@@ -46,9 +46,12 @@ static uint32_t
 get_bool_convert_opcode(uint32_t dst_bit_size)
 {
    switch (dst_bit_size) {
-   case 32: return nir_op_i2i32;
-   case 16: return nir_op_i2i16;
-   case 8:  return nir_op_i2i8;
+   case 32:
+      return nir_op_i2i32;
+   case 16:
+      return nir_op_i2i16;
+   case 8:
+      return nir_op_i2i8;
    default:
       unreachable("invalid boolean bit-size");
    }
@@ -173,130 +176,118 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       break;
 
    case nir_op_flt:
-      opcode = bit_size == 8 ? nir_op_flt8 :
-                               bit_size == 16 ? nir_op_flt16 : nir_op_flt32;
+      opcode = bit_size == 8 ? nir_op_flt8 : bit_size == 16 ? nir_op_flt16
+                                                            : nir_op_flt32;
       break;
 
    case nir_op_fge:
-      opcode = bit_size == 8 ? nir_op_fge8 :
-                               bit_size == 16 ? nir_op_fge16 : nir_op_fge32;
+      opcode = bit_size == 8 ? nir_op_fge8 : bit_size == 16 ? nir_op_fge16
+                                                            : nir_op_fge32;
       break;
 
    case nir_op_feq:
-      opcode = bit_size == 8 ? nir_op_feq8 :
-                               bit_size == 16 ? nir_op_feq16 : nir_op_feq32;
+      opcode = bit_size == 8 ? nir_op_feq8 : bit_size == 16 ? nir_op_feq16
+                                                            : nir_op_feq32;
       break;
 
    case nir_op_fneu:
-      opcode = bit_size == 8 ? nir_op_fneu8 :
-                               bit_size == 16 ? nir_op_fneu16 : nir_op_fneu32;
+      opcode = bit_size == 8 ? nir_op_fneu8 : bit_size == 16 ? nir_op_fneu16
+                                                             : nir_op_fneu32;
       break;
 
    case nir_op_ilt:
-      opcode = bit_size == 8 ? nir_op_ilt8 :
-                               bit_size == 16 ? nir_op_ilt16 : nir_op_ilt32;
+      opcode = bit_size == 8 ? nir_op_ilt8 : bit_size == 16 ? nir_op_ilt16
+                                                            : nir_op_ilt32;
       break;
 
    case nir_op_ige:
-      opcode = bit_size == 8 ? nir_op_ige8 :
-                               bit_size == 16 ? nir_op_ige16 : nir_op_ige32;
+      opcode = bit_size == 8 ? nir_op_ige8 : bit_size == 16 ? nir_op_ige16
+                                                            : nir_op_ige32;
       break;
 
    case nir_op_ieq:
-      opcode = bit_size == 8 ? nir_op_ieq8 :
-                               bit_size == 16 ? nir_op_ieq16 : nir_op_ieq32;
+      opcode = bit_size == 8 ? nir_op_ieq8 : bit_size == 16 ? nir_op_ieq16
+                                                            : nir_op_ieq32;
       break;
 
    case nir_op_ine:
-      opcode = bit_size == 8 ? nir_op_ine8 :
-                               bit_size == 16 ? nir_op_ine16 : nir_op_ine32;
+      opcode = bit_size == 8 ? nir_op_ine8 : bit_size == 16 ? nir_op_ine16
+                                                            : nir_op_ine32;
       break;
 
    case nir_op_ult:
-      opcode = bit_size == 8 ? nir_op_ult8 :
-                               bit_size == 16 ? nir_op_ult16 : nir_op_ult32;
+      opcode = bit_size == 8 ? nir_op_ult8 : bit_size == 16 ? nir_op_ult16
+                                                            : nir_op_ult32;
       break;
 
    case nir_op_uge:
-      opcode = bit_size == 8 ? nir_op_uge8 :
-                               bit_size == 16 ? nir_op_uge16 : nir_op_uge32;
+      opcode = bit_size == 8 ? nir_op_uge8 : bit_size == 16 ? nir_op_uge16
+                                                            : nir_op_uge32;
       break;
 
    case nir_op_ball_fequal2:
-      opcode = bit_size == 8 ? nir_op_b8all_fequal2 :
-                               bit_size == 16 ? nir_op_b16all_fequal2 :
-                                                nir_op_b32all_fequal2;
+      opcode = bit_size == 8 ? nir_op_b8all_fequal2 : bit_size == 16 ? nir_op_b16all_fequal2
+                                                                     : nir_op_b32all_fequal2;
       break;
 
    case nir_op_ball_fequal3:
-      opcode = bit_size == 8 ? nir_op_b8all_fequal3 :
-                               bit_size == 16 ? nir_op_b16all_fequal3 :
-                                                nir_op_b32all_fequal3;
+      opcode = bit_size == 8 ? nir_op_b8all_fequal3 : bit_size == 16 ? nir_op_b16all_fequal3
+                                                                     : nir_op_b32all_fequal3;
       break;
 
    case nir_op_ball_fequal4:
-      opcode = bit_size == 8 ? nir_op_b8all_fequal4 :
-                               bit_size == 16 ? nir_op_b16all_fequal4 :
-                                                nir_op_b32all_fequal4;
+      opcode = bit_size == 8 ? nir_op_b8all_fequal4 : bit_size == 16 ? nir_op_b16all_fequal4
+                                                                     : nir_op_b32all_fequal4;
       break;
 
    case nir_op_bany_fnequal2:
-      opcode = bit_size == 8 ? nir_op_b8any_fnequal2 :
-                               bit_size == 16 ? nir_op_b16any_fnequal2 :
-                                                nir_op_b32any_fnequal2;
+      opcode = bit_size == 8 ? nir_op_b8any_fnequal2 : bit_size == 16 ? nir_op_b16any_fnequal2
+                                                                      : nir_op_b32any_fnequal2;
       break;
 
    case nir_op_bany_fnequal3:
-      opcode = bit_size == 8 ? nir_op_b8any_fnequal3 :
-                               bit_size == 16 ? nir_op_b16any_fnequal3 :
-                                                nir_op_b32any_fnequal3;
+      opcode = bit_size == 8 ? nir_op_b8any_fnequal3 : bit_size == 16 ? nir_op_b16any_fnequal3
+                                                                      : nir_op_b32any_fnequal3;
       break;
 
    case nir_op_bany_fnequal4:
-      opcode = bit_size == 8 ? nir_op_b8any_fnequal4 :
-                               bit_size == 16 ? nir_op_b16any_fnequal4 :
-                                                nir_op_b32any_fnequal4;
+      opcode = bit_size == 8 ? nir_op_b8any_fnequal4 : bit_size == 16 ? nir_op_b16any_fnequal4
+                                                                      : nir_op_b32any_fnequal4;
       break;
 
    case nir_op_ball_iequal2:
-      opcode = bit_size == 8 ? nir_op_b8all_iequal2 :
-                               bit_size == 16 ? nir_op_b16all_iequal2 :
-                                                nir_op_b32all_iequal2;
+      opcode = bit_size == 8 ? nir_op_b8all_iequal2 : bit_size == 16 ? nir_op_b16all_iequal2
+                                                                     : nir_op_b32all_iequal2;
       break;
 
    case nir_op_ball_iequal3:
-      opcode = bit_size == 8 ? nir_op_b8all_iequal3 :
-                               bit_size == 16 ? nir_op_b16all_iequal3 :
-                                                nir_op_b32all_iequal3;
+      opcode = bit_size == 8 ? nir_op_b8all_iequal3 : bit_size == 16 ? nir_op_b16all_iequal3
+                                                                     : nir_op_b32all_iequal3;
       break;
 
    case nir_op_ball_iequal4:
-      opcode = bit_size == 8 ? nir_op_b8all_iequal4 :
-                               bit_size == 16 ? nir_op_b16all_iequal4 :
-                                                nir_op_b32all_iequal4;
+      opcode = bit_size == 8 ? nir_op_b8all_iequal4 : bit_size == 16 ? nir_op_b16all_iequal4
+                                                                     : nir_op_b32all_iequal4;
       break;
 
    case nir_op_bany_inequal2:
-      opcode = bit_size == 8 ? nir_op_b8any_inequal2 :
-                               bit_size == 16 ? nir_op_b16any_inequal2 :
-                                                nir_op_b32any_inequal2;
+      opcode = bit_size == 8 ? nir_op_b8any_inequal2 : bit_size == 16 ? nir_op_b16any_inequal2
+                                                                      : nir_op_b32any_inequal2;
       break;
 
    case nir_op_bany_inequal3:
-      opcode = bit_size == 8 ? nir_op_b8any_inequal3 :
-                               bit_size == 16 ? nir_op_b16any_inequal3 :
-                                                nir_op_b32any_inequal3;
+      opcode = bit_size == 8 ? nir_op_b8any_inequal3 : bit_size == 16 ? nir_op_b16any_inequal3
+                                                                      : nir_op_b32any_inequal3;
       break;
 
    case nir_op_bany_inequal4:
-      opcode = bit_size == 8 ? nir_op_b8any_inequal4 :
-                               bit_size == 16 ? nir_op_b16any_inequal4 :
-                                                nir_op_b32any_inequal4;
+      opcode = bit_size == 8 ? nir_op_b8any_inequal4 : bit_size == 16 ? nir_op_b16any_inequal4
+                                                                      : nir_op_b32any_inequal4;
       break;
 
    case nir_op_bcsel:
-      opcode = bit_size == 8 ? nir_op_b8csel :
-                               bit_size == 16 ? nir_op_b16csel : nir_op_b32csel;
+      opcode = bit_size == 8 ? nir_op_b8csel : bit_size == 16 ? nir_op_b16csel
+                                                              : nir_op_b32csel;
 
       /* The destination of the selection may have a different bit-size from
        * the bcsel condition.
@@ -425,6 +416,6 @@ nir_lower_bool_to_bitsize(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, nir_lower_bool_to_bitsize_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

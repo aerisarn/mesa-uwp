@@ -20,14 +20,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#include <math.h>
-#include <float.h>
-#include "nir.h"
 #include "nir_range_analysis.h"
+#include <float.h>
+#include <math.h>
 #include "util/hash_table.h"
-#include "util/u_math.h"
 #include "util/u_dynarray.h"
+#include "util/u_math.h"
 #include "c99_alloca.h"
+#include "nir.h"
 
 /**
  * Analyzes a sequence of operations to determine some aspects of the range of
@@ -71,7 +71,7 @@ perform_analysis(struct analysis_state *state)
 {
    while (state->query_stack.size) {
       struct analysis_query *cur =
-         (struct analysis_query *)((char*)util_dynarray_end(&state->query_stack) - state->query_size);
+         (struct analysis_query *)((char *)util_dynarray_end(&state->query_stack) - state->query_size);
       uint32_t *result = util_dynarray_element(&state->result_stack, uint32_t, cur->result_index);
 
       uintptr_t key = state->get_key(cur);
@@ -80,13 +80,13 @@ perform_analysis(struct analysis_state *state)
        * them by testing pushed_queries.
        */
       if (cur->pushed_queries == 0 && key &&
-          (he = _mesa_hash_table_search(state->range_ht, (void*)key))) {
+          (he = _mesa_hash_table_search(state->range_ht, (void *)key))) {
          *result = (uintptr_t)he->data;
          state->query_stack.size -= state->query_size;
          continue;
       }
 
-      uint32_t *src = (uint32_t*)util_dynarray_end(&state->result_stack) - cur->pushed_queries;
+      uint32_t *src = (uint32_t *)util_dynarray_end(&state->result_stack) - cur->pushed_queries;
       state->result_stack.size -= sizeof(uint32_t) * cur->pushed_queries;
 
       uint32_t prev_num_queries = state->query_stack.size;
@@ -101,7 +101,7 @@ perform_analysis(struct analysis_state *state)
       }
 
       if (key)
-         _mesa_hash_table_insert(state->range_ht, (void*)key, (void*)(uintptr_t)*result);
+         _mesa_hash_table_insert(state->range_ht, (void *)key, (void *)(uintptr_t)*result);
 
       state->query_stack.size -= state->query_size;
    }
@@ -137,9 +137,9 @@ static struct ssa_result_range
 unpack_data(uint32_t v)
 {
    return (struct ssa_result_range){
-      .range       = v & 0xff,
+      .range = v & 0xff,
       .is_integral = (v & 0x00100) != 0,
-      .is_finite   = (v & 0x00200) != 0,
+      .is_finite = (v & 0x00200) != 0,
       .is_a_number = (v & 0x00400) != 0
    };
 }
@@ -297,52 +297,48 @@ analyze_constant(const struct nir_alu_instr *instr, unsigned src,
  */
 #define _______ unknown
 
-
 #if defined(__clang__)
-   /* clang wants _Pragma("unroll X") */
-   #define pragma_unroll_5 _Pragma("unroll 5")
-   #define pragma_unroll_7 _Pragma("unroll 7")
+/* clang wants _Pragma("unroll X") */
+#define pragma_unroll_5 _Pragma("unroll 5")
+#define pragma_unroll_7 _Pragma("unroll 7")
 /* gcc wants _Pragma("GCC unroll X") */
 #elif defined(__GNUC__)
-   #if __GNUC__ >= 8
-      #define pragma_unroll_5 _Pragma("GCC unroll 5")
-      #define pragma_unroll_7 _Pragma("GCC unroll 7")
-   #else
-      #pragma GCC optimize ("unroll-loops")
-      #define pragma_unroll_5
-      #define pragma_unroll_7
-   #endif
+#if __GNUC__ >= 8
+#define pragma_unroll_5 _Pragma("GCC unroll 5")
+#define pragma_unroll_7 _Pragma("GCC unroll 7")
 #else
-   /* MSVC doesn't have C99's _Pragma() */
-   #define pragma_unroll_5
-   #define pragma_unroll_7
+#pragma GCC optimize("unroll-loops")
+#define pragma_unroll_5
+#define pragma_unroll_7
+#endif
+#else
+/* MSVC doesn't have C99's _Pragma() */
+#define pragma_unroll_5
+#define pragma_unroll_7
 #endif
 
-
 #ifndef NDEBUG
-#define ASSERT_TABLE_IS_COMMUTATIVE(t)                        \
-   do {                                                       \
-      static bool first = true;                               \
-      if (first) {                                            \
-         first = false;                                       \
-         pragma_unroll_7                                      \
-         for (unsigned r = 0; r < ARRAY_SIZE(t); r++) {       \
-            pragma_unroll_7                                   \
-            for (unsigned c = 0; c < ARRAY_SIZE(t[0]); c++)   \
-               assert(t[r][c] == t[c][r]);                    \
-         }                                                    \
-      }                                                       \
+#define ASSERT_TABLE_IS_COMMUTATIVE(t)                                      \
+   do {                                                                     \
+      static bool first = true;                                             \
+      if (first) {                                                          \
+         first = false;                                                     \
+         pragma_unroll_7 for (unsigned r = 0; r < ARRAY_SIZE(t); r++)       \
+         {                                                                  \
+            pragma_unroll_7 for (unsigned c = 0; c < ARRAY_SIZE(t[0]); c++) \
+               assert(t[r][c] == t[c][r]);                                  \
+         }                                                                  \
+      }                                                                     \
    } while (false)
 
-#define ASSERT_TABLE_IS_DIAGONAL(t)                           \
-   do {                                                       \
-      static bool first = true;                               \
-      if (first) {                                            \
-         first = false;                                       \
-         pragma_unroll_7                                      \
-         for (unsigned r = 0; r < ARRAY_SIZE(t); r++)         \
-            assert(t[r][r] == r);                             \
-      }                                                       \
+#define ASSERT_TABLE_IS_DIAGONAL(t)                                   \
+   do {                                                               \
+      static bool first = true;                                       \
+      if (first) {                                                    \
+         first = false;                                               \
+         pragma_unroll_7 for (unsigned r = 0; r < ARRAY_SIZE(t); r++) \
+            assert(t[r][r] == r);                                     \
+      }                                                               \
    } while (false)
 
 #else
@@ -374,26 +370,26 @@ union_ranges(enum ssa_ranges a, enum ssa_ranges b)
 /* Verify that the 'unknown' entry in each row (or column) of the table is the
  * union of all the other values in the row (or column).
  */
-#define ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(t)              \
-   do {                                                                 \
-      static bool first = true;                                         \
-      if (first) {                                                      \
-         first = false;                                                 \
-         pragma_unroll_7                                                \
-         for (unsigned i = 0; i < last_range; i++) {                    \
-            enum ssa_ranges col_range = t[i][unknown + 1];              \
-            enum ssa_ranges row_range = t[unknown + 1][i];              \
-                                                                        \
-            pragma_unroll_5                                             \
-            for (unsigned j = unknown + 2; j < last_range; j++) {       \
-               col_range = union_ranges(col_range, t[i][j]);            \
-               row_range = union_ranges(row_range, t[j][i]);            \
-            }                                                           \
-                                                                        \
-            assert(col_range == t[i][unknown]);                         \
-            assert(row_range == t[unknown][i]);                         \
-         }                                                              \
-      }                                                                 \
+#define ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(t)                      \
+   do {                                                                         \
+      static bool first = true;                                                 \
+      if (first) {                                                              \
+         first = false;                                                         \
+         pragma_unroll_7 for (unsigned i = 0; i < last_range; i++)              \
+         {                                                                      \
+            enum ssa_ranges col_range = t[i][unknown + 1];                      \
+            enum ssa_ranges row_range = t[unknown + 1][i];                      \
+                                                                                \
+            pragma_unroll_5 for (unsigned j = unknown + 2; j < last_range; j++) \
+            {                                                                   \
+               col_range = union_ranges(col_range, t[i][j]);                    \
+               row_range = union_ranges(row_range, t[j][i]);                    \
+            }                                                                   \
+                                                                                \
+            assert(col_range == t[i][unknown]);                                 \
+            assert(row_range == t[unknown][i]);                                 \
+         }                                                                      \
+      }                                                                         \
    } while (false)
 
 /* For most operations, the union of ranges for a strict inequality and
@@ -403,24 +399,24 @@ union_ranges(enum ssa_ranges a, enum ssa_ranges b)
  * Does not apply to selection-like opcodes (bcsel, fmin, fmax, etc.).
  */
 #define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(t) \
-   do {                                                                 \
-      assert(union_ranges(t[lt_zero], t[eq_zero]) == t[le_zero]);       \
-      assert(union_ranges(t[gt_zero], t[eq_zero]) == t[ge_zero]);       \
+   do {                                                                  \
+      assert(union_ranges(t[lt_zero], t[eq_zero]) == t[le_zero]);        \
+      assert(union_ranges(t[gt_zero], t[eq_zero]) == t[ge_zero]);        \
    } while (false)
 
-#define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(t) \
-   do {                                                                 \
-      static bool first = true;                                         \
-      if (first) {                                                      \
-         first = false;                                                 \
-         pragma_unroll_7                                                \
-         for (unsigned i = 0; i < last_range; i++) {                    \
+#define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(t)         \
+   do {                                                                          \
+      static bool first = true;                                                  \
+      if (first) {                                                               \
+         first = false;                                                          \
+         pragma_unroll_7 for (unsigned i = 0; i < last_range; i++)               \
+         {                                                                       \
             assert(union_ranges(t[i][lt_zero], t[i][eq_zero]) == t[i][le_zero]); \
             assert(union_ranges(t[i][gt_zero], t[i][eq_zero]) == t[i][ge_zero]); \
             assert(union_ranges(t[lt_zero][i], t[eq_zero][i]) == t[le_zero][i]); \
             assert(union_ranges(t[gt_zero][i], t[eq_zero][i]) == t[ge_zero][i]); \
-         }                                                              \
-      }                                                                 \
+         }                                                                       \
+      }                                                                          \
    } while (false)
 
 /* Several other unordered tuples span the range of "everything."  Each should
@@ -436,35 +432,35 @@ union_ranges(enum ssa_ranges a, enum ssa_ranges b)
  * possibilities, so the union of all the unions of disjoint ranges is
  * equivalent to the union of "others."
  */
-#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(t)            \
-   do {                                                                 \
-      assert(union_ranges(t[lt_zero], t[ge_zero]) == t[unknown]);       \
-      assert(union_ranges(t[le_zero], t[gt_zero]) == t[unknown]);       \
-      assert(union_ranges(t[eq_zero], t[ne_zero]) == t[unknown]);       \
+#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(t)      \
+   do {                                                           \
+      assert(union_ranges(t[lt_zero], t[ge_zero]) == t[unknown]); \
+      assert(union_ranges(t[le_zero], t[gt_zero]) == t[unknown]); \
+      assert(union_ranges(t[eq_zero], t[ne_zero]) == t[unknown]); \
    } while (false)
 
-#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(t)            \
-   do {                                                                 \
-      static bool first = true;                                         \
-      if (first) {                                                      \
-         first = false;                                                 \
-         pragma_unroll_7                                                \
-         for (unsigned i = 0; i < last_range; i++) {                    \
-            assert(union_ranges(t[i][lt_zero], t[i][ge_zero]) ==        \
-                   t[i][unknown]);                                      \
-            assert(union_ranges(t[i][le_zero], t[i][gt_zero]) ==        \
-                   t[i][unknown]);                                      \
-            assert(union_ranges(t[i][eq_zero], t[i][ne_zero]) ==        \
-                   t[i][unknown]);                                      \
-                                                                        \
-            assert(union_ranges(t[lt_zero][i], t[ge_zero][i]) ==        \
-                   t[unknown][i]);                                      \
-            assert(union_ranges(t[le_zero][i], t[gt_zero][i]) ==        \
-                   t[unknown][i]);                                      \
-            assert(union_ranges(t[eq_zero][i], t[ne_zero][i]) ==        \
-                   t[unknown][i]);                                      \
-         }                                                              \
-      }                                                                 \
+#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(t)       \
+   do {                                                            \
+      static bool first = true;                                    \
+      if (first) {                                                 \
+         first = false;                                            \
+         pragma_unroll_7 for (unsigned i = 0; i < last_range; i++) \
+         {                                                         \
+            assert(union_ranges(t[i][lt_zero], t[i][ge_zero]) ==   \
+                   t[i][unknown]);                                 \
+            assert(union_ranges(t[i][le_zero], t[i][gt_zero]) ==   \
+                   t[i][unknown]);                                 \
+            assert(union_ranges(t[i][eq_zero], t[i][ne_zero]) ==   \
+                   t[i][unknown]);                                 \
+                                                                   \
+            assert(union_ranges(t[lt_zero][i], t[ge_zero][i]) ==   \
+                   t[unknown][i]);                                 \
+            assert(union_ranges(t[le_zero][i], t[gt_zero][i]) ==   \
+                   t[unknown][i]);                                 \
+            assert(union_ranges(t[eq_zero][i], t[ne_zero][i]) ==   \
+                   t[unknown][i]);                                 \
+         }                                                         \
+      }                                                            \
    } while (false)
 
 #else
@@ -512,11 +508,20 @@ get_fp_key(struct analysis_query *q)
     * As a result, the number of bits does not need to be encoded here.
     */
    switch (nir_alu_type_get_base_type(fp_q->use_type)) {
-   case nir_type_int:   type_encoding = 0; break;
-   case nir_type_uint:  type_encoding = 1; break;
-   case nir_type_bool:  type_encoding = 2; break;
-   case nir_type_float: type_encoding = 3; break;
-   default: unreachable("Invalid base type.");
+   case nir_type_int:
+      type_encoding = 0;
+      break;
+   case nir_type_uint:
+      type_encoding = 1;
+      break;
+   case nir_type_bool:
+      type_encoding = 2;
+      break;
+   case nir_type_float:
+      type_encoding = 3;
+      break;
+   default:
+      unreachable("Invalid base type.");
    }
 
    return ptr | type_encoding;
@@ -549,12 +554,12 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
    }
 
    if (instr->src[src].src.ssa->parent_instr->type != nir_instr_type_alu) {
-      *result = pack_data((struct ssa_result_range){unknown, false, false, false});
+      *result = pack_data((struct ssa_result_range){ unknown, false, false, false });
       return;
    }
 
    const struct nir_alu_instr *const alu =
-       nir_instr_as_alu(instr->src[src].src.ssa->parent_instr);
+      nir_instr_as_alu(instr->src[src].src.ssa->parent_instr);
 
    /* Bail if the type of the instruction generating the value does not match
     * the type the value will be interpreted as.  int/uint/bool can be
@@ -570,7 +575,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
       if (use_base_type != src_base_type &&
           (use_base_type == nir_type_float ||
            src_base_type == nir_type_float)) {
-         *result = pack_data((struct ssa_result_range){unknown, false, false, false});
+         *result = pack_data((struct ssa_result_range){ unknown, false, false, false });
          return;
       }
    }
@@ -627,7 +632,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
       }
    }
 
-   struct ssa_result_range r = {unknown, false, false, false};
+   struct ssa_result_range r = { unknown, false, false, false };
 
    /* ge_zero: ge_zero + ge_zero
     *
@@ -719,13 +724,12 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
    ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(fmul_table);
 
    static const enum ssa_ranges fneg_table[last_range + 1] = {
-   /* unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+      /* unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
       _______, gt_zero, ge_zero, lt_zero, le_zero, ne_zero, eq_zero
    };
 
    ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(fneg_table);
    ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(fneg_table);
-
 
    switch (alu->op) {
    case nir_op_b2f32:
@@ -737,7 +741,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
        * 1.401298464324817e-45.  The latter is subnormal, but it is finite and
        * a number.
        */
-      r = (struct ssa_result_range){ge_zero, alu->op == nir_op_b2f32, true, true};
+      r = (struct ssa_result_range){ ge_zero, alu->op == nir_op_b2f32, true, true };
       break;
 
    case nir_op_bcsel: {
@@ -812,7 +816,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
        * operands is finite, then the result cannot be NaN.
        */
       r.is_a_number = left.is_a_number && right.is_a_number &&
-         (left.is_finite || right.is_finite);
+                      (left.is_finite || right.is_finite);
       break;
    }
 
@@ -822,7 +826,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
        * parameters, the result will flush to zero.
        */
       static const enum ssa_ranges table[last_range + 1] = {
-      /* unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+         /* unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
          ge_zero, ge_zero, ge_zero, gt_zero, gt_zero, ge_zero, gt_zero
       };
 
@@ -1033,9 +1037,9 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
           * the other cannot be zero, then the result must be a number.
           */
          r.is_a_number = (left.is_a_number && right.is_a_number) &&
-            ((left.is_finite && right.is_finite) ||
-             (!is_not_zero(left.range) && right.is_finite) ||
-             (left.is_finite && !is_not_zero(right.range)));
+                         ((left.is_finite && right.is_finite) ||
+                          (!is_not_zero(left.range) && right.is_finite) ||
+                          (left.is_finite && !is_not_zero(right.range)));
       } else {
          /* nir_op_fmulz: unlike nir_op_fmul, 0 * ±Inf is a number. */
          r.is_a_number = left.is_a_number && right.is_a_number;
@@ -1107,7 +1111,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
 
    case nir_op_fsqrt:
    case nir_op_frsq:
-      r = (struct ssa_result_range){ge_zero, false, false, false};
+      r = (struct ssa_result_range){ ge_zero, false, false, false };
       break;
 
    case nir_op_ffloor: {
@@ -1186,7 +1190,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
    case nir_op_ult:
    case nir_op_uge:
       /* Boolean results are 0 or -1. */
-      r = (struct ssa_result_range){le_zero, false, true, false};
+      r = (struct ssa_result_range){ le_zero, false, true, false };
       break;
 
    case nir_op_fdot2:
@@ -1210,11 +1214,11 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
        * Inf-Inf in the dot-product, the result must also be a number.
        */
       if (nir_alu_srcs_equal(alu, alu, 0, 1)) {
-         r = (struct ssa_result_range){ge_zero, false, left.is_a_number, false };
+         r = (struct ssa_result_range){ ge_zero, false, left.is_a_number, false };
       } else if (nir_alu_srcs_negative_equal(alu, alu, 0, 1)) {
-         r = (struct ssa_result_range){le_zero, false, left.is_a_number, false };
+         r = (struct ssa_result_range){ le_zero, false, left.is_a_number, false };
       } else {
-         r = (struct ssa_result_range){unknown, false, false, false};
+         r = (struct ssa_result_range){ unknown, false, false, false };
       }
       break;
    }
@@ -1337,7 +1341,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
    }
 
    default:
-      r = (struct ssa_result_range){unknown, false, false, false};
+      r = (struct ssa_result_range){ unknown, false, false, false };
       break;
    }
 
@@ -1345,7 +1349,7 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
       r.is_integral = true;
 
    /* Just like isfinite(), the is_finite flag implies the value is a number. */
-   assert((int) r.is_finite <= (int) r.is_a_number);
+   assert((int)r.is_finite <= (int)r.is_a_number);
 
    *result = pack_data(r);
 }
@@ -1372,11 +1376,14 @@ nir_analyze_range(struct hash_table *range_ht,
    return unpack_data(perform_analysis(&state));
 }
 
-static uint32_t bitmask(uint32_t size) {
+static uint32_t
+bitmask(uint32_t size)
+{
    return size >= 32 ? 0xffffffffu : ((uint32_t)1 << size) - 1u;
 }
 
-static uint64_t mul_clamp(uint32_t a, uint32_t b)
+static uint64_t
+mul_clamp(uint32_t a, uint32_t b)
 {
    if (a != 0 && (a * b) / a != b)
       return (uint64_t)UINT32_MAX + 1;
@@ -1400,7 +1407,7 @@ search_phi_bcsel(nir_ssa_scalar scalar, nir_ssa_scalar *buf, unsigned buf_size, 
          nir_foreach_phi_src(src, phi) {
             num_sources_left--;
             unsigned added = search_phi_bcsel(nir_get_ssa_scalar(src->src.ssa, scalar.comp),
-               buf + total_added, buf_size - num_sources_left, visited);
+                                              buf + total_added, buf_size - num_sources_left, visited);
             assert(added <= buf_size);
             buf_size -= added;
             total_added += added;
@@ -1445,18 +1452,46 @@ static const nir_unsigned_upper_bound_config default_ub_config = {
     * unbounded. On some hardware max_workgroup_count[1] and
     * max_workgroup_count[2] may be smaller.
     */
-   .max_workgroup_count = {UINT32_MAX, UINT32_MAX, UINT32_MAX},
+   .max_workgroup_count = { UINT32_MAX, UINT32_MAX, UINT32_MAX },
 
    /* max_workgroup_size is the local invocation maximum. This is generally
     * small the OpenGL 4.2 minimum maximum is 1024.
     */
-   .max_workgroup_size = {UINT16_MAX, UINT16_MAX, UINT16_MAX},
+   .max_workgroup_size = { UINT16_MAX, UINT16_MAX, UINT16_MAX },
 
    .vertex_attrib_max = {
-      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
+      UINT32_MAX,
    },
 };
 
@@ -1479,8 +1514,8 @@ get_uub_key(struct analysis_query *q)
    /* keys can't be 0, so we have to add 1 to the index */
    unsigned shift_amount = ffs(NIR_MAX_VEC_COMPONENTS) - 1;
    return nir_ssa_scalar_is_const(scalar)
-          ? 0
-          : ((uintptr_t)(scalar.def->index + 1) << shift_amount) | scalar.comp;
+             ? 0
+             : ((uintptr_t)(scalar.def->index + 1) << shift_amount) | scalar.comp;
 }
 
 static void
@@ -1506,7 +1541,8 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
       } else {
          *result = (shader->info.workgroup_size[0] *
                     shader->info.workgroup_size[1] *
-                    shader->info.workgroup_size[2]) - 1u;
+                    shader->info.workgroup_size[2]) -
+                   1u;
       }
       break;
    case nir_intrinsic_load_local_invocation_id:
@@ -1524,17 +1560,19 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
    case nir_intrinsic_load_global_invocation_id:
       if (shader->info.workgroup_size_variable) {
          *result = mul_clamp(config->max_workgroup_size[q.scalar.comp],
-                             config->max_workgroup_count[q.scalar.comp]) - 1u;
+                             config->max_workgroup_count[q.scalar.comp]) -
+                   1u;
       } else {
          *result = (shader->info.workgroup_size[q.scalar.comp] *
-                    config->max_workgroup_count[q.scalar.comp]) - 1u;
+                    config->max_workgroup_count[q.scalar.comp]) -
+                   1u;
       }
       break;
    case nir_intrinsic_load_invocation_id:
       if (shader->info.stage == MESA_SHADER_TESS_CTRL)
          *result = shader->info.tess.tcs_vertices_out
-                   ? (shader->info.tess.tcs_vertices_out - 1)
-                   : 511; /* Generous maximum output patch size of 512 */
+                      ? (shader->info.tess.tcs_vertices_out - 1)
+                      : 511; /* Generous maximum output patch size of 512 */
       break;
    case nir_intrinsic_load_subgroup_invocation:
    case nir_intrinsic_first_invocation:
@@ -1632,7 +1670,7 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
       if (format == PIPE_FORMAT_NONE)
          break;
 
-      const struct util_format_description* desc = util_format_description(format);
+      const struct util_format_description *desc = util_format_description(format);
       if (desc->channel[q.scalar.comp].type != UTIL_FORMAT_TYPE_UNSIGNED)
          break;
 
@@ -1768,7 +1806,8 @@ get_alu_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
       nir_ssa_scalar src1_scalar = nir_ssa_scalar_chase_alu_src(q.scalar, 1);
       if (nir_ssa_scalar_is_const(src1_scalar))
          *result = nir_ssa_scalar_as_uint(src1_scalar)
-                   ? src[0] / nir_ssa_scalar_as_uint(src1_scalar) : 0;
+                      ? src[0] / nir_ssa_scalar_as_uint(src1_scalar)
+                      : 0;
       else
          *result = src[0];
       break;
@@ -1864,7 +1903,7 @@ get_phi_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
    if (!prev || prev->type == nir_cf_node_block) {
       /* Resolve cycles by inserting max into range_ht. */
       uint32_t max = bitmask(q.scalar.def->bit_size);
-      _mesa_hash_table_insert(state->range_ht, (void*)get_uub_key(&q.head), (void*)(uintptr_t)max);
+      _mesa_hash_table_insert(state->range_ht, (void *)get_uub_key(&q.head), (void *)(uintptr_t)max);
 
       struct set *visited = _mesa_pointer_set_create(NULL);
       nir_ssa_scalar *defs = alloca(sizeof(nir_ssa_scalar) * 64);
@@ -1899,7 +1938,8 @@ process_uub_query(struct analysis_state *state, struct analysis_query *aq, uint3
 uint32_t
 nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
                          nir_ssa_scalar scalar,
-                         const nir_unsigned_upper_bound_config *config) {
+                         const nir_unsigned_upper_bound_config *config)
+{
    if (!config)
       config = &default_ub_config;
 

@@ -33,7 +33,7 @@
 
 typedef struct {
    const nir_lower_drawpixels_options *options;
-   nir_shader   *shader;
+   nir_shader *shader;
    nir_variable *texcoord, *texcoord_const, *scale, *bias, *tex, *pixelmap;
 } lower_drawpixels_state;
 
@@ -253,6 +253,6 @@ nir_lower_drawpixels(nir_shader *shader,
 
    nir_shader_instructions_pass(shader, lower_drawpixels_instr,
                                 nir_metadata_block_index |
-                                nir_metadata_dominance,
+                                   nir_metadata_dominance,
                                 &state);
 }

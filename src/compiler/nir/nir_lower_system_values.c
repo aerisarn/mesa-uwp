@@ -25,10 +25,10 @@
  *
  */
 
+#include "util/set.h"
+#include "util/u_math.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "util/u_math.h"
-#include "util/set.h"
 
 struct lower_sysval_state {
    const nir_lower_compute_system_values_options *options;
@@ -50,13 +50,13 @@ sanitize_32bit_sysval(nir_builder *b, nir_intrinsic_instr *intrin)
    return nir_u2uN(b, &intrin->dest.ssa, bit_size);
 }
 
-static nir_ssa_def*
+static nir_ssa_def *
 build_global_group_size(nir_builder *b, unsigned bit_size)
 {
    nir_ssa_def *group_size = nir_load_workgroup_size(b);
    nir_ssa_def *num_workgroups = nir_load_num_workgroups(b, bit_size);
    return nir_imul(b, nir_u2uN(b, group_size, bit_size),
-                      num_workgroups);
+                   num_workgroups);
 }
 
 static bool
@@ -80,7 +80,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
    case nir_intrinsic_load_vertex_id:
       if (b->shader->options->vertex_id_zero_based) {
          return nir_iadd(b, nir_load_vertex_id_zero_base(b),
-                            nir_load_first_vertex(b));
+                         nir_load_first_vertex(b));
       } else {
          return NULL;
       }
@@ -96,7 +96,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
        */
       if (b->shader->options->lower_base_vertex) {
          return nir_iand(b, nir_load_is_indexed_draw(b),
-                            nir_load_first_vertex(b));
+                         nir_load_first_vertex(b));
       } else {
          return NULL;
       }
@@ -167,8 +167,8 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
             nir_ssa_def *index = nir_ssa_for_src(b, arr_deref->arr.index, 1);
             nir_ssa_def *sysval = (deref->var->data.location ==
                                    SYSTEM_VALUE_TESS_LEVEL_INNER)
-                                      ? nir_load_tess_level_inner(b)
-                                      : nir_load_tess_level_outer(b);
+                                     ? nir_load_tess_level_inner(b)
+                                     : nir_load_tess_level_outer(b);
             return nir_vector_extract(b, sysval, index);
          }
 
@@ -191,7 +191,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       switch (var->data.location) {
       case SYSTEM_VALUE_INSTANCE_INDEX:
          return nir_iadd(b, nir_load_instance_id(b),
-                            nir_load_base_instance(b));
+                         nir_load_base_instance(b));
 
       case SYSTEM_VALUE_SUBGROUP_EQ_MASK:
       case SYSTEM_VALUE_SUBGROUP_GE_MASK:
@@ -275,8 +275,8 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
 
       case SYSTEM_VALUE_MESH_VIEW_INDICES:
          return nir_load_mesh_view_indices(b, intrin->dest.ssa.num_components,
-               bit_size, column, .base = 0,
-               .range = intrin->dest.ssa.num_components * bit_size / 8);
+                                           bit_size, column, .base = 0,
+                                           .range = intrin->dest.ssa.num_components * bit_size / 8);
 
       default:
          break;
@@ -426,7 +426,6 @@ lower_id_to_index_no_umod(nir_builder *b, nir_ssa_def *index,
    }
 }
 
-
 static nir_ssa_def *
 lower_id_to_index(nir_builder *b, nir_ssa_def *index, nir_ssa_def *size,
                   unsigned bit_size)
@@ -512,7 +511,7 @@ lower_compute_system_value_instr(nir_builder *b,
              */
 
             nir_ssa_def *val = try_lower_id_to_index_1d(b, local_index,
-                  b->shader->info.workgroup_size);
+                                                        b->shader->info.workgroup_size);
             if (val)
                return val;
          }
@@ -605,8 +604,7 @@ lower_compute_system_value_instr(nir_builder *b,
       if (!b->shader->info.workgroup_size_variable && is_zero) {
          nir_ssa_scalar defs[3];
          for (unsigned i = 0; i < 3; i++) {
-            defs[i] = is_zero & (1 << i) ? nir_get_ssa_scalar(nir_imm_zero(b, 1, 32), 0) :
-                                           nir_get_ssa_scalar(&intrin->dest.ssa, i);
+            defs[i] = is_zero & (1 << i) ? nir_get_ssa_scalar(nir_imm_zero(b, 1, 32), 0) : nir_get_ssa_scalar(&intrin->dest.ssa, i);
          }
          return nir_vec_scalars(b, defs, 3);
       }
@@ -637,9 +635,9 @@ lower_compute_system_value_instr(nir_builder *b,
           */
          nir_ssa_def *index;
          index = nir_imul(b, nir_channel(b, local_id, 2),
-                             nir_imul(b, size_x, size_y));
+                          nir_imul(b, size_x, size_y));
          index = nir_iadd(b, index,
-                             nir_imul(b, nir_channel(b, local_id, 1), size_x));
+                          nir_imul(b, nir_channel(b, local_id, 1), size_x));
          index = nir_iadd(b, index, nir_channel(b, local_id, 0));
          return nir_u2uN(b, index, bit_size);
       } else {
@@ -671,9 +669,8 @@ lower_compute_system_value_instr(nir_builder *b,
          nir_ssa_def *group_id = nir_load_workgroup_id(b, bit_size);
          nir_ssa_def *local_id = nir_load_local_invocation_id(b);
 
-         return nir_iadd(b, nir_imul(b, group_id,
-                                        nir_u2uN(b, group_size, bit_size)),
-                            nir_u2uN(b, local_id, bit_size));
+         return nir_iadd(b, nir_imul(b, group_id, nir_u2uN(b, group_size, bit_size)),
+                         nir_u2uN(b, local_id, bit_size));
       } else {
          return NULL;
       }
@@ -682,7 +679,7 @@ lower_compute_system_value_instr(nir_builder *b,
    case nir_intrinsic_load_global_invocation_id: {
       if (options && options->has_base_global_invocation_id)
          return nir_iadd(b, nir_load_global_invocation_id_zero_base(b, bit_size),
-                            nir_load_base_global_invocation_id(b, bit_size));
+                         nir_load_base_global_invocation_id(b, bit_size));
       else if ((options && options->has_base_workgroup_id) ||
                !b->shader->options->has_cs_global_id)
          return nir_load_global_invocation_id_zero_base(b, bit_size);
@@ -700,7 +697,7 @@ lower_compute_system_value_instr(nir_builder *b,
       /* index = id.x + ((id.y + (id.z * size.y)) * size.x) */
       nir_ssa_def *index;
       index = nir_imul(b, nir_channel(b, global_id, 2),
-                          nir_channel(b, global_size, 1));
+                       nir_channel(b, global_size, 1));
       index = nir_iadd(b, nir_channel(b, global_id, 1), index);
       index = nir_imul(b, nir_channel(b, global_size, 0), index);
       index = nir_iadd(b, nir_channel(b, global_id, 0), index);
@@ -710,12 +707,12 @@ lower_compute_system_value_instr(nir_builder *b,
    case nir_intrinsic_load_workgroup_id: {
       if (options && options->has_base_workgroup_id)
          return nir_iadd(b, nir_u2uN(b, nir_load_workgroup_id_zero_base(b), bit_size),
-                            nir_load_base_workgroup_id(b, bit_size));
+                         nir_load_base_workgroup_id(b, bit_size));
       else if (options && options->lower_workgroup_id_to_index) {
          nir_ssa_def *wg_idx = nir_load_workgroup_index(b);
 
          nir_ssa_def *val =
-               try_lower_id_to_index_1d(b, wg_idx, options->num_workgroups);
+            try_lower_id_to_index_1d(b, wg_idx, options->num_workgroups);
          if (val)
             return val;
 
@@ -727,7 +724,6 @@ lower_compute_system_value_instr(nir_builder *b,
       }
 
       return NULL;
-
    }
 
    case nir_intrinsic_load_num_workgroups: {
@@ -773,7 +769,7 @@ nir_lower_compute_system_values(nir_shader *shader,
       nir_shader_lower_instructions(shader,
                                     lower_compute_system_value_filter,
                                     lower_compute_system_value_instr,
-                                    (void*)&state);
+                                    (void *)&state);
    ralloc_free(state.lower_once_list);
 
    /* Update this so as not to lower it again. */

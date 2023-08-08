@@ -61,7 +61,7 @@ lower_ssbo_op(nir_intrinsic_op op)
 
 static inline nir_ssa_def *
 nir_load_ssbo_prop(nir_builder *b, nir_intrinsic_op op,
-      nir_src *idx, unsigned bitsize)
+                   nir_src *idx, unsigned bitsize)
 {
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, op);
    load->num_components = 1;
@@ -92,8 +92,8 @@ lower_ssbo_instr(nir_builder *b, nir_intrinsic_instr *intr)
 
    nir_ssa_def *address =
       nir_iadd(b,
-            nir_ssbo_prop(b, load_ssbo_address, &index, 64),
-            nir_u2u64(b, offset));
+               nir_ssbo_prop(b, load_ssbo_address, &index, 64),
+               nir_u2u64(b, offset));
 
    /* Create the replacement intrinsic */
 
@@ -161,16 +161,17 @@ nir_lower_ssbo(nir_shader *shader)
 
       nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
-            if (!should_lower_ssbo_instr(instr)) continue;
+            if (!should_lower_ssbo_instr(instr))
+               continue;
             progress = true;
             b.cursor = nir_before_instr(instr);
 
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
             nir_ssa_def *replace = lower_ssbo_instr(&b, intr);
 
-            if (replace)  {
+            if (replace) {
                nir_ssa_def_rewrite_uses(&intr->dest.ssa,
-                                     replace);
+                                        replace);
             }
 
             nir_instr_remove(instr);

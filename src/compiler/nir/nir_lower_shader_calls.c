@@ -21,11 +21,11 @@
  * IN THE SOFTWARE.
  */
 
+#include "util/u_dynarray.h"
+#include "util/u_math.h"
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_phi_builder.h"
-#include "util/u_dynarray.h"
-#include "util/u_math.h"
 
 static bool
 move_system_values_to_top(nir_shader *shader)
@@ -59,7 +59,7 @@ move_system_values_to_top(nir_shader *shader)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -91,7 +91,7 @@ struct sized_bitset {
 static struct sized_bitset
 bitset_create(void *mem_ctx, unsigned size)
 {
-   return (struct sized_bitset) {
+   return (struct sized_bitset){
       .set = rzalloc_array(mem_ctx, BITSET_WORD, BITSET_WORDS(size)),
       .size = size,
    };
@@ -241,8 +241,8 @@ add_src_instr(nir_src *src, void *state)
 static int
 compare_instr_indexes(const void *_inst1, const void *_inst2)
 {
-   const nir_instr * const *inst1 = _inst1;
-   const nir_instr * const *inst2 = _inst2;
+   const nir_instr *const *inst1 = _inst1;
+   const nir_instr *const *inst2 = _inst2;
 
    return (*inst1)->index - (*inst2)->index;
 }
@@ -302,7 +302,7 @@ can_remat_chain_ssa_def(nir_ssa_def *def, struct sized_bitset *remat, struct uti
 
    return true;
 
- fail:
+fail:
    util_dynarray_clear(buf);
    ralloc_free(mem_ctx);
    return false;
@@ -451,9 +451,9 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
    nir_metadata_require(impl, nir_metadata_live_ssa_defs |
-                              nir_metadata_dominance |
-                              nir_metadata_block_index |
-                              nir_metadata_instr_index);
+                                 nir_metadata_dominance |
+                                 nir_metadata_block_index |
+                                 nir_metadata_instr_index);
 
    void *mem_ctx = ralloc_context(shader);
 
@@ -669,12 +669,12 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
          switch (call->intrinsic) {
          case nir_intrinsic_trace_ray: {
             nir_rt_trace_ray(b, call->src[0].ssa, call->src[1].ssa,
-                              call->src[2].ssa, call->src[3].ssa,
-                              call->src[4].ssa, call->src[5].ssa,
-                              call->src[6].ssa, call->src[7].ssa,
-                              call->src[8].ssa, call->src[9].ssa,
-                              call->src[10].ssa,
-                              .call_idx = call_idx, .stack_size = offset);
+                             call->src[2].ssa, call->src[3].ssa,
+                             call->src[4].ssa, call->src[5].ssa,
+                             call->src[6].ssa, call->src[7].ssa,
+                             call->src[8].ssa, call->src[9].ssa,
+                             call->src[10].ssa,
+                             .call_idx = call_idx, .stack_size = offset);
             break;
          }
 
@@ -798,7 +798,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
    ralloc_free(mem_ctx);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 }
 
 static nir_instr *
@@ -929,7 +929,8 @@ cursor_is_after_jump(nir_cursor cursor)
    case nir_cursor_after_instr:
       return cursor.instr->type == nir_instr_type_jump;
    case nir_cursor_after_block:
-      return nir_block_ends_in_jump(cursor.block);;
+      return nir_block_ends_in_jump(cursor.block);
+      ;
    }
    unreachable("Invalid cursor option");
 }
@@ -1134,7 +1135,7 @@ found_resume:
           * copy the stuff after resume_node.
           */
          nir_cf_extract(&cf_list, nir_after_cf_node(resume_node),
-                                  nir_after_cf_list(child_list));
+                        nir_after_cf_list(child_list));
       } else {
          /* The loop contains its own cursor and still has useful stuff in it.
           * We want to move everything after and including the loop to before
@@ -1142,7 +1143,7 @@ found_resume:
           */
          assert(resume_node->type == nir_cf_node_loop);
          nir_cf_extract(&cf_list, nir_before_cf_node(resume_node),
-                                  nir_after_cf_list(child_list));
+                        nir_after_cf_list(child_list));
       }
    } else {
       /* If we found the resume instruction in one of our blocks, grab
@@ -1150,7 +1151,7 @@ found_resume:
        * place it before the cursor instr.
        */
       nir_cf_extract(&cf_list, nir_after_instr(resume_instr),
-                               nir_after_cf_list(child_list));
+                     nir_after_cf_list(child_list));
    }
 
    /* If the resume instruction is in the first block of the child_list,
@@ -1316,7 +1317,7 @@ replace_resume_with_halt(nir_shader *shader, nir_instr *keep)
           */
          nir_cf_list cf_list;
          nir_cf_extract(&cf_list, nir_after_instr(&resume->instr),
-                                  nir_after_block(block));
+                        nir_after_block(block));
          nir_cf_delete(&cf_list);
          b.cursor = nir_instr_remove(&resume->instr);
          nir_jump(&b, nir_jump_halt);
@@ -1403,7 +1404,7 @@ nir_lower_stack_to_scratch(nir_shader *shader,
    return nir_shader_instructions_pass(shader,
                                        lower_stack_instr_to_scratch,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        &state);
 }
 
@@ -1442,7 +1443,7 @@ nir_opt_remove_respills(nir_shader *shader)
    return nir_shader_instructions_pass(shader,
                                        opt_remove_respills_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }
 
@@ -1547,7 +1548,9 @@ nir_opt_trim_stack_values(nir_shader *shader)
          if (read_mask == 0)
             continue;
 
-         unsigned swiz_map[NIR_MAX_VEC_COMPONENTS] = { 0, };
+         unsigned swiz_map[NIR_MAX_VEC_COMPONENTS] = {
+            0,
+         };
          unsigned swiz_count = 0;
          u_foreach_bit(idx, read_mask)
             swiz_map[idx] = swiz_count++;
@@ -1583,11 +1586,10 @@ nir_opt_trim_stack_values(nir_shader *shader)
    }
 
    nir_metadata_preserve(impl,
-                         progress ?
-                         (nir_metadata_dominance |
-                          nir_metadata_block_index |
-                          nir_metadata_loop_analysis) :
-                         nir_metadata_all);
+                         progress ? (nir_metadata_dominance |
+                                     nir_metadata_block_index |
+                                     nir_metadata_loop_analysis)
+                                  : nir_metadata_all);
 
    _mesa_hash_table_u64_destroy(value_id_to_mask);
 
@@ -1611,10 +1613,10 @@ sort_scratch_item_by_size_and_value_id(const void *_item1, const void *_item2)
 
    /* By ascending value_id */
    if (item1->bit_size == item2->bit_size)
-      return (int) item1->value - (int) item2->value;
+      return (int)item1->value - (int)item2->value;
 
    /* By descending size */
-   return (int) item2->bit_size - (int) item1->bit_size;
+   return (int)item2->bit_size - (int)item1->bit_size;
 }
 
 static bool
@@ -1663,7 +1665,7 @@ nir_opt_sort_and_pack_stack(nir_shader *shader,
             };
 
             util_dynarray_append(&ops, struct scratch_item, item);
-            _mesa_hash_table_u64_insert(value_id_to_item, value_id, (void *)(uintptr_t)true);
+            _mesa_hash_table_u64_insert(value_id_to_item, value_id, (void *)(uintptr_t) true);
          }
       }
 
@@ -1672,7 +1674,6 @@ nir_opt_sort_and_pack_stack(nir_shader *shader,
             util_dynarray_num_elements(&ops, struct scratch_item),
             sizeof(struct scratch_item),
             sort_scratch_item_by_size_and_value_id);
-
 
       /* Reorder things on the stack */
       _mesa_hash_table_u64_clear(value_id_to_item);
@@ -1804,7 +1805,7 @@ nir_opt_stack_loads(nir_shader *shader)
 
    nir_foreach_function_impl(impl, shader) {
       nir_metadata_require(impl, nir_metadata_dominance |
-                                 nir_metadata_block_index);
+                                    nir_metadata_block_index);
 
       bool func_progress = false;
       nir_foreach_block_safe(block, impl) {
@@ -1832,8 +1833,8 @@ nir_opt_stack_loads(nir_shader *shader)
       nir_metadata_preserve(impl,
                             func_progress ? (nir_metadata_block_index |
                                              nir_metadata_dominance |
-                                             nir_metadata_loop_analysis) :
-                            nir_metadata_all);
+                                             nir_metadata_loop_analysis)
+                                          : nir_metadata_all);
 
       progress |= func_progress;
    }
@@ -1863,7 +1864,9 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
    b->cursor = nir_before_instr(instr);
 
    if (intrin->intrinsic == nir_intrinsic_load_stack) {
-      nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = { 0, };
+      nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = {
+         0,
+      };
       for (unsigned c = 0; c < intrin->dest.ssa.num_components; c++) {
          components[c] = nir_load_stack(b, 1, intrin->dest.ssa.bit_size,
                                         .base = nir_intrinsic_base(intrin) +
@@ -1903,13 +1906,13 @@ nir_split_stack_components(nir_shader *shader)
    return nir_shader_instructions_pass(shader,
                                        split_stack_components_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }
 
 struct stack_op_vectorizer_state {
-   nir_should_vectorize_mem_func     driver_callback;
-   void                             *driver_data;
+   nir_should_vectorize_mem_func driver_callback;
+   void *driver_data;
 };
 
 static bool
@@ -2003,7 +2006,7 @@ nir_lower_shader_calls(nir_shader *shader,
       nir_rematerialize_derefs_in_use_blocks_impl(impl);
 
       if (progress)
-         NIR_PASS(_, shader, nir_opt_dead_cf); 
+         NIR_PASS(_, shader, nir_opt_dead_cf);
    }
 
    /* Save the start point of the call stack in scratch */
@@ -2057,7 +2060,7 @@ nir_lower_shader_calls(nir_shader *shader,
 
    struct stack_op_vectorizer_state vectorizer_state = {
       .driver_callback = options->vectorizer_callback,
-      .driver_data     = options->vectorizer_data,
+      .driver_data = options->vectorizer_data,
    };
    nir_load_store_vectorize_options vect_opts = {
       .modes = nir_var_shader_temp,

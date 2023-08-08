@@ -51,10 +51,10 @@ nir_scale_fdiv_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 
    nir_ssa_def *final_a =
       nir_bcsel(b, big, scaled_down_a,
-     (nir_bcsel(b, small, scaled_up_a, orig_a)));
+                (nir_bcsel(b, small, scaled_up_a, orig_a)));
    nir_ssa_def *final_b =
       nir_bcsel(b, big, scaled_down_b,
-     (nir_bcsel(b, small, scaled_up_b, orig_b)));
+                (nir_bcsel(b, small, scaled_up_b, orig_b)));
 
    nir_ssa_def *new_div = nir_fdiv(b, final_a, final_b);
    nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, new_div);
@@ -74,6 +74,6 @@ nir_scale_fdiv(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, nir_scale_fdiv_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

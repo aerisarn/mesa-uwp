@@ -30,7 +30,6 @@
 
 #include "nir.h"
 
-
 /*
  * A simple pass that moves some instructions into the least common
  * anscestor of consuming instructions.
@@ -80,7 +79,7 @@ get_innermost_loop(nir_cf_node *node)
 {
    for (; node != NULL; node = node->parent) {
       if (node->type == nir_cf_node_loop)
-         return (nir_loop*)node;
+         return (nir_loop *)node;
    }
    return NULL;
 }
@@ -121,8 +120,8 @@ adjust_block_for_loops(nir_block *use_block, nir_block *def_block,
       if (next && next->type == nir_cf_node_loop) {
          nir_loop *following_loop = nir_cf_node_as_loop(next);
          if (loop_contains_block(following_loop, use_block)) {
-             use_block = cur_block;
-             continue;
+            use_block = cur_block;
+            continue;
          }
       }
    }
@@ -218,7 +217,7 @@ nir_opt_sink(nir_shader *shader, nir_move_options options)
                instr->type != nir_instr_type_intrinsic ||
                can_sink_out_of_loop(nir_instr_as_intrinsic(instr));
             nir_block *use_block =
-                  get_preferred_block(def, sink_out_of_loops);
+               get_preferred_block(def, sink_out_of_loops);
 
             if (!use_block || use_block == instr->block)
                continue;

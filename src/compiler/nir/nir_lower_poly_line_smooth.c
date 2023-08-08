@@ -60,7 +60,7 @@ lower_polylinesmooth(nir_builder *b, nir_instr *instr, void *data)
       /* coverage = (coverage) / SI_NUM_SMOOTH_AA_SAMPLES */
       coverage = nir_bit_count(b, coverage);
       coverage = nir_u2f32(b, coverage);
-      coverage = nir_fmul_imm(b, coverage,  1.0 / *num_smooth_aa_sample);
+      coverage = nir_fmul_imm(b, coverage, 1.0 / *num_smooth_aa_sample);
 
       /* Write out the fragment color*vec4(1, 1, 1, alpha) */
       nir_ssa_def *one = nir_imm_float(b, 1.0f);

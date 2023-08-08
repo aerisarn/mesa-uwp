@@ -22,9 +22,9 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir_builder.h"
-#include "util/u_math.h"
 #include "util/bitscan.h"
+#include "util/u_math.h"
+#include "nir_builder.h"
 
 static nir_intrinsic_instr *
 dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
@@ -152,7 +152,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
             rev_shifted = nir_vec(b, comps, load->dest.ssa.num_components);
             shifted = nir_bcsel(b, nir_ieq_imm(b, shift, 0), &load->dest.ssa,
-                                   nir_ior(b, shifted, rev_shifted));
+                                nir_ior(b, shifted, rev_shifted));
          }
 
          unsigned chunk_bit_size = MIN2(8 << (ffs(chunk_bytes) - 1), bit_size);
@@ -225,8 +225,8 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
 static bool
 lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
-               nir_lower_mem_access_bit_sizes_cb mem_access_size_align_cb,
-               const void *cb_data, bool allow_unaligned_stores_as_atomics)
+                nir_lower_mem_access_bit_sizes_cb mem_access_size_align_cb,
+                const void *cb_data, bool allow_unaligned_stores_as_atomics)
 {
    nir_ssa_def *value = intrin->src[0].ssa;
 
@@ -308,9 +308,7 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
 
          uint64_t align_mask = requested.align - 1;
          nir_ssa_def *chunk_offset = nir_iadd_imm(b, offset, chunk_start);
-         nir_ssa_def *pad = chunk_align < 4 ?
-            nir_iand_imm(b, chunk_offset, align_mask) :
-            nir_imm_intN_t(b, 0, chunk_offset->bit_size);
+         nir_ssa_def *pad = chunk_align < 4 ? nir_iand_imm(b, chunk_offset, align_mask) : nir_imm_intN_t(b, 0, chunk_offset->bit_size);
          chunk_offset = nir_iand_imm(b, chunk_offset, ~align_mask);
 
          unsigned max_pad = chunk_align < requested.align ? requested.align - chunk_align : 0;
@@ -342,25 +340,25 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
          switch (intrin->intrinsic) {
          case nir_intrinsic_store_ssbo:
             nir_ssbo_atomic(b, 32, intrin->src[1].ssa, chunk_offset, iand_mask,
-                                  .atomic_op = nir_atomic_op_iand,
-                                  .access = nir_intrinsic_access(intrin));
+                            .atomic_op = nir_atomic_op_iand,
+                            .access = nir_intrinsic_access(intrin));
             nir_ssbo_atomic(b, 32, intrin->src[1].ssa, chunk_offset, data,
-                                  .atomic_op = nir_atomic_op_ior,
-                                  .access = nir_intrinsic_access(intrin));
+                            .atomic_op = nir_atomic_op_ior,
+                            .access = nir_intrinsic_access(intrin));
             break;
          case nir_intrinsic_store_global:
             nir_global_atomic(b, 32, chunk_offset, iand_mask,
-                                    .atomic_op = nir_atomic_op_iand);
+                              .atomic_op = nir_atomic_op_iand);
             nir_global_atomic(b, 32, chunk_offset, data,
-                                    .atomic_op = nir_atomic_op_ior);
+                              .atomic_op = nir_atomic_op_ior);
             break;
          case nir_intrinsic_store_shared:
             nir_shared_atomic(b, 32, chunk_offset, iand_mask,
-                                    .atomic_op = nir_atomic_op_iand,
-                                    .base = nir_intrinsic_base(intrin));
+                              .atomic_op = nir_atomic_op_iand,
+                              .base = nir_intrinsic_base(intrin));
             nir_shared_atomic(b, 32, chunk_offset, data,
-                                    .atomic_op = nir_atomic_op_ior,
-                                    .base = nir_intrinsic_base(intrin));
+                              .atomic_op = nir_atomic_op_ior,
+                              .base = nir_intrinsic_base(intrin));
             break;
          default:
             unreachable("Unsupported unaligned store");
@@ -374,7 +372,6 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
          dup_mem_intrinsic(b, intrin, chunk_offset,
                            align_mul, chunk_align_offset, packed,
                            requested.num_components, requested.bit_size);
-
       }
       BITSET_CLEAR_RANGE(mask, chunk_start, (chunk_start + chunk_bytes - 1));
    }
@@ -462,6 +459,6 @@ nir_lower_mem_access_bit_sizes(nir_shader *shader,
 {
    return nir_shader_instructions_pass(shader, lower_mem_access_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        (void *)options);
 }

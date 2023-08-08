@@ -68,7 +68,7 @@ lower_single_sampled_instr(nir_builder *b,
    case nir_intrinsic_load_barycentric_at_sample:
       b->cursor = nir_before_instr(instr);
       lowered = nir_load_barycentric(b, nir_intrinsic_load_barycentric_pixel,
-                                        nir_intrinsic_interp_mode(intrin));
+                                     nir_intrinsic_interp_mode(intrin));
 
       if (nir_intrinsic_interp_mode(intrin) == INTERP_MODE_NOPERSPECTIVE) {
          BITSET_SET(b->shader->info.system_values_read,
@@ -122,6 +122,7 @@ nir_lower_single_sampled(nir_shader *shader)
 
    return nir_shader_instructions_pass(shader, lower_single_sampled_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
-                                       NULL) || progress;
+                                          nir_metadata_dominance,
+                                       NULL) ||
+          progress;
 }

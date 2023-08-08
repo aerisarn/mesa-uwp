@@ -87,8 +87,8 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
    if (yinvert)
       y = nir_fsub_imm(&b, 1.0, y);
    new_coord = nir_vec4(&b, nir_channel(&b, new_coord, 0),
-                            y,
-                            zero, one);
+                        y,
+                        zero, one);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
@@ -111,7 +111,7 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
          nir_ssa_def *index = get_io_index(&b, deref);
          nir_ssa_def *mask =
             nir_ishl(&b, nir_imm_int(&b, 1),
-                         nir_iadd_imm(&b, index, base));
+                     nir_iadd_imm(&b, index, base));
 
          nir_ssa_def *cond = nir_test_mask(&b, mask, coord_replace);
          nir_ssa_def *result = nir_bcsel(&b, cond, new_coord,
@@ -124,7 +124,7 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 }
 
 void

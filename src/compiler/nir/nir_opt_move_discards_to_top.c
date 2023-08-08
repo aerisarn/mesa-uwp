@@ -240,7 +240,7 @@ nir_opt_move_discards_to_top(nir_shader *shader)
    nir_foreach_function_impl(impl, shader) {
       if (opt_move_discards_to_top_impl(impl)) {
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                     nir_metadata_dominance);
+                                        nir_metadata_dominance);
          progress = true;
       }
    }

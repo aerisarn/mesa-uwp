@@ -49,13 +49,12 @@ static const struct glsl_type *
 strip_shadow(const struct glsl_type *type)
 {
    const struct glsl_type *new_type =
-         glsl_sampler_type(
-            glsl_get_sampler_dim(type),
-            false, glsl_sampler_type_is_array(type),
-            GLSL_TYPE_FLOAT);
+      glsl_sampler_type(
+         glsl_get_sampler_dim(type),
+         false, glsl_sampler_type_is_array(type),
+         GLSL_TYPE_FLOAT);
    return new_type;
 }
-
 
 static const struct glsl_type *
 strip_shadow_with_array(const struct glsl_type *type)
@@ -107,17 +106,16 @@ nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
    if (proj_index >= 0)
       cmp = nir_fmul(b, cmp, nir_frcp(b, tex->src[proj_index].src.ssa));
 
-   nir_ssa_def * result =
-         nir_compare_func(b,
-                          sampler_binding < state->n_states ?
-                             state->compare_func[sampler_binding] : COMPARE_FUNC_ALWAYS,
-                          cmp, tex_r);
+   nir_ssa_def *result =
+      nir_compare_func(b,
+                       sampler_binding < state->n_states ? state->compare_func[sampler_binding] : COMPARE_FUNC_ALWAYS,
+                       cmp, tex_r);
 
    result = nir_b2f32(b, result);
    nir_ssa_def *one = nir_imm_float(b, 1.0);
    nir_ssa_def *zero = nir_imm_float(b, 0.0);
 
-   nir_ssa_def *lookup[6] = {result, NULL, NULL, NULL, zero, one};
+   nir_ssa_def *lookup[6] = { result, NULL, NULL, NULL, zero, one };
    nir_ssa_def *r[4] = { result, result, result, result };
 
    if (sampler_binding < state->n_states) {
@@ -146,12 +144,12 @@ nir_lower_tex_shadow(nir_shader *s,
                      enum compare_func *compare_func,
                      nir_lower_tex_shadow_swizzle *tex_swizzles)
 {
-   sampler_state state = {n_states, compare_func, tex_swizzles};
+   sampler_state state = { n_states, compare_func, tex_swizzles };
 
    bool result =
-         nir_shader_lower_instructions(s,
-                                       nir_lower_tex_shadow_filter,
-                                       nir_lower_tex_shadow_impl,
-                                       &state);
+      nir_shader_lower_instructions(s,
+                                    nir_lower_tex_shadow_filter,
+                                    nir_lower_tex_shadow_impl,
+                                    &state);
    return result;
 }

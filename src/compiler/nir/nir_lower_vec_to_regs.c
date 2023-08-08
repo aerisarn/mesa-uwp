@@ -35,7 +35,7 @@ insert_store(nir_builder *b, nir_ssa_def *reg, nir_alu_instr *vec,
    unsigned num_components = nir_dest_num_components(vec->dest.dest);
    assert(num_components == nir_op_infos[vec->op].num_inputs);
    unsigned write_mask = 0;
-   unsigned swiz[NIR_MAX_VEC_COMPONENTS] = {0};
+   unsigned swiz[NIR_MAX_VEC_COMPONENTS] = { 0 };
 
    for (unsigned i = start_idx; i < num_components; i++) {
       if (vec->src[i].src.ssa == src) {
@@ -230,7 +230,7 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
       nir_rewrite_uses_to_load_reg(b, &vec->dest.dest.ssa, reg);
    } else {
       /* Otherwise, we replace with a swizzle */
-      unsigned swiz[NIR_MAX_VEC_COMPONENTS] = {0};
+      unsigned swiz[NIR_MAX_VEC_COMPONENTS] = { 0 };
 
       for (unsigned i = 0; i < num_components; ++i) {
          swiz[i] = vec->src[i].swizzle[0];
@@ -258,5 +258,6 @@ nir_lower_vec_to_regs(nir_shader *shader, nir_instr_writemask_filter_cb cb,
 
    return nir_shader_instructions_pass(shader, lower,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance, &data);
+                                          nir_metadata_dominance,
+                                       &data);
 }

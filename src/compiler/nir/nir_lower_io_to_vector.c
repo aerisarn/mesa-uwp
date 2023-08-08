@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
+#include "util/u_dynarray.h"
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_deref.h"
-#include "util/u_dynarray.h"
 
 /** @file nir_lower_io_to_vector.c
  *
@@ -37,7 +37,7 @@
 
 /* FRAG_RESULT_MAX+1 instead of just FRAG_RESULT_MAX because of how this pass
  * handles dual source blending */
-#define MAX_SLOTS MAX2(VARYING_SLOT_TESS_MAX, FRAG_RESULT_MAX+1)
+#define MAX_SLOTS MAX2(VARYING_SLOT_TESS_MAX, FRAG_RESULT_MAX + 1)
 
 static unsigned
 get_slot(const nir_variable *var)
@@ -214,7 +214,7 @@ create_new_io_vars(nir_shader *shader, nir_variable_mode mode,
                    bool flat_vars[MAX_SLOTS],
                    struct util_dynarray *demote_vars)
 {
-   nir_variable *old_vars[MAX_SLOTS][4] = {{0}};
+   nir_variable *old_vars[MAX_SLOTS][4] = { { 0 } };
 
    bool has_io_var = false;
    nir_foreach_variable_with_modes(var, shader, mode) {
@@ -344,7 +344,7 @@ build_array_index(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *base,
       return base;
    case nir_deref_type_array: {
       nir_ssa_def *index = nir_i2iN(b, deref->arr.index.ssa,
-                                   deref->dest.ssa.bit_size);
+                                    deref->dest.ssa.bit_size);
 
       if (nir_deref_instr_parent(deref)->deref_type == nir_deref_type_var &&
           per_vertex)
@@ -385,7 +385,7 @@ build_array_deref_of_new_var_flat(nir_shader *shader,
    bool vs_in = shader->info.stage == MESA_SHADER_VERTEX &&
                 new_var->data.mode == nir_var_shader_in;
    return nir_build_deref_array(b, deref,
-      build_array_index(b, leader, nir_imm_int(b, base), vs_in, per_vertex));
+                                build_array_index(b, leader, nir_imm_int(b, base), vs_in, per_vertex));
 }
 
 ASSERTED static bool
@@ -419,10 +419,10 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
    util_dynarray_init(&demote_vars, NULL);
 
    nir_shader *shader = impl->function->shader;
-   nir_variable *new_inputs[MAX_SLOTS][4] = {{0}};
-   nir_variable *new_outputs[MAX_SLOTS][4] = {{0}};
-   bool flat_inputs[MAX_SLOTS] = {0};
-   bool flat_outputs[MAX_SLOTS] = {0};
+   nir_variable *new_inputs[MAX_SLOTS][4] = { { 0 } };
+   nir_variable *new_outputs[MAX_SLOTS][4] = { { 0 } };
+   bool flat_inputs[MAX_SLOTS] = { 0 };
+   bool flat_outputs[MAX_SLOTS] = { 0 };
 
    if (modes & nir_var_shader_in) {
       /* Vertex shaders support overlapping inputs.  We don't do those */
@@ -480,11 +480,8 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
 
             const unsigned loc = get_slot(old_var);
             const unsigned old_frac = old_var->data.location_frac;
-            nir_variable *new_var = old_var->data.mode == nir_var_shader_in ?
-                                    new_inputs[loc][old_frac] :
-                                    new_outputs[loc][old_frac];
-            bool flat = old_var->data.mode == nir_var_shader_in ?
-                        flat_inputs[loc] : flat_outputs[loc];
+            nir_variable *new_var = old_var->data.mode == nir_var_shader_in ? new_inputs[loc][old_frac] : new_outputs[loc][old_frac];
+            bool flat = old_var->data.mode == nir_var_shader_in ? flat_inputs[loc] : flat_outputs[loc];
             if (!new_var)
                break;
 
@@ -568,10 +565,11 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
                if (new_frac + c >= old_frac &&
                    (old_wrmask & 1 << (new_frac + c - old_frac))) {
                   comps[c] = nir_get_ssa_scalar(old_value,
-                                         new_frac + c - old_frac);
+                                                new_frac + c - old_frac);
                } else {
                   comps[c] = nir_get_ssa_scalar(nir_ssa_undef(&b, old_value->num_components,
-                                                              old_value->bit_size), 0);
+                                                              old_value->bit_size),
+                                                0);
                }
             }
             nir_ssa_def *new_value = nir_vec_scalars(&b, comps, intrin->num_components);
@@ -602,7 +600,7 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    }
 
    return progress;

@@ -24,11 +24,11 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    nir_intrinsic_op address_op;
    bool swap;
 
-#define CASE(storage)                                                          \
-   case nir_intrinsic_##storage##_atomic:                                      \
-   case nir_intrinsic_##storage##_atomic_swap:                                 \
-      address_op = nir_intrinsic_##storage##_texel_address;                    \
-      swap = intr->intrinsic == nir_intrinsic_##storage##_atomic_swap;         \
+#define CASE(storage)                                                  \
+   case nir_intrinsic_##storage##_atomic:                              \
+   case nir_intrinsic_##storage##_atomic_swap:                         \
+      address_op = nir_intrinsic_##storage##_texel_address;            \
+      swap = intr->intrinsic == nir_intrinsic_##storage##_atomic_swap; \
       break;
 
    switch (intr->intrinsic) {
@@ -103,6 +103,6 @@ nir_lower_image_atomics_to_global(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, lower,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

@@ -21,8 +21,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "nir.h"
 
 static bool
 lower_discard_if_instr(nir_builder *b, nir_instr *instr_, void *cb_data)

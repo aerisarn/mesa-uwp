@@ -39,5 +39,6 @@ nir_lower_tess_coord_z(nir_shader *shader, bool triangles)
 {
    return nir_shader_instructions_pass(shader, lower_tess_coord_z,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance, &triangles);
+                                          nir_metadata_dominance,
+                                       &triangles);
 }

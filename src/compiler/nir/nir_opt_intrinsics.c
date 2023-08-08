@@ -311,7 +311,7 @@ opt_intrinsics_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
                 alu->op == nir_op_ine) {
                /* Check for 0 in either operand. */
                nir_const_value *const_val =
-                   nir_src_as_const_value(alu->src[0].src);
+                  nir_src_as_const_value(alu->src[0].src);
                if (!const_val)
                   const_val = nir_src_as_const_value(alu->src[1].src);
                if (!const_val || const_val->i32 != 0)
@@ -391,7 +391,7 @@ nir_opt_intrinsics(nir_shader *shader)
       if (opt_intrinsics_impl(impl, shader->options)) {
          progress = true;
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                     nir_metadata_dominance);
+                                        nir_metadata_dominance);
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
       }

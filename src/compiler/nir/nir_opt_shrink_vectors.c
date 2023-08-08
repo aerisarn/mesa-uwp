@@ -43,9 +43,9 @@
  * elimination.
  */
 
+#include "util/u_math.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "util/u_math.h"
 
 /*
  * Round up a vector size to a vector size that's valid in NIR. At present, NIR
@@ -127,7 +127,7 @@ reswizzle_alu_uses(nir_ssa_def *def, uint8_t *reswizzle)
    nir_foreach_use(use_src, def) {
       /* all uses must be ALU instructions */
       assert(use_src->parent_instr->type == nir_instr_type_alu);
-      nir_alu_src *alu_src = (nir_alu_src*)use_src;
+      nir_alu_src *alu_src = (nir_alu_src *)use_src;
 
       /* reswizzle ALU sources */
       for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
@@ -207,15 +207,15 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
       return false;
 
    switch (instr->op) {
-      /* don't use nir_op_is_vec() as not all vector sizes are supported. */
-      case nir_op_vec4:
-      case nir_op_vec3:
-      case nir_op_vec2:
-         return opt_shrink_vector(b, instr);
-      default:
-         if (nir_op_infos[instr->op].output_size != 0)
-            return false;
-         break;
+   /* don't use nir_op_is_vec() as not all vector sizes are supported. */
+   case nir_op_vec4:
+   case nir_op_vec3:
+   case nir_op_vec2:
+      return opt_shrink_vector(b, instr);
+   default:
+      if (nir_op_infos[instr->op].output_size != 0)
+         return false;
+      break;
    }
 
    /* don't remove any channels if used by non-ALU */
@@ -413,7 +413,6 @@ opt_shrink_vectors_phi(nir_builder *b, nir_phi_instr *instr)
    if (def->num_components > 4)
       return false;
 
-
    /* Check the uses. */
    nir_component_mask_t mask = 0;
    nir_foreach_use(src, def) {
@@ -545,7 +544,7 @@ nir_opt_shrink_vectors(nir_shader *shader)
       if (progress) {
          nir_metadata_preserve(impl,
                                nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
       }

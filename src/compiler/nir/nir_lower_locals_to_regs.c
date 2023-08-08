@@ -152,7 +152,7 @@ get_deref_reg_location(nir_deref_instr *deref,
     * handle this case we just convert it to a direct reference.
     */
    if (nir_intrinsic_num_array_elems(decl) == 0)
-      return (struct reg_location){.reg = reg};
+      return (struct reg_location){ .reg = reg };
 
    nir_ssa_def *indirect = NULL;
    unsigned base_offset = 0;
@@ -262,7 +262,7 @@ lower_locals_to_regs_block(nir_block *block,
                                    .write_mask = write_mask);
          } else {
             nir_build_store_reg(b, val, loc.reg, .base = loc.base_offset,
-                               .write_mask = write_mask);
+                                .write_mask = write_mask);
          }
 
          nir_instr_remove(&intrin->instr);
@@ -299,7 +299,7 @@ impl(nir_function_impl *impl, uint8_t bool_bitsize)
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 
    _mesa_hash_table_destroy(state.regs_table, NULL);
 

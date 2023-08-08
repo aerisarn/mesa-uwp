@@ -78,8 +78,9 @@ nir_lower_point_size(nir_shader *s, float min, float max)
    assert(min > 0.0f || max > 0.0f);
    assert(min <= 0.0f || max <= 0.0f || min <= max);
 
-   float minmax[] = {min, max};
+   float minmax[] = { min, max };
    return nir_shader_instructions_pass(s, lower_point_size_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance, minmax);
+                                          nir_metadata_dominance,
+                                       minmax);
 }

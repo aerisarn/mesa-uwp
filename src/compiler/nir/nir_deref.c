@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir.h"
-#include "nir_builder.h"
 #include "nir_deref.h"
 #include "util/hash_table.h"
+#include "nir.h"
+#include "nir_builder.h"
 
 static bool
 is_trivial_deref_cast(nir_deref_instr *cast)
@@ -144,8 +144,8 @@ nir_deref_instr_is_known_out_of_bounds(nir_deref_instr *instr)
    for (; instr; instr = nir_deref_instr_parent(instr)) {
       if (instr->deref_type == nir_deref_type_array &&
           nir_src_is_const(instr->arr.index) &&
-           nir_src_as_uint(instr->arr.index) >=
-           glsl_get_length(nir_deref_instr_parent(instr)->type))
+          nir_src_as_uint(instr->arr.index) >=
+             glsl_get_length(nir_deref_instr_parent(instr)->type))
          return true;
    }
 
@@ -318,13 +318,13 @@ nir_deref_instr_get_const_offset(nir_deref_instr *deref,
       case nir_deref_type_array:
          offset += nir_src_as_uint((*p)->arr.index) *
                    type_get_array_stride((*p)->type, size_align);
-	 break;
+         break;
       case nir_deref_type_struct: {
          /* p starts at path[1], so this is safe */
          nir_deref_instr *parent = *(p - 1);
          offset += struct_type_get_field_offset(parent->type, size_align,
                                                 (*p)->strct.index);
-	 break;
+         break;
       }
       case nir_deref_type_cast:
          /* A cast doesn't contribute to the offset */
@@ -393,7 +393,7 @@ nir_remove_dead_derefs_impl(nir_function_impl *impl)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -452,9 +452,10 @@ nir_fixup_deref_modes(nir_shader *shader)
 {
    nir_shader_instructions_pass(shader, nir_fixup_deref_modes_instr,
                                 nir_metadata_block_index |
-                                nir_metadata_dominance |
-                                nir_metadata_live_ssa_defs |
-                                nir_metadata_instr_index, NULL);
+                                   nir_metadata_dominance |
+                                   nir_metadata_live_ssa_defs |
+                                   nir_metadata_instr_index,
+                                NULL);
 }
 
 static bool
@@ -717,7 +718,8 @@ nir_compare_derefs(nir_deref_instr *a, nir_deref_instr *b)
    return result;
 }
 
-nir_deref_path *nir_get_deref_path(void *mem_ctx, nir_deref_and_path *deref)
+nir_deref_path *
+nir_get_deref_path(void *mem_ctx, nir_deref_and_path *deref)
 {
    if (!deref->_path) {
       deref->_path = ralloc(mem_ctx, nir_deref_path);
@@ -726,9 +728,10 @@ nir_deref_path *nir_get_deref_path(void *mem_ctx, nir_deref_and_path *deref)
    return deref->_path;
 }
 
-nir_deref_compare_result nir_compare_derefs_and_paths(void *mem_ctx,
-                                                      nir_deref_and_path *a,
-                                                      nir_deref_and_path *b)
+nir_deref_compare_result
+nir_compare_derefs_and_paths(void *mem_ctx,
+                             nir_deref_and_path *a,
+                             nir_deref_and_path *b)
 {
    if (a->instr == b->instr) /* nir_compare_derefs has a fast path if a == b */
       return nir_compare_derefs(a->instr, b->instr);
@@ -1196,7 +1199,6 @@ opt_deref_cast(nir_builder *b, nir_deref_instr *cast)
 
    bool trivial_array_cast = is_trivial_array_deref_cast(cast);
 
-
    nir_foreach_use_including_if_safe(use_src, &cast->dest.ssa) {
       assert(!use_src->is_if && "there cannot be if-uses");
 
@@ -1250,11 +1252,10 @@ opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
        parent->deref_type != nir_deref_type_ptr_as_array)
       return false;
 
-
    deref->arr.in_bounds &= parent->arr.in_bounds;
 
    nir_ssa_def *new_idx = nir_iadd(b, parent->arr.index.ssa,
-                                      deref->arr.index.ssa);
+                                   deref->arr.index.ssa);
 
    deref->deref_type = parent->deref_type;
    nir_instr_rewrite_src(&deref->instr, &deref->parent, parent->parent);
@@ -1316,7 +1317,9 @@ resize_vector(nir_builder *b, nir_ssa_def *data, unsigned num_components)
    if (num_components == data->num_components)
       return data;
 
-   unsigned swiz[NIR_MAX_VEC_COMPONENTS] = { 0, };
+   unsigned swiz[NIR_MAX_VEC_COMPONENTS] = {
+      0,
+   };
    for (unsigned i = 0; i < MIN2(num_components, data->num_components); i++)
       swiz[i] = i;
 
@@ -1505,7 +1508,7 @@ nir_opt_deref_impl(nir_function_impl *impl)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

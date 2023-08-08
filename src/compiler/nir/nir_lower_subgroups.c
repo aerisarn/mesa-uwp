@@ -21,9 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+#include "util/u_math.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "util/u_math.h"
 
 /**
  * \file nir_opt_intrinsics.c
@@ -111,7 +111,7 @@ lower_subgroup_op_to_scalar(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(intrin->dest.ssa.num_components > 1);
 
    nir_ssa_def *value = nir_ssa_for_src(b, intrin->src[0],
-                                           intrin->num_components);
+                                        intrin->num_components);
    nir_ssa_def *reads[NIR_MAX_VEC_COMPONENTS];
 
    for (unsigned i = 0; i < intrin->num_components; i++) {
@@ -255,7 +255,7 @@ lower_to_shuffle(nir_builder *b, nir_intrinsic_instr *intrin,
       break;
    case nir_intrinsic_quad_broadcast:
       index = nir_ior(b, nir_iand_imm(b, index, ~0x3),
-                         intrin->src[1].ssa);
+                      intrin->src[1].ssa);
       break;
    case nir_intrinsic_quad_swap_horizontal:
       /* For Quad operations, subgroups are divided into quads where
@@ -281,11 +281,10 @@ lower_to_shuffle(nir_builder *b, nir_intrinsic_instr *intrin,
       const unsigned cluster_size = nir_intrinsic_cluster_size(intrin);
 
       nir_ssa_def *rotation_group_mask =
-         cluster_size > 0 ? nir_imm_int(b, (int)(cluster_size - 1)) :
-                            nir_iadd_imm(b, nir_load_subgroup_size(b), -1);
+         cluster_size > 0 ? nir_imm_int(b, (int)(cluster_size - 1)) : nir_iadd_imm(b, nir_load_subgroup_size(b), -1);
 
       index = nir_iand(b, nir_iadd(b, local_id, delta),
-                          rotation_group_mask);
+                       rotation_group_mask);
       if (cluster_size > 0) {
          index = nir_iadd(b, index,
                           nir_iand(b, local_id, nir_inot(b, rotation_group_mask)));
@@ -319,8 +318,7 @@ lower_to_shuffle(nir_builder *b, nir_intrinsic_instr *intrin,
 static const struct glsl_type *
 glsl_type_for_ssa(nir_ssa_def *def)
 {
-   const struct glsl_type *comp_type = def->bit_size == 1 ? glsl_bool_type() :
-      glsl_uintN_t_type(def->bit_size);
+   const struct glsl_type *comp_type = def->bit_size == 1 ? glsl_bool_type() : glsl_uintN_t_type(def->bit_size);
    return glsl_replace_vector_type(comp_type, def->num_components);
 }
 
@@ -369,24 +367,32 @@ lower_shuffle(nir_builder *b, nir_intrinsic_instr *intrin)
    nir_variable *result =
       nir_local_variable_create(b->impl, glsl_type_for_ssa(val), "result");
 
-   nir_loop *loop = nir_push_loop(b); {
+   nir_loop *loop = nir_push_loop(b);
+   {
       nir_ssa_def *first_id = nir_read_first_invocation(b, subgroup_id);
       nir_ssa_def *first_val = nir_read_first_invocation(b, val);
       nir_ssa_def *first_result =
          nir_read_invocation(b, val, nir_read_first_invocation(b, id));
 
-      nir_if *nif = nir_push_if(b, nir_ieq(b, id, first_id)); {
+      nir_if *nif = nir_push_if(b, nir_ieq(b, id, first_id));
+      {
          nir_store_var(b, result, first_val, BITFIELD_MASK(val->num_components));
-      } nir_pop_if(b, nif);
+      }
+      nir_pop_if(b, nif);
 
-      nir_if *nif2 = nir_push_if(b, nir_elect(b, 1)); {
-         nir_if *nif3 = nir_push_if(b, nir_ult(b, subgroup_id, id)); {
+      nir_if *nif2 = nir_push_if(b, nir_elect(b, 1));
+      {
+         nir_if *nif3 = nir_push_if(b, nir_ult(b, subgroup_id, id));
+         {
             nir_store_var(b, result, first_result, BITFIELD_MASK(val->num_components));
-         } nir_pop_if(b, nif3);
+         }
+         nir_pop_if(b, nif3);
 
          nir_jump(b, nir_jump_break);
-      } nir_pop_if(b, nif2);
-   } nir_pop_loop(b, loop);
+      }
+      nir_pop_if(b, nif2);
+   }
+   nir_pop_loop(b, loop);
 
    return nir_load_var(b, result);
 }
@@ -487,8 +493,8 @@ build_subgroup_mask(nir_builder *b,
    /* First compute the result assuming one ballot component. */
    nir_ssa_def *result =
       nir_ushr(b, nir_imm_intN_t(b, ~0ull, options->ballot_bit_size),
-                  nir_isub_imm(b, options->ballot_bit_size,
-                               subgroup_size));
+               nir_isub_imm(b, options->ballot_bit_size,
+                            subgroup_size));
 
    /* Since the subgroup size and ballot bitsize are both powers of two, there
     * are two possible cases to consider:
@@ -508,8 +514,8 @@ build_subgroup_mask(nir_builder *b,
     * in all cases.  The other components will also get the correct value in
     * case (1) if we just use the rule in case (2), so we'll get the correct
     * result if we just follow (2) and then replace the first component with
-    * "result". 
-    */ 
+    * "result".
+    */
    nir_const_value min_idx[4];
    for (unsigned i = 0; i < options->ballot_components; i++)
       min_idx[i] = nir_const_value_for_int(i * options->ballot_bit_size, 32);
@@ -669,11 +675,11 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
          break;
       case nir_intrinsic_load_subgroup_ge_mask:
          val = nir_iand(b, build_subgroup_ge_mask(b, options),
-                           build_subgroup_mask(b, options));
+                        build_subgroup_mask(b, options));
          break;
       case nir_intrinsic_load_subgroup_gt_mask:
          val = nir_iand(b, build_subgroup_gt_mask(b, options),
-                           build_subgroup_mask(b, options));
+                        build_subgroup_mask(b, options));
          break;
       case nir_intrinsic_load_subgroup_le_mask:
          val = nir_inot(b, build_subgroup_gt_mask(b, options));

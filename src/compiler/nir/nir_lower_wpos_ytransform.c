@@ -36,8 +36,8 @@
 
 typedef struct {
    const nir_lower_wpos_ytransform_options *options;
-   nir_shader   *shader;
-   nir_builder   b;
+   nir_shader *shader;
+   nir_builder b;
    nir_variable *transform;
 } lower_wpos_ytransform_state;
 
@@ -114,14 +114,12 @@ emit_wpos_adjustment(lower_wpos_ytransform_state *state,
     */
    if (invert) {
       /* wpos_temp.y = wpos_input * wpostrans.xxxx + wpostrans.yyyy */
-      wpos_temp_y = nir_fadd(b, nir_fmul(b, nir_channel(b, wpos_temp, 1),
-                                            nir_channel(b, wpostrans, 0)),
-                                nir_channel(b, wpostrans, 1));
+      wpos_temp_y = nir_fadd(b, nir_fmul(b, nir_channel(b, wpos_temp, 1), nir_channel(b, wpostrans, 0)),
+                             nir_channel(b, wpostrans, 1));
    } else {
       /* wpos_temp.y = wpos_input * wpostrans.zzzz + wpostrans.wwww */
-      wpos_temp_y = nir_fadd(b, nir_fmul(b, nir_channel(b, wpos_temp, 1),
-                                            nir_channel(b, wpostrans, 2)),
-                                nir_channel(b, wpostrans, 3));
+      wpos_temp_y = nir_fadd(b, nir_fmul(b, nir_channel(b, wpos_temp, 1), nir_channel(b, wpostrans, 2)),
+                             nir_channel(b, wpostrans, 3));
    }
 
    wpos_temp = nir_vec4(b,
@@ -263,12 +261,11 @@ lower_interp_deref_or_load_baryc_at_offset(lower_wpos_ytransform_state *state,
 
    offset = nir_ssa_for_src(b, intr->src[offset_src], 2);
    flip_y = nir_fmul(b, nir_channel(b, offset, 1),
-                        nir_channel(b, get_transform(state), 0));
+                     nir_channel(b, get_transform(state), 0));
    nir_instr_rewrite_src(&intr->instr, &intr->src[offset_src],
                          nir_src_for_ssa(nir_vec2(b, nir_channel(b, offset, 0),
-                                                     flip_y)));
+                                                  flip_y)));
 }
-
 
 static void
 lower_load_sample_pos(lower_wpos_ytransform_state *state,
@@ -282,8 +279,8 @@ lower_load_sample_pos(lower_wpos_ytransform_state *state,
    nir_ssa_def *neg_scale = nir_channel(b, get_transform(state), 2);
    /* Either y or 1-y for scale equal to 1 or -1 respectively. */
    nir_ssa_def *flipped_y =
-               nir_fadd(b, nir_fmax(b, neg_scale, nir_imm_float(b, 0.0)),
-                        nir_fmul(b, nir_channel(b, pos, 1), scale));
+      nir_fadd(b, nir_fmax(b, neg_scale, nir_imm_float(b, 0.0)),
+               nir_fmul(b, nir_channel(b, pos, 1), scale));
    nir_ssa_def *flipped_pos = nir_vec2(b, nir_channel(b, pos, 0), flipped_y);
 
    nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, flipped_pos,
@@ -346,6 +343,6 @@ nir_lower_wpos_ytransform(nir_shader *shader,
    return nir_shader_instructions_pass(shader,
                                        lower_wpos_ytransform_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        &state);
 }

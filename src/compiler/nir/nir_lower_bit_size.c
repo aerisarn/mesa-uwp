@@ -30,8 +30,9 @@
  * the original bit-size.
  */
 
-static nir_ssa_def *convert_to_bit_size(nir_builder *bld, nir_ssa_def *src,
-                                        nir_alu_type type, unsigned bit_size)
+static nir_ssa_def *
+convert_to_bit_size(nir_builder *bld, nir_ssa_def *src,
+                    nir_alu_type type, unsigned bit_size)
 {
    assert(src->bit_size < bit_size);
 
@@ -113,7 +114,6 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
    } else {
       lowered_dst = nir_build_alu_src_arr(bld, op, srcs);
    }
-
 
    /* Convert result back to the original bit-size */
    if (nir_alu_type_get_type_size(nir_op_infos[op].output_type) == 0 &&
@@ -278,7 +278,7 @@ lower_impl(nir_function_impl *impl,
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -357,6 +357,6 @@ nir_lower_64bit_phis(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, lower_64bit_phi_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

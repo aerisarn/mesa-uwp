@@ -54,12 +54,10 @@ half_rounded(nir_builder *b, nir_ssa_def *value, nir_ssa_def *guard, nir_ssa_def
       return nir_iadd(b, value, nir_iand(b, guard, nir_ior(b, sticky, value)));
    case nir_rounding_mode_ru:
       sign = nir_ushr_imm(b, sign, 31);
-      return nir_iadd(b, value, nir_iand(b, nir_inot(b, sign),
-                                            nir_ior(b, guard, sticky)));
+      return nir_iadd(b, value, nir_iand(b, nir_inot(b, sign), nir_ior(b, guard, sticky)));
    case nir_rounding_mode_rd:
       sign = nir_ushr_imm(b, sign, 31);
-      return nir_iadd(b, value, nir_iand(b, sign,
-                                            nir_ior(b, guard, sticky)));
+      return nir_iadd(b, value, nir_iand(b, sign, nir_ior(b, guard, sticky)));
    default:
       return value;
    }
@@ -80,9 +78,9 @@ float_to_half_impl(nir_builder *b, nir_ssa_def *src, nir_rounding_mode mode)
    /* NaN or INF. For rtne, overflow also becomes INF, so combine the comparisons */
    nir_push_if(b, nir_ige(b, abs, mode == nir_rounding_mode_rtne ? f16max : f32infinity));
    nir_ssa_def *inf_nanfp16 = nir_bcsel(b,
-                                    nir_ilt(b, f32infinity, abs),
-                                    nir_imm_int(b, 0x7E00),
-                                    nir_imm_int(b, 0x7C00));
+                                        nir_ilt(b, f32infinity, abs),
+                                        nir_imm_int(b, 0x7E00),
+                                        nir_imm_int(b, 0x7C00));
    nir_push_else(b, NULL);
 
    nir_ssa_def *overflowed_fp16 = NULL;
@@ -101,7 +99,8 @@ float_to_half_impl(nir_builder *b, nir_ssa_def *src, nir_rounding_mode mode)
          /* Negative becomes inf, positive becomes max float */
          overflowed_fp16 = nir_bcsel(b, nir_i2b(b, sign), nir_imm_int(b, 0x7C00), nir_imm_int(b, 0x7BFF));
          break;
-      default: unreachable("Should've been handled already");
+      default:
+         unreachable("Should've been handled already");
       }
       nir_push_else(b, NULL);
    }

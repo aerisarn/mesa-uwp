@@ -85,7 +85,7 @@ struct nir_phi_builder_value {
  * _mesa_hash_pointer drops the two least significant bits, but that's where
  * most of our data likely is.  Shift by 2 and add 1 to make everything happy.
  */
-#define INDEX_TO_KEY(x) ((void *)(uintptr_t) ((x << 2) + 1))
+#define INDEX_TO_KEY(x) ((void *)(uintptr_t)((x << 2) + 1))
 
 struct nir_phi_builder *
 nir_phi_builder_create(nir_function_impl *impl)
@@ -141,7 +141,7 @@ nir_phi_builder_add_value(struct nir_phi_builder *pb, unsigned num_components,
    while (w_start != w_end) {
       nir_block *cur = pb->W[w_start++];
       set_foreach(cur->dom_frontier, dom_entry) {
-         nir_block *next = (nir_block *) dom_entry->key;
+         nir_block *next = (nir_block *)dom_entry->key;
 
          /* If there's more than one return statement, then the end block
           * can be a join point for some definitions. However, there are
@@ -243,7 +243,7 @@ nir_phi_builder_value_get_block_def(struct nir_phi_builder_value *val,
        * phi node created by the case above or one passed to us through
        * nir_phi_builder_value_set_block_def().
        */
-      def = (struct nir_ssa_def *) he->data;
+      def = (struct nir_ssa_def *)he->data;
    }
 
    /* Walk the chain and stash the def in all of the applicable blocks.  We do

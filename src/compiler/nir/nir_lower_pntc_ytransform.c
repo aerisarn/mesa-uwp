@@ -30,9 +30,9 @@
 
 typedef struct {
    const gl_state_index16 *pntc_state_tokens;
-   nir_shader             *shader;
-   nir_builder             b;
-   nir_variable           *pntc_transform;
+   nir_shader *shader;
+   nir_builder b;
+   nir_variable *pntc_transform;
 } lower_pntc_ytransform_state;
 
 static nir_ssa_def *
@@ -92,7 +92,7 @@ lower_pntc_ytransform_block(lower_pntc_ytransform_state *state,
                  var->data.location == VARYING_SLOT_PNTC) ||
                 (var->data.mode == nir_var_system_value &&
                  var->data.location == SYSTEM_VALUE_POINT_COORD)) {
-                lower_load_pointcoord(state, intr);
+               lower_load_pointcoord(state, intr);
             }
          }
       }
@@ -103,8 +103,8 @@ bool
 nir_lower_pntc_ytransform(nir_shader *shader,
                           const gl_state_index16 pntc_state_tokens[][STATE_LENGTH])
 {
-    if (!shader->options->lower_wpos_pntc)
-        return false;
+   if (!shader->options->lower_wpos_pntc)
+      return false;
 
    lower_pntc_ytransform_state state = {
       .pntc_state_tokens = *pntc_state_tokens,
@@ -121,7 +121,7 @@ nir_lower_pntc_ytransform(nir_shader *shader,
          lower_pntc_ytransform_block(&state, block);
       }
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    }
 
    return state.pntc_transform != NULL;

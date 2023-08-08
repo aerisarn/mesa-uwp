@@ -137,9 +137,8 @@ nir_opt_reassociate_bfi(nir_shader *shader)
    bool progress = nir_shader_instructions_pass(shader,
                                                 nir_opt_reassociate_bfi_instr,
                                                 nir_metadata_block_index |
-                                                nir_metadata_dominance,
+                                                   nir_metadata_dominance,
                                                 NULL);
 
    return progress;
 }
-

@@ -40,13 +40,13 @@
  * Handling these cases probably wouldn't provide much benefit though.
  *
  * This probably doesn't handle big-endian GPUs correctly.
-*/
+ */
 
-#include "nir.h"
-#include "nir_deref.h"
-#include "nir_builder.h"
-#include "nir_worklist.h"
 #include "util/u_dynarray.h"
+#include "nir.h"
+#include "nir_builder.h"
+#include "nir_deref.h"
+#include "nir_worklist.h"
 
 #include <stdlib.h>
 
@@ -56,49 +56,50 @@ struct intrinsic_info {
    bool is_atomic;
    /* Indices into nir_intrinsic::src[] or -1 if not applicable. */
    int resource_src; /* resource (e.g. from vulkan_resource_index) */
-   int base_src; /* offset which it loads/stores from */
-   int deref_src; /* deref which is loads/stores from */
-   int value_src; /* the data it is storing */
+   int base_src;     /* offset which it loads/stores from */
+   int deref_src;    /* deref which is loads/stores from */
+   int value_src;    /* the data it is storing */
 };
 
 static const struct intrinsic_info *
-get_info(nir_intrinsic_op op) {
+get_info(nir_intrinsic_op op)
+{
    switch (op) {
-#define INFO(mode, op, atomic, res, base, deref, val) \
-case nir_intrinsic_##op: {\
-   static const struct intrinsic_info op##_info = {mode, nir_intrinsic_##op, atomic, res, base, deref, val};\
-   return &op##_info;\
-}
-#define LOAD(mode, op, res, base, deref) INFO(mode, load_##op, false, res, base, deref, -1)
+#define INFO(mode, op, atomic, res, base, deref, val)                                                             \
+   case nir_intrinsic_##op: {                                                                                     \
+      static const struct intrinsic_info op##_info = { mode, nir_intrinsic_##op, atomic, res, base, deref, val }; \
+      return &op##_info;                                                                                          \
+   }
+#define LOAD(mode, op, res, base, deref)       INFO(mode, load_##op, false, res, base, deref, -1)
 #define STORE(mode, op, res, base, deref, val) INFO(mode, store_##op, false, res, base, deref, val)
-#define ATOMIC(mode, type, res, base, deref, val) \
+#define ATOMIC(mode, type, res, base, deref, val)         \
    INFO(mode, type##_atomic, true, res, base, deref, val) \
-   INFO(mode, type##_atomic_swap, true, res, base, deref, val) \
+   INFO(mode, type##_atomic_swap, true, res, base, deref, val)
 
-   LOAD(nir_var_mem_push_const, push_constant, -1, 0, -1)
-   LOAD(nir_var_mem_ubo, ubo, 0, 1, -1)
-   LOAD(nir_var_mem_ssbo, ssbo, 0, 1, -1)
-   STORE(nir_var_mem_ssbo, ssbo, 1, 2, -1, 0)
-   LOAD(0, deref, -1, -1, 0)
-   STORE(0, deref, -1, -1, 0, 1)
-   LOAD(nir_var_mem_shared, shared, -1, 0, -1)
-   STORE(nir_var_mem_shared, shared, -1, 1, -1, 0)
-   LOAD(nir_var_mem_global, global, -1, 0, -1)
-   STORE(nir_var_mem_global, global, -1, 1, -1, 0)
-   LOAD(nir_var_mem_global, global_constant, -1, 0, -1)
-   LOAD(nir_var_mem_task_payload, task_payload, -1, 0, -1)
-   STORE(nir_var_mem_task_payload, task_payload, -1, 1, -1, 0)
-   ATOMIC(nir_var_mem_ssbo, ssbo, 0, 1, -1, 2)
-   ATOMIC(0, deref, -1, -1, 0, 1)
-   ATOMIC(nir_var_mem_shared, shared, -1, 0, -1, 1)
-   ATOMIC(nir_var_mem_global, global, -1, 0, -1, 1)
-   ATOMIC(nir_var_mem_task_payload, task_payload, -1, 0, -1, 1)
-   LOAD(nir_var_shader_temp, stack, -1, -1, -1)
-   STORE(nir_var_shader_temp, stack, -1, -1, -1, 0)
-   LOAD(nir_var_mem_ubo, ubo_uniform_block_intel, 0, 1, -1)
-   LOAD(nir_var_mem_ssbo, ssbo_uniform_block_intel, 0, 1, -1)
-   LOAD(nir_var_mem_shared, shared_uniform_block_intel, -1, 0, -1)
-   LOAD(nir_var_mem_global, global_constant_uniform_block_intel, -1, 0, -1)
+      LOAD(nir_var_mem_push_const, push_constant, -1, 0, -1)
+      LOAD(nir_var_mem_ubo, ubo, 0, 1, -1)
+      LOAD(nir_var_mem_ssbo, ssbo, 0, 1, -1)
+      STORE(nir_var_mem_ssbo, ssbo, 1, 2, -1, 0)
+      LOAD(0, deref, -1, -1, 0)
+      STORE(0, deref, -1, -1, 0, 1)
+      LOAD(nir_var_mem_shared, shared, -1, 0, -1)
+      STORE(nir_var_mem_shared, shared, -1, 1, -1, 0)
+      LOAD(nir_var_mem_global, global, -1, 0, -1)
+      STORE(nir_var_mem_global, global, -1, 1, -1, 0)
+      LOAD(nir_var_mem_global, global_constant, -1, 0, -1)
+      LOAD(nir_var_mem_task_payload, task_payload, -1, 0, -1)
+      STORE(nir_var_mem_task_payload, task_payload, -1, 1, -1, 0)
+      ATOMIC(nir_var_mem_ssbo, ssbo, 0, 1, -1, 2)
+      ATOMIC(0, deref, -1, -1, 0, 1)
+      ATOMIC(nir_var_mem_shared, shared, -1, 0, -1, 1)
+      ATOMIC(nir_var_mem_global, global, -1, 0, -1, 1)
+      ATOMIC(nir_var_mem_task_payload, task_payload, -1, 0, -1, 1)
+      LOAD(nir_var_shader_temp, stack, -1, -1, -1)
+      STORE(nir_var_shader_temp, stack, -1, -1, -1, 0)
+      LOAD(nir_var_mem_ubo, ubo_uniform_block_intel, 0, 1, -1)
+      LOAD(nir_var_mem_ssbo, ssbo_uniform_block_intel, 0, 1, -1)
+      LOAD(nir_var_mem_shared, shared_uniform_block_intel, -1, 0, -1)
+      LOAD(nir_var_mem_global, global_constant_uniform_block_intel, -1, 0, -1)
    default:
       break;
 #undef ATOMIC
@@ -154,11 +155,12 @@ struct vectorize_ctx {
    struct hash_table *stores[nir_num_variable_modes];
 };
 
-static uint32_t hash_entry_key(const void *key_)
+static uint32_t
+hash_entry_key(const void *key_)
 {
    /* this is careful to not include pointers in the hash calculation so that
     * the order of the hash table walk is deterministic */
-   struct entry_key *key = (struct entry_key*)key_;
+   struct entry_key *key = (struct entry_key *)key_;
 
    uint32_t hash = 0;
    if (key->resource)
@@ -179,10 +181,11 @@ static uint32_t hash_entry_key(const void *key_)
    return hash;
 }
 
-static bool entry_key_equals(const void *a_, const void *b_)
+static bool
+entry_key_equals(const void *a_, const void *b_)
 {
-   struct entry_key *a = (struct entry_key*)a_;
-   struct entry_key *b = (struct entry_key*)b_;
+   struct entry_key *a = (struct entry_key *)a_;
+   struct entry_key *b = (struct entry_key *)b_;
 
    if (a->var != b->var || a->resource != b->resource)
       return false;
@@ -204,16 +207,18 @@ static bool entry_key_equals(const void *a_, const void *b_)
    return true;
 }
 
-static void delete_entry_dynarray(struct hash_entry *entry)
+static void
+delete_entry_dynarray(struct hash_entry *entry)
 {
    struct util_dynarray *arr = (struct util_dynarray *)entry->data;
    ralloc_free(arr);
 }
 
-static int sort_entries(const void *a_, const void *b_)
+static int
+sort_entries(const void *a_, const void *b_)
 {
-   struct entry *a = *(struct entry*const*)a_;
-   struct entry *b = *(struct entry*const*)b_;
+   struct entry *a = *(struct entry *const *)a_;
+   struct entry *b = *(struct entry *const *)b_;
 
    if (a->offset_signed > b->offset_signed)
       return 1;
@@ -226,9 +231,7 @@ static int sort_entries(const void *a_, const void *b_)
 static unsigned
 get_bit_size(struct entry *entry)
 {
-   unsigned size = entry->is_store ?
-                   entry->intrin->src[entry->info->value_src].ssa->bit_size :
-                   entry->intrin->dest.ssa.bit_size;
+   unsigned size = entry->is_store ? entry->intrin->src[entry->info->value_src].ssa->bit_size : entry->intrin->dest.ssa.bit_size;
    return size == 1 ? 32u : size;
 }
 
@@ -352,7 +355,7 @@ create_entry_key_from_deref(void *mem_ctx,
    }
    unsigned offset_def_count = 0;
 
-   struct entry_key* key = ralloc(mem_ctx, struct entry_key);
+   struct entry_key *key = ralloc(mem_ctx, struct entry_key);
    key->resource = NULL;
    key->var = NULL;
    *offset_base = 0;
@@ -373,7 +376,7 @@ create_entry_key_from_deref(void *mem_ctx,
          nir_ssa_def *index = deref->arr.index.ssa;
          uint32_t stride = nir_deref_instr_array_stride(deref);
 
-         nir_ssa_scalar base = {.def=index, .comp=0};
+         nir_ssa_scalar base = { .def = index, .comp = 0 };
          uint64_t offset = 0, base_mul = 1;
          parse_offset(&base, &base_mul, &offset);
          offset = util_mask_sign_extend(offset, index->bit_size);
@@ -438,9 +441,9 @@ parse_entry_key_from_offset(struct entry_key *key, unsigned size, unsigned left,
          nir_ssa_scalar src1 = nir_ssa_scalar_chase_alu_src(base, 1);
          unsigned amount = parse_entry_key_from_offset(key, size, left - 1, src0, base_mul, offset);
          amount += parse_entry_key_from_offset(key, size + amount, left - amount, src1, base_mul, offset);
-            return amount;
-         }
+         return amount;
       }
+   }
 
    return add_to_entry_key(key->offset_defs, key->offset_defs_mul, size, base, base_mul);
 }
@@ -457,7 +460,7 @@ create_entry_key_from_offset(void *mem_ctx, nir_ssa_def *base, uint64_t base_mul
       key->offset_defs = offset_defs;
       key->offset_defs_mul = offset_defs_mul;
 
-      nir_ssa_scalar scalar = {.def=base, .comp=0};
+      nir_ssa_scalar scalar = { .def = base, .comp = 0 };
       key->offset_def_count = parse_entry_key_from_offset(key, 0, 32, scalar, base_mul, offset);
 
       key->offset_defs = ralloc_array(mem_ctx, nir_ssa_scalar, key->offset_def_count);
@@ -539,8 +542,7 @@ create_entry(struct vectorize_ctx *ctx,
       entry->key = create_entry_key_from_deref(entry, ctx, &path, &entry->offset);
       nir_deref_path_finish(&path);
    } else {
-      nir_ssa_def *base = entry->info->base_src >= 0 ?
-                          intrin->src[entry->info->base_src].ssa : NULL;
+      nir_ssa_def *base = entry->info->base_src >= 0 ? intrin->src[entry->info->base_src].ssa : NULL;
       uint64_t offset = 0;
       if (nir_intrinsic_has_base(intrin))
          offset += nir_intrinsic_base(intrin);
@@ -579,11 +581,12 @@ static nir_deref_instr *
 cast_deref(nir_builder *b, unsigned num_components, unsigned bit_size, nir_deref_instr *deref)
 {
    if (glsl_get_components(deref->type) == num_components &&
-       type_scalar_size_bytes(deref->type)*8u == bit_size)
+       type_scalar_size_bytes(deref->type) * 8u == bit_size)
       return deref;
 
    enum glsl_base_type types[] = {
-      GLSL_TYPE_UINT8, GLSL_TYPE_UINT16, GLSL_TYPE_UINT, GLSL_TYPE_UINT64};
+      GLSL_TYPE_UINT8, GLSL_TYPE_UINT16, GLSL_TYPE_UINT, GLSL_TYPE_UINT64
+   };
    enum glsl_base_type base = types[ffs(bit_size / 8u) - 1u];
    const struct glsl_type *type = glsl_vector_type(base, num_components);
 
@@ -644,7 +647,8 @@ new_bitsize_acceptable(struct vectorize_ctx *ctx, unsigned new_bit_size,
    return true;
 }
 
-static nir_deref_instr *subtract_deref(nir_builder *b, nir_deref_instr *deref, int64_t offset)
+static nir_deref_instr *
+subtract_deref(nir_builder *b, nir_deref_instr *deref, int64_t offset)
 {
    /* avoid adding another deref to the path */
    if (deref->deref_type == nir_deref_type_ptr_as_array &&
@@ -664,7 +668,6 @@ static nir_deref_instr *subtract_deref(nir_builder *b, nir_deref_instr *deref, i
          return nir_build_deref_array_imm(
             b, parent, nir_src_as_int(deref->arr.index) - offset / stride);
    }
-
 
    deref = nir_build_deref_cast(b, &deref->dest.ssa, deref->modes,
                                 glsl_scalar_type(GLSL_TYPE_UINT8), 1);
@@ -866,12 +869,12 @@ bindings_different_restrict(nir_shader *shader, struct entry *a, struct entry *b
       if (a_res.num_indices != b_res.num_indices ||
           a_res.desc_set != b_res.desc_set ||
           a_res.binding != b_res.binding)
-            different_bindings = true;
+         different_bindings = true;
 
       for (unsigned i = 0; i < a_res.num_indices; i++) {
          if (nir_src_is_const(a_res.indices[i]) && nir_src_is_const(b_res.indices[i]) &&
              nir_src_as_uint(a_res.indices[i]) != nir_src_as_uint(b_res.indices[i]))
-               different_bindings = true;
+            different_bindings = true;
       }
 
       if (different_bindings) {
@@ -1053,7 +1056,7 @@ is_strided_vector(const struct glsl_type *type)
    if (glsl_type_is_vector(type)) {
       unsigned explicit_stride = glsl_get_explicit_stride(type);
       return explicit_stride != 0 && explicit_stride !=
-             type_scalar_size_bytes(glsl_get_array_element(type));
+                                        type_scalar_size_bytes(glsl_get_array_element(type));
    } else {
       return false;
    }
@@ -1189,11 +1192,11 @@ try_vectorize_shared2(struct vectorize_ctx *ctx,
       nir_ssa_def *low_val = low->intrin->src[low->info->value_src].ssa;
       nir_ssa_def *high_val = high->intrin->src[high->info->value_src].ssa;
       nir_ssa_def *val = nir_vec2(&b, nir_bitcast_vector(&b, low_val, low_size * 8u),
-                                      nir_bitcast_vector(&b, high_val, low_size * 8u));
-      nir_store_shared2_amd(&b, val, offset, .offset1=diff/stride, .st64=st64);
+                                  nir_bitcast_vector(&b, high_val, low_size * 8u));
+      nir_store_shared2_amd(&b, val, offset, .offset1 = diff / stride, .st64 = st64);
    } else {
-      nir_ssa_def *new_def = nir_load_shared2_amd(&b, low_size * 8u, offset, .offset1=diff/stride,
-                                                  .st64=st64);
+      nir_ssa_def *new_def = nir_load_shared2_amd(&b, low_size * 8u, offset, .offset1 = diff / stride,
+                                                  .st64 = st64);
       nir_ssa_def_rewrite_uses(&low->intrin->dest.ssa,
                                nir_bitcast_vector(&b, nir_channel(&b, new_def, 0), low_bit_size));
       nir_ssa_def_rewrite_uses(&high->intrin->dest.ssa,
@@ -1390,7 +1393,7 @@ process_block(nir_function_impl *impl, struct vectorize_ctx *ctx, nir_block *blo
          continue;
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-      const struct intrinsic_info *info = get_info(intrin->intrinsic); 
+      const struct intrinsic_info *info = get_info(intrin->intrinsic);
       if (!info)
          continue;
 
@@ -1462,8 +1465,8 @@ nir_opt_load_store_vectorize(nir_shader *shader, const nir_load_store_vectorize_
 
       nir_metadata_preserve(impl,
                             nir_metadata_block_index |
-                            nir_metadata_dominance |
-                            nir_metadata_live_ssa_defs);
+                               nir_metadata_dominance |
+                               nir_metadata_live_ssa_defs);
    }
 
    ralloc_free(ctx);

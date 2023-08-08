@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "nir_legacy.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "nir_legacy.h"
 
 bool
 nir_legacy_float_mod_folds(nir_alu_instr *mod)
@@ -47,18 +47,17 @@ chase_alu_src_helper(const nir_src *src)
    if (load) {
       bool indirect = (load->intrinsic == nir_intrinsic_load_reg_indirect);
 
-      return (nir_legacy_alu_src) {
+      return (nir_legacy_alu_src){
          .src.is_ssa = false,
          .src.reg = {
             .handle = load->src[0].ssa,
             .base_offset = nir_intrinsic_base(load),
-            .indirect = indirect ? load->src[1].ssa : NULL
-         },
+            .indirect = indirect ? load->src[1].ssa : NULL },
          .fabs = nir_intrinsic_legacy_fabs(load),
          .fneg = nir_intrinsic_legacy_fneg(load),
       };
    } else {
-      return (nir_legacy_alu_src) {
+      return (nir_legacy_alu_src){
          .src.is_ssa = true,
          .src.ssa = src->ssa,
       };
@@ -130,18 +129,17 @@ chase_alu_dest_helper(nir_dest *dest)
    if (store) {
       bool indirect = (store->intrinsic == nir_intrinsic_store_reg_indirect);
 
-      return (nir_legacy_alu_dest) {
+      return (nir_legacy_alu_dest){
          .dest.is_ssa = false,
          .dest.reg = {
             .handle = store->src[1].ssa,
             .base_offset = nir_intrinsic_base(store),
-            .indirect = indirect ? store->src[2].ssa : NULL
-         },
+            .indirect = indirect ? store->src[2].ssa : NULL },
          .fsat = nir_intrinsic_legacy_fsat(store),
          .write_mask = nir_intrinsic_write_mask(store),
       };
    } else {
-      return (nir_legacy_alu_dest) {
+      return (nir_legacy_alu_dest){
          .dest.is_ssa = true,
          .dest.ssa = &dest->ssa,
          .write_mask = nir_component_mask(dest->ssa.num_components),
@@ -226,7 +224,7 @@ nir_legacy_chase_alu_dest(nir_dest *dest)
 
    /* Try SSA fsat. No users support 64-bit modifiers. */
    if (chase_fsat(&def)) {
-      return (nir_legacy_alu_dest) {
+      return (nir_legacy_alu_dest){
          .dest.is_ssa = true,
          .dest.ssa = def,
          .fsat = true,
@@ -333,8 +331,9 @@ nir_legacy_trivialize(nir_shader *s, bool fuse_fabs)
     * chase registers recursively, allowing registers to be trivialized easier.
     */
    if (nir_shader_instructions_pass(s, fuse_mods_with_registers,
-                                       nir_metadata_block_index |
-                                       nir_metadata_dominance, &fuse_fabs)) {
+                                    nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                    &fuse_fabs)) {
       /* If we made progress, we likely left dead loads. Clean them up. */
       NIR_PASS_V(s, nir_opt_dce);
    }

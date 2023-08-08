@@ -25,9 +25,9 @@
  *
  */
 
+#include "util/u_math.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "util/u_math.h"
 
 typedef struct {
    uint32_t task_count_shared_addr;
@@ -49,7 +49,7 @@ lower_nv_task_output(nir_builder *b,
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
-   lower_task_nv_state *s = (lower_task_nv_state *) state;
+   lower_task_nv_state *s = (lower_task_nv_state *)state;
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    switch (intrin->intrinsic) {
@@ -90,10 +90,10 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
    nir_store_shared(b, zero, zero, .base = s->task_count_shared_addr);
 
    nir_barrier(b,
-         .execution_scope = SCOPE_WORKGROUP,
-         .memory_scope = SCOPE_WORKGROUP,
-         .memory_semantics = NIR_MEMORY_RELEASE,
-         .memory_modes = nir_var_mem_shared);
+               .execution_scope = SCOPE_WORKGROUP,
+               .memory_scope = SCOPE_WORKGROUP,
+               .memory_semantics = NIR_MEMORY_RELEASE,
+               .memory_modes = nir_var_mem_shared);
 
    /* At the end of the shader, read the task count from shared memory
     * and emit launch_mesh_workgroups.
@@ -101,10 +101,10 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
    b->cursor = nir_after_cf_list(&b->impl->body);
 
    nir_barrier(b,
-         .execution_scope = SCOPE_WORKGROUP,
-         .memory_scope = SCOPE_WORKGROUP,
-         .memory_semantics = NIR_MEMORY_ACQUIRE,
-         .memory_modes = nir_var_mem_shared);
+               .execution_scope = SCOPE_WORKGROUP,
+               .memory_scope = SCOPE_WORKGROUP,
+               .memory_semantics = NIR_MEMORY_ACQUIRE,
+               .memory_modes = nir_var_mem_shared);
 
    nir_ssa_def *task_count =
       nir_load_shared(b, 1, 32, zero, .base = s->task_count_shared_addr);
@@ -172,8 +172,7 @@ lower_task_payload_to_shared(nir_builder *b,
     * have the same number of sources and same indices.
     */
    unsigned base = nir_intrinsic_base(intrin);
-   nir_atomic_op atom_op = nir_intrinsic_has_atomic_op(intrin) ?
-                           nir_intrinsic_atomic_op(intrin) : 0;
+   nir_atomic_op atom_op = nir_intrinsic_has_atomic_op(intrin) ? nir_intrinsic_atomic_op(intrin) : 0;
 
    intrin->intrinsic = shared_opcode_for_task_payload(intrin->intrinsic);
    nir_intrinsic_set_base(intrin, base + s->payload_shared_addr);
@@ -220,10 +219,8 @@ emit_shared_to_payload_copy(nir_builder *b,
    const unsigned vec4_copies_per_invocation = whole_wg_vec4_copies / invocations;
    const unsigned remaining_vec4_copies = whole_wg_vec4_copies % invocations;
    const unsigned remaining_dwords =
-         DIV_ROUND_UP(payload_size
-                       - vec4size * vec4_copies_per_invocation * invocations
-                       - vec4size * remaining_vec4_copies,
-                      4);
+      DIV_ROUND_UP(payload_size - vec4size * vec4_copies_per_invocation * invocations - vec4size * remaining_vec4_copies,
+                   4);
    const unsigned base_shared_addr = s->payload_shared_addr + payload_addr;
 
    nir_ssa_def *invocation_index = nir_load_local_invocation_index(b);
@@ -233,9 +230,9 @@ emit_shared_to_payload_copy(nir_builder *b,
     * This is necessary because we placed the payload in shared memory.
     */
    nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
-                  .memory_scope = SCOPE_WORKGROUP,
-                  .memory_semantics = NIR_MEMORY_ACQ_REL,
-                  .memory_modes = nir_var_mem_shared);
+               .memory_scope = SCOPE_WORKGROUP,
+               .memory_semantics = NIR_MEMORY_ACQ_REL,
+               .memory_modes = nir_var_mem_shared);
 
    /* Payload_size is a size of user-accessible payload, but on some
     * hardware (e.g. Intel) payload has a private header, which we have
@@ -344,7 +341,7 @@ lower_task_intrin(nir_builder *b,
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
-   lower_task_state *s = (lower_task_state *) state;
+   lower_task_state *s = (lower_task_state *)state;
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    switch (intrin->intrinsic) {
@@ -373,21 +370,21 @@ requires_payload_in_shared(nir_shader *shader, bool atomics, bool small_types)
 
             nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
             switch (intrin->intrinsic) {
-               case nir_intrinsic_task_payload_atomic:
-               case nir_intrinsic_task_payload_atomic_swap:
-                  if (atomics)
-                     return true;
-                  break;
-               case nir_intrinsic_load_task_payload:
-                  if (small_types && nir_dest_bit_size(intrin->dest) < 32)
-                     return true;
-                  break;
-               case nir_intrinsic_store_task_payload:
-                  if (small_types && nir_src_bit_size(intrin->src[0]) < 32)
-                     return true;
-                  break;
-               default:
-                  break;
+            case nir_intrinsic_task_payload_atomic:
+            case nir_intrinsic_task_payload_atomic_swap:
+               if (atomics)
+                  return true;
+               break;
+            case nir_intrinsic_load_task_payload:
+               if (small_types && nir_dest_bit_size(intrin->dest) < 32)
+                  return true;
+               break;
+            case nir_intrinsic_store_task_payload:
+               if (small_types && nir_src_bit_size(intrin->src[0]) < 32)
+                  return true;
+               break;
+            default:
+               break;
             }
          }
       }

@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
+#include "util/u_vector.h"
+#include "nir_builder.h"
 #include "nir_instr_set.h"
 #include "nir_search_helpers.h"
-#include "nir_builder.h"
-#include "util/u_vector.h"
 
 /* Partial redundancy elimination of compares
  *
@@ -82,12 +82,12 @@ block_queue_finish(struct block_queue *bq)
 {
    struct block_instructions *n;
 
-   while ((n = (struct block_instructions *) exec_list_pop_head(&bq->blocks)) != NULL) {
+   while ((n = (struct block_instructions *)exec_list_pop_head(&bq->blocks)) != NULL) {
       u_vector_finish(&n->instructions);
       free(n);
    }
 
-   while ((n = (struct block_instructions *) exec_list_pop_head(&bq->reusable_blocks)) != NULL) {
+   while ((n = (struct block_instructions *)exec_list_pop_head(&bq->reusable_blocks)) != NULL) {
       free(n);
    }
 }
@@ -96,7 +96,7 @@ static struct block_instructions *
 push_block(struct block_queue *bq)
 {
    struct block_instructions *bi =
-      (struct block_instructions *) exec_list_pop_head(&bq->reusable_blocks);
+      (struct block_instructions *)exec_list_pop_head(&bq->reusable_blocks);
 
    if (bi == NULL) {
       bi = calloc(1, sizeof(struct block_instructions));
@@ -183,15 +183,15 @@ rewrite_compare_instruction(nir_builder *bld, nir_alu_instr *orig_cmp,
    nir_ssa_def *const b = nir_ssa_for_alu_src(bld, orig_cmp, 1);
 
    nir_ssa_def *const fadd = zero_on_left
-      ? nir_fadd(bld, b, nir_fneg(bld, a))
-      : nir_fadd(bld, a, nir_fneg(bld, b));
+                                ? nir_fadd(bld, b, nir_fneg(bld, a))
+                                : nir_fadd(bld, a, nir_fneg(bld, b));
 
    nir_ssa_def *const zero =
       nir_imm_floatN_t(bld, 0.0, orig_add->dest.dest.ssa.bit_size);
 
    nir_ssa_def *const cmp = zero_on_left
-      ? nir_build_alu(bld, orig_cmp->op, zero, fadd, NULL, NULL)
-      : nir_build_alu(bld, orig_cmp->op, fadd, zero, NULL, NULL);
+                               ? nir_build_alu(bld, orig_cmp->op, zero, fadd, NULL, NULL)
+                               : nir_build_alu(bld, orig_cmp->op, fadd, zero, NULL, NULL);
 
    /* Generating extra moves of the results is the easy way to make sure the
     * writemasks match the original instructions.  Later optimization passes
@@ -256,7 +256,7 @@ comparison_pre_block(nir_block *block, struct block_queue *bq, nir_builder *bld)
       if (alu->dest.dest.ssa.num_components != 1)
          continue;
 
-      static const uint8_t swizzle[NIR_MAX_VEC_COMPONENTS] = {0};
+      static const uint8_t swizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
 
       switch (alu->op) {
       case nir_op_fadd: {
@@ -264,13 +264,14 @@ comparison_pre_block(nir_block *block, struct block_queue *bq, nir_builder *bld)
           * instructions that dominate it.
           */
          struct block_instructions *b =
-            (struct block_instructions *) exec_list_get_head_raw(&bq->blocks);
+            (struct block_instructions *)exec_list_get_head_raw(&bq->blocks);
 
          while (b->node.next != NULL) {
             nir_alu_instr **a;
             bool rewrote_compare = false;
 
-            u_vector_foreach(a, &b->instructions) {
+            u_vector_foreach(a, &b->instructions)
+            {
                nir_alu_instr *const cmp = *a;
 
                if (cmp == NULL)
@@ -330,7 +331,7 @@ comparison_pre_block(nir_block *block, struct block_queue *bq, nir_builder *bld)
                break;
             }
 
-            b = (struct block_instructions *) b->node.next;
+            b = (struct block_instructions *)b->node.next;
          }
 
          break;
@@ -385,7 +386,7 @@ nir_opt_comparison_pre_impl(nir_function_impl *impl)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

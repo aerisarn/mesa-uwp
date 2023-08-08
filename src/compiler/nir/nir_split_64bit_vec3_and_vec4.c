@@ -27,8 +27,8 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-#include "nir_deref.h"
 #include "util/hash_table.h"
+#include "nir_deref.h"
 
 /* This pass splits stores to and loads from 64 bit vec3
  * and vec4 local variables to use at most vec2, and it also
@@ -43,7 +43,7 @@ nir_split_64bit_vec3_and_vec4_filter(const nir_instr *instr,
                                      const void *data)
 {
    switch (instr->type) {
-   case  nir_instr_type_intrinsic: {
+   case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
       switch (intr->intrinsic) {
@@ -63,16 +63,16 @@ nir_split_64bit_vec3_and_vec4_filter(const nir_instr *instr,
             return false;
          return nir_src_num_components(intr->src[1]) >= 3;
       default:
-            return false;
-         }
+         return false;
+      }
       }
    }
    case nir_instr_type_phi: {
-         nir_phi_instr *phi = nir_instr_as_phi(instr);
-         if (nir_dest_bit_size(phi->dest) != 64)
-            return false;
-         return nir_dest_num_components(phi->dest) >= 3;
-      }
+      nir_phi_instr *phi = nir_instr_as_phi(instr);
+      if (nir_dest_bit_size(phi->dest) != 64)
+         return false;
+      return nir_dest_num_components(phi->dest) >= 3;
+   }
 
    default:
       return false;
@@ -83,7 +83,6 @@ typedef struct {
    nir_variable *xy;
    nir_variable *zw;
 } variable_pair;
-
 
 static nir_ssa_def *
 merge_to_vec3_or_vec4(nir_builder *b, nir_ssa_def *load1,
@@ -128,14 +127,13 @@ get_linear_array_offset(nir_builder *b, nir_deref_instr *deref)
    return offset;
 }
 
-
 static variable_pair *
 get_var_pair(nir_builder *b, nir_variable *old_var,
-             struct hash_table  *split_vars)
+             struct hash_table *split_vars)
 {
    variable_pair *new_var = NULL;
    unsigned old_components = glsl_get_components(
-                                glsl_without_array_or_matrix(old_var->type));
+      glsl_without_array_or_matrix(old_var->type));
 
    assert(old_components > 2 && old_components <= 4);
 
@@ -161,7 +159,7 @@ get_var_pair(nir_builder *b, nir_variable *old_var,
 
       _mesa_hash_table_insert(split_vars, old_var, new_var);
    } else
-       new_var = (variable_pair *)entry->data;
+      new_var = (variable_pair *)entry->data;
    return new_var;
 }
 
@@ -171,7 +169,7 @@ split_load_deref(nir_builder *b, nir_intrinsic_instr *intr,
 {
    nir_variable *old_var = nir_intrinsic_get_var(intr, 0);
    unsigned old_components = glsl_get_components(
-                                glsl_without_array_or_matrix(old_var->type));
+      glsl_without_array_or_matrix(old_var->type));
 
    variable_pair *vars = get_var_pair(b, old_var, split_vars);
 
@@ -230,7 +228,7 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
    nir_ssa_dest_init(&vec->instr, &vec->dest.dest,
                      phi->dest.ssa.num_components, 64);
 
-   int num_comp[2] = {2, phi->dest.ssa.num_components - 2};
+   int num_comp[2] = { 2, phi->dest.ssa.num_components - 2 };
 
    nir_phi_instr *new_phi[2];
 
@@ -275,26 +273,25 @@ nir_split_64bit_vec3_and_vec4_impl(nir_builder *b, nir_instr *instr, void *d)
 
       case nir_intrinsic_load_deref: {
          nir_deref_instr *deref =
-               nir_instr_as_deref(intr->src[0].ssa->parent_instr);
+            nir_instr_as_deref(intr->src[0].ssa->parent_instr);
          if (deref->deref_type == nir_deref_type_var)
             return split_load_deref(b, intr, NULL, split_vars);
          else if (deref->deref_type == nir_deref_type_array) {
             return split_load_deref(b, intr, get_linear_array_offset(b, deref), split_vars);
-         }
-         else
+         } else
             unreachable("Only splitting of loads from vars and arrays");
       }
 
       case nir_intrinsic_store_deref: {
          nir_deref_instr *deref =
-               nir_instr_as_deref(intr->src[0].ssa->parent_instr);
+            nir_instr_as_deref(intr->src[0].ssa->parent_instr);
          if (deref->deref_type == nir_deref_type_var)
             return split_store_deref(b, intr, NULL, split_vars);
          else if (deref->deref_type == nir_deref_type_array)
-            return split_store_deref(b, intr,  get_linear_array_offset(b, deref), split_vars);
+            return split_store_deref(b, intr, get_linear_array_offset(b, deref), split_vars);
          else
             unreachable("Only splitting of stores to vars and arrays");
-         }
+      }
 
       default:
          unreachable("Only splitting load_deref and store_deref");
@@ -313,17 +310,16 @@ nir_split_64bit_vec3_and_vec4_impl(nir_builder *b, nir_instr *instr, void *d)
    return NULL;
 }
 
-
 bool
 nir_split_64bit_vec3_and_vec4(nir_shader *sh)
 {
    struct hash_table *split_vars = _mesa_pointer_hash_table_create(NULL);
 
    bool progress =
-         nir_shader_lower_instructions(sh,
-                                       nir_split_64bit_vec3_and_vec4_filter,
-                                       nir_split_64bit_vec3_and_vec4_impl,
-                                       split_vars);
+      nir_shader_lower_instructions(sh,
+                                    nir_split_64bit_vec3_and_vec4_filter,
+                                    nir_split_64bit_vec3_and_vec4_impl,
+                                    split_vars);
 
    _mesa_hash_table_destroy(split_vars, NULL);
    return progress;

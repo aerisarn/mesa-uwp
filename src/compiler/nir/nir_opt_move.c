@@ -55,8 +55,7 @@ static bool
 nir_opt_move_block(nir_block *block, nir_move_options options)
 {
    bool progress = false;
-   nir_instr *last_instr = nir_block_ends_in_jump(block) ?
-                           nir_block_last_instr(block) : NULL;
+   nir_instr *last_instr = nir_block_ends_in_jump(block) ? nir_block_last_instr(block) : NULL;
    const nir_if *iff = nir_block_get_following_if(block);
    const nir_instr *if_cond_instr = iff ? iff->condition.parent_instr : NULL;
 
@@ -67,7 +66,7 @@ nir_opt_move_block(nir_block *block, nir_move_options options)
     * If multiple instructions have the same user,
     * the original order is kept.
     */
-   unsigned index =  1;
+   unsigned index = 1;
    nir_foreach_instr_reverse_safe(instr, block) {
       instr->index = index++;
 
@@ -137,8 +136,8 @@ nir_opt_move(nir_shader *shader, nir_move_options options)
 
       if (impl_progress) {
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                           nir_metadata_dominance |
-                                           nir_metadata_live_ssa_defs);
+                                        nir_metadata_dominance |
+                                        nir_metadata_live_ssa_defs);
          progress = true;
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);

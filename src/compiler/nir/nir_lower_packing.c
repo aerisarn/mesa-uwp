@@ -38,38 +38,38 @@ static nir_ssa_def *
 lower_pack_64_from_32(nir_builder *b, nir_ssa_def *src)
 {
    return nir_pack_64_2x32_split(b, nir_channel(b, src, 0),
-                                    nir_channel(b, src, 1));
+                                 nir_channel(b, src, 1));
 }
 
 static nir_ssa_def *
 lower_unpack_64_to_32(nir_builder *b, nir_ssa_def *src)
 {
    return nir_vec2(b, nir_unpack_64_2x32_split_x(b, src),
-                      nir_unpack_64_2x32_split_y(b, src));
+                   nir_unpack_64_2x32_split_y(b, src));
 }
 
 static nir_ssa_def *
 lower_pack_32_from_16(nir_builder *b, nir_ssa_def *src)
 {
    return nir_pack_32_2x16_split(b, nir_channel(b, src, 0),
-                                    nir_channel(b, src, 1));
+                                 nir_channel(b, src, 1));
 }
 
 static nir_ssa_def *
 lower_unpack_32_to_16(nir_builder *b, nir_ssa_def *src)
 {
    return nir_vec2(b, nir_unpack_32_2x16_split_x(b, src),
-                      nir_unpack_32_2x16_split_y(b, src));
+                   nir_unpack_32_2x16_split_y(b, src));
 }
 
 static nir_ssa_def *
 lower_pack_64_from_16(nir_builder *b, nir_ssa_def *src)
 {
    nir_ssa_def *xy = nir_pack_32_2x16_split(b, nir_channel(b, src, 0),
-                                               nir_channel(b, src, 1));
+                                            nir_channel(b, src, 1));
 
    nir_ssa_def *zw = nir_pack_32_2x16_split(b, nir_channel(b, src, 2),
-                                               nir_channel(b, src, 3));
+                                            nir_channel(b, src, 3));
 
    return nir_pack_64_2x32_split(b, xy, zw);
 }
@@ -81,18 +81,18 @@ lower_unpack_64_to_16(nir_builder *b, nir_ssa_def *src)
    nir_ssa_def *zw = nir_unpack_64_2x32_split_y(b, src);
 
    return nir_vec4(b, nir_unpack_32_2x16_split_x(b, xy),
-                      nir_unpack_32_2x16_split_y(b, xy),
-                      nir_unpack_32_2x16_split_x(b, zw),
-                      nir_unpack_32_2x16_split_y(b, zw));
+                   nir_unpack_32_2x16_split_y(b, xy),
+                   nir_unpack_32_2x16_split_x(b, zw),
+                   nir_unpack_32_2x16_split_y(b, zw));
 }
 
 static nir_ssa_def *
 lower_pack_32_from_8(nir_builder *b, nir_ssa_def *src)
 {
    return nir_pack_32_4x8_split(b, nir_channel(b, src, 0),
-                                   nir_channel(b, src, 1),
-                                   nir_channel(b, src, 2),
-                                   nir_channel(b, src, 3));
+                                nir_channel(b, src, 1),
+                                nir_channel(b, src, 2),
+                                nir_channel(b, src, 3));
 }
 
 static bool
@@ -101,7 +101,7 @@ lower_pack_instr(nir_builder *b, nir_instr *instr, void *data)
    if (instr->type != nir_instr_type_alu)
       return false;
 
-   nir_alu_instr *alu_instr = (nir_alu_instr *) instr;
+   nir_alu_instr *alu_instr = (nir_alu_instr *)instr;
 
    if (alu_instr->op != nir_op_pack_64_2x32 &&
        alu_instr->op != nir_op_unpack_64_2x32 &&
@@ -152,5 +152,5 @@ bool
 nir_lower_pack(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, lower_pack_instr,
-         nir_metadata_block_index | nir_metadata_dominance, NULL);
+                                       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }

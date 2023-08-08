@@ -21,9 +21,9 @@
  * IN THE SOFTWARE.
  */
 #include <math.h>
+#include "util/u_vector.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "util/u_vector.h"
 
 /**
  * Lower flrp instructions.
@@ -615,7 +615,7 @@ lower_flrp_impl(nir_function_impl *impl,
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 }
 
 /**

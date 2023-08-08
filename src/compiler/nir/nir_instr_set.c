@@ -22,8 +22,8 @@
  */
 
 #include "nir_instr_set.h"
-#include "nir_vla.h"
 #include "util/half_float.h"
+#include "nir_vla.h"
 
 /* This function determines if uses of an instruction can safely be rewritten
  * to use another identical instruction instead. Note that this function must
@@ -54,7 +54,6 @@ instr_can_rewrite(const nir_instr *instr)
 
    return false;
 }
-
 
 #define HASH(hash, data) XXH32(&(data), sizeof(data), hash)
 
@@ -312,7 +311,8 @@ get_neg_instr(nir_src s)
    nir_alu_instr *alu = nir_src_as_alu_instr(s);
 
    return alu != NULL && (alu->op == nir_op_fneg || alu->op == nir_op_ineg)
-          ? alu : NULL;
+             ? alu
+             : NULL;
 }
 
 bool
@@ -428,7 +428,7 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
       return true;
    }
 
-   uint8_t alu1_swizzle[NIR_MAX_VEC_COMPONENTS] = {0};
+   uint8_t alu1_swizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
    nir_src alu1_actual_src;
    nir_alu_instr *neg1 = get_neg_instr(alu1->src[src1].src);
 
@@ -445,7 +445,7 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
          alu1_swizzle[i] = i;
    }
 
-   uint8_t alu2_swizzle[NIR_MAX_VEC_COMPONENTS] = {0};
+   uint8_t alu2_swizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
    nir_src alu2_actual_src;
    nir_alu_instr *neg2 = get_neg_instr(alu2->src[src2].src);
 
@@ -609,9 +609,9 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
           tex1->is_shadow != tex2->is_shadow ||
           tex1->is_new_style_shadow != tex2->is_new_style_shadow ||
           tex1->component != tex2->component ||
-         tex1->texture_index != tex2->texture_index ||
-         tex1->sampler_index != tex2->sampler_index ||
-         tex1->backend_flags != tex2->backend_flags) {
+          tex1->texture_index != tex2->texture_index ||
+          tex1->sampler_index != tex2->sampler_index ||
+          tex1->backend_flags != tex2->backend_flags) {
          return false;
       }
 
@@ -682,11 +682,11 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
          return false;
 
       if (info->has_dest && intrinsic1->dest.ssa.num_components !=
-                            intrinsic2->dest.ssa.num_components)
+                               intrinsic2->dest.ssa.num_components)
          return false;
 
       if (info->has_dest && intrinsic1->dest.ssa.bit_size !=
-                            intrinsic2->dest.ssa.bit_size)
+                               intrinsic2->dest.ssa.bit_size)
          return false;
 
       for (unsigned i = 0; i < info->num_srcs; i++) {
@@ -753,14 +753,14 @@ nir_instr_set_destroy(struct set *instr_set)
 
 bool
 nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr,
-                             bool (*cond_function) (const nir_instr *a,
-                                                    const nir_instr *b))
+                             bool (*cond_function)(const nir_instr *a,
+                                                   const nir_instr *b))
 {
    if (!instr_can_rewrite(instr))
       return false;
 
    struct set_entry *e = _mesa_set_search_or_add(instr_set, instr, NULL);
-   nir_instr *match = (nir_instr *) e->key;
+   nir_instr *match = (nir_instr *)e->key;
    if (match == instr)
       return false;
 
@@ -799,4 +799,3 @@ nir_instr_set_remove(struct set *instr_set, nir_instr *instr)
    if (entry)
       _mesa_set_remove(instr_set, entry);
 }
-

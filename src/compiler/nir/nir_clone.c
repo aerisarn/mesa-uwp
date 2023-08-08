@@ -666,8 +666,8 @@ clone_function(clone_state *state, const nir_function *fxn, nir_shader *ns)
 
    nfxn->num_params = fxn->num_params;
    if (fxn->num_params) {
-           nfxn->params = ralloc_array(state->ns, nir_parameter, fxn->num_params);
-           memcpy(nfxn->params, fxn->params, sizeof(nir_parameter) * fxn->num_params);
+      nfxn->params = ralloc_array(state->ns, nir_parameter, fxn->num_params);
+      memcpy(nfxn->params, fxn->params, sizeof(nir_parameter) * fxn->num_params);
    }
    nfxn->is_entrypoint = fxn->is_entrypoint;
    nfxn->is_preamble = fxn->is_preamble;

@@ -133,7 +133,7 @@ opt_undef_store(nir_intrinsic_instr *intrin)
    case nir_intrinsic_store_shared:
    case nir_intrinsic_store_global:
    case nir_intrinsic_store_scratch:
-      arg_index =  0;
+      arg_index = 0;
       break;
    default:
       return false;
@@ -197,6 +197,6 @@ nir_opt_undef(nir_shader *shader)
    return nir_shader_instructions_pass(shader,
                                        nir_opt_undef_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

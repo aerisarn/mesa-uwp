@@ -31,11 +31,11 @@
  * fixed-function blending in part or in full.
  */
 
+#include "nir_lower_blend.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_format_convert.h"
 #include "util/blend.h"
-#include "nir_lower_blend.h"
 
 struct ctx {
    const nir_lower_blend_options *options;
@@ -136,7 +136,7 @@ static nir_ssa_def *
 nir_fsat_signed(nir_builder *b, nir_ssa_def *x)
 {
    return nir_fclamp(b, x, nir_imm_floatN_t(b, -1.0, x->bit_size),
-                           nir_imm_floatN_t(b, +1.0, x->bit_size));
+                     nir_imm_floatN_t(b, +1.0, x->bit_size));
 }
 
 static nir_ssa_def *
@@ -189,7 +189,6 @@ should_clamp_factor(enum pipe_blendfactor factor, bool snorm)
    default:
       unreachable("invalid blend factor");
    }
-
 }
 
 static bool
@@ -246,10 +245,10 @@ nir_color_mask(
    nir_ssa_def *dst)
 {
    return nir_vec4(b,
-         nir_channel(b, (mask & (1 << 0)) ? src : dst, 0),
-         nir_channel(b, (mask & (1 << 1)) ? src : dst, 1),
-         nir_channel(b, (mask & (1 << 2)) ? src : dst, 2),
-         nir_channel(b, (mask & (1 << 3)) ? src : dst, 3));
+                   nir_channel(b, (mask & (1 << 0)) ? src : dst, 0),
+                   nir_channel(b, (mask & (1 << 1)) ? src : dst, 1),
+                   nir_channel(b, (mask & (1 << 2)) ? src : dst, 2),
+                   nir_channel(b, (mask & (1 << 3)) ? src : dst, 3));
 }
 
 static nir_ssa_def *
@@ -330,7 +329,7 @@ nir_blend_logicop(
 
    unsigned bits[4];
    for (int i = 0; i < 4; ++i)
-       bits[i] = format_desc->channel[i].size;
+      bits[i] = format_desc->channel[i].size;
 
    if (util_format_is_unorm(format)) {
       src = nir_format_float_to_unorm(b, src, bits);
@@ -435,10 +434,10 @@ nir_blend(
    nir_ssa_def *one = nir_imm_floatN_t(b, 1.0, dst->bit_size);
 
    dst = nir_vec4(b,
-         channel_exists(desc, 0) ? nir_channel(b, dst, 0) : zero,
-         channel_exists(desc, 1) ? nir_channel(b, dst, 1) : zero,
-         channel_exists(desc, 2) ? nir_channel(b, dst, 2) : zero,
-         channel_exists(desc, 3) ? nir_channel(b, dst, 3) : one);
+                  channel_exists(desc, 0) ? nir_channel(b, dst, 0) : zero,
+                  channel_exists(desc, 1) ? nir_channel(b, dst, 1) : zero,
+                  channel_exists(desc, 2) ? nir_channel(b, dst, 2) : zero,
+                  channel_exists(desc, 3) ? nir_channel(b, dst, 3) : one);
 
    /* We blend per channel and recombine later */
    nir_ssa_def *channels[4];
@@ -453,14 +452,14 @@ nir_blend(
 
       if (nir_blend_factored(chan.func)) {
          psrc = nir_blend_factor(
-                   b, psrc,
-                   src, src1, dst, bconst, c,
-                   chan.src_factor, format);
+            b, psrc,
+            src, src1, dst, bconst, c,
+            chan.src_factor, format);
 
          pdst = nir_blend_factor(
-                   b, pdst,
-                   src, src1, dst, bconst, c,
-                   chan.dst_factor, format);
+            b, pdst,
+            src, src1, dst, bconst, c,
+            chan.dst_factor, format);
       }
 
       channels[c] = nir_blend_func(b, chan.func, psrc, pdst);
@@ -595,7 +594,7 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    /* Grow or shrink the store destination as needed */
    store->num_components = num_components;
    nir_intrinsic_set_write_mask(store, nir_intrinsic_write_mask(store) &
-                                       nir_component_mask(num_components));
+                                          nir_component_mask(num_components));
 
    /* Write out the final color instead of the input */
    nir_instr_rewrite_src_ssa(instr, &store->src[0], blended);
@@ -649,14 +648,14 @@ nir_lower_blend(nir_shader *shader, const nir_lower_blend_options *options)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   struct ctx ctx = {.options = options};
+   struct ctx ctx = { .options = options };
    nir_shader_instructions_pass(shader, consume_dual_stores,
                                 nir_metadata_block_index |
-                                nir_metadata_dominance,
+                                   nir_metadata_dominance,
                                 ctx.src1);
 
    nir_shader_instructions_pass(shader, nir_lower_blend_instr,
                                 nir_metadata_block_index |
-                                nir_metadata_dominance,
+                                   nir_metadata_dominance,
                                 &ctx);
 }

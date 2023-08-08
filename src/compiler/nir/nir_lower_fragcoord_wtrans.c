@@ -75,5 +75,4 @@ nir_lower_fragcoord_wtrans(nir_shader *shader)
                                         lower_fragcoord_wtrans_filter,
                                         lower_fragcoord_wtrans_impl,
                                         NULL);
-
 }

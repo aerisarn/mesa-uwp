@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir.h"
-#include "nir_constant_expressions.h"
 #include "nir_loop_analyze.h"
 #include "util/bitset.h"
+#include "nir.h"
+#include "nir_constant_expressions.h"
 
 typedef enum {
    undefined,
@@ -158,7 +158,7 @@ instr_cost(loop_info_state *state, nir_instr *instr,
    unsigned cost = 1;
 
    if (nir_op_is_selection(alu->op)) {
-      nir_ssa_scalar cond_scalar = {alu->src[0].src.ssa, 0};
+      nir_ssa_scalar cond_scalar = { alu->src[0].src.ssa, 0 };
       if (nir_is_terminator_condition_with_two_inputs(cond_scalar)) {
          nir_instr *sel_cond = alu->src[0].src.ssa->parent_instr;
          nir_alu_instr *sel_alu = nir_instr_as_alu(sel_cond);
@@ -174,7 +174,7 @@ instr_cost(loop_info_state *state, nir_instr *instr,
          if ((nir_src_is_const(sel_alu->src[0].src) &&
               get_loop_var(rhs.def, state)->type == basic_induction) ||
              (nir_src_is_const(sel_alu->src[1].src) &&
-              get_loop_var(lhs.def, state)->type == basic_induction) ) {
+              get_loop_var(lhs.def, state)->type == basic_induction)) {
             /* Also if the selects condition is only used by the select then
              * remove that alu instructons cost from the cost total also.
              */
@@ -204,7 +204,7 @@ instr_cost(loop_info_state *state, nir_instr *instr,
       return cost;
 
    bool is_fp64 = nir_dest_bit_size(alu->dest.dest) == 64 &&
-      nir_alu_type_get_base_type(info->output_type) == nir_type_float;
+                  nir_alu_type_get_base_type(info->output_type) == nir_type_float;
    for (unsigned i = 0; i < info->num_inputs; i++) {
       if (nir_src_bit_size(alu->src[i].src) == 64 &&
           nir_alu_type_get_base_type(info->input_types[i]) == nir_type_float)
@@ -245,9 +245,9 @@ static bool
 init_loop_block(nir_block *block, loop_info_state *state,
                 bool in_if_branch, bool in_nested_loop)
 {
-   init_loop_state init_state = {.in_if_branch = in_if_branch,
-                                 .in_nested_loop = in_nested_loop,
-                                 .state = state };
+   init_loop_state init_state = { .in_if_branch = in_if_branch,
+                                  .in_nested_loop = in_nested_loop,
+                                  .state = state };
 
    nir_foreach_instr(instr, block) {
       nir_foreach_ssa_def(instr, init_loop_def, &init_state);
@@ -374,7 +374,7 @@ is_only_uniform_src(nir_src *src)
       nir_alu_instr *alu = nir_instr_as_alu(instr);
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
          if (!is_only_uniform_src(&alu->src[i].src))
-             return false;
+            return false;
       }
       return true;
    }
@@ -460,7 +460,7 @@ compute_induction_information(loop_info_state *state)
                   /* Is one of the operands const or uniform, and the other the phi.
                    * The phi source can't be swizzled in any way.
                    */
-                  if (alu->src[1-i].src.ssa == &phi->dest.ssa &&
+                  if (alu->src[1 - i].src.ssa == &phi->dest.ssa &&
                       alu_src_has_identity_swizzle(alu, 1 - i)) {
                      if (is_only_uniform_src(&alu->src[i].src))
                         var->update_src = alu->src + i;
@@ -508,9 +508,9 @@ compute_induction_information(loop_info_state *state)
          if (var->type == basic_induction) {
             nir_loop_induction_variable *ivar =
                &info->induction_vars[info->num_induction_vars++];
-             ivar->def = var->def;
-             ivar->init_src = var->init_src;
-             ivar->update_src = var->update_src;
+            ivar->def = var->def;
+            ivar->init_src = var->init_src;
+            ivar->update_src = var->update_src;
          }
       }
       /* don't overflow */
@@ -1379,9 +1379,9 @@ force_unroll_array_access(loop_info_state *state, nir_deref_instr *deref,
    if (array_size) {
       if ((array_size == state->loop->info->max_trip_count) &&
           nir_deref_mode_must_be(deref, nir_var_shader_in |
-                                        nir_var_shader_out |
-                                        nir_var_shader_temp |
-                                        nir_var_function_temp))
+                                           nir_var_shader_out |
+                                           nir_var_shader_temp |
+                                           nir_var_function_temp))
          return true;
 
       if (nir_deref_mode_must_be(deref, state->indirect_mask))
@@ -1404,7 +1404,6 @@ force_unroll_heuristics(loop_info_state *state, nir_block *block)
             nir_tex_instr_src_index(tex_instr,
                                     nir_tex_src_sampler_deref);
 
-
          if (sampler_idx >= 0) {
             nir_deref_instr *deref =
                nir_instr_as_deref(tex_instr->src[sampler_idx].src.ssa->parent_instr);
@@ -1412,7 +1411,6 @@ force_unroll_heuristics(loop_info_state *state, nir_block *block)
                return true;
          }
       }
-
 
       if (instr->type != nir_instr_type_intrinsic)
          continue;
@@ -1526,7 +1524,7 @@ initialize_loop_info_state(nir_loop *loop, void *mem_ctx,
    list_inithead(&state->process_list);
 
    if (loop->info)
-     ralloc_free(loop->info);
+      ralloc_free(loop->info);
 
    loop->info = rzalloc(loop, nir_loop_info);
 

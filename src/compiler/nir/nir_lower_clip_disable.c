@@ -19,14 +19,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
- * 
+ *
  * Authors:
  *    Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
  */
 
 #include "nir.h"
 #include "nir_builder.h"
-
 
 /**
  * This pass uses the enabled clip planes from the rasterizer state to rewrite
@@ -80,7 +79,7 @@ lower_clip_plane_store(nir_builder *b, nir_instr *instr_, void *cb_data)
    out = nir_deref_instr_get_variable(deref);
    if ((out->data.location != VARYING_SLOT_CLIP_DIST0 &&
         out->data.location != VARYING_SLOT_CLIP_DIST1) ||
-        out->data.mode != nir_var_shader_out)
+       out->data.mode != nir_var_shader_out)
       return false;
 
    b->cursor = nir_after_instr(&instr->instr);
@@ -100,7 +99,7 @@ lower_clip_plane_store(nir_builder *b, nir_instr *instr_, void *cb_data)
             components[i] = nir_ssa_undef(b, 1, 32);
       }
       nir_store_deref(b, deref, nir_vec(b, components, instr->num_components), wrmask);
-   } else  if (nir_src_is_const(deref->arr.index)) {
+   } else if (nir_src_is_const(deref->arr.index)) {
       /* storing using a constant index */
       plane = nir_src_as_uint(deref->arr.index);
       /* no need to make changes if the clip plane is enabled */
@@ -131,6 +130,6 @@ nir_lower_clip_disable(nir_shader *shader, unsigned clip_plane_enable)
 
    return nir_shader_instructions_pass(shader, lower_clip_plane_store,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        &clip_plane_enable);
 }

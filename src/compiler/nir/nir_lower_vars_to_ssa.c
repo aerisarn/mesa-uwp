@@ -27,7 +27,6 @@
 #include "nir_phi_builder.h"
 #include "nir_vla.h"
 
-
 struct deref_node {
    struct deref_node *parent;
    const struct glsl_type *type;
@@ -246,8 +245,8 @@ get_deref_node(nir_deref_instr *deref, struct lower_variables_state *state)
 /* \sa foreach_deref_node_match */
 static void
 foreach_deref_node_worker(struct deref_node *node, nir_deref_instr **path,
-                          void (* cb)(struct deref_node *node,
-                                      struct lower_variables_state *state),
+                          void (*cb)(struct deref_node *node,
+                                     struct lower_variables_state *state),
                           struct lower_variables_state *state)
 {
    if (*path == NULL) {
@@ -297,8 +296,8 @@ foreach_deref_node_worker(struct deref_node *node, nir_deref_instr **path,
  */
 static void
 foreach_deref_node_match(nir_deref_path *path,
-                         void (* cb)(struct deref_node *node,
-                                     struct lower_variables_state *state),
+                         void (*cb)(struct deref_node *node,
+                                    struct lower_variables_state *state),
                          struct lower_variables_state *state)
 {
    assert(path->path[0]->deref_type == nir_deref_type_var);
@@ -802,7 +801,7 @@ nir_lower_vars_to_ssa_impl(nir_function_impl *impl)
    nir_phi_builder_finish(state.phi_builder);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 
    ralloc_free(state.dead_ctx);
 

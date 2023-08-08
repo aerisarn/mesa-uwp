@@ -117,7 +117,6 @@ move_vec_src_uses_to_dest_block(nir_block *block)
             if (use->parent_instr->type != nir_instr_type_alu)
                continue;
 
-
             nir_alu_instr *use_alu = nir_instr_as_alu(use->parent_instr);
 
             /* Figure out which source we're actually looking at */
@@ -173,7 +172,7 @@ nir_move_vec_src_uses_to_dest_impl(nir_shader *shader, nir_function_impl *impl)
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 
    return progress;
 }

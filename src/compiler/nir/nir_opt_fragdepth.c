@@ -112,9 +112,9 @@ nir_opt_fragdepth(nir_shader *shader)
       nir_instr_remove(&store_intrin->instr);
 
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance |
-                                  nir_metadata_loop_analysis |
-                                  nir_metadata_instr_index);
+                                     nir_metadata_dominance |
+                                     nir_metadata_loop_analysis |
+                                     nir_metadata_instr_index);
       progress = true;
    }
 

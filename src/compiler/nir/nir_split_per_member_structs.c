@@ -166,9 +166,7 @@ nir_split_per_member_structs(nir_shader *shader)
    struct hash_table *var_to_member_map =
       _mesa_pointer_hash_table_create(dead_ctx);
 
-   nir_foreach_variable_with_modes_safe(var, shader, nir_var_shader_in |
-                                                     nir_var_shader_out |
-                                                     nir_var_system_value) {
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_shader_in | nir_var_shader_out | nir_var_system_value) {
       if (var->num_members == 0)
          continue;
 
@@ -184,7 +182,7 @@ nir_split_per_member_structs(nir_shader *shader)
 
    nir_shader_instructions_pass(shader, rewrite_deref_instr,
                                 nir_metadata_block_index |
-                                nir_metadata_dominance,
+                                   nir_metadata_dominance,
                                 var_to_member_map);
 
    ralloc_free(dead_ctx);

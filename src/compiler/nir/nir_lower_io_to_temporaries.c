@@ -261,7 +261,7 @@ fixup_interpolation(struct lower_io_state *state, nir_function_impl *impl,
             continue;
 
          nir_intrinsic_instr *interp = nir_instr_as_intrinsic(instr);
-         
+
          if (interp->intrinsic == nir_intrinsic_interp_deref_at_centroid ||
              interp->intrinsic == nir_intrinsic_interp_deref_at_sample ||
              interp->intrinsic == nir_intrinsic_interp_deref_at_offset ||
@@ -368,7 +368,7 @@ nir_lower_io_to_temporaries(nir_shader *shader, nir_function_impl *entrypoint,
          emit_output_copies_impl(&state, impl);
 
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    }
 
    exec_list_append(&shader->variables, &state.old_inputs);

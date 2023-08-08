@@ -25,9 +25,9 @@
 #include "nir_builder.h"
 
 nir_builder MUST_CHECK PRINTFLIKE(3, 4)
-nir_builder_init_simple_shader(gl_shader_stage stage,
-                               const nir_shader_compiler_options *options,
-                               const char *name, ...)
+   nir_builder_init_simple_shader(gl_shader_stage stage,
+                                  const nir_shader_compiler_options *options,
+                                  const char *name, ...)
 {
    nir_builder b;
 
@@ -94,7 +94,7 @@ nir_builder_alu_instr_finish_and_insert(nir_builder *build, nir_alu_instr *instr
                bit_size = src_bit_size;
          } else {
             assert(src_bit_size ==
-               nir_alu_type_get_type_size(op_info->input_types[i]));
+                   nir_alu_type_get_type_size(op_info->input_types[i]));
          }
       }
    }
@@ -154,7 +154,7 @@ nir_build_alu1(nir_builder *build, nir_op op, nir_ssa_def *src0)
 
 nir_ssa_def *
 nir_build_alu2(nir_builder *build, nir_op op, nir_ssa_def *src0,
-              nir_ssa_def *src1)
+               nir_ssa_def *src1)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -168,7 +168,7 @@ nir_build_alu2(nir_builder *build, nir_op op, nir_ssa_def *src0,
 
 nir_ssa_def *
 nir_build_alu3(nir_builder *build, nir_op op, nir_ssa_def *src0,
-              nir_ssa_def *src1, nir_ssa_def *src2)
+               nir_ssa_def *src1, nir_ssa_def *src2)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -183,7 +183,7 @@ nir_build_alu3(nir_builder *build, nir_op op, nir_ssa_def *src0,
 
 nir_ssa_def *
 nir_build_alu4(nir_builder *build, nir_op op, nir_ssa_def *src0,
-              nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3)
+               nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -267,7 +267,7 @@ nir_build_tex_deref_instr(nir_builder *build, nir_texop op,
       case nir_tex_src_coord:
          tex->coord_components = nir_src_num_components(extra_srcs[i].src);
          assert(tex->coord_components == tex->is_array +
-                glsl_get_sampler_dim_coordinate_components(tex->sampler_dim));
+                                            glsl_get_sampler_dim_coordinate_components(tex->sampler_dim));
          break;
 
       case nir_tex_src_lod:
@@ -553,10 +553,10 @@ nir_type_convert(nir_builder *b,
           nir_alu_type_get_type_size(src_type) == src->bit_size);
 
    const nir_alu_type dst_base =
-      (nir_alu_type) nir_alu_type_get_base_type(dest_type);
+      (nir_alu_type)nir_alu_type_get_base_type(dest_type);
 
    const nir_alu_type src_base =
-      (nir_alu_type) nir_alu_type_get_base_type(src_type);
+      (nir_alu_type)nir_alu_type_get_base_type(src_type);
 
    /* b2b uses the regular type conversion path, but i2b and f2b are
     * implemented as src != 0.
@@ -568,21 +568,39 @@ nir_type_convert(nir_builder *b,
 
       if (src_base == nir_type_float) {
          switch (dst_bit_size) {
-         case 1:  opcode = nir_op_fneu;   break;
-         case 8:  opcode = nir_op_fneu8;  break;
-         case 16: opcode = nir_op_fneu16; break;
-         case 32: opcode = nir_op_fneu32; break;
-         default: unreachable("Invalid Boolean size.");
+         case 1:
+            opcode = nir_op_fneu;
+            break;
+         case 8:
+            opcode = nir_op_fneu8;
+            break;
+         case 16:
+            opcode = nir_op_fneu16;
+            break;
+         case 32:
+            opcode = nir_op_fneu32;
+            break;
+         default:
+            unreachable("Invalid Boolean size.");
          }
       } else {
          assert(src_base == nir_type_int || src_base == nir_type_uint);
 
          switch (dst_bit_size) {
-         case 1:  opcode = nir_op_ine;   break;
-         case 8:  opcode = nir_op_ine8;  break;
-         case 16: opcode = nir_op_ine16; break;
-         case 32: opcode = nir_op_ine32; break;
-         default: unreachable("Invalid Boolean size.");
+         case 1:
+            opcode = nir_op_ine;
+            break;
+         case 8:
+            opcode = nir_op_ine8;
+            break;
+         case 16:
+            opcode = nir_op_ine16;
+            break;
+         case 32:
+            opcode = nir_op_ine32;
+            break;
+         default:
+            unreachable("Invalid Boolean size.");
          }
       }
 
@@ -590,7 +608,7 @@ nir_type_convert(nir_builder *b,
                            nir_imm_zero(b, src->num_components, src->bit_size),
                            NULL, NULL);
    } else {
-      src_type = (nir_alu_type) (src_type | src->bit_size);
+      src_type = (nir_alu_type)(src_type | src->bit_size);
 
       nir_op opcode =
          nir_type_conversion_op(src_type, dest_type, rnd);

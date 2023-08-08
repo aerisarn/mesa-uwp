@@ -47,8 +47,8 @@ try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state
       return val;
 
    nir_ssa_scalar src[2] = {
-      {alu->src[0].src.ssa, alu->src[0].swizzle[val.comp]},
-      {alu->src[1].src.ssa, alu->src[1].swizzle[val.comp]},
+      { alu->src[0].src.ssa, alu->src[0].swizzle[val.comp] },
+      { alu->src[1].src.ssa, alu->src[1].swizzle[val.comp] },
    };
 
    /* Make sure that we aren't taking out an addition that could trigger
@@ -92,8 +92,8 @@ try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state
 
    b->cursor = nir_before_instr(&alu->instr);
    nir_ssa_def *r =
-          nir_iadd(b, nir_channel(b, src[0].def, src[0].comp),
-                   nir_channel(b, src[1].def, src[1].comp));
+      nir_iadd(b, nir_channel(b, src[0].def, src[0].comp),
+               nir_channel(b, src[1].def, src[1].comp));
    return nir_get_ssa_scalar(r, 0);
 }
 
@@ -118,7 +118,7 @@ try_fold_load_store(nir_builder *b,
 
    if (!nir_src_is_const(*off_src)) {
       uint32_t add_offset = 0;
-      nir_ssa_scalar val = {.def = off_src->ssa, .comp = 0};
+      nir_ssa_scalar val = { .def = off_src->ssa, .comp = 0 };
       val = try_extract_const_addition(b, val, state, &add_offset, max - off_const);
       if (add_offset == 0)
          return false;
@@ -143,12 +143,11 @@ try_fold_load_store(nir_builder *b,
 
 static bool
 try_fold_shared2(nir_builder *b,
-                    nir_intrinsic_instr *intrin,
-                    opt_offsets_state *state,
-                    unsigned offset_src_idx)
+                 nir_intrinsic_instr *intrin,
+                 opt_offsets_state *state,
+                 unsigned offset_src_idx)
 {
-   unsigned comp_size = (intrin->intrinsic == nir_intrinsic_load_shared2_amd ?
-                         intrin->dest.ssa.bit_size : intrin->src[0].ssa->bit_size) / 8;
+   unsigned comp_size = (intrin->intrinsic == nir_intrinsic_load_shared2_amd ? intrin->dest.ssa.bit_size : intrin->src[0].ssa->bit_size) / 8;
    unsigned stride = (nir_intrinsic_st64(intrin) ? 64 : 1) * comp_size;
    unsigned offset0 = nir_intrinsic_offset0(intrin) * stride;
    unsigned offset1 = nir_intrinsic_offset1(intrin) * stride;
@@ -180,7 +179,7 @@ process_instr(nir_builder *b, nir_instr *instr, void *s)
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
-   opt_offsets_state *state = (opt_offsets_state *) s;
+   opt_offsets_state *state = (opt_offsets_state *)s;
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    switch (intrin->intrinsic) {
@@ -218,12 +217,11 @@ nir_opt_offsets(nir_shader *shader, const nir_opt_offsets_options *options)
 
    bool p = nir_shader_instructions_pass(shader, process_instr,
                                          nir_metadata_block_index |
-                                         nir_metadata_dominance,
+                                            nir_metadata_dominance,
                                          &state);
 
    if (state.range_ht)
       _mesa_hash_table_destroy(state.range_ht, NULL);
-
 
    return p;
 }

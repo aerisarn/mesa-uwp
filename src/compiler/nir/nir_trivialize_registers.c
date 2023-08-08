@@ -86,7 +86,7 @@ move_reg_decls(nir_block *block)
    }
 }
 
- /*
+/*
  * Any load can be trivialized by copying immediately after the load and then
  * rewriting uses of the load to read from the copy. That has no functional
  * change, but it means that for every use of the load (the copy), there is no
@@ -363,7 +363,6 @@ trivialize_source(nir_src *src, void *state)
       trivialize_read_after_write(load_reg, possibly_trivial_stores);
 
    return true;
-
 }
 
 static void

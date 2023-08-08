@@ -26,7 +26,7 @@
 static bool
 lower_vec3_to_vec4_instr(nir_builder *b, nir_instr *instr, void *data)
 {
-   nir_variable_mode modes = *((nir_variable_mode*) data);
+   nir_variable_mode modes = *((nir_variable_mode *)data);
 
    switch (instr->type) {
    case nir_instr_type_deref: {
@@ -89,12 +89,12 @@ lower_vec3_to_vec4_instr(nir_builder *b, nir_instr *instr, void *data)
          nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
          nir_deref_instr *src = nir_src_as_deref(intrin->src[0]);
          /* If we convert once side of a copy and not the other, that
-         * would be very bad.
-         */
+          * would be very bad.
+          */
          if (nir_deref_mode_may_be(dst, modes) ||
              nir_deref_mode_may_be(src, modes)) {
-             assert(nir_deref_mode_must_be(dst, modes));
-             assert(nir_deref_mode_must_be(src, modes));
+            assert(nir_deref_mode_must_be(dst, modes));
+            assert(nir_deref_mode_must_be(src, modes));
          }
          break;
       }
@@ -147,7 +147,7 @@ nir_lower_vec3_to_vec4(nir_shader *shader, nir_variable_mode modes)
    progress |= nir_shader_instructions_pass(shader,
                                             lower_vec3_to_vec4_instr,
                                             nir_metadata_block_index |
-                                            nir_metadata_dominance,
+                                               nir_metadata_dominance,
                                             &modes);
 
    return progress;

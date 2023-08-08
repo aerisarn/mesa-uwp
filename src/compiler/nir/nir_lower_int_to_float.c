@@ -107,9 +107,15 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       /* These we expect to have integers but the opcode doesn't change */
       break;
 
-   case nir_op_b2i32: alu->op = nir_op_b2f32; break;
-   case nir_op_i2f32: alu->op = nir_op_mov; break;
-   case nir_op_u2f32: alu->op = nir_op_mov; break;
+   case nir_op_b2i32:
+      alu->op = nir_op_b2f32;
+      break;
+   case nir_op_i2f32:
+      alu->op = nir_op_mov;
+      break;
+   case nir_op_u2f32:
+      alu->op = nir_op_mov;
+      break;
 
    case nir_op_f2i32: {
       alu->op = nir_op_ftrunc;
@@ -138,18 +144,38 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       break;
    }
 
-   case nir_op_f2u32: alu->op = nir_op_ffloor; break;
+   case nir_op_f2u32:
+      alu->op = nir_op_ffloor;
+      break;
 
-   case nir_op_ilt: alu->op = nir_op_flt; break;
-   case nir_op_ige: alu->op = nir_op_fge; break;
-   case nir_op_ieq: alu->op = nir_op_feq; break;
-   case nir_op_ine: alu->op = nir_op_fneu; break;
-   case nir_op_ult: alu->op = nir_op_flt; break;
-   case nir_op_uge: alu->op = nir_op_fge; break;
+   case nir_op_ilt:
+      alu->op = nir_op_flt;
+      break;
+   case nir_op_ige:
+      alu->op = nir_op_fge;
+      break;
+   case nir_op_ieq:
+      alu->op = nir_op_feq;
+      break;
+   case nir_op_ine:
+      alu->op = nir_op_fneu;
+      break;
+   case nir_op_ult:
+      alu->op = nir_op_flt;
+      break;
+   case nir_op_uge:
+      alu->op = nir_op_fge;
+      break;
 
-   case nir_op_iadd: alu->op = nir_op_fadd; break;
-   case nir_op_isub: alu->op = nir_op_fsub; break;
-   case nir_op_imul: alu->op = nir_op_fmul; break;
+   case nir_op_iadd:
+      alu->op = nir_op_fadd;
+      break;
+   case nir_op_isub:
+      alu->op = nir_op_fsub;
+      break;
+   case nir_op_imul:
+      alu->op = nir_op_fmul;
+      break;
 
    case nir_op_idiv: {
       nir_ssa_def *x = nir_ssa_for_alu_src(b, alu, 0);
@@ -164,22 +190,50 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       break;
    }
 
-   case nir_op_iabs: alu->op = nir_op_fabs; break;
-   case nir_op_ineg: alu->op = nir_op_fneg; break;
-   case nir_op_imax: alu->op = nir_op_fmax; break;
-   case nir_op_imin: alu->op = nir_op_fmin; break;
-   case nir_op_umax: alu->op = nir_op_fmax; break;
-   case nir_op_umin: alu->op = nir_op_fmin; break;
+   case nir_op_iabs:
+      alu->op = nir_op_fabs;
+      break;
+   case nir_op_ineg:
+      alu->op = nir_op_fneg;
+      break;
+   case nir_op_imax:
+      alu->op = nir_op_fmax;
+      break;
+   case nir_op_imin:
+      alu->op = nir_op_fmin;
+      break;
+   case nir_op_umax:
+      alu->op = nir_op_fmax;
+      break;
+   case nir_op_umin:
+      alu->op = nir_op_fmin;
+      break;
 
-   case nir_op_ball_iequal2:  alu->op = nir_op_ball_fequal2; break;
-   case nir_op_ball_iequal3:  alu->op = nir_op_ball_fequal3; break;
-   case nir_op_ball_iequal4:  alu->op = nir_op_ball_fequal4; break;
-   case nir_op_bany_inequal2: alu->op = nir_op_bany_fnequal2; break;
-   case nir_op_bany_inequal3: alu->op = nir_op_bany_fnequal3; break;
-   case nir_op_bany_inequal4: alu->op = nir_op_bany_fnequal4; break;
+   case nir_op_ball_iequal2:
+      alu->op = nir_op_ball_fequal2;
+      break;
+   case nir_op_ball_iequal3:
+      alu->op = nir_op_ball_fequal3;
+      break;
+   case nir_op_ball_iequal4:
+      alu->op = nir_op_ball_fequal4;
+      break;
+   case nir_op_bany_inequal2:
+      alu->op = nir_op_bany_fnequal2;
+      break;
+   case nir_op_bany_inequal3:
+      alu->op = nir_op_bany_fnequal3;
+      break;
+   case nir_op_bany_inequal4:
+      alu->op = nir_op_bany_fnequal4;
+      break;
 
-   case nir_op_i32csel_gt: alu->op = nir_op_fcsel_gt; break;
-   case nir_op_i32csel_ge: alu->op = nir_op_fcsel_ge; break;
+   case nir_op_i32csel_gt:
+      alu->op = nir_op_fcsel_gt;
+      break;
+   case nir_op_i32csel_ge:
+      alu->op = nir_op_fcsel_ge;
+      break;
 
    default:
       assert(nir_alu_type_get_base_type(info->output_type) != nir_type_int &&
@@ -246,7 +300,7 @@ nir_lower_int_to_float_impl(nir_function_impl *impl)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

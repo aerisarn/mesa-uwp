@@ -72,8 +72,8 @@ nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
    BITSET_ZERO(outputs);
 
    /* Gather the bitmasks of used locations. */
-   nir_foreach_block_safe (block, impl) {
-      nir_foreach_instr_safe (instr, block) {
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
          nir_variable_mode mode;
          nir_intrinsic_instr *intr = get_io_intrinsic(instr, modes, &mode);
          if (!intr)
@@ -97,8 +97,8 @@ nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
    /* Renumber bases. */
    bool changed = false;
 
-   nir_foreach_block_safe (block, impl) {
-      nir_foreach_instr_safe (instr, block) {
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
          nir_variable_mode mode;
          nir_intrinsic_instr *intr = get_io_intrinsic(instr, modes, &mode);
          if (!intr)
@@ -125,7 +125,7 @@ nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
 
    if (changed) {
       nir_metadata_preserve(impl, nir_metadata_dominance |
-                                  nir_metadata_block_index);
+                                     nir_metadata_block_index);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -156,8 +156,8 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
 
    nir_builder b = nir_builder_create(impl);
 
-   nir_foreach_block_safe (block, impl) {
-      nir_foreach_instr_safe (instr, block) {
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
          nir_variable_mode mode;
          nir_intrinsic_instr *intr = get_io_intrinsic(instr, modes, &mode);
          if (!intr)
@@ -171,7 +171,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
                              mode == nir_var_shader_out);
 
          if (is_varying && sem.location <= VARYING_SLOT_VAR31 &&
-            !(varying_mask & BITFIELD64_BIT(sem.location))) {
+             !(varying_mask & BITFIELD64_BIT(sem.location))) {
             continue; /* can't lower */
          }
 
@@ -265,7 +265,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
 
    if (changed) {
       nir_metadata_preserve(impl, nir_metadata_dominance |
-                                  nir_metadata_block_index);
+                                     nir_metadata_block_index);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -286,8 +286,8 @@ nir_force_mediump_io(nir_shader *nir, nir_variable_mode modes,
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
 
-   nir_foreach_block_safe (block, impl) {
-      nir_foreach_instr_safe (instr, block) {
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
          nir_variable_mode mode;
          nir_intrinsic_instr *intr = get_io_intrinsic(instr, modes, &mode);
          if (!intr)
@@ -316,7 +316,7 @@ nir_force_mediump_io(nir_shader *nir, nir_variable_mode modes,
             /* Only accept generic varyings. */
             if (sem.location < VARYING_SLOT_VAR0 ||
                 sem.location > VARYING_SLOT_VAR31)
-            continue;
+               continue;
          }
 
          sem.medium_precision = 1;
@@ -327,7 +327,7 @@ nir_force_mediump_io(nir_shader *nir, nir_variable_mode modes,
 
    if (changed) {
       nir_metadata_preserve(impl, nir_metadata_dominance |
-                                  nir_metadata_block_index);
+                                     nir_metadata_block_index);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -346,8 +346,8 @@ nir_unpack_16bit_varying_slots(nir_shader *nir, nir_variable_mode modes)
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
 
-   nir_foreach_block_safe (block, impl) {
-      nir_foreach_instr_safe (instr, block) {
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
          nir_variable_mode mode;
          nir_intrinsic_instr *intr = get_io_intrinsic(instr, modes, &mode);
          if (!intr)
@@ -373,7 +373,7 @@ nir_unpack_16bit_varying_slots(nir_shader *nir, nir_variable_mode modes)
 
    if (changed) {
       nir_metadata_preserve(impl, nir_metadata_dominance |
-                                  nir_metadata_block_index);
+                                     nir_metadata_block_index);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -541,7 +541,7 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -658,8 +658,8 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
 
    nir_builder b = nir_builder_create(impl);
 
-   nir_foreach_block_safe (block, impl) {
-      nir_foreach_instr_safe (instr, block) {
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
          if (instr->type != nir_instr_type_tex)
             continue;
 
@@ -700,12 +700,12 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
 
             switch (bit_size) {
             case 16:
-               convert = is_sint ? nir_i2i16 :
-                         is_uint ? nir_u2u16 : nir_f2f16;
+               convert = is_sint ? nir_i2i16 : is_uint ? nir_u2u16
+                                                       : nir_f2f16;
                break;
             case 32:
-               convert = is_sint ? nir_i2i32 :
-                         is_uint ? nir_u2u32 : nir_f2f32;
+               convert = is_sint ? nir_i2i32 : is_uint ? nir_u2u32
+                                                       : nir_f2f32;
                break;
             default:
                assert(!"unexpected bit size");
@@ -724,7 +724,7 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
 
    if (changed) {
       nir_metadata_preserve(impl, nir_metadata_dominance |
-                                  nir_metadata_block_index);
+                                     nir_metadata_block_index);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -745,14 +745,14 @@ static bool
 const_is_u16(nir_ssa_scalar scalar)
 {
    uint64_t value = nir_ssa_scalar_as_uint(scalar);
-   return value == (uint16_t) value;
+   return value == (uint16_t)value;
 }
 
 static bool
 const_is_i16(nir_ssa_scalar scalar)
 {
    int64_t value = nir_ssa_scalar_as_int(scalar);
-   return value == (int16_t) value;
+   return value == (int16_t)value;
 }
 
 static bool
@@ -920,7 +920,6 @@ fold_16bit_tex_dest(nir_tex_instr *tex, unsigned exec_mode,
    return true;
 }
 
-
 static bool
 fold_16bit_tex_srcs(nir_builder *b, nir_tex_instr *tex,
                     struct nir_fold_tex_srcs_options *options)
@@ -1059,8 +1058,9 @@ fold_16bit_tex_image(nir_builder *b, nir_instr *instr, void *params)
    return progress;
 }
 
-bool nir_fold_16bit_tex_image(nir_shader *nir,
-                              struct nir_fold_16bit_tex_image_options *options)
+bool
+nir_fold_16bit_tex_image(nir_shader *nir,
+                         struct nir_fold_16bit_tex_image_options *options)
 {
    return nir_shader_instructions_pass(nir,
                                        fold_16bit_tex_image,

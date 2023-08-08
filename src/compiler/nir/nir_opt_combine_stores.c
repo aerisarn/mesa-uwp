@@ -74,7 +74,6 @@ struct combine_stores_state {
    nir_builder b;
    bool progress;
 
-
    /* Allocator and freelist to reuse structs between functions. */
    void *lin_ctx;
    struct list_head freelist;
@@ -107,7 +106,7 @@ free_combined_store(struct combine_stores_state *state,
 
 static void
 combine_stores(struct combine_stores_state *state,
-                   struct combined_store *combo)
+               struct combined_store *combo)
 {
    assert(combo->latest);
    assert(combo->latest->intrinsic == nir_intrinsic_store_deref);
@@ -124,7 +123,7 @@ combine_stores(struct combine_stores_state *state,
    /* Build a new vec, to be used as source for the combined store.  As it
     * gets build, remove previous stores that are not needed anymore.
     */
-   nir_ssa_scalar comps[NIR_MAX_VEC_COMPONENTS] = {0};
+   nir_ssa_scalar comps[NIR_MAX_VEC_COMPONENTS] = { 0 };
    unsigned num_components = glsl_get_vector_elements(combo->dst->type);
    unsigned bit_size = combo->latest->src[1].ssa->bit_size;
    for (unsigned i = 0; i < num_components; i++) {
@@ -169,7 +168,7 @@ combine_stores(struct combine_stores_state *state,
 
 static void
 combine_stores_with_deref(struct combine_stores_state *state,
-                              nir_deref_instr *deref)
+                          nir_deref_instr *deref)
 {
    if (!nir_deref_mode_may_be(deref, state->modes))
       return;
@@ -184,7 +183,7 @@ combine_stores_with_deref(struct combine_stores_state *state,
 
 static void
 combine_stores_with_modes(struct combine_stores_state *state,
-                              nir_variable_mode modes)
+                          nir_variable_mode modes)
 {
    if ((state->modes & modes) == 0)
       return;
@@ -268,7 +267,7 @@ update_combined_store(struct combine_stores_state *state,
             nir_instr_remove(&prev_store->instr);
          } else {
             assert(glsl_type_is_vector(
-                      nir_src_as_deref(prev_store->src[0])->type));
+               nir_src_as_deref(prev_store->src[0])->type));
             nir_component_mask_t prev_mask = nir_intrinsic_write_mask(prev_store);
             nir_intrinsic_set_write_mask(prev_store, prev_mask & ~(1 << i));
          }
@@ -284,11 +283,11 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
    nir_foreach_instr_safe(instr, block) {
       if (instr->type == nir_instr_type_call) {
          combine_stores_with_modes(state, nir_var_shader_out |
-                                          nir_var_shader_temp |
-                                          nir_var_function_temp |
-                                          nir_var_mem_ssbo |
-                                          nir_var_mem_shared |
-                                          nir_var_mem_global);
+                                             nir_var_shader_temp |
+                                             nir_var_function_temp |
+                                             nir_var_mem_ssbo |
+                                             nir_var_mem_shared |
+                                             nir_var_mem_global);
          continue;
       }
 
@@ -327,16 +326,16 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
 
       case nir_intrinsic_report_ray_intersection:
          combine_stores_with_modes(state, nir_var_mem_ssbo |
-                                          nir_var_mem_global |
-                                          nir_var_shader_call_data |
-                                          nir_var_ray_hit_attrib);
+                                             nir_var_mem_global |
+                                             nir_var_shader_call_data |
+                                             nir_var_ray_hit_attrib);
          break;
 
       case nir_intrinsic_ignore_ray_intersection:
       case nir_intrinsic_terminate_ray:
          combine_stores_with_modes(state, nir_var_mem_ssbo |
-                                          nir_var_mem_global |
-                                          nir_var_shader_call_data);
+                                             nir_var_mem_global |
+                                             nir_var_shader_call_data);
          break;
 
       case nir_intrinsic_load_deref: {
@@ -406,7 +405,7 @@ combine_stores_impl(struct combine_stores_state *state, nir_function_impl *impl)
 
    if (state->progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -419,7 +418,7 @@ nir_opt_combine_stores(nir_shader *shader, nir_variable_mode modes)
 {
    void *mem_ctx = ralloc_context(NULL);
    struct combine_stores_state state = {
-      .modes   = modes,
+      .modes = modes,
       .lin_ctx = linear_zalloc_parent(mem_ctx, 0),
    };
 

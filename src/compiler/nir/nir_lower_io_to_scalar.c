@@ -98,7 +98,8 @@ lower_load_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
 
       nir_intrinsic_set_align_offset(chan_intr,
                                      (nir_intrinsic_align_offset(intr) +
-                                      i * (intr->dest.ssa.bit_size / 8)) % nir_intrinsic_align_mul(intr));
+                                      i * (intr->dest.ssa.bit_size / 8)) %
+                                        nir_intrinsic_align_mul(intr));
       nir_intrinsic_set_align_mul(chan_intr, nir_intrinsic_align_mul(intr));
       if (nir_intrinsic_has_access(intr))
          nir_intrinsic_set_access(chan_intr, nir_intrinsic_access(intr));
@@ -154,14 +155,13 @@ lower_store_output_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
          unsigned component = nir_intrinsic_component(chan_intr);
 
          for (unsigned c = 0; c <= component; c++) {
-            nir_io_xfb xfb = c < 2 ? nir_intrinsic_io_xfb(intr) :
-                                     nir_intrinsic_io_xfb2(intr);
+            nir_io_xfb xfb = c < 2 ? nir_intrinsic_io_xfb(intr) : nir_intrinsic_io_xfb2(intr);
 
             if (component < c + xfb.out[c % 2].num_components) {
                nir_io_xfb scalar_xfb;
 
                memset(&scalar_xfb, 0, sizeof(scalar_xfb));
-               scalar_xfb.out[component % 2].num_components = is_64bit ? 2 :  1;
+               scalar_xfb.out[component % 2].num_components = is_64bit ? 2 : 1;
                scalar_xfb.out[component % 2].buffer = xfb.out[c % 2].buffer;
                scalar_xfb.out[component % 2].offset = xfb.out[c % 2].offset +
                                                       component - c;
@@ -209,7 +209,8 @@ lower_store_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
       nir_intrinsic_set_write_mask(chan_intr, 0x1);
       nir_intrinsic_set_align_offset(chan_intr,
                                      (nir_intrinsic_align_offset(intr) +
-                                      i * (value->bit_size / 8)) % nir_intrinsic_align_mul(intr));
+                                      i * (value->bit_size / 8)) %
+                                        nir_intrinsic_align_mul(intr));
       nir_intrinsic_set_align_mul(chan_intr, nir_intrinsic_align_mul(intr));
       if (nir_intrinsic_has_access(intr))
          nir_intrinsic_set_access(chan_intr, nir_intrinsic_access(intr));
@@ -261,8 +262,8 @@ nir_lower_io_to_scalar_instr(nir_builder *b, nir_instr *instr, void *data)
 
    if ((intr->intrinsic == nir_intrinsic_load_output ||
         intr->intrinsic == nir_intrinsic_load_per_vertex_output) &&
-      (state->mask & nir_var_shader_out) &&
-      (!state->filter || state->filter(instr, state->filter_data))) {
+       (state->mask & nir_var_shader_out) &&
+       (!state->filter || state->filter(instr, state->filter_data))) {
       lower_load_input_to_scalar(b, intr);
       return true;
    }
@@ -306,7 +307,7 @@ nir_lower_io_to_scalar(nir_shader *shader, nir_variable_mode mask, nir_instr_fil
    return nir_shader_instructions_pass(shader,
                                        nir_lower_io_to_scalar_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        &state);
 }
 
@@ -316,10 +317,10 @@ get_channel_variables(struct hash_table *ht, nir_variable *var)
    nir_variable **chan_vars;
    struct hash_entry *entry = _mesa_hash_table_search(ht, var);
    if (!entry) {
-      chan_vars = (nir_variable **) calloc(4, sizeof(nir_variable *));
+      chan_vars = (nir_variable **)calloc(4, sizeof(nir_variable *));
       _mesa_hash_table_insert(ht, var, chan_vars);
    } else {
-      chan_vars = (nir_variable **) entry->data;
+      chan_vars = (nir_variable **)entry->data;
    }
 
    return chan_vars;
@@ -369,7 +370,7 @@ lower_load_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
       nir_variable *chan_var = chan_vars[var->data.location_frac + i];
       if (!chan_vars[var->data.location_frac + i]) {
          chan_var = nir_variable_clone(var, b->shader);
-         chan_var->data.location_frac =  var->data.location_frac + i;
+         chan_var->data.location_frac = var->data.location_frac + i;
          chan_var->type = glsl_channel_type(chan_var->type);
 
          chan_vars[var->data.location_frac + i] = chan_var;
@@ -423,7 +424,7 @@ lower_store_output_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
       nir_variable *chan_var = chan_vars[var->data.location_frac + i];
       if (!chan_vars[var->data.location_frac + i]) {
          chan_var = nir_variable_clone(var, b->shader);
-         chan_var->data.location_frac =  var->data.location_frac + i;
+         chan_var->data.location_frac = var->data.location_frac + i;
          chan_var->type = glsl_channel_type(chan_var->type);
 
          chan_vars[var->data.location_frac + i] = chan_var;
@@ -555,12 +556,12 @@ nir_lower_io_to_scalar_early(nir_shader *shader, nir_variable_mode mask)
    bool progress = nir_shader_instructions_pass(shader,
                                                 nir_lower_io_to_scalar_early_instr,
                                                 nir_metadata_block_index |
-                                                nir_metadata_dominance,
+                                                   nir_metadata_dominance,
                                                 &state);
 
    /* Remove old input from the shaders inputs list */
    hash_table_foreach(state.split_inputs, entry) {
-      nir_variable *var = (nir_variable *) entry->key;
+      nir_variable *var = (nir_variable *)entry->key;
       exec_node_remove(&var->node);
 
       free(entry->data);
@@ -568,7 +569,7 @@ nir_lower_io_to_scalar_early(nir_shader *shader, nir_variable_mode mask)
 
    /* Remove old output from the shaders outputs list */
    hash_table_foreach(state.split_outputs, entry) {
-      nir_variable *var = (nir_variable *) entry->key;
+      nir_variable *var = (nir_variable *)entry->key;
       exec_node_remove(&var->node);
 
       free(entry->data);

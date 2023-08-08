@@ -69,7 +69,8 @@ lower_point_smooth(nir_builder *b, nir_instr *instr, UNUSED void *_state)
    nir_ssa_def *point_size = nir_frcp(b, nir_fddx(b, nir_channel(b, coord, 0)));
 
    /* radius = point_size * 0.5 */
-   nir_ssa_def *radius = nir_fmul_imm(b, point_size, 0.5);;
+   nir_ssa_def *radius = nir_fmul_imm(b, point_size, 0.5);
+   ;
 
    /**
     * Compute the distance of point from centre
@@ -100,6 +101,7 @@ nir_lower_point_smooth(nir_shader *shader)
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
    return nir_shader_instructions_pass(shader, lower_point_smooth,
                                        nir_metadata_loop_analysis |
-                                       nir_metadata_block_index |
-                                       nir_metadata_dominance, NULL);
+                                          nir_metadata_block_index |
+                                          nir_metadata_dominance,
+                                       NULL);
 }

@@ -66,7 +66,7 @@ add_var(nir_variable *var, struct set *invariants)
 }
 
 static bool
-var_is_invariant(nir_variable *var, struct set * invariants)
+var_is_invariant(nir_variable *var, struct set *invariants)
 {
    /* Because we pass the result of nir_intrinsic_get_var directly to this
     * function, it's possible for var to be NULL if, for instance, there's a
@@ -173,8 +173,8 @@ propagate_invariant_impl(nir_function_impl *impl, struct set *invariants)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance |
-                                  nir_metadata_live_ssa_defs);
+                                     nir_metadata_dominance |
+                                     nir_metadata_live_ssa_defs);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

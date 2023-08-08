@@ -21,9 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+#include "main/menums.h"
 #include "nir.h"
 #include "nir_deref.h"
-#include "main/menums.h"
 
 #include "util/set.h"
 
@@ -33,7 +33,7 @@ src_is_invocation_id(const nir_src *src)
    nir_ssa_scalar s = nir_ssa_scalar_resolved(src->ssa, 0);
    return s.def->parent_instr->type == nir_instr_type_intrinsic &&
           nir_instr_as_intrinsic(s.def->parent_instr)->intrinsic ==
-              nir_intrinsic_load_invocation_id;
+             nir_intrinsic_load_invocation_id;
 }
 
 static bool
@@ -42,7 +42,7 @@ src_is_local_invocation_index(const nir_src *src)
    nir_ssa_scalar s = nir_ssa_scalar_resolved(src->ssa, 0);
    return s.def->parent_instr->type == nir_instr_type_intrinsic &&
           nir_instr_as_intrinsic(s.def->parent_instr)->intrinsic ==
-              nir_intrinsic_load_local_invocation_index;
+             nir_intrinsic_load_local_invocation_index;
 }
 
 static void
@@ -109,8 +109,7 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
             return;
 
          bitfield = BITFIELD64_BIT(idx - VARYING_SLOT_PATCH0);
-      }
-      else {
+      } else {
          /* Varyings might still have temp locations so abort */
          if (idx >= VARYING_SLOT_MAX)
             return;
@@ -222,9 +221,7 @@ get_io_offset(nir_deref_instr *deref, nir_variable *var, bool is_arrayed,
          return 0;
       }
       assert(deref->deref_type == nir_deref_type_array);
-      return nir_src_is_const(deref->arr.index) ?
-             (nir_src_as_uint(deref->arr.index) + var->data.location_frac) / 4u :
-             (unsigned)-1;
+      return nir_src_is_const(deref->arr.index) ? (nir_src_as_uint(deref->arr.index) + var->data.location_frac) / 4u : (unsigned)-1;
    }
 
    unsigned offset = 0;
@@ -452,10 +449,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_interp_deref_at_vertex:
    case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:
-   case nir_intrinsic_copy_deref:{
+   case nir_intrinsic_copy_deref: {
       nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
       if (nir_deref_mode_is_one_of(deref, nir_var_shader_in |
-                                          nir_var_shader_out)) {
+                                             nir_var_shader_out)) {
          nir_variable *var = nir_deref_instr_get_variable(deref);
          bool is_output_read = false;
          if (var->data.mode == nir_var_shader_out &&
@@ -582,8 +579,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_load_color0:
    case nir_intrinsic_load_color1:
       shader->info.inputs_read |=
-         BITFIELD64_BIT(VARYING_SLOT_COL0 <<
-                        (instr->intrinsic == nir_intrinsic_load_color1));
+         BITFIELD64_BIT(VARYING_SLOT_COL0 << (instr->intrinsic == nir_intrinsic_load_color1));
       FALLTHROUGH;
    case nir_intrinsic_load_subgroup_size:
    case nir_intrinsic_load_subgroup_invocation:

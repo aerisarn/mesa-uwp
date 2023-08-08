@@ -79,14 +79,11 @@ nir_format_sign_extend_ivec(nir_builder *b, nir_ssa_def *src,
    nir_ssa_def *comps[4];
    for (unsigned i = 0; i < src->num_components; i++) {
       unsigned shift = src->bit_size - bits[i];
-      comps[i] = nir_ishr_imm(b, nir_ishl_imm(b,
-                                              nir_channel(b, src, i),
-                                              shift),
-                                 shift);
+      comps[i] = nir_ishr_imm(b, nir_ishl_imm(b, nir_channel(b, src, i), shift),
+                              shift);
    }
    return nir_vec(b, comps, src->num_components);
 }
-
 
 static inline nir_ssa_def *
 nir_format_unpack_int(nir_builder *b, nir_ssa_def *packed,
@@ -147,8 +144,7 @@ nir_format_pack_uint_unmasked(nir_builder *b, nir_ssa_def *color,
    nir_ssa_def *packed = nir_imm_int(b, 0);
    unsigned offset = 0;
    for (unsigned i = 0; i < num_components; i++) {
-      packed = nir_ior(b, packed, nir_shift_imm(b, nir_channel(b, color, i),
-                                               offset));
+      packed = nir_ior(b, packed, nir_shift_imm(b, nir_channel(b, color, i), offset));
       offset += bits[i];
    }
    assert(offset <= packed->bit_size);
@@ -192,13 +188,13 @@ nir_format_bitcast_uvec_unmasked(nir_builder *b, nir_ssa_def *src,
       DIV_ROUND_UP(src->num_components * src_bits, dst_bits);
    assert(dst_components <= 4);
 
-   nir_ssa_def *dst_chan[4] = {0};
+   nir_ssa_def *dst_chan[4] = { 0 };
    if (dst_bits > src_bits) {
       unsigned shift = 0;
       unsigned dst_idx = 0;
       for (unsigned i = 0; i < src->num_components; i++) {
          nir_ssa_def *shifted = nir_ishl_imm(b, nir_channel(b, src, i),
-                                                shift);
+                                             shift);
          if (shift == 0) {
             dst_chan[dst_idx] = shifted;
          } else {
@@ -263,7 +259,7 @@ nir_format_snorm_to_float(nir_builder *b, nir_ssa_def *s, const unsigned *bits)
       _nir_format_norm_factor(b, bits, s->num_components, true);
 
    return nir_fmax(b, nir_fdiv(b, nir_i2f32(b, s), factor),
-                      nir_imm_float(b, -1.0f));
+                   nir_imm_float(b, -1.0f));
 }
 
 static inline nir_ssa_def *
@@ -308,12 +304,11 @@ nir_format_linear_to_srgb(nir_builder *b, nir_ssa_def *c)
 {
    nir_ssa_def *linear = nir_fmul_imm(b, c, 12.92f);
    nir_ssa_def *curved =
-      nir_fadd_imm(b, nir_fmul_imm(b, nir_fpow(b, c, nir_imm_float(b, 1.0 / 2.4)),
-                                      1.055f),
-                      -0.055f);
+      nir_fadd_imm(b, nir_fmul_imm(b, nir_fpow(b, c, nir_imm_float(b, 1.0 / 2.4)), 1.055f),
+                   -0.055f);
 
    return nir_fsat(b, nir_bcsel(b, nir_flt_imm(b, c, 0.0031308f),
-                                   linear, curved));
+                                linear, curved));
 }
 
 static inline nir_ssa_def *
@@ -321,12 +316,11 @@ nir_format_srgb_to_linear(nir_builder *b, nir_ssa_def *c)
 {
    nir_ssa_def *linear = nir_fdiv_imm(b, c, 12.92f);
    nir_ssa_def *curved =
-      nir_fpow(b, nir_fmul_imm(b, nir_fadd_imm(b, c, 0.055f),
-                                  1.0 / 1.055f),
-                  nir_imm_float(b, 2.4f));
+      nir_fpow(b, nir_fmul_imm(b, nir_fadd_imm(b, c, 0.055f), 1.0 / 1.055f),
+               nir_imm_float(b, 2.4f));
 
    return nir_fsat(b, nir_bcsel(b, nir_fle_imm(b, c, 0.04045f),
-                                   linear, curved));
+                                linear, curved));
 }
 
 /* Clamps a vector of uints so they don't extend beyond the given number of
@@ -392,9 +386,9 @@ nir_format_pack_11f11f10f(nir_builder *b, nir_ssa_def *color)
 
    nir_ssa_def *undef = nir_ssa_undef(b, 1, color->bit_size);
    nir_ssa_def *p1 = nir_pack_half_2x16_split(b, nir_channel(b, clamped, 0),
-                                                 nir_channel(b, clamped, 1));
+                                              nir_channel(b, clamped, 1));
    nir_ssa_def *p2 = nir_pack_half_2x16_split(b, nir_channel(b, clamped, 2),
-                                                 undef);
+                                              undef);
 
    /* A 10 or 11-bit float has the same exponent as a 16-bit float but with
     * fewer mantissa bits and no sign bit.  All we have to do is throw away
@@ -418,12 +412,12 @@ nir_format_pack_r9g9b9e5(nir_builder *b, nir_ssa_def *color)
 
    /* Get rid of negatives and NaN */
    clamped = nir_bcsel(b, nir_ugt_imm(b, color, 0x7f800000),
-                          nir_imm_float(b, 0), clamped);
+                       nir_imm_float(b, 0), clamped);
 
    /* maxrgb.u = MAX3(rc.u, gc.u, bc.u); */
    nir_ssa_def *maxu = nir_umax(b, nir_channel(b, clamped, 0),
-                       nir_umax(b, nir_channel(b, clamped, 1),
-                                   nir_channel(b, clamped, 2)));
+                                nir_umax(b, nir_channel(b, clamped, 1),
+                                         nir_channel(b, clamped, 2)));
 
    /* maxrgb.u += maxrgb.u & (1 << (23-9)); */
    maxu = nir_iadd(b, maxu, nir_iand_imm(b, maxu, 1 << 14));
@@ -432,17 +426,15 @@ nir_format_pack_r9g9b9e5(nir_builder *b, nir_ssa_def *color)
     *              1 + RGB9E5_EXP_BIAS - 127;
     */
    nir_ssa_def *exp_shared =
-      nir_iadd_imm(b, nir_umax(b, nir_ushr_imm(b, maxu, 23),
-                                  nir_imm_int(b, -RGB9E5_EXP_BIAS - 1 + 127)),
-                      1 + RGB9E5_EXP_BIAS - 127);
+      nir_iadd_imm(b, nir_umax(b, nir_ushr_imm(b, maxu, 23), nir_imm_int(b, -RGB9E5_EXP_BIAS - 1 + 127)),
+                   1 + RGB9E5_EXP_BIAS - 127);
 
    /* revdenom_biasedexp = 127 - (exp_shared - RGB9E5_EXP_BIAS -
     *                             RGB9E5_MANTISSA_BITS) + 1;
     */
    nir_ssa_def *revdenom_biasedexp =
-      nir_isub_imm(b, 127 + RGB9E5_EXP_BIAS +
-                      RGB9E5_MANTISSA_BITS + 1,
-                      exp_shared);
+      nir_isub_imm(b, 127 + RGB9E5_EXP_BIAS + RGB9E5_MANTISSA_BITS + 1,
+                   exp_shared);
 
    /* revdenom.u = revdenom_biasedexp << 23; */
    nir_ssa_def *revdenom =
@@ -460,7 +452,7 @@ nir_format_pack_r9g9b9e5(nir_builder *b, nir_ssa_def *color)
     * bm = (bm & 1) + (bm >> 1);
     */
    mantissa = nir_iadd(b, nir_iand_imm(b, mantissa, 1),
-                          nir_ushr_imm(b, mantissa, 1));
+                       nir_ushr_imm(b, mantissa, 1));
 
    nir_ssa_def *packed = nir_channel(b, mantissa, 0);
    packed = nir_mask_shift_or(b, packed, nir_channel(b, mantissa, 1), ~0, 9);

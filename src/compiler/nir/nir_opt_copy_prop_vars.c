@@ -236,8 +236,7 @@ gather_vars_written(struct copy_prop_var_state *state,
             /* Destination in all of store_deref, copy_deref and the atomics is src[0]. */
             nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
 
-            uintptr_t mask = intrin->intrinsic == nir_intrinsic_store_deref ?
-               nir_intrinsic_write_mask(intrin) : (1 << glsl_get_vector_elements(dst->type)) - 1;
+            uintptr_t mask = intrin->intrinsic == nir_intrinsic_store_deref ? nir_intrinsic_write_mask(intrin) : (1 << glsl_get_vector_elements(dst->type)) - 1;
 
             struct hash_entry *ht_entry = _mesa_hash_table_search(written->derefs, dst);
             if (ht_entry)
@@ -295,9 +294,9 @@ gather_vars_written(struct copy_prop_var_state *state,
                _mesa_hash_table_search_pre_hashed(written->derefs, new_entry->hash,
                                                   new_entry->key);
             if (old_entry) {
-               nir_component_mask_t merged = (uintptr_t) new_entry->data |
-                                             (uintptr_t) old_entry->data;
-               old_entry->data = (void *) ((uintptr_t) merged);
+               nir_component_mask_t merged = (uintptr_t)new_entry->data |
+                                             (uintptr_t)old_entry->data;
+               old_entry->data = (void *)((uintptr_t)merged);
             } else {
                _mesa_hash_table_insert_pre_hashed(written->derefs, new_entry->hash,
                                                   new_entry->key, new_entry->data);
@@ -350,7 +349,7 @@ get_copies_array_from_ht_entry(struct copy_prop_var_state *state,
    struct copies_dynarray *copies_array;
    if (copies_owns_ht_entry(copies, ht_entry)) {
       /* The array already exists so just return it */
-      copies_array = (struct copies_dynarray *) ht_entry->data;
+      copies_array = (struct copies_dynarray *)ht_entry->data;
    } else {
       /* Clone the array and set the data value for future access */
       copies_array = get_copies_dynarray(state);
@@ -394,7 +393,6 @@ copies_array_for_deref(struct copy_prop_var_state *state,
 
    return copies_array;
 }
-
 
 static struct copy_entry *
 copy_entry_create(struct copy_prop_var_state *state,
@@ -523,7 +521,7 @@ lookup_entry_and_kill_aliases(struct copy_prop_var_state *state,
        deref->_path->path[0]->var->data.mode == nir_var_mem_shared) {
 
       hash_table_foreach(copies->ht, ht_entry) {
-         nir_variable *var = (nir_variable *) ht_entry->key;
+         nir_variable *var = (nir_variable *)ht_entry->key;
          if (deref->_path->path[0]->deref_type == nir_deref_type_var &&
              var->data.mode != deref->_path->path[0]->var->data.mode)
             continue;
@@ -590,7 +588,7 @@ get_entry_and_kill_aliases(struct copy_prop_var_state *state,
 
 static void
 apply_barrier_for_modes_to_dynarr(struct util_dynarray *copies_array,
-                                 nir_variable_mode modes)
+                                  nir_variable_mode modes)
 {
    util_dynarray_foreach_reverse(copies_array, struct copy_entry, iter) {
       if (nir_deref_mode_may_be(iter->dst.instr, modes) ||
@@ -658,15 +656,15 @@ load_element_from_ssa_entry_value(struct copy_prop_var_state *state,
    assert(entry->src.ssa.component[index] <
           entry->src.ssa.def[index]->num_components);
    nir_ssa_def *def = nir_channel(b, entry->src.ssa.def[index],
-                                     entry->src.ssa.component[index]);
+                                  entry->src.ssa.component[index]);
 
-   *value = (struct value) {
+   *value = (struct value){
       .is_ssa = true,
       {
-	.ssa = {
-	  .def = { def },
-	  .component = { 0 },
-	},
+         .ssa = {
+            .def = { def },
+            .component = { 0 },
+         },
       }
    };
 
@@ -924,9 +922,9 @@ invalidate_copies_for_cf_node(struct copy_prop_var_state *state,
       }
    }
 
-   hash_table_foreach (written->derefs, entry) {
+   hash_table_foreach(written->derefs, entry) {
       nir_deref_instr *deref_written = (nir_deref_instr *)entry->key;
-      nir_deref_and_path deref = {deref_written, NULL};
+      nir_deref_and_path deref = { deref_written, NULL };
       kill_aliases(state, copies, &deref, (uintptr_t)entry->data);
    }
 }
@@ -979,7 +977,7 @@ dump_copy_entries(struct copies *copies)
 {
    hash_table_foreach(copies->ht, ht_entry) {
       struct util_dynarray *copies_array =
-         &((struct copies_dynarray *) ht_entry->data)->arr;
+         &((struct copies_dynarray *)ht_entry->data)->arr;
 
       util_dynarray_foreach(copies_array, struct copy_entry, iter)
          print_copy_entry(iter);
@@ -1006,14 +1004,11 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          dump_instr(instr);
 
       if (instr->type == nir_instr_type_call) {
-         if (debug) dump_instr(instr);
-         apply_barrier_for_modes(state, copies, nir_var_shader_out |
-                                                nir_var_shader_temp |
-                                                nir_var_function_temp |
-                                                nir_var_mem_ssbo |
-                                                nir_var_mem_shared |
-                                                nir_var_mem_global);
-         if (debug) dump_copy_entries(copies);
+         if (debug)
+            dump_instr(instr);
+         apply_barrier_for_modes(state, copies, nir_var_shader_out | nir_var_shader_temp | nir_var_function_temp | nir_var_mem_ssbo | nir_var_mem_shared | nir_var_mem_global);
+         if (debug)
+            dump_copy_entries(copies);
          continue;
       }
 
@@ -1023,7 +1018,8 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
       case nir_intrinsic_barrier:
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
          if (nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_ACQUIRE)
             apply_barrier_for_modes(state, copies, nir_intrinsic_memory_modes(intrin));
@@ -1031,32 +1027,29 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
       case nir_intrinsic_emit_vertex:
       case nir_intrinsic_emit_vertex_with_counter:
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
          apply_barrier_for_modes(state, copies, nir_var_shader_out);
          break;
 
       case nir_intrinsic_report_ray_intersection:
-         apply_barrier_for_modes(state, copies, nir_var_mem_ssbo |
-                                                nir_var_mem_global |
-                                                nir_var_shader_call_data |
-                                                nir_var_ray_hit_attrib);
+         apply_barrier_for_modes(state, copies, nir_var_mem_ssbo | nir_var_mem_global | nir_var_shader_call_data | nir_var_ray_hit_attrib);
          break;
 
       case nir_intrinsic_ignore_ray_intersection:
       case nir_intrinsic_terminate_ray:
-         apply_barrier_for_modes(state, copies, nir_var_mem_ssbo |
-                                                nir_var_mem_global |
-                                                nir_var_shader_call_data);
+         apply_barrier_for_modes(state, copies, nir_var_mem_ssbo | nir_var_mem_global | nir_var_shader_call_data);
          break;
 
       case nir_intrinsic_load_deref: {
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
          if (nir_intrinsic_access(intrin) & ACCESS_VOLATILE)
             break;
 
-         nir_deref_and_path src = {nir_src_as_deref(intrin->src[0]), NULL};
+         nir_deref_and_path src = { nir_src_as_deref(intrin->src[0]), NULL };
 
          /* If this is a load from a read-only mode, then all this pass would
           * do is combine redundant loads and CSE should be more efficient for
@@ -1090,7 +1083,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          struct copy_entry *src_entry =
             lookup_entry_for_deref(state, copies, &src,
                                    nir_derefs_a_contains_b_bit, &src_entry_equal);
-         struct value value = {0};
+         struct value value = { 0 };
          if (try_load_from_entry(state, src_entry, b, intrin, &src, &value)) {
             if (value.is_ssa) {
                /* lookup_load has already ensured that we get a single SSA
@@ -1152,9 +1145,10 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       }
 
       case nir_intrinsic_store_deref: {
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
-         nir_deref_and_path dst = {nir_src_as_deref(intrin->src[0]), NULL};
+         nir_deref_and_path dst = { nir_src_as_deref(intrin->src[0]), NULL };
          assert(glsl_type_is_vector_or_scalar(dst.instr->type));
 
          /* Direct array_derefs of vectors operate on the vectors (the parent
@@ -1191,7 +1185,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
             nir_instr_remove(instr);
             state->progress = true;
          } else {
-            struct value value = {0};
+            struct value value = { 0 };
             value_set_ssa_components(&value, intrin->src[1].ssa,
                                      intrin->num_components);
             unsigned wrmask = nir_intrinsic_write_mask(intrin);
@@ -1204,10 +1198,11 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       }
 
       case nir_intrinsic_copy_deref: {
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
-         nir_deref_and_path dst = {nir_src_as_deref(intrin->src[0]), NULL};
-         nir_deref_and_path src = {nir_src_as_deref(intrin->src[1]), NULL};
+         nir_deref_and_path dst = { nir_src_as_deref(intrin->src[0]), NULL };
+         nir_deref_and_path src = { nir_src_as_deref(intrin->src[1]), NULL };
 
          /* The copy_deref intrinsic doesn't keep track of num_components, so
           * get it ourselves.
@@ -1261,7 +1256,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
             state->progress = true;
          } else {
-            value = (struct value) {
+            value = (struct value){
                .is_ssa = false,
                { .deref = src },
             };
@@ -1285,10 +1280,12 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       case nir_intrinsic_execute_callable:
       case nir_intrinsic_rt_trace_ray:
       case nir_intrinsic_rt_execute_callable: {
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
          nir_deref_and_path payload = {
-            nir_src_as_deref(*nir_get_shader_call_payload_src(intrin)), NULL};
+            nir_src_as_deref(*nir_get_shader_call_payload_src(intrin)), NULL
+         };
          nir_component_mask_t full_mask = (1 << glsl_get_vector_elements(payload.instr->type)) - 1;
          kill_aliases(state, copies, &payload, full_mask);
          break;
@@ -1297,21 +1294,23 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       case nir_intrinsic_memcpy_deref:
       case nir_intrinsic_deref_atomic:
       case nir_intrinsic_deref_atomic_swap:
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
-         nir_deref_and_path dst = {nir_src_as_deref(intrin->src[0]), NULL};
+         nir_deref_and_path dst = { nir_src_as_deref(intrin->src[0]), NULL };
          unsigned num_components = glsl_get_vector_elements(dst.instr->type);
          unsigned full_mask = (1 << num_components) - 1;
          kill_aliases(state, copies, &dst, full_mask);
          break;
 
       case nir_intrinsic_store_deref_block_intel: {
-         if (debug) dump_instr(instr);
+         if (debug)
+            dump_instr(instr);
 
          /* Invalidate the whole variable (or cast) and anything that alias
           * with it.
           */
-         nir_deref_and_path dst = {nir_src_as_deref(intrin->src[0]), NULL};
+         nir_deref_and_path dst = { nir_src_as_deref(intrin->src[0]), NULL };
          while (nir_deref_instr_parent(dst.instr))
             dst.instr = nir_deref_instr_parent(dst.instr);
          assert(dst.instr->deref_type == nir_deref_type_var ||
@@ -1327,7 +1326,8 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          continue; /* To skip the debug below. */
       }
 
-      if (debug) dump_copy_entries(copies);
+      if (debug)
+         dump_copy_entries(copies);
    }
 }
 
@@ -1494,7 +1494,7 @@ nir_copy_prop_vars_impl(nir_function_impl *impl)
 
    if (state.progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

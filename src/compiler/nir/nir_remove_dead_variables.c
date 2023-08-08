@@ -190,7 +190,8 @@ nir_remove_dead_variables(nir_shader *shader, nir_variable_mode modes,
 
    if (modes & ~nir_var_function_temp) {
       progress = remove_dead_vars(&shader->variables, modes,
-                                  live, opts) || progress;
+                                  live, opts) ||
+                 progress;
    }
 
    if (modes & nir_var_function_temp) {
@@ -208,7 +209,7 @@ nir_remove_dead_variables(nir_shader *shader, nir_variable_mode modes,
       if (progress) {
          remove_dead_var_writes(shader);
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                     nir_metadata_dominance);
+                                        nir_metadata_dominance);
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
       }

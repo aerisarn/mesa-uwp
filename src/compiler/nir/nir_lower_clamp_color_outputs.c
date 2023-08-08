@@ -21,7 +21,6 @@
  * SOFTWARE.
  */
 
-
 #include "nir.h"
 #include "nir_builder.h"
 
@@ -102,6 +101,6 @@ nir_lower_clamp_color_outputs(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, lower_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        shader);
 }

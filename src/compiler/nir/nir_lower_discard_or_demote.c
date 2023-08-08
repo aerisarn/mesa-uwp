@@ -92,7 +92,6 @@ insert_is_helper(nir_builder *b, nir_instr *instr)
    return nir_is_helper_invocation(b, 1);
 }
 
-
 static bool
 nir_lower_load_helper_to_is_helper(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -100,14 +99,14 @@ nir_lower_load_helper_to_is_helper(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   nir_ssa_def *is_helper = *(nir_ssa_def**) data;
+   nir_ssa_def *is_helper = *(nir_ssa_def **)data;
    switch (intrin->intrinsic) {
    case nir_intrinsic_demote:
    case nir_intrinsic_demote_if:
       /* insert is_helper at last top level occasion */
       if (is_helper == NULL) {
          is_helper = insert_is_helper(b, instr);
-         *(nir_ssa_def**)data = is_helper;
+         *(nir_ssa_def **)data = is_helper;
          return true;
       } else {
          return false;
@@ -165,9 +164,9 @@ nir_lower_discard_or_demote(nir_shader *shader,
       progress = nir_shader_instructions_pass(shader,
                                               nir_lower_discard_to_demote_instr,
                                               nir_metadata_block_index |
-                                              nir_metadata_dominance |
-                                              nir_metadata_live_ssa_defs |
-                                              nir_metadata_instr_index,
+                                                 nir_metadata_dominance |
+                                                 nir_metadata_live_ssa_defs |
+                                                 nir_metadata_instr_index,
                                               NULL);
       shader->info.fs.uses_demote = true;
    } else if (!shader->info.fs.needs_quad_helper_invocations &&
@@ -177,7 +176,7 @@ nir_lower_discard_or_demote(nir_shader *shader,
       progress = nir_shader_instructions_pass(shader,
                                               nir_lower_demote_to_discard_instr,
                                               nir_metadata_block_index |
-                                              nir_metadata_dominance,
+                                                 nir_metadata_dominance,
                                               NULL);
       shader->info.fs.uses_demote = false;
    } else if (shader->info.fs.uses_demote &&
@@ -189,7 +188,7 @@ nir_lower_discard_or_demote(nir_shader *shader,
       progress = nir_shader_instructions_pass(shader,
                                               nir_lower_load_helper_to_is_helper,
                                               nir_metadata_block_index |
-                                              nir_metadata_dominance,
+                                                 nir_metadata_dominance,
                                               &is_helper);
       BITSET_CLEAR(shader->info.system_values_read,
                    nir_system_value_from_intrinsic(nir_intrinsic_load_helper_invocation));

@@ -129,7 +129,7 @@ init_field_for_type(struct field *field, struct field *parent,
                     const char *name,
                     struct split_var_state *state)
 {
-   *field = (struct field) {
+   *field = (struct field){
       .parent = parent,
       .type = type,
    };
@@ -361,7 +361,7 @@ nir_split_struct_vars(nir_shader *shader, nir_variable_mode modes)
                                   modes, mem_ctx);
 
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
+                                        nir_metadata_dominance);
          progress = true;
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
@@ -427,7 +427,7 @@ init_var_list_array_infos(nir_shader *shader,
 
       struct array_var_info *info =
          rzalloc_size(mem_ctx, sizeof(*info) +
-                               num_levels * sizeof(info->levels[0]));
+                                  num_levels * sizeof(info->levels[0]));
 
       info->base_var = var;
       info->num_levels = num_levels;
@@ -770,7 +770,7 @@ split_array_copies_impl(nir_function_impl *impl,
          b.cursor = nir_instr_remove(&copy->instr);
 
          emit_split_copies(&b, dst_info, &dst_path, 0, dst_path.path[0],
-                               src_info, &src_path, 0, src_path.path[0]);
+                           src_info, &src_path, 0, src_path.path[0]);
       }
    }
 }
@@ -835,7 +835,7 @@ split_array_access_impl(nir_function_impl *impl,
                if (intrin->intrinsic == nir_intrinsic_load_deref) {
                   nir_ssa_def *u =
                      nir_ssa_undef(&b, intrin->dest.ssa.num_components,
-                                       intrin->dest.ssa.bit_size);
+                                   intrin->dest.ssa.bit_size);
                   nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
                                            u);
                }
@@ -952,7 +952,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
          split_array_access_impl(impl, var_info_map, modes, mem_ctx);
 
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
+                                        nir_metadata_dominance);
          progress = true;
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
@@ -1017,7 +1017,7 @@ get_vec_var_usage(nir_variable *var,
 
    struct vec_var_usage *usage =
       rzalloc_size(mem_ctx, sizeof(*usage) +
-                            num_levels * sizeof(usage->levels[0]));
+                               num_levels * sizeof(usage->levels[0]));
 
    usage->num_levels = num_levels;
    const struct glsl_type *type = var->type;
@@ -1131,8 +1131,7 @@ mark_deref_used(nir_deref_instr *deref,
 
       unsigned max_used;
       if (deref->deref_type == nir_deref_type_array) {
-         max_used = nir_src_is_const(deref->arr.index) ?
-                    nir_src_as_uint(deref->arr.index) : UINT_MAX;
+         max_used = nir_src_is_const(deref->arr.index) ? nir_src_as_uint(deref->arr.index) : UINT_MAX;
       } else {
          /* For wildcards, we read or wrote the whole thing. */
          assert(deref->deref_type == nir_deref_type_array_wildcard);
@@ -1554,7 +1553,7 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
                if (intrin->intrinsic == nir_intrinsic_load_deref) {
                   nir_ssa_def *u =
                      nir_ssa_undef(&b, intrin->dest.ssa.num_components,
-                                       intrin->dest.ssa.bit_size);
+                                   intrin->dest.ssa.bit_size);
                   nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
                                            u);
                }
@@ -1706,7 +1705,7 @@ nir_shrink_vec_array_vars(nir_shader *shader, nir_variable_mode modes)
          shrink_vec_var_access_impl(impl, var_usage_map, modes);
 
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
+                                        nir_metadata_dominance);
          progress = true;
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);

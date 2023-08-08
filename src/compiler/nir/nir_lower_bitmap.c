@@ -90,8 +90,7 @@ lower_bitmap(nir_shader *shader, nir_builder *b,
    nir_builder_instr_insert(b, &tex->instr);
 
    /* kill if tex != 0.0.. take .x or .w channel according to format: */
-   cond = nir_fneu_imm(b, nir_channel(b, &tex->dest.ssa,
-                                      options->swizzle_xxxx ? 0 : 3),
+   cond = nir_fneu_imm(b, nir_channel(b, &tex->dest.ssa, options->swizzle_xxxx ? 0 : 3),
                        0.0);
 
    nir_discard_if(b, cond);
@@ -108,7 +107,7 @@ lower_bitmap_impl(nir_function_impl *impl,
    lower_bitmap(impl->function->shader, &b, options);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 }
 
 void

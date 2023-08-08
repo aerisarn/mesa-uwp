@@ -73,8 +73,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
 
    /* Check if we're still in-bounds */
    const unsigned default_buffer_size = 1024 * 1024;
-   unsigned buffer_size = (options && options->max_buffer_size) ?
-                          options->max_buffer_size : default_buffer_size;
+   unsigned buffer_size = (options && options->max_buffer_size) ? options->max_buffer_size : default_buffer_size;
    int max_valid_offset =
       buffer_size - args_size - fmt_str_id_size - counter_size;
    nir_push_if(b, nir_ilt_imm(b, offset, max_valid_offset));
@@ -112,9 +111,8 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
 
       unsigned field_offset = glsl_get_struct_field_offset(args->type, i);
       nir_ssa_def *arg_offset =
-         nir_i2iN(b, nir_iadd_imm(b, offset,
-                                 fmt_str_id_size + field_offset),
-                 ptr_bit_size);
+         nir_i2iN(b, nir_iadd_imm(b, offset, fmt_str_id_size + field_offset),
+                  ptr_bit_size);
       nir_deref_instr *dst_arg_deref =
          nir_build_deref_array(b, buffer, arg_offset);
       dst_arg_deref = nir_build_deref_cast(b, &dst_arg_deref->dest.ssa,

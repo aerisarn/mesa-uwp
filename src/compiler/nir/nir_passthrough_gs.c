@@ -21,10 +21,10 @@
  * SOFTWARE.
  */
 
-#include "nir.h"
-#include "nir_xfb_info.h"
-#include "nir_builder.h"
 #include "util/u_memory.h"
+#include "nir.h"
+#include "nir_builder.h"
+#include "nir_xfb_info.h"
 
 static unsigned int
 gs_in_prim_for_topology(enum mesa_prim prim)
@@ -133,8 +133,7 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
 
    nir_shader *nir = b.shader;
    nir->info.gs.input_primitive = gs_in_prim_for_topology(primitive_type);
-   nir->info.gs.output_primitive = (force_line_strip_out || emulate_edgeflags) ?
-      MESA_PRIM_LINE_STRIP : original_our_prim;
+   nir->info.gs.output_primitive = (force_line_strip_out || emulate_edgeflags) ? MESA_PRIM_LINE_STRIP : original_our_prim;
    nir->info.gs.vertices_in = vertices_out;
    nir->info.gs.vertices_out = needs_closing ? vertices_out + 1 : vertices_out;
    nir->info.gs.invocations = 1;

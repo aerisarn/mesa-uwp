@@ -36,16 +36,16 @@ extern "C" {
  * Definitions for functions in the C file come first.
  */
 
-nir_ssa_def* nir_cross3(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y);
-nir_ssa_def* nir_cross4(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y);
-nir_ssa_def* nir_fast_length(nir_builder *b, nir_ssa_def *vec);
-nir_ssa_def* nir_nextafter(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y);
-nir_ssa_def* nir_normalize(nir_builder *b, nir_ssa_def *vec);
-nir_ssa_def* nir_smoothstep(nir_builder *b, nir_ssa_def *edge0,
+nir_ssa_def *nir_cross3(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y);
+nir_ssa_def *nir_cross4(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y);
+nir_ssa_def *nir_fast_length(nir_builder *b, nir_ssa_def *vec);
+nir_ssa_def *nir_nextafter(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y);
+nir_ssa_def *nir_normalize(nir_builder *b, nir_ssa_def *vec);
+nir_ssa_def *nir_smoothstep(nir_builder *b, nir_ssa_def *edge0,
                             nir_ssa_def *edge1, nir_ssa_def *x);
-nir_ssa_def* nir_upsample(nir_builder *b, nir_ssa_def *hi, nir_ssa_def *lo);
-nir_ssa_def* nir_atan(nir_builder *b, nir_ssa_def *y_over_x);
-nir_ssa_def* nir_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x);
+nir_ssa_def *nir_upsample(nir_builder *b, nir_ssa_def *hi, nir_ssa_def *lo);
+nir_ssa_def *nir_atan(nir_builder *b, nir_ssa_def *y_over_x);
+nir_ssa_def *nir_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x);
 
 nir_ssa_def *
 nir_get_texture_lod(nir_builder *b, nir_tex_instr *tex);
@@ -171,19 +171,19 @@ nir_fast_distance(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
    return nir_fast_length(b, nir_fsub(b, x, y));
 }
 
-static inline nir_ssa_def*
+static inline nir_ssa_def *
 nir_fast_normalize(nir_builder *b, nir_ssa_def *vec)
 {
    return nir_fdiv(b, vec, nir_fast_length(b, vec));
 }
 
-static inline nir_ssa_def*
+static inline nir_ssa_def *
 nir_fmad(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z)
 {
    return nir_fadd(b, nir_fmul(b, x, y), z);
 }
 
-static inline nir_ssa_def*
+static inline nir_ssa_def *
 nir_maxmag(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 {
    nir_ssa_def *xabs = nir_fabs(b, x);
@@ -195,7 +195,7 @@ nir_maxmag(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
    return nir_bcsel(b, condy, y, nir_bcsel(b, condx, x, nir_fmax(b, x, y)));
 }
 
-static inline nir_ssa_def*
+static inline nir_ssa_def *
 nir_minmag(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 {
    nir_ssa_def *xabs = nir_fabs(b, x);
@@ -207,7 +207,7 @@ nir_minmag(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
    return nir_bcsel(b, condy, y, nir_bcsel(b, condx, x, nir_fmin(b, x, y)));
 }
 
-static inline nir_ssa_def*
+static inline nir_ssa_def *
 nir_nan(nir_builder *b, nir_ssa_def *x)
 {
    nir_ssa_def *nan = nir_imm_floatN_t(b, NAN, x->bit_size);

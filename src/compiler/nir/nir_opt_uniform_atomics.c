@@ -43,17 +43,28 @@ static nir_op
 atomic_op_to_alu(nir_atomic_op op)
 {
    switch (op) {
-   case nir_atomic_op_iadd: return nir_op_iadd;
-   case nir_atomic_op_imin: return nir_op_imin;
-   case nir_atomic_op_umin: return nir_op_umin;
-   case nir_atomic_op_imax: return nir_op_imax;
-   case nir_atomic_op_umax: return nir_op_umax;
-   case nir_atomic_op_iand: return nir_op_iand;
-   case nir_atomic_op_ior:  return nir_op_ior;
-   case nir_atomic_op_ixor: return nir_op_ixor;
-   case nir_atomic_op_fadd: return nir_op_fadd;
-   case nir_atomic_op_fmin: return nir_op_fmin;
-   case nir_atomic_op_fmax: return nir_op_fmax;
+   case nir_atomic_op_iadd:
+      return nir_op_iadd;
+   case nir_atomic_op_imin:
+      return nir_op_imin;
+   case nir_atomic_op_umin:
+      return nir_op_umin;
+   case nir_atomic_op_imax:
+      return nir_op_imax;
+   case nir_atomic_op_umax:
+      return nir_op_umax;
+   case nir_atomic_op_iand:
+      return nir_op_iand;
+   case nir_atomic_op_ior:
+      return nir_op_ior;
+   case nir_atomic_op_ixor:
+      return nir_op_ixor;
+   case nir_atomic_op_fadd:
+      return nir_op_fadd;
+   case nir_atomic_op_fmin:
+      return nir_op_fmin;
+   case nir_atomic_op_fmax:
+      return nir_op_fmax;
 
    /* We don't handle exchanges or wraps */
    case nir_atomic_op_xchg:
@@ -184,7 +195,7 @@ is_atomic_already_optimized(nir_shader *shader, nir_intrinsic_instr *instr)
          if (!within_then)
             continue;
 
-         nir_ssa_scalar cond = {nir_cf_node_as_if(cf)->condition.ssa, 0};
+         nir_ssa_scalar cond = { nir_cf_node_as_if(cf)->condition.ssa, 0 };
          dims |= match_invocation_comparison(cond);
       }
    }
@@ -193,7 +204,8 @@ is_atomic_already_optimized(nir_shader *shader, nir_intrinsic_instr *instr)
       unsigned dims_needed = 0;
       for (unsigned i = 0; i < 3; i++)
          dims_needed |= (shader->info.workgroup_size_variable ||
-                         shader->info.workgroup_size[i] > 1) << i;
+                         shader->info.workgroup_size[i] > 1)
+                        << i;
       if ((dims & dims_needed) == dims_needed)
          return true;
    }
@@ -207,14 +219,14 @@ reduce_data(nir_builder *b, nir_op op, nir_ssa_def *data,
             nir_ssa_def **reduce, nir_ssa_def **scan)
 {
    if (scan) {
-      *scan = nir_exclusive_scan(b, data, .reduction_op=op);
+      *scan = nir_exclusive_scan(b, data, .reduction_op = op);
       if (reduce) {
          nir_ssa_def *last_lane = nir_last_invocation(b);
          nir_ssa_def *res = nir_build_alu(b, op, *scan, data, NULL, NULL);
          *reduce = nir_read_invocation(b, res, last_lane);
       }
    } else {
-      *reduce = nir_reduce(b, data, .reduction_op=op);
+      *reduce = nir_reduce(b, data, .reduction_op = op);
    }
 }
 

@@ -22,8 +22,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir_control_flow.h"
 #include "nir_builder.h"
+#include "nir_control_flow.h"
 
 /**
  * This file implements an optimization for multiview. Some GPU's have a
@@ -246,7 +246,7 @@ nir_lower_multiview(nir_shader *shader, uint32_t view_mask)
     * original shader body.
     */
 
-   nir_loop* loop = nir_push_loop(&b);
+   nir_loop *loop = nir_push_loop(&b);
 
    nir_ssa_def *loop_index = nir_load_deref(&b, loop_index_deref);
    nir_ssa_def *cmp = nir_ige_imm(&b, loop_index, view_count);
@@ -314,4 +314,3 @@ nir_lower_multiview(nir_shader *shader, uint32_t view_mask)
    nir_metadata_preserve(entrypoint, nir_metadata_none);
    return true;
 }
-

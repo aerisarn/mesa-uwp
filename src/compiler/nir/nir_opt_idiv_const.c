@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir.h"
-#include "nir_builder.h"
 #include "util/fast_idiv_by_const.h"
 #include "util/u_math.h"
+#include "nir.h"
+#include "nir_builder.h"
 
 static nir_ssa_def *
 build_udiv(nir_builder *b, nir_ssa_def *n, uint64_t d)
@@ -161,7 +161,6 @@ nir_opt_idiv_const_instr(nir_builder *b, nir_instr *instr, void *user_data)
        alu->op != nir_op_irem)
       return false;
 
-
    if (alu->dest.dest.ssa.bit_size < *min_bit_size)
       return false;
 
@@ -225,6 +224,6 @@ nir_opt_idiv_const(nir_shader *shader, unsigned min_bit_size)
 {
    return nir_shader_instructions_pass(shader, nir_opt_idiv_const_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        &min_bit_size);
 }

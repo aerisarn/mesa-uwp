@@ -34,11 +34,16 @@ static const struct glsl_type *
 copy_type_for_byte_size(unsigned size)
 {
    switch (size) {
-   case 1:  return glsl_vector_type(GLSL_TYPE_UINT8, 1);
-   case 2:  return glsl_vector_type(GLSL_TYPE_UINT16, 1);
-   case 4:  return glsl_vector_type(GLSL_TYPE_UINT, 1);
-   case 8:  return glsl_vector_type(GLSL_TYPE_UINT, 2);
-   case 16: return glsl_vector_type(GLSL_TYPE_UINT, 4);
+   case 1:
+      return glsl_vector_type(GLSL_TYPE_UINT8, 1);
+   case 2:
+      return glsl_vector_type(GLSL_TYPE_UINT16, 1);
+   case 4:
+      return glsl_vector_type(GLSL_TYPE_UINT, 1);
+   case 8:
+      return glsl_vector_type(GLSL_TYPE_UINT, 2);
+   case 16:
+      return glsl_vector_type(GLSL_TYPE_UINT, 4);
    default:
       unreachable("Unsupported size");
    }
@@ -149,7 +154,7 @@ lower_memcpy_impl(nir_function_impl *impl)
                                     glsl_uint8_t_type(), 1);
 
             nir_variable *i = nir_local_variable_create(impl,
-               glsl_uintN_t_type(size->bit_size), NULL);
+                                                        glsl_uintN_t_type(size->bit_size), NULL);
             nir_store_var(&b, i, nir_imm_intN_t(&b, 0, size->bit_size), ~0);
             nir_push_loop(&b);
             {
@@ -163,7 +168,7 @@ lower_memcpy_impl(nir_function_impl *impl)
                nir_ssa_def *value =
                   memcpy_load_deref_elem(&b, copy_src, index);
                memcpy_store_deref_elem(&b, copy_dst, index, value);
-               nir_store_var(&b, i, nir_iadd_imm(&b, index, 1),  ~0);
+               nir_store_var(&b, i, nir_iadd_imm(&b, index, 1), ~0);
             }
             nir_pop_loop(&b, NULL);
          }
@@ -174,7 +179,7 @@ lower_memcpy_impl(nir_function_impl *impl)
       nir_metadata_preserve(impl, nir_metadata_none);
    } else if (found_const_memcpy) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

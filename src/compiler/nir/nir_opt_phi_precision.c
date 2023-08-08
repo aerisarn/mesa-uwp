@@ -96,13 +96,20 @@ static nir_op
 concrete_conversion(nir_op op)
 {
    switch (op) {
-   case nir_op_i2imp: return nir_op_i2i16;
-   case nir_op_i2fmp: return nir_op_i2f16;
-   case nir_op_u2fmp: return nir_op_u2f16;
-   case nir_op_f2fmp: return nir_op_f2f16;
-   case nir_op_f2imp: return nir_op_f2i16;
-   case nir_op_f2ump: return nir_op_f2u16;
-   default:           return op;
+   case nir_op_i2imp:
+      return nir_op_i2i16;
+   case nir_op_i2fmp:
+      return nir_op_i2f16;
+   case nir_op_u2fmp:
+      return nir_op_u2f16;
+   case nir_op_f2fmp:
+      return nir_op_f2f16;
+   case nir_op_f2imp:
+      return nir_op_f2i16;
+   case nir_op_f2ump:
+      return nir_op_f2u16;
+   default:
+      return op;
    }
 }
 
@@ -203,7 +210,7 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
    /* Are the only uses of the phi conversion instructions, and
     * are they all the same conversion?
     */
-   nir_foreach_use_including_if (use, &phi->dest.ssa) {
+   nir_foreach_use_including_if(use, &phi->dest.ssa) {
       /* an if use means the phi is used directly in a conditional, ie.
        * without a conversion
        */
@@ -228,7 +235,7 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
                      nir_alu_type_get_type_size(nir_op_infos[op].output_type));
 
    /* Push the conversion into the new phi sources: */
-   nir_foreach_phi_src (src, phi) {
+   nir_foreach_phi_src(src, phi) {
       /* insert new conversion instr in block of original phi src: */
       b->cursor = nir_after_instr_and_phis(src->src.ssa->parent_instr);
       nir_ssa_def *old_src = src->src.ssa;
@@ -242,7 +249,7 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
     * directly use the new phi, skipping the conversion out of the orig
     * phi
     */
-   nir_foreach_use (use, &phi->dest.ssa) {
+   nir_foreach_use(use, &phi->dest.ssa) {
       /* We've previously established that all the uses were alu
        * conversion ops.  Turn them into movs instead.
        */
@@ -278,7 +285,7 @@ can_convert_load_const(nir_load_const_instr *lc, nir_op op)
          break;
       case nir_type_float:
          if (lc->value[i].f32 != _mesa_half_to_float(
-               _mesa_float_to_half(lc->value[i].f32)))
+                                    _mesa_float_to_half(lc->value[i].f32)))
             return false;
          break;
       default:
@@ -301,7 +308,7 @@ find_widening_op(nir_phi_instr *phi, unsigned *bit_size)
    bool has_load_const = false;
    *bit_size = 0;
 
-   nir_foreach_phi_src (src, phi) {
+   nir_foreach_phi_src(src, phi) {
       nir_instr *instr = src->src.ssa->parent_instr;
       if (instr->type == nir_instr_type_load_const) {
          has_load_const = true;
@@ -337,7 +344,7 @@ find_widening_op(nir_phi_instr *phi, unsigned *bit_size)
     * loss of precision), then we could insert a narrowing->widening
     * sequence to make the rest of the transformation possible:
     */
-   nir_foreach_phi_src (src, phi) {
+   nir_foreach_phi_src(src, phi) {
       nir_instr *instr = src->src.ssa->parent_instr;
       if (instr->type != nir_instr_type_load_const)
          continue;
@@ -371,7 +378,7 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
                      phi->dest.ssa.num_components, bit_size);
 
    /* Remove the widening conversions from the phi sources: */
-   nir_foreach_phi_src (src, phi) {
+   nir_foreach_phi_src(src, phi) {
       nir_instr *instr = src->src.ssa->parent_instr;
       nir_ssa_def *new_src;
 
@@ -449,15 +456,15 @@ nir_opt_phi_precision(nir_shader *shader)
    nir_foreach_function_impl(impl, shader) {
       nir_builder b = nir_builder_create(impl);
 
-      nir_foreach_block (block, impl) {
-         nir_foreach_phi_safe (phi, block)
+      nir_foreach_block(block, impl) {
+         nir_foreach_phi_safe(phi, block)
             progress |= lower_phi(&b, phi);
       }
 
       if (progress) {
          nir_metadata_preserve(impl,
                                nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
       }
@@ -465,4 +472,3 @@ nir_opt_phi_precision(nir_shader *shader)
 
    return progress;
 }
-

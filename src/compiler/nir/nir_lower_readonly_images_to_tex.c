@@ -226,6 +226,6 @@ nir_lower_readonly_images_to_tex(nir_shader *shader, bool per_variable)
    struct readonly_image_lower_options options = { per_variable };
    return nir_shader_instructions_pass(shader, lower_readonly_image_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        &options);
 }

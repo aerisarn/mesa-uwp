@@ -110,7 +110,7 @@ nir_collect_src_uniforms(const nir_src *src, int component,
                if (!nir_collect_src_uniforms(&alu_src->src, alu_src->swizzle[j],
                                              uni_offsets, num_offsets,
                                              max_num_bo, max_offset))
-               return false;
+                  return false;
             }
          }
       }
@@ -228,7 +228,7 @@ nir_add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
 
    /* Allow induction variable which means a loop terminator. */
    if (info) {
-      nir_ssa_scalar cond_scalar = {cond->ssa, 0};
+      nir_ssa_scalar cond_scalar = { cond->ssa, 0 };
 
       /* Limit terminator condition to loop unroll support case which is a simple
        * comparison (ie. "i < count" is supported, but "i + 1 < count" is not).
@@ -419,7 +419,7 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                    * found component load with constant load.
                    */
                   uint32_t max_offset = offset + num_components;
-                  nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = {0};
+                  nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = { 0 };
                   bool found = false;
 
                   b.cursor = nir_before_instr(&intr->instr);
@@ -461,7 +461,7 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
          }
 
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                     nir_metadata_dominance);
+                                        nir_metadata_dominance);
       }
    }
 }

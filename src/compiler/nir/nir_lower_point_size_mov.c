@@ -55,7 +55,6 @@ lower_impl(nir_function_impl *impl,
                                                   VARYING_SLOT_PSIZ, glsl_float_type());
    }
 
-
    if (!out) {
       b.cursor = nir_before_cf_list(&impl->body);
       nir_ssa_def *load = nir_load_var(&b, in);
@@ -89,7 +88,7 @@ lower_impl(nir_function_impl *impl,
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
    return true;
 }
 

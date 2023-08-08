@@ -92,8 +92,8 @@ emit_idiv(nir_builder *bld, nir_ssa_def *numer, nir_ssa_def *denom, nir_op op)
 
 static nir_ssa_def *
 convert_instr_small(nir_builder *b, nir_op op,
-      nir_ssa_def *numer, nir_ssa_def *denom,
-      const nir_lower_idiv_options *options)
+                    nir_ssa_def *numer, nir_ssa_def *denom,
+                    const nir_lower_idiv_options *options)
 {
    unsigned sz = numer->bit_size;
    nir_alu_type int_type = nir_op_infos[op].output_type | sz;
@@ -121,7 +121,7 @@ convert_instr_small(nir_builder *b, nir_op op,
    if (op == nir_op_imod) {
       nir_ssa_def *zero = nir_imm_zero(b, 1, sz);
       nir_ssa_def *diff_sign =
-               nir_ine(b, nir_ige(b, numer, zero), nir_ige(b, denom, zero));
+         nir_ine(b, nir_ige(b, numer, zero), nir_ige(b, denom, zero));
 
       nir_ssa_def *adjust = nir_iand(b, diff_sign, nir_ine(b, res, zero));
       res = nir_iadd(b, res, nir_bcsel(b, adjust, denom, zero));
@@ -176,7 +176,7 @@ bool
 nir_lower_idiv(nir_shader *shader, const nir_lower_idiv_options *options)
 {
    return nir_shader_lower_instructions(shader,
-         inst_is_idiv,
-         lower_idiv,
-         (void *)options);
+                                        inst_is_idiv,
+                                        lower_idiv,
+                                        (void *)options);
 }

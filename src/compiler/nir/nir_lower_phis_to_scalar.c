@@ -88,7 +88,7 @@ is_phi_src_scalarizable(nir_phi_src *src,
           */
          nir_deref_instr *deref = nir_src_as_deref(src_intrin->src[0]);
          return !nir_deref_mode_may_be(deref, nir_var_function_temp |
-                                              nir_var_shader_temp);
+                                                 nir_var_shader_temp);
       }
 
       case nir_intrinsic_interp_deref_at_centroid:
@@ -106,7 +106,7 @@ is_phi_src_scalarizable(nir_phi_src *src,
          break;
       }
    }
-   FALLTHROUGH;
+      FALLTHROUGH;
 
    default:
       /* We can't scalarize this type of instruction */
@@ -272,7 +272,7 @@ lower_phis_to_scalar_impl(nir_function_impl *impl, bool lower_all)
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 
    nir_instr_free_list(&state.dead_instrs);
 

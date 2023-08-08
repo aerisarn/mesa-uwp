@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir.h"
 #include "util/bitset.h"
+#include "nir.h"
 
 static void
 set_type(unsigned idx, nir_alu_type type, BITSET_WORD *float_types,

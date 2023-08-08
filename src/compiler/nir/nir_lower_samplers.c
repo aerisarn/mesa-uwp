@@ -100,9 +100,7 @@ lower_tex_src_to_offset(nir_builder *b,
       nir_instr_rewrite_src(&instr->instr, &src->src,
                             nir_src_for_ssa(index));
 
-      src->src_type = is_sampler ?
-         nir_tex_src_sampler_offset :
-         nir_tex_src_texture_offset;
+      src->src_type = is_sampler ? nir_tex_src_sampler_offset : nir_tex_src_texture_offset;
    } else {
       nir_tex_instr_remove_src(instr, src_idx);
    }
@@ -149,6 +147,6 @@ nir_lower_samplers(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, lower_sampler,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

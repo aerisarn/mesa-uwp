@@ -669,7 +669,8 @@ visit_ssa_undef(nir_ssa_undef_instr *instr)
 }
 
 static bool
-nir_variable_mode_is_uniform(nir_variable_mode mode) {
+nir_variable_mode_is_uniform(nir_variable_mode mode)
+{
    switch (mode) {
    case nir_var_uniform:
    case nir_var_mem_ubo:
@@ -869,7 +870,7 @@ visit_loop_header_phi(nir_phi_instr *phi, nir_block *preheader, bool divergent_c
    if (phi->dest.ssa.divergent)
       return false;
 
-   nir_ssa_def* same = NULL;
+   nir_ssa_def *same = NULL;
    nir_foreach_phi_src(src, phi) {
       /* if any source value is divergent, the resulting value is divergent */
       if (src->src.ssa->divergent) {
@@ -1058,7 +1059,8 @@ nir_divergence_analysis(nir_shader *shader)
    visit_cf_list(&nir_shader_get_entrypoint(shader)->body, &state);
 }
 
-bool nir_update_instr_divergence(nir_shader *shader, nir_instr *instr)
+bool
+nir_update_instr_divergence(nir_shader *shader, nir_instr *instr)
 {
    nir_foreach_ssa_def(instr, set_ssa_def_not_divergent, NULL);
 
@@ -1077,7 +1079,6 @@ bool nir_update_instr_divergence(nir_shader *shader, nir_instr *instr)
    update_instr_divergence(shader, instr);
    return true;
 }
-
 
 bool
 nir_has_divergent_loop(nir_shader *shader)

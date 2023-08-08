@@ -36,10 +36,8 @@ load_frag_coord(nir_builder *b, nir_deref_instr *deref,
          nir_ssa_def *unscaled_frag_coord = nir_load_frag_coord_unscaled_ir3(b);
          if (deref->deref_type == nir_deref_type_array) {
             nir_ssa_def *unscaled =
-               nir_i2b(b, nir_iand(b, nir_ishr(b,
-                                               nir_imm_int(b, options->unscaled_input_attachment_ir3 >> base),
-                                            deref->arr.index.ssa),
-                                nir_imm_int(b, 1)));
+               nir_i2b(b, nir_iand(b, nir_ishr(b, nir_imm_int(b, options->unscaled_input_attachment_ir3 >> base), deref->arr.index.ssa),
+                                   nir_imm_int(b, 1)));
             frag_coord = nir_bcsel(b, unscaled, unscaled_frag_coord, frag_coord);
          } else {
             assert(deref->deref_type == nir_deref_type_var);
@@ -75,8 +73,7 @@ load_layer_id(nir_builder *b, const nir_input_attachment_options *options)
          return nir_load_layer_id(b);
    }
 
-   gl_varying_slot slot = options->use_view_id_for_layer ?
-      VARYING_SLOT_VIEW_INDEX : VARYING_SLOT_LAYER;
+   gl_varying_slot slot = options->use_view_id_for_layer ? VARYING_SLOT_VIEW_INDEX : VARYING_SLOT_LAYER;
    nir_variable *layer_id = nir_get_variable_with_location(b->shader, nir_var_shader_in,
                                                            slot, glsl_int_type());
    layer_id->data.interpolation = INTERP_MODE_FLAT;
@@ -173,7 +170,7 @@ try_lower_input_texop(nir_builder *b, nir_tex_instr *tex,
 
    nir_ssa_def *layer = load_layer_id(b, options);
    nir_ssa_def *coord = nir_vec3(b, nir_channel(b, frag_coord, 0),
-                                    nir_channel(b, frag_coord, 1), layer);
+                                 nir_channel(b, frag_coord, 1), layer);
 
    tex->coord_components = 3;
 
@@ -220,6 +217,6 @@ nir_lower_input_attachments(nir_shader *shader,
 
    return nir_shader_instructions_pass(shader, lower_input_attachments_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        (void *)options);
 }

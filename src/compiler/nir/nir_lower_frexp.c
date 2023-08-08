@@ -129,7 +129,7 @@ lower_frexp_exp(nir_builder *b, nir_ssa_def *x)
        * exponent must be a 32-bit integer.
        */
       exponent = nir_i2i32(b, nir_iadd(b, nir_ushr(b, abs_x, exponent_shift),
-                              nir_bcsel(b, is_not_zero, exponent_bias, zero)));
+                                       nir_bcsel(b, is_not_zero, exponent_bias, zero)));
       break;
    }
    case 32: {
@@ -137,7 +137,7 @@ lower_frexp_exp(nir_builder *b, nir_ssa_def *x)
       nir_ssa_def *exponent_bias = nir_imm_int(b, -126);
 
       exponent = nir_iadd(b, nir_ushr(b, abs_x, exponent_shift),
-                             nir_bcsel(b, is_not_zero, exponent_bias, zero));
+                          nir_bcsel(b, is_not_zero, exponent_bias, zero));
       break;
    }
    case 64: {
@@ -148,7 +148,7 @@ lower_frexp_exp(nir_builder *b, nir_ssa_def *x)
       nir_ssa_def *abs_upper_x = nir_unpack_64_2x32_split_y(b, abs_x);
 
       exponent = nir_iadd(b, nir_ushr(b, abs_upper_x, exponent_shift),
-                             nir_bcsel(b, is_not_zero, exponent_bias, zero32));
+                          nir_bcsel(b, is_not_zero, exponent_bias, zero32));
       break;
    }
    default:
@@ -190,6 +190,6 @@ nir_lower_frexp(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, lower_frexp_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

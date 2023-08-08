@@ -184,7 +184,7 @@ nir_opt_large_constants(nir_shader *shader,
 
    struct var_info *var_infos = ralloc_array(NULL, struct var_info, num_locals);
    nir_foreach_function_temp_variable(var, impl) {
-      var_infos[var->index] = (struct var_info) {
+      var_infos[var->index] = (struct var_info){
          .var = var,
          .is_constant = true,
          .found_read = false,
@@ -402,6 +402,6 @@ nir_opt_large_constants(nir_shader *shader,
    ralloc_free(var_infos);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
    return true;
 }

@@ -39,7 +39,6 @@
  * and only once).
  */
 
-
 static nir_variable *
 create_clipdist_var(nir_shader *shader,
                     bool output, gl_varying_slot slot, unsigned array_size)
@@ -122,12 +121,12 @@ load_clipdist_input(nir_builder *b, nir_variable *in, int location_offset,
    if (b->shader->options->use_interpolated_input_intrinsics) {
       /* TODO: use sample when per-sample shading? */
       nir_ssa_def *barycentric = nir_load_barycentric(
-            b, nir_intrinsic_load_barycentric_pixel, INTERP_MODE_NONE);
+         b, nir_intrinsic_load_barycentric_pixel, INTERP_MODE_NONE);
       load = nir_load_interpolated_input(
-            b, 4, 32, barycentric, nir_imm_int(b, location_offset),
-            .base = in->data.driver_location,
-            .dest_type = nir_type_float32,
-            .io_semantics = semantics);
+         b, 4, 32, barycentric, nir_imm_int(b, location_offset),
+         .base = in->data.driver_location,
+         .dest_type = nir_type_float32,
+         .io_semantics = semantics);
 
    } else {
       load = nir_load_input(b, 4, 32, nir_imm_int(b, location_offset),
@@ -231,7 +230,6 @@ get_ucp(nir_builder *b, int plane,
    } else
       return nir_load_user_clip_plane(b, plane);
 }
-
 
 static void
 lower_clip_outputs(nir_builder *b, nir_variable *position,
@@ -462,7 +460,7 @@ lower_clip_fs(nir_function_impl *impl, unsigned ucp_enables,
 
 static bool
 fs_has_clip_dist_input_var(nir_shader *shader, nir_variable **io_vars,
-                            unsigned *ucp_enables)
+                           unsigned *ucp_enables)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
    nir_foreach_shader_in_variable(var, shader) {
@@ -485,7 +483,7 @@ bool
 nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables,
                   bool use_clipdist_array)
 {
-   nir_variable *in[2] = {0};
+   nir_variable *in[2] = { 0 };
 
    if (!ucp_enables)
       return false;

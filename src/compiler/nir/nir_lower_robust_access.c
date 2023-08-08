@@ -20,7 +20,7 @@ rewrite_offset(nir_builder *b, nir_intrinsic_instr *instr,
       nir_iadd_imm(b, instr->src[offset_src].ssa, access_size - 1);
    nir_ssa_def *offset =
       nir_bcsel(b, nir_uge(b, max_access_offset, size), nir_imm_int(b, 0),
-                   instr->src[offset_src].ssa);
+                instr->src[offset_src].ssa);
 
    /* Rewrite offset */
    nir_instr_rewrite_src_ssa(&instr->instr, &instr->src[offset_src], offset);
@@ -38,7 +38,7 @@ wrap_in_if(nir_builder *b, nir_intrinsic_instr *instr, nir_ssa_def *valid)
 
    if (has_dest) {
       zero = nir_imm_zero(b, instr->dest.ssa.num_components,
-                             instr->dest.ssa.bit_size);
+                          instr->dest.ssa.bit_size);
    }
 
    nir_push_if(b, valid);
@@ -211,7 +211,6 @@ bool
 nir_lower_robust_access(nir_shader *s,
                         const nir_lower_robust_access_options *opts)
 {
-   return nir_shader_instructions_pass(s, lower, nir_metadata_block_index |
-                                                 nir_metadata_dominance,
-                                       (void*)opts);
+   return nir_shader_instructions_pass(s, lower, nir_metadata_block_index | nir_metadata_dominance,
+                                       (void *)opts);
 }

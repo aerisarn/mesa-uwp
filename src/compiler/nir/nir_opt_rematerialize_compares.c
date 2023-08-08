@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir.h"
 #include "nir/nir_builder.h"
+#include "nir.h"
 #include "nir_constant_expressions.h"
 #include "nir_control_flow.h"
 #include "nir_loop_analyze.h"
@@ -155,7 +155,7 @@ nir_opt_rematerialize_compares_impl(nir_shader *shader, nir_function_impl *impl)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

@@ -156,7 +156,6 @@ phi_is_invariant(nir_phi_instr *instr, nir_loop *loop)
    return invariant;
 }
 
-
 /* An instruction is said to be loop-invariant if it
  * - has no sideeffects and
  * - solely depends on variables defined outside of the loop or
@@ -180,7 +179,7 @@ instr_is_invariant(nir_instr *instr, nir_loop *loop)
       if (!(nir_intrinsic_infos[intrinsic->intrinsic].flags & NIR_INTRINSIC_CAN_REORDER))
          return not_invariant;
    }
-   FALLTHROUGH;
+      FALLTHROUGH;
    default:
       return nir_foreach_src(instr, src_is_invariant, loop) ? invariant : not_invariant;
    }
@@ -351,7 +350,7 @@ convert_to_lcssa(nir_cf_node *cf_node, lcssa_state *state)
          }
       }
 
-end:
+   end:
       /* For outer loops, the LCSSA-phi should be considered not invariant */
       if (state->skip_invariants) {
          nir_foreach_instr(instr, state->block_after_loop) {
@@ -382,7 +381,7 @@ nir_convert_loop_to_lcssa(nir_loop *loop)
    state->skip_invariants = false;
    state->skip_bool_invariants = false;
 
-   nir_foreach_block_in_cf_node (block, &loop->cf_node) {
+   nir_foreach_block_in_cf_node(block, &loop->cf_node) {
       nir_foreach_instr(instr, block)
          nir_foreach_ssa_def(instr, convert_loop_exit_for_ssa, state);
    }
@@ -409,7 +408,7 @@ nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants, bool skip_bool_in
       if (state->progress) {
          progress = true;
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
+                                        nir_metadata_dominance);
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
       }
@@ -418,4 +417,3 @@ nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants, bool skip_bool_in
    ralloc_free(state);
    return progress;
 }
-

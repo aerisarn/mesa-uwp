@@ -115,7 +115,8 @@ typedef struct {
 /* When walking the instructions in reverse, we use this flag to swap
  * before/after in add_dep().
  */
-enum direction { F, R };
+enum direction { F,
+                 R };
 
 struct nir_schedule_class_dep {
    int klass;
@@ -211,7 +212,6 @@ add_dep(nir_deps_state *state,
    else
       dag_add_edge(&after->dag, &before->dag, 0);
 }
-
 
 static void
 add_read_dep(nir_deps_state *state,
@@ -1124,7 +1124,7 @@ nir_schedule_dag_max_delay_cb(struct dag_node *node, void *state)
    }
 
    n->max_delay = MAX2(n->max_delay, max_delay + n->delay);
- }
+}
 
 static void
 nir_schedule_block(nir_schedule_scoreboard *scoreboard, nir_block *block)
@@ -1233,7 +1233,7 @@ nir_schedule_validate_uses(nir_schedule_scoreboard *scoreboard)
       set_foreach(remaining_uses, instr_entry) {
          if (!any_uses) {
             fprintf(stderr, "Tracked uses remain after scheduling.  "
-                    "Affected instructions: \n");
+                            "Affected instructions: \n");
             any_uses = true;
          }
          nir_print_instr(instr_entry->key, stderr);

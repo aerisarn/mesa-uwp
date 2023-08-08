@@ -32,10 +32,10 @@
  * The max vectorization width must be a power of 2.
  */
 
-#include "nir.h"
-#include "nir_vla.h"
-#include "nir_builder.h"
 #include "util/u_dynarray.h"
+#include "nir.h"
+#include "nir_builder.h"
+#include "nir_vla.h"
 
 #define HASH(hash, data) XXH32(&data, sizeof(data), hash)
 
@@ -65,7 +65,7 @@ hash_alu_src(uint32_t hash, const nir_alu_src *src,
 static uint32_t
 hash_instr(const void *data)
 {
-   const nir_instr *instr = (nir_instr *) data;
+   const nir_instr *instr = (nir_instr *)data;
    assert(instr->type == nir_instr_type_alu);
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
@@ -102,8 +102,8 @@ alu_srcs_equal(const nir_alu_src *src1, const nir_alu_src *src2,
 static bool
 instrs_equal(const void *data1, const void *data2)
 {
-   const nir_instr *instr1 = (nir_instr *) data1;
-   const nir_instr *instr2 = (nir_instr *) data2;
+   const nir_instr *instr1 = (nir_instr *)data1;
+   const nir_instr *instr2 = (nir_instr *)data2;
    assert(instr1->type == nir_instr_type_alu);
    assert(instr2->type == nir_instr_type_alu);
 
@@ -219,9 +219,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
          unsigned bit_size = alu1->src[i].src.ssa->bit_size;
 
          for (unsigned j = 0; j < total_components; j++) {
-            value[j].u64 = j < alu1_components ?
-                              c1[alu1->src[i].swizzle[j]].u64 :
-                              c2[alu2->src[i].swizzle[j - alu1_components]].u64;
+            value[j].u64 = j < alu1_components ? c1[alu1->src[i].swizzle[j]].u64 : c2[alu2->src[i].swizzle[j - alu1_components]].u64;
          }
          nir_ssa_def *def = nir_build_imm(&b, total_components, bit_size, value);
 
@@ -331,7 +329,7 @@ vec_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr,
 
    struct set_entry *entry = _mesa_set_search(instr_set, instr);
    if (entry) {
-      nir_instr *old_instr = (nir_instr *) entry->key;
+      nir_instr *old_instr = (nir_instr *)entry->key;
       _mesa_set_remove(instr_set, entry);
       nir_instr *new_instr = instr_try_combine(instr_set, old_instr, instr);
       if (new_instr) {
@@ -382,7 +380,7 @@ nir_opt_vectorize_impl(nir_function_impl *impl,
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

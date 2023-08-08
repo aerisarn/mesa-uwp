@@ -35,7 +35,7 @@
 static nir_deref_instr *
 deref_offset_var(nir_builder *b, unsigned binding, unsigned offset_align_state)
 {
-   gl_state_index16 tokens[STATE_LENGTH] = {offset_align_state, binding};
+   gl_state_index16 tokens[STATE_LENGTH] = { offset_align_state, binding };
    nir_variable *var = nir_find_state_variable(b->shader, tokens);
    if (!var) {
       var = nir_state_variable_create(b->shader, glsl_uint_type(), "offset", tokens);
@@ -100,7 +100,7 @@ lower_instr(nir_intrinsic_instr *instr, unsigned ssbo_offset, nir_builder *b, un
       offset_load = nir_load_deref(b, deref_offset);
    }
    nir_intrinsic_instr *new_instr =
-         nir_intrinsic_instr_create(b->shader, op);
+      nir_intrinsic_instr_create(b->shader, op);
    if (nir_intrinsic_has_atomic_op(new_instr))
       nir_intrinsic_set_atomic_op(new_instr, atomic_op);
 
@@ -197,7 +197,7 @@ nir_lower_atomics_to_ssbo(nir_shader *shader, unsigned offset_align_state)
       }
 
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    }
 
    if (progress) {
@@ -237,14 +237,14 @@ nir_lower_atomics_to_ssbo(nir_shader *shader, unsigned offset_align_state)
                                           ssbo->data.binding + 1);
 
             struct glsl_struct_field field = {
-                  .type = type,
-                  .name = "counters",
-                  .location = -1,
+               .type = type,
+               .name = "counters",
+               .location = -1,
             };
 
             ssbo->interface_type =
-                  glsl_interface_type(&field, 1, GLSL_INTERFACE_PACKING_STD430,
-                                      false, "counters");
+               glsl_interface_type(&field, 1, GLSL_INTERFACE_PACKING_STD430,
+                                   false, "counters");
 
             replaced |= (1 << var->data.binding);
          }
@@ -255,4 +255,3 @@ nir_lower_atomics_to_ssbo(nir_shader *shader, unsigned offset_align_state)
 
    return progress;
 }
-

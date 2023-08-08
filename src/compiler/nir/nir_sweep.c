@@ -35,8 +35,10 @@
  * earlier, and even many times, trading CPU cycles for memory savings.
  */
 
-#define steal_list(mem_ctx, type, list) \
-   foreach_list_typed(type, obj, node, list) { ralloc_steal(mem_ctx, obj); }
+#define steal_list(mem_ctx, type, list)        \
+   foreach_list_typed(type, obj, node, list) { \
+      ralloc_steal(mem_ctx, obj);              \
+   }
 
 static void sweep_cf_node(nir_shader *nir, nir_cf_node *cf_node);
 

@@ -222,5 +222,6 @@ nir_lower_image(nir_shader *nir, const nir_lower_image_options *options)
 {
    return nir_shader_instructions_pass(nir, lower_image_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance, (void*)options);
+                                          nir_metadata_dominance,
+                                       (void *)options);
 }

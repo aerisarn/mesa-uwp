@@ -38,7 +38,7 @@ static bool
 nir_lower_interpolation_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 {
    nir_lower_interpolation_options options =
-         *(nir_lower_interpolation_options *)cb_data;
+      *(nir_lower_interpolation_options *)cb_data;
 
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -107,11 +107,11 @@ nir_lower_interpolation_instr(nir_builder *b, nir_instr *instr, void *cb_data)
       nir_ssa_def *val;
 
       val = nir_ffma(b, nir_channel(b, bary, 1),
-                        nir_channel(b, iid, 1),
-                        nir_channel(b, iid, 0));
+                     nir_channel(b, iid, 1),
+                     nir_channel(b, iid, 0));
       val = nir_ffma(b, nir_channel(b, bary, 0),
-                        nir_channel(b, iid, 2),
-                        val);
+                     nir_channel(b, iid, 2),
+                     val);
 
       comps[i] = val;
    }
@@ -126,6 +126,6 @@ nir_lower_interpolation(nir_shader *shader, nir_lower_interpolation_options opti
 {
    return nir_shader_instructions_pass(shader, nir_lower_interpolation_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        &options);
 }

@@ -32,7 +32,6 @@
  * in case backends want to insert their own code.
  */
 
-
 nir_function_impl *
 nir_shader_get_preamble(nir_shader *shader)
 {
@@ -209,7 +208,7 @@ can_move_intrinsic(nir_intrinsic_instr *instr, opt_preamble_ctx *ctx)
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_ssbo_ir3:
       return (nir_intrinsic_access(instr) & ACCESS_CAN_REORDER) &&
-         can_move_srcs(&instr->instr, ctx);
+             can_move_srcs(&instr->instr, ctx);
 
    default:
       return false;
@@ -354,8 +353,8 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    ctx.states = calloc(impl->ssa_alloc, sizeof(*ctx.states));
 
    /* Step 1: Calculate can_move */
-   nir_foreach_block (block, impl) {
-      nir_foreach_instr (instr, block) {
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
          nir_ssa_def *def = nir_instr_ssa_def(instr);
          if (!def)
             continue;
@@ -380,8 +379,8 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
     * program because it has a non-can_move user, including recursively.
     */
    unsigned num_candidates = 0;
-   nir_foreach_block_reverse (block, impl) {
-      nir_foreach_instr_reverse (instr, block) {
+   nir_foreach_block_reverse(block, impl) {
+      nir_foreach_instr_reverse(instr, block) {
          nir_ssa_def *def = nir_instr_ssa_def(instr);
          if (!def)
             continue;
@@ -394,7 +393,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
          bool is_candidate = !avoid_instr(instr, options);
          state->candidate = false;
          state->must_stay = false;
-         nir_foreach_use (use, def) {
+         nir_foreach_use(use, def) {
             nir_ssa_def *use_def = nir_instr_ssa_def(use->parent_instr);
             if (!use_def || !ctx.states[use_def->index].can_move ||
                 ctx.states[use_def->index].must_stay) {
@@ -407,7 +406,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
             }
          }
 
-         nir_foreach_if_use (use, def) {
+         nir_foreach_if_use(use, def) {
             if (is_candidate)
                state->candidate = true;
             else
@@ -440,8 +439,8 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
     *
     * While we're here, also collect an array of candidates.
     */
-   nir_foreach_block (block, impl) {
-      nir_foreach_instr (instr, block) {
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
          nir_ssa_def *def = nir_instr_ssa_def(instr);
          if (!def)
             continue;
@@ -452,7 +451,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
 
          ctx.def = def;
          nir_foreach_src(instr, update_src_value, &ctx);
-         
+
          /* If this instruction is a candidate, its value shouldn't be
           * propagated so we skip dividing it.
           *
@@ -468,7 +467,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
 
          if (state->candidate) {
             state->benefit = state->value -
-               options->rewrite_cost_cb(def, options->cb_data);
+                             options->rewrite_cost_cb(def, options->cb_data);
 
             if (state->benefit > 0) {
                options->def_size(def, &state->size, &state->align);
@@ -497,7 +496,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
     */
 
    if (((*size) + total_size) > options->preamble_storage_size) {
-     qsort(candidates, num_candidates, sizeof(*candidates), candidate_sort);
+      qsort(candidates, num_candidates, sizeof(*candidates), candidate_sort);
    }
 
    unsigned offset = *size;
@@ -526,8 +525,8 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    nir_builder preamble_builder = nir_builder_at(nir_before_cf_list(&preamble->body));
    nir_builder *b = &preamble_builder;
 
-   nir_foreach_block (block, impl) {
-      nir_foreach_instr (instr, block) {
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
          nir_ssa_def *def = nir_instr_ssa_def(instr);
          if (!def)
             continue;
@@ -570,8 +569,8 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    nir_builder builder = nir_builder_create(impl);
    b = &builder;
 
-   nir_foreach_block (block, impl) {
-      nir_foreach_instr_safe (instr, block) {
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
          nir_ssa_def *def = nir_instr_ssa_def(instr);
          if (!def)
             continue;
@@ -586,7 +585,6 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
             nir_load_preamble(b, def->num_components, def->bit_size,
                               .base = state->offset);
 
-
          nir_ssa_def_rewrite_uses(def, new_def);
          nir_instr_free_and_dce(instr);
       }
@@ -594,7 +592,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
 
    nir_metadata_preserve(impl,
                          nir_metadata_block_index |
-                         nir_metadata_dominance);
+                            nir_metadata_dominance);
 
    ralloc_free(remap_table);
    free(ctx.states);

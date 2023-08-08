@@ -73,33 +73,81 @@ lower_alu_instr(nir_alu_instr *alu)
       alu->op = nir_op_mov;
       break;
 
-   case nir_op_flt: alu->op = nir_op_flt32; break;
-   case nir_op_fge: alu->op = nir_op_fge32; break;
-   case nir_op_feq: alu->op = nir_op_feq32; break;
-   case nir_op_fneu: alu->op = nir_op_fneu32; break;
-   case nir_op_ilt: alu->op = nir_op_ilt32; break;
-   case nir_op_ige: alu->op = nir_op_ige32; break;
-   case nir_op_ieq: alu->op = nir_op_ieq32; break;
-   case nir_op_ine: alu->op = nir_op_ine32; break;
-   case nir_op_ult: alu->op = nir_op_ult32; break;
-   case nir_op_uge: alu->op = nir_op_uge32; break;
+   case nir_op_flt:
+      alu->op = nir_op_flt32;
+      break;
+   case nir_op_fge:
+      alu->op = nir_op_fge32;
+      break;
+   case nir_op_feq:
+      alu->op = nir_op_feq32;
+      break;
+   case nir_op_fneu:
+      alu->op = nir_op_fneu32;
+      break;
+   case nir_op_ilt:
+      alu->op = nir_op_ilt32;
+      break;
+   case nir_op_ige:
+      alu->op = nir_op_ige32;
+      break;
+   case nir_op_ieq:
+      alu->op = nir_op_ieq32;
+      break;
+   case nir_op_ine:
+      alu->op = nir_op_ine32;
+      break;
+   case nir_op_ult:
+      alu->op = nir_op_ult32;
+      break;
+   case nir_op_uge:
+      alu->op = nir_op_uge32;
+      break;
 
-   case nir_op_ball_fequal2:  alu->op = nir_op_b32all_fequal2; break;
-   case nir_op_ball_fequal3:  alu->op = nir_op_b32all_fequal3; break;
-   case nir_op_ball_fequal4:  alu->op = nir_op_b32all_fequal4; break;
-   case nir_op_bany_fnequal2: alu->op = nir_op_b32any_fnequal2; break;
-   case nir_op_bany_fnequal3: alu->op = nir_op_b32any_fnequal3; break;
-   case nir_op_bany_fnequal4: alu->op = nir_op_b32any_fnequal4; break;
-   case nir_op_ball_iequal2:  alu->op = nir_op_b32all_iequal2; break;
-   case nir_op_ball_iequal3:  alu->op = nir_op_b32all_iequal3; break;
-   case nir_op_ball_iequal4:  alu->op = nir_op_b32all_iequal4; break;
-   case nir_op_bany_inequal2: alu->op = nir_op_b32any_inequal2; break;
-   case nir_op_bany_inequal3: alu->op = nir_op_b32any_inequal3; break;
-   case nir_op_bany_inequal4: alu->op = nir_op_b32any_inequal4; break;
+   case nir_op_ball_fequal2:
+      alu->op = nir_op_b32all_fequal2;
+      break;
+   case nir_op_ball_fequal3:
+      alu->op = nir_op_b32all_fequal3;
+      break;
+   case nir_op_ball_fequal4:
+      alu->op = nir_op_b32all_fequal4;
+      break;
+   case nir_op_bany_fnequal2:
+      alu->op = nir_op_b32any_fnequal2;
+      break;
+   case nir_op_bany_fnequal3:
+      alu->op = nir_op_b32any_fnequal3;
+      break;
+   case nir_op_bany_fnequal4:
+      alu->op = nir_op_b32any_fnequal4;
+      break;
+   case nir_op_ball_iequal2:
+      alu->op = nir_op_b32all_iequal2;
+      break;
+   case nir_op_ball_iequal3:
+      alu->op = nir_op_b32all_iequal3;
+      break;
+   case nir_op_ball_iequal4:
+      alu->op = nir_op_b32all_iequal4;
+      break;
+   case nir_op_bany_inequal2:
+      alu->op = nir_op_b32any_inequal2;
+      break;
+   case nir_op_bany_inequal3:
+      alu->op = nir_op_b32any_inequal3;
+      break;
+   case nir_op_bany_inequal4:
+      alu->op = nir_op_b32any_inequal4;
+      break;
 
-   case nir_op_bcsel: alu->op = nir_op_b32csel; break;
+   case nir_op_bcsel:
+      alu->op = nir_op_b32csel;
+      break;
 
-   case nir_op_fisfinite: alu->op = nir_op_fisfinite32; break;
+   case nir_op_fisfinite:
+      alu->op = nir_op_fisfinite32;
+      break;
 
    default:
       assert(alu->dest.dest.ssa.bit_size > 1);
@@ -181,6 +229,7 @@ nir_lower_bool_to_int32(nir_shader *shader)
    progress |=
       nir_shader_instructions_pass(shader, nir_lower_bool_to_int32_instr,
                                    nir_metadata_block_index |
-                                   nir_metadata_dominance, NULL);
+                                      nir_metadata_dominance,
+                                   NULL);
    return progress;
 }

@@ -278,7 +278,7 @@ append_set_vertex_and_primitive_count(nir_block *end_block, struct state *state)
     * but before any jump instructions (return).
     */
    set_foreach(end_block->predecessors, entry) {
-      nir_block *pred = (nir_block *) entry->key;
+      nir_block *pred = (nir_block *)entry->key;
       b->cursor = nir_after_block_before_jump(pred);
 
       for (unsigned stream = 0; stream < NIR_MAX_XFB_STREAMS; ++stream) {
@@ -293,8 +293,8 @@ append_set_vertex_and_primitive_count(nir_block *end_block, struct state *state)
             /* Inactive stream: vertex count is 0, primitive count is 0 or undef. */
             vtx_cnt = nir_imm_int(b, 0);
             prim_cnt = state->count_prims || state->is_points
-                       ? nir_imm_int(b, 0)
-                       : nir_ssa_undef(b, 1, 32);
+                          ? nir_imm_int(b, 0)
+                          : nir_ssa_undef(b, 1, 32);
          } else {
             if (state->overwrite_incomplete)
                overwrite_incomplete_primitives(state, stream);
@@ -328,8 +328,7 @@ static bool
 a_block_needs_set_vertex_and_primitive_count(nir_block *end_block, bool per_stream)
 {
    set_foreach(end_block->predecessors, entry) {
-      nir_block *pred = (nir_block *) entry->key;
-
+      nir_block *pred = (nir_block *)entry->key;
 
       for (unsigned stream = 0; stream < NIR_MAX_XFB_STREAMS; ++stream) {
          /* When it's not per-stream, we only need to write one variable. */

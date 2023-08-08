@@ -123,19 +123,19 @@ lower_intrinsic(lower_state *state, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
    case nir_intrinsic_load_ubo:
-      //# src[] = { buffer_index, offset }.
+      // # src[] = { buffer_index, offset }.
       if (large_ubo(state, intr->src[0]))
          lower_large_src(&intr->src[1], state);
       return;
 
    case nir_intrinsic_load_ssbo:
-      //# src[] = { buffer_index, offset }.
+      // # src[] = { buffer_index, offset }.
       if (large_ssbo(state, intr->src[0]))
          lower_large_src(&intr->src[1], state);
       return;
 
    case nir_intrinsic_store_ssbo:
-      //# src[] = { value, block_index, offset }
+      // # src[] = { value, block_index, offset }
       if (large_ssbo(state, intr->src[1]))
          lower_large_src(&intr->src[2], state);
       return;
@@ -215,7 +215,7 @@ nir_lower_amul(nir_shader *shader,
    /* Figure out which UBOs or SSBOs are large enough to be
     * disqualified from imul24:
     */
-   nir_foreach_variable_in_shader (var, shader) {
+   nir_foreach_variable_in_shader(var, shader) {
       if (var->data.mode == nir_var_mem_ubo) {
          if (is_large(&state, var)) {
             state.has_large_ubo = true;
@@ -270,8 +270,7 @@ nir_lower_amul(nir_shader *shader,
       }
 
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
-
+                                     nir_metadata_dominance);
    }
 
    return state.progress;

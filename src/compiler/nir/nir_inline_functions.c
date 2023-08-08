@@ -26,16 +26,18 @@
 #include "nir_control_flow.h"
 #include "nir_vla.h"
 
-static bool function_ends_in_jump(nir_function_impl *impl)
+static bool
+function_ends_in_jump(nir_function_impl *impl)
 {
    nir_block *last_block = nir_impl_last_block(impl);
    return nir_block_ends_in_jump(last_block);
 }
 
-void nir_inline_function_impl(struct nir_builder *b,
-                              const nir_function_impl *impl,
-                              nir_ssa_def **params,
-                              struct hash_table *shader_var_remap)
+void
+nir_inline_function_impl(struct nir_builder *b,
+                         const nir_function_impl *impl,
+                         nir_ssa_def **params,
+                         struct hash_table *shader_var_remap)
 {
    nir_function_impl *copy = nir_function_impl_clone(b->shader, impl);
 

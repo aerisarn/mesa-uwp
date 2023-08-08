@@ -81,7 +81,6 @@ lower_const_initializer(struct nir_builder *b, struct exec_list *var_list,
          progress = true;
          var->pointer_initializer = NULL;
       }
-
    }
 
    return progress;
@@ -121,8 +120,8 @@ nir_lower_variable_initializers(nir_shader *shader, nir_variable_mode modes)
       if (impl_progress) {
          progress = true;
          nir_metadata_preserve(impl, nir_metadata_block_index |
-                                               nir_metadata_dominance |
-                                               nir_metadata_live_ssa_defs);
+                                        nir_metadata_dominance |
+                                        nir_metadata_live_ssa_defs);
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);
       }
@@ -177,8 +176,8 @@ nir_zero_initialize_shared_memory(nir_shader *shader,
       nir_pop_if(&b, NULL);
 
       nir_store_shared(&b, nir_imm_zero(&b, chunk_comps, 32), offset,
-                       .align_mul=chunk_size,
-                       .write_mask=((1 << chunk_comps) - 1));
+                       .align_mul = chunk_size,
+                       .write_mask = ((1 << chunk_comps) - 1));
 
       nir_ssa_def *new_offset = nir_iadd_imm(&b, offset, chunk_size * local_count);
       nir_store_var(&b, it, new_offset, 0x1);

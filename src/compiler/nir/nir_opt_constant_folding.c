@@ -21,11 +21,11 @@
  * IN THE SOFTWARE.
  */
 
+#include <math.h>
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_constant_expressions.h"
 #include "nir_deref.h"
-#include <math.h>
 
 /*
  * Implements SSA-based constant folding.
@@ -63,7 +63,7 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
 
       if (src_instr->type != nir_instr_type_load_const)
          return false;
-      nir_load_const_instr* load_const = nir_instr_as_load_const(src_instr);
+      nir_load_const_instr *load_const = nir_instr_as_load_const(src_instr);
 
       for (unsigned j = 0; j < nir_ssa_alu_instr_src_components(alu, i);
            j++) {
@@ -85,8 +85,8 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
 
    b->cursor = nir_before_instr(&alu->instr);
    nir_ssa_def *imm = nir_build_imm(b, alu->dest.dest.ssa.num_components,
-                                       alu->dest.dest.ssa.bit_size,
-                                       dest);
+                                    alu->dest.dest.ssa.bit_size,
+                                    dest);
    nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, imm);
    nir_instr_remove(&alu->instr);
    nir_instr_free(&alu->instr);
@@ -132,12 +132,12 @@ const_value_for_deref(nir_deref_instr *deref)
 
          uint64_t idx = nir_src_as_uint(p->arr.index);
          if (c->num_elements > 0) {
-            assert(glsl_type_is_array(path.path[i-1]->type));
+            assert(glsl_type_is_array(path.path[i - 1]->type));
             if (idx >= c->num_elements)
                goto fail;
             c = c->elements[idx];
          } else {
-            assert(glsl_type_is_vector(path.path[i-1]->type));
+            assert(glsl_type_is_vector(path.path[i - 1]->type));
             assert(glsl_type_is_scalar(p->type));
             if (idx >= NIR_MAX_VEC_COMPONENTS)
                goto fail;
@@ -147,7 +147,7 @@ const_value_for_deref(nir_deref_instr *deref)
       }
 
       case nir_deref_type_struct:
-         assert(glsl_type_is_struct(path.path[i-1]->type));
+         assert(glsl_type_is_struct(path.path[i - 1]->type));
          assert(v == NULL && c->num_elements > 0);
          if (p->strct.index >= c->num_elements)
             goto fail;
@@ -209,7 +209,7 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       if (v) {
          b->cursor = nir_before_instr(&intrin->instr);
          nir_ssa_def *val = nir_build_imm(b, intrin->dest.ssa.num_components,
-                                             intrin->dest.ssa.bit_size, v);
+                                          intrin->dest.ssa.bit_size, v);
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
          nir_instr_remove(&intrin->instr);
          return true;
@@ -234,11 +234,11 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_ssa_def *val;
       if (offset >= range) {
          val = nir_ssa_undef(b, intrin->dest.ssa.num_components,
-                                intrin->dest.ssa.bit_size);
+                             intrin->dest.ssa.bit_size);
       } else {
          nir_const_value imm[NIR_MAX_VEC_COMPONENTS];
          memset(imm, 0, sizeof(imm));
-         uint8_t *data = (uint8_t*)b->shader->constant_data + base;
+         uint8_t *data = (uint8_t *)b->shader->constant_data + base;
          for (unsigned i = 0; i < intrin->num_components; i++) {
             unsigned bytes = intrin->dest.ssa.bit_size / 8;
             bytes = MIN2(bytes, range - offset);
@@ -247,7 +247,7 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
             offset += bytes;
          }
          val = nir_build_imm(b, intrin->dest.ssa.num_components,
-                                intrin->dest.ssa.bit_size, imm);
+                             intrin->dest.ssa.bit_size, imm);
       }
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
       nir_instr_remove(&intrin->instr);
@@ -379,7 +379,7 @@ nir_opt_constant_folding(nir_shader *shader)
 
    bool progress = nir_shader_instructions_pass(shader, try_fold_instr,
                                                 nir_metadata_block_index |
-                                                nir_metadata_dominance,
+                                                   nir_metadata_dominance,
                                                 &state);
 
    /* This doesn't free the constant data if there are no constant loads because

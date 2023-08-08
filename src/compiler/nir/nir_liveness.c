@@ -22,8 +22,8 @@
  */
 
 #include "nir.h"
-#include "nir_worklist.h"
 #include "nir_vla.h"
+#include "nir_worklist.h"
 
 /*
  * Basic liveness analysis.  This works only in SSA form.
@@ -72,7 +72,7 @@ set_src_live(nir_src *src, void *void_live)
    BITSET_WORD *live = void_live;
 
    if (nir_src_is_undef(*src))
-      return true;   /* undefined variables are never live */
+      return true; /* undefined variables are never live */
 
    BITSET_SET(live, src->ssa->index);
 
@@ -137,7 +137,7 @@ nir_live_ssa_defs_impl(nir_function_impl *impl)
    /* Number the instructions so we can do cheap interference tests using the
     * instruction index.
     */
-   nir_metadata_require(impl, nir_metadata_instr_index);
+      nir_metadata_require(impl, nir_metadata_instr_index);
 
    nir_block_worklist_init(&state.worklist, impl->num_blocks, NULL);
 
@@ -147,7 +147,6 @@ nir_live_ssa_defs_impl(nir_function_impl *impl)
    nir_foreach_block(block, impl) {
       init_liveness_block(block, &state);
    }
-
 
    /* We're now ready to work through the worklist and update the liveness
     * sets of each of the blocks.  By the time we get to this point, every

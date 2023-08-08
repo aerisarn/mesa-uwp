@@ -21,11 +21,11 @@
  * IN THE SOFTWARE.
  */
 
-#include <inttypes.h>
 #include "nir_search.h"
+#include <inttypes.h>
+#include "util/half_float.h"
 #include "nir_builder.h"
 #include "nir_worklist.h"
-#include "util/half_float.h"
 
 /* This should be the same as nir_search_max_comm_ops in nir_algebraic.py. */
 #define NIR_SEARCH_MAX_COMM_OPS 8
@@ -53,12 +53,23 @@ static bool
 nir_algebraic_automaton(nir_instr *instr, struct util_dynarray *states,
                         const struct per_op_table *pass_op_table);
 
-static const uint8_t identity_swizzle[NIR_MAX_VEC_COMPONENTS] =
-{
-    0,  1,  2,  3,
-    4,  5,  6,  7,
-    8,  9, 10, 11,
-   12, 13, 14, 15,
+static const uint8_t identity_swizzle[NIR_MAX_VEC_COMPONENTS] = {
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
 };
 
 /**
@@ -109,29 +120,29 @@ nir_op_matches_search_op(nir_op nop, uint16_t sop)
    if (sop <= nir_last_opcode)
       return nop == sop;
 
-#define MATCH_FCONV_CASE(op) \
-   case nir_search_op_##op: \
+#define MATCH_FCONV_CASE(op)           \
+   case nir_search_op_##op:            \
       return nop == nir_op_##op##16 || \
              nop == nir_op_##op##32 || \
              nop == nir_op_##op##64;
 
-#define MATCH_ICONV_CASE(op) \
-   case nir_search_op_##op: \
-      return nop == nir_op_##op##8 || \
+#define MATCH_ICONV_CASE(op)           \
+   case nir_search_op_##op:            \
+      return nop == nir_op_##op##8 ||  \
              nop == nir_op_##op##16 || \
              nop == nir_op_##op##32 || \
              nop == nir_op_##op##64;
 
    switch (sop) {
-   MATCH_FCONV_CASE(i2f)
-   MATCH_FCONV_CASE(u2f)
-   MATCH_FCONV_CASE(f2f)
-   MATCH_ICONV_CASE(f2u)
-   MATCH_ICONV_CASE(f2i)
-   MATCH_ICONV_CASE(u2u)
-   MATCH_ICONV_CASE(i2i)
-   MATCH_FCONV_CASE(b2f)
-   MATCH_ICONV_CASE(b2i)
+      MATCH_FCONV_CASE(i2f)
+      MATCH_FCONV_CASE(u2f)
+      MATCH_FCONV_CASE(f2f)
+      MATCH_ICONV_CASE(f2u)
+      MATCH_ICONV_CASE(f2i)
+      MATCH_ICONV_CASE(u2u)
+      MATCH_ICONV_CASE(i2i)
+      MATCH_FCONV_CASE(b2f)
+      MATCH_ICONV_CASE(b2i)
    default:
       unreachable("Invalid nir_search_op");
    }
@@ -144,29 +155,28 @@ uint16_t
 nir_search_op_for_nir_op(nir_op nop)
 {
 #define MATCH_FCONV_CASE(op) \
-   case nir_op_##op##16: \
-   case nir_op_##op##32: \
-   case nir_op_##op##64: \
+   case nir_op_##op##16:     \
+   case nir_op_##op##32:     \
+   case nir_op_##op##64:     \
       return nir_search_op_##op;
 
 #define MATCH_ICONV_CASE(op) \
-   case nir_op_##op##8: \
-   case nir_op_##op##16: \
-   case nir_op_##op##32: \
-   case nir_op_##op##64: \
+   case nir_op_##op##8:      \
+   case nir_op_##op##16:     \
+   case nir_op_##op##32:     \
+   case nir_op_##op##64:     \
       return nir_search_op_##op;
 
-
    switch (nop) {
-   MATCH_FCONV_CASE(i2f)
-   MATCH_FCONV_CASE(u2f)
-   MATCH_FCONV_CASE(f2f)
-   MATCH_ICONV_CASE(f2u)
-   MATCH_ICONV_CASE(f2i)
-   MATCH_ICONV_CASE(u2u)
-   MATCH_ICONV_CASE(i2i)
-   MATCH_FCONV_CASE(b2f)
-   MATCH_ICONV_CASE(b2i)
+      MATCH_FCONV_CASE(i2f)
+      MATCH_FCONV_CASE(u2f)
+      MATCH_FCONV_CASE(f2f)
+      MATCH_ICONV_CASE(f2u)
+      MATCH_ICONV_CASE(f2i)
+      MATCH_ICONV_CASE(u2u)
+      MATCH_ICONV_CASE(i2i)
+      MATCH_FCONV_CASE(b2f)
+      MATCH_ICONV_CASE(b2i)
    default:
       return nop;
    }
@@ -181,35 +191,44 @@ nir_op_for_search_op(uint16_t sop, unsigned bit_size)
    if (sop <= nir_last_opcode)
       return sop;
 
-#define RET_FCONV_CASE(op) \
-   case nir_search_op_##op: \
-      switch (bit_size) { \
-      case 16: return nir_op_##op##16; \
-      case 32: return nir_op_##op##32; \
-      case 64: return nir_op_##op##64; \
-      default: unreachable("Invalid bit size"); \
+#define RET_FCONV_CASE(op)                \
+   case nir_search_op_##op:               \
+      switch (bit_size) {                 \
+      case 16:                            \
+         return nir_op_##op##16;          \
+      case 32:                            \
+         return nir_op_##op##32;          \
+      case 64:                            \
+         return nir_op_##op##64;          \
+      default:                            \
+         unreachable("Invalid bit size"); \
       }
 
-#define RET_ICONV_CASE(op) \
-   case nir_search_op_##op: \
-      switch (bit_size) { \
-      case 8:  return nir_op_##op##8; \
-      case 16: return nir_op_##op##16; \
-      case 32: return nir_op_##op##32; \
-      case 64: return nir_op_##op##64; \
-      default: unreachable("Invalid bit size"); \
+#define RET_ICONV_CASE(op)                \
+   case nir_search_op_##op:               \
+      switch (bit_size) {                 \
+      case 8:                             \
+         return nir_op_##op##8;           \
+      case 16:                            \
+         return nir_op_##op##16;          \
+      case 32:                            \
+         return nir_op_##op##32;          \
+      case 64:                            \
+         return nir_op_##op##64;          \
+      default:                            \
+         unreachable("Invalid bit size"); \
       }
 
    switch (sop) {
-   RET_FCONV_CASE(i2f)
-   RET_FCONV_CASE(u2f)
-   RET_FCONV_CASE(f2f)
-   RET_ICONV_CASE(f2u)
-   RET_ICONV_CASE(f2i)
-   RET_ICONV_CASE(u2u)
-   RET_ICONV_CASE(i2i)
-   RET_FCONV_CASE(b2f)
-   RET_ICONV_CASE(b2i)
+      RET_FCONV_CASE(i2f)
+      RET_FCONV_CASE(u2f)
+      RET_FCONV_CASE(f2f)
+      RET_ICONV_CASE(f2u)
+      RET_ICONV_CASE(f2i)
+      RET_ICONV_CASE(u2u)
+      RET_ICONV_CASE(i2i)
+      RET_FCONV_CASE(b2f)
+      RET_ICONV_CASE(b2i)
    default:
       unreachable("Invalid nir_search_op");
    }
@@ -384,8 +403,9 @@ match_expression(const nir_algebraic_table *table, const nir_search_expression *
     */
    unsigned comm_op_flip =
       (expr->comm_expr_idx >= 0 &&
-       expr->comm_expr_idx < NIR_SEARCH_MAX_COMM_OPS) ?
-      ((state->comm_op_direction >> expr->comm_expr_idx) & 1) : 0;
+       expr->comm_expr_idx < NIR_SEARCH_MAX_COMM_OPS)
+         ? ((state->comm_op_direction >> expr->comm_expr_idx) & 1)
+         : 0;
 
    bool matched = true;
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
@@ -522,7 +542,8 @@ construct_value(nir_builder *build,
    }
 }
 
-UNUSED static void dump_value(const nir_algebraic_table *table, const nir_search_value *val)
+UNUSED static void
+dump_value(const nir_algebraic_table *table, const nir_search_value *val)
 {
    switch (val->type) {
    case nir_search_value_constant: {
@@ -532,10 +553,10 @@ UNUSED static void dump_value(const nir_algebraic_table *table, const nir_search
          fprintf(stderr, "%f", sconst->data.d);
          break;
       case nir_type_int:
-         fprintf(stderr, "%"PRId64, sconst->data.i);
+         fprintf(stderr, "%" PRId64, sconst->data.i);
          break;
       case nir_type_uint:
-         fprintf(stderr, "0x%"PRIx64, sconst->data.u);
+         fprintf(stderr, "0x%" PRIx64, sconst->data.u);
          break;
       case nir_type_bool:
          fprintf(stderr, "%s", sconst->data.u != 0 ? "True" : "False");
@@ -560,13 +581,15 @@ UNUSED static void dump_value(const nir_algebraic_table *table, const nir_search
       if (expr->inexact)
          fprintf(stderr, "~");
       switch (expr->opcode) {
-#define CASE(n) \
-      case nir_search_op_##n: fprintf(stderr, #n); break;
-      CASE(b2f)
-      CASE(b2i)
-      CASE(i2i)
-      CASE(f2i)
-      CASE(i2f)
+#define CASE(n)            \
+   case nir_search_op_##n: \
+      fprintf(stderr, #n); \
+      break;
+         CASE(b2f)
+         CASE(b2i)
+         CASE(i2i)
+         CASE(f2i)
+         CASE(i2f)
 #undef CASE
       default:
          fprintf(stderr, "%s", nir_op_infos[expr->opcode].name);
@@ -856,7 +879,7 @@ nir_algebraic_impl(nir_function_impl *impl,
     * state 0 is the default state, which means we don't have to visit
     * anything other than constants and ALU instructions.
     */
-   struct util_dynarray states = {0};
+   struct util_dynarray states = { 0 };
    if (!util_dynarray_resize(&states, uint16_t, impl->ssa_alloc)) {
       nir_metadata_preserve(impl, nir_metadata_all);
       return false;
@@ -911,7 +934,7 @@ nir_algebraic_impl(nir_function_impl *impl,
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

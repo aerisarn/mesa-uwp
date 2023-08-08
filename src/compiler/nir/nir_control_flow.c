@@ -154,7 +154,6 @@ link_block_to_non_block(nir_block *block, nir_cf_node *node)
       unlink_block_successors(block);
       link_blocks(block, loop_header_block, NULL);
    }
-
 }
 
 /**
@@ -190,7 +189,7 @@ split_block_beginning(nir_block *block)
    exec_node_insert_node_before(&block->cf_node.node, &new_block->cf_node.node);
 
    set_foreach(block->predecessors, entry) {
-      nir_block *pred = (nir_block *) entry->key;
+      nir_block *pred = (nir_block *)entry->key;
       replace_successor(pred, block, new_block);
    }
 
@@ -440,7 +439,7 @@ nir_loop_add_continue_construct(nir_loop *loop)
    nir_block *header = nir_loop_first_block(loop);
    nir_block *preheader = nir_block_cf_tree_prev(header);
    set_foreach(header->predecessors, entry) {
-      nir_block *pred = (nir_block *) entry->key;
+      nir_block *pred = (nir_block *)entry->key;
       if (pred != preheader)
          replace_successor(pred, header, cont);
    }
@@ -457,7 +456,7 @@ nir_loop_remove_continue_construct(nir_loop *loop)
    nir_block *header = nir_loop_first_block(loop);
    nir_block *cont = nir_loop_first_continue_block(loop);
    set_foreach(cont->predecessors, entry) {
-      nir_block *pred = (nir_block*) entry->key;
+      nir_block *pred = (nir_block *)entry->key;
       replace_successor(pred, cont, header);
    }
    block_remove_pred(header, cont);
@@ -611,8 +610,7 @@ stitch_blocks(nir_block *before, nir_block *after)
       exec_list_append(&before->instr_list, &after->instr_list);
       exec_node_remove(&after->cf_node.node);
 
-      return last_before_instr ? nir_after_instr(last_before_instr) :
-                                 nir_before_block(before);
+      return last_before_instr ? nir_after_instr(last_before_instr) : nir_before_block(before);
    }
 }
 

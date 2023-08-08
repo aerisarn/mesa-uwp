@@ -87,9 +87,9 @@ remove_phis_block(nir_block *block, nir_builder *b)
           */
          if (src->src.ssa == &phi->dest.ssa)
             continue;
-         
+
          if (def == NULL) {
-            def  = src->src.ssa;
+            def = src->src.ssa;
             mov = get_parent_mov(def);
          } else if (nir_src_is_undef(src->src) &&
                     nir_block_dominates(def->parent_instr->block, src->pred)) {
@@ -154,7 +154,7 @@ nir_opt_remove_phis_impl(nir_function_impl *impl)
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
@@ -172,4 +172,3 @@ nir_opt_remove_phis(nir_shader *shader)
 
    return progress;
 }
-

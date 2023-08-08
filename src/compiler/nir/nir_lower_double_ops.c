@@ -25,8 +25,8 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-#include <math.h>
 #include <float.h>
+#include <math.h>
 
 /*
  * Lowers some unsupported double operations, using only:
@@ -98,8 +98,7 @@ fix_inv_result(nir_builder *b, nir_ssa_def *res, nir_ssa_def *src,
     * denorms properly. Note that this doesn't preserve positive/negative
     * zeros, but GLSL doesn't require it.
     */
-   res = nir_bcsel(b, nir_ior(b, nir_ile_imm(b, exp, 0),
-                              nir_feq_imm(b, nir_fabs(b, src), INFINITY)),
+   res = nir_bcsel(b, nir_ior(b, nir_ile_imm(b, exp, 0), nir_feq_imm(b, nir_fabs(b, src), INFINITY)),
                    nir_imm_double(b, 0.0f), res);
 
    /* If the original input was 0, generate the correctly-signed infinity */
@@ -107,7 +106,6 @@ fix_inv_result(nir_builder *b, nir_ssa_def *res, nir_ssa_def *src,
                    res, get_signed_inf(b, src));
 
    return res;
-
 }
 
 static nir_ssa_def *
@@ -301,9 +299,8 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
                                  nir_imm_double(b, 0.0),
                                  src);
       }
-      res = nir_bcsel(b, nir_ior(b, nir_feq_imm(b, src_flushed, 0.0),
-                                 nir_feq_imm(b, src, INFINITY)),
-                                 src_flushed, res);
+      res = nir_bcsel(b, nir_ior(b, nir_feq_imm(b, src_flushed, 0.0), nir_feq_imm(b, src, INFINITY)),
+                      src_flushed, res);
    } else {
       res = fix_inv_result(b, res, src, new_exp);
    }
@@ -352,15 +349,14 @@ lower_trunc(nir_builder *b, nir_ssa_def *src)
    nir_ssa_def *src_lo = nir_unpack_64_2x32_split_x(b, src);
    nir_ssa_def *src_hi = nir_unpack_64_2x32_split_y(b, src);
 
-   return
-      nir_bcsel(b,
-                nir_ilt_imm(b, unbiased_exp, 0),
-                nir_imm_double(b, 0.0),
-                nir_bcsel(b, nir_ige_imm(b, unbiased_exp, 53),
-                          src,
-                          nir_pack_64_2x32_split(b,
-                                                 nir_iand(b, mask_lo, src_lo),
-                                                 nir_iand(b, mask_hi, src_hi))));
+   return nir_bcsel(b,
+                    nir_ilt_imm(b, unbiased_exp, 0),
+                    nir_imm_double(b, 0.0),
+                    nir_bcsel(b, nir_ige_imm(b, unbiased_exp, 53),
+                              src,
+                              nir_pack_64_2x32_split(b,
+                                                     nir_iand(b, mask_lo, src_lo),
+                                                     nir_iand(b, mask_hi, src_hi))));
 }
 
 static nir_ssa_def *
@@ -415,7 +411,8 @@ lower_round_even(nir_builder *b, nir_ssa_def *src)
 
    return nir_bcsel(b, nir_flt(b, nir_fabs(b, src), two52),
                     nir_pack_64_2x32_split(b, nir_unpack_64_2x32_split_x(b, res),
-                                           nir_ior(b, nir_unpack_64_2x32_split_y(b, res), sign)), src);
+                                           nir_ior(b, nir_unpack_64_2x32_split_y(b, res), sign)),
+                    src);
 }
 
 static nir_ssa_def *
@@ -506,8 +503,7 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
       if (instr->src[0].src.ssa->bit_size == 64) {
          name = "__int64_to_fp64";
          mangled_name = "__int64_to_fp64(i641;";
-      }
-      else {
+      } else {
          name = "__int_to_fp64";
          mangled_name = "__int_to_fp64(i1;";
       }
@@ -516,8 +512,7 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
       if (instr->src[0].src.ssa->bit_size == 64) {
          name = "__uint64_to_fp64";
          mangled_name = "__uint64_to_fp64(u641;";
-      }
-      else {
+      } else {
          name = "__uint_to_fp64";
          mangled_name = "__uint_to_fp64(u1;";
       }
@@ -617,7 +612,9 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
       assert(func);
    }
 
-   nir_ssa_def *params[4] = { NULL, };
+   nir_ssa_def *params[4] = {
+      NULL,
+   };
 
    nir_variable *ret_tmp =
       nir_local_variable_create(b->impl, return_type, "return_tmp");
@@ -639,18 +636,30 @@ nir_lower_doubles_options
 nir_lower_doubles_op_to_options_mask(nir_op opcode)
 {
    switch (opcode) {
-   case nir_op_frcp:          return nir_lower_drcp;
-   case nir_op_fsqrt:         return nir_lower_dsqrt;
-   case nir_op_frsq:          return nir_lower_drsq;
-   case nir_op_ftrunc:        return nir_lower_dtrunc;
-   case nir_op_ffloor:        return nir_lower_dfloor;
-   case nir_op_fceil:         return nir_lower_dceil;
-   case nir_op_ffract:        return nir_lower_dfract;
-   case nir_op_fround_even:   return nir_lower_dround_even;
-   case nir_op_fmod:          return nir_lower_dmod;
-   case nir_op_fsub:          return nir_lower_dsub;
-   case nir_op_fdiv:          return nir_lower_ddiv;
-   default:                   return 0;
+   case nir_op_frcp:
+      return nir_lower_drcp;
+   case nir_op_fsqrt:
+      return nir_lower_dsqrt;
+   case nir_op_frsq:
+      return nir_lower_drsq;
+   case nir_op_ftrunc:
+      return nir_lower_dtrunc;
+   case nir_op_ffloor:
+      return nir_lower_dfloor;
+   case nir_op_fceil:
+      return nir_lower_dceil;
+   case nir_op_ffract:
+      return nir_lower_dfract;
+   case nir_op_fround_even:
+      return nir_lower_dround_even;
+   case nir_op_fmod:
+      return nir_lower_dmod;
+   case nir_op_fsub:
+      return nir_lower_dsub;
+   case nir_op_fdiv:
+      return nir_lower_ddiv;
+   default:
+      return 0;
    }
 }
 
@@ -771,7 +780,7 @@ nir_lower_doubles_impl(nir_function_impl *impl,
       nir_opt_deref_impl(impl);
    } else if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
+                                     nir_metadata_dominance);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

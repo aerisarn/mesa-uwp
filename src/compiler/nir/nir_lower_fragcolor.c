@@ -19,7 +19,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
- * 
+ *
  * Authors:
  *    Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
  */
@@ -68,10 +68,8 @@ lower_fragcolor_instr(nir_builder *b, nir_instr *intr, void *data)
    nir_ssa_def *frag_color = instr->src[1].ssa;
    ralloc_free(out->name);
 
-   const char *name = out->data.index == 0 ? "gl_FragData[0]" :
-                                             "gl_SecondaryFragDataEXT[0]";
-   const char *name_tmpl = out->data.index == 0 ? "gl_FragData[%u]" :
-                                                  "gl_SecondaryFragDataEXT[%u]";
+   const char *name = out->data.index == 0 ? "gl_FragData[0]" : "gl_SecondaryFragDataEXT[0]";
+   const char *name_tmpl = out->data.index == 0 ? "gl_FragData[%u]" : "gl_SecondaryFragDataEXT[%u]";
 
    out->name = ralloc_strdup(out, name);
 
@@ -85,7 +83,7 @@ lower_fragcolor_instr(nir_builder *b, nir_instr *intr, void *data)
       char name[28];
       snprintf(name, sizeof(name), name_tmpl, i);
       nir_variable *out_color = nir_variable_create(b->shader, nir_var_shader_out,
-                                                   out->type, name);
+                                                    out->type, name);
       out_color->data.location = FRAG_RESULT_DATA0 + i;
       out_color->data.driver_location = b->shader->num_outputs++;
       out_color->data.index = out->data.index;
@@ -102,5 +100,5 @@ nir_lower_fragcolor(nir_shader *shader, unsigned max_draw_buffers)
       return false;
 
    return nir_shader_instructions_pass(shader, lower_fragcolor_instr,
-         nir_metadata_block_index | nir_metadata_dominance, &max_draw_buffers);
+                                       nir_metadata_block_index | nir_metadata_dominance, &max_draw_buffers);
 }

@@ -85,22 +85,22 @@ nir_lower_texcoord_replace_late(nir_shader *s, unsigned coord_replace,
    assert(s->info.stage == MESA_SHADER_FRAGMENT);
    assert(coord_replace != 0);
 
-   uint64_t replace_mask = (((uint64_t) coord_replace) << VARYING_SLOT_TEX0);
+   uint64_t replace_mask = (((uint64_t)coord_replace) << VARYING_SLOT_TEX0);
 
    /* If no relevant texcoords are read, there's nothing to do */
    if (!(s->info.inputs_read & replace_mask))
       return;
 
    /* Otherwise, we're going to replace these texcoord reads with a PNTC read */
-   s->info.inputs_read &= ~(((uint64_t) coord_replace) << VARYING_SLOT_TEX0);
+   s->info.inputs_read &= ~(((uint64_t)coord_replace) << VARYING_SLOT_TEX0);
 
    if (!point_coord_is_sysval)
       s->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_PNTC);
 
    nir_shader_instructions_pass(s, pass,
-         nir_metadata_block_index | nir_metadata_dominance,
-         &(struct opts) {
-            .coord_replace = coord_replace,
-            .point_coord_is_sysval = point_coord_is_sysval,
-         });
+                                nir_metadata_block_index | nir_metadata_dominance,
+                                &(struct opts){
+                                   .coord_replace = coord_replace,
+                                   .point_coord_is_sysval = point_coord_is_sysval,
+                                });
 }

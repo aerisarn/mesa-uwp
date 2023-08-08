@@ -94,13 +94,11 @@ lower_viewport_transform_instr(nir_builder *b, nir_instr *instr,
 bool
 nir_lower_viewport_transform(nir_shader *shader)
 {
-   assert((shader->info.stage == MESA_SHADER_VERTEX)
-         || (shader->info.stage == MESA_SHADER_GEOMETRY)
-         || (shader->info.stage == MESA_SHADER_TESS_EVAL));
+   assert((shader->info.stage == MESA_SHADER_VERTEX) || (shader->info.stage == MESA_SHADER_GEOMETRY) || (shader->info.stage == MESA_SHADER_TESS_EVAL));
 
    return nir_shader_instructions_pass(shader,
                                        lower_viewport_transform_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

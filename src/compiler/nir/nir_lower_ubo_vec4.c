@@ -105,7 +105,7 @@ nir_lower_ubo_vec4_lower(nir_builder *b, nir_instr *instr, void *data)
 
    unsigned num_components = intr->num_components;
    bool aligned_mul = (align_mul == 16 &&
-                       align_offset +  chan_size_bytes * num_components <= 16);
+                       align_offset + chan_size_bytes * num_components <= 16);
    if (!aligned_mul)
       num_components = chans_per_vec4;
 
@@ -143,8 +143,8 @@ nir_lower_ubo_vec4_lower(nir_builder *b, nir_instr *instr, void *data)
       nir_component_mask_t high_channels =
          low_channels << (8 / chan_size_bytes);
       result = nir_bcsel(b, nir_test_mask(b, byte_offset, 8),
-                            nir_channels(b, result, high_channels),
-                            nir_channels(b, result, low_channels));
+                         nir_channels(b, result, high_channels),
+                         nir_channels(b, result, low_channels));
    } else {
       /* General fallback case: Per-result-channel bcsel-based extraction
        * from two separate vec4 loads.

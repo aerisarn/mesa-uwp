@@ -22,9 +22,9 @@
  * IN THE SOFTWARE.
  */
 
+#include "program/prog_instruction.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "program/prog_instruction.h"
 
 /**
  * This pass adds <0.5, 0.5> to all uses of gl_FragCoord.
@@ -86,6 +86,6 @@ nir_lower_wpos_center(nir_shader *shader)
    return nir_shader_instructions_pass(shader,
                                        lower_wpos_center_instr,
                                        nir_metadata_block_index |
-                                       nir_metadata_dominance,
+                                          nir_metadata_dominance,
                                        NULL);
 }

@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir.h"
 #include "nir/nir_builder.h"
+#include "nir.h"
 #include "nir_control_flow.h"
 #include "nir_search_helpers.h"
 
@@ -306,7 +306,7 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
       nir_phi_src *else_src =
          nir_phi_get_src_from_block(phi, nir_if_first_else_block(if_stmt));
 
-      nir_foreach_use (src, &phi->dest.ssa) {
+      nir_foreach_use(src, &phi->dest.ssa) {
          assert(src->parent_instr->type == nir_instr_type_phi);
          nir_phi_src *phi_src =
             nir_phi_get_src_from_block(nir_instr_as_phi(src->parent_instr),
@@ -356,7 +356,7 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
    /* move the whole inner if before the parent if */
    nir_cf_list tmp;
    nir_cf_extract(&tmp, nir_before_block(first),
-                        nir_after_block(last));
+                  nir_after_block(last));
    nir_cf_reinsert(&tmp, nir_before_cf_node(&parent_if->cf_node));
 
    /* The now empty parent if will be cleaned up by other passes */

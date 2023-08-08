@@ -82,7 +82,8 @@ ssa_def_dominates(nir_ssa_def *a, nir_ssa_def *b)
    if (a->parent_instr->type == nir_instr_type_ssa_undef) {
       /* SSA undefs always dominate */
       return true;
-   } if (def_after(a, b)) {
+   }
+   if (def_after(a, b)) {
       return false;
    } else if (a->parent_instr->block == b->parent_instr->block) {
       return def_after(b, a);
@@ -91,7 +92,6 @@ ssa_def_dominates(nir_ssa_def *a, nir_ssa_def *b)
                                  b->parent_instr->block);
    }
 }
-
 
 /* The following data structure, which I have named merge_set is a way of
  * representing a set registers of non-interfering registers.  This is
@@ -453,7 +453,7 @@ coalesce_phi_nodes_block(nir_block *block, struct from_ssa_state *state)
 
 static void
 aggressive_coalesce_parallel_copy(nir_parallel_copy_instr *pcopy,
-                                 struct from_ssa_state *state)
+                                  struct from_ssa_state *state)
 {
    nir_foreach_parallel_copy_entry(entry, pcopy) {
       assert(!entry->src_is_reg);
@@ -551,15 +551,15 @@ nir_rewrite_uses_to_load_reg(nir_builder *b, nir_ssa_def *old,
        */
       nir_ssa_def *load = NULL;
       if (b->cursor.option == nir_cursor_before_instr) {
-          nir_instr *prev = nir_instr_prev(b->cursor.instr);
+         nir_instr *prev = nir_instr_prev(b->cursor.instr);
 
-          if (prev != NULL && prev->type == nir_instr_type_intrinsic) {
-             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(prev);
-             if (intr->intrinsic == nir_intrinsic_load_reg &&
-                 intr->src[0].ssa == reg &&
-                 nir_intrinsic_base(intr) == 0)
-                load = &intr->dest.ssa;
-          }
+         if (prev != NULL && prev->type == nir_instr_type_intrinsic) {
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(prev);
+            if (intr->intrinsic == nir_intrinsic_load_reg &&
+                intr->src[0].ssa == reg &&
+                nir_intrinsic_base(intr) == 0)
+               load = &intr->dest.ssa;
+         }
       }
 
       if (load == NULL)
@@ -968,7 +968,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
       }
       set_reg_divergent(reg, copy_value_is_divergent(values[b]));
 
-      values[num_vals] = (struct copy_value) {
+      values[num_vals] = (struct copy_value){
          .is_reg = true,
          .ssa = reg,
       };
@@ -1034,12 +1034,11 @@ nir_convert_from_ssa_impl(nir_function_impl *impl,
 
    /* Mark metadata as dirty before we ask for liveness analysis */
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 
    nir_metadata_require(impl, nir_metadata_instr_index |
-                              nir_metadata_live_ssa_defs |
-                              nir_metadata_dominance);
-
+                                 nir_metadata_live_ssa_defs |
+                                 nir_metadata_dominance);
 
    nir_foreach_block(block, impl) {
       coalesce_phi_nodes_block(block, &state);
@@ -1056,7 +1055,7 @@ nir_convert_from_ssa_impl(nir_function_impl *impl,
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                                  nir_metadata_dominance);
 
    /* Clean up dead instructions and the hash tables */
    nir_instr_free_list(&state.dead_instrs);
@@ -1078,13 +1077,12 @@ nir_convert_from_ssa(nir_shader *shader,
    return progress;
 }
 
-
 static void
 place_phi_read(nir_builder *b, nir_ssa_def *reg,
                nir_ssa_def *def, nir_block *block, struct set *visited_blocks)
 {
-  /* Search already visited blocks to avoid back edges in tree */
-  if (_mesa_set_search(visited_blocks, block) == NULL) {
+   /* Search already visited blocks to avoid back edges in tree */
+   if (_mesa_set_search(visited_blocks, block) == NULL) {
       /* Try to go up the single-successor tree */
       bool all_single_successors = true;
       set_foreach(block->predecessors, entry) {

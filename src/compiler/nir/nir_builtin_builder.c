@@ -27,37 +27,37 @@
 #include "nir.h"
 #include "nir_builtin_builder.h"
 
-nir_ssa_def*
+nir_ssa_def *
 nir_cross3(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 {
    unsigned yzx[3] = { 1, 2, 0 };
    unsigned zxy[3] = { 2, 0, 1 };
 
    return nir_ffma(b, nir_swizzle(b, x, yzx, 3),
-                      nir_swizzle(b, y, zxy, 3),
-                      nir_fneg(b, nir_fmul(b, nir_swizzle(b, x, zxy, 3),
-                                              nir_swizzle(b, y, yzx, 3))));
+                   nir_swizzle(b, y, zxy, 3),
+                   nir_fneg(b, nir_fmul(b, nir_swizzle(b, x, zxy, 3),
+                                        nir_swizzle(b, y, yzx, 3))));
 }
 
-nir_ssa_def*
+nir_ssa_def *
 nir_cross4(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 {
    nir_ssa_def *cross = nir_cross3(b, x, y);
 
    return nir_vec4(b,
-      nir_channel(b, cross, 0),
-      nir_channel(b, cross, 1),
-      nir_channel(b, cross, 2),
-      nir_imm_intN_t(b, 0, cross->bit_size));
+                   nir_channel(b, cross, 0),
+                   nir_channel(b, cross, 1),
+                   nir_channel(b, cross, 2),
+                   nir_imm_intN_t(b, 0, cross->bit_size));
 }
 
-nir_ssa_def*
+nir_ssa_def *
 nir_fast_length(nir_builder *b, nir_ssa_def *vec)
 {
    return nir_fsqrt(b, nir_fdot(b, vec, vec));
 }
 
-nir_ssa_def*
+nir_ssa_def *
 nir_nextafter(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 {
    nir_ssa_def *zero = nir_imm_intN_t(b, 0, x->bit_size);
@@ -106,7 +106,7 @@ nir_nextafter(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
    return nir_nan_check2(b, x, y, nir_bcsel(b, condeq, x, res));
 }
 
-nir_ssa_def*
+nir_ssa_def *
 nir_normalize(nir_builder *b, nir_ssa_def *vec)
 {
    if (vec->num_components == 1)
@@ -128,7 +128,7 @@ nir_normalize(nir_builder *b, nir_ssa_def *vec)
    return nir_bcsel(b, nir_feq(b, maxc, f0), vec, res);
 }
 
-nir_ssa_def*
+nir_ssa_def *
 nir_smoothstep(nir_builder *b, nir_ssa_def *edge0, nir_ssa_def *edge1, nir_ssa_def *x)
 {
    nir_ssa_def *f2 = nir_imm_floatN_t(b, 2.0, x->bit_size);
@@ -137,13 +137,13 @@ nir_smoothstep(nir_builder *b, nir_ssa_def *edge0, nir_ssa_def *edge1, nir_ssa_d
    /* t = clamp((x - edge0) / (edge1 - edge0), 0, 1) */
    nir_ssa_def *t =
       nir_fsat(b, nir_fdiv(b, nir_fsub(b, x, edge0),
-                              nir_fsub(b, edge1, edge0)));
+                           nir_fsub(b, edge1, edge0)));
 
    /* result = t * t * (3 - 2 * t) */
    return nir_fmul(b, t, nir_fmul(b, t, nir_a_minus_bc(b, f3, f2, t)));
 }
 
-nir_ssa_def*
+nir_ssa_def *
 nir_upsample(nir_builder *b, nir_ssa_def *hi, nir_ssa_def *lo)
 {
    assert(lo->num_components == hi->num_components);
@@ -188,7 +188,7 @@ nir_atan(nir_builder *b, nir_ssa_def *y_over_x)
     *      \ 1.0 / y_over_x   otherwise
     */
    nir_ssa_def *x = nir_fdiv(b, nir_fmin(b, abs_y_over_x, one),
-                                nir_fmax(b, abs_y_over_x, one));
+                             nir_fmax(b, abs_y_over_x, one));
 
    /*
     * approximate atan by evaluating polynomial:
@@ -197,19 +197,19 @@ nir_atan(nir_builder *b, nir_ssa_def *y_over_x)
     * x^5 * 0.1938924977115610 - x^7  * 0.1173503194786851 +
     * x^9 * 0.0536813784310406 - x^11 * 0.0121323213173444
     */
-   nir_ssa_def *x_2  = nir_fmul(b, x,   x);
-   nir_ssa_def *x_3  = nir_fmul(b, x_2, x);
-   nir_ssa_def *x_5  = nir_fmul(b, x_3, x_2);
-   nir_ssa_def *x_7  = nir_fmul(b, x_5, x_2);
-   nir_ssa_def *x_9  = nir_fmul(b, x_7, x_2);
+   nir_ssa_def *x_2 = nir_fmul(b, x, x);
+   nir_ssa_def *x_3 = nir_fmul(b, x_2, x);
+   nir_ssa_def *x_5 = nir_fmul(b, x_3, x_2);
+   nir_ssa_def *x_7 = nir_fmul(b, x_5, x_2);
+   nir_ssa_def *x_9 = nir_fmul(b, x_7, x_2);
    nir_ssa_def *x_11 = nir_fmul(b, x_9, x_2);
 
    nir_ssa_def *polynomial_terms[] = {
-      nir_fmul_imm(b, x,     0.9999793128310355f),
-      nir_fmul_imm(b, x_3,  -0.3326756418091246f),
-      nir_fmul_imm(b, x_5,   0.1938924977115610f),
-      nir_fmul_imm(b, x_7,  -0.1173503194786851f),
-      nir_fmul_imm(b, x_9,   0.0536813784310406f),
+      nir_fmul_imm(b, x, 0.9999793128310355f),
+      nir_fmul_imm(b, x_3, -0.3326756418091246f),
+      nir_fmul_imm(b, x_5, 0.1938924977115610f),
+      nir_fmul_imm(b, x_7, -0.1173503194786851f),
+      nir_fmul_imm(b, x_9, 0.0536813784310406f),
       nir_fmul_imm(b, x_11, -0.0121323213173444f),
    };
 

@@ -66,11 +66,11 @@ struct gcm_instr_info {
 
 /* Flags used in the instr->pass_flags field for various instruction states */
 enum {
-   GCM_INSTR_PINNED =                (1 << 0),
+   GCM_INSTR_PINNED = (1 << 0),
    GCM_INSTR_SCHEDULE_EARLIER_ONLY = (1 << 1),
-   GCM_INSTR_SCHEDULED_EARLY =       (1 << 2),
-   GCM_INSTR_SCHEDULED_LATE =        (1 << 3),
-   GCM_INSTR_PLACED =                (1 << 4),
+   GCM_INSTR_SCHEDULED_EARLY = (1 << 2),
+   GCM_INSTR_SCHEDULED_LATE = (1 << 3),
+   GCM_INSTR_PLACED = (1 << 4),
 };
 
 struct gcm_state {
@@ -427,7 +427,6 @@ gcm_schedule_early_src(nir_src *src, void *void_state)
    struct gcm_state *state = void_state;
    nir_instr *instr = state->instr;
 
-
    gcm_schedule_early_instr(src->ssa->parent_instr, void_state);
 
    /* While the index isn't a proper dominance depth, it does have the
@@ -538,7 +537,7 @@ set_block_for_loop_instr(struct gcm_state *state, nir_instr *instr,
 }
 
 static bool
-set_block_to_if_block(struct gcm_state *state,  nir_instr *instr,
+set_block_to_if_block(struct gcm_state *state, nir_instr *instr,
                       nir_block *block)
 {
    if (instr->type == nir_instr_type_load_const)
@@ -571,17 +570,17 @@ gcm_choose_block_for_instr(nir_instr *instr, nir_block *early_block,
          continue;
 
       if (state->blocks[block->index].if_depth >=
-          state->blocks[best->index].if_depth &&
+             state->blocks[best->index].if_depth &&
           set_block_to_if_block(state, instr, block)) {
-            /* If we are pushing the instruction into an if we want it to be
-             * in the earliest block not the latest to avoid creating register
-             * pressure issues. So we don't break unless we come across the
-             * block the instruction was originally in.
-             */
-            best = block;
-            block_set = true;
-            if (block == instr->block)
-               break;
+         /* If we are pushing the instruction into an if we want it to be
+          * in the earliest block not the latest to avoid creating register
+          * pressure issues. So we don't break unless we come across the
+          * block the instruction was originally in.
+          */
+         best = block;
+         block_set = true;
+         if (block == instr->block)
+            break;
       } else if (block == instr->block) {
          /* If we couldn't push the instruction later just put is back where it
           * was previously.
@@ -809,7 +808,7 @@ static bool
 opt_gcm_impl(nir_shader *shader, nir_function_impl *impl, bool value_number)
 {
    nir_metadata_require(impl, nir_metadata_block_index |
-                              nir_metadata_dominance);
+                                 nir_metadata_dominance);
    nir_metadata_require(impl, nir_metadata_loop_analysis,
                         shader->options->force_indirect_unrolling,
                         shader->options->force_indirect_unrolling_sampler);
@@ -871,8 +870,8 @@ opt_gcm_impl(nir_shader *shader, nir_function_impl *impl, bool value_number)
    ralloc_free(state.instr_infos);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance |
-                               nir_metadata_loop_analysis);
+                                  nir_metadata_dominance |
+                                  nir_metadata_loop_analysis);
 
    return state.progress;
 }
