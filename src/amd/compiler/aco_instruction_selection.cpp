@@ -7916,6 +7916,42 @@ emit_reduction_instr(isel_context* ctx, aco_opcode aco_op, ReduceOp op, unsigned
    return dst.getTemp();
 }
 
+Temp
+inclusive_scan_to_exclusive(isel_context* ctx, ReduceOp op, Temp scan, Temp src)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   switch (op) {
+   case iadd8:
+   case iadd16:
+   case iadd32: return bld.vsub32(bld.def(scan.regClass()), scan, src);
+   case ixor64:
+   case iadd64: {
+      Temp src00 = bld.tmp(v1);
+      Temp src01 = bld.tmp(v1);
+      bld.pseudo(aco_opcode::p_split_vector, Definition(src00), Definition(src01), scan);
+      Temp src10 = bld.tmp(v1);
+      Temp src11 = bld.tmp(v1);
+      bld.pseudo(aco_opcode::p_split_vector, Definition(src10), Definition(src11), src);
+
+      Temp lower = bld.tmp(v1);
+      Temp upper = bld.tmp(v1);
+      if (op == iadd64) {
+         Temp borrow = bld.vsub32(Definition(lower), src00, src10, true).def(1).getTemp();
+         bld.vsub32(Definition(upper), src01, src11, false, borrow);
+      } else {
+         bld.vop2(aco_opcode::v_xor_b32, Definition(lower), src00, src10);
+         bld.vop2(aco_opcode::v_xor_b32, Definition(upper), src01, src11);
+      }
+      return bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), lower, upper);
+   }
+   case ixor8:
+   case ixor16:
+   case ixor32: return bld.vop2(aco_opcode::v_xor_b32, bld.def(scan.regClass()), scan, src);
+   default: unreachable("Unsupported op");
+   }
+}
+
 void
 emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
 {
@@ -8453,8 +8489,19 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          default: unreachable("unknown reduce intrinsic");
          }
 
+         /* Avoid whole wave shift. */
+         const bool use_inclusive_for_exclusive = aco_op == aco_opcode::p_exclusive_scan &&
+                                                  (op == nir_op_iadd || op == nir_op_ixor) &&
+                                                  dst.type() == RegType::vgpr;
+         if (use_inclusive_for_exclusive)
+            aco_op = aco_opcode::p_inclusive_scan;
+
          Temp tmp_dst = emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size,
                                              bld.def(dst.regClass()), src);
+
+         if (use_inclusive_for_exclusive)
+            tmp_dst = inclusive_scan_to_exclusive(ctx, reduce_op, tmp_dst, src);
+
          emit_wqm(bld, tmp_dst, dst, create_helpers);
       }
       break;
