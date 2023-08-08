@@ -180,13 +180,6 @@ foreach gallium_driver : gallium_drivers
   pre_args += '-DHAVE_@0@'.format(gallium_driver.to_upper())
 endforeach
 
-freedreno_kmds = get_option('freedreno-kmds')
-# If building only vulkan with only kgsl kmd support, there is no libdrm
-# dependency:
-if freedreno_kmds.length() == 1 and freedreno_kmds.contains('kgsl') and not with_gallium_freedreno
-  system_has_kms_drm = false
-endif
-
 with_gallium = gallium_drivers.length() != 0
 with_gallium_kmsro = system_has_kms_drm and [
   with_gallium_asahi,
@@ -197,15 +190,6 @@ with_gallium_kmsro = system_has_kms_drm and [
   with_gallium_v3d,
   with_gallium_vc4,
 ].contains(true)
-
-with_dri = false
-if with_gallium and system_has_kms_drm
-  _glx = get_option('glx')
-  _egl = get_option('egl')
-  if _glx == 'dri' or _egl.enabled() or (_glx == 'disabled' and _egl.allowed())
-    with_dri = true
-  endif
-endif
 
 _vulkan_drivers = get_option('vulkan-drivers')
 if _vulkan_drivers.contains('auto')
@@ -244,6 +228,30 @@ with_imagination_srv = get_option('imagination-srv')
 with_microsoft_vk = _vulkan_drivers.contains('microsoft-experimental')
 with_nouveau_vk = _vulkan_drivers.contains('nouveau-experimental')
 with_any_vk = _vulkan_drivers.length() != 0
+
+freedreno_kmds = get_option('freedreno-kmds')
+if freedreno_kmds.length() != 0 and freedreno_kmds != [ 'msm' ] and with_freedreno_vk
+  if freedreno_kmds.contains('msm')
+      warning('Turnip with the DRM KMD will require libdrm to always be present at runtime which may not always be the case on platforms such as Android.')
+  elif with_gallium_kmsro
+      warning('As a side-effect, Turnip is forced to link with libdrm when built alongside Gallium DRM drivers which platforms such as Android may not have available at runtime.')
+  elif _vulkan_drivers != [ 'freedreno' ]
+      warning('Turnip is forced to link with libdrm when built alongside other Vulkan drivers which platforms such as Android may not have available at runtime.')
+  else
+    # If DRM support isn't needed, we can get rid of it since linking
+    # to libdrm can be a potential compatibility hazard.
+    system_has_kms_drm = false
+  endif
+endif
+
+with_dri = false
+if with_gallium and system_has_kms_drm
+  _glx = get_option('glx')
+  _egl = get_option('egl')
+  if _glx == 'dri' or _egl.enabled() or (_glx == 'disabled' and _egl.allowed())
+    with_dri = true
+  endif
+endif
 
 with_any_broadcom = [
   with_gallium_vc4,
