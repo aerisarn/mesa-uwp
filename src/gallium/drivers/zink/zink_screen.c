@@ -322,17 +322,24 @@ cache_put_job(void *data, void *gdata, int thread_index)
    struct zink_program *pg = data;
    struct zink_screen *screen = gdata;
    size_t size = 0;
+   u_rwlock_rdlock(&pg->pipeline_cache_lock);
    VkResult result = VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, NULL);
    if (result != VK_SUCCESS) {
+      u_rwlock_rdunlock(&pg->pipeline_cache_lock);
       mesa_loge("ZINK: vkGetPipelineCacheData failed (%s)", vk_Result_to_str(result));
       return;
    }
-   if (pg->pipeline_cache_size == size)
+   if (pg->pipeline_cache_size == size) {
+      u_rwlock_rdunlock(&pg->pipeline_cache_lock);
       return;
+   }
    void *pipeline_data = malloc(size);
-   if (!pipeline_data)
+   if (!pipeline_data) {
+      u_rwlock_rdunlock(&pg->pipeline_cache_lock);
       return;
+   }
    result = VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, pipeline_data);
+   u_rwlock_rdunlock(&pg->pipeline_cache_lock);
    if (result == VK_SUCCESS) {
       pg->pipeline_cache_size = size;
 

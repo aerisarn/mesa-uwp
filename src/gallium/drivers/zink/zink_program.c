@@ -961,6 +961,7 @@ create_program(struct zink_context *ctx, bool is_compute)
       return NULL;
 
    pipe_reference_init(&pg->reference, 1);
+   u_rwlock_init(&pg->pipeline_cache_lock);
    util_queue_fence_init(&pg->cache_fence);
    pg->is_compute = is_compute;
    pg->ctx = ctx;
@@ -1494,6 +1495,7 @@ deinit_program(struct zink_screen *screen, struct zink_program *pg)
 
    if (pg->pipeline_cache)
       VKSCR(DestroyPipelineCache)(screen->dev, pg->pipeline_cache, NULL);
+   u_rwlock_destroy(&pg->pipeline_cache_lock);
    zink_descriptor_program_deinit(screen, pg);
 }
 
