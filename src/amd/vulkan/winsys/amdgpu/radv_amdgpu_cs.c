@@ -1599,7 +1599,6 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
    struct drm_amdgpu_bo_list_in bo_list_in;
    void *wait_syncobj = NULL, *signal_syncobj = NULL;
    int i;
-   uint32_t bo_list = 0;
    VkResult result = VK_SUCCESS;
    bool has_user_fence = radv_amdgpu_cs_has_user_fence(request);
    uint32_t queue_syncobj = radv_amdgpu_ctx_queue_syncobj(ctx, request->ip_type, request->ring);
@@ -1720,7 +1719,7 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
       if (r == -ENOMEM)
          os_time_sleep(1000);
 
-      r = amdgpu_cs_submit_raw2(ctx->ws->dev, ctx->ctx, bo_list, num_chunks, chunks, &request->seq_no);
+      r = amdgpu_cs_submit_raw2(ctx->ws->dev, ctx->ctx, 0, num_chunks, chunks, &request->seq_no);
    } while (r == -ENOMEM && os_time_get_nano() < abs_timeout_ns);
 
    if (r) {
@@ -1738,9 +1737,6 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
          result = VK_ERROR_UNKNOWN;
       }
    }
-
-   if (bo_list)
-      amdgpu_bo_list_destroy_raw(ctx->ws->dev, bo_list);
 
 error_out:
    free(chunks);
