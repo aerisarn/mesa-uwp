@@ -3126,6 +3126,29 @@ zink_shader_dump(const struct zink_shader *zs, void *words, size_t size, const c
    }
 }
 
+static VkShaderStageFlagBits
+zink_get_next_stage(gl_shader_stage stage)
+{
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+             VK_SHADER_STAGE_GEOMETRY_BIT |
+             VK_SHADER_STAGE_FRAGMENT_BIT;
+   case MESA_SHADER_TESS_CTRL:
+      return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+   case MESA_SHADER_TESS_EVAL:
+      return VK_SHADER_STAGE_GEOMETRY_BIT |
+             VK_SHADER_STAGE_FRAGMENT_BIT;
+   case MESA_SHADER_GEOMETRY:
+      return VK_SHADER_STAGE_FRAGMENT_BIT;
+   case MESA_SHADER_FRAGMENT:
+   case MESA_SHADER_COMPUTE:
+      return 0;
+   default:
+      unreachable("invalid shader stage");
+   }
+}
+
 struct zink_shader_object
 zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool can_shobj, struct zink_program *pg)
 {
@@ -3144,8 +3167,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
 
    sci.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
    sci.stage = mesa_to_vk_shader_stage(zs->info.stage);
-   if (sci.stage != VK_SHADER_STAGE_FRAGMENT_BIT)
-      sci.nextStage = VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_VERTEX_BIT;
+   sci.nextStage = zink_get_next_stage(zs->info.stage);
    sci.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
    sci.codeSize = spirv->num_words * sizeof(uint32_t);
    sci.pCode = spirv->words;
