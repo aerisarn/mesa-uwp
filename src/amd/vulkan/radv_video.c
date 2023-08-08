@@ -31,6 +31,7 @@
 #include "drm-uapi/amdgpu_drm.h"
 #endif
 
+#include "util/vl_zscan_data.h"
 #include "vk_video/vulkan_video_codecs_common.h"
 #include "ac_uvd_dec.h"
 #include "ac_vcn_dec.h"
@@ -749,6 +750,21 @@ get_h264_level(StdVideoH264LevelIdc level)
    return h264_levels[level];
 }
 
+static void
+update_h264_scaling(unsigned char scaling_list_4x4[6][16], unsigned char scaling_list_8x8[2][64],
+                    const StdVideoH264ScalingLists *scaling_lists)
+{
+   for (int i = 0; i < STD_VIDEO_H264_SCALING_LIST_4X4_NUM_LISTS; i++) {
+      for (int j = 0; j < STD_VIDEO_H264_SCALING_LIST_4X4_NUM_ELEMENTS; j++)
+         scaling_list_4x4[i][vl_zscan_normal_16[j]] = scaling_lists->ScalingList4x4[i][j];
+   }
+
+   for (int i = 0; i < 2; i++) {
+      for (int j = 0; j < STD_VIDEO_H264_SCALING_LIST_8X8_NUM_ELEMENTS; j++)
+         scaling_list_8x8[i][vl_zscan_normal[j]] = scaling_lists->ScalingList8x8[i][j];
+   }
+}
+
 static rvcn_dec_message_avc_t
 get_h264_msg(struct radv_video_session *vid, struct radv_video_session_params *params,
              const struct VkVideoDecodeInfoKHR *frame_info, uint32_t *slice_offset, uint32_t *width_in_samples,
@@ -822,9 +838,7 @@ get_h264_msg(struct radv_video_session *vid, struct radv_video_session_params *p
 
    StdVideoH264ScalingLists scaling_lists;
    vk_video_derive_h264_scaling_list(sps, pps, &scaling_lists);
-   memcpy(result.scaling_list_4x4, scaling_lists.ScalingList4x4, 6 * 16);
-   memcpy(result.scaling_list_8x8[0], scaling_lists.ScalingList8x8[0], 64);
-   memcpy(result.scaling_list_8x8[1], scaling_lists.ScalingList8x8[1], 64);
+   update_h264_scaling(result.scaling_list_4x4, result.scaling_list_8x8, &scaling_lists);
 
    memset(it_ptr, 0, IT_SCALING_TABLE_SIZE);
    memcpy(it_ptr, result.scaling_list_4x4, 6 * 16);
@@ -1303,9 +1317,7 @@ get_uvd_h264_msg(struct radv_video_session *vid, struct radv_video_session_param
 
    StdVideoH264ScalingLists scaling_lists;
    vk_video_derive_h264_scaling_list(sps, pps, &scaling_lists);
-   memcpy(result.scaling_list_4x4, scaling_lists.ScalingList4x4, 6 * 16);
-   memcpy(result.scaling_list_8x8[0], scaling_lists.ScalingList8x8[0], 64);
-   memcpy(result.scaling_list_8x8[1], scaling_lists.ScalingList8x8[1], 64);
+   update_h264_scaling(result.scaling_list_4x4, result.scaling_list_8x8, &scaling_lists);
 
    memset(it_ptr, 0, IT_SCALING_TABLE_SIZE);
    memcpy(it_ptr, result.scaling_list_4x4, 6 * 16);
