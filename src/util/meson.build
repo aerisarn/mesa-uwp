@@ -164,6 +164,8 @@ files_mesa_util = files(
   'u_worklist.h',
   'vl_vlc.h',
   'vl_rbsp.h',
+  'vl_zscan_data.h',
+  'vl_zscan_data.c',
   'vma.c',
   'vma.h',
   'xxhash.h',
