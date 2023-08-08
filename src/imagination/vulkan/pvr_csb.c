@@ -232,6 +232,7 @@ static bool pvr_csb_buffer_extend(struct pvr_csb *csb)
       stream_link_space + PVRX(VDMCTRL_GUARD_SIZE_DEFAULT);
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&csb->device->pdevice->dev_info);
+   size_t current_state_update_size = 0;
    struct pvr_bo *pvr_bo;
    VkResult result;
 
@@ -260,7 +261,7 @@ static bool pvr_csb_buffer_extend(struct pvr_csb *csb)
 
    /* if this is not the first BO in csb */
    if (csb->pvr_bo) {
-      const size_t current_state_update_size =
+      current_state_update_size =
          (uint8_t *)csb->next - (uint8_t *)csb->relocation_mark;
       void *new_buffer = pvr_bo->bo->map;
 
@@ -291,7 +292,7 @@ static bool pvr_csb_buffer_extend(struct pvr_csb *csb)
     * sure we don't run out of space when a stream link is required.
     */
    csb->end = csb->start + pvr_bo->bo->size - stream_reserved_space;
-   csb->next = csb->start;
+   csb->next = csb->start + current_state_update_size;
 
    list_addtail(&pvr_bo->link, &csb->pvr_bo_list);
 
