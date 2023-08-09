@@ -284,7 +284,7 @@ typedef union {
 } nir_const_value;
 
 #define nir_const_value_to_array(arr, c, components, m) \
-{ \
+do { \
    for (unsigned i = 0; i < components; ++i) \
       arr[i] = c[i].m; \
 } while (false)
