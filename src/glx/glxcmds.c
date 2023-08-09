@@ -2449,4 +2449,30 @@ MesaGLInteropGLXExportObject(Display *dpy, GLXContext context,
    return ret;
 }
 
+PUBLIC int
+MesaGLInteropGLXFlushObjects(Display *dpy, GLXContext context,
+                             unsigned count,
+                             struct mesa_glinterop_export_in *resources,
+                             GLsync *sync)
+{
+   struct glx_context *gc = (struct glx_context*)context;
+   int ret;
+
+   __glXLock();
+
+   if (!gc || gc->xid == None || !gc->isDirect) {
+      __glXUnlock();
+      return MESA_GLINTEROP_INVALID_CONTEXT;
+   }
+
+   if (!gc->vtable->interop_flush_objects) {
+      __glXUnlock();
+      return MESA_GLINTEROP_UNSUPPORTED;
+   }
+
+   ret = gc->vtable->interop_flush_objects(gc, count, resources, sync);
+   __glXUnlock();
+   return ret;
+}
+
 #endif /* defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL) */
