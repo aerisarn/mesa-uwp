@@ -820,18 +820,11 @@ get_h264_msg(struct radv_video_session *vid, struct radv_video_session_params *p
    result.chroma_qp_index_offset = pps->chroma_qp_index_offset;
    result.second_chroma_qp_index_offset = pps->second_chroma_qp_index_offset;
 
-   if (pps->flags.pic_scaling_matrix_present_flag) {
-      memcpy(result.scaling_list_4x4, pps->pScalingLists->ScalingList4x4, 6 * 16);
-      memcpy(result.scaling_list_8x8[0], pps->pScalingLists->ScalingList8x8[0], 64);
-      memcpy(result.scaling_list_8x8[1], pps->pScalingLists->ScalingList8x8[1], 64);
-   } else if (sps->flags.seq_scaling_matrix_present_flag) {
-      memcpy(result.scaling_list_4x4, sps->pScalingLists->ScalingList4x4, 6 * 16);
-      memcpy(result.scaling_list_8x8[0], sps->pScalingLists->ScalingList8x8[0], 64);
-      memcpy(result.scaling_list_8x8[1], sps->pScalingLists->ScalingList8x8[1], 64);
-   } else {
-      memset(result.scaling_list_4x4, 0x10, 6 * 16);
-      memset(result.scaling_list_8x8, 0x10, 2 * 64);
-   }
+   StdVideoH264ScalingLists scaling_lists;
+   vk_video_derive_h264_scaling_list(sps, pps, &scaling_lists);
+   memcpy(result.scaling_list_4x4, scaling_lists.ScalingList4x4, 6 * 16);
+   memcpy(result.scaling_list_8x8[0], scaling_lists.ScalingList8x8[0], 64);
+   memcpy(result.scaling_list_8x8[1], scaling_lists.ScalingList8x8[1], 64);
 
    memset(it_ptr, 0, IT_SCALING_TABLE_SIZE);
    memcpy(it_ptr, result.scaling_list_4x4, 6 * 16);
@@ -1308,18 +1301,11 @@ get_uvd_h264_msg(struct radv_video_session *vid, struct radv_video_session_param
    result.chroma_qp_index_offset = pps->chroma_qp_index_offset;
    result.second_chroma_qp_index_offset = pps->second_chroma_qp_index_offset;
 
-   if (pps->flags.pic_scaling_matrix_present_flag) {
-      memcpy(result.scaling_list_4x4, pps->pScalingLists->ScalingList4x4, 6 * 16);
-      memcpy(result.scaling_list_8x8[0], pps->pScalingLists->ScalingList8x8[0], 64);
-      memcpy(result.scaling_list_8x8[1], pps->pScalingLists->ScalingList8x8[3], 64);
-   } else if (sps->flags.seq_scaling_matrix_present_flag) {
-      memcpy(result.scaling_list_4x4, sps->pScalingLists->ScalingList4x4, 6 * 16);
-      memcpy(result.scaling_list_8x8[0], sps->pScalingLists->ScalingList8x8[0], 64);
-      memcpy(result.scaling_list_8x8[1], sps->pScalingLists->ScalingList8x8[3], 64);
-   } else {
-      memset(result.scaling_list_4x4, 0x10, 6 * 16);
-      memset(result.scaling_list_8x8, 0x10, 2 * 64);
-   }
+   StdVideoH264ScalingLists scaling_lists;
+   vk_video_derive_h264_scaling_list(sps, pps, &scaling_lists);
+   memcpy(result.scaling_list_4x4, scaling_lists.ScalingList4x4, 6 * 16);
+   memcpy(result.scaling_list_8x8[0], scaling_lists.ScalingList8x8[0], 64);
+   memcpy(result.scaling_list_8x8[1], scaling_lists.ScalingList8x8[1], 64);
 
    memset(it_ptr, 0, IT_SCALING_TABLE_SIZE);
    memcpy(it_ptr, result.scaling_list_4x4, 6 * 16);
