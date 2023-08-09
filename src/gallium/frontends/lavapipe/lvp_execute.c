@@ -2135,6 +2135,14 @@ copy_depth_box(uint8_t *dst,
    }
 }
 
+static unsigned
+subresource_layercount(const struct lvp_image *image, const VkImageSubresourceLayers *sub)
+{
+   if (sub->layerCount != VK_REMAINING_ARRAY_LAYERS)
+      return sub->layerCount;
+   return image->vk.array_layers - sub->baseArrayLayer;
+}
+
 static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                                              struct rendering_state *state)
 {
@@ -2151,7 +2159,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
       box.z = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
       box.width = copycmd->pRegions[i].imageExtent.width;
       box.height = copycmd->pRegions[i].imageExtent.height;
-      box.depth = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : copycmd->pRegions[i].imageSubresource.layerCount;
+      box.depth = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : subresource_layercount(src_image, &copycmd->pRegions[i].imageSubresource);
 
       src_data = state->pctx->texture_map(state->pctx,
                                            src_image->bo,
@@ -2239,7 +2247,7 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
       box.z = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
       box.width = copycmd->pRegions[i].imageExtent.width;
       box.height = copycmd->pRegions[i].imageExtent.height;
-      box.depth = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : copycmd->pRegions[i].imageSubresource.layerCount;
+      box.depth = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : subresource_layercount(dst_image, &copycmd->pRegions[i].imageSubresource);
 
       dst_data = state->pctx->texture_map(state->pctx,
                                            dst_image->bo,
@@ -2305,7 +2313,7 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
          src_box.depth = copycmd->pRegions[i].extent.depth;
          src_box.z = copycmd->pRegions[i].srcOffset.z;
       } else {
-         src_box.depth = copycmd->pRegions[i].srcSubresource.layerCount;
+         src_box.depth = subresource_layercount(src_image, &copycmd->pRegions[i].srcSubresource);
          src_box.z = copycmd->pRegions[i].srcSubresource.baseArrayLayer;
       }
 
@@ -2412,8 +2420,8 @@ static void handle_blit_image(struct vk_cmd_queue_entry *cmd,
       } else {
          info.src.box.z = blitcmd->pRegions[i].srcSubresource.baseArrayLayer;
          info.dst.box.z = blitcmd->pRegions[i].dstSubresource.baseArrayLayer;
-         info.src.box.depth = blitcmd->pRegions[i].srcSubresource.layerCount;
-         info.dst.box.depth = blitcmd->pRegions[i].dstSubresource.layerCount;
+         info.src.box.depth = subresource_layercount(src_image, &blitcmd->pRegions[i].srcSubresource);
+         info.dst.box.depth = subresource_layercount(dst_image, &blitcmd->pRegions[i].dstSubresource);
       }
 
       info.src.level = blitcmd->pRegions[i].srcSubresource.mipLevel;
@@ -3055,8 +3063,8 @@ static void handle_resolve_image(struct vk_cmd_queue_entry *cmd,
       info.dst.box.height = resolvecmd->pRegions[i].extent.height;
       info.src.box.height = resolvecmd->pRegions[i].extent.height;
 
-      info.dst.box.depth = resolvecmd->pRegions[i].dstSubresource.layerCount;
-      info.src.box.depth = resolvecmd->pRegions[i].srcSubresource.layerCount;
+      info.dst.box.depth = subresource_layercount(dst_image, &resolvecmd->pRegions[i].dstSubresource);
+      info.src.box.depth = subresource_layercount(src_image, &resolvecmd->pRegions[i].srcSubresource);
 
       info.src.level = resolvecmd->pRegions[i].srcSubresource.mipLevel;
       info.src.box.z = resolvecmd->pRegions[i].srcOffset.z + resolvecmd->pRegions[i].srcSubresource.baseArrayLayer;
