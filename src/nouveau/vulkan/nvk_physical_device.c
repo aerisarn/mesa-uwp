@@ -371,10 +371,10 @@ nvk_get_device_properties(const struct nvk_instance *instance,
                           const struct nv_device_info *info,
                           struct vk_properties *properties)
 {
-   VkSampleCountFlagBits sample_counts = VK_SAMPLE_COUNT_1_BIT |
-                                         VK_SAMPLE_COUNT_2_BIT |
-                                         VK_SAMPLE_COUNT_4_BIT |
-                                         VK_SAMPLE_COUNT_8_BIT;
+   const VkSampleCountFlagBits sample_counts = VK_SAMPLE_COUNT_1_BIT |
+                                               VK_SAMPLE_COUNT_2_BIT |
+                                               VK_SAMPLE_COUNT_4_BIT |
+                                               VK_SAMPLE_COUNT_8_BIT;
 
    *properties = (struct vk_properties) {
       .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
@@ -584,6 +584,14 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       /* VK_EXT_robustness2 */
       .robustStorageBufferAccessSizeAlignment = NVK_SSBO_BOUNDS_CHECK_ALIGNMENT,
       .robustUniformBufferAccessSizeAlignment = NVK_MIN_UBO_ALIGNMENT,
+
+      /* VK_EXT_sample_locations */
+      .sampleLocationSampleCounts = sample_counts,
+      .maxSampleLocationGridSize = (VkExtent2D){ 1, 1 },
+      .sampleLocationCoordinateRange[0] = 0.0f,
+      .sampleLocationCoordinateRange[1] = 0.9375f,
+      .sampleLocationSubPixelBits = 4,
+      .variableSampleLocations = true,
 
       /* VK_EXT_transform_feedback */
       .maxTransformFeedbackStreams = 4,
@@ -864,5 +872,20 @@ nvk_GetPhysicalDeviceQueueFamilyProperties2(
       p->queueFamilyProperties.queueCount = 1;
       p->queueFamilyProperties.timestampValidBits = 64;
       p->queueFamilyProperties.minImageTransferGranularity = (VkExtent3D){1, 1, 1};
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceMultisamplePropertiesEXT(
+   VkPhysicalDevice physicalDevice,
+   VkSampleCountFlagBits samples,
+   VkMultisamplePropertiesEXT *pMultisampleProperties)
+{
+   VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
+
+   if (samples & pdev->vk.properties.sampleLocationSampleCounts) {
+      pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){1, 1};
+   } else {
+      pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){0, 0};
    }
 }
