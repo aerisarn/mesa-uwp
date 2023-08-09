@@ -456,7 +456,7 @@ disk_cache_evict_lru_item(struct disk_cache *cache)
    free(dir_path);
 
    if (size) {
-      p_atomic_add(cache->size, - (uint64_t)size);
+      p_atomic_add(&cache->size->value, - (uint64_t)size);
       return;
    }
 
@@ -483,7 +483,7 @@ disk_cache_evict_lru_item(struct disk_cache *cache)
    free_lru_file_list(lru_file_list);
 
    if (size)
-      p_atomic_add(cache->size, - (uint64_t)size);
+      p_atomic_add(&cache->size->value, - (uint64_t)size);
 }
 
 void
@@ -499,7 +499,7 @@ disk_cache_evict_item(struct disk_cache *cache, char *filename)
    free(filename);
 
    if (sb.st_blocks)
-      p_atomic_add(cache->size, - (uint64_t)sb.st_blocks * 512);
+      p_atomic_add(&cache->size->value, - (uint64_t)sb.st_blocks * 512);
 }
 
 static void *
@@ -819,7 +819,7 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
       goto done;
    }
 
-   p_atomic_add(dc_job->cache->size, sb.st_blocks * 512);
+   p_atomic_add(&dc_job->cache->size->value, sb.st_blocks * 512);
 
  done:
    if (fd_final != -1)
@@ -1062,7 +1062,7 @@ disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
       goto path_fail;
    cache->index_mmap_size = size;
 
-   cache->size = (uint64_t *) cache->index_mmap;
+   cache->size = (p_atomic_uint64_t *) cache->index_mmap;
    cache->stored_keys = cache->index_mmap + sizeof(uint64_t);
    mapped = true;
 
