@@ -41,14 +41,6 @@ void tu_perfetto_init(void);
 
 void tu_perfetto_submit(struct tu_device *dev, uint32_t submission_id);
 
-/* Helpers */
-
-struct tu_perfetto_state *
-tu_device_get_perfetto_state(struct tu_device *dev);
-
-uint32_t
-tu_u_trace_submission_data_get_submit_id(const struct tu_u_trace_submission_data *data);
-
 #ifdef __cplusplus
 }
 #endif

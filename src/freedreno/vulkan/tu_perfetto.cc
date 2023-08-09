@@ -6,6 +6,7 @@
 #include <perfetto.h>
 
 #include "tu_perfetto.h"
+#include "tu_device.h"
 
 #include "util/hash_table.h"
 #include "util/perf/u_perfetto.h"
@@ -167,7 +168,7 @@ send_descriptors(TuRenderpassDataSource::TraceContext &ctx)
 static struct tu_perfetto_stage *
 stage_push(struct tu_device *dev)
 {
-   struct tu_perfetto_state *p = tu_device_get_perfetto_state(dev);
+   struct tu_perfetto_state *p = &dev->perfetto;
 
    if (p->stage_depth >= ARRAY_SIZE(p->stages)) {
       p->skipped_depth++;
@@ -182,7 +183,7 @@ typedef void (*trace_payload_as_extra_func)(perfetto::protos::pbzero::GpuRenderS
 static struct tu_perfetto_stage *
 stage_pop(struct tu_device *dev)
 {
-   struct tu_perfetto_state *p = tu_device_get_perfetto_state(dev);
+   struct tu_perfetto_state *p = &dev->perfetto;
 
    if (!p->stage_depth)
       return NULL;
@@ -245,8 +246,7 @@ stage_end(struct tu_device *dev, uint64_t ts_ns, enum tu_stage_id stage_id,
    struct tu_perfetto_stage *stage = stage_pop(dev);
    auto trace_flush_data =
       (const struct tu_u_trace_submission_data *) flush_data;
-   uint32_t submission_id =
-      tu_u_trace_submission_data_get_submit_id(trace_flush_data);
+   uint32_t submission_id = trace_flush_data->submission_id;
 
    if (!stage)
       return;
