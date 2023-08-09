@@ -1621,8 +1621,9 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    }
 
    struct agx_shader_key base_key = {
-      .needs_g13x_coherency =
-         dev->params.gpu_generation == 13 && dev->params.num_clusters_total > 1,
+      .needs_g13x_coherency = (dev->params.gpu_generation == 13 &&
+                               dev->params.num_clusters_total > 1) ||
+                              dev->params.num_dies > 1,
    };
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
