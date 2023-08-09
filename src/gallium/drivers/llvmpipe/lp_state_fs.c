@@ -943,6 +943,12 @@ generate_fs_loop(struct gallivm_state *gallivm,
          lp_build_pointer_set(builder, z_fb_store, sample_loop_state.counter, z_fb);
          lp_build_pointer_set(builder, s_fb_store, sample_loop_state.counter, s_fb);
       }
+      if (key->occlusion_count && !(depth_mode & EARLY_DEPTH_TEST_INFERRED)) {
+         LLVMValueRef counter = lp_jit_thread_data_vis_counter(gallivm, thread_data_type, thread_data_ptr);
+         lp_build_name(counter, "counter");
+         lp_build_occlusion_count(gallivm, type,
+                                 key->multisample ? s_mask : lp_build_mask_value(&mask), counter);
+      }
    }
 
    if (key->multisample) {
@@ -1350,7 +1356,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                             z_value, s_value);
    }
 
-   if (key->occlusion_count) {
+   if (key->occlusion_count && (!(depth_mode & EARLY_DEPTH_TEST) || (depth_mode & EARLY_DEPTH_TEST_INFERRED))) {
       LLVMValueRef counter = lp_jit_thread_data_vis_counter(gallivm, thread_data_type, thread_data_ptr);
       lp_build_name(counter, "counter");
 
