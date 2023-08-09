@@ -67,7 +67,16 @@ spec@ext_external_objects_fd@semaphore-api-errors
 spec@ext_external_objects_fd@memory-object-api-errors
 spec@ext_external_objects@vk-vert-buf-reuse
 
-# too slow, timeouts sometimes in the full run (approx. 1/10 runs)
+# creates too many 8192x8192 or 10240x10240 surfaces, times out
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/151
 CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/152
-CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/2991
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/1120
 CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/1121
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/1290
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/1291
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/2310
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/2311
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/2990
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/2991
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/3160
+CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/3161
