@@ -1196,7 +1196,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    prog->last_vertex_stage = ctx->last_vertex_stage;
 
    if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
-      prog->shaders[MESA_SHADER_TESS_CTRL] = stages[MESA_SHADER_VERTEX]->non_fs.generated_tcs;
+      prog->shaders[MESA_SHADER_TESS_CTRL] = stages[MESA_SHADER_TESS_EVAL]->non_fs.generated_tcs;
       prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    }
 
