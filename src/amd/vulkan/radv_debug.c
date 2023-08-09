@@ -504,7 +504,7 @@ radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
       if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR)) {
          struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP];
          enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-         unsigned num_waves = ac_get_wave_info(gfx_level, waves);
+         unsigned num_waves = ac_get_wave_info(gfx_level, &device->physical_device->rad_info, waves);
 
          fprintf(f, COLOR_CYAN "The number of active waves = %u" COLOR_RESET "\n\n", num_waves);
 
@@ -653,36 +653,43 @@ radv_dump_device_name(const struct radv_device *device, FILE *f)
 static void
 radv_dump_umr_ring(const struct radv_queue *queue, FILE *f)
 {
+#ifndef _WIN32
    const enum amd_ip_type ring = radv_queue_ring(queue);
    const struct radv_device *device = queue->device;
-   char cmd[128];
+   char cmd[256];
 
    /* TODO: Dump compute ring. */
    if (ring != AMD_IP_GFX)
       return;
 
-   sprintf(cmd, "umr -RS %s 2>&1", device->physical_device->rad_info.gfx_level >= GFX10 ? "gfx_0.0.0" : "gfx");
-
+   sprintf(cmd, "umr --by-pci %04x:%02x:%02x.%01x -RS %s 2>&1", device->physical_device->bus_info.domain,
+           device->physical_device->bus_info.bus, device->physical_device->bus_info.dev,
+           device->physical_device->bus_info.func,
+           device->physical_device->rad_info.gfx_level >= GFX10 ? "gfx_0.0.0" : "gfx");
    fprintf(f, "\nUMR GFX ring:\n\n");
    radv_dump_cmd(cmd, f);
+#endif
 }
 
 static void
 radv_dump_umr_waves(struct radv_queue *queue, FILE *f)
 {
+#ifndef _WIN32
    enum amd_ip_type ring = radv_queue_ring(queue);
    struct radv_device *device = queue->device;
-   char cmd[128];
+   char cmd[256];
 
    /* TODO: Dump compute ring. */
    if (ring != AMD_IP_GFX)
       return;
 
-   sprintf(cmd, "umr -O bits,halt_waves -go 0 -wa %s -go 1 2>&1",
+   sprintf(cmd, "umr --by-pci %04x:%02x:%02x.%01x -O bits,halt_waves -go 0 -wa %s -go 1 2>&1",
+           device->physical_device->bus_info.domain, device->physical_device->bus_info.bus,
+           device->physical_device->bus_info.dev, device->physical_device->bus_info.func,
            device->physical_device->rad_info.gfx_level >= GFX10 ? "gfx_0.0.0" : "gfx");
-
    fprintf(f, "\nUMR GFX waves:\n\n");
    radv_dump_cmd(cmd, f);
+#endif
 }
 
 static bool

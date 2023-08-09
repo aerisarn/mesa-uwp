@@ -8,6 +8,7 @@
 #define AC_DEBUG_H
 
 #include "amd_family.h"
+#include "ac_gpu_info.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -56,7 +57,7 @@ void ac_parse_ib(FILE *f, uint32_t *ib, int num_dw, const int *trace_ids, unsign
 bool ac_vm_fault_occurred(enum amd_gfx_level gfx_level, uint64_t *old_dmesg_timestamp,
                          uint64_t *out_addr);
 
-unsigned ac_get_wave_info(enum amd_gfx_level gfx_level,
+unsigned ac_get_wave_info(enum amd_gfx_level gfx_level, const struct radeon_info *info,
                           struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP]);
 
 void ac_print_gpuvm_fault_status(FILE *output, enum amd_gfx_level gfx_level,

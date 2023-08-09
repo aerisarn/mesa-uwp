@@ -1137,16 +1137,18 @@ static int compare_wave(const void *p1, const void *p2)
 }
 
 /* Return wave information. "waves" should be a large enough array. */
-unsigned ac_get_wave_info(enum amd_gfx_level gfx_level,
+unsigned ac_get_wave_info(enum amd_gfx_level gfx_level, const struct radeon_info *info,
                           struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP])
 {
 #ifdef _WIN32
    return 0;
 #else
-   char line[2000], cmd[128];
+   char line[2000], cmd[256];
    unsigned num_waves = 0;
 
-   sprintf(cmd, "umr -O halt_waves -wa %s", gfx_level >= GFX10 ? "gfx_0.0.0" : "gfx");
+   sprintf(cmd, "umr --by-pci %04x:%02x:%02x.%01x -O halt_waves -wa %s",
+           info->pci.domain, info->pci.bus, info->pci.dev, info->pci.func,
+           gfx_level >= GFX10 ? "gfx_0.0.0" : "gfx");
 
    FILE *p = popen(cmd, "r");
    if (!p)
