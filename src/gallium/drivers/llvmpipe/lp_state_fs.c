@@ -3981,6 +3981,7 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
    nir_shader *nir = shader->base.ir.nir;
    NIR_PASS_V(nir, nir_lower_fragcolor, nir->info.fs.color_is_dual_source ? 1 : 8);
 
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    nir_tgsi_scan_shader(nir, &shader->info.base, true);
    shader->info.num_texs = shader->info.base.opcode_count[TGSI_OPCODE_TEX];
 
