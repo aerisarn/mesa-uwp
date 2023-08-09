@@ -50,3 +50,9 @@ c7bf3b69ebc8f2252dbf724a4de638e6bb2ac402
 
 # panfrost: clang-format the tree
 0afd691f29683f6e9dde60f79eca094373521806
+
+# aco: Format.
+1e2639026fec7069806449f9ba2a124ce4eb5569
+
+# radv: Format.
+59c501ca353f8ec9d2717c98af2bfa1a1dbf4d75
