@@ -176,7 +176,7 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
       .first_signaled = 0,
       .pad = 0,
    };
-   intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
+   ret = intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
 
 bind_error:
    STACK_ARRAY_FINISH(xe_binds_stackarray);
