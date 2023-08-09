@@ -1640,7 +1640,6 @@ radv_nir_shader_info_merge(const struct radv_shader_stage *src, struct radv_shad
    dst_info->loads_dynamic_offsets |= src_info->loads_dynamic_offsets;
    dst_info->desc_set_used_mask |= src_info->desc_set_used_mask;
    dst_info->uses_view_index |= src_info->uses_view_index;
-   dst_info->uses_invocation_id |= src_info->uses_invocation_id;
    dst_info->uses_prim_id |= src_info->uses_prim_id;
    dst_info->inline_push_constant_mask |= src_info->inline_push_constant_mask;
 
