@@ -56,3 +56,6 @@ c7bf3b69ebc8f2252dbf724a4de638e6bb2ac402
 
 # radv: Format.
 59c501ca353f8ec9d2717c98af2bfa1a1dbf4d75
+
+# pvr: clang-format fixes
+953c04ebd39c52d457301bdd8ac803949001da2d
