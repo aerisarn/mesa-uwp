@@ -2703,3 +2703,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_SetDeviceMemoryPriorityEXT(
    LVP_FROM_HANDLE(lvp_device_memory, mem, _memory);
    set_mem_priority(mem, get_mem_priority(priority));
 }
+
+VKAPI_ATTR void VKAPI_CALL lvp_GetRenderingAreaGranularityKHR(
+    VkDevice                                    device,
+    const VkRenderingAreaInfoKHR*               pRenderingAreaInfo,
+    VkExtent2D*                                 pGranularity)
+{
+   VkExtent2D tile_size = {64, 64};
+   *pGranularity = tile_size;
+}
