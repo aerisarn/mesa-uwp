@@ -11,6 +11,7 @@
 #include "nil_format.h"
 #include "util/bitpack_helpers.h"
 #include "vulkan/runtime/vk_render_pass.h"
+#include "vulkan/runtime/vk_standard_sample_locations.h"
 #include "vulkan/util/vk_format.h"
 
 #include "nouveau_context.h"
@@ -1206,8 +1207,8 @@ static struct nvk_sample_location
 vk_to_nvk_sample_location(VkSampleLocationEXT loc)
 {
    return (struct nvk_sample_location) {
-      .x_u4 = util_bitpack_ufixed(loc.x, 0, 3, 4),
-      .y_u4 = util_bitpack_ufixed(loc.y, 0, 3, 4),
+      .x_u4 = util_bitpack_ufixed_clamp(loc.x, 0, 3, 4),
+      .y_u4 = util_bitpack_ufixed_clamp(loc.y, 0, 3, 4),
    };
 }
 
@@ -1217,8 +1218,14 @@ nvk_flush_ms_state(struct nvk_cmd_buffer *cmd)
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
-   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS)) {
-      const struct vk_sample_locations_state *sl = dyn->ms.sample_locations;
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS_ENABLE)) {
+      const struct vk_sample_locations_state *sl;
+      if (dyn->ms.sample_locations_enable) {
+         sl = dyn->ms.sample_locations;
+      } else {
+         sl = vk_standard_sample_locations_state(dyn->ms.rasterization_samples);
+      }
 
       if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
          struct nvk_sample_location loc[16];
