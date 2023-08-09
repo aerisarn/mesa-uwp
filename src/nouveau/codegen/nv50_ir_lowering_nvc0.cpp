@@ -1024,9 +1024,24 @@ NVC0LoweringPass::handleTEX(TexInstruction *i)
       if (i->tex.target.isArray()) {
          LValue *layer = new_LValue(func, FILE_GPR);
          Value *src = i->getSrc(lyr);
-         const int sat = (i->op == OP_TXF) ? 1 : 0;
-         DataType sTy = (i->op == OP_TXF) ? TYPE_U32 : TYPE_F32;
-         bld.mkCvt(OP_CVT, TYPE_U16, layer, sTy, src)->saturate = sat;
+         /* Vulkan requires that a negative index on a texelFetch() count as
+          * out-of-bounds but a negative index on any other texture operation
+          * gets clamped to 0.  (See the spec section entitled "(u,v,w,a) to
+          * (i,j,k,l,n) Transformation And Array Layer Selection").
+          *
+          * For TXF, we take a U32 MAX with 0xffff, ensuring that negative
+          * array indices clamp to 0xffff and will be considered out-of-bounds
+          * by the hardware (there are a maximum of 2048 array indices in an
+          * image descriptor).  For everything else, we use a saturating F32
+          * to U16 conversion which will clamp negative array indices to 0 and
+          * large positive indices to 0xffff.  The hardware will further clamp
+          * positive array indices to the maximum in the image descriptor.
+          */
+         if (i->op == OP_TXF) {
+            bld.mkOp2(OP_MIN, TYPE_U32, layer, src, bld.loadImm(NULL, 0xffff));
+         } else {
+            bld.mkCvt(OP_CVT, TYPE_U16, layer, TYPE_F32, src)->saturate = true;
+         }
          if (i->op != OP_TXD || chipset < NVISA_GM107_CHIPSET) {
             for (int s = dim; s >= 1; --s)
                i->setSrc(s, i->getSrc(s - 1));
@@ -1092,9 +1107,11 @@ NVC0LoweringPass::handleTEX(TexInstruction *i)
       }
 
       if (arrayIndex) {
-         int sat = (i->op == OP_TXF) ? 1 : 0;
-         DataType sTy = (i->op == OP_TXF) ? TYPE_U32 : TYPE_F32;
-         bld.mkCvt(OP_CVT, TYPE_U16, src, sTy, arrayIndex)->saturate = sat;
+         if (i->op == OP_TXF) {
+            bld.mkOp2(OP_MIN, TYPE_U32, src, arrayIndex, bld.loadImm(NULL, 0xffff));
+         } else {
+            bld.mkCvt(OP_CVT, TYPE_U16, src, TYPE_F32, arrayIndex)->saturate = true;
+         }
       } else {
          bld.loadImm(src, 0);
       }
