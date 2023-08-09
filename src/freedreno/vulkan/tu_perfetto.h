@@ -39,7 +39,17 @@ struct tu_perfetto_state {
 
 void tu_perfetto_init(void);
 
-void tu_perfetto_submit(struct tu_device *dev, uint32_t submission_id);
+struct tu_perfetto_clocks
+{
+   uint64_t cpu;
+   uint64_t gpu_ts;
+   uint64_t gpu_ts_offset;
+};
+
+struct tu_perfetto_clocks
+tu_perfetto_submit(struct tu_device *dev,
+                   uint32_t submission_id,
+                   struct tu_perfetto_clocks *clocks);
 
 #ifdef __cplusplus
 }

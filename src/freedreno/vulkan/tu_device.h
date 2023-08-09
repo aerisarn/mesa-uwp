@@ -521,6 +521,11 @@ struct tu_u_trace_submission_data
    uint32_t cmd_buffer_count;
    uint32_t last_buffer_with_tracepoints;
    struct tu_u_trace_cmd_data *cmd_trace_data;
+
+   /* GPU time is reset on GPU power cycle and the GPU time
+    * offset may change between submissions due to power cycle.
+    */
+   uint64_t gpu_ts_offset;
 };
 
 VkResult
