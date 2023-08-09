@@ -399,6 +399,19 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetImageSubresourceLayout2EXT(
       size->size = pLayout->subresourceLayout.size;
 }
 
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceImageSubresourceLayoutKHR(
+    VkDevice                                    _device,
+    const VkDeviceImageSubresourceInfoKHR*      pInfo,
+    VkSubresourceLayout2KHR*                    pLayout)
+{
+   VkImage image;
+   /* technically supposed to be able to do this without creating an image, but that's harder */
+   if (lvp_image_create(_device, pInfo->pCreateInfo, NULL, &image) != VK_SUCCESS)
+      return;
+   lvp_GetImageSubresourceLayout2EXT(_device, image, pInfo->pSubresource, pLayout);
+   lvp_DestroyImage(_device, image, NULL);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateBuffer(
     VkDevice                                    _device,
     const VkBufferCreateInfo*                   pCreateInfo,
