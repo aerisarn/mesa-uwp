@@ -4814,6 +4814,35 @@ anv_get_default_cpu_clock_id(void)
 #endif
 }
 
+static inline clockid_t
+vk_time_domain_to_clockid(VkTimeDomainEXT domain)
+{
+   switch (domain) {
+#ifdef CLOCK_MONOTONIC_RAW
+   case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT:
+      return CLOCK_MONOTONIC_RAW;
+#endif
+   case VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT:
+      return CLOCK_MONOTONIC;
+   default:
+      unreachable("Missing");
+      return CLOCK_MONOTONIC;
+   }
+}
+
+static inline bool
+is_cpu_time_domain(VkTimeDomainEXT domain)
+{
+   return domain == VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT ||
+          domain == VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT;
+}
+
+static inline bool
+is_gpu_time_domain(VkTimeDomainEXT domain)
+{
+   return domain == VK_TIME_DOMAIN_DEVICE_EXT;
+}
+
 VkResult anv_GetCalibratedTimestampsEXT(
    VkDevice                                     _device,
    uint32_t                                     timestampCount,
@@ -4822,15 +4851,83 @@ VkResult anv_GetCalibratedTimestampsEXT(
    uint64_t                                     *pMaxDeviation)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   uint64_t timestamp_frequency = device->info->timestamp_frequency;
-   int d;
+   const uint64_t timestamp_frequency = device->info->timestamp_frequency;
+   const uint64_t device_period = DIV_ROUND_UP(1000000000, timestamp_frequency);
+   uint32_t d, increment;
    uint64_t begin, end;
    uint64_t max_clock_period = 0;
+   const enum intel_kmd_type kmd_type = device->physical->info.kmd_type;
+   const bool has_correlate_timestamp = kmd_type == INTEL_KMD_TYPE_XE;
+   clockid_t cpu_clock_id = -1;
 
-   begin = vk_clock_gettime(anv_get_default_cpu_clock_id());
+   begin = end = vk_clock_gettime(anv_get_default_cpu_clock_id());
 
-   for (d = 0; d < timestampCount; d++) {
-      switch (pTimestampInfos[d].timeDomain) {
+   for (d = 0, increment = 1; d < timestampCount; d += increment) {
+      const VkTimeDomainEXT current = pTimestampInfos[d].timeDomain;
+      /* If we have a request pattern like this :
+       * - domain0 = VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT or VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT
+       * - domain1 = VK_TIME_DOMAIN_DEVICE_EXT
+       * - domain2 = domain0 (optional)
+       *
+       * We can combine all of those into a single ioctl for maximum accuracy.
+       */
+      if (has_correlate_timestamp && (d + 1) < timestampCount) {
+         const VkTimeDomainEXT next = pTimestampInfos[d + 1].timeDomain;
+
+         if ((is_cpu_time_domain(current) && is_gpu_time_domain(next)) ||
+             (is_gpu_time_domain(current) && is_cpu_time_domain(next))) {
+            /* We'll consume at least 2 elements. */
+            increment = 2;
+
+            if (is_cpu_time_domain(current))
+               cpu_clock_id = vk_time_domain_to_clockid(current);
+            else
+               cpu_clock_id = vk_time_domain_to_clockid(next);
+
+            uint64_t cpu_timestamp, gpu_timestamp, cpu_delta_timestamp, cpu_end_timestamp;
+            if (!intel_gem_read_correlate_cpu_gpu_timestamp(device->fd,
+                                                            kmd_type,
+                                                            INTEL_ENGINE_CLASS_RENDER,
+                                                            0 /* engine_instance */,
+                                                            cpu_clock_id,
+                                                            &cpu_timestamp,
+                                                            &gpu_timestamp,
+                                                            &cpu_delta_timestamp))
+               return vk_device_set_lost(&device->vk, "Failed to read correlate timestamp %m");
+
+            cpu_end_timestamp = cpu_timestamp + cpu_delta_timestamp;
+            if (is_cpu_time_domain(current)) {
+               pTimestamps[d] = cpu_timestamp;
+               pTimestamps[d + 1] = gpu_timestamp;
+            } else {
+               pTimestamps[d] = gpu_timestamp;
+               pTimestamps[d + 1] = cpu_end_timestamp;
+            }
+            max_clock_period = MAX2(max_clock_period, device_period);
+
+            /* If we can consume a third element */
+            if ((d + 2) < timestampCount &&
+                is_cpu_time_domain(current) &&
+                current == pTimestampInfos[d + 2].timeDomain) {
+               pTimestamps[d + 2] = cpu_end_timestamp;
+               increment++;
+            }
+
+            /* If we're the first element, we can replace begin */
+            if (d == 0 && cpu_clock_id == anv_get_default_cpu_clock_id())
+               begin = cpu_timestamp;
+
+            /* If we're in the same clock domain as begin/end. We can set the end. */
+            if (cpu_clock_id == anv_get_default_cpu_clock_id())
+               end = cpu_end_timestamp;
+
+            continue;
+         }
+      }
+
+      /* fallback to regular method */
+      increment = 1;
+      switch (current) {
       case VK_TIME_DOMAIN_DEVICE_EXT:
          if (!intel_gem_read_render_timestamp(device->fd,
                                               device->info->kmd_type,
@@ -4838,7 +4935,6 @@ VkResult anv_GetCalibratedTimestampsEXT(
             return vk_device_set_lost(&device->vk, "Failed to read the "
                                       "TIMESTAMP register: %m");
          }
-         uint64_t device_period = DIV_ROUND_UP(1000000000, timestamp_frequency);
          max_clock_period = MAX2(max_clock_period, device_period);
          break;
       case VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT:
@@ -4857,7 +4953,11 @@ VkResult anv_GetCalibratedTimestampsEXT(
       }
    }
 
-   end = vk_clock_gettime(anv_get_default_cpu_clock_id());
+   /* If last timestamp was not get with has_correlate_timestamp method or
+    * if it was but last cpu clock is not the default one, get time again
+    */
+   if (increment == 1 || cpu_clock_id != anv_get_default_cpu_clock_id())
+      end = vk_clock_gettime(anv_get_default_cpu_clock_id());
 
    *pMaxDeviation = vk_time_max_deviation(begin, end, max_clock_period);
 
