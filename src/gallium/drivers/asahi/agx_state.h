@@ -657,6 +657,10 @@ agx_map_texture_gpu(struct agx_resource *rsrc, unsigned z)
 void agx_decompress(struct agx_context *ctx, struct agx_resource *rsrc,
                     const char *reason);
 
+void agx_legalize_compression(struct agx_context *ctx,
+                              struct agx_resource *rsrc,
+                              enum pipe_format format);
+
 struct agx_transfer {
    struct pipe_transfer base;
    void *map;

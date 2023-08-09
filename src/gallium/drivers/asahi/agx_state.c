@@ -45,7 +45,7 @@
 #include "agx_tilebuffer.h"
 #include "pool.h"
 
-static void
+void
 agx_legalize_compression(struct agx_context *ctx, struct agx_resource *rsrc,
                          enum pipe_format format)
 {
