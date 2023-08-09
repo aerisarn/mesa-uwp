@@ -252,8 +252,7 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
 }
 
 void
-radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv_shader_stage *out_stage,
-                       gl_shader_stage stage)
+radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv_shader_stage *out_stage)
 {
    const VkShaderModuleCreateInfo *minfo = vk_find_struct_const(sinfo->pNext, SHADER_MODULE_CREATE_INFO);
    const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
@@ -264,7 +263,7 @@ radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv
 
    memset(out_stage, 0, sizeof(*out_stage));
 
-   out_stage->stage = stage;
+   out_stage->stage = vk_to_mesa_shader_stage(sinfo->stage);
    out_stage->entrypoint = sinfo->pName;
    out_stage->spec_info = sinfo->pSpecializationInfo;
    out_stage->feedback.flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
