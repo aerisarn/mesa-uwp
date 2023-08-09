@@ -809,15 +809,18 @@ static int peephole_mul_omod(
  */
 static int peephole(struct radeon_compiler * c, struct rc_instruction * inst)
 {
-	switch(inst->U.I.Opcode){
+	if (!c->has_presub)
+		return 0;
+
+	switch(inst->U.I.Opcode) {
 	case RC_OPCODE_ADD:
-		if (c->has_presub) {
-			if(peephole_add_presub_inv(c, inst))
-				return 1;
-			if(peephole_add_presub_add(c, inst))
-				return 1;
-		}
+	{
+		if (peephole_add_presub_inv(c, inst))
+			return 1;
+		if (peephole_add_presub_add(c, inst))
+			return 1;
 		break;
+	}
 	default:
 		break;
 	}
