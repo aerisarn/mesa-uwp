@@ -1269,7 +1269,8 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
       _mesa_set_add(&prog->libs->libs, gkey);
    }
 
-   util_queue_add_job(&screen->cache_get_thread, prog, &prog->base.cache_fence, create_linked_separable_job, NULL, 0);
+   if (!(zink_debug & ZINK_DEBUG_NOOPT))
+      util_queue_add_job(&screen->cache_get_thread, prog, &prog->base.cache_fence, create_linked_separable_job, NULL, 0);
 
    return prog;
 fail:
