@@ -122,6 +122,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_maintenance2                      = true,
    .KHR_maintenance3                      = true,
    .KHR_maintenance4                      = true,
+   .KHR_maintenance5                      = true,
    .KHR_multiview                         = true,
    .KHR_push_descriptor                   = true,
    .KHR_pipeline_library                  = true,
@@ -580,6 +581,9 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
 
       /* host_image_copy */
       .hostImageCopy = true,
+
+      /* maintenance5 */
+      .maintenance5 = true,
    };
 }
 
@@ -1208,6 +1212,18 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceMaintenance4Properties *properties =
             (VkPhysicalDeviceMaintenance4Properties *)ext;
          properties->maxBufferSize = UINT32_MAX;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: {
+         VkPhysicalDeviceMaintenance5PropertiesKHR *properties =
+            (VkPhysicalDeviceMaintenance5PropertiesKHR *)ext;
+         /* FIXME No idea about most of these ones. */
+         properties->earlyFragmentMultisampleCoverageAfterSampleCounting = true;
+         properties->earlyFragmentSampleMaskTestBeforeSampleCounting = false;
+         properties->depthStencilSwizzleOneSupport = false;
+         properties->polygonModePointSize = true; /* This one is correct. */
+         properties->nonStrictSinglePixelWideLinesUseParallelogram = false;
+         properties->nonStrictWideLinesUseParallelogram = false;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
