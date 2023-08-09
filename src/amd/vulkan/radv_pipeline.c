@@ -252,7 +252,8 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
 }
 
 void
-radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv_shader_stage *out_stage)
+radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
+                         const struct radv_pipeline_layout *pipeline_layout, struct radv_shader_stage *out_stage)
 {
    const VkShaderModuleCreateInfo *minfo = vk_find_struct_const(sinfo->pNext, SHADER_MODULE_CREATE_INFO);
    const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
@@ -281,6 +282,8 @@ radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv
       out_stage->spirv.data = (const char *)minfo->pCode;
       out_stage->spirv.size = minfo->codeSize;
    }
+
+   radv_shader_layout_init(pipeline_layout, out_stage->stage, &out_stage->layout);
 
    vk_pipeline_hash_shader_stage(sinfo, NULL, out_stage->shader_sha1);
 }

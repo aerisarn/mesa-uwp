@@ -196,8 +196,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
 
    int64_t pipeline_start = os_time_get_nano();
 
-   radv_shader_stage_init(pStage, &cs_stage);
-   radv_shader_layout_init(pipeline_layout, MESA_SHADER_COMPUTE, &cs_stage.layout);
+   radv_pipeline_stage_init(pStage, pipeline_layout, &cs_stage);
 
    radv_hash_shaders(hash, &cs_stage, 1, pipeline_layout, pipeline_key,
                      radv_get_hash_flags(device, keep_statistic_info));

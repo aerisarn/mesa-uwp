@@ -260,8 +260,7 @@ radv_rt_fill_stage_info(struct radv_device *device, const VkRayTracingPipelineCr
       stages[idx].stage = vk_to_mesa_shader_stage(pCreateInfo->pStages[idx].stage);
 
       struct radv_shader_stage stage;
-      radv_shader_stage_init(&pCreateInfo->pStages[idx], &stage);
-      radv_shader_layout_init(pipeline_layout, stages[idx].stage, &stage.layout);
+      radv_pipeline_stage_init(&pCreateInfo->pStages[idx], pipeline_layout, &stage);
 
       radv_hash_shaders(stages[idx].sha1, &stage, 1, NULL, key, radv_get_hash_flags(device, false));
    }
@@ -453,8 +452,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
    for (uint32_t idx = 0; idx < pCreateInfo->stageCount; idx++) {
       int64_t stage_start = os_time_get_nano();
       struct radv_shader_stage stage;
-      radv_shader_stage_init(&pCreateInfo->pStages[idx], &stage);
-      radv_shader_layout_init(pipeline_layout, stages[idx].stage, &stage.layout);
+      radv_pipeline_stage_init(&pCreateInfo->pStages[idx], pipeline_layout, &stage);
 
       if (stages[idx].shader)
          goto feedback;

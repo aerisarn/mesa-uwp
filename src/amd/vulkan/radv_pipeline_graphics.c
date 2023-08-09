@@ -2337,8 +2337,7 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib->lib_flags))
          continue;
 
-      radv_shader_stage_init(sinfo, &stages[s]);
-      radv_shader_layout_init(&lib->layout, s, &stages[s].layout);
+      radv_pipeline_stage_init(sinfo, &lib->layout, &stages[s]);
    }
 
    /* Import the NIR shaders (after SPIRV->NIR). */
@@ -2663,8 +2662,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
       if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib_flags))
          continue;
 
-      radv_shader_stage_init(sinfo, &stages[stage]);
-      radv_shader_layout_init(pipeline_layout, stage, &stages[stage].layout);
+      radv_pipeline_stage_init(sinfo, pipeline_layout, &stages[stage]);
    }
 
    radv_pipeline_load_retained_shaders(device, pipeline, pCreateInfo, stages);
