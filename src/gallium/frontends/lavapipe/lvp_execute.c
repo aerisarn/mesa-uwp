@@ -146,6 +146,7 @@ struct rendering_state {
    int num_vb;
    unsigned start_vb;
    struct pipe_vertex_buffer vb[PIPE_MAX_ATTRIBS];
+   size_t vb_sizes[PIPE_MAX_ATTRIBS]; //UINT32_MAX for unset
    struct cso_velems_state velem;
 
    bool disable_multisample;
@@ -1070,8 +1071,23 @@ static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
       int idx = i + vcb->first_binding;
 
       state->vb[idx].buffer_offset = vcb->offsets[i];
-      state->vb[idx].buffer.resource =
-         vcb->buffers[i] ? lvp_buffer_from_handle(vcb->buffers[i])->bo : NULL;
+      if (state->vb_sizes[idx] != UINT32_MAX)
+         pipe_resource_reference(&state->vb[idx].buffer.resource, NULL);
+      state->vb[idx].buffer.resource = vcb->buffers[i] && (!vcb->sizes || vcb->sizes[i]) ? lvp_buffer_from_handle(vcb->buffers[i])->bo : NULL;
+      if (state->vb[idx].buffer.resource && vcb->sizes) {
+         if (vcb->sizes[i] == VK_WHOLE_SIZE || vcb->offsets[i] + vcb->sizes[i] >= state->vb[idx].buffer.resource->width0) {
+            state->vb_sizes[idx] = UINT32_MAX;
+         } else {
+            struct pipe_transfer *xfer;
+            uint8_t *mem = pipe_buffer_map(state->pctx, state->vb[idx].buffer.resource, 0, &xfer);
+            state->pctx->buffer_unmap(state->pctx, xfer);
+            state->vb[idx].buffer.resource = get_buffer_resource(state->pctx, mem);
+            state->vb[idx].buffer.resource->width0 = MIN2(vcb->offsets[i] + vcb->sizes[i], state->vb[idx].buffer.resource->width0);
+            state->vb_sizes[idx] = vcb->sizes[i];
+         }
+      } else {
+         state->vb_sizes[idx] = UINT32_MAX;
+      }
 
       if (vcb->strides)
          state->vb[idx].stride = vcb->strides[i];
