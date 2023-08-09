@@ -108,8 +108,9 @@ struct fd_device_funcs {
     */
    struct fd_bo *(*bo_from_handle)(struct fd_device *dev, uint32_t size,
                                    uint32_t handle);
+   uint32_t (*handle_from_dmabuf)(struct fd_device *dev, int fd);
    struct fd_bo *(*bo_from_dmabuf)(struct fd_device *dev, int fd);
-   void (*bo_close_handle)(struct fd_device *dev, uint32_t handle);
+   void (*bo_close_handle)(struct fd_bo *bo);
 
    struct fd_pipe *(*pipe_new)(struct fd_device *dev, enum fd_pipe_id id,
                                unsigned prio);
@@ -471,7 +472,10 @@ void fd_bo_fini_fences(struct fd_bo *bo);
 void fd_bo_fini_common(struct fd_bo *bo);
 
 struct fd_bo *fd_bo_new_ring(struct fd_device *dev, uint32_t size);
-void fd_bo_close_handle_drm(struct fd_device *dev, uint32_t handle);
+
+uint32_t fd_handle_from_dmabuf_drm(struct fd_device *dev, int fd);
+struct fd_bo *fd_bo_from_dmabuf_drm(struct fd_device *dev, int fd);
+void fd_bo_close_handle_drm(struct fd_bo *bo);
 
 #define enable_debug 0 /* TODO make dynamic */
 

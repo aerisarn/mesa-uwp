@@ -145,7 +145,6 @@ int fd_fence_wait(struct fd_fence *f);
 #define FD_BO_SCANOUT             BITSET_BIT(5)
 
 /* internal bo flags: */
-#define _FD_BO_VIRTIO_SHM         BITSET_BIT(6)
 #define _FD_BO_NOSYNC             BITSET_BIT(7) /* Avoid userspace fencing on control buffers */
 
 /*
@@ -286,7 +285,6 @@ struct fd_bo *fd_bo_from_handle(struct fd_device *dev, uint32_t handle,
                                 uint32_t size);
 struct fd_bo *fd_bo_from_name(struct fd_device *dev, uint32_t name);
 struct fd_bo *fd_bo_from_dmabuf(struct fd_device *dev, int fd);
-struct fd_bo *fd_bo_from_dmabuf_drm(struct fd_device *dev, int fd);
 void fd_bo_mark_for_dump(struct fd_bo *bo);
 
 static inline uint64_t

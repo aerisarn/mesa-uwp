@@ -218,17 +218,27 @@ out_unlock:
    return bo;
 }
 
+uint32_t
+fd_handle_from_dmabuf_drm(struct fd_device *dev, int fd)
+{
+   uint32_t handle;
+   int ret = drmPrimeFDToHandle(dev->fd, fd, &handle);
+   if (ret)
+      return 0;
+   return handle;
+}
+
 struct fd_bo *
 fd_bo_from_dmabuf_drm(struct fd_device *dev, int fd)
 {
-   int ret, size;
+   int size;
    uint32_t handle;
    struct fd_bo *bo;
 
 restart:
    simple_mtx_lock(&table_lock);
-   ret = drmPrimeFDToHandle(dev->fd, fd, &handle);
-   if (ret) {
+   handle = dev->funcs->handle_from_dmabuf(dev, fd);
+   if (!handle) {
       simple_mtx_unlock(&table_lock);
       return NULL;
    }
@@ -437,12 +447,12 @@ fd_bo_fini_fences(struct fd_bo *bo)
 }
 
 void
-fd_bo_close_handle_drm(struct fd_device *dev, uint32_t handle)
+fd_bo_close_handle_drm(struct fd_bo *bo)
 {
    struct drm_gem_close req = {
-      .handle = handle,
+      .handle = bo->handle,
    };
-   drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
+   drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
 }
 
 /**
@@ -468,7 +478,7 @@ fd_bo_fini_common(struct fd_bo *bo)
 
    if (handle) {
       simple_mtx_lock(&table_lock);
-      dev->funcs->bo_close_handle(dev, handle);
+      dev->funcs->bo_close_handle(bo);
       _mesa_hash_table_remove_key(dev->handle_table, &handle);
       if (bo->name)
          _mesa_hash_table_remove_key(dev->name_table, &bo->name);
