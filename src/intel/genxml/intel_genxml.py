@@ -213,6 +213,7 @@ class GenXml(object):
         b_io = io.BytesIO()
         et.indent(self.et, space='  ')
         self.et.write(b_io, encoding="utf-8", xml_declaration=True)
+        b_io.write(b'\n')
 
         tmp = self.filename.with_suffix(f'{self.filename.suffix}.tmp')
         tmp.write_bytes(b_io.getvalue())
