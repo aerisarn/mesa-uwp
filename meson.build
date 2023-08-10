@@ -2232,10 +2232,29 @@ if with_any_vk
   if with_any_vulkan_layers
     vulkan_summary += {'Layers': get_option('vulkan-layers')}
   endif
-  vulkan_summary += {'Video codecs': _codecs.length() != 0 ? _codecs : false}
   vulkan_summary += {'Intel Ray tracing': with_intel_vk_rt}
 endif
 summary(vulkan_summary, section: 'Vulkan', bool_yn: true, list_sep: ' ')
+
+video_summary = {'Codecs': _codecs.length() != 0 ? _codecs : false}
+video_apis = []
+if with_gallium_vdpau
+  video_apis += 'vdpau'
+endif
+if with_gallium_va
+  video_apis += 'va'
+endif
+if with_any_vk
+  video_apis += 'vulkan'
+endif
+if with_gallium_xa
+  video_apis += 'xa'
+endif
+if with_gallium_omx != 'disabled'
+  video_apis += 'omx'
+endif
+video_summary += {'APIs': video_apis.length() != 0 ? video_apis : false}
+summary(video_summary, section: 'Video', bool_yn: true, list_sep: ' ')
 
 llvm_summary = {'Enabled': with_llvm}
 if with_llvm
