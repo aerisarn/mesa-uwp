@@ -2211,7 +2211,9 @@ static void
 radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   uint32_t auto_reset_cntl = 2;
+   enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   /* GFX9 chips fail linestrip CTS tests unless this is set to 0 = no reset */
+   uint32_t auto_reset_cntl = (gfx_level == GFX9) ? 0 : 2;
 
    if (radv_primitive_topology_is_line_list(d->vk.ia.primitive_topology))
       auto_reset_cntl = 1;

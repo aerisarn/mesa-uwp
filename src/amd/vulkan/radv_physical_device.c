@@ -796,10 +796,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       .bresenhamLines = true,
       .smoothLines = true,
       .stippledRectangularLines = false,
-      /* FIXME: Some stippled Bresenham CTS fails on Vega10
-       * but work on Raven.
-       */
-      .stippledBresenhamLines = pdevice->rad_info.gfx_level != GFX9,
+      .stippledBresenhamLines = true,
       .stippledSmoothLines = false,
 
       /* VK_EXT_robustness2 */
