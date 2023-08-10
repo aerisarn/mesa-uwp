@@ -2111,12 +2111,12 @@ radv_GetMemoryFdPropertiesKHR(VkDevice _device, VkExternalMemoryHandleTypeFlagBi
    }
 }
 
-#ifndef _WIN32
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
                                 const VkCalibratedTimestampInfoEXT *pTimestampInfos, uint64_t *pTimestamps,
                                 uint64_t *pMaxDeviation)
 {
+#ifndef _WIN32
    RADV_FROM_HANDLE(radv_device, device, _device);
    uint32_t clock_crystal_freq = device->physical_device->rad_info.clock_crystal_freq;
    int d;
@@ -2161,8 +2161,10 @@ radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
    *pMaxDeviation = vk_time_max_deviation(begin, end, max_clock_period);
 
    return VK_SUCCESS;
-}
+#else
+   return VK_ERROR_FEATURE_NOT_PRESENT;
 #endif
+}
 
 bool
 radv_device_set_pstate(struct radv_device *device, bool enable)
