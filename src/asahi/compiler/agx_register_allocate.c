@@ -660,7 +660,11 @@ find_regs(struct ra_ctx *rctx, agx_instr *I, unsigned dest_idx, unsigned count,
 static void
 reserve_live_in(struct ra_ctx *rctx)
 {
+   /* If there are no predecessors, there is nothing live-in */
    unsigned nr_preds = agx_num_predecessors(rctx->block);
+   if (nr_preds == 0)
+      return;
+
    agx_builder b =
       agx_init_builder(rctx->shader, agx_before_block(rctx->block));
 
