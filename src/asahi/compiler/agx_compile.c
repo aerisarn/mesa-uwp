@@ -1249,6 +1249,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       TRIOP(ffma, fma);
 
       UNOP(f2f16, fmov);
+      UNOP(f2f16_rtne, fmov);
       UNOP(f2f32, fmov);
       UNOP(fround_even, roundeven);
       UNOP(ftrunc, trunc);
