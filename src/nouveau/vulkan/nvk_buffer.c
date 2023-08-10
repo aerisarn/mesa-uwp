@@ -5,7 +5,7 @@
 #include "nvk_physical_device.h"
 
 uint32_t
-nvk_get_buffer_alignment(UNUSED const struct nvk_physical_device *pdev,
+nvk_get_buffer_alignment(UNUSED const struct nv_device_info *info,
                          VkBufferUsageFlags2KHR usage_flags,
                          VkBufferCreateFlags create_flags)
 {
@@ -44,7 +44,7 @@ nvk_CreateBuffer(VkDevice device,
 #if NVK_NEW_UAPI == 1
    if (buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) {
       const uint32_t alignment =
-         nvk_get_buffer_alignment(nvk_device_physical(dev),
+         nvk_get_buffer_alignment(&nvk_device_physical(dev)->info,
                                   buffer->vk.usage,
                                   buffer->vk.create_flags);
       assert(alignment >= 4096);
@@ -97,7 +97,7 @@ nvk_GetDeviceBufferMemoryRequirements(
    VK_FROM_HANDLE(nvk_device, dev, device);
 
    const uint32_t alignment =
-      nvk_get_buffer_alignment(nvk_device_physical(dev),
+      nvk_get_buffer_alignment(&nvk_device_physical(dev)->info,
                                pInfo->pCreateInfo->usage,
                                pInfo->pCreateInfo->flags);
 

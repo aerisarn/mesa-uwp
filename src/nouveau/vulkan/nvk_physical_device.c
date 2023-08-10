@@ -36,308 +36,6 @@
 #include "clc597.h"
 #include "clc997.h"
 
-VKAPI_ATTR void VKAPI_CALL
-nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-                                 VkPhysicalDeviceProperties2 *pProperties)
-{
-   VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
-   VkSampleCountFlagBits sample_counts = VK_SAMPLE_COUNT_1_BIT |
-                                         VK_SAMPLE_COUNT_2_BIT |
-                                         VK_SAMPLE_COUNT_4_BIT |
-                                         VK_SAMPLE_COUNT_8_BIT;
-   pProperties->properties = (VkPhysicalDeviceProperties) {
-      .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
-      .driverVersion = vk_get_driver_version(),
-      .vendorID = NVIDIA_VENDOR_ID,
-      .deviceID = pdev->info.device_id,
-      .deviceType = pdev->info.type == NV_DEVICE_TYPE_DIS ?
-                    VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU :
-                    VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
-      .limits = (VkPhysicalDeviceLimits) {
-         .maxImageArrayLayers = 2048,
-         .maxImageDimension1D = nvk_image_max_dimension(pdev, VK_IMAGE_TYPE_1D),
-         .maxImageDimension2D = nvk_image_max_dimension(pdev, VK_IMAGE_TYPE_2D),
-         .maxImageDimension3D = nvk_image_max_dimension(pdev, VK_IMAGE_TYPE_3D),
-         .maxImageDimensionCube = 0x8000,
-         .maxPushConstantsSize = NVK_MAX_PUSH_SIZE,
-         .maxMemoryAllocationCount = 1024,
-         .bufferImageGranularity = pdev->info.chipset >= 0x120 ? 0x400 : 0x10000,
-         .maxFramebufferHeight = pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000,
-         .maxFramebufferWidth = pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000,
-         .maxFramebufferLayers = 2048,
-         .maxColorAttachments = NVK_MAX_RTS,
-         .maxClipDistances = 8,
-         .maxCullDistances = 8,
-         .maxCombinedClipAndCullDistances = 8,
-         .maxFragmentCombinedOutputResources = 16,
-         .maxFragmentInputComponents = 128,
-         .maxFragmentOutputAttachments = NVK_MAX_RTS,
-         .maxFragmentDualSrcAttachments = 1,
-         .maxSamplerAllocationCount = 4000,
-         .maxSamplerLodBias = 15,
-         .maxSamplerAnisotropy = 16,
-         .maxSampleMaskWords = 1,
-         .minTexelGatherOffset = -32,
-         .minTexelOffset = -8,
-         .maxTexelGatherOffset = 31,
-         .maxTexelOffset = 7,
-         .minInterpolationOffset = -0.5,
-         .maxInterpolationOffset = 0.4375,
-         .mipmapPrecisionBits = 8,
-         .subPixelInterpolationOffsetBits = 4,
-         .subPixelPrecisionBits = 8,
-         .subTexelPrecisionBits = 8,
-         .viewportSubPixelBits = 8,
-         .maxUniformBufferRange = 65536,
-         .maxStorageBufferRange = UINT32_MAX,
-         .maxTexelBufferElements = 128 * 1024 * 1024,
-         .maxBoundDescriptorSets = NVK_MAX_SETS,
-         .maxPerStageDescriptorSamplers = UINT32_MAX,
-         .maxPerStageDescriptorUniformBuffers = UINT32_MAX,
-         .maxPerStageDescriptorStorageBuffers = UINT32_MAX,
-         .maxPerStageDescriptorSampledImages = UINT32_MAX,
-         .maxPerStageDescriptorStorageImages = UINT32_MAX,
-         .maxPerStageDescriptorInputAttachments = UINT32_MAX,
-         .maxPerStageResources = UINT32_MAX,
-         .maxDescriptorSetSamplers = UINT32_MAX,
-         .maxDescriptorSetUniformBuffers = UINT32_MAX,
-         .maxDescriptorSetUniformBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
-         .maxDescriptorSetStorageBuffers = UINT32_MAX,
-         .maxDescriptorSetStorageBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
-         .maxDescriptorSetSampledImages = UINT32_MAX,
-         .maxDescriptorSetStorageImages = UINT32_MAX,
-         .maxDescriptorSetInputAttachments = UINT32_MAX,
-         .maxComputeSharedMemorySize = 49152,
-         .maxComputeWorkGroupCount = {0x7fffffff, 65535, 65535},
-         .maxComputeWorkGroupInvocations = 1024,
-         .maxComputeWorkGroupSize = {1024, 1024, 64},
-         .maxViewports = NVK_MAX_VIEWPORTS,
-         .maxViewportDimensions = { 32768, 32768 },
-         .viewportBoundsRange = { -65536, 65536 },
-         .pointSizeRange = { 1.0, 2047.94 },
-         .pointSizeGranularity = 0.0625,
-         .lineWidthRange = { 1, 64 },
-         .lineWidthGranularity = 0.0625,
-         .nonCoherentAtomSize = 64,
-         .minMemoryMapAlignment = 64,
-         .minUniformBufferOffsetAlignment =
-            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR, 0),
-         .minTexelBufferOffsetAlignment =
-            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR |
-                                           VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR,
-                                     0),
-         .minStorageBufferOffsetAlignment =
-            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR, 0),
-         .maxVertexInputAttributeOffset = 2047,
-         .maxVertexInputAttributes = 32,
-         .maxVertexInputBindingStride = 2048,
-         .maxVertexInputBindings = 32,
-         .maxVertexOutputComponents = 128,
-         .maxTessellationGenerationLevel = 64,
-         .maxTessellationPatchSize = 32,
-         .maxTessellationControlPerVertexInputComponents = 128,
-         .maxTessellationControlPerVertexOutputComponents = 128,
-         .maxTessellationControlPerPatchOutputComponents = 120,
-         .maxTessellationControlTotalOutputComponents = 4216,
-         .maxTessellationEvaluationInputComponents = 128,
-         .maxTessellationEvaluationOutputComponents = 128,
-         .maxGeometryShaderInvocations = 32,
-         .maxGeometryInputComponents = 128,
-         .maxGeometryOutputComponents = 128,
-         .maxGeometryOutputVertices = 1024,
-         .maxGeometryTotalOutputComponents = 1024,
-         .maxDrawIndexedIndexValue = UINT32_MAX,
-         .maxDrawIndirectCount = UINT32_MAX,
-         .timestampComputeAndGraphics = true,
-         .timestampPeriod = 1,
-         .framebufferColorSampleCounts = sample_counts,
-         .framebufferDepthSampleCounts = sample_counts,
-         .framebufferNoAttachmentsSampleCounts = sample_counts,
-         .framebufferStencilSampleCounts = sample_counts,
-         .sampledImageColorSampleCounts = sample_counts,
-         .sampledImageDepthSampleCounts = sample_counts,
-         .sampledImageIntegerSampleCounts = sample_counts,
-         .sampledImageStencilSampleCounts = sample_counts,
-         .storageImageSampleCounts = VK_SAMPLE_COUNT_1_BIT,
-         .standardSampleLocations = true,
-         .strictLines = true,
-         .optimalBufferCopyOffsetAlignment = 1,
-         .optimalBufferCopyRowPitchAlignment = 1,
-         .bufferImageGranularity = 1,
-         .sparseAddressSpaceSize = UINT32_MAX,
-      },
-      .sparseProperties = {
-         .residencyNonResidentStrict = true,
-      },
-      /* More properties */
-   };
-
-   snprintf(pProperties->properties.deviceName,
-            sizeof(pProperties->properties.deviceName),
-            "%s", pdev->info.device_name);
-
-   VkPhysicalDeviceVulkan11Properties core_1_1 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
-      /* Vulkan 1.1 properties */
-      .pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY,
-      .maxMultiviewViewCount = NVK_MAX_MULTIVIEW_VIEW_COUNT,
-      .maxMultiviewInstanceIndex = UINT32_MAX,
-      .maxPerSetDescriptors = UINT32_MAX,
-      .maxMemoryAllocationSize = (1u << 31),
-   };
-   memcpy(core_1_1.deviceUUID, pdev->device_uuid, VK_UUID_SIZE);
-   struct nvk_instance *instance = nvk_physical_device_instance(pdev);
-   memcpy(core_1_1.driverUUID, instance->driver_uuid, VK_UUID_SIZE);
-
-   VkPhysicalDeviceVulkan12Properties core_1_2 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
-      /* Vulkan 1.2 properties */
-      .supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
-                                    VK_RESOLVE_MODE_AVERAGE_BIT |
-                                    VK_RESOLVE_MODE_MIN_BIT |
-                                    VK_RESOLVE_MODE_MAX_BIT,
-      .supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
-                                      VK_RESOLVE_MODE_MIN_BIT |
-                                      VK_RESOLVE_MODE_MAX_BIT,
-      .independentResolveNone = true,
-      .independentResolve = true,
-      .driverID = VK_DRIVER_ID_MESA_NVK,
-      .conformanceVersion = (VkConformanceVersion) { /* TODO: conf version */
-         .major = 0,
-         .minor = 0,
-         .subminor = 0,
-         .patch = 0,
-      },
-      .maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX,
-      .shaderUniformBufferArrayNonUniformIndexingNative = false,
-      .shaderSampledImageArrayNonUniformIndexingNative = pdev->info.cls_eng3d >= TURING_A,
-      .shaderStorageBufferArrayNonUniformIndexingNative = true,
-      .shaderStorageImageArrayNonUniformIndexingNative = pdev->info.cls_eng3d >= TURING_A,
-      .shaderInputAttachmentArrayNonUniformIndexingNative = false,
-      .robustBufferAccessUpdateAfterBind = true,
-      .quadDivergentImplicitLod = pdev->info.cls_eng3d >= TURING_A,
-      .maxPerStageDescriptorUpdateAfterBindSamplers = UINT32_MAX,
-      .maxPerStageDescriptorUpdateAfterBindUniformBuffers = UINT32_MAX,
-      .maxPerStageDescriptorUpdateAfterBindStorageBuffers = UINT32_MAX,
-      .maxPerStageDescriptorUpdateAfterBindSampledImages = UINT32_MAX,
-      .maxPerStageDescriptorUpdateAfterBindStorageImages = UINT32_MAX,
-      .maxPerStageDescriptorUpdateAfterBindInputAttachments = UINT32_MAX,
-      .maxPerStageUpdateAfterBindResources = UINT32_MAX,
-      .maxDescriptorSetUpdateAfterBindSamplers = UINT32_MAX,
-      .maxDescriptorSetUpdateAfterBindUniformBuffers = UINT32_MAX,
-      .maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
-      .maxDescriptorSetUpdateAfterBindStorageBuffers = UINT32_MAX,
-      .maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
-      .maxDescriptorSetUpdateAfterBindSampledImages = UINT32_MAX,
-      .maxDescriptorSetUpdateAfterBindStorageImages = UINT32_MAX,
-      .maxDescriptorSetUpdateAfterBindInputAttachments = UINT32_MAX,
-      .filterMinmaxSingleComponentFormats = true,
-      .filterMinmaxImageComponentMapping = true,
-      .maxTimelineSemaphoreValueDifference = UINT64_MAX,
-   };
-
-   snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "NVK");
-   snprintf(core_1_2.driverInfo, VK_MAX_DRIVER_INFO_SIZE,
-            "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
-
-   VkPhysicalDeviceVulkan13Properties core_1_3 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
-      /* Vulkan 1.3 properties */
-      .maxInlineUniformBlockSize = 1 << 16,
-      .maxPerStageDescriptorInlineUniformBlocks = 32,
-      .maxBufferSize = UINT32_MAX,
-   };
-
-   vk_foreach_struct(ext, pProperties->pNext)
-   {
-      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
-         continue;
-      if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
-         continue;
-      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
-         continue;
-
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
-         VkPhysicalDeviceDrmPropertiesEXT *p = (void *)ext;
-         p->hasPrimary = pdev->primary_dev != 0;
-         p->primaryMajor = major(pdev->primary_dev);
-         p->primaryMinor = minor(pdev->primary_dev);
-         p->hasRender = pdev->render_dev != 0;
-         p->renderMajor = major(pdev->render_dev);
-         p->renderMinor = minor(pdev->render_dev);
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
-         VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *p = (void *)ext;
-         p->dynamicPrimitiveTopologyUnrestricted = true;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
-         VkPhysicalDevicePCIBusInfoPropertiesEXT *p = (void *)ext;
-         assert(pdev->info.type == NV_DEVICE_TYPE_DIS);
-         p->pciDomain   = pdev->info.pci.domain;
-         p->pciBus      = pdev->info.pci.bus;
-         p->pciDevice   = pdev->info.pci.dev;
-         p->pciFunction = pdev->info.pci.func;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
-         VkPhysicalDeviceProvokingVertexPropertiesEXT *p = (void *)ext;
-         p->provokingVertexModePerPipeline = true;
-         p->transformFeedbackPreservesTriangleFanProvokingVertex = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-         VkPhysicalDevicePushDescriptorPropertiesKHR *p = (void *)ext;
-         p->maxPushDescriptors = NVK_MAX_PUSH_DESCRIPTORS;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *p = (void *)ext;
-         p->maxVertexAttribDivisor = UINT32_MAX;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-         VkPhysicalDeviceRobustness2PropertiesEXT *p = (void *)ext;
-         p->robustStorageBufferAccessSizeAlignment =
-            NVK_SSBO_BOUNDS_CHECK_ALIGNMENT;
-         p->robustUniformBufferAccessSizeAlignment = NVK_MIN_UBO_ALIGNMENT;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
-         VkPhysicalDeviceTransformFeedbackPropertiesEXT *p = (void *)ext;
-         p->maxTransformFeedbackStreams = 4;
-         p->maxTransformFeedbackBuffers = 4;
-         p->maxTransformFeedbackBufferSize = UINT32_MAX;
-         p->maxTransformFeedbackStreamDataSize = 2048;
-         p->maxTransformFeedbackBufferDataSize = 512;
-         p->maxTransformFeedbackBufferDataStride = 2048;
-         p->transformFeedbackQueries = true;
-         p->transformFeedbackStreamsLinesTriangles = false;
-         p->transformFeedbackRasterizationStreamSelect = true;
-         p->transformFeedbackDraw = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
-         VkPhysicalDeviceCustomBorderColorPropertiesEXT *props = (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
-         props->maxCustomBorderColorSamplers = 4000;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
-         VkPhysicalDeviceLineRasterizationPropertiesEXT *p = (void *)ext;
-         p->lineSubPixelPrecisionBits = 8;
-         break;
-      }
-      /* More property structs */
-      default:
-         break;
-      }
-   }
-}
-
 PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
 {
@@ -668,6 +366,261 @@ nvk_get_device_features(const struct nv_device_info *info,
    };
 }
 
+static void
+nvk_get_device_properties(const struct nvk_instance *instance,
+                          const struct nv_device_info *info,
+                          struct vk_properties *properties)
+{
+   VkSampleCountFlagBits sample_counts = VK_SAMPLE_COUNT_1_BIT |
+                                         VK_SAMPLE_COUNT_2_BIT |
+                                         VK_SAMPLE_COUNT_4_BIT |
+                                         VK_SAMPLE_COUNT_8_BIT;
+
+   *properties = (struct vk_properties) {
+      .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
+      .driverVersion = vk_get_driver_version(),
+      .vendorID = NVIDIA_VENDOR_ID,
+      .deviceID = info->device_id,
+      .deviceType = info->type == NV_DEVICE_TYPE_DIS ?
+                    VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU :
+                    VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
+
+      /* Vulkan 1.0 limits */
+      .maxImageArrayLayers = 2048,
+      .maxImageDimension1D = nvk_image_max_dimension(info, VK_IMAGE_TYPE_1D),
+      .maxImageDimension2D = nvk_image_max_dimension(info, VK_IMAGE_TYPE_2D),
+      .maxImageDimension3D = nvk_image_max_dimension(info, VK_IMAGE_TYPE_3D),
+      .maxImageDimensionCube = 0x8000,
+      .maxPushConstantsSize = NVK_MAX_PUSH_SIZE,
+      .maxMemoryAllocationCount = 1024,
+      .bufferImageGranularity = info->chipset >= 0x120 ? 0x400 : 0x10000,
+      .maxFramebufferHeight = info->chipset >= 0x130 ? 0x8000 : 0x4000,
+      .maxFramebufferWidth = info->chipset >= 0x130 ? 0x8000 : 0x4000,
+      .maxFramebufferLayers = 2048,
+      .maxColorAttachments = NVK_MAX_RTS,
+      .maxClipDistances = 8,
+      .maxCullDistances = 8,
+      .maxCombinedClipAndCullDistances = 8,
+      .maxFragmentCombinedOutputResources = 16,
+      .maxFragmentInputComponents = 128,
+      .maxFragmentOutputAttachments = NVK_MAX_RTS,
+      .maxFragmentDualSrcAttachments = 1,
+      .maxSamplerAllocationCount = 4000,
+      .maxSamplerLodBias = 15,
+      .maxSamplerAnisotropy = 16,
+      .maxSampleMaskWords = 1,
+      .minTexelGatherOffset = -32,
+      .minTexelOffset = -8,
+      .maxTexelGatherOffset = 31,
+      .maxTexelOffset = 7,
+      .minInterpolationOffset = -0.5,
+      .maxInterpolationOffset = 0.4375,
+      .mipmapPrecisionBits = 8,
+      .subPixelInterpolationOffsetBits = 4,
+      .subPixelPrecisionBits = 8,
+      .subTexelPrecisionBits = 8,
+      .viewportSubPixelBits = 8,
+      .maxUniformBufferRange = 65536,
+      .maxStorageBufferRange = UINT32_MAX,
+      .maxTexelBufferElements = 128 * 1024 * 1024,
+      .maxBoundDescriptorSets = NVK_MAX_SETS,
+      .maxPerStageDescriptorSamplers = UINT32_MAX,
+      .maxPerStageDescriptorUniformBuffers = UINT32_MAX,
+      .maxPerStageDescriptorStorageBuffers = UINT32_MAX,
+      .maxPerStageDescriptorSampledImages = UINT32_MAX,
+      .maxPerStageDescriptorStorageImages = UINT32_MAX,
+      .maxPerStageDescriptorInputAttachments = UINT32_MAX,
+      .maxPerStageResources = UINT32_MAX,
+      .maxDescriptorSetSamplers = UINT32_MAX,
+      .maxDescriptorSetUniformBuffers = UINT32_MAX,
+      .maxDescriptorSetUniformBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
+      .maxDescriptorSetStorageBuffers = UINT32_MAX,
+      .maxDescriptorSetStorageBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
+      .maxDescriptorSetSampledImages = UINT32_MAX,
+      .maxDescriptorSetStorageImages = UINT32_MAX,
+      .maxDescriptorSetInputAttachments = UINT32_MAX,
+      .maxComputeSharedMemorySize = 49152,
+      .maxComputeWorkGroupCount = {0x7fffffff, 65535, 65535},
+      .maxComputeWorkGroupInvocations = 1024,
+      .maxComputeWorkGroupSize = {1024, 1024, 64},
+      .maxViewports = NVK_MAX_VIEWPORTS,
+      .maxViewportDimensions = { 32768, 32768 },
+      .viewportBoundsRange = { -65536, 65536 },
+      .pointSizeRange = { 1.0, 2047.94 },
+      .pointSizeGranularity = 0.0625,
+      .lineWidthRange = { 1, 64 },
+      .lineWidthGranularity = 0.0625,
+      .nonCoherentAtomSize = 64,
+      .minMemoryMapAlignment = 64,
+      .minUniformBufferOffsetAlignment =
+         nvk_get_buffer_alignment(info, VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR, 0),
+      .minTexelBufferOffsetAlignment =
+         nvk_get_buffer_alignment(info, VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR |
+                                        VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR,
+                                  0),
+      .minStorageBufferOffsetAlignment =
+         nvk_get_buffer_alignment(info, VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR, 0),
+      .maxVertexInputAttributeOffset = 2047,
+      .maxVertexInputAttributes = 32,
+      .maxVertexInputBindingStride = 2048,
+      .maxVertexInputBindings = 32,
+      .maxVertexOutputComponents = 128,
+      .maxTessellationGenerationLevel = 64,
+      .maxTessellationPatchSize = 32,
+      .maxTessellationControlPerVertexInputComponents = 128,
+      .maxTessellationControlPerVertexOutputComponents = 128,
+      .maxTessellationControlPerPatchOutputComponents = 120,
+      .maxTessellationControlTotalOutputComponents = 4216,
+      .maxTessellationEvaluationInputComponents = 128,
+      .maxTessellationEvaluationOutputComponents = 128,
+      .maxGeometryShaderInvocations = 32,
+      .maxGeometryInputComponents = 128,
+      .maxGeometryOutputComponents = 128,
+      .maxGeometryOutputVertices = 1024,
+      .maxGeometryTotalOutputComponents = 1024,
+      .maxDrawIndexedIndexValue = UINT32_MAX,
+      .maxDrawIndirectCount = UINT32_MAX,
+      .timestampComputeAndGraphics = true,
+      .timestampPeriod = 1,
+      .framebufferColorSampleCounts = sample_counts,
+      .framebufferDepthSampleCounts = sample_counts,
+      .framebufferNoAttachmentsSampleCounts = sample_counts,
+      .framebufferStencilSampleCounts = sample_counts,
+      .sampledImageColorSampleCounts = sample_counts,
+      .sampledImageDepthSampleCounts = sample_counts,
+      .sampledImageIntegerSampleCounts = sample_counts,
+      .sampledImageStencilSampleCounts = sample_counts,
+      .storageImageSampleCounts = VK_SAMPLE_COUNT_1_BIT,
+      .standardSampleLocations = true,
+      .strictLines = true,
+      .optimalBufferCopyOffsetAlignment = 1,
+      .optimalBufferCopyRowPitchAlignment = 1,
+      .bufferImageGranularity = 1,
+      .sparseAddressSpaceSize = UINT32_MAX,
+
+      /* Vulkan 1.0 sparse properties */
+      .sparseResidencyNonResidentStrict = true,
+
+      /* Vulkan 1.1 properties */
+      .pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY,
+      .maxMultiviewViewCount = NVK_MAX_MULTIVIEW_VIEW_COUNT,
+      .maxMultiviewInstanceIndex = UINT32_MAX,
+      .maxPerSetDescriptors = UINT32_MAX,
+      .maxMemoryAllocationSize = (1u << 31),
+
+      /* Vulkan 1.2 properties */
+      .supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
+                                    VK_RESOLVE_MODE_AVERAGE_BIT |
+                                    VK_RESOLVE_MODE_MIN_BIT |
+                                    VK_RESOLVE_MODE_MAX_BIT,
+      .supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
+                                      VK_RESOLVE_MODE_MIN_BIT |
+                                      VK_RESOLVE_MODE_MAX_BIT,
+      .independentResolveNone = true,
+      .independentResolve = true,
+      .driverID = VK_DRIVER_ID_MESA_NVK,
+      .conformanceVersion = (VkConformanceVersion) { /* TODO: conf version */
+         .major = 0,
+         .minor = 0,
+         .subminor = 0,
+         .patch = 0,
+      },
+      .maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX,
+      .shaderUniformBufferArrayNonUniformIndexingNative = false,
+      .shaderSampledImageArrayNonUniformIndexingNative = info->cls_eng3d >= TURING_A,
+      .shaderStorageBufferArrayNonUniformIndexingNative = true,
+      .shaderStorageImageArrayNonUniformIndexingNative = info->cls_eng3d >= TURING_A,
+      .shaderInputAttachmentArrayNonUniformIndexingNative = false,
+      .robustBufferAccessUpdateAfterBind = true,
+      .quadDivergentImplicitLod = info->cls_eng3d >= TURING_A,
+      .maxPerStageDescriptorUpdateAfterBindSamplers = UINT32_MAX,
+      .maxPerStageDescriptorUpdateAfterBindUniformBuffers = UINT32_MAX,
+      .maxPerStageDescriptorUpdateAfterBindStorageBuffers = UINT32_MAX,
+      .maxPerStageDescriptorUpdateAfterBindSampledImages = UINT32_MAX,
+      .maxPerStageDescriptorUpdateAfterBindStorageImages = UINT32_MAX,
+      .maxPerStageDescriptorUpdateAfterBindInputAttachments = UINT32_MAX,
+      .maxPerStageUpdateAfterBindResources = UINT32_MAX,
+      .maxDescriptorSetUpdateAfterBindSamplers = UINT32_MAX,
+      .maxDescriptorSetUpdateAfterBindUniformBuffers = UINT32_MAX,
+      .maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
+      .maxDescriptorSetUpdateAfterBindStorageBuffers = UINT32_MAX,
+      .maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = NVK_MAX_DYNAMIC_BUFFERS / 2,
+      .maxDescriptorSetUpdateAfterBindSampledImages = UINT32_MAX,
+      .maxDescriptorSetUpdateAfterBindStorageImages = UINT32_MAX,
+      .maxDescriptorSetUpdateAfterBindInputAttachments = UINT32_MAX,
+      .filterMinmaxSingleComponentFormats = true,
+      .filterMinmaxImageComponentMapping = true,
+      .maxTimelineSemaphoreValueDifference = UINT64_MAX,
+
+      /* Vulkan 1.3 properties */
+      .maxInlineUniformBlockSize = 1 << 16,
+      .maxPerStageDescriptorInlineUniformBlocks = 32,
+      .maxBufferSize = UINT32_MAX,
+
+      /* VK_KHR_push_descriptor */
+      .maxPushDescriptors = NVK_MAX_PUSH_DESCRIPTORS,
+
+      /* VK_EXT_custom_border_color */
+      .maxCustomBorderColorSamplers = 4000,
+
+      /* VK_EXT_extended_dynamic_state3 */
+      .dynamicPrimitiveTopologyUnrestricted = true,
+
+      /* VK_EXT_line_rasterization */
+      .lineSubPixelPrecisionBits = 8,
+
+      /* VK_EXT_pci_bus_info */
+      .pciDomain   = info->pci.domain,
+      .pciBus      = info->pci.bus,
+      .pciDevice   = info->pci.dev,
+      .pciFunction = info->pci.func,
+
+      /* VK_EXT_physical_device_drm gets populated later */
+
+      /* VK_EXT_provoking_vertex */
+      .provokingVertexModePerPipeline = true,
+      .transformFeedbackPreservesTriangleFanProvokingVertex = true,
+
+      /* VK_EXT_robustness2 */
+      .robustStorageBufferAccessSizeAlignment = NVK_SSBO_BOUNDS_CHECK_ALIGNMENT,
+      .robustUniformBufferAccessSizeAlignment = NVK_MIN_UBO_ALIGNMENT,
+
+      /* VK_EXT_transform_feedback */
+      .maxTransformFeedbackStreams = 4,
+      .maxTransformFeedbackBuffers = 4,
+      .maxTransformFeedbackBufferSize = UINT32_MAX,
+      .maxTransformFeedbackStreamDataSize = 2048,
+      .maxTransformFeedbackBufferDataSize = 512,
+      .maxTransformFeedbackBufferDataStride = 2048,
+      .transformFeedbackQueries = true,
+      .transformFeedbackStreamsLinesTriangles = false,
+      .transformFeedbackRasterizationStreamSelect = true,
+      .transformFeedbackDraw = true,
+
+      /* VK_EXT_vertex_attribute_divisor */
+      .maxVertexAttribDivisor = UINT32_MAX,
+   };
+
+   snprintf(properties->deviceName, sizeof(properties->deviceName),
+            "%s", info->device_name);
+
+   const struct {
+      uint16_t vendor_id;
+      uint16_t device_id;
+      uint8_t pad[12];
+   } dev_uuid = {
+      .vendor_id = NVIDIA_VENDOR_ID,
+      .device_id = info->device_id,
+   };
+   STATIC_ASSERT(sizeof(dev_uuid) == VK_UUID_SIZE);
+   memcpy(properties->deviceUUID, &dev_uuid, VK_UUID_SIZE);
+   memcpy(properties->driverUUID, instance->driver_uuid, VK_UUID_SIZE);
+
+   snprintf(properties->driverName, VK_MAX_DRIVER_NAME_SIZE, "NVK");
+   snprintf(properties->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
+            "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
+}
+
 VkResult
 nvk_create_drm_physical_device(struct vk_instance *_instance,
                                drmDevicePtr drm_device,
@@ -770,31 +723,32 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    struct vk_features supported_features;
    nvk_get_device_features(&info, &supported_features);
 
+   struct vk_properties properties;
+   nvk_get_device_properties(instance, &info, &properties);
+
+   properties.drmHasRender = true;
+   properties.drmRenderMajor = major(render_dev);
+   properties.drmRenderMinor = minor(render_dev);
+
+   /* DRM primary is optional */
+   if ((drm_device->available_nodes & (1 << DRM_NODE_PRIMARY)) &&
+       !stat(drm_device->nodes[DRM_NODE_PRIMARY], &st)) {
+      assert(st.st_rdev != 0);
+      properties.drmHasPrimary = true;
+      properties.drmPrimaryMajor = major(st.st_rdev);
+      properties.drmPrimaryMinor = minor(st.st_rdev);
+   }
+
    result = vk_physical_device_init(&pdev->vk, &instance->vk,
                                     &supported_extensions,
                                     &supported_features,
-                                    NULL,
+                                    &properties,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
    pdev->render_dev = render_dev;
    pdev->info = info;
-
-   if ((drm_device->available_nodes & (1 << DRM_NODE_PRIMARY)) &&
-       !stat(drm_device->nodes[DRM_NODE_PRIMARY], &st))
-      pdev->primary_dev = st.st_rdev;
-
-   const struct {
-      uint16_t vendor_id;
-      uint16_t device_id;
-      uint8_t pad[12];
-   } dev_uuid = {
-      .vendor_id = NVIDIA_VENDOR_ID,
-      .device_id = pdev->info.device_id,
-   };
-   STATIC_ASSERT(sizeof(dev_uuid) == VK_UUID_SIZE);
-   memcpy(pdev->device_uuid, &dev_uuid, VK_UUID_SIZE);
 
    pdev->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    pdev->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;

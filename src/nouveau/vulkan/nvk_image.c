@@ -149,13 +149,13 @@ vk_image_usage_to_format_features(VkImageUsageFlagBits usage_flag)
 }
 
 uint32_t
-nvk_image_max_dimension(const struct nvk_physical_device *pdev,
+nvk_image_max_dimension(const struct nv_device_info *info,
                         VkImageType image_type)
 {
    switch (image_type) {
    case VK_IMAGE_TYPE_1D:
    case VK_IMAGE_TYPE_2D:
-      return pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000;
+      return info->chipset >= 0x130 ? 0x8000 : 0x4000;
    case VK_IMAGE_TYPE_3D:
       return 0x4000;
    default:
@@ -209,7 +209,8 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    if (ycbcr_info && pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   const uint32_t max_dim = nvk_image_max_dimension(pdev, VK_IMAGE_TYPE_1D);
+   const uint32_t max_dim =
+      nvk_image_max_dimension(&pdev->info, VK_IMAGE_TYPE_1D);
    VkExtent3D maxExtent;
    uint32_t maxArraySize;
    switch (pImageFormatInfo->type) {

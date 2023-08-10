@@ -19,7 +19,7 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
                               VkFormat format, VkImageTiling tiling);
 
 uint32_t
-nvk_image_max_dimension(const struct nvk_physical_device *pdev,
+nvk_image_max_dimension(const struct nv_device_info *info,
                         VkImageType image_type);
 
 struct nvk_image_plane {
