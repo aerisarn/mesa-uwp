@@ -5,6 +5,7 @@
 from __future__ import annotations
 from collections import OrderedDict
 import copy
+import io
 import pathlib
 import re
 import xml.etree.ElementTree as et
@@ -202,7 +203,17 @@ class GenXml(object):
                    for old, new in zip(self.et.getroot(), other.et.getroot()))
 
     def write_file(self):
-        tmp = self.filename.with_suffix(f'{self.filename.suffix}.tmp')
+        try:
+            old_genxml = GenXml(self.filename)
+            if self.is_equivalent_xml(old_genxml):
+                return
+        except Exception:
+            pass
+
+        b_io = io.BytesIO()
         et.indent(self.et, space='  ')
-        self.et.write(tmp, encoding="utf-8", xml_declaration=True)
+        self.et.write(b_io, encoding="utf-8", xml_declaration=True)
+
+        tmp = self.filename.with_suffix(f'{self.filename.suffix}.tmp')
+        tmp.write_bytes(b_io.getvalue())
         tmp.replace(self.filename)
