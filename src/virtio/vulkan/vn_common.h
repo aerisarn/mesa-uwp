@@ -106,6 +106,7 @@ enum vn_debug {
    VN_DEBUG_LOG_CTX_INFO = 1ull << 5,
    VN_DEBUG_CACHE = 1ull << 6,
    VN_DEBUG_NO_SPARSE = 1ull << 7,
+   VN_DEBUG_GPL = 1ull << 8,
 };
 
 enum vn_perf {
