@@ -347,6 +347,48 @@ si_aco_build_vs_prolog(struct si_screen *screen,
    return true;
 }
 
+static bool
+si_aco_build_ps_prolog(struct aco_compiler_options *options,
+                       struct si_shader_part *result)
+{
+   const union si_shader_part_key *key = &result->key;
+
+   struct si_shader_args args;
+   si_get_ps_prolog_args(&args, key);
+
+   struct aco_ps_prolog_info pinfo = {
+      .poly_stipple = key->ps_prolog.states.poly_stipple,
+      .poly_stipple_buf_offset = SI_PS_CONST_POLY_STIPPLE * 16,
+
+      .bc_optimize_for_persp = key->ps_prolog.states.bc_optimize_for_persp,
+      .bc_optimize_for_linear = key->ps_prolog.states.bc_optimize_for_linear,
+      .force_persp_sample_interp = key->ps_prolog.states.force_persp_sample_interp,
+      .force_linear_sample_interp = key->ps_prolog.states.force_linear_sample_interp,
+      .force_persp_center_interp = key->ps_prolog.states.force_persp_center_interp,
+      .force_linear_center_interp = key->ps_prolog.states.force_linear_center_interp,
+
+      .samplemask_log_ps_iter = key->ps_prolog.states.samplemask_log_ps_iter,
+      .num_interp_inputs = key->ps_prolog.num_interp_inputs,
+      .colors_read = key->ps_prolog.colors_read,
+      .color_interp_vgpr_index[0] = key->ps_prolog.color_interp_vgpr_index[0],
+      .color_interp_vgpr_index[1] = key->ps_prolog.color_interp_vgpr_index[1],
+      .color_attr_index[0] = key->ps_prolog.color_attr_index[0],
+      .color_attr_index[1] = key->ps_prolog.color_attr_index[1],
+      .color_two_side = key->ps_prolog.states.color_two_side,
+      .needs_wqm = key->ps_prolog.wqm,
+
+      .internal_bindings = args.internal_bindings,
+   };
+
+   struct aco_shader_info info = {0};
+   info.hw_stage = AC_HW_PIXEL_SHADER;
+   info.workgroup_size = info.wave_size = key->ps_prolog.wave32 ? 32 : 64,
+
+   aco_compile_ps_prolog(options, &info, &pinfo, &args.ac,
+                         si_aco_build_shader_part_binary, (void **)result);
+   return true;
+}
+
 bool
 si_aco_build_shader_part(struct si_screen *screen, gl_shader_stage stage, bool prolog,
                          struct util_debug_callback *debug, const char *name,
@@ -361,6 +403,10 @@ si_aco_build_shader_part(struct si_screen *screen, gl_shader_stage stage, bool p
    case MESA_SHADER_TESS_CTRL:
       return si_aco_build_tcs_epilog(screen, &options, result);
       break;
+   case MESA_SHADER_FRAGMENT:
+      if (prolog)
+         return si_aco_build_ps_prolog(&options, result);
+      FALLTHROUGH;
    default:
       unreachable("bad shader part");
    }
