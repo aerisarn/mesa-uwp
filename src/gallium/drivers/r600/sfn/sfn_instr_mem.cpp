@@ -39,7 +39,7 @@ namespace r600 {
 
 GDSInstr::GDSInstr(
    ESDOp op, Register *dest, const RegisterVec4& src, int uav_base, PRegister uav_id):
-    InstrWithResource(uav_base, uav_id),
+    Resource(this, uav_base, uav_id),
     m_op(op),
     m_dest(dest),
     m_src(src)
@@ -373,6 +373,11 @@ GDSInstr::emit_atomic_pre_dec(nir_intrinsic_instr *instr, Shader& shader)
    return true;
 }
 
+void GDSInstr::update_indirect_addr(PRegister addr)
+{
+   set_resource_offset(addr);
+}
+
 RatInstr::RatInstr(ECFOpCode cf_opcode,
                    ERatOp rat_op,
                    const RegisterVec4& data,
@@ -382,7 +387,7 @@ RatInstr::RatInstr(ECFOpCode cf_opcode,
                    int burst_count,
                    int comp_mask,
                    int element_size):
-    InstrWithResource(rat_id, rat_id_offset),
+    Resource(this, rat_id, rat_id_offset),
     m_cf_opcode(cf_opcode),
     m_rat_op(rat_op),
     m_data(data),
@@ -440,6 +445,11 @@ RatInstr::do_print(std::ostream& os) const
    os << " BC:" << m_burst_count << " MASK:" << m_comp_mask << " ES:" << m_element_size;
    if (m_need_ack)
       os << " ACK";
+}
+
+void RatInstr::update_indirect_addr(PRegister addr)
+{
+   set_resource_offset(addr);
 }
 
 static RatInstr::ERatOp

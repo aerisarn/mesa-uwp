@@ -81,7 +81,7 @@ public:
    PVirtualValue copy_src(r600_bytecode_alu_src& src, const VirtualValue& s);
 
    EBufferIndexMode emit_index_reg(const VirtualValue& addr, unsigned idx);
-   EBufferIndexMode get_index_mode(const InstrWithResource& instr,
+   EBufferIndexMode get_index_mode(const Resource& res,
                                    unsigned idx);
 
    void emit_endif();
@@ -1240,13 +1240,13 @@ AssamblerVisitor::copy_dst(r600_bytecode_alu_dst& dst, const Register& d, bool w
    return true;
 }
 
-EBufferIndexMode AssamblerVisitor::get_index_mode(const InstrWithResource& instr,
+EBufferIndexMode AssamblerVisitor::get_index_mode(const Resource& res,
                                                   unsigned idx)
 {
-   EBufferIndexMode index_mode = instr.buffer_index_mode();
+   EBufferIndexMode index_mode = res.buffer_index_mode();
 
-   if (index_mode == bim_none && instr.resource_offset())
-      index_mode = emit_index_reg(*instr.resource_offset(), idx);
+   if (index_mode == bim_none && res.resource_offset())
+      index_mode = emit_index_reg(*res.resource_offset(), idx);
 
    return index_mode;
 }

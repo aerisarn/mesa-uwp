@@ -48,7 +48,7 @@ FetchInstr::FetchInstr(EVFetchInstr opcode,
                        EVFetchEndianSwap endian_swap,
                        uint32_t resource_id,
                        PRegister resource_offset):
-    InstrWithVectorResult(dst, dest_swizzle, resource_id, resource_offset),
+    InstrWithVectorResult(dst, dest_swizzle, resource_id, resource_offset),   
     m_opcode(opcode),
     m_src(src),
     m_src_offset(src_offset),
