@@ -131,14 +131,12 @@ declare_global_input_sgprs(const struct radv_shader_info *info, const struct use
 }
 
 static void
-declare_vs_specific_input_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args,
-                                gl_shader_stage stage, gl_shader_stage previous_stage)
+declare_vs_specific_input_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args)
 {
    if (info->vs.has_prolog)
       add_ud_arg(args, 2, AC_ARG_INT, &args->prolog_inputs, AC_UD_VS_PROLOG_INPUTS);
 
-   if (info->type != RADV_SHADER_TYPE_GS_COPY &&
-       (stage == MESA_SHADER_VERTEX || previous_stage == MESA_SHADER_VERTEX)) {
+   if (info->type != RADV_SHADER_TYPE_GS_COPY) {
       if (info->vs.vb_desc_usage_mask) {
          add_ud_arg(args, 1, AC_ARG_CONST_DESC_PTR, &args->ac.vertex_buffers, AC_UD_VS_VERTEX_BUFFERS);
       }
@@ -476,7 +474,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
       /* NGG is handled by the GS case */
       assert(!info->is_ngg);
 
-      declare_vs_specific_input_sgprs(info, args, stage, previous_stage);
+      declare_vs_specific_input_sgprs(info, args);
 
       declare_global_input_sgprs(info, user_sgpr_info, args);
 
@@ -518,7 +516,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 
-         declare_vs_specific_input_sgprs(info, args, stage, previous_stage);
+         declare_vs_specific_input_sgprs(info, args);
 
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
@@ -609,7 +607,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 
          if (previous_stage == MESA_SHADER_VERTEX) {
-            declare_vs_specific_input_sgprs(info, args, stage, previous_stage);
+            declare_vs_specific_input_sgprs(info, args);
          } else if (previous_stage == MESA_SHADER_MESH) {
             declare_ms_input_sgprs(info, args);
          }
