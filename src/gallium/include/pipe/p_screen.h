@@ -799,8 +799,6 @@ struct pipe_screen {
 struct pipe_screen_config {
    struct driOptionCache *options;
    const struct driOptionCache *options_info;
-   int64_t dev_major;
-   int64_t dev_minor;
 };
 
 

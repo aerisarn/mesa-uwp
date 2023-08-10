@@ -50,6 +50,13 @@
 
 #include "util/u_cpu_detect.h"
 
+#ifdef HAVE_LIBDRM
+#include <xf86drm.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#endif
+
 static int num_screens = 0;
 bool zink_tracing = false;
 
@@ -2852,7 +2859,7 @@ zink_screen_get_fd(struct pipe_screen *pscreen)
 }
 
 static struct zink_screen *
-zink_internal_create_screen(const struct pipe_screen_config *config)
+zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev_major, int64_t dev_minor)
 {
    if (getenv("ZINK_USE_LAVAPIPE")) {
       mesa_loge("ZINK_USE_LAVAPIPE is obsolete. Use LIBGL_ALWAYS_SOFTWARE\n");
@@ -2904,7 +2911,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->driconf.zink_shader_object_enable = driQueryOptionb(config->options, "zink_shader_object_enable");
    }
 
-   if (!zink_create_instance(screen, config && config->dev_major > 0 && config->dev_major < 255))
+   if (!zink_create_instance(screen, dev_major > 0 && dev_major < 255))
       goto fail;
 
    if (zink_debug & ZINK_DEBUG_VALIDATION) {
@@ -2928,7 +2935,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
 
-   choose_pdev(screen, config ? config->dev_major : 0, config ? config->dev_minor : 0);
+   choose_pdev(screen, dev_major, dev_minor);
    if (screen->pdev == VK_NULL_HANDLE) {
       mesa_loge("ZINK: failed to choose pdev");
       goto fail;
@@ -3282,7 +3289,7 @@ fail:
 struct pipe_screen *
 zink_create_screen(struct sw_winsys *winsys, const struct pipe_screen_config *config)
 {
-   struct zink_screen *ret = zink_internal_create_screen(config);
+   struct zink_screen *ret = zink_internal_create_screen(config, -1, -1);
    if (ret) {
       ret->drm_fd = -1;
    }
@@ -3290,10 +3297,51 @@ zink_create_screen(struct sw_winsys *winsys, const struct pipe_screen_config *co
    return &ret->base;
 }
 
+static inline int
+zink_render_rdev(int fd, int64_t *dev_major, int64_t *dev_minor)
+{
+   int ret = 0;
+   *dev_major = *dev_minor = -1;
+#ifdef HAVE_LIBDRM
+   struct stat stx;
+   drmDevicePtr dev;
+
+   if (fd == -1)
+      return 0;
+
+   if (drmGetDevice2(fd, 0, &dev))
+      return -1;
+
+   if(!(dev->available_nodes & (1 << DRM_NODE_RENDER))) {
+      ret = -1;
+      goto free_device;
+   }
+
+   if(stat(dev->nodes[DRM_NODE_RENDER], &stx)) {
+      ret = -1;
+      goto free_device;
+   }
+
+   *dev_major = major(stx.st_rdev);
+   *dev_minor = minor(stx.st_rdev);
+
+free_device:
+   drmFreeDevice(&dev);
+#endif //HAVE_LIBDRM
+
+   return ret;
+}
+
 struct pipe_screen *
 zink_drm_create_screen(int fd, const struct pipe_screen_config *config)
 {
-   struct zink_screen *ret = zink_internal_create_screen(config);
+   int64_t dev_major, dev_minor;
+   struct zink_screen *ret;
+
+   if (zink_render_rdev(fd, &dev_major, &dev_minor))
+      return NULL;
+
+   ret = zink_internal_create_screen(config, dev_major, dev_minor);
 
    if (ret)
       ret->drm_fd = os_dupfd_cloexec(fd);
