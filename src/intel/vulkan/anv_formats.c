@@ -326,9 +326,9 @@ static const struct anv_format _4444_formats[] = {
 
 static const struct anv_format ycbcr_formats[] = {
    ycbcr_fmt(VK_FORMAT_G8B8G8R8_422_UNORM, 1, true, false,
-             ycbcr_plane(0, ISL_FORMAT_YCRCB_SWAPUV, RGBA)),
+             ycbcr_plane(0, ISL_FORMAT_YCRCB_NORMAL, RGBA)),
    ycbcr_fmt(VK_FORMAT_B8G8R8G8_422_UNORM, 1, true, false,
-             ycbcr_plane(0, ISL_FORMAT_YCRCB_SWAPUVY, RGBA)),
+             ycbcr_plane(0, ISL_FORMAT_YCRCB_SWAPY, RGBA)),
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, 3, true, false,
              ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R8_UNORM, RGBA),

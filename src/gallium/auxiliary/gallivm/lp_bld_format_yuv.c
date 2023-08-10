@@ -373,7 +373,7 @@ uyvy_to_rgba_aos(struct gallivm_state *gallivm,
 
    if (gallivm->texture_descriptor) {
       /* Vulkan expects us to pack raw data. */
-      rgba = rgb_to_rgba_aos(gallivm, n, u, y, v);
+      rgba = rgb_to_rgba_aos(gallivm, n, v, y, u);
    } else {
       LLVMValueRef r, g, b;
       yuv_to_rgb_soa(gallivm, n, y, u, v, &r, &g, &b);
@@ -420,7 +420,7 @@ yuyv_to_rgba_aos(struct gallivm_state *gallivm,
 
    if (gallivm->texture_descriptor) {
       /* Vulkan expects us to pack raw data. */
-      rgba = rgb_to_rgba_aos(gallivm, n, u, y, v);
+      rgba = rgb_to_rgba_aos(gallivm, n, v, y, u);
    } else {
       LLVMValueRef r, g, b;
       yuv_to_rgb_soa(gallivm, n, y, u, v, &r, &g, &b);

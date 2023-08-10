@@ -475,9 +475,9 @@ vk_component_mapping_to_pipe_swizzle(VkComponentMapping mapping,
 
 static const struct vk_format_ycbcr_info ycbcr_infos[] = {
    ycbcr_fmt(VK_FORMAT_G8B8G8R8_422_UNORM, 1,
-             y_plane(VK_FORMAT_G8B8G8R8_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
+             y_plane(VK_FORMAT_G8B8G8R8_422_UNORM, YCBCR_SWIZ(R, G, B, ZERO), 1, 1)),
    ycbcr_fmt(VK_FORMAT_B8G8R8G8_422_UNORM, 1,
-             y_plane(VK_FORMAT_B8G8R8G8_422_UNORM, YCBCR_SWIZ(B, G, R, ZERO), 1, 1)),
+             y_plane(VK_FORMAT_B8G8R8G8_422_UNORM, YCBCR_SWIZ(R, G, B, ZERO), 1, 1)),
    ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, 3,
              y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
              c_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(B, ZERO, ZERO, ZERO), 2, 2),
