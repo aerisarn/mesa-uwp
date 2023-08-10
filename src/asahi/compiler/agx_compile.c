@@ -1196,6 +1196,20 @@ agx_emit_imadshl_agx(agx_builder *b, nir_alu_instr *alu, agx_index dst,
    }
 }
 
+static bool
+is_conversion_to_8bit(nir_op op)
+{
+   switch (op) {
+   case nir_op_i2i8:
+   case nir_op_u2u8:
+   case nir_op_f2i8:
+   case nir_op_f2u8:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
@@ -1205,8 +1219,10 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    ASSERTED unsigned comps = nir_dest_num_components(instr->dest.dest);
 
    assert(comps == 1 || nir_op_is_vec(instr->op));
-   assert(sz == 1 || (nir_op_is_vec(instr->op) && sz == 8) || sz == 16 ||
-          sz == 32 || sz == 64);
+   assert(sz == 1 ||
+          ((nir_op_is_vec(instr->op) || is_conversion_to_8bit(instr->op)) &&
+           sz == 8) ||
+          sz == 16 || sz == 32 || sz == 64);
 
    agx_index dst = agx_dest_index(&instr->dest.dest);
    agx_index s0 = srcs > 0 ? agx_alu_src_index(b, instr->src[0]) : agx_null();
@@ -1401,6 +1417,14 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       else
          return agx_mov_to(b, dst, s0);
    }
+
+   /* It will be put into a 16-bit register, but zero out the garbage. We could
+    * optimize this in the future but it ensures correctness for u2u16(u2u8(x))
+    * sequences.
+    */
+   case nir_op_u2u8:
+   case nir_op_i2i8:
+      return agx_and_to(b, dst, s0, agx_immediate(0xFF));
 
    case nir_op_iadd_sat: {
       agx_instr *I = agx_iadd_to(b, dst, s0, s1, 0);
@@ -2425,7 +2449,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *_)
     * implemented natively.
     */
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   if (alu->dest.dest.ssa.bit_size == 8)
+   if (alu->dest.dest.ssa.bit_size == 8 && !is_conversion_to_8bit(alu->op))
       return 16;
    else
       return 0;
