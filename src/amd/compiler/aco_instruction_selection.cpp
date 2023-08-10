@@ -5186,7 +5186,6 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    unsigned component = nir_intrinsic_component(instr);
-   unsigned idx = nir_intrinsic_base(instr) * 4u + component;
    nir_src offset = *nir_get_io_offset_src(instr);
 
    if (!nir_src_is_const(offset) || nir_src_as_uint(offset))
@@ -5199,6 +5198,15 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
 
    RegClass rc = instr->src[0].ssa->bit_size == 16 ? v2b : v1;
 
+   /* Use semantic location as index. radv already uses it as intrinsic base
+    * but radeonsi does not. We need to make LS output and TCS input index
+    * match each other, so need to use semantic location explicitly. Also for
+    * TCS epilog to index tess factor temps using semantic location directly.
+    */
+   nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+   unsigned base = sem.location + sem.dual_source_blend_index;
+   unsigned idx = base * 4u + component;
+
    for (unsigned i = 0; i < 8; ++i) {
       if (write_mask & (1 << i)) {
          ctx->outputs.mask[idx / 4u] |= 1 << (idx % 4u);
@@ -5208,7 +5216,7 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 
    if (ctx->stage == fragment_fs && ctx->program->info.has_epilog) {
-      unsigned index = nir_intrinsic_base(instr) - FRAG_RESULT_DATA0;
+      unsigned index = base - FRAG_RESULT_DATA0;
 
       if (nir_intrinsic_src_type(instr) == nir_type_float16) {
          ctx->output_color_types |= ACO_TYPE_FLOAT16 << (index * 2);
@@ -5242,8 +5250,10 @@ load_input_from_temps(isel_context* ctx, nir_intrinsic_instr* instr, Temp dst)
    if (!can_use_temps)
       return false;
 
-   unsigned idx = nir_intrinsic_base(instr) * 4u + nir_intrinsic_component(instr) +
-                  4 * nir_src_as_uint(*off_src);
+   nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+
+   unsigned idx =
+      sem.location * 4u + nir_intrinsic_component(instr) + 4 * nir_src_as_uint(*off_src);
    Temp* src = &ctx->inputs.temps[idx];
    create_vec_from_array(ctx, src, dst.size(), dst.regClass().type(), 4u, 0, dst);
 
