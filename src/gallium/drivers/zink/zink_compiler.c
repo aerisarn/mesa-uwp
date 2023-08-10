@@ -4755,6 +4755,26 @@ fixup_io_locations(nir_shader *nir)
       modes = nir->info.stage == MESA_SHADER_FRAGMENT ? nir_var_shader_in : nir_var_shader_out;
    u_foreach_bit(mode, modes) {
       nir_variable_mode m = BITFIELD_BIT(mode);
+      if ((m == nir_var_shader_in && ((nir->info.inputs_read & BITFIELD64_MASK(VARYING_SLOT_VAR1)) == nir->info.inputs_read)) ||
+          (m == nir_var_shader_out && ((nir->info.outputs_written | nir->info.outputs_read) & BITFIELD64_MASK(VARYING_SLOT_VAR1)) == (nir->info.outputs_written | nir->info.outputs_read))) {
+         /* this is a special heuristic to catch ARB/fixedfunc shaders which have different rules:
+          * - i/o interface blocks don't need to match
+          * - any location can be present or not
+          * - it just has to work
+          *
+          * VAR0 is the only user varying that mesa can produce in this case, so overwrite POS
+          * since it's a builtin and yolo it with all the other legacy crap
+          */
+         nir_foreach_variable_with_modes(var, nir, m) {
+            if (nir_slot_is_sysval_output(var->data.location, MESA_SHADER_NONE))
+               continue;
+            if (var->data.location == VARYING_SLOT_VAR0)
+               var->data.driver_location = 0;
+            else
+               var->data.driver_location = var->data.location;
+         }
+         return true;
+      }
       /* i/o interface blocks are required to be EXACT matches between stages:
       * iterate over all locations and set locations incrementally
       */
