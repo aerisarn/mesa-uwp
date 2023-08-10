@@ -2745,10 +2745,13 @@ zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_sh
    memset(slot_map, -1, sizeof(slot_map));
    bool do_fixup = false;
    nir_shader *nir = producer->info.stage == MESA_SHADER_TESS_CTRL ? producer : consumer;
-   if (consumer->info.stage != MESA_SHADER_FRAGMENT) {
+   nir_variable *var = nir_find_variable_with_location(producer, nir_var_shader_out, VARYING_SLOT_PSIZ);
+   if (var) {
+      bool can_remove = false;
+      if (consumer->info.stage != MESA_SHADER_FRAGMENT)
+         can_remove = !var->data.explicit_location && !nir_find_variable_with_location(consumer, nir_var_shader_in, VARYING_SLOT_PSIZ);
       /* remove injected pointsize from all but the last vertex stage */
-      nir_variable *var = nir_find_variable_with_location(producer, nir_var_shader_out, VARYING_SLOT_PSIZ);
-      if (var && !var->data.explicit_location && !nir_find_variable_with_location(consumer, nir_var_shader_in, VARYING_SLOT_PSIZ)) {
+      if (can_remove) {
          var->data.mode = nir_var_shader_temp;
          nir_fixup_deref_modes(producer);
          delete_psiz_store(producer);
