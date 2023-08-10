@@ -776,6 +776,9 @@ vk_multisample_sample_locations_state_init(
          ms->sample_locations =
             vk_standard_sample_locations_state(ms_info->rasterizationSamples);
       }
+      /* In the case that the rasterization samples are dynamic we cannot
+       * pre-populate with a specific set of standard sample locations
+       */
    }
 }
 
@@ -790,7 +793,7 @@ vk_dynamic_graphics_state_init_ms(struct vk_dynamic_graphics_state *dst,
    dst->ms.alpha_to_one_enable = ms->alpha_to_one_enable;
    dst->ms.sample_locations_enable = ms->sample_locations_enable;
 
-   if (IS_NEEDED(MS_SAMPLE_LOCATIONS))
+   if (IS_NEEDED(MS_SAMPLE_LOCATIONS) && ms->sample_locations)
       *dst->ms.sample_locations = *ms->sample_locations;
 }
 
