@@ -2627,15 +2627,21 @@ delete_psiz_store_instr(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    }
    if (nir_intrinsic_io_semantics(intr).location != VARYING_SLOT_PSIZ)
       return false;
-   nir_instr_remove(&intr->instr);
-   return true;
+   if (!data || (nir_src_is_const(intr->src[0]) && fabs(nir_src_as_float(intr->src[0]) - 1.0) < FLT_EPSILON)) {
+      nir_instr_remove(&intr->instr);
+      return true;
+   }
+   return false;
 }
 
 static bool
-delete_psiz_store(nir_shader *nir)
+delete_psiz_store(nir_shader *nir, bool one)
 {
-   return nir_shader_intrinsics_pass(nir, delete_psiz_store_instr,
-                                     nir_metadata_dominance, NULL);
+   bool progress = nir_shader_intrinsics_pass(nir, delete_psiz_store_instr,
+                                              nir_metadata_dominance, one ? nir : NULL);
+   if (progress)
+      nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+   return progress;
 }
 
 struct write_components {
@@ -2748,13 +2754,18 @@ zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_sh
    nir_variable *var = nir_find_variable_with_location(producer, nir_var_shader_out, VARYING_SLOT_PSIZ);
    if (var) {
       bool can_remove = false;
-      if (consumer->info.stage != MESA_SHADER_FRAGMENT)
-         can_remove = !var->data.explicit_location && !nir_find_variable_with_location(consumer, nir_var_shader_in, VARYING_SLOT_PSIZ);
+      if (!nir_find_variable_with_location(consumer, nir_var_shader_in, VARYING_SLOT_PSIZ)) {
+         /* maintenance5 guarantees "A default size of 1.0 is used if PointSize is not written" */
+         if (screen->info.have_KHR_maintenance5 && !var->data.explicit_xfb_buffer && delete_psiz_store(producer, true))
+            can_remove = !(producer->info.outputs_written & VARYING_BIT_PSIZ);
+         else if (consumer->info.stage != MESA_SHADER_FRAGMENT)
+            can_remove = !var->data.explicit_location;
+      }
       /* remove injected pointsize from all but the last vertex stage */
       if (can_remove) {
          var->data.mode = nir_var_shader_temp;
          nir_fixup_deref_modes(producer);
-         delete_psiz_store(producer);
+         delete_psiz_store(producer, false);
          NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_temp, NULL);
          optimize_nir(producer, NULL);
       }
