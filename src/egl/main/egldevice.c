@@ -112,9 +112,16 @@ _eglAddDRMDevice(drmDevicePtr device)
 {
    _EGLDevice *dev;
 
-   if ((device->available_nodes &
-        (1 << DRM_NODE_PRIMARY | 1 << DRM_NODE_RENDER)) == 0)
-      return -1;
+   assert(device->available_nodes & ((1 << DRM_NODE_RENDER)));
+
+   /* TODO: uncomment this assert, which is a sanity check.
+    *
+    * assert(device->available_nodes & ((1 << DRM_NODE_PRIMARY)));
+    *
+    * DRM shim does not expose a primary node, so the CI would fail if we had
+    * this assert. DRM shim is being used to run shader-db. We need to
+    * investigate what should be done (probably fixing DRM shim).
+    */
 
    dev = _eglGlobal.DeviceList;
 
@@ -135,15 +142,10 @@ _eglAddDRMDevice(drmDevicePtr device)
       return -1;
 
    dev = dev->Next;
-   dev->extensions = "EGL_EXT_device_drm";
+   dev->extensions = "EGL_EXT_device_drm EGL_EXT_device_drm_render_node";
    dev->EXT_device_drm = EGL_TRUE;
+   dev->EXT_device_drm_render_node = EGL_TRUE;
    dev->device = device;
-
-   /* TODO: EGL_EXT_device_drm_render_node support for kmsro + renderonly */
-   if (device->available_nodes & (1 << DRM_NODE_RENDER)) {
-      dev->extensions = "EGL_EXT_device_drm EGL_EXT_device_drm_render_node";
-      dev->EXT_device_drm_render_node = EGL_TRUE;
-   }
 
    return 0;
 }
