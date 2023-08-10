@@ -1424,6 +1424,7 @@ opt_if_rewrite_uniform_uses(nir_builder *b, nir_if *nif, nir_ssa_scalar cond, bo
          continue;
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src_uni.def->parent_instr);
       if (intrin->intrinsic != nir_intrinsic_read_first_invocation &&
+          intrin->intrinsic != nir_intrinsic_read_invocation &&
           (intrin->intrinsic != nir_intrinsic_reduce || nir_intrinsic_cluster_size(intrin)))
          continue;
 
