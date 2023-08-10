@@ -27,6 +27,7 @@
 #include "zink_clear.h"
 #include "zink_context.h"
 #include "zink_fence.h"
+#include "zink_format.h"
 #include "zink_program.h"
 #include "zink_screen.h"
 #include "zink_kopper.h"
@@ -884,6 +885,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
       init_ici(screen, &ici, templ, templ->bind, ici_modifier_count);
       uint64_t mod = eval_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
+      if (ici.format == VK_FORMAT_A8_UNORM_KHR && !success) {
+         ici.format = zink_get_format(screen, zink_format_get_emulated_alpha(templ->format));
+         mod = eval_ici(screen, &ici, templ, templ->bind, ici_modifier_count, ici_modifiers, &success);
+      }
       if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT && srgb &&
           util_format_get_nr_components(srgb) == 4 &&
           !(ici.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {

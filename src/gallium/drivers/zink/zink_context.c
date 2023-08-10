@@ -1127,7 +1127,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
             const struct util_format_description *view_desc = util_format_description(state->format);
             for (int i = 0; i < 4; ++i)
                swizzle[i] = zink_clamp_void_swizzle(view_desc, swizzle[i]);
-         } else if (util_format_is_alpha(state->format)) {
+         } else if (util_format_is_alpha(state->format) && res->format != VK_FORMAT_A8_UNORM_KHR) {
             for (int i = 0; i < 4; ++i)
                swizzle[i] = clamp_alpha_swizzle(swizzle[i]);
          } else if (util_format_is_luminance(pres->format) ||

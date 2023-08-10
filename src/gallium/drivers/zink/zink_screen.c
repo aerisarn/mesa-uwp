@@ -1334,7 +1334,8 @@ zink_is_format_supported(struct pipe_screen *pscreen,
          return false;
    }
 
-   VkFormat vkformat = zink_get_format(screen, format);
+   /* always use superset to determine feature support */
+   VkFormat vkformat = zink_get_format(screen, PIPE_FORMAT_A8_UNORM ? zink_format_get_emulated_alpha(format) : format);
    if (vkformat == VK_FORMAT_UNDEFINED)
       return false;
 
@@ -1772,7 +1773,9 @@ emulate_x8(enum pipe_format format)
 VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format)
 {
-   if (!screen->driver_workarounds.broken_l4a4 || format != PIPE_FORMAT_L4A4_UNORM)
+   if (format == PIPE_FORMAT_A8_UNORM && !screen->driver_workarounds.missing_a8_unorm)
+      return VK_FORMAT_A8_UNORM_KHR;
+   else if (!screen->driver_workarounds.broken_l4a4 || format != PIPE_FORMAT_L4A4_UNORM)
       format = zink_format_get_emulated_alpha(format);
 
    VkFormat ret = zink_pipe_format_to_vk_format(emulate_x8(format));
@@ -2038,7 +2041,9 @@ static void
 populate_format_props(struct zink_screen *screen)
 {
    for (unsigned i = 0; i < PIPE_FORMAT_COUNT; i++) {
-      VkFormat format = zink_get_format(screen, i);
+      VkFormat format;
+retry:
+      format = zink_get_format(screen, i);
       if (!format)
          continue;
       if (VKSCR(GetPhysicalDeviceFormatProperties2)) {
@@ -2072,6 +2077,14 @@ populate_format_props(struct zink_screen *screen)
          }
       } else
          VKSCR(GetPhysicalDeviceFormatProperties)(screen->pdev, format, &screen->format_props[i]);
+      if (i == PIPE_FORMAT_A8_UNORM && !screen->driver_workarounds.missing_a8_unorm) {
+         if (!screen->format_props[i].linearTilingFeatures &&
+             !screen->format_props[i].optimalTilingFeatures &&
+             !screen->format_props[i].bufferFeatures) {
+            screen->driver_workarounds.missing_a8_unorm = true;
+            goto retry;
+         }
+      }
       if (zink_format_is_emulated_alpha(i)) {
          VkFormatFeatureFlags blocked = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
          screen->format_props[i].linearTilingFeatures &= ~blocked;
@@ -2524,6 +2537,8 @@ init_driver_workarounds(struct zink_screen *screen)
       /* performance */
       screen->info.border_color_feats.customBorderColorWithoutFormat = VK_FALSE;
    }
+   if (!screen->info.have_KHR_maintenance5)
+      screen->driver_workarounds.missing_a8_unorm = true;
 
    if ((!screen->info.have_EXT_line_rasterization ||
         !screen->info.line_rast_feats.stippledBresenhamLines) &&

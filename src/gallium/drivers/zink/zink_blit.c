@@ -157,7 +157,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    if (src->format != zink_get_format(screen, info->src.format) ||
        dst->format != zink_get_format(screen, info->dst.format))
       return false;
-   if (zink_format_is_emulated_alpha(info->src.format))
+   if (src->format != VK_FORMAT_A8_UNORM_KHR && zink_format_is_emulated_alpha(info->src.format))
       return false;
 
    if (!(src->obj->vkfeats & VK_FORMAT_FEATURE_BLIT_SRC_BIT) ||

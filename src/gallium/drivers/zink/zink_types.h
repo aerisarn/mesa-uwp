@@ -1508,6 +1508,7 @@ struct zink_screen {
        * HI TURNIP
        */
       bool broken_cache_semantics;
+      bool missing_a8_unorm;
       bool implicit_sync;
       bool disable_optimized_compile;
       bool always_feedback_loop;
