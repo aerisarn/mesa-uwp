@@ -561,6 +561,7 @@ vl_compositor_set_buffer_layer(struct vl_compositor_state *s,
 {
    struct pipe_sampler_view **sampler_views;
    unsigned i;
+   vl_csc_matrix csc_matrix;
 
    assert(s && c && buffer);
 
@@ -617,6 +618,12 @@ vl_compositor_set_buffer_layer(struct vl_compositor_state *s,
       else if (c->pipe_gfx_supported)
          s->layers[layer].fs = c->fs_video_buffer;
    }
+
+   vl_csc_get_matrix(util_format_is_yuv(buffer->buffer_format) ?
+                     VL_CSC_COLOR_STANDARD_BT_601 :
+                     VL_CSC_COLOR_STANDARD_IDENTITY,
+                     NULL, true, &csc_matrix);
+   vl_compositor_set_csc_matrix(s, &csc_matrix, 1.0f, 0.0f);
 }
 
 void
