@@ -203,6 +203,7 @@ debian-build-testing:
     .gitlab-ci/meson/build.sh
     section_switch shader-db "shader-db"
     .gitlab-ci/run-shader-db.sh
+  timeout: 30m
 
 # Test a release build with -Werror so new warnings don't sneak in.
 debian-release:
