@@ -112,11 +112,17 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
 
    /* These are supported on all YCbCr formats */
    features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT |
-               VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT |
-               VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT;
+               VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
 
-   if (ycbcr_info->n_planes > 1)
-      features |= VK_FORMAT_FEATURE_DISJOINT_BIT;
+   if (ycbcr_info->n_planes > 1) {
+      /* DISJOINT_BIT implies that each plane has its own separate binding,
+       * while SEPARATE_RECONSTRUCTION_FILTER_BIT implies that luma and chroma
+       * each have their own, separate filters, so these two bits make sense
+       * for multi-planar formats only.
+       */
+      features |= VK_FORMAT_FEATURE_DISJOINT_BIT |
+                  VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT;
+   }
 
    if (cosited_chroma)
       features |= VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT;
