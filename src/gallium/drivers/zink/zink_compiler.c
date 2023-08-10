@@ -4754,6 +4754,7 @@ fixup_io_locations(nir_shader *nir)
    else
       modes = nir->info.stage == MESA_SHADER_FRAGMENT ? nir_var_shader_in : nir_var_shader_out;
    u_foreach_bit(mode, modes) {
+      nir_variable_mode m = BITFIELD_BIT(mode);
       /* i/o interface blocks are required to be EXACT matches between stages:
       * iterate over all locations and set locations incrementally
       */
@@ -4763,7 +4764,7 @@ fixup_io_locations(nir_shader *nir)
             continue;
          bool found = false;
          unsigned size = 0;
-         nir_foreach_variable_with_modes(var, nir, 1<<mode) {
+         nir_foreach_variable_with_modes(var, nir, m) {
             if (var->data.location != i)
                continue;
             /* only add slots for non-component vars or first-time component vars */
