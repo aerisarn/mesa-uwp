@@ -3847,6 +3847,9 @@ typedef struct nir_shader_compiler_options {
     *  type casts (e.g. f2f16).
     */
    bool preserve_mediump;
+
+   /** lowers fquantize2f16 to alu ops. */
+   bool lower_fquantize2f16;
 } nir_shader_compiler_options;
 
 typedef struct nir_shader {

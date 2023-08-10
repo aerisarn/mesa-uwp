@@ -2729,6 +2729,21 @@ optimizations.extend([
     (('fisnormal', 'a@64'), ('ult', 0x3fffffffffffff, ('iadd', ('ishl', a, 1), 0x20000000000000)), 'options->lower_fisnormal')
     ])
 
+
+"""
+  if (fabs(val) < SMALLEST_NORMALIZED_FLOAT16)
+     return (val & SIGN_BIT) /* +0.0 or -0.0 as appropriate */;
+  else
+     return f2f32(f2f16(val));
+"""
+optimizations.extend([
+    (('fquantize2f16', 'a@32'),
+     ('bcsel', ('!flt', ('!fabs', a), math.ldexp(1.0, -14)),
+               ('iand', a, 1 << 31),
+               ('!f2f32', ('!f2f16_rtne', a))),
+     'options->lower_fquantize2f16')
+    ])
+
 for s in range(0, 31):
     mask = 0xffffffff << s
 
