@@ -266,9 +266,9 @@ vk_format_to_pipe_format(enum VkFormat vkformat)
       case VK_FORMAT_R10X6G10X6_UNORM_2PACK16:
          return PIPE_FORMAT_R16G16_UNORM;
       case VK_FORMAT_G8B8G8R8_422_UNORM:
-         return PIPE_FORMAT_YUYV;
+         return PIPE_FORMAT_G8B8_G8R8_UNORM;
       case VK_FORMAT_B8G8R8G8_422_UNORM:
-         return PIPE_FORMAT_UYVY;
+         return PIPE_FORMAT_B8G8_R8G8_UNORM;
       case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
          return PIPE_FORMAT_IYUV;
       case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
