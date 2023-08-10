@@ -223,6 +223,7 @@ zink-tu-a618-traces-performance:
 
 ############### Combined testing (GL, GLES, Piglit) on RADV
 .radv-zink-test-valve:
+  timeout: 30m
   extends:
     - .zink-test
     - .test-radv
@@ -232,6 +233,7 @@ zink-tu-a618-traces-performance:
     PIGLIT_PLATFORM: gbm
     HWCI_TEST_SCRIPT: ./install/valve/gl_combined_testing.sh
     B2C_JOB_SUCCESS_REGEX: 'Execution is over, pipeline status: 0'
+    B2C_TIMEOUT_OVERALL_MINUTES: 20
 
     # Disable reporting, since DUTs don't have internet access
     FLAKES_CHANNEL: ""
