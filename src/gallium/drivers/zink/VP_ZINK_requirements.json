@@ -150,13 +150,18 @@
         },
         "gl40_baseline": {
             "extensions": {
-                "VK_KHR_maintenance2": 1
+                "VK_KHR_maintenance2": 1,
+                "VK_KHR_maintenance3": 1,
+                "VK_KHR_maintenance4": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
                     "sampleRateShading": true,
                     "tessellationShader": true,
                     "imageCubeArray": true
+                },
+                "VkPhysicalDeviceMaintenance4Features": {
+                    "maintenance4": true
                 }
             },
             "formats": {
