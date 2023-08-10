@@ -53,6 +53,9 @@ default:
       unset CI_JOB_JWT  # Unsetting vulnerable env variables
 
   after_script:
+    # Work around https://gitlab.com/gitlab-org/gitlab/-/issues/20338
+    - find -name '*.log' -exec mv {} {}.txt \;
+
     - >
       set +x
 
