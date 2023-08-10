@@ -152,7 +152,8 @@
             "extensions": {
                 "VK_KHR_maintenance2": 1,
                 "VK_KHR_maintenance3": 1,
-                "VK_KHR_maintenance4": 1
+                "VK_KHR_maintenance4": 1,
+                "VK_KHR_maintenance5": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
@@ -162,6 +163,9 @@
                 },
                 "VkPhysicalDeviceMaintenance4Features": {
                     "maintenance4": true
+                },
+                "VkPhysicalDeviceMaintenance5Features": {
+                    "maintenance5": true
                 }
             },
             "formats": {
