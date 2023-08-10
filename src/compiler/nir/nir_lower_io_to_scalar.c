@@ -65,10 +65,9 @@ lower_load_input_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
       for (unsigned j = 0; j < nir_intrinsic_infos[intr->intrinsic].num_srcs; ++j)
          nir_src_copy(&chan_intr->src[j], &intr->src[j], &chan_intr->instr);
       if (newc + newi > 3) {
-         nir_ssa_def *offset = nir_imm_int(b, (newc + newi) / 4);
          nir_src *src = nir_get_io_offset_src(chan_intr);
+         nir_ssa_def *offset = nir_iadd_imm(b, src->ssa, (newc + newi) / 4);
          nir_src new_src = nir_src_for_ssa(offset);
-         offset = nir_iadd_imm(b, src->ssa, (newc + newi) / 4);
          nir_src_copy(src, &new_src, &chan_intr->instr);
       }
 
@@ -181,9 +180,8 @@ lower_store_output_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
       for (unsigned j = 1; j < nir_intrinsic_infos[intr->intrinsic].num_srcs; ++j)
          nir_src_copy(&chan_intr->src[j], &intr->src[j], &chan_intr->instr);
       if (newc + newi > 3) {
-         nir_ssa_def *offset = nir_imm_int(b, (newc + newi) / 4);
          nir_src *src = nir_get_io_offset_src(chan_intr);
-         offset = nir_iadd_imm(b, src->ssa, (newc + newi) / 4);
+         nir_ssa_def *offset = nir_iadd_imm(b, src->ssa, (newc + newi) / 4);
          nir_src new_src = nir_src_for_ssa(offset);
          nir_src_copy(src, &new_src, &chan_intr->instr);
       }
