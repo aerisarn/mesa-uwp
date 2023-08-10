@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Imagination Technologies Ltd.
+ * Copyright © 2023 Imagination Technologies Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,25 +21,24 @@
  * SOFTWARE.
  */
 
-#ifndef PVR_DEBUG_H
-#define PVR_DEBUG_H
+#ifndef PVR_DUMP_INFO_H
+#define PVR_DUMP_INFO_H
 
-#include <stdint.h>
+#include "pvr_device_info.h"
 
-#include "util/macros.h"
+struct pvr_device_dump_info {
+   const struct pvr_device_info *device_info;
+   const struct pvr_device_runtime_info *device_runtime_info;
+   struct {
+      int patchlevel;
+      int major;
+      int minor;
+      const char *name;
+      const char *date;
+      char *const *comp;
+   } drm_display, drm_render;
+};
 
-extern uint32_t PVR_DEBUG;
+void pvr_dump_physical_device_info(const struct pvr_device_dump_info *dump_info);
 
-/* clang-format off */
-#define PVR_IS_DEBUG_SET(x) unlikely(PVR_DEBUG & PVR_DEBUG_##x)
-/* clang-format on */
-
-#define PVR_DEBUG_DUMP_CONTROL_STREAM BITFIELD_BIT(0)
-#define PVR_DEBUG_TRACK_BOS BITFIELD_BIT(1)
-#define PVR_DEBUG_ZERO_BOS BITFIELD_BIT(2)
-#define PVR_DEBUG_VK_DUMP_DESCRIPTOR_SET_LAYOUT BITFIELD_BIT(3)
-#define PVR_DEBUG_INFO BITFIELD_BIT(4)
-
-void pvr_process_debug_variable(void);
-
-#endif /* PVR_DEBUG_H */
+#endif
