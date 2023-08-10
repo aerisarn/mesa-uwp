@@ -265,7 +265,13 @@ _eglQueryDeviceStringEXT(_EGLDevice *dev, EGLint name)
       if (!_eglDeviceSupports(dev, _EGL_DEVICE_DRM_RENDER_NODE))
          break;
 #ifdef HAVE_LIBDRM
-      return dev->device ? dev->device->nodes[DRM_NODE_RENDER] : NULL;
+      /* EGLDevice represents a software device, so no render node
+       * should be advertised. */
+      if (_eglDeviceSupports(dev, _EGL_DEVICE_SOFTWARE))
+         return NULL;
+      /* We create EGLDevice's only for render capable devices. */
+      assert(dev->device->available_nodes & (1 << DRM_NODE_RENDER));
+      return dev->device->nodes[DRM_NODE_RENDER];
 #else
       /* Physical devices are only exposed when libdrm is available. */
       assert(_eglDeviceSupports(dev, _EGL_DEVICE_SOFTWARE));
