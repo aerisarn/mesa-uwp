@@ -345,6 +345,8 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
    F3(A, G8R8_B8R8_UNORM, NONE, G, R, B, xx, UNORM, G8B8G8R8, T),
    F3(A, G8R8_G8B8_UNORM, NONE, R, G, B, xx, UNORM, B8G8R8G8, T),
    F3(A, R8G8_R8B8_UNORM, NONE, G, R, B, xx, UNORM, B8G8R8G8, T),
+   F3(A, G8B8_G8R8_UNORM, NONE, B, G, R, xx, UNORM, B8G8R8G8, T),
+   F3(A, B8G8_R8G8_UNORM, NONE, B, G, R, xx, UNORM, G8B8G8R8, T),
 
    F1(A, R1_UNORM, NONE, R, xx, xx, xx, UNORM, R1, T),
 
