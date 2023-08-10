@@ -3375,7 +3375,11 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    }
    case nir_op_fquantize2f16: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      Temp f16 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), src);
+      Temp f16;
+      if (ctx->block->fp_mode.round16_64 != fp_round_ne)
+         f16 = bld.vop1(aco_opcode::p_cvt_f16_f32_rtne, bld.def(v2b), src);
+      else
+         f16 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), src);
       Temp f32, cmp_res;
 
       if (ctx->program->gfx_level >= GFX8) {
