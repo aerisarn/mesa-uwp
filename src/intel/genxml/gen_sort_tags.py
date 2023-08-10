@@ -24,18 +24,14 @@ def main() -> None:
         if not args.quiet:
             print('Processing {}... '.format(filename), end='', flush=True)
 
-        xml = et.parse(filename)
-        original = copy.deepcopy(xml) if args.validate else xml
-        intel_genxml.sort_xml(xml)
+        genxml = intel_genxml.GenXml(filename)
 
         if args.validate:
-            for old, new in zip(original.getroot(), xml.getroot()):
-                assert intel_genxml.node_validator(old, new), f'{filename} is invalid, run gen_sort_tags.py and commit that'
+            assert genxml.is_equivalent_xml(genxml.sorted_copy()), \
+                f'{filename} is invalid, run gen_sort_tags.py and commit that'
         else:
-            tmp = filename.with_suffix(f'{filename.suffix}.tmp')
-            et.indent(xml, space='  ')
-            xml.write(tmp, encoding="utf-8", xml_declaration=True)
-            tmp.replace(filename)
+            genxml.sort()
+            genxml.write_file()
 
         if not args.quiet:
             print('done.')

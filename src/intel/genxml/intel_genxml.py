@@ -168,7 +168,8 @@ def sort_xml(xml: et.ElementTree) -> None:
 
 class GenXml(object):
     def __init__(self, filename):
-        self.et = et.parse(filename)
+        self.filename = pathlib.Path(filename)
+        self.et = et.parse(self.filename)
 
     def filter_engines(self, engines):
         changed = False
@@ -187,3 +188,21 @@ class GenXml(object):
             items.append(item)
         if changed:
             self.et.getroot()[:] = items
+
+    def sort(self):
+        sort_xml(self.et)
+
+    def sorted_copy(self):
+        clone = copy.deepcopy(self)
+        clone.sort()
+        return clone
+
+    def is_equivalent_xml(self, other):
+        return all(node_validator(old, new)
+                   for old, new in zip(self.et.getroot(), other.et.getroot()))
+
+    def write_file(self):
+        tmp = self.filename.with_suffix(f'{self.filename.suffix}.tmp')
+        et.indent(self.et, space='  ')
+        self.et.write(tmp, encoding="utf-8", xml_declaration=True)
+        tmp.replace(self.filename)
