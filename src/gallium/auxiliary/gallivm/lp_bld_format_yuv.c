@@ -367,18 +367,12 @@ uyvy_to_rgba_aos(struct gallivm_state *gallivm,
                  LLVMValueRef i)
 {
    LLVMValueRef y, u, v;
+   LLVMValueRef r, g, b;
    LLVMValueRef rgba;
 
    uyvy_to_yuv_soa(gallivm, n, packed, i, &y, &u, &v);
-
-   if (gallivm->texture_descriptor) {
-      /* Vulkan expects us to pack raw data. */
-      rgba = rgb_to_rgba_aos(gallivm, n, v, y, u);
-   } else {
-      LLVMValueRef r, g, b;
-      yuv_to_rgb_soa(gallivm, n, y, u, v, &r, &g, &b);
-      rgba = rgb_to_rgba_aos(gallivm, n, r, g, b);
-   }
+   yuv_to_rgb_soa(gallivm, n, y, u, v, &r, &g, &b);
+   rgba = rgb_to_rgba_aos(gallivm, n, r, g, b);
 
    return rgba;
 }
@@ -414,18 +408,12 @@ yuyv_to_rgba_aos(struct gallivm_state *gallivm,
                  LLVMValueRef i)
 {
    LLVMValueRef y, u, v;
+   LLVMValueRef r, g, b;
    LLVMValueRef rgba;
 
    yuyv_to_yuv_soa(gallivm, n, packed, i, &y, &u, &v);
-
-   if (gallivm->texture_descriptor) {
-      /* Vulkan expects us to pack raw data. */
-      rgba = rgb_to_rgba_aos(gallivm, n, v, y, u);
-   } else {
-      LLVMValueRef r, g, b;
-      yuv_to_rgb_soa(gallivm, n, y, u, v, &r, &g, &b);
-      rgba = rgb_to_rgba_aos(gallivm, n, r, g, b);
-   }
+   yuv_to_rgb_soa(gallivm, n, y, u, v, &r, &g, &b);
+   rgba = rgb_to_rgba_aos(gallivm, n, r, g, b);
 
    return rgba;
 }
