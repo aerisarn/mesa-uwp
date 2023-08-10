@@ -1105,6 +1105,11 @@ static void
 radv_fill_code_object_record(struct radv_device *device, struct rgp_shader_data *shader_data,
                              struct radv_shader *shader, uint64_t va)
 {
+   struct radv_physical_device *pdevice = device->physical_device;
+   unsigned lds_increment = pdevice->rad_info.gfx_level >= GFX11 && shader->info.stage == MESA_SHADER_FRAGMENT
+                               ? 1024
+                               : pdevice->rad_info.lds_encode_granularity;
+
    shader_data->hash[0] = (uint64_t)(uintptr_t)shader;
    shader_data->hash[1] = (uint64_t)(uintptr_t)shader >> 32;
    shader_data->code_size = shader->code_size;
@@ -1112,7 +1117,7 @@ radv_fill_code_object_record(struct radv_device *device, struct rgp_shader_data 
    shader_data->vgpr_count = shader->config.num_vgprs;
    shader_data->sgpr_count = shader->config.num_sgprs;
    shader_data->scratch_memory_size = shader->config.scratch_bytes_per_wave;
-   shader_data->lds_size = 0;
+   shader_data->lds_size = shader->config.lds_size * lds_increment;
    shader_data->wavefront_size = shader->info.wave_size;
    shader_data->base_address = va & 0xffffffffffff;
    shader_data->elf_symbol_offset = 0;
