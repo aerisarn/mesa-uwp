@@ -260,6 +260,7 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_int64_options =
       (nir_lower_int64_options) ~(nir_lower_iadd64 | nir_lower_imul_2x32_64),
    .lower_doubles_options = nir_lower_dmod,
+   .lower_fquantize2f16 = true,
 };
 
 #endif
