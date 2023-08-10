@@ -3787,7 +3787,7 @@
       </field>
     </group>
     <group count="16" start="96" size="16">
-      <field name="LTST Frame Number List" start="0" end="15" type="uint"/>
+      <field name="LTST Frame Number List" start="0" end="15" type="uint" />
     </group>
     <group count="16" start="352" size="16">
       <field name="View ID" start="0" end="15" type="uint" />
