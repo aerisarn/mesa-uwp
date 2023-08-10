@@ -1888,6 +1888,13 @@ tu_u_trace_submission_data_finish(
       }
    }
 
+   if (submission_data->kgsl_timestamp_bo.bo) {
+      mtx_lock(&device->kgsl_profiling_mutex);
+      tu_suballoc_bo_free(&device->kgsl_profiling_suballoc,
+                        &submission_data->kgsl_timestamp_bo);
+      mtx_unlock(&device->kgsl_profiling_mutex);
+   }
+
    vk_free(&device->vk.alloc, submission_data->cmd_trace_data);
    vk_free(&device->vk.alloc, submission_data->syncobj);
    vk_free(&device->vk.alloc, submission_data);
@@ -2086,6 +2093,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    mtx_init(&device->bo_mutex, mtx_plain);
    mtx_init(&device->pipeline_mutex, mtx_plain);
    mtx_init(&device->autotune_mutex, mtx_plain);
+   mtx_init(&device->kgsl_profiling_mutex, mtx_plain);
    u_rwlock_init(&device->dma_bo_lock);
    pthread_mutex_init(&device->submit_mutex, NULL);
 
@@ -2181,6 +2189,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       (enum tu_bo_alloc_flags) (TU_BO_ALLOC_GPU_READ_ONLY | TU_BO_ALLOC_ALLOW_DUMP));
    tu_bo_suballocator_init(&device->autotune_suballoc, device,
                            128 * 1024, TU_BO_ALLOC_NO_FLAGS);
+   if (is_kgsl(physical_device->instance)) {
+      tu_bo_suballocator_init(&device->kgsl_profiling_suballoc, device,
+                              128 * 1024, TU_BO_ALLOC_NO_FLAGS);
+   }
 
    result = tu_bo_init_new(device, &device->global_bo, global_size,
                            TU_BO_ALLOC_ALLOW_DUMP, "global");
@@ -2428,6 +2440,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    tu_bo_suballocator_finish(&device->pipeline_suballoc);
    tu_bo_suballocator_finish(&device->autotune_suballoc);
+   tu_bo_suballocator_finish(&device->kgsl_profiling_suballoc);
 
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)

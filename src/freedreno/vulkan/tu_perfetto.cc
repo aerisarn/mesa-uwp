@@ -311,7 +311,12 @@ tu_perfetto_init(void)
    util_perfetto_init();
 
    perfetto::DataSourceDescriptor dsd;
+#ifdef ANDROID
+   /* AGI requires this name */
+   dsd.set_name("gpu.renderstages");
+#else
    dsd.set_name("gpu.renderstages.msm");
+#endif
    TuRenderpassDataSource::Register(dsd);
 }
 

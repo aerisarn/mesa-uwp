@@ -276,6 +276,12 @@ struct tu_device
    struct tu_suballocator autotune_suballoc;
    mtx_t autotune_mutex;
 
+   /* KGSL requires a small chunk of GPU mem to retrieve raw GPU time on
+    * each submission.
+    */
+   struct tu_suballocator kgsl_profiling_suballoc;
+   mtx_t kgsl_profiling_mutex;
+
    /* the blob seems to always use 8K factor and 128K param sizes, copy them */
 #define TU_TESS_FACTOR_SIZE (8 * 1024)
 #define TU_TESS_PARAM_SIZE (128 * 1024)
@@ -526,6 +532,9 @@ struct tu_u_trace_submission_data
     * offset may change between submissions due to power cycle.
     */
    uint64_t gpu_ts_offset;
+
+   /* KGSL needs a GPU memory to write submission timestamps into */
+   struct tu_suballoc_bo kgsl_timestamp_bo;
 };
 
 VkResult
