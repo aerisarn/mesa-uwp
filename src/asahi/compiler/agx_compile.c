@@ -717,6 +717,21 @@ agx_emit_atomic(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr,
    }
 }
 
+static enum agx_format
+format_for_bitsize(unsigned bitsize)
+{
+   switch (bitsize) {
+   case 8:
+      return AGX_FORMAT_I8;
+   case 16:
+      return AGX_FORMAT_I16;
+   case 32:
+      return AGX_FORMAT_I32;
+   default:
+      unreachable("should've been lowered");
+   }
+}
+
 static void
 agx_emit_local_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
 {
@@ -724,9 +739,7 @@ agx_emit_local_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
    agx_index index = agx_zero(); /* TODO: optimize address arithmetic */
    assert(base.size == AGX_SIZE_16);
 
-   assert(nir_dest_bit_size(instr->dest) == 32 && "todo");
-   enum agx_format format = AGX_FORMAT_I32;
-
+   enum agx_format format = format_for_bitsize(nir_dest_bit_size(instr->dest));
    unsigned nr = nir_dest_num_components(instr->dest);
    unsigned mask = BITFIELD_MASK(nr);
 
@@ -742,8 +755,7 @@ agx_emit_local_store(agx_builder *b, nir_intrinsic_instr *instr)
    agx_index index = agx_zero(); /* TODO: optimize address arithmetic */
    assert(base.size == AGX_SIZE_16);
 
-   assert(nir_src_bit_size(instr->src[0]) == 32 && "todo");
-   enum agx_format format = AGX_FORMAT_I32;
+   enum agx_format format = format_for_bitsize(nir_src_bit_size(instr->src[0]));
    unsigned mask = BITFIELD_MASK(
       nir_src_num_components(instr->src[0])); /* XXX: there's a write mask */
 
