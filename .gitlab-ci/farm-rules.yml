@@ -28,9 +28,23 @@
     - exists: [ .ci-farms-disabled/microsoft ]
       when: never
     - changes: [ .ci-farms-disabled/microsoft ]
-      if: '$CI_PIPELINE_SOURCE != "schedule"'
+      if: '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_BRANCH'
       when: on_success
-    - !reference [.microsoft-farm-rules, rules]
+    - changes: [ .ci-farms-disabled/microsoft ]
+      if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: on_success
+    - changes: [ .ci-farms-disabled/microsoft ]
+      if: '$CI_PROJECT_NAMESPACE == "mesa" && $GITLAB_USER_LOGIN != "marge-bot" && $CI_COMMIT_BRANCH'
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]
+      if: '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_BRANCH'
+      when: never
+    - changes: [ .ci-farms-disabled/* ]
+      if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - changes: [ .ci-farms-disabled/* ]
+      if: '$CI_PROJECT_NAMESPACE == "mesa" && $GITLAB_USER_LOGIN != "marge-bot" && $CI_COMMIT_BRANCH'
+      when: never
 
 
 .collabora-farm-rules:
