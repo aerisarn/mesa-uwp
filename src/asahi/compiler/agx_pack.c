@@ -431,7 +431,8 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
          unsigned fmod_offset = is_16 ? 9 : 10;
          src_short |= (fmod << fmod_offset);
       } else if (I->op == AGX_OPCODE_IMAD || I->op == AGX_OPCODE_IADD) {
-         bool zext = I->src[s].abs;
+         /* Force unsigned for immediates so uadd_sat works properly */
+         bool zext = I->src[s].abs || I->src[s].type == AGX_INDEX_IMMEDIATE;
          bool extends = I->src[s].size < AGX_SIZE_64;
 
          unsigned sxt = (extends && !zext) ? (1 << 10) : 0;
