@@ -106,6 +106,8 @@ si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info,
       info->ps.num_interp = si_get_ps_num_interp(shader);
       info->ps.spi_ps_input_ena = shader->config.spi_ps_input_ena;
       info->ps.spi_ps_input_addr = shader->config.spi_ps_input_addr;
+      info->ps.alpha_reference = args->alpha_reference;
+      info->has_epilog = !shader->is_monolithic;
       break;
    default:
       break;
