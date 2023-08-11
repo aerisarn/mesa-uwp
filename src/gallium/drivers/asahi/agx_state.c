@@ -167,7 +167,7 @@ agx_set_blend_color(struct pipe_context *pctx,
    if (state)
       memcpy(&ctx->blend_color, state, sizeof(*state));
 
-   ctx->stage[PIPE_SHADER_FRAGMENT].dirty = ~0;
+   ctx->dirty |= AGX_DIRTY_BLEND_COLOR;
 }
 
 static void *
@@ -2623,7 +2623,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    agx_update_descriptors(batch, ctx->vs, PIPE_SHADER_VERTEX);
    agx_update_descriptors(batch, ctx->fs, PIPE_SHADER_FRAGMENT);
 
-   if (IS_DIRTY(VS) || IS_DIRTY(FS))
+   if (IS_DIRTY(VS) || IS_DIRTY(FS) || IS_DIRTY(BLEND_COLOR))
       agx_upload_uniforms(batch);
 
    if (IS_DIRTY(VS)) {
@@ -3078,7 +3078,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    if (agx_update_fs(batch))
       ctx->dirty |= AGX_DIRTY_FS | AGX_DIRTY_FS_PROG;
-   else if (ctx->stage[PIPE_SHADER_FRAGMENT].dirty)
+   else if (ctx->stage[PIPE_SHADER_FRAGMENT].dirty ||
+            (ctx->dirty & (AGX_DIRTY_BLEND_COLOR | AGX_DIRTY_SAMPLE_MASK)))
       ctx->dirty |= AGX_DIRTY_FS;
 
    agx_batch_add_bo(batch, ctx->vs->bo);

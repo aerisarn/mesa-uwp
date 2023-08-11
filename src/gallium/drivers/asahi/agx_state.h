@@ -379,6 +379,7 @@ enum agx_dirty {
    AGX_DIRTY_QUERY = BITFIELD_BIT(13),
    AGX_DIRTY_XFB = BITFIELD_BIT(14),
    AGX_DIRTY_SAMPLE_MASK = BITFIELD_BIT(15),
+   AGX_DIRTY_BLEND_COLOR = BITFIELD_BIT(16),
 };
 
 /* Maximum number of in-progress + under-construction GPU batches.
