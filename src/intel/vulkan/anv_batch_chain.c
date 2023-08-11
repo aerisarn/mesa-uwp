@@ -487,6 +487,11 @@ cmd_buffer_chain_to_batch_bo(struct anv_cmd_buffer *cmd_buffer,
    emit_batch_buffer_start(batch, bbo->bo, 0);
 
    anv_batch_bo_finish(current_bbo, batch);
+
+   /* Add the current amount of data written in the current_bbo to the command
+    * buffer.
+    */
+   cmd_buffer->total_batch_size += current_bbo->length;
 }
 
 static void
@@ -813,6 +818,8 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
 
    list_inithead(&cmd_buffer->batch_bos);
 
+   cmd_buffer->total_batch_size = 0;
+
    result = anv_batch_bo_create(cmd_buffer,
                                 ANV_MIN_CMD_BUFFER_BATCH_SIZE,
                                 &batch_bo);
@@ -943,6 +950,8 @@ anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->generation_batch.start = NULL;
    cmd_buffer->generation_batch.end   = NULL;
    cmd_buffer->generation_batch.next  = NULL;
+
+   cmd_buffer->total_batch_size = 0;
 }
 
 void
@@ -1050,6 +1059,11 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
    }
 
    anv_batch_bo_finish(batch_bo, &cmd_buffer->batch);
+
+   /* Add the current amount of data written in the current_bbo to the command
+    * buffer.
+    */
+   cmd_buffer->total_batch_size += batch_bo->length;
 }
 
 static VkResult
@@ -1145,6 +1159,11 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
    }
 
    anv_reloc_list_append(&primary->surface_relocs, &secondary->surface_relocs);
+
+   /* Add the amount of data written in the secondary buffer to the primary
+    * command buffer.
+    */
+   primary->total_batch_size += secondary->total_batch_size;
 }
 
 void
