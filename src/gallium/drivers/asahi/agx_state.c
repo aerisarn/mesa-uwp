@@ -1316,7 +1316,6 @@ agx_set_vertex_buffers(struct pipe_context *pctx, unsigned count,
                                 take_ownership);
 
    ctx->dirty |= AGX_DIRTY_VERTEX;
-   ctx->stage[PIPE_SHADER_VERTEX].dirty = ~0;
 }
 
 static void *
@@ -2623,8 +2622,11 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    agx_update_descriptors(batch, ctx->vs, PIPE_SHADER_VERTEX);
    agx_update_descriptors(batch, ctx->fs, PIPE_SHADER_FRAGMENT);
 
-   if (IS_DIRTY(VS) || IS_DIRTY(FS) || IS_DIRTY(BLEND_COLOR))
+   if (IS_DIRTY(VS) || IS_DIRTY(FS) || IS_DIRTY(VERTEX) ||
+       IS_DIRTY(BLEND_COLOR)) {
+
       agx_upload_uniforms(batch);
+   }
 
    if (IS_DIRTY(VS)) {
       agx_pack(out, VDM_STATE, cfg) {
@@ -3073,7 +3075,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    if (agx_update_vs(ctx))
       ctx->dirty |= AGX_DIRTY_VS | AGX_DIRTY_VS_PROG;
-   else if (ctx->stage[PIPE_SHADER_VERTEX].dirty)
+   else if (ctx->stage[PIPE_SHADER_VERTEX].dirty ||
+            (ctx->dirty & AGX_DIRTY_VERTEX))
       ctx->dirty |= AGX_DIRTY_VS;
 
    if (agx_update_fs(batch))
