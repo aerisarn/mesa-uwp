@@ -731,10 +731,10 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
          anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
          (color_writes & ((1u << state->color_att_count) - 1)) != 0;
 
-      SET(BLEND_STATE_POINTERS, blend.AlphaToCoverageEnable,
-                                dyn->ms.alpha_to_coverage_enable);
-      SET(BLEND_STATE_POINTERS, blend.AlphaToOneEnable,
-                                dyn->ms.alpha_to_one_enable);
+      SET(BLEND_STATE, blend.AlphaToCoverageEnable,
+                       dyn->ms.alpha_to_coverage_enable);
+      SET(BLEND_STATE, blend.AlphaToOneEnable,
+                       dyn->ms.alpha_to_one_enable);
 
       bool independent_alpha_blend = false;
       /* Wa_14018912822, check if we set these during RT setup. */
@@ -745,22 +745,22 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
          bool write_disabled = i >= cmd_buffer->state.gfx.color_att_count ||
                                (color_writes & BITFIELD_BIT(i)) == 0;
 
-         SET(BLEND_STATE_POINTERS, blend.rts[i].WriteDisableAlpha,
-                                   write_disabled ||
-                                   (dyn->cb.attachments[i].write_mask &
-                                    VK_COLOR_COMPONENT_A_BIT) == 0);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].WriteDisableRed,
-                                   write_disabled ||
-                                   (dyn->cb.attachments[i].write_mask &
-                                    VK_COLOR_COMPONENT_R_BIT) == 0);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].WriteDisableGreen,
-                                   write_disabled ||
-                                   (dyn->cb.attachments[i].write_mask &
-                                    VK_COLOR_COMPONENT_G_BIT) == 0);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].WriteDisableBlue,
-                                   write_disabled ||
-                                   (dyn->cb.attachments[i].write_mask &
-                                    VK_COLOR_COMPONENT_B_BIT) == 0);
+         SET(BLEND_STATE, blend.rts[i].WriteDisableAlpha,
+                          write_disabled ||
+                          (dyn->cb.attachments[i].write_mask &
+                           VK_COLOR_COMPONENT_A_BIT) == 0);
+         SET(BLEND_STATE, blend.rts[i].WriteDisableRed,
+                          write_disabled ||
+                          (dyn->cb.attachments[i].write_mask &
+                           VK_COLOR_COMPONENT_R_BIT) == 0);
+         SET(BLEND_STATE, blend.rts[i].WriteDisableGreen,
+                          write_disabled ||
+                          (dyn->cb.attachments[i].write_mask &
+                           VK_COLOR_COMPONENT_G_BIT) == 0);
+         SET(BLEND_STATE, blend.rts[i].WriteDisableBlue,
+                          write_disabled ||
+                          (dyn->cb.attachments[i].write_mask &
+                           VK_COLOR_COMPONENT_B_BIT) == 0);
          /* Vulkan specification 1.2.168, VkLogicOp:
           *
           *   "Logical operations are controlled by the logicOpEnable and
@@ -776,22 +776,21 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
           *   "Enabling LogicOp and Color Buffer Blending at the same time is
           *   UNDEFINED"
           */
-         SET(BLEND_STATE_POINTERS, blend.rts[i].LogicOpFunction,
-                                   genX(vk_to_intel_logic_op)[dyn->cb.logic_op]);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].LogicOpEnable,
-                                   dyn->cb.logic_op_enable);
+         SET(BLEND_STATE, blend.rts[i].LogicOpFunction,
+                          genX(vk_to_intel_logic_op)[dyn->cb.logic_op]);
+         SET(BLEND_STATE, blend.rts[i].LogicOpEnable, dyn->cb.logic_op_enable);
 
-         SET(BLEND_STATE_POINTERS, blend.rts[i].ColorClampRange, COLORCLAMP_RTFORMAT);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].PreBlendColorClampEnable, true);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].PostBlendColorClampEnable, true);
+         SET(BLEND_STATE, blend.rts[i].ColorClampRange, COLORCLAMP_RTFORMAT);
+         SET(BLEND_STATE, blend.rts[i].PreBlendColorClampEnable, true);
+         SET(BLEND_STATE, blend.rts[i].PostBlendColorClampEnable, true);
 
          /* Setup blend equation. */
-         SET(BLEND_STATE_POINTERS, blend.rts[i].ColorBlendFunction,
-                                   genX(vk_to_intel_blend_op)[
-                                      dyn->cb.attachments[i].color_blend_op]);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].AlphaBlendFunction,
-                                   genX(vk_to_intel_blend_op)[
-                                      dyn->cb.attachments[i].alpha_blend_op]);
+         SET(BLEND_STATE, blend.rts[i].ColorBlendFunction,
+                          genX(vk_to_intel_blend_op)[
+                             dyn->cb.attachments[i].color_blend_op]);
+         SET(BLEND_STATE, blend.rts[i].AlphaBlendFunction,
+                          genX(vk_to_intel_blend_op)[
+                             dyn->cb.attachments[i].alpha_blend_op]);
 
          if (dyn->cb.attachments[i].src_color_blend_factor !=
              dyn->cb.attachments[i].src_alpha_blend_factor ||
@@ -815,11 +814,11 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
           */
          if (wm_prog_data && !wm_prog_data->dual_src_blend &&
              anv_is_dual_src_blend_equation(&dyn->cb.attachments[i])) {
-            SET(BLEND_STATE_POINTERS, blend.rts[i].ColorBufferBlendEnable, false);
+            SET(BLEND_STATE, blend.rts[i].ColorBufferBlendEnable, false);
          } else {
-            SET(BLEND_STATE_POINTERS, blend.rts[i].ColorBufferBlendEnable,
-                                      !dyn->cb.logic_op_enable &&
-                                      dyn->cb.attachments[i].blend_enable);
+            SET(BLEND_STATE, blend.rts[i].ColorBufferBlendEnable,
+                             !dyn->cb.logic_op_enable &&
+                             dyn->cb.attachments[i].blend_enable);
          }
 
          /* Our hardware applies the blend factor prior to the blend function
@@ -866,15 +865,15 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
             }
          }
 
-         SET(BLEND_STATE_POINTERS, blend.rts[i].SourceBlendFactor, SourceBlendFactor);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].DestinationBlendFactor, DestinationBlendFactor);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].SourceAlphaBlendFactor, SourceAlphaBlendFactor);
-         SET(BLEND_STATE_POINTERS, blend.rts[i].DestinationAlphaBlendFactor, DestinationAlphaBlendFactor);
+         SET(BLEND_STATE, blend.rts[i].SourceBlendFactor, SourceBlendFactor);
+         SET(BLEND_STATE, blend.rts[i].DestinationBlendFactor, DestinationBlendFactor);
+         SET(BLEND_STATE, blend.rts[i].SourceAlphaBlendFactor, SourceAlphaBlendFactor);
+         SET(BLEND_STATE, blend.rts[i].DestinationAlphaBlendFactor, DestinationAlphaBlendFactor);
       }
       cmd_buffer->state.gfx.color_blend_zero = color_blend_zero;
       cmd_buffer->state.gfx.alpha_blend_zero = alpha_blend_zero;
 
-      SET(BLEND_STATE_POINTERS, blend.IndependentAlphaBlendEnable, independent_alpha_blend);
+      SET(BLEND_STATE, blend.IndependentAlphaBlendEnable, independent_alpha_blend);
 
       /* 3DSTATE_PS_BLEND to be consistent with the rest of the
        * BLEND_STATE_ENTRY.
@@ -1600,7 +1599,7 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_BLEND_STATE_POINTERS)) {
+   if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_BLEND_STATE)) {
       const uint32_t num_dwords = GENX(BLEND_STATE_length) +
          GENX(BLEND_STATE_ENTRY_length) * MAX_RTS;
       struct anv_state blend_states =
@@ -1643,8 +1642,14 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
          dws += GENX(BLEND_STATE_ENTRY_length);
       }
 
+      cmd_buffer->state.gfx.blend_states = blend_states;
+      /* Dirty the pointers to reemit 3DSTATE_BLEND_STATE_POINTERS below */
+      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_BLEND_STATE_POINTERS);
+   }
+
+   if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_BLEND_STATE_POINTERS)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_BLEND_STATE_POINTERS), bsp) {
-         bsp.BlendStatePointer      = blend_states.offset;
+         bsp.BlendStatePointer      = cmd_buffer->state.gfx.blend_states.offset;
          bsp.BlendStatePointerValid = true;
       }
    }

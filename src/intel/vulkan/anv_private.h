@@ -1160,7 +1160,8 @@ enum anv_gfx_state_bits {
    ANV_GFX_STATE_TASK_SHADER,
    ANV_GFX_STATE_TASK_REDISTRIB,
    /* Dynamic states */
-   ANV_GFX_STATE_BLEND_STATE_POINTERS,
+   ANV_GFX_STATE_BLEND_STATE, /* Just the dynamic state structure */
+   ANV_GFX_STATE_BLEND_STATE_POINTERS, /* The pointer to the dynamic state */
    ANV_GFX_STATE_CLIP,
    ANV_GFX_STATE_CC_STATE,
    ANV_GFX_STATE_CPS,
@@ -3154,6 +3155,11 @@ struct anv_cmd_graphics_state {
 
    struct vk_vertex_input_state vertex_input;
    struct vk_sample_locations_state sample_locations;
+
+   /**
+    * The latest BLEND_STATE structure packed in dynamic state heap
+    */
+   struct anv_state blend_states;
 
    bool object_preemption;
    bool has_uint_rt;
