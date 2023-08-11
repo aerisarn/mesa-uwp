@@ -110,18 +110,23 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
                  VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT |
                  VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT);
 
-   /* These are supported on all YCbCr formats */
-   features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT |
-               VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
+   /* This is supported on all YCbCr formats */
+   features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;
 
    if (ycbcr_info->n_planes > 1) {
       /* DISJOINT_BIT implies that each plane has its own separate binding,
        * while SEPARATE_RECONSTRUCTION_FILTER_BIT implies that luma and chroma
        * each have their own, separate filters, so these two bits make sense
        * for multi-planar formats only.
+       *
+       * For MIDPOINT_CHROMA_SAMPLES_BIT, NVIDIA HW on single-plane interleaved
+       * YCbCr defaults to COSITED_EVEN, which is inaccurate and fails tests.
+       * This can be fixed with a NIR tweak but for now, we only enable this bit
+       * for multi-plane formats. See Issue #9525 on the mesa/main tracker.
        */
       features |= VK_FORMAT_FEATURE_DISJOINT_BIT |
-                  VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT;
+                  VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT |
+                  VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
    }
 
    if (cosited_chroma)
