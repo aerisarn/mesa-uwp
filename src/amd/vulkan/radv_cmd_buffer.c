@@ -4319,6 +4319,7 @@ radv_cmp_tcs_epilog(const void *a_, const void *b_)
 static struct radv_shader_part *
 lookup_tcs_epilog(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_shader *tcs = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
    const struct radv_shader *tes = cmd_buffer->state.shaders[MESA_SHADER_TESS_EVAL];
    struct radv_device *device = cmd_buffer->device;
    struct radv_shader_part *epilog = NULL;
@@ -4326,6 +4327,7 @@ lookup_tcs_epilog(struct radv_cmd_buffer *cmd_buffer)
    struct radv_tcs_epilog_key key = {
       .primitive_mode = tes->info.tes._primitive_mode,
       .tes_reads_tessfactors = tes->info.tes.reads_tess_factors,
+      .tcs_out_patch_fits_subgroup = tcs->info.wave_size % tcs->info.tcs.tcs_vertices_out == 0,
    };
 
    uint32_t hash = radv_hash_tcs_epilog(&key);

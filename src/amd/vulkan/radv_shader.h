@@ -487,6 +487,7 @@ struct radv_vs_prolog_key {
 struct radv_tcs_epilog_key {
    enum tess_primitive_mode primitive_mode;
    bool tes_reads_tessfactors;
+   bool tcs_out_patch_fits_subgroup;
 };
 
 enum radv_shader_binary_type { RADV_BINARY_TYPE_LEGACY, RADV_BINARY_TYPE_RTLD };
