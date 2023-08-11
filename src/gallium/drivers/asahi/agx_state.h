@@ -92,8 +92,29 @@ struct agx_streamout {
 enum agx_sysval_table {
    AGX_SYSVAL_TABLE_ROOT,
    AGX_SYSVAL_TABLE_GRID,
+   AGX_SYSVAL_TABLE_VS,
+   AGX_SYSVAL_TABLE_TCS,
+   AGX_SYSVAL_TABLE_TES,
+   AGX_SYSVAL_TABLE_GS,
+   AGX_SYSVAL_TABLE_FS,
+   AGX_SYSVAL_TABLE_CS,
    AGX_NUM_SYSVAL_TABLES
 };
+
+#define AGX_SYSVAL_STAGE(stage) (AGX_SYSVAL_TABLE_VS + (stage))
+
+static_assert(AGX_SYSVAL_STAGE(PIPE_SHADER_VERTEX) == AGX_SYSVAL_TABLE_VS,
+              "fixed enum orderings");
+static_assert(AGX_SYSVAL_STAGE(PIPE_SHADER_TESS_CTRL) == AGX_SYSVAL_TABLE_TCS,
+              "fixed enum orderings");
+static_assert(AGX_SYSVAL_STAGE(PIPE_SHADER_TESS_EVAL) == AGX_SYSVAL_TABLE_TES,
+              "fixed enum orderings");
+static_assert(AGX_SYSVAL_STAGE(PIPE_SHADER_GEOMETRY) == AGX_SYSVAL_TABLE_GS,
+              "fixed enum orderings");
+static_assert(AGX_SYSVAL_STAGE(PIPE_SHADER_FRAGMENT) == AGX_SYSVAL_TABLE_FS,
+              "fixed enum orderings");
+static_assert(AGX_SYSVAL_STAGE(PIPE_SHADER_COMPUTE) == AGX_SYSVAL_TABLE_CS,
+              "fixed enum orderings");
 
 /* Root system value table */
 struct PACKED agx_draw_uniforms {
