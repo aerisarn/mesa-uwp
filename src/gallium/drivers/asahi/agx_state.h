@@ -278,6 +278,9 @@ struct agx_batch {
    uint64_t textures[PIPE_SHADER_TYPES];
    uint32_t texture_count[PIPE_SHADER_TYPES];
 
+   uint64_t samplers[PIPE_SHADER_TYPES];
+   uint32_t sampler_count[PIPE_SHADER_TYPES];
+
    /* Resource list requirements, represented as a bit set indexed by BO
     * handles (GEM handles on Linux, or IOGPU's equivalent on macOS)
     */
