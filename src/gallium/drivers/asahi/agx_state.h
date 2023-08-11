@@ -421,14 +421,6 @@ struct agx_context {
    uint16_t sample_mask;
    struct pipe_framebuffer_state framebuffer;
 
-   /* During a launch_grid call, a GPU pointer to
-    *
-    *    uint32_t num_workgroups[3];
-    *
-    * When indirect dispatch is used, that's just the indirect dispatch buffer.
-    */
-   uint64_t grid_info;
-
    struct pipe_query *cond_query;
    bool cond_cond;
    enum pipe_render_cond_flag cond_mode;

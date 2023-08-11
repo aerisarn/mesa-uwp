@@ -2238,7 +2238,6 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
       agx_upload_stage_uniforms(batch, T_tex.gpu, stage);
 
    batch->tables[AGX_SYSVAL_TABLE_ROOT] = agx_upload_uniforms(batch, stage);
-   batch->tables[AGX_SYSVAL_TABLE_GRID] = ctx->grid_info;
 
    for (unsigned i = 0; i < cs->push_range_count; ++i) {
       agx_usc_uniform(&b, cs->push[i].uniform, cs->push[i].length,
@@ -3230,13 +3229,14 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
       struct agx_resource *indirect = agx_resource(info->indirect);
       agx_batch_reads(batch, indirect);
 
-      ctx->grid_info = indirect->bo->ptr.gpu + info->indirect_offset;
+      batch->tables[AGX_SYSVAL_TABLE_GRID] =
+         indirect->bo->ptr.gpu + info->indirect_offset;
    } else {
       static_assert(sizeof(info->grid) == 12,
                     "matches indirect dispatch buffer");
 
-      ctx->grid_info = agx_pool_upload_aligned(&batch->pool, info->grid,
-                                               sizeof(info->grid), 4);
+      batch->tables[AGX_SYSVAL_TABLE_GRID] = agx_pool_upload_aligned(
+         &batch->pool, info->grid, sizeof(info->grid), 4);
    }
 
    struct agx_uncompiled_shader *uncompiled =
@@ -3277,8 +3277,9 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
    if (info->indirect) {
       agx_pack(out, CDM_INDIRECT, cfg) {
-         cfg.address_hi = ctx->grid_info >> 32;
-         cfg.address_lo = ctx->grid_info & BITFIELD64_MASK(32);
+         cfg.address_hi = batch->tables[AGX_SYSVAL_TABLE_GRID] >> 32;
+         cfg.address_lo =
+            batch->tables[AGX_SYSVAL_TABLE_GRID] & BITFIELD64_MASK(32);
       }
       out += AGX_CDM_INDIRECT_LENGTH;
    } else {
@@ -3308,7 +3309,7 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
    /* TODO: Allow multiple kernels in a batch? */
    agx_flush_batch_for_reason(ctx, batch, "Compute kernel serialization");
-   ctx->grid_info = 0;
+   batch->tables[AGX_SYSVAL_TABLE_GRID] = 0;
 }
 
 void agx_init_state_functions(struct pipe_context *ctx);
