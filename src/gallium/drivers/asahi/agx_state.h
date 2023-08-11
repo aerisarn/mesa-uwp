@@ -16,6 +16,7 @@
 #include "asahi/lib/agx_tilebuffer.h"
 #include "asahi/lib/pool.h"
 #include "compiler/nir/nir_lower_blend.h"
+#include "compiler/shader_enums.h"
 #include "gallium/auxiliary/util/u_blitter.h"
 #include "gallium/include/pipe/p_context.h"
 #include "gallium/include/pipe/p_screen.h"
@@ -118,24 +119,8 @@ static_assert(AGX_SYSVAL_STAGE(PIPE_SHADER_COMPUTE) == AGX_SYSVAL_TABLE_CS,
 
 /* Root system value table */
 struct PACKED agx_draw_uniforms {
-   /* Pointer to binding table for texture descriptor, or 0 if none. This must
-    * be first so that u0_u1 is always available for lowering binding
-    * tables to bindless access.
-    */
-   uint64_t texture_base;
-
    /* Pointers to the system value tables themselves (for indirection) */
    uint64_t tables[AGX_NUM_SYSVAL_TABLES];
-
-   /* Uniform buffer objects */
-   uint64_t ubo_base[PIPE_MAX_CONSTANT_BUFFERS];
-
-   /* Shader storage buffer objects */
-   uint64_t ssbo_base[PIPE_MAX_SHADER_BUFFERS];
-   uint32_t ssbo_size[PIPE_MAX_SHADER_BUFFERS];
-
-   /* LOD bias as float16 */
-   uint16_t lod_bias[PIPE_MAX_SAMPLERS];
 
    union {
       struct {
@@ -157,6 +142,24 @@ struct PACKED agx_draw_uniforms {
          uint16_t sample_mask;
       } fs;
    };
+};
+
+struct PACKED agx_stage_uniforms {
+   /* Pointer to binding table for texture descriptor, or 0 if none. This must
+    * be first so that u0_u1 is always available for lowering binding
+    * tables to bindless access.
+    */
+   uint64_t texture_base;
+
+   /* Uniform buffer objects */
+   uint64_t ubo_base[PIPE_MAX_CONSTANT_BUFFERS];
+
+   /* Shader storage buffer objects */
+   uint64_t ssbo_base[PIPE_MAX_SHADER_BUFFERS];
+   uint32_t ssbo_size[PIPE_MAX_SHADER_BUFFERS];
+
+   /* LOD bias as float16 */
+   uint16_t lod_bias[PIPE_MAX_SAMPLERS];
 };
 
 /* In the architecture, there are 512 uniform registers, each 16-bits. In a
@@ -266,6 +269,9 @@ struct agx_batch {
     * each byte (x in low nibble, y in high nibble).
     */
    uint32_t ppp_multisamplectl;
+
+   /* Pointers to the system value tables */
+   uint64_t tables[AGX_NUM_SYSVAL_TABLES];
 
    /* Resource list requirements, represented as a bit set indexed by BO
     * handles (GEM handles on Linux, or IOGPU's equivalent on macOS)
@@ -704,8 +710,11 @@ agx_transfer(struct pipe_transfer *p)
    return (struct agx_transfer *)p;
 }
 
-uint64_t agx_upload_uniforms(struct agx_batch *batch, uint64_t textures,
+uint64_t agx_upload_uniforms(struct agx_batch *batch,
                              enum pipe_shader_type stage);
+
+uint64_t agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
+                                   enum pipe_shader_type stage);
 
 bool agx_nir_lower_sysvals(nir_shader *shader, bool internal_bindless,
                            struct agx_compiled_shader *compiled,

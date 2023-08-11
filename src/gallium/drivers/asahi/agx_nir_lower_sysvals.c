@@ -20,7 +20,8 @@
  * 3. Fill in the load_preamble instructions with the real uniforms.
  */
 
-#define MAX_TABLE_SIZE sizeof(struct agx_draw_uniforms)
+#define MAX_TABLE_SIZE sizeof(struct agx_stage_uniforms)
+static_assert(sizeof(struct agx_draw_uniforms) <= MAX_TABLE_SIZE, "packed");
 
 struct table_state {
    /* Bitset of 16-bit uniforms pushed */
@@ -81,11 +82,18 @@ load_sysval_indirect(nir_builder *b, unsigned dim, unsigned bitsize,
    }
 }
 
+static unsigned
+stage_table(nir_builder *b)
+{
+   assert(b->shader->info.stage < PIPE_SHADER_TYPES);
+   return AGX_SYSVAL_STAGE(b->shader->info.stage);
+}
+
 static nir_def *
 load_ubo(nir_builder *b, nir_intrinsic_instr *intr, void *bases)
 {
-   nir_def *base = load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT, bases,
-                                        intr->src[0].ssa);
+   nir_def *base =
+      load_sysval_indirect(b, 1, 64, stage_table(b), bases, intr->src[0].ssa);
 
    nir_def *address = nir_iadd(b, base, nir_u2u64(b, intr->src[1].ssa));
 
@@ -97,10 +105,11 @@ static nir_def *
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
 {
    struct agx_draw_uniforms *u = NULL;
+   struct agx_stage_uniforms *s = NULL;
 
    switch (intr->intrinsic) {
    case nir_intrinsic_load_ubo:
-      return load_ubo(b, intr, u->ubo_base);
+      return load_ubo(b, intr, s->ubo_base);
    case nir_intrinsic_load_vbo_base_agx:
       return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT,
                                   &u->vs.vbo_base, intr->src[0].ssa);
@@ -117,11 +126,11 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_sample_positions_agx:
       return load_sysval_root(b, 1, 32, &u->fs.ppp_multisamplectl);
    case nir_intrinsic_load_ssbo_address:
-      return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT,
-                                  &u->ssbo_base, intr->src[0].ssa);
+      return load_sysval_indirect(b, 1, 64, stage_table(b), &s->ssbo_base,
+                                  intr->src[0].ssa);
    case nir_intrinsic_get_ssbo_size:
-      return load_sysval_indirect(b, 1, 32, AGX_SYSVAL_TABLE_ROOT,
-                                  &u->ssbo_size, intr->src[0].ssa);
+      return load_sysval_indirect(b, 1, 32, stage_table(b), &s->ssbo_size,
+                                  intr->src[0].ssa);
    case nir_intrinsic_load_num_workgroups:
       return load_sysval(b, 3, 32, AGX_SYSVAL_TABLE_GRID, 0);
    case nir_intrinsic_load_xfb_address:
@@ -160,16 +169,15 @@ lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
       if (tex->op != nir_texop_lod_bias_agx)
          return false;
 
-      struct agx_draw_uniforms *u = NULL;
+      struct agx_stage_uniforms *s = NULL;
 
       int src_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_offset);
       if (src_idx >= 0) {
-         replacement =
-            load_sysval_indirect(b, 1, 16, AGX_SYSVAL_TABLE_ROOT, u->lod_bias,
-                                 tex->src[src_idx].src.ssa);
+         replacement = load_sysval_indirect(
+            b, 1, 16, stage_table(b), s->lod_bias, tex->src[src_idx].src.ssa);
       } else {
-         replacement =
-            load_sysval_root(b, 1, 16, &u->lod_bias[tex->sampler_index]);
+         replacement = load_sysval(b, 1, 16, stage_table(b),
+                                   (uintptr_t)&s->lod_bias[tex->sampler_index]);
       }
    }
 
@@ -292,14 +300,14 @@ lay_out_table(struct agx_compiled_shader *shader, struct table_state *state,
  * otherwise bound to texture state registers.
  */
 static void
-reserve_internal_bindless(struct state *state)
+reserve_internal_bindless(struct state *state, enum pipe_shader_type stage)
 {
-   struct table_state *table = &state->tables[AGX_SYSVAL_TABLE_ROOT];
-   struct agx_draw_uniforms *u = NULL;
-   const unsigned len_words = sizeof(u->texture_base) / sizeof(uint16_t);
+   struct table_state *table = &state->tables[AGX_SYSVAL_STAGE(stage)];
+   struct agx_stage_uniforms *s = NULL;
+   const unsigned len_words = sizeof(s->texture_base) / sizeof(uint16_t);
 
-   static_assert(offsetof(struct agx_draw_uniforms, texture_base) == 0, "ABI");
-   static_assert(sizeof(u->texture_base) == 8, "64-bit pointer");
+   static_assert(offsetof(struct agx_stage_uniforms, texture_base) == 0, "ABI");
+   static_assert(sizeof(s->texture_base) == 8, "64-bit pointer");
 
    BITSET_SET_RANGE(table->pushed, 0, len_words - 1);
 
@@ -312,8 +320,10 @@ lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
 {
    unsigned uniform = 0;
 
-   /* Lay out each system value table */
-   for (uint8_t t = 0; t < AGX_NUM_SYSVAL_TABLES; ++t)
+   /* Lay out each system value table. We do this backwards to ensure the first
+    * uniform goes to the bindless texture base.
+    */
+   for (int t = AGX_NUM_SYSVAL_TABLES - 1; t >= 0; --t)
       uniform = lay_out_table(shader, &state->tables[t], t, uniform);
 
    /* Step 4: Fill in the loads */
@@ -351,7 +361,7 @@ agx_nir_lower_sysvals(nir_shader *shader, bool internal_bindless,
       &state);
 
    if (internal_bindless)
-      reserve_internal_bindless(&state);
+      reserve_internal_bindless(&state, shader->info.stage);
 
    *push_size = lay_out_uniforms(compiled, &state);
 
