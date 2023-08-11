@@ -148,8 +148,6 @@ struct lvp_physical_device {
    struct vk_sync_timeline_type sync_timeline_type;
    const struct vk_sync_type *sync_types[3];
 
-   VkPhysicalDeviceLimits device_limits;
-
    struct wsi_device                       wsi_device;
 };
 

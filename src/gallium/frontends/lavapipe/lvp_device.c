@@ -587,42 +587,38 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
    };
 }
 
-static VkResult VKAPI_CALL
-lvp_physical_device_init(struct lvp_physical_device *device,
-                         struct lvp_instance *instance,
-                         struct pipe_loader_device *pld)
+extern unsigned lp_native_vector_width;
+
+static VkImageLayout lvp_host_copy_image_layouts[] = {
+   VK_IMAGE_LAYOUT_UNDEFINED,
+   VK_IMAGE_LAYOUT_GENERAL,
+   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+   VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+   VK_IMAGE_LAYOUT_PREINITIALIZED,
+   VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+   VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+   VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
+   VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
+   VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+   VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+   VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR,
+   VK_IMAGE_LAYOUT_VIDEO_DECODE_SRC_KHR,
+   VK_IMAGE_LAYOUT_VIDEO_DECODE_DPB_KHR,
+   VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR,
+   VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+   VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
+};
+
+static void
+lvp_get_properties(const struct lvp_physical_device *device, struct vk_properties *p)
 {
-   VkResult result;
-
-   struct vk_physical_device_dispatch_table dispatch_table;
-   vk_physical_device_dispatch_table_from_entrypoints(
-      &dispatch_table, &lvp_physical_device_entrypoints, true);
-   vk_physical_device_dispatch_table_from_entrypoints(
-      &dispatch_table, &wsi_physical_device_entrypoints, false);
-   result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    NULL, NULL, NULL, &dispatch_table);
-   if (result != VK_SUCCESS) {
-      vk_error(instance, result);
-      goto fail;
-   }
-   device->pld = pld;
-
-   device->pscreen = pipe_loader_create_screen_vk(device->pld, true);
-   if (!device->pscreen)
-      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-   for (unsigned i = 0; i < ARRAY_SIZE(device->drv_options); i++)
-      device->drv_options[i] = device->pscreen->get_compiler_options(device->pscreen, PIPE_SHADER_IR_NIR, i);
-
-   device->sync_timeline_type = vk_sync_timeline_get_type(&lvp_pipe_sync_type);
-   device->sync_types[0] = &lvp_pipe_sync_type;
-   device->sync_types[1] = &device->sync_timeline_type.sync;
-   device->sync_types[2] = NULL;
-   device->vk.supported_sync_types = device->sync_types;
-
-   device->max_images = device->pscreen->get_shader_param(device->pscreen, MESA_SHADER_FRAGMENT, PIPE_SHADER_CAP_MAX_SHADER_IMAGES);
-   device->vk.supported_extensions = lvp_device_extensions_supported;
-   lvp_get_features(device, &device->vk.supported_features);
-
    VkSampleCountFlags sample_counts = VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
 
    uint64_t grid_size[3], block_size[3];
@@ -640,7 +636,16 @@ lvp_physical_device_init(struct lvp_physical_device *device,
                                        &max_local_size);
 
    const uint64_t max_render_targets = device->pscreen->get_param(device->pscreen, PIPE_CAP_MAX_RENDER_TARGETS);
-   device->device_limits = (VkPhysicalDeviceLimits) {
+
+   int texel_buffer_alignment = device->pscreen->get_param(device->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
+
+   *p = (struct vk_properties) {
+      /* Vulkan 1.0 */
+      .apiVersion = LVP_API_VERSION,
+      .driverVersion = 1,
+      .vendorID = VK_VENDOR_ID_MESA,
+      .deviceID = 0,
+      .deviceType = VK_PHYSICAL_DEVICE_TYPE_CPU,
       .maxImageDimension1D                      = device->pscreen->get_param(device->pscreen, PIPE_CAP_MAX_TEXTURE_2D_SIZE),
       .maxImageDimension2D                      = device->pscreen->get_param(device->pscreen, PIPE_CAP_MAX_TEXTURE_2D_SIZE),
       .maxImageDimension3D                      = (1 << device->pscreen->get_param(device->pscreen, PIPE_CAP_MAX_TEXTURE_3D_LEVELS)),
@@ -751,7 +756,323 @@ lvp_physical_device_init(struct lvp_physical_device *device,
       .optimalBufferCopyOffsetAlignment         = 128,
       .optimalBufferCopyRowPitchAlignment       = 128,
       .nonCoherentAtomSize                      = 64,
+
+      /* Vulkan 1.1 */
+      /* The LUID is for Windows. */
+      .deviceLUIDValid = false,
+      .deviceNodeMask = 0,
+
+      .subgroupSize = lp_native_vector_width / 32,
+      .subgroupSupportedStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT,
+      .subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_VOTE_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT | VK_SUBGROUP_FEATURE_BALLOT_BIT,
+      .subgroupQuadOperationsInAllStages = false,
+
+      .pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES,
+      .maxMultiviewViewCount = 6,
+      .maxMultiviewInstanceIndex = INT_MAX,
+      .protectedNoFault = false,
+      .maxPerSetDescriptors = MAX_DESCRIPTORS,
+      .maxMemoryAllocationSize = (1u << 31),
+
+      /* Vulkan 1.2 */
+      .driverID = VK_DRIVER_ID_MESA_LLVMPIPE,
+
+      .conformanceVersion = (VkConformanceVersion){
+         .major = 1,
+         .minor = 3,
+         .subminor = 1,
+         .patch = 1,
+      },
+
+      .denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
+      .roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
+      .shaderDenormFlushToZeroFloat16 = false,
+      .shaderDenormPreserveFloat16 = false,
+      .shaderRoundingModeRTEFloat16 = true,
+      .shaderRoundingModeRTZFloat16 = false,
+      .shaderSignedZeroInfNanPreserveFloat16 = true,
+
+      .shaderDenormFlushToZeroFloat32 = false,
+      .shaderDenormPreserveFloat32 = false,
+      .shaderRoundingModeRTEFloat32 = true,
+      .shaderRoundingModeRTZFloat32 = false,
+      .shaderSignedZeroInfNanPreserveFloat32 = true,
+
+      .shaderDenormFlushToZeroFloat64 = false,
+      .shaderDenormPreserveFloat64 = false,
+      .shaderRoundingModeRTEFloat64 = true,
+      .shaderRoundingModeRTZFloat64 = false,
+      .shaderSignedZeroInfNanPreserveFloat64 = true,
+
+      .maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX,
+      .shaderUniformBufferArrayNonUniformIndexingNative = true,
+      .shaderSampledImageArrayNonUniformIndexingNative = true,
+      .shaderStorageBufferArrayNonUniformIndexingNative = true,
+      .shaderStorageImageArrayNonUniformIndexingNative = true,
+      .shaderInputAttachmentArrayNonUniformIndexingNative = true,
+      .robustBufferAccessUpdateAfterBind = true,
+      .quadDivergentImplicitLod = true,
+      .maxPerStageDescriptorUpdateAfterBindSamplers = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorUpdateAfterBindUniformBuffers = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorUpdateAfterBindStorageBuffers = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorUpdateAfterBindSampledImages = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorUpdateAfterBindStorageImages = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorUpdateAfterBindInputAttachments = MAX_DESCRIPTORS,
+      .maxPerStageUpdateAfterBindResources = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindSamplers = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindUniformBuffers = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindStorageBuffers = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindSampledImages = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindStorageImages = MAX_DESCRIPTORS,
+      .maxDescriptorSetUpdateAfterBindInputAttachments = MAX_DESCRIPTORS,
+
+      .supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT | VK_RESOLVE_MODE_AVERAGE_BIT,
+      .supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
+      .independentResolveNone = false,
+      .independentResolve = false,
+
+      .filterMinmaxImageComponentMapping = true,
+      .filterMinmaxSingleComponentFormats = true,
+
+      .maxTimelineSemaphoreValueDifference = UINT64_MAX,
+      .framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT,
+
+      /* Vulkan 1.3 */
+      .minSubgroupSize = lp_native_vector_width / 32,
+      .maxSubgroupSize = lp_native_vector_width / 32,
+      .maxComputeWorkgroupSubgroups = 32,
+      .requiredSubgroupSizeStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
+      .maxInlineUniformTotalSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE * MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS,
+      .maxInlineUniformBlockSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE,
+      .maxPerStageDescriptorInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS,
+      .maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS,
+      .maxDescriptorSetInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS,
+      .maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS,
+      .storageTexelBufferOffsetAlignmentBytes = texel_buffer_alignment,
+      .storageTexelBufferOffsetSingleTexelAlignment = true,
+      .uniformTexelBufferOffsetAlignmentBytes = texel_buffer_alignment,
+      .uniformTexelBufferOffsetSingleTexelAlignment = true,
+      .maxBufferSize = UINT32_MAX,
+
+      /* VK_KHR_push_descriptor */
+      .maxPushDescriptors = MAX_PUSH_DESCRIPTORS,
+
+      /* VK_EXT_host_image_copy */
+      .pCopySrcLayouts = lvp_host_copy_image_layouts,
+      .copySrcLayoutCount = ARRAY_SIZE(lvp_host_copy_image_layouts),
+      .pCopyDstLayouts = lvp_host_copy_image_layouts,
+      .copyDstLayoutCount = ARRAY_SIZE(lvp_host_copy_image_layouts),
+      .identicalMemoryTypeRequirements = VK_FALSE,
+
+      /* VK_EXT_transform_feedback */
+      .maxTransformFeedbackStreams = device->pscreen->get_param(device->pscreen, PIPE_CAP_MAX_VERTEX_STREAMS),
+      .maxTransformFeedbackBuffers = device->pscreen->get_param(device->pscreen, PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS),
+      .maxTransformFeedbackBufferSize = UINT32_MAX,
+      .maxTransformFeedbackStreamDataSize = 512,
+      .maxTransformFeedbackBufferDataSize = 512,
+      .maxTransformFeedbackBufferDataStride = 512,
+      .transformFeedbackQueries = true,
+      .transformFeedbackStreamsLinesTriangles = false,
+      .transformFeedbackRasterizationStreamSelect = false,
+      .transformFeedbackDraw = true,
+
+      /* VK_KHR_maintenance5 */
+      /* FIXME No idea about most of these ones. */
+      .earlyFragmentMultisampleCoverageAfterSampleCounting = true,
+      .earlyFragmentSampleMaskTestBeforeSampleCounting = false,
+      .depthStencilSwizzleOneSupport = false,
+      .polygonModePointSize = true, /* This one is correct. */
+      .nonStrictSinglePixelWideLinesUseParallelogram = false,
+      .nonStrictWideLinesUseParallelogram = false,
+
+      /* VK_EXT_extended_dynamic_state3 */
+      .dynamicPrimitiveTopologyUnrestricted = VK_TRUE,
+
+      /* VK_EXT_line_rasterization */
+      .lineSubPixelPrecisionBits = device->pscreen->get_param(device->pscreen, PIPE_CAP_RASTERIZER_SUBPIXEL_BITS),
+
+      /* VK_NV_device_generated_commands */
+      .maxGraphicsShaderGroupCount = 1<<12,
+      .maxIndirectSequenceCount = 1<<20,
+      .maxIndirectCommandsTokenCount = MAX_DGC_TOKENS,
+      .maxIndirectCommandsStreamCount = MAX_DGC_STREAMS,
+      .maxIndirectCommandsTokenOffset = 2047,
+      .maxIndirectCommandsStreamStride = 2048,
+      .minSequencesCountBufferOffsetAlignment = 4,
+      .minSequencesIndexBufferOffsetAlignment = 4,
+      .minIndirectCommandsBufferOffsetAlignment = 4,
+
+      /* VK_EXT_external_memory_host */
+      .minImportedHostPointerAlignment = 4096,
+
+      /* VK_EXT_custom_border_color */
+      .maxCustomBorderColorSamplers = 32 * 1024,
+
+      /* VK_EXT_provoking_vertex */
+      .provokingVertexModePerPipeline = true,
+      .transformFeedbackPreservesTriangleFanProvokingVertex = true,
+
+      /* VK_EXT_multi_draw */
+      .maxMultiDrawCount = 2048,
+
+      /* VK_EXT_descriptor_buffer */
+      .combinedImageSamplerDescriptorSingleArray = VK_TRUE,
+      .bufferlessPushDescriptors = VK_TRUE,
+      .descriptorBufferOffsetAlignment = 4,
+      .maxDescriptorBufferBindings = MAX_SETS,
+      .maxResourceDescriptorBufferBindings = MAX_SETS,
+      .maxSamplerDescriptorBufferBindings = MAX_SETS,
+      .maxEmbeddedImmutableSamplerBindings = MAX_SETS,
+      .maxEmbeddedImmutableSamplers = 2032,
+      .bufferCaptureReplayDescriptorDataSize = 0,
+      .imageCaptureReplayDescriptorDataSize = 0,
+      .imageViewCaptureReplayDescriptorDataSize = 0,
+      .samplerCaptureReplayDescriptorDataSize = 0,
+      .accelerationStructureCaptureReplayDescriptorDataSize = 0,
+      .samplerDescriptorSize = sizeof(struct lp_descriptor),
+      .combinedImageSamplerDescriptorSize = sizeof(struct lp_descriptor),
+      .sampledImageDescriptorSize = sizeof(struct lp_descriptor),
+      .storageImageDescriptorSize = sizeof(struct lp_descriptor),
+      .uniformTexelBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .robustUniformTexelBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .storageTexelBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .robustStorageTexelBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .uniformBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .robustUniformBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .storageBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .robustStorageBufferDescriptorSize = sizeof(struct lp_descriptor),
+      .inputAttachmentDescriptorSize = sizeof(struct lp_descriptor),
+      .accelerationStructureDescriptorSize = 0,
+      .maxSamplerDescriptorBufferRange = 1<<27, //spec minimum
+      .maxResourceDescriptorBufferRange = 1<<27, //spec minimum
+      .resourceDescriptorBufferAddressSpaceSize = 1<<27, //spec minimum
+      .samplerDescriptorBufferAddressSpaceSize = 1<<27, //spec minimum
+      .descriptorBufferAddressSpaceSize = 1<<27, //spec minimum
+
+      /* VK_EXT_graphics_pipeline_library */
+      .graphicsPipelineLibraryFastLinking = VK_TRUE,
+      .graphicsPipelineLibraryIndependentInterpolationDecoration = VK_TRUE,
+
+      /* VK_EXT_robustness2 */
+      .robustStorageBufferAccessSizeAlignment = 1,
+      .robustUniformBufferAccessSizeAlignment = 1,
+
+      /* VK_EXT_mesh_shader */
+      .maxTaskWorkGroupTotalCount = 4194304,
+      .maxTaskWorkGroupCount[0] = 65536,
+      .maxTaskWorkGroupCount[1] = 65536,
+      .maxTaskWorkGroupCount[2] = 65536,
+      .maxTaskWorkGroupInvocations = 1024,
+      .maxTaskWorkGroupSize[0] = 1024,
+      .maxTaskWorkGroupSize[1] = 1024,
+      .maxTaskWorkGroupSize[2] = 1024,
+      .maxTaskPayloadSize = 16384,
+      .maxTaskSharedMemorySize = 32768,
+      .maxTaskPayloadAndSharedMemorySize = 32768,
+
+      .maxMeshWorkGroupTotalCount = 4194304,
+      .maxMeshWorkGroupCount[0] = 65536,
+      .maxMeshWorkGroupCount[1] = 65536,
+      .maxMeshWorkGroupCount[2] = 65536,
+      .maxMeshWorkGroupInvocations = 1024,
+      .maxMeshWorkGroupSize[0] = 1024,
+      .maxMeshWorkGroupSize[1] = 1024,
+      .maxMeshWorkGroupSize[2] = 1024,
+      .maxMeshOutputMemorySize = 32768, /* 32K min required */
+      .maxMeshSharedMemorySize = 28672,     /* 28K min required */
+      .maxMeshOutputComponents = 128, /* 32x vec4 min required */
+      .maxMeshOutputVertices = 256,
+      .maxMeshOutputPrimitives = 256,
+      .maxMeshOutputLayers = 8,
+      .meshOutputPerVertexGranularity = 1,
+      .meshOutputPerPrimitiveGranularity = 1,
+      .maxPreferredTaskWorkGroupInvocations = 64,
+      .maxPreferredMeshWorkGroupInvocations = 128,
+      .prefersLocalInvocationVertexOutput = true,
+      .prefersLocalInvocationPrimitiveOutput = true,
+      .prefersCompactVertexOutput = true,
+      .prefersCompactPrimitiveOutput = false,
    };
+
+   /* Vulkan 1.0 */
+   strcpy(p->deviceName, device->pscreen->get_name(device->pscreen));
+   lvp_device_get_cache_uuid(p->pipelineCacheUUID);
+
+   /* Vulkan 1.1 */
+   device->pscreen->get_device_uuid(device->pscreen, (char*)(p->deviceUUID));
+   device->pscreen->get_driver_uuid(device->pscreen, (char*)(p->driverUUID));
+   memset(p->deviceLUID, 0, VK_LUID_SIZE);
+
+#if LLVM_VERSION_MAJOR >= 10
+   p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_SHUFFLE_BIT | VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT | VK_SUBGROUP_FEATURE_QUAD_BIT;
+#endif
+
+   /* Vulkan 1.2 */
+   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "llvmpipe");
+   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1
+#ifdef MESA_LLVM_VERSION_STRING
+            " (LLVM " MESA_LLVM_VERSION_STRING ")"
+#endif
+           );
+
+   /* VK_EXT_host_image_copy */
+   lvp_device_get_cache_uuid(p->optimalTilingLayoutUUID);
+
+   /* VK_EXT_vertex_attribute_divisor */
+   if (device->pscreen->get_param(device->pscreen, PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR) != 0)
+      p->maxVertexAttribDivisor = UINT32_MAX;
+   else
+      p->maxVertexAttribDivisor = 1;
+
+   /* VK_EXT_shader_object */
+   /* this is basically unsupported */
+   lvp_device_get_cache_uuid(p->shaderBinaryUUID);
+   p->shaderBinaryVersion = 1;
+
+   /* VK_EXT_mesh_shader */
+   p->maxMeshPayloadAndSharedMemorySize = p->maxTaskPayloadSize + p->maxMeshSharedMemorySize; /* 28K min required */
+   p->maxMeshPayloadAndOutputMemorySize = p->maxTaskPayloadSize + p->maxMeshOutputMemorySize; /* 47K min required */
+}
+
+static VkResult VKAPI_CALL
+lvp_physical_device_init(struct lvp_physical_device *device,
+                         struct lvp_instance *instance,
+                         struct pipe_loader_device *pld)
+{
+   VkResult result;
+
+   struct vk_physical_device_dispatch_table dispatch_table;
+   vk_physical_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &lvp_physical_device_entrypoints, true);
+   vk_physical_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &wsi_physical_device_entrypoints, false);
+   result = vk_physical_device_init(&device->vk, &instance->vk,
+                                    NULL, NULL, NULL, &dispatch_table);
+   if (result != VK_SUCCESS) {
+      vk_error(instance, result);
+      goto fail;
+   }
+   device->pld = pld;
+
+   device->pscreen = pipe_loader_create_screen_vk(device->pld, true);
+   if (!device->pscreen)
+      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   for (unsigned i = 0; i < ARRAY_SIZE(device->drv_options); i++)
+      device->drv_options[i] = device->pscreen->get_compiler_options(device->pscreen, PIPE_SHADER_IR_NIR, i);
+
+   device->sync_timeline_type = vk_sync_timeline_get_type(&lvp_pipe_sync_type);
+   device->sync_types[0] = &lvp_pipe_sync_type;
+   device->sync_types[1] = &device->sync_timeline_type.sync;
+   device->sync_types[2] = NULL;
+   device->vk.supported_sync_types = device->sync_types;
+
+   device->max_images = device->pscreen->get_shader_param(device->pscreen, MESA_SHADER_FRAGMENT, PIPE_SHADER_CAP_MAX_SHADER_IMAGES);
+   device->vk.supported_extensions = lvp_device_extensions_supported;
+   lvp_get_features(device, &device->vk.supported_features);
+   lvp_get_properties(device, &device->vk.properties);
+
    result = lvp_init_wsi(device);
    if (result != VK_SUCCESS) {
       vk_physical_device_finish(&device->vk);
@@ -915,502 +1236,6 @@ lvp_device_get_cache_uuid(void *uuid)
    else
       /* release build */
       memcpy(uuid, PACKAGE_VERSION, strlen(PACKAGE_VERSION));
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
-                                     VkPhysicalDeviceProperties *pProperties)
-{
-   LVP_FROM_HANDLE(lvp_physical_device, pdevice, physicalDevice);
-
-   *pProperties = (VkPhysicalDeviceProperties) {
-      .apiVersion = LVP_API_VERSION,
-      .driverVersion = 1,
-      .vendorID = VK_VENDOR_ID_MESA,
-      .deviceID = 0,
-      .deviceType = VK_PHYSICAL_DEVICE_TYPE_CPU,
-      .limits = pdevice->device_limits,
-      .sparseProperties = {0},
-   };
-
-   strcpy(pProperties->deviceName, pdevice->pscreen->get_name(pdevice->pscreen));
-   lvp_device_get_cache_uuid(pProperties->pipelineCacheUUID);
-
-}
-
-extern unsigned lp_native_vector_width;
-static void
-lvp_get_physical_device_properties_1_1(struct lvp_physical_device *pdevice,
-                                       VkPhysicalDeviceVulkan11Properties *p)
-{
-   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES);
-
-   pdevice->pscreen->get_device_uuid(pdevice->pscreen, (char*)(p->deviceUUID));
-   pdevice->pscreen->get_driver_uuid(pdevice->pscreen, (char*)(p->driverUUID));
-   memset(p->deviceLUID, 0, VK_LUID_SIZE);
-   /* The LUID is for Windows. */
-   p->deviceLUIDValid = false;
-   p->deviceNodeMask = 0;
-
-   p->subgroupSize = lp_native_vector_width / 32;
-   p->subgroupSupportedStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT;
-   p->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_VOTE_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT | VK_SUBGROUP_FEATURE_BALLOT_BIT;
-   p->subgroupQuadOperationsInAllStages = false;
-
-#if LLVM_VERSION_MAJOR >= 10
-   p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_SHUFFLE_BIT | VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT | VK_SUBGROUP_FEATURE_QUAD_BIT;
-#endif
-
-   p->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-   p->maxMultiviewViewCount = 6;
-   p->maxMultiviewInstanceIndex = INT_MAX;
-   p->protectedNoFault = false;
-   p->maxPerSetDescriptors = MAX_DESCRIPTORS;
-   p->maxMemoryAllocationSize = (1u << 31);
-}
-
-static void
-lvp_get_physical_device_properties_1_2(struct lvp_physical_device *pdevice,
-                                       VkPhysicalDeviceVulkan12Properties *p)
-{
-   p->driverID = VK_DRIVER_ID_MESA_LLVMPIPE;
-   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "llvmpipe");
-   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1
-#ifdef MESA_LLVM_VERSION_STRING
-                  " (LLVM " MESA_LLVM_VERSION_STRING ")"
-#endif
-            );
-
-   p->conformanceVersion = (VkConformanceVersion){
-      .major = 1,
-      .minor = 3,
-      .subminor = 1,
-      .patch = 1,
-   };
-
-   p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
-   p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
-   p->shaderDenormFlushToZeroFloat16 = false;
-   p->shaderDenormPreserveFloat16 = false;
-   p->shaderRoundingModeRTEFloat16 = true;
-   p->shaderRoundingModeRTZFloat16 = false;
-   p->shaderSignedZeroInfNanPreserveFloat16 = true;
-
-   p->shaderDenormFlushToZeroFloat32 = false;
-   p->shaderDenormPreserveFloat32 = false;
-   p->shaderRoundingModeRTEFloat32 = true;
-   p->shaderRoundingModeRTZFloat32 = false;
-   p->shaderSignedZeroInfNanPreserveFloat32 = true;
-
-   p->shaderDenormFlushToZeroFloat64 = false;
-   p->shaderDenormPreserveFloat64 = false;
-   p->shaderRoundingModeRTEFloat64 = true;
-   p->shaderRoundingModeRTZFloat64 = false;
-   p->shaderSignedZeroInfNanPreserveFloat64 = true;
-
-   p->maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX;
-   p->shaderUniformBufferArrayNonUniformIndexingNative = true;
-   p->shaderSampledImageArrayNonUniformIndexingNative = true;
-   p->shaderStorageBufferArrayNonUniformIndexingNative = true;
-   p->shaderStorageImageArrayNonUniformIndexingNative = true;
-   p->shaderInputAttachmentArrayNonUniformIndexingNative = true;
-   p->robustBufferAccessUpdateAfterBind = true;
-   p->quadDivergentImplicitLod = true;
-   p->maxPerStageDescriptorUpdateAfterBindSamplers = MAX_DESCRIPTORS;
-   p->maxPerStageDescriptorUpdateAfterBindUniformBuffers = MAX_DESCRIPTORS;
-   p->maxPerStageDescriptorUpdateAfterBindStorageBuffers = MAX_DESCRIPTORS;
-   p->maxPerStageDescriptorUpdateAfterBindSampledImages = MAX_DESCRIPTORS;
-   p->maxPerStageDescriptorUpdateAfterBindStorageImages = MAX_DESCRIPTORS;
-   p->maxPerStageDescriptorUpdateAfterBindInputAttachments = MAX_DESCRIPTORS;
-   p->maxPerStageUpdateAfterBindResources = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindSamplers = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindUniformBuffers = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindStorageBuffers = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindSampledImages = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindStorageImages = MAX_DESCRIPTORS;
-   p->maxDescriptorSetUpdateAfterBindInputAttachments = MAX_DESCRIPTORS;
-
-   p->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT | VK_RESOLVE_MODE_AVERAGE_BIT;
-   p->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-   p->independentResolveNone = false;
-   p->independentResolve = false;
-
-   p->filterMinmaxImageComponentMapping = true;
-   p->filterMinmaxSingleComponentFormats = true;
-
-   p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
-   p->framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT;
-}
-
-static void
-lvp_get_physical_device_properties_1_3(struct lvp_physical_device *pdevice,
-                                       VkPhysicalDeviceVulkan13Properties *p)
-{
-   p->minSubgroupSize = lp_native_vector_width / 32;
-   p->maxSubgroupSize = lp_native_vector_width / 32;
-   p->maxComputeWorkgroupSubgroups = 32;
-   p->requiredSubgroupSizeStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-   p->maxInlineUniformTotalSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE * MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS;
-   p->maxInlineUniformBlockSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE;
-   p->maxPerStageDescriptorInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-   p->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-   p->maxDescriptorSetInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-   p->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-   int alignment = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
-   p->storageTexelBufferOffsetAlignmentBytes = alignment;
-   p->storageTexelBufferOffsetSingleTexelAlignment = true;
-   p->uniformTexelBufferOffsetAlignmentBytes = alignment;
-   p->uniformTexelBufferOffsetSingleTexelAlignment = true;
-   p->maxBufferSize = UINT32_MAX;
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
-   VkPhysicalDevice                            physicalDevice,
-   VkPhysicalDeviceProperties2                *pProperties)
-{
-   LVP_FROM_HANDLE(lvp_physical_device, pdevice, physicalDevice);
-   lvp_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
-
-   VkPhysicalDeviceVulkan11Properties core_1_1 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
-   };
-   lvp_get_physical_device_properties_1_1(pdevice, &core_1_1);
-
-   VkPhysicalDeviceVulkan12Properties core_1_2 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
-   };
-   lvp_get_physical_device_properties_1_2(pdevice, &core_1_2);
-
-   VkPhysicalDeviceVulkan13Properties core_1_3 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
-   };
-   lvp_get_physical_device_properties_1_3(pdevice, &core_1_3);
-
-   vk_foreach_struct(ext, pProperties->pNext) {
-
-      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
-         continue;
-      if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
-         continue;
-      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
-         continue;
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-         VkPhysicalDevicePushDescriptorPropertiesKHR *properties =
-            (VkPhysicalDevicePushDescriptorPropertiesKHR *) ext;
-         properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: {
-         VkPhysicalDeviceShaderIntegerDotProductProperties *properties =
-            (VkPhysicalDeviceShaderIntegerDotProductProperties *) ext;
-         void *pnext = properties->pNext;
-         memset(properties, 0, sizeof(VkPhysicalDeviceShaderIntegerDotProductProperties));
-         properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES;
-         properties->pNext = pnext;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-         VkPhysicalDevicePointClippingProperties *properties =
-            (VkPhysicalDevicePointClippingProperties*)ext;
-         properties->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT: {
-         VkPhysicalDeviceHostImageCopyPropertiesEXT *props =
-            (VkPhysicalDeviceHostImageCopyPropertiesEXT *)ext;
-         VkImageLayout layouts[] = {
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_GENERAL,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_PREINITIALIZED,
-            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
-            VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
-            VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
-            VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR,
-            VK_IMAGE_LAYOUT_VIDEO_DECODE_SRC_KHR,
-            VK_IMAGE_LAYOUT_VIDEO_DECODE_DPB_KHR,
-            VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR,
-            VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
-            VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
-         };
-         if (props->copySrcLayoutCount)
-            typed_memcpy(props->pCopySrcLayouts, layouts, props->copySrcLayoutCount);
-         props->copySrcLayoutCount = ARRAY_SIZE(layouts);
-         if (props->copyDstLayoutCount)
-            typed_memcpy(props->pCopyDstLayouts, layouts, props->copyDstLayoutCount);
-         props->copyDstLayoutCount = ARRAY_SIZE(layouts);
-         lvp_device_get_cache_uuid(props->optimalTilingLayoutUUID);
-         props->identicalMemoryTypeRequirements = VK_FALSE;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *props =
-            (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
-         if (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR) != 0)
-            props->maxVertexAttribDivisor = UINT32_MAX;
-         else
-            props->maxVertexAttribDivisor = 1;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
-         VkPhysicalDeviceDescriptorIndexingProperties *props =
-            (VkPhysicalDeviceDescriptorIndexingProperties *)ext;
-         props->maxUpdateAfterBindDescriptorsInAllPools = 1000000;
-         props->shaderUniformBufferArrayNonUniformIndexingNative = true;
-         props->shaderSampledImageArrayNonUniformIndexingNative = true;
-         props->shaderStorageBufferArrayNonUniformIndexingNative = true;
-         props->shaderStorageImageArrayNonUniformIndexingNative = true;
-         props->shaderInputAttachmentArrayNonUniformIndexingNative = true;
-         props->robustBufferAccessUpdateAfterBind = true;
-         props->quadDivergentImplicitLod = true;
-         props->maxPerStageDescriptorUpdateAfterBindSamplers = 1000000;
-         props->maxPerStageDescriptorUpdateAfterBindUniformBuffers = 1000000;
-         props->maxPerStageDescriptorUpdateAfterBindStorageBuffers = 1000000;
-         props->maxPerStageDescriptorUpdateAfterBindSampledImages = 1000000;
-         props->maxPerStageDescriptorUpdateAfterBindStorageImages = 1000000;
-         props->maxPerStageDescriptorUpdateAfterBindInputAttachments = 1000000;
-         props->maxPerStageUpdateAfterBindResources = 1000000;
-         props->maxDescriptorSetUpdateAfterBindSamplers = 1000000;
-         props->maxDescriptorSetUpdateAfterBindUniformBuffers = 1000000;
-         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = 1000000;
-         props->maxDescriptorSetUpdateAfterBindStorageBuffers = 1000000;
-         props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = 1000000;
-         props->maxDescriptorSetUpdateAfterBindSampledImages = 1000000;
-         props->maxDescriptorSetUpdateAfterBindStorageImages = 1000000;
-         props->maxDescriptorSetUpdateAfterBindInputAttachments = 1000000;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
-         VkPhysicalDeviceTransformFeedbackPropertiesEXT *properties =
-            (VkPhysicalDeviceTransformFeedbackPropertiesEXT*)ext;
-         properties->maxTransformFeedbackStreams = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_MAX_VERTEX_STREAMS);
-         properties->maxTransformFeedbackBuffers = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS);
-         properties->maxTransformFeedbackBufferSize = UINT32_MAX;
-         properties->maxTransformFeedbackStreamDataSize = 512;
-         properties->maxTransformFeedbackBufferDataSize = 512;
-         properties->maxTransformFeedbackBufferDataStride = 512;
-         properties->transformFeedbackQueries = true;
-         properties->transformFeedbackStreamsLinesTriangles = false;
-         properties->transformFeedbackRasterizationStreamSelect = false;
-         properties->transformFeedbackDraw = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES: {
-         VkPhysicalDeviceMaintenance4Properties *properties =
-            (VkPhysicalDeviceMaintenance4Properties *)ext;
-         properties->maxBufferSize = UINT32_MAX;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: {
-         VkPhysicalDeviceMaintenance5PropertiesKHR *properties =
-            (VkPhysicalDeviceMaintenance5PropertiesKHR *)ext;
-         /* FIXME No idea about most of these ones. */
-         properties->earlyFragmentMultisampleCoverageAfterSampleCounting = true;
-         properties->earlyFragmentSampleMaskTestBeforeSampleCounting = false;
-         properties->depthStencilSwizzleOneSupport = false;
-         properties->polygonModePointSize = true; /* This one is correct. */
-         properties->nonStrictSinglePixelWideLinesUseParallelogram = false;
-         properties->nonStrictWideLinesUseParallelogram = false;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
-         VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *properties =
-            (VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)ext;
-         properties->dynamicPrimitiveTopologyUnrestricted = VK_TRUE;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
-         VkPhysicalDeviceLineRasterizationPropertiesEXT *properties =
-            (VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
-         properties->lineSubPixelPrecisionBits =
-            pdevice->pscreen->get_param(pdevice->pscreen,
-                                        PIPE_CAP_RASTERIZER_SUBPIXEL_BITS);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: {
-         VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV *properties =
-            (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV *)ext;
-         properties->maxGraphicsShaderGroupCount = 1<<12;
-         properties->maxIndirectSequenceCount = 1<<20;
-         properties->maxIndirectCommandsTokenCount = MAX_DGC_TOKENS;
-         properties->maxIndirectCommandsStreamCount = MAX_DGC_STREAMS;
-         properties->maxIndirectCommandsTokenOffset = 2047;
-         properties->maxIndirectCommandsStreamStride = 2048;
-         properties->minSequencesCountBufferOffsetAlignment = 4;
-         properties->minSequencesIndexBufferOffsetAlignment = 4;
-         properties->minIndirectCommandsBufferOffsetAlignment = 4;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES: {
-         VkPhysicalDeviceInlineUniformBlockProperties *properties =
-            (VkPhysicalDeviceInlineUniformBlockProperties *)ext;
-         properties->maxInlineUniformBlockSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE;
-         properties->maxPerStageDescriptorInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-         properties->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-         properties->maxDescriptorSetInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-         properties->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
-         VkPhysicalDeviceExternalMemoryHostPropertiesEXT *properties =
-            (VkPhysicalDeviceExternalMemoryHostPropertiesEXT *)ext;
-         properties->minImportedHostPointerAlignment = 4096;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
-         VkPhysicalDeviceCustomBorderColorPropertiesEXT *properties =
-            (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
-         properties->maxCustomBorderColorSamplers = 32 * 1024;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES: {
-         VkPhysicalDeviceSubgroupSizeControlProperties *props = (VkPhysicalDeviceSubgroupSizeControlProperties *)ext;
-         props->minSubgroupSize = lp_native_vector_width / 32;
-         props->maxSubgroupSize = lp_native_vector_width / 32;
-         props->maxComputeWorkgroupSubgroups = 32;
-         props->requiredSubgroupSizeStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
-         VkPhysicalDeviceProvokingVertexPropertiesEXT *properties =
-            (VkPhysicalDeviceProvokingVertexPropertiesEXT*)ext;
-         properties->provokingVertexModePerPipeline = true;
-         properties->transformFeedbackPreservesTriangleFanProvokingVertex = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
-         VkPhysicalDeviceMultiDrawPropertiesEXT *props = (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
-         props->maxMultiDrawCount = 2048;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT: {
-         VkPhysicalDeviceDescriptorBufferPropertiesEXT *props = (VkPhysicalDeviceDescriptorBufferPropertiesEXT *)ext;
-         props->combinedImageSamplerDescriptorSingleArray = VK_TRUE;
-         props->bufferlessPushDescriptors = VK_TRUE;
-         props->descriptorBufferOffsetAlignment = 4;
-         props->maxDescriptorBufferBindings = MAX_SETS;
-         props->maxResourceDescriptorBufferBindings = MAX_SETS;
-         props->maxSamplerDescriptorBufferBindings = MAX_SETS;
-         props->maxEmbeddedImmutableSamplerBindings = MAX_SETS;
-         props->maxEmbeddedImmutableSamplers = 2032;
-         props->bufferCaptureReplayDescriptorDataSize = 0;
-         props->imageCaptureReplayDescriptorDataSize = 0;
-         props->imageViewCaptureReplayDescriptorDataSize = 0;
-         props->samplerCaptureReplayDescriptorDataSize = 0;
-         props->accelerationStructureCaptureReplayDescriptorDataSize = 0;
-         props->samplerDescriptorSize = sizeof(struct lp_descriptor);
-         props->combinedImageSamplerDescriptorSize = sizeof(struct lp_descriptor);
-         props->sampledImageDescriptorSize = sizeof(struct lp_descriptor);
-         props->storageImageDescriptorSize = sizeof(struct lp_descriptor);
-         props->uniformTexelBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->robustUniformTexelBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->storageTexelBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->robustStorageTexelBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->uniformBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->robustUniformBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->storageBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->robustStorageBufferDescriptorSize = sizeof(struct lp_descriptor);
-         props->inputAttachmentDescriptorSize = sizeof(struct lp_descriptor);
-         props->accelerationStructureDescriptorSize = 0;
-         props->maxSamplerDescriptorBufferRange = 1<<27; //spec minimum
-         props->maxResourceDescriptorBufferRange = 1<<27; //spec minimum
-         props->resourceDescriptorBufferAddressSpaceSize = 1<<27; //spec minimum
-         props->samplerDescriptorBufferAddressSpaceSize = 1<<27; //spec minimum
-         props->descriptorBufferAddressSpaceSize = 1<<27; //spec minimum
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES: {
-         VkPhysicalDeviceTexelBufferAlignmentProperties *properties =
-            (VkPhysicalDeviceTexelBufferAlignmentProperties *)ext;
-         int alignment = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
-         properties->storageTexelBufferOffsetAlignmentBytes = alignment;
-         properties->storageTexelBufferOffsetSingleTexelAlignment = true;
-         properties->uniformTexelBufferOffsetAlignmentBytes = alignment;
-         properties->uniformTexelBufferOffsetSingleTexelAlignment = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT: {
-         VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *props = (VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *)ext;
-         props->graphicsPipelineLibraryFastLinking = VK_TRUE;
-         props->graphicsPipelineLibraryIndependentInterpolationDecoration = VK_TRUE;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_PROPERTIES_EXT: {
-         VkPhysicalDeviceShaderObjectPropertiesEXT *props = (VkPhysicalDeviceShaderObjectPropertiesEXT *)ext;
-         /* this is basically unsupported */
-         lvp_device_get_cache_uuid(props->shaderBinaryUUID);
-         props->shaderBinaryVersion = 1;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-         VkPhysicalDeviceRobustness2PropertiesEXT *props =
-            (VkPhysicalDeviceRobustness2PropertiesEXT *)ext;
-         props->robustStorageBufferAccessSizeAlignment = 1;
-         props->robustUniformBufferAccessSizeAlignment = 1;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
-         VkPhysicalDeviceMeshShaderPropertiesEXT *props =
-            (VkPhysicalDeviceMeshShaderPropertiesEXT *)ext;
-         props->maxTaskWorkGroupTotalCount = 4194304;
-         props->maxTaskWorkGroupCount[0] = 65536;
-         props->maxTaskWorkGroupCount[1] = 65536;
-         props->maxTaskWorkGroupCount[2] = 65536;
-         props->maxTaskWorkGroupInvocations = 1024;
-         props->maxTaskWorkGroupSize[0] = 1024;
-         props->maxTaskWorkGroupSize[1] = 1024;
-         props->maxTaskWorkGroupSize[2] = 1024;
-         props->maxTaskPayloadSize = 16384;
-         props->maxTaskSharedMemorySize = 32768;
-         props->maxTaskPayloadAndSharedMemorySize = 32768;
-
-         props->maxMeshWorkGroupTotalCount = 4194304;
-         props->maxMeshWorkGroupCount[0] = 65536;
-         props->maxMeshWorkGroupCount[1] = 65536;
-         props->maxMeshWorkGroupCount[2] = 65536;
-         props->maxMeshWorkGroupInvocations = 1024;
-         props->maxMeshWorkGroupSize[0] = 1024;
-         props->maxMeshWorkGroupSize[1] = 1024;
-         props->maxMeshWorkGroupSize[2] = 1024;
-         props->maxMeshOutputMemorySize = 32768; /* 32K min required */
-         props->maxMeshSharedMemorySize = 28672;     /* 28K min required */
-         props->maxMeshPayloadAndSharedMemorySize =
-            props->maxTaskPayloadSize +
-            props->maxMeshSharedMemorySize; /* 28K min required */
-         props->maxMeshPayloadAndOutputMemorySize =
-            props->maxTaskPayloadSize +
-            props->maxMeshOutputMemorySize;    /* 47K min required */
-         props->maxMeshOutputComponents = 128; /* 32x vec4 min required */
-         props->maxMeshOutputVertices = 256;
-         props->maxMeshOutputPrimitives = 256;
-         props->maxMeshOutputLayers = 8;
-         props->meshOutputPerVertexGranularity = 1;
-         props->meshOutputPerPrimitiveGranularity = 1;
-         props->maxPreferredTaskWorkGroupInvocations = 64;
-         props->maxPreferredMeshWorkGroupInvocations = 128;
-         props->prefersLocalInvocationVertexOutput = true;
-         props->prefersLocalInvocationPrimitiveOutput = true;
-         props->prefersCompactVertexOutput = true;
-         props->prefersCompactPrimitiveOutput = false;
-         break;
-      }
-      default:
-         break;
-      }
-   }
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties2(
