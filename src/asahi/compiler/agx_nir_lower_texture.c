@@ -15,7 +15,6 @@
 #include "nir_intrinsics.h"
 #include "nir_intrinsics_indices.h"
 
-#define AGX_TEXTURE_DESC_STRIDE   24
 #define AGX_FORMAT_RGB32_EMULATED 0x36
 #define AGX_LAYOUT_LINEAR         0x0
 
@@ -35,30 +34,11 @@ texture_descriptor_ptr_for_handle(nir_builder *b, nir_def *handle)
 }
 
 static nir_def *
-texture_descriptor_ptr_for_index(nir_builder *b, nir_def *index)
-{
-   return nir_iadd(
-      b, nir_load_texture_base_agx(b),
-      nir_u2u64(b, nir_imul_imm(b, index, AGX_TEXTURE_DESC_STRIDE)));
-}
-
-static nir_def *
 texture_descriptor_ptr(nir_builder *b, nir_tex_instr *tex)
 {
    int handle_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
-   if (handle_idx >= 0)
-      return texture_descriptor_ptr_for_handle(b, tex->src[handle_idx].src.ssa);
-
-   /* For non-bindless, compute from the texture index */
-   nir_def *index;
-
-   int offs_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_offset);
-   if (offs_idx >= 0)
-      index = tex->src[offs_idx].src.ssa;
-   else
-      index = nir_imm_int(b, tex->texture_index);
-
-   return texture_descriptor_ptr_for_index(b, index);
+   assert(handle_idx >= 0 && "must be bindless");
+   return texture_descriptor_ptr_for_handle(b, tex->src[handle_idx].src.ssa);
 }
 
 /* Implement txs for buffer textures. There is no mipmapping to worry about, so
@@ -539,26 +519,15 @@ static nir_def *
 txs_for_image(nir_builder *b, nir_intrinsic_instr *intr,
               unsigned num_components, unsigned bit_size)
 {
-   bool bindless = intr->intrinsic == nir_intrinsic_bindless_image_size;
-
-   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 1 + (int)bindless);
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
    tex->op = nir_texop_txs;
    tex->is_array = nir_intrinsic_image_array(intr);
    tex->dest_type = nir_type_uint32;
    tex->sampler_dim = nir_intrinsic_image_dim(intr);
 
-   unsigned s = 0;
-   tex->src[s++] = nir_tex_src_for_ssa(nir_tex_src_lod, intr->src[1].ssa);
-
-   if (bindless) {
-      tex->src[s++] =
-         nir_tex_src_for_ssa(nir_tex_src_texture_handle, intr->src[0].ssa);
-   } else if (nir_src_is_const(intr->src[0])) {
-      tex->texture_index = nir_src_as_uint(intr->src[0]);
-   } else {
-      tex->src[s++] =
-         nir_tex_src_for_ssa(nir_tex_src_texture_offset, intr->src[0].ssa);
-   }
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_lod, intr->src[1].ssa);
+   tex->src[1] =
+      nir_tex_src_for_ssa(nir_tex_src_texture_handle, intr->src[0].ssa);
 
    nir_def_init(&tex->instr, &tex->def, num_components, bit_size);
    nir_builder_instr_insert(b, &tex->instr);
@@ -637,12 +606,8 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
                     bool return_index)
 {
    /* First, calculate the address of the PBE descriptor */
-   nir_def *desc_address;
-   if (intr->intrinsic == nir_intrinsic_bindless_image_texel_address ||
-       intr->intrinsic == nir_intrinsic_bindless_image_store)
-      desc_address = texture_descriptor_ptr_for_handle(b, intr->src[0].ssa);
-   else
-      desc_address = texture_descriptor_ptr_for_index(b, intr->src[0].ssa);
+   nir_def *desc_address =
+      texture_descriptor_ptr_for_handle(b, intr->src[0].ssa);
 
    nir_def *coord = intr->src[1].ssa;
 
@@ -767,17 +732,19 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
    case nir_intrinsic_bindless_image_store:
       return lower_buffer_image(b, intr) || lower_1d_image(b, intr);
 
-   case nir_intrinsic_image_size:
    case nir_intrinsic_bindless_image_size:
       nir_def_rewrite_uses(
          &intr->def,
          txs_for_image(b, intr, intr->def.num_components, intr->def.bit_size));
       return true;
 
-   case nir_intrinsic_image_texel_address:
    case nir_intrinsic_bindless_image_texel_address:
       nir_def_rewrite_uses(&intr->def, image_texel_address(b, intr, false));
       return true;
+
+   case nir_intrinsic_image_size:
+   case nir_intrinsic_image_texel_address:
+      unreachable("should've been lowered");
 
    default:
       return false;
@@ -868,8 +835,7 @@ lower_multisampled_store(nir_builder *b, nir_instr *instr, UNUSED void *data)
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    b->cursor = nir_before_instr(instr);
 
-   if (intr->intrinsic != nir_intrinsic_image_store &&
-       intr->intrinsic != nir_intrinsic_bindless_image_store)
+   if (intr->intrinsic != nir_intrinsic_bindless_image_store)
       return false;
 
    if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_MS)

@@ -139,8 +139,8 @@ static void
 store_memory(nir_builder *b, unsigned bindless_base, unsigned nr_samples,
              enum pipe_format format, unsigned rt, nir_def *value)
 {
-   /* Force bindless for multisampled image writes. It avoids the late lowering
-    * needing a texture_base_agx sysval.
+   /* Force bindless for multisampled image writes since they will be lowered
+    * with a descriptor crawl later.
     */
    bool bindless = (nr_samples > 1);
    nir_def *image = handle_for_rt(b, bindless_base, rt, true, &bindless);

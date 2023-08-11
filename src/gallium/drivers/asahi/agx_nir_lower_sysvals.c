@@ -93,8 +93,6 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_ubo_base_agx:
       return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT, u->ubo_base,
                                   intr->src[0].ssa);
-   case nir_intrinsic_load_texture_base_agx:
-      return load_sysval_root(b, 1, 64, &u->texture_base);
    case nir_intrinsic_load_blend_const_color_r_float:
       return load_sysval_root(b, 1, 32, &u->fs.blend_constant[0]);
    case nir_intrinsic_load_blend_const_color_g_float:
