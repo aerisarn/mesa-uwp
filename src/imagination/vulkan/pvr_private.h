@@ -97,7 +97,6 @@ struct pvr_physical_device {
    /* Back-pointer to instance */
    struct pvr_instance *instance;
 
-   char *name;
    char *render_path;
    char *display_path;
 
@@ -106,8 +105,6 @@ struct pvr_physical_device {
    struct pvr_device_runtime_info dev_runtime_info;
 
    VkPhysicalDeviceMemoryProperties memory;
-
-   uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
 
    struct wsi_device wsi_device;
 

@@ -69,8 +69,11 @@
 #include "util/u_dynarray.h"
 #include "util/u_math.h"
 #include "vk_alloc.h"
+#include "vk_extensions.h"
 #include "vk_log.h"
 #include "vk_object.h"
+#include "vk_physical_device_features.h"
+#include "vk_physical_device_properties.h"
 #include "vk_sampler.h"
 #include "vk_util.h"
 
@@ -247,8 +250,9 @@ static void pvr_physical_device_get_supported_features(
    };
 }
 
-static VkResult
-pvr_physical_device_init_uuids(struct pvr_physical_device *pdevice)
+static bool pvr_physical_device_init_pipeline_cache_uuid(
+   const struct pvr_device_info *const dev_info,
+   uint8_t pipeline_cache_uuid_out[const static VK_UUID_SIZE])
 {
    struct mesa_sha1 sha1_ctx;
    unsigned build_id_len;
@@ -256,29 +260,27 @@ pvr_physical_device_init_uuids(struct pvr_physical_device *pdevice)
    uint64_t bvnc;
 
    const struct build_id_note *note =
-      build_id_find_nhdr_for_addr(pvr_physical_device_init_uuids);
+      build_id_find_nhdr_for_addr(pvr_physical_device_init_pipeline_cache_uuid);
    if (!note) {
-      return vk_errorf(pdevice,
-                       VK_ERROR_INITIALIZATION_FAILED,
-                       "Failed to find build-id");
+      mesa_loge("Failed to find build-id");
+      return false;
    }
 
    build_id_len = build_id_length(note);
    if (build_id_len < 20) {
-      return vk_errorf(pdevice,
-                       VK_ERROR_INITIALIZATION_FAILED,
-                       "Build-id too short. It needs to be a SHA");
+      mesa_loge("Build-id too short. It needs to be a SHA");
+      return false;
    }
 
-   bvnc = pvr_get_packed_bvnc(&pdevice->dev_info);
+   bvnc = pvr_get_packed_bvnc(dev_info);
 
    _mesa_sha1_init(&sha1_ctx);
    _mesa_sha1_update(&sha1_ctx, build_id_data(note), build_id_len);
    _mesa_sha1_update(&sha1_ctx, &bvnc, sizeof(bvnc));
    _mesa_sha1_final(&sha1_ctx, sha1);
-   memcpy(pdevice->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
+   memcpy(pipeline_cache_uuid_out, sha1, VK_UUID_SIZE);
 
-   return VK_SUCCESS;
+   return true;
 }
 
 struct pvr_descriptor_limits {
@@ -340,56 +342,13 @@ pvr_get_physical_device_descriptor_limits(
    return &descriptor_limits[cs_level];
 }
 
-static void
-pvr_get_physical_device_properties_1_1(struct pvr_physical_device *pdevice,
-                                       VkPhysicalDeviceVulkan11Properties *p)
+static bool pvr_physical_device_get_properties(
+   const struct pvr_device_info *const dev_info,
+   const struct pvr_device_runtime_info *const dev_runtime_info,
+   struct vk_properties *const properties)
 {
-   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES);
-}
-
-static void
-pvr_get_physical_device_properties_1_2(struct pvr_physical_device *pdevice,
-                                       VkPhysicalDeviceVulkan12Properties *p)
-{
-   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES);
-
-   /* VK_KHR_driver_properties */
-   p->driverID = VK_DRIVER_ID_IMAGINATION_OPEN_SOURCE_MESA;
-   memset(p->driverName, 0, sizeof(p->driverName));
-   snprintf(p->driverName,
-            VK_MAX_DRIVER_NAME_SIZE,
-            "Imagination open-source Mesa driver");
-   memset(p->driverInfo, 0, sizeof(p->driverInfo));
-   snprintf(p->driverInfo,
-            VK_MAX_DRIVER_INFO_SIZE,
-            ("Mesa " PACKAGE_VERSION MESA_GIT_SHA1));
-   p->conformanceVersion = (VkConformanceVersion){
-      .major = 1,
-      .minor = 3,
-      .subminor = 4,
-      .patch = 1,
-   };
-
-   /* VK_KHR_timeline_semaphore */
-   p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
-}
-
-static void
-pvr_get_physical_device_properties_1_3(struct pvr_physical_device *pdevice,
-                                       VkPhysicalDeviceVulkan13Properties *p)
-{
-   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES);
-}
-
-void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
-                                     VkPhysicalDeviceProperties *pProperties)
-{
-   PVR_FROM_HANDLE(pvr_physical_device, pdevice, physicalDevice);
-   const struct pvr_device_info *const dev_info = &pdevice->dev_info;
-
    const struct pvr_descriptor_limits *descriptor_limits =
-      pvr_get_physical_device_descriptor_limits(dev_info,
-                                                &pdevice->dev_runtime_info);
+      pvr_get_physical_device_descriptor_limits(dev_info, dev_runtime_info);
 
    /* Default value based on the minimum value found in all existing cores. */
    const uint32_t max_multisample =
@@ -440,7 +399,17 @@ void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    const uint32_t max_compute_work_group_invocations =
       (usc_slots * max_instances_per_pds_task >= 512U) ? 512U : 384U;
 
-   VkPhysicalDeviceLimits limits = {
+   bool ret;
+
+   *properties = (struct vk_properties){
+      /* Vulkan 1.0 */
+      .apiVersion = PVR_API_VERSION,
+      .driverVersion = vk_get_driver_version(),
+      .vendorID = VK_VENDOR_ID_IMAGINATION,
+      .deviceID = dev_info->ident.device_id,
+      .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
+      /* deviceName and pipelineCacheUUID are filled below .*/
+
       .maxImageDimension1D = max_render_size,
       .maxImageDimension2D = max_render_size,
       .maxImageDimension3D = PVR_MAX_TEXTURE_EXTENT_Z,
@@ -454,11 +423,8 @@ void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxSamplerAllocationCount = UINT32_MAX,
       .bufferImageGranularity = 1U,
       .sparseAddressSpaceSize = 256ULL * 1024ULL * 1024ULL * 1024ULL,
-
-      /* Maximum number of descriptor sets that can be bound at the same time.
-       */
+      /* Maximum number of descriptor sets that can be bound simultaneously. */
       .maxBoundDescriptorSets = PVR_MAX_DESCRIPTOR_SETS,
-
       .maxPerStageResources = descriptor_limits->max_per_stage_resources,
       .maxPerStageDescriptorSamplers =
          descriptor_limits->max_per_stage_samplers,
@@ -472,7 +438,6 @@ void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
          descriptor_limits->max_per_stage_storage_images,
       .maxPerStageDescriptorInputAttachments =
          descriptor_limits->max_per_stage_input_attachments,
-
       .maxDescriptorSetSamplers = 256U,
       .maxDescriptorSetUniformBuffers = 256U,
       .maxDescriptorSetUniformBuffersDynamic =
@@ -587,67 +552,35 @@ void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .optimalBufferCopyOffsetAlignment = 4U,
       .optimalBufferCopyRowPitchAlignment = 4U,
       .nonCoherentAtomSize = 1U,
+
+      /* Vulkan 1.2 / VK_KHR_driver_properties */
+      .driverID = VK_DRIVER_ID_IMAGINATION_OPEN_SOURCE_MESA,
+      .driverName = "Imagination open-source Mesa driver",
+      .driverInfo = "Mesa " PACKAGE_VERSION MESA_GIT_SHA1,
+      .conformanceVersion = {
+         .major = 1,
+         .minor = 3,
+         .subminor = 4,
+         .patch = 1,
+      },
+
+      /* Vulkan 1.2 / VK_KHR_timeline_semaphore */
+      .maxTimelineSemaphoreValueDifference = UINT64_MAX,
    };
 
-   *pProperties = (VkPhysicalDeviceProperties){
-      .apiVersion = PVR_API_VERSION,
-      .driverVersion = vk_get_driver_version(),
-      .vendorID = VK_VENDOR_ID_IMAGINATION,
-      .deviceID = dev_info->ident.device_id,
-      .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
-      .limits = limits,
-      .sparseProperties = { 0 },
-   };
+   snprintf(properties->deviceName,
+            sizeof(properties->deviceName),
+            "Imagination PowerVR %s %s",
+            dev_info->ident.series_name,
+            dev_info->ident.public_name);
 
-   snprintf(pProperties->deviceName,
-            sizeof(pProperties->deviceName),
-            "%s",
-            pdevice->name);
+   ret = pvr_physical_device_init_pipeline_cache_uuid(
+      dev_info,
+      properties->pipelineCacheUUID);
+   if (!ret)
+      return false;
 
-   memcpy(pProperties->pipelineCacheUUID,
-          pdevice->pipeline_cache_uuid,
-          VK_UUID_SIZE);
-}
-
-void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-                                      VkPhysicalDeviceProperties2 *pProperties)
-{
-   PVR_FROM_HANDLE(pvr_physical_device, pdevice, physicalDevice);
-
-   VkPhysicalDeviceVulkan11Properties core_1_1 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
-   };
-
-   VkPhysicalDeviceVulkan12Properties core_1_2 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
-   };
-
-   VkPhysicalDeviceVulkan13Properties core_1_3 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
-   };
-
-   pvr_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
-   pvr_get_physical_device_properties_1_1(pdevice, &core_1_1);
-   pvr_get_physical_device_properties_1_2(pdevice, &core_1_2);
-   pvr_get_physical_device_properties_1_3(pdevice, &core_1_3);
-
-   vk_foreach_struct (ext, pProperties->pNext) {
-      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
-         continue;
-
-      if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
-         continue;
-
-      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
-         continue;
-
-      switch (ext->sType) {
-      default: {
-         pvr_debug_ignored_stype(ext->sType);
-         break;
-      }
-      }
-   }
+   return true;
 }
 
 VkResult pvr_EnumerateInstanceVersion(uint32_t *pApiVersion)
@@ -684,8 +617,6 @@ static void pvr_physical_device_destroy(struct vk_physical_device *vk_pdevice)
       ralloc_free(pdevice->compiler);
 
    pvr_wsi_finish(pdevice);
-
-   free(pdevice->name);
 
    if (pdevice->ws)
       pvr_winsys_destroy(pdevice->ws);
@@ -738,6 +669,7 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
 {
    struct vk_physical_device_dispatch_table dispatch_table;
    struct vk_device_extension_table supported_extensions;
+   struct vk_properties supported_properties;
    struct vk_features supported_features;
    struct pvr_winsys *ws;
    char *display_path;
@@ -792,6 +724,14 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
    pvr_physical_device_get_supported_extensions(&supported_extensions);
    pvr_physical_device_get_supported_features(&pdevice->dev_info,
                                               &supported_features);
+   if (!pvr_physical_device_get_properties(&pdevice->dev_info,
+                                           &pdevice->dev_runtime_info,
+                                           &supported_properties)) {
+      result = vk_errorf(instance,
+                         VK_ERROR_INITIALIZATION_FAILED,
+                         "Failed to collect physical device properties");
+      goto err_pvr_winsys_destroy;
+   }
 
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table,
@@ -807,26 +747,12 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
                                     &instance->vk,
                                     &supported_extensions,
                                     &supported_features,
-                                    NULL,
+                                    &supported_properties,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto err_pvr_winsys_destroy;
 
    pdevice->vk.supported_sync_types = ws->sync_types;
-
-   result = pvr_physical_device_init_uuids(pdevice);
-   if (result != VK_SUCCESS)
-      goto err_vk_physical_device_finish;
-
-   if (asprintf(&pdevice->name,
-                "Imagination PowerVR %s %s",
-                pdevice->dev_info.ident.series_name,
-                pdevice->dev_info.ident.public_name) < 0) {
-      result = vk_errorf(instance,
-                         VK_ERROR_OUT_OF_HOST_MEMORY,
-                         "Unable to allocate memory to store device name");
-      goto err_vk_physical_device_finish;
-   }
 
    /* Setup available memory heaps and types */
    pdevice->memory.memoryHeapCount = 1;
@@ -843,7 +769,7 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
    result = pvr_wsi_init(pdevice);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
-      goto err_free_name;
+      goto err_vk_physical_device_finish;
    }
 
    pdevice->compiler = rogue_compiler_create(&pdevice->dev_info);
@@ -858,9 +784,6 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
 
 err_wsi_finish:
    pvr_wsi_finish(pdevice);
-
-err_free_name:
-   free(pdevice->name);
 
 err_vk_physical_device_finish:
    vk_physical_device_finish(&pdevice->vk);
@@ -1233,21 +1156,6 @@ const static VkQueueFamilyProperties pvr_queue_family_properties = {
    .timestampValidBits = 0,
    .minImageTransferGranularity = { 1, 1, 1 },
 };
-
-void pvr_GetPhysicalDeviceQueueFamilyProperties(
-   VkPhysicalDevice physicalDevice,
-   uint32_t *pCount,
-   VkQueueFamilyProperties *pQueueFamilyProperties)
-{
-   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties,
-                          out,
-                          pQueueFamilyProperties,
-                          pCount);
-
-   vk_outarray_append_typed (VkQueueFamilyProperties, &out, p) {
-      *p = pvr_queue_family_properties;
-   }
-}
 
 void pvr_GetPhysicalDeviceQueueFamilyProperties2(
    VkPhysicalDevice physicalDevice,
