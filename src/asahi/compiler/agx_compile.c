@@ -2581,12 +2581,6 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias, bool allow_mediump,
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       NIR_PASS_V(nir, nir_lower_point_size, 1.0, 0.0);
-   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      /* Lower to maximum colour buffers, the excess stores will get cleaned up
-       * by tilebuffer lowering so they won't become real shader code. However,
-       * that depends on the shader key which we don't have at this point.
-       */
-      NIR_PASS_V(nir, nir_lower_fragcolor, 8);
    }
 
    /* Lower large arrays to scratch and small arrays to csel */

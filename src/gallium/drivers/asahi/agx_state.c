@@ -1721,6 +1721,14 @@ agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
     */
    NIR_PASS_V(nir, agx_nir_lower_bindings, &so->internal_bindless);
 
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      /* Lower to maximum colour buffers, the excess stores will get cleaned up
+       * by tilebuffer lowering so they won't become real shader code. However,
+       * that depends on the shader key which we don't have at this point.
+       */
+      NIR_PASS_V(nir, nir_lower_fragcolor, 8);
+   }
+
    bool allow_mediump = !(dev->debug & AGX_DBG_NO16);
    agx_preprocess_nir(nir, true, allow_mediump, &so->info);
 
