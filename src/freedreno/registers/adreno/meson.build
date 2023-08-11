@@ -32,6 +32,16 @@ xml_files = [
   'adreno_pm4.xml',
 ]
 
+xml_reg_files = [
+  'a2xx.xml',
+  'a3xx.xml',
+  'a4xx.xml',
+  'a5xx.xml',
+  'a6xx.xml',
+]
+
+freedreno_py_header_files = []
+
 foreach f : xml_files
   _name = f + '.h'
   freedreno_xml_header_files += custom_target(
@@ -69,3 +79,14 @@ freedreno_xml_header_files += custom_target(
     command: [prog_python, '@INPUT0@', '--rnn', rnn_src_path, '--xml', '@INPUT1@', 'c-pack-structs'],
     capture: true,
 )
+
+foreach f : xml_reg_files
+  _pyname = f.split('.')[0] + '.py'
+  freedreno_py_header_files += custom_target(
+    _pyname,
+    input: [gen_header_py, f],
+    output: _pyname,
+    command: [prog_python, '@INPUT0@', '--rnn', rnn_src_path, '--xml', '@INPUT1@', 'py-defines'],
+    capture: true,
+  )
+endforeach

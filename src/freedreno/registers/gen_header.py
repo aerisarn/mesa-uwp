@@ -309,6 +309,10 @@ class Reg(object):
 		if self.bitset.inline:
 			self.bitset.dump_regpair_builder(self)
 
+	def dump_py(self):
+		print("\tREG_%s = 0x%08x" % (self.full_name, self.offset))
+
+
 class Parser(object):
 	def __init__(self):
 		self.current_array = None
@@ -630,6 +634,17 @@ class Parser(object):
 
 		self.dump_reg_usages()
 
+
+	def dump_regs_py(self):
+		regs = []
+		for e in self.file:
+			if isinstance(e, Reg):
+				regs.append(e)
+
+		for e in regs:
+			e.dump_py()
+
+
 	def dump_reg_variants(self, regname, variants):
 		# Don't bother for things that only have a single variant:
 		if len(variants) == 1:
@@ -742,6 +757,25 @@ def dump_c_pack_structs(args):
 	dump_c(args.rnn, args.xml, guard, lambda p: p.dump_structs())
 
 
+def dump_py_defines(args):
+	p = Parser()
+
+	try:
+		p.parse(args.rnn, args.xml)
+	except Error as e:
+		print(e, file=sys.stderr)
+		exit(1)
+
+	file_name = os.path.splitext(os.path.basename(args.xml))[0]
+
+	print("from enum import IntEnum")
+	print("class %sRegs(IntEnum):" % file_name.upper())
+
+	os.path.basename(args.xml)
+
+	p.dump_regs_py()
+
+
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--rnn', type=str, required=True)
@@ -754,6 +788,9 @@ def main():
 
 	parser_c_pack_structs = subparsers.add_parser('c-pack-structs')
 	parser_c_pack_structs.set_defaults(func=dump_c_pack_structs)
+
+	parser_py_defines = subparsers.add_parser('py-defines')
+	parser_py_defines.set_defaults(func=dump_py_defines)
 
 	args = parser.parse_args()
 	args.func(args)
