@@ -158,9 +158,14 @@ struct aco_shader_info {
       struct ac_arg vs_state_bits;
    } tcs;
    struct {
-      struct ac_arg epilog_pc;
       uint32_t num_interp;
       unsigned spi_ps_input;
+
+      /* Vulkan only */
+      struct ac_arg epilog_pc;
+
+      /* OpenGL only */
+      struct ac_arg alpha_reference;
    } ps;
    struct {
       uint8_t subgroup_size;

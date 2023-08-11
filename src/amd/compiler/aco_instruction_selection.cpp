@@ -11139,6 +11139,61 @@ create_tcs_end_for_epilog(isel_context* ctx)
    build_end_with_regs(ctx, regs);
 }
 
+static void
+create_fs_end_for_epilog(isel_context* ctx)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   std::vector<Operand> regs;
+
+   regs.emplace_back(get_arg_for_end(ctx, ctx->program->info.ps.alpha_reference));
+
+   unsigned vgpr = 256;
+
+   for (unsigned slot = FRAG_RESULT_DATA0; slot <= FRAG_RESULT_DATA7; slot++) {
+      unsigned index = slot - FRAG_RESULT_DATA0;
+      unsigned type = (ctx->output_color_types >> (index * 2)) & 0x3;
+      unsigned write_mask = ctx->outputs.mask[slot];
+
+      if (!write_mask)
+         continue;
+
+      if (type == ACO_TYPE_ANY32) {
+         u_foreach_bit (i, write_mask) {
+            regs.emplace_back(Operand(ctx->outputs.temps[slot * 4 + i], PhysReg{vgpr + i}));
+         }
+      } else {
+         for (unsigned i = 0; i < 2; i++) {
+            unsigned mask = (write_mask >> (i * 2)) & 0x3;
+            if (!mask)
+               continue;
+
+            unsigned chan = slot * 4 + i * 2;
+            Operand lo = mask & 0x1 ? Operand(ctx->outputs.temps[chan]) : Operand(v2b);
+            Operand hi = mask & 0x2 ? Operand(ctx->outputs.temps[chan + 1]) : Operand(v2b);
+
+            Temp dst = bld.pseudo(aco_opcode::p_create_vector, bld.def(v1), lo, hi);
+            regs.emplace_back(Operand(dst, PhysReg{vgpr + i}));
+         }
+      }
+      vgpr += 4;
+   }
+
+   if (ctx->outputs.mask[FRAG_RESULT_DEPTH])
+      regs.emplace_back(Operand(ctx->outputs.temps[FRAG_RESULT_DEPTH * 4], PhysReg{vgpr++}));
+
+   if (ctx->outputs.mask[FRAG_RESULT_STENCIL])
+      regs.emplace_back(Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL * 4], PhysReg{vgpr++}));
+
+   if (ctx->outputs.mask[FRAG_RESULT_SAMPLE_MASK])
+      regs.emplace_back(Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4], PhysReg{vgpr++}));
+
+   build_end_with_regs(ctx, regs);
+
+   /* Exit WQM mode finally. */
+   ctx->program->needs_exact = true;
+}
+
 Pseudo_instruction*
 add_startpgm(struct isel_context* ctx)
 {
@@ -11661,7 +11716,10 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
 
    if (ctx.program->info.has_epilog) {
       if (ctx.stage == fragment_fs) {
-         create_fs_jump_to_epilog(&ctx);
+         if (ctx.options->is_opengl)
+            create_fs_end_for_epilog(&ctx);
+         else
+            create_fs_jump_to_epilog(&ctx);
 
          /* FS epilogs always have at least one color/null export. */
          ctx.program->has_color_exports = true;
