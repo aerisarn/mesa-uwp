@@ -141,3 +141,4 @@ spec@amd_shader_trinary_minmax@execution@built-in-functions@fs-max3-vec2-vec2-ve
 spec@mesa_shader_integer_functions@execution@built-in-functions@fs-umulextended-only-msb-nonuniform
 spec@glsl-1.20@execution@fs-vec4-const-array-indirect-access-128-elements
 spec@glsl-1.10@execution@vs-mat2-array-assignment
+spec@glsl-1.10@execution@vs-nested-return-sibling-loop2
