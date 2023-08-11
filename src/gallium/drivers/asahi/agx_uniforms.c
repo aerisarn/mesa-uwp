@@ -51,6 +51,14 @@ agx_vertex_buffer_ptr(struct agx_batch *batch, unsigned vbo)
 }
 
 void
+agx_upload_vbos(struct agx_batch *batch)
+{
+   u_foreach_bit(vbo, batch->ctx->vb_mask) {
+      batch->uniforms.vbo_base[vbo] = agx_vertex_buffer_ptr(batch, vbo);
+   }
+}
+
+void
 agx_upload_uniforms(struct agx_batch *batch)
 {
    struct agx_context *ctx = batch->ctx;
@@ -60,10 +68,6 @@ agx_upload_uniforms(struct agx_batch *batch)
 
    batch->uniforms.tables[AGX_SYSVAL_TABLE_ROOT] = root_ptr.gpu;
    batch->uniforms.sample_mask = ctx->sample_mask;
-
-   u_foreach_bit(vbo, ctx->vb_mask) {
-      batch->uniforms.vbo_base[vbo] = agx_vertex_buffer_ptr(batch, vbo);
-   }
 
    if (ctx->streamout.key.active) {
       batch->uniforms.xfb = ctx->streamout.params;
@@ -75,9 +79,6 @@ agx_upload_uniforms(struct agx_batch *batch)
          batch->uniforms.xfb.size[i] = size;
       }
    }
-
-   memcpy(batch->uniforms.blend_constant, &ctx->blend_color,
-          sizeof(ctx->blend_color));
 
    memcpy(root_ptr.cpu, &batch->uniforms, sizeof(batch->uniforms));
 }

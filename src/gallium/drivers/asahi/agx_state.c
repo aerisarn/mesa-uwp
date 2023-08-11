@@ -2622,6 +2622,15 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    agx_update_descriptors(batch, ctx->vs, PIPE_SHADER_VERTEX);
    agx_update_descriptors(batch, ctx->fs, PIPE_SHADER_FRAGMENT);
 
+   if (IS_DIRTY(VERTEX)) {
+      agx_upload_vbos(batch);
+   }
+
+   if (IS_DIRTY(BLEND_COLOR)) {
+      memcpy(batch->uniforms.blend_constant, &ctx->blend_color,
+             sizeof(ctx->blend_color));
+   }
+
    if (IS_DIRTY(VS) || IS_DIRTY(FS) || IS_DIRTY(VERTEX) ||
        IS_DIRTY(BLEND_COLOR)) {
 

@@ -707,6 +707,7 @@ agx_transfer(struct pipe_transfer *p)
    return (struct agx_transfer *)p;
 }
 
+void agx_upload_vbos(struct agx_batch *batch);
 void agx_upload_uniforms(struct agx_batch *batch);
 
 uint64_t agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
