@@ -434,7 +434,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateBuffer(
 
    vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
    buffer->size = pCreateInfo->size;
-   buffer->usage = pCreateInfo->usage;
+   const VkBufferUsageFlags2CreateInfoKHR *uinfo = vk_find_struct_const(pCreateInfo, BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR);
+   buffer->usage = uinfo ? uinfo->usage : pCreateInfo->usage;
 
    {
       struct pipe_resource template;
@@ -450,11 +451,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateBuffer(
       template.height0 = 1;
       template.depth0 = 1;
       template.array_size = 1;
-      if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
+      if (buffer->usage & VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR)
          template.bind |= PIPE_BIND_SAMPLER_VIEW;
-      if (buffer->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+      if (buffer->usage & VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR)
          template.bind |= PIPE_BIND_SHADER_BUFFER;
-      if (buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
+      if (buffer->usage & VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR)
          template.bind |= PIPE_BIND_SHADER_IMAGE;
       template.flags = PIPE_RESOURCE_FLAG_DONT_OVER_ALLOCATE;
       buffer->bo = device->pscreen->resource_create_unbacked(device->pscreen,

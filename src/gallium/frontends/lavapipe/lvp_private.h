@@ -492,7 +492,7 @@ struct lvp_buffer {
 
    VkDeviceSize                                 size;
 
-   VkBufferUsageFlags                           usage;
+   VkBufferUsageFlags2KHR                       usage;
 
    struct pipe_memory_allocation *pmem;
    struct pipe_resource *bo;
