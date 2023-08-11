@@ -5219,7 +5219,20 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
     * TCS epilog to index tess factor temps using semantic location directly.
     */
    nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
-   unsigned base = sem.location + sem.dual_source_blend_index;
+   unsigned base = sem.location;
+   if (ctx->stage == fragment_fs) {
+      /* color result is a legacy slot which won't appear with data result
+       * at the same time. Here we just use the data slot for it to simplify
+       * code handling for both of them.
+       */
+      if (base == FRAG_RESULT_COLOR)
+         base = FRAG_RESULT_DATA0;
+
+      /* Sencond output of dual source blend just use data1 slot for simplicity,
+       * because dual source blend does not support multi render target.
+       */
+      base += sem.dual_source_blend_index;
+   }
    unsigned idx = base * 4u + component;
 
    for (unsigned i = 0; i < 8; ++i) {
@@ -5230,7 +5243,7 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
       idx++;
    }
 
-   if (ctx->stage == fragment_fs && ctx->program->info.has_epilog) {
+   if (ctx->stage == fragment_fs && ctx->program->info.has_epilog && base >= FRAG_RESULT_DATA0) {
       unsigned index = base - FRAG_RESULT_DATA0;
 
       if (nir_intrinsic_src_type(instr) == nir_type_float16) {
