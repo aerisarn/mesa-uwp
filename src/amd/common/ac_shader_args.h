@@ -151,7 +151,7 @@ struct ac_shader_args {
       struct ac_arg launch_size_addr;
       struct ac_arg launch_id;
       struct ac_arg dynamic_callable_stack_base;
-      struct ac_arg traversal_shader;
+      struct ac_arg traversal_shader_addr;
       struct ac_arg shader_addr;
       struct ac_arg shader_record;
       struct ac_arg payload_offset;
