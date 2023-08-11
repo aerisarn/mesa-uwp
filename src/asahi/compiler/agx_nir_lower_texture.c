@@ -305,6 +305,10 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF)
       return lower_buffer_texture(b, tex);
 
+   /* Don't lower twice */
+   if (nir_tex_instr_src_index(tex, nir_tex_src_backend1) >= 0)
+      return false;
+
    /* Get the coordinates */
    nir_def *coord = nir_steal_tex_src(tex, nir_tex_src_coord);
    nir_def *ms_idx = nir_steal_tex_src(tex, nir_tex_src_ms_index);
