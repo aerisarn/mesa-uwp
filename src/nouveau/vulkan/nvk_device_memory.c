@@ -175,7 +175,7 @@ nvk_allocate_memory(struct nvk_device *dev,
       nvk_memory_type_flags(type, handle_types);
 
    uint32_t alignment = (1ULL << 12);
-   if (flags & NOUVEAU_WS_BO_LOCAL)
+   if (!(flags & NOUVEAU_WS_BO_GART))
       alignment = (1ULL << 16);
 
    const uint64_t aligned_size =
