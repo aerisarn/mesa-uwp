@@ -86,7 +86,7 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
                       const struct pipe_image_view *iviews)
 {
    struct agx_context *ctx = agx_context(pctx);
-   ctx->stage[shader].dirty = ~0;
+   ctx->stage[shader].dirty |= AGX_STAGE_DIRTY_IMAGE;
 
    /* Unbind start_slot...start_slot+count */
    if (!iviews) {
@@ -155,7 +155,7 @@ agx_set_shader_buffers(struct pipe_context *pctx, enum pipe_shader_type shader,
                                 &ctx->stage[shader].ssbo_mask, buffers, start,
                                 count);
 
-   ctx->stage[shader].dirty = ~0;
+   ctx->stage[shader].dirty |= AGX_STAGE_DIRTY_SSBO;
 }
 
 static void
@@ -529,7 +529,7 @@ agx_bind_sampler_states(struct pipe_context *pctx, enum pipe_shader_type shader,
 {
    struct agx_context *ctx = agx_context(pctx);
 
-   ctx->stage[shader].dirty = ~0;
+   ctx->stage[shader].dirty |= AGX_STAGE_DIRTY_SAMPLER;
 
    for (unsigned i = 0; i < count; i++) {
       unsigned p = start + i;
@@ -812,7 +812,7 @@ agx_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
          (struct pipe_sampler_view **)&ctx->stage[shader].textures[i], NULL);
    }
    ctx->stage[shader].texture_count = new_nr;
-   ctx->stage[shader].dirty = ~0;
+   ctx->stage[shader].dirty |= AGX_STAGE_DIRTY_IMAGE;
 }
 
 static void
@@ -1286,7 +1286,7 @@ agx_set_constant_buffer(struct pipe_context *pctx, enum pipe_shader_type shader,
    else
       s->cb_mask &= ~mask;
 
-   ctx->stage[shader].dirty = ~0;
+   ctx->stage[shader].dirty |= AGX_STAGE_DIRTY_CONST;
 }
 
 static void
@@ -2181,10 +2181,10 @@ agx_update_descriptors(struct agx_batch *batch, struct agx_compiled_shader *cs,
 {
    struct agx_context *ctx = batch->ctx;
 
-   /* TODO: Dirty track more finely */
-   if (ctx->stage[stage].dirty) {
+   if (ctx->stage[stage].dirty & AGX_STAGE_DIRTY_IMAGE)
       agx_upload_textures(batch, cs, stage);
 
+   if (ctx->stage[stage].dirty) {
       batch->tables[AGX_SYSVAL_STAGE(stage)] =
          agx_upload_stage_uniforms(batch, batch->textures[stage], stage);
    }

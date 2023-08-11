@@ -208,6 +208,13 @@ struct agx_uncompiled_shader {
    unsigned base_varying;
 };
 
+enum agx_stage_dirty {
+   AGX_STAGE_DIRTY_CONST = BITFIELD_BIT(0),
+   AGX_STAGE_DIRTY_SSBO = BITFIELD_BIT(1),
+   AGX_STAGE_DIRTY_IMAGE = BITFIELD_BIT(2),
+   AGX_STAGE_DIRTY_SAMPLER = BITFIELD_BIT(3),
+};
+
 struct agx_stage {
    struct agx_uncompiled_shader *shader;
    uint32_t dirty;
