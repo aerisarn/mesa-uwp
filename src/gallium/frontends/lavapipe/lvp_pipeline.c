@@ -755,7 +755,8 @@ static VkResult
 lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                            struct lvp_device *device,
                            struct lvp_pipeline_cache *cache,
-                           const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                           VkPipelineCreateFlagBits2KHR flags)
 {
    VkResult result;
 
@@ -773,7 +774,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                          VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT |
                          VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT;
 
-   if (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)
+   if (flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR)
       pipeline->library = true;
 
    struct lvp_pipeline_layout *layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
@@ -940,6 +941,7 @@ lvp_graphics_pipeline_create(
    VkDevice _device,
    VkPipelineCache _cache,
    const VkGraphicsPipelineCreateInfo *pCreateInfo,
+   VkPipelineCreateFlagBits2KHR flags,
    VkPipeline *pPipeline,
    bool group)
 {
@@ -963,7 +965,7 @@ lvp_graphics_pipeline_create(
    vk_object_base_init(&device->vk, &pipeline->base,
                        VK_OBJECT_TYPE_PIPELINE);
    uint64_t t0 = os_time_get_nano();
-   result = lvp_graphics_pipeline_init(pipeline, device, cache, pCreateInfo);
+   result = lvp_graphics_pipeline_init(pipeline, device, cache, pCreateInfo, flags);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, pipeline);
       return result;
@@ -976,7 +978,7 @@ lvp_graphics_pipeline_create(
          pci.pTessellationState = g->pTessellationState;
          pci.pStages = g->pStages;
          pci.stageCount = g->stageCount;
-         result = lvp_graphics_pipeline_create(_device, _cache, &pci, &pipeline->groups[i], true);
+         result = lvp_graphics_pipeline_create(_device, _cache, &pci, flags, &pipeline->groups[i], true);
          if (result != VK_SUCCESS) {
             lvp_pipeline_destroy(device, pipeline);
             return result;
@@ -1000,6 +1002,36 @@ lvp_graphics_pipeline_create(
    return VK_SUCCESS;
 }
 
+static VkPipelineCreateFlagBits2KHR
+get_pipeline_create_flags(const void *pCreateInfo)
+{
+   const VkBaseInStructure *base = pCreateInfo;
+   const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
+      vk_find_struct_const(base->pNext, PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
+
+   if (flags2)
+      return flags2->flags;
+
+   switch (((VkBaseInStructure *)pCreateInfo)->sType) {
+   case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: {
+      const VkGraphicsPipelineCreateInfo *create_info = (VkGraphicsPipelineCreateInfo *)pCreateInfo;
+      return create_info->flags;
+   }
+   case VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO: {
+      const VkComputePipelineCreateInfo *create_info = (VkComputePipelineCreateInfo *)pCreateInfo;
+      return create_info->flags;
+   }
+   case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR: {
+      const VkRayTracingPipelineCreateInfoKHR *create_info = (VkRayTracingPipelineCreateInfoKHR *)pCreateInfo;
+      return create_info->flags;
+   }
+   default:
+      unreachable("invalid pCreateInfo pipeline struct");
+   }
+
+   return 0;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateGraphicsPipelines(
    VkDevice                                    _device,
    VkPipelineCache                             pipelineCache,
@@ -1013,16 +1045,19 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateGraphicsPipelines(
 
    for (; i < count; i++) {
       VkResult r = VK_PIPELINE_COMPILE_REQUIRED;
-      if (!(pCreateInfos[i].flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+      VkPipelineCreateFlagBits2KHR flags = get_pipeline_create_flags(&pCreateInfos[i]);
+
+      if (!(flags & VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR))
          r = lvp_graphics_pipeline_create(_device,
                                           pipelineCache,
                                           &pCreateInfos[i],
+                                          flags,
                                           &pPipelines[i],
                                           false);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
-         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+         if (flags & VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR)
             break;
       }
    }
@@ -1063,6 +1098,7 @@ lvp_compute_pipeline_create(
    VkDevice _device,
    VkPipelineCache _cache,
    const VkComputePipelineCreateInfo *pCreateInfo,
+   VkPipelineCreateFlagBits2KHR flags,
    VkPipeline *pPipeline)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
@@ -1111,15 +1147,18 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateComputePipelines(
 
    for (; i < count; i++) {
       VkResult r = VK_PIPELINE_COMPILE_REQUIRED;
-      if (!(pCreateInfos[i].flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+      VkPipelineCreateFlagBits2KHR flags = get_pipeline_create_flags(&pCreateInfos[i]);
+
+      if (!(flags & VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR))
          r = lvp_compute_pipeline_create(_device,
                                          pipelineCache,
                                          &pCreateInfos[i],
+                                         flags,
                                          &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
-         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+         if (flags & VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR)
             break;
       }
    }
