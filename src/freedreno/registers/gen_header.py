@@ -4,6 +4,7 @@ import xml.parsers.expat
 import sys
 import os
 import collections
+import argparse
 
 class Error(Exception):
 	def __init__(self, message):
@@ -705,16 +706,14 @@ class Parser(object):
 			self.dump_reg_variants(regname, self.variant_regs[regname])
 
 
-def main():
+def dump_c(rnn_path, xml_path, guard, func):
 	p = Parser()
-	rnn_path = sys.argv[1]
-	xml_file = sys.argv[2]
-	if len(sys.argv) > 3 and sys.argv[3] == '--pack-structs':
-		do_structs = True
-		guard = str.replace(os.path.basename(xml_file), '.', '_').upper() + '_STRUCTS'
-	else:
-		do_structs = False
-		guard = str.replace(os.path.basename(xml_file), '.', '_').upper()
+
+	try:
+		p.parse(rnn_path, xml_path)
+	except Error as e:
+		print(e, file=sys.stderr)
+		exit(1)
 
 	print("#ifndef %s\n#define %s\n" % (guard, guard))
 
@@ -728,18 +727,37 @@ def main():
 	print("#define __struct_cast(X) (struct X)")
 	print("#endif")
 
-	try:
-		p.parse(rnn_path, xml_file)
-	except Error as e:
-		print(e, file=sys.stderr)
-		exit(1)
-
-	if do_structs:
-		p.dump_structs()
-	else:
-		p.dump()
+	func(p)
 
 	print("\n#endif /* %s */" % guard)
+
+
+def dump_c_defines(args):
+	guard = str.replace(os.path.basename(args.xml), '.', '_').upper()
+	dump_c(args.rnn, args.xml, guard, lambda p: p.dump())
+
+
+def dump_c_pack_structs(args):
+	guard = str.replace(os.path.basename(args.xml), '.', '_').upper() + '_STRUCTS'
+	dump_c(args.rnn, args.xml, guard, lambda p: p.dump_structs())
+
+
+def main():
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--rnn', type=str, required=True)
+	parser.add_argument('--xml', type=str, required=True)
+
+	subparsers = parser.add_subparsers(required=True)
+
+	parser_c_defines = subparsers.add_parser('c-defines')
+	parser_c_defines.set_defaults(func=dump_c_defines)
+
+	parser_c_pack_structs = subparsers.add_parser('c-pack-structs')
+	parser_c_pack_structs.set_defaults(func=dump_c_pack_structs)
+
+	args = parser.parse_args()
+	args.func(args)
+
 
 if __name__ == '__main__':
 	main()
