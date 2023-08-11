@@ -1345,6 +1345,11 @@ dealloc_vgprs(Program* program)
    if (program->max_reg_demand.vgpr <= get_addr_vgpr_from_waves(program, max_waves))
       return false;
 
+   /* sendmsg(dealloc_vgprs) releases scratch, so this isn't safe if there is a in-progress scratch
+    * store. */
+   if (uses_scratch(program))
+      return false;
+
    Block& block = program->blocks.back();
 
    /* don't bother checking if there is a pending VMEM store or export: there almost always is */
