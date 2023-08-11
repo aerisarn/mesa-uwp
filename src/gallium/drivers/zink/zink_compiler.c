@@ -426,7 +426,9 @@ lower_pv_mode_gs_ring_index(nir_builder *b,
 static nir_deref_instr*
 replicate_derefs(nir_builder *b, nir_deref_instr *old, nir_deref_instr *new)
 {
-   nir_deref_instr *parent = nir_src_as_deref(old->parent);
+   nir_deref_instr *parent = nir_deref_instr_parent(old);
+   if (!parent)
+      return new;
    switch(old->deref_type) {
    case nir_deref_type_var:
       return new;
