@@ -100,7 +100,7 @@ static void si_alpha_test(struct si_shader_context *ctx, LLVMValueRef alpha)
       LLVMRealPredicate cond = cond_map[ctx->shader->key.ps.part.epilog.alpha_func];
       assert(cond);
 
-      LLVMValueRef alpha_ref = LLVMGetParam(ctx->main_fn.value, SI_PARAM_ALPHA_REF);
+      LLVMValueRef alpha_ref = ac_get_arg(&ctx->ac, ctx->args->alpha_reference);
       if (LLVMTypeOf(alpha) == ctx->ac.f16)
          alpha_ref = LLVMBuildFPTrunc(ctx->ac.builder, alpha_ref, ctx->ac.f16, "");
 
@@ -666,22 +666,10 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
    struct si_ps_exports exp = {};
    LLVMValueRef color[8][4] = {};
 
-   memset(ctx->args, 0, sizeof(*ctx->args));
-
-   /* Declare input SGPRs. */
-   ac_add_arg(&ctx->args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args->internal_bindings);
-   ac_add_arg(&ctx->args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args->bindless_samplers_and_images);
-   ac_add_arg(&ctx->args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args->const_and_shader_buffers);
-   ac_add_arg(&ctx->args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args->samplers_and_images);
-   si_add_arg_checked(&ctx->args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL, SI_PARAM_ALPHA_REF);
-
-   /* Declare input VGPRs. */
-   unsigned required_num_params =
-      ctx->args->ac.num_sgprs_used + util_bitcount(key->ps_epilog.colors_written) * 4 +
-      key->ps_epilog.writes_z + key->ps_epilog.writes_stencil + key->ps_epilog.writes_samplemask;
-
-   while (ctx->args->ac.arg_count < required_num_params)
-      ac_add_arg(&ctx->args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
+   struct si_shader_args *args = ctx->args;
+   struct ac_arg color_args[MAX_DRAW_BUFFERS];
+   struct ac_arg depth_arg, stencil_arg, samplemask_arg;
+   si_get_ps_epilog_args(args, key, color_args, &depth_arg, &stencil_arg, &samplemask_arg);
 
    /* Create the function. */
    si_llvm_create_func(ctx, "ps_epilog", NULL, 0, 0);
@@ -689,25 +677,18 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
    ac_llvm_add_target_dep_function_attr(ctx->main_fn.value, "InitialPSInputAddr", 0xffffff);
 
    /* Prepare color. */
-   unsigned vgpr = ctx->args->ac.num_sgprs_used;
    unsigned colors_written = key->ps_epilog.colors_written;
 
    while (colors_written) {
       int write_i = u_bit_scan(&colors_written);
       unsigned color_type = (key->ps_epilog.color_types >> (write_i * 2)) & 0x3;
+      LLVMValueRef arg = ac_get_arg(&ctx->ac, color_args[write_i]);
 
-      if (color_type != SI_TYPE_ANY32) {
-         for (i = 0; i < 4; i++) {
-            color[write_i][i] = LLVMGetParam(ctx->main_fn.value, vgpr + i / 2);
-            color[write_i][i] = LLVMBuildBitCast(ctx->ac.builder, color[write_i][i],
-                                                 ctx->ac.v2f16, "");
-            color[write_i][i] = ac_llvm_extract_elem(&ctx->ac, color[write_i][i], i % 2);
-         }
-         vgpr += 4;
-      } else {
-         for (i = 0; i < 4; i++)
-            color[write_i][i] = LLVMGetParam(ctx->main_fn.value, vgpr++);
-      }
+      if (color_type != SI_TYPE_ANY32)
+         arg = LLVMBuildBitCast(ctx->ac.builder, arg, LLVMVectorType(ctx->ac.f16, 8), "");
+
+      for (i = 0; i < 4; i++)
+         color[write_i][i] = ac_llvm_extract_elem(&ctx->ac, arg, i);
 
       si_llvm_build_clamp_alpha_test(ctx, color[write_i], write_i);
    }
@@ -721,15 +702,13 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
        key->ps_epilog.writes_samplemask ||
        mrtz_alpha) {
       LLVMValueRef depth = NULL, stencil = NULL, samplemask = NULL;
-      unsigned vgpr_index = ctx->args->ac.num_sgprs_used +
-                            util_bitcount(key->ps_epilog.colors_written) * 4;
 
       if (key->ps_epilog.writes_z)
-         depth = LLVMGetParam(ctx->main_fn.value, vgpr_index++);
+         depth = ac_get_arg(&ctx->ac, depth_arg);
       if (key->ps_epilog.writes_stencil)
-         stencil = LLVMGetParam(ctx->main_fn.value, vgpr_index++);
+         stencil = ac_get_arg(&ctx->ac, stencil_arg);
       if (key->ps_epilog.writes_samplemask)
-         samplemask = LLVMGetParam(ctx->main_fn.value, vgpr_index++);
+         samplemask = ac_get_arg(&ctx->ac, samplemask_arg);
 
       ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, mrtz_alpha, false,
                       &exp.args[exp.num++]);
