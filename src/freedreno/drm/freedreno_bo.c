@@ -586,23 +586,14 @@ fd_bo_is_cached(struct fd_bo *bo)
 void *
 fd_bo_map_os_mmap(struct fd_bo *bo)
 {
-   if (!bo->map) {
-      uint64_t offset;
-      int ret;
-
-      ret = bo->funcs->offset(bo, &offset);
-      if (ret) {
-         return NULL;
-      }
-
-      bo->map = os_mmap(0, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                        bo->dev->fd, offset);
-      if (bo->map == MAP_FAILED) {
-         ERROR_MSG("mmap failed: %s", strerror(errno));
-         bo->map = NULL;
-      }
+   uint64_t offset;
+   int ret;
+   ret = bo->funcs->offset(bo, &offset);
+   if (ret) {
+      return NULL;
    }
-   return bo->map;
+   return os_mmap(0, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                  bo->dev->fd, offset);
 }
 
 void *
@@ -614,7 +605,15 @@ fd_bo_map(struct fd_bo *bo)
    if (bo->alloc_flags & FD_BO_NOMAP)
       return NULL;
 
-   return bo->funcs->map(bo);
+   if (!bo->map) {
+      bo->map = bo->funcs->map(bo);
+      if (bo->map == MAP_FAILED) {
+         ERROR_MSG("mmap failed: %s", strerror(errno));
+         bo->map = NULL;
+      }
+   }
+
+   return bo->map;
 }
 
 void
