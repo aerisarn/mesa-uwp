@@ -2238,7 +2238,7 @@ agx_update_descriptors(struct agx_batch *batch, struct agx_compiled_shader *cs,
       agx_upload_samplers(batch, cs, stage);
 
    if (ctx->stage[stage].dirty) {
-      batch->tables[AGX_SYSVAL_STAGE(stage)] =
+      batch->uniforms.tables[AGX_SYSVAL_STAGE(stage)] =
          agx_upload_stage_uniforms(batch, batch->textures[stage], stage);
    }
 }
@@ -2269,8 +2269,9 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    }
 
    for (unsigned i = 0; i < cs->push_range_count; ++i) {
-      agx_usc_uniform(&b, cs->push[i].uniform, cs->push[i].length,
-                      batch->tables[cs->push[i].table] + cs->push[i].offset);
+      agx_usc_uniform(
+         &b, cs->push[i].uniform, cs->push[i].length,
+         batch->uniforms.tables[cs->push[i].table] + cs->push[i].offset);
    }
 
    if (stage == PIPE_SHADER_FRAGMENT) {
@@ -2594,7 +2595,7 @@ agx_batch_init_state(struct agx_batch *batch)
    }
 
    /* Set up standard sample positions */
-   batch->ppp_multisamplectl =
+   batch->uniforms.ppp_multisamplectl =
       agx_default_sample_positions(batch->tilebuffer_layout.nr_samples);
 }
 
@@ -3264,13 +3265,13 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
       struct agx_resource *indirect = agx_resource(info->indirect);
       agx_batch_reads(batch, indirect);
 
-      batch->tables[AGX_SYSVAL_TABLE_GRID] =
+      batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] =
          indirect->bo->ptr.gpu + info->indirect_offset;
    } else {
       static_assert(sizeof(info->grid) == 12,
                     "matches indirect dispatch buffer");
 
-      batch->tables[AGX_SYSVAL_TABLE_GRID] = agx_pool_upload_aligned(
+      batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] = agx_pool_upload_aligned(
          &batch->pool, info->grid, sizeof(info->grid), 4);
    }
 
@@ -3315,9 +3316,9 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
    if (info->indirect) {
       agx_pack(out, CDM_INDIRECT, cfg) {
-         cfg.address_hi = batch->tables[AGX_SYSVAL_TABLE_GRID] >> 32;
+         cfg.address_hi = batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] >> 32;
          cfg.address_lo =
-            batch->tables[AGX_SYSVAL_TABLE_GRID] & BITFIELD64_MASK(32);
+            batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] & BITFIELD64_MASK(32);
       }
       out += AGX_CDM_INDIRECT_LENGTH;
    } else {
@@ -3347,7 +3348,7 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
    /* TODO: Allow multiple kernels in a batch? */
    agx_flush_batch_for_reason(ctx, batch, "Compute kernel serialization");
-   batch->tables[AGX_SYSVAL_TABLE_GRID] = 0;
+   batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] = 0;
 }
 
 void agx_init_state_functions(struct pipe_context *ctx);

@@ -58,32 +58,28 @@ agx_upload_uniforms(struct agx_batch *batch)
    struct agx_ptr root_ptr = agx_pool_alloc_aligned(
       &batch->pool, sizeof(struct agx_draw_uniforms), 16);
 
-   batch->tables[AGX_SYSVAL_TABLE_ROOT] = root_ptr.gpu;
-
-   struct agx_draw_uniforms uniforms = {
-      .sample_mask = ctx->sample_mask,
-      .ppp_multisamplectl = batch->ppp_multisamplectl,
-   };
-
-   memcpy(&uniforms.tables, &batch->tables, sizeof(batch->tables));
+   batch->uniforms.tables[AGX_SYSVAL_TABLE_ROOT] = root_ptr.gpu;
+   batch->uniforms.sample_mask = ctx->sample_mask;
 
    u_foreach_bit(vbo, ctx->vb_mask) {
-      uniforms.vbo_base[vbo] = agx_vertex_buffer_ptr(batch, vbo);
+      batch->uniforms.vbo_base[vbo] = agx_vertex_buffer_ptr(batch, vbo);
    }
 
    if (ctx->streamout.key.active) {
-      uniforms.xfb = ctx->streamout.params;
+      batch->uniforms.xfb = ctx->streamout.params;
 
       for (unsigned i = 0; i < batch->ctx->streamout.num_targets; ++i) {
          uint32_t size = 0;
-         uniforms.xfb.base[i] = agx_batch_get_so_address(batch, i, &size);
-         uniforms.xfb.size[i] = size;
+         batch->uniforms.xfb.base[i] =
+            agx_batch_get_so_address(batch, i, &size);
+         batch->uniforms.xfb.size[i] = size;
       }
    }
 
-   memcpy(uniforms.blend_constant, &ctx->blend_color, sizeof(ctx->blend_color));
+   memcpy(batch->uniforms.blend_constant, &ctx->blend_color,
+          sizeof(ctx->blend_color));
 
-   memcpy(root_ptr.cpu, &uniforms, sizeof(uniforms));
+   memcpy(root_ptr.cpu, &batch->uniforms, sizeof(batch->uniforms));
 }
 
 uint64_t

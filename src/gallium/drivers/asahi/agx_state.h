@@ -131,7 +131,9 @@ struct PACKED agx_draw_uniforms {
    /* Blend constant if any */
    float blend_constant[4];
 
-   /* Value of the ppp_multisamplectl control register */
+   /* Value of the multisample control register, containing sample positions in
+    * each byte (x in low nibble, y in high nibble).
+    */
    uint32_t ppp_multisamplectl;
 
    /* glSampleMask */
@@ -266,13 +268,7 @@ struct agx_batch {
    /* Current varyings linkage structures */
    uint32_t varyings;
 
-   /* Value of the multisample control register, containing sample positions in
-    * each byte (x in low nibble, y in high nibble).
-    */
-   uint32_t ppp_multisamplectl;
-
-   /* Pointers to the system value tables */
-   uint64_t tables[AGX_NUM_SYSVAL_TABLES];
+   struct agx_draw_uniforms uniforms;
 
    /* Uploaded descriptors */
    uint64_t textures[PIPE_SHADER_TYPES];
