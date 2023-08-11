@@ -1011,8 +1011,8 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_emit_collect_to(
          b, dst, 2,
          (agx_index[2]){
-            agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X),
-            agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_Y),
+            agx_get_sr(b, 16, AGX_SR_THREAD_POSITION_IN_GRID_X),
+            agx_get_sr(b, 16, AGX_SR_THREAD_POSITION_IN_GRID_Y),
          });
 
    case nir_intrinsic_load_frag_coord_zw: {
