@@ -41,6 +41,9 @@
    (PVR_BORDER_COLOR_TABLE_NR_ENTRIES -          \
     PVR_BORDER_COLOR_TABLE_NR_BUILTIN_ENTRIES)
 
+/* Forward declaration from "pvr_common.h" */
+struct pvr_sampler;
+
 /* Forward declaration from "pvr_bo.h" */
 struct pvr_bo;
 
@@ -61,10 +64,10 @@ VkResult pvr_border_color_table_init(struct pvr_border_color_table *table,
 void pvr_border_color_table_finish(struct pvr_border_color_table *table,
                                    struct pvr_device *device);
 
-VkResult pvr_border_color_table_get_or_create_entry(
-   struct pvr_border_color_table *table,
-   const struct VkSamplerCreateInfo *sampler_create_info,
-   uint32_t *index_out);
+VkResult
+pvr_border_color_table_get_or_create_entry(struct pvr_border_color_table *table,
+                                           const struct pvr_sampler *sampler,
+                                           uint32_t *index_out);
 
 static inline bool pvr_border_color_table_is_index_valid(
    const struct pvr_border_color_table *const table,

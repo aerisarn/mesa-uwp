@@ -1503,7 +1503,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_descriptor_pool,
                                VkDescriptorPool,
                                VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_sampler,
-                               base,
+                               vk.base,
                                VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_pipeline_layout,

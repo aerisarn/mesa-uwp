@@ -1132,10 +1132,10 @@ void pvr_border_color_table_finish(struct pvr_border_color_table *const table,
 
 VkResult pvr_border_color_table_get_or_create_entry(
    UNUSED struct pvr_border_color_table *const table,
-   const struct VkSamplerCreateInfo *const sampler_create_info,
+   const struct pvr_sampler *const sampler,
    uint32_t *const index_out)
 {
-   const VkBorderColor vk_type = sampler_create_info->borderColor;
+   const VkBorderColor vk_type = sampler->vk.border_color;
 
    if (vk_type <= PVR_BORDER_COLOR_TABLE_NR_BUILTIN_ENTRIES) {
       *index_out = vk_type;
@@ -1143,5 +1143,5 @@ VkResult pvr_border_color_table_get_or_create_entry(
    }
 
    pvr_finishme("VK_EXT_custom_border_color is currently unsupported.");
-   return vk_error(NULL, VK_ERROR_EXTENSION_NOT_PRESENT);
+   return vk_error(sampler, VK_ERROR_EXTENSION_NOT_PRESENT);
 }

@@ -71,6 +71,7 @@
 #include "vk_alloc.h"
 #include "vk_log.h"
 #include "vk_object.h"
+#include "vk_sampler.h"
 #include "vk_util.h"
 
 #define PVR_GLOBAL_FREE_LIST_INITIAL_SIZE (2U * 1024U * 1024U)
@@ -3138,10 +3139,8 @@ VkResult pvr_CreateSampler(VkDevice _device,
    STATIC_ASSERT(sizeof(((union pvr_sampler_descriptor *)NULL)->data) ==
                  sizeof(((union pvr_sampler_descriptor *)NULL)->words));
 
-   sampler = vk_object_alloc(&device->vk,
-                             pAllocator,
-                             sizeof(*sampler),
-                             VK_OBJECT_TYPE_SAMPLER);
+   sampler =
+      vk_sampler_create(&device->vk, pCreateInfo, pAllocator, sizeof(*sampler));
    if (!sampler) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto err_out;
@@ -3152,7 +3151,7 @@ VkResult pvr_CreateSampler(VkDevice _device,
 
    result =
       pvr_border_color_table_get_or_create_entry(&device->border_color_table,
-                                                 pCreateInfo,
+                                                 sampler,
                                                  &border_color_table_index);
    if (result != VK_SUCCESS)
       goto err_free_sampler;
@@ -3285,7 +3284,7 @@ void pvr_DestroySampler(VkDevice _device,
    if (!sampler)
       return;
 
-   vk_object_free(&device->vk, pAllocator, sampler);
+   vk_sampler_destroy(&device->vk, pAllocator, &sampler->vk);
 }
 
 void pvr_GetBufferMemoryRequirements2(
