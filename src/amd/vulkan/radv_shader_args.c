@@ -773,5 +773,12 @@ radv_declare_tcs_epilog_args(const struct radv_device *device, const struct radv
 
    ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.ring_offsets);
 
-   /* TODO: declare other arguments. */
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_factor_offset);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->patch_base);
+
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->tcs_out_current_patch_data_offset);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->invocation_id);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->rel_patch_id);
 }

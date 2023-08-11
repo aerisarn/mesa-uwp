@@ -71,6 +71,12 @@ struct radv_shader_args {
    struct ac_arg tcs_offchip_layout;
    struct ac_arg tcs_epilog_pc;
 
+   /* TCS epilogs */
+   struct ac_arg patch_base;
+   struct ac_arg tcs_out_current_patch_data_offset;
+   struct ac_arg invocation_id;
+   struct ac_arg rel_patch_id;
+
    /* TES */
    /* # [0:7] = the number of tessellation patches
     * # [8:15] = the number of TCS vertices output
