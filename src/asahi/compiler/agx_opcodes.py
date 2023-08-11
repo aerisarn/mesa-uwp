@@ -65,7 +65,7 @@ L = (1 << 15)
 _ = None
 
 FORMAT = immediate("format", "enum agx_format")
-IMM = immediate("imm")
+IMM = immediate("imm", "uint64_t")
 WRITEOUT = immediate("writeout")
 INDEX = immediate("index")
 COMPONENT = immediate("component")
