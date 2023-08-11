@@ -82,17 +82,28 @@ load_sysval_indirect(nir_builder *b, unsigned dim, unsigned bitsize,
 }
 
 static nir_def *
+load_ubo(nir_builder *b, nir_intrinsic_instr *intr, void *bases)
+{
+   nir_def *base = load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT, bases,
+                                        intr->src[0].ssa);
+
+   nir_def *address = nir_iadd(b, base, nir_u2u64(b, intr->src[1].ssa));
+
+   return nir_load_global_constant(b, address, nir_intrinsic_align(intr),
+                                   intr->num_components, intr->def.bit_size);
+}
+
+static nir_def *
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
 {
    struct agx_draw_uniforms *u = NULL;
 
    switch (intr->intrinsic) {
+   case nir_intrinsic_load_ubo:
+      return load_ubo(b, intr, u->ubo_base);
    case nir_intrinsic_load_vbo_base_agx:
       return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT,
                                   &u->vs.vbo_base, intr->src[0].ssa);
-   case nir_intrinsic_load_ubo_base_agx:
-      return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT, u->ubo_base,
-                                  intr->src[0].ssa);
    case nir_intrinsic_load_blend_const_color_r_float:
       return load_sysval_root(b, 1, 32, &u->fs.blend_constant[0]);
    case nir_intrinsic_load_blend_const_color_g_float:
