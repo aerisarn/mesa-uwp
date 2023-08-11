@@ -128,6 +128,7 @@ anv_measure_start_snapshot(struct anv_cmd_buffer *cmd_buffer,
    if (config->cpu_measure) {
       intel_measure_print_cpu_result(measure->base.frame,
                                      measure->base.batch_count,
+                                     measure->base.batch_size,
                                      index/2,
                                      measure->base.event_count,
                                      count,
@@ -386,6 +387,7 @@ _anv_measure_submit(struct anv_cmd_buffer *cmd_buffer)
    /* finalize snapshots and enqueue them */
    static unsigned cmd_buffer_count = 0;
    base->batch_count = p_atomic_inc_return(&cmd_buffer_count);
+   base->batch_size = cmd_buffer->total_batch_size;
 
    if (base->index %2 == 1) {
       anv_measure_end_snapshot(cmd_buffer, base->event_count);

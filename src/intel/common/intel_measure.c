@@ -215,12 +215,12 @@ intel_measure_init(struct intel_measure_device *device)
       }
 
       if (!config.cpu_measure)
-         fputs("draw_start,draw_end,frame,batch,renderpass,"
+         fputs("draw_start,draw_end,frame,batch,batch_size,renderpass,"
                "event_index,event_count,type,count,vs,tcs,tes,"
                "gs,fs,cs,ms,ts,idle_us,time_us\n",
                config.file);
       else
-         fputs("draw_start,frame,batch,event_index,event_count,"
+         fputs("draw_start,frame,batch,batch_size,event_index,event_count,"
                "type,count\n",
                config.file);
    }
@@ -435,6 +435,7 @@ intel_measure_push_result(struct intel_measure_device *device,
       if (begin->type == INTEL_SNAPSHOT_SECONDARY_BATCH) {
          assert(begin->secondary != NULL);
          begin->secondary->batch_count = batch->batch_count;
+         begin->secondary->batch_size = 0;
          begin->secondary->primary_renderpass = batch->renderpass;
          intel_measure_push_result(device, begin->secondary);
          continue;
@@ -470,6 +471,7 @@ intel_measure_push_result(struct intel_measure_device *device,
          raw_timestamp_delta(prev_end_ts, buffered_result->start_ts);
       buffered_result->frame = batch->frame;
       buffered_result->batch_count = batch->batch_count;
+      buffered_result->batch_size = batch->batch_size;
       buffered_result->primary_renderpass = batch->primary_renderpass;
       buffered_result->event_index = i / 2;
       buffered_result->snapshot.event_count = end->event_count;
@@ -622,10 +624,11 @@ print_combined_results(struct intel_measure_device *measure_device,
    const struct intel_measure_snapshot *begin = &start_result->snapshot;
    uint32_t renderpass = (start_result->primary_renderpass)
       ? start_result->primary_renderpass : begin->renderpass;
-   fprintf(config.file, "%"PRIu64",%"PRIu64",%u,%u,%u,%u,%u,%s,%u,"
+   fprintf(config.file, "%"PRIu64",%"PRIu64",%u,%u,%"PRIu64",%u,%u,%u,%s,%u,"
            "0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,%.3lf,%.3lf\n",
            start_result->start_ts, current_result->end_ts,
-           start_result->frame, start_result->batch_count,
+           start_result->frame,
+           start_result->batch_count, start_result->batch_size,
            renderpass, start_result->event_index, event_count,
            begin->event_name, begin->count,
            begin->vs, begin->tcs, begin->tes, begin->gs,
@@ -640,6 +643,7 @@ print_combined_results(struct intel_measure_device *measure_device,
 void
 intel_measure_print_cpu_result(unsigned int frame,
                                unsigned int batch_count,
+                               uint64_t batch_size,
                                unsigned int event_index,
                                unsigned int event_count,
                                unsigned int count,
@@ -648,9 +652,9 @@ intel_measure_print_cpu_result(unsigned int frame,
    assert(config.cpu_measure);
    uint64_t start_ns = os_time_get_nano();
 
-   fprintf(config.file, "%"PRIu64",%u,%3u,%3u,%u,%s,%u\n",
-           start_ns, frame, batch_count, event_index, event_count,
-           event_name, count);
+   fprintf(config.file, "%"PRIu64",%u,%3u,%"PRIu64",%3u,%u,%s,%u\n",
+           start_ns, frame, batch_count, batch_size,
+           event_index, event_count, event_name, count);
 }
 
 /**
@@ -708,4 +712,3 @@ intel_measure_gather(struct intel_measure_device *measure_device,
    intel_measure_print(measure_device, info);
    pthread_mutex_unlock(&measure_device->mutex);
 }
-
