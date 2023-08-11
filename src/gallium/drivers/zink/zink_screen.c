@@ -2886,7 +2886,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->driconf.zink_shader_object_enable = driQueryOptionb(config->options, "zink_shader_object_enable");
    }
 
-   if (!zink_create_instance(screen, config->dev_major > 0 && config->dev_major < 255))
+   if (!zink_create_instance(screen, config && config->dev_major > 0 && config->dev_major < 255))
       goto fail;
 
    if (zink_debug & ZINK_DEBUG_VALIDATION) {
@@ -2910,7 +2910,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
 
-   choose_pdev(screen, config->dev_major, config->dev_minor);
+   choose_pdev(screen, config ? config->dev_major : 0, config ? config->dev_minor : 0);
    if (screen->pdev == VK_NULL_HANDLE) {
       mesa_loge("ZINK: failed to choose pdev");
       goto fail;
