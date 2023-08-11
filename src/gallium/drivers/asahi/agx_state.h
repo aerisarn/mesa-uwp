@@ -537,6 +537,17 @@ agx_dirty_all(struct agx_context *ctx)
       ctx->stage[i].dirty = ~0;
 }
 
+static inline void
+agx_dirty_reset_graphics(struct agx_context *ctx)
+{
+   ctx->dirty = 0;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->stage); ++i) {
+      if (i != PIPE_SHADER_COMPUTE)
+         ctx->stage[i].dirty = 0;
+   }
+}
+
 struct agx_rasterizer {
    struct pipe_rasterizer_state base;
    uint8_t cull[AGX_CULL_LENGTH];

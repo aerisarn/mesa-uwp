@@ -3231,7 +3231,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    assert((batch->encoder_current + AGX_VDM_STREAM_LINK_LENGTH) <=
              batch->encoder_end &&
           "Failed to reserve sufficient space in encoder");
-   ctx->dirty = 0;
+   agx_dirty_reset_graphics(ctx);
 
    assert(batch == agx_get_batch(ctx) && "batch should not change under us");
 
