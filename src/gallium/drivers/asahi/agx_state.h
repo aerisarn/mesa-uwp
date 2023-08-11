@@ -707,10 +707,14 @@ agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
 {
    /* Double the size of the BO list if we run out, this is amortized O(1) */
    if (unlikely(bo->handle > agx_batch_bo_list_bits(batch))) {
+      unsigned word_count =
+         MAX2(batch->bo_list.word_count * 2,
+              util_next_power_of_two(BITSET_WORDS(bo->handle + 1)));
+
       batch->bo_list.set =
          rerzalloc(batch->ctx, batch->bo_list.set, BITSET_WORD,
-                   batch->bo_list.word_count, batch->bo_list.word_count * 2);
-      batch->bo_list.word_count *= 2;
+                   batch->bo_list.word_count, word_count);
+      batch->bo_list.word_count = word_count;
    }
 
    /* The batch holds a single reference to each BO in the batch, released when
