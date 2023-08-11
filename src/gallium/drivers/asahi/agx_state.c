@@ -2259,8 +2259,6 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
       }
    }
 
-   batch->tables[AGX_SYSVAL_TABLE_ROOT] = agx_upload_uniforms(batch, stage);
-
    for (unsigned i = 0; i < cs->push_range_count; ++i) {
       agx_usc_uniform(&b, cs->push[i].uniform, cs->push[i].length,
                       batch->tables[cs->push[i].table] + cs->push[i].offset);
@@ -2609,10 +2607,13 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    struct agx_rasterizer *rast = ctx->rast;
    unsigned ppp_updates = 0;
 
+#define IS_DIRTY(ST) !!(ctx->dirty & AGX_DIRTY_##ST)
+
    agx_update_descriptors(batch, ctx->vs, PIPE_SHADER_VERTEX);
    agx_update_descriptors(batch, ctx->fs, PIPE_SHADER_FRAGMENT);
 
-#define IS_DIRTY(ST) !!(ctx->dirty & AGX_DIRTY_##ST)
+   if (IS_DIRTY(VS) || IS_DIRTY(FS))
+      agx_upload_uniforms(batch);
 
    if (IS_DIRTY(VS)) {
       agx_pack(out, VDM_STATE, cfg) {
@@ -3274,6 +3275,7 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    agx_batch_add_bo(batch, cs->bo);
 
    agx_update_descriptors(batch, cs, PIPE_SHADER_COMPUTE);
+   agx_upload_uniforms(batch);
 
    /* TODO: Ensure space if we allow multiple kernels in a batch */
    uint8_t *out = batch->encoder_current;

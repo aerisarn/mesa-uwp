@@ -122,26 +122,20 @@ struct PACKED agx_draw_uniforms {
    /* Pointers to the system value tables themselves (for indirection) */
    uint64_t tables[AGX_NUM_SYSVAL_TABLES];
 
-   union {
-      struct {
-         /* Vertex buffer object bases, if present */
-         uint64_t vbo_base[PIPE_MAX_ATTRIBS];
+   /* Vertex buffer object bases, if present */
+   uint64_t vbo_base[PIPE_MAX_ATTRIBS];
 
-         /* Transform feedback info for a transform feedback shader */
-         struct agx_xfb_params xfb;
-      } vs;
+   /* Transform feedback info for a transform feedback shader */
+   struct agx_xfb_params xfb;
 
-      struct {
-         /* Blend constant if any */
-         float blend_constant[4];
+   /* Blend constant if any */
+   float blend_constant[4];
 
-         /* Value of the ppp_multisamplectl control register */
-         uint32_t ppp_multisamplectl;
+   /* Value of the ppp_multisamplectl control register */
+   uint32_t ppp_multisamplectl;
 
-         /* glSampleMask */
-         uint16_t sample_mask;
-      } fs;
-   };
+   /* glSampleMask */
+   uint16_t sample_mask;
 };
 
 struct PACKED agx_stage_uniforms {
@@ -706,8 +700,7 @@ agx_transfer(struct pipe_transfer *p)
    return (struct agx_transfer *)p;
 }
 
-uint64_t agx_upload_uniforms(struct agx_batch *batch,
-                             enum pipe_shader_type stage);
+void agx_upload_uniforms(struct agx_batch *batch);
 
 uint64_t agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
                                    enum pipe_shader_type stage);

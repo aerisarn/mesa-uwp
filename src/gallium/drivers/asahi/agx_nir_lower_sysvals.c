@@ -111,20 +111,20 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_ubo:
       return load_ubo(b, intr, s->ubo_base);
    case nir_intrinsic_load_vbo_base_agx:
-      return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT,
-                                  &u->vs.vbo_base, intr->src[0].ssa);
+      return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT, &u->vbo_base,
+                                  intr->src[0].ssa);
    case nir_intrinsic_load_blend_const_color_r_float:
-      return load_sysval_root(b, 1, 32, &u->fs.blend_constant[0]);
+      return load_sysval_root(b, 1, 32, &u->blend_constant[0]);
    case nir_intrinsic_load_blend_const_color_g_float:
-      return load_sysval_root(b, 1, 32, &u->fs.blend_constant[1]);
+      return load_sysval_root(b, 1, 32, &u->blend_constant[1]);
    case nir_intrinsic_load_blend_const_color_b_float:
-      return load_sysval_root(b, 1, 32, &u->fs.blend_constant[2]);
+      return load_sysval_root(b, 1, 32, &u->blend_constant[2]);
    case nir_intrinsic_load_blend_const_color_a_float:
-      return load_sysval_root(b, 1, 32, &u->fs.blend_constant[3]);
+      return load_sysval_root(b, 1, 32, &u->blend_constant[3]);
    case nir_intrinsic_load_api_sample_mask_agx:
-      return load_sysval_root(b, 1, 16, &u->fs.sample_mask);
+      return load_sysval_root(b, 1, 16, &u->sample_mask);
    case nir_intrinsic_load_sample_positions_agx:
-      return load_sysval_root(b, 1, 32, &u->fs.ppp_multisamplectl);
+      return load_sysval_root(b, 1, 32, &u->ppp_multisamplectl);
    case nir_intrinsic_load_ssbo_address:
       return load_sysval_indirect(b, 1, 64, stage_table(b), &s->ssbo_base,
                                   intr->src[0].ssa);
@@ -134,17 +134,15 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_num_workgroups:
       return load_sysval(b, 3, 32, AGX_SYSVAL_TABLE_GRID, 0);
    case nir_intrinsic_load_xfb_address:
-      return load_sysval_root(b, 1, 64,
-                              &u->vs.xfb.base[nir_intrinsic_base(intr)]);
+      return load_sysval_root(b, 1, 64, &u->xfb.base[nir_intrinsic_base(intr)]);
    case nir_intrinsic_load_xfb_size:
-      return load_sysval_root(b, 1, 32,
-                              &u->vs.xfb.size[nir_intrinsic_base(intr)]);
+      return load_sysval_root(b, 1, 32, &u->xfb.size[nir_intrinsic_base(intr)]);
    case nir_intrinsic_load_xfb_index_buffer:
-      return load_sysval_root(b, 1, 64, &u->vs.xfb.index_buffer);
+      return load_sysval_root(b, 1, 64, &u->xfb.index_buffer);
    case nir_intrinsic_load_base_vertex:
-      return load_sysval_root(b, 1, 32, &u->vs.xfb.base_vertex);
+      return load_sysval_root(b, 1, 32, &u->xfb.base_vertex);
    case nir_intrinsic_load_num_vertices:
-      return load_sysval_root(b, 1, 32, &u->vs.xfb.num_vertices);
+      return load_sysval_root(b, 1, 32, &u->xfb.num_vertices);
    default:
       return NULL;
    }
