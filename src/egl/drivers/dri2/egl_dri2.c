@@ -870,6 +870,10 @@ dri2_setup_screen(_EGLDisplay *disp)
    disp->Extensions.KHR_no_config_context = EGL_TRUE;
    disp->Extensions.KHR_surfaceless_context = EGL_TRUE;
 
+   if (dri2_dpy->interop) {
+      disp->Extensions.MESA_gl_interop = EGL_TRUE;
+   }
+
    if (dri2_dpy->configOptions) {
       disp->Extensions.MESA_query_driver = EGL_TRUE;
    }

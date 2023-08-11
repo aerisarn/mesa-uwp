@@ -588,6 +588,7 @@ _eglCreateExtensionsString(_EGLDisplay *disp)
    if (disp->Extensions.KHR_no_config_context)
       _eglAppendExtension(&exts, "EGL_MESA_configless_context");
    _EGL_CHECK_EXTENSION(MESA_drm_image);
+   _EGL_CHECK_EXTENSION(MESA_gl_interop);
    _EGL_CHECK_EXTENSION(MESA_image_dma_buf_export);
    _EGL_CHECK_EXTENSION(MESA_query_driver);
 
