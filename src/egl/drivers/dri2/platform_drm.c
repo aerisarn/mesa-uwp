@@ -674,7 +674,7 @@ dri2_initialize_drm(_EGLDisplay *disp)
    }
 
    disp->Extensions.KHR_image_pixmap = EGL_TRUE;
-   if (dri2_dpy->dri2)
+   if (dri2_dpy->image_driver)
       disp->Extensions.EXT_buffer_age = EGL_TRUE;
 
 #ifdef HAVE_WAYLAND_PLATFORM
