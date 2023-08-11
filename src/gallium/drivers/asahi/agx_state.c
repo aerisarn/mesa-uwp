@@ -17,6 +17,7 @@
 #include "asahi/lib/agx_usc.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_serialize.h"
+#include "compiler/shader_enums.h"
 #include "gallium/auxiliary/nir/tgsi_to_nir.h"
 #include "gallium/auxiliary/tgsi/tgsi_from_mesa.h"
 #include "gallium/auxiliary/util/u_blend.h"
@@ -2084,30 +2085,21 @@ agx_upload_spilled_rt_descriptors(struct agx_texture_packed *out,
    }
 }
 
-static uint32_t
-agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
-                   enum pipe_shader_type stage, unsigned variable_shared_mem)
+static void
+agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
+                    enum pipe_shader_type stage)
 {
    struct agx_context *ctx = batch->ctx;
    unsigned nr_textures = cs->info.nr_bindful_textures;
    unsigned nr_active_textures = ctx->stage[stage].texture_count;
-   unsigned nr_samplers = sampler_count(ctx, cs, stage);
-   unsigned nr_images = cs->info.nr_bindful_images;
    unsigned nr_tex_descriptors = agx_nr_tex_descriptors(batch, stage, cs);
-   bool custom_borders = ctx->stage[stage].custom_borders;
+   unsigned nr_images = cs->info.nr_bindful_images;
 
    struct agx_ptr T_tex = agx_pool_alloc_aligned(
       &batch->pool, AGX_TEXTURE_LENGTH * nr_tex_descriptors, 64);
 
-   size_t sampler_length =
-      AGX_SAMPLER_LENGTH + (custom_borders ? AGX_BORDER_LENGTH : 0);
-
-   struct agx_ptr T_samp =
-      agx_pool_alloc_aligned(&batch->pool, sampler_length * nr_samplers, 64);
-
    struct agx_texture_packed *textures = T_tex.cpu;
 
-   /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    for (unsigned i = 0; i < MIN2(nr_textures, nr_active_textures); ++i) {
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
 
@@ -2179,6 +2171,41 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
       agx_upload_spilled_rt_descriptors(out, batch);
    }
 
+   batch->texture_count[stage] = nr_tex_descriptors;
+   batch->textures[stage] = T_tex.gpu;
+}
+
+static void
+agx_update_descriptors(struct agx_batch *batch, struct agx_compiled_shader *cs,
+                       enum pipe_shader_type stage)
+{
+   struct agx_context *ctx = batch->ctx;
+
+   /* TODO: Dirty track more finely */
+   if (ctx->stage[stage].dirty) {
+      agx_upload_textures(batch, cs, stage);
+
+      batch->tables[AGX_SYSVAL_STAGE(stage)] =
+         agx_upload_stage_uniforms(batch, batch->textures[stage], stage);
+   }
+
+   /* TODO: Samplers? */
+}
+
+static uint32_t
+agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
+                   enum pipe_shader_type stage, unsigned variable_shared_mem)
+{
+   struct agx_context *ctx = batch->ctx;
+   unsigned nr_samplers = sampler_count(ctx, cs, stage);
+   bool custom_borders = ctx->stage[stage].custom_borders;
+
+   size_t sampler_length =
+      AGX_SAMPLER_LENGTH + (custom_borders ? AGX_BORDER_LENGTH : 0);
+
+   struct agx_ptr T_samp =
+      agx_pool_alloc_aligned(&batch->pool, sampler_length * nr_samplers, 64);
+
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    uint8_t *out_sampler = T_samp.cpu;
    for (unsigned i = 0; i < nr_samplers; ++i) {
@@ -2215,11 +2242,12 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    struct agx_usc_builder b =
       agx_alloc_usc_control(&batch->pipeline_pool, cs->push_range_count + 2);
 
-   if (nr_tex_descriptors) {
+   if (batch->texture_count[stage]) {
       agx_usc_pack(&b, TEXTURE, cfg) {
          cfg.start = 0;
-         cfg.count = MIN2(nr_tex_descriptors, AGX_NUM_TEXTURE_STATE_REGS);
-         cfg.buffer = T_tex.gpu;
+         cfg.count =
+            MIN2(batch->texture_count[stage], AGX_NUM_TEXTURE_STATE_REGS);
+         cfg.buffer = batch->textures[stage];
       }
    }
 
@@ -2230,12 +2258,6 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
          cfg.buffer = T_samp.gpu;
       }
    }
-
-   /* Must only upload uniforms after uploading textures so we can implement the
-    * AGX_PUSH_TEXTURE_BASE sysval correctly.
-    */
-   batch->tables[AGX_SYSVAL_STAGE(stage)] =
-      agx_upload_stage_uniforms(batch, T_tex.gpu, stage);
 
    batch->tables[AGX_SYSVAL_TABLE_ROOT] = agx_upload_uniforms(batch, stage);
 
@@ -2586,6 +2608,9 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    struct agx_context *ctx = batch->ctx;
    struct agx_rasterizer *rast = ctx->rast;
    unsigned ppp_updates = 0;
+
+   agx_update_descriptors(batch, ctx->vs, PIPE_SHADER_VERTEX);
+   agx_update_descriptors(batch, ctx->fs, PIPE_SHADER_FRAGMENT);
 
 #define IS_DIRTY(ST) !!(ctx->dirty & AGX_DIRTY_##ST)
 
@@ -3247,6 +3272,8 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
       _mesa_hash_table_next_entry(uncompiled->variants, NULL)->data;
 
    agx_batch_add_bo(batch, cs->bo);
+
+   agx_update_descriptors(batch, cs, PIPE_SHADER_COMPUTE);
 
    /* TODO: Ensure space if we allow multiple kernels in a batch */
    uint8_t *out = batch->encoder_current;

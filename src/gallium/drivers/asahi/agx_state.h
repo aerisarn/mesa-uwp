@@ -273,6 +273,10 @@ struct agx_batch {
    /* Pointers to the system value tables */
    uint64_t tables[AGX_NUM_SYSVAL_TABLES];
 
+   /* Uploaded descriptors */
+   uint64_t textures[PIPE_SHADER_TYPES];
+   uint32_t texture_count[PIPE_SHADER_TYPES];
+
    /* Resource list requirements, represented as a bit set indexed by BO
     * handles (GEM handles on Linux, or IOGPU's equivalent on macOS)
     */
