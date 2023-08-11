@@ -1572,6 +1572,16 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
          } else {
             colormasks[i] = BITFIELD_MASK(4);
          }
+
+         /* If not all bound RTs are fully written to, we need to force
+          * translucent pass type. agx_nir_lower_tilebuffer will take
+          * care of this for its own colormasks input.
+          */
+         unsigned comps = util_format_get_nr_components(key->rt_formats[i]);
+         if (i < key->nr_cbufs &&
+             (opts.rt[i].colormask & BITFIELD_MASK(comps)) !=
+                BITFIELD_MASK(comps))
+            force_translucent = true;
       }
 
       /* Clip plane lowering creates discard instructions, so run that before
