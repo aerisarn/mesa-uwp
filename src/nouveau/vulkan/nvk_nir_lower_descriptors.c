@@ -124,14 +124,14 @@ load_descriptor_for_idx_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_def *index = nir_imm_int(b, 0);
 
    while (intrin->intrinsic == nir_intrinsic_vulkan_resource_reindex) {
-      index = nir_iadd(b, index, nir_ssa_for_src(b, intrin->src[1], 1));
+      index = nir_iadd(b, index, intrin->src[1].ssa);
       intrin = nir_src_as_intrinsic(intrin->src[0]);
    }
 
    assert(intrin->intrinsic == nir_intrinsic_vulkan_resource_index);
    uint32_t set = nir_intrinsic_desc_set(intrin);
    uint32_t binding = nir_intrinsic_binding(intrin);
-   index = nir_iadd(b, index, nir_ssa_for_src(b, intrin->src[0], 1));
+   index = nir_iadd(b, index, intrin->src[0].ssa);
 
    return load_descriptor(b, 4, 32, set, binding, index, 0, ctx);
 }
