@@ -343,19 +343,10 @@ nir_vec_scalars(nir_builder *build, nir_scalar *comp, unsigned num_components)
  * See nir_ssa_for_alu_src() for alu instructions.
  */
 nir_def *
-nir_ssa_for_src(nir_builder *build, nir_src src, int num_components)
+nir_ssa_for_src(nir_builder *build, nir_src src, ASSERTED int num_components)
 {
-   if (src.ssa->num_components == num_components)
-      return src.ssa;
-
-   assert((unsigned)num_components <= nir_src_num_components(src));
-
-   nir_alu_src alu = { NIR_SRC_INIT };
-   alu.src = src;
-   for (int j = 0; j < NIR_MAX_VEC_COMPONENTS; j++)
-      alu.swizzle[j] = j;
-
-   return nir_mov_alu(build, alu, num_components);
+   assert(src.ssa->num_components == num_components && "now required");
+   return src.ssa;
 }
 
 /**
