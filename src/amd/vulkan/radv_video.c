@@ -430,7 +430,7 @@ radv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice, cons
          pCapabilities->flags |= VK_VIDEO_CAPABILITY_SEPARATE_REFERENCE_IMAGES_BIT_KHR;
       ext->fieldOffsetGranularity.x = 0;
       ext->fieldOffsetGranularity.y = 0;
-      ext->maxLevelIdc = 51;
+      ext->maxLevelIdc = STD_VIDEO_H264_LEVEL_IDC_5_1;
       strcpy(pCapabilities->stdHeaderVersion.extensionName, VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_EXTENSION_NAME);
       pCapabilities->stdHeaderVersion.specVersion = VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_SPEC_VERSION;
       break;
@@ -456,7 +456,7 @@ radv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice, cons
       /* for h265 on navi21+ separate dpb images should work */
       if (radv_enable_tier2(pdevice))
          pCapabilities->flags |= VK_VIDEO_CAPABILITY_SEPARATE_REFERENCE_IMAGES_BIT_KHR;
-      ext->maxLevelIdc = 51;
+      ext->maxLevelIdc = STD_VIDEO_H265_LEVEL_IDC_5_1;
       strcpy(pCapabilities->stdHeaderVersion.extensionName, VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_EXTENSION_NAME);
       pCapabilities->stdHeaderVersion.specVersion = VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_SPEC_VERSION;
       break;
