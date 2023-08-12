@@ -723,7 +723,7 @@ static inline void rogue_feedback_used_regs(rogue_build_ctx *ctx,
       rogue_count_used_regs(shader, ROGUE_REG_CLASS_INTERNAL);
 }
 
-static bool ssa_def_cb(nir_ssa_def *ssa, void *state)
+static bool ssa_def_cb(nir_def *ssa, void *state)
 {
    rogue_shader *shader = (rogue_shader *)state;
 

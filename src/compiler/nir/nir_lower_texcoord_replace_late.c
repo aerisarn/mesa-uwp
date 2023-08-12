@@ -13,13 +13,13 @@ struct opts {
    bool point_coord_is_sysval;
 };
 
-static nir_ssa_def *
-nir_channel_or_undef(nir_builder *b, nir_ssa_def *def, signed int channel)
+static nir_def *
+nir_channel_or_undef(nir_builder *b, nir_def *def, signed int channel)
 {
    if (channel >= 0 && channel < def->num_components)
       return nir_channel(b, def, channel);
    else
-      return nir_ssa_undef(b, def->bit_size, 1);
+      return nir_undef(b, def->bit_size, 1);
 }
 
 static bool
@@ -49,14 +49,14 @@ pass(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *channels[4] = {
+   nir_def *channels[4] = {
       NULL, NULL,
       nir_imm_float(b, 0.0),
       nir_imm_float(b, 1.0)
    };
 
    if (opts->point_coord_is_sysval) {
-      nir_ssa_def *pntc = nir_load_point_coord(b);
+      nir_def *pntc = nir_load_point_coord(b);
 
       b->cursor = nir_after_instr(instr);
       channels[0] = nir_channel(b, pntc, 0);
@@ -65,16 +65,16 @@ pass(nir_builder *b, nir_instr *instr, void *data)
       sem.location = VARYING_SLOT_PNTC;
       nir_instr_rewrite_src_ssa(instr, offset, nir_imm_int(b, 0));
       nir_intrinsic_set_io_semantics(intr, sem);
-      nir_ssa_def *raw = &intr->dest.ssa;
+      nir_def *raw = &intr->dest.ssa;
 
       b->cursor = nir_after_instr(instr);
       channels[0] = nir_channel_or_undef(b, raw, 0 - component);
       channels[1] = nir_channel_or_undef(b, raw, 1 - component);
    }
 
-   nir_ssa_def *res = nir_vec(b, &channels[component], intr->num_components);
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, res,
-                                  res->parent_instr);
+   nir_def *res = nir_vec(b, &channels[component], intr->num_components);
+   nir_def_rewrite_uses_after(&intr->dest.ssa, res,
+                              res->parent_instr);
    return true;
 }
 

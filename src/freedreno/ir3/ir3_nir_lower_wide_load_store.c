@@ -47,7 +47,7 @@ lower_wide_load_store_filter(const nir_instr *instr, const void *unused)
    return false;
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_wide_load_store(nir_builder *b, nir_instr *instr, void *unused)
 {
    (void)unused;
@@ -57,12 +57,12 @@ lower_wide_load_store(nir_builder *b, nir_instr *instr, void *unused)
    if (is_intrinsic_store(intr->intrinsic)) {
       unsigned num_comp = nir_intrinsic_src_components(intr, 0);
       unsigned wrmask = nir_intrinsic_write_mask(intr);
-      nir_ssa_def *val = nir_ssa_for_src(b, intr->src[0], num_comp);
-      nir_ssa_def *addr = nir_ssa_for_src(b, intr->src[1], 1);
+      nir_def *val = nir_ssa_for_src(b, intr->src[0], num_comp);
+      nir_def *addr = nir_ssa_for_src(b, intr->src[1], 1);
 
       for (unsigned off = 0; off < num_comp; off += 4) {
          unsigned c = MIN2(num_comp - off, 4);
-         nir_ssa_def *v = nir_channels(b, val, BITFIELD_MASK(c) << off);
+         nir_def *v = nir_channels(b, val, BITFIELD_MASK(c) << off);
 
          nir_intrinsic_instr *store =
                nir_intrinsic_instr_create(b->shader, intr->intrinsic);
@@ -82,8 +82,8 @@ lower_wide_load_store(nir_builder *b, nir_instr *instr, void *unused)
    } else {
       unsigned num_comp = nir_intrinsic_dest_components(intr);
       unsigned bit_size = nir_dest_bit_size(intr->dest);
-      nir_ssa_def *addr = nir_ssa_for_src(b, intr->src[0], 1);
-      nir_ssa_def *components[num_comp];
+      nir_def *addr = nir_ssa_for_src(b, intr->src[0], 1);
+      nir_def *components[num_comp];
 
       for (unsigned off = 0; off < num_comp;) {
          unsigned c = MIN2(num_comp - off, 4);

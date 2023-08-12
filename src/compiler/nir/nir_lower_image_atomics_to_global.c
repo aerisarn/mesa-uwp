@@ -64,7 +64,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    }
 
    /* Get the relevant texel address */
-   nir_ssa_def *address = nir_image_texel_address(
+   nir_def *address = nir_image_texel_address(
       b, 64, intr->src[0].ssa, intr->src[1].ssa, intr->src[2].ssa,
       .image_dim = nir_intrinsic_image_dim(intr),
       .image_array = nir_intrinsic_image_array(intr),
@@ -81,7 +81,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    }
 
    /* Build the global atomic */
-   nir_ssa_def *global;
+   nir_def *global;
    if (swap) {
       global = nir_global_atomic_swap(b, bit_size, address, intr->src[3].ssa,
                                       intr->src[4].ssa, .atomic_op = atomic_op);
@@ -93,7 +93,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    /* Replace the image atomic with the global atomic. Remove the image
     * explicitly because it has side effects so is not DCE'd.
     */
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, global);
+   nir_def_rewrite_uses(&intr->dest.ssa, global);
    nir_instr_remove(instr);
    return true;
 }

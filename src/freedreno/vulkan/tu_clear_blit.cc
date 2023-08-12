@@ -495,7 +495,7 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
 /* r3d_ = shader path operations */
 
-static nir_ssa_def *
+static nir_def *
 load_const(nir_builder *b, unsigned base, unsigned components)
 {
    return nir_load_uniform(b, components, 32, nir_imm_int(b, 0),
@@ -515,11 +515,11 @@ build_blit_vs_shader(void)
                           "gl_Position");
    out_pos->data.location = VARYING_SLOT_POS;
 
-   nir_ssa_def *vert0_pos = load_const(b, 0, 2);
-   nir_ssa_def *vert1_pos = load_const(b, 4, 2);
-   nir_ssa_def *vertex = nir_load_vertex_id(b);
+   nir_def *vert0_pos = load_const(b, 0, 2);
+   nir_def *vert1_pos = load_const(b, 4, 2);
+   nir_def *vertex = nir_load_vertex_id(b);
 
-   nir_ssa_def *pos = nir_bcsel(b, nir_i2b(b, vertex), vert1_pos, vert0_pos);
+   nir_def *pos = nir_bcsel(b, nir_i2b(b, vertex), vert1_pos, vert0_pos);
    pos = nir_vec4(b, nir_channel(b, pos, 0),
                      nir_channel(b, pos, 1),
                      nir_imm_float(b, 0.0),
@@ -532,13 +532,13 @@ build_blit_vs_shader(void)
                           "coords");
    out_coords->data.location = VARYING_SLOT_VAR0;
 
-   nir_ssa_def *vert0_coords = load_const(b, 2, 2);
-   nir_ssa_def *vert1_coords = load_const(b, 6, 2);
+   nir_def *vert0_coords = load_const(b, 2, 2);
+   nir_def *vert1_coords = load_const(b, 6, 2);
 
    /* Only used with "z scale" blit path which uses a 3d texture */
-   nir_ssa_def *z_coord = load_const(b, 8, 1);
+   nir_def *z_coord = load_const(b, 8, 1);
 
-   nir_ssa_def *coords = nir_bcsel(b, nir_i2b(b, vertex), vert1_coords, vert0_coords);
+   nir_def *coords = nir_bcsel(b, nir_i2b(b, vertex), vert1_coords, vert0_coords);
    coords = nir_vec3(b, nir_channel(b, coords, 0), nir_channel(b, coords, 1),
                      z_coord);
 
@@ -560,13 +560,13 @@ build_clear_vs_shader(void)
                           "gl_Position");
    out_pos->data.location = VARYING_SLOT_POS;
 
-   nir_ssa_def *vert0_pos = load_const(b, 0, 2);
-   nir_ssa_def *vert1_pos = load_const(b, 4, 2);
+   nir_def *vert0_pos = load_const(b, 0, 2);
+   nir_def *vert1_pos = load_const(b, 4, 2);
    /* c0.z is used to clear depth */
-   nir_ssa_def *depth = load_const(b, 2, 1);
-   nir_ssa_def *vertex = nir_load_vertex_id(b);
+   nir_def *depth = load_const(b, 2, 1);
+   nir_def *vertex = nir_load_vertex_id(b);
 
-   nir_ssa_def *pos = nir_bcsel(b, nir_i2b(b, vertex), vert1_pos, vert0_pos);
+   nir_def *pos = nir_bcsel(b, nir_i2b(b, vertex), vert1_pos, vert0_pos);
    pos = nir_vec4(b, nir_channel(b, pos, 0),
                      nir_channel(b, pos, 1),
                      depth, nir_imm_float(b, 1.0));
@@ -577,7 +577,7 @@ build_clear_vs_shader(void)
       nir_variable_create(b->shader, nir_var_shader_out, glsl_uint_type(),
                           "gl_Layer");
    out_layer->data.location = VARYING_SLOT_LAYER;
-   nir_ssa_def *layer = load_const(b, 3, 1);
+   nir_def *layer = load_const(b, 3, 1);
    nir_store_var(b, out_layer, layer, 1);
 
    return b->shader;
@@ -673,7 +673,7 @@ build_ms_copy_fs_shader(void)
    BITSET_SET(b->shader->info.textures_used, 0);
    BITSET_SET(b->shader->info.textures_used_by_txf, 0);
 
-   nir_ssa_def *coord = nir_f2i32(b, nir_load_var(b, in_coords));
+   nir_def *coord = nir_f2i32(b, nir_load_var(b, in_coords));
 
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
    tex->coord_components = 2;
@@ -704,7 +704,7 @@ build_clear_fs_shader(unsigned mrts)
                              "color");
       out_color->data.location = FRAG_RESULT_DATA0 + i;
 
-      nir_ssa_def *color = load_const(b, 4 * i, 4);
+      nir_def *color = load_const(b, 4 * i, 4);
       nir_store_var(b, out_color, color, 0xf);
    }
 

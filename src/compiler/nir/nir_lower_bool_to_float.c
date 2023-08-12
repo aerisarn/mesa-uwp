@@ -25,14 +25,14 @@
 #include "nir_builder.h"
 
 static bool
-assert_ssa_def_is_not_1bit(nir_ssa_def *def, UNUSED void *unused)
+assert_ssa_def_is_not_1bit(nir_def *def, UNUSED void *unused)
 {
    assert(def->bit_size > 1);
    return true;
 }
 
 static bool
-rewrite_1bit_ssa_def_to_32bit(nir_ssa_def *def, void *_progress)
+rewrite_1bit_ssa_def_to_32bit(nir_def *def, void *_progress)
 {
    bool *progress = _progress;
    if (def->bit_size == 1) {
@@ -51,7 +51,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu, bool has_fcsel_ne,
    b->cursor = nir_before_instr(&alu->instr);
 
    /* Replacement SSA value */
-   nir_ssa_def *rep = NULL;
+   nir_def *rep = NULL;
    switch (alu->op) {
    case nir_op_mov:
    case nir_op_vec2:
@@ -184,7 +184,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu, bool has_fcsel_ne,
 
    if (rep) {
       /* We've emitted a replacement instruction */
-      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, rep);
+      nir_def_rewrite_uses(&alu->dest.dest.ssa, rep);
       nir_instr_remove(&alu->instr);
    } else {
       if (alu->dest.dest.ssa.bit_size == 1)

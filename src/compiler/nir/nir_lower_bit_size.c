@@ -30,8 +30,8 @@
  * the original bit-size.
  */
 
-static nir_ssa_def *
-convert_to_bit_size(nir_builder *bld, nir_ssa_def *src,
+static nir_def *
+convert_to_bit_size(nir_builder *bld, nir_def *src,
                     nir_alu_type type, unsigned bit_size)
 {
    assert(src->bit_size < bit_size);
@@ -57,9 +57,9 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
    bld->cursor = nir_before_instr(&alu->instr);
 
    /* Convert each source to the requested bit-size */
-   nir_ssa_def *srcs[NIR_MAX_VEC_COMPONENTS] = { NULL };
+   nir_def *srcs[NIR_MAX_VEC_COMPONENTS] = { NULL };
    for (unsigned i = 0; i < nir_op_infos[op].num_inputs; i++) {
-      nir_ssa_def *src = nir_ssa_for_alu_src(bld, alu, i);
+      nir_def *src = nir_ssa_for_alu_src(bld, alu, i);
 
       nir_alu_type type = nir_op_infos[op].input_types[i];
       if (nir_alu_type_get_type_size(type) == 0)
@@ -77,7 +77,7 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
    }
 
    /* Emit the lowered ALU instruction */
-   nir_ssa_def *lowered_dst = NULL;
+   nir_def *lowered_dst = NULL;
    if (op == nir_op_imul_high || op == nir_op_umul_high) {
       assert(dst_bit_size * 2 <= bit_size);
       lowered_dst = nir_imul(bld, srcs[0], srcs[1]);
@@ -119,10 +119,10 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
    if (nir_alu_type_get_type_size(nir_op_infos[op].output_type) == 0 &&
        dst_bit_size != bit_size) {
       nir_alu_type type = nir_op_infos[op].output_type;
-      nir_ssa_def *dst = nir_convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
-      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, dst);
+      nir_def *dst = nir_convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
+      nir_def_rewrite_uses(&alu->dest.dest.ssa, dst);
    } else {
-      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, lowered_dst);
+      nir_def_rewrite_uses(&alu->dest.dest.ssa, lowered_dst);
    }
 }
 
@@ -159,8 +159,8 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_intrinsic_instr *new_intrin =
          nir_instr_as_intrinsic(nir_instr_clone(b->shader, &intrin->instr));
 
-      nir_ssa_def *new_src = nir_convert_to_bit_size(b, intrin->src[0].ssa,
-                                                     type, bit_size);
+      nir_def *new_src = nir_convert_to_bit_size(b, intrin->src[0].ssa,
+                                                 type, bit_size);
       new_intrin->src[0] = nir_src_for_ssa(new_src);
 
       if (intrin->intrinsic == nir_intrinsic_vote_feq ||
@@ -177,7 +177,7 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
 
       nir_builder_instr_insert(b, &new_intrin->instr);
 
-      nir_ssa_def *res = &new_intrin->dest.ssa;
+      nir_def *res = &new_intrin->dest.ssa;
       if (intrin->intrinsic == nir_intrinsic_exclusive_scan) {
          /* For exclusive scan, we have to be careful because the identity
           * value for the higher bit size may get added into the mix by
@@ -205,7 +205,7 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
           intrin->intrinsic != nir_intrinsic_vote_ieq)
          res = nir_u2uN(b, res, old_bit_size);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, res);
+      nir_def_rewrite_uses(&intrin->dest.ssa, res);
       break;
    }
 
@@ -223,7 +223,7 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi, unsigned bit_size,
 
    nir_foreach_phi_src(src, phi) {
       b->cursor = nir_after_block_before_jump(src->pred);
-      nir_ssa_def *new_src = nir_u2uN(b, src->src.ssa, bit_size);
+      nir_def *new_src = nir_u2uN(b, src->src.ssa, bit_size);
 
       nir_instr_rewrite_src(&phi->instr, &src->src, nir_src_for_ssa(new_src));
    }
@@ -232,9 +232,9 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi, unsigned bit_size,
 
    b->cursor = nir_after_instr(&last_phi->instr);
 
-   nir_ssa_def *new_dest = nir_u2uN(b, &phi->dest.ssa, old_bit_size);
-   nir_ssa_def_rewrite_uses_after(&phi->dest.ssa, new_dest,
-                                  new_dest->parent_instr);
+   nir_def *new_dest = nir_u2uN(b, &phi->dest.ssa, old_bit_size);
+   nir_def_rewrite_uses_after(&phi->dest.ssa, new_dest,
+                              new_dest->parent_instr);
 }
 
 static bool
@@ -315,8 +315,8 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
 
       b->cursor = nir_before_src(&src->src);
 
-      nir_ssa_def *x = nir_unpack_64_2x32_split_x(b, src->src.ssa);
-      nir_ssa_def *y = nir_unpack_64_2x32_split_y(b, src->src.ssa);
+      nir_def *x = nir_unpack_64_2x32_split_x(b, src->src.ssa);
+      nir_def *y = nir_unpack_64_2x32_split_y(b, src->src.ssa);
 
       nir_phi_instr_add_src(lowered[0], src->pred, nir_src_for_ssa(x));
       nir_phi_instr_add_src(lowered[1], src->pred, nir_src_for_ssa(y));
@@ -332,8 +332,8 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
    nir_builder_instr_insert(b, &lowered[1]->instr);
 
    b->cursor = nir_after_phis(nir_cursor_current_block(b->cursor));
-   nir_ssa_def *merged = nir_pack_64_2x32_split(b, &lowered[0]->dest.ssa, &lowered[1]->dest.ssa);
-   nir_ssa_def_rewrite_uses(&phi->dest.ssa, merged);
+   nir_def *merged = nir_pack_64_2x32_split(b, &lowered[0]->dest.ssa, &lowered[1]->dest.ssa);
+   nir_def_rewrite_uses(&phi->dest.ssa, merged);
    nir_instr_remove(&phi->instr);
 }
 

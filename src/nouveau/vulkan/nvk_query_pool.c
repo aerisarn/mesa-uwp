@@ -111,11 +111,11 @@ nvk_query_available_addr(struct nvk_query_pool *pool, uint32_t query)
    return pool->bo->offset + query * sizeof(uint32_t);
 }
 
-static nir_ssa_def *
-nvk_nir_available_addr(nir_builder *b, nir_ssa_def *pool_addr,
-                       nir_ssa_def *query)
+static nir_def *
+nvk_nir_available_addr(nir_builder *b, nir_def *pool_addr,
+                       nir_def *query)
 {
-   nir_ssa_def *offset = nir_imul_imm(b, query, sizeof(uint32_t));
+   nir_def *offset = nir_imul_imm(b, query, sizeof(uint32_t));
    return nir_iadd(b, pool_addr, nir_u2u64(b, offset));
 }
 
@@ -139,12 +139,12 @@ nvk_query_report_addr(struct nvk_query_pool *pool, uint32_t query)
    return pool->bo->offset + nvk_query_offset(pool, query);
 }
 
-static nir_ssa_def *
-nvk_nir_query_report_addr(nir_builder *b, nir_ssa_def *pool_addr,
-                          nir_ssa_def *query_start, nir_ssa_def *query_stride,
-                          nir_ssa_def *query)
+static nir_def *
+nvk_nir_query_report_addr(nir_builder *b, nir_def *pool_addr,
+                          nir_def *query_start, nir_def *query_stride,
+                          nir_def *query)
 {
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_iadd(b, query_start, nir_umul_2x32_64(b, query, query_stride));
    return nir_iadd(b, pool_addr, offset);
 }
@@ -681,7 +681,7 @@ struct nvk_copy_query_push {
    uint32_t flags;
 };
 
-static nir_ssa_def *
+static nir_def *
 load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
 {
    nir_deref_instr *deref =
@@ -690,79 +690,79 @@ load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
 }
 
 static void
-nir_write_query_result(nir_builder *b, nir_ssa_def *dst_addr,
-                       nir_ssa_def *idx, nir_ssa_def *flags,
-                       nir_ssa_def *result)
+nir_write_query_result(nir_builder *b, nir_def *dst_addr,
+                       nir_def *idx, nir_def *flags,
+                       nir_def *result)
 {
    assert(result->num_components == 1);
    assert(result->bit_size == 64);
 
    nir_push_if(b, nir_test_mask(b, flags, VK_QUERY_RESULT_64_BIT));
    {
-      nir_ssa_def *offset = nir_i2i64(b, nir_imul_imm(b, idx, 8));
+      nir_def *offset = nir_i2i64(b, nir_imul_imm(b, idx, 8));
       nir_store_global(b, nir_iadd(b, dst_addr, offset), 8, result, 0x1);
    }
    nir_push_else(b, NULL);
    {
-      nir_ssa_def *result32 = nir_u2u32(b, result);
-      nir_ssa_def *offset = nir_i2i64(b, nir_imul_imm(b, idx, 4));
+      nir_def *result32 = nir_u2u32(b, result);
+      nir_def *offset = nir_i2i64(b, nir_imul_imm(b, idx, 4));
       nir_store_global(b, nir_iadd(b, dst_addr, offset), 4, result32, 0x1);
    }
    nir_pop_if(b, NULL);
 }
 
 static void
-nir_get_query_delta(nir_builder *b, nir_ssa_def *dst_addr,
-                    nir_ssa_def *report_addr, nir_ssa_def *idx,
-                    nir_ssa_def *flags)
+nir_get_query_delta(nir_builder *b, nir_def *dst_addr,
+                    nir_def *report_addr, nir_def *idx,
+                    nir_def *flags)
 {
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_imul_imm(b, idx, 2 * sizeof(struct nvk_query_report));
-   nir_ssa_def *begin_addr =
+   nir_def *begin_addr =
       nir_iadd(b, report_addr, nir_i2i64(b, offset));
-   nir_ssa_def *end_addr =
+   nir_def *end_addr =
       nir_iadd_imm(b, begin_addr, sizeof(struct nvk_query_report));
 
    /* nvk_query_report::timestamp is the first uint64_t */
-   nir_ssa_def *begin = nir_load_global(b, begin_addr, 16, 1, 64);
-   nir_ssa_def *end = nir_load_global(b, end_addr, 16, 1, 64);
+   nir_def *begin = nir_load_global(b, begin_addr, 16, 1, 64);
+   nir_def *end = nir_load_global(b, end_addr, 16, 1, 64);
 
-   nir_ssa_def *delta = nir_isub(b, end, begin);
+   nir_def *delta = nir_isub(b, end, begin);
 
    nir_write_query_result(b, dst_addr, idx, flags, delta);
 }
 
 static void
-nvk_nir_copy_query(nir_builder *b, nir_variable *push, nir_ssa_def *i)
+nvk_nir_copy_query(nir_builder *b, nir_variable *push, nir_def *i)
 {
-   nir_ssa_def *pool_addr = load_struct_var(b, push, 0);
-   nir_ssa_def *query_start = nir_u2u64(b, load_struct_var(b, push, 1));
-   nir_ssa_def *query_stride = load_struct_var(b, push, 2);
-   nir_ssa_def *first_query = load_struct_var(b, push, 3);
-   nir_ssa_def *dst_addr = load_struct_var(b, push, 5);
-   nir_ssa_def *dst_stride = load_struct_var(b, push, 6);
-   nir_ssa_def *flags = load_struct_var(b, push, 7);
+   nir_def *pool_addr = load_struct_var(b, push, 0);
+   nir_def *query_start = nir_u2u64(b, load_struct_var(b, push, 1));
+   nir_def *query_stride = load_struct_var(b, push, 2);
+   nir_def *first_query = load_struct_var(b, push, 3);
+   nir_def *dst_addr = load_struct_var(b, push, 5);
+   nir_def *dst_stride = load_struct_var(b, push, 6);
+   nir_def *flags = load_struct_var(b, push, 7);
 
-   nir_ssa_def *query = nir_iadd(b, first_query, i);
+   nir_def *query = nir_iadd(b, first_query, i);
 
-   nir_ssa_def *avail_addr = nvk_nir_available_addr(b, pool_addr, query);
-   nir_ssa_def *available =
+   nir_def *avail_addr = nvk_nir_available_addr(b, pool_addr, query);
+   nir_def *available =
       nir_i2b(b, nir_load_global(b, avail_addr, 4, 1, 32));
 
-   nir_ssa_def *partial = nir_test_mask(b, flags, VK_QUERY_RESULT_PARTIAL_BIT);
-   nir_ssa_def *write_results = nir_ior(b, available, partial);
+   nir_def *partial = nir_test_mask(b, flags, VK_QUERY_RESULT_PARTIAL_BIT);
+   nir_def *write_results = nir_ior(b, available, partial);
 
-   nir_ssa_def *report_addr =
+   nir_def *report_addr =
       nvk_nir_query_report_addr(b, pool_addr, query_start, query_stride,
                                 query);
-   nir_ssa_def *dst_offset = nir_imul(b, nir_u2u64(b, i), dst_stride);
+   nir_def *dst_offset = nir_imul(b, nir_u2u64(b, i), dst_stride);
 
    /* Timestamp queries are the only ones use a single report */
-   nir_ssa_def *is_timestamp =
+   nir_def *is_timestamp =
       nir_ieq_imm(b, query_stride, sizeof(struct nvk_query_report));
 
-   nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *num_reports;
+   nir_def *one = nir_imm_int(b, 1);
+   nir_def *num_reports;
    nir_push_if(b, is_timestamp);
    {
       nir_push_if(b, write_results);
@@ -770,7 +770,7 @@ nvk_nir_copy_query(nir_builder *b, nir_variable *push, nir_ssa_def *i)
          /* This is the timestamp case.  We add 8 because we're loading
           * nvk_query_report::timestamp.
           */
-         nir_ssa_def *timestamp =
+         nir_def *timestamp =
             nir_load_global(b, nir_iadd_imm(b, report_addr, 8), 8, 1, 64);
 
          nir_write_query_result(b, nir_iadd(b, dst_addr, dst_offset),
@@ -847,7 +847,7 @@ build_copy_queries_shader(void)
    nir_variable *push = nir_variable_create(b->shader, nir_var_mem_push_const,
                                             push_iface_type, "push");
 
-   nir_ssa_def *query_count = load_struct_var(b, push, 4);
+   nir_def *query_count = load_struct_var(b, push, 4);
 
    nir_variable *i = nir_local_variable_create(b->impl, glsl_uint_type(), "i");
    nir_store_var(b, i, nir_imm_int(b, 0), 0x1);

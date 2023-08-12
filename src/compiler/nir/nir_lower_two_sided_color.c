@@ -58,7 +58,7 @@ create_input(nir_shader *shader, gl_varying_slot slot,
    return var;
 }
 
-static nir_ssa_def *
+static nir_def *
 load_input(nir_builder *b, nir_variable *in)
 {
    return nir_load_input(b, 4, 32, nir_imm_int(b, 0),
@@ -143,7 +143,7 @@ nir_lower_two_sided_color_instr(nir_builder *b, nir_instr *instr, void *data)
    /* gl_FrontFace is a boolean but the intrinsic constructor creates
     * 32-bit value by default.
     */
-   nir_ssa_def *face;
+   nir_def *face;
    if (state->face_sysval)
       face = nir_load_front_face(b, 1);
    else {
@@ -153,7 +153,7 @@ nir_lower_two_sided_color_instr(nir_builder *b, nir_instr *instr, void *data)
       face = nir_load_var(b, var);
    }
 
-   nir_ssa_def *front, *back;
+   nir_def *front, *back;
    if (intr->intrinsic == nir_intrinsic_load_deref) {
       front = nir_load_var(b, state->colors[idx].front);
       back = nir_load_var(b, state->colors[idx].back);
@@ -161,9 +161,9 @@ nir_lower_two_sided_color_instr(nir_builder *b, nir_instr *instr, void *data)
       front = load_input(b, state->colors[idx].front);
       back = load_input(b, state->colors[idx].back);
    }
-   nir_ssa_def *color = nir_bcsel(b, face, front, back);
+   nir_def *color = nir_bcsel(b, face, front, back);
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, color);
+   nir_def_rewrite_uses(&intr->dest.ssa, color);
 
    return true;
 }

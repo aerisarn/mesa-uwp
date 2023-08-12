@@ -69,8 +69,8 @@ rewrite_to_vec(nir_alu_instr *mov, nir_alu_instr *vec)
    for (unsigned i = 0; i < num_comp; i++)
       new_vec->src[i] = vec->src[mov->src[0].swizzle[i]];
 
-   nir_ssa_def *new = nir_builder_alu_instr_finish_and_insert(&b, new_vec);
-   nir_ssa_def_rewrite_uses(&mov->dest.dest.ssa, new);
+   nir_def *new = nir_builder_alu_instr_finish_and_insert(&b, new_vec);
+   nir_def_rewrite_uses(&mov->dest.dest.ssa, new);
 
    /* If we remove "mov" and it's the next instruction in the
     * nir_foreach_instr_safe() loop, then we would end copy-propagation early. */
@@ -81,7 +81,7 @@ rewrite_to_vec(nir_alu_instr *mov, nir_alu_instr *vec)
 static bool
 copy_propagate_alu(nir_alu_src *src, nir_alu_instr *copy)
 {
-   nir_ssa_def *def = NULL;
+   nir_def *def = NULL;
    nir_alu_instr *user = nir_instr_as_alu(src->src.parent_instr);
    unsigned src_idx = src - user->src;
    assert(src_idx < nir_op_infos[user->op].num_inputs);
@@ -115,7 +115,7 @@ copy_propagate(nir_src *src, nir_alu_instr *copy)
    if (!is_swizzleless_move(copy))
       return false;
 
-   nir_src_rewrite_ssa(src, copy->src[0].src.ssa);
+   nir_src_rewrite(src, copy->src[0].src.ssa);
 
    return true;
 }
@@ -140,7 +140,7 @@ copy_prop_instr(nir_instr *instr)
          progress |= copy_propagate(src, mov);
    }
 
-   if (progress && nir_ssa_def_is_unused(&mov->dest.dest.ssa))
+   if (progress && nir_def_is_unused(&mov->dest.dest.ssa))
       nir_instr_remove(&mov->instr);
 
    return progress;

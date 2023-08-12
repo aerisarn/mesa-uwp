@@ -949,27 +949,27 @@ public:
 
 private:
    bool filter(const nir_instr *instr) const override;
-   nir_ssa_def *lower(nir_instr *instr) override;
+   nir_def *lower(nir_instr *instr) override;
 
-   nir_ssa_def *lower_tex(nir_tex_instr *tex);
-   nir_ssa_def *lower_txf(nir_tex_instr *tex);
-   nir_ssa_def *lower_tg4(nir_tex_instr *tex);
-   nir_ssa_def *lower_txf_ms(nir_tex_instr *tex);
-   nir_ssa_def *lower_txf_ms_direct(nir_tex_instr *tex);
+   nir_def *lower_tex(nir_tex_instr *tex);
+   nir_def *lower_txf(nir_tex_instr *tex);
+   nir_def *lower_tg4(nir_tex_instr *tex);
+   nir_def *lower_txf_ms(nir_tex_instr *tex);
+   nir_def *lower_txf_ms_direct(nir_tex_instr *tex);
 
-   nir_ssa_def *
+   nir_def *
    prepare_coord(nir_tex_instr *tex, int& unnormalized_mask, int& used_coord_mask);
    int get_src_coords(nir_tex_instr *tex,
-                      std::array<nir_ssa_def *, 4>& coord,
+                      std::array<nir_def *, 4>& coord,
                       bool round_array_index);
-   nir_ssa_def *prep_src(std::array<nir_ssa_def *, 4>& coord, int& used_coord_mask);
-   nir_ssa_def *
-   finalize(nir_tex_instr *tex, nir_ssa_def *backend1, nir_ssa_def *backend2);
+   nir_def *prep_src(std::array<nir_def *, 4>& coord, int& used_coord_mask);
+   nir_def *
+   finalize(nir_tex_instr *tex, nir_def *backend1, nir_def *backend2);
 
-   nir_ssa_def *get_undef();
+   nir_def *get_undef();
 
    amd_gfx_level m_chip_class;
-   nir_ssa_def *m_undef {nullptr};
+   nir_def *m_undef {nullptr};
 };
 
 bool
@@ -1008,14 +1008,14 @@ LowerTexToBackend::filter(const nir_instr *instr) const
    return nir_tex_instr_src_index(tex, nir_tex_src_backend1) == -1;
 }
 
-nir_ssa_def *LowerTexToBackend::get_undef()
+nir_def *LowerTexToBackend::get_undef()
 {
    if (!m_undef)
-      m_undef = nir_ssa_undef(b, 1, 32);
+      m_undef = nir_undef(b, 1, 32);
    return m_undef;
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::lower(nir_instr *instr)
 {
    b->cursor = nir_before_instr(instr);
@@ -1041,23 +1041,23 @@ LowerTexToBackend::lower(nir_instr *instr)
    }
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::lower_tex(nir_tex_instr *tex)
 {
    int unnormalized_mask = 0;
    int used_coord_mask = 0;
 
-   nir_ssa_def *backend1 = prepare_coord(tex, unnormalized_mask, used_coord_mask);
+   nir_def *backend1 = prepare_coord(tex, unnormalized_mask, used_coord_mask);
 
-   nir_ssa_def *backend2 = nir_imm_ivec4(b, used_coord_mask, unnormalized_mask, 0, 0);
+   nir_def *backend2 = nir_imm_ivec4(b, used_coord_mask, unnormalized_mask, 0, 0);
 
    return finalize(tex, backend1, backend2);
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::lower_txf(nir_tex_instr *tex)
 {
-   std::array<nir_ssa_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
+   std::array<nir_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
 
    get_src_coords(tex, new_coord, false);
 
@@ -1065,17 +1065,17 @@ LowerTexToBackend::lower_txf(nir_tex_instr *tex)
    new_coord[3] = tex->src[lod_idx].src.ssa;
 
    int used_coord_mask = 0;
-   nir_ssa_def *backend1 = prep_src(new_coord, used_coord_mask);
-   nir_ssa_def *backend2 =
+   nir_def *backend1 = prep_src(new_coord, used_coord_mask);
+   nir_def *backend2 =
       nir_imm_ivec4(b, used_coord_mask, tex->is_array ? 0x4 : 0, 0, 0);
 
    return finalize(tex, backend1, backend2);
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::lower_tg4(nir_tex_instr *tex)
 {
-   std::array<nir_ssa_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
+   std::array<nir_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
 
    get_src_coords(tex, new_coord, false);
    uint32_t dest_swizzle =
@@ -1083,17 +1083,17 @@ LowerTexToBackend::lower_tg4(nir_tex_instr *tex)
 
    int used_coord_mask = 0;
    int unnormalized_mask = 0;
-   nir_ssa_def *backend1 = prepare_coord(tex, unnormalized_mask, used_coord_mask);
+   nir_def *backend1 = prepare_coord(tex, unnormalized_mask, used_coord_mask);
 
-   nir_ssa_def *backend2 =
+   nir_def *backend2 =
       nir_imm_ivec4(b, used_coord_mask, unnormalized_mask, tex->component, dest_swizzle);
    return finalize(tex, backend1, backend2);
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::lower_txf_ms(nir_tex_instr *tex)
 {
-   std::array<nir_ssa_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
+   std::array<nir_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
 
    get_src_coords(tex, new_coord, false);
 
@@ -1112,8 +1112,8 @@ LowerTexToBackend::lower_txf_ms(nir_tex_instr *tex)
    nir_ssa_dest_init(&fetch_sample->instr, &fetch_sample->dest, 4, 32);
 
    int used_coord_mask = 0;
-   nir_ssa_def *backend1 = prep_src(new_coord, used_coord_mask);
-   nir_ssa_def *backend2 = nir_imm_ivec4(b, used_coord_mask, 0xf, 1, 0);
+   nir_def *backend1 = prep_src(new_coord, used_coord_mask);
+   nir_def *backend2 = nir_imm_ivec4(b, used_coord_mask, 0xf, 1, 0);
 
    nir_builder_instr_insert(b, &fetch_sample->instr);
    finalize(fetch_sample, backend1, backend2);
@@ -1124,15 +1124,15 @@ LowerTexToBackend::lower_txf_ms(nir_tex_instr *tex)
                                         nir_ishl_imm(b, new_coord[3], 2)),
                                15);
 
-   nir_ssa_def *backend1b = prep_src(new_coord, used_coord_mask);
-   nir_ssa_def *backend2b = nir_imm_ivec4(b, used_coord_mask, 0, 0, 0);
+   nir_def *backend1b = prep_src(new_coord, used_coord_mask);
+   nir_def *backend2b = nir_imm_ivec4(b, used_coord_mask, 0, 0, 0);
    return finalize(tex, backend1b, backend2b);
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::lower_txf_ms_direct(nir_tex_instr *tex)
 {
-   std::array<nir_ssa_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
+   std::array<nir_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
 
    get_src_coords(tex, new_coord, false);
 
@@ -1140,16 +1140,16 @@ LowerTexToBackend::lower_txf_ms_direct(nir_tex_instr *tex)
    new_coord[3] = tex->src[ms_index].src.ssa;
 
    int used_coord_mask = 0;
-   nir_ssa_def *backend1 = prep_src(new_coord, used_coord_mask);
-   nir_ssa_def *backend2 = nir_imm_ivec4(b, used_coord_mask, 0, 0, 0);
+   nir_def *backend1 = prep_src(new_coord, used_coord_mask);
+   nir_def *backend2 = nir_imm_ivec4(b, used_coord_mask, 0, 0, 0);
 
    return finalize(tex, backend1, backend2);
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::finalize(nir_tex_instr *tex,
-                            nir_ssa_def *backend1,
-                            nir_ssa_def *backend2)
+                            nir_def *backend1,
+                            nir_def *backend2)
 {
    nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(backend1));
    nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(backend2));
@@ -1169,8 +1169,8 @@ LowerTexToBackend::finalize(nir_tex_instr *tex,
    return NIR_LOWER_INSTR_PROGRESS;
 }
 
-nir_ssa_def *
-LowerTexToBackend::prep_src(std::array<nir_ssa_def *, 4>& coord, int& used_coord_mask)
+nir_def *
+LowerTexToBackend::prep_src(std::array<nir_def *, 4>& coord, int& used_coord_mask)
 {
    int max_coord = 0;
    for (int i = 0; i < 4; ++i) {
@@ -1184,12 +1184,12 @@ LowerTexToBackend::prep_src(std::array<nir_ssa_def *, 4>& coord, int& used_coord
    return nir_vec(b, coord.data(), max_coord + 1);
 }
 
-nir_ssa_def *
+nir_def *
 LowerTexToBackend::prepare_coord(nir_tex_instr *tex,
                                  int& unnormalized_mask,
                                  int& used_coord_mask)
 {
-   std::array<nir_ssa_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
+   std::array<nir_def *, 4> new_coord = {nullptr, nullptr, nullptr, nullptr};
 
    unnormalized_mask = get_src_coords(tex, new_coord, true);
    used_coord_mask = 0;
@@ -1213,7 +1213,7 @@ LowerTexToBackend::prepare_coord(nir_tex_instr *tex,
 
 int
 LowerTexToBackend::get_src_coords(nir_tex_instr *tex,
-                                  std::array<nir_ssa_def *, 4>& coord,
+                                  std::array<nir_def *, 4>& coord,
                                   bool round_array_index)
 {
    int unnormalized_mask = 0;

@@ -663,7 +663,7 @@ visit_load_const(nir_load_const_instr *instr)
 }
 
 static bool
-visit_ssa_undef(nir_ssa_undef_instr *instr)
+visit_ssa_undef(nir_undef_instr *instr)
 {
    return false;
 }
@@ -773,7 +773,7 @@ visit_jump(nir_jump_instr *jump, struct divergence_state *state)
 }
 
 static bool
-set_ssa_def_not_divergent(nir_ssa_def *def, UNUSED void *_state)
+set_ssa_def_not_divergent(nir_def *def, UNUSED void *_state)
 {
    def->divergent = false;
    return true;
@@ -870,7 +870,7 @@ visit_loop_header_phi(nir_phi_instr *phi, nir_block *preheader, bool divergent_c
    if (phi->dest.ssa.divergent)
       return false;
 
-   nir_ssa_def *same = NULL;
+   nir_def *same = NULL;
    nir_foreach_phi_src(src, phi) {
       /* if any source value is divergent, the resulting value is divergent */
       if (src->src.ssa->divergent) {

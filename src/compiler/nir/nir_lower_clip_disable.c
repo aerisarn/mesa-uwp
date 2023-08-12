@@ -37,7 +37,7 @@
  * then overwrite it if that plane isn't enabled
  */
 static void
-recursive_if_chain(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *value, unsigned clip_plane_enable, nir_ssa_def *index, unsigned start, unsigned end)
+recursive_if_chain(nir_builder *b, nir_deref_instr *deref, nir_def *value, unsigned clip_plane_enable, nir_def *index, unsigned start, unsigned end)
 {
    if (start == end - 1) {
       /* store the original value again if the clip plane is enabled */
@@ -86,7 +86,7 @@ lower_clip_plane_store(nir_builder *b, nir_instr *instr_, void *cb_data)
    if (deref->deref_type == nir_deref_type_var) {
       int wrmask = nir_intrinsic_write_mask(instr);
 
-      nir_ssa_def *components[4];
+      nir_def *components[4];
       int start = out->data.location == VARYING_SLOT_CLIP_DIST1 ? 4 : 0;
       /* rewrite components as zeroes for planes that aren't enabled */
       for (int i = 0; i < 4; i++) {
@@ -96,7 +96,7 @@ lower_clip_plane_store(nir_builder *b, nir_instr *instr_, void *cb_data)
             else
                components[i] = nir_channel(b, nir_ssa_for_src(b, instr->src[1], nir_src_num_components(instr->src[1])), i);
          } else
-            components[i] = nir_ssa_undef(b, 1, 32);
+            components[i] = nir_undef(b, 1, 32);
       }
       nir_store_deref(b, deref, nir_vec(b, components, instr->num_components), wrmask);
    } else if (nir_src_is_const(deref->arr.index)) {
@@ -110,7 +110,7 @@ lower_clip_plane_store(nir_builder *b, nir_instr *instr_, void *cb_data)
       nir_store_deref(b, deref, nir_imm_int(b, 0), 1);
    } else {
       /* storing using a variable index */
-      nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
+      nir_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
       unsigned length = glsl_get_length(nir_deref_instr_parent(deref)->type);
 
       recursive_if_chain(b, deref, instr->src[1].ssa, clip_plane_enable, index, 0, length);

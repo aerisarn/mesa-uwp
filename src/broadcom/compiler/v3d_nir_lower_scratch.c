@@ -34,11 +34,11 @@
  * writemasks in the process.
  */
 
-static nir_ssa_def *
+static nir_def *
 v3d_nir_scratch_offset(nir_builder *b, nir_intrinsic_instr *instr)
 {
         bool is_store = instr->intrinsic == nir_intrinsic_store_scratch;
-        nir_ssa_def *offset = nir_ssa_for_src(b, instr->src[is_store ? 1 : 0], 1);
+        nir_def *offset = nir_ssa_for_src(b, instr->src[is_store ? 1 : 0], 1);
 
         assert(nir_intrinsic_align_mul(instr) >= 4);
         assert(nir_intrinsic_align_offset(instr) == 0);
@@ -55,11 +55,11 @@ v3d_nir_lower_load_scratch(nir_builder *b, nir_intrinsic_instr *instr)
 {
         b->cursor = nir_before_instr(&instr->instr);
 
-        nir_ssa_def *offset = v3d_nir_scratch_offset(b,instr);
+        nir_def *offset = v3d_nir_scratch_offset(b,instr);
 
-        nir_ssa_def *chans[NIR_MAX_VEC_COMPONENTS];
+        nir_def *chans[NIR_MAX_VEC_COMPONENTS];
         for (int i = 0; i < instr->num_components; i++) {
-                nir_ssa_def *chan_offset =
+                nir_def *chan_offset =
                         nir_iadd_imm(b, offset, V3D_CHANNELS * i * 4);
 
                 nir_intrinsic_instr *chan_instr =
@@ -77,8 +77,8 @@ v3d_nir_lower_load_scratch(nir_builder *b, nir_intrinsic_instr *instr)
                 chans[i] = &chan_instr->dest.ssa;
         }
 
-        nir_ssa_def *result = nir_vec(b, chans, instr->num_components);
-        nir_ssa_def_rewrite_uses(&instr->dest.ssa, result);
+        nir_def *result = nir_vec(b, chans, instr->num_components);
+        nir_def_rewrite_uses(&instr->dest.ssa, result);
         nir_instr_remove(&instr->instr);
 }
 
@@ -87,15 +87,15 @@ v3d_nir_lower_store_scratch(nir_builder *b, nir_intrinsic_instr *instr)
 {
         b->cursor = nir_before_instr(&instr->instr);
 
-        nir_ssa_def *offset = v3d_nir_scratch_offset(b, instr);
-        nir_ssa_def *value = nir_ssa_for_src(b, instr->src[0],
+        nir_def *offset = v3d_nir_scratch_offset(b, instr);
+        nir_def *value = nir_ssa_for_src(b, instr->src[0],
                                              instr->num_components);
 
         for (int i = 0; i < instr->num_components; i++) {
                 if (!(nir_intrinsic_write_mask(instr) & (1 << i)))
                         continue;
 
-                nir_ssa_def *chan_offset =
+                nir_def *chan_offset =
                         nir_iadd_imm(b, offset, V3D_CHANNELS * i * 4);
 
                 nir_intrinsic_instr *chan_instr =

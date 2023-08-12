@@ -95,9 +95,9 @@ copy_types(nir_src src, nir_dest *dest, BITSET_WORD *float_types,
  * recorded for that type.
  */
 void
-nir_gather_ssa_types(nir_function_impl *impl,
-                     BITSET_WORD *float_types,
-                     BITSET_WORD *int_types)
+nir_gather_types(nir_function_impl *impl,
+                 BITSET_WORD *float_types,
+                 BITSET_WORD *int_types)
 {
    bool progress;
    do {

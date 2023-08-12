@@ -36,7 +36,7 @@ function_ends_in_jump(nir_function_impl *impl)
 void
 nir_inline_function_impl(struct nir_builder *b,
                          const nir_function_impl *impl,
-                         nir_ssa_def **params,
+                         nir_def **params,
                          struct hash_table *shader_var_remap)
 {
    nir_function_impl *copy = nir_function_impl_clone(b->shader, impl);
@@ -84,8 +84,8 @@ nir_inline_function_impl(struct nir_builder *b,
 
             unsigned param_idx = nir_intrinsic_param_idx(load);
             assert(param_idx < impl->function->num_params);
-            nir_ssa_def_rewrite_uses(&load->dest.ssa,
-                                     params[param_idx]);
+            nir_def_rewrite_uses(&load->dest.ssa,
+                                 params[param_idx]);
 
             /* Remove any left-over load_param intrinsics because they're soon
              * to be in another function and therefore no longer valid.
@@ -159,7 +159,7 @@ inline_functions_block(nir_block *block, nir_builder *b,
        * to an SSA value first.
        */
       const unsigned num_params = call->num_params;
-      NIR_VLA(nir_ssa_def *, params, num_params);
+      NIR_VLA(nir_def *, params, num_params);
       for (unsigned i = 0; i < num_params; i++) {
          params[i] = nir_ssa_for_src(b, call->params[i],
                                      call->callee->params[i].num_components);

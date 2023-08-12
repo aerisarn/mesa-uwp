@@ -90,7 +90,7 @@ is_use_inside_loop(nir_src *use, nir_loop *loop)
 }
 
 static bool
-is_defined_before_loop(nir_ssa_def *def, nir_loop *loop)
+is_defined_before_loop(nir_def *def, nir_loop *loop)
 {
    nir_instr *instr = def->parent_instr;
    nir_block *block_before_loop =
@@ -109,7 +109,7 @@ static instr_invariance
 instr_is_invariant(nir_instr *instr, nir_loop *loop);
 
 static bool
-def_is_invariant(nir_ssa_def *def, nir_loop *loop)
+def_is_invariant(nir_def *def, nir_loop *loop)
 {
    if (is_defined_before_loop(def, loop))
       return invariant;
@@ -188,7 +188,7 @@ instr_is_invariant(nir_instr *instr, nir_loop *loop)
 }
 
 static bool
-convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
+convert_loop_exit_for_ssa(nir_def *def, void *void_state)
 {
    lcssa_state *state = void_state;
    bool all_uses_inside_loop = true;
@@ -237,7 +237,7 @@ convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
    }
 
    nir_instr_insert_before_block(state->block_after_loop, &phi->instr);
-   nir_ssa_def *dest = &phi->dest.ssa;
+   nir_def *dest = &phi->dest.ssa;
 
    /* deref instructions need a cast after the phi */
    if (def->parent_instr->type == nir_instr_type_deref) {

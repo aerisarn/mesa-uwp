@@ -55,7 +55,7 @@ typedef struct {
    /* an index used to make new non-conflicting names */
    unsigned index;
 
-   /* Used with nir_gather_ssa_types() to identify best representation
+   /* Used with nir_gather_types() to identify best representation
     * to print terse inline constant values together with SSA sources.
     * Updated per nir_function_impl being printed.
     */
@@ -117,7 +117,7 @@ count_digits(unsigned n)
 }
 
 static void
-print_ssa_def(nir_ssa_def *def, print_state *state)
+print_ssa_def(nir_def *def, print_state *state)
 {
    FILE *fp = state->fp;
 
@@ -386,7 +386,7 @@ print_load_const_instr(nir_load_const_instr *instr, print_state *state)
 }
 
 static void
-print_ssa_use(nir_ssa_def *def, print_state *state, nir_alu_type src_type)
+print_ssa_use(nir_def *def, print_state *state, nir_alu_type src_type)
 {
    FILE *fp = state->fp;
    fprintf(fp, "%%%u", def->index);
@@ -1790,7 +1790,7 @@ print_jump_instr(nir_jump_instr *instr, print_state *state)
 }
 
 static void
-print_ssa_undef_instr(nir_ssa_undef_instr *instr, print_state *state)
+print_ssa_undef_instr(nir_undef_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
    print_ssa_def(&instr->def, state);
@@ -2089,13 +2089,13 @@ print_function_impl(nir_function_impl *impl, print_state *state)
    }
 
    if (!NIR_DEBUG(PRINT_NO_INLINE_CONSTS)) {
-      /* Don't reindex the SSA as suggested by nir_gather_ssa_types() because
+      /* Don't reindex the SSA as suggested by nir_gather_types() because
        * nir_print don't modify the shader.  If needed, a limit for ssa_alloc
        * can be added.
        */
       state->float_types = calloc(BITSET_WORDS(impl->ssa_alloc), sizeof(BITSET_WORD));
       state->int_types = calloc(BITSET_WORDS(impl->ssa_alloc), sizeof(BITSET_WORD));
-      nir_gather_ssa_types(impl, state->float_types, state->int_types);
+      nir_gather_types(impl, state->float_types, state->int_types);
    }
 
    nir_foreach_function_temp_variable(var, impl) {

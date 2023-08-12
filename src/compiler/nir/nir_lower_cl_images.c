@@ -186,10 +186,10 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
                break;
 
             b.cursor = nir_instr_remove(&deref->instr);
-            nir_ssa_def *loc =
+            nir_def *loc =
                nir_imm_intN_t(&b, deref->var->data.driver_location,
                               deref->dest.ssa.bit_size);
-            nir_ssa_def_rewrite_uses(&deref->dest.ssa, loc);
+            nir_def_rewrite_uses(&deref->dest.ssa, loc);
             progress = true;
             break;
          }
@@ -217,7 +217,7 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
                   } else {
                      b.cursor = nir_before_instr(&tex->instr);
                      /* Back-ends expect a 32-bit thing, not 64-bit */
-                     nir_ssa_def *offset = nir_u2u32(&b, tex->src[i].src.ssa);
+                     nir_def *offset = nir_u2u32(&b, tex->src[i].src.ssa);
                      if (tex->src[i].src_type == nir_tex_src_texture_deref)
                         tex->src[count].src_type = nir_tex_src_texture_offset;
                      else
@@ -255,7 +255,7 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
 
                b.cursor = nir_before_instr(&intrin->instr);
                /* Back-ends expect a 32-bit thing, not 64-bit */
-               nir_ssa_def *offset = nir_u2u32(&b, intrin->src[0].ssa);
+               nir_def *offset = nir_u2u32(&b, intrin->src[0].ssa);
                nir_rewrite_image_intrinsic(intrin, offset, false);
                progress = true;
                break;

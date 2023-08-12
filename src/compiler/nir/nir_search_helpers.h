@@ -408,7 +408,7 @@ is_used_once(const nir_alu_instr *instr)
 static inline bool
 is_used_by_if(const nir_alu_instr *instr)
 {
-   return nir_ssa_def_used_by_if(&instr->dest.dest.ssa);
+   return nir_def_used_by_if(&instr->dest.dest.ssa);
 }
 
 static inline bool
@@ -481,13 +481,13 @@ is_only_used_by_fadd(const nir_alu_instr *instr)
 static inline bool
 only_lower_8_bits_used(const nir_alu_instr *instr)
 {
-   return (nir_ssa_def_bits_used(&instr->dest.dest.ssa) & ~0xffull) == 0;
+   return (nir_def_bits_used(&instr->dest.dest.ssa) & ~0xffull) == 0;
 }
 
 static inline bool
 only_lower_16_bits_used(const nir_alu_instr *instr)
 {
-   return (nir_ssa_def_bits_used(&instr->dest.dest.ssa) & ~0xffffull) == 0;
+   return (nir_def_bits_used(&instr->dest.dest.ssa) & ~0xffffull) == 0;
 }
 
 /**

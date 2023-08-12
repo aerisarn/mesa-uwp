@@ -203,8 +203,8 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
                   for (unsigned i = 0; i < num_uniforms; i++) {
                      if (offset == uniform_dw_offsets[i]) {
                         b.cursor = nir_before_instr(&intr->instr);
-                        nir_ssa_def *def = nir_imm_int(&b, uniform_values[i]);
-                        nir_ssa_def_rewrite_uses(&intr->dest.ssa, def);
+                        nir_def *def = nir_imm_int(&b, uniform_values[i]);
+                        nir_def_rewrite_uses(&intr->dest.ssa, def);
                         nir_instr_remove(&intr->instr);
                         break;
                      }
@@ -214,7 +214,7 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
                    * found component load with constant load.
                    */
                   uint32_t max_offset = offset + num_components;
-                  nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = {0};
+                  nir_def *components[NIR_MAX_VEC_COMPONENTS] = {0};
                   bool found = false;
 
                   b.cursor = nir_before_instr(&intr->instr);
@@ -248,7 +248,7 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
                   }
 
                   /* Replace the original uniform load. */
-                  nir_ssa_def_rewrite_uses(&intr->dest.ssa,
+                  nir_def_rewrite_uses(&intr->dest.ssa,
                                            nir_vec(&b, components, num_components));
                   nir_instr_remove(&intr->instr);
                }

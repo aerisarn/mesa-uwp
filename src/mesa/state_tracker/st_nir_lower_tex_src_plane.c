@@ -145,7 +145,7 @@ lower_tex_src_plane_block(nir_builder *b, lower_tex_src_state *state, nir_block 
             assert(samp);
 
             nir_deref_instr *tex_deref_instr = nir_build_deref_var(b, samp);
-            nir_ssa_def *tex_deref = &tex_deref_instr->dest.ssa;
+            nir_def *tex_deref = &tex_deref_instr->dest.ssa;
 
             nir_instr_rewrite_src(&tex->instr,
                                   &tex->src[tex_index].src,

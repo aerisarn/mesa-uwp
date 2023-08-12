@@ -44,7 +44,7 @@ brw_nir_lower_load_uniforms_filter(const nir_instr *instr,
    return intrin->intrinsic == nir_intrinsic_load_uniform;
 }
 
-static nir_ssa_def *
+static nir_def *
 brw_nir_lower_load_uniforms_impl(nir_builder *b, nir_instr *instr,
                                  UNUSED void *data)
 {
@@ -107,12 +107,12 @@ brw_nir_lower_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, voi
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   nir_ssa_def *local_invocation_index = nir_load_local_invocation_index(b);
+   nir_def *local_invocation_index = nir_load_local_invocation_index(b);
 
    /* Make sure that the mesh workgroup size is taken from the first invocation
     * (nir_intrinsic_launch_mesh_workgroups requirement)
     */
-   nir_ssa_def *cmp = nir_ieq_imm(b, local_invocation_index, 0);
+   nir_def *cmp = nir_ieq_imm(b, local_invocation_index, 0);
    nir_if *if_stmt = nir_push_if(b, cmp);
    {
       /* TUE header contains 4 words:
@@ -122,11 +122,11 @@ brw_nir_lower_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, voi
        * - Words 1-3 used for "Dispatch Dimensions" feature, to allow mapping a
        *   3D dispatch into the 1D dispatch supported by HW.
        */
-      nir_ssa_def *x = nir_channel(b, intrin->src[0].ssa, 0);
-      nir_ssa_def *y = nir_channel(b, intrin->src[0].ssa, 1);
-      nir_ssa_def *z = nir_channel(b, intrin->src[0].ssa, 2);
-      nir_ssa_def *task_count = nir_imul(b, x, nir_imul(b, y, z));
-      nir_ssa_def *tue_header = nir_vec4(b, task_count, x, y, z);
+      nir_def *x = nir_channel(b, intrin->src[0].ssa, 0);
+      nir_def *y = nir_channel(b, intrin->src[0].ssa, 1);
+      nir_def *z = nir_channel(b, intrin->src[0].ssa, 2);
+      nir_def *task_count = nir_imul(b, x, nir_imul(b, y, z));
+      nir_def *tue_header = nir_vec4(b, task_count, x, y, z);
       nir_store_task_payload(b, tue_header, nir_imm_int(b, 0));
    }
    nir_pop_if(b, if_stmt);
@@ -202,7 +202,7 @@ brw_nir_adjust_task_payload_offsets_instr(struct nir_builder *b,
        * TODO(mesh): Figure out how to handle 8-bit, 16-bit.
        */
 
-      nir_ssa_def *offset = nir_ishr_imm(b, offset_src->ssa, 2);
+      nir_def *offset = nir_ishr_imm(b, offset_src->ssa, 2);
       nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
 
       unsigned base = nir_intrinsic_base(intrin);
@@ -1105,8 +1105,8 @@ brw_nir_initialize_mue(nir_shader *nir,
    nir_function_impl *entrypoint = nir_shader_get_entrypoint(nir);
    b = nir_builder_at(nir_before_block(nir_start_block(entrypoint)));
 
-   nir_ssa_def *dw_off = nir_imm_int(&b, 0);
-   nir_ssa_def *zerovec = nir_imm_vec4(&b, 0, 0, 0, 0);
+   nir_def *dw_off = nir_imm_int(&b, 0);
+   nir_def *zerovec = nir_imm_vec4(&b, 0, 0, 0, 0);
 
    /* TODO(mesh): can we write in bigger batches, generating fewer SENDs? */
 
@@ -1124,13 +1124,13 @@ brw_nir_initialize_mue(nir_shader *nir,
     * Reserved, RTAIndex, ViewportIndex, CullPrimitiveMask.
     */
 
-   nir_ssa_def *local_invocation_index = nir_load_local_invocation_index(&b);
+   nir_def *local_invocation_index = nir_load_local_invocation_index(&b);
 
    /* Zero primitive headers distanced by workgroup_size, starting from
     * invocation index.
     */
    for (unsigned prim_in_inv = 0; prim_in_inv < prims_per_inv; ++prim_in_inv) {
-      nir_ssa_def *prim = nir_iadd_imm(&b, local_invocation_index,
+      nir_def *prim = nir_iadd_imm(&b, local_invocation_index,
                                            prim_in_inv * workgroup_size);
 
       nir_store_per_primitive_output(&b, zerovec, prim, dw_off,
@@ -1147,10 +1147,10 @@ brw_nir_initialize_mue(nir_shader *nir,
       /* Zero "remaining" primitive headers starting from the last one covered
        * by the loop above + workgroup_size.
        */
-      nir_ssa_def *cmp = nir_ilt_imm(&b, local_invocation_index, remaining);
+      nir_def *cmp = nir_ilt_imm(&b, local_invocation_index, remaining);
       nir_if *if_stmt = nir_push_if(&b, cmp);
       {
-         nir_ssa_def *prim = nir_iadd_imm(&b, local_invocation_index,
+         nir_def *prim = nir_iadd_imm(&b, local_invocation_index,
                                                prims_per_inv * workgroup_size);
 
          nir_store_per_primitive_output(&b, zerovec, prim, dw_off,
@@ -1186,7 +1186,7 @@ brw_nir_adjust_offset(nir_builder *b, nir_intrinsic_instr *intrin, uint32_t pitc
    nir_src *offset_src = nir_get_io_offset_src(intrin);
 
    b->cursor = nir_before_instr(&intrin->instr);
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_iadd(b,
                offset_src->ssa,
                nir_imul_imm(b, index_src->ssa, pitch));
@@ -1370,10 +1370,10 @@ brw_pack_primitive_indices_instr(nir_builder *b, nir_instr *instr, void *data)
          nir_build_deref_array(b, new_var_deref, array_deref->arr.index.ssa);
 
    nir_src *data_src = &intrin->src[1];
-   nir_ssa_def *data_def =
+   nir_def *data_def =
          nir_ssa_for_src(b, *data_src, vertices_per_primitive);
 
-   nir_ssa_def *new_data =
+   nir_def *new_data =
          nir_ior(b, nir_ishl_imm(b, nir_channel(b, data_def, 0), 0),
                     nir_ishl_imm(b, nir_channel(b, data_def, 1), 8));
 

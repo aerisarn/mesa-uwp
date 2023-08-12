@@ -39,28 +39,28 @@
  */
 
 /* Creates a double with the exponent bits set to a given integer value */
-static nir_ssa_def *
-set_exponent(nir_builder *b, nir_ssa_def *src, nir_ssa_def *exp)
+static nir_def *
+set_exponent(nir_builder *b, nir_def *src, nir_def *exp)
 {
    /* Split into bits 0-31 and 32-63 */
-   nir_ssa_def *lo = nir_unpack_64_2x32_split_x(b, src);
-   nir_ssa_def *hi = nir_unpack_64_2x32_split_y(b, src);
+   nir_def *lo = nir_unpack_64_2x32_split_x(b, src);
+   nir_def *hi = nir_unpack_64_2x32_split_y(b, src);
 
    /* The exponent is bits 52-62, or 20-30 of the high word, so set the exponent
     * to 1023
     */
-   nir_ssa_def *new_hi = nir_bitfield_insert(b, hi, exp,
-                                             nir_imm_int(b, 20),
-                                             nir_imm_int(b, 11));
+   nir_def *new_hi = nir_bitfield_insert(b, hi, exp,
+                                         nir_imm_int(b, 20),
+                                         nir_imm_int(b, 11));
    /* recombine */
    return nir_pack_64_2x32_split(b, lo, new_hi);
 }
 
-static nir_ssa_def *
-get_exponent(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+get_exponent(nir_builder *b, nir_def *src)
 {
    /* get bits 32-63 */
-   nir_ssa_def *hi = nir_unpack_64_2x32_split_y(b, src);
+   nir_def *hi = nir_unpack_64_2x32_split_y(b, src);
 
    /* extract bits 20-30 of the high word */
    return nir_ubitfield_extract(b, hi, nir_imm_int(b, 20), nir_imm_int(b, 11));
@@ -68,10 +68,10 @@ get_exponent(nir_builder *b, nir_ssa_def *src)
 
 /* Return infinity with the sign of the given source which is +/-0 */
 
-static nir_ssa_def *
-get_signed_inf(nir_builder *b, nir_ssa_def *zero)
+static nir_def *
+get_signed_inf(nir_builder *b, nir_def *zero)
 {
-   nir_ssa_def *zero_hi = nir_unpack_64_2x32_split_y(b, zero);
+   nir_def *zero_hi = nir_unpack_64_2x32_split_y(b, zero);
 
    /* The bit pattern for infinity is 0x7ff0000000000000, where the sign bit
     * is the highest bit. Only the sign bit can be non-zero in the passed in
@@ -79,7 +79,7 @@ get_signed_inf(nir_builder *b, nir_ssa_def *zero)
     * the low 32 bits are always 0 so we can construct the correct high 32
     * bits and then pack it together with zero low 32 bits.
     */
-   nir_ssa_def *inf_hi = nir_ior_imm(b, zero_hi, 0x7ff00000);
+   nir_def *inf_hi = nir_ior_imm(b, zero_hi, 0x7ff00000);
    return nir_pack_64_2x32_split(b, nir_imm_int(b, 0), inf_hi);
 }
 
@@ -89,9 +89,9 @@ get_signed_inf(nir_builder *b, nir_ssa_def *zero)
  * too small to be representable.
  */
 
-static nir_ssa_def *
-fix_inv_result(nir_builder *b, nir_ssa_def *res, nir_ssa_def *src,
-               nir_ssa_def *exp)
+static nir_def *
+fix_inv_result(nir_builder *b, nir_def *res, nir_def *src,
+               nir_def *exp)
 {
    /* If the exponent is too small or the original input was infinity/NaN,
     * force the result to 0 (flush denorms) to avoid the work of handling
@@ -108,23 +108,23 @@ fix_inv_result(nir_builder *b, nir_ssa_def *res, nir_ssa_def *src,
    return res;
 }
 
-static nir_ssa_def *
-lower_rcp(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_rcp(nir_builder *b, nir_def *src)
 {
    /* normalize the input to avoid range issues */
-   nir_ssa_def *src_norm = set_exponent(b, src, nir_imm_int(b, 1023));
+   nir_def *src_norm = set_exponent(b, src, nir_imm_int(b, 1023));
 
    /* cast to float, do an rcp, and then cast back to get an approximate
     * result
     */
-   nir_ssa_def *ra = nir_f2f64(b, nir_frcp(b, nir_f2f32(b, src_norm)));
+   nir_def *ra = nir_f2f64(b, nir_frcp(b, nir_f2f32(b, src_norm)));
 
    /* Fixup the exponent of the result - note that we check if this is too
     * small below.
     */
-   nir_ssa_def *new_exp = nir_isub(b, get_exponent(b, ra),
-                                   nir_iadd_imm(b, get_exponent(b, src),
-                                                -1023));
+   nir_def *new_exp = nir_isub(b, get_exponent(b, ra),
+                               nir_iadd_imm(b, get_exponent(b, src),
+                                            -1023));
 
    ra = set_exponent(b, ra, new_exp);
 
@@ -149,8 +149,8 @@ lower_rcp(nir_builder *b, nir_ssa_def *src)
    return fix_inv_result(b, ra, src, new_exp);
 }
 
-static nir_ssa_def *
-lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
+static nir_def *
+lower_sqrt_rsq(nir_builder *b, nir_def *src, bool sqrt)
 {
    /* We want to compute:
     *
@@ -172,16 +172,16 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
     * shifting right by 1.
     */
 
-   nir_ssa_def *unbiased_exp = nir_iadd_imm(b, get_exponent(b, src),
-                                            -1023);
-   nir_ssa_def *even = nir_iand_imm(b, unbiased_exp, 1);
-   nir_ssa_def *half = nir_ishr_imm(b, unbiased_exp, 1);
+   nir_def *unbiased_exp = nir_iadd_imm(b, get_exponent(b, src),
+                                        -1023);
+   nir_def *even = nir_iand_imm(b, unbiased_exp, 1);
+   nir_def *half = nir_ishr_imm(b, unbiased_exp, 1);
 
-   nir_ssa_def *src_norm = set_exponent(b, src,
-                                        nir_iadd_imm(b, even, 1023));
+   nir_def *src_norm = set_exponent(b, src,
+                                    nir_iadd_imm(b, even, 1023));
 
-   nir_ssa_def *ra = nir_f2f64(b, nir_frsq(b, nir_f2f32(b, src_norm)));
-   nir_ssa_def *new_exp = nir_isub(b, get_exponent(b, ra), half);
+   nir_def *ra = nir_f2f64(b, nir_frsq(b, nir_f2f32(b, src_norm)));
+   nir_def *new_exp = nir_isub(b, get_exponent(b, ra), half);
    ra = set_exponent(b, ra, new_exp);
 
    /*
@@ -267,20 +267,20 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
     * (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots).
     */
 
-   nir_ssa_def *one_half = nir_imm_double(b, 0.5);
-   nir_ssa_def *h_0 = nir_fmul(b, one_half, ra);
-   nir_ssa_def *g_0 = nir_fmul(b, src, ra);
-   nir_ssa_def *r_0 = nir_ffma(b, nir_fneg(b, h_0), g_0, one_half);
-   nir_ssa_def *h_1 = nir_ffma(b, h_0, r_0, h_0);
-   nir_ssa_def *res;
+   nir_def *one_half = nir_imm_double(b, 0.5);
+   nir_def *h_0 = nir_fmul(b, one_half, ra);
+   nir_def *g_0 = nir_fmul(b, src, ra);
+   nir_def *r_0 = nir_ffma(b, nir_fneg(b, h_0), g_0, one_half);
+   nir_def *h_1 = nir_ffma(b, h_0, r_0, h_0);
+   nir_def *res;
    if (sqrt) {
-      nir_ssa_def *g_1 = nir_ffma(b, g_0, r_0, g_0);
-      nir_ssa_def *r_1 = nir_ffma(b, nir_fneg(b, g_1), g_1, src);
+      nir_def *g_1 = nir_ffma(b, g_0, r_0, g_0);
+      nir_def *r_1 = nir_ffma(b, nir_fneg(b, g_1), g_1, src);
       res = nir_ffma(b, h_1, r_1, g_1);
    } else {
-      nir_ssa_def *y_1 = nir_fmul_imm(b, h_1, 2.0);
-      nir_ssa_def *r_1 = nir_ffma(b, nir_fneg(b, y_1), nir_fmul(b, h_1, src),
-                                  one_half);
+      nir_def *y_1 = nir_fmul_imm(b, h_1, 2.0);
+      nir_def *r_1 = nir_ffma(b, nir_fneg(b, y_1), nir_fmul(b, h_1, src),
+                              one_half);
       res = nir_ffma(b, y_1, r_1, y_1);
    }
 
@@ -292,7 +292,7 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
       const bool preserve_denorms =
          b->shader->info.float_controls_execution_mode &
          FLOAT_CONTROLS_DENORM_PRESERVE_FP64;
-      nir_ssa_def *src_flushed = src;
+      nir_def *src_flushed = src;
       if (!preserve_denorms) {
          src_flushed = nir_bcsel(b,
                                  nir_flt_imm(b, nir_fabs(b, src), DBL_MIN),
@@ -308,13 +308,13 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
    return res;
 }
 
-static nir_ssa_def *
-lower_trunc(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_trunc(nir_builder *b, nir_def *src)
 {
-   nir_ssa_def *unbiased_exp = nir_iadd_imm(b, get_exponent(b, src),
-                                            -1023);
+   nir_def *unbiased_exp = nir_iadd_imm(b, get_exponent(b, src),
+                                        -1023);
 
-   nir_ssa_def *frac_bits = nir_isub_imm(b, 52, unbiased_exp);
+   nir_def *frac_bits = nir_isub_imm(b, 52, unbiased_exp);
 
    /*
     * Decide the operation to apply depending on the unbiased exponent:
@@ -332,13 +332,13 @@ lower_trunc(nir_builder *b, nir_ssa_def *src)
     */
 
    /* Compute "~0 << frac_bits" in terms of hi/lo 32-bit integer math */
-   nir_ssa_def *mask_lo =
+   nir_def *mask_lo =
       nir_bcsel(b,
                 nir_ige_imm(b, frac_bits, 32),
                 nir_imm_int(b, 0),
                 nir_ishl(b, nir_imm_int(b, ~0), frac_bits));
 
-   nir_ssa_def *mask_hi =
+   nir_def *mask_hi =
       nir_bcsel(b,
                 nir_ilt_imm(b, frac_bits, 33),
                 nir_imm_int(b, ~0),
@@ -346,8 +346,8 @@ lower_trunc(nir_builder *b, nir_ssa_def *src)
                          nir_imm_int(b, ~0),
                          nir_iadd_imm(b, frac_bits, -32)));
 
-   nir_ssa_def *src_lo = nir_unpack_64_2x32_split_x(b, src);
-   nir_ssa_def *src_hi = nir_unpack_64_2x32_split_y(b, src);
+   nir_def *src_lo = nir_unpack_64_2x32_split_x(b, src);
+   nir_def *src_hi = nir_unpack_64_2x32_split_y(b, src);
 
    return nir_bcsel(b,
                     nir_ilt_imm(b, unbiased_exp, 0),
@@ -359,8 +359,8 @@ lower_trunc(nir_builder *b, nir_ssa_def *src)
                                                      nir_iand(b, mask_hi, src_hi))));
 }
 
-static nir_ssa_def *
-lower_floor(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_floor(nir_builder *b, nir_def *src)
 {
    /*
     * For x >= 0, floor(x) = trunc(x)
@@ -368,45 +368,45 @@ lower_floor(nir_builder *b, nir_ssa_def *src)
     *    - if x is integer, floor(x) = x
     *    - otherwise, floor(x) = trunc(x) - 1
     */
-   nir_ssa_def *tr = nir_ftrunc(b, src);
-   nir_ssa_def *positive = nir_fge_imm(b, src, 0.0);
+   nir_def *tr = nir_ftrunc(b, src);
+   nir_def *positive = nir_fge_imm(b, src, 0.0);
    return nir_bcsel(b,
                     nir_ior(b, positive, nir_feq(b, src, tr)),
                     tr,
                     nir_fadd_imm(b, tr, -1.0));
 }
 
-static nir_ssa_def *
-lower_ceil(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_ceil(nir_builder *b, nir_def *src)
 {
    /* if x < 0,                    ceil(x) = trunc(x)
     * else if (x - trunc(x) == 0), ceil(x) = x
     * else,                        ceil(x) = trunc(x) + 1
     */
-   nir_ssa_def *tr = nir_ftrunc(b, src);
-   nir_ssa_def *negative = nir_flt_imm(b, src, 0.0);
+   nir_def *tr = nir_ftrunc(b, src);
+   nir_def *negative = nir_flt_imm(b, src, 0.0);
    return nir_bcsel(b,
                     nir_ior(b, negative, nir_feq(b, src, tr)),
                     tr,
                     nir_fadd_imm(b, tr, 1.0));
 }
 
-static nir_ssa_def *
-lower_fract(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_fract(nir_builder *b, nir_def *src)
 {
    return nir_fsub(b, src, nir_ffloor(b, src));
 }
 
-static nir_ssa_def *
-lower_round_even(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_round_even(nir_builder *b, nir_def *src)
 {
    /* Add and subtract 2**52 to round off any fractional bits. */
-   nir_ssa_def *two52 = nir_imm_double(b, (double)(1ull << 52));
-   nir_ssa_def *sign = nir_iand_imm(b, nir_unpack_64_2x32_split_y(b, src),
-                                    1ull << 31);
+   nir_def *two52 = nir_imm_double(b, (double)(1ull << 52));
+   nir_def *sign = nir_iand_imm(b, nir_unpack_64_2x32_split_y(b, src),
+                                1ull << 31);
 
    b->exact = true;
-   nir_ssa_def *res = nir_fsub(b, nir_fadd(b, nir_fabs(b, src), two52), two52);
+   nir_def *res = nir_fsub(b, nir_fadd(b, nir_fabs(b, src), two52), two52);
    b->exact = false;
 
    return nir_bcsel(b, nir_flt(b, nir_fabs(b, src), two52),
@@ -415,8 +415,8 @@ lower_round_even(nir_builder *b, nir_ssa_def *src)
                     src);
 }
 
-static nir_ssa_def *
-lower_mod(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
+static nir_def *
+lower_mod(nir_builder *b, nir_def *src0, nir_def *src1)
 {
    /* mod(x,y) = x - y * floor(x/y)
     *
@@ -445,12 +445,12 @@ lower_mod(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
     * In summary, in the practice mod(a,a) can be "a" both for OpenGL and
     * Vulkan.
     */
-   nir_ssa_def *floor = nir_ffloor(b, nir_fdiv(b, src0, src1));
+   nir_def *floor = nir_ffloor(b, nir_fdiv(b, src0, src1));
 
    return nir_fsub(b, src0, nir_fmul(b, src1, floor));
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
                             const nir_shader *softfp64,
                             nir_lower_doubles_options options)
@@ -612,7 +612,7 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
       assert(func);
    }
 
-   nir_ssa_def *params[4] = {
+   nir_def *params[4] = {
       NULL,
    };
 
@@ -695,14 +695,14 @@ should_lower_double_instr(const nir_instr *instr, const void *_data)
    return options & nir_lower_doubles_op_to_options_mask(alu->op);
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_doubles_instr(nir_builder *b, nir_instr *instr, void *_data)
 {
    const struct lower_doubles_data *data = _data;
    const nir_lower_doubles_options options = data->options;
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   nir_ssa_def *soft_def =
+   nir_def *soft_def =
       lower_doubles_instr_to_soft(b, alu, data->softfp64, options);
    if (soft_def)
       return soft_def;
@@ -710,8 +710,8 @@ lower_doubles_instr(nir_builder *b, nir_instr *instr, void *_data)
    if (!(options & nir_lower_doubles_op_to_options_mask(alu->op)))
       return NULL;
 
-   nir_ssa_def *src = nir_mov_alu(b, alu->src[0],
-                                  alu->dest.dest.ssa.num_components);
+   nir_def *src = nir_mov_alu(b, alu->src[0],
+                              alu->dest.dest.ssa.num_components);
 
    switch (alu->op) {
    case nir_op_frcp:
@@ -734,8 +734,8 @@ lower_doubles_instr(nir_builder *b, nir_instr *instr, void *_data)
    case nir_op_fdiv:
    case nir_op_fsub:
    case nir_op_fmod: {
-      nir_ssa_def *src1 = nir_mov_alu(b, alu->src[1],
-                                      alu->dest.dest.ssa.num_components);
+      nir_def *src1 = nir_mov_alu(b, alu->src[1],
+                                  alu->dest.dest.ssa.num_components);
       switch (alu->op) {
       case nir_op_fdiv:
          return nir_fmul(b, src, nir_frcp(b, src1));

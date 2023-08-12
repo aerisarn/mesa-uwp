@@ -41,9 +41,9 @@ pan_lower_helper_invocation_instr(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *mask = nir_load_sample_mask_in(b);
-   nir_ssa_def *eq = nir_ieq_imm(b, mask, 0);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, eq);
+   nir_def *mask = nir_load_sample_mask_in(b);
+   nir_def *eq = nir_ieq_imm(b, mask, 0);
+   nir_def_rewrite_uses(&intr->dest.ssa, eq);
 
    return true;
 }

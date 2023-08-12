@@ -49,11 +49,11 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
 
                   b.cursor = nir_after_instr(instr);
 
-                  nir_ssa_def *ssa = nir_ine_imm(&b, &intr->dest.ssa, 0);
+                  nir_def *ssa = nir_ine_imm(&b, &intr->dest.ssa, 0);
                   if (v->key.front_ccw)
                      nir_instr_as_alu(ssa->parent_instr)->op = nir_op_ieq;
 
-                  nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
+                  nir_def_rewrite_uses_after(&intr->dest.ssa,
                                                  ssa,
                                                  ssa->parent_instr);
                } break;
@@ -70,7 +70,7 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
 
                   b.cursor = nir_before_instr(instr);
 
-                  nir_ssa_def *ssa = nir_mov(&b, intr->src[1].ssa);
+                  nir_def *ssa = nir_mov(&b, intr->src[1].ssa);
                   nir_alu_instr *alu = nir_instr_as_alu(ssa->parent_instr);
                   alu->src[0].swizzle[0] = 2;
                   alu->src[0].swizzle[2] = 0;
@@ -164,7 +164,7 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
          if (alu->op == nir_op_fsin || alu->op == nir_op_fcos) {
             b.cursor = nir_before_instr(instr);
 
-            nir_ssa_def *imm = has_new_transcendentals ?
+            nir_def *imm = has_new_transcendentals ?
                nir_imm_float(&b, 1.0 / M_PI) :
                nir_imm_float(&b, 2.0 / M_PI);
 
@@ -178,7 +178,7 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
          if (has_new_transcendentals && (
              alu->op == nir_op_fdiv || alu->op == nir_op_flog2 ||
              alu->op == nir_op_fsin || alu->op == nir_op_fcos)) {
-            nir_ssa_def *ssa = &alu->dest.dest.ssa;
+            nir_def *ssa = &alu->dest.dest.ssa;
 
             assert(ssa->num_components == 1);
 
@@ -193,7 +193,7 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
 
             nir_instr_insert_after(instr, &mul->instr);
 
-            nir_ssa_def_rewrite_uses_after(ssa, &mul->dest.dest.ssa,
+            nir_def_rewrite_uses_after(ssa, &mul->dest.dest.ssa,
                                            &mul->instr);
          }
       }

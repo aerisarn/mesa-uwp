@@ -39,16 +39,16 @@
 
 struct ctx {
    const nir_lower_blend_options *options;
-   nir_ssa_def *src1[8];
+   nir_def *src1[8];
 };
 
 /* Given processed factors, combine them per a blend function */
 
-static nir_ssa_def *
+static nir_def *
 nir_blend_func(
    nir_builder *b,
    enum pipe_blend_func func,
-   nir_ssa_def *src, nir_ssa_def *dst)
+   nir_def *src, nir_def *dst)
 {
    switch (func) {
    case PIPE_BLEND_ADD:
@@ -82,26 +82,26 @@ nir_blend_factored(enum pipe_blend_func func)
 }
 
 /* Compute a src_alpha_saturate factor */
-static nir_ssa_def *
+static nir_def *
 nir_alpha_saturate(
    nir_builder *b,
-   nir_ssa_def *src, nir_ssa_def *dst,
+   nir_def *src, nir_def *dst,
    unsigned chan)
 {
-   nir_ssa_def *Asrc = nir_channel(b, src, 3);
-   nir_ssa_def *Adst = nir_channel(b, dst, 3);
-   nir_ssa_def *one = nir_imm_floatN_t(b, 1.0, src->bit_size);
-   nir_ssa_def *Adsti = nir_fsub(b, one, Adst);
+   nir_def *Asrc = nir_channel(b, src, 3);
+   nir_def *Adst = nir_channel(b, dst, 3);
+   nir_def *one = nir_imm_floatN_t(b, 1.0, src->bit_size);
+   nir_def *Adsti = nir_fsub(b, one, Adst);
 
    return (chan < 3) ? nir_fmin(b, Asrc, Adsti) : one;
 }
 
 /* Returns a scalar single factor, unmultiplied */
 
-static nir_ssa_def *
+static nir_def *
 nir_blend_factor_value(
    nir_builder *b,
-   nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst, nir_ssa_def *bconst,
+   nir_def *src, nir_def *src1, nir_def *dst, nir_def *bconst,
    unsigned chan,
    enum pipe_blendfactor factor_without_invert)
 {
@@ -132,15 +132,15 @@ nir_blend_factor_value(
    }
 }
 
-static nir_ssa_def *
-nir_fsat_signed(nir_builder *b, nir_ssa_def *x)
+static nir_def *
+nir_fsat_signed(nir_builder *b, nir_def *x)
 {
    return nir_fclamp(b, x, nir_imm_floatN_t(b, -1.0, x->bit_size),
                      nir_imm_floatN_t(b, +1.0, x->bit_size));
 }
 
-static nir_ssa_def *
-nir_fsat_to_format(nir_builder *b, nir_ssa_def *x, enum pipe_format format)
+static nir_def *
+nir_fsat_to_format(nir_builder *b, nir_def *x, enum pipe_format format)
 {
    if (util_format_is_unorm(format))
       return nir_fsat(b, x);
@@ -213,16 +213,16 @@ channel_uses_dest(nir_lower_blend_channel chan)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 nir_blend_factor(
    nir_builder *b,
-   nir_ssa_def *raw_scalar,
-   nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst, nir_ssa_def *bconst,
+   nir_def *raw_scalar,
+   nir_def *src, nir_def *src1, nir_def *dst, nir_def *bconst,
    unsigned chan,
    enum pipe_blendfactor factor,
    enum pipe_format format)
 {
-   nir_ssa_def *f =
+   nir_def *f =
       nir_blend_factor_value(b, src, src1, dst, bconst, chan,
                              util_blendfactor_without_invert(factor));
 
@@ -237,12 +237,12 @@ nir_blend_factor(
 
 /* Given a colormask, "blend" with the destination */
 
-static nir_ssa_def *
+static nir_def *
 nir_color_mask(
    nir_builder *b,
    unsigned mask,
-   nir_ssa_def *src,
-   nir_ssa_def *dst)
+   nir_def *src,
+   nir_def *dst)
 {
    return nir_vec4(b,
                    nir_channel(b, (mask & (1 << 0)) ? src : dst, 0),
@@ -251,11 +251,11 @@ nir_color_mask(
                    nir_channel(b, (mask & (1 << 3)) ? src : dst, 3));
 }
 
-static nir_ssa_def *
+static nir_def *
 nir_logicop_func(
    nir_builder *b,
    enum pipe_logicop func,
-   nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bitmask)
+   nir_def *src, nir_def *dst, nir_def *bitmask)
 {
    switch (func) {
    case PIPE_LOGICOP_CLEAR:
@@ -295,12 +295,12 @@ nir_logicop_func(
    unreachable("Invalid logciop function");
 }
 
-static nir_ssa_def *
+static nir_def *
 nir_blend_logicop(
    nir_builder *b,
    const nir_lower_blend_options *options,
    unsigned rt,
-   nir_ssa_def *src, nir_ssa_def *dst)
+   nir_def *src, nir_def *dst)
 {
    unsigned bit_size = src->bit_size;
 
@@ -345,8 +345,8 @@ nir_blend_logicop(
    for (int i = 0; i < 4; ++i)
       mask[i] = nir_const_value_for_uint(BITFIELD_MASK(bits[i]), 32);
 
-   nir_ssa_def *out = nir_logicop_func(b, options->logicop_func, src, dst,
-                                       nir_build_imm(b, 4, 32, mask));
+   nir_def *out = nir_logicop_func(b, options->logicop_func, src, dst,
+                                   nir_build_imm(b, 4, 32, mask));
 
    if (util_format_is_unorm(format)) {
       out = nir_format_unorm_to_float(b, out, bits);
@@ -375,12 +375,12 @@ channel_exists(const struct util_format_description *desc, unsigned i)
  * return the blended color
  */
 
-static nir_ssa_def *
+static nir_def *
 nir_blend(
    nir_builder *b,
    const nir_lower_blend_options *options,
    unsigned rt,
-   nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst)
+   nir_def *src, nir_def *src1, nir_def *dst)
 {
    /* Don't crash if src1 isn't written. It doesn't matter what dual colour we
     * blend with in that case, as long as we don't dereference NULL.
@@ -389,7 +389,7 @@ nir_blend(
       src1 = nir_imm_zero(b, 4, src->bit_size);
 
    /* Grab the blend constant ahead of time */
-   nir_ssa_def *bconst;
+   nir_def *bconst;
    if (options->scalar_blend_const) {
       bconst = nir_vec4(b,
                         nir_load_blend_const_color_r_float(b),
@@ -430,8 +430,8 @@ nir_blend(
    const struct util_format_description *desc =
       util_format_description(format);
 
-   nir_ssa_def *zero = nir_imm_floatN_t(b, 0.0, dst->bit_size);
-   nir_ssa_def *one = nir_imm_floatN_t(b, 1.0, dst->bit_size);
+   nir_def *zero = nir_imm_floatN_t(b, 0.0, dst->bit_size);
+   nir_def *one = nir_imm_floatN_t(b, 1.0, dst->bit_size);
 
    dst = nir_vec4(b,
                   channel_exists(desc, 0) ? nir_channel(b, dst, 0) : zero,
@@ -440,15 +440,15 @@ nir_blend(
                   channel_exists(desc, 3) ? nir_channel(b, dst, 3) : one);
 
    /* We blend per channel and recombine later */
-   nir_ssa_def *channels[4];
+   nir_def *channels[4];
 
    for (unsigned c = 0; c < 4; ++c) {
       /* Decide properties based on channel */
       nir_lower_blend_channel chan =
          (c < 3) ? options->rt[rt].rgb : options->rt[rt].alpha;
 
-      nir_ssa_def *psrc = nir_channel(b, src, c);
-      nir_ssa_def *pdst = nir_channel(b, dst, c);
+      nir_def *psrc = nir_channel(b, src, c);
+      nir_def *pdst = nir_channel(b, dst, c);
 
       if (nir_blend_factored(chan.func)) {
          psrc = nir_blend_factor(
@@ -540,12 +540,12 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    /* Grab the input color.  We always want 4 channels during blend.  Dead
     * code will clean up any channels we don't need.
     */
-   nir_ssa_def *src = nir_pad_vector(b, store->src[0].ssa, 4);
+   nir_def *src = nir_pad_vector(b, store->src[0].ssa, 4);
 
    assert(nir_src_as_uint(store->src[1]) == 0 && "store_output invariant");
 
    /* Grab the previous fragment color if we need it */
-   nir_ssa_def *dst;
+   nir_def *dst;
 
    if (channel_uses_dest(options->rt[rt].rgb) ||
        channel_uses_dest(options->rt[rt].alpha) ||
@@ -562,7 +562,7 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
                             .dest_type = nir_intrinsic_src_type(store),
                             .io_semantics = sem);
    } else {
-      dst = nir_ssa_undef(b, 4, nir_src_bit_size(store->src[0]));
+      dst = nir_undef(b, 4, nir_src_bit_size(store->src[0]));
    }
 
    /* Blend the two colors per the passed options. We only call nir_blend if
@@ -571,7 +571,7 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
     * case where blending is disabled at an API level, but the driver calls
     * nir_blend (possibly for color masking).
     */
-   nir_ssa_def *blended = src;
+   nir_def *blended = src;
 
    if (options->logicop_enable) {
       blended = nir_blend_logicop(b, options, rt, src, dst);
@@ -613,7 +613,7 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
 static bool
 consume_dual_stores(nir_builder *b, nir_instr *instr, void *data)
 {
-   nir_ssa_def **outputs = data;
+   nir_def **outputs = data;
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 

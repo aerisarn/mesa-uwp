@@ -234,7 +234,7 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
    builder->cursor = nir_after_instr(instr);
    nir_address_format ubo_format = nir_address_format_32bit_index_offset;
 
-   nir_ssa_def *index = nir_vulkan_resource_index(
+   nir_def *index = nir_vulkan_resource_index(
       builder, nir_address_format_num_components(ubo_format),
       nir_address_format_bit_size(ubo_format),
       nir_imm_int(builder, 0),
@@ -242,12 +242,12 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
       .binding = conf->runtime_data_cbv.base_shader_register,
       .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
+   nir_def *load_desc = nir_load_vulkan_descriptor(
       builder, nir_address_format_num_components(ubo_format),
       nir_address_format_bit_size(ubo_format),
       index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   nir_ssa_def *load_data = nir_load_ubo(
+   nir_def *load_data = nir_load_ubo(
       builder, 
       nir_dest_num_components(intrin->dest),
       nir_dest_bit_size(intrin->dest),
@@ -258,7 +258,7 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
       .range_base = offset,
       .range = nir_dest_bit_size(intrin->dest) * nir_dest_num_components(intrin->dest) / 8);
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, load_data);
+   nir_def_rewrite_uses(&intrin->dest.ssa, load_data);
    nir_instr_remove(instr);
    return true;
 }
@@ -323,20 +323,20 @@ lower_load_push_constant(struct nir_builder *builder, nir_instr *instr,
    builder->cursor = nir_after_instr(instr);
    nir_address_format ubo_format = data->ubo_format;
 
-   nir_ssa_def *index = nir_vulkan_resource_index(
+   nir_def *index = nir_vulkan_resource_index(
       builder, nir_address_format_num_components(ubo_format),
       nir_address_format_bit_size(ubo_format),
       nir_imm_int(builder, 0),
       .desc_set = data->desc_set, .binding = data->binding,
       .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
+   nir_def *load_desc = nir_load_vulkan_descriptor(
       builder, nir_address_format_num_components(ubo_format),
       nir_address_format_bit_size(ubo_format),
       index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   nir_ssa_def *offset = nir_ssa_for_src(builder, intrin->src[0], 1);
-   nir_ssa_def *load_data = nir_load_ubo(
+   nir_def *offset = nir_ssa_for_src(builder, intrin->src[0], 1);
+   nir_def *load_data = nir_load_ubo(
       builder, 
       nir_dest_num_components(intrin->dest),
       nir_dest_bit_size(intrin->dest), 
@@ -347,7 +347,7 @@ lower_load_push_constant(struct nir_builder *builder, nir_instr *instr,
       .range_base = base,
       .range = range);
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, load_data);
+   nir_def_rewrite_uses(&intrin->dest.ssa, load_data);
    nir_instr_remove(instr);
    return true;
 }
@@ -406,10 +406,10 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
 
    const struct dxil_spirv_runtime_conf *rt_conf = data->rt_conf;
 
-   nir_ssa_def *pos = nir_ssa_for_src(builder, intrin->src[1], 4);
-   nir_ssa_def *y_pos = nir_channel(builder, pos, 1);
-   nir_ssa_def *z_pos = nir_channel(builder, pos, 2);
-   nir_ssa_def *y_flip_mask = NULL, *z_flip_mask = NULL, *dyn_yz_flip_mask = NULL;
+   nir_def *pos = nir_ssa_for_src(builder, intrin->src[1], 4);
+   nir_def *y_pos = nir_channel(builder, pos, 1);
+   nir_def *z_pos = nir_channel(builder, pos, 2);
+   nir_def *y_flip_mask = NULL, *z_flip_mask = NULL, *dyn_yz_flip_mask = NULL;
 
    if (rt_conf->yz_flip.mode & DXIL_SPIRV_YZ_FLIP_CONDITIONAL) {
       // conditional YZ-flip. The flip bitmask is passed through the vertex
@@ -418,7 +418,7 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
          offsetof(struct dxil_spirv_vertex_runtime_data, yz_flip_mask);
       nir_address_format ubo_format = nir_address_format_32bit_index_offset;
 
-      nir_ssa_def *index = nir_vulkan_resource_index(
+      nir_def *index = nir_vulkan_resource_index(
          builder, nir_address_format_num_components(ubo_format),
          nir_address_format_bit_size(ubo_format),
          nir_imm_int(builder, 0),
@@ -426,7 +426,7 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
          .binding = rt_conf->runtime_data_cbv.base_shader_register,
          .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-      nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
+      nir_def *load_desc = nir_load_vulkan_descriptor(
          builder, nir_address_format_num_components(ubo_format),
          nir_address_format_bit_size(ubo_format),
          index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -455,14 +455,14 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
    /* TODO: Multi-viewport */
 
    if (y_flip_mask) {
-      nir_ssa_def *flip = nir_test_mask(builder, y_flip_mask, 1);
+      nir_def *flip = nir_test_mask(builder, y_flip_mask, 1);
 
       // Z-flip => pos.y = -pos.y
       y_pos = nir_bcsel(builder, flip, nir_fneg(builder, y_pos), y_pos);
    }
 
    if (z_flip_mask) {
-      nir_ssa_def *flip = nir_test_mask(builder, z_flip_mask, 1);
+      nir_def *flip = nir_test_mask(builder, z_flip_mask, 1);
 
       // Z-flip => pos.z = -pos.z + 1.0f
       z_pos = nir_bcsel(builder, flip,
@@ -470,7 +470,7 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
                         z_pos);
    }
 
-   nir_ssa_def *def = nir_vec4(builder,
+   nir_def *def = nir_vec4(builder,
                                nir_channel(builder, pos, 0),
                                y_pos,
                                z_pos,
@@ -517,7 +517,7 @@ discard_psiz_access(struct nir_builder *builder, nir_instr *instr,
    builder->cursor = nir_before_instr(instr);
 
    if (intrin->intrinsic == nir_intrinsic_load_deref)
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_imm_float(builder, 1.0));
+      nir_def_rewrite_uses(&intrin->dest.ssa, nir_imm_float(builder, 1.0));
 
    nir_instr_remove(instr);
    return true;
@@ -595,9 +595,9 @@ kill_undefined_varyings(struct nir_builder *b,
     * since that would remove the store instruction, and would make it tricky to satisfy
     * the DXIL requirements of writing all position components.
     */
-   nir_ssa_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest),
+   nir_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest),
                                        nir_dest_bit_size(intr->dest));
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, zero);
+   nir_def_rewrite_uses(&intr->dest.ssa, zero);
    nir_instr_remove(instr);
    return true;
 }
@@ -708,7 +708,7 @@ write_pntc_with_pos(nir_builder *b, nir_instr *instr, void *_data)
    if (!var || var->data.location != VARYING_SLOT_POS)
       return false;
 
-   nir_ssa_def *pos = intr->src[1].ssa;
+   nir_def *pos = intr->src[1].ssa;
 
    unsigned offset =
       offsetof(struct dxil_spirv_vertex_runtime_data, viewport_width) - 4;
@@ -717,7 +717,7 @@ write_pntc_with_pos(nir_builder *b, nir_instr *instr, void *_data)
    nir_address_format ubo_format = nir_address_format_32bit_index_offset;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *index = nir_vulkan_resource_index(
+   nir_def *index = nir_vulkan_resource_index(
       b, nir_address_format_num_components(ubo_format),
       nir_address_format_bit_size(ubo_format),
       nir_imm_int(b, 0),
@@ -725,12 +725,12 @@ write_pntc_with_pos(nir_builder *b, nir_instr *instr, void *_data)
       .binding = data->conf->runtime_data_cbv.base_shader_register,
       .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
+   nir_def *load_desc = nir_load_vulkan_descriptor(
       b, nir_address_format_num_components(ubo_format),
       nir_address_format_bit_size(ubo_format),
       index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   nir_ssa_def *transform = nir_channels(b,
+   nir_def *transform = nir_channels(b,
                                          nir_load_ubo(b, 4, 32,
                                                       nir_channel(b, load_desc, 0),
                                                       nir_imm_int(b, offset),
@@ -738,9 +738,9 @@ write_pntc_with_pos(nir_builder *b, nir_instr *instr, void *_data)
                                                       .range_base = offset,
                                                       .range = 16),
                                          0x6);
-   nir_ssa_def *point_center_in_clip = nir_fmul(b, nir_trim_vector(b, pos, 2),
+   nir_def *point_center_in_clip = nir_fmul(b, nir_trim_vector(b, pos, 2),
                                                 nir_frcp(b, nir_channel(b, pos, 3)));
-   nir_ssa_def *point_center =
+   nir_def *point_center =
       nir_fmul(b, nir_fadd_imm(b,
                                nir_fmul(b, point_center_in_clip,
                                         nir_vec2(b, nir_imm_float(b, 0.5), nir_imm_float(b, -0.5f))),
@@ -785,12 +785,12 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
    if (!var || var->data.location != VARYING_SLOT_PNTC)
       return false;
 
-   nir_ssa_def *point_center = &intr->dest.ssa;
+   nir_def *point_center = &intr->dest.ssa;
    nir_variable *pos_var = (nir_variable *)data;
 
    b->cursor = nir_after_instr(instr);
 
-   nir_ssa_def *pos;
+   nir_def *pos;
    if (var->data.sample == pos_var->data.sample)
       pos = nir_load_var(b, pos_var);
    else if (var->data.sample)
@@ -802,10 +802,10 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
                                        &nir_build_deref_var(b, pos_var)->dest.ssa,
                                        nir_imm_zero(b, 2, 32));
 
-   nir_ssa_def *pntc = nir_fadd_imm(b,
+   nir_def *pntc = nir_fadd_imm(b,
                                     nir_fsub(b, nir_trim_vector(b, pos, 2), nir_trim_vector(b, point_center, 2)),
                                     0.5);
-   nir_ssa_def_rewrite_uses_after(point_center, pntc, pntc->parent_instr);
+   nir_def_rewrite_uses_after(point_center, pntc, pntc->parent_instr);
    return true;
 }
 
@@ -841,8 +841,8 @@ lower_view_index_to_rt_layer_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *layer = intr->src[1].ssa;
-   nir_ssa_def *new_layer = nir_iadd(b, layer,
+   nir_def *layer = intr->src[1].ssa;
+   nir_def *new_layer = nir_iadd(b, layer,
                                      nir_load_view_index(b));
    nir_instr_rewrite_src_ssa(instr, &intr->src[1], new_layer);
    return true;

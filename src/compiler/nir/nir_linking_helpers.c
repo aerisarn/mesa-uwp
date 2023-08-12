@@ -1073,11 +1073,11 @@ replace_varying_input_by_constant_load(nir_shader *shader,
             nir_instr_as_load_const(store_intr->src[1].ssa->parent_instr);
 
          /* Add new const to replace the input */
-         nir_ssa_def *nconst = nir_build_imm(&b, store_intr->num_components,
-                                             intr->dest.ssa.bit_size,
-                                             out_const->value);
+         nir_def *nconst = nir_build_imm(&b, store_intr->num_components,
+                                         intr->dest.ssa.bit_size,
+                                         out_const->value);
 
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nconst);
+         nir_def_rewrite_uses(&intr->dest.ssa, nconst);
 
          progress = true;
       }
@@ -1122,8 +1122,8 @@ replace_duplicate_input(nir_shader *shader, nir_variable *input_var,
 
          b.cursor = nir_before_instr(instr);
 
-         nir_ssa_def *load = nir_load_var(&b, input_var);
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
+         nir_def *load = nir_load_var(&b, input_var);
+         nir_def_rewrite_uses(&intr->dest.ssa, load);
 
          progress = true;
       }
@@ -1133,7 +1133,7 @@ replace_duplicate_input(nir_shader *shader, nir_variable *input_var,
 }
 
 static bool
-is_direct_uniform_load(nir_ssa_def *def, nir_ssa_scalar *s)
+is_direct_uniform_load(nir_def *def, nir_scalar *s)
 {
    /* def is sure to be scalar as can_replace_varying() filter out vector case. */
    assert(def->num_components == 1);
@@ -1147,9 +1147,9 @@ is_direct_uniform_load(nir_ssa_def *def, nir_ssa_scalar *s)
     *     vec1 32 ssa_4 = deref_var &color_out (shader_out float)
     *     intrinsic store_deref (ssa_4, ssa_3) (1, 0)
     */
-   *s = nir_ssa_scalar_resolved(def, 0);
+   *s = nir_scalar_resolved(def, 0);
 
-   nir_ssa_def *ssa = s->def;
+   nir_def *ssa = s->def;
    if (ssa->parent_instr->type != nir_instr_type_intrinsic)
       return false;
 
@@ -1209,8 +1209,8 @@ clone_deref_instr(nir_builder *b, nir_variable *var, nir_deref_instr *deref)
    case nir_deref_type_ptr_as_array: {
       nir_load_const_instr *index =
          nir_instr_as_load_const(deref->arr.index.ssa->parent_instr);
-      nir_ssa_def *ssa = nir_imm_intN_t(b, index->value->i64,
-                                        parent->dest.ssa.bit_size);
+      nir_def *ssa = nir_imm_intN_t(b, index->value->i64,
+                                    parent->dest.ssa.bit_size);
       return nir_build_deref_ptr_as_array(b, parent, ssa);
    }
    case nir_deref_type_struct:
@@ -1224,7 +1224,7 @@ clone_deref_instr(nir_builder *b, nir_variable *var, nir_deref_instr *deref)
 static bool
 replace_varying_input_by_uniform_load(nir_shader *shader,
                                       nir_intrinsic_instr *store_intr,
-                                      nir_ssa_scalar *scalar)
+                                      nir_scalar *scalar)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
@@ -1260,7 +1260,7 @@ replace_varying_input_by_uniform_load(nir_shader *shader,
 
          /* Clone instructions start from deref load to variable deref. */
          nir_deref_instr *uni_deref = clone_deref_instr(&b, uni_var, deref);
-         nir_ssa_def *uni_def = nir_load_deref(&b, uni_deref);
+         nir_def *uni_def = nir_load_deref(&b, uni_deref);
 
          /* Add a vector to scalar move if uniform is a vector. */
          if (uni_def->num_components > 1) {
@@ -1271,7 +1271,7 @@ replace_varying_input_by_uniform_load(nir_shader *shader,
          }
 
          /* Replace load input with load uniform. */
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, uni_def);
+         nir_def_rewrite_uses(&intr->dest.ssa, uni_def);
 
          progress = true;
       }
@@ -1393,13 +1393,13 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
       if (!can_replace_varying(out_var))
          continue;
 
-      nir_ssa_def *ssa = intr->src[1].ssa;
+      nir_def *ssa = intr->src[1].ssa;
       if (ssa->parent_instr->type == nir_instr_type_load_const) {
          progress |= replace_varying_input_by_constant_load(consumer, intr);
          continue;
       }
 
-      nir_ssa_scalar uni_scalar;
+      nir_scalar uni_scalar;
       if (is_direct_uniform_load(ssa, &uni_scalar)) {
          if (consumer->options->lower_varying_from_uniform) {
             progress |= replace_varying_input_by_uniform_load(consumer, intr,

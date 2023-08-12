@@ -48,7 +48,7 @@ replace_imul_instr(nir_builder *b, nir_alu_instr *imul, unsigned small_val,
    nir_ssa_dest_init(&imul_32x16->instr, &imul_32x16->dest.dest,
                      imul->dest.dest.ssa.num_components, 32);
 
-   nir_ssa_def_rewrite_uses(&imul->dest.dest.ssa,
+   nir_def_rewrite_uses(&imul->dest.dest.ssa,
                             &imul_32x16->dest.dest.ssa);
 
    nir_builder_instr_insert(b, &imul_32x16->instr);
@@ -67,19 +67,19 @@ enum root_operation {
 
 static enum root_operation
 signed_integer_range_analysis(nir_shader *shader, struct hash_table *range_ht,
-                              nir_ssa_scalar scalar, int *lo, int *hi)
+                              nir_scalar scalar, int *lo, int *hi)
 {
-   if (nir_ssa_scalar_is_const(scalar)) {
-      *lo = nir_ssa_scalar_as_int(scalar);
+   if (nir_scalar_is_const(scalar)) {
+      *lo = nir_scalar_as_int(scalar);
       *hi = *lo;
       return non_unary;
    }
 
-   if (nir_ssa_scalar_is_alu(scalar)) {
-      switch (nir_ssa_scalar_alu_op(scalar)) {
+   if (nir_scalar_is_alu(scalar)) {
+      switch (nir_scalar_alu_op(scalar)) {
       case nir_op_iabs:
          signed_integer_range_analysis(shader, range_ht,
-                                       nir_ssa_scalar_chase_alu_src(scalar, 0),
+                                       nir_scalar_chase_alu_src(scalar, 0),
                                        lo, hi);
 
          if (*lo == INT32_MIN) {
@@ -100,7 +100,7 @@ signed_integer_range_analysis(nir_shader *shader, struct hash_table *range_ht,
       case nir_op_ineg: {
          const enum root_operation root =
             signed_integer_range_analysis(shader, range_ht,
-                                          nir_ssa_scalar_chase_alu_src(scalar, 0),
+                                          nir_scalar_chase_alu_src(scalar, 0),
                                           lo, hi);
 
          if (*lo == INT32_MIN) {
@@ -124,10 +124,10 @@ signed_integer_range_analysis(nir_shader *shader, struct hash_table *range_ht,
          int src1_lo, src1_hi;
 
          signed_integer_range_analysis(shader, range_ht,
-                                       nir_ssa_scalar_chase_alu_src(scalar, 0),
+                                       nir_scalar_chase_alu_src(scalar, 0),
                                        &src0_lo, &src0_hi);
          signed_integer_range_analysis(shader, range_ht,
-                                       nir_ssa_scalar_chase_alu_src(scalar, 1),
+                                       nir_scalar_chase_alu_src(scalar, 1),
                                        &src1_lo, &src1_hi);
 
          *lo = MAX2(src0_lo, src1_lo);
@@ -141,10 +141,10 @@ signed_integer_range_analysis(nir_shader *shader, struct hash_table *range_ht,
          int src1_lo, src1_hi;
 
          signed_integer_range_analysis(shader, range_ht,
-                                       nir_ssa_scalar_chase_alu_src(scalar, 0),
+                                       nir_scalar_chase_alu_src(scalar, 0),
                                        &src0_lo, &src0_hi);
          signed_integer_range_analysis(shader, range_ht,
-                                       nir_ssa_scalar_chase_alu_src(scalar, 1),
+                                       nir_scalar_chase_alu_src(scalar, 1),
                                        &src1_lo, &src1_hi);
 
          *lo = MIN2(src0_lo, src1_lo);
@@ -238,7 +238,7 @@ brw_nir_opt_peephole_imul32x16_instr(nir_builder *b,
    if (imul->dest.dest.ssa.num_components > 1)
       return false;
 
-   const nir_ssa_scalar imul_scalar = { &imul->dest.dest.ssa, 0 };
+   const nir_scalar imul_scalar = { &imul->dest.dest.ssa, 0 };
    int idx = -1;
    enum root_operation prev_root = invalid_root;
 
@@ -249,7 +249,7 @@ brw_nir_opt_peephole_imul32x16_instr(nir_builder *b,
       if (imul->src[i].src.ssa->parent_instr->type == nir_instr_type_load_const)
          continue;
 
-      nir_ssa_scalar scalar = nir_ssa_scalar_chase_alu_src(imul_scalar, i);
+      nir_scalar scalar = nir_scalar_chase_alu_src(imul_scalar, i);
       int lo = INT32_MIN;
       int hi = INT32_MAX;
 

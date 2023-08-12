@@ -45,24 +45,24 @@ build_color_shaders(struct radv_device *dev, struct nir_shader **out_vs, struct 
    nir_variable *vs_out_pos = nir_variable_create(vs_b.shader, nir_var_shader_out, position_type, "gl_Position");
    vs_out_pos->data.location = VARYING_SLOT_POS;
 
-   nir_ssa_def *in_color_load = nir_load_push_constant(&fs_b, 4, 32, nir_imm_int(&fs_b, 0), .range = 16);
+   nir_def *in_color_load = nir_load_push_constant(&fs_b, 4, 32, nir_imm_int(&fs_b, 0), .range = 16);
 
    nir_variable *fs_out_color = nir_variable_create(fs_b.shader, nir_var_shader_out, color_type, "f_color");
    fs_out_color->data.location = FRAG_RESULT_DATA0 + frag_output;
 
    nir_store_var(&fs_b, fs_out_color, in_color_load, 0xf);
 
-   nir_ssa_def *outvec = nir_gen_rect_vertices(&vs_b, NULL, NULL);
+   nir_def *outvec = nir_gen_rect_vertices(&vs_b, NULL, NULL);
    nir_store_var(&vs_b, vs_out_pos, outvec, 0xf);
 
    const struct glsl_type *layer_type = glsl_int_type();
    nir_variable *vs_out_layer = nir_variable_create(vs_b.shader, nir_var_shader_out, layer_type, "v_layer");
    vs_out_layer->data.location = VARYING_SLOT_LAYER;
    vs_out_layer->data.interpolation = INTERP_MODE_FLAT;
-   nir_ssa_def *inst_id = nir_load_instance_id(&vs_b);
-   nir_ssa_def *base_instance = nir_load_base_instance(&vs_b);
+   nir_def *inst_id = nir_load_instance_id(&vs_b);
+   nir_def *base_instance = nir_load_base_instance(&vs_b);
 
-   nir_ssa_def *layer_id = nir_iadd(&vs_b, inst_id, base_instance);
+   nir_def *layer_id = nir_iadd(&vs_b, inst_id, base_instance);
    nir_store_var(&vs_b, vs_out_layer, layer_id, 0x1);
 
    *out_vs = vs_b.shader;
@@ -376,9 +376,9 @@ build_depthstencil_shader(struct radv_device *dev, struct nir_shader **out_vs, s
    nir_variable *vs_out_pos = nir_variable_create(vs_b.shader, nir_var_shader_out, position_out_type, "gl_Position");
    vs_out_pos->data.location = VARYING_SLOT_POS;
 
-   nir_ssa_def *z;
+   nir_def *z;
    if (unrestricted) {
-      nir_ssa_def *in_color_load = nir_load_push_constant(&fs_b, 1, 32, nir_imm_int(&fs_b, 0), .range = 4);
+      nir_def *in_color_load = nir_load_push_constant(&fs_b, 1, 32, nir_imm_int(&fs_b, 0), .range = 4);
 
       nir_variable *fs_out_depth = nir_variable_create(fs_b.shader, nir_var_shader_out, glsl_int_type(), "f_depth");
       fs_out_depth->data.location = FRAG_RESULT_DEPTH;
@@ -389,17 +389,17 @@ build_depthstencil_shader(struct radv_device *dev, struct nir_shader **out_vs, s
       z = nir_load_push_constant(&vs_b, 1, 32, nir_imm_int(&vs_b, 0), .range = 4);
    }
 
-   nir_ssa_def *outvec = nir_gen_rect_vertices(&vs_b, z, NULL);
+   nir_def *outvec = nir_gen_rect_vertices(&vs_b, z, NULL);
    nir_store_var(&vs_b, vs_out_pos, outvec, 0xf);
 
    const struct glsl_type *layer_type = glsl_int_type();
    nir_variable *vs_out_layer = nir_variable_create(vs_b.shader, nir_var_shader_out, layer_type, "v_layer");
    vs_out_layer->data.location = VARYING_SLOT_LAYER;
    vs_out_layer->data.interpolation = INTERP_MODE_FLAT;
-   nir_ssa_def *inst_id = nir_load_instance_id(&vs_b);
-   nir_ssa_def *base_instance = nir_load_base_instance(&vs_b);
+   nir_def *inst_id = nir_load_instance_id(&vs_b);
+   nir_def *base_instance = nir_load_base_instance(&vs_b);
 
-   nir_ssa_def *layer_id = nir_iadd(&vs_b, inst_id, base_instance);
+   nir_def *layer_id = nir_iadd(&vs_b, inst_id, base_instance);
    nir_store_var(&vs_b, vs_out_layer, layer_id, 0x1);
 
    *out_vs = vs_b.shader;
@@ -808,19 +808,19 @@ build_clear_htile_mask_shader(struct radv_device *dev)
    nir_builder b = radv_meta_init_shader(dev, MESA_SHADER_COMPUTE, "meta_clear_htile_mask");
    b.shader->info.workgroup_size[0] = 64;
 
-   nir_ssa_def *global_id = get_global_ids(&b, 1);
+   nir_def *global_id = get_global_ids(&b, 1);
 
-   nir_ssa_def *offset = nir_imul_imm(&b, global_id, 16);
+   nir_def *offset = nir_imul_imm(&b, global_id, 16);
    offset = nir_channel(&b, offset, 0);
 
-   nir_ssa_def *buf = radv_meta_load_descriptor(&b, 0, 0);
+   nir_def *buf = radv_meta_load_descriptor(&b, 0, 0);
 
-   nir_ssa_def *constants = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
+   nir_def *constants = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
 
-   nir_ssa_def *load = nir_load_ssbo(&b, 4, 32, buf, offset, .align_mul = 16);
+   nir_def *load = nir_load_ssbo(&b, 4, 32, buf, offset, .align_mul = 16);
 
    /* data = (data & ~htile_mask) | (htile_value & htile_mask) */
-   nir_ssa_def *data = nir_iand(&b, load, nir_channel(&b, constants, 1));
+   nir_def *data = nir_iand(&b, load, nir_channel(&b, constants, 1));
    data = nir_ior(&b, data, nir_channel(&b, constants, 0));
 
    nir_store_ssbo(&b, data, buf, offset, .access = ACCESS_NON_READABLE, .align_mul = 16);
@@ -906,29 +906,29 @@ build_clear_dcc_comp_to_single_shader(struct radv_device *dev, bool is_msaa)
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
 
-   nir_ssa_def *global_id = get_global_ids(&b, 3);
+   nir_def *global_id = get_global_ids(&b, 3);
 
    /* Load the dimensions in pixels of a block that gets compressed to one DCC byte. */
-   nir_ssa_def *dcc_block_size = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
+   nir_def *dcc_block_size = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
 
    /* Compute the coordinates. */
-   nir_ssa_def *coord = nir_trim_vector(&b, global_id, 2);
+   nir_def *coord = nir_trim_vector(&b, global_id, 2);
    coord = nir_imul(&b, coord, dcc_block_size);
    coord = nir_vec4(&b, nir_channel(&b, coord, 0), nir_channel(&b, coord, 1), nir_channel(&b, global_id, 2),
-                    nir_ssa_undef(&b, 1, 32));
+                    nir_undef(&b, 1, 32));
 
    nir_variable *output_img = nir_variable_create(b.shader, nir_var_image, img_type, "out_img");
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 0;
 
    /* Load the clear color values. */
-   nir_ssa_def *clear_values = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 8), .range = 8);
+   nir_def *clear_values = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 8), .range = 8);
 
-   nir_ssa_def *data = nir_vec4(&b, nir_channel(&b, clear_values, 0), nir_channel(&b, clear_values, 1),
-                                nir_channel(&b, clear_values, 1), nir_channel(&b, clear_values, 1));
+   nir_def *data = nir_vec4(&b, nir_channel(&b, clear_values, 0), nir_channel(&b, clear_values, 1),
+                            nir_channel(&b, clear_values, 1), nir_channel(&b, clear_values, 1));
 
    /* Store the clear color values. */
-   nir_ssa_def *sample_id = is_msaa ? nir_imm_int(&b, 0) : nir_ssa_undef(&b, 1, 32);
+   nir_def *sample_id = is_msaa ? nir_imm_int(&b, 0) : nir_undef(&b, 1, 32);
    nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, sample_id, data, nir_imm_int(&b, 0),
                          .image_dim = dim, .image_array = true);
 

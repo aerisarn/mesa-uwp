@@ -677,11 +677,11 @@ remove_out_of_bounds_induction_use(nir_shader *shader, nir_loop *loop,
             if (is_access_out_of_bounds(term, nir_src_as_deref(intrin->src[0]),
                                         trip_count)) {
                if (intrin->intrinsic == nir_intrinsic_load_deref) {
-                  nir_ssa_def *undef =
-                     nir_ssa_undef(&b, intrin->dest.ssa.num_components,
-                                   intrin->dest.ssa.bit_size);
-                  nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                           undef);
+                  nir_def *undef =
+                     nir_undef(&b, intrin->dest.ssa.num_components,
+                               intrin->dest.ssa.bit_size);
+                  nir_def_rewrite_uses(&intrin->dest.ssa,
+                                       undef);
                } else {
                   nir_instr_remove(instr);
                   continue;

@@ -30,7 +30,7 @@ static void
 lower_tex_src_to_offset(nir_builder *b,
                         nir_tex_instr *instr, unsigned src_idx)
 {
-   nir_ssa_def *index = NULL;
+   nir_def *index = NULL;
    unsigned base_index = 0;
    unsigned array_elements = 1;
    nir_tex_src *src = &instr->src[src_idx];

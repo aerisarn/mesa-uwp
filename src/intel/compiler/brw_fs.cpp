@@ -7354,7 +7354,7 @@ fs_visitor::run_mesh(bool allow_spilling)
 }
 
 static bool
-is_used_in_not_interp_frag_coord(nir_ssa_def *def)
+is_used_in_not_interp_frag_coord(nir_def *def)
 {
    nir_foreach_use_including_if(src, def) {
       if (src->is_if)
@@ -8027,7 +8027,7 @@ filter_simd(const nir_instr *instr, const void * /* options */)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_simd(nir_builder *b, nir_instr *instr, void *options)
 {
    uintptr_t simd_width = (uintptr_t)options;

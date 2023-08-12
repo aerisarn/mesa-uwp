@@ -11,7 +11,7 @@
 static bool
 lower_wrapped(nir_builder *b, nir_instr *instr, void *data)
 {
-   nir_ssa_def *sample_id = data;
+   nir_def *sample_id = data;
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
@@ -21,7 +21,7 @@ lower_wrapped(nir_builder *b, nir_instr *instr, void *data)
    switch (intr->intrinsic) {
    case nir_intrinsic_load_sample_id: {
       unsigned size = nir_dest_bit_size(intr->dest);
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_u2uN(b, sample_id, size));
+      nir_def_rewrite_uses(&intr->dest.ssa, nir_u2uN(b, sample_id, size));
       nir_instr_remove(instr);
       return true;
    }
@@ -34,10 +34,10 @@ lower_wrapped(nir_builder *b, nir_instr *instr, void *data)
       unsigned mask_index =
          (intr->intrinsic == nir_intrinsic_store_local_pixel_agx) ? 1 : 0;
 
-      nir_ssa_def *mask = intr->src[mask_index].ssa;
-      nir_ssa_def *id_mask = nir_ishl(b, nir_imm_intN_t(b, 1, mask->bit_size),
-                                      nir_u2u32(b, sample_id));
-      nir_src_rewrite_ssa(&intr->src[mask_index], nir_iand(b, mask, id_mask));
+      nir_def *mask = intr->src[mask_index].ssa;
+      nir_def *id_mask = nir_ishl(b, nir_imm_intN_t(b, 1, mask->bit_size),
+                                  nir_u2u32(b, sample_id));
+      nir_src_rewrite(&intr->src[mask_index], nir_iand(b, mask, id_mask));
       return true;
    }
 
@@ -70,7 +70,7 @@ agx_nir_wrap_per_sample_loop(nir_shader *shader, uint8_t nr_samples)
    nir_variable *i =
       nir_local_variable_create(impl, glsl_uintN_t_type(16), NULL);
    nir_store_var(&b, i, nir_imm_intN_t(&b, 0, 16), ~0);
-   nir_ssa_def *index = NULL;
+   nir_def *index = NULL;
 
    /* Create a loop in the wrapped function */
    nir_loop *loop = nir_push_loop(&b);
@@ -151,11 +151,11 @@ lower_sample_mask_read(nir_builder *b, nir_instr *instr, UNUSED void *_)
    if (intr->intrinsic != nir_intrinsic_load_sample_mask_in)
       return false;
 
-   nir_ssa_def *old = &intr->dest.ssa;
-   nir_ssa_def *lowered = nir_iand(
+   nir_def *old = &intr->dest.ssa;
+   nir_def *lowered = nir_iand(
       b, old, nir_u2uN(b, nir_load_api_sample_mask_agx(b), old->bit_size));
 
-   nir_ssa_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
+   nir_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
    return true;
 }
 

@@ -19,10 +19,10 @@ lower_tess_coord_z(nir_builder *b, nir_instr *instr, void *state)
       return false;
 
    b->cursor = nir_instr_remove(instr);
-   nir_ssa_def *xy = nir_load_tess_coord_xy(b);
-   nir_ssa_def *x = nir_channel(b, xy, 0);
-   nir_ssa_def *y = nir_channel(b, xy, 1);
-   nir_ssa_def *z;
+   nir_def *xy = nir_load_tess_coord_xy(b);
+   nir_def *x = nir_channel(b, xy, 0);
+   nir_def *y = nir_channel(b, xy, 1);
+   nir_def *z;
 
    bool *triangles = state;
    if (*triangles)
@@ -30,7 +30,7 @@ lower_tess_coord_z(nir_builder *b, nir_instr *instr, void *state)
    else
       z = nir_imm_float(b, 0.0f);
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_vec3(b, x, y, z));
+   nir_def_rewrite_uses(&intr->dest.ssa, nir_vec3(b, x, y, z));
    return true;
 }
 

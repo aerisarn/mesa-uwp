@@ -84,10 +84,10 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
                          b->shader->info.float_controls_execution_mode);
 
    b->cursor = nir_before_instr(&alu->instr);
-   nir_ssa_def *imm = nir_build_imm(b, alu->dest.dest.ssa.num_components,
-                                    alu->dest.dest.ssa.bit_size,
-                                    dest);
-   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, imm);
+   nir_def *imm = nir_build_imm(b, alu->dest.dest.ssa.num_components,
+                                alu->dest.dest.ssa.bit_size,
+                                dest);
+   nir_def_rewrite_uses(&alu->dest.dest.ssa, imm);
    nir_instr_remove(&alu->instr);
    nir_instr_free(&alu->instr);
 
@@ -208,9 +208,9 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_const_value *v = const_value_for_deref(deref);
       if (v) {
          b->cursor = nir_before_instr(&intrin->instr);
-         nir_ssa_def *val = nir_build_imm(b, intrin->dest.ssa.num_components,
-                                          intrin->dest.ssa.bit_size, v);
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
+         nir_def *val = nir_build_imm(b, intrin->dest.ssa.num_components,
+                                      intrin->dest.ssa.bit_size, v);
+         nir_def_rewrite_uses(&intrin->dest.ssa, val);
          nir_instr_remove(&intrin->instr);
          return true;
       }
@@ -231,10 +231,10 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(base + range <= b->shader->constant_data_size);
 
       b->cursor = nir_before_instr(&intrin->instr);
-      nir_ssa_def *val;
+      nir_def *val;
       if (offset >= range) {
-         val = nir_ssa_undef(b, intrin->dest.ssa.num_components,
-                             intrin->dest.ssa.bit_size);
+         val = nir_undef(b, intrin->dest.ssa.num_components,
+                         intrin->dest.ssa.bit_size);
       } else {
          nir_const_value imm[NIR_MAX_VEC_COMPONENTS];
          memset(imm, 0, sizeof(imm));
@@ -249,7 +249,7 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
          val = nir_build_imm(b, intrin->dest.ssa.num_components,
                              intrin->dest.ssa.bit_size, imm);
       }
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
+      nir_def_rewrite_uses(&intrin->dest.ssa, val);
       nir_instr_remove(&intrin->instr);
       return true;
    }
@@ -273,8 +273,8 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
        * the data is constant.
        */
       if (nir_src_is_const(intrin->src[0])) {
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                  intrin->src[0].ssa);
+         nir_def_rewrite_uses(&intrin->dest.ssa,
+                              intrin->src[0].ssa);
          nir_instr_remove(&intrin->instr);
          return true;
       }
@@ -284,8 +284,8 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_intrinsic_vote_ieq:
       if (nir_src_is_const(intrin->src[0])) {
          b->cursor = nir_before_instr(&intrin->instr);
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                  nir_imm_true(b));
+         nir_def_rewrite_uses(&intrin->dest.ssa,
+                              nir_imm_true(b));
          nir_instr_remove(&intrin->instr);
          return true;
       }

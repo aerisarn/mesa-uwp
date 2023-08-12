@@ -30,7 +30,7 @@
 static bool
 src_is_invocation_id(const nir_src *src)
 {
-   nir_ssa_scalar s = nir_ssa_scalar_resolved(src->ssa, 0);
+   nir_scalar s = nir_scalar_resolved(src->ssa, 0);
    return s.def->parent_instr->type == nir_instr_type_intrinsic &&
           nir_instr_as_intrinsic(s.def->parent_instr)->intrinsic ==
              nir_intrinsic_load_invocation_id;
@@ -39,7 +39,7 @@ src_is_invocation_id(const nir_src *src)
 static bool
 src_is_local_invocation_index(const nir_src *src)
 {
-   nir_ssa_scalar s = nir_ssa_scalar_resolved(src->ssa, 0);
+   nir_scalar s = nir_scalar_resolved(src->ssa, 0);
    return s.def->parent_instr->type == nir_instr_type_intrinsic &&
           nir_instr_as_intrinsic(s.def->parent_instr)->intrinsic ==
              nir_intrinsic_load_local_invocation_index;
@@ -776,10 +776,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_launch_mesh_workgroups:
    case nir_intrinsic_launch_mesh_workgroups_with_payload_deref: {
       for (unsigned i = 0; i < 3; ++i) {
-         nir_ssa_scalar dim = nir_ssa_scalar_resolved(instr->src[0].ssa, i);
-         if (nir_ssa_scalar_is_const(dim))
+         nir_scalar dim = nir_scalar_resolved(instr->src[0].ssa, i);
+         if (nir_scalar_is_const(dim))
             shader->info.mesh.ts_mesh_dispatch_dimensions[i] =
-               nir_ssa_scalar_as_uint(dim);
+               nir_scalar_as_uint(dim);
       }
       break;
    }

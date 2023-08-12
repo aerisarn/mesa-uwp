@@ -11,7 +11,7 @@ rusticl_lower_intrinsics_filter(const nir_instr* instr, const void* state)
     return instr->type == nir_instr_type_intrinsic;
 }
 
-static nir_ssa_def*
+static nir_def*
 rusticl_lower_intrinsics_instr(
     nir_builder *b,
     nir_instr *instr,
@@ -25,7 +25,7 @@ rusticl_lower_intrinsics_instr(
     case nir_intrinsic_image_deref_order: {
         int32_t offset;
         nir_deref_instr *deref;
-        nir_ssa_def *val;
+        nir_def *val;
         nir_variable *var;
 
         if (intrins->intrinsic == nir_intrinsic_image_deref_format) {
@@ -84,18 +84,18 @@ rusticl_lower_intrinsics(nir_shader *nir, struct rusticl_lower_state* state)
     );
 }
 
-static nir_ssa_def*
+static nir_def*
 rusticl_lower_input_instr(struct nir_builder *b, nir_instr *instr, void *_)
 {
    nir_intrinsic_instr *intrins = nir_instr_as_intrinsic(instr);
    if (intrins->intrinsic != nir_intrinsic_load_kernel_input)
       return NULL;
 
-   nir_ssa_def *ubo_idx = nir_imm_int(b, 0);
-   nir_ssa_def *uniform_offset = nir_ssa_for_src(b, intrins->src[0], 1);
+   nir_def *ubo_idx = nir_imm_int(b, 0);
+   nir_def *uniform_offset = nir_ssa_for_src(b, intrins->src[0], 1);
 
    assert(intrins->dest.ssa.bit_size >= 8);
-   nir_ssa_def *load_result =
+   nir_def *load_result =
       nir_load_ubo(b, intrins->num_components, intrins->dest.ssa.bit_size,
                    ubo_idx, nir_iadd_imm(b, uniform_offset, nir_intrinsic_base(intrins)));
 

@@ -128,7 +128,7 @@ append_logical_end(Block* b)
 }
 
 Temp
-get_ssa_temp(struct isel_context* ctx, nir_ssa_def* def)
+get_ssa_temp(struct isel_context* ctx, nir_def* def)
 {
    uint32_t id = ctx->first_temp_id + def->index;
    return Temp(id, ctx->program->temp_rc[id]);
@@ -576,7 +576,7 @@ byte_align_vector(isel_context* ctx, Temp vec, Operand offset, Temp dst, unsigne
 }
 
 Temp
-get_ssa_temp_tex(struct isel_context* ctx, nir_ssa_def* def, bool is_16bit)
+get_ssa_temp_tex(struct isel_context* ctx, nir_def* def, bool is_16bit)
 {
    RegClass rc = RegClass::get(RegType::vgpr, (is_16bit ? 2 : 4) * def->num_components);
    Temp tmp = get_ssa_temp(ctx, def);
@@ -806,8 +806,7 @@ get_alu_src_vop3p(struct isel_context* ctx, nir_alu_src src)
 uint32_t
 get_alu_src_ub(isel_context* ctx, nir_alu_instr* instr, int src_idx)
 {
-   nir_ssa_scalar scalar =
-      nir_ssa_scalar{instr->src[src_idx].src.ssa, instr->src[src_idx].swizzle[0]};
+   nir_scalar scalar = nir_scalar{instr->src[src_idx].src.ssa, instr->src[src_idx].swizzle[0]};
    return nir_unsigned_upper_bound(ctx->shader, ctx->range_ht, scalar, &ctx->ub_config);
 }
 
@@ -6131,7 +6130,7 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
 
    unsigned result_size = instr->dest.ssa.num_components - is_sparse;
    unsigned expand_mask =
-      nir_ssa_def_components_read(&instr->dest.ssa) & u_bit_consecutive(0, result_size);
+      nir_def_components_read(&instr->dest.ssa) & u_bit_consecutive(0, result_size);
    expand_mask = MAX2(expand_mask, 1); /* this can be zero in the case of sparse image loads */
    if (dim == GLSL_SAMPLER_DIM_BUF)
       expand_mask = (1u << util_last_bit(expand_mask)) - 1u;
@@ -6311,9 +6310,9 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
     */
    if (instr->src[3].ssa->bit_size == 32 || instr->src[3].ssa->bit_size == 16) {
       for (uint32_t i = 0; i < instr->num_components; i++) {
-         nir_ssa_scalar comp = nir_ssa_scalar_resolved(instr->src[3].ssa, i);
-         if ((nir_ssa_scalar_is_const(comp) && nir_ssa_scalar_as_uint(comp) == 0) ||
-             nir_ssa_scalar_is_undef(comp))
+         nir_scalar comp = nir_scalar_resolved(instr->src[3].ssa, i);
+         if ((nir_scalar_is_const(comp) && nir_scalar_as_uint(comp) == 0) ||
+             nir_scalar_is_undef(comp))
             dmask &= ~BITFIELD_BIT(i);
       }
 
@@ -6444,7 +6443,7 @@ translate_buffer_image_atomic_op(const nir_atomic_op op, aco_opcode* buf_op, aco
 void
 visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 {
-   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
+   bool return_previous = !nir_def_is_unused(&instr->dest.ssa);
    const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
    bool is_array = nir_intrinsic_image_array(instr);
    Builder bld(ctx->program, ctx->block);
@@ -6586,7 +6585,7 @@ void
 visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
-   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
+   bool return_previous = !nir_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[2].ssa));
 
    const nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
@@ -6788,7 +6787,7 @@ void
 visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
-   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
+   bool return_previous = !nir_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
    const nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
@@ -7177,7 +7176,7 @@ emit_barrier(isel_context* ctx, nir_intrinsic_instr* instr)
 void
 visit_load_shared(isel_context* ctx, nir_intrinsic_instr* instr)
 {
-   // TODO: implement sparse reads using ds_read2_b32 and nir_ssa_def_components_read()
+   // TODO: implement sparse reads using ds_read2_b32 and nir_def_components_read()
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    Temp address = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Builder bld(ctx->program, ctx->block);
@@ -7294,7 +7293,7 @@ visit_shared_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    default: unreachable("Unhandled shared atomic intrinsic");
    }
 
-   bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
+   bool return_previous = !nir_def_is_unused(&instr->dest.ssa);
 
    aco_opcode op;
    if (data.size() == 1) {
@@ -9102,7 +9101,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
-get_const_vec(nir_ssa_def* vec, nir_const_value* cv[4])
+get_const_vec(nir_def* vec, nir_const_value* cv[4])
 {
    if (vec->parent_instr->type != nir_instr_type_alu)
       return;
@@ -9339,7 +9338,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    }
 
    /* Build tex instruction */
-   unsigned dmask = nir_ssa_def_components_read(&instr->dest.ssa) & 0xf;
+   unsigned dmask = nir_def_components_read(&instr->dest.ssa) & 0xf;
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF)
       dmask = u_bit_consecutive(0, util_last_bit(dmask));
    if (instr->is_sparse)
@@ -9746,7 +9745,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
 }
 
 Operand
-get_phi_operand(isel_context* ctx, nir_ssa_def* ssa, RegClass rc, bool logical)
+get_phi_operand(isel_context* ctx, nir_def* ssa, RegClass rc, bool logical)
 {
    Temp tmp = get_ssa_temp(ctx, ssa);
    if (ssa->parent_instr->type == nir_instr_type_ssa_undef) {
@@ -9772,7 +9771,7 @@ visit_phi(isel_context* ctx, nir_phi_instr* instr)
    aco_opcode opcode = logical ? aco_opcode::p_phi : aco_opcode::p_linear_phi;
 
    /* we want a sorted list of sources, since the predecessor list is also sorted */
-   std::map<unsigned, nir_ssa_def*> phi_src;
+   std::map<unsigned, nir_def*> phi_src;
    nir_foreach_phi_src (src, instr)
       phi_src[src->pred->index] = src->src.ssa;
 
@@ -9782,7 +9781,7 @@ visit_phi(isel_context* ctx, nir_phi_instr* instr)
       (std::max(exec_list_length(&instr->srcs), (unsigned)preds.size()) + 1) * sizeof(Operand));
    unsigned num_defined = 0;
    unsigned cur_pred_idx = 0;
-   for (std::pair<unsigned, nir_ssa_def*> src : phi_src) {
+   for (std::pair<unsigned, nir_def*> src : phi_src) {
       if (cur_pred_idx < preds.size()) {
          /* handle missing preds (IF merges with discard/break) and extra preds
           * (loop exit with discard) */
@@ -9857,7 +9856,7 @@ visit_phi(isel_context* ctx, nir_phi_instr* instr)
 }
 
 void
-visit_undef(isel_context* ctx, nir_ssa_undef_instr* instr)
+visit_undef(isel_context* ctx, nir_undef_instr* instr)
 {
    Temp dst = get_ssa_temp(ctx, &instr->def);
 

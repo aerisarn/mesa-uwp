@@ -49,9 +49,9 @@ copy_type_for_byte_size(unsigned size)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 memcpy_load_deref_elem(nir_builder *b, nir_deref_instr *parent,
-                       nir_ssa_def *index)
+                       nir_def *index)
 {
    nir_deref_instr *deref;
 
@@ -62,17 +62,17 @@ memcpy_load_deref_elem(nir_builder *b, nir_deref_instr *parent,
    return nir_load_deref(b, deref);
 }
 
-static nir_ssa_def *
+static nir_def *
 memcpy_load_deref_elem_imm(nir_builder *b, nir_deref_instr *parent,
                            uint64_t index)
 {
-   nir_ssa_def *idx = nir_imm_intN_t(b, index, parent->dest.ssa.bit_size);
+   nir_def *idx = nir_imm_intN_t(b, index, parent->dest.ssa.bit_size);
    return memcpy_load_deref_elem(b, parent, idx);
 }
 
 static void
 memcpy_store_deref_elem(nir_builder *b, nir_deref_instr *parent,
-                        nir_ssa_def *index, nir_ssa_def *value)
+                        nir_def *index, nir_def *value)
 {
    nir_deref_instr *deref;
 
@@ -84,9 +84,9 @@ memcpy_store_deref_elem(nir_builder *b, nir_deref_instr *parent,
 
 static void
 memcpy_store_deref_elem_imm(nir_builder *b, nir_deref_instr *parent,
-                            uint64_t index, nir_ssa_def *value)
+                            uint64_t index, nir_def *value)
 {
-   nir_ssa_def *idx = nir_imm_intN_t(b, index, parent->dest.ssa.bit_size);
+   nir_def *idx = nir_imm_intN_t(b, index, parent->dest.ssa.bit_size);
    memcpy_store_deref_elem(b, parent, idx, value);
 }
 
@@ -134,14 +134,14 @@ lower_memcpy_impl(nir_function_impl *impl)
                                        copy_type, copy_size);
 
                uint64_t index = offset / copy_size;
-               nir_ssa_def *value =
+               nir_def *value =
                   memcpy_load_deref_elem_imm(&b, copy_src, index);
                memcpy_store_deref_elem_imm(&b, copy_dst, index, value);
                offset += copy_size;
             }
          } else {
             found_non_const_memcpy = true;
-            nir_ssa_def *size = cpy->src[2].ssa;
+            nir_def *size = cpy->src[2].ssa;
 
             /* In this case, we don't have any idea what the size is so we
              * emit a loop which copies one byte at a time.
@@ -158,14 +158,14 @@ lower_memcpy_impl(nir_function_impl *impl)
             nir_store_var(&b, i, nir_imm_intN_t(&b, 0, size->bit_size), ~0);
             nir_push_loop(&b);
             {
-               nir_ssa_def *index = nir_load_var(&b, i);
+               nir_def *index = nir_load_var(&b, i);
                nir_push_if(&b, nir_uge(&b, index, size));
                {
                   nir_jump(&b, nir_jump_break);
                }
                nir_pop_if(&b, NULL);
 
-               nir_ssa_def *value =
+               nir_def *value =
                   memcpy_load_deref_elem(&b, copy_src, index);
                memcpy_store_deref_elem(&b, copy_dst, index, value);
                nir_store_var(&b, i, nir_iadd_imm(&b, index, 1), ~0);

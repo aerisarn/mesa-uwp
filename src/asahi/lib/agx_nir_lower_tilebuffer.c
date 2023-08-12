@@ -43,7 +43,7 @@ tib_filter(const nir_instr *instr, UNUSED const void *_)
 static void
 store_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
                  enum pipe_format format, enum pipe_format logical_format,
-                 unsigned rt, nir_ssa_def *value, unsigned write_mask)
+                 unsigned rt, nir_def *value, unsigned write_mask)
 {
    /* The hardware cannot extend for a 32-bit format. Extend ourselves. */
    if (format == PIPE_FORMAT_R32_UINT && value->bit_size == 16) {
@@ -61,7 +61,7 @@ store_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
                              .format = format);
 }
 
-static nir_ssa_def *
+static nir_def *
 load_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
                 uint8_t load_comps, uint8_t bit_size, unsigned rt,
                 enum pipe_format format, enum pipe_format logical_format)
@@ -74,7 +74,7 @@ load_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
       format = PIPE_FORMAT_R16_UINT;
 
    uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
-   nir_ssa_def *res = nir_load_local_pixel_agx(
+   nir_def *res = nir_load_local_pixel_agx(
       b, MIN2(load_comps, comps), f16 ? 16 : bit_size,
       nir_imm_intN_t(b, ALL_SAMPLES, 16), .base = offset_B, .format = format);
 
@@ -100,7 +100,7 @@ load_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
  * texture/PBE descriptors are alternated for each render target. This is
  * ABI. If we need to make this more flexible for Vulkan later, we can.
  */
-static nir_ssa_def *
+static nir_def *
 handle_for_rt(nir_builder *b, unsigned base, unsigned rt, bool pbe,
               bool *bindless)
 {
@@ -117,7 +117,7 @@ handle_for_rt(nir_builder *b, unsigned base, unsigned rt, bool pbe,
 }
 
 static enum glsl_sampler_dim
-dim_for_rt(nir_builder *b, unsigned nr_samples, nir_ssa_def **sample)
+dim_for_rt(nir_builder *b, unsigned nr_samples, nir_def **sample)
 {
    if (nr_samples == 1) {
       *sample = nir_imm_intN_t(b, 0, 16);
@@ -129,7 +129,7 @@ dim_for_rt(nir_builder *b, unsigned nr_samples, nir_ssa_def **sample)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 image_coords(nir_builder *b)
 {
    return nir_pad_vector(b, nir_u2u32(b, nir_load_pixel_coord(b)), 4);
@@ -137,25 +137,25 @@ image_coords(nir_builder *b)
 
 static void
 store_memory(nir_builder *b, unsigned bindless_base, unsigned nr_samples,
-             enum pipe_format format, unsigned rt, nir_ssa_def *value)
+             enum pipe_format format, unsigned rt, nir_def *value)
 {
    /* Force bindless for multisampled image writes. It avoids the late lowering
     * needing a texture_base_agx sysval.
     */
    bool bindless = (nr_samples > 1);
-   nir_ssa_def *image = handle_for_rt(b, bindless_base, rt, true, &bindless);
-   nir_ssa_def *zero = nir_imm_intN_t(b, 0, 16);
-   nir_ssa_def *lod = zero;
+   nir_def *image = handle_for_rt(b, bindless_base, rt, true, &bindless);
+   nir_def *zero = nir_imm_intN_t(b, 0, 16);
+   nir_def *lod = zero;
 
-   nir_ssa_def *sample;
+   nir_def *sample;
    enum glsl_sampler_dim dim = dim_for_rt(b, nr_samples, &sample);
-   nir_ssa_def *coords = image_coords(b);
+   nir_def *coords = image_coords(b);
 
    nir_begin_invocation_interlock(b);
 
    if (nr_samples > 1) {
-      nir_ssa_def *coverage = nir_load_sample_mask(b);
-      nir_ssa_def *covered = nir_ubitfield_extract(
+      nir_def *coverage = nir_load_sample_mask(b);
+      nir_def *covered = nir_ubitfield_extract(
          b, coverage, nir_u2u32(b, sample), nir_imm_int(b, 1));
 
       nir_push_if(b, nir_ine_imm(b, covered, 0));
@@ -176,19 +176,19 @@ store_memory(nir_builder *b, unsigned bindless_base, unsigned nr_samples,
    b->shader->info.writes_memory = true;
 }
 
-static nir_ssa_def *
+static nir_def *
 load_memory(nir_builder *b, unsigned bindless_base, unsigned nr_samples,
             uint8_t comps, uint8_t bit_size, unsigned rt,
             enum pipe_format format)
 {
    bool bindless = false;
-   nir_ssa_def *image = handle_for_rt(b, bindless_base, rt, false, &bindless);
-   nir_ssa_def *zero = nir_imm_intN_t(b, 0, 16);
-   nir_ssa_def *lod = zero;
+   nir_def *image = handle_for_rt(b, bindless_base, rt, false, &bindless);
+   nir_def *zero = nir_imm_intN_t(b, 0, 16);
+   nir_def *lod = zero;
 
-   nir_ssa_def *sample;
+   nir_def *sample;
    enum glsl_sampler_dim dim = dim_for_rt(b, nr_samples, &sample);
-   nir_ssa_def *coords = image_coords(b);
+   nir_def *coords = image_coords(b);
 
    /* Ensure pixels below this one have written out their results */
    nir_begin_invocation_interlock(b);
@@ -204,7 +204,7 @@ load_memory(nir_builder *b, unsigned bindless_base, unsigned nr_samples,
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 tib_impl(nir_builder *b, nir_instr *instr, void *data)
 {
    struct ctx *ctx = data;
@@ -250,7 +250,7 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
       if (!write_mask)
          return NIR_LOWER_INSTR_PROGRESS_REPLACE;
 
-      nir_ssa_def *value = intr->src[0].ssa;
+      nir_def *value = intr->src[0].ssa;
 
       /* Trim to format as required by hardware */
       value = nir_trim_vector(b, intr->src[0].ssa, comps);
@@ -272,7 +272,7 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
        * possible to encode in the hardware, delete them.
        */
       if (logical_format == PIPE_FORMAT_NONE) {
-         return nir_ssa_undef(b, intr->num_components, bit_size);
+         return nir_undef(b, intr->num_components, bit_size);
       } else if (tib->spilled[rt]) {
          *(ctx->translucent) = true;
 

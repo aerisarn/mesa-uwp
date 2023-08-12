@@ -58,19 +58,19 @@ nir_lower_uniforms_to_ubo_instr(nir_builder *b, nir_instr *instr, void *data)
    /* Increase all UBO binding points by 1. */
    if (intr->intrinsic == nir_intrinsic_load_ubo &&
        !b->shader->info.first_ubo_is_default_ubo) {
-      nir_ssa_def *old_idx = nir_ssa_for_src(b, intr->src[0], 1);
-      nir_ssa_def *new_idx = nir_iadd_imm(b, old_idx, 1);
+      nir_def *old_idx = nir_ssa_for_src(b, intr->src[0], 1);
+      nir_def *new_idx = nir_iadd_imm(b, old_idx, 1);
       nir_instr_rewrite_src(&intr->instr, &intr->src[0],
                             nir_src_for_ssa(new_idx));
       return true;
    }
 
    if (intr->intrinsic == nir_intrinsic_load_uniform) {
-      nir_ssa_def *ubo_idx = nir_imm_int(b, 0);
-      nir_ssa_def *uniform_offset = nir_ssa_for_src(b, intr->src[0], 1);
+      nir_def *ubo_idx = nir_imm_int(b, 0);
+      nir_def *uniform_offset = nir_ssa_for_src(b, intr->src[0], 1);
 
       assert(intr->dest.ssa.bit_size >= 8);
-      nir_ssa_def *load_result;
+      nir_def *load_result;
       if (state->load_vec4) {
          /* No asking us to generate load_vec4 when you've packed your uniforms
           * as dwords instead of vec4s.
@@ -109,7 +109,7 @@ nir_lower_uniforms_to_ubo_instr(nir_builder *b, nir_instr *instr, void *data)
          nir_intrinsic_set_range_base(load, nir_intrinsic_base(intr) * multiplier);
          nir_intrinsic_set_range(load, nir_intrinsic_range(intr) * multiplier);
       }
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, load_result);
+      nir_def_rewrite_uses(&intr->dest.ssa, load_result);
 
       nir_instr_remove(&intr->instr);
       return true;

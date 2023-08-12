@@ -39,9 +39,9 @@ cl_type_size_align(const struct glsl_type *type, unsigned *size,
    *align = glsl_get_cl_alignment(type);
 }
 
-static nir_ssa_def *
+static nir_def *
 load_comps_to_vec(nir_builder *b, unsigned src_bit_size,
-                  nir_ssa_def **src_comps, unsigned num_src_comps,
+                  nir_def **src_comps, unsigned num_src_comps,
                   unsigned dst_bit_size)
 {
    if (src_bit_size == dst_bit_size)
@@ -51,14 +51,14 @@ load_comps_to_vec(nir_builder *b, unsigned src_bit_size,
 
    unsigned num_dst_comps = DIV_ROUND_UP(num_src_comps * src_bit_size, dst_bit_size);
    unsigned comps_per_dst = dst_bit_size / src_bit_size;
-   nir_ssa_def *dst_comps[4];
+   nir_def *dst_comps[4];
 
    for (unsigned i = 0; i < num_dst_comps; i++) {
       unsigned src_offs = i * comps_per_dst;
 
       dst_comps[i] = nir_u2uN(b, src_comps[src_offs], dst_bit_size);
       for (unsigned j = 1; j < comps_per_dst && src_offs + j < num_src_comps; j++) {
-         nir_ssa_def *tmp = nir_ishl_imm(b, nir_u2uN(b, src_comps[src_offs + j], dst_bit_size),
+         nir_def *tmp = nir_ishl_imm(b, nir_u2uN(b, src_comps[src_offs + j], dst_bit_size),
                                          j * src_bit_size);
          dst_comps[i] = nir_ior(b, dst_comps[i], tmp);
       }
@@ -76,14 +76,14 @@ lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *v
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *offset = intr->src[0].ssa;
+   nir_def *offset = intr->src[0].ssa;
    if (intr->intrinsic == nir_intrinsic_load_shared)
       offset = nir_iadd_imm(b, offset, nir_intrinsic_base(intr));
    else
       offset = nir_u2u32(b, offset);
-   nir_ssa_def *index = nir_ushr_imm(b, offset, 2);
-   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
-   nir_ssa_def *comps_32bit[NIR_MAX_VEC_COMPONENTS * 2];
+   nir_def *index = nir_ushr_imm(b, offset, 2);
+   nir_def *comps[NIR_MAX_VEC_COMPONENTS];
+   nir_def *comps_32bit[NIR_MAX_VEC_COMPONENTS * 2];
 
    /* We need to split loads in 32-bit accesses because the buffer
     * is an i32 array and DXIL does not support type casts.
@@ -96,40 +96,40 @@ lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *v
    for (unsigned i = 0; i < num_32bit_comps; i += num_comps_per_pass) {
       unsigned num_vec32_comps = MIN2(num_32bit_comps - i, 4);
       unsigned num_dest_comps = num_vec32_comps * 32 / bit_size;
-      nir_ssa_def *vec32 = nir_vec(b, &comps_32bit[i], num_vec32_comps);
+      nir_def *vec32 = nir_vec(b, &comps_32bit[i], num_vec32_comps);
 
       /* If we have 16 bits or less to load we need to adjust the u32 value so
        * we can always extract the LSB.
        */
       if (num_bits <= 16) {
-         nir_ssa_def *shift =
+         nir_def *shift =
             nir_imul_imm(b, nir_iand_imm(b, offset, 3), 8);
          vec32 = nir_ushr(b, vec32, shift);
       }
 
       /* And now comes the pack/unpack step to match the original type. */
       unsigned dest_index = i * 32 / bit_size;
-      nir_ssa_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, num_dest_comps, bit_size);
+      nir_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, num_dest_comps, bit_size);
       for (unsigned comp = 0; comp < num_dest_comps; ++comp, ++dest_index)
          comps[dest_index] = nir_channel(b, temp_vec, comp);
    }
 
-   nir_ssa_def *result = nir_vec(b, comps, num_components);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
+   nir_def *result = nir_vec(b, comps, num_components);
+   nir_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
 
    return true;
 }
 
 static void
-lower_masked_store_vec32(nir_builder *b, nir_ssa_def *offset, nir_ssa_def *index,
-                         nir_ssa_def *vec32, unsigned num_bits, nir_variable *var, unsigned alignment)
+lower_masked_store_vec32(nir_builder *b, nir_def *offset, nir_def *index,
+                         nir_def *vec32, unsigned num_bits, nir_variable *var, unsigned alignment)
 {
-   nir_ssa_def *mask = nir_imm_int(b, (1 << num_bits) - 1);
+   nir_def *mask = nir_imm_int(b, (1 << num_bits) - 1);
 
    /* If we have small alignments, we need to place them correctly in the u32 component. */
    if (alignment <= 2) {
-      nir_ssa_def *shift =
+      nir_def *shift =
          nir_imul_imm(b, nir_iand_imm(b, offset, 3), 8);
 
       vec32 = nir_ishl(b, vec32, shift);
@@ -143,9 +143,9 @@ lower_masked_store_vec32(nir_builder *b, nir_ssa_def *offset, nir_ssa_def *index
       nir_deref_atomic(b, 32, &deref->dest.ssa, vec32, .atomic_op = nir_atomic_op_ior);
    } else {
       /* For scratch, since we don't need atomics, just generate the read-modify-write in NIR */
-      nir_ssa_def *load = nir_load_array_var(b, var, index);
+      nir_def *load = nir_load_array_var(b, var, index);
 
-      nir_ssa_def *new_val = nir_ior(b, vec32,
+      nir_def *new_val = nir_ior(b, vec32,
                                      nir_iand(b,
                                               nir_inot(b, mask),
                                               load));
@@ -163,12 +163,12 @@ lower_32b_offset_store(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *offset = intr->src[1].ssa;
+   nir_def *offset = intr->src[1].ssa;
    if (intr->intrinsic == nir_intrinsic_store_shared)
       offset = nir_iadd_imm(b, offset, nir_intrinsic_base(intr));
    else
       offset = nir_u2u32(b, offset);
-   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
+   nir_def *comps[NIR_MAX_VEC_COMPONENTS];
 
    unsigned comp_idx = 0;
    for (unsigned i = 0; i < num_components; i++)
@@ -178,10 +178,10 @@ lower_32b_offset_store(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *
    for (unsigned i = 0; i < num_bits; i += step) {
       /* For each 4byte chunk (or smaller) we generate a 32bit scalar store. */
       unsigned substore_num_bits = MIN2(num_bits - i, step);
-      nir_ssa_def *local_offset = nir_iadd_imm(b, offset, i / 8);
-      nir_ssa_def *vec32 = load_comps_to_vec(b, bit_size, &comps[comp_idx],
+      nir_def *local_offset = nir_iadd_imm(b, offset, i / 8);
+      nir_def *vec32 = load_comps_to_vec(b, bit_size, &comps[comp_idx],
                                              substore_num_bits / bit_size, 32);
-      nir_ssa_def *index = nir_ushr_imm(b, local_offset, 2);
+      nir_def *index = nir_ushr_imm(b, local_offset, 2);
 
       /* For anything less than 32bits we need to use the masked version of the
        * intrinsic to preserve data living in the same 32bit slot. */
@@ -272,7 +272,7 @@ dxil_nir_lower_constant_to_temp(nir_shader *nir)
                   deref->dest.ssa.bit_size = 32;
                   if (deref->deref_type == nir_deref_type_array) {
                      b.cursor = nir_before_instr(instr);
-                     nir_src_rewrite_ssa(&deref->arr.index, nir_u2u32(&b, deref->arr.index.ssa));
+                     nir_src_rewrite(&deref->arr.index, nir_u2u32(&b, deref->arr.index.ssa));
                   }
                }
             }
@@ -319,12 +319,12 @@ flatten_var_arrays(nir_builder *b, nir_instr *instr, void *data)
    assert(path.path[0]->deref_type == nir_deref_type_var);
    b->cursor = nir_before_instr(&path.path[0]->instr);
    nir_deref_instr *new_var_deref = nir_build_deref_var(b, var);
-   nir_ssa_def *index = NULL;
+   nir_def *index = NULL;
    for (unsigned level = 1; path.path[level]; ++level) {
       nir_deref_instr *arr_deref = path.path[level];
       assert(arr_deref->deref_type == nir_deref_type_array);
       b->cursor = nir_before_instr(&arr_deref->instr);
-      nir_ssa_def *val = nir_imul_imm(b, arr_deref->arr.index.ssa,
+      nir_def *val = nir_imul_imm(b, arr_deref->arr.index.ssa,
                                       glsl_get_component_slots(arr_deref->type));
       if (index) {
          index = nir_iadd(b, index, val);
@@ -337,25 +337,25 @@ flatten_var_arrays(nir_builder *b, nir_instr *instr, void *data)
    if (vector_comps > 1) {
       b->cursor = nir_before_instr(instr);
       if (intr->intrinsic == nir_intrinsic_load_deref) {
-         nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS];
+         nir_def *components[NIR_MAX_VEC_COMPONENTS];
          for (unsigned i = 0; i < vector_comps; ++i) {
-            nir_ssa_def *final_index = index ? nir_iadd_imm(b, index, i) : nir_imm_int(b, i);
+            nir_def *final_index = index ? nir_iadd_imm(b, index, i) : nir_imm_int(b, i);
             nir_deref_instr *comp_deref = nir_build_deref_array(b, new_var_deref, final_index);
             components[i] = nir_load_deref(b, comp_deref);
          }
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, components, vector_comps));
+         nir_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, components, vector_comps));
       } else if (intr->intrinsic == nir_intrinsic_store_deref) {
          for (unsigned i = 0; i < vector_comps; ++i) {
             if (((1 << i) & nir_intrinsic_write_mask(intr)) == 0)
                continue;
-            nir_ssa_def *final_index = index ? nir_iadd_imm(b, index, i) : nir_imm_int(b, i);
+            nir_def *final_index = index ? nir_iadd_imm(b, index, i) : nir_imm_int(b, i);
             nir_deref_instr *comp_deref = nir_build_deref_array(b, new_var_deref, final_index);
             nir_store_deref(b, comp_deref, nir_channel(b, intr->src[1].ssa, i), 1);
          }
       }
       nir_instr_remove(instr);
    } else {
-      nir_src_rewrite_ssa(&intr->src[0], &nir_build_deref_array(b, new_var_deref, index)->dest.ssa);
+      nir_src_rewrite(&intr->src[0], &nir_build_deref_array(b, new_var_deref, index)->dest.ssa);
    }
 
    nir_deref_path_finish(&path);
@@ -462,13 +462,13 @@ lower_deref_bit_size(nir_builder *b, nir_instr *instr, void *data)
       if (intr->intrinsic == nir_intrinsic_load_deref) {
          intr->dest.ssa.bit_size = glsl_get_bit_size(var_scalar_type);
          b->cursor = nir_after_instr(instr);
-         nir_ssa_def *downcast = nir_type_convert(b, &intr->dest.ssa, new_type, old_type, nir_rounding_mode_undef);
-         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, downcast, downcast->parent_instr);
+         nir_def *downcast = nir_type_convert(b, &intr->dest.ssa, new_type, old_type, nir_rounding_mode_undef);
+         nir_def_rewrite_uses_after(&intr->dest.ssa, downcast, downcast->parent_instr);
       }
       else {
          b->cursor = nir_before_instr(instr);
-         nir_ssa_def *upcast = nir_type_convert(b, intr->src[1].ssa, old_type, new_type, nir_rounding_mode_undef);
-         nir_src_rewrite_ssa(&intr->src[1], upcast);
+         nir_def *upcast = nir_type_convert(b, intr->src[1].ssa, old_type, new_type, nir_rounding_mode_undef);
+         nir_src_rewrite(&intr->src[1], upcast);
       }
 
       while (deref->deref_type == nir_deref_type_array) {
@@ -488,12 +488,12 @@ lower_deref_bit_size(nir_builder *b, nir_instr *instr, void *data)
                                                       nir_iadd_imm(b, deref->arr.index.ssa, 1));
       b->cursor = nir_before_instr(instr);
       if (intr->intrinsic == nir_intrinsic_load_deref) {
-         nir_ssa_def *src1 = nir_load_deref(b, deref);
-         nir_ssa_def *src2 = nir_load_deref(b, deref2);
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_pack_64_2x32_split(b, src1, src2));
+         nir_def *src1 = nir_load_deref(b, deref);
+         nir_def *src2 = nir_load_deref(b, deref2);
+         nir_def_rewrite_uses(&intr->dest.ssa, nir_pack_64_2x32_split(b, src1, src2));
       } else {
-         nir_ssa_def *src1 = nir_unpack_64_2x32_split_x(b, intr->src[1].ssa);
-         nir_ssa_def *src2 = nir_unpack_64_2x32_split_y(b, intr->src[1].ssa);
+         nir_def *src1 = nir_unpack_64_2x32_split_x(b, intr->src[1].ssa);
+         nir_def *src2 = nir_unpack_64_2x32_split_y(b, intr->src[1].ssa);
          nir_store_deref(b, deref, src1, 1);
          nir_store_deref(b, deref, src2, 1);
       }
@@ -619,12 +619,12 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_iadd_imm(b, intr->src[0].ssa, nir_intrinsic_base(intr));
-   nir_ssa_def *index = nir_ushr_imm(b, offset, 2);
+   nir_def *index = nir_ushr_imm(b, offset, 2);
 
    nir_deref_instr *deref = nir_build_deref_array(b, nir_build_deref_var(b, var), index);
-   nir_ssa_def *result;
+   nir_def *result;
    if (intr->intrinsic == nir_intrinsic_shared_atomic_swap)
       result = nir_deref_atomic_swap(b, 32, &deref->dest.ssa, intr->src[1].ssa, intr->src[2].ssa,
                                      .atomic_op = nir_intrinsic_atomic_op(intr));
@@ -632,7 +632,7 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var
       result = nir_deref_atomic(b, 32, &deref->dest.ssa, intr->src[1].ssa,
                                 .atomic_op = nir_intrinsic_atomic_op(intr));
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
+   nir_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
    return true;
 }
@@ -713,11 +713,11 @@ lower_deref_ssbo(nir_builder *b, nir_deref_instr *deref)
       /* We turn all deref_var into deref_cast and build a pointer value based on
        * the var binding which encodes the UAV id.
        */
-      nir_ssa_def *ptr = nir_imm_int64(b, (uint64_t)var->data.binding << 32);
+      nir_def *ptr = nir_imm_int64(b, (uint64_t)var->data.binding << 32);
       nir_deref_instr *deref_cast =
          nir_build_deref_cast(b, ptr, nir_var_mem_ssbo, deref->type,
                               glsl_get_explicit_stride(var->type));
-      nir_ssa_def_rewrite_uses(&deref->dest.ssa,
+      nir_def_rewrite_uses(&deref->dest.ssa,
                                &deref_cast->dest.ssa);
       nir_instr_remove(&deref->instr);
 
@@ -781,7 +781,7 @@ lower_alu_deref_srcs(nir_builder *b, nir_alu_instr *alu)
       if (root_deref->deref_type != nir_deref_type_cast)
          continue;
 
-      nir_ssa_def *ptr =
+      nir_def *ptr =
          nir_iadd(b, root_deref->parent.ssa,
                      nir_build_deref_offset(b, deref, cl_type_size_align));
       nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(ptr));
@@ -830,7 +830,7 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
 
       b->cursor = nir_after_instr_and_phis(src->src.ssa->parent_instr);
 
-      nir_ssa_def *cast = nir_u2uN(b, src->src.ssa, new_bit_size);
+      nir_def *cast = nir_u2uN(b, src->src.ssa, new_bit_size);
 
       nir_phi_instr_add_src(lowered, src->pred, nir_src_for_ssa(cast));
    }
@@ -842,9 +842,9 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
    nir_builder_instr_insert(b, &lowered->instr);
 
    b->cursor = nir_after_phis(nir_cursor_current_block(b->cursor));
-   nir_ssa_def *result = nir_u2uN(b, &lowered->dest.ssa, old_bit_size);
+   nir_def *result = nir_u2uN(b, &lowered->dest.ssa, old_bit_size);
 
-   nir_ssa_def_rewrite_uses(&phi->dest.ssa, result);
+   nir_def_rewrite_uses(&phi->dest.ssa, result);
    nir_instr_remove(&phi->instr);
 }
 
@@ -1002,7 +1002,7 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
       new_intermediate_deref = nir_build_deref_array(b, new_intermediate_deref, parent->arr.index.ssa);
    }
    nir_deref_instr *new_array_deref = nir_build_deref_array(b, new_intermediate_deref, nir_imm_int(b, total_index % 4));
-   nir_ssa_def_rewrite_uses(&deref->dest.ssa, &new_array_deref->dest.ssa);
+   nir_def_rewrite_uses(&deref->dest.ssa, &new_array_deref->dest.ssa);
    return true;
 }
 
@@ -1048,10 +1048,10 @@ dxil_nir_lower_double_math_instr(nir_builder *b,
          unsigned num_components = nir_op_infos[alu->op].input_sizes[i];
          if (!num_components)
             num_components = alu->dest.dest.ssa.num_components;
-         nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS];
+         nir_def *components[NIR_MAX_VEC_COMPONENTS];
          for (unsigned c = 0; c < num_components; ++c) {
-            nir_ssa_def *packed_double = nir_channel(b, alu->src[i].src.ssa, alu->src[i].swizzle[c]);
-            nir_ssa_def *unpacked_double = nir_unpack_64_2x32(b, packed_double);
+            nir_def *packed_double = nir_channel(b, alu->src[i].src.ssa, alu->src[i].swizzle[c]);
+            nir_def *unpacked_double = nir_unpack_64_2x32(b, packed_double);
             components[c] = nir_pack_double_2x32_dxil(b, unpacked_double);
             alu->src[i].swizzle[c] = c;
          }
@@ -1063,14 +1063,14 @@ dxil_nir_lower_double_math_instr(nir_builder *b,
    if (nir_alu_type_get_base_type(nir_op_infos[alu->op].output_type) == nir_type_float &&
        alu->dest.dest.ssa.bit_size == 64) {
       b->cursor = nir_after_instr(&alu->instr);
-      nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS];
+      nir_def *components[NIR_MAX_VEC_COMPONENTS];
       for (unsigned c = 0; c < alu->dest.dest.ssa.num_components; ++c) {
-         nir_ssa_def *packed_double = nir_channel(b, &alu->dest.dest.ssa, c);
-         nir_ssa_def *unpacked_double = nir_unpack_double_2x32_dxil(b, packed_double);
+         nir_def *packed_double = nir_channel(b, &alu->dest.dest.ssa, c);
+         nir_def *unpacked_double = nir_unpack_double_2x32_dxil(b, packed_double);
          components[c] = nir_pack_64_2x32(b, unpacked_double);
       }
-      nir_ssa_def *repacked_dvec = nir_vec(b, components, alu->dest.dest.ssa.num_components);
-      nir_ssa_def_rewrite_uses_after(&alu->dest.dest.ssa, repacked_dvec, repacked_dvec->parent_instr);
+      nir_def *repacked_dvec = nir_vec(b, components, alu->dest.dest.ssa.num_components);
+      nir_def_rewrite_uses_after(&alu->dest.dest.ssa, repacked_dvec, repacked_dvec->parent_instr);
       progress = true;
    }
 
@@ -1128,7 +1128,7 @@ lower_system_value_to_zero_filter(const nir_instr* instr, const void* cb_state)
    return false;
 }
 
-static nir_ssa_def*
+static nir_def*
 lower_system_value_to_zero_instr(nir_builder* b, nir_instr* instr, void* _state)
 {
    return nir_imm_int(b, 0);
@@ -1156,8 +1156,8 @@ lower_load_local_group_size(nir_builder *b, nir_intrinsic_instr *intr)
       nir_const_value_for_int(b->shader->info.workgroup_size[1], 32),
       nir_const_value_for_int(b->shader->info.workgroup_size[2], 32)
    };
-   nir_ssa_def *size = nir_build_imm(b, 3, 32, v);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, size);
+   nir_def *size = nir_build_imm(b, 3, 32, v);
+   nir_def_rewrite_uses(&intr->dest.ssa, size);
    nir_instr_remove(&intr->instr);
 }
 
@@ -1423,7 +1423,7 @@ lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
       ? 32 : intr->dest.ssa.bit_size;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *result = nir_load_input(b, intr->dest.ssa.num_components, bit_size, nir_imm_int(b, 0),
+   nir_def *result = nir_load_input(b, intr->dest.ssa.num_components, bit_size, nir_imm_int(b, 0),
       .base = var->data.driver_location, .dest_type = dest_type);
 
    /* The nir_type_uint32 is really a nir_type_bool32, but that type is very
@@ -1433,7 +1433,7 @@ lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
    if (sysval == SYSTEM_VALUE_FRONT_FACE)
       result = nir_ine_imm(b, result, 0);
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
+   nir_def_rewrite_uses(&intr->dest.ssa, result);
    return true;
 }
 
@@ -1610,14 +1610,14 @@ lower_ubo_array_one_to_static(struct nir_builder *b, nir_instr *inst,
    // Indexing out of bounds on array of UBOs is considered undefined
    // behavior. Therefore, we just hardcode all the index to 0.
    uint8_t bit_size = index->dest.ssa.bit_size;
-   nir_ssa_def *zero = nir_imm_intN_t(b, 0, bit_size);
-   nir_ssa_def *dest =
+   nir_def *zero = nir_imm_intN_t(b, 0, bit_size);
+   nir_def *dest =
       nir_vulkan_resource_index(b, index->num_components, bit_size, zero,
                                 .desc_set = nir_intrinsic_desc_set(index),
                                 .binding = nir_intrinsic_binding(index),
                                 .desc_type = nir_intrinsic_desc_type(index));
 
-   nir_ssa_def_rewrite_uses(&index->dest.ssa, dest);
+   nir_def_rewrite_uses(&index->dest.ssa, dest);
 
    return true;
 }
@@ -1641,7 +1641,7 @@ is_fquantize2f16(const nir_instr *instr, const void *data)
    return alu->op == nir_op_fquantize2f16;
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_fquantize2f16(struct nir_builder *b, nir_instr *instr, void *data)
 {
    /*
@@ -1672,19 +1672,19 @@ lower_fquantize2f16(struct nir_builder *b, nir_instr *instr, void *data)
     *      return round(val);
     */
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   nir_ssa_def *src =
+   nir_def *src =
       nir_ssa_for_src(b, alu->src[0].src, nir_src_num_components(alu->src[0].src));
 
-   nir_ssa_def *neg_inf_cond =
+   nir_def *neg_inf_cond =
       nir_flt_imm(b, src, -65504.0f);
-   nir_ssa_def *pos_inf_cond =
+   nir_def *pos_inf_cond =
       nir_fgt_imm(b, src, 65504.0f);
-   nir_ssa_def *zero_cond =
+   nir_def *zero_cond =
       nir_flt_imm(b, nir_fabs(b, src), ldexpf(1.0, -14));
-   nir_ssa_def *zero = nir_iand_imm(b, src, 1 << 31);
-   nir_ssa_def *round = nir_iand_imm(b, src, ~BITFIELD_MASK(13));
+   nir_def *zero = nir_iand_imm(b, src, 1 << 31);
+   nir_def *round = nir_iand_imm(b, src, ~BITFIELD_MASK(13));
 
-   nir_ssa_def *res =
+   nir_def *res =
       nir_bcsel(b, neg_inf_cond, nir_imm_float(b, -INFINITY), round);
    res = nir_bcsel(b, pos_inf_cond, nir_imm_float(b, INFINITY), res);
    res = nir_bcsel(b, zero_cond, zero, res);
@@ -1847,14 +1847,14 @@ update_writes(struct nir_builder *b, nir_instr *instr, void *_state)
    if (io.location != VARYING_SLOT_POS)
       return false;
 
-   nir_ssa_def *src = intr->src[0].ssa;
+   nir_def *src = intr->src[0].ssa;
    unsigned write_mask = nir_intrinsic_write_mask(intr);
    if (src->num_components == 4 && write_mask == 0xf)
       return false;
 
    b->cursor = nir_before_instr(instr);
    unsigned first_comp = nir_intrinsic_component(intr);
-   nir_ssa_def *channels[4] = { NULL, NULL, NULL, NULL };
+   nir_def *channels[4] = { NULL, NULL, NULL, NULL };
    assert(first_comp + src->num_components <= ARRAY_SIZE(channels));
    for (unsigned i = 0; i < src->num_components; ++i)
       if (write_mask & (1 << i))
@@ -1894,7 +1894,7 @@ is_sample_pos(const nir_instr *instr, const void *_data)
    return intr->intrinsic == nir_intrinsic_load_sample_pos;
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_sample_pos(nir_builder *b, nir_instr *instr, void *_data)
 {
    return nir_load_sample_pos_from_id(b, 32, nir_load_sample_id(b));
@@ -1920,19 +1920,19 @@ lower_subgroup_id(nir_builder *b, nir_instr *instr, void *data)
        b->shader->info.workgroup_size[2] == 1) {
       /* When using Nx1x1 groups, use a simple stable algorithm
        * which is almost guaranteed to be correct. */
-      nir_ssa_def *subgroup_id = nir_udiv(b, nir_load_local_invocation_index(b), nir_load_subgroup_size(b));
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, subgroup_id);
+      nir_def *subgroup_id = nir_udiv(b, nir_load_local_invocation_index(b), nir_load_subgroup_size(b));
+      nir_def_rewrite_uses(&intr->dest.ssa, subgroup_id);
       return true;
    }
 
-   nir_ssa_def **subgroup_id = (nir_ssa_def **)data;
+   nir_def **subgroup_id = (nir_def **)data;
    if (*subgroup_id == NULL) {
       nir_variable *subgroup_id_counter = nir_variable_create(b->shader, nir_var_mem_shared, glsl_uint_type(), "dxil_SubgroupID_counter");
       nir_variable *subgroup_id_local = nir_local_variable_create(b->impl, glsl_uint_type(), "dxil_SubgroupID_local");
       nir_store_var(b, subgroup_id_local, nir_imm_int(b, 0), 1);
 
       nir_deref_instr *counter_deref = nir_build_deref_var(b, subgroup_id_counter);
-      nir_ssa_def *tid = nir_load_local_invocation_index(b);
+      nir_def *tid = nir_load_local_invocation_index(b);
       nir_if *nif = nir_push_if(b, nir_ieq_imm(b, tid, 0));
       nir_store_deref(b, counter_deref, nir_imm_int(b, 0), 1);
       nir_pop_if(b, nif);
@@ -1944,22 +1944,22 @@ lower_subgroup_id(nir_builder *b, nir_instr *instr, void *data)
                          .memory_modes = nir_var_mem_shared);
 
       nif = nir_push_if(b, nir_elect(b, 1));
-      nir_ssa_def *subgroup_id_first_thread = nir_deref_atomic(b, 32, &counter_deref->dest.ssa, nir_imm_int(b, 1),
+      nir_def *subgroup_id_first_thread = nir_deref_atomic(b, 32, &counter_deref->dest.ssa, nir_imm_int(b, 1),
                                                                .atomic_op = nir_atomic_op_iadd);
       nir_store_var(b, subgroup_id_local, subgroup_id_first_thread, 1);
       nir_pop_if(b, nif);
 
-      nir_ssa_def *subgroup_id_loaded = nir_load_var(b, subgroup_id_local);
+      nir_def *subgroup_id_loaded = nir_load_var(b, subgroup_id_local);
       *subgroup_id = nir_read_first_invocation(b, subgroup_id_loaded);
    }
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, *subgroup_id);
+   nir_def_rewrite_uses(&intr->dest.ssa, *subgroup_id);
    return true;
 }
 
 bool
 dxil_nir_lower_subgroup_id(nir_shader *s)
 {
-   nir_ssa_def *subgroup_id = NULL;
+   nir_def *subgroup_id = NULL;
    return nir_shader_instructions_pass(s, lower_subgroup_id, nir_metadata_none, &subgroup_id);
 }
 
@@ -1973,14 +1973,14 @@ lower_num_subgroups(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *subgroup_size = nir_load_subgroup_size(b);
-   nir_ssa_def *size_minus_one = nir_iadd_imm(b, subgroup_size, -1);
-   nir_ssa_def *workgroup_size_vec = nir_load_workgroup_size(b);
-   nir_ssa_def *workgroup_size = nir_imul(b, nir_channel(b, workgroup_size_vec, 0),
+   nir_def *subgroup_size = nir_load_subgroup_size(b);
+   nir_def *size_minus_one = nir_iadd_imm(b, subgroup_size, -1);
+   nir_def *workgroup_size_vec = nir_load_workgroup_size(b);
+   nir_def *workgroup_size = nir_imul(b, nir_channel(b, workgroup_size_vec, 0),
                                              nir_imul(b, nir_channel(b, workgroup_size_vec, 1),
                                                          nir_channel(b, workgroup_size_vec, 2)));
-   nir_ssa_def *ret = nir_idiv(b, nir_iadd(b, workgroup_size, size_minus_one), subgroup_size);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+   nir_def *ret = nir_idiv(b, nir_iadd(b, workgroup_size, size_minus_one), subgroup_size);
+   nir_def_rewrite_uses(&intr->dest.ssa, ret);
    return true;
 }
 
@@ -2014,7 +2014,7 @@ static void
 split_unaligned_load(nir_builder *b, nir_intrinsic_instr *intrin, unsigned alignment)
 {
    enum gl_access_qualifier access = nir_intrinsic_access(intrin);
-   nir_ssa_def *srcs[NIR_MAX_VEC_COMPONENTS * NIR_MAX_VEC_COMPONENTS * sizeof(int64_t) / 8];
+   nir_def *srcs[NIR_MAX_VEC_COMPONENTS * NIR_MAX_VEC_COMPONENTS * sizeof(int64_t) / 8];
    unsigned comp_size = intrin->dest.ssa.bit_size / 8;
    unsigned num_comps = intrin->dest.ssa.num_components;
 
@@ -2031,8 +2031,8 @@ split_unaligned_load(nir_builder *b, nir_intrinsic_instr *intrin, unsigned align
       srcs[i] = nir_load_deref_with_access(b, elem, access);
    }
 
-   nir_ssa_def *new_dest = nir_extract_bits(b, srcs, num_loads, 0, num_comps, intrin->dest.ssa.bit_size);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_dest);
+   nir_def *new_dest = nir_extract_bits(b, srcs, num_loads, 0, num_comps, intrin->dest.ssa.bit_size);
+   nir_def_rewrite_uses(&intrin->dest.ssa, new_dest);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -2041,7 +2041,7 @@ split_unaligned_store(nir_builder *b, nir_intrinsic_instr *intrin, unsigned alig
 {
    enum gl_access_qualifier access = nir_intrinsic_access(intrin);
 
-   nir_ssa_def *value = intrin->src[1].ssa;
+   nir_def *value = intrin->src[1].ssa;
    unsigned comp_size = value->bit_size / 8;
    unsigned num_comps = value->num_components;
 
@@ -2054,7 +2054,7 @@ split_unaligned_store(nir_builder *b, nir_intrinsic_instr *intrin, unsigned alig
 
    unsigned num_stores = DIV_ROUND_UP(comp_size * num_comps, alignment);
    for (unsigned i = 0; i < num_stores; ++i) {
-      nir_ssa_def *substore_val = nir_extract_bits(b, &value, 1, i * alignment * 8, 1, alignment * 8);
+      nir_def *substore_val = nir_extract_bits(b, &value, 1, i * alignment * 8, 1, alignment * 8);
       nir_deref_instr *elem = nir_build_deref_ptr_as_array(b, cast, nir_imm_intN_t(b, i, cast->dest.ssa.bit_size));
       nir_store_deref_with_access(b, elem, substore_val, ~0, access);
    }
@@ -2094,7 +2094,7 @@ dxil_nir_split_unaligned_loads_stores(nir_shader *shader, nir_variable_mode mode
             if (alignment >= req_align)
                continue;
 
-            nir_ssa_def *val;
+            nir_def *val;
             if (intrin->intrinsic == nir_intrinsic_load_deref) {
                val = &intrin->dest.ssa;
             } else {
@@ -2133,9 +2133,9 @@ lower_inclusive_to_exclusive(nir_builder *b, nir_intrinsic_instr *intr)
    intr->intrinsic = nir_intrinsic_exclusive_scan;
    nir_intrinsic_set_reduction_op(intr, op);
 
-   nir_ssa_def *final_val = nir_build_alu2(b, nir_intrinsic_reduction_op(intr),
+   nir_def *final_val = nir_build_alu2(b, nir_intrinsic_reduction_op(intr),
                                            &intr->dest.ssa, intr->src[0].ssa);
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, final_val, final_val->parent_instr);
+   nir_def_rewrite_uses_after(&intr->dest.ssa, final_val, final_val->parent_instr);
 }
 
 static bool
@@ -2166,9 +2166,9 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(instr);
    nir_op op = nir_intrinsic_reduction_op(intr);
-   nir_ssa_def *subgroup_id = nir_load_subgroup_invocation(b);
-   nir_ssa_def *active_threads = nir_ballot(b, 4, 32, nir_imm_true(b));
-   nir_ssa_def *base_value;
+   nir_def *subgroup_id = nir_load_subgroup_invocation(b);
+   nir_def *active_threads = nir_ballot(b, 4, 32, nir_imm_true(b));
+   nir_def *base_value;
    uint32_t bit_size = intr->dest.ssa.bit_size;
    if (op == nir_op_iand || op == nir_op_umin)
       base_value = nir_imm_intN_t(b, ~0ull, bit_size);
@@ -2191,12 +2191,12 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
    nir_store_var(b, loop_counter_var, nir_imm_int(b, 0), 1);
    nir_store_var(b, result_var, base_value, 1);
    nir_loop *loop = nir_push_loop(b);
-   nir_ssa_def *loop_counter = nir_load_var(b, loop_counter_var);
+   nir_def *loop_counter = nir_load_var(b, loop_counter_var);
    nir_if *nif = nir_push_if(b, intr->intrinsic == nir_intrinsic_inclusive_scan ?
       nir_ige(b, subgroup_id, loop_counter) :
       nir_ilt(b, loop_counter, subgroup_id));
    nir_if *if_active_thread = nir_push_if(b, nir_ballot_bitfield_extract(b, 32, active_threads, loop_counter));
-   nir_ssa_def *result = nir_build_alu2(b, op,
+   nir_def *result = nir_build_alu2(b, op,
                                         nir_load_var(b, result_var),
                                         nir_read_invocation(b, intr->src[0].ssa, loop_counter));
    nir_store_var(b, result_var, result, 1);
@@ -2208,7 +2208,7 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
    nir_pop_loop(b, loop);
 
    result = nir_load_var(b, result_var);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
+   nir_def_rewrite_uses(&intr->dest.ssa, result);
    return true;
 }
 
@@ -2237,9 +2237,9 @@ lower_load_face(nir_builder *b, nir_instr *instr, void *data)
    b->cursor = nir_before_instr(&intr->instr);
 
    nir_variable *var = data;
-   nir_ssa_def *load = nir_ine_imm(b, nir_load_var(b, var), 0);
+   nir_def *load = nir_ine_imm(b, nir_load_var(b, var), 0);
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
+   nir_def_rewrite_uses(&intr->dest.ssa, load);
    nir_instr_remove(instr);
    return true;
 }
@@ -2276,7 +2276,7 @@ move_consts(nir_builder *b, nir_instr *instr, void *data)
                                                                          load_const->def.bit_size);
             memcpy(new_load->value, load_const->value, sizeof(load_const->value[0]) * load_const->def.num_components);
             nir_builder_instr_insert(b, &new_load->instr);
-            nir_src_rewrite_ssa(src, &new_load->def);
+            nir_src_rewrite(src, &new_load->def);
             progress = true;
          }
       }

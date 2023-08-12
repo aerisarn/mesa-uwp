@@ -84,7 +84,7 @@ lower_sample_mask_to_zs(nir_builder *b, nir_instr *instr, UNUSED void *data)
     */
    if (intr->intrinsic == nir_intrinsic_store_zs_agx && !depth_written) {
       /* Load the current depth at this pixel */
-      nir_ssa_def *z = nir_load_frag_coord_zw(b, .component = 2);
+      nir_def *z = nir_load_frag_coord_zw(b, .component = 2);
 
       /* Write it out from this store_zs */
       nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) | BASE_Z);
@@ -103,7 +103,7 @@ lower_sample_mask_to_zs(nir_builder *b, nir_instr *instr, UNUSED void *data)
    /* Write a NaN depth value for discarded samples */
    nir_store_zs_agx(b, intr->src[0].ssa, nir_imm_float(b, NAN),
                     stencil_written ? nir_imm_intN_t(b, 0, 16)
-                                    : nir_ssa_undef(b, 1, 16) /* stencil */,
+                                    : nir_undef(b, 1, 16) /* stencil */,
                     .base = BASE_Z | (stencil_written ? BASE_S : 0));
 
    nir_instr_remove(instr);
@@ -196,9 +196,9 @@ agx_nir_lower_sample_mask(nir_shader *shader, unsigned nr_samples)
             /* Last discard is executed unconditionally, so fuse tests. */
             b.cursor = nir_before_instr(&intr->instr);
 
-            nir_ssa_def *all_samples = nir_imm_intN_t(&b, ALL_SAMPLES, 16);
-            nir_ssa_def *killed = intr->src[0].ssa;
-            nir_ssa_def *live = nir_ixor(&b, killed, all_samples);
+            nir_def *all_samples = nir_imm_intN_t(&b, ALL_SAMPLES, 16);
+            nir_def *killed = intr->src[0].ssa;
+            nir_def *live = nir_ixor(&b, killed, all_samples);
 
             nir_sample_mask_agx(&b, all_samples, live);
             nir_instr_remove(&intr->instr);

@@ -30,15 +30,15 @@ bool
 vtn_handle_amd_gcn_shader_instruction(struct vtn_builder *b, SpvOp ext_opcode,
                                       const uint32_t *w, unsigned count)
 {
-   nir_ssa_def *def;
+   nir_def *def;
    switch ((enum GcnShaderAMD)ext_opcode) {
    case CubeFaceIndexAMD:
       def = nir_channel(&b->nb, nir_cube_amd(&b->nb, vtn_get_nir_ssa(b, w[5])), 3);
       break;
    case CubeFaceCoordAMD: {
       def = nir_cube_amd(&b->nb, vtn_get_nir_ssa(b, w[5]));
-      nir_ssa_def *st = nir_swizzle(&b->nb, def, (unsigned[]){1, 0}, 2);
-      nir_ssa_def *invma = nir_frcp(&b->nb, nir_channel(&b->nb, def, 2));
+      nir_def *st = nir_swizzle(&b->nb, def, (unsigned[]){1, 0}, 2);
+      nir_def *invma = nir_frcp(&b->nb, nir_channel(&b->nb, def, 2));
       def = nir_ffma_imm2(&b->nb, st, invma, 0.5);
       break;
    }
@@ -126,19 +126,19 @@ vtn_handle_amd_shader_trinary_minmax_instruction(struct vtn_builder *b, SpvOp ex
 
    unsigned num_inputs = count - 5;
    assert(num_inputs == 3);
-   nir_ssa_def *src[3] = { NULL, };
+   nir_def *src[3] = { NULL, };
    for (unsigned i = 0; i < num_inputs; i++)
       src[i] = vtn_get_nir_ssa(b, w[i + 5]);
 
    /* place constants at src[1-2] for easier constant-folding */
    for (unsigned i = 1; i <= 2; i++) {
       if (nir_src_as_const_value(nir_src_for_ssa(src[0]))) {
-         nir_ssa_def* tmp = src[i];
+         nir_def* tmp = src[i];
          src[i] = src[0];
          src[0] = tmp;
       }
    }
-   nir_ssa_def *def;
+   nir_def *def;
    switch ((enum ShaderTrinaryMinMaxAMD)ext_opcode) {
    case FMin3AMD:
       def = nir_fmin(nb, src[0], nir_fmin(nb, src[1], src[2]));
@@ -222,7 +222,7 @@ vtn_handle_amd_shader_explicit_vertex_parameter_instruction(struct vtn_builder *
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-   nir_ssa_def *def;
+   nir_def *def;
    if (vec_array_deref) {
       assert(vec_deref);
       def = nir_vector_extract(&b->nb, &intrin->dest.ssa,

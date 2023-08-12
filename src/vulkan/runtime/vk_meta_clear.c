@@ -67,7 +67,7 @@ build_clear_shader(const struct vk_meta_clear_key *key)
       nir_build_deref_struct(b, nir_build_deref_var(b, push), 0);
 
    u_foreach_bit(a, key->color_attachments_cleared) {
-      nir_ssa_def *color_value =
+      nir_def *color_value =
          nir_load_deref(b, nir_build_deref_array_imm(b, push_arr, a));
 
       const struct glsl_type *out_type;

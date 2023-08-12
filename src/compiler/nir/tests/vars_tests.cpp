@@ -187,7 +187,7 @@ class nir_remove_dead_variables_test : public nir_vars_test {};
 
 } // namespace
 
-static nir_ssa_def *
+static nir_def *
 nir_load_var_volatile(nir_builder *b, nir_variable *var)
 {
    return nir_load_deref_with_access(b, nir_build_deref_var(b, var),
@@ -196,7 +196,7 @@ nir_load_var_volatile(nir_builder *b, nir_variable *var)
 
 static void
 nir_store_var_volatile(nir_builder *b, nir_variable *var,
-                       nir_ssa_def *value, nir_component_mask_t writemask)
+                       nir_def *value, nir_component_mask_t writemask)
 {
    nir_store_deref_with_access(b, nir_build_deref_var(b, var),
                                value, writemask, ACCESS_VOLATILE);
@@ -399,10 +399,10 @@ TEST_F(nir_copy_prop_vars_test, simple_store_load)
    nir_variable **v = create_many_ivec2(nir_var_function_temp, "v", 2);
    unsigned mask = 1 | 2;
 
-   nir_ssa_def *stored_value = nir_imm_ivec2(b, 10, 20);
+   nir_def *stored_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], stored_value, mask);
 
-   nir_ssa_def *read_value = nir_load_var(b, v[0]);
+   nir_def *read_value = nir_load_var(b, v[0]);
    nir_store_var(b, v[1], read_value, mask);
 
    nir_validate_shader(b->shader, NULL);
@@ -425,13 +425,13 @@ TEST_F(nir_copy_prop_vars_test, store_store_load)
    nir_variable **v = create_many_ivec2(nir_var_function_temp, "v", 2);
    unsigned mask = 1 | 2;
 
-   nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
+   nir_def *first_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], first_value, mask);
 
-   nir_ssa_def *second_value = nir_imm_ivec2(b, 30, 40);
+   nir_def *second_value = nir_imm_ivec2(b, 30, 40);
    nir_store_var(b, v[0], second_value, mask);
 
-   nir_ssa_def *read_value = nir_load_var(b, v[0]);
+   nir_def *read_value = nir_load_var(b, v[0]);
    nir_store_var(b, v[1], read_value, mask);
 
    nir_validate_shader(b->shader, NULL);
@@ -453,13 +453,13 @@ TEST_F(nir_copy_prop_vars_test, store_store_load_different_components)
 {
    nir_variable **v = create_many_ivec2(nir_var_function_temp, "v", 2);
 
-   nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
+   nir_def *first_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], first_value, 1 << 1);
 
-   nir_ssa_def *second_value = nir_imm_ivec2(b, 30, 40);
+   nir_def *second_value = nir_imm_ivec2(b, 30, 40);
    nir_store_var(b, v[0], second_value, 1 << 0);
 
-   nir_ssa_def *read_value = nir_load_var(b, v[0]);
+   nir_def *read_value = nir_load_var(b, v[0]);
    nir_store_var(b, v[1], read_value, 1 << 1);
 
    nir_validate_shader(b->shader, NULL);
@@ -486,19 +486,19 @@ TEST_F(nir_copy_prop_vars_test, store_store_load_different_components_in_many_bl
 {
    nir_variable **v = create_many_ivec2(nir_var_function_temp, "v", 2);
 
-   nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
+   nir_def *first_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], first_value, 1 << 1);
 
    /* Adding an if statement will cause blocks to be created. */
    nir_pop_if(b, nir_push_if(b, nir_imm_int(b, 0)));
 
-   nir_ssa_def *second_value = nir_imm_ivec2(b, 30, 40);
+   nir_def *second_value = nir_imm_ivec2(b, 30, 40);
    nir_store_var(b, v[0], second_value, 1 << 0);
 
    /* Adding an if statement will cause blocks to be created. */
    nir_pop_if(b, nir_push_if(b, nir_imm_int(b, 0)));
 
-   nir_ssa_def *read_value = nir_load_var(b, v[0]);
+   nir_def *read_value = nir_load_var(b, v[0]);
    nir_store_var(b, v[1], read_value, 1 << 1);
 
    nir_validate_shader(b->shader, NULL);
@@ -526,16 +526,16 @@ TEST_F(nir_copy_prop_vars_test, store_volatile)
    nir_variable **v = create_many_ivec2(nir_var_function_temp, "v", 2);
    unsigned mask = 1 | 2;
 
-   nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
+   nir_def *first_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], first_value, mask);
 
-   nir_ssa_def *second_value = nir_imm_ivec2(b, 30, 40);
+   nir_def *second_value = nir_imm_ivec2(b, 30, 40);
    nir_store_var_volatile(b, v[0], second_value, mask);
 
-   nir_ssa_def *third_value = nir_imm_ivec2(b, 50, 60);
+   nir_def *third_value = nir_imm_ivec2(b, 50, 60);
    nir_store_var(b, v[0], third_value, mask);
 
-   nir_ssa_def *read_value = nir_load_var(b, v[0]);
+   nir_def *read_value = nir_load_var(b, v[0]);
    nir_store_var(b, v[1], read_value, mask);
 
    nir_validate_shader(b->shader, NULL);
@@ -1029,13 +1029,13 @@ TEST_F(nir_copy_prop_vars_test, simple_store_load_in_two_blocks)
    nir_variable **v = create_many_ivec2(nir_var_function_temp, "v", 2);
    unsigned mask = 1 | 2;
 
-   nir_ssa_def *stored_value = nir_imm_ivec2(b, 10, 20);
+   nir_def *stored_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], stored_value, mask);
 
    /* Adding an if statement will cause blocks to be created. */
    nir_pop_if(b, nir_push_if(b, nir_imm_int(b, 0)));
 
-   nir_ssa_def *read_value = nir_load_var(b, v[0]);
+   nir_def *read_value = nir_load_var(b, v[0]);
    nir_store_var(b, v[1], read_value, mask);
 
    nir_validate_shader(b->shader, NULL);
@@ -1066,7 +1066,7 @@ TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_reuses_previou
    /* This load will be dropped, as vec.y (or vec[1]) is already known. */
    nir_deref_instr *deref =
       nir_build_deref_array_imm(b, nir_build_deref_var(b, vec), 1);
-   nir_ssa_def *loaded_from_deref = nir_load_deref(b, deref);
+   nir_def *loaded_from_deref = nir_load_deref(b, deref);
 
    /* This store should use the value loaded from in1. */
    nir_store_var(b, out, loaded_from_deref, 1 << 0);
@@ -1127,7 +1127,7 @@ TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_gets_reused)
    nir_store_var(b, vec, nir_load_var(b, in0), 1 << 0);
 
    /* This load will be dropped, since both vec.x and vec.y are known. */
-   nir_ssa_def *loaded_from_vec = nir_load_var(b, vec);
+   nir_def *loaded_from_vec = nir_load_var(b, vec);
    nir_store_var(b, out, loaded_from_vec, 0x3);
 
    nir_validate_shader(b->shader, NULL);
@@ -1194,7 +1194,7 @@ TEST_F(nir_copy_prop_vars_test, store_load_indirect_array_deref_on_vector)
    nir_variable *idx = create_int(nir_var_mem_global, "idx");
    nir_variable *out = create_int(nir_var_mem_global, "out");
 
-   nir_ssa_def *idx_ssa = nir_load_var(b, idx);
+   nir_def *idx_ssa = nir_load_var(b, idx);
 
    /* Store to vec[idx]. */
    nir_deref_instr *store_deref =
@@ -1229,7 +1229,7 @@ TEST_F(nir_copy_prop_vars_test, store_load_direct_and_indirect_array_deref_on_ve
    nir_variable *idx = create_int(nir_var_mem_global, "idx");
    nir_variable **out = create_many_int(nir_var_mem_global, "out", 2);
 
-   nir_ssa_def *idx_ssa = nir_load_var(b, idx);
+   nir_def *idx_ssa = nir_load_var(b, idx);
 
    /* Store to vec. */
    nir_store_var(b, vec, nir_imm_ivec2(b, 10, 10), 1 | 2);
@@ -1267,7 +1267,7 @@ TEST_F(nir_copy_prop_vars_test, store_load_indirect_array_deref)
    nir_variable *idx = create_int(nir_var_mem_global, "idx");
    nir_variable *out = create_int(nir_var_mem_global, "out");
 
-   nir_ssa_def *idx_ssa = nir_load_var(b, idx);
+   nir_def *idx_ssa = nir_load_var(b, idx);
 
    /* Store to arr[idx]. */
    nir_deref_instr *store_deref =
@@ -1624,7 +1624,7 @@ TEST_F(nir_dead_write_vars_test, dead_write_in_block)
    nir_variable **v = create_many_int(nir_var_mem_global, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
-   nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
+   nir_def *load_v2 = nir_load_var(b, v[2]);
    nir_store_var(b, v[0], load_v2, 1);
 
    bool progress = nir_opt_dead_write_vars(b->shader);
@@ -1641,7 +1641,7 @@ TEST_F(nir_dead_write_vars_test, dead_write_components_in_block)
    nir_variable **v = create_many_ivec2(nir_var_mem_global, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1 << 0);
-   nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
+   nir_def *load_v2 = nir_load_var(b, v[2]);
    nir_store_var(b, v[0], load_v2, 1 << 0);
 
    bool progress = nir_opt_dead_write_vars(b->shader);
@@ -1664,7 +1664,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_dead_write_in_two_blocks)
    nir_variable **v = create_many_int(nir_var_mem_global, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
-   nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
+   nir_def *load_v2 = nir_load_var(b, v[2]);
 
    /* Causes the stores to be in different blocks. */
    nir_pop_if(b, nir_push_if(b, nir_imm_int(b, 0)));
@@ -1689,7 +1689,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_dead_write_components_in_two_blocks)
    /* Causes the stores to be in different blocks. */
    nir_pop_if(b, nir_push_if(b, nir_imm_int(b, 0)));
 
-   nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
+   nir_def *load_v2 = nir_load_var(b, v[2]);
    nir_store_var(b, v[0], load_v2, 1 << 0);
 
    bool progress = nir_opt_dead_write_vars(b->shader);
@@ -1709,11 +1709,11 @@ TEST_F(nir_dead_write_vars_test, DISABLED_dead_writes_in_if_statement)
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
 
    nir_if *if_stmt = nir_push_if(b, nir_imm_int(b, 0));
-   nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
+   nir_def *load_v2 = nir_load_var(b, v[2]);
    nir_store_var(b, v[0], load_v2, 1);
 
    nir_push_else(b, if_stmt);
-   nir_ssa_def *load_v3 = nir_load_var(b, v[3]);
+   nir_def *load_v3 = nir_load_var(b, v[3]);
    nir_store_var(b, v[0], load_v3, 1);
 
    nir_pop_if(b, if_stmt);
@@ -1947,9 +1947,9 @@ vec_src_comp_as_int(nir_src src, unsigned comp)
    if (nir_src_is_const(src))
       return nir_src_comp_as_int(src, comp);
 
-   nir_ssa_scalar s = { src.ssa, comp };
-   assert(nir_op_is_vec(nir_ssa_scalar_alu_op(s)));
-   return nir_ssa_scalar_as_int(nir_ssa_scalar_chase_alu_src(s, comp));
+   nir_scalar s = { src.ssa, comp };
+   assert(nir_op_is_vec(nir_scalar_alu_op(s)));
+   return nir_scalar_as_int(nir_scalar_chase_alu_src(s, comp));
 }
 
 TEST_F(nir_combine_stores_test, store_volatile)

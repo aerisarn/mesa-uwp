@@ -34,7 +34,7 @@
 
 #include "ppir.h"
 
-static void *ppir_node_create_ssa(ppir_block *block, ppir_op op, nir_ssa_def *ssa)
+static void *ppir_node_create_ssa(ppir_block *block, ppir_op op, nir_def *ssa)
 {
    ppir_node *node = ppir_node_create(block, op, ssa->index, 0);
    if (!node)
@@ -53,7 +53,7 @@ static void *ppir_node_create_ssa(ppir_block *block, ppir_op op, nir_ssa_def *ss
 }
 
 static void *ppir_node_create_reg(ppir_block *block, ppir_op op,
-                                  nir_ssa_def *def, unsigned mask)
+                                  nir_def *def, unsigned mask)
 {
    ppir_node *node = ppir_node_create(block, op, def->index, mask);
    if (!node)
@@ -471,7 +471,7 @@ static bool ppir_emit_load_const(ppir_block *block, nir_instr *ni)
 
 static bool ppir_emit_ssa_undef(ppir_block *block, nir_instr *ni)
 {
-   nir_ssa_undef_instr *undef = nir_instr_as_ssa_undef(ni);
+   nir_undef_instr *undef = nir_instr_as_ssa_undef(ni);
    ppir_node *node = ppir_node_create_ssa(block, ppir_op_undef, &undef->def);
    if (!node)
       return false;

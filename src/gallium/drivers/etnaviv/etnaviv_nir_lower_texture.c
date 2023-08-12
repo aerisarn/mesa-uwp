@@ -18,10 +18,10 @@ lower_txs(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    b->cursor = nir_instr_remove(instr);
 
-   nir_ssa_def *idx = nir_imm_int(b, tex->texture_index);
-   nir_ssa_def *sizes = nir_load_texture_size_etna(b, 32, idx);
+   nir_def *idx = nir_imm_int(b, tex->texture_index);
+   nir_def *sizes = nir_load_texture_size_etna(b, 32, idx);
 
-   nir_ssa_def_rewrite_uses(&tex->dest.ssa, sizes);
+   nir_def_rewrite_uses(&tex->dest.ssa, sizes);
 
    return true;
 }

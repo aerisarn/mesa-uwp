@@ -60,14 +60,14 @@ v3d_gl_format_is_return_32(enum pipe_format format)
 /* Packs a 32-bit vector of colors in the range [0, (1 << bits[i]) - 1] to a
  * 32-bit SSA value, with as many channels as necessary to store all the bits
  */
-static nir_ssa_def *
-pack_bits(nir_builder *b, nir_ssa_def *color, const unsigned *bits,
+static nir_def *
+pack_bits(nir_builder *b, nir_def *color, const unsigned *bits,
           int num_components, bool mask)
 {
-        nir_ssa_def *results[4];
+        nir_def *results[4];
         int offset = 0;
         for (int i = 0; i < num_components; i++) {
-                nir_ssa_def *chan = nir_channel(b, color, i);
+                nir_def *chan = nir_channel(b, color, i);
 
                 /* Channels being stored shouldn't cross a 32-bit boundary. */
                 assert((offset & ~31) == ((offset + bits[i] - 1) & ~31));
@@ -103,10 +103,10 @@ v3d_nir_lower_image_store(nir_builder *b, nir_intrinsic_instr *instr)
 
         b->cursor = nir_before_instr(&instr->instr);
 
-        nir_ssa_def *color = nir_trim_vector(b,
+        nir_def *color = nir_trim_vector(b,
                                              nir_ssa_for_src(b, instr->src[3], 4),
                                              num_components);
-        nir_ssa_def *formatted = NULL;
+        nir_def *formatted = NULL;
 
         if (format == PIPE_FORMAT_R11G11B10_FLOAT) {
                 formatted = nir_format_pack_11f11f10f(b, color);
@@ -182,14 +182,14 @@ v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
 
         b->cursor = nir_after_instr(&instr->instr);
 
-        nir_ssa_def *result = &instr->dest.ssa;
+        nir_def *result = &instr->dest.ssa;
         if (util_format_is_pure_uint(format)) {
                 result = nir_format_unpack_uint(b, result, bits16, 4);
         } else if (util_format_is_pure_sint(format)) {
                 result = nir_format_unpack_sint(b, result, bits16, 4);
         } else {
-                nir_ssa_def *rg = nir_channel(b, result, 0);
-                nir_ssa_def *ba = nir_channel(b, result, 1);
+                nir_def *rg = nir_channel(b, result, 0);
+                nir_def *ba = nir_channel(b, result, 1);
                 result = nir_vec4(b,
                                   nir_unpack_half_2x16_split_x(b, rg),
                                   nir_unpack_half_2x16_split_y(b, rg),
@@ -197,7 +197,7 @@ v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
                                   nir_unpack_half_2x16_split_y(b, ba));
         }
 
-        nir_ssa_def_rewrite_uses_after(&instr->dest.ssa, result,
+        nir_def_rewrite_uses_after(&instr->dest.ssa, result,
                                        result->parent_instr);
 
         return true;

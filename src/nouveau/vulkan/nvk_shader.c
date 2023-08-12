@@ -113,9 +113,9 @@ lower_image_size_to_txs(nir_builder *b, nir_instr *instr, UNUSED void *_data)
    b->cursor = nir_instr_remove(&intrin->instr);
 
    nir_deref_instr *img = nir_src_as_deref(intrin->src[0]);
-   nir_ssa_def *lod = nir_tex_type_has_lod(img->type) ?
+   nir_def *lod = nir_tex_type_has_lod(img->type) ?
                       intrin->src[1].ssa : NULL;
-   nir_ssa_def *size = nir_txs_deref(b, img, lod);
+   nir_def *size = nir_txs_deref(b, img, lod);
 
    if (glsl_get_sampler_dim(img->type) == GLSL_SAMPLER_DIM_CUBE) {
       /* Cube image descriptors are set up as simple arrays but SPIR-V wants
@@ -132,7 +132,7 @@ lower_image_size_to_txs(nir_builder *b, nir_instr *instr, UNUSED void *_data)
       }
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, size);
+   nir_def_rewrite_uses(&intrin->dest.ssa, size);
 
    return true;
 }
@@ -151,12 +151,12 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   nir_ssa_def *base_addr = intrin->src[0].ssa;
-   nir_ssa_def *offset = intrin->src[1].ssa;
+   nir_def *base_addr = intrin->src[0].ssa;
+   nir_def *offset = intrin->src[1].ssa;
 
-   nir_ssa_def *zero = NULL;
+   nir_def *zero = NULL;
    if (intrin->intrinsic == nir_intrinsic_load_global_constant_bounded) {
-      nir_ssa_def *bound = intrin->src[2].ssa;
+      nir_def *bound = intrin->src[2].ssa;
 
       unsigned bit_size = intrin->dest.ssa.bit_size;
       assert(bit_size >= 8 && bit_size % 8 == 0);
@@ -166,15 +166,15 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
 
       unsigned load_size = byte_size * intrin->num_components;
 
-      nir_ssa_def *sat_offset =
+      nir_def *sat_offset =
          nir_umin(b, offset, nir_imm_int(b, UINT32_MAX - (load_size - 1)));
-      nir_ssa_def *in_bounds =
+      nir_def *in_bounds =
          nir_ilt(b, nir_iadd_imm(b, sat_offset, load_size - 1), bound);
 
       nir_push_if(b, in_bounds);
    }
 
-   nir_ssa_def *val =
+   nir_def *val =
       nir_build_load_global(b, intrin->dest.ssa.num_components,
                             intrin->dest.ssa.bit_size,
                             nir_iadd(b, base_addr, nir_u2u64(b, offset)),
@@ -187,7 +187,7 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
       val = nir_if_phi(b, val, zero);
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
+   nir_def_rewrite_uses(&intrin->dest.ssa, val);
 
    return true;
 }
@@ -221,7 +221,7 @@ lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    b->cursor = nir_before_instr(&intrin->instr);
 
-   nir_ssa_def *val;
+   nir_def *val;
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_frag_coord:
       var = find_or_create_input(b, glsl_vec4_type(),
@@ -251,7 +251,7 @@ lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
       return false;
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
+   nir_def_rewrite_uses(&intrin->dest.ssa, val);
 
    return true;
 }
@@ -270,8 +270,8 @@ lower_system_value_first_vertex(nir_builder *b, nir_instr *instr, UNUSED void *_
       return false;
 
    b->cursor = nir_before_instr(&intrin->instr);
-   nir_ssa_def *base_vertex = nir_load_base_vertex(b);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, base_vertex);
+   nir_def *base_vertex = nir_load_base_vertex(b);
+   nir_def_rewrite_uses(&intrin->dest.ssa, base_vertex);
 
    return true;
 }

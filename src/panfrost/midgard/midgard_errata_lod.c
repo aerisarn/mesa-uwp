@@ -56,22 +56,22 @@ nir_lod_errata_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_src_copy(&l->src[0], &idx, &l->instr);
 
    nir_builder_instr_insert(b, &l->instr);
-   nir_ssa_def *params = &l->dest.ssa;
+   nir_def *params = &l->dest.ssa;
 
    /* Extract the individual components */
-   nir_ssa_def *min_lod = nir_channel(b, params, 0);
-   nir_ssa_def *max_lod = nir_channel(b, params, 1);
-   nir_ssa_def *lod_bias = nir_channel(b, params, 2);
+   nir_def *min_lod = nir_channel(b, params, 0);
+   nir_def *max_lod = nir_channel(b, params, 1);
+   nir_def *lod_bias = nir_channel(b, params, 2);
 
    /* Rewrite the LOD with bias/clamps. Order sensitive. */
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       if (tex->src[i].src_type != nir_tex_src_lod)
          continue;
 
-      nir_ssa_def *lod = nir_ssa_for_src(b, tex->src[i].src, 1);
+      nir_def *lod = nir_ssa_for_src(b, tex->src[i].src, 1);
 
-      nir_ssa_def *biased = nir_fadd(b, lod, lod_bias);
-      nir_ssa_def *clamped = nir_fmin(b, nir_fmax(b, biased, min_lod), max_lod);
+      nir_def *biased = nir_fadd(b, lod, lod_bias);
+      nir_def *clamped = nir_fmin(b, nir_fmax(b, biased, min_lod), max_lod);
 
       nir_instr_rewrite_src(&tex->instr, &tex->src[i].src,
                             nir_src_for_ssa(clamped));

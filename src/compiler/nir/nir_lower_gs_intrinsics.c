@@ -85,15 +85,15 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
    /* Load the vertex count */
    b->cursor = nir_before_instr(&intrin->instr);
    assert(state->vertex_count_vars[stream] != NULL);
-   nir_ssa_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
-   nir_ssa_def *count_per_primitive;
+   nir_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
+   nir_def *count_per_primitive;
 
    if (state->count_vtx_per_prim)
       count_per_primitive = nir_load_var(b, state->vtxcnt_per_prim_vars[stream]);
    else if (state->is_points)
       count_per_primitive = nir_imm_int(b, 0);
    else
-      count_per_primitive = nir_ssa_undef(b, 1, 32);
+      count_per_primitive = nir_undef(b, 1, 32);
 
    /* Create: if (vertex_count < max_vertices) and insert it.
     *
@@ -112,7 +112,7 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
    if (state->count_vtx_per_prim) {
       /* Increment the per-primitive vertex count by 1 */
       nir_variable *var = state->vtxcnt_per_prim_vars[stream];
-      nir_ssa_def *vtx_per_prim_cnt = nir_load_var(b, var);
+      nir_def *vtx_per_prim_cnt = nir_load_var(b, var);
       nir_store_var(b, var,
                     nir_iadd_imm(b, vtx_per_prim_cnt, 1),
                     0x1); /* .x */
@@ -160,19 +160,19 @@ overwrite_incomplete_primitives(struct state *state, unsigned stream)
       unreachable("Invalid GS output primitive type.");
 
    /* Total count of vertices emitted so far. */
-   nir_ssa_def *vtxcnt_total =
+   nir_def *vtxcnt_total =
       nir_load_var(b, state->vertex_count_vars[stream]);
 
    /* Number of vertices emitted for the last primitive */
-   nir_ssa_def *vtxcnt_per_primitive =
+   nir_def *vtxcnt_per_primitive =
       nir_load_var(b, state->vtxcnt_per_prim_vars[stream]);
 
    /* See if the current primitive is a incomplete */
-   nir_ssa_def *is_inc_prim =
+   nir_def *is_inc_prim =
       nir_ilt_imm(b, vtxcnt_per_primitive, outprim_min_vertices);
 
    /* Number of vertices in the incomplete primitive */
-   nir_ssa_def *num_inc_vtx =
+   nir_def *num_inc_vtx =
       nir_bcsel(b, is_inc_prim, vtxcnt_per_primitive, nir_imm_int(b, 0));
 
    /* Store corrected total vertex count */
@@ -182,10 +182,10 @@ overwrite_incomplete_primitives(struct state *state, unsigned stream)
 
    if (state->count_prims) {
       /* Number of incomplete primitives (0 or 1) */
-      nir_ssa_def *num_inc_prim = nir_b2i32(b, is_inc_prim);
+      nir_def *num_inc_prim = nir_b2i32(b, is_inc_prim);
 
       /* Store corrected primitive count */
-      nir_ssa_def *prim_cnt = nir_load_var(b, state->primitive_count_vars[stream]);
+      nir_def *prim_cnt = nir_load_var(b, state->primitive_count_vars[stream]);
       nir_store_var(b, state->primitive_count_vars[stream],
                     nir_isub(b, prim_cnt, num_inc_prim),
                     0x1); /* .x */
@@ -203,21 +203,21 @@ rewrite_end_primitive(nir_intrinsic_instr *intrin, struct state *state)
 
    b->cursor = nir_before_instr(&intrin->instr);
    assert(state->vertex_count_vars[stream] != NULL);
-   nir_ssa_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
-   nir_ssa_def *count_per_primitive;
+   nir_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
+   nir_def *count_per_primitive;
 
    if (state->count_vtx_per_prim)
       count_per_primitive = nir_load_var(b, state->vtxcnt_per_prim_vars[stream]);
    else if (state->is_points)
       count_per_primitive = nir_imm_int(b, 0);
    else
-      count_per_primitive = nir_ssa_undef(b, count->num_components, count->bit_size);
+      count_per_primitive = nir_undef(b, count->num_components, count->bit_size);
 
    nir_end_primitive_with_counter(b, count, count_per_primitive, stream);
 
    if (state->count_prims) {
       /* Increment the primitive count by 1 */
-      nir_ssa_def *prim_cnt = nir_load_var(b, state->primitive_count_vars[stream]);
+      nir_def *prim_cnt = nir_load_var(b, state->primitive_count_vars[stream]);
       nir_store_var(b, state->primitive_count_vars[stream],
                     nir_iadd_imm(b, prim_cnt, 1),
                     0x1); /* .x */
@@ -286,15 +286,15 @@ append_set_vertex_and_primitive_count(nir_block *end_block, struct state *state)
          if (!state->per_stream && stream != 0)
             continue;
 
-         nir_ssa_def *vtx_cnt;
-         nir_ssa_def *prim_cnt;
+         nir_def *vtx_cnt;
+         nir_def *prim_cnt;
 
          if (state->per_stream && !(shader->info.gs.active_stream_mask & (1 << stream))) {
             /* Inactive stream: vertex count is 0, primitive count is 0 or undef. */
             vtx_cnt = nir_imm_int(b, 0);
             prim_cnt = state->count_prims || state->is_points
                           ? nir_imm_int(b, 0)
-                          : nir_ssa_undef(b, 1, 32);
+                          : nir_undef(b, 1, 32);
          } else {
             if (state->overwrite_incomplete)
                overwrite_incomplete_primitives(state, stream);
@@ -309,7 +309,7 @@ append_set_vertex_and_primitive_count(nir_block *end_block, struct state *state)
                 */
                prim_cnt = vtx_cnt;
             else
-               prim_cnt = nir_ssa_undef(b, 1, 32);
+               prim_cnt = nir_undef(b, 1, 32);
          }
 
          nir_set_vertex_and_primitive_count(b, vtx_cnt, prim_cnt, stream);

@@ -26,11 +26,11 @@ struct data {
  * which ones have been processed.
  */
 static unsigned
-insert_store(nir_builder *b, nir_ssa_def *reg, nir_alu_instr *vec,
+insert_store(nir_builder *b, nir_def *reg, nir_alu_instr *vec,
              unsigned start_idx)
 {
    assert(start_idx < nir_op_infos[vec->op].num_inputs);
-   nir_ssa_def *src = vec->src[start_idx].src.ssa;
+   nir_def *src = vec->src[start_idx].src.ssa;
 
    unsigned num_components = nir_dest_num_components(vec->dest.dest);
    assert(num_components == nir_op_infos[vec->op].num_inputs);
@@ -69,7 +69,7 @@ has_replicated_dest(nir_alu_instr *alu)
  * can then call insert_mov as normal.
  */
 static unsigned
-try_coalesce(nir_builder *b, nir_ssa_def *reg, nir_alu_instr *vec,
+try_coalesce(nir_builder *b, nir_def *reg, nir_alu_instr *vec,
              unsigned start_idx, struct data *data)
 {
    assert(start_idx < nir_op_infos[vec->op].num_inputs);
@@ -213,8 +213,8 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
 
    if (need_reg) {
       /* We'll replace with a register. Declare one for the purpose. */
-      nir_ssa_def *reg = nir_decl_reg(b, num_components,
-                                      nir_dest_bit_size(vec->dest.dest), 0);
+      nir_def *reg = nir_decl_reg(b, num_components,
+                                  nir_dest_bit_size(vec->dest.dest), 0);
 
       unsigned finished_write_mask = 0;
       for (unsigned i = 0; i < num_components; i++) {
@@ -237,9 +237,9 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
       }
 
       b->cursor = nir_before_instr(instr);
-      nir_ssa_def *swizzled = nir_swizzle(b, vec->src[0].src.ssa, swiz,
-                                          num_components);
-      nir_ssa_def_rewrite_uses(&vec->dest.dest.ssa, swizzled);
+      nir_def *swizzled = nir_swizzle(b, vec->src[0].src.ssa, swiz,
+                                      num_components);
+      nir_def_rewrite_uses(&vec->dest.dest.ssa, swizzled);
    }
 
    nir_instr_remove(&vec->instr);

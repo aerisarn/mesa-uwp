@@ -47,11 +47,11 @@
 static void
 update_fragcoord(nir_builder *b, nir_intrinsic_instr *intr)
 {
-   nir_ssa_def *wpos = &intr->dest.ssa;
+   nir_def *wpos = &intr->dest.ssa;
 
    b->cursor = nir_after_instr(&intr->instr);
 
-   nir_ssa_def *spos = nir_load_sample_pos_or_center(b);
+   nir_def *spos = nir_load_sample_pos_or_center(b);
 
    wpos = nir_fadd(b, wpos,
                    nir_vec4(b,
@@ -60,8 +60,8 @@ update_fragcoord(nir_builder *b, nir_intrinsic_instr *intr)
                             nir_imm_float(b, 0.0f),
                             nir_imm_float(b, 0.0f)));
 
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, wpos,
-                                  wpos->parent_instr);
+   nir_def_rewrite_uses_after(&intr->dest.ssa, wpos,
+                              wpos->parent_instr);
 }
 
 static bool

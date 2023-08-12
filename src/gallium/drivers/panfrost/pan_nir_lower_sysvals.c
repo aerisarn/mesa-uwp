@@ -168,12 +168,12 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    unsigned ubo_offset = (vec4_index * 16) + offset;
 
    b->cursor = nir_after_instr(instr);
-   nir_ssa_def *val =
+   nir_def *val =
       nir_load_ubo(b, nir_dest_num_components(*dest), nir_dest_bit_size(*dest),
                    nir_imm_int(b, ctx->sysval_ubo), nir_imm_int(b, ubo_offset),
                    .align_mul = nir_dest_bit_size(*dest) / 8, .align_offset = 0,
                    .range_base = offset, .range = nir_dest_bit_size(*dest) / 8);
-   nir_ssa_def_rewrite_uses(&dest->ssa, val);
+   nir_def_rewrite_uses(&dest->ssa, val);
    return true;
 }
 

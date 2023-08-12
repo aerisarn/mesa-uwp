@@ -56,8 +56,8 @@ void nir_deref_path_finish(nir_deref_path *path);
 unsigned nir_deref_instr_get_const_offset(nir_deref_instr *deref,
                                           glsl_type_size_align_func size_align);
 
-nir_ssa_def *nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
-                                    glsl_type_size_align_func size_align);
+nir_def *nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
+                                glsl_type_size_align_func size_align);
 
 nir_deref_path *nir_get_deref_path(void *mem_ctx, nir_deref_and_path *deref);
 

@@ -25,14 +25,14 @@
 #include "nir_builder.h"
 
 static bool
-assert_ssa_def_is_not_1bit(nir_ssa_def *def, UNUSED void *unused)
+assert_ssa_def_is_not_1bit(nir_def *def, UNUSED void *unused)
 {
    assert(def->bit_size > 1);
    return true;
 }
 
 static bool
-rewrite_1bit_ssa_def_to_32bit(nir_ssa_def *def, void *_progress)
+rewrite_1bit_ssa_def_to_32bit(nir_def *def, void *_progress)
 {
    bool *progress = _progress;
    if (def->bit_size == 1) {
@@ -69,7 +69,7 @@ make_sources_canonical(nir_builder *b, nir_alu_instr *alu, uint32_t start_idx)
       if (nir_src_bit_size(alu->src[i].src) != bit_size) {
          b->cursor = nir_before_instr(&alu->instr);
          nir_op convert_op = get_bool_convert_opcode(bit_size);
-         nir_ssa_def *new_src =
+         nir_def *new_src =
             nir_build_alu(b, convert_op, alu->src[i].src.ssa, NULL, NULL, NULL);
          /* Retain the write mask and swizzle of the original instruction so
           * that we don’t unnecessarily create a vectorized instruction.
@@ -356,7 +356,7 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi)
       } else if (src_bit_size != dst_bit_size) {
          b->cursor = nir_before_src(&phi_src->src);
          nir_op convert_op = get_bool_convert_opcode(dst_bit_size);
-         nir_ssa_def *new_src =
+         nir_def *new_src =
             nir_build_alu(b, convert_op, phi_src->src.ssa, NULL, NULL, NULL);
          nir_instr_rewrite_src(&phi->instr, &phi_src->src,
                                nir_src_for_ssa(new_src));

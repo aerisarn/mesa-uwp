@@ -192,7 +192,7 @@ ir3_context_free(struct ir3_context *ctx)
  * insert in def_ht
  */
 struct ir3_instruction **
-ir3_get_dst_ssa(struct ir3_context *ctx, nir_ssa_def *dst, unsigned n)
+ir3_get_dst_ssa(struct ir3_context *ctx, nir_def *dst, unsigned n)
 {
    struct ir3_instruction **value =
       ralloc_array(ctx->def_ht, struct ir3_instruction *, n);
@@ -515,7 +515,7 @@ ir3_declare_array(struct ir3_context *ctx, nir_intrinsic_instr *decl)
 }
 
 struct ir3_array *
-ir3_get_array(struct ir3_context *ctx, nir_ssa_def *reg)
+ir3_get_array(struct ir3_context *ctx, nir_def *reg)
 {
    foreach_array (arr, &ctx->ir->array_list) {
       if (arr->r == reg)

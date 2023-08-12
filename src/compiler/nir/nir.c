@@ -718,7 +718,7 @@ nir_load_const_instr_create(nir_shader *shader, unsigned num_components,
       gc_zalloc_zla(shader->gctx, nir_load_const_instr, nir_const_value, num_components);
    instr_init(&instr->instr, nir_instr_type_load_const);
 
-   nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size);
+   nir_def_init(&instr->instr, &instr->def, num_components, bit_size);
 
    return instr;
 }
@@ -870,15 +870,15 @@ nir_parallel_copy_instr_create(nir_shader *shader)
    return instr;
 }
 
-nir_ssa_undef_instr *
-nir_ssa_undef_instr_create(nir_shader *shader,
-                           unsigned num_components,
-                           unsigned bit_size)
+nir_undef_instr *
+nir_undef_instr_create(nir_shader *shader,
+                       unsigned num_components,
+                       unsigned bit_size)
 {
-   nir_ssa_undef_instr *instr = gc_alloc(shader->gctx, nir_ssa_undef_instr, 1);
+   nir_undef_instr *instr = gc_alloc(shader->gctx, nir_undef_instr, 1);
    instr_init(&instr->instr, nir_instr_type_ssa_undef);
 
-   nir_ssa_def_init(&instr->instr, &instr->def, num_components, bit_size);
+   nir_def_init(&instr->instr, &instr->def, num_components, bit_size);
 
    return instr;
 }
@@ -1036,7 +1036,7 @@ add_use_cb(nir_src *src, void *state)
 }
 
 static bool
-add_ssa_def_cb(nir_ssa_def *def, void *state)
+add_ssa_def_cb(nir_def *def, void *state)
 {
    nir_instr *instr = state;
 
@@ -1194,11 +1194,11 @@ nir_instr_free_list(struct exec_list *list)
 }
 
 static bool
-nir_instr_free_and_dce_live_cb(nir_ssa_def *def, void *state)
+nir_instr_free_and_dce_live_cb(nir_def *def, void *state)
 {
    bool *live = state;
 
-   if (!nir_ssa_def_is_unused(def)) {
+   if (!nir_def_is_unused(def)) {
       *live = true;
       return false;
    } else {
@@ -1291,7 +1291,7 @@ struct foreach_ssa_def_state {
 };
 
 static inline bool
-nir_ssa_def_visitor(nir_dest *dest, void *void_state)
+nir_def_visitor(nir_dest *dest, void *void_state)
 {
    struct foreach_ssa_def_state *state = void_state;
 
@@ -1309,7 +1309,7 @@ nir_foreach_ssa_def(nir_instr *instr, nir_foreach_ssa_def_cb cb, void *state)
    case nir_instr_type_phi:
    case nir_instr_type_parallel_copy: {
       struct foreach_ssa_def_state foreach_state = { cb, state };
-      return nir_foreach_dest(instr, nir_ssa_def_visitor, &foreach_state);
+      return nir_foreach_dest(instr, nir_def_visitor, &foreach_state);
    }
 
    case nir_instr_type_load_const:
@@ -1324,7 +1324,7 @@ nir_foreach_ssa_def(nir_instr *instr, nir_foreach_ssa_def_cb cb, void *state)
    }
 }
 
-nir_ssa_def *
+nir_def *
 nir_instr_ssa_def(nir_instr *instr)
 {
    switch (instr->type) {
@@ -1539,9 +1539,9 @@ nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src)
 }
 
 void
-nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
-                 unsigned num_components,
-                 unsigned bit_size)
+nir_def_init(nir_instr *instr, nir_def *def,
+             unsigned num_components,
+             unsigned bit_size)
 {
    def->parent_instr = instr;
    list_inithead(&def->uses);
@@ -1565,22 +1565,22 @@ void
 nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
                   unsigned num_components, unsigned bit_size)
 {
-   nir_ssa_def_init(instr, &dest->ssa, num_components, bit_size);
+   nir_def_init(instr, &dest->ssa, num_components, bit_size);
 }
 
 void
-nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_ssa_def *new_ssa)
+nir_def_rewrite_uses(nir_def *def, nir_def *new_ssa)
 {
    assert(def != new_ssa);
    nir_foreach_use_including_if_safe(use_src, def) {
-      nir_src_rewrite_ssa(use_src, new_ssa);
+      nir_src_rewrite(use_src, new_ssa);
    }
 }
 
 void
-nir_ssa_def_rewrite_uses_src(nir_ssa_def *def, nir_src new_src)
+nir_def_rewrite_uses_src(nir_def *def, nir_src new_src)
 {
-   nir_ssa_def_rewrite_uses(def, new_src.ssa);
+   nir_def_rewrite_uses(def, new_src.ssa);
 }
 
 static bool
@@ -1614,8 +1614,8 @@ is_instr_between(nir_instr *start, nir_instr *end, nir_instr *between)
  * def->parent_instr and that after_me comes after def->parent_instr.
  */
 void
-nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_ssa_def *new_ssa,
-                               nir_instr *after_me)
+nir_def_rewrite_uses_after(nir_def *def, nir_def *new_ssa,
+                           nir_instr *after_me)
 {
    if (def == new_ssa)
       return;
@@ -1632,11 +1632,11 @@ nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_ssa_def *new_ssa,
             continue;
       }
 
-      nir_src_rewrite_ssa(use_src, new_ssa);
+      nir_src_rewrite(use_src, new_ssa);
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 get_store_value(nir_intrinsic_instr *intrin)
 {
    assert(nir_intrinsic_has_write_mask(intrin));
@@ -1672,7 +1672,7 @@ nir_src_components_read(const nir_src *src)
 }
 
 nir_component_mask_t
-nir_ssa_def_components_read(const nir_ssa_def *def)
+nir_def_components_read(const nir_def *def)
 {
    nir_component_mask_t read_mask = 0;
 
@@ -1950,7 +1950,7 @@ nir_index_blocks(nir_function_impl *impl)
 }
 
 static bool
-index_ssa_def_cb(nir_ssa_def *def, void *state)
+index_ssa_def_cb(nir_def *def, void *state)
 {
    unsigned *index = (unsigned *)state;
    def->index = (*index)++;
@@ -2084,14 +2084,14 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
          continue;
       }
 
-      nir_ssa_def *old_def = nir_instr_ssa_def(instr);
+      nir_def *old_def = nir_instr_ssa_def(instr);
       struct list_head old_uses;
       if (old_def != NULL) {
          /* We're about to ask the callback to generate a replacement for instr.
           * Save off the uses from instr's SSA def so we know what uses to
-          * rewrite later.  If we use nir_ssa_def_rewrite_uses, it fails in the
+          * rewrite later.  If we use nir_def_rewrite_uses, it fails in the
           * case where the generated replacement code uses the result of instr
-          * itself.  If we use nir_ssa_def_rewrite_uses_after (which is the
+          * itself.  If we use nir_def_rewrite_uses_after (which is the
           * normal solution to this problem), it doesn't work well if control-
           * flow is inserted as part of the replacement, doesn't handle cases
           * where the replacement is something consumed by instr, and suffers
@@ -2104,7 +2104,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
       }
 
       b.cursor = nir_after_instr(instr);
-      nir_ssa_def *new_def = lower(&b, instr, cb_data);
+      nir_def *new_def = lower(&b, instr, cb_data);
       if (new_def && new_def != NIR_LOWER_INSTR_PROGRESS &&
           new_def != NIR_LOWER_INSTR_PROGRESS_REPLACE) {
          assert(old_def != NULL);
@@ -2119,7 +2119,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
                nir_instr_rewrite_src(use_src->parent_instr, use_src, new_src);
          }
 
-         if (nir_ssa_def_is_unused(old_def)) {
+         if (nir_def_is_unused(old_def)) {
             iter = nir_instr_free_and_dce(instr);
          } else {
             iter = nir_after_instr(instr);
@@ -2530,7 +2530,7 @@ nir_get_single_slot_attribs_mask(uint64_t attribs, uint64_t dual_slot)
 }
 
 void
-nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src,
+nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_def *src,
                             bool bindless)
 {
    enum gl_access_qualifier access = nir_intrinsic_access(intrin);
@@ -2760,10 +2760,10 @@ nir_alu_instr_is_copy(nir_alu_instr *instr)
    return nir_op_is_vec(instr->op);
 }
 
-nir_ssa_scalar
-nir_ssa_scalar_chase_movs(nir_ssa_scalar s)
+nir_scalar
+nir_scalar_chase_movs(nir_scalar s)
 {
-   while (nir_ssa_scalar_is_alu(s)) {
+   while (nir_scalar_is_alu(s)) {
       nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
       if (!nir_alu_instr_is_copy(alu))
          break;

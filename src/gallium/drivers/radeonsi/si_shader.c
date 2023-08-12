@@ -1618,9 +1618,9 @@ static bool clamp_vertex_color_instr(nir_builder *b, nir_instr *instr, void *sta
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *color = intrin->src[0].ssa;
-   nir_ssa_def *clamp = nir_load_clamp_vertex_color_amd(b);
-   nir_ssa_def *new_color = nir_bcsel(b, clamp, nir_fsat(b, color), color);
+   nir_def *color = intrin->src[0].ssa;
+   nir_def *clamp = nir_load_clamp_vertex_color_amd(b);
+   nir_def *new_color = nir_bcsel(b, clamp, nir_fsat(b, color), color);
    nir_instr_rewrite_src_ssa(instr, &intrin->src[0], new_color);
 
    return true;
@@ -1903,7 +1903,7 @@ static unsigned si_get_nr_pos_exports(const struct si_shader_selector *sel,
 
 static bool lower_ps_load_color_intrinsic(nir_builder *b, nir_instr *instr, void *state)
 {
-   nir_ssa_def **colors = (nir_ssa_def **)state;
+   nir_def **colors = (nir_def **)state;
 
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -1917,7 +1917,7 @@ static bool lower_ps_load_color_intrinsic(nir_builder *b, nir_instr *instr, void
    unsigned index = intrin->intrinsic == nir_intrinsic_load_color0 ? 0 : 1;
    assert(colors[index]);
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, colors[index]);
+   nir_def_rewrite_uses(&intrin->dest.ssa, colors[index]);
 
    nir_instr_remove(&intrin->instr);
    return true;
@@ -1934,7 +1934,7 @@ static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
    const union si_shader_key *key = &shader->key;
 
    /* Build ready to be used colors at the beginning of the shader. */
-   nir_ssa_def *colors[2] = {0};
+   nir_def *colors[2] = {0};
    for (int i = 0; i < 2; i++) {
       if (!(sel->info.colors_read & (0xf << (i * 4))))
          continue;
@@ -1953,7 +1953,7 @@ static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
             INTERP_MODE_FLAT : INTERP_MODE_SMOOTH;
       }
 
-      nir_ssa_def *back_color = NULL;
+      nir_def *back_color = NULL;
       if (interp_mode == INTERP_MODE_FLAT) {
          colors[i] = nir_load_input(b, 4, 32, nir_imm_int(b, 0),
                                    .base = color_base);
@@ -1979,7 +1979,7 @@ static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
             break;
          }
 
-         nir_ssa_def *barycentric = nir_load_barycentric(b, op, interp_mode);
+         nir_def *barycentric = nir_load_barycentric(b, op, interp_mode);
 
          colors[i] =
             nir_load_interpolated_input(b, 4, 32, barycentric, nir_imm_int(b, 0),
@@ -1993,7 +1993,7 @@ static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
       }
 
       if (back_color) {
-         nir_ssa_def *is_front_face = nir_load_front_face(b, 1);
+         nir_def *is_front_face = nir_load_front_face(b, 1);
          colors[i] = nir_bcsel(b, is_front_face, colors[i], back_color);
       }
    }
@@ -2012,23 +2012,23 @@ static void si_nir_emit_polygon_stipple(nir_shader *nir, struct si_shader_args *
    nir_builder *b = &builder;
 
    /* Load the buffer descriptor. */
-   nir_ssa_def *desc =
+   nir_def *desc =
       si_nir_load_internal_binding(b, args, SI_PS_CONST_POLY_STIPPLE, 4);
 
    /* Use the fixed-point gl_FragCoord input.
     * Since the stipple pattern is 32x32 and it repeats, just get 5 bits
     * per coordinate to get the repeating effect.
     */
-   nir_ssa_def *pos_x = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 0, 5);
-   nir_ssa_def *pos_y = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 16, 5);
+   nir_def *pos_x = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 0, 5);
+   nir_def *pos_y = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 16, 5);
 
-   nir_ssa_def *zero = nir_imm_int(b, 0);
+   nir_def *zero = nir_imm_int(b, 0);
    /* The stipple pattern is 32x32, each row has 32 bits. */
-   nir_ssa_def *offset = nir_ishl_imm(b, pos_y, 2);
-   nir_ssa_def *row = nir_load_buffer_amd(b, 1, 32, desc, offset, zero, zero);
-   nir_ssa_def *bit = nir_ubfe(b, row, pos_x, nir_imm_int(b, 1));
+   nir_def *offset = nir_ishl_imm(b, pos_y, 2);
+   nir_def *row = nir_load_buffer_amd(b, 1, 32, desc, offset, zero, zero);
+   nir_def *bit = nir_ubfe(b, row, pos_x, nir_imm_int(b, 1));
 
-   nir_ssa_def *pass = nir_i2b(b, bit);
+   nir_def *pass = nir_i2b(b, bit);
    nir_discard_if(b, nir_inot(b, pass));
 }
 

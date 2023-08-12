@@ -30,7 +30,7 @@
 #include "nir_intrinsics_indices.h"
 #include "sfn_nir.h"
 
-static nir_ssa_def *
+static nir_def *
 r600_legalize_image_load_store_impl(nir_builder *b,
                                     nir_instr *instr,
                                     UNUSED void *_options)
@@ -38,9 +38,9 @@ r600_legalize_image_load_store_impl(nir_builder *b,
    b->cursor = nir_before_instr(instr);
    auto ir = nir_instr_as_intrinsic(instr);
 
-   nir_ssa_def *default_value = nir_imm_vec4(b, 0.0, 0.0, 0.0, 0.0);
+   nir_def *default_value = nir_imm_vec4(b, 0.0, 0.0, 0.0, 0.0);
 
-   nir_ssa_def *result = NIR_LOWER_INSTR_PROGRESS_REPLACE;
+   nir_def *result = NIR_LOWER_INSTR_PROGRESS_REPLACE;
 
    bool load_value = ir->intrinsic != nir_intrinsic_image_store;
 

@@ -43,7 +43,7 @@ struct nir_phi_builder {
    nir_block **W;
 };
 
-#define NEEDS_PHI ((nir_ssa_def *)(intptr_t)-1)
+#define NEEDS_PHI ((nir_def *)(intptr_t)-1)
 
 struct nir_phi_builder_value {
    struct exec_node node;
@@ -173,12 +173,12 @@ nir_phi_builder_add_value(struct nir_phi_builder *pb, unsigned num_components,
 
 void
 nir_phi_builder_value_set_block_def(struct nir_phi_builder_value *val,
-                                    nir_block *block, nir_ssa_def *def)
+                                    nir_block *block, nir_def *def)
 {
    _mesa_hash_table_insert(&val->ht, INDEX_TO_KEY(block->index), def);
 }
 
-nir_ssa_def *
+nir_def *
 nir_phi_builder_value_get_block_def(struct nir_phi_builder_value *val,
                                     nir_block *block)
 {
@@ -199,16 +199,16 @@ nir_phi_builder_value_get_block_def(struct nir_phi_builder_value *val,
    /* Exactly one of (he != NULL) and (dom == NULL) must be true. */
    assert((he != NULL) != (dom == NULL));
 
-   nir_ssa_def *def;
+   nir_def *def;
    if (dom == NULL) {
       /* No dominator means either that we crawled to the top without ever
        * finding a definition or that this block is unreachable.  In either
        * case, the value is undefined so we need an SSA undef.
        */
-      nir_ssa_undef_instr *undef =
-         nir_ssa_undef_instr_create(val->builder->shader,
-                                    val->num_components,
-                                    val->bit_size);
+      nir_undef_instr *undef =
+         nir_undef_instr_create(val->builder->shader,
+                                val->num_components,
+                                val->bit_size);
       nir_instr_insert(nir_before_cf_list(&val->builder->impl->body),
                        &undef->instr);
       def = &undef->def;
@@ -243,7 +243,7 @@ nir_phi_builder_value_get_block_def(struct nir_phi_builder_value *val,
        * phi node created by the case above or one passed to us through
        * nir_phi_builder_value_set_block_def().
        */
-      def = (struct nir_ssa_def *)he->data;
+      def = (struct nir_def *)he->data;
    }
 
    /* Walk the chain and stash the def in all of the applicable blocks.  We do

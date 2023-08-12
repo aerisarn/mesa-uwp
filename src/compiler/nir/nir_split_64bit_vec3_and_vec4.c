@@ -84,9 +84,9 @@ typedef struct {
    nir_variable *zw;
 } variable_pair;
 
-static nir_ssa_def *
-merge_to_vec3_or_vec4(nir_builder *b, nir_ssa_def *load1,
-                      nir_ssa_def *load2)
+static nir_def *
+merge_to_vec3_or_vec4(nir_builder *b, nir_def *load1,
+                      nir_def *load2)
 {
    assert(load2->num_components > 0 && load2->num_components < 3);
 
@@ -101,17 +101,17 @@ merge_to_vec3_or_vec4(nir_builder *b, nir_ssa_def *load1,
                       nir_channel(b, load2, 1));
 }
 
-static nir_ssa_def *
+static nir_def *
 get_linear_array_offset(nir_builder *b, nir_deref_instr *deref)
 {
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
 
-   nir_ssa_def *offset = nir_imm_intN_t(b, 0, deref->dest.ssa.bit_size);
+   nir_def *offset = nir_imm_intN_t(b, 0, deref->dest.ssa.bit_size);
    for (nir_deref_instr **p = &path.path[1]; *p; p++) {
       switch ((*p)->deref_type) {
       case nir_deref_type_array: {
-         nir_ssa_def *index = nir_ssa_for_src(b, (*p)->arr.index, 1);
+         nir_def *index = nir_ssa_for_src(b, (*p)->arr.index, 1);
          int stride = glsl_array_size((*p)->type);
          if (stride >= 0)
             offset = nir_iadd(b, offset, nir_amul_imm(b, index, stride));
@@ -163,9 +163,9 @@ get_var_pair(nir_builder *b, nir_variable *old_var,
    return new_var;
 }
 
-static nir_ssa_def *
+static nir_def *
 split_load_deref(nir_builder *b, nir_intrinsic_instr *intr,
-                 nir_ssa_def *offset, struct hash_table *split_vars)
+                 nir_def *offset, struct hash_table *split_vars)
 {
    nir_variable *old_var = nir_intrinsic_get_var(intr, 0);
    unsigned old_components = glsl_get_components(
@@ -181,15 +181,15 @@ split_load_deref(nir_builder *b, nir_intrinsic_instr *intr,
       deref2 = nir_build_deref_array(b, deref2, offset);
    }
 
-   nir_ssa_def *load1 = nir_build_load_deref(b, 2, 64, &deref1->dest.ssa, 0);
-   nir_ssa_def *load2 = nir_build_load_deref(b, old_components - 2, 64, &deref2->dest.ssa, 0);
+   nir_def *load1 = nir_build_load_deref(b, 2, 64, &deref1->dest.ssa, 0);
+   nir_def *load2 = nir_build_load_deref(b, old_components - 2, 64, &deref2->dest.ssa, 0);
 
    return merge_to_vec3_or_vec4(b, load1, load2);
 }
 
-static nir_ssa_def *
+static nir_def *
 split_store_deref(nir_builder *b, nir_intrinsic_instr *intr,
-                  nir_ssa_def *offset, struct hash_table *split_vars)
+                  nir_def *offset, struct hash_table *split_vars)
 {
    nir_variable *old_var = nir_intrinsic_get_var(intr, 0);
 
@@ -205,21 +205,21 @@ split_store_deref(nir_builder *b, nir_intrinsic_instr *intr,
 
    int write_mask_xy = nir_intrinsic_write_mask(intr) & 3;
    if (write_mask_xy) {
-      nir_ssa_def *src_xy = nir_trim_vector(b, intr->src[1].ssa, 2);
+      nir_def *src_xy = nir_trim_vector(b, intr->src[1].ssa, 2);
       nir_build_store_deref(b, &deref_xy->dest.ssa, src_xy, write_mask_xy);
    }
 
    int write_mask_zw = nir_intrinsic_write_mask(intr) & 0xc;
    if (write_mask_zw) {
-      nir_ssa_def *src_zw = nir_channels(b, intr->src[1].ssa,
-                                         nir_component_mask(intr->src[1].ssa->num_components) & 0xc);
+      nir_def *src_zw = nir_channels(b, intr->src[1].ssa,
+                                     nir_component_mask(intr->src[1].ssa->num_components) & 0xc);
       nir_build_store_deref(b, &deref_zw->dest.ssa, src_zw, write_mask_zw >> 2);
    }
 
    return NIR_LOWER_INSTR_PROGRESS_REPLACE;
 }
 
-static nir_ssa_def *
+static nir_def *
 split_phi(nir_builder *b, nir_phi_instr *phi)
 {
    nir_op vec_op = nir_op_vec(phi->dest.ssa.num_components);
@@ -247,8 +247,8 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
          else
             b->cursor = nir_after_block(src->pred);
 
-         nir_ssa_def *new_src = nir_channels(b, src->src.ssa,
-                                             ((1 << num_comp[i]) - 1) << (2 * i));
+         nir_def *new_src = nir_channels(b, src->src.ssa,
+                                         ((1 << num_comp[i]) - 1) << (2 * i));
 
          nir_phi_instr_add_src(new_phi[i], src->pred, nir_src_for_ssa(new_src));
       }
@@ -259,7 +259,7 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
    return merge_to_vec3_or_vec4(b, &new_phi[0]->dest.ssa, &new_phi[1]->dest.ssa);
 };
 
-static nir_ssa_def *
+static nir_def *
 nir_split_64bit_vec3_and_vec4_impl(nir_builder *b, nir_instr *instr, void *d)
 {
    struct hash_table *split_vars = (struct hash_table *)d;

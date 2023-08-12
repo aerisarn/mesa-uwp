@@ -30,7 +30,7 @@
  */
 
 static inline bool
-are_all_uses_fadd(nir_ssa_def *def)
+are_all_uses_fadd(nir_def *def)
 {
    nir_foreach_use_including_if(use_src, def) {
       if (use_src->is_if)
@@ -200,7 +200,7 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
 
    unsigned bit_size = add->dest.dest.ssa.bit_size;
 
-   nir_ssa_def *mul_src[2];
+   nir_def *mul_src[2];
    mul_src[0] = mul->src[0].src.ssa;
    mul_src[1] = mul->src[1].src.ssa;
 
@@ -234,7 +234,7 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
 
    nir_ssa_dest_init(&ffma->instr, &ffma->dest.dest,
                      add->dest.dest.ssa.num_components, bit_size);
-   nir_ssa_def_rewrite_uses(&add->dest.dest.ssa, &ffma->dest.dest.ssa);
+   nir_def_rewrite_uses(&add->dest.dest.ssa, &ffma->dest.dest.ssa);
 
    nir_builder_instr_insert(b, &ffma->instr);
    assert(list_is_empty(&add->dest.dest.ssa.uses));

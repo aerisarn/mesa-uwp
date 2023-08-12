@@ -568,7 +568,7 @@ lower_vulkan_resource_index(nir_builder *b,
     * vulkan_load_descriptor return a vec2 providing an index and
     * offset. Our backend compiler only cares about the index part.
     */
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa,
+   nir_def_rewrite_uses(&instr->dest.ssa,
                             nir_imm_ivec2(b, index, 0));
    nir_instr_remove(&instr->instr);
 }
@@ -594,7 +594,7 @@ lower_tex_src(nir_builder *b,
               unsigned src_idx,
               struct lower_pipeline_layout_state *state)
 {
-   nir_ssa_def *index = NULL;
+   nir_def *index = NULL;
    unsigned base_index = 0;
    unsigned array_elements = 1;
    nir_tex_src *src = &instr->src[src_idx];
@@ -739,7 +739,7 @@ lower_image_deref(nir_builder *b,
                   struct lower_pipeline_layout_state *state)
 {
    nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
-   nir_ssa_def *index = NULL;
+   nir_def *index = NULL;
    unsigned array_elements = 1;
    unsigned base_index = 0;
 
@@ -826,7 +826,7 @@ lower_intrinsic(nir_builder *b,
       /* Loading the descriptor happens as part of load/store instructions,
        * so for us this is a no-op.
        */
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, instr->src[0].ssa);
+      nir_def_rewrite_uses(&instr->dest.ssa, instr->src[0].ssa);
       nir_instr_remove(&instr->instr);
       return true;
    }
@@ -907,11 +907,11 @@ lower_point_coord_cb(nir_builder *b, nir_instr *instr, void *_state)
       return false;
 
    b->cursor = nir_after_instr(&intr->instr);
-   nir_ssa_def *result = &intr->dest.ssa;
+   nir_def *result = &intr->dest.ssa;
    result =
       nir_vector_insert_imm(b, result,
                             nir_fsub_imm(b, 1.0, nir_channel(b, result, 1)), 1);
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
+   nir_def_rewrite_uses_after(&intr->dest.ssa,
                                   result, result->parent_instr);
    return true;
 }
@@ -2257,7 +2257,7 @@ pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
    out_layer->data.location = VARYING_SLOT_LAYER;
 
    /* Get the view index value that we will write to gl_Layer */
-   nir_ssa_def *layer =
+   nir_def *layer =
       nir_load_system_value(&b, nir_intrinsic_load_view_index, 0, 1, 32);
 
    /* Emit all output vertices */

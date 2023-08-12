@@ -81,15 +81,15 @@ opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
    }
 
    b->cursor = nir_before_instr(&alu->instr);
-   nir_ssa_def *undef = nir_ssa_undef(b, alu->dest.dest.ssa.num_components,
-                                      nir_dest_bit_size(alu->dest.dest));
-   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, undef);
+   nir_def *undef = nir_undef(b, alu->dest.dest.ssa.num_components,
+                              nir_dest_bit_size(alu->dest.dest));
+   nir_def_rewrite_uses(&alu->dest.dest.ssa, undef);
 
    return true;
 }
 
 static uint32_t
-nir_get_undef_mask(nir_ssa_def *def)
+nir_get_undef_mask(nir_def *def)
 {
    nir_instr *instr = def->parent_instr;
 
@@ -139,7 +139,7 @@ opt_undef_store(nir_intrinsic_instr *intrin)
       return false;
    }
 
-   nir_ssa_def *def = intrin->src[arg_index].ssa;
+   nir_def *def = intrin->src[arg_index].ssa;
 
    unsigned write_mask = nir_intrinsic_write_mask(intrin);
    unsigned undef_mask = nir_get_undef_mask(def);
@@ -171,8 +171,8 @@ opt_undef_pack(nir_builder *b, nir_alu_instr *alu)
    }
    unsigned num_components = nir_dest_num_components(alu->dest.dest);
    b->cursor = nir_before_instr(&alu->instr);
-   nir_ssa_def *def = nir_ssa_undef(b, num_components, 32);
-   nir_ssa_def_rewrite_uses_after(&alu->dest.dest.ssa, def, &alu->instr);
+   nir_def *def = nir_undef(b, num_components, 32);
+   nir_def_rewrite_uses_after(&alu->dest.dest.ssa, def, &alu->instr);
    nir_instr_remove(&alu->instr);
    return true;
 }

@@ -50,10 +50,10 @@ nir_lower_image_bitsize(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *coord =
+   nir_def *coord =
       nir_ssa_for_src(b, intr->src[1], nir_src_num_components(intr->src[1]));
 
-   nir_ssa_def *coord16 = nir_u2u16(b, coord);
+   nir_def *coord16 = nir_u2u16(b, coord);
 
    nir_instr_rewrite_src(instr, &intr->src[1], nir_src_for_ssa(coord16));
 

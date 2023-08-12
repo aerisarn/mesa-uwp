@@ -221,7 +221,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
          for (unsigned j = 0; j < total_components; j++) {
             value[j].u64 = j < alu1_components ? c1[alu1->src[i].swizzle[j]].u64 : c2[alu2->src[i].swizzle[j - alu1_components]].u64;
          }
-         nir_ssa_def *def = nir_build_imm(&b, total_components, bit_size, value);
+         nir_def *def = nir_build_imm(&b, total_components, bit_size, value);
 
          new_alu->src[i].src = nir_src_for_ssa(def);
          for (unsigned j = 0; j < total_components; j++)
@@ -282,20 +282,20 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
    /* update all other uses if there are any */
    unsigned swiz[NIR_MAX_VEC_COMPONENTS];
 
-   if (!nir_ssa_def_is_unused(&alu1->dest.dest.ssa)) {
+   if (!nir_def_is_unused(&alu1->dest.dest.ssa)) {
       for (unsigned i = 0; i < alu1_components; i++)
          swiz[i] = i;
-      nir_ssa_def *new_alu1 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
-                                          alu1_components);
-      nir_ssa_def_rewrite_uses(&alu1->dest.dest.ssa, new_alu1);
+      nir_def *new_alu1 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
+                                      alu1_components);
+      nir_def_rewrite_uses(&alu1->dest.dest.ssa, new_alu1);
    }
 
-   if (!nir_ssa_def_is_unused(&alu2->dest.dest.ssa)) {
+   if (!nir_def_is_unused(&alu2->dest.dest.ssa)) {
       for (unsigned i = 0; i < alu2_components; i++)
          swiz[i] = i + alu1_components;
-      nir_ssa_def *new_alu2 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
-                                          alu2_components);
-      nir_ssa_def_rewrite_uses(&alu2->dest.dest.ssa, new_alu2);
+      nir_def *new_alu2 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
+                                      alu2_components);
+      nir_def_rewrite_uses(&alu2->dest.dest.ssa, new_alu2);
    }
 
    nir_instr_remove(instr1);

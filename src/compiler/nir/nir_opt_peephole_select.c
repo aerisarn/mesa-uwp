@@ -349,8 +349,8 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
 
    /* combine the conditions */
    struct nir_builder b = nir_builder_at(nir_before_cf_node(&if_stmt->cf_node));
-   nir_ssa_def *cond = nir_iand(&b, if_stmt->condition.ssa,
-                                parent_if->condition.ssa);
+   nir_def *cond = nir_iand(&b, if_stmt->condition.ssa,
+                            parent_if->condition.ssa);
    nir_if_rewrite_condition(if_stmt, nir_src_for_ssa(cond));
 
    /* move the whole inner if before the parent if */
@@ -460,8 +460,8 @@ nir_opt_peephole_select_block(nir_block *block, nir_shader *shader,
       nir_ssa_dest_init(&sel->instr, &sel->dest.dest,
                         phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
 
-      nir_ssa_def_rewrite_uses(&phi->dest.ssa,
-                               &sel->dest.dest.ssa);
+      nir_def_rewrite_uses(&phi->dest.ssa,
+                           &sel->dest.dest.ssa);
 
       nir_instr_insert_before(&phi->instr, &sel->instr);
       nir_instr_remove(&phi->instr);

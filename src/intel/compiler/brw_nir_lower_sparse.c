@@ -55,7 +55,7 @@ lower_is_sparse_texels_resident(nir_builder *b, nir_intrinsic_instr *intrin)
 {
    b->cursor = nir_instr_remove(&intrin->instr);
 
-   nir_ssa_def_rewrite_uses(
+   nir_def_rewrite_uses(
       &intrin->dest.ssa,
       nir_i2b(b, nir_iand(b, intrin->src[0].ssa,
                               nir_ishl(b, nir_imm_int(b, 1),
@@ -67,7 +67,7 @@ lower_sparse_residency_code_and(nir_builder *b, nir_intrinsic_instr *intrin)
 {
    b->cursor = nir_instr_remove(&intrin->instr);
 
-   nir_ssa_def_rewrite_uses(
+   nir_def_rewrite_uses(
       &intrin->dest.ssa,
       nir_iand(b, intrin->src[0].ssa, intrin->src[1].ssa));
 }
@@ -77,7 +77,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
 {
    b->cursor = nir_instr_remove(&intrin->instr);
 
-   nir_ssa_def *img_load;
+   nir_def *img_load;
    nir_intrinsic_instr *new_intrin;
    if (intrin->intrinsic == nir_intrinsic_image_sparse_load) {
       img_load = nir_image_load(b,
@@ -106,7 +106,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    nir_intrinsic_set_access(new_intrin, nir_intrinsic_access(intrin));
    nir_intrinsic_set_dest_type(new_intrin, nir_intrinsic_dest_type(intrin));
 
-   nir_ssa_def *dests[NIR_MAX_VEC_COMPONENTS];
+   nir_def *dests[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < intrin->num_components - 1; i++) {
       dests[i] = nir_channel(b, img_load, i);
    }
@@ -130,16 +130,16 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    tex->src[0].src = nir_src_for_ssa(intrin->src[0].ssa);
 
    tex->coord_components = nir_image_intrinsic_coord_components(intrin);
-   nir_ssa_def *coord;
+   nir_def *coord;
    if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_CUBE &&
        nir_intrinsic_image_array(intrin)) {
       tex->coord_components++;
 
-      nir_ssa_def *img_layer = nir_channel(b, intrin->src[1].ssa, 2);
-      nir_ssa_def *tex_slice = nir_idiv(b, img_layer, nir_imm_int(b, 6));
-      nir_ssa_def *tex_face =
+      nir_def *img_layer = nir_channel(b, intrin->src[1].ssa, 2);
+      nir_def *tex_slice = nir_idiv(b, img_layer, nir_imm_int(b, 6));
+      nir_def *tex_face =
          nir_iadd(b, img_layer, nir_ineg(b, nir_imul_imm(b, tex_slice, 6)));
-      nir_ssa_def *comps[4] = {
+      nir_def *comps[4] = {
          nir_channel(b, intrin->src[1].ssa, 0),
          nir_channel(b, intrin->src[1].ssa, 1),
          tex_face,
@@ -163,7 +163,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
 
    dests[intrin->num_components - 1] = nir_channel(b, &tex->dest.ssa, 4);
 
-   nir_ssa_def_rewrite_uses(
+   nir_def_rewrite_uses(
       &intrin->dest.ssa,
       nir_vec(b, dests, intrin->num_components));
 }
@@ -186,15 +186,15 @@ lower_tex_compare(nir_builder *b, nir_tex_instr *tex, int compare_idx)
    tex->is_sparse = false;
    tex->dest.ssa.num_components = tex->dest.ssa.num_components - 1;
 
-   nir_ssa_def *new_comps[NIR_MAX_VEC_COMPONENTS];
+   nir_def *new_comps[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < tex->dest.ssa.num_components; i++)
       new_comps[i] = nir_channel(b, &tex->dest.ssa, i);
    new_comps[tex->dest.ssa.num_components] =
       nir_channel(b, &sparse_tex->dest.ssa, tex->dest.ssa.num_components);
 
-   nir_ssa_def *new_vec = nir_vec(b, new_comps, sparse_tex->dest.ssa.num_components);
+   nir_def *new_vec = nir_vec(b, new_comps, sparse_tex->dest.ssa.num_components);
 
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, new_vec, new_vec->parent_instr);
+   nir_def_rewrite_uses_after(&tex->dest.ssa, new_vec, new_vec->parent_instr);
 }
 
 static bool

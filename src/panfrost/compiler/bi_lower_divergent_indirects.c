@@ -79,15 +79,15 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
    /* This indirect does need it */
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *lane = nir_load_subgroup_invocation(b);
+   nir_def *lane = nir_load_subgroup_invocation(b);
    unsigned *lanes = data;
 
    /* Write zero in a funny way to bypass lower_load_const_to_scalar */
    bool has_dest = nir_intrinsic_infos[intr->intrinsic].has_dest;
    unsigned size = has_dest ? nir_dest_bit_size(intr->dest) : 32;
-   nir_ssa_def *zero = has_dest ? nir_imm_zero(b, 1, size) : NULL;
-   nir_ssa_def *zeroes[4] = {zero, zero, zero, zero};
-   nir_ssa_def *res =
+   nir_def *zero = has_dest ? nir_imm_zero(b, 1, size) : NULL;
+   nir_def *zeroes[4] = {zero, zero, zero, zero};
+   nir_def *res =
       has_dest ? nir_vec(b, zeroes, nir_dest_num_components(intr->dest)) : NULL;
 
    for (unsigned i = 0; i < (*lanes); ++i) {
@@ -99,13 +99,13 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
       nir_pop_if(b, NULL);
 
       if (has_dest) {
-         nir_ssa_def *c_ssa = &c_intr->dest.ssa;
+         nir_def *c_ssa = &c_intr->dest.ssa;
          res = nir_if_phi(b, c_ssa, res);
       }
    }
 
    if (has_dest)
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, res);
+      nir_def_rewrite_uses(&intr->dest.ssa, res);
 
    nir_instr_remove(instr);
    return true;

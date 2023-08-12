@@ -41,7 +41,7 @@ typedef struct {
    nir_variable *transform;
 } lower_wpos_ytransform_state;
 
-static nir_ssa_def *
+static nir_def *
 get_transform(lower_wpos_ytransform_state *state)
 {
    if (state->transform == NULL) {
@@ -60,8 +60,8 @@ get_transform(lower_wpos_ytransform_state *state)
 }
 
 /* NIR equiv of TGSI CMP instruction: */
-static nir_ssa_def *
-nir_cmp(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1, nir_ssa_def *src2)
+static nir_def *
+nir_cmp(nir_builder *b, nir_def *src0, nir_def *src1, nir_def *src2)
 {
    return nir_bcsel(b, nir_flt_imm(b, src0, 0.0), src1, src2);
 }
@@ -73,7 +73,7 @@ emit_wpos_adjustment(lower_wpos_ytransform_state *state,
                      float adjX, float adjY[2])
 {
    nir_builder *b = &state->b;
-   nir_ssa_def *wpostrans, *wpos_temp, *wpos_temp_y, *wpos_input;
+   nir_def *wpostrans, *wpos_temp, *wpos_temp_y, *wpos_input;
 
    wpos_input = &intr->dest.ssa;
 
@@ -89,7 +89,7 @@ emit_wpos_adjustment(lower_wpos_ytransform_state *state,
           * or not, which is determined by testing against the inversion
           * state variable used below, which will be either +1 or -1.
           */
-         nir_ssa_def *adj_temp;
+         nir_def *adj_temp;
 
          adj_temp = nir_cmp(b,
                             nir_channel(b, wpostrans, invert ? 2 : 0),
@@ -128,9 +128,9 @@ emit_wpos_adjustment(lower_wpos_ytransform_state *state,
                         nir_channel(b, wpos_temp, 2),
                         nir_channel(b, wpos_temp, 3));
 
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
-                                  wpos_temp,
-                                  wpos_temp->parent_instr);
+   nir_def_rewrite_uses_after(&intr->dest.ssa,
+                              wpos_temp,
+                              wpos_temp->parent_instr);
 }
 
 static void
@@ -226,7 +226,7 @@ static void
 lower_fddy(lower_wpos_ytransform_state *state, nir_alu_instr *fddy)
 {
    nir_builder *b = &state->b;
-   nir_ssa_def *p, *pt, *trans;
+   nir_def *p, *pt, *trans;
 
    b->cursor = nir_before_instr(&fddy->instr);
 
@@ -254,8 +254,8 @@ lower_interp_deref_or_load_baryc_at_offset(lower_wpos_ytransform_state *state,
                                            unsigned offset_src)
 {
    nir_builder *b = &state->b;
-   nir_ssa_def *offset;
-   nir_ssa_def *flip_y;
+   nir_def *offset;
+   nir_def *flip_y;
 
    b->cursor = nir_before_instr(&intr->instr);
 
@@ -274,17 +274,17 @@ lower_load_sample_pos(lower_wpos_ytransform_state *state,
    nir_builder *b = &state->b;
    b->cursor = nir_after_instr(&intr->instr);
 
-   nir_ssa_def *pos = &intr->dest.ssa;
-   nir_ssa_def *scale = nir_channel(b, get_transform(state), 0);
-   nir_ssa_def *neg_scale = nir_channel(b, get_transform(state), 2);
+   nir_def *pos = &intr->dest.ssa;
+   nir_def *scale = nir_channel(b, get_transform(state), 0);
+   nir_def *neg_scale = nir_channel(b, get_transform(state), 2);
    /* Either y or 1-y for scale equal to 1 or -1 respectively. */
-   nir_ssa_def *flipped_y =
+   nir_def *flipped_y =
       nir_fadd(b, nir_fmax(b, neg_scale, nir_imm_float(b, 0.0)),
                nir_fmul(b, nir_channel(b, pos, 1), scale));
-   nir_ssa_def *flipped_pos = nir_vec2(b, nir_channel(b, pos, 0), flipped_y);
+   nir_def *flipped_pos = nir_vec2(b, nir_channel(b, pos, 0), flipped_y);
 
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, flipped_pos,
-                                  flipped_pos->parent_instr);
+   nir_def_rewrite_uses_after(&intr->dest.ssa, flipped_pos,
+                              flipped_pos->parent_instr);
 }
 
 static bool

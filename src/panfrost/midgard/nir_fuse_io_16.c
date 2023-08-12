@@ -81,9 +81,9 @@ nir_fuse_io_16(nir_shader *shader)
             nir_builder b = nir_builder_at(nir_after_instr(instr));
 
             /* The f2f32(f2fmp(x)) will cancel by opt_algebraic */
-            nir_ssa_def *conv = nir_f2f32(&b, &intr->dest.ssa);
-            nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, conv,
-                                           conv->parent_instr);
+            nir_def *conv = nir_f2f32(&b, &intr->dest.ssa);
+            nir_def_rewrite_uses_after(&intr->dest.ssa, conv,
+                                       conv->parent_instr);
 
             progress |= true;
          }

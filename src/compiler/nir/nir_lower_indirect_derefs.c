@@ -29,14 +29,14 @@ static void
 emit_load_store_deref(nir_builder *b, nir_intrinsic_instr *orig_instr,
                       nir_deref_instr *parent,
                       nir_deref_instr **deref_arr,
-                      nir_ssa_def **dest, nir_ssa_def *src);
+                      nir_def **dest, nir_def *src);
 
 static void
 emit_indirect_load_store_deref(nir_builder *b, nir_intrinsic_instr *orig_instr,
                                nir_deref_instr *parent,
                                nir_deref_instr **deref_arr,
                                int start, int end,
-                               nir_ssa_def **dest, nir_ssa_def *src)
+                               nir_def **dest, nir_def *src)
 {
    assert(start < end);
    if (start == end - 1) {
@@ -46,7 +46,7 @@ emit_indirect_load_store_deref(nir_builder *b, nir_intrinsic_instr *orig_instr,
    } else {
       int mid = start + (end - start) / 2;
 
-      nir_ssa_def *then_dest, *else_dest;
+      nir_def *then_dest, *else_dest;
 
       nir_deref_instr *deref = *deref_arr;
       assert(deref->deref_type == nir_deref_type_array);
@@ -68,7 +68,7 @@ static void
 emit_load_store_deref(nir_builder *b, nir_intrinsic_instr *orig_instr,
                       nir_deref_instr *parent,
                       nir_deref_instr **deref_arr,
-                      nir_ssa_def **dest, nir_ssa_def *src)
+                      nir_def **dest, nir_def *src)
 {
    for (; *deref_arr; deref_arr++) {
       nir_deref_instr *deref = *deref_arr;
@@ -172,10 +172,10 @@ lower_indirect_derefs_block(nir_block *block, nir_builder *b,
          emit_load_store_deref(b, intrin, base, &path.path[1],
                                NULL, intrin->src[1].ssa);
       } else {
-         nir_ssa_def *result;
+         nir_def *result;
          emit_load_store_deref(b, intrin, base, &path.path[1],
                                &result, NULL);
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, result);
+         nir_def_rewrite_uses(&intrin->dest.ssa, result);
       }
 
       nir_deref_path_finish(&path);

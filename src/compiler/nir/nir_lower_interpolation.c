@@ -95,16 +95,16 @@ nir_lower_interpolation_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
+   nir_def *comps[NIR_MAX_VEC_COMPONENTS];
    for (int i = 0; i < intr->num_components; i++) {
-      nir_ssa_def *iid =
+      nir_def *iid =
          nir_load_fs_input_interp_deltas(b, 32, intr->src[1].ssa,
                                          .base = nir_intrinsic_base(intr),
                                          .component = (nir_intrinsic_component(intr) + i),
                                          .io_semantics = nir_intrinsic_io_semantics(intr));
 
-      nir_ssa_def *bary = intr->src[0].ssa;
-      nir_ssa_def *val;
+      nir_def *bary = intr->src[0].ssa;
+      nir_def *val;
 
       val = nir_ffma(b, nir_channel(b, bary, 1),
                      nir_channel(b, iid, 1),
@@ -115,8 +115,8 @@ nir_lower_interpolation_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 
       comps[i] = val;
    }
-   nir_ssa_def *vec = nir_vec(b, comps, intr->num_components);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, vec);
+   nir_def *vec = nir_vec(b, comps, intr->num_components);
+   nir_def_rewrite_uses(&intr->dest.ssa, vec);
 
    return true;
 }

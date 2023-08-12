@@ -38,7 +38,7 @@ gpir_reg *gpir_create_reg(gpir_compiler *comp)
    return reg;
 }
 
-static void register_node_ssa(gpir_block *block, gpir_node *node, nir_ssa_def *ssa)
+static void register_node_ssa(gpir_block *block, gpir_node *node, nir_def *ssa)
 {
    block->comp->node_for_ssa[ssa->index] = node;
    snprintf(node->name, sizeof(node->name), "ssa%d", ssa->index);
@@ -309,7 +309,7 @@ static bool gpir_emit_load_const(gpir_block *block, nir_instr *ni)
 
 static bool gpir_emit_ssa_undef(gpir_block *block, nir_instr *ni)
 {
-   gpir_error("nir_ssa_undef_instr is not supported\n");
+   gpir_error("nir_undef_instr is not supported\n");
    return false;
 }
 

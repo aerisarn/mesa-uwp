@@ -79,7 +79,7 @@ vk_meta_draw_rects_vs_nir(struct vk_meta_device *device, bool use_gs)
                           use_gs ? "layer_out" : "gl_Layer");
    layer->data.location = use_gs ? VARYING_SLOT_VAR1 : VARYING_SLOT_LAYER;
 
-   nir_ssa_def *vtx = nir_load_var(b, in);
+   nir_def *vtx = nir_load_var(b, in);
    nir_store_var(b, pos, nir_vec4(b, nir_channel(b, vtx, 0),
                                      nir_channel(b, vtx, 1),
                                      nir_channel(b, vtx, 2),

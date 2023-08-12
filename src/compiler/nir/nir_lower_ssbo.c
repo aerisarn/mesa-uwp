@@ -59,7 +59,7 @@ lower_ssbo_op(nir_intrinsic_op op)
 /* Like SSBO property sysvals, though SSBO index may be indirect. C.f.
  * nir_load_system_value */
 
-static inline nir_ssa_def *
+static inline nir_def *
 nir_load_ssbo_prop(nir_builder *b, nir_intrinsic_op op,
                    nir_src *idx, unsigned bitsize)
 {
@@ -74,7 +74,7 @@ nir_load_ssbo_prop(nir_builder *b, nir_intrinsic_op op,
 #define nir_ssbo_prop(b, prop, index, bitsize) \
    nir_load_ssbo_prop(b, nir_intrinsic_##prop, index, bitsize)
 
-static nir_ssa_def *
+static nir_def *
 lower_ssbo_instr(nir_builder *b, nir_intrinsic_instr *intr)
 {
    nir_intrinsic_op op = lower_ssbo_op(intr->intrinsic);
@@ -88,9 +88,9 @@ lower_ssbo_instr(nir_builder *b, nir_intrinsic_instr *intr)
 
    nir_src index = intr->src[is_store ? 1 : 0];
    nir_src *offset_src = nir_get_io_offset_src(intr);
-   nir_ssa_def *offset = nir_ssa_for_src(b, *offset_src, 1);
+   nir_def *offset = nir_ssa_for_src(b, *offset_src, 1);
 
-   nir_ssa_def *address =
+   nir_def *address =
       nir_iadd(b,
                nir_ssbo_prop(b, load_ssbo_address, &index, 64),
                nir_u2u64(b, offset));
@@ -167,11 +167,11 @@ nir_lower_ssbo(nir_shader *shader)
             b.cursor = nir_before_instr(instr);
 
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            nir_ssa_def *replace = lower_ssbo_instr(&b, intr);
+            nir_def *replace = lower_ssbo_instr(&b, intr);
 
             if (replace) {
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa,
-                                        replace);
+               nir_def_rewrite_uses(&intr->dest.ssa,
+                                    replace);
             }
 
             nir_instr_remove(instr);

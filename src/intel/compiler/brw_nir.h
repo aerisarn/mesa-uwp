@@ -280,9 +280,9 @@ bool brw_nir_pulls_at_sample(nir_shader *shader);
 #define BRW_NIR_FRAG_OUTPUT_LOCATION_MASK INTEL_MASK(31, 1)
 
 bool brw_nir_move_interpolation_to_top(nir_shader *nir);
-nir_ssa_def *brw_nir_load_global_const(nir_builder *b,
+nir_def *brw_nir_load_global_const(nir_builder *b,
                                        nir_intrinsic_instr *load_uniform,
-                                       nir_ssa_def *base_addr,
+                                       nir_def *base_addr,
                                        unsigned off);
 
 const struct glsl_type *brw_nir_get_var_type(const struct nir_shader *nir,

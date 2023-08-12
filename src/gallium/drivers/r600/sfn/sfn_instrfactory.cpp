@@ -211,7 +211,7 @@ InstrFactory::process_jump(nir_jump_instr *instr, Shader& shader)
 }
 
 bool
-InstrFactory::process_undef(nir_ssa_undef_instr *undef, Shader& shader)
+InstrFactory::process_undef(nir_undef_instr *undef, Shader& shader)
 {
    for (int i = 0; i < undef->def.num_components; ++i) {
       auto dest = shader.value_factory().undef(undef->def.index, i);

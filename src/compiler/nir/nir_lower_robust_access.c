@@ -10,15 +10,15 @@
 
 static void
 rewrite_offset(nir_builder *b, nir_intrinsic_instr *instr,
-               uint32_t type_sz, uint32_t offset_src, nir_ssa_def *size)
+               uint32_t type_sz, uint32_t offset_src, nir_def *size)
 {
    /* Compute the maximum offset being accessed and if it is out of bounds
     * rewrite it to 0 to ensure the access is within bounds.
     */
    const uint32_t access_size = instr->num_components * type_sz;
-   nir_ssa_def *max_access_offset =
+   nir_def *max_access_offset =
       nir_iadd_imm(b, instr->src[offset_src].ssa, access_size - 1);
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_bcsel(b, nir_uge(b, max_access_offset, size), nir_imm_int(b, 0),
                 instr->src[offset_src].ssa);
 
@@ -31,10 +31,10 @@ rewrite_offset(nir_builder *b, nir_intrinsic_instr *instr,
  * intrinsic produces a destination, it will be zero in the invalid case.
  */
 static void
-wrap_in_if(nir_builder *b, nir_intrinsic_instr *instr, nir_ssa_def *valid)
+wrap_in_if(nir_builder *b, nir_intrinsic_instr *instr, nir_def *valid)
 {
    bool has_dest = nir_intrinsic_infos[instr->intrinsic].has_dest;
-   nir_ssa_def *res, *zero;
+   nir_def *res, *zero;
 
    if (has_dest) {
       zero = nir_imm_zero(b, instr->dest.ssa.num_components,
@@ -52,7 +52,7 @@ wrap_in_if(nir_builder *b, nir_intrinsic_instr *instr, nir_ssa_def *valid)
    nir_pop_if(b, NULL);
 
    if (has_dest)
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_if_phi(b, res, zero));
+      nir_def_rewrite_uses(&instr->dest.ssa, nir_if_phi(b, res, zero));
 
    /* We've cloned and wrapped, so drop original instruction */
    nir_instr_remove(&instr->instr);
@@ -64,8 +64,8 @@ lower_buffer_load(nir_builder *b,
                   const nir_lower_robust_access_options *opts)
 {
    uint32_t type_sz = nir_dest_bit_size(instr->dest) / 8;
-   nir_ssa_def *size;
-   nir_ssa_def *index = instr->src[0].ssa;
+   nir_def *size;
+   nir_def *index = instr->src[0].ssa;
 
    if (instr->intrinsic == nir_intrinsic_load_ubo) {
       size = nir_get_ubo_size(b, 32, index);
@@ -125,21 +125,21 @@ lower_image(nir_builder *b,
 
    uint32_t num_coords = nir_image_intrinsic_coord_components(instr);
    bool is_array = nir_intrinsic_image_array(instr);
-   nir_ssa_def *coord = instr->src[1].ssa;
+   nir_def *coord = instr->src[1].ssa;
 
    /* Get image size. imageSize for cubes returns the size of a single face. */
    unsigned size_components = num_coords;
    if (dim == GLSL_SAMPLER_DIM_CUBE && !is_array)
       size_components -= 1;
 
-   nir_ssa_def *size =
+   nir_def *size =
       nir_image_size(b, size_components, 32,
                      instr->src[0].ssa, nir_imm_int(b, 0),
                      .image_array = is_array, .image_dim = dim);
 
    if (dim == GLSL_SAMPLER_DIM_CUBE) {
-      nir_ssa_def *z = is_array ? nir_imul_imm(b, nir_channel(b, size, 2), 6)
-                                : nir_imm_int(b, 6);
+      nir_def *z = is_array ? nir_imul_imm(b, nir_channel(b, size, 2), 6)
+                            : nir_imm_int(b, 6);
 
       size = nir_vec3(b, nir_channel(b, size, 0), nir_channel(b, size, 1), z);
    }

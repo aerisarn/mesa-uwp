@@ -38,7 +38,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
    if (prntf->intrinsic != nir_intrinsic_printf)
       return false;
 
-   nir_ssa_def *fmt_str_id = prntf->src[0].ssa;
+   nir_def *fmt_str_id = prntf->src[0].ssa;
    nir_deref_instr *args = nir_src_as_deref(prntf->src[1]);
    assert(args->deref_type == nir_deref_type_var);
 
@@ -48,7 +48,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
     * overflowed, return -1, otherwise, store the arguments and return 0.
     */
    b->cursor = nir_before_instr(&prntf->instr);
-   nir_ssa_def *buffer_addr = nir_load_printf_buffer_address(b, ptr_bit_size);
+   nir_def *buffer_addr = nir_load_printf_buffer_address(b, ptr_bit_size);
    nir_deref_instr *buffer =
       nir_build_deref_cast(b, buffer_addr, nir_var_mem_global,
                            glsl_array_type(glsl_uint8_t_type(), 0, 4), 0);
@@ -66,7 +66,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
                                   nir_var_mem_global,
                                   glsl_uint_type(), 0);
    counter->cast.align_mul = 4;
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_deref_atomic(b, 32, &counter->dest.ssa,
                        nir_imm_int(b, fmt_str_id_size + args_size),
                        .atomic_op = nir_atomic_op_iadd);
@@ -78,10 +78,10 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
       buffer_size - args_size - fmt_str_id_size - counter_size;
    nir_push_if(b, nir_ilt_imm(b, offset, max_valid_offset));
 
-   nir_ssa_def *printf_succ_val = nir_imm_int(b, 0);
+   nir_def *printf_succ_val = nir_imm_int(b, 0);
 
    /* Write the format string ID */
-   nir_ssa_def *fmt_str_id_offset =
+   nir_def *fmt_str_id_offset =
       nir_i2iN(b, offset, ptr_bit_size);
    nir_deref_instr *fmt_str_id_deref =
       nir_build_deref_array(b, buffer, fmt_str_id_offset);
@@ -94,7 +94,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
    /* Write the format args */
    for (unsigned i = 0; i < glsl_get_length(args->type); ++i) {
       nir_deref_instr *arg_deref = nir_build_deref_struct(b, args, i);
-      nir_ssa_def *arg = nir_load_deref(b, arg_deref);
+      nir_def *arg = nir_load_deref(b, arg_deref);
       const struct glsl_type *arg_type = arg_deref->type;
 
       /* Clang does promotion of arguments to their "native" size. That means
@@ -110,7 +110,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
       }
 
       unsigned field_offset = glsl_get_struct_field_offset(args->type, i);
-      nir_ssa_def *arg_offset =
+      nir_def *arg_offset =
          nir_i2iN(b, nir_iadd_imm(b, offset, fmt_str_id_size + field_offset),
                   ptr_bit_size);
       nir_deref_instr *dst_arg_deref =
@@ -123,11 +123,11 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
    }
 
    nir_push_else(b, NULL);
-   nir_ssa_def *printf_fail_val = nir_imm_int(b, -1);
+   nir_def *printf_fail_val = nir_imm_int(b, -1);
    nir_pop_if(b, NULL);
 
-   nir_ssa_def *ret_val = nir_if_phi(b, printf_succ_val, printf_fail_val);
-   nir_ssa_def_rewrite_uses(&prntf->dest.ssa, ret_val);
+   nir_def *ret_val = nir_if_phi(b, printf_succ_val, printf_fail_val);
+   nir_def_rewrite_uses(&prntf->dest.ssa, ret_val);
    nir_instr_remove(&prntf->instr);
 
    return true;

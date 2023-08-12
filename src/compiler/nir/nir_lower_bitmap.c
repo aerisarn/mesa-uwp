@@ -56,9 +56,9 @@ static void
 lower_bitmap(nir_shader *shader, nir_builder *b,
              const nir_lower_bitmap_options *options)
 {
-   nir_ssa_def *texcoord;
+   nir_def *texcoord;
    nir_tex_instr *tex;
-   nir_ssa_def *cond;
+   nir_def *cond;
 
    texcoord = nir_load_var(b, nir_get_variable_with_location(shader, nir_var_shader_in,
                                                              VARYING_SLOT_TEX0, glsl_vec4_type()));

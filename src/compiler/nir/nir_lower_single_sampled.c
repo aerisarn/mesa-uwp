@@ -34,7 +34,7 @@ lower_single_sampled_instr(nir_builder *b,
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-   nir_ssa_def *lowered;
+   nir_def *lowered;
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_sample_id:
       b->cursor = nir_before_instr(instr);
@@ -83,7 +83,7 @@ lower_single_sampled_instr(nir_builder *b,
       return false;
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, lowered);
+   nir_def_rewrite_uses(&intrin->dest.ssa, lowered);
    nir_instr_remove(instr);
    return true;
 }

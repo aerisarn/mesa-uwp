@@ -67,7 +67,7 @@ get_src_block(nir_src *src)
 }
 
 static bool
-repair_ssa_def(nir_ssa_def *def, void *void_state)
+repair_ssa_def(nir_def *def, void *void_state)
 {
    struct repair_ssa_state *state = void_state;
 
@@ -103,7 +103,7 @@ repair_ssa_def(nir_ssa_def *def, void *void_state)
          continue;
       }
 
-      nir_ssa_def *block_def =
+      nir_def *block_def =
          nir_phi_builder_value_get_block_def(val, block);
       if (block_def == def)
          continue;

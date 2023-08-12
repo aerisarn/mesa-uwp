@@ -120,14 +120,14 @@ nir_opt_reassociate_bfi_instr(nir_builder *b,
    /* The extra nir_mov_alu are to handle swizzles that might be on the
     * original sources.
     */
-   nir_ssa_def *new_bfi = nir_bfi(b,
-                                  nir_mov_alu(b, bfiCD0->src[0], 1),
-                                  nir_mov_alu(b, bfiCD0->src[1], 1),
-                                  nir_iand(b,
-                                           nir_mov_alu(b, bfiABx->src[0], 1),
-                                           nir_mov_alu(b, bfiABx->src[1], 1)));
+   nir_def *new_bfi = nir_bfi(b,
+                              nir_mov_alu(b, bfiCD0->src[0], 1),
+                              nir_mov_alu(b, bfiCD0->src[1], 1),
+                              nir_iand(b,
+                                       nir_mov_alu(b, bfiABx->src[0], 1),
+                                       nir_mov_alu(b, bfiABx->src[1], 1)));
 
-   nir_ssa_def_rewrite_uses(&bfiABx->dest.dest.ssa, new_bfi);
+   nir_def_rewrite_uses(&bfiABx->dest.dest.ssa, new_bfi);
    return true;
 }
 

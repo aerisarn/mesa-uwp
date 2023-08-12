@@ -115,7 +115,7 @@ clover_lower_nir_filter(const nir_instr *instr, const void *)
    return instr->type == nir_instr_type_intrinsic;
 }
 
-static nir_ssa_def *
+static nir_def *
 clover_lower_nir_instr(nir_builder *b, nir_instr *instr, void *_state)
 {
    clover_lower_nir_state *state = reinterpret_cast<clover_lower_nir_state*>(_state);
@@ -137,7 +137,7 @@ clover_lower_nir_instr(nir_builder *b, nir_instr *instr, void *_state)
       return nir_load_var(b, state->printf_buffer);
    }
    case nir_intrinsic_load_base_global_invocation_id: {
-      nir_ssa_def *loads[3];
+      nir_def *loads[3];
 
       /* create variables if we didn't do so alrady */
       if (!state->offset_vars[0]) {

@@ -25,14 +25,14 @@
 #include "nir_builder.h"
 
 static bool
-assert_ssa_def_is_not_1bit(nir_ssa_def *def, UNUSED void *unused)
+assert_ssa_def_is_not_1bit(nir_def *def, UNUSED void *unused)
 {
    assert(def->bit_size > 1);
    return true;
 }
 
 static bool
-rewrite_1bit_ssa_def_to_32bit(nir_ssa_def *def, void *_progress)
+rewrite_1bit_ssa_def_to_32bit(nir_def *def, void *_progress)
 {
    bool *progress = _progress;
    if (def->bit_size == 1) {

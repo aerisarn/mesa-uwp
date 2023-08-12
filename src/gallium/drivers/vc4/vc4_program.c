@@ -140,8 +140,8 @@ vc4_ubo_load(struct vc4_compile *c, nir_intrinsic_instr *intr)
         return qir_TEX_RESULT(c);
 }
 
-nir_ssa_def *
-vc4_nir_get_swizzled_channel(nir_builder *b, nir_ssa_def **srcs, int swiz)
+nir_def *
+vc4_nir_get_swizzled_channel(nir_builder *b, nir_def **srcs, int swiz)
 {
         switch (swiz) {
         default:
@@ -161,7 +161,7 @@ vc4_nir_get_swizzled_channel(nir_builder *b, nir_ssa_def **srcs, int swiz)
 }
 
 static struct qreg *
-ntq_init_ssa_def(struct vc4_compile *c, nir_ssa_def *def)
+ntq_init_ssa_def(struct vc4_compile *c, nir_def *def)
 {
         struct qreg *qregs = ralloc_array(c->def_ht, struct qreg,
                                           def->num_components);
@@ -211,7 +211,7 @@ ntq_store_dest(struct vc4_compile *c, nir_dest *dest, int chan,
 
                 qregs[chan] = result;
         } else {
-                nir_ssa_def *reg = store->src[1].ssa;
+                nir_def *reg = store->src[1].ssa;
                 ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
                 assert(nir_intrinsic_base(store) == 0);
                 assert(nir_intrinsic_num_array_elems(decl) == 0);
@@ -261,7 +261,7 @@ ntq_get_src(struct vc4_compile *c, nir_src src, int i)
                 entry = _mesa_hash_table_search(c->def_ht, src.ssa);
                 assert(i < src.ssa->num_components);
         } else {
-                nir_ssa_def *reg = load->src[0].ssa;
+                nir_def *reg = load->src[0].ssa;
                 ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
                 assert(nir_intrinsic_base(load) == 0);
                 assert(nir_intrinsic_num_array_elems(decl) == 0);
@@ -1643,7 +1643,7 @@ ntq_setup_registers(struct vc4_compile *c, nir_function_impl *impl)
                 struct qreg *qregs = ralloc_array(c->def_ht, struct qreg,
                                                   array_len * num_components);
 
-                nir_ssa_def *nir_reg = &decl->dest.ssa;
+                nir_def *nir_reg = &decl->dest.ssa;
                 _mesa_hash_table_insert(c->def_ht, nir_reg, qregs);
 
                 for (int i = 0; i < array_len * num_components; i++)
@@ -1662,7 +1662,7 @@ ntq_emit_load_const(struct vc4_compile *c, nir_load_const_instr *instr)
 }
 
 static void
-ntq_emit_ssa_undef(struct vc4_compile *c, nir_ssa_undef_instr *instr)
+ntq_emit_ssa_undef(struct vc4_compile *c, nir_undef_instr *instr)
 {
         struct qreg *qregs = ntq_init_ssa_def(c, &instr->def);
 

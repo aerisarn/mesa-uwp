@@ -353,7 +353,7 @@ st_pbo_create_gs(struct st_context *st)
    b.shader->info.outputs_written |= VARYING_BIT_LAYER;
 
    for (int i = 0; i < 3; ++i) {
-      nir_ssa_def *pos = nir_load_array_var_imm(&b, in_pos, i);
+      nir_def *pos = nir_load_array_var_imm(&b, in_pos, i);
 
       nir_store_var(&b, out_pos, nir_vector_insert_imm(&b, pos, nir_imm_float(&b, 0.0), 2), 0xf);
       /* out_layer.x = f2i(in_pos[i].z) */
@@ -412,13 +412,13 @@ create_fs(struct st_context *st, bool download,
                                                   "st/pbo download FS" :
                                                   "st/pbo upload FS");
 
-   nir_ssa_def *zero = nir_imm_int(&b, 0);
+   nir_def *zero = nir_imm_int(&b, 0);
 
    /* param = [ -xoffset + skip_pixels, -yoffset, stride, image_height ] */
    nir_variable *param_var =
       nir_variable_create(b.shader, nir_var_uniform, glsl_vec4_type(), "param");
    b.shader->num_uniforms += 4;
-   nir_ssa_def *param = nir_load_var(&b, param_var);
+   nir_def *param = nir_load_var(&b, param_var);
 
    nir_variable *fragcoord;
    if (pos_is_sysval)
@@ -427,14 +427,14 @@ create_fs(struct st_context *st, bool download,
    else
       fragcoord = nir_create_variable_with_location(b.shader, nir_var_shader_in,
                                                     VARYING_SLOT_POS, glsl_vec4_type());
-   nir_ssa_def *coord = nir_load_var(&b, fragcoord);
+   nir_def *coord = nir_load_var(&b, fragcoord);
 
    /* When st->pbo.layers == false, it is guaranteed we only have a single
     * layer. But we still need the "layer" variable to add the "array"
     * coordinate to the texture. Hence we set layer to zero when array texture
     * is used in case only a single layer is required.
     */
-   nir_ssa_def *layer = NULL;
+   nir_def *layer = NULL;
    if (!download || target == PIPE_TEXTURE_1D_ARRAY ||
                     target == PIPE_TEXTURE_2D_ARRAY ||
                     target == PIPE_TEXTURE_3D ||
@@ -453,12 +453,12 @@ create_fs(struct st_context *st, bool download,
    }
 
    /* offset_pos = param.xy + f2i(coord.xy) */
-   nir_ssa_def *offset_pos =
+   nir_def *offset_pos =
       nir_iadd(&b, nir_channels(&b, param, TGSI_WRITEMASK_XY),
                nir_f2i32(&b, nir_channels(&b, coord, TGSI_WRITEMASK_XY)));
 
    /* addr = offset_pos.x + offset_pos.y * stride */
-   nir_ssa_def *pbo_addr =
+   nir_def *pbo_addr =
       nir_iadd(&b, nir_channel(&b, offset_pos, 0),
                nir_imul(&b, nir_channel(&b, offset_pos, 1),
                         nir_channel(&b, param, 2)));
@@ -468,7 +468,7 @@ create_fs(struct st_context *st, bool download,
                           nir_imul(&b, layer, nir_channel(&b, param, 3)));
    }
 
-   nir_ssa_def *texcoord;
+   nir_def *texcoord;
    if (download) {
       texcoord = nir_f2i32(&b, nir_channels(&b, coord, TGSI_WRITEMASK_XY));
 
@@ -478,7 +478,7 @@ create_fs(struct st_context *st, bool download,
       }
 
       if (layer) {
-         nir_ssa_def *src_layer = layer;
+         nir_def *src_layer = layer;
 
          if (target == PIPE_TEXTURE_3D) {
             nir_variable *layer_offset_var =
@@ -486,7 +486,7 @@ create_fs(struct st_context *st, bool download,
                                    glsl_int_type(), "layer_offset");
             b.shader->num_uniforms += 1;
             layer_offset_var->data.driver_location = 4;
-            nir_ssa_def *layer_offset = nir_load_var(&b, layer_offset_var);
+            nir_def *layer_offset = nir_load_var(&b, layer_offset_var);
 
             src_layer = nir_iadd(&b, layer, layer_offset);
          }
@@ -529,7 +529,7 @@ create_fs(struct st_context *st, bool download,
    tex->src[2].src = nir_src_for_ssa(texcoord);
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
-   nir_ssa_def *result = &tex->dest.ssa;
+   nir_def *result = &tex->dest.ssa;
 
    if (conversion == ST_PBO_CONVERT_SINT_TO_UINT)
       result = nir_imax(&b, result, zero);

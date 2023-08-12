@@ -80,7 +80,7 @@ set_src_live(nir_src *src, void *void_live)
 }
 
 static bool
-set_ssa_def_dead(nir_ssa_def *def, void *void_live)
+set_ssa_def_dead(nir_def *def, void *void_live)
 {
    BITSET_WORD *live = void_live;
 
@@ -257,11 +257,11 @@ nir_get_live_ssa_defs(nir_cursor cursor, void *mem_ctx)
 static bool
 src_does_not_use_def(nir_src *src, void *def)
 {
-   return src->ssa != (nir_ssa_def *)def;
+   return src->ssa != (nir_def *)def;
 }
 
 static bool
-search_for_use_after_instr(nir_instr *start, nir_ssa_def *def)
+search_for_use_after_instr(nir_instr *start, nir_def *def)
 {
    /* Only look for a use strictly after the given instruction */
    struct exec_node *node = start->node.next;
@@ -286,7 +286,7 @@ search_for_use_after_instr(nir_instr *start, nir_ssa_def *def)
  * instr in a pre DFS search of the dominance tree.
  */
 static bool
-nir_ssa_def_is_live_at(nir_ssa_def *def, nir_instr *instr)
+nir_def_is_live_at(nir_def *def, nir_instr *instr)
 {
    if (BITSET_TEST(instr->block->live_out, def->index)) {
       /* Since def dominates instr, if def is in the liveout of the block,
@@ -308,7 +308,7 @@ nir_ssa_def_is_live_at(nir_ssa_def *def, nir_instr *instr)
 }
 
 bool
-nir_ssa_defs_interfere(nir_ssa_def *a, nir_ssa_def *b)
+nir_defs_interfere(nir_def *a, nir_def *b)
 {
    if (a->parent_instr == b->parent_instr) {
       /* Two variables defined at the same time interfere assuming at
@@ -320,8 +320,8 @@ nir_ssa_defs_interfere(nir_ssa_def *a, nir_ssa_def *b)
       /* If either variable is an ssa_undef, then there's no interference */
       return false;
    } else if (a->parent_instr->index < b->parent_instr->index) {
-      return nir_ssa_def_is_live_at(a, b->parent_instr);
+      return nir_def_is_live_at(a, b->parent_instr);
    } else {
-      return nir_ssa_def_is_live_at(b, a->parent_instr);
+      return nir_def_is_live_at(b, a->parent_instr);
    }
 }

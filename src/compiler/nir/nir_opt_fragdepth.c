@@ -32,9 +32,9 @@
  */
 
 static bool
-ssa_def_is_source_depth(nir_ssa_def *def)
+ssa_def_is_source_depth(nir_def *def)
 {
-   nir_ssa_scalar scalar = nir_ssa_scalar_resolved(def, 0);
+   nir_scalar scalar = nir_scalar_resolved(def, 0);
    nir_instr *instr = scalar.def->parent_instr;
    if (instr->type != nir_instr_type_intrinsic)
       return false;

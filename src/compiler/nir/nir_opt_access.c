@@ -49,7 +49,7 @@ struct access_state {
 };
 
 static void
-gather_buffer_access(struct access_state *state, nir_ssa_def *def, bool read, bool write)
+gather_buffer_access(struct access_state *state, nir_def *def, bool read, bool write)
 {
    state->buffers_read |= read;
    state->buffers_written |= write;

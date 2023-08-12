@@ -466,13 +466,13 @@ mir_is_ssa(unsigned index)
 }
 
 static inline unsigned
-nir_ssa_index(nir_ssa_def *ssa)
+nir_ssa_index(nir_def *ssa)
 {
    return (ssa->index << 1) | 0;
 }
 
 static inline unsigned
-nir_reg_index(nir_ssa_def *handle)
+nir_reg_index(nir_def *handle)
 {
    return (handle->index << 1) | PAN_IS_REG;
 }

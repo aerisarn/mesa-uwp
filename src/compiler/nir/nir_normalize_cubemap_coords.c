@@ -44,13 +44,13 @@ normalize_cubemap_coords(nir_builder *b, nir_instr *instr, void *data)
    if (idx < 0)
       return false;
 
-   nir_ssa_def *orig_coord =
+   nir_def *orig_coord =
       nir_ssa_for_src(b, tex->src[idx].src, nir_tex_instr_src_size(tex, idx));
    assert(orig_coord->num_components >= 3);
 
-   nir_ssa_def *orig_xyz = nir_trim_vector(b, orig_coord, 3);
-   nir_ssa_def *norm = nir_fmax_abs_vec_comp(b, orig_xyz);
-   nir_ssa_def *normalized = nir_fmul(b, orig_coord, nir_frcp(b, norm));
+   nir_def *orig_xyz = nir_trim_vector(b, orig_coord, 3);
+   nir_def *norm = nir_fmax_abs_vec_comp(b, orig_xyz);
+   nir_def *normalized = nir_fmul(b, orig_coord, nir_frcp(b, norm));
 
    /* Array indices don't have to be normalized, so make a new vector
     * with the coordinate's array index untouched.

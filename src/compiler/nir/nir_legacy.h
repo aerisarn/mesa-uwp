@@ -10,14 +10,14 @@
 #include "nir.h"
 
 typedef struct {
-   nir_ssa_def *handle;
-   nir_ssa_def *indirect; /** < NULL for no indirect offset */
+   nir_def *handle;
+   nir_def *indirect; /** < NULL for no indirect offset */
    unsigned base_offset;
 } nir_reg_src;
 
 typedef struct {
-   nir_ssa_def *handle;
-   nir_ssa_def *indirect; /** < NULL for no indirect offset */
+   nir_def *handle;
+   nir_def *indirect; /** < NULL for no indirect offset */
    unsigned base_offset;
 } nir_reg_dest;
 
@@ -26,7 +26,7 @@ typedef struct {
 
    union {
       nir_reg_src reg;
-      nir_ssa_def *ssa;
+      nir_def *ssa;
    };
 } nir_legacy_src;
 
@@ -35,7 +35,7 @@ typedef struct {
 
    union {
       nir_reg_dest reg;
-      nir_ssa_def *ssa;
+      nir_def *ssa;
    };
 } nir_legacy_dest;
 

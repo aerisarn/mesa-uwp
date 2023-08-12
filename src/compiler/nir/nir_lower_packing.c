@@ -34,51 +34,51 @@
  * unpackInt2x32(foo) -> vec2(unpackInt2x32_x(foo), unpackInt2x32_y(foo))
  */
 
-static nir_ssa_def *
-lower_pack_64_from_32(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_pack_64_from_32(nir_builder *b, nir_def *src)
 {
    return nir_pack_64_2x32_split(b, nir_channel(b, src, 0),
                                  nir_channel(b, src, 1));
 }
 
-static nir_ssa_def *
-lower_unpack_64_to_32(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_unpack_64_to_32(nir_builder *b, nir_def *src)
 {
    return nir_vec2(b, nir_unpack_64_2x32_split_x(b, src),
                    nir_unpack_64_2x32_split_y(b, src));
 }
 
-static nir_ssa_def *
-lower_pack_32_from_16(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_pack_32_from_16(nir_builder *b, nir_def *src)
 {
    return nir_pack_32_2x16_split(b, nir_channel(b, src, 0),
                                  nir_channel(b, src, 1));
 }
 
-static nir_ssa_def *
-lower_unpack_32_to_16(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_unpack_32_to_16(nir_builder *b, nir_def *src)
 {
    return nir_vec2(b, nir_unpack_32_2x16_split_x(b, src),
                    nir_unpack_32_2x16_split_y(b, src));
 }
 
-static nir_ssa_def *
-lower_pack_64_from_16(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_pack_64_from_16(nir_builder *b, nir_def *src)
 {
-   nir_ssa_def *xy = nir_pack_32_2x16_split(b, nir_channel(b, src, 0),
-                                            nir_channel(b, src, 1));
+   nir_def *xy = nir_pack_32_2x16_split(b, nir_channel(b, src, 0),
+                                        nir_channel(b, src, 1));
 
-   nir_ssa_def *zw = nir_pack_32_2x16_split(b, nir_channel(b, src, 2),
-                                            nir_channel(b, src, 3));
+   nir_def *zw = nir_pack_32_2x16_split(b, nir_channel(b, src, 2),
+                                        nir_channel(b, src, 3));
 
    return nir_pack_64_2x32_split(b, xy, zw);
 }
 
-static nir_ssa_def *
-lower_unpack_64_to_16(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_unpack_64_to_16(nir_builder *b, nir_def *src)
 {
-   nir_ssa_def *xy = nir_unpack_64_2x32_split_x(b, src);
-   nir_ssa_def *zw = nir_unpack_64_2x32_split_y(b, src);
+   nir_def *xy = nir_unpack_64_2x32_split_x(b, src);
+   nir_def *zw = nir_unpack_64_2x32_split_y(b, src);
 
    return nir_vec4(b, nir_unpack_32_2x16_split_x(b, xy),
                    nir_unpack_32_2x16_split_y(b, xy),
@@ -86,8 +86,8 @@ lower_unpack_64_to_16(nir_builder *b, nir_ssa_def *src)
                    nir_unpack_32_2x16_split_y(b, zw));
 }
 
-static nir_ssa_def *
-lower_pack_32_from_8(nir_builder *b, nir_ssa_def *src)
+static nir_def *
+lower_pack_32_from_8(nir_builder *b, nir_def *src)
 {
    return nir_pack_32_4x8_split(b, nir_channel(b, src, 0),
                                 nir_channel(b, src, 1),
@@ -114,8 +114,8 @@ lower_pack_instr(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(&alu_instr->instr);
 
-   nir_ssa_def *src = nir_ssa_for_alu_src(b, alu_instr, 0);
-   nir_ssa_def *dest;
+   nir_def *src = nir_ssa_for_alu_src(b, alu_instr, 0);
+   nir_def *dest;
 
    switch (alu_instr->op) {
    case nir_op_pack_64_2x32:
@@ -142,7 +142,7 @@ lower_pack_instr(nir_builder *b, nir_instr *instr, void *data)
    default:
       unreachable("Impossible opcode");
    }
-   nir_ssa_def_rewrite_uses(&alu_instr->dest.dest.ssa, dest);
+   nir_def_rewrite_uses(&alu_instr->dest.dest.ssa, dest);
    nir_instr_remove(&alu_instr->instr);
 
    return true;

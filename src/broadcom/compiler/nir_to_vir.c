@@ -310,7 +310,7 @@ ntq_add_pending_tmu_flush(struct v3d_compile *c,
 
                 nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
                 if (store != NULL) {
-                        nir_ssa_def *reg = store->src[1].ssa;
+                        nir_def *reg = store->src[1].ssa;
                         _mesa_set_add(c->tmu.outstanding_regs, reg);
                 }
         }
@@ -716,7 +716,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
 }
 
 static struct qreg *
-ntq_init_ssa_def(struct v3d_compile *c, nir_ssa_def *def)
+ntq_init_ssa_def(struct v3d_compile *c, nir_def *def)
 {
         struct qreg *qregs = ralloc_array(c->def_ht, struct qreg,
                                           def->num_components);
@@ -789,7 +789,7 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
 
                 qregs[chan] = result;
         } else {
-                nir_ssa_def *reg = store->src[1].ssa;
+                nir_def *reg = store->src[1].ssa;
                 ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
                 assert(nir_intrinsic_base(store) == 0);
                 assert(nir_intrinsic_num_array_elems(decl) == 0);
@@ -858,7 +858,7 @@ ntq_get_src(struct v3d_compile *c, nir_src src, int i)
                         entry = _mesa_hash_table_search(c->def_ht, src.ssa);
                 }
         } else {
-                nir_ssa_def *reg = load->src[0].ssa;
+                nir_def *reg = load->src[0].ssa;
                 ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
                 assert(nir_intrinsic_base(load) == 0);
                 assert(nir_intrinsic_num_array_elems(decl) == 0);
@@ -2471,7 +2471,7 @@ ntq_setup_registers(struct v3d_compile *c, nir_function_impl *impl)
                 struct qreg *qregs = ralloc_array(c->def_ht, struct qreg,
                                                   array_len * num_components);
 
-                nir_ssa_def *nir_reg = &decl->dest.ssa;
+                nir_def *nir_reg = &decl->dest.ssa;
                 _mesa_hash_table_insert(c->def_ht, nir_reg, qregs);
 
                 for (int i = 0; i < array_len * num_components; i++)

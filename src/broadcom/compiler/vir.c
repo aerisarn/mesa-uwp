@@ -1481,8 +1481,8 @@ lower_load_num_subgroups(struct v3d_compile *c,
                 DIV_ROUND_UP(c->s->info.workgroup_size[0] *
                              c->s->info.workgroup_size[1] *
                              c->s->info.workgroup_size[2], V3D_CHANNELS);
-        nir_ssa_def *result = nir_imm_int(b, num_subgroups);
-        nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
+        nir_def *result = nir_imm_int(b, num_subgroups);
+        nir_def_rewrite_uses(&intr->dest.ssa, result);
         nir_instr_remove(&intr->instr);
 }
 

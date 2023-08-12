@@ -1393,7 +1393,7 @@ mul_clamp(uint32_t a, uint32_t b)
 
 /* recursively gather at most "buf_size" phi/bcsel sources */
 static unsigned
-search_phi_bcsel(nir_ssa_scalar scalar, nir_ssa_scalar *buf, unsigned buf_size, struct set *visited)
+search_phi_bcsel(nir_scalar scalar, nir_scalar *buf, unsigned buf_size, struct set *visited)
 {
    if (_mesa_set_search(visited, scalar.def))
       return 0;
@@ -1416,12 +1416,12 @@ search_phi_bcsel(nir_ssa_scalar scalar, nir_ssa_scalar *buf, unsigned buf_size, 
       }
    }
 
-   if (nir_ssa_scalar_is_alu(scalar)) {
-      nir_op op = nir_ssa_scalar_alu_op(scalar);
+   if (nir_scalar_is_alu(scalar)) {
+      nir_op op = nir_scalar_alu_op(scalar);
 
       if ((op == nir_op_bcsel || op == nir_op_b32csel) && buf_size >= 2) {
-         nir_ssa_scalar src1 = nir_ssa_scalar_chase_alu_src(scalar, 1);
-         nir_ssa_scalar src2 = nir_ssa_scalar_chase_alu_src(scalar, 2);
+         nir_scalar src1 = nir_scalar_chase_alu_src(scalar, 1);
+         nir_scalar src2 = nir_scalar_chase_alu_src(scalar, 2);
 
          unsigned added = search_phi_bcsel(src1, buf, buf_size - 1, visited);
          buf_size -= added;
@@ -1497,11 +1497,11 @@ static const nir_unsigned_upper_bound_config default_ub_config = {
 
 struct uub_query {
    struct analysis_query head;
-   nir_ssa_scalar scalar;
+   nir_scalar scalar;
 };
 
 static void
-push_uub_query(struct analysis_state *state, nir_ssa_scalar scalar)
+push_uub_query(struct analysis_state *state, nir_scalar scalar)
 {
    struct uub_query *pushed_q = push_analysis_query(state, sizeof(struct uub_query));
    pushed_q->scalar = scalar;
@@ -1510,10 +1510,10 @@ push_uub_query(struct analysis_state *state, nir_ssa_scalar scalar)
 static uintptr_t
 get_uub_key(struct analysis_query *q)
 {
-   nir_ssa_scalar scalar = ((struct uub_query *)q)->scalar;
+   nir_scalar scalar = ((struct uub_query *)q)->scalar;
    /* keys can't be 0, so we have to add 1 to the index */
    unsigned shift_amount = ffs(NIR_MAX_VEC_COMPONENTS) - 1;
-   return nir_ssa_scalar_is_const(scalar)
+   return nir_scalar_is_const(scalar)
              ? 0
              : ((uintptr_t)(scalar.def->index + 1) << shift_amount) | scalar.comp;
 }
@@ -1698,7 +1698,7 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
 static void
 get_alu_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, const uint32_t *src)
 {
-   nir_op op = nir_ssa_scalar_alu_op(q.scalar);
+   nir_op op = nir_scalar_alu_op(q.scalar);
 
    /* Early exit for unsupported ALU opcodes. */
    switch (op) {
@@ -1735,7 +1735,7 @@ get_alu_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
    case nir_op_u2u16:
    case nir_op_u2u32:
    case nir_op_f2u32:
-      if (nir_ssa_scalar_chase_alu_src(q.scalar, 0).def->bit_size > 32) {
+      if (nir_scalar_chase_alu_src(q.scalar, 0).def->bit_size > 32) {
          /* If src is >32 bits, return max */
          return;
       }
@@ -1746,7 +1746,7 @@ get_alu_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
 
    if (!q.head.pushed_queries) {
       for (unsigned i = 0; i < nir_op_infos[op].num_inputs; i++)
-         push_uub_query(state, nir_ssa_scalar_chase_alu_src(q.scalar, i));
+         push_uub_query(state, nir_scalar_chase_alu_src(q.scalar, i));
       return;
    }
 
@@ -1778,19 +1778,19 @@ get_alu_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
          *result = src[0] * src[1];
       break;
    case nir_op_ushr: {
-      nir_ssa_scalar src1_scalar = nir_ssa_scalar_chase_alu_src(q.scalar, 1);
+      nir_scalar src1_scalar = nir_scalar_chase_alu_src(q.scalar, 1);
       uint32_t mask = q.scalar.def->bit_size - 1u;
-      if (nir_ssa_scalar_is_const(src1_scalar))
-         *result = src[0] >> (nir_ssa_scalar_as_uint(src1_scalar) & mask);
+      if (nir_scalar_is_const(src1_scalar))
+         *result = src[0] >> (nir_scalar_as_uint(src1_scalar) & mask);
       else
          *result = src[0];
       break;
    }
    case nir_op_ishr: {
-      nir_ssa_scalar src1_scalar = nir_ssa_scalar_chase_alu_src(q.scalar, 1);
+      nir_scalar src1_scalar = nir_scalar_chase_alu_src(q.scalar, 1);
       uint32_t mask = q.scalar.def->bit_size - 1u;
-      if (src[0] <= 2147483647 && nir_ssa_scalar_is_const(src1_scalar))
-         *result = src[0] >> (nir_ssa_scalar_as_uint(src1_scalar) & mask);
+      if (src[0] <= 2147483647 && nir_scalar_is_const(src1_scalar))
+         *result = src[0] >> (nir_scalar_as_uint(src1_scalar) & mask);
       else
          *result = src[0];
       break;
@@ -1803,10 +1803,10 @@ get_alu_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
       *result = src[1] ? src[1] - 1 : 0;
       break;
    case nir_op_udiv: {
-      nir_ssa_scalar src1_scalar = nir_ssa_scalar_chase_alu_src(q.scalar, 1);
-      if (nir_ssa_scalar_is_const(src1_scalar))
-         *result = nir_ssa_scalar_as_uint(src1_scalar)
-                      ? src[0] / nir_ssa_scalar_as_uint(src1_scalar)
+      nir_scalar src1_scalar = nir_scalar_chase_alu_src(q.scalar, 1);
+      if (nir_scalar_is_const(src1_scalar))
+         *result = nir_scalar_as_uint(src1_scalar)
+                      ? src[0] / nir_scalar_as_uint(src1_scalar)
                       : 0;
       else
          *result = src[0];
@@ -1820,10 +1820,10 @@ get_alu_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
       *result = bitmask(MIN2(src[2], q.scalar.def->bit_size));
       break;
    case nir_op_bfm: {
-      nir_ssa_scalar src1_scalar = nir_ssa_scalar_chase_alu_src(q.scalar, 1);
-      if (nir_ssa_scalar_is_const(src1_scalar)) {
+      nir_scalar src1_scalar = nir_scalar_chase_alu_src(q.scalar, 1);
+      if (nir_scalar_is_const(src1_scalar)) {
          uint32_t src0 = MIN2(src[0], 31);
-         uint32_t src1 = nir_ssa_scalar_as_uint(src1_scalar) & 0x1fu;
+         uint32_t src1 = nir_scalar_as_uint(src1_scalar) & 0x1fu;
          *result = bitmask(src0) << src1;
       } else {
          uint32_t src0 = MIN2(src[0], 31);
@@ -1906,7 +1906,7 @@ get_phi_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
       _mesa_hash_table_insert(state->range_ht, (void *)get_uub_key(&q.head), (void *)(uintptr_t)max);
 
       struct set *visited = _mesa_pointer_set_create(NULL);
-      nir_ssa_scalar *defs = alloca(sizeof(nir_ssa_scalar) * 64);
+      nir_scalar *defs = alloca(sizeof(nir_scalar) * 64);
       unsigned def_count = search_phi_bcsel(q.scalar, defs, 64, visited);
       _mesa_set_destroy(visited, NULL);
 
@@ -1925,11 +1925,11 @@ process_uub_query(struct analysis_state *state, struct analysis_query *aq, uint3
    struct uub_query q = *(struct uub_query *)aq;
 
    *result = bitmask(q.scalar.def->bit_size);
-   if (nir_ssa_scalar_is_const(q.scalar))
-      *result = nir_ssa_scalar_as_uint(q.scalar);
+   if (nir_scalar_is_const(q.scalar))
+      *result = nir_scalar_as_uint(q.scalar);
    else if (q.scalar.def->parent_instr->type == nir_instr_type_intrinsic)
       get_intrinsic_uub(state, q, result, src);
-   else if (nir_ssa_scalar_is_alu(q.scalar))
+   else if (nir_scalar_is_alu(q.scalar))
       get_alu_uub(state, q, result, src);
    else if (q.scalar.def->parent_instr->type == nir_instr_type_phi)
       get_phi_uub(state, q, result, src);
@@ -1937,7 +1937,7 @@ process_uub_query(struct analysis_state *state, struct analysis_query *aq, uint3
 
 uint32_t
 nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
-                         nir_ssa_scalar scalar,
+                         nir_scalar scalar,
                          const nir_unsigned_upper_bound_config *config)
 {
    if (!config)
@@ -1963,21 +1963,21 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
 
 bool
 nir_addition_might_overflow(nir_shader *shader, struct hash_table *range_ht,
-                            nir_ssa_scalar ssa, unsigned const_val,
+                            nir_scalar ssa, unsigned const_val,
                             const nir_unsigned_upper_bound_config *config)
 {
-   if (nir_ssa_scalar_is_alu(ssa)) {
-      nir_op alu_op = nir_ssa_scalar_alu_op(ssa);
+   if (nir_scalar_is_alu(ssa)) {
+      nir_op alu_op = nir_scalar_alu_op(ssa);
 
       /* iadd(imul(a, #b), #c) */
       if (alu_op == nir_op_imul || alu_op == nir_op_ishl) {
-         nir_ssa_scalar mul_src0 = nir_ssa_scalar_chase_alu_src(ssa, 0);
-         nir_ssa_scalar mul_src1 = nir_ssa_scalar_chase_alu_src(ssa, 1);
+         nir_scalar mul_src0 = nir_scalar_chase_alu_src(ssa, 0);
+         nir_scalar mul_src1 = nir_scalar_chase_alu_src(ssa, 1);
          uint32_t stride = 1;
-         if (nir_ssa_scalar_is_const(mul_src0))
-            stride = nir_ssa_scalar_as_uint(mul_src0);
-         else if (nir_ssa_scalar_is_const(mul_src1))
-            stride = nir_ssa_scalar_as_uint(mul_src1);
+         if (nir_scalar_is_const(mul_src0))
+            stride = nir_scalar_as_uint(mul_src0);
+         else if (nir_scalar_is_const(mul_src1))
+            stride = nir_scalar_as_uint(mul_src1);
 
          if (alu_op == nir_op_ishl)
             stride = 1u << (stride % 32u);
@@ -1988,13 +1988,13 @@ nir_addition_might_overflow(nir_shader *shader, struct hash_table *range_ht,
 
       /* iadd(iand(a, #b), #c) */
       if (alu_op == nir_op_iand) {
-         nir_ssa_scalar and_src0 = nir_ssa_scalar_chase_alu_src(ssa, 0);
-         nir_ssa_scalar and_src1 = nir_ssa_scalar_chase_alu_src(ssa, 1);
+         nir_scalar and_src0 = nir_scalar_chase_alu_src(ssa, 0);
+         nir_scalar and_src1 = nir_scalar_chase_alu_src(ssa, 1);
          uint32_t mask = 0xffffffff;
-         if (nir_ssa_scalar_is_const(and_src0))
-            mask = nir_ssa_scalar_as_uint(and_src0);
-         else if (nir_ssa_scalar_is_const(and_src1))
-            mask = nir_ssa_scalar_as_uint(and_src1);
+         if (nir_scalar_is_const(and_src0))
+            mask = nir_scalar_as_uint(and_src0);
+         else if (nir_scalar_is_const(and_src1))
+            mask = nir_scalar_as_uint(and_src1);
          if (mask == 0 || const_val < (1u << (ffs(mask) - 1)))
             return false;
       }
@@ -2005,7 +2005,7 @@ nir_addition_might_overflow(nir_shader *shader, struct hash_table *range_ht,
 }
 
 static uint64_t
-ssa_def_bits_used(const nir_ssa_def *def, int recur)
+ssa_def_bits_used(const nir_def *def, int recur)
 {
    uint64_t bits_used = 0;
    uint64_t all_bits = BITFIELD64_MASK(def->bit_size);
@@ -2197,7 +2197,7 @@ ssa_def_bits_used(const nir_ssa_def *def, int recur)
 }
 
 uint64_t
-nir_ssa_def_bits_used(const nir_ssa_def *def)
+nir_def_bits_used(const nir_def *def)
 {
    return ssa_def_bits_used(def, 2);
 }

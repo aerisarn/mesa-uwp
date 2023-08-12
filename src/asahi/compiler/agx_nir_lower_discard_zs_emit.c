@@ -33,7 +33,7 @@ lower_zs_emit(nir_block *block)
 
       nir_builder b = nir_builder_at(nir_before_instr(instr));
 
-      nir_ssa_def *value = intr->src[0].ssa;
+      nir_def *value = intr->src[0].ssa;
       bool z = (sem.location == FRAG_RESULT_DEPTH);
 
       unsigned src_idx = z ? 1 : 2;
@@ -51,10 +51,10 @@ lower_zs_emit(nir_block *block)
          /* Multisampling will get lowered later if needed, default to
           * broadcast
           */
-         nir_ssa_def *sample_mask = nir_imm_intN_t(&b, ALL_SAMPLES, 16);
-         zs_emit = nir_store_zs_agx(&b, sample_mask,
-                                    nir_ssa_undef(&b, 1, 32) /* depth */,
-                                    nir_ssa_undef(&b, 1, 16) /* stencil */);
+         nir_def *sample_mask = nir_imm_intN_t(&b, ALL_SAMPLES, 16);
+         zs_emit =
+            nir_store_zs_agx(&b, sample_mask, nir_undef(&b, 1, 32) /* depth */,
+                             nir_undef(&b, 1, 16) /* stencil */);
       }
 
       assert((nir_intrinsic_base(zs_emit) & base) == 0 &&
@@ -83,9 +83,9 @@ lower_discard(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *all_samples = nir_imm_intN_t(b, ALL_SAMPLES, 16);
-   nir_ssa_def *no_samples = nir_imm_intN_t(b, 0, 16);
-   nir_ssa_def *killed_samples = all_samples;
+   nir_def *all_samples = nir_imm_intN_t(b, ALL_SAMPLES, 16);
+   nir_def *no_samples = nir_imm_intN_t(b, 0, 16);
+   nir_def *killed_samples = all_samples;
 
    if (intr->intrinsic == nir_intrinsic_discard_if)
       killed_samples = nir_bcsel(b, intr->src[0].ssa, all_samples, no_samples);

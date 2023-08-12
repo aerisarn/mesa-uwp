@@ -625,7 +625,7 @@ gcm_schedule_late_instr(nir_instr *instr, struct gcm_state *state);
  * as close to the LCA as possible while trying to stay out of loops.
  */
 static bool
-gcm_schedule_late_def(nir_ssa_def *def, void *void_state)
+gcm_schedule_late_def(nir_def *def, void *void_state)
 {
    struct gcm_state *state = void_state;
 
@@ -733,18 +733,18 @@ gcm_schedule_late_instr(nir_instr *instr, struct gcm_state *state)
 }
 
 static bool
-gcm_replace_def_with_undef(nir_ssa_def *def, void *void_state)
+gcm_replace_def_with_undef(nir_def *def, void *void_state)
 {
    struct gcm_state *state = void_state;
 
-   if (nir_ssa_def_is_unused(def))
+   if (nir_def_is_unused(def))
       return true;
 
-   nir_ssa_undef_instr *undef =
-      nir_ssa_undef_instr_create(state->impl->function->shader,
-                                 def->num_components, def->bit_size);
+   nir_undef_instr *undef =
+      nir_undef_instr_create(state->impl->function->shader,
+                             def->num_components, def->bit_size);
    nir_instr_insert(nir_before_cf_list(&state->impl->body), &undef->instr);
-   nir_ssa_def_rewrite_uses(def, &undef->def);
+   nir_def_rewrite_uses(def, &undef->def);
 
    return true;
 }

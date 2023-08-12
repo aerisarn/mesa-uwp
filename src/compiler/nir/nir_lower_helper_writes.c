@@ -52,9 +52,9 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(instr);
    bool has_dest = nir_intrinsic_infos[intr->intrinsic].has_dest;
-   nir_ssa_def *undef = NULL;
+   nir_def *undef = NULL;
 
-   nir_ssa_def *helper = nir_load_helper_invocation(b, 1);
+   nir_def *helper = nir_load_helper_invocation(b, 1);
    nir_push_if(b, nir_inot(b, helper));
    nir_instr_remove(instr);
    nir_builder_instr_insert(b, instr);
@@ -76,19 +76,19 @@ lower(nir_builder *b, nir_instr *instr, void *data)
     */
    if (has_dest) {
       nir_push_else(b, NULL);
-      undef = nir_ssa_undef(b, nir_dest_num_components(intr->dest),
-                            nir_dest_bit_size(intr->dest));
+      undef = nir_undef(b, nir_dest_num_components(intr->dest),
+                        nir_dest_bit_size(intr->dest));
    }
 
    nir_pop_if(b, NULL);
 
    if (has_dest) {
-      nir_ssa_def *phi = nir_if_phi(b, &intr->dest.ssa, undef);
+      nir_def *phi = nir_if_phi(b, &intr->dest.ssa, undef);
 
-      /* We can't use nir_ssa_def_rewrite_uses_after on phis, so use the global
+      /* We can't use nir_def_rewrite_uses_after on phis, so use the global
        * version and fixup the phi manually
        */
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, phi);
+      nir_def_rewrite_uses(&intr->dest.ssa, phi);
 
       nir_instr *phi_instr = phi->parent_instr;
       nir_phi_instr *phi_as_phi = nir_instr_as_phi(phi_instr);

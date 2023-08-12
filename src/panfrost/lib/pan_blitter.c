@@ -402,8 +402,7 @@ lower_sampler_parameters(nir_builder *b, nir_instr *instr, UNUSED void *data)
    };
 
    b->cursor = nir_after_instr(instr);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa,
-                            nir_build_imm(b, 3, 32, constants));
+   nir_def_rewrite_uses(&intr->dest.ssa, nir_build_imm(b, 3, 32, constants));
    return true;
 }
 
@@ -482,7 +481,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
       glsl_vector_type(GLSL_TYPE_FLOAT, coord_comps), "coord");
    coord_var->data.location = VARYING_SLOT_VAR0;
 
-   nir_ssa_def *coord = nir_load_var(&b, coord_var);
+   nir_def *coord = nir_load_var(&b, coord_var);
 
    unsigned active_count = 0;
    for (unsigned i = 0; i < ARRAY_SIZE(key->surfaces); i++) {
@@ -526,7 +525,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
          break;
       }
 
-      nir_ssa_def *res = NULL;
+      nir_def *res = NULL;
 
       if (resolve) {
          /* When resolving a float type, we need to calculate

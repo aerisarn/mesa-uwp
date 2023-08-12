@@ -110,8 +110,8 @@ split_wrmask(nir_builder *b, nir_intrinsic_instr *intr)
       unsigned first_component = ffs(wrmask) - 1;
       unsigned length = ffs(~(wrmask >> first_component)) - 1;
 
-      nir_ssa_def *value = nir_ssa_for_src(b, intr->src[value_idx], num_comp);
-      nir_ssa_def *offset = nir_ssa_for_src(b, intr->src[offset_idx], 1);
+      nir_def *value = nir_ssa_for_src(b, intr->src[value_idx], num_comp);
+      nir_def *offset = nir_ssa_for_src(b, intr->src[offset_idx], 1);
 
       /* swizzle out the consecutive components that we'll store
        * in this iteration:

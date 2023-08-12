@@ -217,7 +217,7 @@ ir3_nir_lower_ssbo_size_filter(const nir_instr *instr, const void *data)
              nir_intrinsic_get_ssbo_size;
 }
 
-static nir_ssa_def *
+static nir_def *
 ir3_nir_lower_ssbo_size_instr(nir_builder *b, nir_instr *instr, void *data)
 {
    uint8_t ssbo_size_to_bytes_shift = *(uint8_t *) data;
@@ -306,10 +306,10 @@ ir3_nir_lower_array_sampler_cb(struct nir_builder *b, nir_instr *instr, void *_d
    b->cursor = nir_before_instr(&tex->instr);
 
    unsigned ncomp = tex->coord_components;
-   nir_ssa_def *src = nir_ssa_for_src(b, tex->src[coord_idx].src, ncomp);
+   nir_def *src = nir_ssa_for_src(b, tex->src[coord_idx].src, ncomp);
 
    assume(ncomp >= 1);
-   nir_ssa_def *ai = nir_channel(b, src, ncomp - 1);
+   nir_def *ai = nir_channel(b, src, ncomp - 1);
    ai = nir_fadd_imm(b, ai, 0.5);
    nir_instr_rewrite_src(&tex->instr, &tex->src[coord_idx].src,
                          nir_src_for_ssa(nir_vector_insert_imm(b, src, ai, ncomp - 1)));
@@ -418,7 +418,7 @@ lower_subgroup_id_filter(const nir_instr *instr, const void *unused)
           intr->intrinsic == nir_intrinsic_load_num_subgroups;
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_subgroup_id(nir_builder *b, nir_instr *instr, void *unused)
 {
    (void)unused;
@@ -437,12 +437,12 @@ lower_subgroup_id(nir_builder *b, nir_instr *instr, void *unused)
        * nir_lower_compute_system_values() will replace local_size with a
        * constant so this can mostly be constant folded away.
        */
-      nir_ssa_def *local_size = nir_load_workgroup_size(b);
-      nir_ssa_def *size =
+      nir_def *local_size = nir_load_workgroup_size(b);
+      nir_def *size =
          nir_imul24(b, nir_channel(b, local_size, 0),
                     nir_imul24(b, nir_channel(b, local_size, 1),
                                nir_channel(b, local_size, 2)));
-      nir_ssa_def *one = nir_imm_int(b, 1);
+      nir_def *one = nir_imm_int(b, 1);
       return nir_iadd(b, one,
                       nir_ishr(b, nir_isub(b, size, one),
                                nir_load_subgroup_id_shift_ir3(b)));

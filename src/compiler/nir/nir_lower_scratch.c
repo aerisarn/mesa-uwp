@@ -40,7 +40,7 @@ lower_load_store(nir_builder *b,
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
    nir_variable *var = nir_deref_instr_get_variable(deref);
 
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_iadd_imm(b, nir_build_deref_offset(b, deref, size_align),
                    var->data.location);
 
@@ -49,16 +49,16 @@ lower_load_store(nir_builder *b,
 
    if (intrin->intrinsic == nir_intrinsic_load_deref) {
       unsigned bit_size = intrin->dest.ssa.bit_size;
-      nir_ssa_def *value = nir_load_scratch(
+      nir_def *value = nir_load_scratch(
          b, intrin->num_components, bit_size == 1 ? 32 : bit_size, offset, .align_mul = align);
       if (bit_size == 1)
          value = nir_b2b1(b, value);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, value);
+      nir_def_rewrite_uses(&intrin->dest.ssa, value);
    } else {
       assert(intrin->intrinsic == nir_intrinsic_store_deref);
 
-      nir_ssa_def *value = intrin->src[1].ssa;
+      nir_def *value = intrin->src[1].ssa;
       if (value->bit_size == 1)
          value = nir_b2b32(b, value);
 

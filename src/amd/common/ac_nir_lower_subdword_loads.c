@@ -69,8 +69,8 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
    unsigned align_offset = nir_intrinsic_align_offset(intr) % align_mul;
 
    nir_src *src_offset = nir_get_io_offset_src(intr);
-   nir_ssa_def *offset = src_offset->ssa;
-   nir_ssa_def *result = &intr->dest.ssa;
+   nir_def *offset = src_offset->ssa;
+   nir_def *result = &intr->dest.ssa;
 
    /* Change the load to 32 bits per channel, update the channel count,
     * and increase the declared load alignment.
@@ -87,7 +87,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
       b->cursor = nir_after_instr(instr);
       result = nir_extract_bits(b, &result, 1, 0, num_components, bit_size);
 
-      nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, result,
+      nir_def_rewrite_uses_after(&intr->dest.ssa, result,
                                      result->parent_instr);
       return true;
    }
@@ -121,7 +121,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
       result = nir_extract_bits(b, &result, 1, comp_offset * bit_size,
                                 num_components, bit_size);
 
-      nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, result,
+      nir_def_rewrite_uses_after(&intr->dest.ssa, result,
                                      result->parent_instr);
       return true;
    }
@@ -138,10 +138,10 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
 
    /* We need to shift bits in the loaded vector by this number. */
    b->cursor = nir_after_instr(instr);
-   nir_ssa_def *shift = nir_ishl_imm(b, nir_iand_imm(b, offset, 0x3), 3);
-   nir_ssa_def *rev_shift32 = nir_isub_imm(b, 32, shift);
+   nir_def *shift = nir_ishl_imm(b, nir_iand_imm(b, offset, 0x3), 3);
+   nir_def *rev_shift32 = nir_isub_imm(b, 32, shift);
 
-   nir_ssa_def *elems[NIR_MAX_VEC_COMPONENTS];
+   nir_def *elems[NIR_MAX_VEC_COMPONENTS];
 
    /* "shift" can be only be one of: 0, 8, 16, 24
     *
@@ -170,7 +170,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
    if (intr->num_components >= 2) {
       /* Use the 64-bit algorithm as described above. */
       for (i = 0; i < intr->num_components / 2 - 1; i++) {
-         nir_ssa_def *qword1, *dword2;
+         nir_def *qword1, *dword2;
 
          qword1 = nir_pack_64_2x32_split(b,
                                          nir_channel(b, result, i * 2 + 0),
@@ -203,7 +203,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
    result = nir_vec(b, elems, intr->num_components);
    result = nir_extract_bits(b, &result, 1, 0, num_components, bit_size);
 
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, result,
+   nir_def_rewrite_uses_after(&intr->dest.ssa, result,
                                   result->parent_instr);
    return true;
 }

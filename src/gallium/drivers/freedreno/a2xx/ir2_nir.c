@@ -818,7 +818,7 @@ setup_input(struct ir2_context *ctx, nir_variable *in)
 }
 
 static void
-emit_undef(struct ir2_context *ctx, nir_ssa_undef_instr *undef)
+emit_undef(struct ir2_context *ctx, nir_undef_instr *undef)
 {
    /* TODO we don't want to emit anything for undefs */
 

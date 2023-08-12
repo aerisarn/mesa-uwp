@@ -31,7 +31,7 @@ lower_load_uniform_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *loads[4];
+   nir_def *loads[4];
    for (unsigned i = 0; i < intr->num_components; i++) {
       nir_intrinsic_instr *chan_intr =
          nir_intrinsic_instr_create(b->shader, intr->intrinsic);
@@ -51,7 +51,7 @@ lower_load_uniform_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
       loads[i] = &chan_intr->dest.ssa;
    }
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa,
+   nir_def_rewrite_uses(&intr->dest.ssa,
                             nir_vec(b, loads, intr->num_components));
    nir_instr_remove(&intr->instr);
 }

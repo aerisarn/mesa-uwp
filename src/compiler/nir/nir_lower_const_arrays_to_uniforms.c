@@ -400,9 +400,9 @@ nir_lower_const_arrays_to_uniforms(nir_shader *shader,
          }
          nir_deref_path_finish(&path);
 
-         nir_ssa_def *new_def = nir_load_deref(&b, new_deref_instr);
+         nir_def *new_def = nir_load_deref(&b, new_deref_instr);
 
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_def);
+         nir_def_rewrite_uses(&intrin->dest.ssa, new_def);
          nir_instr_remove(&intrin->instr);
       }
    }

@@ -164,7 +164,7 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
 }
 
 static dst_reg
-dst_reg_for_nir_reg(vec4_visitor *v, nir_ssa_def *handle,
+dst_reg_for_nir_reg(vec4_visitor *v, nir_def *handle,
                     unsigned base_offset, nir_src *indirect)
 {
    nir_intrinsic_instr *decl = nir_reg_get_decl(handle);
@@ -2227,7 +2227,7 @@ vec4_visitor::emit_mcs_fetch(const glsl_type *coordinate_type,
 }
 
 void
-vec4_visitor::nir_emit_undef(nir_ssa_undef_instr *instr)
+vec4_visitor::nir_emit_undef(nir_undef_instr *instr)
 {
    nir_ssa_values[instr->def.index] =
       dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(instr->def.bit_size, 32)));

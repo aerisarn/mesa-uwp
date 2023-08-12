@@ -53,7 +53,7 @@ lower_clc_call_instr(nir_instr *instr, nir_builder *b,
       return false;
    }
 
-   nir_ssa_def **params = rzalloc_array(b->shader, nir_ssa_def*, call->num_params);
+   nir_def **params = rzalloc_array(b->shader, nir_def*, call->num_params);
 
    for (unsigned i = 0; i < call->num_params; i++) {
       params[i] = nir_ssa_for_src(b, call->params[i],

@@ -36,7 +36,7 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
    return res;
 }
 
-static nir_ssa_def *
+static nir_def *
 build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
                     unsigned nr, bool msaa)
 {

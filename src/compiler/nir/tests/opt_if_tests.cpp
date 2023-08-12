@@ -29,7 +29,7 @@ protected:
 
    nir_builder bld;
 
-   nir_ssa_def *in_def;
+   nir_def *in_def;
    nir_variable *out_var;
 };
 
@@ -55,9 +55,9 @@ TEST_F(nir_opt_if_test, opt_if_simplification)
     * }
     */
 
-   nir_ssa_def *one = nir_imm_int(b, 1);
+   nir_def *one = nir_imm_int(b, 1);
 
-   nir_ssa_def *cmp_result = nir_ieq(b, in_def, one);
+   nir_def *cmp_result = nir_ieq(b, in_def, one);
    nir_if *nif = nir_push_if(b, cmp_result);
 
    nir_push_else(b, NULL);
@@ -92,9 +92,9 @@ TEST_F(nir_opt_if_test, opt_if_simplification_single_source_phi_after_if)
     * vec1 32 ssa_3 = phi block_2: ssa_0
     */
 
-   nir_ssa_def *one = nir_imm_int(b, 1);
+   nir_def *one = nir_imm_int(b, 1);
 
-   nir_ssa_def *cmp_result = nir_ieq(b, in_def, one);
+   nir_def *cmp_result = nir_ieq(b, in_def, one);
    nir_if *nif = nir_push_if(b, cmp_result);
 
    nir_push_else(b, NULL);
@@ -128,8 +128,8 @@ TEST_F(nir_opt_if_test, opt_if_simplification_single_source_phi_after_if)
 
 TEST_F(nir_opt_if_test, opt_if_alu_of_phi_progress)
 {
-   nir_ssa_def *two = nir_imm_int(b, 2);
-   nir_ssa_def *x = nir_imm_int(b, 0);
+   nir_def *two = nir_imm_int(b, 2);
+   nir_def *x = nir_imm_int(b, 0);
 
    nir_phi_instr *phi = nir_phi_instr_create(b->shader);
 
@@ -140,7 +140,7 @@ TEST_F(nir_opt_if_test, opt_if_alu_of_phi_progress)
 
       nir_phi_instr_add_src(phi, x->parent_instr->block, nir_src_for_ssa(x));
 
-      nir_ssa_def *y = nir_iadd(b, &phi->dest.ssa, two);
+      nir_def *y = nir_iadd(b, &phi->dest.ssa, two);
       nir_store_var(b, out_var,
                     nir_imul(b, &phi->dest.ssa, two), 1);
 

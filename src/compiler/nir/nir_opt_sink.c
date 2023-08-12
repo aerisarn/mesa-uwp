@@ -136,7 +136,7 @@ adjust_block_for_loops(nir_block *use_block, nir_block *def_block,
  * the uses
  */
 static nir_block *
-get_preferred_block(nir_ssa_def *def, bool sink_out_of_loops)
+get_preferred_block(nir_def *def, bool sink_out_of_loops)
 {
    nir_block *lca = NULL;
 
@@ -211,7 +211,7 @@ nir_opt_sink(nir_shader *shader, nir_move_options options)
             if (!nir_can_move_instr(instr, options))
                continue;
 
-            nir_ssa_def *def = nir_instr_ssa_def(instr);
+            nir_def *def = nir_instr_ssa_def(instr);
 
             bool sink_out_of_loops =
                instr->type != nir_instr_type_intrinsic ||

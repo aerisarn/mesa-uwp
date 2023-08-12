@@ -39,7 +39,7 @@ static void
 mark_query_read(struct set *queries,
                 nir_intrinsic_instr *intrin)
 {
-   nir_ssa_def *rq_def = intrin->src[0].ssa;
+   nir_def *rq_def = intrin->src[0].ssa;
 
    nir_variable *query;
    if (rq_def->parent_instr->type == nir_instr_type_intrinsic) {

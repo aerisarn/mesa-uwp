@@ -30,7 +30,7 @@ nir_alu_src_type(const nir_alu_instr *instr, unsigned src)
           nir_src_bit_size(instr->src[src].src);
 }
 
-static nir_ssa_scalar
+static nir_scalar
 nir_alu_arg(const nir_alu_instr *alu, unsigned arg, unsigned comp)
 {
    const nir_alu_src *src = &alu->src[arg];
@@ -45,7 +45,7 @@ nir_alu_arg(const nir_alu_instr *alu, unsigned arg, unsigned comp)
  * Tests are in mod_analysis_tests.cpp.
  */
 bool
-nir_mod_analysis(nir_ssa_scalar val, nir_alu_type val_type, unsigned div, unsigned *mod)
+nir_mod_analysis(nir_scalar val, nir_alu_type val_type, unsigned div, unsigned *mod)
 {
    if (div == 1) {
       *mod = 0;

@@ -44,7 +44,7 @@ struct path_fork {
    bool is_var;
    union {
       nir_variable *path_var;
-      nir_ssa_def *path_ssa;
+      nir_def *path_ssa;
    };
    struct path paths[2];
 };
@@ -175,7 +175,7 @@ set_path_vars_cond(nir_builder *b, struct path_fork *fork, nir_src condition,
                fork = fork->paths[i].fork;
                break;
             } else {
-               nir_ssa_def *ssa_def = condition.ssa;
+               nir_def *ssa_def = condition.ssa;
                assert(ssa_def->bit_size == 1);
                assert(ssa_def->num_components == 1);
                if (!i)
@@ -353,10 +353,10 @@ loop_routing_start(struct routes *routing, nir_builder *b,
  * Gets a forks condition as ssa def if the condition is inside a helper var,
  * the variable will be read into an ssa def
  */
-static nir_ssa_def *
+static nir_def *
 fork_condition(nir_builder *b, struct path_fork *fork)
 {
-   nir_ssa_def *ret;
+   nir_def *ret;
    if (fork->is_var) {
       ret = nir_load_var(b, fork->path_var);
    } else

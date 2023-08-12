@@ -149,7 +149,7 @@ try_lower_memcpy(nir_builder *b, nir_intrinsic_instr *cpy,
        glsl_get_explicit_size(dst->type, false) == size &&
        glsl_get_explicit_size(src->type, false) == size) {
       b->cursor = nir_instr_remove(&cpy->instr);
-      nir_ssa_def *data =
+      nir_def *data =
          nir_load_deref_with_access(b, src, nir_intrinsic_src_access(cpy));
       data = nir_bitcast_vector(b, data, glsl_get_bit_size(dst->type));
       assert(data->num_components == glsl_get_vector_elements(dst->type));

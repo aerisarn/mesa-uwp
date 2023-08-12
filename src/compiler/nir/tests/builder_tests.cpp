@@ -27,7 +27,7 @@ namespace {
 
 class nir_builder_test : public nir_test {
 private:
-   const glsl_type *type_for_def(nir_ssa_def *def)
+   const glsl_type *type_for_def(nir_def *def)
    {
       switch (def->bit_size) {
       case 8:  return glsl_type::u8vec(def->num_components);
@@ -44,7 +44,7 @@ protected:
    {
    }
 
-   void store_test_val(nir_ssa_def *val)
+   void store_test_val(nir_def *val)
    {
       nir_variable *var = nir_variable_create(b->shader, nir_var_mem_ssbo,
                                               type_for_def(val), NULL);
@@ -59,7 +59,7 @@ protected:
       stores.push_back(store);
    }
 
-   nir_ssa_def *test_val(unsigned idx)
+   nir_def *test_val(unsigned idx)
    {
       return stores[idx]->src[1].ssa;
    }
@@ -75,7 +75,7 @@ class nir_extract_bits_test : public nir_builder_test {};
 // TODO: Re-enable this once we get vec8 support in NIR
 TEST_F(nir_extract_bits_test, DISABLED_unaligned8)
 {
-   nir_ssa_def *srcs[] = {
+   nir_def *srcs[] = {
       nir_imm_int(b, 0x03020100),
       nir_imm_ivec2(b, 0x07060504, 0x0b0a0908),
    };
@@ -91,7 +91,7 @@ TEST_F(nir_extract_bits_test, DISABLED_unaligned8)
 
 TEST_F(nir_extract_bits_test, unaligned16_disabled)
 {
-   nir_ssa_def *srcs[] = {
+   nir_def *srcs[] = {
       nir_imm_int(b, 0x03020100),
       nir_imm_ivec2(b, 0x07060504, 0x0b0a0908),
    };
@@ -107,7 +107,7 @@ TEST_F(nir_extract_bits_test, unaligned16_disabled)
 
 TEST_F(nir_extract_bits_test, mixed_bit_sizes)
 {
-   nir_ssa_def *srcs[] = {
+   nir_def *srcs[] = {
       nir_imm_int(b, 0x03020100),
       nir_imm_intN_t(b, 0x04, 8),
       nir_imm_intN_t(b, 0x08070605, 32),

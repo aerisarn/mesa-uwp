@@ -32,21 +32,21 @@
  * 2x2 quad.
  */
 
-static nir_ssa_def *
+static nir_def *
 v3d_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *in_instr, void *data)
 {
         nir_tex_instr *instr = nir_instr_as_tex(in_instr);
 
         b->cursor = nir_before_instr(&instr->instr);
 
-        nir_ssa_def *coord = nir_steal_tex_src(instr, nir_tex_src_coord);
-        nir_ssa_def *sample = nir_steal_tex_src(instr, nir_tex_src_ms_index);
+        nir_def *coord = nir_steal_tex_src(instr, nir_tex_src_coord);
+        nir_def *sample = nir_steal_tex_src(instr, nir_tex_src_ms_index);
 
-        nir_ssa_def *one = nir_imm_int(b, 1);
-        nir_ssa_def *x = nir_iadd(b,
+        nir_def *one = nir_imm_int(b, 1);
+        nir_def *x = nir_iadd(b,
                                   nir_ishl(b, nir_channel(b, coord, 0), one),
                                   nir_iand(b, sample, one));
-        nir_ssa_def *y = nir_iadd(b,
+        nir_def *y = nir_iadd(b,
                                   nir_ishl(b, nir_channel(b, coord, 1), one),
                                   nir_iand(b, nir_ushr(b, sample, one), one));
         if (instr->is_array)

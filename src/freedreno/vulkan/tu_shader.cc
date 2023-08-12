@@ -153,13 +153,13 @@ lower_load_push_constant(struct tu_device *dev,
       base -= shader->const_state.push_consts.lo * 4;
    }
 
-   nir_ssa_def *load =
+   nir_def *load =
       nir_load_uniform(b, instr->num_components,
             instr->dest.ssa.bit_size,
             nir_ushr_imm(b, instr->src[0].ssa, 2),
             .base = base);
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, load);
+   nir_def_rewrite_uses(&instr->dest.ssa, load);
 
    nir_instr_remove(&instr->instr);
 }
@@ -169,14 +169,14 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
                             struct tu_shader *shader,
                             const struct tu_pipeline_layout *layout)
 {
-   nir_ssa_def *vulkan_idx = instr->src[0].ssa;
+   nir_def *vulkan_idx = instr->src[0].ssa;
 
    unsigned set = nir_intrinsic_desc_set(instr);
    unsigned binding = nir_intrinsic_binding(instr);
    struct tu_descriptor_set_layout *set_layout = layout->set[set].layout;
    struct tu_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
-   nir_ssa_def *base;
+   nir_def *base;
 
    if (binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
       return;
@@ -193,7 +193,7 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
           * get it from the const file instead.
           */
          base = nir_imm_int(b, binding_layout->dynamic_offset_offset / (4 * A6XX_TEX_CONST_DWORDS));
-         nir_ssa_def *dynamic_offset_start =
+         nir_def *dynamic_offset_start =
             nir_load_uniform(b, 1, 32, nir_imm_int(b, 0),
                              .base = shader->const_state.dynamic_offset_loc + set);
          base = nir_iadd(b, base, dynamic_offset_start);
@@ -210,46 +210,46 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
 
    unsigned stride = binding_layout->size / (4 * A6XX_TEX_CONST_DWORDS);
    assert(util_is_power_of_two_nonzero(stride));
-   nir_ssa_def *shift = nir_imm_int(b, util_logbase2(stride));
+   nir_def *shift = nir_imm_int(b, util_logbase2(stride));
 
-   nir_ssa_def *def = nir_vec3(b, nir_imm_int(b, set),
+   nir_def *def = nir_vec3(b, nir_imm_int(b, set),
                                nir_iadd(b, base,
                                         nir_ishl(b, vulkan_idx, shift)),
                                shift);
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, def);
+   nir_def_rewrite_uses(&instr->dest.ssa, def);
    nir_instr_remove(&instr->instr);
 }
 
 static void
 lower_vulkan_resource_reindex(nir_builder *b, nir_intrinsic_instr *instr)
 {
-   nir_ssa_def *old_index = instr->src[0].ssa;
-   nir_ssa_def *delta = instr->src[1].ssa;
-   nir_ssa_def *shift = nir_channel(b, old_index, 2);
+   nir_def *old_index = instr->src[0].ssa;
+   nir_def *delta = instr->src[1].ssa;
+   nir_def *shift = nir_channel(b, old_index, 2);
 
-   nir_ssa_def *new_index =
+   nir_def *new_index =
       nir_vec3(b, nir_channel(b, old_index, 0),
                nir_iadd(b, nir_channel(b, old_index, 1),
                         nir_ishl(b, delta, shift)),
                shift);
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, new_index);
+   nir_def_rewrite_uses(&instr->dest.ssa, new_index);
    nir_instr_remove(&instr->instr);
 }
 
 static void
 lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   nir_ssa_def *old_index = intrin->src[0].ssa;
+   nir_def *old_index = intrin->src[0].ssa;
    /* Loading the descriptor happens as part of the load/store instruction so
     * this is a no-op. We just need to turn the shift into an offset of 0.
     */
-   nir_ssa_def *new_index =
+   nir_def *new_index =
       nir_vec3(b, nir_channel(b, old_index, 0),
                nir_channel(b, old_index, 1),
                nir_imm_int(b, 0));
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_index);
+   nir_def_rewrite_uses(&intrin->dest.ssa, new_index);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -273,8 +273,8 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
       buffer_src = 0;
    }
 
-   nir_ssa_scalar scalar_idx = nir_ssa_scalar_resolved(intrin->src[buffer_src].ssa, 0);
-   nir_ssa_def *descriptor_idx = nir_channel(b, intrin->src[buffer_src].ssa, 1);
+   nir_scalar scalar_idx = nir_scalar_resolved(intrin->src[buffer_src].ssa, 0);
+   nir_def *descriptor_idx = nir_channel(b, intrin->src[buffer_src].ssa, 1);
 
    /* For isam, we need to use the appropriate descriptor if 16-bit storage is
     * enabled. Descriptor 0 is the 16-bit one, descriptor 1 is the 32-bit one.
@@ -286,21 +286,21 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
       descriptor_idx = nir_iadd_imm(b, descriptor_idx, 1);
    }
 
-   nir_ssa_def *results[MAX_SETS + 1] = { NULL };
+   nir_def *results[MAX_SETS + 1] = { NULL };
 
-   if (nir_ssa_scalar_is_const(scalar_idx)) {
-      nir_ssa_def *bindless =
-         nir_bindless_resource_ir3(b, 32, descriptor_idx, .desc_set = nir_ssa_scalar_as_uint(scalar_idx));
+   if (nir_scalar_is_const(scalar_idx)) {
+      nir_def *bindless =
+         nir_bindless_resource_ir3(b, 32, descriptor_idx, .desc_set = nir_scalar_as_uint(scalar_idx));
       nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[buffer_src], bindless);
       return;
    }
 
-   nir_ssa_def *base_idx = nir_channel(b, scalar_idx.def, scalar_idx.comp);
+   nir_def *base_idx = nir_channel(b, scalar_idx.def, scalar_idx.comp);
    for (unsigned i = 0; i < MAX_SETS + 1; i++) {
       /* if (base_idx == i) { ... */
       nir_if *nif = nir_push_if(b, nir_ieq_imm(b, base_idx, i));
 
-      nir_ssa_def *bindless =
+      nir_def *bindless =
          nir_bindless_resource_ir3(b, 32, descriptor_idx, .desc_set = i);
 
       nir_intrinsic_instr *copy =
@@ -332,8 +332,8 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
       nir_push_else(b, nif);
    }
 
-   nir_ssa_def *result =
-      nir_ssa_undef(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
+   nir_def *result =
+      nir_undef(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
    for (int i = MAX_SETS; i >= 0; i--) {
       nir_pop_if(b, NULL);
       if (info->has_dest)
@@ -341,11 +341,11 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
    }
 
    if (info->has_dest)
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, result);
+      nir_def_rewrite_uses(&intrin->dest.ssa, result);
    nir_instr_remove(&intrin->instr);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_bindless(struct tu_device *dev, nir_builder *b,
                nir_deref_instr *deref, bool is_sampler,
                struct tu_shader *shader,
@@ -373,13 +373,13 @@ build_bindless(struct tu_device *dev, nir_builder *b,
       if (deref->deref_type == nir_deref_type_var)
          return nir_imm_int(b, idx);
 
-      nir_ssa_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
+      nir_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
       return nir_iadd_imm(b, nir_imul_imm(b, arr_index, 2), idx);
    }
 
    shader->active_desc_sets |= 1u << set;
 
-   nir_ssa_def *desc_offset;
+   nir_def *desc_offset;
    unsigned descriptor_stride;
    unsigned offset = 0;
    /* Samplers come second in combined image/sampler descriptors, see
@@ -397,7 +397,7 @@ build_bindless(struct tu_device *dev, nir_builder *b,
    if (deref->deref_type != nir_deref_type_var) {
       assert(deref->deref_type == nir_deref_type_array);
 
-      nir_ssa_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
+      nir_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
       desc_offset = nir_iadd(b, desc_offset,
                              nir_imul_imm(b, arr_index, descriptor_stride));
    }
@@ -411,7 +411,7 @@ lower_image_deref(struct tu_device *dev, nir_builder *b,
                   const struct tu_pipeline_layout *layout)
 {
    nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
-   nir_ssa_def *bindless = build_bindless(dev, b, deref, false, shader, layout);
+   nir_def *bindless = build_bindless(dev, b, deref, false, shader, layout);
    nir_rewrite_image_intrinsic(instr, bindless, true);
 }
 
@@ -519,12 +519,12 @@ lower_tex_ycbcr(const struct tu_pipeline_layout *layout,
    }
 
    uint32_t bpcs[3] = {bits, bits, bits}; /* TODO: use right bpc for each channel ? */
-   nir_ssa_def *result = nir_convert_ycbcr_to_rgb(builder,
+   nir_def *result = nir_convert_ycbcr_to_rgb(builder,
                                                   ycbcr_sampler->ycbcr_model,
                                                   ycbcr_sampler->ycbcr_range,
                                                   &tex->dest.ssa,
                                                   bpcs);
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, result,
+   nir_def_rewrite_uses_after(&tex->dest.ssa, result,
                                   result->parent_instr);
 
    builder->cursor = nir_before_instr(&tex->instr);
@@ -539,7 +539,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, struct tu_device *dev,
    int sampler_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
    if (sampler_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_src_idx].src);
-      nir_ssa_def *bindless = build_bindless(dev, b, deref, true, shader, layout);
+      nir_def *bindless = build_bindless(dev, b, deref, true, shader, layout);
       nir_instr_rewrite_src(&tex->instr, &tex->src[sampler_src_idx].src,
                             nir_src_for_ssa(bindless));
       tex->src[sampler_src_idx].src_type = nir_tex_src_sampler_handle;
@@ -548,7 +548,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, struct tu_device *dev,
    int tex_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
    if (tex_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_src_idx].src);
-      nir_ssa_def *bindless = build_bindless(dev, b, deref, false, shader, layout);
+      nir_def *bindless = build_bindless(dev, b, deref, false, shader, layout);
       nir_instr_rewrite_src(&tex->instr, &tex->src[tex_src_idx].src,
                             nir_src_for_ssa(bindless));
       tex->src[tex_src_idx].src_type = nir_tex_src_texture_handle;
@@ -629,19 +629,19 @@ lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
       /* Assume we're loading out-of-bounds from a 0-sized inline uniform
        * filtered out below.
        */
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                               nir_ssa_undef(b, intrin->num_components,
+      nir_def_rewrite_uses(&intrin->dest.ssa,
+                               nir_undef(b, intrin->num_components,
                                              intrin->dest.ssa.bit_size));
       return true;
    }
 
-   nir_ssa_def *offset = intrin->src[1].ssa;
+   nir_def *offset = intrin->src[1].ssa;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *val;
+   nir_def *val;
 
    if (use_load) {
-      nir_ssa_def *base_addr =
+      nir_def *base_addr =
          nir_load_uniform(b, 2, 32, nir_imm_int(b, 0), .base = base);
       val = nir_load_global_ir3(b, intrin->num_components,
                                 intrin->dest.ssa.bit_size,
@@ -652,7 +652,7 @@ lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
                              nir_ishr_imm(b, offset, 2), .base = base);
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
+   nir_def_rewrite_uses(&intrin->dest.ssa, val);
    nir_instr_remove(instr);
    return true;
 }
@@ -843,7 +843,7 @@ lower_fdm_filter(const nir_instr *instr, const void *data)
        options->adjust_fragcoord);
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_fdm_instr(struct nir_builder *b, nir_instr *instr, void *data)
 {
    const struct lower_fdm_options *options =
@@ -851,7 +851,7 @@ lower_fdm_instr(struct nir_builder *b, nir_instr *instr, void *data)
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-   nir_ssa_def *view;
+   nir_def *view;
    if (options->multiview) {
       nir_variable *view_var =
          nir_find_variable_with_location(b->shader, nir_var_shader_in,
@@ -870,14 +870,14 @@ lower_fdm_instr(struct nir_builder *b, nir_instr *instr, void *data)
       view = nir_imm_int(b, 0);
    }
 
-   nir_ssa_def *frag_size =
+   nir_def *frag_size =
       nir_load_frag_size_ir3(b, view, .range = options->num_views);
 
    if (intrin->intrinsic == nir_intrinsic_load_frag_coord) {
-      nir_ssa_def *frag_offset =
+      nir_def *frag_offset =
          nir_load_frag_offset_ir3(b, view, .range = options->num_views);
-      nir_ssa_def *unscaled_coord = nir_load_frag_coord_unscaled_ir3(b);
-      nir_ssa_def *xy = nir_trim_vector(b, unscaled_coord, 2);
+      nir_def *unscaled_coord = nir_load_frag_coord_unscaled_ir3(b);
+      nir_def *xy = nir_trim_vector(b, unscaled_coord, 2);
       xy = nir_fmul(b, nir_fsub(b, xy, frag_offset), nir_i2f32(b, frag_size));
       return nir_vec4(b,
                       nir_channel(b, xy, 0),

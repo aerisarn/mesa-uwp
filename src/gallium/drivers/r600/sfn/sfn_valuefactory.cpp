@@ -349,7 +349,7 @@ ValueFactory::dummy_dest(unsigned chan)
 }
 
 PRegister
-ValueFactory::dest(const nir_ssa_def& ssa, int chan, Pin pin_channel, uint8_t chan_mask)
+ValueFactory::dest(const nir_def& ssa, int chan, Pin pin_channel, uint8_t chan_mask)
 {
    RegisterKey key(ssa.index, chan, vp_ssa);
 
@@ -410,7 +410,7 @@ ValueFactory::undef(int index, int chan)
 }
 
 PVirtualValue
-ValueFactory::ssa_src(const nir_ssa_def& ssa, int chan)
+ValueFactory::ssa_src(const nir_def& ssa, int chan)
 {
    RegisterKey key(ssa.index, chan, vp_ssa);
    sfn_log << SfnLog::reg << "search src with key" << key << "\n";

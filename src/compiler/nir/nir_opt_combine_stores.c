@@ -123,7 +123,7 @@ combine_stores(struct combine_stores_state *state,
    /* Build a new vec, to be used as source for the combined store.  As it
     * gets build, remove previous stores that are not needed anymore.
     */
-   nir_ssa_scalar comps[NIR_MAX_VEC_COMPONENTS] = { 0 };
+   nir_scalar comps[NIR_MAX_VEC_COMPONENTS] = { 0 };
    unsigned num_components = glsl_get_vector_elements(combo->dst->type);
    unsigned bit_size = combo->latest->src[1].ssa->bit_size;
    for (unsigned i = 0; i < num_components; i++) {
@@ -141,11 +141,11 @@ combine_stores(struct combine_stores_state *state,
          if (--store->instr.pass_flags == 0 && store != combo->latest)
             nir_instr_remove(&store->instr);
       } else {
-         comps[i] = nir_get_ssa_scalar(nir_ssa_undef(&state->b, 1, bit_size), 0);
+         comps[i] = nir_get_ssa_scalar(nir_undef(&state->b, 1, bit_size), 0);
       }
    }
    assert(combo->latest->instr.pass_flags == 0);
-   nir_ssa_def *vec = nir_vec_scalars(&state->b, comps, num_components);
+   nir_def *vec = nir_vec_scalars(&state->b, comps, num_components);
 
    /* Fix the latest store with the combined information. */
    nir_intrinsic_instr *store = combo->latest;

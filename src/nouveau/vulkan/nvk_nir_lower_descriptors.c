@@ -14,7 +14,7 @@ struct lower_descriptors_ctx {
    nir_address_format ssbo_addr_format;
 };
 
-static nir_ssa_def *
+static nir_def *
 load_descriptor_set_addr(nir_builder *b, uint32_t set,
                          UNUSED const struct lower_descriptors_ctx *ctx)
 {
@@ -40,9 +40,9 @@ get_binding_layout(uint32_t set, uint32_t binding,
    return &set_layout->binding[binding];
 }
 
-static nir_ssa_def *
+static nir_def *
 load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
-                uint32_t set, uint32_t binding, nir_ssa_def *index,
+                uint32_t set, uint32_t binding, nir_def *index,
                 unsigned offset_B, const struct lower_descriptors_ctx *ctx)
 {
    const struct nvk_descriptor_set_binding_layout *binding_layout =
@@ -62,7 +62,7 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
                            dynamic_buffer_start +
                            binding_layout->dynamic_buffer_index);
 
-      nir_ssa_def *root_desc_offset =
+      nir_def *root_desc_offset =
          nir_iadd_imm(b, nir_imul_imm(b, index, sizeof(struct nvk_buffer_address)),
                       nvk_root_descriptor_offset(dynamic_buffers));
 
@@ -72,7 +72,7 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
    }
 
    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
-      nir_ssa_def *base_addr =
+      nir_def *base_addr =
          nir_iadd_imm(b, load_descriptor_set_addr(b, set, ctx),
                           binding_layout->offset);
 
@@ -89,14 +89,14 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
 
    default: {
       assert(binding_layout->stride > 0);
-      nir_ssa_def *desc_ubo_offset =
+      nir_def *desc_ubo_offset =
          nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),
                          binding_layout->offset + offset_B);
 
       unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
       desc_align = MIN2(desc_align, 16);
 
-      nir_ssa_def *set_addr = load_descriptor_set_addr(b, set, ctx);
+      nir_def *set_addr = load_descriptor_set_addr(b, set, ctx);
       return nir_load_global_constant_offset(b, num_components, bit_size,
                                              set_addr, desc_ubo_offset,
                                              .align_mul = desc_align,
@@ -117,11 +117,11 @@ is_idx_intrin(nir_intrinsic_instr *intrin)
    return intrin->intrinsic == nir_intrinsic_vulkan_resource_index;
 }
 
-static nir_ssa_def *
+static nir_def *
 load_descriptor_for_idx_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
                                const struct lower_descriptors_ctx *ctx)
 {
-   nir_ssa_def *index = nir_imm_int(b, 0);
+   nir_def *index = nir_imm_int(b, 0);
 
    while (intrin->intrinsic == nir_intrinsic_vulkan_resource_reindex) {
       index = nir_iadd(b, index, nir_ssa_for_src(b, intrin->src[1], 1));
@@ -150,9 +150,9 @@ try_lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       return false;
    }
 
-   nir_ssa_def *desc = load_descriptor_for_idx_intrin(b, idx_intrin, ctx);
+   nir_def *desc = load_descriptor_for_idx_intrin(b, idx_intrin, ctx);
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
+   nir_def_rewrite_uses(&intrin->dest.ssa, desc);
 
    return true;
 }
@@ -166,14 +166,14 @@ lower_num_workgroups(nir_builder *b, nir_intrinsic_instr *load,
 
    b->cursor = nir_instr_remove(&load->instr);
 
-   nir_ssa_def *val = nir_load_ubo(b, 3, 32,
+   nir_def *val = nir_load_ubo(b, 3, 32,
                                    nir_imm_int(b, 0), /* Root table */
                                    nir_imm_int(b, root_table_offset),
                                    .align_mul = 4,
                                    .align_offset = 0,
                                    .range = root_table_offset + 3 * 4);
 
-   nir_ssa_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->dest.ssa, val);
 
    return true;
 }
@@ -187,14 +187,14 @@ lower_load_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *load,
 
    b->cursor = nir_instr_remove(&load->instr);
 
-   nir_ssa_def *val = nir_load_ubo(b, 3, 32,
+   nir_def *val = nir_load_ubo(b, 3, 32,
                                    nir_imm_int(b, 0),
                                    nir_imm_int(b, root_table_offset),
                                    .align_mul = 4,
                                    .align_offset = 0,
                                    .range = root_table_offset + 3 * 4);
 
-   nir_ssa_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->dest.ssa, val);
 
    return true;
 }
@@ -209,10 +209,10 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
 
    b->cursor = nir_before_instr(&load->instr);
 
-   nir_ssa_def *offset = nir_iadd_imm(b, load->src[0].ssa,
+   nir_def *offset = nir_iadd_imm(b, load->src[0].ssa,
                                          push_region_offset + base);
 
-   nir_ssa_def *val =
+   nir_def *val =
       nir_load_ubo(b, load->dest.ssa.num_components, load->dest.ssa.bit_size,
                    nir_imm_int(b, 0), offset,
                    .align_mul = load->dest.ssa.bit_size / 8,
@@ -220,7 +220,7 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
                    .range = push_region_offset + base +
                             nir_intrinsic_range(load));
 
-   nir_ssa_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->dest.ssa, val);
 
    return true;
 }
@@ -234,14 +234,14 @@ lower_load_view_index(nir_builder *b, nir_intrinsic_instr *load,
 
    b->cursor = nir_instr_remove(&load->instr);
 
-   nir_ssa_def *val = nir_load_ubo(b, 1, 32,
+   nir_def *val = nir_load_ubo(b, 1, 32,
                                    nir_imm_int(b, 0),
                                    nir_imm_int(b, root_table_offset),
                                    .align_mul = 4,
                                    .align_offset = 0,
                                    .range = root_table_offset + 4);
 
-   nir_ssa_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->dest.ssa, val);
 
    return true;
 }
@@ -249,7 +249,7 @@ lower_load_view_index(nir_builder *b, nir_intrinsic_instr *load,
 static void
 get_resource_deref_binding(nir_builder *b, nir_deref_instr *deref,
                            uint32_t *set, uint32_t *binding,
-                           nir_ssa_def **index)
+                           nir_def **index)
 {
    if (deref->deref_type == nir_deref_type_array) {
       *index = deref->arr.index.ssa;
@@ -265,14 +265,14 @@ get_resource_deref_binding(nir_builder *b, nir_deref_instr *deref,
    *binding = var->data.binding;
 }
 
-static nir_ssa_def *
+static nir_def *
 load_resource_deref_desc(nir_builder *b, 
                          unsigned num_components, unsigned bit_size,
                          nir_deref_instr *deref, unsigned offset_B,
                          const struct lower_descriptors_ctx *ctx)
 {
    uint32_t set, binding;
-   nir_ssa_def *index;
+   nir_def *index;
    get_resource_deref_binding(b, deref, &set, &binding, &index);
    return load_descriptor(b, num_components, bit_size,
                           set, binding, index, offset_B, ctx);
@@ -284,7 +284,7 @@ lower_image_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
 {
    b->cursor = nir_before_instr(&intrin->instr);
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-   nir_ssa_def *desc = load_resource_deref_desc(b, 1, 32, deref, 0, ctx);
+   nir_def *desc = load_resource_deref_desc(b, 1, 32, deref, 0, ctx);
    nir_rewrite_image_intrinsic(intrin, desc, true);
 
    /* We treat 3D images as 2D arrays */
@@ -360,24 +360,24 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
                               nir_src_as_deref(tex->src[sampler_src_idx].src);
    assert(texture);
 
-   nir_ssa_def *plane_ssa = nir_steal_tex_src(tex, nir_tex_src_plane);
+   nir_def *plane_ssa = nir_steal_tex_src(tex, nir_tex_src_plane);
    const uint32_t plane =
       plane_ssa ? nir_src_as_uint(nir_src_for_ssa(plane_ssa)) : 0;
    const uint64_t plane_offset_B = plane * sizeof(struct nvk_image_descriptor);
 
-   nir_ssa_def *combined_handle;
+   nir_def *combined_handle;
    if (texture == sampler) {
       combined_handle = load_resource_deref_desc(b, 1, 32, texture, plane_offset_B, ctx);
    } else {
-      nir_ssa_def *texture_desc =
+      nir_def *texture_desc =
          load_resource_deref_desc(b, 1, 32, texture, plane_offset_B, ctx);
       combined_handle = nir_iand_imm(b, texture_desc,
                                      NVK_IMAGE_DESCRIPTOR_IMAGE_INDEX_MASK);
 
       if (sampler != NULL) {
-         nir_ssa_def *sampler_desc =
+         nir_def *sampler_desc =
             load_resource_deref_desc(b, 1, 32, sampler, plane_offset_B, ctx);
-         nir_ssa_def *sampler_index =
+         nir_def *sampler_index =
             nir_iand_imm(b, sampler_desc,
                          NVK_IMAGE_DESCRIPTOR_SAMPLER_INDEX_MASK);
          combined_handle = nir_ior(b, combined_handle, sampler_index);
@@ -437,17 +437,17 @@ lower_ssbo_resource_index(nir_builder *b, nir_intrinsic_instr *intrin,
 
    uint32_t set = nir_intrinsic_desc_set(intrin);
    uint32_t binding = nir_intrinsic_binding(intrin);
-   nir_ssa_def *index = intrin->src[0].ssa;
+   nir_def *index = intrin->src[0].ssa;
 
    const struct nvk_descriptor_set_binding_layout *binding_layout =
       get_binding_layout(set, binding, ctx);
 
-   nir_ssa_def *binding_addr;
+   nir_def *binding_addr;
    uint8_t binding_stride;
    switch (binding_layout->type) {
    case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
-      nir_ssa_def *set_addr = load_descriptor_set_addr(b, set, ctx);
+      nir_def *set_addr = load_descriptor_set_addr(b, set, ctx);
       binding_addr = nir_iadd_imm(b, set_addr, binding_layout->offset);
       binding_stride = binding_layout->stride;
       break;
@@ -457,7 +457,7 @@ lower_ssbo_resource_index(nir_builder *b, nir_intrinsic_instr *intrin,
       const uint32_t root_desc_addr_offset =
          nvk_root_descriptor_offset(root_desc_addr);
 
-      nir_ssa_def *root_desc_addr =
+      nir_def *root_desc_addr =
          nir_load_ubo(b, 1, 64, nir_imm_int(b, 0),
                       nir_imm_int(b, root_desc_addr_offset),
                       .align_mul = 8, .align_offset = 0, .range = ~0);
@@ -483,9 +483,9 @@ lower_ssbo_resource_index(nir_builder *b, nir_intrinsic_instr *intrin,
    binding_addr = nir_ior_imm(b, binding_addr, (uint64_t)binding_stride << 56);
 
    const uint32_t binding_size = binding_layout->array_size * binding_stride;
-   nir_ssa_def *offset_in_binding = nir_imul_imm(b, index, binding_stride);
+   nir_def *offset_in_binding = nir_imul_imm(b, index, binding_stride);
 
-   nir_ssa_def *addr;
+   nir_def *addr;
    switch (ctx->ssbo_addr_format) {
    case nir_address_format_64bit_global:
       addr = nir_iadd(b, binding_addr, nir_u2u64(b, offset_in_binding));
@@ -503,7 +503,7 @@ lower_ssbo_resource_index(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Unknown address mode");
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, addr);
+   nir_def_rewrite_uses(&intrin->dest.ssa, addr);
 
    return true;
 }
@@ -519,10 +519,10 @@ lower_ssbo_resource_reindex(nir_builder *b, nir_intrinsic_instr *intrin,
 
    b->cursor = nir_instr_remove(&intrin->instr);
 
-   nir_ssa_def *addr = intrin->src[0].ssa;
-   nir_ssa_def *index = intrin->src[1].ssa;
+   nir_def *addr = intrin->src[0].ssa;
+   nir_def *index = intrin->src[1].ssa;
 
-   nir_ssa_def *addr_high32;
+   nir_def *addr_high32;
    switch (ctx->ssbo_addr_format) {
    case nir_address_format_64bit_global:
       addr_high32 = nir_unpack_64_2x32_split_y(b, addr);
@@ -537,12 +537,12 @@ lower_ssbo_resource_reindex(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Unknown address mode");
    }
 
-   nir_ssa_def *stride = nir_ushr_imm(b, addr_high32, 24);
-   nir_ssa_def *offset = nir_imul(b, index, stride);
+   nir_def *stride = nir_ushr_imm(b, addr_high32, 24);
+   nir_def *offset = nir_imul(b, index, stride);
 
    addr = nir_build_addr_iadd(b, addr, ctx->ssbo_addr_format,
                               nir_var_mem_ssbo, offset);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, addr);
+   nir_def_rewrite_uses(&intrin->dest.ssa, addr);
 
    return true;
 }
@@ -558,9 +558,9 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
 
    b->cursor = nir_instr_remove(&intrin->instr);
 
-   nir_ssa_def *addr = intrin->src[0].ssa;
+   nir_def *addr = intrin->src[0].ssa;
 
-   nir_ssa_def *desc;
+   nir_def *desc;
    switch (ctx->ssbo_addr_format) {
    case nir_address_format_64bit_global:
       /* Mask off the binding stride */
@@ -571,8 +571,8 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       break;
 
    case nir_address_format_64bit_global_32bit_offset: {
-      nir_ssa_def *base = nir_pack_64_2x32(b, nir_trim_vector(b, addr, 2));
-      nir_ssa_def *offset = nir_channel(b, addr, 3);
+      nir_def *base = nir_pack_64_2x32(b, nir_trim_vector(b, addr, 2));
+      nir_def *offset = nir_channel(b, addr, 3);
       /* Mask off the binding stride */
       base = nir_iand_imm(b, base, BITFIELD64_MASK(56));
       desc = nir_load_global_constant_offset(b, 4, 32, base, offset,
@@ -582,9 +582,9 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    }
 
    case nir_address_format_64bit_bounded_global: {
-      nir_ssa_def *base = nir_pack_64_2x32(b, nir_trim_vector(b, addr, 2));
-      nir_ssa_def *size = nir_channel(b, addr, 2);
-      nir_ssa_def *offset = nir_channel(b, addr, 3);
+      nir_def *base = nir_pack_64_2x32(b, nir_trim_vector(b, addr, 2));
+      nir_def *size = nir_channel(b, addr, 2);
+      nir_def *offset = nir_channel(b, addr, 3);
       /* Mask off the binding stride */
       base = nir_iand_imm(b, base, BITFIELD64_MASK(56));
       desc = nir_load_global_constant_bounded(b, 4, 32, base, offset, size,
@@ -597,7 +597,7 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Unknown address mode");
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
+   nir_def_rewrite_uses(&intrin->dest.ssa, desc);
 
    return true;
 }

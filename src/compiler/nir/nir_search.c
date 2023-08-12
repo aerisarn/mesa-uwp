@@ -505,7 +505,7 @@ construct_value(nir_builder *build,
       const nir_search_constant *c = nir_search_value_as_constant(value);
       unsigned bit_size = replace_bitsize(value, search_bitsize, state);
 
-      nir_ssa_def *cval;
+      nir_def *cval;
       switch (c->type) {
       case nir_type_float:
          cval = nir_imm_floatN_t(build, c->data.d, bit_size);
@@ -619,7 +619,7 @@ add_uses_to_worklist(nir_instr *instr,
                      struct util_dynarray *states,
                      const struct per_op_table *pass_op_table)
 {
-   nir_ssa_def *def = nir_instr_ssa_def(instr);
+   nir_def *def = nir_instr_ssa_def(instr);
 
    nir_foreach_use_safe(use_src, def) {
       if (nir_algebraic_automaton(use_src->parent_instr, states, pass_op_table))
@@ -650,7 +650,7 @@ nir_algebraic_update_automaton(nir_instr *new_instr,
    nir_instr_worklist_destroy(automaton_worklist);
 }
 
-static nir_ssa_def *
+static nir_def *
 nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
                   struct hash_table *range_ht,
                   struct util_dynarray *states,
@@ -749,7 +749,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    /* Note that NIR builder will elide the MOV if it's a no-op, which may
     * allow more work to be done in a single pass through algebraic.
     */
-   nir_ssa_def *ssa_val =
+   nir_def *ssa_val =
       nir_mov_alu(build, val, instr->dest.dest.ssa.num_components);
    if (ssa_val->index == util_dynarray_num_elements(states, uint16_t)) {
       util_dynarray_append(states, uint16_t, 0);
@@ -759,7 +759,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    /* Rewrite the uses of the old SSA value to the new one, and recurse
     * through the uses updating the automaton's state.
     */
-   nir_ssa_def_rewrite_uses(&instr->dest.dest.ssa, ssa_val);
+   nir_def_rewrite_uses(&instr->dest.dest.ssa, ssa_val);
    nir_algebraic_update_automaton(ssa_val->parent_instr, algebraic_worklist,
                                   states, table->pass_op_table);
 

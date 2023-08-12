@@ -128,7 +128,7 @@ get_cursor_for_instr_without_cf(nir_instr *instr)
 }
 
 struct tcs_patch_loop_state {
-   nir_ssa_def *deref, *count;
+   nir_def *deref, *count;
    nir_cursor begin_cursor, end_cursor, insert_cursor;
    nir_loop *loop;
 };
@@ -228,7 +228,7 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
             continue;
          nir_foreach_use_including_if_safe(src, &intr->dest.ssa) {
             b.cursor = nir_before_src(src);
-            nir_src_rewrite_ssa(src, nir_load_invocation_id(&b));
+            nir_src_rewrite(src, nir_load_invocation_id(&b));
          }
          nir_instr_remove(instr);
       }
@@ -254,7 +254,7 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
                b.cursor = state.begin_cursor = get_cursor_for_instr_without_cf(instr);
                start_tcs_loop(&b, &state, loop_var_deref);
             }
-            nir_ssa_def_rewrite_uses(&intr->dest.ssa, state.count);
+            nir_def_rewrite_uses(&intr->dest.ssa, state.count);
             break;
          }
          case nir_intrinsic_barrier:
@@ -313,7 +313,7 @@ remove_tess_level_accesses(nir_builder *b, nir_instr *instr, void *_data)
    } else {
       b->cursor = nir_after_instr(instr);
       assert(nir_dest_num_components(intr->dest) == 1);
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_ssa_undef(b, 1, intr->dest.ssa.bit_size));
+      nir_def_rewrite_uses(&intr->dest.ssa, nir_undef(b, 1, intr->dest.ssa.bit_size));
    }
    return true;
 }

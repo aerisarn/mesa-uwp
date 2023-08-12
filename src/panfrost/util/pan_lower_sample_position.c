@@ -46,19 +46,19 @@ pan_lower_sample_pos_impl(struct nir_builder *b, nir_instr *instr,
    b->cursor = nir_before_instr(instr);
 
    /* Elements are 4 bytes */
-   nir_ssa_def *addr =
+   nir_def *addr =
       nir_iadd(b, nir_load_sample_positions_pan(b),
                nir_u2u64(b, nir_imul_imm(b, nir_load_sample_id(b), 4)));
 
    /* Decode 8:8 fixed-point */
-   nir_ssa_def *raw = nir_load_global(b, addr, 2, 2, 16);
-   nir_ssa_def *decoded = nir_fmul_imm(b, nir_i2f16(b, raw), 1.0 / 256.0);
+   nir_def *raw = nir_load_global(b, addr, 2, 2, 16);
+   nir_def *decoded = nir_fmul_imm(b, nir_i2f16(b, raw), 1.0 / 256.0);
 
    /* Make NIR validator happy */
    if (decoded->bit_size != nir_dest_bit_size(intr->dest))
       decoded = nir_f2fN(b, decoded, nir_dest_bit_size(intr->dest));
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, decoded);
+   nir_def_rewrite_uses(&intr->dest.ssa, decoded);
    return true;
 }
 

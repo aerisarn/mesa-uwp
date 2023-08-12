@@ -179,7 +179,7 @@ find_tex(const nir_instr *instr, const void *data_cb)
    return false;
 }
 
-static nir_ssa_def *
+static nir_def *
 fixup_tex_instr(struct nir_builder *b, nir_instr *instr, void *data_cb)
 {
    nir_tex_instr *tex_instr = nir_instr_as_tex(instr);

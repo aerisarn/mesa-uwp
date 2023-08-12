@@ -27,9 +27,9 @@
 #include "nir_control_flow.h"
 #include "nir_loop_analyze.h"
 
-static nir_ssa_def *clone_alu_and_replace_src_defs(nir_builder *b,
-                                                   const nir_alu_instr *alu,
-                                                   nir_ssa_def **src_defs);
+static nir_def *clone_alu_and_replace_src_defs(nir_builder *b,
+                                               const nir_alu_instr *alu,
+                                               nir_def **src_defs);
 
 /**
  * Gets the single block that jumps back to the loop header. Already assumes
@@ -158,7 +158,7 @@ opt_peel_loop_initial_if(nir_loop *loop)
 
    nir_if *nif = nir_cf_node_as_if(if_node);
 
-   nir_ssa_def *cond = nif->condition.ssa;
+   nir_def *cond = nif->condition.ssa;
    if (cond->parent_instr->type != nir_instr_type_phi)
       return false;
 
@@ -408,8 +408,8 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
       bool all_non_phi_exist_in_prev_block = true;
       bool is_prev_result_undef = true;
       bool is_prev_result_const = true;
-      nir_ssa_def *prev_srcs[8];     // FINISHME: Array size?
-      nir_ssa_def *continue_srcs[8]; // FINISHME: Array size?
+      nir_def *prev_srcs[8];     // FINISHME: Array size?
+      nir_def *continue_srcs[8]; // FINISHME: Array size?
 
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
          nir_instr *const src_instr = alu->src[i].src.ssa->parent_instr;
@@ -479,7 +479,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
 
       /* Split ALU of Phi */
       b->cursor = nir_after_block(prev_block);
-      nir_ssa_def *prev_value = clone_alu_and_replace_src_defs(b, alu, prev_srcs);
+      nir_def *prev_value = clone_alu_and_replace_src_defs(b, alu, prev_srcs);
 
       /* Make a copy of the original ALU instruction.  Replace the sources
        * of the new instruction that read a phi with an undef source from
@@ -489,7 +489,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
        */
       b->cursor = nir_after_block_before_jump(continue_block);
 
-      nir_ssa_def *const alu_copy =
+      nir_def *const alu_copy =
          clone_alu_and_replace_src_defs(b, alu, continue_srcs);
 
       /* Make a new phi node that selects a value from prev_block and the
@@ -508,8 +508,8 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
       /* Modify all readers of the original ALU instruction to read the
        * result of the phi.
        */
-      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa,
-                               &phi->dest.ssa);
+      nir_def_rewrite_uses(&alu->dest.dest.ssa,
+                           &phi->dest.ssa);
 
       /* Since the original ALU instruction no longer has any readers, just
        * remove it.
@@ -673,8 +673,8 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
       /* Modify all readers of the bcsel instruction to read the result of
        * the phi.
        */
-      nir_ssa_def_rewrite_uses(&bcsel->dest.dest.ssa,
-                               &phi->dest.ssa);
+      nir_def_rewrite_uses(&bcsel->dest.dest.ssa,
+                           &phi->dest.ssa);
 
       /* Since the original bcsel instruction no longer has any readers,
        * just remove it.
@@ -873,7 +873,7 @@ opt_if_simplification(nir_builder *b, nir_if *nif)
    /* Insert the inverted instruction and rewrite the condition. */
    b->cursor = nir_after_instr(&alu_instr->instr);
 
-   nir_ssa_def *new_condition =
+   nir_def *new_condition =
       nir_inot(b, &alu_instr->dest.dest.ssa);
 
    nir_if_rewrite_condition(nif, nir_src_for_ssa(new_condition));
@@ -914,7 +914,7 @@ opt_if_phi_is_condition(nir_builder *b, nir_if *nif)
    /* Grab pointers to the last then/else blocks for looking in the phis. */
    nir_block *then_block = nir_if_last_then_block(nif);
    ASSERTED nir_block *else_block = nir_if_last_else_block(nif);
-   nir_ssa_def *cond = nif->condition.ssa;
+   nir_def *cond = nif->condition.ssa;
    bool progress = false;
 
    nir_block *after_if_block = nir_cf_node_as_block(nir_cf_node_next(&nif->cf_node));
@@ -934,23 +934,23 @@ opt_if_phi_is_condition(nir_builder *b, nir_if *nif)
          assert(src->pred == then_block || src->pred == else_block);
          enum opt_bool *pred_val = src->pred == then_block ? &then_val : &else_val;
 
-         nir_ssa_scalar val = nir_ssa_scalar_resolved(src->src.ssa, 0);
-         if (!nir_ssa_scalar_is_const(val))
+         nir_scalar val = nir_scalar_resolved(src->src.ssa, 0);
+         if (!nir_scalar_is_const(val))
             break;
 
-         if (nir_ssa_scalar_as_int(val) == -1)
+         if (nir_scalar_as_int(val) == -1)
             *pred_val = T;
-         else if (nir_ssa_scalar_as_uint(val) == 0)
+         else if (nir_scalar_as_uint(val) == 0)
             *pred_val = F;
          else
             break;
       }
       if (then_val == T && else_val == F) {
-         nir_ssa_def_rewrite_uses(&phi->dest.ssa, cond);
+         nir_def_rewrite_uses(&phi->dest.ssa, cond);
          progress = true;
       } else if (then_val == F && else_val == T) {
          b->cursor = nir_before_cf_node(&nif->cf_node);
-         nir_ssa_def_rewrite_uses(&phi->dest.ssa, nir_inot(b, cond));
+         nir_def_rewrite_uses(&phi->dest.ssa, nir_inot(b, cond));
          progress = true;
       }
    }
@@ -1177,9 +1177,9 @@ evaluate_if_condition(nir_if *nif, nir_cursor cursor, bool *value)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 clone_alu_and_replace_src_defs(nir_builder *b, const nir_alu_instr *alu,
-                               nir_ssa_def **src_defs)
+                               nir_def **src_defs)
 {
    nir_alu_instr *nalu = nir_alu_instr_create(b->shader, alu->op);
    nalu->exact = alu->exact;
@@ -1256,7 +1256,7 @@ propagate_condition_eval(nir_builder *b, nir_if *nif, nir_src *use_src,
    if (!evaluate_if_condition(nif, b->cursor, &bool_value))
       return false;
 
-   nir_ssa_def *def[NIR_MAX_VEC_COMPONENTS] = { 0 };
+   nir_def *def[NIR_MAX_VEC_COMPONENTS] = { 0 };
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       if (alu->src[i].src.ssa == use_src->ssa) {
          def[i] = nir_imm_bool(b, bool_value);
@@ -1265,7 +1265,7 @@ propagate_condition_eval(nir_builder *b, nir_if *nif, nir_src *use_src,
       }
    }
 
-   nir_ssa_def *nalu = clone_alu_and_replace_src_defs(b, alu, def);
+   nir_def *nalu = clone_alu_and_replace_src_defs(b, alu, def);
 
    /* Rewrite use to use new alu instruction */
    nir_src new_src = nir_src_for_ssa(nalu);
@@ -1343,14 +1343,14 @@ opt_if_evaluate_condition_use(nir_builder *b, nir_if *nif)
 
 static bool
 rewrite_comp_uses_within_if(nir_builder *b, nir_if *nif, bool invert,
-                            nir_ssa_scalar scalar, nir_ssa_scalar new_scalar)
+                            nir_scalar scalar, nir_scalar new_scalar)
 {
    bool progress = false;
 
    nir_block *first = invert ? nir_if_first_else_block(nif) : nir_if_first_then_block(nif);
    nir_block *last = invert ? nir_if_last_else_block(nif) : nir_if_last_then_block(nif);
 
-   nir_ssa_def *new_ssa = NULL;
+   nir_def *new_ssa = NULL;
    nir_foreach_use_safe(use, scalar.def) {
       if (use->parent_instr->block->index < first->index ||
           use->parent_instr->block->index > last->index)
@@ -1371,7 +1371,7 @@ rewrite_comp_uses_within_if(nir_builder *b, nir_if *nif, bool invert,
          b->cursor = nir_before_cf_node(&nif->cf_node);
          new_ssa = nir_channel(b, new_scalar.def, new_scalar.comp);
          if (scalar.def->num_components > 1) {
-            nir_ssa_def *vec = nir_ssa_undef(b, scalar.def->num_components, scalar.def->bit_size);
+            nir_def *vec = nir_undef(b, scalar.def->num_components, scalar.def->bit_size);
             new_ssa = nir_vector_insert_imm(b, vec, new_ssa, scalar.comp);
          }
       }
@@ -1399,17 +1399,17 @@ rewrite_comp_uses_within_if(nir_builder *b, nir_if *nif, bool invert,
  *        use(d)
  */
 static bool
-opt_if_rewrite_uniform_uses(nir_builder *b, nir_if *nif, nir_ssa_scalar cond, bool accept_ine)
+opt_if_rewrite_uniform_uses(nir_builder *b, nir_if *nif, nir_scalar cond, bool accept_ine)
 {
    bool progress = false;
 
-   if (!nir_ssa_scalar_is_alu(cond))
+   if (!nir_scalar_is_alu(cond))
       return false;
 
-   nir_op op = nir_ssa_scalar_alu_op(cond);
+   nir_op op = nir_scalar_alu_op(cond);
    if (op == nir_op_iand) {
-      progress |= opt_if_rewrite_uniform_uses(b, nif, nir_ssa_scalar_chase_alu_src(cond, 0), false);
-      progress |= opt_if_rewrite_uniform_uses(b, nif, nir_ssa_scalar_chase_alu_src(cond, 1), false);
+      progress |= opt_if_rewrite_uniform_uses(b, nif, nir_scalar_chase_alu_src(cond, 0), false);
+      progress |= opt_if_rewrite_uniform_uses(b, nif, nir_scalar_chase_alu_src(cond, 1), false);
       return progress;
    }
 
@@ -1417,8 +1417,8 @@ opt_if_rewrite_uniform_uses(nir_builder *b, nir_if *nif, nir_ssa_scalar cond, bo
       return false;
 
    for (unsigned i = 0; i < 2; i++) {
-      nir_ssa_scalar src_uni = nir_ssa_scalar_chase_alu_src(cond, i);
-      nir_ssa_scalar src_div = nir_ssa_scalar_chase_alu_src(cond, !i);
+      nir_scalar src_uni = nir_scalar_chase_alu_src(cond, i);
+      nir_scalar src_div = nir_scalar_chase_alu_src(cond, !i);
 
       if (src_uni.def->parent_instr->type == nir_instr_type_load_const && src_div.def != src_uni.def)
          return rewrite_comp_uses_within_if(b, nif, op == nir_op_ine, src_div, src_uni);
@@ -1431,8 +1431,8 @@ opt_if_rewrite_uniform_uses(nir_builder *b, nir_if *nif, nir_ssa_scalar cond, bo
           (intrin->intrinsic != nir_intrinsic_reduce || nir_intrinsic_cluster_size(intrin)))
          continue;
 
-      nir_ssa_scalar intrin_src = { intrin->src[0].ssa, src_uni.comp };
-      nir_ssa_scalar resolved_intrin_src = nir_ssa_scalar_resolved(intrin_src.def, intrin_src.comp);
+      nir_scalar intrin_src = { intrin->src[0].ssa, src_uni.comp };
+      nir_scalar resolved_intrin_src = nir_scalar_resolved(intrin_src.def, intrin_src.comp);
 
       if (resolved_intrin_src.comp != src_div.comp || resolved_intrin_src.def != src_div.def)
          continue;
@@ -1646,7 +1646,7 @@ opt_if_safe_cf_list(nir_builder *b, struct exec_list *cf_list)
          progress |= opt_if_safe_cf_list(b, &nif->then_list);
          progress |= opt_if_safe_cf_list(b, &nif->else_list);
          progress |= opt_if_evaluate_condition_use(b, nif);
-         nir_ssa_scalar cond = nir_ssa_scalar_resolved(nif->condition.ssa, 0);
+         nir_scalar cond = nir_scalar_resolved(nif->condition.ssa, 0);
          progress |= opt_if_rewrite_uniform_uses(b, nif, cond, true);
          break;
       }

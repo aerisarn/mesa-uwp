@@ -60,7 +60,7 @@ lower_vulkan_descriptors_instr(nir_builder *b, nir_instr *instr, void *cb_data)
    uint32_t binding = nir_intrinsic_binding(res_index_intrin);
    assert(binding < bind_map->num_bindings);
 
-   nir_ssa_def *desc_value = NULL;
+   nir_def *desc_value = NULL;
    if (bind_map->bindings[binding].push_constant) {
       desc_value =
          nir_vec2(b,
@@ -93,7 +93,7 @@ lower_vulkan_descriptors_instr(nir_builder *b, nir_instr *instr, void *cb_data)
                   nir_imm_int(b, 0));
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc_value);
+   nir_def_rewrite_uses(&intrin->dest.ssa, desc_value);
 
    return true;
 }
@@ -121,7 +121,7 @@ lower_base_workgroup_id(nir_builder *b, nir_instr *instr, UNUSED void *data)
       return false;
 
    b->cursor = nir_instr_remove(&intrin->instr);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_imm_zero(b, 3, 32));
+   nir_def_rewrite_uses(&intrin->dest.ssa, nir_imm_zero(b, 3, 32));
    return true;
 }
 
@@ -137,7 +137,7 @@ lower_load_ubo_to_uniforms(nir_builder *b, nir_instr *instr, void *cb_data)
 
    b->cursor = nir_instr_remove(instr);
 
-   nir_ssa_def_rewrite_uses(
+   nir_def_rewrite_uses(
       &intrin->dest.ssa,
       nir_load_uniform(b,
                        intrin->dest.ssa.num_components,

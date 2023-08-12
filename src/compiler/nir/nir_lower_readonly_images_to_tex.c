@@ -137,12 +137,12 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_image_deref_load: {
-      nir_ssa_def *coord =
+      nir_def *coord =
          nir_trim_vector(b, intrin->src[1].ssa, coord_components);
       tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
       tex->coord_components = coord_components;
 
-      nir_ssa_def *lod = intrin->src[3].ssa;
+      nir_def *lod = intrin->src[3].ssa;
       tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
       assert(num_srcs == 3);
@@ -153,7 +153,7 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
    }
 
    case nir_intrinsic_image_deref_size: {
-      nir_ssa_def *lod = intrin->src[1].ssa;
+      nir_def *lod = intrin->src[1].ssa;
       tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
       assert(num_srcs == 2);
@@ -169,10 +169,10 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   nir_ssa_def *res = nir_trim_vector(b, &tex->dest.ssa,
-                                      intrin->dest.ssa.num_components);
+   nir_def *res = nir_trim_vector(b, &tex->dest.ssa,
+                                  intrin->dest.ssa.num_components);
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, res);
+   nir_def_rewrite_uses(&intrin->dest.ssa, res);
    nir_instr_remove(&intrin->instr);
 
    return true;

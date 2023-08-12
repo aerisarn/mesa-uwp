@@ -71,7 +71,7 @@ typedef struct {
    nir_lower_tex_shadow_swizzle *tex_swizzles;
 } sampler_state;
 
-static nir_ssa_def *
+static nir_def *
 nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
 
 {
@@ -99,24 +99,24 @@ nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
    /* NIR expects a vec4 result from the above texture instructions */
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
 
-   nir_ssa_def *tex_r = nir_channel(b, &tex->dest.ssa, 0);
-   nir_ssa_def *cmp = tex->src[comp_index].src.ssa;
+   nir_def *tex_r = nir_channel(b, &tex->dest.ssa, 0);
+   nir_def *cmp = tex->src[comp_index].src.ssa;
 
    int proj_index = nir_tex_instr_src_index(tex, nir_tex_src_projector);
    if (proj_index >= 0)
       cmp = nir_fmul(b, cmp, nir_frcp(b, tex->src[proj_index].src.ssa));
 
-   nir_ssa_def *result =
+   nir_def *result =
       nir_compare_func(b,
                        sampler_binding < state->n_states ? state->compare_func[sampler_binding] : COMPARE_FUNC_ALWAYS,
                        cmp, tex_r);
 
    result = nir_b2f32(b, result);
-   nir_ssa_def *one = nir_imm_float(b, 1.0);
-   nir_ssa_def *zero = nir_imm_float(b, 0.0);
+   nir_def *one = nir_imm_float(b, 1.0);
+   nir_def *zero = nir_imm_float(b, 0.0);
 
-   nir_ssa_def *lookup[6] = { result, NULL, NULL, NULL, zero, one };
-   nir_ssa_def *r[4] = { result, result, result, result };
+   nir_def *lookup[6] = { result, NULL, NULL, NULL, zero, one };
+   nir_def *r[4] = { result, result, result, result };
 
    if (sampler_binding < state->n_states) {
       r[0] = lookup[state->tex_swizzles[sampler_binding].swizzle_r];

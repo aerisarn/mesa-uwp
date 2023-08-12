@@ -980,7 +980,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       nir_intrinsic_instr *store_reg =
          nir_store_reg_for_def(&instr->dest.dest.ssa);
       if (store_reg != NULL) {
-         nir_ssa_def *dest_reg = store_reg->src[1].ssa;
+         nir_def *dest_reg = store_reg->src[1].ssa;
          for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
             nir_intrinsic_instr *load_reg =
                nir_load_reg_for_def(instr->src[i].src.ssa);
@@ -3992,7 +3992,7 @@ brw_cond_mod_for_nir_reduction_op(nir_op op)
 
 struct rebuild_resource {
    unsigned idx;
-   std::vector<nir_ssa_def *> array;
+   std::vector<nir_def *> array;
 };
 
 static bool
@@ -4000,7 +4000,7 @@ add_rebuild_src(nir_src *src, void *state)
 {
    struct rebuild_resource *res = (struct rebuild_resource *) state;
 
-   for (nir_ssa_def *def : res->array) {
+   for (nir_def *def : res->array) {
       if (def == src->ssa)
          return true;
    }
@@ -4011,7 +4011,7 @@ add_rebuild_src(nir_src *src, void *state)
 }
 
 fs_reg
-fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_ssa_def *resource_def)
+fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
 {
    /* Create a build at the location of the resource_intel intrinsic */
    fs_builder ubld1 = bld.exec_all().group(1, 0);
@@ -4025,7 +4025,7 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_ssa_def *resour
    resources.array.push_back(resource_def);
 
    if (resources.array.size() == 1) {
-      nir_ssa_def *def = resources.array[0];
+      nir_def *def = resources.array[0];
 
       if (def->parent_instr->type == nir_instr_type_load_const) {
          nir_load_const_instr *load_const =
@@ -4045,7 +4045,7 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_ssa_def *resour
    }
 
    for (unsigned i = 0; i < resources.array.size(); i++) {
-      nir_ssa_def *def = resources.array[i];
+      nir_def *def = resources.array[i];
 
       nir_instr *instr = def->parent_instr;
       switch (instr->type) {
@@ -6685,7 +6685,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    const unsigned dest_size = nir_tex_instr_dest_size(instr);
    if (devinfo->ver >= 9 &&
        instr->op != nir_texop_tg4 && instr->op != nir_texop_query_levels) {
-      unsigned write_mask = nir_ssa_def_components_read(&instr->dest.ssa);
+      unsigned write_mask = nir_def_components_read(&instr->dest.ssa);
       assert(write_mask != 0); /* dead code should have been eliminated */
       if (instr->is_sparse) {
          inst->size_written = (util_last_bit(write_mask) - 1) *

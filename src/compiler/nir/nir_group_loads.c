@@ -193,7 +193,7 @@ group_loads(nir_instr *first, nir_instr *last)
       if (!can_move(instr, first->pass_flags))
          continue;
 
-      nir_ssa_def *def = nir_instr_ssa_def(instr);
+      nir_def *def = nir_instr_ssa_def(instr);
       if (def) {
          bool all_uses_after_last = true;
 

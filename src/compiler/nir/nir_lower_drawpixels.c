@@ -37,7 +37,7 @@ typedef struct {
    nir_variable *texcoord, *texcoord_const, *scale, *bias, *tex, *pixelmap;
 } lower_drawpixels_state;
 
-static nir_ssa_def *
+static nir_def *
 get_texcoord(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->texcoord == NULL) {
@@ -47,7 +47,7 @@ get_texcoord(nir_builder *b, lower_drawpixels_state *state)
    return nir_load_var(b, state->texcoord);
 }
 
-static nir_ssa_def *
+static nir_def *
 get_scale(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->scale == NULL) {
@@ -57,7 +57,7 @@ get_scale(nir_builder *b, lower_drawpixels_state *state)
    return nir_load_var(b, state->scale);
 }
 
-static nir_ssa_def *
+static nir_def *
 get_bias(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->bias == NULL) {
@@ -67,7 +67,7 @@ get_bias(nir_builder *b, lower_drawpixels_state *state)
    return nir_load_var(b, state->bias);
 }
 
-static nir_ssa_def *
+static nir_def *
 get_texcoord_const(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->texcoord_const == NULL) {
@@ -81,9 +81,9 @@ get_texcoord_const(nir_builder *b, lower_drawpixels_state *state)
 static bool
 lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *intr)
 {
-   nir_ssa_def *texcoord;
+   nir_def *texcoord;
    nir_tex_instr *tex;
-   nir_ssa_def *def;
+   nir_def *def;
 
    b->cursor = nir_before_instr(&intr->instr);
 
@@ -141,7 +141,7 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
          nir_build_deref_var(b, state->pixelmap);
 
       /* do four pixel map look-ups with two TEX instructions: */
-      nir_ssa_def *def_xy, *def_zw;
+      nir_def *def_xy, *def_zw;
 
       /* TEX def.xy, def.xyyy, pixelmap_sampler, 2D; */
       tex = nir_tex_instr_create(state->shader, 3);
@@ -184,7 +184,7 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
                      nir_channel(b, def_zw, 1));
    }
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, def);
+   nir_def_rewrite_uses(&intr->dest.ssa, def);
    return true;
 }
 
@@ -193,8 +193,8 @@ lower_texcoord(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_inst
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *texcoord_const = get_texcoord_const(b, state);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, texcoord_const);
+   nir_def *texcoord_const = get_texcoord_const(b, state);
+   nir_def_rewrite_uses(&intr->dest.ssa, texcoord_const);
    return true;
 }
 

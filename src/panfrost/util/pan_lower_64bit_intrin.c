@@ -59,9 +59,9 @@ nir_lower_64bit_intrin_instr(nir_builder *b, nir_instr *instr, void *data)
 
    intr->dest.ssa.bit_size = 32;
 
-   nir_ssa_def *conv = nir_u2u64(b, &intr->dest.ssa);
+   nir_def *conv = nir_u2u64(b, &intr->dest.ssa);
 
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, conv, conv->parent_instr);
+   nir_def_rewrite_uses_after(&intr->dest.ssa, conv, conv->parent_instr);
 
    return true;
 }

@@ -312,8 +312,8 @@ split_struct_derefs_impl(nir_function_impl *impl,
          }
 
          assert(new_deref->type == deref->type);
-         nir_ssa_def_rewrite_uses(&deref->dest.ssa,
-                                  &new_deref->dest.ssa);
+         nir_def_rewrite_uses(&deref->dest.ssa,
+                              &new_deref->dest.ssa);
          nir_deref_instr_remove_if_unused(deref);
       }
    }
@@ -833,11 +833,11 @@ split_array_access_impl(nir_function_impl *impl,
                 * garbage in the destination alone.
                 */
                if (intrin->intrinsic == nir_intrinsic_load_deref) {
-                  nir_ssa_def *u =
-                     nir_ssa_undef(&b, intrin->dest.ssa.num_components,
-                                   intrin->dest.ssa.bit_size);
-                  nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                           u);
+                  nir_def *u =
+                     nir_undef(&b, intrin->dest.ssa.num_components,
+                               intrin->dest.ssa.bit_size);
+                  nir_def_rewrite_uses(&intrin->dest.ssa,
+                                       u);
                }
                nir_instr_remove(&intrin->instr);
                for (unsigned i = 0; i < num_derefs; i++)
@@ -1242,7 +1242,7 @@ find_used_components_impl(nir_function_impl *impl,
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_deref:
             mark_deref_used(nir_src_as_deref(intrin->src[0]),
-                            nir_ssa_def_components_read(&intrin->dest.ssa), 0,
+                            nir_def_components_read(&intrin->dest.ssa), 0,
                             NULL, var_usage_map, modes, mem_ctx);
             break;
 
@@ -1551,11 +1551,11 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
 
             if (usage->comps_kept == 0 || vec_deref_is_oob(deref, usage)) {
                if (intrin->intrinsic == nir_intrinsic_load_deref) {
-                  nir_ssa_def *u =
-                     nir_ssa_undef(&b, intrin->dest.ssa.num_components,
-                                   intrin->dest.ssa.bit_size);
-                  nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                           u);
+                  nir_def *u =
+                     nir_undef(&b, intrin->dest.ssa.num_components,
+                               intrin->dest.ssa.bit_size);
+                  nir_def_rewrite_uses(&intrin->dest.ssa,
+                                       u);
                }
                nir_instr_remove(&intrin->instr);
                nir_deref_instr_remove_if_unused(deref);
@@ -1571,9 +1571,9 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
             if (intrin->intrinsic == nir_intrinsic_load_deref) {
                b.cursor = nir_after_instr(&intrin->instr);
 
-               nir_ssa_def *undef =
-                  nir_ssa_undef(&b, 1, intrin->dest.ssa.bit_size);
-               nir_ssa_def *vec_srcs[NIR_MAX_VEC_COMPONENTS];
+               nir_def *undef =
+                  nir_undef(&b, 1, intrin->dest.ssa.bit_size);
+               nir_def *vec_srcs[NIR_MAX_VEC_COMPONENTS];
                unsigned c = 0;
                for (unsigned i = 0; i < intrin->num_components; i++) {
                   if (usage->comps_kept & (1u << i))
@@ -1581,11 +1581,11 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
                   else
                      vec_srcs[i] = undef;
                }
-               nir_ssa_def *vec = nir_vec(&b, vec_srcs, intrin->num_components);
+               nir_def *vec = nir_vec(&b, vec_srcs, intrin->num_components);
 
-               nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                              vec,
-                                              vec->parent_instr);
+               nir_def_rewrite_uses_after(&intrin->dest.ssa,
+                                          vec,
+                                          vec->parent_instr);
 
                /* The SSA def is now only used by the swizzle.  It's safe to
                 * shrink the number of components.
@@ -1611,7 +1611,7 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
 
                b.cursor = nir_before_instr(&intrin->instr);
 
-               nir_ssa_def *swizzled =
+               nir_def *swizzled =
                   nir_swizzle(&b, intrin->src[1].ssa, swizzle, c);
 
                /* Rewrite to use the compacted source */

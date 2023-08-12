@@ -212,7 +212,7 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
  * with (ie. not requiring value range tracking)
  */
 static void
-handle_partial_const(nir_builder *b, nir_ssa_def **srcp, int *offp)
+handle_partial_const(nir_builder *b, nir_def **srcp, int *offp)
 {
    if ((*srcp)->parent_instr->type != nir_instr_type_alu)
       return;
@@ -287,7 +287,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
       return false;
    }
 
-   nir_ssa_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
+   nir_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
    int const_offset = 0;
 
    handle_partial_const(b, &ubo_offset, &const_offset);
@@ -298,8 +298,8 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
     * also the same for the constant part of the offset:
     */
    const int shift = -2;
-   nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, ubo_offset, -2);
-   nir_ssa_def *uniform_offset = NULL;
+   nir_def *new_offset = ir3_nir_try_propagate_bit_shift(b, ubo_offset, -2);
+   nir_def *uniform_offset = NULL;
    if (new_offset) {
       uniform_offset = new_offset;
    } else {
@@ -325,11 +325,11 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
       const_offset = 0;
    }
 
-   nir_ssa_def *uniform =
+   nir_def *uniform =
       nir_load_uniform(b, instr->num_components, instr->dest.ssa.bit_size,
                        uniform_offset, .base = const_offset);
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, uniform);
+   nir_def_rewrite_uses(&instr->dest.ssa, uniform);
 
    nir_instr_remove(&instr->instr);
 
@@ -361,7 +361,7 @@ copy_ubo_to_uniform(nir_shader *nir, const struct ir3_const_state *const_state)
           range->ubo.block == const_state->constant_data_ubo)
          continue;
 
-      nir_ssa_def *ubo = nir_imm_int(b, range->ubo.block);
+      nir_def *ubo = nir_imm_int(b, range->ubo.block);
       if (range->ubo.bindless) {
          ubo = nir_bindless_resource_ir3(b, 32, ubo,
                                          .desc_set = range->ubo.bindless_base);
@@ -516,7 +516,7 @@ fixup_load_uniform_filter(const nir_instr *instr, const void *arg)
           nir_intrinsic_load_uniform;
 }
 
-static nir_ssa_def *
+static nir_def *
 fixup_load_uniform_instr(struct nir_builder *b, nir_instr *instr, void *arg)
 {
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
@@ -534,7 +534,7 @@ fixup_load_uniform_instr(struct nir_builder *b, nir_instr *instr, void *arg)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *offset = nir_ssa_for_src(b, intr->src[0], 1);
+   nir_def *offset = nir_ssa_for_src(b, intr->src[0], 1);
 
    /* We'd like to avoid a sequence like:
     *
@@ -578,7 +578,7 @@ ir3_nir_fixup_load_uniform(nir_shader *nir)
    return nir_shader_lower_instructions(nir, fixup_load_uniform_filter,
                                         fixup_load_uniform_instr, NULL);
 }
-static nir_ssa_def *
+static nir_def *
 ir3_nir_lower_load_const_instr(nir_builder *b, nir_instr *in_instr, void *data)
 {
    struct ir3_const_state *const_state = data;
@@ -604,11 +604,11 @@ ir3_nir_lower_load_const_instr(nir_builder *b, nir_instr *in_instr, void *data)
       num_components = DIV_ROUND_UP(num_components, 2);
    }
    unsigned base = nir_intrinsic_base(instr);
-   nir_ssa_def *index = nir_imm_int(b, const_state->constant_data_ubo);
-   nir_ssa_def *offset =
+   nir_def *index = nir_imm_int(b, const_state->constant_data_ubo);
+   nir_def *offset =
       nir_iadd_imm(b, nir_ssa_for_src(b, instr->src[0], 1), base);
 
-   nir_ssa_def *result =
+   nir_def *result =
       nir_load_ubo(b, num_components, 32, index, offset,
                    .align_mul = nir_intrinsic_align_mul(instr),
                    .align_offset = nir_intrinsic_align_offset(instr),

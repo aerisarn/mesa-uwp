@@ -34,7 +34,7 @@ struct state {
       unsigned stride;
    } map;
 
-   nir_ssa_def *header;
+   nir_def *header;
 
    nir_variable *vertex_count_var;
    nir_variable *emitted_vertex_var;
@@ -48,25 +48,25 @@ struct state {
    unsigned local_primitive_id_start;
 };
 
-static nir_ssa_def *
-bitfield_extract(nir_builder *b, nir_ssa_def *v, uint32_t start, uint32_t mask)
+static nir_def *
+bitfield_extract(nir_builder *b, nir_def *v, uint32_t start, uint32_t mask)
 {
    return nir_iand_imm(b, nir_ushr_imm(b, v, start), mask);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_invocation_id(nir_builder *b, struct state *state)
 {
    return bitfield_extract(b, state->header, 11, 31);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_vertex_id(nir_builder *b, struct state *state)
 {
    return bitfield_extract(b, state->header, 6, 31);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_local_primitive_id(nir_builder *b, struct state *state)
 {
    return bitfield_extract(b, state->header, state->local_primitive_id_start,
@@ -125,15 +125,15 @@ shader_io_get_unique_index(gl_varying_slot slot)
    }
 }
 
-static nir_ssa_def *
-build_local_offset(nir_builder *b, struct state *state, nir_ssa_def *vertex,
-                   uint32_t location, uint32_t comp, nir_ssa_def *offset)
+static nir_def *
+build_local_offset(nir_builder *b, struct state *state, nir_def *vertex,
+                   uint32_t location, uint32_t comp, nir_def *offset)
 {
-   nir_ssa_def *primitive_stride = nir_load_vs_primitive_stride_ir3(b);
-   nir_ssa_def *primitive_offset =
+   nir_def *primitive_stride = nir_load_vs_primitive_stride_ir3(b);
+   nir_def *primitive_offset =
       nir_imul24(b, build_local_primitive_id(b, state), primitive_stride);
-   nir_ssa_def *attr_offset;
-   nir_ssa_def *vertex_stride;
+   nir_def *attr_offset;
+   nir_def *vertex_stride;
    unsigned index = shader_io_get_unique_index(location);
 
    switch (b->shader->info.stage) {
@@ -152,7 +152,7 @@ build_local_offset(nir_builder *b, struct state *state, nir_ssa_def *vertex,
       unreachable("bad shader stage");
    }
 
-   nir_ssa_def *vertex_offset = nir_imul24(b, vertex, vertex_stride);
+   nir_def *vertex_offset = nir_imul24(b, vertex, vertex_stride);
 
    return nir_iadd(
       b, nir_iadd(b, primitive_offset, vertex_offset),
@@ -161,8 +161,8 @@ build_local_offset(nir_builder *b, struct state *state, nir_ssa_def *vertex,
 
 static nir_intrinsic_instr *
 replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
-                  nir_intrinsic_op op, nir_ssa_def *src0, nir_ssa_def *src1,
-                  nir_ssa_def *src2)
+                  nir_intrinsic_op op, nir_def *src0, nir_def *src1,
+                  nir_def *src2)
 {
    nir_intrinsic_instr *new_intr = nir_intrinsic_instr_create(b->shader, op);
 
@@ -181,7 +181,7 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
    nir_builder_instr_insert(b, &new_intr->instr);
 
    if (nir_intrinsic_infos[op].has_dest)
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, &new_intr->dest.ssa);
+      nir_def_rewrite_uses(&intr->dest.ssa, &new_intr->dest.ssa);
 
    nir_instr_remove(&intr->instr);
 
@@ -267,8 +267,8 @@ lower_block_to_explicit_output(nir_block *block, nir_builder *b,
 
          b->cursor = nir_instr_remove(&intr->instr);
 
-         nir_ssa_def *vertex_id = build_vertex_id(b, state);
-         nir_ssa_def *offset = build_local_offset(
+         nir_def *vertex_id = build_vertex_id(b, state);
+         nir_def *offset = build_local_offset(
             b, state, vertex_id, nir_intrinsic_io_semantics(intr).location,
             nir_intrinsic_component(intr), intr->src[1].ssa);
 
@@ -282,7 +282,7 @@ lower_block_to_explicit_output(nir_block *block, nir_builder *b,
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 local_thread_id(nir_builder *b)
 {
    return bitfield_extract(b, nir_load_gs_header_ir3(b), 16, 1023);
@@ -333,7 +333,7 @@ lower_block_to_explicit_input(nir_block *block, nir_builder *b,
 
          b->cursor = nir_before_instr(&intr->instr);
 
-         nir_ssa_def *offset = build_local_offset(
+         nir_def *offset = build_local_offset(
             b, state,
             intr->src[0].ssa, // this is typically gl_InvocationID
             nir_intrinsic_io_semantics(intr).location,
@@ -347,8 +347,8 @@ lower_block_to_explicit_input(nir_block *block, nir_builder *b,
       case nir_intrinsic_load_invocation_id: {
          b->cursor = nir_before_instr(&intr->instr);
 
-         nir_ssa_def *iid = build_invocation_id(b, state);
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, iid);
+         nir_def *iid = build_invocation_id(b, state);
+         nir_def_rewrite_uses(&intr->dest.ssa, iid);
          nir_instr_remove(&intr->instr);
          break;
       }
@@ -388,7 +388,7 @@ ir3_nir_lower_to_explicit_input(nir_shader *shader,
    v->input_size = calc_primitive_map_size(shader);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_tcs_out_vertices(nir_builder *b)
 {
    if (b->shader->info.stage == MESA_SHADER_TESS_CTRL)
@@ -397,15 +397,15 @@ build_tcs_out_vertices(nir_builder *b)
       return nir_load_patch_vertices_in(b);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_per_vertex_offset(nir_builder *b, struct state *state,
-                        nir_ssa_def *vertex, uint32_t location, uint32_t comp,
-                        nir_ssa_def *offset)
+                        nir_def *vertex, uint32_t location, uint32_t comp,
+                        nir_def *offset)
 {
-   nir_ssa_def *patch_id = nir_load_rel_patch_id_ir3(b);
-   nir_ssa_def *patch_stride = nir_load_hs_patch_stride_ir3(b);
-   nir_ssa_def *patch_offset = nir_imul24(b, patch_id, patch_stride);
-   nir_ssa_def *attr_offset;
+   nir_def *patch_id = nir_load_rel_patch_id_ir3(b);
+   nir_def *patch_stride = nir_load_hs_patch_stride_ir3(b);
+   nir_def *patch_offset = nir_imul24(b, patch_id, patch_stride);
+   nir_def *attr_offset;
 
    if (nir_src_is_const(nir_src_for_ssa(offset))) {
       location += nir_src_as_uint(nir_src_for_ssa(offset));
@@ -417,7 +417,7 @@ build_per_vertex_offset(nir_builder *b, struct state *state,
       offset = nir_ishl_imm(b, offset, 2);
    }
 
-   nir_ssa_def *vertex_offset;
+   nir_def *vertex_offset;
    if (vertex) {
       unsigned index = shader_io_get_unique_index(location);
       switch (b->shader->info.stage) {
@@ -446,9 +446,9 @@ build_per_vertex_offset(nir_builder *b, struct state *state,
    return nir_iadd(b, nir_iadd(b, patch_offset, attr_offset), vertex_offset);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_patch_offset(nir_builder *b, struct state *state, uint32_t base,
-                   uint32_t comp, nir_ssa_def *offset)
+                   uint32_t comp, nir_def *offset)
 {
    return build_per_vertex_offset(b, state, NULL, base, comp, offset);
 }
@@ -474,7 +474,7 @@ tess_level_components(struct state *state, uint32_t *inner, uint32_t *outer)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 build_tessfactor_base(nir_builder *b, gl_varying_slot slot, uint32_t comp,
                       struct state *state)
 {
@@ -483,9 +483,9 @@ build_tessfactor_base(nir_builder *b, gl_varying_slot slot, uint32_t comp,
 
    const uint32_t patch_stride = 1 + inner_levels + outer_levels;
 
-   nir_ssa_def *patch_id = nir_load_rel_patch_id_ir3(b);
+   nir_def *patch_id = nir_load_rel_patch_id_ir3(b);
 
-   nir_ssa_def *patch_offset =
+   nir_def *patch_offset =
       nir_imul24(b, patch_id, nir_imm_int(b, patch_stride));
 
    uint32_t offset;
@@ -521,8 +521,8 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
          b->cursor = nir_before_instr(&intr->instr);
 
-         nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-         nir_ssa_def *offset = build_per_vertex_offset(
+         nir_def *address = nir_load_tess_param_base_ir3(b);
+         nir_def *offset = build_per_vertex_offset(
             b, state, intr->src[0].ssa,
             nir_intrinsic_io_semantics(intr).location,
             nir_intrinsic_component(intr), intr->src[1].ssa);
@@ -541,9 +541,9 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
          assert(
             util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1));
 
-         nir_ssa_def *value = intr->src[0].ssa;
-         nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-         nir_ssa_def *offset = build_per_vertex_offset(
+         nir_def *value = intr->src[0].ssa;
+         nir_def *address = nir_load_tess_param_base_ir3(b);
+         nir_def *offset = build_per_vertex_offset(
             b, state, intr->src[1].ssa,
             nir_intrinsic_io_semantics(intr).location,
             nir_intrinsic_component(intr), intr->src[2].ssa);
@@ -559,7 +559,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
          b->cursor = nir_before_instr(&intr->instr);
 
-         nir_ssa_def *address, *offset;
+         nir_def *address, *offset;
 
          /* note if vectorization of the tess level loads ever happens:
           * "ldg" across 16-byte boundaries can behave incorrectly if results
@@ -614,12 +614,12 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
                else
                   levels = inner_levels;
 
-               nir_ssa_def *offset = nir_iadd_imm(
+               nir_def *offset = nir_iadd_imm(
                   b, intr->src[1].ssa, nir_intrinsic_component(intr));
                nif = nir_push_if(b, nir_ult_imm(b, offset, levels));
             }
 
-            nir_ssa_def *offset = build_tessfactor_base(
+            nir_def *offset = build_tessfactor_base(
                b, location, nir_intrinsic_component(intr), state);
 
             replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3,
@@ -631,8 +631,8 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
                nir_pop_if(b, nif);
             }
          } else {
-            nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-            nir_ssa_def *offset = build_patch_offset(
+            nir_def *address = nir_load_tess_param_base_ir3(b);
+            nir_def *offset = build_patch_offset(
                b, state, location, nir_intrinsic_component(intr),
                intr->src[1].ssa);
 
@@ -713,10 +713,10 @@ ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader_variant *v,
 
    /* Re-emit the header, since the old one got moved into the if branch */
    state.header = nir_load_tcs_header_ir3(&b);
-   nir_ssa_def *iid = build_invocation_id(&b, &state);
+   nir_def *iid = build_invocation_id(&b, &state);
 
    const uint32_t nvertices = shader->info.tess.tcs_vertices_out;
-   nir_ssa_def *cond = nir_ult_imm(&b, iid, nvertices);
+   nir_def *cond = nir_ult_imm(&b, iid, nvertices);
 
    nir_if *nif = nir_push_if(&b, cond);
 
@@ -725,7 +725,7 @@ ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader_variant *v,
    b.cursor = nir_after_cf_list(&nif->then_list);
 
    /* Insert conditional exit for threads invocation id != 0 */
-   nir_ssa_def *iid0_cond = nir_ieq_imm(&b, iid, 0);
+   nir_def *iid0_cond = nir_ieq_imm(&b, iid, 0);
    nir_cond_end_ir3(&b, iid0_cond);
 
    emit_tess_epilouge(&b, &state);
@@ -750,8 +750,8 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 
          b->cursor = nir_before_instr(&intr->instr);
 
-         nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-         nir_ssa_def *offset = build_per_vertex_offset(
+         nir_def *address = nir_load_tess_param_base_ir3(b);
+         nir_def *offset = build_per_vertex_offset(
             b, state, intr->src[0].ssa,
             nir_intrinsic_io_semantics(intr).location,
             nir_intrinsic_component(intr), intr->src[1].ssa);
@@ -766,7 +766,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 
          b->cursor = nir_before_instr(&intr->instr);
 
-         nir_ssa_def *address, *offset;
+         nir_def *address, *offset;
 
          /* note if vectorization of the tess level loads ever happens:
           * "ldg" across 16-byte boundaries can behave incorrectly if results
@@ -947,7 +947,7 @@ lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
       case nir_intrinsic_emit_vertex: {
          /* Load the vertex count */
          b->cursor = nir_before_instr(&intr->instr);
-         nir_ssa_def *count = nir_load_var(b, state->vertex_count_var);
+         nir_def *count = nir_load_var(b, state->vertex_count_var);
 
          nir_push_if(b, nir_ieq(b, count, local_thread_id(b)));
 
@@ -1088,7 +1088,7 @@ ir3_nir_lower_gs(nir_shader *shader)
     *
     * [1] ex, tests/spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept.shader_test
     */
-   nir_ssa_def *cond =
+   nir_def *cond =
       nir_ieq_imm(&b, nir_load_var(&b, state.emitted_vertex_var), 0);
    nir_push_if(&b, cond);
    nir_store_var(&b, state.vertex_flags_out, nir_imm_int(&b, 4), 0x1);

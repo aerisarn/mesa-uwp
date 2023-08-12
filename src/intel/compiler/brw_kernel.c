@@ -82,7 +82,7 @@ implement_atomic_builtin(nir_function *func, nir_atomic_op atomic_op,
    nir_intrinsic_set_atomic_op(atomic, atomic_op);
 
    for (unsigned i = 0; i < nir_intrinsic_infos[op].num_srcs; i++) {
-      nir_ssa_def *src = nir_load_param(&b, p++);
+      nir_def *src = nir_load_param(&b, p++);
       if (i == 0) {
          /* The first source is our deref */
          assert(nir_intrinsic_infos[op].src_components[i] == -1);
@@ -104,7 +104,7 @@ implement_sub_group_ballot_builtin(nir_function *func)
    nir_deref_instr *ret =
       nir_build_deref_cast(&b, nir_load_param(&b, 0),
                            nir_var_function_temp, glsl_uint_type(), 0);
-   nir_ssa_def *cond = nir_load_param(&b, 1);
+   nir_def *cond = nir_load_param(&b, 1);
 
    nir_intrinsic_instr *ballot =
       nir_intrinsic_instr_create(b.shader, nir_intrinsic_ballot);
@@ -187,17 +187,17 @@ lower_kernel_intrinsics(nir_shader *nir)
                               intrin->dest.ssa.bit_size);
             nir_builder_instr_insert(&b, &load->instr);
 
-            nir_ssa_def_rewrite_uses(&intrin->dest.ssa, &load->dest.ssa);
+            nir_def_rewrite_uses(&intrin->dest.ssa, &load->dest.ssa);
             progress = true;
             break;
          }
 
          case nir_intrinsic_load_constant_base_ptr: {
             b.cursor = nir_instr_remove(&intrin->instr);
-            nir_ssa_def *const_data_base_addr = nir_pack_64_2x32_split(&b,
+            nir_def *const_data_base_addr = nir_pack_64_2x32_split(&b,
                nir_load_reloc_const_intel(&b, BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW),
                nir_load_reloc_const_intel(&b, BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
-            nir_ssa_def_rewrite_uses(&intrin->dest.ssa, const_data_base_addr);
+            nir_def_rewrite_uses(&intrin->dest.ssa, const_data_base_addr);
             progress = true;
             break;
          }
@@ -216,10 +216,10 @@ lower_kernel_intrinsics(nir_shader *nir)
             nir_builder_instr_insert(&b, &load->instr);
 
             /* We may need to do a bit-size cast here */
-            nir_ssa_def *num_work_groups =
+            nir_def *num_work_groups =
                nir_u2uN(&b, &load->dest.ssa, intrin->dest.ssa.bit_size);
 
-            nir_ssa_def_rewrite_uses(&intrin->dest.ssa, num_work_groups);
+            nir_def_rewrite_uses(&intrin->dest.ssa, num_work_groups);
             progress = true;
             break;
          }

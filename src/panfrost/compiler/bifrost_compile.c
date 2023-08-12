@@ -3564,7 +3564,7 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
    image_src = bi_lshift_or_i32(b, texture, image_src, bi_imm_u8(16));
 
    /* Only write the components that we actually read */
-   unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
+   unsigned mask = nir_def_components_read(&instr->dest.ssa);
    unsigned comps_per_reg = nir_dest_bit_size(instr->dest) == 16 ? 2 : 1;
    unsigned res_size = DIV_ROUND_UP(util_bitcount(mask), comps_per_reg);
 
@@ -4259,8 +4259,8 @@ bi_scalarize_filter(const nir_instr *instr, const void *data)
 }
 
 /* Ensure we write exactly 4 components */
-static nir_ssa_def *
-bifrost_nir_valid_channel(nir_builder *b, nir_ssa_def *in, unsigned channel,
+static nir_def *
+bifrost_nir_valid_channel(nir_builder *b, nir_def *in, unsigned channel,
                           unsigned first, unsigned mask)
 {
    if (!(mask & BITFIELD_BIT(channel)))
@@ -4286,7 +4286,7 @@ bifrost_nir_lower_blend_components(struct nir_builder *b, nir_instr *instr,
    if (intr->intrinsic != nir_intrinsic_store_output)
       return false;
 
-   nir_ssa_def *in = intr->src[0].ssa;
+   nir_def *in = intr->src[0].ssa;
    unsigned first = nir_intrinsic_component(intr);
    unsigned mask = nir_intrinsic_write_mask(intr);
 
@@ -4299,7 +4299,7 @@ bifrost_nir_lower_blend_components(struct nir_builder *b, nir_instr *instr,
    b->cursor = nir_before_instr(&intr->instr);
 
    /* Replicate the first valid component instead */
-   nir_ssa_def *replicated =
+   nir_def *replicated =
       nir_vec4(b, bifrost_nir_valid_channel(b, in, 0, first, mask),
                bifrost_nir_valid_channel(b, in, 1, first, mask),
                bifrost_nir_valid_channel(b, in, 2, first, mask),
@@ -4542,8 +4542,8 @@ bi_gather_texcoords(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_src src = tex->src[coord_idx].src;
-   nir_ssa_scalar x = nir_ssa_scalar_resolved(src.ssa, 0);
-   nir_ssa_scalar y = nir_ssa_scalar_resolved(src.ssa, 1);
+   nir_scalar x = nir_scalar_resolved(src.ssa, 0);
+   nir_scalar y = nir_scalar_resolved(src.ssa, 1);
 
    if (x.def != y.def)
       return false;
@@ -4597,7 +4597,7 @@ bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *orig = nir_load_sample_mask(b);
+   nir_def *orig = nir_load_sample_mask(b);
 
    nir_instr_rewrite_src_ssa(
       instr, &intr->src[0],
@@ -4623,15 +4623,15 @@ bi_lower_load_output(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *conversion = nir_load_rt_conversion_pan(
+   nir_def *conversion = nir_load_rt_conversion_pan(
       b, .base = rt, .src_type = nir_intrinsic_dest_type(intr));
 
-   nir_ssa_def *lowered = nir_load_converted_output_pan(
+   nir_def *lowered = nir_load_converted_output_pan(
       b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest),
       conversion, .dest_type = nir_intrinsic_dest_type(intr),
       .io_semantics = nir_intrinsic_io_semantics(intr));
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, lowered);
+   nir_def_rewrite_uses(&intr->dest.ssa, lowered);
    return true;
 }
 

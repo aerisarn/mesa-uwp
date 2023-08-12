@@ -7,10 +7,10 @@
 #include "agx_tilebuffer.h"
 #include "nir_builder.h"
 
-static nir_ssa_def *
-mask_by_sample_id(nir_builder *b, nir_ssa_def *mask)
+static nir_def *
+mask_by_sample_id(nir_builder *b, nir_def *mask)
 {
-   nir_ssa_def *id_mask =
+   nir_def *id_mask =
       nir_ishl(b, nir_imm_intN_t(b, 1, mask->bit_size), nir_load_sample_id(b));
    return nir_iand(b, mask, id_mask);
 }
@@ -36,16 +36,16 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
        *       xy[component] = ((float)nibble) / 16.0;
        *    }
        */
-      nir_ssa_def *packed = nir_load_sample_positions_agx(b);
+      nir_def *packed = nir_load_sample_positions_agx(b);
 
       /* The n'th sample is the in the n'th byte of the register */
-      nir_ssa_def *shifted = nir_ushr(
+      nir_def *shifted = nir_ushr(
          b, packed, nir_u2u32(b, nir_imul_imm(b, nir_load_sample_id(b), 8)));
 
-      nir_ssa_def *xy[2];
+      nir_def *xy[2];
       for (unsigned i = 0; i < 2; ++i) {
          /* Get the appropriate nibble */
-         nir_ssa_def *nibble =
+         nir_def *nibble =
             nir_iand_imm(b, nir_ushr_imm(b, shifted, i * 4), 0xF);
 
          /* Convert it from fixed point to float */
@@ -56,7 +56,7 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
       }
 
       /* Collect and rewrite */
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_vec2(b, xy[0], xy[1]));
+      nir_def_rewrite_uses(&intr->dest.ssa, nir_vec2(b, xy[0], xy[1]));
       nir_instr_remove(instr);
       return true;
    }
@@ -67,9 +67,9 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
        * by the sample ID to make that happen.
        */
       b->cursor = nir_after_instr(instr);
-      nir_ssa_def *old = &intr->dest.ssa;
-      nir_ssa_def *lowered = mask_by_sample_id(b, old);
-      nir_ssa_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
+      nir_def *old = &intr->dest.ssa;
+      nir_def *lowered = mask_by_sample_id(b, old);
+      nir_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
       return true;
    }
 
@@ -78,13 +78,13 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
        * interpolateAtSample() with the sample ID
        */
       b->cursor = nir_after_instr(instr);
-      nir_ssa_def *old = &intr->dest.ssa;
+      nir_def *old = &intr->dest.ssa;
 
-      nir_ssa_def *lowered = nir_load_barycentric_at_sample(
+      nir_def *lowered = nir_load_barycentric_at_sample(
          b, nir_dest_bit_size(intr->dest), nir_load_sample_id(b),
          .interp_mode = nir_intrinsic_interp_mode(intr));
 
-      nir_ssa_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
+      nir_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
       return true;
    }
 

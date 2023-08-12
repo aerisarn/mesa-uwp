@@ -29,7 +29,7 @@
  */
 
 static int
-coord_offset(nir_ssa_def *ssa)
+coord_offset(nir_def *ssa)
 {
    nir_instr *parent_instr = ssa->parent_instr;
 
@@ -97,7 +97,7 @@ coord_offset(nir_ssa_def *ssa)
 }
 
 int
-ir3_nir_coord_offset(nir_ssa_def *ssa)
+ir3_nir_coord_offset(nir_def *ssa)
 {
 
    assert(ssa->num_components == 2);

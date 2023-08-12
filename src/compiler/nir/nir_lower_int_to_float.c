@@ -26,7 +26,7 @@
 #include "nir_builder.h"
 
 static bool
-assert_ssa_def_is_not_int(nir_ssa_def *def, void *arg)
+assert_ssa_def_is_not_int(nir_def *def, void *arg)
 {
    ASSERTED BITSET_WORD *int_types = arg;
    assert(!BITSET_TEST(int_types, def->index));
@@ -97,7 +97,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    b->cursor = nir_before_instr(&alu->instr);
 
    /* Replacement SSA value */
-   nir_ssa_def *rep = NULL;
+   nir_def *rep = NULL;
    switch (alu->op) {
    case nir_op_mov:
    case nir_op_vec2:
@@ -178,8 +178,8 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       break;
 
    case nir_op_idiv: {
-      nir_ssa_def *x = nir_ssa_for_alu_src(b, alu, 0);
-      nir_ssa_def *y = nir_ssa_for_alu_src(b, alu, 1);
+      nir_def *x = nir_ssa_for_alu_src(b, alu, 0);
+      nir_def *y = nir_ssa_for_alu_src(b, alu, 1);
 
       /* Hand-lower fdiv, since lower_int_to_float is after nir_opt_algebraic. */
       if (b->shader->options->lower_fdiv) {
@@ -247,7 +247,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
 
    if (rep) {
       /* We've emitted a replacement instruction */
-      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, rep);
+      nir_def_rewrite_uses(&alu->dest.dest.ssa, rep);
       nir_instr_remove(&alu->instr);
    }
 
@@ -267,7 +267,7 @@ nir_lower_int_to_float_impl(nir_function_impl *impl)
                         sizeof(BITSET_WORD));
    int_types = calloc(BITSET_WORDS(impl->ssa_alloc),
                       sizeof(BITSET_WORD));
-   nir_gather_ssa_types(impl, float_types, int_types);
+   nir_gather_types(impl, float_types, int_types);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {

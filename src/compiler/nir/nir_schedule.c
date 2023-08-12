@@ -87,7 +87,7 @@ typedef struct {
 
    nir_shader *shader;
 
-   /* Mapping from nir_ssa_def * to a struct set of
+   /* Mapping from nir_def * to a struct set of
     * instructions remaining to be scheduled using the register.
     */
    struct hash_table *remaining_uses;
@@ -95,7 +95,7 @@ typedef struct {
    /* Map from nir_instr to nir_schedule_node * */
    struct hash_table *instr_map;
 
-   /* Set of nir_ssa_def * that have had any instruction scheduled on them. */
+   /* Set of nir_def * that have had any instruction scheduled on them. */
    struct set *live_values;
 
    /* An abstract approximation of the number of nir_scheduler_node->delay
@@ -160,7 +160,7 @@ nir_schedule_get_node(struct hash_table *instr_map, nir_instr *instr)
 
 static struct set *
 nir_schedule_scoreboard_get_reg(nir_schedule_scoreboard *scoreboard,
-                                nir_ssa_def *reg)
+                                nir_def *reg)
 {
    return _mesa_hash_table_search_data(scoreboard->remaining_uses, reg);
 }
@@ -172,14 +172,14 @@ nir_schedule_scoreboard_get_src(nir_schedule_scoreboard *scoreboard, nir_src *sr
 }
 
 static int
-nir_schedule_reg_pressure(nir_ssa_def *reg)
+nir_schedule_reg_pressure(nir_def *reg)
 {
    nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
    return nir_intrinsic_num_components(decl);
 }
 
 static int
-nir_schedule_def_pressure(nir_ssa_def *def)
+nir_schedule_def_pressure(nir_def *def)
 {
    return def->num_components;
 }
@@ -234,7 +234,7 @@ static void
 nir_schedule_load_reg_deps(nir_intrinsic_instr *load,
                            nir_deps_state *state)
 {
-   nir_ssa_def *reg = load->src[0].ssa;
+   nir_def *reg = load->src[0].ssa;
    (void)nir_reg_get_decl(reg);
 
    struct hash_entry *entry = _mesa_hash_table_search(state->reg_map, reg);
@@ -252,7 +252,7 @@ static void
 nir_schedule_store_reg_deps(nir_intrinsic_instr *store,
                             nir_deps_state *state)
 {
-   nir_ssa_def *reg = store->src[1].ssa;
+   nir_def *reg = store->src[1].ssa;
    (void)nir_reg_get_decl(reg);
 
    nir_schedule_node *dest_n =
@@ -269,7 +269,7 @@ nir_schedule_store_reg_deps(nir_intrinsic_instr *store,
 }
 
 static bool
-nir_schedule_ssa_deps(nir_ssa_def *def, void *in_state)
+nir_schedule_ssa_deps(nir_def *def, void *in_state)
 {
    nir_deps_state *state = in_state;
    struct hash_table *instr_map = state->scoreboard->instr_map;
@@ -538,7 +538,7 @@ nir_schedule_regs_freed_src_cb(nir_src *src, void *in_state)
 }
 
 static bool
-nir_schedule_regs_freed_def_cb(nir_ssa_def *def, void *in_state)
+nir_schedule_regs_freed_def_cb(nir_def *def, void *in_state)
 {
    nir_schedule_regs_freed_state *state = in_state;
 
@@ -557,7 +557,7 @@ nir_schedule_regs_freed_load_reg(nir_intrinsic_instr *load,
       nir_schedule_regs_freed_src_cb(&load->src[1], state);
 
    nir_schedule_scoreboard *scoreboard = state->scoreboard;
-   nir_ssa_def *reg = load->src[0].ssa;
+   nir_def *reg = load->src[0].ssa;
    struct set *remaining_uses = nir_schedule_scoreboard_get_reg(scoreboard, reg);
 
    if (remaining_uses->entries == 1 &&
@@ -579,7 +579,7 @@ nir_schedule_regs_freed_store_reg(nir_intrinsic_instr *store,
       nir_schedule_regs_freed_src_cb(&store->src[2], state);
 
    nir_schedule_scoreboard *scoreboard = state->scoreboard;
-   nir_ssa_def *reg = store->src[1].ssa;
+   nir_def *reg = store->src[1].ssa;
 
    /* Only the first def of a reg counts against register pressure. */
    if (!_mesa_set_search(scoreboard->live_values, reg))
@@ -930,7 +930,7 @@ nir_schedule_mark_src_scheduled(nir_src *src, void *state)
 }
 
 static bool
-nir_schedule_mark_def_scheduled(nir_ssa_def *def, void *state)
+nir_schedule_mark_def_scheduled(nir_def *def, void *state)
 {
    nir_schedule_scoreboard *scoreboard = state;
 
@@ -945,7 +945,7 @@ nir_schedule_mark_load_reg_scheduled(nir_intrinsic_instr *load,
                                      nir_schedule_scoreboard *scoreboard)
 {
    assert(nir_is_load_reg(load));
-   nir_ssa_def *reg = load->src[0].ssa;
+   nir_def *reg = load->src[0].ssa;
 
    if (load->intrinsic == nir_intrinsic_load_reg_indirect)
       nir_schedule_mark_src_scheduled(&load->src[1], scoreboard);
@@ -961,7 +961,7 @@ nir_schedule_mark_store_reg_scheduled(nir_intrinsic_instr *store,
                                       nir_schedule_scoreboard *scoreboard)
 {
    assert(nir_is_store_reg(store));
-   nir_ssa_def *reg = store->src[1].ssa;
+   nir_def *reg = store->src[1].ssa;
 
    nir_schedule_mark_src_scheduled(&store->src[0], scoreboard);
    if (store->intrinsic == nir_intrinsic_store_reg_indirect)
@@ -1167,7 +1167,7 @@ is_decl_reg(nir_instr *instr)
 }
 
 static bool
-nir_schedule_ssa_def_init_scoreboard(nir_ssa_def *def, void *state)
+nir_schedule_ssa_def_init_scoreboard(nir_def *def, void *state)
 {
    nir_schedule_scoreboard *scoreboard = state;
    struct set *def_uses = _mesa_pointer_set_create(scoreboard);

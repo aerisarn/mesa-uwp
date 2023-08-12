@@ -32,7 +32,7 @@
 
 typedef struct {
    size_t blob_offset;
-   nir_ssa_def *src;
+   nir_def *src;
    nir_block *block;
 } write_phi_fixup;
 
@@ -1320,7 +1320,7 @@ read_load_const(read_ctx *ctx, union packed_instr header)
 }
 
 static void
-write_ssa_undef(write_ctx *ctx, const nir_ssa_undef_instr *undef)
+write_ssa_undef(write_ctx *ctx, const nir_undef_instr *undef)
 {
    assert(undef->def.num_components >= 1 && undef->def.num_components <= 16);
 
@@ -1335,12 +1335,12 @@ write_ssa_undef(write_ctx *ctx, const nir_ssa_undef_instr *undef)
    write_add_object(ctx, &undef->def);
 }
 
-static nir_ssa_undef_instr *
+static nir_undef_instr *
 read_ssa_undef(read_ctx *ctx, union packed_instr header)
 {
-   nir_ssa_undef_instr *undef =
-      nir_ssa_undef_instr_create(ctx->nir, header.undef.last_component + 1,
-                                 decode_bit_size_3bits(header.undef.bit_size));
+   nir_undef_instr *undef =
+      nir_undef_instr_create(ctx->nir, header.undef.last_component + 1,
+                             decode_bit_size_3bits(header.undef.bit_size));
 
    undef->def.divergent = false;
 
@@ -1510,7 +1510,7 @@ read_phi(read_ctx *ctx, nir_block *blk, union packed_instr header)
    nir_instr_insert_after_block(blk, &phi->instr);
 
    for (unsigned i = 0; i < header.phi.num_srcs; i++) {
-      nir_ssa_def *def = (nir_ssa_def *)(uintptr_t)blob_read_uint32(ctx->blob);
+      nir_def *def = (nir_def *)(uintptr_t)blob_read_uint32(ctx->blob);
       nir_block *pred = (nir_block *)(uintptr_t)blob_read_uint32(ctx->blob);
       nir_phi_src *src = nir_phi_instr_add_src(phi, pred, nir_src_for_ssa(def));
 

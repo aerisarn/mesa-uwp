@@ -231,16 +231,16 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *addr = intr->src[0].ssa;
+   nir_def *addr = intr->src[0].ssa;
 
-   nir_ssa_def *comps[MIR_VEC_COMPONENTS];
+   nir_def *comps[MIR_VEC_COMPONENTS];
    unsigned ncomps = 0;
 
    while (totalsz) {
       unsigned loadsz = MIN2(1 << (util_last_bit(totalsz) - 1), 128);
       unsigned loadncomps = loadsz / compsz;
 
-      nir_ssa_def *load;
+      nir_def *load;
       if (intr->intrinsic == nir_intrinsic_load_global) {
          load = nir_load_global(b, addr, compsz / 8, loadncomps, compsz);
       } else {
@@ -265,7 +265,7 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
    }
 
    assert(ncomps == nir_dest_num_components(intr->dest));
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, comps, ncomps));
+   nir_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, comps, ncomps));
 
    return true;
 }
@@ -494,7 +494,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 static void
 emit_load_const(compiler_context *ctx, nir_load_const_instr *instr)
 {
-   nir_ssa_def def = instr->def;
+   nir_def def = instr->def;
 
    midgard_constants *consts = rzalloc(ctx, midgard_constants);
 
@@ -1547,12 +1547,12 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_load_reg: {
       /* NIR guarantees that, for typical isel, this will always be fully
-       * consumed. However, we also do our own nir_ssa_scalar chasing for
+       * consumed. However, we also do our own nir_scalar chasing for
        * address arithmetic, bypassing the source chasing helpers. So we can end
        * up with unconsumed load_register instructions. Translate them here. 99%
        * of the time, these moves will be DCE'd away.
        */
-      nir_ssa_def *handle = instr->src[0].ssa;
+      nir_def *handle = instr->src[0].ssa;
 
       midgard_instruction ins =
          v_mov(nir_reg_index(handle), nir_dest_index(&instr->dest));

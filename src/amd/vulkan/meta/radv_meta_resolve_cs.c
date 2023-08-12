@@ -32,11 +32,11 @@
 #include "sid.h"
 #include "vk_format.h"
 
-static nir_ssa_def *
-radv_meta_build_resolve_srgb_conversion(nir_builder *b, nir_ssa_def *input)
+static nir_def *
+radv_meta_build_resolve_srgb_conversion(nir_builder *b, nir_def *input)
 {
    unsigned i;
-   nir_ssa_def *comp[4];
+   nir_def *comp[4];
    for (i = 0; i < 3; i++)
       comp[i] = nir_format_linear_to_srgb(b, nir_channel(b, input, i));
    comp[3] = nir_channels(b, input, 1 << 3);
@@ -62,27 +62,27 @@ build_resolve_compute_shader(struct radv_device *dev, bool is_integer, bool is_s
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
 
-   nir_ssa_def *global_id = get_global_ids(&b, 2);
+   nir_def *global_id = get_global_ids(&b, 2);
 
-   nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
-   nir_ssa_def *dst_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 8), .range = 16);
+   nir_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
+   nir_def *dst_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 8), .range = 16);
 
-   nir_ssa_def *src_coord = nir_iadd(&b, global_id, src_offset);
-   nir_ssa_def *dst_coord = nir_iadd(&b, global_id, dst_offset);
+   nir_def *src_coord = nir_iadd(&b, global_id, src_offset);
+   nir_def *dst_coord = nir_iadd(&b, global_id, dst_offset);
 
    nir_variable *color = nir_local_variable_create(b.impl, glsl_vec4_type(), "color");
 
    radv_meta_build_resolve_shader_core(dev, &b, is_integer, samples, input_img, color, src_coord);
 
-   nir_ssa_def *outval = nir_load_var(&b, color);
+   nir_def *outval = nir_load_var(&b, color);
    if (is_srgb)
       outval = radv_meta_build_resolve_srgb_conversion(&b, outval);
 
-   nir_ssa_def *img_coord = nir_vec4(&b, nir_channel(&b, dst_coord, 0), nir_channel(&b, dst_coord, 1),
-                                     nir_ssa_undef(&b, 1, 32), nir_ssa_undef(&b, 1, 32));
+   nir_def *img_coord = nir_vec4(&b, nir_channel(&b, dst_coord, 0), nir_channel(&b, dst_coord, 1), nir_undef(&b, 1, 32),
+                                 nir_undef(&b, 1, 32));
 
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord, nir_ssa_undef(&b, 1, 32),
-                         outval, nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord, nir_undef(&b, 1, 32), outval,
+                         nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
    return b.shader;
 }
 
@@ -130,21 +130,21 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
 
-   nir_ssa_def *global_id = get_global_ids(&b, 3);
+   nir_def *global_id = get_global_ids(&b, 3);
 
-   nir_ssa_def *offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
+   nir_def *offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
 
-   nir_ssa_def *resolve_coord = nir_iadd(&b, nir_trim_vector(&b, global_id, 2), offset);
+   nir_def *resolve_coord = nir_iadd(&b, nir_trim_vector(&b, global_id, 2), offset);
 
-   nir_ssa_def *img_coord =
+   nir_def *img_coord =
       nir_vec3(&b, nir_channel(&b, resolve_coord, 0), nir_channel(&b, resolve_coord, 1), nir_channel(&b, global_id, 2));
 
    nir_deref_instr *input_img_deref = nir_build_deref_var(&b, input_img);
-   nir_ssa_def *outval = nir_txf_ms_deref(&b, input_img_deref, img_coord, nir_imm_int(&b, 0));
+   nir_def *outval = nir_txf_ms_deref(&b, input_img_deref, img_coord, nir_imm_int(&b, 0));
 
    if (resolve_mode != VK_RESOLVE_MODE_SAMPLE_ZERO_BIT) {
       for (int i = 1; i < samples; i++) {
-         nir_ssa_def *si = nir_txf_ms_deref(&b, input_img_deref, img_coord, nir_imm_int(&b, i));
+         nir_def *si = nir_txf_ms_deref(&b, input_img_deref, img_coord, nir_imm_int(&b, i));
 
          switch (resolve_mode) {
          case VK_RESOLVE_MODE_AVERAGE_BIT:
@@ -172,9 +172,9 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
          outval = nir_fdiv_imm(&b, outval, samples);
    }
 
-   nir_ssa_def *coord = nir_vec4(&b, nir_channel(&b, img_coord, 0), nir_channel(&b, img_coord, 1),
-                                 nir_channel(&b, img_coord, 2), nir_ssa_undef(&b, 1, 32));
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, nir_ssa_undef(&b, 1, 32), outval,
+   nir_def *coord = nir_vec4(&b, nir_channel(&b, img_coord, 0), nir_channel(&b, img_coord, 1),
+                             nir_channel(&b, img_coord, 2), nir_undef(&b, 1, 32));
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, nir_undef(&b, 1, 32), outval,
                          nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D, .image_array = true);
    return b.shader;
 }

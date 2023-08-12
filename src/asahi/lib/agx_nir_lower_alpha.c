@@ -46,7 +46,7 @@ agx_nir_lower_alpha_to_coverage(nir_shader *shader, uint8_t nr_samples)
       return;
 
    /* Similarly, if there are less than 4 components, alpha is undefined */
-   nir_ssa_def *rgba = store->src[0].ssa;
+   nir_def *rgba = store->src[0].ssa;
    if (rgba->num_components < 4)
       return;
 
@@ -59,9 +59,9 @@ agx_nir_lower_alpha_to_coverage(nir_shader *shader, uint8_t nr_samples)
     *    # of bits = (unsigned int) (alpha * nr_samples)
     *    mask = (1 << (# of bits)) - 1
     */
-   nir_ssa_def *alpha = nir_channel(b, rgba, 3);
-   nir_ssa_def *bits = nir_f2u32(b, nir_fmul_imm(b, alpha, nr_samples));
-   nir_ssa_def *mask =
+   nir_def *alpha = nir_channel(b, rgba, 3);
+   nir_def *bits = nir_f2u32(b, nir_fmul_imm(b, alpha, nr_samples));
+   nir_def *mask =
       nir_iadd_imm(b, nir_ishl(b, nir_imm_intN_t(b, 1, 16), bits), -1);
 
    /* Discard samples that aren't covered */
@@ -100,12 +100,12 @@ agx_nir_lower_alpha_to_one(nir_shader *shader)
       if (sem.location < FRAG_RESULT_DATA0)
          continue;
 
-      nir_ssa_def *rgba = intr->src[0].ssa;
+      nir_def *rgba = intr->src[0].ssa;
       if (rgba->num_components < 4)
          continue;
 
       nir_builder b = nir_builder_at(nir_before_instr(instr));
-      nir_ssa_def *rgb1 = nir_vector_insert_imm(
+      nir_def *rgb1 = nir_vector_insert_imm(
          &b, rgba, nir_imm_floatN_t(&b, 1.0, rgba->bit_size), 3);
 
       nir_instr_rewrite_src_ssa(instr, &intr->src[0], rgb1);

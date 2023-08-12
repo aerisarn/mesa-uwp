@@ -57,19 +57,19 @@ static void
 rewrite_load(nir_intrinsic_instr *load, struct regs_to_ssa_state *state)
 {
    nir_block *block = load->instr.block;
-   nir_ssa_def *reg = load->src[0].ssa;
+   nir_def *reg = load->src[0].ssa;
 
    struct nir_phi_builder_value *value = state->values[reg->index];
    if (!value)
       return;
 
    nir_intrinsic_instr *decl = nir_instr_as_intrinsic(reg->parent_instr);
-   nir_ssa_def *def = nir_phi_builder_value_get_block_def(value, block);
+   nir_def *def = nir_phi_builder_value_get_block_def(value, block);
 
-   nir_ssa_def_rewrite_uses(&load->dest.ssa, def);
+   nir_def_rewrite_uses(&load->dest.ssa, def);
    nir_instr_remove(&load->instr);
 
-   if (nir_ssa_def_is_unused(&decl->dest.ssa))
+   if (nir_def_is_unused(&decl->dest.ssa))
       nir_instr_remove(&decl->instr);
 }
 
@@ -77,8 +77,8 @@ static void
 rewrite_store(nir_intrinsic_instr *store, struct regs_to_ssa_state *state)
 {
    nir_block *block = store->instr.block;
-   nir_ssa_def *new_value = store->src[0].ssa;
-   nir_ssa_def *reg = store->src[1].ssa;
+   nir_def *new_value = store->src[0].ssa;
+   nir_def *reg = store->src[1].ssa;
 
    struct nir_phi_builder_value *value = state->values[reg->index];
    if (!value)
@@ -90,10 +90,10 @@ rewrite_store(nir_intrinsic_instr *store, struct regs_to_ssa_state *state)
 
    /* Implement write masks by combining together the old/new values */
    if (write_mask != BITFIELD_MASK(num_components)) {
-      nir_ssa_def *old_value =
+      nir_def *old_value =
          nir_phi_builder_value_get_block_def(value, block);
 
-      nir_ssa_def *channels[NIR_MAX_VEC_COMPONENTS] = { NULL };
+      nir_def *channels[NIR_MAX_VEC_COMPONENTS] = { NULL };
       state->b.cursor = nir_before_instr(&store->instr);
 
       for (unsigned i = 0; i < num_components; ++i) {
@@ -109,7 +109,7 @@ rewrite_store(nir_intrinsic_instr *store, struct regs_to_ssa_state *state)
    nir_phi_builder_value_set_block_def(value, block, new_value);
    nir_instr_remove(&store->instr);
 
-   if (nir_ssa_def_is_unused(&decl->dest.ssa))
+   if (nir_def_is_unused(&decl->dest.ssa))
       nir_instr_remove(&decl->instr);
 }
 

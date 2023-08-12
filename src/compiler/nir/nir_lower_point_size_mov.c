@@ -57,7 +57,7 @@ lower_impl(nir_function_impl *impl,
 
    if (!out) {
       b.cursor = nir_before_cf_list(&impl->body);
-      nir_ssa_def *load = nir_load_var(&b, in);
+      nir_def *load = nir_load_var(&b, in);
       load = nir_fclamp(&b, nir_channel(&b, load, 0), nir_channel(&b, load, 1), nir_channel(&b, load, 2));
       nir_store_var(&b, new_out, load, 0x1);
    } else {
@@ -70,7 +70,7 @@ lower_impl(nir_function_impl *impl,
                   nir_variable *var = nir_intrinsic_get_var(intr, 0);
                   if (var == out) {
                      b.cursor = nir_after_instr(instr);
-                     nir_ssa_def *load = nir_load_var(&b, in);
+                     nir_def *load = nir_load_var(&b, in);
                      load = nir_fclamp(&b, nir_channel(&b, load, 0), nir_channel(&b, load, 1), nir_channel(&b, load, 2));
                      nir_store_var(&b, new_out ? new_out : out, load, 0x1);
                      found = true;
@@ -81,7 +81,7 @@ lower_impl(nir_function_impl *impl,
       }
       if (!found) {
          b.cursor = nir_before_cf_list(&impl->body);
-         nir_ssa_def *load = nir_load_var(&b, in);
+         nir_def *load = nir_load_var(&b, in);
          load = nir_fclamp(&b, nir_channel(&b, load, 0), nir_channel(&b, load, 1), nir_channel(&b, load, 2));
          nir_store_var(&b, new_out, load, 0x1);
       }

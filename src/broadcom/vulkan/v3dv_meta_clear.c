@@ -329,7 +329,7 @@ get_clear_rect_vs()
       nir_variable_create(b.shader, nir_var_shader_out, vec4, "gl_Position");
    vs_out_pos->data.location = VARYING_SLOT_POS;
 
-   nir_ssa_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
+   nir_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
    nir_store_var(&b, vs_out_pos, pos, 0xf);
 
    return b.shader;
@@ -386,7 +386,7 @@ get_clear_rect_gs(uint32_t push_constant_layer_base)
       nir_copy_deref(&b, nir_build_deref_var(&b, gs_out_pos), in_pos_i);
 
       /* gl_Layer from push constants */
-      nir_ssa_def *layer =
+      nir_def *layer =
          nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
                                 .base = push_constant_layer_base, .range = 4);
       nir_store_var(&b, gs_out_layer, layer, 0x1);
@@ -414,7 +414,7 @@ get_color_clear_rect_fs(uint32_t rt_idx, VkFormat format)
       nir_variable_create(b.shader, nir_var_shader_out, fs_out_type, "out_color");
    fs_out_color->data.location = FRAG_RESULT_DATA0 + rt_idx;
 
-   nir_ssa_def *color_load = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
+   nir_def *color_load = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
    nir_store_var(&b, fs_out_color, color_load, 0xf);
 
    return b.shader;
@@ -432,7 +432,7 @@ get_depth_clear_rect_fs()
                           "out_depth");
    fs_out_depth->data.location = FRAG_RESULT_DEPTH;
 
-   nir_ssa_def *depth_load =
+   nir_def *depth_load =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 0, .range = 4);
 
    nir_store_var(&b, fs_out_depth, depth_load, 0x1);

@@ -620,8 +620,8 @@ pan_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
       nir_const_value_for_float(floats[3], 32)};
 
    b->cursor = nir_after_instr(instr);
-   nir_ssa_def *constant = nir_build_imm(b, 4, 32, constants);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, constant);
+   nir_def *constant = nir_build_imm(b, 4, 32, constants);
+   nir_def_rewrite_uses(&intr->dest.ssa, constant);
    nir_instr_remove(instr);
    return true;
 }
@@ -683,8 +683,8 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
       options.rt[rt].alpha.dst_factor = rt_state->equation.alpha_dst_factor;
    }
 
-   nir_ssa_def *pixel = nir_load_barycentric_pixel(&b, 32, .interp_mode = 1);
-   nir_ssa_def *zero = nir_imm_int(&b, 0);
+   nir_def *pixel = nir_load_barycentric_pixel(&b, 32, .interp_mode = 1);
+   nir_def *zero = nir_imm_int(&b, 0);
 
    for (unsigned i = 0; i < 2; ++i) {
       nir_alu_type src_type =
@@ -694,7 +694,7 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
       src_type = nir_alu_type_get_base_type(nir_type) |
                  nir_alu_type_get_type_size(src_type);
 
-      nir_ssa_def *src = nir_load_interpolated_input(
+      nir_def *src = nir_load_interpolated_input(
          &b, 4, nir_alu_type_get_type_size(src_type), pixel, zero,
          .io_semantics.location = i ? VARYING_SLOT_VAR0 : VARYING_SLOT_COL0,
          .io_semantics.num_slots = 1, .base = i, .dest_type = src_type);
@@ -806,7 +806,7 @@ inline_rt_conversion(nir_builder *b, nir_instr *instr, void *data)
       inputs->dev, inputs->formats[rt], rt, size, false);
 
    b->cursor = nir_after_instr(instr);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_imm_int(b, conversion >> 32));
+   nir_def_rewrite_uses(&intr->dest.ssa, nir_imm_int(b, conversion >> 32));
    return true;
 }
 

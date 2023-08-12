@@ -409,7 +409,7 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
 
-   assert(nir_ssa_def_components_read(&instr->dest.ssa) ==
+   assert(nir_def_components_read(&instr->dest.ssa) ==
              nir_component_mask(components) &&
           "iter does not handle write-after-write hazards");
 
@@ -771,10 +771,10 @@ agx_emit_local_store(agx_builder *b, nir_intrinsic_instr *instr)
 static agx_index
 agx_translate_bindless_handle(agx_builder *b, nir_src *handle, agx_index *base)
 {
-   nir_ssa_scalar base_scalar = nir_ssa_scalar_resolved(handle->ssa, 0);
-   assert(nir_ssa_scalar_is_const(base_scalar) && "base must be constant");
+   nir_scalar base_scalar = nir_scalar_resolved(handle->ssa, 0);
+   assert(nir_scalar_is_const(base_scalar) && "base must be constant");
 
-   unsigned base_uint = nir_ssa_scalar_as_uint(base_scalar);
+   unsigned base_uint = nir_scalar_as_uint(base_scalar);
    *base = agx_uniform(base_uint, AGX_SIZE_64);
 
    return agx_emit_extract(b, agx_src_index(handle), 1);
@@ -801,7 +801,7 @@ static unsigned
 agx_expand_tex_to(agx_builder *b, nir_dest *dest, agx_index src, bool masked)
 {
    unsigned nr_channels = nir_dest_num_components(*dest);
-   nir_component_mask_t mask = nir_ssa_def_components_read(&dest->ssa);
+   nir_component_mask_t mask = nir_def_components_read(&dest->ssa);
 
    if (!masked)
       mask = (nir_component_mask_t)BITFIELD_MASK(nr_channels);
@@ -1798,7 +1798,7 @@ agx_emit_phis_deferred(agx_context *ctx)
 }
 
 static void
-agx_emit_undef(agx_builder *b, nir_ssa_undef_instr *instr)
+agx_emit_undef(agx_builder *b, nir_undef_instr *instr)
 {
    /* For now, just lower undefs to zero. This doesn't matter too much, since
     * the lowering happens in NIR and this just allows for late lowering passes
@@ -2095,17 +2095,17 @@ agx_lower_sincos_filter(const nir_instr *instr, UNUSED const void *_)
  * implemented by shifting by one quadrant: cos(x) = sin(x + tau/4).
  */
 
-static nir_ssa_def *
+static nir_def *
 agx_lower_sincos_impl(struct nir_builder *b, nir_instr *instr, UNUSED void *_)
 {
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   nir_ssa_def *x = nir_mov_alu(b, alu->src[0], 1);
-   nir_ssa_def *turns = nir_fmul_imm(b, x, M_1_PI * 0.5f);
+   nir_def *x = nir_mov_alu(b, alu->src[0], 1);
+   nir_def *turns = nir_fmul_imm(b, x, M_1_PI * 0.5f);
 
    if (alu->op == nir_op_fcos)
       turns = nir_fadd_imm(b, turns, 0.25f);
 
-   nir_ssa_def *quadrants = nir_fmul_imm(b, nir_ffract(b, turns), 4.0);
+   nir_def *quadrants = nir_fmul_imm(b, nir_ffract(b, turns), 4.0);
    return nir_fsin_agx(b, quadrants);
 }
 
@@ -2126,11 +2126,11 @@ agx_lower_front_face(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    if (intr->intrinsic != nir_intrinsic_load_front_face)
       return false;
 
-   nir_ssa_def *def = &intr->dest.ssa;
+   nir_def *def = &intr->dest.ssa;
    assert(def->bit_size == 1);
 
    b->cursor = nir_before_instr(&intr->instr);
-   nir_ssa_def_rewrite_uses(def, nir_inot(b, nir_load_back_face_agx(b, 1)));
+   nir_def_rewrite_uses(def, nir_inot(b, nir_load_back_face_agx(b, 1)));
    return true;
 }
 
@@ -2347,8 +2347,8 @@ agx_gather_texcoords(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_src src = tex->src[coord_idx].src;
-   nir_ssa_scalar x = nir_ssa_scalar_resolved(src.ssa, 0);
-   nir_ssa_scalar y = nir_ssa_scalar_resolved(src.ssa, 1);
+   nir_scalar x = nir_scalar_resolved(src.ssa, 0);
+   nir_scalar y = nir_scalar_resolved(src.ssa, 1);
 
    if (x.def != y.def)
       return false;

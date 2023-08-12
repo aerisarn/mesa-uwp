@@ -100,7 +100,7 @@ opt_constant_if(nir_if *if_stmt, bool condition)
        */
       nir_block *after = nir_cf_node_as_block(nir_cf_node_next(&if_stmt->cf_node));
       nir_foreach_phi_safe(phi, after) {
-         nir_ssa_def *def = NULL;
+         nir_def *def = NULL;
          nir_foreach_phi_src(phi_src, phi) {
             if (phi_src->pred != last_block)
                continue;
@@ -109,7 +109,7 @@ opt_constant_if(nir_if *if_stmt, bool condition)
          }
 
          assert(def);
-         nir_ssa_def_rewrite_uses(&phi->dest.ssa, def);
+         nir_def_rewrite_uses(&phi->dest.ssa, def);
          nir_instr_remove(&phi->instr);
       }
    }
@@ -125,7 +125,7 @@ opt_constant_if(nir_if *if_stmt, bool condition)
 }
 
 static bool
-def_only_used_in_cf_node(nir_ssa_def *def, void *_node)
+def_only_used_in_cf_node(nir_def *def, void *_node)
 {
    nir_cf_node *node = _node;
    assert(node->type == nir_cf_node_loop || node->type == nir_cf_node_if);

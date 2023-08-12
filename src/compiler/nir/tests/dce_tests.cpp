@@ -40,7 +40,7 @@ protected:
 };
 
 nir_phi_instr *create_one_source_phi(nir_shader *shader, nir_block *pred,
-                                     nir_ssa_def *def)
+                                     nir_def *def)
 {
    nir_phi_instr *phi = nir_phi_instr_create(shader);
    nir_phi_instr_add_src(phi, pred, nir_src_for_ssa(def));
@@ -83,7 +83,7 @@ TEST_F(nir_opt_dce_test, return_before_loop)
 
    nir_loop *loop = nir_push_loop(b);
 
-   nir_ssa_def *one = nir_imm_int(b, 1);
+   nir_def *one = nir_imm_int(b, 1);
 
    nir_phi_instr *phi = create_one_source_phi(b->shader, one->parent_instr->block, one);
    nir_instr_insert_before_block(one->parent_instr->block, &phi->instr);
@@ -125,7 +125,7 @@ TEST_F(nir_opt_dead_cf_test, jump_before_constant_if)
     */
    nir_variable *var = nir_variable_create(b->shader, nir_var_shader_out, glsl_int_type(), "out");
 
-   nir_ssa_def *cond = nir_imm_false(b);
+   nir_def *cond = nir_imm_false(b);
    nir_jump(b, nir_jump_return);
    nir_push_if(b, cond);
    nir_store_var(b, var, nir_imm_int(b, 1), 0x1);

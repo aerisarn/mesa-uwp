@@ -223,10 +223,10 @@ nir_insert_phi_undef(nir_block *block, nir_block *pred)
 {
    nir_function_impl *impl = nir_cf_node_get_function(&block->cf_node);
    nir_foreach_phi(phi, block) {
-      nir_ssa_undef_instr *undef =
-         nir_ssa_undef_instr_create(impl->function->shader,
-                                    phi->dest.ssa.num_components,
-                                    phi->dest.ssa.bit_size);
+      nir_undef_instr *undef =
+         nir_undef_instr_create(impl->function->shader,
+                                phi->dest.ssa.num_components,
+                                phi->dest.ssa.bit_size);
       nir_instr_insert_before_cf_list(&impl->body, &undef->instr);
       nir_phi_src *src = nir_phi_instr_add_src(phi, pred, nir_src_for_ssa(&undef->def));
       list_addtail(&src->src.use_link, &undef->def.uses);
@@ -641,16 +641,16 @@ nir_cf_node_insert(nir_cursor cursor, nir_cf_node *node)
 }
 
 static bool
-replace_ssa_def_uses(nir_ssa_def *def, void *void_impl)
+replace_ssa_def_uses(nir_def *def, void *void_impl)
 {
    nir_function_impl *impl = void_impl;
 
-   nir_ssa_undef_instr *undef =
-      nir_ssa_undef_instr_create(impl->function->shader,
-                                 def->num_components,
-                                 def->bit_size);
+   nir_undef_instr *undef =
+      nir_undef_instr_create(impl->function->shader,
+                             def->num_components,
+                             def->bit_size);
    nir_instr_insert_before_cf_list(&impl->body, &undef->instr);
-   nir_ssa_def_rewrite_uses(def, &undef->def);
+   nir_def_rewrite_uses(def, &undef->def);
    return true;
 }
 

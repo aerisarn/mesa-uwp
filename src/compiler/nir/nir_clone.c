@@ -322,12 +322,12 @@ clone_load_const(clone_state *state, const nir_load_const_instr *lc)
    return nlc;
 }
 
-static nir_ssa_undef_instr *
-clone_ssa_undef(clone_state *state, const nir_ssa_undef_instr *sa)
+static nir_undef_instr *
+clone_ssa_undef(clone_state *state, const nir_undef_instr *sa)
 {
-   nir_ssa_undef_instr *nsa =
-      nir_ssa_undef_instr_create(state->ns, sa->def.num_components,
-                                 sa->def.bit_size);
+   nir_undef_instr *nsa =
+      nir_undef_instr_create(state->ns, sa->def.num_components,
+                             sa->def.bit_size);
 
    add_remap(state, &nsa->def, &sa->def);
 

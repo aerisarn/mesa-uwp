@@ -64,7 +64,7 @@ var_info_cmp(const void *_a, const void *_b)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 build_constant_load(nir_builder *b, nir_deref_instr *deref,
                     glsl_type_size_align_func size_align)
 {
@@ -80,8 +80,8 @@ build_constant_load(nir_builder *b, nir_deref_instr *deref,
    UNUSED unsigned deref_size, deref_align;
    size_align(deref->type, &deref_size, &deref_align);
 
-   nir_ssa_def *src = nir_build_deref_offset(b, deref, size_align);
-   nir_ssa_def *load =
+   nir_def *src = nir_build_deref_offset(b, deref, size_align);
+   nir_def *load =
       nir_load_constant(b, num_components, bit_size, src,
                         .base = var->data.location,
                         .range = var_size,
@@ -360,9 +360,9 @@ nir_opt_large_constants(nir_shader *shader,
             struct var_info *info = &var_infos[var->index];
             if (info->is_constant) {
                b.cursor = nir_after_instr(&intrin->instr);
-               nir_ssa_def *val = build_constant_load(&b, deref, size_align);
-               nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                        val);
+               nir_def *val = build_constant_load(&b, deref, size_align);
+               nir_def_rewrite_uses(&intrin->dest.ssa,
+                                    val);
                nir_instr_remove(&intrin->instr);
                nir_deref_instr_remove_if_unused(deref);
             }

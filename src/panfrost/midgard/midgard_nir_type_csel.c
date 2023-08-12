@@ -35,7 +35,7 @@ midgard_nir_type_csel(nir_shader *shader)
 
    BITSET_WORD *float_types =
       calloc(BITSET_WORDS(impl->ssa_alloc), sizeof(BITSET_WORD));
-   nir_gather_ssa_types(impl, float_types, NULL);
+   nir_gather_types(impl, float_types, NULL);
 
    nir_shader_instructions_pass(
       shader, pass, nir_metadata_block_index | nir_metadata_dominance,

@@ -36,7 +36,7 @@
  * down but won't split it.
  */
 
-static nir_ssa_def *
+static nir_def *
 clone_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 {
    nir_intrinsic_instr *new_intrin =
@@ -63,12 +63,12 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
       struct hash_entry *entry =
          _mesa_hash_table_search(visited_instrs, src->parent_instr);
       if (entry && (src->parent_instr->type != nir_instr_type_phi)) {
-         nir_ssa_def *def = entry->data;
+         nir_def *def = entry->data;
          nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(def));
          continue;
       }
       b->cursor = nir_before_src(src);
-      nir_ssa_def *new = clone_intrinsic(b, intrin);
+      nir_def *new = clone_intrinsic(b, intrin);
       nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(new));
       _mesa_hash_table_insert(visited_instrs, src->parent_instr, new);
    }
@@ -92,12 +92,12 @@ replace_load_const(nir_builder *b, nir_load_const_instr *load_const)
       struct hash_entry *entry =
          _mesa_hash_table_search(visited_instrs, src->parent_instr);
       if (entry && (src->parent_instr->type != nir_instr_type_phi)) {
-         nir_ssa_def *def = entry->data;
+         nir_def *def = entry->data;
          nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(def));
          continue;
       }
       b->cursor = nir_before_src(src);
-      nir_ssa_def *new = nir_build_imm(b, load_const->def.num_components,
+      nir_def *new = nir_build_imm(b, load_const->def.num_components,
                                        load_const->def.bit_size,
                                        load_const->value);
       nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(new));

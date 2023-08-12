@@ -135,7 +135,7 @@ v3d33_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
          * instruction writes and how many the instruction could produce.
          */
         p1_unpacked.return_words_of_texture_data =
-                nir_ssa_def_components_read(&instr->dest.ssa);
+                nir_def_components_read(&instr->dest.ssa);
 
         uint32_t p0_packed;
         V3D33_TEXTURE_UNIFORM_PARAMETER_0_CFG_MODE1_pack(NULL,

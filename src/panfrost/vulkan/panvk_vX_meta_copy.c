@@ -303,7 +303,7 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
       b.shader, nir_var_shader_in,
       glsl_vector_type(GLSL_TYPE_FLOAT, texdim + texisarray), "coord");
    coord_var->data.location = VARYING_SLOT_VAR0;
-   nir_ssa_def *coord = nir_f2u32(&b, nir_load_var(&b, coord_var));
+   nir_def *coord = nir_f2u32(&b, nir_load_var(&b, coord_var));
 
    nir_tex_instr *tex = nir_tex_instr_create(b.shader, is_ms ? 2 : 1);
    tex->op = is_ms ? nir_texop_txf_ms : nir_texop_txf;
@@ -340,7 +340,7 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
                      nir_alu_type_get_type_size(tex->dest_type));
    nir_builder_instr_insert(&b, &tex->instr);
 
-   nir_ssa_def *texel = &tex->dest.ssa;
+   nir_def *texel = &tex->dest.ssa;
 
    unsigned dstcompsz =
       util_format_get_component_bits(dstfmt, UTIL_FORMAT_COLORSPACE_RGB, 0);
@@ -348,11 +348,11 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
    const struct glsl_type *outtype = NULL;
 
    if (srcfmt == PIPE_FORMAT_R5G6B5_UNORM && dstfmt == PIPE_FORMAT_R8G8_UNORM) {
-      nir_ssa_def *rgb = nir_f2u32(
+      nir_def *rgb = nir_f2u32(
          &b, nir_fmul(&b, texel,
                       nir_vec3(&b, nir_imm_float(&b, 31), nir_imm_float(&b, 63),
                                nir_imm_float(&b, 31))));
-      nir_ssa_def *rg = nir_vec2(
+      nir_def *rg = nir_vec2(
          &b,
          nir_ior(&b, nir_channel(&b, rgb, 0),
                  nir_ishl(&b, nir_channel(&b, rgb, 1), nir_imm_int(&b, 5))),
@@ -363,8 +363,8 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
       outtype = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
    } else if (srcfmt == PIPE_FORMAT_R8G8_UNORM &&
               dstfmt == PIPE_FORMAT_R5G6B5_UNORM) {
-      nir_ssa_def *rg = nir_f2u32(&b, nir_fmul_imm(&b, texel, 255));
-      nir_ssa_def *rgb = nir_vec3(
+      nir_def *rg = nir_f2u32(&b, nir_fmul_imm(&b, texel, 255));
+      nir_def *rgb = nir_vec3(
          &b, nir_channel(&b, rg, 0),
          nir_ior(&b, nir_ushr_imm(&b, nir_channel(&b, rg, 0), 5),
                  nir_ishl(&b, nir_channel(&b, rg, 1), nir_imm_int(&b, 3))),
@@ -402,8 +402,8 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
 
    unsigned fullmask = (1 << ndstcomps) - 1;
    if (dstcompsz > 8 && dstmask != fullmask) {
-      nir_ssa_def *oldtexel = nir_load_var(&b, out);
-      nir_ssa_def *dstcomps[4];
+      nir_def *oldtexel = nir_load_var(&b, out);
+      nir_def *dstcomps[4];
 
       for (unsigned i = 0; i < ndstcomps; i++) {
          if (dstmask & BITFIELD_BIT(i))
@@ -867,21 +867,21 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
       nir_variable_create(b.shader, nir_var_shader_in,
                           glsl_vector_type(GLSL_TYPE_FLOAT, 3), "coord");
    coord_var->data.location = VARYING_SLOT_VAR0;
-   nir_ssa_def *coord = nir_load_var(&b, coord_var);
+   nir_def *coord = nir_load_var(&b, coord_var);
 
    coord = nir_f2u32(&b, coord);
 
-   nir_ssa_def *bufptr = panvk_meta_copy_buf2img_get_info_field(&b, buf.ptr);
-   nir_ssa_def *buflinestride =
+   nir_def *bufptr = panvk_meta_copy_buf2img_get_info_field(&b, buf.ptr);
+   nir_def *buflinestride =
       panvk_meta_copy_buf2img_get_info_field(&b, buf.stride.line);
-   nir_ssa_def *bufsurfstride =
+   nir_def *bufsurfstride =
       panvk_meta_copy_buf2img_get_info_field(&b, buf.stride.surf);
 
    unsigned imgtexelsz = util_format_get_blocksize(key.imgfmt);
    unsigned buftexelsz = panvk_meta_copy_buf_texelsize(key.imgfmt, key.mask);
    unsigned writemask = key.mask;
 
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_imul(&b, nir_channel(&b, coord, 0), nir_imm_int(&b, buftexelsz));
    offset = nir_iadd(&b, offset,
                      nir_imul(&b, nir_channel(&b, coord, 1), buflinestride));
@@ -901,7 +901,7 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
    assert(bufcompsz == 1 || bufcompsz == 2 || bufcompsz == 4);
    assert(nbufcomps <= 4 && nimgcomps <= 4);
 
-   nir_ssa_def *texel =
+   nir_def *texel =
       nir_load_global(&b, bufptr, bufcompsz, nbufcomps, bufcompsz * 8);
 
    enum glsl_base_type basetype;
@@ -940,11 +940,11 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
 
    if (fullmask != writemask) {
       unsigned first_written_comp = ffs(writemask) - 1;
-      nir_ssa_def *oldtexel = NULL;
+      nir_def *oldtexel = NULL;
       if (imgcompsz > 1)
          oldtexel = nir_load_var(&b, out);
 
-      nir_ssa_def *texel_comps[4];
+      nir_def *texel_comps[4];
       for (unsigned i = 0; i < nimgcomps; i++) {
          if (writemask & BITFIELD_BIT(i))
             texel_comps[i] = nir_channel(&b, texel, i - first_written_comp);
@@ -1256,23 +1256,23 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
       "panvk_meta_copy_img2buf(dim=%dD%s,imgfmt=%s,mask=%x)", texdim,
       texisarray ? "[]" : "", util_format_name(key.imgfmt), key.mask);
 
-   nir_ssa_def *coord = nir_load_global_invocation_id(&b, 32);
-   nir_ssa_def *bufptr = panvk_meta_copy_img2buf_get_info_field(&b, buf.ptr);
-   nir_ssa_def *buflinestride =
+   nir_def *coord = nir_load_global_invocation_id(&b, 32);
+   nir_def *bufptr = panvk_meta_copy_img2buf_get_info_field(&b, buf.ptr);
+   nir_def *buflinestride =
       panvk_meta_copy_img2buf_get_info_field(&b, buf.stride.line);
-   nir_ssa_def *bufsurfstride =
+   nir_def *bufsurfstride =
       panvk_meta_copy_img2buf_get_info_field(&b, buf.stride.surf);
 
-   nir_ssa_def *imgminx =
+   nir_def *imgminx =
       panvk_meta_copy_img2buf_get_info_field(&b, img.extent.minx);
-   nir_ssa_def *imgminy =
+   nir_def *imgminy =
       panvk_meta_copy_img2buf_get_info_field(&b, img.extent.miny);
-   nir_ssa_def *imgmaxx =
+   nir_def *imgmaxx =
       panvk_meta_copy_img2buf_get_info_field(&b, img.extent.maxx);
-   nir_ssa_def *imgmaxy =
+   nir_def *imgmaxy =
       panvk_meta_copy_img2buf_get_info_field(&b, img.extent.maxy);
 
-   nir_ssa_def *imgcoords, *inbounds;
+   nir_def *imgcoords, *inbounds;
 
    switch (texdim + texisarray) {
    case 1:
@@ -1325,7 +1325,7 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
     * This being said, compressed textures are not compatible with AFBC, so we
     * could use a compute shader arranging the blocks properly.
     */
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_imul(&b, nir_channel(&b, coord, 0), nir_imm_int(&b, buftexelsz));
    offset = nir_iadd(&b, offset,
                      nir_imul(&b, nir_channel(&b, coord, 1), buflinestride));
@@ -1365,12 +1365,12 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
                      nir_alu_type_get_type_size(tex->dest_type));
    nir_builder_instr_insert(&b, &tex->instr);
 
-   nir_ssa_def *texel = &tex->dest.ssa;
+   nir_def *texel = &tex->dest.ssa;
 
    unsigned fullmask = (1 << util_format_get_nr_components(key.imgfmt)) - 1;
    unsigned nbufcomps = util_bitcount(fullmask);
    if (key.mask != fullmask) {
-      nir_ssa_def *bufcomps[4];
+      nir_def *bufcomps[4];
       nbufcomps = 0;
       for (unsigned i = 0; i < nimgcomps; i++) {
          if (key.mask & BITFIELD_BIT(i))
@@ -1397,7 +1397,7 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
       nbufcomps = 1;
       nimgcomps = 1;
    } else if (imgcompsz == 1) {
-      nir_ssa_def *packed = nir_channel(&b, texel, 0);
+      nir_def *packed = nir_channel(&b, texel, 0);
       for (unsigned i = 1; i < nbufcomps; i++) {
          packed = nir_ior(
             &b, packed,
@@ -1634,13 +1634,13 @@ panvk_meta_copy_buf2buf_shader(struct panfrost_device *pdev,
       MESA_SHADER_COMPUTE, GENX(pan_shader_get_compiler_options)(),
       "panvk_meta_copy_buf2buf(blksz=%d)", blksz);
 
-   nir_ssa_def *coord = nir_load_global_invocation_id(&b, 32);
+   nir_def *coord = nir_load_global_invocation_id(&b, 32);
 
-   nir_ssa_def *offset = nir_u2u64(
+   nir_def *offset = nir_u2u64(
       &b, nir_imul(&b, nir_channel(&b, coord, 0), nir_imm_int(&b, blksz)));
-   nir_ssa_def *srcptr =
+   nir_def *srcptr =
       nir_iadd(&b, panvk_meta_copy_buf2buf_get_info_field(&b, src), offset);
-   nir_ssa_def *dstptr =
+   nir_def *dstptr =
       nir_iadd(&b, panvk_meta_copy_buf2buf_get_info_field(&b, dst), offset);
 
    unsigned compsz = blksz < 4 ? blksz : 4;
@@ -1765,14 +1765,13 @@ panvk_meta_fill_buf_shader(struct panfrost_device *pdev,
       MESA_SHADER_COMPUTE, GENX(pan_shader_get_compiler_options)(),
       "panvk_meta_fill_buf()");
 
-   nir_ssa_def *coord = nir_load_global_invocation_id(&b, 32);
+   nir_def *coord = nir_load_global_invocation_id(&b, 32);
 
-   nir_ssa_def *offset =
-      nir_u2u64(&b, nir_imul(&b, nir_channel(&b, coord, 0),
-                             nir_imm_int(&b, sizeof(uint32_t))));
-   nir_ssa_def *ptr =
+   nir_def *offset = nir_u2u64(&b, nir_imul(&b, nir_channel(&b, coord, 0),
+                                            nir_imm_int(&b, sizeof(uint32_t))));
+   nir_def *ptr =
       nir_iadd(&b, panvk_meta_fill_buf_get_info_field(&b, start), offset);
-   nir_ssa_def *val = panvk_meta_fill_buf_get_info_field(&b, val);
+   nir_def *val = panvk_meta_fill_buf_get_info_field(&b, val);
 
    nir_store_global(&b, ptr, sizeof(uint32_t), val, 1);
 

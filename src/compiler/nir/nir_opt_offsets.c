@@ -34,19 +34,19 @@ typedef struct
    const nir_opt_offsets_options *options;
 } opt_offsets_state;
 
-static nir_ssa_scalar
-try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state *state, unsigned *out_const, uint32_t max)
+static nir_scalar
+try_extract_const_addition(nir_builder *b, nir_scalar val, opt_offsets_state *state, unsigned *out_const, uint32_t max)
 {
-   val = nir_ssa_scalar_chase_movs(val);
+   val = nir_scalar_chase_movs(val);
 
-   if (!nir_ssa_scalar_is_alu(val))
+   if (!nir_scalar_is_alu(val))
       return val;
 
    nir_alu_instr *alu = nir_instr_as_alu(val.def->parent_instr);
    if (alu->op != nir_op_iadd)
       return val;
 
-   nir_ssa_scalar src[2] = {
+   nir_scalar src[2] = {
       { alu->src[0].src.ssa, alu->src[0].swizzle[val.comp] },
       { alu->src[1].src.ssa, alu->src[1].swizzle[val.comp] },
    };
@@ -74,9 +74,9 @@ try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state
    }
 
    for (unsigned i = 0; i < 2; ++i) {
-      src[i] = nir_ssa_scalar_chase_movs(src[i]);
-      if (nir_ssa_scalar_is_const(src[i])) {
-         uint32_t offset = nir_ssa_scalar_as_uint(src[i]);
+      src[i] = nir_scalar_chase_movs(src[i]);
+      if (nir_scalar_is_const(src[i])) {
+         uint32_t offset = nir_scalar_as_uint(src[i]);
          if (offset + *out_const <= max) {
             *out_const += offset;
             return try_extract_const_addition(b, src[1 - i], state, out_const, max);
@@ -91,7 +91,7 @@ try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state
       return val;
 
    b->cursor = nir_before_instr(&alu->instr);
-   nir_ssa_def *r =
+   nir_def *r =
       nir_iadd(b, nir_channel(b, src[0].def, src[0].comp),
                nir_channel(b, src[1].def, src[1].comp));
    return nir_get_ssa_scalar(r, 0);
@@ -111,14 +111,14 @@ try_fold_load_store(nir_builder *b,
 
    unsigned off_const = nir_intrinsic_base(intrin);
    nir_src *off_src = &intrin->src[offset_src_idx];
-   nir_ssa_def *replace_src = NULL;
+   nir_def *replace_src = NULL;
 
    if (off_src->ssa->bit_size != 32)
       return false;
 
    if (!nir_src_is_const(*off_src)) {
       uint32_t add_offset = 0;
-      nir_ssa_scalar val = { .def = off_src->ssa, .comp = 0 };
+      nir_scalar val = { .def = off_src->ssa, .comp = 0 };
       val = try_extract_const_addition(b, val, state, &add_offset, max - off_const);
       if (add_offset == 0)
          return false;

@@ -64,7 +64,7 @@ NirLowerInstruction::filter_instr(const nir_instr *instr, const void *data)
    return me->filter(instr);
 }
 
-nir_ssa_def *
+nir_def *
 NirLowerInstruction::lower_instr(nir_builder *b, nir_instr *instr, void *data)
 {
    auto me = reinterpret_cast<NirLowerInstruction *>(data);
@@ -101,8 +101,8 @@ r600_nir_lower_scratch_address_impl(nir_builder *b, nir_intrinsic_instr *instr)
       align = instr->dest.ssa.num_components;
    }
 
-   nir_ssa_def *address = instr->src[address_index].ssa;
-   nir_ssa_def *new_address = nir_ishr_imm(b, address, 4 * align);
+   nir_def *address = instr->src[address_index].ssa;
+   nir_def *new_address = nir_ishr_imm(b, address, 4 * align);
 
    nir_instr_rewrite_src(&instr->instr,
                          &instr->src[address_index],
@@ -235,11 +235,11 @@ private:
       return nir_intrinsic_io_semantics(intr).location == VARYING_SLOT_CLIP_VERTEX;
    }
 
-   nir_ssa_def *lower(nir_instr *instr) override
+   nir_def *lower(nir_instr *instr) override
    {
 
       auto intr = nir_instr_as_intrinsic(instr);
-      nir_ssa_def *output[8] = {nullptr};
+      nir_def *output[8] = {nullptr};
 
       auto buf_id = nir_imm_int(b, R600_BUFFER_INFO_CONST_BUFFER);
 
@@ -269,7 +269,7 @@ private:
       }
       nir_intrinsic_set_base(intr, m_clipvtx);
 
-      nir_ssa_def *result = NIR_LOWER_INSTR_PROGRESS_REPLACE;
+      nir_def *result = NIR_LOWER_INSTR_PROGRESS_REPLACE;
       for (unsigned i = 0; i < m_so_info.num_outputs; ++i) {
          if (m_so_info.output[i].register_index == clip_vertex_index) {
             m_so_info.output[i].register_index = m_clipvtx;
@@ -307,7 +307,7 @@ private:
       return nir_intrinsic_base(intr) == 0;
    }
 
-   nir_ssa_def *lower(nir_instr *instr) override
+   nir_def *lower(nir_instr *instr) override
    {
       auto intr = nir_instr_as_intrinsic(instr);
       assert(intr->intrinsic == nir_intrinsic_load_ubo_vec4);
@@ -399,7 +399,7 @@ r600_lower_deref_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
 
    b->cursor = nir_before_instr(&instr->instr);
 
-   nir_ssa_def *offset = nir_imm_int(b, 0);
+   nir_def *offset = nir_imm_int(b, 0);
    for (nir_deref_instr *d = deref; d->deref_type != nir_deref_type_var;
         d = nir_deref_instr_parent(d)) {
       assert(d->deref_type == nir_deref_type_array);
@@ -519,7 +519,7 @@ r600_lower_shared_io_impl(nir_function_impl *impl)
          b.cursor = nir_before_instr(instr);
 
          if (op->intrinsic == nir_intrinsic_load_shared) {
-            nir_ssa_def *addr = op->src[0].ssa;
+            nir_def *addr = op->src[0].ssa;
 
             switch (nir_dest_num_components(op->dest)) {
             case 2: {
@@ -545,10 +545,10 @@ r600_lower_shared_io_impl(nir_function_impl *impl)
             load->src[0] = nir_src_for_ssa(addr);
             nir_ssa_dest_init(&load->instr, &load->dest, load->num_components,
                               32);
-            nir_ssa_def_rewrite_uses(&op->dest.ssa, &load->dest.ssa);
+            nir_def_rewrite_uses(&op->dest.ssa, &load->dest.ssa);
             nir_builder_instr_insert(&b, &load->instr);
          } else {
-            nir_ssa_def *addr = op->src[1].ssa;
+            nir_def *addr = op->src[1].ssa;
             for (int i = 0; i < 2; ++i) {
                unsigned test_mask = (0x3 << 2 * i);
                if (!(nir_intrinsic_write_mask(op) & test_mask))
@@ -589,7 +589,7 @@ r600_lower_shared_io(nir_shader *nir)
    return progress;
 }
 
-static nir_ssa_def *
+static nir_def *
 r600_lower_fs_pos_input_impl(nir_builder *b, nir_instr *instr, void *_options)
 {
    (void)_options;

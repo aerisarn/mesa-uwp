@@ -144,7 +144,7 @@ src_index(nir_function_impl *impl, nir_src *src)
    nir_intrinsic_instr *load = nir_load_reg_for_def(src->ssa);
 
    if (load) {
-      nir_ssa_def *reg = load->src[0].ssa;
+      nir_def *reg = load->src[0].ssa;
       ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
       assert(nir_intrinsic_base(load) == 0);
       assert(nir_intrinsic_num_array_elems(decl) == 0);
@@ -162,7 +162,7 @@ dest_index(nir_function_impl *impl, nir_dest *dest)
    nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
 
    if (store) {
-      nir_ssa_def *reg = store->src[1].ssa;
+      nir_def *reg = store->src[1].ssa;
       ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
       assert(nir_intrinsic_base(store) == 0);
       assert(nir_intrinsic_num_array_elems(decl) == 0);
@@ -202,7 +202,7 @@ real_dest(nir_dest *dest, unsigned *swiz, unsigned *mask)
    if (!dest)
       return dest;
 
-   bool can_bypass_src = !nir_ssa_def_used_by_if(&dest->ssa);
+   bool can_bypass_src = !nir_def_used_by_if(&dest->ssa);
    nir_instr *p_instr = dest->ssa.parent_instr;
 
    /* if used by a vecN, the "real" destination becomes the vecN destination
@@ -236,7 +236,7 @@ real_dest(nir_dest *dest, unsigned *swiz, unsigned *mask)
       case nir_op_vec2:
       case nir_op_vec3:
       case nir_op_vec4:
-         assert(!nir_ssa_def_used_by_if(&dest->ssa));
+         assert(!nir_def_used_by_if(&dest->ssa));
          nir_foreach_use(use_src, &dest->ssa)
             assert(use_src->parent_instr == instr);
 
@@ -250,7 +250,7 @@ real_dest(nir_dest *dest, unsigned *swiz, unsigned *mask)
          default:
             continue;
          }
-         if (nir_ssa_def_used_by_if(&dest->ssa) ||
+         if (nir_def_used_by_if(&dest->ssa) ||
              list_length(&dest->ssa.uses) > 1)
             continue;
 

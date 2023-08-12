@@ -35,7 +35,7 @@
  * and do the math in the shader.
  */
 
-static nir_ssa_def *
+static nir_def *
 vc4_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *instr, void *data)
 {
         nir_tex_instr *txf_ms = nir_instr_as_tex(instr);
@@ -49,7 +49,7 @@ vc4_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *instr, void *data)
         txf->is_new_style_shadow = txf_ms->is_new_style_shadow;
         txf->dest_type = txf_ms->dest_type;
 
-        nir_ssa_def *coord = NULL, *sample_index = NULL;
+        nir_def *coord = NULL, *sample_index = NULL;
         for (int i = 0; i < txf_ms->num_srcs; i++) {
                 switch (txf_ms->src[i].src_type) {
                 case nir_tex_src_coord:
@@ -65,8 +65,8 @@ vc4_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *instr, void *data)
         assert(coord);
         assert(sample_index);
 
-        nir_ssa_def *x = nir_channel(b, coord, 0);
-        nir_ssa_def *y = nir_channel(b, coord, 1);
+        nir_def *x = nir_channel(b, coord, 0);
+        nir_def *y = nir_channel(b, coord, 1);
 
         uint32_t tile_w = 32;
         uint32_t tile_h = 32;
@@ -78,22 +78,22 @@ vc4_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *instr, void *data)
         uint32_t w = align(c->key->tex[unit].msaa_width, tile_w);
         uint32_t w_tiles = w / tile_w;
 
-        nir_ssa_def *x_tile = nir_ushr_imm(b, x, tile_w_shift);
-        nir_ssa_def *y_tile = nir_ushr_imm(b, y, tile_h_shift);
-        nir_ssa_def *tile_addr = nir_iadd(b,
+        nir_def *x_tile = nir_ushr_imm(b, x, tile_w_shift);
+        nir_def *y_tile = nir_ushr_imm(b, y, tile_h_shift);
+        nir_def *tile_addr = nir_iadd(b,
                                           nir_imul_imm(b, x_tile, tile_size),
                                           nir_imul_imm(b, y_tile, w_tiles *
                                                                   tile_size));
-        nir_ssa_def *x_subspan = nir_iand_imm(b, x, (tile_w - 1) & ~1);
-        nir_ssa_def *y_subspan = nir_iand_imm(b, y, (tile_h - 1) & ~1);
-        nir_ssa_def *subspan_addr = nir_iadd(b,
+        nir_def *x_subspan = nir_iand_imm(b, x, (tile_w - 1) & ~1);
+        nir_def *y_subspan = nir_iand_imm(b, y, (tile_h - 1) & ~1);
+        nir_def *subspan_addr = nir_iadd(b,
                                              nir_imul_imm(b, x_subspan,
                                                           2 * VC4_MAX_SAMPLES * sizeof(uint32_t)),
                                              nir_imul_imm(b, y_subspan,
                                                           tile_w * VC4_MAX_SAMPLES *
                                                           sizeof(uint32_t)));
 
-        nir_ssa_def *pixel_addr = nir_ior(b,
+        nir_def *pixel_addr = nir_ior(b,
                                           nir_iand_imm(b,
                                                        nir_ishl_imm(b, x, 2),
                                                        1 << 2),
@@ -101,9 +101,9 @@ vc4_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *instr, void *data)
                                                        nir_ishl_imm(b, y, 3),
                                                        1 << 3));
 
-        nir_ssa_def *sample_addr = nir_ishl_imm(b, sample_index, 4);
+        nir_def *sample_addr = nir_ishl_imm(b, sample_index, 4);
 
-        nir_ssa_def *addr = nir_iadd(b,
+        nir_def *addr = nir_iadd(b,
                                      nir_ior(b, sample_addr, pixel_addr),
                                      nir_iadd(b, subspan_addr, tile_addr));
 

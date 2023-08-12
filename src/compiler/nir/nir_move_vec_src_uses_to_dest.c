@@ -46,7 +46,7 @@
  * considered to *not* dominate the instruction that defines it.
  */
 static bool
-ssa_def_dominates_instr(nir_ssa_def *def, nir_instr *instr)
+ssa_def_dominates_instr(nir_def *def, nir_instr *instr)
 {
    if (instr->index <= def->parent_instr->index) {
       return false;

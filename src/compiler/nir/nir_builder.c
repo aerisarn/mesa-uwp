@@ -60,7 +60,7 @@ nir_builder MUST_CHECK PRINTFLIKE(3, 4)
    return b;
 }
 
-nir_ssa_def *
+nir_def *
 nir_builder_alu_instr_finish_and_insert(nir_builder *build, nir_alu_instr *instr)
 {
    const nir_op_info *op_info = &nir_op_infos[instr->op];
@@ -121,9 +121,9 @@ nir_builder_alu_instr_finish_and_insert(nir_builder *build, nir_alu_instr *instr
    return &instr->dest.dest.ssa;
 }
 
-nir_ssa_def *
-nir_build_alu(nir_builder *build, nir_op op, nir_ssa_def *src0,
-              nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3)
+nir_def *
+nir_build_alu(nir_builder *build, nir_op op, nir_def *src0,
+              nir_def *src1, nir_def *src2, nir_def *src3)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -140,8 +140,8 @@ nir_build_alu(nir_builder *build, nir_op op, nir_ssa_def *src0,
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
-nir_ssa_def *
-nir_build_alu1(nir_builder *build, nir_op op, nir_ssa_def *src0)
+nir_def *
+nir_build_alu1(nir_builder *build, nir_op op, nir_def *src0)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -152,9 +152,9 @@ nir_build_alu1(nir_builder *build, nir_op op, nir_ssa_def *src0)
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
-nir_ssa_def *
-nir_build_alu2(nir_builder *build, nir_op op, nir_ssa_def *src0,
-               nir_ssa_def *src1)
+nir_def *
+nir_build_alu2(nir_builder *build, nir_op op, nir_def *src0,
+               nir_def *src1)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -166,9 +166,9 @@ nir_build_alu2(nir_builder *build, nir_op op, nir_ssa_def *src0,
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
-nir_ssa_def *
-nir_build_alu3(nir_builder *build, nir_op op, nir_ssa_def *src0,
-               nir_ssa_def *src1, nir_ssa_def *src2)
+nir_def *
+nir_build_alu3(nir_builder *build, nir_op op, nir_def *src0,
+               nir_def *src1, nir_def *src2)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -181,9 +181,9 @@ nir_build_alu3(nir_builder *build, nir_op op, nir_ssa_def *src0,
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
-nir_ssa_def *
-nir_build_alu4(nir_builder *build, nir_op op, nir_ssa_def *src0,
-               nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3)
+nir_def *
+nir_build_alu4(nir_builder *build, nir_op op, nir_def *src0,
+               nir_def *src1, nir_def *src2, nir_def *src3)
 {
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
    if (!instr)
@@ -198,8 +198,8 @@ nir_build_alu4(nir_builder *build, nir_op op, nir_ssa_def *src0,
 }
 
 /* for the couple special cases with more than 4 src args: */
-nir_ssa_def *
-nir_build_alu_src_arr(nir_builder *build, nir_op op, nir_ssa_def **srcs)
+nir_def *
+nir_build_alu_src_arr(nir_builder *build, nir_op op, nir_def **srcs)
 {
    const nir_op_info *op_info = &nir_op_infos[op];
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
@@ -212,7 +212,7 @@ nir_build_alu_src_arr(nir_builder *build, nir_op op, nir_ssa_def **srcs)
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
-nir_ssa_def *
+nir_def *
 nir_build_tex_deref_instr(nir_builder *build, nir_texop op,
                           nir_deref_instr *texture,
                           nir_deref_instr *sampler,
@@ -311,8 +311,8 @@ nir_build_tex_deref_instr(nir_builder *build, nir_texop op,
    return &tex->dest.ssa;
 }
 
-nir_ssa_def *
-nir_vec_scalars(nir_builder *build, nir_ssa_scalar *comp, unsigned num_components)
+nir_def *
+nir_vec_scalars(nir_builder *build, nir_scalar *comp, unsigned num_components)
 {
    nir_op op = nir_op_vec(num_components);
    nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
@@ -337,12 +337,12 @@ nir_vec_scalars(nir_builder *build, nir_ssa_scalar *comp, unsigned num_component
 }
 
 /**
- * Turns a nir_src into a nir_ssa_def * so it can be passed to
+ * Turns a nir_src into a nir_def * so it can be passed to
  * nir_build_alu()-based builder calls.
  *
  * See nir_ssa_for_alu_src() for alu instructions.
  */
-nir_ssa_def *
+nir_def *
 nir_ssa_for_src(nir_builder *build, nir_src src, int num_components)
 {
    if (src.ssa->num_components == num_components)
@@ -362,7 +362,7 @@ nir_ssa_for_src(nir_builder *build, nir_src src, int num_components)
  * Similar to nir_ssa_for_src(), but for alu srcs, respecting the
  * nir_alu_src's swizzle.
  */
-nir_ssa_def *
+nir_def *
 nir_ssa_for_alu_src(nir_builder *build, nir_alu_instr *instr, unsigned srcn)
 {
    if (nir_alu_src_is_trivial_ssa(instr, srcn))
@@ -374,7 +374,7 @@ nir_ssa_for_alu_src(nir_builder *build, nir_alu_instr *instr, unsigned srcn)
 }
 
 /* Generic builder for system values. */
-nir_ssa_def *
+nir_def *
 nir_load_system_value(nir_builder *build, nir_intrinsic_op op, int index,
                       unsigned num_components, unsigned bit_size)
 {
@@ -430,7 +430,7 @@ nir_push_if_src(nir_builder *build, nir_src condition)
 }
 
 nir_if *
-nir_push_if(nir_builder *build, nir_ssa_def *condition)
+nir_push_if(nir_builder *build, nir_def *condition)
 {
    return nir_push_if_src(build, nir_src_for_ssa(condition));
 }
@@ -460,8 +460,8 @@ nir_pop_if(nir_builder *build, nir_if *nif)
    build->cursor = nir_after_cf_node(&nif->cf_node);
 }
 
-nir_ssa_def *
-nir_if_phi(nir_builder *build, nir_ssa_def *then_def, nir_ssa_def *else_def)
+nir_def *
+nir_if_phi(nir_builder *build, nir_def *then_def, nir_def *else_def)
 {
    nir_block *block = nir_cursor_current_block(build->cursor);
    nir_if *nif = nir_cf_node_as_if(nir_cf_node_prev(&block->cf_node));
@@ -517,9 +517,9 @@ nir_pop_loop(nir_builder *build, nir_loop *loop)
    build->cursor = nir_after_cf_node(&loop->cf_node);
 }
 
-nir_ssa_def *
+nir_def *
 nir_compare_func(nir_builder *b, enum compare_func func,
-                 nir_ssa_def *src0, nir_ssa_def *src1)
+                 nir_def *src0, nir_def *src1)
 {
    switch (func) {
    case COMPARE_FUNC_NEVER:
@@ -542,9 +542,9 @@ nir_compare_func(nir_builder *b, enum compare_func func,
    unreachable("bad compare func");
 }
 
-nir_ssa_def *
+nir_def *
 nir_type_convert(nir_builder *b,
-                 nir_ssa_def *src,
+                 nir_def *src,
                  nir_alu_type src_type,
                  nir_alu_type dest_type,
                  nir_rounding_mode rnd)
@@ -619,15 +619,15 @@ nir_type_convert(nir_builder *b,
    }
 }
 
-nir_ssa_def *
-nir_gen_rect_vertices(nir_builder *b, nir_ssa_def *z, nir_ssa_def *w)
+nir_def *
+nir_gen_rect_vertices(nir_builder *b, nir_def *z, nir_def *w)
 {
    if (!z)
       z = nir_imm_float(b, 0.0);
    if (!w)
       w = nir_imm_float(b, 1.0);
 
-   nir_ssa_def *vertex_id;
+   nir_def *vertex_id;
    if (b->shader->options && b->shader->options->vertex_id_zero_based)
       vertex_id = nir_load_vertex_id_zero_base(b);
    else
@@ -644,10 +644,10 @@ nir_gen_rect_vertices(nir_builder *b, nir_ssa_def *z, nir_ssa_def *w)
     * channel 1 is vertex_id & 1 ?  1.0 : -1.0
     */
 
-   nir_ssa_def *c0cmp = nir_ilt_imm(b, vertex_id, 2);
-   nir_ssa_def *c1cmp = nir_test_mask(b, vertex_id, 1);
+   nir_def *c0cmp = nir_ilt_imm(b, vertex_id, 2);
+   nir_def *c1cmp = nir_test_mask(b, vertex_id, 1);
 
-   nir_ssa_def *comp[4];
+   nir_def *comp[4];
    comp[0] = nir_bcsel(b, c0cmp, nir_imm_float(b, -1.0), nir_imm_float(b, 1.0));
    comp[1] = nir_bcsel(b, c1cmp, nir_imm_float(b, 1.0), nir_imm_float(b, -1.0));
    comp[2] = z;

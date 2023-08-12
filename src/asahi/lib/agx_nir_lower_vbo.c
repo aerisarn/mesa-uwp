@@ -78,8 +78,8 @@ agx_vbo_supports_format(enum pipe_format format)
    return agx_vbo_internal_format(format) != PIPE_FORMAT_NONE;
 }
 
-static nir_ssa_def *
-apply_swizzle_channel(nir_builder *b, nir_ssa_def *vec, unsigned swizzle,
+static nir_def *
+apply_swizzle_channel(nir_builder *b, nir_def *vec, unsigned swizzle,
                       bool is_int)
 {
    switch (swizzle) {
@@ -158,12 +158,11 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
    /* Calculate the element to fetch the vertex for. Divide the instance ID by
     * the divisor for per-instance data. Divisor=0 specifies per-vertex data.
     */
-   nir_ssa_def *el =
-      (attrib.divisor == 0)
-         ? nir_load_vertex_id(b)
-         : nir_udiv_imm(b, nir_load_instance_id(b), attrib.divisor);
+   nir_def *el = (attrib.divisor == 0)
+                    ? nir_load_vertex_id(b)
+                    : nir_udiv_imm(b, nir_load_instance_id(b), attrib.divisor);
 
-   nir_ssa_def *base = nir_load_vbo_base_agx(b, nir_imm_int(b, attrib.buf));
+   nir_def *base = nir_load_vbo_base_agx(b, nir_imm_int(b, attrib.buf));
 
    assert((stride % interchange_align) == 0 && "must be aligned");
    assert((offset % interchange_align) == 0 && "must be aligned");
@@ -183,11 +182,11 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
       stride_el = 1;
    }
 
-   nir_ssa_def *stride_offset_el =
+   nir_def *stride_offset_el =
       nir_iadd_imm(b, nir_imul_imm(b, el, stride_el), offset_el);
 
    /* Load the raw vector */
-   nir_ssa_def *memory = nir_load_constant_agx(
+   nir_def *memory = nir_load_constant_agx(
       b, interchange_comps, interchange_register_size, base, stride_offset_el,
       .format = interchange_format, .base = shift);
 
@@ -240,14 +239,14 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
    /* We now have a properly formatted vector of the components in memory. Apply
     * the format swizzle forwards to trim/pad/reorder as needed.
     */
-   nir_ssa_def *channels[4] = {NULL};
+   nir_def *channels[4] = {NULL};
    assert(nir_intrinsic_component(intr) == 0 && "unimplemented");
 
    for (unsigned i = 0; i < intr->num_components; ++i)
       channels[i] = apply_swizzle_channel(b, memory, desc->swizzle[i], is_int);
 
-   nir_ssa_def *logical = nir_vec(b, channels, intr->num_components);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, logical);
+   nir_def *logical = nir_vec(b, channels, intr->num_components);
+   nir_def_rewrite_uses(&intr->dest.ssa, logical);
    return true;
 }
 

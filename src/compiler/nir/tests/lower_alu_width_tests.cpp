@@ -40,7 +40,7 @@ TEST_F(nir_lower_alu_width_test, fdot_order)
    b->exact = true;
 
    /* If this isn't done in xyz order, it evaluates to infinity. */
-   nir_ssa_def *val = nir_fdot(
+   nir_def *val = nir_fdot(
       b, nir_imm_vec3(b, 1.7014118346046923e+38, 1.7014118346046923e+38, 8.507059173023462e+37),
       nir_imm_vec3(b, -0.5, 1.5, 1.0));
    nir_intrinsic_instr *store =

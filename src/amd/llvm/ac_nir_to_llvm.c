@@ -41,7 +41,7 @@ struct ac_nir_context {
    LLVMBasicBlockRef break_block;
 };
 
-static LLVMTypeRef get_def_type(struct ac_nir_context *ctx, const nir_ssa_def *def)
+static LLVMTypeRef get_def_type(struct ac_nir_context *ctx, const nir_def *def)
 {
    LLVMTypeRef type = LLVMIntTypeInContext(ctx->ac.context, def->bit_size);
    if (def->num_components > 1) {
@@ -1471,7 +1471,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    assert((!args->tfe || !args->d16) && "unsupported");
 
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
-      unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
+      unsigned mask = nir_def_components_read(&instr->dest.ssa);
 
       /* Buffers don't support A16. */
       if (args->a16)
@@ -2326,7 +2326,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
    args.tfe = instr->intrinsic == nir_intrinsic_bindless_image_sparse_load;
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      unsigned num_channels = util_last_bit(nir_ssa_def_components_read(&instr->dest.ssa));
+      unsigned num_channels = util_last_bit(nir_def_components_read(&instr->dest.ssa));
       if (instr->dest.ssa.bit_size == 64)
          num_channels = num_channels < 4 ? 2 : 4;
       LLVMValueRef rsrc, vindex;
@@ -4133,7 +4133,7 @@ static void phi_post_pass(struct ac_nir_context *ctx)
    }
 }
 
-static bool is_def_used_in_an_export(const nir_ssa_def *def)
+static bool is_def_used_in_an_export(const nir_def *def)
 {
    nir_foreach_use (use_src, def) {
       if (use_src->parent_instr->type == nir_instr_type_intrinsic) {
@@ -4150,7 +4150,7 @@ static bool is_def_used_in_an_export(const nir_ssa_def *def)
    return false;
 }
 
-static void visit_ssa_undef(struct ac_nir_context *ctx, const nir_ssa_undef_instr *instr)
+static void visit_ssa_undef(struct ac_nir_context *ctx, const nir_undef_instr *instr)
 {
    unsigned num_components = instr->def.num_components;
    LLVMTypeRef type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);

@@ -59,19 +59,19 @@ lower_viewport_transform_instr(nir_builder *b, nir_instr *instr,
    b->cursor = nir_before_instr(instr);
 
    /* Grab the source and viewport */
-   nir_ssa_def *input_point = nir_ssa_for_src(b, intr->src[1], 4);
-   nir_ssa_def *scale = nir_load_viewport_scale(b);
-   nir_ssa_def *offset = nir_load_viewport_offset(b);
+   nir_def *input_point = nir_ssa_for_src(b, intr->src[1], 4);
+   nir_def *scale = nir_load_viewport_scale(b);
+   nir_def *offset = nir_load_viewport_offset(b);
 
    /* World space to normalised device coordinates to screen space */
 
-   nir_ssa_def *w_recip = nir_frcp(b, nir_channel(b, input_point, 3));
+   nir_def *w_recip = nir_frcp(b, nir_channel(b, input_point, 3));
 
-   nir_ssa_def *ndc_point = nir_fmul(b, nir_trim_vector(b, input_point, 3),
-                                     w_recip);
+   nir_def *ndc_point = nir_fmul(b, nir_trim_vector(b, input_point, 3),
+                                 w_recip);
 
-   nir_ssa_def *screen = nir_fadd(b, nir_fmul(b, ndc_point, scale),
-                                  offset);
+   nir_def *screen = nir_fadd(b, nir_fmul(b, ndc_point, scale),
+                              offset);
 
    /* gl_Position will be written out in screenspace xyz, with w set to
     * the reciprocal we computed earlier. The transformed w component is
@@ -80,11 +80,11 @@ lower_viewport_transform_instr(nir_builder *b, nir_instr *instr,
     * used in depth clipping computations
     */
 
-   nir_ssa_def *screen_space = nir_vec4(b,
-                                        nir_channel(b, screen, 0),
-                                        nir_channel(b, screen, 1),
-                                        nir_channel(b, screen, 2),
-                                        w_recip);
+   nir_def *screen_space = nir_vec4(b,
+                                    nir_channel(b, screen, 0),
+                                    nir_channel(b, screen, 1),
+                                    nir_channel(b, screen, 2),
+                                    w_recip);
 
    nir_instr_rewrite_src(instr, &intr->src[1],
                          nir_src_for_ssa(screen_space));

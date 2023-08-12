@@ -411,15 +411,15 @@ register_load_instr(nir_intrinsic_instr *load_instr,
     * expect any array derefs at all after vars_to_ssa.
     */
    if (node == UNDEF_NODE) {
-      nir_ssa_undef_instr *undef =
-         nir_ssa_undef_instr_create(state->shader,
-                                    load_instr->num_components,
-                                    load_instr->dest.ssa.bit_size);
+      nir_undef_instr *undef =
+         nir_undef_instr_create(state->shader,
+                                load_instr->num_components,
+                                load_instr->dest.ssa.bit_size);
 
       nir_instr_insert_before(&load_instr->instr, &undef->instr);
       nir_instr_remove(&load_instr->instr);
 
-      nir_ssa_def_rewrite_uses(&load_instr->dest.ssa, &undef->def);
+      nir_def_rewrite_uses(&load_instr->dest.ssa, &undef->def);
       return true;
    }
 
@@ -609,8 +609,8 @@ rename_variables(struct lower_variables_state *state)
             nir_instr_insert_before(&intrin->instr, &mov->instr);
             nir_instr_remove(&intrin->instr);
 
-            nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                     &mov->dest.dest.ssa);
+            nir_def_rewrite_uses(&intrin->dest.ssa,
+                                 &mov->dest.dest.ssa);
             break;
          }
 
@@ -626,7 +626,7 @@ rename_variables(struct lower_variables_state *state)
             /* Should have been removed before rename_variables(). */
             assert(node != UNDEF_NODE);
 
-            nir_ssa_def *value = intrin->src[1].ssa;
+            nir_def *value = intrin->src[1].ssa;
 
             if (!node->lower_to_ssa)
                continue;
@@ -634,7 +634,7 @@ rename_variables(struct lower_variables_state *state)
             assert(intrin->num_components ==
                    glsl_get_vector_elements(node->type));
 
-            nir_ssa_def *new_def;
+            nir_def *new_def;
             b.cursor = nir_before_instr(&intrin->instr);
 
             unsigned wrmask = nir_intrinsic_write_mask(intrin);
@@ -650,13 +650,13 @@ rename_variables(struct lower_variables_state *state)
                new_def = nir_swizzle(&b, value, swiz,
                                      intrin->num_components);
             } else {
-               nir_ssa_def *old_def =
+               nir_def *old_def =
                   nir_phi_builder_value_get_block_def(node->pb_value, block);
                /* For writemasked store_var intrinsics, we combine the newly
                 * written values with the existing contents of unwritten
                 * channels, creating a new SSA value for the whole vector.
                 */
-               nir_ssa_scalar srcs[NIR_MAX_VEC_COMPONENTS];
+               nir_scalar srcs[NIR_MAX_VEC_COMPONENTS];
                for (unsigned i = 0; i < intrin->num_components; i++) {
                   if (wrmask & (1 << i)) {
                      srcs[i] = nir_get_ssa_scalar(value, i);

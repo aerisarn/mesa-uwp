@@ -179,19 +179,19 @@ rewrite_compare_instruction(nir_builder *bld, nir_alu_instr *orig_cmp,
     * zero_on_left is false, the resulting compare instruction is (fcmp,
     * (fadd, x, y), 0.0) and x = a and y = -b.
     */
-   nir_ssa_def *const a = nir_ssa_for_alu_src(bld, orig_cmp, 0);
-   nir_ssa_def *const b = nir_ssa_for_alu_src(bld, orig_cmp, 1);
+   nir_def *const a = nir_ssa_for_alu_src(bld, orig_cmp, 0);
+   nir_def *const b = nir_ssa_for_alu_src(bld, orig_cmp, 1);
 
-   nir_ssa_def *const fadd = zero_on_left
-                                ? nir_fadd(bld, b, nir_fneg(bld, a))
-                                : nir_fadd(bld, a, nir_fneg(bld, b));
+   nir_def *const fadd = zero_on_left
+                            ? nir_fadd(bld, b, nir_fneg(bld, a))
+                            : nir_fadd(bld, a, nir_fneg(bld, b));
 
-   nir_ssa_def *const zero =
+   nir_def *const zero =
       nir_imm_floatN_t(bld, 0.0, orig_add->dest.dest.ssa.bit_size);
 
-   nir_ssa_def *const cmp = zero_on_left
-                               ? nir_build_alu(bld, orig_cmp->op, zero, fadd, NULL, NULL)
-                               : nir_build_alu(bld, orig_cmp->op, fadd, zero, NULL, NULL);
+   nir_def *const cmp = zero_on_left
+                           ? nir_build_alu(bld, orig_cmp->op, zero, fadd, NULL, NULL)
+                           : nir_build_alu(bld, orig_cmp->op, fadd, zero, NULL, NULL);
 
    /* Generating extra moves of the results is the easy way to make sure the
     * writemasks match the original instructions.  Later optimization passes
@@ -214,10 +214,10 @@ rewrite_compare_instruction(nir_builder *bld, nir_alu_instr *orig_cmp,
 
    nir_builder_instr_insert(bld, &mov_cmp->instr);
 
-   nir_ssa_def_rewrite_uses(&orig_cmp->dest.dest.ssa,
-                            &mov_cmp->dest.dest.ssa);
-   nir_ssa_def_rewrite_uses(&orig_add->dest.dest.ssa,
-                            &mov_add->dest.dest.ssa);
+   nir_def_rewrite_uses(&orig_cmp->dest.dest.ssa,
+                        &mov_cmp->dest.dest.ssa);
+   nir_def_rewrite_uses(&orig_add->dest.dest.ssa,
+                        &mov_add->dest.dest.ssa);
 
    /* We know these have no more uses because we just rewrote them all, so we
     * can remove them.

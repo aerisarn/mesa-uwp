@@ -118,7 +118,7 @@ lower_deref_instr(nir_builder *b, nir_intrinsic_instr *instr,
    else
       range_base = var->data.offset;
 
-   nir_ssa_def *offset = nir_imm_int(b, offset_value);
+   nir_def *offset = nir_imm_int(b, offset_value);
    for (nir_deref_instr *d = deref; d->deref_type != nir_deref_type_var;
         d = nir_deref_instr_parent(d)) {
       assert(d->deref_type == nir_deref_type_array);

@@ -161,7 +161,7 @@ get_nir_alu_type(const struct glsl_type *type)
 }
 
 static nir_alu_type
-infer_nir_alu_type_from_uses_ssa(nir_ssa_def *ssa);
+infer_nir_alu_type_from_uses_ssa(nir_def *ssa);
 
 static nir_alu_type
 infer_nir_alu_type_from_use(nir_src *src)
@@ -243,7 +243,7 @@ infer_nir_alu_type_from_use(nir_src *src)
 }
 
 static nir_alu_type
-infer_nir_alu_type_from_uses_ssa(nir_ssa_def *ssa)
+infer_nir_alu_type_from_uses_ssa(nir_def *ssa)
 {
    nir_alu_type atype = nir_type_invalid;
    /* try to infer a type: if it's wrong then whatever, but at least we tried */
@@ -1369,7 +1369,7 @@ get_vec_from_bit_size(struct ntv_context *ctx, uint32_t bit_size, uint32_t num_c
 }
 
 static SpvId
-get_src_ssa(struct ntv_context *ctx, const nir_ssa_def *ssa, nir_alu_type *atype)
+get_src_ssa(struct ntv_context *ctx, const nir_def *ssa, nir_alu_type *atype)
 {
    assert(ssa->index < ctx->num_defs);
    assert(ctx->defs[ssa->index] != 0);
@@ -1471,7 +1471,7 @@ get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src, nir_a
 }
 
 static void
-store_ssa_def(struct ntv_context *ctx, nir_ssa_def *ssa, SpvId result, nir_alu_type atype)
+store_ssa_def(struct ntv_context *ctx, nir_def *ssa, SpvId result, nir_alu_type atype)
 {
    assert(result != 0);
    assert(ssa->index < ctx->num_defs);
@@ -3262,7 +3262,7 @@ emit_image_deref_store(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static SpvId
-extract_sparse_load(struct ntv_context *ctx, SpvId result, SpvId dest_type, nir_ssa_def *dest_ssa)
+extract_sparse_load(struct ntv_context *ctx, SpvId result, SpvId dest_type, nir_def *dest_ssa)
 {
    /* Result Type must be an OpTypeStruct with two members.
     * The first member’s type must be an integer type scalar.
@@ -3456,7 +3456,7 @@ emit_is_sparse_texels_resident(struct ntv_context *ctx, nir_intrinsic_instr *int
    SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
 
    /* this will always be stored with the ssa index of the parent instr */
-   nir_ssa_def *ssa = intr->src[0].ssa;
+   nir_def *ssa = intr->src[0].ssa;
    assert(ssa->parent_instr->type == nir_instr_type_alu);
    nir_alu_instr *alu = nir_instr_as_alu(ssa->parent_instr);
    unsigned index = alu->src[0].src.ssa->index;
@@ -3804,7 +3804,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
-emit_undef(struct ntv_context *ctx, nir_ssa_undef_instr *undef)
+emit_undef(struct ntv_context *ctx, nir_undef_instr *undef)
 {
    SpvId type = undef->def.bit_size == 1 ? get_bvec_type(ctx, undef->def.num_components) :
                                            get_uvec_type(ctx, undef->def.bit_size,

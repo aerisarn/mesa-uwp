@@ -53,7 +53,7 @@ lower_fragcoord_wtrans_filter(const nir_instr *instr, UNUSED const void *_option
    return var->data.location == VARYING_SLOT_POS;
 }
 
-static nir_ssa_def *
+static nir_def *
 lower_fragcoord_wtrans_impl(nir_builder *b, nir_instr *instr,
                             UNUSED void *_options)
 {

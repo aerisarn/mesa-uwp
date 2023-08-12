@@ -62,7 +62,7 @@ struct v3d_nir_lower_io_state {
 
         BITSET_WORD varyings_stored[BITSET_WORDS(V3D_MAX_ANY_STAGE_INPUTS)];
 
-        nir_ssa_def *pos[4];
+        nir_def *pos[4];
 };
 
 static void
@@ -70,8 +70,8 @@ v3d_nir_emit_ff_vpm_outputs(struct v3d_compile *c, nir_builder *b,
                             struct v3d_nir_lower_io_state *state);
 
 static void
-v3d_nir_store_output(nir_builder *b, int base, nir_ssa_def *offset,
-                     nir_ssa_def *chan)
+v3d_nir_store_output(nir_builder *b, int base, nir_def *offset,
+                     nir_def *chan)
 {
         if (offset) {
                 /* When generating the VIR instruction, the base and the offset
@@ -134,13 +134,13 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
         /* If this is a geometry shader we need to emit our outputs
          * to the current vertex offset in the VPM.
          */
-        nir_ssa_def *offset_reg =
+        nir_def *offset_reg =
                 c->s->info.stage == MESA_SHADER_GEOMETRY ?
                         nir_load_var(b, state->gs.output_offset_var) : NULL;
 
         int start_comp = nir_intrinsic_component(intr);
         unsigned location = nir_intrinsic_io_semantics(intr).location;
-        nir_ssa_def *src = nir_ssa_for_src(b, intr->src[0],
+        nir_def *src = nir_ssa_for_src(b, intr->src[0],
                                            intr->num_components);
         /* Save off the components of the position for the setup of VPM inputs
          * read by fixed function HW.
@@ -159,7 +159,7 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
 
         if (location == VARYING_SLOT_LAYER) {
                 assert(c->s->info.stage == MESA_SHADER_GEOMETRY);
-                nir_ssa_def *header = nir_load_var(b, state->gs.header_var);
+                nir_def *header = nir_load_var(b, state->gs.header_var);
                 header = nir_iand_imm(b, header, 0xff00ffff);
 
                 /* From the GLES 3.2 spec:
@@ -180,9 +180,9 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
                  * to 0 in that case (we always allocate tile state for at
                  * least one layer).
                  */
-                nir_ssa_def *fb_layers = nir_load_fb_layers_v3d(b, 32);
-                nir_ssa_def *cond = nir_ige(b, src, fb_layers);
-                nir_ssa_def *layer_id =
+                nir_def *fb_layers = nir_load_fb_layers_v3d(b, 32);
+                nir_def *cond = nir_ige(b, src, fb_layers);
+                nir_def *layer_id =
                         nir_bcsel(b, cond,
                                   nir_imm_int(b, 0),
                                   nir_ishl_imm(b, src, 16));
@@ -238,9 +238,9 @@ v3d_nir_lower_emit_vertex(struct v3d_compile *c, nir_builder *b,
 {
         b->cursor = nir_before_instr(&instr->instr);
 
-        nir_ssa_def *header = nir_load_var(b, state->gs.header_var);
-        nir_ssa_def *header_offset = nir_load_var(b, state->gs.header_offset_var);
-        nir_ssa_def *output_offset = nir_load_var(b, state->gs.output_offset_var);
+        nir_def *header = nir_load_var(b, state->gs.header_var);
+        nir_def *header_offset = nir_load_var(b, state->gs.header_offset_var);
+        nir_def *output_offset = nir_load_var(b, state->gs.output_offset_var);
 
         /* Emit fixed function outputs */
         v3d_nir_emit_ff_vpm_outputs(c, b, state);
@@ -476,16 +476,16 @@ v3d_nir_emit_ff_vpm_outputs(struct v3d_compile *c, nir_builder *b,
         /* If this is a geometry shader we need to emit our fixed function
          * outputs to the current vertex offset in the VPM.
          */
-        nir_ssa_def *offset_reg =
+        nir_def *offset_reg =
                 c->s->info.stage == MESA_SHADER_GEOMETRY ?
                         nir_load_var(b, state->gs.output_offset_var) : NULL;
 
         for (int i = 0; i < 4; i++) {
                 if (!state->pos[i])
-                        state->pos[i] = nir_ssa_undef(b, 1, 32);
+                        state->pos[i] = nir_undef(b, 1, 32);
         }
 
-        nir_ssa_def *rcp_wc = nir_frcp(b, state->pos[3]);
+        nir_def *rcp_wc = nir_frcp(b, state->pos[3]);
 
         if (state->pos_vpm_offset != -1) {
                 for (int i = 0; i < 4; i++) {
@@ -496,8 +496,8 @@ v3d_nir_emit_ff_vpm_outputs(struct v3d_compile *c, nir_builder *b,
 
         if (state->vp_vpm_offset != -1) {
                 for (int i = 0; i < 2; i++) {
-                        nir_ssa_def *pos;
-                        nir_ssa_def *scale;
+                        nir_def *pos;
+                        nir_def *scale;
                         pos = state->pos[i];
                         if (i == 0)
                                 scale = nir_load_viewport_x_scale(b);
@@ -523,7 +523,7 @@ v3d_nir_emit_ff_vpm_outputs(struct v3d_compile *c, nir_builder *b,
         }
 
         if (state->zs_vpm_offset != -1) {
-                nir_ssa_def *z = state->pos[2];
+                nir_def *z = state->pos[2];
                 z = nir_fmul(b, z, nir_load_viewport_z_scale(b));
                 z = nir_fmul(b, z, rcp_wc);
                 z = nir_fadd(b, z, nir_load_viewport_z_offset(b));
@@ -599,11 +599,11 @@ emit_gs_vpm_output_header_prolog(struct v3d_compile *c, nir_builder *b,
          * offset variable by removing the one generic header slot that always
          * goes at the beginning of out header.
          */
-        nir_ssa_def *header_offset =
+        nir_def *header_offset =
                 nir_load_var(b, state->gs.header_offset_var);
-        nir_ssa_def *vertex_count =
+        nir_def *vertex_count =
                 nir_iadd_imm(b, header_offset, -1);
-        nir_ssa_def *header =
+        nir_def *header =
                 nir_ior_imm(b,
                             nir_ishl_imm(b, vertex_count,
                                          VERTEX_COUNT_OFFSET),

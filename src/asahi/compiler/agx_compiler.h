@@ -454,7 +454,7 @@ agx_size_for_bits(unsigned bits)
 }
 
 static inline agx_index
-agx_nir_ssa_index(nir_ssa_def *ssa)
+agx_nir_ssa_index(nir_def *ssa)
 {
    return agx_get_index(ssa->index, agx_size_for_bits(ssa->bit_size));
 }

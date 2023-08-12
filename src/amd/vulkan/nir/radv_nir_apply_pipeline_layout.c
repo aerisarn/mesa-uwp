@@ -41,25 +41,25 @@ typedef struct {
    const struct radv_shader_layout *layout;
 } apply_layout_state;
 
-static nir_ssa_def *
+static nir_def *
 get_scalar_arg(nir_builder *b, unsigned size, struct ac_arg arg)
 {
    assert(arg.used);
    return nir_load_scalar_arg_amd(b, size, .base = arg.arg_index);
 }
 
-static nir_ssa_def *
-convert_pointer_to_64_bit(nir_builder *b, apply_layout_state *state, nir_ssa_def *ptr)
+static nir_def *
+convert_pointer_to_64_bit(nir_builder *b, apply_layout_state *state, nir_def *ptr)
 {
    return nir_pack_64_2x32_split(b, ptr, nir_imm_int(b, state->address32_hi));
 }
 
-static nir_ssa_def *
+static nir_def *
 load_desc_ptr(nir_builder *b, apply_layout_state *state, unsigned set)
 {
    const struct radv_userdata_locations *user_sgprs_locs = &state->info->user_sgprs_locs;
    if (user_sgprs_locs->shader_data[AC_UD_INDIRECT_DESCRIPTOR_SETS].sgpr_idx != -1) {
-      nir_ssa_def *addr = get_scalar_arg(b, 1, state->args->descriptor_sets[0]);
+      nir_def *addr = get_scalar_arg(b, 1, state->args->descriptor_sets[0]);
       addr = convert_pointer_to_64_bit(b, state, addr);
       return nir_load_smem_amd(b, 1, addr, nir_imm_int(b, set * 4));
    }
@@ -77,7 +77,7 @@ visit_vulkan_resource_index(nir_builder *b, apply_layout_state *state, nir_intri
    unsigned offset = layout->binding[binding].offset;
    unsigned stride;
 
-   nir_ssa_def *set_ptr;
+   nir_def *set_ptr;
    if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
        layout->binding[binding].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
       unsigned idx = state->layout->set[desc_set].dynamic_offset_start + layout->binding[binding].dynamic_offset_offset;
@@ -89,7 +89,7 @@ visit_vulkan_resource_index(nir_builder *b, apply_layout_state *state, nir_intri
       stride = layout->binding[binding].size;
    }
 
-   nir_ssa_def *binding_ptr = nir_imul_imm(b, intrin->src[0].ssa, stride);
+   nir_def *binding_ptr = nir_imul_imm(b, intrin->src[0].ssa, stride);
    nir_instr_as_alu(binding_ptr->parent_instr)->no_unsigned_wrap = true;
 
    binding_ptr = nir_iadd_imm(b, binding_ptr, offset);
@@ -97,9 +97,9 @@ visit_vulkan_resource_index(nir_builder *b, apply_layout_state *state, nir_intri
 
    if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
       assert(stride == 16);
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
+      nir_def_rewrite_uses(&intrin->dest.ssa, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
    } else {
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_vec3(b, set_ptr, binding_ptr, nir_imm_int(b, stride)));
+      nir_def_rewrite_uses(&intrin->dest.ssa, nir_vec3(b, set_ptr, binding_ptr, nir_imm_int(b, stride)));
    }
    nir_instr_remove(&intrin->instr);
 }
@@ -109,27 +109,27 @@ visit_vulkan_resource_reindex(nir_builder *b, apply_layout_state *state, nir_int
 {
    VkDescriptorType desc_type = nir_intrinsic_desc_type(intrin);
    if (desc_type == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
-      nir_ssa_def *set_ptr = nir_unpack_64_2x32_split_x(b, intrin->src[0].ssa);
-      nir_ssa_def *binding_ptr = nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa);
+      nir_def *set_ptr = nir_unpack_64_2x32_split_x(b, intrin->src[0].ssa);
+      nir_def *binding_ptr = nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa);
 
-      nir_ssa_def *index = nir_imul_imm(b, intrin->src[1].ssa, 16);
+      nir_def *index = nir_imul_imm(b, intrin->src[1].ssa, 16);
       nir_instr_as_alu(index->parent_instr)->no_unsigned_wrap = true;
 
       binding_ptr = nir_iadd_nuw(b, binding_ptr, index);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
+      nir_def_rewrite_uses(&intrin->dest.ssa, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
    } else {
       assert(desc_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER || desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-      nir_ssa_def *binding_ptr = nir_channel(b, intrin->src[0].ssa, 1);
-      nir_ssa_def *stride = nir_channel(b, intrin->src[0].ssa, 2);
+      nir_def *binding_ptr = nir_channel(b, intrin->src[0].ssa, 1);
+      nir_def *stride = nir_channel(b, intrin->src[0].ssa, 2);
 
-      nir_ssa_def *index = nir_imul(b, intrin->src[1].ssa, stride);
+      nir_def *index = nir_imul(b, intrin->src[1].ssa, stride);
       nir_instr_as_alu(index->parent_instr)->no_unsigned_wrap = true;
 
       binding_ptr = nir_iadd_nuw(b, binding_ptr, index);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_vector_insert_imm(b, intrin->src[0].ssa, binding_ptr, 1));
+      nir_def_rewrite_uses(&intrin->dest.ssa, nir_vector_insert_imm(b, intrin->src[0].ssa, binding_ptr, 1));
    }
    nir_instr_remove(&intrin->instr);
 }
@@ -138,20 +138,20 @@ static void
 visit_load_vulkan_descriptor(nir_builder *b, apply_layout_state *state, nir_intrinsic_instr *intrin)
 {
    if (nir_intrinsic_desc_type(intrin) == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
-      nir_ssa_def *addr = convert_pointer_to_64_bit(b, state,
-                                                    nir_iadd(b, nir_unpack_64_2x32_split_x(b, intrin->src[0].ssa),
-                                                             nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa)));
-      nir_ssa_def *desc = nir_build_load_global(b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE);
+      nir_def *addr = convert_pointer_to_64_bit(b, state,
+                                                nir_iadd(b, nir_unpack_64_2x32_split_x(b, intrin->src[0].ssa),
+                                                         nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa)));
+      nir_def *desc = nir_build_load_global(b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
+      nir_def_rewrite_uses(&intrin->dest.ssa, desc);
    } else {
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_vector_insert_imm(b, intrin->src[0].ssa, nir_imm_int(b, 0), 2));
+      nir_def_rewrite_uses(&intrin->dest.ssa, nir_vector_insert_imm(b, intrin->src[0].ssa, nir_imm_int(b, 0), 2));
    }
    nir_instr_remove(&intrin->instr);
 }
 
-static nir_ssa_def *
-load_inline_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_ssa_def *rsrc)
+static nir_def *
+load_inline_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_def *rsrc)
 {
    uint32_t desc_type = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                         S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
@@ -169,8 +169,8 @@ load_inline_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_ssa
                    nir_imm_int(b, desc_type));
 }
 
-static nir_ssa_def *
-load_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_ssa_def *rsrc, unsigned access)
+static nir_def *
+load_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_def *rsrc, unsigned access)
 {
    nir_binding binding = nir_chase_binding(nir_src_for_ssa(rsrc));
 
@@ -188,34 +188,34 @@ load_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_ssa_def *r
    if (access & ACCESS_NON_UNIFORM)
       return nir_iadd(b, nir_channel(b, rsrc, 0), nir_channel(b, rsrc, 1));
 
-   nir_ssa_def *desc_set = convert_pointer_to_64_bit(b, state, nir_channel(b, rsrc, 0));
+   nir_def *desc_set = convert_pointer_to_64_bit(b, state, nir_channel(b, rsrc, 0));
    return nir_load_smem_amd(b, 4, desc_set, nir_channel(b, rsrc, 1), .align_mul = 16);
 }
 
 static void
 visit_get_ssbo_size(nir_builder *b, apply_layout_state *state, nir_intrinsic_instr *intrin)
 {
-   nir_ssa_def *rsrc = intrin->src[0].ssa;
+   nir_def *rsrc = intrin->src[0].ssa;
 
-   nir_ssa_def *size;
+   nir_def *size;
    if (nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM) {
-      nir_ssa_def *ptr = nir_iadd(b, nir_channel(b, rsrc, 0), nir_channel(b, rsrc, 1));
+      nir_def *ptr = nir_iadd(b, nir_channel(b, rsrc, 0), nir_channel(b, rsrc, 1));
       ptr = nir_iadd_imm(b, ptr, 8);
       ptr = convert_pointer_to_64_bit(b, state, ptr);
       size = nir_build_load_global(b, 4, 32, ptr, .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER, .align_mul = 16,
                                    .align_offset = 4);
    } else {
       /* load the entire descriptor so it can be CSE'd */
-      nir_ssa_def *ptr = convert_pointer_to_64_bit(b, state, nir_channel(b, rsrc, 0));
-      nir_ssa_def *desc = nir_load_smem_amd(b, 4, ptr, nir_channel(b, rsrc, 1), .align_mul = 16);
+      nir_def *ptr = convert_pointer_to_64_bit(b, state, nir_channel(b, rsrc, 0));
+      nir_def *desc = nir_load_smem_amd(b, 4, ptr, nir_channel(b, rsrc, 1), .align_mul = 16);
       size = nir_channel(b, desc, 2);
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, size);
+   nir_def_rewrite_uses(&intrin->dest.ssa, size);
    nir_instr_remove(&intrin->instr);
 }
 
-static nir_ssa_def *
+static nir_def *
 get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *deref, enum ac_descriptor_type desc_type,
                  bool non_uniform, nir_tex_instr *tex, bool write)
 {
@@ -276,13 +276,13 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
       break;
    }
 
-   nir_ssa_def *index = NULL;
+   nir_def *index = NULL;
    while (deref->deref_type != nir_deref_type_var) {
       assert(deref->deref_type == nir_deref_type_array);
       unsigned array_size = MAX2(glsl_get_aoa_size(deref->type), 1);
       array_size *= binding->size;
 
-      nir_ssa_def *tmp = nir_imul_imm(b, deref->arr.index.ssa, array_size);
+      nir_def *tmp = nir_imul_imm(b, deref->arr.index.ssa, array_size);
       if (tmp != deref->arr.index.ssa)
          nir_instr_as_alu(tmp->parent_instr)->no_unsigned_wrap = true;
 
@@ -296,23 +296,23 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
       deref = nir_deref_instr_parent(deref);
    }
 
-   nir_ssa_def *index_offset = index ? nir_iadd_imm(b, index, offset) : nir_imm_int(b, offset);
+   nir_def *index_offset = index ? nir_iadd_imm(b, index, offset) : nir_imm_int(b, offset);
    if (index && index_offset != index)
       nir_instr_as_alu(index_offset->parent_instr)->no_unsigned_wrap = true;
 
    if (non_uniform)
       return nir_iadd(b, load_desc_ptr(b, state, desc_set), index_offset);
 
-   nir_ssa_def *addr = convert_pointer_to_64_bit(b, state, load_desc_ptr(b, state, desc_set));
-   nir_ssa_def *desc = nir_load_smem_amd(b, size, addr, index_offset, .align_mul = size * 4u);
+   nir_def *addr = convert_pointer_to_64_bit(b, state, load_desc_ptr(b, state, desc_set));
+   nir_def *desc = nir_load_smem_amd(b, size, addr, index_offset, .align_mul = size * 4u);
 
    /* 3 plane formats always have same size and format for plane 1 & 2, so
     * use the tail from plane 1 so that we can store only the first 16 bytes
     * of the last plane. */
    if (desc_type == AC_DESC_PLANE_2) {
-      nir_ssa_def *desc2 = get_sampler_desc(b, state, deref, AC_DESC_PLANE_1, non_uniform, tex, write);
+      nir_def *desc2 = get_sampler_desc(b, state, deref, AC_DESC_PLANE_1, non_uniform, tex, write);
 
-      nir_ssa_def *comp[8];
+      nir_def *comp[8];
       for (unsigned i = 0; i < 4; i++)
          comp[i] = nir_channel(b, desc, i);
       for (unsigned i = 4; i < 8; i++)
@@ -320,7 +320,7 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
 
       return nir_vec(b, comp, 8);
    } else if (desc_type == AC_DESC_IMAGE && state->has_image_load_dcc_bug && !tex && !write) {
-      nir_ssa_def *comp[8];
+      nir_def *comp[8];
       for (unsigned i = 0; i < 8; i++)
          comp[i] = nir_channel(b, desc, i);
 
@@ -331,7 +331,7 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
 
       return nir_vec(b, comp, 8);
    } else if (desc_type == AC_DESC_SAMPLER && tex->op == nir_texop_tg4 && !state->conformant_trunc_coord) {
-      nir_ssa_def *comp[4];
+      nir_def *comp[4];
       for (unsigned i = 0; i < 4; i++)
          comp[i] = nir_channel(b, desc, i);
 
@@ -354,11 +354,11 @@ update_image_intrinsic(nir_builder *b, apply_layout_state *state, nir_intrinsic_
    bool is_load =
       intrin->intrinsic == nir_intrinsic_image_deref_load || intrin->intrinsic == nir_intrinsic_image_deref_sparse_load;
 
-   nir_ssa_def *desc = get_sampler_desc(b, state, deref, dim == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE,
-                                        nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM, NULL, !is_load);
+   nir_def *desc = get_sampler_desc(b, state, deref, dim == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE,
+                                    nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM, NULL, !is_load);
 
    if (intrin->intrinsic == nir_intrinsic_image_deref_descriptor_amd) {
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
+      nir_def_rewrite_uses(&intrin->dest.ssa, desc);
       nir_instr_remove(&intrin->instr);
    } else {
       nir_rewrite_image_intrinsic(intrin, desc, true);
@@ -370,7 +370,7 @@ apply_layout_to_intrin(nir_builder *b, apply_layout_state *state, nir_intrinsic_
 {
    b->cursor = nir_before_instr(&intrin->instr);
 
-   nir_ssa_def *rsrc;
+   nir_def *rsrc;
    switch (intrin->intrinsic) {
    case nir_intrinsic_vulkan_resource_index:
       visit_vulkan_resource_index(b, state, intrin);
@@ -435,8 +435,8 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
       }
    }
 
-   nir_ssa_def *image = NULL;
-   nir_ssa_def *sampler = NULL;
+   nir_def *image = NULL;
+   nir_def *sampler = NULL;
    if (plane >= 0) {
       assert(tex->op != nir_texop_txf_ms && tex->op != nir_texop_samples_identical);
       assert(tex->sampler_dim != GLSL_SAMPLER_DIM_BUF);
@@ -467,7 +467,7 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
           */
          /* TODO: This is unnecessary for combined image+sampler.
           * We can do this when updating the desc set. */
-         nir_ssa_def *comp[4];
+         nir_def *comp[4];
          for (unsigned i = 0; i < 4; i++)
             comp[i] = nir_channel(b, sampler, i);
          comp[0] = nir_iand(b, comp[0], nir_channel(b, image, 7));
@@ -477,7 +477,7 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
    }
 
    if (tex->op == nir_texop_descriptor_amd) {
-      nir_ssa_def_rewrite_uses(&tex->dest.ssa, image);
+      nir_def_rewrite_uses(&tex->dest.ssa, image);
       nir_instr_remove(&tex->instr);
       return;
    }

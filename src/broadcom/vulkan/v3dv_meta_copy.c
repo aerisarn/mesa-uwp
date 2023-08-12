@@ -2151,7 +2151,7 @@ get_texel_buffer_copy_vs()
                           glsl_vec4_type(), "gl_Position");
    vs_out_pos->data.location = VARYING_SLOT_POS;
 
-   nir_ssa_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
+   nir_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
    nir_store_var(&b, vs_out_pos, pos, 0xf);
 
    return b.shader;
@@ -2208,7 +2208,7 @@ get_texel_buffer_copy_gs()
       nir_copy_deref(&b, nir_build_deref_var(&b, gs_out_pos), in_pos_i);
 
       /* gl_Layer from push constants */
-      nir_ssa_def *layer =
+      nir_def *layer =
          nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
                                 .base = TEXEL_BUFFER_COPY_GS_LAYER_PC_OFFSET,
                                 .range = 4);
@@ -2222,7 +2222,7 @@ get_texel_buffer_copy_gs()
    return nir;
 }
 
-static nir_ssa_def *
+static nir_def *
 load_frag_coord(nir_builder *b)
 {
    nir_foreach_shader_in_variable(var, b->shader) {
@@ -2286,24 +2286,24 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
    /* Load the box describing the pixel region we want to copy from the
     * texel buffer.
     */
-   nir_ssa_def *box =
+   nir_def *box =
       nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0),
                              .base = TEXEL_BUFFER_COPY_FS_BOX_PC_OFFSET,
                              .range = 16);
 
    /* Load the buffer stride (this comes in texel units) */
-   nir_ssa_def *stride =
+   nir_def *stride =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
                              .base = TEXEL_BUFFER_COPY_FS_STRIDE_PC_OFFSET,
                              .range = 4);
 
    /* Load the buffer offset (this comes in texel units) */
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0),
                              .base = TEXEL_BUFFER_COPY_FS_OFFSET_PC_OFFSET,
                              .range = 4);
 
-   nir_ssa_def *coord = nir_f2i32(&b, load_frag_coord(&b));
+   nir_def *coord = nir_f2i32(&b, load_frag_coord(&b));
 
    /* Load pixel data from texel buffer based on the x,y offset of the pixel
     * within the box. Texel buffers are 1D arrays of texels.
@@ -2313,17 +2313,17 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
     * texel buffer should always be within its bounds and we we don't need
     * to add a check for that here.
     */
-   nir_ssa_def *x_offset =
+   nir_def *x_offset =
       nir_isub(&b, nir_channel(&b, coord, 0),
                    nir_channel(&b, box, 0));
-   nir_ssa_def *y_offset =
+   nir_def *y_offset =
       nir_isub(&b, nir_channel(&b, coord, 1),
                    nir_channel(&b, box, 1));
-   nir_ssa_def *texel_offset =
+   nir_def *texel_offset =
       nir_iadd(&b, nir_iadd(&b, offset, x_offset),
                    nir_imul(&b, y_offset, stride));
 
-   nir_ssa_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
    nir_tex_instr *tex = nir_tex_instr_create(b.shader, 2);
    tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
    tex->op = nir_texop_txf;
@@ -2344,7 +2344,7 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
       component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_B, cswizzle->b);
    swiz[3] =
       component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_A, cswizzle->a);
-   nir_ssa_def *s = nir_swizzle(&b, &tex->dest.ssa, swiz, 4);
+   nir_def *s = nir_swizzle(&b, &tex->dest.ssa, swiz, 4);
    nir_store_var(&b, fs_out_color, s, 0xf);
 
    return b.shader;
@@ -3543,16 +3543,16 @@ create_blit_render_pass(struct v3dv_device *device,
    return result == VK_SUCCESS;
 }
 
-static nir_ssa_def *
+static nir_def *
 gen_tex_coords(nir_builder *b)
 {
-   nir_ssa_def *tex_box =
+   nir_def *tex_box =
       nir_load_push_constant(b, 4, 32, nir_imm_int(b, 0), .base = 0, .range = 16);
 
-   nir_ssa_def *tex_z =
+   nir_def *tex_z =
       nir_load_push_constant(b, 1, 32, nir_imm_int(b, 0), .base = 16, .range = 4);
 
-   nir_ssa_def *vertex_id = nir_load_vertex_id(b);
+   nir_def *vertex_id = nir_load_vertex_id(b);
 
    /* vertex 0: src0_x, src0_y
     * vertex 1: src0_x, src1_y
@@ -3565,11 +3565,11 @@ gen_tex_coords(nir_builder *b)
     * channel 1 is vertex id & 1 ? src1_y : src0_y
     */
 
-   nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *c0cmp = nir_ilt_imm(b, vertex_id, 2);
-   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, vertex_id, one), one);
+   nir_def *one = nir_imm_int(b, 1);
+   nir_def *c0cmp = nir_ilt_imm(b, vertex_id, 2);
+   nir_def *c1cmp = nir_ieq(b, nir_iand(b, vertex_id, one), one);
 
-   nir_ssa_def *comp[4];
+   nir_def *comp[4];
    comp[0] = nir_bcsel(b, c0cmp,
                        nir_channel(b, tex_box, 0),
                        nir_channel(b, tex_box, 2));
@@ -3582,9 +3582,9 @@ gen_tex_coords(nir_builder *b)
    return nir_vec(b, comp, 4);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_nir_tex_op_read(struct nir_builder *b,
-                      nir_ssa_def *tex_pos,
+                      nir_def *tex_pos,
                       enum glsl_base_type tex_type,
                       enum glsl_sampler_dim dim)
 {
@@ -3597,7 +3597,7 @@ build_nir_tex_op_read(struct nir_builder *b,
    sampler->data.descriptor_set = 0;
    sampler->data.binding = 0;
 
-   nir_ssa_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
    tex->sampler_dim = dim;
    tex->op = nir_texop_tex;
@@ -3613,13 +3613,13 @@ build_nir_tex_op_read(struct nir_builder *b,
    return &tex->dest.ssa;
 }
 
-static nir_ssa_def *
+static nir_def *
 build_nir_tex_op_ms_fetch_sample(struct nir_builder *b,
                                  nir_variable *sampler,
-                                 nir_ssa_def *tex_deref,
+                                 nir_def *tex_deref,
                                  enum glsl_base_type tex_type,
-                                 nir_ssa_def *tex_pos,
-                                 nir_ssa_def *sample_idx)
+                                 nir_def *tex_pos,
+                                 nir_def *sample_idx)
 {
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
    tex->sampler_dim = GLSL_SAMPLER_DIM_MS;
@@ -3637,9 +3637,9 @@ build_nir_tex_op_ms_fetch_sample(struct nir_builder *b,
 }
 
 /* Fetches all samples at the given position and averages them */
-static nir_ssa_def *
+static nir_def *
 build_nir_tex_op_ms_resolve(struct nir_builder *b,
-                            nir_ssa_def *tex_pos,
+                            nir_def *tex_pos,
                             enum glsl_base_type tex_type,
                             VkSampleCountFlagBits src_samples)
 {
@@ -3653,10 +3653,10 @@ build_nir_tex_op_ms_resolve(struct nir_builder *b,
 
    const bool is_int = glsl_base_type_is_integer(tex_type);
 
-   nir_ssa_def *tmp = NULL;
-   nir_ssa_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+   nir_def *tmp = NULL;
+   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
    for (uint32_t i = 0; i < src_samples; i++) {
-      nir_ssa_def *s =
+      nir_def *s =
          build_nir_tex_op_ms_fetch_sample(b, sampler, tex_deref,
                                           tex_type, tex_pos,
                                           nir_imm_int(b, i));
@@ -3675,9 +3675,9 @@ build_nir_tex_op_ms_resolve(struct nir_builder *b,
 }
 
 /* Fetches the current sample (gl_SampleID) at the given position */
-static nir_ssa_def *
+static nir_def *
 build_nir_tex_op_ms_read(struct nir_builder *b,
-                         nir_ssa_def *tex_pos,
+                         nir_def *tex_pos,
                          enum glsl_base_type tex_type)
 {
    const struct glsl_type *sampler_type =
@@ -3687,17 +3687,17 @@ build_nir_tex_op_ms_read(struct nir_builder *b,
    sampler->data.descriptor_set = 0;
    sampler->data.binding = 0;
 
-   nir_ssa_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
 
    return build_nir_tex_op_ms_fetch_sample(b, sampler, tex_deref,
                                            tex_type, tex_pos,
                                            nir_load_sample_id(b));
 }
 
-static nir_ssa_def *
+static nir_def *
 build_nir_tex_op(struct nir_builder *b,
                  struct v3dv_device *device,
-                 nir_ssa_def *tex_pos,
+                 nir_def *tex_pos,
                  enum glsl_base_type tex_type,
                  VkSampleCountFlagBits dst_samples,
                  VkSampleCountFlagBits src_samples,
@@ -3741,10 +3741,10 @@ get_blit_vs()
    vs_out_tex_coord->data.location = VARYING_SLOT_VAR0;
    vs_out_tex_coord->data.interpolation = INTERP_MODE_SMOOTH;
 
-   nir_ssa_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
+   nir_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
    nir_store_var(&b, vs_out_pos, pos, 0xf);
 
-   nir_ssa_def *tex_coord = gen_tex_coords(&b);
+   nir_def *tex_coord = gen_tex_coords(&b);
    nir_store_var(&b, vs_out_tex_coord, tex_coord, 0xf);
 
    return b.shader;
@@ -3795,11 +3795,11 @@ get_color_blit_fs(struct v3dv_device *device,
       nir_variable_create(b.shader, nir_var_shader_out, fs_out_type, "out_color");
    fs_out_color->data.location = FRAG_RESULT_DATA0;
 
-   nir_ssa_def *tex_coord = nir_load_var(&b, fs_in_tex_coord);
+   nir_def *tex_coord = nir_load_var(&b, fs_in_tex_coord);
    const uint32_t channel_mask = get_channel_mask_for_sampler_dim(sampler_dim);
    tex_coord = nir_channels(&b, tex_coord, channel_mask);
 
-   nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord, src_base_type,
+   nir_def *color = build_nir_tex_op(&b, device, tex_coord, src_base_type,
                                          dst_samples, src_samples, sampler_dim);
 
    /* For integer textures, if the bit-size of the destination is too small to
@@ -3814,7 +3814,7 @@ get_color_blit_fs(struct v3dv_device *device,
       enum pipe_format src_pformat = vk_format_to_pipe_format(src_format);
       enum pipe_format dst_pformat = vk_format_to_pipe_format(dst_format);
 
-      nir_ssa_def *c[4];
+      nir_def *c[4];
       for (uint32_t i = 0; i < 4; i++) {
          c[i] = nir_channel(&b, color, i);
 
@@ -3832,11 +3832,11 @@ get_color_blit_fs(struct v3dv_device *device,
 
          assert(dst_bit_size > 0);
          if (util_format_is_pure_uint(dst_pformat)) {
-            nir_ssa_def *max = nir_imm_int(&b, (1 << dst_bit_size) - 1);
+            nir_def *max = nir_imm_int(&b, (1 << dst_bit_size) - 1);
             c[i] = nir_umin(&b, c[i], max);
          } else {
-            nir_ssa_def *max = nir_imm_int(&b, (1 << (dst_bit_size - 1)) - 1);
-            nir_ssa_def *min = nir_imm_int(&b, -(1 << (dst_bit_size - 1)));
+            nir_def *max = nir_imm_int(&b, (1 << (dst_bit_size - 1)) - 1);
+            nir_def *min = nir_imm_int(&b, -(1 << (dst_bit_size - 1)));
             c[i] = nir_imax(&b, nir_imin(&b, c[i], max), min);
          }
       }

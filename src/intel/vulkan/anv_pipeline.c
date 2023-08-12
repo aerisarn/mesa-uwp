@@ -49,7 +49,7 @@ struct lower_set_vtx_and_prim_count_state {
 };
 
 static nir_variable *
-anv_nir_prim_count_store(nir_builder *b, nir_ssa_def *val)
+anv_nir_prim_count_store(nir_builder *b, nir_def *val)
 {
    nir_variable *primitive_count =
          nir_variable_create(b->shader,
@@ -59,9 +59,9 @@ anv_nir_prim_count_store(nir_builder *b, nir_ssa_def *val)
    primitive_count->data.location = VARYING_SLOT_PRIMITIVE_COUNT;
    primitive_count->data.interpolation = INTERP_MODE_NONE;
 
-   nir_ssa_def *local_invocation_index = nir_load_local_invocation_index(b);
+   nir_def *local_invocation_index = nir_load_local_invocation_index(b);
 
-   nir_ssa_def *cmp = nir_ieq_imm(b, local_invocation_index, 0);
+   nir_def *cmp = nir_ieq_imm(b, local_invocation_index, 0);
    nir_if *if_stmt = nir_push_if(b, cmp);
    {
       nir_deref_instr *prim_count_deref = nir_build_deref_var(b, primitive_count);
@@ -120,7 +120,7 @@ anv_nir_lower_set_vtx_and_prim_count(nir_shader *nir)
       nir_builder b;
       nir_function_impl *entrypoint = nir_shader_get_entrypoint(nir);
       b = nir_builder_at(nir_before_block(nir_start_block(entrypoint)));
-      nir_ssa_def *zero = nir_imm_int(&b, 0);
+      nir_def *zero = nir_imm_int(&b, 0);
       state.primitive_count = anv_nir_prim_count_store(&b, zero);
    }
 

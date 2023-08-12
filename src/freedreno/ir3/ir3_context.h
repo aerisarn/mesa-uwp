@@ -203,7 +203,7 @@ struct ir3_context *ir3_context_init(struct ir3_compiler *compiler,
 void ir3_context_free(struct ir3_context *ctx);
 
 struct ir3_instruction **ir3_get_dst_ssa(struct ir3_context *ctx,
-                                         nir_ssa_def *dst, unsigned n);
+                                         nir_def *dst, unsigned n);
 struct ir3_instruction **ir3_get_dst(struct ir3_context *ctx, nir_dest *dst,
                                      unsigned n);
 struct ir3_instruction *const *ir3_get_src(struct ir3_context *ctx,
@@ -244,7 +244,7 @@ struct ir3_instruction *ir3_get_predicate(struct ir3_context *ctx,
                                           struct ir3_instruction *src);
 
 void ir3_declare_array(struct ir3_context *ctx, nir_intrinsic_instr *decl);
-struct ir3_array *ir3_get_array(struct ir3_context *ctx, nir_ssa_def *reg);
+struct ir3_array *ir3_get_array(struct ir3_context *ctx, nir_def *reg);
 struct ir3_instruction *ir3_create_array_load(struct ir3_context *ctx,
                                               struct ir3_array *arr, int n,
                                               struct ir3_instruction *address);

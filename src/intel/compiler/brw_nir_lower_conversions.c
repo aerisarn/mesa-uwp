@@ -43,10 +43,10 @@ split_conversion(nir_builder *b, nir_alu_instr *alu, nir_alu_type src_type,
                  nir_rounding_mode rnd)
 {
    b->cursor = nir_before_instr(&alu->instr);
-   nir_ssa_def *src = nir_ssa_for_alu_src(b, alu, 0);
-   nir_ssa_def *tmp = nir_type_convert(b, src, src_type, tmp_type, nir_rounding_mode_undef);
-   nir_ssa_def *res = nir_type_convert(b, tmp, tmp_type, dst_type, rnd);
-   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, res);
+   nir_def *src = nir_ssa_for_alu_src(b, alu, 0);
+   nir_def *tmp = nir_type_convert(b, src, src_type, tmp_type, nir_rounding_mode_undef);
+   nir_def *res = nir_type_convert(b, tmp, tmp_type, dst_type, rnd);
+   nir_def_rewrite_uses(&alu->dest.dest.ssa, res);
    nir_instr_remove(&alu->instr);
 }
 

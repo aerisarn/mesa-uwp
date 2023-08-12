@@ -306,7 +306,7 @@ public:
    virtual void nir_emit_alu(nir_alu_instr *instr);
    virtual void nir_emit_jump(nir_jump_instr *instr);
    virtual void nir_emit_texture(nir_tex_instr *instr);
-   virtual void nir_emit_undef(nir_ssa_undef_instr *instr);
+   virtual void nir_emit_undef(nir_undef_instr *instr);
    virtual void nir_emit_ssbo_atomic(int op, nir_intrinsic_instr *instr);
 
    dst_reg get_nir_dest(const nir_dest &dest, enum brw_reg_type type);

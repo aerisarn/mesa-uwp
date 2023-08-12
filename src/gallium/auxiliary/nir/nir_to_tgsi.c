@@ -550,9 +550,9 @@ ntt_allocate_regs_unoptimized(struct ntt_compile *c, nir_function_impl *impl)
 static const uint32_t
 ntt_extract_const_src_offset(nir_src *src)
 {
-   nir_ssa_scalar s = nir_get_ssa_scalar(src->ssa, 0);
+   nir_scalar s = nir_get_ssa_scalar(src->ssa, 0);
 
-   while (nir_ssa_scalar_is_alu(s)) {
+   while (nir_scalar_is_alu(s)) {
       nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
 
       if (alu->op == nir_op_iadd) {
@@ -567,7 +567,7 @@ ntt_extract_const_src_offset(nir_src *src)
          return 0;
       }
 
-      /* We'd like to reuse nir_ssa_scalar_chase_movs(), but it assumes SSA and that
+      /* We'd like to reuse nir_scalar_chase_movs(), but it assumes SSA and that
        * seems reasonable for something used in inner loops of the compiler.
        */
       if (!nir_alu_instr_is_copy(alu))
@@ -825,7 +825,7 @@ ntt_try_store_reg_in_tgsi_output(struct ntt_compile *c, struct ureg_dst *dst,
  */
 static bool
 ntt_try_store_ssa_in_tgsi_output(struct ntt_compile *c, struct ureg_dst *dst,
-                                 nir_ssa_def *def)
+                                 nir_def *def)
 {
    *dst = ureg_dst_undef();
 
@@ -1310,7 +1310,7 @@ ntt_swizzle_for_write_mask(struct ureg_src src, uint32_t write_mask)
 }
 
 static struct ureg_dst
-ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
+ntt_get_ssa_def_decl(struct ntt_compile *c, nir_def *ssa)
 {
    uint32_t writemask = BITSET_MASK(ssa->num_components);
    if (ssa->bit_size == 64)
@@ -1384,7 +1384,7 @@ ntt_get_alu_dest(struct ntt_compile *c, nir_dest *dest)
  * a copy of the ureg_src.
  */
 static void
-ntt_store_def(struct ntt_compile *c, nir_ssa_def *def, struct ureg_src src)
+ntt_store_def(struct ntt_compile *c, nir_def *def, struct ureg_src src)
 {
    if (!src.Indirect && !src.DimIndirect) {
       switch (src.File) {
@@ -2904,7 +2904,7 @@ ntt_emit_jump(struct ntt_compile *c, nir_jump_instr *jump)
 }
 
 static void
-ntt_emit_ssa_undef(struct ntt_compile *c, nir_ssa_undef_instr *instr)
+ntt_emit_ssa_undef(struct ntt_compile *c, nir_undef_instr *instr)
 {
    /* Nothing to do but make sure that we have some storage to deref. */
    (void)ntt_get_ssa_def_decl(c, &instr->def);
@@ -3437,20 +3437,20 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
 
    if (has_dest) {
       /* Merge the two loads' results back into a vector. */
-      nir_ssa_scalar channels[4] = {
+      nir_scalar channels[4] = {
          nir_get_ssa_scalar(&first->dest.ssa, 0),
          nir_get_ssa_scalar(&first->dest.ssa, 1),
          nir_get_ssa_scalar(&second->dest.ssa, 0),
          nir_get_ssa_scalar(&second->dest.ssa, second->num_components > 1 ? 1 : 0),
       };
-      nir_ssa_def *new = nir_vec_scalars(b, channels, instr->num_components);
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, new);
+      nir_def *new = nir_vec_scalars(b, channels, instr->num_components);
+      nir_def_rewrite_uses(&instr->dest.ssa, new);
    } else {
       /* Split the src value across the two stores. */
       b->cursor = nir_before_instr(&instr->instr);
 
-      nir_ssa_def *src0 = instr->src[0].ssa;
-      nir_ssa_scalar channels[4] = { 0 };
+      nir_def *src0 = instr->src[0].ssa;
+      nir_scalar channels[4] = { 0 };
       for (int i = 0; i < instr->num_components; i++)
          channels[i] = nir_get_ssa_scalar(src0, i);
 
@@ -3484,7 +3484,7 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
    }
    if (offset_src != -1) {
       b->cursor = nir_before_instr(&second->instr);
-      nir_ssa_def *second_offset =
+      nir_def *second_offset =
          nir_iadd_imm(b, second->src[offset_src].ssa, offset_amount);
       nir_instr_rewrite_src(&second->instr, &second->src[offset_src],
                             nir_src_for_ssa(second_offset));
@@ -3529,14 +3529,14 @@ nir_to_tgsi_lower_64bit_load_const(nir_builder *b, nir_load_const_instr *instr)
    nir_builder_instr_insert(b, &first->instr);
    nir_builder_instr_insert(b, &second->instr);
 
-   nir_ssa_def *channels[4] = {
+   nir_def *channels[4] = {
       nir_channel(b, &first->def, 0),
       nir_channel(b, &first->def, 1),
       nir_channel(b, &second->def, 0),
       num_components == 4 ? nir_channel(b, &second->def, 1) : NULL,
    };
-   nir_ssa_def *new = nir_vec(b, channels, num_components);
-   nir_ssa_def_rewrite_uses(&instr->def, new);
+   nir_def *new = nir_vec(b, channels, num_components);
+   nir_def_rewrite_uses(&instr->def, new);
    nir_instr_remove(&instr->instr);
 
    return true;
@@ -3568,7 +3568,7 @@ nir_to_tgsi_lower_64bit_to_vec2(nir_shader *s)
 }
 
 struct ntt_lower_tex_state {
-   nir_ssa_scalar channels[8];
+   nir_scalar channels[8];
    unsigned i;
 };
 
@@ -3582,7 +3582,7 @@ nir_to_tgsi_lower_tex_instr_arg(nir_builder *b,
    if (tex_src < 0)
       return;
 
-   nir_ssa_def *def = instr->src[tex_src].src.ssa;
+   nir_def *def = instr->src[tex_src].src.ssa;
    for (int i = 0; i < def->num_components; i++) {
       s->channels[s->i++] = nir_get_ssa_scalar(def, i);
    }
@@ -3718,12 +3718,12 @@ ntt_lower_atomic_pre_dec_filter(const nir_instr *instr, const void *_data)
            nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_atomic_counter_pre_dec);
 }
 
-static nir_ssa_def *
+static nir_def *
 ntt_lower_atomic_pre_dec_lower(nir_builder *b, nir_instr *instr, void *_data)
 {
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
-   nir_ssa_def *old_result = &intr->dest.ssa;
+   nir_def *old_result = &intr->dest.ssa;
    intr->intrinsic = nir_intrinsic_atomic_counter_post_dec;
 
    return nir_iadd_imm(b, old_result, -1);
@@ -3783,7 +3783,7 @@ nir_lower_primid_sysval_to_input_filter(const nir_instr *instr, const void *_dat
            nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_primitive_id);
 }
 
-static nir_ssa_def *
+static nir_def *
 nir_lower_primid_sysval_to_input_lower(nir_builder *b, nir_instr *instr, void *data)
 {
    nir_variable *var = nir_get_variable_with_location(b->shader, nir_var_shader_in,

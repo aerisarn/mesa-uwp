@@ -26,9 +26,9 @@
 
 struct nu_handle {
    nir_src *src;
-   nir_ssa_def *handle;
+   nir_def *handle;
    nir_deref_instr *parent_deref;
-   nir_ssa_def *first;
+   nir_def *first;
 };
 
 static bool
@@ -63,7 +63,7 @@ nu_handle_init(struct nu_handle *h, nir_src *src)
    }
 }
 
-static nir_ssa_def *
+static nir_def *
 nu_handle_compare(const nir_lower_non_uniform_access_options *options,
                   nir_builder *b, struct nu_handle *handle)
 {
@@ -72,14 +72,14 @@ nu_handle_compare(const nir_lower_non_uniform_access_options *options,
       channel_mask = options->callback(handle->src, options->callback_data);
    channel_mask &= nir_component_mask(handle->handle->num_components);
 
-   nir_ssa_def *channels[NIR_MAX_VEC_COMPONENTS];
+   nir_def *channels[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < handle->handle->num_components; i++)
       channels[i] = nir_channel(b, handle->handle, i);
 
    handle->first = handle->handle;
-   nir_ssa_def *equal_first = nir_imm_true(b);
+   nir_def *equal_first = nir_imm_true(b);
    u_foreach_bit(i, channel_mask) {
-      nir_ssa_def *first = nir_read_first_invocation(b, channels[i]);
+      nir_def *first = nir_read_first_invocation(b, channels[i]);
       handle->first = nir_vector_insert_imm(b, handle->first, first, i);
 
       equal_first = nir_iand(b, equal_first, nir_ieq(b, first, channels[i]));
@@ -143,14 +143,14 @@ lower_non_uniform_tex_access(const nir_lower_non_uniform_access_options *options
 
    nir_push_loop(b);
 
-   nir_ssa_def *all_equal_first = nir_imm_true(b);
+   nir_def *all_equal_first = nir_imm_true(b);
    for (unsigned i = 0; i < num_handles; i++) {
       if (i && handles[i].handle == handles[0].handle) {
          handles[i].first = handles[0].first;
          continue;
       }
 
-      nir_ssa_def *equal_first = nu_handle_compare(options, b, &handles[i]);
+      nir_def *equal_first = nu_handle_compare(options, b, &handles[i]);
       all_equal_first = nir_iand(b, all_equal_first, equal_first);
    }
 

@@ -52,16 +52,16 @@ lower_store_component(nir_builder *b, nir_instr *instr, void *data)
    nir_intrinsic_instr *prev = _mesa_hash_table_u64_search(slots, slot);
    unsigned mask = (prev ? nir_intrinsic_write_mask(prev) : 0);
 
-   nir_ssa_def *value = intr->src[0].ssa;
+   nir_def *value = intr->src[0].ssa;
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *undef = nir_ssa_undef(b, 1, value->bit_size);
-   nir_ssa_def *channels[4] = {undef, undef, undef, undef};
+   nir_def *undef = nir_undef(b, 1, value->bit_size);
+   nir_def *channels[4] = {undef, undef, undef, undef};
 
    /* Copy old */
    u_foreach_bit(i, mask) {
       assert(prev != NULL);
-      nir_ssa_def *prev_ssa = prev->src[0].ssa;
+      nir_def *prev_ssa = prev->src[0].ssa;
       channels[i] = nir_channel(b, prev_ssa, i);
    }
 

@@ -335,16 +335,16 @@ build_array_deref_of_new_var(nir_builder *b, nir_variable *new_var,
    return nir_build_deref_follower(b, parent, leader);
 }
 
-static nir_ssa_def *
-build_array_index(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *base,
+static nir_def *
+build_array_index(nir_builder *b, nir_deref_instr *deref, nir_def *base,
                   bool vs_in, bool per_vertex)
 {
    switch (deref->deref_type) {
    case nir_deref_type_var:
       return base;
    case nir_deref_type_array: {
-      nir_ssa_def *index = nir_i2iN(b, deref->arr.index.ssa,
-                                    deref->dest.ssa.bit_size);
+      nir_def *index = nir_i2iN(b, deref->arr.index.ssa,
+                                deref->dest.ssa.bit_size);
 
       if (nir_deref_instr_parent(deref)->deref_type == nir_deref_type_var &&
           per_vertex)
@@ -375,7 +375,7 @@ build_array_deref_of_new_var_flat(nir_shader *shader,
       nir_deref_instr *p = path.path[1];
       nir_deref_path_finish(&path);
 
-      nir_ssa_def *index = p->arr.index.ssa;
+      nir_def *index = p->arr.index.ssa;
       deref = nir_build_deref_array(b, deref, index);
    }
 
@@ -513,11 +513,11 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
 
             b.cursor = nir_after_instr(&intrin->instr);
 
-            nir_ssa_def *new_vec = nir_channels(&b, &intrin->dest.ssa,
-                                                vec4_comp_mask >> new_frac);
-            nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                           new_vec,
-                                           new_vec->parent_instr);
+            nir_def *new_vec = nir_channels(&b, &intrin->dest.ssa,
+                                            vec4_comp_mask >> new_frac);
+            nir_def_rewrite_uses_after(&intrin->dest.ssa,
+                                       new_vec,
+                                       new_vec->parent_instr);
 
             progress = true;
             break;
@@ -559,20 +559,20 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
 
             nir_component_mask_t old_wrmask = nir_intrinsic_write_mask(intrin);
 
-            nir_ssa_def *old_value = intrin->src[1].ssa;
-            nir_ssa_scalar comps[4];
+            nir_def *old_value = intrin->src[1].ssa;
+            nir_scalar comps[4];
             for (unsigned c = 0; c < intrin->num_components; c++) {
                if (new_frac + c >= old_frac &&
                    (old_wrmask & 1 << (new_frac + c - old_frac))) {
                   comps[c] = nir_get_ssa_scalar(old_value,
                                                 new_frac + c - old_frac);
                } else {
-                  comps[c] = nir_get_ssa_scalar(nir_ssa_undef(&b, old_value->num_components,
-                                                              old_value->bit_size),
+                  comps[c] = nir_get_ssa_scalar(nir_undef(&b, old_value->num_components,
+                                                          old_value->bit_size),
                                                 0);
                }
             }
-            nir_ssa_def *new_value = nir_vec_scalars(&b, comps, intrin->num_components);
+            nir_def *new_value = nir_vec_scalars(&b, comps, intrin->num_components);
             nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
                                   nir_src_for_ssa(new_value));
 
@@ -649,7 +649,7 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
          unsigned vec_size = glsl_get_vector_elements(var->type);
 
          b.cursor = nir_before_instr(instr);
-         nir_ssa_def *new_deref = &nir_build_deref_var(&b, var)->dest.ssa;
+         nir_def *new_deref = &nir_build_deref_var(&b, var)->dest.ssa;
          nir_instr_rewrite_src(instr, &intrin->src[0], nir_src_for_ssa(new_deref));
 
          nir_deref_instr_remove_if_unused(deref);
@@ -661,9 +661,9 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
             if (intrin->intrinsic == nir_intrinsic_load_deref) {
                /* Return undef from out of bounds loads. */
                b.cursor = nir_after_instr(instr);
-               nir_ssa_def *val = &intrin->dest.ssa;
-               nir_ssa_def *u = nir_ssa_undef(&b, val->num_components, val->bit_size);
-               nir_ssa_def_rewrite_uses(val, u);
+               nir_def *val = &intrin->dest.ssa;
+               nir_def *u = nir_undef(&b, val->num_components, val->bit_size);
+               nir_def_rewrite_uses(val, u);
             }
 
             /* Finally, remove the out of bounds access. */
@@ -674,15 +674,15 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
 
          if (intrin->intrinsic == nir_intrinsic_store_deref) {
             nir_intrinsic_set_write_mask(intrin, 1 << index);
-            nir_ssa_def *new_val = nir_ssa_undef(&b, intrin->num_components, 32);
+            nir_def *new_val = nir_undef(&b, intrin->num_components, 32);
             new_val = nir_vector_insert_imm(&b, new_val, intrin->src[1].ssa, index);
             nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(new_val));
          } else {
             b.cursor = nir_after_instr(instr);
-            nir_ssa_def *val = &intrin->dest.ssa;
+            nir_def *val = &intrin->dest.ssa;
             val->num_components = intrin->num_components;
-            nir_ssa_def *comp = nir_channel(&b, val, index);
-            nir_ssa_def_rewrite_uses_after(val, comp, comp->parent_instr);
+            nir_def *comp = nir_channel(&b, val, index);
+            nir_def_rewrite_uses_after(val, comp, comp->parent_instr);
          }
 
          progress = true;

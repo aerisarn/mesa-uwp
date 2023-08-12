@@ -30,7 +30,7 @@ lower_impl(nir_function_impl *impl)
    nir_shader *shader = impl->function->shader;
    nir_builder b;
    nir_variable *in, *out;
-   nir_ssa_def *def;
+   nir_def *def;
 
    b = nir_builder_at(nir_before_cf_list(&impl->body));
 
@@ -50,7 +50,7 @@ lower_impl(nir_function_impl *impl)
       load_sem.location = VERT_ATTRIB_EDGEFLAG;
       load_sem.num_slots = 1;
 
-      nir_ssa_def *load =
+      nir_def *load =
          nir_load_input(&b, 1, 32, nir_imm_int(&b, 0),
                         .base = shader->num_inputs++,
                         .component = 0,

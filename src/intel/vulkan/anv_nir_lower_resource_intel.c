@@ -109,8 +109,8 @@ lower_resource_intel(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *set_offset = intrin->src[0].ssa;
-   nir_ssa_def *binding_offset = intrin->src[1].ssa;
+   nir_def *set_offset = intrin->src[0].ssa;
+   nir_def *binding_offset = intrin->src[1].ssa;
 
    /* When using indirect descriptor, the surface handles are loaded from the
     * descriptor buffer and do not need any offset.

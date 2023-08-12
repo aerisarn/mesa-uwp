@@ -228,14 +228,14 @@ nir_add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
 
    /* Allow induction variable which means a loop terminator. */
    if (info) {
-      nir_ssa_scalar cond_scalar = { cond->ssa, 0 };
+      nir_scalar cond_scalar = { cond->ssa, 0 };
 
       /* Limit terminator condition to loop unroll support case which is a simple
        * comparison (ie. "i < count" is supported, but "i + 1 < count" is not).
        */
       if (nir_is_supported_terminator_condition(cond_scalar)) {
-         if (nir_ssa_scalar_alu_op(cond_scalar) == nir_op_inot)
-            cond_scalar = nir_ssa_scalar_chase_alu_src(cond_scalar, 0);
+         if (nir_scalar_alu_op(cond_scalar) == nir_op_inot)
+            cond_scalar = nir_scalar_chase_alu_src(cond_scalar, 0);
 
          nir_alu_instr *alu = nir_instr_as_alu(cond_scalar.def->parent_instr);
 
@@ -408,8 +408,8 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                   for (unsigned i = 0; i < num_uniforms; i++) {
                      if (offset == uniform_dw_offsets[i]) {
                         b.cursor = nir_before_instr(&intr->instr);
-                        nir_ssa_def *def = nir_imm_int(&b, uniform_values[i]);
-                        nir_ssa_def_rewrite_uses(&intr->dest.ssa, def);
+                        nir_def *def = nir_imm_int(&b, uniform_values[i]);
+                        nir_def_rewrite_uses(&intr->dest.ssa, def);
                         nir_instr_remove(&intr->instr);
                         break;
                      }
@@ -419,7 +419,7 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                    * found component load with constant load.
                    */
                   uint32_t max_offset = offset + num_components;
-                  nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = { 0 };
+                  nir_def *components[NIR_MAX_VEC_COMPONENTS] = { 0 };
                   bool found = false;
 
                   b.cursor = nir_before_instr(&intr->instr);
@@ -453,8 +453,8 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                   }
 
                   /* Replace the original uniform load. */
-                  nir_ssa_def_rewrite_uses(&intr->dest.ssa,
-                                           nir_vec(&b, components, num_components));
+                  nir_def_rewrite_uses(&intr->dest.ssa,
+                                       nir_vec(&b, components, num_components));
                   nir_instr_remove(&intr->instr);
                }
             }

@@ -164,7 +164,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
             continue;
 
          nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
-         nir_ssa_def *(*convert)(nir_builder *, nir_ssa_def *);
+         nir_def *(*convert)(nir_builder *, nir_def *);
          bool is_varying = !(nir->info.stage == MESA_SHADER_VERTEX &&
                              mode == nir_var_shader_in) &&
                            !(nir->info.stage == MESA_SHADER_FRAGMENT &&
@@ -203,7 +203,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
              * gl_FragDepth, as GLSL ES declares it highp and so hardware such
              * as Adreno a6xx doesn't expect a half-float output for it.
              */
-            nir_ssa_def *val = intr->src[0].ssa;
+            nir_def *val = intr->src[0].ssa;
             bool is_fragdepth = (nir->info.stage == MESA_SHADER_FRAGMENT &&
                                  sem.location == FRAG_RESULT_DEPTH);
             if (!sem.medium_precision &&
@@ -242,9 +242,9 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
             b.cursor = nir_after_instr(&intr->instr);
             intr->dest.ssa.bit_size = 16;
             nir_intrinsic_set_dest_type(intr, (type & ~32) | 16);
-            nir_ssa_def *dst = convert(&b, &intr->dest.ssa);
-            nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, dst,
-                                           dst->parent_instr);
+            nir_def *dst = convert(&b, &intr->dest.ssa);
+            nir_def_rewrite_uses_after(&intr->dest.ssa, dst,
+                                       dst->parent_instr);
          }
 
          if (use_16bit_slots && is_varying &&
@@ -462,7 +462,7 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
                intrin->dest.ssa.bit_size = 16;
 
                b.cursor = nir_after_instr(&intrin->instr);
-               nir_ssa_def *replace = NULL;
+               nir_def *replace = NULL;
                switch (glsl_get_base_type(deref->type)) {
                case GLSL_TYPE_FLOAT16:
                   replace = nir_f2f32(&b, &intrin->dest.ssa);
@@ -477,15 +477,15 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
                   unreachable("Invalid 16-bit type");
                }
 
-               nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                              replace,
-                                              replace->parent_instr);
+               nir_def_rewrite_uses_after(&intrin->dest.ssa,
+                                          replace,
+                                          replace->parent_instr);
                progress = true;
                break;
             }
 
             case nir_intrinsic_store_deref: {
-               nir_ssa_def *data = intrin->src[1].ssa;
+               nir_def *data = intrin->src[1].ssa;
                if (data->bit_size != 32)
                   break;
 
@@ -494,7 +494,7 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
                   break;
 
                b.cursor = nir_before_instr(&intrin->instr);
-               nir_ssa_def *replace = NULL;
+               nir_def *replace = NULL;
                switch (glsl_get_base_type(deref->type)) {
                case GLSL_TYPE_FLOAT16:
                   replace = nir_f2fmp(&b, data);
@@ -696,7 +696,7 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
             /* Fix the bit size. */
             bool is_sint = nir_tex_instr_src_type(tex, i) == nir_type_int;
             bool is_uint = nir_tex_instr_src_type(tex, i) == nir_type_uint;
-            nir_ssa_def *(*convert)(nir_builder *, nir_ssa_def *);
+            nir_def *(*convert)(nir_builder *, nir_def *);
 
             switch (bit_size) {
             case 16:
@@ -713,7 +713,7 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
             }
 
             b.cursor = nir_before_instr(&tex->instr);
-            nir_ssa_def *conv =
+            nir_def *conv =
                convert(&b, nir_ssa_for_src(&b, tex->src[i].src,
                                            tex->src[i].src.ssa->num_components));
             nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, conv);
@@ -733,30 +733,30 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
 }
 
 static bool
-const_is_f16(nir_ssa_scalar scalar)
+const_is_f16(nir_scalar scalar)
 {
-   double value = nir_ssa_scalar_as_float(scalar);
+   double value = nir_scalar_as_float(scalar);
    uint16_t fp16_val = _mesa_float_to_half(value);
    bool is_denorm = (fp16_val & 0x7fff) != 0 && (fp16_val & 0x7fff) <= 0x3ff;
    return value == _mesa_half_to_float(fp16_val) && !is_denorm;
 }
 
 static bool
-const_is_u16(nir_ssa_scalar scalar)
+const_is_u16(nir_scalar scalar)
 {
-   uint64_t value = nir_ssa_scalar_as_uint(scalar);
+   uint64_t value = nir_scalar_as_uint(scalar);
    return value == (uint16_t)value;
 }
 
 static bool
-const_is_i16(nir_ssa_scalar scalar)
+const_is_i16(nir_scalar scalar)
 {
-   int64_t value = nir_ssa_scalar_as_int(scalar);
+   int64_t value = nir_scalar_as_int(scalar);
    return value == (int16_t)value;
 }
 
 static bool
-can_fold_16bit_src(nir_ssa_def *ssa, nir_alu_type src_type, bool sext_matters)
+can_fold_16bit_src(nir_def *ssa, nir_alu_type src_type, bool sext_matters)
 {
    bool fold_f16 = src_type == nir_type_float32;
    bool fold_u16 = src_type == nir_type_uint32 && sext_matters;
@@ -765,10 +765,10 @@ can_fold_16bit_src(nir_ssa_def *ssa, nir_alu_type src_type, bool sext_matters)
 
    bool can_fold = fold_f16 || fold_u16 || fold_i16 || fold_i16_u16;
    for (unsigned i = 0; can_fold && i < ssa->num_components; i++) {
-      nir_ssa_scalar comp = nir_ssa_scalar_resolved(ssa, i);
-      if (nir_ssa_scalar_is_undef(comp))
+      nir_scalar comp = nir_scalar_resolved(ssa, i);
+      if (nir_scalar_is_undef(comp))
          continue;
-      else if (nir_ssa_scalar_is_const(comp)) {
+      else if (nir_scalar_is_const(comp)) {
          if (fold_f16)
             can_fold &= const_is_f16(comp);
          else if (fold_u16)
@@ -798,26 +798,26 @@ fold_16bit_src(nir_builder *b, nir_instr *instr, nir_src *src, nir_alu_type src_
 {
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_scalar new_comps[NIR_MAX_VEC_COMPONENTS];
+   nir_scalar new_comps[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < src->ssa->num_components; i++) {
-      nir_ssa_scalar comp = nir_ssa_scalar_resolved(src->ssa, i);
+      nir_scalar comp = nir_scalar_resolved(src->ssa, i);
 
-      if (nir_ssa_scalar_is_undef(comp))
-         new_comps[i] = nir_get_ssa_scalar(nir_ssa_undef(b, 1, 16), 0);
-      else if (nir_ssa_scalar_is_const(comp)) {
-         nir_ssa_def *constant;
+      if (nir_scalar_is_undef(comp))
+         new_comps[i] = nir_get_ssa_scalar(nir_undef(b, 1, 16), 0);
+      else if (nir_scalar_is_const(comp)) {
+         nir_def *constant;
          if (src_type == nir_type_float32)
-            constant = nir_imm_float16(b, nir_ssa_scalar_as_float(comp));
+            constant = nir_imm_float16(b, nir_scalar_as_float(comp));
          else
-            constant = nir_imm_intN_t(b, nir_ssa_scalar_as_uint(comp), 16);
+            constant = nir_imm_intN_t(b, nir_scalar_as_uint(comp), 16);
          new_comps[i] = nir_get_ssa_scalar(constant, 0);
       } else {
          /* conversion instruction */
-         new_comps[i] = nir_ssa_scalar_chase_alu_src(comp, 0);
+         new_comps[i] = nir_scalar_chase_alu_src(comp, 0);
       }
    }
 
-   nir_ssa_def *new_vec = nir_vec_scalars(b, new_comps, src->ssa->num_components);
+   nir_def *new_vec = nir_vec_scalars(b, new_comps, src->ssa->num_components);
 
    nir_instr_rewrite_src_ssa(instr, src, new_vec);
 }
@@ -841,7 +841,7 @@ fold_16bit_store_data(nir_builder *b, nir_intrinsic_instr *instr)
 }
 
 static bool
-fold_16bit_destination(nir_ssa_def *ssa, nir_alu_type dest_type,
+fold_16bit_destination(nir_def *ssa, nir_alu_type dest_type,
                        unsigned exec_mode, nir_rounding_mode rdm)
 {
    bool is_f32_to_f16 = dest_type == nir_type_float32;

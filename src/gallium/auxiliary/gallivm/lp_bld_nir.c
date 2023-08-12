@@ -166,7 +166,7 @@ assign_ssa(struct lp_build_nir_context *bld_base, int idx, LLVMValueRef ptr)
 
 
 static void
-assign_ssa_dest(struct lp_build_nir_context *bld_base, const nir_ssa_def *ssa,
+assign_ssa_dest(struct lp_build_nir_context *bld_base, const nir_def *ssa,
                 LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
    if ((ssa->num_components == 1 || is_aos(bld_base))) {
@@ -2701,7 +2701,7 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
 
 static void
 visit_ssa_undef(struct lp_build_nir_context *bld_base,
-                const nir_ssa_undef_instr *instr)
+                const nir_undef_instr *instr)
 {
    unsigned num_components = instr->def.num_components;
    LLVMValueRef undef[NIR_MAX_VEC_COMPONENTS];

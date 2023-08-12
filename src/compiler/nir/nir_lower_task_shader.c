@@ -55,17 +55,17 @@ lower_nv_task_output(nir_builder *b,
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_output: {
       b->cursor = nir_after_instr(instr);
-      nir_ssa_def *load =
+      nir_def *load =
          nir_load_shared(b, 1, 32, nir_imm_int(b, 0),
                          .base = s->task_count_shared_addr);
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, load);
+      nir_def_rewrite_uses(&intrin->dest.ssa, load);
       nir_instr_remove(instr);
       return true;
    }
 
    case nir_intrinsic_store_output: {
       b->cursor = nir_after_instr(instr);
-      nir_ssa_def *store_val = intrin->src[0].ssa;
+      nir_def *store_val = intrin->src[0].ssa;
       nir_store_shared(b, store_val, nir_imm_int(b, 0),
                        .base = s->task_count_shared_addr);
       nir_instr_remove(instr);
@@ -86,7 +86,7 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
     * shader doesn't write the TASK_COUNT output.
     */
    b->cursor = nir_before_cf_list(&b->impl->body);
-   nir_ssa_def *zero = nir_imm_int(b, 0);
+   nir_def *zero = nir_imm_int(b, 0);
    nir_store_shared(b, zero, zero, .base = s->task_count_shared_addr);
 
    nir_barrier(b,
@@ -106,7 +106,7 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
                .memory_semantics = NIR_MEMORY_ACQUIRE,
                .memory_modes = nir_var_mem_shared);
 
-   nir_ssa_def *task_count =
+   nir_def *task_count =
       nir_load_shared(b, 1, 32, zero, .base = s->task_count_shared_addr);
 
    /* NV_mesh_shader doesn't offer to choose which task_payload variable
@@ -114,8 +114,8 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
     */
    uint32_t range = b->shader->info.task_payload_size;
 
-   nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *dispatch_3d = nir_vec3(b, task_count, one, one);
+   nir_def *one = nir_imm_int(b, 1);
+   nir_def *dispatch_3d = nir_vec3(b, task_count, one, one);
    nir_launch_mesh_workgroups(b, dispatch_3d, .base = 0, .range = range);
 }
 
@@ -186,14 +186,14 @@ lower_task_payload_to_shared(nir_builder *b,
 static void
 copy_shared_to_payload(nir_builder *b,
                        unsigned num_components,
-                       nir_ssa_def *addr,
+                       nir_def *addr,
                        unsigned shared_base,
                        unsigned off)
 {
    /* Read from shared memory. */
-   nir_ssa_def *copy = nir_load_shared(b, num_components, 32, addr,
-                                       .align_mul = 16,
-                                       .base = shared_base + off);
+   nir_def *copy = nir_load_shared(b, num_components, 32, addr,
+                                   .align_mul = 16,
+                                   .base = shared_base + off);
 
    /* Write to task payload memory. */
    nir_store_task_payload(b, copy, addr, .base = off);
@@ -223,8 +223,8 @@ emit_shared_to_payload_copy(nir_builder *b,
                    4);
    const unsigned base_shared_addr = s->payload_shared_addr + payload_addr;
 
-   nir_ssa_def *invocation_index = nir_load_local_invocation_index(b);
-   nir_ssa_def *addr = nir_imul_imm(b, invocation_index, vec4size);
+   nir_def *invocation_index = nir_load_local_invocation_index(b);
+   nir_def *addr = nir_imul_imm(b, invocation_index, vec4size);
 
    /* Wait for all previous shared stores to finish.
     * This is necessary because we placed the payload in shared memory.
@@ -256,7 +256,7 @@ emit_shared_to_payload_copy(nir_builder *b,
    if (remaining_vec4_copies > 0) {
       assert(remaining_vec4_copies < invocations);
 
-      nir_ssa_def *cmp = nir_ilt_imm(b, invocation_index, remaining_vec4_copies);
+      nir_def *cmp = nir_ilt_imm(b, invocation_index, remaining_vec4_copies);
       nir_if *if_stmt = nir_push_if(b, cmp);
       {
          copy_shared_to_payload(b, vec4size / 4, addr, base_shared_addr, off);
@@ -268,7 +268,7 @@ emit_shared_to_payload_copy(nir_builder *b,
    /* Copy the last few dwords not forming full vec4. */
    if (remaining_dwords > 0) {
       assert(remaining_dwords < 4);
-      nir_ssa_def *cmp = nir_ieq_imm(b, invocation_index, 0);
+      nir_def *cmp = nir_ieq_imm(b, invocation_index, 0);
       nir_if *if_stmt = nir_push_if(b, cmp);
       {
          copy_shared_to_payload(b, remaining_dwords, addr, base_shared_addr, off);

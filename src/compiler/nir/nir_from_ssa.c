@@ -56,7 +56,7 @@ struct from_ssa_state {
  * We treat SSA undefs as always coming before other instruction types.
  */
 static bool
-def_after(nir_ssa_def *a, nir_ssa_def *b)
+def_after(nir_def *a, nir_def *b)
 {
    if (a->parent_instr->type == nir_instr_type_ssa_undef)
       return false;
@@ -77,7 +77,7 @@ def_after(nir_ssa_def *a, nir_ssa_def *b)
 
 /* Returns true if a dominates b */
 static bool
-ssa_def_dominates(nir_ssa_def *a, nir_ssa_def *b)
+ssa_def_dominates(nir_def *a, nir_def *b)
 {
    if (a->parent_instr->type == nir_instr_type_ssa_undef) {
       /* SSA undefs always dominate */
@@ -115,21 +115,21 @@ struct merge_set;
 typedef struct {
    struct exec_node node;
    struct merge_set *set;
-   nir_ssa_def *def;
+   nir_def *def;
 } merge_node;
 
 typedef struct merge_set {
    struct exec_list nodes;
    unsigned size;
    bool divergent;
-   nir_ssa_def *reg_decl;
+   nir_def *reg_decl;
 } merge_set;
 
 #if 0
 static void
 merge_set_dump(merge_set *set, FILE *fp)
 {
-   NIR_VLA(nir_ssa_def *, dom, set->size);
+   NIR_VLA(nir_def *, dom, set->size);
    int dom_idx = -1;
 
    foreach_list_typed(merge_node, node, node, &set->nodes) {
@@ -147,7 +147,7 @@ merge_set_dump(merge_set *set, FILE *fp)
 #endif
 
 static merge_node *
-get_merge_node(nir_ssa_def *def, struct from_ssa_state *state)
+get_merge_node(nir_def *def, struct from_ssa_state *state)
 {
    struct hash_entry *entry =
       _mesa_hash_table_search(state->merge_node_table, def);
@@ -179,7 +179,7 @@ merge_nodes_interfere(merge_node *a, merge_node *b)
    if (a->set == b->set)
       return false;
 
-   return nir_ssa_defs_interfere(a->def, b->def);
+   return nir_defs_interfere(a->def, b->def);
 }
 
 /* Merges b into a
@@ -422,8 +422,8 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
       entry->dest.dest.ssa.divergent = phi->dest.ssa.divergent;
       exec_list_push_tail(&block_pcopy->entries, &entry->node);
 
-      nir_ssa_def_rewrite_uses(&phi->dest.ssa,
-                               &entry->dest.dest.ssa);
+      nir_def_rewrite_uses(&phi->dest.ssa,
+                           &entry->dest.dest.ssa);
 
       nir_instr_rewrite_src(&block_pcopy->instr, &entry->src,
                             nir_src_for_ssa(&phi->dest.ssa));
@@ -511,22 +511,22 @@ aggressive_coalesce_block(nir_block *block, struct from_ssa_state *state)
    return true;
 }
 
-static nir_ssa_def *
-decl_reg_for_ssa_def(nir_builder *b, nir_ssa_def *def)
+static nir_def *
+decl_reg_for_ssa_def(nir_builder *b, nir_def *def)
 {
    return nir_decl_reg(b, def->num_components, def->bit_size, 0);
 }
 
 static void
-set_reg_divergent(nir_ssa_def *reg, bool divergent)
+set_reg_divergent(nir_def *reg, bool divergent)
 {
    nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
    nir_intrinsic_set_divergent(decl, divergent);
 }
 
 void
-nir_rewrite_uses_to_load_reg(nir_builder *b, nir_ssa_def *old,
-                             nir_ssa_def *reg)
+nir_rewrite_uses_to_load_reg(nir_builder *b, nir_def *old,
+                             nir_def *reg)
 {
    nir_foreach_use_including_if_safe(use, old) {
       b->cursor = nir_before_src(use);
@@ -540,7 +540,7 @@ nir_rewrite_uses_to_load_reg(nir_builder *b, nir_ssa_def *old,
 
          assert(!copy_entry->src_is_reg);
          copy_entry->src_is_reg = true;
-         nir_src_rewrite_ssa(&copy_entry->src, reg);
+         nir_src_rewrite(&copy_entry->src, reg);
          continue;
       }
 
@@ -549,7 +549,7 @@ nir_rewrite_uses_to_load_reg(nir_builder *b, nir_ssa_def *old,
        * a register is referenced in multiple sources in the same instruction,
        * which otherwise would turn into piles of unnecessary moves.
        */
-      nir_ssa_def *load = NULL;
+      nir_def *load = NULL;
       if (b->cursor.option == nir_cursor_before_instr) {
          nir_instr *prev = nir_instr_prev(b->cursor.instr);
 
@@ -565,7 +565,7 @@ nir_rewrite_uses_to_load_reg(nir_builder *b, nir_ssa_def *old,
       if (load == NULL)
          load = nir_load_reg(b, reg);
 
-      nir_src_rewrite_ssa(use, load);
+      nir_src_rewrite(use, load);
    }
 }
 
@@ -574,7 +574,7 @@ dest_replace_ssa_with_reg(nir_dest *dest, nir_function_impl *impl)
 {
    nir_builder b = nir_builder_create(impl);
 
-   nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &dest->ssa);
+   nir_def *reg = decl_reg_for_ssa_def(&b, &dest->ssa);
    nir_rewrite_uses_to_load_reg(&b, &dest->ssa, reg);
 
    b.cursor = nir_after_instr(dest->ssa.parent_instr);
@@ -582,8 +582,8 @@ dest_replace_ssa_with_reg(nir_dest *dest, nir_function_impl *impl)
    return true;
 }
 
-static nir_ssa_def *
-reg_for_ssa_def(nir_ssa_def *def, struct from_ssa_state *state)
+static nir_def *
+reg_for_ssa_def(nir_def *def, struct from_ssa_state *state)
 {
    struct hash_entry *entry =
       _mesa_hash_table_search(state->merge_node_table, def);
@@ -633,15 +633,15 @@ remove_no_op_phi(nir_instr *instr, struct from_ssa_state *state)
 }
 
 static bool
-rewrite_ssa_def(nir_ssa_def *def, void *void_state)
+rewrite_ssa_def(nir_def *def, void *void_state)
 {
    struct from_ssa_state *state = void_state;
 
-   nir_ssa_def *reg = reg_for_ssa_def(def, state);
+   nir_def *reg = reg_for_ssa_def(def, state);
    if (reg == NULL)
       return true;
 
-   assert(nir_ssa_def_is_unused(def));
+   assert(nir_def_is_unused(def));
 
    /* At this point we know a priori that this SSA def is part of a
     * nir_dest.  We can use exec_node_data to get the dest pointer.
@@ -658,11 +658,11 @@ rewrite_src(nir_src *src, void *void_state)
 {
    struct from_ssa_state *state = void_state;
 
-   nir_ssa_def *reg = reg_for_ssa_def(src->ssa, state);
+   nir_def *reg = reg_for_ssa_def(src->ssa, state);
    if (reg == NULL)
       return true;
 
-   nir_src_rewrite_ssa(src, nir_load_reg(&state->builder, reg));
+   nir_src_rewrite(src, nir_load_reg(&state->builder, reg));
 
    state->progress = true;
    return true;
@@ -709,10 +709,10 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 
             nir_foreach_parallel_copy_entry(entry, pcopy) {
                assert(!entry->dest_is_reg);
-               assert(nir_ssa_def_is_unused(&entry->dest.dest.ssa));
+               assert(nir_def_is_unused(&entry->dest.dest.ssa));
 
                /* Parallel copy destinations will always be registers */
-               nir_ssa_def *reg = reg_for_ssa_def(&entry->dest.dest.ssa, state);
+               nir_def *reg = reg_for_ssa_def(&entry->dest.dest.ssa, state);
                assert(reg != NULL);
 
                entry->dest_is_reg = true;
@@ -723,7 +723,7 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 
             nir_foreach_parallel_copy_entry(entry, pcopy) {
                assert(!entry->src_is_reg);
-               nir_ssa_def *reg = reg_for_ssa_def(entry->src.ssa, state);
+               nir_def *reg = reg_for_ssa_def(entry->src.ssa, state);
                if (reg == NULL)
                   continue;
 
@@ -768,7 +768,7 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
  */
 struct copy_value {
    bool is_reg;
-   nir_ssa_def *ssa;
+   nir_def *ssa;
 };
 
 static bool
@@ -790,7 +790,7 @@ copy_value_is_divergent(struct copy_value v)
 static void
 copy_values(nir_builder *b, struct copy_value dest, struct copy_value src)
 {
-   nir_ssa_def *val = src.is_reg ? nir_load_reg(b, src.ssa) : src.ssa;
+   nir_def *val = src.is_reg ? nir_load_reg(b, src.ssa) : src.ssa;
 
    assert(!copy_value_is_divergent(src) || copy_value_is_divergent(dest));
 
@@ -957,7 +957,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
        * temporary (which is trivial).
        */
       assert(num_vals < num_copies * 2);
-      nir_ssa_def *reg;
+      nir_def *reg;
       if (values[b].is_reg) {
          nir_intrinsic_instr *decl = nir_reg_get_decl(values[b].ssa);
          uint8_t num_components = nir_intrinsic_num_components(decl);
@@ -1078,8 +1078,8 @@ nir_convert_from_ssa(nir_shader *shader,
 }
 
 static void
-place_phi_read(nir_builder *b, nir_ssa_def *reg,
-               nir_ssa_def *def, nir_block *block, struct set *visited_blocks)
+place_phi_read(nir_builder *b, nir_def *reg,
+               nir_def *def, nir_block *block, struct set *visited_blocks)
 {
    /* Search already visited blocks to avoid back edges in tree */
    if (_mesa_set_search(visited_blocks, block) == NULL) {
@@ -1150,10 +1150,10 @@ nir_lower_phis_to_regs_block(nir_block *block)
 
    bool progress = false;
    nir_foreach_phi_safe(phi, block) {
-      nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &phi->dest.ssa);
+      nir_def *reg = decl_reg_for_ssa_def(&b, &phi->dest.ssa);
 
       b.cursor = nir_after_instr(&phi->instr);
-      nir_ssa_def_rewrite_uses(&phi->dest.ssa, nir_load_reg(&b, reg));
+      nir_def_rewrite_uses(&phi->dest.ssa, nir_load_reg(&b, reg));
 
       nir_foreach_phi_src(src, phi) {
 
@@ -1186,7 +1186,7 @@ dest_replace_ssa_with_reg_state(nir_dest *dest, void *void_state)
 }
 
 static bool
-ssa_def_is_local_to_block(nir_ssa_def *def, UNUSED void *state)
+ssa_def_is_local_to_block(nir_def *def, UNUSED void *state)
 {
    nir_block *block = def->parent_instr->block;
    nir_foreach_use_including_if(use_src, def) {
@@ -1210,7 +1210,7 @@ instr_is_load_new_reg(nir_instr *instr, unsigned old_num_ssa)
    if (load->intrinsic != nir_intrinsic_load_reg)
       return false;
 
-   nir_ssa_def *reg = load->src[0].ssa;
+   nir_def *reg = load->src[0].ssa;
 
    return reg->index >= old_num_ssa;
 }
@@ -1241,12 +1241,12 @@ nir_lower_ssa_defs_to_regs_block(nir_block *block)
    nir_foreach_instr_safe(instr, block) {
       if (instr->type == nir_instr_type_ssa_undef) {
          /* Undefs are just a read of something never written. */
-         nir_ssa_undef_instr *undef = nir_instr_as_ssa_undef(instr);
-         nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &undef->def);
+         nir_undef_instr *undef = nir_instr_as_ssa_undef(instr);
+         nir_def *reg = decl_reg_for_ssa_def(&b, &undef->def);
          nir_rewrite_uses_to_load_reg(&b, &undef->def, reg);
       } else if (instr->type == nir_instr_type_load_const) {
          nir_load_const_instr *load = nir_instr_as_load_const(instr);
-         nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &load->def);
+         nir_def *reg = decl_reg_for_ssa_def(&b, &load->def);
          nir_rewrite_uses_to_load_reg(&b, &load->def, reg);
 
          b.cursor = nir_after_instr(instr);

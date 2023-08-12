@@ -84,11 +84,11 @@ private:
    LValues& convert(nir_dest *);
    SVSemantic convert(nir_intrinsic_op);
    Value* convert(nir_load_const_instr*, uint8_t);
-   LValues& convert(nir_ssa_def *);
+   LValues& convert(nir_def *);
 
    Value* getSrc(nir_alu_src *, uint8_t component = 0);
    Value* getSrc(nir_src *, uint8_t, bool indirect = false);
-   Value* getSrc(nir_ssa_def *, uint8_t);
+   Value* getSrc(nir_def *, uint8_t);
 
    // returned value is the constant part of the given source (either the
    // nir_src or the selected source component of an intrinsic). Even though
@@ -156,7 +156,7 @@ private:
    bool visit(nir_jump_instr *);
    bool visit(nir_load_const_instr*);
    bool visit(nir_loop *);
-   bool visit(nir_ssa_undef_instr *);
+   bool visit(nir_undef_instr *);
    bool visit(nir_tex_instr *);
 
    static unsigned lowerBitSizeCB(const nir_instr *, void *);
@@ -694,7 +694,7 @@ Converter::convert(nir_dest *dest)
 }
 
 Converter::LValues&
-Converter::convert(nir_ssa_def *def)
+Converter::convert(nir_def *def)
 {
    NirDefMap::iterator it = ssaDefs.find(def->index);
    if (it != ssaDefs.end())
@@ -719,7 +719,7 @@ Converter::getSrc(nir_src *src, uint8_t idx, bool indirect)
 }
 
 Value*
-Converter::getSrc(nir_ssa_def *src, uint8_t idx)
+Converter::getSrc(nir_def *src, uint8_t idx)
 {
    ImmediateMap::iterator iit = immediates.find(src->index);
    if (iit != immediates.end())
@@ -2887,7 +2887,7 @@ Converter::visit(nir_alu_instr *insn)
 #undef DEFAULT_CHECKS
 
 bool
-Converter::visit(nir_ssa_undef_instr *insn)
+Converter::visit(nir_undef_instr *insn)
 {
    LValues &newDefs = convert(&insn->def);
    for (uint8_t i = 0u; i < insn->def.num_components; ++i) {

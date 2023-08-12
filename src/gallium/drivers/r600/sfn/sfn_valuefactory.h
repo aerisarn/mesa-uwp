@@ -242,7 +242,7 @@ public:
    dest(const nir_dest& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
 
    PRegister
-   dest(const nir_ssa_def& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
+   dest(const nir_def& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
 
    RegisterVec4 dest_vec4(const nir_dest& dest, Pin pin);
 
@@ -303,7 +303,7 @@ public:
    PRegister idx_reg(unsigned idx);
 
 private:
-   PVirtualValue ssa_src(const nir_ssa_def& dest, int chan);
+   PVirtualValue ssa_src(const nir_def& dest, int chan);
 
    int m_next_register_index;
    int m_next_temp_channel{0};

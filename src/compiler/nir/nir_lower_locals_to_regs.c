@@ -97,7 +97,7 @@ derefs_equal(const void *void_a, const void *void_b)
    unreachable("We should have hit a variable dereference");
 }
 
-static nir_ssa_def *
+static nir_def *
 get_reg_for_deref(nir_deref_instr *deref, struct locals_to_regs_state *state)
 {
    uint32_t hash = hash_deref(deref);
@@ -122,9 +122,9 @@ get_reg_for_deref(nir_deref_instr *deref, struct locals_to_regs_state *state)
    if (bit_size == 1)
       bit_size = state->bool_bitsize;
 
-   nir_ssa_def *reg = nir_decl_reg(&state->builder,
-                                   glsl_get_vector_elements(deref->type),
-                                   bit_size, array_size > 1 ? array_size : 0);
+   nir_def *reg = nir_decl_reg(&state->builder,
+                               glsl_get_vector_elements(deref->type),
+                               bit_size, array_size > 1 ? array_size : 0);
 
    _mesa_hash_table_insert_pre_hashed(state->regs_table, hash, deref, reg);
 
@@ -132,8 +132,8 @@ get_reg_for_deref(nir_deref_instr *deref, struct locals_to_regs_state *state)
 }
 
 struct reg_location {
-   nir_ssa_def *reg;
-   nir_ssa_def *indirect;
+   nir_def *reg;
+   nir_def *indirect;
    unsigned base_offset;
 };
 
@@ -143,7 +143,7 @@ get_deref_reg_location(nir_deref_instr *deref,
 {
    nir_builder *b = &state->builder;
 
-   nir_ssa_def *reg = get_reg_for_deref(deref, state);
+   nir_def *reg = get_reg_for_deref(deref, state);
    nir_intrinsic_instr *decl = nir_instr_as_intrinsic(reg->parent_instr);
 
    /* It is possible for a user to create a shader that has an array with a
@@ -154,7 +154,7 @@ get_deref_reg_location(nir_deref_instr *deref,
    if (nir_intrinsic_num_array_elems(decl) == 0)
       return (struct reg_location){ .reg = reg };
 
-   nir_ssa_def *indirect = NULL;
+   nir_def *indirect = NULL;
    unsigned base_offset = 0;
 
    unsigned inner_array_size = 1;
@@ -172,15 +172,15 @@ get_deref_reg_location(nir_deref_instr *deref,
             base_offset = 0;
          }
 
-         nir_ssa_def *index = nir_i2iN(b, nir_ssa_for_src(b, d->arr.index, 1), 32);
-         nir_ssa_def *offset = nir_imul_imm(b, index, inner_array_size);
+         nir_def *index = nir_i2iN(b, nir_ssa_for_src(b, d->arr.index, 1), 32);
+         nir_def *offset = nir_imul_imm(b, index, inner_array_size);
 
          /* Avoid emitting iadd with 0, which is otherwise common, since this
           * pass runs late enough that nothing will clean it up.
           */
-         nir_ssa_scalar scal = nir_get_ssa_scalar(indirect, 0);
-         if (nir_ssa_scalar_is_const(scal))
-            indirect = nir_iadd_imm(b, offset, nir_ssa_scalar_as_uint(scal));
+         nir_scalar scal = nir_get_ssa_scalar(indirect, 0);
+         if (nir_scalar_is_const(scal))
+            indirect = nir_iadd_imm(b, offset, nir_scalar_as_uint(scal));
          else
             indirect = nir_iadd(b, offset, indirect);
       }
@@ -217,7 +217,7 @@ lower_locals_to_regs_block(nir_block *block,
          struct reg_location loc = get_deref_reg_location(deref, state);
          nir_intrinsic_instr *decl = nir_reg_get_decl(loc.reg);
 
-         nir_ssa_def *value;
+         nir_def *value;
          unsigned num_array_elems = nir_intrinsic_num_array_elems(decl);
          unsigned num_components = nir_intrinsic_num_components(decl);
          unsigned bit_size = nir_intrinsic_bit_size(decl);
@@ -234,7 +234,7 @@ lower_locals_to_regs_block(nir_block *block,
                                        loc.reg, .base = loc.base_offset);
          }
 
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, value);
+         nir_def_rewrite_uses(&intrin->dest.ssa, value);
          nir_instr_remove(&intrin->instr);
          state->progress = true;
          break;
@@ -250,7 +250,7 @@ lower_locals_to_regs_block(nir_block *block,
          struct reg_location loc = get_deref_reg_location(deref, state);
          nir_intrinsic_instr *decl = nir_reg_get_decl(loc.reg);
 
-         nir_ssa_def *val = intrin->src[1].ssa;
+         nir_def *val = intrin->src[1].ssa;
          unsigned num_array_elems = nir_intrinsic_num_array_elems(decl);
          unsigned write_mask = nir_intrinsic_write_mask(intrin);
 

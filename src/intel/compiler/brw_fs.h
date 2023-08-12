@@ -389,7 +389,7 @@ public:
    nir_component_mask_t get_nir_write_mask(const nir_alu_dest &dest);
    fs_reg get_resource_nir_src(const nir_src &src);
    fs_reg try_rebuild_resource(const brw::fs_builder &bld,
-                               nir_ssa_def *resource_def);
+                               nir_def *resource_def);
    fs_reg get_indirect_offset(nir_intrinsic_instr *instr);
    fs_reg get_tcs_single_patch_icp_handle(const brw::fs_builder &bld,
                                           nir_intrinsic_instr *instr);

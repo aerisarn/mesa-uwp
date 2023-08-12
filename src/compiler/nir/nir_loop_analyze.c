@@ -40,7 +40,7 @@ typedef struct {
    bool in_loop;
 
    /* The ssa_def associated with this info */
-   nir_ssa_def *def;
+   nir_def *def;
 
    /* The type of this ssa_def */
    nir_loop_variable_type type;
@@ -63,7 +63,7 @@ typedef struct {
     * is the increment of the induction variable, this will point to the SSA
     * def being incremented.
     */
-   nir_ssa_def *basis;
+   nir_def *basis;
 } nir_loop_variable;
 
 typedef struct {
@@ -83,7 +83,7 @@ typedef struct {
 } loop_info_state;
 
 static nir_loop_variable *
-get_loop_var(nir_ssa_def *value, loop_info_state *state)
+get_loop_var(nir_def *value, loop_info_state *state)
 {
    nir_loop_variable *var = &(state->loop_vars[value->index]);
 
@@ -112,7 +112,7 @@ typedef struct {
 } init_loop_state;
 
 static bool
-init_loop_def(nir_ssa_def *def, void *void_init_loop_state)
+init_loop_def(nir_def *def, void *void_init_loop_state)
 {
    init_loop_state *loop_init_state = void_init_loop_state;
    nir_loop_variable *var = get_loop_var(def, loop_init_state->state);
@@ -158,14 +158,14 @@ instr_cost(loop_info_state *state, nir_instr *instr,
    unsigned cost = 1;
 
    if (nir_op_is_selection(alu->op)) {
-      nir_ssa_scalar cond_scalar = { alu->src[0].src.ssa, 0 };
+      nir_scalar cond_scalar = { alu->src[0].src.ssa, 0 };
       if (nir_is_terminator_condition_with_two_inputs(cond_scalar)) {
          nir_instr *sel_cond = alu->src[0].src.ssa->parent_instr;
          nir_alu_instr *sel_alu = nir_instr_as_alu(sel_cond);
 
-         nir_ssa_scalar rhs, lhs;
-         lhs = nir_ssa_scalar_chase_alu_src(cond_scalar, 0);
-         rhs = nir_ssa_scalar_chase_alu_src(cond_scalar, 1);
+         nir_scalar rhs, lhs;
+         lhs = nir_scalar_chase_alu_src(cond_scalar, 0);
+         rhs = nir_scalar_chase_alu_src(cond_scalar, 1);
 
          /* If the selects condition is a comparision between a constant and
           * a basic induction variable we know that it will be eliminated once
@@ -179,7 +179,7 @@ instr_cost(loop_info_state *state, nir_instr *instr,
              * remove that alu instructons cost from the cost total also.
              */
             if (!list_is_singular(&sel_alu->dest.dest.ssa.uses) ||
-                nir_ssa_def_used_by_if(&sel_alu->dest.dest.ssa))
+                nir_def_used_by_if(&sel_alu->dest.dest.ssa))
                return 0;
             else
                return -1;
@@ -269,7 +269,7 @@ is_var_phi(nir_loop_variable *var)
 }
 
 static inline bool
-mark_invariant(nir_ssa_def *def, loop_info_state *state)
+mark_invariant(nir_def *def, loop_info_state *state)
 {
    nir_loop_variable *var = get_loop_var(def, state);
 
@@ -617,7 +617,7 @@ find_array_access_via_induction(loop_info_state *state,
 
 static bool
 guess_loop_limit(loop_info_state *state, nir_const_value *limit_val,
-                 nir_ssa_scalar basic_ind)
+                 nir_scalar basic_ind)
 {
    unsigned min_array_size = 0;
 
@@ -672,18 +672,18 @@ guess_loop_limit(loop_info_state *state, nir_const_value *limit_val,
 }
 
 static bool
-try_find_limit_of_alu(nir_ssa_scalar limit, nir_const_value *limit_val,
+try_find_limit_of_alu(nir_scalar limit, nir_const_value *limit_val,
                       nir_loop_terminator *terminator, loop_info_state *state)
 {
-   if (!nir_ssa_scalar_is_alu(limit))
+   if (!nir_scalar_is_alu(limit))
       return false;
 
-   nir_op limit_op = nir_ssa_scalar_alu_op(limit);
+   nir_op limit_op = nir_scalar_alu_op(limit);
    if (limit_op == nir_op_imin || limit_op == nir_op_fmin) {
       for (unsigned i = 0; i < 2; i++) {
-         nir_ssa_scalar src = nir_ssa_scalar_chase_alu_src(limit, i);
-         if (nir_ssa_scalar_is_const(src)) {
-            *limit_val = nir_ssa_scalar_as_const_value(src);
+         nir_scalar src = nir_scalar_chase_alu_src(limit, i);
+         if (nir_scalar_is_const(src)) {
+            *limit_val = nir_scalar_as_const_value(src);
             terminator->exact_trip_count_unknown = true;
             return true;
          }
@@ -717,7 +717,7 @@ eval_const_binop(nir_op op, unsigned bit_size,
 }
 
 static int
-find_replacement(const nir_ssa_def **originals, const nir_ssa_def *key,
+find_replacement(const nir_def **originals, const nir_def *key,
                  unsigned num_replacements)
 {
    for (int i = 0; i < num_replacements; i++) {
@@ -751,7 +751,7 @@ find_replacement(const nir_ssa_def **originals, const nir_ssa_def *key,
  */
 static bool
 try_eval_const_alu(nir_const_value *dest, nir_alu_instr *alu,
-                   const nir_ssa_def **originals,
+                   const nir_def **originals,
                    const nir_const_value **replacements,
                    unsigned num_replacements, unsigned execution_mode)
 {
@@ -891,7 +891,7 @@ get_iteration(nir_op cond_op, nir_const_value initial, nir_const_value step,
 
 static int32_t
 get_iteration_empirical(nir_alu_instr *cond_alu, nir_alu_instr *incr_alu,
-                        nir_ssa_def *basis, nir_const_value initial,
+                        nir_def *basis, nir_const_value initial,
                         bool invert_cond, unsigned execution_mode,
                         unsigned max_unroll_iterations)
 {
@@ -899,7 +899,7 @@ get_iteration_empirical(nir_alu_instr *cond_alu, nir_alu_instr *incr_alu,
    nir_const_value result;
    nir_const_value iter = initial;
 
-   const nir_ssa_def *originals[2] = { basis, NULL };
+   const nir_def *originals[2] = { basis, NULL };
    const nir_const_value *replacements[2] = { &iter, NULL };
 
    while (iter_count <= max_unroll_iterations) {
@@ -927,14 +927,14 @@ get_iteration_empirical(nir_alu_instr *cond_alu, nir_alu_instr *incr_alu,
 }
 
 static bool
-will_break_on_first_iteration(nir_alu_instr *cond_alu, nir_ssa_def *basis,
-                              nir_ssa_def *limit_basis,
+will_break_on_first_iteration(nir_alu_instr *cond_alu, nir_def *basis,
+                              nir_def *limit_basis,
                               nir_const_value initial, nir_const_value limit,
                               bool invert_cond, unsigned execution_mode)
 {
    nir_const_value result;
 
-   const nir_ssa_def *originals[2] = { basis, limit_basis };
+   const nir_def *originals[2] = { basis, limit_basis };
    const nir_const_value *replacements[2] = { &initial, &limit };
 
    ASSERTED bool success = try_eval_const_alu(&result, cond_alu, originals,
@@ -995,10 +995,10 @@ test_iterations(int32_t iter_int, nir_const_value step,
 }
 
 static int
-calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
+calculate_iterations(nir_def *basis, nir_def *limit_basis,
                      nir_const_value initial, nir_const_value step,
                      nir_const_value limit, nir_alu_instr *alu,
-                     nir_ssa_scalar cond, nir_op alu_op, bool limit_rhs,
+                     nir_scalar cond, nir_op alu_op, bool limit_rhs,
                      bool invert_cond, unsigned execution_mode,
                      unsigned max_unroll_iterations)
 {
@@ -1113,15 +1113,15 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
 }
 
 static bool
-get_induction_and_limit_vars(nir_ssa_scalar cond,
-                             nir_ssa_scalar *ind,
-                             nir_ssa_scalar *limit,
+get_induction_and_limit_vars(nir_scalar cond,
+                             nir_scalar *ind,
+                             nir_scalar *limit,
                              bool *limit_rhs,
                              loop_info_state *state)
 {
-   nir_ssa_scalar rhs, lhs;
-   lhs = nir_ssa_scalar_chase_alu_src(cond, 0);
-   rhs = nir_ssa_scalar_chase_alu_src(cond, 1);
+   nir_scalar rhs, lhs;
+   lhs = nir_scalar_chase_alu_src(cond, 0);
+   rhs = nir_scalar_chase_alu_src(cond, 1);
 
    nir_loop_variable *src0_lv = get_loop_var(lhs.def, state);
    nir_loop_variable *src1_lv = get_loop_var(rhs.def, state);
@@ -1148,40 +1148,40 @@ get_induction_and_limit_vars(nir_ssa_scalar cond,
 }
 
 static bool
-try_find_trip_count_vars_in_iand(nir_ssa_scalar *cond,
-                                 nir_ssa_scalar *ind,
-                                 nir_ssa_scalar *limit,
+try_find_trip_count_vars_in_iand(nir_scalar *cond,
+                                 nir_scalar *ind,
+                                 nir_scalar *limit,
                                  bool *limit_rhs,
                                  loop_info_state *state)
 {
-   const nir_op alu_op = nir_ssa_scalar_alu_op(*cond);
+   const nir_op alu_op = nir_scalar_alu_op(*cond);
    assert(alu_op == nir_op_ieq || alu_op == nir_op_inot);
 
-   nir_ssa_scalar iand = nir_ssa_scalar_chase_alu_src(*cond, 0);
+   nir_scalar iand = nir_scalar_chase_alu_src(*cond, 0);
 
    if (alu_op == nir_op_ieq) {
-      nir_ssa_scalar zero = nir_ssa_scalar_chase_alu_src(*cond, 1);
+      nir_scalar zero = nir_scalar_chase_alu_src(*cond, 1);
 
-      if (!nir_ssa_scalar_is_alu(iand) || !nir_ssa_scalar_is_const(zero)) {
+      if (!nir_scalar_is_alu(iand) || !nir_scalar_is_const(zero)) {
          /* Maybe we had it the wrong way, flip things around */
-         nir_ssa_scalar tmp = zero;
+         nir_scalar tmp = zero;
          zero = iand;
          iand = tmp;
 
          /* If we still didn't find what we need then return */
-         if (!nir_ssa_scalar_is_const(zero))
+         if (!nir_scalar_is_const(zero))
             return false;
       }
 
       /* If the loop is not breaking on (x && y) == 0 then return */
-      if (nir_ssa_scalar_as_uint(zero) != 0)
+      if (nir_scalar_as_uint(zero) != 0)
          return false;
    }
 
-   if (!nir_ssa_scalar_is_alu(iand))
+   if (!nir_scalar_is_alu(iand))
       return false;
 
-   if (nir_ssa_scalar_alu_op(iand) != nir_op_iand)
+   if (nir_scalar_alu_op(iand) != nir_op_iand)
       return false;
 
    /* Check if iand src is a terminator condition and try get induction var
@@ -1189,14 +1189,14 @@ try_find_trip_count_vars_in_iand(nir_ssa_scalar *cond,
     */
    bool found_induction_var = false;
    for (unsigned i = 0; i < 2; i++) {
-      nir_ssa_scalar src = nir_ssa_scalar_chase_alu_src(iand, i);
+      nir_scalar src = nir_scalar_chase_alu_src(iand, i);
       if (nir_is_terminator_condition_with_two_inputs(src) &&
           get_induction_and_limit_vars(src, ind, limit, limit_rhs, state)) {
          *cond = src;
          found_induction_var = true;
 
          /* If we've found one with a constant limit, stop. */
-         if (nir_ssa_scalar_is_const(*limit))
+         if (nir_scalar_is_const(*limit))
             return true;
       }
    }
@@ -1222,9 +1222,9 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
    list_for_each_entry(nir_loop_terminator, terminator,
                        &state->loop->info->loop_terminator_list,
                        loop_terminator_link) {
-      nir_ssa_scalar cond = { terminator->nif->condition.ssa, 0 };
+      nir_scalar cond = { terminator->nif->condition.ssa, 0 };
 
-      if (!nir_ssa_scalar_is_alu(cond)) {
+      if (!nir_scalar_is_alu(cond)) {
          /* If we get here the loop is dead and will get cleaned up by the
           * nir_opt_dead_cf pass.
           */
@@ -1233,13 +1233,13 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
          continue;
       }
 
-      nir_op alu_op = nir_ssa_scalar_alu_op(cond);
+      nir_op alu_op = nir_scalar_alu_op(cond);
 
       bool invert_cond = terminator->continue_from_then;
 
       bool limit_rhs;
-      nir_ssa_scalar basic_ind = { NULL, 0 };
-      nir_ssa_scalar limit;
+      nir_scalar basic_ind = { NULL, 0 };
+      nir_scalar limit;
       if ((alu_op == nir_op_inot || alu_op == nir_op_ieq) &&
           try_find_trip_count_vars_in_iand(&cond, &basic_ind, &limit,
                                            &limit_rhs, state)) {
@@ -1248,7 +1248,7 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
           * inverse of x or y (i.e. which ever contained the induction var) in
           * order to compute the trip count.
           */
-         alu_op = nir_ssa_scalar_alu_op(cond);
+         alu_op = nir_scalar_alu_op(cond);
          invert_cond = !invert_cond;
          trip_count_known = false;
          terminator->exact_trip_count_unknown = true;
@@ -1259,8 +1259,8 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
             /* Extract and inverse the comparision if it is wrapped in an inot
              */
             if (alu_op == nir_op_inot) {
-               cond = nir_ssa_scalar_chase_alu_src(cond, 0);
-               alu_op = nir_ssa_scalar_alu_op(cond);
+               cond = nir_scalar_chase_alu_src(cond, 0);
+               alu_op = nir_scalar_alu_op(cond);
                invert_cond = !invert_cond;
             }
 
@@ -1282,8 +1282,8 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
 
       /* Attempt to find a constant limit for the loop */
       nir_const_value limit_val;
-      if (nir_ssa_scalar_is_const(limit)) {
-         limit_val = nir_ssa_scalar_as_const_value(limit);
+      if (nir_scalar_is_const(limit)) {
+         limit_val = nir_scalar_as_const_value(limit);
       } else {
          trip_count_known = false;
 
@@ -1312,8 +1312,8 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
        * earlier that the phi source has a scalar swizzle, we can take the
        * component from basic_ind.
        */
-      nir_ssa_scalar initial_s = { lv->init_src->ssa, basic_ind.comp };
-      nir_ssa_scalar alu_s = {
+      nir_scalar initial_s = { lv->init_src->ssa, basic_ind.comp };
+      nir_scalar alu_s = {
          lv->update_src->src.ssa,
          lv->update_src->swizzle[basic_ind.comp]
       };
@@ -1321,12 +1321,12 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
       /* We are not guaranteed by that at one of these sources is a constant.
        * Try to find one.
        */
-      if (!nir_ssa_scalar_is_const(initial_s) ||
-          !nir_ssa_scalar_is_const(alu_s))
+      if (!nir_scalar_is_const(initial_s) ||
+          !nir_scalar_is_const(alu_s))
          continue;
 
-      nir_const_value initial_val = nir_ssa_scalar_as_const_value(initial_s);
-      nir_const_value step_val = nir_ssa_scalar_as_const_value(alu_s);
+      nir_const_value initial_val = nir_scalar_as_const_value(initial_s);
+      nir_const_value step_val = nir_scalar_as_const_value(alu_s);
 
       int iterations = calculate_iterations(lv->basis, limit.def,
                                             initial_val, step_val, limit_val,

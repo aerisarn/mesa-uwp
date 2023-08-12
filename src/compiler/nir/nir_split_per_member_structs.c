@@ -149,8 +149,8 @@ rewrite_deref_instr(nir_builder *b, nir_instr *instr, void *cb_data)
    b->cursor = nir_before_instr(&deref->instr);
    nir_deref_instr *member_deref =
       build_member_deref(b, nir_deref_instr_parent(deref), member);
-   nir_ssa_def_rewrite_uses(&deref->dest.ssa,
-                            &member_deref->dest.ssa);
+   nir_def_rewrite_uses(&deref->dest.ssa,
+                        &member_deref->dest.ssa);
 
    /* The referenced variable is no longer valid, clean up the deref */
    nir_deref_instr_remove_if_unused(deref);

@@ -41,7 +41,7 @@ static void insert_pfo(nir_builder *b,
    /* TODO: Verify type is vec4. */
 
    /* Pack the output color components into U8888 format. */
-   nir_ssa_def *new_output_src_ssa = nir_pack_unorm_4x8(b, output_src->ssa);
+   nir_def *new_output_src_ssa = nir_pack_unorm_4x8(b, output_src->ssa);
    nir_src new_output_src = nir_src_for_ssa(new_output_src_ssa);
 
    /* Update the store_output intrinsic. */

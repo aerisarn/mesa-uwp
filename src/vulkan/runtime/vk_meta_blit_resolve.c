@@ -117,7 +117,7 @@ compute_off_scale(uint32_t src_level_size,
    *scale_out = dst_scale;
 }
 
-static inline nir_ssa_def *
+static inline nir_def *
 load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
 {
    nir_deref_instr *deref =
@@ -125,13 +125,13 @@ load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
    return nir_load_deref(b, deref);
 }
 
-static nir_ssa_def *
+static nir_def *
 build_tex_resolve(nir_builder *b, nir_deref_instr *t,
-                  nir_ssa_def *coord,
+                  nir_def *coord,
                   VkSampleCountFlagBits samples,
                   VkResolveModeFlagBits resolve_mode)
 {
-   nir_ssa_def *accum = nir_txf_ms_deref(b, t, coord, nir_imm_int(b, 0));
+   nir_def *accum = nir_txf_ms_deref(b, t, coord, nir_imm_int(b, 0));
    if (resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
       return accum;
 
@@ -139,7 +139,7 @@ build_tex_resolve(nir_builder *b, nir_deref_instr *t,
       glsl_get_sampler_result_type(t->type);
 
    for (unsigned i = 1; i < samples; i++) {
-      nir_ssa_def *val = nir_txf_ms_deref(b, t, coord, nir_imm_int(b, i));
+      nir_def *val = nir_txf_ms_deref(b, t, coord, nir_imm_int(b, i));
       switch (resolve_mode) {
       case VK_RESOLVE_MODE_AVERAGE_BIT:
          assert(base_type == GLSL_TYPE_FLOAT);
@@ -213,28 +213,28 @@ build_blit_shader(const struct vk_meta_blit_key *key)
    nir_variable *push = nir_variable_create(b->shader, nir_var_mem_push_const,
                                             push_iface_type, "push");
 
-   nir_ssa_def *xy_xform = load_struct_var(b, push, 0);
-   nir_ssa_def *xy_off = nir_channels(b, xy_xform, 3 << 0);
-   nir_ssa_def *xy_scale = nir_channels(b, xy_xform, 3 << 2);
+   nir_def *xy_xform = load_struct_var(b, push, 0);
+   nir_def *xy_off = nir_channels(b, xy_xform, 3 << 0);
+   nir_def *xy_scale = nir_channels(b, xy_xform, 3 << 2);
 
-   nir_ssa_def *out_coord_xy = nir_load_frag_coord(b);
+   nir_def *out_coord_xy = nir_load_frag_coord(b);
    out_coord_xy = nir_trim_vector(b, out_coord_xy, 2);
-   nir_ssa_def *src_coord_xy = nir_ffma(b, out_coord_xy, xy_scale, xy_off);
+   nir_def *src_coord_xy = nir_ffma(b, out_coord_xy, xy_scale, xy_off);
 
-   nir_ssa_def *z_xform = load_struct_var(b, push, 1);
-   nir_ssa_def *out_layer = nir_load_layer_id(b);
-   nir_ssa_def *src_coord;
+   nir_def *z_xform = load_struct_var(b, push, 1);
+   nir_def *out_layer = nir_load_layer_id(b);
+   nir_def *src_coord;
    if (key->dim == GLSL_SAMPLER_DIM_3D) {
-      nir_ssa_def *z_off = nir_channel(b, z_xform, 0);
-      nir_ssa_def *z_scale = nir_channel(b, z_xform, 1);
-      nir_ssa_def *out_coord_z = nir_fadd_imm(b, nir_u2f32(b, out_layer), 0.5);
-      nir_ssa_def *src_coord_z = nir_ffma(b, out_coord_z, z_scale, z_off);
+      nir_def *z_off = nir_channel(b, z_xform, 0);
+      nir_def *z_scale = nir_channel(b, z_xform, 1);
+      nir_def *out_coord_z = nir_fadd_imm(b, nir_u2f32(b, out_layer), 0.5);
+      nir_def *src_coord_z = nir_ffma(b, out_coord_z, z_scale, z_off);
       src_coord = nir_vec3(b, nir_channel(b, src_coord_xy, 0),
                               nir_channel(b, src_coord_xy, 1),
                               src_coord_z);
    } else {
-      nir_ssa_def *arr_delta = nir_channel(b, z_xform, 2);
-      nir_ssa_def *in_layer = nir_iadd(b, out_layer, arr_delta);
+      nir_def *arr_delta = nir_channel(b, z_xform, 2);
+      nir_def *in_layer = nir_iadd(b, out_layer, arr_delta);
       if (key->dim == GLSL_SAMPLER_DIM_1D) {
          src_coord = nir_vec2(b, nir_channel(b, src_coord_xy, 0),
                                  nir_u2f32(b, in_layer));
@@ -303,7 +303,7 @@ build_blit_shader(const struct vk_meta_blit_key *key)
       texture->data.binding = aspect_to_tex_binding(aspect);
       nir_deref_instr *t = nir_build_deref_var(b, texture);
 
-      nir_ssa_def *val;
+      nir_def *val;
       if (resolve_mode == VK_RESOLVE_MODE_NONE) {
          val = nir_txl_deref(b, t, s, src_coord, nir_imm_float(b, 0));
       } else {
@@ -314,7 +314,7 @@ build_blit_shader(const struct vk_meta_blit_key *key)
 
       if (key->stencil_as_discard) {
          assert(key->aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
-         nir_ssa_def *stencil_bit = nir_channel(b, z_xform, 3);
+         nir_def *stencil_bit = nir_channel(b, z_xform, 3);
          nir_discard_if(b, nir_ieq(b, nir_iand(b, val, stencil_bit),
                                       nir_imm_int(b, 0)));
       } else {

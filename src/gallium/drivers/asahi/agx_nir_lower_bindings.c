@@ -14,11 +14,11 @@
  * indices mapped 1:1 with the binding table. So we want the bindless handle
  * (u0_u1, index) which is encoded in NIR as (0, index).
  */
-static nir_ssa_def *
-index_to_handle(nir_builder *b, nir_ssa_def *index)
+static nir_def *
+index_to_handle(nir_builder *b, nir_def *index)
 {
-   nir_ssa_def *table = nir_imm_int(b, 0);
-   nir_ssa_def *offset = nir_imul_imm(b, index, AGX_TEXTURE_DESC_STRIDE);
+   nir_def *table = nir_imm_int(b, 0);
+   nir_def *offset = nir_imul_imm(b, index, AGX_TEXTURE_DESC_STRIDE);
 
    return nir_vec2(b, table, offset);
 }
@@ -57,8 +57,8 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       }
 #undef CASE
 
-      nir_ssa_def *index = intr->src[0].ssa;
-      nir_ssa_scalar index_scalar = nir_ssa_scalar_resolved(index, 0);
+      nir_def *index = intr->src[0].ssa;
+      nir_scalar index_scalar = nir_scalar_resolved(index, 0);
 
       /* Remap according to the driver layout */
       unsigned offset = BITSET_LAST_BIT(b->shader->info.textures_used);
@@ -73,11 +73,11 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       /* If we can determine statically that the image fits in texture state
        * registers, avoid lowering to bindless access.
        */
-      if (nir_ssa_scalar_is_const(index_scalar)) {
-         unsigned idx = (nir_ssa_scalar_as_uint(index_scalar) * 2) + offset;
+      if (nir_scalar_is_const(index_scalar)) {
+         unsigned idx = (nir_scalar_as_uint(index_scalar) * 2) + offset;
 
          if (idx < AGX_NUM_TEXTURE_STATE_REGS) {
-            nir_src_rewrite_ssa(&intr->src[0], nir_imm_intN_t(b, idx, 16));
+            nir_src_rewrite(&intr->src[0], nir_imm_intN_t(b, idx, 16));
             return true;
          }
       }
@@ -87,7 +87,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       *internal_bindless = true;
 
       index = nir_iadd_imm(b, nir_imul_imm(b, index, 2), offset);
-      nir_src_rewrite_ssa(&intr->src[0], index_to_handle(b, index));
+      nir_src_rewrite(&intr->src[0], index_to_handle(b, index));
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
 
@@ -103,7 +103,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
          return false;
 
       /* Otherwise, lower to bindless. Could be optimized. */
-      nir_ssa_def *index = nir_steal_tex_src(tex, nir_tex_src_texture_offset);
+      nir_def *index = nir_steal_tex_src(tex, nir_tex_src_texture_offset);
       if (!index)
          index = nir_imm_int(b, tex->texture_index);
 

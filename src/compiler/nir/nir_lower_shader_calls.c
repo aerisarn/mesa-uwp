@@ -114,7 +114,7 @@ src_is_in_bitset(nir_src *src, void *_set)
 }
 
 static void
-add_ssa_def_to_bitset(nir_ssa_def *def, struct sized_bitset *set)
+add_ssa_def_to_bitset(nir_def *def, struct sized_bitset *set)
 {
    if (def->index >= set->size)
       return;
@@ -212,7 +212,7 @@ can_remat_instr(nir_instr *instr, struct sized_bitset *remat)
 }
 
 static bool
-can_remat_ssa_def(nir_ssa_def *def, struct sized_bitset *remat)
+can_remat_ssa_def(nir_def *def, struct sized_bitset *remat)
 {
    return can_remat_instr(def->parent_instr, remat);
 }
@@ -248,7 +248,7 @@ compare_instr_indexes(const void *_inst1, const void *_inst2)
 }
 
 static bool
-can_remat_chain_ssa_def(nir_ssa_def *def, struct sized_bitset *remat, struct util_dynarray *buf)
+can_remat_chain_ssa_def(nir_def *def, struct sized_bitset *remat, struct util_dynarray *buf)
 {
    assert(util_dynarray_num_elements(buf, nir_instr *) == 0);
 
@@ -283,7 +283,7 @@ can_remat_chain_ssa_def(nir_ssa_def *def, struct sized_bitset *remat, struct uti
    memcpy(potential_remat.set, remat->set, BITSET_WORDS(remat->size) * sizeof(BITSET_WORD));
 
    util_dynarray_foreach(buf, nir_instr *, instr_ptr) {
-      nir_ssa_def *instr_ssa_def = nir_instr_ssa_def(*instr_ptr);
+      nir_def *instr_ssa_def = nir_instr_ssa_def(*instr_ptr);
 
       /* If already in the potential rematerializable, nothing to do. */
       if (BITSET_TEST(potential_remat.set, instr_ssa_def->index))
@@ -308,23 +308,23 @@ fail:
    return false;
 }
 
-static nir_ssa_def *
-remat_ssa_def(nir_builder *b, nir_ssa_def *def, struct hash_table *remap_table)
+static nir_def *
+remat_ssa_def(nir_builder *b, nir_def *def, struct hash_table *remap_table)
 {
    nir_instr *clone = nir_instr_clone_deep(b->shader, def->parent_instr, remap_table);
    nir_builder_instr_insert(b, clone);
    return nir_instr_ssa_def(clone);
 }
 
-static nir_ssa_def *
+static nir_def *
 remat_chain_ssa_def(nir_builder *b, struct util_dynarray *buf,
-                    struct sized_bitset *remat, nir_ssa_def ***fill_defs,
+                    struct sized_bitset *remat, nir_def ***fill_defs,
                     unsigned call_idx, struct hash_table *remap_table)
 {
-   nir_ssa_def *last_def = NULL;
+   nir_def *last_def = NULL;
 
    util_dynarray_foreach(buf, nir_instr *, instr_ptr) {
-      nir_ssa_def *instr_ssa_def = nir_instr_ssa_def(*instr_ptr);
+      nir_def *instr_ssa_def = nir_instr_ssa_def(*instr_ptr);
       unsigned ssa_index = instr_ssa_def->index;
 
       if (fill_defs[ssa_index] != NULL &&
@@ -332,11 +332,11 @@ remat_chain_ssa_def(nir_builder *b, struct util_dynarray *buf,
          continue;
 
       /* Clone the instruction we want to rematerialize */
-      nir_ssa_def *clone_ssa_def = remat_ssa_def(b, instr_ssa_def, remap_table);
+      nir_def *clone_ssa_def = remat_ssa_def(b, instr_ssa_def, remap_table);
 
       if (fill_defs[ssa_index] == NULL) {
          fill_defs[ssa_index] =
-            rzalloc_array(fill_defs, nir_ssa_def *, remat->size);
+            rzalloc_array(fill_defs, nir_def *, remat->size);
       }
 
       /* Add the new ssa_def to the list fill_defs and flag it as
@@ -357,7 +357,7 @@ struct pbv_array {
 };
 
 static struct nir_phi_builder_value *
-get_phi_builder_value_for_def(nir_ssa_def *def,
+get_phi_builder_value_for_def(nir_def *def,
                               struct pbv_array *pbv_arr)
 {
    if (def->index >= pbv_arr->len)
@@ -366,7 +366,7 @@ get_phi_builder_value_for_def(nir_ssa_def *def,
    return pbv_arr->arr[def->index];
 }
 
-static nir_ssa_def *
+static nir_def *
 get_phi_builder_def_for_src(nir_src *src, struct pbv_array *pbv_arr,
                             nir_block *block)
 {
@@ -390,14 +390,14 @@ rewrite_instr_src_from_phi_builder(nir_src *src, void *_pbv_arr)
       block = src->parent_instr->block;
    }
 
-   nir_ssa_def *new_def = get_phi_builder_def_for_src(src, _pbv_arr, block);
+   nir_def *new_def = get_phi_builder_def_for_src(src, _pbv_arr, block);
    if (new_def != NULL)
       nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(new_def));
    return true;
 }
 
-static nir_ssa_def *
-spill_fill(nir_builder *before, nir_builder *after, nir_ssa_def *def,
+static nir_def *
+spill_fill(nir_builder *before, nir_builder *after, nir_def *def,
            unsigned value_id, unsigned call_idx,
            unsigned offset, unsigned stack_alignment)
 {
@@ -462,14 +462,14 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
    struct sized_bitset trivial_remat = bitset_create(mem_ctx, num_ssa_defs);
 
    /* Array of all live SSA defs which are spill candidates */
-   nir_ssa_def **spill_defs =
-      rzalloc_array(mem_ctx, nir_ssa_def *, num_ssa_defs);
+   nir_def **spill_defs =
+      rzalloc_array(mem_ctx, nir_def *, num_ssa_defs);
 
    /* For each spill candidate, an array of every time it's defined by a fill,
     * indexed by call instruction index.
     */
-   nir_ssa_def ***fill_defs =
-      rzalloc_array(mem_ctx, nir_ssa_def **, num_ssa_defs);
+   nir_def ***fill_defs =
+      rzalloc_array(mem_ctx, nir_def **, num_ssa_defs);
 
    /* For each call instruction, the liveness set at the call */
    const BITSET_WORD **call_live =
@@ -522,7 +522,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
 
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
-            nir_ssa_def *def = nir_instr_ssa_def(instr);
+            nir_def *def = nir_instr_ssa_def(instr);
             if (def == NULL)
                continue;
 
@@ -559,7 +559,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
    unsigned max_scratch_size = shader->scratch_size;
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         nir_ssa_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_ssa_def(instr);
          if (def != NULL) {
             if (can_remat_ssa_def(def, &trivial_remat)) {
                add_ssa_def_to_bitset(def, &trivial_remat);
@@ -605,7 +605,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
                assert(index < num_ssa_defs);
 
                def = spill_defs[index];
-               nir_ssa_def *original_def = def, *new_def;
+               nir_def *original_def = def, *new_def;
                if (can_remat_ssa_def(def, &remat)) {
                   /* If this SSA def is re-materializable or based on other
                    * things we've already spilled, re-materialize it rather
@@ -648,7 +648,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
                 */
                if (fill_defs[index] == NULL) {
                   fill_defs[index] =
-                     rzalloc_array(fill_defs, nir_ssa_def *, num_calls);
+                     rzalloc_array(fill_defs, nir_def *, num_calls);
                }
                fill_defs[index][call_idx] = new_def;
                _mesa_hash_table_insert(remap_table, original_def, new_def);
@@ -717,7 +717,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
       if (fill_defs[index] == NULL)
          continue;
 
-      nir_ssa_def *def = spill_defs[index];
+      nir_def *def = spill_defs[index];
 
       memset(def_blocks, 0, block_words * sizeof(BITSET_WORD));
       BITSET_SET(def_blocks, def->parent_instr->block->index);
@@ -735,7 +735,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
     */
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         nir_ssa_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_ssa_def(instr);
          if (def != NULL) {
             struct nir_phi_builder_value *pbv =
                get_phi_builder_value_for_def(def, &pbv_arr);
@@ -775,7 +775,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
 
       nir_if *following_if = nir_block_get_following_if(block);
       if (following_if) {
-         nir_ssa_def *new_def =
+         nir_def *new_def =
             get_phi_builder_def_for_src(&following_if->condition,
                                         &pbv_arr, block);
          if (new_def != NULL)
@@ -829,7 +829,7 @@ find_resume_instr(nir_function_impl *impl, unsigned call_idx)
 static bool
 duplicate_loop_bodies(nir_function_impl *impl, nir_instr *resume_instr)
 {
-   nir_ssa_def *resume_reg = NULL;
+   nir_def *resume_reg = NULL;
    for (nir_cf_node *node = resume_instr->block->cf_node.parent;
         node->type != nir_cf_node_function; node = node->parent) {
       if (node->type != nir_cf_node_loop)
@@ -911,7 +911,7 @@ rewrite_phis_to_pred(nir_block *block, nir_block *pred)
       nir_foreach_phi_src(phi_src, phi) {
          if (phi_src->pred == pred) {
             found = true;
-            nir_ssa_def_rewrite_uses(&phi->dest.ssa, phi_src->src.ssa);
+            nir_def_rewrite_uses(&phi->dest.ssa, phi_src->src.ssa);
             break;
          }
       }
@@ -1044,7 +1044,7 @@ flatten_resume_if_ladder(nir_builder *b,
                nir_instr_insert(b->cursor, instr);
                b->cursor = nir_after_instr(instr);
 
-               nir_ssa_def *def = nir_instr_ssa_def(instr);
+               nir_def *def = nir_instr_ssa_def(instr);
                BITSET_SET(remat->set, def->index);
             }
          }
@@ -1256,7 +1256,7 @@ lower_resume(nir_shader *shader, int call_idx)
       NIR_PASS_V(shader, nir_lower_reg_intrinsics_to_ssa);
    }
 
-   /* Re-index nir_ssa_def::index.  We don't care about actual liveness in
+   /* Re-index nir_def::index.  We don't care about actual liveness in
     * this pass but, so we can use the same helpers as the spilling pass, we
     * need to make sure that live_index is something sane.  It's used
     * constantly for determining if an SSA value has been added since the
@@ -1342,12 +1342,12 @@ lower_stack_instr_to_scratch(struct nir_builder *b, nir_instr *instr, void *data
    switch (stack->intrinsic) {
    case nir_intrinsic_load_stack: {
       b->cursor = nir_instr_remove(instr);
-      nir_ssa_def *data, *old_data = nir_instr_ssa_def(instr);
+      nir_def *data, *old_data = nir_instr_ssa_def(instr);
 
       if (state->address_format == nir_address_format_64bit_global) {
-         nir_ssa_def *addr = nir_iadd_imm(b,
-                                          nir_load_scratch_base_ptr(b, 1, 64, 1),
-                                          nir_intrinsic_base(stack));
+         nir_def *addr = nir_iadd_imm(b,
+                                      nir_load_scratch_base_ptr(b, 1, 64, 1),
+                                      nir_intrinsic_base(stack));
          data = nir_load_global(b, addr,
                                 nir_intrinsic_align_mul(stack),
                                 stack->dest.ssa.num_components,
@@ -1360,18 +1360,18 @@ lower_stack_instr_to_scratch(struct nir_builder *b, nir_instr *instr, void *data
                                  nir_imm_int(b, nir_intrinsic_base(stack)),
                                  .align_mul = nir_intrinsic_align_mul(stack));
       }
-      nir_ssa_def_rewrite_uses(old_data, data);
+      nir_def_rewrite_uses(old_data, data);
       break;
    }
 
    case nir_intrinsic_store_stack: {
       b->cursor = nir_instr_remove(instr);
-      nir_ssa_def *data = stack->src[0].ssa;
+      nir_def *data = stack->src[0].ssa;
 
       if (state->address_format == nir_address_format_64bit_global) {
-         nir_ssa_def *addr = nir_iadd_imm(b,
-                                          nir_load_scratch_base_ptr(b, 1, 64, 1),
-                                          nir_intrinsic_base(stack));
+         nir_def *addr = nir_iadd_imm(b,
+                                      nir_load_scratch_base_ptr(b, 1, 64, 1),
+                                      nir_intrinsic_base(stack));
          nir_store_global(b, addr,
                           nir_intrinsic_align_mul(stack),
                           data,
@@ -1484,7 +1484,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
          const unsigned value_id = nir_intrinsic_value_id(intrin);
 
          const unsigned mask =
-            nir_ssa_def_components_read(nir_instr_ssa_def(instr));
+            nir_def_components_read(nir_instr_ssa_def(instr));
          add_use_mask(value_id_to_mask, value_id, mask);
       }
    }
@@ -1519,7 +1519,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
 
          nir_builder b = nir_builder_at(nir_before_instr(instr));
 
-         nir_ssa_def *value = nir_channels(&b, intrin->src[0].ssa, read_mask);
+         nir_def *value = nir_channels(&b, intrin->src[0].ssa, read_mask);
          nir_instr_rewrite_src_ssa(instr, &intrin->src[0], value);
 
          intrin->num_components = util_bitcount(read_mask);
@@ -1555,7 +1555,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
          u_foreach_bit(idx, read_mask)
             swiz_map[idx] = swiz_count++;
 
-         nir_ssa_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_ssa_def(instr);
 
          nir_foreach_use_safe(use_src, def) {
             if (use_src->parent_instr->type == nir_instr_type_alu) {
@@ -1652,7 +1652,7 @@ nir_opt_sort_and_pack_stack(nir_shader *shader,
                continue;
 
             const unsigned value_id = nir_intrinsic_value_id(intrin);
-            nir_ssa_def *def = nir_instr_ssa_def(instr);
+            nir_def *def = nir_instr_ssa_def(instr);
 
             assert(_mesa_hash_table_u64_search(value_id_to_item,
                                                value_id) == NULL);
@@ -1747,7 +1747,7 @@ nir_block_loop_depth(nir_block *block)
 
 /* Find the last block dominating all the uses of a SSA value. */
 static nir_block *
-find_last_dominant_use_block(nir_function_impl *impl, nir_ssa_def *value)
+find_last_dominant_use_block(nir_function_impl *impl, nir_def *value)
 {
    nir_block *old_block = value->parent_instr->block;
    unsigned old_block_loop_depth = nir_block_loop_depth(old_block);
@@ -1817,7 +1817,7 @@ nir_opt_stack_loads(nir_shader *shader)
             if (intrin->intrinsic != nir_intrinsic_load_stack)
                continue;
 
-            nir_ssa_def *value = &intrin->dest.ssa;
+            nir_def *value = &intrin->dest.ssa;
             nir_block *new_block = find_last_dominant_use_block(impl, value);
             if (new_block == block)
                continue;
@@ -1864,7 +1864,7 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
    b->cursor = nir_before_instr(instr);
 
    if (intrin->intrinsic == nir_intrinsic_load_stack) {
-      nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = {
+      nir_def *components[NIR_MAX_VEC_COMPONENTS] = {
          0,
       };
       for (unsigned c = 0; c < intrin->dest.ssa.num_components; c++) {
@@ -1876,9 +1876,9 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
                                         .align_mul = nir_intrinsic_align_mul(intrin));
       }
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                               nir_vec(b, components,
-                                       intrin->dest.ssa.num_components));
+      nir_def_rewrite_uses(&intrin->dest.ssa,
+                           nir_vec(b, components,
+                                   intrin->dest.ssa.num_components));
    } else {
       assert(intrin->intrinsic == nir_intrinsic_store_stack);
       for (unsigned c = 0; c < intrin->src[0].ssa->num_components; c++) {

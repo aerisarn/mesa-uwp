@@ -8,7 +8,7 @@
 #include "agx_compiler.h"
 
 static void
-def_size(nir_ssa_def *def, unsigned *size, unsigned *align)
+def_size(nir_def *def, unsigned *size, unsigned *align)
 {
    unsigned bit_size = MAX2(def->bit_size, 16);
 
@@ -50,7 +50,7 @@ instr_cost(nir_instr *instr, const void *data)
 }
 
 static float
-rewrite_cost(nir_ssa_def *def, const void *data)
+rewrite_cost(nir_def *def, const void *data)
 {
    bool mov_needed = false;
    nir_foreach_use(use, def) {
@@ -76,7 +76,7 @@ rewrite_cost(nir_ssa_def *def, const void *data)
 static bool
 avoid_instr(const nir_instr *instr, const void *data)
 {
-   const nir_ssa_def *def = nir_instr_ssa_def((nir_instr *)instr);
+   const nir_def *def = nir_instr_ssa_def((nir_instr *)instr);
 
    /* Do not move bindless handles, since we need those to retain their constant
     * base index.

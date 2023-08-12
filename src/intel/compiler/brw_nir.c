@@ -38,7 +38,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
    bool out_of_bounds = false;
    bool write = !nir_intrinsic_infos[intr->intrinsic].has_dest;
    unsigned mask = write ? nir_intrinsic_write_mask(intr) : 0;
-   nir_ssa_def *src = NULL, *dest = NULL;
+   nir_def *src = NULL, *dest = NULL;
 
    if (write) {
       assert(intr->num_components == intr->src[0].ssa->num_components);
@@ -60,9 +60,9 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
 
             intr->num_components = 4;
 
-            nir_ssa_def *undef = nir_ssa_undef(b, 1, 32);
-            nir_ssa_def *x = nir_channel(b, intr->src[0].ssa, 0);
-            nir_ssa_def *y = nir_channel(b, intr->src[0].ssa, 1);
+            nir_def *undef = nir_undef(b, 1, 32);
+            nir_def *x = nir_channel(b, intr->src[0].ssa, 0);
+            nir_def *y = nir_channel(b, intr->src[0].ssa, 1);
             src = nir_vec4(b, undef, undef, y, x);
             mask = !!(mask & WRITEMASK_X) << 3 | !!(mask & WRITEMASK_Y) << 2;
          } else if (intr->dest.ssa.num_components > 1) {
@@ -128,9 +128,9 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
          if (write) {
             assert(intr->src[0].ssa->num_components == 4);
 
-            nir_ssa_def *undef = nir_ssa_undef(b, 1, 32);
-            nir_ssa_def *x = nir_channel(b, intr->src[0].ssa, 0);
-            nir_ssa_def *y = nir_channel(b, intr->src[0].ssa, 1);
+            nir_def *undef = nir_undef(b, 1, 32);
+            nir_def *x = nir_channel(b, intr->src[0].ssa, 0);
+            nir_def *y = nir_channel(b, intr->src[0].ssa, 1);
             src = nir_vec4(b, undef, undef, x, y);
             mask = !!(mask & WRITEMASK_X) << 2 | !!(mask & WRITEMASK_Y) << 3;
          } else {
@@ -147,7 +147,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
 
    if (out_of_bounds) {
       if (!write)
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_ssa_undef(b, 1, 32));
+         nir_def_rewrite_uses(&intr->dest.ssa, nir_undef(b, 1, 32));
       nir_instr_remove(&intr->instr);
    } else if (write) {
       nir_intrinsic_set_write_mask(intr, mask);
@@ -157,7 +157,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
                                nir_src_for_ssa(src));
       }
    } else if (dest) {
-      nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, dest,
+      nir_def_rewrite_uses_after(&intr->dest.ssa, dest,
                                      dest->parent_instr);
    }
 
@@ -214,7 +214,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
                b->cursor = nir_before_instr(&intrin->instr);
 
                /* Multiply by the number of per-vertex slots. */
-               nir_ssa_def *vertex_offset =
+               nir_def *vertex_offset =
                   nir_imul(b,
                            nir_ssa_for_src(b, *vertex, 1),
                            nir_imm_int(b,
@@ -222,7 +222,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
 
                /* Add it to the existing offset */
                nir_src *offset = nir_get_io_offset_src(intrin);
-               nir_ssa_def *total_offset =
+               nir_def *total_offset =
                   nir_iadd(b, vertex_offset,
                            nir_ssa_for_src(b, *offset, 1));
 
@@ -331,7 +331,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                nir_ssa_dest_init(&load->instr, &load->dest, 1, 32);
                nir_builder_instr_insert(&b, &load->instr);
 
-               nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+               nir_def_rewrite_uses(&intrin->dest.ssa,
                                         &load->dest.ssa);
                nir_instr_remove(&intrin->instr);
                break;
@@ -453,10 +453,10 @@ lower_barycentric_per_sample(nir_builder *b,
       return false;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *centroid =
+   nir_def *centroid =
       nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
                            nir_intrinsic_interp_mode(intrin));
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, centroid);
+   nir_def_rewrite_uses(&intrin->dest.ssa, centroid);
    nir_instr_remove(instr);
    return true;
 }
@@ -490,7 +490,7 @@ lower_barycentric_at_offset(nir_builder *b, nir_instr *instr, void *data)
    b->cursor = nir_before_instr(instr);
 
    assert(intrin->src[0].ssa);
-   nir_ssa_def *offset =
+   nir_def *offset =
       nir_imin(b, nir_imm_int(b, 7),
                nir_f2i32(b, nir_fmul_imm(b, intrin->src[0].ssa, 16)));
 
@@ -1075,9 +1075,9 @@ brw_nir_zero_inputs_instr(struct nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_ssa_def *zero = nir_imm_zero(b, 1, 32);
+   nir_def *zero = nir_imm_zero(b, 1, 32);
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, zero);
+   nir_def_rewrite_uses(&intrin->dest.ssa, zero);
 
    nir_instr_remove(instr);
 
@@ -2047,16 +2047,16 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
    return nir;
 }
 
-nir_ssa_def *
+nir_def *
 brw_nir_load_global_const(nir_builder *b, nir_intrinsic_instr *load_uniform,
-      nir_ssa_def *base_addr, unsigned off)
+      nir_def *base_addr, unsigned off)
 {
    assert(load_uniform->intrinsic == nir_intrinsic_load_uniform);
 
    unsigned bit_size = load_uniform->dest.ssa.bit_size;
    assert(bit_size >= 8 && bit_size % 8 == 0);
    unsigned byte_size = bit_size / 8;
-   nir_ssa_def *sysval;
+   nir_def *sysval;
 
    if (nir_src_is_const(load_uniform->src[0])) {
       uint64_t offset = off +
@@ -2070,9 +2070,9 @@ brw_nir_load_global_const(nir_builder *b, nir_intrinsic_instr *load_uniform,
       uint64_t aligned_offset = offset - suboffset;
 
       /* Load two just in case we go over a 64B boundary */
-      nir_ssa_def *data[2];
+      nir_def *data[2];
       for (unsigned i = 0; i < 2; i++) {
-         nir_ssa_def *addr = nir_iadd_imm(b, base_addr, aligned_offset + i * 64);
+         nir_def *addr = nir_iadd_imm(b, base_addr, aligned_offset + i * 64);
          data[i] = nir_load_global_const_block_intel(b, 16, addr,
                                                      nir_imm_true(b));
       }
@@ -2080,10 +2080,10 @@ brw_nir_load_global_const(nir_builder *b, nir_intrinsic_instr *load_uniform,
       sysval = nir_extract_bits(b, data, 2, suboffset * 8,
                                 load_uniform->num_components, bit_size);
    } else {
-      nir_ssa_def *offset32 =
+      nir_def *offset32 =
          nir_iadd_imm(b, load_uniform->src[0].ssa,
                          off + nir_intrinsic_base(load_uniform));
-      nir_ssa_def *addr = nir_iadd(b, base_addr, nir_u2u64(b, offset32));
+      nir_def *addr = nir_iadd(b, base_addr, nir_u2u64(b, offset32));
       sysval = nir_load_global_constant(b, addr, byte_size,
                                         load_uniform->num_components, bit_size);
    }

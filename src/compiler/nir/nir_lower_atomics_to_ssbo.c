@@ -91,10 +91,10 @@ lower_instr(nir_intrinsic_instr *instr, unsigned ssbo_offset, nir_builder *b, un
       return false;
    }
 
-   nir_ssa_def *buffer = nir_imm_int(b, ssbo_offset + nir_intrinsic_base(instr));
-   nir_ssa_def *temp = NULL;
+   nir_def *buffer = nir_imm_int(b, ssbo_offset + nir_intrinsic_base(instr));
+   nir_def *temp = NULL;
 
-   nir_ssa_def *offset_load = NULL;
+   nir_def *offset_load = NULL;
    if (offset_align_state) {
       nir_deref_instr *deref_offset = deref_offset_var(b, nir_intrinsic_base(instr), offset_align_state);
       offset_load = nir_load_deref(b, deref_offset);
@@ -163,10 +163,10 @@ lower_instr(nir_intrinsic_instr *instr, unsigned ssbo_offset, nir_builder *b, un
 
    if (instr->intrinsic == nir_intrinsic_atomic_counter_pre_dec) {
       b->cursor = nir_after_instr(&new_instr->instr);
-      nir_ssa_def *result = nir_iadd(b, &new_instr->dest.ssa, temp);
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, result);
+      nir_def *result = nir_iadd(b, &new_instr->dest.ssa, temp);
+      nir_def_rewrite_uses(&instr->dest.ssa, result);
    } else {
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, &new_instr->dest.ssa);
+      nir_def_rewrite_uses(&instr->dest.ssa, &new_instr->dest.ssa);
    }
 
    return true;

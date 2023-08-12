@@ -1811,7 +1811,7 @@ get_frag_coord(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       ctx->frag_coord = ir3_create_collect(b, xyzw, 4);
    }
 
-   ctx->so->fragcoord_compmask |= nir_ssa_def_components_read(&intr->dest.ssa);
+   ctx->so->fragcoord_compmask |= nir_def_components_read(&intr->dest.ssa);
 
    return ctx->frag_coord;
 }
@@ -2684,7 +2684,7 @@ emit_load_const(struct ir3_context *ctx, nir_load_const_instr *instr)
 }
 
 static void
-emit_undef(struct ir3_context *ctx, nir_ssa_undef_instr *undef)
+emit_undef(struct ir3_context *ctx, nir_undef_instr *undef)
 {
    struct ir3_instruction **dst =
       ir3_get_dst_ssa(ctx, &undef->def, undef->def.num_components);

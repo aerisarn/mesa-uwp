@@ -180,7 +180,7 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 }
 
 static void
-validate_ssa_def(nir_ssa_def *def, validate_state *state)
+validate_ssa_def(nir_def *def, validate_state *state)
 {
    validate_assert(state, def->index < state->impl->ssa_alloc);
    validate_assert(state, !BITSET_TEST(state->ssa_defs_found, def->index));
@@ -460,7 +460,7 @@ validate_register_handle(nir_src handle_src,
                          unsigned bit_size,
                          validate_state *state)
 {
-   nir_ssa_def *handle = handle_src.ssa;
+   nir_def *handle = handle_src.ssa;
    nir_instr *parent = handle->parent_instr;
 
    if (!validate_assert(state, parent->type == nir_instr_type_intrinsic))
@@ -923,7 +923,7 @@ validate_load_const_instr(nir_load_const_instr *instr, validate_state *state)
 }
 
 static void
-validate_ssa_undef_instr(nir_ssa_undef_instr *instr, validate_state *state)
+validate_ssa_undef_instr(nir_undef_instr *instr, validate_state *state)
 {
    validate_ssa_def(&instr->def, state);
 }
@@ -1439,7 +1439,7 @@ validate_var_decl(nir_variable *var, nir_variable_mode valid_modes,
 }
 
 static bool
-validate_ssa_def_dominance(nir_ssa_def *def, void *_state)
+validate_ssa_def_dominance(nir_def *def, void *_state)
 {
    validate_state *state = _state;
 

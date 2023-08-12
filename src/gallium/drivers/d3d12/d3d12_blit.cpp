@@ -661,14 +661,14 @@ get_stencil_resolve_fs(struct d3d12_context *ctx, bool no_flip)
    sampler->data.binding = 0;
    sampler->data.explicit_binding = true;
 
-   nir_ssa_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
 
    nir_variable *pos_in = nir_variable_create(b.shader, nir_var_shader_in,
                                               glsl_vec4_type(), "pos");
    pos_in->data.location = VARYING_SLOT_POS; // VARYING_SLOT_VAR0?
-   nir_ssa_def *pos = nir_load_var(&b, pos_in);
+   nir_def *pos = nir_load_var(&b, pos_in);
 
-   nir_ssa_def *pos_src;
+   nir_def *pos_src;
 
    if (no_flip)
       pos_src = pos;

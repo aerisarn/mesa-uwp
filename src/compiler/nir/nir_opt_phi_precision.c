@@ -238,8 +238,8 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
    nir_foreach_phi_src(src, phi) {
       /* insert new conversion instr in block of original phi src: */
       b->cursor = nir_after_instr_and_phis(src->src.ssa->parent_instr);
-      nir_ssa_def *old_src = src->src.ssa;
-      nir_ssa_def *new_src = nir_build_alu(b, op, old_src, NULL, NULL, NULL);
+      nir_def *old_src = src->src.ssa;
+      nir_def *new_src = nir_build_alu(b, op, old_src, NULL, NULL, NULL);
 
       /* and add corresponding phi_src to the new_phi: */
       nir_phi_instr_add_src(new_phi, src->pred, nir_src_for_ssa(new_src));
@@ -256,7 +256,7 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
       nir_alu_instr *alu = nir_instr_as_alu(use->parent_instr);
       alu->op = nir_op_mov;
    }
-   nir_ssa_def_rewrite_uses(&phi->dest.ssa, &new_phi->dest.ssa);
+   nir_def_rewrite_uses(&phi->dest.ssa, &new_phi->dest.ssa);
 
    /* And finally insert the new phi after all sources are in place: */
    b->cursor = nir_after_instr(&phi->instr);
@@ -380,7 +380,7 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
    /* Remove the widening conversions from the phi sources: */
    nir_foreach_phi_src(src, phi) {
       nir_instr *instr = src->src.ssa->parent_instr;
-      nir_ssa_def *new_src;
+      nir_def *new_src;
 
       b->cursor = nir_after_instr(instr);
 
@@ -419,9 +419,9 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
     * and re-write the original phi's uses
     */
    b->cursor = nir_after_instr_and_phis(&new_phi->instr);
-   nir_ssa_def *def = nir_build_alu(b, op, &new_phi->dest.ssa, NULL, NULL, NULL);
+   nir_def *def = nir_build_alu(b, op, &new_phi->dest.ssa, NULL, NULL, NULL);
 
-   nir_ssa_def_rewrite_uses(&phi->dest.ssa, def);
+   nir_def_rewrite_uses(&phi->dest.ssa, def);
 
    return true;
 }

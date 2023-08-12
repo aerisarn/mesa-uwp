@@ -65,7 +65,7 @@ chase_alu_src_helper(const nir_src *src)
 }
 
 static inline bool
-chase_source_mod(nir_ssa_def **ssa, nir_op op, uint8_t *swizzle)
+chase_source_mod(nir_def **ssa, nir_op op, uint8_t *swizzle)
 {
    if ((*ssa)->parent_instr->type != nir_instr_type_alu)
       return false;
@@ -151,7 +151,7 @@ bool
 nir_legacy_fsat_folds(nir_alu_instr *fsat)
 {
    assert(fsat->op == nir_op_fsat);
-   nir_ssa_def *def = fsat->src[0].src.ssa;
+   nir_def *def = fsat->src[0].src.ssa;
 
    /* No legacy user supports fp64 modifiers */
    if (def->bit_size == 64)
@@ -194,7 +194,7 @@ nir_legacy_fsat_folds(nir_alu_instr *fsat)
 }
 
 static inline bool
-chase_fsat(nir_ssa_def **def)
+chase_fsat(nir_def **def)
 {
    /* No legacy user supports fp64 modifiers */
    if ((*def)->bit_size == 64)
@@ -220,7 +220,7 @@ chase_fsat(nir_ssa_def **def)
 nir_legacy_alu_dest
 nir_legacy_chase_alu_dest(nir_dest *dest)
 {
-   nir_ssa_def *def = &dest->ssa;
+   nir_def *def = &dest->ssa;
 
    /* Try SSA fsat. No users support 64-bit modifiers. */
    if (chase_fsat(&def)) {
@@ -296,7 +296,7 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
             assert(!use->is_if);
             assert(use->parent_instr->type == nir_instr_type_alu);
             nir_alu_src *alu_use = list_entry(use, nir_alu_src, src);
-            nir_src_rewrite_ssa(&alu_use->src, &load->dest.ssa);
+            nir_src_rewrite(&alu_use->src, &load->dest.ssa);
             for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i)
                alu_use->swizzle[i] = alu->src[0].swizzle[alu_use->swizzle[i]];
          }
@@ -316,7 +316,7 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
 
       if (store) {
          nir_intrinsic_set_legacy_fsat(store, true);
-         nir_src_rewrite_ssa(&store->src[0], &alu->dest.dest.ssa);
+         nir_src_rewrite(&store->src[0], &alu->dest.dest.ssa);
          return true;
       }
    }

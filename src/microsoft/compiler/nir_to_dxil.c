@@ -2120,7 +2120,7 @@ bitcast_to_float(struct ntd_context *ctx, unsigned bit_size,
 }
 
 static bool
-is_phi_src(nir_ssa_def *ssa)
+is_phi_src(nir_def *ssa)
 {
    nir_foreach_use(src, ssa)
       if (src->parent_instr->type == nir_instr_type_phi)
@@ -2129,7 +2129,7 @@ is_phi_src(nir_ssa_def *ssa)
 }
 
 static void
-store_ssa_def(struct ntd_context *ctx, nir_ssa_def *ssa, unsigned chan,
+store_ssa_def(struct ntd_context *ctx, nir_def *ssa, unsigned chan,
               const struct dxil_value *value)
 {
    assert(ssa->index < ctx->num_defs);
@@ -2188,7 +2188,7 @@ store_alu_dest(struct ntd_context *ctx, nir_alu_instr *alu, unsigned chan,
 }
 
 static const struct dxil_value *
-get_src_ssa(struct ntd_context *ctx, const nir_ssa_def *ssa, unsigned chan)
+get_src_ssa(struct ntd_context *ctx, const nir_def *ssa, unsigned chan)
 {
    assert(ssa->index < ctx->num_defs);
    assert(chan < ssa->num_components);
@@ -2298,8 +2298,8 @@ emit_shift(struct ntd_context *ctx, nir_alu_instr *alu,
                             dxil_module_get_int_const(&ctx->mod, shift_mask, op0_bit_size),
                             0);
    } else {
-      uint64_t val = nir_ssa_scalar_as_uint(
-         nir_ssa_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1));
+      uint64_t val = nir_scalar_as_uint(
+         nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1));
       op1 = dxil_module_get_int_const(&ctx->mod, val & shift_mask, op0_bit_size);
    }
 
@@ -2906,8 +2906,8 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_udiv:
       if (nir_src_is_const(alu->src[1].src)) {
          /* It's illegal to emit a literal divide by 0 in DXIL */
-         nir_ssa_scalar divisor = nir_ssa_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1);
-         if (nir_ssa_scalar_as_int(divisor) == 0) {
+         nir_scalar divisor = nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1);
+         if (nir_scalar_as_int(divisor) == 0) {
             store_alu_dest(ctx, alu, 0, dxil_module_get_int_const(&ctx->mod, 0, nir_dest_bit_size(alu->dest.dest)));
             return true;
          }
@@ -3123,7 +3123,7 @@ static bool
 emit_load_global_invocation_id(struct ntd_context *ctx,
                                     nir_intrinsic_instr *intr)
 {
-   nir_component_mask_t comps = nir_ssa_def_components_read(&intr->dest.ssa);
+   nir_component_mask_t comps = nir_def_components_read(&intr->dest.ssa);
 
    for (int i = 0; i < nir_intrinsic_dest_components(intr); i++) {
       if (comps & (1 << i)) {
@@ -3145,7 +3145,7 @@ static bool
 emit_load_local_invocation_id(struct ntd_context *ctx,
                               nir_intrinsic_instr *intr)
 {
-   nir_component_mask_t comps = nir_ssa_def_components_read(&intr->dest.ssa);
+   nir_component_mask_t comps = nir_def_components_read(&intr->dest.ssa);
 
    for (int i = 0; i < nir_intrinsic_dest_components(intr); i++) {
       if (comps & (1 << i)) {
@@ -3180,7 +3180,7 @@ static bool
 emit_load_local_workgroup_id(struct ntd_context *ctx,
                               nir_intrinsic_instr *intr)
 {
-   nir_component_mask_t comps = nir_ssa_def_components_read(&intr->dest.ssa);
+   nir_component_mask_t comps = nir_def_components_read(&intr->dest.ssa);
 
    for (int i = 0; i < nir_intrinsic_dest_components(intr); i++) {
       if (comps & (1 << i)) {
@@ -4947,7 +4947,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static const struct dxil_type *
-dxil_type_for_const(struct ntd_context *ctx, nir_ssa_def *def)
+dxil_type_for_const(struct ntd_context *ctx, nir_def *def)
 {
    if (BITSET_TEST(ctx->int_types, def->index) ||
        !BITSET_TEST(ctx->float_types, def->index))
@@ -5634,7 +5634,7 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 }
 
 static bool
-emit_undefined(struct ntd_context *ctx, nir_ssa_undef_instr *undef)
+emit_undefined(struct ntd_context *ctx, nir_undef_instr *undef)
 {
    for (unsigned i = 0; i < undef->def.num_components; ++i)
       store_ssa_def(ctx, &undef->def, i, dxil_module_get_int32_const(&ctx->mod, 0));
@@ -5909,7 +5909,7 @@ emit_function(struct ntd_context *ctx, nir_function *func, nir_function_impl *im
    if (!ctx->phis)
       return false;
 
-   nir_gather_ssa_types(impl, ctx->float_types, ctx->int_types);
+   nir_gather_types(impl, ctx->float_types, ctx->int_types);
 
    if (!emit_scratch(ctx, impl))
       return false;

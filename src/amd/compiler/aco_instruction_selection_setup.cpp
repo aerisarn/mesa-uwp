@@ -66,7 +66,7 @@ is_block_reachable(nir_function_impl* impl, nir_block* known_reachable, nir_bloc
 
 /* Check whether the given SSA def is only used by cross-lane instructions. */
 bool
-only_used_by_cross_lane_instrs(nir_ssa_def* ssa, bool follow_phis = true)
+only_used_by_cross_lane_instrs(nir_def* ssa, bool follow_phis = true)
 {
    nir_foreach_use (src, ssa) {
       switch (src->parent_instr->type) {
@@ -178,13 +178,13 @@ sanitize_cf_list(nir_function_impl* impl, struct exec_list* cf_list)
 }
 
 void
-apply_nuw_to_ssa(isel_context* ctx, nir_ssa_def* ssa)
+apply_nuw_to_ssa(isel_context* ctx, nir_def* ssa)
 {
-   nir_ssa_scalar scalar;
+   nir_scalar scalar;
    scalar.def = ssa;
    scalar.comp = 0;
 
-   if (!nir_ssa_scalar_is_alu(scalar) || nir_ssa_scalar_alu_op(scalar) != nir_op_iadd)
+   if (!nir_scalar_is_alu(scalar) || nir_scalar_alu_op(scalar) != nir_op_iadd)
       return;
 
    nir_alu_instr* add = nir_instr_as_alu(ssa->parent_instr);
@@ -192,11 +192,11 @@ apply_nuw_to_ssa(isel_context* ctx, nir_ssa_def* ssa)
    if (add->no_unsigned_wrap)
       return;
 
-   nir_ssa_scalar src0 = nir_ssa_scalar_chase_alu_src(scalar, 0);
-   nir_ssa_scalar src1 = nir_ssa_scalar_chase_alu_src(scalar, 1);
+   nir_scalar src0 = nir_scalar_chase_alu_src(scalar, 0);
+   nir_scalar src1 = nir_scalar_chase_alu_src(scalar, 1);
 
-   if (nir_ssa_scalar_is_const(src0)) {
-      nir_ssa_scalar tmp = src0;
+   if (nir_scalar_is_const(src0)) {
+      nir_scalar tmp = src0;
       src0 = src1;
       src1 = tmp;
    }

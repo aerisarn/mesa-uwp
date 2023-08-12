@@ -622,7 +622,7 @@ struct v3d_compile {
         void *debug_output_data;
 
         /**
-         * Mapping from nir_register * or nir_ssa_def * to array of struct
+         * Mapping from nir_register * or nir_def * to array of struct
          * qreg for the values.
          */
         struct hash_table *def_ht;

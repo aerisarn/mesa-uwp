@@ -63,33 +63,33 @@ lower_point_smooth(nir_builder *b, nir_instr *instr, UNUSED void *_state)
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *coord = nir_load_point_coord_maybe_flipped(b);
+   nir_def *coord = nir_load_point_coord_maybe_flipped(b);
 
    /* point_size = 1.0 / dFdx(gl_PointCoord.x); */
-   nir_ssa_def *point_size = nir_frcp(b, nir_fddx(b, nir_channel(b, coord, 0)));
+   nir_def *point_size = nir_frcp(b, nir_fddx(b, nir_channel(b, coord, 0)));
 
    /* radius = point_size * 0.5 */
-   nir_ssa_def *radius = nir_fmul_imm(b, point_size, 0.5);
+   nir_def *radius = nir_fmul_imm(b, point_size, 0.5);
    ;
 
    /**
     * Compute the distance of point from centre
     * distance = √ (x - 0.5)^2 + (y - 0.5)^2
     */
-   nir_ssa_def *distance = nir_fast_distance(b, coord,
-                                             nir_imm_vec2(b, 0.5, 0.5));
+   nir_def *distance = nir_fast_distance(b, coord,
+                                         nir_imm_vec2(b, 0.5, 0.5));
    distance = nir_fmul(b, distance, point_size);
 
    /* alpha = min(max(radius - distance, 0.0), 1.0) */
-   nir_ssa_def *coverage = nir_fsat(b, nir_fsub(b, radius, distance));
+   nir_def *coverage = nir_fsat(b, nir_fsub(b, radius, distance));
 
    /* Discard fragments that are not covered by the point */
    nir_discard_if(b, nir_feq_imm(b, coverage, 0.0f));
 
    /* Write out the fragment color*vec4(1, 1, 1, coverage)*/
-   nir_ssa_def *one = nir_imm_float(b, 1.0f);
-   nir_ssa_def *new_val = nir_fmul(b, nir_vec4(b, one, one, one, coverage),
-                                   intr->src[out_src_idx].ssa);
+   nir_def *one = nir_imm_float(b, 1.0f);
+   nir_def *new_val = nir_fmul(b, nir_vec4(b, one, one, one, coverage),
+                               intr->src[out_src_idx].ssa);
    nir_instr_rewrite_src(instr, &intr->src[out_src_idx], nir_src_for_ssa(new_val));
 
    return true;

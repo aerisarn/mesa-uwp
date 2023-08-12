@@ -47,9 +47,9 @@ protected:
 
    struct nir_builder bld;
 
-   nir_ssa_def *v1;
-   nir_ssa_def *v2;
-   nir_ssa_def *v3;
+   nir_def *v1;
+   nir_def *v2;
+   nir_def *v3;
 
    const uint8_t xxxx[4] = { 0, 0, 0, 0 };
    const uint8_t wwww[4] = { 3, 3, 3, 3 };
@@ -93,10 +93,10 @@ TEST_F(comparison_pre_test, a_lt_b_vs_neg_a_plus_b)
     * } else {
     * }
     */
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, a, one);
+   nir_def *flt = nir_flt(&bld, a, one);
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -145,10 +145,10 @@ TEST_F(comparison_pre_test, a_lt_b_vs_a_minus_b)
     * } else {
     * }
     */
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *b = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *b = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, one, b);
+   nir_def *flt = nir_flt(&bld, one, b);
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -198,10 +198,10 @@ TEST_F(comparison_pre_test, neg_a_lt_b_vs_a_plus_b)
     * }
     */
 
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, nir_fneg(&bld, a), one);
+   nir_def *flt = nir_flt(&bld, nir_fneg(&bld, a), one);
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -250,10 +250,10 @@ TEST_F(comparison_pre_test, a_lt_neg_b_vs_a_plus_b)
     * } else {
     * }
     */
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *b = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *b = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, one, nir_fneg(&bld, b));
+   nir_def *flt = nir_flt(&bld, one, nir_fneg(&bld, b));
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -302,11 +302,11 @@ TEST_F(comparison_pre_test, imm_lt_b_vs_neg_imm_plus_b)
     * } else {
     * }
     */
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
-   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, one, a);
+   nir_def *flt = nir_flt(&bld, one, a);
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -355,11 +355,11 @@ TEST_F(comparison_pre_test, a_lt_imm_vs_a_minus_imm)
     * } else {
     * }
     */
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
-   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, a, one);
+   nir_def *flt = nir_flt(&bld, a, one);
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -409,11 +409,11 @@ TEST_F(comparison_pre_test, neg_imm_lt_a_vs_a_plus_imm)
     * }
     */
 
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
-   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, neg_one, a);
+   nir_def *flt = nir_flt(&bld, neg_one, a);
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -462,11 +462,11 @@ TEST_F(comparison_pre_test, a_lt_neg_imm_vs_a_plus_imm)
     * } else {
     * }
     */
-   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
-   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
-   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+   nir_def *one = nir_imm_float(&bld, 1.0f);
+   nir_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
 
-   nir_ssa_def *flt = nir_flt(&bld, a, neg_one);
+   nir_def *flt = nir_flt(&bld, a, neg_one);
 
    nir_if *nif = nir_push_if(&bld, flt);
 
@@ -492,7 +492,7 @@ TEST_F(comparison_pre_test, swizzle_of_same_immediate_vector)
     * } else {
     * }
     */
-   nir_ssa_def *a = nir_fadd(&bld, v1, v3);
+   nir_def *a = nir_fadd(&bld, v1, v3);
 
    nir_alu_instr *flt = nir_alu_instr_create(bld.shader, nir_op_flt);
 
@@ -547,7 +547,7 @@ TEST_F(comparison_pre_test, non_scalar_add_result)
     *
     * No change.
     */
-   nir_ssa_def *a = nir_fadd(&bld, v1, v3);
+   nir_def *a = nir_fadd(&bld, v1, v3);
 
    nir_alu_instr *flt = nir_alu_instr_create(bld.shader, nir_op_flt);
 

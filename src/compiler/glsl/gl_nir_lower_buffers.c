@@ -29,7 +29,7 @@
 #include "util/compiler.h"
 #include "main/shader_types.h"
 
-static nir_ssa_def *
+static nir_def *
 get_block_array_index(nir_builder *b, nir_deref_instr *deref,
                       const struct gl_shader_program *shader_program)
 {
@@ -41,7 +41,7 @@ get_block_array_index(nir_builder *b, nir_deref_instr *deref,
     */
    int const_array_offset = 0;
    const char *block_name = "";
-   nir_ssa_def *nonconst_index = NULL;
+   nir_def *nonconst_index = NULL;
    while (deref->deref_type == nir_deref_type_array) {
       nir_deref_instr *parent = nir_deref_instr_parent(deref);
       assert(parent && glsl_type_is_array(parent->type));
@@ -56,9 +56,9 @@ get_block_array_index(nir_builder *b, nir_deref_instr *deref,
 
          const_array_offset += arr_index * array_elements;
       } else {
-         nir_ssa_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
+         nir_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
          arr_index = nir_umin(b, arr_index, nir_imm_int(b, arr_size - 1));
-         nir_ssa_def *arr_offset = nir_amul_imm(b, arr_index, array_elements);
+         nir_def *arr_offset = nir_amul_imm(b, arr_index, array_elements);
          if (nonconst_index)
             nonconst_index = nir_iadd(b, nonconst_index, arr_offset);
          else
@@ -202,7 +202,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
             b.cursor = nir_before_instr(&deref->instr);
 
             unsigned offset = 0;
-            nir_ssa_def *ptr;
+            nir_def *ptr;
             if (deref->deref_type == nir_deref_type_var &&
                 !glsl_type_is_interface(glsl_without_array(deref->var->type))) {
                /* This variable is contained in an interface block rather than
@@ -219,7 +219,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                 * Everything after this point is a byte offset and will be
                 * handled by nir_lower_explicit_io().
                 */
-               nir_ssa_def *index = get_block_array_index(&b, deref,
+               nir_def *index = get_block_array_index(&b, deref,
                                                           shader_program);
                ptr = nir_vec2(&b, index, nir_imm_int(&b, offset));
             } else {
@@ -237,7 +237,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
             cast->cast.align_mul = NIR_ALIGN_MUL_MAX;
             cast->cast.align_offset = offset % NIR_ALIGN_MUL_MAX;
 
-            nir_ssa_def_rewrite_uses(&deref->dest.ssa,
+            nir_def_rewrite_uses(&deref->dest.ssa,
                                      &cast->dest.ssa);
             nir_deref_instr_remove_if_unused(deref);
             break;
@@ -262,8 +262,8 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                if (glsl_type_is_boolean(deref->type)) {
                   b.cursor = nir_after_instr(&intrin->instr);
                   intrin->dest.ssa.bit_size = 32;
-                  nir_ssa_def *bval = nir_i2b(&b, &intrin->dest.ssa);
-                  nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
+                  nir_def *bval = nir_i2b(&b, &intrin->dest.ssa);
+                  nir_def_rewrite_uses_after(&intrin->dest.ssa,
                                                  bval,
                                                  bval->parent_instr);
                   progress = true;
@@ -288,7 +288,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                 */
                if (glsl_type_is_boolean(deref->type)) {
                   b.cursor = nir_before_instr(&intrin->instr);
-                  nir_ssa_def *ival = nir_b2i32(&b, intrin->src[1].ssa);
+                  nir_def *ival = nir_b2i32(&b, intrin->src[1].ssa);
                   nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
                                         nir_src_for_ssa(ival));
                   progress = true;

@@ -161,13 +161,13 @@ nir_zero_initialize_shared_memory(nir_shader *shader,
 
    nir_variable *it = nir_local_variable_create(b.impl, glsl_uint_type(),
                                                 "zero_init_iterator");
-   nir_ssa_def *local_index = nir_load_local_invocation_index(&b);
-   nir_ssa_def *first_offset = nir_imul_imm(&b, local_index, chunk_size);
+   nir_def *local_index = nir_load_local_invocation_index(&b);
+   nir_def *first_offset = nir_imul_imm(&b, local_index, chunk_size);
    nir_store_var(&b, it, first_offset, 0x1);
 
    nir_loop *loop = nir_push_loop(&b);
    {
-      nir_ssa_def *offset = nir_load_var(&b, it);
+      nir_def *offset = nir_load_var(&b, it);
 
       nir_push_if(&b, nir_uge_imm(&b, offset, shared_size));
       {
@@ -179,7 +179,7 @@ nir_zero_initialize_shared_memory(nir_shader *shader,
                        .align_mul = chunk_size,
                        .write_mask = ((1 << chunk_comps) - 1));
 
-      nir_ssa_def *new_offset = nir_iadd_imm(&b, offset, chunk_size * local_count);
+      nir_def *new_offset = nir_iadd_imm(&b, offset, chunk_size * local_count);
       nir_store_var(&b, it, new_offset, 0x1);
    }
    nir_pop_loop(&b, loop);

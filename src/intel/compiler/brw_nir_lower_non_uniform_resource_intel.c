@@ -49,7 +49,7 @@ add_src_instr(nir_src *src, void *state)
 
 static nir_intrinsic_instr *
 find_resource_intel(struct util_dynarray *inst_array,
-                    nir_ssa_def *def)
+                    nir_def *def)
 {
    /* If resouce_intel is already directly in front of the instruction, there
     * is nothing to do.
@@ -131,8 +131,8 @@ brw_nir_lower_non_uniform_intrinsic(nir_builder *b,
    nir_intrinsic_instr *new_resource_intel =
       nir_instr_as_intrinsic(new_instr);
 
-   nir_src_rewrite_ssa(&new_resource_intel->src[1], intrin->src[source].ssa);
-   nir_src_rewrite_ssa(&intrin->src[source], &new_resource_intel->dest.ssa);
+   nir_src_rewrite(&new_resource_intel->src[1], intrin->src[source].ssa);
+   nir_src_rewrite(&intrin->src[source], &new_resource_intel->dest.ssa);
 
    return true;
 }
@@ -165,8 +165,8 @@ brw_nir_lower_non_uniform_tex(nir_builder *b,
       nir_intrinsic_instr *new_resource_intel =
          nir_instr_as_intrinsic(new_instr);
 
-      nir_src_rewrite_ssa(&new_resource_intel->src[1], tex->src[s].src.ssa);
-      nir_src_rewrite_ssa(&tex->src[s].src, &new_resource_intel->dest.ssa);
+      nir_src_rewrite(&new_resource_intel->src[1], tex->src[s].src.ssa);
+      nir_src_rewrite(&tex->src[s].src, &new_resource_intel->dest.ssa);
 
       progress = true;
    }
@@ -296,7 +296,7 @@ brw_nir_cleanup_resource_intel_instr(nir_builder *b,
          continue;
 
       progress = true;
-      nir_src_rewrite_ssa(src, intrin->src[1].ssa);
+      nir_src_rewrite(src, intrin->src[1].ssa);
    }
 
    return progress;

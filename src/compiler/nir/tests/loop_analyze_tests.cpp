@@ -54,12 +54,12 @@ struct loop_builder_param {
    uint32_t init_value;
    uint32_t cond_value;
    uint32_t incr_value;
-   nir_ssa_def *(*cond_instr)(nir_builder *,
-                              nir_ssa_def *,
-                              nir_ssa_def *);
-   nir_ssa_def *(*incr_instr)(nir_builder *,
-                              nir_ssa_def *,
-                              nir_ssa_def *);
+   nir_def *(*cond_instr)(nir_builder *,
+                              nir_def *,
+                              nir_def *);
+   nir_def *(*incr_instr)(nir_builder *,
+                              nir_def *,
+                              nir_def *);
 };
 
 static nir_loop *
@@ -75,9 +75,9 @@ loop_builder(nir_builder *b, loop_builder_param p)
     *       i = incr_instr(i, incr_value);
     *    }
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(b, p.init_value);
-   nir_ssa_def *ssa_1 = nir_imm_int(b, p.cond_value);
-   nir_ssa_def *ssa_2 = nir_imm_int(b, p.incr_value);
+   nir_def *ssa_0 = nir_imm_int(b, p.init_value);
+   nir_def *ssa_1 = nir_imm_int(b, p.cond_value);
+   nir_def *ssa_2 = nir_imm_int(b, p.incr_value);
 
    nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
 
@@ -89,8 +89,8 @@ loop_builder(nir_builder *b, loop_builder_param p)
       nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
                             nir_src_for_ssa(ssa_0));
 
-      nir_ssa_def *ssa_5 = &phi->dest.ssa;
-      nir_ssa_def *ssa_3 = p.cond_instr(b, ssa_5, ssa_1);
+      nir_def *ssa_5 = &phi->dest.ssa;
+      nir_def *ssa_3 = p.cond_instr(b, ssa_5, ssa_1);
 
       nir_if *nif = nir_push_if(b, ssa_3);
       {
@@ -99,7 +99,7 @@ loop_builder(nir_builder *b, loop_builder_param p)
       }
       nir_pop_if(b, nif);
 
-      nir_ssa_def *ssa_4 = p.incr_instr(b, ssa_5, ssa_2);
+      nir_def *ssa_4 = p.incr_instr(b, ssa_5, ssa_2);
 
       nir_phi_instr_add_src(phi, ssa_4->parent_instr->block,
                             nir_src_for_ssa(ssa_4));
@@ -116,12 +116,12 @@ struct loop_builder_invert_param {
    uint32_t init_value;
    uint32_t incr_value;
    uint32_t cond_value;
-   nir_ssa_def *(*cond_instr)(nir_builder *,
-                              nir_ssa_def *,
-                              nir_ssa_def *);
-   nir_ssa_def *(*incr_instr)(nir_builder *,
-                              nir_ssa_def *,
-                              nir_ssa_def *);
+   nir_def *(*cond_instr)(nir_builder *,
+                              nir_def *,
+                              nir_def *);
+   nir_def *(*incr_instr)(nir_builder *,
+                              nir_def *,
+                              nir_def *);
 };
 
 /**
@@ -145,9 +145,9 @@ loop_builder_invert(nir_builder *b, loop_builder_invert_param p)
     *          break;
     *    }
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(b, p.init_value);
-   nir_ssa_def *ssa_1 = nir_imm_int(b, p.incr_value);
-   nir_ssa_def *ssa_2 = nir_imm_int(b, p.cond_value);
+   nir_def *ssa_0 = nir_imm_int(b, p.init_value);
+   nir_def *ssa_1 = nir_imm_int(b, p.incr_value);
+   nir_def *ssa_2 = nir_imm_int(b, p.cond_value);
 
    nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
 
@@ -159,11 +159,11 @@ loop_builder_invert(nir_builder *b, loop_builder_invert_param p)
       nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
                             nir_src_for_ssa(ssa_0));
 
-      nir_ssa_def *ssa_5 = &phi->dest.ssa;
+      nir_def *ssa_5 = &phi->dest.ssa;
 
-      nir_ssa_def *ssa_3 = p.incr_instr(b, ssa_5, ssa_1);
+      nir_def *ssa_3 = p.incr_instr(b, ssa_5, ssa_1);
 
-      nir_ssa_def *ssa_4 = p.cond_instr(b, ssa_3, ssa_2);
+      nir_def *ssa_4 = p.cond_instr(b, ssa_3, ssa_2);
 
       nir_if *nif = nir_push_if(b, ssa_4);
       {
@@ -268,8 +268,8 @@ TEST_F(nir_loop_analyze_test, one_iteration_fneu)
 }
 
 #define COMPARE_REVERSE(comp)                                           \
-   static nir_ssa_def *                                                 \
-   nir_ ## comp ## _rev(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y) \
+   static nir_def *                                                 \
+   nir_ ## comp ## _rev(nir_builder *b, nir_def *x, nir_def *y) \
    {                                                                    \
       return nir_ ## comp (b, y, x);                                    \
    }
@@ -281,8 +281,8 @@ COMPARE_REVERSE(uge)
 COMPARE_REVERSE(ishl)
 
 #define INOT_COMPARE(comp)                                              \
-   static nir_ssa_def *                                                 \
-   nir_inot_ ## comp (nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)   \
+   static nir_def *                                                 \
+   nir_inot_ ## comp (nir_builder *b, nir_def *x, nir_def *y)   \
    {                                                                    \
       return nir_inot(b, nir_ ## comp (b, x, y));                       \
    }

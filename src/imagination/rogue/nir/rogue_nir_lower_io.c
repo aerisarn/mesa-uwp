@@ -45,11 +45,11 @@ static void lower_vulkan_resource_index(nir_builder *b,
    unsigned binding = nir_intrinsic_binding(intr);
    unsigned desc_type = nir_intrinsic_desc_type(intr);
 
-   nir_ssa_def *def = nir_vec3(b,
+   nir_def *def = nir_vec3(b,
                                nir_imm_int(b, desc_set),
                                nir_imm_int(b, binding),
                                nir_imm_int(b, desc_type));
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, def);
+   nir_def_rewrite_uses(&intr->dest.ssa, def);
    nir_instr_remove(&intr->instr);
 }
 
@@ -61,7 +61,7 @@ static void lower_load_global_constant_to_scalar(nir_builder *b,
 
    assert(intr->num_components > 1);
 
-   nir_ssa_def *loads[NIR_MAX_VEC_COMPONENTS];
+   nir_def *loads[NIR_MAX_VEC_COMPONENTS];
 
    for (uint8_t i = 0; i < intr->num_components; i++) {
       nir_intrinsic_instr *chan_intr =
@@ -86,7 +86,7 @@ static void lower_load_global_constant_to_scalar(nir_builder *b,
       loads[i] = &chan_intr->dest.ssa;
    }
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa,
+   nir_def_rewrite_uses(&intr->dest.ssa,
                             nir_vec(b, loads, intr->num_components));
    nir_instr_remove(&intr->instr);
 }

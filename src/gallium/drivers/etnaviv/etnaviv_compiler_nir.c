@@ -413,7 +413,7 @@ get_src(struct etna_compile *c, nir_src *src)
 }
 
 static bool
-vec_dest_has_swizzle(nir_alu_instr *vec, nir_ssa_def *ssa)
+vec_dest_has_swizzle(nir_alu_instr *vec, nir_def *ssa)
 {
    for (unsigned i = 0; i < nir_dest_num_components(vec->dest.dest); i++) {
       if (vec->src[i].src.ssa != ssa)
@@ -829,7 +829,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
 
       /* resolve with single combined const src */
       if (swiz_max < 4) {
-         nir_ssa_def *def = nir_build_imm(&b, swiz_max + 1, 32, value);
+         nir_def *def = nir_build_imm(&b, swiz_max + 1, 32, value);
 
          for (unsigned i = 0; i < info->num_inputs; i++) {
             nir_const_value *cv = get_alu_cv(&alu->src[i]);
@@ -855,7 +855,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
          if (num_const == 1)
             continue;
 
-         nir_ssa_def *mov = nir_mov(&b, alu->src[i].src.ssa);
+         nir_def *mov = nir_mov(&b, alu->src[i].src.ssa);
          nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(mov));
       }
       return;
@@ -875,10 +875,10 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
     * are constant)
     */
    if (num_components > 1) {
-      nir_ssa_def *def = nir_build_imm(&b, num_components, 32, value);
+      nir_def *def = nir_build_imm(&b, num_components, 32, value);
 
       if (num_components == info->num_inputs) {
-         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, def);
+         nir_def_rewrite_uses(&alu->dest.dest.ssa, def);
          nir_instr_remove(&alu->instr);
          return;
       }
@@ -895,7 +895,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
 
    unsigned finished_write_mask = 0;
    for (unsigned i = 0; i < nir_dest_num_components(alu->dest.dest); i++) {
-      nir_ssa_def *ssa = alu->src[i].src.ssa;
+      nir_def *ssa = alu->src[i].src.ssa;
 
       /* check that vecN instruction is only user of this */
       bool need_mov = false;
@@ -975,9 +975,9 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
                value[i] = UNIFORM(base * 4 + i);
 
             b.cursor = nir_after_instr(instr);
-            nir_ssa_def *def = nir_build_imm(&b, intr->dest.ssa.num_components, 32, value);
+            nir_def *def = nir_build_imm(&b, intr->dest.ssa.num_components, 32, value);
 
-            nir_ssa_def_rewrite_uses(&intr->dest.ssa, def);
+            nir_def_rewrite_uses(&intr->dest.ssa, def);
             nir_instr_remove(instr);
          } break;
          default:

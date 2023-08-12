@@ -936,7 +936,7 @@ static void
 zero_array_members(nir_builder *b, nir_variable *var)
 {
    nir_deref_instr *deref = nir_build_deref_var(b, var);
-   nir_ssa_def *zero = nir_imm_zero(b, 4, 32);
+   nir_def *zero = nir_imm_zero(b, 4, 32);
    for (int i = 0; i < glsl_array_size(var->type); i++) {
       nir_deref_instr *arr = nir_build_deref_array_imm(b, deref, i);
       uint32_t mask = BITFIELD_MASK(glsl_get_vector_elements(arr->type));

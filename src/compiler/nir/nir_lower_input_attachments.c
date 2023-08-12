@@ -24,18 +24,18 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-static nir_ssa_def *
+static nir_def *
 load_frag_coord(nir_builder *b, nir_deref_instr *deref,
                 const nir_input_attachment_options *options)
 {
    if (options->use_fragcoord_sysval) {
-      nir_ssa_def *frag_coord = nir_load_frag_coord(b);
+      nir_def *frag_coord = nir_load_frag_coord(b);
       if (options->unscaled_input_attachment_ir3) {
          nir_variable *var = nir_deref_instr_get_variable(deref);
          unsigned base = var->data.index;
-         nir_ssa_def *unscaled_frag_coord = nir_load_frag_coord_unscaled_ir3(b);
+         nir_def *unscaled_frag_coord = nir_load_frag_coord_unscaled_ir3(b);
          if (deref->deref_type == nir_deref_type_array) {
-            nir_ssa_def *unscaled =
+            nir_def *unscaled =
                nir_i2b(b, nir_iand(b, nir_ishr(b, nir_imm_int(b, options->unscaled_input_attachment_ir3 >> base), deref->arr.index.ssa),
                                    nir_imm_int(b, 1)));
             frag_coord = nir_bcsel(b, unscaled, unscaled_frag_coord, frag_coord);
@@ -63,7 +63,7 @@ load_frag_coord(nir_builder *b, nir_deref_instr *deref,
    return nir_load_var(b, pos);
 }
 
-static nir_ssa_def *
+static nir_def *
 load_layer_id(nir_builder *b, const nir_input_attachment_options *options)
 {
    if (options->use_layer_id_sysval) {
@@ -97,13 +97,13 @@ try_lower_input_load(nir_builder *b, nir_intrinsic_instr *load,
 
    b->cursor = nir_instr_remove(&load->instr);
 
-   nir_ssa_def *frag_coord = load_frag_coord(b, deref, options);
+   nir_def *frag_coord = load_frag_coord(b, deref, options);
    frag_coord = nir_f2i32(b, frag_coord);
-   nir_ssa_def *offset = nir_ssa_for_src(b, load->src[1], 2);
-   nir_ssa_def *pos = nir_iadd(b, frag_coord, offset);
+   nir_def *offset = nir_ssa_for_src(b, load->src[1], 2);
+   nir_def *pos = nir_iadd(b, frag_coord, offset);
 
-   nir_ssa_def *layer = load_layer_id(b, options);
-   nir_ssa_def *coord =
+   nir_def *layer = load_layer_id(b, options);
+   nir_def *coord =
       nir_vec3(b, nir_channel(b, pos, 0), nir_channel(b, pos, 1), layer);
 
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3 + multisampled);
@@ -142,13 +142,13 @@ try_lower_input_load(nir_builder *b, nir_intrinsic_instr *load,
    if (tex->is_sparse) {
       unsigned load_result_size = load->dest.ssa.num_components - 1;
       nir_component_mask_t load_result_mask = nir_component_mask(load_result_size);
-      nir_ssa_def *res = nir_channels(
+      nir_def *res = nir_channels(
          b, &tex->dest.ssa, load_result_mask | 0x10);
 
-      nir_ssa_def_rewrite_uses(&load->dest.ssa, res);
+      nir_def_rewrite_uses(&load->dest.ssa, res);
    } else {
-      nir_ssa_def_rewrite_uses(&load->dest.ssa,
-                               &tex->dest.ssa);
+      nir_def_rewrite_uses(&load->dest.ssa,
+                           &tex->dest.ssa);
    }
 
    return true;
@@ -165,12 +165,12 @@ try_lower_input_texop(nir_builder *b, nir_tex_instr *tex,
 
    b->cursor = nir_before_instr(&tex->instr);
 
-   nir_ssa_def *frag_coord = load_frag_coord(b, deref, options);
+   nir_def *frag_coord = load_frag_coord(b, deref, options);
    frag_coord = nir_f2i32(b, frag_coord);
 
-   nir_ssa_def *layer = load_layer_id(b, options);
-   nir_ssa_def *coord = nir_vec3(b, nir_channel(b, frag_coord, 0),
-                                 nir_channel(b, frag_coord, 1), layer);
+   nir_def *layer = load_layer_id(b, options);
+   nir_def *coord = nir_vec3(b, nir_channel(b, frag_coord, 0),
+                             nir_channel(b, frag_coord, 1), layer);
 
    tex->coord_components = 3;
 

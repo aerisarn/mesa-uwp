@@ -106,7 +106,7 @@ copy_vars(nir_builder *b, nir_deref_instr *dst, nir_deref_instr *src)
          copy_vars(b, nir_build_deref_array_imm(b, dst, i), nir_build_deref_array_imm(b, src, i));
       }
    } else {
-      nir_ssa_def *load = nir_load_deref(b, src);
+      nir_def *load = nir_load_deref(b, src);
       nir_store_deref(b, dst, load, BITFIELD_MASK(load->num_components));
    }
 }
@@ -215,12 +215,12 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
    }
 
    nir_variable *edge_var = nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_EDGE);
-   nir_ssa_def *flat_interp_mask_def = nir_load_flat_mask(&b);
-   nir_ssa_def *last_pv_vert_def = nir_load_provoking_last(&b);
+   nir_def *flat_interp_mask_def = nir_load_flat_mask(&b);
+   nir_def *last_pv_vert_def = nir_load_provoking_last(&b);
    last_pv_vert_def = nir_ine_imm(&b, last_pv_vert_def, 0);
-   nir_ssa_def *start_vert_index = nir_imm_int(&b, start_vert);
-   nir_ssa_def *end_vert_index = nir_imm_int(&b, end_vert - 1);
-   nir_ssa_def *pv_vert_index = nir_bcsel(&b, last_pv_vert_def, end_vert_index, start_vert_index);
+   nir_def *start_vert_index = nir_imm_int(&b, start_vert);
+   nir_def *end_vert_index = nir_imm_int(&b, end_vert - 1);
+   nir_def *pv_vert_index = nir_bcsel(&b, last_pv_vert_def, end_vert_index, start_vert_index);
    for (unsigned i = start_vert; i < end_vert || needs_closing; i += vert_step) {
       int idx = i < end_vert ? i : start_vert;
       /* Copy inputs to outputs. */
@@ -229,7 +229,7 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
             continue;
          }
          /* no need to use copy_var to save a lower pass */
-         nir_ssa_def *index;
+         nir_def *index;
          if (in_vars[j]->data.location == VARYING_SLOT_POS || !handle_flat)
             index = nir_imm_int(&b, idx);
          else {
@@ -242,7 +242,7 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
       }
       nir_emit_vertex(&b, 0);
       if (emulate_edgeflags) {
-         nir_ssa_def *edge_value = nir_channel(&b, nir_load_array_var_imm(&b, edge_var, idx), 0);
+         nir_def *edge_value = nir_channel(&b, nir_load_array_var_imm(&b, edge_var, idx), 0);
          nir_if *edge_if = nir_push_if(&b, nir_fneu_imm(&b, edge_value, 1.0));
          nir_end_primitive(&b, 0);
          nir_pop_if(&b, edge_if);

@@ -38,7 +38,7 @@ lima_nir_split_load_input_instr(nir_builder *b,
    if (alu->op != nir_op_mov)
       return false;
 
-   nir_ssa_def *ssa = alu->src[0].src.ssa;
+   nir_def *ssa = alu->src[0].src.ssa;
    if (ssa->parent_instr->type != nir_instr_type_intrinsic)
       return false;
 
@@ -80,7 +80,7 @@ lima_nir_split_load_input_instr(nir_builder *b,
    nir_src_copy(&new_intrin->src[0], &intrin->src[0], &new_intrin->instr);
 
    nir_builder_instr_insert(b, &new_intrin->instr);
-   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa,
+   nir_def_rewrite_uses(&alu->dest.dest.ssa,
                             &new_intrin->dest.ssa);
    nir_instr_remove(&alu->instr);
    return true;
