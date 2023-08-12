@@ -186,9 +186,6 @@ struct agx_uncompiled_shader {
     */
    bool internal_bindless;
 
-   /* For compute kernels */
-   unsigned static_shared_mem;
-
    /* Set on VS, passed to FS for linkage */
    unsigned base_varying;
 };

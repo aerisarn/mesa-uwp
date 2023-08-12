@@ -1848,10 +1848,7 @@ agx_create_compute_state(struct pipe_context *pctx,
    nir_shader *nir = (void *)cso->prog;
 
    agx_shader_initialize(dev, so, nir);
-   struct agx_compiled_shader *cs =
-      agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
-
-   so->static_shared_mem = cs->info.local_size;
+   agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
 
    /* We're done with the NIR, throw it away */
    ralloc_free(nir);
@@ -2247,9 +2244,7 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    if (stage == PIPE_SHADER_FRAGMENT) {
       agx_usc_tilebuffer(&b, &batch->tilebuffer_layout);
    } else if (stage == PIPE_SHADER_COMPUTE) {
-      unsigned size =
-         ctx->stage[PIPE_SHADER_COMPUTE].shader->static_shared_mem +
-         variable_shared_mem;
+      unsigned size = cs->info.local_size + variable_shared_mem;
 
       agx_usc_pack(&b, SHARED, cfg) {
          cfg.layout = AGX_SHARED_LAYOUT_VERTEX_COMPUTE;
