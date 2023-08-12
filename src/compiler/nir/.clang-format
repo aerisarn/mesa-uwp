@@ -1,4 +1,5 @@
 BasedOnStyle: InheritParentConfig
+DisableFormat: false
 
 ColumnLimit: 0
 Cpp11BracedListStyle: false

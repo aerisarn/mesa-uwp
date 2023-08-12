@@ -311,3 +311,10 @@ ForEachMacros:
   - pan_foreach_instr_in_block_rev
   - pan_foreach_predecessor
   - pan_foreach_successor
+
+# Disable clang formatting by default. Drivers that use clang-format
+# inherit from this .clang-format file and re-enable formatting:
+#
+# DisableFormat: false
+#
+DisableFormat: true
