@@ -1258,7 +1258,6 @@ nv50_ir_init_prog_info(struct nv50_ir_prog_info *info,
       info->prop.cp.numThreads[2] = 1;
    }
    info_out->bin.smemSize = info->bin.smemSize;
-   info_out->io.genUserClip = info->io.genUserClip;
    info_out->io.instanceId = 0xff;
    info_out->io.vertexId = 0xff;
    info_out->io.edgeFlagIn = 0xff;

@@ -53,33 +53,4 @@ ConverterCommon::translateInterpMode(const struct nv50_ir_varying *var, operatio
    return mode;
 }
 
-void
-ConverterCommon::handleUserClipPlanes()
-{
-   Value *res[8];
-   int n, i, c;
-
-   for (c = 0; c < 4; ++c) {
-      for (i = 0; i < info_out->io.genUserClip; ++i) {
-         Symbol *sym = mkSymbol(FILE_MEMORY_CONST, info->io.auxCBSlot,
-                                TYPE_F32, info->io.ucpBase + i * 16 + c * 4);
-         Value *ucp = mkLoadv(TYPE_F32, sym, NULL);
-         if (c == 0)
-            res[i] = mkOp2v(OP_MUL, TYPE_F32, getScratch(), clipVtx[c], ucp);
-         else
-            mkOp3(OP_MAD, TYPE_F32, res[i], clipVtx[c], ucp, res[i]);
-      }
-   }
-
-   const int first = info_out->numOutputs - (info_out->io.genUserClip + 3) / 4;
-
-   for (i = 0; i < info_out->io.genUserClip; ++i) {
-      n = i / 4 + first;
-      c = i % 4;
-      Symbol *sym =
-         mkSymbol(FILE_SHADER_OUTPUT, 0, TYPE_F32, info_out->out[n].slot[c] * 4);
-      mkStore(OP_EXPORT, TYPE_F32, sym, NULL, res[i]);
-   }
-}
-
 } // namespace nv50_ir

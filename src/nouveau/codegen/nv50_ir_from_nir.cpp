@@ -23,6 +23,7 @@
  */
 
 #include "compiler/nir/nir.h"
+#include "compiler/nir/nir_builder.h"
 
 #include "util/u_debug.h"
 #include "util/u_prim.h"
@@ -63,6 +64,34 @@ function_temp_type_info(const struct glsl_type *type, unsigned *size, unsigned *
       *size = comp_size * length;
       *align = 0x10;
    }
+}
+
+bool
+nv50_nir_lower_load_user_clip_plane_cb(nir_builder *b, nir_intrinsic_instr *intrin, void *params)
+{
+   struct nv50_ir_prog_info *info = (struct nv50_ir_prog_info *)params;
+
+   if (intrin->intrinsic != nir_intrinsic_load_user_clip_plane)
+      return false;
+
+   uint16_t offset = info->io.ucpBase + nir_intrinsic_ucp_id(intrin) * 16;
+
+   b->cursor = nir_before_instr(&intrin->instr);
+   nir_def *replacement =
+      nir_load_ubo(b, 4, 32, nir_imm_int(b, info->io.auxCBSlot),
+                   nir_imm_int(b, offset), .range = ~0u);
+
+   nir_def_rewrite_uses(&intrin->def, replacement);
+   nir_instr_remove(&intrin->instr);
+
+   return true;
+}
+
+bool
+nv50_nir_lower_load_user_clip_plane(nir_shader *nir, struct nv50_ir_prog_info *info) {
+   return nir_shader_intrinsics_pass(nir, nv50_nir_lower_load_user_clip_plane_cb,
+                                     nir_metadata_block_index | nir_metadata_dominance,
+                                     info);
 }
 
 class Converter : public ConverterCommon
@@ -1044,9 +1073,6 @@ bool Converter::assignSlots() {
             info_out->numPatchConstants = MAX2(info_out->numPatchConstants, index + slots);
 
          switch (name) {
-         case TGSI_SEMANTIC_CLIPDIST:
-            info_out->io.genUserClip = -1;
-            break;
          case TGSI_SEMANTIC_CLIPVERTEX:
             clipVertexOutput = vary;
             break;
@@ -1112,20 +1138,6 @@ bool Converter::assignSlots() {
                v->oread = 1;
          }
          info_out->numOutputs = std::max<uint8_t>(info_out->numOutputs, vary);
-      }
-   }
-
-   if (info_out->io.genUserClip > 0) {
-      info_out->io.clipDistances = info_out->io.genUserClip;
-
-      const unsigned int nOut = (info_out->io.genUserClip + 3) / 4;
-
-      for (unsigned int n = 0; n < nOut; ++n) {
-         unsigned int i = info_out->numOutputs++;
-         info_out->out[i].id = i;
-         info_out->out[i].sn = TGSI_SEMANTIC_CLIPDIST;
-         info_out->out[i].si = n;
-         info_out->out[i].mask = ((1 << info_out->io.clipDistances) - 1) >> (n * 4);
       }
    }
 
@@ -1336,11 +1348,6 @@ Converter::visit(nir_function *function)
 
    setPosition(entry, true);
 
-   if (info_out->io.genUserClip > 0) {
-      for (int c = 0; c < 4; ++c)
-         clipVtx[c] = getScratch();
-   }
-
    switch (prog->getType()) {
    case Program::TYPE_TESSELLATION_CONTROL:
       outBase = mkOp2v(
@@ -1366,11 +1373,6 @@ Converter::visit(nir_function *function)
 
    bb->cfg.attach(&exit->cfg, Graph::Edge::TREE);
    setPosition(exit, true);
-
-   if ((prog->getType() == Program::TYPE_VERTEX ||
-        prog->getType() == Program::TYPE_TESSELLATION_EVAL)
-       && info_out->io.genUserClip > 0)
-      handleUserClipPlanes();
 
    // TODO: for non main function this needs to be a OP_RETURN
    mkOp(OP_EXIT, TYPE_NONE, NULL)->terminator = 1;
@@ -1683,15 +1685,6 @@ Converter::visit(nir_intrinsic_instr *insn)
             }
             break;
          }
-         case Program::TYPE_GEOMETRY:
-         case Program::TYPE_TESSELLATION_EVAL:
-         case Program::TYPE_VERTEX: {
-            if (info_out->io.genUserClip > 0 && idx == (uint32_t)clipVertexOutput) {
-               mkMov(clipVtx[i], src);
-               src = clipVtx[i];
-            }
-            break;
-         }
          default:
             break;
          }
@@ -2001,8 +1994,6 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_emit_vertex: {
-      if (info_out->io.genUserClip > 0)
-         handleUserClipPlanes();
       uint32_t idx = nir_intrinsic_stream_id(insn);
       mkOp1(getOperation(op), TYPE_U32, NULL, mkImm(idx))->fixed = 1;
       break;
@@ -3238,6 +3229,28 @@ Converter::run()
                          (nir->options->lower_flrp32 ? 32 : 0) |
                          (nir->options->lower_flrp64 ? 64 : 0);
    assert(lower_flrp);
+
+   info_out->io.genUserClip = info->io.genUserClip;
+   if (info->io.genUserClip > 0) {
+      bool lowered = false;
+
+      if (nir->info.stage == MESA_SHADER_VERTEX ||
+          nir->info.stage == MESA_SHADER_TESS_EVAL)
+         NIR_PASS(lowered, nir, nir_lower_clip_vs,
+                  (1 << info->io.genUserClip) - 1, true, false, NULL);
+      else if (nir->info.stage == MESA_SHADER_GEOMETRY)
+         NIR_PASS(lowered, nir, nir_lower_clip_gs,
+                  (1 << info->io.genUserClip) - 1, false, NULL);
+
+      if (lowered) {
+         nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+         NIR_PASS_V(nir, nir_lower_io_to_temporaries, impl, true, false);
+         NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+         NIR_PASS_V(nir, nv50_nir_lower_load_user_clip_plane, info);
+      } else {
+         info_out->io.genUserClip = -1;
+      }
+   }
 
    /* prepare for IO lowering */
    NIR_PASS_V(nir, nir_lower_flrp, lower_flrp, false);

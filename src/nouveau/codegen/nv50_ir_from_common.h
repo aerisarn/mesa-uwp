@@ -32,12 +32,9 @@ public:
 protected:
    uint8_t translateInterpMode(const struct nv50_ir_varying *var, operation& op);
 
-   void handleUserClipPlanes();
-
    struct nv50_ir_prog_info *info;
    struct nv50_ir_prog_info_out *info_out;
    Value *fragCoord[4];
-   Value *clipVtx[4];
    Value *outBase; // base address of vertex out patch (for TCP)
 };
 
