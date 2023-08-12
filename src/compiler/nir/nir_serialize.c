@@ -492,7 +492,7 @@ read_src(read_ctx *ctx, nir_src *src)
    return header;
 }
 
-union packed_dest {
+union packed_def {
    uint8_t u8;
    struct {
       uint8_t _pad : 1;
@@ -533,7 +533,7 @@ union packed_instr {
    struct {
       unsigned instr_type : 4; /* always present */
       unsigned _pad : 20;
-      unsigned dest : 8; /* always last */
+      unsigned def : 8; /* always last */
    } any;
    struct {
       unsigned instr_type : 4;
@@ -547,7 +547,7 @@ union packed_instr {
       unsigned packed_src_ssa_16bit : 1;
       /* Scalarized ALUs always have the same header. */
       unsigned num_followup_alu_sharing_header : 2;
-      unsigned dest : 8;
+      unsigned def : 8;
    } alu;
    struct {
       unsigned instr_type : 4;
@@ -557,21 +557,21 @@ union packed_instr {
       unsigned _pad : 9;
       unsigned in_bounds : 1;
       unsigned packed_src_ssa_16bit : 1; /* deref_var redefines this */
-      unsigned dest : 8;
+      unsigned def : 8;
    } deref;
    struct {
       unsigned instr_type : 4;
       unsigned deref_type : 3;
       unsigned _pad : 1;
       unsigned object_idx : 16; /* if 0, the object ID is a separate uint32 */
-      unsigned dest : 8;
+      unsigned def : 8;
    } deref_var;
    struct {
       unsigned instr_type : 4;
       unsigned intrinsic : 10;
       unsigned const_indices_encoding : 2;
       unsigned packed_const_indices : 8;
-      unsigned dest : 8;
+      unsigned def : 8;
    } intrinsic;
    struct {
       unsigned instr_type : 4;
@@ -591,12 +591,12 @@ union packed_instr {
       unsigned num_srcs : 4;
       unsigned op : 5;
       unsigned _pad : 11;
-      unsigned dest : 8;
+      unsigned def : 8;
    } tex;
    struct {
       unsigned instr_type : 4;
       unsigned num_srcs : 20;
-      unsigned dest : 8;
+      unsigned def : 8;
    } phi;
    struct {
       unsigned instr_type : 4;
@@ -607,18 +607,18 @@ union packed_instr {
 
 /* Write "lo24" as low 24 bits in the first uint32. */
 static void
-write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
-           nir_instr_type instr_type)
+write_def(write_ctx *ctx, const nir_def *def, union packed_instr header,
+          nir_instr_type instr_type)
 {
-   STATIC_ASSERT(sizeof(union packed_dest) == 1);
-   union packed_dest dest;
-   dest.u8 = 0;
+   STATIC_ASSERT(sizeof(union packed_def) == 1);
+   union packed_def pdef;
+   pdef.u8 = 0;
 
-   dest.num_components =
-      encode_num_components_in_3bits(dst->ssa.num_components);
-   dest.bit_size = encode_bit_size_3bits(dst->ssa.bit_size);
-   dest.divergent = dst->ssa.divergent;
-   header.any.dest = dest.u8;
+   pdef.num_components =
+      encode_num_components_in_3bits(def->num_components);
+   pdef.bit_size = encode_bit_size_3bits(def->bit_size);
+   pdef.divergent = def->divergent;
+   header.any.def = pdef.u8;
 
    /* Check if the current ALU instruction has the same header as the previous
     * instruction that is also ALU. If it is, we don't have to write
@@ -659,28 +659,28 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
       blob_write_uint32(ctx->blob, header.u32);
    }
 
-   if (dest.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
-      blob_write_uint32(ctx->blob, dst->ssa.num_components);
+   if (pdef.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
+      blob_write_uint32(ctx->blob, def->num_components);
 
-   write_add_object(ctx, &dst->ssa);
+   write_add_object(ctx, def);
 }
 
 static void
-read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr,
-          union packed_instr header)
+read_def(read_ctx *ctx, nir_def *def, nir_instr *instr,
+         union packed_instr header)
 {
-   union packed_dest dest;
-   dest.u8 = header.any.dest;
+   union packed_def pdef;
+   pdef.u8 = header.any.def;
 
-   unsigned bit_size = decode_bit_size_3bits(dest.bit_size);
+   unsigned bit_size = decode_bit_size_3bits(pdef.bit_size);
    unsigned num_components;
-   if (dest.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
+   if (pdef.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
       num_components = blob_read_uint32(ctx->blob);
    else
-      num_components = decode_num_components_in_3bits(dest.num_components);
-   nir_ssa_dest_init(instr, dst, num_components, bit_size);
-   dst->ssa.divergent = dest.divergent;
-   read_add_object(ctx, &dst->ssa);
+      num_components = decode_num_components_in_3bits(pdef.num_components);
+   nir_def_init(instr, def, num_components, bit_size);
+   def->divergent = pdef.divergent;
+   read_add_object(ctx, def);
 }
 
 static bool
@@ -737,7 +737,7 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
          header.alu.writemask_or_two_swizzles |= alu->src[1].swizzle[0] << 2;
    }
 
-   write_dest(ctx, &alu->dest.dest, header, alu->instr.type);
+   write_def(ctx, &alu->dest.dest.ssa, header, alu->instr.type);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
@@ -788,7 +788,7 @@ read_alu(read_ctx *ctx, union packed_instr header)
    alu->no_signed_wrap = header.alu.no_signed_wrap;
    alu->no_unsigned_wrap = header.alu.no_unsigned_wrap;
 
-   read_dest(ctx, &alu->dest.dest, &alu->instr, header);
+   read_def(ctx, &alu->dest.dest.ssa, &alu->instr, header);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
@@ -910,7 +910,7 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
       header.deref.in_bounds = deref->arr.in_bounds;
    }
 
-   write_dest(ctx, &deref->dest, header, deref->instr.type);
+   write_def(ctx, &deref->dest.ssa, header, deref->instr.type);
 
    switch (deref->deref_type) {
    case nir_deref_type_var:
@@ -962,7 +962,7 @@ read_deref(read_ctx *ctx, union packed_instr header)
    nir_deref_type deref_type = header.deref.deref_type;
    nir_deref_instr *deref = nir_deref_instr_create(ctx->nir, deref_type);
 
-   read_dest(ctx, &deref->dest, &deref->instr, header);
+   read_def(ctx, &deref->dest.ssa, &deref->instr, header);
 
    nir_deref_instr *parent;
 
@@ -1077,7 +1077,7 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
    }
 
    if (nir_intrinsic_infos[intrin->intrinsic].has_dest)
-      write_dest(ctx, &intrin->dest, header, intrin->instr.type);
+      write_def(ctx, &intrin->dest.ssa, header, intrin->instr.type);
    else
       blob_write_uint32(ctx->blob, header.u32);
 
@@ -1112,7 +1112,7 @@ read_intrinsic(read_ctx *ctx, union packed_instr header)
    unsigned num_indices = nir_intrinsic_infos[op].num_indices;
 
    if (nir_intrinsic_infos[op].has_dest)
-      read_dest(ctx, &intrin->dest, &intrin->instr, header);
+      read_def(ctx, &intrin->dest.ssa, &intrin->instr, header);
 
    for (unsigned i = 0; i < num_srcs; i++)
       read_src(ctx, &intrin->src[i]);
@@ -1380,7 +1380,7 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
    header.tex.num_srcs = tex->num_srcs;
    header.tex.op = tex->op;
 
-   write_dest(ctx, &tex->dest, header, tex->instr.type);
+   write_def(ctx, &tex->dest.ssa, header, tex->instr.type);
 
    blob_write_uint32(ctx->blob, tex->texture_index);
    blob_write_uint32(ctx->blob, tex->sampler_index);
@@ -1418,7 +1418,7 @@ read_tex(read_ctx *ctx, union packed_instr header)
 {
    nir_tex_instr *tex = nir_tex_instr_create(ctx->nir, header.tex.num_srcs);
 
-   read_dest(ctx, &tex->dest, &tex->instr, header);
+   read_def(ctx, &tex->dest.ssa, &tex->instr, header);
 
    tex->op = header.tex.op;
    tex->texture_index = blob_read_uint32(ctx->blob);
@@ -1464,7 +1464,7 @@ write_phi(write_ctx *ctx, const nir_phi_instr *phi)
     * and then store enough information so that a later fixup pass can fill
     * them in correctly.
     */
-   write_dest(ctx, &phi->dest, header, phi->instr.type);
+   write_def(ctx, &phi->dest.ssa, header, phi->instr.type);
 
    nir_foreach_phi_src(src, phi) {
       size_t blob_offset = blob_reserve_uint32(ctx->blob);
@@ -1497,7 +1497,7 @@ read_phi(read_ctx *ctx, nir_block *blk, union packed_instr header)
 {
    nir_phi_instr *phi = nir_phi_instr_create(ctx->nir);
 
-   read_dest(ctx, &phi->dest, &phi->instr, header);
+   read_def(ctx, &phi->dest.ssa, &phi->instr, header);
 
    /* For similar reasons as before, we just store the index directly into the
     * pointer, and let a later pass resolve the phi sources.
