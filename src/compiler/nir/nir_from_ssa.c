@@ -580,7 +580,11 @@ def_replace_with_reg(nir_def *def, nir_function_impl *impl)
    nir_def *reg = decl_reg_for_ssa_def(&b, def);
    nir_rewrite_uses_to_load_reg(&b, def, reg);
 
-   b.cursor = nir_after_instr(def->parent_instr);
+   if (def->parent_instr->type == nir_instr_type_phi)
+      b.cursor = nir_before_block_after_phis(def->parent_instr->block);
+   else
+      b.cursor = nir_after_instr(def->parent_instr);
+
    nir_store_reg(&b, def, reg);
    return true;
 }
