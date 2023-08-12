@@ -82,8 +82,16 @@ lower(nir_builder *b, nir_instr *instr, void *data)
          }
       }
 
+      nir_atomic_op op = nir_atomic_op_iadd /* irrelevant */;
+      if (nir_intrinsic_has_atomic_op(intr))
+         op = nir_intrinsic_atomic_op(intr);
+
       /* Otherwise, lower to bindless */
       intr->intrinsic = bindless_op;
+
+      if (nir_intrinsic_has_atomic_op(intr))
+         nir_intrinsic_set_atomic_op(intr, op);
+
       *internal_bindless = true;
 
       index = nir_iadd_imm(b, nir_imul_imm(b, index, 2), offset);
