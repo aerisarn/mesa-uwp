@@ -3359,6 +3359,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_store_def(c, &instr->def, 0, vir_MOV(c, c->vid));
                 break;
 
+        case nir_intrinsic_load_draw_id:
+                ntq_store_def(c, &instr->def, 0, vir_uniform(c, QUNIFORM_DRAW_ID, 0));
+                break;
+
         case nir_intrinsic_load_tlb_color_v3d:
                 vir_emit_tlb_color_read(c, instr);
                 break;

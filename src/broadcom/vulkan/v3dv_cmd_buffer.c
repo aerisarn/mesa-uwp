@@ -2336,6 +2336,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
    const bool has_new_push_constants = dirty_uniform_state & V3DV_CMD_DIRTY_PUSH_CONSTANTS;
    const bool has_new_descriptors = dirty_uniform_state & V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
    const bool has_new_view_index = dirty_uniform_state & V3DV_CMD_DIRTY_VIEW_INDEX;
+   const bool has_new_draw_id = dirty_uniform_state & V3DV_CMD_DIRTY_DRAW_ID;
 
    /* VK_SHADER_STAGE_FRAGMENT_BIT */
    const bool has_new_descriptors_fs =
@@ -2403,6 +2404,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
 
    const bool needs_vs_update = has_new_viewport ||
                                 has_new_view_index ||
+                                has_new_draw_id ||
                                 has_new_pipeline ||
                                 has_new_push_constants_vs ||
                                 has_new_descriptors_vs;
@@ -2422,6 +2424,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_VIEW_INDEX;
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_DRAW_ID;
 }
 
 /* This stores command buffer state that we might be about to stomp for
@@ -2913,7 +2916,8 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
                 V3DV_CMD_DIRTY_PUSH_CONSTANTS |
                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                 V3DV_CMD_DIRTY_VIEWPORT |
-                V3DV_CMD_DIRTY_VIEW_INDEX);
+                V3DV_CMD_DIRTY_VIEW_INDEX |
+                V3DV_CMD_DIRTY_DRAW_ID);
 
    if (dirty_uniform_state)
       update_gfx_uniform_state(cmd_buffer, dirty_uniform_state);
@@ -3031,6 +3035,35 @@ v3dv_CmdDraw(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+v3dv_CmdDrawMultiEXT(VkCommandBuffer commandBuffer,
+                     uint32_t drawCount,
+                     const VkMultiDrawInfoEXT *pVertexInfo,
+                     uint32_t instanceCount,
+                     uint32_t firstInstance,
+                     uint32_t stride)
+
+{
+   if (drawCount == 0 || instanceCount == 0)
+      return;
+
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   uint32_t i = 0;
+   vk_foreach_multi_draw(draw, i, pVertexInfo, drawCount, stride) {
+      cmd_buffer->state.draw_id = i;
+      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DRAW_ID;
+
+      struct v3dv_draw_info info = {};
+      info.vertex_count = draw->vertexCount;
+      info.instance_count = instanceCount;
+      info.first_instance = firstInstance;
+      info.first_vertex = draw->firstVertex;
+
+      cmd_buffer_draw(cmd_buffer, &info);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                     uint32_t indexCount,
                     uint32_t instanceCount,
@@ -3061,6 +3094,48 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
          (cmd_buffer, indexCount, instanceCount,
           firstIndex, vertexOffset, firstInstance);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+v3dv_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer,
+                            uint32_t drawCount,
+                            const VkMultiDrawIndexedInfoEXT *pIndexInfo,
+                            uint32_t instanceCount,
+                            uint32_t firstInstance,
+                            uint32_t stride,
+                            const int32_t *pVertexOffset)
+{
+   if (drawCount == 0 || instanceCount == 0)
+      return;
+
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   uint32_t i = 0;
+   vk_foreach_multi_draw_indexed(draw, i, pIndexInfo, drawCount, stride) {
+      uint32_t vertex_count = draw->indexCount * instanceCount;
+      int32_t vertexOffset = pVertexOffset ? *pVertexOffset : draw->vertexOffset;
+
+      cmd_buffer->state.draw_id = i;
+      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DRAW_ID;
+
+      struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+      if (likely(!pass->multiview_enabled)) {
+         v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, false, vertex_count);
+         v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
+            (cmd_buffer, draw->indexCount, instanceCount,
+             draw->firstIndex, vertexOffset, firstInstance);
+         continue;
+      }
+
+      uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
+      while (view_mask) {
+         cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
+         v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, false, vertex_count);
+         v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
+            (cmd_buffer, draw->indexCount, instanceCount,
+             draw->firstIndex, vertexOffset, firstInstance);
+      }
    }
 }
 

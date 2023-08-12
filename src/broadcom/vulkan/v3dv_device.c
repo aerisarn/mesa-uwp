@@ -195,6 +195,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_index_type_uint8                 = true,
       .EXT_line_rasterization               = true,
       .EXT_memory_budget                    = true,
+      .EXT_multi_draw                       = true,
       .EXT_physical_device_drm              = true,
       .EXT_pipeline_creation_cache_control  = true,
       .EXT_pipeline_creation_feedback       = true,
@@ -436,6 +437,9 @@ get_features(const struct v3dv_physical_device *physical_device,
 
       /* VK_EXT_pipeline_robustness */
       .pipelineRobustness = true,
+
+      /* VK_EXT_multi_draw */
+      .multiDraw = true,
    };
 }
 
@@ -1734,6 +1738,12 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DEVICE_DEFAULT_EXT;
          props->defaultRobustnessImages =
             VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DEVICE_DEFAULT_EXT;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
+         VkPhysicalDeviceMultiDrawPropertiesEXT *properties =
+            (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
+         properties->maxMultiDrawCount = 2048;
          break;
       }
       default:

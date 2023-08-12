@@ -345,6 +345,11 @@ enum quniform_contents {
          QUNIFORM_INLINE_UBO_1,
          QUNIFORM_INLINE_UBO_2,
          QUNIFORM_INLINE_UBO_3,
+
+        /**
+         * Current value of DrawIndex for Multidraw
+         */
+        QUNIFORM_DRAW_ID,
 };
 
 static inline uint32_t v3d_unit_data_create(uint32_t unit, uint32_t value)
