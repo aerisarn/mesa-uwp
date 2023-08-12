@@ -366,7 +366,7 @@ compile_setupinst(struct st_translate *t,
       tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                         nir_trim_vector(t->b, coord, tex->coord_components));
 
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+      nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
       nir_builder_instr_insert(t->b, &tex->instr);
 
       t->temps[r] = &tex->dest.ssa;

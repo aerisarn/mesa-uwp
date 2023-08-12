@@ -491,9 +491,9 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
             nir_intrinsic_set_align(load_ubo, 4, 0);
             nir_intrinsic_set_range_base(load_ubo, 0);
             nir_intrinsic_set_range(load_ubo, ~0);
-            nir_ssa_dest_init(&load_ubo->instr, &load_ubo->dest,
-                              intrin->dest.ssa.num_components,
-                              intrin->dest.ssa.bit_size);
+            nir_def_init(&load_ubo->instr, &load_ubo->dest.ssa,
+                         intrin->dest.ssa.num_components,
+                         intrin->dest.ssa.bit_size);
             nir_builder_instr_insert(&b, &load_ubo->instr);
 
             nir_def_rewrite_uses(&intrin->dest.ssa,
@@ -631,7 +631,7 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
          nir_intrinsic_set_align(load, 4, 0);
          nir_intrinsic_set_range_base(load, 0);
          nir_intrinsic_set_range(load, ~0);
-         nir_ssa_dest_init(&load->instr, &load->dest, comps, 32);
+         nir_def_init(&load->instr, &load->dest.ssa, comps, 32);
          nir_builder_instr_insert(&b, &load->instr);
          nir_def_rewrite_uses(&intrin->dest.ssa,
                                   &load->dest.ssa);

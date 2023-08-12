@@ -176,9 +176,9 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_def *coor
       s++;
    }
 
-   nir_ssa_dest_init(&array_tex->instr, &array_tex->dest,
-                     nir_tex_instr_dest_size(array_tex),
-                     nir_dest_bit_size(tex->dest));
+   nir_def_init(&array_tex->instr, &array_tex->dest.ssa,
+                nir_tex_instr_dest_size(array_tex),
+                nir_dest_bit_size(tex->dest));
    nir_builder_instr_insert(b, &array_tex->instr);
    return &array_tex->dest.ssa;
 }
@@ -446,9 +446,9 @@ lower_tex_to_txl(nir_builder *b, nir_tex_instr *tex)
    txl->src[s] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
    b->cursor = nir_before_instr(&tex->instr);
-   nir_ssa_dest_init(&txl->instr, &txl->dest,
-                     nir_dest_num_components(tex->dest),
-                     nir_dest_bit_size(tex->dest));
+   nir_def_init(&txl->instr, &txl->dest.ssa,
+                nir_dest_num_components(tex->dest),
+                nir_dest_bit_size(tex->dest));
    nir_builder_instr_insert(b, &txl->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);
    return txl;

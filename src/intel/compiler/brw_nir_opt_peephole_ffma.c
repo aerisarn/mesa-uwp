@@ -232,8 +232,8 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
    }
    nir_alu_src_copy(&ffma->src[2], &add->src[1 - add_mul_src], ffma);
 
-   nir_ssa_dest_init(&ffma->instr, &ffma->dest.dest,
-                     add->dest.dest.ssa.num_components, bit_size);
+   nir_def_init(&ffma->instr, &ffma->dest.dest.ssa,
+                add->dest.dest.ssa.num_components, bit_size);
    nir_def_rewrite_uses(&add->dest.dest.ssa, &ffma->dest.dest.ssa);
 
    nir_builder_instr_insert(b, &ffma->instr);

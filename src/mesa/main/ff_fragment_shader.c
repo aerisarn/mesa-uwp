@@ -819,7 +819,7 @@ load_texture(struct texenv_fragment_program *p, GLuint unit)
       tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_comparator, src4);
    }
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
    p->src_texture[unit] = &tex->dest.ssa;
 
    nir_builder_instr_insert(p->b, &tex->instr);

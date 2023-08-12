@@ -321,8 +321,8 @@ sample_plane(nir_builder *b, nir_tex_instr *tex, int plane,
    plane_tex->texture_index = tex->texture_index;
    plane_tex->sampler_index = tex->sampler_index;
 
-   nir_ssa_dest_init(&plane_tex->instr, &plane_tex->dest, 4,
-                     nir_dest_bit_size(tex->dest));
+   nir_def_init(&plane_tex->instr, &plane_tex->dest.ssa, 4,
+                nir_dest_bit_size(tex->dest));
 
    nir_builder_instr_insert(b, &plane_tex->instr);
 
@@ -886,9 +886,9 @@ lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
    txd->src[tex->num_srcs] = nir_tex_src_for_ssa(nir_tex_src_ddx, dfdx);
    txd->src[tex->num_srcs + 1] = nir_tex_src_for_ssa(nir_tex_src_ddy, dfdy);
 
-   nir_ssa_dest_init(&txd->instr, &txd->dest,
-                     nir_dest_num_components(tex->dest),
-                     nir_dest_bit_size(tex->dest));
+   nir_def_init(&txd->instr, &txd->dest.ssa,
+                nir_dest_num_components(tex->dest),
+                nir_dest_bit_size(tex->dest));
    nir_builder_instr_insert(b, &txd->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txd->dest.ssa);
    nir_instr_remove(&tex->instr);
@@ -926,9 +926,9 @@ lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
    lod = nir_fadd(b, nir_channel(b, lod, 1), nir_ssa_for_src(b, tex->src[bias_idx].src, 1));
    txl->src[tex->num_srcs - 1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
-   nir_ssa_dest_init(&txl->instr, &txl->dest,
-                     nir_dest_num_components(tex->dest),
-                     nir_dest_bit_size(tex->dest));
+   nir_def_init(&txl->instr, &txl->dest.ssa,
+                nir_dest_num_components(tex->dest),
+                nir_dest_bit_size(tex->dest));
    nir_builder_instr_insert(b, &txl->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);
    nir_instr_remove(&tex->instr);
@@ -1219,8 +1219,8 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
       nir_tex_src src = nir_tex_src_for_ssa(nir_tex_src_offset, offset);
       tex_copy->src[tex_copy->num_srcs - 1] = src;
 
-      nir_ssa_dest_init(&tex_copy->instr, &tex_copy->dest,
-                        nir_tex_instr_dest_size(tex), 32);
+      nir_def_init(&tex_copy->instr, &tex_copy->dest.ssa,
+                   nir_tex_instr_dest_size(tex), 32);
 
       nir_builder_instr_insert(b, &tex_copy->instr);
 
@@ -1341,7 +1341,7 @@ nir_lower_ms_txf_to_fragment_fetch(nir_builder *b, nir_tex_instr *tex)
    fmask_fetch->is_array = tex->is_array;
    fmask_fetch->texture_non_uniform = tex->texture_non_uniform;
    fmask_fetch->dest_type = nir_type_uint32;
-   nir_ssa_dest_init(&fmask_fetch->instr, &fmask_fetch->dest, 1, 32);
+   nir_def_init(&fmask_fetch->instr, &fmask_fetch->dest.ssa, 1, 32);
 
    fmask_fetch->num_srcs = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
@@ -1374,7 +1374,7 @@ nir_lower_samples_identical_to_fragment_fetch(nir_builder *b, nir_tex_instr *tex
    nir_tex_instr *fmask_fetch = nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
    fmask_fetch->op = nir_texop_fragment_mask_fetch_amd;
    fmask_fetch->dest_type = nir_type_uint32;
-   nir_ssa_dest_init(&fmask_fetch->instr, &fmask_fetch->dest, 1, 32);
+   nir_def_init(&fmask_fetch->instr, &fmask_fetch->dest.ssa, 1, 32);
    nir_builder_instr_insert(b, &fmask_fetch->instr);
 
    nir_def_rewrite_uses(&tex->dest.ssa, nir_ieq_imm(b, &fmask_fetch->dest.ssa, 0));

@@ -163,7 +163,7 @@ blorp_create_nir_tex_instr(nir_builder *b, struct brw_blorp_blit_vars *v,
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, pos);
    tex->coord_components = 3;
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
 
    return tex;
 }

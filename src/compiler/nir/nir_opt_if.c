@@ -499,8 +499,8 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
       nir_phi_instr_add_src(phi, prev_block, nir_src_for_ssa(prev_value));
       nir_phi_instr_add_src(phi, continue_block, nir_src_for_ssa(alu_copy));
 
-      nir_ssa_dest_init(&phi->instr, &phi->dest, alu_copy->num_components,
-                        alu_copy->bit_size);
+      nir_def_init(&phi->instr, &phi->dest.ssa, alu_copy->num_components,
+                   alu_copy->bit_size);
 
       b->cursor = nir_after_phis(header_block);
       nir_builder_instr_insert(b, &phi->instr);
@@ -663,9 +663,9 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
                                                        continue_block)
                                ->src);
 
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        nir_dest_num_components(bcsel->dest.dest),
-                        nir_dest_bit_size(bcsel->dest.dest));
+      nir_def_init(&phi->instr, &phi->dest.ssa,
+                   nir_dest_num_components(bcsel->dest.dest),
+                   nir_dest_bit_size(bcsel->dest.dest));
 
       b->cursor = nir_after_phis(header_block);
       nir_builder_instr_insert(b, &phi->instr);
@@ -1184,9 +1184,9 @@ clone_alu_and_replace_src_defs(nir_builder *b, const nir_alu_instr *alu,
    nir_alu_instr *nalu = nir_alu_instr_create(b->shader, alu->op);
    nalu->exact = alu->exact;
 
-   nir_ssa_dest_init(&nalu->instr, &nalu->dest.dest,
-                     alu->dest.dest.ssa.num_components,
-                     alu->dest.dest.ssa.bit_size);
+   nir_def_init(&nalu->instr, &nalu->dest.dest.ssa,
+                alu->dest.dest.ssa.num_components,
+                alu->dest.dest.ssa.bit_size);
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       nalu->src[i].src = nir_src_for_ssa(src_defs[i]);

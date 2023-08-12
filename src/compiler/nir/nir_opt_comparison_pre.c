@@ -199,17 +199,17 @@ rewrite_compare_instruction(nir_builder *bld, nir_alu_instr *orig_cmp,
     * nir_search.c).
     */
    nir_alu_instr *mov_add = nir_alu_instr_create(bld->shader, nir_op_mov);
-   nir_ssa_dest_init(&mov_add->instr, &mov_add->dest.dest,
-                     orig_add->dest.dest.ssa.num_components,
-                     orig_add->dest.dest.ssa.bit_size);
+   nir_def_init(&mov_add->instr, &mov_add->dest.dest.ssa,
+                orig_add->dest.dest.ssa.num_components,
+                orig_add->dest.dest.ssa.bit_size);
    mov_add->src[0].src = nir_src_for_ssa(fadd);
 
    nir_builder_instr_insert(bld, &mov_add->instr);
 
    nir_alu_instr *mov_cmp = nir_alu_instr_create(bld->shader, nir_op_mov);
-   nir_ssa_dest_init(&mov_cmp->instr, &mov_cmp->dest.dest,
-                     orig_cmp->dest.dest.ssa.num_components,
-                     orig_cmp->dest.dest.ssa.bit_size);
+   nir_def_init(&mov_cmp->instr, &mov_cmp->dest.dest.ssa,
+                orig_cmp->dest.dest.ssa.num_components,
+                orig_cmp->dest.dest.ssa.bit_size);
    mov_cmp->src[0].src = nir_src_for_ssa(cmp);
 
    nir_builder_instr_insert(bld, &mov_cmp->instr);

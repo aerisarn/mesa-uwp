@@ -742,7 +742,7 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       }
       load->src[srcn++] = nir_src_for_ssa(offset);
 
-      nir_ssa_dest_init(&load->instr, &load->dest, 4, 32);
+      nir_def_init(&load->instr, &load->dest.ssa, 4, 32);
       nir_builder_instr_insert(b, &load->instr);
 
       src = nir_src_for_ssa(&load->dest.ssa);
@@ -1401,8 +1401,8 @@ ttn_tex(struct ttn_compile *c, nir_def **src)
    assert(src_number == num_srcs);
    assert(src_number == instr->num_srcs);
 
-   nir_ssa_dest_init(&instr->instr, &instr->dest,
-                     nir_tex_instr_dest_size(instr), 32);
+   nir_def_init(&instr->instr, &instr->dest.ssa,
+                nir_tex_instr_dest_size(instr), 32);
    nir_builder_instr_insert(b, &instr->instr);
    return nir_pad_vector_imm_int(b, &instr->dest.ssa, 0, 4);
 }
@@ -1460,11 +1460,10 @@ ttn_txq(struct ttn_compile *c, nir_def **src)
    txs->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod,
                                      ttn_channel(b, src[0], X));
 
-   nir_ssa_dest_init(&txs->instr, &txs->dest, nir_tex_instr_dest_size(txs),
-                     32);
+   nir_def_init(&txs->instr, &txs->dest.ssa, nir_tex_instr_dest_size(txs), 32);
    nir_builder_instr_insert(b, &txs->instr);
 
-   nir_ssa_dest_init(&qlv->instr, &qlv->dest, 1, 32);
+   nir_def_init(&qlv->instr, &qlv->dest.ssa, 1, 32);
    nir_builder_instr_insert(b, &qlv->instr);
 
    return nir_vector_insert_imm(b,
@@ -1622,8 +1621,7 @@ ttn_mem(struct ttn_compile *c, nir_def **src)
 
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_LOAD) {
-      nir_ssa_dest_init(&instr->instr, &instr->dest, instr->num_components,
-                        32);
+      nir_def_init(&instr->instr, &instr->dest.ssa, instr->num_components, 32);
       nir_builder_instr_insert(b, &instr->instr);
       return nir_pad_vector_imm_int(b, &instr->dest.ssa, 0, 4);
    } else {

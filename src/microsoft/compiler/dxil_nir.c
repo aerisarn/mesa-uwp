@@ -835,8 +835,8 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
       nir_phi_instr_add_src(lowered, src->pred, nir_src_for_ssa(cast));
    }
 
-   nir_ssa_dest_init(&lowered->instr, &lowered->dest, num_components,
-                     new_bit_size);
+   nir_def_init(&lowered->instr, &lowered->dest.ssa, num_components,
+                new_bit_size);
 
    b->cursor = nir_before_instr(&phi->instr);
    nir_builder_instr_insert(b, &lowered->instr);

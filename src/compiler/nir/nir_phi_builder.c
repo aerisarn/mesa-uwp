@@ -232,8 +232,8 @@ nir_phi_builder_value_get_block_def(struct nir_phi_builder_value *val,
        * be used.
        */
       nir_phi_instr *phi = nir_phi_instr_create(val->builder->shader);
-      nir_ssa_dest_init(&phi->instr, &phi->dest, val->num_components,
-                        val->bit_size);
+      nir_def_init(&phi->instr, &phi->dest.ssa, val->num_components,
+                   val->bit_size);
       phi->instr.block = dom;
       exec_list_push_tail(&val->phis, &phi->instr.node);
       def = &phi->dest.ssa;

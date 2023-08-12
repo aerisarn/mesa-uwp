@@ -134,7 +134,7 @@ sample_via_nir(nir_builder *b, nir_variable *texcoord,
                           nir_trim_vector(b, nir_load_var(b, texcoord),
                                              tex->coord_components));
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
    return nir_channel(b, &tex->dest.ssa, 0);
 }

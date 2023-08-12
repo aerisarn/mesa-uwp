@@ -486,7 +486,7 @@ NirLowerFSOutToVector::create_combined_vector(nir_builder *b,
       k += s->num_components;
    }
 
-   nir_ssa_dest_init(&instr->instr, &instr->dest.dest, num_comp, 32);
+   nir_def_init(&instr->instr, &instr->dest.dest.ssa, num_comp, 32);
    nir_builder_instr_insert(b, &instr->instr);
    return &instr->dest.dest.ssa;
 }

@@ -287,8 +287,8 @@ optimize_and_rewrite_atomic(nir_builder *b, nir_intrinsic_instr *intrin)
 
    nir_def old_result = intrin->dest.ssa;
    list_replace(&intrin->dest.ssa.uses, &old_result.uses);
-   nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1,
-                     intrin->dest.ssa.bit_size);
+   nir_def_init(&intrin->instr, &intrin->dest.ssa, 1,
+                intrin->dest.ssa.bit_size);
 
    nir_def *result = optimize_atomic(b, intrin, return_prev);
 

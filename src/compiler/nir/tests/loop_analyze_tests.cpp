@@ -83,8 +83,8 @@ loop_builder(nir_builder *b, loop_builder_param p)
 
    nir_loop *loop = nir_push_loop(b);
    {
-      nir_ssa_dest_init(&phi->instr, &phi->dest, ssa_0->num_components,
-                        ssa_0->bit_size);
+      nir_def_init(&phi->instr, &phi->dest.ssa, ssa_0->num_components,
+                   ssa_0->bit_size);
 
       nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
                             nir_src_for_ssa(ssa_0));
@@ -153,8 +153,8 @@ loop_builder_invert(nir_builder *b, loop_builder_invert_param p)
 
    nir_loop *loop = nir_push_loop(b);
    {
-      nir_ssa_dest_init(&phi->instr, &phi->dest, ssa_0->num_components,
-                        ssa_0->bit_size);
+      nir_def_init(&phi->instr, &phi->dest.ssa, ssa_0->num_components,
+                   ssa_0->bit_size);
 
       nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
                             nir_src_for_ssa(ssa_0));

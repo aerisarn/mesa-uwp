@@ -100,9 +100,9 @@ emit_load_store_deref(nir_builder *b, nir_intrinsic_instr *orig_instr,
            i < nir_intrinsic_infos[orig_instr->intrinsic].num_srcs; i++)
          nir_src_copy(&load->src[i], &orig_instr->src[i], &load->instr);
 
-      nir_ssa_dest_init(&load->instr, &load->dest,
-                        orig_instr->dest.ssa.num_components,
-                        orig_instr->dest.ssa.bit_size);
+      nir_def_init(&load->instr, &load->dest.ssa,
+                   orig_instr->dest.ssa.num_components,
+                   orig_instr->dest.ssa.bit_size);
       nir_builder_instr_insert(b, &load->instr);
       *dest = &load->dest.ssa;
    } else {

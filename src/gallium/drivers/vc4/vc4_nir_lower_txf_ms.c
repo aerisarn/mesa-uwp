@@ -109,7 +109,7 @@ vc4_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *instr, void *data)
 
         txf->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                           nir_vec2(b, addr, nir_imm_int(b, 0)));
-        nir_ssa_dest_init(&txf->instr, &txf->dest, 4, 32);
+        nir_def_init(&txf->instr, &txf->dest.ssa, 4, 32);
         nir_builder_instr_insert(b, &txf->instr);
 
         return &txf->dest.ssa;

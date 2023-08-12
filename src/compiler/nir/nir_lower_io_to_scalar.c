@@ -53,8 +53,8 @@ lower_load_input_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
       unsigned newc = nir_intrinsic_component(intr);
       nir_intrinsic_instr *chan_intr =
          nir_intrinsic_instr_create(b->shader, intr->intrinsic);
-      nir_ssa_dest_init(&chan_intr->instr, &chan_intr->dest, 1,
-                        intr->dest.ssa.bit_size);
+      nir_def_init(&chan_intr->instr, &chan_intr->dest.ssa, 1,
+                   intr->dest.ssa.bit_size);
       chan_intr->num_components = 1;
 
       nir_intrinsic_set_base(chan_intr, nir_intrinsic_base(intr));
@@ -92,8 +92,8 @@ lower_load_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
    for (unsigned i = 0; i < intr->num_components; i++) {
       nir_intrinsic_instr *chan_intr =
          nir_intrinsic_instr_create(b->shader, intr->intrinsic);
-      nir_ssa_dest_init(&chan_intr->instr, &chan_intr->dest, 1,
-                        intr->dest.ssa.bit_size);
+      nir_def_init(&chan_intr->instr, &chan_intr->dest.ssa, 1,
+                   intr->dest.ssa.bit_size);
       chan_intr->num_components = 1;
 
       nir_intrinsic_set_align_offset(chan_intr,
@@ -380,8 +380,8 @@ lower_load_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
 
       nir_intrinsic_instr *chan_intr =
          nir_intrinsic_instr_create(b->shader, intr->intrinsic);
-      nir_ssa_dest_init(&chan_intr->instr, &chan_intr->dest, 1,
-                        intr->dest.ssa.bit_size);
+      nir_def_init(&chan_intr->instr, &chan_intr->dest.ssa, 1,
+                   intr->dest.ssa.bit_size);
       chan_intr->num_components = 1;
 
       nir_deref_instr *deref = nir_build_deref_var(b, chan_var);

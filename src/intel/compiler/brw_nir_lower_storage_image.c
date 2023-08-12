@@ -51,7 +51,7 @@ _load_image_param(nir_builder *b, nir_deref_instr *deref, unsigned offset)
    default:
       unreachable("Invalid param offset");
    }
-   nir_ssa_dest_init(&load->instr, &load->dest, load->num_components, 32);
+   nir_def_init(&load->instr, &load->dest.ssa, load->num_components, 32);
 
    nir_builder_instr_insert(b, &load->instr);
    return &load->dest.ssa;

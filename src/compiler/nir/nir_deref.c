@@ -806,8 +806,8 @@ rematerialize_deref_in_block(nir_deref_instr *deref,
       unreachable("Invalid deref instruction type");
    }
 
-   nir_ssa_dest_init(&new_deref->instr, &new_deref->dest,
-                     deref->dest.ssa.num_components, deref->dest.ssa.bit_size);
+   nir_def_init(&new_deref->instr, &new_deref->dest.ssa,
+                deref->dest.ssa.num_components, deref->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &new_deref->instr);
 
    return new_deref;

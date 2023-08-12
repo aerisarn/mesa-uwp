@@ -225,8 +225,8 @@ convert_loop_exit_for_ssa(nir_def *def, void *void_state)
 
    /* Initialize a phi-instruction */
    nir_phi_instr *phi = nir_phi_instr_create(state->shader);
-   nir_ssa_dest_init(&phi->instr, &phi->dest, def->num_components,
-                     def->bit_size);
+   nir_def_init(&phi->instr, &phi->dest.ssa, def->num_components,
+                def->bit_size);
 
    /* Create a phi node with as many sources pointing to the same ssa_def as
     * the block has predecessors.
@@ -250,8 +250,8 @@ convert_loop_exit_for_ssa(nir_def *def, void *void_state)
       cast->parent = nir_src_for_ssa(&phi->dest.ssa);
       cast->cast.ptr_stride = nir_deref_instr_array_stride(instr);
 
-      nir_ssa_dest_init(&cast->instr, &cast->dest,
-                        phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
+      nir_def_init(&cast->instr, &cast->dest.ssa,
+                   phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
       nir_instr_insert(nir_after_phis(state->block_after_loop), &cast->instr);
       dest = &cast->dest.ssa;
    }

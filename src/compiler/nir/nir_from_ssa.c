@@ -401,9 +401,8 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
                                                   nir_parallel_copy_entry);
          entry->src_is_reg = false;
          entry->dest_is_reg = false;
-         nir_ssa_dest_init(&pcopy->instr, &entry->dest.dest,
-                           phi->dest.ssa.num_components,
-                           phi->dest.ssa.bit_size);
+         nir_def_init(&pcopy->instr, &entry->dest.dest.ssa,
+                      phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
          entry->dest.dest.ssa.divergent = nir_src_is_divergent(src->src);
          exec_list_push_tail(&pcopy->entries, &entry->node);
 
@@ -417,8 +416,8 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
                                                nir_parallel_copy_entry);
       entry->src_is_reg = false;
       entry->dest_is_reg = false;
-      nir_ssa_dest_init(&block_pcopy->instr, &entry->dest.dest,
-                        phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
+      nir_def_init(&block_pcopy->instr, &entry->dest.dest.ssa,
+                   phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
       entry->dest.dest.ssa.divergent = phi->dest.ssa.divergent;
       exec_list_push_tail(&block_pcopy->entries, &entry->node);
 

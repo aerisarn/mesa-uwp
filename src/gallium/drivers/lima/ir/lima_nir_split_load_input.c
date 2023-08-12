@@ -69,8 +69,8 @@ lima_nir_split_load_input_instr(nir_builder *b,
    nir_intrinsic_instr *new_intrin = nir_intrinsic_instr_create(
                                           b->shader,
                                           intrin->intrinsic);
-   nir_ssa_dest_init(&new_intrin->instr, &new_intrin->dest,
-                     nir_dest_num_components(alu->dest.dest), ssa->bit_size);
+   nir_def_init(&new_intrin->instr, &new_intrin->dest.ssa,
+                nir_dest_num_components(alu->dest.dest), ssa->bit_size);
    new_intrin->num_components = nir_dest_num_components(alu->dest.dest);
    nir_intrinsic_set_base(new_intrin, nir_intrinsic_base(intrin));
    nir_intrinsic_set_component(new_intrin, nir_intrinsic_component(intrin) + swizzle);

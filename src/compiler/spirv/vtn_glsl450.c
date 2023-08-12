@@ -680,9 +680,9 @@ handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
    }
 
    intrin->num_components = glsl_get_vector_elements(deref->type);
-   nir_ssa_dest_init(&intrin->instr, &intrin->dest,
-                     glsl_get_vector_elements(deref->type),
-                     glsl_get_bit_size(deref->type));
+   nir_def_init(&intrin->instr, &intrin->dest.ssa,
+                glsl_get_vector_elements(deref->type),
+                glsl_get_bit_size(deref->type));
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
 

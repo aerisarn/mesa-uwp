@@ -156,8 +156,8 @@ lower_instr(nir_intrinsic_instr *instr, unsigned ssbo_offset, nir_builder *b, un
       new_instr->num_components = instr->dest.ssa.num_components;
    }
 
-   nir_ssa_dest_init(&new_instr->instr, &new_instr->dest,
-                     instr->dest.ssa.num_components, instr->dest.ssa.bit_size);
+   nir_def_init(&new_instr->instr, &new_instr->dest.ssa,
+                instr->dest.ssa.num_components, instr->dest.ssa.bit_size);
    nir_instr_insert_before(&instr->instr, &new_instr->instr);
    nir_instr_remove(&instr->instr);
 

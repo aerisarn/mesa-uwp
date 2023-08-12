@@ -55,7 +55,7 @@ static nir_def *
 emit_load_param_base(nir_builder *b, nir_intrinsic_op op)
 {
    nir_intrinsic_instr *result = nir_intrinsic_instr_create(b->shader, op);
-   nir_ssa_dest_init(&result->instr, &result->dest, 4, 32);
+   nir_def_init(&result->instr, &result->dest.ssa, 4, 32);
    nir_builder_instr_insert(b, &result->instr);
    return &result->dest.ssa;
 }
@@ -284,7 +284,7 @@ r600_load_rel_patch_id(nir_builder *b)
 {
    auto patch_id =
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_tcs_rel_patch_id_r600);
-   nir_ssa_dest_init(&patch_id->instr, &patch_id->dest, 1, 32);
+   nir_def_init(&patch_id->instr, &patch_id->dest.ssa, 1, 32);
    nir_builder_instr_insert(b, &patch_id->instr);
    return &patch_id->dest.ssa;
 }
@@ -452,7 +452,7 @@ r600_lower_tess_io_impl(nir_builder *b, nir_instr *instr, enum mesa_prim prim_ty
          nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_local_shared_r600);
       tf->num_components = ncomps;
       tf->src[0] = nir_src_for_ssa(addr_outer);
-      nir_ssa_dest_init(&tf->instr, &tf->dest, tf->num_components, 32);
+      nir_def_init(&tf->instr, &tf->dest.ssa, tf->num_components, 32);
       nir_builder_instr_insert(b, &tf->instr);
       if (ncomps < 4 && b->shader->info.stage != MESA_SHADER_TESS_EVAL) {
          auto undef = nir_undef(b, 1, 32);

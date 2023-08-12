@@ -322,10 +322,8 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
       nir_phi_instr_add_src(lowered[1], src->pred, nir_src_for_ssa(y));
    }
 
-   nir_ssa_dest_init(&lowered[0]->instr, &lowered[0]->dest, num_components,
-                     32);
-   nir_ssa_dest_init(&lowered[1]->instr, &lowered[1]->dest, num_components,
-                     32);
+   nir_def_init(&lowered[0]->instr, &lowered[0]->dest.ssa, num_components, 32);
+   nir_def_init(&lowered[1]->instr, &lowered[1]->dest.ssa, num_components, 32);
 
    b->cursor = nir_before_instr(&phi->instr);
    nir_builder_instr_insert(b, &lowered[0]->instr);

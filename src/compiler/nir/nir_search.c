@@ -451,8 +451,8 @@ construct_value(nir_builder *build,
          num_components = nir_op_infos[op].output_size;
 
       nir_alu_instr *alu = nir_alu_instr_create(build->shader, op);
-      nir_ssa_dest_init(&alu->instr, &alu->dest.dest, num_components,
-                        dst_bit_size);
+      nir_def_init(&alu->instr, &alu->dest.dest.ssa, num_components,
+                   dst_bit_size);
 
       /* We have no way of knowing what values in a given search expression
        * map to a particular replacement value.  Therefore, if the

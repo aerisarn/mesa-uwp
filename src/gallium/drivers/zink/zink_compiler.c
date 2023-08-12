@@ -235,7 +235,7 @@ lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant_zink);
    load->src[0] = nir_src_for_ssa(nir_imm_int(b, ZINK_GFX_PUSHCONST_DRAW_MODE_IS_INDEXED));
    load->num_components = 1;
-   nir_ssa_dest_init(&load->instr, &load->dest, 1, 32);
+   nir_def_init(&load->instr, &load->dest.ssa, 1, 32);
    nir_builder_instr_insert(b, &load->instr);
 
    nir_def *composite = nir_build_alu(b, nir_op_bcsel,
@@ -275,7 +275,7 @@ lower_drawid_instr(nir_builder *b, nir_instr *in, void *data)
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant_zink);
    load->src[0] = nir_src_for_ssa(nir_imm_int(b, ZINK_GFX_PUSHCONST_DRAW_ID));
    load->num_components = 1;
-   nir_ssa_dest_init(&load->instr, &load->dest, 1, 32);
+   nir_def_init(&load->instr, &load->dest.ssa, 1, 32);
    nir_builder_instr_insert(b, &load->instr);
 
    nir_def_rewrite_uses(&instr->dest.ssa, &load->dest.ssa);
@@ -1718,8 +1718,8 @@ lower_txf_lod_robustness_instr(nir_builder *b, nir_instr *in, void *data)
       levels->src[!!(offset_idx >= 0)].src_type = nir_tex_src_texture_handle;
       nir_src_copy(&levels->src[!!(offset_idx >= 0)].src, &txf->src[handle_idx].src, &levels->instr);
    }
-   nir_ssa_dest_init(&levels->instr, &levels->dest,
-                     nir_tex_instr_dest_size(levels), 32);
+   nir_def_init(&levels->instr, &levels->dest.ssa,
+                nir_tex_instr_dest_size(levels), 32);
    nir_builder_instr_insert(b, &levels->instr);
 
    nir_if *lod_oob_if = nir_push_if(b, nir_ilt(b, lod, &levels->dest.ssa));
@@ -2323,8 +2323,8 @@ rewrite_atomic_ssbo_instr(nir_builder *b, nir_instr *instr, struct bo_vars *bo)
    for (unsigned i = 0; i < num_components; i++) {
       nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, offset);
       nir_intrinsic_instr *new_instr = nir_intrinsic_instr_create(b->shader, op);
-      nir_ssa_dest_init(&new_instr->instr, &new_instr->dest, 1,
-                        nir_dest_bit_size(intr->dest));
+      nir_def_init(&new_instr->instr, &new_instr->dest.ssa, 1,
+                   nir_dest_bit_size(intr->dest));
       nir_intrinsic_set_atomic_op(new_instr, nir_intrinsic_atomic_op(intr));
       new_instr->src[0] = nir_src_for_ssa(&deref_arr->dest.ssa);
       /* deref ops have no offset src, so copy the srcs after it */

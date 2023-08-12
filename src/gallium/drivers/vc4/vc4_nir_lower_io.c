@@ -299,8 +299,8 @@ vc4_nir_lower_uniform(struct vc4_compile *c, nir_builder *b,
                 nir_intrinsic_instr *intr_comp =
                         nir_intrinsic_instr_create(c->s, intr->intrinsic);
                 intr_comp->num_components = 1;
-                nir_ssa_dest_init(&intr_comp->instr, &intr_comp->dest, 1,
-                                  intr->dest.ssa.bit_size);
+                nir_def_init(&intr_comp->instr, &intr_comp->dest.ssa, 1,
+                             intr->dest.ssa.bit_size);
 
                 /* Convert the uniform offset to bytes.  If it happens
                  * to be a constant, constant-folding will clean up

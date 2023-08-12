@@ -336,8 +336,8 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
          nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_load_sample_id(&b));
    }
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4,
-                     nir_alu_type_get_type_size(tex->dest_type));
+   nir_def_init(&tex->instr, &tex->dest.ssa, 4,
+                nir_alu_type_get_type_size(tex->dest_type));
    nir_builder_instr_insert(&b, &tex->instr);
 
    nir_def *texel = &tex->dest.ssa;
@@ -1361,8 +1361,8 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
 
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, imgcoords);
    tex->coord_components = texdim + texisarray;
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4,
-                     nir_alu_type_get_type_size(tex->dest_type));
+   nir_def_init(&tex->instr, &tex->dest.ssa, 4,
+                nir_alu_type_get_type_size(tex->dest_type));
    nir_builder_instr_insert(&b, &tex->instr);
 
    nir_def *texel = &tex->dest.ssa;

@@ -162,7 +162,7 @@ nir_load_store_vectorize_test::get_resource(uint32_t binding, bool ssbo)
 
    nir_intrinsic_instr *res = nir_intrinsic_instr_create(
       b->shader, nir_intrinsic_vulkan_resource_index);
-   nir_ssa_dest_init(&res->instr, &res->dest, 1, 32);
+   nir_def_init(&res->instr, &res->dest.ssa, 1, 32);
    res->num_components = 1;
    res->src[0] = nir_src_for_ssa(nir_imm_zero(b, 1, 32));
    nir_intrinsic_set_desc_type(
@@ -197,7 +197,7 @@ nir_load_store_vectorize_test::create_indirect_load(
       return NULL;
    }
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, intrinsic);
-   nir_ssa_dest_init(&load->instr, &load->dest, components, bit_size);
+   nir_def_init(&load->instr, &load->dest.ssa, components, bit_size);
    load->num_components = components;
    if (res) {
       load->src[0] = nir_src_for_ssa(res);
@@ -258,7 +258,7 @@ nir_load_store_vectorize_test::create_indirect_store(
       return;
    }
    nir_intrinsic_instr *store = nir_intrinsic_instr_create(b->shader, intrinsic);
-   nir_ssa_dest_init(&store->instr, &store->dest, components, bit_size);
+   nir_def_init(&store->instr, &store->dest.ssa, components, bit_size);
    store->num_components = components;
    if (res) {
       store->src[0] = nir_src_for_ssa(value);

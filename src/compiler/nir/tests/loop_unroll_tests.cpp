@@ -116,7 +116,7 @@ loop_unroll_test_helper(nir_builder *bld, nir_def *init,
    nir_block *head_block = nir_loop_first_block(loop);
 
    nir_phi_instr *phi = nir_phi_instr_create(bld->shader);
-   nir_ssa_dest_init(&phi->instr, &phi->dest, 1, 32);
+   nir_def_init(&phi->instr, &phi->dest.ssa, 1, 32);
 
    nir_phi_instr_add_src(phi, top_block, nir_src_for_ssa(init));
 

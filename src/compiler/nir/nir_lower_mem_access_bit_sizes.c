@@ -58,7 +58,7 @@ dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_intrinsic_set_align(dup, align_mul, align_offset);
 
    if (info->has_dest) {
-      nir_ssa_dest_init(&dup->instr, &dup->dest, num_components, bit_size);
+      nir_def_init(&dup->instr, &dup->dest.ssa, num_components, bit_size);
    } else {
       nir_intrinsic_set_write_mask(dup, (1 << num_components) - 1);
    }

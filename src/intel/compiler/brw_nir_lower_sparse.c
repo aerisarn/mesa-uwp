@@ -156,8 +156,8 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    tex->src[2].src_type = nir_tex_src_lod;
    tex->src[2].src = nir_src_for_ssa(nir_imm_int(b, 0));
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 5,
-                     nir_dest_bit_size(intrin->dest));
+   nir_def_init(&tex->instr, &tex->dest.ssa, 5,
+                nir_dest_bit_size(intrin->dest));
 
    nir_builder_instr_insert(b, &tex->instr);
 
@@ -175,8 +175,8 @@ lower_tex_compare(nir_builder *b, nir_tex_instr *tex, int compare_idx)
 
    /* Clone the original instruction */
    nir_tex_instr *sparse_tex = nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
-   nir_ssa_dest_init(&sparse_tex->instr, &sparse_tex->dest,
-                     tex->dest.ssa.num_components, tex->dest.ssa.bit_size);
+   nir_def_init(&sparse_tex->instr, &sparse_tex->dest.ssa,
+                tex->dest.ssa.num_components, tex->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &sparse_tex->instr);
 
    /* Drop the compare source on the cloned instruction */

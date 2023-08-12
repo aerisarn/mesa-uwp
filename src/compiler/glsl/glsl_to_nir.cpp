@@ -1226,11 +1226,11 @@ nir_visitor::visit(ir_call *ir)
          /* Atomic result */
          assert(ir->return_deref);
          if (ir->return_deref->type->is_integer_64()) {
-            nir_ssa_dest_init(&instr->instr, &instr->dest,
-                              ir->return_deref->type->vector_elements, 64);
+            nir_def_init(&instr->instr, &instr->dest.ssa,
+                         ir->return_deref->type->vector_elements, 64);
          } else {
-            nir_ssa_dest_init(&instr->instr, &instr->dest,
-                              ir->return_deref->type->vector_elements, 32);
+            nir_def_init(&instr->instr, &instr->dest.ssa,
+                         ir->return_deref->type->vector_elements, 32);
          }
          nir_builder_instr_insert(&b, &instr->instr);
          break;
@@ -1255,7 +1255,7 @@ nir_visitor::visit(ir_call *ir)
 
          /* Set the intrinsic destination. */
          if (ir->return_deref) {
-            nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 32);
+            nir_def_init(&instr->instr, &instr->dest.ssa, 1, 32);
          }
 
          /* Set the intrinsic parameters. */
@@ -1311,7 +1311,7 @@ nir_visitor::visit(ir_call *ir)
             } else
                num_components = ir->return_deref->type->vector_elements;
 
-            nir_ssa_dest_init(&instr->instr, &instr->dest, num_components, 32);
+            nir_def_init(&instr->instr, &instr->dest.ssa, num_components, 32);
          }
 
          if (op == nir_intrinsic_image_deref_size) {
@@ -1444,7 +1444,7 @@ nir_visitor::visit(ir_call *ir)
          break;
       }
       case nir_intrinsic_shader_clock:
-         nir_ssa_dest_init(&instr->instr, &instr->dest, 2, 32);
+         nir_def_init(&instr->instr, &instr->dest.ssa, 2, 32);
          nir_intrinsic_set_memory_scope(instr, SCOPE_SUBGROUP);
          nir_builder_instr_insert(&b, &instr->instr);
          break;
@@ -1495,8 +1495,8 @@ nir_visitor::visit(ir_call *ir)
 
          /* Setup destination register */
          unsigned bit_size = type->is_boolean() ? 32 : glsl_get_bit_size(type);
-         nir_ssa_dest_init(&instr->instr, &instr->dest, type->vector_elements,
-                           bit_size);
+         nir_def_init(&instr->instr, &instr->dest.ssa, type->vector_elements,
+                      bit_size);
 
          nir_builder_instr_insert(&b, &instr->instr);
 
@@ -1538,7 +1538,7 @@ nir_visitor::visit(ir_call *ir)
          FALLTHROUGH;
       case nir_intrinsic_vote_any:
       case nir_intrinsic_vote_all: {
-         nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 1);
+         nir_def_init(&instr->instr, &instr->dest.ssa, 1, 1);
 
          ir_rvalue *value = (ir_rvalue *) ir->actual_parameters.get_head();
          instr->src[0] = nir_src_for_ssa(evaluate_rvalue(value));
@@ -1548,8 +1548,8 @@ nir_visitor::visit(ir_call *ir)
       }
 
       case nir_intrinsic_ballot: {
-         nir_ssa_dest_init(&instr->instr, &instr->dest,
-                           ir->return_deref->type->vector_elements, 64);
+         nir_def_init(&instr->instr, &instr->dest.ssa,
+                      ir->return_deref->type->vector_elements, 64);
          instr->num_components = ir->return_deref->type->vector_elements;
 
          ir_rvalue *value = (ir_rvalue *) ir->actual_parameters.get_head();
@@ -1559,8 +1559,8 @@ nir_visitor::visit(ir_call *ir)
          break;
       }
       case nir_intrinsic_read_invocation: {
-         nir_ssa_dest_init(&instr->instr, &instr->dest,
-                           ir->return_deref->type->vector_elements, 32);
+         nir_def_init(&instr->instr, &instr->dest.ssa,
+                      ir->return_deref->type->vector_elements, 32);
          instr->num_components = ir->return_deref->type->vector_elements;
 
          ir_rvalue *value = (ir_rvalue *) ir->actual_parameters.get_head();
@@ -1573,8 +1573,8 @@ nir_visitor::visit(ir_call *ir)
          break;
       }
       case nir_intrinsic_read_first_invocation: {
-         nir_ssa_dest_init(&instr->instr, &instr->dest,
-                           ir->return_deref->type->vector_elements, 32);
+         nir_def_init(&instr->instr, &instr->dest.ssa,
+                      ir->return_deref->type->vector_elements, 32);
          instr->num_components = ir->return_deref->type->vector_elements;
 
          ir_rvalue *value = (ir_rvalue *) ir->actual_parameters.get_head();
@@ -1584,12 +1584,12 @@ nir_visitor::visit(ir_call *ir)
          break;
       }
       case nir_intrinsic_is_helper_invocation: {
-         nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 1);
+         nir_def_init(&instr->instr, &instr->dest.ssa, 1, 1);
          nir_builder_instr_insert(&b, &instr->instr);
          break;
       }
       case nir_intrinsic_is_sparse_texels_resident: {
-         nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 1);
+         nir_def_init(&instr->instr, &instr->dest.ssa, 1, 1);
 
          ir_rvalue *value = (ir_rvalue *) ir->actual_parameters.get_head();
          instr->src[0] = nir_src_for_ssa(evaluate_rvalue(value));

@@ -216,9 +216,9 @@ vtn_handle_amd_shader_explicit_vertex_parameter_instruction(struct vtn_builder *
    intrin->src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[6]));
 
    intrin->num_components = glsl_get_vector_elements(deref->type);
-   nir_ssa_dest_init(&intrin->instr, &intrin->dest,
-                     glsl_get_vector_elements(deref->type),
-                     glsl_get_bit_size(deref->type));
+   nir_def_init(&intrin->instr, &intrin->dest.ssa,
+                glsl_get_vector_elements(deref->type),
+                glsl_get_bit_size(deref->type));
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
 

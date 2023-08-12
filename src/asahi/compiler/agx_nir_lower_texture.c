@@ -419,7 +419,7 @@ bias_for_tex(nir_builder *b, nir_tex_instr *tex)
    query->op = nir_texop_lod_bias_agx;
    query->dest_type = nir_type_float16;
 
-   nir_ssa_dest_init(instr, &query->dest, 1, 16);
+   nir_def_init(instr, &query->dest.ssa, 1, 16);
    return &query->dest.ssa;
 }
 
@@ -548,7 +548,7 @@ txs_for_image(nir_builder *b, nir_intrinsic_instr *intr,
          nir_tex_src_for_ssa(nir_tex_src_texture_offset, intr->src[0].ssa);
    }
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, num_components, bit_size);
+   nir_def_init(&tex->instr, &tex->dest.ssa, num_components, bit_size);
    nir_builder_instr_insert(b, &tex->instr);
    return &tex->dest.ssa;
 }

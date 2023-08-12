@@ -557,7 +557,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
 
             tex->src[2] =
                nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
-            nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+            nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
             nir_builder_instr_insert(&b, &tex->instr);
 
             res = res ? nir_fadd(&b, res, &tex->dest.ssa) : &tex->dest.ssa;
@@ -592,7 +592,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
             tex->coord_components = coord_comps;
          }
 
-         nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+         nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
          nir_builder_instr_insert(&b, &tex->instr);
          res = &tex->dest.ssa;
       }

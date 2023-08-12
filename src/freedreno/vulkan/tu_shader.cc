@@ -320,9 +320,9 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
       }
 
       if (info->has_dest) {
-         nir_ssa_dest_init(&copy->instr, &copy->dest,
-                           intrin->dest.ssa.num_components,
-                           intrin->dest.ssa.bit_size);
+         nir_def_init(&copy->instr, &copy->dest.ssa,
+                      intrin->dest.ssa.num_components,
+                      intrin->dest.ssa.bit_size);
          results[i] = &copy->dest.ssa;
       }
 

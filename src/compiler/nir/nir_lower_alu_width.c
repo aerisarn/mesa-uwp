@@ -89,7 +89,7 @@ static void
 nir_alu_ssa_dest_init(nir_alu_instr *alu, unsigned num_components,
                       unsigned bit_size)
 {
-   nir_ssa_dest_init(&alu->instr, &alu->dest.dest, num_components, bit_size);
+   nir_def_init(&alu->instr, &alu->dest.dest.ssa, num_components, bit_size);
 }
 
 static nir_def *
