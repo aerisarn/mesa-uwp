@@ -782,9 +782,6 @@ nvk_vtgp_gen_header(struct nvk_shader *vs, struct nv50_ir_prog_info_out *info)
    for (i = 0; i < info->io.cullDistances; ++i)
       vs->vs.clip_mode |= 1 << ((info->io.clipDistances + i) * 4);
 
-   if (info->io.genUserClip < 0)
-      vs->vs.num_ucps = 8 + 1; /* prevent rebuilding */
-
    vs->vs.layer_viewport_relative = info->io.layer_viewport_relative;
 
    return 0;
