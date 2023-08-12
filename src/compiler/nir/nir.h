@@ -2682,6 +2682,12 @@ nir_scalar_resolved(nir_def *def, unsigned channel)
    return nir_scalar_chase_movs(nir_get_scalar(def, channel));
 }
 
+static inline bool
+nir_scalar_equal(nir_scalar s1, nir_scalar s2)
+{
+   return s1.def == s2.def && s1.comp == s2.comp;
+}
+
 static inline uint64_t
 nir_alu_src_as_uint(nir_alu_src src)
 {

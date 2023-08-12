@@ -1422,11 +1422,11 @@ opt_if_rewrite_uniform_uses(nir_builder *b, nir_if *nif, nir_scalar cond, bool a
       nir_scalar intrin_src = { intrin->src[0].ssa, src_uni.comp };
       nir_scalar resolved_intrin_src = nir_scalar_resolved(intrin_src.def, intrin_src.comp);
 
-      if (resolved_intrin_src.comp != src_div.comp || resolved_intrin_src.def != src_div.def)
+      if (!nir_scalar_equal(resolved_intrin_src, src_div))
          continue;
 
       progress |= rewrite_comp_uses_within_if(b, nif, op == nir_op_ine, resolved_intrin_src, src_uni);
-      if (intrin_src.comp != resolved_intrin_src.comp || intrin_src.def != resolved_intrin_src.def)
+      if (!nir_scalar_equal(intrin_src, resolved_intrin_src))
          progress |= rewrite_comp_uses_within_if(b, nif, op == nir_op_ine, intrin_src, src_uni);
 
       return progress;
