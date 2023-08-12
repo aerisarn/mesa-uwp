@@ -23,7 +23,7 @@ pub struct PipeScreen {
     screen: *mut pipe_screen,
 }
 
-const UUID_SIZE: usize = PIPE_UUID_SIZE as usize;
+pub const UUID_SIZE: usize = PIPE_UUID_SIZE as usize;
 const LUID_SIZE: usize = PIPE_LUID_SIZE as usize;
 
 // until we have a better solution

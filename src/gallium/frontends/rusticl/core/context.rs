@@ -2,6 +2,7 @@ use crate::api::icd::*;
 use crate::api::types::DeleteContextCB;
 use crate::core::device::*;
 use crate::core::format::*;
+use crate::core::gl::*;
 use crate::core::memory::*;
 use crate::core::util::*;
 use crate::impl_cl_type_trait;
@@ -26,6 +27,7 @@ pub struct Context {
     pub properties: Properties<cl_context_properties>,
     pub dtors: Mutex<Vec<DeleteContextCB>>,
     pub svm_ptrs: Mutex<BTreeMap<*const c_void, Layout>>,
+    pub gl_ctx_manager: Option<GLCtxManager>,
 }
 
 impl_cl_type_trait!(cl_context, Context, CL_INVALID_CONTEXT);
@@ -34,6 +36,7 @@ impl Context {
     pub fn new(
         devs: Vec<&'static Device>,
         properties: Properties<cl_context_properties>,
+        gl_ctx_manager: Option<GLCtxManager>,
     ) -> Arc<Context> {
         Arc::new(Self {
             base: CLObjectBase::new(),
@@ -41,6 +44,7 @@ impl Context {
             properties: properties,
             dtors: Mutex::new(Vec::new()),
             svm_ptrs: Mutex::new(BTreeMap::new()),
+            gl_ctx_manager: gl_ctx_manager,
         })
     }
 

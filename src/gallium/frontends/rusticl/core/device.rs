@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
 use std::ffi::CString;
+use std::mem::transmute;
 use std::os::raw::*;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -1003,7 +1004,7 @@ impl Device {
     }
 }
 
-fn devs() -> &'static Vec<Arc<Device>> {
+pub fn devs() -> &'static Vec<Arc<Device>> {
     &Platform::get().devs
 }
 
@@ -1011,6 +1012,24 @@ pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Device> {
     devs()
         .iter()
         .filter(|d| device_type & d.device_type(true) != 0)
+        .map(Arc::as_ref)
+        .collect()
+}
+
+pub fn get_dev_for_uuid(uuid: [c_char; UUID_SIZE]) -> Option<&'static Device> {
+    devs()
+        .iter()
+        .find(|d| {
+            let uuid: [c_uchar; UUID_SIZE] = unsafe { transmute(uuid) };
+            uuid == d.screen().device_uuid().unwrap()
+        })
+        .map(Arc::as_ref)
+}
+
+pub fn get_devs_with_gl_interop() -> Vec<&'static Device> {
+    devs()
+        .iter()
+        .filter(|d| d.is_gl_sharing_supported())
         .map(Arc::as_ref)
         .collect()
 }

@@ -2,7 +2,8 @@ use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::context::*;
-use crate::core::device::get_devs_for_type;
+use crate::core::device::{get_dev_for_uuid, get_devs_for_type, get_devs_with_gl_interop};
+use crate::core::gl::*;
 use crate::core::platform::*;
 
 use mesa_rust_util::properties::Properties;
@@ -11,8 +12,10 @@ use rusticl_proc_macros::cl_entrypoint;
 use rusticl_proc_macros::cl_info_entrypoint;
 
 use std::collections::HashSet;
+use std::ffi::c_void;
 use std::iter::FromIterator;
 use std::mem::MaybeUninit;
+use std::ptr;
 use std::slice;
 
 #[cl_info_entrypoint(cl_get_context_info)]
@@ -33,6 +36,75 @@ impl CLInfo<cl_context_info> for cl_context {
             _ => return Err(CL_INVALID_VALUE),
         })
     }
+}
+
+impl CLInfo<cl_gl_context_info> for GLCtxManager {
+    fn query(&self, q: cl_gl_context_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
+        let info = self.interop_dev_info;
+
+        Ok(match q {
+            CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR => {
+                let ptr = match get_dev_for_uuid(info.device_uuid) {
+                    Some(dev) => dev,
+                    None => ptr::null(),
+                };
+                cl_prop::<cl_device_id>(cl_device_id::from_ptr(ptr))
+            }
+            CL_DEVICES_FOR_GL_CONTEXT_KHR => {
+                let devs = get_devs_with_gl_interop()
+                    .iter()
+                    .map(|&d| cl_device_id::from_ptr(d))
+                    .collect();
+                cl_prop::<&Vec<cl_device_id>>(&devs)
+            }
+            _ => return Err(CL_INVALID_VALUE),
+        })
+    }
+}
+
+#[cl_entrypoint]
+pub fn get_gl_context_info_khr(
+    properties: *const cl_context_properties,
+    param_name: cl_gl_context_info,
+    param_value_size: usize,
+    param_value: *mut ::std::os::raw::c_void,
+    param_value_size_ret: *mut usize,
+) -> CLResult<()> {
+    let mut egl_display: EGLDisplay = ptr::null_mut();
+    let mut glx_display: *mut _XDisplay = ptr::null_mut();
+    let mut gl_context: *mut c_void = ptr::null_mut();
+
+    // CL_INVALID_PROPERTY [...] if the same property name is specified more than once.
+    let props = Properties::from_ptr(properties).ok_or(CL_INVALID_PROPERTY)?;
+    for p in &props.props {
+        match p.0 as u32 {
+            // CL_INVALID_PLATFORM [...] if platform value specified in properties is not a valid platform.
+            CL_CONTEXT_PLATFORM => {
+                (p.1 as cl_platform_id).get_ref()?;
+            }
+            CL_EGL_DISPLAY_KHR => {
+                egl_display = p.1 as *mut _;
+            }
+            CL_GL_CONTEXT_KHR => {
+                gl_context = p.1 as *mut _;
+            }
+            CL_GLX_DISPLAY_KHR => {
+                glx_display = p.1 as *mut _;
+            }
+            // CL_INVALID_PROPERTY if context property name in properties is not a supported property name
+            _ => return Err(CL_INVALID_PROPERTY),
+        }
+    }
+
+    let gl_ctx_manager = GLCtxManager::new(gl_context, glx_display, egl_display)?;
+    gl_ctx_manager
+        .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?
+        .get_info(
+            param_name,
+            param_value_size,
+            param_value,
+            param_value_size_ret,
+        )
 }
 
 #[cl_entrypoint]
@@ -58,6 +130,10 @@ fn create_context(
         return Err(CL_INVALID_VALUE);
     }
 
+    let mut egl_display: EGLDisplay = ptr::null_mut();
+    let mut glx_display: *mut _XDisplay = ptr::null_mut();
+    let mut gl_context: *mut c_void = ptr::null_mut();
+
     // CL_INVALID_PROPERTY [...] if the same property name is specified more than once.
     let props = Properties::from_ptr(properties).ok_or(CL_INVALID_PROPERTY)?;
     for p in &props.props {
@@ -69,17 +145,32 @@ fn create_context(
             CL_CONTEXT_INTEROP_USER_SYNC => {
                 check_cl_bool(p.1).ok_or(CL_INVALID_PROPERTY)?;
             }
+            CL_EGL_DISPLAY_KHR => {
+                egl_display = p.1 as *mut _;
+            }
+            CL_GL_CONTEXT_KHR => {
+                gl_context = p.1 as *mut _;
+            }
+            CL_GLX_DISPLAY_KHR => {
+                glx_display = p.1 as *mut _;
+            }
             // CL_INVALID_PROPERTY if context property name in properties is not a supported property name
             _ => return Err(CL_INVALID_PROPERTY),
         }
     }
+
+    let gl_ctx_manager = GLCtxManager::new(gl_context, glx_display, egl_display)?;
 
     // Duplicate devices specified in devices are ignored.
     let set: HashSet<_> =
         HashSet::from_iter(unsafe { slice::from_raw_parts(devices, num_devices as usize) }.iter());
     let devs: Result<_, _> = set.into_iter().map(cl_device_id::get_ref).collect();
 
-    Ok(cl_context::from_arc(Context::new(devs?, props)))
+    Ok(cl_context::from_arc(Context::new(
+        devs?,
+        props,
+        gl_ctx_manager,
+    )))
 }
 
 #[cl_entrypoint]

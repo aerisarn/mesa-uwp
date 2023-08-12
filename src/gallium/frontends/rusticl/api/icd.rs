@@ -93,7 +93,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clGetGLTextureInfo: None,
     clEnqueueAcquireGLObjects: None,
     clEnqueueReleaseGLObjects: None,
-    clGetGLContextInfoKHR: None,
+    clGetGLContextInfoKHR: Some(cl_get_gl_context_info_khr),
     clGetDeviceIDsFromD3D10KHR: ptr::null_mut(),
     clCreateFromD3D10BufferKHR: ptr::null_mut(),
     clCreateFromD3D10Texture2DKHR: ptr::null_mut(),
@@ -412,6 +412,9 @@ extern "C" fn cl_get_extension_function_address(
 
         // cl_khr_il_program
         "clCreateProgramWithILKHR" => cl_create_program_with_il as *mut ::std::ffi::c_void,
+
+        // cl_khr_gl_sharing
+        "clGetGLContextInfoKHR" => cl_get_gl_context_info_khr as *mut ::std::ffi::c_void,
 
         // cl_arm_shared_virtual_memory
         "clEnqueueSVMFreeARM" => cl_enqueue_svm_free_arm as *mut ::std::ffi::c_void,
