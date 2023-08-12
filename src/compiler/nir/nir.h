@@ -2623,6 +2623,18 @@ nir_scalar_alu_op(nir_scalar s)
    return nir_instr_as_alu(s.def->parent_instr)->op;
 }
 
+static inline bool
+nir_scalar_is_intrinsic(nir_scalar s)
+{
+   return s.def->parent_instr->type == nir_instr_type_intrinsic;
+}
+
+static inline nir_intrinsic_op
+nir_scalar_intrinsic_op(nir_scalar s)
+{
+   return nir_instr_as_intrinsic(s.def->parent_instr)->intrinsic;
+}
+
 static inline nir_scalar
 nir_scalar_chase_alu_src(nir_scalar s, unsigned alu_src_idx)
 {

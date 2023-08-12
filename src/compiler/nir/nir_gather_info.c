@@ -31,18 +31,16 @@ static bool
 src_is_invocation_id(const nir_src *src)
 {
    nir_scalar s = nir_scalar_resolved(src->ssa, 0);
-   return s.def->parent_instr->type == nir_instr_type_intrinsic &&
-          nir_instr_as_intrinsic(s.def->parent_instr)->intrinsic ==
-             nir_intrinsic_load_invocation_id;
+   return nir_scalar_is_intrinsic(s) &&
+          nir_scalar_intrinsic_op(s) == nir_intrinsic_load_invocation_id;
 }
 
 static bool
 src_is_local_invocation_index(const nir_src *src)
 {
    nir_scalar s = nir_scalar_resolved(src->ssa, 0);
-   return s.def->parent_instr->type == nir_instr_type_intrinsic &&
-          nir_instr_as_intrinsic(s.def->parent_instr)->intrinsic ==
-             nir_intrinsic_load_local_invocation_index;
+   return nir_scalar_is_intrinsic(s) &&
+          nir_scalar_intrinsic_op(s) == nir_intrinsic_load_local_invocation_index;
 }
 
 static void

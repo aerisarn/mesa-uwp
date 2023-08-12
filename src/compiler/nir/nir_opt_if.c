@@ -1408,10 +1408,10 @@ opt_if_rewrite_uniform_uses(nir_builder *b, nir_if *nif, nir_scalar cond, bool a
       nir_scalar src_uni = nir_scalar_chase_alu_src(cond, i);
       nir_scalar src_div = nir_scalar_chase_alu_src(cond, !i);
 
-      if (src_uni.def->parent_instr->type == nir_instr_type_load_const && src_div.def != src_uni.def)
+      if (nir_scalar_is_const(src_uni) && src_div.def != src_uni.def)
          return rewrite_comp_uses_within_if(b, nif, op == nir_op_ine, src_div, src_uni);
 
-      if (src_uni.def->parent_instr->type != nir_instr_type_intrinsic)
+      if (!nir_scalar_is_intrinsic(src_uni))
          continue;
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src_uni.def->parent_instr);
       if (intrin->intrinsic != nir_intrinsic_read_first_invocation &&
