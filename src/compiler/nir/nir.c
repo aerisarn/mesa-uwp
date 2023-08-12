@@ -1562,13 +1562,6 @@ nir_def_init(nir_instr *instr, nir_def *def,
 }
 
 void
-nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
-                  unsigned num_components, unsigned bit_size)
-{
-   nir_def_init(instr, &dest->ssa, num_components, bit_size);
-}
-
-void
 nir_def_rewrite_uses(nir_def *def, nir_def *new_ssa)
 {
    assert(def != new_ssa);

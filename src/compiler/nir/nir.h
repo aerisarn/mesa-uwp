@@ -4442,8 +4442,6 @@ void nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src);
 
 void nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src);
 
-void nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
-                       unsigned num_components, unsigned bit_size);
 void nir_def_init(nir_instr *instr, nir_def *def,
                   unsigned num_components, unsigned bit_size);
 static inline void
@@ -4451,8 +4449,8 @@ nir_ssa_dest_init_for_type(nir_instr *instr, nir_dest *dest,
                            const struct glsl_type *type)
 {
    assert(glsl_type_is_vector_or_scalar(type));
-   nir_ssa_dest_init(instr, dest, glsl_get_components(type),
-                     glsl_get_bit_size(type));
+   nir_def_init(instr, &dest->ssa, glsl_get_components(type),
+                glsl_get_bit_size(type));
 }
 void nir_def_rewrite_uses(nir_def *def, nir_def *new_ssa);
 void nir_def_rewrite_uses_src(nir_def *def, nir_src new_src);
