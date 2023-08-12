@@ -203,13 +203,12 @@ __clone_src(clone_state *state, void *ninstr_or_if,
 }
 
 static void
-__clone_dst(clone_state *state, nir_instr *ninstr,
-            nir_dest *ndst, const nir_dest *dst)
+__clone_def(clone_state *state, nir_instr *ninstr,
+            nir_def *ndef, const nir_def *def)
 {
-   nir_ssa_dest_init(ninstr, ndst, dst->ssa.num_components,
-                     dst->ssa.bit_size);
+   nir_def_init(ninstr, ndef, def->num_components, def->bit_size);
    if (likely(state->remap_table))
-      add_remap(state, &ndst->ssa, &dst->ssa);
+      add_remap(state, ndef, def);
 }
 
 static nir_alu_instr *
@@ -220,7 +219,7 @@ clone_alu(clone_state *state, const nir_alu_instr *alu)
    nalu->no_signed_wrap = alu->no_signed_wrap;
    nalu->no_unsigned_wrap = alu->no_unsigned_wrap;
 
-   __clone_dst(state, &nalu->instr, &nalu->dest.dest, &alu->dest.dest);
+   __clone_def(state, &nalu->instr, &nalu->dest.dest.ssa, &alu->dest.dest.ssa);
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       __clone_src(state, &nalu->instr, &nalu->src[i].src, &alu->src[i].src);
@@ -247,7 +246,7 @@ clone_deref_instr(clone_state *state, const nir_deref_instr *deref)
    nir_deref_instr *nderef =
       nir_deref_instr_create(state->ns, deref->deref_type);
 
-   __clone_dst(state, &nderef->instr, &nderef->dest, &deref->dest);
+   __clone_def(state, &nderef->instr, &nderef->dest.ssa, &deref->dest.ssa);
 
    nderef->modes = deref->modes;
    nderef->type = deref->type;
@@ -297,7 +296,7 @@ clone_intrinsic(clone_state *state, const nir_intrinsic_instr *itr)
    unsigned num_srcs = nir_intrinsic_infos[itr->intrinsic].num_srcs;
 
    if (nir_intrinsic_infos[itr->intrinsic].has_dest)
-      __clone_dst(state, &nitr->instr, &nitr->dest, &itr->dest);
+      __clone_def(state, &nitr->instr, &nitr->dest.ssa, &itr->dest.ssa);
 
    nitr->num_components = itr->num_components;
    memcpy(nitr->const_index, itr->const_index, sizeof(nitr->const_index));
@@ -342,7 +341,7 @@ clone_tex(clone_state *state, const nir_tex_instr *tex)
    ntex->sampler_dim = tex->sampler_dim;
    ntex->dest_type = tex->dest_type;
    ntex->op = tex->op;
-   __clone_dst(state, &ntex->instr, &ntex->dest, &tex->dest);
+   __clone_def(state, &ntex->instr, &ntex->dest.ssa, &tex->dest.ssa);
    for (unsigned i = 0; i < ntex->num_srcs; i++) {
       ntex->src[i].src_type = tex->src[i].src_type;
       __clone_src(state, &ntex->instr, &ntex->src[i].src, &tex->src[i].src);
@@ -372,7 +371,7 @@ clone_phi(clone_state *state, const nir_phi_instr *phi, nir_block *nblk)
 {
    nir_phi_instr *nphi = nir_phi_instr_create(state->ns);
 
-   __clone_dst(state, &nphi->instr, &nphi->dest, &phi->dest);
+   __clone_def(state, &nphi->instr, &nphi->dest.ssa, &phi->dest.ssa);
 
    /* Cloning a phi node is a bit different from other instructions.  The
     * sources of phi instructions are the only time where we can use an SSA
