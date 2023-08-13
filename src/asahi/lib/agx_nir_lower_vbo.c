@@ -240,10 +240,11 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
     * the format swizzle forwards to trim/pad/reorder as needed.
     */
    nir_def *channels[4] = {NULL};
-   assert(nir_intrinsic_component(intr) == 0 && "unimplemented");
 
-   for (unsigned i = 0; i < intr->num_components; ++i)
-      channels[i] = apply_swizzle_channel(b, memory, desc->swizzle[i], is_int);
+   for (unsigned i = 0; i < intr->num_components; ++i) {
+      unsigned c = nir_intrinsic_component(intr) + i;
+      channels[i] = apply_swizzle_channel(b, memory, desc->swizzle[c], is_int);
+   }
 
    nir_def *logical = nir_vec(b, channels, intr->num_components);
    nir_def_rewrite_uses(&intr->def, logical);
