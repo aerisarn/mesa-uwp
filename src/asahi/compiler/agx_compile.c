@@ -1223,6 +1223,7 @@ is_conversion_to_8bit(nir_op op)
    case nir_op_u2u8:
    case nir_op_f2i8:
    case nir_op_f2u8:
+   case nir_op_b2i8:
       return true;
    default:
       return false;
@@ -1395,6 +1396,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
    case nir_op_b2i32:
    case nir_op_b2i16:
+   case nir_op_b2i8:
       return agx_icmpsel_to(b, dst, s0, i0, i0, i1, AGX_ICOND_UEQ);
 
    case nir_op_b2b32:
