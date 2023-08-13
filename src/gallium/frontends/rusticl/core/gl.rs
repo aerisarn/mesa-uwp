@@ -1,6 +1,7 @@
 use crate::api::icd::*;
+use crate::core::format::*;
 
-use libc_rust_gen::dlsym;
+use libc_rust_gen::{close, dlsym};
 use rusticl_opencl_gen::*;
 
 use std::ffi::CString;
@@ -166,6 +167,153 @@ impl GLCtxManager {
             Err(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)
         }
     }
+
+    pub fn export_object(
+        &self,
+        target: cl_GLenum,
+        flags: u32,
+        miplevel: cl_GLint,
+        texture: cl_GLuint,
+    ) -> CLResult<GLExportManager> {
+        let xplat_manager = &self.xplat_manager;
+        let mut export_in = mesa_glinterop_export_in {
+            version: 1,
+            target: target,
+            obj: texture,
+            miplevel: miplevel as u32,
+            access: cl_to_interop_flags(flags),
+            ..Default::default()
+        };
+
+        let mut export_out = mesa_glinterop_export_out {
+            version: 2,
+            ..Default::default()
+        };
+
+        let err = unsafe {
+            match &self.gl_ctx {
+                GLCtx::EGL(disp, ctx) => {
+                    let egl_export_object_func = xplat_manager
+                        .MesaGLInteropEGLExportObject()?
+                        .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
+
+                    egl_export_object_func(disp.cast(), ctx.cast(), &mut export_in, &mut export_out)
+                }
+                GLCtx::GLX(disp, ctx) => {
+                    let glx_export_object_func = xplat_manager
+                        .MesaGLInteropGLXExportObject()?
+                        .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
+
+                    glx_export_object_func(disp.cast(), ctx.cast(), &mut export_in, &mut export_out)
+                }
+            }
+        };
+
+        if err != MESA_GLINTEROP_SUCCESS as i32 {
+            return Err(interop_to_cl_error(err));
+        }
+
+        // CL_INVALID_GL_OBJECT if bufobj is not a GL buffer object or is a GL buffer
+        // object but does not have an existing data store or the size of the buffer is 0.
+        if target == GL_ARRAY_BUFFER && export_out.buf_size == 0 {
+            return Err(CL_INVALID_GL_OBJECT);
+        }
+
+        Ok(GLExportManager {
+            export_in: export_in,
+            export_out: export_out,
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct GLMemProps {
+    pub height: u16,
+    pub depth: u16,
+    pub width: u32,
+    pub array_size: u16,
+    pub pixel_size: u8,
+    pub stride: u32,
+}
+
+impl GLMemProps {
+    pub fn size(&self) -> usize {
+        self.height as usize
+            * self.depth as usize
+            * self.array_size as usize
+            * self.width as usize
+            * self.pixel_size as usize
+    }
+}
+
+pub struct GLExportManager {
+    pub export_in: mesa_glinterop_export_in,
+    pub export_out: mesa_glinterop_export_out,
+}
+
+impl GLExportManager {
+    pub fn get_gl_mem_props(&self) -> CLResult<GLMemProps> {
+        let pixel_size = if self.is_gl_buffer() {
+            0
+        } else {
+            format_from_gl(self.export_out.internal_format)
+                .ok_or(CL_OUT_OF_HOST_MEMORY)?
+                .pixel_size()
+                .unwrap()
+        };
+
+        let mut height = self.export_out.height as u16;
+        let mut depth = self.export_out.depth as u16;
+        let mut width = self.export_out.width;
+        let mut array_size = 1;
+
+        // some fixups
+        match self.export_in.target {
+            GL_TEXTURE_1D_ARRAY => {
+                array_size = height;
+                height = 1;
+                depth = 1;
+            }
+            GL_TEXTURE_2D_ARRAY => {
+                array_size = depth;
+                depth = 1;
+            }
+            GL_ARRAY_BUFFER => {
+                array_size = 1;
+                width = self.export_out.buf_size as u32;
+                height = 1;
+                depth = 1;
+            }
+            _ => {}
+        }
+
+        Ok(GLMemProps {
+            height: height,
+            depth: depth,
+            width: width,
+            array_size: array_size,
+            pixel_size: pixel_size,
+            stride: self.export_out.stride,
+        })
+    }
+
+    pub fn is_gl_buffer(&self) -> bool {
+        self.export_out.internal_format == GL_NONE
+    }
+}
+
+impl Drop for GLExportManager {
+    fn drop(&mut self) {
+        unsafe {
+            close(self.export_out.dmabuf_fd);
+        }
+    }
+}
+
+pub struct GLObject {
+    pub gl_object_target: cl_GLenum,
+    pub gl_object_type: cl_gl_object_type,
+    pub gl_object_name: cl_GLuint,
 }
 
 pub fn interop_to_cl_error(error: i32) -> CLError {
@@ -180,4 +328,60 @@ pub fn interop_to_cl_error(error: i32) -> CLError {
         MESA_GLINTEROP_INVALID_MIP_LEVEL => CL_INVALID_MIP_LEVEL,
         _ => CL_OUT_OF_HOST_MEMORY,
     }
+}
+
+pub fn cl_to_interop_flags(flags: u32) -> u32 {
+    match flags {
+        CL_MEM_READ_WRITE => MESA_GLINTEROP_ACCESS_READ_WRITE,
+        CL_MEM_READ_ONLY => MESA_GLINTEROP_ACCESS_READ_ONLY,
+        CL_MEM_WRITE_ONLY => MESA_GLINTEROP_ACCESS_WRITE_ONLY,
+        _ => 0,
+    }
+}
+
+pub fn target_from_gl(target: u32) -> CLResult<(u32, u32)> {
+    // CL_INVALID_IMAGE_FORMAT_DESCRIPTOR if the OpenGL texture
+    // internal format does not map to a supported OpenCL image format.
+    Ok(match target {
+        GL_ARRAY_BUFFER => (CL_MEM_OBJECT_BUFFER, CL_GL_OBJECT_BUFFER),
+        GL_RENDERBUFFER => (CL_MEM_OBJECT_IMAGE2D, CL_GL_OBJECT_RENDERBUFFER),
+        GL_TEXTURE_1D => (CL_MEM_OBJECT_IMAGE1D, CL_GL_OBJECT_TEXTURE1D),
+        GL_TEXTURE_1D_ARRAY => (CL_MEM_OBJECT_IMAGE1D_ARRAY, CL_GL_OBJECT_TEXTURE1D_ARRAY),
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X
+        | GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
+        | GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+        | GL_TEXTURE_CUBE_MAP_POSITIVE_X
+        | GL_TEXTURE_CUBE_MAP_POSITIVE_Y
+        | GL_TEXTURE_CUBE_MAP_POSITIVE_Z
+        | GL_TEXTURE_2D
+        | GL_TEXTURE_RECTANGLE => (CL_MEM_OBJECT_IMAGE2D, CL_GL_OBJECT_TEXTURE2D),
+        GL_TEXTURE_2D_ARRAY => (CL_MEM_OBJECT_IMAGE2D_ARRAY, CL_GL_OBJECT_TEXTURE2D_ARRAY),
+        GL_TEXTURE_3D => (CL_MEM_OBJECT_IMAGE3D, CL_GL_OBJECT_TEXTURE3D),
+        _ => return Err(CL_INVALID_VALUE),
+    })
+}
+
+pub fn is_valid_gl_texture(target: u32) -> bool {
+    matches!(
+        target,
+        GL_TEXTURE_1D
+            | GL_TEXTURE_1D_ARRAY
+            | GL_TEXTURE_BUFFER
+            | GL_TEXTURE_2D_ARRAY
+            | GL_TEXTURE_3D
+    ) || is_valid_gl_texture_2d(target)
+}
+
+pub fn is_valid_gl_texture_2d(target: u32) -> bool {
+    matches!(
+        target,
+        GL_TEXTURE_2D
+            | GL_TEXTURE_RECTANGLE
+            | GL_TEXTURE_CUBE_MAP_NEGATIVE_X
+            | GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
+            | GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+            | GL_TEXTURE_CUBE_MAP_POSITIVE_X
+            | GL_TEXTURE_CUBE_MAP_POSITIVE_Y
+            | GL_TEXTURE_CUBE_MAP_POSITIVE_Z
+    )
 }

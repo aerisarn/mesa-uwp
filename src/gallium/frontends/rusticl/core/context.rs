@@ -9,6 +9,7 @@ use crate::impl_cl_type_trait;
 
 use mesa_rust::pipe::resource::*;
 use mesa_rust::pipe::screen::ResourceType;
+use mesa_rust_gen::pipe_format;
 use mesa_rust_util::properties::Properties;
 use rusticl_opencl_gen::*;
 
@@ -203,6 +204,39 @@ impl Context {
 
     pub fn remove_svm_ptr(&self, ptr: *const c_void) -> Option<Layout> {
         self.svm_ptrs.lock().unwrap().remove(&ptr)
+    }
+
+    pub fn import_gl_buffer(
+        &self,
+        handle: u32,
+        modifier: u64,
+        image_type: cl_mem_object_type,
+        format: pipe_format,
+        gl_props: GLMemProps,
+    ) -> CLResult<HashMap<&'static Device, Arc<PipeResource>>> {
+        let mut res = HashMap::new();
+        let target = cl_mem_type_to_texture_target(image_type);
+
+        for dev in &self.devs {
+            let resource = dev
+                .screen()
+                .resource_import_dmabuf(
+                    handle,
+                    modifier,
+                    target,
+                    format,
+                    gl_props.stride,
+                    gl_props.width,
+                    gl_props.height,
+                    gl_props.depth,
+                    gl_props.array_size,
+                )
+                .ok_or(CL_OUT_OF_RESOURCES)?;
+
+            res.insert(*dev, Arc::new(resource));
+        }
+
+        Ok(res)
     }
 }
 

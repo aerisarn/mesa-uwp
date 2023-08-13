@@ -4,6 +4,7 @@ use crate::api::util::*;
 use crate::core::context::*;
 use crate::core::device::*;
 use crate::core::format::*;
+use crate::core::gl::*;
 use crate::core::queue::*;
 use crate::core::util::*;
 use crate::impl_cl_type_trait;
@@ -118,6 +119,7 @@ pub struct Mem {
     pub image_elem_size: u8,
     pub props: Vec<cl_mem_properties>,
     pub cbs: Mutex<Vec<MemCB>>,
+    pub gl_obj: Option<GLObject>,
     res: Option<HashMap<&'static Device, Arc<PipeResource>>>,
     maps: Mutex<Mappings>,
 }
@@ -306,6 +308,7 @@ impl Mem {
             image_desc: cl_image_desc::default(),
             image_elem_size: 0,
             props: props,
+            gl_obj: None,
             cbs: Mutex::new(Vec::new()),
             res: Some(buffer),
             maps: Mappings::new(),
@@ -338,6 +341,7 @@ impl Mem {
             image_desc: cl_image_desc::default(),
             image_elem_size: 0,
             props: Vec::new(),
+            gl_obj: None,
             cbs: Mutex::new(Vec::new()),
             res: None,
             maps: Mappings::new(),
@@ -422,8 +426,77 @@ impl Mem {
             image_desc: api_image_desc,
             image_elem_size: image_elem_size,
             props: props,
+            gl_obj: None,
             cbs: Mutex::new(Vec::new()),
             res: texture,
+            maps: Mappings::new(),
+        }))
+    }
+
+    pub fn from_gl(
+        context: Arc<Context>,
+        flags: cl_mem_flags,
+        gl_export_manager: &GLExportManager,
+    ) -> CLResult<Arc<Mem>> {
+        let export_in = &gl_export_manager.export_in;
+        let export_out = &gl_export_manager.export_out;
+
+        let (mem_type, gl_object_type) = target_from_gl(export_in.target)?;
+        let gl_mem_props = gl_export_manager.get_gl_mem_props()?;
+
+        // Handle Buffers
+        let (image_format, pipe_format) = if gl_export_manager.is_gl_buffer() {
+            (cl_image_format::default(), pipe_format::PIPE_FORMAT_NONE)
+        } else {
+            let image_format =
+                format_from_gl(export_out.internal_format).ok_or(CL_OUT_OF_HOST_MEMORY)?;
+            (image_format, image_format.to_pipe_format().unwrap())
+        };
+
+        let texture = context.import_gl_buffer(
+            export_out.dmabuf_fd as u32,
+            export_out.modifier,
+            mem_type,
+            pipe_format,
+            gl_mem_props.clone(),
+        )?;
+
+        let gl_obj = GLObject {
+            gl_object_target: gl_export_manager.export_in.target,
+            gl_object_type: gl_object_type,
+            gl_object_name: export_in.obj,
+        };
+
+        let desc = cl_image_desc {
+            image_type: mem_type,
+            image_width: gl_mem_props.width as usize,
+            image_height: gl_mem_props.height as usize,
+            image_depth: gl_mem_props.depth as usize,
+            image_array_size: gl_mem_props.array_size as usize,
+            image_row_pitch: 0,
+            image_slice_pitch: 0,
+            num_mip_levels: 1,
+            num_samples: 1,
+            ..Default::default()
+        };
+
+        Ok(Arc::new(Self {
+            base: CLObjectBase::new(),
+            context: context,
+            parent: None,
+            mem_type: mem_type,
+            flags: flags,
+            size: gl_mem_props.size(),
+            offset: 0,
+            host_ptr: ptr::null_mut(),
+            image_format: image_format,
+            pipe_format: pipe_format,
+            image_desc: desc,
+            image_elem_size: gl_mem_props.pixel_size,
+            props: Vec::new(),
+            gl_obj: Some(gl_obj),
+            cbs: Mutex::new(Vec::new()),
+            res: Some(texture),
             maps: Mappings::new(),
         }))
     }

@@ -225,6 +225,43 @@ impl PipeScreen {
         self.resource_create_from_user(&tmpl, mem)
     }
 
+    pub fn resource_import_dmabuf(
+        &self,
+        handle: u32,
+        modifier: u64,
+        target: pipe_texture_target,
+        format: pipe_format,
+        stride: u32,
+        width: u32,
+        height: u16,
+        depth: u16,
+        array_size: u16,
+    ) -> Option<PipeResource> {
+        let mut tmpl = pipe_resource::default();
+        let mut handle = winsys_handle {
+            type_: WINSYS_HANDLE_TYPE_FD,
+            handle: handle,
+            modifier: modifier,
+            format: format as u64,
+            stride: stride,
+            ..Default::default()
+        };
+
+        tmpl.set_target(target);
+        tmpl.set_format(format);
+        tmpl.width0 = width;
+        tmpl.height0 = height;
+        tmpl.depth0 = depth;
+        tmpl.array_size = array_size;
+
+        unsafe {
+            PipeResource::new(
+                (*self.screen).resource_from_handle.unwrap()(self.screen, &tmpl, &mut handle, 0),
+                false,
+            )
+        }
+    }
+
     pub fn param(&self, cap: pipe_cap) -> i32 {
         unsafe { (*self.screen).get_param.unwrap()(self.screen, cap) }
     }

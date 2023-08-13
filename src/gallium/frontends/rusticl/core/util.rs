@@ -7,6 +7,7 @@ use std::mem;
 
 pub fn cl_mem_type_to_texture_target(mem_type: cl_mem_object_type) -> pipe_texture_target {
     match mem_type {
+        CL_MEM_OBJECT_BUFFER => pipe_texture_target::PIPE_BUFFER,
         CL_MEM_OBJECT_IMAGE1D => pipe_texture_target::PIPE_TEXTURE_1D,
         CL_MEM_OBJECT_IMAGE2D => pipe_texture_target::PIPE_TEXTURE_2D,
         CL_MEM_OBJECT_IMAGE3D => pipe_texture_target::PIPE_TEXTURE_3D,
