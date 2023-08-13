@@ -1038,7 +1038,7 @@ impl SM75Instr {
         } else {
             assert!(*scope == MemScope::System);
             assert!(*order == MemOrder::Strong);
-            self.set_field(77..81, 0xa);
+            self.set_field(77..81, 0xa_u8);
         }
     }
 
