@@ -247,10 +247,10 @@ class LowerSplit64op : public NirLowerInstruction {
          auto phi = nir_instr_as_phi(instr);
          auto phi_lo = nir_phi_instr_create(b->shader);
          auto phi_hi = nir_phi_instr_create(b->shader);
-         nir_ssa_dest_init(
-            &phi_lo->instr, &phi_lo->dest, phi->dest.ssa.num_components * 2, 32);
-         nir_ssa_dest_init(
-            &phi_hi->instr, &phi_hi->dest, phi->dest.ssa.num_components * 2, 32);
+         nir_def_init(
+            &phi_lo->instr, &phi_lo->dest.ssa, phi->dest.ssa.num_components * 2, 32);
+         nir_def_init(
+            &phi_hi->instr, &phi_hi->dest.ssa, phi->dest.ssa.num_components * 2, 32);
          nir_foreach_phi_src(s, phi)
          {
             auto lo = nir_unpack_32_2x16_split_x(b, nir_ssa_for_src(b, s->src, 1));

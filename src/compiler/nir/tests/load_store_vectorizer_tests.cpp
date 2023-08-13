@@ -1200,7 +1200,7 @@ TEST_F(nir_load_store_vectorize_test, shared_load_distant_64bit)
 {
    nir_variable *var = nir_variable_create(b->shader, nir_var_mem_shared, glsl_array_type(glsl_uint_type(), 4, 0), "var");
    nir_deref_instr *deref = nir_build_deref_var(b, var);
-   nir_ssa_dest_init(&deref->instr, &deref->dest, 1, 64);
+   nir_def_init(&deref->instr, &deref->dest.ssa, 1, 64);
 
    create_shared_load(nir_build_deref_array_imm(b, deref, 0x100000000), 0x1);
    create_shared_load(nir_build_deref_array_imm(b, deref, 0x200000001), 0x2);

@@ -545,7 +545,7 @@ r600_append_tcs_TF_emission(nir_shader *shader, enum mesa_prim prim_type)
 
    auto invocation_id =
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_invocation_id);
-   nir_ssa_dest_init(&invocation_id->instr, &invocation_id->dest, 1, 32);
+   nir_def_init(&invocation_id->instr, &invocation_id->dest.ssa, 1, 32);
    nir_builder_instr_insert(b, &invocation_id->instr);
 
    nir_push_if(b, nir_ieq_imm(b, &invocation_id->dest.ssa, 0));
@@ -559,15 +559,15 @@ r600_append_tcs_TF_emission(nir_shader *shader, enum mesa_prim prim_type)
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_local_shared_r600);
    tf_outer->num_components = outer_comps;
    tf_outer->src[0] = nir_src_for_ssa(addr_outer);
-   nir_ssa_dest_init(
-      &tf_outer->instr, &tf_outer->dest, tf_outer->num_components, 32);
+   nir_def_init(
+      &tf_outer->instr, &tf_outer->dest.ssa, tf_outer->num_components, 32);
    nir_builder_instr_insert(b, &tf_outer->instr);
 
    std::vector<nir_def *> tf_out;
 
    auto tf_out_base =
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_tcs_tess_factor_base_r600);
-   nir_ssa_dest_init(&tf_out_base->instr, &tf_out_base->dest, 1, 32);
+   nir_def_init(&tf_out_base->instr, &tf_out_base->dest.ssa, 1, 32);
    nir_builder_instr_insert(b, &tf_out_base->instr);
 
    auto out_addr0 = nir_build_alu(b,
@@ -612,8 +612,8 @@ r600_append_tcs_TF_emission(nir_shader *shader, enum mesa_prim prim_type)
          nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_local_shared_r600);
       tf_inner->num_components = inner_comps;
       tf_inner->src[0] = nir_src_for_ssa(addr1);
-      nir_ssa_dest_init(
-         &tf_inner->instr, &tf_inner->dest, tf_inner->num_components, 32);
+      nir_def_init(
+         &tf_inner->instr, &tf_inner->dest.ssa, tf_inner->num_components, 32);
       nir_builder_instr_insert(b, &tf_inner->instr);
 
       tf_out.push_back(nir_vec2(b,

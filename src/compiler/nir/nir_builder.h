@@ -509,8 +509,8 @@ nir_mov_alu(nir_builder *build, nir_alu_src src, unsigned num_components)
    }
 
    nir_alu_instr *mov = nir_alu_instr_create(build->shader, nir_op_mov);
-   nir_ssa_dest_init(&mov->instr, &mov->dest.dest, num_components,
-                     nir_src_bit_size(src.src));
+   nir_def_init(&mov->instr, &mov->dest.dest.ssa, num_components,
+                nir_src_bit_size(src.src));
    mov->exact = build->exact;
    mov->src[0] = src;
    nir_builder_instr_insert(build, &mov->instr);

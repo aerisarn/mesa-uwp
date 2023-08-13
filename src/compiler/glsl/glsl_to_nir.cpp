@@ -1721,8 +1721,8 @@ nir_visitor::visit(ir_assignment *ir)
  *
  * Note that this only handles instructions we generate at this level.
  */
-static nir_dest *
-get_instr_dest(nir_instr *instr)
+static nir_def *
+get_instr_def(nir_instr *instr)
 {
    nir_alu_instr *alu_instr;
    nir_intrinsic_instr *intrinsic_instr;
@@ -1731,18 +1731,18 @@ get_instr_dest(nir_instr *instr)
    switch (instr->type) {
       case nir_instr_type_alu:
          alu_instr = nir_instr_as_alu(instr);
-         return &alu_instr->dest.dest;
+         return &alu_instr->dest.dest.ssa;
 
       case nir_instr_type_intrinsic:
          intrinsic_instr = nir_instr_as_intrinsic(instr);
          if (nir_intrinsic_infos[intrinsic_instr->intrinsic].has_dest)
-            return &intrinsic_instr->dest;
+            return &intrinsic_instr->dest.ssa;
          else
             return NULL;
 
       case nir_instr_type_tex:
          tex_instr = nir_instr_as_tex(instr);
-         return &tex_instr->dest;
+         return &tex_instr->dest.ssa;
 
       default:
          unreachable("not reached");
@@ -1755,16 +1755,15 @@ void
 nir_visitor::add_instr(nir_instr *instr, unsigned num_components,
                        unsigned bit_size)
 {
-   nir_dest *dest = get_instr_dest(instr);
+   nir_def *def = get_instr_def(instr);
 
-   if (dest)
-      nir_ssa_dest_init(instr, dest, num_components, bit_size);
+   if (def)
+      nir_def_init(instr, def, num_components, bit_size);
 
    nir_builder_instr_insert(&b, instr);
 
-   if (dest) {
-      this->result = &dest->ssa;
-   }
+   if (def)
+      this->result = def;
 }
 
 nir_def *

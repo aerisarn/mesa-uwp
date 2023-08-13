@@ -273,7 +273,7 @@ TEST_F(unsigned_upper_bound_test, loop_phi_bcsel)
    nir_def *cond = nir_imm_false(b);
 
    nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
-   nir_ssa_dest_init(&phi->instr, &phi->dest, 1, 32);
+   nir_def_init(&phi->instr, &phi->dest.ssa, 1, 32);
 
    nir_push_loop(b);
    nir_def *sel = nir_bcsel(b, cond, &phi->dest.ssa, two);
