@@ -1,44 +1,44 @@
-/* _nir_foreach_dest() needs to be ALWAYS_INLINE so that it can inline the
+/* _nir_foreach_def() needs to be ALWAYS_INLINE so that it can inline the
  * callback if it was declared with ALWAYS_INLINE.
  */
 static ALWAYS_INLINE bool
-_nir_foreach_dest(nir_instr *instr, nir_foreach_dest_cb cb, void *state)
+_nir_foreach_def(nir_instr *instr, nir_foreach_def_cb cb, void *state)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
-      return cb(&nir_instr_as_alu(instr)->dest.dest, state);
+      return cb(&nir_instr_as_alu(instr)->dest.dest.ssa, state);
    case nir_instr_type_deref:
-      return cb(&nir_instr_as_deref(instr)->dest, state);
+      return cb(&nir_instr_as_deref(instr)->dest.ssa, state);
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       if (nir_intrinsic_infos[intrin->intrinsic].has_dest)
-         return cb(&intrin->dest, state);
+         return cb(&intrin->dest.ssa, state);
       return true;
    }
    case nir_instr_type_tex:
-      return cb(&nir_instr_as_tex(instr)->dest, state);
+      return cb(&nir_instr_as_tex(instr)->dest.ssa, state);
    case nir_instr_type_phi:
-      return cb(&nir_instr_as_phi(instr)->dest, state);
+      return cb(&nir_instr_as_phi(instr)->dest.ssa, state);
    case nir_instr_type_parallel_copy: {
       nir_foreach_parallel_copy_entry(entry, nir_instr_as_parallel_copy(instr)) {
-         if (!entry->dest_is_reg && !cb(&entry->dest.dest, state))
+         if (!entry->dest_is_reg && !cb(&entry->dest.dest.ssa, state))
             return false;
       }
       return true;
    }
 
    case nir_instr_type_load_const:
+      return cb(&nir_instr_as_load_const(instr)->def, state);
    case nir_instr_type_ssa_undef:
+      return cb(&nir_instr_as_ssa_undef(instr)->def, state);
+
    case nir_instr_type_call:
    case nir_instr_type_jump:
-      break;
+      return true;
 
    default:
       unreachable("Invalid instruction type");
-      break;
    }
-
-   return true;
 }
 
 static ALWAYS_INLINE bool
@@ -50,9 +50,9 @@ _nir_visit_src(nir_src *src, nir_foreach_src_cb cb, void *state)
 }
 
 static inline bool
-nir_foreach_dest(nir_instr *instr, nir_foreach_dest_cb cb, void *state)
+nir_foreach_def(nir_instr *instr, nir_foreach_def_cb cb, void *state)
 {
-   return _nir_foreach_dest(instr, cb, state);
+   return _nir_foreach_def(instr, cb, state);
 }
 
 static inline bool
