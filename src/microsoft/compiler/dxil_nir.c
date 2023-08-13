@@ -2310,9 +2310,9 @@ clear_pass_flags(nir_function_impl *impl)
 }
 
 static bool
-add_dest_to_worklist(nir_dest *dest, void *state)
+add_def_to_worklist(nir_def *def, void *state)
 {
-   nir_foreach_use_including_if(src, &dest->ssa) {
+   nir_foreach_use_including_if(src, def) {
       if (src->is_if) {
          nir_if *nif = src->parent_if;
          nir_foreach_block_in_cf_node(block, &nif->cf_node) {
@@ -2413,7 +2413,7 @@ propagate_input_to_output_dependencies(struct dxil_module *mod, nir_intrinsic_in
          continue;
 
       instr->pass_flags = 1;
-      nir_foreach_dest(instr, add_dest_to_worklist, worklist);
+      nir_foreach_def(instr, add_def_to_worklist, worklist);
       switch (instr->type) {
       case nir_instr_type_jump: {
          nir_jump_instr *jump = nir_instr_as_jump(instr);
