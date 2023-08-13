@@ -569,15 +569,19 @@ nir_rewrite_uses_to_load_reg(nir_builder *b, nir_def *old,
 }
 
 static bool
-dest_replace_ssa_with_reg(nir_dest *dest, nir_function_impl *impl)
+def_replace_with_reg(nir_def *def, nir_function_impl *impl)
 {
+   /* These are handled elsewhere */
+   assert(def->parent_instr->type != nir_instr_type_ssa_undef &&
+          def->parent_instr->type != nir_instr_type_load_const);
+
    nir_builder b = nir_builder_create(impl);
 
-   nir_def *reg = decl_reg_for_ssa_def(&b, &dest->ssa);
-   nir_rewrite_uses_to_load_reg(&b, &dest->ssa, reg);
+   nir_def *reg = decl_reg_for_ssa_def(&b, def);
+   nir_rewrite_uses_to_load_reg(&b, def, reg);
 
-   b.cursor = nir_after_instr(dest->ssa.parent_instr);
-   nir_store_reg(&b, &dest->ssa, reg);
+   b.cursor = nir_after_instr(def->parent_instr);
+   nir_store_reg(&b, def, reg);
    return true;
 }
 
@@ -1177,10 +1181,10 @@ struct ssa_def_to_reg_state {
 };
 
 static bool
-dest_replace_ssa_with_reg_state(nir_dest *dest, void *void_state)
+def_replace_with_reg_state(nir_def *def, void *void_state)
 {
    struct ssa_def_to_reg_state *state = void_state;
-   state->progress |= dest_replace_ssa_with_reg(dest, state->impl);
+   state->progress |= def_replace_with_reg(def, state->impl);
    return true;
 }
 
@@ -1262,7 +1266,7 @@ nir_lower_ssa_defs_to_regs_block(nir_block *block)
           * don't have a reason to convert it to a register.
           */
       } else {
-         nir_foreach_dest(instr, dest_replace_ssa_with_reg_state, &state);
+         nir_foreach_def(instr, def_replace_with_reg_state, &state);
       }
    }
 
