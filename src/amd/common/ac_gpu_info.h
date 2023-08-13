@@ -75,6 +75,7 @@ struct radeon_info {
    uint32_t chip_rev; /* 0 = A0, 1 = A1, etc. */
 
    /* Flags. */
+   bool family_overridden; /* AMD_FORCE_FAMILY was used, skip command submission */
    bool is_pro_graphics;
    bool has_graphics; /* false if the chip is compute-only */
    uint32_t ib_pad_dw_mask[AMD_NUM_IP_TYPES];
