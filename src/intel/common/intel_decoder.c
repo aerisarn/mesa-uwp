@@ -638,8 +638,10 @@ get_embedded_xml_data(int verx10, void **data, size_t *data_len)
    assert(text_offset + text_length <= total_length);
 
    *data = malloc(text_length);
-   if (*data == NULL)
+   if (*data == NULL) {
+      free(text_data);
       return false;
+   }
 
    memcpy(*data, &text_data[text_offset], text_length);
    free(text_data);
