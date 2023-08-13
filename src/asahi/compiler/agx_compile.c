@@ -313,11 +313,12 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
 }
 
 /*
- * Implement umul_high of 32-bit sources by doing a 32x32->64-bit multiply and
+ * Implement mul_high of 32-bit sources by doing a 32x32->64-bit multiply and
  * extracting only the high word.
  */
 static agx_instr *
-agx_umul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q)
+agx_mul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q,
+                bool is_signed)
 {
    assert(P.size == Q.size && "source sizes must match");
    assert(P.size == dst.size && "dest size must match");
@@ -326,8 +327,13 @@ agx_umul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q)
    static_assert(AGX_SIZE_64 == (AGX_SIZE_32 + 1), "enum wrong");
    static_assert(AGX_SIZE_32 == (AGX_SIZE_16 + 1), "enum wrong");
 
+   if (!is_signed) {
+      P = agx_abs(P);
+      Q = agx_abs(Q);
+   }
+
    agx_index product = agx_temp(b->shader, P.size + 1);
-   agx_imad_to(b, product, agx_abs(P), agx_abs(Q), agx_zero(), 0);
+   agx_imad_to(b, product, P, Q, agx_zero(), 0);
 
    return agx_subdivide_to(b, dst, product, 1);
 }
@@ -1367,7 +1373,9 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_imul_2x32_64:
       return agx_imad_to(b, dst, s0, s1, i0, 0);
    case nir_op_umul_high:
-      return agx_umul_high_to(b, dst, s0, s1);
+      return agx_mul_high_to(b, dst, s0, s1, false);
+   case nir_op_imul_high:
+      return agx_mul_high_to(b, dst, s0, s1, true);
 
    case nir_op_ishl:
       return agx_bfi_to(b, dst, i0, s0, s1, 0);
