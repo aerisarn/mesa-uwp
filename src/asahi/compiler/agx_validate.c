@@ -189,7 +189,7 @@ agx_validate_predecessors(agx_block *block)
          has_later_preds = true;
    }
 
-   if (block->loop_header != has_later_preds)
+   if (has_later_preds && !block->loop_header)
       return false;
 
    /* Successors and predecessors are found together */
