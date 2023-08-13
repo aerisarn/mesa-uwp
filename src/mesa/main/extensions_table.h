@@ -149,7 +149,7 @@ EXT(ARB_stencil_texturing                   , ARB_stencil_texturing             
 EXT(ARB_sync                                , ARB_sync                               , GLL, GLC,  x ,  x , 2003)
 EXT(ARB_tessellation_shader                 , ARB_tessellation_shader                , GLL, GLC,  x ,  x , 2009)
 EXT(ARB_texture_barrier                     , NV_texture_barrier                     , GLL, GLC,  x ,  x , 2014)
-EXT(ARB_texture_border_clamp                , dummy_true                             , GLL,  x ,  x ,  x , 2000)
+EXT(ARB_texture_border_clamp                , dummy_true                             , GLL, GLC,  x ,  x , 2000)
 EXT(ARB_texture_buffer_object               , ARB_texture_buffer_object              , GLL, GLC,  x ,  x , 2008)
 EXT(ARB_texture_buffer_object_rgb32         , ARB_texture_buffer_object_rgb32        , GLL, GLC,  x ,  x , 2009)
 EXT(ARB_texture_buffer_range                , ARB_texture_buffer_range               , GLL, GLC,  x ,  x , 2012)
