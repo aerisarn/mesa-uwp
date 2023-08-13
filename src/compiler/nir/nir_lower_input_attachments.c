@@ -99,7 +99,7 @@ try_lower_input_load(nir_builder *b, nir_intrinsic_instr *load,
 
    nir_def *frag_coord = load_frag_coord(b, deref, options);
    frag_coord = nir_f2i32(b, frag_coord);
-   nir_def *offset = nir_ssa_for_src(b, load->src[1], 2);
+   nir_def *offset = nir_trim_vector(b, load->src[1].ssa, 2);
    nir_def *pos = nir_iadd(b, frag_coord, offset);
 
    nir_def *layer = load_layer_id(b, options);
