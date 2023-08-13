@@ -156,7 +156,7 @@ nir_repair_ssa_impl(nir_function_impl *impl)
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         nir_foreach_ssa_def(instr, repair_ssa_def, &state);
+         nir_foreach_def(instr, repair_ssa_def, &state);
       }
    }
 

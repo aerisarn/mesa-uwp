@@ -262,7 +262,7 @@ node_is_dead(nir_cf_node *node)
             }
          }
 
-         if (!nir_foreach_ssa_def(instr, def_only_used_in_cf_node, node))
+         if (!nir_foreach_def(instr, def_only_used_in_cf_node, node))
             return false;
       }
    }

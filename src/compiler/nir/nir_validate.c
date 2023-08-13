@@ -1485,7 +1485,7 @@ validate_ssa_dominance(nir_function_impl *impl, validate_state *state)
          } else {
             nir_foreach_src(instr, validate_src_dominance, state);
          }
-         nir_foreach_ssa_def(instr, validate_ssa_def_dominance, state);
+         nir_foreach_def(instr, validate_ssa_def_dominance, state);
       }
    }
 }

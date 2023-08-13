@@ -250,7 +250,7 @@ init_loop_block(nir_block *block, loop_info_state *state,
                                   .state = state };
 
    nir_foreach_instr(instr, block) {
-      nir_foreach_ssa_def(instr, init_loop_def, &init_state);
+      nir_foreach_def(instr, init_loop_def, &init_state);
    }
 
    return true;

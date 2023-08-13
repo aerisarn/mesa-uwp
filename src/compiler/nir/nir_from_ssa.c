@@ -735,7 +735,7 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 
          default:
             state->builder.cursor = nir_after_instr(instr);
-            nir_foreach_ssa_def(instr, rewrite_ssa_def, state);
+            nir_foreach_def(instr, rewrite_ssa_def, state);
             state->builder.cursor = nir_before_instr(instr);
             nir_foreach_src(instr, rewrite_src, state);
          }
@@ -1256,7 +1256,7 @@ nir_lower_ssa_defs_to_regs_block(nir_block *block)
           * infinite recursion, we don't want to lower any newly placed
           * load_reg instructions to yet anoter load/store_reg.
           */
-      } else if (nir_foreach_ssa_def(instr, ssa_def_is_local_to_block, NULL)) {
+      } else if (nir_foreach_def(instr, ssa_def_is_local_to_block, NULL)) {
          /* If the SSA def produced by this instruction is only in the block
           * in which it is defined and is not used by ifs or phis, then we
           * don't have a reason to convert it to a register.

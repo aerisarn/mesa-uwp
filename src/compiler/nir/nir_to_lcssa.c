@@ -342,7 +342,7 @@ convert_to_lcssa(nir_cf_node *cf_node, lcssa_state *state)
 
       nir_foreach_block_in_cf_node(block, cf_node) {
          nir_foreach_instr(instr, block) {
-            nir_foreach_ssa_def(instr, convert_loop_exit_for_ssa, state);
+            nir_foreach_def(instr, convert_loop_exit_for_ssa, state);
 
             /* for outer loops, invariant instructions can be variant */
             if (state->skip_invariants && instr->pass_flags == invariant)
@@ -383,7 +383,7 @@ nir_convert_loop_to_lcssa(nir_loop *loop)
 
    nir_foreach_block_in_cf_node(block, &loop->cf_node) {
       nir_foreach_instr(instr, block)
-         nir_foreach_ssa_def(instr, convert_loop_exit_for_ssa, state);
+         nir_foreach_def(instr, convert_loop_exit_for_ssa, state);
    }
 
    ralloc_free(state);

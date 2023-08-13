@@ -239,7 +239,7 @@ nir_lower_bool_to_float_instr(nir_builder *b,
    case nir_instr_type_ssa_undef:
    case nir_instr_type_phi: {
       bool progress = false;
-      nir_foreach_ssa_def(instr, rewrite_1bit_ssa_def_to_32bit, &progress);
+      nir_foreach_def(instr, rewrite_1bit_ssa_def_to_32bit, &progress);
       return progress;
    }
 
@@ -247,7 +247,7 @@ nir_lower_bool_to_float_instr(nir_builder *b,
       return lower_tex_instr(nir_instr_as_tex(instr));
 
    default:
-      nir_foreach_ssa_def(instr, assert_ssa_def_is_not_1bit, NULL);
+      nir_foreach_def(instr, assert_ssa_def_is_not_1bit, NULL);
       return false;
    }
 }

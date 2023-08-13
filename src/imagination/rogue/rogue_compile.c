@@ -777,7 +777,7 @@ rogue_shader *rogue_nir_to_rogue(rogue_build_ctx *ctx, const nir_shader *nir)
             if (load_const->def.num_components > 1)
                continue;
          }
-         nir_foreach_ssa_def(instr, ssa_def_cb, shader);
+         nir_foreach_def(instr, ssa_def_cb, shader);
       }
    }
    ++shader->ctx->next_ssa_idx;

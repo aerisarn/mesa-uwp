@@ -4387,11 +4387,11 @@ nir_cursor nir_instr_free_and_dce(nir_instr *instr);
 
 nir_def *nir_instr_ssa_def(nir_instr *instr);
 
-typedef bool (*nir_foreach_ssa_def_cb)(nir_def *def, void *state);
+typedef bool (*nir_foreach_def_cb)(nir_def *def, void *state);
 typedef bool (*nir_foreach_dest_cb)(nir_dest *dest, void *state);
 typedef bool (*nir_foreach_src_cb)(nir_src *src, void *state);
-bool nir_foreach_ssa_def(nir_instr *instr, nir_foreach_ssa_def_cb cb,
-                         void *state);
+bool nir_foreach_def(nir_instr *instr, nir_foreach_def_cb cb,
+                     void *state);
 static inline bool nir_foreach_dest(nir_instr *instr, nir_foreach_dest_cb cb, void *state);
 static inline bool nir_foreach_src(nir_instr *instr, nir_foreach_src_cb cb, void *state);
 bool nir_foreach_phi_src_leaving_block(nir_block *instr,

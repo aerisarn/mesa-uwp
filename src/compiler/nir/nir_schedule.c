@@ -437,7 +437,7 @@ nir_schedule_calculate_deps(nir_deps_state *state, nir_schedule_node *n)
     * depend on the def.
     */
    if (state->dir == F)
-      nir_foreach_ssa_def(instr, nir_schedule_ssa_deps, state);
+      nir_foreach_def(instr, nir_schedule_ssa_deps, state);
 
    /* Make sure any other instructions keep their positions relative to
     * jumps.
@@ -622,7 +622,7 @@ nir_schedule_regs_freed(nir_schedule_scoreboard *scoreboard, nir_schedule_node *
 
    if (!nir_schedule_regs_freed_reg_intrin(n->instr, &state)) {
       nir_foreach_src(n->instr, nir_schedule_regs_freed_src_cb, &state);
-      nir_foreach_ssa_def(n->instr, nir_schedule_regs_freed_def_cb, &state);
+      nir_foreach_def(n->instr, nir_schedule_regs_freed_def_cb, &state);
    }
 
    return state.regs_freed;
@@ -1009,7 +1009,7 @@ nir_schedule_mark_node_scheduled(nir_schedule_scoreboard *scoreboard,
 {
    if (!nir_schedule_mark_reg_intrin_scheduled(n->instr, scoreboard)) {
       nir_foreach_src(n->instr, nir_schedule_mark_src_scheduled, scoreboard);
-      nir_foreach_ssa_def(n->instr, nir_schedule_mark_def_scheduled, scoreboard);
+      nir_foreach_def(n->instr, nir_schedule_mark_def_scheduled, scoreboard);
    }
 
    util_dynarray_foreach(&n->dag.edges, struct dag_edge, edge) {
@@ -1204,8 +1204,8 @@ nir_schedule_get_scoreboard(nir_shader *shader,
    nir_foreach_function_impl(impl, shader) {
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
-            nir_foreach_ssa_def(instr, nir_schedule_ssa_def_init_scoreboard,
-                                scoreboard);
+            nir_foreach_def(instr, nir_schedule_ssa_def_init_scoreboard,
+                            scoreboard);
          }
 
          /* XXX: We're ignoring if uses, which may prioritize scheduling other

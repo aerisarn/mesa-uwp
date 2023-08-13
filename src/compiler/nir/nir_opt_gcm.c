@@ -729,7 +729,7 @@ gcm_schedule_late_instr(nir_instr *instr, struct gcm_state *state)
        instr->pass_flags & GCM_INSTR_PINNED)
       return;
 
-   nir_foreach_ssa_def(instr, gcm_schedule_late_def, state);
+   nir_foreach_def(instr, gcm_schedule_late_def, state);
 }
 
 static bool
@@ -769,7 +769,7 @@ gcm_place_instr(nir_instr *instr, struct gcm_state *state)
    instr->pass_flags |= GCM_INSTR_PLACED;
 
    if (instr->block == NULL) {
-      nir_foreach_ssa_def(instr, gcm_replace_def_with_undef, state);
+      nir_foreach_def(instr, gcm_replace_def_with_undef, state);
       nir_instr_remove(instr);
       return;
    }

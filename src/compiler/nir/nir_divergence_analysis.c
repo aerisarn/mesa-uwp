@@ -815,7 +815,7 @@ visit_block(nir_block *block, struct divergence_state *state)
          continue;
 
       if (state->first_visit)
-         nir_foreach_ssa_def(instr, set_ssa_def_not_divergent, NULL);
+         nir_foreach_def(instr, set_ssa_def_not_divergent, NULL);
 
       if (instr->type == nir_instr_type_jump)
          has_changed |= visit_jump(nir_instr_as_jump(instr), state);
@@ -1062,7 +1062,7 @@ nir_divergence_analysis(nir_shader *shader)
 bool
 nir_update_instr_divergence(nir_shader *shader, nir_instr *instr)
 {
-   nir_foreach_ssa_def(instr, set_ssa_def_not_divergent, NULL);
+   nir_foreach_def(instr, set_ssa_def_not_divergent, NULL);
 
    if (instr->type == nir_instr_type_phi) {
       nir_cf_node *prev = nir_cf_node_prev(&instr->block->cf_node);

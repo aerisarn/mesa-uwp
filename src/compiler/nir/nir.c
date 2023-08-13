@@ -1056,7 +1056,7 @@ static void
 add_defs_uses(nir_instr *instr)
 {
    nir_foreach_src(instr, add_use_cb, instr);
-   nir_foreach_ssa_def(instr, add_ssa_def_cb, instr);
+   nir_foreach_def(instr, add_ssa_def_cb, instr);
 }
 
 void
@@ -1220,7 +1220,7 @@ nir_instr_free_and_dce_is_live(nir_instr *instr)
    }
 
    bool live = false;
-   nir_foreach_ssa_def(instr, nir_instr_free_and_dce_live_cb, &live);
+   nir_foreach_def(instr, nir_instr_free_and_dce_live_cb, &live);
    return live;
 }
 
@@ -1285,21 +1285,21 @@ nir_instr_free_and_dce(nir_instr *instr)
 
 /*@}*/
 
-struct foreach_ssa_def_state {
-   nir_foreach_ssa_def_cb cb;
+struct foreach_def_state {
+   nir_foreach_def_cb cb;
    void *client_state;
 };
 
 static inline bool
 nir_def_visitor(nir_dest *dest, void *void_state)
 {
-   struct foreach_ssa_def_state *state = void_state;
+   struct foreach_def_state *state = void_state;
 
    return state->cb(&dest->ssa, state->client_state);
 }
 
 bool
-nir_foreach_ssa_def(nir_instr *instr, nir_foreach_ssa_def_cb cb, void *state)
+nir_foreach_def(nir_instr *instr, nir_foreach_def_cb cb, void *state)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
@@ -1308,7 +1308,7 @@ nir_foreach_ssa_def(nir_instr *instr, nir_foreach_ssa_def_cb cb, void *state)
    case nir_instr_type_intrinsic:
    case nir_instr_type_phi:
    case nir_instr_type_parallel_copy: {
-      struct foreach_ssa_def_state foreach_state = { cb, state };
+      struct foreach_def_state foreach_state = { cb, state };
       return nir_foreach_dest(instr, nir_def_visitor, &foreach_state);
    }
 
@@ -1964,7 +1964,7 @@ nir_index_ssa_defs(nir_function_impl *impl)
 
    nir_foreach_block_unstructured(block, impl) {
       nir_foreach_instr(instr, block)
-         nir_foreach_ssa_def(instr, index_ssa_def_cb, &index);
+         nir_foreach_def(instr, index_ssa_def_cb, &index);
    }
 
    impl->ssa_alloc = index;

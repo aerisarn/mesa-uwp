@@ -58,7 +58,7 @@ nir_core_test::shader_contains_def(nir_def *def)
          struct contains_def_state state = {
             def, false
          };
-         nir_foreach_ssa_def(instr, contains_def_cb, &state);
+         nir_foreach_def(instr, contains_def_cb, &state);
          if (state.found)
             return true;
       }

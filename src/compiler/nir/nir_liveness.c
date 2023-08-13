@@ -176,7 +176,7 @@ nir_live_ssa_defs_impl(nir_function_impl *impl)
          if (instr->type == nir_instr_type_phi)
             break;
 
-         nir_foreach_ssa_def(instr, set_ssa_def_dead, block->live_in);
+         nir_foreach_def(instr, set_ssa_def_dead, block->live_in);
          nir_foreach_src(instr, set_src_live, block->live_in);
       }
 
@@ -244,7 +244,7 @@ nir_get_live_ssa_defs(nir_cursor cursor, void *mem_ctx)
       if (instr->type == nir_instr_type_phi)
          break;
 
-      nir_foreach_ssa_def(instr, set_ssa_def_dead, live);
+      nir_foreach_def(instr, set_ssa_def_dead, live);
       nir_foreach_src(instr, set_src_live, live);
 
       if (cursor.option == nir_cursor_before_instr && instr == cursor.instr)

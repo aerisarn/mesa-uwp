@@ -292,7 +292,7 @@ nir_lower_int_to_float_impl(nir_function_impl *impl)
             break;
 
          default:
-            nir_foreach_ssa_def(instr, assert_ssa_def_is_not_int, (void *)int_types);
+            nir_foreach_def(instr, assert_ssa_def_is_not_int, (void *)int_types);
             break;
          }
       }

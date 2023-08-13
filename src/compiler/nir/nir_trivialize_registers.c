@@ -386,7 +386,7 @@ trivialize_stores(nir_function_impl *impl, nir_block *block)
     */
 
    nir_foreach_instr_reverse_safe(instr, block) {
-      nir_foreach_ssa_def(instr, clear_def, possibly_trivial_stores);
+      nir_foreach_def(instr, clear_def, possibly_trivial_stores);
 
       if (instr->type == nir_instr_type_intrinsic) {
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
