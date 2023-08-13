@@ -1420,10 +1420,10 @@ zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens)
 
 
 static bool
-dest_is_64bit(nir_dest *dest, void *state)
+def_is_64bit(nir_def *def, void *state)
 {
    bool *lower = (bool *)state;
-   if (dest && (nir_dest_bit_size(*dest) == 64)) {
+   if (def && (def->bit_size == 64)) {
       *lower = true;
       return false;
    }
@@ -1449,7 +1449,7 @@ filter_64_bit_instr(const nir_instr *const_instr, UNUSED const void *data)
     * doesn't have const variants, so do the ugly const_cast here. */
    nir_instr *instr = (nir_instr *)const_instr;
 
-   nir_foreach_dest(instr, dest_is_64bit, &lower);
+   nir_foreach_def(instr, def_is_64bit, &lower);
    if (lower)
       return true;
    nir_foreach_src(instr, src_is_64bit, &lower);

@@ -1471,9 +1471,9 @@ check_64_bit_op_src(nir_src *src, void *state)
 }
 
 static bool
-check_64_bit_op_dest(nir_dest *dest, void *state)
+check_64_bit_op_def(nir_def *def, void *state)
 {
-   if (nir_dest_bit_size(*dest) == 64) {
+   if (def->bit_size == 64) {
       *(bool *)state = true;
       return false;
    }
@@ -1486,7 +1486,7 @@ AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
    bool is_64bit_op = false;
    nir_foreach_src(&alu->instr, check_64_bit_op_src, &is_64bit_op);
    if (!is_64bit_op)
-      nir_foreach_dest(&alu->instr, check_64_bit_op_dest, &is_64bit_op);
+      nir_foreach_def(&alu->instr, check_64_bit_op_def, &is_64bit_op);
 
    if (is_64bit_op) {
       switch (alu->op) {
