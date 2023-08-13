@@ -2474,6 +2474,8 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *_)
    nir_alu_instr *alu = nir_instr_as_alu(instr);
    if (alu->def.bit_size == 8 && !is_conversion_to_8bit(alu->op))
       return 16;
+   else if (alu->def.bit_size == 1 && alu->src[0].src.ssa->bit_size == 8)
+      return 16 /* comparisons */;
    else
       return 0;
 }
