@@ -129,7 +129,7 @@ lower_load_bitsize(nir_builder *b,
 
         /* For global 2x32 we ignore Y component because it must be zero */
         unsigned offset_idx = offset_src(intr->intrinsic);
-        nir_def *offset = nir_ssa_for_src(b, intr->src[offset_idx], 1);
+        nir_def *offset = nir_trim_vector(b, intr->src[offset_idx].ssa, 1);
 
         /* Split vector store to multiple scalar loads */
         nir_def *dest_components[4] = { NULL };
@@ -187,7 +187,7 @@ lower_store_bitsize(nir_builder *b,
 
         /* For global 2x32 we ignore Y component because it must be zero */
         unsigned offset_idx = offset_src(intr->intrinsic);
-        nir_def *offset = nir_ssa_for_src(b, intr->src[offset_idx], 1);
+        nir_def *offset = nir_trim_vector(b, intr->src[offset_idx].ssa, 1);
 
         /* Split vector store to multiple scalar stores */
         const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
