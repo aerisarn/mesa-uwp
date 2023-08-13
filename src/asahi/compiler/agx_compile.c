@@ -1126,6 +1126,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       /* Flush out the atomic to main memory */
       agx_memory_barrier(b);
 
+      /* TODO: Which ones do we actually need? */
+      agx_image_barrier_1(b);
+      agx_image_barrier_2(b);
+      agx_image_barrier_3(b);
+      agx_image_barrier_4(b);
+
       /* Flush out the texture cache */
       agx_flush_memory_to_texture(b);
       return NULL;
