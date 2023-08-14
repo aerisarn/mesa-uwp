@@ -159,14 +159,14 @@ static int nir_to_ppir_opcodes[nir_num_opcodes] = {
 static bool ppir_emit_alu(ppir_block *block, nir_instr *ni)
 {
    nir_alu_instr *instr = nir_instr_as_alu(ni);
-   nir_dest *dst = &instr->dest.dest;
+   nir_def *def = &instr->dest.dest.ssa;
    int op = nir_to_ppir_opcodes[instr->op];
 
    if (op == ppir_op_unsupported) {
       ppir_error("unsupported nir_op: %s\n", nir_op_infos[instr->op].name);
       return false;
    }
-   nir_legacy_alu_dest legacy_dest = nir_legacy_chase_alu_dest(dst);
+   nir_legacy_alu_dest legacy_dest = nir_legacy_chase_alu_dest(def);
 
    /* Don't try to translate folded fsat since their source won't be valid */
    if (instr->op == nir_op_fsat && nir_legacy_fsat_folds(instr))
@@ -180,7 +180,7 @@ static bool ppir_emit_alu(ppir_block *block, nir_instr *ni)
       nir_alu_src *ns = &instr->src[0];
       ppir_node *parent = block->comp->var_nodes[ns->src.ssa->index];
       assert(parent);
-      block->comp->var_nodes[dst->ssa.index] = parent;
+      block->comp->var_nodes[def->index] = parent;
       return true;
    }
 
@@ -291,7 +291,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       return true;
 
    case nir_intrinsic_load_reg: {
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
       lnode = ppir_node_create_dest(block, ppir_op_dummy, &legacy_dest, mask);
       return true;
    }
@@ -299,7 +299,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
    case nir_intrinsic_load_input: {
       mask = u_bit_consecutive(0, instr->num_components);
 
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
       lnode = ppir_node_create_dest(block, ppir_op_load_varying, &legacy_dest, mask);
       if (!lnode)
          return false;
@@ -338,7 +338,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
          break;
       }
 
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
       lnode = ppir_node_create_dest(block, op, &legacy_dest, mask);
       if (!lnode)
          return false;
@@ -351,7 +351,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
    case nir_intrinsic_load_uniform: {
       mask = u_bit_consecutive(0, instr->num_components);
 
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
       lnode = ppir_node_create_dest(block, ppir_op_load_uniform, &legacy_dest, mask);
       if (!lnode)
          return false;
@@ -517,7 +517,7 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
    unsigned mask = 0;
    mask = u_bit_consecutive(0, nir_tex_instr_dest_size(instr));
 
-   nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest);
+   nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
    node = ppir_node_create_dest(block, ppir_op_load_texture, &legacy_dest, mask);
    if (!node)
       return false;

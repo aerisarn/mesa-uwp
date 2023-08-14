@@ -285,9 +285,9 @@ set_legacy_index(struct ir2_context *ctx, nir_legacy_dest dst,
 }
 
 static void
-set_index(struct ir2_context *ctx, nir_dest *dst, struct ir2_instr *instr)
+set_index(struct ir2_context *ctx, nir_def *def, struct ir2_instr *instr)
 {
-   set_legacy_index(ctx, nir_legacy_chase_dest(dst), instr);
+   set_legacy_index(ctx, nir_legacy_chase_dest(def), instr);
 }
 
 static struct ir2_instr *
@@ -381,23 +381,23 @@ instr_create_alu_reg(struct ir2_context *ctx, nir_op opcode, uint8_t write_mask,
 }
 
 static struct ir2_instr *
-instr_create_alu_dest(struct ir2_context *ctx, nir_op opcode, nir_dest *dst)
+instr_create_alu_dest(struct ir2_context *ctx, nir_op opcode, nir_def *def)
 {
    struct ir2_instr *instr;
-   instr = instr_create_alu(ctx, opcode, nir_dest_num_components(*dst));
-   set_index(ctx, dst, instr);
+   instr = instr_create_alu(ctx, opcode, def->num_components);
+   set_index(ctx, def, instr);
    return instr;
 }
 
 static struct ir2_instr *
-ir2_instr_create_fetch(struct ir2_context *ctx, nir_dest *dst,
+ir2_instr_create_fetch(struct ir2_context *ctx, nir_def *def,
                        instr_fetch_opc_t opc)
 {
    struct ir2_instr *instr = ir2_instr_create(ctx, IR2_FETCH);
    instr->fetch.opc = opc;
    instr->src_count = 1;
-   instr->ssa.ncomp = nir_dest_num_components(*dst);
-   set_index(ctx, dst, instr);
+   instr->ssa.ncomp = def->num_components;
+   set_index(ctx, def, instr);
    return instr;
 }
 
@@ -419,7 +419,7 @@ static void
 emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
-   nir_dest *dst = &alu->dest.dest;
+   nir_def *def = &alu->dest.dest.ssa;
    struct ir2_instr *instr;
    struct ir2_src tmp;
    unsigned ncomp;
@@ -433,11 +433,12 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
       return;
 
    /* get the number of dst components */
-   ncomp = dst->ssa.num_components;
+   ncomp = def->num_components;
 
    instr = instr_create_alu(ctx, alu->op, ncomp);
 
-   nir_legacy_alu_dest legacy_dest = nir_legacy_chase_alu_dest(&alu->dest.dest);
+   nir_legacy_alu_dest legacy_dest =
+      nir_legacy_chase_alu_dest(&alu->dest.dest.ssa);
    set_legacy_index(ctx, legacy_dest.dest, instr);
    instr->alu.saturate = legacy_dest.fsat;
    instr->alu.write_mask = legacy_dest.write_mask;
@@ -512,13 +513,13 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
 }
 
 static void
-load_input(struct ir2_context *ctx, nir_dest *dst, unsigned idx)
+load_input(struct ir2_context *ctx, nir_def *def, unsigned idx)
 {
    struct ir2_instr *instr;
    int slot = -1;
 
    if (ctx->so->type == MESA_SHADER_VERTEX) {
-      instr = ir2_instr_create_fetch(ctx, dst, 0);
+      instr = ir2_instr_create_fetch(ctx, def, 0);
       instr->src[0] = ir2_src(0, 0, IR2_SRC_INPUT);
       instr->fetch.vtx.const_idx = 20 + (idx / 3);
       instr->fetch.vtx.const_idx_sel = idx % 3;
@@ -554,11 +555,11 @@ load_input(struct ir2_context *ctx, nir_dest *dst, unsigned idx)
       instr->src[0] = ir2_src(ctx->f->fragcoord, IR2_SWIZZLE_Y, IR2_SRC_INPUT);
 
       unsigned reg_idx = instr->reg - ctx->reg; /* XXX */
-      instr = instr_create_alu_dest(ctx, nir_op_mov, dst);
+      instr = instr_create_alu_dest(ctx, nir_op_mov, def);
       instr->src[0] = ir2_src(reg_idx, 0, IR2_SRC_REG);
       break;
    default:
-      instr = instr_create_alu_dest(ctx, nir_op_mov, dst);
+      instr = instr_create_alu_dest(ctx, nir_op_mov, def);
       instr->src[0] = ir2_src(idx, 0, IR2_SRC_INPUT);
       break;
    }
@@ -629,7 +630,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_input:
-      load_input(ctx, &intr->dest, nir_intrinsic_base(intr));
+      load_input(ctx, &intr->dest.ssa, nir_intrinsic_base(intr));
       break;
    case nir_intrinsic_store_output:
       store_output(ctx, intr->src[0], output_slot(ctx, intr),
@@ -640,7 +641,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       assert(const_offset); /* TODO can be false in ES2? */
       idx = nir_intrinsic_base(intr);
       idx += (uint32_t)const_offset[0].f32;
-      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest);
+      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest.ssa);
       instr->src[0] = ir2_src(idx, 0, IR2_SRC_CONST);
       break;
    case nir_intrinsic_discard:
@@ -667,7 +668,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       struct ir2_instr *tmp = instr_create_alu(ctx, nir_op_frcp, 1);
       tmp->src[0] = ir2_src(ctx->f->inputs_count, 0, IR2_SRC_INPUT);
 
-      instr = instr_create_alu_dest(ctx, nir_op_sge, &intr->dest);
+      instr = instr_create_alu_dest(ctx, nir_op_sge, &intr->dest.ssa);
       instr->src[0] = ir2_src(tmp->idx, 0, IR2_SRC_SSA);
       instr->src[1] = ir2_zero(ctx);
       break;
@@ -675,7 +676,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       /* param.zw (note: abs might be needed like fragcoord in param.xy?) */
       ctx->so->need_param = true;
 
-      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest);
+      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest.ssa);
       instr->src[0] =
          ir2_src(ctx->f->inputs_count, IR2_SWIZZLE_ZW, IR2_SRC_INPUT);
       break;
@@ -768,7 +769,7 @@ emit_tex(struct ir2_context *ctx, nir_tex_instr *tex)
       /* TODO: lod/bias transformed by src_coord.z ? */
    }
 
-   instr = ir2_instr_create_fetch(ctx, &tex->dest, TEX_FETCH);
+   instr = ir2_instr_create_fetch(ctx, &tex->dest.ssa, TEX_FETCH);
    instr->src[0] = src_coord;
    instr->src[0].swizzle = is_cube ? IR2_SWIZZLE_YXW : 0;
    instr->fetch.tex.is_cube = is_cube;
@@ -824,8 +825,7 @@ emit_undef(struct ir2_context *ctx, nir_undef_instr *undef)
 
    struct ir2_instr *instr;
 
-   instr = instr_create_alu_dest(
-      ctx, nir_op_mov, &(nir_dest){.ssa = undef->def});
+   instr = instr_create_alu_dest(ctx, nir_op_mov, &undef->def);
    instr->src[0] = ir2_src(0, 0, IR2_SRC_CONST);
 }
 

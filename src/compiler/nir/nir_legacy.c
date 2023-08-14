@@ -122,9 +122,9 @@ nir_legacy_chase_alu_src(const nir_alu_src *src, bool fuse_fabs)
 }
 
 static nir_legacy_alu_dest
-chase_alu_dest_helper(nir_dest *dest)
+chase_alu_dest_helper(nir_def *def)
 {
-   nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
+   nir_intrinsic_instr *store = nir_store_reg_for_def(def);
 
    if (store) {
       bool indirect = (store->intrinsic == nir_intrinsic_store_reg_indirect);
@@ -141,8 +141,8 @@ chase_alu_dest_helper(nir_dest *dest)
    } else {
       return (nir_legacy_alu_dest){
          .dest.is_ssa = true,
-         .dest.ssa = &dest->ssa,
-         .write_mask = nir_component_mask(dest->ssa.num_components),
+         .dest.ssa = def,
+         .write_mask = nir_component_mask(def->num_components),
       };
    }
 }
@@ -218,10 +218,8 @@ chase_fsat(nir_def **def)
 }
 
 nir_legacy_alu_dest
-nir_legacy_chase_alu_dest(nir_dest *dest)
+nir_legacy_chase_alu_dest(nir_def *def)
 {
-   nir_def *def = &dest->ssa;
-
    /* Try SSA fsat. No users support 64-bit modifiers. */
    if (chase_fsat(&def)) {
       return (nir_legacy_alu_dest){
@@ -231,7 +229,7 @@ nir_legacy_chase_alu_dest(nir_dest *dest)
          .write_mask = nir_component_mask(def->num_components),
       };
    } else {
-      return chase_alu_dest_helper(dest);
+      return chase_alu_dest_helper(def);
    }
 }
 
@@ -244,12 +242,11 @@ nir_legacy_chase_src(const nir_src *src)
 }
 
 nir_legacy_dest
-nir_legacy_chase_dest(nir_dest *dest)
+nir_legacy_chase_dest(nir_def *def)
 {
-   nir_legacy_alu_dest alu_dest = chase_alu_dest_helper(dest);
+   nir_legacy_alu_dest alu_dest = chase_alu_dest_helper(def);
    assert(!alu_dest.fsat);
-   assert(alu_dest.write_mask ==
-          nir_component_mask(nir_dest_num_components(*dest)));
+   assert(alu_dest.write_mask == nir_component_mask(def->num_components));
 
    return alu_dest.dest;
 }
@@ -310,7 +307,7 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
       }
    }
 
-   nir_legacy_alu_dest dest = nir_legacy_chase_alu_dest(&alu->dest.dest);
+   nir_legacy_alu_dest dest = nir_legacy_chase_alu_dest(&alu->dest.dest.ssa);
    if (dest.fsat) {
       nir_intrinsic_instr *store = nir_store_reg_for_def(dest.dest.ssa);
 

@@ -1352,16 +1352,16 @@ ntt_get_chased_dest(struct ntt_compile *c, nir_legacy_dest *dest)
 }
 
 static struct ureg_dst
-ntt_get_dest(struct ntt_compile *c, nir_dest *dest)
+ntt_get_dest(struct ntt_compile *c, nir_def *def)
 {
-   nir_legacy_dest chased = nir_legacy_chase_dest(dest);
+   nir_legacy_dest chased = nir_legacy_chase_dest(def);
    return ntt_get_chased_dest(c, &chased);
 }
 
 static struct ureg_dst
-ntt_get_alu_dest(struct ntt_compile *c, nir_dest *dest)
+ntt_get_alu_dest(struct ntt_compile *c, nir_def *def)
 {
-   nir_legacy_alu_dest chased = nir_legacy_chase_alu_dest(dest);
+   nir_legacy_alu_dest chased = nir_legacy_chase_alu_dest(def);
    struct ureg_dst dst = ntt_get_chased_dest(c, &chased.dest);
 
    if (chased.fsat)
@@ -1371,7 +1371,7 @@ ntt_get_alu_dest(struct ntt_compile *c, nir_dest *dest)
    if (chased.dest.is_ssa)
       return dst;
 
-   int dst_64 = nir_dest_bit_size(*dest) == 64;
+   int dst_64 = def->bit_size == 64;
    unsigned write_mask = chased.write_mask;
 
    if (dst_64)
@@ -1401,9 +1401,9 @@ ntt_store_def(struct ntt_compile *c, nir_def *def, struct ureg_src src)
 }
 
 static void
-ntt_store(struct ntt_compile *c, nir_dest *dest, struct ureg_src src)
+ntt_store(struct ntt_compile *c, nir_def *def, struct ureg_src src)
 {
-   nir_legacy_dest chased = nir_legacy_chase_dest(dest);
+   nir_legacy_dest chased = nir_legacy_chase_dest(def);
 
    if (chased.is_ssa)
       ntt_store_def(c, chased.ssa, src);
@@ -1458,7 +1458,7 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
    for (; i < ARRAY_SIZE(src); i++)
       src[i] = ureg_src_undef();
 
-   dst = ntt_get_alu_dest(c, &instr->dest.dest);
+   dst = ntt_get_alu_dest(c, &instr->dest.dest.ssa);
 
    static enum tgsi_opcode op_map[][2] = {
       [nir_op_mov] = { TGSI_OPCODE_MOV, TGSI_OPCODE_MOV },
@@ -1923,14 +1923,14 @@ ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
       src = ntt_shift_by_frac(src, start_component,
                               instr->num_components * bit_size / 32);
 
-      ntt_store(c, &instr->dest, src);
+      ntt_store(c, &instr->dest.ssa, src);
    } else {
       /* PIPE_CAP_LOAD_CONSTBUF: Not necessarily vec4 aligned, emit a
        * TGSI_OPCODE_LOAD instruction from the const file.
        */
       struct ntt_insn *insn =
          ntt_insn(c, TGSI_OPCODE_LOAD,
-                  ntt_get_dest(c, &instr->dest),
+                  ntt_get_dest(c, &instr->dest.ssa),
                   src, ntt_get_src(c, instr->src[1]),
                   ureg_src_undef(), ureg_src_undef());
       insn->is_mem = true;
@@ -2112,7 +2112,7 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
          write_mask = ntt_64bit_write_mask(write_mask);
       dst = ureg_writemask(dst, write_mask);
    } else {
-      dst = ntt_get_dest(c, &instr->dest);
+      dst = ntt_get_dest(c, &instr->dest.ssa);
    }
 
    struct ntt_insn *insn = ntt_insn(c, opcode, dst, src[0], src[1], src[2], src[3]);
@@ -2157,7 +2157,7 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
       dst = ureg_dst(resource);
    } else {
       srcs[num_src++] = resource;
-      dst = ntt_get_dest(c, &instr->dest);
+      dst = ntt_get_dest(c, &instr->dest.ssa);
    }
    struct ureg_dst opcode_dst = dst;
 
@@ -2269,13 +2269,13 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
    switch (instr->intrinsic) {
    case nir_intrinsic_load_input:
       input = ntt_ureg_src_indirect(c, input, instr->src[0], 0);
-      ntt_store(c, &instr->dest, input);
+      ntt_store(c, &instr->dest.ssa, input);
       break;
 
    case nir_intrinsic_load_per_vertex_input:
       input = ntt_ureg_src_indirect(c, input, instr->src[1], 0);
       input = ntt_ureg_src_dimension_indirect(c, input, instr->src[0]);
-      ntt_store(c, &instr->dest, input);
+      ntt_store(c, &instr->dest.ssa, input);
       break;
 
    case nir_intrinsic_load_interpolated_input: {
@@ -2290,7 +2290,7 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
          /* For these, we know that the barycentric load matches the
           * interpolation on the input declaration, so we can use it directly.
           */
-         ntt_store(c, &instr->dest, input);
+         ntt_store(c, &instr->dest.ssa, input);
          break;
 
       case nir_intrinsic_load_barycentric_centroid:
@@ -2299,21 +2299,21 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
           * input.
           */
          if (c->centroid_inputs & (1ull << nir_intrinsic_base(instr))) {
-            ntt_store(c, &instr->dest, input);
+            ntt_store(c, &instr->dest.ssa, input);
          } else {
-            ntt_INTERP_CENTROID(c, ntt_get_dest(c, &instr->dest), input);
+            ntt_INTERP_CENTROID(c, ntt_get_dest(c, &instr->dest.ssa), input);
          }
          break;
 
       case nir_intrinsic_load_barycentric_at_sample:
          /* We stored the sample in the fake "bary" dest. */
-         ntt_INTERP_SAMPLE(c, ntt_get_dest(c, &instr->dest), input,
+         ntt_INTERP_SAMPLE(c, ntt_get_dest(c, &instr->dest.ssa), input,
                             ntt_get_src(c, instr->src[0]));
          break;
 
       case nir_intrinsic_load_barycentric_at_offset:
          /* We stored the offset in the fake "bary" dest. */
-         ntt_INTERP_OFFSET(c, ntt_get_dest(c, &instr->dest), input,
+         ntt_INTERP_OFFSET(c, ntt_get_dest(c, &instr->dest.ssa), input,
                             ntt_get_src(c, instr->src[0]));
          break;
 
@@ -2383,7 +2383,7 @@ ntt_emit_load_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
       out = ntt_ureg_dst_indirect(c, out, instr->src[0]);
    }
 
-   struct ureg_dst dst = ntt_get_dest(c, &instr->dest);
+   struct ureg_dst dst = ntt_get_dest(c, &instr->dest.ssa);
    struct ureg_src out_src = ureg_src(out);
 
    /* Don't swizzling unavailable channels of the output in the writemasked-out
@@ -2426,7 +2426,7 @@ ntt_emit_load_sysval(struct ntt_compile *c, nir_intrinsic_instr *instr)
       switch (instr->intrinsic) {
       case nir_intrinsic_load_vertex_id:
       case nir_intrinsic_load_instance_id:
-         ntt_U2F(c, ntt_get_dest(c, &instr->dest), sv);
+         ntt_U2F(c, ntt_get_dest(c, &instr->dest.ssa), sv);
          return;
 
       default:
@@ -2434,7 +2434,7 @@ ntt_emit_load_sysval(struct ntt_compile *c, nir_intrinsic_instr *instr)
       }
    }
 
-   ntt_store(c, &instr->dest, sv);
+   ntt_store(c, &instr->dest.ssa, sv);
 }
 
 static void
@@ -2563,26 +2563,26 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_is_helper_invocation:
-      ntt_READ_HELPER(c, ntt_get_dest(c, &instr->dest));
+      ntt_READ_HELPER(c, ntt_get_dest(c, &instr->dest.ssa));
       break;
 
    case nir_intrinsic_vote_all:
-      ntt_VOTE_ALL(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c,instr->src[0]));
+      ntt_VOTE_ALL(c, ntt_get_dest(c, &instr->dest.ssa), ntt_get_src(c,instr->src[0]));
       return;
    case nir_intrinsic_vote_any:
-      ntt_VOTE_ANY(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      ntt_VOTE_ANY(c, ntt_get_dest(c, &instr->dest.ssa), ntt_get_src(c, instr->src[0]));
       return;
    case nir_intrinsic_vote_ieq:
-      ntt_VOTE_EQ(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      ntt_VOTE_EQ(c, ntt_get_dest(c, &instr->dest.ssa), ntt_get_src(c, instr->src[0]));
       return;
    case nir_intrinsic_ballot:
-      ntt_BALLOT(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      ntt_BALLOT(c, ntt_get_dest(c, &instr->dest.ssa), ntt_get_src(c, instr->src[0]));
       return;
    case nir_intrinsic_read_first_invocation:
-      ntt_READ_FIRST(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      ntt_READ_FIRST(c, ntt_get_dest(c, &instr->dest.ssa), ntt_get_src(c, instr->src[0]));
       return;
    case nir_intrinsic_read_invocation:
-      ntt_READ_INVOC(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]), ntt_get_src(c, instr->src[1]));
+      ntt_READ_INVOC(c, ntt_get_dest(c, &instr->dest.ssa), ntt_get_src(c, instr->src[0]), ntt_get_src(c, instr->src[1]));
       return;
 
    case nir_intrinsic_load_ssbo:
@@ -2654,11 +2654,11 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       break;
    case nir_intrinsic_load_barycentric_at_sample:
    case nir_intrinsic_load_barycentric_at_offset:
-      ntt_store(c, &instr->dest, ntt_get_src(c, instr->src[0]));
+      ntt_store(c, &instr->dest.ssa, ntt_get_src(c, instr->src[0]));
       break;
 
    case nir_intrinsic_shader_clock:
-      ntt_CLOCK(c, ntt_get_dest(c, &instr->dest));
+      ntt_CLOCK(c, ntt_get_dest(c, &instr->dest.ssa));
       break;
 
    case nir_intrinsic_decl_reg:
@@ -2714,7 +2714,7 @@ ntt_push_tex_arg(struct ntt_compile *c,
 static void
 ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
 {
-   struct ureg_dst dst = ntt_get_dest(c, &instr->dest);
+   struct ureg_dst dst = ntt_get_dest(c, &instr->dest.ssa);
    enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(instr->sampler_dim, instr->is_array, instr->is_shadow);
    unsigned tex_opcode;
 
