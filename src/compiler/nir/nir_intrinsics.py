@@ -536,15 +536,19 @@ intrinsic("end_primitive", indices=[STREAM_ID])
 # Alternatively, drivers may implement these intrinsics, and use
 # nir_lower_gs_intrinsics() to convert from the basic intrinsics.
 #
-# These contain three additional unsigned integer sources:
+# These contain four additional unsigned integer sources:
 # 1. The total number of vertices emitted so far.
 # 2. The number of vertices emitted for the current primitive
 #    so far if we're counting, otherwise undef.
 # 3. The total number of primitives emitted so far.
-intrinsic("emit_vertex_with_counter", src_comp=[1, 1, 1], indices=[STREAM_ID])
-intrinsic("end_primitive_with_counter", src_comp=[1, 1, 1], indices=[STREAM_ID])
-# Contains the final total vertex and primitive counts in the current GS thread.
-intrinsic("set_vertex_and_primitive_count", src_comp=[1, 1], indices=[STREAM_ID])
+# 4. The total number of decomposed primitives emitted so far. This counts like
+#    the PRIMITIVES_GENERATED query: a triangle strip with 5 vertices is counted
+#    as 3 primitives (not 1).
+intrinsic("emit_vertex_with_counter", src_comp=[1, 1, 1, 1], indices=[STREAM_ID])
+intrinsic("end_primitive_with_counter", src_comp=[1, 1, 1, 1], indices=[STREAM_ID])
+# Contains the final total vertex, primitive, and decomposed primitives counts
+# in the current GS thread.
+intrinsic("set_vertex_and_primitive_count", src_comp=[1, 1, 1], indices=[STREAM_ID])
 
 # Launches mesh shader workgroups from a task shader, with explicit task_payload.
 # Rules:

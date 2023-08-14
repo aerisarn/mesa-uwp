@@ -6654,7 +6654,8 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpSetMeshOutputsEXT:
       nir_set_vertex_and_primitive_count(
-         &b->nb, vtn_get_nir_ssa(b, w[1]), vtn_get_nir_ssa(b, w[2]));
+         &b->nb, vtn_get_nir_ssa(b, w[1]), vtn_get_nir_ssa(b, w[2]),
+         nir_undef(&b->nb, 1, 32));
       break;
 
    case SpvOpInitializeNodePayloadsAMDX:
