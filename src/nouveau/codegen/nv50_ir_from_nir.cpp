@@ -3385,8 +3385,7 @@ nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type)
    op.lower_fsqrt = false; // TODO: only before gm200
    op.lower_sincos = false;
    op.lower_fmod = true;
-   op.lower_bitfield_extract = false;
-   op.lower_bitfield_extract_to_shifts = (chipset >= NVISA_GV100_CHIPSET || chipset < NVISA_GF100_CHIPSET);
+   op.lower_bitfield_extract = (chipset >= NVISA_GV100_CHIPSET || chipset < NVISA_GF100_CHIPSET);
    op.lower_bitfield_insert = (chipset >= NVISA_GV100_CHIPSET || chipset < NVISA_GF100_CHIPSET);
    op.lower_bitfield_reverse = (chipset < NVISA_GF100_CHIPSET);
    op.lower_bit_count = (chipset < NVISA_GF100_CHIPSET);

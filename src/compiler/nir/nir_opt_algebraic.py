@@ -1999,12 +1999,12 @@ optimizations.extend([
    (('ibitfield_extract', 'value', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'), 'value',
               ('ibfe', 'value', 'offset', 'bits')),
-    'options->lower_bitfield_extract'),
+    'options->lower_bitfield_extract && options->has_bfe'),
 
    (('ubitfield_extract', 'value', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'), 'value',
               ('ubfe', 'value', 'offset', 'bits')),
-    'options->lower_bitfield_extract'),
+    'options->lower_bitfield_extract && options->has_bfe'),
 
    # (src0 & src1) | (~src0 & src2). Constant fold if src2 is 0.
    (('bitfield_select', a, b, 0), ('iand', a, b)),
@@ -2056,7 +2056,7 @@ optimizations.extend([
      ('ishr',
        ('ishl', 'value', ('isub', ('isub', 32, 'bits'), 'offset')),
        ('isub', 32, 'bits'))),
-    'options->lower_bitfield_extract_to_shifts'),
+    'options->lower_bitfield_extract && !options->has_bfe'),
 
    (('ubitfield_extract', 'value', 'offset', 'bits'),
     ('iand',
@@ -2064,7 +2064,7 @@ optimizations.extend([
      ('bcsel', ('ieq', 'bits', 32),
       0xffffffff,
       ('isub', ('ishl', 1, 'bits'), 1))),
-    'options->lower_bitfield_extract_to_shifts'),
+    'options->lower_bitfield_extract && !options->has_bfe'),
 
    (('ifind_msb', 'value'),
     ('ufind_msb', ('bcsel', ('ilt', 'value', 0), ('inot', 'value'), 'value')),

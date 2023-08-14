@@ -98,6 +98,7 @@ get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage s
       .lower_hadd = true,
       .lower_mul_32x16 = true,
       .lower_uclz = true,
+      .has_bfe = true,
       .has_bfm = true,
       .has_bitfield_select = true,
       .has_fsub = true,

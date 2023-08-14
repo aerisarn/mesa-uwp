@@ -40,6 +40,7 @@
    .lower_fisnormal = true,                                                   \
    .lower_isign = true,                                                       \
    .lower_ldexp = true,                                                       \
+   .lower_bitfield_extract = true,                                            \
    .lower_bitfield_insert = true,                                             \
    .lower_device_index_to_zero = true,                                        \
    .vectorize_io = true,                                                      \
@@ -183,8 +184,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
       nir_options->lower_flrp32 = devinfo->ver < 6 || devinfo->ver >= 11;
       nir_options->lower_fpow = devinfo->ver >= 12;
 
-      nir_options->lower_bitfield_extract = devinfo->ver >= 7;
-      nir_options->lower_bitfield_extract_to_shifts = devinfo->ver < 7;
+      nir_options->has_bfe = devinfo->ver >= 7;
       nir_options->has_bfm = devinfo->ver >= 7;
       nir_options->has_bfi = devinfo->ver >= 7;
 

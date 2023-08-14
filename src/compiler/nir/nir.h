@@ -3411,10 +3411,8 @@ typedef struct nir_shader_compiler_options {
    bool lower_fsqrt;
    bool lower_sincos;
    bool lower_fmod;
-   /** Lowers ibitfield_extract/ubitfield_extract to ibfe/ubfe. */
+   /** Lowers ibitfield_extract/ubitfield_extract. */
    bool lower_bitfield_extract;
-   /** Lowers ibitfield_extract/ubitfield_extract to compares, shifts. */
-   bool lower_bitfield_extract_to_shifts;
    /** Lowers bitfield_insert. */
    bool lower_bitfield_insert;
    /** Lowers bitfield_reverse to shifts. */
@@ -3743,6 +3741,9 @@ typedef struct nir_shader_compiler_options {
 
    /** Backend supports bitz/bitnz. */
    bool has_bit_test;
+
+   /** Backend supports ubfe/ibfe. */
+   bool has_bfe;
 
    /** Backend supports bfm. */
    bool has_bfm;

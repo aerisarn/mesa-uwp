@@ -1339,6 +1339,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_fmod = true,
 		.lower_uadd_carry = true,
 		.lower_usub_borrow = true,
+		.lower_bitfield_extract = true,
 		.lower_bitfield_insert = true,
 		.lower_extract_byte = true,
 		.lower_extract_word = true,
@@ -1381,7 +1382,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		rscreen->nir_options.force_indirect_unrolling_sampler = true;
 
 	if (rscreen->info.gfx_level >= EVERGREEN) {
-		rscreen->nir_options.lower_bitfield_extract = true;
+		rscreen->nir_options.has_bfe = true;
 		rscreen->nir_options.has_bfm = true;
 		rscreen->nir_options.has_bitfield_select = true;
 	}
@@ -1390,7 +1391,6 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		/* Pre-EG doesn't have these ALU ops */
 		rscreen->nir_options.lower_bit_count = true;
 		rscreen->nir_options.lower_bitfield_reverse = true;
-		rscreen->nir_options.lower_bitfield_extract_to_shifts = true;
 	}
 
 	if (rscreen->info.gfx_level < CAYMAN) {
