@@ -12733,10 +12733,10 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
    Builder bld(ctx.program, ctx.block);
 
    /* Export all color render targets */
-   struct aco_export_mrt mrts[8];
+   struct aco_export_mrt mrts[MAX_DRAW_BUFFERS];
    uint8_t exported_mrts = 0;
 
-   for (unsigned i = 0; i < 8; i++) {
+   for (unsigned i = 0; i < MAX_DRAW_BUFFERS; i++) {
       unsigned col_format = (einfo->spi_shader_col_format >> (i * 4)) & 0xf;
 
       if (col_format == V_028714_SPI_SHADER_ZERO)
@@ -12751,10 +12751,10 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
       out.is_int10 = (einfo->color_is_int10 >> i) & 1;
       out.enable_mrt_output_nan_fixup = (options->enable_mrt_output_nan_fixup >> i) & 1;
 
-      Temp inputs = get_arg(&ctx, einfo->inputs[i]);
-      emit_split_vector(&ctx, inputs, 4);
+      Temp colors = get_arg(&ctx, einfo->colors[i]);
+      emit_split_vector(&ctx, colors, 4);
       for (unsigned c = 0; c < 4; ++c) {
-         out.values[c] = Operand(emit_extract_vector(&ctx, inputs, c, v1));
+         out.values[c] = Operand(emit_extract_vector(&ctx, colors, c, v1));
       }
 
       if (export_fs_mrt_color(&ctx, &out, &mrts[i])) {
