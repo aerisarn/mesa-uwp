@@ -750,8 +750,6 @@ void agx_flush_readers(struct agx_context *ctx, struct agx_resource *rsrc,
                        const char *reason);
 void agx_flush_writer(struct agx_context *ctx, struct agx_resource *rsrc,
                       const char *reason);
-void agx_flush_batches_writing_occlusion_queries(struct agx_context *ctx);
-void agx_flush_occlusion_queries(struct agx_context *ctx);
 
 void agx_sync_writer(struct agx_context *ctx, struct agx_resource *rsrc,
                      const char *reason);

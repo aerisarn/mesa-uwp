@@ -482,35 +482,6 @@ agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc)
    }
 }
 
-/*
- * The OpenGL specification says that
- *
- *    It must always be true that if any query object returns a result
- *    available of TRUE, all queries of the same type issued prior to that
- *    query must also return TRUE.
- *
- * To implement this, we need to be able to flush all batches writing occlusion
- * queries so we ensure ordering.
- */
-void
-agx_flush_occlusion_queries(struct agx_context *ctx)
-{
-   unsigned i;
-   foreach_active(ctx, i) {
-      struct agx_batch *other = &ctx->batches.slots[i];
-
-      if (other->occlusion_queries.size != 0)
-         agx_flush_batch_for_reason(ctx, other, "Occlusion query ordering");
-   }
-
-   foreach_submitted(ctx, i) {
-      struct agx_batch *other = &ctx->batches.slots[i];
-
-      if (other->occlusion_queries.size != 0)
-         agx_sync_batch_for_reason(ctx, other, "Occlusion query ordering");
-   }
-}
-
 static int
 agx_get_in_sync(struct agx_context *ctx)
 {

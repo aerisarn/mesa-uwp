@@ -115,13 +115,15 @@ agx_get_query_result(struct pipe_context *pctx, struct pipe_query *pquery,
          assert(query->writer->occlusion_queries.size != 0);
 
          /* Querying the result forces a query to finish in finite time, so we
-          * need to flush regardless. Furthermore, we need all earlier queries
-          * to finish before this query, so we flush all batches writing queries
-          * now. Yes, this sucks for tilers.
+          * need to flush. Furthermore, we need all earlier queries
+          * to finish before this query, so we sync unconditionally (so we can
+          * maintain the lie that all queries are finished when read).
+          *
+          * TODO: Optimize based on wait flag.
           */
-         agx_flush_occlusion_queries(ctx);
-
-         /* TODO: Respect wait when we have real sync */
+         struct agx_batch *writer = query->writer;
+         agx_flush_batch_for_reason(ctx, writer, "GPU query");
+         agx_sync_batch_for_reason(ctx, writer, "GPU query");
       }
 
       assert(query->writer == NULL && "cleared when cleaning up batch");
