@@ -105,11 +105,11 @@ dx_get_texture_lod(nir_builder *b, nir_tex_instr *tex)
       }
    }
 
-   nir_def_init(&tql->instr, &tql->dest.ssa, 2, 32);
+   nir_def_init(&tql->instr, &tql->def, 2, 32);
    nir_builder_instr_insert(b, &tql->instr);
 
    /* DirectX LOD only has a value in x channel */
-   return nir_channel(b, &tql->dest.ssa, 0);
+   return nir_channel(b, &tql->def, 0);
 }
 
 typedef struct {
@@ -224,7 +224,7 @@ static nir_def *
 load_bordercolor(nir_builder *b, nir_tex_instr *tex, const dxil_wrap_sampler_state *active_state,
                  const dxil_texture_swizzle_state *tex_swizzle)
 {
-   int ndest_comp = tex->dest.ssa.num_components;
+   int ndest_comp = tex->def.num_components;
 
    unsigned swizzle[4] = {
       tex_swizzle->swizzle_r,
@@ -296,7 +296,7 @@ create_txf_from_tex(nir_builder *b, nir_tex_instr *tex)
       }
    }
 
-   nir_def_init(&txf->instr, &txf->dest.ssa, nir_tex_instr_dest_size(txf), 32);
+   nir_def_init(&txf->instr, &txf->def, nir_tex_instr_dest_size(txf), 32);
    nir_builder_instr_insert(b, &txf->instr);
 
    return txf;
@@ -328,7 +328,7 @@ load_texel(nir_builder *b, nir_tex_instr *tex, wrap_lower_param_t *params)
    nir_tex_instr_add_src(load, nir_tex_src_lod, nir_src_for_ssa(params->lod));
    nir_tex_instr_add_src(load, nir_tex_src_coord, nir_src_for_ssa(texcoord));
    b->cursor = nir_after_instr(&load->instr);
-   return &load->dest.ssa;
+   return &load->def;
 }
 
 typedef struct {

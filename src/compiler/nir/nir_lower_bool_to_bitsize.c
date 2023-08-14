@@ -340,7 +340,7 @@ lower_load_const_instr(nir_load_const_instr *load)
 static bool
 lower_phi_instr(nir_builder *b, nir_phi_instr *phi)
 {
-   if (phi->dest.ssa.bit_size != 1)
+   if (phi->def.bit_size != 1)
       return false;
 
    /* Ensure all phi sources have a canonical bit-size. We choose the
@@ -363,7 +363,7 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi)
       }
    }
 
-   phi->dest.ssa.bit_size = dst_bit_size;
+   phi->def.bit_size = dst_bit_size;
 
    return true;
 }
@@ -372,7 +372,7 @@ static bool
 lower_tex_instr(nir_tex_instr *tex)
 {
    bool progress = false;
-   rewrite_1bit_ssa_def_to_32bit(&tex->dest.ssa, &progress);
+   rewrite_1bit_ssa_def_to_32bit(&tex->def, &progress);
    if (tex->dest_type == nir_type_bool1) {
       tex->dest_type = nir_type_bool32;
       progress = true;

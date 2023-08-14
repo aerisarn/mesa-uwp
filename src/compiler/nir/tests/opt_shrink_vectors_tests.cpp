@@ -276,11 +276,11 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_simple)
    nir_def *loop_max = nir_imm_float(b, 3.0);
 
    nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
-   nir_def *phi_def = &phi->dest.ssa;
+   nir_def *phi_def = &phi->def;
 
    nir_loop *loop = nir_push_loop(b);
 
-   nir_def_init(&phi->instr, &phi->dest.ssa, v->num_components, v->bit_size);
+   nir_def_init(&phi->instr, &phi->def, v->num_components, v->bit_size);
 
    nir_phi_instr_add_src(phi, v->parent_instr->block,
                          nir_src_for_ssa(v));
@@ -382,11 +382,11 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_swizzle)
    nir_def *loop_max = nir_imm_float(b, 3.0);
 
    nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
-   nir_def *phi_def = &phi->dest.ssa;
+   nir_def *phi_def = &phi->def;
 
    nir_loop *loop = nir_push_loop(b);
 
-   nir_def_init(&phi->instr, &phi->dest.ssa, v->num_components, v->bit_size);
+   nir_def_init(&phi->instr, &phi->def, v->num_components, v->bit_size);
 
    nir_phi_instr_add_src(phi, v->parent_instr->block,
                          nir_src_for_ssa(v));
@@ -489,11 +489,11 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_phi_out)
    nir_def *loop_max = nir_imm_float(b, 3.0);
 
    nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
-   nir_def *phi_def = &phi->dest.ssa;
+   nir_def *phi_def = &phi->def;
 
    nir_loop *loop = nir_push_loop(b);
 
-   nir_def_init(&phi->instr, &phi->dest.ssa, v->num_components, v->bit_size);
+   nir_def_init(&phi->instr, &phi->def, v->num_components, v->bit_size);
 
    nir_phi_instr_add_src(phi, v->parent_instr->block,
                          nir_src_for_ssa(v));

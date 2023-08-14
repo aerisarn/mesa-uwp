@@ -630,7 +630,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_input:
-      load_input(ctx, &intr->dest.ssa, nir_intrinsic_base(intr));
+      load_input(ctx, &intr->def, nir_intrinsic_base(intr));
       break;
    case nir_intrinsic_store_output:
       store_output(ctx, intr->src[0], output_slot(ctx, intr),
@@ -641,7 +641,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       assert(const_offset); /* TODO can be false in ES2? */
       idx = nir_intrinsic_base(intr);
       idx += (uint32_t)const_offset[0].f32;
-      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest.ssa);
+      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->def);
       instr->src[0] = ir2_src(idx, 0, IR2_SRC_CONST);
       break;
    case nir_intrinsic_discard:
@@ -668,7 +668,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       struct ir2_instr *tmp = instr_create_alu(ctx, nir_op_frcp, 1);
       tmp->src[0] = ir2_src(ctx->f->inputs_count, 0, IR2_SRC_INPUT);
 
-      instr = instr_create_alu_dest(ctx, nir_op_sge, &intr->dest.ssa);
+      instr = instr_create_alu_dest(ctx, nir_op_sge, &intr->def);
       instr->src[0] = ir2_src(tmp->idx, 0, IR2_SRC_SSA);
       instr->src[1] = ir2_zero(ctx);
       break;
@@ -676,7 +676,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
       /* param.zw (note: abs might be needed like fragcoord in param.xy?) */
       ctx->so->need_param = true;
 
-      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->dest.ssa);
+      instr = instr_create_alu_dest(ctx, nir_op_mov, &intr->def);
       instr->src[0] =
          ir2_src(ctx->f->inputs_count, IR2_SWIZZLE_ZW, IR2_SRC_INPUT);
       break;
@@ -769,7 +769,7 @@ emit_tex(struct ir2_context *ctx, nir_tex_instr *tex)
       /* TODO: lod/bias transformed by src_coord.z ? */
    }
 
-   instr = ir2_instr_create_fetch(ctx, &tex->dest.ssa, TEX_FETCH);
+   instr = ir2_instr_create_fetch(ctx, &tex->def, TEX_FETCH);
    instr->src[0] = src_coord;
    instr->src[0].swizzle = is_cube ? IR2_SWIZZLE_YXW : 0;
    instr->fetch.tex.is_cube = is_cube;
@@ -1194,9 +1194,9 @@ ir2_nir_compile(struct ir2_context *ctx, bool binning)
    nir_function_impl *fxn = nir_shader_get_entrypoint(ctx->nir);
 
    nir_foreach_reg_decl (decl, fxn) {
-      assert(decl->dest.ssa.index < ARRAY_SIZE(ctx->reg));
-      ctx->reg[decl->dest.ssa.index].ncomp = nir_intrinsic_num_components(decl);
-      ctx->reg_count = MAX2(ctx->reg_count, decl->dest.ssa.index + 1);
+      assert(decl->def.index < ARRAY_SIZE(ctx->reg));
+      ctx->reg[decl->def.index].ncomp = nir_intrinsic_num_components(decl);
+      ctx->reg_count = MAX2(ctx->reg_count, decl->def.index + 1);
    }
 
    nir_metadata_require(fxn, nir_metadata_block_index);

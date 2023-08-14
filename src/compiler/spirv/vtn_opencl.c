@@ -186,7 +186,7 @@ static bool call_mangled_function(struct vtn_builder *b,
                                                         glsl_get_bare_type(dest_type->type),
                                                         "return_tmp");
       ret_deref = nir_build_deref_var(&b->nb, ret_tmp);
-      call->params[param_idx++] = nir_src_for_ssa(&ret_deref->dest.ssa);
+      call->params[param_idx++] = nir_src_for_ssa(&ret_deref->def);
    }
 
    for (unsigned i = 0; i < num_srcs; i++)
@@ -830,7 +830,7 @@ handle_printf(struct vtn_builder *b, uint32_t opcode,
 
    /* Lastly, the actual intrinsic */
    nir_def *fmt_idx = nir_imm_int(&b->nb, info_idx);
-   nir_def *ret = nir_printf(&b->nb, fmt_idx, &deref_var->dest.ssa);
+   nir_def *ret = nir_printf(&b->nb, fmt_idx, &deref_var->def);
    vtn_push_nir_ssa(b, w_dest[1], ret);
 }
 

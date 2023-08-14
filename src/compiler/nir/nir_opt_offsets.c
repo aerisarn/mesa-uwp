@@ -147,7 +147,7 @@ try_fold_shared2(nir_builder *b,
                  opt_offsets_state *state,
                  unsigned offset_src_idx)
 {
-   unsigned comp_size = (intrin->intrinsic == nir_intrinsic_load_shared2_amd ? intrin->dest.ssa.bit_size : intrin->src[0].ssa->bit_size) / 8;
+   unsigned comp_size = (intrin->intrinsic == nir_intrinsic_load_shared2_amd ? intrin->def.bit_size : intrin->src[0].ssa->bit_size) / 8;
    unsigned stride = (nir_intrinsic_st64(intrin) ? 64 : 1) * comp_size;
    unsigned offset0 = nir_intrinsic_offset0(intrin) * stride;
    unsigned offset1 = nir_intrinsic_offset1(intrin) * stride;

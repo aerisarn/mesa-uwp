@@ -184,7 +184,7 @@ anv_nir_compute_push_layout(nir_shader *nir,
                         b, pc_load,
                         nir_load_reloc_const_intel(
                            b, BRW_SHADER_RELOC_DESCRIPTORS_ADDR_HIGH));
-                  nir_def_rewrite_uses(&intrin->dest.ssa, desc_addr);
+                  nir_def_rewrite_uses(&intrin->def, desc_addr);
                   break;
                }
 
@@ -197,7 +197,7 @@ anv_nir_compute_push_layout(nir_shader *nir,
                      .dest_type = nir_type_uint32);
                   pc_load = nir_iand_imm(
                      b, pc_load, ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK);
-                  nir_def_rewrite_uses(&intrin->dest.ssa, pc_load);
+                  nir_def_rewrite_uses(&intrin->def, pc_load);
                   break;
                }
 

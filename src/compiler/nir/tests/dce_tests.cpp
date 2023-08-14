@@ -44,7 +44,7 @@ nir_phi_instr *create_one_source_phi(nir_shader *shader, nir_block *pred,
 {
    nir_phi_instr *phi = nir_phi_instr_create(shader);
    nir_phi_instr_add_src(phi, pred, nir_src_for_ssa(def));
-   nir_def_init(&phi->instr, &phi->dest.ssa, def->num_components,
+   nir_def_init(&phi->instr, &phi->def, def->num_components,
                 def->bit_size);
 
    return phi;
@@ -88,7 +88,7 @@ TEST_F(nir_opt_dce_test, return_before_loop)
    nir_phi_instr *phi = create_one_source_phi(b->shader, one->parent_instr->block, one);
    nir_instr_insert_before_block(one->parent_instr->block, &phi->instr);
 
-   nir_store_var(b, var, &phi->dest.ssa, 0x1);
+   nir_store_var(b, var, &phi->def, 0x1);
 
    nir_pop_loop(b, loop);
 

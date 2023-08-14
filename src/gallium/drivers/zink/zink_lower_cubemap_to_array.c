@@ -176,11 +176,11 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_def *coor
       s++;
    }
 
-   nir_def_init(&array_tex->instr, &array_tex->dest.ssa,
+   nir_def_init(&array_tex->instr, &array_tex->def,
                 nir_tex_instr_dest_size(array_tex),
-                tex->dest.ssa.bit_size);
+                tex->def.bit_size);
    nir_builder_instr_insert(b, &array_tex->instr);
-   return &array_tex->dest.ssa;
+   return &array_tex->def;
 }
 
 static nir_def *
@@ -446,11 +446,11 @@ lower_tex_to_txl(nir_builder *b, nir_tex_instr *tex)
    txl->src[s] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
    b->cursor = nir_before_instr(&tex->instr);
-   nir_def_init(&txl->instr, &txl->dest.ssa,
-                tex->dest.ssa.num_components,
-                tex->dest.ssa.bit_size);
+   nir_def_init(&txl->instr, &txl->def,
+                tex->def.num_components,
+                tex->def.bit_size);
    nir_builder_instr_insert(b, &txl->instr);
-   nir_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);
+   nir_def_rewrite_uses(&tex->def, &txl->def);
    return txl;
 }
 
@@ -482,14 +482,14 @@ lower_cube_txs(nir_builder *b, nir_tex_instr *tex)
    b->cursor = nir_after_instr(&tex->instr);
 
    rewrite_cube_var_type(b, tex);
-   unsigned num_components = tex->dest.ssa.num_components;
+   unsigned num_components = tex->def.num_components;
    /* force max components to unbreak textureSize().xy */
-   tex->dest.ssa.num_components = 3;
+   tex->def.num_components = 3;
    tex->is_array = true;
-   nir_def *array_dim = nir_channel(b, &tex->dest.ssa, 2);
+   nir_def *array_dim = nir_channel(b, &tex->def, 2);
    nir_def *cube_array_dim = nir_idiv(b, array_dim, nir_imm_int(b, 6));
-   nir_def *size = nir_vec3(b, nir_channel(b, &tex->dest.ssa, 0),
-                                   nir_channel(b, &tex->dest.ssa, 1),
+   nir_def *size = nir_vec3(b, nir_channel(b, &tex->def, 0),
+                                   nir_channel(b, &tex->def, 1),
                                    cube_array_dim);
    return nir_trim_vector(b, size, num_components);
 }

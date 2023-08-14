@@ -114,9 +114,9 @@ lower_array(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var,
    if (nir_deref_instr_is_known_out_of_bounds(nir_src_as_deref(intr->src[0]))) {
       /* See Section 5.11 (Out-of-Bounds Accesses) of the GLSL 4.60 */
       if (intr->intrinsic != nir_intrinsic_store_deref) {
-         nir_def *zero = nir_imm_zero(b, intr->dest.ssa.num_components,
-                                      intr->dest.ssa.bit_size);
-         nir_def_rewrite_uses(&intr->dest.ssa,
+         nir_def *zero = nir_imm_zero(b, intr->def.num_components,
+                                      intr->def.bit_size);
+         nir_def_rewrite_uses(&intr->def,
                               zero);
       }
       nir_instr_remove(&intr->instr);
@@ -168,11 +168,11 @@ lower_array(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var,
    nir_intrinsic_instr *element_intr =
       nir_intrinsic_instr_create(b->shader, intr->intrinsic);
    element_intr->num_components = intr->num_components;
-   element_intr->src[0] = nir_src_for_ssa(&element_deref->dest.ssa);
+   element_intr->src[0] = nir_src_for_ssa(&element_deref->def);
 
    if (intr->intrinsic != nir_intrinsic_store_deref) {
-      nir_def_init(&element_intr->instr, &element_intr->dest.ssa,
-                   intr->num_components, intr->dest.ssa.bit_size);
+      nir_def_init(&element_intr->instr, &element_intr->def,
+                   intr->num_components, intr->def.bit_size);
 
       if (intr->intrinsic == nir_intrinsic_interp_deref_at_offset ||
           intr->intrinsic == nir_intrinsic_interp_deref_at_sample ||
@@ -181,8 +181,8 @@ lower_array(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var,
                       &element_intr->instr);
       }
 
-      nir_def_rewrite_uses(&intr->dest.ssa,
-                           &element_intr->dest.ssa);
+      nir_def_rewrite_uses(&intr->def,
+                           &element_intr->def);
    } else {
       nir_intrinsic_set_write_mask(element_intr,
                                    nir_intrinsic_write_mask(intr));

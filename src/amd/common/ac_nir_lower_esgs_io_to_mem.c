@@ -272,12 +272,12 @@ lower_gs_per_vertex_input_load(nir_builder *b,
    nir_def *off = gs_per_vertex_input_offset(b, st, intrin);
 
    if (st->gfx_level >= GFX9)
-      return nir_load_shared(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size, off);
+      return nir_load_shared(b, intrin->def.num_components, intrin->def.bit_size, off);
 
    unsigned wave_size = 64u; /* GFX6-8 only support wave64 */
    nir_def *ring = nir_load_ring_esgs_amd(b);
    return emit_split_buffer_load(b, ring, off, nir_imm_zero(b, 1, 32), 4u * wave_size,
-                                 intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
+                                 intrin->def.num_components, intrin->def.bit_size);
 }
 
 static bool

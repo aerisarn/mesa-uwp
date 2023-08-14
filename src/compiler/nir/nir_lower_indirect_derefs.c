@@ -93,18 +93,18 @@ emit_load_store_deref(nir_builder *b, nir_intrinsic_instr *orig_instr,
          nir_intrinsic_instr_create(b->shader, orig_instr->intrinsic);
       load->num_components = orig_instr->num_components;
 
-      load->src[0] = nir_src_for_ssa(&parent->dest.ssa);
+      load->src[0] = nir_src_for_ssa(&parent->def);
 
       /* Copy over any other sources.  This is needed for interp_deref_at */
       for (unsigned i = 1;
            i < nir_intrinsic_infos[orig_instr->intrinsic].num_srcs; i++)
          nir_src_copy(&load->src[i], &orig_instr->src[i], &load->instr);
 
-      nir_def_init(&load->instr, &load->dest.ssa,
-                   orig_instr->dest.ssa.num_components,
-                   orig_instr->dest.ssa.bit_size);
+      nir_def_init(&load->instr, &load->def,
+                   orig_instr->def.num_components,
+                   orig_instr->def.bit_size);
       nir_builder_instr_insert(b, &load->instr);
-      *dest = &load->dest.ssa;
+      *dest = &load->def;
    } else {
       assert(orig_instr->intrinsic == nir_intrinsic_store_deref);
       nir_store_deref(b, parent, src, nir_intrinsic_write_mask(orig_instr));
@@ -175,7 +175,7 @@ lower_indirect_derefs_block(nir_block *block, nir_builder *b,
          nir_def *result;
          emit_load_store_deref(b, intrin, base, &path.path[1],
                                &result, NULL);
-         nir_def_rewrite_uses(&intrin->dest.ssa, result);
+         nir_def_rewrite_uses(&intrin->def, result);
       }
 
       nir_deref_path_finish(&path);

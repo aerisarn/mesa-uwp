@@ -37,8 +37,8 @@ wrap_in_if(nir_builder *b, nir_intrinsic_instr *instr, nir_def *valid)
    nir_def *res, *zero;
 
    if (has_dest) {
-      zero = nir_imm_zero(b, instr->dest.ssa.num_components,
-                          instr->dest.ssa.bit_size);
+      zero = nir_imm_zero(b, instr->def.num_components,
+                          instr->def.bit_size);
    }
 
    nir_push_if(b, valid);
@@ -47,12 +47,12 @@ wrap_in_if(nir_builder *b, nir_intrinsic_instr *instr, nir_def *valid)
       nir_builder_instr_insert(b, orig);
 
       if (has_dest)
-         res = &nir_instr_as_intrinsic(orig)->dest.ssa;
+         res = &nir_instr_as_intrinsic(orig)->def;
    }
    nir_pop_if(b, NULL);
 
    if (has_dest)
-      nir_def_rewrite_uses(&instr->dest.ssa, nir_if_phi(b, res, zero));
+      nir_def_rewrite_uses(&instr->def, nir_if_phi(b, res, zero));
 
    /* We've cloned and wrapped, so drop original instruction */
    nir_instr_remove(&instr->instr);
@@ -63,7 +63,7 @@ lower_buffer_load(nir_builder *b,
                   nir_intrinsic_instr *instr,
                   const nir_lower_robust_access_options *opts)
 {
-   uint32_t type_sz = instr->dest.ssa.bit_size / 8;
+   uint32_t type_sz = instr->def.bit_size / 8;
    nir_def *size;
    nir_def *index = instr->src[0].ssa;
 
@@ -96,7 +96,7 @@ lower_buffer_shared(nir_builder *b, nir_intrinsic_instr *instr)
    uint32_t type_sz, offset_src;
    if (instr->intrinsic == nir_intrinsic_load_shared) {
       offset_src = 0;
-      type_sz = instr->dest.ssa.bit_size / 8;
+      type_sz = instr->def.bit_size / 8;
    } else if (instr->intrinsic == nir_intrinsic_store_shared) {
       offset_src = 1;
       type_sz = nir_src_bit_size(instr->src[0]) / 8;

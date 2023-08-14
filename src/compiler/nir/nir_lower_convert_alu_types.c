@@ -62,7 +62,7 @@ lower_convert_alu_types_instr(nir_builder *b, nir_intrinsic_instr *conv)
                                 nir_intrinsic_dest_type(conv),
                                 nir_intrinsic_rounding_mode(conv),
                                 nir_intrinsic_saturate(conv));
-   nir_def_rewrite_uses(&conv->dest.ssa, val);
+   nir_def_rewrite_uses(&conv->def, val);
 }
 
 static bool

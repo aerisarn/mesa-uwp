@@ -83,7 +83,7 @@ lower_single_sampled_instr(nir_builder *b,
       return false;
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, lowered);
+   nir_def_rewrite_uses(&intrin->def, lowered);
    nir_instr_remove(instr);
    return true;
 }

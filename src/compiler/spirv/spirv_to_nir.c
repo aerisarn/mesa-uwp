@@ -443,7 +443,7 @@ vtn_push_image(struct vtn_builder *b, uint32_t value_id,
 {
    struct vtn_type *type = vtn_get_value_type(b, value_id);
    vtn_assert(type->base_type == vtn_base_type_image);
-   struct vtn_value *value = vtn_push_nir_ssa(b, value_id, &deref->dest.ssa);
+   struct vtn_value *value = vtn_push_nir_ssa(b, value_id, &deref->def);
    value->propagated_non_uniform = propagate_non_uniform;
 }
 
@@ -460,7 +460,7 @@ nir_def *
 vtn_sampled_image_to_nir_ssa(struct vtn_builder *b,
                              struct vtn_sampled_image si)
 {
-   return nir_vec2(&b->nb, &si.image->dest.ssa, &si.sampler->dest.ssa);
+   return nir_vec2(&b->nb, &si.image->def, &si.sampler->def);
 }
 
 static void
@@ -2956,7 +2956,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    nir_tex_src srcs[10]; /* 10 should be enough */
    nir_tex_src *p = srcs;
 
-   p->src = nir_src_for_ssa(&image->dest.ssa);
+   p->src = nir_src_for_ssa(&image->def);
    p->src_type = nir_tex_src_texture_deref;
    p++;
 
@@ -2970,7 +2970,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       vtn_fail_if(sampler == NULL,
                   "%s requires an image of type OpTypeSampledImage",
                   spirv_op_to_string(opcode));
-      p->src = nir_src_for_ssa(&sampler->dest.ssa);
+      p->src = nir_src_for_ssa(&sampler->def);
       p->src_type = nir_tex_src_sampler_deref;
       p++;
       break;
@@ -3295,7 +3295,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
    instr->dest_type = dest_type;
 
-   nir_def_init(&instr->instr, &instr->dest.ssa,
+   nir_def_init(&instr->instr, &instr->def,
                 nir_tex_instr_dest_size(instr), 32);
 
    vtn_assert(glsl_get_vector_elements(ret_type->type) ==
@@ -3336,12 +3336,12 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    if (is_sparse) {
       struct vtn_ssa_value *dest = vtn_create_ssa_value(b, struct_type->type);
       unsigned result_size = glsl_get_vector_elements(ret_type->type);
-      dest->elems[0]->def = nir_channel(&b->nb, &instr->dest.ssa, result_size);
-      dest->elems[1]->def = nir_trim_vector(&b->nb, &instr->dest.ssa,
+      dest->elems[0]->def = nir_channel(&b->nb, &instr->def, result_size);
+      dest->elems[1]->def = nir_trim_vector(&b->nb, &instr->def,
                                               result_size);
       vtn_push_ssa_value(b, w[2], dest);
    } else {
-      vtn_push_nir_ssa(b, w[2], &instr->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &instr->def);
    }
 }
 
@@ -3641,7 +3641,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    if (nir_intrinsic_has_atomic_op(intrin))
       nir_intrinsic_set_atomic_op(intrin, translate_atomic_op(opcode));
 
-   intrin->src[0] = nir_src_for_ssa(&image.image->dest.ssa);
+   intrin->src[0] = nir_src_for_ssa(&image.image->def);
    nir_intrinsic_set_image_dim(intrin, glsl_get_sampler_dim(image.image->type));
    nir_intrinsic_set_image_array(intrin,
       glsl_sampler_type_is_array(image.image->type));
@@ -3776,12 +3776,12 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
           opcode == SpvOpImageQuerySizeLod)
          bit_size = MIN2(bit_size, 32);
 
-      nir_def_init(&intrin->instr, &intrin->dest.ssa,
+      nir_def_init(&intrin->instr, &intrin->def,
                    nir_intrinsic_dest_components(intrin), bit_size);
 
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-      nir_def *result = nir_trim_vector(&b->nb, &intrin->dest.ssa,
+      nir_def *result = nir_trim_vector(&b->nb, &intrin->def,
                                               dest_components);
 
       if (opcode == SpvOpImageQuerySize ||
@@ -3792,7 +3792,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          struct vtn_ssa_value *dest = vtn_create_ssa_value(b, struct_type->type);
          unsigned res_type_size = glsl_get_vector_elements(type->type);
          dest->elems[0]->def = nir_channel(&b->nb, result, res_type_size);
-         if (intrin->dest.ssa.bit_size != 32)
+         if (intrin->def.bit_size != 32)
             dest->elems[0]->def = nir_u2u32(&b->nb, dest->elems[0]->def);
          dest->elems[1]->def = nir_trim_vector(&b->nb, result, res_type_size);
          vtn_push_ssa_value(b, w[2], dest);
@@ -3933,7 +3933,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
       nir_intrinsic_op op = get_uniform_nir_atomic_op(b, opcode);
       atomic = nir_intrinsic_instr_create(b->nb.shader, op);
-      atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+      atomic->src[0] = nir_src_for_ssa(&deref->def);
 
       /* SSBO needs to initialize index/offset. In this case we don't need to,
        * as that info is already stored on the ptr->var->var nir_variable (see
@@ -3970,7 +3970,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       const struct glsl_type *deref_type = deref->type;
       nir_intrinsic_op op = get_deref_nir_atomic_op(b, opcode);
       atomic = nir_intrinsic_instr_create(b->nb.shader, op);
-      atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+      atomic->src[0] = nir_src_for_ssa(&deref->def);
 
       if (nir_intrinsic_has_atomic_op(atomic))
          nir_intrinsic_set_atomic_op(atomic, translate_atomic_op(opcode));
@@ -4042,20 +4042,20 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
 
       if (opcode == SpvOpAtomicFlagTestAndSet) {
          /* map atomic flag to a 32-bit atomic integer. */
-         nir_def_init(&atomic->instr, &atomic->dest.ssa, 1, 32);
+         nir_def_init(&atomic->instr, &atomic->def, 1, 32);
       } else {
-         nir_def_init(&atomic->instr, &atomic->dest.ssa,
+         nir_def_init(&atomic->instr, &atomic->def,
                       glsl_get_vector_elements(type->type),
                       glsl_get_bit_size(type->type));
 
-         vtn_push_nir_ssa(b, w[2], &atomic->dest.ssa);
+         vtn_push_nir_ssa(b, w[2], &atomic->def);
       }
    }
 
    nir_builder_instr_insert(&b->nb, &atomic->instr);
 
    if (opcode == SpvOpAtomicFlagTestAndSet) {
-      vtn_push_nir_ssa(b, w[2], nir_i2b(&b->nb, &atomic->dest.ssa));
+      vtn_push_nir_ssa(b, w[2], nir_i2b(&b->nb, &atomic->def));
    }
    if (after_semantics)
       vtn_emit_memory_barrier(b, scope, after_semantics);
@@ -5780,7 +5780,7 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
          payload = vtn_get_call_payload_for_location(b, w[11]);
       else
          payload = vtn_nir_deref(b, w[11]);
-      intrin->src[10] = nir_src_for_ssa(&payload->dest.ssa);
+      intrin->src[10] = nir_src_for_ssa(&payload->def);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
    }
@@ -5790,9 +5790,9 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
                                           nir_intrinsic_report_ray_intersection);
       intrin->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[3])->def);
       intrin->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
-      nir_def_init(&intrin->instr, &intrin->dest.ssa, 1, 1);
+      nir_def_init(&intrin->instr, &intrin->def, 1, 1);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
-      vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &intrin->def);
       break;
    }
 
@@ -5818,7 +5818,7 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
          payload = vtn_get_call_payload_for_location(b, w[2]);
       else
          payload = vtn_nir_deref(b, w[2]);
-      intrin->src[1] = nir_src_for_ssa(&payload->dest.ssa);
+      intrin->src[1] = nir_src_for_ssa(&payload->def);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
    }
@@ -6684,11 +6684,11 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
             nir_local_variable_create(impl, in_var->type, "copy_in");
          nir_copy_var(&b->nb, copy_var, in_var);
          call->params[i] =
-            nir_src_for_ssa(&nir_build_deref_var(&b->nb, copy_var)->dest.ssa);
+            nir_src_for_ssa(&nir_build_deref_var(&b->nb, copy_var)->def);
       } else if (param_type->base_type == vtn_base_type_image ||
                  param_type->base_type == vtn_base_type_sampler) {
          /* Don't load the var, just pass a deref of it */
-         call->params[i] = nir_src_for_ssa(&nir_build_deref_var(&b->nb, in_var)->dest.ssa);
+         call->params[i] = nir_src_for_ssa(&nir_build_deref_var(&b->nb, in_var)->def);
       } else {
          call->params[i] = nir_src_for_ssa(nir_load_var(&b->nb, in_var));
       }

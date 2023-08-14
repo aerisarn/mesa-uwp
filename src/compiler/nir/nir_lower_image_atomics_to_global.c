@@ -43,7 +43,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    b->cursor = nir_before_instr(instr);
    nir_atomic_op atomic_op = nir_intrinsic_atomic_op(intr);
    enum pipe_format format = nir_intrinsic_format(intr);
-   unsigned bit_size = intr->dest.ssa.bit_size;
+   unsigned bit_size = intr->def.bit_size;
 
    /* Even for "formatless" access, we know the size of the texel accessed,
     * since it's the size of the atomic. We can use that to synthesize a
@@ -93,7 +93,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    /* Replace the image atomic with the global atomic. Remove the image
     * explicitly because it has side effects so is not DCE'd.
     */
-   nir_def_rewrite_uses(&intr->dest.ssa, global);
+   nir_def_rewrite_uses(&intr->def, global);
    nir_instr_remove(instr);
    return true;
 }

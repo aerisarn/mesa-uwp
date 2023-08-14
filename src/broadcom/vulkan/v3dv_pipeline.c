@@ -568,7 +568,7 @@ lower_vulkan_resource_index(nir_builder *b,
     * vulkan_load_descriptor return a vec2 providing an index and
     * offset. Our backend compiler only cares about the index part.
     */
-   nir_def_rewrite_uses(&instr->dest.ssa,
+   nir_def_rewrite_uses(&instr->def,
                             nir_imm_ivec2(b, index, 0));
    nir_instr_remove(&instr->instr);
 }
@@ -826,7 +826,7 @@ lower_intrinsic(nir_builder *b,
       /* Loading the descriptor happens as part of load/store instructions,
        * so for us this is a no-op.
        */
-      nir_def_rewrite_uses(&instr->dest.ssa, instr->src[0].ssa);
+      nir_def_rewrite_uses(&instr->def, instr->src[0].ssa);
       nir_instr_remove(&instr->instr);
       return true;
    }
@@ -907,11 +907,11 @@ lower_point_coord_cb(nir_builder *b, nir_instr *instr, void *_state)
       return false;
 
    b->cursor = nir_after_instr(&intr->instr);
-   nir_def *result = &intr->dest.ssa;
+   nir_def *result = &intr->def;
    result =
       nir_vector_insert_imm(b, result,
                             nir_fsub_imm(b, 1.0, nir_channel(b, result, 1)), 1);
-   nir_def_rewrite_uses_after(&intr->dest.ssa,
+   nir_def_rewrite_uses_after(&intr->def,
                                   result, result->parent_instr);
    return true;
 }

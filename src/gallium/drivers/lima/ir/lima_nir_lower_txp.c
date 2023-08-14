@@ -54,7 +54,7 @@ get_proj_index(nir_instr *coord_instr, nir_instr *proj_instr,
    if (intrin->intrinsic != nir_intrinsic_load_input)
       return NULL;
 
-   if (intrin->dest.ssa.num_components != 4)
+   if (intrin->def.num_components != 4)
       return NULL;
 
    /* Coords must be in .xyz */

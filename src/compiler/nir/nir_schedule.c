@@ -565,7 +565,7 @@ nir_schedule_regs_freed_load_reg(nir_intrinsic_instr *load,
       state->regs_freed += nir_schedule_reg_pressure(reg);
    }
 
-   nir_schedule_regs_freed_def_cb(&load->dest.ssa, state);
+   nir_schedule_regs_freed_def_cb(&load->def, state);
 }
 
 static void
@@ -953,7 +953,7 @@ nir_schedule_mark_load_reg_scheduled(nir_intrinsic_instr *load,
    nir_schedule_mark_use(scoreboard, reg, &load->instr,
                          nir_schedule_reg_pressure(reg));
 
-   nir_schedule_mark_def_scheduled(&load->dest.ssa, scoreboard);
+   nir_schedule_mark_def_scheduled(&load->def, scoreboard);
 }
 
 static void

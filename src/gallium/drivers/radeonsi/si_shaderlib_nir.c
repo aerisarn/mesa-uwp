@@ -64,7 +64,7 @@ static void unpack_2x16_signed(nir_builder *b, nir_def *src, nir_def **x, nir_de
 static nir_def *
 deref_ssa(nir_builder *b, nir_variable *var)
 {
-   return &nir_build_deref_var(b, var)->dest.ssa;
+   return &nir_build_deref_var(b, var)->def;
 }
 
 /* Create a NIR compute shader implementing copy_image.

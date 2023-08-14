@@ -97,9 +97,9 @@ visit_vulkan_resource_index(nir_builder *b, apply_layout_state *state, nir_intri
 
    if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
       assert(stride == 16);
-      nir_def_rewrite_uses(&intrin->dest.ssa, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
+      nir_def_rewrite_uses(&intrin->def, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
    } else {
-      nir_def_rewrite_uses(&intrin->dest.ssa, nir_vec3(b, set_ptr, binding_ptr, nir_imm_int(b, stride)));
+      nir_def_rewrite_uses(&intrin->def, nir_vec3(b, set_ptr, binding_ptr, nir_imm_int(b, stride)));
    }
    nir_instr_remove(&intrin->instr);
 }
@@ -117,7 +117,7 @@ visit_vulkan_resource_reindex(nir_builder *b, apply_layout_state *state, nir_int
 
       binding_ptr = nir_iadd_nuw(b, binding_ptr, index);
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
+      nir_def_rewrite_uses(&intrin->def, nir_pack_64_2x32_split(b, set_ptr, binding_ptr));
    } else {
       assert(desc_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER || desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -129,7 +129,7 @@ visit_vulkan_resource_reindex(nir_builder *b, apply_layout_state *state, nir_int
 
       binding_ptr = nir_iadd_nuw(b, binding_ptr, index);
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, nir_vector_insert_imm(b, intrin->src[0].ssa, binding_ptr, 1));
+      nir_def_rewrite_uses(&intrin->def, nir_vector_insert_imm(b, intrin->src[0].ssa, binding_ptr, 1));
    }
    nir_instr_remove(&intrin->instr);
 }
@@ -143,9 +143,9 @@ visit_load_vulkan_descriptor(nir_builder *b, apply_layout_state *state, nir_intr
                                                          nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa)));
       nir_def *desc = nir_build_load_global(b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE);
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+      nir_def_rewrite_uses(&intrin->def, desc);
    } else {
-      nir_def_rewrite_uses(&intrin->dest.ssa, nir_vector_insert_imm(b, intrin->src[0].ssa, nir_imm_int(b, 0), 2));
+      nir_def_rewrite_uses(&intrin->def, nir_vector_insert_imm(b, intrin->src[0].ssa, nir_imm_int(b, 0), 2));
    }
    nir_instr_remove(&intrin->instr);
 }
@@ -211,7 +211,7 @@ visit_get_ssbo_size(nir_builder *b, apply_layout_state *state, nir_intrinsic_ins
       size = nir_channel(b, desc, 2);
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, size);
+   nir_def_rewrite_uses(&intrin->def, size);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -358,7 +358,7 @@ update_image_intrinsic(nir_builder *b, apply_layout_state *state, nir_intrinsic_
                                     nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM, NULL, !is_load);
 
    if (intrin->intrinsic == nir_intrinsic_image_deref_descriptor_amd) {
-      nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+      nir_def_rewrite_uses(&intrin->def, desc);
       nir_instr_remove(&intrin->instr);
    } else {
       nir_rewrite_image_intrinsic(intrin, desc, true);
@@ -477,7 +477,7 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
    }
 
    if (tex->op == nir_texop_descriptor_amd) {
-      nir_def_rewrite_uses(&tex->dest.ssa, image);
+      nir_def_rewrite_uses(&tex->def, image);
       nir_instr_remove(&tex->instr);
       return;
    }

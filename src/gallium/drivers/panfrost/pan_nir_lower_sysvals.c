@@ -138,14 +138,14 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-      old = &intr->dest.ssa;
+      old = &intr->def;
       sysval = sysval_for_intrinsic(intr, &offset);
 
       if (sysval == ~0)
          return false;
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
-      old = &tex->dest.ssa;
+      old = &tex->def;
 
       if (tex->op != nir_texop_txs)
          return false;

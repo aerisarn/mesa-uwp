@@ -1152,7 +1152,7 @@ split_64bit_subgroup_op(nir_builder *b, const nir_intrinsic_instr *intrin)
       nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa),
    };
 
-   assert(info->has_dest && intrin->dest.ssa.bit_size == 64);
+   assert(info->has_dest && intrin->def.bit_size == 64);
 
    nir_def *res[2];
    for (unsigned i = 0; i < 2; i++) {
@@ -1171,11 +1171,11 @@ split_64bit_subgroup_op(nir_builder *b, const nir_intrinsic_instr *intrin)
       memcpy(split->const_index, intrin->const_index,
              sizeof(intrin->const_index));
 
-      nir_def_init(&split->instr, &split->dest.ssa,
-                   intrin->dest.ssa.num_components, 32);
+      nir_def_init(&split->instr, &split->def,
+                   intrin->def.num_components, 32);
       nir_builder_instr_insert(b, &split->instr);
 
-      res[i] = &split->dest.ssa;
+      res[i] = &split->def;
    }
 
    return nir_pack_64_2x32_split(b, res[0], res[1]);
@@ -1188,9 +1188,9 @@ build_vote_ieq(nir_builder *b, nir_def *x)
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_vote_ieq);
    vote->src[0] = nir_src_for_ssa(x);
    vote->num_components = x->num_components;
-   nir_def_init(&vote->instr, &vote->dest.ssa, 1, 1);
+   nir_def_init(&vote->instr, &vote->def, 1, 1);
    nir_builder_instr_insert(b, &vote->instr);
-   return &vote->dest.ssa;
+   return &vote->def;
 }
 
 static nir_def *
@@ -1212,10 +1212,10 @@ build_scan_intrinsic(nir_builder *b, nir_intrinsic_op scan_op,
    nir_intrinsic_set_reduction_op(scan, reduction_op);
    if (scan_op == nir_intrinsic_reduce)
       nir_intrinsic_set_cluster_size(scan, cluster_size);
-   nir_def_init(&scan->instr, &scan->dest.ssa, val->num_components,
+   nir_def_init(&scan->instr, &scan->def, val->num_components,
                 val->bit_size);
    nir_builder_instr_insert(b, &scan->instr);
-   return &scan->dest.ssa;
+   return &scan->def;
 }
 
 static nir_def *
@@ -1271,7 +1271,7 @@ should_lower_int64_intrinsic(const nir_intrinsic_instr *intrin,
    case nir_intrinsic_quad_swap_horizontal:
    case nir_intrinsic_quad_swap_vertical:
    case nir_intrinsic_quad_swap_diagonal:
-      return intrin->dest.ssa.bit_size == 64 &&
+      return intrin->def.bit_size == 64 &&
              (options->lower_int64_options & nir_lower_subgroup_shuffle64);
 
    case nir_intrinsic_vote_ieq:
@@ -1281,7 +1281,7 @@ should_lower_int64_intrinsic(const nir_intrinsic_instr *intrin,
    case nir_intrinsic_reduce:
    case nir_intrinsic_inclusive_scan:
    case nir_intrinsic_exclusive_scan:
-      if (intrin->dest.ssa.bit_size != 64)
+      if (intrin->def.bit_size != 64)
          return false;
 
       switch (nir_intrinsic_reduction_op(intrin)) {

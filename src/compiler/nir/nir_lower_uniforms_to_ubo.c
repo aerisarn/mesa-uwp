@@ -69,21 +69,21 @@ nir_lower_uniforms_to_ubo_instr(nir_builder *b, nir_instr *instr, void *data)
       nir_def *ubo_idx = nir_imm_int(b, 0);
       nir_def *uniform_offset = nir_ssa_for_src(b, intr->src[0], 1);
 
-      assert(intr->dest.ssa.bit_size >= 8);
+      assert(intr->def.bit_size >= 8);
       nir_def *load_result;
       if (state->load_vec4) {
          /* No asking us to generate load_vec4 when you've packed your uniforms
           * as dwords instead of vec4s.
           */
          assert(!state->dword_packed);
-         load_result = nir_load_ubo_vec4(b, intr->num_components, intr->dest.ssa.bit_size,
+         load_result = nir_load_ubo_vec4(b, intr->num_components, intr->def.bit_size,
                                          ubo_idx, uniform_offset, .base = nir_intrinsic_base(intr));
       } else {
          /* For PIPE_CAP_PACKED_UNIFORMS, the uniforms are packed with the
           * base/offset in dword units instead of vec4 units.
           */
          int multiplier = state->dword_packed ? 4 : 16;
-         load_result = nir_load_ubo(b, intr->num_components, intr->dest.ssa.bit_size,
+         load_result = nir_load_ubo(b, intr->num_components, intr->def.bit_size,
                                     ubo_idx,
                                     nir_iadd_imm(b, nir_imul_imm(b, uniform_offset, multiplier),
                                                  nir_intrinsic_base(intr) * multiplier));
@@ -103,13 +103,13 @@ nir_lower_uniforms_to_ubo_instr(nir_builder *b, nir_instr *instr, void *data)
                                      nir_intrinsic_base(intr) * multiplier) %
                                        NIR_ALIGN_MUL_MAX);
          } else {
-            nir_intrinsic_set_align(load, MAX2(multiplier, intr->dest.ssa.bit_size / 8), 0);
+            nir_intrinsic_set_align(load, MAX2(multiplier, intr->def.bit_size / 8), 0);
          }
 
          nir_intrinsic_set_range_base(load, nir_intrinsic_base(intr) * multiplier);
          nir_intrinsic_set_range(load, nir_intrinsic_range(intr) * multiplier);
       }
-      nir_def_rewrite_uses(&intr->dest.ssa, load_result);
+      nir_def_rewrite_uses(&intr->def, load_result);
 
       nir_instr_remove(&intr->instr);
       return true;

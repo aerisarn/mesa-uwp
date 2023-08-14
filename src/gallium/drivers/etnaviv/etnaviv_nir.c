@@ -45,15 +45,15 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                   /* HW front_face is 0.0/1.0, not 0/~0u for bool
                    * lower with a comparison with 0
                    */
-                  intr->dest.ssa.bit_size = 32;
+                  intr->def.bit_size = 32;
 
                   b.cursor = nir_after_instr(instr);
 
-                  nir_def *ssa = nir_ine_imm(&b, &intr->dest.ssa, 0);
+                  nir_def *ssa = nir_ine_imm(&b, &intr->def, 0);
                   if (v->key.front_ccw)
                      nir_instr_as_alu(ssa->parent_instr)->op = nir_op_ieq;
 
-                  nir_def_rewrite_uses_after(&intr->dest.ssa,
+                  nir_def_rewrite_uses_after(&intr->def,
                                                  ssa,
                                                  ssa->parent_instr);
                } break;

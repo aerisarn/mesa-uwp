@@ -98,8 +98,8 @@ process_instr(nir_builder *b, nir_instr *instr, void *_)
    new_intrin->num_components = intrin->num_components;
 
    if (op != nir_intrinsic_store_global_amd)
-      nir_def_init(&new_intrin->instr, &new_intrin->dest.ssa,
-                   intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
+      nir_def_init(&new_intrin->instr, &new_intrin->def,
+                   intrin->def.num_components, intrin->def.bit_size);
 
    unsigned num_src = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
    for (unsigned i = 0; i < num_src; i++)
@@ -121,7 +121,7 @@ process_instr(nir_builder *b, nir_instr *instr, void *_)
 
    nir_builder_instr_insert(b, &new_intrin->instr);
    if (op != nir_intrinsic_store_global_amd)
-      nir_def_rewrite_uses(&intrin->dest.ssa, &new_intrin->dest.ssa);
+      nir_def_rewrite_uses(&intrin->def, &new_intrin->def);
    nir_instr_remove(&intrin->instr);
 
    return true;

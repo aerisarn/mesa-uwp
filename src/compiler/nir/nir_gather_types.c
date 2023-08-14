@@ -152,7 +152,7 @@ nir_gather_types(nir_function_impl *impl,
                            nir_tex_instr_src_type(tex, i),
                            float_types, int_types, &progress);
                }
-               set_type(tex->dest.ssa.index, tex->dest_type,
+               set_type(tex->def.index, tex->dest_type,
                         float_types, int_types, &progress);
                break;
             }
@@ -162,7 +162,7 @@ nir_gather_types(nir_function_impl *impl,
 
                nir_alu_type dest_type = nir_intrinsic_instr_dest_type(intrin);
                if (dest_type != nir_type_invalid) {
-                  set_type(intrin->dest.ssa.index, dest_type,
+                  set_type(intrin->def.index, dest_type,
                            float_types, int_types, &progress);
                }
 
@@ -180,7 +180,7 @@ nir_gather_types(nir_function_impl *impl,
             case nir_instr_type_phi: {
                nir_phi_instr *phi = nir_instr_as_phi(instr);
                nir_foreach_phi_src(src, phi) {
-                  copy_types(src->src, &phi->dest.ssa,
+                  copy_types(src->src, &phi->def,
                              float_types, int_types, &progress);
                }
                break;

@@ -701,7 +701,7 @@ radv_nir_lower_ray_queries(struct nir_shader *shader, struct radv_device *device
             }
 
             if (new_dest)
-               nir_def_rewrite_uses(&intrinsic->dest.ssa, new_dest);
+               nir_def_rewrite_uses(&intrinsic->def, new_dest);
 
             nir_instr_remove(instr);
             nir_instr_free(instr);

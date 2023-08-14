@@ -74,7 +74,7 @@ lower_xfb(nir_builder *b, nir_instr *instr, UNUSED void *data)
       nir_def *repl =
          nir_iadd(b, nir_load_vertex_id_zero_base(b), nir_load_first_vertex(b));
 
-      nir_def_rewrite_uses(&intr->dest.ssa, repl);
+      nir_def_rewrite_uses(&intr->def, repl);
       return true;
    }
 

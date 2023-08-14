@@ -621,7 +621,7 @@ pan_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_after_instr(instr);
    nir_def *constant = nir_build_imm(b, 4, 32, constants);
-   nir_def_rewrite_uses(&intr->dest.ssa, constant);
+   nir_def_rewrite_uses(&intr->def, constant);
    nir_instr_remove(instr);
    return true;
 }
@@ -806,7 +806,7 @@ inline_rt_conversion(nir_builder *b, nir_instr *instr, void *data)
       inputs->dev, inputs->formats[rt], rt, size, false);
 
    b->cursor = nir_after_instr(instr);
-   nir_def_rewrite_uses(&intr->dest.ssa, nir_imm_int(b, conversion >> 32));
+   nir_def_rewrite_uses(&intr->def, nir_imm_int(b, conversion >> 32));
    return true;
 }
 

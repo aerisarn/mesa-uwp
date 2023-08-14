@@ -581,17 +581,17 @@ lower_vs_input_instr(nir_builder *b, nir_instr *instr, void *state)
 
    unsigned input_index = nir_intrinsic_base(intrin);
    unsigned component = nir_intrinsic_component(intrin);
-   unsigned num_components = intrin->dest.ssa.num_components;
+   unsigned num_components = intrin->def.num_components;
 
    nir_def *comp[4];
    if (s->shader->selector->info.base.vs.blit_sgprs_amd)
       load_vs_input_from_blit_sgpr(b, input_index, s, comp);
    else
-      load_vs_input_from_vertex_buffer(b, input_index, s, intrin->dest.ssa.bit_size, comp);
+      load_vs_input_from_vertex_buffer(b, input_index, s, intrin->def.bit_size, comp);
 
    nir_def *replacement = nir_vec(b, &comp[component], num_components);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, replacement);
+   nir_def_rewrite_uses(&intrin->def, replacement);
    nir_instr_remove(instr);
    nir_instr_free(instr);
 

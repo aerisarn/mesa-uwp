@@ -72,7 +72,7 @@ nir_find_ray_queries_read(struct set *queries,
             nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
             switch (intrin->intrinsic) {
             case nir_intrinsic_rq_proceed:
-               if (!list_is_empty(&intrin->dest.ssa.uses))
+               if (!list_is_empty(&intrin->def.uses))
                   mark_query_read(queries, intrin);
                break;
             case nir_intrinsic_rq_load:
@@ -115,7 +115,7 @@ nir_replace_unread_queries_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    if (intrin->intrinsic == nir_intrinsic_rq_load)
-      assert(list_is_empty(&intrin->dest.ssa.uses));
+      assert(list_is_empty(&intrin->def.uses));
 
    nir_instr_remove(instr);
 

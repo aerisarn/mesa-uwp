@@ -273,10 +273,10 @@ TEST_F(unsigned_upper_bound_test, loop_phi_bcsel)
    nir_def *cond = nir_imm_false(b);
 
    nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
-   nir_def_init(&phi->instr, &phi->dest.ssa, 1, 32);
+   nir_def_init(&phi->instr, &phi->def, 1, 32);
 
    nir_push_loop(b);
-   nir_def *sel = nir_bcsel(b, cond, &phi->dest.ssa, two);
+   nir_def *sel = nir_bcsel(b, cond, &phi->def, two);
    nir_pop_loop(b, NULL);
 
    nir_phi_instr_add_src(phi, zero->parent_instr->block,
@@ -289,7 +289,7 @@ TEST_F(unsigned_upper_bound_test, loop_phi_bcsel)
    nir_validate_shader(b->shader, NULL);
 
    struct hash_table *range_ht = _mesa_pointer_hash_table_create(NULL);
-   nir_scalar scalar = nir_get_ssa_scalar(&phi->dest.ssa, 0);
+   nir_scalar scalar = nir_get_ssa_scalar(&phi->def, 0);
    EXPECT_EQ(nir_unsigned_upper_bound(b->shader, range_ht, scalar, NULL), 2);
    _mesa_hash_table_destroy(range_ht, NULL);
 }

@@ -298,7 +298,7 @@ rewrite_varying_deref(nir_builder *b, struct replace_varyings_data *rv_data,
       unsigned i = nir_src_as_uint(deref->arr.index);
       nir_deref_instr *new_deref =
          nir_build_deref_var(b, rv_data->new_texcoord[i]);
-      nir_def_rewrite_uses(&deref->dest.ssa, &new_deref->dest.ssa);
+      nir_def_rewrite_uses(&deref->def, &new_deref->def);
       return;
    }
 }

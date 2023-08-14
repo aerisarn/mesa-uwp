@@ -715,12 +715,12 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
                                            nir_imm_int(&b, 0));
 
          tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                           &tex_deref->dest.ssa);
+                                           &tex_deref->def);
 
-         nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+         nir_def_init(&tex->instr, &tex->def, 4, 32);
 
          nir_builder_instr_insert(&b, &tex->instr);
-         res = res ? nir_build_alu2(&b, resolve_op, res, &tex->dest.ssa) : &tex->dest.ssa;
+         res = res ? nir_build_alu2(&b, resolve_op, res, &tex->def) : &tex->def;
       }
 
       if (resolve_mode == dzn_blit_resolve_average)
@@ -747,7 +747,7 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
                                            nir_imm_int(&b, 0));
 
          tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                           &tex_deref->dest.ssa);
+                                           &tex_deref->def);
       } else {
          nir_variable *sampler_var =
             nir_variable_create(b.shader, nir_var_uniform, glsl_bare_sampler_type(), "sampler");
@@ -760,15 +760,15 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
          tex->coord_components = coord_comps;
 
          tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                           &tex_deref->dest.ssa);
+                                           &tex_deref->def);
 
          tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                           &sampler_deref->dest.ssa);
+                                           &sampler_deref->def);
       }
 
-      nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(&b, &tex->instr);
-      res = &tex->dest.ssa;
+      res = &tex->def;
    }
 
    nir_store_var(&b, out, nir_trim_vector(&b, res, out_comps), 0xf);

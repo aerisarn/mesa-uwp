@@ -523,7 +523,7 @@ static void
 emit_tex(struct etna_compile *c, nir_tex_instr * tex)
 {
    unsigned dst_swiz;
-   hw_dst dst = ra_def(c, &tex->dest.ssa, &dst_swiz);
+   hw_dst dst = ra_def(c, &tex->def, &dst_swiz);
    nir_src *coord = NULL, *src1 = NULL, *src2 = NULL;
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
@@ -568,7 +568,7 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
       break;
    case nir_intrinsic_load_uniform: {
       unsigned dst_swiz;
-      struct etna_inst_dst dst = ra_def(c, &intr->dest.ssa, &dst_swiz);
+      struct etna_inst_dst dst = ra_def(c, &intr->def, &dst_swiz);
 
       /* TODO: rework so extra MOV isn't required, load up to 4 addresses at once */
       emit_inst(c, &(struct etna_inst) {
@@ -595,7 +595,7 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
       emit_inst(c, &(struct etna_inst) {
          .opcode = INST_OPCODE_LOAD,
          .type = INST_TYPE_U32,
-         .dst = ra_def(c, &intr->dest.ssa, &dst_swiz),
+         .dst = ra_def(c, &intr->def, &dst_swiz),
          .src[0] = get_src(c, &intr->src[1]),
          .src[1] = const_src(c, &CONST_VAL(ETNA_UNIFORM_UBO0_ADDR + idx, 0), 1),
       });
@@ -911,7 +911,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
          break;
       case nir_instr_type_intrinsic:
          if (nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_input) {
-            need_mov = vec_dest_has_swizzle(alu, &nir_instr_as_intrinsic(instr)->dest.ssa);
+            need_mov = vec_dest_has_swizzle(alu, &nir_instr_as_intrinsic(instr)->def);
             break;
          }
          FALLTHROUGH;
@@ -971,13 +971,13 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
                base += off[0].u32;
             nir_const_value value[4];
 
-            for (unsigned i = 0; i < intr->dest.ssa.num_components; i++)
+            for (unsigned i = 0; i < intr->def.num_components; i++)
                value[i] = UNIFORM(base * 4 + i);
 
             b.cursor = nir_after_instr(instr);
-            nir_def *def = nir_build_imm(&b, intr->dest.ssa.num_components, 32, value);
+            nir_def *def = nir_build_imm(&b, intr->def.num_components, 32, value);
 
-            nir_def_rewrite_uses(&intr->dest.ssa, def);
+            nir_def_rewrite_uses(&intr->def, def);
             nir_instr_remove(instr);
          } break;
          default:

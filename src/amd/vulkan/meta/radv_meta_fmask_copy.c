@@ -88,7 +88,7 @@ build_fmask_copy_compute_shader(struct radv_device *dev, int samples)
       nir_def *outval = nir_build_tex_deref_instr(&b, nir_texop_fragment_fetch_amd, nir_build_deref_var(&b, input_img),
                                                   NULL, ARRAY_SIZE(frag_fetch_srcs), frag_fetch_srcs);
 
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, dst_coord, sample_id, outval,
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, dst_coord, sample_id, outval,
                             nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_MS);
 
       radv_break_on_count(&b, counter, max_sample_index);

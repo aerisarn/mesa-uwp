@@ -58,7 +58,7 @@ build_expand_depth_stencil_compute_shader(struct radv_device *dev)
 
    nir_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
 
-   nir_def *data = nir_image_deref_load(&b, 4, 32, &nir_build_deref_var(&b, input_img)->dest.ssa, global_id,
+   nir_def *data = nir_image_deref_load(&b, 4, 32, &nir_build_deref_var(&b, input_img)->def, global_id,
                                         nir_undef(&b, 1, 32), nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
 
    /* We need a SCOPE_DEVICE memory_scope because ACO will avoid
@@ -68,7 +68,7 @@ build_expand_depth_stencil_compute_shader(struct radv_device *dev)
    nir_barrier(&b, .execution_scope = SCOPE_WORKGROUP, .memory_scope = SCOPE_DEVICE,
                .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_ssbo);
 
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, global_id, nir_undef(&b, 1, 32), data,
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, global_id, nir_undef(&b, 1, 32), data,
                          nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
    return b.shader;
 }

@@ -350,7 +350,7 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
    case nir_intrinsic_load_tess_level_outer_default:
    case nir_intrinsic_load_tess_level_inner_default: {
       nir_def *buf = si_nir_load_internal_binding(b, args, SI_HS_CONST_DEFAULT_TESS_LEVELS, 4);
-      unsigned num_components = intrin->dest.ssa.num_components;
+      unsigned num_components = intrin->def.num_components;
       unsigned offset =
          intrin->intrinsic == nir_intrinsic_load_tess_level_inner_default ? 16 : 0;
       replacement = nir_load_ubo(b, num_components, 32, buf, nir_imm_int(b, offset),
@@ -709,7 +709,7 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
    }
 
    if (replacement)
-      nir_def_rewrite_uses(&intrin->dest.ssa, replacement);
+      nir_def_rewrite_uses(&intrin->def, replacement);
 
    nir_instr_remove(instr);
    nir_instr_free(instr);

@@ -270,7 +270,7 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    unsigned bitsize = intr->intrinsic == nir_intrinsic_store_global
                          ? nir_src_bit_size(intr->src[0])
-                         : intr->dest.ssa.bit_size;
+                         : intr->def.bit_size;
    enum pipe_format format = format_for_bitsize(bitsize);
    unsigned format_shift = util_logbase2(util_format_get_blocksize(format));
 
@@ -311,8 +311,8 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    nir_def *repl = NULL;
    bool has_dest = (intr->intrinsic != nir_intrinsic_store_global);
-   unsigned num_components = has_dest ? intr->dest.ssa.num_components : 0;
-   unsigned bit_size = has_dest ? intr->dest.ssa.bit_size : 0;
+   unsigned num_components = has_dest ? intr->def.num_components : 0;
+   unsigned bit_size = has_dest ? intr->def.bit_size : 0;
 
    if (intr->intrinsic == nir_intrinsic_load_global) {
       repl =
@@ -344,7 +344,7 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    }
 
    if (repl)
-      nir_def_rewrite_uses(&intr->dest.ssa, repl);
+      nir_def_rewrite_uses(&intr->def, repl);
 
    nir_instr_remove(instr);
    return true;

@@ -402,7 +402,7 @@ lower_sampler_parameters(nir_builder *b, nir_instr *instr, UNUSED void *data)
    };
 
    b->cursor = nir_after_instr(instr);
-   nir_def_rewrite_uses(&intr->dest.ssa, nir_build_imm(b, 3, 32, constants));
+   nir_def_rewrite_uses(&intr->def, nir_build_imm(b, 3, 32, constants));
    return true;
 }
 
@@ -557,10 +557,10 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
 
             tex->src[2] =
                nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
-            nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+            nir_def_init(&tex->instr, &tex->def, 4, 32);
             nir_builder_instr_insert(&b, &tex->instr);
 
-            res = res ? nir_fadd(&b, res, &tex->dest.ssa) : &tex->dest.ssa;
+            res = res ? nir_fadd(&b, res, &tex->def) : &tex->def;
          }
 
          if (base_type == nir_type_float)
@@ -592,9 +592,9 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
             tex->coord_components = coord_comps;
          }
 
-         nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+         nir_def_init(&tex->instr, &tex->def, 4, 32);
          nir_builder_instr_insert(&b, &tex->instr);
-         res = &tex->dest.ssa;
+         res = &tex->def;
       }
 
       assert(res);

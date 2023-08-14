@@ -55,7 +55,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
       return false;
    }
 
-   unsigned bit_size = intr->dest.ssa.bit_size;
+   unsigned bit_size = intr->def.bit_size;
    if (bit_size >= 32)
       return false;
 
@@ -70,15 +70,15 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
 
    nir_src *src_offset = nir_get_io_offset_src(intr);
    nir_def *offset = src_offset->ssa;
-   nir_def *result = &intr->dest.ssa;
+   nir_def *result = &intr->def;
 
    /* Change the load to 32 bits per channel, update the channel count,
     * and increase the declared load alignment.
     */
-   intr->dest.ssa.bit_size = 32;
+   intr->def.bit_size = 32;
 
    if (align_mul == 4 && align_offset == 0) {
-      intr->num_components = intr->dest.ssa.num_components =
+      intr->num_components = intr->def.num_components =
          DIV_ROUND_UP(num_components, comp_per_dword);
 
       /* Aligned loads. Just bitcast the vector and trim it if there are
@@ -87,7 +87,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
       b->cursor = nir_after_instr(instr);
       result = nir_extract_bits(b, &result, 1, 0, num_components, bit_size);
 
-      nir_def_rewrite_uses_after(&intr->dest.ssa, result,
+      nir_def_rewrite_uses_after(&intr->def, result,
                                      result->parent_instr);
       return true;
    }
@@ -95,7 +95,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
    /* Multi-component unaligned loads may straddle the dword boundary.
     * E.g. for 2 components, we need to load an extra dword, and so on.
     */
-   intr->num_components = intr->dest.ssa.num_components =
+   intr->num_components = intr->def.num_components =
       DIV_ROUND_UP(4 - align_mul + align_offset + num_components * component_size, 4);
 
    nir_intrinsic_set_align(intr,
@@ -121,7 +121,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
       result = nir_extract_bits(b, &result, 1, comp_offset * bit_size,
                                 num_components, bit_size);
 
-      nir_def_rewrite_uses_after(&intr->dest.ssa, result,
+      nir_def_rewrite_uses_after(&intr->def, result,
                                      result->parent_instr);
       return true;
    }
@@ -203,7 +203,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
    result = nir_vec(b, elems, intr->num_components);
    result = nir_extract_bits(b, &result, 1, 0, num_components, bit_size);
 
-   nir_def_rewrite_uses_after(&intr->dest.ssa, result,
+   nir_def_rewrite_uses_after(&intr->def, result,
                                   result->parent_instr);
    return true;
 }

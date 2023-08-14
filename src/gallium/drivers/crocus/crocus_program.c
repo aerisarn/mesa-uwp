@@ -467,7 +467,7 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
          case nir_intrinsic_load_base_workgroup_id: {
             /* GL doesn't have a concept of base workgroup */
             b.cursor = nir_instr_remove(&intrin->instr);
-            nir_def_rewrite_uses(&intrin->dest.ssa,
+            nir_def_rewrite_uses(&intrin->def,
                                      nir_imm_zero(&b, 3, 32));
             continue;
          }
@@ -491,13 +491,13 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
             nir_intrinsic_set_align(load_ubo, 4, 0);
             nir_intrinsic_set_range_base(load_ubo, 0);
             nir_intrinsic_set_range(load_ubo, ~0);
-            nir_def_init(&load_ubo->instr, &load_ubo->dest.ssa,
-                         intrin->dest.ssa.num_components,
-                         intrin->dest.ssa.bit_size);
+            nir_def_init(&load_ubo->instr, &load_ubo->def,
+                         intrin->def.num_components,
+                         intrin->def.bit_size);
             nir_builder_instr_insert(&b, &load_ubo->instr);
 
-            nir_def_rewrite_uses(&intrin->dest.ssa,
-                                     &load_ubo->dest.ssa);
+            nir_def_rewrite_uses(&intrin->def,
+                                     &load_ubo->def);
             nir_instr_remove(&intrin->instr);
             continue;
          }
@@ -631,10 +631,10 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
          nir_intrinsic_set_align(load, 4, 0);
          nir_intrinsic_set_range_base(load, 0);
          nir_intrinsic_set_range(load, ~0);
-         nir_def_init(&load->instr, &load->dest.ssa, comps, 32);
+         nir_def_init(&load->instr, &load->def, comps, 32);
          nir_builder_instr_insert(&b, &load->instr);
-         nir_def_rewrite_uses(&intrin->dest.ssa,
-                                  &load->dest.ssa);
+         nir_def_rewrite_uses(&intrin->def,
+                                  &load->def);
          nir_instr_remove(instr);
       }
    }
@@ -984,13 +984,13 @@ crocus_setup_binding_table(const struct intel_device_info *devinfo,
                enum gfx6_gather_sampler_wa wa = key->gfx6_gather_wa[tex->texture_index];
                int width = (wa & WA_8BIT) ? 8 : 16;
 
-               nir_def *val = nir_fmul_imm(&b, &tex->dest.ssa, (1 << width) - 1);
+               nir_def *val = nir_fmul_imm(&b, &tex->def, (1 << width) - 1);
                val = nir_f2u32(&b, val);
                if (wa & WA_SIGN) {
                   val = nir_ishl_imm(&b, val, 32 - width);
                   val = nir_ishr_imm(&b, val, 32 - width);
                }
-               nir_def_rewrite_uses_after(&tex->dest.ssa, val, val->parent_instr);
+               nir_def_rewrite_uses_after(&tex->def, val, val->parent_instr);
             }
 
             tex->texture_index =

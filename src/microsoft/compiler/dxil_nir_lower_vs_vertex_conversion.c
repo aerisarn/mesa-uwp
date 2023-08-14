@@ -111,11 +111,11 @@ lower_vs_vertex_conversion_impl(nir_builder *b, nir_instr *instr, void *options)
              fmt == PIPE_FORMAT_R8G8B8_UINT ||
              fmt == PIPE_FORMAT_R16G16B16_SINT ||
              fmt == PIPE_FORMAT_R16G16B16_UINT);
-      if (intr->dest.ssa.num_components == 3)
+      if (intr->def.num_components == 3)
          return NULL;
-      return nir_vector_insert_imm(b, &intr->dest.ssa, nir_imm_int(b, 1), 3);
+      return nir_vector_insert_imm(b, &intr->def, nir_imm_int(b, 1), 3);
    } else {
-      nir_def *src = nir_channel(b, &intr->dest.ssa, 0);
+      nir_def *src = nir_channel(b, &intr->def, 0);
 
       switch (fmt) {
       case PIPE_FORMAT_R10G10B10A2_SNORM:
@@ -134,10 +134,10 @@ lower_vs_vertex_conversion_impl(nir_builder *b, nir_instr *instr, void *options)
          return from_10_10_10_2_scaled(b, src, lshift_bgra(b), nir_ushr);
       case PIPE_FORMAT_R8G8B8A8_USCALED:
       case PIPE_FORMAT_R16G16B16A16_USCALED:
-         return nir_u2f32(b, &intr->dest.ssa);
+         return nir_u2f32(b, &intr->def);
       case PIPE_FORMAT_R8G8B8A8_SSCALED:
       case PIPE_FORMAT_R16G16B16A16_SSCALED:
-         return nir_i2f32(b, &intr->dest.ssa);
+         return nir_i2f32(b, &intr->def);
 
       default:
          unreachable("Unsupported emulated vertex format");

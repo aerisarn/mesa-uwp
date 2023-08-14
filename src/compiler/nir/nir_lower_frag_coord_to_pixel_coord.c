@@ -27,7 +27,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *data)
    nir_def *vec = nir_vec4(b, nir_channel(b, xy, 0), nir_channel(b, xy, 1),
                            nir_load_frag_coord_zw(b, .component = 2),
                            nir_load_frag_coord_zw(b, .component = 3));
-   nir_def_rewrite_uses(&intr->dest.ssa, vec);
+   nir_def_rewrite_uses(&intr->def, vec);
    return true;
 }
 

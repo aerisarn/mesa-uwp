@@ -409,7 +409,7 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
 
-   assert(nir_def_components_read(&instr->dest.ssa) ==
+   assert(nir_def_components_read(&instr->def) ==
              nir_component_mask(components) &&
           "iter does not handle write-after-write hazards");
 
@@ -519,7 +519,7 @@ agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
    b->shader->did_writeout = true;
    b->shader->out->reads_tib = true;
 
-   unsigned nr_comps = instr->dest.ssa.num_components;
+   unsigned nr_comps = instr->def.num_components;
    agx_ld_tile_to(b, dest, agx_src_index(&instr->src[0]),
                   agx_format_for_pipe(nir_intrinsic_format(instr)),
                   BITFIELD_MASK(nr_comps), nir_intrinsic_base(instr));
@@ -539,8 +539,8 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
       offset = agx_abs(offset);
 
    agx_device_load_to(b, dest, addr, offset, fmt,
-                      BITFIELD_MASK(instr->dest.ssa.num_components), shift, 0);
-   agx_emit_cached_split(b, dest, instr->dest.ssa.num_components);
+                      BITFIELD_MASK(instr->def.num_components), shift, 0);
+   agx_emit_cached_split(b, dest, instr->def.num_components);
 }
 
 static void
@@ -566,7 +566,7 @@ agx_emit_load_preamble(agx_builder *b, agx_index dst,
                        nir_intrinsic_instr *instr)
 {
    agx_index srcs[4] = {agx_null()};
-   unsigned dim = instr->dest.ssa.num_components;
+   unsigned dim = instr->def.num_components;
    assert(dim <= ARRAY_SIZE(srcs) && "shouldn't see larger vectors");
 
    unsigned base = nir_intrinsic_base(instr);
@@ -642,8 +642,8 @@ static agx_instr *
 agx_load_compute_dimension(agx_builder *b, agx_index dst,
                            nir_intrinsic_instr *instr, enum agx_sr base)
 {
-   unsigned dim = instr->dest.ssa.num_components;
-   unsigned size = instr->dest.ssa.bit_size;
+   unsigned dim = instr->def.num_components;
+   unsigned size = instr->def.bit_size;
    assert(size == 16 || size == 32);
 
    agx_index srcs[] = {
@@ -738,8 +738,8 @@ agx_emit_local_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
    agx_index index = agx_zero(); /* TODO: optimize address arithmetic */
    assert(base.size == AGX_SIZE_16);
 
-   enum agx_format format = format_for_bitsize(instr->dest.ssa.bit_size);
-   unsigned nr = instr->dest.ssa.num_components;
+   enum agx_format format = format_for_bitsize(instr->def.bit_size);
+   unsigned nr = instr->def.num_components;
    unsigned mask = BITFIELD_MASK(nr);
 
    agx_local_load_to(b, dst, base, index, format, mask);
@@ -874,7 +874,7 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
    agx_instr *I = agx_image_load_to(
       b, tmp, coords, lod, bindless, texture, agx_txf_sampler(b->shader),
       agx_null(), agx_tex_dim(dim, is_array), lod_mode, 0, 0, false);
-   I->mask = agx_expand_tex_to(b, &intr->dest.ssa, tmp, true);
+   I->mask = agx_expand_tex_to(b, &intr->def, tmp, true);
    return NULL;
 }
 
@@ -936,7 +936,7 @@ static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
    agx_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest
-                      ? agx_def_index(&instr->dest.ssa)
+                      ? agx_def_index(&instr->def)
                       : agx_null();
    gl_shader_stage stage = b->shader->stage;
 
@@ -1663,7 +1663,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       }
    }
 
-   agx_index dst = agx_def_index(&instr->dest.ssa);
+   agx_index dst = agx_def_index(&instr->def);
 
    /* Pack shadow reference value (compare) and packed offset together */
    agx_index compare_offset = agx_null();
@@ -1690,7 +1690,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
     * textureGatherOffsets. Don't try to mask the destination for gathers.
     */
    bool masked = (instr->op != nir_texop_tg4);
-   I->mask = agx_expand_tex_to(b, &instr->dest.ssa, tmp, masked);
+   I->mask = agx_expand_tex_to(b, &instr->def, tmp, masked);
 }
 
 /*
@@ -1754,8 +1754,8 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 static void
 agx_emit_phi(agx_builder *b, nir_phi_instr *instr)
 {
-   agx_instr *I = agx_phi_to(b, agx_def_index(&instr->dest.ssa),
-                             exec_list_length(&instr->srcs));
+   agx_instr *I =
+      agx_phi_to(b, agx_def_index(&instr->def), exec_list_length(&instr->srcs));
 
    /* Deferred */
    I->phi = instr;
@@ -1776,7 +1776,7 @@ agx_emit_phi_deferred(agx_context *ctx, agx_block *block, agx_instr *I)
    nir_phi_instr *phi = I->phi;
 
    /* Guaranteed by lower_phis_to_scalar */
-   assert(phi->dest.ssa.num_components == 1);
+   assert(phi->def.num_components == 1);
 
    nir_foreach_phi_src(src, phi) {
       agx_block *pred = agx_from_nir_block(ctx, src->pred);
@@ -2125,7 +2125,7 @@ agx_lower_front_face(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    if (intr->intrinsic != nir_intrinsic_load_front_face)
       return false;
 
-   nir_def *def = &intr->dest.ssa;
+   nir_def *def = &intr->def;
    assert(def->bit_size == 1);
 
    b->cursor = nir_before_instr(&intr->instr);

@@ -257,10 +257,10 @@ optimize_atomic(nir_builder *b, nir_intrinsic_instr *intrin, bool return_prev)
    if (return_prev) {
       nir_push_else(b, nif);
 
-      nir_def *undef = nir_undef(b, 1, intrin->dest.ssa.bit_size);
+      nir_def *undef = nir_undef(b, 1, intrin->def.bit_size);
 
       nir_pop_if(b, nif);
-      nir_def *result = nir_if_phi(b, &intrin->dest.ssa, undef);
+      nir_def *result = nir_if_phi(b, &intrin->def, undef);
       result = nir_read_first_invocation(b, result);
 
       if (!combined_scan_reduce)
@@ -282,13 +282,13 @@ optimize_and_rewrite_atomic(nir_builder *b, nir_intrinsic_instr *intrin)
       helper_nif = nir_push_if(b, nir_inot(b, helper));
    }
 
-   ASSERTED bool original_result_divergent = intrin->dest.ssa.divergent;
-   bool return_prev = !nir_def_is_unused(&intrin->dest.ssa);
+   ASSERTED bool original_result_divergent = intrin->def.divergent;
+   bool return_prev = !nir_def_is_unused(&intrin->def);
 
-   nir_def old_result = intrin->dest.ssa;
-   list_replace(&intrin->dest.ssa.uses, &old_result.uses);
-   nir_def_init(&intrin->instr, &intrin->dest.ssa, 1,
-                intrin->dest.ssa.bit_size);
+   nir_def old_result = intrin->def;
+   list_replace(&intrin->def.uses, &old_result.uses);
+   nir_def_init(&intrin->instr, &intrin->def, 1,
+                intrin->def.bit_size);
 
    nir_def *result = optimize_atomic(b, intrin, return_prev);
 

@@ -116,7 +116,7 @@ nir_lower_interpolation_instr(nir_builder *b, nir_instr *instr, void *cb_data)
       comps[i] = val;
    }
    nir_def *vec = nir_vec(b, comps, intr->num_components);
-   nir_def_rewrite_uses(&intr->dest.ssa, vec);
+   nir_def_rewrite_uses(&intr->def, vec);
 
    return true;
 }

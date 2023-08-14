@@ -40,8 +40,8 @@ gather_intrinsic_load_input_info(const nir_shader *nir, const nir_intrinsic_inst
    case MESA_SHADER_VERTEX: {
       unsigned idx = nir_intrinsic_io_semantics(instr).location;
       unsigned component = nir_intrinsic_component(instr);
-      unsigned mask = nir_def_components_read(&instr->dest.ssa);
-      mask = (instr->dest.ssa.bit_size == 64 ? util_widen_mask(mask, 2) : mask) << component;
+      unsigned mask = nir_def_components_read(&instr->def);
+      mask = (instr->def.bit_size == 64 ? util_widen_mask(mask, 2) : mask) << component;
 
       info->vs.input_usage_mask[idx] |= mask & 0xf;
       if (mask >> 4)
@@ -115,9 +115,9 @@ gather_push_constant_info(const nir_shader *nir, const nir_intrinsic_instr *inst
 {
    info->loads_push_constants = true;
 
-   if (nir_src_is_const(instr->src[0]) && instr->dest.ssa.bit_size >= 32) {
+   if (nir_src_is_const(instr->src[0]) && instr->def.bit_size >= 32) {
       uint32_t start = (nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[0])) / 4u;
-      uint32_t size = instr->num_components * (instr->dest.ssa.bit_size / 32u);
+      uint32_t size = instr->num_components * (instr->def.bit_size / 32u);
 
       if (start + size <= (MAX_PUSH_CONSTANTS_SIZE / 4u)) {
          info->inline_push_constant_mask |= u_bit_consecutive64(start, size);
@@ -179,7 +179,7 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr, s
       break;
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_workgroup_id: {
-      unsigned mask = nir_def_components_read(&instr->dest.ssa);
+      unsigned mask = nir_def_components_read(&instr->def);
       while (mask) {
          unsigned i = u_bit_scan(&mask);
 
@@ -191,10 +191,10 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr, s
       break;
    }
    case nir_intrinsic_load_frag_coord:
-      info->ps.reads_frag_coord_mask |= nir_def_components_read(&instr->dest.ssa);
+      info->ps.reads_frag_coord_mask |= nir_def_components_read(&instr->def);
       break;
    case nir_intrinsic_load_sample_pos:
-      info->ps.reads_sample_pos_mask |= nir_def_components_read(&instr->dest.ssa);
+      info->ps.reads_sample_pos_mask |= nir_def_components_read(&instr->def);
       break;
    case nir_intrinsic_load_push_constant:
       gather_push_constant_info(nir, instr, info);

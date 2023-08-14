@@ -972,7 +972,7 @@ print_deref_instr(nir_deref_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
-   print_def(&instr->dest.ssa, state);
+   print_def(&instr->def, state);
 
    switch (instr->deref_type) {
    case nir_deref_type_var:
@@ -1096,7 +1096,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
    FILE *fp = state->fp;
 
    if (info->has_dest) {
-      print_def(&instr->dest.ssa, state);
+      print_def(&instr->def, state);
       fprintf(fp, " = ");
    } else {
       print_no_dest_padding(state);
@@ -1540,7 +1540,7 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
-   print_def(&instr->dest.ssa, state);
+   print_def(&instr->def, state);
 
    fprintf(fp, " = (");
    print_alu_type(instr->dest_type, state);
@@ -1795,7 +1795,7 @@ static void
 print_phi_instr(nir_phi_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
-   print_def(&instr->dest.ssa, state);
+   print_def(&instr->def, state);
    fprintf(fp, " = phi ");
    nir_foreach_phi_src(src, instr) {
       if (&src->node != exec_list_get_head(&instr->srcs))
@@ -1818,7 +1818,7 @@ print_parallel_copy_instr(nir_parallel_copy_instr *instr, print_state *state)
          fprintf(fp, "*");
          print_src(&entry->dest.reg, state, nir_type_invalid);
       } else {
-         print_def(&entry->dest.dest.ssa, state);
+         print_def(&entry->dest.def, state);
       }
       fprintf(fp, " = ");
 

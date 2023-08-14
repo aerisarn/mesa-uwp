@@ -76,10 +76,10 @@ nir_lower_fb_read_instr(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
                                      nir_imm_intN_t(b, io.location - FRAG_RESULT_DATA0, 32));
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
 
-   nir_def_rewrite_uses(&intr->dest.ssa, &tex->dest.ssa);
+   nir_def_rewrite_uses(&intr->def, &tex->def);
 
    return true;
 }

@@ -47,7 +47,7 @@ opt_memcpy_deref_cast(nir_intrinsic_instr *cpy, nir_src *deref_src)
    if (cast->type == glsl_int8_t_type() ||
        cast->type == glsl_uint8_t_type()) {
       nir_instr_rewrite_src(&cpy->instr, deref_src,
-                            nir_src_for_ssa(&parent->dest.ssa));
+                            nir_src_for_ssa(&parent->def));
       return true;
    }
 
@@ -65,7 +65,7 @@ opt_memcpy_deref_cast(nir_intrinsic_instr *cpy, nir_src *deref_src)
       return false;
 
    nir_instr_rewrite_src(&cpy->instr, deref_src,
-                         nir_src_for_ssa(&parent->dest.ssa));
+                         nir_src_for_ssa(&parent->def));
    return true;
 }
 
@@ -185,7 +185,7 @@ try_lower_memcpy(nir_builder *b, nir_intrinsic_instr *cpy,
        type_is_tightly_packed(dst->type, &type_size) &&
        type_size == size) {
       b->cursor = nir_instr_remove(&cpy->instr);
-      src = nir_build_deref_cast(b, &src->dest.ssa,
+      src = nir_build_deref_cast(b, &src->def,
                                  src->modes, dst->type, 0);
       nir_copy_deref_with_access(b, dst, src,
                                  nir_intrinsic_dst_access(cpy),
@@ -205,7 +205,7 @@ try_lower_memcpy(nir_builder *b, nir_intrinsic_instr *cpy,
        _mesa_set_search(complex_vars, dst->var) == NULL &&
        glsl_get_explicit_size(dst->type, false) <= size) {
       b->cursor = nir_instr_remove(&cpy->instr);
-      src = nir_build_deref_cast(b, &src->dest.ssa,
+      src = nir_build_deref_cast(b, &src->def,
                                  src->modes, dst->type, 0);
       nir_copy_deref_with_access(b, dst, src,
                                  nir_intrinsic_dst_access(cpy),
@@ -217,7 +217,7 @@ try_lower_memcpy(nir_builder *b, nir_intrinsic_instr *cpy,
        type_is_tightly_packed(src->type, &type_size) &&
        type_size == size) {
       b->cursor = nir_instr_remove(&cpy->instr);
-      dst = nir_build_deref_cast(b, &dst->dest.ssa,
+      dst = nir_build_deref_cast(b, &dst->def,
                                  dst->modes, src->type, 0);
       nir_copy_deref_with_access(b, dst, src,
                                  nir_intrinsic_dst_access(cpy),

@@ -128,7 +128,7 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       coord_components++;
 
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &deref->dest.ssa);
+                                     &deref->def);
 
    if (options->per_variable) {
       assert(nir_deref_instr_get_variable(deref));
@@ -148,7 +148,7 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       assert(num_srcs == 3);
 
       tex->dest_type = nir_intrinsic_dest_type(intrin);
-      nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
       break;
    }
 
@@ -159,7 +159,7 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       assert(num_srcs == 2);
 
       tex->dest_type = nir_type_uint32;
-      nir_def_init(&tex->instr, &tex->dest.ssa, coord_components, 32);
+      nir_def_init(&tex->instr, &tex->def, coord_components, 32);
       break;
    }
 
@@ -169,10 +169,10 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   nir_def *res = nir_trim_vector(b, &tex->dest.ssa,
-                                  intrin->dest.ssa.num_components);
+   nir_def *res = nir_trim_vector(b, &tex->def,
+                                  intrin->def.num_components);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, res);
+   nir_def_rewrite_uses(&intrin->def, res);
    nir_instr_remove(&intrin->instr);
 
    return true;

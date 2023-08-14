@@ -54,8 +54,8 @@ brw_nir_lower_load_uniforms_impl(nir_builder *b, nir_instr *instr,
 
    /* Read the first few 32-bit scalars from InlineData. */
    if (nir_src_is_const(intrin->src[0]) &&
-       intrin->dest.ssa.bit_size == 32 &&
-       intrin->dest.ssa.num_components == 1) {
+       intrin->def.bit_size == 32 &&
+       intrin->def.num_components == 1) {
       unsigned off = nir_intrinsic_base(intrin) + nir_src_as_uint(intrin->src[0]);
       unsigned off_dw = off / 4;
       if (off % 4 == 0 && off_dw < BRW_TASK_MESH_PUSH_CONSTANTS_SIZE_DW) {
@@ -1383,7 +1383,7 @@ brw_pack_primitive_indices_instr(nir_builder *b, nir_instr *instr, void *data)
                        nir_ishl_imm(b, nir_channel(b, data_def, 2), 16));
    }
 
-   nir_build_store_deref(b, &new_array_deref->dest.ssa, new_data);
+   nir_build_store_deref(b, &new_array_deref->def, new_data);
 
    nir_instr_remove(instr);
 
@@ -1777,9 +1777,9 @@ static void
 emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
                       const fs_reg &dest, fs_reg urb_handle)
 {
-   assert(instr->dest.ssa.bit_size == 32);
+   assert(instr->def.bit_size == 32);
 
-   unsigned comps = instr->dest.ssa.num_components;
+   unsigned comps = instr->def.num_components;
    if (comps == 0)
       return;
 
@@ -1819,9 +1819,9 @@ static void
 emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
                         const fs_reg &dest, const fs_reg &offset_src, fs_reg urb_handle)
 {
-   assert(instr->dest.ssa.bit_size == 32);
+   assert(instr->def.bit_size == 32);
 
-   unsigned comps = instr->dest.ssa.num_components;
+   unsigned comps = instr->def.num_components;
    if (comps == 0)
       return;
 
@@ -1914,7 +1914,7 @@ void
 fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *instr,
                                 const fs_reg &urb_handle)
 {
-   fs_reg dest = get_nir_def(instr->dest.ssa);
+   fs_reg dest = get_nir_def(instr->def);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
 
    /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
@@ -1991,7 +1991,7 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_def(instr->dest.ssa);
+      dest = get_nir_def(instr->def);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_mesh_inline_data_intel: {

@@ -275,7 +275,7 @@ nir_lower_multiview(nir_shader *shader, uint32_t view_mask)
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_view_index: {
-            nir_def_rewrite_uses(&intrin->dest.ssa, view_index);
+            nir_def_rewrite_uses(&intrin->def, view_index);
             break;
          }
 
@@ -285,7 +285,7 @@ nir_lower_multiview(nir_shader *shader, uint32_t view_mask)
                nir_deref_instr *old_deref = nir_src_as_deref(intrin->src[0]);
 
                nir_instr_rewrite_src(instr, &intrin->src[0],
-                                     nir_src_for_ssa(&pos_deref->dest.ssa));
+                                     nir_src_for_ssa(&pos_deref->def));
 
                /* Remove old deref since it has the wrong type. */
                nir_deref_instr_remove_if_unused(old_deref);

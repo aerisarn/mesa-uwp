@@ -204,13 +204,13 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
    nir_op op = INVALID_OP;
 
    /* If the phi has already been narrowed, nothing more to do: */
-   if (phi->dest.ssa.bit_size != 32)
+   if (phi->def.bit_size != 32)
       return false;
 
    /* Are the only uses of the phi conversion instructions, and
     * are they all the same conversion?
     */
-   nir_foreach_use_including_if(use, &phi->dest.ssa) {
+   nir_foreach_use_including_if(use, &phi->def) {
       /* an if use means the phi is used directly in a conditional, ie.
        * without a conversion
        */
@@ -230,8 +230,8 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
 
    /* construct replacement phi instruction: */
    nir_phi_instr *new_phi = nir_phi_instr_create(b->shader);
-   nir_def_init(&new_phi->instr, &new_phi->dest.ssa,
-                phi->dest.ssa.num_components,
+   nir_def_init(&new_phi->instr, &new_phi->def,
+                phi->def.num_components,
                 nir_alu_type_get_type_size(nir_op_infos[op].output_type));
 
    /* Push the conversion into the new phi sources: */
@@ -249,14 +249,14 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
     * directly use the new phi, skipping the conversion out of the orig
     * phi
     */
-   nir_foreach_use(use, &phi->dest.ssa) {
+   nir_foreach_use(use, &phi->def) {
       /* We've previously established that all the uses were alu
        * conversion ops.  Turn them into movs instead.
        */
       nir_alu_instr *alu = nir_instr_as_alu(use->parent_instr);
       alu->op = nir_op_mov;
    }
-   nir_def_rewrite_uses(&phi->dest.ssa, &new_phi->dest.ssa);
+   nir_def_rewrite_uses(&phi->def, &new_phi->def);
 
    /* And finally insert the new phi after all sources are in place: */
    b->cursor = nir_after_instr(&phi->instr);
@@ -363,7 +363,7 @@ static bool
 try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
 {
    /* If the phi has already been narrowed, nothing more to do: */
-   if (phi->dest.ssa.bit_size != 32)
+   if (phi->def.bit_size != 32)
       return false;
 
    unsigned bit_size;
@@ -374,8 +374,8 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
 
    /* construct replacement phi instruction: */
    nir_phi_instr *new_phi = nir_phi_instr_create(b->shader);
-   nir_def_init(&new_phi->instr, &new_phi->dest.ssa,
-                phi->dest.ssa.num_components, bit_size);
+   nir_def_init(&new_phi->instr, &new_phi->def,
+                phi->def.num_components, bit_size);
 
    /* Remove the widening conversions from the phi sources: */
    nir_foreach_phi_src(src, phi) {
@@ -419,9 +419,9 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
     * and re-write the original phi's uses
     */
    b->cursor = nir_after_instr_and_phis(&new_phi->instr);
-   nir_def *def = nir_build_alu(b, op, &new_phi->dest.ssa, NULL, NULL, NULL);
+   nir_def *def = nir_build_alu(b, op, &new_phi->def, NULL, NULL, NULL);
 
-   nir_def_rewrite_uses(&phi->dest.ssa, def);
+   nir_def_rewrite_uses(&phi->def, def);
 
    return true;
 }

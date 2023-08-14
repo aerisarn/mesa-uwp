@@ -98,7 +98,7 @@ r600_nir_lower_scratch_address_impl(nir_builder *b, nir_intrinsic_instr *instr)
       align = instr->src[0].ssa->num_components;
       address_index = 1;
    } else {
-      align = instr->dest.ssa.num_components;
+      align = instr->def.num_components;
    }
 
    nir_def *address = instr->src[address_index].ssa;
@@ -337,7 +337,7 @@ private:
 
       nir_intrinsic_set_base(intr, new_base);
       nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(new_bufid->ssa));
-      return &intr->dest.ssa;
+      return &intr->def;
    }
 };
 
@@ -521,7 +521,7 @@ r600_lower_shared_io_impl(nir_function_impl *impl)
          if (op->intrinsic == nir_intrinsic_load_shared) {
             nir_def *addr = op->src[0].ssa;
 
-            switch (op->dest.ssa.num_components) {
+            switch (op->def.num_components) {
             case 2: {
                auto addr2 = nir_iadd_imm(&b, addr, 4);
                addr = nir_vec2(&b, addr, addr2);
@@ -541,11 +541,11 @@ r600_lower_shared_io_impl(nir_function_impl *impl)
 
             auto load =
                nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_local_shared_r600);
-            load->num_components = op->dest.ssa.num_components;
+            load->num_components = op->def.num_components;
             load->src[0] = nir_src_for_ssa(addr);
-            nir_def_init(&load->instr, &load->dest.ssa, load->num_components,
+            nir_def_init(&load->instr, &load->def, load->num_components,
                          32);
-            nir_def_rewrite_uses(&op->dest.ssa, &load->dest.ssa);
+            nir_def_rewrite_uses(&op->def, &load->def);
             nir_builder_instr_insert(&b, &load->instr);
          } else {
             nir_def *addr = op->src[1].ssa;
@@ -595,8 +595,8 @@ r600_lower_fs_pos_input_impl(nir_builder *b, nir_instr *instr, void *_options)
    (void)_options;
    auto old_ir = nir_instr_as_intrinsic(instr);
    auto load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_input);
-   nir_def_init(&load->instr, &load->dest.ssa,
-                old_ir->dest.ssa.num_components, old_ir->dest.ssa.bit_size);
+   nir_def_init(&load->instr, &load->def,
+                old_ir->def.num_components, old_ir->def.bit_size);
    nir_intrinsic_set_io_semantics(load, nir_intrinsic_io_semantics(old_ir));
 
    nir_intrinsic_set_base(load, nir_intrinsic_base(old_ir));
@@ -605,7 +605,7 @@ r600_lower_fs_pos_input_impl(nir_builder *b, nir_instr *instr, void *_options)
    load->num_components = old_ir->num_components;
    load->src[0] = old_ir->src[1];
    nir_builder_instr_insert(b, &load->instr);
-   return &load->dest.ssa;
+   return &load->def;
 }
 
 bool

@@ -85,7 +85,7 @@ remove_phis_block(nir_block *block, nir_builder *b)
           * still dominate the phi node, and the phi will still always take
           * the value of that definition.
           */
-         if (src->src.ssa == &phi->dest.ssa)
+         if (src->src.ssa == &phi->def)
             continue;
 
          if (def == NULL) {
@@ -109,8 +109,8 @@ remove_phis_block(nir_block *block, nir_builder *b)
          /* In this case, the phi had no sources. So turn it into an undef. */
 
          b->cursor = nir_after_phis(block);
-         def = nir_undef(b, phi->dest.ssa.num_components,
-                         phi->dest.ssa.bit_size);
+         def = nir_undef(b, phi->def.num_components,
+                         phi->def.bit_size);
       } else if (mov) {
          /* If the sources were all movs from the same source with the same
           * swizzle, then we can't just pick a random move because it may not
@@ -124,7 +124,7 @@ remove_phis_block(nir_block *block, nir_builder *b)
          def = nir_mov_alu(b, mov->src[0], def->num_components);
       }
 
-      nir_def_rewrite_uses(&phi->dest.ssa, def);
+      nir_def_rewrite_uses(&phi->def, def);
       nir_instr_remove(&phi->instr);
 
       progress = true;

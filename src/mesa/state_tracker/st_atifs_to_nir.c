@@ -360,16 +360,16 @@ compile_setupinst(struct st_translate *t,
          glsl_get_sampler_dim_coordinate_components(tex->sampler_dim);
 
       tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                        &tex_deref->dest.ssa);
+                                        &tex_deref->def);
       tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                        &tex_deref->dest.ssa);
+                                        &tex_deref->def);
       tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                         nir_trim_vector(t->b, coord, tex->coord_components));
 
-      nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(t->b, &tex->instr);
 
-      t->temps[r] = &tex->dest.ssa;
+      t->temps[r] = &tex->def;
    } else if (texinst->Opcode == ATI_FRAGMENT_SHADER_PASS_OP) {
       t->temps[r] = coord;
    }

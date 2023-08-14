@@ -326,10 +326,10 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
    }
 
    nir_def *uniform =
-      nir_load_uniform(b, instr->num_components, instr->dest.ssa.bit_size,
+      nir_load_uniform(b, instr->num_components, instr->def.bit_size,
                        uniform_offset, .base = const_offset);
 
-   nir_def_rewrite_uses(&instr->dest.ssa, uniform);
+   nir_def_rewrite_uses(&instr->def, uniform);
 
    nir_instr_remove(&instr->instr);
 
@@ -594,7 +594,7 @@ ir3_nir_lower_load_const_instr(nir_builder *b, nir_instr *in_instr, void *data)
    }
 
    unsigned num_components = instr->num_components;
-   if (instr->dest.ssa.bit_size == 16) {
+   if (instr->def.bit_size == 16) {
       /* We can't do 16b loads -- either from LDC (32-bit only in any of our
        * traces, and disasm that doesn't look like it really supports it) or
        * from the constant file (where CONSTANT_DEMOTION_ENABLE means we get
@@ -614,7 +614,7 @@ ir3_nir_lower_load_const_instr(nir_builder *b, nir_instr *in_instr, void *data)
                    .align_offset = nir_intrinsic_align_offset(instr),
                    .range_base = base, .range = nir_intrinsic_range(instr));
 
-   if (instr->dest.ssa.bit_size == 16) {
+   if (instr->def.bit_size == 16) {
       result = nir_bitcast_vector(b, result, 16);
       result = nir_trim_vector(b, result, instr->num_components);
    }

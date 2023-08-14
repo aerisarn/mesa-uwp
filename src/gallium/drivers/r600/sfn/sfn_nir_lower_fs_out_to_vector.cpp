@@ -428,7 +428,7 @@ NirLowerFSOutToVector::create_new_io(nir_builder *b,
    nir_deref_instr *deref = nir_build_deref_var(b, var);
    deref = clone_deref_array(b, deref, nir_src_as_deref(intr->src[0]));
 
-   new_intr->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+   new_intr->src[0] = nir_src_for_ssa(&deref->def);
    new_intr->src[1] =
       nir_src_for_ssa(create_combined_vector(b, srcs, first_comp, num_comps));
 

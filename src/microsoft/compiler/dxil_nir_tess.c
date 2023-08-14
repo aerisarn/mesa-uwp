@@ -223,10 +223,10 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
             continue;
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
          if (intr->intrinsic != nir_intrinsic_load_invocation_id ||
-             list_is_empty(&intr->dest.ssa.uses) ||
-             list_is_singular(&intr->dest.ssa.uses))
+             list_is_empty(&intr->def.uses) ||
+             list_is_singular(&intr->def.uses))
             continue;
-         nir_foreach_use_including_if_safe(src, &intr->dest.ssa) {
+         nir_foreach_use_including_if_safe(src, &intr->def) {
             b.cursor = nir_before_src(src);
             nir_src_rewrite(src, nir_load_invocation_id(&b));
          }
@@ -254,7 +254,7 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
                b.cursor = state.begin_cursor = get_cursor_for_instr_without_cf(instr);
                start_tcs_loop(&b, &state, loop_var_deref);
             }
-            nir_def_rewrite_uses(&intr->dest.ssa, state.count);
+            nir_def_rewrite_uses(&intr->def, state.count);
             break;
          }
          case nir_intrinsic_barrier:
@@ -312,8 +312,8 @@ remove_tess_level_accesses(nir_builder *b, nir_instr *instr, void *_data)
       nir_instr_remove(instr);
    } else {
       b->cursor = nir_after_instr(instr);
-      assert(intr->dest.ssa.num_components == 1);
-      nir_def_rewrite_uses(&intr->dest.ssa, nir_undef(b, 1, intr->dest.ssa.bit_size));
+      assert(intr->def.num_components == 1);
+      nir_def_rewrite_uses(&intr->def, nir_undef(b, 1, intr->def.bit_size));
    }
    return true;
 }

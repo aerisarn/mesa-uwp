@@ -234,7 +234,7 @@ lower_locals_to_regs_block(nir_block *block,
                                        loc.reg, .base = loc.base_offset);
          }
 
-         nir_def_rewrite_uses(&intrin->dest.ssa, value);
+         nir_def_rewrite_uses(&intrin->def, value);
          nir_instr_remove(&intrin->instr);
          state->progress = true;
          break;

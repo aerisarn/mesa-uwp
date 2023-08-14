@@ -703,9 +703,9 @@ lower_load_accel_struct_desc(nir_builder *b,
    /* Acceleration structure descriptors are always uint64_t */
    nir_def *desc = build_load_descriptor_mem(b, desc_addr, 0, 1, 64, state);
 
-   assert(load_desc->dest.ssa.bit_size == 64);
-   assert(load_desc->dest.ssa.num_components == 1);
-   nir_def_rewrite_uses(&load_desc->dest.ssa, desc);
+   assert(load_desc->def.bit_size == 64);
+   assert(load_desc->def.num_components == 1);
+   nir_def_rewrite_uses(&load_desc->def, desc);
    nir_instr_remove(&load_desc->instr);
 
    return true;
@@ -753,9 +753,9 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                          intrin->src[0].ssa,
                          addr_format, state);
 
-   assert(intrin->dest.ssa.bit_size == index->bit_size);
-   assert(intrin->dest.ssa.num_components == index->num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, index);
+   assert(intrin->def.bit_size == index->bit_size);
+   assert(intrin->def.num_components == index->num_components);
+   nir_def_rewrite_uses(&intrin->def, index);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -775,9 +775,9 @@ lower_res_reindex_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                            intrin->src[1].ssa,
                            addr_format);
 
-   assert(intrin->dest.ssa.bit_size == index->bit_size);
-   assert(intrin->dest.ssa.num_components == index->num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, index);
+   assert(intrin->def.bit_size == index->bit_size);
+   assert(intrin->def.num_components == index->num_components);
+   nir_def_rewrite_uses(&intrin->def, index);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -796,9 +796,9 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       build_buffer_addr_for_res_index(b, desc_type, intrin->src[0].ssa,
                                       addr_format, state);
 
-   assert(intrin->dest.ssa.bit_size == desc->bit_size);
-   assert(intrin->dest.ssa.num_components == desc->num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+   assert(intrin->def.bit_size == desc->bit_size);
+   assert(intrin->def.num_components == desc->num_components);
+   nir_def_rewrite_uses(&intrin->def, desc);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -824,7 +824,7 @@ lower_get_ssbo_size(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_address_format_64bit_global_32bit_offset:
    case nir_address_format_64bit_bounded_global: {
       nir_def *size = nir_channel(b, desc, 2);
-      nir_def_rewrite_uses(&intrin->dest.ssa, size);
+      nir_def_rewrite_uses(&intrin->def, size);
       nir_instr_remove(&intrin->instr);
       break;
    }
@@ -871,10 +871,10 @@ lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
       nir_def *desc =
          build_load_var_deref_descriptor_mem(b, deref, param * 16,
-                                             intrin->dest.ssa.num_components,
-                                             intrin->dest.ssa.bit_size, state);
+                                             intrin->def.num_components,
+                                             intrin->def.bit_size, state);
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+      nir_def_rewrite_uses(&intrin->def, desc);
    } else {
       nir_def *index = NULL;
       if (deref->deref_type != nir_deref_type_var) {
@@ -906,9 +906,9 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_def *data;
    if (!anv_use_relocations(state->pdevice)) {
-      unsigned load_size = intrin->dest.ssa.num_components *
-                           intrin->dest.ssa.bit_size / 8;
-      unsigned load_align = intrin->dest.ssa.bit_size / 8;
+      unsigned load_size = intrin->def.num_components *
+                           intrin->def.bit_size / 8;
+      unsigned load_align = intrin->def.bit_size / 8;
 
       assert(load_size < b->shader->constant_data_size);
       unsigned max_offset = b->shader->constant_data_size - load_size;
@@ -921,20 +921,20 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
       data = nir_load_global_constant(b, nir_iadd(b, const_data_base_addr,
                                                      nir_u2u64(b, offset)),
                                       load_align,
-                                      intrin->dest.ssa.num_components,
-                                      intrin->dest.ssa.bit_size);
+                                      intrin->def.num_components,
+                                      intrin->def.bit_size);
    } else {
       nir_def *index = nir_imm_int(b, state->constants_offset);
 
-      data = nir_load_ubo(b, intrin->num_components, intrin->dest.ssa.bit_size,
+      data = nir_load_ubo(b, intrin->num_components, intrin->def.bit_size,
                           index, offset,
-                          .align_mul = intrin->dest.ssa.bit_size / 8,
+                          .align_mul = intrin->def.bit_size / 8,
                           .align_offset =  0,
                           .range_base = nir_intrinsic_base(intrin),
                           .range = nir_intrinsic_range(intrin));
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, data);
+   nir_def_rewrite_uses(&intrin->def, data);
 
    return true;
 }
@@ -949,7 +949,7 @@ lower_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_load_push_constant(b, 3, 32, nir_imm_int(b, 0),
                              .base = offsetof(struct anv_push_constants, cs.base_work_group_id),
                              .range = 3 * sizeof(uint32_t));
-   nir_def_rewrite_uses(&intrin->dest.ssa, base_workgroup_id);
+   nir_def_rewrite_uses(&intrin->def, base_workgroup_id);
 
    return true;
 }
@@ -1114,8 +1114,8 @@ lower_gfx7_tex_swizzle(nir_builder *b, nir_tex_instr *tex, unsigned plane,
 
    b->cursor = nir_after_instr(&tex->instr);
 
-   assert(tex->dest.ssa.bit_size == 32);
-   assert(tex->dest.ssa.num_components == 4);
+   assert(tex->def.bit_size == 32);
+   assert(tex->def.num_components == 4);
 
    /* Initializing to undef is ok; nir_opt_undef will clean it up. */
    nir_def *undef = nir_undef(b, 1, 32);
@@ -1128,10 +1128,10 @@ lower_gfx7_tex_swizzle(nir_builder *b, nir_tex_instr *tex, unsigned plane,
       comps[ISL_CHANNEL_SELECT_ONE] = nir_imm_float(b, 1);
    else
       comps[ISL_CHANNEL_SELECT_ONE] = nir_imm_int(b, 1);
-   comps[ISL_CHANNEL_SELECT_RED] = nir_channel(b, &tex->dest.ssa, 0);
-   comps[ISL_CHANNEL_SELECT_GREEN] = nir_channel(b, &tex->dest.ssa, 1);
-   comps[ISL_CHANNEL_SELECT_BLUE] = nir_channel(b, &tex->dest.ssa, 2);
-   comps[ISL_CHANNEL_SELECT_ALPHA] = nir_channel(b, &tex->dest.ssa, 3);
+   comps[ISL_CHANNEL_SELECT_RED] = nir_channel(b, &tex->def, 0);
+   comps[ISL_CHANNEL_SELECT_GREEN] = nir_channel(b, &tex->def, 1);
+   comps[ISL_CHANNEL_SELECT_BLUE] = nir_channel(b, &tex->def, 2);
+   comps[ISL_CHANNEL_SELECT_ALPHA] = nir_channel(b, &tex->def, 3);
 
    nir_def *swiz_comps[4];
    for (unsigned i = 0; i < 4; i++) {
@@ -1141,7 +1141,7 @@ lower_gfx7_tex_swizzle(nir_builder *b, nir_tex_instr *tex, unsigned plane,
    nir_def *swiz_tex_res = nir_vec(b, swiz_comps, 4);
 
    /* Rewrite uses before we insert so we don't rewrite this use */
-   nir_def_rewrite_uses_after(&tex->dest.ssa,
+   nir_def_rewrite_uses_after(&tex->def,
                                   swiz_tex_res,
                                   swiz_tex_res->parent_instr);
 }

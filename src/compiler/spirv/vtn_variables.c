@@ -249,13 +249,13 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
    nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, var->mode));
 
    nir_address_format addr_format = vtn_mode_to_address_format(b, var->mode);
-   nir_def_init(&instr->instr, &instr->dest.ssa,
+   nir_def_init(&instr->instr, &instr->def,
                 nir_address_format_num_components(addr_format),
                 nir_address_format_bit_size(addr_format));
-   instr->num_components = instr->dest.ssa.num_components;
+   instr->num_components = instr->def.num_components;
    nir_builder_instr_insert(&b->nb, &instr->instr);
 
-   return &instr->dest.ssa;
+   return &instr->def;
 }
 
 static nir_def *
@@ -272,13 +272,13 @@ vtn_resource_reindex(struct vtn_builder *b, enum vtn_variable_mode mode,
    nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, mode));
 
    nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
-   nir_def_init(&instr->instr, &instr->dest.ssa,
+   nir_def_init(&instr->instr, &instr->def,
                 nir_address_format_num_components(addr_format),
                 nir_address_format_bit_size(addr_format));
-   instr->num_components = instr->dest.ssa.num_components;
+   instr->num_components = instr->def.num_components;
    nir_builder_instr_insert(&b->nb, &instr->instr);
 
-   return &instr->dest.ssa;
+   return &instr->def;
 }
 
 static nir_def *
@@ -294,13 +294,13 @@ vtn_descriptor_load(struct vtn_builder *b, enum vtn_variable_mode mode,
    nir_intrinsic_set_desc_type(desc_load, vk_desc_type_for_mode(b, mode));
 
    nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
-   nir_def_init(&desc_load->instr, &desc_load->dest.ssa,
+   nir_def_init(&desc_load->instr, &desc_load->def,
                 nir_address_format_num_components(addr_format),
                 nir_address_format_bit_size(addr_format));
-   desc_load->num_components = desc_load->dest.ssa.num_components;
+   desc_load->num_components = desc_load->def.num_components;
    nir_builder_instr_insert(&b->nb, &desc_load->instr);
 
-   return &desc_load->dest.ssa;
+   return &desc_load->def;
 }
 
 static struct vtn_pointer *
@@ -432,9 +432,9 @@ vtn_pointer_dereference(struct vtn_builder *b,
       assert(base->var && base->var->var);
       tail = nir_build_deref_var(&b->nb, base->var->var);
       if (base->ptr_type && base->ptr_type->type) {
-         tail->dest.ssa.num_components =
+         tail->def.num_components =
             glsl_get_vector_elements(base->ptr_type->type);
-         tail->dest.ssa.bit_size = glsl_get_bit_size(base->ptr_type->type);
+         tail->def.bit_size = glsl_get_bit_size(base->ptr_type->type);
       }
    }
 
@@ -442,11 +442,11 @@ vtn_pointer_dereference(struct vtn_builder *b,
       /* We start with a deref cast to get the stride.  Hopefully, we'll be
        * able to delete that cast eventually.
        */
-      tail = nir_build_deref_cast(&b->nb, &tail->dest.ssa, tail->modes,
+      tail = nir_build_deref_cast(&b->nb, &tail->def, tail->modes,
                                   tail->type, base->ptr_type->stride);
 
       nir_def *index = vtn_access_link_as_ssa(b, deref_chain->link[0], 1,
-                                                  tail->dest.ssa.bit_size);
+                                                  tail->def.bit_size);
       tail = nir_build_deref_ptr_as_array(&b->nb, tail, index);
       idx++;
    }
@@ -460,7 +460,7 @@ vtn_pointer_dereference(struct vtn_builder *b,
       } else {
          nir_def *arr_index =
             vtn_access_link_as_ssa(b, deref_chain->link[idx], 1,
-                                   tail->dest.ssa.bit_size);
+                                   tail->def.bit_size);
          tail = nir_build_deref_array(&b->nb, tail, arr_index);
          type = type->array_element;
       }
@@ -1784,7 +1784,7 @@ vtn_pointer_to_ssa(struct vtn_builder *b, struct vtn_pointer *ptr)
 
       return ptr->block_index;
    } else {
-      return &vtn_pointer_to_deref(b, ptr)->dest.ssa;
+      return &vtn_pointer_to_deref(b, ptr)->def;
    }
 }
 
@@ -1833,9 +1833,9 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_def *ssa,
        */
       ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
                                         deref_type, ptr_type->stride);
-      ptr->deref->dest.ssa.num_components =
+      ptr->deref->def.num_components =
          glsl_get_vector_elements(ptr_type->type);
-      ptr->deref->dest.ssa.bit_size = glsl_get_bit_size(ptr_type->type);
+      ptr->deref->def.bit_size = glsl_get_bit_size(ptr_type->type);
    }
 
    return ptr;
@@ -2773,9 +2773,9 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                                nir_address_format_bit_size(addr_format),
                                nir_address_format_null_value(addr_format));
 
-      nir_def *valid = nir_build_deref_mode_is(&b->nb, 1, &src_deref->dest.ssa, nir_mode);
+      nir_def *valid = nir_build_deref_mode_is(&b->nb, 1, &src_deref->def, nir_mode);
       vtn_push_nir_ssa(b, w[2], nir_bcsel(&b->nb, valid,
-                                                  &src_deref->dest.ssa,
+                                                  &src_deref->def,
                                                   null_value));
       break;
    }
@@ -2797,13 +2797,13 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       nir_deref_instr *src_deref = vtn_nir_deref(b, w[3]);
 
       nir_def *global_bit =
-         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, 1, &src_deref->dest.ssa,
+         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, 1, &src_deref->def,
                                                    nir_var_mem_global),
                    nir_imm_int(&b->nb, SpvMemorySemanticsCrossWorkgroupMemoryMask),
                    nir_imm_int(&b->nb, 0));
 
       nir_def *shared_bit =
-         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, 1, &src_deref->dest.ssa,
+         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, 1, &src_deref->def,
                                                    nir_var_mem_shared),
                    nir_imm_int(&b->nb, SpvMemorySemanticsWorkgroupMemoryMask),
                    nir_imm_int(&b->nb, 0));
@@ -2819,12 +2819,12 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_instr *load =
          nir_intrinsic_instr_create(b->nb.shader,
                                     nir_intrinsic_load_deref_block_intel);
-      load->src[0] = nir_src_for_ssa(&src->dest.ssa);
-      nir_def_init_for_type(&load->instr, &load->dest.ssa, res_type->type);
-      load->num_components = load->dest.ssa.num_components;
+      load->src[0] = nir_src_for_ssa(&src->def);
+      nir_def_init_for_type(&load->instr, &load->def, res_type->type);
+      load->num_components = load->def.num_components;
       nir_builder_instr_insert(&b->nb, &load->instr);
 
-      vtn_push_nir_ssa(b, w[2], &load->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &load->def);
       break;
    }
 
@@ -2835,7 +2835,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_instr *store =
          nir_intrinsic_instr_create(b->nb.shader,
                                     nir_intrinsic_store_deref_block_intel);
-      store->src[0] = nir_src_for_ssa(&dest->dest.ssa);
+      store->src[0] = nir_src_for_ssa(&dest->def);
       store->src[1] = nir_src_for_ssa(data);
       store->num_components = data->num_components;
       nir_builder_instr_insert(&b->nb, &store->instr);

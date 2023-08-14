@@ -43,7 +43,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
    if (write) {
       assert(intr->num_components == intr->src[0].ssa->num_components);
    } else {
-      assert(intr->num_components == intr->dest.ssa.num_components);
+      assert(intr->num_components == intr->def.num_components);
    }
 
    if (location == VARYING_SLOT_TESS_LEVEL_INNER) {
@@ -65,14 +65,14 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
             nir_def *y = nir_channel(b, intr->src[0].ssa, 1);
             src = nir_vec4(b, undef, undef, y, x);
             mask = !!(mask & WRITEMASK_X) << 3 | !!(mask & WRITEMASK_Y) << 2;
-         } else if (intr->dest.ssa.num_components > 1) {
-            assert(intr->dest.ssa.num_components == 2);
+         } else if (intr->def.num_components > 1) {
+            assert(intr->def.num_components == 2);
 
             intr->num_components = 4;
-            intr->dest.ssa.num_components = 4;
+            intr->def.num_components = 4;
 
             unsigned wz[2] = { 3, 2 };
-            dest = nir_swizzle(b, &intr->dest.ssa, wz, 2);
+            dest = nir_swizzle(b, &intr->def, wz, 2);
          } else {
             nir_intrinsic_set_component(intr, 3 - component);
          }
@@ -112,11 +112,11 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
             /* Don't overwrite the inner factor at DWord 4 for triangles */
             if (_primitive_mode == TESS_PRIMITIVE_TRIANGLES)
                mask &= ~WRITEMASK_X;
-         } else if (intr->dest.ssa.num_components > 1) {
-            assert(intr->dest.ssa.num_components == 4);
+         } else if (intr->def.num_components > 1) {
+            assert(intr->def.num_components == 4);
 
             unsigned wzyx[4] = { 3, 2, 1, 0 };
-            dest = nir_swizzle(b, &intr->dest.ssa, wzyx, 4);
+            dest = nir_swizzle(b, &intr->def, wzyx, 4);
          } else {
             nir_intrinsic_set_component(intr, 3 - component);
             out_of_bounds = component == 3 &&
@@ -147,7 +147,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
 
    if (out_of_bounds) {
       if (!write)
-         nir_def_rewrite_uses(&intr->dest.ssa, nir_undef(b, 1, 32));
+         nir_def_rewrite_uses(&intr->def, nir_undef(b, 1, 32));
       nir_instr_remove(&intr->instr);
    } else if (write) {
       nir_intrinsic_set_write_mask(intr, mask);
@@ -157,7 +157,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
                                nir_src_for_ssa(src));
       }
    } else if (dest) {
-      nir_def_rewrite_uses_after(&intr->dest.ssa, dest,
+      nir_def_rewrite_uses_after(&intr->def, dest,
                                      dest->parent_instr);
    }
 
@@ -328,11 +328,11 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                }
 
                load->num_components = 1;
-               nir_def_init(&load->instr, &load->dest.ssa, 1, 32);
+               nir_def_init(&load->instr, &load->def, 1, 32);
                nir_builder_instr_insert(&b, &load->instr);
 
-               nir_def_rewrite_uses(&intrin->dest.ssa,
-                                        &load->dest.ssa);
+               nir_def_rewrite_uses(&intrin->def,
+                                        &load->def);
                nir_instr_remove(&intrin->instr);
                break;
             }
@@ -456,7 +456,7 @@ lower_barycentric_per_sample(nir_builder *b,
    nir_def *centroid =
       nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
                            nir_intrinsic_interp_mode(intrin));
-   nir_def_rewrite_uses(&intrin->dest.ssa, centroid);
+   nir_def_rewrite_uses(&intrin->def, centroid);
    nir_instr_remove(instr);
    return true;
 }
@@ -849,7 +849,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
           * to do if we were trying to do it in native 8-bit types and the
           * results are the same once we truncate to 8 bits at the end.
           */
-         if (intrin->dest.ssa.bit_size == 8)
+         if (intrin->def.bit_size == 8)
             return 16;
          return 0;
 
@@ -861,7 +861,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
 
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      if (phi->dest.ssa.bit_size == 8)
+      if (phi->def.bit_size == 8)
          return 16;
       return 0;
    }
@@ -1077,7 +1077,7 @@ brw_nir_zero_inputs_instr(struct nir_builder *b, nir_instr *instr, void *data)
 
    nir_def *zero = nir_imm_zero(b, 1, 32);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, zero);
+   nir_def_rewrite_uses(&intrin->def, zero);
 
    nir_instr_remove(instr);
 
@@ -2053,7 +2053,7 @@ brw_nir_load_global_const(nir_builder *b, nir_intrinsic_instr *load_uniform,
 {
    assert(load_uniform->intrinsic == nir_intrinsic_load_uniform);
 
-   unsigned bit_size = load_uniform->dest.ssa.bit_size;
+   unsigned bit_size = load_uniform->def.bit_size;
    assert(bit_size >= 8 && bit_size % 8 == 0);
    unsigned byte_size = bit_size / 8;
    nir_def *sysval;

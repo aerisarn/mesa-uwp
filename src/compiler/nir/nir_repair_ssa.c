@@ -126,11 +126,11 @@ repair_ssa_def(nir_def *def, void *void_state)
          cast->parent = nir_src_for_ssa(block_def);
          cast->cast.ptr_stride = nir_deref_instr_array_stride(deref);
 
-         nir_def_init(&cast->instr, &cast->dest.ssa, def->num_components,
+         nir_def_init(&cast->instr, &cast->def, def->num_components,
                       def->bit_size);
          nir_instr_insert(nir_before_instr(src->parent_instr),
                           &cast->instr);
-         block_def = &cast->dest.ssa;
+         block_def = &cast->def;
       }
 
       if (src->is_if)

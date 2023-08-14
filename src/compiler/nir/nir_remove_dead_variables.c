@@ -30,7 +30,7 @@
 static bool
 deref_used_for_not_store(nir_deref_instr *deref)
 {
-   nir_foreach_use(src, &deref->dest.ssa) {
+   nir_foreach_use(src, &deref->def) {
       switch (src->parent_instr->type) {
       case nir_instr_type_deref:
          if (deref_used_for_not_store(nir_instr_as_deref(src->parent_instr)))

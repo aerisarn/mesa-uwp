@@ -58,7 +58,7 @@ lower_nv_task_output(nir_builder *b,
       nir_def *load =
          nir_load_shared(b, 1, 32, nir_imm_int(b, 0),
                          .base = s->task_count_shared_addr);
-      nir_def_rewrite_uses(&intrin->dest.ssa, load);
+      nir_def_rewrite_uses(&intrin->def, load);
       nir_instr_remove(instr);
       return true;
    }
@@ -376,7 +376,7 @@ requires_payload_in_shared(nir_shader *shader, bool atomics, bool small_types)
                   return true;
                break;
             case nir_intrinsic_load_task_payload:
-               if (small_types && intrin->dest.ssa.bit_size < 32)
+               if (small_types && intrin->def.bit_size < 32)
                   return true;
                break;
             case nir_intrinsic_store_task_payload:

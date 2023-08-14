@@ -52,11 +52,11 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
          xy[i] = nir_fmul_imm(b, nir_u2f16(b, nibble), 1.0 / 16.0);
 
          /* Upconvert if necessary */
-         xy[i] = nir_f2fN(b, xy[i], intr->dest.ssa.bit_size);
+         xy[i] = nir_f2fN(b, xy[i], intr->def.bit_size);
       }
 
       /* Collect and rewrite */
-      nir_def_rewrite_uses(&intr->dest.ssa, nir_vec2(b, xy[0], xy[1]));
+      nir_def_rewrite_uses(&intr->def, nir_vec2(b, xy[0], xy[1]));
       nir_instr_remove(instr);
       return true;
    }
@@ -67,7 +67,7 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
        * by the sample ID to make that happen.
        */
       b->cursor = nir_after_instr(instr);
-      nir_def *old = &intr->dest.ssa;
+      nir_def *old = &intr->def;
       nir_def *lowered = mask_by_sample_id(b, old);
       nir_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
       return true;
@@ -78,10 +78,10 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
        * interpolateAtSample() with the sample ID
        */
       b->cursor = nir_after_instr(instr);
-      nir_def *old = &intr->dest.ssa;
+      nir_def *old = &intr->def;
 
       nir_def *lowered = nir_load_barycentric_at_sample(
-         b, intr->dest.ssa.bit_size, nir_load_sample_id(b),
+         b, intr->def.bit_size, nir_load_sample_id(b),
          .interp_mode = nir_intrinsic_interp_mode(intr));
 
       nir_def_rewrite_uses_after(old, lowered, lowered->parent_instr);

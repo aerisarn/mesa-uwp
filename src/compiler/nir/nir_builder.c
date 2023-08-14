@@ -256,11 +256,11 @@ nir_build_tex_deref_instr(nir_builder *build, nir_texop op,
 
    unsigned src_idx = 0;
    tex->src[src_idx++] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                             &texture->dest.ssa);
+                                             &texture->def);
    if (sampler != NULL) {
       assert(glsl_type_is_sampler(sampler->type));
       tex->src[src_idx++] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                                &sampler->dest.ssa);
+                                                &sampler->def);
    }
    for (unsigned i = 0; i < num_extra_srcs; i++) {
       switch (extra_srcs[i].src_type) {
@@ -304,11 +304,11 @@ nir_build_tex_deref_instr(nir_builder *build, nir_texop op,
    }
    assert(src_idx == num_srcs);
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, nir_tex_instr_dest_size(tex),
+   nir_def_init(&tex->instr, &tex->def, nir_tex_instr_dest_size(tex),
                 nir_alu_type_get_type_size(tex->dest_type));
    nir_builder_instr_insert(build, &tex->instr);
 
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 nir_def *
@@ -385,9 +385,9 @@ nir_load_system_value(nir_builder *build, nir_intrinsic_op op, int index,
       load->num_components = num_components;
    load->const_index[0] = index;
 
-   nir_def_init(&load->instr, &load->dest.ssa, num_components, bit_size);
+   nir_def_init(&load->instr, &load->def, num_components, bit_size);
    nir_builder_instr_insert(build, &load->instr);
-   return &load->dest.ssa;
+   return &load->def;
 }
 
 void
@@ -472,12 +472,12 @@ nir_if_phi(nir_builder *build, nir_def *then_def, nir_def *else_def)
 
    assert(then_def->num_components == else_def->num_components);
    assert(then_def->bit_size == else_def->bit_size);
-   nir_def_init(&phi->instr, &phi->dest.ssa, then_def->num_components,
+   nir_def_init(&phi->instr, &phi->def, then_def->num_components,
                 then_def->bit_size);
 
    nir_builder_instr_insert(build, &phi->instr);
 
-   return &phi->dest.ssa;
+   return &phi->def;
 }
 
 nir_loop *

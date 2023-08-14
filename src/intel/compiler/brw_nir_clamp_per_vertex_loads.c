@@ -102,7 +102,7 @@ lower_patch_vertices_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, nir_imm_int(b, *input_vertices));
+   nir_def_rewrite_uses(&intrin->def, nir_imm_int(b, *input_vertices));
 
    return true;
 }

@@ -48,7 +48,7 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
    output_img->data.access = ACCESS_NON_READABLE;
 
    nir_deref_instr *input_img_deref = nir_build_deref_var(&b, input_img);
-   nir_def *output_img_deref = &nir_build_deref_var(&b, output_img)->dest.ssa;
+   nir_def *output_img_deref = &nir_build_deref_var(&b, output_img)->def;
 
    nir_def *tex_coord = get_global_ids(&b, 3);
 

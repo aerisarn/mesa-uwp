@@ -163,7 +163,7 @@ blorp_create_nir_tex_instr(nir_builder *b, struct brw_blorp_blit_vars *v,
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, pos);
    tex->coord_components = 3;
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
 
    return tex;
 }
@@ -189,7 +189,7 @@ blorp_nir_tex(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 static nir_def *
@@ -204,7 +204,7 @@ blorp_nir_txf(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 static nir_def *
@@ -231,7 +231,7 @@ blorp_nir_txf_ms(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 static nir_def *
@@ -246,7 +246,7 @@ blorp_blit_txf_ms_mcs(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 /**

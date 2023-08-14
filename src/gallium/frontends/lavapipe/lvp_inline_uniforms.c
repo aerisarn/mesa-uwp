@@ -192,8 +192,8 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
                 nir_src_as_uint(intr->src[0]) == ubo &&
                 nir_src_is_const(intr->src[1]) &&
                 /* TODO: Can't handle other bit sizes for now. */
-                intr->dest.ssa.bit_size == 32) {
-               int num_components = intr->dest.ssa.num_components;
+                intr->def.bit_size == 32) {
+               int num_components = intr->def.num_components;
                uint32_t offset = nir_src_as_uint(intr->src[1]);
                const unsigned num_uniforms = shader->inlines.count[ubo];
                const unsigned *uniform_dw_offsets = shader->inlines.uniform_offsets[ubo];
@@ -204,7 +204,7 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
                      if (offset == uniform_dw_offsets[i]) {
                         b.cursor = nir_before_instr(&intr->instr);
                         nir_def *def = nir_imm_int(&b, uniform_values[i]);
-                        nir_def_rewrite_uses(&intr->dest.ssa, def);
+                        nir_def_rewrite_uses(&intr->def, def);
                         nir_instr_remove(&intr->instr);
                         break;
                      }
@@ -236,7 +236,7 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
                   for (unsigned i = 0; i < num_components; i++) {
                      if (!components[i]) {
                         uint32_t scalar_offset = (offset + i) * 4;
-                        components[i] = nir_load_ubo(&b, 1, intr->dest.ssa.bit_size,
+                        components[i] = nir_load_ubo(&b, 1, intr->def.bit_size,
                                                      intr->src[0].ssa,
                                                      nir_imm_int(&b, scalar_offset));
                         nir_intrinsic_instr *load =
@@ -248,7 +248,7 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
                   }
 
                   /* Replace the original uniform load. */
-                  nir_def_rewrite_uses(&intr->dest.ssa,
+                  nir_def_rewrite_uses(&intr->def,
                                            nir_vec(&b, components, num_components));
                   nir_instr_remove(&intr->instr);
                }

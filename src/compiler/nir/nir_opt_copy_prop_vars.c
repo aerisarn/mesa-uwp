@@ -727,7 +727,7 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
 
    if (available != (1 << num_components) - 1 &&
        intrin->intrinsic == nir_intrinsic_load_deref &&
-       (available & nir_def_components_read(&intrin->dest.ssa)) == 0) {
+       (available & nir_def_components_read(&intrin->def)) == 0) {
       /* If none of the components read are available as SSA values, then we
        * should just bail.  Otherwise, we would end up replacing the uses of
        * the load_deref a vecN() that just gathers up its components.
@@ -738,7 +738,7 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
    b->cursor = nir_after_instr(&intrin->instr);
 
    nir_def *load_def =
-      intrin->intrinsic == nir_intrinsic_load_deref ? &intrin->dest.ssa : NULL;
+      intrin->intrinsic == nir_intrinsic_load_deref ? &intrin->def : NULL;
 
    bool keep_intrin = false;
    nir_scalar comps[NIR_MAX_VEC_COMPONENTS];
@@ -1072,8 +1072,8 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
             /* Loading from an invalid index yields an undef */
             if (vec_index >= vec_comps) {
                b->cursor = nir_instr_remove(instr);
-               nir_def *u = nir_undef(b, 1, intrin->dest.ssa.bit_size);
-               nir_def_rewrite_uses(&intrin->dest.ssa, u);
+               nir_def *u = nir_undef(b, 1, intrin->def.bit_size);
+               nir_def_rewrite_uses(&intrin->def, u);
                state->progress = true;
                break;
             }
@@ -1097,25 +1097,25 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
                    * We need to be careful when rewriting uses so we don't
                    * rewrite the vecN itself.
                    */
-                  nir_def_rewrite_uses_after(&intrin->dest.ssa,
+                  nir_def_rewrite_uses_after(&intrin->def,
                                              value.ssa.def[0],
                                              value.ssa.def[0]->parent_instr);
                } else {
-                  nir_def_rewrite_uses(&intrin->dest.ssa,
+                  nir_def_rewrite_uses(&intrin->def,
                                        value.ssa.def[0]);
                }
             } else {
                /* We're turning it into a load of a different variable */
-               intrin->src[0] = nir_src_for_ssa(&value.deref.instr->dest.ssa);
+               intrin->src[0] = nir_src_for_ssa(&value.deref.instr->def);
 
                /* Put it back in again. */
                nir_builder_instr_insert(b, instr);
-               value_set_ssa_components(&value, &intrin->dest.ssa,
+               value_set_ssa_components(&value, &intrin->def,
                                         intrin->num_components);
             }
             state->progress = true;
          } else {
-            value_set_ssa_components(&value, &intrin->dest.ssa,
+            value_set_ssa_components(&value, &intrin->def,
                                      intrin->num_components);
          }
 
@@ -1248,7 +1248,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
                   continue;
 
                /* Just turn it into a copy of a different deref */
-               intrin->src[1] = nir_src_for_ssa(&value.deref.instr->dest.ssa);
+               intrin->src[1] = nir_src_for_ssa(&value.deref.instr->def);
 
                /* Put it back in again. */
                nir_builder_instr_insert(b, instr);

@@ -48,13 +48,13 @@ lower_load_store(nir_builder *b,
    size_align(deref->type, &size, &align);
 
    if (intrin->intrinsic == nir_intrinsic_load_deref) {
-      unsigned bit_size = intrin->dest.ssa.bit_size;
+      unsigned bit_size = intrin->def.bit_size;
       nir_def *value = nir_load_scratch(
          b, intrin->num_components, bit_size == 1 ? 32 : bit_size, offset, .align_mul = align);
       if (bit_size == 1)
          value = nir_b2b1(b, value);
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, value);
+      nir_def_rewrite_uses(&intrin->def, value);
    } else {
       assert(intrin->intrinsic == nir_intrinsic_store_deref);
 
@@ -73,7 +73,7 @@ lower_load_store(nir_builder *b,
 static bool
 only_used_for_load_store(nir_deref_instr *deref)
 {
-   nir_foreach_use(src, &deref->dest.ssa) {
+   nir_foreach_use(src, &deref->def) {
       if (!src->parent_instr)
          return false;
       if (src->parent_instr->type == nir_instr_type_deref) {

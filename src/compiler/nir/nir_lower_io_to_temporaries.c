@@ -198,7 +198,7 @@ emit_interp(nir_builder *b, nir_deref_instr **old_interp_deref,
    nir_intrinsic_instr *new_interp =
       nir_intrinsic_instr_create(b->shader, interp->intrinsic);
 
-   new_interp->src[0] = nir_src_for_ssa(&new_interp_deref->dest.ssa);
+   new_interp->src[0] = nir_src_for_ssa(&new_interp_deref->def);
    if (interp->intrinsic == nir_intrinsic_interp_deref_at_sample ||
        interp->intrinsic == nir_intrinsic_interp_deref_at_offset ||
        interp->intrinsic == nir_intrinsic_interp_deref_at_vertex) {
@@ -206,12 +206,12 @@ emit_interp(nir_builder *b, nir_deref_instr **old_interp_deref,
    }
 
    new_interp->num_components = interp->num_components;
-   nir_def_init(&new_interp->instr, &new_interp->dest.ssa,
-                interp->dest.ssa.num_components, interp->dest.ssa.bit_size);
+   nir_def_init(&new_interp->instr, &new_interp->def,
+                interp->def.num_components, interp->def.bit_size);
 
    nir_builder_instr_insert(b, &new_interp->instr);
-   nir_store_deref(b, temp_deref, &new_interp->dest.ssa,
-                   (1 << interp->dest.ssa.num_components) - 1);
+   nir_store_deref(b, temp_deref, &new_interp->def,
+                   (1 << interp->def.num_components) - 1);
 }
 
 static void
@@ -244,7 +244,7 @@ fixup_interpolation_instr(struct lower_io_state *state,
     * correct part of the temporary.
     */
    nir_def *load = nir_load_deref(b, nir_src_as_deref(interp->src[0]));
-   nir_def_rewrite_uses(&interp->dest.ssa, load);
+   nir_def_rewrite_uses(&interp->def, load);
    nir_instr_remove(&interp->instr);
 
    nir_deref_path_finish(&interp_path);

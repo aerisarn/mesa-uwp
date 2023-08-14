@@ -93,15 +93,15 @@ shrink_dest_to_read_mask(nir_def *def)
 static bool
 shrink_intrinsic_to_non_sparse(nir_intrinsic_instr *instr)
 {
-   unsigned mask = nir_def_components_read(&instr->dest.ssa);
+   unsigned mask = nir_def_components_read(&instr->def);
    int last_bit = util_last_bit(mask);
 
    /* If the sparse component is used, do nothing. */
-   if (last_bit == instr->dest.ssa.num_components)
+   if (last_bit == instr->def.num_components)
       return false;
 
-   instr->dest.ssa.num_components -= 1;
-   instr->num_components = instr->dest.ssa.num_components;
+   instr->def.num_components -= 1;
+   instr->num_components = instr->def.num_components;
 
    /* Switch to the non-sparse intrinsic. */
    switch (instr->intrinsic) {
@@ -302,10 +302,10 @@ opt_shrink_vectors_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       assert(instr->num_components != 0);
 
       /* Trim the dest to the used channels */
-      if (!shrink_dest_to_read_mask(&instr->dest.ssa))
+      if (!shrink_dest_to_read_mask(&instr->def))
          return false;
 
-      instr->num_components = instr->dest.ssa.num_components;
+      instr->num_components = instr->def.num_components;
       return true;
    }
    case nir_intrinsic_image_sparse_load:
@@ -323,14 +323,14 @@ opt_shrink_vectors_tex(nir_builder *b, nir_tex_instr *tex)
    if (!tex->is_sparse)
       return false;
 
-   unsigned mask = nir_def_components_read(&tex->dest.ssa);
+   unsigned mask = nir_def_components_read(&tex->def);
    int last_bit = util_last_bit(mask);
 
    /* If the sparse component is used, do nothing. */
-   if (last_bit == tex->dest.ssa.num_components)
+   if (last_bit == tex->def.num_components)
       return false;
 
-   tex->dest.ssa.num_components -= 1;
+   tex->def.num_components -= 1;
    tex->is_sparse = false;
 
    return true;
@@ -403,7 +403,7 @@ opt_shrink_vectors_ssa_undef(nir_undef_instr *instr)
 static bool
 opt_shrink_vectors_phi(nir_builder *b, nir_phi_instr *instr)
 {
-   nir_def *def = &instr->dest.ssa;
+   nir_def *def = &instr->def;
 
    /* early out if there's nothing to do. */
    if (def->num_components == 1)

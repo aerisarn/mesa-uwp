@@ -241,19 +241,19 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_invocation_id:
-      emit(MOV(get_nir_def(instr->dest.ssa, BRW_REGISTER_TYPE_UD),
+      emit(MOV(get_nir_def(instr->def, BRW_REGISTER_TYPE_UD),
                invocation_id));
       break;
    case nir_intrinsic_load_primitive_id:
       emit(TCS_OPCODE_GET_PRIMITIVE_ID,
-           get_nir_def(instr->dest.ssa, BRW_REGISTER_TYPE_UD));
+           get_nir_def(instr->def, BRW_REGISTER_TYPE_UD));
       break;
    case nir_intrinsic_load_patch_vertices_in:
-      emit(MOV(get_nir_def(instr->dest.ssa, BRW_REGISTER_TYPE_D),
+      emit(MOV(get_nir_def(instr->def, BRW_REGISTER_TYPE_D),
                brw_imm_d(key->input_vertices)));
       break;
    case nir_intrinsic_load_per_vertex_input: {
-      assert(instr->dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       src_reg indirect_offset = get_indirect_offset(instr);
       unsigned imm_offset = nir_intrinsic_base(instr);
 
@@ -261,7 +261,7 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                     BRW_REGISTER_TYPE_UD);
 
       unsigned first_component = nir_intrinsic_component(instr);
-      dst_reg dst = get_nir_def(instr->dest.ssa, BRW_REGISTER_TYPE_D);
+      dst_reg dst = get_nir_def(instr->def, BRW_REGISTER_TYPE_D);
       dst.writemask = brw_writemask_for_size(instr->num_components);
       emit_input_urb_read(dst, vertex_index, imm_offset,
                           first_component, indirect_offset);
@@ -275,7 +275,7 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       src_reg indirect_offset = get_indirect_offset(instr);
       unsigned imm_offset = nir_intrinsic_base(instr);
 
-      dst_reg dst = get_nir_def(instr->dest.ssa, BRW_REGISTER_TYPE_D);
+      dst_reg dst = get_nir_def(instr->def, BRW_REGISTER_TYPE_D);
       dst.writemask = brw_writemask_for_size(instr->num_components);
 
       emit_output_urb_read(dst, imm_offset, nir_intrinsic_component(instr),

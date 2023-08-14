@@ -155,11 +155,11 @@ lower_load_push_constant(struct tu_device *dev,
 
    nir_def *load =
       nir_load_uniform(b, instr->num_components,
-            instr->dest.ssa.bit_size,
+            instr->def.bit_size,
             nir_ushr_imm(b, instr->src[0].ssa, 2),
             .base = base);
 
-   nir_def_rewrite_uses(&instr->dest.ssa, load);
+   nir_def_rewrite_uses(&instr->def, load);
 
    nir_instr_remove(&instr->instr);
 }
@@ -217,7 +217,7 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
                                         nir_ishl(b, vulkan_idx, shift)),
                                shift);
 
-   nir_def_rewrite_uses(&instr->dest.ssa, def);
+   nir_def_rewrite_uses(&instr->def, def);
    nir_instr_remove(&instr->instr);
 }
 
@@ -234,7 +234,7 @@ lower_vulkan_resource_reindex(nir_builder *b, nir_intrinsic_instr *instr)
                         nir_ishl(b, delta, shift)),
                shift);
 
-   nir_def_rewrite_uses(&instr->dest.ssa, new_index);
+   nir_def_rewrite_uses(&instr->def, new_index);
    nir_instr_remove(&instr->instr);
 }
 
@@ -249,7 +249,7 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin)
       nir_vec3(b, nir_channel(b, old_index, 0),
                nir_channel(b, old_index, 1),
                nir_imm_int(b, 0));
-   nir_def_rewrite_uses(&intrin->dest.ssa, new_index);
+   nir_def_rewrite_uses(&intrin->def, new_index);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -282,7 +282,7 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
    if (dev->physical_device->info->a6xx.storage_16bit &&
        intrin->intrinsic == nir_intrinsic_load_ssbo &&
        (nir_intrinsic_access(intrin) & ACCESS_CAN_REORDER) &&
-       intrin->dest.ssa.bit_size > 16) {
+       intrin->def.bit_size > 16) {
       descriptor_idx = nir_iadd_imm(b, descriptor_idx, 1);
    }
 
@@ -320,10 +320,10 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
       }
 
       if (info->has_dest) {
-         nir_def_init(&copy->instr, &copy->dest.ssa,
-                      intrin->dest.ssa.num_components,
-                      intrin->dest.ssa.bit_size);
-         results[i] = &copy->dest.ssa;
+         nir_def_init(&copy->instr, &copy->def,
+                      intrin->def.num_components,
+                      intrin->def.bit_size);
+         results[i] = &copy->def;
       }
 
       nir_builder_instr_insert(b, &copy->instr);
@@ -333,7 +333,7 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
    }
 
    nir_def *result =
-      nir_undef(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
+      nir_undef(b, intrin->def.num_components, intrin->def.bit_size);
    for (int i = MAX_SETS; i >= 0; i--) {
       nir_pop_if(b, NULL);
       if (info->has_dest)
@@ -341,7 +341,7 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
    }
 
    if (info->has_dest)
-      nir_def_rewrite_uses(&intrin->dest.ssa, result);
+      nir_def_rewrite_uses(&intrin->def, result);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -522,9 +522,9 @@ lower_tex_ycbcr(const struct tu_pipeline_layout *layout,
    nir_def *result = nir_convert_ycbcr_to_rgb(builder,
                                                   ycbcr_sampler->ycbcr_model,
                                                   ycbcr_sampler->ycbcr_range,
-                                                  &tex->dest.ssa,
+                                                  &tex->def,
                                                   bpcs);
-   nir_def_rewrite_uses_after(&tex->dest.ssa, result,
+   nir_def_rewrite_uses_after(&tex->def, result,
                                   result->parent_instr);
 
    builder->cursor = nir_before_instr(&tex->instr);
@@ -629,9 +629,9 @@ lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
       /* Assume we're loading out-of-bounds from a 0-sized inline uniform
        * filtered out below.
        */
-      nir_def_rewrite_uses(&intrin->dest.ssa,
+      nir_def_rewrite_uses(&intrin->def,
                                nir_undef(b, intrin->num_components,
-                                             intrin->dest.ssa.bit_size));
+                                             intrin->def.bit_size));
       return true;
    }
 
@@ -644,15 +644,15 @@ lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
       nir_def *base_addr =
          nir_load_uniform(b, 2, 32, nir_imm_int(b, 0), .base = base);
       val = nir_load_global_ir3(b, intrin->num_components,
-                                intrin->dest.ssa.bit_size,
+                                intrin->def.bit_size,
                                 base_addr, nir_ishr_imm(b, offset, 2));
    } else {
       val = nir_load_uniform(b, intrin->num_components,
-                             intrin->dest.ssa.bit_size,
+                             intrin->def.bit_size,
                              nir_ishr_imm(b, offset, 2), .base = base);
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, val);
+   nir_def_rewrite_uses(&intrin->def, val);
    nir_instr_remove(instr);
    return true;
 }

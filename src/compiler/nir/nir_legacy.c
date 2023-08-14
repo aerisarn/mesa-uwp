@@ -293,7 +293,7 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
             assert(!use->is_if);
             assert(use->parent_instr->type == nir_instr_type_alu);
             nir_alu_src *alu_use = list_entry(use, nir_alu_src, src);
-            nir_src_rewrite(&alu_use->src, &load->dest.ssa);
+            nir_src_rewrite(&alu_use->src, &load->def);
             for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i)
                alu_use->swizzle[i] = alu->src[0].swizzle[alu_use->swizzle[i]];
          }

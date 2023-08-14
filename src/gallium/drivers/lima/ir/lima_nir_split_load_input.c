@@ -69,7 +69,7 @@ lima_nir_split_load_input_instr(nir_builder *b,
    nir_intrinsic_instr *new_intrin = nir_intrinsic_instr_create(
                                           b->shader,
                                           intrin->intrinsic);
-   nir_def_init(&new_intrin->instr, &new_intrin->dest.ssa,
+   nir_def_init(&new_intrin->instr, &new_intrin->def,
                 alu->def.num_components, ssa->bit_size);
    new_intrin->num_components = alu->def.num_components;
    nir_intrinsic_set_base(new_intrin, nir_intrinsic_base(intrin));
@@ -81,7 +81,7 @@ lima_nir_split_load_input_instr(nir_builder *b,
 
    nir_builder_instr_insert(b, &new_intrin->instr);
    nir_def_rewrite_uses(&alu->def,
-                            &new_intrin->dest.ssa);
+                            &new_intrin->def);
    nir_instr_remove(&alu->instr);
    return true;
 }

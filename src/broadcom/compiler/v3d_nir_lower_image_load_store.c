@@ -182,7 +182,7 @@ v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
 
         b->cursor = nir_after_instr(&instr->instr);
 
-        nir_def *result = &instr->dest.ssa;
+        nir_def *result = &instr->def;
         if (util_format_is_pure_uint(format)) {
                 result = nir_format_unpack_uint(b, result, bits16, 4);
         } else if (util_format_is_pure_sint(format)) {
@@ -197,7 +197,7 @@ v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
                                   nir_unpack_half_2x16_split_y(b, ba));
         }
 
-        nir_def_rewrite_uses_after(&instr->dest.ssa, result,
+        nir_def_rewrite_uses_after(&instr->def, result,
                                        result->parent_instr);
 
         return true;

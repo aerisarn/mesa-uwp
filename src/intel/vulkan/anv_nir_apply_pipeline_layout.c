@@ -1158,7 +1158,7 @@ try_lower_direct_buffer_intrinsic(nir_builder *b,
       /* 64-bit atomics only support A64 messages so we can't lower them to
        * the index+offset model.
        */
-      if (is_atomic && intrin->dest.ssa.bit_size == 64 &&
+      if (is_atomic && intrin->def.bit_size == 64 &&
           !state->pdevice->info.has_lsc)
          return false;
 
@@ -1243,9 +1243,9 @@ lower_load_accel_struct_desc(nir_builder *b,
    /* Acceleration structure descriptors are always uint64_t */
    nir_def *desc = build_load_descriptor_mem(b, desc_addr, 0, 1, 64, state);
 
-   assert(load_desc->dest.ssa.bit_size == 64);
-   assert(load_desc->dest.ssa.num_components == 1);
-   nir_def_rewrite_uses(&load_desc->dest.ssa, desc);
+   assert(load_desc->def.bit_size == 64);
+   assert(load_desc->def.num_components == 1);
+   nir_def_rewrite_uses(&load_desc->def, desc);
    nir_instr_remove(&load_desc->instr);
 
    return true;
@@ -1327,9 +1327,9 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                          intrin->src[0].ssa,
                          state);
 
-   assert(intrin->dest.ssa.bit_size == index->bit_size);
-   assert(intrin->dest.ssa.num_components == index->num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, index);
+   assert(intrin->def.bit_size == index->bit_size);
+   assert(intrin->def.num_components == index->num_components);
+   nir_def_rewrite_uses(&intrin->def, index);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -1345,9 +1345,9 @@ lower_res_reindex_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       build_res_reindex(b, intrin->src[0].ssa,
                            intrin->src[1].ssa);
 
-   assert(intrin->dest.ssa.bit_size == index->bit_size);
-   assert(intrin->dest.ssa.num_components == index->num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, index);
+   assert(intrin->def.bit_size == index->bit_size);
+   assert(intrin->def.num_components == index->num_components);
+   nir_def_rewrite_uses(&intrin->def, index);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -1367,9 +1367,9 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
                                       desc_type, intrin->src[0].ssa,
                                       addr_format, state);
 
-   assert(intrin->dest.ssa.bit_size == desc->bit_size);
-   assert(intrin->dest.ssa.num_components == desc->num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+   assert(intrin->def.bit_size == desc->bit_size);
+   assert(intrin->def.num_components == desc->num_components);
+   nir_def_rewrite_uses(&intrin->def, desc);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -1412,7 +1412,7 @@ lower_get_ssbo_size(nir_builder *b, nir_intrinsic_instr *intrin,
    }
 
    nir_def *size = nir_channel(b, desc_range, 2);
-   nir_def_rewrite_uses(&intrin->dest.ssa, size);
+   nir_def_rewrite_uses(&intrin->def, size);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -1474,15 +1474,15 @@ lower_image_size_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_def *image_depth =
       build_load_storage_3d_image_depth(b, desc_addr,
-                                        nir_channel(b, &intrin->dest.ssa, 2),
+                                        nir_channel(b, &intrin->def, 2),
                                         state);
 
    nir_def *comps[4] = {};
-   for (unsigned c = 0; c < intrin->dest.ssa.num_components; c++)
-      comps[c] = c == 2 ? image_depth : nir_channel(b, &intrin->dest.ssa, c);
+   for (unsigned c = 0; c < intrin->def.num_components; c++)
+      comps[c] = c == 2 ? image_depth : nir_channel(b, &intrin->def, c);
 
-   nir_def *vec = nir_vec(b, comps, intrin->dest.ssa.num_components);
-   nir_def_rewrite_uses_after(&intrin->dest.ssa, vec, vec->parent_instr);
+   nir_def *vec = nir_vec(b, comps, intrin->def.num_components);
+   nir_def_rewrite_uses_after(&intrin->def, vec, vec->parent_instr);
 
    return true;
 }
@@ -1500,9 +1500,9 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_def *offset = nir_iadd_imm(b, nir_ssa_for_src(b, intrin->src[0], 1),
                                       nir_intrinsic_base(intrin));
 
-   unsigned load_size = intrin->dest.ssa.num_components *
-                        intrin->dest.ssa.bit_size / 8;
-   unsigned load_align = intrin->dest.ssa.bit_size / 8;
+   unsigned load_size = intrin->def.num_components *
+                        intrin->def.bit_size / 8;
+   unsigned load_align = intrin->def.bit_size / 8;
 
    assert(load_size < b->shader->constant_data_size);
    unsigned max_offset = b->shader->constant_data_size - load_size;
@@ -1517,10 +1517,10 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_def *data =
       nir_load_global_constant(b, const_data_addr,
                                load_align,
-                               intrin->dest.ssa.num_components,
-                               intrin->dest.ssa.bit_size);
+                               intrin->def.num_components,
+                               intrin->def.bit_size);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, data);
+   nir_def_rewrite_uses(&intrin->def, data);
 
    return true;
 }
@@ -1535,7 +1535,7 @@ lower_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_load_push_constant(b, 3, 32, nir_imm_int(b, 0),
                              .base = offsetof(struct anv_push_constants, cs.base_work_group_id),
                              .range = sizeof_field(struct anv_push_constants, cs.base_work_group_id));
-   nir_def_rewrite_uses(&intrin->dest.ssa, base_workgroup_id);
+   nir_def_rewrite_uses(&intrin->def, base_workgroup_id);
 
    return true;
 }
@@ -1652,7 +1652,7 @@ lower_ray_query_globals(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_load_push_constant(b, 1, 64, nir_imm_int(b, 0),
                              .base = offsetof(struct anv_push_constants, ray_query_globals),
                              .range = sizeof_field(struct anv_push_constants, ray_query_globals));
-   nir_def_rewrite_uses(&intrin->dest.ssa, rq_globals);
+   nir_def_rewrite_uses(&intrin->def, rq_globals);
 
    return true;
 }

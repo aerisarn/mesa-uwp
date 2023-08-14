@@ -99,11 +99,11 @@ trivialize_load(nir_intrinsic_instr *load)
    assert(nir_is_load_reg(load));
 
    nir_builder b = nir_builder_at(nir_after_instr(&load->instr));
-   nir_def *copy = nir_mov(&b, &load->dest.ssa);
-   copy->divergent = load->dest.ssa.divergent;
-   nir_def_rewrite_uses_after(&load->dest.ssa, copy, copy->parent_instr);
+   nir_def *copy = nir_mov(&b, &load->def);
+   copy->divergent = load->def.divergent;
+   nir_def_rewrite_uses_after(&load->def, copy, copy->parent_instr);
 
-   assert(list_is_singular(&load->dest.ssa.uses));
+   assert(list_is_singular(&load->def.uses));
 }
 
 struct trivialize_src_state {
@@ -304,7 +304,7 @@ trivialize_read_after_write(nir_intrinsic_instr *load,
 {
    assert(nir_is_load_reg(load));
 
-   unsigned nr = load->dest.ssa.num_components;
+   unsigned nr = load->def.num_components;
    trivialize_reg_stores(load->src[0].ssa, nir_component_mask(nr),
                          possibly_trivial_stores);
 }

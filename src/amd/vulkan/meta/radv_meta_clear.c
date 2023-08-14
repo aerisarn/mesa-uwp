@@ -929,7 +929,7 @@ build_clear_dcc_comp_to_single_shader(struct radv_device *dev, bool is_msaa)
 
    /* Store the clear color values. */
    nir_def *sample_id = is_msaa ? nir_imm_int(&b, 0) : nir_undef(&b, 1, 32);
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, sample_id, data, nir_imm_int(&b, 0),
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, coord, sample_id, data, nir_imm_int(&b, 0),
                          .image_dim = dim, .image_array = true);
 
    return b.shader;

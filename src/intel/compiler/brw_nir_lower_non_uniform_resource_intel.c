@@ -132,7 +132,7 @@ brw_nir_lower_non_uniform_intrinsic(nir_builder *b,
       nir_instr_as_intrinsic(new_instr);
 
    nir_src_rewrite(&new_resource_intel->src[1], intrin->src[source].ssa);
-   nir_src_rewrite(&intrin->src[source], &new_resource_intel->dest.ssa);
+   nir_src_rewrite(&intrin->src[source], &new_resource_intel->def);
 
    return true;
 }
@@ -166,7 +166,7 @@ brw_nir_lower_non_uniform_tex(nir_builder *b,
          nir_instr_as_intrinsic(new_instr);
 
       nir_src_rewrite(&new_resource_intel->src[1], tex->src[s].src.ssa);
-      nir_src_rewrite(&tex->src[s].src, &new_resource_intel->dest.ssa);
+      nir_src_rewrite(&tex->src[s].src, &new_resource_intel->def);
 
       progress = true;
    }
@@ -291,7 +291,7 @@ brw_nir_cleanup_resource_intel_instr(nir_builder *b,
       return false;
 
    bool progress = false;
-   nir_foreach_use_safe(src, &intrin->dest.ssa) {
+   nir_foreach_use_safe(src, &intrin->def) {
       if (!src->is_if && skip_resource_intel_cleanup(src->parent_instr))
          continue;
 

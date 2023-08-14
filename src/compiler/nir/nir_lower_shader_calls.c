@@ -911,7 +911,7 @@ rewrite_phis_to_pred(nir_block *block, nir_block *pred)
       nir_foreach_phi_src(phi_src, phi) {
          if (phi_src->pred == pred) {
             found = true;
-            nir_def_rewrite_uses(&phi->dest.ssa, phi_src->src.ssa);
+            nir_def_rewrite_uses(&phi->def, phi_src->src.ssa);
             break;
          }
       }
@@ -1350,8 +1350,8 @@ lower_stack_instr_to_scratch(struct nir_builder *b, nir_instr *instr, void *data
                                       nir_intrinsic_base(stack));
          data = nir_load_global(b, addr,
                                 nir_intrinsic_align_mul(stack),
-                                stack->dest.ssa.num_components,
-                                stack->dest.ssa.bit_size);
+                                stack->def.num_components,
+                                stack->def.bit_size);
       } else {
          assert(state->address_format == nir_address_format_32bit_offset);
          data = nir_load_scratch(b,
@@ -1579,7 +1579,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
             }
          }
 
-         intrin->dest.ssa.num_components = intrin->num_components = swiz_count;
+         intrin->def.num_components = intrin->num_components = swiz_count;
 
          progress = true;
       }
@@ -1817,7 +1817,7 @@ nir_opt_stack_loads(nir_shader *shader)
             if (intrin->intrinsic != nir_intrinsic_load_stack)
                continue;
 
-            nir_def *value = &intrin->dest.ssa;
+            nir_def *value = &intrin->def;
             nir_block *new_block = find_last_dominant_use_block(impl, value);
             if (new_block == block)
                continue;
@@ -1854,7 +1854,7 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
       return false;
 
    if (intrin->intrinsic == nir_intrinsic_load_stack &&
-       intrin->dest.ssa.num_components == 1)
+       intrin->def.num_components == 1)
       return false;
 
    if (intrin->intrinsic == nir_intrinsic_store_stack &&
@@ -1867,18 +1867,18 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
       nir_def *components[NIR_MAX_VEC_COMPONENTS] = {
          0,
       };
-      for (unsigned c = 0; c < intrin->dest.ssa.num_components; c++) {
-         components[c] = nir_load_stack(b, 1, intrin->dest.ssa.bit_size,
+      for (unsigned c = 0; c < intrin->def.num_components; c++) {
+         components[c] = nir_load_stack(b, 1, intrin->def.bit_size,
                                         .base = nir_intrinsic_base(intrin) +
-                                                c * intrin->dest.ssa.bit_size / 8,
+                                                c * intrin->def.bit_size / 8,
                                         .call_idx = nir_intrinsic_call_idx(intrin),
                                         .value_id = nir_intrinsic_value_id(intrin),
                                         .align_mul = nir_intrinsic_align_mul(intrin));
       }
 
-      nir_def_rewrite_uses(&intrin->dest.ssa,
+      nir_def_rewrite_uses(&intrin->def,
                            nir_vec(b, components,
-                                   intrin->dest.ssa.num_components));
+                                   intrin->def.num_components));
    } else {
       assert(intrin->intrinsic == nir_intrinsic_store_stack);
       for (unsigned c = 0; c < intrin->src[0].ssa->num_components; c++) {

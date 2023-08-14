@@ -20,8 +20,8 @@ lower_wrapped(nir_builder *b, nir_instr *instr, void *data)
 
    switch (intr->intrinsic) {
    case nir_intrinsic_load_sample_id: {
-      unsigned size = intr->dest.ssa.bit_size;
-      nir_def_rewrite_uses(&intr->dest.ssa, nir_u2uN(b, sample_id, size));
+      unsigned size = intr->def.bit_size;
+      nir_def_rewrite_uses(&intr->def, nir_u2uN(b, sample_id, size));
       nir_instr_remove(instr);
       return true;
    }
@@ -151,7 +151,7 @@ lower_sample_mask_read(nir_builder *b, nir_instr *instr, UNUSED void *_)
    if (intr->intrinsic != nir_intrinsic_load_sample_mask_in)
       return false;
 
-   nir_def *old = &intr->dest.ssa;
+   nir_def *old = &intr->def;
    nir_def *lowered = nir_iand(
       b, old, nir_u2uN(b, nir_load_api_sample_mask_agx(b), old->bit_size));
 

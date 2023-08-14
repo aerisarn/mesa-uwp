@@ -80,17 +80,17 @@ lower_bitmap(nir_shader *shader, nir_builder *b,
    tex->coord_components = 2;
    tex->dest_type = nir_type_float32;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &tex_deref->dest.ssa);
+                                     &tex_deref->def);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                     &tex_deref->dest.ssa);
+                                     &tex_deref->def);
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                      nir_trim_vector(b, texcoord, tex->coord_components));
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
 
    /* kill if tex != 0.0.. take .x or .w channel according to format: */
-   cond = nir_fneu_imm(b, nir_channel(b, &tex->dest.ssa, options->swizzle_xxxx ? 0 : 3),
+   cond = nir_fneu_imm(b, nir_channel(b, &tex->def, options->swizzle_xxxx ? 0 : 3),
                        0.0);
 
    nir_discard_if(b, cond);

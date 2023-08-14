@@ -62,12 +62,12 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
    /* Increment the counter at the beginning of the buffer */
    const unsigned counter_size = 4;
    nir_deref_instr *counter = nir_build_deref_array_imm(b, buffer, 0);
-   counter = nir_build_deref_cast(b, &counter->dest.ssa,
+   counter = nir_build_deref_cast(b, &counter->def,
                                   nir_var_mem_global,
                                   glsl_uint_type(), 0);
    counter->cast.align_mul = 4;
    nir_def *offset =
-      nir_deref_atomic(b, 32, &counter->dest.ssa,
+      nir_deref_atomic(b, 32, &counter->def,
                        nir_imm_int(b, fmt_str_id_size + args_size),
                        .atomic_op = nir_atomic_op_iadd);
 
@@ -85,7 +85,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
       nir_i2iN(b, offset, ptr_bit_size);
    nir_deref_instr *fmt_str_id_deref =
       nir_build_deref_array(b, buffer, fmt_str_id_offset);
-   fmt_str_id_deref = nir_build_deref_cast(b, &fmt_str_id_deref->dest.ssa,
+   fmt_str_id_deref = nir_build_deref_cast(b, &fmt_str_id_deref->def,
                                            nir_var_mem_global,
                                            glsl_uint_type(), 0);
    fmt_str_id_deref->cast.align_mul = 4;
@@ -115,7 +115,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
                   ptr_bit_size);
       nir_deref_instr *dst_arg_deref =
          nir_build_deref_array(b, buffer, arg_offset);
-      dst_arg_deref = nir_build_deref_cast(b, &dst_arg_deref->dest.ssa,
+      dst_arg_deref = nir_build_deref_cast(b, &dst_arg_deref->def,
                                            nir_var_mem_global, arg_type, 0);
       assert(field_offset % 4 == 0);
       dst_arg_deref->cast.align_mul = 4;
@@ -127,7 +127,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
    nir_pop_if(b, NULL);
 
    nir_def *ret_val = nir_if_phi(b, printf_succ_val, printf_fail_val);
-   nir_def_rewrite_uses(&prntf->dest.ssa, ret_val);
+   nir_def_rewrite_uses(&prntf->def, ret_val);
    nir_instr_remove(&prntf->instr);
 
    return true;

@@ -84,7 +84,7 @@ nir_lower_patch_vertices(nir_shader *nir,
                }
 
                progress = true;
-               nir_def_rewrite_uses(&intr->dest.ssa,
+               nir_def_rewrite_uses(&intr->def,
                                     val);
                nir_instr_remove(instr);
             }

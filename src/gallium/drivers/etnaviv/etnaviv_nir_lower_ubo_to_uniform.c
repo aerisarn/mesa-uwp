@@ -64,12 +64,12 @@ lower_ubo_to_uniform(nir_builder *b, nir_instr *instr, void *_data)
       nir_ushr_imm(b, nir_isub(b, ubo_offset, range_base), 4);
 
    nir_def *uniform =
-      nir_load_uniform(b, intr->num_components, intr->dest.ssa.bit_size, uniform_offset,
+      nir_load_uniform(b, intr->num_components, intr->def.bit_size, uniform_offset,
                        .base = nir_intrinsic_range_base(intr) / 16,
                        .range = nir_intrinsic_range(intr) / 16,
                        .dest_type = nir_type_float32);
 
-	nir_def_rewrite_uses(&intr->dest.ssa, uniform);
+	nir_def_rewrite_uses(&intr->def, uniform);
 
    return uniform;
 }

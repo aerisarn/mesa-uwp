@@ -299,7 +299,7 @@ static bool lower_image_opcodes(nir_builder *b, nir_instr *instr, void *data)
       nir_def *desc = NULL, *result = NULL;
       ASSERTED const char *intr_name;
 
-      nir_def *dst = &intr->dest.ssa;
+      nir_def *dst = &intr->def;
       b->cursor = nir_before_instr(instr);
 
       switch (intr->intrinsic) {
@@ -357,7 +357,7 @@ static bool lower_image_opcodes(nir_builder *b, nir_instr *instr, void *data)
       case nir_intrinsic_image_load:
       case nir_intrinsic_image_deref_load:
       case nir_intrinsic_bindless_image_load:
-         result = emulated_image_load(b, intr->dest.ssa.num_components, intr->dest.ssa.bit_size,
+         result = emulated_image_load(b, intr->def.num_components, intr->def.bit_size,
                                       desc, intr->src[1].ssa, access, dim, is_array, true);
          nir_def_rewrite_uses_after(dst, result, instr);
          nir_instr_remove(instr);
@@ -378,7 +378,7 @@ static bool lower_image_opcodes(nir_builder *b, nir_instr *instr, void *data)
       nir_tex_instr *new_tex;
       nir_def *coord = NULL, *desc = NULL, *sampler_desc = NULL, *result = NULL;
 
-      nir_def *dst = &tex->dest.ssa;
+      nir_def *dst = &tex->def;
       b->cursor = nir_before_instr(instr);
 
       switch (tex->op) {
@@ -400,10 +400,10 @@ static bool lower_image_opcodes(nir_builder *b, nir_instr *instr, void *data)
                new_tex->dest_type = nir_type_int32;
                nir_src_copy(&new_tex->src[0].src, &tex->src[i].src, &new_tex->instr);
                new_tex->src[0].src_type = tex->src[i].src_type;
-               nir_def_init(&new_tex->instr, &new_tex->dest.ssa,
+               nir_def_init(&new_tex->instr, &new_tex->def,
                             nir_tex_instr_dest_size(new_tex), 32);
                nir_builder_instr_insert(b, &new_tex->instr);
-               desc = &new_tex->dest.ssa;
+               desc = &new_tex->def;
                break;
 
             case nir_tex_src_sampler_deref:
@@ -419,10 +419,10 @@ static bool lower_image_opcodes(nir_builder *b, nir_instr *instr, void *data)
                new_tex->dest_type = nir_type_int32;
                nir_src_copy(&new_tex->src[0].src, &tex->src[i].src, &new_tex->instr);
                new_tex->src[0].src_type = tex->src[i].src_type;
-               nir_def_init(&new_tex->instr, &new_tex->dest.ssa,
+               nir_def_init(&new_tex->instr, &new_tex->def,
                             nir_tex_instr_dest_size(new_tex), 32);
                nir_builder_instr_insert(b, &new_tex->instr);
-               sampler_desc = &new_tex->dest.ssa;
+               sampler_desc = &new_tex->def;
                break;
 
             case nir_tex_src_coord:
@@ -443,7 +443,7 @@ static bool lower_image_opcodes(nir_builder *b, nir_instr *instr, void *data)
 
          switch (tex->op) {
          case nir_texop_txf:
-            result = emulated_image_load(b, tex->dest.ssa.num_components, tex->dest.ssa.bit_size,
+            result = emulated_image_load(b, tex->def.num_components, tex->def.bit_size,
                                          desc, coord,
                                          ACCESS_RESTRICT | ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER,
                                          tex->sampler_dim, tex->is_array, true);
@@ -453,7 +453,7 @@ static bool lower_image_opcodes(nir_builder *b, nir_instr *instr, void *data)
 
          case nir_texop_tex:
          case nir_texop_txl:
-            result = emulated_tex_level_zero(b, tex->dest.ssa.num_components, tex->dest.ssa.bit_size,
+            result = emulated_tex_level_zero(b, tex->def.num_components, tex->def.bit_size,
                                   desc, sampler_desc, coord, tex->sampler_dim, tex->is_array);
             nir_def_rewrite_uses_after(dst, result, instr);
             nir_instr_remove(instr);

@@ -83,7 +83,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    if (!nir_intrinsic_infos[instr->intrinsic].has_dest)
       return false;
 
-   if (instr->dest.ssa.divergent)
+   if (instr->def.divergent)
       return false;
 
    nir_divergence_options options = shader->options->divergence_analysis_options;
@@ -620,14 +620,14 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
 #endif
    }
 
-   instr->dest.ssa.divergent = is_divergent;
+   instr->def.divergent = is_divergent;
    return is_divergent;
 }
 
 static bool
 visit_tex(nir_tex_instr *instr)
 {
-   if (instr->dest.ssa.divergent)
+   if (instr->def.divergent)
       return false;
 
    bool is_divergent = false;
@@ -652,7 +652,7 @@ visit_tex(nir_tex_instr *instr)
       }
    }
 
-   instr->dest.ssa.divergent = is_divergent;
+   instr->def.divergent = is_divergent;
    return is_divergent;
 }
 
@@ -716,7 +716,7 @@ nir_variable_is_uniform(nir_shader *shader, nir_variable *var)
 static bool
 visit_deref(nir_shader *shader, nir_deref_instr *deref)
 {
-   if (deref->dest.ssa.divergent)
+   if (deref->def.divergent)
       return false;
 
    bool is_divergent = false;
@@ -738,7 +738,7 @@ visit_deref(nir_shader *shader, nir_deref_instr *deref)
       break;
    }
 
-   deref->dest.ssa.divergent = is_divergent;
+   deref->def.divergent = is_divergent;
    return is_divergent;
 }
 
@@ -834,14 +834,14 @@ visit_block(nir_block *block, struct divergence_state *state)
 static bool
 visit_if_merge_phi(nir_phi_instr *phi, bool if_cond_divergent)
 {
-   if (phi->dest.ssa.divergent)
+   if (phi->def.divergent)
       return false;
 
    unsigned defined_srcs = 0;
    nir_foreach_phi_src(src, phi) {
       /* if any source value is divergent, the resulting value is divergent */
       if (src->src.ssa->divergent) {
-         phi->dest.ssa.divergent = true;
+         phi->def.divergent = true;
          return true;
       }
       if (src->src.ssa->parent_instr->type != nir_instr_type_ssa_undef) {
@@ -851,7 +851,7 @@ visit_if_merge_phi(nir_phi_instr *phi, bool if_cond_divergent)
 
    /* if the condition is divergent and two sources defined, the definition is divergent */
    if (defined_srcs > 1 && if_cond_divergent) {
-      phi->dest.ssa.divergent = true;
+      phi->def.divergent = true;
       return true;
    }
 
@@ -867,14 +867,14 @@ visit_if_merge_phi(nir_phi_instr *phi, bool if_cond_divergent)
 static bool
 visit_loop_header_phi(nir_phi_instr *phi, nir_block *preheader, bool divergent_continue)
 {
-   if (phi->dest.ssa.divergent)
+   if (phi->def.divergent)
       return false;
 
    nir_def *same = NULL;
    nir_foreach_phi_src(src, phi) {
       /* if any source value is divergent, the resulting value is divergent */
       if (src->src.ssa->divergent) {
-         phi->dest.ssa.divergent = true;
+         phi->def.divergent = true;
          return true;
       }
       /* if this loop is uniform, we're done here */
@@ -891,7 +891,7 @@ visit_loop_header_phi(nir_phi_instr *phi, nir_block *preheader, bool divergent_c
       if (!same)
          same = src->src.ssa;
       else if (same != src->src.ssa) {
-         phi->dest.ssa.divergent = true;
+         phi->def.divergent = true;
          return true;
       }
    }
@@ -908,18 +908,18 @@ visit_loop_header_phi(nir_phi_instr *phi, nir_block *preheader, bool divergent_c
 static bool
 visit_loop_exit_phi(nir_phi_instr *phi, bool divergent_break)
 {
-   if (phi->dest.ssa.divergent)
+   if (phi->def.divergent)
       return false;
 
    if (divergent_break) {
-      phi->dest.ssa.divergent = true;
+      phi->def.divergent = true;
       return true;
    }
 
    /* if any source value is divergent, the resulting value is divergent */
    nir_foreach_phi_src(src, phi) {
       if (src->src.ssa->divergent) {
-         phi->dest.ssa.divergent = true;
+         phi->def.divergent = true;
          return true;
       }
    }
@@ -943,7 +943,7 @@ visit_if(nir_if *if_stmt, struct divergence_state *state)
    /* handle phis after the IF */
    nir_foreach_phi(phi, nir_cf_node_cf_tree_next(&if_stmt->cf_node)) {
       if (state->first_visit)
-         phi->dest.ssa.divergent = false;
+         phi->def.divergent = false;
       progress |= visit_if_merge_phi(phi, if_stmt->condition.ssa->divergent);
    }
 
@@ -972,16 +972,16 @@ visit_loop(nir_loop *loop, struct divergence_state *state)
    /* handle loop header phis first: we have no knowledge yet about
     * the loop's control flow or any loop-carried sources. */
    nir_foreach_phi(phi, loop_header) {
-      if (!state->first_visit && phi->dest.ssa.divergent)
+      if (!state->first_visit && phi->def.divergent)
          continue;
 
       nir_foreach_phi_src(src, phi) {
          if (src->pred == loop_preheader) {
-            phi->dest.ssa.divergent = src->src.ssa->divergent;
+            phi->def.divergent = src->src.ssa->divergent;
             break;
          }
       }
-      progress |= phi->dest.ssa.divergent;
+      progress |= phi->def.divergent;
    }
 
    /* setup loop state */
@@ -1009,7 +1009,7 @@ visit_loop(nir_loop *loop, struct divergence_state *state)
    /* handle phis after the loop */
    nir_foreach_phi(phi, nir_cf_node_cf_tree_next(&loop->cf_node)) {
       if (state->first_visit)
-         phi->dest.ssa.divergent = false;
+         phi->def.divergent = false;
       progress |= visit_loop_exit_phi(phi, loop_state.divergent_loop_break);
    }
 

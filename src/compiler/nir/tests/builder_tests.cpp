@@ -51,7 +51,7 @@ protected:
       nir_intrinsic_instr *store =
          nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_deref);
       store->num_components = val->num_components;
-      store->src[0] = nir_src_for_ssa(&nir_build_deref_var(b, var)->dest.ssa);
+      store->src[0] = nir_src_for_ssa(&nir_build_deref_var(b, var)->def);
       store->src[1] = nir_src_for_ssa(val);
       nir_intrinsic_set_write_mask(store, ((1 << val->num_components) - 1));
       nir_builder_instr_insert(b, &store->instr);

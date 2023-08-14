@@ -79,12 +79,12 @@ ValueFactory::allocate_registers(const std::list<nir_intrinsic_instr *>& regs)
 
       if (num_elms > 0 || num_comp > 1 || bit_size > 32) {
          array_entry ae = {
-            intr->dest.ssa.index,
+            intr->def.index,
             num_elms ? num_elms : 1,
             bit_size / 32 * num_comp};
          arrays.push(ae);
       } else {
-         non_array.push_back(intr->dest.ssa.index);
+         non_array.push_back(intr->def.index);
       }
    }
 

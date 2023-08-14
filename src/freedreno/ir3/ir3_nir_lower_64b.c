@@ -50,7 +50,7 @@ lower_64b_intrinsics_filter(const nir_instr *instr, const void *unused)
    if (nir_intrinsic_dest_components(intr) == 0)
       return false;
 
-   return intr->dest.ssa.bit_size == 64;
+   return intr->def.bit_size == 64;
 }
 
 static nir_def *
@@ -106,7 +106,7 @@ lower_64b_intrinsics(nir_builder *b, nir_instr *instr, void *unused)
 
    unsigned num_comp = nir_intrinsic_dest_components(intr);
 
-   nir_def *def = &intr->dest.ssa;
+   nir_def *def = &intr->def;
    def->bit_size = 32;
 
    /* load_kernel_input is handled specially, lowering to two 32b inputs:
@@ -144,10 +144,10 @@ lower_64b_intrinsics(nir_builder *b, nir_instr *instr, void *unused)
          load->num_components = 2;
          load->src[offset_src_idx] = nir_src_for_ssa(off);
 
-         nir_def_init(&load->instr, &load->dest.ssa, 2, 32);
+         nir_def_init(&load->instr, &load->def, 2, 32);
          nir_builder_instr_insert(b, &load->instr);
 
-         components[i] = nir_pack_64_2x32(b, &load->dest.ssa);
+         components[i] = nir_pack_64_2x32(b, &load->def);
 
          off = nir_iadd_imm(b, off, 8);
       }
@@ -257,12 +257,12 @@ lower_64b_global(nir_builder *b, nir_instr *instr, void *unused)
 
    if (intr->intrinsic == nir_intrinsic_global_atomic) {
       return nir_global_atomic_ir3(
-            b, intr->dest.ssa.bit_size, addr,
+            b, intr->def.bit_size, addr,
             nir_ssa_for_src(b, intr->src[1], 1),
          .atomic_op = nir_intrinsic_atomic_op(intr));
    } else if (intr->intrinsic == nir_intrinsic_global_atomic_swap) {
       return nir_global_atomic_swap_ir3(
-         b, intr->dest.ssa.bit_size, addr,
+         b, intr->def.bit_size, addr,
          nir_ssa_for_src(b, intr->src[1], 1),
          nir_ssa_for_src(b, intr->src[2], 1),
          .atomic_op = nir_intrinsic_atomic_op(intr));
@@ -274,7 +274,7 @@ lower_64b_global(nir_builder *b, nir_instr *instr, void *unused)
       for (unsigned off = 0; off < num_comp;) {
          unsigned c = MIN2(num_comp - off, 4);
          nir_def *val = nir_load_global_ir3(
-               b, c, intr->dest.ssa.bit_size,
+               b, c, intr->def.bit_size,
                addr, nir_imm_int(b, off));
          for (unsigned i = 0; i < c; i++) {
             components[off++] = nir_channel(b, val, i);

@@ -111,16 +111,16 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
    tex->coord_components = 2;
    tex->dest_type = nir_type_float32;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &tex_deref->dest.ssa);
+                                     &tex_deref->def);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                     &tex_deref->dest.ssa);
+                                     &tex_deref->def);
    tex->src[2] =
       nir_tex_src_for_ssa(nir_tex_src_coord,
                           nir_trim_vector(b, texcoord, tex->coord_components));
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
-   def = &tex->dest.ssa;
+   def = &tex->def;
 
    /* Apply the scale and bias. */
    if (state->options->scale_and_bias) {
@@ -152,15 +152,15 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
       tex->texture_index = state->options->pixelmap_sampler;
       tex->dest_type = nir_type_float32;
       tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                        &pixelmap_deref->dest.ssa);
+                                        &pixelmap_deref->def);
       tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                        &pixelmap_deref->dest.ssa);
+                                        &pixelmap_deref->def);
       tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                         nir_trim_vector(b, def, 2));
 
-      nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
-      def_xy = &tex->dest.ssa;
+      def_xy = &tex->def;
 
       /* TEX def.zw, def.zwww, pixelmap_sampler, 2D; */
       tex = nir_tex_instr_create(state->shader, 1);
@@ -172,9 +172,9 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
       tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                         nir_channels(b, def, 0xc));
 
-      nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
-      def_zw = &tex->dest.ssa;
+      def_zw = &tex->def;
 
       /* def = vec4(def.xy, def.zw); */
       def = nir_vec4(b,
@@ -184,7 +184,7 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
                      nir_channel(b, def_zw, 1));
    }
 
-   nir_def_rewrite_uses(&intr->dest.ssa, def);
+   nir_def_rewrite_uses(&intr->def, def);
    return true;
 }
 
@@ -194,7 +194,7 @@ lower_texcoord(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_inst
    b->cursor = nir_before_instr(&intr->instr);
 
    nir_def *texcoord_const = get_texcoord_const(b, state);
-   nir_def_rewrite_uses(&intr->dest.ssa, texcoord_const);
+   nir_def_rewrite_uses(&intr->def, texcoord_const);
    return true;
 }
 

@@ -127,7 +127,7 @@ interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel)
       .interp_mode = interp_mode_for_load(load), .io_semantics = sem);
 
    if (load->intrinsic == nir_intrinsic_load_input) {
-      assert(load->dest.ssa.bit_size == 32);
+      assert(load->def.bit_size == 32);
       return interpolate_flat(b, coefficients);
    } else {
       nir_intrinsic_instr *bary = nir_src_as_intrinsic(load->src[0]);
@@ -136,7 +136,7 @@ interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel)
          b, coefficients, bary->src[0].ssa,
          nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE);
 
-      return nir_f2fN(b, interp, load->dest.ssa.bit_size);
+      return nir_f2fN(b, interp, load->def.bit_size);
    }
 }
 
@@ -147,11 +147,11 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 
    /* Each component is loaded separated */
    nir_def *values[NIR_MAX_VEC_COMPONENTS] = {NULL};
-   for (unsigned i = 0; i < intr->dest.ssa.num_components; ++i) {
+   for (unsigned i = 0; i < intr->def.num_components; ++i) {
       values[i] = interpolate_channel(b, intr, i);
    }
 
-   return nir_vec(b, values, intr->dest.ssa.num_components);
+   return nir_vec(b, values, intr->def.num_components);
 }
 
 bool

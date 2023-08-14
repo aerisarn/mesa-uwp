@@ -198,7 +198,7 @@ static bool
 lower_tex_instr(nir_tex_instr *tex)
 {
    bool progress = false;
-   rewrite_1bit_ssa_def_to_32bit(&tex->dest.ssa, &progress);
+   rewrite_1bit_ssa_def_to_32bit(&tex->def, &progress);
    if (tex->dest_type == nir_type_bool1) {
       tex->dest_type = nir_type_bool32;
       progress = true;

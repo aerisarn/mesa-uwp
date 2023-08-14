@@ -1471,7 +1471,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    assert((!args->tfe || !args->d16) && "unsupported");
 
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
-      unsigned mask = nir_def_components_read(&instr->dest.ssa);
+      unsigned mask = nir_def_components_read(&instr->def);
 
       /* Buffers don't support A16. */
       if (args->a16)
@@ -1479,7 +1479,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
 
       return ac_build_buffer_load_format(&ctx->ac, args->resource, args->coords[0], ctx->ac.i32_0,
                                          util_last_bit(mask), 0, true,
-                                         instr->dest.ssa.bit_size == 16,
+                                         instr->def.bit_size == 16,
                                          args->tfe);
    }
 
@@ -1566,11 +1566,11 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
    /* Load constant values from user SGPRS when possible, otherwise
     * fallback to the default path that loads directly from memory.
     */
-   if (LLVMIsConstant(src0) && instr->dest.ssa.bit_size >= 32) {
-      unsigned count = instr->dest.ssa.num_components;
+   if (LLVMIsConstant(src0) && instr->def.bit_size >= 32) {
+      unsigned count = instr->def.num_components;
       unsigned offset = index;
 
-      if (instr->dest.ssa.bit_size == 64)
+      if (instr->def.bit_size == 64)
          count *= 2;
 
       offset += LLVMConstIntGetZExtValue(src0);
@@ -1585,8 +1585,8 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
          for (unsigned i = 0; i < count; i++)
             push_constants[i] = ac_get_arg(&ctx->ac, ctx->args->inline_push_consts[arg_index++]);
          LLVMValueRef res = ac_build_gather_values(&ctx->ac, push_constants, count);
-         return instr->dest.ssa.bit_size == 64
-                   ? LLVMBuildBitCast(ctx->ac.builder, res, get_def_type(ctx, &instr->dest.ssa), "")
+         return instr->def.bit_size == 64
+                   ? LLVMBuildBitCast(ctx->ac.builder, res, get_def_type(ctx, &instr->def), "")
                    : res;
       }
    }
@@ -1594,8 +1594,8 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
    struct ac_llvm_pointer pc = ac_get_ptr_arg(&ctx->ac, ctx->args, ctx->args->push_constants);
    ptr = LLVMBuildGEP2(ctx->ac.builder, pc.t, pc.v, &addr, 1, "");
 
-   if (instr->dest.ssa.bit_size == 8) {
-      unsigned load_dwords = instr->dest.ssa.num_components > 1 ? 2 : 1;
+   if (instr->def.bit_size == 8) {
+      unsigned load_dwords = instr->def.num_components > 1 ? 2 : 1;
       LLVMTypeRef vec_type = LLVMVectorType(ctx->ac.i8, 4 * load_dwords);
       ptr = ac_cast_ptr(&ctx->ac, ptr, vec_type);
       LLVMValueRef res = LLVMBuildLoad2(ctx->ac.builder, vec_type, ptr, "");
@@ -1617,13 +1617,13 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
 
       res = LLVMBuildTrunc(
          ctx->ac.builder, res,
-         LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.num_components * 8), "");
-      if (instr->dest.ssa.num_components > 1)
+         LLVMIntTypeInContext(ctx->ac.context, instr->def.num_components * 8), "");
+      if (instr->def.num_components > 1)
          res = LLVMBuildBitCast(ctx->ac.builder, res,
-                                LLVMVectorType(ctx->ac.i8, instr->dest.ssa.num_components), "");
+                                LLVMVectorType(ctx->ac.i8, instr->def.num_components), "");
       return res;
-   } else if (instr->dest.ssa.bit_size == 16) {
-      unsigned load_dwords = instr->dest.ssa.num_components / 2 + 1;
+   } else if (instr->def.bit_size == 16) {
+      unsigned load_dwords = instr->def.num_components / 2 + 1;
       LLVMTypeRef vec_type = LLVMVectorType(ctx->ac.i16, 2 * load_dwords);
       ptr = ac_cast_ptr(&ctx->ac, ptr, vec_type);
       LLVMValueRef res = LLVMBuildLoad2(ctx->ac.builder, vec_type, ptr, "");
@@ -1634,17 +1634,17 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
          ctx->ac.i32_0, ctx->ac.i32_1,
          LLVMConstInt(ctx->ac.i32, 2, false), LLVMConstInt(ctx->ac.i32, 3, false),
          LLVMConstInt(ctx->ac.i32, 4, false)};
-      LLVMValueRef swizzle_aligned = LLVMConstVector(&mask[0], instr->dest.ssa.num_components);
-      LLVMValueRef swizzle_unaligned = LLVMConstVector(&mask[1], instr->dest.ssa.num_components);
+      LLVMValueRef swizzle_aligned = LLVMConstVector(&mask[0], instr->def.num_components);
+      LLVMValueRef swizzle_unaligned = LLVMConstVector(&mask[1], instr->def.num_components);
       LLVMValueRef shuffle_aligned =
          LLVMBuildShuffleVector(ctx->ac.builder, res, res, swizzle_aligned, "");
       LLVMValueRef shuffle_unaligned =
          LLVMBuildShuffleVector(ctx->ac.builder, res, res, swizzle_unaligned, "");
       res = LLVMBuildSelect(ctx->ac.builder, cond, shuffle_unaligned, shuffle_aligned, "");
-      return LLVMBuildBitCast(ctx->ac.builder, res, get_def_type(ctx, &instr->dest.ssa), "");
+      return LLVMBuildBitCast(ctx->ac.builder, res, get_def_type(ctx, &instr->def), "");
    }
 
-   LLVMTypeRef ptr_type = get_def_type(ctx, &instr->dest.ssa);
+   LLVMTypeRef ptr_type = get_def_type(ctx, &instr->def);
    ptr = ac_cast_ptr(&ctx->ac, ptr, ptr_type);
 
    return LLVMBuildLoad2(ctx->ac.builder, ptr_type, ptr, "");
@@ -1941,7 +1941,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
    struct waterfall_context wctx;
    LLVMValueRef rsrc_base = enter_waterfall_ssbo(ctx, &wctx, instr, instr->src[0]);
 
-   int elem_size_bytes = instr->dest.ssa.bit_size / 8;
+   int elem_size_bytes = instr->def.bit_size / 8;
    int num_components = instr->num_components;
    enum gl_access_qualifier access = ac_get_mem_access_flags(instr);
 
@@ -1950,7 +1950,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
       ctx->abi->load_ssbo(ctx->abi, rsrc_base, false, false) : rsrc_base;
    LLVMValueRef vindex = ctx->ac.i32_0;
 
-   LLVMTypeRef def_type = get_def_type(ctx, &instr->dest.ssa);
+   LLVMTypeRef def_type = get_def_type(ctx, &instr->def);
    LLVMTypeRef def_elem_type = num_components > 1 ? LLVMGetElementType(def_type) : def_type;
 
    LLVMValueRef results[4];
@@ -2035,7 +2035,7 @@ static LLVMValueRef get_global_address(struct ac_nir_context *ctx,
 static LLVMValueRef visit_load_global(struct ac_nir_context *ctx,
                                       nir_intrinsic_instr *instr)
 {
-   LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
+   LLVMTypeRef result_type = get_def_type(ctx, &instr->def);
    LLVMValueRef val;
    LLVMValueRef addr = get_global_address(ctx, instr, result_type);
 
@@ -2119,18 +2119,18 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
    LLVMValueRef offset = get_src(ctx, instr->src[1]);
    int num_components = instr->num_components;
 
-   assert(instr->dest.ssa.bit_size >= 32 && instr->dest.ssa.bit_size % 32 == 0);
+   assert(instr->def.bit_size >= 32 && instr->def.bit_size % 32 == 0);
 
    if (ctx->abi->load_ubo)
       rsrc = ctx->abi->load_ubo(ctx->abi, rsrc);
 
    /* Convert to a 32-bit load. */
-   if (instr->dest.ssa.bit_size == 64)
+   if (instr->def.bit_size == 64)
       num_components *= 2;
 
    ret = ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset, NULL,
                               ctx->ac.f32, 0, true, true);
-   ret = LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->dest.ssa), "");
+   ret = LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->def), "");
 
    return exit_waterfall(ctx, &wctx, ret);
 }
@@ -2326,8 +2326,8 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
    args.tfe = instr->intrinsic == nir_intrinsic_bindless_image_sparse_load;
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      unsigned num_channels = util_last_bit(nir_def_components_read(&instr->dest.ssa));
-      if (instr->dest.ssa.bit_size == 64)
+      unsigned num_channels = util_last_bit(nir_def_components_read(&instr->def));
+      if (instr->def.bit_size == 64)
          num_channels = num_channels < 4 ? 2 : 4;
       LLVMValueRef rsrc, vindex;
 
@@ -2338,11 +2338,11 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       bool can_speculate = access & ACCESS_CAN_REORDER;
       res = ac_build_buffer_load_format(&ctx->ac, rsrc, vindex, ctx->ac.i32_0, num_channels,
                                         args.access, can_speculate,
-                                        instr->dest.ssa.bit_size == 16,
+                                        instr->def.bit_size == 16,
                                         args.tfe);
       res = ac_build_expand(&ctx->ac, res, num_channels, args.tfe ? 5 : 4);
 
-      res = ac_trim_vector(&ctx->ac, res, instr->dest.ssa.num_components);
+      res = ac_trim_vector(&ctx->ac, res, instr->def.num_components);
       res = ac_to_integer(&ctx->ac, res);
    } else if (instr->intrinsic == nir_intrinsic_bindless_image_fragment_mask_load_amd) {
       assert(ctx->ac.gfx_level < GFX11);
@@ -2368,12 +2368,12 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       args.dmask = 15;
       args.attributes = access & ACCESS_CAN_REORDER ? AC_ATTR_INVARIANT_LOAD : 0;
 
-      args.d16 = instr->dest.ssa.bit_size == 16;
+      args.d16 = instr->def.bit_size == 16;
 
       res = ac_build_image_opcode(&ctx->ac, &args);
    }
 
-   if (instr->dest.ssa.bit_size == 64) {
+   if (instr->def.bit_size == 64) {
       LLVMValueRef code = NULL;
       if (args.tfe) {
          code = ac_llvm_extract_elem(&ctx->ac, res, 4);
@@ -2525,7 +2525,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
       params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
                                                       ctx->ac.i32_0, ""); /* vindex */
       params[param_count++] = ctx->ac.i32_0;                              /* voffset */
-      if (cmpswap && instr->dest.ssa.bit_size == 64) {
+      if (cmpswap && instr->def.bit_size == 64) {
          result = emit_ssbo_comp_swap_64(ctx, params[2], params[3], params[1], params[0], true);
       } else {
          LLVMTypeRef data_type = LLVMTypeOf(params[0]);
@@ -2637,7 +2637,7 @@ static LLVMValueRef visit_load_shared(struct ac_nir_context *ctx, const nir_intr
    LLVMValueRef values[16], derived_ptr, index, ret;
    unsigned const_off = nir_intrinsic_base(instr);
 
-   LLVMTypeRef elem_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
+   LLVMTypeRef elem_type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
    LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], const_off);
 
    for (int chan = 0; chan < instr->num_components; chan++) {
@@ -2648,7 +2648,7 @@ static LLVMValueRef visit_load_shared(struct ac_nir_context *ctx, const nir_intr
 
    ret = ac_build_gather_values(&ctx->ac, values, instr->num_components);
 
-   return LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->dest.ssa), "");
+   return LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->def), "");
 }
 
 static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
@@ -2676,7 +2676,7 @@ static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_i
 static LLVMValueRef visit_load_shared2_amd(struct ac_nir_context *ctx,
                                            const nir_intrinsic_instr *instr)
 {
-   LLVMTypeRef pointee_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
+   LLVMTypeRef pointee_type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
    LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], 0);
 
    LLVMValueRef values[2];
@@ -2689,7 +2689,7 @@ static LLVMValueRef visit_load_shared2_amd(struct ac_nir_context *ctx,
    }
 
    LLVMValueRef ret = ac_build_gather_values(&ctx->ac, values, 2);
-   return LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->dest.ssa), "");
+   return LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->def), "");
 }
 
 static void visit_store_shared2_amd(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
@@ -2905,17 +2905,17 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
                                bool is_output)
 {
    LLVMValueRef values[8];
-   LLVMTypeRef dest_type = get_def_type(ctx, &instr->dest.ssa);
+   LLVMTypeRef dest_type = get_def_type(ctx, &instr->def);
    LLVMTypeRef component_type;
    unsigned base = nir_intrinsic_base(instr);
    unsigned component = nir_intrinsic_component(instr);
-   unsigned count = instr->dest.ssa.num_components;
+   unsigned count = instr->def.num_components;
    nir_src *vertex_index_src = nir_get_io_arrayed_index_src(instr);
    LLVMValueRef vertex_index = vertex_index_src ? get_src(ctx, *vertex_index_src) : NULL;
    nir_src offset = *nir_get_io_offset_src(instr);
    LLVMValueRef indir_index = NULL;
 
-   switch (instr->dest.ssa.bit_size) {
+   switch (instr->def.bit_size) {
    case 16:
    case 32:
       break;
@@ -2945,7 +2945,7 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
                                                          vertex_index, indir_index,
                                                          base, component,
                                                          count, !is_output);
-      if (instr->dest.ssa.bit_size == 16) {
+      if (instr->def.bit_size == 16) {
          result = ac_to_integer(&ctx->ac, result);
          result = LLVMBuildTrunc(ctx->ac.builder, result, dest_type, "");
       }
@@ -2981,12 +2981,12 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
       values[chan] = ac_build_fs_interp_mov(&ctx->ac, vertex_id, llvm_chan, attr_number,
                                             ac_get_arg(&ctx->ac, ctx->args->prim_mask));
       values[chan] = LLVMBuildBitCast(ctx->ac.builder, values[chan], ctx->ac.i32, "");
-      if (instr->dest.ssa.bit_size == 16 &&
+      if (instr->def.bit_size == 16 &&
           nir_intrinsic_io_semantics(instr).high_16bits)
          values[chan] = LLVMBuildLShr(ctx->ac.builder, values[chan], LLVMConstInt(ctx->ac.i32, 16, 0), "");
       values[chan] =
          LLVMBuildTruncOrBitCast(ctx->ac.builder, values[chan],
-                                 instr->dest.ssa.bit_size == 16 ? ctx->ac.i16 : ctx->ac.i32, "");
+                                 instr->def.bit_size == 16 ? ctx->ac.i16 : ctx->ac.i32, "");
    }
 
    LLVMValueRef result = ac_build_gather_values(&ctx->ac, values, count);
@@ -3035,8 +3035,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    switch (instr->intrinsic) {
    case nir_intrinsic_ballot:
       result = ac_build_ballot(&ctx->ac, get_src(ctx, instr->src[0]));
-      if (instr->dest.ssa.bit_size > ctx->ac.wave_size) {
-         LLVMTypeRef dest_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
+      if (instr->def.bit_size > ctx->ac.wave_size) {
+         LLVMTypeRef dest_type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
          result = LLVMBuildZExt(ctx->ac.builder, result, dest_type, "");
       }
       break;
@@ -3057,7 +3057,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          values[i] = ctx->args->workgroup_ids[i].used
                         ? ac_get_arg(&ctx->ac, ctx->args->workgroup_ids[i])
                         : ctx->ac.i32_0;
-         if (instr->dest.ssa.bit_size == 64)
+         if (instr->def.bit_size == 64)
             values[i] = LLVMBuildZExt(ctx->ac.builder, values[i], ctx->ac.i64, "");
       }
 
@@ -3156,7 +3156,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          result = ac_build_load_invariant(&ctx->ac,
             ac_get_ptr_arg(&ctx->ac, ctx->args, ctx->args->num_work_groups), ctx->ac.i32_0);
       }
-      if (instr->dest.ssa.bit_size == 64)
+      if (instr->def.bit_size == 64)
          result = LLVMBuildZExt(ctx->ac.builder, result, LLVMVectorType(ctx->ac.i64, 3), "");
       break;
    case nir_intrinsic_load_local_invocation_index:
@@ -3305,7 +3305,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       unsigned index = nir_intrinsic_base(instr);
       unsigned component = nir_intrinsic_component(instr);
       result = load_interpolated_input(ctx, interp_param, index, component,
-                                       instr->dest.ssa.num_components, instr->dest.ssa.bit_size,
+                                       instr->def.num_components, instr->def.bit_size,
                                        nir_intrinsic_io_semantics(instr).high_16bits);
       break;
    }
@@ -3418,10 +3418,10 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_scratch: {
       LLVMValueRef offset = get_src(ctx, instr->src[0]);
       LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->scratch, offset);
-      LLVMTypeRef comp_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
-      LLVMTypeRef vec_type = instr->dest.ssa.num_components == 1
+      LLVMTypeRef comp_type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
+      LLVMTypeRef vec_type = instr->def.num_components == 1
                                 ? comp_type
-                                : LLVMVectorType(comp_type, instr->dest.ssa.num_components);
+                                : LLVMVectorType(comp_type, instr->def.num_components);
       result = LLVMBuildLoad2(ctx->ac.builder, vec_type, ptr, "");
       break;
    }
@@ -3457,10 +3457,10 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       offset = LLVMBuildSelect(ctx->ac.builder, cond, offset, size, "");
 
       LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->constant_data, offset);
-      LLVMTypeRef comp_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
-      LLVMTypeRef vec_type = instr->dest.ssa.num_components == 1
+      LLVMTypeRef comp_type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
+      LLVMTypeRef vec_type = instr->def.num_components == 1
                                 ? comp_type
-                                : LLVMVectorType(comp_type, instr->dest.ssa.num_components);
+                                : LLVMVectorType(comp_type, instr->def.num_components);
       result = LLVMBuildLoad2(ctx->ac.builder, vec_type, ptr, "");
       break;
    }
@@ -3479,7 +3479,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMValueRef addr_voffset = get_src(ctx, instr->src[src_base + 1]);
       LLVMValueRef addr_soffset = get_src(ctx, instr->src[src_base + 2]);
       LLVMValueRef vidx = idxen ? get_src(ctx, instr->src[src_base + 3]) : NULL;
-      unsigned num_components = instr->dest.ssa.num_components;
+      unsigned num_components = instr->def.num_components;
       unsigned const_offset = nir_intrinsic_base(instr);
       bool reorder = nir_intrinsic_can_reorder(instr);
       enum gl_access_qualifier access = ac_get_mem_access_flags(instr);
@@ -3489,10 +3489,10 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                           LLVMConstInt(ctx->ac.i32, const_offset, 0), "");
 
       if (instr->intrinsic == nir_intrinsic_load_buffer_amd && uses_format) {
-         assert(instr->dest.ssa.bit_size == 16 || instr->dest.ssa.bit_size == 32);
+         assert(instr->def.bit_size == 16 || instr->def.bit_size == 32);
          result = ac_build_buffer_load_format(&ctx->ac, descriptor, vidx, voffset, num_components,
                                               access, reorder,
-                                              instr->dest.ssa.bit_size == 16, false);
+                                              instr->def.bit_size == 16, false);
          result = ac_to_integer(&ctx->ac, result);
       } else if (instr->intrinsic == nir_intrinsic_store_buffer_amd && uses_format) {
          assert(instr->src[0].ssa->bit_size == 16 || instr->src[0].ssa->bit_size == 32);
@@ -3503,9 +3503,9 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
           * Workaround by using i32 and casting to the correct type later.
           */
          const unsigned fetch_num_components =
-            num_components * MAX2(32, instr->dest.ssa.bit_size) / 32;
+            num_components * MAX2(32, instr->def.bit_size) / 32;
          LLVMTypeRef channel_type =
-            LLVMIntTypeInContext(ctx->ac.context, MIN2(32, instr->dest.ssa.bit_size));
+            LLVMIntTypeInContext(ctx->ac.context, MIN2(32, instr->def.bit_size));
 
          if (instr->intrinsic == nir_intrinsic_load_buffer_amd) {
             result = ac_build_buffer_load(&ctx->ac, descriptor, fetch_num_components, vidx, voffset,
@@ -3527,9 +3527,9 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          result = ac_trim_vector(&ctx->ac, result, fetch_num_components);
 
          /* Cast to larger than 32-bit sized components if needed. */
-         if (instr->dest.ssa.bit_size > 32) {
+         if (instr->def.bit_size > 32) {
             LLVMTypeRef cast_channel_type =
-               LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
+               LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
             LLVMTypeRef cast_type =
                num_components == 1 ? cast_channel_type :
                LLVMVectorType(cast_channel_type, num_components);
@@ -3600,7 +3600,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       arg.used = true;
       result = ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, arg));
       if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(result)) != 32)
-         result = LLVMBuildBitCast(ctx->ac.builder, result, get_def_type(ctx, &instr->dest.ssa), "");
+         result = LLVMBuildBitCast(ctx->ac.builder, result, get_def_type(ctx, &instr->def), "");
       break;
    }
    case nir_intrinsic_load_smem_amd: {
@@ -3610,7 +3610,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       bool is_addr_32bit = nir_src_bit_size(instr->src[0]) == 32;
       int addr_space = is_addr_32bit ? AC_ADDR_SPACE_CONST_32BIT : AC_ADDR_SPACE_CONST;
 
-      LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
+      LLVMTypeRef result_type = get_def_type(ctx, &instr->def);
       LLVMTypeRef byte_ptr_type = LLVMPointerType(ctx->ac.i8, addr_space);
 
       LLVMValueRef addr = LLVMBuildIntToPtr(ctx->ac.builder, base, byte_ptr_type, "");
@@ -3785,7 +3785,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       return false;
    }
    if (result) {
-      ctx->ssa_defs[instr->dest.ssa.index] = result;
+      ctx->ssa_defs[instr->def.index] = result;
    }
    return true;
 }
@@ -4067,7 +4067,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       args.sampler = LLVMBuildInsertElement(ctx->ac.builder, args.sampler, dword0, ctx->ac.i32_0, "");
    }
 
-   args.d16 = instr->dest.ssa.bit_size == 16;
+   args.d16 = instr->def.bit_size == 16;
    args.tfe = instr->is_sparse;
 
    result = build_tex_intrinsic(ctx, instr, &args);
@@ -4090,7 +4090,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
                                LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, ""),
                                LLVMConstInt(ctx->ac.i32, 0x76543210, false), "");
    } else if (nir_tex_instr_result_size(instr) != 4)
-      result = ac_trim_vector(&ctx->ac, result, instr->dest.ssa.num_components);
+      result = ac_trim_vector(&ctx->ac, result, instr->def.num_components);
 
    if (instr->is_sparse)
       result = ac_build_concat(&ctx->ac, result, code);
@@ -4102,16 +4102,16 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
          result = exit_waterfall(ctx, wctx + i, result);
       }
 
-      ctx->ssa_defs[instr->dest.ssa.index] = result;
+      ctx->ssa_defs[instr->def.index] = result;
    }
 }
 
 static void visit_phi(struct ac_nir_context *ctx, nir_phi_instr *instr)
 {
-   LLVMTypeRef type = get_def_type(ctx, &instr->dest.ssa);
+   LLVMTypeRef type = get_def_type(ctx, &instr->def);
    LLVMValueRef result = LLVMBuildPhi(ctx->ac.builder, type, "");
 
-   ctx->ssa_defs[instr->dest.ssa.index] = result;
+   ctx->ssa_defs[instr->def.index] = result;
    _mesa_hash_table_insert(ctx->phis, instr, result);
 }
 

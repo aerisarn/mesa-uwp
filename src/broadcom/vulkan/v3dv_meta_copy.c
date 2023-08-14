@@ -2323,7 +2323,7 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
       nir_iadd(&b, nir_iadd(&b, offset, x_offset),
                    nir_imul(&b, y_offset, stride));
 
-   nir_def *tex_deref = &nir_build_deref_var(&b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(&b, sampler)->def;
    nir_tex_instr *tex = nir_tex_instr_create(b.shader, 2);
    tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
    tex->op = nir_texop_txf;
@@ -2332,7 +2332,7 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
    tex->dest_type = nir_type_uint32;
    tex->is_array = false;
    tex->coord_components = 1;
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
 
    uint32_t swiz[4];
@@ -2344,7 +2344,7 @@ get_texel_buffer_copy_fs(struct v3dv_device *device, VkFormat format,
       component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_B, cswizzle->b);
    swiz[3] =
       component_swizzle_to_nir_swizzle(VK_COMPONENT_SWIZZLE_A, cswizzle->a);
-   nir_def *s = nir_swizzle(&b, &tex->dest.ssa, swiz, 4);
+   nir_def *s = nir_swizzle(&b, &tex->def, swiz, 4);
    nir_store_var(&b, fs_out_color, s, 0xf);
 
    return b.shader;
@@ -3597,7 +3597,7 @@ build_nir_tex_op_read(struct nir_builder *b,
    sampler->data.descriptor_set = 0;
    sampler->data.binding = 0;
 
-   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->def;
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
    tex->sampler_dim = dim;
    tex->op = nir_texop_tex;
@@ -3608,9 +3608,9 @@ build_nir_tex_op_read(struct nir_builder *b,
    tex->is_array = glsl_sampler_type_is_array(sampler_type);
    tex->coord_components = tex_pos->num_components;
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 static nir_def *
@@ -3631,9 +3631,9 @@ build_nir_tex_op_ms_fetch_sample(struct nir_builder *b,
    tex->is_array = false;
    tex->coord_components = tex_pos->num_components;
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 /* Fetches all samples at the given position and averages them */
@@ -3654,7 +3654,7 @@ build_nir_tex_op_ms_resolve(struct nir_builder *b,
    const bool is_int = glsl_base_type_is_integer(tex_type);
 
    nir_def *tmp = NULL;
-   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->def;
    for (uint32_t i = 0; i < src_samples; i++) {
       nir_def *s =
          build_nir_tex_op_ms_fetch_sample(b, sampler, tex_deref,
@@ -3687,7 +3687,7 @@ build_nir_tex_op_ms_read(struct nir_builder *b,
    sampler->data.descriptor_set = 0;
    sampler->data.binding = 0;
 
-   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+   nir_def *tex_deref = &nir_build_deref_var(b, sampler)->def;
 
    return build_nir_tex_op_ms_fetch_sample(b, sampler, tex_deref,
                                            tex_type, tex_pos,

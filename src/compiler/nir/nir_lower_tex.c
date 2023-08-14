@@ -288,7 +288,7 @@ lower_zero_lod(nir_builder *b, nir_tex_instr *tex)
    b->cursor = nir_before_instr(&tex->instr);
 
    if (tex->op == nir_texop_lod) {
-      nir_def_rewrite_uses(&tex->dest.ssa, nir_imm_int(b, 0));
+      nir_def_rewrite_uses(&tex->def, nir_imm_int(b, 0));
       nir_instr_remove(&tex->instr);
       return;
    }
@@ -315,23 +315,23 @@ sample_plane(nir_builder *b, nir_tex_instr *tex, int plane,
                                                        nir_imm_int(b, plane));
    plane_tex->op = nir_texop_tex;
    plane_tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-   plane_tex->dest_type = nir_type_float | tex->dest.ssa.bit_size;
+   plane_tex->dest_type = nir_type_float | tex->def.bit_size;
    plane_tex->coord_components = 2;
 
    plane_tex->texture_index = tex->texture_index;
    plane_tex->sampler_index = tex->sampler_index;
 
-   nir_def_init(&plane_tex->instr, &plane_tex->dest.ssa, 4,
-                tex->dest.ssa.bit_size);
+   nir_def_init(&plane_tex->instr, &plane_tex->def, 4,
+                tex->def.bit_size);
 
    nir_builder_instr_insert(b, &plane_tex->instr);
 
    /* If scaling_factor is set, return a scaled value. */
    if (options->scale_factors[tex->texture_index])
-      return nir_fmul_imm(b, &plane_tex->dest.ssa,
+      return nir_fmul_imm(b, &plane_tex->def,
                           options->scale_factors[tex->texture_index]);
 
-   return &plane_tex->dest.ssa;
+   return &plane_tex->def;
 }
 
 static void
@@ -369,7 +369,7 @@ convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
       }
    }
 
-   unsigned bit_size = tex->dest.ssa.bit_size;
+   unsigned bit_size = tex->def.bit_size;
 
    nir_def *offset =
       nir_vec4(b,
@@ -387,7 +387,7 @@ convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
    nir_def *result =
       nir_ffma(b, y, m0, nir_ffma(b, u, m1, nir_ffma(b, v, m2, offset)));
 
-   nir_def_rewrite_uses(&tex->dest.ssa, result);
+   nir_def_rewrite_uses(&tex->def, result);
 }
 
 static void
@@ -886,11 +886,11 @@ lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
    txd->src[tex->num_srcs] = nir_tex_src_for_ssa(nir_tex_src_ddx, dfdx);
    txd->src[tex->num_srcs + 1] = nir_tex_src_for_ssa(nir_tex_src_ddy, dfdy);
 
-   nir_def_init(&txd->instr, &txd->dest.ssa,
-                tex->dest.ssa.num_components,
-                tex->dest.ssa.bit_size);
+   nir_def_init(&txd->instr, &txd->def,
+                tex->def.num_components,
+                tex->def.bit_size);
    nir_builder_instr_insert(b, &txd->instr);
-   nir_def_rewrite_uses(&tex->dest.ssa, &txd->dest.ssa);
+   nir_def_rewrite_uses(&tex->def, &txd->def);
    nir_instr_remove(&tex->instr);
    return txd;
 }
@@ -926,11 +926,11 @@ lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
    lod = nir_fadd(b, nir_channel(b, lod, 1), nir_ssa_for_src(b, tex->src[bias_idx].src, 1));
    txl->src[tex->num_srcs - 1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
-   nir_def_init(&txl->instr, &txl->dest.ssa,
-                tex->dest.ssa.num_components,
-                tex->dest.ssa.bit_size);
+   nir_def_init(&txl->instr, &txl->def,
+                tex->def.num_components,
+                tex->def.bit_size);
    nir_builder_instr_insert(b, &txl->instr);
-   nir_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);
+   nir_def_rewrite_uses(&tex->def, &txl->def);
    nir_instr_remove(&tex->instr);
    return txl;
 }
@@ -1015,9 +1015,9 @@ swizzle_tg4_broadcom(nir_builder *b, nir_tex_instr *tex)
 
    assert(nir_tex_instr_dest_size(tex) == 4);
    unsigned swiz[4] = { 2, 3, 1, 0 };
-   nir_def *swizzled = nir_swizzle(b, &tex->dest.ssa, swiz, 4);
+   nir_def *swizzled = nir_swizzle(b, &tex->def, swiz, 4);
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, swizzled,
+   nir_def_rewrite_uses_after(&tex->def, swizzled,
                               swizzled->parent_instr);
 }
 
@@ -1041,12 +1041,12 @@ swizzle_result(nir_builder *b, nir_tex_instr *tex, const uint8_t swizzle[4])
           swizzle[2] < 4 && swizzle[3] < 4) {
          unsigned swiz[4] = { swizzle[0], swizzle[1], swizzle[2], swizzle[3] };
          /* We have no 0s or 1s, just emit a swizzling MOV */
-         swizzled = nir_swizzle(b, &tex->dest.ssa, swiz, 4);
+         swizzled = nir_swizzle(b, &tex->def, swiz, 4);
       } else {
          nir_scalar srcs[4];
          for (unsigned i = 0; i < 4; i++) {
             if (swizzle[i] < 4) {
-               srcs[i] = nir_get_ssa_scalar(&tex->dest.ssa, swizzle[i]);
+               srcs[i] = nir_get_ssa_scalar(&tex->def, swizzle[i]);
             } else {
                srcs[i] = nir_get_ssa_scalar(get_zero_or_one(b, tex->dest_type, swizzle[i]), 0);
             }
@@ -1055,7 +1055,7 @@ swizzle_result(nir_builder *b, nir_tex_instr *tex, const uint8_t swizzle[4])
       }
    }
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, swizzled,
+   nir_def_rewrite_uses_after(&tex->def, swizzled,
                               swizzled->parent_instr);
 }
 
@@ -1068,16 +1068,16 @@ linearize_srgb_result(nir_builder *b, nir_tex_instr *tex)
    b->cursor = nir_after_instr(&tex->instr);
 
    nir_def *rgb =
-      nir_format_srgb_to_linear(b, nir_trim_vector(b, &tex->dest.ssa, 3));
+      nir_format_srgb_to_linear(b, nir_trim_vector(b, &tex->def, 3));
 
    /* alpha is untouched: */
    nir_def *result = nir_vec4(b,
                               nir_channel(b, rgb, 0),
                               nir_channel(b, rgb, 1),
                               nir_channel(b, rgb, 2),
-                              nir_channel(b, &tex->dest.ssa, 3));
+                              nir_channel(b, &tex->def, 3));
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, result,
+   nir_def_rewrite_uses_after(&tex->def, result,
                               result->parent_instr);
 }
 
@@ -1094,7 +1094,7 @@ static bool
 lower_tex_packing(nir_builder *b, nir_tex_instr *tex,
                   const nir_lower_tex_options *options)
 {
-   nir_def *color = &tex->dest.ssa;
+   nir_def *color = &tex->def;
 
    b->cursor = nir_after_instr(&tex->instr);
 
@@ -1158,7 +1158,7 @@ lower_tex_packing(nir_builder *b, nir_tex_instr *tex,
       break;
    }
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, color,
+   nir_def_rewrite_uses_after(&tex->def, color,
                               color->parent_instr);
    return true;
 }
@@ -1219,14 +1219,14 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
       nir_tex_src src = nir_tex_src_for_ssa(nir_tex_src_offset, offset);
       tex_copy->src[tex_copy->num_srcs - 1] = src;
 
-      nir_def_init(&tex_copy->instr, &tex_copy->dest.ssa,
+      nir_def_init(&tex_copy->instr, &tex_copy->def,
                    nir_tex_instr_dest_size(tex), 32);
 
       nir_builder_instr_insert(b, &tex_copy->instr);
 
-      dest[i] = nir_get_ssa_scalar(&tex_copy->dest.ssa, 3);
+      dest[i] = nir_get_ssa_scalar(&tex_copy->def, 3);
       if (tex->is_sparse) {
-         nir_def *code = nir_channel(b, &tex_copy->dest.ssa, 4);
+         nir_def *code = nir_channel(b, &tex_copy->def, 4);
          if (residency)
             residency = nir_sparse_residency_code_and(b, residency, code);
          else
@@ -1235,8 +1235,8 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
    }
    dest[4] = nir_get_ssa_scalar(residency, 0);
 
-   nir_def *res = nir_vec_scalars(b, dest, tex->dest.ssa.num_components);
-   nir_def_rewrite_uses(&tex->dest.ssa, res);
+   nir_def *res = nir_vec_scalars(b, dest, tex->def.num_components);
+   nir_def_rewrite_uses(&tex->def, res);
    nir_instr_remove(&tex->instr);
 
    return true;
@@ -1265,8 +1265,8 @@ nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
     * which should return 0, not 1.
     */
    b->cursor = nir_after_instr(&tex->instr);
-   nir_def *minified = nir_imin(b, &tex->dest.ssa,
-                                nir_imax(b, nir_ushr(b, &tex->dest.ssa, lod),
+   nir_def *minified = nir_imin(b, &tex->def,
+                                nir_imax(b, nir_ushr(b, &tex->def, lod),
                                          nir_imm_int(b, 1)));
 
    /* Make sure the component encoding the array size (if any) is not
@@ -1279,11 +1279,11 @@ nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
       for (unsigned i = 0; i < dest_size - 1; i++)
          comp[i] = nir_channel(b, minified, i);
 
-      comp[dest_size - 1] = nir_channel(b, &tex->dest.ssa, dest_size - 1);
+      comp[dest_size - 1] = nir_channel(b, &tex->def, dest_size - 1);
       minified = nir_vec(b, comp, dest_size);
    }
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, minified,
+   nir_def_rewrite_uses_after(&tex->def, minified,
                               minified->parent_instr);
    return true;
 }
@@ -1296,14 +1296,14 @@ nir_lower_txs_cube_array(nir_builder *b, nir_tex_instr *tex)
 
    b->cursor = nir_after_instr(&tex->instr);
 
-   assert(tex->dest.ssa.num_components == 3);
-   nir_def *size = &tex->dest.ssa;
+   assert(tex->def.num_components == 3);
+   nir_def *size = &tex->def;
    size = nir_vec3(b, nir_channel(b, size, 1),
                    nir_channel(b, size, 1),
                    nir_idiv(b, nir_channel(b, size, 2),
                             nir_imm_int(b, 6)));
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, size, size->parent_instr);
+   nir_def_rewrite_uses_after(&tex->def, size, size->parent_instr);
 }
 
 /* Adjust the sample index according to AMD FMASK (fragment mask).
@@ -1341,7 +1341,7 @@ nir_lower_ms_txf_to_fragment_fetch(nir_builder *b, nir_tex_instr *tex)
    fmask_fetch->is_array = tex->is_array;
    fmask_fetch->texture_non_uniform = tex->texture_non_uniform;
    fmask_fetch->dest_type = nir_type_uint32;
-   nir_def_init(&fmask_fetch->instr, &fmask_fetch->dest.ssa, 1, 32);
+   nir_def_init(&fmask_fetch->instr, &fmask_fetch->def, 1, 32);
 
    fmask_fetch->num_srcs = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
@@ -1358,7 +1358,7 @@ nir_lower_ms_txf_to_fragment_fetch(nir_builder *b, nir_tex_instr *tex)
    int ms_index = nir_tex_instr_src_index(tex, nir_tex_src_ms_index);
    assert(ms_index >= 0);
    nir_src sample = tex->src[ms_index].src;
-   nir_def *new_sample = nir_ubfe(b, &fmask_fetch->dest.ssa,
+   nir_def *new_sample = nir_ubfe(b, &fmask_fetch->def,
                                   nir_ishl_imm(b, sample.ssa, 2), nir_imm_int(b, 3));
 
    /* Update instruction. */
@@ -1374,10 +1374,10 @@ nir_lower_samples_identical_to_fragment_fetch(nir_builder *b, nir_tex_instr *tex
    nir_tex_instr *fmask_fetch = nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
    fmask_fetch->op = nir_texop_fragment_mask_fetch_amd;
    fmask_fetch->dest_type = nir_type_uint32;
-   nir_def_init(&fmask_fetch->instr, &fmask_fetch->dest.ssa, 1, 32);
+   nir_def_init(&fmask_fetch->instr, &fmask_fetch->def, 1, 32);
    nir_builder_instr_insert(b, &fmask_fetch->instr);
 
-   nir_def_rewrite_uses(&tex->dest.ssa, nir_ieq_imm(b, &fmask_fetch->dest.ssa, 0));
+   nir_def_rewrite_uses(&tex->def, nir_ieq_imm(b, &fmask_fetch->def, 0));
    nir_instr_remove_v(&tex->instr);
 }
 
@@ -1405,12 +1405,12 @@ nir_lower_lod_zero_width(nir_builder *b, nir_tex_instr *tex)
    /* Replace the raw LOD by -FLT_MAX if the sum is 0 for all coordinates. */
    nir_def *adjusted_lod =
       nir_bcsel(b, is_zero, nir_imm_float(b, -FLT_MAX),
-                nir_channel(b, &tex->dest.ssa, 1));
+                nir_channel(b, &tex->def, 1));
 
    nir_def *def =
-      nir_vec2(b, nir_channel(b, &tex->dest.ssa, 0), adjusted_lod);
+      nir_vec2(b, nir_channel(b, &tex->def, 0), adjusted_lod);
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, def, def->parent_instr);
+   nir_def_rewrite_uses_after(&tex->def, def, def->parent_instr);
 }
 
 static bool

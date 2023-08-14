@@ -26,9 +26,9 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
       nir_iadd(b, nir_load_ubo_base_agx(b, ubo_index), nir_u2u64(b, offset));
    nir_def *value =
       nir_load_global_constant(b, address, nir_intrinsic_align(intr),
-                               intr->num_components, intr->dest.ssa.bit_size);
+                               intr->num_components, intr->def.bit_size);
 
-   nir_def_rewrite_uses(&intr->dest.ssa, value);
+   nir_def_rewrite_uses(&intr->def, value);
    return true;
 }
 

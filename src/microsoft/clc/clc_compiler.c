@@ -145,7 +145,7 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
     *    arbitrary type for it.
     */
    for (int pass = 0; pass < 2; ++pass) {
-      nir_foreach_use_safe(src, &context->deref->dest.ssa) {
+      nir_foreach_use_safe(src, &context->deref->def) {
          enum image_type type;
 
          if (src->parent_instr->type == nir_instr_type_intrinsic) {
@@ -218,7 +218,7 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
                }
 
                /* No actual intrinsic needed here, just reference the loaded variable */
-               nir_def_rewrite_uses(&intrinsic->dest.ssa, *cached_deref);
+               nir_def_rewrite_uses(&intrinsic->def, *cached_deref);
                nir_instr_remove(&intrinsic->instr);
                break;
             }
@@ -307,12 +307,12 @@ clc_lower_64bit_semantics(nir_shader *nir)
                if (nir_instr_ssa_def(instr)->bit_size != 64)
                   continue;
 
-               intrinsic->dest.ssa.bit_size = 32;
+               intrinsic->def.bit_size = 32;
                b.cursor = nir_after_instr(instr);
 
-               nir_def *i64 = nir_u2u64(&b, &intrinsic->dest.ssa);
+               nir_def *i64 = nir_u2u64(&b, &intrinsic->def);
                nir_def_rewrite_uses_after(
-                  &intrinsic->dest.ssa,
+                  &intrinsic->def,
                   i64,
                   i64->parent_instr);
             }

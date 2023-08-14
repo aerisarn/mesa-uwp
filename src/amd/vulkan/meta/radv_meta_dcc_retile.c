@@ -51,8 +51,8 @@ build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *sur
    output_dcc->data.descriptor_set = 0;
    output_dcc->data.binding = 1;
 
-   nir_def *input_dcc_ref = &nir_build_deref_var(&b, input_dcc)->dest.ssa;
-   nir_def *output_dcc_ref = &nir_build_deref_var(&b, output_dcc)->dest.ssa;
+   nir_def *input_dcc_ref = &nir_build_deref_var(&b, input_dcc)->def;
+   nir_def *output_dcc_ref = &nir_build_deref_var(&b, output_dcc)->def;
 
    nir_def *coord = get_global_ids(&b, 2);
    nir_def *zero = nir_imm_int(&b, 0);

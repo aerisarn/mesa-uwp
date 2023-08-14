@@ -124,7 +124,7 @@ vtn_handle_function_call(struct vtn_builder *b, SpvOp opcode,
                                    glsl_get_bare_type(ret_type->type),
                                    "return_tmp");
       ret_deref = nir_build_deref_var(&b->nb, ret_tmp);
-      call->params[param_idx++] = nir_src_for_ssa(&ret_deref->dest.ssa);
+      call->params[param_idx++] = nir_src_for_ssa(&ret_deref->def);
    }
 
    for (unsigned i = 0; i < vtn_callee->type->length; i++) {

@@ -63,7 +63,7 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_stage *fs
                def = sample_coverage;
             }
 
-            nir_def_rewrite_uses(&intrin->dest.ssa, def);
+            nir_def_rewrite_uses(&intrin->def, def);
 
             nir_instr_remove(instr);
             progress = true;
@@ -73,10 +73,10 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_stage *fs
             if (!key->adjust_frag_coord_z)
                continue;
 
-            if (!(nir_def_components_read(&intrin->dest.ssa) & (1 << 2)))
+            if (!(nir_def_components_read(&intrin->def) & (1 << 2)))
                continue;
 
-            nir_def *frag_z = nir_channel(&b, &intrin->dest.ssa, 2);
+            nir_def *frag_z = nir_channel(&b, &intrin->def, 2);
 
             /* adjusted_frag_z = fddx_fine(frag_z) * 0.0625 + frag_z */
             nir_def *adjusted_frag_z = nir_fddx_fine(&b, frag_z);
@@ -90,8 +90,8 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_stage *fs
             nir_def *cond = nir_ieq_imm(&b, x_rate, 1);
             frag_z = nir_bcsel(&b, cond, adjusted_frag_z, frag_z);
 
-            nir_def *new_dest = nir_vector_insert_imm(&b, &intrin->dest.ssa, frag_z, 2);
-            nir_def_rewrite_uses_after(&intrin->dest.ssa, new_dest, new_dest->parent_instr);
+            nir_def *new_dest = nir_vector_insert_imm(&b, &intrin->def, frag_z, 2);
+            nir_def_rewrite_uses_after(&intrin->def, new_dest, new_dest->parent_instr);
 
             progress = true;
             break;
@@ -134,7 +134,7 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_stage *fs
                }
             }
 
-            nir_def_rewrite_uses(&intrin->dest.ssa, new_dest);
+            nir_def_rewrite_uses(&intrin->def, new_dest);
             nir_instr_remove(instr);
 
             progress = true;

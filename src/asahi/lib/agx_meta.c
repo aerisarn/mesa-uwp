@@ -57,10 +57,10 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
 
       tex->coord_components = 2;
       tex->texture_index = rt;
-      nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
 
-      return nir_trim_vector(b, &tex->dest.ssa, nr);
+      return nir_trim_vector(b, &tex->def, nr);
    } else {
       assert(op == AGX_META_OP_CLEAR);
 

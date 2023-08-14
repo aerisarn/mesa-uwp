@@ -53,8 +53,8 @@ lower_load_input_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
       unsigned newc = nir_intrinsic_component(intr);
       nir_intrinsic_instr *chan_intr =
          nir_intrinsic_instr_create(b->shader, intr->intrinsic);
-      nir_def_init(&chan_intr->instr, &chan_intr->dest.ssa, 1,
-                   intr->dest.ssa.bit_size);
+      nir_def_init(&chan_intr->instr, &chan_intr->def, 1,
+                   intr->def.bit_size);
       chan_intr->num_components = 1;
 
       nir_intrinsic_set_base(chan_intr, nir_intrinsic_base(intr));
@@ -73,10 +73,10 @@ lower_load_input_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
 
       nir_builder_instr_insert(b, &chan_intr->instr);
 
-      loads[i] = &chan_intr->dest.ssa;
+      loads[i] = &chan_intr->def;
    }
 
-   nir_def_rewrite_uses(&intr->dest.ssa,
+   nir_def_rewrite_uses(&intr->def,
                         nir_vec(b, loads, intr->num_components));
    nir_instr_remove(&intr->instr);
 }
@@ -92,13 +92,13 @@ lower_load_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
    for (unsigned i = 0; i < intr->num_components; i++) {
       nir_intrinsic_instr *chan_intr =
          nir_intrinsic_instr_create(b->shader, intr->intrinsic);
-      nir_def_init(&chan_intr->instr, &chan_intr->dest.ssa, 1,
-                   intr->dest.ssa.bit_size);
+      nir_def_init(&chan_intr->instr, &chan_intr->def, 1,
+                   intr->def.bit_size);
       chan_intr->num_components = 1;
 
       nir_intrinsic_set_align_offset(chan_intr,
                                      (nir_intrinsic_align_offset(intr) +
-                                      i * (intr->dest.ssa.bit_size / 8)) %
+                                      i * (intr->def.bit_size / 8)) %
                                         nir_intrinsic_align_mul(intr));
       nir_intrinsic_set_align_mul(chan_intr, nir_intrinsic_align_mul(intr));
       if (nir_intrinsic_has_access(intr))
@@ -113,15 +113,15 @@ lower_load_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
          nir_src_copy(&chan_intr->src[j], &intr->src[j], &chan_intr->instr);
 
       /* increment offset per component */
-      nir_def *offset = nir_iadd_imm(b, base_offset, i * (intr->dest.ssa.bit_size / 8));
+      nir_def *offset = nir_iadd_imm(b, base_offset, i * (intr->def.bit_size / 8));
       *nir_get_io_offset_src(chan_intr) = nir_src_for_ssa(offset);
 
       nir_builder_instr_insert(b, &chan_intr->instr);
 
-      loads[i] = &chan_intr->dest.ssa;
+      loads[i] = &chan_intr->def;
    }
 
-   nir_def_rewrite_uses(&intr->dest.ssa,
+   nir_def_rewrite_uses(&intr->def,
                         nir_vec(b, loads, intr->num_components));
    nir_instr_remove(&intr->instr);
 }
@@ -380,15 +380,15 @@ lower_load_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
 
       nir_intrinsic_instr *chan_intr =
          nir_intrinsic_instr_create(b->shader, intr->intrinsic);
-      nir_def_init(&chan_intr->instr, &chan_intr->dest.ssa, 1,
-                   intr->dest.ssa.bit_size);
+      nir_def_init(&chan_intr->instr, &chan_intr->def, 1,
+                   intr->def.bit_size);
       chan_intr->num_components = 1;
 
       nir_deref_instr *deref = nir_build_deref_var(b, chan_var);
 
       deref = clone_deref_array(b, deref, nir_src_as_deref(intr->src[0]));
 
-      chan_intr->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+      chan_intr->src[0] = nir_src_for_ssa(&deref->def);
 
       if (intr->intrinsic == nir_intrinsic_interp_deref_at_offset ||
           intr->intrinsic == nir_intrinsic_interp_deref_at_sample ||
@@ -397,10 +397,10 @@ lower_load_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
 
       nir_builder_instr_insert(b, &chan_intr->instr);
 
-      loads[i] = &chan_intr->dest.ssa;
+      loads[i] = &chan_intr->def;
    }
 
-   nir_def_rewrite_uses(&intr->dest.ssa,
+   nir_def_rewrite_uses(&intr->def,
                         nir_vec(b, loads, intr->num_components));
 
    /* Remove the old load intrinsic */
@@ -442,7 +442,7 @@ lower_store_output_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
 
       deref = clone_deref_array(b, deref, nir_src_as_deref(intr->src[0]));
 
-      chan_intr->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+      chan_intr->src[0] = nir_src_for_ssa(&deref->def);
       chan_intr->src[1] = nir_src_for_ssa(nir_channel(b, value, i));
 
       nir_builder_instr_insert(b, &chan_intr->instr);

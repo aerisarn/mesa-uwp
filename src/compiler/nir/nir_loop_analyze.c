@@ -460,7 +460,7 @@ compute_induction_information(loop_info_state *state)
                   /* Is one of the operands const or uniform, and the other the phi.
                    * The phi source can't be swizzled in any way.
                    */
-                  if (alu->src[1 - i].src.ssa == &phi->dest.ssa &&
+                  if (alu->src[1 - i].src.ssa == &phi->def &&
                       alu_src_has_identity_swizzle(alu, 1 - i)) {
                      if (is_only_uniform_src(&alu->src[i].src))
                         var->update_src = alu->src + i;

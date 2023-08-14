@@ -55,11 +55,11 @@ lower_vec3_to_vec4_instr(nir_builder *b, nir_instr *instr, void *data)
             break;
 
          intrin->num_components = 4;
-         intrin->dest.ssa.num_components = 4;
+         intrin->def.num_components = 4;
 
          b->cursor = nir_after_instr(&intrin->instr);
-         nir_def *vec3 = nir_trim_vector(b, &intrin->dest.ssa, 3);
-         nir_def_rewrite_uses_after(&intrin->dest.ssa,
+         nir_def *vec3 = nir_trim_vector(b, &intrin->def, 3);
+         nir_def_rewrite_uses_after(&intrin->def,
                                     vec3,
                                     vec3->parent_instr);
          return true;

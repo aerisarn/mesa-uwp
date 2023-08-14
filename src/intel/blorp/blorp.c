@@ -356,7 +356,7 @@ lower_base_workgroup_id(nir_builder *b, nir_instr *instr, UNUSED void *data)
       return false;
 
    b->cursor = nir_instr_remove(&intrin->instr);
-   nir_def_rewrite_uses(&intrin->dest.ssa, nir_imm_zero(b, 3, 32));
+   nir_def_rewrite_uses(&intrin->def, nir_imm_zero(b, 3, 32));
    return true;
 }
 

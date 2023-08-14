@@ -156,10 +156,10 @@ scalarize_load(nir_intrinsic_instr *intrinsic, nir_builder *b)
    nir_def *descriptor = intrinsic->src[0].ssa;
    nir_def *offset = intrinsic->src[1].ssa;
    nir_def *new_offset = intrinsic->src[2].ssa;
-   unsigned comp_size = intrinsic->dest.ssa.bit_size / 8;
-   for (unsigned i = 0; i < intrinsic->dest.ssa.num_components; i++) {
+   unsigned comp_size = intrinsic->def.bit_size / 8;
+   for (unsigned i = 0; i < intrinsic->def.num_components; i++) {
       results[i] =
-         nir_load_ssbo_ir3(b, 1, intrinsic->dest.ssa.bit_size, descriptor,
+         nir_load_ssbo_ir3(b, 1, intrinsic->def.bit_size, descriptor,
                            nir_iadd_imm(b, offset, i * comp_size),
                            nir_iadd_imm(b, new_offset, i),
                            .access = nir_intrinsic_access(intrinsic),
@@ -167,9 +167,9 @@ scalarize_load(nir_intrinsic_instr *intrinsic, nir_builder *b)
                            .align_offset = nir_intrinsic_align_offset(intrinsic));
    }
 
-   nir_def *result = nir_vec(b, results, intrinsic->dest.ssa.num_components);
+   nir_def *result = nir_vec(b, results, intrinsic->def.num_components);
 
-   nir_def_rewrite_uses(&intrinsic->dest.ssa, result);
+   nir_def_rewrite_uses(&intrinsic->def, result);
 
    nir_instr_remove(&intrinsic->instr);
 }
@@ -185,7 +185,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
    nir_def *new_dest = NULL;
 
    /* for 16-bit ssbo access, offset is in 16-bit words instead of dwords */
-   if ((has_dest && intrinsic->dest.ssa.bit_size == 16) ||
+   if ((has_dest && intrinsic->def.bit_size == 16) ||
        (!has_dest && intrinsic->src[0].ssa->bit_size == 16))
       shift = 1;
 
@@ -219,10 +219,10 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
    *target_src = nir_src_for_ssa(offset);
 
    if (has_dest) {
-      nir_def *dest = &intrinsic->dest.ssa;
-      nir_def_init(&new_intrinsic->instr, &new_intrinsic->dest.ssa,
+      nir_def *dest = &intrinsic->def;
+      nir_def_init(&new_intrinsic->instr, &new_intrinsic->def,
                    dest->num_components, dest->bit_size);
-      new_dest = &new_intrinsic->dest.ssa;
+      new_dest = &new_intrinsic->def;
    }
 
    for (unsigned i = 0; i < num_srcs; i++)
@@ -253,7 +253,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
       /* Replace the uses of the original destination by that
        * of the new intrinsic.
        */
-      nir_def_rewrite_uses(&intrinsic->dest.ssa, new_dest);
+      nir_def_rewrite_uses(&intrinsic->def, new_dest);
    }
 
    /* Finally remove the original intrinsic. */

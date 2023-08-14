@@ -499,7 +499,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       return false;
 
    if (replacement)
-      nir_def_rewrite_uses(&intrin->dest.ssa, replacement);
+      nir_def_rewrite_uses(&intrin->def, replacement);
 
    nir_instr_remove(instr);
    nir_instr_free(instr);

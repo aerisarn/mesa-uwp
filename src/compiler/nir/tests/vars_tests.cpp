@@ -2163,7 +2163,7 @@ TEST_F(nir_split_vars_test, simple_dont_split)
    nir_deref_instr *temp_deref = nir_build_deref_var(b, temp);
 
    for (int i = 0; i < 4; i++)
-      nir_store_deref(b, nir_build_deref_array(b, temp_deref, &ind_deref->dest.ssa), nir_load_var(b, in[i]), 1);
+      nir_store_deref(b, nir_build_deref_array(b, temp_deref, &ind_deref->def), nir_load_var(b, in[i]), 1);
 
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_derefs(nir_deref_type_array), 4);
@@ -2188,7 +2188,7 @@ TEST_F(nir_split_vars_test, twolevel_dont_split_lvl_0)
    nir_deref_instr *temp_deref = nir_build_deref_var(b, temp);
 
    for (int i = 0; i < 4; i++) {
-      nir_deref_instr *level0 = nir_build_deref_array(b, temp_deref, &ind_deref->dest.ssa);
+      nir_deref_instr *level0 = nir_build_deref_array(b, temp_deref, &ind_deref->def);
       for (int j = 0; j < 6; j++) {
          nir_deref_instr *level1 = nir_build_deref_array_imm(b, level0, j);
          nir_store_deref(b, level1, nir_load_var(b, in[i]), 1);
@@ -2221,7 +2221,7 @@ TEST_F(nir_split_vars_test, twolevel_dont_split_lvl_1)
       nir_deref_instr *level0 = nir_build_deref_array_imm(b, temp_deref, i);
       for (int j = 0; j < 6; j++) {
          /* just add the inner index to get some different derefs */
-         nir_deref_instr *level1 = nir_build_deref_array(b, level0, nir_iadd_imm(b, &ind_deref->dest.ssa, j));
+         nir_deref_instr *level1 = nir_build_deref_array(b, level0, nir_iadd_imm(b, &ind_deref->def, j));
          nir_store_deref(b, level1, nir_load_var(b, in[i]), 1);
       }
    }

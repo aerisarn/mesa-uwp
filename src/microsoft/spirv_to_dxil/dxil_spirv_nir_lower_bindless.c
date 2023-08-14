@@ -110,7 +110,7 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *intr,
    nir_def *res_idx =
       load_vulkan_ssbo(b, remap.descriptor_set, nir_imul_imm(b, index_in_ubo, descriptor_size), 2);
 
-   nir_def_rewrite_uses(&intr->dest.ssa, res_idx);
+   nir_def_rewrite_uses(&intr->def, res_idx);
    return true;
 }
 

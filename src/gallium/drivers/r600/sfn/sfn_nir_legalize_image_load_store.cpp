@@ -46,7 +46,7 @@ r600_legalize_image_load_store_impl(nir_builder *b,
 
    if (load_value)
       default_value =
-         nir_imm_zero(b, ir->dest.ssa.num_components, ir->dest.ssa.bit_size);
+         nir_imm_zero(b, ir->def.num_components, ir->def.bit_size);
 
    auto image_exists =
       nir_ult_imm(b, ir->src[0].ssa, b->shader->info.num_images);
@@ -128,7 +128,7 @@ r600_legalize_image_load_store_impl(nir_builder *b,
    nir_builder_instr_insert(b, new_load);
 
    if (load_value)
-      result = &new_load_ir->dest.ssa;
+      result = &new_load_ir->def;
 
    if (ir->intrinsic != nir_intrinsic_image_size) {
       /*  Access is out of range start */

@@ -33,7 +33,7 @@ _load_image_param(nir_builder *b, nir_deref_instr *deref, unsigned offset)
    nir_intrinsic_instr *load =
       nir_intrinsic_instr_create(b->shader,
                                  nir_intrinsic_image_deref_load_param_intel);
-   load->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+   load->src[0] = nir_src_for_ssa(&deref->def);
    nir_intrinsic_set_base(load, offset / 4);
 
    switch (offset) {
@@ -51,10 +51,10 @@ _load_image_param(nir_builder *b, nir_deref_instr *deref, unsigned offset)
    default:
       unreachable("Invalid param offset");
    }
-   nir_def_init(&load->instr, &load->dest.ssa, load->num_components, 32);
+   nir_def_init(&load->instr, &load->def, load->num_components, 32);
 
    nir_builder_instr_insert(b, &load->instr);
-   return &load->dest.ssa;
+   return &load->def;
 }
 
 #define load_image_param(b, d, o) \
@@ -384,22 +384,22 @@ lower_image_load_instr(nir_builder *b,
        * conversion.
        */
       nir_def *placeholder = nir_undef(b, 4, 32);
-      nir_def_rewrite_uses(&intrin->dest.ssa, placeholder);
+      nir_def_rewrite_uses(&intrin->def, placeholder);
 
       intrin->num_components = isl_format_get_num_channels(lower_fmt);
-      intrin->dest.ssa.num_components = intrin->num_components;
+      intrin->def.num_components = intrin->num_components;
 
       b->cursor = nir_after_instr(&intrin->instr);
 
       nir_def *color = convert_color_for_load(b, devinfo,
-                                                  &intrin->dest.ssa,
+                                                  &intrin->def,
                                                   image_fmt, lower_fmt,
                                                   dest_components);
 
       if (sparse) {
          /* Put the sparse component back on the original instruction */
          intrin->num_components++;
-         intrin->dest.ssa.num_components = intrin->num_components;
+         intrin->def.num_components = intrin->num_components;
 
          /* Carry over the sparse component without modifying it with the
           * converted color.
@@ -408,7 +408,7 @@ lower_image_load_instr(nir_builder *b,
          for (unsigned i = 0; i < dest_components; i++)
             sparse_color[i] = nir_channel(b, color, i);
          sparse_color[dest_components] =
-            nir_channel(b, &intrin->dest.ssa, intrin->num_components - 1);
+            nir_channel(b, &intrin->def, intrin->num_components - 1);
          color = nir_vec(b, sparse_color, dest_components + 1);
       }
 
@@ -451,7 +451,7 @@ lower_image_load_instr(nir_builder *b,
       nir_def *addr = image_address(b, devinfo, deref, coord);
       nir_def *load =
          nir_image_deref_load_raw_intel(b, image_fmtl->bpb / 32, 32,
-                                        &deref->dest.ssa, addr);
+                                        &deref->def, addr);
 
       nir_push_else(b, NULL);
 
@@ -465,7 +465,7 @@ lower_image_load_instr(nir_builder *b,
                                                   image_fmt, raw_fmt,
                                                   dest_components);
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, color);
+      nir_def_rewrite_uses(&intrin->def, color);
    }
 
    return true;
@@ -607,7 +607,7 @@ lower_image_store_instr(nir_builder *b,
       nir_intrinsic_instr *store =
          nir_intrinsic_instr_create(b->shader,
                                     nir_intrinsic_image_deref_store_raw_intel);
-      store->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+      store->src[0] = nir_src_for_ssa(&deref->def);
       store->src[1] = nir_src_for_ssa(addr);
       store->src[2] = nir_src_for_ssa(color);
       store->num_components = image_fmtl->bpb / 32;
@@ -633,7 +633,7 @@ lower_image_atomic_instr(nir_builder *b,
 
    /* Use an undef to hold the uses of the load conversion. */
    nir_def *placeholder = nir_undef(b, 4, 32);
-   nir_def_rewrite_uses(&intrin->dest.ssa, placeholder);
+   nir_def_rewrite_uses(&intrin->def, placeholder);
 
    /* Check the first component of the size field to find out if the
     * image is bound.  Necessary on IVB for typed atomics because
@@ -648,7 +648,7 @@ lower_image_atomic_instr(nir_builder *b,
 
    nir_pop_if(b, NULL);
 
-   nir_def *result = nir_if_phi(b, &intrin->dest.ssa, zero);
+   nir_def *result = nir_if_phi(b, &intrin->def, zero);
    nir_def_rewrite_uses(placeholder, result);
 
    return true;
@@ -692,11 +692,11 @@ lower_image_size_instr(nir_builder *b,
    for (unsigned c = 0; c < coord_comps; c++)
       comps[c] = nir_channel(b, size, c);
 
-   for (unsigned c = coord_comps; c < intrin->dest.ssa.num_components; ++c)
+   for (unsigned c = coord_comps; c < intrin->def.num_components; ++c)
       comps[c] = nir_imm_int(b, 1);
 
-   nir_def *vec = nir_vec(b, comps, intrin->dest.ssa.num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, vec);
+   nir_def *vec = nir_vec(b, comps, intrin->def.num_components);
+   nir_def_rewrite_uses(&intrin->def, vec);
 
    return true;
 }

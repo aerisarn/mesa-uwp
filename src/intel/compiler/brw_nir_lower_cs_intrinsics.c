@@ -193,10 +193,10 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
       case nir_intrinsic_load_workgroup_id:
       case nir_intrinsic_load_num_workgroups:
          /* Convert this to 32-bit if it's not */
-         if (intrinsic->dest.ssa.bit_size == 64) {
-            intrinsic->dest.ssa.bit_size = 32;
-            sysval = nir_u2u64(b, &intrinsic->dest.ssa);
-            nir_def_rewrite_uses_after(&intrinsic->dest.ssa,
+         if (intrinsic->def.bit_size == 64) {
+            intrinsic->def.bit_size = 32;
+            sysval = nir_u2u64(b, &intrinsic->def);
+            nir_def_rewrite_uses_after(&intrinsic->def,
                                            sysval,
                                            sysval->parent_instr);
          }
@@ -262,10 +262,10 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
          continue;
       }
 
-      if (intrinsic->dest.ssa.bit_size == 64)
+      if (intrinsic->def.bit_size == 64)
          sysval = nir_u2u64(b, sysval);
 
-      nir_def_rewrite_uses(&intrinsic->dest.ssa, sysval);
+      nir_def_rewrite_uses(&intrinsic->def, sysval);
       nir_instr_remove(&intrinsic->instr);
 
       state->progress = true;

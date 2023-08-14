@@ -1074,10 +1074,10 @@ replace_varying_input_by_constant_load(nir_shader *shader,
 
          /* Add new const to replace the input */
          nir_def *nconst = nir_build_imm(&b, store_intr->num_components,
-                                         intr->dest.ssa.bit_size,
+                                         intr->def.bit_size,
                                          out_const->value);
 
-         nir_def_rewrite_uses(&intr->dest.ssa, nconst);
+         nir_def_rewrite_uses(&intr->def, nconst);
 
          progress = true;
       }
@@ -1123,7 +1123,7 @@ replace_duplicate_input(nir_shader *shader, nir_variable *input_var,
          b.cursor = nir_before_instr(instr);
 
          nir_def *load = nir_load_var(&b, input_var);
-         nir_def_rewrite_uses(&intr->dest.ssa, load);
+         nir_def_rewrite_uses(&intr->def, load);
 
          progress = true;
       }
@@ -1210,7 +1210,7 @@ clone_deref_instr(nir_builder *b, nir_variable *var, nir_deref_instr *deref)
       nir_load_const_instr *index =
          nir_instr_as_load_const(deref->arr.index.ssa->parent_instr);
       nir_def *ssa = nir_imm_intN_t(b, index->value->i64,
-                                    parent->dest.ssa.bit_size);
+                                    parent->def.bit_size);
       return nir_build_deref_ptr_as_array(b, parent, ssa);
    }
    case nir_deref_type_struct:
@@ -1271,7 +1271,7 @@ replace_varying_input_by_uniform_load(nir_shader *shader,
          }
 
          /* Replace load input with load uniform. */
-         nir_def_rewrite_uses(&intr->dest.ssa, uni_def);
+         nir_def_rewrite_uses(&intr->def, uni_def);
 
          progress = true;
       }

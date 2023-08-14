@@ -509,7 +509,7 @@ ir3_declare_array(struct ir3_context *ctx, nir_intrinsic_instr *decl)
                  MAX2(1, nir_intrinsic_num_array_elems(decl));
 
    compile_assert(ctx, arr->length > 0);
-   arr->r = &decl->dest.ssa;
+   arr->r = &decl->def;
    arr->half = ir3_bitsize(ctx, nir_intrinsic_bit_size(decl)) <= 16;
    list_addtail(&arr->node, &ctx->ir->array_list);
 }

@@ -619,7 +619,7 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
    nir_variable *ret_tmp =
       nir_local_variable_create(b->impl, return_type, "return_tmp");
    nir_deref_instr *ret_deref = nir_build_deref_var(b, ret_tmp);
-   params[0] = &ret_deref->dest.ssa;
+   params[0] = &ret_deref->def;
 
    assert(nir_op_infos[instr->op].num_inputs + 1 == func->num_params);
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {

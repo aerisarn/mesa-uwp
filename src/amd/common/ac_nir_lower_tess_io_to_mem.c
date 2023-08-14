@@ -402,7 +402,7 @@ lower_hs_per_vertex_input_load(nir_builder *b,
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    nir_def *off = hs_per_vertex_input_lds_offset(b, st, intrin);
-   return nir_load_shared(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size, off);
+   return nir_load_shared(b, intrin->def.num_components, intrin->def.bit_size, off);
 }
 
 static nir_def *
@@ -480,7 +480,7 @@ lower_hs_output_load(nir_builder *b,
                      lower_tess_io_state *st)
 {
    nir_def *off = hs_output_lds_offset(b, st, intrin);
-   return nir_load_shared(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size, off);
+   return nir_load_shared(b, intrin->def.num_components, intrin->def.bit_size, off);
 }
 
 static void
@@ -704,8 +704,8 @@ lower_tes_input_load(nir_builder *b,
 
    nir_def *zero = nir_imm_int(b, 0);
 
-   return nir_load_buffer_amd(b, intrin->dest.ssa.num_components,
-                              intrin->dest.ssa.bit_size, offchip_ring,
+   return nir_load_buffer_amd(b, intrin->def.num_components,
+                              intrin->def.bit_size, offchip_ring,
                               off, offchip_offset, zero,
                               .access = ACCESS_COHERENT);
 }

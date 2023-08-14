@@ -284,7 +284,7 @@ def_for_instr(nir_instr *instr)
       def = &nir_instr_as_alu(instr)->def;
       break;
    case nir_instr_type_tex:
-      def = &nir_instr_as_tex(instr)->dest.ssa;
+      def = &nir_instr_as_tex(instr)->def;
       break;
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
@@ -294,7 +294,7 @@ def_for_instr(nir_instr *instr)
           intr->intrinsic == nir_intrinsic_load_instance_id ||
           intr->intrinsic == nir_intrinsic_load_texture_scale ||
           intr->intrinsic == nir_intrinsic_load_texture_size_etna)
-         def = &intr->dest.ssa;
+         def = &intr->def;
    } break;
    case nir_instr_type_deref:
       return NULL;

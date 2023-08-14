@@ -42,12 +42,12 @@ struct lower_sysval_state {
 static nir_def *
 sanitize_32bit_sysval(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   const unsigned bit_size = intrin->dest.ssa.bit_size;
+   const unsigned bit_size = intrin->def.bit_size;
    if (bit_size == 32)
       return NULL;
 
-   intrin->dest.ssa.bit_size = 32;
-   return nir_u2uN(b, &intrin->dest.ssa, bit_size);
+   intrin->def.bit_size = 32;
+   return nir_u2uN(b, &intrin->def, bit_size);
 }
 
 static nir_def *
@@ -74,7 +74,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
    if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
       return NULL;
 
-   const unsigned bit_size = intrin->dest.ssa.bit_size;
+   const unsigned bit_size = intrin->def.bit_size;
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_vertex_id:
@@ -201,10 +201,10 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          nir_intrinsic_op op =
             nir_intrinsic_from_system_value(var->data.location);
          nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, op);
-         nir_def_init_for_type(&load->instr, &load->dest.ssa, var->type);
-         load->num_components = load->dest.ssa.num_components;
+         nir_def_init_for_type(&load->instr, &load->def, var->type);
+         load->num_components = load->def.num_components;
          nir_builder_instr_insert(b, &load->instr);
-         return &load->dest.ssa;
+         return &load->def;
       }
 
       case SYSTEM_VALUE_DEVICE_INDEX:
@@ -274,9 +274,9 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       }
 
       case SYSTEM_VALUE_MESH_VIEW_INDICES:
-         return nir_load_mesh_view_indices(b, intrin->dest.ssa.num_components,
+         return nir_load_mesh_view_indices(b, intrin->def.num_components,
                                            bit_size, column, .base = 0,
-                                           .range = intrin->dest.ssa.num_components * bit_size / 8);
+                                           .range = intrin->def.num_components * bit_size / 8);
 
       default:
          break;
@@ -288,33 +288,33 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          assert(nir_intrinsic_infos[sysval_op].index_map[NIR_INTRINSIC_COLUMN] > 0);
          unsigned num_cols = glsl_get_matrix_columns(var->type);
          ASSERTED unsigned num_rows = glsl_get_vector_elements(var->type);
-         assert(num_rows == intrin->dest.ssa.num_components);
+         assert(num_rows == intrin->def.num_components);
 
          nir_def *cols[4];
          for (unsigned i = 0; i < num_cols; i++) {
             cols[i] = nir_load_system_value(b, sysval_op, i,
-                                            intrin->dest.ssa.num_components,
-                                            intrin->dest.ssa.bit_size);
+                                            intrin->def.num_components,
+                                            intrin->def.bit_size);
             assert(cols[i]->num_components == num_rows);
          }
          return nir_select_from_ssa_def_array(b, cols, num_cols, column);
       } else if (glsl_type_is_array(var->type)) {
          unsigned num_elems = glsl_get_length(var->type);
          ASSERTED const struct glsl_type *elem_type = glsl_get_array_element(var->type);
-         assert(glsl_get_components(elem_type) == intrin->dest.ssa.num_components);
+         assert(glsl_get_components(elem_type) == intrin->def.num_components);
 
          nir_def *elems[4];
          assert(ARRAY_SIZE(elems) >= num_elems);
          for (unsigned i = 0; i < num_elems; i++) {
             elems[i] = nir_load_system_value(b, sysval_op, i,
-                                             intrin->dest.ssa.num_components,
-                                             intrin->dest.ssa.bit_size);
+                                             intrin->def.num_components,
+                                             intrin->def.bit_size);
          }
          return nir_select_from_ssa_def_array(b, elems, num_elems, column);
       } else {
          return nir_load_system_value(b, sysval_op, 0,
-                                      intrin->dest.ssa.num_components,
-                                      intrin->dest.ssa.bit_size);
+                                      intrin->def.num_components,
+                                      intrin->def.bit_size);
       }
    }
 
@@ -492,7 +492,7 @@ lower_compute_system_value_instr(nir_builder *b,
    if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
       return NULL;
 
-   const unsigned bit_size = intrin->dest.ssa.bit_size;
+   const unsigned bit_size = intrin->def.bit_size;
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_local_invocation_id:
@@ -604,7 +604,7 @@ lower_compute_system_value_instr(nir_builder *b,
       if (!b->shader->info.workgroup_size_variable && is_zero) {
          nir_scalar defs[3];
          for (unsigned i = 0; i < 3; i++) {
-            defs[i] = is_zero & (1 << i) ? nir_get_ssa_scalar(nir_imm_zero(b, 1, 32), 0) : nir_get_ssa_scalar(&intrin->dest.ssa, i);
+            defs[i] = is_zero & (1 << i) ? nir_get_ssa_scalar(nir_imm_zero(b, 1, 32), 0) : nir_get_ssa_scalar(&intrin->def, i);
          }
          return nir_vec_scalars(b, defs, 3);
       }
@@ -740,7 +740,7 @@ lower_compute_system_value_instr(nir_builder *b,
 
       b->cursor = nir_after_instr(instr);
 
-      nir_def *num_wgs = &intrin->dest.ssa;
+      nir_def *num_wgs = &intrin->def;
       for (unsigned i = 0; i < 3; ++i) {
          if (num_wgs_imm[i])
             num_wgs = nir_vector_insert_imm(b, num_wgs, nir_imm_int(b, num_wgs_imm[i]), i);

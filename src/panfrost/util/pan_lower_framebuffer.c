@@ -547,19 +547,19 @@ pan_lower_fb_load(nir_builder *b, nir_intrinsic_instr *intr,
     * the result is undefined.
     */
 
-   unsigned bits = intr->dest.ssa.bit_size;
+   unsigned bits = intr->def.bit_size;
 
    nir_alu_type src_type =
       nir_alu_type_get_base_type(pan_unpacked_type_for_format(desc));
 
    unpacked = nir_convert_to_bit_size(b, unpacked, src_type, bits);
-   unpacked = nir_resize_vector(b, unpacked, intr->dest.ssa.num_components);
+   unpacked = nir_resize_vector(b, unpacked, intr->def.num_components);
 
    /* Reorder the components */
    if (reorder_comps)
       unpacked = pan_unpack_reorder(b, desc, unpacked);
 
-   nir_def_rewrite_uses_after(&intr->dest.ssa, unpacked, &intr->instr);
+   nir_def_rewrite_uses_after(&intr->def, unpacked, &intr->instr);
 }
 
 struct inputs {

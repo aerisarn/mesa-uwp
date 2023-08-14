@@ -28,12 +28,12 @@ static bool
 resize_deref(nir_builder *b, nir_deref_instr *deref,
              unsigned num_components, unsigned bit_size)
 {
-   if (deref->dest.ssa.num_components == num_components &&
-       deref->dest.ssa.bit_size == bit_size)
+   if (deref->def.num_components == num_components &&
+       deref->def.bit_size == bit_size)
       return false;
 
    /* NIR requires array indices have to match the deref bit size */
-   if (deref->dest.ssa.bit_size != bit_size &&
+   if (deref->def.bit_size != bit_size &&
        (deref->deref_type == nir_deref_type_array ||
         deref->deref_type == nir_deref_type_ptr_as_array)) {
       b->cursor = nir_before_instr(&deref->instr);
@@ -47,8 +47,8 @@ resize_deref(nir_builder *b, nir_deref_instr *deref,
                             nir_src_for_ssa(idx));
    }
 
-   deref->dest.ssa.num_components = num_components;
-   deref->dest.ssa.bit_size = bit_size;
+   deref->def.num_components = num_components;
+   deref->def.bit_size = bit_size;
 
    return true;
 }
@@ -117,8 +117,8 @@ lower_rt_io_derefs(nir_shader *shader)
                   nir_build_deref_cast(&b, call_data_addr,
                                        nir_var_function_temp,
                                        deref->var->type, 0);
-               nir_def_rewrite_uses(&deref->dest.ssa,
-                                        &cast->dest.ssa);
+               nir_def_rewrite_uses(&deref->def,
+                                        &cast->def);
                nir_instr_remove(&deref->instr);
                progress = true;
             }
@@ -130,8 +130,8 @@ lower_rt_io_derefs(nir_shader *shader)
                   nir_build_deref_cast(&b, hit_attrib_addr,
                                        nir_var_function_temp,
                                        deref->type, 0);
-               nir_def_rewrite_uses(&deref->dest.ssa,
-                                        &cast->dest.ssa);
+               nir_def_rewrite_uses(&deref->def,
+                                        &cast->def);
                nir_instr_remove(&deref->instr);
                progress = true;
             }
@@ -520,7 +520,7 @@ brw_nir_create_raygen_trampoline(const struct brw_compiler *compiler,
          b.cursor = nir_before_instr(&intrin->instr);
          nir_def *global_arg_addr =
             load_trampoline_param(&b, rt_disp_globals_addr, 1, 64);
-         nir_def_rewrite_uses(&intrin->dest.ssa,
+         nir_def_rewrite_uses(&intrin->def,
                                   global_arg_addr);
          nir_instr_remove(instr);
       }

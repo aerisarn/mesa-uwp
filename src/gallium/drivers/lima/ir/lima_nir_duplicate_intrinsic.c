@@ -32,7 +32,7 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
    nir_intrinsic_instr *last_dupl = NULL;
    nir_instr *last_parent_instr = NULL;
 
-   nir_foreach_use_safe(use_src, &itr->dest.ssa) {
+   nir_foreach_use_safe(use_src, &itr->def) {
       nir_intrinsic_instr *dupl;
 
       if (last_parent_instr != use_src->parent_instr) {
@@ -43,8 +43,8 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          memcpy(dupl->const_index, itr->const_index, sizeof(itr->const_index));
          dupl->src[0].ssa = itr->src[0].ssa;
 
-         nir_def_init(&dupl->instr, &dupl->dest.ssa, dupl->num_components,
-                      itr->dest.ssa.bit_size);
+         nir_def_init(&dupl->instr, &dupl->def, dupl->num_components,
+                      itr->def.bit_size);
 
          dupl->instr.pass_flags = 1;
          nir_builder_instr_insert(b, &dupl->instr);
@@ -53,7 +53,7 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          dupl = last_dupl;
       }
 
-      nir_instr_rewrite_src(use_src->parent_instr, use_src, nir_src_for_ssa(&dupl->dest.ssa));
+      nir_instr_rewrite_src(use_src->parent_instr, use_src, nir_src_for_ssa(&dupl->def));
       last_parent_instr = use_src->parent_instr;
       last_dupl = dupl;
    }
@@ -61,7 +61,7 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
    last_dupl = NULL;
    last_parent_instr = NULL;
 
-   nir_foreach_if_use_safe(use_src, &itr->dest.ssa) {
+   nir_foreach_if_use_safe(use_src, &itr->def) {
       nir_intrinsic_instr *dupl;
 
       if (last_parent_instr != use_src->parent_instr) {
@@ -72,8 +72,8 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          memcpy(dupl->const_index, itr->const_index, sizeof(itr->const_index));
          dupl->src[0].ssa = itr->src[0].ssa;
 
-         nir_def_init(&dupl->instr, &dupl->dest.ssa, dupl->num_components,
-                      itr->dest.ssa.bit_size);
+         nir_def_init(&dupl->instr, &dupl->def, dupl->num_components,
+                      itr->def.bit_size);
 
          dupl->instr.pass_flags = 1;
          nir_builder_instr_insert(b, &dupl->instr);
@@ -82,7 +82,7 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          dupl = last_dupl;
       }
 
-      nir_if_rewrite_condition(use_src->parent_if, nir_src_for_ssa(&dupl->dest.ssa));
+      nir_if_rewrite_condition(use_src->parent_if, nir_src_for_ssa(&dupl->def));
       last_parent_instr = use_src->parent_instr;
       last_dupl = dupl;
    }

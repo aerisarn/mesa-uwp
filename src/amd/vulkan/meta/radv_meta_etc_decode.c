@@ -426,13 +426,13 @@ build_shader(struct radv_device *dev)
 
    nir_push_if(&b, is_3d);
    {
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img_3d)->dest.ssa, img_coord, nir_undef(&b, 1, 32),
-                            outval, nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_3D);
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img_3d)->def, img_coord, nir_undef(&b, 1, 32), outval,
+                            nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_3D);
    }
    nir_push_else(&b, NULL);
    {
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img_2d)->dest.ssa, img_coord, nir_undef(&b, 1, 32),
-                            outval, nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D, .image_array = true);
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img_2d)->def, img_coord, nir_undef(&b, 1, 32), outval,
+                            nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D, .image_array = true);
    }
    nir_pop_if(&b, NULL);
    return b.shader;

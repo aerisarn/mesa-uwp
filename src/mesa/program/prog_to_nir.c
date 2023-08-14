@@ -422,10 +422,10 @@ ptn_tex(struct ptn_compile *c, nir_def **src,
    unsigned src_number = 0;
 
    instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                                &deref->dest.ssa);
+                                                &deref->def);
    src_number++;
    instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                                &deref->dest.ssa);
+                                                &deref->def);
    src_number++;
 
    instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_coord,
@@ -463,10 +463,10 @@ ptn_tex(struct ptn_compile *c, nir_def **src,
 
    assert(src_number == num_srcs);
 
-   nir_def_init(&instr->instr, &instr->dest.ssa, 4, 32);
+   nir_def_init(&instr->instr, &instr->def, 4, 32);
    nir_builder_instr_insert(b, &instr->instr);
 
-   return &instr->dest.ssa;
+   return &instr->def;
 }
 
 static const nir_op op_trans[MAX_OPCODE] = {

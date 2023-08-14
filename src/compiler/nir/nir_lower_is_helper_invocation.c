@@ -64,7 +64,7 @@ nir_lower_load_and_store_is_helper(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_is_helper_invocation: {
       b->cursor = nir_before_instr(instr);
       nir_def *is_helper = nir_load_deref(b, is_helper_deref);
-      nir_def_rewrite_uses(&intrin->dest.ssa, is_helper);
+      nir_def_rewrite_uses(&intrin->def, is_helper);
       nir_instr_remove_v(instr);
       return true;
    }

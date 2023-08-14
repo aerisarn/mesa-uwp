@@ -75,7 +75,7 @@ emit_wpos_adjustment(lower_wpos_ytransform_state *state,
    nir_builder *b = &state->b;
    nir_def *wpostrans, *wpos_temp, *wpos_temp_y, *wpos_input;
 
-   wpos_input = &intr->dest.ssa;
+   wpos_input = &intr->def;
 
    b->cursor = nir_after_instr(&intr->instr);
 
@@ -128,7 +128,7 @@ emit_wpos_adjustment(lower_wpos_ytransform_state *state,
                         nir_channel(b, wpos_temp, 2),
                         nir_channel(b, wpos_temp, 3));
 
-   nir_def_rewrite_uses_after(&intr->dest.ssa,
+   nir_def_rewrite_uses_after(&intr->def,
                               wpos_temp,
                               wpos_temp->parent_instr);
 }
@@ -274,7 +274,7 @@ lower_load_sample_pos(lower_wpos_ytransform_state *state,
    nir_builder *b = &state->b;
    b->cursor = nir_after_instr(&intr->instr);
 
-   nir_def *pos = &intr->dest.ssa;
+   nir_def *pos = &intr->def;
    nir_def *scale = nir_channel(b, get_transform(state), 0);
    nir_def *neg_scale = nir_channel(b, get_transform(state), 2);
    /* Either y or 1-y for scale equal to 1 or -1 respectively. */
@@ -283,7 +283,7 @@ lower_load_sample_pos(lower_wpos_ytransform_state *state,
                nir_fmul(b, nir_channel(b, pos, 1), scale));
    nir_def *flipped_pos = nir_vec2(b, nir_channel(b, pos, 0), flipped_y);
 
-   nir_def_rewrite_uses_after(&intr->dest.ssa, flipped_pos,
+   nir_def_rewrite_uses_after(&intr->def, flipped_pos,
                               flipped_pos->parent_instr);
 }
 

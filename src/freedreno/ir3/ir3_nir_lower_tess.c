@@ -175,13 +175,13 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
    new_intr->num_components = intr->num_components;
 
    if (nir_intrinsic_infos[op].has_dest)
-      nir_def_init(&new_intr->instr, &new_intr->dest.ssa,
-                   intr->num_components, intr->dest.ssa.bit_size);
+      nir_def_init(&new_intr->instr, &new_intr->def,
+                   intr->num_components, intr->def.bit_size);
 
    nir_builder_instr_insert(b, &new_intr->instr);
 
    if (nir_intrinsic_infos[op].has_dest)
-      nir_def_rewrite_uses(&intr->dest.ssa, &new_intr->dest.ssa);
+      nir_def_rewrite_uses(&intr->def, &new_intr->def);
 
    nir_instr_remove(&intr->instr);
 
@@ -348,7 +348,7 @@ lower_block_to_explicit_input(nir_block *block, nir_builder *b,
          b->cursor = nir_before_instr(&intr->instr);
 
          nir_def *iid = build_invocation_id(b, state);
-         nir_def_rewrite_uses(&intr->dest.ssa, iid);
+         nir_def_rewrite_uses(&intr->def, iid);
          nir_instr_remove(&intr->instr);
          break;
       }
@@ -568,7 +568,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
           */
          gl_varying_slot location = nir_intrinsic_io_semantics(intr).location;
          if (is_tess_levels(location)) {
-            assert(intr->dest.ssa.num_components == 1);
+            assert(intr->def.num_components == 1);
             address = nir_load_tess_factor_base_ir3(b);
             offset = build_tessfactor_base(
                b, location, nir_intrinsic_component(intr), state);
@@ -775,7 +775,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
           */
          gl_varying_slot location = nir_intrinsic_io_semantics(intr).location;
          if (is_tess_levels(location)) {
-            assert(intr->dest.ssa.num_components == 1);
+            assert(intr->def.num_components == 1);
             address = nir_load_tess_factor_base_ir3(b);
             offset = build_tessfactor_base(
                b, location, nir_intrinsic_component(intr), state);

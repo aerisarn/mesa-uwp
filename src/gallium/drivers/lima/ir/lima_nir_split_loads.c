@@ -44,7 +44,7 @@ clone_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 
    nir_builder_instr_insert(b, &new_intrin->instr);
 
-   return &new_intrin->dest.ssa;
+   return &new_intrin->def;
 }
 
 static bool
@@ -59,7 +59,7 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 
    struct hash_table *visited_instrs = _mesa_pointer_hash_table_create(NULL);
 
-   nir_foreach_use_safe(src, &intrin->dest.ssa) {
+   nir_foreach_use_safe(src, &intrin->def) {
       struct hash_entry *entry =
          _mesa_hash_table_search(visited_instrs, src->parent_instr);
       if (entry && (src->parent_instr->type != nir_instr_type_phi)) {
@@ -72,7 +72,7 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
       nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(new));
       _mesa_hash_table_insert(visited_instrs, src->parent_instr, new);
    }
-   nir_foreach_if_use_safe(src, &intrin->dest.ssa) {
+   nir_foreach_if_use_safe(src, &intrin->def) {
       b->cursor = nir_before_src(src);
       nir_if_rewrite_condition(src->parent_if,
                                nir_src_for_ssa(clone_intrinsic(b, intrin)));

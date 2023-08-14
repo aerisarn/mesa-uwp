@@ -250,10 +250,10 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         /* Limit the number of channels returned to both how many the NIR
          * instruction writes and how many the instruction could produce.
          */
-        nir_intrinsic_instr *store = nir_store_reg_for_def(&instr->dest.ssa);
+        nir_intrinsic_instr *store = nir_store_reg_for_def(&instr->def);
         if (store == NULL) {
                 p0_unpacked.return_words_of_texture_data =
-                        nir_def_components_read(&instr->dest.ssa);
+                        nir_def_components_read(&instr->def);
         } else {
                 nir_def *reg = store->src[1].ssa;
                 nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
@@ -407,7 +407,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         }
 
         retiring->ldtmu_count = p0_unpacked.return_words_of_texture_data;
-        ntq_add_pending_tmu_flush(c, &instr->dest.ssa,
+        ntq_add_pending_tmu_flush(c, &instr->def,
                                   p0_unpacked.return_words_of_texture_data);
 }
 
@@ -639,6 +639,6 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
         struct qinst *retiring =
                 vir_image_emit_register_writes(c, instr, atomic_add_replaced, NULL);
         retiring->ldtmu_count = p0_unpacked.return_words_of_texture_data;
-        ntq_add_pending_tmu_flush(c, &instr->dest.ssa,
+        ntq_add_pending_tmu_flush(c, &instr->def,
                                   p0_unpacked.return_words_of_texture_data);
 }

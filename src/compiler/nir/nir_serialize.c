@@ -910,7 +910,7 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
       header.deref.in_bounds = deref->arr.in_bounds;
    }
 
-   write_def(ctx, &deref->dest.ssa, header, deref->instr.type);
+   write_def(ctx, &deref->def, header, deref->instr.type);
 
    switch (deref->deref_type) {
    case nir_deref_type_var:
@@ -962,7 +962,7 @@ read_deref(read_ctx *ctx, union packed_instr header)
    nir_deref_type deref_type = header.deref.deref_type;
    nir_deref_instr *deref = nir_deref_instr_create(ctx->nir, deref_type);
 
-   read_def(ctx, &deref->dest.ssa, &deref->instr, header);
+   read_def(ctx, &deref->def, &deref->instr, header);
 
    nir_deref_instr *parent;
 
@@ -1077,7 +1077,7 @@ write_intrinsic(write_ctx *ctx, const nir_intrinsic_instr *intrin)
    }
 
    if (nir_intrinsic_infos[intrin->intrinsic].has_dest)
-      write_def(ctx, &intrin->dest.ssa, header, intrin->instr.type);
+      write_def(ctx, &intrin->def, header, intrin->instr.type);
    else
       blob_write_uint32(ctx->blob, header.u32);
 
@@ -1112,7 +1112,7 @@ read_intrinsic(read_ctx *ctx, union packed_instr header)
    unsigned num_indices = nir_intrinsic_infos[op].num_indices;
 
    if (nir_intrinsic_infos[op].has_dest)
-      read_def(ctx, &intrin->dest.ssa, &intrin->instr, header);
+      read_def(ctx, &intrin->def, &intrin->instr, header);
 
    for (unsigned i = 0; i < num_srcs; i++)
       read_src(ctx, &intrin->src[i]);
@@ -1122,7 +1122,7 @@ read_intrinsic(read_ctx *ctx, union packed_instr header)
     */
    if (nir_intrinsic_infos[op].has_dest &&
        nir_intrinsic_infos[op].dest_components == 0) {
-      intrin->num_components = intrin->dest.ssa.num_components;
+      intrin->num_components = intrin->def.num_components;
    } else {
       for (unsigned i = 0; i < num_srcs; i++) {
          if (nir_intrinsic_infos[op].src_components[i] == 0) {
@@ -1380,7 +1380,7 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
    header.tex.num_srcs = tex->num_srcs;
    header.tex.op = tex->op;
 
-   write_def(ctx, &tex->dest.ssa, header, tex->instr.type);
+   write_def(ctx, &tex->def, header, tex->instr.type);
 
    blob_write_uint32(ctx->blob, tex->texture_index);
    blob_write_uint32(ctx->blob, tex->sampler_index);
@@ -1418,7 +1418,7 @@ read_tex(read_ctx *ctx, union packed_instr header)
 {
    nir_tex_instr *tex = nir_tex_instr_create(ctx->nir, header.tex.num_srcs);
 
-   read_def(ctx, &tex->dest.ssa, &tex->instr, header);
+   read_def(ctx, &tex->def, &tex->instr, header);
 
    tex->op = header.tex.op;
    tex->texture_index = blob_read_uint32(ctx->blob);
@@ -1464,7 +1464,7 @@ write_phi(write_ctx *ctx, const nir_phi_instr *phi)
     * and then store enough information so that a later fixup pass can fill
     * them in correctly.
     */
-   write_def(ctx, &phi->dest.ssa, header, phi->instr.type);
+   write_def(ctx, &phi->def, header, phi->instr.type);
 
    nir_foreach_phi_src(src, phi) {
       size_t blob_offset = blob_reserve_uint32(ctx->blob);
@@ -1497,7 +1497,7 @@ read_phi(read_ctx *ctx, nir_block *blk, union packed_instr header)
 {
    nir_phi_instr *phi = nir_phi_instr_create(ctx->nir);
 
-   read_def(ctx, &phi->dest.ssa, &phi->instr, header);
+   read_def(ctx, &phi->def, &phi->instr, header);
 
    /* For similar reasons as before, we just store the index directly into the
     * pointer, and let a later pass resolve the phi sources.

@@ -336,11 +336,11 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
          nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_load_sample_id(&b));
    }
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4,
+   nir_def_init(&tex->instr, &tex->def, 4,
                 nir_alu_type_get_type_size(tex->dest_type));
    nir_builder_instr_insert(&b, &tex->instr);
 
-   nir_def *texel = &tex->dest.ssa;
+   nir_def *texel = &tex->def;
 
    unsigned dstcompsz =
       util_format_get_component_bits(dstfmt, UTIL_FORMAT_COLORSPACE_RGB, 0);
@@ -1361,11 +1361,11 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
 
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, imgcoords);
    tex->coord_components = texdim + texisarray;
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4,
+   nir_def_init(&tex->instr, &tex->def, 4,
                 nir_alu_type_get_type_size(tex->dest_type));
    nir_builder_instr_insert(&b, &tex->instr);
 
-   nir_def *texel = &tex->dest.ssa;
+   nir_def *texel = &tex->def;
 
    unsigned fullmask = (1 << util_format_get_nr_components(key.imgfmt)) - 1;
    unsigned nbufcomps = util_bitcount(fullmask);

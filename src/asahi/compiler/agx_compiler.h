@@ -474,7 +474,7 @@ agx_vec_for_def(agx_context *ctx, nir_def *def)
 static inline agx_index
 agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
 {
-   return agx_vec_for_def(ctx, &instr->dest.ssa);
+   return agx_vec_for_def(ctx, &instr->def);
 }
 
 static inline unsigned

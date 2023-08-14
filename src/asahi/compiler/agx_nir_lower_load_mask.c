@@ -21,12 +21,12 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    if (intr->intrinsic != nir_intrinsic_load_interpolated_input)
       return false;
 
-   unsigned mask = nir_def_components_read(&intr->dest.ssa);
+   unsigned mask = nir_def_components_read(&intr->def);
    if (mask == 0 || mask == nir_component_mask(intr->num_components))
       return false;
 
    b->cursor = nir_before_instr(instr);
-   unsigned bit_size = intr->dest.ssa.bit_size;
+   unsigned bit_size = intr->def.bit_size;
    nir_def *comps[4] = {NULL};
 
    for (unsigned c = 0; c < intr->num_components; ++c) {
@@ -43,8 +43,8 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
          nir_intrinsic_instr *clone_intr = nir_instr_as_intrinsic(clone);
 
          /* Shrink the load to count contiguous components */
-         nir_def_init(clone, &clone_intr->dest.ssa, count, bit_size);
-         nir_def *clone_vec = &clone_intr->dest.ssa;
+         nir_def_init(clone, &clone_intr->def, count, bit_size);
+         nir_def *clone_vec = &clone_intr->def;
          clone_intr->num_components = count;
 
          /* The load starts from component c relative to the original load */
@@ -68,8 +68,7 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
       }
    }
 
-   nir_def_rewrite_uses(&intr->dest.ssa,
-                        nir_vec(b, comps, intr->num_components));
+   nir_def_rewrite_uses(&intr->def, nir_vec(b, comps, intr->num_components));
    return true;
 }
 

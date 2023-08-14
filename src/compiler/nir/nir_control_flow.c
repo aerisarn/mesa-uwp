@@ -225,8 +225,8 @@ nir_insert_phi_undef(nir_block *block, nir_block *pred)
    nir_foreach_phi(phi, block) {
       nir_undef_instr *undef =
          nir_undef_instr_create(impl->function->shader,
-                                phi->dest.ssa.num_components,
-                                phi->dest.ssa.bit_size);
+                                phi->def.num_components,
+                                phi->def.bit_size);
       nir_instr_insert_before_cf_list(&impl->body, &undef->instr);
       nir_phi_src *src = nir_phi_instr_add_src(phi, pred, nir_src_for_ssa(&undef->def));
       list_addtail(&src->src.use_link, &undef->def.uses);

@@ -35,8 +35,8 @@ is_trivial_deref_cast(nir_deref_instr *cast)
 
    return cast->modes == parent->modes &&
           cast->type == parent->type &&
-          cast->dest.ssa.num_components == parent->dest.ssa.num_components &&
-          cast->dest.ssa.bit_size == parent->dest.ssa.bit_size;
+          cast->def.num_components == parent->def.num_components &&
+          cast->def.bit_size == parent->def.bit_size;
 }
 
 void
@@ -109,7 +109,7 @@ nir_deref_instr_remove_if_unused(nir_deref_instr *instr)
 
    for (nir_deref_instr *d = instr; d; d = nir_deref_instr_parent(d)) {
       /* If anyone is using this deref, leave it alone */
-      if (!nir_def_is_unused(&d->dest.ssa))
+      if (!nir_def_is_unused(&d->def))
          break;
 
       nir_instr_remove(&d->instr);
@@ -156,7 +156,7 @@ bool
 nir_deref_instr_has_complex_use(nir_deref_instr *deref,
                                 nir_deref_instr_has_complex_use_options opts)
 {
-   nir_foreach_use_including_if(use_src, &deref->dest.ssa) {
+   nir_foreach_use_including_if(use_src, &deref->def) {
       if (use_src->is_if)
          return true;
 
@@ -346,7 +346,7 @@ nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
 
-   nir_def *offset = nir_imm_intN_t(b, 0, deref->dest.ssa.bit_size);
+   nir_def *offset = nir_imm_intN_t(b, 0, deref->def.bit_size);
    for (nir_deref_instr **p = &path.path[1]; *p; p++) {
       switch ((*p)->deref_type) {
       case nir_deref_type_array:
@@ -774,7 +774,7 @@ rematerialize_deref_in_block(nir_deref_instr *deref,
       nir_deref_instr *parent = nir_src_as_deref(deref->parent);
       if (parent) {
          parent = rematerialize_deref_in_block(parent, state);
-         new_deref->parent = nir_src_for_ssa(&parent->dest.ssa);
+         new_deref->parent = nir_src_for_ssa(&parent->def);
       } else {
          nir_src_copy(&new_deref->parent, &deref->parent, &new_deref->instr);
       }
@@ -806,8 +806,8 @@ rematerialize_deref_in_block(nir_deref_instr *deref,
       unreachable("Invalid deref instruction type");
    }
 
-   nir_def_init(&new_deref->instr, &new_deref->dest.ssa,
-                deref->dest.ssa.num_components, deref->dest.ssa.bit_size);
+   nir_def_init(&new_deref->instr, &new_deref->def,
+                deref->def.num_components, deref->def.bit_size);
    nir_builder_instr_insert(b, &new_deref->instr);
 
    return new_deref;
@@ -825,7 +825,7 @@ rematerialize_deref_src(nir_src *src, void *_state)
    nir_deref_instr *block_deref = rematerialize_deref_in_block(deref, state);
    if (block_deref != deref) {
       nir_instr_rewrite_src(src->parent_instr, src,
-                            nir_src_for_ssa(&block_deref->dest.ssa));
+                            nir_src_for_ssa(&block_deref->def));
       nir_deref_instr_remove_if_unused(deref);
       state->progress = true;
    }
@@ -885,7 +885,7 @@ nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
 static void
 nir_deref_instr_fixup_child_types(nir_deref_instr *parent)
 {
-   nir_foreach_use(use, &parent->dest.ssa) {
+   nir_foreach_use(use, &parent->def) {
       if (use->parent_instr->type != nir_instr_type_deref)
          continue;
 
@@ -1121,8 +1121,8 @@ opt_remove_sampler_cast(nir_deref_instr *cast)
    /* We're a cast from a more detailed sampler type to a bare sampler or a
     * texture type with the same dimensionality.
     */
-   nir_def_rewrite_uses(&cast->dest.ssa,
-                        &parent->dest.ssa);
+   nir_def_rewrite_uses(&cast->def,
+                        &parent->def);
    nir_instr_remove(&cast->instr);
 
    /* Recursively crawl the deref tree and clean up types */
@@ -1169,7 +1169,7 @@ opt_replace_struct_wrapper_cast(nir_builder *b, nir_deref_instr *cast)
       return false;
 
    nir_deref_instr *replace = nir_build_deref_struct(b, parent, 0);
-   nir_def_rewrite_uses(&cast->dest.ssa, &replace->dest.ssa);
+   nir_def_rewrite_uses(&cast->def, &replace->def);
    nir_deref_instr_remove_if_unused(cast);
    return true;
 }
@@ -1199,7 +1199,7 @@ opt_deref_cast(nir_builder *b, nir_deref_instr *cast)
 
    bool trivial_array_cast = is_trivial_array_deref_cast(cast);
 
-   nir_foreach_use_including_if_safe(use_src, &cast->dest.ssa) {
+   nir_foreach_use_including_if_safe(use_src, &cast->def) {
       assert(!use_src->is_if && "there cannot be if-uses");
 
       /* If this isn't a trivial array cast, we can't propagate into
@@ -1242,8 +1242,8 @@ opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
           parent->cast.align_mul == 0 &&
           is_trivial_deref_cast(parent))
          parent = nir_deref_instr_parent(parent);
-      nir_def_rewrite_uses(&deref->dest.ssa,
-                           &parent->dest.ssa);
+      nir_def_rewrite_uses(&deref->def,
+                           &parent->def);
       nir_instr_remove(&deref->instr);
       return true;
    }
@@ -1331,15 +1331,15 @@ opt_load_vec_deref(nir_builder *b, nir_intrinsic_instr *load)
 {
    nir_deref_instr *deref = nir_src_as_deref(load->src[0]);
    nir_component_mask_t read_mask =
-      nir_def_components_read(&load->dest.ssa);
+      nir_def_components_read(&load->def);
 
    /* LLVM loves take advantage of the fact that vec3s in OpenCL are
     * vec4-aligned and so it can just read/write them as vec4s.  This
     * results in a LOT of vec4->vec3 casts on loads and stores.
     */
    if (is_vector_bitcast_deref(deref, read_mask, false)) {
-      const unsigned old_num_comps = load->dest.ssa.num_components;
-      const unsigned old_bit_size = load->dest.ssa.bit_size;
+      const unsigned old_num_comps = load->def.num_components;
+      const unsigned old_bit_size = load->def.bit_size;
 
       nir_deref_instr *parent = nir_src_as_deref(deref->parent);
       const unsigned new_num_comps = glsl_get_vector_elements(parent->type);
@@ -1347,18 +1347,18 @@ opt_load_vec_deref(nir_builder *b, nir_intrinsic_instr *load)
 
       /* Stomp it to reference the parent */
       nir_instr_rewrite_src(&load->instr, &load->src[0],
-                            nir_src_for_ssa(&parent->dest.ssa));
-      load->dest.ssa.bit_size = new_bit_size;
-      load->dest.ssa.num_components = new_num_comps;
+                            nir_src_for_ssa(&parent->def));
+      load->def.bit_size = new_bit_size;
+      load->def.num_components = new_num_comps;
       load->num_components = new_num_comps;
 
       b->cursor = nir_after_instr(&load->instr);
-      nir_def *data = &load->dest.ssa;
+      nir_def *data = &load->def;
       if (old_bit_size != new_bit_size)
-         data = nir_bitcast_vector(b, &load->dest.ssa, old_bit_size);
+         data = nir_bitcast_vector(b, &load->def, old_bit_size);
       data = resize_vector(b, data, old_num_comps);
 
-      nir_def_rewrite_uses_after(&load->dest.ssa, data,
+      nir_def_rewrite_uses_after(&load->def, data,
                                  data->parent_instr);
       return true;
    }
@@ -1386,7 +1386,7 @@ opt_store_vec_deref(nir_builder *b, nir_intrinsic_instr *store)
       const unsigned new_bit_size = glsl_get_bit_size(parent->type);
 
       nir_instr_rewrite_src(&store->instr, &store->src[0],
-                            nir_src_for_ssa(&parent->dest.ssa));
+                            nir_src_for_ssa(&parent->def));
 
       /* Restrict things down as needed so the bitcast doesn't fail */
       data = nir_trim_vector(b, data, util_last_bit(write_mask));
@@ -1426,7 +1426,7 @@ opt_known_deref_mode_is(nir_builder *b, nir_intrinsic_instr *intrin)
    if (deref_is == NULL)
       return false;
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, deref_is);
+   nir_def_rewrite_uses(&intrin->def, deref_is);
    nir_instr_remove(&intrin->instr);
    return true;
 }

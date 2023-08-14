@@ -1293,22 +1293,22 @@ nir_instr_ssa_def(nir_instr *instr)
       return &nir_instr_as_alu(instr)->def;
 
    case nir_instr_type_deref:
-      return &nir_instr_as_deref(instr)->dest.ssa;
+      return &nir_instr_as_deref(instr)->def;
 
    case nir_instr_type_tex:
-      return &nir_instr_as_tex(instr)->dest.ssa;
+      return &nir_instr_as_tex(instr)->def;
 
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       if (nir_intrinsic_infos[intrin->intrinsic].has_dest) {
-         return &intrin->dest.ssa;
+         return &intrin->def;
       } else {
          return NULL;
       }
    }
 
    case nir_instr_type_phi:
-      return &nir_instr_as_phi(instr)->dest.ssa;
+      return &nir_instr_as_phi(instr)->def;
 
    case nir_instr_type_parallel_copy:
       unreachable("Parallel copies are unsupported by this function");

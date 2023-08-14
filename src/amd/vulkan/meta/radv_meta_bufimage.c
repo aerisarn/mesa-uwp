@@ -63,7 +63,7 @@ build_nir_itob_compute_shader(struct radv_device *dev, bool is_3d)
 
    nir_def *coord = nir_replicate(&b, tmp, 4);
 
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, nir_undef(&b, 1, 32), outval,
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, coord, nir_undef(&b, 1, 32), outval,
                          nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_BUF);
 
    return b.shader;
@@ -213,7 +213,7 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
    nir_def *img_coord = nir_vec4(&b, nir_channel(&b, coord, 0), nir_channel(&b, coord, 1),
                                  is_3d ? nir_channel(&b, coord, 2) : nir_undef(&b, 1, 32), nir_undef(&b, 1, 32));
 
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord, nir_undef(&b, 1, 32), outval,
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, img_coord, nir_undef(&b, 1, 32), outval,
                          nir_imm_int(&b, 0), .image_dim = dim);
 
    return b.shader;
@@ -367,7 +367,7 @@ build_nir_btoi_r32g32b32_compute_shader(struct radv_device *dev)
 
       nir_def *coord = nir_replicate(&b, local_pos, 4);
 
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, nir_undef(&b, 1, 32),
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, coord, nir_undef(&b, 1, 32),
                             nir_channel(&b, outval, chan), nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_BUF);
    }
 
@@ -494,8 +494,8 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d, int samples)
                                  is_3d ? nir_channel(&b, dst_coord, 2) : nir_undef(&b, 1, 32), nir_undef(&b, 1, 32));
 
    for (uint32_t i = 0; i < samples; i++) {
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord, nir_imm_int(&b, i),
-                            tex_vals[i], nir_imm_int(&b, 0), .image_dim = dim);
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, img_coord, nir_imm_int(&b, i), tex_vals[i],
+                            nir_imm_int(&b, 0), .image_dim = dim);
    }
 
    return b.shader;
@@ -665,7 +665,7 @@ build_nir_itoi_r32g32b32_compute_shader(struct radv_device *dev)
 
       nir_def *dst_coord = nir_replicate(&b, dst_local_pos, 4);
 
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, dst_coord, nir_undef(&b, 1, 32),
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, dst_coord, nir_undef(&b, 1, 32),
                             nir_channel(&b, outval, 0), nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_BUF);
    }
 
@@ -779,8 +779,8 @@ build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d, int samples
    global_id = nir_vec(&b, comps, 4);
 
    for (uint32_t i = 0; i < samples; i++) {
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, global_id, nir_imm_int(&b, i),
-                            clear_val, nir_imm_int(&b, 0), .image_dim = dim);
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, global_id, nir_imm_int(&b, i), clear_val,
+                            nir_imm_int(&b, 0), .image_dim = dim);
    }
 
    return b.shader;
@@ -929,7 +929,7 @@ build_nir_cleari_r32g32b32_compute_shader(struct radv_device *dev)
 
       nir_def *coord = nir_replicate(&b, local_pos, 4);
 
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, nir_undef(&b, 1, 32),
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, coord, nir_undef(&b, 1, 32),
                             nir_channel(&b, clear_val, chan), nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_BUF);
    }
 

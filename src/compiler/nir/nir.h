@@ -1038,10 +1038,6 @@ nir_def_used_by_if(const nir_def *def)
    return false;
 }
 
-typedef struct {
-   nir_def ssa;
-} nir_dest;
-
 static inline nir_src
 nir_src_for_ssa(nir_def *def)
 {
@@ -1538,7 +1534,7 @@ typedef struct {
    };
 
    /** Destination to store the resulting "pointer" */
-   nir_dest dest;
+   nir_def def;
 } nir_deref_instr;
 
 /** Returns true if deref might have one of the given modes
@@ -1723,7 +1719,7 @@ typedef struct {
 
    nir_intrinsic_op intrinsic;
 
-   nir_dest dest;
+   nir_def def;
 
    /** number of components if this is a vectorized intrinsic
     *
@@ -2199,7 +2195,7 @@ typedef struct {
    nir_texop op;
 
    /** Destination */
-   nir_dest dest;
+   nir_def def;
 
    /** Array of sources
     *
@@ -2468,7 +2464,7 @@ typedef struct {
 
    struct exec_list srcs; /** < list of nir_phi_src */
 
-   nir_dest dest;
+   nir_def def;
 } nir_phi_instr;
 
 static inline nir_phi_src *
@@ -2489,7 +2485,7 @@ typedef struct {
    bool dest_is_reg;
    nir_src src;
    union {
-      nir_dest dest;
+      nir_def def;
       nir_src reg;
    } dest;
 } nir_parallel_copy_entry;
@@ -6183,13 +6179,13 @@ nir_is_store_reg(nir_intrinsic_instr *intr)
 #define nir_foreach_reg_load(load, reg)              \
    assert(reg->intrinsic == nir_intrinsic_decl_reg); \
                                                      \
-   nir_foreach_use(load, &reg->dest.ssa)             \
+   nir_foreach_use(load, &reg->def)             \
       if (nir_is_load_reg(nir_instr_as_intrinsic(load->parent_instr)))
 
 #define nir_foreach_reg_store(store, reg)            \
    assert(reg->intrinsic == nir_intrinsic_decl_reg); \
                                                      \
-   nir_foreach_use(store, &reg->dest.ssa)            \
+   nir_foreach_use(store, &reg->def)            \
       if (nir_is_store_reg(nir_instr_as_intrinsic(store->parent_instr)))
 
 static inline nir_intrinsic_instr *

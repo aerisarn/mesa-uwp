@@ -132,7 +132,7 @@ lower_image_size_to_txs(nir_builder *b, nir_instr *instr, UNUSED void *_data)
       }
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, size);
+   nir_def_rewrite_uses(&intrin->def, size);
 
    return true;
 }
@@ -158,7 +158,7 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
    if (intrin->intrinsic == nir_intrinsic_load_global_constant_bounded) {
       nir_def *bound = intrin->src[2].ssa;
 
-      unsigned bit_size = intrin->dest.ssa.bit_size;
+      unsigned bit_size = intrin->def.bit_size;
       assert(bit_size >= 8 && bit_size % 8 == 0);
       unsigned byte_size = bit_size / 8;
 
@@ -175,8 +175,8 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
    }
 
    nir_def *val =
-      nir_build_load_global(b, intrin->dest.ssa.num_components,
-                            intrin->dest.ssa.bit_size,
+      nir_build_load_global(b, intrin->def.num_components,
+                            intrin->def.bit_size,
                             nir_iadd(b, base_addr, nir_u2u64(b, offset)),
                             .access = nir_intrinsic_access(intrin),
                             .align_mul = nir_intrinsic_align_mul(intrin),
@@ -187,7 +187,7 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
       val = nir_if_phi(b, val, zero);
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, val);
+   nir_def_rewrite_uses(&intrin->def, val);
 
    return true;
 }
@@ -251,7 +251,7 @@ lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
       return false;
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, val);
+   nir_def_rewrite_uses(&intrin->def, val);
 
    return true;
 }
@@ -271,7 +271,7 @@ lower_system_value_first_vertex(nir_builder *b, nir_instr *instr, UNUSED void *_
 
    b->cursor = nir_before_instr(&intrin->instr);
    nir_def *base_vertex = nir_load_base_vertex(b);
-   nir_def_rewrite_uses(&intrin->dest.ssa, base_vertex);
+   nir_def_rewrite_uses(&intrin->def, base_vertex);
 
    return true;
 }

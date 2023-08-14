@@ -213,7 +213,7 @@ lower_builtin_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
    def = nir_swizzle(b, def, swiz, intrin->num_components);
 
    /* and rewrite uses of original instruction: */
-   nir_def_rewrite_uses(&intrin->dest.ssa, def);
+   nir_def_rewrite_uses(&intrin->def, def);
 
    /* at this point intrin should be unused.  We need to remove it
     * (rather than waiting for DCE pass) to avoid dangling reference

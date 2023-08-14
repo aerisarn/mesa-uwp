@@ -116,7 +116,7 @@ static bool
 lower_load_bitsize(nir_builder *b,
                    nir_intrinsic_instr *intr)
 {
-        uint32_t bit_size = intr->dest.ssa.bit_size;
+        uint32_t bit_size = intr->def.bit_size;
         if (bit_size == 32)
                 return false;
 
@@ -153,15 +153,15 @@ lower_load_bitsize(nir_builder *b,
                         }
                 }
 
-                nir_def_init(&new_intr->instr, &new_intr->dest.ssa, 1,
+                nir_def_init(&new_intr->instr, &new_intr->def, 1,
                              bit_size);
-                dest_components[component] = &new_intr->dest.ssa;
+                dest_components[component] = &new_intr->def;
 
                 nir_builder_instr_insert(b, &new_intr->instr);
         }
 
         nir_def *new_dst = nir_vec(b, dest_components, num_comp);
-        nir_def_rewrite_uses(&intr->dest.ssa, new_dst);
+        nir_def_rewrite_uses(&intr->def, new_dst);
 
         nir_instr_remove(&intr->instr);
         return true;

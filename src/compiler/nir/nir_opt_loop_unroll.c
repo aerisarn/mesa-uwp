@@ -678,9 +678,9 @@ remove_out_of_bounds_induction_use(nir_shader *shader, nir_loop *loop,
                                         trip_count)) {
                if (intrin->intrinsic == nir_intrinsic_load_deref) {
                   nir_def *undef =
-                     nir_undef(&b, intrin->dest.ssa.num_components,
-                               intrin->dest.ssa.bit_size);
-                  nir_def_rewrite_uses(&intrin->dest.ssa,
+                     nir_undef(&b, intrin->def.num_components,
+                               intrin->def.bit_size);
+                  nir_def_rewrite_uses(&intrin->def,
                                        undef);
                } else {
                   nir_instr_remove(instr);

@@ -53,7 +53,7 @@ brw_nir_clamp_image_1d_2d_array_sizes_instr(nir_builder *b,
          if (!nir_intrinsic_image_array(intr))
             break;
 
-         image_size = &intr->dest.ssa;
+         image_size = &intr->def;
          break;
 
       case nir_intrinsic_image_deref_size: {
@@ -64,7 +64,7 @@ brw_nir_clamp_image_1d_2d_array_sizes_instr(nir_builder *b,
          if (!glsl_sampler_type_is_array(deref->type))
             break;
 
-         image_size = &intr->dest.ssa;
+         image_size = &intr->def;
          break;
       }
 
@@ -82,7 +82,7 @@ brw_nir_clamp_image_1d_2d_array_sizes_instr(nir_builder *b,
       if (!tex_instr->is_array)
          break;
 
-      image_size = &tex_instr->dest.ssa;
+      image_size = &tex_instr->def;
       break;
    }
 

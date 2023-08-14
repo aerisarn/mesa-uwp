@@ -402,7 +402,7 @@ static bool si_mark_divergent_texture_non_uniform(struct nir_shader *nir)
          }
 
          /* If dest is already divergent, divergence won't change. */
-         divergence_changed |= !tex->dest.ssa.divergent &&
+         divergence_changed |= !tex->def.divergent &&
             (tex->texture_non_uniform || tex->sampler_non_uniform);
       }
    }

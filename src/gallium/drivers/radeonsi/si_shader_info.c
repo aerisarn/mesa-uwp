@@ -230,8 +230,8 @@ static void scan_io_usage(const nir_shader *nir, struct si_shader_info *info,
       bit_size = nir_src_bit_size(intr->src[0]);
       is_output_load = false;
    } else {
-      mask = nir_def_components_read(&intr->dest.ssa); /* load */
-      bit_size = intr->dest.ssa.bit_size;
+      mask = nir_def_components_read(&intr->def); /* load */
+      bit_size = intr->def.bit_size;
       is_output_load = !is_input;
    }
    assert(bit_size != 64 && !(mask & ~0xf) && "64-bit IO should have been lowered");
@@ -478,7 +478,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          break;
       case nir_intrinsic_load_local_invocation_id:
       case nir_intrinsic_load_workgroup_id: {
-         unsigned mask = nir_def_components_read(&intr->dest.ssa);
+         unsigned mask = nir_def_components_read(&intr->def);
          while (mask) {
             unsigned i = u_bit_scan(&mask);
 
@@ -492,7 +492,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_load_color0:
       case nir_intrinsic_load_color1: {
          unsigned index = intr->intrinsic == nir_intrinsic_load_color1;
-         uint8_t mask = nir_def_components_read(&intr->dest.ssa);
+         uint8_t mask = nir_def_components_read(&intr->def);
          info->colors_read |= mask << (index * 4);
 
          switch (info->color_interpolate[index]) {
@@ -541,10 +541,10 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
             info->uses_interp_at_sample = true;
          break;
       case nir_intrinsic_load_frag_coord:
-         info->reads_frag_coord_mask |= nir_def_components_read(&intr->dest.ssa);
+         info->reads_frag_coord_mask |= nir_def_components_read(&intr->def);
          break;
       case nir_intrinsic_load_sample_pos:
-         info->reads_sample_pos_mask |= nir_def_components_read(&intr->dest.ssa);
+         info->reads_sample_pos_mask |= nir_def_components_read(&intr->def);
          break;
       case nir_intrinsic_load_input:
       case nir_intrinsic_load_per_vertex_input:

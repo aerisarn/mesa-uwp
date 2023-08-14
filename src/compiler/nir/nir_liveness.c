@@ -106,7 +106,7 @@ propagate_across_edge(nir_block *pred, nir_block *succ,
    memcpy(live, succ->live_in, state->bitset_words * sizeof *live);
 
    nir_foreach_phi(phi, succ) {
-      set_ssa_def_dead(&phi->dest.ssa, live);
+      set_ssa_def_dead(&phi->def, live);
    }
 
    nir_foreach_phi(phi, succ) {

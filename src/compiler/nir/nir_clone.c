@@ -246,7 +246,7 @@ clone_deref_instr(clone_state *state, const nir_deref_instr *deref)
    nir_deref_instr *nderef =
       nir_deref_instr_create(state->ns, deref->deref_type);
 
-   __clone_def(state, &nderef->instr, &nderef->dest.ssa, &deref->dest.ssa);
+   __clone_def(state, &nderef->instr, &nderef->def, &deref->def);
 
    nderef->modes = deref->modes;
    nderef->type = deref->type;
@@ -296,7 +296,7 @@ clone_intrinsic(clone_state *state, const nir_intrinsic_instr *itr)
    unsigned num_srcs = nir_intrinsic_infos[itr->intrinsic].num_srcs;
 
    if (nir_intrinsic_infos[itr->intrinsic].has_dest)
-      __clone_def(state, &nitr->instr, &nitr->dest.ssa, &itr->dest.ssa);
+      __clone_def(state, &nitr->instr, &nitr->def, &itr->def);
 
    nitr->num_components = itr->num_components;
    memcpy(nitr->const_index, itr->const_index, sizeof(nitr->const_index));
@@ -341,7 +341,7 @@ clone_tex(clone_state *state, const nir_tex_instr *tex)
    ntex->sampler_dim = tex->sampler_dim;
    ntex->dest_type = tex->dest_type;
    ntex->op = tex->op;
-   __clone_def(state, &ntex->instr, &ntex->dest.ssa, &tex->dest.ssa);
+   __clone_def(state, &ntex->instr, &ntex->def, &tex->def);
    for (unsigned i = 0; i < ntex->num_srcs; i++) {
       ntex->src[i].src_type = tex->src[i].src_type;
       __clone_src(state, &ntex->instr, &ntex->src[i].src, &tex->src[i].src);
@@ -371,7 +371,7 @@ clone_phi(clone_state *state, const nir_phi_instr *phi, nir_block *nblk)
 {
    nir_phi_instr *nphi = nir_phi_instr_create(state->ns);
 
-   __clone_def(state, &nphi->instr, &nphi->dest.ssa, &phi->dest.ssa);
+   __clone_def(state, &nphi->instr, &nphi->def, &phi->def);
 
    /* Cloning a phi node is a bit different from other instructions.  The
     * sources of phi instructions are the only time where we can use an SSA

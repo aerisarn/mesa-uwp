@@ -60,10 +60,10 @@ lower_fragcoord_wtrans_impl(nir_builder *b, nir_instr *instr,
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
    return nir_vec4(b,
-                   nir_channel(b, &intr->dest.ssa, 0),
-                   nir_channel(b, &intr->dest.ssa, 1),
-                   nir_channel(b, &intr->dest.ssa, 2),
-                   nir_frcp(b, nir_channel(b, &intr->dest.ssa, 3)));
+                   nir_channel(b, &intr->def, 0),
+                   nir_channel(b, &intr->def, 1),
+                   nir_channel(b, &intr->def, 2),
+                   nir_frcp(b, nir_channel(b, &intr->def, 3)));
 }
 
 bool

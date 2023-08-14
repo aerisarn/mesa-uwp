@@ -800,9 +800,9 @@ load_texture(struct texenv_fragment_program *p, GLuint unit)
 
    nir_deref_instr *deref = nir_build_deref_var(p->b, var);
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &deref->dest.ssa);
+                                     &deref->def);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                     &deref->dest.ssa);
+                                     &deref->def);
 
    nir_def *src2 =
       nir_channels(p->b, texcoord,
@@ -819,8 +819,8 @@ load_texture(struct texenv_fragment_program *p, GLuint unit)
       tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_comparator, src4);
    }
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
-   p->src_texture[unit] = &tex->dest.ssa;
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+   p->src_texture[unit] = &tex->def;
 
    nir_builder_instr_insert(p->b, &tex->instr);
    BITSET_SET(p->b->shader->info.textures_used, unit);

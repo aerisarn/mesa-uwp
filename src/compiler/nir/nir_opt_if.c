@@ -499,7 +499,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
       nir_phi_instr_add_src(phi, prev_block, nir_src_for_ssa(prev_value));
       nir_phi_instr_add_src(phi, continue_block, nir_src_for_ssa(alu_copy));
 
-      nir_def_init(&phi->instr, &phi->dest.ssa, alu_copy->num_components,
+      nir_def_init(&phi->instr, &phi->def, alu_copy->num_components,
                    alu_copy->bit_size);
 
       b->cursor = nir_after_phis(header_block);
@@ -509,7 +509,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
        * result of the phi.
        */
       nir_def_rewrite_uses(&alu->def,
-                           &phi->dest.ssa);
+                           &phi->def);
 
       /* Since the original ALU instruction no longer has any readers, just
        * remove it.
@@ -663,7 +663,7 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
                                                        continue_block)
                                ->src);
 
-      nir_def_init(&phi->instr, &phi->dest.ssa,
+      nir_def_init(&phi->instr, &phi->def,
                    bcsel->def.num_components,
                    bcsel->def.bit_size);
 
@@ -674,7 +674,7 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
        * the phi.
        */
       nir_def_rewrite_uses(&bcsel->def,
-                           &phi->dest.ssa);
+                           &phi->def);
 
       /* Since the original bcsel instruction no longer has any readers,
        * just remove it.
@@ -919,8 +919,8 @@ opt_if_phi_is_condition(nir_builder *b, nir_if *nif)
 
    nir_block *after_if_block = nir_cf_node_as_block(nir_cf_node_next(&nif->cf_node));
    nir_foreach_phi_safe(phi, after_if_block) {
-      if (phi->dest.ssa.bit_size != cond->bit_size ||
-          phi->dest.ssa.num_components != 1)
+      if (phi->def.bit_size != cond->bit_size ||
+          phi->def.num_components != 1)
          continue;
 
       enum opt_bool {
@@ -946,11 +946,11 @@ opt_if_phi_is_condition(nir_builder *b, nir_if *nif)
             break;
       }
       if (then_val == T && else_val == F) {
-         nir_def_rewrite_uses(&phi->dest.ssa, cond);
+         nir_def_rewrite_uses(&phi->def, cond);
          progress = true;
       } else if (then_val == F && else_val == T) {
          b->cursor = nir_before_cf_node(&nif->cf_node);
-         nir_def_rewrite_uses(&phi->dest.ssa, nir_inot(b, cond));
+         nir_def_rewrite_uses(&phi->def, nir_inot(b, cond));
          progress = true;
       }
    }

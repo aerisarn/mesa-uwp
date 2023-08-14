@@ -2611,9 +2611,9 @@ replace_unused_interpolate_at_with_undef(nir_builder *b, nir_instr *instr,
          if (var->data.mode == nir_var_shader_temp) {
             /* Create undef and rewrite the interp uses */
             nir_def *undef =
-               nir_undef(b, intrin->dest.ssa.num_components,
-                             intrin->dest.ssa.bit_size);
-            nir_def_rewrite_uses(&intrin->dest.ssa, undef);
+               nir_undef(b, intrin->def.num_components,
+                             intrin->def.bit_size);
+            nir_def_rewrite_uses(&intrin->def, undef);
 
             nir_instr_remove(&intrin->instr);
             return true;

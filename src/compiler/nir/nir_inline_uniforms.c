@@ -128,7 +128,7 @@ nir_collect_src_uniforms(const nir_src *src, int component,
           nir_src_is_const(intr->src[1]) &&
           nir_src_as_uint(intr->src[1]) <= max_offset &&
           /* TODO: Can't handle other bit sizes for now. */
-          intr->dest.ssa.bit_size == 32) {
+          intr->def.bit_size == 32) {
          /* num_offsets can be NULL if-and-only-if uni_offsets is NULL. */
          assert((num_offsets == NULL) == (uni_offsets == NULL));
 
@@ -399,8 +399,8 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                 nir_src_as_uint(intr->src[0]) == 0 &&
                 nir_src_is_const(intr->src[1]) &&
                 /* TODO: Can't handle other bit sizes for now. */
-                intr->dest.ssa.bit_size == 32) {
-               int num_components = intr->dest.ssa.num_components;
+                intr->def.bit_size == 32) {
+               int num_components = intr->def.num_components;
                uint32_t offset = nir_src_as_uint(intr->src[1]) / 4;
 
                if (num_components == 1) {
@@ -409,7 +409,7 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                      if (offset == uniform_dw_offsets[i]) {
                         b.cursor = nir_before_instr(&intr->instr);
                         nir_def *def = nir_imm_int(&b, uniform_values[i]);
-                        nir_def_rewrite_uses(&intr->dest.ssa, def);
+                        nir_def_rewrite_uses(&intr->def, def);
                         nir_instr_remove(&intr->instr);
                         break;
                      }
@@ -441,7 +441,7 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                   for (unsigned i = 0; i < num_components; i++) {
                      if (!components[i]) {
                         uint32_t scalar_offset = (offset + i) * 4;
-                        components[i] = nir_load_ubo(&b, 1, intr->dest.ssa.bit_size,
+                        components[i] = nir_load_ubo(&b, 1, intr->def.bit_size,
                                                      intr->src[0].ssa,
                                                      nir_imm_int(&b, scalar_offset));
                         nir_intrinsic_instr *load =
@@ -453,7 +453,7 @@ nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
                   }
 
                   /* Replace the original uniform load. */
-                  nir_def_rewrite_uses(&intr->dest.ssa,
+                  nir_def_rewrite_uses(&intr->def,
                                        nir_vec(&b, components, num_components));
                   nir_instr_remove(&intr->instr);
                }

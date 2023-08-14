@@ -152,7 +152,7 @@ try_lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_def *desc = load_descriptor_for_idx_intrin(b, idx_intrin, ctx);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+   nir_def_rewrite_uses(&intrin->def, desc);
 
    return true;
 }
@@ -173,7 +173,7 @@ lower_num_workgroups(nir_builder *b, nir_intrinsic_instr *load,
                                    .align_offset = 0,
                                    .range = root_table_offset + 3 * 4);
 
-   nir_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->def, val);
 
    return true;
 }
@@ -194,7 +194,7 @@ lower_load_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *load,
                                    .align_offset = 0,
                                    .range = root_table_offset + 3 * 4);
 
-   nir_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->def, val);
 
    return true;
 }
@@ -213,14 +213,14 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
                                          push_region_offset + base);
 
    nir_def *val =
-      nir_load_ubo(b, load->dest.ssa.num_components, load->dest.ssa.bit_size,
+      nir_load_ubo(b, load->def.num_components, load->def.bit_size,
                    nir_imm_int(b, 0), offset,
-                   .align_mul = load->dest.ssa.bit_size / 8,
+                   .align_mul = load->def.bit_size / 8,
                    .align_offset = 0,
                    .range = push_region_offset + base +
                             nir_intrinsic_range(load));
 
-   nir_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->def, val);
 
    return true;
 }
@@ -241,7 +241,7 @@ lower_load_view_index(nir_builder *b, nir_intrinsic_instr *load,
                                    .align_offset = 0,
                                    .range = root_table_offset + 4);
 
-   nir_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->def, val);
 
    return true;
 }
@@ -503,7 +503,7 @@ lower_ssbo_resource_index(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Unknown address mode");
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, addr);
+   nir_def_rewrite_uses(&intrin->def, addr);
 
    return true;
 }
@@ -542,7 +542,7 @@ lower_ssbo_resource_reindex(nir_builder *b, nir_intrinsic_instr *intrin,
 
    addr = nir_build_addr_iadd(b, addr, ctx->ssbo_addr_format,
                               nir_var_mem_ssbo, offset);
-   nir_def_rewrite_uses(&intrin->dest.ssa, addr);
+   nir_def_rewrite_uses(&intrin->def, addr);
 
    return true;
 }
@@ -597,7 +597,7 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Unknown address mode");
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+   nir_def_rewrite_uses(&intrin->def, desc);
 
    return true;
 }

@@ -223,8 +223,8 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
        intr->intrinsic != nir_intrinsic_load_shared)
       return false;
 
-   unsigned compsz = intr->dest.ssa.bit_size;
-   unsigned totalsz = compsz * intr->dest.ssa.num_components;
+   unsigned compsz = intr->def.bit_size;
+   unsigned totalsz = compsz * intr->def.num_components;
    /* 8, 16, 32, 64 and 128 bit loads don't need to be lowered */
    if (util_bitcount(totalsz) < 2 && totalsz <= 128)
       return false;
@@ -251,10 +251,10 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
          shared_load->src[0] = nir_src_for_ssa(addr);
          nir_intrinsic_set_align(shared_load, compsz / 8, 0);
          nir_intrinsic_set_base(shared_load, nir_intrinsic_base(intr));
-         nir_def_init(&shared_load->instr, &shared_load->dest.ssa,
+         nir_def_init(&shared_load->instr, &shared_load->def,
                       shared_load->num_components, compsz);
          nir_builder_instr_insert(b, &shared_load->instr);
-         load = &shared_load->dest.ssa;
+         load = &shared_load->def;
       }
 
       for (unsigned i = 0; i < loadncomps; i++)
@@ -264,8 +264,8 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
       addr = nir_iadd_imm(b, addr, loadsz / 8);
    }
 
-   assert(ncomps == intr->dest.ssa.num_components);
-   nir_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, comps, ncomps));
+   assert(ncomps == intr->def.num_components);
+   nir_def_rewrite_uses(&intr->def, nir_vec(b, comps, ncomps));
 
    return true;
 }
@@ -991,7 +991,7 @@ mir_set_intr_mask(nir_instr *instr, midgard_instruction *ins, bool is_read)
       nir_mask = mask_of(nir_intrinsic_dest_components(intr));
 
       /* Extension is mandatory for 8/16-bit loads */
-      dsize = intr->dest.ssa.bit_size == 64 ? 64 : 32;
+      dsize = intr->def.bit_size == 64 ? 64 : 32;
    } else {
       nir_mask = nir_intrinsic_write_mask(intr);
       dsize = OP_IS_COMMON_STORE(ins->op) ? nir_src_bit_size(intr->src[0]) : 32;
@@ -1014,7 +1014,7 @@ emit_ubo_read(compiler_context *ctx, nir_instr *instr, unsigned dest,
    midgard_instruction ins;
 
    unsigned dest_size = (instr->type == nir_instr_type_intrinsic)
-                           ? nir_instr_as_intrinsic(instr)->dest.ssa.bit_size
+                           ? nir_instr_as_intrinsic(instr)->def.bit_size
                            : 32;
 
    unsigned bitsize = dest_size * nr_comps;
@@ -1070,8 +1070,7 @@ emit_global(compiler_context *ctx, nir_instr *instr, bool is_read,
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (is_read) {
-      unsigned bitsize =
-         intr->dest.ssa.bit_size * intr->dest.ssa.num_components;
+      unsigned bitsize = intr->def.bit_size * intr->def.num_components;
 
       switch (bitsize) {
       case 8:
@@ -1098,7 +1097,7 @@ emit_global(compiler_context *ctx, nir_instr *instr, bool is_read,
       /* For anything not aligned on 32bit, make sure we write full
        * 32 bits registers. */
       if (bitsize & 31) {
-         unsigned comps_per_32b = 32 / intr->dest.ssa.bit_size;
+         unsigned comps_per_32b = 32 / intr->def.bit_size;
 
          for (unsigned c = 0; c < 4 * comps_per_32b; c += comps_per_32b) {
             if (!(ins.mask & BITFIELD_RANGE(c, comps_per_32b)))
@@ -1192,7 +1191,7 @@ emit_atomic(compiler_context *ctx, nir_intrinsic_instr *instr)
    bool is_shared = (instr->intrinsic == nir_intrinsic_shared_atomic) ||
                     (instr->intrinsic == nir_intrinsic_shared_atomic_swap);
 
-   unsigned dest = nir_def_index(&instr->dest.ssa);
+   unsigned dest = nir_def_index(&instr->def);
    unsigned val = nir_src_index(ctx, &instr->src[1]);
    unsigned bitsize = nir_src_bit_size(instr->src[1]);
    emit_explicit_constant(ctx, val);
@@ -1323,12 +1322,12 @@ emit_image_op(compiler_context *ctx, nir_intrinsic_instr *instr)
       nir_alu_type base_type = nir_alu_type_get_base_type(type);
       ins.src_types[0] = base_type | nir_src_bit_size(instr->src[3]);
    } else if (instr->intrinsic == nir_intrinsic_image_texel_address) {
-      ins = m_lea_image(nir_def_index(&instr->dest.ssa),
-                        PACK_LDST_ATTRIB_OFS(address));
+      ins =
+         m_lea_image(nir_def_index(&instr->def), PACK_LDST_ATTRIB_OFS(address));
       ins.mask = mask_of(2); /* 64-bit memory address */
    } else {                  /* emit ld_image_* */
       nir_alu_type type = nir_intrinsic_dest_type(instr);
-      ins = ld_image(type, nir_def_index(&instr->dest.ssa),
+      ins = ld_image(type, nir_def_index(&instr->def),
                      PACK_LDST_ATTRIB_OFS(address));
       ins.mask = mask_of(nir_intrinsic_dest_components(instr));
       ins.dest_type = type;
@@ -1456,7 +1455,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned src_z,
 static void
 emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-   unsigned reg = nir_def_index(&instr->dest.ssa);
+   unsigned reg = nir_def_index(&instr->def);
    midgard_instruction ins = m_ldst_mov(reg, 0);
    ins.mask = mask_of(3);
    ins.swizzle[0][3] = COMPONENT_X; /* xyzx */
@@ -1480,7 +1479,7 @@ vertex_builtin_arg(nir_intrinsic_op op)
 static void
 emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-   unsigned reg = nir_def_index(&instr->dest.ssa);
+   unsigned reg = nir_def_index(&instr->def);
    emit_attr_read(ctx, reg, vertex_builtin_arg(instr->intrinsic), 1,
                   nir_type_int);
 }
@@ -1488,7 +1487,7 @@ emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 static void
 emit_special(compiler_context *ctx, nir_intrinsic_instr *instr, unsigned idx)
 {
-   unsigned reg = nir_def_index(&instr->dest.ssa);
+   unsigned reg = nir_def_index(&instr->def);
 
    midgard_instruction ld = m_ld_tilebuffer_raw(reg, 0);
    ld.op = midgard_op_ld_special_32u;
@@ -1551,12 +1550,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       nir_def *handle = instr->src[0].ssa;
 
       midgard_instruction ins =
-         v_mov(nir_reg_index(handle), nir_def_index(&instr->dest.ssa));
+         v_mov(nir_reg_index(handle), nir_def_index(&instr->def));
 
-      ins.dest_type = ins.src_types[1] =
-         nir_type_uint | instr->dest.ssa.bit_size;
+      ins.dest_type = ins.src_types[1] = nir_type_uint | instr->def.bit_size;
 
-      ins.mask = BITFIELD_MASK(instr->dest.ssa.num_components);
+      ins.mask = BITFIELD_MASK(instr->def.num_components);
       emit_mir_instruction(ctx, ins);
       break;
    }
@@ -1625,7 +1623,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       /* We may need to apply a fractional offset */
       int component =
          (is_flat || is_interp) ? nir_intrinsic_component(instr) : 0;
-      reg = nir_def_index(&instr->dest.ssa);
+      reg = nir_def_index(&instr->def);
 
       if (is_ubo) {
          nir_src index = instr->src[0];
@@ -1642,8 +1640,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
          emit_global(ctx, &instr->instr, true, reg, src_offset, seg);
       } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->inputs->is_blend) {
          emit_varying_read(ctx, reg, offset, nr_comp, component,
-                           indirect_offset, t | instr->dest.ssa.bit_size,
-                           is_flat);
+                           indirect_offset, t | instr->def.bit_size, is_flat);
       } else if (ctx->inputs->is_blend) {
          /* ctx->blend_input will be precoloured to r0/r2, where
           * the input is preloaded */
@@ -1672,7 +1669,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
 
    case nir_intrinsic_load_raw_output_pan: {
-      reg = nir_def_index(&instr->dest.ssa);
+      reg = nir_def_index(&instr->def);
 
       /* T720 and below use different blend opcodes with slightly
        * different semantics than T760 and up */
@@ -1705,9 +1702,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_load_output: {
-      reg = nir_def_index(&instr->dest.ssa);
+      reg = nir_def_index(&instr->def);
 
-      unsigned bits = instr->dest.ssa.bit_size;
+      unsigned bits = instr->def.bit_size;
 
       midgard_instruction ld;
       if (bits == 16)
@@ -2160,7 +2157,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
    midgard_instruction ins = {
       .type = TAG_TEXTURE_4,
       .mask = 0xF,
-      .dest = nir_def_index(&instr->dest.ssa),
+      .dest = nir_def_index(&instr->def),
       .src = {~0, ~0, ~0, ~0},
       .dest_type = instr->dest_type,
       .swizzle = SWIZZLE_IDENTITY_4,

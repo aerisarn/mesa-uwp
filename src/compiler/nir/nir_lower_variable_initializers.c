@@ -76,7 +76,7 @@ lower_const_initializer(struct nir_builder *b, struct exec_list *var_list,
          nir_deref_instr *dst_deref = nir_build_deref_var(b, var);
 
          /* Note that this stores a pointer to src into dst */
-         nir_store_deref(b, dst_deref, &src_deref->dest.ssa, ~0);
+         nir_store_deref(b, dst_deref, &src_deref->def, ~0);
 
          progress = true;
          var->pointer_initializer = NULL;

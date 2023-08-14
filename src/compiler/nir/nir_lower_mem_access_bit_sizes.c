@@ -58,7 +58,7 @@ dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_intrinsic_set_align(dup, align_mul, align_offset);
 
    if (info->has_dest) {
-      nir_def_init(&dup->instr, &dup->dest.ssa, num_components, bit_size);
+      nir_def_init(&dup->instr, &dup->def, num_components, bit_size);
    } else {
       nir_intrinsic_set_write_mask(dup, (1 << num_components) - 1);
    }
@@ -73,8 +73,8 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
                nir_lower_mem_access_bit_sizes_cb mem_access_size_align_cb,
                const void *cb_data)
 {
-   const unsigned bit_size = intrin->dest.ssa.bit_size;
-   const unsigned num_components = intrin->dest.ssa.num_components;
+   const unsigned bit_size = intrin->def.bit_size;
+   const unsigned num_components = intrin->def.num_components;
    const unsigned bytes_read = num_components * (bit_size / 8);
    const uint32_t align_mul = nir_intrinsic_align_mul(intrin);
    const uint32_t whole_align_offset = nir_intrinsic_align_offset(intrin);
@@ -136,22 +136,22 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
          chunk_bytes = MIN2(bytes_left, requested_bytes - max_pad);
 
          nir_def *shift = nir_imul_imm(b, pad, 8);
-         nir_def *shifted = nir_ushr(b, &load->dest.ssa, shift);
+         nir_def *shifted = nir_ushr(b, &load->def, shift);
 
-         if (load->dest.ssa.num_components > 1) {
+         if (load->def.num_components > 1) {
             nir_def *rev_shift =
-               nir_isub_imm(b, load->dest.ssa.bit_size, shift);
-            nir_def *rev_shifted = nir_ishl(b, &load->dest.ssa, rev_shift);
+               nir_isub_imm(b, load->def.bit_size, shift);
+            nir_def *rev_shifted = nir_ishl(b, &load->def, rev_shift);
 
             nir_def *comps[NIR_MAX_VEC_COMPONENTS];
-            for (unsigned i = 1; i < load->dest.ssa.num_components; i++)
+            for (unsigned i = 1; i < load->def.num_components; i++)
                comps[i - 1] = nir_channel(b, rev_shifted, i);
 
-            comps[load->dest.ssa.num_components - 1] =
-               nir_imm_zero(b, 1, load->dest.ssa.bit_size);
+            comps[load->def.num_components - 1] =
+               nir_imm_zero(b, 1, load->def.bit_size);
 
-            rev_shifted = nir_vec(b, comps, load->dest.ssa.num_components);
-            shifted = nir_bcsel(b, nir_ieq_imm(b, shift, 0), &load->dest.ssa,
+            rev_shifted = nir_vec(b, comps, load->def.num_components);
+            shifted = nir_bcsel(b, nir_ieq_imm(b, shift, 0), &load->def,
                                 nir_ior(b, shifted, rev_shifted));
          }
 
@@ -192,7 +192,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
          /* There's no guarantee that chunk_num_components is a valid NIR
           * vector size, so just loop one chunk component at a time
           */
-         nir_def *chunk_data = &load->dest.ssa;
+         nir_def *chunk_data = &load->def;
          for (unsigned i = 0; i < chunk_num_components; i++) {
             assert(num_chunks < ARRAY_SIZE(chunks));
             chunks[num_chunks++] =
@@ -209,7 +209,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
          chunk_bytes = requested.num_components * (requested.bit_size / 8);
          assert(num_chunks < ARRAY_SIZE(chunks));
-         chunks[num_chunks++] = &load->dest.ssa;
+         chunks[num_chunks++] = &load->def;
       }
 
       chunk_start += chunk_bytes;
@@ -217,7 +217,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_def *result = nir_extract_bits(b, chunks, num_chunks, 0,
                                       num_components, bit_size);
-   nir_def_rewrite_uses(&intrin->dest.ssa, result);
+   nir_def_rewrite_uses(&intrin->def, result);
    nir_instr_remove(&intrin->instr);
 
    return true;

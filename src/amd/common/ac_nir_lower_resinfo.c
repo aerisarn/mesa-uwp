@@ -212,7 +212,7 @@ static bool lower_resinfo(nir_builder *b, nir_instr *instr, void *data)
       bool is_array;
       nir_def *desc = NULL;
 
-      dst = &intr->dest.ssa;
+      dst = &intr->def;
       b->cursor = nir_before_instr(instr);
 
       switch (intr->intrinsic) {
@@ -268,7 +268,7 @@ static bool lower_resinfo(nir_builder *b, nir_instr *instr, void *data)
       nir_def *desc = NULL;
       nir_src *lod = NULL;
 
-      dst = &tex->dest.ssa;
+      dst = &tex->def;
       b->cursor = nir_before_instr(instr);
 
       switch (tex->op) {
@@ -288,10 +288,10 @@ static bool lower_resinfo(nir_builder *b, nir_instr *instr, void *data)
                new_tex->dest_type = nir_type_int32;
                nir_src_copy(&new_tex->src[0].src, &tex->src[i].src, &new_tex->instr);
                new_tex->src[0].src_type = tex->src[i].src_type;
-               nir_def_init(&new_tex->instr, &new_tex->dest.ssa,
+               nir_def_init(&new_tex->instr, &new_tex->def,
                             nir_tex_instr_dest_size(new_tex), 32);
                nir_builder_instr_insert(b, &new_tex->instr);
-               desc = &new_tex->dest.ssa;
+               desc = &new_tex->def;
                break;
 
             case nir_tex_src_lod:

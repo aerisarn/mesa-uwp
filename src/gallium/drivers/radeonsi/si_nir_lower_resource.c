@@ -291,7 +291,7 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
 
       nir_def *desc = load_ssbo_desc(b, &intrin->src[0], s);
       nir_def *size = nir_channel(b, desc, 2);
-      nir_def_rewrite_uses(&intrin->dest.ssa, size);
+      nir_def_rewrite_uses(&intrin->def, size);
       nir_instr_remove(&intrin->instr);
       break;
    }
@@ -323,7 +323,7 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       nir_def *desc = load_deref_image_desc(b, deref, desc_type, is_load, s);
 
       if (intrin->intrinsic == nir_intrinsic_image_deref_descriptor_amd) {
-         nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+         nir_def_rewrite_uses(&intrin->def, desc);
          nir_instr_remove(&intrin->instr);
       } else {
          nir_intrinsic_set_image_dim(intrin, glsl_get_sampler_dim(deref->type));
@@ -359,7 +359,7 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       nir_def *desc = load_bindless_image_desc(b, index, desc_type, is_load, s);
 
       if (intrin->intrinsic == nir_intrinsic_bindless_image_descriptor_amd) {
-         nir_def_rewrite_uses(&intrin->dest.ssa, desc);
+         nir_def_rewrite_uses(&intrin->def, desc);
          nir_instr_remove(&intrin->instr);
       } else {
          nir_instr_rewrite_src(&intrin->instr, &intrin->src[0], nir_src_for_ssa(desc));
@@ -498,7 +498,7 @@ static bool lower_resource_tex(nir_builder *b, nir_tex_instr *tex,
          image = load_deref_sampler_desc(b, texture_deref, desc_type, s, true);
       else
          image = load_bindless_sampler_desc(b, texture_handle, desc_type, s);
-      nir_def_rewrite_uses(&tex->dest.ssa, image);
+      nir_def_rewrite_uses(&tex->def, image);
       nir_instr_remove(&tex->instr);
       return true;
    }
@@ -509,7 +509,7 @@ static bool lower_resource_tex(nir_builder *b, nir_tex_instr *tex,
          sampler = load_deref_sampler_desc(b, sampler_deref, AC_DESC_SAMPLER, s, true);
       else
          sampler = load_bindless_sampler_desc(b, sampler_handle, AC_DESC_SAMPLER, s);
-      nir_def_rewrite_uses(&tex->dest.ssa, sampler);
+      nir_def_rewrite_uses(&tex->def, sampler);
       nir_instr_remove(&tex->instr);
       return true;
    }

@@ -42,7 +42,7 @@ lower_ubo_load_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
    if (load->intrinsic == nir_intrinsic_load_global_constant_bounded)
       bound = load->src[2].ssa;
 
-   unsigned bit_size = load->dest.ssa.bit_size;
+   unsigned bit_size = load->def.bit_size;
    assert(bit_size >= 8 && bit_size % 8 == 0);
    unsigned byte_size = bit_size / 8;
 
@@ -90,8 +90,8 @@ lower_ubo_load_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
          nir_push_if(b, in_bounds);
 
          nir_def *load_val =
-            nir_build_load_global_constant(b, load->dest.ssa.num_components,
-                                           load->dest.ssa.bit_size, addr,
+            nir_build_load_global_constant(b, load->def.num_components,
+                                           load->def.bit_size, addr,
                                            .access = nir_intrinsic_access(load),
                                            .align_mul = nir_intrinsic_align_mul(load),
                                            .align_offset = nir_intrinsic_align_offset(load));
@@ -100,15 +100,15 @@ lower_ubo_load_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 
          val = nir_if_phi(b, load_val, zero);
       } else {
-         val = nir_build_load_global_constant(b, load->dest.ssa.num_components,
-                                              load->dest.ssa.bit_size, addr,
+         val = nir_build_load_global_constant(b, load->def.num_components,
+                                              load->def.bit_size, addr,
                                               .access = nir_intrinsic_access(load),
                                               .align_mul = nir_intrinsic_align_mul(load),
                                               .align_offset = nir_intrinsic_align_offset(load));
       }
    }
 
-   nir_def_rewrite_uses(&load->dest.ssa, val);
+   nir_def_rewrite_uses(&load->def, val);
    nir_instr_remove(&load->instr);
 
    return true;

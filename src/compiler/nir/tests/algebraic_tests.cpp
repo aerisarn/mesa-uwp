@@ -49,7 +49,7 @@ algebraic_test_base::algebraic_test_base()
 void algebraic_test_base::test_op(nir_op op, nir_def *src0, nir_def *src1,
                                      nir_def *src2, nir_def *src3, const char *desc)
 {
-   nir_def *res_deref = &nir_build_deref_var(b, res_var)->dest.ssa;
+   nir_def *res_deref = &nir_build_deref_var(b, res_var)->def;
 
    /* create optimized expression */
    nir_intrinsic_instr *optimized_instr = nir_build_store_deref(

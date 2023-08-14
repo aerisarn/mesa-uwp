@@ -452,7 +452,7 @@ anv_frag_update_derefs_instr(struct nir_builder *b, nir_instr *instr, void *data
       return false;
 
    nir_instr_remove(&deref->instr);
-   nir_def_rewrite_uses(&deref->dest.ssa, &new_derefs[location]->dest.ssa);
+   nir_def_rewrite_uses(&deref->def, &new_derefs[location]->def);
 
    return true;
 }

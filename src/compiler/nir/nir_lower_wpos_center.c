@@ -47,7 +47,7 @@
 static void
 update_fragcoord(nir_builder *b, nir_intrinsic_instr *intr)
 {
-   nir_def *wpos = &intr->dest.ssa;
+   nir_def *wpos = &intr->def;
 
    b->cursor = nir_after_instr(&intr->instr);
 
@@ -60,7 +60,7 @@ update_fragcoord(nir_builder *b, nir_intrinsic_instr *intr)
                             nir_imm_float(b, 0.0f),
                             nir_imm_float(b, 0.0f)));
 
-   nir_def_rewrite_uses_after(&intr->dest.ssa, wpos,
+   nir_def_rewrite_uses_after(&intr->def, wpos,
                               wpos->parent_instr);
 }
 

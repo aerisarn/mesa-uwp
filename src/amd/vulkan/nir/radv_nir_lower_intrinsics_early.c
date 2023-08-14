@@ -60,7 +60,7 @@ radv_nir_lower_intrinsics_early(nir_shader *nir, const struct radv_pipeline_key 
             continue;
          }
 
-         nir_def_rewrite_uses(&intrin->dest.ssa, def);
+         nir_def_rewrite_uses(&intrin->def, def);
 
          nir_instr_remove(instr);
          progress = true;

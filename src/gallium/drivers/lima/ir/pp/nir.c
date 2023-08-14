@@ -175,7 +175,7 @@ static bool ppir_emit_alu(ppir_block *block, nir_instr *ni)
    /* Skip folded fabs/fneg since we do not have dead code elimination */
    if ((instr->op == nir_op_fabs || instr->op == nir_op_fneg) &&
        nir_legacy_float_mod_folds(instr)) {
-      /* Add parent node as a the folded dest ssa node to keep
+      /* Add parent node as a the folded def node to keep
        * the dependency chain */
       nir_alu_src *ns = &instr->src[0];
       ppir_node *parent = block->comp->var_nodes[ns->src.ssa->index];
@@ -291,7 +291,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       return true;
 
    case nir_intrinsic_load_reg: {
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->def);
       lnode = ppir_node_create_dest(block, ppir_op_dummy, &legacy_dest, mask);
       return true;
    }
@@ -299,7 +299,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
    case nir_intrinsic_load_input: {
       mask = u_bit_consecutive(0, instr->num_components);
 
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->def);
       lnode = ppir_node_create_dest(block, ppir_op_load_varying, &legacy_dest, mask);
       if (!lnode)
          return false;
@@ -338,7 +338,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
          break;
       }
 
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->def);
       lnode = ppir_node_create_dest(block, op, &legacy_dest, mask);
       if (!lnode)
          return false;
@@ -351,7 +351,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
    case nir_intrinsic_load_uniform: {
       mask = u_bit_consecutive(0, instr->num_components);
 
-      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
+      nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->def);
       lnode = ppir_node_create_dest(block, ppir_op_load_uniform, &legacy_dest, mask);
       if (!lnode)
          return false;
@@ -517,7 +517,7 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
    unsigned mask = 0;
    mask = u_bit_consecutive(0, nir_tex_instr_dest_size(instr));
 
-   nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->dest.ssa);
+   nir_legacy_dest legacy_dest = nir_legacy_chase_dest(&instr->def);
    node = ppir_node_create_dest(block, ppir_op_load_texture, &legacy_dest, mask);
    if (!node)
       return false;
@@ -991,7 +991,7 @@ bool ppir_compile_nir(struct lima_fs_compiled_shader *prog, struct nir_shader *n
       if (!r)
          return false;
 
-      r->index = decl->dest.ssa.index;
+      r->index = decl->def.index;
       r->num_components = nir_intrinsic_num_components(decl);
       r->is_head = false;
       list_addtail(&r->list, &comp->reg_list);

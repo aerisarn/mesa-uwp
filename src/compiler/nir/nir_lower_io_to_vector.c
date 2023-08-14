@@ -344,7 +344,7 @@ build_array_index(nir_builder *b, nir_deref_instr *deref, nir_def *base,
       return base;
    case nir_deref_type_array: {
       nir_def *index = nir_i2iN(b, deref->arr.index.ssa,
-                                deref->dest.ssa.bit_size);
+                                deref->def.bit_size);
 
       if (nir_deref_instr_parent(deref)->deref_type == nir_deref_type_var &&
           per_vertex)
@@ -505,17 +505,17 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
                assert(glsl_type_is_vector(new_deref->type));
             }
             nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                                  nir_src_for_ssa(&new_deref->dest.ssa));
+                                  nir_src_for_ssa(&new_deref->def));
 
             intrin->num_components =
                glsl_get_components(new_deref->type);
-            intrin->dest.ssa.num_components = intrin->num_components;
+            intrin->def.num_components = intrin->num_components;
 
             b.cursor = nir_after_instr(&intrin->instr);
 
-            nir_def *new_vec = nir_channels(&b, &intrin->dest.ssa,
+            nir_def *new_vec = nir_channels(&b, &intrin->def,
                                             vec4_comp_mask >> new_frac);
-            nir_def_rewrite_uses_after(&intrin->dest.ssa,
+            nir_def_rewrite_uses_after(&intrin->def,
                                        new_vec,
                                        new_vec->parent_instr);
 
@@ -552,7 +552,7 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
                assert(glsl_type_is_vector(new_deref->type));
             }
             nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                                  nir_src_for_ssa(&new_deref->dest.ssa));
+                                  nir_src_for_ssa(&new_deref->def));
 
             intrin->num_components =
                glsl_get_components(new_deref->type);
@@ -649,7 +649,7 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
          unsigned vec_size = glsl_get_vector_elements(var->type);
 
          b.cursor = nir_before_instr(instr);
-         nir_def *new_deref = &nir_build_deref_var(&b, var)->dest.ssa;
+         nir_def *new_deref = &nir_build_deref_var(&b, var)->def;
          nir_instr_rewrite_src(instr, &intrin->src[0], nir_src_for_ssa(new_deref));
 
          nir_deref_instr_remove_if_unused(deref);
@@ -661,7 +661,7 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
             if (intrin->intrinsic == nir_intrinsic_load_deref) {
                /* Return undef from out of bounds loads. */
                b.cursor = nir_after_instr(instr);
-               nir_def *val = &intrin->dest.ssa;
+               nir_def *val = &intrin->def;
                nir_def *u = nir_undef(&b, val->num_components, val->bit_size);
                nir_def_rewrite_uses(val, u);
             }
@@ -679,7 +679,7 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
             nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(new_val));
          } else {
             b.cursor = nir_after_instr(instr);
-            nir_def *val = &intrin->dest.ssa;
+            nir_def *val = &intrin->def;
             val->num_components = intrin->num_components;
             nir_def *comp = nir_channel(&b, val, index);
             nir_def_rewrite_uses_after(val, comp, comp->parent_instr);

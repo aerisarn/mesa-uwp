@@ -240,10 +240,10 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
 
             /* Convert the 32-bit load into a 16-bit load. */
             b.cursor = nir_after_instr(&intr->instr);
-            intr->dest.ssa.bit_size = 16;
+            intr->def.bit_size = 16;
             nir_intrinsic_set_dest_type(intr, (type & ~32) | 16);
-            nir_def *dst = convert(&b, &intr->dest.ssa);
-            nir_def_rewrite_uses_after(&intr->dest.ssa, dst,
+            nir_def *dst = convert(&b, &intr->def);
+            nir_def_rewrite_uses_after(&intr->def, dst,
                                        dst->parent_instr);
          }
 
@@ -452,32 +452,32 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
             switch (intrin->intrinsic) {
             case nir_intrinsic_load_deref: {
 
-               if (intrin->dest.ssa.bit_size != 32)
+               if (intrin->def.bit_size != 32)
                   break;
 
                nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
                if (glsl_get_bit_size(deref->type) != 16)
                   break;
 
-               intrin->dest.ssa.bit_size = 16;
+               intrin->def.bit_size = 16;
 
                b.cursor = nir_after_instr(&intrin->instr);
                nir_def *replace = NULL;
                switch (glsl_get_base_type(deref->type)) {
                case GLSL_TYPE_FLOAT16:
-                  replace = nir_f2f32(&b, &intrin->dest.ssa);
+                  replace = nir_f2f32(&b, &intrin->def);
                   break;
                case GLSL_TYPE_INT16:
-                  replace = nir_i2i32(&b, &intrin->dest.ssa);
+                  replace = nir_i2i32(&b, &intrin->def);
                   break;
                case GLSL_TYPE_UINT16:
-                  replace = nir_u2u32(&b, &intrin->dest.ssa);
+                  replace = nir_u2u32(&b, &intrin->def);
                   break;
                default:
                   unreachable("Invalid 16-bit type");
                }
 
-               nir_def_rewrite_uses_after(&intrin->dest.ssa,
+               nir_def_rewrite_uses_after(&intrin->def,
                                           replace,
                                           replace->parent_instr);
                progress = true;
@@ -883,7 +883,7 @@ fold_16bit_image_dest(nir_intrinsic_instr *instr, unsigned exec_mode,
    if (!(nir_alu_type_get_base_type(dest_type) & allowed_types))
       return false;
 
-   if (!fold_16bit_destination(&instr->dest.ssa, dest_type, exec_mode, rdm))
+   if (!fold_16bit_destination(&instr->def, dest_type, exec_mode, rdm))
       return false;
 
    nir_intrinsic_set_dest_type(instr, (dest_type & ~32) | 16);
@@ -913,7 +913,7 @@ fold_16bit_tex_dest(nir_tex_instr *tex, unsigned exec_mode,
    if (!(nir_alu_type_get_base_type(tex->dest_type) & allowed_types))
       return false;
 
-   if (!fold_16bit_destination(&tex->dest.ssa, tex->dest_type, exec_mode, rdm))
+   if (!fold_16bit_destination(&tex->def, tex->dest_type, exec_mode, rdm))
       return false;
 
    tex->dest_type = (tex->dest_type & ~32) | 16;

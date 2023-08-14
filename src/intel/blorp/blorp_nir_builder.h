@@ -61,10 +61,10 @@ blorp_nir_txf_ms_mcs(nir_builder *b, nir_def *xy_pos, nir_def *layer)
    tex->texture_index = 0;
    tex->sampler_index = 0;
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
 
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 static inline nir_def *

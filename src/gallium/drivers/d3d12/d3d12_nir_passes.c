@@ -137,7 +137,7 @@ lower_pos_read(nir_builder *b, struct nir_instr *instr,
 
    pos = nir_vector_insert_imm(b, pos, depth, 2);
 
-   nir_def_rewrite_uses_after(&intr->dest.ssa, pos,
+   nir_def_rewrite_uses_after(&intr->def, pos,
                                   pos->parent_instr);
 }
 
@@ -183,7 +183,7 @@ lower_compute_state_vars(nir_builder *b, nir_instr *instr, void *_state)
       return false;
    }
 
-   nir_def_rewrite_uses(&intr->dest.ssa, result);
+   nir_def_rewrite_uses(&intr->def, result);
    nir_instr_remove(instr);
    return true;
 }
@@ -275,7 +275,7 @@ lower_load_draw_params(nir_builder *b, nir_instr *instr, void *draw_params)
    unsigned channel = intr->intrinsic == nir_intrinsic_load_first_vertex ? 0 :
       intr->intrinsic == nir_intrinsic_load_base_instance ? 1 :
       intr->intrinsic == nir_intrinsic_load_draw_id ? 2 : 3;
-   nir_def_rewrite_uses(&intr->dest.ssa, nir_channel(b, load, channel));
+   nir_def_rewrite_uses(&intr->def, nir_channel(b, load, channel));
    nir_instr_remove(instr);
 
    return true;
@@ -305,7 +305,7 @@ lower_load_patch_vertices_in(nir_builder *b, nir_instr *instr, void *_state)
    nir_def *load = b->shader->info.stage == MESA_SHADER_TESS_CTRL ?
       d3d12_get_state_var(b, D3D12_STATE_VAR_PATCH_VERTICES_IN, "d3d12_FirstVertex", glsl_uint_type(), _state) :
       nir_imm_int(b, b->shader->info.tess.tcs_vertices_out);
-   nir_def_rewrite_uses(&intr->dest.ssa, load);
+   nir_def_rewrite_uses(&intr->def, load);
    nir_instr_remove(instr);
    return true;
 }
@@ -482,7 +482,7 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b,
    nir_def *ubo_idx = nir_imm_int(b, binding);
    nir_def *ubo_offset =  nir_imm_int(b, get_state_var_offset(shader, var) * 4);
    nir_def *load =
-      nir_load_ubo(b, instr->num_components, instr->dest.ssa.bit_size,
+      nir_load_ubo(b, instr->num_components, instr->def.bit_size,
                    ubo_idx, ubo_offset,
                    .align_mul = 16,
                    .align_offset = 0,
@@ -490,13 +490,13 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b,
                    .range = ~0,
                    );
 
-   nir_def_rewrite_uses(&instr->dest.ssa, load);
+   nir_def_rewrite_uses(&instr->def, load);
 
    /* Remove the old load_* instruction and any parent derefs */
    nir_instr_remove(&instr->instr);
    for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
       /* If anyone is using this deref, leave it alone */
-      if (!list_is_empty(&d->dest.ssa.uses))
+      if (!list_is_empty(&d->def.uses))
          break;
 
       nir_instr_remove(&d->instr);
@@ -899,7 +899,7 @@ split_multistream_varying_stores(nir_builder *b, nir_instr *instr, void *_state)
       first_channel += var_state->subvars[subvar].num_components;
 
       unsigned new_write_mask = (orig_write_mask >> first_channel) & mask_num_channels;
-      nir_build_store_deref(b, &new_path->dest.ssa, sub_value, new_write_mask, nir_intrinsic_access(intr));
+      nir_build_store_deref(b, &new_path->def, sub_value, new_write_mask, nir_intrinsic_access(intr));
    }
 
    nir_deref_path_finish(&path);

@@ -48,12 +48,12 @@ nir_split_64bit_vec3_and_vec4_filter(const nir_instr *instr,
 
       switch (intr->intrinsic) {
       case nir_intrinsic_load_deref: {
-         if (intr->dest.ssa.bit_size != 64)
+         if (intr->def.bit_size != 64)
             return false;
          nir_variable *var = nir_intrinsic_get_var(intr, 0);
          if (var->data.mode != nir_var_function_temp)
             return false;
-         return intr->dest.ssa.num_components >= 3;
+         return intr->def.num_components >= 3;
       }
       case nir_intrinsic_store_deref: {
          if (nir_src_bit_size(intr->src[1]) != 64)
@@ -69,9 +69,9 @@ nir_split_64bit_vec3_and_vec4_filter(const nir_instr *instr,
    }
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      if (phi->dest.ssa.bit_size != 64)
+      if (phi->def.bit_size != 64)
          return false;
-      return phi->dest.ssa.num_components >= 3;
+      return phi->def.num_components >= 3;
    }
 
    default:
@@ -107,7 +107,7 @@ get_linear_array_offset(nir_builder *b, nir_deref_instr *deref)
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
 
-   nir_def *offset = nir_imm_intN_t(b, 0, deref->dest.ssa.bit_size);
+   nir_def *offset = nir_imm_intN_t(b, 0, deref->def.bit_size);
    for (nir_deref_instr **p = &path.path[1]; *p; p++) {
       switch ((*p)->deref_type) {
       case nir_deref_type_array: {
@@ -181,8 +181,8 @@ split_load_deref(nir_builder *b, nir_intrinsic_instr *intr,
       deref2 = nir_build_deref_array(b, deref2, offset);
    }
 
-   nir_def *load1 = nir_build_load_deref(b, 2, 64, &deref1->dest.ssa, 0);
-   nir_def *load2 = nir_build_load_deref(b, old_components - 2, 64, &deref2->dest.ssa, 0);
+   nir_def *load1 = nir_build_load_deref(b, 2, 64, &deref1->def, 0);
+   nir_def *load2 = nir_build_load_deref(b, old_components - 2, 64, &deref2->def, 0);
 
    return merge_to_vec3_or_vec4(b, load1, load2);
 }
@@ -206,14 +206,14 @@ split_store_deref(nir_builder *b, nir_intrinsic_instr *intr,
    int write_mask_xy = nir_intrinsic_write_mask(intr) & 3;
    if (write_mask_xy) {
       nir_def *src_xy = nir_trim_vector(b, intr->src[1].ssa, 2);
-      nir_build_store_deref(b, &deref_xy->dest.ssa, src_xy, write_mask_xy);
+      nir_build_store_deref(b, &deref_xy->def, src_xy, write_mask_xy);
    }
 
    int write_mask_zw = nir_intrinsic_write_mask(intr) & 0xc;
    if (write_mask_zw) {
       nir_def *src_zw = nir_channels(b, intr->src[1].ssa,
                                      nir_component_mask(intr->src[1].ssa->num_components) & 0xc);
-      nir_build_store_deref(b, &deref_zw->dest.ssa, src_zw, write_mask_zw >> 2);
+      nir_build_store_deref(b, &deref_zw->def, src_zw, write_mask_zw >> 2);
    }
 
    return NIR_LOWER_INSTR_PROGRESS_REPLACE;
@@ -222,20 +222,20 @@ split_store_deref(nir_builder *b, nir_intrinsic_instr *intr,
 static nir_def *
 split_phi(nir_builder *b, nir_phi_instr *phi)
 {
-   nir_op vec_op = nir_op_vec(phi->dest.ssa.num_components);
+   nir_op vec_op = nir_op_vec(phi->def.num_components);
 
    nir_alu_instr *vec = nir_alu_instr_create(b->shader, vec_op);
    nir_def_init(&vec->instr, &vec->def,
-                phi->dest.ssa.num_components, 64);
+                phi->def.num_components, 64);
 
-   int num_comp[2] = { 2, phi->dest.ssa.num_components - 2 };
+   int num_comp[2] = { 2, phi->def.num_components - 2 };
 
    nir_phi_instr *new_phi[2];
 
    for (unsigned i = 0; i < 2; i++) {
       new_phi[i] = nir_phi_instr_create(b->shader);
-      nir_def_init(&new_phi[i]->instr, &new_phi[i]->dest.ssa, num_comp[i],
-                   phi->dest.ssa.bit_size);
+      nir_def_init(&new_phi[i]->instr, &new_phi[i]->def, num_comp[i],
+                   phi->def.bit_size);
 
       nir_foreach_phi_src(src, phi) {
          /* Insert at the end of the predecessor but before the jump
@@ -256,7 +256,7 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
    }
 
    b->cursor = nir_after_instr(&phi->instr);
-   return merge_to_vec3_or_vec4(b, &new_phi[0]->dest.ssa, &new_phi[1]->dest.ssa);
+   return merge_to_vec3_or_vec4(b, &new_phi[0]->def, &new_phi[1]->def);
 };
 
 static nir_def *

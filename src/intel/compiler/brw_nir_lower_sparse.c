@@ -56,7 +56,7 @@ lower_is_sparse_texels_resident(nir_builder *b, nir_intrinsic_instr *intrin)
    b->cursor = nir_instr_remove(&intrin->instr);
 
    nir_def_rewrite_uses(
-      &intrin->dest.ssa,
+      &intrin->def,
       nir_i2b(b, nir_iand(b, intrin->src[0].ssa,
                               nir_ishl(b, nir_imm_int(b, 1),
                                           nir_load_subgroup_invocation(b)))));
@@ -68,7 +68,7 @@ lower_sparse_residency_code_and(nir_builder *b, nir_intrinsic_instr *intrin)
    b->cursor = nir_instr_remove(&intrin->instr);
 
    nir_def_rewrite_uses(
-      &intrin->dest.ssa,
+      &intrin->def,
       nir_iand(b, intrin->src[0].ssa, intrin->src[1].ssa));
 }
 
@@ -82,7 +82,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    if (intrin->intrinsic == nir_intrinsic_image_sparse_load) {
       img_load = nir_image_load(b,
                                 intrin->num_components - 1,
-                                intrin->dest.ssa.bit_size,
+                                intrin->def.bit_size,
                                 intrin->src[0].ssa,
                                 intrin->src[1].ssa,
                                 intrin->src[2].ssa,
@@ -92,7 +92,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    } else {
       img_load = nir_bindless_image_load(b,
                                          intrin->num_components - 1,
-                                         intrin->dest.ssa.bit_size,
+                                         intrin->def.bit_size,
                                          intrin->src[0].ssa,
                                          intrin->src[1].ssa,
                                          intrin->src[2].ssa,
@@ -156,15 +156,15 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    tex->src[2].src_type = nir_tex_src_lod;
    tex->src[2].src = nir_src_for_ssa(nir_imm_int(b, 0));
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, 5,
-                intrin->dest.ssa.bit_size);
+   nir_def_init(&tex->instr, &tex->def, 5,
+                intrin->def.bit_size);
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   dests[intrin->num_components - 1] = nir_channel(b, &tex->dest.ssa, 4);
+   dests[intrin->num_components - 1] = nir_channel(b, &tex->def, 4);
 
    nir_def_rewrite_uses(
-      &intrin->dest.ssa,
+      &intrin->def,
       nir_vec(b, dests, intrin->num_components));
 }
 
@@ -175,8 +175,8 @@ lower_tex_compare(nir_builder *b, nir_tex_instr *tex, int compare_idx)
 
    /* Clone the original instruction */
    nir_tex_instr *sparse_tex = nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
-   nir_def_init(&sparse_tex->instr, &sparse_tex->dest.ssa,
-                tex->dest.ssa.num_components, tex->dest.ssa.bit_size);
+   nir_def_init(&sparse_tex->instr, &sparse_tex->def,
+                tex->def.num_components, tex->def.bit_size);
    nir_builder_instr_insert(b, &sparse_tex->instr);
 
    /* Drop the compare source on the cloned instruction */
@@ -184,17 +184,17 @@ lower_tex_compare(nir_builder *b, nir_tex_instr *tex, int compare_idx)
 
    /* Drop the residency query on the original tex instruction */
    tex->is_sparse = false;
-   tex->dest.ssa.num_components = tex->dest.ssa.num_components - 1;
+   tex->def.num_components = tex->def.num_components - 1;
 
    nir_def *new_comps[NIR_MAX_VEC_COMPONENTS];
-   for (unsigned i = 0; i < tex->dest.ssa.num_components; i++)
-      new_comps[i] = nir_channel(b, &tex->dest.ssa, i);
-   new_comps[tex->dest.ssa.num_components] =
-      nir_channel(b, &sparse_tex->dest.ssa, tex->dest.ssa.num_components);
+   for (unsigned i = 0; i < tex->def.num_components; i++)
+      new_comps[i] = nir_channel(b, &tex->def, i);
+   new_comps[tex->def.num_components] =
+      nir_channel(b, &sparse_tex->def, tex->def.num_components);
 
-   nir_def *new_vec = nir_vec(b, new_comps, sparse_tex->dest.ssa.num_components);
+   nir_def *new_vec = nir_vec(b, new_comps, sparse_tex->def.num_components);
 
-   nir_def_rewrite_uses_after(&tex->dest.ssa, new_vec, new_vec->parent_instr);
+   nir_def_rewrite_uses_after(&tex->def, new_vec, new_vec->parent_instr);
 }
 
 static bool

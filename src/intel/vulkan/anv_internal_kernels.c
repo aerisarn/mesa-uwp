@@ -93,7 +93,7 @@ lower_vulkan_descriptors_instr(nir_builder *b, nir_instr *instr, void *cb_data)
                   nir_imm_int(b, 0));
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, desc_value);
+   nir_def_rewrite_uses(&intrin->def, desc_value);
 
    return true;
 }
@@ -121,7 +121,7 @@ lower_base_workgroup_id(nir_builder *b, nir_instr *instr, UNUSED void *data)
       return false;
 
    b->cursor = nir_instr_remove(&intrin->instr);
-   nir_def_rewrite_uses(&intrin->dest.ssa, nir_imm_zero(b, 3, 32));
+   nir_def_rewrite_uses(&intrin->def, nir_imm_zero(b, 3, 32));
    return true;
 }
 
@@ -138,14 +138,14 @@ lower_load_ubo_to_uniforms(nir_builder *b, nir_instr *instr, void *cb_data)
    b->cursor = nir_instr_remove(instr);
 
    nir_def_rewrite_uses(
-      &intrin->dest.ssa,
+      &intrin->def,
       nir_load_uniform(b,
-                       intrin->dest.ssa.num_components,
-                       intrin->dest.ssa.bit_size,
+                       intrin->def.num_components,
+                       intrin->def.bit_size,
                        intrin->src[1].ssa,
                        .base = 0,
-                       .range = intrin->dest.ssa.num_components *
-                                intrin->dest.ssa.bit_size / 8));
+                       .range = intrin->def.num_components *
+                                intrin->def.bit_size / 8));
 
    return true;
 }

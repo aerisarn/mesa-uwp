@@ -55,7 +55,7 @@ memcpy_load_deref_elem(nir_builder *b, nir_deref_instr *parent,
 {
    nir_deref_instr *deref;
 
-   index = nir_i2iN(b, index, parent->dest.ssa.bit_size);
+   index = nir_i2iN(b, index, parent->def.bit_size);
    assert(parent->deref_type == nir_deref_type_cast);
    deref = nir_build_deref_ptr_as_array(b, parent, index);
 
@@ -66,7 +66,7 @@ static nir_def *
 memcpy_load_deref_elem_imm(nir_builder *b, nir_deref_instr *parent,
                            uint64_t index)
 {
-   nir_def *idx = nir_imm_intN_t(b, index, parent->dest.ssa.bit_size);
+   nir_def *idx = nir_imm_intN_t(b, index, parent->def.bit_size);
    return memcpy_load_deref_elem(b, parent, idx);
 }
 
@@ -76,7 +76,7 @@ memcpy_store_deref_elem(nir_builder *b, nir_deref_instr *parent,
 {
    nir_deref_instr *deref;
 
-   index = nir_i2iN(b, index, parent->dest.ssa.bit_size);
+   index = nir_i2iN(b, index, parent->def.bit_size);
    assert(parent->deref_type == nir_deref_type_cast);
    deref = nir_build_deref_ptr_as_array(b, parent, index);
    nir_store_deref(b, deref, value, ~0);
@@ -86,7 +86,7 @@ static void
 memcpy_store_deref_elem_imm(nir_builder *b, nir_deref_instr *parent,
                             uint64_t index, nir_def *value)
 {
-   nir_def *idx = nir_imm_intN_t(b, index, parent->dest.ssa.bit_size);
+   nir_def *idx = nir_imm_intN_t(b, index, parent->def.bit_size);
    memcpy_store_deref_elem(b, parent, idx, value);
 }
 
@@ -127,10 +127,10 @@ lower_memcpy_impl(nir_function_impl *impl)
                   copy_type_for_byte_size(copy_size);
 
                nir_deref_instr *copy_dst =
-                  nir_build_deref_cast(&b, &dst->dest.ssa, dst->modes,
+                  nir_build_deref_cast(&b, &dst->def, dst->modes,
                                        copy_type, copy_size);
                nir_deref_instr *copy_src =
-                  nir_build_deref_cast(&b, &src->dest.ssa, src->modes,
+                  nir_build_deref_cast(&b, &src->def, src->modes,
                                        copy_type, copy_size);
 
                uint64_t index = offset / copy_size;
@@ -147,10 +147,10 @@ lower_memcpy_impl(nir_function_impl *impl)
              * emit a loop which copies one byte at a time.
              */
             nir_deref_instr *copy_dst =
-               nir_build_deref_cast(&b, &dst->dest.ssa, dst->modes,
+               nir_build_deref_cast(&b, &dst->def, dst->modes,
                                     glsl_uint8_t_type(), 1);
             nir_deref_instr *copy_src =
-               nir_build_deref_cast(&b, &src->dest.ssa, src->modes,
+               nir_build_deref_cast(&b, &src->def, src->modes,
                                     glsl_uint8_t_type(), 1);
 
             nir_variable *i = nir_local_variable_create(impl,

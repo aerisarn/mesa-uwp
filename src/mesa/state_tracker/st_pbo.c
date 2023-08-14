@@ -521,14 +521,14 @@ create_fs(struct st_context *st, bool download,
 
    tex->dest_type = nir_get_nir_type_for_glsl_base_type(glsl_get_sampler_result_type(tex_var->type));
    tex->src[0].src_type = nir_tex_src_texture_deref;
-   tex->src[0].src = nir_src_for_ssa(&tex_deref->dest.ssa);
+   tex->src[0].src = nir_src_for_ssa(&tex_deref->def);
    tex->src[1].src_type = nir_tex_src_sampler_deref;
-   tex->src[1].src = nir_src_for_ssa(&tex_deref->dest.ssa);
+   tex->src[1].src = nir_src_for_ssa(&tex_deref->def);
    tex->src[2].src_type = nir_tex_src_coord;
    tex->src[2].src = nir_src_for_ssa(texcoord);
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
-   nir_def *result = &tex->dest.ssa;
+   nir_def *result = &tex->def;
 
    if (conversion == ST_PBO_CONVERT_SINT_TO_UINT)
       result = nir_imax(&b, result, zero);
@@ -553,7 +553,7 @@ create_fs(struct st_context *st, bool download,
       img_var->data.image.format = format;
       nir_deref_instr *img_deref = nir_build_deref_var(&b, img_var);
 
-      nir_image_deref_store(&b, &img_deref->dest.ssa,
+      nir_image_deref_store(&b, &img_deref->def,
                             nir_vec4(&b, pbo_addr, zero, zero, zero),
                             zero,
                             result,

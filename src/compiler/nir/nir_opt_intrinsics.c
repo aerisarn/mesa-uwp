@@ -39,10 +39,10 @@ src_is_single_use_shuffle(nir_src src, nir_def **data, nir_def **index)
     * uses is reasonable.  If we ever want to use this from an if statement,
     * we can change it then.
     */
-   if (!list_is_singular(&shuffle->dest.ssa.uses))
+   if (!list_is_singular(&shuffle->def.uses))
       return false;
 
-   if (nir_def_used_by_if(&shuffle->dest.ssa))
+   if (nir_def_used_by_if(&shuffle->def))
       return false;
 
    *data = shuffle->src[0].ssa;
@@ -243,10 +243,10 @@ opt_intrinsics_alu(nir_builder *b, nir_alu_instr *alu,
 static bool
 try_opt_exclusive_scan_to_inclusive(nir_intrinsic_instr *intrin)
 {
-   if (intrin->dest.ssa.num_components != 1)
+   if (intrin->def.num_components != 1)
       return false;
 
-   nir_foreach_use_including_if(src, &intrin->dest.ssa) {
+   nir_foreach_use_including_if(src, &intrin->def) {
       if (src->is_if || src->parent_instr->type != nir_instr_type_alu)
          return false;
 
@@ -279,10 +279,10 @@ try_opt_exclusive_scan_to_inclusive(nir_intrinsic_instr *intrin)
    /* Convert to inclusive scan. */
    intrin->intrinsic = nir_intrinsic_inclusive_scan;
 
-   nir_foreach_use_including_if_safe(src, &intrin->dest.ssa) {
+   nir_foreach_use_including_if_safe(src, &intrin->def) {
       /* Remove alu. */
       nir_alu_instr *alu = nir_instr_as_alu(src->parent_instr);
-      nir_def_rewrite_uses(&alu->def, &intrin->dest.ssa);
+      nir_def_rewrite_uses(&alu->def, &intrin->def);
       nir_instr_remove(&alu->instr);
    }
 
@@ -303,7 +303,7 @@ opt_intrinsics_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
          return false;
 
       bool progress = false;
-      nir_foreach_use_safe(use_src, &intrin->dest.ssa) {
+      nir_foreach_use_safe(use_src, &intrin->def) {
          if (use_src->parent_instr->type == nir_instr_type_alu) {
             nir_alu_instr *alu = nir_instr_as_alu(use_src->parent_instr);
 

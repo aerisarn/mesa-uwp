@@ -153,20 +153,20 @@ lower_instr(nir_intrinsic_instr *instr, unsigned ssbo_offset, nir_builder *b, un
        * num_components with one that has variable number.  So
        * best to take this from the dest:
        */
-      new_instr->num_components = instr->dest.ssa.num_components;
+      new_instr->num_components = instr->def.num_components;
    }
 
-   nir_def_init(&new_instr->instr, &new_instr->dest.ssa,
-                instr->dest.ssa.num_components, instr->dest.ssa.bit_size);
+   nir_def_init(&new_instr->instr, &new_instr->def,
+                instr->def.num_components, instr->def.bit_size);
    nir_instr_insert_before(&instr->instr, &new_instr->instr);
    nir_instr_remove(&instr->instr);
 
    if (instr->intrinsic == nir_intrinsic_atomic_counter_pre_dec) {
       b->cursor = nir_after_instr(&new_instr->instr);
-      nir_def *result = nir_iadd(b, &new_instr->dest.ssa, temp);
-      nir_def_rewrite_uses(&instr->dest.ssa, result);
+      nir_def *result = nir_iadd(b, &new_instr->def, temp);
+      nir_def_rewrite_uses(&instr->def, result);
    } else {
-      nir_def_rewrite_uses(&instr->dest.ssa, &new_instr->dest.ssa);
+      nir_def_rewrite_uses(&instr->def, &new_instr->def);
    }
 
    return true;

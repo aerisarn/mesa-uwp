@@ -52,8 +52,8 @@ vtn_build_subgroup_instr(struct vtn_builder *b,
 
    nir_intrinsic_instr *intrin =
       nir_intrinsic_instr_create(b->nb.shader, nir_op);
-   nir_def_init_for_type(&intrin->instr, &intrin->dest.ssa, dst->type);
-   intrin->num_components = intrin->dest.ssa.num_components;
+   nir_def_init_for_type(&intrin->instr, &intrin->def, dst->type);
+   intrin->num_components = intrin->def.num_components;
 
    intrin->src[0] = nir_src_for_ssa(src0->def);
    if (index)
@@ -64,7 +64,7 @@ vtn_build_subgroup_instr(struct vtn_builder *b,
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-   dst->def = &intrin->dest.ssa;
+   dst->def = &intrin->def;
 
    return dst;
 }
@@ -81,9 +81,9 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
                   "OpGroupNonUniformElect must return a Bool");
       nir_intrinsic_instr *elect =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_elect);
-      nir_def_init_for_type(&elect->instr, &elect->dest.ssa, dest_type->type);
+      nir_def_init_for_type(&elect->instr, &elect->def, dest_type->type);
       nir_builder_instr_insert(&b->nb, &elect->instr);
-      vtn_push_nir_ssa(b, w[2], &elect->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &elect->def);
       break;
    }
 
@@ -95,10 +95,10 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_instr *ballot =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_ballot);
       ballot->src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[3 + has_scope]));
-      nir_def_init(&ballot->instr, &ballot->dest.ssa, 4, 32);
+      nir_def_init(&ballot->instr, &ballot->def, 4, 32);
       ballot->num_components = 4;
       nir_builder_instr_insert(&b->nb, &ballot->instr);
-      vtn_push_nir_ssa(b, w[2], &ballot->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &ballot->def);
       break;
    }
 
@@ -114,11 +114,11 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       intrin->src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[4]));
       intrin->src[1] = nir_src_for_ssa(nir_load_subgroup_invocation(&b->nb));
 
-      nir_def_init_for_type(&intrin->instr, &intrin->dest.ssa,
+      nir_def_init_for_type(&intrin->instr, &intrin->def,
                             dest_type->type);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-      vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &intrin->def);
       break;
    }
 
@@ -169,11 +169,11 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       if (src1)
          intrin->src[1] = nir_src_for_ssa(src1);
 
-      nir_def_init_for_type(&intrin->instr, &intrin->dest.ssa,
+      nir_def_init_for_type(&intrin->instr, &intrin->def,
                             dest_type->type);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-      vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &intrin->def);
       break;
    }
 
@@ -262,11 +262,11 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       if (nir_intrinsic_infos[op].src_components[0] == 0)
          intrin->num_components = src0->num_components;
       intrin->src[0] = nir_src_for_ssa(src0);
-      nir_def_init_for_type(&intrin->instr, &intrin->dest.ssa,
+      nir_def_init_for_type(&intrin->instr, &intrin->def,
                             dest_type->type);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-      vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], &intrin->def);
       break;
    }
 

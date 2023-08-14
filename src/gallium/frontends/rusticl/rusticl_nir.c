@@ -68,7 +68,7 @@ rusticl_lower_intrinsics_instr(
     case nir_intrinsic_load_work_dim:
         assert(state->work_dim);
         return nir_u2uN(b, nir_load_var(b, state->work_dim),
-                        intrins->dest.ssa.bit_size);
+                        intrins->def.bit_size);
     default:
         return NULL;
     }
@@ -95,9 +95,9 @@ rusticl_lower_input_instr(struct nir_builder *b, nir_instr *instr, void *_)
    nir_def *ubo_idx = nir_imm_int(b, 0);
    nir_def *uniform_offset = nir_ssa_for_src(b, intrins->src[0], 1);
 
-   assert(intrins->dest.ssa.bit_size >= 8);
+   assert(intrins->def.bit_size >= 8);
    nir_def *load_result =
-      nir_load_ubo(b, intrins->num_components, intrins->dest.ssa.bit_size,
+      nir_load_ubo(b, intrins->num_components, intrins->def.bit_size,
                    ubo_idx, nir_iadd_imm(b, uniform_offset, nir_intrinsic_base(intrins)));
 
    nir_intrinsic_instr *load = nir_instr_as_intrinsic(load_result->parent_instr);

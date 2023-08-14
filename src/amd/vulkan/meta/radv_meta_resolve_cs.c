@@ -81,7 +81,7 @@ build_resolve_compute_shader(struct radv_device *dev, bool is_integer, bool is_s
    nir_def *img_coord = nir_vec4(&b, nir_channel(&b, dst_coord, 0), nir_channel(&b, dst_coord, 1), nir_undef(&b, 1, 32),
                                  nir_undef(&b, 1, 32));
 
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord, nir_undef(&b, 1, 32), outval,
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, img_coord, nir_undef(&b, 1, 32), outval,
                          nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
    return b.shader;
 }
@@ -174,7 +174,7 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
 
    nir_def *coord = nir_vec4(&b, nir_channel(&b, img_coord, 0), nir_channel(&b, img_coord, 1),
                              nir_channel(&b, img_coord, 2), nir_undef(&b, 1, 32));
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord, nir_undef(&b, 1, 32), outval,
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->def, coord, nir_undef(&b, 1, 32), outval,
                          nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D, .image_array = true);
    return b.shader;
 }

@@ -60,7 +60,7 @@ lower_load_pointcoord(lower_pntc_ytransform_state *state,
    nir_builder *b = &state->b;
    b->cursor = nir_after_instr(&intr->instr);
 
-   nir_def *pntc = &intr->dest.ssa;
+   nir_def *pntc = &intr->def;
    nir_def *transform = get_pntc_transform(state);
    nir_def *y = nir_channel(b, pntc, 1);
    /* The offset is 1 if we're flipping, 0 otherwise. */
@@ -73,7 +73,7 @@ lower_load_pointcoord(lower_pntc_ytransform_state *state,
                                     nir_channel(b, pntc, 0),
                                     nir_fadd(b, offset, scaled));
 
-   nir_def_rewrite_uses_after(&intr->dest.ssa, flipped_pntc,
+   nir_def_rewrite_uses_after(&intr->def, flipped_pntc,
                               flipped_pntc->parent_instr);
 }
 

@@ -121,7 +121,7 @@ try_lower_input_load(nir_builder *b, nir_intrinsic_instr *load,
    tex->sampler_index = 0;
 
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &deref->dest.ssa);
+                                     &deref->def);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
    tex->coord_components = 3;
 
@@ -135,19 +135,19 @@ try_lower_input_load(nir_builder *b, nir_intrinsic_instr *load,
 
    tex->texture_non_uniform = nir_intrinsic_access(load) & ACCESS_NON_UNIFORM;
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, nir_tex_instr_dest_size(tex), 32);
+   nir_def_init(&tex->instr, &tex->def, nir_tex_instr_dest_size(tex), 32);
    nir_builder_instr_insert(b, &tex->instr);
 
    if (tex->is_sparse) {
-      unsigned load_result_size = load->dest.ssa.num_components - 1;
+      unsigned load_result_size = load->def.num_components - 1;
       nir_component_mask_t load_result_mask = nir_component_mask(load_result_size);
       nir_def *res = nir_channels(
-         b, &tex->dest.ssa, load_result_mask | 0x10);
+         b, &tex->def, load_result_mask | 0x10);
 
-      nir_def_rewrite_uses(&load->dest.ssa, res);
+      nir_def_rewrite_uses(&load->def, res);
    } else {
-      nir_def_rewrite_uses(&load->dest.ssa,
-                           &tex->dest.ssa);
+      nir_def_rewrite_uses(&load->def,
+                           &tex->def);
    }
 
    return true;

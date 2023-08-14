@@ -7404,7 +7404,7 @@ brw_compute_barycentric_interp_modes(const struct intel_device_info *devinfo,
             }
 
             /* Ignore WPOS; it doesn't require interpolation. */
-            if (!is_used_in_not_interp_frag_coord(&intrin->dest.ssa))
+            if (!is_used_in_not_interp_frag_coord(&intrin->def))
                continue;
 
             nir_intrinsic_op bary_op = intrin->intrinsic;

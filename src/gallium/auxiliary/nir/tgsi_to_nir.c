@@ -742,10 +742,10 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       }
       load->src[srcn++] = nir_src_for_ssa(offset);
 
-      nir_def_init(&load->instr, &load->dest.ssa, 4, 32);
+      nir_def_init(&load->instr, &load->def, 4, 32);
       nir_builder_instr_insert(b, &load->instr);
 
-      src = nir_src_for_ssa(&load->dest.ssa);
+      src = nir_src_for_ssa(&load->def);
       break;
    }
 
@@ -1290,10 +1290,10 @@ ttn_tex(struct ttn_compile *c, nir_def **src)
    unsigned src_number = 0;
 
    instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                                &deref->dest.ssa);
+                                                &deref->def);
    src_number++;
    instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
-                                                &deref->dest.ssa);
+                                                &deref->def);
    src_number++;
 
    instr->src[src_number] =
@@ -1401,10 +1401,10 @@ ttn_tex(struct ttn_compile *c, nir_def **src)
    assert(src_number == num_srcs);
    assert(src_number == instr->num_srcs);
 
-   nir_def_init(&instr->instr, &instr->dest.ssa,
+   nir_def_init(&instr->instr, &instr->def,
                 nir_tex_instr_dest_size(instr), 32);
    nir_builder_instr_insert(b, &instr->instr);
-   return nir_pad_vector_imm_int(b, &instr->dest.ssa, 0, 4);
+   return nir_pad_vector_imm_int(b, &instr->def, 0, 4);
 }
 
 /* TGSI_OPCODE_TXQ is actually two distinct operations:
@@ -1451,24 +1451,24 @@ ttn_txq(struct ttn_compile *c, nir_def **src)
    nir_deref_instr *deref = nir_build_deref_var(b, var);
 
    txs->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &deref->dest.ssa);
+                                     &deref->def);
 
    qlv->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &deref->dest.ssa);
+                                     &deref->def);
 
    /* lod: */
    txs->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod,
                                      ttn_channel(b, src[0], X));
 
-   nir_def_init(&txs->instr, &txs->dest.ssa, nir_tex_instr_dest_size(txs), 32);
+   nir_def_init(&txs->instr, &txs->def, nir_tex_instr_dest_size(txs), 32);
    nir_builder_instr_insert(b, &txs->instr);
 
-   nir_def_init(&qlv->instr, &qlv->dest.ssa, 1, 32);
+   nir_def_init(&qlv->instr, &qlv->def, 1, 32);
    nir_builder_instr_insert(b, &qlv->instr);
 
    return nir_vector_insert_imm(b,
-                                nir_pad_vector_imm_int(b, &txs->dest.ssa, 0, 4),
-                                &qlv->dest.ssa, 3);
+                                nir_pad_vector_imm_int(b, &txs->def, 0, 4),
+                                &qlv->def, 3);
 }
 
 static enum glsl_base_type
@@ -1592,7 +1592,7 @@ ttn_mem(struct ttn_compile *c, nir_def **src)
 
       nir_intrinsic_set_access(instr, image_deref->var->data.access);
 
-      instr->src[0] = nir_src_for_ssa(&image_deref->dest.ssa);
+      instr->src[0] = nir_src_for_ssa(&image_deref->def);
       instr->src[1] = nir_src_for_ssa(src[addr_src_index]);
 
       /* Set the sample argument, which is undefined for single-sample images. */
@@ -1621,9 +1621,9 @@ ttn_mem(struct ttn_compile *c, nir_def **src)
 
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_LOAD) {
-      nir_def_init(&instr->instr, &instr->dest.ssa, instr->num_components, 32);
+      nir_def_init(&instr->instr, &instr->def, instr->num_components, 32);
       nir_builder_instr_insert(b, &instr->instr);
-      return nir_pad_vector_imm_int(b, &instr->dest.ssa, 0, 4);
+      return nir_pad_vector_imm_int(b, &instr->def, 0, 4);
    } else {
       nir_builder_instr_insert(b, &instr->instr);
       return NULL;

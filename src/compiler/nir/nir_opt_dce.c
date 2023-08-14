@@ -64,21 +64,21 @@ is_live(BITSET_WORD *defs_live, nir_instr *instr)
    }
    case nir_instr_type_deref: {
       nir_deref_instr *deref = nir_instr_as_deref(instr);
-      return is_def_live(&deref->dest.ssa, defs_live);
+      return is_def_live(&deref->def, defs_live);
    }
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       const nir_intrinsic_info *info = &nir_intrinsic_infos[intrin->intrinsic];
       return !(info->flags & NIR_INTRINSIC_CAN_ELIMINATE) ||
-             (info->has_dest && is_def_live(&intrin->dest.ssa, defs_live));
+             (info->has_dest && is_def_live(&intrin->def, defs_live));
    }
    case nir_instr_type_tex: {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
-      return is_def_live(&tex->dest.ssa, defs_live);
+      return is_def_live(&tex->def, defs_live);
    }
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      return is_def_live(&phi->dest.ssa, defs_live);
+      return is_def_live(&phi->def, defs_live);
    }
    case nir_instr_type_load_const: {
       nir_load_const_instr *lc = nir_instr_as_load_const(instr);
@@ -91,7 +91,7 @@ is_live(BITSET_WORD *defs_live, nir_instr *instr)
    case nir_instr_type_parallel_copy: {
       nir_parallel_copy_instr *pc = nir_instr_as_parallel_copy(instr);
       nir_foreach_parallel_copy_entry(entry, pc) {
-         if (entry->dest_is_reg || is_def_live(&entry->dest.dest.ssa, defs_live))
+         if (entry->dest_is_reg || is_def_live(&entry->dest.def, defs_live))
             return true;
       }
       return false;

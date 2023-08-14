@@ -93,7 +93,7 @@ nir_lower_ubo_vec4_lower(nir_builder *b, nir_instr *instr, void *data)
    unsigned align_mul = nir_intrinsic_align_mul(intr);
    unsigned align_offset = nir_intrinsic_align_offset(intr);
 
-   int chan_size_bytes = intr->dest.ssa.bit_size / 8;
+   int chan_size_bytes = intr->def.bit_size / 8;
    int chans_per_vec4 = 16 / chan_size_bytes;
 
    /* We don't care if someone figured out that things are aligned beyond
@@ -110,12 +110,12 @@ nir_lower_ubo_vec4_lower(nir_builder *b, nir_instr *instr, void *data)
       num_components = chans_per_vec4;
 
    nir_intrinsic_instr *load = create_load(b, intr->src[0].ssa, vec4_offset,
-                                           intr->dest.ssa.bit_size,
+                                           intr->def.bit_size,
                                            num_components);
 
    nir_intrinsic_set_access(load, nir_intrinsic_access(intr));
 
-   nir_def *result = &load->dest.ssa;
+   nir_def *result = &load->def;
 
    int align_chan_offset = align_offset / chan_size_bytes;
    if (aligned_mul) {
@@ -151,7 +151,7 @@ nir_lower_ubo_vec4_lower(nir_builder *b, nir_instr *instr, void *data)
        */
       nir_def *next_vec4_offset = nir_iadd_imm(b, vec4_offset, 1);
       nir_intrinsic_instr *next_load = create_load(b, intr->src[0].ssa, next_vec4_offset,
-                                                   intr->dest.ssa.bit_size,
+                                                   intr->def.bit_size,
                                                    num_components);
 
       nir_def *channels[NIR_MAX_VEC_COMPONENTS];
@@ -170,8 +170,8 @@ nir_lower_ubo_vec4_lower(nir_builder *b, nir_instr *instr, void *data)
                                                     nir_ieq(b,
                                                             chan_vec4_offset,
                                                             vec4_offset),
-                                                    &load->dest.ssa,
-                                                    &next_load->dest.ssa),
+                                                    &load->def,
+                                                    &next_load->def),
                                           component);
       }
 

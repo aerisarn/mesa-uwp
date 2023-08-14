@@ -666,7 +666,7 @@ handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
       vec_deref = deref;
       deref = nir_deref_instr_parent(deref);
    }
-   intrin->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+   intrin->src[0] = nir_src_for_ssa(&deref->def);
 
    switch (opcode) {
    case GLSLstd450InterpolateAtCentroid:
@@ -680,13 +680,13 @@ handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
    }
 
    intrin->num_components = glsl_get_vector_elements(deref->type);
-   nir_def_init(&intrin->instr, &intrin->dest.ssa,
+   nir_def_init(&intrin->instr, &intrin->def,
                 glsl_get_vector_elements(deref->type),
                 glsl_get_bit_size(deref->type));
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-   nir_def *def = &intrin->dest.ssa;
+   nir_def *def = &intrin->def;
    if (vec_array_deref)
       def = nir_vector_extract(&b->nb, def, vec_deref->arr.index.ssa);
 

@@ -306,7 +306,7 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
       nir_phi_src *else_src =
          nir_phi_get_src_from_block(phi, nir_if_first_else_block(if_stmt));
 
-      nir_foreach_use(src, &phi->dest.ssa) {
+      nir_foreach_use(src, &phi->def) {
          assert(src->parent_instr->type == nir_instr_type_phi);
          nir_phi_src *phi_src =
             nir_phi_get_src_from_block(nir_instr_as_phi(src->parent_instr),
@@ -337,13 +337,13 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
       nir_phi_instr *phi = nir_instr_as_phi(instr);
       nir_phi_src *else_src =
          nir_phi_get_src_from_block(phi, nir_if_first_else_block(if_stmt));
-      nir_foreach_use_safe(src, &phi->dest.ssa) {
+      nir_foreach_use_safe(src, &phi->def) {
          nir_phi_src *phi_src =
             nir_phi_get_src_from_block(nir_instr_as_phi(src->parent_instr),
                                        nir_if_first_else_block(parent_if));
          if (phi_src->src.ssa == else_src->src.ssa)
             nir_instr_rewrite_src(src->parent_instr, &phi_src->src,
-                                  nir_src_for_ssa(&phi->dest.ssa));
+                                  nir_src_for_ssa(&phi->def));
       }
    }
 
@@ -458,9 +458,9 @@ nir_opt_peephole_select_block(nir_block *block, nir_shader *shader,
       }
 
       nir_def_init(&sel->instr, &sel->def,
-                   phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
+                   phi->def.num_components, phi->def.bit_size);
 
-      nir_def_rewrite_uses(&phi->dest.ssa,
+      nir_def_rewrite_uses(&phi->def,
                            &sel->def);
 
       nir_instr_insert_before(&phi->instr, &sel->instr);

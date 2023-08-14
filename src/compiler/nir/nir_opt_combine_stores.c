@@ -156,7 +156,7 @@ combine_stores(struct combine_stores_state *state,
    if (store->num_components == 1) {
       store->num_components = num_components;
       nir_instr_rewrite_src(&store->instr, &store->src[0],
-                            nir_src_for_ssa(&combo->dst->dest.ssa));
+                            nir_src_for_ssa(&combo->dst->def));
    }
 
    assert(store->num_components == num_components);

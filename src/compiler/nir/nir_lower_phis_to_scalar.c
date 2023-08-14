@@ -139,7 +139,7 @@ static bool
 should_lower_phi(nir_phi_instr *phi, struct lower_phis_to_scalar_state *state)
 {
    /* Already scalar */
-   if (phi->dest.ssa.num_components == 1)
+   if (phi->def.num_components == 1)
       return false;
 
    if (state->lower_all)
@@ -192,24 +192,24 @@ lower_phis_to_scalar_block(nir_block *block,
       if (!should_lower_phi(phi, state))
          continue;
 
-      unsigned bit_size = phi->dest.ssa.bit_size;
+      unsigned bit_size = phi->def.bit_size;
 
       /* Create a vecN operation to combine the results.  Most of these
        * will be redundant, but copy propagation should clean them up for
        * us.  No need to add the complexity here.
        */
-      nir_op vec_op = nir_op_vec(phi->dest.ssa.num_components);
+      nir_op vec_op = nir_op_vec(phi->def.num_components);
 
       nir_alu_instr *vec = nir_alu_instr_create(state->shader, vec_op);
       nir_def_init(&vec->instr, &vec->def,
-                   phi->dest.ssa.num_components, bit_size);
+                   phi->def.num_components, bit_size);
 
-      for (unsigned i = 0; i < phi->dest.ssa.num_components; i++) {
+      for (unsigned i = 0; i < phi->def.num_components; i++) {
          nir_phi_instr *new_phi = nir_phi_instr_create(state->shader);
-         nir_def_init(&new_phi->instr, &new_phi->dest.ssa, 1,
-                      phi->dest.ssa.bit_size);
+         nir_def_init(&new_phi->instr, &new_phi->def, 1,
+                      phi->def.bit_size);
 
-         vec->src[i].src = nir_src_for_ssa(&new_phi->dest.ssa);
+         vec->src[i].src = nir_src_for_ssa(&new_phi->def);
 
          nir_foreach_phi_src(src, phi) {
             /* We need to insert a mov to grab the i'th component of src */
@@ -234,7 +234,7 @@ lower_phis_to_scalar_block(nir_block *block,
 
       nir_instr_insert_after(&last_phi->instr, &vec->instr);
 
-      nir_def_rewrite_uses(&phi->dest.ssa,
+      nir_def_rewrite_uses(&phi->def,
                            &vec->def);
 
       nir_instr_remove(&phi->instr);

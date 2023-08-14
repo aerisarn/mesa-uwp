@@ -244,7 +244,7 @@ anv_nir_lower_multiview(nir_shader *shader, uint32_t view_mask,
             value = build_view_index(&state);
          }
 
-         nir_def_rewrite_uses(&load->dest.ssa, value);
+         nir_def_rewrite_uses(&load->def, value);
 
          nir_instr_remove(&load->instr);
       }

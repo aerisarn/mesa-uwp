@@ -49,7 +49,7 @@ replace_intrinsic_with_vec(nir_builder *b, nir_intrinsic_instr *intr,
         /* Replace the old intrinsic with a reference to our reconstructed
          * vector.
          */
-        nir_def_rewrite_uses(&intr->dest.ssa, vec);
+        nir_def_rewrite_uses(&intr->def, vec);
         nir_instr_remove(&intr->instr);
 }
 
@@ -239,7 +239,7 @@ vc4_nir_lower_fs_input(struct vc4_compile *c, nir_builder *b,
                                         c->fs_key->point_sprite_mask)) {
                 assert(intr->num_components == 1);
 
-                nir_def *result = &intr->dest.ssa;
+                nir_def *result = &intr->def;
 
                 switch (comp) {
                 case 0:
@@ -262,8 +262,8 @@ vc4_nir_lower_fs_input(struct vc4_compile *c, nir_builder *b,
                 if (c->fs_key->point_coord_upper_left && comp == 1)
                         result = nir_fsub_imm(b, 1.0, result);
 
-                if (result != &intr->dest.ssa) {
-                        nir_def_rewrite_uses_after(&intr->dest.ssa,
+                if (result != &intr->def) {
+                        nir_def_rewrite_uses_after(&intr->def,
                                                        result,
                                                        result->parent_instr);
                 }
@@ -299,8 +299,8 @@ vc4_nir_lower_uniform(struct vc4_compile *c, nir_builder *b,
                 nir_intrinsic_instr *intr_comp =
                         nir_intrinsic_instr_create(c->s, intr->intrinsic);
                 intr_comp->num_components = 1;
-                nir_def_init(&intr_comp->instr, &intr_comp->dest.ssa, 1,
-                             intr->dest.ssa.bit_size);
+                nir_def_init(&intr_comp->instr, &intr_comp->def, 1,
+                             intr->def.bit_size);
 
                 /* Convert the uniform offset to bytes.  If it happens
                  * to be a constant, constant-folding will clean up
@@ -315,7 +315,7 @@ vc4_nir_lower_uniform(struct vc4_compile *c, nir_builder *b,
                 intr_comp->src[0] =
                         nir_src_for_ssa(nir_ishl_imm(b, intr->src[0].ssa, 4));
 
-                dests[i] = &intr_comp->dest.ssa;
+                dests[i] = &intr_comp->def;
 
                 nir_builder_instr_insert(b, &intr_comp->instr);
         }

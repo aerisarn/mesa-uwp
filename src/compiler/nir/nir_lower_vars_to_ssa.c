@@ -414,12 +414,12 @@ register_load_instr(nir_intrinsic_instr *load_instr,
       nir_undef_instr *undef =
          nir_undef_instr_create(state->shader,
                                 load_instr->num_components,
-                                load_instr->dest.ssa.bit_size);
+                                load_instr->def.bit_size);
 
       nir_instr_insert_before(&load_instr->instr, &undef->instr);
       nir_instr_remove(&load_instr->instr);
 
-      nir_def_rewrite_uses(&load_instr->dest.ssa, &undef->def);
+      nir_def_rewrite_uses(&load_instr->def, &undef->def);
       return true;
    }
 
@@ -603,12 +603,12 @@ rename_variables(struct lower_variables_state *state)
                mov->src[0].swizzle[i] = 0;
 
             nir_def_init(&mov->instr, &mov->def,
-                         intrin->num_components, intrin->dest.ssa.bit_size);
+                         intrin->num_components, intrin->def.bit_size);
 
             nir_instr_insert_before(&intrin->instr, &mov->instr);
             nir_instr_remove(&intrin->instr);
 
-            nir_def_rewrite_uses(&intrin->dest.ssa,
+            nir_def_rewrite_uses(&intrin->def,
                                  &mov->def);
             break;
          }

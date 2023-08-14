@@ -44,7 +44,7 @@ TEST_F(nir_lower_alu_width_test, fdot_order)
       b, nir_imm_vec3(b, 1.7014118346046923e+38, 1.7014118346046923e+38, 8.507059173023462e+37),
       nir_imm_vec3(b, -0.5, 1.5, 1.0));
    nir_intrinsic_instr *store =
-      nir_build_store_deref(b, &nir_build_deref_var(b, res_var)->dest.ssa, val);
+      nir_build_store_deref(b, &nir_build_deref_var(b, res_var)->def, val);
 
    nir_lower_alu_width(b->shader, NULL, NULL);
    nir_opt_constant_folding(b->shader);

@@ -142,11 +142,11 @@ lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
 
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-      old = &intr->dest.ssa;
+      old = &intr->def;
       replacement = lower_intrinsic(b, intr);
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
-      old = &tex->dest.ssa;
+      old = &tex->def;
 
       if (tex->op != nir_texop_lod_bias_agx)
          return false;
@@ -183,9 +183,9 @@ record_loads(nir_builder *b, nir_instr *instr, void *data)
    if (intr->intrinsic != nir_intrinsic_load_preamble)
       return false;
 
-   assert(intr->dest.ssa.bit_size >= 16 && "no 8-bit sysvals");
-   unsigned dim = intr->dest.ssa.num_components;
-   unsigned element_size = intr->dest.ssa.bit_size / 16;
+   assert(intr->def.bit_size >= 16 && "no 8-bit sysvals");
+   unsigned dim = intr->def.num_components;
+   unsigned element_size = intr->def.bit_size / 16;
    unsigned length = dim * element_size;
 
    struct state *state = data;

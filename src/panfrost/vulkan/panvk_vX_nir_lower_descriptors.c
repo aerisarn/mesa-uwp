@@ -273,9 +273,9 @@ lower_res_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Unhandled resource intrinsic");
    }
 
-   assert(intrin->dest.ssa.bit_size == res->bit_size);
-   assert(intrin->dest.ssa.num_components == res->num_components);
-   nir_def_rewrite_uses(&intrin->dest.ssa, res);
+   assert(intrin->def.bit_size == res->bit_size);
+   assert(intrin->def.num_components == res->num_components);
+   nir_def_rewrite_uses(&intrin->def, res);
    nir_instr_remove(&intrin->instr);
 
    return true;
@@ -398,21 +398,21 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
       switch (tex->op) {
       case nir_texop_txs:
          res = nir_channels(b, load_tex_img_size(b, deref, dim, ctx),
-                            nir_component_mask(tex->dest.ssa.num_components));
+                            nir_component_mask(tex->def.num_components));
          break;
       case nir_texop_query_levels:
-         assert(tex->dest.ssa.num_components == 1);
+         assert(tex->def.num_components == 1);
          res = load_tex_img_levels(b, deref, dim, ctx);
          break;
       case nir_texop_texture_samples:
-         assert(tex->dest.ssa.num_components == 1);
+         assert(tex->def.num_components == 1);
          res = load_tex_img_samples(b, deref, dim, ctx);
          break;
       default:
          unreachable("Unsupported texture query op");
       }
 
-      nir_def_rewrite_uses(&tex->dest.ssa, res);
+      nir_def_rewrite_uses(&tex->def, res);
       nir_instr_remove(&tex->instr);
       return true;
    }
@@ -505,7 +505,7 @@ lower_img_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
       switch (intr->intrinsic) {
       case nir_intrinsic_image_deref_size:
          res = nir_channels(b, load_tex_img_size(b, deref, dim, ctx),
-                            nir_component_mask(intr->dest.ssa.num_components));
+                            nir_component_mask(intr->def.num_components));
          break;
       case nir_intrinsic_image_deref_samples:
          res = load_tex_img_samples(b, deref, dim, ctx);
@@ -514,7 +514,7 @@ lower_img_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
          unreachable("Unsupported image query op");
       }
 
-      nir_def_rewrite_uses(&intr->dest.ssa, res);
+      nir_def_rewrite_uses(&intr->def, res);
       nir_instr_remove(&intr->instr);
    } else {
       nir_rewrite_image_intrinsic(intr, get_img_index(b, deref, ctx), false);

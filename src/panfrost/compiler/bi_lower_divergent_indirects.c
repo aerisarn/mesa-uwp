@@ -84,11 +84,11 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
 
    /* Write zero in a funny way to bypass lower_load_const_to_scalar */
    bool has_dest = nir_intrinsic_infos[intr->intrinsic].has_dest;
-   unsigned size = has_dest ? intr->dest.ssa.bit_size : 32;
+   unsigned size = has_dest ? intr->def.bit_size : 32;
    nir_def *zero = has_dest ? nir_imm_zero(b, 1, size) : NULL;
    nir_def *zeroes[4] = {zero, zero, zero, zero};
    nir_def *res =
-      has_dest ? nir_vec(b, zeroes, intr->dest.ssa.num_components) : NULL;
+      has_dest ? nir_vec(b, zeroes, intr->def.num_components) : NULL;
 
    for (unsigned i = 0; i < (*lanes); ++i) {
       nir_push_if(b, nir_ieq_imm(b, lane, i));
@@ -99,13 +99,13 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
       nir_pop_if(b, NULL);
 
       if (has_dest) {
-         nir_def *c_ssa = &c_intr->dest.ssa;
+         nir_def *c_ssa = &c_intr->def;
          res = nir_if_phi(b, c_ssa, res);
       }
    }
 
    if (has_dest)
-      nir_def_rewrite_uses(&intr->dest.ssa, res);
+      nir_def_rewrite_uses(&intr->def, res);
 
    nir_instr_remove(instr);
    return true;

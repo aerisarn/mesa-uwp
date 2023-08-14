@@ -278,7 +278,7 @@ Converter::getDType(nir_intrinsic_instr *insn)
       break;
    }
 
-   return typeOfSize(insn->dest.ssa.bit_size / 8, isFloat, isSigned);
+   return typeOfSize(insn->def.bit_size / 8, isFloat, isSigned);
 }
 
 DataType
@@ -1615,7 +1615,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
    switch (op) {
    case nir_intrinsic_decl_reg: {
-      const unsigned reg_index = insn->dest.ssa.index;
+      const unsigned reg_index = insn->def.index;
       const unsigned bit_size = nir_intrinsic_bit_size(insn);
       const unsigned num_components = nir_intrinsic_num_components(insn);
       assert(nir_intrinsic_num_array_elems(insn) == 0);
@@ -1636,7 +1636,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       LValues &src = it->second;
 
       DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       for (uint8_t c = 0; c < insn->num_components; c++)
          mkMov(newDefs[c], src[c], dType);
       break;
@@ -1703,7 +1703,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_interpolated_input:
    case nir_intrinsic_load_output: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
 
       // FBFetch
       if (prog->getType() == Program::TYPE_FRAGMENT &&
@@ -1814,7 +1814,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_barycentric_centroid:
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_sample: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       uint32_t mode;
 
       if (op == nir_intrinsic_load_barycentric_centroid ||
@@ -1895,7 +1895,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_work_dim: {
       const DataType dType = getDType(insn);
       SVSemantic sv = convert(op);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
 
       for (uint8_t i = 0u; i < nir_intrinsic_dest_components(insn); ++i) {
          Value *def;
@@ -1920,14 +1920,14 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    // constants
    case nir_intrinsic_load_subgroup_size: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       loadImm(newDefs[0], 32u);
       break;
    }
    case nir_intrinsic_vote_all:
    case nir_intrinsic_vote_any:
    case nir_intrinsic_vote_ieq: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *pred = getScratch(1, FILE_PREDICATE);
       mkCmp(OP_SET, CC_NE, TYPE_U32, pred, TYPE_U32, getSrc(&insn->src[0], 0), zero);
       mkOp1(OP_VOTE, TYPE_U32, pred, pred)->subOp = getSubOp(op);
@@ -1935,7 +1935,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_ballot: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *pred = getSSA(1, FILE_PREDICATE);
       mkCmp(OP_SET, CC_NE, TYPE_U32, pred, TYPE_U32, getSrc(&insn->src[0], 0), zero);
       mkOp1(OP_VOTE, TYPE_U32, newDefs[0], pred)->subOp = NV50_IR_SUBOP_VOTE_ANY;
@@ -1943,7 +1943,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_read_first_invocation:
    case nir_intrinsic_read_invocation: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       const DataType dType = getDType(insn);
       Value *tmp = getScratch();
 
@@ -1962,7 +1962,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_load_per_vertex_input: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectVertex;
       Value *indirectOffset;
       uint32_t baseVertex = getIndirect(&insn->src[0], 0, indirectVertex);
@@ -1979,7 +1979,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_load_per_vertex_output: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectVertex;
       Value *indirectOffset;
       uint32_t baseVertex = getIndirect(&insn->src[0], 0, indirectVertex);
@@ -2016,7 +2016,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_load_ubo: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectIndex;
       Value *indirectOffset;
       uint32_t index = getIndirect(&insn->src[0], 0, indirectIndex);
@@ -2031,7 +2031,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_get_ssbo_size: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       const DataType dType = getDType(insn);
       Value *indirectBuffer;
       uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
@@ -2063,7 +2063,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_load_ssbo: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectBuffer;
       Value *indirectOffset;
       uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
@@ -2081,7 +2081,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_shared_atomic:
    case nir_intrinsic_shared_atomic_swap: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
       Symbol *sym = mkSymbol(FILE_MEMORY_SHARED, 0, dType, offset);
@@ -2095,7 +2095,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_ssbo_atomic:
    case nir_intrinsic_ssbo_atomic_swap: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectBuffer;
       Value *indirectOffset;
       uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
@@ -2116,7 +2116,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_global_atomic:
    case nir_intrinsic_global_atomic_swap: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *address;
       uint32_t offset = getIndirect(&insn->src[0], 0, address);
 
@@ -2155,7 +2155,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint16_t location = 0;
 
       if (opInfo.has_dest) {
-         LValues &newDefs = convert(&insn->dest.ssa);
+         LValues &newDefs = convert(&insn->def);
          for (uint8_t i = 0u; i < newDefs.size(); ++i) {
             defs.push_back(newDefs[i]);
             mask |= 1 << i;
@@ -2281,7 +2281,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_scratch:
    case nir_intrinsic_load_shared: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
       if (indirectOffset)
@@ -2322,7 +2322,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_shader_clock: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
 
       loadImm(newDefs[0], 0u);
       mkOp1(OP_RDSV, dType, newDefs[1], mkSysVal(SV_CLOCK, 0))->fixed = 1;
@@ -2331,7 +2331,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_global:
    case nir_intrinsic_load_global_constant: {
       const DataType dType = getDType(insn);
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
 
@@ -2960,7 +2960,7 @@ Converter::visit(nir_tex_instr *insn)
    case nir_texop_txf_ms:
    case nir_texop_txl:
    case nir_texop_txs: {
-      LValues &newDefs = convert(&insn->dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       std::vector<Value*> srcs;
       std::vector<Value*> defs;
       std::vector<nir_src*> offsets;

@@ -222,7 +222,7 @@ ir3_nir_lower_ssbo_size_instr(nir_builder *b, nir_instr *instr, void *data)
 {
    uint8_t ssbo_size_to_bytes_shift = *(uint8_t *) data;
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   return nir_ishl_imm(b, &intr->dest.ssa, ssbo_size_to_bytes_shift);
+   return nir_ishl_imm(b, &intr->def, ssbo_size_to_bytes_shift);
 }
 
 static bool

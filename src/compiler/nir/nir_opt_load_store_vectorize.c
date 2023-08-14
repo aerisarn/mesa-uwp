@@ -231,7 +231,7 @@ sort_entries(const void *a_, const void *b_)
 static unsigned
 get_bit_size(struct entry *entry)
 {
-   unsigned size = entry->is_store ? entry->intrin->src[entry->info->value_src].ssa->bit_size : entry->intrin->dest.ssa.bit_size;
+   unsigned size = entry->is_store ? entry->intrin->src[entry->info->value_src].ssa->bit_size : entry->intrin->def.bit_size;
    return size == 1 ? 32u : size;
 }
 
@@ -593,7 +593,7 @@ cast_deref(nir_builder *b, unsigned num_components, unsigned bit_size, nir_deref
    if (deref->type == type)
       return deref;
 
-   return nir_build_deref_cast(b, &deref->dest.ssa, deref->modes, type, 0);
+   return nir_build_deref_cast(b, &deref->def, deref->modes, type, 0);
 }
 
 /* Return true if "new_bit_size" is a usable bit size for a vectorized load/store
@@ -656,7 +656,7 @@ subtract_deref(nir_builder *b, nir_deref_instr *deref, int64_t offset)
        offset % nir_deref_instr_array_stride(deref) == 0) {
       unsigned stride = nir_deref_instr_array_stride(deref);
       nir_def *index = nir_imm_intN_t(b, nir_src_as_int(deref->arr.index) - offset / stride,
-                                      deref->dest.ssa.bit_size);
+                                      deref->def.bit_size);
       return nir_build_deref_ptr_as_array(b, nir_deref_instr_parent(deref), index);
    }
 
@@ -669,10 +669,10 @@ subtract_deref(nir_builder *b, nir_deref_instr *deref, int64_t offset)
             b, parent, nir_src_as_int(deref->arr.index) - offset / stride);
    }
 
-   deref = nir_build_deref_cast(b, &deref->dest.ssa, deref->modes,
+   deref = nir_build_deref_cast(b, &deref->def, deref->modes,
                                 glsl_scalar_type(GLSL_TYPE_UINT8), 1);
    return nir_build_deref_ptr_as_array(
-      b, deref, nir_imm_intN_t(b, -offset, deref->dest.ssa.bit_size));
+      b, deref, nir_imm_intN_t(b, -offset, deref->def.bit_size));
 }
 
 static void
@@ -684,9 +684,9 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
 {
    unsigned low_bit_size = get_bit_size(low);
    unsigned high_bit_size = get_bit_size(high);
-   bool low_bool = low->intrin->dest.ssa.bit_size == 1;
-   bool high_bool = high->intrin->dest.ssa.bit_size == 1;
-   nir_def *data = &first->intrin->dest.ssa;
+   bool low_bool = low->intrin->def.bit_size == 1;
+   bool high_bool = high->intrin->def.bit_size == 1;
+   nir_def *data = &first->intrin->def;
 
    b->cursor = nir_after_instr(first->instr);
 
@@ -705,12 +705,12 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
 
    /* update uses */
    if (first == low) {
-      nir_def_rewrite_uses_after(&low->intrin->dest.ssa, low_def,
+      nir_def_rewrite_uses_after(&low->intrin->def, low_def,
                                  high_def->parent_instr);
-      nir_def_rewrite_uses(&high->intrin->dest.ssa, high_def);
+      nir_def_rewrite_uses(&high->intrin->def, high_def);
    } else {
-      nir_def_rewrite_uses(&low->intrin->dest.ssa, low_def);
-      nir_def_rewrite_uses_after(&high->intrin->dest.ssa, high_def,
+      nir_def_rewrite_uses(&low->intrin->def, low_def);
+      nir_def_rewrite_uses_after(&high->intrin->def, high_def,
                                  high_def->parent_instr);
    }
 
@@ -743,7 +743,7 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
       first->deref = cast_deref(b, new_num_components, new_bit_size, deref);
 
       nir_instr_rewrite_src(first->instr, &first->intrin->src[info->deref_src],
-                            nir_src_for_ssa(&first->deref->dest.ssa));
+                            nir_src_for_ssa(&first->deref->def));
    }
 
    /* update align */
@@ -836,7 +836,7 @@ vectorize_stores(nir_builder *b, struct vectorize_ctx *ctx,
       second->deref = cast_deref(b, new_num_components, new_bit_size,
                                  nir_src_as_deref(low->intrin->src[info->deref_src]));
       nir_instr_rewrite_src(second->instr, &second->intrin->src[info->deref_src],
-                            nir_src_for_ssa(&second->deref->dest.ssa));
+                            nir_src_for_ssa(&second->deref->def));
    }
 
    /* update base/align */
@@ -1197,9 +1197,9 @@ try_vectorize_shared2(struct vectorize_ctx *ctx,
    } else {
       nir_def *new_def = nir_load_shared2_amd(&b, low_size * 8u, offset, .offset1 = diff / stride,
                                               .st64 = st64);
-      nir_def_rewrite_uses(&low->intrin->dest.ssa,
+      nir_def_rewrite_uses(&low->intrin->def,
                            nir_bitcast_vector(&b, nir_channel(&b, new_def, 0), low_bit_size));
-      nir_def_rewrite_uses(&high->intrin->dest.ssa,
+      nir_def_rewrite_uses(&high->intrin->def,
                            nir_bitcast_vector(&b, nir_channel(&b, new_def, 1), high_bit_size));
    }
 

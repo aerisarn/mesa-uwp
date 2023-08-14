@@ -822,7 +822,7 @@ lower_varying(struct lower_packed_varyings_state *state,
             swizzle_values[i] = i + location_frac;
          }
 
-         nir_def *ssa_def = &packed_deref->dest.ssa;
+         nir_def *ssa_def = &packed_deref->def;
          ssa_def = nir_load_deref(&state->b, packed_deref);
          nir_def *swizzle =
             nir_swizzle(&state->b, ssa_def, swizzle_values, components);

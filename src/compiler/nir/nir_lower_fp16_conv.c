@@ -202,7 +202,7 @@ lower_fp16_cast_impl(nir_builder *b, nir_instr *instr, void *data)
           nir_intrinsic_dest_type(intrin) != nir_type_float16)
          return false;
       src = intrin->src[0].ssa;
-      dst = &intrin->dest.ssa;
+      dst = &intrin->def;
       mode = nir_intrinsic_rounding_mode(intrin);
    } else {
       return false;

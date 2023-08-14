@@ -882,7 +882,7 @@ emit_intrinsic_load_ubo_ldc(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    ldc->dsts[0]->wrmask = MASK(ncomp);
    ldc->cat6.iim_val = ncomp;
    ldc->cat6.d = nir_intrinsic_component(intr);
-   ldc->cat6.type = utype_def(&intr->dest.ssa);
+   ldc->cat6.type = utype_def(&intr->def);
 
    ir3_handle_bindless_cat6(ldc, intr->src[0]);
    if (ldc->flags & IR3_INSTR_B)
@@ -1074,7 +1074,7 @@ emit_intrinsic_load_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    ldl = ir3_LDL(b, offset, 0, create_immed(b, base), 0,
                  create_immed(b, intr->num_components), 0);
 
-   ldl->cat6.type = utype_def(&intr->dest.ssa);
+   ldl->cat6.type = utype_def(&intr->def);
    ldl->dsts[0]->wrmask = MASK(intr->num_components);
 
    ldl->barrier_class = IR3_BARRIER_SHARED_R;
@@ -1131,7 +1131,7 @@ emit_intrinsic_load_shared_ir3(struct ir3_context *ctx,
    if (ctx->so->type == MESA_SHADER_TESS_CTRL && ctx->compiler->tess_use_shared)
       load->opc = OPC_LDL;
 
-   load->cat6.type = utype_def(&intr->dest.ssa);
+   load->cat6.type = utype_def(&intr->def);
    load->dsts[0]->wrmask = MASK(intr->num_components);
 
    load->barrier_class = IR3_BARRIER_SHARED_R;
@@ -1282,7 +1282,7 @@ emit_intrinsic_load_scratch(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    ldp = ir3_LDP(b, offset, 0, create_immed(b, base), 0,
                  create_immed(b, intr->num_components), 0);
 
-   ldp->cat6.type = utype_def(&intr->dest.ssa);
+   ldp->cat6.type = utype_def(&intr->def);
    ldp->dsts[0]->wrmask = MASK(intr->num_components);
 
    ldp->barrier_class = IR3_BARRIER_PRIVATE_R;
@@ -1484,7 +1484,7 @@ emit_intrinsic_image_size_tex(struct ir3_context *ctx,
    struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0], true);
    struct ir3_instruction *sam, *lod;
    unsigned flags, ncoords = ir3_get_image_coords(intr, &flags);
-   type_t dst_type = intr->dest.ssa.bit_size == 16 ? TYPE_U16 : TYPE_U32;
+   type_t dst_type = intr->def.bit_size == 16 ? TYPE_U16 : TYPE_U32;
 
    info.flags |= flags;
    assert(nir_src_as_uint(intr->src[1]) == 0);
@@ -1525,7 +1525,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx,
 {
    /* Note: isam currently can't handle vectorized loads/stores */
    if (!(nir_intrinsic_access(intr) & ACCESS_CAN_REORDER) ||
-       intr->dest.ssa.num_components > 1) {
+       intr->def.num_components > 1) {
       ctx->funcs->emit_intrinsic_load_ssbo(ctx, intr, dst);
       return;
    }
@@ -1535,9 +1535,9 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx,
    struct ir3_instruction *coords = ir3_collect(b, offset, create_immed(b, 0));
    struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0], false);
 
-   unsigned num_components = intr->dest.ssa.num_components;
+   unsigned num_components = intr->def.num_components;
    struct ir3_instruction *sam =
-      emit_sam(ctx, OPC_ISAM, info, utype_for_size(intr->dest.ssa.bit_size),
+      emit_sam(ctx, OPC_ISAM, info, utype_for_size(intr->def.bit_size),
                MASK(num_components), coords, NULL);
 
    ir3_handle_nonuniform(sam, intr);
@@ -1811,7 +1811,7 @@ get_frag_coord(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       ctx->frag_coord = ir3_create_collect(b, xyzw, 4);
    }
 
-   ctx->so->fragcoord_compmask |= nir_def_components_read(&intr->dest.ssa);
+   ctx->so->fragcoord_compmask |= nir_def_components_read(&intr->def);
 
    return ctx->frag_coord;
 }
@@ -1902,7 +1902,7 @@ emit_intrinsic_reduce(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
    nir_op nir_reduce_op = (nir_op) nir_intrinsic_reduction_op(intr);
    reduce_op_t reduce_op = get_reduce_op(nir_reduce_op);
-   unsigned dst_size = intr->dest.ssa.bit_size;
+   unsigned dst_size = intr->def.bit_size;
    unsigned flags = (ir3_bitsize(ctx, dst_size) == 16) ? IR3_REG_HALF : 0;
 
    /* Note: the shared reg is initialized to the identity, so we need it to
@@ -1972,7 +1972,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    int idx;
 
    if (info->has_dest) {
-      dst = ir3_get_def(ctx, &intr->dest.ssa, dest_components);
+      dst = ir3_get_def(ctx, &intr->def, dest_components);
    } else {
       dst = NULL;
    }
@@ -2046,14 +2046,14 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          for (int i = 0; i < dest_components; i++) {
             dst[i] = create_uniform_typed(
                b, idx + i,
-               intr->dest.ssa.bit_size == 16 ? TYPE_F16 : TYPE_F32);
+               intr->def.bit_size == 16 ? TYPE_F16 : TYPE_F32);
          }
       } else {
          src = ir3_get_src(ctx, &intr->src[0]);
          for (int i = 0; i < dest_components; i++) {
             dst[i] = create_uniform_indirect(
                b, idx + i,
-               intr->dest.ssa.bit_size == 16 ? TYPE_F16 : TYPE_F32,
+               intr->def.bit_size == 16 ? TYPE_F16 : TYPE_F32,
                ir3_get_addr0(ctx, src[0], 1));
          }
          /* NOTE: if relative addressing is used, we set
@@ -2543,7 +2543,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_ballot: {
       struct ir3_instruction *ballot;
-      unsigned components = intr->dest.ssa.num_components;
+      unsigned components = intr->def.num_components;
       if (nir_src_is_const(intr->src[0]) && nir_src_as_bool(intr->src[0])) {
          /* ballot(true) is just MOVMSK */
          ballot = ir3_MOVMSK(ctx->block, components);
@@ -2567,7 +2567,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       struct ir3_instruction *idx = ir3_get_src(ctx, &intr->src[1])[0];
 
-      type_t dst_type = type_uint_size(intr->dest.ssa.bit_size);
+      type_t dst_type = type_uint_size(intr->def.bit_size);
 
       if (dst_type != TYPE_U32)
          idx = ir3_COV(ctx->block, idx, TYPE_U32, dst_type);
@@ -2580,21 +2580,21 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_quad_swap_horizontal: {
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       dst[0] = ir3_QUAD_SHUFFLE_HORIZ(ctx->block, src, 0);
-      dst[0]->cat5.type = type_uint_size(intr->dest.ssa.bit_size);
+      dst[0]->cat5.type = type_uint_size(intr->def.bit_size);
       break;
    }
 
    case nir_intrinsic_quad_swap_vertical: {
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       dst[0] = ir3_QUAD_SHUFFLE_VERT(ctx->block, src, 0);
-      dst[0]->cat5.type = type_uint_size(intr->dest.ssa.bit_size);
+      dst[0]->cat5.type = type_uint_size(intr->def.bit_size);
       break;
    }
 
    case nir_intrinsic_quad_swap_diagonal: {
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       dst[0] = ir3_QUAD_SHUFFLE_DIAG(ctx->block, src, 0);
-      dst[0]->cat5.type = type_uint_size(intr->dest.ssa.bit_size);
+      dst[0]->cat5.type = type_uint_size(intr->def.bit_size);
       break;
    }
 
@@ -2661,7 +2661,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    }
 
    if (info->has_dest)
-      ir3_put_def(ctx, &intr->dest.ssa);
+      ir3_put_def(ctx, &intr->def);
 }
 
 static void
@@ -2901,12 +2901,12 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
    type_t type;
    opc_t opc = 0;
 
-   ncomp = tex->dest.ssa.num_components;
+   ncomp = tex->def.num_components;
 
    coord = off = ddx = ddy = NULL;
    lod = proj = compare = sample_index = NULL;
 
-   dst = ir3_get_def(ctx, &tex->dest.ssa, ncomp);
+   dst = ir3_get_def(ctx, &tex->def, ncomp);
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -3190,7 +3190,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
                type_float(type) ? fui(swizzle - 4) : (swizzle - 4));
          for (int i = 0; i < 4; i++)
             dst[i] = imm;
-         ir3_put_def(ctx, &tex->dest.ssa);
+         ir3_put_def(ctx, &tex->def);
          return;
       }
       opc = OPC_GATHER4R + swizzle;
@@ -3284,7 +3284,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
    /* GETLOD returns results in 4.8 fixed point */
    if (opc == OPC_GETLOD) {
-      bool half = tex->dest.ssa.bit_size == 16;
+      bool half = tex->def.bit_size == 16;
       struct ir3_instruction *factor =
          half ? create_immed_typed(b, _mesa_float_to_half(1.0 / 256), TYPE_F16)
               : create_immed(b, fui(1.0 / 256));
@@ -3296,7 +3296,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
       }
    }
 
-   ir3_put_def(ctx, &tex->dest.ssa);
+   ir3_put_def(ctx, &tex->def);
 }
 
 static void
@@ -3307,7 +3307,7 @@ emit_tex_info(struct ir3_context *ctx, nir_tex_instr *tex, unsigned idx)
    type_t dst_type = get_tex_dest_type(tex);
    struct tex_src_info info = get_tex_samp_tex_src(ctx, tex);
 
-   dst = ir3_get_def(ctx, &tex->dest.ssa, 1);
+   dst = ir3_get_def(ctx, &tex->def, 1);
 
    sam = emit_sam(ctx, OPC_GETINFO, info, dst_type, 1 << idx, NULL, NULL);
 
@@ -3322,7 +3322,7 @@ emit_tex_info(struct ir3_context *ctx, nir_tex_instr *tex, unsigned idx)
    if (ctx->compiler->levels_add_one)
       dst[0] = ir3_ADD_U(b, dst[0], 0, create_immed(b, 1), 0);
 
-   ir3_put_def(ctx, &tex->dest.ssa);
+   ir3_put_def(ctx, &tex->def);
 }
 
 static void
@@ -3344,7 +3344,7 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
       coords = 2;
 
-   dst = ir3_get_def(ctx, &tex->dest.ssa, 4);
+   dst = ir3_get_def(ctx, &tex->def, 4);
 
    int lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_lod);
    compile_assert(ctx, lod_idx >= 0);
@@ -3377,7 +3377,7 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
       }
    }
 
-   ir3_put_def(ctx, &tex->dest.ssa);
+   ir3_put_def(ctx, &tex->def);
 }
 
 /* phi instructions are left partially constructed.  We don't resolve
@@ -3391,9 +3391,9 @@ emit_phi(struct ir3_context *ctx, nir_phi_instr *nphi)
    struct ir3_instruction *phi, **dst;
 
    /* NOTE: phi's should be lowered to scalar at this point */
-   compile_assert(ctx, nphi->dest.ssa.num_components == 1);
+   compile_assert(ctx, nphi->def.num_components == 1);
 
-   dst = ir3_get_def(ctx, &nphi->dest.ssa, 1);
+   dst = ir3_get_def(ctx, &nphi->def, 1);
 
    phi = ir3_instr_create(ctx->block, OPC_META_PHI, 1,
                           exec_list_length(&nphi->srcs));
@@ -3402,7 +3402,7 @@ emit_phi(struct ir3_context *ctx, nir_phi_instr *nphi)
 
    dst[0] = phi;
 
-   ir3_put_def(ctx, &nphi->dest.ssa);
+   ir3_put_def(ctx, &nphi->def);
 }
 
 static struct ir3_block *get_block(struct ir3_context *ctx,

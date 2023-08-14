@@ -84,9 +84,9 @@ vtn_handle_amd_shader_ballot_instruction(struct vtn_builder *b, SpvOp ext_opcode
 
    const struct glsl_type *dest_type = vtn_get_type(b, w[1])->type;
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->nb.shader, op);
-   nir_def_init_for_type(&intrin->instr, &intrin->dest.ssa, dest_type);
+   nir_def_init_for_type(&intrin->instr, &intrin->def, dest_type);
    if (nir_intrinsic_infos[op].src_components[0] == 0)
-      intrin->num_components = intrin->dest.ssa.num_components;
+      intrin->num_components = intrin->def.num_components;
 
    for (unsigned i = 0; i < num_args; i++)
       intrin->src[i] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[i + 5]));
@@ -113,7 +113,7 @@ vtn_handle_amd_shader_ballot_instruction(struct vtn_builder *b, SpvOp ext_opcode
    }
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
-   vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
+   vtn_push_nir_ssa(b, w[2], &intrin->def);
 
    return true;
 }
@@ -212,11 +212,11 @@ vtn_handle_amd_shader_explicit_vertex_parameter_instruction(struct vtn_builder *
       vec_deref = deref;
       deref = nir_deref_instr_parent(deref);
    }
-   intrin->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+   intrin->src[0] = nir_src_for_ssa(&deref->def);
    intrin->src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[6]));
 
    intrin->num_components = glsl_get_vector_elements(deref->type);
-   nir_def_init(&intrin->instr, &intrin->dest.ssa,
+   nir_def_init(&intrin->instr, &intrin->def,
                 glsl_get_vector_elements(deref->type),
                 glsl_get_bit_size(deref->type));
 
@@ -225,10 +225,10 @@ vtn_handle_amd_shader_explicit_vertex_parameter_instruction(struct vtn_builder *
    nir_def *def;
    if (vec_array_deref) {
       assert(vec_deref);
-      def = nir_vector_extract(&b->nb, &intrin->dest.ssa,
+      def = nir_vector_extract(&b->nb, &intrin->def,
                                vec_deref->arr.index.ssa);
    } else {
-      def = &intrin->dest.ssa;
+      def = &intrin->def;
    }
    vtn_push_nir_ssa(b, w[2], def);
 

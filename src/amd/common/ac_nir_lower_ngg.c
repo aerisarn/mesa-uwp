@@ -1164,15 +1164,15 @@ find_reusable_ssa_def(nir_instr *instr)
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       if (!nir_intrinsic_can_reorder(intrin) ||
             !nir_intrinsic_infos[intrin->intrinsic].has_dest ||
-            intrin->dest.ssa.divergent)
+            intrin->def.divergent)
          return NULL;
-      return &intrin->dest.ssa;
+      return &intrin->def;
    }
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      if (phi->dest.ssa.divergent)
+      if (phi->def.divergent)
          return NULL;
-      return &phi->dest.ssa;
+      return &phi->def;
    }
    default:
       return NULL;
@@ -3913,8 +3913,8 @@ ms_load_arrayed_output_intrin(nir_builder *b,
 
    unsigned location = nir_intrinsic_io_semantics(intrin).location;
    unsigned component_offset = nir_intrinsic_component(intrin);
-   unsigned bit_size = intrin->dest.ssa.bit_size;
-   unsigned num_components = intrin->dest.ssa.num_components;
+   unsigned bit_size = intrin->def.bit_size;
+   unsigned num_components = intrin->def.num_components;
    unsigned load_bit_size = MAX2(bit_size, 32);
 
    nir_def *load =

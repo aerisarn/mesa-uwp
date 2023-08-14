@@ -479,14 +479,14 @@ iris_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
          case nir_intrinsic_load_base_workgroup_id: {
             /* GL doesn't have a concept of base workgroup */
             b.cursor = nir_instr_remove(&intrin->instr);
-            nir_def_rewrite_uses(&intrin->dest.ssa,
+            nir_def_rewrite_uses(&intrin->def,
                                      nir_imm_zero(&b, 3, 32));
             continue;
          }
          case nir_intrinsic_load_constant: {
-            unsigned load_size = intrin->dest.ssa.num_components *
-                                 intrin->dest.ssa.bit_size / 8;
-            unsigned load_align = intrin->dest.ssa.bit_size / 8;
+            unsigned load_size = intrin->def.num_components *
+                                 intrin->def.bit_size / 8;
+            unsigned load_align = intrin->def.bit_size / 8;
 
             /* This one is special because it reads from the shader constant
              * data and not cbuf0 which gallium uploads for us.
@@ -514,10 +514,10 @@ iris_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
             nir_def *data =
                nir_load_global_constant(&b, nir_u2u64(&b, const_data_addr),
                                         load_align,
-                                        intrin->dest.ssa.num_components,
-                                        intrin->dest.ssa.bit_size);
+                                        intrin->def.num_components,
+                                        intrin->def.bit_size);
 
-            nir_def_rewrite_uses(&intrin->dest.ssa,
+            nir_def_rewrite_uses(&intrin->def,
                                      data);
             continue;
          }
@@ -663,14 +663,14 @@ iris_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
          }
 
          nir_def *load =
-            nir_load_ubo(&b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size,
+            nir_load_ubo(&b, intrin->def.num_components, intrin->def.bit_size,
                          temp_ubo_name, offset,
                          .align_mul = 4,
                          .align_offset = 0,
                          .range_base = 0,
                          .range = ~0);
 
-         nir_def_rewrite_uses(&intrin->dest.ssa,
+         nir_def_rewrite_uses(&intrin->def,
                                   load);
          nir_instr_remove(instr);
       }

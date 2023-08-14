@@ -136,7 +136,7 @@ replace_tex_by_imm(nir_builder *b, nir_instr *instr, void *state)
 
    b->cursor = nir_instr_remove(&tex->instr);
    nir_def *imm = nir_imm_vec4(b, p->value[0], p->value[1], p->value[2], p->value[3]);
-   nir_def_rewrite_uses(&tex->dest.ssa, imm);
+   nir_def_rewrite_uses(&tex->def, imm);
    return true;
 }
 

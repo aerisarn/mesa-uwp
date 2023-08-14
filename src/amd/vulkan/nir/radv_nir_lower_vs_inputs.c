@@ -47,8 +47,8 @@ lower_load_vs_input_from_prolog(nir_builder *b, nir_intrinsic_instr *intrin, low
    const unsigned base_offset = nir_src_as_uint(*offset_src);
    const unsigned driver_location = base + base_offset - VERT_ATTRIB_GENERIC0;
    const unsigned component = nir_intrinsic_component(intrin);
-   const unsigned bit_size = intrin->dest.ssa.bit_size;
-   const unsigned num_components = intrin->dest.ssa.num_components;
+   const unsigned bit_size = intrin->def.bit_size;
+   const unsigned num_components = intrin->def.num_components;
 
    /* 64-bit inputs: they occupy twice as many 32-bit components.
     * 16-bit inputs: they occupy a 32-bit component (not packed).
@@ -209,8 +209,8 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
    const unsigned base = nir_intrinsic_base(intrin);
    const unsigned base_offset = nir_src_as_uint(*offset_src);
    const unsigned location = base + base_offset - VERT_ATTRIB_GENERIC0;
-   const unsigned bit_size = intrin->dest.ssa.bit_size;
-   const unsigned dest_num_components = intrin->dest.ssa.num_components;
+   const unsigned bit_size = intrin->def.bit_size;
+   const unsigned dest_num_components = intrin->def.num_components;
 
    /* Convert the component offset to bit_size units.
     * (Intrinsic component offset is in 32-bit units.)
@@ -225,7 +225,7 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
    /* Bitmask of components in bit_size units
     * of the current input load that are actually used.
     */
-   const unsigned dest_use_mask = nir_def_components_read(&intrin->dest.ssa) << component;
+   const unsigned dest_use_mask = nir_def_components_read(&intrin->def) << component;
 
    /* If the input is entirely unused, just replace it with undef.
     * This is just in case we debug this pass without running DCE first.
@@ -406,7 +406,7 @@ lower_vs_input_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = lower_load_vs_input(b, intrin, s);
    }
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, replacement);
+   nir_def_rewrite_uses(&intrin->def, replacement);
    nir_instr_remove(instr);
    nir_instr_free(instr);
 

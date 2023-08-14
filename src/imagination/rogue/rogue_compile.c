@@ -144,10 +144,10 @@ static void trans_nir_intrinsic_load_input_fs(rogue_builder *b,
 {
    struct rogue_fs_build_data *fs_data = &b->shader->ctx->stage_data.fs;
 
-   unsigned load_size = intr->dest.ssa.num_components;
+   unsigned load_size = intr->def.num_components;
    assert(load_size == 1); /* TODO: We can support larger load sizes. */
 
-   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->def.index);
 
    struct nir_io_semantics io_semantics = nir_intrinsic_io_semantics(intr);
    unsigned component = nir_intrinsic_component(intr);
@@ -178,10 +178,10 @@ static void trans_nir_intrinsic_load_input_vs(rogue_builder *b,
    struct pvr_pipeline_layout *pipeline_layout =
       b->shader->ctx->pipeline_layout;
 
-   ASSERTED unsigned load_size = intr->dest.ssa.num_components;
+   ASSERTED unsigned load_size = intr->def.num_components;
    assert(load_size == 1); /* TODO: We can support larger load sizes. */
 
-   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->def.index);
 
    struct nir_io_semantics io_semantics = nir_intrinsic_io_semantics(intr);
    unsigned input = io_semantics.location - VERT_ATTRIB_GENERIC0;
@@ -520,7 +520,7 @@ trans_nir_intrinsic_load_vulkan_descriptor(rogue_builder *b,
                rogue_ref_reg(desc_addr_offset_val_hi),
                rogue_ref_io(ROGUE_IO_NONE));
 
-   unsigned desc_addr_idx = intr->dest.ssa.index;
+   unsigned desc_addr_idx = intr->def.index;
    rogue_regarray *desc_addr_64 =
       rogue_ssa_vec_regarray(b->shader, 2, desc_addr_idx, 0);
    instr = &rogue_LD(b,
@@ -540,7 +540,7 @@ static void trans_nir_intrinsic_load_global_constant(rogue_builder *b,
    rogue_regarray *src = rogue_ssa_vec_regarray(b->shader, 2, src_index, 0);
 
    /*** TODO NEXT: this could be either a reg or regarray. ***/
-   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->def.index);
 
    /* TODO NEXT: src[1] should be depending on ssa vec size for burst loads */
    rogue_instr *instr = &rogue_LD(b,

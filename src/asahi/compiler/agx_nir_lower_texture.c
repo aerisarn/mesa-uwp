@@ -140,7 +140,7 @@ agx_txs(nir_builder *b, nir_tex_instr *tex)
       height = depth;
 
    /* How we finish depends on the size of the result */
-   unsigned nr_comps = tex->dest.ssa.num_components;
+   unsigned nr_comps = tex->def.num_components;
    assert(nr_comps <= 3);
 
    /* Adjust for LOD, do not adjust array size */
@@ -179,7 +179,7 @@ lower_txs(nir_builder *b, nir_instr *instr, UNUSED void *data)
       return false;
 
    nir_def *res = agx_txs(b, tex);
-   nir_def_rewrite_uses_after(&tex->dest.ssa, res, instr);
+   nir_def_rewrite_uses_after(&tex->def, res, instr);
    nir_instr_remove(instr);
    return true;
 }
@@ -206,7 +206,7 @@ load_rgb32(nir_builder *b, nir_tex_instr *tex, nir_def *coordinate)
       nir_iand_imm(b, nir_ushr_imm(b, desc_hi, 2), BITFIELD64_MASK(36));
    nir_def *base = nir_ishl_imm(b, base_shr4, 4);
 
-   nir_def *raw = nir_load_constant_agx(b, 3, tex->dest.ssa.bit_size, base,
+   nir_def *raw = nir_load_constant_agx(b, 3, tex->def.bit_size, base,
                                         nir_imul_imm(b, coordinate, 3),
                                         .format = AGX_INTERNAL_FORMAT_I32);
 
@@ -277,11 +277,11 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
    nir_pop_if(b, nif);
 
    /* Put it together with a phi */
-   nir_def *phi = nir_if_phi(b, rgb32, &tex->dest.ssa);
-   nir_def_rewrite_uses(&tex->dest.ssa, phi);
+   nir_def *phi = nir_if_phi(b, rgb32, &tex->def);
+   nir_def_rewrite_uses(&tex->def, phi);
    nir_phi_instr *phi_instr = nir_instr_as_phi(phi->parent_instr);
    nir_phi_src *else_src = nir_phi_get_src_from_block(phi_instr, else_block);
-   nir_instr_rewrite_src_ssa(phi->parent_instr, &else_src->src, &tex->dest.ssa);
+   nir_instr_rewrite_src_ssa(phi->parent_instr, &else_src->src, &tex->def);
    return true;
 }
 
@@ -419,8 +419,8 @@ bias_for_tex(nir_builder *b, nir_tex_instr *tex)
    query->op = nir_texop_lod_bias_agx;
    query->dest_type = nir_type_float16;
 
-   nir_def_init(instr, &query->dest.ssa, 1, 16);
-   return &query->dest.ssa;
+   nir_def_init(instr, &query->def, 1, 16);
+   return &query->def;
 }
 
 static bool
@@ -548,9 +548,9 @@ txs_for_image(nir_builder *b, nir_intrinsic_instr *intr,
          nir_tex_src_for_ssa(nir_tex_src_texture_offset, intr->src[0].ssa);
    }
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, num_components, bit_size);
+   nir_def_init(&tex->instr, &tex->def, num_components, bit_size);
    nir_builder_instr_insert(b, &tex->instr);
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 static nir_def *
@@ -742,15 +742,14 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    case nir_intrinsic_image_size:
    case nir_intrinsic_bindless_image_size:
-      nir_def_rewrite_uses(&intr->dest.ssa,
-                           txs_for_image(b, intr, intr->dest.ssa.num_components,
-                                         intr->dest.ssa.bit_size));
+      nir_def_rewrite_uses(
+         &intr->def,
+         txs_for_image(b, intr, intr->def.num_components, intr->def.bit_size));
       return true;
 
    case nir_intrinsic_image_texel_address:
    case nir_intrinsic_bindless_image_texel_address:
-      nir_def_rewrite_uses(&intr->dest.ssa,
-                           image_texel_address(b, intr, false));
+      nir_def_rewrite_uses(&intr->def, image_texel_address(b, intr, false));
       return true;
 
    default:

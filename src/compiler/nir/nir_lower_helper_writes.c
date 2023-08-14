@@ -76,26 +76,26 @@ lower(nir_builder *b, nir_instr *instr, void *data)
     */
    if (has_dest) {
       nir_push_else(b, NULL);
-      undef = nir_undef(b, intr->dest.ssa.num_components,
-                        intr->dest.ssa.bit_size);
+      undef = nir_undef(b, intr->def.num_components,
+                        intr->def.bit_size);
    }
 
    nir_pop_if(b, NULL);
 
    if (has_dest) {
-      nir_def *phi = nir_if_phi(b, &intr->dest.ssa, undef);
+      nir_def *phi = nir_if_phi(b, &intr->def, undef);
 
       /* We can't use nir_def_rewrite_uses_after on phis, so use the global
        * version and fixup the phi manually
        */
-      nir_def_rewrite_uses(&intr->dest.ssa, phi);
+      nir_def_rewrite_uses(&intr->def, phi);
 
       nir_instr *phi_instr = phi->parent_instr;
       nir_phi_instr *phi_as_phi = nir_instr_as_phi(phi_instr);
       nir_phi_src *phi_src = nir_phi_get_src_from_block(phi_as_phi,
                                                         instr->block);
       nir_instr_rewrite_src_ssa(phi->parent_instr, &phi_src->src,
-                                &intr->dest.ssa);
+                                &intr->def);
    }
 
    return true;

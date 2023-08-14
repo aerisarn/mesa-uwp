@@ -128,9 +128,9 @@ _nir_build_${name}(nir_builder *build${intrinsic_decl_list(opcode)})
    % endif
    % if opcode.has_dest:
       % if opcode.dest_components == 0:
-      nir_def_init(&intrin->instr, &intrin->dest.ssa, intrin->num_components, ${get_intrinsic_bitsize(opcode)});
+      nir_def_init(&intrin->instr, &intrin->def, intrin->num_components, ${get_intrinsic_bitsize(opcode)});
       % else:
-      nir_def_init(&intrin->instr, &intrin->dest.ssa, ${opcode.dest_components}, ${get_intrinsic_bitsize(opcode)});
+      nir_def_init(&intrin->instr, &intrin->def, ${opcode.dest_components}, ${get_intrinsic_bitsize(opcode)});
       % endif
    % endif
    % for i in range(opcode.num_srcs):
@@ -145,7 +145,7 @@ _nir_build_${name}(nir_builder *build${intrinsic_decl_list(opcode)})
       indices.align_mul = src${opcode.src_components.index(0)}->bit_size / 8u;
    % elif ALIGN_MUL in opcode.indices and opcode.dest_components == 0:
    if (!indices.align_mul)
-      indices.align_mul = intrin->dest.ssa.bit_size / 8u;
+      indices.align_mul = intrin->def.bit_size / 8u;
    % endif
    % for index in opcode.indices:
    nir_intrinsic_set_${index.name}(intrin, indices.${index.name});
@@ -153,7 +153,7 @@ _nir_build_${name}(nir_builder *build${intrinsic_decl_list(opcode)})
 
    nir_builder_instr_insert(build, &intrin->instr);
    % if opcode.has_dest:
-   return &intrin->dest.ssa;
+   return &intrin->def;
    % else:
    return intrin;
    % endif

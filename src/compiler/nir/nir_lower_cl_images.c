@@ -188,8 +188,8 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
             b.cursor = nir_instr_remove(&deref->instr);
             nir_def *loc =
                nir_imm_intN_t(&b, deref->var->data.driver_location,
-                              deref->dest.ssa.bit_size);
-            nir_def_rewrite_uses(&deref->dest.ssa, loc);
+                              deref->def.bit_size);
+            nir_def_rewrite_uses(&deref->def, loc);
             progress = true;
             break;
          }

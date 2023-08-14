@@ -213,8 +213,8 @@ hash_intrinsic(uint32_t hash, const nir_intrinsic_instr *instr)
    hash = HASH(hash, instr->intrinsic);
 
    if (info->has_dest) {
-      hash = HASH(hash, instr->dest.ssa.num_components);
-      hash = HASH(hash, instr->dest.ssa.bit_size);
+      hash = HASH(hash, instr->def.num_components);
+      hash = HASH(hash, instr->def.bit_size);
    }
 
    hash = XXH32(instr->const_index, info->num_indices * sizeof(instr->const_index[0]), hash);
@@ -653,9 +653,9 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
       /* In case of phis with no sources, the dest needs to be checked
        * to ensure that phis with incompatible dests won't get merged
        * during CSE. */
-      if (phi1->dest.ssa.num_components != phi2->dest.ssa.num_components)
+      if (phi1->def.num_components != phi2->def.num_components)
          return false;
-      if (phi1->dest.ssa.bit_size != phi2->dest.ssa.bit_size)
+      if (phi1->def.bit_size != phi2->def.bit_size)
          return false;
 
       nir_foreach_phi_src(src1, phi1) {
@@ -681,12 +681,12 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
           intrinsic1->num_components != intrinsic2->num_components)
          return false;
 
-      if (info->has_dest && intrinsic1->dest.ssa.num_components !=
-                               intrinsic2->dest.ssa.num_components)
+      if (info->has_dest && intrinsic1->def.num_components !=
+                               intrinsic2->def.num_components)
          return false;
 
-      if (info->has_dest && intrinsic1->dest.ssa.bit_size !=
-                               intrinsic2->dest.ssa.bit_size)
+      if (info->has_dest && intrinsic1->def.bit_size !=
+                               intrinsic2->def.bit_size)
          return false;
 
       for (unsigned i = 0; i < info->num_srcs; i++) {
@@ -713,21 +713,21 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
 }
 
 static nir_def *
-nir_instr_get_dest_ssa_def(nir_instr *instr)
+nir_instr_get_def_def(nir_instr *instr)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
       return &nir_instr_as_alu(instr)->def;
    case nir_instr_type_deref:
-      return &nir_instr_as_deref(instr)->dest.ssa;
+      return &nir_instr_as_deref(instr)->def;
    case nir_instr_type_load_const:
       return &nir_instr_as_load_const(instr)->def;
    case nir_instr_type_phi:
-      return &nir_instr_as_phi(instr)->dest.ssa;
+      return &nir_instr_as_phi(instr)->def;
    case nir_instr_type_intrinsic:
-      return &nir_instr_as_intrinsic(instr)->dest.ssa;
+      return &nir_instr_as_intrinsic(instr)->def;
    case nir_instr_type_tex:
-      return &nir_instr_as_tex(instr)->dest.ssa;
+      return &nir_instr_as_tex(instr)->def;
    default:
       unreachable("We never ask for any of these");
    }
@@ -766,8 +766,8 @@ nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr,
 
    if (!cond_function || cond_function(match, instr)) {
       /* rewrite instruction if condition is matched */
-      nir_def *def = nir_instr_get_dest_ssa_def(instr);
-      nir_def *new_def = nir_instr_get_dest_ssa_def(match);
+      nir_def *def = nir_instr_get_def_def(instr);
+      nir_def *new_def = nir_instr_get_def_def(match);
 
       /* It's safe to replace an exact instruction with an inexact one as
        * long as we make it exact.  If we got here, the two instructions are

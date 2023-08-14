@@ -94,7 +94,7 @@ only_used_by_cross_lane_instrs(nir_def* ssa, bool follow_phis = true)
             return false;
 
          nir_phi_instr* phi = nir_instr_as_phi(src->parent_instr);
-         if (!only_used_by_cross_lane_instrs(&phi->dest.ssa, false))
+         if (!only_used_by_cross_lane_instrs(&phi->def, false))
             return false;
 
          continue;
@@ -461,8 +461,8 @@ init_context(isel_context* ctx, nir_shader* shader)
                if (!nir_intrinsic_infos[intrinsic->intrinsic].has_dest)
                   break;
                if (intrinsic->intrinsic == nir_intrinsic_strict_wqm_coord_amd) {
-                  regclasses[intrinsic->dest.ssa.index] =
-                     RegClass::get(RegType::vgpr, intrinsic->dest.ssa.num_components * 4 +
+                  regclasses[intrinsic->def.index] =
+                     RegClass::get(RegType::vgpr, intrinsic->def.num_components * 4 +
                                                      nir_intrinsic_base(intrinsic))
                         .as_linear();
                   break;
@@ -542,7 +542,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                    * it is beneficial to use a VGPR destination. This is because this allows
                    * to put the s_waitcnt further down, which decreases latency.
                    */
-                  if (only_used_by_cross_lane_instrs(&intrinsic->dest.ssa)) {
+                  if (only_used_by_cross_lane_instrs(&intrinsic->def)) {
                      type = RegType::vgpr;
                      break;
                   }
@@ -560,7 +560,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_ubo:
                case nir_intrinsic_load_ssbo:
                case nir_intrinsic_load_global_amd:
-                  type = intrinsic->dest.ssa.divergent ? RegType::vgpr : RegType::sgpr;
+                  type = intrinsic->def.divergent ? RegType::vgpr : RegType::sgpr;
                   break;
                case nir_intrinsic_load_view_index:
                   type = ctx->stage == fragment_fs ? RegType::vgpr : RegType::sgpr;
@@ -573,22 +573,21 @@ init_context(isel_context* ctx, nir_shader* shader)
                   }
                   break;
                }
-               RegClass rc = get_reg_class(ctx, type, intrinsic->dest.ssa.num_components,
-                                           intrinsic->dest.ssa.bit_size);
-               regclasses[intrinsic->dest.ssa.index] = rc;
+               RegClass rc =
+                  get_reg_class(ctx, type, intrinsic->def.num_components, intrinsic->def.bit_size);
+               regclasses[intrinsic->def.index] = rc;
                break;
             }
             case nir_instr_type_tex: {
                nir_tex_instr* tex = nir_instr_as_tex(instr);
-               RegType type = tex->dest.ssa.divergent ? RegType::vgpr : RegType::sgpr;
+               RegType type = tex->def.divergent ? RegType::vgpr : RegType::sgpr;
 
                if (tex->op == nir_texop_texture_samples) {
-                  assert(!tex->dest.ssa.divergent);
+                  assert(!tex->def.divergent);
                }
 
-               RegClass rc =
-                  get_reg_class(ctx, type, tex->dest.ssa.num_components, tex->dest.ssa.bit_size);
-               regclasses[tex->dest.ssa.index] = rc;
+               RegClass rc = get_reg_class(ctx, type, tex->def.num_components, tex->def.bit_size);
+               regclasses[tex->def.index] = rc;
                break;
             }
             case nir_instr_type_ssa_undef: {
@@ -601,11 +600,11 @@ init_context(isel_context* ctx, nir_shader* shader)
             case nir_instr_type_phi: {
                nir_phi_instr* phi = nir_instr_as_phi(instr);
                RegType type = RegType::sgpr;
-               unsigned num_components = phi->dest.ssa.num_components;
-               assert((phi->dest.ssa.bit_size != 1 || num_components == 1) &&
+               unsigned num_components = phi->def.num_components;
+               assert((phi->def.bit_size != 1 || num_components == 1) &&
                       "Multiple components not supported on boolean phis.");
 
-               if (phi->dest.ssa.divergent) {
+               if (phi->def.divergent) {
                   type = RegType::vgpr;
                } else {
                   nir_foreach_phi_src (src, phi) {
@@ -614,10 +613,10 @@ init_context(isel_context* ctx, nir_shader* shader)
                   }
                }
 
-               RegClass rc = get_reg_class(ctx, type, num_components, phi->dest.ssa.bit_size);
-               if (rc != regclasses[phi->dest.ssa.index])
+               RegClass rc = get_reg_class(ctx, type, num_components, phi->def.bit_size);
+               if (rc != regclasses[phi->def.index])
                   done = false;
-               regclasses[phi->dest.ssa.index] = rc;
+               regclasses[phi->def.index] = rc;
                break;
             }
             default: break;

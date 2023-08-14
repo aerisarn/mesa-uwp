@@ -1053,12 +1053,12 @@ RegisterAccessHandler::RegisterAccessHandler(Shader& shader, nir_intrinsic_instr
 
 void RegisterReadHandler::visit(LocalArray& array)
 {
-   int slots =  ir->dest.ssa.bit_size / 32;
-   auto pin = ir->dest.ssa.num_components > 1 ? pin_none : pin_free;
-   for (int i = 0; i < ir->dest.ssa.num_components; ++i) {
+   int slots =  ir->def.bit_size / 32;
+   auto pin = ir->def.num_components > 1 ? pin_none : pin_free;
+   for (int i = 0; i < ir->def.num_components; ++i) {
       for (int s = 0; s < slots; ++s) {
          int chan = i * slots + s;
-         auto dest = sh.value_factory().dest(ir->dest.ssa, chan, pin);
+         auto dest = sh.value_factory().dest(ir->def, chan, pin);
          auto src = array.element(nir_intrinsic_base(ir), addr, chan);
          sh.emit_instruction(new AluInstr(op1_mov, dest, src, AluInstr::write));
       }
@@ -1067,7 +1067,7 @@ void RegisterReadHandler::visit(LocalArray& array)
 
 void RegisterReadHandler::visit(Register& reg)
 {
-   auto dest = sh.value_factory().dest(ir->dest.ssa, 0, pin_free);
+   auto dest = sh.value_factory().dest(ir->def, 0, pin_free);
    sh.emit_instruction(new AluInstr(op1_mov, dest, &reg, AluInstr::write));
 }
 
@@ -1100,11 +1100,11 @@ void RegisterWriteHandler::visit(Register& dest)
 bool
 Shader::emit_atomic_local_shared(nir_intrinsic_instr *instr)
 {
-   bool uses_retval = !list_is_empty(&instr->dest.ssa.uses);
+   bool uses_retval = !list_is_empty(&instr->def.uses);
 
    auto& vf = value_factory();
 
-   auto dest_value = uses_retval ? vf.dest(instr->dest.ssa, 0, pin_free) : nullptr;
+   auto dest_value = uses_retval ? vf.dest(instr->def, 0, pin_free) : nullptr;
 
    auto op = lds_op_from_intrinsic(nir_intrinsic_atomic_op(instr), uses_retval);
 
@@ -1113,7 +1113,7 @@ Shader::emit_atomic_local_shared(nir_intrinsic_instr *instr)
     * value from read queue. */
    if (!uses_retval &&
        (op == LDS_XCHG_RET || op == LDS_CMP_XCHG_RET)) {
-      dest_value = vf.dest(instr->dest.ssa, 0, pin_free);
+      dest_value = vf.dest(instr->def, 0, pin_free);
    }
 
    auto address = vf.src(instr->src[0], 0);
@@ -1217,7 +1217,7 @@ bool
 Shader::emit_load_scratch(nir_intrinsic_instr *intr)
 {
    auto addr = value_factory().src(intr->src[0], 0);
-   auto dest = value_factory().dest_vec4(intr->dest.ssa, pin_group);
+   auto dest = value_factory().dest_vec4(intr->def, pin_group);
 
    if (chip_class() >= ISA_CC_R700) {
       RegisterVec4::Swizzle dest_swz = {7, 7, 7, 7};
@@ -1265,7 +1265,7 @@ Shader::emit_load_scratch(nir_intrinsic_instr *intr)
 
 bool Shader::emit_load_global(nir_intrinsic_instr *intr)
 {
-   auto dest = value_factory().dest_vec4(intr->dest.ssa, pin_group);
+   auto dest = value_factory().dest_vec4(intr->def, pin_group);
 
    auto src_value = value_factory().src(intr->src[0], 0);
    auto src = src_value->as_register();
@@ -1312,7 +1312,7 @@ bool
 Shader::emit_local_load(nir_intrinsic_instr *instr)
 {
    auto address = value_factory().src_vec(instr->src[0], instr->num_components);
-   auto dest_value = value_factory().dest_vec(instr->dest.ssa, instr->num_components);
+   auto dest_value = value_factory().dest_vec(instr->def, instr->num_components);
    emit_instruction(new LDSReadInstr(dest_value, address));
    return true;
 }
@@ -1450,7 +1450,7 @@ Shader::emit_load_tcs_param_base(nir_intrinsic_instr *instr, int offset)
    emit_instruction(
       new AluInstr(op1_mov, src, value_factory().zero(), AluInstr::last_write));
 
-   auto dest = value_factory().dest_vec4(instr->dest.ssa, pin_group);
+   auto dest = value_factory().dest_vec4(instr->def, pin_group);
    auto fetch = new LoadFromBuffer(dest,
                                    {0, 1, 2, 3},
                                    src,
@@ -1471,11 +1471,11 @@ Shader::emit_shader_clock(nir_intrinsic_instr *instr)
    auto& vf = value_factory();
    auto group = new AluGroup();
    group->add_instruction(new AluInstr(op1_mov,
-                                       vf.dest(instr->dest.ssa, 0, pin_chan),
+                                       vf.dest(instr->def, 0, pin_chan),
                                        vf.inline_const(ALU_SRC_TIME_LO, 0),
                                        AluInstr::write));
    group->add_instruction(new AluInstr(op1_mov,
-                                       vf.dest(instr->dest.ssa, 1, pin_chan),
+                                       vf.dest(instr->def, 1, pin_chan),
                                        vf.inline_const(ALU_SRC_TIME_HI, 0),
                                        AluInstr::last_write));
    emit_instruction(group);
@@ -1536,9 +1536,9 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
 
       auto addr = value_factory().src(instr->src[1], 0)->as_register();
       RegisterVec4::Swizzle dest_swz{7, 7, 7, 7};
-      auto dest = value_factory().dest_vec4(instr->dest.ssa, pin_group);
+      auto dest = value_factory().dest_vec4(instr->def, pin_group);
 
-      for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
+      for (unsigned i = 0; i < instr->def.num_components; ++i) {
          dest_swz[i] = i + nir_intrinsic_component(instr);
       }
 
@@ -1560,18 +1560,18 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
       int buf_cmp = nir_intrinsic_component(instr);
 
       AluInstr *ir = nullptr;
-      auto pin = instr->dest.ssa.num_components == 1
+      auto pin = instr->def.num_components == 1
                     ? pin_free
                     : pin_none;
-      for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
+      for (unsigned i = 0; i < instr->def.num_components; ++i) {
 
-         sfn_log << SfnLog::io << "UBO[" << bufid << "] " << instr->dest.ssa.index
+         sfn_log << SfnLog::io << "UBO[" << bufid << "] " << instr->def.index
                  << " const[" << i << "]: " << instr->const_index[i] << "\n";
 
          auto uniform =
             value_factory().uniform(512 + buf_offset->u32, i + buf_cmp, bufid->u32);
          ir = new AluInstr(op1_mov,
-                           value_factory().dest(instr->dest.ssa, i, pin),
+                           value_factory().dest(instr->def, i, pin),
                            uniform,
                            {alu_write});
          emit_instruction(ir);
@@ -1584,11 +1584,11 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
       AluInstr *ir = nullptr;
       auto kc_id = value_factory().src(instr->src[0], 0);
 
-      for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
+      for (unsigned i = 0; i < instr->def.num_components; ++i) {
          int cmp = buf_cmp + i;
          auto u =
             new UniformValue(512 + buf_offset->u32, cmp, kc_id, nir_intrinsic_base(instr));
-         auto dest = value_factory().dest(instr->dest.ssa, i, pin_none);
+         auto dest = value_factory().dest(instr->def, i, pin_none);
          ir = new AluInstr(op1_mov, dest, u, AluInstr::write);
          emit_instruction(ir);
       }

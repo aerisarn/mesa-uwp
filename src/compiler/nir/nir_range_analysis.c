@@ -2141,7 +2141,7 @@ ssa_def_bits_used(const nir_def *def, int recur)
          case nir_intrinsic_quad_swap_vertical:
          case nir_intrinsic_quad_swap_diagonal:
             if (src_idx == 0) {
-               bits_used |= ssa_def_bits_used(&use_intrin->dest.ssa, recur);
+               bits_used |= ssa_def_bits_used(&use_intrin->def, recur);
             } else {
                if (use_intrin->intrinsic == nir_intrinsic_quad_broadcast) {
                   bits_used |= 3;
@@ -2162,7 +2162,7 @@ ssa_def_bits_used(const nir_def *def, int recur)
             case nir_op_ior:
             case nir_op_iand:
             case nir_op_ixor:
-               bits_used |= ssa_def_bits_used(&use_intrin->dest.ssa, recur);
+               bits_used |= ssa_def_bits_used(&use_intrin->def, recur);
                break;
 
             default:
@@ -2179,7 +2179,7 @@ ssa_def_bits_used(const nir_def *def, int recur)
 
       case nir_instr_type_phi: {
          nir_phi_instr *use_phi = nir_instr_as_phi(src->parent_instr);
-         bits_used |= ssa_def_bits_used(&use_phi->dest.ssa, recur);
+         bits_used |= ssa_def_bits_used(&use_phi->def, recur);
          break;
       }
 

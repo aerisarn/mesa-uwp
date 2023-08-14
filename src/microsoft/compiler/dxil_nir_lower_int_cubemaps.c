@@ -188,10 +188,10 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_def *coor
       array_tex->src[i].src_type = tex->src[i].src_type;
    }
 
-   nir_def_init(&array_tex->instr, &array_tex->dest.ssa,
+   nir_def_init(&array_tex->instr, &array_tex->def,
                 nir_tex_instr_dest_size(array_tex), 32);
    nir_builder_instr_insert(b, &array_tex->instr);
-   return &array_tex->dest.ssa;
+   return &array_tex->def;
 }
 
 static nir_def *
@@ -426,12 +426,12 @@ lower_cube_txs(nir_builder *b, nir_tex_instr *tex)
 {
    b->cursor = nir_after_instr(&tex->instr);
    if (!tex->is_array)
-      return nir_trim_vector(b, &tex->dest.ssa, 2);
+      return nir_trim_vector(b, &tex->def, 2);
 
-   nir_def *array_dim = nir_channel(b, &tex->dest.ssa, 2);
+   nir_def *array_dim = nir_channel(b, &tex->def, 2);
    nir_def *cube_array_dim = nir_idiv(b, array_dim, nir_imm_int(b, 6));
-   return nir_vec3(b, nir_channel(b, &tex->dest.ssa, 0),
-                      nir_channel(b, &tex->dest.ssa, 1),
+   return nir_vec3(b, nir_channel(b, &tex->def, 0),
+                      nir_channel(b, &tex->def, 1),
                       cube_array_dim);
 }
 
@@ -440,12 +440,12 @@ lower_cube_image_size(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_after_instr(&intr->instr);
    if (!nir_intrinsic_image_array(intr))
-      return nir_trim_vector(b, &intr->dest.ssa, 2);
+      return nir_trim_vector(b, &intr->def, 2);
 
-   nir_def *array_dim = nir_channel(b, &intr->dest.ssa, 2);
+   nir_def *array_dim = nir_channel(b, &intr->def, 2);
    nir_def *cube_array_dim = nir_idiv(b, array_dim, nir_imm_int(b, 6));
-   return nir_vec3(b, nir_channel(b, &intr->dest.ssa, 0),
-                      nir_channel(b, &intr->dest.ssa, 1),
+   return nir_vec3(b, nir_channel(b, &intr->def, 0),
+                      nir_channel(b, &intr->def, 1),
                       cube_array_dim);
 }
 

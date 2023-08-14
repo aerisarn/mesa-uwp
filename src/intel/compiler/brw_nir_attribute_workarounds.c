@@ -48,7 +48,7 @@ apply_attr_wa_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 
    b->cursor = nir_after_instr(instr);
 
-   nir_def *val = &intrin->dest.ssa;
+   nir_def *val = &intrin->def;
 
    /* Do GL_FIXED rescaling for GLES2.0.  Our GL_FIXED attributes
     * come in as floating point conversions of the integer values.
@@ -115,7 +115,7 @@ apply_attr_wa_instr(nir_builder *b, nir_instr *instr, void *cb_data)
                                             : nir_u2f32(b, val);
    }
 
-   nir_def_rewrite_uses_after(&intrin->dest.ssa, val,
+   nir_def_rewrite_uses_after(&intrin->def, val,
                                   val->parent_instr);
 
    return true;

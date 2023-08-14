@@ -134,7 +134,7 @@ lower_intrinsic_to_arg(nir_builder *b, nir_instr *instr, void *state)
    }
 
    assert(replacement);
-   nir_def_rewrite_uses(&intrin->dest.ssa, replacement);
+   nir_def_rewrite_uses(&intrin->def, replacement);
    nir_instr_remove(&intrin->instr);
    return true;
 }

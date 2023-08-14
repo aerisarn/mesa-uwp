@@ -214,8 +214,8 @@ lower_taskmesh_payload_load(nir_builder *b,
                             lower_tsms_io_state *s)
 {
    unsigned base = nir_intrinsic_base(intrin);
-   unsigned num_components = intrin->dest.ssa.num_components;
-   unsigned bit_size = intrin->dest.ssa.bit_size;
+   unsigned num_components = intrin->def.num_components;
+   unsigned bit_size = intrin->def.bit_size;
 
    nir_def *ptr =
       b->shader->info.stage == MESA_SHADER_TASK ?

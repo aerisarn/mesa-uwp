@@ -116,19 +116,19 @@ loop_unroll_test_helper(nir_builder *bld, nir_def *init,
    nir_block *head_block = nir_loop_first_block(loop);
 
    nir_phi_instr *phi = nir_phi_instr_create(bld->shader);
-   nir_def_init(&phi->instr, &phi->dest.ssa, 1, 32);
+   nir_def_init(&phi->instr, &phi->def, 1, 32);
 
    nir_phi_instr_add_src(phi, top_block, nir_src_for_ssa(init));
 
    nir_def *cond = cond_instr(bld,
-                                  (reverse ? limit : &phi->dest.ssa),
-                                  (reverse ? &phi->dest.ssa : limit));
+                                  (reverse ? limit : &phi->def),
+                                  (reverse ? &phi->def : limit));
 
    nir_if *nif = nir_push_if(bld, cond);
    nir_jump(bld, nir_jump_break);
    nir_pop_if(bld, nif);
 
-   nir_def *var = incr_instr(bld, &phi->dest.ssa, step);
+   nir_def *var = incr_instr(bld, &phi->def, step);
 
    nir_phi_instr_add_src(phi, nir_cursor_current_block(bld->cursor),
                          nir_src_for_ssa(var));

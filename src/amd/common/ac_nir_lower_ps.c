@@ -187,7 +187,7 @@ lower_ps_load_barycentric(nir_builder *b, nir_intrinsic_instr *intrin, lower_ps_
    b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *replacement = nir_load_var(b, var);
-   nir_def_rewrite_uses(&intrin->dest.ssa, replacement);
+   nir_def_rewrite_uses(&intrin->def, replacement);
 
    nir_instr_remove(&intrin->instr);
    return true;
@@ -255,7 +255,7 @@ lower_ps_load_sample_mask_in(nir_builder *b, nir_intrinsic_instr *intrin, lower_
    nir_def *sample_mask = nir_load_sample_mask_in(b);
    nir_def *replacement = nir_iand(b, sample_mask, submask);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, replacement);
+   nir_def_rewrite_uses(&intrin->def, replacement);
 
    nir_instr_remove(&intrin->instr);
    return true;

@@ -228,14 +228,14 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
    case nir_intrinsic_decl_reg:
    {
       gpir_reg *reg = gpir_create_reg(block->comp);
-      block->comp->reg_for_ssa[instr->dest.ssa.index] = reg;
+      block->comp->reg_for_ssa[instr->def.index] = reg;
       return true;
    }
    case nir_intrinsic_load_reg:
    {
       gpir_node *node = gpir_node_find(block, &instr->src[0], 0);
       assert(node);
-      block->comp->node_for_ssa[instr->dest.ssa.index] = node;
+      block->comp->node_for_ssa[instr->def.index] = node;
       return true;
    }
    case nir_intrinsic_store_reg:
@@ -246,7 +246,7 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
       return true;
    }
    case nir_intrinsic_load_input:
-      return gpir_create_load(block, &instr->dest.ssa,
+      return gpir_create_load(block, &instr->def,
                               gpir_op_load_attribute,
                               nir_intrinsic_base(instr),
                               nir_intrinsic_component(instr)) != NULL;
@@ -255,14 +255,14 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
       int offset = nir_intrinsic_base(instr);
       offset += (int)nir_src_as_float(instr->src[0]);
 
-      return gpir_create_load(block, &instr->dest.ssa,
+      return gpir_create_load(block, &instr->def,
                               gpir_op_load_uniform,
                               offset / 4, offset % 4) != NULL;
    }
    case nir_intrinsic_load_viewport_scale:
-      return gpir_create_vector_load(block, &instr->dest.ssa, GPIR_VECTOR_SSA_VIEWPORT_SCALE);
+      return gpir_create_vector_load(block, &instr->def, GPIR_VECTOR_SSA_VIEWPORT_SCALE);
    case nir_intrinsic_load_viewport_offset:
-      return gpir_create_vector_load(block, &instr->dest.ssa, GPIR_VECTOR_SSA_VIEWPORT_OFFSET);
+      return gpir_create_vector_load(block, &instr->def, GPIR_VECTOR_SSA_VIEWPORT_OFFSET);
    case nir_intrinsic_store_output:
    {
       gpir_store_node *store = gpir_node_create(block, gpir_op_store_varying);

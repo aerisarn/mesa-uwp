@@ -324,7 +324,7 @@ lower_ray_query_intrinsic(nir_builder *b,
       }
       nir_pop_if(b, NULL);
       not_done = nir_if_phi(b, not_done_then, not_done_else);
-      nir_def_rewrite_uses(&intrin->dest.ssa, not_done);
+      nir_def_rewrite_uses(&intrin->def, not_done);
       break;
    }
 
@@ -490,7 +490,7 @@ lower_ray_query_intrinsic(nir_builder *b,
       }
 
       assert(sysval);
-      nir_def_rewrite_uses(&intrin->dest.ssa, sysval);
+      nir_def_rewrite_uses(&intrin->def, sysval);
       break;
    }
 

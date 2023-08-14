@@ -249,16 +249,16 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
 
    nir_def *load_data = nir_load_ubo(
       builder, 
-      intrin->dest.ssa.num_components,
-      intrin->dest.ssa.bit_size,
+      intrin->def.num_components,
+      intrin->def.bit_size,
       nir_channel(builder, load_desc, 0),
       nir_imm_int(builder, offset),
       .align_mul = 256,
       .align_offset = offset,
       .range_base = offset,
-      .range = intrin->dest.ssa.bit_size * intrin->dest.ssa.num_components / 8);
+      .range = intrin->def.bit_size * intrin->def.num_components / 8);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, load_data);
+   nir_def_rewrite_uses(&intrin->def, load_data);
    nir_instr_remove(instr);
    return true;
 }
@@ -338,8 +338,8 @@ lower_load_push_constant(struct nir_builder *builder, nir_instr *instr,
    nir_def *offset = nir_ssa_for_src(builder, intrin->src[0], 1);
    nir_def *load_data = nir_load_ubo(
       builder, 
-      intrin->dest.ssa.num_components,
-      intrin->dest.ssa.bit_size, 
+      intrin->def.num_components,
+      intrin->def.bit_size, 
       nir_channel(builder, load_desc, 0),
       nir_iadd_imm(builder, offset, base),
       .align_mul = nir_intrinsic_align_mul(intrin),
@@ -347,7 +347,7 @@ lower_load_push_constant(struct nir_builder *builder, nir_instr *instr,
       .range_base = base,
       .range = range);
 
-   nir_def_rewrite_uses(&intrin->dest.ssa, load_data);
+   nir_def_rewrite_uses(&intrin->def, load_data);
    nir_instr_remove(instr);
    return true;
 }
@@ -517,7 +517,7 @@ discard_psiz_access(struct nir_builder *builder, nir_instr *instr,
    builder->cursor = nir_before_instr(instr);
 
    if (intrin->intrinsic == nir_intrinsic_load_deref)
-      nir_def_rewrite_uses(&intrin->dest.ssa, nir_imm_float(builder, 1.0));
+      nir_def_rewrite_uses(&intrin->def, nir_imm_float(builder, 1.0));
 
    nir_instr_remove(instr);
    return true;
@@ -595,9 +595,9 @@ kill_undefined_varyings(struct nir_builder *b,
     * since that would remove the store instruction, and would make it tricky to satisfy
     * the DXIL requirements of writing all position components.
     */
-   nir_def *zero = nir_imm_zero(b, intr->dest.ssa.num_components,
-                                       intr->dest.ssa.bit_size);
-   nir_def_rewrite_uses(&intr->dest.ssa, zero);
+   nir_def *zero = nir_imm_zero(b, intr->def.num_components,
+                                       intr->def.bit_size);
+   nir_def_rewrite_uses(&intr->def, zero);
    nir_instr_remove(instr);
    return true;
 }
@@ -785,7 +785,7 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
    if (!var || var->data.location != VARYING_SLOT_PNTC)
       return false;
 
-   nir_def *point_center = &intr->dest.ssa;
+   nir_def *point_center = &intr->def;
    nir_variable *pos_var = (nir_variable *)data;
 
    b->cursor = nir_after_instr(instr);
@@ -795,11 +795,11 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
       pos = nir_load_var(b, pos_var);
    else if (var->data.sample)
       pos = nir_interp_deref_at_sample(b, 4, 32,
-                                       &nir_build_deref_var(b, pos_var)->dest.ssa,
+                                       &nir_build_deref_var(b, pos_var)->def,
                                        nir_load_sample_id(b));
    else
       pos = nir_interp_deref_at_offset(b, 4, 32,
-                                       &nir_build_deref_var(b, pos_var)->dest.ssa,
+                                       &nir_build_deref_var(b, pos_var)->def,
                                        nir_imm_zero(b, 2, 32));
 
    nir_def *pntc = nir_fadd_imm(b,
@@ -942,7 +942,7 @@ lower_bit_size_callback(const nir_instr *instr, void *data)
    case nir_intrinsic_reduce:
    case nir_intrinsic_inclusive_scan:
    case nir_intrinsic_exclusive_scan:
-      return intr->dest.ssa.bit_size == 1 ? 32 : 0;
+      return intr->def.bit_size == 1 ? 32 : 0;
    default:
       return 0;
    }

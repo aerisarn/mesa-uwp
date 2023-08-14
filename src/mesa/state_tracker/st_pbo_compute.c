@@ -685,13 +685,13 @@ create_conversion_shader(struct st_context *st, enum pipe_texture_target target,
    txf->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
    txf->src[2].src_type = nir_tex_src_texture_deref;
    nir_deref_instr *sampler_deref = nir_build_deref_var(&b, sampler);
-   txf->src[2].src = nir_src_for_ssa(&sampler_deref->dest.ssa);
+   txf->src[2].src = nir_src_for_ssa(&sampler_deref->def);
 
-   nir_def_init(&txf->instr, &txf->dest.ssa, 4, 32);
+   nir_def_init(&txf->instr, &txf->def, 4, 32);
    nir_builder_instr_insert(&b, &txf->instr);
 
    /* pass the grid offset as the coord to get the zero-indexed buffer offset */
-   do_shader_conversion(&b, &txf->dest.ssa, num_components, global_id, &sd);
+   do_shader_conversion(&b, &txf->def, num_components, global_id, &sd);
 
    nir_pop_if(&b, NULL);
 

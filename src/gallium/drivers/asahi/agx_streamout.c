@@ -438,7 +438,7 @@ lower_xfb_intrinsics(struct nir_builder *b, nir_instr *instr, void *data)
    /* XXX: Rename to "xfb index" to avoid the clash */
    case nir_intrinsic_load_vertex_id_zero_base: {
       nir_def *id = nir_load_vertex_id(b);
-      nir_def_rewrite_uses(&intr->dest.ssa, id);
+      nir_def_rewrite_uses(&intr->def, id);
       return true;
    }
 
@@ -533,7 +533,7 @@ lower_xfb_intrinsics(struct nir_builder *b, nir_instr *instr, void *data)
          id = nir_u2uN(b, index, id->bit_size);
       }
 
-      nir_def_rewrite_uses(&intr->dest.ssa, id);
+      nir_def_rewrite_uses(&intr->def, id);
       return true;
    }
 

@@ -8,20 +8,20 @@ _nir_foreach_def(nir_instr *instr, nir_foreach_def_cb cb, void *state)
    case nir_instr_type_alu:
       return cb(&nir_instr_as_alu(instr)->def, state);
    case nir_instr_type_deref:
-      return cb(&nir_instr_as_deref(instr)->dest.ssa, state);
+      return cb(&nir_instr_as_deref(instr)->def, state);
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       if (nir_intrinsic_infos[intrin->intrinsic].has_dest)
-         return cb(&intrin->dest.ssa, state);
+         return cb(&intrin->def, state);
       return true;
    }
    case nir_instr_type_tex:
-      return cb(&nir_instr_as_tex(instr)->dest.ssa, state);
+      return cb(&nir_instr_as_tex(instr)->def, state);
    case nir_instr_type_phi:
-      return cb(&nir_instr_as_phi(instr)->dest.ssa, state);
+      return cb(&nir_instr_as_phi(instr)->def, state);
    case nir_instr_type_parallel_copy: {
       nir_foreach_parallel_copy_entry(entry, nir_instr_as_parallel_copy(instr)) {
-         if (!entry->dest_is_reg && !cb(&entry->dest.dest.ssa, state))
+         if (!entry->dest_is_reg && !cb(&entry->dest.def, state))
             return false;
       }
       return true;

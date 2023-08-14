@@ -146,7 +146,7 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_intrinsic_reduce:
    case nir_intrinsic_inclusive_scan:
    case nir_intrinsic_exclusive_scan: {
-      const unsigned old_bit_size = intrin->dest.ssa.bit_size;
+      const unsigned old_bit_size = intrin->def.bit_size;
       assert(old_bit_size < bit_size);
 
       nir_alu_type type = nir_type_uint;
@@ -166,18 +166,18 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
       if (intrin->intrinsic == nir_intrinsic_vote_feq ||
           intrin->intrinsic == nir_intrinsic_vote_ieq) {
          /* These return a Boolean; it's always 1-bit */
-         assert(new_intrin->dest.ssa.bit_size == 1);
+         assert(new_intrin->def.bit_size == 1);
       } else {
          /* These return the same bit size as the source; we need to adjust
           * the size and then we'll have to emit a down-cast.
           */
-         assert(intrin->src[0].ssa->bit_size == intrin->dest.ssa.bit_size);
-         new_intrin->dest.ssa.bit_size = bit_size;
+         assert(intrin->src[0].ssa->bit_size == intrin->def.bit_size);
+         new_intrin->def.bit_size = bit_size;
       }
 
       nir_builder_instr_insert(b, &new_intrin->instr);
 
-      nir_def *res = &new_intrin->dest.ssa;
+      nir_def *res = &new_intrin->def;
       if (intrin->intrinsic == nir_intrinsic_exclusive_scan) {
          /* For exclusive scan, we have to be careful because the identity
           * value for the higher bit size may get added into the mix by
@@ -205,7 +205,7 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
           intrin->intrinsic != nir_intrinsic_vote_ieq)
          res = nir_u2uN(b, res, old_bit_size);
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, res);
+      nir_def_rewrite_uses(&intrin->def, res);
       break;
    }
 
@@ -218,7 +218,7 @@ static void
 lower_phi_instr(nir_builder *b, nir_phi_instr *phi, unsigned bit_size,
                 nir_phi_instr *last_phi)
 {
-   unsigned old_bit_size = phi->dest.ssa.bit_size;
+   unsigned old_bit_size = phi->def.bit_size;
    assert(old_bit_size < bit_size);
 
    nir_foreach_phi_src(src, phi) {
@@ -228,12 +228,12 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi, unsigned bit_size,
       nir_instr_rewrite_src(&phi->instr, &src->src, nir_src_for_ssa(new_src));
    }
 
-   phi->dest.ssa.bit_size = bit_size;
+   phi->def.bit_size = bit_size;
 
    b->cursor = nir_after_instr(&last_phi->instr);
 
-   nir_def *new_dest = nir_u2uN(b, &phi->dest.ssa, old_bit_size);
-   nir_def_rewrite_uses_after(&phi->dest.ssa, new_dest,
+   nir_def *new_dest = nir_u2uN(b, &phi->def, old_bit_size);
+   nir_def_rewrite_uses_after(&phi->def, new_dest,
                               new_dest->parent_instr);
 }
 
@@ -307,8 +307,8 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
       nir_phi_instr_create(b->shader),
       nir_phi_instr_create(b->shader)
    };
-   int num_components = phi->dest.ssa.num_components;
-   assert(phi->dest.ssa.bit_size == 64);
+   int num_components = phi->def.num_components;
+   assert(phi->def.bit_size == 64);
 
    nir_foreach_phi_src(src, phi) {
       assert(num_components == src->src.ssa->num_components);
@@ -322,16 +322,16 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
       nir_phi_instr_add_src(lowered[1], src->pred, nir_src_for_ssa(y));
    }
 
-   nir_def_init(&lowered[0]->instr, &lowered[0]->dest.ssa, num_components, 32);
-   nir_def_init(&lowered[1]->instr, &lowered[1]->dest.ssa, num_components, 32);
+   nir_def_init(&lowered[0]->instr, &lowered[0]->def, num_components, 32);
+   nir_def_init(&lowered[1]->instr, &lowered[1]->def, num_components, 32);
 
    b->cursor = nir_before_instr(&phi->instr);
    nir_builder_instr_insert(b, &lowered[0]->instr);
    nir_builder_instr_insert(b, &lowered[1]->instr);
 
    b->cursor = nir_after_phis(nir_cursor_current_block(b->cursor));
-   nir_def *merged = nir_pack_64_2x32_split(b, &lowered[0]->dest.ssa, &lowered[1]->dest.ssa);
-   nir_def_rewrite_uses(&phi->dest.ssa, merged);
+   nir_def *merged = nir_pack_64_2x32_split(b, &lowered[0]->def, &lowered[1]->def);
+   nir_def_rewrite_uses(&phi->def, merged);
    nir_instr_remove(&phi->instr);
 }
 
@@ -343,7 +343,7 @@ lower_64bit_phi_instr(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
 
    nir_phi_instr *phi = nir_instr_as_phi(instr);
 
-   if (phi->dest.ssa.bit_size <= 32)
+   if (phi->def.bit_size <= 32)
       return false;
 
    split_phi(b, phi);

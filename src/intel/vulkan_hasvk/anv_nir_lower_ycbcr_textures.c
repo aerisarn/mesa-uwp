@@ -53,12 +53,12 @@ get_texture_size(struct ycbcr_state *state, nir_deref_instr *texture)
    tex->dest_type = nir_type_int32;
 
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
-                                     &texture->dest.ssa);
+                                     &texture->def);
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, nir_tex_instr_dest_size(tex), 32);
+   nir_def_init(&tex->instr, &tex->def, nir_tex_instr_dest_size(tex), 32);
    nir_builder_instr_insert(b, &tex->instr);
 
-   state->image_size = nir_i2f32(b, &tex->dest.ssa);
+   state->image_size = nir_i2f32(b, &tex->def);
 
    return state->image_size;
 }
@@ -151,11 +151,11 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
    tex->sampler_index = old_tex->sampler_index;
    tex->is_array = old_tex->is_array;
 
-   nir_def_init(&tex->instr, &tex->dest.ssa, old_tex->dest.ssa.num_components,
-                old_tex->dest.ssa.bit_size);
+   nir_def_init(&tex->instr, &tex->def, old_tex->def.num_components,
+                old_tex->def.bit_size);
    nir_builder_instr_insert(b, &tex->instr);
 
-   return &tex->dest.ssa;
+   return &tex->def;
 }
 
 static unsigned
@@ -327,7 +327,7 @@ anv_nir_lower_ycbcr_textures_instr(nir_builder *builder,
                                         swizzled_bpcs);
    }
 
-   nir_def_rewrite_uses(&tex->dest.ssa, result);
+   nir_def_rewrite_uses(&tex->def, result);
    nir_instr_remove(&tex->instr);
 
    return true;

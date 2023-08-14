@@ -401,31 +401,31 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
                                                   nir_parallel_copy_entry);
          entry->src_is_reg = false;
          entry->dest_is_reg = false;
-         nir_def_init(&pcopy->instr, &entry->dest.dest.ssa,
-                      phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
-         entry->dest.dest.ssa.divergent = nir_src_is_divergent(src->src);
+         nir_def_init(&pcopy->instr, &entry->dest.def,
+                      phi->def.num_components, phi->def.bit_size);
+         entry->dest.def.divergent = nir_src_is_divergent(src->src);
          exec_list_push_tail(&pcopy->entries, &entry->node);
 
          nir_instr_rewrite_src(&pcopy->instr, &entry->src, src->src);
 
          nir_instr_rewrite_src(&phi->instr, &src->src,
-                               nir_src_for_ssa(&entry->dest.dest.ssa));
+                               nir_src_for_ssa(&entry->dest.def));
       }
 
       nir_parallel_copy_entry *entry = rzalloc(dead_ctx,
                                                nir_parallel_copy_entry);
       entry->src_is_reg = false;
       entry->dest_is_reg = false;
-      nir_def_init(&block_pcopy->instr, &entry->dest.dest.ssa,
-                   phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
-      entry->dest.dest.ssa.divergent = phi->dest.ssa.divergent;
+      nir_def_init(&block_pcopy->instr, &entry->dest.def,
+                   phi->def.num_components, phi->def.bit_size);
+      entry->dest.def.divergent = phi->def.divergent;
       exec_list_push_tail(&block_pcopy->entries, &entry->node);
 
-      nir_def_rewrite_uses(&phi->dest.ssa,
-                           &entry->dest.dest.ssa);
+      nir_def_rewrite_uses(&phi->def,
+                           &entry->dest.def);
 
       nir_instr_rewrite_src(&block_pcopy->instr, &entry->src,
-                            nir_src_for_ssa(&phi->dest.ssa));
+                            nir_src_for_ssa(&phi->def));
    }
 
    return true;
@@ -435,7 +435,7 @@ static bool
 coalesce_phi_nodes_block(nir_block *block, struct from_ssa_state *state)
 {
    nir_foreach_phi(phi, block) {
-      merge_node *dest_node = get_merge_node(&phi->dest.ssa, state);
+      merge_node *dest_node = get_merge_node(&phi->def, state);
 
       nir_foreach_phi_src(src, phi) {
          if (nir_src_is_undef(src->src))
@@ -457,7 +457,7 @@ aggressive_coalesce_parallel_copy(nir_parallel_copy_instr *pcopy,
    nir_foreach_parallel_copy_entry(entry, pcopy) {
       assert(!entry->src_is_reg);
       assert(!entry->dest_is_reg);
-      assert(entry->dest.dest.ssa.num_components ==
+      assert(entry->dest.def.num_components ==
              entry->src.ssa->num_components);
 
       /* Since load_const instructions are SSA only, we can't replace their
@@ -467,7 +467,7 @@ aggressive_coalesce_parallel_copy(nir_parallel_copy_instr *pcopy,
          continue;
 
       merge_node *src_node = get_merge_node(entry->src.ssa, state);
-      merge_node *dest_node = get_merge_node(&entry->dest.dest.ssa, state);
+      merge_node *dest_node = get_merge_node(&entry->dest.def, state);
 
       if (src_node->set == dest_node->set)
          continue;
@@ -557,7 +557,7 @@ nir_rewrite_uses_to_load_reg(nir_builder *b, nir_def *old,
             if (intr->intrinsic == nir_intrinsic_load_reg &&
                 intr->src[0].ssa == reg &&
                 nir_intrinsic_base(intr) == 0)
-               load = &intr->dest.ssa;
+               load = &intr->def;
          }
       }
 
@@ -621,7 +621,7 @@ remove_no_op_phi(nir_instr *instr, struct from_ssa_state *state)
    nir_phi_instr *phi = nir_instr_as_phi(instr);
 
    struct hash_entry *entry =
-      _mesa_hash_table_search(state->merge_node_table, &phi->dest.ssa);
+      _mesa_hash_table_search(state->merge_node_table, &phi->def);
    assert(entry != NULL);
    merge_node *node = (merge_node *)entry->data;
 
@@ -716,10 +716,10 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 
             nir_foreach_parallel_copy_entry(entry, pcopy) {
                assert(!entry->dest_is_reg);
-               assert(nir_def_is_unused(&entry->dest.dest.ssa));
+               assert(nir_def_is_unused(&entry->dest.def));
 
                /* Parallel copy destinations will always be registers */
-               nir_def *reg = reg_for_ssa_def(&entry->dest.dest.ssa, state);
+               nir_def *reg = reg_for_ssa_def(&entry->dest.def, state);
                assert(reg != NULL);
 
                entry->dest_is_reg = true;
@@ -1157,10 +1157,10 @@ nir_lower_phis_to_regs_block(nir_block *block)
 
    bool progress = false;
    nir_foreach_phi_safe(phi, block) {
-      nir_def *reg = decl_reg_for_ssa_def(&b, &phi->dest.ssa);
+      nir_def *reg = decl_reg_for_ssa_def(&b, &phi->def);
 
       b.cursor = nir_after_instr(&phi->instr);
-      nir_def_rewrite_uses(&phi->dest.ssa, nir_load_reg(&b, reg));
+      nir_def_rewrite_uses(&phi->def, nir_load_reg(&b, reg));
 
       nir_foreach_phi_src(src, phi) {
 

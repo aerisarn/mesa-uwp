@@ -217,7 +217,7 @@ lower_image_cast_instr(nir_builder *b, nir_instr *instr, void *_data)
    const struct util_format_description *from_desc, *to_desc;
    if (intr->intrinsic == nir_intrinsic_image_deref_load) {
       b->cursor = nir_after_instr(instr);
-      value = &intr->dest.ssa;
+      value = &intr->def;
       from_desc = util_format_description(emulation_format);
       to_desc = util_format_description(real_format);
    } else {

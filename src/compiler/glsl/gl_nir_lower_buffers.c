@@ -194,8 +194,8 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                break;
 
             /* We use nir_address_format_32bit_index_offset */
-            assert(deref->dest.ssa.bit_size == 32);
-            deref->dest.ssa.num_components = 2;
+            assert(deref->def.bit_size == 32);
+            deref->def.num_components = 2;
 
             progress = true;
 
@@ -237,8 +237,8 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
             cast->cast.align_mul = NIR_ALIGN_MUL_MAX;
             cast->cast.align_offset = offset % NIR_ALIGN_MUL_MAX;
 
-            nir_def_rewrite_uses(&deref->dest.ssa,
-                                     &cast->dest.ssa);
+            nir_def_rewrite_uses(&deref->def,
+                                     &cast->def);
             nir_deref_instr_remove_if_unused(deref);
             break;
          }
@@ -261,9 +261,9 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                 */
                if (glsl_type_is_boolean(deref->type)) {
                   b.cursor = nir_after_instr(&intrin->instr);
-                  intrin->dest.ssa.bit_size = 32;
-                  nir_def *bval = nir_i2b(&b, &intrin->dest.ssa);
-                  nir_def_rewrite_uses_after(&intrin->dest.ssa,
+                  intrin->def.bit_size = 32;
+                  nir_def *bval = nir_i2b(&b, &intrin->def);
+                  nir_def_rewrite_uses_after(&intrin->def,
                                                  bval,
                                                  bval->parent_instr);
                   progress = true;

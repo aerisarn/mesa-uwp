@@ -97,9 +97,9 @@ nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
    }
 
    /* NIR expects a vec4 result from the above texture instructions */
-   nir_def_init(&tex->instr, &tex->dest.ssa, 4, 32);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
 
-   nir_def *tex_r = nir_channel(b, &tex->dest.ssa, 0);
+   nir_def *tex_r = nir_channel(b, &tex->def, 0);
    nir_def *cmp = tex->src[comp_index].src.ssa;
 
    int proj_index = nir_tex_instr_src_index(tex, nir_tex_src_projector);

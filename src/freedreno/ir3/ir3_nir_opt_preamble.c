@@ -322,7 +322,7 @@ ir3_nir_lower_preamble(nir_shader *nir, struct ir3_shader_variant *v)
          if (intrin->intrinsic != nir_intrinsic_load_preamble)
             continue;
 
-         nir_def *dest = &intrin->dest.ssa;
+         nir_def *dest = &intrin->def;
 
          unsigned offset = preamble_base + nir_intrinsic_base(intrin);
          b->cursor = nir_before_instr(instr);

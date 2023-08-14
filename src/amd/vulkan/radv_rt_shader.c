@@ -62,7 +62,7 @@ lower_rt_derefs(nir_shader *shader)
             b.cursor = nir_before_instr(&deref->instr);
             nir_deref_instr *replacement =
                nir_build_deref_cast(&b, arg_offset, nir_var_function_temp, deref->var->type, 0);
-            nir_def_rewrite_uses(&deref->dest.ssa, &replacement->dest.ssa);
+            nir_def_rewrite_uses(&deref->def, &replacement->def);
             nir_instr_remove(&deref->instr);
          }
       }
@@ -560,7 +560,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
 
             if (ret)
-               nir_def_rewrite_uses(&intr->dest.ssa, ret);
+               nir_def_rewrite_uses(&intr->def, ret);
             nir_instr_remove(instr);
             break;
          }
@@ -600,8 +600,8 @@ lower_hit_attrib_deref(nir_builder *b, nir_instr *instr, void *data)
    b->cursor = nir_after_instr(instr);
 
    if (intrin->intrinsic == nir_intrinsic_load_deref) {
-      uint32_t num_components = intrin->dest.ssa.num_components;
-      uint32_t bit_size = intrin->dest.ssa.bit_size;
+      uint32_t num_components = intrin->def.num_components;
+      uint32_t bit_size = intrin->def.bit_size;
 
       nir_def *components[NIR_MAX_VEC_COMPONENTS];
 
@@ -626,7 +626,7 @@ lower_hit_attrib_deref(nir_builder *b, nir_instr *instr, void *data)
          }
       }
 
-      nir_def_rewrite_uses(&intrin->dest.ssa, nir_vec(b, components, num_components));
+      nir_def_rewrite_uses(&intrin->def, nir_vec(b, components, num_components));
    } else {
       nir_def *value = intrin->src[1].ssa;
       uint32_t num_components = value->num_components;
@@ -913,12 +913,12 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
                break;
 
             case nir_intrinsic_load_ray_t_max:
-               nir_def_rewrite_uses(&intrin->dest.ssa, hit_t);
+               nir_def_rewrite_uses(&intrin->def, hit_t);
                nir_instr_remove(&intrin->instr);
                break;
 
             case nir_intrinsic_load_ray_hit_kind:
-               nir_def_rewrite_uses(&intrin->dest.ssa, hit_kind);
+               nir_def_rewrite_uses(&intrin->def, hit_kind);
                nir_instr_remove(&intrin->instr);
                break;
 
@@ -939,8 +939,8 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
                break;
             case nir_intrinsic_load_rt_arg_scratch_offset_amd:
                b->cursor = nir_after_instr(instr);
-               nir_def *arg_offset = nir_isub(b, &intrin->dest.ssa, scratch_offset);
-               nir_def_rewrite_uses_after(&intrin->dest.ssa, arg_offset, arg_offset->parent_instr);
+               nir_def *arg_offset = nir_isub(b, &intrin->def, scratch_offset);
+               nir_def_rewrite_uses_after(&intrin->def, arg_offset, arg_offset->parent_instr);
                break;
 
             default:
@@ -1030,7 +1030,7 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
                nir_push_if(b, nir_inot(b, nir_load_intersection_opaque_amd(b)));
                {
                   nir_def *params[] = {
-                     &nir_build_deref_var(b, commit_tmp)->dest.ssa,
+                     &nir_build_deref_var(b, commit_tmp)->def,
                      hit_t,
                      hit_kind,
                      nir_imm_int(b, intersection->scratch_size),
@@ -1049,7 +1049,7 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
          nir_pop_if(b, NULL);
 
          nir_def *accepted = nir_load_var(b, commit_tmp);
-         nir_def_rewrite_uses(&intrin->dest.ssa, accepted);
+         nir_def_rewrite_uses(&intrin->def, accepted);
       }
    }
    nir_metadata_preserve(impl, nir_metadata_none);

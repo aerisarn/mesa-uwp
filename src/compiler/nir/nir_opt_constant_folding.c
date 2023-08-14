@@ -208,9 +208,9 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_const_value *v = const_value_for_deref(deref);
       if (v) {
          b->cursor = nir_before_instr(&intrin->instr);
-         nir_def *val = nir_build_imm(b, intrin->dest.ssa.num_components,
-                                      intrin->dest.ssa.bit_size, v);
-         nir_def_rewrite_uses(&intrin->dest.ssa, val);
+         nir_def *val = nir_build_imm(b, intrin->def.num_components,
+                                      intrin->def.bit_size, v);
+         nir_def_rewrite_uses(&intrin->def, val);
          nir_instr_remove(&intrin->instr);
          return true;
       }
@@ -233,23 +233,23 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       b->cursor = nir_before_instr(&intrin->instr);
       nir_def *val;
       if (offset >= range) {
-         val = nir_undef(b, intrin->dest.ssa.num_components,
-                         intrin->dest.ssa.bit_size);
+         val = nir_undef(b, intrin->def.num_components,
+                         intrin->def.bit_size);
       } else {
          nir_const_value imm[NIR_MAX_VEC_COMPONENTS];
          memset(imm, 0, sizeof(imm));
          uint8_t *data = (uint8_t *)b->shader->constant_data + base;
          for (unsigned i = 0; i < intrin->num_components; i++) {
-            unsigned bytes = intrin->dest.ssa.bit_size / 8;
+            unsigned bytes = intrin->def.bit_size / 8;
             bytes = MIN2(bytes, range - offset);
 
             memcpy(&imm[i].u64, data + offset, bytes);
             offset += bytes;
          }
-         val = nir_build_imm(b, intrin->dest.ssa.num_components,
-                             intrin->dest.ssa.bit_size, imm);
+         val = nir_build_imm(b, intrin->def.num_components,
+                             intrin->def.bit_size, imm);
       }
-      nir_def_rewrite_uses(&intrin->dest.ssa, val);
+      nir_def_rewrite_uses(&intrin->def, val);
       nir_instr_remove(&intrin->instr);
       return true;
    }
@@ -273,7 +273,7 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
        * the data is constant.
        */
       if (nir_src_is_const(intrin->src[0])) {
-         nir_def_rewrite_uses(&intrin->dest.ssa,
+         nir_def_rewrite_uses(&intrin->def,
                               intrin->src[0].ssa);
          nir_instr_remove(&intrin->instr);
          return true;
@@ -284,7 +284,7 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_intrinsic_vote_ieq:
       if (nir_src_is_const(intrin->src[0])) {
          b->cursor = nir_before_instr(&intrin->instr);
-         nir_def_rewrite_uses(&intrin->dest.ssa,
+         nir_def_rewrite_uses(&intrin->def,
                               nir_imm_true(b));
          nir_instr_remove(&intrin->instr);
          return true;
