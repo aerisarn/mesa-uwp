@@ -80,7 +80,7 @@ FragmentShader::load_input(nir_intrinsic_instr *intr)
       AluInstr *ir = nullptr;
       for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
          ir = new AluInstr(op1_mov,
-                           vf.dest(intr->dest, i, pin_none),
+                           vf.dest(intr->dest.ssa, i, pin_none),
                            m_pos_input[i],
                            AluInstr::write);
          emit_instruction(ir);
@@ -91,7 +91,7 @@ FragmentShader::load_input(nir_intrinsic_instr *intr)
 
    if (location == VARYING_SLOT_FACE) {
       auto ir = new AluInstr(op2_setgt_dx10,
-                             vf.dest(intr->dest, 0, pin_none),
+                             vf.dest(intr->dest.ssa, 0, pin_none),
                              m_face_input,
                              vf.inline_const(ALU_SRC_0, 0),
                              AluInstr::last_write);
@@ -181,9 +181,9 @@ FragmentShader::process_stage_intrinsic(nir_intrinsic_instr *intr)
       if (m_apply_sample_mask) {
          return emit_load_sample_mask_in(intr);
       } else
-         return emit_simple_mov(intr->dest, 0, m_sample_mask_reg);
+         return emit_simple_mov(intr->dest.ssa, 0, m_sample_mask_reg);
    case nir_intrinsic_load_sample_id:
-      return emit_simple_mov(intr->dest, 0, m_sample_id_reg);
+      return emit_simple_mov(intr->dest.ssa, 0, m_sample_id_reg);
    case nir_intrinsic_load_helper_invocation:
       return emit_load_helper_invocation(intr);
    case nir_intrinsic_load_sample_pos:
@@ -201,7 +201,7 @@ FragmentShader::load_interpolated_input(nir_intrinsic_instr *intr)
    switch (loc) {
    case VARYING_SLOT_POS:
       for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i)
-         vf.inject_value(intr->dest, i, m_pos_input[i]);
+         vf.inject_value(intr->dest.ssa, i, m_pos_input[i]);
       return true;
    case VARYING_SLOT_FACE:
       return false;
@@ -301,7 +301,7 @@ bool
 FragmentShader::emit_load_sample_mask_in(nir_intrinsic_instr *instr)
 {
    auto& vf = value_factory();
-   auto dest = vf.dest(instr->dest, 0, pin_free);
+   auto dest = vf.dest(instr->dest.ssa, 0, pin_free);
    auto tmp = vf.temp_register();
    assert(m_sample_id_reg);
    assert(m_sample_mask_reg);
@@ -332,7 +332,7 @@ FragmentShader::emit_load_helper_invocation(nir_intrinsic_instr *instr)
    vtx->set_fetch_flag(FetchInstr::vpm);
    vtx->set_fetch_flag(FetchInstr::use_tc);
    vtx->set_always_keep();
-   auto dst = value_factory().dest(instr->dest, 0, pin_free);
+   auto dst = value_factory().dest(instr->dest.ssa, 0, pin_free);
    auto ir = new AluInstr(op1_mov, dst, m_helper_invocation, AluInstr::last_write);
    ir->add_required_instr(vtx);
    emit_instruction(vtx);
@@ -570,7 +570,7 @@ FragmentShader::emit_export_pixel(nir_intrinsic_instr& intr)
 bool
 FragmentShader::emit_load_sample_pos(nir_intrinsic_instr *instr)
 {
-   auto dest = value_factory().dest_vec4(instr->dest, pin_group);
+   auto dest = value_factory().dest_vec4(instr->dest.ssa, pin_group);
 
    auto fetch = new LoadFromBuffer(dest,
                                    {0, 1, 2, 3},
@@ -689,7 +689,7 @@ FragmentShaderR600::load_input_hw(nir_intrinsic_instr *intr)
               << *m_interpolated_inputs[nir_intrinsic_base(intr)][i] << "\n";
       unsigned index = nir_intrinsic_component(intr) + i;
       assert(index < 4);
-      vf.inject_value(intr->dest,
+      vf.inject_value(intr->dest.ssa,
                       i,
                       m_interpolated_inputs[nir_intrinsic_base(intr)][index]);
    }
@@ -736,11 +736,11 @@ FragmentShaderEG::load_input_hw(nir_intrinsic_instr *intr)
                          AluInstr::last_write);
          emit_instruction(ir);
          emit_instruction(new AluInstr(
-            op1_mov, vf.dest(intr->dest, i, pin_chan), tmp, AluInstr::last_write));
+            op1_mov, vf.dest(intr->dest.ssa, i, pin_chan), tmp, AluInstr::last_write));
       } else {
 
          ir = new AluInstr(op1_interp_load_p0,
-                           vf.dest(intr->dest, i, pin_chan),
+                           vf.dest(intr->dest.ssa, i, pin_chan),
                            new InlineConstant(ALU_SRC_PARAM_BASE + io.lds_pos(), i),
                            AluInstr::write);
          emit_instruction(ir);
@@ -786,8 +786,8 @@ FragmentShaderEG::process_stage_intrinsic_hw(nir_intrinsic_instr *intr)
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_sample: {
       unsigned ij = barycentric_ij_index(intr);
-      vf.inject_value(intr->dest, 0, m_interpolator[ij].i);
-      vf.inject_value(intr->dest, 1, m_interpolator[ij].j);
+      vf.inject_value(intr->dest.ssa, 0, m_interpolator[ij].i);
+      vf.inject_value(intr->dest.ssa, 1, m_interpolator[ij].j);
       return true;
    }
    case nir_intrinsic_load_barycentric_at_offset:
@@ -810,7 +810,7 @@ FragmentShaderEG::load_interpolated_input_hw(nir_intrinsic_instr *intr)
    int start_comp = nir_intrinsic_component(intr);
    bool need_temp = start_comp > 0;
 
-   auto dst = need_temp ? vf.temp_vec4(pin_chan) : vf.dest_vec4(intr->dest, pin_chan);
+   auto dst = need_temp ? vf.temp_vec4(pin_chan) : vf.dest_vec4(intr->dest.ssa, pin_chan);
 
    InterpolateParams params;
 
@@ -824,7 +824,7 @@ FragmentShaderEG::load_interpolated_input_hw(nir_intrinsic_instr *intr)
    if (need_temp) {
       AluInstr *ir = nullptr;
       for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
-         auto real_dst = vf.dest(intr->dest, i, pin_chan);
+         auto real_dst = vf.dest(intr->dest.ssa, i, pin_chan);
          ir = new AluInstr(op1_mov, real_dst, dst[i + start_comp], AluInstr::write);
          emit_instruction(ir);
       }
@@ -936,13 +936,13 @@ FragmentShaderEG::load_barycentric_at_sample(nir_intrinsic_instr *instr)
       op3_muladd, tmp1, grad[1], slope[2], interpolator.i, {alu_write, alu_last_instr}));
 
    emit_instruction(new AluInstr(op3_muladd,
-                                 vf.dest(instr->dest, 0, pin_none),
+                                 vf.dest(instr->dest.ssa, 0, pin_none),
                                  grad[3],
                                  slope[3],
                                  tmp1,
                                  {alu_write}));
    emit_instruction(new AluInstr(op3_muladd,
-                                 vf.dest(instr->dest, 1, pin_none),
+                                 vf.dest(instr->dest.ssa, 1, pin_none),
                                  grad[2],
                                  slope[3],
                                  tmp0,
@@ -987,9 +987,9 @@ FragmentShaderEG::load_barycentric_at_offset(nir_intrinsic_instr *instr)
    emit_instruction(new AluInstr(
       op3_muladd, tmp1, help[1], ofs_x, interpolator.i, {alu_write, alu_last_instr}));
    emit_instruction(new AluInstr(
-      op3_muladd, vf.dest(instr->dest, 0, pin_none), help[3], ofs_y, tmp1, {alu_write}));
+      op3_muladd, vf.dest(instr->dest.ssa, 0, pin_none), help[3], ofs_y, tmp1, {alu_write}));
    emit_instruction(new AluInstr(op3_muladd,
-                                 vf.dest(instr->dest, 1, pin_none),
+                                 vf.dest(instr->dest.ssa, 1, pin_none),
                                  help[2],
                                  ofs_y,
                                  tmp0,

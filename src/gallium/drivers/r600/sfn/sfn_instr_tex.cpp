@@ -535,7 +535,7 @@ TexInstr::emit_lowered_tex(nir_tex_instr *tex, Inputs& src, Shader& shader)
    int32_t inst_mode = params[2].i32;
    uint32_t dst_swz_packed = params[3].u32;
 
-   auto dst = vf.dest_vec4(tex->dest, pin_group);
+   auto dst = vf.dest_vec4(tex->dest.ssa, pin_group);
 
    RegisterVec4::Swizzle src_swizzle = {0};
    for (int i = 0; i < 4; ++i)
@@ -580,7 +580,7 @@ bool
 TexInstr::emit_buf_txf(nir_tex_instr *tex, Inputs& src, Shader& shader)
 {
    auto& vf = shader.value_factory();
-   auto dst = vf.dest_vec4(tex->dest, pin_group);
+   auto dst = vf.dest_vec4(tex->dest.ssa, pin_group);
 
    PRegister tex_offset = nullptr;
    if (src.resource_offset)
@@ -633,7 +633,7 @@ TexInstr::emit_buf_txf(nir_tex_instr *tex, Inputs& src, Shader& shader)
 bool
 TexInstr::emit_tex_texture_samples(nir_tex_instr *instr, Inputs& src, Shader& shader)
 {
-   RegisterVec4 dest = shader.value_factory().dest_vec4(instr->dest, pin_chan);
+   RegisterVec4 dest = shader.value_factory().dest_vec4(instr->dest.ssa, pin_chan);
    RegisterVec4 help{
       0, true, {4, 4, 4, 4}
    };
@@ -655,7 +655,7 @@ TexInstr::emit_tex_txs(nir_tex_instr *tex,
 {
    auto& vf = shader.value_factory();
 
-   auto dest = vf.dest_vec4(tex->dest, pin_group);
+   auto dest = vf.dest_vec4(tex->dest.ssa, pin_group);
 
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       if (shader.chip_class() >= ISA_CC_EVERGREEN) {
@@ -885,7 +885,7 @@ TexInstr::emit_tex_lod(nir_tex_instr *tex, Inputs& src, Shader& shader)
    auto sampler = get_sampler_id(tex->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
-   auto dst = shader.value_factory().dest_vec4(tex->dest, pin_group);
+   auto dst = shader.value_factory().dest_vec4(tex->dest.ssa, pin_group);
 
    auto swizzle = src.swizzle_from_ncomps(tex->coord_components);
 

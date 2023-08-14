@@ -232,21 +232,15 @@ public:
 
    /* Inject a predefined value for a given dest value
     * (usually the result of a sysvalue load) */
-   void inject_value(const nir_dest& dest, int chan, PVirtualValue value);
+   void inject_value(const nir_def& def, int chan, PVirtualValue value);
 
    /* Get or create a destination value of vector of values */
    PRegister
-   dest(const nir_alu_dest& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
+   dest(const nir_def& def, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
 
-   PRegister
-   dest(const nir_dest& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
+   RegisterVec4 dest_vec4(const nir_def& dest, Pin pin);
 
-   PRegister
-   dest(const nir_def& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
-
-   RegisterVec4 dest_vec4(const nir_dest& dest, Pin pin);
-
-   std::vector<PRegister, Allocator<PRegister>> dest_vec(const nir_dest& dest,
+   std::vector<PRegister, Allocator<PRegister>> dest_vec(const nir_def& dest,
                                                          int num_components);
 
    PRegister dummy_dest(unsigned chan);

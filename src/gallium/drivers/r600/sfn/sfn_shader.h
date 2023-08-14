@@ -278,7 +278,7 @@ protected:
 
    const ShaderInput& input(int base) const;
 
-   bool emit_simple_mov(nir_dest& dest, int chan, PVirtualValue src, Pin pin = pin_free);
+   bool emit_simple_mov(nir_def& def, int chan, PVirtualValue src, Pin pin = pin_free);
 
    template <typename T>
    using IOMap = std::map<int, T, std::less<int>, Allocator<std::pair<const int, T>>>;

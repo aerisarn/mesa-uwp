@@ -168,19 +168,12 @@ ValueFactory::allocate_pinned_vec4(int sel, bool is_ssa)
 }
 
 void
-ValueFactory::inject_value(const nir_dest& dest, int chan, PVirtualValue value)
+ValueFactory::inject_value(const nir_def& def, int chan, PVirtualValue value)
 {
-   RegisterKey key(dest.ssa.index, chan, vp_ssa);
+   RegisterKey key(def.index, chan, vp_ssa);
    sfn_log << SfnLog::reg << "Inject value with key " << key << "\n";
    assert(m_values.find(key) == m_values.end());
    m_values[key] = value;
-}
-
-PRegister
-ValueFactory::dest(const nir_alu_dest& dst, int chan, Pin pin_channel, uint8_t chan_mask)
-{
-   sfn_log << SfnLog::reg << "Search (ref) " << &dst << "\n";
-   return dest(dst.dest, chan, pin_channel, chan_mask);
 }
 
 class TranslateRegister : public RegisterVisitor {
@@ -206,12 +199,6 @@ public:
    int m_offset;
    int m_chan;
 };
-
-PRegister
-ValueFactory::dest(const nir_dest& dst, int chan, Pin pin_channel, uint8_t chan_mask)
-{
-   return dest(dst.ssa, chan, pin_channel, chan_mask);
-}
 
 void
 ValueFactory::allocate_const(nir_load_const_instr *load_const)
@@ -277,14 +264,14 @@ ValueFactory::temp_vec4(Pin pin, const RegisterVec4::Swizzle& swizzle)
 }
 
 RegisterVec4
-ValueFactory::dest_vec4(const nir_dest& dst, Pin pin)
+ValueFactory::dest_vec4(const nir_def& def, Pin pin)
 {
    if (pin != pin_group && pin != pin_chgr)
       pin = pin_chan;
-   PRegister x = dest(dst, 0, pin);
-   PRegister y = dest(dst, 1, pin);
-   PRegister z = dest(dst, 2, pin);
-   PRegister w = dest(dst, 3, pin);
+   PRegister x = dest(def, 0, pin);
+   PRegister y = dest(def, 1, pin);
+   PRegister z = dest(def, 2, pin);
+   PRegister w = dest(def, 3, pin);
    return RegisterVec4(x, y, z, w, pin);
 }
 
@@ -475,12 +462,12 @@ ValueFactory::src_vec(const nir_src& source, int components)
 }
 
 std::vector<PRegister, Allocator<PRegister>>
-ValueFactory::dest_vec(const nir_dest& dst, int num_components)
+ValueFactory::dest_vec(const nir_def& def, int num_components)
 {
    std::vector<PRegister, Allocator<PRegister>> retval;
    retval.reserve(num_components);
    for (int i = 0; i < num_components; ++i)
-      retval.push_back(dest(dst, i, num_components > 1 ? pin_none : pin_free));
+      retval.push_back(dest(def, i, num_components > 1 ? pin_none : pin_free));
    return retval;
 }
 
