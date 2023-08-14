@@ -201,9 +201,9 @@ ir3_get_dst_ssa(struct ir3_context *ctx, nir_def *dst, unsigned n)
 }
 
 struct ir3_instruction **
-ir3_get_dst(struct ir3_context *ctx, nir_dest *dst, unsigned n)
+ir3_get_def(struct ir3_context *ctx, nir_def *def, unsigned n)
 {
-   struct ir3_instruction **value = ir3_get_dst_ssa(ctx, &dst->ssa, n);
+   struct ir3_instruction **value = ir3_get_dst_ssa(ctx, def, n);
 
    compile_assert(ctx, !ctx->last_dst);
    ctx->last_dst = value;
@@ -222,9 +222,9 @@ ir3_get_src(struct ir3_context *ctx, nir_src *src)
 }
 
 void
-ir3_put_dst(struct ir3_context *ctx, nir_dest *dst)
+ir3_put_def(struct ir3_context *ctx, nir_def *def)
 {
-   unsigned bit_size = ir3_bitsize(ctx, nir_dest_bit_size(*dst));
+   unsigned bit_size = ir3_bitsize(ctx, def->bit_size);
 
    /* add extra mov if dst value is shared reg.. in some cases not all
     * instructions can read from shared regs, in cases where they can
