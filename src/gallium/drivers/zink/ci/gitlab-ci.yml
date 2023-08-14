@@ -42,14 +42,14 @@
 .zink-turnip-rules:
   stage: layered-backends
   rules:
-    - !reference [.turnip-rules, rules]
+    - !reference [.collabora-turnip-rules, rules]
     - !reference [.zink-common-rules, rules]
 
 .zink-turnip-manual-rules:
   stage: layered-backends
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
-    - !reference [.turnip-manual-rules, rules]
+    - !reference [.collabora-turnip-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
 
 .zink-radv-rules:

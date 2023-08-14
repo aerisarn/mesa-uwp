@@ -1,7 +1,6 @@
 # Rules for changes that impact either freedreno or turnip.
 .freedreno-common-rules:
   rules:
-    - !reference [.freedreno-farm-rules, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - changes: &freedreno_core_file_list
       - src/freedreno/ci/**/*
@@ -16,15 +15,17 @@
 .freedreno-common-manual-rules:
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
-    - !reference [.freedreno-farm-manual-rules, rules]
     - !reference [.core-manual-rules, rules]
     - changes:
         *freedreno_core_file_list
       when: manual
 
-.freedreno-rules:
+
+# Two different farms (Google Freedreno and Collabora farm)
+.google-freedreno-rules:
   stage: freedreno
   rules:
+    - !reference [.freedreno-farm-rules, rules]
     - !reference [.freedreno-common-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &freedreno_gl_file_list
@@ -33,29 +34,76 @@
       - src/gallium/winsys/freedreno/**/*
       when: on_success
 
-.freedreno-manual-rules:
+.collabora-freedreno-rules:
+  stage: freedreno
+  rules:
+    - !reference [.collabora-farm-rules, rules]
+    - !reference [.freedreno-common-rules, rules]
+    - !reference [.gl-rules, rules]
+    - changes: &freedreno_gl_file_list
+      - src/freedreno/ir2/**/*
+      - src/gallium/drivers/freedreno/**/*
+      - src/gallium/winsys/freedreno/**/*
+      when: on_success
+
+.google-freedreno-manual-rules:
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.freedreno-farm-manual-rules, rules]
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
         *freedreno_gl_file_list
       when: manual
 
-.turnip-rules:
+.collabora-freedreno-manual-rules:
+  stage: freedreno
+  retry: !reference [.scheduled_pipeline-rules, retry]
+  rules:
+    - !reference [.collabora-farm-manual-rules, rules]
+    - !reference [.freedreno-common-manual-rules, rules]
+    - !reference [.gl-manual-rules, rules]
+    - changes:
+        *freedreno_gl_file_list
+      when: manual
+
+
+.google-turnip-rules:
   stage: freedreno
   rules:
+    - !reference [.freedreno-farm-rules, rules]
     - !reference [.freedreno-common-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes: &freedreno_vulkan_file_list
       - src/freedreno/vulkan/**/*
       when: on_success
 
-.turnip-manual-rules:
+.collabora-turnip-rules:
+  stage: freedreno
+  rules:
+    - !reference [.freedreno-farm-manual-rules, rules]
+    - !reference [.freedreno-common-rules, rules]
+    - !reference [.vulkan-rules, rules]
+    - changes: *freedreno_vulkan_file_list
+      when: on_success
+
+.google-turnip-manual-rules:
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.freedreno-farm-manual-rules, rules]
+    - !reference [.freedreno-common-manual-rules, rules]
+    - !reference [.vulkan-manual-rules, rules]
+    - changes:
+        *freedreno_vulkan_file_list
+      when: manual
+
+.collabora-turnip-manual-rules:
+  stage: freedreno
+  retry: !reference [.scheduled_pipeline-rules, retry]
+  rules:
+    - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes:
@@ -63,26 +111,36 @@
       when: manual
 
 # For piglit and skqp test jobs that run both GL and VK tests.
-.freedreno-turnip-rules:
+.google-freedreno-turnip-rules:
   rules:
-    - !reference [.freedreno-rules, rules]
-    - !reference [.turnip-rules, rules]
+    - !reference [.google-freedreno-rules, rules]
+    - !reference [.google-turnip-rules, rules]
 
-.freedreno-rules-restricted:
+.collabora-freedreno-turnip-rules:
+  rules:
+    - !reference [.collabora-freedreno-rules, rules]
+    - !reference [.collabora-turnip-rules, rules]
+
+.google-freedreno-rules-restricted:
   stage: freedreno
   rules:
     - !reference [.restricted-rules, rules]
-    - !reference [.freedreno-rules, rules]
+    - !reference [.google-freedreno-rules, rules]
 
-.freedreno-rules-performance:
+.collabora-freedreno-rules-restricted:
+  stage: freedreno
+  rules:
+    - !reference [.restricted-rules, rules]
+    - !reference [.collabora-freedreno-rules, rules]
+
+.google-freedreno-rules-performance:
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
     - !reference [.performance-rules, rules]
-    - !reference [.freedreno-manual-rules, rules]
+    - !reference [.google-freedreno-manual-rules, rules]
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
   variables:
-    JOB_PRIORITY: 40
     # Ensure that we are using the release build artifact
     S3_ARTIFACT_NAME: mesa-arm64-default-release
   needs:
@@ -90,11 +148,27 @@
     - debian-arm64-release
   dependencies: null
 
+.collabora-freedreno-rules-performance:
+  stage: freedreno
+  retry: !reference [.scheduled_pipeline-rules, retry]
+  rules:
+    - !reference [.performance-rules, rules]
+    - !reference [.collabora-freedreno-manual-rules, rules]
+  allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
+  variables:
+    JOB_PRIORITY: 40
+    # Ensure that we are using the release build artifact
+    S3_ARTIFACT_NAME: mesa-arm64-default-release
+  needs:
+    - debian/x86_64_build
+    - debian-arm64-release
+  dependencies: null
+
 
 .google-freedreno-test:
   extends:
     - .baremetal-test-arm64
-    - .freedreno-rules
+    - .google-freedreno-rules
   variables:
     VK_DRIVER: freedreno
     FLAKES_CHANNEL: "#freedreno-ci"
@@ -147,7 +221,7 @@ a306_gl:
   extends:
     - .piglit-test
     - .a306-test
-    - .freedreno-manual-rules
+    - .google-freedreno-manual-rules
   variables:
     HWCI_START_XORG: 1
 
@@ -214,7 +288,7 @@ a530_gl:
 .a530_piglit_gl:
   extends:
     - .a530_piglit
-    - .freedreno-manual-rules
+    - .google-freedreno-manual-rules
   parallel: null
   variables:
     PIGLIT_PROFILES: quick_gl
@@ -260,7 +334,7 @@ a618_vk:
   extends:
     - .lava-test-deqp:arm64
     - .a618-test-kingoftown-r1
-    - .turnip-rules
+    - .collabora-turnip-rules
   parallel: 12
   variables:
     DEQP_SUITE: freedreno-a618-vk
@@ -269,7 +343,7 @@ a618_vk:
 a618_vk_full:
   extends:
     - a618_vk
-    - .turnip-manual-rules
+    - .collabora-turnip-manual-rules
   # We use a longer timeout to keep the parallel down so that we don't lock up
   # too many runners for a long time when a dev is trying out at full VK status.
   timeout: 4h
@@ -285,7 +359,7 @@ a618_gl:
   extends:
     - .lava-test-deqp:arm64
     - .a618-test-limozeen-nots-r5
-    - .freedreno-rules
+    - .collabora-freedreno-rules
   parallel: 4
   variables:
     DEQP_SUITE: freedreno-a618
@@ -296,7 +370,7 @@ a618_gl:
   extends:
     - .lava-test-deqp:arm64
     - .a618-test-limozeen-nots-r5
-    - .freedreno-rules
+    - .collabora-freedreno-rules
   variables:
     DEQP_VER: egl
     HWCI_START_XORG: 1
@@ -307,9 +381,9 @@ a618_gl:
   extends:
     - .lava-test-deqp:arm64
     - .a618-test-limozeen-nots-r5
-    - .freedreno-rules
+    - .collabora-freedreno-rules
     # SKQP tests both the GL and VK drivers.
-    - .freedreno-turnip-rules
+    - .collabora-freedreno-turnip-rules
   variables:
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a618-skqp
@@ -319,9 +393,9 @@ a618_gl:
     - .piglit-test
     - .lava-piglit:arm64
     - .a618-test-limozeen-nots-r5
-    - .freedreno-rules
+    - .collabora-freedreno-rules
     # Note that piglit has GL+VK integration testing.
-    - .freedreno-turnip-rules
+    - .collabora-freedreno-turnip-rules
   variables:
     HWCI_START_WESTON: 1
     DEQP_VER: gles2
@@ -331,7 +405,7 @@ a618-traces:
   extends:
     - .lava-piglit-traces:arm64
     - .a618-test-limozeen-nots-r5
-    - .freedreno-rules
+    - .collabora-freedreno-rules
   variables:
     HWCI_START_WESTON: 1
     # So we aren't capped by VSync by the X server
@@ -349,7 +423,7 @@ a618-traces-performance:
   extends:
     - a618-traces
     - .piglit-performance:arm64
-    - .freedreno-rules-performance
+    - .collabora-freedreno-rules-performance
   variables:
     # Always use the same device
     # a618 tag starts with cbg-1 (not cbg-0) for some reason
@@ -374,7 +448,7 @@ a618-traces-performance:
 a660_gl:
   extends:
     - .lava-test-deqp:arm64
-    - .freedreno-rules
+    - .collabora-freedreno-rules
     - .lava-sm8350-hdk
   parallel: 2
   variables:
@@ -435,7 +509,7 @@ a630_skqp:
     - .baremetal-deqp-test
     - .a630-test
     # SKQP tests both the GL and VK drivers.
-    - .freedreno-turnip-rules
+    - .google-freedreno-turnip-rules
   variables:
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-skqp
@@ -444,7 +518,7 @@ a630_vk:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
-    - .turnip-rules
+    - .google-turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk
 
@@ -457,7 +531,7 @@ a630_vk_full:
   extends:
     - a630_vk
     - .a630-full
-    - .turnip-manual-rules
+    - .google-turnip-manual-rules
   parallel: 2
   variables:
     DEQP_SUITE: freedreno-a630-vk-full
@@ -468,7 +542,7 @@ a630_vk_asan:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
     - .baremetal-arm64-asan-test
-    - .turnip-rules
+    - .google-turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk-asan
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
@@ -479,7 +553,7 @@ a630_piglit:
     - .baremetal-deqp-test
     - .a630-test
     # Note that piglit has GL+VK integration testing.
-    - .freedreno-turnip-rules
+    - .google-freedreno-turnip-rules
   variables:
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-piglit
@@ -500,7 +574,7 @@ a630-traces:
 a630-traces-restricted:
   extends:
     - a630-traces
-    - .freedreno-rules-restricted
+    - .google-freedreno-rules-restricted
   variables:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/restricted-traces-freedreno.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: "--download-caching-proxy-url=http://10.42.0.1:8888/cache/?uri= --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-private --jwt-file=${CI_JOB_JWT_FILE}"
@@ -509,7 +583,7 @@ a630-traces-restricted:
 a630-traces-performance:
   extends:
     - a630-traces
-    - .freedreno-rules-performance
+    - .google-freedreno-rules-performance
   variables:
     PIGLIT_REPLAY_SUBCOMMAND: "profile"
     PIGLIT_REPLAY_EXTRA_ARGS: "--download-caching-proxy-url=http://10.42.0.1:8888/cache/?uri= --db-path ${CI_PROJECT_DIR}/replayer-db/"
