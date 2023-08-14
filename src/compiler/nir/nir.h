@@ -1009,6 +1009,24 @@ typedef struct nir_src {
    bool is_if;
 } nir_src;
 
+static inline bool
+nir_src_is_if(const nir_src *src)
+{
+   return src->is_if;
+}
+
+static inline nir_instr *
+nir_src_parent_instr(const nir_src *src)
+{
+   return src->parent_instr;
+}
+
+static inline struct nir_if *
+nir_src_parent_if(const nir_src *src)
+{
+   return src->parent_if;
+}
+
 static inline void
 nir_src_set_parent_instr(nir_src *src, nir_instr *parent_instr)
 {
