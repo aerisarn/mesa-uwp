@@ -1184,9 +1184,6 @@ ${pass_name}(nir_shader *shader)
     */
    assert((int)options->lower_bitfield_extract +
           (int)options->lower_bitfield_extract_to_shifts <= 1);
-   assert((int)options->lower_bitfield_insert +
-          (int)options->lower_bitfield_insert_to_shifts +
-          (int)options->lower_bitfield_insert_to_bitfield_select <= 1);
 
 
    STATIC_ASSERT(${str(cache["next_index"])} == ARRAY_SIZE(${pass_name}_values));

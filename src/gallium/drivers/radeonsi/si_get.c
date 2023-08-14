@@ -1268,7 +1268,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_flrp32 = true,
       .lower_flrp64 = true,
       .lower_fdiv = true,
-      .lower_bitfield_insert_to_bitfield_select = true,
+      .lower_bitfield_insert = true,
       .lower_bitfield_extract = true,
       /*        |---------------------------------- Performance & Availability --------------------------------|
        *        |MAD/MAC/MADAK/MADMK|MAD_LEGACY|MAC_LEGACY|    FMA     |FMAC/FMAAK/FMAMK|FMA_LEGACY|PK_FMA_F16,|Best choice
@@ -1323,6 +1323,8 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .has_sudot_4x8 = sscreen->info.has_accelerated_dot_product && sscreen->info.gfx_level >= GFX11,
       .has_udot_4x8 = sscreen->info.has_accelerated_dot_product,
       .has_dot_2x16 = sscreen->info.has_accelerated_dot_product && sscreen->info.gfx_level < GFX11,
+      .has_bfm = true,
+      .has_bitfield_select = true,
       .optimize_sample_mask_in = true,
       .max_unroll_iterations = 128,
       .max_unroll_iterations_aggressive = 128,

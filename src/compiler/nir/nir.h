@@ -3415,12 +3415,8 @@ typedef struct nir_shader_compiler_options {
    bool lower_bitfield_extract;
    /** Lowers ibitfield_extract/ubitfield_extract to compares, shifts. */
    bool lower_bitfield_extract_to_shifts;
-   /** Lowers bitfield_insert to bfi/bfm */
+   /** Lowers bitfield_insert. */
    bool lower_bitfield_insert;
-   /** Lowers bitfield_insert to compares, and shifts. */
-   bool lower_bitfield_insert_to_shifts;
-   /** Lowers bitfield_insert to bfm/bitfield_select. */
-   bool lower_bitfield_insert_to_bitfield_select;
    /** Lowers bitfield_reverse to shifts. */
    bool lower_bitfield_reverse;
    /** Lowers bit_count to shifts. */
@@ -3747,6 +3743,15 @@ typedef struct nir_shader_compiler_options {
 
    /** Backend supports bitz/bitnz. */
    bool has_bit_test;
+
+   /** Backend supports bfm. */
+   bool has_bfm;
+
+   /** Backend supports bfi. */
+   bool has_bfi;
+
+   /** Backend supports bitfield_select. */
+   bool has_bitfield_select;
 
    /**
     * Is this the Intel vec4 backend?

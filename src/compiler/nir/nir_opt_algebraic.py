@@ -1895,7 +1895,7 @@ optimizations.extend([
    (('bitfield_insert', 'base', 'insert', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'), 'insert',
               ('bfi', ('bfm', 'bits', 'offset'), 'insert', 'base')),
-    'options->lower_bitfield_insert'),
+    'options->lower_bitfield_insert && options->has_bfm && options->has_bfi'),
    (('ihadd', a, b), ('iadd', ('iand', a, b), ('ishr', ('ixor', a, b), 1)), 'options->lower_hadd'),
    (('uhadd', a, b), ('iadd', ('iand', a, b), ('ushr', ('ixor', a, b), 1)), 'options->lower_hadd'),
    (('irhadd', a, b), ('isub', ('ior', a, b), ('ishr', ('ixor', a, b), 1)), 'options->lower_hadd'),
@@ -1988,13 +1988,13 @@ optimizations.extend([
     (('ior',
      ('iand', 'base', ('inot', ('ishl', ('isub', ('ishl', 1, 'bits'), 1), 'offset'))),
      ('iand', ('ishl', 'insert', 'offset'), ('ishl', ('isub', ('ishl', 1, 'bits'), 1), 'offset'))))),
-    'options->lower_bitfield_insert_to_shifts'),
+    'options->lower_bitfield_insert && (!options->has_bfm || (!options->has_bfi && !options->has_bitfield_select))'),
 
    # Alternative lowering that uses bitfield_select.
    (('bitfield_insert', 'base', 'insert', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'), 'insert',
               ('bitfield_select', ('bfm', 'bits', 'offset'), ('ishl', 'insert', 'offset'), 'base')),
-    'options->lower_bitfield_insert_to_bitfield_select'),
+    'options->lower_bitfield_insert && options->has_bfm && options->has_bitfield_select'),
 
    (('ibitfield_extract', 'value', 'offset', 'bits'),
     ('bcsel', ('ult', 31, 'bits'), 'value',
@@ -2029,7 +2029,7 @@ optimizations.extend([
     ('bfm', 'width', 'offset')),
 
    # open-coded BFM
-   (('iadd@32', ('ishl', 1, a), -1), ('bfm', a, 0), 'options->lower_bitfield_insert_to_bitfield_select || options->lower_bitfield_insert'),
+   (('iadd@32', ('ishl', 1, a), -1), ('bfm', a, 0), 'options->has_bfm'),
    (('ishl', ('bfm', a, 0), b), ('bfm', a, b)),
 
    # Section 8.8 (Integer Functions) of the GLSL 4.60 spec says:

@@ -52,7 +52,7 @@ void bifrost_compile_shader_nir(nir_shader *nir,
                                                                                \
       .lower_fsign = true,                                                     \
                                                                                \
-      .lower_bitfield_insert_to_shifts = true,                                 \
+      .lower_bitfield_insert = true,                                           \
       .lower_bitfield_extract_to_shifts = true,                                \
       .lower_insert_byte = true,                                               \
       .lower_rotate = true,                                                    \

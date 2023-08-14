@@ -1339,6 +1339,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_fmod = true,
 		.lower_uadd_carry = true,
 		.lower_usub_borrow = true,
+		.lower_bitfield_insert = true,
 		.lower_extract_byte = true,
 		.lower_extract_word = true,
 		.lower_insert_byte = true,
@@ -1381,14 +1382,14 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 
 	if (rscreen->info.gfx_level >= EVERGREEN) {
 		rscreen->nir_options.lower_bitfield_extract = true;
-		rscreen->nir_options.lower_bitfield_insert_to_bitfield_select = true;
+		rscreen->nir_options.has_bfm = true;
+		rscreen->nir_options.has_bitfield_select = true;
 	}
 
 	if (rscreen->info.gfx_level < EVERGREEN) {
 		/* Pre-EG doesn't have these ALU ops */
 		rscreen->nir_options.lower_bit_count = true;
 		rscreen->nir_options.lower_bitfield_reverse = true;
-		rscreen->nir_options.lower_bitfield_insert_to_shifts = true;
 		rscreen->nir_options.lower_bitfield_extract_to_shifts = true;
 	}
 
