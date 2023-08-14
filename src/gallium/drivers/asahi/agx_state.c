@@ -1336,6 +1336,7 @@ agx_create_vertex_elements(struct pipe_context *ctx, unsigned count,
       attribs[i] = (struct agx_attribute){
          .buf = ve.vertex_buffer_index,
          .src_offset = ve.src_offset,
+         .stride = ve.src_stride,
          .format = ve.src_format,
          .divisor = ve.instance_divisor,
       };
