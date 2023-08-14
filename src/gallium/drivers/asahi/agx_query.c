@@ -81,6 +81,7 @@ agx_begin_query(struct pipe_context *pctx, struct pipe_query *pquery)
     */
    if (query->writer) {
       agx_flush_batch_for_reason(ctx, query->writer, "Query overwritten");
+      agx_sync_batch_for_reason(ctx, query->writer, "Query overwrriten");
    }
 
    assert(query->writer == NULL);
