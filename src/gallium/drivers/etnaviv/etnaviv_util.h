@@ -31,19 +31,6 @@
 /* for conditionally setting boolean flag(s): */
 #define COND(bool, val) ((bool) ? (val) : 0)
 
-/* clamped float [0.0 .. 1.0] -> [0 .. 255] */
-static inline uint8_t
-etna_cfloat_to_uint8(float f)
-{
-   if (f <= 0.0f)
-      return 0;
-
-   if (f >= (1.0f - 1.0f / 256.0f))
-      return 255;
-
-   return f * 256.0f;
-}
-
 /* float to fixp 5.5 */
 static inline uint32_t
 etna_float_to_fixp55(float f)
