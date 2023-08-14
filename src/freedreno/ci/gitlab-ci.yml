@@ -102,8 +102,6 @@
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 $BM_KERNEL_EXTRA_ARGS root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
   script:
     - ./install/bare-metal/fastboot.sh
-  tags:
-    - google-freedreno-db410c
 
 .baremetal-deqp-test-freedreno-vk:
   extends:
@@ -132,6 +130,8 @@
     BM_KERNEL: Image.gz
     BM_DTB: apq8016-sbc
     GPU_VERSION: freedreno-a307
+  tags:
+    - google-freedreno-db410c
 
 a306_gl:
   extends:
