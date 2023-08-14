@@ -213,14 +213,6 @@ zink-tu-a618-traces-performance:
     - !reference [zink-tu-a618-traces, needs]
     - !reference [.piglit-performance:arm64, needs]
 
-.zink-freedreno-a630-traces:
-  extends:
-    - a630-traces
-    - .zink-turnip-rules
-    - .zink-trace-test
-  variables:
-    PIGLIT_REPLAY_DEVICE_NAME: "zink-a630"
-
 ############### Combined testing (GL, GLES, Piglit) on RADV
 .radv-zink-test-valve:
   timeout: 30m
