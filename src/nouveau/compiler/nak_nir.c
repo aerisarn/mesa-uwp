@@ -350,7 +350,8 @@ nak_nir_lower_fs_inputs(nir_shader *nir)
             continue;
 
          nir_intrinsic_instr *bary = nir_src_as_intrinsic(intrin->src[0]);
-         if (nir_intrinsic_interp_mode(bary) == INTERP_MODE_SMOOTH) {
+         if (nir_intrinsic_interp_mode(bary) == INTERP_MODE_SMOOTH ||
+             nir_intrinsic_interp_mode(bary) == INTERP_MODE_NONE) {
             /* Perspective-correct interpolation requires that we divide by
              * gl_FragCoord.w.
              */
