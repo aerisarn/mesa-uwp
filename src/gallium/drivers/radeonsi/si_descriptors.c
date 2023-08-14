@@ -2898,9 +2898,6 @@ void si_init_all_descriptors(struct si_context *sctx)
                          si_get_user_data_base(sctx->gfx_level, TESS_OFF, GS_OFF,
                                                NGG_OFF, PIPE_SHADER_GEOMETRY));
    si_set_user_data_base(sctx, PIPE_SHADER_FRAGMENT, R_00B030_SPI_SHADER_USER_DATA_PS_0);
-
-   si_set_ring_buffer(sctx, SI_GS_ATTRIBUTE_RING, &sctx->screen->attribute_ring->b.b,
-                      0, ~0u, false, true, 16, 32, 0);
 }
 
 void si_release_all_descriptors(struct si_context *sctx)

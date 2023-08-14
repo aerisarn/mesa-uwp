@@ -290,24 +290,32 @@ static void declare_vs_input_vgprs(struct si_shader_args *args, struct si_shader
    }
 }
 
-static void declare_vs_blit_inputs(struct si_shader_args *args, unsigned vs_blit_property)
+static void declare_vs_blit_inputs(struct si_shader *shader, struct si_shader_args *args)
 {
+   bool has_attribute_ring_address = shader->selector->screen->info.gfx_level >= GFX11;
+
    ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_blit_inputs); /* i16 x1, y1 */
    ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);                  /* i16 x1, y1 */
    ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL);                /* depth */
 
-   if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_COLOR) {
+   if (shader->selector->info.base.vs.blit_sgprs_amd ==
+       SI_VS_BLIT_SGPRS_POS_COLOR + has_attribute_ring_address) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color0 */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color1 */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color2 */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color3 */
-   } else if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_TEXCOORD) {
+      if (has_attribute_ring_address)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* attribute ring address */
+   } else if (shader->selector->info.base.vs.blit_sgprs_amd ==
+              SI_VS_BLIT_SGPRS_POS_TEXCOORD + has_attribute_ring_address) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.x1 */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.y1 */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.x2 */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.y2 */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.z */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.w */
+      if (has_attribute_ring_address)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* attribute ring address */
    }
 }
 
@@ -356,7 +364,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       declare_global_desc_pointers(args);
 
       if (sel->info.base.vs.blit_sgprs_amd) {
-         declare_vs_blit_inputs(args, sel->info.base.vs.blit_sgprs_amd);
+         declare_vs_blit_inputs(shader, args);
       } else {
          declare_per_stage_desc_pointers(args, shader, true);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
@@ -523,7 +531,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       }
 
       if (stage == MESA_SHADER_VERTEX && sel->info.base.vs.blit_sgprs_amd) {
-         declare_vs_blit_inputs(args, sel->info.base.vs.blit_sgprs_amd);
+         declare_vs_blit_inputs(shader, args);
       } else {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
 

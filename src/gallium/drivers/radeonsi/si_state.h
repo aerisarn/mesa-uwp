@@ -415,11 +415,6 @@ enum
 
    /* Aliases to reuse slots that are unused on other generations. */
    SI_GS_QUERY_BUF = SI_RING_ESGS,     /* gfx10+ */
-
-   /* Only u_blitter uses this (and compute should be used in most cases, so this shouldn't
-    * be used much). Normal draws get the address from a user SGPR.
-    */
-   SI_GS_ATTRIBUTE_RING = SI_RING_GSVS, /* gfx11+ */
 };
 
 /* Indices into sctx->descriptors, laid out so that gfx and compute pipelines

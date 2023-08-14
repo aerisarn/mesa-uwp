@@ -2354,6 +2354,8 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
 {
    struct pipe_context *pipe = util_blitter_get_pipe(blitter);
    struct si_context *sctx = (struct si_context *)pipe;
+   uint32_t attribute_ring_address_lo =
+      sctx->gfx_level >= GFX11 ? sctx->screen->attribute_ring->gpu_address : 0;
 
    /* Pack position coordinates as signed int16. */
    sctx->vs_blit_sh_data[0] = (uint32_t)(x1 & 0xffff) | ((uint32_t)(y1 & 0xffff) << 16);
@@ -2363,10 +2365,12 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    switch (type) {
    case UTIL_BLITTER_ATTRIB_COLOR:
       memcpy(&sctx->vs_blit_sh_data[3], attrib->color, sizeof(float) * 4);
+      sctx->vs_blit_sh_data[7] = attribute_ring_address_lo;
       break;
    case UTIL_BLITTER_ATTRIB_TEXCOORD_XY:
    case UTIL_BLITTER_ATTRIB_TEXCOORD_XYZW:
       memcpy(&sctx->vs_blit_sh_data[3], &attrib->texcoord, sizeof(attrib->texcoord));
+      sctx->vs_blit_sh_data[9] = attribute_ring_address_lo;
       break;
    case UTIL_BLITTER_ATTRIB_NONE:;
    }

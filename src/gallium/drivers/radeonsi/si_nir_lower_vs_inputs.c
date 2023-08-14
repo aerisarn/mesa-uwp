@@ -137,15 +137,17 @@ load_vs_input_from_blit_sgpr(nir_builder *b, unsigned input_index,
       out[2] = ac_nir_load_arg_at_offset(b, &s->args->ac, s->args->vs_blit_inputs, 2);
       out[3] = nir_imm_float(b, 1);
    } else {
+      bool has_attribute_ring_address = s->shader->selector->screen->info.gfx_level >= GFX11;
+
       /* Color or texture coordinates: */
       assert(input_index == 1);
 
       unsigned vs_blit_property = s->shader->selector->info.base.vs.blit_sgprs_amd;
-      if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_COLOR) {
+      if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_COLOR + has_attribute_ring_address) {
          for (int i = 0; i < 4; i++)
             out[i] = ac_nir_load_arg_at_offset(b, &s->args->ac, s->args->vs_blit_inputs, 3 + i);
       } else {
-         assert(vs_blit_property == SI_VS_BLIT_SGPRS_POS_TEXCOORD);
+         assert(vs_blit_property == SI_VS_BLIT_SGPRS_POS_TEXCOORD + has_attribute_ring_address);
 
          nir_def *x1 = ac_nir_load_arg_at_offset(b, &s->args->ac, s->args->vs_blit_inputs, 3);
          nir_def *y1 = ac_nir_load_arg_at_offset(b, &s->args->ac, s->args->vs_blit_inputs, 4);

@@ -72,7 +72,8 @@ static nir_def *build_attr_ring_desc(nir_builder *b, struct si_shader *shader,
 
    nir_def *attr_address =
       sel->stage == MESA_SHADER_VERTEX && sel->info.base.vs.blit_sgprs_amd ?
-      si_nir_load_internal_binding(b, args, SI_GS_ATTRIBUTE_RING, 4) :
+      ac_nir_load_arg_at_offset(b, &args->ac, args->vs_blit_inputs,
+                                sel->info.base.vs.blit_sgprs_amd - 1) :
       ac_nir_load_arg(b, &args->ac, args->gs_attr_address);
 
    unsigned stride = 16 * shader->info.nr_param_exports;

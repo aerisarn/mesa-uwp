@@ -289,6 +289,8 @@ enum
    SI_VS_BLIT_SGPRS_POS = 3,
    SI_VS_BLIT_SGPRS_POS_COLOR = 7,
    SI_VS_BLIT_SGPRS_POS_TEXCOORD = 9,
+
+   MAX_SI_VS_BLIT_SGPRS = 10, /* +1 for the attribute ring address */
 };
 
 #define SI_NGG_CULL_TRIANGLES                (1 << 0)   /* this implies W, view.xy, and small prim culling */
