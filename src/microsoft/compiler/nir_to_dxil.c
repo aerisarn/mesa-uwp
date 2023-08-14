@@ -2158,15 +2158,7 @@ store_ssa_def(struct ntd_context *ctx, nir_def *ssa, unsigned chan,
 }
 
 static void
-store_dest_value(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
-                 const struct dxil_value *value)
-{
-   assert(value);
-   store_ssa_def(ctx, &dest->ssa, chan, value);
-}
-
-static void
-store_dest(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
+store_def(struct ntd_context *ctx, nir_def *def, unsigned chan,
            const struct dxil_value *value)
 {
    const struct dxil_type *type = dxil_value_get_type(value);
@@ -2177,14 +2169,14 @@ store_dest(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
       ctx->mod.feats.min_precision = true;
    if (type == ctx->mod.int64_type)
       ctx->mod.feats.int64_ops = true;
-   store_dest_value(ctx, dest, chan, value);
+   store_ssa_def(ctx, def, chan, value);
 }
 
 static void
 store_alu_dest(struct ntd_context *ctx, nir_alu_instr *alu, unsigned chan,
                const struct dxil_value *value)
 {
-   store_dest(ctx, &alu->dest.dest, chan, value);
+   store_def(ctx, &alu->dest.dest.ssa, chan, value);
 }
 
 static const struct dxil_value *
@@ -2804,7 +2796,7 @@ emit_make_double(struct ntd_context *ctx, nir_alu_instr *alu)
    const struct dxil_value *v = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!v)
       return false;
-   store_dest(ctx, &alu->dest.dest, 0, v);
+   store_def(ctx, &alu->dest.dest.ssa, 0, v);
    return true;
 }
 
@@ -2835,8 +2827,8 @@ emit_split_double(struct ntd_context *ctx, nir_alu_instr *alu)
    if (!hi || !lo)
       return false;
 
-   store_dest(ctx, &alu->dest.dest, 0, hi);
-   store_dest(ctx, &alu->dest.dest, 1, lo);
+   store_def(ctx, &alu->dest.dest.ssa, 0, hi);
+   store_def(ctx, &alu->dest.dest.ssa, 1, lo);
    return true;
 }
 
@@ -3135,7 +3127,7 @@ emit_load_global_invocation_id(struct ntd_context *ctx,
          if (!globalid)
             return false;
 
-         store_dest(ctx, &intr->dest, i, globalid);
+         store_def(ctx, &intr->dest.ssa, i, globalid);
       }
    }
    return true;
@@ -3157,7 +3149,7 @@ emit_load_local_invocation_id(struct ntd_context *ctx,
             *threadidingroup = emit_threadidingroup_call(ctx, idx);
          if (!threadidingroup)
             return false;
-         store_dest(ctx, &intr->dest, i, threadidingroup);
+         store_def(ctx, &intr->dest.ssa, i, threadidingroup);
       }
    }
    return true;
@@ -3171,7 +3163,7 @@ emit_load_local_invocation_index(struct ntd_context *ctx,
       *flattenedthreadidingroup = emit_flattenedthreadidingroup_call(ctx);
    if (!flattenedthreadidingroup)
       return false;
-   store_dest(ctx, &intr->dest, 0, flattenedthreadidingroup);
+   store_def(ctx, &intr->dest.ssa, 0, flattenedthreadidingroup);
    
    return true;
 }
@@ -3190,7 +3182,7 @@ emit_load_local_workgroup_id(struct ntd_context *ctx,
          const struct dxil_value *groupid = emit_groupid_call(ctx, idx);
          if (!groupid)
             return false;
-         store_dest(ctx, &intr->dest, i, groupid);
+         store_def(ctx, &intr->dest.ssa, i, groupid);
       }
    }
    return true;
@@ -3225,7 +3217,7 @@ emit_load_unary_external_function(struct ntd_context *ctx,
 {
    const struct dxil_value *value = call_unary_external_function(ctx, name, dxil_intr,
                                                                  get_overload(type, intr->dest.ssa.bit_size));
-   store_dest(ctx, &intr->dest, 0, value);
+   store_def(ctx, &intr->dest.ssa, 0, value);
 
    return true;
 }
@@ -3244,7 +3236,7 @@ emit_load_sample_mask_in(struct ntd_context *ctx, nir_intrinsic_instr *intr)
             call_unary_external_function(ctx, "dx.op.sampleIndex", DXIL_INTR_SAMPLE_INDEX, DXIL_I32), 0), 0);
    }
 
-   store_dest(ctx, &intr->dest, 0, value);
+   store_def(ctx, &intr->dest.ssa, 0, value);
    return true;
 }
 
@@ -3274,12 +3266,12 @@ emit_load_tess_coord(struct ntd_context *ctx,
 
       const struct dxil_value *value =
          dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
-      store_dest(ctx, &intr->dest, i, value);
+      store_def(ctx, &intr->dest.ssa, i, value);
    }
 
    for (unsigned i = num_coords; i < intr->dest.ssa.num_components; ++i) {
       const struct dxil_value *value = dxil_module_get_float_const(&ctx->mod, 0.0f);
-      store_dest(ctx, &intr->dest, i, value);
+      store_def(ctx, &intr->dest.ssa, i, value);
    }
 
    return true;
@@ -3458,7 +3450,7 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
          dxil_emit_extractval(&ctx->mod, load, i);
       if (!val)
          return false;
-      store_dest(ctx, &intr->dest, i, val);
+      store_def(ctx, &intr->dest.ssa, i, val);
    }
    if (nir_dest_bit_size(intr->dest) == 16)
       ctx->mod.feats.native_low_precision = true;
@@ -3535,7 +3527,7 @@ emit_load_ubo_vec4(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    unsigned first_component = nir_intrinsic_has_component(intr) ?
       nir_intrinsic_component(intr) : 0;
    for (unsigned i = 0; i < nir_dest_num_components(intr->dest); i++)
-      store_dest(ctx, &intr->dest, i,
+      store_def(ctx, &intr->dest.ssa, i,
                  dxil_emit_extractval(&ctx->mod, agg, i + first_component));
 
    if (nir_dest_bit_size(intr->dest) == 16)
@@ -3781,7 +3773,7 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
       const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, num_args);
       if (!retval)
          return false;
-      store_dest(ctx, &intr->dest, i, retval);
+      store_def(ctx, &intr->dest.ssa, i, retval);
    }
    return true;
 }
@@ -3865,7 +3857,7 @@ emit_load_interpolated_input(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, num_args);
       if (!retval)
          return false;
-      store_dest(ctx, &intr->dest, i, retval);
+      store_def(ctx, &intr->dest.ssa, i, retval);
    }
    return true;
 }
@@ -3911,7 +3903,7 @@ emit_load_deref(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!retval)
       return false;
 
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
    return true;
 }
 
@@ -3945,7 +3937,7 @@ emit_atomic_deref(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!retval)
       return false;
 
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
    return true;
 }
 
@@ -3967,7 +3959,7 @@ emit_atomic_deref_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!retval)
       return false;
 
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
    return true;
 }
 
@@ -4163,7 +4155,7 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       const struct dxil_value *component = dxil_emit_extractval(&ctx->mod, load_result, i);
       if (!component)
          return false;
-      store_dest(ctx, &intr->dest, i, component);
+      store_def(ctx, &intr->dest.ssa, i, component);
    }
 
    if (util_format_get_nr_components(nir_intrinsic_format(intr)) > 1)
@@ -4219,7 +4211,7 @@ emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!retval)
       return false;
 
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
    return true;
 }
 
@@ -4268,7 +4260,7 @@ emit_image_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!retval)
       return false;
 
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
    return true;
 }
 
@@ -4325,7 +4317,7 @@ emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, dimensions, i);
-      store_dest(ctx, &intr->dest, i, retval);
+      store_def(ctx, &intr->dest.ssa, i, retval);
    }
 
    return true;
@@ -4356,7 +4348,7 @@ emit_get_ssbo_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, dimensions, 0);
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
 
    return true;
 }
@@ -4390,7 +4382,7 @@ emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!retval)
       return false;
 
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
    return true;
 }
 
@@ -4422,7 +4414,7 @@ emit_ssbo_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!retval)
       return false;
 
-   store_dest(ctx, &intr->dest, 0, retval);
+   store_def(ctx, &intr->dest.ssa, 0, retval);
    return true;
 }
 
@@ -4450,8 +4442,8 @@ emit_vulkan_resource_index(struct ntd_context *ctx, nir_intrinsic_instr *intr)
          return false;
    }
 
-   store_dest(ctx, &intr->dest, 0, index_value);
-   store_dest(ctx, &intr->dest, 1, dxil_module_get_int32_const(&ctx->mod, 0));
+   store_def(ctx, &intr->dest.ssa, 0, index_value);
+   store_def(ctx, &intr->dest.ssa, 1, dxil_module_get_int32_const(&ctx->mod, 0));
    return true;
 }
 
@@ -4505,8 +4497,8 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       handle = emit_annotate_handle(ctx, unannotated_handle, res_props);
    }
 
-   store_dest_value(ctx, &intr->dest, 0, handle);
-   store_dest(ctx, &intr->dest, 1, get_src(ctx, &intr->src[0], 1, nir_type_uint32));
+   store_ssa_def(ctx, &intr->dest.ssa, 0, handle);
+   store_def(ctx, &intr->dest.ssa, 1, get_src(ctx, &intr->src[0], 1, nir_type_uint32));
 
    return true;
 }
@@ -4538,7 +4530,7 @@ emit_load_sample_pos_from_id(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       const struct dxil_value *coord = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
          dxil_emit_extractval(&ctx->mod, v, i),
          dxil_module_get_float_const(&ctx->mod, 0.5f), 0);
-      store_dest(ctx, &intr->dest, i, coord);
+      store_def(ctx, &intr->dest.ssa, i, coord);
    }
    return true;
 }
@@ -4553,7 +4545,7 @@ emit_load_sample_id(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_unary_external_function(ctx, intr, "dx.op.sampleIndex",
                                                DXIL_INTR_SAMPLE_INDEX, nir_type_int);
 
-   store_dest(ctx, &intr->dest, 0, dxil_module_get_int32_const(&ctx->mod, 0));
+   store_def(ctx, &intr->dest.ssa, 0, dxil_module_get_int32_const(&ctx->mod, 0));
    return true;
 }
 
@@ -4573,7 +4565,7 @@ emit_read_first_invocation(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest(ctx, &intr->dest, 0, ret);
+   store_def(ctx, &intr->dest.ssa, 0, ret);
    return true;
 }
 
@@ -4595,7 +4587,7 @@ emit_read_invocation(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest(ctx, &intr->dest, 0, ret);
+   store_def(ctx, &intr->dest.ssa, 0, ret);
    return true;
 }
 
@@ -4616,7 +4608,7 @@ emit_vote_eq(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest(ctx, &intr->dest, 0, ret);
+   store_def(ctx, &intr->dest.ssa, 0, ret);
    return true;
 }
 
@@ -4638,7 +4630,7 @@ emit_vote(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest(ctx, &intr->dest, 0, ret);
+   store_def(ctx, &intr->dest.ssa, 0, ret);
    return true;
 }
 
@@ -4658,7 +4650,7 @@ emit_ballot(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!ret)
       return false;
    for (uint32_t i = 0; i < 4; ++i)
-      store_dest(ctx, &intr->dest, i, dxil_emit_extractval(&ctx->mod, ret, i));
+      store_def(ctx, &intr->dest.ssa, i, dxil_emit_extractval(&ctx->mod, ret, i));
    return true;
 }
 
@@ -4679,7 +4671,7 @@ emit_quad_op(struct ntd_context *ctx, nir_intrinsic_instr *intr, enum dxil_quad_
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest(ctx, &intr->dest, 0, ret);
+   store_def(ctx, &intr->dest.ssa, 0, ret);
    return true;
 }
 
@@ -4712,7 +4704,7 @@ emit_reduce_bitwise(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest(ctx, &intr->dest, 0, ret);
+   store_def(ctx, &intr->dest.ssa, 0, ret);
    return true;
 }
 
@@ -4771,7 +4763,7 @@ emit_reduce(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest(ctx, &intr->dest, 0, ret);
+   store_def(ctx, &intr->dest.ssa, 0, ret);
    return true;
 }
 
@@ -4986,13 +4978,13 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
       /* Just store the values, we'll use these to build a GEP in the load or store */
       switch (instr->deref_type) {
       case nir_deref_type_var:
-         store_dest(ctx, &instr->dest, 0, dxil_module_get_int_const(&ctx->mod, 0, instr->dest.ssa.bit_size));
+         store_def(ctx, &instr->dest.ssa, 0, dxil_module_get_int_const(&ctx->mod, 0, instr->dest.ssa.bit_size));
          return true;
       case nir_deref_type_array:
-         store_dest(ctx, &instr->dest, 0, get_src(ctx, &instr->arr.index, 0, nir_type_int));
+         store_def(ctx, &instr->dest.ssa, 0, get_src(ctx, &instr->arr.index, 0, nir_type_int));
          return true;
       case nir_deref_type_struct:
-         store_dest(ctx, &instr->dest, 0, dxil_module_get_int_const(&ctx->mod, instr->strct.index, 32));
+         store_def(ctx, &instr->dest.ssa, 0, dxil_module_get_int_const(&ctx->mod, instr->strct.index, 32));
          return true;
       default:
          unreachable("Other deref types not supported");
@@ -5032,7 +5024,7 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
 
    /* Haven't finished chasing the deref chain yet, just store the value */
    if (glsl_type_is_array(type)) {
-      store_dest(ctx, &instr->dest, 0, binding);
+      store_def(ctx, &instr->dest.ssa, 0, binding);
       return true;
    }
 
@@ -5052,7 +5044,7 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
    if (!handle)
       return false;
 
-   store_dest_value(ctx, &instr->dest, 0, handle);
+   store_ssa_def(ctx, &instr->dest.ssa, 0, handle);
    return true;
 }
 
@@ -5110,7 +5102,7 @@ emit_phi(struct ntd_context *ctx, nir_phi_instr *instr)
       struct dxil_instr *phi = vphi->comp[i] = dxil_emit_phi(&ctx->mod, type);
       if (!phi)
          return false;
-      store_dest_value(ctx, &instr->dest, i, dxil_instr_get_return_value(phi));
+      store_ssa_def(ctx, &instr->dest.ssa, i, dxil_instr_get_return_value(phi));
    }
    _mesa_hash_table_insert(ctx->phis, instr, vphi);
    return true;
@@ -5596,16 +5588,16 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 
    case nir_texop_lod:
       sample = emit_texture_lod(ctx, &params, true);
-      store_dest(ctx, &instr->dest, 0, sample);
+      store_def(ctx, &instr->dest.ssa, 0, sample);
       sample = emit_texture_lod(ctx, &params, false);
-      store_dest(ctx, &instr->dest, 1, sample);
+      store_def(ctx, &instr->dest.ssa, 1, sample);
       return true;
 
    case nir_texop_query_levels: {
       params.lod_or_sample = dxil_module_get_int_const(&ctx->mod, 0, 32);
       sample = emit_texture_size(ctx, &params);
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, sample, 3);
-      store_dest(ctx, &instr->dest, 0, retval);
+      store_def(ctx, &instr->dest.ssa, 0, retval);
       return true;
    }
 
@@ -5613,7 +5605,7 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
       params.lod_or_sample = int_undef;
       sample = emit_texture_size(ctx, &params);
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, sample, 3);
-      store_dest(ctx, &instr->dest, 0, retval);
+      store_def(ctx, &instr->dest.ssa, 0, retval);
       return true;
    }
 
@@ -5627,7 +5619,7 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 
    for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, sample, i);
-      store_dest(ctx, &instr->dest, i, retval);
+      store_def(ctx, &instr->dest.ssa, i, retval);
    }
 
    return true;
