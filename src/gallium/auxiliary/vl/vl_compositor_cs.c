@@ -782,15 +782,16 @@ set_viewport(struct vl_compositor_state *s,
 
    assert(s && drawn);
 
-   void *ptr = pipe_buffer_map(s->pipe, s->shader_params,
-                               PIPE_MAP_READ | PIPE_MAP_WRITE,
-                               &buf_transfer);
+   void *ptr = pipe_buffer_map_range(s->pipe, s->shader_params,
+                                     sizeof(vl_csc_matrix) + sizeof(float) * 2,
+                                     sizeof(float) * 6 + sizeof(int) * 8,
+                                     PIPE_MAP_WRITE | PIPE_MAP_DISCARD_RANGE,
+                                     &buf_transfer);
 
    if (!ptr)
      return false;
 
    float *ptr_float = (float *)ptr;
-   ptr_float += sizeof(vl_csc_matrix)/sizeof(float) + 2;
    *ptr_float++ = drawn->scale_x;
    *ptr_float++ = drawn->scale_y;
 
