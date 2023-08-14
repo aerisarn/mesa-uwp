@@ -489,24 +489,24 @@ nir_src_index(compiler_context *ctx, nir_src *src)
 }
 
 static inline unsigned
-nir_dest_index_with_mask(nir_dest *dest, uint16_t *write_mask)
+nir_def_index_with_mask(nir_def *def, uint16_t *write_mask)
 {
-   nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
+   nir_intrinsic_instr *store = nir_store_reg_for_def(def);
 
    if (store) {
       *write_mask = nir_intrinsic_write_mask(store);
       return nir_reg_index(store->src[1].ssa);
    } else {
-      *write_mask = (uint16_t)BITFIELD_MASK(nir_dest_num_components(*dest));
-      return nir_ssa_index(&dest->ssa);
+      *write_mask = (uint16_t)BITFIELD_MASK(def->num_components);
+      return nir_ssa_index(def);
    }
 }
 
 static inline unsigned
-nir_dest_index(nir_dest *dest)
+nir_def_index(nir_def *def)
 {
    uint16_t write_mask = 0;
-   return nir_dest_index_with_mask(dest, &write_mask);
+   return nir_def_index_with_mask(def, &write_mask);
 }
 
 /* MIR manipulation */

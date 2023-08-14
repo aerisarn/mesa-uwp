@@ -624,8 +624,6 @@ mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i,
 static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
-   nir_dest *dest = &instr->dest.dest;
-
    /* Derivatives end up emitted on the texture pipe, not the ALUs. This
     * is handled elsewhere */
 
@@ -634,7 +632,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       return;
    }
 
-   unsigned nr_components = nir_dest_num_components(*dest);
+   unsigned nr_components = nir_dest_num_components(instr->dest.dest);
    unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
    unsigned op = 0;
 
@@ -649,7 +647,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
    bool flip_src12 = false;
 
    ASSERTED unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
-   ASSERTED unsigned dst_bitsize = nir_dest_bit_size(*dest);
+   unsigned dst_bitsize = nir_dest_bit_size(instr->dest.dest);
 
    enum midgard_roundmode roundmode = MIDGARD_RTE;
 
@@ -873,12 +871,11 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
    midgard_instruction ins = {
       .type = TAG_ALU_4,
-      .dest_type =
-         nir_op_infos[instr->op].output_type | nir_dest_bit_size(*dest),
+      .dest_type = nir_op_infos[instr->op].output_type | dst_bitsize,
       .roundmode = roundmode,
    };
 
-   ins.dest = nir_dest_index_with_mask(dest, &ins.mask);
+   ins.dest = nir_def_index_with_mask(&instr->dest.dest.ssa, &ins.mask);
 
    for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
       ins.src[i] = ~0;
@@ -1196,7 +1193,7 @@ emit_atomic(compiler_context *ctx, nir_intrinsic_instr *instr)
    bool is_shared = (instr->intrinsic == nir_intrinsic_shared_atomic) ||
                     (instr->intrinsic == nir_intrinsic_shared_atomic_swap);
 
-   unsigned dest = nir_dest_index(&instr->dest);
+   unsigned dest = nir_def_index(&instr->dest.ssa);
    unsigned val = nir_src_index(ctx, &instr->src[1]);
    unsigned bitsize = nir_src_bit_size(instr->src[1]);
    emit_explicit_constant(ctx, val);
@@ -1327,12 +1324,12 @@ emit_image_op(compiler_context *ctx, nir_intrinsic_instr *instr)
       nir_alu_type base_type = nir_alu_type_get_base_type(type);
       ins.src_types[0] = base_type | nir_src_bit_size(instr->src[3]);
    } else if (instr->intrinsic == nir_intrinsic_image_texel_address) {
-      ins = m_lea_image(nir_dest_index(&instr->dest),
+      ins = m_lea_image(nir_def_index(&instr->dest.ssa),
                         PACK_LDST_ATTRIB_OFS(address));
       ins.mask = mask_of(2); /* 64-bit memory address */
    } else {                  /* emit ld_image_* */
       nir_alu_type type = nir_intrinsic_dest_type(instr);
-      ins = ld_image(type, nir_dest_index(&instr->dest),
+      ins = ld_image(type, nir_def_index(&instr->dest.ssa),
                      PACK_LDST_ATTRIB_OFS(address));
       ins.mask = mask_of(nir_intrinsic_dest_components(instr));
       ins.dest_type = type;
@@ -1460,7 +1457,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned src_z,
 static void
 emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-   unsigned reg = nir_dest_index(&instr->dest);
+   unsigned reg = nir_def_index(&instr->dest.ssa);
    midgard_instruction ins = m_ldst_mov(reg, 0);
    ins.mask = mask_of(3);
    ins.swizzle[0][3] = COMPONENT_X; /* xyzx */
@@ -1484,7 +1481,7 @@ vertex_builtin_arg(nir_intrinsic_op op)
 static void
 emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-   unsigned reg = nir_dest_index(&instr->dest);
+   unsigned reg = nir_def_index(&instr->dest.ssa);
    emit_attr_read(ctx, reg, vertex_builtin_arg(instr->intrinsic), 1,
                   nir_type_int);
 }
@@ -1492,7 +1489,7 @@ emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 static void
 emit_special(compiler_context *ctx, nir_intrinsic_instr *instr, unsigned idx)
 {
-   unsigned reg = nir_dest_index(&instr->dest);
+   unsigned reg = nir_def_index(&instr->dest.ssa);
 
    midgard_instruction ld = m_ld_tilebuffer_raw(reg, 0);
    ld.op = midgard_op_ld_special_32u;
@@ -1555,7 +1552,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       nir_def *handle = instr->src[0].ssa;
 
       midgard_instruction ins =
-         v_mov(nir_reg_index(handle), nir_dest_index(&instr->dest));
+         v_mov(nir_reg_index(handle), nir_def_index(&instr->dest.ssa));
 
       ins.dest_type = ins.src_types[1] =
          nir_type_uint | nir_dest_bit_size(instr->dest);
@@ -1629,7 +1626,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       /* We may need to apply a fractional offset */
       int component =
          (is_flat || is_interp) ? nir_intrinsic_component(instr) : 0;
-      reg = nir_dest_index(&instr->dest);
+      reg = nir_def_index(&instr->dest.ssa);
 
       if (is_ubo) {
          nir_src index = instr->src[0];
@@ -1676,7 +1673,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
 
    case nir_intrinsic_load_raw_output_pan: {
-      reg = nir_dest_index(&instr->dest);
+      reg = nir_def_index(&instr->dest.ssa);
 
       /* T720 and below use different blend opcodes with slightly
        * different semantics than T760 and up */
@@ -1709,7 +1706,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_load_output: {
-      reg = nir_dest_index(&instr->dest);
+      reg = nir_def_index(&instr->dest.ssa);
 
       unsigned bits = nir_dest_bit_size(instr->dest);
 
@@ -2150,8 +2147,6 @@ static void
 emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                   unsigned midgard_texop)
 {
-   nir_dest *dest = &instr->dest;
-
    int texture_index = instr->texture_index;
    int sampler_index = instr->sampler_index;
 
@@ -2166,7 +2161,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
    midgard_instruction ins = {
       .type = TAG_TEXTURE_4,
       .mask = 0xF,
-      .dest = nir_dest_index(dest),
+      .dest = nir_def_index(&instr->dest.ssa),
       .src = {~0, ~0, ~0, ~0},
       .dest_type = instr->dest_type,
       .swizzle = SWIZZLE_IDENTITY_4,
