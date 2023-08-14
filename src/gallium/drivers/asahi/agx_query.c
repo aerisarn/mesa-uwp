@@ -107,34 +107,33 @@ agx_get_query_result(struct pipe_context *pctx, struct pipe_query *pquery,
    struct agx_query *query = (struct agx_query *)pquery;
    struct agx_context *ctx = agx_context(pctx);
 
+   /* For GPU queries, flush the writer. When the writer is flushed, the GPU
+    * will write the value, and when we wait for the writer, the CPU will read
+    * the value into query->value.
+    */
+   if (query->writer != NULL) {
+      /* Querying the result forces a query to finish in finite time, so we
+       * need to flush. Furthermore, we need all earlier queries
+       * to finish before this query, so we sync unconditionally (so we can
+       * maintain the lie that all queries are finished when read).
+       *
+       * TODO: Optimize based on wait flag.
+       */
+      struct agx_batch *writer = query->writer;
+      agx_flush_batch_for_reason(ctx, writer, "GPU query");
+      agx_sync_batch_for_reason(ctx, writer, "GPU query");
+   }
+
+   /* After syncing, there is no writer left, so query->value is ready */
+   assert(query->writer == NULL && "cleared when cleaning up batch");
+
    switch (query->type) {
-   case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-      if (query->writer != NULL) {
-         assert(query->writer->occlusion_queries.size != 0);
-
-         /* Querying the result forces a query to finish in finite time, so we
-          * need to flush. Furthermore, we need all earlier queries
-          * to finish before this query, so we sync unconditionally (so we can
-          * maintain the lie that all queries are finished when read).
-          *
-          * TODO: Optimize based on wait flag.
-          */
-         struct agx_batch *writer = query->writer;
-         agx_flush_batch_for_reason(ctx, writer, "GPU query");
-         agx_sync_batch_for_reason(ctx, writer, "GPU query");
-      }
-
-      assert(query->writer == NULL && "cleared when cleaning up batch");
-
-      if (query->type == PIPE_QUERY_OCCLUSION_COUNTER)
-         vresult->u64 = query->value;
-      else
-         vresult->b = query->value;
-
+      vresult->b = query->value;
       return true;
 
+   case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
       vresult->u64 = query->value;
