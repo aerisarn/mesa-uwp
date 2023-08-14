@@ -546,8 +546,9 @@ get_equation_str(const struct pan_blend_rt_state *rt_state, char *str,
       "add", "sub", "reverse_sub", "min", "max",
    };
    const char *factors[] = {
-      "one",           "src_color",   "src_alpha",   "dst_alpha",  "dst_color",
-      "src_alpha_sat", "const_color", "const_alpha", "src1_color", "src1_alpha",
+      "",           "one",           "src_color",   "src_alpha",   "dst_alpha",
+      "dst_color",  "src_alpha_sat", "const_color", "const_alpha", "src1_color",
+      "src1_alpha",
    };
    int ret;
 
