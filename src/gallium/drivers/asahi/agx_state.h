@@ -268,6 +268,9 @@ struct agx_batch {
    struct util_dynarray occlusion_queries;
    struct agx_ptr occlusion_buffer;
 
+   /* Non-occlusion queries */
+   struct util_dynarray nonocclusion_queries;
+
    /* Result buffer where the kernel places command execution information */
    union agx_batch_result *result;
    size_t result_off;
@@ -528,6 +531,12 @@ struct agx_query {
     */
    struct agx_batch *writer;
    unsigned writer_index;
+
+   /* For GPU queries other than occlusion queries, the value of the query as
+    * written by the `writer` if a writer is non-NULL, and irrelevant otherwise.
+    * When flushing the query, this value is read and added to agx_query::value.
+    */
+   struct agx_ptr ptr;
 
    /* Accumulator flushed to the CPU */
    uint64_t value;
@@ -797,7 +806,7 @@ uint64_t agx_build_meta(struct agx_batch *batch, bool store,
 /* Query management */
 uint16_t agx_get_oq_index(struct agx_batch *batch, struct agx_query *query);
 
-void agx_finish_batch_occlusion_queries(struct agx_batch *batch);
+void agx_finish_batch_queries(struct agx_batch *batch);
 
 bool agx_render_condition_check_inner(struct agx_context *ctx);
 

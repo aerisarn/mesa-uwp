@@ -196,9 +196,9 @@ agx_get_oq_index(struct agx_batch *batch, struct agx_query *query)
 }
 
 void
-agx_finish_batch_occlusion_queries(struct agx_batch *batch)
+agx_finish_batch_queries(struct agx_batch *batch)
 {
-   uint64_t *results = (uint64_t *)batch->occlusion_buffer.cpu;
+   uint64_t *occlusion = (uint64_t *)batch->occlusion_buffer.cpu;
 
    util_dynarray_foreach(&batch->occlusion_queries, struct agx_query *, it) {
       struct agx_query *query = *it;
@@ -209,11 +209,11 @@ agx_finish_batch_occlusion_queries(struct agx_batch *batch)
 
       assert(query->writer == batch);
 
-      /* Get the result for this batch. If results is NULL, it means that no
+      /* Get the result for this batch. If occlusion is NULL, it means that no
        * draws actually enabled any occlusion queries, so there's no change.
        */
-      if (results != NULL) {
-         uint64_t result = *(results++);
+      if (occlusion != NULL) {
+         uint64_t result = *(occlusion++);
 
          /* Accumulate with the previous result (e.g. in case we split a frame
           * into multiple batches so an API-level query spans multiple batches).
@@ -226,6 +226,23 @@ agx_finish_batch_occlusion_queries(struct agx_batch *batch)
 
       query->writer = NULL;
       query->writer_index = 0;
+   }
+
+   /* Now handle non-occlusion queries in a similar way */
+   util_dynarray_foreach(&batch->nonocclusion_queries, struct agx_query *, it) {
+      struct agx_query *query = *it;
+      if (query == NULL)
+         continue;
+
+      assert(query->writer == batch);
+
+      /* Accumulate */
+      uint64_t *value = query->ptr.cpu;
+      query->value += (*value);
+      query->writer = NULL;
+      query->writer_index = 0;
+      query->ptr.cpu = NULL;
+      query->ptr.gpu = 0;
    }
 }
 

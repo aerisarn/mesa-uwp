@@ -108,6 +108,7 @@ agx_batch_init(struct agx_context *ctx,
    util_dynarray_init(&batch->scissor, ctx);
    util_dynarray_init(&batch->depth_bias, ctx);
    util_dynarray_init(&batch->occlusion_queries, ctx);
+   util_dynarray_init(&batch->nonocclusion_queries, ctx);
 
    batch->clear = 0;
    batch->draw = 0;
@@ -146,7 +147,7 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
 
    assert(ctx->batch != batch);
 
-   agx_finish_batch_occlusion_queries(batch);
+   agx_finish_batch_queries(batch);
    batch->occlusion_buffer.cpu = NULL;
    batch->occlusion_buffer.gpu = 0;
 
@@ -182,9 +183,7 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
    util_dynarray_fini(&batch->scissor);
    util_dynarray_fini(&batch->depth_bias);
    util_dynarray_fini(&batch->occlusion_queries);
-   util_unreference_framebuffer_state(&batch->key);
-
-   agx_batch_mark_complete(batch);
+   util_dynarray_fini(&batch->nonocclusion_queries);
 
    if (!(dev->debug & (AGX_DBG_TRACE | AGX_DBG_SYNC))) {
       agx_batch_print_stats(dev, batch);
