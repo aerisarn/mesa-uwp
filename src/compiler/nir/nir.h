@@ -1082,12 +1082,6 @@ nir_src_is_divergent(nir_src src)
    return src.ssa->divergent;
 }
 
-static inline unsigned
-nir_dest_num_components(nir_dest dest)
-{
-   return dest.ssa.num_components;
-}
-
 static inline bool
 nir_dest_is_divergent(nir_dest dest)
 {

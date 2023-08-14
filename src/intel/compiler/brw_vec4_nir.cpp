@@ -1084,7 +1084,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    nir_alu_type dst_type = (nir_alu_type) (nir_op_infos[instr->op].output_type |
                                            instr->dest.dest.ssa.bit_size);
    dst_reg dst = get_nir_def(instr->dest.dest.ssa, dst_type);
-   dst.writemask &= nir_component_mask(nir_dest_num_components(instr->dest.dest));
+   dst.writemask &= nir_component_mask(instr->dest.dest.ssa.num_components);
 
    src_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {

@@ -312,7 +312,7 @@ remove_tess_level_accesses(nir_builder *b, nir_instr *instr, void *_data)
       nir_instr_remove(instr);
    } else {
       b->cursor = nir_after_instr(instr);
-      assert(nir_dest_num_components(intr->dest) == 1);
+      assert(intr->dest.ssa.num_components == 1);
       nir_def_rewrite_uses(&intr->dest.ssa, nir_undef(b, 1, intr->dest.ssa.bit_size));
    }
    return true;

@@ -224,7 +224,7 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
       return false;
 
    unsigned compsz = intr->dest.ssa.bit_size;
-   unsigned totalsz = compsz * nir_dest_num_components(intr->dest);
+   unsigned totalsz = compsz * intr->dest.ssa.num_components;
    /* 8, 16, 32, 64 and 128 bit loads don't need to be lowered */
    if (util_bitcount(totalsz) < 2 && totalsz <= 128)
       return false;
@@ -264,7 +264,7 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
       addr = nir_iadd_imm(b, addr, loadsz / 8);
    }
 
-   assert(ncomps == nir_dest_num_components(intr->dest));
+   assert(ncomps == intr->dest.ssa.num_components);
    nir_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, comps, ncomps));
 
    return true;
@@ -632,7 +632,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       return;
    }
 
-   unsigned nr_components = nir_dest_num_components(instr->dest.dest);
+   unsigned nr_components = instr->dest.dest.ssa.num_components;
    unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
    unsigned op = 0;
 
@@ -1071,7 +1071,7 @@ emit_global(compiler_context *ctx, nir_instr *instr, bool is_read,
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (is_read) {
       unsigned bitsize =
-         intr->dest.ssa.bit_size * nir_dest_num_components(intr->dest);
+         intr->dest.ssa.bit_size * intr->dest.ssa.num_components;
 
       switch (bitsize) {
       case 8:
@@ -1556,7 +1556,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       ins.dest_type = ins.src_types[1] =
          nir_type_uint | instr->dest.ssa.bit_size;
 
-      ins.mask = BITFIELD_MASK(nir_dest_num_components(instr->dest));
+      ins.mask = BITFIELD_MASK(instr->dest.ssa.num_components);
       emit_mir_instruction(ctx, ins);
       break;
    }

@@ -1271,7 +1271,7 @@ ntt_get_alu_src(struct ntt_compile *c, nir_alu_instr *instr, int i)
       !(src.src.is_ssa && src.src.ssa->parent_instr->type == nir_instr_type_ssa_undef)) {
       int chan1 = 1;
       if (nir_op_infos[instr->op].input_sizes[i] == 0) {
-         chan1 = nir_dest_num_components(instr->dest.dest) > 1 ? 1 : 0;
+         chan1 = instr->dest.dest.ssa.num_components > 1 ? 1 : 0;
       }
       usrc = ureg_swizzle(usrc,
                           src.swizzle[0] * 2,
@@ -2414,7 +2414,7 @@ ntt_emit_load_sysval(struct ntt_compile *c, nir_intrinsic_instr *instr)
     * aren't defined, even if they aren't really read.  (GLSL compile fails on
     * gl_NumWorkGroups.w, for example).
     */
-   uint32_t write_mask = BITSET_MASK(nir_dest_num_components(instr->dest));
+   uint32_t write_mask = BITSET_MASK(instr->dest.ssa.num_components);
    sv = ntt_swizzle_for_write_mask(sv, write_mask);
 
    /* TGSI and NIR define these intrinsics as always loading ints, but they can

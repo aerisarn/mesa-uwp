@@ -230,7 +230,7 @@ all_same_constant(const nir_alu_instr *instr, unsigned src, double *result)
       return false;
 
    const uint8_t *const swizzle = instr->src[src].swizzle;
-   const unsigned num_components = nir_dest_num_components(instr->dest.dest);
+   const unsigned num_components = instr->dest.dest.ssa.num_components;
 
    if (instr->dest.dest.ssa.bit_size == 32) {
       const float first = val[swizzle[0]].f32;
@@ -266,7 +266,7 @@ sources_are_constants_with_similar_magnitudes(const nir_alu_instr *instr)
 
    const uint8_t *const swizzle0 = instr->src[0].swizzle;
    const uint8_t *const swizzle1 = instr->src[1].swizzle;
-   const unsigned num_components = nir_dest_num_components(instr->dest.dest);
+   const unsigned num_components = instr->dest.dest.ssa.num_components;
 
    if (instr->dest.dest.ssa.bit_size == 32) {
       for (unsigned i = 0; i < num_components; i++) {

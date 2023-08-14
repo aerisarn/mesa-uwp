@@ -553,7 +553,7 @@ RatInstr::emit_ssbo_load(nir_intrinsic_instr *intr, Shader& shader)
       {0, 1, 2, 3}
    };
 
-   int comp_idx = nir_dest_num_components(intr->dest) - 1;
+   int comp_idx = intr->dest.ssa.num_components - 1;
 
    auto [offset, res_offset] = shader.evaluate_resource_offset(intr, 0);
    {
@@ -910,7 +910,7 @@ RatInstr::emit_image_size(nir_intrinsic_instr *intrin, Shader& shader)
 
       if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_CUBE &&
           nir_intrinsic_image_array(intrin) &&
-          nir_dest_num_components(intrin->dest) > 2) {
+          intrin->dest.ssa.num_components > 2) {
          /* Need to load the layers from a const buffer */
 
          auto dest = vf.dest_vec4(intrin->dest.ssa, pin_group);

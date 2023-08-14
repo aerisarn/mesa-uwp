@@ -180,7 +180,7 @@ nir_legacy_fsat_folds(nir_alu_instr *fsat)
       return false;
 
    /* We can't do expansions without a move in the middle */
-   unsigned nr_components = nir_dest_num_components(generate_alu->dest.dest);
+   unsigned nr_components = generate_alu->dest.dest.ssa.num_components;
    if (fsat->dest.dest.ssa.num_components != nr_components)
       return false;
 

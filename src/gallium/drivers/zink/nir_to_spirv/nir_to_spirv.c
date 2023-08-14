@@ -2159,7 +2159,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    }
 
    unsigned bit_size = alu->dest.dest.ssa.bit_size;
-   unsigned num_components = nir_dest_num_components(alu->dest.dest);
+   unsigned num_components = alu->dest.dest.ssa.num_components;
    nir_alu_type atype = bit_size == 1 ?
                         nir_type_bool :
                         (alu_op_is_typeless(alu->op) ? typeless_type : nir_op_infos[alu->op].output_type);
@@ -2712,7 +2712,7 @@ static void
 emit_load_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
-   unsigned num_components = nir_dest_num_components(intr->dest);
+   unsigned num_components = intr->dest.ssa.num_components;
    unsigned bit_size = intr->dest.ssa.bit_size;
    SpvId uint_type = get_uvec_type(ctx, bit_size, 1);
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
@@ -2774,7 +2774,7 @@ static void
 emit_load_scratch(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
-   unsigned num_components = nir_dest_num_components(intr->dest);
+   unsigned num_components = intr->dest.ssa.num_components;
    unsigned bit_size = intr->dest.ssa.bit_size;
    SpvId uint_type = get_uvec_type(ctx, bit_size, 1);
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
@@ -2839,7 +2839,7 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId load_type = get_uvec_type(ctx, 32, 1);
 
    /* number of components being loaded */
-   unsigned num_components = nir_dest_num_components(intr->dest);
+   unsigned num_components = intr->dest.ssa.num_components;
    SpvId constituents[NIR_MAX_VEC_COMPONENTS * 2];
    SpvId result;
 
@@ -3002,7 +3002,7 @@ emit_load_front_face(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
                                           ctx->front_face_var);
-   assert(1 == nir_dest_num_components(intr->dest));
+   assert(1 == intr->dest.ssa.num_components);
    store_def(ctx, &intr->dest.ssa, result, nir_type_bool);
 }
 
@@ -3033,7 +3033,7 @@ emit_load_uint_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *
    }
 
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type, load_var);
-   assert(1 == nir_dest_num_components(intr->dest));
+   assert(1 == intr->dest.ssa.num_components);
    store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
@@ -3044,19 +3044,19 @@ emit_load_vec_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *v
 
    switch (type) {
    case nir_type_bool:
-      var_type = get_bvec_type(ctx, nir_dest_num_components(intr->dest));
+      var_type = get_bvec_type(ctx, intr->dest.ssa.num_components);
       break;
    case nir_type_int:
       var_type = get_ivec_type(ctx, intr->dest.ssa.bit_size,
-                               nir_dest_num_components(intr->dest));
+                               intr->dest.ssa.num_components);
       break;
    case nir_type_uint:
       var_type = get_uvec_type(ctx, intr->dest.ssa.bit_size,
-                               nir_dest_num_components(intr->dest));
+                               intr->dest.ssa.num_components);
       break;
    case nir_type_float:
       var_type = get_fvec_type(ctx, intr->dest.ssa.bit_size,
-                               nir_dest_num_components(intr->dest));
+                               intr->dest.ssa.num_components);
       break;
    default:
       unreachable("unknown type passed");
@@ -3314,7 +3314,8 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    bool use_sample = glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS ||
                      glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_SUBPASS_MS;
    SpvId sample = use_sample ? get_src(ctx, &intr->src[2], &atype) : 0;
-   SpvId dest_type = spirv_builder_type_vector(&ctx->builder, base_type, nir_dest_num_components(intr->dest));
+   SpvId dest_type = spirv_builder_type_vector(&ctx->builder, base_type,
+                                               intr->dest.ssa.num_components);
    SpvId result = spirv_builder_emit_image_read(&ctx->builder,
                                  dest_type,
                                  img, coord, 0, sample, 0, sparse);
@@ -4116,7 +4117,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       return;
    }
    SpvId actual_dest_type;
-   unsigned num_components = nir_dest_num_components(tex->dest);
+   unsigned num_components = tex->dest.ssa.num_components;
    switch (nir_alu_type_get_base_type(tex->dest_type)) {
    case nir_type_int:
       actual_dest_type = get_ivec_type(ctx, 32, num_components);

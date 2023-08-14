@@ -447,7 +447,7 @@ lower_tex_to_txl(nir_builder *b, nir_tex_instr *tex)
 
    b->cursor = nir_before_instr(&tex->instr);
    nir_def_init(&txl->instr, &txl->dest.ssa,
-                nir_dest_num_components(tex->dest),
+                tex->dest.ssa.num_components,
                 tex->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &txl->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);

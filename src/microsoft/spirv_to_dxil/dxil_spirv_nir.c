@@ -249,14 +249,14 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
 
    nir_def *load_data = nir_load_ubo(
       builder, 
-      nir_dest_num_components(intrin->dest),
+      intrin->dest.ssa.num_components,
       intrin->dest.ssa.bit_size,
       nir_channel(builder, load_desc, 0),
       nir_imm_int(builder, offset),
       .align_mul = 256,
       .align_offset = offset,
       .range_base = offset,
-      .range = intrin->dest.ssa.bit_size * nir_dest_num_components(intrin->dest) / 8);
+      .range = intrin->dest.ssa.bit_size * intrin->dest.ssa.num_components / 8);
 
    nir_def_rewrite_uses(&intrin->dest.ssa, load_data);
    nir_instr_remove(instr);
@@ -338,7 +338,7 @@ lower_load_push_constant(struct nir_builder *builder, nir_instr *instr,
    nir_def *offset = nir_ssa_for_src(builder, intrin->src[0], 1);
    nir_def *load_data = nir_load_ubo(
       builder, 
-      nir_dest_num_components(intrin->dest),
+      intrin->dest.ssa.num_components,
       intrin->dest.ssa.bit_size, 
       nir_channel(builder, load_desc, 0),
       nir_iadd_imm(builder, offset, base),
@@ -595,7 +595,7 @@ kill_undefined_varyings(struct nir_builder *b,
     * since that would remove the store instruction, and would make it tricky to satisfy
     * the DXIL requirements of writing all position components.
     */
-   nir_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest),
+   nir_def *zero = nir_imm_zero(b, intr->dest.ssa.num_components,
                                        intr->dest.ssa.bit_size);
    nir_def_rewrite_uses(&intr->dest.ssa, zero);
    nir_instr_remove(instr);

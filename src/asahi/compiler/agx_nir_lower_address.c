@@ -311,7 +311,7 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    nir_def *repl = NULL;
    bool has_dest = (intr->intrinsic != nir_intrinsic_store_global);
-   unsigned num_components = has_dest ? nir_dest_num_components(intr->dest) : 0;
+   unsigned num_components = has_dest ? intr->dest.ssa.num_components : 0;
    unsigned bit_size = has_dest ? intr->dest.ssa.bit_size : 0;
 
    if (intr->intrinsic == nir_intrinsic_load_global) {

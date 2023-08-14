@@ -35,14 +35,14 @@ static nir_def *
 load_ubo(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var, unsigned offset)
 {
    return nir_load_ubo(b,
-                       nir_dest_num_components(intr->dest),
+                       intr->dest.ssa.num_components,
                        intr->dest.ssa.bit_size,
                        nir_imm_int(b, var->data.binding),
                        nir_imm_int(b, offset),
                        .align_mul = 256,
                        .align_offset = offset,
                        .range_base = offset,
-                       .range = intr->dest.ssa.bit_size * nir_dest_num_components(intr->dest) / 8);
+                       .range = intr->dest.ssa.bit_size * intr->dest.ssa.num_components / 8);
 }
 
 static bool
@@ -167,7 +167,7 @@ lower_load_kernel_input(nir_builder *b, nir_intrinsic_instr *intr,
    }
 
    const struct glsl_type *type =
-      glsl_vector_type(base_type, nir_dest_num_components(intr->dest));
+      glsl_vector_type(base_type, intr->dest.ssa.num_components);
    nir_def *ptr = nir_vec2(b, nir_imm_int(b, var->data.binding),
                                   nir_u2uN(b, intr->src[0].ssa, 32));
    nir_deref_instr *deref = nir_build_deref_cast(b, ptr, nir_var_mem_ubo, type,

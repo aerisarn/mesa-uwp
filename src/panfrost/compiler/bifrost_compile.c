@@ -1066,8 +1066,7 @@ bi_emit_load_push_constant(bi_builder *b, nir_intrinsic_instr *instr)
    uint32_t base = nir_intrinsic_base(instr) + nir_src_as_uint(*offset);
    assert((base & 3) == 0 && "unaligned push constants");
 
-   unsigned bits =
-      instr->dest.ssa.bit_size * nir_dest_num_components(instr->dest);
+   unsigned bits = instr->dest.ssa.bit_size * instr->dest.ssa.num_components;
 
    unsigned n = DIV_ROUND_UP(bits, 32);
    assert(n <= 4);
@@ -2097,7 +2096,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
    bi_index dst = bi_def_index(&instr->dest.dest.ssa);
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
    unsigned sz = instr->dest.dest.ssa.bit_size;
-   unsigned comps = nir_dest_num_components(instr->dest.dest);
+   unsigned comps = instr->dest.dest.ssa.num_components;
    unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
 
    /* Indicate scalarness */
@@ -3428,7 +3427,7 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
    bi_emit_split_i32(b, w, dst, res_size);
    bi_emit_collect_to(
       b, bi_def_index(&instr->dest.ssa), w,
-      DIV_ROUND_UP(nir_dest_num_components(instr->dest) * res_size, 4));
+      DIV_ROUND_UP(instr->dest.ssa.num_components * res_size, 4));
 }
 
 /* Staging registers required by texturing in the order they appear (Valhall) */
@@ -3605,7 +3604,7 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
    /* Index into the packed component array */
    unsigned j = 0;
    unsigned comps[4] = {0};
-   unsigned nr_components = nir_dest_num_components(instr->dest);
+   unsigned nr_components = instr->dest.ssa.num_components;
 
    for (unsigned i = 0; i < nr_components; ++i) {
       if (mask & BITFIELD_BIT(i)) {
@@ -3617,8 +3616,7 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
    }
 
    bi_make_vec_to(b, bi_def_index(&instr->dest.ssa), unpacked, comps,
-                  nir_dest_num_components(instr->dest),
-                  instr->dest.ssa.bit_size);
+                  instr->dest.ssa.num_components, instr->dest.ssa.bit_size);
 }
 
 /* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D/cube
@@ -4625,8 +4623,8 @@ bi_lower_load_output(nir_builder *b, nir_instr *instr, UNUSED void *data)
       b, .base = rt, .src_type = nir_intrinsic_dest_type(intr));
 
    nir_def *lowered = nir_load_converted_output_pan(
-      b, nir_dest_num_components(intr->dest), intr->dest.ssa.bit_size,
-      conversion, .dest_type = nir_intrinsic_dest_type(intr),
+      b, intr->dest.ssa.num_components, intr->dest.ssa.bit_size, conversion,
+      .dest_type = nir_intrinsic_dest_type(intr),
       .io_semantics = nir_intrinsic_io_semantics(intr));
 
    nir_def_rewrite_uses(&intr->dest.ssa, lowered);

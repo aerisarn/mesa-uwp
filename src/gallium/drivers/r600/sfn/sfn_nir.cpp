@@ -521,7 +521,7 @@ r600_lower_shared_io_impl(nir_function_impl *impl)
          if (op->intrinsic == nir_intrinsic_load_shared) {
             nir_def *addr = op->src[0].ssa;
 
-            switch (nir_dest_num_components(op->dest)) {
+            switch (op->dest.ssa.num_components) {
             case 2: {
                auto addr2 = nir_iadd_imm(&b, addr, 4);
                addr = nir_vec2(&b, addr, addr2);
@@ -541,7 +541,7 @@ r600_lower_shared_io_impl(nir_function_impl *impl)
 
             auto load =
                nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_local_shared_r600);
-            load->num_components = nir_dest_num_components(op->dest);
+            load->num_components = op->dest.ssa.num_components;
             load->src[0] = nir_src_for_ssa(addr);
             nir_def_init(&load->instr, &load->dest.ssa, load->num_components,
                          32);

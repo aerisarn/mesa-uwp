@@ -169,7 +169,7 @@ opt_undef_pack(nir_builder *b, nir_alu_instr *alu)
    default:
       return false;
    }
-   unsigned num_components = nir_dest_num_components(alu->dest.dest);
+   unsigned num_components = alu->dest.dest.ssa.num_components;
    b->cursor = nir_before_instr(&alu->instr);
    nir_def *def = nir_undef(b, num_components, 32);
    nir_def_rewrite_uses_after(&alu->dest.dest.ssa, def, &alu->instr);

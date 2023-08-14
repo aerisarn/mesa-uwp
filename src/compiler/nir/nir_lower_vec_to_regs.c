@@ -32,7 +32,7 @@ insert_store(nir_builder *b, nir_def *reg, nir_alu_instr *vec,
    assert(start_idx < nir_op_infos[vec->op].num_inputs);
    nir_def *src = vec->src[start_idx].src.ssa;
 
-   unsigned num_components = nir_dest_num_components(vec->dest.dest);
+   unsigned num_components = vec->dest.dest.ssa.num_components;
    assert(num_components == nir_op_infos[vec->op].num_inputs);
    unsigned write_mask = 0;
    unsigned swiz[NIR_MAX_VEC_COMPONENTS] = { 0 };
@@ -125,7 +125,7 @@ try_coalesce(nir_builder *b, nir_def *reg, nir_alu_instr *vec,
       for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
          swizzles[j][i] = src_alu->src[j].swizzle[i];
 
-   unsigned dest_components = nir_dest_num_components(vec->dest.dest);
+   unsigned dest_components = vec->dest.dest.ssa.num_components;
    assert(dest_components == nir_op_infos[vec->op].num_inputs);
 
    /* Generate the final write mask */
@@ -198,7 +198,7 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
    if (vec->op == nir_op_mov || !nir_op_is_vec(vec->op))
       return false;
 
-   unsigned num_components = nir_dest_num_components(vec->dest.dest);
+   unsigned num_components = vec->dest.dest.ssa.num_components;
 
    /* Special case: if all sources are the same, just swizzle instead to avoid
     * the extra copies from a register.

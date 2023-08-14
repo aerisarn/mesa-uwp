@@ -1538,7 +1538,7 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
       RegisterVec4::Swizzle dest_swz{7, 7, 7, 7};
       auto dest = value_factory().dest_vec4(instr->dest.ssa, pin_group);
 
-      for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
+      for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
          dest_swz[i] = i + nir_intrinsic_component(instr);
       }
 
@@ -1560,10 +1560,10 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
       int buf_cmp = nir_intrinsic_component(instr);
 
       AluInstr *ir = nullptr;
-      auto pin = nir_dest_num_components(instr->dest) == 1
+      auto pin = instr->dest.ssa.num_components == 1
                     ? pin_free
                     : pin_none;
-      for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
+      for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
 
          sfn_log << SfnLog::io << "UBO[" << bufid << "] " << instr->dest.ssa.index
                  << " const[" << i << "]: " << instr->const_index[i] << "\n";
@@ -1584,7 +1584,7 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
       AluInstr *ir = nullptr;
       auto kc_id = value_factory().src(instr->src[0], 0);
 
-      for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
+      for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
          int cmp = buf_cmp + i;
          auto u =
             new UniformValue(512 + buf_offset->u32, cmp, kc_id, nir_intrinsic_base(instr));

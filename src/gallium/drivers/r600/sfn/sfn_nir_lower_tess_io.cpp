@@ -213,7 +213,7 @@ static uint32_t
 get_dest_usee_mask(nir_intrinsic_instr *op)
 {
    MaskQuery mq = {0};
-   mq.full_mask = (1 << nir_dest_num_components(op->dest)) - 1;
+   mq.full_mask = (1 << op->dest.ssa.num_components) - 1;
 
    nir_foreach_use(use_src, &op->dest.ssa)
    {
@@ -264,7 +264,7 @@ replace_load_instr(nir_builder *b, nir_intrinsic_instr *op, nir_def *addr)
       auto new_load = nir_load_local_shared_r600(b, 32, addr_outer);
 
       auto undef = nir_undef(b, 1, 32);
-      int comps = nir_dest_num_components(op->dest);
+      int comps = op->dest.ssa.num_components;
       nir_def *remix[4] = {undef, undef, undef, undef};
 
       int chan = 0;

@@ -224,7 +224,7 @@ static nir_def *
 load_bordercolor(nir_builder *b, nir_tex_instr *tex, const dxil_wrap_sampler_state *active_state,
                  const dxil_texture_swizzle_state *tex_swizzle)
 {
-   int ndest_comp = nir_dest_num_components(tex->dest);
+   int ndest_comp = tex->dest.ssa.num_components;
 
    unsigned swizzle[4] = {
       tex_swizzle->swizzle_r,

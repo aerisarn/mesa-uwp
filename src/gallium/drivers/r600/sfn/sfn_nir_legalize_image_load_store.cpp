@@ -46,7 +46,7 @@ r600_legalize_image_load_store_impl(nir_builder *b,
 
    if (load_value)
       default_value =
-         nir_imm_zero(b, nir_dest_num_components(ir->dest), ir->dest.ssa.bit_size);
+         nir_imm_zero(b, ir->dest.ssa.num_components, ir->dest.ssa.bit_size);
 
    auto image_exists =
       nir_ult_imm(b, ir->src[0].ssa, b->shader->info.num_images);

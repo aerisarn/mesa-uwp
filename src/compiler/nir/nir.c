@@ -2834,7 +2834,7 @@ nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return channel < nir_op_infos[instr->op].input_sizes[src];
 
-   return channel < nir_dest_num_components(instr->dest.dest);
+   return channel < instr->dest.dest.ssa.num_components;
 }
 
 nir_component_mask_t
@@ -2856,7 +2856,7 @@ nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return nir_op_infos[instr->op].input_sizes[src];
 
-   return nir_dest_num_components(instr->dest.dest);
+   return instr->dest.dest.ssa.num_components;
 }
 
 #define CASE_ALL_SIZES(op) \

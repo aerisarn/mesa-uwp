@@ -88,7 +88,7 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
    nir_def *zero = has_dest ? nir_imm_zero(b, 1, size) : NULL;
    nir_def *zeroes[4] = {zero, zero, zero, zero};
    nir_def *res =
-      has_dest ? nir_vec(b, zeroes, nir_dest_num_components(intr->dest)) : NULL;
+      has_dest ? nir_vec(b, zeroes, intr->dest.ssa.num_components) : NULL;
 
    for (unsigned i = 0; i < (*lanes); ++i) {
       nir_push_if(b, nir_ieq_imm(b, lane, i));

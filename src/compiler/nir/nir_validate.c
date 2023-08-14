@@ -317,7 +317,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
        * as the destination.
        */
       validate_src(&instr->parent, state, instr->dest.ssa.bit_size,
-                   nir_dest_num_components(instr->dest));
+                   instr->dest.ssa.num_components);
 
       nir_instr *parent_instr = instr->parent.ssa->parent_instr;
 
@@ -477,7 +477,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    case nir_intrinsic_load_reg:
    case nir_intrinsic_load_reg_indirect:
       validate_register_handle(instr->src[0],
-                               nir_dest_num_components(instr->dest),
+                               instr->dest.ssa.num_components,
                                instr->dest.ssa.bit_size, state);
       break;
 

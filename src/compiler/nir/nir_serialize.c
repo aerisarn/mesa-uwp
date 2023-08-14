@@ -1122,7 +1122,7 @@ read_intrinsic(read_ctx *ctx, union packed_instr header)
     */
    if (nir_intrinsic_infos[op].has_dest &&
        nir_intrinsic_infos[op].dest_components == 0) {
-      intrin->num_components = nir_dest_num_components(intrin->dest);
+      intrin->num_components = intrin->dest.ssa.num_components;
    } else {
       for (unsigned i = 0; i < num_srcs; i++) {
          if (nir_intrinsic_infos[op].src_components[i] == 0) {

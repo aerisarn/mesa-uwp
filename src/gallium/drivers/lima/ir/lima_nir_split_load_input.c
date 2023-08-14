@@ -49,19 +49,19 @@ lima_nir_split_load_input_instr(nir_builder *b,
    uint8_t swizzle = alu->src[0].swizzle[0];
    int i;
 
-   for (i = 1; i < nir_dest_num_components(alu->dest.dest); i++)
+   for (i = 1; i < alu->dest.dest.ssa.num_components; i++)
       if (alu->src[0].swizzle[i] != (swizzle + i))
          break;
 
-   if (i != nir_dest_num_components(alu->dest.dest))
+   if (i != alu->dest.dest.ssa.num_components)
       return false;
 
    /* mali4xx can't access unaligned vec3, don't split load input */
-   if (nir_dest_num_components(alu->dest.dest) == 3 && swizzle > 0)
+   if (alu->dest.dest.ssa.num_components == 3 && swizzle > 0)
       return false;
 
    /* mali4xx can't access unaligned vec2, don't split load input */
-   if (nir_dest_num_components(alu->dest.dest) == 2 &&
+   if (alu->dest.dest.ssa.num_components == 2 &&
        swizzle != 0 && swizzle != 2)
       return false;
 
@@ -70,8 +70,8 @@ lima_nir_split_load_input_instr(nir_builder *b,
                                           b->shader,
                                           intrin->intrinsic);
    nir_def_init(&new_intrin->instr, &new_intrin->dest.ssa,
-                nir_dest_num_components(alu->dest.dest), ssa->bit_size);
-   new_intrin->num_components = nir_dest_num_components(alu->dest.dest);
+                alu->dest.dest.ssa.num_components, ssa->bit_size);
+   new_intrin->num_components = alu->dest.dest.ssa.num_components;
    nir_intrinsic_set_base(new_intrin, nir_intrinsic_base(intrin));
    nir_intrinsic_set_component(new_intrin, nir_intrinsic_component(intrin) + swizzle);
    nir_intrinsic_set_dest_type(new_intrin, nir_intrinsic_dest_type(intrin));

@@ -426,7 +426,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    }
 
    /* General case: We can just grab the one used channel per src. */
-   assert(nir_dest_num_components(alu->dest.dest) == 1);
+   assert(alu->dest.dest.ssa.num_components == 1);
 
    for (int i = 0; i < info->num_inputs; i++) {
       nir_alu_src *asrc = &alu->src[i];
@@ -2901,7 +2901,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
    type_t type;
    opc_t opc = 0;
 
-   ncomp = nir_dest_num_components(tex->dest);
+   ncomp = tex->dest.ssa.num_components;
 
    coord = off = ddx = ddy = NULL;
    lod = proj = compare = sample_index = NULL;

@@ -2846,7 +2846,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_vec16:
       return emit_vec(ctx, alu, nir_op_infos[alu->op].num_inputs);
    case nir_op_mov: {
-         assert(nir_dest_num_components(alu->dest.dest) == 1);
+         assert(alu->dest.dest.ssa.num_components == 1);
          store_ssa_def(ctx, &alu->dest.dest.ssa, 0, get_src_ssa(ctx,
                         alu->src->src.ssa, alu->src->swizzle[0]));
          return true;
@@ -3527,7 +3527,7 @@ emit_load_ubo_vec4(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    unsigned first_component = nir_intrinsic_has_component(intr) ?
       nir_intrinsic_component(intr) : 0;
-   for (unsigned i = 0; i < nir_dest_num_components(intr->dest); i++)
+   for (unsigned i = 0; i < intr->dest.ssa.num_components; i++)
       store_def(ctx, &intr->dest.ssa, i,
                  dxil_emit_extractval(&ctx->mod, agg, i + first_component));
 
@@ -4150,7 +4150,7 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    assert(intr->dest.ssa.bit_size == 32);
-   unsigned num_components = nir_dest_num_components(intr->dest);
+   unsigned num_components = intr->dest.ssa.num_components;
    assert(num_components <= 4);
    for (unsigned i = 0; i < num_components; ++i) {
       const struct dxil_value *component = dxil_emit_extractval(&ctx->mod, load_result, i);
@@ -4316,7 +4316,7 @@ emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!dimensions)
       return false;
 
-   for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
+   for (unsigned i = 0; i < intr->dest.ssa.num_components; ++i) {
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, dimensions, i);
       store_def(ctx, &intr->dest.ssa, i, retval);
    }
@@ -5097,7 +5097,7 @@ emit_phi(struct ntd_context *ctx, nir_phi_instr *instr)
    }
 
    struct phi_block *vphi = ralloc(ctx->phis, struct phi_block);
-   vphi->num_components = nir_dest_num_components(instr->dest);
+   vphi->num_components = instr->dest.ssa.num_components;
 
    for (unsigned i = 0; i < vphi->num_components; ++i) {
       struct dxil_instr *phi = vphi->comp[i] = dxil_emit_phi(&ctx->mod, type);
@@ -5618,7 +5618,7 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
    if (!sample)
       return false;
 
-   for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
+   for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, sample, i);
       store_def(ctx, &instr->dest.ssa, i, retval);
    }

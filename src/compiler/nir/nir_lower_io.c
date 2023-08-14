@@ -2845,7 +2845,7 @@ is_dual_slot(nir_intrinsic_instr *intrin)
    }
 
    return intrin->dest.ssa.bit_size == 64 &&
-   nir_dest_num_components(intrin->dest) >= 3;
+   intrin->dest.ssa.num_components >= 3;
 }
 
 /**

@@ -887,7 +887,7 @@ lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
    txd->src[tex->num_srcs + 1] = nir_tex_src_for_ssa(nir_tex_src_ddy, dfdy);
 
    nir_def_init(&txd->instr, &txd->dest.ssa,
-                nir_dest_num_components(tex->dest),
+                tex->dest.ssa.num_components,
                 tex->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &txd->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txd->dest.ssa);
@@ -927,7 +927,7 @@ lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
    txl->src[tex->num_srcs - 1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
    nir_def_init(&txl->instr, &txl->dest.ssa,
-                nir_dest_num_components(tex->dest),
+                tex->dest.ssa.num_components,
                 tex->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &txl->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);

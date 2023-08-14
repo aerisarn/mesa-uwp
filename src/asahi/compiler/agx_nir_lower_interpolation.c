@@ -147,11 +147,11 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 
    /* Each component is loaded separated */
    nir_def *values[NIR_MAX_VEC_COMPONENTS] = {NULL};
-   for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
+   for (unsigned i = 0; i < intr->dest.ssa.num_components; ++i) {
       values[i] = interpolate_channel(b, intr, i);
    }
 
-   return nir_vec(b, values, nir_dest_num_components(intr->dest));
+   return nir_vec(b, values, intr->dest.ssa.num_components);
 }
 
 bool

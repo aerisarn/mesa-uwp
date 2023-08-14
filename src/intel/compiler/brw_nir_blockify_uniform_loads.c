@@ -58,7 +58,7 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
       /* Without the LSC, we can only do block loads of at least 4dwords (1
        * oword).
        */
-      if (!devinfo->has_lsc && nir_dest_num_components(intrin->dest) < 4)
+      if (!devinfo->has_lsc && intrin->dest.ssa.num_components < 4)
          return false;
 
       intrin->intrinsic =
@@ -91,7 +91,7 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
       /* Without the LSC, we can only do block loads of at least 4dwords (1
        * oword).
        */
-      if (!devinfo->has_lsc && nir_dest_num_components(intrin->dest) < 4)
+      if (!devinfo->has_lsc && intrin->dest.ssa.num_components < 4)
          return false;
 
       intrin->intrinsic = nir_intrinsic_load_global_constant_uniform_block_intel;

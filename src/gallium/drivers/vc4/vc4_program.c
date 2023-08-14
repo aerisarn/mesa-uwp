@@ -1085,7 +1085,7 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
         if (instr->op == nir_op_unpack_unorm_4x8) {
                 struct qreg src = ntq_get_src(c, instr->src[0].src,
                                               instr->src[0].swizzle[0]);
-                unsigned count = nir_dest_num_components(instr->dest.dest);
+                unsigned count = instr->dest.dest.ssa.num_components;
                 for (int i = 0; i < count; i++) {
                         ntq_store_def(c, &instr->dest.dest.ssa, i,
                                       qir_UNPACK_8_F(c, src, i));

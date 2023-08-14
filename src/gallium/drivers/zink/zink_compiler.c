@@ -2322,7 +2322,7 @@ rewrite_atomic_ssbo_instr(nir_builder *b, nir_instr *instr, struct bo_vars *bo)
 
    /* generate new atomic deref ops for every component */
    nir_def *result[4];
-   unsigned num_components = nir_dest_num_components(intr->dest);
+   unsigned num_components = intr->dest.ssa.num_components;
    for (unsigned i = 0; i < num_components; i++) {
       nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, offset);
       nir_intrinsic_instr *new_instr = nir_intrinsic_instr_create(b->shader, op);
@@ -2642,7 +2642,7 @@ rewrite_read_as_0(nir_builder *b, nir_instr *instr, void *data)
    if (deref_var != var)
       return false;
    b->cursor = nir_before_instr(instr);
-   nir_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest),
+   nir_def *zero = nir_imm_zero(b, intr->dest.ssa.num_components,
                                 intr->dest.ssa.bit_size);
    if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
       switch (var->data.location) {
@@ -2651,7 +2651,7 @@ rewrite_read_as_0(nir_builder *b, nir_instr *instr, void *data)
       case VARYING_SLOT_BFC0:
       case VARYING_SLOT_BFC1:
          /* default color is 0,0,0,1 */
-         if (nir_dest_num_components(intr->dest) == 4)
+         if (intr->dest.ssa.num_components == 4)
             zero = nir_vector_insert_imm(b, zero, nir_imm_float(b, 1.0), 3);
          break;
       default:
@@ -3314,7 +3314,7 @@ rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, struct z
    unsigned bit_size = glsl_base_type_get_bit_size(ret_type);
    unsigned dest_size = tex->dest.ssa.bit_size;
    b->cursor = nir_after_instr(&tex->instr);
-   unsigned num_components = nir_dest_num_components(tex->dest);
+   unsigned num_components = tex->dest.ssa.num_components;
    bool rewrite_depth = tex->is_shadow && num_components > 1 && tex->op != nir_texop_tg4 && !tex->is_sparse;
    if (bit_size == dest_size && !rewrite_depth)
       return NULL;
@@ -3395,7 +3395,7 @@ lower_zs_swizzle_tex_instr(nir_builder *b, nir_instr *instr, void *data)
    const struct glsl_type *type = glsl_without_array(var->type);
    enum glsl_base_type ret_type = glsl_get_sampler_result_type(type);
    bool is_int = glsl_base_type_is_integer(ret_type);
-   unsigned num_components = nir_dest_num_components(tex->dest);
+   unsigned num_components = tex->dest.ssa.num_components;
    if (tex->is_shadow)
       tex->is_new_style_shadow = true;
    nir_def *dest = rewrite_tex_dest(b, tex, var, NULL);
@@ -4509,7 +4509,7 @@ split_bitfields_instr(nir_builder *b, nir_instr *in, void *data)
    default:
       return false;
    }
-   unsigned num_components = nir_dest_num_components(alu->dest.dest);
+   unsigned num_components = alu->dest.dest.ssa.num_components;
    if (num_components == 1)
       return false;
    b->cursor = nir_before_instr(in);

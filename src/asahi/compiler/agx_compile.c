@@ -519,7 +519,7 @@ agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
    b->shader->did_writeout = true;
    b->shader->out->reads_tib = true;
 
-   unsigned nr_comps = nir_dest_num_components(instr->dest);
+   unsigned nr_comps = instr->dest.ssa.num_components;
    agx_ld_tile_to(b, dest, agx_src_index(&instr->src[0]),
                   agx_format_for_pipe(nir_intrinsic_format(instr)),
                   BITFIELD_MASK(nr_comps), nir_intrinsic_base(instr));
@@ -539,9 +539,8 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
       offset = agx_abs(offset);
 
    agx_device_load_to(b, dest, addr, offset, fmt,
-                      BITFIELD_MASK(nir_dest_num_components(instr->dest)),
-                      shift, 0);
-   agx_emit_cached_split(b, dest, nir_dest_num_components(instr->dest));
+                      BITFIELD_MASK(instr->dest.ssa.num_components), shift, 0);
+   agx_emit_cached_split(b, dest, instr->dest.ssa.num_components);
 }
 
 static void
@@ -567,7 +566,7 @@ agx_emit_load_preamble(agx_builder *b, agx_index dst,
                        nir_intrinsic_instr *instr)
 {
    agx_index srcs[4] = {agx_null()};
-   unsigned dim = nir_dest_num_components(instr->dest);
+   unsigned dim = instr->dest.ssa.num_components;
    assert(dim <= ARRAY_SIZE(srcs) && "shouldn't see larger vectors");
 
    unsigned base = nir_intrinsic_base(instr);
@@ -643,7 +642,7 @@ static agx_instr *
 agx_load_compute_dimension(agx_builder *b, agx_index dst,
                            nir_intrinsic_instr *instr, enum agx_sr base)
 {
-   unsigned dim = nir_dest_num_components(instr->dest);
+   unsigned dim = instr->dest.ssa.num_components;
    unsigned size = instr->dest.ssa.bit_size;
    assert(size == 16 || size == 32);
 
@@ -740,7 +739,7 @@ agx_emit_local_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
    assert(base.size == AGX_SIZE_16);
 
    enum agx_format format = format_for_bitsize(instr->dest.ssa.bit_size);
-   unsigned nr = nir_dest_num_components(instr->dest);
+   unsigned nr = instr->dest.ssa.num_components;
    unsigned mask = BITFIELD_MASK(nr);
 
    agx_local_load_to(b, dst, base, index, format, mask);
@@ -1228,7 +1227,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
    unsigned sz = instr->dest.dest.ssa.bit_size;
    unsigned src_sz = srcs ? nir_src_bit_size(instr->src[0].src) : 0;
-   ASSERTED unsigned comps = nir_dest_num_components(instr->dest.dest);
+   ASSERTED unsigned comps = instr->dest.dest.ssa.num_components;
 
    assert(comps == 1 || nir_op_is_vec(instr->op));
    assert(sz == 1 ||

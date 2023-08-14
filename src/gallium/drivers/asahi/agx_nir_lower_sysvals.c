@@ -184,7 +184,7 @@ record_loads(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    assert(intr->dest.ssa.bit_size >= 16 && "no 8-bit sysvals");
-   unsigned dim = nir_dest_num_components(intr->dest);
+   unsigned dim = intr->dest.ssa.num_components;
    unsigned element_size = intr->dest.ssa.bit_size / 16;
    unsigned length = dim * element_size;
 

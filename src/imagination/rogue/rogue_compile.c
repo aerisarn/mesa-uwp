@@ -144,7 +144,7 @@ static void trans_nir_intrinsic_load_input_fs(rogue_builder *b,
 {
    struct rogue_fs_build_data *fs_data = &b->shader->ctx->stage_data.fs;
 
-   unsigned load_size = nir_dest_num_components(intr->dest);
+   unsigned load_size = intr->dest.ssa.num_components;
    assert(load_size == 1); /* TODO: We can support larger load sizes. */
 
    rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
@@ -178,7 +178,7 @@ static void trans_nir_intrinsic_load_input_vs(rogue_builder *b,
    struct pvr_pipeline_layout *pipeline_layout =
       b->shader->ctx->pipeline_layout;
 
-   ASSERTED unsigned load_size = nir_dest_num_components(intr->dest);
+   ASSERTED unsigned load_size = intr->dest.ssa.num_components;
    assert(load_size == 1); /* TODO: We can support larger load sizes. */
 
    rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);

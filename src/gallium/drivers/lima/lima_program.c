@@ -196,7 +196,7 @@ lima_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
       return false;
    }
 
-   int num_components = nir_dest_num_components(alu->dest.dest);
+   int num_components = alu->dest.dest.ssa.num_components;
 
    uint8_t swizzle = alu->src[0].swizzle[0];
 

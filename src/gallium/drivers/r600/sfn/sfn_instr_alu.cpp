@@ -1903,7 +1903,7 @@ AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
 static Pin
 pin_for_components(const nir_alu_instr& alu)
 {
-   return nir_dest_num_components(alu.dest.dest) == 1 ? pin_free : pin_none;
+   return alu.dest.dest.ssa.num_components == 1 ? pin_free : pin_none;
 }
 
 static bool
@@ -1924,7 +1924,7 @@ emit_alu_op1_64bit(const nir_alu_instr& alu,
       swz[1] = 0;
    }
 
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest.ssa, 2 * i, pin_chan),
                         value_factory.src64(alu.src[0], i, swz[0]),
@@ -1950,7 +1950,7 @@ emit_alu_mov_64bit(const nir_alu_instr& alu, Shader& shader)
 
    AluInstr *ir = nullptr;
 
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       for (unsigned c = 0; c < 2; ++c) {
          ir = new AluInstr(op1_mov,
                            value_factory.dest(alu.dest.dest.ssa, 2 * i + c, pin_free),
@@ -1971,7 +1971,7 @@ emit_alu_neg(const nir_alu_instr& alu, Shader& shader)
 
    AluInstr *ir = nullptr;
 
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       for (unsigned c = 0; c < 2; ++c) {
          ir = new AluInstr(op1_mov,
                            value_factory.dest(alu.dest.dest.ssa, 2 * i + c, pin_chan),
@@ -1992,7 +1992,7 @@ emit_alu_abs64(const nir_alu_instr& alu, Shader& shader)
 {
    auto& value_factory = shader.value_factory();
 
-   assert(nir_dest_num_components(alu.dest.dest) == 1);
+   assert(alu.dest.dest.ssa.num_components == 1);
 
    shader.emit_instruction(new AluInstr(op1_mov,
                                         value_factory.dest(alu.dest.dest.ssa, 0, pin_chan),
@@ -2044,7 +2044,7 @@ emit_alu_fsat64(const nir_alu_instr& alu, Shader& shader)
 {
    auto& value_factory = shader.value_factory();
 
-   assert(nir_dest_num_components(alu.dest.dest) == 1);
+   assert(alu.dest.dest.ssa.num_components == 1);
 
    if (try_propagat_fsat64(alu, shader)) {
       auto ir = new AluInstr(op1_mov,
@@ -2100,9 +2100,9 @@ emit_alu_op2_64bit(const nir_alu_instr& alu,
 
    int num_emit0 = opcode == op2_mul_64 ? 3 : 1;
 
-   assert(num_emit0 == 1 || nir_dest_num_components(alu.dest.dest) == 1);
+   assert(num_emit0 == 1 || alu.dest.dest.ssa.num_components == 1);
 
-   for (unsigned k = 0; k < nir_dest_num_components(alu.dest.dest); ++k) {
+   for (unsigned k = 0; k < alu.dest.dest.ssa.num_components; ++k) {
       int i = 0;
       for (; i < num_emit0; ++i) {
          auto dest = i < 2 ? value_factory.dest(alu.dest.dest.ssa, i, pin_chan)
@@ -2149,7 +2149,7 @@ emit_alu_op2_64bit_one_dst(const nir_alu_instr& alu,
 
    AluInstr::SrcValues src(4);
 
-   for (unsigned k = 0; k < nir_dest_num_components(alu.dest.dest); ++k) {
+   for (unsigned k = 0; k < alu.dest.dest.ssa.num_components; ++k) {
       auto dest = value_factory.dest(alu.dest.dest.ssa, 2 * k, pin_chan);
       src[0] = value_factory.src64(alu.src[order[0]], k, 1);
       src[1] = value_factory.src64(alu.src[order[1]], k, 1);
@@ -2224,7 +2224,7 @@ emit_alu_b2f64(const nir_alu_instr& alu, Shader& shader)
    auto group = new AluGroup();
    AluInstr *ir = nullptr;
 
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(op2_and_int,
                         value_factory.dest(alu.dest.dest.ssa, 2 * i, pin_group),
                         value_factory.src(alu.src[0], i),
@@ -2253,7 +2253,7 @@ emit_alu_i2f64(const nir_alu_instr& alu, EAluOp op, Shader& shader)
    auto group = new AluGroup();
    AluInstr *ir = nullptr;
 
-   assert(nir_dest_num_components(alu.dest.dest) == 1);
+   assert(alu.dest.dest.ssa.num_components == 1);
 
    auto tmpx = value_factory.temp_register();
    shader.emit_instruction(new AluInstr(op2_and_int,
@@ -2315,7 +2315,7 @@ emit_alu_f2f64(const nir_alu_instr& alu, Shader& shader)
    auto group = new AluGroup();
    AluInstr *ir = nullptr;
 
-   assert(nir_dest_num_components(alu.dest.dest) == 1);
+   assert(alu.dest.dest.ssa.num_components == 1);
 
    ir = new AluInstr(op1_flt32_to_flt64,
                      value_factory.dest(alu.dest.dest.ssa, 0, pin_chan),
@@ -2359,7 +2359,7 @@ emit_alu_b2x(const nir_alu_instr& alu, AluInlineConstants mask, Shader& shader)
    AluInstr *ir = nullptr;
    auto pin = pin_for_components(alu);
 
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       auto src = value_factory.src(alu.src[0], i);
       ir = new AluInstr(op2_and_int,
                         value_factory.dest(alu.dest.dest.ssa, i, pin),
@@ -2384,7 +2384,7 @@ emit_alu_op1(const nir_alu_instr& alu,
    AluInstr *ir = nullptr;
    auto pin = pin_for_components(alu);
 
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest.ssa, i, pin),
                         value_factory.src(alu.src[0], i),
@@ -2426,7 +2426,7 @@ emit_alu_op2(const nir_alu_instr& alu,
 
    auto pin = pin_for_components(alu);
    AluInstr *ir = nullptr;
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest.ssa, i, pin),
                         value_factory.src(*src0, i),
@@ -2464,7 +2464,7 @@ emit_alu_op3(const nir_alu_instr& alu,
 
    auto pin = pin_for_components(alu);
    AluInstr *ir = nullptr;
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest.ssa, i, pin),
                         value_factory.src(*src[0], i),
@@ -2719,7 +2719,7 @@ emit_alu_comb_with_zero(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
    auto& value_factory = shader.value_factory();
    AluInstr *ir = nullptr;
    auto pin = pin_for_components(alu);
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest.ssa, i, pin),
                         value_factory.zero(),
@@ -2878,7 +2878,7 @@ emit_alu_trans_op1_eg(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
    AluInstr *ir = nullptr;
    auto pin = pin_for_components(alu);
 
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest.ssa, i, pin),
                         value_factory.src(src0, i),
@@ -2898,7 +2898,7 @@ emit_alu_f2i32_or_u32_eg(const nir_alu_instr& alu, EAluOp opcode, Shader& shader
 
    PRegister reg[4];
 
-   int num_comp = nir_dest_num_components(alu.dest.dest);
+   int num_comp = alu.dest.dest.ssa.num_components;
 
    for (int i = 0; i < num_comp; ++i) {
       reg[i] = value_factory.temp_register();
@@ -2935,7 +2935,7 @@ emit_alu_trans_op1_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
 
    const std::set<AluModifiers> flags({alu_write, alu_last_instr, alu_is_cayman_trans});
 
-   for (unsigned j = 0; j < nir_dest_num_components(alu.dest.dest); ++j) {
+   for (unsigned j = 0; j < alu.dest.dest.ssa.num_components; ++j) {
       unsigned ncomp =  j == 3 ? 4 : 3;
 
       AluInstr::SrcValues srcs(ncomp);
@@ -2961,7 +2961,7 @@ emit_alu_trans_op2_eg(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
    AluInstr *ir = nullptr;
 
    auto pin = pin_for_components(alu);
-   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
+   for (unsigned i = 0; i < alu.dest.dest.ssa.num_components; ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest.ssa, i, pin),
                         value_factory.src(src0, i),
@@ -2985,7 +2985,7 @@ emit_alu_trans_op2_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
 
    const std::set<AluModifiers> flags({alu_write, alu_last_instr, alu_is_cayman_trans});
 
-   for (unsigned k = 0; k < nir_dest_num_components(alu.dest.dest); ++k) {
+   for (unsigned k = 0; k < alu.dest.dest.ssa.num_components; ++k) {
       AluInstr::SrcValues srcs(2 * last_slot);
       PRegister dest = value_factory.dest(alu.dest.dest.ssa, k, pin_free);
 
@@ -3006,7 +3006,7 @@ emit_tex_fdd(const nir_alu_instr& alu, TexInstr::Opcode opcode, bool fine, Shade
 {
    auto& value_factory = shader.value_factory();
 
-   int ncomp = nir_dest_num_components(alu.dest.dest);
+   int ncomp = alu.dest.dest.ssa.num_components;
    RegisterVec4::Swizzle src_swz = {7, 7, 7, 7};
    RegisterVec4::Swizzle tmp_swz = {7, 7, 7, 7};
    for (auto i = 0; i < ncomp; ++i) {

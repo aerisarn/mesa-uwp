@@ -140,7 +140,7 @@ agx_txs(nir_builder *b, nir_tex_instr *tex)
       height = depth;
 
    /* How we finish depends on the size of the result */
-   unsigned nr_comps = nir_dest_num_components(tex->dest);
+   unsigned nr_comps = tex->dest.ssa.num_components;
    assert(nr_comps <= 3);
 
    /* Adjust for LOD, do not adjust array size */
@@ -742,10 +742,9 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    case nir_intrinsic_image_size:
    case nir_intrinsic_bindless_image_size:
-      nir_def_rewrite_uses(
-         &intr->dest.ssa,
-         txs_for_image(b, intr, nir_dest_num_components(intr->dest),
-                       intr->dest.ssa.bit_size));
+      nir_def_rewrite_uses(&intr->dest.ssa,
+                           txs_for_image(b, intr, intr->dest.ssa.num_components,
+                                         intr->dest.ssa.bit_size));
       return true;
 
    case nir_intrinsic_image_texel_address:

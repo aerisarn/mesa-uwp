@@ -1116,7 +1116,7 @@ visit_alu(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMValueRef src[NIR_MAX_VEC_COMPONENTS];
    unsigned src_bit_size[NIR_MAX_VEC_COMPONENTS];
-   const unsigned num_components = nir_dest_num_components(instr->dest.dest);
+   const unsigned num_components = instr->dest.dest.ssa.num_components;
    unsigned src_components;
 
    switch (instr->op) {
@@ -1296,7 +1296,7 @@ visit_load_input(struct lp_build_nir_context *bld_base,
    var.data.driver_location = nir_intrinsic_base(instr);
    var.data.location_frac = nir_intrinsic_component(instr);
 
-   unsigned nc = nir_dest_num_components(instr->dest);
+   unsigned nc = instr->dest.ssa.num_components;
    unsigned bit_size = instr->dest.ssa.bit_size;
 
    nir_src offset = *nir_get_io_offset_src(instr);
@@ -1364,8 +1364,8 @@ visit_load_reg(struct lp_build_nir_context *bld_base,
 
    LLVMValueRef val = bld_base->load_reg(bld_base, reg_bld, decl, base, indir_src, reg_storage);
 
-   if (!is_aos(bld_base) && nir_dest_num_components(instr->dest) > 1) {
-      for (unsigned i = 0; i < nir_dest_num_components(instr->dest); i++)
+   if (!is_aos(bld_base) && instr->dest.ssa.num_components > 1) {
+      for (unsigned i = 0; i < instr->dest.ssa.num_components; i++)
          result[i] = LLVMBuildExtractValue(builder, val, i, "");
    } else {
       result[0] = val;
@@ -1435,7 +1435,7 @@ visit_load_var(struct lp_build_nir_context *bld_base,
    LLVMValueRef indir_index;
    LLVMValueRef indir_vertex_index = NULL;
    unsigned vertex_index = 0;
-   unsigned nc = nir_dest_num_components(instr->dest);
+   unsigned nc = instr->dest.ssa.num_components;
    unsigned bit_size = instr->dest.ssa.bit_size;
    if (var) {
       bool vs_in = bld_base->shader->info.stage == MESA_SHADER_VERTEX &&
@@ -1521,7 +1521,7 @@ visit_load_ubo(struct lp_build_nir_context *bld_base,
    if (nir_src_num_components(instr->src[0]) == 1)
       idx = LLVMBuildExtractElement(builder, idx, lp_build_const_int32(gallivm, 0), "");
 
-   bld_base->load_ubo(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_ubo(bld_base, instr->dest.ssa.num_components,
                       instr->dest.ssa.bit_size,
                       offset_is_uniform, idx, offset, result);
 }
@@ -1537,7 +1537,7 @@ visit_load_push_constant(struct lp_build_nir_context *bld_base,
    LLVMValueRef idx = lp_build_const_int32(gallivm, 0);
    bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
 
-   bld_base->load_ubo(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_ubo(bld_base, instr->dest.ssa.num_components,
                       instr->dest.ssa.bit_size,
                       offset_is_uniform, idx, offset, result);
 }
@@ -1556,7 +1556,7 @@ visit_load_ssbo(struct lp_build_nir_context *bld_base,
    bool index_and_offset_are_uniform =
       nir_src_is_always_uniform(instr->src[0]) &&
       nir_src_is_always_uniform(instr->src[1]);
-   bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_mem(bld_base, instr->dest.ssa.num_components,
                       instr->dest.ssa.bit_size,
                       index_and_offset_are_uniform, false, idx, offset, result);
 }
@@ -1881,7 +1881,7 @@ visit_shared_load(struct lp_build_nir_context *bld_base,
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
    bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
-   bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_mem(bld_base, instr->dest.ssa.num_components,
                       instr->dest.ssa.bit_size,
                       offset_is_uniform, false, NULL, offset, result);
 }
@@ -1957,7 +1957,7 @@ visit_load_kernel_input(struct lp_build_nir_context *bld_base,
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
 
    bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
-   bld_base->load_kernel_arg(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_kernel_arg(bld_base, instr->dest.ssa.num_components,
                              instr->dest.ssa.bit_size,
                              nir_src_bit_size(instr->src[0]),
                              offset_is_uniform, offset, result);
@@ -1971,7 +1971,7 @@ visit_load_global(struct lp_build_nir_context *bld_base,
 {
    LLVMValueRef addr = get_src(bld_base, instr->src[0]);
    bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
-   bld_base->load_global(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_global(bld_base, instr->dest.ssa.num_components,
                          instr->dest.ssa.bit_size,
                          nir_src_bit_size(instr->src[0]),
                          offset_is_uniform, addr, result);
@@ -2036,7 +2036,7 @@ visit_interp(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
-   unsigned num_components = nir_dest_num_components(instr->dest);
+   unsigned num_components = instr->dest.ssa.num_components;
    nir_variable *var = nir_deref_instr_get_variable(deref);
    unsigned const_index;
    LLVMValueRef indir_index;
@@ -2067,7 +2067,7 @@ visit_load_scratch(struct lp_build_nir_context *bld_base,
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
 
-   bld_base->load_scratch(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_scratch(bld_base, instr->dest.ssa.num_components,
                           instr->dest.ssa.bit_size, offset, result);
 }
 
@@ -2091,7 +2091,7 @@ visit_payload_load(struct lp_build_nir_context *bld_base,
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
    bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
-   bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest),
+   bld_base->load_mem(bld_base, instr->dest.ssa.num_components,
                       instr->dest.ssa.bit_size,
                       offset_is_uniform, true, NULL, offset, result);
 }
@@ -2685,7 +2685,7 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
       default:
          unreachable("unexpected alu type");
       }
-      for (int i = 0; i < nir_dest_num_components(instr->dest); ++i) {
+      for (int i = 0; i < instr->dest.ssa.num_components; ++i) {
          if (is_float) {
             texel[i] = lp_build_float_to_half(gallivm, texel[i]);
          } else {
