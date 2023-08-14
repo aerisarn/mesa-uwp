@@ -1269,14 +1269,32 @@ iris_resource_prepare_render(struct iris_context *ice,
                              uint32_t start_layer, uint32_t layer_count,
                              enum isl_aux_usage aux_usage)
 {
-   /* If the resource's clear color is incompatible with render_format,
-    * replace it with one that is. This process keeps the aux buffer
-    * compatible with render_format and the resource's format.
+   /* Replace the resource's clear color with zero if:
+    *
+    * - The resource's clear color is incompatible with render_format. This
+    *   avoids corrupting current fast clear blocks and ensures any fast clear
+    *   blocks generated as a result of the render will be recoverable.
+    *
+    * - The clear color struct is uninitialized and potentially inconsistent
+    *   with itself. For non-32-bpc formats, the struct consists of different
+    *   fields for rendering and sampling. If rendering can generate
+    *   fast-cleared blocks, we want these to agree so that we can avoid
+    *   partially resolving prior to sampling. Images with modifiers can be
+    *   ignored. Either we will have already initialized their structs to
+    *   zero, or they will have already been consistent at the time of import
+    *   (as defined by drm_fourcc.h)
+    *
+    * The only aux usage which requires this process is FCV_CCS_E. Other aux
+    * usages share a subset of these restrictions and benefit from only some
+    * of the steps involved with changing the clear color. For now, just keep
+    * things simple and assume we have the worst case usage of FCV_CCS_E.
     */
    if (!iris_render_formats_color_compatible(render_format,
                                              res->surf.format,
                                              res->aux.clear_color,
-                                             res->aux.clear_color_unknown)) {
+                                             res->aux.clear_color_unknown) ||
+       (res->aux.clear_color_unknown && !res->mod_info &&
+        isl_format_get_layout(render_format)->channels.r.bits != 32)) {
 
       /* Remove references to the clear color with resolves. */
       iris_resource_prepare_access(ice, res, 0, INTEL_REMAINING_LEVELS, 0,
