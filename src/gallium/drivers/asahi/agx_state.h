@@ -805,6 +805,8 @@ uint64_t agx_build_meta(struct agx_batch *batch, bool store,
 
 /* Query management */
 uint16_t agx_get_oq_index(struct agx_batch *batch, struct agx_query *query);
+uint64_t agx_get_query_address(struct agx_batch *batch,
+                               struct agx_query *query);
 
 void agx_finish_batch_queries(struct agx_batch *batch);
 

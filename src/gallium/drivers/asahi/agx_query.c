@@ -6,6 +6,7 @@
 
 #include "util/u_prim.h"
 #include "agx_state.h"
+#include "pool.h"
 
 static struct pipe_query *
 agx_create_query(struct pipe_context *ctx, unsigned query_type, unsigned index)
@@ -167,32 +168,59 @@ agx_set_active_query_state(struct pipe_context *pipe, bool enable)
    ctx->dirty |= AGX_DIRTY_QUERY;
 }
 
-uint16_t
-agx_get_oq_index(struct agx_batch *batch, struct agx_query *query)
+static uint16_t
+agx_add_query_to_batch(struct agx_batch *batch, struct agx_query *query,
+                       struct util_dynarray *array)
 {
    /* If written by another batch, flush it now. If this affects real apps, we
     * could avoid this flush by merging query results.
     */
    if (query->writer && query->writer != batch) {
       agx_flush_batch_for_reason(batch->ctx, query->writer,
-                                 "Multiple occlusion query writers");
+                                 "Multiple query writers");
    }
 
    /* Allocate if needed */
    if (query->writer == NULL) {
       query->writer = batch;
-      query->writer_index = util_dynarray_num_elements(
-         &batch->occlusion_queries, struct agx_query *);
+      query->writer_index =
+         util_dynarray_num_elements(array, struct agx_query *);
 
-      util_dynarray_append(&batch->occlusion_queries, struct agx_query *,
-                           query);
+      util_dynarray_append(array, struct agx_query *, query);
    }
 
    assert(query->writer == batch);
-   assert(*util_dynarray_element(&batch->occlusion_queries, struct agx_query *,
+   assert(*util_dynarray_element(array, struct agx_query *,
                                  query->writer_index) == query);
 
    return query->writer_index;
+}
+
+uint16_t
+agx_get_oq_index(struct agx_batch *batch, struct agx_query *query)
+{
+   assert(is_occlusion(query));
+
+   return agx_add_query_to_batch(batch, query, &batch->occlusion_queries);
+}
+
+uint64_t
+agx_get_query_address(struct agx_batch *batch, struct agx_query *query)
+{
+   assert(!is_occlusion(query));
+
+   agx_add_query_to_batch(batch, query, &batch->nonocclusion_queries);
+
+   /* Allocate storage for the query in the batch */
+   if (!query->ptr.cpu) {
+      query->ptr = agx_pool_alloc_aligned(&batch->pool, sizeof(uint64_t),
+                                          sizeof(uint64_t));
+
+      uint64_t *value = query->ptr.cpu;
+      *value = 0;
+   }
+
+   return query->ptr.gpu;
 }
 
 void
