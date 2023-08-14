@@ -163,7 +163,7 @@ infer_nir_alu_type_from_uses_ssa(nir_def *ssa);
 static nir_alu_type
 infer_nir_alu_type_from_use(nir_src *src)
 {
-   nir_instr *instr = src->parent_instr;
+   nir_instr *instr = nir_src_parent_instr(src);
    nir_alu_type atype = nir_type_invalid;
    switch (instr->type) {
    case nir_instr_type_alu: {
@@ -245,7 +245,7 @@ infer_nir_alu_type_from_uses_ssa(nir_def *ssa)
    nir_alu_type atype = nir_type_invalid;
    /* try to infer a type: if it's wrong then whatever, but at least we tried */
    nir_foreach_use_including_if(src, ssa) {
-      if (src->is_if)
+      if (nir_src_is_if(src))
          return nir_type_bool;
       atype = infer_nir_alu_type_from_use(src);
       if (atype)

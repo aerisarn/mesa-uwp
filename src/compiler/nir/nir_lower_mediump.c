@@ -858,7 +858,7 @@ fold_16bit_destination(nir_def *ssa, nir_alu_type dest_type,
    bool allow_rtne = rdm == nir_rounding_mode_rtne;
 
    nir_foreach_use(use, ssa) {
-      nir_instr *instr = use->parent_instr;
+      nir_instr *instr = nir_src_parent_instr(use);
       is_f32_to_f16 &= (allow_standard && is_f32_to_f16_conversion(instr)) ||
                        (allow_rtz && is_n_to_m_conversion(instr, 32, nir_op_f2f16_rtz)) ||
                        (allow_rtne && is_n_to_m_conversion(instr, 32, nir_op_f2f16_rtne));
@@ -870,7 +870,7 @@ fold_16bit_destination(nir_def *ssa, nir_alu_type dest_type,
 
    /* All uses are the same conversions. Replace them with mov. */
    nir_foreach_use(use, ssa) {
-      nir_alu_instr *conv = nir_instr_as_alu(use->parent_instr);
+      nir_alu_instr *conv = nir_instr_as_alu(nir_src_parent_instr(use));
       conv->op = nir_op_mov;
    }
 

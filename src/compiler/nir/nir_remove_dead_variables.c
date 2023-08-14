@@ -31,15 +31,15 @@ static bool
 deref_used_for_not_store(nir_deref_instr *deref)
 {
    nir_foreach_use(src, &deref->def) {
-      switch (src->parent_instr->type) {
+      switch (nir_src_parent_instr(src)->type) {
       case nir_instr_type_deref:
-         if (deref_used_for_not_store(nir_instr_as_deref(src->parent_instr)))
+         if (deref_used_for_not_store(nir_instr_as_deref(nir_src_parent_instr(src))))
             return true;
          break;
 
       case nir_instr_type_intrinsic: {
          nir_intrinsic_instr *intrin =
-            nir_instr_as_intrinsic(src->parent_instr);
+            nir_instr_as_intrinsic(nir_src_parent_instr(src));
          /* The first source of copy and store intrinsics is the deref to
           * write.  Don't record those.
           */

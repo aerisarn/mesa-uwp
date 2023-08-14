@@ -223,9 +223,9 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          } else {
             /* The only uses of this definition must be phis in the successor */
             nir_foreach_use_including_if(use, &mov->def) {
-               if (use->is_if ||
-                   use->parent_instr->type != nir_instr_type_phi ||
-                   use->parent_instr->block != block->successors[0])
+               if (nir_src_is_if(use) ||
+                   nir_src_parent_instr(use)->type != nir_instr_type_phi ||
+                   nir_src_parent_instr(use)->block != block->successors[0])
                   return false;
             }
          }
@@ -307,9 +307,9 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
          nir_phi_get_src_from_block(phi, nir_if_first_else_block(if_stmt));
 
       nir_foreach_use(src, &phi->def) {
-         assert(src->parent_instr->type == nir_instr_type_phi);
+         assert(nir_src_parent_instr(src)->type == nir_instr_type_phi);
          nir_phi_src *phi_src =
-            nir_phi_get_src_from_block(nir_instr_as_phi(src->parent_instr),
+            nir_phi_get_src_from_block(nir_instr_as_phi(nir_src_parent_instr(src)),
                                        nir_if_first_else_block(parent_if));
          if (phi_src->src.ssa != else_src->src.ssa)
             return false;
@@ -339,7 +339,7 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
          nir_phi_get_src_from_block(phi, nir_if_first_else_block(if_stmt));
       nir_foreach_use_safe(src, &phi->def) {
          nir_phi_src *phi_src =
-            nir_phi_get_src_from_block(nir_instr_as_phi(src->parent_instr),
+            nir_phi_get_src_from_block(nir_instr_as_phi(nir_src_parent_instr(src)),
                                        nir_if_first_else_block(parent_if));
          if (phi_src->src.ssa == else_src->src.ssa)
             nir_src_rewrite(&phi_src->src, &phi->def);

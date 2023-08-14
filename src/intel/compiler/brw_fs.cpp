@@ -7477,13 +7477,13 @@ static bool
 is_used_in_not_interp_frag_coord(nir_def *def)
 {
    nir_foreach_use_including_if(src, def) {
-      if (src->is_if)
+      if (nir_src_is_if(src))
          return true;
 
-      if (src->parent_instr->type != nir_instr_type_intrinsic)
+      if (nir_src_parent_instr(src)->type != nir_instr_type_intrinsic)
          return true;
 
-      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src->parent_instr);
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(nir_src_parent_instr(src));
       if (intrin->intrinsic != nir_intrinsic_load_frag_coord)
          return true;
    }

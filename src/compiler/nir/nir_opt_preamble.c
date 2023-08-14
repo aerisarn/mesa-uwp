@@ -385,7 +385,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
          state->candidate = false;
          state->must_stay = false;
          nir_foreach_use(use, def) {
-            nir_def *use_def = nir_instr_def(use->parent_instr);
+            nir_def *use_def = nir_instr_def(nir_src_parent_instr(use));
             if (!use_def || !ctx.states[use_def->index].can_move ||
                 ctx.states[use_def->index].must_stay) {
                if (is_candidate)

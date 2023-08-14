@@ -999,7 +999,7 @@ struct nir_if;
 typedef struct nir_src {
    union {
       /** Instruction that consumes this value as a source. */
-      nir_instr *parent_instr;
+      nir_instr *renamed_parent_instr;
       struct nir_if *parent_if;
    };
 
@@ -1018,7 +1018,7 @@ nir_src_is_if(const nir_src *src)
 static inline nir_instr *
 nir_src_parent_instr(const nir_src *src)
 {
-   return src->parent_instr;
+   return src->renamed_parent_instr;
 }
 
 static inline struct nir_if *
@@ -1031,7 +1031,7 @@ static inline void
 nir_src_set_parent_instr(nir_src *src, nir_instr *parent_instr)
 {
    src->is_if = false;
-   src->parent_instr = parent_instr;
+   src->renamed_parent_instr = parent_instr;
 }
 
 static inline void
@@ -1058,19 +1058,19 @@ nir_src_init(void)
 
 #define nir_foreach_use(src, reg_or_ssa_def)         \
    nir_foreach_use_including_if(src, reg_or_ssa_def) \
-      if (!src->is_if)
+      if (!nir_src_is_if(src))
 
 #define nir_foreach_use_safe(src, reg_or_ssa_def)         \
    nir_foreach_use_including_if_safe(src, reg_or_ssa_def) \
-      if (!src->is_if)
+      if (!nir_src_is_if(src))
 
 #define nir_foreach_if_use(src, reg_or_ssa_def)      \
    nir_foreach_use_including_if(src, reg_or_ssa_def) \
-      if (src->is_if)
+      if (nir_src_is_if(src))
 
 #define nir_foreach_if_use_safe(src, reg_or_ssa_def)      \
    nir_foreach_use_including_if_safe(src, reg_or_ssa_def) \
-      if (src->is_if)
+      if (nir_src_is_if(src))
 
 static inline bool
 nir_def_used_by_if(const nir_def *def)
@@ -4284,13 +4284,13 @@ nir_after_block_before_jump(nir_block *block)
 static inline nir_cursor
 nir_before_src(nir_src *src)
 {
-   if (src->is_if) {
+   if (nir_src_is_if(src)) {
       nir_block *prev_block =
-         nir_cf_node_as_block(nir_cf_node_prev(&src->parent_if->cf_node));
+         nir_cf_node_as_block(nir_cf_node_prev(&nir_src_parent_if(src)->cf_node));
       return nir_after_block(prev_block);
-   } else if (src->parent_instr->type == nir_instr_type_phi) {
+   } else if (nir_src_parent_instr(src)->type == nir_instr_type_phi) {
 #ifndef NDEBUG
-      nir_phi_instr *cond_phi = nir_instr_as_phi(src->parent_instr);
+      nir_phi_instr *cond_phi = nir_instr_as_phi(nir_src_parent_instr(src));
       bool found = false;
       nir_foreach_phi_src(phi_src, cond_phi) {
          if (phi_src->src.ssa == src->ssa) {
@@ -4306,7 +4306,7 @@ nir_before_src(nir_src *src)
       nir_phi_src *phi_src = list_entry(src, nir_phi_src, src);
       return nir_after_block_before_jump(phi_src->pred);
    } else {
-      return nir_before_instr(src->parent_instr);
+      return nir_before_instr(nir_src_parent_instr(src));
    }
 }
 
@@ -4498,7 +4498,7 @@ static inline void
 nir_src_rewrite(nir_src *src, nir_def *new_ssa)
 {
    assert(src->ssa);
-   assert(src->is_if ? (src->parent_if != NULL) : (src->parent_instr != NULL));
+   assert(nir_src_is_if(src) ? (nir_src_parent_if(src) != NULL) : (nir_src_parent_instr(src) != NULL));
    list_del(&src->use_link);
    src->ssa = new_ssa;
    list_addtail(&src->use_link, &new_ssa->uses);
@@ -6372,13 +6372,13 @@ nir_is_store_reg(nir_intrinsic_instr *intr)
    assert(reg->intrinsic == nir_intrinsic_decl_reg); \
                                                      \
    nir_foreach_use(load, &reg->def)             \
-      if (nir_is_load_reg(nir_instr_as_intrinsic(load->parent_instr)))
+      if (nir_is_load_reg(nir_instr_as_intrinsic(nir_src_parent_instr(load))))
 
 #define nir_foreach_reg_store(store, reg)            \
    assert(reg->intrinsic == nir_intrinsic_decl_reg); \
                                                      \
    nir_foreach_use(store, &reg->def)            \
-      if (nir_is_store_reg(nir_instr_as_intrinsic(store->parent_instr)))
+      if (nir_is_store_reg(nir_instr_as_intrinsic(nir_src_parent_instr(store))))
 
 static inline nir_intrinsic_instr *
 nir_load_reg_for_def(const nir_def *def)
@@ -6403,10 +6403,10 @@ nir_store_reg_for_def(const nir_def *def)
       return NULL;
 
    nir_src *src = list_first_entry(&def->uses, nir_src, use_link);
-   if (src->is_if)
+   if (nir_src_is_if(src))
       return NULL;
 
-   nir_instr *parent = src->parent_instr;
+   nir_instr *parent = nir_src_parent_instr(src);
    if (parent->type != nir_instr_type_intrinsic)
       return NULL;
 
