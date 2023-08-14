@@ -188,6 +188,6 @@ v3d33_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 
         for (int i = 0; i < 4; i++) {
                 if (p1_unpacked.return_words_of_texture_data & (1 << i))
-                        ntq_store_dest(c, &instr->dest, i, vir_LDTMU(c));
+                        ntq_store_def(c, &instr->dest.ssa, i, vir_LDTMU(c));
         }
 }

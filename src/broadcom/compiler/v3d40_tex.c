@@ -407,7 +407,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         }
 
         retiring->ldtmu_count = p0_unpacked.return_words_of_texture_data;
-        ntq_add_pending_tmu_flush(c, &instr->dest,
+        ntq_add_pending_tmu_flush(c, &instr->dest.ssa,
                                   p0_unpacked.return_words_of_texture_data);
 }
 
@@ -639,6 +639,6 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
         struct qinst *retiring =
                 vir_image_emit_register_writes(c, instr, atomic_add_replaced, NULL);
         retiring->ldtmu_count = p0_unpacked.return_words_of_texture_data;
-        ntq_add_pending_tmu_flush(c, &instr->dest,
+        ntq_add_pending_tmu_flush(c, &instr->dest.ssa,
                                   p0_unpacked.return_words_of_texture_data);
 }

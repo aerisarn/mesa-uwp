@@ -641,7 +641,7 @@ struct v3d_compile {
                 uint32_t output_fifo_size;
 
                 struct {
-                        nir_dest *dest;
+                        nir_def *def;
                         uint8_t num_components;
                         uint8_t component_mask;
                 } flush[MAX_TMU_QUEUE_SIZE];
@@ -1147,10 +1147,10 @@ bool vir_writes_r4(const struct v3d_device_info *devinfo, struct qinst *inst);
 struct qreg vir_follow_movs(struct v3d_compile *c, struct qreg reg);
 uint8_t vir_channels_written(struct qinst *inst);
 struct qreg ntq_get_src(struct v3d_compile *c, nir_src src, int i);
-void ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
-                    struct qreg result);
+void ntq_store_def(struct v3d_compile *c, nir_def *def, int chan,
+                   struct qreg result);
 bool ntq_tmu_fifo_overflow(struct v3d_compile *c, uint32_t components);
-void ntq_add_pending_tmu_flush(struct v3d_compile *c, nir_dest *dest,
+void ntq_add_pending_tmu_flush(struct v3d_compile *c, nir_def *def,
                                uint32_t component_mask);
 void ntq_flush_tmu(struct v3d_compile *c);
 void vir_emit_thrsw(struct v3d_compile *c);
