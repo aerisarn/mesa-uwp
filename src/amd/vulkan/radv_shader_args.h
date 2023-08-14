@@ -65,7 +65,7 @@ struct radv_shader_args {
 
    /* TCS */
    /* # [0:5] = the number of patch control points
-    * # [6:13] = the number of tessellation patches
+    * # [6:11] = the number of tessellation patches
     */
    struct ac_arg tcs_offchip_layout;
    struct ac_arg tcs_epilog_pc;
