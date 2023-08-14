@@ -18,6 +18,19 @@ agx_create_query(struct pipe_context *ctx, unsigned query_type, unsigned index)
    return (struct pipe_query *)query;
 }
 
+static bool
+is_occlusion(struct agx_query *query)
+{
+   switch (query->type) {
+   case PIPE_QUERY_OCCLUSION_COUNTER:
+   case PIPE_QUERY_OCCLUSION_PREDICATE:
+   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static void
 agx_destroy_query(struct pipe_context *ctx, struct pipe_query *pquery)
 {
@@ -27,7 +40,7 @@ agx_destroy_query(struct pipe_context *ctx, struct pipe_query *pquery)
     * particularly during application teardown. In this case, don't leave a
     * dangling reference to the query.
     */
-   if (query->writer) {
+   if (query->writer && is_occlusion(query)) {
       *util_dynarray_element(&query->writer->occlusion_queries,
                              struct agx_query *, query->writer_index) = NULL;
    }
