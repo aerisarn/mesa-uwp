@@ -183,15 +183,15 @@ dst_reg_for_nir_reg(vec4_visitor *v, nir_def *handle,
 }
 
 dst_reg
-vec4_visitor::get_nir_dest(const nir_dest &dest)
+vec4_visitor::get_nir_def(const nir_def &def)
 {
-   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
+   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&def);
    if (!store_reg) {
       dst_reg dst =
-         dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(dest.ssa.bit_size, 32)));
-      if (dest.ssa.bit_size == 64)
+         dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(def.bit_size, 32)));
+      if (def.bit_size == 64)
          dst.type = BRW_REGISTER_TYPE_DF;
-      nir_ssa_values[dest.ssa.index] = dst;
+      nir_ssa_values[def.index] = dst;
       return dst;
    } else {
       nir_src *indirect =
@@ -207,15 +207,15 @@ vec4_visitor::get_nir_dest(const nir_dest &dest)
 }
 
 dst_reg
-vec4_visitor::get_nir_dest(const nir_dest &dest, enum brw_reg_type type)
+vec4_visitor::get_nir_def(const nir_def &def, enum brw_reg_type type)
 {
-   return retype(get_nir_dest(dest), type);
+   return retype(get_nir_def(def), type);
 }
 
 dst_reg
-vec4_visitor::get_nir_dest(const nir_dest &dest, nir_alu_type type)
+vec4_visitor::get_nir_def(const nir_def &def, nir_alu_type type)
 {
-   return get_nir_dest(dest, brw_type_for_nir_type(devinfo, type));
+   return get_nir_def(def, brw_type_for_nir_type(devinfo, type));
 }
 
 src_reg
@@ -427,7 +427,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       /* We set EmitNoIndirectInput for VS */
       unsigned load_offset = nir_src_as_uint(instr->src[0]);
 
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
       src = src_reg(ATTR, nir_intrinsic_base(instr) + load_offset,
                     glsl_type::uvec4_type);
@@ -457,7 +457,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       unsigned ssbo_index = nir_src_is_const(instr->src[0]) ?
                             nir_src_as_uint(instr->src[0]) : 0;
 
-      dst_reg result_dst = get_nir_dest(instr->dest);
+      dst_reg result_dst = get_nir_def(instr->dest.ssa);
       vec4_instruction *inst = new(mem_ctx)
          vec4_instruction(SHADER_OPCODE_GET_BUFFER_SIZE, result_dst);
 
@@ -554,7 +554,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       src_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
                                               1 /* dims */, 4 /* size*/,
                                               BRW_PREDICATE_NONE);
-      dst_reg dest = get_nir_dest(instr->dest);
+      dst_reg dest = get_nir_def(instr->dest.ssa);
       read_result.type = dest.type;
       read_result.swizzle = brw_swizzle_for_size(instr->num_components);
       emit(MOV(dest, read_result));
@@ -581,7 +581,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       /* Offsets are in bytes but they should always be multiples of 4 */
       assert(nir_intrinsic_base(instr) % 4 == 0);
 
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
       src = src_reg(dst_reg(UNIFORM, nir_intrinsic_base(instr) / 16));
       src.type = dest.type;
@@ -632,7 +632,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    case nir_intrinsic_load_ubo: {
       src_reg surf_index;
 
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
       if (nir_src_is_const(instr->src[0])) {
          /* The block index is a constant, so just emit the binding table entry
@@ -743,7 +743,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       const src_reg shader_clock = get_timestamp();
       const enum brw_reg_type type = brw_type_for_base_type(glsl_type::uvec2_type);
 
-      dest = get_nir_dest(instr->dest, type);
+      dest = get_nir_def(instr->dest.ssa, type);
       emit(MOV(dest, shader_clock));
       break;
    }
@@ -758,7 +758,7 @@ vec4_visitor::nir_emit_ssbo_atomic(int op, nir_intrinsic_instr *instr)
 {
    dst_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    src_reg surface = get_nir_ssbo_intrinsic_index(instr);
    src_reg offset = get_nir_src(instr->src[1], 1);
@@ -1083,7 +1083,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    nir_alu_type dst_type = (nir_alu_type) (nir_op_infos[instr->op].output_type |
                                            nir_dest_bit_size(instr->dest.dest));
-   dst_reg dst = get_nir_dest(instr->dest.dest, dst_type);
+   dst_reg dst = get_nir_def(instr->dest.dest.ssa, dst_type);
    dst.writemask &= nir_component_mask(nir_dest_num_components(instr->dest.dest));
 
    src_reg op[4];
@@ -1884,7 +1884,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    src_reg sample_index;
    src_reg mcs;
 
-   dst_reg dest = get_nir_dest(instr->dest, instr->dest_type);
+   dst_reg dest = get_nir_def(instr->dest.ssa, instr->dest_type);
 
    /* The hardware requires a LOD for buffer textures */
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF)
