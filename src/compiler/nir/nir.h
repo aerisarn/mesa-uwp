@@ -1018,12 +1018,14 @@ nir_src_is_if(const nir_src *src)
 static inline nir_instr *
 nir_src_parent_instr(const nir_src *src)
 {
+   assert(!nir_src_is_if(src));
    return src->renamed_parent_instr;
 }
 
 static inline struct nir_if *
 nir_src_parent_if(const nir_src *src)
 {
+   assert(nir_src_is_if(src));
    return src->parent_if;
 }
 
