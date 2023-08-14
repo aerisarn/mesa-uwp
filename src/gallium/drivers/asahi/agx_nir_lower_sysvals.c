@@ -137,16 +137,16 @@ static bool
 lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
 {
    b->cursor = nir_before_instr(instr);
-   nir_dest *dest;
+   nir_def *old;
    nir_def *replacement = NULL;
 
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-      dest = &intr->dest;
+      old = &intr->dest.ssa;
       replacement = lower_intrinsic(b, intr);
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
-      dest = &tex->dest;
+      old = &tex->dest.ssa;
 
       if (tex->op != nir_texop_lod_bias_agx)
          return false;
@@ -165,7 +165,7 @@ lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
    }
 
    if (replacement != NULL) {
-      nir_def_rewrite_uses(&dest->ssa, replacement);
+      nir_def_rewrite_uses(old, replacement);
       return true;
    } else {
       return false;
