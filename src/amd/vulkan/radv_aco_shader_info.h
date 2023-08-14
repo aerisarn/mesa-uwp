@@ -118,7 +118,6 @@ radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco_info, const struct
    ASSIGN_FIELD(mrt0_is_dual_src);
 
    memcpy(aco_info->inputs, radv_args->ps_epilog_inputs, sizeof(aco_info->inputs));
-   aco_info->pc = radv_args->ps_epilog_pc;
 }
 
 static inline void

@@ -66,7 +66,6 @@ struct aco_vs_prolog_info {
 
 struct aco_ps_epilog_info {
    struct ac_arg inputs[8];
-   struct ac_arg pc;
 
    uint32_t spi_shader_col_format;
 
