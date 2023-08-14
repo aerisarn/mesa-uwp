@@ -38,6 +38,11 @@ gpir_reg *gpir_create_reg(gpir_compiler *comp)
    return reg;
 }
 
+/* Register the given gpir_node as providing the given NIR destination, so
+ * that gpir_node_find() will return it. Also insert any stores necessary if
+ * the destination will be used after the end of this basic block. The node
+ * must already be inserted.
+ */
 static void register_node_ssa(gpir_block *block, gpir_node *node, nir_def *ssa)
 {
    block->comp->node_for_ssa[ssa->index] = node;
@@ -86,16 +91,6 @@ static void register_node_reg(gpir_block *block, gpir_node *node, int index)
    gpir_node_add_dep(&store->node, node, GPIR_DEP_INPUT);
 
    list_addtail(&store->node.list, &block->node_list);
-}
-
-/* Register the given gpir_node as providing the given NIR destination, so
- * that gpir_node_find() will return it. Also insert any stores necessary if
- * the destination will be used after the end of this basic block. The node
- * must already be inserted.
- */
-static void register_node(gpir_block *block, gpir_node *node, nir_dest *dest)
-{
-   register_node_ssa(block, node, &dest->ssa);
 }
 
 static gpir_node *gpir_node_find(gpir_block *block, nir_src *src,
@@ -158,7 +153,7 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
    if (instr->op == nir_op_mov) {
       gpir_node *child = gpir_node_find(block, &instr->src[0].src,
                                         instr->src[0].swizzle[0]);
-      register_node(block, child, &instr->dest.dest);
+      register_node_ssa(block, child, &instr->dest.dest.ssa);
       return true;
    }
 
@@ -187,12 +182,12 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
    }
 
    list_addtail(&node->node.list, &block->node_list);
-   register_node(block, &node->node, &instr->dest.dest);
+   register_node_ssa(block, &node->node, &instr->dest.dest.ssa);
 
    return true;
 }
 
-static gpir_node *gpir_create_load(gpir_block *block, nir_dest *dest,
+static gpir_node *gpir_create_load(gpir_block *block, nir_def *def,
                                    int op, int index, int component)
 {
    gpir_load_node *load = gpir_node_create(block, op);
@@ -202,24 +197,24 @@ static gpir_node *gpir_create_load(gpir_block *block, nir_dest *dest,
    load->index = index;
    load->component = component;
    list_addtail(&load->node.list, &block->node_list);
-   register_node(block, &load->node, dest);
+   register_node_ssa(block, &load->node, def);
    return &load->node;
 }
 
-static bool gpir_create_vector_load(gpir_block *block, nir_dest *dest, int index)
+static bool gpir_create_vector_load(gpir_block *block, nir_def *def, int index)
 {
    assert(index < GPIR_VECTOR_SSA_NUM);
 
-   block->comp->vector_ssa[index].ssa = dest->ssa.index;
+   block->comp->vector_ssa[index].ssa = def->index;
 
-   for (int i = 0; i < dest->ssa.num_components; i++) {
-      gpir_node *node = gpir_create_load(block, dest, gpir_op_load_uniform,
+   for (int i = 0; i < def->num_components; i++) {
+      gpir_node *node = gpir_create_load(block, def, gpir_op_load_uniform,
                                          block->comp->constant_base + index, i);
       if (!node)
          return false;
 
       block->comp->vector_ssa[index].nodes[i] = node;
-      snprintf(node->name, sizeof(node->name), "ssa%d.%c", dest->ssa.index, "xyzw"[i]);
+      snprintf(node->name, sizeof(node->name), "ssa%d.%c", def->index, "xyzw"[i]);
    }
 
    return true;
@@ -251,7 +246,7 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
       return true;
    }
    case nir_intrinsic_load_input:
-      return gpir_create_load(block, &instr->dest,
+      return gpir_create_load(block, &instr->dest.ssa,
                               gpir_op_load_attribute,
                               nir_intrinsic_base(instr),
                               nir_intrinsic_component(instr)) != NULL;
@@ -260,14 +255,14 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
       int offset = nir_intrinsic_base(instr);
       offset += (int)nir_src_as_float(instr->src[0]);
 
-      return gpir_create_load(block, &instr->dest,
+      return gpir_create_load(block, &instr->dest.ssa,
                               gpir_op_load_uniform,
                               offset / 4, offset % 4) != NULL;
    }
    case nir_intrinsic_load_viewport_scale:
-      return gpir_create_vector_load(block, &instr->dest, GPIR_VECTOR_SSA_VIEWPORT_SCALE);
+      return gpir_create_vector_load(block, &instr->dest.ssa, GPIR_VECTOR_SSA_VIEWPORT_SCALE);
    case nir_intrinsic_load_viewport_offset:
-      return gpir_create_vector_load(block, &instr->dest, GPIR_VECTOR_SSA_VIEWPORT_OFFSET);
+      return gpir_create_vector_load(block, &instr->dest.ssa, GPIR_VECTOR_SSA_VIEWPORT_OFFSET);
    case nir_intrinsic_store_output:
    {
       gpir_store_node *store = gpir_node_create(block, gpir_op_store_varying);
