@@ -112,9 +112,7 @@ struct panfrost_vertex_state {
    uint16_t strides[PIPE_MAX_ATTRIBS];
 
 #if PAN_ARCH >= 9
-   /* Packed attribute descriptor. All fields are set at CSO create time
-    * except for stride, which must be ORed in at draw time
-    */
+   /* Packed attribute descriptors */
    struct mali_attribute_packed attributes[PIPE_MAX_ATTRIBS];
 #else
    /* buffers corresponds to attribute buffer, element_buffers corresponds
@@ -939,33 +937,15 @@ panfrost_emit_vertex_buffers(struct panfrost_batch *batch)
    return T.gpu;
 }
 
-/**
- * Emit Valhall attribute descriptors and associated (vertex) buffer
- * descriptors at draw-time. The attribute descriptors are packed at draw time
- * except for the stride field. The buffer descriptors are packed here, though
- * that could be moved into panfrost_set_vertex_buffers if needed.
- */
 static mali_ptr
 panfrost_emit_vertex_data(struct panfrost_batch *batch)
 {
    struct panfrost_context *ctx = batch->ctx;
    struct panfrost_vertex_state *vtx = ctx->vertex;
-   struct panfrost_ptr T = pan_pool_alloc_desc_array(
-      &batch->pool.base, vtx->num_elements, ATTRIBUTE);
-   struct mali_attribute_packed *attributes = T.cpu;
 
-   for (unsigned i = 0; i < vtx->num_elements; ++i) {
-      struct mali_attribute_packed packed;
-
-      pan_pack(&packed, ATTRIBUTE, cfg) {
-         cfg.stride = vtx->pipe[i].src_stride;
-      }
-
-      pan_merge(packed, vtx->attributes[i], ATTRIBUTE);
-      attributes[i] = packed;
-   }
-
-   return T.gpu;
+   return pan_pool_upload_aligned(&batch->pool.base, vtx->attributes,
+                                  vtx->num_elements * pan_size(ATTRIBUTE),
+                                  pan_alignment(ATTRIBUTE));
 }
 
 static void panfrost_update_sampler_view(struct panfrost_sampler_view *view,
@@ -3930,9 +3910,7 @@ panfrost_create_rasterizer_state(struct pipe_context *pctx,
 #if PAN_ARCH >= 9
 /*
  * Given a pipe_vertex_element, pack the corresponding Valhall attribute
- * descriptor. This function is called at CSO create time. Since
- * pipe_vertex_element lacks a stride, the packed attribute descriptor will not
- * be uploaded until draw time.
+ * descriptor. This function is called at CSO create time.
  */
 static void
 panfrost_pack_attribute(struct panfrost_device *dev,
@@ -3947,6 +3925,7 @@ panfrost_pack_attribute(struct panfrost_device *dev,
       cfg.format = dev->formats[el.src_format].hw;
       cfg.offset = el.src_offset;
       cfg.buffer_index = el.vertex_buffer_index;
+      cfg.stride = el.src_stride;
 
       if (el.instance_divisor == 0) {
          /* Per-vertex */
