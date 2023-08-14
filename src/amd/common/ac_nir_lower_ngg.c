@@ -3513,7 +3513,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
 
    if (!options->can_cull) {
       nir_gs_count_vertices_and_primitives(shader, state.const_out_vtxcnt,
-                                           state.const_out_prmcnt, 4u);
+                                           state.const_out_prmcnt, NULL, 4u);
       state.output_compile_time_known =
          state.const_out_vtxcnt[0] == shader->info.gs.vertices_out &&
          state.const_out_prmcnt[0] != -1;

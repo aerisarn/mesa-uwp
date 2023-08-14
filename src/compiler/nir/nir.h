@@ -5023,6 +5023,7 @@ void nir_dump_cfg(nir_shader *shader, FILE *fp);
 void nir_gs_count_vertices_and_primitives(const nir_shader *shader,
                                           int *out_vtxcnt,
                                           int *out_prmcnt,
+                                          int *out_decomposed_prmcnt,
                                           unsigned num_streams);
 
 typedef enum {
