@@ -1042,15 +1042,6 @@ typedef struct {
    nir_def ssa;
 } nir_dest;
 
-static inline nir_dest
-nir_dest_init(void)
-{
-   nir_dest dest = { { NULL } };
-   return dest;
-}
-
-#define NIR_DEST_INIT nir_dest_init()
-
 static inline nir_src
 nir_src_for_ssa(nir_def *def)
 {
