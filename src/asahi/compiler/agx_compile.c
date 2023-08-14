@@ -308,7 +308,7 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
    assert(instr->def.num_components == 1);
 
    /* Emit move, later passes can inline/push if useful */
-   agx_mov_imm_to(b, agx_nir_ssa_index(&instr->def),
+   agx_mov_imm_to(b, agx_def_index(&instr->def),
                   nir_const_value_as_uint(instr->value[0], bit_size));
 }
 
@@ -1804,7 +1804,7 @@ agx_emit_undef(agx_builder *b, nir_undef_instr *instr)
     * the lowering happens in NIR and this just allows for late lowering passes
     * to result in undefs.
     */
-   agx_mov_imm_to(b, agx_nir_ssa_index(&instr->def), 0);
+   agx_mov_imm_to(b, agx_def_index(&instr->def), 0);
 }
 
 static void
