@@ -444,16 +444,16 @@ vec_dest_has_swizzle(nir_alu_instr *vec, nir_def *ssa)
    return false;
 }
 
-/* get allocated dest register for nir_dest
+/* get allocated dest register for nir_def
  * *p_swiz tells how the components need to be placed into register
  */
 static hw_dst
-ra_dest(struct etna_compile *c, nir_dest *dest, unsigned *p_swiz)
+ra_def(struct etna_compile *c, nir_def *def, unsigned *p_swiz)
 {
    unsigned swiz = INST_SWIZ_IDENTITY, mask = 0xf;
-   dest = real_dest(dest, &swiz, &mask);
+   def = real_def(def, &swiz, &mask);
 
-   unsigned r = ra_get_node_reg(c->g, c->live_map[dest_index(c->impl, dest)]);
+   unsigned r = ra_get_node_reg(c->g, c->live_map[def_index(c->impl, def)]);
    unsigned t = reg_get_type(r);
 
    *p_swiz = inst_swiz_compose(swiz, reg_dst_swiz[t]);
@@ -477,7 +477,7 @@ emit_alu(struct etna_compile *c, nir_alu_instr * alu)
    assert(!(alu->op >= nir_op_vec2 && alu->op <= nir_op_vec4));
 
    unsigned dst_swiz;
-   hw_dst dst = ra_dest(c, &alu->dest.dest, &dst_swiz);
+   hw_dst dst = ra_def(c, &alu->dest.dest.ssa, &dst_swiz);
 
    switch (alu->op) {
    case nir_op_fdot2:
@@ -523,7 +523,7 @@ static void
 emit_tex(struct etna_compile *c, nir_tex_instr * tex)
 {
    unsigned dst_swiz;
-   hw_dst dst = ra_dest(c, &tex->dest, &dst_swiz);
+   hw_dst dst = ra_def(c, &tex->dest.ssa, &dst_swiz);
    nir_src *coord = NULL, *src1 = NULL, *src2 = NULL;
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
@@ -568,7 +568,7 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
       break;
    case nir_intrinsic_load_uniform: {
       unsigned dst_swiz;
-      struct etna_inst_dst dst = ra_dest(c, &intr->dest, &dst_swiz);
+      struct etna_inst_dst dst = ra_def(c, &intr->dest.ssa, &dst_swiz);
 
       /* TODO: rework so extra MOV isn't required, load up to 4 addresses at once */
       emit_inst(c, &(struct etna_inst) {
@@ -595,7 +595,7 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
       emit_inst(c, &(struct etna_inst) {
          .opcode = INST_OPCODE_LOAD,
          .type = INST_TYPE_U32,
-         .dst = ra_dest(c, &intr->dest, &dst_swiz),
+         .dst = ra_def(c, &intr->dest.ssa, &dst_swiz),
          .src[0] = get_src(c, &intr->src[1]),
          .src[1] = const_src(c, &CONST_VAL(ETNA_UNIFORM_UBO0_ADDR + idx, 0), 1),
       });

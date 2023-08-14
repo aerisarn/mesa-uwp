@@ -130,16 +130,16 @@ etna_live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_ma
    nir_foreach_block(block, impl) {
       block_live_index[block->index] = state.num_defs;
       nir_foreach_instr(instr, block) {
-         nir_dest *dest = dest_for_instr(instr);
-         if (!dest)
+         nir_def *def = def_for_instr(instr);
+         if (!def)
             continue;
 
-         unsigned idx = dest_index(impl, dest);
+         unsigned idx = def_index(impl, def);
          /* register is already in defs */
          if (live_map[idx] != ~0u)
             continue;
 
-         defs[state.num_defs] = (struct live_def) {instr, dest, state.num_defs, 0};
+         defs[state.num_defs] = (struct live_def) {instr, def, state.num_defs, 0};
 
          /* input live from the start */
          if (instr->type == nir_instr_type_intrinsic) {

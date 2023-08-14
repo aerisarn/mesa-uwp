@@ -147,8 +147,8 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
    /* set classes from num_components */
    for (unsigned i = 0; i < num_nodes; i++) {
       nir_instr *instr = defs[i].instr;
-      nir_dest *dest = defs[i].dest;
-      unsigned comp = nir_dest_num_components(*dest) - 1;
+      nir_def *def = defs[i].def;
+      unsigned comp = def->num_components - 1;
 
       if (instr->type == nir_instr_type_alu &&
           c->specs->has_new_transcendentals) {
@@ -168,10 +168,10 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
          /* can't have dst swizzle or sparse writemask on UBO loads */
          if (intr->intrinsic == nir_intrinsic_load_ubo) {
-            assert(dest == &intr->dest);
-            if (dest->ssa.num_components == 2)
+            assert(def == &intr->dest.ssa);
+            if (def->num_components == 2)
                comp = REG_CLASS_VIRT_VEC2C;
-            if (dest->ssa.num_components == 3)
+            if (def->num_components == 3)
                comp = REG_CLASS_VIRT_VEC3C;
          }
       }
@@ -184,7 +184,7 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
          if (instr->type != nir_instr_type_intrinsic)
             continue;
 
-         nir_dest *dest = dest_for_instr(instr);
+         nir_def *def = def_for_instr(instr);
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
          unsigned reg;
 
@@ -210,7 +210,7 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
                REG_TYPE_VIRT_VEC2_XY,
                REG_TYPE_VIRT_VEC3_XYZ,
                REG_TYPE_VEC4,
-            }[nir_dest_num_components(*dest) - 1];
+            }[def->num_components - 1];
             break;
          case nir_intrinsic_load_instance_id:
             reg = c->variant->infile.num_reg * NUM_REG_TYPES + REG_TYPE_VIRT_SCALAR_Y;
@@ -219,7 +219,7 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
             continue;
          }
 
-         ra_set_node_reg(g, live_map[dest_index(impl, dest)], reg);
+         ra_set_node_reg(g, live_map[def_index(impl, def)], reg);
       }
    }
 
