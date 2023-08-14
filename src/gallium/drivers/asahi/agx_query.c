@@ -48,34 +48,31 @@ agx_begin_query(struct pipe_context *pctx, struct pipe_query *pquery)
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
       ctx->occlusion_query = query;
-
-      /* begin_query zeroes, flush so we can do that write. If anything (i.e.
-       * other than piglit) actually hits this, we could shadow the query to
-       * avoid the flush.
-       */
-      if (query->writer) {
-         agx_flush_batch_for_reason(ctx, query->writer,
-                                    "Occlusion overwritten");
-      }
-
-      assert(query->writer == NULL);
-
-      query->value = 0;
-      return true;
+      break;
 
    case PIPE_QUERY_PRIMITIVES_GENERATED:
       ctx->prims_generated = query;
-      query->value = 0;
-      return true;
+      break;
 
    case PIPE_QUERY_PRIMITIVES_EMITTED:
       ctx->tf_prims_generated = query;
-      query->value = 0;
-      return true;
+      break;
 
    default:
       return false;
    }
+
+   /* begin_query zeroes, flush so we can do that write. If anything (i.e.
+    * other than piglit) actually hits this, we could shadow the query to
+    * avoid the flush.
+    */
+   if (query->writer) {
+      agx_flush_batch_for_reason(ctx, query->writer, "Query overwritten");
+   }
+
+   assert(query->writer == NULL);
+   query->value = 0;
+   return true;
 }
 
 static bool
