@@ -117,7 +117,7 @@ count_digits(unsigned n)
 }
 
 static void
-print_ssa_def(nir_def *def, print_state *state)
+print_def(nir_def *def, print_state *state)
 {
    FILE *fp = state->fp;
 
@@ -377,7 +377,7 @@ print_load_const_instr(nir_load_const_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
-   print_ssa_def(&instr->def, state);
+   print_def(&instr->def, state);
 
    fprintf(fp, " = load_const ");
 
@@ -422,12 +422,6 @@ static void
 print_src(const nir_src *src, print_state *state, nir_alu_type src_type)
 {
    print_ssa_use(src->ssa, state, src_type);
-}
-
-static void
-print_dest(nir_dest *dest, print_state *state)
-{
-   print_ssa_def(&dest->ssa, state);
 }
 
 static const char *
@@ -477,7 +471,7 @@ print_alu_instr(nir_alu_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
-   print_dest(&instr->dest.dest, state);
+   print_def(&instr->dest.dest.ssa, state);
 
    fprintf(fp, " = %s", nir_op_infos[instr->op].name);
    if (instr->exact)
@@ -978,7 +972,7 @@ print_deref_instr(nir_deref_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
-   print_dest(&instr->dest, state);
+   print_def(&instr->dest.ssa, state);
 
    switch (instr->deref_type) {
    case nir_deref_type_var:
@@ -1102,7 +1096,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
    FILE *fp = state->fp;
 
    if (info->has_dest) {
-      print_dest(&instr->dest, state);
+      print_def(&instr->dest.ssa, state);
       fprintf(fp, " = ");
    } else {
       print_no_dest_padding(state);
@@ -1546,7 +1540,7 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
-   print_dest(&instr->dest, state);
+   print_def(&instr->dest.ssa, state);
 
    fprintf(fp, " = (");
    print_alu_type(instr->dest_type, state);
@@ -1793,7 +1787,7 @@ static void
 print_ssa_undef_instr(nir_undef_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
-   print_ssa_def(&instr->def, state);
+   print_def(&instr->def, state);
    fprintf(fp, " = undefined");
 }
 
@@ -1801,7 +1795,7 @@ static void
 print_phi_instr(nir_phi_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
-   print_dest(&instr->dest, state);
+   print_def(&instr->dest.ssa, state);
    fprintf(fp, " = phi ");
    nir_foreach_phi_src(src, instr) {
       if (&src->node != exec_list_get_head(&instr->srcs))
@@ -1824,7 +1818,7 @@ print_parallel_copy_instr(nir_parallel_copy_instr *instr, print_state *state)
          fprintf(fp, "*");
          print_src(&entry->dest.reg, state, nir_type_invalid);
       } else {
-         print_dest(&entry->dest.dest, state);
+         print_def(&entry->dest.dest.ssa, state);
       }
       fprintf(fp, " = ");
 
