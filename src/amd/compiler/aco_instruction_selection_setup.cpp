@@ -341,7 +341,7 @@ init_context(isel_context* ctx, nir_shader* shader)
             case nir_instr_type_alu: {
                nir_alu_instr* alu_instr = nir_instr_as_alu(instr);
                RegType type =
-                  nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
+                  alu_instr->dest.dest.ssa.divergent ? RegType::vgpr : RegType::sgpr;
                switch (alu_instr->op) {
                case nir_op_fmul:
                case nir_op_fmulz:
@@ -561,7 +561,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_ubo:
                case nir_intrinsic_load_ssbo:
                case nir_intrinsic_load_global_amd:
-                  type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
+                  type = intrinsic->dest.ssa.divergent ? RegType::vgpr : RegType::sgpr;
                   break;
                case nir_intrinsic_load_view_index:
                   type = ctx->stage == fragment_fs ? RegType::vgpr : RegType::sgpr;
@@ -581,7 +581,7 @@ init_context(isel_context* ctx, nir_shader* shader)
             }
             case nir_instr_type_tex: {
                nir_tex_instr* tex = nir_instr_as_tex(instr);
-               RegType type = nir_dest_is_divergent(tex->dest) ? RegType::vgpr : RegType::sgpr;
+               RegType type = tex->dest.ssa.divergent ? RegType::vgpr : RegType::sgpr;
 
                if (tex->op == nir_texop_texture_samples) {
                   assert(!tex->dest.ssa.divergent);
@@ -606,7 +606,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                assert((phi->dest.ssa.bit_size != 1 || num_components == 1) &&
                       "Multiple components not supported on boolean phis.");
 
-               if (nir_dest_is_divergent(phi->dest)) {
+               if (phi->dest.ssa.divergent) {
                   type = RegType::vgpr;
                } else {
                   nir_foreach_phi_src (src, phi) {

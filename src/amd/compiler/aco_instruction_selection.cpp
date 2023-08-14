@@ -1081,7 +1081,7 @@ emit_comparison(isel_context* ctx, nir_alu_instr* instr, Temp dst, aco_opcode v1
    aco_opcode v_op = instr->src[0].src.ssa->bit_size == 64   ? v64_op
                      : instr->src[0].src.ssa->bit_size == 32 ? v32_op
                                                              : v16_op;
-   bool use_valu = s_op == aco_opcode::num_opcodes || nir_dest_is_divergent(instr->dest.dest) ||
+   bool use_valu = s_op == aco_opcode::num_opcodes || instr->dest.dest.ssa.divergent ||
                    get_ssa_temp(ctx, instr->src[0].src.ssa).type() == RegType::vgpr ||
                    get_ssa_temp(ctx, instr->src[1].src.ssa).type() == RegType::vgpr;
    aco_opcode op = use_valu ? v_op : s_op;
@@ -8395,7 +8395,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          ASSERTED bool expected_divergent = instr->intrinsic == nir_intrinsic_exclusive_scan;
          if (instr->intrinsic == nir_intrinsic_inclusive_scan)
             expected_divergent = op == nir_op_iadd || op == nir_op_fadd || op == nir_op_ixor;
-         assert(nir_dest_is_divergent(instr->dest) == expected_divergent);
+         assert(instr->dest.ssa.divergent == expected_divergent);
 
          if (instr->intrinsic == nir_intrinsic_reduce) {
             if (emit_uniform_reduce(ctx, instr))
@@ -8456,7 +8456,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_quad_swizzle_amd: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
 
-      if (!nir_dest_is_divergent(instr->dest)) {
+      if (!instr->dest.ssa.divergent) {
          emit_uniform_subgroup(ctx, instr, src);
          break;
       }
@@ -8553,7 +8553,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_masked_swizzle_amd: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      if (!nir_dest_is_divergent(instr->dest)) {
+      if (!instr->dest.ssa.divergent) {
          emit_uniform_subgroup(ctx, instr, src);
          break;
       }
@@ -9766,7 +9766,7 @@ visit_phi(isel_context* ctx, nir_phi_instr* instr)
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    assert(instr->dest.ssa.bit_size != 1 || dst.regClass() == ctx->program->lane_mask);
 
-   bool logical = !dst.is_linear() || nir_dest_is_divergent(instr->dest);
+   bool logical = !dst.is_linear() || instr->dest.ssa.divergent;
    logical |= (ctx->block->kind & block_kind_merge) != 0;
    aco_opcode opcode = logical ? aco_opcode::p_phi : aco_opcode::p_linear_phi;
 

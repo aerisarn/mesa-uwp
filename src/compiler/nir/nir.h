@@ -1082,12 +1082,6 @@ nir_src_is_divergent(nir_src src)
    return src.ssa->divergent;
 }
 
-static inline bool
-nir_dest_is_divergent(nir_dest dest)
-{
-   return dest.ssa.divergent;
-}
-
 /* Are all components the same, ie. .xxxx */
 static inline bool
 nir_is_same_comp_swizzle(uint8_t *swiz, unsigned nr_comp)
