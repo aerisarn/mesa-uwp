@@ -278,8 +278,6 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res);
 
 void
 zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res);
-bool
-zink_use_dummy_attachments(const struct zink_context *ctx);
 void
 zink_set_null_fs(struct zink_context *ctx);
 

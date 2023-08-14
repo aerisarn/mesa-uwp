@@ -2948,7 +2948,7 @@ VkImageView
 zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned i)
 {
    struct zink_resource *res;
-   if (!surf || (i < ctx->fb_state.nr_cbufs && zink_use_dummy_attachments(ctx))) {
+   if (!surf) {
       surf = zink_get_dummy_surface(ctx, util_logbase2_ceil(ctx->fb_state.samples));
       res = zink_resource(surf->base.texture);
    } else {
