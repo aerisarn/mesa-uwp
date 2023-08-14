@@ -1442,7 +1442,7 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
    struct ureg_src src[4];
    struct ureg_dst dst;
    unsigned i;
-   int dst_64 = nir_dest_bit_size(instr->dest.dest) == 64;
+   int dst_64 = instr->dest.dest.ssa.bit_size == 64;
    int src_64 = nir_src_bit_size(instr->src[0].src) == 64;
    int num_srcs = nir_op_infos[instr->op].num_inputs;
 
@@ -1879,7 +1879,7 @@ ntt_shift_by_frac(struct ureg_src src, unsigned frac, unsigned num_components)
 static void
 ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
-   int bit_size = nir_dest_bit_size(instr->dest);
+   int bit_size = instr->dest.ssa.bit_size;
    assert(bit_size == 32 || instr->num_components <= 2);
 
    struct ureg_src src = ureg_src_register(TGSI_FILE_CONSTANT, 0);
@@ -2234,7 +2234,7 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
    unsigned base = nir_intrinsic_base(instr);
    struct ureg_src input;
    nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
-   bool is_64 = nir_dest_bit_size(instr->dest) == 64;
+   bool is_64 = instr->dest.ssa.bit_size == 64;
 
    if (c->s->info.stage == MESA_SHADER_VERTEX) {
       input = ureg_DECL_vs_input(c->ureg, base);
@@ -3226,7 +3226,7 @@ ntt_should_vectorize_instr(const nir_instr *instr, const void *data)
    }
 
    int src_bit_size = nir_src_bit_size(alu->src[0].src);
-   int dst_bit_size = nir_dest_bit_size(alu->dest.dest);
+   int dst_bit_size = alu->dest.dest.ssa.bit_size;
 
    if (src_bit_size == 64 || dst_bit_size == 64) {
       /* Avoid vectorizing 64-bit instructions at all.  Despite tgsi.rst
@@ -3366,7 +3366,7 @@ scalarize_64bit(const nir_instr *instr, const void *data)
 {
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   return (nir_dest_bit_size(alu->dest.dest) == 64 ||
+   return (alu->dest.dest.ssa.bit_size == 64 ||
            nir_src_bit_size(alu->src[0].src) == 64);
 }
 
@@ -3395,7 +3395,7 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
 
    bool has_dest = nir_intrinsic_infos[instr->intrinsic].has_dest;
    if (has_dest) {
-      if (nir_dest_bit_size(instr->dest) != 64)
+      if (instr->dest.ssa.bit_size != 64)
          return false;
    } else  {
       if (nir_src_bit_size(instr->src[0]) != 64)
@@ -3824,7 +3824,7 @@ ntt_vec_to_mov_writemask_cb(const nir_instr *instr, unsigned writemask, UNUSED c
       return false;
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   int dst_32 = nir_dest_bit_size(alu->dest.dest) == 32;
+   int dst_32 = alu->dest.dest.ssa.bit_size == 32;
    int src_64 = nir_src_bit_size(alu->src[0].src) == 64;
 
    if (src_64 && dst_32) {

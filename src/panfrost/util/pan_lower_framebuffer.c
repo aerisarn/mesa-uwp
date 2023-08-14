@@ -547,7 +547,7 @@ pan_lower_fb_load(nir_builder *b, nir_intrinsic_instr *intr,
     * the result is undefined.
     */
 
-   unsigned bits = nir_dest_bit_size(intr->dest);
+   unsigned bits = intr->dest.ssa.bit_size;
 
    nir_alu_type src_type =
       nir_alu_type_get_base_type(pan_unpacked_type_for_format(desc));

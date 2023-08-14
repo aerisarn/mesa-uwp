@@ -33,7 +33,7 @@ vec4_gs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_per_vertex_input: {
-      assert(nir_dest_bit_size(instr->dest) == 32);
+      assert(instr->dest.ssa.bit_size == 32);
       /* The EmitNoIndirectInput flag guarantees our vertex index will
        * be constant.  We should handle indirects someday.
        */

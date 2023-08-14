@@ -52,7 +52,7 @@ nir_lower_64bit_intrin_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
    }
 
-   if (nir_dest_bit_size(intr->dest) != 64)
+   if (intr->dest.ssa.bit_size != 64)
       return false;
 
    b->cursor = nir_after_instr(instr);

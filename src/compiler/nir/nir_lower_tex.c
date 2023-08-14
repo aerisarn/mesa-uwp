@@ -315,14 +315,14 @@ sample_plane(nir_builder *b, nir_tex_instr *tex, int plane,
                                                        nir_imm_int(b, plane));
    plane_tex->op = nir_texop_tex;
    plane_tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-   plane_tex->dest_type = nir_type_float | nir_dest_bit_size(tex->dest);
+   plane_tex->dest_type = nir_type_float | tex->dest.ssa.bit_size;
    plane_tex->coord_components = 2;
 
    plane_tex->texture_index = tex->texture_index;
    plane_tex->sampler_index = tex->sampler_index;
 
    nir_def_init(&plane_tex->instr, &plane_tex->dest.ssa, 4,
-                nir_dest_bit_size(tex->dest));
+                tex->dest.ssa.bit_size);
 
    nir_builder_instr_insert(b, &plane_tex->instr);
 
@@ -369,7 +369,7 @@ convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
       }
    }
 
-   unsigned bit_size = nir_dest_bit_size(tex->dest);
+   unsigned bit_size = tex->dest.ssa.bit_size;
 
    nir_def *offset =
       nir_vec4(b,
@@ -888,7 +888,7 @@ lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
 
    nir_def_init(&txd->instr, &txd->dest.ssa,
                 nir_dest_num_components(tex->dest),
-                nir_dest_bit_size(tex->dest));
+                tex->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &txd->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txd->dest.ssa);
    nir_instr_remove(&tex->instr);
@@ -928,7 +928,7 @@ lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
 
    nir_def_init(&txl->instr, &txl->dest.ssa,
                 nir_dest_num_components(tex->dest),
-                nir_dest_bit_size(tex->dest));
+                tex->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &txl->instr);
    nir_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);
    nir_instr_remove(&tex->instr);

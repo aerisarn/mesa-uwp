@@ -55,8 +55,8 @@ pan_lower_sample_pos_impl(struct nir_builder *b, nir_instr *instr,
    nir_def *decoded = nir_fmul_imm(b, nir_i2f16(b, raw), 1.0 / 256.0);
 
    /* Make NIR validator happy */
-   if (decoded->bit_size != nir_dest_bit_size(intr->dest))
-      decoded = nir_f2fN(b, decoded, nir_dest_bit_size(intr->dest));
+   if (decoded->bit_size != intr->dest.ssa.bit_size)
+      decoded = nir_f2fN(b, decoded, intr->dest.ssa.bit_size);
 
    nir_def_rewrite_uses(&intr->dest.ssa, decoded);
    return true;

@@ -376,7 +376,7 @@ requires_payload_in_shared(nir_shader *shader, bool atomics, bool small_types)
                   return true;
                break;
             case nir_intrinsic_load_task_payload:
-               if (small_types && nir_dest_bit_size(intrin->dest) < 32)
+               if (small_types && intrin->dest.ssa.bit_size < 32)
                   return true;
                break;
             case nir_intrinsic_store_task_payload:

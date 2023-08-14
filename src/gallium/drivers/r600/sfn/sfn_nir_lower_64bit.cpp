@@ -112,7 +112,7 @@ LowerLoad64Uniform::filter(const nir_instr *instr) const
        intr->intrinsic != nir_intrinsic_load_ubo_vec4)
       return false;
 
-   return nir_dest_bit_size(intr->dest) == 64;
+   return intr->dest.ssa.bit_size == 64;
 }
 
 nir_def *
@@ -156,7 +156,7 @@ class LowerSplit64op : public NirLowerInstruction {
          auto alu = nir_instr_as_alu(instr);
          switch (alu->op) {
          case nir_op_bcsel:
-            return nir_dest_bit_size(alu->dest.dest) == 64;
+            return alu->dest.dest.ssa.bit_size == 64;
          case nir_op_f2i32:
          case nir_op_f2u32:
          case nir_op_f2i64:
@@ -285,7 +285,7 @@ LowerSplit64BitVar::filter(const nir_instr *instr) const
       case nir_intrinsic_load_input:
       case nir_intrinsic_load_ubo:
       case nir_intrinsic_load_ssbo:
-         if (nir_dest_bit_size(intr->dest) != 64)
+         if (intr->dest.ssa.bit_size != 64)
             return false;
          return nir_dest_num_components(intr->dest) >= 3;
       case nir_intrinsic_store_output:
@@ -306,7 +306,7 @@ LowerSplit64BitVar::filter(const nir_instr *instr) const
       case nir_op_bcsel:
          if (nir_dest_num_components(alu->dest.dest) < 3)
             return false;
-         return nir_dest_bit_size(alu->dest.dest) == 64;
+         return alu->dest.dest.ssa.bit_size == 64;
       case nir_op_bany_fnequal3:
       case nir_op_bany_fnequal4:
       case nir_op_ball_fequal3:
@@ -833,7 +833,7 @@ Lower64BitToVec2::filter(const nir_instr *instr) const
       case nir_intrinsic_load_global:
       case nir_intrinsic_load_ubo_vec4:
       case nir_intrinsic_load_ssbo:
-         return nir_dest_bit_size(intr->dest) == 64;
+         return intr->dest.ssa.bit_size == 64;
       case nir_intrinsic_store_deref: {
          if (nir_src_bit_size(intr->src[1]) == 64)
             return true;
@@ -850,11 +850,11 @@ Lower64BitToVec2::filter(const nir_instr *instr) const
    }
    case nir_instr_type_alu: {
       auto alu = nir_instr_as_alu(instr);
-      return nir_dest_bit_size(alu->dest.dest) == 64;
+      return alu->dest.dest.ssa.bit_size == 64;
    }
    case nir_instr_type_phi: {
       auto phi = nir_instr_as_phi(instr);
-      return nir_dest_bit_size(phi->dest) == 64;
+      return phi->dest.ssa.bit_size == 64;
    }
    case nir_instr_type_load_const: {
       auto lc = nir_instr_as_load_const(instr);
@@ -1286,7 +1286,7 @@ r600_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
 
    bool has_dest = nir_intrinsic_infos[instr->intrinsic].has_dest;
    if (has_dest) {
-      if (nir_dest_bit_size(instr->dest) != 64)
+      if (instr->dest.ssa.bit_size != 64)
          return false;
    } else {
       if (nir_src_bit_size(instr->src[0]) != 64)

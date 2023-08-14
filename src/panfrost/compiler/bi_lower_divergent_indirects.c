@@ -84,7 +84,7 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
 
    /* Write zero in a funny way to bypass lower_load_const_to_scalar */
    bool has_dest = nir_intrinsic_infos[intr->intrinsic].has_dest;
-   unsigned size = has_dest ? nir_dest_bit_size(intr->dest) : 32;
+   unsigned size = has_dest ? intr->dest.ssa.bit_size : 32;
    nir_def *zero = has_dest ? nir_imm_zero(b, 1, size) : NULL;
    nir_def *zeroes[4] = {zero, zero, zero, zero};
    nir_def *res =

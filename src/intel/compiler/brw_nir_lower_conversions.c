@@ -57,7 +57,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    nir_alu_type src_type = nir_op_infos[alu->op].input_types[0];
    nir_alu_type src_full_type = (nir_alu_type) (src_type | src_bit_size);
 
-   unsigned dst_bit_size = nir_dest_bit_size(alu->dest.dest);
+   unsigned dst_bit_size = alu->dest.dest.ssa.bit_size;
    nir_alu_type dst_full_type = nir_op_infos[alu->op].output_type;
    nir_alu_type dst_type = nir_alu_type_get_base_type(dst_full_type);
 

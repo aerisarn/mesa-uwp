@@ -116,7 +116,7 @@ static bool
 lower_load_bitsize(nir_builder *b,
                    nir_intrinsic_instr *intr)
 {
-        uint32_t bit_size = nir_dest_bit_size(intr->dest);
+        uint32_t bit_size = intr->dest.ssa.bit_size;
         if (bit_size == 32)
                 return false;
 

@@ -206,7 +206,7 @@ lower_image_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_bindless_image_samples: {
       if (options->lower_image_samples_to_one) {
          b->cursor = nir_after_instr(&intrin->instr);
-         nir_def *samples = nir_imm_intN_t(b, 1, nir_dest_bit_size(intrin->dest));
+         nir_def *samples = nir_imm_intN_t(b, 1, intrin->dest.ssa.bit_size);
          nir_def_rewrite_uses(&intrin->dest.ssa, samples);
          return true;
       }

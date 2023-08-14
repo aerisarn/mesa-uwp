@@ -665,7 +665,7 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
 
       nir_def_init(&phi->instr, &phi->dest.ssa,
                    nir_dest_num_components(bcsel->dest.dest),
-                   nir_dest_bit_size(bcsel->dest.dest));
+                   bcsel->dest.dest.ssa.bit_size);
 
       b->cursor = nir_after_phis(header_block);
       nir_builder_instr_insert(b, &phi->instr);

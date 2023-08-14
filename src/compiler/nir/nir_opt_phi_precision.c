@@ -183,7 +183,7 @@ widening_conversion_op(nir_instr *instr, unsigned *bit_size)
    /* We also need to check that the conversion's dest was actually
     * wider:
     */
-   if (nir_dest_bit_size(alu->dest.dest) <= *bit_size)
+   if (alu->dest.dest.ssa.bit_size <= *bit_size)
       return INVALID_OP;
 
    return alu->op;

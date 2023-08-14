@@ -149,7 +149,7 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
       util_format_is_pure_uint(interchange_format) &&
             !util_format_is_pure_uint(attrib.format)
          ? (interchange_align * 8)
-         : nir_dest_bit_size(intr->dest);
+         : intr->dest.ssa.bit_size;
 
    /* Non-UNORM R10G10B10A2 loaded as a scalar and unpacked */
    if (interchange_format == PIPE_FORMAT_R32_UINT && !desc->is_array)
@@ -190,7 +190,7 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
       b, interchange_comps, interchange_register_size, base, stride_offset_el,
       .format = interchange_format, .base = shift);
 
-   unsigned dest_size = nir_dest_bit_size(intr->dest);
+   unsigned dest_size = intr->dest.ssa.bit_size;
 
    /* Unpack but do not convert non-native non-array formats */
    if (is_rgb10_a2(desc) && interchange_format == PIPE_FORMAT_R32_UINT) {

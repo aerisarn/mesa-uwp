@@ -2158,7 +2158,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       }
    }
 
-   unsigned bit_size = nir_dest_bit_size(alu->dest.dest);
+   unsigned bit_size = alu->dest.dest.ssa.bit_size;
    unsigned num_components = nir_dest_num_components(alu->dest.dest);
    nir_alu_type atype = bit_size == 1 ?
                         nir_type_bool :
@@ -2713,7 +2713,7 @@ emit_load_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
    unsigned num_components = nir_dest_num_components(intr->dest);
-   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   unsigned bit_size = intr->dest.ssa.bit_size;
    SpvId uint_type = get_uvec_type(ctx, bit_size, 1);
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                SpvStorageClassWorkgroup,
@@ -2775,7 +2775,7 @@ emit_load_scratch(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
    unsigned num_components = nir_dest_num_components(intr->dest);
-   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   unsigned bit_size = intr->dest.ssa.bit_size;
    SpvId uint_type = get_uvec_type(ctx, bit_size, 1);
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                SpvStorageClassPrivate,
@@ -3047,13 +3047,16 @@ emit_load_vec_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *v
       var_type = get_bvec_type(ctx, nir_dest_num_components(intr->dest));
       break;
    case nir_type_int:
-      var_type = get_ivec_type(ctx, nir_dest_bit_size(intr->dest), nir_dest_num_components(intr->dest));
+      var_type = get_ivec_type(ctx, intr->dest.ssa.bit_size,
+                               nir_dest_num_components(intr->dest));
       break;
    case nir_type_uint:
-      var_type = get_uvec_type(ctx, nir_dest_bit_size(intr->dest), nir_dest_num_components(intr->dest));
+      var_type = get_uvec_type(ctx, intr->dest.ssa.bit_size,
+                               nir_dest_num_components(intr->dest));
       break;
    case nir_type_float:
-      var_type = get_fvec_type(ctx, nir_dest_bit_size(intr->dest), nir_dest_num_components(intr->dest));
+      var_type = get_fvec_type(ctx, intr->dest.ssa.bit_size,
+                               nir_dest_num_components(intr->dest));
       break;
    default:
       unreachable("unknown type passed");
@@ -3112,7 +3115,9 @@ static void
 handle_atomic_op(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId ptr, SpvId param, SpvId param2, nir_alu_type type)
 {
    SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, type);
-   SpvId result = emit_atomic(ctx, get_atomic_op(ctx, nir_dest_bit_size(intr->dest), nir_intrinsic_atomic_op(intr)), dest_type, ptr, param, param2);
+   SpvId result = emit_atomic(ctx,
+                              get_atomic_op(ctx, intr->dest.ssa.bit_size, nir_intrinsic_atomic_op(intr)),
+                              dest_type, ptr, param, param2);
    assert(result);
    store_def(ctx, &intr->dest.ssa, result, type);
 }
@@ -4175,7 +4180,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    if (tex->is_sparse)
       result = extract_sparse_load(ctx, result, actual_dest_type, &tex->dest.ssa);
 
-   if (nir_dest_bit_size(tex->dest) != 32) {
+   if (tex->dest.ssa.bit_size != 32) {
       /* convert FP32 to FP16 */
       result = emit_unop(ctx, SpvOpFConvert, dest_type, result);
    }

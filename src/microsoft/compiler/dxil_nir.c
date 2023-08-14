@@ -70,7 +70,7 @@ load_comps_to_vec(nir_builder *b, unsigned src_bit_size,
 static bool
 lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var)
 {
-   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   unsigned bit_size = intr->dest.ssa.bit_size;
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned num_bits = num_components * bit_size;
 

@@ -82,7 +82,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    if (intrin->intrinsic == nir_intrinsic_image_sparse_load) {
       img_load = nir_image_load(b,
                                 intrin->num_components - 1,
-                                nir_dest_bit_size(intrin->dest),
+                                intrin->dest.ssa.bit_size,
                                 intrin->src[0].ssa,
                                 intrin->src[1].ssa,
                                 intrin->src[2].ssa,
@@ -92,7 +92,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    } else {
       img_load = nir_bindless_image_load(b,
                                          intrin->num_components - 1,
-                                         nir_dest_bit_size(intrin->dest),
+                                         intrin->dest.ssa.bit_size,
                                          intrin->src[0].ssa,
                                          intrin->src[1].ssa,
                                          intrin->src[2].ssa,
@@ -157,7 +157,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
    tex->src[2].src = nir_src_for_ssa(nir_imm_int(b, 0));
 
    nir_def_init(&tex->instr, &tex->dest.ssa, 5,
-                nir_dest_bit_size(intrin->dest));
+                intrin->dest.ssa.bit_size);
 
    nir_builder_instr_insert(b, &tex->instr);
 

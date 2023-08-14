@@ -223,7 +223,7 @@ opt_intrinsics_alu(nir_builder *b, nir_alu_instr *alu,
       break;
    case nir_op_iand:
    case nir_op_ior:
-      if (nir_dest_bit_size(alu->dest.dest) == 1 && options->optimize_quad_vote_to_reduce)
+      if (alu->dest.dest.ssa.bit_size == 1 && options->optimize_quad_vote_to_reduce)
          replacement = try_opt_quad_vote(b, alu, block_has_discard);
       break;
    default:

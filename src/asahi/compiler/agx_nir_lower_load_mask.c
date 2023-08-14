@@ -26,7 +26,7 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
       return false;
 
    b->cursor = nir_before_instr(instr);
-   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   unsigned bit_size = intr->dest.ssa.bit_size;
    nir_def *comps[4] = {NULL};
 
    for (unsigned c = 0; c < intr->num_components; ++c) {

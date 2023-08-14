@@ -36,13 +36,13 @@ load_ubo(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var, unsigned 
 {
    return nir_load_ubo(b,
                        nir_dest_num_components(intr->dest),
-                       nir_dest_bit_size(intr->dest),
+                       intr->dest.ssa.bit_size,
                        nir_imm_int(b, var->data.binding),
                        nir_imm_int(b, offset),
                        .align_mul = 256,
                        .align_offset = offset,
                        .range_base = offset,
-                       .range = nir_dest_bit_size(intr->dest) * nir_dest_num_components(intr->dest) / 8);
+                       .range = intr->dest.ssa.bit_size * nir_dest_num_components(intr->dest) / 8);
 }
 
 static bool
@@ -146,7 +146,7 @@ lower_load_kernel_input(nir_builder *b, nir_intrinsic_instr *intr,
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   unsigned bit_size = intr->dest.ssa.bit_size;
    enum glsl_base_type base_type;
 
    switch (bit_size) {

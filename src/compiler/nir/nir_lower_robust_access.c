@@ -63,7 +63,7 @@ lower_buffer_load(nir_builder *b,
                   nir_intrinsic_instr *instr,
                   const nir_lower_robust_access_options *opts)
 {
-   uint32_t type_sz = nir_dest_bit_size(instr->dest) / 8;
+   uint32_t type_sz = instr->dest.ssa.bit_size / 8;
    nir_def *size;
    nir_def *index = instr->src[0].ssa;
 
@@ -96,7 +96,7 @@ lower_buffer_shared(nir_builder *b, nir_intrinsic_instr *instr)
    uint32_t type_sz, offset_src;
    if (instr->intrinsic == nir_intrinsic_load_shared) {
       offset_src = 0;
-      type_sz = nir_dest_bit_size(instr->dest) / 8;
+      type_sz = instr->dest.ssa.bit_size / 8;
    } else if (instr->intrinsic == nir_intrinsic_store_shared) {
       offset_src = 1;
       type_sz = nir_src_bit_size(instr->src[0]) / 8;

@@ -378,7 +378,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    unsigned bs[info->num_inputs]; /* bit size */
    struct ir3_block *b = ctx->block;
    unsigned dst_sz, wrmask;
-   type_t dst_type = type_uint_size(nir_dest_bit_size(alu->dest.dest));
+   type_t dst_type = type_uint_size(alu->dest.dest.ssa.bit_size);
 
    dst_sz = alu->dest.dest.ssa.num_components;
    wrmask = (1 << dst_sz) - 1;
@@ -645,7 +645,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       dst[0] = ir3_MAD_S24(b, src[0], 0, src[1], 0, src[2], 0);
       break;
    case nir_op_imul:
-      compile_assert(ctx, nir_dest_bit_size(alu->dest.dest) == 16);
+      compile_assert(ctx, alu->dest.dest.ssa.bit_size == 16);
       dst[0] = ir3_MUL_S24(b, src[0], 0, src[1], 0);
       break;
    case nir_op_imul24:
@@ -843,7 +843,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    }
 
    if (nir_alu_type_get_base_type(info->output_type) == nir_type_bool) {
-      assert(nir_dest_bit_size(alu->dest.dest) == 1 || alu->op == nir_op_b2b32);
+      assert(alu->dest.dest.ssa.bit_size == 1 || alu->op == nir_op_b2b32);
       assert(dst_sz == 1);
    } else {
       /* 1-bit values stored in 32-bit registers are only valid for certain
@@ -857,7 +857,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       case nir_op_bcsel:
          break;
       default:
-         compile_assert(ctx, nir_dest_bit_size(alu->dest.dest) != 1);
+         compile_assert(ctx, alu->dest.dest.ssa.bit_size != 1);
       }
    }
 
@@ -1484,7 +1484,7 @@ emit_intrinsic_image_size_tex(struct ir3_context *ctx,
    struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0], true);
    struct ir3_instruction *sam, *lod;
    unsigned flags, ncoords = ir3_get_image_coords(intr, &flags);
-   type_t dst_type = nir_dest_bit_size(intr->dest) == 16 ? TYPE_U16 : TYPE_U32;
+   type_t dst_type = intr->dest.ssa.bit_size == 16 ? TYPE_U16 : TYPE_U32;
 
    info.flags |= flags;
    assert(nir_src_as_uint(intr->src[1]) == 0);
@@ -1902,7 +1902,7 @@ emit_intrinsic_reduce(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
    nir_op nir_reduce_op = (nir_op) nir_intrinsic_reduction_op(intr);
    reduce_op_t reduce_op = get_reduce_op(nir_reduce_op);
-   unsigned dst_size = nir_dest_bit_size(intr->dest);
+   unsigned dst_size = intr->dest.ssa.bit_size;
    unsigned flags = (ir3_bitsize(ctx, dst_size) == 16) ? IR3_REG_HALF : 0;
 
    /* Note: the shared reg is initialized to the identity, so we need it to
@@ -2046,14 +2046,14 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          for (int i = 0; i < dest_components; i++) {
             dst[i] = create_uniform_typed(
                b, idx + i,
-               nir_dest_bit_size(intr->dest) == 16 ? TYPE_F16 : TYPE_F32);
+               intr->dest.ssa.bit_size == 16 ? TYPE_F16 : TYPE_F32);
          }
       } else {
          src = ir3_get_src(ctx, &intr->src[0]);
          for (int i = 0; i < dest_components; i++) {
             dst[i] = create_uniform_indirect(
                b, idx + i,
-               nir_dest_bit_size(intr->dest) == 16 ? TYPE_F16 : TYPE_F32,
+               intr->dest.ssa.bit_size == 16 ? TYPE_F16 : TYPE_F32,
                ir3_get_addr0(ctx, src[0], 1));
          }
          /* NOTE: if relative addressing is used, we set
@@ -2567,7 +2567,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       struct ir3_instruction *idx = ir3_get_src(ctx, &intr->src[1])[0];
 
-      type_t dst_type = type_uint_size(nir_dest_bit_size(intr->dest));
+      type_t dst_type = type_uint_size(intr->dest.ssa.bit_size);
 
       if (dst_type != TYPE_U32)
          idx = ir3_COV(ctx->block, idx, TYPE_U32, dst_type);
@@ -2580,21 +2580,21 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_quad_swap_horizontal: {
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       dst[0] = ir3_QUAD_SHUFFLE_HORIZ(ctx->block, src, 0);
-      dst[0]->cat5.type = type_uint_size(nir_dest_bit_size(intr->dest));
+      dst[0]->cat5.type = type_uint_size(intr->dest.ssa.bit_size);
       break;
    }
 
    case nir_intrinsic_quad_swap_vertical: {
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       dst[0] = ir3_QUAD_SHUFFLE_VERT(ctx->block, src, 0);
-      dst[0]->cat5.type = type_uint_size(nir_dest_bit_size(intr->dest));
+      dst[0]->cat5.type = type_uint_size(intr->dest.ssa.bit_size);
       break;
    }
 
    case nir_intrinsic_quad_swap_diagonal: {
       struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
       dst[0] = ir3_QUAD_SHUFFLE_DIAG(ctx->block, src, 0);
-      dst[0]->cat5.type = type_uint_size(nir_dest_bit_size(intr->dest));
+      dst[0]->cat5.type = type_uint_size(intr->dest.ssa.bit_size);
       break;
    }
 
@@ -3284,7 +3284,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
    /* GETLOD returns results in 4.8 fixed point */
    if (opc == OPC_GETLOD) {
-      bool half = nir_dest_bit_size(tex->dest) == 16;
+      bool half = tex->dest.ssa.bit_size == 16;
       struct ir3_instruction *factor =
          half ? create_immed_typed(b, _mesa_float_to_half(1.0 / 256), TYPE_F16)
               : create_immed(b, fui(1.0 / 256));

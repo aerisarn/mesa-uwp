@@ -644,7 +644,7 @@ agx_load_compute_dimension(agx_builder *b, agx_index dst,
                            nir_intrinsic_instr *instr, enum agx_sr base)
 {
    unsigned dim = nir_dest_num_components(instr->dest);
-   unsigned size = nir_dest_bit_size(instr->dest);
+   unsigned size = instr->dest.ssa.bit_size;
    assert(size == 16 || size == 32);
 
    agx_index srcs[] = {
@@ -739,7 +739,7 @@ agx_emit_local_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
    agx_index index = agx_zero(); /* TODO: optimize address arithmetic */
    assert(base.size == AGX_SIZE_16);
 
-   enum agx_format format = format_for_bitsize(nir_dest_bit_size(instr->dest));
+   enum agx_format format = format_for_bitsize(instr->dest.ssa.bit_size);
    unsigned nr = nir_dest_num_components(instr->dest);
    unsigned mask = BITFIELD_MASK(nr);
 
@@ -1226,7 +1226,7 @@ static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
-   unsigned sz = nir_dest_bit_size(instr->dest.dest);
+   unsigned sz = instr->dest.dest.ssa.bit_size;
    unsigned src_sz = srcs ? nir_src_bit_size(instr->src[0].src) : 0;
    ASSERTED unsigned comps = nir_dest_num_components(instr->dest.dest);
 

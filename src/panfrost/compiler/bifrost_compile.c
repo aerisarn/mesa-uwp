@@ -392,7 +392,7 @@ bi_copy_component(bi_builder *b, nir_intrinsic_instr *instr, bi_index tmp)
    unsigned component = nir_intrinsic_component(instr);
    unsigned nr = instr->num_components;
    unsigned total = nr + component;
-   unsigned bitsize = nir_dest_bit_size(instr->dest);
+   unsigned bitsize = instr->dest.ssa.bit_size;
 
    assert(total <= 4 && "should be vec4");
    bi_emit_cached_split(b, tmp, total * bitsize);
@@ -404,7 +404,7 @@ bi_copy_component(bi_builder *b, nir_intrinsic_instr *instr, bi_index tmp)
    unsigned channels[] = {component, component + 1, component + 2};
 
    bi_make_vec_to(b, bi_def_index(&instr->dest.ssa), srcs, channels, nr,
-                  nir_dest_bit_size(instr->dest));
+                  instr->dest.ssa.bit_size);
 }
 
 static void
@@ -502,7 +502,7 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
    bi_index dest =
       (component == 0) ? bi_def_index(&instr->dest.ssa) : bi_temp(b->shader);
 
-   unsigned sz = nir_dest_bit_size(instr->dest);
+   unsigned sz = instr->dest.ssa.bit_size;
 
    if (smooth) {
       nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
@@ -1050,7 +1050,7 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
    bi_index dyn_offset = bi_src_index(offset);
    uint32_t const_offset = offset_is_const ? nir_src_as_uint(*offset) : 0;
 
-   bi_load_ubo_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
+   bi_load_ubo_to(b, instr->num_components * instr->dest.ssa.bit_size,
                   bi_def_index(&instr->dest.ssa),
                   offset_is_const ? bi_imm_u32(const_offset) : dyn_offset,
                   bi_src_index(&instr->src[0]));
@@ -1067,7 +1067,7 @@ bi_emit_load_push_constant(bi_builder *b, nir_intrinsic_instr *instr)
    assert((base & 3) == 0 && "unaligned push constants");
 
    unsigned bits =
-      nir_dest_bit_size(instr->dest) * nir_dest_num_components(instr->dest);
+      instr->dest.ssa.bit_size * nir_dest_num_components(instr->dest);
 
    unsigned n = DIV_ROUND_UP(bits, 32);
    assert(n <= 4);
@@ -1124,7 +1124,7 @@ static void
 bi_emit_load(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 {
    int16_t offset = 0;
-   unsigned bits = instr->num_components * nir_dest_bit_size(instr->dest);
+   unsigned bits = instr->num_components * instr->dest.ssa.bit_size;
    bi_index dest = bi_def_index(&instr->dest.ssa);
    bi_index addr_lo = bi_extract(b, bi_src_index(&instr->src[0]), 0);
    bi_index addr_hi = bi_addr_high(b, &instr->src[0]);
@@ -1471,7 +1471,7 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
    bi_index dest = bi_def_index(&instr->dest.ssa);
    nir_alu_type T = nir_intrinsic_dest_type(instr);
    enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
-   unsigned size = nir_dest_bit_size(instr->dest);
+   unsigned size = instr->dest.ssa.bit_size;
    unsigned nr = instr->num_components;
 
    /* Get the render target */
@@ -2096,7 +2096,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
    bi_index dst = bi_def_index(&instr->dest.dest.ssa);
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
-   unsigned sz = nir_dest_bit_size(instr->dest.dest);
+   unsigned sz = instr->dest.dest.ssa.bit_size;
    unsigned comps = nir_dest_num_components(instr->dest.dest);
    unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
 
@@ -3245,9 +3245,8 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
       .shadow_or_clamp_disable = instr->is_shadow,
       .array = instr->is_array,
       .dimension = bifrost_tex_format(instr->sampler_dim),
-      .format =
-         bi_texture_format(instr->dest_type | nir_dest_bit_size(instr->dest),
-                           BI_CLAMP_NONE), /* TODO */
+      .format = bi_texture_format(instr->dest_type | instr->dest.ssa.bit_size,
+                                  BI_CLAMP_NONE), /* TODO */
       .mask = 0xF,
    };
 
@@ -3410,7 +3409,7 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
          dregs[sr_count++] = dregs[i];
    }
 
-   unsigned res_size = nir_dest_bit_size(instr->dest) == 16 ? 2 : 4;
+   unsigned res_size = instr->dest.ssa.bit_size == 16 ? 2 : 4;
 
    bi_index sr = sr_count ? bi_temp(b->shader) : bi_null();
    bi_index dst = bi_temp(b->shader);
@@ -3565,7 +3564,7 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
 
    /* Only write the components that we actually read */
    unsigned mask = nir_def_components_read(&instr->dest.ssa);
-   unsigned comps_per_reg = nir_dest_bit_size(instr->dest) == 16 ? 2 : 1;
+   unsigned comps_per_reg = instr->dest.ssa.bit_size == 16 ? 2 : 1;
    unsigned res_size = DIV_ROUND_UP(util_bitcount(mask), comps_per_reg);
 
    enum bi_register_format regfmt = bi_reg_fmt_for_nir(instr->dest_type);
@@ -3619,7 +3618,7 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
 
    bi_make_vec_to(b, bi_def_index(&instr->dest.ssa), unpacked, comps,
                   nir_dest_num_components(instr->dest),
-                  nir_dest_bit_size(instr->dest));
+                  instr->dest.ssa.bit_size);
 }
 
 /* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D/cube
@@ -3637,13 +3636,12 @@ bi_emit_texs(bi_builder *b, nir_tex_instr *instr)
       bi_index face, s, t;
       bi_emit_cube_coord(b, coords, &face, &s, &t);
 
-      bi_texs_cube_to(b, nir_dest_bit_size(instr->dest),
+      bi_texs_cube_to(b, instr->dest.ssa.bit_size,
                       bi_def_index(&instr->dest.ssa), s, t, face,
                       instr->sampler_index, instr->texture_index);
    } else {
-      bi_texs_2d_to(b, nir_dest_bit_size(instr->dest),
-                    bi_def_index(&instr->dest.ssa), bi_extract(b, coords, 0),
-                    bi_extract(b, coords, 1),
+      bi_texs_2d_to(b, instr->dest.ssa.bit_size, bi_def_index(&instr->dest.ssa),
+                    bi_extract(b, coords, 0), bi_extract(b, coords, 1),
                     instr->op != nir_texop_tex, /* zero LOD */
                     instr->sampler_index, instr->texture_index);
    }
@@ -4234,7 +4232,7 @@ bi_vectorize_filter(const nir_instr *instr, const void *data)
    }
 
    /* Vectorized instructions cannot write more than 32-bit */
-   int dst_bit_size = nir_dest_bit_size(alu->dest.dest);
+   int dst_bit_size = alu->dest.dest.ssa.bit_size;
    if (dst_bit_size == 16)
       return 2;
    else
@@ -4627,7 +4625,7 @@ bi_lower_load_output(nir_builder *b, nir_instr *instr, UNUSED void *data)
       b, .base = rt, .src_type = nir_intrinsic_dest_type(intr));
 
    nir_def *lowered = nir_load_converted_output_pan(
-      b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest),
+      b, nir_dest_num_components(intr->dest), intr->dest.ssa.bit_size,
       conversion, .dest_type = nir_intrinsic_dest_type(intr),
       .io_semantics = nir_intrinsic_io_semantics(intr));
 

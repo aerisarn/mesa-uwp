@@ -20,7 +20,7 @@ lower_wrapped(nir_builder *b, nir_instr *instr, void *data)
 
    switch (intr->intrinsic) {
    case nir_intrinsic_load_sample_id: {
-      unsigned size = nir_dest_bit_size(intr->dest);
+      unsigned size = intr->dest.ssa.bit_size;
       nir_def_rewrite_uses(&intr->dest.ssa, nir_u2uN(b, sample_id, size));
       nir_instr_remove(instr);
       return true;

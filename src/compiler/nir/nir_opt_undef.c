@@ -82,7 +82,7 @@ opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
 
    b->cursor = nir_before_instr(&alu->instr);
    nir_def *undef = nir_undef(b, alu->dest.dest.ssa.num_components,
-                              nir_dest_bit_size(alu->dest.dest));
+                              alu->dest.dest.ssa.bit_size);
    nir_def_rewrite_uses(&alu->dest.dest.ssa, undef);
 
    return true;

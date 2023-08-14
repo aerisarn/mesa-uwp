@@ -1083,12 +1083,6 @@ nir_src_is_divergent(nir_src src)
 }
 
 static inline unsigned
-nir_dest_bit_size(nir_dest dest)
-{
-   return dest.ssa.bit_size;
-}
-
-static inline unsigned
 nir_dest_num_components(nir_dest dest)
 {
    return dest.ssa.num_components;

@@ -54,7 +54,7 @@ brw_nir_lower_load_uniforms_impl(nir_builder *b, nir_instr *instr,
 
    /* Read the first few 32-bit scalars from InlineData. */
    if (nir_src_is_const(intrin->src[0]) &&
-       nir_dest_bit_size(intrin->dest) == 32 &&
+       intrin->dest.ssa.bit_size == 32 &&
        nir_dest_num_components(intrin->dest) == 1) {
       unsigned off = nir_intrinsic_base(intrin) + nir_src_as_uint(intrin->src[0]);
       unsigned off_dw = off / 4;
@@ -1777,7 +1777,7 @@ static void
 emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
                       const fs_reg &dest, fs_reg urb_handle)
 {
-   assert(nir_dest_bit_size(instr->dest) == 32);
+   assert(instr->dest.ssa.bit_size == 32);
 
    unsigned comps = nir_dest_num_components(instr->dest);
    if (comps == 0)
@@ -1819,7 +1819,7 @@ static void
 emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
                         const fs_reg &dest, const fs_reg &offset_src, fs_reg urb_handle)
 {
-   assert(nir_dest_bit_size(instr->dest) == 32);
+   assert(instr->dest.ssa.bit_size == 32);
 
    unsigned comps = nir_dest_num_components(instr->dest);
    if (comps == 0)

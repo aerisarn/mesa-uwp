@@ -537,7 +537,7 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    }
 
    /* None of the supported APIs allow interpolation on 64-bit things */
-   assert(nir_dest_bit_size(intrin->dest) <= 32);
+   assert(intrin->dest.ssa.bit_size <= 32);
 
    nir_intrinsic_op bary_op;
    switch (intrin->intrinsic) {
@@ -2844,8 +2844,8 @@ is_dual_slot(nir_intrinsic_instr *intrin)
              nir_src_num_components(intrin->src[0]) >= 3;
    }
 
-   return nir_dest_bit_size(intrin->dest) == 64 &&
-          nir_dest_num_components(intrin->dest) >= 3;
+   return intrin->dest.ssa.bit_size == 64 &&
+   nir_dest_num_components(intrin->dest) >= 3;
 }
 
 /**

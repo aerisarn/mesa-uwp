@@ -627,7 +627,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                                        tmu_op, has_index,
                                                        &tmu_writes);
                 } else if (is_load) {
-                        type_size = nir_dest_bit_size(instr->dest) / 8;
+                        type_size = instr->dest.ssa.bit_size / 8;
                 }
 
                 /* For atomics we use 32bit except for CMPXCHG, that we need
@@ -2694,7 +2694,7 @@ static void
 ntq_emit_load_uniform(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         /* We scalarize general TMU access for anything that is not 32-bit. */
-        assert(nir_dest_bit_size(instr->dest) == 32 ||
+        assert(instr->dest.ssa.bit_size == 32 ||
                instr->num_components == 1);
 
         /* Try to emit ldunif if possible, otherwise fallback to general TMU */
@@ -2726,7 +2726,7 @@ ntq_emit_inline_ubo_load(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 return false;
 
         /* We scalarize general TMU access for anything that is not 32-bit */
-        assert(nir_dest_bit_size(instr->dest) == 32 ||
+        assert(instr->dest.ssa.bit_size == 32 ||
                instr->num_components == 1);
 
         if (nir_src_is_const(instr->src[1])) {
@@ -3108,7 +3108,7 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
          * use ldunifa if we can verify alignment, which we can only do for
          * loads with a constant offset.
          */
-        uint32_t bit_size = nir_dest_bit_size(instr->dest);
+        uint32_t bit_size = instr->dest.ssa.bit_size;
         uint32_t value_skips = 0;
         if (bit_size < 32) {
                 if (dynamic_src) {

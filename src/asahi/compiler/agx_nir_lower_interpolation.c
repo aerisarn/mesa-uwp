@@ -127,7 +127,7 @@ interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel)
       .interp_mode = interp_mode_for_load(load), .io_semantics = sem);
 
    if (load->intrinsic == nir_intrinsic_load_input) {
-      assert(nir_dest_bit_size(load->dest) == 32);
+      assert(load->dest.ssa.bit_size == 32);
       return interpolate_flat(b, coefficients);
    } else {
       nir_intrinsic_instr *bary = nir_src_as_intrinsic(load->src[0]);
@@ -136,7 +136,7 @@ interpolate_channel(nir_builder *b, nir_intrinsic_instr *load, unsigned channel)
          b, coefficients, bary->src[0].ssa,
          nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE);
 
-      return nir_f2fN(b, interp, nir_dest_bit_size(load->dest));
+      return nir_f2fN(b, interp, load->dest.ssa.bit_size);
    }
 }
 

@@ -67,7 +67,8 @@ rusticl_lower_intrinsics_instr(
         return nir_load_var(b, state->printf_buf);
     case nir_intrinsic_load_work_dim:
         assert(state->work_dim);
-        return nir_u2uN(b, nir_load_var(b, state->work_dim), nir_dest_bit_size(intrins->dest));
+        return nir_u2uN(b, nir_load_var(b, state->work_dim),
+                        intrins->dest.ssa.bit_size);
     default:
         return NULL;
     }

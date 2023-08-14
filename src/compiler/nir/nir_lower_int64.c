@@ -1060,11 +1060,11 @@ lower_int64_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_i2f64:
    case nir_op_i2f32:
    case nir_op_i2f16:
-      return lower_2f(b, src[0], nir_dest_bit_size(alu->dest.dest), true);
+      return lower_2f(b, src[0], alu->dest.dest.ssa.bit_size, true);
    case nir_op_u2f64:
    case nir_op_u2f32:
    case nir_op_u2f16:
-      return lower_2f(b, src[0], nir_dest_bit_size(alu->dest.dest), false);
+      return lower_2f(b, src[0], alu->dest.dest.ssa.bit_size, false);
    case nir_op_f2i64:
    case nir_op_f2u64:
       return lower_f2(b, src[0], alu->op == nir_op_f2i64);

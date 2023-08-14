@@ -206,8 +206,8 @@ load_rgb32(nir_builder *b, nir_tex_instr *tex, nir_def *coordinate)
       nir_iand_imm(b, nir_ushr_imm(b, desc_hi, 2), BITFIELD64_MASK(36));
    nir_def *base = nir_ishl_imm(b, base_shr4, 4);
 
-   nir_def *raw = nir_load_constant_agx(b, 3, nir_dest_bit_size(tex->dest),
-                                        base, nir_imul_imm(b, coordinate, 3),
+   nir_def *raw = nir_load_constant_agx(b, 3, tex->dest.ssa.bit_size, base,
+                                        nir_imul_imm(b, coordinate, 3),
                                         .format = AGX_INTERNAL_FORMAT_I32);
 
    /* Set alpha to 1 (in the appropriate format) */
@@ -745,7 +745,7 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
       nir_def_rewrite_uses(
          &intr->dest.ssa,
          txs_for_image(b, intr, nir_dest_num_components(intr->dest),
-                       nir_dest_bit_size(intr->dest)));
+                       intr->dest.ssa.bit_size));
       return true;
 
    case nir_intrinsic_image_texel_address:

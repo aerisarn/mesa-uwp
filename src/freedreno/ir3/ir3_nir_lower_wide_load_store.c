@@ -81,7 +81,7 @@ lower_wide_load_store(nir_builder *b, nir_instr *instr, void *unused)
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
    } else {
       unsigned num_comp = nir_intrinsic_dest_components(intr);
-      unsigned bit_size = nir_dest_bit_size(intr->dest);
+      unsigned bit_size = intr->dest.ssa.bit_size;
       nir_def *addr = nir_ssa_for_src(b, intr->src[0], 1);
       nir_def *components[num_comp];
 

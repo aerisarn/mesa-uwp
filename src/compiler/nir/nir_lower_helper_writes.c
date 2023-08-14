@@ -77,7 +77,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    if (has_dest) {
       nir_push_else(b, NULL);
       undef = nir_undef(b, nir_dest_num_components(intr->dest),
-                        nir_dest_bit_size(intr->dest));
+                        intr->dest.ssa.bit_size);
    }
 
    nir_pop_if(b, NULL);

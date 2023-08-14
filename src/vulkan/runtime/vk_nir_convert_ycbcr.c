@@ -271,7 +271,7 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
    tex->is_array = old_tex->is_array;
 
    nir_def_init(&tex->instr, &tex->dest.ssa, old_tex->dest.ssa.num_components,
-                nir_dest_bit_size(old_tex->dest));
+                old_tex->dest.ssa.bit_size);
    nir_builder_instr_insert(b, &tex->instr);
 
    return &tex->dest.ssa;

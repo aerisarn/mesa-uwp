@@ -1529,19 +1529,19 @@ bound_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
 
    switch (intr->intrinsic) {
    case nir_intrinsic_store_ssbo:
-      var = bo->ssbo[nir_dest_bit_size(intr->dest) >> 4];
+      var = bo->ssbo[intr->dest.ssa.bit_size >> 4];
       offset = intr->src[2].ssa;
       is_load = false;
       break;
    case nir_intrinsic_load_ssbo:
-      var = bo->ssbo[nir_dest_bit_size(intr->dest) >> 4];
+      var = bo->ssbo[intr->dest.ssa.bit_size >> 4];
       offset = intr->src[1].ssa;
       break;
    case nir_intrinsic_load_ubo:
       if (nir_src_is_const(intr->src[0]) && nir_src_as_const_value(intr->src[0])->u32 == 0)
-         var = bo->uniforms[nir_dest_bit_size(intr->dest) >> 4];
+         var = bo->uniforms[intr->dest.ssa.bit_size >> 4];
       else
-         var = bo->ubo[nir_dest_bit_size(intr->dest) >> 4];
+         var = bo->ubo[intr->dest.ssa.bit_size >> 4];
       offset = intr->src[1].ssa;
       break;
    default:
@@ -1564,7 +1564,7 @@ bound_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       if (offset_bytes + i >= size) {
          rewrites++;
          if (is_load)
-            result[i] = nir_imm_zero(b, 1, nir_dest_bit_size(intr->dest));
+            result[i] = nir_imm_zero(b, 1, intr->dest.ssa.bit_size);
       }
    }
    assert(rewrites == intr->num_components);
@@ -2144,7 +2144,7 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_ssbo_atomic:
    case nir_intrinsic_ssbo_atomic_swap: {
       /* convert offset to uintN_t[idx] */
-      nir_def *offset = nir_udiv_imm(b, intr->src[1].ssa, nir_dest_bit_size(intr->dest) / 8);
+      nir_def *offset = nir_udiv_imm(b, intr->src[1].ssa, intr->dest.ssa.bit_size / 8);
       nir_instr_rewrite_src_ssa(instr, &intr->src[1], offset);
       return true;
    }
@@ -2154,10 +2154,10 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       bool force_2x32 = intr->intrinsic == nir_intrinsic_load_ubo &&
                         nir_src_is_const(intr->src[0]) &&
                         nir_src_as_uint(intr->src[0]) == 0 &&
-                        nir_dest_bit_size(intr->dest) == 64 &&
+                        intr->dest.ssa.bit_size == 64 &&
                         nir_intrinsic_align_offset(intr) % 8 != 0;
-      force_2x32 |= nir_dest_bit_size(intr->dest) == 64 && !has_int64;
-      nir_def *offset = nir_udiv_imm(b, intr->src[1].ssa, (force_2x32 ? 32 : nir_dest_bit_size(intr->dest)) / 8);
+      force_2x32 |= intr->dest.ssa.bit_size == 64 && !has_int64;
+      nir_def *offset = nir_udiv_imm(b, intr->src[1].ssa, (force_2x32 ? 32 : intr->dest.ssa.bit_size) / 8);
       nir_instr_rewrite_src_ssa(instr, &intr->src[1], offset);
       /* if 64bit isn't supported, 64bit loads definitely aren't supported, so rewrite as 2x32 with cast and pray */
       if (force_2x32) {
@@ -2181,8 +2181,8 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
    }
    case nir_intrinsic_load_shared:
       b->cursor = nir_before_instr(instr);
-      bool force_2x32 = nir_dest_bit_size(intr->dest) == 64 && !has_int64;
-      nir_def *offset = nir_udiv_imm(b, intr->src[0].ssa, (force_2x32 ? 32 : nir_dest_bit_size(intr->dest)) / 8);
+      bool force_2x32 = intr->dest.ssa.bit_size == 64 && !has_int64;
+      nir_def *offset = nir_udiv_imm(b, intr->src[0].ssa, (force_2x32 ? 32 : intr->dest.ssa.bit_size) / 8);
       nir_instr_rewrite_src_ssa(instr, &intr->src[0], offset);
       /* if 64bit isn't supported, 64bit loads definitely aren't supported, so rewrite as 2x32 with cast and pray */
       if (force_2x32) {
@@ -2311,7 +2311,8 @@ rewrite_atomic_ssbo_instr(nir_builder *b, nir_instr *instr, struct bo_vars *bo)
       unreachable("unknown intrinsic");
    nir_def *offset = intr->src[1].ssa;
    nir_src *src = &intr->src[0];
-   nir_variable *var = get_bo_var(b->shader, bo, true, src, nir_dest_bit_size(intr->dest));
+   nir_variable *var = get_bo_var(b->shader, bo, true, src,
+                                  intr->dest.ssa.bit_size);
    nir_deref_instr *deref_var = nir_build_deref_var(b, var);
    nir_def *idx = src->ssa;
    if (bo->first_ssbo)
@@ -2326,7 +2327,7 @@ rewrite_atomic_ssbo_instr(nir_builder *b, nir_instr *instr, struct bo_vars *bo)
       nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, offset);
       nir_intrinsic_instr *new_instr = nir_intrinsic_instr_create(b->shader, op);
       nir_def_init(&new_instr->instr, &new_instr->dest.ssa, 1,
-                   nir_dest_bit_size(intr->dest));
+                   intr->dest.ssa.bit_size);
       nir_intrinsic_set_atomic_op(new_instr, nir_intrinsic_atomic_op(intr));
       new_instr->src[0] = nir_src_for_ssa(&deref_arr->dest.ssa);
       /* deref ops have no offset src, so copy the srcs after it */
@@ -2369,12 +2370,12 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    case nir_intrinsic_load_ssbo:
       src = &intr->src[0];
-      var = get_bo_var(b->shader, bo, true, src, nir_dest_bit_size(intr->dest));
+      var = get_bo_var(b->shader, bo, true, src, intr->dest.ssa.bit_size);
       offset = intr->src[1].ssa;
       break;
    case nir_intrinsic_load_ubo:
       src = &intr->src[0];
-      var = get_bo_var(b->shader, bo, false, src, nir_dest_bit_size(intr->dest));
+      var = get_bo_var(b->shader, bo, false, src, intr->dest.ssa.bit_size);
       offset = intr->src[1].ssa;
       ssbo = false;
       break;
@@ -2389,13 +2390,15 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       idx = nir_iadd_imm(b, idx, -bo->first_ubo);
    else if (ssbo && bo->first_ssbo)
       idx = nir_iadd_imm(b, idx, -bo->first_ssbo);
-   nir_deref_instr *deref_array = nir_build_deref_array(b, deref_var, nir_i2iN(b, idx, nir_dest_bit_size(deref_var->dest)));
+   nir_deref_instr *deref_array = nir_build_deref_array(b, deref_var,
+                                                        nir_i2iN(b, idx, deref_var->dest.ssa.bit_size));
    nir_deref_instr *deref_struct = nir_build_deref_struct(b, deref_array, 0);
    assert(intr->num_components <= 2);
    if (is_load) {
       nir_def *result[2];
       for (unsigned i = 0; i < intr->num_components; i++) {
-         nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, nir_i2iN(b, offset, nir_dest_bit_size(deref_struct->dest)));
+         nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct,
+                                                            nir_i2iN(b, offset, deref_struct->dest.ssa.bit_size));
          result[i] = nir_load_deref(b, deref_arr);
          if (intr->intrinsic == nir_intrinsic_load_ssbo)
             nir_intrinsic_set_access(nir_instr_as_intrinsic(result[i]->parent_instr), nir_intrinsic_access(intr));
@@ -2404,7 +2407,8 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       nir_def *load = nir_vec(b, result, intr->num_components);
       nir_def_rewrite_uses(&intr->dest.ssa, load);
    } else {
-      nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, nir_i2iN(b, offset, nir_dest_bit_size(deref_struct->dest)));
+      nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct,
+                                                         nir_i2iN(b, offset, deref_struct->dest.ssa.bit_size));
       nir_build_store_deref(b, &deref_arr->dest.ssa, intr->src[0].ssa, BITFIELD_MASK(intr->num_components), nir_intrinsic_access(intr));
    }
    nir_instr_remove(instr);
@@ -2638,7 +2642,8 @@ rewrite_read_as_0(nir_builder *b, nir_instr *instr, void *data)
    if (deref_var != var)
       return false;
    b->cursor = nir_before_instr(instr);
-   nir_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest));
+   nir_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest),
+                                intr->dest.ssa.bit_size);
    if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
       switch (var->data.location) {
       case VARYING_SLOT_COL0:
@@ -3307,7 +3312,7 @@ rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, struct z
    enum glsl_base_type ret_type = glsl_get_sampler_result_type(type);
    bool is_int = glsl_base_type_is_integer(ret_type);
    unsigned bit_size = glsl_base_type_get_bit_size(ret_type);
-   unsigned dest_size = nir_dest_bit_size(tex->dest);
+   unsigned dest_size = tex->dest.ssa.bit_size;
    b->cursor = nir_after_instr(&tex->instr);
    unsigned num_components = nir_dest_num_components(tex->dest);
    bool rewrite_depth = tex->is_shadow && num_components > 1 && tex->op != nir_texop_tg4 && !tex->is_sparse;
@@ -3408,13 +3413,13 @@ lower_zs_swizzle_tex_instr(nir_builder *b, nir_instr *instr, void *data)
          nir_def *swizzle;
          switch (swizzle_key->swizzle[sampler_id].s[tex->component]) {
          case PIPE_SWIZZLE_0:
-            swizzle = nir_imm_zero(b, 4, nir_dest_bit_size(tex->dest));
+            swizzle = nir_imm_zero(b, 4, tex->dest.ssa.bit_size);
             break;
          case PIPE_SWIZZLE_1:
             if (is_int)
-               swizzle = nir_imm_intN_t(b, 4, nir_dest_bit_size(tex->dest));
+               swizzle = nir_imm_intN_t(b, 4, tex->dest.ssa.bit_size);
             else
-               swizzle = nir_imm_floatN_t(b, 4, nir_dest_bit_size(tex->dest));
+               swizzle = nir_imm_floatN_t(b, 4, tex->dest.ssa.bit_size);
             break;
          default:
             if (!tex->component)
@@ -3429,13 +3434,13 @@ lower_zs_swizzle_tex_instr(nir_builder *b, nir_instr *instr, void *data)
       for (unsigned i = 0; i < ARRAY_SIZE(vec); i++) {
          switch (swizzle_key->swizzle[sampler_id].s[i]) {
          case PIPE_SWIZZLE_0:
-            vec[i] = nir_imm_zero(b, 1, nir_dest_bit_size(tex->dest));
+            vec[i] = nir_imm_zero(b, 1, tex->dest.ssa.bit_size);
             break;
          case PIPE_SWIZZLE_1:
             if (is_int)
-               vec[i] = nir_imm_intN_t(b, 1, nir_dest_bit_size(tex->dest));
+               vec[i] = nir_imm_intN_t(b, 1, tex->dest.ssa.bit_size);
             else
-               vec[i] = nir_imm_floatN_t(b, 1, nir_dest_bit_size(tex->dest));
+               vec[i] = nir_imm_floatN_t(b, 1, tex->dest.ssa.bit_size);
             break;
          default:
             vec[i] = dest->num_components == 1 ? dest : nir_channel(b, dest, i);

@@ -188,9 +188,9 @@ instr_cost(loop_info_state *state, nir_instr *instr,
    }
 
    if (alu->op == nir_op_flrp) {
-      if ((options->lower_flrp16 && nir_dest_bit_size(alu->dest.dest) == 16) ||
-          (options->lower_flrp32 && nir_dest_bit_size(alu->dest.dest) == 32) ||
-          (options->lower_flrp64 && nir_dest_bit_size(alu->dest.dest) == 64))
+      if ((options->lower_flrp16 && alu->dest.dest.ssa.bit_size == 16) ||
+          (options->lower_flrp32 && alu->dest.dest.ssa.bit_size == 32) ||
+          (options->lower_flrp64 && alu->dest.dest.ssa.bit_size == 64))
          cost *= 3;
    }
 
@@ -199,11 +199,11 @@ instr_cost(loop_info_state *state, nir_instr *instr,
     * There are no 64-bit ops that don't have a 64-bit thing as their
     * destination or first source.
     */
-   if (nir_dest_bit_size(alu->dest.dest) < 64 &&
+   if (alu->dest.dest.ssa.bit_size < 64 &&
        nir_src_bit_size(alu->src[0].src) < 64)
       return cost;
 
-   bool is_fp64 = nir_dest_bit_size(alu->dest.dest) == 64 &&
+   bool is_fp64 = alu->dest.dest.ssa.bit_size == 64 &&
                   nir_alu_type_get_base_type(info->output_type) == nir_type_float;
    for (unsigned i = 0; i < info->num_inputs; i++) {
       if (nir_src_bit_size(alu->src[i].src) == 64 &&

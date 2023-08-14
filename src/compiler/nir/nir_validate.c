@@ -248,7 +248,7 @@ validate_alu_instr(nir_alu_instr *instr, validate_state *state)
    }
 
    nir_alu_type dest_type = nir_op_infos[instr->op].output_type;
-   unsigned dest_bit_size = nir_dest_bit_size(instr->dest.dest);
+   unsigned dest_bit_size = instr->dest.dest.ssa.bit_size;
    if (nir_alu_type_get_type_size(dest_type)) {
       validate_assert(state, dest_bit_size == nir_alu_type_get_type_size(dest_type));
    } else if (instr_bit_size) {
@@ -316,7 +316,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
       /* The parent pointer value must have the same number of components
        * as the destination.
        */
-      validate_src(&instr->parent, state, nir_dest_bit_size(instr->dest),
+      validate_src(&instr->parent, state, instr->dest.ssa.bit_size,
                    nir_dest_num_components(instr->dest));
 
       nir_instr *parent_instr = instr->parent.ssa->parent_instr;
@@ -357,7 +357,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
 
          if (instr->deref_type == nir_deref_type_array) {
             validate_src(&instr->arr.index, state,
-                         nir_dest_bit_size(instr->dest), 1);
+                         instr->dest.ssa.bit_size, 1);
          }
          break;
 
@@ -371,7 +371,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
                             parent->deref_type == nir_deref_type_ptr_as_array ||
                             parent->deref_type == nir_deref_type_cast);
          validate_src(&instr->arr.index, state,
-                      nir_dest_bit_size(instr->dest), 1);
+                      instr->dest.ssa.bit_size, 1);
          break;
 
       default:
@@ -478,7 +478,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    case nir_intrinsic_load_reg_indirect:
       validate_register_handle(instr->src[0],
                                nir_dest_num_components(instr->dest),
-                               nir_dest_bit_size(instr->dest), state);
+                               instr->dest.ssa.bit_size, state);
       break;
 
    case nir_intrinsic_store_reg:
@@ -552,7 +552,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    }
 
    case nir_intrinsic_load_ubo_vec4: {
-      int bit_size = nir_dest_bit_size(instr->dest);
+      int bit_size = instr->dest.ssa.bit_size;
       validate_assert(state, bit_size >= 8);
       validate_assert(state, (nir_intrinsic_component(instr) +
                               instr->num_components) *
@@ -587,7 +587,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    case nir_intrinsic_load_per_primitive_output:
    case nir_intrinsic_load_push_constant:
       /* All memory load operations must load at least a byte */
-      validate_assert(state, nir_dest_bit_size(instr->dest) >= 8);
+      validate_assert(state, instr->dest.ssa.bit_size >= 8);
       break;
 
    case nir_intrinsic_store_ssbo:
@@ -645,7 +645,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
          }
 
          validate_assert(state, allowed);
-         validate_assert(state, nir_dest_bit_size(instr->dest) ==
+         validate_assert(state, instr->dest.ssa.bit_size ==
                                    util_format_get_blocksizebits(format));
       }
       break;
@@ -852,7 +852,7 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
    unsigned bit_size = nir_alu_type_get_type_size(instr->dest_type);
    validate_assert(state,
                    (bit_size ? bit_size : 32) ==
-                      nir_dest_bit_size(instr->dest));
+                      instr->dest.ssa.bit_size);
 }
 
 static void

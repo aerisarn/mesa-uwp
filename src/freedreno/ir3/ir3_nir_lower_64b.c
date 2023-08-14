@@ -50,7 +50,7 @@ lower_64b_intrinsics_filter(const nir_instr *instr, const void *unused)
    if (nir_intrinsic_dest_components(intr) == 0)
       return false;
 
-   return nir_dest_bit_size(intr->dest) == 64;
+   return intr->dest.ssa.bit_size == 64;
 }
 
 static nir_def *
@@ -257,12 +257,12 @@ lower_64b_global(nir_builder *b, nir_instr *instr, void *unused)
 
    if (intr->intrinsic == nir_intrinsic_global_atomic) {
       return nir_global_atomic_ir3(
-            b, nir_dest_bit_size(intr->dest), addr,
+            b, intr->dest.ssa.bit_size, addr,
             nir_ssa_for_src(b, intr->src[1], 1),
          .atomic_op = nir_intrinsic_atomic_op(intr));
    } else if (intr->intrinsic == nir_intrinsic_global_atomic_swap) {
       return nir_global_atomic_swap_ir3(
-         b, nir_dest_bit_size(intr->dest), addr,
+         b, intr->dest.ssa.bit_size, addr,
          nir_ssa_for_src(b, intr->src[1], 1),
          nir_ssa_for_src(b, intr->src[2], 1),
          .atomic_op = nir_intrinsic_atomic_op(intr));
@@ -274,7 +274,7 @@ lower_64b_global(nir_builder *b, nir_instr *instr, void *unused)
       for (unsigned off = 0; off < num_comp;) {
          unsigned c = MIN2(num_comp - off, 4);
          nir_def *val = nir_load_global_ir3(
-               b, c, nir_dest_bit_size(intr->dest),
+               b, c, intr->dest.ssa.bit_size,
                addr, nir_imm_int(b, off));
          for (unsigned i = 0; i < c; i++) {
             components[off++] = nir_channel(b, val, i);

@@ -112,7 +112,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_iand:
    case nir_op_ior:
    case nir_op_ixor:
-      if (nir_dest_bit_size(alu->dest.dest) > 1)
+      if (alu->dest.dest.ssa.bit_size > 1)
          return false; /* Not a boolean instruction */
       FALLTHROUGH;
 
@@ -135,7 +135,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
 
    case nir_op_bcsel:
       /* bcsel may be choosing between boolean sources too */
-      if (nir_dest_bit_size(alu->dest.dest) == 1)
+      if (alu->dest.dest.ssa.bit_size == 1)
          make_sources_canonical(b, alu, 1);
       break;
 
@@ -340,7 +340,7 @@ lower_load_const_instr(nir_load_const_instr *load)
 static bool
 lower_phi_instr(nir_builder *b, nir_phi_instr *phi)
 {
-   if (nir_dest_bit_size(phi->dest) != 1)
+   if (phi->dest.ssa.bit_size != 1)
       return false;
 
    /* Ensure all phi sources have a canonical bit-size. We choose the

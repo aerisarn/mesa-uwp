@@ -250,13 +250,13 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
    nir_def *load_data = nir_load_ubo(
       builder, 
       nir_dest_num_components(intrin->dest),
-      nir_dest_bit_size(intrin->dest),
+      intrin->dest.ssa.bit_size,
       nir_channel(builder, load_desc, 0),
       nir_imm_int(builder, offset),
       .align_mul = 256,
       .align_offset = offset,
       .range_base = offset,
-      .range = nir_dest_bit_size(intrin->dest) * nir_dest_num_components(intrin->dest) / 8);
+      .range = intrin->dest.ssa.bit_size * nir_dest_num_components(intrin->dest) / 8);
 
    nir_def_rewrite_uses(&intrin->dest.ssa, load_data);
    nir_instr_remove(instr);
@@ -339,7 +339,7 @@ lower_load_push_constant(struct nir_builder *builder, nir_instr *instr,
    nir_def *load_data = nir_load_ubo(
       builder, 
       nir_dest_num_components(intrin->dest),
-      nir_dest_bit_size(intrin->dest), 
+      intrin->dest.ssa.bit_size, 
       nir_channel(builder, load_desc, 0),
       nir_iadd_imm(builder, offset, base),
       .align_mul = nir_intrinsic_align_mul(intrin),
@@ -596,7 +596,7 @@ kill_undefined_varyings(struct nir_builder *b,
     * the DXIL requirements of writing all position components.
     */
    nir_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest),
-                                       nir_dest_bit_size(intr->dest));
+                                       intr->dest.ssa.bit_size);
    nir_def_rewrite_uses(&intr->dest.ssa, zero);
    nir_instr_remove(instr);
    return true;

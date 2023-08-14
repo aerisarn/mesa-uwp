@@ -52,7 +52,7 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
       if (nir_src_is_divergent(intrin->src[1]))
          return false;
 
-      if (nir_dest_bit_size(intrin->dest) != 32)
+      if (intrin->dest.ssa.bit_size != 32)
          return false;
 
       /* Without the LSC, we can only do block loads of at least 4dwords (1
@@ -75,7 +75,7 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
       if (nir_src_is_divergent(intrin->src[0]))
          return false;
 
-      if (nir_dest_bit_size(intrin->dest) != 32)
+      if (intrin->dest.ssa.bit_size != 32)
          return false;
 
       intrin->intrinsic = nir_intrinsic_load_shared_uniform_block_intel;
@@ -85,7 +85,7 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
       if (nir_src_is_divergent(intrin->src[0]))
          return false;
 
-      if (nir_dest_bit_size(intrin->dest) != 32)
+      if (intrin->dest.ssa.bit_size != 32)
          return false;
 
       /* Without the LSC, we can only do block loads of at least 4dwords (1

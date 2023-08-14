@@ -52,7 +52,7 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
          xy[i] = nir_fmul_imm(b, nir_u2f16(b, nibble), 1.0 / 16.0);
 
          /* Upconvert if necessary */
-         xy[i] = nir_f2fN(b, xy[i], nir_dest_bit_size(intr->dest));
+         xy[i] = nir_f2fN(b, xy[i], intr->dest.ssa.bit_size);
       }
 
       /* Collect and rewrite */
@@ -81,7 +81,7 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
       nir_def *old = &intr->dest.ssa;
 
       nir_def *lowered = nir_load_barycentric_at_sample(
-         b, nir_dest_bit_size(intr->dest), nir_load_sample_id(b),
+         b, intr->dest.ssa.bit_size, nir_load_sample_id(b),
          .interp_mode = nir_intrinsic_interp_mode(intr));
 
       nir_def_rewrite_uses_after(old, lowered, lowered->parent_instr);

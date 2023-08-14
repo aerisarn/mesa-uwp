@@ -174,7 +174,7 @@ try_coalesce(nir_builder *b, nir_def *reg, nir_alu_instr *vec,
    /* ... so we can replace it with the bigger destination accommodating the
     * whole vector that will be masked for the store.
     */
-   unsigned bit_size = nir_dest_bit_size(vec->dest.dest);
+   unsigned bit_size = vec->dest.dest.ssa.bit_size;
    assert(bit_size == src_alu->dest.dest.ssa.bit_size);
    nir_def_init(&src_alu->instr, &src_alu->dest.dest.ssa, dest_components,
                 bit_size);
@@ -214,7 +214,7 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
    if (need_reg) {
       /* We'll replace with a register. Declare one for the purpose. */
       nir_def *reg = nir_decl_reg(b, num_components,
-                                  nir_dest_bit_size(vec->dest.dest), 0);
+                                  vec->dest.dest.ssa.bit_size, 0);
 
       unsigned finished_write_mask = 0;
       for (unsigned i = 0; i < num_components; i++) {

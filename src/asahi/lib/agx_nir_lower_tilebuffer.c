@@ -266,7 +266,7 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
 
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
    } else {
-      uint8_t bit_size = nir_dest_bit_size(intr->dest);
+      uint8_t bit_size = intr->dest.ssa.bit_size;
 
       /* Loads from non-existent render targets are undefined in NIR but not
        * possible to encode in the hardware, delete them.

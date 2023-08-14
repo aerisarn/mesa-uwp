@@ -594,7 +594,7 @@ ir3_nir_lower_load_const_instr(nir_builder *b, nir_instr *in_instr, void *data)
    }
 
    unsigned num_components = instr->num_components;
-   if (nir_dest_bit_size(instr->dest) == 16) {
+   if (instr->dest.ssa.bit_size == 16) {
       /* We can't do 16b loads -- either from LDC (32-bit only in any of our
        * traces, and disasm that doesn't look like it really supports it) or
        * from the constant file (where CONSTANT_DEMOTION_ENABLE means we get
@@ -614,7 +614,7 @@ ir3_nir_lower_load_const_instr(nir_builder *b, nir_instr *in_instr, void *data)
                    .align_offset = nir_intrinsic_align_offset(instr),
                    .range_base = base, .range = nir_intrinsic_range(instr));
 
-   if (nir_dest_bit_size(instr->dest) == 16) {
+   if (instr->dest.ssa.bit_size == 16) {
       result = nir_bitcast_vector(b, result, 16);
       result = nir_trim_vector(b, result, instr->num_components);
    }

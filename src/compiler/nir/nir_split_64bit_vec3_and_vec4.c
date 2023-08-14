@@ -48,7 +48,7 @@ nir_split_64bit_vec3_and_vec4_filter(const nir_instr *instr,
 
       switch (intr->intrinsic) {
       case nir_intrinsic_load_deref: {
-         if (nir_dest_bit_size(intr->dest) != 64)
+         if (intr->dest.ssa.bit_size != 64)
             return false;
          nir_variable *var = nir_intrinsic_get_var(intr, 0);
          if (var->data.mode != nir_var_function_temp)
@@ -69,7 +69,7 @@ nir_split_64bit_vec3_and_vec4_filter(const nir_instr *instr,
    }
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      if (nir_dest_bit_size(phi->dest) != 64)
+      if (phi->dest.ssa.bit_size != 64)
          return false;
       return nir_dest_num_components(phi->dest) >= 3;
    }

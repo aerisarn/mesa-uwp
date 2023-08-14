@@ -60,7 +60,7 @@ nir_fuse_io_16(nir_shader *shader)
             if (intr->intrinsic != nir_intrinsic_load_interpolated_input)
                continue;
 
-            if (nir_dest_bit_size(intr->dest) != 32)
+            if (intr->dest.ssa.bit_size != 32)
                continue;
 
             /* We swizzle at a 32-bit level so need a multiple of 2. We could

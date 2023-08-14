@@ -183,9 +183,9 @@ record_loads(nir_builder *b, nir_instr *instr, void *data)
    if (intr->intrinsic != nir_intrinsic_load_preamble)
       return false;
 
-   assert(nir_dest_bit_size(intr->dest) >= 16 && "no 8-bit sysvals");
+   assert(intr->dest.ssa.bit_size >= 16 && "no 8-bit sysvals");
    unsigned dim = nir_dest_num_components(intr->dest);
-   unsigned element_size = nir_dest_bit_size(intr->dest) / 16;
+   unsigned element_size = intr->dest.ssa.bit_size / 16;
    unsigned length = dim * element_size;
 
    struct state *state = data;

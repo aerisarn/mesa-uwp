@@ -43,7 +43,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    b->cursor = nir_before_instr(instr);
    nir_atomic_op atomic_op = nir_intrinsic_atomic_op(intr);
    enum pipe_format format = nir_intrinsic_format(intr);
-   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   unsigned bit_size = intr->dest.ssa.bit_size;
 
    /* Even for "formatless" access, we know the size of the texel accessed,
     * since it's the size of the atomic. We can use that to synthesize a
