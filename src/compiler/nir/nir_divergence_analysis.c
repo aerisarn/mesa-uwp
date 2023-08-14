@@ -62,14 +62,14 @@ visit_cf_list(struct exec_list *list, struct divergence_state *state);
 static bool
 visit_alu(nir_alu_instr *instr)
 {
-   if (instr->dest.dest.ssa.divergent)
+   if (instr->def.divergent)
       return false;
 
    unsigned num_src = nir_op_infos[instr->op].num_inputs;
 
    for (unsigned i = 0; i < num_src; i++) {
       if (instr->src[i].src.ssa->divergent) {
-         instr->dest.dest.ssa.divergent = true;
+         instr->def.divergent = true;
          return true;
       }
    }

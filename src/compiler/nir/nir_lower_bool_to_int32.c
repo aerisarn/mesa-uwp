@@ -59,7 +59,7 @@ lower_alu_instr(nir_alu_instr *alu)
    case nir_op_iand:
    case nir_op_ior:
    case nir_op_ixor:
-      if (alu->dest.dest.ssa.bit_size != 1)
+      if (alu->def.bit_size != 1)
          return false;
       /* These we expect to have booleans but the opcode doesn't change */
       break;
@@ -150,14 +150,14 @@ lower_alu_instr(nir_alu_instr *alu)
       break;
 
    default:
-      assert(alu->dest.dest.ssa.bit_size > 1);
+      assert(alu->def.bit_size > 1);
       for (unsigned i = 0; i < op_info->num_inputs; i++)
          assert(alu->src[i].src.ssa->bit_size > 1);
       return false;
    }
 
-   if (alu->dest.dest.ssa.bit_size == 1)
-      alu->dest.dest.ssa.bit_size = 32;
+   if (alu->def.bit_size == 1)
+      alu->def.bit_size = 32;
 
    return true;
 }

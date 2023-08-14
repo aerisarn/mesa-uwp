@@ -1153,12 +1153,12 @@ find_reusable_ssa_def(nir_instr *instr)
    switch (instr->type) {
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
-      if (alu->dest.dest.ssa.divergent)
+      if (alu->def.divergent)
          return NULL;
       /* Ignore uniform floats because they regress VGPR usage too much */
       if (nir_op_infos[alu->op].output_type & nir_type_float)
          return NULL;
-      return &alu->dest.dest.ssa;
+      return &alu->def;
    }
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);

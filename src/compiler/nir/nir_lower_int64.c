@@ -1060,11 +1060,11 @@ lower_int64_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_i2f64:
    case nir_op_i2f32:
    case nir_op_i2f16:
-      return lower_2f(b, src[0], alu->dest.dest.ssa.bit_size, true);
+      return lower_2f(b, src[0], alu->def.bit_size, true);
    case nir_op_u2f64:
    case nir_op_u2f32:
    case nir_op_u2f16:
-      return lower_2f(b, src[0], alu->dest.dest.ssa.bit_size, false);
+      return lower_2f(b, src[0], alu->def.bit_size, false);
    case nir_op_f2i64:
    case nir_op_f2u64:
       return lower_f2(b, src[0], alu->op == nir_op_f2i64);
@@ -1113,7 +1113,7 @@ should_lower_int64_alu_instr(const nir_alu_instr *alu,
    case nir_op_amul:
       if (options->has_imul24)
          return false;
-      if (alu->dest.dest.ssa.bit_size != 64)
+      if (alu->def.bit_size != 64)
          return false;
       break;
    case nir_op_i2f64:
@@ -1129,7 +1129,7 @@ should_lower_int64_alu_instr(const nir_alu_instr *alu,
    case nir_op_f2i64:
       FALLTHROUGH;
    default:
-      if (alu->dest.dest.ssa.bit_size != 64)
+      if (alu->def.bit_size != 64)
          return false;
       break;
    }

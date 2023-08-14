@@ -132,10 +132,10 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
             for (unsigned i = tex->coord_components; i < 4; i++)
                vec->src[i].src = nir_src_for_ssa(src1->ssa);
 
-            nir_def_init(&vec->instr, &vec->dest.dest.ssa, 4, 32);
+            nir_def_init(&vec->instr, &vec->def, 4, 32);
 
             nir_tex_instr_remove_src(tex, src1_idx);
-            nir_instr_rewrite_src(&tex->instr, coord, nir_src_for_ssa(&vec->dest.dest.ssa));
+            nir_instr_rewrite_src(&tex->instr, coord, nir_src_for_ssa(&vec->def));
             tex->coord_components = 4;
 
             nir_instr_insert_before(&tex->instr, &vec->instr);
@@ -178,7 +178,7 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
          if (has_new_transcendentals && (
              alu->op == nir_op_fdiv || alu->op == nir_op_flog2 ||
              alu->op == nir_op_fsin || alu->op == nir_op_fcos)) {
-            nir_def *ssa = &alu->dest.dest.ssa;
+            nir_def *ssa = &alu->def;
 
             assert(ssa->num_components == 1);
 
@@ -186,14 +186,14 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
             mul->src[0].src = mul->src[1].src = nir_src_for_ssa(ssa);
             mul->src[1].swizzle[0] = 1;
 
-            nir_def_init(&mul->instr, &mul->dest.dest.ssa, 1, 32);
+            nir_def_init(&mul->instr, &mul->def, 1, 32);
 
             alu->src[0].swizzle[1] = 0;
             ssa->num_components = 2;
 
             nir_instr_insert_after(instr, &mul->instr);
 
-            nir_def_rewrite_uses_after(ssa, &mul->dest.dest.ssa,
+            nir_def_rewrite_uses_after(ssa, &mul->def,
                                            &mul->instr);
          }
       }

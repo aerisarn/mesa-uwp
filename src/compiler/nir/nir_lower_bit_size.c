@@ -52,7 +52,7 @@ static void
 lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 {
    const nir_op op = alu->op;
-   unsigned dst_bit_size = alu->dest.dest.ssa.bit_size;
+   unsigned dst_bit_size = alu->def.bit_size;
 
    bld->cursor = nir_before_instr(&alu->instr);
 
@@ -120,9 +120,9 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
        dst_bit_size != bit_size) {
       nir_alu_type type = nir_op_infos[op].output_type;
       nir_def *dst = nir_convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
-      nir_def_rewrite_uses(&alu->dest.dest.ssa, dst);
+      nir_def_rewrite_uses(&alu->def, dst);
    } else {
-      nir_def_rewrite_uses(&alu->dest.dest.ssa, lowered_dst);
+      nir_def_rewrite_uses(&alu->def, lowered_dst);
    }
 }
 

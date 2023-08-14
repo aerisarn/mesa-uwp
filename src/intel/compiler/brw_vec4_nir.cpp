@@ -1082,9 +1082,9 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    vec4_instruction *inst;
 
    nir_alu_type dst_type = (nir_alu_type) (nir_op_infos[instr->op].output_type |
-                                           instr->dest.dest.ssa.bit_size);
-   dst_reg dst = get_nir_def(instr->dest.dest.ssa, dst_type);
-   dst.writemask &= nir_component_mask(instr->dest.dest.ssa.num_components);
+                                           instr->def.bit_size);
+   dst_reg dst = get_nir_def(instr->def, dst_type);
+   dst.writemask &= nir_component_mask(instr->def.num_components);
 
    src_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
@@ -1153,7 +1153,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_iadd:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       FALLTHROUGH;
    case nir_op_fadd:
       try_immediate_source(instr, op, true);
@@ -1161,7 +1161,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_uadd_sat:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       inst = emit(ADD(dst, op[0], op[1]));
       inst->saturate = true;
       break;
@@ -1172,7 +1172,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_imul: {
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
 
       /* For integer multiplication, the MUL uses the low 16 bits of one of
        * the operands (src0 through SNB, src1 on IVB and later). The MACH
@@ -1206,7 +1206,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_imul_high:
    case nir_op_umul_high: {
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       struct brw_reg acc = retype(brw_acc_reg(8), dst.type);
 
       emit(MUL(acc, op[0], op[1]));
@@ -1236,7 +1236,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_idiv:
    case nir_op_udiv:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit_math(SHADER_OPCODE_INT_QUOTIENT, dst, op[0], op[1]);
       break;
 
@@ -1246,7 +1246,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        * appears that our hardware just does the right thing for signed
        * remainder.
        */
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit_math(SHADER_OPCODE_INT_REMAINDER, dst, op[0], op[1]);
       break;
 
@@ -1297,7 +1297,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_uadd_carry: {
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
 
       emit(ADDC(dst_null_ud(), op[0], op[1]));
@@ -1306,7 +1306,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_usub_borrow: {
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
 
       emit(SUBB(dst_null_ud(), op[0], op[1]));
@@ -1379,7 +1379,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_imin:
    case nir_op_umin:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       FALLTHROUGH;
    case nir_op_fmin:
       try_immediate_source(instr, op, true);
@@ -1388,7 +1388,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_imax:
    case nir_op_umax:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       FALLTHROUGH;
    case nir_op_fmax:
       try_immediate_source(instr, op, true);
@@ -1409,7 +1409,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_uge32:
    case nir_op_ieq32:
    case nir_op_ine32:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       FALLTHROUGH;
    case nir_op_flt32:
    case nir_op_fge32:
@@ -1444,7 +1444,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_b32all_iequal2:
    case nir_op_b32all_iequal3:
    case nir_op_b32all_iequal4:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       FALLTHROUGH;
    case nir_op_b32all_fequal2:
    case nir_op_b32all_fequal3:
@@ -1463,7 +1463,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_b32any_inequal2:
    case nir_op_b32any_inequal3:
    case nir_op_b32any_inequal4:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       FALLTHROUGH;
    case nir_op_b32any_fnequal2:
    case nir_op_b32any_fnequal3:
@@ -1481,24 +1481,24 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_inot:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit(NOT(dst, op[0]));
       break;
 
    case nir_op_ixor:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       try_immediate_source(instr, op, true);
       emit(XOR(dst, op[0], op[1]));
       break;
 
    case nir_op_ior:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       try_immediate_source(instr, op, true);
       emit(OR(dst, op[0], op[1]));
       break;
 
    case nir_op_iand:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       try_immediate_source(instr, op, true);
       emit(AND(dst, op[0], op[1]));
       break;
@@ -1506,7 +1506,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_b2i32:
    case nir_op_b2f32:
    case nir_op_b2f64:
-      if (instr->dest.dest.ssa.bit_size > 32) {
+      if (instr->def.bit_size > 32) {
          assert(dst.type == BRW_REGISTER_TYPE_DF);
          emit_conversion_to_double(dst, negate(op[0]));
       } else {
@@ -1584,39 +1584,39 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_unpack_unorm_4x8:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit_unpack_unorm_4x8(dst, op[0]);
       break;
 
    case nir_op_pack_unorm_4x8:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit_pack_unorm_4x8(dst, op[0]);
       break;
 
    case nir_op_unpack_snorm_4x8:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit_unpack_snorm_4x8(dst, op[0]);
       break;
 
    case nir_op_pack_snorm_4x8:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit_pack_snorm_4x8(dst, op[0]);
       break;
 
    case nir_op_bitfield_reverse:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       emit(BFREV(dst, op[0]));
       break;
 
    case nir_op_bit_count:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) < 64);
       emit(CBIT(dst, op[0]));
       break;
 
    case nir_op_ifind_msb: {
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       assert(devinfo->ver >= 7);
 
@@ -1639,13 +1639,13 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_uclz:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       emit(LZD(dst, op[0]));
       break;
 
    case nir_op_find_lsb:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       assert(devinfo->ver >= 7);
       emit(FBL(dst, op[0]));
@@ -1656,7 +1656,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       unreachable("should have been lowered");
    case nir_op_ubfe:
    case nir_op_ibfe:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       op[0] = fix_3src_operand(op[0]);
       op[1] = fix_3src_operand(op[1]);
       op[2] = fix_3src_operand(op[2]);
@@ -1665,12 +1665,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_bfm:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       emit(BFI1(dst, op[0], op[1]));
       break;
 
    case nir_op_bfi:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       op[0] = fix_3src_operand(op[0]);
       op[1] = fix_3src_operand(op[1]);
       op[2] = fix_3src_operand(op[2]);
@@ -1733,19 +1733,19 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_ishl:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       try_immediate_source(instr, op, false);
       emit(SHL(dst, op[0], op[1]));
       break;
 
    case nir_op_ishr:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       try_immediate_source(instr, op, false);
       emit(ASR(dst, op[0], op[1]));
       break;
 
    case nir_op_ushr:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       try_immediate_source(instr, op, false);
       emit(SHR(dst, op[0], op[1]));
       break;

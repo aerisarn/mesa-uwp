@@ -134,7 +134,7 @@ vectorize_vec2_16bit(const nir_instr *instr, const void *_)
       return 0;
 
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
-   const unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   const unsigned bit_size = alu->def.bit_size;
    if (bit_size == 16)
       return 2;
    else

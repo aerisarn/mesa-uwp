@@ -1290,7 +1290,7 @@ nir_instr_ssa_def(nir_instr *instr)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
-      return &nir_instr_as_alu(instr)->dest.dest.ssa;
+      return &nir_instr_as_alu(instr)->def;
 
    case nir_instr_type_deref:
       return &nir_instr_as_deref(instr)->dest.ssa;
@@ -2834,7 +2834,7 @@ nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return channel < nir_op_infos[instr->op].input_sizes[src];
 
-   return channel < instr->dest.dest.ssa.num_components;
+   return channel < instr->def.num_components;
 }
 
 nir_component_mask_t
@@ -2856,7 +2856,7 @@ nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return nir_op_infos[instr->op].input_sizes[src];
 
-   return instr->dest.dest.ssa.num_components;
+   return instr->def.num_components;
 }
 
 #define CASE_ALL_SIZES(op) \

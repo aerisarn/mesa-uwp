@@ -179,7 +179,7 @@ lower_fp16_cast_impl(nir_builder *b, nir_instr *instr, void *data)
       nir_alu_instr *alu = nir_instr_as_alu(instr);
       src = alu->src[0].src.ssa;
       swizzle = alu->src[0].swizzle;
-      dst = &alu->dest.dest.ssa;
+      dst = &alu->def;
       switch (alu->op) {
       case nir_op_f2f16:
          if (b->shader->info.float_controls_execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP16)

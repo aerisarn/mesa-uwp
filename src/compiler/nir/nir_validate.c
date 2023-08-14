@@ -248,7 +248,7 @@ validate_alu_instr(nir_alu_instr *instr, validate_state *state)
    }
 
    nir_alu_type dest_type = nir_op_infos[instr->op].output_type;
-   unsigned dest_bit_size = instr->dest.dest.ssa.bit_size;
+   unsigned dest_bit_size = instr->def.bit_size;
    if (nir_alu_type_get_type_size(dest_type)) {
       validate_assert(state, dest_bit_size == nir_alu_type_get_type_size(dest_type));
    } else if (instr_bit_size) {
@@ -263,7 +263,7 @@ validate_alu_instr(nir_alu_instr *instr, validate_state *state)
                                 dest_bit_size == 64);
    }
 
-   validate_def(&instr->dest.dest.ssa, state, 0, 0);
+   validate_def(&instr->def, state, 0, 0);
 }
 
 static void

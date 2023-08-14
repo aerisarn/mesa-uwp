@@ -178,8 +178,8 @@ instr_cost(loop_info_state *state, nir_instr *instr,
             /* Also if the selects condition is only used by the select then
              * remove that alu instructons cost from the cost total also.
              */
-            if (!list_is_singular(&sel_alu->dest.dest.ssa.uses) ||
-                nir_def_used_by_if(&sel_alu->dest.dest.ssa))
+            if (!list_is_singular(&sel_alu->def.uses) ||
+                nir_def_used_by_if(&sel_alu->def))
                return 0;
             else
                return -1;
@@ -188,9 +188,9 @@ instr_cost(loop_info_state *state, nir_instr *instr,
    }
 
    if (alu->op == nir_op_flrp) {
-      if ((options->lower_flrp16 && alu->dest.dest.ssa.bit_size == 16) ||
-          (options->lower_flrp32 && alu->dest.dest.ssa.bit_size == 32) ||
-          (options->lower_flrp64 && alu->dest.dest.ssa.bit_size == 64))
+      if ((options->lower_flrp16 && alu->def.bit_size == 16) ||
+          (options->lower_flrp32 && alu->def.bit_size == 32) ||
+          (options->lower_flrp64 && alu->def.bit_size == 64))
          cost *= 3;
    }
 
@@ -199,11 +199,11 @@ instr_cost(loop_info_state *state, nir_instr *instr,
     * There are no 64-bit ops that don't have a 64-bit thing as their
     * destination or first source.
     */
-   if (alu->dest.dest.ssa.bit_size < 64 &&
+   if (alu->def.bit_size < 64 &&
        nir_src_bit_size(alu->src[0].src) < 64)
       return cost;
 
-   bool is_fp64 = alu->dest.dest.ssa.bit_size == 64 &&
+   bool is_fp64 = alu->def.bit_size == 64 &&
                   nir_alu_type_get_base_type(info->output_type) == nir_type_float;
    for (unsigned i = 0; i < info->num_inputs; i++) {
       if (nir_src_bit_size(alu->src[i].src) == 64 &&
@@ -355,7 +355,7 @@ static bool
 alu_src_has_identity_swizzle(nir_alu_instr *alu, unsigned src_idx)
 {
    assert(nir_op_infos[alu->op].input_sizes[src_idx] == 0);
-   for (unsigned i = 0; i < alu->dest.dest.ssa.num_components; i++) {
+   for (unsigned i = 0; i < alu->def.num_components; i++) {
       if (alu->src[src_idx].swizzle[i] != i)
          return false;
    }
@@ -436,7 +436,7 @@ compute_induction_information(loop_info_state *state)
                nir_instr_as_phi(src_var->def->parent_instr);
             nir_alu_instr *src_phi_alu = phi_instr_as_alu(src_phi);
             if (src_phi_alu) {
-               src_var = get_loop_var(&src_phi_alu->dest.dest.ssa, state);
+               src_var = get_loop_var(&src_phi_alu->def, state);
                if (!src_var->in_if_branch)
                   break;
             }
@@ -768,7 +768,7 @@ try_eval_const_alu(nir_const_value *dest, nir_alu_instr *alu,
     */
    unsigned bit_size = 0;
    if (!nir_alu_type_get_type_size(nir_op_infos[alu->op].output_type))
-      bit_size = alu->dest.dest.ssa.bit_size;
+      bit_size = alu->def.bit_size;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       if (bit_size == 0 &&
@@ -814,7 +814,7 @@ try_eval_const_alu(nir_const_value *dest, nir_alu_instr *alu,
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; ++i)
       srcs[i] = src[i];
 
-   nir_eval_const_opcode(alu->op, dest, alu->dest.dest.ssa.num_components,
+   nir_eval_const_opcode(alu->op, dest, alu->def.num_components,
                          bit_size, srcs, execution_mode);
 
    return true;
@@ -1030,8 +1030,8 @@ calculate_iterations(nir_def *basis, nir_def *limit_basis,
     */
    unsigned trip_offset = 0;
    nir_alu_instr *cond_alu = nir_instr_as_alu(cond.def->parent_instr);
-   if (cond_alu->src[0].src.ssa == &alu->dest.dest.ssa ||
-       cond_alu->src[1].src.ssa == &alu->dest.dest.ssa) {
+   if (cond_alu->src[0].src.ssa == &alu->def ||
+       cond_alu->src[1].src.ssa == &alu->def) {
       trip_offset = 1;
    }
 

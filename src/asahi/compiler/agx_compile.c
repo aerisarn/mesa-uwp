@@ -1225,9 +1225,9 @@ static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
-   unsigned sz = instr->dest.dest.ssa.bit_size;
+   unsigned sz = instr->def.bit_size;
    unsigned src_sz = srcs ? nir_src_bit_size(instr->src[0].src) : 0;
-   ASSERTED unsigned comps = instr->dest.dest.ssa.num_components;
+   ASSERTED unsigned comps = instr->def.num_components;
 
    assert(comps == 1 || nir_op_is_vec(instr->op));
    assert(sz == 1 ||
@@ -1235,7 +1235,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
            sz == 8) ||
           sz == 16 || sz == 32 || sz == 64);
 
-   agx_index dst = agx_def_index(&instr->dest.dest.ssa);
+   agx_index dst = agx_def_index(&instr->def);
    agx_index s0 = srcs > 0 ? agx_alu_src_index(b, instr->src[0]) : agx_null();
    agx_index s1 = srcs > 1 ? agx_alu_src_index(b, instr->src[1]) : agx_null();
    agx_index s2 = srcs > 2 ? agx_alu_src_index(b, instr->src[2]) : agx_null();
@@ -2461,7 +2461,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *_)
     * implemented natively.
     */
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   if (alu->dest.dest.ssa.bit_size == 8 && !is_conversion_to_8bit(alu->op))
+   if (alu->def.bit_size == 8 && !is_conversion_to_8bit(alu->op))
       return 16;
    else
       return 0;

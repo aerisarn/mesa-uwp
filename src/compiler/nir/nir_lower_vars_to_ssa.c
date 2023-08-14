@@ -602,14 +602,14 @@ rename_variables(struct lower_variables_state *state)
             for (unsigned i = intrin->num_components; i < NIR_MAX_VEC_COMPONENTS; i++)
                mov->src[0].swizzle[i] = 0;
 
-            nir_def_init(&mov->instr, &mov->dest.dest.ssa,
+            nir_def_init(&mov->instr, &mov->def,
                          intrin->num_components, intrin->dest.ssa.bit_size);
 
             nir_instr_insert_before(&intrin->instr, &mov->instr);
             nir_instr_remove(&intrin->instr);
 
             nir_def_rewrite_uses(&intrin->dest.ssa,
-                                 &mov->dest.dest.ssa);
+                                 &mov->def);
             break;
          }
 

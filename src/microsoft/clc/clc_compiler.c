@@ -577,7 +577,7 @@ static bool shader_has_double(nir_shader *nir)
              const nir_op_info *info = &nir_op_infos[alu->op];
 
              if (info->output_type & nir_type_float &&
-                 alu->dest.dest.ssa.bit_size == 64)
+                 alu->def.bit_size == 64)
                  return true;
          }
       }

@@ -286,7 +286,7 @@ mdg_should_scalarize(const nir_instr *instr, const void *_unused)
    if (nir_src_bit_size(alu->src[0].src) == 64)
       return true;
 
-   if (alu->dest.dest.ssa.bit_size == 64)
+   if (alu->def.bit_size == 64)
       return true;
 
    switch (alu->op) {
@@ -319,7 +319,7 @@ midgard_vectorize_filter(const nir_instr *instr, const void *data)
 
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
    int src_bit_size = nir_src_bit_size(alu->src[0].src);
-   int dst_bit_size = alu->dest.dest.ssa.bit_size;
+   int dst_bit_size = alu->def.bit_size;
 
    if (src_bit_size == 64 || dst_bit_size == 64)
       return 2;
@@ -632,7 +632,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       return;
    }
 
-   unsigned nr_components = instr->dest.dest.ssa.num_components;
+   unsigned nr_components = instr->def.num_components;
    unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
    unsigned op = 0;
 
@@ -647,7 +647,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
    bool flip_src12 = false;
 
    ASSERTED unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
-   unsigned dst_bitsize = instr->dest.dest.ssa.bit_size;
+   unsigned dst_bitsize = instr->def.bit_size;
 
    enum midgard_roundmode roundmode = MIDGARD_RTE;
 
@@ -875,7 +875,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       .roundmode = roundmode,
    };
 
-   ins.dest = nir_def_index_with_mask(&instr->dest.dest.ssa, &ins.mask);
+   ins.dest = nir_def_index_with_mask(&instr->def, &ins.mask);
 
    for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
       ins.src[i] = ~0;

@@ -161,7 +161,7 @@ nir_opt_idiv_const_instr(nir_builder *b, nir_instr *instr, void *user_data)
        alu->op != nir_op_irem)
       return false;
 
-   if (alu->dest.dest.ssa.bit_size < *min_bit_size)
+   if (alu->def.bit_size < *min_bit_size)
       return false;
 
    if (!nir_src_is_const(alu->src[1].src))
@@ -172,7 +172,7 @@ nir_opt_idiv_const_instr(nir_builder *b, nir_instr *instr, void *user_data)
    b->cursor = nir_before_instr(&alu->instr);
 
    nir_def *q[NIR_MAX_VEC_COMPONENTS];
-   for (unsigned comp = 0; comp < alu->dest.dest.ssa.num_components; comp++) {
+   for (unsigned comp = 0; comp < alu->def.num_components; comp++) {
       /* Get the numerator for the channel */
       nir_def *n = nir_channel(b, alu->src[0].src.ssa,
                                alu->src[0].swizzle[comp]);
@@ -212,8 +212,8 @@ nir_opt_idiv_const_instr(nir_builder *b, nir_instr *instr, void *user_data)
       }
    }
 
-   nir_def *qvec = nir_vec(b, q, alu->dest.dest.ssa.num_components);
-   nir_def_rewrite_uses(&alu->dest.dest.ssa, qvec);
+   nir_def *qvec = nir_vec(b, q, alu->def.num_components);
+   nir_def_rewrite_uses(&alu->def, qvec);
    nir_instr_remove(&alu->instr);
 
    return true;

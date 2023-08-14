@@ -841,7 +841,7 @@ ntq_emit_pack_unorm_4x8(struct vc4_compile *c, nir_alu_instr *instr)
                 struct qreg rep = ntq_get_src(c,
                                               instr->src[0].src,
                                               instr->src[0].swizzle[0]);
-                ntq_store_def(c, &instr->dest.dest.ssa, 0, qir_PACK_8888_F(c, rep));
+                ntq_store_def(c, &instr->def, 0, qir_PACK_8888_F(c, rep));
                 return;
         }
 
@@ -871,7 +871,7 @@ ntq_emit_pack_unorm_4x8(struct vc4_compile *c, nir_alu_instr *instr)
                 qir_PACK_8_F(c, result, src, i);
         }
 
-        ntq_store_def(c, &instr->dest.dest.ssa, 0, qir_MOV(c, result));
+        ntq_store_def(c, &instr->def, 0, qir_MOV(c, result));
 }
 
 /** Handles sign-extended bitfield extracts for 16 bits. */
@@ -1072,7 +1072,7 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
                         srcs[i] = ntq_get_src(c, instr->src[i].src,
                                               instr->src[i].swizzle[0]);
                 for (int i = 0; i < nir_op_infos[instr->op].num_inputs; i++)
-                        ntq_store_def(c, &instr->dest.dest.ssa, i,
+                        ntq_store_def(c, &instr->def, i,
                                       qir_MOV(c, srcs[i]));
                 return;
         }
@@ -1085,9 +1085,9 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
         if (instr->op == nir_op_unpack_unorm_4x8) {
                 struct qreg src = ntq_get_src(c, instr->src[0].src,
                                               instr->src[0].swizzle[0]);
-                unsigned count = instr->dest.dest.ssa.num_components;
+                unsigned count = instr->def.num_components;
                 for (int i = 0; i < count; i++) {
-                        ntq_store_def(c, &instr->dest.dest.ssa, i,
+                        ntq_store_def(c, &instr->def, i,
                                       qir_UNPACK_8_F(c, src, i));
                 }
                 return;
@@ -1302,7 +1302,7 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
                 abort();
         }
 
-        ntq_store_def(c, &instr->dest.dest.ssa, 0, result);
+        ntq_store_def(c, &instr->def, 0, result);
 }
 
 static void

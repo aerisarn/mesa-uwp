@@ -6,7 +6,7 @@ _nir_foreach_def(nir_instr *instr, nir_foreach_def_cb cb, void *state)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
-      return cb(&nir_instr_as_alu(instr)->dest.dest.ssa, state);
+      return cb(&nir_instr_as_alu(instr)->def, state);
    case nir_instr_type_deref:
       return cb(&nir_instr_as_deref(instr)->dest.ssa, state);
    case nir_instr_type_intrinsic: {

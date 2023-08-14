@@ -2176,7 +2176,7 @@ static void
 store_alu_dest(struct ntd_context *ctx, nir_alu_instr *alu, unsigned chan,
                const struct dxil_value *value)
 {
-   store_def(ctx, &alu->dest.dest.ssa, chan, value);
+   store_def(ctx, &alu->def, chan, value);
 }
 
 static const struct dxil_value *
@@ -2291,7 +2291,7 @@ emit_shift(struct ntd_context *ctx, nir_alu_instr *alu,
                             0);
    } else {
       uint64_t val = nir_scalar_as_uint(
-         nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1));
+         nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->def, 0), 1));
       op1 = dxil_module_get_int_const(&ctx->mod, val & shift_mask, op0_bit_size);
    }
 
@@ -2318,7 +2318,7 @@ emit_cmp(struct ntd_context *ctx, nir_alu_instr *alu,
 static enum dxil_cast_opcode
 get_cast_op(nir_alu_instr *alu)
 {
-   unsigned dst_bits = alu->dest.dest.ssa.bit_size;
+   unsigned dst_bits = alu->def.bit_size;
    unsigned src_bits = nir_src_bit_size(alu->src[0].src);
 
    switch (alu->op) {
@@ -2399,7 +2399,7 @@ get_cast_op(nir_alu_instr *alu)
 static const struct dxil_type *
 get_cast_dest_type(struct ntd_context *ctx, nir_alu_instr *alu)
 {
-   unsigned dst_bits = alu->dest.dest.ssa.bit_size;
+   unsigned dst_bits = alu->def.bit_size;
    switch (nir_alu_type_get_base_type(nir_op_infos[alu->op].output_type)) {
    case nir_type_bool:
       assert(dst_bits == 1);
@@ -2436,7 +2436,7 @@ emit_cast(struct ntd_context *ctx, nir_alu_instr *alu,
    switch (opcode) {
    case DXIL_CAST_UITOFP:
    case DXIL_CAST_SITOFP:
-      if (is_double(info->output_type, alu->dest.dest.ssa.bit_size))
+      if (is_double(info->output_type, alu->def.bit_size))
          ctx->mod.feats.dx11_1_double_extensions = true;
       break;
    case DXIL_CAST_FPTOUI:
@@ -2448,7 +2448,7 @@ emit_cast(struct ntd_context *ctx, nir_alu_instr *alu,
       break;
    }
 
-   if (alu->dest.dest.ssa.bit_size == 16) {
+   if (alu->def.bit_size == 16) {
       switch (alu->op) {
       case nir_op_f2fmp:
       case nir_op_i2imp:
@@ -2540,7 +2540,7 @@ emit_binary_intin(struct ntd_context *ctx, nir_alu_instr *alu,
    const nir_op_info *info = &nir_op_infos[alu->op];
    assert(info->output_type == info->input_types[0]);
    assert(info->output_type == info->input_types[1]);
-   unsigned dst_bits = alu->dest.dest.ssa.bit_size;
+   unsigned dst_bits = alu->def.bit_size;
    assert(nir_src_bit_size(alu->src[0].src) == dst_bits);
    assert(nir_src_bit_size(alu->src[1].src) == dst_bits);
    enum overload_type overload = get_overload(info->output_type, dst_bits);
@@ -2561,7 +2561,7 @@ emit_tertiary_intin(struct ntd_context *ctx, nir_alu_instr *alu,
                     const struct dxil_value *op2)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
-   unsigned dst_bits = alu->dest.dest.ssa.bit_size;
+   unsigned dst_bits = alu->def.bit_size;
    assert(nir_src_bit_size(alu->src[0].src) == dst_bits);
    assert(nir_src_bit_size(alu->src[1].src) == dst_bits);
    assert(nir_src_bit_size(alu->src[2].src) == dst_bits);
@@ -2796,7 +2796,7 @@ emit_make_double(struct ntd_context *ctx, nir_alu_instr *alu)
    const struct dxil_value *v = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!v)
       return false;
-   store_def(ctx, &alu->dest.dest.ssa, 0, v);
+   store_def(ctx, &alu->def, 0, v);
    return true;
 }
 
@@ -2827,8 +2827,8 @@ emit_split_double(struct ntd_context *ctx, nir_alu_instr *alu)
    if (!hi || !lo)
       return false;
 
-   store_def(ctx, &alu->dest.dest.ssa, 0, hi);
-   store_def(ctx, &alu->dest.dest.ssa, 1, lo);
+   store_def(ctx, &alu->def, 0, hi);
+   store_def(ctx, &alu->def, 1, lo);
    return true;
 }
 
@@ -2846,8 +2846,8 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_vec16:
       return emit_vec(ctx, alu, nir_op_infos[alu->op].num_inputs);
    case nir_op_mov: {
-         assert(alu->dest.dest.ssa.num_components == 1);
-         store_ssa_def(ctx, &alu->dest.dest.ssa, 0, get_src_ssa(ctx,
+         assert(alu->def.num_components == 1);
+         store_ssa_def(ctx, &alu->def, 0, get_src_ssa(ctx,
                         alu->src->src.ssa, alu->src->swizzle[0]));
          return true;
       }
@@ -2890,7 +2890,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fmul: return emit_binop(ctx, alu, DXIL_BINOP_MUL, src[0], src[1]);
 
    case nir_op_fdiv:
-      if (alu->dest.dest.ssa.bit_size == 64)
+      if (alu->def.bit_size == 64)
          ctx->mod.feats.dx11_1_double_extensions = 1;
       return emit_binop(ctx, alu, DXIL_BINOP_SDIV, src[0], src[1]);
 
@@ -2898,10 +2898,10 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_udiv:
       if (nir_src_is_const(alu->src[1].src)) {
          /* It's illegal to emit a literal divide by 0 in DXIL */
-         nir_scalar divisor = nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1);
+         nir_scalar divisor = nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->def, 0), 1);
          if (nir_scalar_as_int(divisor) == 0) {
             store_alu_dest(ctx, alu, 0,
-                           dxil_module_get_int_const(&ctx->mod, 0, alu->dest.dest.ssa.bit_size));
+                           dxil_module_get_int_const(&ctx->mod, 0, alu->def.bit_size));
             return true;
          }
       }
@@ -2917,7 +2917,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_ior:  return emit_binop(ctx, alu, DXIL_BINOP_OR, src[0], src[1]);
    case nir_op_ixor: return emit_binop(ctx, alu, DXIL_BINOP_XOR, src[0], src[1]);
    case nir_op_inot: {
-      unsigned bit_size = alu->dest.dest.ssa.bit_size;
+      unsigned bit_size = alu->def.bit_size;
       intmax_t val = bit_size == 1 ? 1 : -1;
       const struct dxil_value *negative_one = dxil_module_get_int_const(&ctx->mod, val, bit_size);
       return emit_binop(ctx, alu, DXIL_BINOP_XOR, src[0], negative_one);
@@ -2954,7 +2954,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fround_even: return emit_unary_intin(ctx, alu, DXIL_INTR_ROUND_NE, src[0]);
    case nir_op_frcp: {
       const struct dxil_value *one;
-      switch (alu->dest.dest.ssa.bit_size) {
+      switch (alu->def.bit_size) {
       case 16:
          one = dxil_module_get_float16_const(&ctx->mod, 0x3C00);
          break;
@@ -2983,7 +2983,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fmax: return emit_binary_intin(ctx, alu, DXIL_INTR_FMAX, src[0], src[1]);
    case nir_op_fmin: return emit_binary_intin(ctx, alu, DXIL_INTR_FMIN, src[0], src[1]);
    case nir_op_ffma:
-      if (alu->dest.dest.ssa.bit_size == 64)
+      if (alu->def.bit_size == 64)
          ctx->mod.feats.dx11_1_double_extensions = 1;
       return emit_tertiary_intin(ctx, alu, DXIL_INTR_FMA, src[0], src[1], src[2]);
 

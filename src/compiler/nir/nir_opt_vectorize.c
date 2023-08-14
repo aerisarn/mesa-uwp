@@ -70,11 +70,11 @@ hash_instr(const void *data)
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
    uint32_t hash = HASH(0, alu->op);
-   hash = HASH(hash, alu->dest.dest.ssa.bit_size);
+   hash = HASH(hash, alu->def.bit_size);
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
       hash = hash_alu_src(hash, &alu->src[i],
-                          alu->dest.dest.ssa.num_components,
+                          alu->def.num_components,
                           instr->pass_flags);
 
    return hash;
@@ -113,7 +113,7 @@ instrs_equal(const void *data1, const void *data2)
    if (alu1->op != alu2->op)
       return false;
 
-   if (alu1->dest.dest.ssa.bit_size != alu2->dest.dest.ssa.bit_size)
+   if (alu1->def.bit_size != alu2->def.bit_size)
       return false;
 
    for (unsigned i = 0; i < nir_op_infos[alu1->op].num_inputs; i++) {
@@ -139,7 +139,7 @@ instr_can_rewrite(nir_instr *instr)
          return false;
 
       /* no need to hash instructions which are already vectorized */
-      if (alu->dest.dest.ssa.num_components >= instr->pass_flags)
+      if (alu->def.num_components >= instr->pass_flags)
          return false;
 
       if (nir_op_infos[alu->op].output_size != 0)
@@ -152,7 +152,7 @@ instr_can_rewrite(nir_instr *instr)
          /* don't hash instructions which are already swizzled
           * outside of max_components: these should better be scalarized */
          uint32_t mask = ~(instr->pass_flags - 1);
-         for (unsigned j = 1; j < alu->dest.dest.ssa.num_components; j++) {
+         for (unsigned j = 1; j < alu->def.num_components; j++) {
             if ((alu->src[i].swizzle[0] & mask) != (alu->src[i].swizzle[j] & mask))
                return false;
          }
@@ -182,9 +182,9 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
    nir_alu_instr *alu1 = nir_instr_as_alu(instr1);
    nir_alu_instr *alu2 = nir_instr_as_alu(instr2);
 
-   assert(alu1->dest.dest.ssa.bit_size == alu2->dest.dest.ssa.bit_size);
-   unsigned alu1_components = alu1->dest.dest.ssa.num_components;
-   unsigned alu2_components = alu2->dest.dest.ssa.num_components;
+   assert(alu1->def.bit_size == alu2->def.bit_size);
+   unsigned alu1_components = alu1->def.num_components;
+   unsigned alu2_components = alu2->def.num_components;
    unsigned total_components = alu1_components + alu2_components;
 
    assert(instr1->pass_flags == instr2->pass_flags);
@@ -194,8 +194,8 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
    nir_builder b = nir_builder_at(nir_after_instr(instr1));
 
    nir_alu_instr *new_alu = nir_alu_instr_create(b.shader, alu1->op);
-   nir_def_init(&new_alu->instr, &new_alu->dest.dest.ssa, total_components,
-                alu1->dest.dest.ssa.bit_size);
+   nir_def_init(&new_alu->instr, &new_alu->def, total_components,
+                alu1->def.bit_size);
    new_alu->instr.pass_flags = alu1->instr.pass_flags;
 
    /* If either channel is exact, we have to preserve it even if it's
@@ -243,7 +243,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
    nir_builder_instr_insert(&b, &new_alu->instr);
 
    /* update all ALU uses */
-   nir_foreach_use_safe(src, &alu1->dest.dest.ssa) {
+   nir_foreach_use_safe(src, &alu1->def) {
       nir_instr *user_instr = src->parent_instr;
       if (user_instr->type == nir_instr_type_alu) {
          /* Check if user is found in the hashset */
@@ -253,7 +253,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
           * round-trip through copy propagation.
           */
          nir_instr_rewrite_src(user_instr, src,
-                               nir_src_for_ssa(&new_alu->dest.dest.ssa));
+                               nir_src_for_ssa(&new_alu->def));
 
          /* Rehash user if it was found in the hashset */
          if (entry && entry->key == user_instr) {
@@ -263,13 +263,13 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
       }
    }
 
-   nir_foreach_use_safe(src, &alu2->dest.dest.ssa) {
+   nir_foreach_use_safe(src, &alu2->def) {
       if (src->parent_instr->type == nir_instr_type_alu) {
          /* For ALU instructions, rewrite the source directly to avoid a
           * round-trip through copy propagation.
           */
          nir_instr_rewrite_src(src->parent_instr, src,
-                               nir_src_for_ssa(&new_alu->dest.dest.ssa));
+                               nir_src_for_ssa(&new_alu->def));
 
          nir_alu_src *alu_src = container_of(src, nir_alu_src, src);
          nir_alu_instr *use = nir_instr_as_alu(src->parent_instr);
@@ -282,20 +282,20 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
    /* update all other uses if there are any */
    unsigned swiz[NIR_MAX_VEC_COMPONENTS];
 
-   if (!nir_def_is_unused(&alu1->dest.dest.ssa)) {
+   if (!nir_def_is_unused(&alu1->def)) {
       for (unsigned i = 0; i < alu1_components; i++)
          swiz[i] = i;
-      nir_def *new_alu1 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
+      nir_def *new_alu1 = nir_swizzle(&b, &new_alu->def, swiz,
                                       alu1_components);
-      nir_def_rewrite_uses(&alu1->dest.dest.ssa, new_alu1);
+      nir_def_rewrite_uses(&alu1->def, new_alu1);
    }
 
-   if (!nir_def_is_unused(&alu2->dest.dest.ssa)) {
+   if (!nir_def_is_unused(&alu2->def)) {
       for (unsigned i = 0; i < alu2_components; i++)
          swiz[i] = i + alu1_components;
-      nir_def *new_alu2 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
+      nir_def *new_alu2 = nir_swizzle(&b, &new_alu->def, swiz,
                                       alu2_components);
-      nir_def_rewrite_uses(&alu2->dest.dest.ssa, new_alu2);
+      nir_def_rewrite_uses(&alu2->def, new_alu2);
    }
 
    nir_instr_remove(instr1);

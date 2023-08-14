@@ -74,7 +74,7 @@ only_used_by_cross_lane_instrs(nir_def* ssa, bool follow_phis = true)
          nir_alu_instr* alu = nir_instr_as_alu(src->parent_instr);
          if (alu->op != nir_op_unpack_64_2x32_split_x && alu->op != nir_op_unpack_64_2x32_split_y)
             return false;
-         if (!only_used_by_cross_lane_instrs(&alu->dest.dest.ssa, follow_phis))
+         if (!only_used_by_cross_lane_instrs(&alu->def, follow_phis))
             return false;
 
          continue;
@@ -340,8 +340,7 @@ init_context(isel_context* ctx, nir_shader* shader)
             switch (instr->type) {
             case nir_instr_type_alu: {
                nir_alu_instr* alu_instr = nir_instr_as_alu(instr);
-               RegType type =
-                  alu_instr->dest.dest.ssa.divergent ? RegType::vgpr : RegType::sgpr;
+               RegType type = alu_instr->def.divergent ? RegType::vgpr : RegType::sgpr;
                switch (alu_instr->op) {
                case nir_op_fmul:
                case nir_op_fmulz:
@@ -435,7 +434,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_op_ishr:
                case nir_op_ushr:
                   /* packed 16bit instructions have to be VGPR */
-                  type = alu_instr->dest.dest.ssa.num_components == 2 ? RegType::vgpr : type;
+                  type = alu_instr->def.num_components == 2 ? RegType::vgpr : type;
                   FALLTHROUGH;
                default:
                   for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
@@ -445,9 +444,9 @@ init_context(isel_context* ctx, nir_shader* shader)
                   break;
                }
 
-               RegClass rc = get_reg_class(ctx, type, alu_instr->dest.dest.ssa.num_components,
-                                           alu_instr->dest.dest.ssa.bit_size);
-               regclasses[alu_instr->dest.dest.ssa.index] = rc;
+               RegClass rc =
+                  get_reg_class(ctx, type, alu_instr->def.num_components, alu_instr->def.bit_size);
+               regclasses[alu_instr->def.index] = rc;
                break;
             }
             case nir_instr_type_load_const: {

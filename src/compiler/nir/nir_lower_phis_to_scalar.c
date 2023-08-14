@@ -201,7 +201,7 @@ lower_phis_to_scalar_block(nir_block *block,
       nir_op vec_op = nir_op_vec(phi->dest.ssa.num_components);
 
       nir_alu_instr *vec = nir_alu_instr_create(state->shader, vec_op);
-      nir_def_init(&vec->instr, &vec->dest.dest.ssa,
+      nir_def_init(&vec->instr, &vec->def,
                    phi->dest.ssa.num_components, bit_size);
 
       for (unsigned i = 0; i < phi->dest.ssa.num_components; i++) {
@@ -215,7 +215,7 @@ lower_phis_to_scalar_block(nir_block *block,
             /* We need to insert a mov to grab the i'th component of src */
             nir_alu_instr *mov = nir_alu_instr_create(state->shader,
                                                       nir_op_mov);
-            nir_def_init(&mov->instr, &mov->dest.dest.ssa, 1, bit_size);
+            nir_def_init(&mov->instr, &mov->def, 1, bit_size);
             nir_src_copy(&mov->src[0].src, &src->src, &mov->instr);
             mov->src[0].swizzle[0] = i;
 
@@ -226,7 +226,7 @@ lower_phis_to_scalar_block(nir_block *block,
             else
                nir_instr_insert_after_block(src->pred, &mov->instr);
 
-            nir_phi_instr_add_src(new_phi, src->pred, nir_src_for_ssa(&mov->dest.dest.ssa));
+            nir_phi_instr_add_src(new_phi, src->pred, nir_src_for_ssa(&mov->def));
          }
 
          nir_instr_insert_before(&phi->instr, &new_phi->instr);
@@ -235,7 +235,7 @@ lower_phis_to_scalar_block(nir_block *block,
       nir_instr_insert_after(&last_phi->instr, &vec->instr);
 
       nir_def_rewrite_uses(&phi->dest.ssa,
-                           &vec->dest.dest.ssa);
+                           &vec->def);
 
       nir_instr_remove(&phi->instr);
       exec_list_push_tail(&state->dead_instrs, &phi->instr.node);

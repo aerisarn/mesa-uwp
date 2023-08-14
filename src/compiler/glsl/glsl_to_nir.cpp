@@ -1731,7 +1731,7 @@ get_instr_def(nir_instr *instr)
    switch (instr->type) {
       case nir_instr_type_alu:
          alu_instr = nir_instr_as_alu(instr);
-         return &alu_instr->dest.dest.ssa;
+         return &alu_instr->def;
 
       case nir_instr_type_intrinsic:
          intrinsic_instr = nir_instr_as_intrinsic(instr);

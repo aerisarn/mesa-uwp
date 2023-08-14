@@ -46,7 +46,7 @@ split_conversion(nir_builder *b, nir_alu_instr *alu, nir_alu_type src_type,
    nir_def *src = nir_ssa_for_alu_src(b, alu, 0);
    nir_def *tmp = nir_type_convert(b, src, src_type, tmp_type, nir_rounding_mode_undef);
    nir_def *res = nir_type_convert(b, tmp, tmp_type, dst_type, rnd);
-   nir_def_rewrite_uses(&alu->dest.dest.ssa, res);
+   nir_def_rewrite_uses(&alu->def, res);
    nir_instr_remove(&alu->instr);
 }
 
@@ -57,7 +57,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    nir_alu_type src_type = nir_op_infos[alu->op].input_types[0];
    nir_alu_type src_full_type = (nir_alu_type) (src_type | src_bit_size);
 
-   unsigned dst_bit_size = alu->dest.dest.ssa.bit_size;
+   unsigned dst_bit_size = alu->def.bit_size;
    nir_alu_type dst_full_type = nir_op_infos[alu->op].output_type;
    nir_alu_type dst_type = nir_alu_type_get_base_type(dst_full_type);
 

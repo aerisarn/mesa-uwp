@@ -486,9 +486,9 @@ NirLowerFSOutToVector::create_combined_vector(nir_builder *b,
       k += s->num_components;
    }
 
-   nir_def_init(&instr->instr, &instr->dest.dest.ssa, num_comp, 32);
+   nir_def_init(&instr->instr, &instr->def, num_comp, 32);
    nir_builder_instr_insert(b, &instr->instr);
-   return &instr->dest.dest.ssa;
+   return &instr->def;
 }
 
 } // namespace r600

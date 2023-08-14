@@ -39,7 +39,7 @@ instr_has_only_trivial_swizzles(nir_alu_instr *alu)
    const nir_op_info *info = &nir_op_infos[alu->op];
 
    for (unsigned i = 0; i < info->num_inputs; i++) {
-      for (unsigned chan = 0; chan < alu->dest.dest.ssa.num_components; chan++) {
+      for (unsigned chan = 0; chan < alu->def.num_components; chan++) {
          if (alu->src[i].swizzle[chan] != chan)
             return false;
       }
@@ -83,7 +83,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
 
-   bool is_bool_only = alu->dest.dest.ssa.bit_size == 1;
+   bool is_bool_only = alu->def.bit_size == 1;
    for (unsigned i = 0; i < info->num_inputs; i++) {
       if (alu->src[i].src.ssa->bit_size != 1)
          is_bool_only = false;
@@ -247,7 +247,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
 
    if (rep) {
       /* We've emitted a replacement instruction */
-      nir_def_rewrite_uses(&alu->dest.dest.ssa, rep);
+      nir_def_rewrite_uses(&alu->def, rep);
       nir_instr_remove(&alu->instr);
    }
 

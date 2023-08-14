@@ -118,7 +118,7 @@ nir_gather_types(nir_function_impl *impl,
                case nir_op_vec8:
                case nir_op_vec16:
                   for (unsigned i = 0; i < info->num_inputs; i++) {
-                     copy_types(alu->src[i].src, &alu->dest.dest.ssa,
+                     copy_types(alu->src[i].src, &alu->def,
                                 float_types, int_types, &progress);
                   }
                   break;
@@ -127,9 +127,9 @@ nir_gather_types(nir_function_impl *impl,
                case nir_op_b32csel:
                   set_type(alu->src[0].src.ssa->index, nir_type_bool,
                            float_types, int_types, &progress);
-                  copy_types(alu->src[1].src, &alu->dest.dest.ssa,
+                  copy_types(alu->src[1].src, &alu->def,
                              float_types, int_types, &progress);
-                  copy_types(alu->src[2].src, &alu->dest.dest.ssa,
+                  copy_types(alu->src[2].src, &alu->def,
                              float_types, int_types, &progress);
                   break;
 
@@ -139,7 +139,7 @@ nir_gather_types(nir_function_impl *impl,
                               info->input_types[i],
                               float_types, int_types, &progress);
                   }
-                  set_type(alu->dest.dest.ssa.index, info->output_type,
+                  set_type(alu->def.index, info->output_type,
                            float_types, int_types, &progress);
                }
                break;

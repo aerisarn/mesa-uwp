@@ -61,7 +61,7 @@ ssa_def_bits_used_test::build_alu_instr(nir_op op,
    if (alu == NULL)
       return NULL;
 
-   alu->dest.dest.ssa.num_components = 1;
+   alu->def.num_components = 1;
 
    return alu;
 }

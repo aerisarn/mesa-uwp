@@ -153,7 +153,7 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
    if (instr->op == nir_op_mov) {
       gpir_node *child = gpir_node_find(block, &instr->src[0].src,
                                         instr->src[0].swizzle[0]);
-      register_node_ssa(block, child, &instr->dest.dest.ssa);
+      register_node_ssa(block, child, &instr->def);
       return true;
    }
 
@@ -182,7 +182,7 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
    }
 
    list_addtail(&node->node.list, &block->node_list);
-   register_node_ssa(block, &node->node, &instr->dest.dest.ssa);
+   register_node_ssa(block, &node->node, &instr->def);
 
    return true;
 }

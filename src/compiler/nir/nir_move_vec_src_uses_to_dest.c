@@ -110,7 +110,7 @@ move_vec_src_uses_to_dest_block(nir_block *block)
                continue;
 
             /* We need to dominate the use if we are going to rewrite it */
-            if (!ssa_def_dominates_instr(&vec->dest.dest.ssa, use->parent_instr))
+            if (!ssa_def_dominates_instr(&vec->def, use->parent_instr))
                continue;
 
             /* For now, we'll just rewrite ALU instructions */
@@ -143,7 +143,7 @@ move_vec_src_uses_to_dest_block(nir_block *block)
              * Go ahead and rewrite it as needed.
              */
             nir_instr_rewrite_src(use->parent_instr, use,
-                                  nir_src_for_ssa(&vec->dest.dest.ssa));
+                                  nir_src_for_ssa(&vec->def));
             for (unsigned j = 0; j < 4; j++) {
                if (!nir_alu_instr_channel_used(use_alu, src_idx, j))
                   continue;

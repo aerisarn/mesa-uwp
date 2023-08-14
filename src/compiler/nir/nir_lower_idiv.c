@@ -157,7 +157,7 @@ inst_is_idiv(const nir_instr *instr, UNUSED const void *_state)
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   if (alu->dest.dest.ssa.bit_size > 32)
+   if (alu->def.bit_size > 32)
       return false;
 
    switch (alu->op) {

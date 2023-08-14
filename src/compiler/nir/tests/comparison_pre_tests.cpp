@@ -504,9 +504,9 @@ TEST_F(comparison_pre_test, swizzle_of_same_immediate_vector)
 
    nir_builder_alu_instr_finish_and_insert(&bld, flt);
 
-   flt->dest.dest.ssa.num_components = 1;
+   flt->def.num_components = 1;
 
-   nir_if *nif = nir_push_if(&bld, &flt->dest.dest.ssa);
+   nir_if *nif = nir_push_if(&bld, &flt->def);
 
    nir_alu_instr *fadd = nir_alu_instr_create(bld.shader, nir_op_fadd);
 
@@ -518,7 +518,7 @@ TEST_F(comparison_pre_test, swizzle_of_same_immediate_vector)
 
    nir_builder_alu_instr_finish_and_insert(&bld, fadd);
 
-   fadd->dest.dest.ssa.num_components = 1;
+   fadd->def.num_components = 1;
 
    nir_pop_if(&bld, nif);
 
@@ -559,9 +559,9 @@ TEST_F(comparison_pre_test, non_scalar_add_result)
 
    nir_builder_alu_instr_finish_and_insert(&bld, flt);
 
-   flt->dest.dest.ssa.num_components = 1;
+   flt->def.num_components = 1;
 
-   nir_if *nif = nir_push_if(&bld, &flt->dest.dest.ssa);
+   nir_if *nif = nir_push_if(&bld, &flt->def);
 
    nir_alu_instr *fadd = nir_alu_instr_create(bld.shader, nir_op_fadd);
 
@@ -573,7 +573,7 @@ TEST_F(comparison_pre_test, non_scalar_add_result)
 
    nir_builder_alu_instr_finish_and_insert(&bld, fadd);
 
-   fadd->dest.dest.ssa.num_components = 2;
+   fadd->def.num_components = 2;
 
    nir_pop_if(&bld, nif);
 

@@ -541,9 +541,9 @@ ac_build_const_int_vec(struct ac_llvm_context *ctx, LLVMTypeRef type, long long 
 static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 {
    LLVMValueRef src[16], result = NULL;
-   unsigned num_components = instr->dest.dest.ssa.num_components;
+   unsigned num_components = instr->def.num_components;
    unsigned src_components;
-   LLVMTypeRef def_type = get_def_type(ctx, &instr->dest.dest.ssa);
+   LLVMTypeRef def_type = get_def_type(ctx, &instr->def);
 
    assert(nir_op_infos[instr->op].num_inputs <= ARRAY_SIZE(src));
    switch (instr->op) {
@@ -589,7 +589,7 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
          /* fneg will be optimized by backend compiler with sign
           * bit removed via XOR. This is probably a LLVM bug.
           */
-         result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
+         result = ac_build_canonicalize(&ctx->ac, result, instr->def.bit_size);
       }
       break;
    case nir_op_inot:
@@ -738,7 +738,7 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
          /* fabs will be optimized by backend compiler with sign
           * bit removed via AND.
           */
-         result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
+         result = ac_build_canonicalize(&ctx->ac, result, instr->def.bit_size);
       }
       break;
    case nir_op_fsat:
@@ -825,27 +825,27 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    case nir_op_frexp_sig:
       src[0] = ac_to_float(&ctx->ac, src[0]);
-      result = ac_build_frexp_mant(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
+      result = ac_build_frexp_mant(&ctx->ac, src[0], instr->def.bit_size);
       break;
    case nir_op_fmax:
       result = emit_intrin_2f_param(&ctx->ac, "llvm.maxnum", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1]);
-      if (ctx->ac.gfx_level < GFX9 && instr->dest.dest.ssa.bit_size == 32) {
+      if (ctx->ac.gfx_level < GFX9 && instr->def.bit_size == 32) {
          /* Only pre-GFX9 chips do not flush denorms. */
-         result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
+         result = ac_build_canonicalize(&ctx->ac, result, instr->def.bit_size);
       }
       break;
    case nir_op_fmin:
       result = emit_intrin_2f_param(&ctx->ac, "llvm.minnum", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1]);
-      if (ctx->ac.gfx_level < GFX9 && instr->dest.dest.ssa.bit_size == 32) {
+      if (ctx->ac.gfx_level < GFX9 && instr->def.bit_size == 32) {
          /* Only pre-GFX9 chips do not flush denorms. */
-         result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
+         result = ac_build_canonicalize(&ctx->ac, result, instr->def.bit_size);
       }
       break;
    case nir_op_ffma:
       /* FMA is slow on gfx6-8, so it shouldn't be used. */
-      assert(instr->dest.dest.ssa.bit_size != 32 || ctx->ac.gfx_level >= GFX9);
+      assert(instr->def.bit_size != 32 || ctx->ac.gfx_level >= GFX9);
       result = emit_intrin_3f_param(&ctx->ac, "llvm.fma", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1], src[2]);
       break;
@@ -1030,13 +1030,13 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_b2f16:
    case nir_op_b2f32:
    case nir_op_b2f64:
-      result = emit_b2f(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
+      result = emit_b2f(&ctx->ac, src[0], instr->def.bit_size);
       break;
    case nir_op_b2i8:
    case nir_op_b2i16:
    case nir_op_b2i32:
    case nir_op_b2i64:
-      result = emit_b2i(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
+      result = emit_b2i(&ctx->ac, src[0], instr->def.bit_size);
       break;
    case nir_op_b2b1: /* after loads */
       result = emit_i2b(&ctx->ac, src[0]);
@@ -1280,7 +1280,7 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 
    if (result) {
       result = ac_to_integer_or_pointer(&ctx->ac, result);
-      ctx->ssa_defs[instr->dest.dest.ssa.index] = result;
+      ctx->ssa_defs[instr->def.index] = result;
    }
    return true;
 }
@@ -4142,7 +4142,7 @@ static bool is_def_used_in_an_export(const nir_def *def)
             return true;
       } else if (use_src->parent_instr->type == nir_instr_type_alu) {
          nir_alu_instr *instr = nir_instr_as_alu(use_src->parent_instr);
-         if (instr->op == nir_op_vec4 && is_def_used_in_an_export(&instr->dest.dest.ssa)) {
+         if (instr->op == nir_op_vec4 && is_def_used_in_an_export(&instr->def)) {
             return true;
          }
       }

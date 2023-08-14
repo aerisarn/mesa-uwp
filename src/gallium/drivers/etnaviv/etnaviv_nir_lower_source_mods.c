@@ -96,7 +96,7 @@ nir_lower_to_source_mods_instr(nir_builder *b, nir_instr *instr,
          alu->src[i].swizzle[j] = parent->src[0].swizzle[alu->src[i].swizzle[j]];
       }
 
-      if (nir_def_is_unused(&parent->dest.dest.ssa))
+      if (nir_def_is_unused(&parent->def))
          nir_instr_remove(&parent->instr);
 
       progress = true;

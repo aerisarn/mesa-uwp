@@ -225,7 +225,7 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
    nir_op vec_op = nir_op_vec(phi->dest.ssa.num_components);
 
    nir_alu_instr *vec = nir_alu_instr_create(b->shader, vec_op);
-   nir_def_init(&vec->instr, &vec->dest.dest.ssa,
+   nir_def_init(&vec->instr, &vec->def,
                 phi->dest.ssa.num_components, 64);
 
    int num_comp[2] = { 2, phi->dest.ssa.num_components - 2 };

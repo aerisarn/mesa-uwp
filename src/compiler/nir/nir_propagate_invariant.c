@@ -81,7 +81,7 @@ propagate_invariant_instr(nir_instr *instr, struct set *invariants)
    switch (instr->type) {
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
-      if (!def_is_invariant(&alu->dest.dest.ssa, invariants))
+      if (!def_is_invariant(&alu->def, invariants))
          break;
 
       alu->exact = true;

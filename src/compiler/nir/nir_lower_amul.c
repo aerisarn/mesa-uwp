@@ -260,7 +260,7 @@ nir_lower_amul(nir_shader *shader,
             if (alu->op != nir_op_amul)
                continue;
 
-            if (alu->dest.dest.ssa.bit_size <= 32)
+            if (alu->def.bit_size <= 32)
                alu->op = nir_op_imul24;
             else
                alu->op = nir_op_imul;

@@ -76,8 +76,8 @@ make_sources_canonical(nir_builder *b, nir_alu_instr *alu, uint32_t start_idx)
           */
          nir_alu_instr *conv_instr =
             nir_instr_as_alu(nir_builder_last_instr(b));
-         conv_instr->dest.dest.ssa.num_components =
-            alu->dest.dest.ssa.num_components;
+         conv_instr->def.num_components =
+            alu->def.num_components;
          memcpy(conv_instr->src[0].swizzle,
                 alu->src[i].swizzle,
                 sizeof(conv_instr->src[0].swizzle));
@@ -112,7 +112,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_iand:
    case nir_op_ior:
    case nir_op_ixor:
-      if (alu->dest.dest.ssa.bit_size > 1)
+      if (alu->def.bit_size > 1)
          return false; /* Not a boolean instruction */
       FALLTHROUGH;
 
@@ -135,7 +135,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
 
    case nir_op_bcsel:
       /* bcsel may be choosing between boolean sources too */
-      if (alu->dest.dest.ssa.bit_size == 1)
+      if (alu->def.bit_size == 1)
          make_sources_canonical(b, alu, 1);
       break;
 
@@ -296,7 +296,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       break;
 
    default:
-      assert(alu->dest.dest.ssa.bit_size > 1);
+      assert(alu->def.bit_size > 1);
       for (unsigned i = 0; i < op_info->num_inputs; i++)
          assert(alu->src[i].src.ssa->bit_size > 1);
       return false;
@@ -304,8 +304,8 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
 
    alu->op = opcode;
 
-   if (alu->dest.dest.ssa.bit_size == 1)
-      alu->dest.dest.ssa.bit_size = bit_size;
+   if (alu->def.bit_size == 1)
+      alu->def.bit_size = bit_size;
 
    return true;
 }

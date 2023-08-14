@@ -394,11 +394,11 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
 
    /* If an instruction is not scalarized by this point,
     * it can be emitted as packed instruction */
-   if (alu->dest.dest.ssa.num_components > 1)
+   if (alu->def.num_components > 1)
       return 0;
 
-   if (alu->dest.dest.ssa.bit_size & (8 | 16)) {
-      unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   if (alu->def.bit_size & (8 | 16)) {
+      unsigned bit_size = alu->def.bit_size;
       switch (alu->op) {
       case nir_op_bitfield_select:
       case nir_op_imul_high:
@@ -417,10 +417,10 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
       case nir_op_isign:
       case nir_op_uadd_sat:
       case nir_op_usub_sat:
-         return (bit_size == 8 || !(chip >= GFX8 && alu->dest.dest.ssa.divergent)) ? 32 : 0;
+         return (bit_size == 8 || !(chip >= GFX8 && alu->def.divergent)) ? 32 : 0;
       case nir_op_iadd_sat:
       case nir_op_isub_sat:
-         return bit_size == 8 || !alu->dest.dest.ssa.divergent ? 32 : 0;
+         return bit_size == 8 || !alu->def.divergent ? 32 : 0;
 
       default:
          return 0;
@@ -442,7 +442,7 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
       case nir_op_uge:
       case nir_op_bitz:
       case nir_op_bitnz:
-         return (bit_size == 8 || !(chip >= GFX8 && alu->dest.dest.ssa.divergent)) ? 32 : 0;
+         return (bit_size == 8 || !(chip >= GFX8 && alu->def.divergent)) ? 32 : 0;
       default:
          return 0;
       }
@@ -463,7 +463,7 @@ opt_vectorize_callback(const nir_instr *instr, const void *_)
       return 1;
 
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
-   const unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   const unsigned bit_size = alu->def.bit_size;
    if (bit_size != 16)
       return 1;
 

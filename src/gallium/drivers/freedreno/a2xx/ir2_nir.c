@@ -419,7 +419,7 @@ static void
 emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
-   nir_def *def = &alu->dest.dest.ssa;
+   nir_def *def = &alu->def;
    struct ir2_instr *instr;
    struct ir2_src tmp;
    unsigned ncomp;
@@ -438,7 +438,7 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
    instr = instr_create_alu(ctx, alu->op, ncomp);
 
    nir_legacy_alu_dest legacy_dest =
-      nir_legacy_chase_alu_dest(&alu->dest.dest.ssa);
+      nir_legacy_chase_alu_dest(&alu->def);
    set_legacy_index(ctx, legacy_dest.dest, instr);
    instr->alu.saturate = legacy_dest.fsat;
    instr->alu.write_mask = legacy_dest.write_mask;

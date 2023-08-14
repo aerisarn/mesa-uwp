@@ -222,7 +222,7 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
                (*count)++;
          } else {
             /* The only uses of this definition must be phis in the successor */
-            nir_foreach_use_including_if(use, &mov->dest.dest.ssa) {
+            nir_foreach_use_including_if(use, &mov->def) {
                if (use->is_if ||
                    use->parent_instr->type != nir_instr_type_phi ||
                    use->parent_instr->block != block->successors[0])
@@ -457,11 +457,11 @@ nir_opt_peephole_select_block(nir_block *block, nir_shader *shader,
          nir_src_copy(&sel->src[idx].src, &src->src, &sel->instr);
       }
 
-      nir_def_init(&sel->instr, &sel->dest.dest.ssa,
+      nir_def_init(&sel->instr, &sel->def,
                    phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
 
       nir_def_rewrite_uses(&phi->dest.ssa,
-                           &sel->dest.dest.ssa);
+                           &sel->def);
 
       nir_instr_insert_before(&phi->instr, &sel->instr);
       nir_instr_remove(&phi->instr);

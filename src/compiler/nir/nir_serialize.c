@@ -737,7 +737,7 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
          header.alu.writemask_or_two_swizzles |= alu->src[1].swizzle[0] << 2;
    }
 
-   write_def(ctx, &alu->dest.dest.ssa, header, alu->instr.type);
+   write_def(ctx, &alu->def, header, alu->instr.type);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
@@ -788,7 +788,7 @@ read_alu(read_ctx *ctx, union packed_instr header)
    alu->no_signed_wrap = header.alu.no_signed_wrap;
    alu->no_unsigned_wrap = header.alu.no_unsigned_wrap;
 
-   read_def(ctx, &alu->dest.dest.ssa, &alu->instr, header);
+   read_def(ctx, &alu->def, &alu->instr, header);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {

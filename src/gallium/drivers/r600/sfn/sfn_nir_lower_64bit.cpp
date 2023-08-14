@@ -156,7 +156,7 @@ class LowerSplit64op : public NirLowerInstruction {
          auto alu = nir_instr_as_alu(instr);
          switch (alu->op) {
          case nir_op_bcsel:
-            return alu->dest.dest.ssa.bit_size == 64;
+            return alu->def.bit_size == 64;
          case nir_op_f2i32:
          case nir_op_f2u32:
          case nir_op_f2i64:
@@ -304,9 +304,9 @@ LowerSplit64BitVar::filter(const nir_instr *instr) const
       auto alu = nir_instr_as_alu(instr);
       switch (alu->op) {
       case nir_op_bcsel:
-         if (alu->dest.dest.ssa.num_components < 3)
+         if (alu->def.num_components < 3)
             return false;
-         return alu->dest.dest.ssa.bit_size == 64;
+         return alu->def.bit_size == 64;
       case nir_op_bany_fnequal3:
       case nir_op_bany_fnequal4:
       case nir_op_ball_fequal3:
@@ -700,13 +700,13 @@ nir_def *
 LowerSplit64BitVar::split_bcsel(nir_alu_instr *alu)
 {
    static nir_def *dest[4];
-   for (unsigned i = 0; i < alu->dest.dest.ssa.num_components; ++i) {
+   for (unsigned i = 0; i < alu->def.num_components; ++i) {
       dest[i] = nir_bcsel(b,
                           nir_channel(b, alu->src[0].src.ssa, i),
                           nir_channel(b, alu->src[1].src.ssa, i),
                           nir_channel(b, alu->src[2].src.ssa, i));
    }
-   return nir_vec(b, dest, alu->dest.dest.ssa.num_components);
+   return nir_vec(b, dest, alu->def.num_components);
 }
 
 nir_def *
@@ -850,7 +850,7 @@ Lower64BitToVec2::filter(const nir_instr *instr) const
    }
    case nir_instr_type_alu: {
       auto alu = nir_instr_as_alu(instr);
-      return alu->dest.dest.ssa.bit_size == 64;
+      return alu->def.bit_size == 64;
    }
    case nir_instr_type_phi: {
       auto phi = nir_instr_as_phi(instr);
@@ -896,8 +896,8 @@ Lower64BitToVec2::lower(nir_instr *instr)
    }
    case nir_instr_type_alu: {
       auto alu = nir_instr_as_alu(instr);
-      alu->dest.dest.ssa.bit_size = 32;
-      alu->dest.dest.ssa.num_components *= 2;
+      alu->def.bit_size = 32;
+      alu->def.num_components *= 2;
       switch (alu->op) {
       case nir_op_pack_64_2x32_split:
          alu->op = nir_op_vec2;

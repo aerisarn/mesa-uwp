@@ -179,7 +179,7 @@ infer_nir_alu_type_from_use(nir_src *src)
       }
       /* ignore typeless ops */
       if (alu_op_is_typeless(alu->op)) {
-         atype = infer_nir_alu_type_from_uses_ssa(&alu->dest.dest.ssa);
+         atype = infer_nir_alu_type_from_uses_ssa(&alu->def);
          break;
       }
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
@@ -2037,7 +2037,7 @@ alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return nir_op_infos[instr->op].input_sizes[src];
 
-   return instr->dest.dest.ssa.num_components;
+   return instr->def.num_components;
 }
 
 static SpvId
@@ -2077,7 +2077,7 @@ get_alu_src(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src, SpvId *ra
 static void
 store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result, nir_alu_type atype)
 {
-   store_def(ctx, &alu->dest.dest.ssa, result, atype);
+   store_def(ctx, &alu->def, result, atype);
 }
 
 static SpvId
@@ -2158,12 +2158,12 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       }
    }
 
-   unsigned bit_size = alu->dest.dest.ssa.bit_size;
-   unsigned num_components = alu->dest.dest.ssa.num_components;
+   unsigned bit_size = alu->def.bit_size;
+   unsigned num_components = alu->def.num_components;
    nir_alu_type atype = bit_size == 1 ?
                         nir_type_bool :
                         (alu_op_is_typeless(alu->op) ? typeless_type : nir_op_infos[alu->op].output_type);
-   SpvId dest_type = get_def_type(ctx, &alu->dest.dest.ssa, atype);
+   SpvId dest_type = get_def_type(ctx, &alu->def, atype);
 
    if (needs_derivative_control(alu))
       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityDerivativeControl);
@@ -2265,7 +2265,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 #define BUILTIN_UNOPF(nir_op, spirv_op) \
    case nir_op: \
       assert(nir_op_infos[alu->op].num_inputs == 1); \
-      result = emit_builtin_unop(ctx, spirv_op, get_def_type(ctx, &alu->dest.dest.ssa, nir_type_float), src[0]); \
+      result = emit_builtin_unop(ctx, spirv_op, get_def_type(ctx, &alu->def, nir_type_float), src[0]); \
       atype = nir_type_float; \
       break;
 
@@ -2290,12 +2290,12 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 
    case nir_op_pack_half_2x16:
       assert(nir_op_infos[alu->op].num_inputs == 1);
-      result = emit_builtin_unop(ctx, GLSLstd450PackHalf2x16, get_def_type(ctx, &alu->dest.dest.ssa, nir_type_uint), src[0]);
+      result = emit_builtin_unop(ctx, GLSLstd450PackHalf2x16, get_def_type(ctx, &alu->def, nir_type_uint), src[0]);
       break;
 
    case nir_op_unpack_64_2x32:
       assert(nir_op_infos[alu->op].num_inputs == 1);
-      result = emit_builtin_unop(ctx, GLSLstd450UnpackDouble2x32, get_def_type(ctx, &alu->dest.dest.ssa, nir_type_uint), src[0]);
+      result = emit_builtin_unop(ctx, GLSLstd450UnpackDouble2x32, get_def_type(ctx, &alu->def, nir_type_uint), src[0]);
       break;
 
    BUILTIN_UNOPF(nir_op_unpack_half_2x16, GLSLstd450UnpackHalf2x16)

@@ -113,12 +113,12 @@ nir_builder_alu_instr_finish_and_insert(nir_builder *build, nir_alu_instr *instr
       }
    }
 
-   nir_def_init(&instr->instr, &instr->dest.dest.ssa, num_components,
+   nir_def_init(&instr->instr, &instr->def, num_components,
                 bit_size);
 
    nir_builder_instr_insert(build, &instr->instr);
 
-   return &instr->dest.dest.ssa;
+   return &instr->def;
 }
 
 nir_def *
@@ -328,12 +328,12 @@ nir_vec_scalars(nir_builder *build, nir_scalar *comp, unsigned num_components)
    /* Note: not reusing nir_builder_alu_instr_finish_and_insert() because it
     * can't re-guess the num_components when num_components == 1 (nir_op_mov).
     */
-   nir_def_init(&instr->instr, &instr->dest.dest.ssa, num_components,
+   nir_def_init(&instr->instr, &instr->def, num_components,
                 comp[0].def->bit_size);
 
    nir_builder_instr_insert(build, &instr->instr);
 
-   return &instr->dest.dest.ssa;
+   return &instr->def;
 }
 
 /**

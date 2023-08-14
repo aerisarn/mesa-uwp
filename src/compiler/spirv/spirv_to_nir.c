@@ -4066,7 +4066,7 @@ create_vec(struct vtn_builder *b, unsigned num_components, unsigned bit_size)
 {
    nir_op op = nir_op_vec(num_components);
    nir_alu_instr *vec = nir_alu_instr_create(b->shader, op);
-   nir_def_init(&vec->instr, &vec->dest.dest.ssa, num_components, bit_size);
+   nir_def_init(&vec->instr, &vec->def, num_components, bit_size);
 
    return vec;
 }
@@ -4126,7 +4126,7 @@ vtn_vector_shuffle(struct vtn_builder *b, unsigned num_components,
 
    nir_builder_instr_insert(&b->nb, &vec->instr);
 
-   return &vec->dest.dest.ssa;
+   return &vec->def;
 }
 
 /*
@@ -4165,7 +4165,7 @@ vtn_vector_construct(struct vtn_builder *b, unsigned num_components,
 
    nir_builder_instr_insert(&b->nb, &vec->instr);
 
-   return &vec->dest.dest.ssa;
+   return &vec->def;
 }
 
 static struct vtn_ssa_value *

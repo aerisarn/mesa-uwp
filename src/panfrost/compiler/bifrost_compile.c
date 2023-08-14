@@ -2093,10 +2093,10 @@ bi_nir_is_replicated(nir_alu_src *src)
 static void
 bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
-   bi_index dst = bi_def_index(&instr->dest.dest.ssa);
+   bi_index dst = bi_def_index(&instr->def);
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
-   unsigned sz = instr->dest.dest.ssa.bit_size;
-   unsigned comps = instr->dest.dest.ssa.num_components;
+   unsigned sz = instr->def.bit_size;
+   unsigned comps = instr->def.num_components;
    unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
 
    /* Indicate scalarness */
@@ -4230,7 +4230,7 @@ bi_vectorize_filter(const nir_instr *instr, const void *data)
    }
 
    /* Vectorized instructions cannot write more than 32-bit */
-   int dst_bit_size = alu->dest.dest.ssa.bit_size;
+   int dst_bit_size = alu->def.bit_size;
    if (dst_bit_size == 16)
       return 2;
    else

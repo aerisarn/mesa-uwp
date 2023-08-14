@@ -178,12 +178,12 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
          } else {
             assert(swizzle != SWIZZLE_NIL);
             nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_mov);
-            nir_def_init(&mov->instr, &mov->dest.dest.ssa, 1, 32);
+            nir_def_init(&mov->instr, &mov->def, 1, 32);
             mov->src[0] = src;
             mov->src[0].swizzle[0] = swizzle;
             nir_builder_instr_insert(b, &mov->instr);
 
-            chans[i] = &mov->dest.dest.ssa;
+            chans[i] = &mov->def;
          }
 
          if (prog_src->Negate & (1 << i))

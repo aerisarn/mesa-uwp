@@ -15,8 +15,8 @@ bool si_alu_to_scalar_packed_math_filter(const nir_instr *instr, const void *dat
    if (instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-      if (alu->dest.dest.ssa.bit_size == 16 &&
-          alu->dest.dest.ssa.num_components == 2)
+      if (alu->def.bit_size == 16 &&
+          alu->def.num_components == 2)
          return false;
    }
 
@@ -29,7 +29,7 @@ static uint8_t si_vectorize_callback(const nir_instr *instr, const void *data)
       return 0;
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   if (alu->dest.dest.ssa.bit_size == 16) {
+   if (alu->def.bit_size == 16) {
       switch (alu->op) {
       case nir_op_unpack_32_2x16_split_x:
       case nir_op_unpack_32_2x16_split_y:
@@ -52,7 +52,7 @@ static unsigned si_lower_bit_size_callback(const nir_instr *instr, void *data)
    switch (alu->op) {
    case nir_op_imul_high:
    case nir_op_umul_high:
-      if (alu->dest.dest.ssa.bit_size < 32)
+      if (alu->def.bit_size < 32)
          return 32;
       break;
    default:

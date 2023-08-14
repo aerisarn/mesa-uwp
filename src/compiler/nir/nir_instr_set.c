@@ -84,8 +84,8 @@ hash_alu(uint32_t hash, const nir_alu_instr *instr)
                    instr->no_unsigned_wrap << 1;
    hash = HASH(hash, flags);
 
-   hash = HASH(hash, instr->dest.dest.ssa.num_components);
-   hash = HASH(hash, instr->dest.dest.ssa.bit_size);
+   hash = HASH(hash, instr->def.num_components);
+   hash = HASH(hash, instr->def.bit_size);
 
    if (nir_op_infos[instr->op].algebraic_properties & NIR_OP_IS_2SRC_COMMUTATIVE) {
       assert(nir_op_infos[instr->op].num_inputs >= 2);
@@ -516,10 +516,10 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
       /* TODO: We can probably acutally do something more inteligent such
        * as allowing different numbers and taking a maximum or something
        * here */
-      if (alu1->dest.dest.ssa.num_components != alu2->dest.dest.ssa.num_components)
+      if (alu1->def.num_components != alu2->def.num_components)
          return false;
 
-      if (alu1->dest.dest.ssa.bit_size != alu2->dest.dest.ssa.bit_size)
+      if (alu1->def.bit_size != alu2->def.bit_size)
          return false;
 
       if (nir_op_infos[alu1->op].algebraic_properties & NIR_OP_IS_2SRC_COMMUTATIVE) {
@@ -717,7 +717,7 @@ nir_instr_get_dest_ssa_def(nir_instr *instr)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
-      return &nir_instr_as_alu(instr)->dest.dest.ssa;
+      return &nir_instr_as_alu(instr)->def;
    case nir_instr_type_deref:
       return &nir_instr_as_deref(instr)->dest.ssa;
    case nir_instr_type_load_const:

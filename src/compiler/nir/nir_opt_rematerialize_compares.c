@@ -60,7 +60,7 @@ is_two_src_comparison(const nir_alu_instr *instr)
 static bool
 all_uses_are_bcsel(const nir_alu_instr *instr)
 {
-   nir_foreach_use(use, &instr->dest.dest.ssa) {
+   nir_foreach_use(use, &instr->def) {
       if (use->parent_instr->type != nir_instr_type_alu)
          return false;
 
@@ -72,7 +72,7 @@ all_uses_are_bcsel(const nir_alu_instr *instr)
       /* Not only must the result be used by a bcsel, but it must be used as
        * the first source (the condition).
        */
-      if (alu->src[0].src.ssa != &instr->dest.dest.ssa)
+      if (alu->src[0].src.ssa != &instr->def)
          return false;
    }
 
@@ -106,7 +106,7 @@ nir_opt_rematerialize_compares_impl(nir_shader *shader, nir_function_impl *impl)
           * instruction must be duplicated only once in each block because CSE
           * cannot be run after this pass.
           */
-         nir_foreach_use_including_if_safe(use, &alu->dest.dest.ssa) {
+         nir_foreach_use_including_if_safe(use, &alu->def) {
             if (use->is_if) {
                nir_if *const if_stmt = use->parent_if;
 
@@ -124,7 +124,7 @@ nir_opt_rematerialize_compares_impl(nir_shader *shader, nir_function_impl *impl)
                nir_instr_insert_after_block(prev_block, &clone->instr);
 
                nir_if_rewrite_condition(if_stmt,
-                                        nir_src_for_ssa(&clone->dest.dest.ssa));
+                                        nir_src_for_ssa(&clone->def));
                progress = true;
             } else {
                nir_instr *const use_instr = use->parent_instr;
@@ -141,10 +141,10 @@ nir_opt_rematerialize_compares_impl(nir_shader *shader, nir_function_impl *impl)
 
                nir_alu_instr *const use_alu = nir_instr_as_alu(use_instr);
                for (unsigned i = 0; i < nir_op_infos[use_alu->op].num_inputs; i++) {
-                  if (use_alu->src[i].src.ssa == &alu->dest.dest.ssa) {
+                  if (use_alu->src[i].src.ssa == &alu->def) {
                      nir_instr_rewrite_src(&use_alu->instr,
                                            &use_alu->src[i].src,
-                                           nir_src_for_ssa(&clone->dest.dest.ssa));
+                                           nir_src_for_ssa(&clone->def));
                      progress = true;
                   }
                }

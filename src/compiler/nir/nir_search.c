@@ -374,7 +374,7 @@ match_expression(const nir_algebraic_table *table, const nir_search_expression *
       return false;
 
    if (expr->value.bit_size > 0 &&
-       instr->dest.dest.ssa.bit_size != expr->value.bit_size)
+       instr->def.bit_size != expr->value.bit_size)
       return false;
 
    state->inexact_match = expr->inexact || state->inexact_match;
@@ -451,7 +451,7 @@ construct_value(nir_builder *build,
          num_components = nir_op_infos[op].output_size;
 
       nir_alu_instr *alu = nir_alu_instr_create(build->shader, op);
-      nir_def_init(&alu->instr, &alu->dest.dest.ssa, num_components,
+      nir_def_init(&alu->instr, &alu->def, num_components,
                    dst_bit_size);
 
       /* We have no way of knowing what values in a given search expression
@@ -475,13 +475,13 @@ construct_value(nir_builder *build,
 
       nir_builder_instr_insert(build, &alu->instr);
 
-      assert(alu->dest.dest.ssa.index ==
+      assert(alu->def.index ==
              util_dynarray_num_elements(state->states, uint16_t));
       util_dynarray_append(state->states, uint16_t, 0);
       nir_algebraic_automaton(&alu->instr, state->states, state->pass_op_table);
 
       nir_alu_src val;
-      val.src = nir_src_for_ssa(&alu->dest.dest.ssa);
+      val.src = nir_src_for_ssa(&alu->def);
       memcpy(val.swizzle, identity_swizzle, sizeof val.swizzle);
 
       return val;
@@ -662,7 +662,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
 {
    uint8_t swizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
 
-   for (unsigned i = 0; i < instr->dest.dest.ssa.num_components; ++i)
+   for (unsigned i = 0; i < instr->def.num_components; ++i)
       swizzle[i] = i;
 
    struct match_state state;
@@ -686,7 +686,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
       state.variables_seen = 0;
 
       if (match_expression(table, search, instr,
-                           instr->dest.dest.ssa.num_components,
+                           instr->def.num_components,
                            swizzle, &state)) {
          found = true;
          break;
@@ -700,7 +700,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    dump_value(&search->value);
    fprintf(stderr, " -> ");
    dump_value(replace);
-   fprintf(stderr, " ssa_%d\n", instr->dest.dest.ssa.index);
+   fprintf(stderr, " ssa_%d\n", instr->def.index);
 #endif
 
    /* If the instruction at the root of the expression tree being replaced is
@@ -742,15 +742,15 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    state.states = states;
 
    nir_alu_src val = construct_value(build, replace,
-                                     instr->dest.dest.ssa.num_components,
-                                     instr->dest.dest.ssa.bit_size,
+                                     instr->def.num_components,
+                                     instr->def.bit_size,
                                      &state, &instr->instr);
 
    /* Note that NIR builder will elide the MOV if it's a no-op, which may
     * allow more work to be done in a single pass through algebraic.
     */
    nir_def *ssa_val =
-      nir_mov_alu(build, val, instr->dest.dest.ssa.num_components);
+      nir_mov_alu(build, val, instr->def.num_components);
    if (ssa_val->index == util_dynarray_num_elements(states, uint16_t)) {
       util_dynarray_append(states, uint16_t, 0);
       nir_algebraic_automaton(ssa_val->parent_instr, states, table->pass_op_table);
@@ -759,7 +759,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    /* Rewrite the uses of the old SSA value to the new one, and recurse
     * through the uses updating the automaton's state.
     */
-   nir_def_rewrite_uses(&instr->dest.dest.ssa, ssa_val);
+   nir_def_rewrite_uses(&instr->def, ssa_val);
    nir_algebraic_update_automaton(ssa_val->parent_instr, algebraic_worklist,
                                   states, table->pass_op_table);
 
@@ -802,7 +802,7 @@ nir_algebraic_automaton(nir_instr *instr, struct util_dynarray *states,
       }
 
       uint16_t *state = util_dynarray_element(states, uint16_t,
-                                              alu->dest.dest.ssa.index);
+                                              alu->def.index);
       if (*state != tbl->table[index]) {
          *state = tbl->table[index];
          return true;
@@ -841,7 +841,7 @@ nir_algebraic_instr(nir_builder *build, nir_instr *instr,
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   unsigned bit_size = alu->def.bit_size;
    const unsigned execution_mode =
       build->shader->info.float_controls_execution_mode;
    const bool ignore_inexact =
@@ -849,7 +849,7 @@ nir_algebraic_instr(nir_builder *build, nir_instr *instr,
       nir_is_denorm_flush_to_zero(execution_mode, bit_size);
 
    int xform_idx = *util_dynarray_element(states, uint16_t,
-                                          alu->dest.dest.ssa.index);
+                                          alu->def.index);
    for (const struct transform *xform = &table->transforms[table->transform_offsets[xform_idx]];
         xform->condition_offset != ~0;
         xform++) {

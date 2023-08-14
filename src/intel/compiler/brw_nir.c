@@ -767,7 +767,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
          break;
       }
 
-      if (alu->dest.dest.ssa.bit_size >= 32)
+      if (alu->def.bit_size >= 32)
          return 0;
 
       /* Note: nir_op_iabs and nir_op_ineg are not lowered here because the
@@ -801,7 +801,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
          return 0;
       default:
          if (nir_op_infos[alu->op].num_inputs >= 2 &&
-             alu->dest.dest.ssa.bit_size == 8)
+             alu->def.bit_size == 8)
             return 16;
 
          if (nir_alu_instr_is_comparison(alu) &&

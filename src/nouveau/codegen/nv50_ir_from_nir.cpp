@@ -254,7 +254,7 @@ Converter::isResultSigned(nir_op op)
 DataType
 Converter::getDType(nir_alu_instr *insn)
 {
-   return getDType(insn->op, insn->dest.dest.ssa.bit_size);
+   return getDType(insn->op, insn->def.bit_size);
 }
 
 DataType
@@ -2433,7 +2433,7 @@ Converter::visit(nir_load_const_instr *insn)
 }
 
 #define DEFAULT_CHECKS \
-      if (insn->dest.dest.ssa.num_components > 1) { \
+      if (insn->def.num_components > 1) { \
          ERROR("nir_alu_instr only supported with 1 component!\n"); \
          return false; \
       }
@@ -2503,7 +2503,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_ishl:
    case nir_op_ixor: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       operation preOp = preOperationNeeded(op);
       if (preOp != OP_NOP) {
          assert(info.num_inputs < 2);
@@ -2540,14 +2540,14 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_ifind_msb:
    case nir_op_ufind_msb: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       dType = sTypes[0];
       mkOp1(getOperation(op), dType, newDefs[0], getSrc(&insn->src[0]));
       break;
    }
    case nir_op_fround_even: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkCvt(OP_CVT, dType, newDefs[0], dType, getSrc(&insn->src[0]))->rnd = ROUND_NI;
       break;
    }
@@ -2575,7 +2575,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_u2f64:
    case nir_op_u2u64: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       DataType stype = sTypes[0];
       Instruction *i = mkOp1(getOperation(op), dType, newDefs[0], getSrc(&insn->src[0]));
       if (::isFloatType(stype) && isIntType(dType))
@@ -2607,7 +2607,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_fneu32:
    case nir_op_ine32: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Instruction *i = mkCmp(getOperation(op),
                              getCondCode(op),
                              dType,
@@ -2621,7 +2621,7 @@ Converter::visit(nir_alu_instr *insn)
       break;
    }
    case nir_op_mov: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       for (LValues::size_type c = 0u; c < newDefs.size(); ++c) {
          mkMov(newDefs[c], getSrc(&insn->src[0], c), dType);
       }
@@ -2632,7 +2632,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_vec4:
    case nir_op_vec8:
    case nir_op_vec16: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       for (LValues::size_type c = 0u; c < newDefs.size(); ++c) {
          mkMov(newDefs[c], getSrc(&insn->src[c]), dType);
       }
@@ -2640,14 +2640,14 @@ Converter::visit(nir_alu_instr *insn)
    }
    // (un)pack
    case nir_op_pack_64_2x32: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Instruction *merge = mkOp(OP_MERGE, dType, newDefs[0]);
       merge->setSrc(0, getSrc(&insn->src[0], 0));
       merge->setSrc(1, getSrc(&insn->src[0], 1));
       break;
    }
    case nir_op_pack_half_2x16_split: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *tmpH = getSSA();
       Value *tmpL = getSSA();
 
@@ -2658,24 +2658,24 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_unpack_half_2x16_split_x:
    case nir_op_unpack_half_2x16_split_y: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Instruction *cvt = mkCvt(OP_CVT, TYPE_F32, newDefs[0], TYPE_F16, getSrc(&insn->src[0]));
       if (op == nir_op_unpack_half_2x16_split_y)
          cvt->subOp = 1;
       break;
    }
    case nir_op_unpack_64_2x32: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp1(OP_SPLIT, dType, newDefs[0], getSrc(&insn->src[0]))->setDef(1, newDefs[1]);
       break;
    }
    case nir_op_unpack_64_2x32_split_x: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp1(OP_SPLIT, dType, newDefs[0], getSrc(&insn->src[0]))->setDef(1, getSSA());
       break;
    }
    case nir_op_unpack_64_2x32_split_y: {
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp1(OP_SPLIT, dType, getSSA(), getSrc(&insn->src[0]))->setDef(1, newDefs[0]);
       break;
    }
@@ -2689,7 +2689,7 @@ Converter::visit(nir_alu_instr *insn)
       else
          iType = TYPE_S32;
 
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       LValue *val0 = getScratch();
       LValue *val1 = getScratch();
       mkCmp(OP_SET, CC_GT, iType, val0, dType, getSrc(&insn->src[0]), zero);
@@ -2711,7 +2711,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_fcsel:
    case nir_op_b32csel: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkCmp(OP_SLCT, CC_NE, dType, newDefs[0], sTypes[0], getSrc(&insn->src[1]), getSrc(&insn->src[2]), getSrc(&insn->src[0]));
       break;
    }
@@ -2719,20 +2719,20 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_ubitfield_extract: {
       DEFAULT_CHECKS;
       Value *tmp = getSSA();
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp3(OP_INSBF, dType, tmp, getSrc(&insn->src[2]), loadImm(NULL, 0x808), getSrc(&insn->src[1]));
       mkOp2(OP_EXTBF, dType, newDefs[0], getSrc(&insn->src[0]), tmp);
       break;
    }
    case nir_op_bfm: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp2(OP_BMSK, dType, newDefs[0], getSrc(&insn->src[1]), getSrc(&insn->src[0]))->subOp = NV50_IR_SUBOP_BMSK_W;
       break;
    }
    case nir_op_bitfield_insert: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       LValue *temp = getSSA();
       mkOp3(OP_INSBF, TYPE_U32, temp, getSrc(&insn->src[3]), mkImm(0x808), getSrc(&insn->src[2]));
       mkOp3(OP_INSBF, dType, newDefs[0], getSrc(&insn->src[1]), temp, getSrc(&insn->src[0]));
@@ -2740,19 +2740,19 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_bit_count: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp2(OP_POPCNT, dType, newDefs[0], getSrc(&insn->src[0]), getSrc(&insn->src[0]));
       break;
    }
    case nir_op_bitfield_reverse: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp1(OP_BREV, TYPE_U32, newDefs[0], getSrc(&insn->src[0]));
       break;
    }
    case nir_op_find_lsb: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *tmp = getSSA();
       mkOp1(OP_BREV, TYPE_U32, tmp, getSrc(&insn->src[0]));
       mkOp1(OP_BFIND, TYPE_U32, newDefs[0], tmp)->subOp = NV50_IR_SUBOP_BFIND_SAMT;
@@ -2760,7 +2760,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_extract_u8: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *prmt = getSSA();
       mkOp2(OP_OR, TYPE_U32, prmt, getSrc(&insn->src[1]), loadImm(NULL, 0x4440));
       mkOp3(OP_PERMT, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), prmt, loadImm(NULL, 0));
@@ -2768,7 +2768,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_extract_i8: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *prmt = getSSA();
       mkOp3(OP_MAD, TYPE_U32, prmt, getSrc(&insn->src[1]), loadImm(NULL, 0x1111), loadImm(NULL, 0x8880));
       mkOp3(OP_PERMT, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), prmt, loadImm(NULL, 0));
@@ -2776,7 +2776,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_extract_u16: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *prmt = getSSA();
       mkOp3(OP_MAD, TYPE_U32, prmt, getSrc(&insn->src[1]), loadImm(NULL, 0x22), loadImm(NULL, 0x4410));
       mkOp3(OP_PERMT, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), prmt, loadImm(NULL, 0));
@@ -2784,7 +2784,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_extract_i16: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *prmt = getSSA();
       mkOp3(OP_MAD, TYPE_U32, prmt, getSrc(&insn->src[1]), loadImm(NULL, 0x2222), loadImm(NULL, 0x9910));
       mkOp3(OP_PERMT, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), prmt, loadImm(NULL, 0));
@@ -2792,7 +2792,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_fquantize2f16: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *tmp = getSSA();
       mkCvt(OP_CVT, TYPE_F16, tmp, TYPE_F32, getSrc(&insn->src[0]))->ftz = 1;
       mkCvt(OP_CVT, TYPE_F32, newDefs[0], TYPE_F16, tmp);
@@ -2800,7 +2800,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_urol: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp3(OP_SHF, TYPE_U32, newDefs[0], getSrc(&insn->src[0]),
             getSrc(&insn->src[1]), getSrc(&insn->src[0]))
          ->subOp = NV50_IR_SUBOP_SHF_L |
@@ -2810,7 +2810,7 @@ Converter::visit(nir_alu_instr *insn)
    }
    case nir_op_uror: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp3(OP_SHF, TYPE_U32, newDefs[0], getSrc(&insn->src[0]),
             getSrc(&insn->src[1]), getSrc(&insn->src[0]))
          ->subOp = NV50_IR_SUBOP_SHF_R |
@@ -2821,13 +2821,13 @@ Converter::visit(nir_alu_instr *insn)
    // boolean conversions
    case nir_op_b2f32: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp2(OP_AND, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), loadImm(NULL, 1.0f));
       break;
    }
    case nir_op_b2f64: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       Value *tmp = getSSA(4);
       mkOp2(OP_AND, TYPE_U32, tmp, getSrc(&insn->src[0]), loadImm(NULL, 0x3ff00000));
       mkOp2(OP_MERGE, TYPE_U64, newDefs[0], loadImm(NULL, 0), tmp);
@@ -2837,13 +2837,13 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_b2i16:
    case nir_op_b2i32: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       mkOp2(OP_AND, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), loadImm(NULL, 1));
       break;
    }
    case nir_op_b2i64: {
       DEFAULT_CHECKS;
-      LValues &newDefs = convert(&insn->dest.dest.ssa);
+      LValues &newDefs = convert(&insn->def);
       LValue *def = getScratch();
       mkOp2(OP_AND, TYPE_U32, def, getSrc(&insn->src[0]), loadImm(NULL, 1));
       mkOp2(OP_MERGE, TYPE_S64, newDefs[0], def, loadImm(NULL, 0));

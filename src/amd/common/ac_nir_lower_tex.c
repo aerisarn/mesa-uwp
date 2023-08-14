@@ -420,12 +420,12 @@ move_fddxy(struct move_tex_coords_state *state, nir_function_impl *impl, nir_alu
       return false;
    }
 
-   unsigned num_components = instr->dest.dest.ssa.num_components;
+   unsigned num_components = instr->def.num_components;
    nir_scalar components[NIR_MAX_VEC_COMPONENTS];
    coord_info infos[NIR_MAX_VEC_COMPONENTS];
    bool can_move_all = true;
    for (unsigned i = 0; i < num_components; i++) {
-      components[i] = nir_scalar_chase_alu_src(nir_get_ssa_scalar(&instr->dest.dest.ssa, i), 0);
+      components[i] = nir_scalar_chase_alu_src(nir_get_ssa_scalar(&instr->def, i), 0);
       components[i] = nir_scalar_chase_movs(components[i]);
       can_move_all &= can_move_coord(components[i], &infos[i]);
    }
@@ -439,7 +439,7 @@ move_fddxy(struct move_tex_coords_state *state, nir_function_impl *impl, nir_alu
 
    nir_def *def = nir_vec_scalars(&state->toplevel_b, components, num_components);
    def = nir_build_alu1(&state->toplevel_b, instr->op, def);
-   nir_def_rewrite_uses(&instr->dest.dest.ssa, def);
+   nir_def_rewrite_uses(&instr->def, def);
 
    state->num_wqm_vgprs += num_components;
 

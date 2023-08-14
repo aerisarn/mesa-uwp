@@ -70,7 +70,7 @@ nir_opt_reassociate_bfi_instr(nir_builder *b,
       return false;
 
    nir_alu_instr *bfiCD0 = nir_instr_as_alu(instr);
-   if (bfiCD0->op != nir_op_bfi || bfiCD0->dest.dest.ssa.num_components != 1)
+   if (bfiCD0->op != nir_op_bfi || bfiCD0->def.num_components != 1)
       return false;
 
    /* Enforce the bfi('#c', d, 0) part of the pattern. */
@@ -87,19 +87,19 @@ nir_opt_reassociate_bfi_instr(nir_builder *b,
    if (!is_used_once(bfiCD0))
       return false;
 
-   nir_src *use = list_first_entry(&bfiCD0->dest.dest.ssa.uses,
+   nir_src *use = list_first_entry(&bfiCD0->def.uses,
                                    nir_src, use_link);
 
    if (use->parent_instr->type != nir_instr_type_alu)
       return false;
 
    nir_alu_instr *bfiABx = nir_instr_as_alu(use->parent_instr);
-   if (bfiABx->op != nir_op_bfi || bfiABx->dest.dest.ssa.num_components != 1)
+   if (bfiABx->op != nir_op_bfi || bfiABx->def.num_components != 1)
       return false;
 
    /* Enforce the bfi('#a', b, ...) part of the pattern. */
    if (!nir_src_is_const(bfiABx->src[0].src) ||
-       bfiABx->src[2].src.ssa != &bfiCD0->dest.dest.ssa) {
+       bfiABx->src[2].src.ssa != &bfiCD0->def) {
       return false;
    }
 
@@ -127,7 +127,7 @@ nir_opt_reassociate_bfi_instr(nir_builder *b,
                                        nir_mov_alu(b, bfiABx->src[0], 1),
                                        nir_mov_alu(b, bfiABx->src[1], 1)));
 
-   nir_def_rewrite_uses(&bfiABx->dest.dest.ssa, new_bfi);
+   nir_def_rewrite_uses(&bfiABx->def, new_bfi);
    return true;
 }
 

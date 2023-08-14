@@ -1116,7 +1116,7 @@ visit_alu(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMValueRef src[NIR_MAX_VEC_COMPONENTS];
    unsigned src_bit_size[NIR_MAX_VEC_COMPONENTS];
-   const unsigned num_components = instr->dest.dest.ssa.num_components;
+   const unsigned num_components = instr->def.num_components;
    unsigned src_components;
 
    switch (instr->op) {
@@ -1197,10 +1197,10 @@ visit_alu(struct lp_build_nir_context *bld_base,
          result[c] = do_alu_action(bld_base, instr, src_bit_size, src_chan);
          result[c] = cast_type(bld_base, result[c],
                                nir_op_infos[instr->op].output_type,
-                               instr->dest.dest.ssa.bit_size);
+                               instr->def.bit_size);
       }
    }
-   assign_ssa_dest(bld_base, &instr->dest.dest.ssa, result);
+   assign_ssa_dest(bld_base, &instr->def, result);
 }
 
 

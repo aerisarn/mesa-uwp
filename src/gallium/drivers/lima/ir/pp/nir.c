@@ -159,7 +159,7 @@ static int nir_to_ppir_opcodes[nir_num_opcodes] = {
 static bool ppir_emit_alu(ppir_block *block, nir_instr *ni)
 {
    nir_alu_instr *instr = nir_instr_as_alu(ni);
-   nir_def *def = &instr->dest.dest.ssa;
+   nir_def *def = &instr->def;
    int op = nir_to_ppir_opcodes[instr->op];
 
    if (op == ppir_op_unsupported) {

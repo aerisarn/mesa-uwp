@@ -57,7 +57,7 @@ nir_scale_fdiv_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
                 (nir_bcsel(b, small, scaled_up_b, orig_b)));
 
    nir_def *new_div = nir_fdiv(b, final_a, final_b);
-   nir_def_rewrite_uses(&alu->dest.dest.ssa, new_div);
+   nir_def_rewrite_uses(&alu->def, new_div);
 
    return true;
 }

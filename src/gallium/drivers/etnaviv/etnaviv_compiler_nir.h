@@ -262,7 +262,7 @@ real_def(nir_def *def, unsigned *swiz, unsigned *mask)
 
       assert(!(instr->pass_flags & BYPASS_SRC));
       instr->pass_flags |= BYPASS_DST;
-      return real_def(&alu->dest.dest.ssa, swiz, mask);
+      return real_def(&alu->def, swiz, mask);
    }
 
    if (can_bypass_src && !(p_instr->pass_flags & BYPASS_DST)) {
@@ -281,7 +281,7 @@ def_for_instr(nir_instr *instr)
 
    switch (instr->type) {
    case nir_instr_type_alu:
-      def = &nir_instr_as_alu(instr)->dest.dest.ssa;
+      def = &nir_instr_as_alu(instr)->def;
       break;
    case nir_instr_type_tex:
       def = &nir_instr_as_tex(instr)->dest.ssa;

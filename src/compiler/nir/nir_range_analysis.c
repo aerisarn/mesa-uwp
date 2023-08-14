@@ -2045,7 +2045,7 @@ ssa_def_bits_used(const nir_def *def, int recur)
           * question can eventually answered after the shader has been
           * scalarized.
           */
-         if (use_alu->dest.dest.ssa.num_components > 1)
+         if (use_alu->def.num_components > 1)
             return all_bits;
 
          switch (use_alu->op) {

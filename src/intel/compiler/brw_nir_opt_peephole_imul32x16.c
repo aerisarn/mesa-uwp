@@ -45,11 +45,11 @@ replace_imul_instr(nir_builder *b, nir_alu_instr *imul, unsigned small_val,
    nir_alu_src_copy(&imul_32x16->src[0], &imul->src[1 - small_val], imul_32x16);
    nir_alu_src_copy(&imul_32x16->src[1], &imul->src[small_val], imul_32x16);
 
-   nir_def_init(&imul_32x16->instr, &imul_32x16->dest.dest.ssa,
-                imul->dest.dest.ssa.num_components, 32);
+   nir_def_init(&imul_32x16->instr, &imul_32x16->def,
+                imul->def.num_components, 32);
 
-   nir_def_rewrite_uses(&imul->dest.dest.ssa,
-                            &imul_32x16->dest.dest.ssa);
+   nir_def_rewrite_uses(&imul->def,
+                            &imul_32x16->def);
 
    nir_builder_instr_insert(b, &imul_32x16->instr);
 
@@ -198,7 +198,7 @@ brw_nir_opt_peephole_imul32x16_instr(nir_builder *b,
    if (imul->op != nir_op_imul)
       return false;
 
-   if (imul->dest.dest.ssa.bit_size != 32)
+   if (imul->def.bit_size != 32)
       return false;
 
    nir_op new_opcode = nir_num_opcodes;
@@ -211,7 +211,7 @@ brw_nir_opt_peephole_imul32x16_instr(nir_builder *b,
       int64_t lo = INT64_MAX;
       int64_t hi = INT64_MIN;
 
-      for (unsigned comp = 0; comp < imul->dest.dest.ssa.num_components; comp++) {
+      for (unsigned comp = 0; comp < imul->def.num_components; comp++) {
          int64_t v = nir_src_comp_as_int(imul->src[i].src, comp);
 
          if (v < lo)
@@ -235,10 +235,10 @@ brw_nir_opt_peephole_imul32x16_instr(nir_builder *b,
       return true;
    }
 
-   if (imul->dest.dest.ssa.num_components > 1)
+   if (imul->def.num_components > 1)
       return false;
 
-   const nir_scalar imul_scalar = { &imul->dest.dest.ssa, 0 };
+   const nir_scalar imul_scalar = { &imul->def, 0 };
    int idx = -1;
    enum root_operation prev_root = invalid_root;
 

@@ -149,7 +149,7 @@ is_only_used_by_alu(nir_def *def)
 static bool
 opt_shrink_vector(nir_builder *b, nir_alu_instr *instr)
 {
-   nir_def *def = &instr->dest.dest.ssa;
+   nir_def *def = &instr->def;
    unsigned mask = nir_def_components_read(def);
 
    /* If nothing was read, leave it up to DCE. */
@@ -200,7 +200,7 @@ opt_shrink_vector(nir_builder *b, nir_alu_instr *instr)
 static bool
 opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
 {
-   nir_def *def = &instr->dest.dest.ssa;
+   nir_def *def = &instr->def;
 
    /* Nothing to shrink */
    if (def->num_components == 1)
@@ -425,7 +425,7 @@ opt_shrink_vectors_phi(nir_builder *b, nir_phi_instr *instr)
       int src_idx = alu_src - &alu->src[0];
       nir_component_mask_t src_read_mask = nir_alu_instr_src_read_mask(alu, src_idx);
 
-      nir_def *alu_def = &alu->dest.dest.ssa;
+      nir_def *alu_def = &alu->def;
 
       /* We don't mark the channels used if the only reader is the original phi.
        * This can happen in the case of loops.

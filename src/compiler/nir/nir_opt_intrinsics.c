@@ -223,7 +223,7 @@ opt_intrinsics_alu(nir_builder *b, nir_alu_instr *alu,
       break;
    case nir_op_iand:
    case nir_op_ior:
-      if (alu->dest.dest.ssa.bit_size == 1 && options->optimize_quad_vote_to_reduce)
+      if (alu->def.bit_size == 1 && options->optimize_quad_vote_to_reduce)
          replacement = try_opt_quad_vote(b, alu, block_has_discard);
       break;
    default:
@@ -231,7 +231,7 @@ opt_intrinsics_alu(nir_builder *b, nir_alu_instr *alu,
    }
 
    if (replacement) {
-      nir_def_rewrite_uses(&alu->dest.dest.ssa,
+      nir_def_rewrite_uses(&alu->def,
                            replacement);
       nir_instr_remove(&alu->instr);
       return true;
@@ -260,7 +260,7 @@ try_opt_exclusive_scan_to_inclusive(nir_intrinsic_instr *intrin)
           alu->op != nir_op_fmax && alu->op != nir_op_fmin && alu->exact)
          return false;
 
-      if (alu->dest.dest.ssa.num_components != 1)
+      if (alu->def.num_components != 1)
          return false;
 
       nir_alu_src *alu_src = list_entry(src, nir_alu_src, src);
@@ -282,7 +282,7 @@ try_opt_exclusive_scan_to_inclusive(nir_intrinsic_instr *intrin)
    nir_foreach_use_including_if_safe(src, &intrin->dest.ssa) {
       /* Remove alu. */
       nir_alu_instr *alu = nir_instr_as_alu(src->parent_instr);
-      nir_def_rewrite_uses(&alu->dest.dest.ssa, &intrin->dest.ssa);
+      nir_def_rewrite_uses(&alu->def, &intrin->dest.ssa);
       nir_instr_remove(&alu->instr);
    }
 
@@ -322,7 +322,7 @@ opt_intrinsics_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
                if (alu->op == nir_op_ine)
                   new_expr = nir_inot(b, new_expr);
 
-               nir_def_rewrite_uses(&alu->dest.dest.ssa,
+               nir_def_rewrite_uses(&alu->def,
                                     new_expr);
                nir_instr_remove(&alu->instr);
                progress = true;

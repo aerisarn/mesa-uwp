@@ -1183,7 +1183,7 @@ lower_64bit_pack_instr(nir_builder *b, nir_instr *instr, void *data)
    default:
       unreachable("Impossible opcode");
    }
-   nir_def_rewrite_uses(&alu_instr->dest.dest.ssa, dest);
+   nir_def_rewrite_uses(&alu_instr->def, dest);
    nir_instr_remove(&alu_instr->instr);
    return true;
 }
@@ -4509,7 +4509,7 @@ split_bitfields_instr(nir_builder *b, nir_instr *in, void *data)
    default:
       return false;
    }
-   unsigned num_components = alu->dest.dest.ssa.num_components;
+   unsigned num_components = alu->def.num_components;
    if (num_components == 1)
       return false;
    b->cursor = nir_before_instr(in);
@@ -4533,7 +4533,7 @@ split_bitfields_instr(nir_builder *b, nir_instr *in, void *data)
                                           nir_channel(b, alu->src[2].src.ssa, alu->src[2].swizzle[i]));
    }
    nir_def *dest = nir_vec(b, dests, num_components);
-   nir_def_rewrite_uses_after(&alu->dest.dest.ssa, dest, in);
+   nir_def_rewrite_uses_after(&alu->def, dest, in);
    nir_instr_remove(in);
    return true;
 }

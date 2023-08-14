@@ -640,11 +640,11 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
                                                 bool need_dest)
 {
    fs_reg result =
-      need_dest ? get_nir_def(instr->dest.dest.ssa) : bld.null_reg_ud();
+      need_dest ? get_nir_def(instr->def) : bld.null_reg_ud();
 
    result.type = brw_type_for_nir_type(devinfo,
       (nir_alu_type)(nir_op_infos[instr->op].output_type |
-                     instr->dest.dest.ssa.bit_size));
+                     instr->def.bit_size));
 
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
       op[i] = get_nir_src(instr->src[i].src);
@@ -679,7 +679,7 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
       /* Since NIR is doing the scalarizing for us, we should only ever see
        * vectorized operations with a single channel.
        */
-      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest.dest.ssa);
+      nir_component_mask_t write_mask = get_nir_write_mask(instr->def);
       assert(util_bitcount(write_mask) == 1);
       channel = ffs(write_mask) - 1;
 
@@ -732,7 +732,7 @@ fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
     * The source restriction is just because I was lazy about generating the
     * constant below.
     */
-   if (instr->dest.dest.ssa.bit_size != 32 ||
+   if (instr->def.bit_size != 32 ||
        nir_src_bit_size(inot_instr->src[0].src) != 32)
       return false;
 
@@ -791,7 +791,7 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
          /* Since NIR is doing the scalarizing for us, we should only ever see
           * vectorized operations with a single channel.
           */
-         nir_component_mask_t write_mask = get_nir_write_mask(instr->dest.dest.ssa);
+         nir_component_mask_t write_mask = get_nir_write_mask(instr->def);
          assert(util_bitcount(write_mask) == 1);
          channel = ffs(write_mask) - 1;
       }
@@ -978,7 +978,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       bool need_extra_copy = false;
 
       nir_intrinsic_instr *store_reg =
-         nir_store_reg_for_def(&instr->dest.dest.ssa);
+         nir_store_reg_for_def(&instr->def);
       if (store_reg != NULL) {
          nir_def *dest_reg = store_reg->src[1].ssa;
          for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
@@ -995,7 +995,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          }
       }
 
-      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest.dest.ssa);
+      nir_component_mask_t write_mask = get_nir_write_mask(instr->def);
       unsigned last_bit = util_last_bit(write_mask);
 
       for (unsigned i = 0; i < last_bit; i++) {
@@ -1234,13 +1234,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_irhadd:
    case nir_op_urhadd:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       inst = bld.AVG(result, op[0], op[1]);
       break;
 
    case nir_op_ihadd:
    case nir_op_uhadd: {
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       fs_reg tmp = bld.vgrf(result.type);
 
       if (devinfo->ver >= 8) {
@@ -1292,7 +1292,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       const enum brw_reg_type dword_type =
          ud ? BRW_REGISTER_TYPE_UD : BRW_REGISTER_TYPE_D;
 
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
 
       /* Before copy propagation there are no immediate values. */
       assert(op[0].file != IMM && op[1].file != IMM);
@@ -1308,14 +1308,14 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    }
 
    case nir_op_imul:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       bld.MUL(result, op[0], op[1]);
       break;
 
    case nir_op_imul_high:
    case nir_op_umul_high:
-      assert(instr->dest.dest.ssa.bit_size < 64);
-      if (instr->dest.dest.ssa.bit_size == 32) {
+      assert(instr->def.bit_size < 64);
+      if (instr->def.bit_size == 32) {
          bld.emit(SHADER_OPCODE_MULH, result, op[0], op[1]);
       } else {
          fs_reg tmp = bld.vgrf(brw_reg_type_from_bit_size(32, op[0].type));
@@ -1326,7 +1326,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_idiv:
    case nir_op_udiv:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       bld.emit(SHADER_OPCODE_INT_QUOTIENT, result, op[0], op[1]);
       break;
 
@@ -1342,7 +1342,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        * appears that our hardware just does the right thing for signed
        * remainder.
        */
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       bld.emit(SHADER_OPCODE_INT_REMAINDER, result, op[0], op[1]);
       break;
 
@@ -1458,7 +1458,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
             result.type =
                brw_type_for_nir_type(devinfo,
                                      (nir_alu_type)(nir_type_int |
-                                                    instr->dest.dest.ssa.bit_size));
+                                                    instr->def.bit_size));
             op[0].type =
                brw_type_for_nir_type(devinfo,
                                      (nir_alu_type)(nir_type_int |
@@ -1673,25 +1673,25 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       break;
 
    case nir_op_bitfield_reverse:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       bld.BFREV(result, op[0]);
       break;
 
    case nir_op_bit_count:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) < 64);
       bld.CBIT(result, op[0]);
       break;
 
    case nir_op_uclz:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       bld.LZD(retype(result, BRW_REGISTER_TYPE_UD), op[0]);
       break;
 
    case nir_op_ifind_msb: {
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       assert(devinfo->ver >= 7);
 
@@ -1711,7 +1711,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    }
 
    case nir_op_find_lsb:
-      assert(instr->dest.dest.ssa.bit_size == 32);
+      assert(instr->def.bit_size == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
       assert(devinfo->ver >= 7);
       bld.FBL(result, op[0]);
@@ -1722,15 +1722,15 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       unreachable("should have been lowered");
    case nir_op_ubfe:
    case nir_op_ibfe:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       bld.BFE(result, op[2], op[1], op[0]);
       break;
    case nir_op_bfm:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
       bld.BFI1(result, op[0], op[1]);
       break;
    case nir_op_bfi:
-      assert(instr->dest.dest.ssa.bit_size < 64);
+      assert(instr->def.bit_size < 64);
 
       /* bfi is ((...) | (~src0 & src2)). The second part is zero when src2 is
        * either 0 or src0. Replacing the 0 with another value can eliminate a
@@ -1870,7 +1870,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        *    There is no direct conversion from B/UB to Q/UQ or Q/UQ to B/UB.
        *    Use two instructions and a word or DWord intermediate integer type.
        */
-      if (instr->dest.dest.ssa.bit_size == 64) {
+      if (instr->def.bit_size == 64) {
          const brw_reg_type type = brw_int_type(1, instr->op == nir_op_extract_i8);
 
          if (instr->op == nir_op_extract_i8) {

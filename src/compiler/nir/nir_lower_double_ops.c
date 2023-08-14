@@ -679,7 +679,7 @@ should_lower_double_instr(const nir_instr *instr, const void *_data)
 
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   bool is_64 = alu->dest.dest.ssa.bit_size == 64;
+   bool is_64 = alu->def.bit_size == 64;
 
    unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
    for (unsigned i = 0; i < num_srcs; i++) {
@@ -711,7 +711,7 @@ lower_doubles_instr(nir_builder *b, nir_instr *instr, void *_data)
       return NULL;
 
    nir_def *src = nir_mov_alu(b, alu->src[0],
-                              alu->dest.dest.ssa.num_components);
+                              alu->def.num_components);
 
    switch (alu->op) {
    case nir_op_frcp:
@@ -735,7 +735,7 @@ lower_doubles_instr(nir_builder *b, nir_instr *instr, void *_data)
    case nir_op_fsub:
    case nir_op_fmod: {
       nir_def *src1 = nir_mov_alu(b, alu->src[1],
-                                  alu->dest.dest.ssa.num_components);
+                                  alu->def.num_components);
       switch (alu->op) {
       case nir_op_fdiv:
          return nir_fmul(b, src, nir_frcp(b, src1));

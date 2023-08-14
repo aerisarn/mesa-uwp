@@ -1120,11 +1120,6 @@ typedef struct {
    uint8_t swizzle[NIR_MAX_VEC_COMPONENTS];
 } nir_alu_src;
 
-typedef struct {
-   /** Base destination */
-   nir_dest dest;
-} nir_alu_dest;
-
 /** NIR sized and unsized types
  *
  * The values in this enum are carefully chosen so that the sized type is
@@ -1446,7 +1441,7 @@ typedef struct nir_alu_instr {
    bool no_unsigned_wrap : 1;
 
    /** Destination */
-   nir_alu_dest dest;
+   nir_def def;
 
    /** Sources
     *

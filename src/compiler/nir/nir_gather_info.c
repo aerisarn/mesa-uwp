@@ -853,9 +853,9 @@ gather_alu_info(nir_alu_instr *instr, nir_shader *shader)
          shader->info.bit_sizes_int |= nir_src_bit_size(instr->src[i].src);
    }
    if (nir_alu_type_get_base_type(info->output_type) == nir_type_float)
-      shader->info.bit_sizes_float |= instr->dest.dest.ssa.bit_size;
+      shader->info.bit_sizes_float |= instr->def.bit_size;
    else
-      shader->info.bit_sizes_int |= instr->dest.dest.ssa.bit_size;
+      shader->info.bit_sizes_int |= instr->def.bit_size;
 }
 
 static void

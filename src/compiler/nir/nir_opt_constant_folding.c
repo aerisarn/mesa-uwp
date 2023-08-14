@@ -52,7 +52,7 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
     */
    unsigned bit_size = 0;
    if (!nir_alu_type_get_type_size(nir_op_infos[alu->op].output_type))
-      bit_size = alu->dest.dest.ssa.bit_size;
+      bit_size = alu->def.bit_size;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       if (bit_size == 0 &&
@@ -79,15 +79,15 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
    memset(dest, 0, sizeof(dest));
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; ++i)
       srcs[i] = src[i];
-   nir_eval_const_opcode(alu->op, dest, alu->dest.dest.ssa.num_components,
+   nir_eval_const_opcode(alu->op, dest, alu->def.num_components,
                          bit_size, srcs,
                          b->shader->info.float_controls_execution_mode);
 
    b->cursor = nir_before_instr(&alu->instr);
-   nir_def *imm = nir_build_imm(b, alu->dest.dest.ssa.num_components,
-                                alu->dest.dest.ssa.bit_size,
+   nir_def *imm = nir_build_imm(b, alu->def.num_components,
+                                alu->def.bit_size,
                                 dest);
-   nir_def_rewrite_uses(&alu->dest.dest.ssa, imm);
+   nir_def_rewrite_uses(&alu->def, imm);
    nir_instr_remove(&alu->instr);
    nir_instr_free(&alu->instr);
 

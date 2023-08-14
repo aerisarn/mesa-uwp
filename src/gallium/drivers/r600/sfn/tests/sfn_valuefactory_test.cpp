@@ -55,8 +55,8 @@ TEST_F(ValuefactoryTest, test_create_ssa)
    auto sum = nir_fadd(&b, c1, c2);
    auto alu = nir_instr_as_alu(sum->parent_instr);
 
-   sfn_log << SfnLog::reg << "Search (test) " << &alu->dest << "\n";
-   auto dest_value = factory->dest(alu->dest.dest.ssa, 0, pin_none);
+   sfn_log << SfnLog::reg << "Search (test) " << &alu->def << "\n";
+   auto dest_value = factory->dest(alu->def, 0, pin_none);
    EXPECT_EQ(dest_value->sel(), 1024);
    EXPECT_EQ(dest_value->chan(), 0);
    EXPECT_EQ(dest_value->pin(), pin_none);
@@ -76,7 +76,7 @@ TEST_F(ValuefactoryTest, test_create_ssa_pinned_chan)
    auto sum = nir_fadd(&b, c1, c2);
    auto alu = nir_instr_as_alu(sum->parent_instr);
 
-   auto dest_value = factory->dest(alu->dest.dest.ssa, 0, pin_chan);
+   auto dest_value = factory->dest(alu->def, 0, pin_chan);
    EXPECT_EQ(dest_value->sel(), 1024);
    EXPECT_EQ(dest_value->chan(), 0);
    EXPECT_EQ(dest_value->pin(), pin_chan);
@@ -94,7 +94,7 @@ TEST_F(ValuefactoryTest, test_create_ssa_pinned_chan_and_reg)
    auto sum = nir_fadd(&b, c1, c2);
    auto alu = nir_instr_as_alu(sum->parent_instr);
 
-   auto dest_value = factory->dest(alu->dest.dest.ssa, 1, pin_chan);
+   auto dest_value = factory->dest(alu->def, 1, pin_chan);
    EXPECT_EQ(dest_value->sel(), 1024);
    EXPECT_EQ(dest_value->chan(), 1);
    EXPECT_EQ(dest_value->pin(), pin_chan);

@@ -402,13 +402,13 @@ is_not_const_and_not_fsign(struct hash_table *ht, const nir_alu_instr *instr,
 static inline bool
 is_used_once(const nir_alu_instr *instr)
 {
-   return list_is_singular(&instr->dest.dest.ssa.uses);
+   return list_is_singular(&instr->def.uses);
 }
 
 static inline bool
 is_used_by_if(const nir_alu_instr *instr)
 {
-   return nir_def_used_by_if(&instr->dest.dest.ssa);
+   return nir_def_used_by_if(&instr->def);
 }
 
 static inline bool
@@ -420,7 +420,7 @@ is_not_used_by_if(const nir_alu_instr *instr)
 static inline bool
 is_used_by_non_fsat(const nir_alu_instr *instr)
 {
-   nir_foreach_use(src, &instr->dest.dest.ssa) {
+   nir_foreach_use(src, &instr->def) {
       const nir_instr *const user_instr = src->parent_instr;
 
       if (user_instr->type != nir_instr_type_alu)
@@ -439,7 +439,7 @@ is_used_by_non_fsat(const nir_alu_instr *instr)
 static inline bool
 is_only_used_as_float(const nir_alu_instr *instr)
 {
-   nir_foreach_use(src, &instr->dest.dest.ssa) {
+   nir_foreach_use(src, &instr->def) {
       const nir_instr *const user_instr = src->parent_instr;
       if (user_instr->type != nir_instr_type_alu)
          return false;
@@ -459,7 +459,7 @@ is_only_used_as_float(const nir_alu_instr *instr)
 static inline bool
 is_only_used_by_fadd(const nir_alu_instr *instr)
 {
-   nir_foreach_use(src, &instr->dest.dest.ssa) {
+   nir_foreach_use(src, &instr->def) {
       const nir_instr *const user_instr = src->parent_instr;
       if (user_instr->type != nir_instr_type_alu)
          return false;
@@ -481,13 +481,13 @@ is_only_used_by_fadd(const nir_alu_instr *instr)
 static inline bool
 only_lower_8_bits_used(const nir_alu_instr *instr)
 {
-   return (nir_def_bits_used(&instr->dest.dest.ssa) & ~0xffull) == 0;
+   return (nir_def_bits_used(&instr->def) & ~0xffull) == 0;
 }
 
 static inline bool
 only_lower_16_bits_used(const nir_alu_instr *instr)
 {
-   return (nir_def_bits_used(&instr->dest.dest.ssa) & ~0xffffull) == 0;
+   return (nir_def_bits_used(&instr->def) & ~0xffffull) == 0;
 }
 
 /**

@@ -85,7 +85,7 @@ nir_mod_analysis(nir_scalar val, nir_alu_type val_type, unsigned div, unsigned *
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(val.def->parent_instr);
 
-      if (alu->dest.dest.ssa.num_components != 1)
+      if (alu->def.num_components != 1)
          return false;
 
       switch (alu->op) {

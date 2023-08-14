@@ -60,7 +60,7 @@ is_live(BITSET_WORD *defs_live, nir_instr *instr)
       return true;
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
-      return is_def_live(&alu->dest.dest.ssa, defs_live);
+      return is_def_live(&alu->def, defs_live);
    }
    case nir_instr_type_deref: {
       nir_deref_instr *deref = nir_instr_as_deref(instr);

@@ -81,9 +81,9 @@ opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
    }
 
    b->cursor = nir_before_instr(&alu->instr);
-   nir_def *undef = nir_undef(b, alu->dest.dest.ssa.num_components,
-                              alu->dest.dest.ssa.bit_size);
-   nir_def_rewrite_uses(&alu->dest.dest.ssa, undef);
+   nir_def *undef = nir_undef(b, alu->def.num_components,
+                              alu->def.bit_size);
+   nir_def_rewrite_uses(&alu->def, undef);
 
    return true;
 }
@@ -169,10 +169,10 @@ opt_undef_pack(nir_builder *b, nir_alu_instr *alu)
    default:
       return false;
    }
-   unsigned num_components = alu->dest.dest.ssa.num_components;
+   unsigned num_components = alu->def.num_components;
    b->cursor = nir_before_instr(&alu->instr);
    nir_def *def = nir_undef(b, num_components, 32);
-   nir_def_rewrite_uses_after(&alu->dest.dest.ssa, def, &alu->instr);
+   nir_def_rewrite_uses_after(&alu->def, def, &alu->instr);
    nir_instr_remove(&alu->instr);
    return true;
 }

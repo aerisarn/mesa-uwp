@@ -180,7 +180,7 @@ lower_frexp_instr(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
       return false;
    }
 
-   nir_def_rewrite_uses(&alu_instr->dest.dest.ssa, lower);
+   nir_def_rewrite_uses(&alu_instr->def, lower);
    nir_instr_remove(instr);
    return true;
 }

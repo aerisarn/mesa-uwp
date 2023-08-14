@@ -123,7 +123,7 @@ instr_cost(nir_instr *instr, const void *data)
    switch (instr->type) {
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
-      unsigned components = alu->dest.dest.ssa.num_components;
+      unsigned components = alu->def.num_components;
       switch (alu->op) {
       /* cat4 */
       case nir_op_frcp:
@@ -145,13 +145,13 @@ instr_cost(nir_instr *instr, const void *data)
       case nir_op_f2f16:
       case nir_op_f2fmp:
       case nir_op_fneg:
-         return all_uses_float(&alu->dest.dest.ssa, true) ? 0 : 1 * components;
+         return all_uses_float(&alu->def, true) ? 0 : 1 * components;
 
       case nir_op_fabs:
-         return all_uses_float(&alu->dest.dest.ssa, false) ? 0 : 1 * components;
+         return all_uses_float(&alu->def, false) ? 0 : 1 * components;
 
       case nir_op_inot:
-         return all_uses_bit(&alu->dest.dest.ssa) ? 0 : 1 * components;
+         return all_uses_bit(&alu->def) ? 0 : 1 * components;
 
       /* Instructions that become vector split/collect */
       case nir_op_vec2:

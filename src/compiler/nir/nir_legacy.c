@@ -14,10 +14,10 @@ nir_legacy_float_mod_folds(nir_alu_instr *mod)
    assert(mod->op == nir_op_fabs || mod->op == nir_op_fneg);
 
    /* No legacy user supports fp64 modifiers */
-   if (mod->dest.dest.ssa.bit_size == 64)
+   if (mod->def.bit_size == 64)
       return false;
 
-   nir_foreach_use_including_if(src, &mod->dest.dest.ssa) {
+   nir_foreach_use_including_if(src, &mod->def) {
       if (src->is_if)
          return false;
 
@@ -180,8 +180,8 @@ nir_legacy_fsat_folds(nir_alu_instr *fsat)
       return false;
 
    /* We can't do expansions without a move in the middle */
-   unsigned nr_components = generate_alu->dest.dest.ssa.num_components;
-   if (fsat->dest.dest.ssa.num_components != nr_components)
+   unsigned nr_components = generate_alu->def.num_components;
+   if (fsat->def.num_components != nr_components)
       return false;
 
    /* We don't handle swizzles here, so check for the identity */
@@ -213,7 +213,7 @@ chase_fsat(nir_def **def)
 
    /* Otherwise, we're good */
    nir_alu_instr *alu = nir_instr_as_alu(use->parent_instr);
-   *def = &alu->dest.dest.ssa;
+   *def = &alu->def;
    return true;
 }
 
@@ -289,7 +289,7 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
           * already know that they're all float ALU instructions because
           * nir_legacy_float_mod_folds() returned true.
           */
-         nir_foreach_use_including_if_safe(use, &alu->dest.dest.ssa) {
+         nir_foreach_use_including_if_safe(use, &alu->def) {
             assert(!use->is_if);
             assert(use->parent_instr->type == nir_instr_type_alu);
             nir_alu_src *alu_use = list_entry(use, nir_alu_src, src);
@@ -307,13 +307,13 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
       }
    }
 
-   nir_legacy_alu_dest dest = nir_legacy_chase_alu_dest(&alu->dest.dest.ssa);
+   nir_legacy_alu_dest dest = nir_legacy_chase_alu_dest(&alu->def);
    if (dest.fsat) {
       nir_intrinsic_instr *store = nir_store_reg_for_def(dest.dest.ssa);
 
       if (store) {
          nir_intrinsic_set_legacy_fsat(store, true);
-         nir_src_rewrite(&store->src[0], &alu->dest.dest.ssa);
+         nir_src_rewrite(&store->src[0], &alu->def);
          return true;
       }
    }

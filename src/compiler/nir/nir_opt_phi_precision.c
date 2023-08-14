@@ -183,7 +183,7 @@ widening_conversion_op(nir_instr *instr, unsigned *bit_size)
    /* We also need to check that the conversion's dest was actually
     * wider:
     */
-   if (alu->dest.dest.ssa.bit_size <= *bit_size)
+   if (alu->def.bit_size <= *bit_size)
       return INVALID_OP;
 
    return alu->op;
@@ -403,7 +403,7 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
          /* The conversion we are stripping off could have had a swizzle,
           * so replace it with a mov if necessary:
           */
-         unsigned num_comp = alu->dest.dest.ssa.num_components;
+         unsigned num_comp = alu->def.num_components;
          new_src = nir_mov_alu(b, alu->src[0], num_comp);
       }
 

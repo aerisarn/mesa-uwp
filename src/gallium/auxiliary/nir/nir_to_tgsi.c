@@ -1271,7 +1271,7 @@ ntt_get_alu_src(struct ntt_compile *c, nir_alu_instr *instr, int i)
       !(src.src.is_ssa && src.src.ssa->parent_instr->type == nir_instr_type_ssa_undef)) {
       int chan1 = 1;
       if (nir_op_infos[instr->op].input_sizes[i] == 0) {
-         chan1 = instr->dest.dest.ssa.num_components > 1 ? 1 : 0;
+         chan1 = instr->def.num_components > 1 ? 1 : 0;
       }
       usrc = ureg_swizzle(usrc,
                           src.swizzle[0] * 2,
@@ -1442,7 +1442,7 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
    struct ureg_src src[4];
    struct ureg_dst dst;
    unsigned i;
-   int dst_64 = instr->dest.dest.ssa.bit_size == 64;
+   int dst_64 = instr->def.bit_size == 64;
    int src_64 = nir_src_bit_size(instr->src[0].src) == 64;
    int num_srcs = nir_op_infos[instr->op].num_inputs;
 
@@ -1458,7 +1458,7 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
    for (; i < ARRAY_SIZE(src); i++)
       src[i] = ureg_src_undef();
 
-   dst = ntt_get_alu_dest(c, &instr->dest.dest.ssa);
+   dst = ntt_get_alu_dest(c, &instr->def);
 
    static enum tgsi_opcode op_map[][2] = {
       [nir_op_mov] = { TGSI_OPCODE_MOV, TGSI_OPCODE_MOV },
@@ -3226,7 +3226,7 @@ ntt_should_vectorize_instr(const nir_instr *instr, const void *data)
    }
 
    int src_bit_size = nir_src_bit_size(alu->src[0].src);
-   int dst_bit_size = alu->dest.dest.ssa.bit_size;
+   int dst_bit_size = alu->def.bit_size;
 
    if (src_bit_size == 64 || dst_bit_size == 64) {
       /* Avoid vectorizing 64-bit instructions at all.  Despite tgsi.rst
@@ -3366,7 +3366,7 @@ scalarize_64bit(const nir_instr *instr, const void *data)
 {
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   return (alu->dest.dest.ssa.bit_size == 64 ||
+   return (alu->def.bit_size == 64 ||
            nir_src_bit_size(alu->src[0].src) == 64);
 }
 
@@ -3824,7 +3824,7 @@ ntt_vec_to_mov_writemask_cb(const nir_instr *instr, unsigned writemask, UNUSED c
       return false;
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   int dst_32 = alu->dest.dest.ssa.bit_size == 32;
+   int dst_32 = alu->def.bit_size == 32;
    int src_64 = nir_src_bit_size(alu->src[0].src) == 64;
 
    if (src_64 && dst_32) {

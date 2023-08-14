@@ -48,7 +48,7 @@ are_all_uses_fadd(nir_def *def)
       case nir_op_mov:
       case nir_op_fneg:
       case nir_op_fabs:
-         if (!are_all_uses_fadd(&use_alu->dest.dest.ssa))
+         if (!are_all_uses_fadd(&use_alu->def))
             return false;
          break;
 
@@ -84,18 +84,18 @@ get_mul_for_src(nir_alu_src *src, unsigned num_components,
 
    switch (alu->op) {
    case nir_op_mov:
-      alu = get_mul_for_src(&alu->src[0], alu->dest.dest.ssa.num_components,
+      alu = get_mul_for_src(&alu->src[0], alu->def.num_components,
                             swizzle, negate, abs);
       break;
 
    case nir_op_fneg:
-      alu = get_mul_for_src(&alu->src[0], alu->dest.dest.ssa.num_components,
+      alu = get_mul_for_src(&alu->src[0], alu->def.num_components,
                             swizzle, negate, abs);
       *negate = !*negate;
       break;
 
    case nir_op_fabs:
-      alu = get_mul_for_src(&alu->src[0], alu->dest.dest.ssa.num_components,
+      alu = get_mul_for_src(&alu->src[0], alu->def.num_components,
                             swizzle, negate, abs);
       *negate = false;
       *abs = true;
@@ -106,7 +106,7 @@ get_mul_for_src(nir_alu_src *src, unsigned num_components,
        * operations.  This prevents us from being too aggressive with our
        * fusing which can actually lead to more instructions.
        */
-      if (!are_all_uses_fadd(&alu->dest.dest.ssa))
+      if (!are_all_uses_fadd(&alu->def))
          return NULL;
       break;
 
@@ -188,7 +188,7 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
       abs = false;
 
       mul = get_mul_for_src(&add->src[add_mul_src],
-                            add->dest.dest.ssa.num_components,
+                            add->def.num_components,
                             swizzle, &negate, &abs);
 
       if (mul != NULL)
@@ -198,7 +198,7 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
    if (mul == NULL)
       return false;
 
-   unsigned bit_size = add->dest.dest.ssa.bit_size;
+   unsigned bit_size = add->def.bit_size;
 
    nir_def *mul_src[2];
    mul_src[0] = mul->src[0].src.ssa;
@@ -227,17 +227,17 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
 
    for (unsigned i = 0; i < 2; i++) {
       ffma->src[i].src = nir_src_for_ssa(mul_src[i]);
-      for (unsigned j = 0; j < add->dest.dest.ssa.num_components; j++)
+      for (unsigned j = 0; j < add->def.num_components; j++)
          ffma->src[i].swizzle[j] = mul->src[i].swizzle[swizzle[j]];
    }
    nir_alu_src_copy(&ffma->src[2], &add->src[1 - add_mul_src], ffma);
 
-   nir_def_init(&ffma->instr, &ffma->dest.dest.ssa,
-                add->dest.dest.ssa.num_components, bit_size);
-   nir_def_rewrite_uses(&add->dest.dest.ssa, &ffma->dest.dest.ssa);
+   nir_def_init(&ffma->instr, &ffma->def,
+                add->def.num_components, bit_size);
+   nir_def_rewrite_uses(&add->def, &ffma->def);
 
    nir_builder_instr_insert(b, &ffma->instr);
-   assert(list_is_empty(&add->dest.dest.ssa.uses));
+   assert(list_is_empty(&add->def.uses));
    nir_instr_remove(&add->instr);
 
    return true;

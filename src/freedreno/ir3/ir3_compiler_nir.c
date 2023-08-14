@@ -378,12 +378,12 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    unsigned bs[info->num_inputs]; /* bit size */
    struct ir3_block *b = ctx->block;
    unsigned dst_sz, wrmask;
-   type_t dst_type = type_uint_size(alu->dest.dest.ssa.bit_size);
+   type_t dst_type = type_uint_size(alu->def.bit_size);
 
-   dst_sz = alu->dest.dest.ssa.num_components;
+   dst_sz = alu->def.num_components;
    wrmask = (1 << dst_sz) - 1;
 
-   dst = ir3_get_def(ctx, &alu->dest.dest.ssa, dst_sz);
+   dst = ir3_get_def(ctx, &alu->def, dst_sz);
 
    /* Vectors are special in that they have non-scalarized writemasks,
     * and just take the first swizzle channel for each argument in
@@ -402,7 +402,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
          dst[i] = ir3_MOV(b, src[i], dst_type);
       }
 
-      ir3_put_def(ctx, &alu->dest.dest.ssa);
+      ir3_put_def(ctx, &alu->def);
       return;
    }
 
@@ -421,12 +421,12 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
          }
       }
 
-      ir3_put_def(ctx, &alu->dest.dest.ssa);
+      ir3_put_def(ctx, &alu->def);
       return;
    }
 
    /* General case: We can just grab the one used channel per src. */
-   assert(alu->dest.dest.ssa.num_components == 1);
+   assert(alu->def.num_components == 1);
 
    for (int i = 0; i < info->num_inputs; i++) {
       nir_alu_src *asrc = &alu->src[i];
@@ -645,7 +645,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       dst[0] = ir3_MAD_S24(b, src[0], 0, src[1], 0, src[2], 0);
       break;
    case nir_op_imul:
-      compile_assert(ctx, alu->dest.dest.ssa.bit_size == 16);
+      compile_assert(ctx, alu->def.bit_size == 16);
       dst[0] = ir3_MUL_S24(b, src[0], 0, src[1], 0);
       break;
    case nir_op_imul24:
@@ -843,7 +843,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    }
 
    if (nir_alu_type_get_base_type(info->output_type) == nir_type_bool) {
-      assert(alu->dest.dest.ssa.bit_size == 1 || alu->op == nir_op_b2b32);
+      assert(alu->def.bit_size == 1 || alu->op == nir_op_b2b32);
       assert(dst_sz == 1);
    } else {
       /* 1-bit values stored in 32-bit registers are only valid for certain
@@ -857,11 +857,11 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       case nir_op_bcsel:
          break;
       default:
-         compile_assert(ctx, alu->dest.dest.ssa.bit_size != 1);
+         compile_assert(ctx, alu->def.bit_size != 1);
       }
    }
 
-   ir3_put_def(ctx, &alu->dest.dest.ssa);
+   ir3_put_def(ctx, &alu->def);
 }
 
 static void

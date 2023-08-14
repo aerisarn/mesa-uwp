@@ -51,7 +51,7 @@ inst_is_vector_alu(const nir_instr *instr, const void *_state)
    /* There is no ALU instruction which has a scalar destination, scalar
     * src[0], and some other vector source.
     */
-   return alu->dest.dest.ssa.num_components > 1 ||
+   return alu->def.num_components > 1 ||
           nir_op_infos[alu->op].input_sizes[0] > 1;
 }
 
@@ -76,7 +76,7 @@ alu_is_swizzled_in_bounds(const nir_alu_instr *alu, unsigned width)
          continue;
 
       unsigned mask = ~(width - 1);
-      for (unsigned j = 1; j < alu->dest.dest.ssa.num_components; j++) {
+      for (unsigned j = 1; j < alu->def.num_components; j++) {
          if ((alu->src[i].swizzle[0] & mask) != (alu->src[i].swizzle[j] & mask))
             return false;
       }
@@ -89,7 +89,7 @@ static void
 nir_alu_ssa_dest_init(nir_alu_instr *alu, unsigned num_components,
                       unsigned bit_size)
 {
-   nir_def_init(&alu->instr, &alu->dest.dest.ssa, num_components, bit_size);
+   nir_def_init(&alu->instr, &alu->def, num_components, bit_size);
 }
 
 static nir_def *
@@ -102,7 +102,7 @@ lower_reduction(nir_alu_instr *alu, nir_op chan_op, nir_op merge_op,
    for (int i = 0; i < num_components; i++) {
       int channel = reverse_order ? num_components - 1 - i : i;
       nir_alu_instr *chan = nir_alu_instr_create(builder->shader, chan_op);
-      nir_alu_ssa_dest_init(chan, 1, alu->dest.dest.ssa.bit_size);
+      nir_alu_ssa_dest_init(chan, 1, alu->def.bit_size);
       nir_alu_src_copy(&chan->src[0], &alu->src[0], chan);
       chan->src[0].swizzle[0] = chan->src[0].swizzle[channel];
       if (nir_op_infos[chan_op].num_inputs > 1) {
@@ -115,10 +115,10 @@ lower_reduction(nir_alu_instr *alu, nir_op chan_op, nir_op merge_op,
       nir_builder_instr_insert(builder, &chan->instr);
 
       if (i == 0) {
-         last = &chan->dest.dest.ssa;
+         last = &chan->def;
       } else {
          last = nir_build_alu(builder, merge_op,
-                              last, &chan->dest.dest.ssa, NULL, NULL);
+                              last, &chan->def, NULL, NULL);
       }
    }
 
@@ -151,7 +151,7 @@ lower_fdot(nir_alu_instr *alu, nir_builder *builder)
    /* If we don't want to lower ffma, create several ffma instead of fmul+fadd
     * and fusing later because fusing is not possible for exact fdot instructions.
     */
-   if (will_lower_ffma(builder->shader, alu->dest.dest.ssa.bit_size))
+   if (will_lower_ffma(builder->shader, alu->def.bit_size))
       return lower_reduction(alu, nir_op_fmul, nir_op_fadd, builder, reverse_order);
 
    unsigned num_components = nir_op_infos[alu->op].input_sizes[0];
@@ -161,7 +161,7 @@ lower_fdot(nir_alu_instr *alu, nir_builder *builder)
       int channel = reverse_order ? num_components - 1 - i : i;
       nir_alu_instr *instr = nir_alu_instr_create(
          builder->shader, prev ? nir_op_ffma : nir_op_fmul);
-      nir_alu_ssa_dest_init(instr, 1, alu->dest.dest.ssa.bit_size);
+      nir_alu_ssa_dest_init(instr, 1, alu->def.bit_size);
       for (unsigned j = 0; j < 2; j++) {
          nir_alu_src_copy(&instr->src[j], &alu->src[j], instr);
          instr->src[j].swizzle[0] = alu->src[j].swizzle[channel];
@@ -172,7 +172,7 @@ lower_fdot(nir_alu_instr *alu, nir_builder *builder)
 
       nir_builder_instr_insert(builder, &instr->instr);
 
-      prev = &instr->dest.dest.ssa;
+      prev = &instr->def;
    }
 
    return prev;
@@ -188,7 +188,7 @@ lower_alu_instr_width(nir_builder *b, nir_instr *instr, void *_data)
 
    b->exact = alu->exact;
 
-   unsigned num_components = alu->dest.dest.ssa.num_components;
+   unsigned num_components = alu->def.num_components;
    unsigned target_width = 1;
 
    if (data->cb) {
@@ -283,7 +283,7 @@ lower_alu_instr_width(nir_builder *b, nir_instr *instr, void *_data)
 
       /* Only use reverse order for imprecise fdph, see explanation in lower_fdot. */
       bool reverse_order = !b->exact;
-      if (will_lower_ffma(b->shader, alu->dest.dest.ssa.bit_size)) {
+      if (will_lower_ffma(b->shader, alu->def.bit_size)) {
          nir_def *sum[4];
          for (unsigned i = 0; i < 3; i++) {
             int dest = reverse_order ? 3 - i : i;
@@ -403,11 +403,11 @@ lower_alu_instr_width(nir_builder *b, nir_instr *instr, void *_data)
          }
       }
 
-      nir_alu_ssa_dest_init(lower, components, alu->dest.dest.ssa.bit_size);
+      nir_alu_ssa_dest_init(lower, components, alu->def.bit_size);
       lower->exact = alu->exact;
 
       for (i = 0; i < components; i++) {
-         vec->src[chan + i].src = nir_src_for_ssa(&lower->dest.dest.ssa);
+         vec->src[chan + i].src = nir_src_for_ssa(&lower->def);
          vec->src[chan + i].swizzle[0] = i;
       }
 

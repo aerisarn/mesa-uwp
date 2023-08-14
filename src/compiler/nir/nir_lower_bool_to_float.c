@@ -60,7 +60,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu, bool has_fcsel_ne,
    case nir_op_vec5:
    case nir_op_vec8:
    case nir_op_vec16:
-      if (alu->dest.dest.ssa.bit_size != 1)
+      if (alu->def.bit_size != 1)
          return false;
       /* These we expect to have booleans but the opcode doesn't change */
       break;
@@ -176,7 +176,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu, bool has_fcsel_ne,
       break;
 
    default:
-      assert(alu->dest.dest.ssa.bit_size > 1);
+      assert(alu->def.bit_size > 1);
       for (unsigned i = 0; i < op_info->num_inputs; i++)
          assert(alu->src[i].src.ssa->bit_size > 1);
       return false;
@@ -184,11 +184,11 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu, bool has_fcsel_ne,
 
    if (rep) {
       /* We've emitted a replacement instruction */
-      nir_def_rewrite_uses(&alu->dest.dest.ssa, rep);
+      nir_def_rewrite_uses(&alu->def, rep);
       nir_instr_remove(&alu->instr);
    } else {
-      if (alu->dest.dest.ssa.bit_size == 1)
-         alu->dest.dest.ssa.bit_size = 32;
+      if (alu->def.bit_size == 1)
+         alu->def.bit_size = 32;
    }
 
    return true;

@@ -78,8 +78,8 @@ static rogue_ref nir_ssa_reg_alu_src(rogue_shader *shader,
 static rogue_ref
 nir_ssa_reg_alu_dst(rogue_shader *shader, const nir_alu_instr *alu, bool vec)
 {
-   unsigned num_components = alu->dest.dest.ssa.num_components;
-   unsigned index = alu->dest.dest.ssa.index;
+   unsigned num_components = alu->def.num_components;
+   unsigned index = alu->def.index;
 
    assert(num_components == 1);
 
@@ -605,7 +605,7 @@ static void trans_nir_alu_ffma(rogue_builder *b, nir_alu_instr *alu)
 
 static void trans_nir_alu_vecN(rogue_builder *b, nir_alu_instr *alu, unsigned n)
 {
-   unsigned dst_index = alu->dest.dest.ssa.index;
+   unsigned dst_index = alu->def.index;
    rogue_regarray *dst;
    rogue_reg *src;
 
@@ -618,7 +618,7 @@ static void trans_nir_alu_vecN(rogue_builder *b, nir_alu_instr *alu, unsigned n)
 
 static void trans_nir_alu_iadd64(rogue_builder *b, nir_alu_instr *alu)
 {
-   unsigned dst_index = alu->dest.dest.ssa.index;
+   unsigned dst_index = alu->def.index;
    rogue_regarray *dst[2] = {
       rogue_ssa_vec_regarray(b->shader, 1, dst_index, 0),
       rogue_ssa_vec_regarray(b->shader, 1, dst_index, 1),
@@ -650,7 +650,7 @@ static void trans_nir_alu_iadd64(rogue_builder *b, nir_alu_instr *alu)
 
 static void trans_nir_alu_iadd(rogue_builder *b, nir_alu_instr *alu)
 {
-   unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   unsigned bit_size = alu->def.bit_size;
 
    switch (bit_size) {
       /* TODO: case 32: */

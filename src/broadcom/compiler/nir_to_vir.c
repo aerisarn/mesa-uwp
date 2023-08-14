@@ -1360,7 +1360,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                         srcs[i] = ntq_get_src(c, instr->src[i].src,
                                               instr->src[i].swizzle[0]);
                 for (int i = 0; i < nir_op_infos[instr->op].num_inputs; i++)
-                        ntq_store_def(c, &instr->dest.dest.ssa, i,
+                        ntq_store_def(c, &instr->def, i,
                                       vir_MOV(c, srcs[i]));
                 return;
         }
@@ -1722,7 +1722,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 abort();
         }
 
-        ntq_store_def(c, &instr->dest.dest.ssa, 0, result);
+        ntq_store_def(c, &instr->def, 0, result);
 }
 
 /* Each TLB read/write setup (a render target or depth buffer) takes an 8-bit

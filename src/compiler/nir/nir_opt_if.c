@@ -469,10 +469,10 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
 
       if (!is_prev_result_undef && !is_prev_result_const) {
          /* check if the only user is a trivial bcsel */
-         if (!list_is_singular(&alu->dest.dest.ssa.uses))
+         if (!list_is_singular(&alu->def.uses))
             continue;
 
-         nir_src *use = list_first_entry(&alu->dest.dest.ssa.uses, nir_src, use_link);
+         nir_src *use = list_first_entry(&alu->def.uses, nir_src, use_link);
          if (use->is_if || !is_trivial_bcsel(use->parent_instr, true))
             continue;
       }
@@ -508,7 +508,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
       /* Modify all readers of the original ALU instruction to read the
        * result of the phi.
        */
-      nir_def_rewrite_uses(&alu->dest.dest.ssa,
+      nir_def_rewrite_uses(&alu->def,
                            &phi->dest.ssa);
 
       /* Since the original ALU instruction no longer has any readers, just
@@ -664,8 +664,8 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
                                ->src);
 
       nir_def_init(&phi->instr, &phi->dest.ssa,
-                   bcsel->dest.dest.ssa.num_components,
-                   bcsel->dest.dest.ssa.bit_size);
+                   bcsel->def.num_components,
+                   bcsel->def.bit_size);
 
       b->cursor = nir_after_phis(header_block);
       nir_builder_instr_insert(b, &phi->instr);
@@ -673,7 +673,7 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
       /* Modify all readers of the bcsel instruction to read the result of
        * the phi.
        */
-      nir_def_rewrite_uses(&bcsel->dest.dest.ssa,
+      nir_def_rewrite_uses(&bcsel->def,
                            &phi->dest.ssa);
 
       /* Since the original bcsel instruction no longer has any readers,
@@ -874,7 +874,7 @@ opt_if_simplification(nir_builder *b, nir_if *nif)
    b->cursor = nir_after_instr(&alu_instr->instr);
 
    nir_def *new_condition =
-      nir_inot(b, &alu_instr->dest.dest.ssa);
+      nir_inot(b, &alu_instr->def);
 
    nir_if_rewrite_condition(nif, nir_src_for_ssa(new_condition));
 
@@ -1184,9 +1184,9 @@ clone_alu_and_replace_src_defs(nir_builder *b, const nir_alu_instr *alu,
    nir_alu_instr *nalu = nir_alu_instr_create(b->shader, alu->op);
    nalu->exact = alu->exact;
 
-   nir_def_init(&nalu->instr, &nalu->dest.dest.ssa,
-                alu->dest.dest.ssa.num_components,
-                alu->dest.dest.ssa.bit_size);
+   nir_def_init(&nalu->instr, &nalu->def,
+                alu->def.num_components,
+                alu->def.bit_size);
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       nalu->src[i].src = nir_src_for_ssa(src_defs[i]);
@@ -1196,7 +1196,7 @@ clone_alu_and_replace_src_defs(nir_builder *b, const nir_alu_instr *alu,
 
    nir_builder_instr_insert(b, &nalu->instr);
 
-   return &nalu->dest.dest.ssa;
+   return &nalu->def;
    ;
 }
 
@@ -1320,7 +1320,7 @@ evaluate_condition_use(nir_builder *b, nir_if *nif, nir_src *use_src)
    if (!use_src->is_if && can_propagate_through_alu(use_src)) {
       nir_alu_instr *alu = nir_instr_as_alu(use_src->parent_instr);
 
-      nir_foreach_use_including_if_safe(alu_use, &alu->dest.dest.ssa)
+      nir_foreach_use_including_if_safe(alu_use, &alu->def)
          progress |= propagate_condition_eval(b, nif, use_src, alu_use, alu);
    }
 
