@@ -53,6 +53,7 @@
 #include "util/u_cpu_detect.h"
 #include "util/strndup.h"
 #include "nir.h"
+#include "nir_builder.h"
 
 #include "driver_trace/tr_context.h"
 
@@ -181,6 +182,9 @@ zink_context_destroy(struct pipe_context *pctx)
       util_dynarray_fini(&ctx->di.bindless[i].updates);
       util_dynarray_fini(&ctx->di.bindless[i].resident);
    }
+
+   if (ctx->null_fs)
+      pctx->delete_fs_state(pctx, ctx->null_fs);
 
    hash_table_foreach(&ctx->framebuffer_cache, he)
       zink_destroy_framebuffer(screen, he->data);
@@ -2861,19 +2865,8 @@ zink_batch_rp(struct zink_context *ctx)
    ctx->queries_in_rp = maybe_has_query_ends;
    /* if possible, out-of-renderpass resume any queries that were stopped when previous rp ended */
    if (!ctx->queries_disabled && !maybe_has_query_ends) {
-      if (ctx->primitives_generated_suspended && ctx->clears_enabled) {
-         /* this is a driver that doesn't need dummy surfaces but does need rasterization discard, so flush clears first */
-         ctx->queries_disabled = true;
-         zink_batch_rp(ctx);
-         zink_batch_no_rp(ctx);
-         ctx->queries_disabled = false;
-      }
       zink_resume_queries(ctx, &ctx->batch);
       zink_query_update_gs_states(ctx);
-   }
-   if (!ctx->queries_disabled && ctx->primitives_generated_suspended && !zink_screen(ctx->base.screen)->info.have_EXT_color_write_enable) {
-      if (zink_set_rasterizer_discard(ctx, true))
-         zink_set_color_write_enables(ctx);
    }
    unsigned clear_buffers;
    /* use renderpass for multisample-to-singlesample or fbfetch:
@@ -3207,14 +3200,14 @@ static void
 reapply_color_write(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (screen->info.have_EXT_color_write_enable) {
-      const VkBool32 enables[PIPE_MAX_COLOR_BUFS] = {1, 1, 1, 1, 1, 1, 1, 1};
-      const VkBool32 disables[PIPE_MAX_COLOR_BUFS] = {0};
-      const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, screen->info.props.limits.maxColorAttachments);
-      VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, ctx->disable_color_writes ? disables : enables);
-      VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->barrier_cmdbuf, max_att, enables);
-   }
-   if (screen->info.have_EXT_extended_dynamic_state && ctx->dsa_state)
+   assert(screen->info.have_EXT_color_write_enable);
+   const VkBool32 enables[PIPE_MAX_COLOR_BUFS] = {1, 1, 1, 1, 1, 1, 1, 1};
+   const VkBool32 disables[PIPE_MAX_COLOR_BUFS] = {0};
+   const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, screen->info.props.limits.maxColorAttachments);
+   VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, ctx->disable_color_writes ? disables : enables);
+   VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->barrier_cmdbuf, max_att, enables);
+   assert(screen->info.have_EXT_extended_dynamic_state);
+   if (ctx->dsa_state)
       VKCTX(CmdSetDepthWriteEnableEXT)(ctx->batch.state->cmdbuf, ctx->disable_color_writes ? VK_FALSE : ctx->dsa_state->hw_state.depth_write);
 }
 
@@ -3277,7 +3270,8 @@ flush_batch(struct zink_context *ctx, bool sync)
          VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->barrier_cmdbuf, 1);
       }
       update_feedback_loop_dynamic_state(ctx);
-      reapply_color_write(ctx);
+      if (screen->info.have_EXT_color_write_enable)
+         reapply_color_write(ctx);
       update_layered_rendering_state(ctx);
       tc_renderpass_info_reset(&ctx->dynamic_fb.tc_info);
       ctx->rp_tc_info_updated = true;
@@ -3361,22 +3355,57 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
 }
 
 void
-zink_set_color_write_enables(struct zink_context *ctx)
+zink_set_null_fs(struct zink_context *ctx)
 {
-   bool disable_color_writes = ctx->rast_state && ctx->rast_state->base.rasterizer_discard &&
-                               (ctx->primitives_generated_active || (!ctx->queries_disabled && ctx->primitives_generated_suspended));
-   if (ctx->disable_color_writes == disable_color_writes)
-      return;
-   /* this should have been handled already */
-   assert(!disable_color_writes || !ctx->clears_enabled);
-   ctx->disable_color_writes = disable_color_writes;
-   if (!zink_screen(ctx->base.screen)->info.have_EXT_color_write_enable) {
-      /* use dummy color buffers instead of the more sane option */
-      ctx->rp_changed = true;
-      ctx->fb_changed = true;
-   } else {
-      reapply_color_write(ctx);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   bool prev_disable_fs = ctx->disable_fs;
+   ctx->disable_fs = ctx->rast_state && ctx->rast_state->base.rasterizer_discard &&
+                     (ctx->primitives_generated_active || (!ctx->queries_disabled && ctx->primitives_generated_suspended));
+   struct zink_shader *zs = ctx->gfx_stages[MESA_SHADER_FRAGMENT];
+   unsigned compact = screen->compact_descriptors ? ZINK_DESCRIPTOR_COMPACT : 0;
+   /* can't use CWE if side effects */
+   bool no_cwe = (zs && (zs->ssbos_used || zs->bindless || zs->num_bindings[ZINK_DESCRIPTOR_TYPE_IMAGE - compact])) ||
+                 ctx->fs_query_active || ctx->occlusion_query_active || !screen->info.have_EXT_color_write_enable;
+   bool prev_disable_color_writes = ctx->disable_color_writes;
+   ctx->disable_color_writes = ctx->disable_fs && !no_cwe;
+
+   if (ctx->disable_fs == prev_disable_fs) {
+      /* if this is a true no-op then return */
+      if (!ctx->disable_fs || ctx->disable_color_writes == !no_cwe)
+         return;
+      /* else changing disable modes */
    }
+
+   /* either of these cases requires removing the previous mode */
+   if (!ctx->disable_fs || (prev_disable_fs && prev_disable_color_writes != !no_cwe)) {
+      if (prev_disable_color_writes)
+         reapply_color_write(ctx);
+      else
+         ctx->base.bind_fs_state(&ctx->base, ctx->saved_fs);
+      ctx->saved_fs = NULL;
+      /* fs/CWE reenabled, fs active, done */
+      if (!ctx->disable_fs)
+         return;
+   }
+
+   /* always use CWE when possible */
+   if (!no_cwe) {
+      reapply_color_write(ctx);
+      return;
+   }
+   /* otherwise need to bind a null fs */
+   if (!ctx->null_fs) {
+      nir_shader *nir = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, &screen->nir_options, "null_fs").shader;
+      nir->info.separate_shader = true;
+      struct pipe_shader_state shstate = {
+         .type = PIPE_SHADER_IR_NIR,
+         .tokens = NULL,
+         .ir.nir = nir
+      };
+      ctx->null_fs = ctx->base.create_fs_state(&ctx->base, &shstate);
+   }
+   ctx->saved_fs = ctx->gfx_stages[MESA_SHADER_FRAGMENT];
+   ctx->base.bind_fs_state(&ctx->base, ctx->null_fs);
 }
 
 static void
@@ -5374,7 +5403,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       fb.nr_cbufs = 1;
       fb.width = fb.height = 256;
       ctx->base.set_framebuffer_state(&ctx->base, &fb);
-      ctx->disable_color_writes = true;
+      ctx->disable_fs = true;
       struct pipe_depth_stencil_alpha_state dsa = {0};
       void *state = ctx->base.create_depth_stencil_alpha_state(&ctx->base, &dsa);
       ctx->base.bind_depth_stencil_alpha_state(&ctx->base, state);

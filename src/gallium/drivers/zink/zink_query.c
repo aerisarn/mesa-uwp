@@ -946,7 +946,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (q->needs_rast_discard_workaround) {
       ctx->primitives_generated_active = true;
       if (zink_set_rasterizer_discard(ctx, true))
-         zink_set_color_write_enables(ctx);
+         zink_set_null_fs(ctx);
    }
 }
 
@@ -1038,7 +1038,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    if (q->needs_rast_discard_workaround) {
       ctx->primitives_generated_active = false;
       if (zink_set_rasterizer_discard(ctx, false))
-         zink_set_color_write_enables(ctx);
+         zink_set_null_fs(ctx);
    }
 }
 
@@ -1095,7 +1095,7 @@ zink_end_query(struct pipe_context *pctx,
    }
 
    if (unset_null_fs)
-      zink_set_color_write_enables(ctx);
+      zink_set_null_fs(ctx);
 
    return true;
 }

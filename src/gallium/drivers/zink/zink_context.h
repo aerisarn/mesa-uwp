@@ -281,7 +281,7 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res);
 bool
 zink_use_dummy_attachments(const struct zink_context *ctx);
 void
-zink_set_color_write_enables(struct zink_context *ctx);
+zink_set_null_fs(struct zink_context *ctx);
 
 void
 zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,

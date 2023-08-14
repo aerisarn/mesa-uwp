@@ -756,7 +756,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       if (!ctx->primitives_generated_active)
          zink_set_rasterizer_discard(ctx, false);
       else if (rasterizer_discard != ctx->rast_state->base.rasterizer_discard)
-         zink_set_color_write_enables(ctx);
+         zink_set_null_fs(ctx);
 
       if (ctx->rast_state->base.point_quad_rasterization ||
           ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)

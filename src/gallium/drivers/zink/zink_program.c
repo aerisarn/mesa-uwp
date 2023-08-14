@@ -1840,6 +1840,11 @@ zink_bind_fs_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    if (!cso && !ctx->gfx_stages[MESA_SHADER_FRAGMENT])
       return;
+   if (ctx->disable_fs && !ctx->disable_color_writes && cso != ctx->null_fs) {
+      ctx->saved_fs = cso;
+      zink_set_null_fs(ctx);
+      return;
+   }
    unsigned shadow_mask = ctx->gfx_stages[MESA_SHADER_FRAGMENT] ? ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask : 0;
    bind_gfx_stage(ctx, MESA_SHADER_FRAGMENT, cso);
    ctx->fbfetch_outputs = 0;

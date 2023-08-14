@@ -1874,11 +1874,14 @@ struct zink_context {
    };
 
    struct zink_vk_query *curr_xfb_queries[PIPE_MAX_VERTEX_STREAMS];
+   struct zink_shader *null_fs;
+   struct zink_shader *saved_fs;
 
    struct list_head query_pools;
    struct list_head suspended_queries;
    struct list_head primitives_generated_queries;
    struct zink_query *vertices_query;
+   bool disable_fs;
    bool disable_color_writes;
    bool was_line_loop;
    bool fs_query_active;
