@@ -2740,6 +2740,18 @@ get_ccs_compatible_copy_format(const struct isl_format_layout *fmtl)
    case ISL_FORMAT_R8G8_UINT:
       return ISL_FORMAT_R8G8_UINT;
 
+   case ISL_FORMAT_YCRCB_NORMAL:
+   case ISL_FORMAT_YCRCB_SWAPY:
+   case ISL_FORMAT_YCRCB_SWAPUV:
+   case ISL_FORMAT_YCRCB_SWAPUVY:
+      /* Tiger Lake starts claiming CCS_E support for certain YCRCB formats.
+       * BLORP chooses to take the CCS-compatible format path whenever ISL
+       * claims CCS_E support on a format, not when CCS_E is actually used.
+       * Therefore, if these formats are going to be used with BLORP, we need
+       * a CCS-compatible format. R8G8_UINT seems as good as any.
+       */
+      return ISL_FORMAT_R8G8_UINT;
+
    case ISL_FORMAT_B5G5R5X1_UNORM:
    case ISL_FORMAT_B5G5R5X1_UNORM_SRGB:
    case ISL_FORMAT_B5G5R5A1_UNORM:
