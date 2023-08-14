@@ -73,12 +73,12 @@ copy_type(unsigned src, unsigned dst, bool src_is_sink,
 }
 
 static void
-copy_types(nir_src src, nir_dest *dest, BITSET_WORD *float_types,
+copy_types(nir_src src, nir_def *def, BITSET_WORD *float_types,
            BITSET_WORD *int_types, bool *progress)
 {
    bool src_is_sink = nir_src_is_const(src) || nir_src_is_undef(src);
-   copy_type(src.ssa->index, dest->ssa.index, src_is_sink, float_types, progress);
-   copy_type(src.ssa->index, dest->ssa.index, src_is_sink, int_types, progress);
+   copy_type(src.ssa->index, def->index, src_is_sink, float_types, progress);
+   copy_type(src.ssa->index, def->index, src_is_sink, int_types, progress);
 }
 
 /** Gather up ALU types for SSA values
@@ -118,7 +118,7 @@ nir_gather_types(nir_function_impl *impl,
                case nir_op_vec8:
                case nir_op_vec16:
                   for (unsigned i = 0; i < info->num_inputs; i++) {
-                     copy_types(alu->src[i].src, &alu->dest.dest,
+                     copy_types(alu->src[i].src, &alu->dest.dest.ssa,
                                 float_types, int_types, &progress);
                   }
                   break;
@@ -127,9 +127,9 @@ nir_gather_types(nir_function_impl *impl,
                case nir_op_b32csel:
                   set_type(alu->src[0].src.ssa->index, nir_type_bool,
                            float_types, int_types, &progress);
-                  copy_types(alu->src[1].src, &alu->dest.dest,
+                  copy_types(alu->src[1].src, &alu->dest.dest.ssa,
                              float_types, int_types, &progress);
-                  copy_types(alu->src[2].src, &alu->dest.dest,
+                  copy_types(alu->src[2].src, &alu->dest.dest.ssa,
                              float_types, int_types, &progress);
                   break;
 
@@ -180,7 +180,7 @@ nir_gather_types(nir_function_impl *impl,
             case nir_instr_type_phi: {
                nir_phi_instr *phi = nir_instr_as_phi(instr);
                nir_foreach_phi_src(src, phi) {
-                  copy_types(src->src, &phi->dest,
+                  copy_types(src->src, &phi->dest.ssa,
                              float_types, int_types, &progress);
                }
                break;
