@@ -572,7 +572,8 @@ private:
 
    unsigned workgroup_size() const;
 
-   void debug_optimizer(const char *pass_name,
+   void debug_optimizer(const nir_shader *nir,
+                        const char *pass_name,
                         int iteration, int pass_num) const;
 };
 

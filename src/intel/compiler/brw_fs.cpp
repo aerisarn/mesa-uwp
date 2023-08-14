@@ -6193,10 +6193,11 @@ fs_visitor::invalidate_analysis(brw::analysis_dependency_class c)
 }
 
 void
-fs_visitor::debug_optimizer(const char *pass_name,
+fs_visitor::debug_optimizer(const nir_shader *nir,
+                            const char *pass_name,
                             int iteration, int pass_num) const
 {
-   if (!INTEL_DEBUG(DEBUG_OPTIMIZER))
+   if (!brw_should_print_shader(nir, DEBUG_OPTIMIZER))
       return;
 
    char *filename;
@@ -6213,7 +6214,7 @@ fs_visitor::debug_optimizer(const char *pass_name,
 void
 fs_visitor::optimize()
 {
-   debug_optimizer("start", 0, 0);
+   debug_optimizer(nir, "start", 0, 0);
 
    /* Start by validating the shader we currently have. */
    validate();
@@ -6240,7 +6241,7 @@ fs_visitor::optimize()
       bool this_progress = pass(args);                                  \
                                                                         \
       if (this_progress)                                                \
-         debug_optimizer(#pass, iteration, pass_num);                   \
+         debug_optimizer(nir, #pass, iteration, pass_num);              \
                                                                         \
       validate();                                                       \
                                                                         \
@@ -6747,7 +6748,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
    if (needs_register_pressure)
       shader_stats.max_register_pressure = compute_max_register_pressure();
 
-   debug_optimizer("pre_register_allocate", 99, 99);
+   debug_optimizer(nir, "pre_register_allocate", 99, 99);
 
    bool spill_all = allow_spilling && INTEL_DEBUG(DEBUG_SPILL_FS);
 
