@@ -640,7 +640,7 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
                                                 bool need_dest)
 {
    fs_reg result =
-      need_dest ? get_nir_dest(instr->dest.dest) : bld.null_reg_ud();
+      need_dest ? get_nir_def(instr->dest.dest.ssa) : bld.null_reg_ud();
 
    result.type = brw_type_for_nir_type(devinfo,
       (nir_alu_type)(nir_op_infos[instr->op].output_type |
@@ -679,7 +679,7 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
       /* Since NIR is doing the scalarizing for us, we should only ever see
        * vectorized operations with a single channel.
        */
-      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest);
+      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest.dest.ssa);
       assert(util_bitcount(write_mask) == 1);
       channel = ffs(write_mask) - 1;
 
@@ -791,7 +791,7 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
          /* Since NIR is doing the scalarizing for us, we should only ever see
           * vectorized operations with a single channel.
           */
-         nir_component_mask_t write_mask = get_nir_write_mask(instr->dest);
+         nir_component_mask_t write_mask = get_nir_write_mask(instr->dest.dest.ssa);
          assert(util_bitcount(write_mask) == 1);
          channel = ffs(write_mask) - 1;
       }
@@ -995,7 +995,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          }
       }
 
-      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest);
+      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest.dest.ssa);
       unsigned last_bit = util_last_bit(write_mask);
 
       for (unsigned i = 0; i < last_bit; i++) {
@@ -2052,19 +2052,19 @@ fs_visitor::get_nir_src_imm(const nir_src &src)
 }
 
 fs_reg
-fs_visitor::get_nir_dest(const nir_dest &dest)
+fs_visitor::get_nir_def(const nir_def &def)
 {
-   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
+   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&def);
    if (!store_reg) {
       const brw_reg_type reg_type =
-         brw_reg_type_from_bit_size(dest.ssa.bit_size,
-                                    dest.ssa.bit_size == 8 ?
+         brw_reg_type_from_bit_size(def.bit_size,
+                                    def.bit_size == 8 ?
                                     BRW_REGISTER_TYPE_D :
                                     BRW_REGISTER_TYPE_F);
-      nir_ssa_values[dest.ssa.index] =
-         bld.vgrf(reg_type, dest.ssa.num_components);
-      bld.UNDEF(nir_ssa_values[dest.ssa.index]);
-      return nir_ssa_values[dest.ssa.index];
+      nir_ssa_values[def.index] =
+         bld.vgrf(reg_type, def.num_components);
+      bld.UNDEF(nir_ssa_values[def.index]);
+      return nir_ssa_values[def.index];
    } else {
       nir_intrinsic_instr *decl_reg =
          nir_reg_get_decl(store_reg->src[1].ssa);
@@ -2076,11 +2076,11 @@ fs_visitor::get_nir_dest(const nir_dest &dest)
 }
 
 nir_component_mask_t
-fs_visitor::get_nir_write_mask(const nir_alu_dest &dest)
+fs_visitor::get_nir_write_mask(const nir_def &def)
 {
-   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.dest.ssa);
+   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&def);
    if (!store_reg) {
-      return nir_component_mask(dest.dest.ssa.num_components);
+      return nir_component_mask(def.num_components);
    } else {
       return nir_intrinsic_write_mask(store_reg);
    }
@@ -2615,7 +2615,7 @@ fs_visitor::nir_emit_vs_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_vertex_id:
@@ -2750,7 +2750,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
 
    fs_reg dst;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dst = get_nir_dest(instr->dest);
+      dst = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_primitive_id:
@@ -2980,7 +2980,7 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_primitive_id:
@@ -3088,7 +3088,7 @@ fs_visitor::nir_emit_gs_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_primitive_id:
@@ -3312,7 +3312,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_front_face:
@@ -3686,7 +3686,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_barrier:
@@ -3898,7 +3898,7 @@ fs_visitor::nir_emit_bs_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_btd_global_arg_addr_intel:
@@ -4339,7 +4339,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_resource_intel:
@@ -6292,7 +6292,7 @@ fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
           (nir_dest_bit_size(instr->dest) == 16 &&
            (devinfo->has_lsc || lsc_opcode_is_atomic_float(op))));
 
-   fs_reg dest = get_nir_dest(instr->dest);
+   fs_reg dest = get_nir_def(instr->dest.ssa);
 
    fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
    srcs[bindless ?
@@ -6363,7 +6363,7 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
 {
    int op = lsc_aop_for_nir_intrinsic(instr);
 
-   fs_reg dest = get_nir_dest(instr->dest);
+   fs_reg dest = get_nir_def(instr->dest.ssa);
 
    fs_reg addr = get_nir_src(instr->src[0]);
 
@@ -6644,7 +6644,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       opcode = SHADER_OPCODE_SAMPLEINFO_LOGICAL;
       break;
    case nir_texop_samples_identical: {
-      fs_reg dst = retype(get_nir_dest(instr->dest), BRW_REGISTER_TYPE_D);
+      fs_reg dst = retype(get_nir_def(instr->dest.ssa), BRW_REGISTER_TYPE_D);
 
       /* If mcs is an immediate value, it means there is no MCS.  In that case
        * just return false.
@@ -6736,7 +6736,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    if (instr->is_sparse)
       nir_dest[dest_size - 1] = component(offset(dst, bld, dest_size - 1), 0);
 
-   bld.LOAD_PAYLOAD(get_nir_dest(instr->dest), nir_dest, dest_size, 0);
+   bld.LOAD_PAYLOAD(get_nir_def(instr->dest.ssa), nir_dest, dest_size, 0);
 }
 
 void

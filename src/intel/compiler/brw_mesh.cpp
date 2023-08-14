@@ -1914,7 +1914,7 @@ void
 fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *instr,
                                 const fs_reg &urb_handle)
 {
-   fs_reg dest = get_nir_dest(instr->dest);
+   fs_reg dest = get_nir_def(instr->dest.ssa);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
 
    /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
@@ -1991,7 +1991,7 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_def(instr->dest.ssa);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_mesh_inline_data_intel: {
