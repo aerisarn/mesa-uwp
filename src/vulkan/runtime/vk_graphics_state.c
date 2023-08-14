@@ -992,7 +992,7 @@ vk_color_blend_state_init(struct vk_color_blend_state *cb,
       }
       cb->color_write_enables = color_write_enables;
    } else {
-      cb->color_write_enables = BITFIELD_MASK(cb_info->attachmentCount);
+      cb->color_write_enables = BITFIELD_MASK(MESA_VK_MAX_COLOR_ATTACHMENTS);
    }
 }
 
