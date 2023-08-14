@@ -11,12 +11,12 @@ workflow:
     # post-merge pipeline
     - if: $GITLAB_USER_LOGIN == "marge-bot" && $CI_COMMIT_BRANCH
       variables:
-        LAVA_JOB_PRIORITY: 40
+        JOB_PRIORITY: 40
         VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
     # any other pipeline
     - if: $GITLAB_USER_LOGIN != "marge-bot"
       variables:
-        LAVA_JOB_PRIORITY: 50
+        JOB_PRIORITY: 50
         VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
     - when: always
 

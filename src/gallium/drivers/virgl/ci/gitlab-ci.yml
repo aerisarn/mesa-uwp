@@ -32,7 +32,7 @@
       when: manual
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
   variables:
-    LAVA_JOB_PRIORITY: 40
+    JOB_PRIORITY: 40
     S3_ARTIFACT_NAME: "mesa-x86_64-default-release"
   needs:
     - kernel+rootfs_x86_64
