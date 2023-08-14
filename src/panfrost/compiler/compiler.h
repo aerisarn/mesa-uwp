@@ -946,6 +946,12 @@ bi_temp(bi_context *ctx)
    return bi_get_index(ctx->ssa_alloc++);
 }
 
+static inline bi_index
+bi_def_index(nir_def *def)
+{
+   return bi_get_index(def->index);
+}
+
 /* Inline constants automatically, will be lowered out by bi_lower_fau where a
  * constant is not allowed. load_const_to_scalar gaurantees that this makes
  * sense */
@@ -956,14 +962,8 @@ bi_src_index(nir_src *src)
    if (nir_src_is_const(*src) && nir_src_bit_size(*src) <= 32) {
       return bi_imm_u32(nir_src_as_uint(*src));
    } else {
-      return bi_get_index(src->ssa->index);
+      return bi_def_index(src->ssa);
    }
-}
-
-static inline bi_index
-bi_dest_index(nir_dest *dst)
-{
-   return bi_get_index(dst->ssa.index);
 }
 
 /* Iterators for Bifrost IR */
