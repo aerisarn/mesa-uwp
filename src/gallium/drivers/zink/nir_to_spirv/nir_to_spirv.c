@@ -517,10 +517,10 @@ get_storage_class(struct nir_variable *var)
 }
 
 static SpvId
-get_dest_uvec_type(struct ntv_context *ctx, nir_dest *dest)
+get_def_uvec_type(struct ntv_context *ctx, nir_def *def)
 {
-   unsigned bit_size = nir_dest_bit_size(*dest);
-   return get_uvec_type(ctx, bit_size, nir_dest_num_components(*dest));
+   unsigned bit_size = def->bit_size;
+   return get_uvec_type(ctx, bit_size, def->num_components);
 }
 
 static SpvId
@@ -1526,15 +1526,15 @@ cast_src_to_type(struct ntv_context *ctx, SpvId value, nir_src src, nir_alu_type
 }
 
 static void
-store_dest_raw(struct ntv_context *ctx, nir_dest *dest, SpvId result, nir_alu_type atype)
+store_def_raw(struct ntv_context *ctx, nir_def *def, SpvId result, nir_alu_type atype)
 {
-   store_ssa_def(ctx, &dest->ssa, result, atype);
+   store_ssa_def(ctx, def, result, atype);
 }
 
 static void
-store_dest(struct ntv_context *ctx, nir_dest *dest, SpvId result, nir_alu_type type)
+store_def(struct ntv_context *ctx, nir_def *def, SpvId result, nir_alu_type type)
 {
-   store_dest_raw(ctx, dest, result, type);
+   store_def_raw(ctx, def, result, type);
 }
 
 static SpvId
@@ -2077,15 +2077,13 @@ get_alu_src(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src, SpvId *ra
 static void
 store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result, nir_alu_type atype)
 {
-   store_dest(ctx, &alu->dest.dest, result, atype);
+   store_def(ctx, &alu->dest.dest.ssa, result, atype);
 }
 
 static SpvId
-get_dest_type(struct ntv_context *ctx, nir_dest *dest, nir_alu_type type)
+get_def_type(struct ntv_context *ctx, nir_def *def, nir_alu_type type)
 {
-   unsigned num_components = nir_dest_num_components(*dest);
-   unsigned bit_size = nir_dest_bit_size(*dest);
-   return get_alu_type(ctx, type, num_components, bit_size);
+   return get_alu_type(ctx, type, def->num_components, def->bit_size);
 }
 
 static bool
@@ -2165,7 +2163,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    nir_alu_type atype = bit_size == 1 ?
                         nir_type_bool :
                         (alu_op_is_typeless(alu->op) ? typeless_type : nir_op_infos[alu->op].output_type);
-   SpvId dest_type = get_dest_type(ctx, &alu->dest.dest, atype);
+   SpvId dest_type = get_def_type(ctx, &alu->dest.dest.ssa, atype);
 
    if (needs_derivative_control(alu))
       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityDerivativeControl);
@@ -2267,7 +2265,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 #define BUILTIN_UNOPF(nir_op, spirv_op) \
    case nir_op: \
       assert(nir_op_infos[alu->op].num_inputs == 1); \
-      result = emit_builtin_unop(ctx, spirv_op, get_dest_type(ctx, &alu->dest.dest, nir_type_float), src[0]); \
+      result = emit_builtin_unop(ctx, spirv_op, get_def_type(ctx, &alu->dest.dest.ssa, nir_type_float), src[0]); \
       atype = nir_type_float; \
       break;
 
@@ -2292,12 +2290,12 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 
    case nir_op_pack_half_2x16:
       assert(nir_op_infos[alu->op].num_inputs == 1);
-      result = emit_builtin_unop(ctx, GLSLstd450PackHalf2x16, get_dest_type(ctx, &alu->dest.dest, nir_type_uint), src[0]);
+      result = emit_builtin_unop(ctx, GLSLstd450PackHalf2x16, get_def_type(ctx, &alu->dest.dest.ssa, nir_type_uint), src[0]);
       break;
 
    case nir_op_unpack_64_2x32:
       assert(nir_op_infos[alu->op].num_inputs == 1);
-      result = emit_builtin_unop(ctx, GLSLstd450UnpackDouble2x32, get_dest_type(ctx, &alu->dest.dest, nir_type_uint), src[0]);
+      result = emit_builtin_unop(ctx, GLSLstd450UnpackDouble2x32, get_def_type(ctx, &alu->dest.dest.ssa, nir_type_uint), src[0]);
       break;
 
    BUILTIN_UNOPF(nir_op_unpack_half_2x16, GLSLstd450UnpackHalf2x16)
@@ -2648,7 +2646,7 @@ emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       result = emit_atomic(ctx, SpvOpAtomicLoad, type, ptr, 0, 0);
    else
       result = spirv_builder_emit_load(&ctx->builder, type, ptr);
-   store_dest(ctx, &intr->dest, result, atype);
+   store_def(ctx, &intr->dest.ssa, result, atype);
 }
 
 static void
@@ -2713,7 +2711,7 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_load_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+   SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    SpvId uint_type = get_uvec_type(ctx, bit_size, 1);
@@ -2738,7 +2736,7 @@ emit_load_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       result = spirv_builder_emit_composite_construct(&ctx->builder, dest_type, constituents, num_components);
    else
       result = constituents[0];
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -2775,7 +2773,7 @@ emit_store_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_load_scratch(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+   SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    SpvId uint_type = get_uvec_type(ctx, bit_size, 1);
@@ -2800,7 +2798,7 @@ emit_load_scratch(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       result = spirv_builder_emit_composite_construct(&ctx->builder, dest_type, constituents, num_components);
    else
       result = constituents[0];
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -2846,7 +2844,7 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId result;
 
    /* destination type for the load */
-   SpvId type = get_dest_uvec_type(ctx, &intr->dest);
+   SpvId type = get_def_uvec_type(ctx, &intr->dest.ssa);
    SpvId one = emit_uint_const(ctx, 32, 1);
 
    /* we grab a single array member at a time, so it's a pointer to a uint */
@@ -2887,21 +2885,21 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    } else
       result = constituents[0];
 
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
 emit_load_global(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilityPhysicalStorageBufferAddresses);
-   SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+   SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassPhysicalStorageBuffer,
                                                    dest_type);
    nir_alu_type atype;
    SpvId ptr = emit_bitcast(ctx, pointer_type, get_src(ctx, &intr->src[0], &atype));
    SpvId result = spirv_builder_emit_load(&ctx->builder, dest_type, ptr);
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -2937,7 +2935,7 @@ emit_load_reg(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId var = ctx->defs[index];
    SpvId type = get_alu_type(ctx, atype, num_components, bit_size);
    SpvId result = spirv_builder_emit_load(&ctx->builder, type, var);
-   store_dest(ctx, &intr->dest, result, atype);
+   store_def(ctx, &intr->dest.ssa, result, atype);
 }
 
 static void
@@ -3005,7 +3003,7 @@ emit_load_front_face(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
                                           ctx->front_face_var);
    assert(1 == nir_dest_num_components(intr->dest));
-   store_dest(ctx, &intr->dest, result, nir_type_bool);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_bool);
 }
 
 static void
@@ -3036,7 +3034,7 @@ emit_load_uint_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *
 
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type, load_var);
    assert(1 == nir_dest_num_components(intr->dest));
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -3067,7 +3065,7 @@ emit_load_vec_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *v
                                    builtin);
 
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type, *var_id);
-   store_dest(ctx, &intr->dest, result, type);
+   store_def(ctx, &intr->dest.ssa, result, type);
 }
 
 static void
@@ -3107,16 +3105,16 @@ emit_interpolate(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       result = emit_builtin_unop(ctx, op, get_glsl_type(ctx, gtype), ptr);
    else
       result = emit_builtin_binop(ctx, op, get_glsl_type(ctx, gtype), ptr, src1);
-   store_dest(ctx, &intr->dest, result, ptype);
+   store_def(ctx, &intr->dest.ssa, result, ptype);
 }
 
 static void
 handle_atomic_op(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId ptr, SpvId param, SpvId param2, nir_alu_type type)
 {
-   SpvId dest_type = get_dest_type(ctx, &intr->dest, type);
+   SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, type);
    SpvId result = emit_atomic(ctx, get_atomic_op(ctx, nir_dest_bit_size(intr->dest), nir_intrinsic_atomic_op(intr)), dest_type, ptr, param, param2);
    assert(result);
-   store_dest(ctx, &intr->dest, result, type);
+   store_def(ctx, &intr->dest.ssa, result, type);
 }
 
 static void
@@ -3147,7 +3145,7 @@ static void
 emit_shared_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    unsigned bit_size = nir_src_bit_size(intr->src[1]);
-   SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+   SpvId dest_type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
    nir_alu_type atype;
    nir_alu_type ret_type = nir_atomic_op_type(nir_intrinsic_atomic_op(intr)) == nir_type_float ? nir_type_float : nir_type_uint;
    SpvId param = get_src(ctx, &intr->src[1], &atype);
@@ -3210,7 +3208,7 @@ emit_get_ssbo_size(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    result = emit_binop(ctx, SpvOpIAdd, uint_type, result,
                         emit_uint_const(ctx, 32,
                                        glsl_get_struct_field_offset(bare_type, last_member_idx)));
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static SpvId
@@ -3323,7 +3321,7 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                     SpvDecorationRelaxedPrecision);
    }
 
-   store_dest(ctx, &intr->dest, result, nir_get_nir_type_for_glsl_base_type(glsl_get_sampler_result_type(type)));
+   store_def(ctx, &intr->dest.ssa, result, nir_get_nir_type_for_glsl_base_type(glsl_get_sampler_result_type(type)));
 }
 
 static void
@@ -3343,7 +3341,7 @@ emit_image_deref_size(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageQuery);
    SpvId result = spirv_builder_emit_image_query_size(&ctx->builder, get_uvec_type(ctx, 32, num_components), img, 0);
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -3357,8 +3355,8 @@ emit_image_deref_samples(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
 
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageQuery);
-   SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples, get_dest_type(ctx, &intr->dest, nir_type_uint), img);
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples, get_def_type(ctx, &intr->dest.ssa, nir_type_uint), img);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -3384,14 +3382,14 @@ emit_image_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
     */
    nir_alu_type ntype = nir_get_nir_type_for_glsl_base_type(glsl_type);
    if (ptype != ntype) {
-      SpvId cast_type = get_dest_type(ctx, &intr->dest, ntype);
+      SpvId cast_type = get_def_type(ctx, &intr->dest.ssa, ntype);
       param = emit_bitcast(ctx, cast_type, param);
    }
 
    if (intr->intrinsic == nir_intrinsic_image_deref_atomic_swap) {
       param2 = get_src(ctx, &intr->src[4], &ptype);
       if (ptype != ntype) {
-         SpvId cast_type = get_dest_type(ctx, &intr->dest, ntype);
+         SpvId cast_type = get_def_type(ctx, &intr->dest.ssa, ntype);
          param2 = emit_bitcast(ctx, cast_type, param2);
       }
    }
@@ -3404,10 +3402,10 @@ emit_ballot(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySubgroupBallotKHR);
    spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_ballot");
-   SpvId type = get_dest_uvec_type(ctx, &intr->dest);
+   SpvId type = get_def_uvec_type(ctx, &intr->dest.ssa);
    nir_alu_type atype;
    SpvId result = emit_unop(ctx, SpvOpSubgroupBallotKHR, type, get_src(ctx, &intr->src[0], &atype));
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -3417,9 +3415,9 @@ emit_read_first_invocation(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_ballot");
    nir_alu_type atype;
    SpvId src = get_src(ctx, &intr->src[0], &atype);
-   SpvId type = get_dest_type(ctx, &intr->dest, atype);
+   SpvId type = get_def_type(ctx, &intr->dest.ssa, atype);
    SpvId result = emit_unop(ctx, SpvOpSubgroupFirstInvocationKHR, type, src);
-   store_dest(ctx, &intr->dest, result, atype);
+   store_def(ctx, &intr->dest.ssa, result, atype);
 }
 
 static void
@@ -3429,11 +3427,11 @@ emit_read_invocation(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_ballot");
    nir_alu_type atype, itype;
    SpvId src = get_src(ctx, &intr->src[0], &atype);
-   SpvId type = get_dest_type(ctx, &intr->dest, atype);
+   SpvId type = get_def_type(ctx, &intr->dest.ssa, atype);
    SpvId result = emit_binop(ctx, SpvOpSubgroupReadInvocationKHR, type,
                               src,
                               get_src(ctx, &intr->src[1], &itype));
-   store_dest(ctx, &intr->dest, result, atype);
+   store_def(ctx, &intr->dest.ssa, result, atype);
 }
 
 static void
@@ -3443,9 +3441,9 @@ emit_shader_clock(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_clock");
 
    SpvScope scope = get_scope(nir_intrinsic_memory_scope(intr));
-   SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+   SpvId type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
    SpvId result = spirv_builder_emit_unop_const(&ctx->builder, SpvOpReadClockKHR, type, scope);
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -3453,7 +3451,7 @@ emit_is_sparse_texels_resident(struct ntv_context *ctx, nir_intrinsic_instr *int
 {
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySparseResidency);
 
-   SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+   SpvId type = get_def_type(ctx, &intr->dest.ssa, nir_type_uint);
 
    /* this will always be stored with the ssa index of the parent instr */
    nir_def *ssa = intr->src[0].ssa;
@@ -3465,7 +3463,7 @@ emit_is_sparse_texels_resident(struct ntv_context *ctx, nir_intrinsic_instr *int
    SpvId resident = ctx->resident_defs[index];
 
    SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageSparseTexelsResident, type, resident);
-   store_dest(ctx, &intr->dest, result, nir_type_uint);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_uint);
 }
 
 static void
@@ -3490,7 +3488,7 @@ emit_vote(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilityGroupNonUniformVote);
    nir_alu_type atype;
    SpvId result = spirv_builder_emit_vote(&ctx->builder, op, get_src(ctx, &intr->src[0], &atype));
-   store_dest_raw(ctx, &intr->dest, result, nir_type_bool);
+   store_def_raw(ctx, &intr->dest.ssa, result, nir_type_bool);
 }
 
 static void
@@ -3499,7 +3497,7 @@ emit_is_helper_invocation(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_extension(&ctx->builder,
                                 "SPV_EXT_demote_to_helper_invocation");
    SpvId result = spirv_is_helper_invocation(&ctx->builder);
-   store_dest(ctx, &intr->dest, result, nir_type_bool);
+   store_def(ctx, &intr->dest.ssa, result, nir_type_bool);
 }
 
 static void
@@ -3758,7 +3756,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_load_workgroup_size:
       assert(ctx->local_group_size_var);
-      store_dest(ctx, &intr->dest, ctx->local_group_size_var, nir_type_uint);
+      store_def(ctx, &intr->dest.ssa, ctx->local_group_size_var, nir_type_uint);
       break;
 
    case nir_intrinsic_load_shared:
@@ -4033,7 +4031,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    if (tex->is_sparse)
       tex->dest.ssa.num_components--;
-   SpvId dest_type = get_dest_type(ctx, &tex->dest, tex->dest_type);
+   SpvId dest_type = get_def_type(ctx, &tex->dest.ssa, tex->dest_type);
 
    if (nir_tex_instr_is_query(tex))
       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageQuery);
@@ -4061,7 +4059,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       SpvId result = spirv_builder_emit_image_query_size(&ctx->builder,
                                                          dest_type, image,
                                                          lod);
-      store_dest(ctx, &tex->dest, result, tex->dest_type);
+      store_def(ctx, &tex->dest.ssa, result, tex->dest_type);
       return;
    }
    if (tex->op == nir_texop_query_levels) {
@@ -4070,7 +4068,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                     spirv_builder_emit_image(&ctx->builder, image_type, load);
       SpvId result = spirv_builder_emit_image_query_levels(&ctx->builder,
                                                          dest_type, image);
-      store_dest(ctx, &tex->dest, result, tex->dest_type);
+      store_def(ctx, &tex->dest.ssa, result, tex->dest_type);
       return;
    }
    if (tex->op == nir_texop_texture_samples) {
@@ -4079,7 +4077,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                     spirv_builder_emit_image(&ctx->builder, image_type, load);
       SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples,
                                              dest_type, image);
-      store_dest(ctx, &tex->dest, result, tex->dest_type);
+      store_def(ctx, &tex->dest.ssa, result, tex->dest_type);
       return;
    }
 
@@ -4109,7 +4107,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       SpvId result = spirv_builder_emit_image_query_lod(&ctx->builder,
                                                          dest_type, load,
                                                          coord);
-      store_dest(ctx, &tex->dest, result, tex->dest_type);
+      store_def(ctx, &tex->dest.ssa, result, tex->dest_type);
       return;
    }
    SpvId actual_dest_type;
@@ -4184,7 +4182,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    if (tex->is_sparse && tex->is_shadow)
       tex->dest.ssa.num_components++;
-   store_dest(ctx, &tex->dest, result, tex->dest_type);
+   store_def(ctx, &tex->dest.ssa, result, tex->dest_type);
    if (tex->is_sparse && !tex->is_shadow)
       tex->dest.ssa.num_components++;
 }
@@ -4246,7 +4244,7 @@ emit_deref_var(struct ntv_context *ctx, nir_deref_instr *deref)
    struct hash_entry *he = _mesa_hash_table_search(ctx->vars, deref->var);
    assert(he);
    SpvId result = (SpvId)(intptr_t)he->data;
-   store_dest_raw(ctx, &deref->dest, result, get_nir_alu_type(deref->type));
+   store_def_raw(ctx, &deref->dest.ssa, result, get_nir_alu_type(deref->type));
 }
 
 static void
@@ -4330,7 +4328,7 @@ emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
                                                   base,
                                                   &index, 1);
    /* uint is a bit of a lie here, it's really just an opaque type */
-   store_dest(ctx, &deref->dest, result, get_nir_alu_type(deref->type));
+   store_def(ctx, &deref->dest.ssa, result, get_nir_alu_type(deref->type));
 }
 
 static void
@@ -4356,7 +4354,7 @@ emit_deref_struct(struct ntv_context *ctx, nir_deref_instr *deref)
                                                   get_src(ctx, &deref->parent, &atype),
                                                   &index, 1);
    /* uint is a bit of a lie here, it's really just an opaque type */
-   store_dest(ctx, &deref->dest, result, get_nir_alu_type(deref->type));
+   store_def(ctx, &deref->dest.ssa, result, get_nir_alu_type(deref->type));
 }
 
 static void
