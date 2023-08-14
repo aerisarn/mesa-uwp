@@ -3419,14 +3419,10 @@ typedef struct nir_shader_compiler_options {
    bool lower_bitfield_reverse;
    /** Lowers bit_count to shifts. */
    bool lower_bit_count;
-   /** Lowers ifind_msb to compare and ufind_msb */
+   /** Lowers ifind_msb. */
    bool lower_ifind_msb;
-   /** Lowers ifind_msb and ufind_msb to reverse variants */
-   bool lower_find_msb_to_reverse;
-   /** Lowers ifind_msb to uclz and logic ops*/
-   bool lower_ifind_msb_to_uclz;
-   /** Lowers ufind_msb to 31-uclz */
-   bool lower_ufind_msb_to_uclz;
+   /** Lowers ufind_msb. */
+   bool lower_ufind_msb;
    /** Lowers find_lsb to ufind_msb and logic ops */
    bool lower_find_lsb;
    bool lower_uadd_carry;
@@ -3630,11 +3626,6 @@ typedef struct nir_shader_compiler_options {
    bool lower_mul_32x16;
 
    /**
-    * Set if uclz should be lowered to find_msb_rev.
-    */
-   bool lower_uclz;
-
-   /**
     * Should IO be re-vectorized?  Some scalar ISAs still operate on vec4's
     * for IO purposes and would prefer loads/stores be vectorized.
     */
@@ -3753,6 +3744,9 @@ typedef struct nir_shader_compiler_options {
 
    /** Backend supports bitfield_select. */
    bool has_bitfield_select;
+
+   /** Backend supports uclz. */
+   bool has_uclz;
 
    /**
     * Is this the Intel vec4 backend?

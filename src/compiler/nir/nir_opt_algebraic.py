@@ -1855,18 +1855,18 @@ optimizations.extend([
    (('bcsel', ('ine', 'a@32', 0), ('iadd', 31, ('ineg', ('ufind_msb', a))), ('ufind_msb', a)), ('ufind_msb_rev', a), 'options->has_find_msb_rev'),
    (('bcsel', ('ieq', 'a@32', 0), ('ufind_msb', a), ('iadd', 31, ('ineg', ('ufind_msb', a)))), ('ufind_msb_rev', a), 'options->has_find_msb_rev'),
 
-   (('bcsel', ('ine', ('ifind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ifind_msb_rev', a))), -1), ('ifind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ine', ('ufind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), -1), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ieq', ('ifind_msb_rev', 'a@32'), -1), -1, ('iadd', 31, ('ineg', ('ifind_msb_rev', a)))), ('ifind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ieq', ('ufind_msb_rev', 'a@32'), -1), -1, ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ine', ('ifind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ifind_msb_rev', a))), ('ifind_msb_rev', a)), ('ifind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ine', ('ufind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), ('ufind_msb_rev', a)), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ieq', ('ifind_msb_rev', 'a@32'), -1), ('ifind_msb_rev', a), ('iadd', 31, ('ineg', ('ifind_msb_rev', a)))), ('ifind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ieq', ('ufind_msb_rev', 'a@32'), -1), ('ufind_msb_rev', a), ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ine', 'a@32', 0), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), -1), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ieq', 'a@32', 0), -1, ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ine', 'a@32', 0), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), ('ufind_msb_rev', a)), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
-   (('bcsel', ('ieq', 'a@32', 0), ('ufind_msb_rev', a), ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_find_msb_to_reverse'),
+   (('bcsel', ('ine', ('ifind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ifind_msb_rev', a))), -1), ('ifind_msb', a), '!options->lower_ifind_msb'),
+   (('bcsel', ('ine', ('ufind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), -1), ('ufind_msb', a), '!options->lower_ufind_msb'),
+   (('bcsel', ('ieq', ('ifind_msb_rev', 'a@32'), -1), -1, ('iadd', 31, ('ineg', ('ifind_msb_rev', a)))), ('ifind_msb', a), '!options->lower_ifind_msb'),
+   (('bcsel', ('ieq', ('ufind_msb_rev', 'a@32'), -1), -1, ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_ufind_msb'),
+   (('bcsel', ('ine', ('ifind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ifind_msb_rev', a))), ('ifind_msb_rev', a)), ('ifind_msb', a), '!options->lower_ifind_msb'),
+   (('bcsel', ('ine', ('ufind_msb_rev', 'a@32'), -1), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), ('ufind_msb_rev', a)), ('ufind_msb', a), '!options->lower_ufind_msb'),
+   (('bcsel', ('ieq', ('ifind_msb_rev', 'a@32'), -1), ('ifind_msb_rev', a), ('iadd', 31, ('ineg', ('ifind_msb_rev', a)))), ('ifind_msb', a), '!options->lower_ifind_msb'),
+   (('bcsel', ('ieq', ('ufind_msb_rev', 'a@32'), -1), ('ufind_msb_rev', a), ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_ufind_msb'),
+   (('bcsel', ('ine', 'a@32', 0), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), -1), ('ufind_msb', a), '!options->lower_ufind_msb'),
+   (('bcsel', ('ieq', 'a@32', 0), -1, ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_ufind_msb'),
+   (('bcsel', ('ine', 'a@32', 0), ('iadd', 31, ('ineg', ('ufind_msb_rev', a))), ('ufind_msb_rev', a)), ('ufind_msb', a), '!options->lower_ufind_msb'),
+   (('bcsel', ('ieq', 'a@32', 0), ('ufind_msb_rev', a), ('iadd', 31, ('ineg', ('ufind_msb_rev', a)))), ('ufind_msb', a), '!options->lower_ufind_msb'),
 
    # This is safe. Both ufind_msb_rev and bitfield_reverse can only have
    # 32-bit sources, so the transformation can only generate correct NIR.
@@ -2068,13 +2068,13 @@ optimizations.extend([
 
    (('ifind_msb', 'value'),
     ('ufind_msb', ('bcsel', ('ilt', 'value', 0), ('inot', 'value'), 'value')),
-    'options->lower_ifind_msb'),
+    'options->lower_ifind_msb && !options->has_find_msb_rev && !options->has_uclz'),
 
    (('ifind_msb', 'value'),
     ('bcsel', ('ige', ('ifind_msb_rev', 'value'), 0),
      ('isub', 31, ('ifind_msb_rev', 'value')),
      ('ifind_msb_rev', 'value')),
-    'options->lower_find_msb_to_reverse'),
+    'options->lower_ifind_msb && options->has_find_msb_rev'),
 
    # uclz of an absolute value source almost always does the right thing.
    # There are a couple problem values:
@@ -2096,19 +2096,19 @@ optimizations.extend([
    # be achieved by (x ^ (x >> 31)).
    (('ifind_msb', 'value'),
     ('isub', 31, ('uclz', ('ixor', 'value', ('ishr', 'value', 31)))),
-    'options->lower_ifind_msb_to_uclz'),
+    'options->lower_ifind_msb && options->has_uclz'),
 
    (('ufind_msb', 'value@32'),
     ('bcsel', ('ige', ('ufind_msb_rev', 'value'), 0),
      ('isub', 31, ('ufind_msb_rev', 'value')),
      ('ufind_msb_rev', 'value')),
-    'options->lower_find_msb_to_reverse'),
+    'options->lower_ufind_msb && options->has_find_msb_rev'),
 
    (('ufind_msb', 'value@32'),
     ('isub', 31, ('uclz', 'value')),
-    'options->lower_ufind_msb_to_uclz'),
+    'options->lower_ufind_msb && options->has_uclz'),
 
-   (('uclz', a), ('umin', 32, ('ufind_msb_rev', a)), 'options->lower_uclz'),
+   (('uclz', a), ('umin', 32, ('ufind_msb_rev', a)), '!options->has_uclz && options->has_find_msb_rev'),
 
    (('find_lsb', 'value@64'),
     ('ufind_msb', ('iand', 'value', ('ineg', 'value'))),

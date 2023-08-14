@@ -29,11 +29,12 @@
 #include "util/u_debug.h"
 
 #define COMMON_OPTIONS                                                        \
+   .has_uclz = true,                                                          \
    .lower_fdiv = true,                                                        \
    .lower_scmp = true,                                                        \
    .lower_flrp16 = true,                                                      \
    .lower_fmod = true,                                                        \
-   .lower_ufind_msb_to_uclz = true,                                           \
+   .lower_ufind_msb = true,                                                   \
    .lower_uadd_carry = true,                                                  \
    .lower_usub_borrow = true,                                                 \
    .lower_flrp64 = true,                                                      \
@@ -191,7 +192,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
       nir_options->lower_rotate = devinfo->ver < 11;
       nir_options->lower_bitfield_reverse = devinfo->ver < 7;
       nir_options->lower_find_lsb = devinfo->ver < 7;
-      nir_options->lower_ifind_msb_to_uclz = devinfo->ver < 7;
+      nir_options->lower_ifind_msb = devinfo->ver < 7;
       nir_options->has_iadd3 = devinfo->verx10 >= 125;
 
       nir_options->has_sdot_4x8 = devinfo->ver >= 12;
