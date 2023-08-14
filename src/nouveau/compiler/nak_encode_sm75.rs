@@ -1437,18 +1437,18 @@ impl SM75Instr {
 
         self.set_field(
             76..78,
-            match op.freq {
-                InterpFreq::Pass => 0_u8,
-                InterpFreq::Constant => 1_u8,
-                InterpFreq::State => 2_u8,
-            },
-        );
-        self.set_field(
-            78..80,
             match op.loc {
                 InterpLoc::Default => 0_u8,
                 InterpLoc::Centroid => 1_u8,
                 InterpLoc::Offset => 2_u8,
+            },
+        );
+        self.set_field(
+            78..80,
+            match op.freq {
+                InterpFreq::Pass => 0_u8,
+                InterpFreq::Constant => 1_u8,
+                InterpFreq::State => 2_u8,
             },
         );
 
