@@ -997,56 +997,75 @@ struct nir_src;
 struct nir_if;
 
 typedef struct nir_src {
-   union {
-      /** Instruction that consumes this value as a source. */
-      nir_instr *renamed_parent_instr;
-      struct nir_if *parent_if;
-   };
+   /* Instruction or if-statement that consumes this value as a source. This
+    * should only be accessed through nir_src_* helpers.
+    *
+    * Internally, it is a tagged pointer to a nir_instr or nir_if.
+    */
+   uintptr_t _parent;
 
    struct list_head use_link;
    nir_def *ssa;
-
-   bool is_if;
 } nir_src;
+
+/* Layout of the _parent pointer. Bottom bit is set for nir_if parents (clear
+ * for nir_instr parents). Remaining bits are the pointer.
+ */
+#define NIR_SRC_PARENT_IS_IF (0x1)
+#define NIR_SRC_PARENT_MASK (~((uintptr_t) NIR_SRC_PARENT_IS_IF))
 
 static inline bool
 nir_src_is_if(const nir_src *src)
 {
-   return src->is_if;
+   return src->_parent & NIR_SRC_PARENT_IS_IF;
 }
 
 static inline nir_instr *
 nir_src_parent_instr(const nir_src *src)
 {
    assert(!nir_src_is_if(src));
-   return src->renamed_parent_instr;
+
+   /* Because it is not an if, the tag is 0, therefore we do not need to mask */
+   return (nir_instr *)(src->_parent);
 }
 
 static inline struct nir_if *
 nir_src_parent_if(const nir_src *src)
 {
    assert(nir_src_is_if(src));
-   return src->parent_if;
+
+   /* Because it is an if, the tag is 1, so we need to mask */
+   return (struct nir_if *)(src->_parent & NIR_SRC_PARENT_MASK);
+}
+
+static inline void
+_nir_src_set_parent(nir_src *src, void *parent, bool is_if)
+{
+    uintptr_t ptr = (uintptr_t) parent;
+    assert((ptr & ~NIR_SRC_PARENT_MASK) == 0 && "pointer must be aligned");
+
+    if (is_if)
+       ptr |= NIR_SRC_PARENT_IS_IF;
+
+    src->_parent = ptr;
 }
 
 static inline void
 nir_src_set_parent_instr(nir_src *src, nir_instr *parent_instr)
 {
-   src->is_if = false;
-   src->renamed_parent_instr = parent_instr;
+   _nir_src_set_parent(src, parent_instr, false);
 }
 
 static inline void
 nir_src_set_parent_if(nir_src *src, struct nir_if *parent_if)
 {
-   src->is_if = true;
-   src->parent_if = parent_if;
+   _nir_src_set_parent(src, parent_if, true);
 }
 
 static inline nir_src
 nir_src_init(void)
 {
-   nir_src src = { { NULL } };
+   nir_src src = { 0 };
    return src;
 }
 
