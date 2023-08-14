@@ -466,21 +466,21 @@ agx_src_index(nir_src *src)
 }
 
 static inline agx_index
-agx_dest_index(nir_dest *dst)
+agx_def_index(nir_def *def)
 {
-   return agx_nir_ssa_index(&dst->ssa);
+   return agx_nir_ssa_index(def);
 }
 
 static inline agx_index
-agx_vec_for_dest(agx_context *ctx, nir_dest *dest)
+agx_vec_for_def(agx_context *ctx, nir_def *def)
 {
-   return agx_temp(ctx, agx_size_for_bits(nir_dest_bit_size(*dest)));
+   return agx_temp(ctx, agx_size_for_bits(def->bit_size));
 }
 
 static inline agx_index
 agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
 {
-   return agx_vec_for_dest(ctx, &instr->dest);
+   return agx_vec_for_def(ctx, &instr->dest.ssa);
 }
 
 static inline unsigned

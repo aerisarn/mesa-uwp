@@ -798,10 +798,10 @@ agx_txf_sampler(agx_context *ctx)
 }
 
 static unsigned
-agx_expand_tex_to(agx_builder *b, nir_dest *dest, agx_index src, bool masked)
+agx_expand_tex_to(agx_builder *b, nir_def *def, agx_index src, bool masked)
 {
-   unsigned nr_channels = nir_dest_num_components(*dest);
-   nir_component_mask_t mask = nir_def_components_read(&dest->ssa);
+   unsigned nr_channels = def->num_components;
+   nir_component_mask_t mask = nir_def_components_read(def);
 
    if (!masked)
       mask = (nir_component_mask_t)BITFIELD_MASK(nr_channels);
@@ -819,7 +819,7 @@ agx_expand_tex_to(agx_builder *b, nir_dest *dest, agx_index src, bool masked)
             : agx_undef(src.size);
    }
 
-   agx_emit_collect_to(b, agx_dest_index(dest), nr_channels, unpacked_channels);
+   agx_emit_collect_to(b, agx_def_index(def), nr_channels, unpacked_channels);
    return mask;
 }
 
@@ -875,7 +875,7 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
    agx_instr *I = agx_image_load_to(
       b, tmp, coords, lod, bindless, texture, agx_txf_sampler(b->shader),
       agx_null(), agx_tex_dim(dim, is_array), lod_mode, 0, 0, false);
-   I->mask = agx_expand_tex_to(b, &intr->dest, tmp, true);
+   I->mask = agx_expand_tex_to(b, &intr->dest.ssa, tmp, true);
    return NULL;
 }
 
@@ -937,7 +937,7 @@ static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
    agx_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest
-                      ? agx_dest_index(&instr->dest)
+                      ? agx_def_index(&instr->dest.ssa)
                       : agx_null();
    gl_shader_stage stage = b->shader->stage;
 
@@ -1236,7 +1236,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
            sz == 8) ||
           sz == 16 || sz == 32 || sz == 64);
 
-   agx_index dst = agx_dest_index(&instr->dest.dest);
+   agx_index dst = agx_def_index(&instr->dest.dest.ssa);
    agx_index s0 = srcs > 0 ? agx_alu_src_index(b, instr->src[0]) : agx_null();
    agx_index s1 = srcs > 1 ? agx_alu_src_index(b, instr->src[1]) : agx_null();
    agx_index s2 = srcs > 2 ? agx_alu_src_index(b, instr->src[2]) : agx_null();
@@ -1664,7 +1664,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       }
    }
 
-   agx_index dst = agx_dest_index(&instr->dest);
+   agx_index dst = agx_def_index(&instr->dest.ssa);
 
    /* Pack shadow reference value (compare) and packed offset together */
    agx_index compare_offset = agx_null();
@@ -1691,7 +1691,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
     * textureGatherOffsets. Don't try to mask the destination for gathers.
     */
    bool masked = (instr->op != nir_texop_tg4);
-   I->mask = agx_expand_tex_to(b, &instr->dest, tmp, masked);
+   I->mask = agx_expand_tex_to(b, &instr->dest.ssa, tmp, masked);
 }
 
 /*
@@ -1755,7 +1755,7 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 static void
 agx_emit_phi(agx_builder *b, nir_phi_instr *instr)
 {
-   agx_instr *I = agx_phi_to(b, agx_dest_index(&instr->dest),
+   agx_instr *I = agx_phi_to(b, agx_def_index(&instr->dest.ssa),
                              exec_list_length(&instr->srcs));
 
    /* Deferred */
