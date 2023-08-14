@@ -961,6 +961,11 @@ zink_begin_query(struct pipe_context *pctx,
    /* drop all past results */
    reset_qbo(query);
 
+   if (query->vkqtype == VK_QUERY_TYPE_OCCLUSION)
+      ctx->occlusion_query_active = true;
+   if (query->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && query->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
+      ctx->fs_query_active = true;
+
    query->predicate_dirty = true;
 
    util_dynarray_clear(&query->starts);
@@ -1055,6 +1060,11 @@ zink_end_query(struct pipe_context *pctx,
 
    /* FIXME: this can be called from a thread, but it needs to write to the cmdbuf */
    threaded_context_unwrap_sync(pctx);
+
+   if (query->vkqtype == VK_QUERY_TYPE_OCCLUSION)
+      ctx->occlusion_query_active = true;
+   if (query->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && query->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
+      ctx->fs_query_active = true;
 
    if (list_is_linked(&query->stats_list))
       list_delinit(&query->stats_list);

@@ -1881,6 +1881,8 @@ struct zink_context {
    struct zink_query *vertices_query;
    bool disable_color_writes;
    bool was_line_loop;
+   bool fs_query_active;
+   bool occlusion_query_active;
    bool primitives_generated_active;
    bool primitives_generated_suspended;
    bool queries_disabled, render_condition_active;
