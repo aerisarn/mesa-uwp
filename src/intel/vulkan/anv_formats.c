@@ -781,7 +781,7 @@ anv_get_image_format_features2(const struct anv_physical_device *physical_device
       }
 
       if (isl_drm_modifier_has_aux(isl_mod_info->modifier) &&
-          !isl_format_supports_ccs_e(devinfo, plane_format.isl_format)) {
+          !anv_format_supports_ccs_e(devinfo, plane_format.isl_format)) {
          return 0;
       }
 

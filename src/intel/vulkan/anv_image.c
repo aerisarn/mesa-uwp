@@ -442,7 +442,7 @@ formats_ccs_e_compatible(const struct intel_device_info *devinfo,
                          VkImageUsageFlags vk_usage,
                          const VkImageFormatListCreateInfo *fmt_list)
 {
-   if (!isl_format_supports_ccs_e(devinfo, format))
+   if (!anv_format_supports_ccs_e(devinfo, format))
       return false;
 
    /* For images created without MUTABLE_FORMAT_BIT set, we know that they will
@@ -469,6 +469,19 @@ formats_ccs_e_compatible(const struct intel_device_info *devinfo,
    }
 
    return true;
+}
+
+bool
+anv_format_supports_ccs_e(const struct intel_device_info *devinfo,
+                          const enum isl_format format)
+{
+   /* CCS_E for YCRCB_NORMAL and YCRCB_SWAP_UV is not currently supported by
+    * ANV so leave it disabled for now.
+    */
+   if (isl_format_is_yuv(format))
+      return false;
+
+   return isl_format_supports_ccs_e(devinfo, format);
 }
 
 bool
