@@ -2205,7 +2205,9 @@ static uint64_t trace_context_create_texture_handle(struct pipe_context *_pipe,
 
    handle = pipe->create_texture_handle(pipe, view, state);
 
-   trace_dump_ret(uint, handle);
+   uintptr_t *texture_handle = (uintptr_t*)(uintptr_t)handle;
+   trace_dump_ret(ptr, texture_handle);
+
    trace_dump_call_end();
 
    return handle;
@@ -2219,7 +2221,8 @@ static void trace_context_delete_texture_handle(struct pipe_context *_pipe,
 
    trace_dump_call_begin("pipe_context", "delete_texture_handle");
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(uint, handle);
+   uintptr_t *texture_handle = (uintptr_t*)(uintptr_t)handle;
+   trace_dump_ret(ptr, texture_handle);
    trace_dump_call_end();
 
    pipe->delete_texture_handle(pipe, handle);
@@ -2234,7 +2237,8 @@ static void trace_context_make_texture_handle_resident(struct pipe_context *_pip
 
    trace_dump_call_begin("pipe_context", "make_texture_handle_resident");
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(uint, handle);
+   uintptr_t *texture_handle = (uintptr_t*)(uintptr_t)handle;
+   trace_dump_ret(ptr, texture_handle);
    trace_dump_arg(bool, resident);
    trace_dump_call_end();
 
@@ -2256,7 +2260,8 @@ static uint64_t trace_context_create_image_handle(struct pipe_context *_pipe,
 
    handle = pipe->create_image_handle(pipe, image);
 
-   trace_dump_ret(uint, handle);
+   uintptr_t *image_handle = (uintptr_t*)(uintptr_t)handle;
+   trace_dump_ret(ptr, image_handle);
    trace_dump_call_end();
 
    return handle;
@@ -2270,7 +2275,8 @@ static void trace_context_delete_image_handle(struct pipe_context *_pipe,
 
    trace_dump_call_begin("pipe_context", "delete_image_handle");
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(uint, handle);
+   uintptr_t *image_handle = (uintptr_t*)(uintptr_t)handle;
+   trace_dump_ret(ptr, image_handle);
    trace_dump_call_end();
 
    pipe->delete_image_handle(pipe, handle);
@@ -2286,7 +2292,8 @@ static void trace_context_make_image_handle_resident(struct pipe_context *_pipe,
 
    trace_dump_call_begin("pipe_context", "make_image_handle_resident");
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(uint, handle);
+   uintptr_t *image_handle = (uintptr_t*)(uintptr_t)handle;
+   trace_dump_ret(ptr, image_handle);
    trace_dump_arg(uint, access);
    trace_dump_arg(bool, resident);
    trace_dump_call_end();
