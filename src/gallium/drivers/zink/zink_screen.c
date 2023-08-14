@@ -2472,8 +2472,11 @@ init_driver_workarounds(struct zink_screen *screen)
        zink_debug & (ZINK_DEBUG_COMPACT | ZINK_DEBUG_NOSHOBJ))
       screen->info.have_EXT_shader_object = false;
    /* EDS2 is only used with EDS1 */
-   if (!screen->info.have_EXT_extended_dynamic_state)
+   if (!screen->info.have_EXT_extended_dynamic_state) {
       screen->info.have_EXT_extended_dynamic_state2 = false;
+      /* CWE usage needs EDS1 */
+      screen->info.have_EXT_color_write_enable = false;
+   }
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
       /* this completely breaks xfb somehow */
       screen->info.have_EXT_extended_dynamic_state2 = false;
