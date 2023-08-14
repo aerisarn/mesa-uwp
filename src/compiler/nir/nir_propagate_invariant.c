@@ -37,9 +37,9 @@ add_src_cb(nir_src *src, void *state)
 }
 
 static bool
-dest_is_invariant(nir_dest *dest, struct set *invariants)
+def_is_invariant(nir_def *def, struct set *invariants)
 {
-   return _mesa_set_search(invariants, &dest->ssa);
+   return _mesa_set_search(invariants, def);
 }
 
 static void
@@ -81,7 +81,7 @@ propagate_invariant_instr(nir_instr *instr, struct set *invariants)
    switch (instr->type) {
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
-      if (!dest_is_invariant(&alu->dest.dest, invariants))
+      if (!def_is_invariant(&alu->dest.dest.ssa, invariants))
          break;
 
       alu->exact = true;
@@ -91,7 +91,7 @@ propagate_invariant_instr(nir_instr *instr, struct set *invariants)
 
    case nir_instr_type_tex: {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
-      if (dest_is_invariant(&tex->dest, invariants))
+      if (def_is_invariant(&tex->dest.ssa, invariants))
          nir_foreach_src(instr, add_src_cb, invariants);
       break;
    }
@@ -106,7 +106,7 @@ propagate_invariant_instr(nir_instr *instr, struct set *invariants)
          break;
 
       case nir_intrinsic_load_deref:
-         if (dest_is_invariant(&intrin->dest, invariants))
+         if (def_is_invariant(&intrin->dest.ssa, invariants))
             add_var(nir_intrinsic_get_var(intrin, 0), invariants);
          break;
 
@@ -130,7 +130,7 @@ propagate_invariant_instr(nir_instr *instr, struct set *invariants)
 
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      if (!dest_is_invariant(&phi->dest, invariants))
+      if (!def_is_invariant(&phi->dest.ssa, invariants))
          break;
 
       nir_foreach_phi_src(src, phi) {
