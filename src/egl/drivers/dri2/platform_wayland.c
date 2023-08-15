@@ -2416,8 +2416,8 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
 
       /* wait for the compositor to release a buffer */
       if (!dri2_surf->back) {
-         if (wl_display_dispatch_queue(dri2_dpy->wl_dpy, dri2_surf->wl_queue) ==
-             -1) {
+         bool error = zink || wl_display_dispatch_queue(dri2_dpy->wl_dpy, dri2_surf->wl_queue) == -1;
+         if (error) {
             _eglError(EGL_BAD_ALLOC, "waiting for a free buffer failed");
             return -1;
          }
