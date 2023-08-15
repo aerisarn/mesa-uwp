@@ -6792,6 +6792,9 @@ fs_visitor::allocate_registers(bool allow_spilling)
       [SCHEDULE_NONE] = "none",
    };
 
+   uint32_t best_register_pressure = UINT32_MAX;
+   enum instruction_scheduler_mode best_sched = SCHEDULE_NONE;
+
    compact_virtual_grfs();
 
    if (needs_register_pressure)
@@ -6806,6 +6809,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
     * prevent dependencies between the different scheduling modes.
     */
    fs_inst **orig_order = save_instruction_order(cfg);
+   fs_inst **best_pressure_order = NULL;
 
    /* Try each scheduling heuristic to see if it can successfully register
     * allocate without spilling.  They should be ordered by decreasing
@@ -6813,12 +6817,6 @@ fs_visitor::allocate_registers(bool allow_spilling)
     */
    for (unsigned i = 0; i < ARRAY_SIZE(pre_modes); i++) {
       enum instruction_scheduler_mode sched_mode = pre_modes[i];
-
-      if (i > 0) {
-         /* Unless we're the first pass, reset back to the original order */
-         restore_instruction_order(cfg, orig_order);
-         invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
-      }
 
       schedule_instructions(sched_mode);
       this->shader_stats.scheduler_mode = scheduler_mode_name[sched_mode];
@@ -6829,18 +6827,46 @@ fs_visitor::allocate_registers(bool allow_spilling)
          break;
       }
 
-      bool can_spill = allow_spilling &&
-                       (i == ARRAY_SIZE(pre_modes) - 1);
-
       /* We should only spill registers on the last scheduling. */
       assert(!spilled_any_registers);
 
-      allocated = assign_regs(can_spill, spill_all);
+      allocated = assign_regs(false, spill_all);
       if (allocated)
          break;
+
+      /* Save the maximum register pressure */
+      uint32_t this_pressure = compute_max_register_pressure();
+
+      if (0) {
+         fprintf(stderr, "Scheduler mode \"%s\" spilled, max pressure = %u\n",
+                 scheduler_mode_name[sched_mode], this_pressure);
+      }
+
+      if (this_pressure < best_register_pressure) {
+         best_register_pressure = this_pressure;
+         best_sched = sched_mode;
+         delete[] best_pressure_order;
+         best_pressure_order = save_instruction_order(cfg);
+      }
+
+      /* Reset back to the original order before trying the next mode */
+      restore_instruction_order(cfg, orig_order);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
+   }
+
+   if (!allocated) {
+      if (0) {
+         fprintf(stderr, "Spilling - using lowest-pressure mode \"%s\"\n",
+                 scheduler_mode_name[best_sched]);
+      }
+      restore_instruction_order(cfg, best_pressure_order);
+      shader_stats.scheduler_mode = scheduler_mode_name[best_sched];
+
+      allocated = assign_regs(allow_spilling, spill_all);
    }
 
    delete[] orig_order;
+   delete[] best_pressure_order;
 
    if (!allocated) {
       fail("Failure to register allocate.  Reduce number of "
