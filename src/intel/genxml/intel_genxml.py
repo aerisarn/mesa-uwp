@@ -105,7 +105,7 @@ def node_validator(old: et.Element, new: et.Element) -> bool:
         # Check that the attributes are the same
         old.tag == new.tag and
         old.text == new.text and
-        old.tail == new.tail and
+        (old.tail or "").strip() == (new.tail or "").strip() and
         list(old.attrib.items()) == list(new.attrib.items()) and
         len(old) == len(new) and
 
