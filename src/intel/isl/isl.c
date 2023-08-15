@@ -2846,6 +2846,10 @@ isl_surf_supports_ccs(const struct isl_device *dev,
       return false;
    }
 
+   /* TODO: add CCS support for Ys/Yf */
+   if (isl_tiling_is_std_y(surf->tiling))
+      return false;
+
    if (ISL_GFX_VER(dev) >= 12) {
       if (isl_surf_usage_is_stencil(surf->usage)) {
          /* HiZ and MCS aren't allowed with stencil */
