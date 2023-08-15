@@ -72,7 +72,7 @@ opt_undef_csel(nir_alu_instr *instr)
 static bool
 opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
 {
-   if (!nir_op_is_vec(alu->op))
+   if (!nir_op_is_vec_or_mov(alu->op))
       return false;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
@@ -103,7 +103,7 @@ nir_get_undef_mask(nir_def *def)
    unsigned undef = 0;
 
    /* nir_op_mov of undef is handled by opt_undef_vecN() */
-   if (nir_op_is_vec(alu->op) && alu->op != nir_op_mov) {
+   if (nir_op_is_vec(alu->op)) {
       for (int i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
          if (alu->src[i].src.ssa->parent_instr->type ==
              nir_instr_type_undef) {

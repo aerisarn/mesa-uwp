@@ -570,9 +570,6 @@ ntt_extract_const_src_offset(nir_src *src)
       /* We'd like to reuse nir_scalar_chase_movs(), but it assumes SSA and that
        * seems reasonable for something used in inner loops of the compiler.
        */
-      if (!nir_alu_instr_is_copy(alu))
-         return 0;
-
       if (alu->op == nir_op_mov) {
          s.def = alu->src[0].src.ssa;
          s.comp = alu->src[0].swizzle[s.comp];

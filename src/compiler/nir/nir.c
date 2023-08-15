@@ -2597,9 +2597,9 @@ nir_chase_binding(nir_src rsrc)
    }
 
    /* Skip copies and trimming. Trimming can appear as nir_op_mov instructions
-    * when removing the offset from addresses. We also consider nir_op_is_vec()
-    * instructions to skip trimming of vec2_index_32bit_offset addresses after
-    * lowering ALU to scalar.
+    * when removing the offset from addresses. We also consider
+    * nir_op_is_vec_or_mov() instructions to skip trimming of
+    * vec2_index_32bit_offset addresses after lowering ALU to scalar.
     */
    unsigned num_components = nir_src_num_components(rsrc);
    while (true) {
@@ -2708,12 +2708,6 @@ nir_get_binding_variable(nir_shader *shader, nir_binding binding)
    return binding_var;
 }
 
-bool
-nir_alu_instr_is_copy(nir_alu_instr *instr)
-{
-   return nir_op_is_vec(instr->op);
-}
-
 nir_scalar
 nir_scalar_chase_movs(nir_scalar s)
 {
@@ -2792,10 +2786,10 @@ nir_get_glsl_base_type_for_nir_type(nir_alu_type base_type)
 }
 
 nir_op
-nir_op_vec(unsigned components)
+nir_op_vec(unsigned num_components)
 {
    /* clang-format off */
-   switch (components) {
+   switch (num_components) {
    case  1: return nir_op_mov;
    case  2: return nir_op_vec2;
    case  3: return nir_op_vec3;
@@ -2812,7 +2806,6 @@ bool
 nir_op_is_vec(nir_op op)
 {
    switch (op) {
-   case nir_op_mov:
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:

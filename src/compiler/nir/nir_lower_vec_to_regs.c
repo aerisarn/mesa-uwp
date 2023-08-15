@@ -195,7 +195,7 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
       return false;
 
    nir_alu_instr *vec = nir_instr_as_alu(instr);
-   if (vec->op == nir_op_mov || !nir_op_is_vec(vec->op))
+   if (!nir_op_is_vec(vec->op))
       return false;
 
    unsigned num_components = vec->def.num_components;

@@ -128,7 +128,7 @@ copy_prop_instr(nir_instr *instr)
 
    nir_alu_instr *mov = nir_instr_as_alu(instr);
 
-   if (!nir_alu_instr_is_copy(mov))
+   if (!nir_op_is_vec_or_mov(mov->op))
       return false;
 
    bool progress = false;

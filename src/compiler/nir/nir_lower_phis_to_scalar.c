@@ -61,7 +61,7 @@ is_phi_src_scalarizable(nir_phi_src *src,
        * are ok too.
        */
       return nir_op_infos[src_alu->op].output_size == 0 ||
-             nir_op_is_vec(src_alu->op);
+             nir_op_is_vec_or_mov(src_alu->op);
    }
 
    case nir_instr_type_phi:

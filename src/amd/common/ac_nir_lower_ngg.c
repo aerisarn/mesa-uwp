@@ -793,7 +793,7 @@ remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
 
    if (store_val->parent_instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(store_val->parent_instr);
-      if (nir_op_is_vec(alu->op)) {
+      if (nir_op_is_vec_or_mov(alu->op)) {
          /* Output store uses a vector, we can easily rewrite uses of each vector element. */
 
          unsigned num_vec_src = 0;

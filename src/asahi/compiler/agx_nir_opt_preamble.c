@@ -39,7 +39,7 @@ instr_cost(nir_instr *instr, const void *data)
 
    case nir_instr_type_alu:
       /* We optimistically assume that moves get coalesced */
-      if (nir_op_is_vec(nir_instr_as_alu(instr)->op))
+      if (nir_op_is_vec_or_mov(nir_instr_as_alu(instr)->op))
          return 0.0;
       else
          return 2.0;

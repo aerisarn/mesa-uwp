@@ -6119,7 +6119,7 @@ lower_bit_size_callback(const nir_instr* instr, void *data)
    if (nir_op_infos[alu->op].is_conversion)
       return 0;
 
-   if (nir_alu_instr_is_copy(alu))
+   if (nir_op_is_vec_or_mov(alu->op))
       return 0;
 
    unsigned num_inputs = nir_op_infos[alu->op].num_inputs;

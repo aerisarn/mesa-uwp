@@ -1231,11 +1231,34 @@ nir_atomic_op_type(nir_atomic_op op)
    unreachable("Invalid nir_atomic_op");
 }
 
+/** Returns nir_op_vec<num_components> or nir_op_mov if num_components == 1
+ *
+ * This is subtly different from nir_op_is_vec() which returns false for
+ * nir_op_mov.  Returning nir_op_mov from nir_op_vec() when num_components == 1
+ * makes sense under the assumption that the num_components of the resulting
+ * nir_def will same as what is passed in here because a single-component mov
+ * is effectively a vec1.  However, if alu->def.num_components > 1, nir_op_mov
+ * has different semantics from nir_op_vec* so so code which detects "is this
+ * a vec?" typically needs to handle nir_op_mov separate from nir_op_vecN.
+ *
+ * In the unlikely case where you can handle nir_op_vecN and nir_op_mov
+ * together, use nir_op_is_vec_or_mov().
+ */
 nir_op
-nir_op_vec(unsigned components);
+nir_op_vec(unsigned num_components);
 
+/** Returns true if this op is one of nir_op_vec*
+ *
+ * Returns false for nir_op_mov.  See nir_op_vec() for more details.
+ */
 bool
 nir_op_is_vec(nir_op op);
+
+static inline bool
+nir_op_is_vec_or_mov(nir_op op)
+{
+   return op == nir_op_mov || nir_op_is_vec(op);
+}
 
 static inline bool
 nir_is_float_control_signed_zero_inf_nan_preserve(unsigned execution_mode, unsigned bit_size)
@@ -1448,8 +1471,6 @@ typedef struct nir_alu_instr {
 
 void nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
                       nir_alu_instr *instr);
-
-bool nir_alu_instr_is_copy(nir_alu_instr *instr);
 
 /* is this source channel used? */
 bool

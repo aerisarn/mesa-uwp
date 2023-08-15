@@ -1948,7 +1948,7 @@ vec_src_comp_as_int(nir_src src, unsigned comp)
       return nir_src_comp_as_int(src, comp);
 
    nir_scalar s = { src.ssa, comp };
-   assert(nir_op_is_vec(nir_scalar_alu_op(s)));
+   assert(nir_op_is_vec_or_mov(nir_scalar_alu_op(s)));
    return nir_scalar_as_int(nir_scalar_chase_alu_src(s, comp));
 }
 
