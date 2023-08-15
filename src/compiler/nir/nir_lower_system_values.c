@@ -604,7 +604,7 @@ lower_compute_system_value_instr(nir_builder *b,
       if (!b->shader->info.workgroup_size_variable && is_zero) {
          nir_scalar defs[3];
          for (unsigned i = 0; i < 3; i++) {
-            defs[i] = is_zero & (1 << i) ? nir_get_ssa_scalar(nir_imm_zero(b, 1, 32), 0) : nir_get_ssa_scalar(&intrin->def, i);
+            defs[i] = is_zero & (1 << i) ? nir_get_scalar(nir_imm_zero(b, 1, 32), 0) : nir_get_scalar(&intrin->def, i);
          }
          return nir_vec_scalars(b, defs, 3);
       }

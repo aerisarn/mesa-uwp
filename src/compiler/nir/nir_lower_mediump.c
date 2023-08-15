@@ -803,14 +803,14 @@ fold_16bit_src(nir_builder *b, nir_instr *instr, nir_src *src, nir_alu_type src_
       nir_scalar comp = nir_scalar_resolved(src->ssa, i);
 
       if (nir_scalar_is_undef(comp))
-         new_comps[i] = nir_get_ssa_scalar(nir_undef(b, 1, 16), 0);
+         new_comps[i] = nir_get_scalar(nir_undef(b, 1, 16), 0);
       else if (nir_scalar_is_const(comp)) {
          nir_def *constant;
          if (src_type == nir_type_float32)
             constant = nir_imm_float16(b, nir_scalar_as_float(comp));
          else
             constant = nir_imm_intN_t(b, nir_scalar_as_uint(comp), 16);
-         new_comps[i] = nir_get_ssa_scalar(constant, 0);
+         new_comps[i] = nir_get_scalar(constant, 0);
       } else {
          /* conversion instruction */
          new_comps[i] = nir_scalar_chase_alu_src(comp, 0);

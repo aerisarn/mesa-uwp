@@ -304,9 +304,9 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_simple)
 
    nir_scalar srcs[4] = {{0}};
    for (unsigned i = 0; i < 4; i++) {
-      srcs[i] = nir_get_ssa_scalar(phi_def, i);
+      srcs[i] = nir_get_scalar(phi_def, i);
    }
-   srcs[1] = nir_get_ssa_scalar(fadd, 0);
+   srcs[1] = nir_get_scalar(fadd, 0);
    nir_def *vec = nir_vec_scalars(b, srcs, 4);
 
    nir_phi_instr_add_src(phi, vec->parent_instr->block,
@@ -409,10 +409,10 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_swizzle)
    fadd_alu_instr->src[0].swizzle[0] = 2;
 
    nir_scalar srcs[4] = {{0}};
-   srcs[0] = nir_get_ssa_scalar(phi_def, 0);
-   srcs[1] = nir_get_ssa_scalar(fadd, 0);
-   srcs[2] = nir_get_ssa_scalar(phi_def, 1);
-   srcs[3] = nir_get_ssa_scalar(phi_def, 3);
+   srcs[0] = nir_get_scalar(phi_def, 0);
+   srcs[1] = nir_get_scalar(fadd, 0);
+   srcs[2] = nir_get_scalar(phi_def, 1);
+   srcs[3] = nir_get_scalar(phi_def, 3);
    nir_def *vec = nir_vec_scalars(b, srcs, 4);
 
    nir_phi_instr_add_src(phi, vec->parent_instr->block,
@@ -517,9 +517,9 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_phi_out)
 
    nir_scalar srcs[4] = {{0}};
    for (unsigned i = 0; i < 4; i++) {
-      srcs[i] = nir_get_ssa_scalar(phi_def, i);
+      srcs[i] = nir_get_scalar(phi_def, i);
    }
-   srcs[1] = nir_get_ssa_scalar(fadd, 0);
+   srcs[1] = nir_get_scalar(fadd, 0);
    nir_def *vec = nir_vec_scalars(b, srcs, 4);
 
    nir_phi_instr_add_src(phi, vec->parent_instr->block,

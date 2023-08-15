@@ -1215,10 +1215,10 @@ nir_pad_vector(nir_builder *b, nir_def *src, unsigned num_components)
       return src;
 
    nir_scalar components[NIR_MAX_VEC_COMPONENTS];
-   nir_scalar undef = nir_get_ssa_scalar(nir_undef(b, 1, src->bit_size), 0);
+   nir_scalar undef = nir_get_scalar(nir_undef(b, 1, src->bit_size), 0);
    unsigned i = 0;
    for (; i < src->num_components; i++)
-      components[i] = nir_get_ssa_scalar(src, i);
+      components[i] = nir_get_scalar(src, i);
    for (; i < num_components; i++)
       components[i] = undef;
 
@@ -1239,10 +1239,10 @@ nir_pad_vector_imm_int(nir_builder *b, nir_def *src, uint64_t imm_val,
       return src;
 
    nir_scalar components[NIR_MAX_VEC_COMPONENTS];
-   nir_scalar imm = nir_get_ssa_scalar(nir_imm_intN_t(b, imm_val, src->bit_size), 0);
+   nir_scalar imm = nir_get_scalar(nir_imm_intN_t(b, imm_val, src->bit_size), 0);
    unsigned i = 0;
    for (; i < src->num_components; i++)
-      components[i] = nir_get_ssa_scalar(src, i);
+      components[i] = nir_get_scalar(src, i);
    for (; i < num_components; i++)
       components[i] = imm;
 

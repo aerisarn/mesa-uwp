@@ -2638,7 +2638,7 @@ nir_scalar_chase_alu_src(nir_scalar s, unsigned alu_src_idx)
 nir_scalar nir_scalar_chase_movs(nir_scalar s);
 
 static inline nir_scalar
-nir_get_ssa_scalar(nir_def *def, unsigned channel)
+nir_get_scalar(nir_def *def, unsigned channel)
 {
    nir_scalar s = { def, channel };
    return s;
@@ -2648,13 +2648,13 @@ nir_get_ssa_scalar(nir_def *def, unsigned channel)
 static inline nir_scalar
 nir_scalar_resolved(nir_def *def, unsigned channel)
 {
-   return nir_scalar_chase_movs(nir_get_ssa_scalar(def, channel));
+   return nir_scalar_chase_movs(nir_get_scalar(def, channel));
 }
 
 static inline uint64_t
 nir_alu_src_as_uint(nir_alu_src src)
 {
-   nir_scalar scalar = nir_get_ssa_scalar(src.src.ssa, src.swizzle[0]);
+   nir_scalar scalar = nir_get_scalar(src.src.ssa, src.swizzle[0]);
    return nir_scalar_as_uint(scalar);
 }
 

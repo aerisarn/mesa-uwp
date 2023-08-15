@@ -94,7 +94,7 @@ try_extract_const_addition(nir_builder *b, nir_scalar val, opt_offsets_state *st
    nir_def *r =
       nir_iadd(b, nir_channel(b, src[0].def, src[0].comp),
                nir_channel(b, src[1].def, src[1].comp));
-   return nir_get_ssa_scalar(r, 0);
+   return nir_get_scalar(r, 0);
 }
 
 static bool

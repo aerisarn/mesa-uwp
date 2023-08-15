@@ -2291,7 +2291,7 @@ emit_shift(struct ntd_context *ctx, nir_alu_instr *alu,
                             0);
    } else {
       uint64_t val = nir_scalar_as_uint(
-         nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->def, 0), 1));
+         nir_scalar_chase_alu_src(nir_get_scalar(&alu->def, 0), 1));
       op1 = dxil_module_get_int_const(&ctx->mod, val & shift_mask, op0_bit_size);
    }
 
@@ -2898,7 +2898,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_udiv:
       if (nir_src_is_const(alu->src[1].src)) {
          /* It's illegal to emit a literal divide by 0 in DXIL */
-         nir_scalar divisor = nir_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->def, 0), 1);
+         nir_scalar divisor = nir_scalar_chase_alu_src(nir_get_scalar(&alu->def, 0), 1);
          if (nir_scalar_as_int(divisor) == 0) {
             store_alu_dest(ctx, alu, 0,
                            dxil_module_get_int_const(&ctx->mod, 0, alu->def.bit_size));

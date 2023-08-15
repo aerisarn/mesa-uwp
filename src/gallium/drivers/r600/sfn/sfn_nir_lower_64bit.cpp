@@ -1330,10 +1330,10 @@ r600_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
    if (has_dest) {
       /* Merge the two loads' results back into a vector. */
       nir_scalar channels[4] = {
-         nir_get_ssa_scalar(&first->def, 0),
-         nir_get_ssa_scalar(&first->def, 1),
-         nir_get_ssa_scalar(&second->def, 0),
-         nir_get_ssa_scalar(&second->def, second->num_components > 1 ? 1 : 0),
+         nir_get_scalar(&first->def, 0),
+         nir_get_scalar(&first->def, 1),
+         nir_get_scalar(&second->def, 0),
+         nir_get_scalar(&second->def, second->num_components > 1 ? 1 : 0),
       };
       nir_def *new_ir = nir_vec_scalars(b, channels, instr->num_components);
       nir_def_rewrite_uses(&instr->def, new_ir);
@@ -1344,7 +1344,7 @@ r600_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       nir_def *src0 = instr->src[0].ssa;
       nir_scalar channels[4] = {{0}};
       for (int i = 0; i < instr->num_components; i++)
-         channels[i] = nir_get_ssa_scalar(src0, i);
+         channels[i] = nir_get_scalar(src0, i);
 
       nir_intrinsic_set_write_mask(first, nir_intrinsic_write_mask(instr) & 3);
       nir_intrinsic_set_write_mask(second, nir_intrinsic_write_mask(instr) >> 2);

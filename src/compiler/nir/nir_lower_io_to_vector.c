@@ -564,10 +564,10 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
             for (unsigned c = 0; c < intrin->num_components; c++) {
                if (new_frac + c >= old_frac &&
                    (old_wrmask & 1 << (new_frac + c - old_frac))) {
-                  comps[c] = nir_get_ssa_scalar(old_value,
+                  comps[c] = nir_get_scalar(old_value,
                                                 new_frac + c - old_frac);
                } else {
-                  comps[c] = nir_get_ssa_scalar(nir_undef(&b, old_value->num_components,
+                  comps[c] = nir_get_scalar(nir_undef(&b, old_value->num_components,
                                                           old_value->bit_size),
                                                 0);
                }

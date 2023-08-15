@@ -4087,7 +4087,7 @@ vtn_ssa_transpose(struct vtn_builder *b, struct vtn_ssa_value *src)
          unsigned cols = glsl_get_matrix_columns(src->type);
          nir_scalar srcs[NIR_MAX_MATRIX_COLUMNS];
          for (unsigned j = 0; j < cols; j++) {
-            srcs[j] = nir_get_ssa_scalar(src->elems[j]->def, i);
+            srcs[j] = nir_get_scalar(src->elems[j]->def, i);
          }
          dest->elems[i]->def = nir_vec_scalars(&b->nb, srcs, cols);
       }

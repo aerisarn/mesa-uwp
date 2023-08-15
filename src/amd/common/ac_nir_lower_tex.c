@@ -384,7 +384,7 @@ move_tex_coords(struct move_tex_coords_state *state, nir_function_impl *impl, ni
       return false;
 
    for (unsigned i = 0; i < tex->coord_components; i++)
-      components[i] = nir_get_ssa_scalar(build_coordinate(state, components[i], infos[i]), 0);
+      components[i] = nir_get_scalar(build_coordinate(state, components[i], infos[i]), 0);
 
    nir_def *linear_vgpr = nir_vec_scalars(&state->toplevel_b, components, tex->coord_components);
    lower_tex_coords(&state->toplevel_b, tex, &linear_vgpr, state->options);
@@ -425,7 +425,7 @@ move_fddxy(struct move_tex_coords_state *state, nir_function_impl *impl, nir_alu
    coord_info infos[NIR_MAX_VEC_COMPONENTS];
    bool can_move_all = true;
    for (unsigned i = 0; i < num_components; i++) {
-      components[i] = nir_scalar_chase_alu_src(nir_get_ssa_scalar(&instr->def, i), 0);
+      components[i] = nir_scalar_chase_alu_src(nir_get_scalar(&instr->def, i), 0);
       components[i] = nir_scalar_chase_movs(components[i]);
       can_move_all &= can_move_coord(components[i], &infos[i]);
    }
@@ -434,7 +434,7 @@ move_fddxy(struct move_tex_coords_state *state, nir_function_impl *impl, nir_alu
 
    for (unsigned i = 0; i < num_components; i++) {
       nir_def *def = build_coordinate(state, components[i], infos[i]);
-      components[i] = nir_get_ssa_scalar(def, 0);
+      components[i] = nir_get_scalar(def, 0);
    }
 
    nir_def *def = nir_vec_scalars(&state->toplevel_b, components, num_components);

@@ -658,9 +658,9 @@ rename_variables(struct lower_variables_state *state)
                nir_scalar srcs[NIR_MAX_VEC_COMPONENTS];
                for (unsigned i = 0; i < intrin->num_components; i++) {
                   if (wrmask & (1 << i)) {
-                     srcs[i] = nir_get_ssa_scalar(value, i);
+                     srcs[i] = nir_get_scalar(value, i);
                   } else {
-                     srcs[i] = nir_get_ssa_scalar(old_def, i);
+                     srcs[i] = nir_get_scalar(old_def, i);
                   }
                }
                new_def = nir_vec_scalars(&b, srcs, intrin->num_components);

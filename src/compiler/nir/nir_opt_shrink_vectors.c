@@ -167,7 +167,7 @@ opt_shrink_vector(nir_builder *b, nir_alu_instr *instr)
       if (!((mask >> i) & 0x1))
          continue;
 
-      nir_scalar scalar = nir_get_ssa_scalar(instr->src[i].src.ssa, instr->src[i].swizzle[0]);
+      nir_scalar scalar = nir_get_scalar(instr->src[i].src.ssa, instr->src[i].swizzle[0]);
 
       /* Try reuse a component with the same value */
       unsigned j;

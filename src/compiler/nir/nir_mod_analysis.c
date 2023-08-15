@@ -34,7 +34,7 @@ static nir_scalar
 nir_alu_arg(const nir_alu_instr *alu, unsigned arg, unsigned comp)
 {
    const nir_alu_src *src = &alu->src[arg];
-   return nir_get_ssa_scalar(src->src.ssa, src->swizzle[comp]);
+   return nir_get_scalar(src->src.ssa, src->swizzle[comp]);
 }
 
 /* Tries to determine the value of expression "val % div", assuming that val

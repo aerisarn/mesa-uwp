@@ -178,7 +178,7 @@ get_deref_reg_location(nir_deref_instr *deref,
          /* Avoid emitting iadd with 0, which is otherwise common, since this
           * pass runs late enough that nothing will clean it up.
           */
-         nir_scalar scal = nir_get_ssa_scalar(indirect, 0);
+         nir_scalar scal = nir_get_scalar(indirect, 0);
          if (nir_scalar_is_const(scal))
             indirect = nir_iadd_imm(b, offset, nir_scalar_as_uint(scal));
          else

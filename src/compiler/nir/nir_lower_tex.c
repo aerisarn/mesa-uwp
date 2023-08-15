@@ -1046,9 +1046,9 @@ swizzle_result(nir_builder *b, nir_tex_instr *tex, const uint8_t swizzle[4])
          nir_scalar srcs[4];
          for (unsigned i = 0; i < 4; i++) {
             if (swizzle[i] < 4) {
-               srcs[i] = nir_get_ssa_scalar(&tex->def, swizzle[i]);
+               srcs[i] = nir_get_scalar(&tex->def, swizzle[i]);
             } else {
-               srcs[i] = nir_get_ssa_scalar(get_zero_or_one(b, tex->dest_type, swizzle[i]), 0);
+               srcs[i] = nir_get_scalar(get_zero_or_one(b, tex->dest_type, swizzle[i]), 0);
             }
          }
          swizzled = nir_vec_scalars(b, srcs, 4);
@@ -1224,7 +1224,7 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
 
       nir_builder_instr_insert(b, &tex_copy->instr);
 
-      dest[i] = nir_get_ssa_scalar(&tex_copy->def, 3);
+      dest[i] = nir_get_scalar(&tex_copy->def, 3);
       if (tex->is_sparse) {
          nir_def *code = nir_channel(b, &tex_copy->def, 4);
          if (residency)
@@ -1233,7 +1233,7 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
             residency = code;
       }
    }
-   dest[4] = nir_get_ssa_scalar(residency, 0);
+   dest[4] = nir_get_scalar(residency, 0);
 
    nir_def *res = nir_vec_scalars(b, dest, tex->def.num_components);
    nir_def_rewrite_uses(&tex->def, res);

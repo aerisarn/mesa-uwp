@@ -128,7 +128,7 @@ match_soa(nir_builder *b, struct match *match, unsigned format_shift)
       nir_def *rewrite = nir_iadd_imm(
          b, nir_imul_imm(b, unmultiplied, multiplier_shifted), offset_shifted);
 
-      match->offset = nir_get_ssa_scalar(rewrite, 0);
+      match->offset = nir_get_scalar(rewrite, 0);
       match->shift = 0;
       return true;
    }
@@ -161,7 +161,7 @@ match_address(nir_builder *b, nir_scalar base, int8_t format_shift)
 
          return (struct match){
             .base = summands[1 - i],
-            .offset = nir_get_ssa_scalar(nir_imm_int(b, value), 0),
+            .offset = nir_get_scalar(nir_imm_int(b, value), 0),
             .shift = -format_shift,
             .sign_extend = false,
          };
@@ -215,7 +215,7 @@ match_address(nir_builder *b, nir_scalar base, int8_t format_shift)
       /* Only fold in if we wouldn't overflow the lsl field */
       if (new_shift <= 2) {
          match.offset =
-            nir_get_ssa_scalar(nir_imul_imm(b, multiplied_ssa, multiplier), 0);
+            nir_get_scalar(nir_imul_imm(b, multiplied_ssa, multiplier), 0);
          match.shift = new_shift;
       } else if (new_shift > 0) {
          /* For large shifts, we do need a multiply, but we can
@@ -226,7 +226,7 @@ match_address(nir_builder *b, nir_scalar base, int8_t format_shift)
          nir_def *rewrite =
             nir_imul_imm(b, multiplied_ssa, multiplier << new_shift);
 
-         match.offset = nir_get_ssa_scalar(rewrite, 0);
+         match.offset = nir_get_scalar(rewrite, 0);
          match.shift = 0;
       }
    } else {

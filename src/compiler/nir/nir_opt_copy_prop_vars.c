@@ -744,7 +744,7 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
    nir_scalar comps[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < num_components; i++) {
       if (value->ssa.def[i]) {
-         comps[i] = nir_get_ssa_scalar(value->ssa.def[i], value->ssa.component[i]);
+         comps[i] = nir_get_scalar(value->ssa.def[i], value->ssa.component[i]);
       } else {
          /* We don't have anything for this component in our
           * list.  Just re-use a channel from the load.
@@ -755,7 +755,7 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
          if (load_def->parent_instr == &intrin->instr)
             keep_intrin = true;
 
-         comps[i] = nir_get_ssa_scalar(load_def, i);
+         comps[i] = nir_get_scalar(load_def, i);
       }
    }
 

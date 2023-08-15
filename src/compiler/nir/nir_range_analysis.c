@@ -1406,7 +1406,7 @@ search_phi_bcsel(nir_scalar scalar, nir_scalar *buf, unsigned buf_size, struct s
          unsigned total_added = 0;
          nir_foreach_phi_src(src, phi) {
             num_sources_left--;
-            unsigned added = search_phi_bcsel(nir_get_ssa_scalar(src->src.ssa, scalar.comp),
+            unsigned added = search_phi_bcsel(nir_get_scalar(src->src.ssa, scalar.comp),
                                               buf + total_added, buf_size - num_sources_left, visited);
             assert(added <= buf_size);
             buf_size -= added;
@@ -1580,7 +1580,7 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
       break;
    case nir_intrinsic_mbcnt_amd: {
       if (!q.head.pushed_queries) {
-         push_uub_query(state, nir_get_ssa_scalar(intrin->src[1].ssa, 0));
+         push_uub_query(state, nir_get_scalar(intrin->src[1].ssa, 0));
          return;
       } else {
          uint32_t src0 = config->max_subgroup_size - 1;
@@ -1624,7 +1624,7 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
       nir_op op = nir_intrinsic_reduction_op(intrin);
       if (op == nir_op_umin || op == nir_op_umax || op == nir_op_imin || op == nir_op_imax) {
          if (!q.head.pushed_queries) {
-            push_uub_query(state, nir_get_ssa_scalar(intrin->src[0].ssa, q.scalar.comp));
+            push_uub_query(state, nir_get_scalar(intrin->src[0].ssa, q.scalar.comp));
             return;
          } else {
             *result = src[0];
@@ -1645,7 +1645,7 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
    case nir_intrinsic_quad_swizzle_amd:
    case nir_intrinsic_masked_swizzle_amd:
       if (!q.head.pushed_queries) {
-         push_uub_query(state, nir_get_ssa_scalar(intrin->src[0].ssa, q.scalar.comp));
+         push_uub_query(state, nir_get_scalar(intrin->src[0].ssa, q.scalar.comp));
          return;
       } else {
          *result = src[0];
@@ -1653,8 +1653,8 @@ get_intrinsic_uub(struct analysis_state *state, struct uub_query q, uint32_t *re
       break;
    case nir_intrinsic_write_invocation_amd:
       if (!q.head.pushed_queries) {
-         push_uub_query(state, nir_get_ssa_scalar(intrin->src[0].ssa, q.scalar.comp));
-         push_uub_query(state, nir_get_ssa_scalar(intrin->src[1].ssa, q.scalar.comp));
+         push_uub_query(state, nir_get_scalar(intrin->src[0].ssa, q.scalar.comp));
+         push_uub_query(state, nir_get_scalar(intrin->src[1].ssa, q.scalar.comp));
          return;
       } else {
          *result = MAX2(src[0], src[1]);
@@ -1914,7 +1914,7 @@ get_phi_uub(struct analysis_state *state, struct uub_query q, uint32_t *result, 
          push_uub_query(state, defs[i]);
    } else {
       nir_foreach_phi_src(src, phi)
-         push_uub_query(state, nir_get_ssa_scalar(src->src.ssa, q.scalar.comp));
+         push_uub_query(state, nir_get_scalar(src->src.ssa, q.scalar.comp));
    }
 }
 

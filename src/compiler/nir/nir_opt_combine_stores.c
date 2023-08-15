@@ -135,13 +135,13 @@ combine_stores(struct combine_stores_state *state,
           * and store->src[1] is a scalar.  Otherwise, we're a regular vector
           * load and we have to pick off a component.
           */
-         comps[i] = nir_get_ssa_scalar(store->src[1].ssa, store->num_components == 1 ? 0 : i);
+         comps[i] = nir_get_scalar(store->src[1].ssa, store->num_components == 1 ? 0 : i);
 
          assert(store->instr.pass_flags > 0);
          if (--store->instr.pass_flags == 0 && store != combo->latest)
             nir_instr_remove(&store->instr);
       } else {
-         comps[i] = nir_get_ssa_scalar(nir_undef(&state->b, 1, bit_size), 0);
+         comps[i] = nir_get_scalar(nir_undef(&state->b, 1, bit_size), 0);
       }
    }
    assert(combo->latest->instr.pass_flags == 0);

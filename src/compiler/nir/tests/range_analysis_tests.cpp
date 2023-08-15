@@ -289,7 +289,7 @@ TEST_F(unsigned_upper_bound_test, loop_phi_bcsel)
    nir_validate_shader(b->shader, NULL);
 
    struct hash_table *range_ht = _mesa_pointer_hash_table_create(NULL);
-   nir_scalar scalar = nir_get_ssa_scalar(&phi->def, 0);
+   nir_scalar scalar = nir_get_scalar(&phi->def, 0);
    EXPECT_EQ(nir_unsigned_upper_bound(b->shader, range_ht, scalar, NULL), 2);
    _mesa_hash_table_destroy(range_ht, NULL);
 }

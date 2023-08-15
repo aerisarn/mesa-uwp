@@ -876,8 +876,8 @@ ac_nir_gs_shader_query(nir_builder *b,
    u_foreach_bit (i, b->shader->info.gs.active_stream_mask) {
       assert(vertex_count[i] && primitive_count[i]);
 
-      nir_scalar vtx_cnt = nir_get_ssa_scalar(vertex_count[i], 0);
-      nir_scalar prm_cnt = nir_get_ssa_scalar(primitive_count[i], 0);
+      nir_scalar vtx_cnt = nir_get_scalar(vertex_count[i], 0);
+      nir_scalar prm_cnt = nir_get_scalar(primitive_count[i], 0);
 
       if (nir_scalar_is_const(vtx_cnt) && nir_scalar_is_const(prm_cnt)) {
          unsigned gs_vtx_cnt = nir_scalar_as_uint(vtx_cnt);

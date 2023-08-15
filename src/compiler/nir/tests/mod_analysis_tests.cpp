@@ -27,7 +27,7 @@
 static inline bool
 nir_mod_analysis_comp0(nir_def *val, nir_alu_type val_type, unsigned div, unsigned *mod)
 {
-   return nir_mod_analysis(nir_get_ssa_scalar(val, 0), val_type, div, mod);
+   return nir_mod_analysis(nir_get_scalar(val, 0), val_type, div, mod);
 }
 
 class nir_mod_analysis_test : public nir_test {
