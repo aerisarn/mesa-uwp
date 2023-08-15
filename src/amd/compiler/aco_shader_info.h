@@ -103,6 +103,7 @@ struct aco_shader_info {
    unsigned workgroup_size;
    bool has_epilog; /* Only for TCS or PS. */
    bool is_monolithic;
+   struct ac_arg next_stage_pc;
    struct {
       bool tcs_in_out_eq;
       uint64_t tcs_temp_only_input_mask;

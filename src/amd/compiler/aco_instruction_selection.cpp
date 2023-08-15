@@ -11445,6 +11445,36 @@ pops_await_overlapped_waves(isel_context* ctx)
    bld.reset(ctx->block);
 }
 
+static void
+create_vs_jump_to_tcs(isel_context* ctx)
+{
+   Builder bld(ctx->program, ctx->block);
+   std::vector<Operand> regs;
+
+   for (unsigned i = 0; i < ctx->args->arg_count; i++) {
+      if (!ctx->args->args[i].preserved)
+         continue;
+
+      const enum ac_arg_regfile file = ctx->args->args[i].file;
+      const unsigned reg = ctx->args->args[i].offset;
+
+      Operand op(ctx->arg_temps[i]);
+      op.setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
+      regs.emplace_back(op);
+   }
+
+   Temp continue_pc =
+      convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->program->info.next_stage_pc));
+
+   aco_ptr<Pseudo_instruction> jump{create_instruction<Pseudo_instruction>(
+      aco_opcode::p_jump_to_epilog, Format::PSEUDO, 1 + regs.size(), 0)};
+   jump->operands[0] = Operand(continue_pc);
+   for (unsigned i = 0; i < regs.size(); i++) {
+      jump->operands[i + 1] = regs[i];
+   }
+   ctx->block->instructions.emplace_back(std::move(jump));
+}
+
 void
 select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, const bool need_barrier,
               if_context* ic_merged_wave_info, const bool check_merged_wave_info,
@@ -11519,6 +11549,11 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
          else
             create_tcs_jump_to_epilog(&ctx);
       }
+   }
+
+   if (ctx.stage.hw == AC_HW_HULL_SHADER && ctx.stage.sw == SWStage::VS) {
+      assert(program->gfx_level >= GFX9);
+      create_vs_jump_to_tcs(&ctx);
    }
 
    cleanup_context(&ctx);
@@ -11651,7 +11686,23 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
    if (shader_count >= 2) {
       select_program_merged(ctx, shader_count, shaders);
    } else {
-      select_shader(ctx, shaders[0], true, false, NULL, false, false);
+      bool need_barrier = false, check_merged_wave_info = false, endif_merged_wave_info = false;
+      if_context ic_merged_wave_info;
+
+      /* Handle separate compilation of VS+TCS on GFX9+. */
+      if (!ctx.program->info.is_monolithic) {
+         assert(ctx.program->gfx_level >= GFX9);
+         if (ctx.stage.hw == AC_HW_HULL_SHADER && ctx.stage.sw == SWStage::VS) {
+            check_merged_wave_info = endif_merged_wave_info = true;
+         } else {
+            assert(ctx.stage == tess_control_hs);
+            check_merged_wave_info = endif_merged_wave_info = true;
+            need_barrier = true;
+         }
+      }
+
+      select_shader(ctx, shaders[0], true, need_barrier, &ic_merged_wave_info,
+                    check_merged_wave_info, endif_merged_wave_info);
    }
 
    program->config->float_mode = program->blocks[0].fp_mode.val;
