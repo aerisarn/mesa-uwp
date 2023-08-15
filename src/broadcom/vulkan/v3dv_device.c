@@ -1156,36 +1156,6 @@ create_physical_device(struct v3dv_instance *instance,
     */
    device->drm_syncobj_type.features &= ~VK_SYNC_FEATURE_TIMELINE;
 
-#if using_v3d_simulator
-   /* There are CTS tests which do the following:
-    *
-    *  1. Create a command buffer with a vkCmdWaitEvents()
-    *  2. Submit the command buffer
-    *  3. vkGetSemaphoreFdKHR() to try to get a sync_file
-    *  4. vkSetEvent()
-    *
-    * This deadlocks in the simulator because we have to wait for the syncobj
-    * to get a real fence in vkGetSemaphoreFdKHR(). This will never happen
-    * though because the simulator, unlike real hardware, executes ioctls
-    * synchronously in the same thread, which means that it will try to
-    * execute the wait for event immediately and never get to emit the
-    * signaling job that comes after the compute job that implements the wait
-    * in the command buffer, which would be responsible for creating the fence
-    * for the signaling semaphore.
-    *
-    * This behavior was seemingly allowed in previous Vulkan versions, however,
-    * this was fixed in Vulkan the 1.3.228 spec. From commit 355367640f2e:
-    *
-    *    "Clarify that vkCmdWaitEvents must not execute before a vkSetEvent it
-    *     waits on (internal issue 2971)"
-    *
-    * Either way, we disable sync file support in the simulator for now, until
-    * the CTS is fixed.
-    */
-   device->drm_syncobj_type.import_sync_file = NULL;
-   device->drm_syncobj_type.export_sync_file = NULL;
-#endif
-
    /* Multiwait is required for emulated timeline semaphores and is supported
     * by the v3d kernel interface.
     */
