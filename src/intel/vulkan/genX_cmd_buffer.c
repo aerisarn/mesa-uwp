@@ -7130,6 +7130,15 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
 
    isl_emit_depth_stencil_hiz_s(&device->isl_dev, dw, &info);
 
+   /* Wa_14016712196:
+    * Emit depth flush after state that sends implicit depth flush.
+    */
+   if (intel_needs_workaround(cmd_buffer->device->info, 14016712196)) {
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_DEPTH_CACHE_FLUSH_BIT);
+   }
+
    if (info.depth_surf)
       genX(cmd_buffer_emit_gfx12_depth_wa)(cmd_buffer, info.depth_surf);
 
@@ -7190,6 +7199,15 @@ cmd_buffer_emit_cps_control_buffer(struct anv_cmd_buffer *cmd_buffer,
    }
 
    isl_emit_cpb_control_s(&device->isl_dev, dw, &info);
+
+   /* Wa_14016712196:
+    * Emit depth flush after state that sends implicit depth flush.
+    */
+   if (intel_needs_workaround(cmd_buffer->device->info, 14016712196)) {
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_DEPTH_CACHE_FLUSH_BIT);
+   }
 #endif /* GFX_VERx10 >= 125 */
 }
 
