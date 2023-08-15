@@ -86,6 +86,9 @@ struct radv_shader_args {
    /* NGG VS streamout */
    struct ac_arg num_verts_per_prim;
 
+   /* For non-monolithic VS or TES on GFX9+. */
+   struct ac_arg next_stage_pc;
+
    struct radv_userdata_locations user_sgprs_locs;
    unsigned num_user_sgprs;
 
