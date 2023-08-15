@@ -670,9 +670,9 @@ alu_can_accept_constant(const aco_ptr<Instruction>& instr, unsigned operand)
    case aco_opcode::v_readfirstlane_b32:
    case aco_opcode::p_extract:
    case aco_opcode::p_insert: return operand != 0;
-   case aco_opcode::p_bpermute_gfx6:
-   case aco_opcode::p_bpermute_gfx10w64:
-   case aco_opcode::p_bpermute_gfx11w64:
+   case aco_opcode::p_bpermute_readlane:
+   case aco_opcode::p_bpermute_shared_vgpr:
+   case aco_opcode::p_bpermute_permlane:
    case aco_opcode::p_interp_gfx11:
    case aco_opcode::p_dual_src_export_gfx11:
    case aco_opcode::v_interp_p1_f32:

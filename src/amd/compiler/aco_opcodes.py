@@ -334,20 +334,20 @@ opcode("p_demote_to_helper")
 opcode("p_is_helper")
 opcode("p_exit_early_if")
 
-# simulates proper bpermute behavior on GFX6
+# simulates proper bpermute behavior using v_readlane_b32
 # definitions: result VGPR, temp EXEC, clobbered VCC
 # operands: index, input data
-opcode("p_bpermute_gfx6")
+opcode("p_bpermute_readlane")
 
-# simulates proper bpermute behavior on GFX10
+# simulates proper wave64 bpermute behavior using shared vgprs (for GFX10/10.3)
 # definitions: result VGPR, temp EXEC, clobbered SCC
 # operands: index * 4, input data, same half (bool)
-opcode("p_bpermute_gfx10w64")
+opcode("p_bpermute_shared_vgpr")
 
-# simulates proper bpermute behavior on GFX11
+# simulates proper wave64 bpermute behavior using v_permlane64_b32 (for GFX11+)
 # definitions: result VGPR, temp EXEC, clobbered SCC
 # operands: linear VGPR, index * 4, input data, same half (bool)
-opcode("p_bpermute_gfx11w64")
+opcode("p_bpermute_permlane")
 
 # creates a lane mask where only the first active lane is selected
 opcode("p_elect")

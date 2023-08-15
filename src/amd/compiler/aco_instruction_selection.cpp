@@ -208,7 +208,7 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
       index_op.setLateKill(true);
       input_data.setLateKill(true);
 
-      return bld.pseudo(aco_opcode::p_bpermute_gfx6, bld.def(v1), bld.def(bld.lm),
+      return bld.pseudo(aco_opcode::p_bpermute_readlane, bld.def(v1), bld.def(bld.lm),
                         bld.def(bld.lm, vcc), index_op, input_data);
    } else if (ctx->options->gfx_level >= GFX10 && ctx->program->wave_size == 64) {
 
@@ -234,10 +234,10 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
           */
          ctx->program->config->num_shared_vgprs = 2 * ctx->program->dev.vgpr_alloc_granule;
 
-         return bld.pseudo(aco_opcode::p_bpermute_gfx10w64, bld.def(v1), bld.def(s2),
+         return bld.pseudo(aco_opcode::p_bpermute_shared_vgpr, bld.def(v1), bld.def(s2),
                            bld.def(s1, scc), index_x4, input_data, same_half);
       } else {
-         return bld.pseudo(aco_opcode::p_bpermute_gfx11w64, bld.def(v1), bld.def(s2),
+         return bld.pseudo(aco_opcode::p_bpermute_permlane, bld.def(v1), bld.def(s2),
                            bld.def(s1, scc), Operand(v1.as_linear()), index_x4, input_data,
                            same_half);
       }

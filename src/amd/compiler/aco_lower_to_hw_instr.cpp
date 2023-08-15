@@ -932,7 +932,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
 }
 
 void
-emit_gfx11_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
+emit_bpermute_permlane(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
 {
    /* Emulates proper bpermute on GFX11 in wave64 mode.
     *
@@ -993,7 +993,7 @@ emit_gfx11_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builde
 }
 
 void
-emit_gfx10_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
+emit_bpermute_shared_vgpr(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
 {
    /* Emulates proper bpermute on GFX10 in wave64 mode.
     *
@@ -1072,7 +1072,7 @@ emit_gfx10_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builde
 }
 
 void
-emit_gfx6_bpermute(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
+emit_bpermute_readlane(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
 {
    /* Emulates bpermute using readlane instructions */
 
@@ -2555,16 +2555,16 @@ lower_to_hw_instr(Program* program)
                         Operand(pops_exiting_wave_id, s1), instr->operands[0]);
                break;
             }
-            case aco_opcode::p_bpermute_gfx6: {
-               emit_gfx6_bpermute(program, instr, bld);
+            case aco_opcode::p_bpermute_readlane: {
+               emit_bpermute_readlane(program, instr, bld);
                break;
             }
-            case aco_opcode::p_bpermute_gfx10w64: {
-               emit_gfx10_wave64_bpermute(program, instr, bld);
+            case aco_opcode::p_bpermute_shared_vgpr: {
+               emit_bpermute_shared_vgpr(program, instr, bld);
                break;
             }
-            case aco_opcode::p_bpermute_gfx11w64: {
-               emit_gfx11_wave64_bpermute(program, instr, bld);
+            case aco_opcode::p_bpermute_permlane: {
+               emit_bpermute_permlane(program, instr, bld);
                break;
             }
             case aco_opcode::p_constaddr: {
