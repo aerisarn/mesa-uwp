@@ -1561,7 +1561,8 @@ dri2_initialize_x11_swrast(_EGLDisplay *disp)
       disp->Extensions.EXT_buffer_age = EGL_TRUE;
       disp->Extensions.EXT_swap_buffers_with_damage = EGL_TRUE;
 
-      // dri2_set_WL_bind_wayland_display(disp);
+      if (dri2_dpy->multibuffers_available)
+         dri2_set_WL_bind_wayland_display(disp);
    } else {
       /* swrast */
       disp->Extensions.ANGLE_sync_control_rate = EGL_TRUE;
