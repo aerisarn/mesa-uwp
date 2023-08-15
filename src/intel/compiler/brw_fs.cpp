@@ -6800,7 +6800,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
    if (needs_register_pressure)
       shader_stats.max_register_pressure = compute_max_register_pressure();
 
-   debug_optimizer(nir, "pre_register_allocate", 99, 99);
+   debug_optimizer(nir, "pre_register_allocate", 90, 90);
 
    bool spill_all = allow_spilling && INTEL_DEBUG(DEBUG_SPILL_FS);
 
@@ -6820,6 +6820,8 @@ fs_visitor::allocate_registers(bool allow_spilling)
 
       schedule_instructions(sched_mode);
       this->shader_stats.scheduler_mode = scheduler_mode_name[sched_mode];
+
+      debug_optimizer(nir, shader_stats.scheduler_mode, 95, i);
 
       if (0) {
          assign_regs_trivial();
