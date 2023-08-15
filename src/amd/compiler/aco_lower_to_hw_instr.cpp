@@ -1093,7 +1093,7 @@ emit_gfx6_bpermute(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
    assert(input.physReg() != dst.physReg());
 
    /* Save original EXEC */
-   bld.sop1(aco_opcode::s_mov_b64, temp_exec, Operand(exec, s2));
+   bld.sop1(Builder::s_mov, temp_exec, Operand(exec, bld.lm));
 
    /* An "unrolled loop" that is executed per each lane.
     * This takes only a few instructions per lane, as opposed to a "real" loop
@@ -1108,7 +1108,7 @@ emit_gfx6_bpermute(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
       /* On the active lane, move the data we read from lane N to the destination VGPR */
       bld.vop1(aco_opcode::v_mov_b32, dst, Operand(vcc, s1));
       /* Restore original EXEC */
-      bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(temp_exec.physReg(), s2));
+      bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(temp_exec.physReg(), bld.lm));
    }
 
    /* RA assumes that the result is always in the low part of the register, so we have to shift,
