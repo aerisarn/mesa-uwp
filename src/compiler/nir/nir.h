@@ -4602,6 +4602,7 @@ nir_instr *nir_instr_clone_deep(nir_shader *s, const nir_instr *orig,
 nir_alu_instr *nir_alu_instr_clone(nir_shader *s, const nir_alu_instr *orig);
 
 nir_shader *nir_shader_clone(void *mem_ctx, const nir_shader *s);
+nir_function *nir_function_clone(nir_shader *ns, const nir_function *fxn);
 nir_function_impl *nir_function_impl_clone(nir_shader *shader,
                                            const nir_function_impl *fi);
 nir_constant *nir_constant_clone(const nir_constant *c, nir_variable *var);
