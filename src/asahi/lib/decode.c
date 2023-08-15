@@ -229,7 +229,16 @@ __agxdecode_fetch_gpu_mem(const struct agx_bo *mem, uint64_t gpu_va,
    }
 
    assert(mem);
-   assert(size + (gpu_va - mem->ptr.gpu) <= mem->size);
+
+   if (size + (gpu_va - mem->ptr.gpu) > mem->size) {
+      fprintf(stderr,
+              "Overflowing to unknown memory %" PRIx64
+              " of size %zu (max size %zu) in %s:%d\n",
+              gpu_va, size, mem->size - (gpu_va - mem->ptr.gpu), filename,
+              line);
+      fflush(agxdecode_dump_stream);
+      assert(0);
+   }
 
    memcpy(buf, mem->ptr.cpu + gpu_va - mem->ptr.gpu, size);
 
