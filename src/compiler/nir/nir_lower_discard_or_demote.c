@@ -165,7 +165,7 @@ nir_lower_discard_or_demote(nir_shader *shader,
                                               nir_lower_discard_to_demote_instr,
                                               nir_metadata_block_index |
                                                  nir_metadata_dominance |
-                                                 nir_metadata_live_ssa_defs |
+                                                 nir_metadata_live_defs |
                                                  nir_metadata_instr_index,
                                               NULL);
       shader->info.fs.uses_demote = true;

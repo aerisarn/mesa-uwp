@@ -281,7 +281,7 @@ opt_access_impl(struct access_state *state,
       nir_metadata_preserve(impl,
                             nir_metadata_block_index |
                                nir_metadata_dominance |
-                               nir_metadata_live_ssa_defs |
+                               nir_metadata_live_defs |
                                nir_metadata_loop_analysis);
    }
 
@@ -328,7 +328,7 @@ nir_opt_access(nir_shader *shader, const nir_opt_access_options *options)
          nir_metadata_preserve(impl,
                                nir_metadata_block_index |
                                   nir_metadata_dominance |
-                                  nir_metadata_live_ssa_defs |
+                                  nir_metadata_live_defs |
                                   nir_metadata_loop_analysis);
       }
    }

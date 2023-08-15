@@ -3034,7 +3034,7 @@ typedef enum {
     * SSA defs or uses of SSA defs (most passes shouldn't preserve this
     * metadata type).
     */
-   nir_metadata_live_ssa_defs = 0x4,
+   nir_metadata_live_defs = 0x4,
 
    /** A dummy metadata value to track when a pass forgot to call
     * nir_metadata_preserve.
@@ -5825,9 +5825,9 @@ bool nir_normalize_cubemap_coords(nir_shader *shader);
 
 bool nir_shader_supports_implicit_lod(nir_shader *shader);
 
-void nir_live_ssa_defs_impl(nir_function_impl *impl);
+void nir_live_defs_impl(nir_function_impl *impl);
 
-const BITSET_WORD *nir_get_live_ssa_defs(nir_cursor cursor, void *mem_ctx);
+const BITSET_WORD *nir_get_live_defs(nir_cursor cursor, void *mem_ctx);
 
 void nir_loop_analyze_impl(nir_function_impl *impl,
                            nir_variable_mode indirect_mask,

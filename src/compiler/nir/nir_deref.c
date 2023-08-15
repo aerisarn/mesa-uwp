@@ -453,7 +453,7 @@ nir_fixup_deref_modes(nir_shader *shader)
    nir_shader_instructions_pass(shader, nir_fixup_deref_modes_instr,
                                 nir_metadata_block_index |
                                    nir_metadata_dominance |
-                                   nir_metadata_live_ssa_defs |
+                                   nir_metadata_live_defs |
                                    nir_metadata_instr_index,
                                 NULL);
 }

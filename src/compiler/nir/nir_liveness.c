@@ -39,7 +39,7 @@
  * block but not in the live-in of the block containing the phi node.
  */
 
-struct live_ssa_defs_state {
+struct live_defs_state {
    unsigned bitset_words;
 
    /* Used in propagate_across_edge() */
@@ -53,7 +53,7 @@ struct live_ssa_defs_state {
  */
 static void
 init_liveness_block(nir_block *block,
-                    struct live_ssa_defs_state *state)
+                    struct live_defs_state *state)
 {
    block->live_in = reralloc(block, block->live_in, BITSET_WORD,
                              state->bitset_words);
@@ -100,7 +100,7 @@ set_ssa_def_dead(nir_def *def, void *void_live)
  */
 static bool
 propagate_across_edge(nir_block *pred, nir_block *succ,
-                      struct live_ssa_defs_state *state)
+                      struct live_defs_state *state)
 {
    BITSET_WORD *live = state->tmp_live;
    memcpy(live, succ->live_in, state->bitset_words * sizeof *live);
@@ -127,9 +127,9 @@ propagate_across_edge(nir_block *pred, nir_block *succ,
 }
 
 void
-nir_live_ssa_defs_impl(nir_function_impl *impl)
+nir_live_defs_impl(nir_function_impl *impl)
 {
-   struct live_ssa_defs_state state = {
+   struct live_defs_state state = {
       .bitset_words = BITSET_WORDS(impl->ssa_alloc),
    };
    state.tmp_live = rzalloc_array(impl, BITSET_WORD, state.bitset_words),
@@ -203,11 +203,11 @@ nir_live_ssa_defs_impl(nir_function_impl *impl)
  *       instead, provide a mem_ctx and free that.
  */
 const BITSET_WORD *
-nir_get_live_ssa_defs(nir_cursor cursor, void *mem_ctx)
+nir_get_live_defs(nir_cursor cursor, void *mem_ctx)
 {
    nir_block *block = nir_cursor_current_block(cursor);
    nir_function_impl *impl = nir_cf_node_get_function(&block->cf_node);
-   assert(impl->valid_metadata & nir_metadata_live_ssa_defs);
+   assert(impl->valid_metadata & nir_metadata_live_defs);
 
    switch (cursor.option) {
    case nir_cursor_before_block:

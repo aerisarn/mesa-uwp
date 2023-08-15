@@ -110,6 +110,6 @@ brw_nir_blockify_uniform_loads(nir_shader *shader,
                                        brw_nir_blockify_uniform_loads_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance |
-                                       nir_metadata_live_ssa_defs,
+                                       nir_metadata_live_defs,
                                        (void *) devinfo);
 }

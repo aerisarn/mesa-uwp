@@ -450,7 +450,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
     */
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
-   nir_metadata_require(impl, nir_metadata_live_ssa_defs |
+   nir_metadata_require(impl, nir_metadata_live_defs |
                                  nir_metadata_dominance |
                                  nir_metadata_block_index |
                                  nir_metadata_instr_index);
@@ -504,7 +504,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
           * TODO: This isn't quite true for report_intersection.
           */
          call_live[call_idx] =
-            nir_get_live_ssa_defs(nir_after_instr(instr), mem_ctx);
+            nir_get_live_defs(nir_after_instr(instr), mem_ctx);
 
          call_idx++;
       }

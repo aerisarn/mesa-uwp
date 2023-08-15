@@ -137,7 +137,7 @@ nir_opt_move(nir_shader *shader, nir_move_options options)
       if (impl_progress) {
          nir_metadata_preserve(impl, nir_metadata_block_index |
                                         nir_metadata_dominance |
-                                        nir_metadata_live_ssa_defs);
+                                        nir_metadata_live_defs);
          progress = true;
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);

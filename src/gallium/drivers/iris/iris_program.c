@@ -352,7 +352,7 @@ iris_fix_edge_flags(nir_shader *nir)
    nir_foreach_function_impl(impl, nir) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
                                   nir_metadata_dominance |
-                                  nir_metadata_live_ssa_defs |
+                                  nir_metadata_live_defs |
                                   nir_metadata_loop_analysis);
    }
 

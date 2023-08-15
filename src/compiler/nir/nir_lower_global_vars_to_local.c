@@ -90,7 +90,7 @@ nir_lower_global_vars_to_local(nir_shader *shader)
          exec_list_push_tail(&impl->locals, &var->node);
          nir_metadata_preserve(impl, nir_metadata_block_index |
                                         nir_metadata_dominance |
-                                        nir_metadata_live_ssa_defs);
+                                        nir_metadata_live_defs);
          progress = true;
       }
    }

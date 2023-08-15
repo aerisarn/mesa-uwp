@@ -1046,7 +1046,7 @@ add_ssa_def_cb(nir_def *def, void *state)
 
       def->index = impl->ssa_alloc++;
 
-      impl->valid_metadata &= ~nir_metadata_live_ssa_defs;
+      impl->valid_metadata &= ~nir_metadata_live_defs;
    }
 
    return true;
@@ -1516,7 +1516,7 @@ nir_def_init(nir_instr *instr, nir_def *def,
 
       def->index = impl->ssa_alloc++;
 
-      impl->valid_metadata &= ~nir_metadata_live_ssa_defs;
+      impl->valid_metadata &= ~nir_metadata_live_defs;
    } else {
       def->index = UINT_MAX;
    }
@@ -1921,7 +1921,7 @@ nir_index_ssa_defs(nir_function_impl *impl)
 {
    unsigned index = 0;
 
-   impl->valid_metadata &= ~nir_metadata_live_ssa_defs;
+   impl->valid_metadata &= ~nir_metadata_live_defs;
 
    nir_foreach_block_unstructured(block, impl) {
       nir_foreach_instr(instr, block)
