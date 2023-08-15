@@ -358,8 +358,7 @@ v3dv_CreateQueryPool(VkDevice _device,
          if (result != VK_SUCCESS)
             goto fail;
 
-         for (uint32_t j = 0; j < pool->perfmon.nperfmons; j++)
-            pool->queries[query_idx].perf.kperfmon_ids[j] = 0;
+         kperfmon_create(device, pool, query_idx);
          break;
          }
       default:
