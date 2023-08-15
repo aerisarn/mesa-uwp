@@ -45,7 +45,7 @@ insert_store(nir_builder *b, nir_def *reg, nir_alu_instr *vec,
    }
 
    /* No sense storing from undef, just return the write mask */
-   if (src->parent_instr->type == nir_instr_type_ssa_undef)
+   if (src->parent_instr->type == nir_instr_type_undef)
       return write_mask;
 
    b->cursor = nir_before_instr(&vec->instr);

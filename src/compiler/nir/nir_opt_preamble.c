@@ -86,7 +86,7 @@ get_instr_cost(nir_instr *instr, const nir_opt_preamble_options *options)
     * this for them.
     */
    if (instr->type == nir_instr_type_load_const ||
-       instr->type == nir_instr_type_ssa_undef)
+       instr->type == nir_instr_type_undef)
       return 0;
 
    return options->instr_cost_cb(instr, options->cb_data);
@@ -252,7 +252,7 @@ can_move_instr(nir_instr *instr, opt_preamble_ctx *ctx)
       return can_move_intrinsic(nir_instr_as_intrinsic(instr), ctx);
 
    case nir_instr_type_load_const:
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       return true;
 
    case nir_instr_type_deref: {

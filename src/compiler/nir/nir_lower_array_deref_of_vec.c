@@ -147,7 +147,7 @@ nir_lower_array_deref_of_vec_impl(nir_function_impl *impl,
             nir_def *index = nir_ssa_for_src(&b, deref->arr.index, 1);
             nir_def *scalar =
                nir_vector_extract(&b, &intrin->def, index);
-            if (scalar->parent_instr->type == nir_instr_type_ssa_undef) {
+            if (scalar->parent_instr->type == nir_instr_type_undef) {
                nir_def_rewrite_uses(&intrin->def,
                                     scalar);
                nir_instr_remove(&intrin->instr);

@@ -196,7 +196,7 @@ nir_lower_bool_to_int32_instr(UNUSED nir_builder *b,
    }
 
    case nir_instr_type_intrinsic:
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_phi: {
       bool progress = false;
       nir_foreach_def(instr, rewrite_1bit_ssa_def_to_32bit, &progress);

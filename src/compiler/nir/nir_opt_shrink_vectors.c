@@ -514,8 +514,8 @@ opt_shrink_vectors_instr(nir_builder *b, nir_instr *instr)
    case nir_instr_type_load_const:
       return opt_shrink_vectors_load_const(nir_instr_as_load_const(instr));
 
-   case nir_instr_type_ssa_undef:
-      return opt_shrink_vectors_ssa_undef(nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      return opt_shrink_vectors_ssa_undef(nir_instr_as_undef(instr));
 
    case nir_instr_type_phi:
       return opt_shrink_vectors_phi(b, nir_instr_as_phi(instr));

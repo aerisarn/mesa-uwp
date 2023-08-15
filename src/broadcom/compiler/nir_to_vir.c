@@ -3820,7 +3820,7 @@ is_cheap_block(nir_block *block)
         nir_foreach_instr(instr, block) {
                 switch (instr->type) {
                 case nir_instr_type_alu:
-                case nir_instr_type_ssa_undef:
+                case nir_instr_type_undef:
                 case nir_instr_type_load_const:
                         if (--cost <= 0)
                                 return false;
@@ -4129,7 +4129,7 @@ ntq_emit_instr(struct v3d_compile *c, nir_instr *instr)
                 ntq_emit_load_const(c, nir_instr_as_load_const(instr));
                 break;
 
-        case nir_instr_type_ssa_undef:
+        case nir_instr_type_undef:
                 unreachable("Should've been lowered by nir_lower_undef_to_zero");
                 break;
 

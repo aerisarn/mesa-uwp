@@ -1268,7 +1268,7 @@ ntt_get_alu_src(struct ntt_compile *c, nir_alu_instr *instr, int i)
     * the specific swizzles from an undef don't matter)
     */
    if (nir_src_bit_size(instr->src[i].src) == 64 &&
-      !(src.src.is_ssa && src.src.ssa->parent_instr->type == nir_instr_type_ssa_undef)) {
+      !(src.src.is_ssa && src.src.ssa->parent_instr->type == nir_instr_type_undef)) {
       int chan1 = 1;
       if (nir_op_infos[instr->op].input_sizes[i] == 0) {
          chan1 = instr->def.num_components > 1 ? 1 : 0;
@@ -2941,8 +2941,8 @@ ntt_emit_instr(struct ntt_compile *c, nir_instr *instr)
       ntt_emit_jump(c, nir_instr_as_jump(instr));
       break;
 
-   case nir_instr_type_ssa_undef:
-      ntt_emit_ssa_undef(c, nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      ntt_emit_ssa_undef(c, nir_instr_as_undef(instr));
       break;
 
    default:

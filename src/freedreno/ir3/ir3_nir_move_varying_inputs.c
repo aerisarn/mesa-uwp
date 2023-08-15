@@ -78,7 +78,7 @@ check_precondition_instr(precond_state *state, nir_instr *instr)
    case nir_instr_type_alu:
    case nir_instr_type_deref:
    case nir_instr_type_load_const:
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       /* These could be safely moved around */
       break;
    case nir_instr_type_intrinsic: {

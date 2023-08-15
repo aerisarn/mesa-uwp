@@ -1834,8 +1834,8 @@ agx_emit_instr(agx_builder *b, struct nir_instr *instr)
       agx_emit_phi(b, nir_instr_as_phi(instr));
       break;
 
-   case nir_instr_type_ssa_undef:
-      agx_emit_undef(b, nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      agx_emit_undef(b, nir_instr_as_undef(instr));
       break;
 
    default:

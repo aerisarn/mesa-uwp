@@ -84,8 +84,8 @@ is_live(BITSET_WORD *defs_live, nir_instr *instr)
       nir_load_const_instr *lc = nir_instr_as_load_const(instr);
       return is_def_live(&lc->def, defs_live);
    }
-   case nir_instr_type_ssa_undef: {
-      nir_undef_instr *undef = nir_instr_as_ssa_undef(instr);
+   case nir_instr_type_undef: {
+      nir_undef_instr *undef = nir_instr_as_undef(instr);
       return is_def_live(&undef->def, defs_live);
    }
    case nir_instr_type_parallel_copy: {

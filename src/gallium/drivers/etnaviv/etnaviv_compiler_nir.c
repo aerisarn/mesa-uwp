@@ -399,7 +399,7 @@ get_src(struct etna_compile *c, nir_src *src)
    case nir_instr_type_alu:
    case nir_instr_type_tex:
       return ra_src(c, src);
-   case nir_instr_type_ssa_undef: {
+   case nir_instr_type_undef: {
       /* return zero to deal with broken Blur demo */
       nir_const_value value = CONST(0);
       return src_swizzle(const_src(c, &value, 1), SWIZZLE(X,X,X,X));
@@ -634,7 +634,7 @@ emit_instr(struct etna_compile *c, nir_instr * instr)
       assert(nir_instr_is_last(instr));
       break;
    case nir_instr_type_load_const:
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_deref:
       break;
    default:

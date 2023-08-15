@@ -1031,8 +1031,8 @@ validate_instr(nir_instr *instr, validate_state *state)
       validate_phi_instr(nir_instr_as_phi(instr), state);
       break;
 
-   case nir_instr_type_ssa_undef:
-      validate_ssa_undef_instr(nir_instr_as_ssa_undef(instr), state);
+   case nir_instr_type_undef:
+      validate_ssa_undef_instr(nir_instr_as_undef(instr), state);
       break;
 
    case nir_instr_type_jump:

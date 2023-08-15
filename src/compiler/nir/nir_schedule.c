@@ -446,7 +446,7 @@ nir_schedule_calculate_deps(nir_deps_state *state, nir_schedule_node *n)
       add_read_dep(state, state->jump, n);
 
    switch (instr->type) {
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_load_const:
    case nir_instr_type_alu:
    case nir_instr_type_deref:
@@ -1075,7 +1075,7 @@ nir_schedule_get_delay(nir_schedule_scoreboard *scoreboard, nir_instr *instr)
    }
 
    switch (instr->type) {
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_load_const:
    case nir_instr_type_alu:
    case nir_instr_type_deref:

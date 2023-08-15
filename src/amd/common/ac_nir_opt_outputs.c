@@ -271,7 +271,7 @@ bool ac_nir_optimize_outputs(nir_shader *nir, bool sprite_tex_disallowed,
          /* nir_lower_io_to_scalar is required before this */
          assert(intr->src[0].ssa->num_components == 1);
          /* No intrinsic should store undef. */
-         assert(intr->src[0].ssa->parent_instr->type != nir_instr_type_ssa_undef);
+         assert(intr->src[0].ssa->parent_instr->type != nir_instr_type_undef);
 
          /* Gather the output. */
          struct ac_out_info *out_info = &outputs[sem.location];

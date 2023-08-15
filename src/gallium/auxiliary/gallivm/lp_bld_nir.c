@@ -2777,8 +2777,8 @@ visit_block(struct lp_build_nir_context *bld_base, nir_block *block)
       case nir_instr_type_phi:
          assert(0);
          break;
-      case nir_instr_type_ssa_undef:
-         visit_ssa_undef(bld_base, nir_instr_as_ssa_undef(instr));
+      case nir_instr_type_undef:
+         visit_ssa_undef(bld_base, nir_instr_as_undef(instr));
          break;
       case nir_instr_type_jump:
          visit_jump(bld_base, nir_instr_as_jump(instr));

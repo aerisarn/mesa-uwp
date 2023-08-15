@@ -43,7 +43,7 @@ opt_undef_csel(nir_alu_instr *instr)
 
    for (int i = 1; i <= 2; i++) {
       nir_instr *parent = instr->src[i].src.ssa->parent_instr;
-      if (parent->type != nir_instr_type_ssa_undef)
+      if (parent->type != nir_instr_type_undef)
          continue;
 
       /* We can't just use nir_alu_src_copy, because we need the def/use
@@ -76,7 +76,7 @@ opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
       return false;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      if (alu->src[i].src.ssa->parent_instr->type != nir_instr_type_ssa_undef)
+      if (alu->src[i].src.ssa->parent_instr->type != nir_instr_type_undef)
          return false;
    }
 
@@ -93,7 +93,7 @@ nir_get_undef_mask(nir_def *def)
 {
    nir_instr *instr = def->parent_instr;
 
-   if (instr->type == nir_instr_type_ssa_undef)
+   if (instr->type == nir_instr_type_undef)
       return BITSET_MASK(def->num_components);
 
    if (instr->type != nir_instr_type_alu)
@@ -105,7 +105,7 @@ nir_get_undef_mask(nir_def *def)
    if (nir_op_is_vec(alu->op)) {
       for (int i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
          if (alu->src[i].src.ssa->parent_instr->type ==
-             nir_instr_type_ssa_undef) {
+             nir_instr_type_undef) {
             undef |= BITSET_MASK(nir_ssa_alu_instr_src_components(alu, i)) << i;
          }
       }

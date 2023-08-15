@@ -1527,8 +1527,8 @@ Converter::visit(nir_instr *insn)
       return visit(nir_instr_as_jump(insn));
    case nir_instr_type_load_const:
       return visit(nir_instr_as_load_const(insn));
-   case nir_instr_type_ssa_undef:
-      return visit(nir_instr_as_ssa_undef(insn));
+   case nir_instr_type_undef:
+      return visit(nir_instr_as_undef(insn));
    case nir_instr_type_tex:
       return visit(nir_instr_as_tex(insn));
    default:

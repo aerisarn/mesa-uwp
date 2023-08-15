@@ -186,7 +186,7 @@ is_src_scalarizable(nir_src *src)
       /* These are trivially scalarizable */
       return true;
 
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       return true;
 
    case nir_instr_type_intrinsic: {
@@ -383,7 +383,7 @@ gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
             break;
 
          case nir_instr_type_jump:
-         case nir_instr_type_ssa_undef:
+         case nir_instr_type_undef:
          case nir_instr_type_phi:
             instr->pass_flags = GCM_INSTR_PLACED;
             break;

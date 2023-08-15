@@ -895,7 +895,7 @@ typedef enum ENUM_PACKED {
    nir_instr_type_intrinsic,
    nir_instr_type_load_const,
    nir_instr_type_jump,
-   nir_instr_type_ssa_undef,
+   nir_instr_type_undef,
    nir_instr_type_phi,
    nir_instr_type_parallel_copy,
 } nir_instr_type;
@@ -1069,7 +1069,7 @@ nir_src_is_const(nir_src src)
 static inline bool
 nir_src_is_undef(nir_src src)
 {
-   return src.ssa->parent_instr->type == nir_instr_type_ssa_undef;
+   return src.ssa->parent_instr->type == nir_instr_type_undef;
 }
 
 static inline bool
@@ -2518,8 +2518,8 @@ NIR_DEFINE_CAST(nir_instr_as_intrinsic, nir_instr, nir_intrinsic_instr, instr,
                 type, nir_instr_type_intrinsic)
 NIR_DEFINE_CAST(nir_instr_as_load_const, nir_instr, nir_load_const_instr, instr,
                 type, nir_instr_type_load_const)
-NIR_DEFINE_CAST(nir_instr_as_ssa_undef, nir_instr, nir_undef_instr, instr,
-                type, nir_instr_type_ssa_undef)
+NIR_DEFINE_CAST(nir_instr_as_undef, nir_instr, nir_undef_instr, instr,
+                type, nir_instr_type_undef)
 NIR_DEFINE_CAST(nir_instr_as_phi, nir_instr, nir_phi_instr, instr,
                 type, nir_instr_type_phi)
 NIR_DEFINE_CAST(nir_instr_as_parallel_copy, nir_instr,
@@ -2566,7 +2566,7 @@ nir_scalar_is_const(nir_scalar s)
 static inline bool
 nir_scalar_is_undef(nir_scalar s)
 {
-   return s.def->parent_instr->type == nir_instr_type_ssa_undef;
+   return s.def->parent_instr->type == nir_instr_type_undef;
 }
 
 static inline nir_const_value

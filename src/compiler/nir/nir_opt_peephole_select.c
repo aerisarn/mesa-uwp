@@ -70,7 +70,7 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          case nir_instr_type_deref:
          case nir_instr_type_load_const:
          case nir_instr_type_phi:
-         case nir_instr_type_ssa_undef:
+         case nir_instr_type_undef:
          case nir_instr_type_tex:
             break;
 
@@ -164,7 +164,7 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
 
       case nir_instr_type_deref:
       case nir_instr_type_load_const:
-      case nir_instr_type_ssa_undef:
+      case nir_instr_type_undef:
          break;
 
       case nir_instr_type_alu: {

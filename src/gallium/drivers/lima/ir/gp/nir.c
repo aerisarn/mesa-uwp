@@ -324,7 +324,7 @@ static bool (*gpir_emit_instr[nir_instr_type_phi])(gpir_block *, nir_instr *) = 
    [nir_instr_type_alu]        = gpir_emit_alu,
    [nir_instr_type_intrinsic]  = gpir_emit_intrinsic,
    [nir_instr_type_load_const] = gpir_emit_load_const,
-   [nir_instr_type_ssa_undef]  = gpir_emit_ssa_undef,
+   [nir_instr_type_undef]      = gpir_emit_ssa_undef,
    [nir_instr_type_tex]        = gpir_emit_tex,
    [nir_instr_type_jump]       = gpir_emit_jump,
 };

@@ -127,8 +127,8 @@ InstrFactory::from_nir(nir_instr *instr, Shader& shader)
       return TexInstr::from_nir(nir_instr_as_tex(instr), shader);
    case nir_instr_type_jump:
       return process_jump(nir_instr_as_jump(instr), shader);
-   case nir_instr_type_ssa_undef:
-      return process_undef(nir_instr_as_ssa_undef(instr), shader);
+   case nir_instr_type_undef:
+      return process_undef(nir_instr_as_undef(instr), shader);
    default:
       fprintf(stderr, "Instruction type %d not supported\n", instr->type);
       return false;

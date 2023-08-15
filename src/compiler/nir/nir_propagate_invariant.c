@@ -124,7 +124,7 @@ propagate_invariant_instr(nir_instr *instr, struct set *invariants)
 
    case nir_instr_type_deref:
    case nir_instr_type_jump:
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_load_const:
       break; /* Nothing to do */
 

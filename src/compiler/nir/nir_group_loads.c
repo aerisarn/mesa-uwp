@@ -127,7 +127,7 @@ can_move(nir_instr *instr, uint8_t current_indirection_level)
        instr->type == nir_instr_type_deref ||
        instr->type == nir_instr_type_tex ||
        instr->type == nir_instr_type_load_const ||
-       instr->type == nir_instr_type_ssa_undef)
+       instr->type == nir_instr_type_undef)
       return true;
 
    if (instr->type == nir_instr_type_intrinsic &&

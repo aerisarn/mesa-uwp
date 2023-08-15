@@ -3431,7 +3431,7 @@ read_phi_src(struct ir3_context *ctx, struct ir3_block *blk,
 
    nir_foreach_phi_src (nsrc, nphi) {
       if (blk->nblock == nsrc->pred) {
-         if (nsrc->src.ssa->parent_instr->type == nir_instr_type_ssa_undef) {
+         if (nsrc->src.ssa->parent_instr->type == nir_instr_type_undef) {
             /* Create an ir3 undef */
             return NULL;
          } else {
@@ -3503,8 +3503,8 @@ emit_instr(struct ir3_context *ctx, nir_instr *instr)
    case nir_instr_type_load_const:
       emit_load_const(ctx, nir_instr_as_load_const(instr));
       break;
-   case nir_instr_type_ssa_undef:
-      emit_undef(ctx, nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      emit_undef(ctx, nir_instr_as_undef(instr));
       break;
    case nir_instr_type_tex: {
       nir_tex_instr *tex = nir_instr_as_tex(instr);

@@ -168,7 +168,7 @@ instr_is_invariant(nir_instr *instr, nir_loop *loop)
 
    switch (instr->type) {
    case nir_instr_type_load_const:
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       return invariant;
    case nir_instr_type_call:
       return not_invariant;

@@ -4227,8 +4227,8 @@ static bool visit_block(struct ac_nir_context *ctx, nir_block *block)
          break;
       case nir_instr_type_phi:
          break;
-      case nir_instr_type_ssa_undef:
-         visit_ssa_undef(ctx, nir_instr_as_ssa_undef(instr));
+      case nir_instr_type_undef:
+         visit_ssa_undef(ctx, nir_instr_as_undef(instr));
          break;
       case nir_instr_type_jump:
          if (!visit_jump(&ctx->ac, nir_instr_as_jump(instr)))

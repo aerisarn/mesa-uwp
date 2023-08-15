@@ -2008,8 +2008,8 @@ ntq_emit_instr(struct vc4_compile *c, nir_instr *instr)
                 ntq_emit_load_const(c, nir_instr_as_load_const(instr));
                 break;
 
-        case nir_instr_type_ssa_undef:
-                ntq_emit_ssa_undef(c, nir_instr_as_ssa_undef(instr));
+        case nir_instr_type_undef:
+                ntq_emit_ssa_undef(c, nir_instr_as_undef(instr));
                 break;
 
         case nir_instr_type_tex:

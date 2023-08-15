@@ -5651,8 +5651,8 @@ static bool emit_instr(struct ntd_context *ctx, struct nir_instr* instr)
       return emit_phi(ctx, nir_instr_as_phi(instr));
    case nir_instr_type_tex:
       return emit_tex(ctx, nir_instr_as_tex(instr));
-   case nir_instr_type_ssa_undef:
-      return emit_undefined(ctx, nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      return emit_undefined(ctx, nir_instr_as_undef(instr));
    default:
       log_nir_instr_unsupported(ctx->logger, "Unimplemented instruction type",
                                 instr);

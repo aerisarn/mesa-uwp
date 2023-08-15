@@ -154,8 +154,8 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
       nir_emit_texture(nir_instr_as_tex(instr));
       break;
 
-   case nir_instr_type_ssa_undef:
-      nir_emit_undef(nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      nir_emit_undef(nir_instr_as_undef(instr));
       break;
 
    default:

@@ -472,7 +472,7 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
       nir_emit_load_const(abld, nir_instr_as_load_const(instr));
       break;
 
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       /* We create a new VGRF for undefs on every use (by handling
        * them in get_nir_src()), rather than for each definition.
        * This helps register coalescing eliminate MOVs from undef.

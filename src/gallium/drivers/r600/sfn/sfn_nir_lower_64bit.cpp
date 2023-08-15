@@ -860,8 +860,8 @@ Lower64BitToVec2::filter(const nir_instr *instr) const
       auto lc = nir_instr_as_load_const(instr);
       return lc->def.bit_size == 64;
    }
-   case nir_instr_type_ssa_undef: {
-      auto undef = nir_instr_as_ssa_undef(instr);
+   case nir_instr_type_undef: {
+      auto undef = nir_instr_as_undef(instr);
       return undef->def.bit_size == 64;
    }
    default:
@@ -934,8 +934,8 @@ Lower64BitToVec2::lower(nir_instr *instr)
 
       return nir_build_imm(b, 2 * lc->def.num_components, 32, val);
    }
-   case nir_instr_type_ssa_undef: {
-      auto undef = nir_instr_as_ssa_undef(instr);
+   case nir_instr_type_undef: {
+      auto undef = nir_instr_as_undef(instr);
       undef->def.num_components *= 2;
       undef->def.bit_size = 32;
       return NIR_LOWER_INSTR_PROGRESS;

@@ -414,7 +414,7 @@ trivialize_stores(nir_function_impl *impl, nir_block *block)
             /* SSA-only instruction types */
             nir_instr *parent = value->parent_instr;
             nontrivial |= (parent->type == nir_instr_type_load_const) ||
-                          (parent->type == nir_instr_type_ssa_undef);
+                          (parent->type == nir_instr_type_undef);
 
             /* Must be written in the same block */
             nontrivial |= (parent->block != block);

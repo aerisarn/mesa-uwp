@@ -590,11 +590,11 @@ init_context(isel_context* ctx, nir_shader* shader)
                regclasses[tex->def.index] = rc;
                break;
             }
-            case nir_instr_type_ssa_undef: {
-               unsigned num_components = nir_instr_as_ssa_undef(instr)->def.num_components;
-               unsigned bit_size = nir_instr_as_ssa_undef(instr)->def.bit_size;
+            case nir_instr_type_undef: {
+               unsigned num_components = nir_instr_as_undef(instr)->def.num_components;
+               unsigned bit_size = nir_instr_as_undef(instr)->def.bit_size;
                RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
-               regclasses[nir_instr_as_ssa_undef(instr)->def.index] = rc;
+               regclasses[nir_instr_as_undef(instr)->def.index] = rc;
                break;
             }
             case nir_instr_type_phi: {

@@ -43,10 +43,10 @@
 static bool
 lower_undef_instr_to_zero(nir_builder *b, nir_instr *instr, UNUSED void *_state)
 {
-   if (instr->type != nir_instr_type_ssa_undef)
+   if (instr->type != nir_instr_type_undef)
       return false;
 
-   nir_undef_instr *und = nir_instr_as_ssa_undef(instr);
+   nir_undef_instr *und = nir_instr_as_undef(instr);
    b->cursor = nir_instr_remove(&und->instr);
    nir_def *zero = nir_imm_zero(b, und->def.num_components,
                                 und->def.bit_size);

@@ -181,7 +181,7 @@ lower_64b_undef(nir_builder *b, nir_instr *instr, void *unused)
 {
    (void)unused;
 
-   nir_undef_instr *undef = nir_instr_as_ssa_undef(instr);
+   nir_undef_instr *undef = nir_instr_as_undef(instr);
    unsigned num_comp = undef->def.num_components;
    nir_def *components[num_comp];
 
@@ -201,8 +201,8 @@ lower_64b_undef_filter(const nir_instr *instr, const void *unused)
 {
    (void)unused;
 
-   return instr->type == nir_instr_type_ssa_undef &&
-      nir_instr_as_ssa_undef(instr)->def.bit_size == 64;
+   return instr->type == nir_instr_type_undef &&
+      nir_instr_as_undef(instr)->def.bit_size == 64;
 }
 
 bool

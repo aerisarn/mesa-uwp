@@ -58,10 +58,10 @@ struct from_ssa_state {
 static bool
 def_after(nir_def *a, nir_def *b)
 {
-   if (a->parent_instr->type == nir_instr_type_ssa_undef)
+   if (a->parent_instr->type == nir_instr_type_undef)
       return false;
 
-   if (b->parent_instr->type == nir_instr_type_ssa_undef)
+   if (b->parent_instr->type == nir_instr_type_undef)
       return true;
 
    /* If they're in the same block, we can rely on whichever instruction
@@ -79,7 +79,7 @@ def_after(nir_def *a, nir_def *b)
 static bool
 ssa_def_dominates(nir_def *a, nir_def *b)
 {
-   if (a->parent_instr->type == nir_instr_type_ssa_undef) {
+   if (a->parent_instr->type == nir_instr_type_undef) {
       /* SSA undefs always dominate */
       return true;
    }
@@ -572,7 +572,7 @@ static bool
 def_replace_with_reg(nir_def *def, nir_function_impl *impl)
 {
    /* These are handled elsewhere */
-   assert(def->parent_instr->type != nir_instr_type_ssa_undef &&
+   assert(def->parent_instr->type != nir_instr_type_undef &&
           def->parent_instr->type != nir_instr_type_load_const);
 
    nir_builder b = nir_builder_create(impl);
@@ -1246,9 +1246,9 @@ nir_lower_ssa_defs_to_regs_block(nir_block *block)
    const unsigned num_ssa = impl->ssa_alloc;
 
    nir_foreach_instr_safe(instr, block) {
-      if (instr->type == nir_instr_type_ssa_undef) {
+      if (instr->type == nir_instr_type_undef) {
          /* Undefs are just a read of something never written. */
-         nir_undef_instr *undef = nir_instr_as_ssa_undef(instr);
+         nir_undef_instr *undef = nir_instr_as_undef(instr);
          nir_def *reg = decl_reg_for_ssa_def(&b, &undef->def);
          nir_rewrite_uses_to_load_reg(&b, &undef->def, reg);
       } else if (instr->type == nir_instr_type_load_const) {

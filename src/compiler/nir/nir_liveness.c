@@ -315,8 +315,8 @@ nir_defs_interfere(nir_def *a, nir_def *b)
        * least one isn't dead.
        */
       return true;
-   } else if (a->parent_instr->type == nir_instr_type_ssa_undef ||
-              b->parent_instr->type == nir_instr_type_ssa_undef) {
+   } else if (a->parent_instr->type == nir_instr_type_undef ||
+              b->parent_instr->type == nir_instr_type_undef) {
       /* If either variable is an ssa_undef, then there's no interference */
       return false;
    } else if (a->parent_instr->index < b->parent_instr->index) {

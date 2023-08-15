@@ -791,8 +791,8 @@ update_instr_divergence(nir_shader *shader, nir_instr *instr)
       return visit_tex(nir_instr_as_tex(instr));
    case nir_instr_type_load_const:
       return visit_load_const(nir_instr_as_load_const(instr));
-   case nir_instr_type_ssa_undef:
-      return visit_ssa_undef(nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      return visit_ssa_undef(nir_instr_as_undef(instr));
    case nir_instr_type_deref:
       return visit_deref(shader, nir_instr_as_deref(instr));
    case nir_instr_type_jump:
@@ -844,7 +844,7 @@ visit_if_merge_phi(nir_phi_instr *phi, bool if_cond_divergent)
          phi->def.divergent = true;
          return true;
       }
-      if (src->src.ssa->parent_instr->type != nir_instr_type_ssa_undef) {
+      if (src->src.ssa->parent_instr->type != nir_instr_type_undef) {
          defined_srcs++;
       }
    }

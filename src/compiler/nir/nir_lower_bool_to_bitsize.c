@@ -395,7 +395,7 @@ nir_lower_bool_to_bitsize_instr(nir_builder *b,
    case nir_instr_type_phi:
       return lower_phi_instr(b, nir_instr_as_phi(instr));
 
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_intrinsic: {
       bool progress = false;
       nir_foreach_def(instr, rewrite_1bit_ssa_def_to_32bit, &progress);

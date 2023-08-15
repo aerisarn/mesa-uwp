@@ -851,8 +851,8 @@ emit_instr(struct ir2_context *ctx, nir_instr *instr)
    case nir_instr_type_jump:
       ctx->block_has_jump[ctx->block_idx] = true;
       break;
-   case nir_instr_type_ssa_undef:
-      emit_undef(ctx, nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      emit_undef(ctx, nir_instr_as_undef(instr));
       break;
    default:
       break;

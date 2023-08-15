@@ -79,7 +79,7 @@ set_src_live(nir_src *src, void *void_state)
 
    switch (instr->type) {
    case nir_instr_type_load_const:
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       return true;
    case nir_instr_type_alu: {
       /* alu op bypass */

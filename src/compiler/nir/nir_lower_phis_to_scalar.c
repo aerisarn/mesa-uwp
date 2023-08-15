@@ -72,7 +72,7 @@ is_phi_src_scalarizable(nir_phi_src *src,
       /* These are trivially scalarizable */
       return true;
 
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       /* The caller of this function is going to OR the results and we don't
        * want undefs to count so we return false.
        */

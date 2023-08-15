@@ -3998,8 +3998,8 @@ emit_block(struct ntv_context *ctx, struct nir_block *block)
       case nir_instr_type_load_const:
          emit_load_const(ctx, nir_instr_as_load_const(instr));
          break;
-      case nir_instr_type_ssa_undef:
-         emit_undef(ctx, nir_instr_as_ssa_undef(instr));
+      case nir_instr_type_undef:
+         emit_undef(ctx, nir_instr_as_undef(instr));
          break;
       case nir_instr_type_tex:
          emit_tex(ctx, nir_instr_as_tex(instr));

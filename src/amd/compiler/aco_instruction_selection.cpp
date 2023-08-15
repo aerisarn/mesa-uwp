@@ -9742,7 +9742,7 @@ Operand
 get_phi_operand(isel_context* ctx, nir_def* ssa, RegClass rc, bool logical)
 {
    Temp tmp = get_ssa_temp(ctx, ssa);
-   if (ssa->parent_instr->type == nir_instr_type_ssa_undef) {
+   if (ssa->parent_instr->type == nir_instr_type_undef) {
       return Operand(rc);
    } else if (logical && ssa->bit_size == 1 &&
               ssa->parent_instr->type == nir_instr_type_load_const) {
@@ -10093,7 +10093,7 @@ visit_block(isel_context* ctx, nir_block* block)
       case nir_instr_type_intrinsic: visit_intrinsic(ctx, nir_instr_as_intrinsic(instr)); break;
       case nir_instr_type_tex: visit_tex(ctx, nir_instr_as_tex(instr)); break;
       case nir_instr_type_phi: visit_phi(ctx, nir_instr_as_phi(instr)); break;
-      case nir_instr_type_ssa_undef: visit_undef(ctx, nir_instr_as_ssa_undef(instr)); break;
+      case nir_instr_type_undef: visit_undef(ctx, nir_instr_as_undef(instr)); break;
       case nir_instr_type_deref: break;
       case nir_instr_type_jump: visit_jump(ctx, nir_instr_as_jump(instr)); break;
       default: isel_err(instr, "Unknown NIR instr type");

@@ -40,7 +40,7 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
 {
    switch (instr->type) {
    case nir_instr_type_load_const:
-   case nir_instr_type_ssa_undef: {
+   case nir_instr_type_undef: {
       return options & nir_move_const_undef;
    }
    case nir_instr_type_alu: {

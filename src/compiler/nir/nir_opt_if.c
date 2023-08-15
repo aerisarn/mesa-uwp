@@ -433,7 +433,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
             nir_foreach_phi_src(src_of_phi, phi) {
                if (src_of_phi->pred == prev_block) {
                   if (src_of_phi->src.ssa->parent_instr->type !=
-                      nir_instr_type_ssa_undef) {
+                      nir_instr_type_undef) {
                      is_prev_result_undef = false;
                   }
 

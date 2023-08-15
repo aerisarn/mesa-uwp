@@ -1612,8 +1612,8 @@ write_instr(write_ctx *ctx, const nir_instr *instr)
    case nir_instr_type_load_const:
       write_load_const(ctx, nir_instr_as_load_const(instr));
       break;
-   case nir_instr_type_ssa_undef:
-      write_ssa_undef(ctx, nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_undef:
+      write_ssa_undef(ctx, nir_instr_as_undef(instr));
       break;
    case nir_instr_type_tex:
       write_tex(ctx, nir_instr_as_tex(instr));
@@ -1658,7 +1658,7 @@ read_instr(read_ctx *ctx, nir_block *block)
    case nir_instr_type_load_const:
       instr = &read_load_const(ctx, header)->instr;
       break;
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       instr = &read_ssa_undef(ctx, header)->instr;
       break;
    case nir_instr_type_tex:

@@ -2299,7 +2299,7 @@ emit_instr(compiler_context *ctx, struct nir_instr *instr)
       emit_jump(ctx, nir_instr_as_jump(instr));
       break;
 
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
       /* Spurious */
       break;
 

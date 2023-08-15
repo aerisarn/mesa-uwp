@@ -202,7 +202,7 @@ can_remat_instr(nir_instr *instr, struct sized_bitset *remat)
       }
    }
 
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_load_const:
       return true;
 

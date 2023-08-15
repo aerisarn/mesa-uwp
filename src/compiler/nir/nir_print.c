@@ -1863,8 +1863,8 @@ print_instr(const nir_instr *instr, print_state *state, unsigned tabs)
       print_jump_instr(nir_instr_as_jump(instr), state);
       break;
 
-   case nir_instr_type_ssa_undef:
-      print_ssa_undef_instr(nir_instr_as_ssa_undef(instr), state);
+   case nir_instr_type_undef:
+      print_ssa_undef_instr(nir_instr_as_undef(instr), state);
       break;
 
    case nir_instr_type_phi:
@@ -1893,7 +1893,7 @@ block_has_instruction_with_dest(nir_block *block)
       case nir_instr_type_deref:
       case nir_instr_type_alu:
       case nir_instr_type_tex:
-      case nir_instr_type_ssa_undef:
+      case nir_instr_type_undef:
       case nir_instr_type_phi:
       case nir_instr_type_parallel_copy:
          return true;

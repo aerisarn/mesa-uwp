@@ -1157,7 +1157,7 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
    struct v3d_compile *c = (struct v3d_compile *) data;
 
    switch (instr->type) {
-   case nir_instr_type_ssa_undef:
+   case nir_instr_type_undef:
    case nir_instr_type_load_const:
    case nir_instr_type_alu:
    case nir_instr_type_deref:

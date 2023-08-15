@@ -876,7 +876,7 @@ nir_undef_instr_create(nir_shader *shader,
                        unsigned bit_size)
 {
    nir_undef_instr *instr = gc_alloc(shader->gctx, nir_undef_instr, 1);
-   instr_init(&instr->instr, nir_instr_type_ssa_undef);
+   instr_init(&instr->instr, nir_instr_type_undef);
 
    nir_def_init(&instr->instr, &instr->def, num_components, bit_size);
 
@@ -1316,8 +1316,8 @@ nir_instr_ssa_def(nir_instr *instr)
    case nir_instr_type_load_const:
       return &nir_instr_as_load_const(instr)->def;
 
-   case nir_instr_type_ssa_undef:
-      return &nir_instr_as_ssa_undef(instr)->def;
+   case nir_instr_type_undef:
+      return &nir_instr_as_undef(instr)->def;
 
    case nir_instr_type_call:
    case nir_instr_type_jump:

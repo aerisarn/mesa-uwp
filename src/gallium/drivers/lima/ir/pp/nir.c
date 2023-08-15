@@ -471,7 +471,7 @@ static bool ppir_emit_load_const(ppir_block *block, nir_instr *ni)
 
 static bool ppir_emit_ssa_undef(ppir_block *block, nir_instr *ni)
 {
-   nir_undef_instr *undef = nir_instr_as_ssa_undef(ni);
+   nir_undef_instr *undef = nir_instr_as_undef(ni);
    ppir_node *node = ppir_node_create_ssa(block, ppir_op_undef, &undef->def);
    if (!node)
       return false;
@@ -665,7 +665,7 @@ static bool (*ppir_emit_instr[nir_instr_type_phi])(ppir_block *, nir_instr *) = 
    [nir_instr_type_alu]        = ppir_emit_alu,
    [nir_instr_type_intrinsic]  = ppir_emit_intrinsic,
    [nir_instr_type_load_const] = ppir_emit_load_const,
-   [nir_instr_type_ssa_undef]  = ppir_emit_ssa_undef,
+   [nir_instr_type_undef]      = ppir_emit_ssa_undef,
    [nir_instr_type_tex]        = ppir_emit_tex,
    [nir_instr_type_jump]       = ppir_emit_jump,
 };

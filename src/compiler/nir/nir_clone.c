@@ -434,8 +434,8 @@ clone_instr(clone_state *state, const nir_instr *instr)
       return &clone_intrinsic(state, nir_instr_as_intrinsic(instr))->instr;
    case nir_instr_type_load_const:
       return &clone_load_const(state, nir_instr_as_load_const(instr))->instr;
-   case nir_instr_type_ssa_undef:
-      return &clone_ssa_undef(state, nir_instr_as_ssa_undef(instr))->instr;
+   case nir_instr_type_undef:
+      return &clone_ssa_undef(state, nir_instr_as_undef(instr))->instr;
    case nir_instr_type_tex:
       return &clone_tex(state, nir_instr_as_tex(instr))->instr;
    case nir_instr_type_phi:
