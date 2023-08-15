@@ -6177,6 +6177,18 @@ brw::register_pressure::register_pressure(const fs_visitor *v)
       for (int ip = live.vgrf_start[reg]; ip <= live.vgrf_end[reg]; ip++)
          regs_live_at_ip[ip] += v->alloc.sizes[reg];
    }
+
+   const unsigned payload_count = v->first_non_payload_grf;
+
+   int *payload_last_use_ip = new int[payload_count];
+   v->calculate_payload_ranges(payload_count, payload_last_use_ip);
+
+   for (unsigned reg = 0; reg < payload_count; reg++) {
+      for (int ip = 0; ip < payload_last_use_ip[reg]; ip++)
+         ++regs_live_at_ip[ip];
+   }
+
+   delete[] payload_last_use_ip;
 }
 
 brw::register_pressure::~register_pressure()
