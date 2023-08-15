@@ -347,6 +347,22 @@ class GenXml(object):
         """
         self.process_imported(merge=True)
 
+    def flatten_imported(self):
+        """Flattens the genxml to not include any imports
+
+        Essentially this helper will put the `self.et` into a state
+        that includes all imported items directly, and does not
+        contain any <import> tags. This is used by the
+        genxml_import.py with the --flatten switch to "undo" any
+        genxml imports.
+
+        """
+        self.merge_imported()
+        root = self.et.getroot()
+        imports = root.findall('import')
+        for i in imports:
+            root.remove(i)
+
     def add_xml_imports(self):
         """Adds imports to the genxml file.
 
