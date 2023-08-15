@@ -1111,7 +1111,12 @@ VkResult genX(CreateSampler)(
 void
 genX(apply_task_urb_workaround)(struct anv_cmd_buffer *cmd_buffer)
 {
-#if INTEL_NEEDS_WA_16014390852
+#if GFX_VERx10 >= 125
+   const struct intel_device_info *devinfo = &cmd_buffer->device->physical->info;
+
+   if (!intel_needs_workaround(devinfo, 16014390852))
+      return;
+
    if (cmd_buffer->state.current_pipeline != _3D ||
        !cmd_buffer->state.gfx.used_task_shader)
       return;
