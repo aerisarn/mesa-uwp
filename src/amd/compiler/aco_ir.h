@@ -2145,6 +2145,9 @@ public:
 
    std::vector<Definition> args_pending_vmem;
 
+   /* For shader part with previous shader part that has lds access. */
+   bool pending_lds_access = false;
+
    struct {
       FILE* output = stderr;
       bool shorten_messages = false;
