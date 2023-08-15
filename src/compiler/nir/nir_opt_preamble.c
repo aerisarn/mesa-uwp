@@ -355,7 +355,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    /* Step 1: Calculate can_move */
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
          if (!def)
             continue;
 
@@ -381,7 +381,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    unsigned num_candidates = 0;
    nir_foreach_block_reverse(block, impl) {
       nir_foreach_instr_reverse(instr, block) {
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
          if (!def)
             continue;
 
@@ -394,7 +394,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
          state->candidate = false;
          state->must_stay = false;
          nir_foreach_use(use, def) {
-            nir_def *use_def = nir_instr_ssa_def(use->parent_instr);
+            nir_def *use_def = nir_instr_def(use->parent_instr);
             if (!use_def || !ctx.states[use_def->index].can_move ||
                 ctx.states[use_def->index].must_stay) {
                if (is_candidate)
@@ -441,7 +441,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
     */
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
          if (!def)
             continue;
 
@@ -527,7 +527,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
          if (!def)
             continue;
 
@@ -560,7 +560,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
          }
 
          if (state->replace) {
-            nir_def *clone_def = nir_instr_ssa_def(clone);
+            nir_def *clone_def = nir_instr_def(clone);
             nir_store_preamble(b, clone_def, .base = state->offset);
          }
       }
@@ -571,7 +571,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
          if (!def)
             continue;
 

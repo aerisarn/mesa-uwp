@@ -211,7 +211,7 @@ nir_opt_sink(nir_shader *shader, nir_move_options options)
             if (!nir_can_move_instr(instr, options))
                continue;
 
-            nir_def *def = nir_instr_ssa_def(instr);
+            nir_def *def = nir_instr_def(instr);
 
             bool sink_out_of_loops =
                instr->type != nir_instr_type_intrinsic ||

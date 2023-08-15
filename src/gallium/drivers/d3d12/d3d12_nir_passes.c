@@ -124,7 +124,7 @@ lower_pos_read(nir_builder *b, struct nir_instr *instr,
 
    b->cursor = nir_after_instr(instr);
 
-   nir_def *pos = nir_instr_ssa_def(instr);
+   nir_def *pos = nir_instr_def(instr);
    nir_def *depth = nir_channel(b, pos, 2);
 
    assert(depth_transform_var);

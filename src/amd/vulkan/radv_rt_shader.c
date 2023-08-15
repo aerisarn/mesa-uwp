@@ -716,7 +716,7 @@ lower_hit_attribs(nir_shader *shader, nir_variable **hit_attribs, uint32_t workg
                ret = nir_load_var(&b, hit_attribs[nir_intrinsic_base(intrin)]);
             else
                ret = nir_load_shared(&b, 1, 32, offset, .base = 0, .align_mul = 4);
-            nir_def_rewrite_uses(nir_instr_ssa_def(instr), ret);
+            nir_def_rewrite_uses(nir_instr_def(instr), ret);
          } else {
             if (hit_attribs)
                nir_store_var(&b, hit_attribs[nir_intrinsic_base(intrin)], intrin->src->ssa, 0x1);

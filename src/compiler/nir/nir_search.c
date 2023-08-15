@@ -619,7 +619,7 @@ add_uses_to_worklist(nir_instr *instr,
                      struct util_dynarray *states,
                      const struct per_op_table *pass_op_table)
 {
-   nir_def *def = nir_instr_ssa_def(instr);
+   nir_def *def = nir_instr_def(instr);
 
    nir_foreach_use_safe(use_src, def) {
       if (nir_algebraic_automaton(use_src->parent_instr, states, pass_op_table))

@@ -196,7 +196,7 @@ static bool ac_eliminate_duplicated_output(struct ac_out_info *outputs,
       sem.no_sysval_output = 1;
 
       /* Write just one component. */
-      prev_chan->store_intr = nir_store_output(b, nir_instr_ssa_def(cur_chan->value),
+      prev_chan->store_intr = nir_store_output(b, nir_instr_def(cur_chan->value),
                                                nir_imm_int(b, 0),
                                                .base = prev->base,
                                                .component = i % 4,

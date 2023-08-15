@@ -75,7 +75,7 @@ nir_opt_move_block(nir_block *block, nir_move_options options)
          continue;
 
       /* Check all users in this block which is the first */
-      const nir_def *def = nir_instr_ssa_def(instr);
+      const nir_def *def = nir_instr_def(instr);
       nir_instr *first_user = instr == if_cond_instr ? NULL : last_instr;
       nir_foreach_use(use, def) {
          nir_instr *parent = use->parent_instr;

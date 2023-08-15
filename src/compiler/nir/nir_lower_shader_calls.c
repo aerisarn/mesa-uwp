@@ -283,7 +283,7 @@ can_remat_chain_ssa_def(nir_def *def, struct sized_bitset *remat, struct util_dy
    memcpy(potential_remat.set, remat->set, BITSET_WORDS(remat->size) * sizeof(BITSET_WORD));
 
    util_dynarray_foreach(buf, nir_instr *, instr_ptr) {
-      nir_def *instr_ssa_def = nir_instr_ssa_def(*instr_ptr);
+      nir_def *instr_ssa_def = nir_instr_def(*instr_ptr);
 
       /* If already in the potential rematerializable, nothing to do. */
       if (BITSET_TEST(potential_remat.set, instr_ssa_def->index))
@@ -313,7 +313,7 @@ remat_ssa_def(nir_builder *b, nir_def *def, struct hash_table *remap_table)
 {
    nir_instr *clone = nir_instr_clone_deep(b->shader, def->parent_instr, remap_table);
    nir_builder_instr_insert(b, clone);
-   return nir_instr_ssa_def(clone);
+   return nir_instr_def(clone);
 }
 
 static nir_def *
@@ -324,7 +324,7 @@ remat_chain_ssa_def(nir_builder *b, struct util_dynarray *buf,
    nir_def *last_def = NULL;
 
    util_dynarray_foreach(buf, nir_instr *, instr_ptr) {
-      nir_def *instr_ssa_def = nir_instr_ssa_def(*instr_ptr);
+      nir_def *instr_ssa_def = nir_instr_def(*instr_ptr);
       unsigned ssa_index = instr_ssa_def->index;
 
       if (fill_defs[ssa_index] != NULL &&
@@ -522,7 +522,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
 
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
-            nir_def *def = nir_instr_ssa_def(instr);
+            nir_def *def = nir_instr_def(instr);
             if (def == NULL)
                continue;
 
@@ -559,7 +559,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
    unsigned max_scratch_size = shader->scratch_size;
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
          if (def != NULL) {
             if (can_remat_ssa_def(def, &trivial_remat)) {
                add_ssa_def_to_bitset(def, &trivial_remat);
@@ -735,7 +735,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
     */
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
          if (def != NULL) {
             struct nir_phi_builder_value *pbv =
                get_phi_builder_value_for_def(def, &pbv_arr);
@@ -1044,7 +1044,7 @@ flatten_resume_if_ladder(nir_builder *b,
                nir_instr_insert(b->cursor, instr);
                b->cursor = nir_after_instr(instr);
 
-               nir_def *def = nir_instr_ssa_def(instr);
+               nir_def *def = nir_instr_def(instr);
                BITSET_SET(remat->set, def->index);
             }
          }
@@ -1342,7 +1342,7 @@ lower_stack_instr_to_scratch(struct nir_builder *b, nir_instr *instr, void *data
    switch (stack->intrinsic) {
    case nir_intrinsic_load_stack: {
       b->cursor = nir_instr_remove(instr);
-      nir_def *data, *old_data = nir_instr_ssa_def(instr);
+      nir_def *data, *old_data = nir_instr_def(instr);
 
       if (state->address_format == nir_address_format_64bit_global) {
          nir_def *addr = nir_iadd_imm(b,
@@ -1484,7 +1484,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
          const unsigned value_id = nir_intrinsic_value_id(intrin);
 
          const unsigned mask =
-            nir_def_components_read(nir_instr_ssa_def(instr));
+            nir_def_components_read(nir_instr_def(instr));
          add_use_mask(value_id_to_mask, value_id, mask);
       }
    }
@@ -1555,7 +1555,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
          u_foreach_bit(idx, read_mask)
             swiz_map[idx] = swiz_count++;
 
-         nir_def *def = nir_instr_ssa_def(instr);
+         nir_def *def = nir_instr_def(instr);
 
          nir_foreach_use_safe(use_src, def) {
             if (use_src->parent_instr->type == nir_instr_type_alu) {
@@ -1652,7 +1652,7 @@ nir_opt_sort_and_pack_stack(nir_shader *shader,
                continue;
 
             const unsigned value_id = nir_intrinsic_value_id(intrin);
-            nir_def *def = nir_instr_ssa_def(instr);
+            nir_def *def = nir_instr_def(instr);
 
             assert(_mesa_hash_table_u64_search(value_id_to_item,
                                                value_id) == NULL);

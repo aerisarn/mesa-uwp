@@ -304,7 +304,7 @@ clc_lower_64bit_semantics(nir_shader *nir)
                   continue;
                }
 
-               if (nir_instr_ssa_def(instr)->bit_size != 64)
+               if (nir_instr_def(instr)->bit_size != 64)
                   continue;
 
                intrinsic->def.bit_size = 32;

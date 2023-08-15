@@ -44,7 +44,7 @@ lower_cube_size(nir_builder *b, nir_intrinsic_instr *intrin)
    nir_intrinsic_set_image_array(_2darray_size, true);
    nir_builder_instr_insert(b, &_2darray_size->instr);
 
-   nir_def *size = nir_instr_ssa_def(&_2darray_size->instr);
+   nir_def *size = nir_instr_def(&_2darray_size->instr);
    nir_scalar comps[NIR_MAX_VEC_COMPONENTS] = { 0 };
    unsigned coord_comps = intrin->def.num_components;
    for (unsigned c = 0; c < coord_comps; c++) {

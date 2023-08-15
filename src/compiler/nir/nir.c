@@ -1286,7 +1286,7 @@ nir_instr_free_and_dce(nir_instr *instr)
 /*@}*/
 
 nir_def *
-nir_instr_ssa_def(nir_instr *instr)
+nir_instr_def(nir_instr *instr)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
@@ -2038,7 +2038,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
          continue;
       }
 
-      nir_def *old_def = nir_instr_ssa_def(instr);
+      nir_def *old_def = nir_instr_def(instr);
       struct list_head old_uses;
       if (old_def != NULL) {
          /* We're about to ask the callback to generate a replacement for instr.

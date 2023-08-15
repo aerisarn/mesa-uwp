@@ -76,7 +76,7 @@ rewrite_cost(nir_def *def, const void *data)
 static bool
 avoid_instr(const nir_instr *instr, const void *data)
 {
-   const nir_def *def = nir_instr_ssa_def((nir_instr *)instr);
+   const nir_def *def = nir_instr_def((nir_instr *)instr);
 
    /* Do not move bindless handles, since we need those to retain their constant
     * base index.
