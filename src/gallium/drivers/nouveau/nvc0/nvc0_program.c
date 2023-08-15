@@ -594,11 +594,11 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
 
 #ifndef NDEBUG
    info->target = debug_get_num_option("NV50_PROG_CHIPSET", chipset);
-   info->optLevel = debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
+   info->optLevel = debug_get_num_option("NV50_PROG_OPTIMIZE", 4);
    info->dbgFlags = debug_get_num_option("NV50_PROG_DEBUG", 0);
    info->omitLineNum = debug_get_num_option("NV50_PROG_DEBUG_OMIT_LINENUM", 0);
 #else
-   info->optLevel = 3;
+   info->optLevel = 4;
 #endif
 
    info->bin.smemSize = prog->cp.smem_size;

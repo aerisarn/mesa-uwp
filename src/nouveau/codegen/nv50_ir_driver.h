@@ -95,7 +95,8 @@ struct nv50_ir_prog_info
 
    uint8_t type; /* PIPE_SHADER */
 
-   uint8_t optLevel; /* optimization level (0 to 3) */
+   uint8_t optLevel; /* optimization level (0 to 4). Level 4 enables MemoryOpt
+                      * which does not work well with NVK */
    uint8_t dbgFlags;
    bool omitLineNum; /* only used for printing the prog when dbgFlags is set */
 
