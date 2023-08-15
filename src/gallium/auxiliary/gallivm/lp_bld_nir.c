@@ -2100,6 +2100,20 @@ visit_payload_atomic(struct lp_build_nir_context *bld_base,
                         offset, val, val2, &result[0]);
 }
 
+static void visit_load_param(struct lp_build_nir_context *bld_base,
+                             nir_intrinsic_instr *instr,
+                             LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
+{
+   LLVMValueRef param = LLVMGetParam(bld_base->func, nir_intrinsic_param_idx(instr) + LP_RESV_FUNC_ARGS);
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   if (instr->num_components == 1)
+      result[0] = param;
+   else {
+      for (unsigned i = 0; i < instr->num_components; i++)
+         result[i] = LLVMBuildExtractValue(gallivm->builder, param, i, "");
+   }
+}
+
 static void
 visit_intrinsic(struct lp_build_nir_context *bld_base,
                 nir_intrinsic_instr *instr)
@@ -2304,6 +2318,9 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
       bld_base->set_vertex_and_primitive_count(bld_base,
                                                get_src(bld_base, instr->src[0]),
                                                get_src(bld_base, instr->src[1]));
+      break;
+   case nir_intrinsic_load_param:
+      visit_load_param(bld_base, instr, result);
       break;
    default:
       fprintf(stderr, "Unsupported intrinsic: ");
@@ -2729,6 +2746,29 @@ visit_deref(struct lp_build_nir_context *bld_base,
    assign_ssa(bld_base, instr->def.index, result);
 }
 
+static void
+visit_call(struct lp_build_nir_context *bld_base,
+           nir_call_instr *instr)
+{
+   LLVMValueRef *args;
+   struct hash_entry *entry = _mesa_hash_table_search(bld_base->fns, instr->callee);
+   struct lp_build_fn *fn = entry->data;
+   args = calloc(instr->num_params + LP_RESV_FUNC_ARGS, sizeof(LLVMValueRef));
+
+   assert(args);
+
+   args[0] = 0;
+   for (unsigned i = 0; i < instr->num_params; i++) {
+      LLVMValueRef arg = get_src(bld_base, instr->params[i]);
+
+      if (nir_src_bit_size(instr->params[i]) == 32 && LLVMTypeOf(arg) == bld_base->base.vec_type)
+         arg = cast_type(bld_base, arg, nir_type_int, 32);
+      args[i + LP_RESV_FUNC_ARGS] = arg;
+   }
+
+   bld_base->call(bld_base, fn, instr->num_params + LP_RESV_FUNC_ARGS, args);
+   free(args);
+}
 
 static void
 visit_block(struct lp_build_nir_context *bld_base, nir_block *block)
@@ -2759,6 +2799,9 @@ visit_block(struct lp_build_nir_context *bld_base, nir_block *block)
          break;
       case nir_instr_type_deref:
          visit_deref(bld_base, nir_instr_as_deref(instr));
+         break;
+      case nir_instr_type_call:
+         visit_call(bld_base, nir_instr_as_call(instr));
          break;
       default:
          fprintf(stderr, "Unknown NIR instr type: ");
