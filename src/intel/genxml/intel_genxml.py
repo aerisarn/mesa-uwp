@@ -172,6 +172,40 @@ def sort_xml(xml: et.ElementTree) -> None:
     genxml[:] = new_elems
 
 
+# `default_imports` documents which files should be imported for our
+# genxml files. This is only useful if a genxml file does not already
+# include imports.
+#
+# Basically, this allows the genxml_import.py tool used with the
+# --import switch to know which files should be added as an import.
+# (genxml_import.py uses GenXml.add_xml_imports, which relies on
+# `default_imports`.)
+default_imports = OrderedDict([
+    ('gen4.xml', ()),
+    ('gen45.xml', ('gen4.xml',)),
+    ('gen5.xml', ('gen45.xml',)),
+    ('gen6.xml', ('gen5.xml',)),
+    ('gen7.xml', ('gen6.xml',)),
+    ('gen75.xml', ('gen7.xml',)),
+    ('gen8.xml', ('gen75.xml',)),
+    ('gen9.xml', ('gen8.xml',)),
+    ('gen11.xml', ('gen9.xml',)),
+    ('gen12.xml', ('gen11.xml',)),
+    ('gen125.xml', ('gen12.xml',)),
+    ])
+known_genxml_files = list(default_imports.keys())
+
+
+def genxml_path_to_key(path):
+    try:
+        return known_genxml_files.index(path.name)
+    except ValueError:
+        return len(known_genxml_files)
+
+
+def sort_genxml_files(files):
+    files.sort(key=genxml_path_to_key)
+
 class GenXml(object):
     def __init__(self, filename, import_xml=False, files=None):
         if files is not None:
@@ -312,6 +346,45 @@ class GenXml(object):
 
         """
         self.process_imported(merge=True)
+
+    def add_xml_imports(self):
+        """Adds imports to the genxml file.
+
+        Using the `default_imports` structure, we add imports to the
+        genxml file.
+
+        """
+        # `imports` is a set of filenames currently imported by the
+        # genxml.
+        imports = self.et.findall('import')
+        imports = set(map(lambda el: el.attrib['name'], imports))
+        new_elements = []
+        self_flattened = copy.deepcopy(self)
+        self_flattened.flatten_imported()
+        old_names = { el.attrib['name'] for el in self_flattened.et.getroot() }
+        for import_xml in default_imports.get(self.filename.name, tuple()):
+            if import_xml in imports:
+                # This genxml is already imported, so we don't need to
+                # add it as an import.
+                continue
+            el = et.Element('import', {'name': import_xml})
+            import_path = self.filename.with_name(import_xml)
+            imported_genxml = GenXml(import_path, import_xml=True)
+            imported_names = { el.attrib['name']
+                               for el in imported_genxml.et.getroot()
+                               if el.tag != 'import' }
+            # Importing this genxml could add some new items. When
+            # adding a genxml import, we don't want to add new items,
+            # unless they were already in the current genxml. So, we
+            # put them into a list of items to exclude when importing
+            # the genxml.
+            exclude_names = imported_names - old_names
+            for n in sorted(exclude_names):
+                el.append(et.Element('exclude', {'name': n}))
+            new_elements.append(el)
+        if len(new_elements) > 0:
+            self.et.getroot().extend(new_elements)
+            sort_xml(self.et)
 
     def optimize_xml_import(self):
         """Optimizes the genxml by dropping items that can be imported
