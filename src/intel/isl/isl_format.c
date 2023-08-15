@@ -882,10 +882,6 @@ isl_format_supports_ccs_e(const struct intel_device_info *devinfo,
    if (intel_needs_workaround(devinfo, 14017240301))
       return false;
 
-   /* Wa_22011186057: Disable compression on ADL-P A0 */
-   if (devinfo->platform == INTEL_PLATFORM_ADL && devinfo->gt == 2 && devinfo->revision == 0)
-      return false;
-
    if (!format_info_exists(format))
       return false;
 
