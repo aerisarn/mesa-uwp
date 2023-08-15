@@ -736,7 +736,8 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       user_sgpr_info.remaining_sgprs -= num_desc_set;
    }
 
-   allocate_inline_push_consts(info, &user_sgpr_info);
+   if (info->is_monolithic)
+      allocate_inline_push_consts(info, &user_sgpr_info);
 
    declare_shader_args(device, key, info, stage, previous_stage, args, &user_sgpr_info);
 }
