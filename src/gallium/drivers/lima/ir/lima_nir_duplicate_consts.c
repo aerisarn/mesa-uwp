@@ -55,12 +55,13 @@ lima_nir_duplicate_load_const(nir_builder *b, nir_load_const_instr *load)
    }
 
    last_dupl = NULL;
-   last_parent_instr = NULL;
+   nir_if *last_parent_if = NULL;
 
    nir_foreach_if_use_safe(use_src, &load->def) {
       nir_load_const_instr *dupl;
+      nir_if *nif = use_src->parent_if;
 
-      if (last_parent_instr != use_src->parent_instr) {
+      if (last_parent_if != nif) {
          /* if 'if use', clone where it is */
          b->cursor = nir_before_instr(&load->instr);
 
@@ -76,7 +77,7 @@ lima_nir_duplicate_load_const(nir_builder *b, nir_load_const_instr *load)
       }
 
       nir_src_rewrite(&use_src->parent_if->condition, &dupl->def);
-      last_parent_instr = use_src->parent_instr;
+      last_parent_if = nif;
       last_dupl = dupl;
    }
 
