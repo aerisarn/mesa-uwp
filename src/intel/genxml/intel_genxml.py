@@ -199,6 +199,8 @@ class GenXml(object):
         return clone
 
     def is_equivalent_xml(self, other):
+        if len(self.et.getroot()) != len(other.et.getroot()):
+            return False
         return all(node_validator(old, new)
                    for old, new in zip(self.et.getroot(), other.et.getroot()))
 
