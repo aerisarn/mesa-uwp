@@ -6798,8 +6798,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
          invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
       }
 
-      if (pre_modes[i] != SCHEDULE_NONE)
-         schedule_instructions(pre_modes[i]);
+      schedule_instructions(pre_modes[i]);
       this->shader_stats.scheduler_mode = scheduler_mode_name[i];
 
       if (0) {
