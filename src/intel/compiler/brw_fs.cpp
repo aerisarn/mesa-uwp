@@ -6749,10 +6749,11 @@ fs_visitor::allocate_registers(bool allow_spilling)
    };
 
    static const char *scheduler_mode_name[] = {
-      "top-down",
-      "non-lifo",
-      "none",
-      "lifo"
+      [SCHEDULE_PRE] = "top-down",
+      [SCHEDULE_PRE_NON_LIFO] = "non-lifo",
+      [SCHEDULE_PRE_LIFO] = "lifo",
+      [SCHEDULE_POST] = "post",
+      [SCHEDULE_NONE] = "none",
    };
 
    compact_virtual_grfs();
@@ -6783,6 +6784,8 @@ fs_visitor::allocate_registers(bool allow_spilling)
     * performance but increasing likelihood of allocating.
     */
    for (unsigned i = 0; i < ARRAY_SIZE(pre_modes); i++) {
+      enum instruction_scheduler_mode sched_mode = pre_modes[i];
+
       if (i > 0) {
          /* Unless we're the first pass, reset back to the original order */
          ip = 0;
@@ -6798,8 +6801,8 @@ fs_visitor::allocate_registers(bool allow_spilling)
          invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
       }
 
-      schedule_instructions(pre_modes[i]);
-      this->shader_stats.scheduler_mode = scheduler_mode_name[i];
+      schedule_instructions(sched_mode);
+      this->shader_stats.scheduler_mode = scheduler_mode_name[sched_mode];
 
       if (0) {
          assign_regs_trivial();
