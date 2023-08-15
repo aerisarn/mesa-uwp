@@ -7223,6 +7223,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
 
+      /* Wa_14016712196:
+       * Emit depth flush after state that sends implicit depth flush.
+       */
+      if (intel_needs_workaround(batch->screen->devinfo, 14016712196)) {
+         iris_emit_pipe_control_flush(batch, "Wa_14016712196",
+                                      PIPE_CONTROL_DEPTH_CACHE_FLUSH);
+      }
+
       if (zres)
          genX(emit_depth_state_workarounds)(ice, batch, &zres->surf);
 
