@@ -2719,16 +2719,14 @@ nir_scalar_chase_movs(nir_scalar s)
 {
    while (nir_scalar_is_alu(s)) {
       nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
-      if (!nir_alu_instr_is_copy(alu))
-         break;
-
       if (alu->op == nir_op_mov) {
          s.def = alu->src[0].src.ssa;
          s.comp = alu->src[0].swizzle[s.comp];
-      } else {
-         assert(nir_op_is_vec(alu->op));
+      } else if (nir_op_is_vec(alu->op)) {
          s.def = alu->src[s.comp].src.ssa;
          s.comp = alu->src[s.comp].swizzle[0];
+      } else {
+         break;
       }
    }
 
