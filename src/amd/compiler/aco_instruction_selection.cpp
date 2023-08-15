@@ -196,10 +196,11 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
     * of multiple binaries, because the VGPR use is not known when choosing
     * which registers to use for the shared VGPRs.
     */
-   const bool avoid_shared_vgprs = ctx->options->gfx_level >= GFX10 &&
-                                   ctx->options->gfx_level < GFX11 &&
-                                   ctx->program->wave_size == 64 &&
-                                   (ctx->program->info.has_epilog || ctx->stage == raytracing_cs);
+   const bool avoid_shared_vgprs =
+      ctx->options->gfx_level >= GFX10 && ctx->options->gfx_level < GFX11 &&
+      ctx->program->wave_size == 64 &&
+      (ctx->program->info.has_epilog || !ctx->program->info.is_monolithic ||
+       ctx->stage == raytracing_cs);
 
    if (ctx->options->gfx_level <= GFX7 || avoid_shared_vgprs) {
       /* GFX6-7: there is no bpermute instruction */
