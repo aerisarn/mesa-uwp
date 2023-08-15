@@ -775,12 +775,10 @@ VkResult pvr_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
-static uint32_t
-pvr_get_simultanous_num_allocs(const struct pvr_physical_device *pdevice)
+static uint32_t pvr_get_simultaneous_num_allocs(
+   const struct pvr_device_info *dev_info,
+   ASSERTED const struct pvr_device_runtime_info *dev_runtime_info)
 {
-   const struct pvr_device_runtime_info *dev_runtime_info =
-      &pdevice->dev_runtime_info;
-   const struct pvr_device_info *dev_info = &pdevice->dev_info;
    uint32_t min_cluster_per_phantom;
 
    if (PVR_HAS_FEATURE(dev_info, s8xe))
@@ -798,15 +796,13 @@ pvr_get_simultanous_num_allocs(const struct pvr_physical_device *pdevice)
 }
 
 uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
-   const struct pvr_physical_device *pdevice,
+   const struct pvr_device_info *dev_info,
+   const struct pvr_device_runtime_info *dev_runtime_info,
    uint32_t fs_common_size,
    uint32_t min_tiles_in_flight)
 {
-   const struct pvr_device_runtime_info *dev_runtime_info =
-      &pdevice->dev_runtime_info;
    const uint32_t available_shareds =
       dev_runtime_info->reserved_shared_size - dev_runtime_info->max_coeffs;
-   const struct pvr_device_info *dev_info = &pdevice->dev_info;
    const uint32_t max_tiles_in_flight =
       PVR_GET_FEATURE_VALUE(dev_info, isp_max_tiles_in_flight, 1U);
    uint32_t num_tile_in_flight;
@@ -815,7 +811,7 @@ uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
    if (fs_common_size == 0)
       return max_tiles_in_flight;
 
-   num_allocs = pvr_get_simultanous_num_allocs(pdevice);
+   num_allocs = pvr_get_simultaneous_num_allocs(dev_info, dev_runtime_info);
 
    if (fs_common_size == UINT32_MAX) {
       uint32_t max_common_size = available_shareds;
@@ -872,7 +868,9 @@ struct pvr_descriptor_limits {
 };
 
 static const struct pvr_descriptor_limits *
-pvr_get_physical_device_descriptor_limits(struct pvr_physical_device *pdevice)
+pvr_get_physical_device_descriptor_limits(
+   const struct pvr_device_info *dev_info,
+   const struct pvr_device_runtime_info *dev_runtime_info)
 {
    enum pvr_descriptor_cs_level {
       /* clang-format off */
@@ -895,7 +893,10 @@ pvr_get_physical_device_descriptor_limits(struct pvr_physical_device *pdevice)
    };
 
    const uint32_t common_size =
-      pvr_calc_fscommon_size_and_tiles_in_flight(pdevice, UINT32_MAX, 1);
+      pvr_calc_fscommon_size_and_tiles_in_flight(dev_info,
+                                                 dev_runtime_info,
+                                                 UINT32_MAX,
+                                                 1);
    enum pvr_descriptor_cs_level cs_level;
 
    if (common_size >= 2048) {
@@ -960,33 +961,31 @@ void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                      VkPhysicalDeviceProperties *pProperties)
 {
    PVR_FROM_HANDLE(pvr_physical_device, pdevice, physicalDevice);
+   const struct pvr_device_info *const dev_info = &pdevice->dev_info;
 
    const struct pvr_descriptor_limits *descriptor_limits =
-      pvr_get_physical_device_descriptor_limits(pdevice);
+      pvr_get_physical_device_descriptor_limits(dev_info,
+                                                &pdevice->dev_runtime_info);
 
    /* Default value based on the minimum value found in all existing cores. */
    const uint32_t max_multisample =
-      PVR_GET_FEATURE_VALUE(&pdevice->dev_info, max_multisample, 4);
+      PVR_GET_FEATURE_VALUE(dev_info, max_multisample, 4);
 
    /* Default value based on the minimum value found in all existing cores. */
-   const uint32_t uvs_banks =
-      PVR_GET_FEATURE_VALUE(&pdevice->dev_info, uvs_banks, 2);
+   const uint32_t uvs_banks = PVR_GET_FEATURE_VALUE(dev_info, uvs_banks, 2);
 
    /* Default value based on the minimum value found in all existing cores. */
    const uint32_t uvs_pba_entries =
-      PVR_GET_FEATURE_VALUE(&pdevice->dev_info, uvs_pba_entries, 160);
+      PVR_GET_FEATURE_VALUE(dev_info, uvs_pba_entries, 160);
 
    /* Default value based on the minimum value found in all existing cores. */
    const uint32_t num_user_clip_planes =
-      PVR_GET_FEATURE_VALUE(&pdevice->dev_info, num_user_clip_planes, 8);
+      PVR_GET_FEATURE_VALUE(dev_info, num_user_clip_planes, 8);
 
    const uint32_t sub_pixel_precision =
-      PVR_HAS_FEATURE(&pdevice->dev_info, simple_internal_parameter_format)
-         ? 4U
-         : 8U;
+      PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format) ? 4U : 8U;
 
-   const uint32_t max_render_size =
-      rogue_get_render_size_max(&pdevice->dev_info);
+   const uint32_t max_render_size = rogue_get_render_size_max(dev_info);
 
    const uint32_t max_sample_bits = ((max_multisample << 1) - 1);
 
@@ -1008,14 +1007,11 @@ void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
     */
 
    /* Default value based on the minimum value found in all existing cores. */
-   const uint32_t usc_slots =
-      PVR_GET_FEATURE_VALUE(&pdevice->dev_info, usc_slots, 14);
+   const uint32_t usc_slots = PVR_GET_FEATURE_VALUE(dev_info, usc_slots, 14);
 
    /* Default value based on the minimum value found in all existing cores. */
    const uint32_t max_instances_per_pds_task =
-      PVR_GET_FEATURE_VALUE(&pdevice->dev_info,
-                            max_instances_per_pds_task,
-                            32U);
+      PVR_GET_FEATURE_VALUE(dev_info, max_instances_per_pds_task, 32U);
 
    const uint32_t max_compute_work_group_invocations =
       (usc_slots * max_instances_per_pds_task >= 512U) ? 512U : 384U;
@@ -1173,7 +1169,7 @@ void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .apiVersion = PVR_API_VERSION,
       .driverVersion = vk_get_driver_version(),
       .vendorID = VK_VENDOR_ID_IMAGINATION,
-      .deviceID = pdevice->dev_info.ident.device_id,
+      .deviceID = dev_info->ident.device_id,
       .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
       .limits = limits,
       .sparseProperties = { 0 },

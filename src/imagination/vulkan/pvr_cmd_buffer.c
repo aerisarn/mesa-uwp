@@ -5426,7 +5426,8 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
 
    const uint32_t max_tiles_in_flight =
       pvr_calc_fscommon_size_and_tiles_in_flight(
-         pdevice,
+         &pdevice->dev_info,
+         &pdevice->dev_runtime_info,
          usc_shared_size *
             PVRX(TA_STATE_PDS_SIZEINFO2_USC_SHAREDSIZE_UNIT_SIZE),
          1);

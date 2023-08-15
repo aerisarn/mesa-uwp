@@ -103,7 +103,6 @@ struct pvr_physical_device {
 
    struct pvr_winsys *ws;
    struct pvr_device_info dev_info;
-
    struct pvr_device_runtime_info dev_runtime_info;
 
    VkPhysicalDeviceMemoryProperties memory;
@@ -1210,7 +1209,8 @@ CHECK_MASK_SIZE(pvr_load_op,
 #undef CHECK_MASK_SIZE
 
 uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
-   const struct pvr_physical_device *pdevice,
+   const struct pvr_device_info *dev_info,
+   const struct pvr_device_runtime_info *dev_runtime_info,
    uint32_t fs_common_size,
    uint32_t min_tiles_in_flight);
 
