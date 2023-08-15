@@ -187,7 +187,6 @@ spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-non-const-unifo
 
 spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
 
-spec@arb_gl_spirv@execution@xfb@vs_block_array,Fail
 
 spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-tf-separate,Fail
 spec@arb_gpu_shader_fp64@execution@glsl-fs-loop-unroll-mul-fp64,Fail
