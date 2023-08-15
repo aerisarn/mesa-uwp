@@ -82,7 +82,12 @@ nir_collect_src_uniforms(const nir_src *src, int component,
       nir_alu_instr *alu = nir_instr_as_alu(instr);
 
       /* Vector ops only need to check the corresponding component. */
-      if (nir_op_is_vec(alu->op)) {
+      if (alu->op == nir_op_mov) {
+         return nir_collect_src_uniforms(&alu->src[0].src,
+                                         alu->src[0].swizzle[component],
+                                         uni_offsets, num_offsets,
+                                         max_num_bo, max_offset);
+      } else if (nir_op_is_vec(alu->op)) {
          nir_alu_src *alu_src = alu->src + component;
          return nir_collect_src_uniforms(&alu_src->src, alu_src->swizzle[0],
                                          uni_offsets, num_offsets,
