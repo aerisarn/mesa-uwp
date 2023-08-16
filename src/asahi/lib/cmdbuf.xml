@@ -770,7 +770,8 @@
   </struct>
 
   <struct name="VDM State Vertex Shader Word 1" size="4">
-    <field name="Pipeline" size="32" start="0" type="address"/>
+    <field name="Unknown 1:0" size="2" start="0" type="hex"/>
+    <field name="Pipeline" size="26" start="6" type="address" modifier="shr(6)"/>
   </struct>
 
   <struct name="VDM State Vertex Outputs" size="4">
