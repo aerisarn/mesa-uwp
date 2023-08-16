@@ -1155,8 +1155,10 @@ bool gfx10_is_ngg_passthrough(struct si_shader *shader)
 }
 
 /* Common tail code for NGG primitive shaders. */
-static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader *shader)
+static void gfx10_emit_shader_ngg(struct si_context *sctx, unsigned index)
 {
+   struct si_shader *shader = sctx->queued.named.gs;
+
    SET_FIELD(sctx->current_gs_state, GS_STATE_ESGS_VERTEX_STRIDE,
              shader->ngg.esgs_vertex_stride);
 
@@ -1172,6 +1174,8 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
       radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL, SI_TRACKED_VGT_GS_ONCHIP_CNTL,
                                  shader->ngg.vgt_gs_onchip_cntl);
    }
+   radeon_opt_set_context_reg(sctx, R_028B38_VGT_GS_MAX_VERT_OUT, SI_TRACKED_VGT_GS_MAX_VERT_OUT,
+                              shader->ngg.vgt_gs_max_vert_out);
    radeon_opt_set_context_reg(sctx, R_028B90_VGT_GS_INSTANCE_CNT, SI_TRACKED_VGT_GS_INSTANCE_CNT,
                               shader->ngg.vgt_gs_instance_cnt);
    radeon_opt_set_context_reg(sctx, R_0286C4_SPI_VS_OUT_CONFIG, SI_TRACKED_SPI_VS_OUT_CONFIG,
@@ -1207,14 +1211,7 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
    radeon_end();
 }
 
-static void gfx10_emit_shader_ngg_notess_nogs(struct si_context *sctx, unsigned index)
-{
-   struct si_shader *shader = sctx->queued.named.gs;
-
-   gfx10_emit_shader_ngg_tail(sctx, shader);
-}
-
-static void gfx10_emit_shader_ngg_tess_nogs(struct si_context *sctx, unsigned index)
+static void gfx10_emit_shader_ngg_tess(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.gs;
 
@@ -1223,33 +1220,7 @@ static void gfx10_emit_shader_ngg_tess_nogs(struct si_context *sctx, unsigned in
                               shader->vgt_tf_param);
    radeon_end_update_context_roll(sctx);
 
-   gfx10_emit_shader_ngg_tail(sctx, shader);
-}
-
-static void gfx10_emit_shader_ngg_notess_gs(struct si_context *sctx, unsigned index)
-{
-   struct si_shader *shader = sctx->queued.named.gs;
-
-   radeon_begin(&sctx->gfx_cs);
-   radeon_opt_set_context_reg(sctx, R_028B38_VGT_GS_MAX_VERT_OUT, SI_TRACKED_VGT_GS_MAX_VERT_OUT,
-                              shader->ngg.vgt_gs_max_vert_out);
-   radeon_end_update_context_roll(sctx);
-
-   gfx10_emit_shader_ngg_tail(sctx, shader);
-}
-
-static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx, unsigned index)
-{
-   struct si_shader *shader = sctx->queued.named.gs;
-
-   radeon_begin(&sctx->gfx_cs);
-   radeon_opt_set_context_reg(sctx, R_028B38_VGT_GS_MAX_VERT_OUT, SI_TRACKED_VGT_GS_MAX_VERT_OUT,
-                              shader->ngg.vgt_gs_max_vert_out);
-   radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
-                              shader->vgt_tf_param);
-   radeon_end_update_context_roll(sctx);
-
-   gfx10_emit_shader_ngg_tail(sctx, shader);
+   gfx10_emit_shader_ngg(sctx, index);
 }
 
 unsigned si_get_input_prim(const struct si_shader_selector *gs, const union si_shader_key *key)
@@ -1323,13 +1294,10 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    if (!pm4)
       return;
 
-   if (es_stage == MESA_SHADER_TESS_EVAL) {
-      pm4->atom.emit = gs_stage == MESA_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_tess_gs
-                                                        : gfx10_emit_shader_ngg_tess_nogs;
-   } else {
-      pm4->atom.emit = gs_stage == MESA_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_notess_gs
-                                                        : gfx10_emit_shader_ngg_notess_nogs;
-   }
+   if (es_stage == MESA_SHADER_TESS_EVAL)
+      pm4->atom.emit = gfx10_emit_shader_ngg_tess;
+   else
+      pm4->atom.emit = gfx10_emit_shader_ngg;
 
    va = shader->bo->gpu_address;
 
@@ -1407,6 +1375,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       shader->ngg.vgt_gs_max_vert_out = gs_sel->info.base.gs.vertices_out;
    } else {
       shader->ngg.esgs_vertex_stride = 1;
+      shader->ngg.vgt_gs_max_vert_out = 1;
    }
 
    if (es_stage == MESA_SHADER_TESS_EVAL)
