@@ -54,7 +54,7 @@ v3d_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *in_instr, void *data)
         else
                 coord = nir_vec2(b, x, y);
 
-        nir_tex_instr_add_src(instr, nir_tex_src_coord, nir_src_for_ssa(coord));
+        nir_tex_instr_add_src(instr, nir_tex_src_coord, coord);
         instr->op = nir_texop_txf;
         instr->sampler_dim = GLSL_SAMPLER_DIM_2D;
 

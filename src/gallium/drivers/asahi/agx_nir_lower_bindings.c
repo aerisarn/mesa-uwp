@@ -109,7 +109,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 
       *internal_bindless = true;
       nir_tex_instr_add_src(tex, nir_tex_src_texture_handle,
-                            nir_src_for_ssa(index_to_handle(b, index)));
+                            index_to_handle(b, index));
    }
 
    return false;

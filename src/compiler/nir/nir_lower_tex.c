@@ -271,7 +271,7 @@ lower_lod(nir_builder *b, nir_tex_instr *tex, nir_def *lod)
    if (min_lod)
       lod = nir_fmax(b, lod, min_lod);
 
-   nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
+   nir_tex_instr_add_src(tex, nir_tex_src_lod, lod);
    tex->op = nir_texop_txl;
 }
 
@@ -649,7 +649,7 @@ replace_gradient_with_lod(nir_builder *b, nir_def *lod, nir_tex_instr *tex)
    if (min_lod)
       lod = nir_fmax(b, lod, min_lod);
 
-   nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
+   nir_tex_instr_add_src(tex, nir_tex_src_lod, lod);
    tex->op = nir_texop_txl;
 }
 
@@ -1647,7 +1647,7 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
           (tex->op == nir_texop_txf || tex->op == nir_texop_txs ||
            tex->op == nir_texop_txl || tex->op == nir_texop_query_levels)) {
          b->cursor = nir_before_instr(&tex->instr);
-         nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(nir_imm_int(b, 0)));
+         nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_imm_int(b, 0));
          progress = true;
          continue;
       }

@@ -190,8 +190,8 @@ lower_txl_txf_array_or_cube(nir_builder *b, nir_tex_instr *tex)
       nir_tex_instr_remove_src(tex, bias_idx);
    if (min_lod_idx >= 0)
       nir_tex_instr_remove_src(tex, min_lod_idx);
-   nir_tex_instr_add_src(tex, nir_tex_src_ddx, nir_src_for_ssa(grad));
-   nir_tex_instr_add_src(tex, nir_tex_src_ddy, nir_src_for_ssa(grad));
+   nir_tex_instr_add_src(tex, nir_tex_src_ddx, grad);
+   nir_tex_instr_add_src(tex, nir_tex_src_ddy, grad);
 
    tex->op = nir_texop_txd;
    return true;

@@ -149,7 +149,7 @@ lima_nir_lower_txp_instr(nir_builder *b, nir_instr *instr,
 
    nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_coord));
    nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_projector));
-   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(combined));
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, combined);
 
    return true;
 }

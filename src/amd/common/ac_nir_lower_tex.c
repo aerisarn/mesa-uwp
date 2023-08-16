@@ -394,7 +394,7 @@ move_tex_coords(struct move_tex_coords_state *state, nir_function_impl *impl, ni
    nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_coord));
    tex->coord_components = 0;
 
-   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(linear_vgpr));
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, linear_vgpr);
 
    int offset_src = nir_tex_instr_src_index(tex, nir_tex_src_offset);
    if (offset_src >= 0) /* Workaround requirement in nir_tex_instr_src_size(). */

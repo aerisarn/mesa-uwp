@@ -396,8 +396,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    tex->src[texture_src_idx].src_type = nir_tex_src_texture_handle;
 
    if (sampler_src_idx < 0) {
-      nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle,
-                            nir_src_for_ssa(combined_handle));
+      nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle, combined_handle);
    } else {
       nir_instr_rewrite_src_ssa(&tex->instr,
                                 &tex->src[sampler_src_idx].src,

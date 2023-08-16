@@ -3635,9 +3635,11 @@ nir_to_tgsi_lower_tex_instr(nir_builder *b, nir_instr *instr, void *data)
          s.channels[i] = s.channels[0];
    }
 
-   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(nir_vec_scalars(b, s.channels, MIN2(s.i, 4))));
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1,
+                         nir_vec_scalars(b, s.channels, MIN2(s.i, 4)));
    if (s.i > 4)
-      nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(nir_vec_scalars(b, &s.channels[4], s.i - 4)));
+      nir_tex_instr_add_src(tex, nir_tex_src_backend2,
+                            nir_vec_scalars(b, &s.channels[4], s.i - 4));
 
    return true;
 }

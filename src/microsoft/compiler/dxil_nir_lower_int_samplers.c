@@ -325,8 +325,8 @@ load_texel(nir_builder *b, nir_tex_instr *tex, wrap_lower_param_t *params)
    texcoord = nir_f2i32(b, texcoord);
 
    nir_tex_instr *load = create_txf_from_tex(b, tex);
-   nir_tex_instr_add_src(load, nir_tex_src_lod, nir_src_for_ssa(params->lod));
-   nir_tex_instr_add_src(load, nir_tex_src_coord, nir_src_for_ssa(texcoord));
+   nir_tex_instr_add_src(load, nir_tex_src_lod, params->lod);
+   nir_tex_instr_add_src(load, nir_tex_src_coord, texcoord);
    b->cursor = nir_after_instr(&load->instr);
    return &load->def;
 }

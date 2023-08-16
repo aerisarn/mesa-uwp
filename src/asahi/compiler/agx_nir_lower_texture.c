@@ -272,7 +272,7 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
    nir_def *coord2d = coords_for_buffer_texture(b, coord);
    nir_instr_remove(&tex->instr);
    nir_builder_instr_insert(b, &tex->instr);
-   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(coord2d));
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, coord2d);
    nir_block *else_block = nir_cursor_current_block(b->cursor);
    nir_pop_if(b, nif);
 
@@ -339,7 +339,7 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
          assert(src->num_components == 1);
          src = nir_vec2(b, src, nir_imm_intN_t(b, 0, src->bit_size));
-         nir_tex_instr_add_src(tex, other_srcs[i], nir_src_for_ssa(src));
+         nir_tex_instr_add_src(tex, other_srcs[i], src);
       }
 
       tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
@@ -386,7 +386,7 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
       coord = nir_vector_insert_imm(b, coord, sample_array, end);
    }
 
-   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(coord));
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, coord);
 
    /* Furthermore, if there is an offset vector, it must be packed */
    nir_def *offset = nir_steal_tex_src(tex, nir_tex_src_offset);
@@ -404,7 +404,7 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
             packed = shifted;
       }
 
-      nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(packed));
+      nir_tex_instr_add_src(tex, nir_tex_src_backend2, packed);
    }
 
    return true;
@@ -435,8 +435,7 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
    switch (tex->op) {
    case nir_texop_tex: {
       tex->op = nir_texop_txb;
-      nir_tex_instr_add_src(tex, nir_tex_src_bias,
-                            nir_src_for_ssa(bias_for_tex(b, tex)));
+      nir_tex_instr_add_src(tex, nir_tex_src_bias, bias_for_tex(b, tex));
       return true;
    }
 
@@ -451,8 +450,7 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
       if (orig->bit_size != 16)
          orig = nir_f2f16(b, orig);
 
-      nir_tex_instr_add_src(
-         tex, src, nir_src_for_ssa(nir_fadd(b, orig, bias_for_tex(b, tex))));
+      nir_tex_instr_add_src(tex, src, nir_fadd(b, orig, bias_for_tex(b, tex)));
       return true;
    }
 
@@ -470,7 +468,7 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
          assert(orig != NULL && "invalid");
 
          nir_def *scaled = nir_fmul(b, nir_f2f32(b, orig), scale);
-         nir_tex_instr_add_src(tex, src[s], nir_src_for_ssa(scaled));
+         nir_tex_instr_add_src(tex, src[s], scaled);
       }
 
       return true;

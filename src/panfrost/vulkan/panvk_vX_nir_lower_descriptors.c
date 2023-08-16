@@ -434,8 +434,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
                            bind_layout->sampler_idx + index_imm;
 
       if (index_ssa != NULL) {
-         nir_tex_instr_add_src(tex, nir_tex_src_sampler_offset,
-                               nir_src_for_ssa(index_ssa));
+         nir_tex_instr_add_src(tex, nir_tex_src_sampler_offset, index_ssa);
       }
       progress = true;
    }
@@ -456,8 +455,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
          ctx->layout->sets[set].tex_offset + bind_layout->tex_idx + index_imm;
 
       if (index_ssa != NULL) {
-         nir_tex_instr_add_src(tex, nir_tex_src_texture_offset,
-                               nir_src_for_ssa(index_ssa));
+         nir_tex_instr_add_src(tex, nir_tex_src_texture_offset, index_ssa);
       }
       progress = true;
    }

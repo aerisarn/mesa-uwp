@@ -783,7 +783,7 @@ nir_tex_instr_create(nir_shader *shader, unsigned num_srcs)
 void
 nir_tex_instr_add_src(nir_tex_instr *tex,
                       nir_tex_src_type src_type,
-                      nir_src src)
+                      nir_def *src)
 {
    nir_tex_src *new_srcs = gc_zalloc(gc_get_context(tex), nir_tex_src, tex->num_srcs + 1);
 
@@ -797,7 +797,8 @@ nir_tex_instr_add_src(nir_tex_instr *tex,
    tex->src = new_srcs;
 
    tex->src[tex->num_srcs].src_type = src_type;
-   nir_instr_rewrite_src(&tex->instr, &tex->src[tex->num_srcs].src, src);
+   nir_instr_rewrite_src(&tex->instr, &tex->src[tex->num_srcs].src,
+                         nir_src_for_ssa(src));
    tex->num_srcs++;
 }
 

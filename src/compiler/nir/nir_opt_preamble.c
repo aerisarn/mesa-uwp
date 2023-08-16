@@ -551,8 +551,8 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
 
                nir_def *zero =
                   nir_imm_zero(b, tex->coord_components - tex->is_array, 32);
-               nir_tex_instr_add_src(tex, nir_tex_src_ddx, nir_src_for_ssa(zero));
-               nir_tex_instr_add_src(tex, nir_tex_src_ddy, nir_src_for_ssa(zero));
+               nir_tex_instr_add_src(tex, nir_tex_src_ddx, zero);
+               nir_tex_instr_add_src(tex, nir_tex_src_ddy, zero);
                tex->op = nir_texop_txd;
 
                b->cursor = nir_after_instr(clone);
