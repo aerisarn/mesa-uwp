@@ -102,7 +102,22 @@ struct ac_shader_args {
    struct ac_arg gs2vs_offset;      /* legacy GS */
    struct ac_arg gs_wave_id;        /* legacy GS */
    struct ac_arg gs_attr_offset;    /* gfx11+: attribute ring offset in 512B increments */
-   struct ac_arg gs_vtx_offset[6];  /* GFX6-8: [0-5], GFX9+: [0-2] packed */
+
+   /* GS vertex indices/offsets:
+    *
+    * GFX6-8: [0-5] 6x uint32, multiplied by VGT_ESGS_RING_ITEMSIZE by hw
+    * GFX9-11 non-passthrough: [0-2] 6x packed uint16, multiplied by VGT_ESGS_RING_ITEMSIZE by hw
+    *
+    * GFX10-11 passthrough: [0] 1x uint32 with the following bitfields matching the prim export:
+    *    [0:8]    vertex index 0
+    *    [9]      edgeflag 0
+    *    [10:18]  vertex index 1
+    *    [19]     edgeflag 1
+    *    [20:28]  vertex index 2
+    *    [29]     edgeflag 2
+    *    [31]     0 (valid prim)
+    */
+   struct ac_arg gs_vtx_offset[6];
    struct ac_arg gs_prim_id;
    struct ac_arg gs_invocation_id;
 
