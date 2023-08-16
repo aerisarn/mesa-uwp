@@ -190,6 +190,7 @@ else
 fi
 
 DEQP_EXITCODE=$?
+set -e
 
 set +x
 
