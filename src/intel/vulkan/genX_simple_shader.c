@@ -653,3 +653,11 @@ genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
    }
 }
 
+void
+genX(emit_simple_shader_end)(struct anv_simple_shader *state)
+{
+   anv_batch_emit(state->batch, GENX(MI_BATCH_BUFFER_END), end);
+
+   if ((state->batch->next - state->batch->start) & 4)
+      anv_batch_emit(state->batch, GENX(MI_NOOP), noop);
+}
