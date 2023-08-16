@@ -737,10 +737,6 @@ morton_sort(VkCommandBuffer commandBuffer, uint32_t infoCount,
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    for (uint32_t i = 0; i < infoCount; ++i) {
-      struct radix_sort_vk_memory_requirements requirements;
-      radix_sort_vk_get_memory_requirements(cmd_buffer->device->meta_state.accel_struct_build.radix_sort,
-                                            bvh_states[i].node_count, &requirements);
-
       struct radix_sort_vk_sort_devaddr_info info = cmd_buffer->device->meta_state.accel_struct_build.radix_sort_info;
       info.count = bvh_states[i].node_count;
 
