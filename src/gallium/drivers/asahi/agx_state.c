@@ -1419,6 +1419,12 @@ agx_find_linked_slot(struct agx_varyings_vs *vs, struct agx_varyings_fs *fs,
 
    unsigned vs_index = vs->slots[slot];
 
+   /* If the layer is read but not written, its value will be ignored by the
+    * agx_nir_predicate_layer_id lowering, so read garbage.
+    */
+   if (vs_index >= vs->nr_index && slot == VARYING_SLOT_LAYER)
+      return 0;
+
    assert(vs_index >= 4 && "gl_Position should have been the first 4 slots");
    assert(vs_index < vs->nr_index &&
           "varyings not written by vertex shader are undefined");
@@ -1638,6 +1644,8 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
                     key->sprite_coord_enable,
                     false /* point coord is sysval */);
       }
+
+      NIR_PASS_V(nir, agx_nir_predicate_layer_id);
    }
 
    struct agx_shader_key base_key = {
@@ -3128,6 +3136,9 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
               (ctx->dirty & AGX_DIRTY_VERTEX)) {
       ctx->dirty |= AGX_DIRTY_VS;
    }
+
+   struct agx_compiled_shader *vs = ctx->vs;
+   batch->uniforms.layer_id_written = vs->info.writes_layer_viewport ? ~0 : 0;
 
    if (agx_update_fs(batch)) {
       ctx->dirty |= AGX_DIRTY_FS | AGX_DIRTY_FS_PROG;
