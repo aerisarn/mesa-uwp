@@ -2139,7 +2139,7 @@ static void evergreen_emit_vertex_buffers(struct r600_context *rctx,
 		struct r600_resource *rbuffer;
 		uint64_t va;
 		unsigned buffer_index = u_bit_scan(&dirty_mask);
-		struct r600_fetch_shader *shader = (struct r600_fetch_shader*)&rctx->vertex_fetch_shader;
+		struct r600_fetch_shader *shader = (struct r600_fetch_shader*)rctx->vertex_fetch_shader.cso;
 		unsigned stride = pkt_flags == RADEON_CP_PACKET3_COMPUTE_MODE ?
 				  1 : shader->strides[buffer_index];
 

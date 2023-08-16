@@ -1670,7 +1670,7 @@ static void r600_emit_vertex_buffers(struct r600_context *rctx, struct r600_atom
 		struct r600_resource *rbuffer;
 		unsigned offset;
 		unsigned buffer_index = u_bit_scan(&dirty_mask);
-		struct r600_fetch_shader *shader = (struct r600_fetch_shader*)&rctx->vertex_fetch_shader;
+		struct r600_fetch_shader *shader = (struct r600_fetch_shader*)rctx->vertex_fetch_shader.cso;
 		unsigned stride = shader->strides[buffer_index];
 
 		vb = &rctx->vertex_buffer_state.vb[buffer_index];
