@@ -1695,6 +1695,11 @@ intrinsic("load_coefficients_agx",
           indices=[COMPONENT, IO_SEMANTICS, INTERP_MODE],
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# In a fragment shader, boolean system value that is true if the last vertex
+# stage writes the layer ID. If false, layer IDs are defined to read back zero.
+# This system value facilitates that. 16-bit 0/~0 bool allows easy masking.
+system_value("layer_id_written_agx", 1, bit_sizes=[16])
+
 # Load/store a pixel in local memory. This operation is formatted, with
 # conversion between the specified format and the implied register format of the
 # source/destination (for store/loads respectively). This mostly matters for
