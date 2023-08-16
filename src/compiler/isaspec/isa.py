@@ -381,6 +381,15 @@ class BitSet(object):
             return self.isa.bitsets[self.extends].get_root()
         return self
 
+class BitSetTemplate(object):
+    """Class that encapsulates a template declaration
+    """
+    def __init__(self, isa, xml):
+        self.isa = isa
+        self.name = xml.attrib['name']
+        self.display = xml.text.strip()
+        dbg("found template '{}: {}'".format(self.name, self.display))
+
 class BitSetEnum(object):
     """Class that encapsulates an enum declaration
     """
@@ -427,6 +436,9 @@ class ISA(object):
         # Table of (globally defined) expressions:
         self.expressions = {}
 
+        # Table of templates:
+        self.templates = {}
+
         # Table of enums:
         self.enums = {}
 
@@ -468,6 +480,11 @@ class ISA(object):
         # Extract expressions:
         self.parse_expressions(root)
 
+        # Extract templates:
+        for template in root.findall('template'):
+            t = BitSetTemplate(self, template)
+            self.templates[t.name] = t
+
         # Extract enums:
         for enum in root.findall('enum'):
             e = BitSetEnum(self, enum)
@@ -484,6 +501,12 @@ class ISA(object):
                 dbg("derived: " + b.name)
             self.bitsets[b.name] = b
             self.leafs.setdefault(b.name, []).append(b)
+
+        # Resolve all templates:
+        for _, bitset in self.bitsets.items():
+            for case in bitset.cases:
+                if case.display:
+                    case.display = self.resolve_templates(case.display)
 
     def validate_isa(self):
         # We only support multiples of 32 bits for now
@@ -593,3 +616,11 @@ class ISA(object):
                 continue
             for bitset in bitsets:
                 yield name, bitset
+
+    def resolve_templates(self, display_string):
+        matches = re.findall(r'\{([^\}]+)\}', display_string)
+        for m in matches:
+            if m in self.templates:
+                display_string = display_string.replace("{" + m + "}", self.templates[m].display)
+
+        return display_string
