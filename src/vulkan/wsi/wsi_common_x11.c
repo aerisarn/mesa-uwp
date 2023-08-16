@@ -1045,7 +1045,6 @@ struct x11_swapchain {
    bool                                         has_mit_shm;
 
    xcb_connection_t *                           conn;
-   xcb_connection_t *                           capture_conn;
    xcb_window_t                                 window;
    xcb_gc_t                                     gc;
    uint32_t                                     depth;
@@ -1687,24 +1686,36 @@ x11_present_to_x11_sw(struct x11_swapchain *chain, uint32_t image_index,
 static void
 x11_capture_trace(struct x11_swapchain *chain)
 {
-   if (!chain->capture_conn)
+#ifdef XCB_KEYSYMS_AVAILABLE
+   VK_FROM_HANDLE(vk_device, device, chain->base.device);
+   if (!device->physical->instance->trace_mode)
       return;
 
-   xcb_generic_event_t *event;
-   while ((event = xcb_poll_for_event(chain->capture_conn))) {
-      if ((event->response_type & ~0x80) != XCB_KEY_PRESS) {
-         free(event);
-         continue;
-      }
+   xcb_query_keymap_cookie_t keys_cookie = xcb_query_keymap(chain->conn);
 
-      VK_FROM_HANDLE(vk_device, device, chain->base.device);
+   xcb_generic_error_t *error = NULL;
+   xcb_query_keymap_reply_t *keys = xcb_query_keymap_reply(chain->conn, keys_cookie, &error);
+   if (error) {
+      free(error);
+      return;
+   }
+
+   xcb_key_symbols_t *key_symbols = xcb_key_symbols_alloc(chain->conn);
+   xcb_keycode_t *keycodes = xcb_key_symbols_get_keycode(key_symbols, XK_F1);
+   if (keycodes) {
+      xcb_keycode_t keycode = keycodes[0];
+      free(keycodes);
 
       simple_mtx_lock(&device->trace_mtx);
-      device->trace_hotkey_trigger = true;
+      bool capture_key_pressed = keys->keys[keycode / 8] & (1u << (keycode % 8));
+      device->trace_hotkey_trigger = capture_key_pressed && (capture_key_pressed != chain->base.capture_key_pressed);
+      chain->base.capture_key_pressed = capture_key_pressed;
       simple_mtx_unlock(&device->trace_mtx);
-
-      free(event);
    }
+
+   xcb_key_symbols_free(key_symbols);
+   free(keys);
+#endif
 }
 
 /**
@@ -2353,8 +2364,6 @@ x11_swapchain_destroy(struct wsi_swapchain *anv_chain,
                                              XCB_PRESENT_EVENT_MASK_NO_EVENT);
    xcb_discard_reply(chain->conn, cookie.sequence);
 
-   xcb_disconnect(chain->capture_conn);
-
    pthread_mutex_destroy(&chain->present_poll_mutex);
    pthread_mutex_destroy(&chain->present_progress_mutex);
    pthread_cond_destroy(&chain->present_progress_cond);
@@ -2637,24 +2646,6 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-#ifdef XCB_KEYSYMS_AVAILABLE
-   VK_FROM_HANDLE(vk_device, vk_device, device);
-   if (vk_device->capture_trace) {
-      chain->capture_conn = xcb_connect(NULL, NULL);
-      assert(!xcb_connection_has_error(chain->capture_conn));
-
-      xcb_key_symbols_t *key_symbols = xcb_key_symbols_alloc(conn);
-      xcb_keycode_t *keycodes = xcb_key_symbols_get_keycode(key_symbols, XK_F12);
-      if (keycodes) {
-         xcb_grab_key(chain->capture_conn, 1, window, XCB_MOD_MASK_ANY, keycodes[0],
-                      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-      }
-      xcb_key_symbols_free(key_symbols);
-
-      xcb_flush(chain->capture_conn);
-   }
-#endif
 
    int ret = pthread_mutex_init(&chain->present_progress_mutex, NULL);
    if (ret != 0) {
