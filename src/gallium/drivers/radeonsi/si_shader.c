@@ -734,7 +734,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.workgroup_ids[i]);
          }
       }
-      if (shader->selector->info.uses_subgroup_info)
+      if (shader->selector->info.uses_tg_size)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tg_size);
 
       /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */

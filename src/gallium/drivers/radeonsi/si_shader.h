@@ -490,7 +490,7 @@ struct si_shader_info {
    bool uses_block_id[3];
    bool uses_variable_block_size;
    bool uses_grid_size;
-   bool uses_subgroup_info;
+   bool uses_tg_size;
    bool writes_position;
    bool writes_psize;
    bool writes_clipvertex;

@@ -193,7 +193,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
                              S_00B84C_TGID_X_EN(sel->info.uses_block_id[0]) |
                              S_00B84C_TGID_Y_EN(sel->info.uses_block_id[1]) |
                              S_00B84C_TGID_Z_EN(sel->info.uses_block_id[2]) |
-                             S_00B84C_TG_SIZE_EN(sel->info.uses_subgroup_info) |
+                             S_00B84C_TG_SIZE_EN(sel->info.uses_tg_size) |
                              S_00B84C_TIDIG_COMP_CNT(sel->info.uses_thread_id[2]
                                                         ? 2
                                                         : sel->info.uses_thread_id[1] ? 1 : 0) |
