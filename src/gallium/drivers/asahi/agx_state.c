@@ -1113,8 +1113,8 @@ agx_pack_image_atomic_data(void *packed, struct pipe_image_view *view)
             unsigned width_el = u_minify(tex->base.width0, level);
             cfg.tiles_per_row = DIV_ROUND_UP(width_el, tile_size.width_el);
 
-            cfg.layer_stride_elements =
-               DIV_ROUND_UP(tex->layout.layer_stride_B, blocksize_B);
+            cfg.layer_stride_pixels = DIV_ROUND_UP(
+               tex->layout.layer_stride_B, blocksize_B * cfg.sample_count);
          }
       }
    }

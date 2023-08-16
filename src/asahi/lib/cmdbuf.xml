@@ -216,7 +216,7 @@
     <field name="Sample count" size="2" start="54" type="uint" modifier="log2" default="1"/>
 
     <!-- Extended fields begin here -->
-    <field name="Layer stride (elements)" size="32" start="64" type="uint"/>
+    <field name="Layer stride (pixels)" size="32" start="64" type="uint"/>
   </struct>
 
   <struct name="PBE Buffer (software)" size="8">

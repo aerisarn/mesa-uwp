@@ -575,7 +575,7 @@ nir_bitfield_mask(nir_builder *b, nir_def *x)
 static nir_def *
 calculate_twiddled_coordinates(nir_builder *b, nir_def *coord,
                                nir_def *tile_w_px_log2, nir_def *tile_h_px_log2,
-                               nir_def *width_tl, nir_def *layer_stride_el)
+                               nir_def *width_tl, nir_def *layer_stride_px)
 {
    /* SIMD-within-a-register */
    nir_def *coord_px = nir_pack_32_2x16(b, nir_u2u16(b, coord));
@@ -623,9 +623,9 @@ calculate_twiddled_coordinates(nir_builder *b, nir_def *coord,
    nir_def *offs_px = nir_interleave_agx(b, offs_x_px, offs_y_px);
    nir_def *total_px = nir_iadd(b, tile_offset_px, nir_u2u32(b, offs_px));
 
-   if (layer_stride_el) {
+   if (layer_stride_px) {
       nir_def *layer = nir_channel(b, coord, 2);
-      nir_def *layer_offset_px = nir_imul(b, layer, layer_stride_el);
+      nir_def *layer_offset_px = nir_imul(b, layer, layer_stride_px);
       total_px = nir_iadd(b, total_px, layer_offset_px);
    }
 
@@ -657,12 +657,12 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
     */
    nir_def *meta_ptr = nir_iadd_imm(b, desc_address, 16);
    nir_def *meta = nir_load_global_constant(b, meta_ptr, 8, 1, 64);
-   nir_def *layer_stride_el = NULL;
+   nir_def *layer_stride_px = NULL;
 
    if (layered) {
       nir_def *desc = nir_load_global_constant(b, meta, 8, 3, 32);
       meta = nir_pack_64_2x32(b, nir_trim_vector(b, desc, 2));
-      layer_stride_el = nir_channel(b, desc, 2);
+      layer_stride_px = nir_channel(b, desc, 2);
    }
 
    nir_def *meta_hi = nir_unpack_64_2x32_split_y(b, meta);
@@ -690,7 +690,7 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
       total_px = nir_channel(b, coord, 0);
    } else {
       total_px = calculate_twiddled_coordinates(
-         b, coord, tile_w_px_log2, tile_h_px_log2, width_tl, layer_stride_el);
+         b, coord, tile_w_px_log2, tile_h_px_log2, width_tl, layer_stride_px);
    }
 
    nir_def *total_sa;
