@@ -38,12 +38,11 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
        (stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg))
       return 64;
 
-   /* Small workgroups use Wave32 unconditionally. */
-   if (stage == MESA_SHADER_COMPUTE && info &&
-       !info->base.workgroup_size_variable &&
-       info->base.workgroup_size[0] *
-       info->base.workgroup_size[1] *
-       info->base.workgroup_size[2] <= 32)
+   /* Workgroup sizes that are not divisible by 64 use Wave32. */
+   if (stage == MESA_SHADER_COMPUTE && info && !info->base.workgroup_size_variable &&
+       (info->base.workgroup_size[0] *
+        info->base.workgroup_size[1] *
+        info->base.workgroup_size[2]) % 64 != 0)
       return 32;
 
    /* Debug flags. */
