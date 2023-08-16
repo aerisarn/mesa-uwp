@@ -973,14 +973,14 @@ static void si_emit_shader_gs(struct si_context *sctx, unsigned index)
    /* These don't cause any context rolls. */
    radeon_begin_again(&sctx->gfx_cs);
    if (sctx->gfx_level >= GFX7) {
-      radeon_opt_set_sh_reg_idx3(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-                                 SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
-                                 shader->gs.spi_shader_pgm_rsrc3_gs);
+      radeon_opt_set_sh_reg_idx(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                                SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
+                                3, shader->gs.spi_shader_pgm_rsrc3_gs);
    }
    if (sctx->gfx_level >= GFX10) {
-      radeon_opt_set_sh_reg_idx3(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-                                 SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
-                                 shader->gs.spi_shader_pgm_rsrc4_gs);
+      radeon_opt_set_sh_reg_idx(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+                                SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
+                                3, shader->gs.spi_shader_pgm_rsrc4_gs);
    }
    radeon_end();
 }
@@ -1198,12 +1198,12 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
                                  SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
                                  shader->gs.spi_shader_pgm_rsrc4_gs);
    } else {
-      radeon_opt_set_sh_reg_idx3(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-                                 SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
-                                 shader->ngg.spi_shader_pgm_rsrc3_gs);
-      radeon_opt_set_sh_reg_idx3(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-                                 SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
-                                 shader->ngg.spi_shader_pgm_rsrc4_gs);
+      radeon_opt_set_sh_reg_idx(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                                SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
+                                3, shader->ngg.spi_shader_pgm_rsrc3_gs);
+      radeon_opt_set_sh_reg_idx(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+                                SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
+                                3, shader->ngg.spi_shader_pgm_rsrc4_gs);
    }
    radeon_end();
 }
