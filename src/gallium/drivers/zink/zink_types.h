@@ -599,8 +599,11 @@ struct zink_batch_state {
    VkCommandBuffer cmdbuf;
    VkCommandBuffer barrier_cmdbuf;
    VkSemaphore signal_semaphore; //external signal semaphore
+   struct util_dynarray signal_semaphores; //external signal semaphores
    struct util_dynarray wait_semaphores; //external wait semaphores
    struct util_dynarray wait_semaphore_stages; //external wait semaphores
+   struct util_dynarray fd_wait_semaphores; //dmabuf wait semaphores
+   struct util_dynarray fd_wait_semaphore_stages; //dmabuf wait semaphores
 
    VkSemaphore present;
    struct zink_resource *swapchain;

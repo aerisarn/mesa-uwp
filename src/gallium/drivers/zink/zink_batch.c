@@ -162,6 +162,14 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       util_dynarray_clear(&bs->wait_semaphores);
       simple_mtx_unlock(&screen->semaphores_lock);
    }
+   if (util_dynarray_contains(&bs->signal_semaphores, VkSemaphore) || util_dynarray_contains(&bs->fd_wait_semaphores, VkSemaphore)) {
+      simple_mtx_lock(&screen->semaphores_lock);
+      util_dynarray_append_dynarray(&screen->fd_semaphores, &bs->signal_semaphores);
+      util_dynarray_clear(&bs->signal_semaphores);
+      util_dynarray_append_dynarray(&screen->fd_semaphores, &bs->fd_wait_semaphores);
+      util_dynarray_clear(&bs->fd_wait_semaphores);
+      simple_mtx_unlock(&screen->semaphores_lock);
+   }
    bs->swapchain = NULL;
 
    bs->unordered_write_access = 0;
@@ -342,11 +350,14 @@ create_batch_state(struct zink_context *ctx)
 
    SET_CREATE_OR_FAIL(&bs->programs);
    SET_CREATE_OR_FAIL(&bs->active_queries);
+   util_dynarray_init(&bs->signal_semaphores, NULL);
    util_dynarray_init(&bs->wait_semaphores, NULL);
+   util_dynarray_init(&bs->fd_wait_semaphores, NULL);
    util_dynarray_init(&bs->dead_querypools, NULL);
    util_dynarray_init(&bs->dgc.pipelines, NULL);
    util_dynarray_init(&bs->dgc.layouts, NULL);
    util_dynarray_init(&bs->wait_semaphore_stages, NULL);
+   util_dynarray_init(&bs->fd_wait_semaphore_stages, NULL);
    util_dynarray_init(&bs->zombie_samplers, NULL);
    util_dynarray_init(&bs->dead_framebuffers, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
