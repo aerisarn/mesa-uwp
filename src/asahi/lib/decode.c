@@ -486,10 +486,13 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
 
 #define PPP_PRINT(map, header_name, struct_name, human)                        \
    if (hdr.header_name) {                                                      \
-      assert(((map + AGX_##struct_name##_LENGTH) <= (base + size)) &&          \
-             "buffer overrun in PPP update");                                  \
+      if (((map + AGX_##struct_name##_LENGTH) > (base + size))) {              \
+         fprintf(agxdecode_dump_stream, "Buffer overrun in PPP update\n");     \
+         return;                                                               \
+      }                                                                        \
       DUMP_CL(struct_name, map, human);                                        \
       map += AGX_##struct_name##_LENGTH;                                       \
+      fflush(agxdecode_dump_stream);                                           \
    }
 
 static void
