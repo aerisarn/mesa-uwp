@@ -677,9 +677,6 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (INTEL_DEBUG(DEBUG_NO_HIZ))
-         return VK_SUCCESS;
-
       ok = isl_surf_get_hiz_surf(&device->isl_dev,
                                  &image->planes[plane].primary_surface.isl,
                                  &image->planes[plane].aux_surface.isl);
@@ -717,10 +714,6 @@ add_aux_surface_if_supported(struct anv_device *device,
       if (image->planes[plane].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT)
          return add_aux_state_tracking_buffer(device, image, plane);
    } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-
-      if (INTEL_DEBUG(DEBUG_NO_CCS))
-         return VK_SUCCESS;
-
       if (!isl_surf_supports_ccs(&device->isl_dev,
                                  &image->planes[plane].primary_surface.isl,
                                  NULL))
@@ -747,9 +740,6 @@ add_aux_surface_if_supported(struct anv_device *device,
           */
          return VK_SUCCESS;
       }
-
-      if (INTEL_DEBUG(DEBUG_NO_CCS))
-         return VK_SUCCESS;
 
       ok = isl_surf_get_ccs_surf(&device->isl_dev,
                                  &image->planes[plane].primary_surface.isl,
