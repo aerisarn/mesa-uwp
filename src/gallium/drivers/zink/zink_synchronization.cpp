@@ -438,13 +438,15 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
          pipe_resource_reference(&pres, &res->base.b);
       }
    }
-   if (res->obj->exportable && queue_import) {
-      VkSemaphore sem = zink_screen_export_dmabuf_semaphore(zink_screen(ctx->base.screen), res);
-      if (sem)
-         util_dynarray_append(&ctx->batch.state->fd_wait_semaphores, VkSemaphore, sem);
-   }
    if (new_layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
       zink_resource_copies_reset(res);
+   if (res->obj->exportable && queue_import) {
+      for (; res; res = zink_resource(res->base.b.next)) {
+         VkSemaphore sem = zink_screen_export_dmabuf_semaphore(zink_screen(ctx->base.screen), res);
+         if (sem)
+            util_dynarray_append(&ctx->batch.state->fd_wait_semaphores, VkSemaphore, sem);
+      }
+   }
 }
 
 bool

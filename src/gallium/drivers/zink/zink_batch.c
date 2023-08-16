@@ -672,13 +672,13 @@ submit_queue(void *data, void *gdata, int thread_index)
    simple_mtx_unlock(&screen->queue_lock);
 
    unsigned i = 0;
+   VkSemaphore *sem = bs->signal_semaphores.data;
    set_foreach_remove(&bs->dmabuf_exports, entry) {
       struct zink_resource *res = (void*)entry->key;
-      VkSemaphore *sem = bs->signal_semaphores.data;
-      zink_screen_import_dmabuf_semaphore(screen, res, sem[i]);
-      i++;
+      for (; res; res = zink_resource(res->base.b.next))
+         zink_screen_import_dmabuf_semaphore(screen, res, sem[i++]);
 
-      struct pipe_resource *pres = &res->base.b;
+      struct pipe_resource *pres = (void*)entry->key;
       pipe_resource_reference(&pres, NULL);
    }
 
@@ -789,9 +789,11 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       }
       res->queue = VK_QUEUE_FAMILY_FOREIGN_EXT;
 
-      VkSemaphore sem = zink_create_exportable_semaphore(screen);
-      if (sem)
-         util_dynarray_append(&ctx->batch.state->signal_semaphores, VkSemaphore, sem);
+      for (; res; res = zink_resource(res->base.b.next)) {
+         VkSemaphore sem = zink_create_exportable_semaphore(screen);
+         if (sem)
+            util_dynarray_append(&ctx->batch.state->signal_semaphores, VkSemaphore, sem);
+      }
    }
 
    if (screen->threaded_submit) {

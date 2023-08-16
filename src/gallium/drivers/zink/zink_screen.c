@@ -2211,11 +2211,15 @@ zink_screen_export_dmabuf_semaphore(struct zink_screen *screen, struct zink_reso
    };
 
    int fd;
-   VkMemoryGetFdInfoKHR fd_info = {0};
-   fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-   fd_info.memory = zink_bo_get_mem(res->obj->bo);
-   fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-   VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
+   if (res->obj->is_aux) {
+      fd = os_dupfd_cloexec(res->obj->handle);
+   } else {
+      VkMemoryGetFdInfoKHR fd_info = {0};
+      fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+      fd_info.memory = zink_bo_get_mem(res->obj->bo);
+      fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+      VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
+   }
 
    int ret = drmIoctl(fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &export);
    if (ret) {
@@ -2264,11 +2268,17 @@ zink_screen_import_dmabuf_semaphore(struct zink_screen *screen, struct zink_reso
 
    bool ret = false;
    int fd;
-   VkMemoryGetFdInfoKHR fd_info = {0};
-   fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-   fd_info.memory = zink_bo_get_mem(res->obj->bo);
-   fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-   if (VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd) == VK_SUCCESS) {
+   if (res->obj->is_aux) {
+      fd = os_dupfd_cloexec(res->obj->handle);
+   } else {
+      VkMemoryGetFdInfoKHR fd_info = {0};
+      fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+      fd_info.memory = zink_bo_get_mem(res->obj->bo);
+      fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+      if (VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd) != VK_SUCCESS)
+         fd = -1;
+   }
+   if (fd != -1) {
       struct dma_buf_import_sync_file import = {
          .flags = DMA_BUF_SYNC_RW,
          .fd = sync_file_fd,
@@ -2278,15 +2288,12 @@ zink_screen_import_dmabuf_semaphore(struct zink_screen *screen, struct zink_reso
          if (errno == ENOTTY || errno == EBADF || errno == ENOSYS) {
             assert(!"how did this fail?");
          } else {
-            mesa_loge("MESA: failed to import sync file '%s'", strerror(errno));
+            ret = true;
          }
-      } else {
-         ret = true;
       }
+      close(fd);
    }
-
    close(sync_file_fd);
-   close(fd);
    return ret;
 #else
    return true;
