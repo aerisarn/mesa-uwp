@@ -158,7 +158,7 @@ set_path_vars(nir_builder *b, struct path_fork *fork, nir_block *target)
  * in this case the condition is inverted
  */
 static void
-set_path_vars_cond(nir_builder *b, struct path_fork *fork, nir_src condition,
+set_path_vars_cond(nir_builder *b, struct path_fork *fork, nir_def *condition,
                    nir_block *then_block, nir_block *else_block)
 {
    int i;
@@ -175,16 +175,16 @@ set_path_vars_cond(nir_builder *b, struct path_fork *fork, nir_src condition,
                fork = fork->paths[i].fork;
                break;
             } else {
-               nir_def *ssa_def = condition.ssa;
-               assert(ssa_def->bit_size == 1);
-               assert(ssa_def->num_components == 1);
+               assert(condition->bit_size == 1);
+               assert(condition->num_components == 1);
+               nir_def *fork_cond = condition;
                if (!i)
-                  ssa_def = nir_inot(b, ssa_def);
+                  fork_cond = nir_inot(b, fork_cond);
                if (fork->is_var) {
-                  nir_store_var(b, fork->path_var, ssa_def, 1);
+                  nir_store_var(b, fork->path_var, fork_cond, 1);
                } else {
                   assert(fork->path_ssa == NULL);
-                  fork->path_ssa = ssa_def;
+                  fork->path_ssa = fork_cond;
                }
                set_path_vars(b, fork->paths[i].fork, then_block);
                set_path_vars(b, fork->paths[!i].fork, else_block);
@@ -229,7 +229,7 @@ route_to(nir_builder *b, struct routes *routing, nir_block *target)
  *     C
  */
 static void
-route_to_cond(nir_builder *b, struct routes *routing, nir_src condition,
+route_to_cond(nir_builder *b, struct routes *routing, nir_def *condition,
               nir_block *then_block, nir_block *else_block)
 {
    if (_mesa_set_search(routing->regular.reachable, then_block)) {
@@ -255,7 +255,7 @@ route_to_cond(nir_builder *b, struct routes *routing, nir_src condition,
    }
 
    /* then and else blocks are in different routes */
-   nir_push_if_src(b, condition);
+   nir_push_if(b, condition);
    route_to(b, routing, then_block);
    nir_push_else(b, NULL);
    route_to(b, routing, else_block);
@@ -380,8 +380,7 @@ loop_routing_end(struct routes *routing, nir_builder *b)
                                routing_backup->cont.reachable) {
       assert(!(routing->brk.fork->is_var &&
                strcmp(routing->brk.fork->path_var->name, "path_continue")));
-      nir_push_if_src(b, nir_src_for_ssa(
-                            fork_condition(b, routing->brk.fork)));
+      nir_push_if(b, fork_condition(b, routing->brk.fork));
       nir_jump(b, nir_jump_continue);
       nir_pop_if(b, NULL);
       routing->brk = routing->brk.fork->paths[0];
@@ -390,8 +389,7 @@ loop_routing_end(struct routes *routing, nir_builder *b)
                                routing_backup->brk.reachable) {
       assert(!(routing->brk.fork->is_var &&
                strcmp(routing->brk.fork->path_var->name, "path_break")));
-      nir_push_if_src(b, nir_src_for_ssa(
-                            fork_condition(b, routing->brk.fork)));
+      nir_push_if(b, fork_condition(b, routing->brk.fork));
       nir_jump(b, nir_jump_break);
       nir_pop_if(b, NULL);
       routing->brk = routing->brk.fork->paths[0];
@@ -802,7 +800,7 @@ select_blocks(struct routes *routing, nir_builder *b,
    } else {
       assert(!(in_path.fork->is_var &&
                strcmp(in_path.fork->path_var->name, "path_select")));
-      nir_push_if_src(b, nir_src_for_ssa(fork_condition(b, in_path.fork)));
+      nir_push_if(b, fork_condition(b, in_path.fork));
       select_blocks(routing, b, in_path.fork->paths[1], mem_ctx);
       nir_push_else(b, NULL);
       select_blocks(routing, b, in_path.fork->paths[0], mem_ctx);
@@ -823,8 +821,7 @@ plant_levels(struct list_head *levels, struct routes *routing,
          assert(routing->regular.fork);
          assert(!(routing->regular.fork->is_var && strcmp(
                                                       routing->regular.fork->path_var->name, "path_conditional")));
-         nir_push_if_src(b, nir_src_for_ssa(
-                               fork_condition(b, routing->regular.fork)));
+         nir_push_if(b, fork_condition(b, routing->regular.fork));
          routing->regular = routing->regular.fork->paths[1];
       }
       struct path in_path = routing->regular;
@@ -902,7 +899,7 @@ nir_structurize(struct routes *routing, nir_builder *b, nir_block *block,
 
    /* Find path to the successor blocks */
    if (jump_instr->type == nir_jump_goto_if) {
-      route_to_cond(b, routing, jump_instr->condition,
+      route_to_cond(b, routing, jump_instr->condition.ssa,
                     jump_instr->target, jump_instr->else_target);
    } else {
       route_to(b, routing, block->successors[0]);

@@ -411,19 +411,13 @@ nir_builder_is_inside_cf(nir_builder *build, nir_cf_node *cf_node)
 }
 
 nir_if *
-nir_push_if_src(nir_builder *build, nir_src condition)
+nir_push_if(nir_builder *build, nir_def *condition)
 {
    nir_if *nif = nir_if_create(build->shader);
-   nif->condition = condition;
+   nif->condition = nir_src_for_ssa(condition);
    nir_builder_cf_insert(build, &nif->cf_node);
    build->cursor = nir_before_cf_list(&nif->then_list);
    return nif;
-}
-
-nir_if *
-nir_push_if(nir_builder *build, nir_def *condition)
-{
-   return nir_push_if_src(build, nir_src_for_ssa(condition));
 }
 
 nir_if *

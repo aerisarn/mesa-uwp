@@ -159,9 +159,6 @@ void nir_builder_cf_insert(nir_builder *build, nir_cf_node *cf);
 bool nir_builder_is_inside_cf(nir_builder *build, nir_cf_node *cf_node);
 
 nir_if *
-nir_push_if_src(nir_builder *build, nir_src condition);
-
-nir_if *
 nir_push_if(nir_builder *build, nir_def *condition);
 
 nir_if *
