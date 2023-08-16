@@ -731,7 +731,6 @@ struct radv_meta_state {
       VkPipeline copy_pipeline;
 
       struct radix_sort_vk *radix_sort;
-      struct radix_sort_vk_sort_devaddr_info radix_sort_info;
 
       struct {
          VkBuffer buffer;
