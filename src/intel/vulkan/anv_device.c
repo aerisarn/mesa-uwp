@@ -3727,9 +3727,6 @@ VkResult anv_AllocateMemory(
 
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
 
-   /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
-   assert(pAllocateInfo->allocationSize > 0);
-
    VkDeviceSize aligned_alloc_size =
       align64(pAllocateInfo->allocationSize, 4096);
 
