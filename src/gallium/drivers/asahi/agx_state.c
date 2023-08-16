@@ -1073,12 +1073,13 @@ image_view_for_surface(struct pipe_surface *surf)
 static struct pipe_sampler_view
 sampler_view_for_surface(struct pipe_surface *surf)
 {
+   bool layered = surf->u.tex.last_layer > surf->u.tex.first_layer;
+
    return (struct pipe_sampler_view){
-      /* To reduce shader variants, we always use a 2D
-       * texture. For reloads of arrays and cube maps, we
-       * map a single layer as a 2D image.
+      /* To reduce shader variants, we always use a 2D texture. For reloads of
+       * arrays and cube maps, we map a single layer as a 2D image.
        */
-      .target = PIPE_TEXTURE_2D,
+      .target = layered ? PIPE_TEXTURE_2D_ARRAY : PIPE_TEXTURE_2D,
       .swizzle_r = PIPE_SWIZZLE_X,
       .swizzle_g = PIPE_SWIZZLE_Y,
       .swizzle_b = PIPE_SWIZZLE_Z,
