@@ -217,6 +217,7 @@ struct gfx9_meta_equation {
 struct gfx9_surf_layout {
    uint16_t epitch;           /* gfx9 only, not on gfx10 */
    uint8_t swizzle_mode;      /* color or depth */
+   bool uses_custom_pitch;    /* only used by gfx10.3+ */
 
    enum gfx9_resource_type resource_type:8; /* 1D, 2D or 3D */
    uint16_t surf_pitch;                   /* in blocks */

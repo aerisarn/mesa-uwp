@@ -840,15 +840,16 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
    }
 
    /* GFX10.3+ can set a custom pitch for 1D and 2D non-array, but it must be a multiple
-    * of 256B. Only set it for 2D linear for multi-GPU interop.
+    * of 256B.
     *
     * If an imported image is used with VK_IMAGE_VIEW_TYPE_2D_ARRAY, it may hang due to VM faults
     * because DEPTH means pitch with 2D, but it means depth with 2D array.
     */
-   if (device->physical_device->rad_info.gfx_level >= GFX10_3 && image->vk.image_type == VK_IMAGE_TYPE_2D &&
-       plane->surface.is_linear && util_is_power_of_two_nonzero(plane->surface.bpe) &&
-       G_00A00C_TYPE(state[3]) == V_008F1C_SQ_RSRC_IMG_2D) {
+   if (device->physical_device->rad_info.gfx_level >= GFX10_3 && plane->surface.u.gfx9.uses_custom_pitch) {
       assert((plane->surface.u.gfx9.surf_pitch * plane->surface.bpe) % 256 == 0);
+      assert(image->vk.image_type == VK_IMAGE_TYPE_2D);
+      assert(plane->surface.is_linear);
+      assert(G_00A00C_TYPE(state[3]) == V_008F1C_SQ_RSRC_IMG_2D);
       unsigned pitch = plane->surface.u.gfx9.surf_pitch;
 
       /* Subsampled images have the pitch in the units of blocks. */

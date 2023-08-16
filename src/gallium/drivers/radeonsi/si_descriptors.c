@@ -327,13 +327,14 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       }
 
       /* GFX10.3+ can set a custom pitch for 1D and 2D non-array, but it must be a multiple
-       * of 256B. Only set it for 2D linear for multi-GPU interop.
+       * of 256B.
        */
-      if (sscreen->info.gfx_level >= GFX10_3 &&
-          (tex->buffer.b.b.target == PIPE_TEXTURE_2D ||
-           tex->buffer.b.b.target == PIPE_TEXTURE_RECT) &&
-          tex->surface.is_linear) {
-         assert((tex->surface.u.gfx9.surf_pitch * tex->surface.bpe) % 256 == 0);
+      if (sscreen->info.gfx_level >= GFX10_3 && tex->surface.u.gfx9.uses_custom_pitch) {
+         ASSERTED unsigned min_alignment = 256;
+         assert((tex->surface.u.gfx9.surf_pitch * tex->surface.bpe) % min_alignment == 0);
+         assert(tex->buffer.b.b.target == PIPE_TEXTURE_2D ||
+                tex->buffer.b.b.target == PIPE_TEXTURE_RECT);
+         assert(tex->surface.is_linear);
          unsigned pitch = tex->surface.u.gfx9.surf_pitch;
 
          /* Subsampled images have the pitch in the units of blocks. */

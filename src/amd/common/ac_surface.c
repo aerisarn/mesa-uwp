@@ -3009,6 +3009,7 @@ bool ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
          if (pitch != surf->u.gfx9.surf_pitch) {
             unsigned slices = surf->surf_size / surf->u.gfx9.surf_slice_size;
 
+            surf->u.gfx9.uses_custom_pitch = true;
             surf->u.gfx9.surf_pitch = pitch;
             surf->u.gfx9.epitch = pitch - 1;
             surf->u.gfx9.pitch[0] = pitch;
