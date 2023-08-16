@@ -211,8 +211,7 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
                      else
                         tex->sampler_index = deref->var->data.driver_location;
                      /* This source gets discarded */
-                     nir_instr_rewrite_src(&tex->instr, &tex->src[i].src,
-                                           NIR_SRC_INIT);
+                     nir_instr_clear_src(&tex->instr, &tex->src[i].src);
                      continue;
                   } else {
                      b.cursor = nir_before_instr(&tex->instr);

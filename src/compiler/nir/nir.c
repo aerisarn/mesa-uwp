@@ -808,7 +808,7 @@ nir_tex_instr_remove_src(nir_tex_instr *tex, unsigned src_idx)
    assert(src_idx < tex->num_srcs);
 
    /* First rewrite the source to NIR_SRC_INIT */
-   nir_instr_rewrite_src(&tex->instr, &tex->src[src_idx].src, NIR_SRC_INIT);
+   nir_instr_clear_src(&tex->instr, &tex->src[src_idx].src);
 
    /* Now, move all of the other sources down */
    for (unsigned i = src_idx + 1; i < tex->num_srcs; i++) {
@@ -1474,6 +1474,13 @@ nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src)
    src_remove_all_uses(src);
    nir_src_copy(src, &new_src, instr);
    src_add_all_uses(src, instr, NULL);
+}
+
+void
+nir_instr_clear_src(nir_instr *instr, nir_src *src)
+{
+   src_remove_all_uses(src);
+   *src = NIR_SRC_INIT;
 }
 
 void

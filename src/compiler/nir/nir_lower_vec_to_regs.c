@@ -165,7 +165,7 @@ try_coalesce(nir_builder *b, nir_def *reg, nir_alu_instr *vec,
 
       /* Clear the no longer needed vec source */
       if (valid)
-         nir_instr_rewrite_src(&vec->instr, &vec->src[i].src, NIR_SRC_INIT);
+         nir_instr_clear_src(&vec->instr, &vec->src[i].src);
    }
 
    /* We've cleared the only use of the destination */

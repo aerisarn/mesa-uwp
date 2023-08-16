@@ -666,7 +666,7 @@ cleanup_cf_node(nir_cf_node *node, nir_function_impl *impl)
             nir_jump_instr *jump = nir_instr_as_jump(instr);
             unlink_jump(block, jump->type, false);
             if (jump->type == nir_jump_goto_if)
-               nir_instr_rewrite_src(instr, &jump->condition, NIR_SRC_INIT);
+               nir_instr_clear_src(instr, &jump->condition);
          } else {
             nir_foreach_def(instr, replace_ssa_def_uses, impl);
             nir_instr_remove(instr);

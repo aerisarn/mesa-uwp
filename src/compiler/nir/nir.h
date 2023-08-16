@@ -4420,6 +4420,16 @@ nir_instr_rewrite_src_ssa(ASSERTED nir_instr *instr,
 }
 
 void nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src);
+
+/** Clear a nir_src
+ *
+ * This helper clears a nir_src by removing it from any uses lists and
+ * resetting its contents to NIR_SRC_INIT.  This is typically used as a
+ * precursor to removing the source from the instruction by adjusting a
+ * num_srcs parameter somewhere or overwriting it with nir_instr_move_src().
+ */
+void nir_instr_clear_src(nir_instr *instr, nir_src *src);
+
 void nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src);
 
 void nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src);
