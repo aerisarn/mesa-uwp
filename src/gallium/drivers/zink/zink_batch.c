@@ -544,7 +544,12 @@ submit_queue(void *data, void *gdata, int thread_index)
    struct zink_batch_state *bs = data;
    struct zink_context *ctx = bs->ctx;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkSubmitInfo si[2] = {0};
+   /* 3 submit infos:
+    * - waits
+    * - main cmdbuf payload
+    * - signals
+    */
+   VkSubmitInfo si[3] = {0};
    VkSubmitInfo *submit = si;
    int num_si = 2;
    while (!bs->fence.batch_id)
@@ -554,7 +559,7 @@ submit_queue(void *data, void *gdata, int thread_index)
 
    uint64_t batch_id = bs->fence.batch_id;
    /* first submit is just for acquire waits since they have a separate array */
-   si[0].sType = si[1].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   si[0].sType = si[1].sType = si[2].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    si[0].waitSemaphoreCount = util_dynarray_num_elements(&bs->acquires, VkSemaphore);
    si[0].pWaitSemaphores = bs->acquires.data;
    while (util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags) < si[0].waitSemaphoreCount) {
