@@ -930,6 +930,38 @@ radv_assign_last_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_reque
    radv_amdgpu_request_to_fence(ctx, &ctx->last_submission[request->ip_type][request->ring], request);
 }
 
+static bool
+radv_amdgpu_cs_has_external_ib(const struct radv_amdgpu_cs *cs)
+{
+   for (unsigned i = 0; i < cs->num_ib_buffers; i++) {
+      if (cs->ib_buffers[i].is_external)
+         return true;
+   }
+
+   return false;
+}
+
+static unsigned
+radv_amdgpu_get_num_ibs_per_cs(const struct radv_amdgpu_cs *cs)
+{
+   unsigned num_ibs = 0;
+
+   if (cs->use_ib) {
+      unsigned num_external_ibs = 0;
+
+      for (unsigned i = 0; i < cs->num_ib_buffers; i++) {
+         if (cs->ib_buffers[i].is_external)
+            num_external_ibs++;
+      }
+
+      num_ibs = num_external_ibs * 2 + 1;
+   } else {
+      num_ibs = cs->num_ib_buffers;
+   }
+
+   return num_ibs;
+}
+
 static unsigned
 radv_amdgpu_count_ibs(struct radeon_cmdbuf **cs_array, unsigned cs_count, unsigned initial_preamble_count,
                       unsigned continue_preamble_count, unsigned postamble_count)
@@ -939,7 +971,7 @@ radv_amdgpu_count_ibs(struct radeon_cmdbuf **cs_array, unsigned cs_count, unsign
    for (unsigned i = 0; i < cs_count; i++) {
       struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
 
-      num_ibs += cs->use_ib ? 1 : cs->num_ib_buffers;
+      num_ibs += radv_amdgpu_get_num_ibs_per_cs(cs);
    }
 
    return MAX2(initial_preamble_count, continue_preamble_count) + num_ibs + postamble_count;
@@ -1014,7 +1046,7 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
 
          if (cs_ib_idx == 0) {
             /* Make sure the whole CS fits into the same submission. */
-            unsigned cs_num_ib = cs->use_ib ? 1 : cs->num_ib_buffers;
+            unsigned cs_num_ib = radv_amdgpu_get_num_ibs_per_cs(cs);
             if (i + cs_num_ib > ib_per_submit || ibs_per_ip[cs->hw_ip] + cs_num_ib > max_ib_per_ip[cs->hw_ip])
                break;
 
@@ -1026,20 +1058,37 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
                assert(cs_idx != cs_count - 1);
                struct radv_amdgpu_cs *next_cs = radv_amdgpu_cs(cs_array[cs_idx + 1]);
                assert(next_cs->hw_ip == request.ip_type);
-               unsigned next_cs_num_ib = next_cs->use_ib ? 1 : next_cs->num_ib_buffers;
+               unsigned next_cs_num_ib = radv_amdgpu_get_num_ibs_per_cs(next_cs);
                if (i + cs_num_ib + next_cs_num_ib > ib_per_submit ||
                    ibs_per_ip[next_cs->hw_ip] + next_cs_num_ib > max_ib_per_ip[next_cs->hw_ip])
                   break;
             }
          }
 
-         /* When can use IBs, we only need to submit the main IB of this CS,
-          * because everything else is chained to the first IB.
-          * Otherwise we must submit all IBs in the ib_buffers array.
+         /* When IBs are used, we only need to submit the main IB of this CS, because everything
+          * else is chained to the first IB. Except when the CS has external IBs because they need
+          * to be submitted separately. Otherwise we must submit all IBs in the ib_buffers array.
           */
          if (cs->use_ib) {
-            ib = radv_amdgpu_cs_ib_to_info(cs, cs->ib_buffers[0]);
-            cs_idx++;
+            if (radv_amdgpu_cs_has_external_ib(cs)) {
+               const unsigned cur_ib_idx = cs_ib_idx;
+
+               ib = radv_amdgpu_cs_ib_to_info(cs, cs->ib_buffers[cs_ib_idx++]);
+
+               /* Loop until the next external IB is found. */
+               while (!cs->ib_buffers[cur_ib_idx].is_external && !cs->ib_buffers[cs_ib_idx].is_external &&
+                      cs_ib_idx < cs->num_ib_buffers) {
+                  cs_ib_idx++;
+               }
+
+               if (cs_ib_idx == cs->num_ib_buffers) {
+                  cs_idx++;
+                  cs_ib_idx = 0;
+               }
+            } else {
+               ib = radv_amdgpu_cs_ib_to_info(cs, cs->ib_buffers[0]);
+               cs_idx++;
+            }
          } else {
             assert(cs_ib_idx < cs->num_ib_buffers);
             ib = radv_amdgpu_cs_ib_to_info(cs, cs->ib_buffers[cs_ib_idx++]);
