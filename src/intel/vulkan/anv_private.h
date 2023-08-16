@@ -3118,13 +3118,18 @@ anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
  * State tracking for simple internal shaders
  */
 struct anv_simple_shader {
-   /* The command buffer associated with this emission */
+   /* The device associated with this emission */
+   struct anv_device *device;
+   /* The command buffer associated with this emission (can be NULL) */
    struct anv_cmd_buffer *cmd_buffer;
+   /* State stream used for various internal allocations */
+   struct anv_state_stream *dynamic_state_stream;
+   struct anv_state_stream *general_state_stream;
    /* Where to emit the commands (can be different from cmd_buffer->batch) */
    struct anv_batch *batch;
    /* Shader to use */
    struct anv_shader_bin *kernel;
-   /**/
+   /* L3 config used by the shader */
    const struct intel_l3_config *l3_config;
 
    /* Managed by the simpler shader helper*/

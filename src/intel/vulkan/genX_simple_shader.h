@@ -36,10 +36,11 @@
 static void
 genX(emit_simpler_shader_init_fragment)(struct anv_simple_shader *state)
 {
-   assert(state->cmd_buffer->state.current_pipeline == _3D);
+   assert(state->cmd_buffer == NULL ||
+          state->cmd_buffer->state.current_pipeline == _3D);
 
    struct anv_batch *batch = state->batch;
-   struct anv_device *device = state->cmd_buffer->device;
+   struct anv_device *device = state->device;
    const struct brw_wm_prog_data *prog_data =
       brw_wm_prog_data_const(state->kernel->prog_data);
 
@@ -214,8 +215,8 @@ genX(emit_simpler_shader_init_fragment)(struct anv_simple_shader *state)
 
    anv_batch_emit(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), cc) {
       struct anv_state cc_state =
-         anv_cmd_buffer_alloc_dynamic_state(state->cmd_buffer,
-                                            4 * GENX(CC_VIEWPORT_length), 32);
+         anv_state_stream_alloc(state->dynamic_state_stream,
+                                4 * GENX(CC_VIEWPORT_length), 32);
       struct GENX(CC_VIEWPORT) cc_viewport = {
          .MinimumDepth = 0.0f,
          .MaximumDepth = 1.0f,
@@ -341,13 +342,24 @@ genX(emit_simpler_shader_init_fragment)(struct anv_simple_shader *state)
 static void
 genX(emit_simpler_shader_init_compute)(struct anv_simple_shader *state)
 {
-   assert(state->cmd_buffer->state.current_pipeline == GPGPU);
+   assert(state->cmd_buffer == NULL ||
+          state->cmd_buffer->state.current_pipeline == GPGPU);
 
 #if GFX_VERx10 >= 125
    struct anv_shader_bin *cs_bin = state->kernel;
    const struct brw_cs_prog_data *prog_data =
       (const struct brw_cs_prog_data *) cs_bin->prog_data;
-   genX(cmd_buffer_ensure_cfe_state)(state->cmd_buffer, prog_data->base.total_scratch);
+   /* Currently our simple shaders are simple enough that they never spill. */
+   assert(prog_data->base.total_scratch == 0);
+   if (state->cmd_buffer != NULL) {
+      genX(cmd_buffer_ensure_cfe_state)(state->cmd_buffer, 0);
+   } else {
+      anv_batch_emit(state->batch, GENX(CFE_STATE), cfe) {
+         cfe.MaximumNumberofThreads =
+            state->device->info->max_cs_threads *
+            state->device->info->subslice_total;
+      }
+   }
 #endif
 }
 
@@ -367,15 +379,13 @@ static struct anv_state
 genX(simple_shader_alloc_push)(struct anv_simple_shader *state, uint32_t size)
 {
    if (state->kernel->stage == MESA_SHADER_FRAGMENT) {
-      return anv_cmd_buffer_alloc_dynamic_state(state->cmd_buffer,
-                                                size,
-                                                ANV_UBO_ALIGNMENT);
+      return anv_state_stream_alloc(state->dynamic_state_stream,
+                                    size, ANV_UBO_ALIGNMENT);
    } else {
 #if GFX_VERx10 >= 125
-      return anv_state_stream_alloc(&state->cmd_buffer->general_state_stream,
-                                    size, 64);
+      return anv_state_stream_alloc(state->general_state_stream, align(size, 64), 64);
 #else
-      return anv_cmd_buffer_alloc_dynamic_state(state->cmd_buffer, size, 64);
+      return anv_state_stream_alloc(state->dynamic_state_stream, size, 64);
 #endif
    }
 }
@@ -386,17 +396,14 @@ genX(simple_shader_push_state_address)(struct anv_simple_shader *state,
 {
    if (state->kernel->stage == MESA_SHADER_FRAGMENT) {
       return anv_state_pool_state_address(
-         &state->cmd_buffer->device->dynamic_state_pool,
-         push_state);
+         &state->device->dynamic_state_pool, push_state);
    } else {
 #if GFX_VERx10 >= 125
       return anv_state_pool_state_address(
-         &state->cmd_buffer->device->general_state_pool,
-         push_state);
+         &state->device->general_state_pool, push_state);
 #else
       return anv_state_pool_state_address(
-         &state->cmd_buffer->device->dynamic_state_pool,
-         push_state);
+         &state->device->dynamic_state_pool, push_state);
 #endif
    }
 }
@@ -406,15 +413,20 @@ genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
                                   uint32_t num_threads,
                                   struct anv_state push_state)
 {
-   struct anv_device *device = state->cmd_buffer->device;
+   struct anv_device *device = state->device;
    struct anv_batch *batch = state->batch;
    struct anv_address push_addr =
       anv_state_pool_state_address(&device->dynamic_state_pool, push_state);
 
    if (state->kernel->stage == MESA_SHADER_FRAGMENT) {
+      /* At the moment we require a command buffer associated with this
+       * emission as we need to allocate binding tables on Gfx9.
+       */
+      assert(state->cmd_buffer != NULL);
+
       struct anv_state vs_data_state =
-         anv_cmd_buffer_alloc_dynamic_state(
-            state->cmd_buffer, 9 * sizeof(uint32_t), 32);
+         anv_state_stream_alloc(state->dynamic_state_stream,
+                                9 * sizeof(uint32_t), 32);
 
       float x0 = 0.0f, x1 = MIN2(num_threads, 8192);
       float y0 = 0.0f, y1 = DIV_ROUND_UP(num_threads, 8192);
@@ -546,7 +558,12 @@ genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
       enum anv_pipe_bits emitted_bits = 0;
       genX(emit_apply_pipe_flushes)(batch, device, GPGPU, ANV_PIPE_CS_STALL_BIT,
                                     &emitted_bits);
-      anv_cmd_buffer_update_pending_query_bits(state->cmd_buffer, emitted_bits);
+
+      /* If we have a command buffer allocated with the emission, update the
+       * pending bits.
+       */
+      if (state->cmd_buffer)
+         anv_cmd_buffer_update_pending_query_bits(state->cmd_buffer, emitted_bits);
 
       anv_batch_emit(batch, GENX(MEDIA_VFE_STATE), vfe) {
          vfe.StackSize              = 0;
@@ -576,9 +593,8 @@ genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
          }
       }
       struct anv_state iface_desc_state =
-         anv_cmd_buffer_alloc_dynamic_state(state->cmd_buffer,
-                                            GENX(INTERFACE_DESCRIPTOR_DATA_length) * 4,
-                                            64);
+         anv_state_stream_alloc(state->dynamic_state_stream,
+                                GENX(INTERFACE_DESCRIPTOR_DATA_length) * 4, 64);
       struct GENX(INTERFACE_DESCRIPTOR_DATA) iface_desc = {
          .KernelStartPointer                    = state->kernel->kernel.offset +
                                                   brw_cs_prog_data_prog_offset(prog_data,
