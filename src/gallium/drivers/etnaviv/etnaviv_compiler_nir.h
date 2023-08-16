@@ -181,7 +181,7 @@ update_swiz_mask(nir_alu_instr *alu, nir_def *def, unsigned *swiz, unsigned *mas
 
    bool is_vec = def != NULL;
    unsigned swizzle = 0, write_mask = 0;
-   for (unsigned i = 0; i < def->num_components; i++) {
+   for (unsigned i = 0; i < alu->def.num_components; i++) {
       /* src is different (only check for vecN) */
       if (is_vec && alu->src[i].src.ssa != def)
          continue;
