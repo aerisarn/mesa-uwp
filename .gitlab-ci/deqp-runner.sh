@@ -154,7 +154,7 @@ if [ -z "$DEQP_SUITE" ]; then
         export DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --renderer-check $DEQP_EXPECTED_RENDERER"
     fi
     if [ $DEQP_VER != vk ] && [ $DEQP_VER != egl ]; then
-	VER=$(sed 's/[() ]/./g' "$INSTALL/VERSION")
+        VER=$(sed 's/[() ]/./g' "$INSTALL/VERSION")
         export DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --version-check $VER"
     fi
 fi
@@ -172,7 +172,7 @@ if [ -z "$DEQP_SUITE" ]; then
         --flakes $INSTALL/$GPU_VERSION-flakes.txt \
         --testlog-to-xml /deqp/executor/testlog-to-xml \
         --jobs ${FDO_CI_CONCURRENT:-4} \
-	$DEQP_RUNNER_OPTIONS \
+        $DEQP_RUNNER_OPTIONS \
         -- \
         $DEQP_OPTIONS
 else
@@ -184,9 +184,9 @@ else
         --flakes $INSTALL/$GPU_VERSION-flakes.txt \
         --testlog-to-xml /deqp/executor/testlog-to-xml \
         --fraction-start $CI_NODE_INDEX \
-	--fraction $((CI_NODE_TOTAL * ${DEQP_FRACTION:-1})) \
+        --fraction $((CI_NODE_TOTAL * ${DEQP_FRACTION:-1})) \
         --jobs ${FDO_CI_CONCURRENT:-4} \
-	$DEQP_RUNNER_OPTIONS
+        $DEQP_RUNNER_OPTIONS
 fi
 
 DEQP_EXITCODE=$?
