@@ -350,6 +350,7 @@ create_batch_state(struct zink_context *ctx)
 
    SET_CREATE_OR_FAIL(&bs->programs);
    SET_CREATE_OR_FAIL(&bs->active_queries);
+   SET_CREATE_OR_FAIL(&bs->dmabuf_exports);
    util_dynarray_init(&bs->signal_semaphores, NULL);
    util_dynarray_init(&bs->wait_semaphores, NULL);
    util_dynarray_init(&bs->fd_wait_semaphores, NULL);
@@ -584,6 +585,15 @@ submit_queue(void *data, void *gdata, int thread_index)
    assert(util_dynarray_num_elements(&bs->acquires, VkSemaphore) <= util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags));
    si[ZINK_SUBMIT_WAIT_ACQUIRE].pWaitDstStageMask = bs->acquire_flags.data;
 
+   si[ZINK_SUBMIT_WAIT_FD].waitSemaphoreCount = util_dynarray_num_elements(&bs->fd_wait_semaphores, VkSemaphore);
+   si[ZINK_SUBMIT_WAIT_FD].pWaitSemaphores = bs->fd_wait_semaphores.data;
+   while (util_dynarray_num_elements(&bs->fd_wait_semaphore_stages, VkPipelineStageFlags) < si[ZINK_SUBMIT_WAIT_FD].waitSemaphoreCount) {
+      VkPipelineStageFlags mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+      util_dynarray_append(&bs->fd_wait_semaphore_stages, VkPipelineStageFlags, mask);
+   }
+   assert(util_dynarray_num_elements(&bs->fd_wait_semaphores, VkSemaphore) <= util_dynarray_num_elements(&bs->fd_wait_semaphore_stages, VkPipelineStageFlags));
+   si[ZINK_SUBMIT_WAIT_FD].pWaitDstStageMask = bs->fd_wait_semaphore_stages.data;
+
    if (si[ZINK_SUBMIT_WAIT_ACQUIRE].waitSemaphoreCount == 0) {
       num_si--;
       submit++;
@@ -621,6 +631,10 @@ submit_queue(void *data, void *gdata, int thread_index)
       signals[si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount++] = bs->present;
    tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount;
 
+   /* then the optional signal submit */
+   si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount = util_dynarray_num_elements(&bs->signal_semaphores, VkSemaphore);
+   si[ZINK_SUBMIT_SIGNAL].pSignalSemaphores = bs->signal_semaphores.data;
+
    VkResult result = VKSCR(EndCommandBuffer)(bs->cmdbuf);
    if (result != VK_SUCCESS) {
       mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
@@ -656,6 +670,18 @@ submit_queue(void *data, void *gdata, int thread_index)
       bs->is_device_lost = true;
    }
    simple_mtx_unlock(&screen->queue_lock);
+
+   unsigned i = 0;
+   set_foreach_remove(&bs->dmabuf_exports, entry) {
+      struct zink_resource *res = (void*)entry->key;
+      VkSemaphore *sem = bs->signal_semaphores.data;
+      zink_screen_import_dmabuf_semaphore(screen, res, sem[i]);
+      i++;
+
+      struct pipe_resource *pres = &res->base.b;
+      pipe_resource_reference(&pres, NULL);
+   }
+
    bs->usage.submit_count++;
 end:
    cnd_broadcast(&bs->usage.flush);
@@ -725,6 +751,47 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (ctx->tc) {
       set_foreach(&bs->active_queries, entry)
          zink_query_sync(ctx, (void*)entry->key);
+   }
+
+   set_foreach(&bs->dmabuf_exports, entry) {
+      struct zink_resource *res = (void*)entry->key;
+      if (screen->info.have_KHR_synchronization2) {
+         VkImageMemoryBarrier2 imb;
+         zink_resource_image_barrier2_init(&imb, res, res->layout, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+         imb.srcQueueFamilyIndex = screen->gfx_queue;
+         imb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+         VkDependencyInfo dep = {
+            VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            NULL,
+            0,
+            0,
+            NULL,
+            0,
+            NULL,
+            1,
+            &imb
+         };
+         VKCTX(CmdPipelineBarrier2)(bs->cmdbuf, &dep);
+      } else {
+         VkImageMemoryBarrier imb;
+         zink_resource_image_barrier_init(&imb, res, res->layout, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+         imb.srcQueueFamilyIndex = screen->gfx_queue;
+         imb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+         VKCTX(CmdPipelineBarrier)(
+            bs->cmdbuf,
+            res->obj->access_stage,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0, NULL,
+            0, NULL,
+            1, &imb
+         );
+      }
+      res->queue = VK_QUEUE_FAMILY_FOREIGN_EXT;
+
+      VkSemaphore sem = zink_create_exportable_semaphore(screen);
+      if (sem)
+         util_dynarray_append(&ctx->batch.state->signal_semaphores, VkSemaphore, sem);
    }
 
    if (screen->threaded_submit) {

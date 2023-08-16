@@ -80,6 +80,7 @@ bool zink_tracing = false;
 #endif
 
 #ifdef HAVE_LIBDRM
+#include "drm-uapi/dma-buf.h"
 #include <xf86drm.h>
 #endif
 
@@ -2197,6 +2198,99 @@ zink_create_exportable_semaphore(struct zink_screen *screen)
       return sem;
    VkResult ret = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &sem);
    return ret == VK_SUCCESS ? sem : VK_NULL_HANDLE;
+}
+
+VkSemaphore
+zink_screen_export_dmabuf_semaphore(struct zink_screen *screen, struct zink_resource *res)
+{
+   VkSemaphore sem = VK_NULL_HANDLE;
+#if defined(HAVE_LIBDRM) && (DETECT_OS_LINUX || DETECT_OS_BSD)
+   struct dma_buf_export_sync_file export = {
+      .flags = DMA_BUF_SYNC_RW,
+      .fd = -1,
+   };
+
+   int fd;
+   VkMemoryGetFdInfoKHR fd_info = {0};
+   fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+   fd_info.memory = zink_bo_get_mem(res->obj->bo);
+   fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+   VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
+
+   int ret = drmIoctl(fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &export);
+   if (ret) {
+      if (errno == ENOTTY || errno == EBADF || errno == ENOSYS) {
+         assert(!"how did this fail?");
+         return VK_NULL_HANDLE;
+      } else {
+         mesa_loge("MESA: failed to import sync file '%s'", strerror(errno));
+         return VK_NULL_HANDLE;
+      }
+   }
+
+   sem = zink_create_exportable_semaphore(screen);
+
+   const VkImportSemaphoreFdInfoKHR sdi = {
+      .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
+      .semaphore = sem,
+      .flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
+      .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+      .fd = export.fd,
+   };
+   bool success = VKSCR(ImportSemaphoreFdKHR)(screen->dev, &sdi) == VK_SUCCESS;
+   close(fd);
+   if (!success) {
+      VKSCR(DestroySemaphore)(screen->dev, sem, NULL);
+      return VK_NULL_HANDLE;
+   }
+#endif
+   return sem;
+}
+
+bool
+zink_screen_import_dmabuf_semaphore(struct zink_screen *screen, struct zink_resource *res, VkSemaphore sem)
+{
+#if defined(HAVE_LIBDRM) && (DETECT_OS_LINUX || DETECT_OS_BSD)
+   const VkSemaphoreGetFdInfoKHR get_fd_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
+      .semaphore = sem,
+      .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+   };
+   int sync_file_fd = -1;
+   VkResult result = VKSCR(GetSemaphoreFdKHR)(screen->dev, &get_fd_info, &sync_file_fd);
+   if (result != VK_SUCCESS) {
+      return false;
+   }
+
+   bool ret = false;
+   int fd;
+   VkMemoryGetFdInfoKHR fd_info = {0};
+   fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+   fd_info.memory = zink_bo_get_mem(res->obj->bo);
+   fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+   if (VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd) == VK_SUCCESS) {
+      struct dma_buf_import_sync_file import = {
+         .flags = DMA_BUF_SYNC_RW,
+         .fd = sync_file_fd,
+      };
+      int ret = drmIoctl(fd, DMA_BUF_IOCTL_IMPORT_SYNC_FILE, &import);
+      if (ret) {
+         if (errno == ENOTTY || errno == EBADF || errno == ENOSYS) {
+            assert(!"how did this fail?");
+         } else {
+            mesa_loge("MESA: failed to import sync file '%s'", strerror(errno));
+         }
+      } else {
+         ret = true;
+      }
+   }
+
+   close(sync_file_fd);
+   close(fd);
+   return ret;
+#else
+   return true;
+#endif
 }
 
 bool
