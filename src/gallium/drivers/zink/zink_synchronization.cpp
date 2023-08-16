@@ -199,7 +199,7 @@ zink_resource_image_barrier_init(VkImageMemoryBarrier *imb, struct zink_resource
    };
 }
 
-static void
+void
 zink_resource_image_barrier2_init(VkImageMemoryBarrier2 *imb, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)
