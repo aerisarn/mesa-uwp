@@ -498,7 +498,7 @@ void
 genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
-   const struct vk_dynamic_graphics_state *dyn =
+   struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
 
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
@@ -663,30 +663,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,
                            pipeline->gfx8.raster);
-   }
-
-   /* Stencil reference values moved from COLOR_CALC_STATE in gfx8 to
-    * 3DSTATE_WM_DEPTH_STENCIL in gfx9. That means the dirty bits gets split
-    * across different state packets for gfx8 and gfx9. We handle that by
-    * using a big old #if switch here.
-    */
-   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
-      struct anv_state cc_state =
-         anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
-                                            GENX(COLOR_CALC_STATE_length) * 4,
-                                            64);
-      struct GENX(COLOR_CALC_STATE) cc = {
-         .BlendConstantColorRed = dyn->cb.blend_constants[0],
-         .BlendConstantColorGreen = dyn->cb.blend_constants[1],
-         .BlendConstantColorBlue = dyn->cb.blend_constants[2],
-         .BlendConstantColorAlpha = dyn->cb.blend_constants[3],
-      };
-      GENX(COLOR_CALC_STATE_pack)(NULL, cc_state.map, &cc);
-
-      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), ccp) {
-         ccp.ColorCalcStatePointer = cc_state.offset;
-         ccp.ColorCalcStatePointerValid = true;
-      }
    }
 
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE) ||
@@ -895,6 +871,10 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
       struct GENX(BLEND_STATE_ENTRY) bs0 = { 0 };
 
+      /* Wa_14018912822, check if we set these during RT setup. */
+      bool color_blend_zero = false;
+      bool alpha_blend_zero = false;
+
       for (uint32_t i = 0; i < MAX_RTS; i++) {
          /* Disable anything above the current number of color attachments. */
          bool write_disabled = i >= cmd_buffer->state.gfx.color_att_count ||
@@ -993,12 +973,37 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
             entry.DestinationAlphaBlendFactor = BLENDFACTOR_ONE;
          }
 
+         /* When MSAA is enabled, instead of using BLENDFACTOR_ZERO use CONST_COLOR,
+          * CONST_ALPHA and supply zero by using blend constants.
+          */
+         if (intel_needs_workaround(cmd_buffer->device->info, 14018912822) &&
+             pipeline->rasterization_samples > 1) {
+            if (entry.DestinationBlendFactor == BLENDFACTOR_ZERO) {
+               entry.DestinationBlendFactor = BLENDFACTOR_CONST_COLOR;
+               color_blend_zero = true;
+            }
+            if (entry.DestinationAlphaBlendFactor == BLENDFACTOR_ZERO) {
+               entry.DestinationAlphaBlendFactor = BLENDFACTOR_CONST_ALPHA;
+               alpha_blend_zero = true;
+            }
+         }
+
          GENX(BLEND_STATE_ENTRY_pack)(NULL, dws, &entry);
 
          if (i == 0)
             bs0 = entry;
 
          dws += GENX(BLEND_STATE_ENTRY_length);
+      }
+
+      /* Blend constants modified for Wa_14018912822. */
+      if (cmd_buffer->state.gfx.color_blend_zero != color_blend_zero) {
+         cmd_buffer->state.gfx.color_blend_zero = color_blend_zero;
+         BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS);
+      }
+      if (cmd_buffer->state.gfx.alpha_blend_zero != alpha_blend_zero) {
+         cmd_buffer->state.gfx.alpha_blend_zero = alpha_blend_zero;
+         BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS);
       }
 
       /* Generate blend state after entries. */
@@ -1022,6 +1027,29 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_BLEND_STATE_POINTERS), bsp) {
          bsp.BlendStatePointer      = blend_states.offset;
          bsp.BlendStatePointerValid = true;
+      }
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
+      struct anv_state cc_state =
+         anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
+                                            GENX(COLOR_CALC_STATE_length) * 4,
+                                            64);
+      struct GENX(COLOR_CALC_STATE) cc = {
+         .BlendConstantColorRed   = cmd_buffer->state.gfx.color_blend_zero ?
+                                    0.0f : dyn->cb.blend_constants[0],
+         .BlendConstantColorGreen = cmd_buffer->state.gfx.color_blend_zero ?
+                                    0.0f : dyn->cb.blend_constants[1],
+         .BlendConstantColorBlue  = cmd_buffer->state.gfx.color_blend_zero ?
+                                    0.0f : dyn->cb.blend_constants[2],
+         .BlendConstantColorAlpha = cmd_buffer->state.gfx.alpha_blend_zero ?
+                                    0.0f : dyn->cb.blend_constants[3],
+      };
+      GENX(COLOR_CALC_STATE_pack)(NULL, cc_state.map, &cc);
+
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), ccp) {
+         ccp.ColorCalcStatePointer = cc_state.offset;
+         ccp.ColorCalcStatePointerValid = true;
       }
    }
 

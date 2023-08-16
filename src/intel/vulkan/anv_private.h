@@ -2839,6 +2839,10 @@ struct anv_cmd_graphics_state {
    bool object_preemption;
    bool has_uint_rt;
 
+   /* State tracking for Wa_14018912822. */
+   bool color_blend_zero;
+   bool alpha_blend_zero;
+
    /**
     * DEPTH and STENCIL attachment write state for Wa_18019816803.
     */
