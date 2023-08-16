@@ -545,6 +545,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    struct zink_context *ctx = bs->ctx;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkSubmitInfo si[2] = {0};
+   VkSubmitInfo *submit = si;
    int num_si = 2;
    while (!bs->fence.batch_id)
       bs->fence.batch_id = (uint32_t)p_atomic_inc_return(&screen->curr_batch);
@@ -563,8 +564,10 @@ submit_queue(void *data, void *gdata, int thread_index)
    assert(util_dynarray_num_elements(&bs->acquires, VkSemaphore) <= util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags));
    si[0].pWaitDstStageMask = bs->acquire_flags.data;
 
-   if (si[0].waitSemaphoreCount == 0)
+   if (si[0].waitSemaphoreCount == 0) {
      num_si--;
+     submit++;
+   }
 
    /* then the real submit */
    si[1].waitSemaphoreCount = util_dynarray_num_elements(&bs->wait_semaphores, VkSemaphore);
@@ -620,7 +623,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    }
 
    simple_mtx_lock(&screen->queue_lock);
-   result = VKSCR(QueueSubmit)(screen->queue, num_si, num_si == 2 ? si : &si[1], VK_NULL_HANDLE);
+   result = VKSCR(QueueSubmit)(screen->queue, num_si, submit, VK_NULL_HANDLE);
    if (result != VK_SUCCESS) {
       mesa_loge("ZINK: vkQueueSubmit failed (%s)", vk_Result_to_str(result));
       bs->is_device_lost = true;
