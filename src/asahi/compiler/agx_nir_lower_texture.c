@@ -864,6 +864,7 @@ lower_multisampled_store(nir_builder *b, nir_instr *instr, UNUSED void *data)
    nir_def *coord2d = coords_for_buffer_texture(b, index_px);
 
    nir_src_rewrite(&intr->src[1], nir_pad_vector(b, coord2d, 4));
+   nir_src_rewrite(&intr->src[2], nir_imm_int(b, 0));
    nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
    return true;
 }
