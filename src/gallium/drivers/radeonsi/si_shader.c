@@ -1581,11 +1581,20 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
+   uint64_t kill_outputs = nir->info.stage > MESA_SHADER_GEOMETRY ? 0 : key->ge.opt.kill_outputs;
+
+   /* Always remove the interpolated gl_Layer output for blit shaders on the first compile
+    * (it's always unused by PS), otherwise we hang because we don't pass the attribute ring
+    * pointer to position-only shaders that also write gl_Layer.
+    */
+   if (nir->info.stage == MESA_SHADER_VERTEX && nir->info.vs.blit_sgprs_amd)
+      kill_outputs |= BITFIELD64_BIT(SI_UNIQUE_SLOT_LAYER);
 
    if (nir->info.stage > MESA_SHADER_GEOMETRY ||
-       (!key->ge.opt.kill_outputs &&
+       (!kill_outputs &&
         !key->ge.opt.kill_pointsize &&
-        !key->ge.opt.kill_clip_distances)) {
+        !key->ge.opt.kill_clip_distances &&
+        (nir->info.stage != MESA_SHADER_VERTEX || !nir->info.vs.blit_sgprs_amd))) {
       nir_metadata_preserve(impl, nir_metadata_all);
       return false;
    }
@@ -1609,7 +1618,7 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
          nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
 
          if (nir_slot_is_varying(sem.location) &&
-             key->ge.opt.kill_outputs &
+             kill_outputs &
              (1ull << si_shader_io_get_unique_index(sem.location))) {
             nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
             progress = true;
