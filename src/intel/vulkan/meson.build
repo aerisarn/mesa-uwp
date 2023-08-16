@@ -105,6 +105,7 @@ anv_per_hw_ver_files = files(
   'genX_init_state.c',
   'genX_pipeline.c',
   'genX_query.c',
+  'genX_simple_shader.c',
   'genX_video.c',
 )
 if with_intel_vk_rt

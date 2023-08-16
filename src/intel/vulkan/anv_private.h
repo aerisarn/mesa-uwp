@@ -5194,6 +5194,10 @@ struct anv_utrace_submit {
    struct anv_batch batch;
    struct anv_bo *batch_bo;
 
+   /* Stream for temporary allocations */
+   struct anv_state_stream dynamic_state_stream;
+   struct anv_state_stream general_state_stream;
+
    /* Syncobj to be signaled when the batch completes */
    struct vk_sync *sync;
 

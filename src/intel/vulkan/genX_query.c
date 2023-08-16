@@ -37,7 +37,6 @@
 #include "ds/intel_tracepoints.h"
 
 #include "anv_internal_kernels.h"
-#include "genX_simple_shader.h"
 
 /* We reserve :
  *    - GPR 14 for perf queries

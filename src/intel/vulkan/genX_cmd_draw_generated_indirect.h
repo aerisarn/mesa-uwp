@@ -33,7 +33,6 @@
 
 #include "anv_private.h"
 #include "anv_internal_kernels.h"
-#include "genX_simple_shader.h"
 
 /* This is a maximum number of items a fragment shader can generate due to the
  * viewport size.

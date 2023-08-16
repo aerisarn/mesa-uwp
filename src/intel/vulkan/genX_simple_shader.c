@@ -21,17 +21,16 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GENX_SIMPLE_SHADER_H
-#define GENX_SIMPLE_SHADER_H
-
 #include <assert.h>
 #include <stdbool.h>
 
 #include "util/macros.h"
 
-#include "common/intel_genX_state.h"
-
 #include "anv_private.h"
+
+#include "genxml/gen_macros.h"
+#include "genxml/genX_pack.h"
+#include "common/intel_genX_state.h"
 
 static void
 genX(emit_simpler_shader_init_fragment)(struct anv_simple_shader *state)
@@ -363,7 +362,8 @@ genX(emit_simpler_shader_init_compute)(struct anv_simple_shader *state)
 #endif
 }
 
-static void
+/** Initialize a simple shader emission */
+void
 genX(emit_simple_shader_init)(struct anv_simple_shader *state)
 {
    assert(state->kernel->stage == MESA_SHADER_FRAGMENT ||
@@ -375,7 +375,8 @@ genX(emit_simple_shader_init)(struct anv_simple_shader *state)
       genX(emit_simpler_shader_init_compute)(state);
 }
 
-static struct anv_state
+/** Allocate push constant data for a simple shader */
+struct anv_state
 genX(simple_shader_alloc_push)(struct anv_simple_shader *state, uint32_t size)
 {
    if (state->kernel->stage == MESA_SHADER_FRAGMENT) {
@@ -390,7 +391,10 @@ genX(simple_shader_alloc_push)(struct anv_simple_shader *state, uint32_t size)
    }
 }
 
-static struct anv_address
+/** Get the address of allocated push constant data by
+ *  genX(simple_shader_alloc_push)
+ */
+struct anv_address
 genX(simple_shader_push_state_address)(struct anv_simple_shader *state,
                                        struct anv_state push_state)
 {
@@ -408,7 +412,8 @@ genX(simple_shader_push_state_address)(struct anv_simple_shader *state,
    }
 }
 
-static void
+/** Emit a simple shader dispatch */
+void
 genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
                                   uint32_t num_threads,
                                   struct anv_state push_state)
@@ -648,4 +653,3 @@ genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
    }
 }
 
-#endif /* GENX_SIMPLE_SHADER_H */
