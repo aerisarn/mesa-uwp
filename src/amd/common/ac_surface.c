@@ -1707,6 +1707,8 @@ static void ac_copy_cmask_equation(const struct radeon_info *info,
                                    ADDR2_COMPUTE_CMASK_INFO_OUTPUT *cmask,
                                    struct gfx9_meta_equation *equation)
 {
+   assert(info->gfx_level < GFX11);
+
    equation->meta_block_width = cmask->metaBlkWidth;
    equation->meta_block_height = cmask->metaBlkHeight;
    equation->meta_block_depth = 1;
@@ -2920,21 +2922,10 @@ static uint32_t ac_surface_get_pitch_align(const struct radeon_info *info,
                                            const struct radeon_surf *surf)
 {
    if (surf->is_linear) {
-      switch (info->gfx_level) {
-      case GFX6:
-      case GFX7:
-      case GFX8:
-         return MAX2(8, 64 / surf->bpe);
-
-      case GFX9:
-      case GFX10:
-      case GFX10_3:
-      case GFX11:
+      if (info->gfx_level >= GFX9)
          return 256 / surf->bpe;
-
-      default:
-         unreachable("unhandled gfx_level");
-      }
+      else
+         return MAX2(8, 64 / surf->bpe);
    }
 
    if (info->gfx_level >= GFX9) {
