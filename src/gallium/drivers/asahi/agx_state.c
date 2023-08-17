@@ -3082,17 +3082,21 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       batch->resolve |= ctx->zs->store;
    }
 
-   if (agx_update_vs(ctx))
+   if (agx_update_vs(ctx)) {
       ctx->dirty |= AGX_DIRTY_VS | AGX_DIRTY_VS_PROG;
-   else if (ctx->stage[PIPE_SHADER_VERTEX].dirty ||
-            (ctx->dirty & AGX_DIRTY_VERTEX))
+      ctx->stage[PIPE_SHADER_VERTEX].dirty = ~0;
+   } else if (ctx->stage[PIPE_SHADER_VERTEX].dirty ||
+              (ctx->dirty & AGX_DIRTY_VERTEX)) {
       ctx->dirty |= AGX_DIRTY_VS;
+   }
 
-   if (agx_update_fs(batch))
+   if (agx_update_fs(batch)) {
       ctx->dirty |= AGX_DIRTY_FS | AGX_DIRTY_FS_PROG;
-   else if (ctx->stage[PIPE_SHADER_FRAGMENT].dirty ||
-            (ctx->dirty & (AGX_DIRTY_BLEND_COLOR | AGX_DIRTY_SAMPLE_MASK)))
+      ctx->stage[PIPE_SHADER_FRAGMENT].dirty = ~0;
+   } else if (ctx->stage[PIPE_SHADER_FRAGMENT].dirty ||
+              (ctx->dirty & (AGX_DIRTY_BLEND_COLOR | AGX_DIRTY_SAMPLE_MASK))) {
       ctx->dirty |= AGX_DIRTY_FS;
+   }
 
    agx_batch_add_bo(batch, ctx->vs->bo);
    agx_batch_add_bo(batch, ctx->fs->bo);
