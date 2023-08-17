@@ -1502,18 +1502,6 @@ nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src)
 }
 
 void
-nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src)
-{
-   nir_shader *shader = ralloc_parent(if_stmt);
-   nir_src *src = &if_stmt->condition;
-   assert(!src_is_valid(src) || (src->is_if && src->parent_if == if_stmt));
-
-   src_remove_all_uses(src);
-   src_copy(src, &new_src, shader->gctx);
-   src_add_all_uses(src, NULL, if_stmt);
-}
-
-void
 nir_def_init(nir_instr *instr, nir_def *def,
              unsigned num_components,
              unsigned bit_size)
@@ -2079,13 +2067,8 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
          if (new_def->parent_instr->block != instr->block)
             preserved = nir_metadata_none;
 
-         nir_src new_src = nir_src_for_ssa(new_def);
-         list_for_each_entry_safe(nir_src, use_src, &old_uses, use_link) {
-            if (use_src->is_if)
-               nir_if_rewrite_condition(use_src->parent_if, new_src);
-            else
-               nir_instr_rewrite_src(use_src->parent_instr, use_src, new_src);
-         }
+         list_for_each_entry_safe(nir_src, use_src, &old_uses, use_link)
+            nir_src_rewrite(use_src, new_def);
 
          if (nir_def_is_unused(old_def)) {
             iter = nir_instr_free_and_dce(instr);

@@ -82,7 +82,7 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          dupl = last_dupl;
       }
 
-      nir_if_rewrite_condition(use_src->parent_if, nir_src_for_ssa(&dupl->def));
+      nir_src_rewrite(&use_src->parent_if->condition, &dupl->def);
       last_parent_instr = use_src->parent_instr;
       last_dupl = dupl;
    }

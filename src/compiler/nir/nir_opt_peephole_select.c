@@ -351,7 +351,7 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
    struct nir_builder b = nir_builder_at(nir_before_cf_node(&if_stmt->cf_node));
    nir_def *cond = nir_iand(&b, if_stmt->condition.ssa,
                             parent_if->condition.ssa);
-   nir_if_rewrite_condition(if_stmt, nir_src_for_ssa(cond));
+   nir_src_rewrite(&if_stmt->condition, cond);
 
    /* move the whole inner if before the parent if */
    nir_cf_list tmp;

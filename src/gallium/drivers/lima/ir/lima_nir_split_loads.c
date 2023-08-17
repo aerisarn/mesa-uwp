@@ -74,8 +74,7 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
    }
    nir_foreach_if_use_safe(src, &intrin->def) {
       b->cursor = nir_before_src(src);
-      nir_if_rewrite_condition(src->parent_if,
-                               nir_src_for_ssa(clone_intrinsic(b, intrin)));
+      nir_src_rewrite(&src->parent_if->condition, clone_intrinsic(b, intrin));
    }
 
    nir_instr_remove(&intrin->instr);

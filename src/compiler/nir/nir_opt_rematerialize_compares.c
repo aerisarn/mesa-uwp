@@ -123,8 +123,7 @@ nir_opt_rematerialize_compares_impl(nir_shader *shader, nir_function_impl *impl)
 
                nir_instr_insert_after_block(prev_block, &clone->instr);
 
-               nir_if_rewrite_condition(if_stmt,
-                                        nir_src_for_ssa(&clone->def));
+               nir_src_rewrite(&if_stmt->condition, &clone->def);
                progress = true;
             } else {
                nir_instr *const use_instr = use->parent_instr;

@@ -779,7 +779,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
             get_phi_builder_def_for_src(&following_if->condition,
                                         &pbv_arr, block);
          if (new_def != NULL)
-            nir_if_rewrite_condition(following_if, nir_src_for_ssa(new_def));
+            nir_src_rewrite(&following_if->condition, new_def);
       }
 
       /* Handle phi sources that source from this block.  We have to do this

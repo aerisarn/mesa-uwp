@@ -262,7 +262,7 @@ convert_loop_exit_for_ssa(nir_def *def, void *void_state)
    nir_foreach_use_including_if_safe(use, def) {
       if (use->is_if) {
          if (!is_if_use_inside_loop(use, state->loop))
-            nir_if_rewrite_condition(use->parent_if, nir_src_for_ssa(dest));
+            nir_src_rewrite(&use->parent_if->condition, dest);
 
          continue;
       }

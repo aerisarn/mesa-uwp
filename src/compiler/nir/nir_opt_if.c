@@ -876,7 +876,7 @@ opt_if_simplification(nir_builder *b, nir_if *nif)
    nir_def *new_condition =
       nir_inot(b, &alu_instr->def);
 
-   nir_if_rewrite_condition(nif, nir_src_for_ssa(new_condition));
+   nir_src_rewrite(&nif->condition, new_condition);
 
    /* Grab pointers to the last then/else blocks for fixing up the phis. */
    nir_block *then_block = nir_if_last_then_block(nif);
@@ -1266,14 +1266,7 @@ propagate_condition_eval(nir_builder *b, nir_if *nif, nir_src *use_src,
    }
 
    nir_def *nalu = clone_alu_and_replace_src_defs(b, alu, def);
-
-   /* Rewrite use to use new alu instruction */
-   nir_src new_src = nir_src_for_ssa(nalu);
-
-   if (alu_use->is_if)
-      nir_if_rewrite_condition(alu_use->parent_if, new_src);
-   else
-      nir_instr_rewrite_src(alu_use->parent_instr, alu_use, new_src);
+   nir_src_rewrite(alu_use, nalu);
 
    return true;
 }
@@ -1308,12 +1301,7 @@ evaluate_condition_use(nir_builder *b, nir_if *nif, nir_src *use_src)
    bool bool_value;
    if (evaluate_if_condition(nif, b->cursor, &bool_value)) {
       /* Rewrite use to use const */
-      nir_src imm_src = nir_src_for_ssa(nir_imm_bool(b, bool_value));
-      if (use_src->is_if)
-         nir_if_rewrite_condition(use_src->parent_if, imm_src);
-      else
-         nir_instr_rewrite_src(use_src->parent_instr, use_src, imm_src);
-
+      nir_src_rewrite(use_src, nir_imm_bool(b, bool_value));
       progress = true;
    }
 

@@ -4449,8 +4449,6 @@ void nir_instr_clear_src(nir_instr *instr, nir_src *src);
 
 void nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src);
 
-void nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src);
-
 void nir_def_init(nir_instr *instr, nir_def *def,
                   unsigned num_components, unsigned bit_size);
 static inline void

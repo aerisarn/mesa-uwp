@@ -134,7 +134,7 @@ repair_ssa_def(nir_def *def, void *void_state)
       }
 
       if (src->is_if)
-         nir_if_rewrite_condition(src->parent_if, nir_src_for_ssa(block_def));
+         nir_src_rewrite(&src->parent_if->condition, block_def);
       else
          nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(block_def));
    }
