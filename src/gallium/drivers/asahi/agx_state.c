@@ -585,6 +585,10 @@ agx_translate_tex_dim(enum pipe_texture_target dim, unsigned samples)
       assert(samples == 1);
       return AGX_TEXTURE_DIMENSION_CUBE;
 
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      assert(samples == 1);
+      return AGX_TEXTURE_DIMENSION_CUBE_ARRAY;
+
    default:
       unreachable("Unsupported texture dimension");
    }
