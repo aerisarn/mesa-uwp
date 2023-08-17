@@ -74,6 +74,19 @@ struct aco_ps_epilog_info {
    uint8_t color_is_int10;
 
    bool mrt0_is_dual_src;
+
+   /* OpenGL only */
+   uint16_t color_types;
+   bool clamp_color;
+   bool alpha_to_one;
+   bool alpha_to_coverage_via_mrtz;
+   bool skip_null_export;
+   unsigned broadcast_last_cbuf;
+   enum compare_func alpha_func;
+   struct ac_arg alpha_reference;
+   struct ac_arg depth;
+   struct ac_arg stencil;
+   struct ac_arg samplemask;
 };
 
 struct aco_tcs_epilog_info {

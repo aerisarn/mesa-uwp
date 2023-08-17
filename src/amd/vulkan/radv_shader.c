@@ -2605,7 +2605,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
 
    struct radv_shader_part_binary *binary = NULL;
    struct aco_shader_info ac_info;
-   struct aco_ps_epilog_info ac_epilog_info;
+   struct aco_ps_epilog_info ac_epilog_info = {0};
    struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info, &args, &options.key, options.info->gfx_level);
    radv_aco_convert_opts(&ac_opts, &options, &args);

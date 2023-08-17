@@ -10839,6 +10839,68 @@ export_fs_mrt_color(isel_context* ctx, const struct aco_ps_epilog_info* info, Te
 }
 
 static void
+export_fs_mrtz(isel_context* ctx, Temp depth, Temp stencil, Temp samplemask, Temp alpha)
+{
+   Builder bld(ctx->program, ctx->block);
+   unsigned enabled_channels = 0;
+   bool compr = false;
+   Operand values[4];
+
+   for (unsigned i = 0; i < 4; ++i) {
+      values[i] = Operand(v1);
+   }
+
+   /* Both stencil and sample mask only need 16-bits. */
+   if (!depth.id() && !alpha.id() && (stencil.id() || samplemask.id())) {
+      compr = ctx->program->gfx_level < GFX11; /* COMPR flag */
+
+      if (stencil.id()) {
+         /* Stencil should be in X[23:16]. */
+         values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(16u), stencil);
+         enabled_channels |= ctx->program->gfx_level >= GFX11 ? 0x1 : 0x3;
+      }
+
+      if (samplemask.id()) {
+         /* SampleMask should be in Y[15:0]. */
+         values[1] = Operand(samplemask);
+         enabled_channels |= ctx->program->gfx_level >= GFX11 ? 0x2 : 0xc;
+      }
+   } else {
+      if (depth.id()) {
+         values[0] = Operand(depth);
+         enabled_channels |= 0x1;
+      }
+
+      if (stencil.id()) {
+         values[1] = Operand(stencil);
+         enabled_channels |= 0x2;
+      }
+
+      if (samplemask.id()) {
+         values[2] = Operand(samplemask);
+         enabled_channels |= 0x4;
+      }
+
+      if (alpha.id()) {
+         assert(ctx->program->gfx_level >= GFX11);
+         values[3] = Operand(alpha);
+         enabled_channels |= 0x8;
+      }
+   }
+
+   /* GFX6 (except OLAND and HAINAN) has a bug that it only looks at the X
+    * writemask component.
+    */
+   if (ctx->options->gfx_level == GFX6 && ctx->options->family != CHIP_OLAND &&
+       ctx->options->family != CHIP_HAINAN) {
+      enabled_channels |= 0x1;
+   }
+
+   bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3], enabled_channels,
+           V_008DFC_SQ_EXP_MRTZ, compr);
+}
+
+static void
 create_fs_null_export(isel_context* ctx)
 {
    /* FS must always have exports.
@@ -12082,6 +12144,63 @@ interpolate_color_args(isel_context* ctx, const struct aco_ps_prolog_info* finfo
    }
 }
 
+void
+emit_clamp_alpha_test(isel_context* ctx, const struct aco_ps_epilog_info* info, Temp colors[4],
+                      unsigned color_index)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   if (info->clamp_color) {
+      for (unsigned i = 0; i < 4; i++) {
+         if (colors[i].regClass() == v2b) {
+            colors[i] = bld.vop3(aco_opcode::v_med3_f16, bld.def(v2b), Operand::c16(0u),
+                                 Operand::c16(0x3c00), colors[i]);
+         } else {
+            assert(colors[i].regClass() == v1);
+            colors[i] = bld.vop3(aco_opcode::v_med3_f32, bld.def(v1), Operand::zero(),
+                                 Operand::c32(0x3f800000u), colors[i]);
+         }
+      }
+   }
+
+   if (info->alpha_to_one) {
+      if (colors[3].regClass() == v2b)
+         colors[3] = bld.copy(bld.def(v2b), Operand::c16(0x3c00));
+      else
+         colors[3] = bld.copy(bld.def(v1), Operand::c32(0x3f800000u));
+   }
+
+   if (color_index == 0 && info->alpha_func != COMPARE_FUNC_ALWAYS) {
+      Operand cond = Operand::c32(-1u);
+      if (info->alpha_func != COMPARE_FUNC_NEVER) {
+         aco_opcode opcode = aco_opcode::num_opcodes;
+
+         switch (info->alpha_func) {
+         case COMPARE_FUNC_LESS: opcode = aco_opcode::v_cmp_ngt_f32; break;
+         case COMPARE_FUNC_EQUAL: opcode = aco_opcode::v_cmp_neq_f32; break;
+         case COMPARE_FUNC_LEQUAL: opcode = aco_opcode::v_cmp_nge_f32; break;
+         case COMPARE_FUNC_GREATER: opcode = aco_opcode::v_cmp_nlt_f32; break;
+         case COMPARE_FUNC_NOTEQUAL: opcode = aco_opcode::v_cmp_nlg_f32; break;
+         case COMPARE_FUNC_GEQUAL: opcode = aco_opcode::v_cmp_nle_f32; break;
+         default: unreachable("invalid alpha func");
+         }
+
+         Temp ref = get_arg(ctx, info->alpha_reference);
+
+         Temp alpha = colors[3].regClass() == v2b
+                         ? bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), colors[3])
+                         : colors[3];
+
+         /* true if not pass */
+         cond = bld.vopc(opcode, bld.def(bld.lm), ref, alpha);
+      }
+
+      bld.pseudo(aco_opcode::p_discard_if, cond);
+      ctx->block->kind |= block_kind_uses_discard;
+      ctx->program->needs_exact = true;
+   }
+}
+
 } /* end namespace */
 
 void
@@ -12704,24 +12823,50 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
 
    Builder bld(ctx.program, ctx.block);
 
-   /* Export all color render targets */
-   struct aco_export_mrt mrts[MAX_DRAW_BUFFERS];
-   uint8_t exported_mrts = 0;
-
+   Temp colors[MAX_DRAW_BUFFERS][4];
    for (unsigned i = 0; i < MAX_DRAW_BUFFERS; i++) {
       if (!einfo->colors[i].used)
          continue;
 
-      Temp colors = get_arg(&ctx, einfo->colors[i]);
-      emit_split_vector(&ctx, colors, 4);
+      Temp color = get_arg(&ctx, einfo->colors[i]);
+      unsigned col_types = (einfo->color_types >> (i * 2)) & 0x3;
 
-      Temp comps[4];
+      emit_split_vector(&ctx, color, col_types == ACO_TYPE_ANY32 ? 4 : 8);
       for (unsigned c = 0; c < 4; ++c) {
-         comps[c] = emit_extract_vector(&ctx, colors, c, v1);
+         colors[i][c] = emit_extract_vector(&ctx, color, c, col_types == ACO_TYPE_ANY32 ? v1 : v2b);
       }
 
-      if (export_fs_mrt_color(&ctx, einfo, comps, i, &mrts[i])) {
-         exported_mrts |= 1 << i;
+      emit_clamp_alpha_test(&ctx, einfo, colors[i], i);
+   }
+
+   bool has_mrtz_depth = einfo->depth.used;
+   bool has_mrtz_stencil = einfo->stencil.used;
+   bool has_mrtz_samplemask = einfo->samplemask.used;
+   bool has_mrtz_alpha = einfo->alpha_to_coverage_via_mrtz && einfo->colors[0].used;
+   bool has_mrtz_export =
+      has_mrtz_depth || has_mrtz_stencil || has_mrtz_samplemask || has_mrtz_alpha;
+   if (has_mrtz_export) {
+      Temp depth = has_mrtz_depth ? get_arg(&ctx, einfo->depth) : Temp();
+      Temp stencil = has_mrtz_stencil ? get_arg(&ctx, einfo->stencil) : Temp();
+      Temp samplemask = has_mrtz_samplemask ? get_arg(&ctx, einfo->samplemask) : Temp();
+      Temp alpha = has_mrtz_alpha ? colors[0][3] : Temp();
+
+      export_fs_mrtz(&ctx, depth, stencil, samplemask, alpha);
+   }
+
+   /* Export all color render targets */
+   struct aco_export_mrt mrts[MAX_DRAW_BUFFERS];
+   uint8_t exported_mrts = 0;
+
+   if (einfo->broadcast_last_cbuf) {
+      for (unsigned i = 0; i <= einfo->broadcast_last_cbuf; i++) {
+         if (export_fs_mrt_color(&ctx, einfo, colors[0], i, &mrts[i]))
+            exported_mrts |= 1 << i;
+      }
+   } else {
+      for (unsigned i = 0; i < MAX_DRAW_BUFFERS; i++) {
+         if (export_fs_mrt_color(&ctx, einfo, colors[i], i, &mrts[i]))
+            exported_mrts |= 1 << i;
       }
    }
 
@@ -12735,7 +12880,7 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
             export_mrt(&ctx, &mrts[i]);
          }
       }
-   } else {
+   } else if (!has_mrtz_export && !einfo->skip_null_export) {
       create_fs_null_export(&ctx);
    }
 

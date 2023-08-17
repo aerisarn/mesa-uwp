@@ -118,6 +118,8 @@ radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco_info, const struct
    ASSIGN_FIELD(mrt0_is_dual_src);
 
    memcpy(aco_info->colors, radv_args->ps_epilog_inputs, sizeof(aco_info->colors));
+
+   aco_info->alpha_func = COMPARE_FUNC_ALWAYS;
 }
 
 static inline void
