@@ -1128,9 +1128,25 @@ agx_pack_image_atomic_data(void *packed, struct pipe_image_view *view)
    }
 }
 
+static bool
+target_is_array(enum pipe_texture_target target)
+{
+   switch (target) {
+   case PIPE_TEXTURE_3D:
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_1D_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static void
 agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
-                     struct pipe_image_view *view, bool block_access)
+                     struct pipe_image_view *view, bool block_access,
+                     bool arrays_as_2d)
 {
    struct agx_resource *tex = agx_resource(view->resource);
    const struct util_format_description *desc =
@@ -1140,6 +1156,12 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
 
    if (!is_buffer && view->u.tex.single_layer_view)
       target = PIPE_TEXTURE_2D;
+
+   /* To reduce shader variants, spilled layered render targets are accessed as
+    * 2D Arrays regardless of the actual target, so force in that case.
+    */
+   if (arrays_as_2d && target_is_array(target))
+      target = PIPE_TEXTURE_2D_ARRAY;
 
    unsigned level = is_buffer ? 0 : view->u.tex.level;
    unsigned layer = is_buffer ? 0 : view->u.tex.first_layer;
@@ -2124,7 +2146,7 @@ agx_upload_spilled_rt_descriptors(struct agx_texture_packed *out,
       struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
 
       agx_pack_texture(texture, rsrc, surf->format, &sampler_view, true);
-      agx_batch_upload_pbe(batch, pbe, &view, false);
+      agx_batch_upload_pbe(batch, pbe, &view, false, true);
    }
 }
 
@@ -2201,7 +2223,7 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
       struct pipe_sampler_view sampler_view = util_image_to_sampler_view(view);
       agx_pack_texture(texture, agx_resource(view->resource), view->format,
                        &sampler_view, true);
-      agx_batch_upload_pbe(batch, pbe, view, false);
+      agx_batch_upload_pbe(batch, pbe, view, false, false);
    }
 
    if (stage == PIPE_SHADER_FRAGMENT &&
@@ -2448,7 +2470,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          /* The tilebuffer is already in sRGB space if needed. Do not convert */
          view.format = util_format_linear(view.format);
 
-         agx_batch_upload_pbe(batch, pbe.cpu, &view, true);
+         agx_batch_upload_pbe(batch, pbe.cpu, &view, true, true);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
