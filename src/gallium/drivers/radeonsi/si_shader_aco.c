@@ -391,6 +391,40 @@ si_aco_build_ps_prolog(struct aco_compiler_options *options,
    return true;
 }
 
+static bool
+si_aco_build_ps_epilog(struct aco_compiler_options *options,
+                       struct si_shader_part *result)
+{
+   const union si_shader_part_key *key = &result->key;
+
+   struct aco_ps_epilog_info pinfo = {
+      .spi_shader_col_format = key->ps_epilog.states.spi_shader_col_format,
+      .color_is_int8 = key->ps_epilog.states.color_is_int8,
+      .color_is_int10 = key->ps_epilog.states.color_is_int10,
+      .mrt0_is_dual_src = key->ps_epilog.states.dual_src_blend_swizzle,
+      .color_types = key->ps_epilog.color_types,
+      .clamp_color = key->ps_epilog.states.clamp_color,
+      .alpha_to_one = key->ps_epilog.states.alpha_to_one,
+      .alpha_to_coverage_via_mrtz = key->ps_epilog.states.alpha_to_coverage_via_mrtz,
+      .skip_null_export = options->gfx_level >= GFX10 && !key->ps_epilog.uses_discard,
+      .broadcast_last_cbuf = key->ps_epilog.states.last_cbuf,
+      .alpha_func = key->ps_epilog.states.alpha_func,
+   };
+
+   struct si_shader_args args;
+   si_get_ps_epilog_args(&args, key, pinfo.colors, &pinfo.depth, &pinfo.stencil,
+                         &pinfo.samplemask);
+   pinfo.alpha_reference = args.alpha_reference;
+
+   struct aco_shader_info info = {0};
+   info.hw_stage = AC_HW_PIXEL_SHADER;
+   info.workgroup_size = info.wave_size = key->ps_epilog.wave32 ? 32 : 64,
+
+   aco_compile_ps_epilog(options, &info, &pinfo, &args.ac,
+                         si_aco_build_shader_part_binary, (void **)result);
+   return true;
+}
+
 bool
 si_aco_build_shader_part(struct si_screen *screen, gl_shader_stage stage, bool prolog,
                          struct util_debug_callback *debug, const char *name,
@@ -408,7 +442,8 @@ si_aco_build_shader_part(struct si_screen *screen, gl_shader_stage stage, bool p
    case MESA_SHADER_FRAGMENT:
       if (prolog)
          return si_aco_build_ps_prolog(&options, result);
-      FALLTHROUGH;
+      else
+         return si_aco_build_ps_epilog(&options, result);
    default:
       unreachable("bad shader part");
    }
