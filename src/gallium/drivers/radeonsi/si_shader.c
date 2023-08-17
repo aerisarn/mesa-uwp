@@ -1678,7 +1678,7 @@ static bool clamp_vertex_color_instr(nir_builder *b, nir_instr *instr, void *sta
    nir_def *color = intrin->src[0].ssa;
    nir_def *clamp = nir_load_clamp_vertex_color_amd(b);
    nir_def *new_color = nir_bcsel(b, clamp, nir_fsat(b, color), color);
-   nir_instr_rewrite_src_ssa(instr, &intrin->src[0], new_color);
+   nir_src_rewrite(&intrin->src[0], new_color);
 
    return true;
 }

@@ -237,7 +237,7 @@ lower_image_cast_instr(nir_builder *b, nir_instr *instr, void *_data)
       nir_def_rewrite_uses_after(value, new_value, new_value->parent_instr);
       nir_intrinsic_set_dest_type(intr, alu_type);
    } else {
-      nir_instr_rewrite_src_ssa(instr, &intr->src[3], new_value);
+      nir_src_rewrite(&intr->src[3], new_value);
       nir_intrinsic_set_src_type(intr, alu_type);
    }
    nir_intrinsic_set_format(intr, emulation_format);

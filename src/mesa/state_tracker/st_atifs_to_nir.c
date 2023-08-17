@@ -517,8 +517,8 @@ st_nir_lower_atifs_samplers_instr(nir_builder *b, nir_instr *instr, void *data)
     */
    if (coord_components != tex->coord_components) {
       nir_def *coords = nir_ssa_for_src(b, tex->src[coords_idx].src, tex->coord_components);
-      nir_instr_rewrite_src_ssa(instr, &tex->src[coords_idx].src,
-                                nir_resize_vector(b, coords, coord_components));
+      nir_src_rewrite(&tex->src[coords_idx].src,
+                      nir_resize_vector(b, coords, coord_components));
       tex->coord_components = coord_components;
    }
 

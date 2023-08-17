@@ -281,7 +281,7 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
    nir_def_rewrite_uses(&tex->def, phi);
    nir_phi_instr *phi_instr = nir_instr_as_phi(phi->parent_instr);
    nir_phi_src *else_src = nir_phi_get_src_from_block(phi_instr, else_block);
-   nir_instr_rewrite_src_ssa(phi->parent_instr, &else_src->src, &tex->def);
+   nir_src_rewrite(&else_src->src, &tex->def);
    return true;
 }
 

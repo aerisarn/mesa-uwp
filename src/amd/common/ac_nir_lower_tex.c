@@ -140,7 +140,7 @@ prepare_cube_coords(nir_builder *b, nir_tex_instr *tex, nir_def **coord, nir_src
          nir_def *x = nir_fsub(b, nir_fmul(b, deriv_sc, invma), nir_fmul(b, deriv_ma, sc));
          nir_def *y = nir_fsub(b, nir_fmul(b, deriv_tc, invma), nir_fmul(b, deriv_ma, tc));
 
-         nir_instr_rewrite_src_ssa(&tex->instr, i ? ddy : ddx, nir_vec2(b, x, y));
+         nir_src_rewrite(i ? ddy : ddx, nir_vec2(b, x, y));
       }
 
       sc = nir_fadd_imm(b, sc, 1.5);
@@ -204,14 +204,14 @@ lower_tex_coords(nir_builder *b, nir_tex_instr *tex, nir_def **coords,
       if (offset_src >= 0) {
          nir_src *offset = &tex->src[offset_src].src;
          nir_def *zero = nir_imm_intN_t(b, 0, offset->ssa->bit_size);
-         nir_instr_rewrite_src_ssa(&tex->instr, offset, nir_vec2(b, offset->ssa, zero));
+         nir_src_rewrite(offset, nir_vec2(b, offset->ssa, zero));
       }
 
       if (ddx || ddy) {
          nir_def *def = nir_vec2(b, ddx->ssa, nir_imm_floatN_t(b, 0.0, ddx->ssa->bit_size));
-         nir_instr_rewrite_src_ssa(&tex->instr, ddx, def);
+         nir_src_rewrite(ddx, def);
          def = nir_vec2(b, ddy->ssa, nir_imm_floatN_t(b, 0.0, ddy->ssa->bit_size));
-         nir_instr_rewrite_src_ssa(&tex->instr, ddy, def);
+         nir_src_rewrite(ddy, def);
       }
    } else if (tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
       prepare_cube_coords(b, tex, coords, ddx, ddy, options);
@@ -236,7 +236,7 @@ lower_tex(nir_builder *b, nir_instr *instr, void *options_)
    nir_def *coords = tex->src[coord_idx].src.ssa;
    if (lower_tex_coords(b, tex, &coords, options)) {
       tex->coord_components = coords->num_components;
-      nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[coord_idx].src, coords);
+      nir_src_rewrite(&tex->src[coord_idx].src, coords);
       return true;
    }
 

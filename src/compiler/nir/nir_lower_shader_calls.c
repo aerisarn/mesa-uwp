@@ -1523,7 +1523,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
          nir_builder b = nir_builder_at(nir_before_instr(instr));
 
          nir_def *value = nir_channels(&b, intrin->src[0].ssa, read_mask);
-         nir_instr_rewrite_src_ssa(instr, &intrin->src[0], value);
+         nir_src_rewrite(&intrin->src[0], value);
 
          intrin->num_components = util_bitcount(read_mask);
          nir_intrinsic_set_write_mask(intrin, (1u << intrin->num_components) - 1);

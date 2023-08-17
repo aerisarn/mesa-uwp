@@ -23,7 +23,7 @@ rewrite_offset(nir_builder *b, nir_intrinsic_instr *instr,
                 instr->src[offset_src].ssa);
 
    /* Rewrite offset */
-   nir_instr_rewrite_src_ssa(&instr->instr, &instr->src[offset_src], offset);
+   nir_src_rewrite(&instr->src[offset_src], offset);
 }
 
 /*

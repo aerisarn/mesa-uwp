@@ -119,7 +119,7 @@ lower_image_to_fragment_mask_load(nir_builder *b, nir_intrinsic_instr *intrin)
    nir_def *sample_index_new = nir_ubfe(b, fmask, fmask_offset, fmask_width);
 
    /* fix color buffer load */
-   nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[2], sample_index_new);
+   nir_src_rewrite(&intrin->src[2], sample_index_new);
 
    /* Mark uses fmask to prevent lower this intrinsic again. */
    enum gl_access_qualifier access = nir_intrinsic_access(intrin);

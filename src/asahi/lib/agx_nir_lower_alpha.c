@@ -108,6 +108,6 @@ agx_nir_lower_alpha_to_one(nir_shader *shader)
       nir_def *rgb1 = nir_vector_insert_imm(
          &b, rgba, nir_imm_floatN_t(&b, 1.0, rgba->bit_size), 3);
 
-      nir_instr_rewrite_src_ssa(instr, &intr->src[0], rgb1);
+      nir_src_rewrite(&intr->src[0], rgb1);
    }
 }

@@ -60,7 +60,7 @@ normalize_cubemap_coords(nir_builder *b, nir_instr *instr, void *data)
                                          nir_channel(b, orig_coord, 3), 3);
    }
 
-   nir_instr_rewrite_src_ssa(instr, &tex->src[idx].src, normalized);
+   nir_src_rewrite(&tex->src[idx].src, normalized);
    return true;
 }
 

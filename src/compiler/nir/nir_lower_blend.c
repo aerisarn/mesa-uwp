@@ -597,7 +597,7 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
                                           nir_component_mask(num_components));
 
    /* Write out the final color instead of the input */
-   nir_instr_rewrite_src_ssa(instr, &store->src[0], blended);
+   nir_src_rewrite(&store->src[0], blended);
 
    /* Sink to bottom */
    nir_instr_remove(instr);

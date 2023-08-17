@@ -844,7 +844,7 @@ lower_view_index_to_rt_layer_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_def *layer = intr->src[1].ssa;
    nir_def *new_layer = nir_iadd(b, layer,
                                      nir_load_view_index(b));
-   nir_instr_rewrite_src_ssa(instr, &intr->src[1], new_layer);
+   nir_src_rewrite(&intr->src[1], new_layer);
    return true;
 }
 

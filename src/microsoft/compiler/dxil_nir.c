@@ -1055,7 +1055,8 @@ dxil_nir_lower_double_math_instr(nir_builder *b,
             components[c] = nir_pack_double_2x32_dxil(b, unpacked_double);
             alu->src[i].swizzle[c] = c;
          }
-         nir_instr_rewrite_src_ssa(instr, &alu->src[i].src, nir_vec(b, components, num_components));
+         nir_src_rewrite(&alu->src[i].src,
+                         nir_vec(b, components, num_components));
          progress = true;
       }
    }
@@ -1289,7 +1290,7 @@ redirect_sampler_derefs(struct nir_builder *b, nir_instr *instr, void *data)
    }
 
    nir_deref_path_finish(&path);
-   nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[sampler_idx].src, &new_tail->def);
+   nir_src_rewrite(&tex->src[sampler_idx].src, &new_tail->def);
    return true;
 }
 
@@ -1368,7 +1369,7 @@ redirect_texture_derefs(struct nir_builder *b, nir_instr *instr, void *data)
    }
 
    nir_deref_path_finish(&path);
-   nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[texture_idx].src, &new_tail->def);
+   nir_src_rewrite(&tex->src[texture_idx].src, &new_tail->def);
 
    return true;
 }
@@ -1864,7 +1865,7 @@ update_writes(struct nir_builder *b, nir_instr *instr, void *_state)
          channels[i] = nir_imm_intN_t(b, 0, src->bit_size);
 
    intr->num_components = 4;
-   nir_instr_rewrite_src_ssa(instr, &intr->src[0], nir_vec(b, channels, 4));
+   nir_src_rewrite(&intr->src[0], nir_vec(b, channels, 4));
    nir_intrinsic_set_component(intr, 0);
    nir_intrinsic_set_write_mask(intr, 0xf);
    return true;

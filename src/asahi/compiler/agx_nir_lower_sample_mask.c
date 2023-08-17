@@ -88,7 +88,7 @@ lower_sample_mask_to_zs(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
       /* Write it out from this store_zs */
       nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) | BASE_Z);
-      nir_instr_rewrite_src_ssa(instr, &intr->src[1], z);
+      nir_src_rewrite(&intr->src[1], z);
 
       /* We'll set outputs_written after the pass in case there are multiple
        * store_zs_agx instructions needing fixup.

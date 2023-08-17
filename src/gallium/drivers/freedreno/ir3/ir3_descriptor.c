@@ -72,7 +72,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
     */
    src = nir_umod_imm(b, src, IR3_BINDLESS_DESC_COUNT);
    nir_def *bindless = nir_bindless_resource_ir3(b, 32, src, set);
-   nir_instr_rewrite_src_ssa(&intr->instr, &intr->src[buffer_src], bindless);
+   nir_src_rewrite(&intr->src[buffer_src], bindless);
 
    return true;
 }

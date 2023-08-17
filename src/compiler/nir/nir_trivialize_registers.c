@@ -195,7 +195,7 @@ isolate_store(nir_intrinsic_instr *store)
    nir_builder b = nir_builder_at(nir_before_instr(&store->instr));
    nir_def *copy = nir_mov(&b, store->src[0].ssa);
    copy->divergent = store->src[0].ssa->divergent;
-   nir_instr_rewrite_src_ssa(&store->instr, &store->src[0], copy);
+   nir_src_rewrite(&store->src[0], copy);
 }
 
 static void

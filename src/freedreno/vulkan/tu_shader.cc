@@ -291,7 +291,7 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
    if (nir_scalar_is_const(scalar_idx)) {
       nir_def *bindless =
          nir_bindless_resource_ir3(b, 32, descriptor_idx, .desc_set = nir_scalar_as_uint(scalar_idx));
-      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[buffer_src], bindless);
+      nir_src_rewrite(&intrin->src[buffer_src], bindless);
       return;
    }
 

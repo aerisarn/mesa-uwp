@@ -130,7 +130,7 @@ static void lower_vri_instr_tex(struct nir_builder *b,
       }
 
       nir_def *resource = vulkan_resource_from_deref(b, deref, layout);
-      nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, resource);
+      nir_src_rewrite(&tex->src[i].src, resource);
    }
 }
 

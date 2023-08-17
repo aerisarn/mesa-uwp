@@ -486,7 +486,7 @@ opt_shrink_vectors_phi(nir_builder *b, nir_phi_instr *instr)
          alu_src.swizzle[i] = src_reswizzle[i];
       nir_def *mov = nir_mov_alu(b, alu_src, num_components);
 
-      nir_instr_rewrite_src_ssa(&instr->instr, &phi_src->src, mov);
+      nir_src_rewrite(&phi_src->src, mov);
    }
    b->cursor = nir_before_instr(&instr->instr);
 

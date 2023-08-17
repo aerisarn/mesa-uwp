@@ -386,11 +386,11 @@ apply_layout_to_intrin(nir_builder *b, apply_layout_state *state, nir_intrinsic_
    case nir_intrinsic_ssbo_atomic:
    case nir_intrinsic_ssbo_atomic_swap:
       rsrc = load_buffer_descriptor(b, state, intrin->src[0].ssa, nir_intrinsic_access(intrin));
-      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[0], rsrc);
+      nir_src_rewrite(&intrin->src[0], rsrc);
       break;
    case nir_intrinsic_store_ssbo:
       rsrc = load_buffer_descriptor(b, state, intrin->src[1].ssa, nir_intrinsic_access(intrin));
-      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[1], rsrc);
+      nir_src_rewrite(&intrin->src[1], rsrc);
       break;
    case nir_intrinsic_get_ssbo_size:
       visit_get_ssbo_size(b, state, intrin);
@@ -486,11 +486,11 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
       switch (tex->src[i].src_type) {
       case nir_tex_src_texture_deref:
          tex->src[i].src_type = nir_tex_src_texture_handle;
-         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, image);
+         nir_src_rewrite(&tex->src[i].src, image);
          break;
       case nir_tex_src_sampler_deref:
          tex->src[i].src_type = nir_tex_src_sampler_handle;
-         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, sampler);
+         nir_src_rewrite(&tex->src[i].src, sampler);
          break;
       default:
          break;

@@ -350,15 +350,13 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_load_scratch: {
-               nir_instr_rewrite_src_ssa(
-                  instr, &intr->src[0],
-                  nir_iadd_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[0].ssa));
+               nir_src_rewrite(&intr->src[0],
+                               nir_iadd_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[0].ssa));
                continue;
             }
             case nir_intrinsic_store_scratch: {
-               nir_instr_rewrite_src_ssa(
-                  instr, &intr->src[1],
-                  nir_iadd_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[1].ssa));
+               nir_src_rewrite(&intr->src[1],
+                               nir_iadd_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[1].ssa));
                continue;
             }
             case nir_intrinsic_load_rt_arg_scratch_offset_amd: {
@@ -932,11 +930,11 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
              */
             case nir_intrinsic_load_scratch:
                b->cursor = nir_before_instr(instr);
-               nir_instr_rewrite_src_ssa(instr, &intrin->src[0], nir_iadd_nuw(b, scratch_offset, intrin->src[0].ssa));
+               nir_src_rewrite(&intrin->src[0], nir_iadd_nuw(b, scratch_offset, intrin->src[0].ssa));
                break;
             case nir_intrinsic_store_scratch:
                b->cursor = nir_before_instr(instr);
-               nir_instr_rewrite_src_ssa(instr, &intrin->src[1], nir_iadd_nuw(b, scratch_offset, intrin->src[1].ssa));
+               nir_src_rewrite(&intrin->src[1], nir_iadd_nuw(b, scratch_offset, intrin->src[1].ssa));
                break;
             case nir_intrinsic_load_rt_arg_scratch_offset_amd:
                b->cursor = nir_after_instr(instr);

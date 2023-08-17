@@ -104,7 +104,7 @@ copy_propagate_alu(nir_alu_src *src, nir_alu_instr *copy)
          src->swizzle[i] = copy->src[src->swizzle[i]].swizzle[0];
    }
 
-   nir_instr_rewrite_src_ssa(src->src.parent_instr, &src->src, def);
+   nir_src_rewrite(&src->src, def);
 
    return true;
 }

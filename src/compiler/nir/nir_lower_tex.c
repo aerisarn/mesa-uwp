@@ -1363,7 +1363,7 @@ nir_lower_ms_txf_to_fragment_fetch(nir_builder *b, nir_tex_instr *tex)
 
    /* Update instruction. */
    tex->op = nir_texop_fragment_fetch_amd;
-   nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[ms_index].src, new_sample);
+   nir_src_rewrite(&tex->src[ms_index].src, new_sample);
 }
 
 static void

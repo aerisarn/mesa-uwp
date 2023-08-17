@@ -60,7 +60,7 @@ lower_zs_emit(nir_block *block)
       assert((nir_intrinsic_base(zs_emit) & base) == 0 &&
              "each of depth/stencil may only be written once");
 
-      nir_instr_rewrite_src_ssa(&zs_emit->instr, &zs_emit->src[src_idx], value);
+      nir_src_rewrite(&zs_emit->src[src_idx], value);
       nir_intrinsic_set_base(zs_emit, nir_intrinsic_base(zs_emit) | base);
 
       nir_instr_remove(instr);

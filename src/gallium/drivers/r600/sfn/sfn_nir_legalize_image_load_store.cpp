@@ -62,7 +62,7 @@ r600_legalize_image_load_store_impl(nir_builder *b,
          nir_umin(b,
                   ir->src[0].ssa,
                   nir_imm_int(b, b->shader->info.num_images - 1));
-      nir_instr_rewrite_src_ssa(instr, &ir->src[0], new_index);
+      nir_src_rewrite(&ir->src[0], new_index);
 
       enum glsl_sampler_dim dim = nir_intrinsic_image_dim(ir);
 

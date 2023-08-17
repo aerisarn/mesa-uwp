@@ -214,8 +214,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
 
             /* Convert the 32-bit store into a 16-bit store. */
             b.cursor = nir_before_instr(&intr->instr);
-            nir_instr_rewrite_src_ssa(&intr->instr, &intr->src[0],
-                                      convert(&b, intr->src[0].ssa));
+            nir_src_rewrite(&intr->src[0], convert(&b, intr->src[0].ssa));
             nir_intrinsic_set_src_type(intr, (type & ~32) | 16);
          } else {
             if (!sem.medium_precision)
@@ -716,7 +715,7 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
             nir_def *conv =
                convert(&b, nir_ssa_for_src(&b, tex->src[i].src,
                                            tex->src[i].src.ssa->num_components));
-            nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, conv);
+            nir_src_rewrite(&tex->src[i].src, conv);
             changed = true;
          }
       }
@@ -819,7 +818,7 @@ fold_16bit_src(nir_builder *b, nir_instr *instr, nir_src *src, nir_alu_type src_
 
    nir_def *new_vec = nir_vec_scalars(b, new_comps, src->ssa->num_components);
 
-   nir_instr_rewrite_src_ssa(instr, src, new_vec);
+   nir_src_rewrite(src, new_vec);
 }
 
 static bool

@@ -114,8 +114,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
        * align_offset. Subtracting align_offset should eliminate it.
        */
       b->cursor = nir_before_instr(instr);
-      nir_instr_rewrite_src_ssa(instr, src_offset,
-                                nir_iadd_imm(b, offset, -align_offset));
+      nir_src_rewrite(src_offset, nir_iadd_imm(b, offset, -align_offset));
 
       b->cursor = nir_after_instr(instr);
       result = nir_extract_bits(b, &result, 1, comp_offset * bit_size,
@@ -133,8 +132,7 @@ lower_subdword_loads(nir_builder *b, nir_instr *instr, void *data)
 
    /* Round down by masking out the bits. */
    b->cursor = nir_before_instr(instr);
-   nir_instr_rewrite_src_ssa(instr, src_offset,
-                             nir_iand_imm(b, offset, ~0x3));
+   nir_src_rewrite(src_offset, nir_iand_imm(b, offset, ~0x3));
 
    /* We need to shift bits in the loaded vector by this number. */
    b->cursor = nir_after_instr(instr);

@@ -4122,7 +4122,7 @@ lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
       nir_deref_instr *deref = nir_build_deref_var(b, var);
       if (glsl_type_is_array(var->type))
          deref = nir_build_deref_array(b, deref, nir_u2uN(b, tex->src[idx].src.ssa, 32));
-      nir_instr_rewrite_src_ssa(in, &tex->src[idx].src, &deref->def);
+      nir_src_rewrite(&tex->src[idx].src, &deref->def);
 
       /* bindless sampling uses the variable type directly, which means the tex instr has to exactly
        * match up with it in contrast to normal sampler ops where things are a bit more flexible;
@@ -4137,7 +4137,7 @@ lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
       unsigned coord_components = nir_src_num_components(tex->src[c].src);
       if (coord_components < needed_components) {
          nir_def *def = nir_pad_vector(b, tex->src[c].src.ssa, needed_components);
-         nir_instr_rewrite_src_ssa(in, &tex->src[c].src, def);
+         nir_src_rewrite(&tex->src[c].src, def);
          tex->coord_components = needed_components;
       }
       return true;
@@ -4176,7 +4176,7 @@ lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
    nir_deref_instr *deref = nir_build_deref_var(b, var);
    if (glsl_type_is_array(var->type))
       deref = nir_build_deref_array(b, deref, nir_u2uN(b, instr->src[0].ssa, 32));
-   nir_instr_rewrite_src_ssa(in, &instr->src[0], &deref->def);
+   nir_src_rewrite(&instr->src[0], &deref->def);
    return true;
 }
 
@@ -4355,7 +4355,7 @@ convert_1d_shadow_tex(nir_builder *b, nir_instr *instr, void *data)
          def = nir_vec2(b, tex->src[c].src.ssa, zero);
       else
          def = nir_vec3(b, nir_channel(b, tex->src[c].src.ssa, 0), zero, nir_channel(b, tex->src[c].src.ssa, 1));
-      nir_instr_rewrite_src_ssa(instr, &tex->src[c].src, def);
+      nir_src_rewrite(&tex->src[c].src, def);
    }
    b->cursor = nir_after_instr(instr);
    unsigned needed_components = nir_tex_instr_dest_size(tex);

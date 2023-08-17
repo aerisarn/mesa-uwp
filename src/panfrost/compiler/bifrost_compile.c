@@ -4299,7 +4299,7 @@ bifrost_nir_lower_blend_components(struct nir_builder *b, nir_instr *instr,
                bifrost_nir_valid_channel(b, in, 3, first, mask));
 
    /* Rewrite to use our replicated version */
-   nir_instr_rewrite_src_ssa(instr, &intr->src[0], replicated);
+   nir_src_rewrite(&intr->src[0], replicated);
    nir_intrinsic_set_component(intr, 0);
    nir_intrinsic_set_write_mask(intr, 0xF);
    intr->num_components = 4;
@@ -4592,8 +4592,8 @@ bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
 
    nir_def *orig = nir_load_sample_mask(b);
 
-   nir_instr_rewrite_src_ssa(
-      instr, &intr->src[0],
+   nir_src_rewrite(
+      &intr->src[0],
       nir_b32csel(b, nir_load_multisampled_pan(b),
                   nir_iand(b, orig, nir_ssa_for_src(b, intr->src[0], 1)),
                   orig));

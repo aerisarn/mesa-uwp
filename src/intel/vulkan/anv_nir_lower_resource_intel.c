@@ -148,13 +148,13 @@ lower_resource_intel(nir_builder *b, nir_instr *instr, void *data)
             binding_offset = nir_ishl_imm(b, binding_offset, 6);
       }
 
-      nir_instr_rewrite_src_ssa(instr, &intrin->src[1],
-                                nir_iadd(b, set_offset, binding_offset));
+      nir_src_rewrite(&intrin->src[1],
+                      nir_iadd(b, set_offset, binding_offset));
    }
 
    /* Now unused values : set offset, array index */
-   nir_instr_rewrite_src_ssa(instr, &intrin->src[0], nir_imm_int(b, 0xdeaddeed));
-   nir_instr_rewrite_src_ssa(instr, &intrin->src[2], nir_imm_int(b, 0xdeaddeed));
+   nir_src_rewrite(&intrin->src[0], nir_imm_int(b, 0xdeaddeed));
+   nir_src_rewrite(&intrin->src[2], nir_imm_int(b, 0xdeaddeed));
 
    return true;
 }

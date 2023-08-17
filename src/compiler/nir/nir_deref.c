@@ -932,8 +932,7 @@ opt_alu_of_cast(nir_alu_instr *alu)
       if (src_deref->deref_type != nir_deref_type_cast)
          continue;
 
-      nir_instr_rewrite_src_ssa(&alu->instr, &alu->src[i].src,
-                                src_deref->parent.ssa);
+      nir_src_rewrite(&alu->src[i].src, src_deref->parent.ssa);
       progress = true;
    }
 

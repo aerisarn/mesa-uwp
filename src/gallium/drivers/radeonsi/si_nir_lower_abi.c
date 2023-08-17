@@ -755,7 +755,7 @@ static bool lower_tex(nir_builder *b, nir_instr *instr, struct lower_abi_state *
       nir_def *clamped = nir_fsat(b, compare);
       compare = nir_bcsel(b, upgraded, clamped, compare);
 
-      nir_instr_rewrite_src_ssa(instr, &tex->src[comp_index].src, compare);
+      nir_src_rewrite(&tex->src[comp_index].src, compare);
       return true;
    }
 

@@ -1364,7 +1364,7 @@ rewrite_comp_uses_within_if(nir_builder *b, nir_if *nif, bool invert,
          }
       }
 
-      nir_instr_rewrite_src_ssa(use->parent_instr, use, new_ssa);
+      nir_src_rewrite(use, new_ssa);
       progress = true;
    }
 

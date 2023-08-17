@@ -102,7 +102,8 @@ st_nir_lower_fog_instr(nir_builder *b, nir_instr *instr, void *_state)
    /* retain the non-fog-blended alpha value for color */
    color = nir_vector_insert_imm(b, fog, nir_channel(b, color, 3), 3);
 
-   nir_instr_rewrite_src_ssa(instr, &intr->src[0], nir_resize_vector(b, color, intr->num_components));
+   nir_src_rewrite(&intr->src[0],
+                   nir_resize_vector(b, color, intr->num_components));
 
    return true;
 }

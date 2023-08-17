@@ -267,7 +267,7 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
 
       nir_def *desc = load_ubo_desc(b, intrin->src[0].ssa, s);
-      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[0], desc);
+      nir_src_rewrite(&intrin->src[0], desc);
       break;
    }
    case nir_intrinsic_load_ssbo:
@@ -276,14 +276,14 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
 
       nir_def *desc = load_ssbo_desc(b, &intrin->src[0], s);
-      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[0], desc);
+      nir_src_rewrite(&intrin->src[0], desc);
       break;
    }
    case nir_intrinsic_store_ssbo: {
       assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
 
       nir_def *desc = load_ssbo_desc(b, &intrin->src[1], s);
-      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[1], desc);
+      nir_src_rewrite(&intrin->src[1], desc);
       break;
    }
    case nir_intrinsic_get_ssbo_size: {
@@ -533,13 +533,13 @@ static bool lower_resource_tex(nir_builder *b, nir_tex_instr *tex,
          tex->src[i].src_type = nir_tex_src_texture_handle;
          FALLTHROUGH;
       case nir_tex_src_texture_handle:
-         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, image);
+         nir_src_rewrite(&tex->src[i].src, image);
          break;
       case nir_tex_src_sampler_deref:
          tex->src[i].src_type = nir_tex_src_sampler_handle;
          FALLTHROUGH;
       case nir_tex_src_sampler_handle:
-         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, sampler);
+         nir_src_rewrite(&tex->src[i].src, sampler);
          break;
       default:
          break;

@@ -75,8 +75,7 @@ lower_store_component(nir_builder *b, nir_instr *instr, void *data)
    }
 
    intr->num_components = util_last_bit(mask);
-   nir_instr_rewrite_src_ssa(instr, &intr->src[0],
-                             nir_vec(b, channels, intr->num_components));
+   nir_src_rewrite(&intr->src[0], nir_vec(b, channels, intr->num_components));
 
    nir_intrinsic_set_component(intr, 0);
    nir_intrinsic_set_write_mask(intr, mask);

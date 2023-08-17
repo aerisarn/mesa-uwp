@@ -63,7 +63,7 @@ pass(nir_builder *b, nir_instr *instr, void *data)
       channels[1] = nir_channel(b, pntc, 1);
    } else {
       sem.location = VARYING_SLOT_PNTC;
-      nir_instr_rewrite_src_ssa(instr, offset, nir_imm_int(b, 0));
+      nir_src_rewrite(offset, nir_imm_int(b, 0));
       nir_intrinsic_set_io_semantics(intr, sem);
       nir_def *raw = &intr->def;
 

@@ -130,7 +130,7 @@ lower_bindless_tex_src(nir_builder *b, nir_tex_instr *tex,
    if (!handle)
       return false;
 
-   nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[index].src, handle);
+   nir_src_rewrite(&tex->src[index].src, handle);
    tex->src[index].src_type = new;
    return true;
 }
