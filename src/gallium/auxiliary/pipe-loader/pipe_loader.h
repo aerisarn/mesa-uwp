@@ -227,6 +227,13 @@ pipe_loader_drm_zink_probe(struct pipe_loader_device **devs, int ndev);
 #endif
 
 /**
+ * Get the fd of a render-capable device compatible with a given display-only
+ * device fd.
+ */
+int
+pipe_loader_get_compatible_render_capable_device_fd(int kms_only_fd);
+
+/**
  * Initialize a DRM device in an already opened fd.
  *
  * This function is platform-specific.

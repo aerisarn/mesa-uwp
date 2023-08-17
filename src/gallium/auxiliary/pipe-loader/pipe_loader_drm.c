@@ -269,6 +269,54 @@ pipe_loader_drm_release(struct pipe_loader_device **dev)
    pipe_loader_base_release(dev);
 }
 
+int
+pipe_loader_get_compatible_render_capable_device_fd(int kms_only_fd)
+{
+   bool is_platform_device;
+   struct pipe_loader_device *dev;
+   const char * const drivers[] = {
+#if defined GALLIUM_ASAHI
+      "asahi",
+#endif
+#if defined GALLIUM_ETNAVIV
+      "etnaviv",
+#endif
+#if defined GALLIUM_FREEDRENO
+      "msm",
+#endif
+#if defined GALLIUM_LIMA
+      "lima",
+#endif
+#if defined GALLIUM_PANFROST
+      "panfrost",
+#endif
+#if defined GALLIUM_V3D
+      "v3d",
+#endif
+#if defined GALLIUM_VC4
+      "vc4",
+#endif
+   };
+
+   if (!pipe_loader_drm_probe_fd(&dev, kms_only_fd, false))
+      return -1;
+   is_platform_device = (dev->type == PIPE_LOADER_DEVICE_PLATFORM);
+   pipe_loader_release(&dev, 1);
+
+   /* For display-only devices that are not on the platform bus, we can't assume
+    * that any of the rendering devices are compatible. */
+   if (!is_platform_device)
+      return -1;
+
+   /* For platform display-only devices, we try to find a render-capable device
+    * on the platform bus and that should be compatible with the display-only
+    * device. */
+   if (ARRAY_SIZE(drivers) == 0)
+      return -1;
+
+   return loader_open_render_node_platform_device(drivers, ARRAY_SIZE(drivers));
+}
+
 static const struct driOptionDescription *
 pipe_loader_drm_get_driconf(struct pipe_loader_device *dev, unsigned *count)
 {
