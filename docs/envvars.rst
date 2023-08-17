@@ -395,7 +395,10 @@ Core Mesa environment variables
 
    - ``DRI_PRIME=N``: selects the Nth non-default GPU (N > 0).
    - ``DRI_PRIME=pci-0000_02_00_0``: selects the GPU connected to this PCIe bus
-   - ``DRI_PRIME=vendor_id:device_id``: selects the first GPU matching these ids
+   - ``DRI_PRIME=vendor_id:device_id``: selects the first GPU matching these ids.
+
+   For Vulkan it's possible to append ``!``, in which case only the selected GPU
+   will be exposed to the application (eg: DRI_PRIME=1!).
 
    .. note::
 
@@ -801,6 +804,8 @@ Vulkan mesa device select layer environment variables
    when set to "vid:did" number from PCI device. That PCI device is
    selected as default. The default device is returned as the first
    device in vkEnumeratePhysicalDevices API.
+   Using "vid:did!" will have the same effect as using the
+   ``MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE`` variable.
 
 .. envvar:: MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE
 
