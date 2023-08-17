@@ -640,7 +640,6 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
          .bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
          .header = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.header_offset,
          .ids = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.sort_buffer_offset[0],
-         .dst_offset = 0,
       };
 
       for (unsigned j = 0; j < pInfos[i].geometryCount; ++j) {
@@ -653,7 +652,7 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
 
          leaf_consts.geometry_type = geom->geometryType;
          leaf_consts.geometry_id = pack_geometry_id_and_flags(j, geom->flags);
-         unsigned prim_size;
+
          switch (geom->geometryType) {
          case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
             assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
@@ -674,16 +673,12 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
             leaf_consts.stride = geom->geometry.triangles.vertexStride;
             leaf_consts.vertex_format = geom->geometry.triangles.vertexFormat;
             leaf_consts.index_format = geom->geometry.triangles.indexType;
-
-            prim_size = sizeof(struct radv_ir_triangle_node);
             break;
          case VK_GEOMETRY_TYPE_AABBS_KHR:
             assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
 
             leaf_consts.data = geom->geometry.aabbs.data.deviceAddress + buildRangeInfo->primitiveOffset;
             leaf_consts.stride = geom->geometry.aabbs.stride;
-
-            prim_size = sizeof(struct radv_ir_aabb_node);
             break;
          case VK_GEOMETRY_TYPE_INSTANCES_KHR:
             assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR);
@@ -694,8 +689,6 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
                leaf_consts.stride = 8;
             else
                leaf_consts.stride = sizeof(VkAccelerationStructureInstanceKHR);
-
-            prim_size = sizeof(struct radv_ir_instance_node);
             break;
          default:
             unreachable("Unknown geometryType");
@@ -704,8 +697,6 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
          radv_CmdPushConstants(commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.leaf_p_layout,
                                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(leaf_consts), &leaf_consts);
          radv_unaligned_dispatch(cmd_buffer, buildRangeInfo->primitiveCount, 1, 1);
-
-         leaf_consts.dst_offset += prim_size * buildRangeInfo->primitiveCount;
 
          bvh_states[i].leaf_node_count += buildRangeInfo->primitiveCount;
          bvh_states[i].node_count += buildRangeInfo->primitiveCount;
