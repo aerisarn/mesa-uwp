@@ -286,6 +286,25 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
 }
 
 /*
+ * Given a 1D texture coordinate, calculate the 2D coordinate vector that
+ * will be used to access the linear 2D texture bound to the 1D texture.
+ */
+static nir_def *
+coords_for_1d_texture(nir_builder *b, nir_def *coord, bool is_array)
+{
+   /* Add a zero Y component to the coordinate */
+   if (is_array) {
+      assert(coord->num_components >= 2);
+      return nir_vec3(b, nir_channel(b, coord, 0),
+                      nir_imm_intN_t(b, 0, coord->bit_size),
+                      nir_channel(b, coord, 1));
+   } else {
+      assert(coord->num_components >= 1);
+      return nir_vec2(b, coord, nir_imm_intN_t(b, 0, coord->bit_size));
+   }
+}
+
+/*
  * NIR indexes into array textures with unclamped floats (integer for txf). AGX
  * requires the index to be a clamped integer. Lower tex_src_coord into
  * tex_src_backend1 for array textures by type-converting and clamping.
@@ -317,16 +336,7 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
     * always lower to 2D.
     */
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_1D) {
-      /* Add a zero Y component to the coordinate */
-      if (tex->is_array) {
-         assert(coord->num_components == 2);
-         coord = nir_vec3(b, nir_channel(b, coord, 0),
-                          nir_imm_intN_t(b, 0, coord->bit_size),
-                          nir_channel(b, coord, 1));
-      } else {
-         assert(coord->num_components == 1);
-         coord = nir_vec2(b, coord, nir_imm_intN_t(b, 0, coord->bit_size));
-      }
+      coord = coords_for_1d_texture(b, coord, tex->is_array);
 
       /* Add a zero Y component to other sources */
       nir_tex_src_type other_srcs[] = {
@@ -727,6 +737,21 @@ lower_buffer_image(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
+lower_1d_image(nir_builder *b, nir_intrinsic_instr *intr)
+{
+   if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_1D)
+      return false;
+
+   nir_def *coord = intr->src[1].ssa;
+   bool is_array = nir_intrinsic_image_array(intr);
+   nir_def *coord2d = coords_for_1d_texture(b, coord, is_array);
+
+   nir_src_rewrite(&intr->src[1], nir_pad_vector(b, coord2d, 4));
+   nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
+   return true;
+}
+
+static bool
 lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
 {
    if (instr->type != nir_instr_type_intrinsic)
@@ -740,7 +765,7 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
    case nir_intrinsic_image_store:
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_store:
-      return lower_buffer_image(b, intr);
+      return lower_buffer_image(b, intr) || lower_1d_image(b, intr);
 
    case nir_intrinsic_image_size:
    case nir_intrinsic_bindless_image_size:
