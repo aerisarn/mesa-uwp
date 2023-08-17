@@ -255,8 +255,8 @@ class LowerSplit64op : public NirLowerInstruction {
          {
             auto lo = nir_unpack_32_2x16_split_x(b, nir_ssa_for_src(b, s->src, 1));
             auto hi = nir_unpack_32_2x16_split_x(b, nir_ssa_for_src(b, s->src, 1));
-            nir_phi_instr_add_src(phi_lo, s->pred, nir_src_for_ssa(lo));
-            nir_phi_instr_add_src(phi_hi, s->pred, nir_src_for_ssa(hi));
+            nir_phi_instr_add_src(phi_lo, s->pred, lo);
+            nir_phi_instr_add_src(phi_hi, s->pred, hi);
          }
          return nir_pack_64_2x32_split(b, &phi_lo->def, &phi_hi->def);
       }

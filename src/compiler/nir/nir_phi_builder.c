@@ -288,7 +288,7 @@ nir_phi_builder_finish(struct nir_phi_builder *pb)
 
          for (unsigned i = 0; i < phi->instr.block->predecessors->entries; i++) {
             nir_phi_instr_add_src(phi, preds[i],
-                                  nir_src_for_ssa(nir_phi_builder_value_get_block_def(val, preds[i])));
+                                  nir_phi_builder_value_get_block_def(val, preds[i]));
          }
 
          ralloc_free(preds);

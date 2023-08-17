@@ -233,7 +233,7 @@ convert_loop_exit_for_ssa(nir_def *def, void *void_state)
     */
    uint32_t num_exits = state->block_after_loop->predecessors->entries;
    for (uint32_t i = 0; i < num_exits; i++) {
-      nir_phi_instr_add_src(phi, state->exit_blocks[i], nir_src_for_ssa(def));
+      nir_phi_instr_add_src(phi, state->exit_blocks[i], def);
    }
 
    nir_instr_insert_before_block(state->block_after_loop, &phi->instr);

@@ -118,7 +118,7 @@ loop_unroll_test_helper(nir_builder *bld, nir_def *init,
    nir_phi_instr *phi = nir_phi_instr_create(bld->shader);
    nir_def_init(&phi->instr, &phi->def, 1, 32);
 
-   nir_phi_instr_add_src(phi, top_block, nir_src_for_ssa(init));
+   nir_phi_instr_add_src(phi, top_block, init);
 
    nir_def *cond = cond_instr(bld,
                                   (reverse ? limit : &phi->def),
@@ -130,8 +130,7 @@ loop_unroll_test_helper(nir_builder *bld, nir_def *init,
 
    nir_def *var = incr_instr(bld, &phi->def, step);
 
-   nir_phi_instr_add_src(phi, nir_cursor_current_block(bld->cursor),
-                         nir_src_for_ssa(var));
+   nir_phi_instr_add_src(phi, nir_cursor_current_block(bld->cursor), var);
 
    nir_pop_loop(bld, loop);
 

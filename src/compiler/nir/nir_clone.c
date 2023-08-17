@@ -388,7 +388,7 @@ clone_phi(clone_state *state, const nir_phi_instr *phi, nir_block *nblk)
    nir_instr_insert_after_block(nblk, &nphi->instr);
 
    nir_foreach_phi_src(src, phi) {
-      nir_phi_src *nsrc = nir_phi_instr_add_src(nphi, src->pred, src->src);
+      nir_phi_src *nsrc = nir_phi_instr_add_src(nphi, src->pred, src->src.ssa);
 
       /* Stash it in the list of phi sources.  We'll walk this list and fix up
        * sources at the very end of clone_function_impl.

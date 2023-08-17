@@ -43,7 +43,7 @@ nir_phi_instr *create_one_source_phi(nir_shader *shader, nir_block *pred,
                                      nir_def *def)
 {
    nir_phi_instr *phi = nir_phi_instr_create(shader);
-   nir_phi_instr_add_src(phi, pred, nir_src_for_ssa(def));
+   nir_phi_instr_add_src(phi, pred, def);
    nir_def_init(&phi->instr, &phi->def, def->num_components,
                 def->bit_size);
 

@@ -832,7 +832,7 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
 
       nir_def *cast = nir_u2uN(b, src->src.ssa, new_bit_size);
 
-      nir_phi_instr_add_src(lowered, src->pred, nir_src_for_ssa(cast));
+      nir_phi_instr_add_src(lowered, src->pred, cast);
    }
 
    nir_def_init(&lowered->instr, &lowered->def, num_components,

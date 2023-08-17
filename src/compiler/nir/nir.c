@@ -847,13 +847,13 @@ nir_phi_instr_create(nir_shader *shader)
  * list_addtail(&phi_src->src.use_link, &src.ssa->uses);
  */
 nir_phi_src *
-nir_phi_instr_add_src(nir_phi_instr *instr, nir_block *pred, nir_src src)
+nir_phi_instr_add_src(nir_phi_instr *instr, nir_block *pred, nir_def *src)
 {
    nir_phi_src *phi_src;
 
    phi_src = gc_zalloc(gc_get_context(instr), nir_phi_src, 1);
    phi_src->pred = pred;
-   phi_src->src = src;
+   phi_src->src = nir_src_for_ssa(src);
    nir_src_set_parent_instr(&phi_src->src, &instr->instr);
    exec_list_push_tail(&instr->srcs, &phi_src->node);
 

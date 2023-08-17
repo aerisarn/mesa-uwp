@@ -250,7 +250,7 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
          nir_def *new_src = nir_channels(b, src->src.ssa,
                                          ((1 << num_comp[i]) - 1) << (2 * i));
 
-         nir_phi_instr_add_src(new_phi[i], src->pred, nir_src_for_ssa(new_src));
+         nir_phi_instr_add_src(new_phi[i], src->pred, new_src);
       }
       nir_instr_insert_before(&phi->instr, &new_phi[i]->instr);
    }

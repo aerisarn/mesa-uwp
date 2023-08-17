@@ -1512,7 +1512,7 @@ read_phi(read_ctx *ctx, nir_block *blk, union packed_instr header)
    for (unsigned i = 0; i < header.phi.num_srcs; i++) {
       nir_def *def = (nir_def *)(uintptr_t)blob_read_uint32(ctx->blob);
       nir_block *pred = (nir_block *)(uintptr_t)blob_read_uint32(ctx->blob);
-      nir_phi_src *src = nir_phi_instr_add_src(phi, pred, nir_src_for_ssa(def));
+      nir_phi_src *src = nir_phi_instr_add_src(phi, pred, def);
 
       /* Since we're not letting nir_insert_instr handle use/def stuff for us,
        * we have to set the parent_instr manually.  It doesn't really matter
