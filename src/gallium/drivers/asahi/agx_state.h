@@ -711,9 +711,11 @@ void agx_upload_uniforms(struct agx_batch *batch);
 uint64_t agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
                                    enum pipe_shader_type stage);
 
-bool agx_nir_lower_sysvals(nir_shader *shader, bool internal_bindless,
-                           struct agx_compiled_shader *compiled,
-                           unsigned *push_size);
+bool agx_nir_lower_sysvals(nir_shader *shader);
+
+bool agx_nir_layout_uniforms(nir_shader *shader, bool internal_bindless,
+                             struct agx_compiled_shader *compiled,
+                             unsigned *push_size);
 
 bool agx_nir_lower_bindings(nir_shader *shader, bool *internal_bindless);
 

@@ -1646,7 +1646,8 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       base_key.vs.outputs_linear_shaded = key_->vs.outputs_linear_shaded;
    }
 
-   NIR_PASS_V(nir, agx_nir_lower_sysvals, so->internal_bindless, compiled,
+   NIR_PASS_V(nir, agx_nir_lower_sysvals);
+   NIR_PASS_V(nir, agx_nir_layout_uniforms, so->internal_bindless, compiled,
               &base_key.reserved_preamble);
 
    agx_compile_shader_nir(nir, &base_key, debug, &binary, &compiled->info);

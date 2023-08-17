@@ -7,15 +7,18 @@
 #include "util/bitset.h"
 #include "util/u_dynarray.h"
 #include "agx_state.h"
+#include "nir.h"
+#include "nir_builder_opcodes.h"
+#include "nir_intrinsics.h"
+#include "nir_intrinsics_indices.h"
 
 /*
  * Lower all system values to uniform loads. This pass tries to compact ranges
  * of contiguous uploaded uniforms to reduce the draw-time overhead of uploading
  * many tiny ranges. To do so, it works in 4 steps:
  *
- * 1. Lower NIR sysvals to loads from the system value buffers (as placeholder
- *    load_preambles)
- * 2. Walk the NIR, recording the placeholder load_preambles.
+ * 1. Lower NIR sysvals to loads from the system value buffers.
+ * 2. Walk the NIR, recording loads from system value buffers.
  * 2. Walk the ranges of uniforms needed, compacting into contiguous ranges.
  * 3. Fill in the load_preamble instructions with the real uniforms.
  */
@@ -34,8 +37,8 @@ struct table_state {
 };
 
 struct state {
-   /* Array of load_preamble nir_intrinsic_instr's to fix up at the end */
-   struct util_dynarray load_preambles;
+   /* Array of nir_intrinsic_instr's to fix up at the end */
+   struct util_dynarray loads;
 
    struct table_state tables[AGX_NUM_SYSVAL_TABLES];
 };
@@ -44,9 +47,8 @@ static nir_def *
 load_sysval(nir_builder *b, unsigned dim, unsigned bitsize, uint8_t table,
             uint16_t offset)
 {
-   /* Encode as a sideband */
-   uint32_t packed = (((uint32_t)table) << 16) | ((uint32_t)offset);
-   return nir_load_preamble(b, dim, bitsize, .base = packed);
+   return nir_load_sysval_agx(b, dim, bitsize, .desc_set = table,
+                              .binding = offset);
 }
 
 static nir_def *
@@ -195,7 +197,7 @@ record_loads(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_preamble)
+   if (intr->intrinsic != nir_intrinsic_load_sysval_agx)
       return false;
 
    assert(intr->def.bit_size >= 16 && "no 8-bit sysvals");
@@ -204,9 +206,8 @@ record_loads(nir_builder *b, nir_instr *instr, void *data)
    unsigned length = dim * element_size;
 
    struct state *state = data;
-   unsigned base = nir_intrinsic_base(intr);
-   struct table_state *table = &state->tables[base >> 16];
-   unsigned offset = base & 0xFFFF;
+   struct table_state *table = &state->tables[nir_intrinsic_desc_set(intr)];
+   unsigned offset = nir_intrinsic_binding(intr);
    assert((offset % 2) == 0 && "all entries are aligned by ABI");
 
    BITSET_SET_RANGE(table->pushed, (offset / 2), (offset / 2) + length - 1);
@@ -218,7 +219,7 @@ record_loads(nir_builder *b, nir_instr *instr, void *data)
          table->element_size[(offset / 2) + i] = element_size;
    }
 
-   util_dynarray_append(&state->load_preambles, nir_intrinsic_instr *, intr);
+   util_dynarray_append(&state->loads, nir_intrinsic_instr *, intr);
    return false;
 }
 
@@ -325,34 +326,39 @@ lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
       uniform = lay_out_table(shader, &state->tables[t], t, uniform);
 
    /* Step 4: Fill in the loads */
-   util_dynarray_foreach(&state->load_preambles, nir_intrinsic_instr *, intr) {
-      uint32_t base = nir_intrinsic_base(*intr);
-      uint8_t table = base >> 16;
-      uint16_t offset = base & 0xFFFF;
+   util_dynarray_foreach(&state->loads, nir_intrinsic_instr *, intr_) {
+      nir_intrinsic_instr *intr = *intr_;
+      uint8_t table = nir_intrinsic_desc_set(intr);
+      uint16_t offset = nir_intrinsic_binding(intr);
 
       struct agx_push_range *range =
          find_push_range_containing(shader, table, offset);
 
-      nir_intrinsic_set_base(*intr,
-                             range->uniform + ((offset - range->offset) / 2));
+      nir_builder b = nir_builder_at(nir_instr_remove(&(intr->instr)));
+
+      nir_def *repl = nir_load_preamble(
+         &b, intr->def.num_components, intr->def.bit_size,
+         .base = range->uniform + ((offset - range->offset) / 2));
+
+      nir_def_rewrite_uses(&intr->def, repl);
    }
 
    return uniform;
 }
 
 bool
-agx_nir_lower_sysvals(nir_shader *shader, bool internal_bindless,
-                      struct agx_compiled_shader *compiled, unsigned *push_size)
+agx_nir_lower_sysvals(nir_shader *shader)
 {
-   bool progress = nir_shader_instructions_pass(
+   return nir_shader_instructions_pass(
       shader, lower_sysvals, nir_metadata_block_index | nir_metadata_dominance,
       NULL);
+}
 
-   if (!progress && !internal_bindless) {
-      *push_size = 0;
-      return false;
-   }
-
+bool
+agx_nir_layout_uniforms(nir_shader *shader, bool internal_bindless,
+                        struct agx_compiled_shader *compiled,
+                        unsigned *push_size)
+{
    struct state state = {0};
    nir_shader_instructions_pass(
       shader, record_loads, nir_metadata_block_index | nir_metadata_dominance,
@@ -363,7 +369,7 @@ agx_nir_lower_sysvals(nir_shader *shader, bool internal_bindless,
 
    *push_size = lay_out_uniforms(compiled, &state);
 
-   util_dynarray_fini(&state.load_preambles);
+   util_dynarray_fini(&state.loads);
 
    return true;
 }
