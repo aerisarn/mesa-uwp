@@ -784,8 +784,15 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
    }
 }
 
+/*
+ * Early texture lowering passes, called by the driver before lowering
+ * descriptor bindings. That means these passes operate on texture derefs. The
+ * purpose is to make descriptor crawls explicit in the NIR, so that the driver
+ * can accurately lower descriptors after this pass but before calling
+ * agx_preprocess_nir (and hence the full agx_nir_lower_texture).
+ */
 bool
-agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
+agx_nir_lower_texture_early(nir_shader *s)
 {
    bool progress = false;
 
@@ -801,6 +808,16 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
       .lower_txd_cube_map = true,
    };
 
+   NIR_PASS(progress, s, nir_lower_tex, &lower_tex_options);
+
+   return progress;
+}
+
+bool
+agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
+{
+   bool progress = false;
+
    nir_tex_src_type_constraints tex_constraints = {
       [nir_tex_src_lod] = {true, 16},
       [nir_tex_src_bias] = {true, 16},
@@ -808,8 +825,6 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
       [nir_tex_src_texture_offset] = {true, 16},
       [nir_tex_src_sampler_offset] = {true, 16},
    };
-
-   NIR_PASS(progress, s, nir_lower_tex, &lower_tex_options);
 
    /* Insert fences before lowering image atomics, since image atomics need
     * different fencing than other image operations.

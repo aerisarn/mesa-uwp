@@ -211,6 +211,8 @@ struct agx_shader_key {
    };
 };
 
+bool agx_nir_lower_texture_early(nir_shader *s);
+
 void agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
                         bool allow_mediump,
                         struct agx_uncompiled_shader_info *out);
