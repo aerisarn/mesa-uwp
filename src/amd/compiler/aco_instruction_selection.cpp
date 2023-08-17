@@ -11756,7 +11756,6 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
 
          /* FS epilogs always have at least one color/null export. */
          ctx.program->has_color_exports = true;
-         ctx.block->kind |= block_kind_export_end;
       } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
          assert(ctx.stage == tess_control_hs || ctx.stage == vertex_tess_control_hs);
          if (ctx.options->is_opengl)
