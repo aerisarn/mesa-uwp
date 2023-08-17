@@ -4421,6 +4421,23 @@ nir_instr_rewrite_src_ssa(ASSERTED nir_instr *instr,
 
 void nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src);
 
+/** Initialize a nir_src
+ *
+ * This is almost never the helper you want to use.  This helper assumes that
+ * the source is uninitialized garbage and blasts over it without doing any
+ * tear-down the existing source, including removing it from uses lists.
+ * Using this helper on a source that currently exists in any uses list will
+ * result in linked list corruption.  It also assumes that the instruction is
+ * currently live in the IR and adds the source to the uses list for the given
+ * nir_def as part of setup.
+ *
+ * This is pretty much only useful for adding sources to extant instructions
+ * or manipulating parallel copy instructions as part of out-of-SSA.
+ *
+ * When in doubt, use nir_src_rewrite() instead.
+ */
+void nir_instr_init_src(nir_instr *instr, nir_src *src, nir_def *def);
+
 /** Clear a nir_src
  *
  * This helper clears a nir_src by removing it from any uses lists and

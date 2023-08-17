@@ -399,14 +399,19 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
 
          nir_parallel_copy_entry *entry = rzalloc(dead_ctx,
                                                   nir_parallel_copy_entry);
-         entry->src_is_reg = false;
+
          entry->dest_is_reg = false;
          nir_def_init(&pcopy->instr, &entry->dest.def,
                       phi->def.num_components, phi->def.bit_size);
          entry->dest.def.divergent = nir_src_is_divergent(src->src);
-         exec_list_push_tail(&pcopy->entries, &entry->node);
 
-         nir_instr_rewrite_src(&pcopy->instr, &entry->src, src->src);
+         /* We're adding a source to a live instruction so we need to use
+          * nir_instr_init_src()
+          */
+         entry->src_is_reg = false;
+         nir_instr_init_src(&pcopy->instr, &entry->src, src->src.ssa);
+
+         exec_list_push_tail(&pcopy->entries, &entry->node);
 
          nir_instr_rewrite_src(&phi->instr, &src->src,
                                nir_src_for_ssa(&entry->dest.def));
@@ -414,18 +419,25 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
 
       nir_parallel_copy_entry *entry = rzalloc(dead_ctx,
                                                nir_parallel_copy_entry);
-      entry->src_is_reg = false;
+
       entry->dest_is_reg = false;
       nir_def_init(&block_pcopy->instr, &entry->dest.def,
                    phi->def.num_components, phi->def.bit_size);
       entry->dest.def.divergent = phi->def.divergent;
+
+      nir_def_rewrite_uses(&phi->def, &entry->dest.def);
+
+      /* We're adding a source to a live instruction so we need to use
+       * nir_instr_init_src().
+       *
+       * Note that we do this after we've rewritten all uses of the phi to
+       * entry->def, ensuring that entry->src will be the only remaining use
+       * of the phi.
+       */
+      entry->src_is_reg = false;
+      nir_instr_init_src(&block_pcopy->instr, &entry->src, &phi->def);
+
       exec_list_push_tail(&block_pcopy->entries, &entry->node);
-
-      nir_def_rewrite_uses(&phi->def,
-                           &entry->dest.def);
-
-      nir_instr_rewrite_src(&block_pcopy->instr, &entry->src,
-                            nir_src_for_ssa(&phi->def));
    }
 
    return true;
@@ -716,16 +728,17 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 
             nir_foreach_parallel_copy_entry(entry, pcopy) {
                assert(!entry->dest_is_reg);
-               assert(nir_def_is_unused(&entry->dest.def));
 
                /* Parallel copy destinations will always be registers */
                nir_def *reg = reg_for_ssa_def(&entry->dest.def, state);
                assert(reg != NULL);
 
+               /* We're switching from the nir_def to the nir_src in the dest
+                * union so we need to use nir_instr_init_src() here.
+                */
+               assert(nir_def_is_unused(&entry->dest.def));
                entry->dest_is_reg = true;
-               entry->dest.reg = NIR_SRC_INIT;
-               nir_instr_rewrite_src(&pcopy->instr, &entry->dest.reg,
-                                     nir_src_for_ssa(reg));
+               nir_instr_init_src(&pcopy->instr, &entry->dest.reg, reg);
             }
 
             nir_foreach_parallel_copy_entry(entry, pcopy) {

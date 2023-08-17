@@ -797,8 +797,7 @@ nir_tex_instr_add_src(nir_tex_instr *tex,
    tex->src = new_srcs;
 
    tex->src[tex->num_srcs].src_type = src_type;
-   nir_instr_rewrite_src(&tex->instr, &tex->src[tex->num_srcs].src,
-                         nir_src_for_ssa(src));
+   nir_instr_init_src(&tex->instr, &tex->src[tex->num_srcs].src, src);
    tex->num_srcs++;
 }
 
@@ -1473,6 +1472,13 @@ nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src)
 
    src_remove_all_uses(src);
    nir_src_copy(src, &new_src, instr);
+   src_add_all_uses(src, instr, NULL);
+}
+
+void
+nir_instr_init_src(nir_instr *instr, nir_src *src, nir_def *def)
+{
+   *src = nir_src_for_ssa(def);
    src_add_all_uses(src, instr, NULL);
 }
 
