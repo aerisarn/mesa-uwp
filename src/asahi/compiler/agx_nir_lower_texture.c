@@ -354,6 +354,14 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
       if (tex->op != nir_texop_txf && tex->op != nir_texop_txf_ms)
          unclamped_layer = nir_f2u32(b, nir_fround_even(b, unclamped_layer));
 
+      /* For a cube array, the layer is zero-indexed component 3 of the
+       * coordinate but the number of layers is component 2 of the txs result.
+       */
+      if (tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+         assert(lidx == 3 && "4 components");
+         lidx = 2;
+      }
+
       /* Clamp to max layer = (# of layers - 1) for out-of-bounds handling.
        * Layer must be 16-bits for the hardware, drop top bits after clamping.
        */
