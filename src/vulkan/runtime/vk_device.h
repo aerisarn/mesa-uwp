@@ -256,10 +256,8 @@ struct vk_device {
 
    struct vk_memory_trace_data memory_trace_data;
 
-#ifdef ANDROID
    mtx_t swapchain_private_mtx;
    struct hash_table *swapchain_private;
-#endif
 };
 
 VK_DEFINE_HANDLE_CASTS(vk_device, base, VkDevice,
