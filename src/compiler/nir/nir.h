@@ -4410,8 +4410,6 @@ nir_src_rewrite(nir_src *src, nir_def *new_ssa)
    list_addtail(&src->use_link, &new_ssa->uses);
 }
 
-void nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src);
-
 /** Initialize a nir_src
  *
  * This is almost never the helper you want to use.  This helper assumes that

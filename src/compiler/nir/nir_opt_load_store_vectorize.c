@@ -823,21 +823,20 @@ vectorize_stores(nir_builder *b, struct vectorize_ctx *ctx,
 
    const struct intrinsic_info *info = second->info;
    assert(info->value_src >= 0);
-   nir_instr_rewrite_src(second->instr, &second->intrin->src[info->value_src],
-                         nir_src_for_ssa(data));
+   nir_src_rewrite(&second->intrin->src[info->value_src], data);
 
    /* update the offset */
    if (second != low && info->base_src >= 0)
-      nir_instr_rewrite_src(second->instr, &second->intrin->src[info->base_src],
-                            low->intrin->src[info->base_src]);
+      nir_src_rewrite(&second->intrin->src[info->base_src],
+                      low->intrin->src[info->base_src].ssa);
 
    /* update the deref */
    if (info->deref_src >= 0) {
       b->cursor = nir_before_instr(second->instr);
       second->deref = cast_deref(b, new_num_components, new_bit_size,
                                  nir_src_as_deref(low->intrin->src[info->deref_src]));
-      nir_instr_rewrite_src(second->instr, &second->intrin->src[info->deref_src],
-                            nir_src_for_ssa(&second->deref->def));
+      nir_src_rewrite(&second->intrin->src[info->deref_src],
+                      &second->deref->def);
    }
 
    /* update base/align */

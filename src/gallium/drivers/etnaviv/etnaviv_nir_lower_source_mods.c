@@ -76,7 +76,7 @@ nir_lower_to_source_mods_instr(nir_builder *b, nir_instr *instr,
       if (i >= 3)
          continue;
 
-      nir_instr_rewrite_src(instr, &alu->src[i].src, parent->src[0].src);
+      nir_src_rewrite(&alu->src[i].src, parent->src[0].src.ssa);
 
       /* Apply any modifiers that come from the parent opcode */
       if (parent->op == nir_op_fneg)

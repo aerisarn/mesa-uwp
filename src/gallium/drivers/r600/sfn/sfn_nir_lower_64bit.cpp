@@ -614,8 +614,7 @@ LowerSplit64BitVar::split_double_load_ssbo(nir_intrinsic_instr *intr)
    nir_intrinsic_instr *load2 =
       nir_instr_as_intrinsic(nir_instr_clone(b->shader, &intr->instr));
 
-   auto new_src0 = nir_src_for_ssa(nir_iadd_imm(b, intr->src[0].ssa, 1));
-   nir_instr_rewrite_src(&load2->instr, &load2->src[0], new_src0);
+   nir_src_rewrite(&load2->src[0], nir_iadd_imm(b, intr->src[0].ssa, 1));
    load2->num_components = second_components;
    nir_def_init(&load2->instr, &load2->def, second_components, 64);
 
@@ -1241,9 +1240,7 @@ StoreMerger::combine_one_slot(vector<nir_intrinsic_instr *>& stores)
 
    auto new_src = nir_vec(&b, srcs, comps);
 
-   nir_instr_rewrite_src(&last_store->instr,
-                         &last_store->src[0],
-                         nir_src_for_ssa(new_src));
+   nir_src_rewrite(&last_store->src[0], new_src);
    last_store->num_components = comps;
    nir_intrinsic_set_component(last_store, first_comp);
    nir_intrinsic_set_write_mask(last_store, writemask);

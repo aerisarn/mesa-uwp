@@ -1466,16 +1466,6 @@ src_add_all_uses(nir_src *src, nir_instr *parent_instr, nir_if *parent_if)
 }
 
 void
-nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src)
-{
-   assert(!src_is_valid(src) || src->parent_instr == instr);
-
-   src_remove_all_uses(src);
-   nir_src_copy(src, &new_src, instr);
-   src_add_all_uses(src, instr, NULL);
-}
-
-void
 nir_instr_init_src(nir_instr *instr, nir_src *src, nir_def *def)
 {
    *src = nir_src_for_ssa(def);

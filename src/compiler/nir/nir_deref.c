@@ -1206,7 +1206,7 @@ opt_deref_cast(nir_builder *b, nir_deref_instr *cast)
           !trivial_array_cast)
          continue;
 
-      nir_instr_rewrite_src(use_src->parent_instr, use_src, cast->parent);
+      nir_src_rewrite(use_src, cast->parent.ssa);
       progress = true;
    }
 
@@ -1255,7 +1255,7 @@ opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
                                deref->arr.index.ssa);
 
    deref->deref_type = parent->deref_type;
-   nir_instr_rewrite_src(&deref->instr, &deref->parent, parent->parent);
+   nir_src_rewrite(&deref->parent, parent->parent.ssa);
    nir_src_rewrite(&deref->arr.index, new_idx);
    return true;
 }

@@ -334,7 +334,7 @@ private:
       }
 
       nir_intrinsic_set_base(intr, new_base);
-      nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(new_bufid->ssa));
+      nir_src_rewrite(&intr->src[0], new_bufid->ssa);
       return &intr->def;
    }
 };
