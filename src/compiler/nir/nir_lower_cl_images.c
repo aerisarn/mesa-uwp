@@ -221,8 +221,7 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
                         tex->src[count].src_type = nir_tex_src_texture_offset;
                      else
                         tex->src[count].src_type = nir_tex_src_sampler_offset;
-                     nir_instr_rewrite_src(&tex->instr, &tex->src[count].src,
-                                           nir_src_for_ssa(offset));
+                     nir_src_rewrite(&tex->src[count].src, offset);
                   }
                } else {
                   /* If we've removed a source, move this one down */

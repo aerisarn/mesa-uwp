@@ -314,8 +314,8 @@ ir3_nir_lower_array_sampler_cb(struct nir_builder *b, nir_instr *instr, void *_d
    assume(ncomp >= 1);
    nir_def *ai = nir_channel(b, src, ncomp - 1);
    ai = nir_fadd_imm(b, ai, 0.5);
-   nir_instr_rewrite_src(&tex->instr, &tex->src[coord_idx].src,
-                         nir_src_for_ssa(nir_vector_insert_imm(b, src, ai, ncomp - 1)));
+   nir_src_rewrite(&tex->src[coord_idx].src,
+                   nir_vector_insert_imm(b, src, ai, ncomp - 1));
    return true;
 }
 

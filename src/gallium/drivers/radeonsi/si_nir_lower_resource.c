@@ -362,7 +362,7 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
          nir_def_rewrite_uses(&intrin->def, desc);
          nir_instr_remove(&intrin->instr);
       } else {
-         nir_instr_rewrite_src(&intrin->instr, &intrin->src[0], nir_src_for_ssa(desc));
+         nir_src_rewrite(&intrin->src[0], desc);
       }
       break;
    }

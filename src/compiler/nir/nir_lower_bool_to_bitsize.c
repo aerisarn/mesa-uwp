@@ -81,8 +81,7 @@ make_sources_canonical(nir_builder *b, nir_alu_instr *alu, uint32_t start_idx)
          memcpy(conv_instr->src[0].swizzle,
                 alu->src[i].swizzle,
                 sizeof(conv_instr->src[0].swizzle));
-         nir_instr_rewrite_src(&alu->instr,
-                               &alu->src[i].src, nir_src_for_ssa(new_src));
+         nir_src_rewrite(&alu->src[i].src, new_src);
          /* The swizzle will have been handled by the conversion instruction
           * so we can reset it back to the default
           */
@@ -358,8 +357,7 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi)
          nir_op convert_op = get_bool_convert_opcode(dst_bit_size);
          nir_def *new_src =
             nir_build_alu(b, convert_op, phi_src->src.ssa, NULL, NULL, NULL);
-         nir_instr_rewrite_src(&phi->instr, &phi_src->src,
-                               nir_src_for_ssa(new_src));
+         nir_src_rewrite(&phi_src->src, new_src);
       }
    }
 

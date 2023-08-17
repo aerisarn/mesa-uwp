@@ -50,7 +50,7 @@ lower_pos_write(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
                                                  nir_channel(b, pos, 3)),
                                         0.5),
                            nir_channel(b, pos, 3));
-   nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));
+   nir_src_rewrite(intr->src + 1, def);
    return true;
 }
 

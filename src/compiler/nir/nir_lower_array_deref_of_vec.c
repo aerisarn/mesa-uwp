@@ -139,8 +139,7 @@ nir_lower_array_deref_of_vec_impl(nir_function_impl *impl,
             }
 
             /* Turn the load into a vector load */
-            nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                                  nir_src_for_ssa(&vec_deref->def));
+            nir_src_rewrite(&intrin->src[0], &vec_deref->def);
             intrin->def.num_components = num_components;
             intrin->num_components = num_components;
 

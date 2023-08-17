@@ -91,7 +91,7 @@ radv_nir_lower_primitive_shading_rate(nir_shader *nir, enum amd_gfx_level gfx_le
 
          out = nir_ior(&b, nir_ishl_imm(&b, x_rate, x_rate_shift), nir_ishl_imm(&b, y_rate, y_rate_shift));
 
-         nir_instr_rewrite_src(&intr->instr, &intr->src[1], nir_src_for_ssa(out));
+         nir_src_rewrite(&intr->src[1], out);
 
          progress = true;
          if (nir->info.stage == MESA_SHADER_VERTEX)

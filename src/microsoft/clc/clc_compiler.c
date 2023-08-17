@@ -384,9 +384,7 @@ clc_lower_nonnormalized_samplers(nir_shader *nir,
                comps[i] = nir_fmul(&b, comps[i], nir_channel(&b, scale, i));
             }
             nir_def *normalized_coords = nir_vec(&b, comps, coords->num_components);
-            nir_instr_rewrite_src(&tex->instr,
-                                  &tex->src[coords_idx].src,
-                                  nir_src_for_ssa(normalized_coords));
+            nir_src_rewrite(&tex->src[coords_idx].src, normalized_coords);
          }
       }
    }

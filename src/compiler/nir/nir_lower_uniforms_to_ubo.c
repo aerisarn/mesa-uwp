@@ -60,8 +60,7 @@ nir_lower_uniforms_to_ubo_instr(nir_builder *b, nir_instr *instr, void *data)
        !b->shader->info.first_ubo_is_default_ubo) {
       nir_def *old_idx = nir_ssa_for_src(b, intr->src[0], 1);
       nir_def *new_idx = nir_iadd_imm(b, old_idx, 1);
-      nir_instr_rewrite_src(&intr->instr, &intr->src[0],
-                            nir_src_for_ssa(new_idx));
+      nir_src_rewrite(&intr->src[0], new_idx);
       return true;
    }
 

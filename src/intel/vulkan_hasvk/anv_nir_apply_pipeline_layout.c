@@ -833,8 +833,7 @@ lower_get_ssbo_size(nir_builder *b, nir_intrinsic_instr *intrin,
       /* The binding table index is the first component of the address.  The
        * back-end wants a scalar binding table index source.
        */
-      nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                            nir_src_for_ssa(nir_channel(b, desc, 0)));
+      nir_src_rewrite(&intrin->src[0], nir_channel(b, desc, 0));
       break;
 
    default:
@@ -1043,8 +1042,7 @@ lower_tex_deref(nir_builder *b, nir_tex_instr *tex,
    }
 
    if (index) {
-      nir_instr_rewrite_src(&tex->instr, &tex->src[deref_src_idx].src,
-                            nir_src_for_ssa(index));
+      nir_src_rewrite(&tex->src[deref_src_idx].src, index);
       tex->src[deref_src_idx].src_type = offset_src_type;
    } else {
       nir_tex_instr_remove_src(tex, deref_src_idx);

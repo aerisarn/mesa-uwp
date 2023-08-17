@@ -504,8 +504,7 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
                new_deref = build_array_deref_of_new_var(&b, new_var, old_deref);
                assert(glsl_type_is_vector(new_deref->type));
             }
-            nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                                  nir_src_for_ssa(&new_deref->def));
+            nir_src_rewrite(&intrin->src[0], &new_deref->def);
 
             intrin->num_components =
                glsl_get_components(new_deref->type);
@@ -551,8 +550,7 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
                new_deref = build_array_deref_of_new_var(&b, new_var, old_deref);
                assert(glsl_type_is_vector(new_deref->type));
             }
-            nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                                  nir_src_for_ssa(&new_deref->def));
+            nir_src_rewrite(&intrin->src[0], &new_deref->def);
 
             intrin->num_components =
                glsl_get_components(new_deref->type);
@@ -573,8 +571,7 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
                }
             }
             nir_def *new_value = nir_vec_scalars(&b, comps, intrin->num_components);
-            nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
-                                  nir_src_for_ssa(new_value));
+            nir_src_rewrite(&intrin->src[1], new_value);
 
             nir_intrinsic_set_write_mask(intrin,
                                          old_wrmask << (old_frac - new_frac));
@@ -650,7 +647,7 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
 
          b.cursor = nir_before_instr(instr);
          nir_def *new_deref = &nir_build_deref_var(&b, var)->def;
-         nir_instr_rewrite_src(instr, &intrin->src[0], nir_src_for_ssa(new_deref));
+         nir_src_rewrite(&intrin->src[0], new_deref);
 
          nir_deref_instr_remove_if_unused(deref);
 
@@ -676,7 +673,7 @@ nir_vectorize_tess_levels_impl(nir_function_impl *impl)
             nir_intrinsic_set_write_mask(intrin, 1 << index);
             nir_def *new_val = nir_undef(&b, intrin->num_components, 32);
             new_val = nir_vector_insert_imm(&b, new_val, intrin->src[1].ssa, index);
-            nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(new_val));
+            nir_src_rewrite(&intrin->src[1], new_val);
          } else {
             b.cursor = nir_after_instr(instr);
             nir_def *val = &intrin->def;

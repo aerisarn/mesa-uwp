@@ -60,7 +60,7 @@ lower_point_size_instr(nir_builder *b, nir_instr *instr, void *data)
    if (minmax[1] > 0.0f)
       psiz = nir_fmin(b, psiz, nir_imm_float(b, minmax[1]));
 
-   nir_instr_rewrite_src(instr, &intr->src[1], nir_src_for_ssa(psiz));
+   nir_src_rewrite(&intr->src[1], psiz);
 
    return true;
 }

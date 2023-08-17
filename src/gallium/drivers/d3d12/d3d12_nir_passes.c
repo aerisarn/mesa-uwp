@@ -79,7 +79,7 @@ lower_pos_write(nir_builder *b, struct nir_instr *instr, nir_variable **flip)
                                nir_fmul(b, nir_channel(b, pos, 1), flip_y),
                                nir_channel(b, pos, 2),
                                nir_channel(b, pos, 3));
-   nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));
+   nir_src_rewrite(intr->src + 1, def);
 }
 
 void
@@ -231,7 +231,7 @@ lower_uint_color_write(nir_builder *b, struct nir_instr *instr, bool is_signed)
       def = nir_bcsel(b, nir_ilt_imm(b, def, 0),
                       nir_iadd_imm(b, def, 1ull << NUM_BITS),
                       def);
-   nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));
+   nir_src_rewrite(intr->src + 1, def);
 }
 
 void
@@ -364,7 +364,7 @@ invert_depth_impl(nir_builder *b, struct invert_depth_state *state)
       nir_pop_if(b, NULL);
       def = nir_if_phi(b, def, pos);
    }
-   nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));
+   nir_src_rewrite(intr->src + 1, def);
 
    state->viewport_index = NULL;
    state->store_pos_instr = NULL;

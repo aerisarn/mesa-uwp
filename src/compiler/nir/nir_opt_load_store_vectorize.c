@@ -731,8 +731,7 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
       nir_def *new_base = first->intrin->src[info->base_src].ssa;
       new_base = nir_iadd_imm(b, new_base, -(int)(high_start / 8u));
 
-      nir_instr_rewrite_src(first->instr, &first->intrin->src[info->base_src],
-                            nir_src_for_ssa(new_base));
+      nir_src_rewrite(&first->intrin->src[info->base_src], new_base);
    }
 
    /* update the deref */
@@ -744,8 +743,8 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
          deref = subtract_deref(b, deref, high_start / 8u);
       first->deref = cast_deref(b, new_num_components, new_bit_size, deref);
 
-      nir_instr_rewrite_src(first->instr, &first->intrin->src[info->deref_src],
-                            nir_src_for_ssa(&first->deref->def));
+      nir_src_rewrite(&first->intrin->src[info->deref_src],
+                      &first->deref->def);
    }
 
    /* update align */

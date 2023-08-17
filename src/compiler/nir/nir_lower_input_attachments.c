@@ -173,7 +173,7 @@ try_lower_input_texop(nir_builder *b, nir_tex_instr *tex,
 
    tex->coord_components = 3;
 
-   nir_instr_rewrite_src(&tex->instr, &tex->src[1].src, nir_src_for_ssa(coord));
+   nir_src_rewrite(&tex->src[1].src, coord);
 
    return true;
 }

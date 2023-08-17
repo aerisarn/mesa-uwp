@@ -55,7 +55,7 @@ nir_lower_image_bitsize(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    nir_def *coord16 = nir_u2u16(b, coord);
 
-   nir_instr_rewrite_src(instr, &intr->src[1], nir_src_for_ssa(coord16));
+   nir_src_rewrite(&intr->src[1], coord16);
 
    return true;
 }

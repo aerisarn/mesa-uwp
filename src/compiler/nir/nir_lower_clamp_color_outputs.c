@@ -82,7 +82,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr, nir_shader *shader)
       int src = intr->intrinsic == nir_intrinsic_store_deref ? 1 : 0;
       s = nir_ssa_for_src(b, intr->src[src], intr->num_components);
       s = nir_fsat(b, s);
-      nir_instr_rewrite_src(&intr->instr, &intr->src[src], nir_src_for_ssa(s));
+      nir_src_rewrite(&intr->src[src], s);
    }
 
    return true;

@@ -637,8 +637,7 @@ lower_tex_src(nir_builder *b,
     * instr if needed
     */
    if (index) {
-      nir_instr_rewrite_src(&instr->instr, &src->src,
-                            nir_src_for_ssa(index));
+      nir_src_rewrite(&src->src, index);
 
       src->src_type = is_sampler ?
          nir_tex_src_sampler_offset :

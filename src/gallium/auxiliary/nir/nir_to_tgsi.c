@@ -3454,11 +3454,9 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       nir_intrinsic_set_write_mask(first, nir_intrinsic_write_mask(instr) & 3);
       nir_intrinsic_set_write_mask(second, nir_intrinsic_write_mask(instr) >> 2);
 
-      nir_instr_rewrite_src(&first->instr, &first->src[0],
-                            nir_src_for_ssa(nir_vec_scalars(b, channels, 2)));
-      nir_instr_rewrite_src(&second->instr, &second->src[0],
-                            nir_src_for_ssa(nir_vec_scalars(b, &channels[2],
-                                                           second->num_components)));
+      nir_src_rewrite(&first->src[0], nir_vec_scalars(b, channels, 2));
+      nir_src_rewrite(&second->src[0],
+                      nir_vec_scalars(b, &channels[2], second->num_components));
    }
 
    int offset_src = -1;
@@ -3483,8 +3481,7 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       b->cursor = nir_before_instr(&second->instr);
       nir_def *second_offset =
          nir_iadd_imm(b, second->src[offset_src].ssa, offset_amount);
-      nir_instr_rewrite_src(&second->instr, &second->src[offset_src],
-                            nir_src_for_ssa(second_offset));
+      nir_src_rewrite(&second->src[offset_src], second_offset);
    }
 
    /* DCE stores we generated with no writemask (nothing else does this

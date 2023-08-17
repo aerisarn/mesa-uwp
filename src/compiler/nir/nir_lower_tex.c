@@ -148,9 +148,7 @@ project_src(nir_builder *b, nir_tex_instr *tex)
          }
       }
 
-      nir_instr_rewrite_src(&tex->instr,
-                            &tex->src[i].src,
-                            nir_src_for_ssa(projected));
+      nir_src_rewrite(&tex->src[i].src, projected);
    }
 
    return true;
@@ -208,8 +206,7 @@ lower_offset(nir_builder *b, nir_tex_instr *tex)
       }
    }
 
-   nir_instr_rewrite_src(&tex->instr, &tex->src[coord_index].src,
-                         nir_src_for_ssa(offset_coord));
+   nir_src_rewrite(&tex->src[coord_index].src, offset_coord);
 
    return true;
 }
@@ -229,9 +226,7 @@ lower_rect(nir_builder *b, nir_tex_instr *tex)
    if (coord_index != -1) {
       nir_def *coords =
          nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
-      nir_instr_rewrite_src(&tex->instr,
-                            &tex->src[coord_index].src,
-                            nir_src_for_ssa(nir_fmul(b, coords, scale)));
+      nir_src_rewrite(&tex->src[coord_index].src, nir_fmul(b, coords, scale));
    }
 }
 
@@ -247,9 +242,7 @@ lower_rect_tex_scale(nir_builder *b, nir_tex_instr *tex)
    if (coord_index != -1) {
       nir_def *coords =
          nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
-      nir_instr_rewrite_src(&tex->instr,
-                            &tex->src[coord_index].src,
-                            nir_src_for_ssa(nir_fmul(b, coords, scale)));
+      nir_src_rewrite(&tex->src[coord_index].src, nir_fmul(b, coords, scale));
    }
 }
 
@@ -981,9 +974,7 @@ saturate_src(nir_builder *b, nir_tex_instr *tex, unsigned sat_mask)
       /* and move the result back into a single vecN: */
       src = nir_vec(b, comp, tex->coord_components);
 
-      nir_instr_rewrite_src(&tex->instr,
-                            &tex->src[coord_index].src,
-                            nir_src_for_ssa(src));
+      nir_src_rewrite(&tex->src[coord_index].src, src);
    }
    return tex;
 }
@@ -1257,8 +1248,7 @@ nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
    nir_def *lod = nir_ssa_for_src(b, tex->src[lod_idx].src, 1);
 
    /* Replace the non-0-LOD in the initial TXS operation by a 0-LOD. */
-   nir_instr_rewrite_src(&tex->instr, &tex->src[lod_idx].src,
-                         nir_src_for_ssa(nir_imm_int(b, 0)));
+   nir_src_rewrite(&tex->src[lod_idx].src, nir_imm_int(b, 0));
 
    /* TXS(LOD) = max(TXS(0) >> LOD, 1)
     * But we do min(TXS(0), TXS(LOD)) to catch the case of a null surface,
@@ -1437,8 +1427,7 @@ lower_index_to_offset(nir_builder *b, nir_tex_instr *tex)
          continue;
 
       nir_def *sum = nir_iadd_imm(b, tex->src[i].src.ssa, *index);
-      nir_instr_rewrite_src(&tex->instr, &tex->src[i].src,
-                            nir_src_for_ssa(sum));
+      nir_src_rewrite(&tex->src[i].src, sum);
       *index = 0;
       progress = true;
    }

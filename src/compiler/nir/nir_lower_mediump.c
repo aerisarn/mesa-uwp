@@ -506,8 +506,7 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
                   unreachable("Invalid 16-bit type");
                }
 
-               nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
-                                     nir_src_for_ssa(replace));
+               nir_src_rewrite(&intrin->src[1], replace);
                progress = true;
                break;
             }

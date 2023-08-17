@@ -49,7 +49,7 @@ lima_nir_duplicate_load_const(nir_builder *b, nir_load_const_instr *load)
          dupl = last_dupl;
       }
 
-      nir_instr_rewrite_src(use_src->parent_instr, use_src, nir_src_for_ssa(&dupl->def));
+      nir_src_rewrite(use_src, &dupl->def);
       last_parent_instr = use_src->parent_instr;
       last_dupl = dupl;
    }

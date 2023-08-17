@@ -824,8 +824,7 @@ rematerialize_deref_src(nir_src *src, void *_state)
 
    nir_deref_instr *block_deref = rematerialize_deref_in_block(deref, state);
    if (block_deref != deref) {
-      nir_instr_rewrite_src(src->parent_instr, src,
-                            nir_src_for_ssa(&block_deref->def));
+      nir_src_rewrite(src, &block_deref->def);
       nir_deref_instr_remove_if_unused(deref);
       state->progress = true;
    }
@@ -1060,8 +1059,7 @@ opt_remove_cast_cast(nir_deref_instr *cast)
       cast->cast.align_offset = parent->cast.align_offset;
    }
 
-   nir_instr_rewrite_src(&cast->instr, &cast->parent,
-                         nir_src_for_ssa(parent->parent.ssa));
+   nir_src_rewrite(&cast->parent, parent->parent.ssa);
    return true;
 }
 
@@ -1258,8 +1256,7 @@ opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
 
    deref->deref_type = parent->deref_type;
    nir_instr_rewrite_src(&deref->instr, &deref->parent, parent->parent);
-   nir_instr_rewrite_src(&deref->instr, &deref->arr.index,
-                         nir_src_for_ssa(new_idx));
+   nir_src_rewrite(&deref->arr.index, new_idx);
    return true;
 }
 
@@ -1345,8 +1342,7 @@ opt_load_vec_deref(nir_builder *b, nir_intrinsic_instr *load)
       const unsigned new_bit_size = glsl_get_bit_size(parent->type);
 
       /* Stomp it to reference the parent */
-      nir_instr_rewrite_src(&load->instr, &load->src[0],
-                            nir_src_for_ssa(&parent->def));
+      nir_src_rewrite(&load->src[0], &parent->def);
       load->def.bit_size = new_bit_size;
       load->def.num_components = new_num_comps;
       load->num_components = new_num_comps;
@@ -1384,16 +1380,14 @@ opt_store_vec_deref(nir_builder *b, nir_intrinsic_instr *store)
       const unsigned new_num_comps = glsl_get_vector_elements(parent->type);
       const unsigned new_bit_size = glsl_get_bit_size(parent->type);
 
-      nir_instr_rewrite_src(&store->instr, &store->src[0],
-                            nir_src_for_ssa(&parent->def));
+      nir_src_rewrite(&store->src[0], &parent->def);
 
       /* Restrict things down as needed so the bitcast doesn't fail */
       data = nir_trim_vector(b, data, util_last_bit(write_mask));
       if (old_bit_size != new_bit_size)
          data = nir_bitcast_vector(b, data, new_bit_size);
       data = resize_vector(b, data, new_num_comps);
-      nir_instr_rewrite_src(&store->instr, &store->src[1],
-                            nir_src_for_ssa(data));
+      nir_src_rewrite(&store->src[1], data);
       store->num_components = new_num_comps;
 
       /* Adjust the write mask */

@@ -559,7 +559,7 @@ fixup_load_uniform_instr(struct nir_builder *b, nir_instr *instr, void *arg)
    nir_intrinsic_set_base(intr, new_base_offset);
    offset = nir_iadd_imm(b, offset, base_offset - new_base_offset);
 
-   nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(offset));
+   nir_src_rewrite(&intr->src[0], offset);
 
    return NIR_LOWER_INSTR_PROGRESS;
 }

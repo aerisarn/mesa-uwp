@@ -866,8 +866,7 @@ split_array_access_impl(nir_function_impl *impl,
             assert(new_deref->type == deref->type);
 
             /* Rewrite the deref source to point to the split one */
-            nir_instr_rewrite_src(&intrin->instr, &intrin->src[d],
-                                  nir_src_for_ssa(&new_deref->def));
+            nir_src_rewrite(&intrin->src[d], &new_deref->def);
             nir_deref_instr_remove_if_unused(deref);
          }
       }
@@ -1615,8 +1614,7 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
                   nir_swizzle(&b, intrin->src[1].ssa, swizzle, c);
 
                /* Rewrite to use the compacted source */
-               nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
-                                     nir_src_for_ssa(swizzled));
+               nir_src_rewrite(&intrin->src[1], swizzled);
                nir_intrinsic_set_write_mask(intrin, new_write_mask);
                intrin->num_components = c;
             }

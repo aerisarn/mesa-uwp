@@ -246,8 +246,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
    /* Replace the last source of the new intrinsic by the result of
     * the offset divided by 4.
     */
-   nir_instr_rewrite_src(&new_intrinsic->instr, target_src,
-                         nir_src_for_ssa(offset));
+   nir_src_rewrite(target_src, offset);
 
    if (has_dest) {
       /* Replace the uses of the original destination by that

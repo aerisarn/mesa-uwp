@@ -735,7 +735,7 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
       if (!(write_mask & (1 << i)))
          continue;
 
-      nir_instr_rewrite_src(&vec->instr, &vec->src[i].src, nir_src_for_ssa(&mov->def));
+      nir_src_rewrite(&vec->src[i].src, &mov->def);
       vec->src[i].swizzle[0] = j++;
    }
 
@@ -836,7 +836,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
             if (!cv)
                continue;
 
-            nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(def));
+            nir_src_rewrite(&alu->src[i].src, def);
 
             for (unsigned j = 0; j < 4; j++)
                alu->src[i].swizzle[j] = swizzle[i][j];
@@ -856,7 +856,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
             continue;
 
          nir_def *mov = nir_mov(&b, alu->src[i].src.ssa);
-         nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(mov));
+         nir_src_rewrite(&alu->src[i].src, mov);
       }
       return;
    }
@@ -888,7 +888,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
          if (!cv)
             continue;
 
-         nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(def));
+         nir_src_rewrite(&alu->src[i].src, def);
          alu->src[i].swizzle[0] = j++;
       }
    }
@@ -1010,7 +1010,7 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
                  deref->var->data.location == FRAG_RESULT_DEPTH &&
                  src->ssa->parent_instr->type != nir_instr_type_alu)) {
                b.cursor = nir_before_instr(instr);
-               nir_instr_rewrite_src(instr, src, nir_src_for_ssa(nir_mov(&b, src->ssa)));
+               nir_src_rewrite(src, nir_mov(&b, src->ssa));
             }
          } break;
          default:

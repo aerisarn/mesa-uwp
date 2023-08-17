@@ -285,8 +285,7 @@ lower_sampler(nir_tex_instr *instr, struct lower_samplers_as_deref_state *state,
          lower_deref(b, state, nir_src_as_deref(instr->src[texture_idx].src));
       /* only lower non-bindless: */
       if (texture_deref) {
-         nir_instr_rewrite_src(&instr->instr, &instr->src[texture_idx].src,
-                               nir_src_for_ssa(&texture_deref->def));
+         nir_src_rewrite(&instr->src[texture_idx].src, &texture_deref->def);
          record_textures_used(&b->shader->info, texture_deref, instr->op);
       }
    }
@@ -296,8 +295,7 @@ lower_sampler(nir_tex_instr *instr, struct lower_samplers_as_deref_state *state,
          lower_deref(b, state, nir_src_as_deref(instr->src[sampler_idx].src));
       /* only lower non-bindless: */
       if (sampler_deref) {
-         nir_instr_rewrite_src(&instr->instr, &instr->src[sampler_idx].src,
-                               nir_src_for_ssa(&sampler_deref->def));
+         nir_src_rewrite(&instr->src[sampler_idx].src, &sampler_deref->def);
          record_samplers_used(&b->shader->info, sampler_deref, instr->op);
       }
    }
@@ -328,8 +326,7 @@ lower_intrinsic(nir_intrinsic_instr *instr,
       /* don't lower bindless: */
       if (!deref)
          return false;
-      nir_instr_rewrite_src(&instr->instr, &instr->src[0],
-                            nir_src_for_ssa(&deref->def));
+      nir_src_rewrite(&instr->src[0], &deref->def);
       return true;
    }
    if (instr->intrinsic == nir_intrinsic_image_deref_order ||

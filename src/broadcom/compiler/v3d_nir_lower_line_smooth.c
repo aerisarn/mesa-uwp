@@ -49,9 +49,7 @@ lower_line_smooth_intrinsic(struct lower_line_smooth_state *state,
         nir_def *new_val = nir_fmul(b, nir_vec4(b, one, one, one, coverage),
                                         intr->src[0].ssa);
 
-        nir_instr_rewrite_src(&intr->instr,
-                              &intr->src[0],
-                              nir_src_for_ssa(new_val));
+        nir_src_rewrite(&intr->src[0], new_val);
 }
 
 static bool

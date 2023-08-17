@@ -475,7 +475,7 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
                                y_pos,
                                z_pos,
                                nir_channel(builder, pos, 3));
-   nir_instr_rewrite_src(&intrin->instr, &intrin->src[1], nir_src_for_ssa(def));
+   nir_src_rewrite(&intrin->src[1], def);
    return true;
 }
 

@@ -83,8 +83,7 @@ lower_shading_rate_output_instr(nir_builder *b, nir_instr *instr,
                             nir_iand_imm(b, bit_field, 0x3)));
       nir_def *packed_fp16_xy = nir_pack_32_2x16_split(b, fp16_x, fp16_y);
 
-      nir_instr_rewrite_src(instr, &intrin->src[0],
-                            nir_src_for_ssa(packed_fp16_xy));
+      nir_src_rewrite(&intrin->src[0], packed_fp16_xy);
    } else {
       nir_def *packed_fp16_xy = &intrin->def;
 

@@ -299,10 +299,7 @@ lower_uniform_offset_to_bytes_cb(nir_builder *b, nir_instr *instr, void *_state)
 
         b->cursor = nir_before_instr(&intr->instr);
         nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) * 16);
-        nir_instr_rewrite_src(&intr->instr,
-                              &intr->src[0],
-                              nir_src_for_ssa(nir_ishl_imm(b, intr->src[0].ssa,
-                                                           4)));
+        nir_src_rewrite(&intr->src[0], nir_ishl_imm(b, intr->src[0].ssa, 4));
         return true;
 }
 

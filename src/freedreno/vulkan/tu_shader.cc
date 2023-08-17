@@ -540,8 +540,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, struct tu_device *dev,
    if (sampler_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_src_idx].src);
       nir_def *bindless = build_bindless(dev, b, deref, true, shader, layout);
-      nir_instr_rewrite_src(&tex->instr, &tex->src[sampler_src_idx].src,
-                            nir_src_for_ssa(bindless));
+      nir_src_rewrite(&tex->src[sampler_src_idx].src, bindless);
       tex->src[sampler_src_idx].src_type = nir_tex_src_sampler_handle;
    }
 
@@ -549,8 +548,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, struct tu_device *dev,
    if (tex_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_src_idx].src);
       nir_def *bindless = build_bindless(dev, b, deref, false, shader, layout);
-      nir_instr_rewrite_src(&tex->instr, &tex->src[tex_src_idx].src,
-                            nir_src_for_ssa(bindless));
+      nir_src_rewrite(&tex->src[tex_src_idx].src, bindless);
       tex->src[tex_src_idx].src_type = nir_tex_src_texture_handle;
 
       /* for the input attachment case: */

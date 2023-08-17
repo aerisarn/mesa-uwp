@@ -164,8 +164,7 @@ v3d_nir_lower_image_store(nir_builder *b, nir_intrinsic_instr *instr)
                                       pack_mask);
         }
 
-        nir_instr_rewrite_src(&instr->instr, &instr->src[3],
-                              nir_src_for_ssa(formatted));
+        nir_src_rewrite(&instr->src[3], formatted);
         instr->num_components = formatted->num_components;
 
         return true;

@@ -2894,8 +2894,7 @@ add_const_offset_to_base_block(nir_block *block, nir_builder *b,
             nir_intrinsic_set_io_semantics(intrin, sem);
 
             b->cursor = nir_before_instr(&intrin->instr);
-            nir_instr_rewrite_src(&intrin->instr, offset,
-                                  nir_src_for_ssa(nir_imm_int(b, 0)));
+            nir_src_rewrite(offset, nir_imm_int(b, 0));
             progress = true;
          }
       }

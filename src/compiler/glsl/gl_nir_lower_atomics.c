@@ -138,8 +138,7 @@ lower_deref_instr(nir_builder *b, nir_intrinsic_instr *instr,
    instr->intrinsic = op;
    nir_intrinsic_set_range_base(instr, range_base);
 
-   nir_instr_rewrite_src(&instr->instr, &instr->src[0],
-                         nir_src_for_ssa(offset));
+   nir_src_rewrite(&instr->src[0], offset);
    nir_intrinsic_set_base(instr, idx);
 
    nir_deref_instr_remove_if_unused(deref);

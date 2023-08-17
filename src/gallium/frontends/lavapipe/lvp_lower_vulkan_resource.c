@@ -171,10 +171,10 @@ lower_load_ubo(nir_builder *b, nir_instr *instr, void *data_cb)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_instr_rewrite_src(instr, &intrin->src[0], nir_src_for_ssa(nir_imm_int(b, binding.desc_set + 1)));
+   nir_src_rewrite(&intrin->src[0], nir_imm_int(b, binding.desc_set + 1));
 
    nir_def *offset = nir_iadd_imm(b, intrin->src[1].ssa, bind_layout->uniform_block_offset);
-   nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(offset));
+   nir_src_rewrite(&intrin->src[1], offset);
 
    return true;
 }
@@ -198,8 +198,7 @@ static nir_def *lower_vri_instr(struct nir_builder *b,
          /* Ignore the offset component. */
          b->cursor = nir_before_instr(instr);
          nir_def *resource = nir_ssa_for_src(b, intrin->src[0], 2);
-         nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                               nir_src_for_ssa(resource));
+         nir_src_rewrite(&intrin->src[0], resource);
          return NULL;
       }
       case nir_intrinsic_image_deref_sparse_load:

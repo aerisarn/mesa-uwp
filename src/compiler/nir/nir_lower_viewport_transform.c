@@ -86,8 +86,7 @@ lower_viewport_transform_instr(nir_builder *b, nir_instr *instr,
                                     nir_channel(b, screen, 2),
                                     w_recip);
 
-   nir_instr_rewrite_src(instr, &intr->src[1],
-                         nir_src_for_ssa(screen_space));
+   nir_src_rewrite(&intr->src[1], screen_space);
    return true;
 }
 

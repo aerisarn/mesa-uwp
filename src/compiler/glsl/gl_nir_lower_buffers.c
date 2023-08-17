@@ -289,8 +289,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                if (glsl_type_is_boolean(deref->type)) {
                   b.cursor = nir_before_instr(&intrin->instr);
                   nir_def *ival = nir_b2i32(&b, intrin->src[1].ssa);
-                  nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
-                                        nir_src_for_ssa(ival));
+                  nir_src_rewrite(&intrin->src[1], ival);
                   progress = true;
                }
                break;

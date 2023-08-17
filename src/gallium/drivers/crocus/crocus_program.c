@@ -671,8 +671,7 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
 
             if (load->src[0].ssa == temp_ubo_name) {
                nir_def *imm = nir_imm_int(&b, sysval_cbuf_index);
-               nir_instr_rewrite_src(instr, &load->src[0],
-                                     nir_src_for_ssa(imm));
+               nir_src_rewrite(&load->src[0], imm);
             }
          }
       }
@@ -786,7 +785,7 @@ rewrite_src_with_bti(nir_builder *b, struct crocus_binding_table *bt,
       assert(bt->used_mask[group] == BITFIELD64_MASK(bt->sizes[group]));
       bti = nir_iadd_imm(b, src->ssa, bt->offsets[group]);
    }
-   nir_instr_rewrite_src(instr, src, nir_src_for_ssa(bti));
+   nir_src_rewrite(src, bti);
 }
 
 static void

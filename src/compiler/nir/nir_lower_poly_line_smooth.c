@@ -74,7 +74,7 @@ lower_polylinesmooth(nir_builder *b, nir_instr *instr, void *data)
 
    nir_def *new_dest = nir_if_phi(b, res1, res2);
 
-   nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(new_dest));
+   nir_src_rewrite(&intr->src[0], new_dest);
    return true;
 }
 

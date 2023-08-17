@@ -43,8 +43,7 @@ resize_deref(nir_builder *b, nir_deref_instr *deref,
       } else {
          idx = nir_i2iN(b, deref->arr.index.ssa, bit_size);
       }
-      nir_instr_rewrite_src(&deref->instr, &deref->arr.index,
-                            nir_src_for_ssa(idx));
+      nir_src_rewrite(&deref->arr.index, idx);
    }
 
    deref->def.num_components = num_components;

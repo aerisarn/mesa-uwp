@@ -237,9 +237,7 @@ lower_fddy(lower_wpos_ytransform_state *state, nir_alu_instr *fddy)
 
    pt = nir_fmul(b, p, trans);
 
-   nir_instr_rewrite_src(&fddy->instr,
-                         &fddy->src[0].src,
-                         nir_src_for_ssa(pt));
+   nir_src_rewrite(&fddy->src[0].src, pt);
 
    for (unsigned i = 0; i < 4; i++)
       fddy->src[0].swizzle[i] = MIN2(i, pt->num_components - 1);
@@ -262,9 +260,8 @@ lower_interp_deref_or_load_baryc_at_offset(lower_wpos_ytransform_state *state,
    offset = nir_ssa_for_src(b, intr->src[offset_src], 2);
    flip_y = nir_fmul(b, nir_channel(b, offset, 1),
                      nir_channel(b, get_transform(state), 0));
-   nir_instr_rewrite_src(&intr->instr, &intr->src[offset_src],
-                         nir_src_for_ssa(nir_vec2(b, nir_channel(b, offset, 0),
-                                                  flip_y)));
+   nir_src_rewrite(&intr->src[offset_src],
+                   nir_vec2(b, nir_channel(b, offset, 0), flip_y));
 }
 
 static void

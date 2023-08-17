@@ -141,9 +141,7 @@ nir_opt_rematerialize_compares_impl(nir_shader *shader, nir_function_impl *impl)
                nir_alu_instr *const use_alu = nir_instr_as_alu(use_instr);
                for (unsigned i = 0; i < nir_op_infos[use_alu->op].num_inputs; i++) {
                   if (use_alu->src[i].src.ssa == &alu->def) {
-                     nir_instr_rewrite_src(&use_alu->instr,
-                                           &use_alu->src[i].src,
-                                           nir_src_for_ssa(&clone->def));
+                     nir_src_rewrite(&use_alu->src[i].src, &clone->def);
                      progress = true;
                   }
                }

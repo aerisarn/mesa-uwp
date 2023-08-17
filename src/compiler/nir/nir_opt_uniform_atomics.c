@@ -244,7 +244,7 @@ optimize_atomic(nir_builder *b, nir_intrinsic_instr *intrin, bool return_prev)
    nir_def *reduce = NULL, *scan = NULL;
    reduce_data(b, op, data, &reduce, combined_scan_reduce ? &scan : NULL);
 
-   nir_instr_rewrite_src(&intrin->instr, &intrin->src[data_src], nir_src_for_ssa(reduce));
+   nir_src_rewrite(&intrin->src[data_src], reduce);
    nir_update_instr_divergence(b->shader, &intrin->instr);
 
    nir_def *cond = nir_elect(b, 1);

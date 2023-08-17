@@ -252,8 +252,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
          /* For ALU instructions, rewrite the source directly to avoid a
           * round-trip through copy propagation.
           */
-         nir_instr_rewrite_src(user_instr, src,
-                               nir_src_for_ssa(&new_alu->def));
+         nir_src_rewrite(src, &new_alu->def);
 
          /* Rehash user if it was found in the hashset */
          if (entry && entry->key == user_instr) {
@@ -268,8 +267,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
          /* For ALU instructions, rewrite the source directly to avoid a
           * round-trip through copy propagation.
           */
-         nir_instr_rewrite_src(src->parent_instr, src,
-                               nir_src_for_ssa(&new_alu->def));
+         nir_src_rewrite(src, &new_alu->def);
 
          nir_alu_src *alu_src = container_of(src, nir_alu_src, src);
          nir_alu_instr *use = nir_instr_as_alu(src->parent_instr);

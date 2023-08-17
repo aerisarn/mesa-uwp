@@ -155,14 +155,12 @@ combine_stores(struct combine_stores_state *state,
     */
    if (store->num_components == 1) {
       store->num_components = num_components;
-      nir_instr_rewrite_src(&store->instr, &store->src[0],
-                            nir_src_for_ssa(&combo->dst->def));
+      nir_src_rewrite(&store->src[0], &combo->dst->def);
    }
 
    assert(store->num_components == num_components);
    nir_intrinsic_set_write_mask(store, combo->write_mask);
-   nir_instr_rewrite_src(&store->instr, &store->src[1],
-                         nir_src_for_ssa(vec));
+   nir_src_rewrite(&store->src[1], vec);
    state->progress = true;
 }
 

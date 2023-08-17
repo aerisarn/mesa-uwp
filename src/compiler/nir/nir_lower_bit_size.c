@@ -225,7 +225,7 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi, unsigned bit_size,
       b->cursor = nir_after_block_before_jump(src->pred);
       nir_def *new_src = nir_u2uN(b, src->src.ssa, bit_size);
 
-      nir_instr_rewrite_src(&phi->instr, &src->src, nir_src_for_ssa(new_src));
+      nir_src_rewrite(&src->src, new_src);
    }
 
    phi->def.bit_size = bit_size;

@@ -182,9 +182,7 @@ brw_nir_lower_alpha_to_coverage(nir_shader *shader,
                               dither_mask, sample_mask_write->src[0].ssa);
    }
 
-   nir_instr_rewrite_src(&sample_mask_write->instr,
-                         &sample_mask_write->src[0],
-                         nir_src_for_ssa(dither_mask));
+   nir_src_rewrite(&sample_mask_write->src[0], dither_mask);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
                                nir_metadata_dominance);

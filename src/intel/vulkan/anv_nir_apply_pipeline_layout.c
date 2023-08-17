@@ -1298,8 +1298,7 @@ lower_direct_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
                                          non_uniform,
                                          state);
 
-      nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                            nir_src_for_ssa(surface_index));
+      nir_src_rewrite(&intrin->src[0], surface_index);
       _mesa_set_add(state->lowered_instrs, intrin);
       return true;
    }
@@ -1589,8 +1588,7 @@ lower_tex_deref(nir_builder *b, nir_tex_instr *tex,
                         nir_tex_src_sampler_offset;
    }
 
-   nir_instr_rewrite_src(&tex->instr, &tex->src[deref_src_idx].src,
-                         nir_src_for_ssa(index));
+   nir_src_rewrite(&tex->src[deref_src_idx].src, index);
    tex->src[deref_src_idx].src_type = offset_src_type;
 }
 

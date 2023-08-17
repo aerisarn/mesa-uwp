@@ -392,7 +392,7 @@ rewrite_instr_src_from_phi_builder(nir_src *src, void *_pbv_arr)
 
    nir_def *new_def = get_phi_builder_def_for_src(src, _pbv_arr, block);
    if (new_def != NULL)
-      nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(new_def));
+      nir_src_rewrite(src, new_def);
    return true;
 }
 

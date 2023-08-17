@@ -73,8 +73,7 @@ nir_lod_errata_instr(nir_builder *b, nir_instr *instr, void *data)
       nir_def *biased = nir_fadd(b, lod, lod_bias);
       nir_def *clamped = nir_fmin(b, nir_fmax(b, biased, min_lod), max_lod);
 
-      nir_instr_rewrite_src(&tex->instr, &tex->src[i].src,
-                            nir_src_for_ssa(clamped));
+      nir_src_rewrite(&tex->src[i].src, clamped);
    }
 
    return true;

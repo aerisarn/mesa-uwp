@@ -104,9 +104,7 @@ r600_nir_lower_scratch_address_impl(nir_builder *b, nir_intrinsic_instr *instr)
    nir_def *address = instr->src[address_index].ssa;
    nir_def *new_address = nir_ishr_imm(b, address, 4 * align);
 
-   nir_instr_rewrite_src(&instr->instr,
-                         &instr->src[address_index],
-                         nir_src_for_ssa(new_address));
+   nir_src_rewrite(&instr->src[address_index], new_address);
 }
 
 bool
@@ -417,7 +415,7 @@ r600_lower_deref_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
     * opcode.
     */
    instr->intrinsic = op;
-   nir_instr_rewrite_src(&instr->instr, &instr->src[0], nir_src_for_ssa(offset));
+   nir_src_rewrite(&instr->src[0], offset);
    nir_intrinsic_set_base(instr, idx);
    nir_intrinsic_set_range_base(instr, var->data.index);
 

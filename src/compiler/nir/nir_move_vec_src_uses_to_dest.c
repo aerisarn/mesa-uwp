@@ -142,8 +142,7 @@ move_vec_src_uses_to_dest_block(nir_block *block)
              * reswizzled to actually use the destination of the vecN operation.
              * Go ahead and rewrite it as needed.
              */
-            nir_instr_rewrite_src(use->parent_instr, use,
-                                  nir_src_for_ssa(&vec->def));
+            nir_src_rewrite(use, &vec->def);
             for (unsigned j = 0; j < 4; j++) {
                if (!nir_alu_instr_channel_used(use_alu, src_idx, j))
                   continue;

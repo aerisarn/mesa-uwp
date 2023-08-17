@@ -560,10 +560,10 @@ LowerSplit64BitVar::split_store_output(nir_intrinsic_instr *store1)
    auto src1 = nir_trim_vector(b, src.ssa, 2);
    auto src2 = nir_channels(b, src.ssa, old_components == 3 ? 4 : 0xc);
 
-   nir_instr_rewrite_src(&store1->instr, &src, nir_src_for_ssa(src1));
+   nir_src_rewrite(&src, src1);
    nir_intrinsic_set_write_mask(store1, 3);
 
-   nir_instr_rewrite_src(&store2->instr, &src, nir_src_for_ssa(src2));
+   nir_src_rewrite(&src, src2);
    nir_intrinsic_set_write_mask(store2, old_components == 3 ? 1 : 3);
 
    sem.num_slots = 1;
@@ -1349,13 +1349,9 @@ r600_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       nir_intrinsic_set_write_mask(first, nir_intrinsic_write_mask(instr) & 3);
       nir_intrinsic_set_write_mask(second, nir_intrinsic_write_mask(instr) >> 2);
 
-      nir_instr_rewrite_src(&first->instr,
-                            &first->src[0],
-                            nir_src_for_ssa(nir_vec_scalars(b, channels, 2)));
-      nir_instr_rewrite_src(
-         &second->instr,
-         &second->src[0],
-         nir_src_for_ssa(nir_vec_scalars(b, &channels[2], second->num_components)));
+      nir_src_rewrite(&first->src[0], nir_vec_scalars(b, channels, 2));
+      nir_src_rewrite(&second->src[0],
+                      nir_vec_scalars(b, &channels[2], second->num_components));
    }
 
    int offset_src = -1;
@@ -1381,9 +1377,7 @@ r600_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       b->cursor = nir_before_instr(&second->instr);
       nir_def *second_offset =
          nir_iadd_imm(b, second->src[offset_src].ssa, offset_amount);
-      nir_instr_rewrite_src(&second->instr,
-                            &second->src[offset_src],
-                            nir_src_for_ssa(second_offset));
+      nir_src_rewrite(&second->src[offset_src], second_offset);
    }
 
    /* DCE stores we generated with no writemask (nothing else does this

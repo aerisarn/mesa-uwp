@@ -203,7 +203,7 @@ brw_nir_adjust_task_payload_offsets_instr(struct nir_builder *b,
        */
 
       nir_def *offset = nir_ishr_imm(b, offset_src->ssa, 2);
-      nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+      nir_src_rewrite(offset_src, offset);
 
       unsigned base = nir_intrinsic_base(intrin);
       assert(base % 4 == 0);
@@ -1190,7 +1190,7 @@ brw_nir_adjust_offset(nir_builder *b, nir_intrinsic_instr *intrin, uint32_t pitc
       nir_iadd(b,
                offset_src->ssa,
                nir_imul_imm(b, index_src->ssa, pitch));
-   nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+   nir_src_rewrite(offset_src, offset);
 }
 
 static bool

@@ -784,7 +784,7 @@ lower_alu_deref_srcs(nir_builder *b, nir_alu_instr *alu)
       nir_def *ptr =
          nir_iadd(b, root_deref->parent.ssa,
                      nir_build_deref_offset(b, deref, cl_type_size_align));
-      nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(ptr));
+      nir_src_rewrite(&alu->src[i].src, ptr);
       progress = true;
    }
 

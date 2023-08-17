@@ -64,12 +64,12 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
          _mesa_hash_table_search(visited_instrs, src->parent_instr);
       if (entry && (src->parent_instr->type != nir_instr_type_phi)) {
          nir_def *def = entry->data;
-         nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(def));
+         nir_src_rewrite(src, def);
          continue;
       }
       b->cursor = nir_before_src(src);
       nir_def *new = clone_intrinsic(b, intrin);
-      nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(new));
+      nir_src_rewrite(src, new);
       _mesa_hash_table_insert(visited_instrs, src->parent_instr, new);
    }
    nir_foreach_if_use_safe(src, &intrin->def) {
@@ -92,14 +92,14 @@ replace_load_const(nir_builder *b, nir_load_const_instr *load_const)
          _mesa_hash_table_search(visited_instrs, src->parent_instr);
       if (entry && (src->parent_instr->type != nir_instr_type_phi)) {
          nir_def *def = entry->data;
-         nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(def));
+         nir_src_rewrite(src, def);
          continue;
       }
       b->cursor = nir_before_src(src);
       nir_def *new = nir_build_imm(b, load_const->def.num_components,
                                        load_const->def.bit_size,
                                        load_const->value);
-      nir_instr_rewrite_src(src->parent_instr, src, nir_src_for_ssa(new));
+      nir_src_rewrite(src, new);
       _mesa_hash_table_insert(visited_instrs, src->parent_instr, new);
    }
 

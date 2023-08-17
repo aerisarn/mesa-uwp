@@ -569,8 +569,7 @@ lower_image_store_instr(nir_builder *b,
                                                    intrin->src[3].ssa,
                                                    image_fmt, lower_fmt);
       intrin->num_components = isl_format_get_num_channels(lower_fmt);
-      nir_instr_rewrite_src(&intrin->instr, &intrin->src[3],
-                            nir_src_for_ssa(color));
+      nir_src_rewrite(&intrin->src[3], color);
    } else {
       const struct isl_format_layout *image_fmtl =
          isl_format_get_layout(image_fmt);

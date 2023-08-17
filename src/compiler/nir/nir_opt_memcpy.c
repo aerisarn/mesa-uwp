@@ -46,8 +46,7 @@ opt_memcpy_deref_cast(nir_intrinsic_instr *cpy, nir_src *deref_src)
    /* Casts to uint8 or int8 never do us any good; get rid of them */
    if (cast->type == glsl_int8_t_type() ||
        cast->type == glsl_uint8_t_type()) {
-      nir_instr_rewrite_src(&cpy->instr, deref_src,
-                            nir_src_for_ssa(&parent->def));
+      nir_src_rewrite(deref_src, &parent->def);
       return true;
    }
 
@@ -64,8 +63,7 @@ opt_memcpy_deref_cast(nir_intrinsic_instr *cpy, nir_src *deref_src)
    if (nir_src_as_uint(cpy->src[2]) < (uint64_t)parent_type_size)
       return false;
 
-   nir_instr_rewrite_src(&cpy->instr, deref_src,
-                         nir_src_for_ssa(&parent->def));
+   nir_src_rewrite(deref_src, &parent->def);
    return true;
 }
 

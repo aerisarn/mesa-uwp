@@ -339,8 +339,7 @@ v3d_nir_lower_logic_op_instr(struct v3d_compile *c,
                 nir_def *result =
                         v3d_nir_emit_logic_op(c, b, frag_color, rt, 0);
 
-                nir_instr_rewrite_src(&intr->instr, &intr->src[0],
-                                      nir_src_for_ssa(result));
+                nir_src_rewrite(&intr->src[0], result);
                 intr->num_components = result->num_components;
         }
 }

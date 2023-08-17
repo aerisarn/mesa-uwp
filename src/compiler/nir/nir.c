@@ -2536,8 +2536,7 @@ nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_def *src,
    if (nir_intrinsic_has_atomic_op(intrin))
       nir_intrinsic_set_atomic_op(intrin, atomic_op);
 
-   nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
-                         nir_src_for_ssa(src));
+   nir_src_rewrite(&intrin->src[0], src);
 }
 
 unsigned

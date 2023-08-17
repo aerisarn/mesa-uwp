@@ -80,8 +80,7 @@ lower_vec3_to_vec4_instr(nir_builder *b, nir_instr *instr, void *data)
          data = nir_swizzle(b, data, swiz, 4);
 
          intrin->num_components = 4;
-         nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
-                               nir_src_for_ssa(data));
+         nir_src_rewrite(&intrin->src[1], data);
          return true;
       }
 

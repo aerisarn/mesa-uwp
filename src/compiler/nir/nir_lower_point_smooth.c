@@ -90,7 +90,7 @@ lower_point_smooth(nir_builder *b, nir_instr *instr, UNUSED void *_state)
    nir_def *one = nir_imm_float(b, 1.0f);
    nir_def *new_val = nir_fmul(b, nir_vec4(b, one, one, one, coverage),
                                intr->src[out_src_idx].ssa);
-   nir_instr_rewrite_src(instr, &intr->src[out_src_idx], nir_src_for_ssa(new_val));
+   nir_src_rewrite(&intr->src[out_src_idx], new_val);
 
    return true;
 }

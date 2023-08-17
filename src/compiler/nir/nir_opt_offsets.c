@@ -134,7 +134,7 @@ try_fold_load_store(nir_builder *b,
    if (!replace_src)
       return false;
 
-   nir_instr_rewrite_src(&intrin->instr, &intrin->src[offset_src_idx], nir_src_for_ssa(replace_src));
+   nir_src_rewrite(&intrin->src[offset_src_idx], replace_src);
 
    assert(off_const <= max);
    nir_intrinsic_set_base(intrin, off_const);
@@ -165,7 +165,7 @@ try_fold_shared2(nir_builder *b,
       return false;
 
    b->cursor = nir_before_instr(&intrin->instr);
-   nir_instr_rewrite_src(&intrin->instr, off_src, nir_src_for_ssa(nir_imm_zero(b, 1, 32)));
+   nir_src_rewrite(off_src, nir_imm_zero(b, 1, 32));
    nir_intrinsic_set_offset0(intrin, offset0 / stride);
    nir_intrinsic_set_offset1(intrin, offset1 / stride);
    nir_intrinsic_set_st64(intrin, st64);

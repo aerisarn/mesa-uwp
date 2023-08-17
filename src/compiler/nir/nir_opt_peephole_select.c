@@ -342,8 +342,7 @@ nir_opt_collapse_if(nir_if *if_stmt, nir_shader *shader, unsigned limit,
             nir_phi_get_src_from_block(nir_instr_as_phi(src->parent_instr),
                                        nir_if_first_else_block(parent_if));
          if (phi_src->src.ssa == else_src->src.ssa)
-            nir_instr_rewrite_src(src->parent_instr, &phi_src->src,
-                                  nir_src_for_ssa(&phi->def));
+            nir_src_rewrite(&phi_src->src, &phi->def);
       }
    }
 

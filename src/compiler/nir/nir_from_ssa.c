@@ -413,8 +413,7 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
 
          exec_list_push_tail(&pcopy->entries, &entry->node);
 
-         nir_instr_rewrite_src(&phi->instr, &src->src,
-                               nir_src_for_ssa(&entry->dest.def));
+         nir_src_rewrite(&src->src, &entry->dest.def);
       }
 
       nir_parallel_copy_entry *entry = rzalloc(dead_ctx,
@@ -748,8 +747,7 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
                   continue;
 
                entry->src_is_reg = true;
-               nir_instr_rewrite_src(&pcopy->instr, &entry->src,
-                                     nir_src_for_ssa(reg));
+               nir_src_rewrite(&entry->src, reg);
             }
             break;
          }

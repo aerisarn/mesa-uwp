@@ -153,8 +153,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
       nir_intrinsic_set_write_mask(intr, mask);
 
       if (src) {
-         nir_instr_rewrite_src(&intr->instr, &intr->src[0],
-                               nir_src_for_ssa(src));
+         nir_src_rewrite(&intr->src[0], src);
       }
    } else if (dest) {
       nir_def_rewrite_uses_after(&intr->def, dest,
@@ -226,8 +225,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
                   nir_iadd(b, vertex_offset,
                            nir_ssa_for_src(b, *offset, 1));
 
-               nir_instr_rewrite_src(&intrin->instr, offset,
-                                     nir_src_for_ssa(total_offset));
+               nir_src_rewrite(offset, total_offset);
             }
          }
       }
@@ -494,7 +492,7 @@ lower_barycentric_at_offset(nir_builder *b, nir_instr *instr, void *data)
       nir_imin(b, nir_imm_int(b, 7),
                nir_f2i32(b, nir_fmul_imm(b, intrin->src[0].ssa, 16)));
 
-   nir_instr_rewrite_src(instr, &intrin->src[0], nir_src_for_ssa(offset));
+   nir_src_rewrite(&intrin->src[0], offset);
 
    return true;
 }

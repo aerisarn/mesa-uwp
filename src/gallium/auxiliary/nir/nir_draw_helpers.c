@@ -229,7 +229,7 @@ lower_aaline_instr(nir_builder *b, nir_instr *instr, void *data)
                                  nir_channel(b, out_input, 1),
                                  nir_channel(b, out_input, 2),
                                  tmp);
-   nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(out));
+   nir_src_rewrite(&intrin->src[1], out);
    return true;
 }
 
@@ -302,7 +302,7 @@ nir_lower_aapoint_block(nir_block *block,
                                   nir_channel(b, out_input, 1),
                                   nir_channel(b, out_input, 2),
                                   tmp);
-      nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(out));
+      nir_src_rewrite(&intrin->src[1], out);
    }
 
 }

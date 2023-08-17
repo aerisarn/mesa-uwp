@@ -273,7 +273,7 @@ convert_loop_exit_for_ssa(nir_def *def, void *void_state)
       }
 
       if (!is_use_inside_loop(use, state->loop)) {
-         nir_instr_rewrite_src(use->parent_instr, use, nir_src_for_ssa(dest));
+         nir_src_rewrite(use, dest);
       }
    }
 

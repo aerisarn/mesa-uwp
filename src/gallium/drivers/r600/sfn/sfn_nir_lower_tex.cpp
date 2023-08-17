@@ -54,7 +54,7 @@ lower_coord_shift_normalized(nir_builder *b, nir_tex_instr *tex)
                       tex->src[coord_index].src.ssa);
    }
 
-   nir_instr_rewrite_src(&tex->instr, &tex->src[coord_index].src, nir_src_for_ssa(corr));
+   nir_src_rewrite(&tex->src[coord_index].src, corr);
    return true;
 }
 
@@ -75,7 +75,7 @@ lower_coord_shift_unnormalized(nir_builder *b, nir_tex_instr *tex)
    } else {
       corr = nir_fadd_imm(b, tex->src[coord_index].src.ssa, -0.5f);
    }
-   nir_instr_rewrite_src(&tex->instr, &tex->src[coord_index].src, nir_src_for_ssa(corr));
+   nir_src_rewrite(&tex->src[coord_index].src, corr);
    return true;
 }
 
@@ -281,24 +281,16 @@ r600_nir_lower_cube_to_2darray_impl(nir_builder *b, nir_instr *instr, void *_opt
 
    if (tex->op == nir_texop_txd) {
       int ddx_idx = nir_tex_instr_src_index(tex, nir_tex_src_ddx);
-      nir_instr_rewrite_src(
-         &tex->instr,
-         &tex->src[ddx_idx].src,
-         nir_src_for_ssa(
-            nir_fmul_imm(b, nir_ssa_for_src(b, tex->src[ddx_idx].src, 3), 0.5)));
+      nir_src_rewrite(&tex->src[ddx_idx].src,
+                      nir_fmul_imm(b, nir_ssa_for_src(b, tex->src[ddx_idx].src, 3), 0.5));
 
       int ddy_idx = nir_tex_instr_src_index(tex, nir_tex_src_ddy);
-      nir_instr_rewrite_src(
-         &tex->instr,
-         &tex->src[ddy_idx].src,
-         nir_src_for_ssa(
-            nir_fmul_imm(b, nir_ssa_for_src(b, tex->src[ddy_idx].src, 3), 0.5)));
+      nir_src_rewrite(&tex->src[ddy_idx].src,
+                      nir_fmul_imm(b, nir_ssa_for_src(b, tex->src[ddy_idx].src, 3), 0.5));
    }
 
    auto new_coord = nir_vec3(b, nir_channel(b, xy, 0), nir_channel(b, xy, 1), z);
-   nir_instr_rewrite_src(&tex->instr,
-                         &tex->src[coord_idx].src,
-                         nir_src_for_ssa(new_coord));
+   nir_src_rewrite(&tex->src[coord_idx].src, new_coord);
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
    tex->is_array = true;
    tex->array_is_lowered_cube = true;

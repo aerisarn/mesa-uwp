@@ -74,7 +74,7 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                   nir_alu_instr *alu = nir_instr_as_alu(ssa->parent_instr);
                   alu->src[0].swizzle[0] = 2;
                   alu->src[0].swizzle[2] = 0;
-                  nir_instr_rewrite_src(instr, &intr->src[1], nir_src_for_ssa(ssa));
+                  nir_src_rewrite(&intr->src[1], ssa);
                } break;
                case nir_intrinsic_load_vertex_id:
                case nir_intrinsic_load_instance_id:
@@ -135,7 +135,7 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
             nir_def_init(&vec->instr, &vec->def, 4, 32);
 
             nir_tex_instr_remove_src(tex, src1_idx);
-            nir_instr_rewrite_src(&tex->instr, coord, nir_src_for_ssa(&vec->def));
+            nir_src_rewrite(coord, &vec->def);
             tex->coord_components = 4;
 
             nir_instr_insert_before(&tex->instr, &vec->instr);
@@ -168,8 +168,8 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
                nir_imm_float(&b, 1.0 / M_PI) :
                nir_imm_float(&b, 2.0 / M_PI);
 
-            nir_instr_rewrite_src(instr, &alu->src[0].src,
-               nir_src_for_ssa(nir_fmul(&b, alu->src[0].src.ssa, imm)));
+            nir_src_rewrite(&alu->src[0].src,
+                            nir_fmul(&b, alu->src[0].src.ssa, imm));
          }
 
          /* change transcendental ops to vec2 and insert vec1 mul for the result
