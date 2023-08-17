@@ -231,8 +231,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
                                  const VARectangle *dst_region,
                                  struct pipe_video_buffer *src,
                                  struct pipe_video_buffer *dst,
-                                 enum vl_compositor_deinterlace deinterlace,
-                                 bool full_range)
+                                 enum vl_compositor_deinterlace deinterlace)
 {
    struct pipe_surface **src_surfaces;
    struct pipe_surface **dst_surfaces;
@@ -289,7 +288,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
    if (grab) {
       vl_compositor_convert_rgb_to_yuv(&drv->cstate, &drv->compositor, 0,
                                        ((struct vl_video_buffer *)src)->resources[0],
-                                       dst, &src_rect, &dst_rect, full_range);
+                                       dst, &src_rect, &dst_rect);
 
       return VA_STATUS_SUCCESS;
    }
@@ -589,6 +588,5 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
                                     src, context->target, deinterlace);
    else
       return vlVaPostProcBlit(drv, context, src_region, dst_region,
-                              src, context->target, deinterlace,
-                              dst_surface->full_range);
+                              src, context->target, deinterlace);
 }

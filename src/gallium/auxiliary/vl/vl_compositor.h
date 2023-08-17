@@ -304,8 +304,7 @@ vl_compositor_convert_rgb_to_yuv(struct vl_compositor_state *state,
                                  struct pipe_resource *src_res,
                                  struct pipe_video_buffer *dst,
                                  struct u_rect *src_rect,
-                                 struct u_rect *dst_rect,
-                                 bool full_range);
+                                 struct u_rect *dst_rect);
 
 /*@}*/
 
