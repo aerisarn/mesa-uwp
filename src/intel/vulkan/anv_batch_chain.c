@@ -1287,7 +1287,8 @@ anv_queue_exec_locked(struct anv_queue *queue,
                       uint32_t signal_count,
                       const struct vk_sync_signal *signals,
                       struct anv_query_pool *perf_query_pool,
-                      uint32_t perf_query_pass)
+                      uint32_t perf_query_pass,
+                      struct anv_utrace_submit *utrace_submit)
 {
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
@@ -1311,7 +1312,8 @@ anv_queue_exec_locked(struct anv_queue *queue,
          cmd_buffer_count, cmd_buffers,
          needs_companion_sync ? 0 : signal_count, signals,
          perf_query_pool,
-         perf_query_pass);
+         perf_query_pass,
+         utrace_submit);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1328,7 +1330,8 @@ anv_queue_exec_locked(struct anv_queue *queue,
                                                 1, &companion_sync,
                                                 0, NULL,
                                                 signal_count, signals,
-                                                NULL, 0);
+                                                NULL, 0,
+                                                NULL);
    }
 
    return result;
@@ -1342,7 +1345,8 @@ can_chain_query_pools(struct anv_query_pool *p1, struct anv_query_pool *p2)
 
 static VkResult
 anv_queue_submit_locked(struct anv_queue *queue,
-                        struct vk_queue_submit *submit)
+                        struct vk_queue_submit *submit,
+                        struct anv_utrace_submit *utrace_submit)
 {
    VkResult result;
 
@@ -1363,7 +1367,8 @@ anv_queue_submit_locked(struct anv_queue *queue,
                                      NULL /* cmd_buffers */,
                                      submit->signal_count, submit->signals,
                                      NULL /* perf_query_pool */,
-                                     0 /* perf_query_pass */);
+                                     0 /* perf_query_pass */,
+                                     utrace_submit);
       if (result != VK_SUCCESS)
          return result;
    } else {
@@ -1401,7 +1406,8 @@ anv_queue_submit_locked(struct anv_queue *queue,
                                      next == end ? submit->signal_count : 0,
                                      next == end ? submit->signals : NULL,
                                      perf_query_pool,
-                                     submit->perf_pass_index);
+                                     submit->perf_pass_index,
+                                     next == end ? utrace_submit : NULL);
             if (result != VK_SUCCESS)
                return result;
             if (next < end) {
@@ -1456,10 +1462,22 @@ anv_queue_submit(struct vk_queue *vk_queue,
       return VK_SUCCESS;
    }
 
+   /* Flush the trace points first before taking the lock as the flushing
+    * might try to take that same lock.
+    */
+   struct anv_utrace_submit *utrace_submit = NULL;
+   result = anv_device_utrace_flush_cmd_buffers(
+      queue,
+      submit->command_buffer_count,
+      (struct anv_cmd_buffer **)submit->command_buffers,
+      &utrace_submit);
+   if (result != VK_SUCCESS)
+      return result;
+
    pthread_mutex_lock(&device->mutex);
 
    uint64_t start_ts = intel_ds_begin_submit(&queue->ds);
-   result = anv_queue_submit_locked(queue, submit);
+   result = anv_queue_submit_locked(queue, submit, utrace_submit);
    /* Take submission ID under lock */
    intel_ds_end_submit(&queue->ds, start_ts);
 
