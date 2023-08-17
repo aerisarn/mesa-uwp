@@ -2453,8 +2453,6 @@ static void si_determine_use_aco(struct si_shader *shader)
          shader->is_gs_copy_shader;
       break;
    case MESA_SHADER_FRAGMENT:
-      shader->use_aco = shader->is_monolithic;
-      break;
    case MESA_SHADER_COMPUTE:
       shader->use_aco = true;
       break;
@@ -2973,7 +2971,6 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
          use_aco = sscreen->info.gfx_level <= GFX8;
          break;
       default:
-         use_aco = false;
          break;
       }
    }
