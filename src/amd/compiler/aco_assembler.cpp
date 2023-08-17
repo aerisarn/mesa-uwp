@@ -1291,8 +1291,10 @@ emit_program(Program* program, std::vector<uint32_t>& code, std::vector<struct a
 {
    asm_context ctx(program, symbols);
 
-   if (program->stage.hw == AC_HW_VERTEX_SHADER || program->stage.hw == AC_HW_PIXEL_SHADER ||
-       program->stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER)
+   /* Prolog has no exports. */
+   if (!program->is_prolog &&
+       (program->stage.hw == AC_HW_VERTEX_SHADER || program->stage.hw == AC_HW_PIXEL_SHADER ||
+        program->stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER))
       fix_exports(ctx, code, program);
 
    for (Block& block : program->blocks) {
