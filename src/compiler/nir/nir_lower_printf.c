@@ -28,13 +28,9 @@
 #include "util/u_math.h"
 
 static bool
-lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
+lower_printf_intrin(nir_builder *b, nir_intrinsic_instr *prntf, void *_options)
 {
    const nir_lower_printf_options *options = _options;
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *prntf = nir_instr_as_intrinsic(instr);
    if (prntf->intrinsic != nir_intrinsic_printf)
       return false;
 
@@ -136,7 +132,7 @@ lower_printf_instr(nir_builder *b, nir_instr *instr, void *_options)
 bool
 nir_lower_printf(nir_shader *nir, const nir_lower_printf_options *options)
 {
-   return nir_shader_instructions_pass(nir, lower_printf_instr,
-                                       nir_metadata_none,
-                                       (void *)options);
+   return nir_shader_intrinsics_pass(nir, lower_printf_intrin,
+                                     nir_metadata_none,
+                                     (void *)options);
 }

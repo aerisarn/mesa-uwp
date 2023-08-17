@@ -40,32 +40,29 @@
  */
 
 static bool
-nir_lower_load_and_store_is_helper(nir_builder *b, nir_instr *instr, void *data)
+lower_load_and_store_is_helper(nir_builder *b,
+                               nir_intrinsic_instr *intrin, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    nir_deref_instr *is_helper_deref = (nir_deref_instr *)data;
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_demote: {
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       nir_store_deref(b, is_helper_deref, nir_imm_true(b), 1);
       return true;
    }
    case nir_intrinsic_demote_if: {
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       nir_def *current_is_helper = nir_load_deref(b, is_helper_deref);
       nir_def *updated_is_helper = nir_ior(b, current_is_helper, intrin->src[0].ssa);
       nir_store_deref(b, is_helper_deref, updated_is_helper, 1);
       return true;
    }
    case nir_intrinsic_is_helper_invocation: {
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       nir_def *is_helper = nir_load_deref(b, is_helper_deref);
       nir_def_rewrite_uses(&intrin->def, is_helper);
-      nir_instr_remove_v(instr);
+      nir_instr_remove(&intrin->instr);
       return true;
    }
    default:
@@ -114,9 +111,8 @@ nir_lower_is_helper_invocation(nir_shader *shader)
    nir_deref_instr *is_helper_deref = nir_build_deref_var(&b, is_helper);
    nir_store_deref(&b, is_helper_deref, started_as_helper, 1);
 
-   return nir_shader_instructions_pass(shader,
-                                       nir_lower_load_and_store_is_helper,
-                                       nir_metadata_block_index |
-                                          nir_metadata_dominance,
-                                       is_helper_deref);
+   return nir_shader_intrinsics_pass(shader, lower_load_and_store_is_helper,
+                                     nir_metadata_block_index |
+                                        nir_metadata_dominance,
+                                     is_helper_deref);
 }

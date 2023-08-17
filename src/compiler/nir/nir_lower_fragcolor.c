@@ -48,12 +48,8 @@
  */
 
 static bool
-lower_fragcolor_instr(nir_builder *b, nir_instr *intr, void *data)
+lower_fragcolor_intrin(nir_builder *b, nir_intrinsic_instr *instr, void *data)
 {
-   if (intr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(intr);
    unsigned *max_draw_buffers = data;
 
    nir_variable *out;
@@ -99,6 +95,8 @@ nir_lower_fragcolor(nir_shader *shader, unsigned max_draw_buffers)
    if (shader->info.stage != MESA_SHADER_FRAGMENT)
       return false;
 
-   return nir_shader_instructions_pass(shader, lower_fragcolor_instr,
-                                       nir_metadata_block_index | nir_metadata_dominance, &max_draw_buffers);
+   return nir_shader_intrinsics_pass(shader, lower_fragcolor_intrin,
+                                     nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                     &max_draw_buffers);
 }

@@ -160,13 +160,9 @@ lower_image_samples_identical_to_fragment_mask_load(nir_builder *b, nir_intrinsi
 }
 
 static bool
-lower_image_instr(nir_builder *b, nir_instr *instr, void *state)
+lower_image_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
    const nir_lower_image_options *options = state;
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_image_size:
@@ -220,8 +216,8 @@ lower_image_instr(nir_builder *b, nir_instr *instr, void *state)
 bool
 nir_lower_image(nir_shader *nir, const nir_lower_image_options *options)
 {
-   return nir_shader_instructions_pass(nir, lower_image_instr,
-                                       nir_metadata_block_index |
-                                          nir_metadata_dominance,
-                                       (void *)options);
+   return nir_shader_intrinsics_pass(nir, lower_image_intrin,
+                                     nir_metadata_block_index |
+                                        nir_metadata_dominance,
+                                     (void *)options);
 }

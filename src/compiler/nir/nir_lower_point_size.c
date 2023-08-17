@@ -33,14 +33,10 @@
  * valid range.
  */
 static bool
-lower_point_size_instr(nir_builder *b, nir_instr *instr, void *data)
+lower_point_size_intrin(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    float *minmax = (float *)data;
 
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_deref)
       return false;
 
@@ -49,7 +45,7 @@ lower_point_size_instr(nir_builder *b, nir_instr *instr, void *data)
    if (var->data.location != VARYING_SLOT_PSIZ)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    assert(intr->src[1].ssa->num_components == 1);
    nir_def *psiz = intr->src[1].ssa;
@@ -79,8 +75,8 @@ nir_lower_point_size(nir_shader *s, float min, float max)
    assert(min <= 0.0f || max <= 0.0f || min <= max);
 
    float minmax[] = { min, max };
-   return nir_shader_instructions_pass(s, lower_point_size_instr,
-                                       nir_metadata_block_index |
-                                          nir_metadata_dominance,
-                                       minmax);
+   return nir_shader_intrinsics_pass(s, lower_point_size_intrin,
+                                     nir_metadata_block_index |
+                                        nir_metadata_dominance,
+                                     minmax);
 }

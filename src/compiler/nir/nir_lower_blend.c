@@ -500,14 +500,10 @@ nir_blend_replace_rt(const nir_lower_blend_rt *rt)
 }
 
 static bool
-nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
+nir_lower_blend_instr(nir_builder *b, nir_intrinsic_instr *store, void *data)
 {
    struct ctx *ctx = data;
    const nir_lower_blend_options *options = ctx->options;
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *store = nir_instr_as_intrinsic(instr);
    if (store->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -519,21 +515,21 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    /* Only process stores once. Pass flags are cleared by consume_dual_stores */
-   if (instr->pass_flags)
+   if (store->instr.pass_flags)
       return false;
 
-   instr->pass_flags = 1;
+   store->instr.pass_flags = 1;
 
    /* Store are sunk to the bottom of the block to ensure that the dual
     * source colour is already written.
     */
-   b->cursor = nir_after_block(instr->block);
+   b->cursor = nir_after_block(store->instr.block);
 
    /* Don't bother copying the destination to the source for disabled RTs */
    if (options->rt[rt].colormask == 0 ||
        (options->logicop_enable && options->logicop_func == PIPE_LOGICOP_NOOP)) {
 
-      nir_instr_remove(instr);
+      nir_instr_remove(&store->instr);
       return true;
    }
 
@@ -600,8 +596,8 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_src_rewrite(&store->src[0], blended);
 
    /* Sink to bottom */
-   nir_instr_remove(instr);
-   nir_builder_instr_insert(b, instr);
+   nir_instr_remove(&store->instr);
+   nir_builder_instr_insert(b, &store->instr);
    return true;
 }
 
@@ -611,20 +607,16 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
  * backend doesn't have to deal with them, collecting the sources for blending.
  */
 static bool
-consume_dual_stores(nir_builder *b, nir_instr *instr, void *data)
+consume_dual_stores(nir_builder *b, nir_intrinsic_instr *store, void *data)
 {
    nir_def **outputs = data;
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *store = nir_instr_as_intrinsic(instr);
    if (store->intrinsic != nir_intrinsic_store_output)
       return false;
 
    /* While we're here, clear the pass flags for store_outputs, since we'll set
     * them later.
     */
-   instr->pass_flags = 0;
+   store->instr.pass_flags = 0;
 
    nir_io_semantics sem = nir_intrinsic_io_semantics(store);
    if (sem.dual_source_blend_index == 0)
@@ -634,7 +626,7 @@ consume_dual_stores(nir_builder *b, nir_instr *instr, void *data)
    assert(rt >= 0 && rt < 8 && "bounds for dual-source blending");
 
    outputs[rt] = store->src[0].ssa;
-   nir_instr_remove(instr);
+   nir_instr_remove(&store->instr);
    return true;
 }
 
@@ -649,13 +641,13 @@ nir_lower_blend(nir_shader *shader, const nir_lower_blend_options *options)
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
    struct ctx ctx = { .options = options };
-   nir_shader_instructions_pass(shader, consume_dual_stores,
-                                nir_metadata_block_index |
-                                   nir_metadata_dominance,
-                                ctx.src1);
+   nir_shader_intrinsics_pass(shader, consume_dual_stores,
+                              nir_metadata_block_index |
+                                 nir_metadata_dominance,
+                              ctx.src1);
 
-   nir_shader_instructions_pass(shader, nir_lower_blend_instr,
-                                nir_metadata_block_index |
-                                   nir_metadata_dominance,
-                                &ctx);
+   nir_shader_intrinsics_pass(shader, nir_lower_blend_instr,
+                              nir_metadata_block_index |
+                                 nir_metadata_dominance,
+                              &ctx);
 }

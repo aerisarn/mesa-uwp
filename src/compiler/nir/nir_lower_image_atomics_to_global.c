@@ -15,12 +15,8 @@
  */
 
 static bool
-lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
+lower(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *_)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    nir_intrinsic_op address_op;
    bool swap;
 
@@ -40,7 +36,7 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
    }
 #undef CASE
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_atomic_op atomic_op = nir_intrinsic_atomic_op(intr);
    enum pipe_format format = nir_intrinsic_format(intr);
    unsigned bit_size = intr->def.bit_size;
@@ -94,15 +90,15 @@ lower(nir_builder *b, nir_instr *instr, UNUSED void *_)
     * explicitly because it has side effects so is not DCE'd.
     */
    nir_def_rewrite_uses(&intr->def, global);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
 bool
 nir_lower_image_atomics_to_global(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, lower,
-                                       nir_metadata_block_index |
-                                          nir_metadata_dominance,
-                                       NULL);
+   return nir_shader_intrinsics_pass(shader, lower,
+                                     nir_metadata_block_index |
+                                        nir_metadata_dominance,
+                                     NULL);
 }
