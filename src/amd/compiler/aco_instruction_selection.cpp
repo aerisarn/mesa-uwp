@@ -11458,6 +11458,14 @@ get_tess_ring_descriptor(isel_context* ctx, const struct aco_tcs_epilog_info* ei
 {
    Builder bld(ctx->program, ctx->block);
 
+   if (!ctx->options->is_opengl) {
+      Temp ring_offsets = get_arg(ctx, ctx->args->ring_offsets);
+      uint32_t tess_ring_offset =
+         is_tcs_factor_ring ? 5 /* RING_HS_TESS_FACTOR */ : 6 /* RING_HS_TESS_OFFCHIP */;
+      return bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ring_offsets,
+                      Operand::c32(tess_ring_offset * 16u));
+   }
+
    Temp addr = get_arg(ctx, einfo->tcs_out_lds_layout);
    /* TCS only receives high 13 bits of the address. */
    addr = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), addr,
@@ -12312,13 +12320,22 @@ select_tcs_epilog(Program* program, void* pinfo, ac_shader_config* config,
 
    if (einfo->tes_reads_tessfactors) {
       Temp layout = get_arg(&ctx, einfo->tcs_offchip_layout);
-      Temp num_patches =
-         bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), layout, Operand::c32(0x3f));
-      num_patches = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), num_patches,
-                             Operand::c32(1));
+      Temp num_patches, patch_base;
 
-      Temp patch_base =
-         bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc), layout, Operand::c32(16));
+      if (ctx.options->is_opengl) {
+         num_patches = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), layout,
+                                Operand::c32(0x3f));
+         num_patches = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), num_patches,
+                                Operand::c32(1));
+
+         patch_base = bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc), layout,
+                               Operand::c32(16));
+      } else {
+         num_patches = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), layout,
+                                Operand::c32(0x60006));
+
+         patch_base = get_arg(&ctx, einfo->patch_base);
+      }
 
       Temp tess_ring_desc = get_tess_ring_descriptor(&ctx, einfo, false);
       Temp tess_ring_base = get_arg(&ctx, args->tess_offchip_offset);

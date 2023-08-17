@@ -87,6 +87,7 @@ struct aco_tcs_epilog_info {
    struct ac_arg invocation_id;
    struct ac_arg rel_patch_id;
    struct ac_arg tcs_out_current_patch_data_offset;
+   struct ac_arg patch_base;
    struct ac_arg tess_lvl_in[2];
    struct ac_arg tess_lvl_out[4];
    struct ac_arg tcs_out_lds_layout;
