@@ -4410,15 +4410,6 @@ nir_src_rewrite(nir_src *src, nir_def *new_ssa)
    list_addtail(&src->use_link, &new_ssa->uses);
 }
 
-static inline void
-nir_instr_rewrite_src_ssa(ASSERTED nir_instr *instr,
-                          nir_src *src, nir_def *new_ssa)
-{
-   assert(!src->is_if);
-   assert(src->parent_instr == instr);
-   nir_src_rewrite(src, new_ssa);
-}
-
 void nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src);
 
 /** Initialize a nir_src

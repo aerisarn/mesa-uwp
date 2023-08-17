@@ -705,8 +705,8 @@ emit_ps_dual_src_blend_swizzle(nir_builder *b, lower_ps_state *s, unsigned first
       arg1_vec[i] = arg1;
    }
 
-   nir_instr_rewrite_src_ssa(&mrt0_exp->instr, &mrt0_exp->src[0], nir_vec(b, arg0_vec, 4));
-   nir_instr_rewrite_src_ssa(&mrt1_exp->instr, &mrt1_exp->src[0], nir_vec(b, arg1_vec, 4));
+   nir_src_rewrite(&mrt0_exp->src[0], nir_vec(b, arg0_vec, 4));
+   nir_src_rewrite(&mrt1_exp->src[0], nir_vec(b, arg1_vec, 4));
 
    nir_intrinsic_set_write_mask(mrt0_exp, write_mask);
    nir_intrinsic_set_write_mask(mrt1_exp, write_mask);
