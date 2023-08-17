@@ -543,13 +543,6 @@ static void r600_delete_dsa_state(struct pipe_context *ctx, void *state)
 	free(dsa);
 }
 
-static void r600_bind_vertex_elements(struct pipe_context *ctx, void *state)
-{
-	struct r600_context *rctx = (struct r600_context *)ctx;
-
-	r600_set_cso_state(rctx, &rctx->vertex_fetch_shader, state);
-}
-
 static void r600_delete_vertex_elements(struct pipe_context *ctx, void *state)
 {
 	struct r600_fetch_shader *shader = (struct r600_fetch_shader*)state;
@@ -560,10 +553,25 @@ static void r600_delete_vertex_elements(struct pipe_context *ctx, void *state)
 
 void r600_vertex_buffers_dirty(struct r600_context *rctx)
 {
-	if (rctx->vertex_buffer_state.dirty_mask) {
+	struct r600_fetch_shader *shader = (struct r600_fetch_shader*)rctx->vertex_fetch_shader.cso;
+	if (shader && (rctx->vertex_buffer_state.dirty_mask & shader->buffer_mask)) {
 		rctx->vertex_buffer_state.atom.num_dw = (rctx->b.gfx_level >= EVERGREEN ? 12 : 11) *
-					       util_bitcount(rctx->vertex_buffer_state.dirty_mask);
+					       util_bitcount(rctx->vertex_buffer_state.dirty_mask & shader->buffer_mask);
 		r600_mark_atom_dirty(rctx, &rctx->vertex_buffer_state.atom);
+	}
+}
+
+static void r600_bind_vertex_elements(struct pipe_context *ctx, void *state)
+{
+	struct r600_context *rctx = (struct r600_context *)ctx;
+	struct r600_fetch_shader *prev = (struct r600_fetch_shader*)rctx->vertex_fetch_shader.cso;
+	struct r600_fetch_shader *cso = state;
+
+	r600_set_cso_state(rctx, &rctx->vertex_fetch_shader, state);
+	if (!prev || (cso && cso->buffer_mask &&
+		      (prev->buffer_mask != cso->buffer_mask || memcmp(cso->strides, prev->strides, util_last_bit(cso->buffer_mask))))) {
+		rctx->vertex_buffer_state.dirty_mask |= cso ? cso->buffer_mask : 0;
+		r600_vertex_buffers_dirty(rctx);
 	}
 }
 
