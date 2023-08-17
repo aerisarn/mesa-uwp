@@ -108,13 +108,18 @@ struct aco_shader_info {
       bool has_prolog;
    } vs;
    struct {
+      struct ac_arg tcs_offchip_layout;
+
       /* Vulkan only */
       uint32_t num_lds_blocks;
+      struct ac_arg epilog_pc;
+      uint32_t num_linked_outputs;
+      uint32_t num_linked_patch_outputs;
+      uint32_t tcs_vertices_out;
 
       /* OpenGL only */
       bool pass_tessfactors_by_reg;
       unsigned patch_stride;
-      struct ac_arg tcs_offchip_layout;
       struct ac_arg tes_offchip_addr;
       struct ac_arg vs_state_bits;
    } tcs;
