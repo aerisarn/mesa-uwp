@@ -106,6 +106,7 @@ struct scratch_layout {
    uint32_t lbvh_node_offset;
 
    uint32_t ir_offset;
+   uint32_t internal_node_offset;
 };
 
 static struct build_config
@@ -229,6 +230,8 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
 
       scratch->ir_offset = offset;
       offset += ir_leaf_size * leaf_count;
+
+      scratch->internal_node_offset = offset;
       offset += sizeof(struct radv_ir_box_node) * internal_count;
 
       scratch->size = offset;
@@ -601,7 +604,6 @@ radv_device_init_accel_struct_copy_state(struct radv_device *device)
 }
 
 struct bvh_state {
-   uint32_t internal_node_base;
    uint32_t node_count;
    uint32_t scratch_offset;
 
@@ -708,7 +710,6 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
          bvh_states[i].leaf_node_count += buildRangeInfo->primitiveCount;
          bvh_states[i].node_count += buildRangeInfo->primitiveCount;
       }
-      bvh_states[i].internal_node_base = leaf_consts.dst_offset;
    }
 
    cmd_buffer->state.flush_bits |= flush_bits;
@@ -794,7 +795,7 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
          .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
          .node_info = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.lbvh_node_offset,
          .id_count = bvh_states[i].node_count,
-         .internal_node_base = bvh_states[i].internal_node_base,
+         .internal_node_base = bvh_states[i].scratch.internal_node_offset - bvh_states[i].scratch.ir_offset,
       };
 
       radv_CmdPushConstants(commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.lbvh_main_p_layout,
@@ -817,7 +818,7 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
          .bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
          .node_info = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.lbvh_node_offset,
          .header = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.header_offset,
-         .internal_node_base = bvh_states[i].internal_node_base,
+         .internal_node_base = bvh_states[i].scratch.internal_node_offset - bvh_states[i].scratch.ir_offset,
       };
 
       radv_CmdPushConstants(commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.lbvh_generate_ir_p_layout,
@@ -864,7 +865,7 @@ ploc_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
          .ids_1 = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
          .prefix_scan_partitions =
             pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ploc_prefix_sum_partition_offset,
-         .internal_node_offset = bvh_states[i].internal_node_base,
+         .internal_node_offset = bvh_states[i].scratch.internal_node_offset - bvh_states[i].scratch.ir_offset,
       };
 
       radv_CmdPushConstants(commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.ploc_p_layout,
