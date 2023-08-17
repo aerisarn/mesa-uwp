@@ -41,7 +41,7 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
                     unsigned nr, bool msaa)
 {
    if (op == AGX_META_OP_LOAD) {
-      nir_tex_instr *tex = nir_tex_instr_create(b->shader, msaa ? 2 : 1);
+      nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
       /* The type doesn't matter as long as it matches the store */
       tex->dest_type = nir_type_uint32;
       tex->sampler_dim = msaa ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
@@ -53,6 +53,8 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
          tex->src[1] =
             nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_load_sample_id(b));
          b->shader->info.fs.uses_sample_shading = true;
+      } else {
+         tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(b, 0));
       }
 
       tex->coord_components = 2;
