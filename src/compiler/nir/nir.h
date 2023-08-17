@@ -429,7 +429,8 @@ typedef struct nir_constant {
  * with a layout qualifier.
  */
 typedef enum {
-   nir_depth_layout_none, /**< No depth layout is specified. */
+   /** No depth layout is specified. */
+   nir_depth_layout_none,
    nir_depth_layout_any,
    nir_depth_layout_greater,
    nir_depth_layout_less,
@@ -812,11 +813,12 @@ typedef struct nir_variable {
     *
     * If the variable is not a uniform, \c num_state_slots will be zero and
     * \c state_slots will be \c NULL.
+    *
+    * Number of state slots used.
     */
-   /*@{*/
-   uint16_t num_state_slots;    /**< Number of state slots used */
-   nir_state_slot *state_slots; /**< State descriptors. */
-   /*@}*/
+   uint16_t num_state_slots;
+   /** State descriptors. */
+   nir_state_slot *state_slots;
 
    /**
     * Constant expression assigned in the initializer of the variable
@@ -1948,7 +1950,8 @@ nir_instr_xfb_write_mask(nir_intrinsic_instr *instr);
 typedef struct {
    const char *name;
 
-   uint8_t num_srcs; /** < number of register/SSA inputs */
+   /** number of register/SSA inputs */
+   uint8_t num_srcs;
 
    /** number of components of each input register
     *
@@ -2262,30 +2265,50 @@ typedef struct nir_tex_src {
 
 /** Texture instruction opcode */
 typedef enum nir_texop {
-   nir_texop_tex,                     /**< Regular texture look-up */
-   nir_texop_txb,                     /**< Texture look-up with LOD bias */
-   nir_texop_txl,                     /**< Texture look-up with explicit LOD */
-   nir_texop_txd,                     /**< Texture look-up with partial derivatives */
-   nir_texop_txf,                     /**< Texel fetch with explicit LOD */
-   nir_texop_txf_ms,                  /**< Multisample texture fetch */
-   nir_texop_txf_ms_fb,               /**< Multisample texture fetch from framebuffer */
-   nir_texop_txf_ms_mcs_intel,        /**< Multisample compression value fetch */
-   nir_texop_txs,                     /**< Texture size */
-   nir_texop_lod,                     /**< Texture lod query */
-   nir_texop_tg4,                     /**< Texture gather */
-   nir_texop_query_levels,            /**< Texture levels query */
-   nir_texop_texture_samples,         /**< Texture samples query */
-   nir_texop_samples_identical,       /**< Query whether all samples are definitely
-                                       * identical.
-                                       */
-   nir_texop_tex_prefetch,            /**< Regular texture look-up, eligible for pre-dispatch */
-   nir_texop_fragment_fetch_amd,      /**< Multisample fragment color texture fetch */
-   nir_texop_fragment_mask_fetch_amd, /**< Multisample fragment mask texture fetch */
-   nir_texop_descriptor_amd,          /**< Returns a buffer or image descriptor. */
-   nir_texop_sampler_descriptor_amd,  /**< Returns a sampler descriptor. */
-   nir_texop_lod_bias_agx,            /**< Returns the sampler's LOD bias */
-   nir_texop_hdr_dim_nv,              /**< Maps to TXQ.DIMENSION */
-   nir_texop_tex_type_nv,             /**< Maps to TXQ.TEXTURE_TYPE */
+   /** Regular texture look-up */
+   nir_texop_tex,
+   /** Texture look-up with LOD bias */
+   nir_texop_txb,
+   /** Texture look-up with explicit LOD */
+   nir_texop_txl,
+   /** Texture look-up with partial derivatives */
+   nir_texop_txd,
+   /** Texel fetch with explicit LOD */
+   nir_texop_txf,
+   /** Multisample texture fetch */
+   nir_texop_txf_ms,
+   /** Multisample texture fetch from framebuffer */
+   nir_texop_txf_ms_fb,
+   /** Multisample compression value fetch */
+   nir_texop_txf_ms_mcs_intel,
+   /** Texture size */
+   nir_texop_txs,
+   /** Texture lod query */
+   nir_texop_lod,
+   /** Texture gather */
+   nir_texop_tg4,
+   /** Texture levels query */
+   nir_texop_query_levels,
+   /** Texture samples query */
+   nir_texop_texture_samples,
+   /** Query whether all samples are definitely identical. */
+   nir_texop_samples_identical,
+   /** Regular texture look-up, eligible for pre-dispatch */
+   nir_texop_tex_prefetch,
+   /** Multisample fragment color texture fetch */
+   nir_texop_fragment_fetch_amd,
+   /** Multisample fragment mask texture fetch */
+   nir_texop_fragment_mask_fetch_amd,
+   /** Returns a buffer or image descriptor. */
+   nir_texop_descriptor_amd,
+   /** Returns a sampler descriptor. */
+   nir_texop_sampler_descriptor_amd,
+   /** Returns the sampler's LOD bias */
+   nir_texop_lod_bias_agx,
+   /** Maps to TXQ.DIMENSION */
+   nir_texop_hdr_dim_nv,
+   /** Maps to TXQ.TEXTURE_TYPE */
+   nir_texop_tex_type_nv,
 } nir_texop;
 
 /** Represents a texture instruction */
@@ -2585,7 +2608,8 @@ typedef struct {
 typedef struct {
    nir_instr instr;
 
-   struct exec_list srcs; /** < list of nir_phi_src */
+   /** list of nir_phi_src */
+   struct exec_list srcs;
 
    nir_def def;
 } nir_phi_instr;
@@ -2845,7 +2869,8 @@ typedef struct nir_cf_node {
 typedef struct nir_block {
    nir_cf_node cf_node;
 
-   struct exec_list instr_list; /** < list of nir_instr */
+   /** list of nir_instr */
+   struct exec_list instr_list;
 
    /** generic block index; generated by nir_index_blocks */
    unsigned index;
@@ -3035,8 +3060,11 @@ typedef struct nir_if {
    nir_src condition;
    nir_selection_control control;
 
-   struct exec_list then_list; /** < list of nir_cf_node */
-   struct exec_list else_list; /** < list of nir_cf_node */
+   /** list of nir_cf_node */
+   struct exec_list then_list;
+
+   /** list of nir_cf_node */
+   struct exec_list else_list;
 } nir_if;
 
 typedef struct {
@@ -3124,8 +3152,11 @@ typedef enum {
 typedef struct {
    nir_cf_node cf_node;
 
-   struct exec_list body;          /** < list of nir_cf_node */
-   struct exec_list continue_list; /** < (optional) list of nir_cf_node */
+   /** list of nir_cf_node */
+   struct exec_list body;
+
+   /** (optional) list of nir_cf_node */
+   struct exec_list continue_list;
 
    nir_loop_info *info;
    nir_loop_control control;
@@ -3232,7 +3263,8 @@ typedef struct {
     */
    struct nir_function *preamble;
 
-   struct exec_list body; /** < list of nir_cf_node */
+   /** list of nir_cf_node */
+   struct exec_list body;
 
    nir_block *end_block;
 
@@ -3990,7 +4022,8 @@ typedef struct nir_shader {
    /** Various bits of compile-time information about a given shader */
    struct shader_info info;
 
-   struct exec_list functions; /** < list of nir_function */
+   /** list of nir_function */
+   struct exec_list functions;
 
    /**
     * The size of the variable space for load_input_*, load_uniform_*, etc.
