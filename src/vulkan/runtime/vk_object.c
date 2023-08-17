@@ -175,8 +175,8 @@ get_swapchain_private_data_locked(struct vk_device *device,
                                   uint64_t **private_data)
 {
    if (unlikely(device->swapchain_private == NULL)) {
-      /* Even though VkSwapchain is a non-dispatchable object, we know a
-       * priori that it is actually a pointer so we can use
+      /* Even though VkSwapchain/Surface are non-dispatchable objects, we know
+       * a priori that these are actually pointers so we can use
        * the pointer hash table for them.
        */
       device->swapchain_private = _mesa_pointer_hash_table_create(NULL);
@@ -222,7 +222,12 @@ vk_object_base_private_data(struct vk_device *device,
     * vkGet/SetPrivateDataEXT call on a swapchain because the loader will
     * handle it.
     */
-   if (objectType == VK_OBJECT_TYPE_SWAPCHAIN_KHR) {
+#ifdef ANDROID
+   if (objectType == VK_OBJECT_TYPE_SWAPCHAIN_KHR ||
+       objectType == VK_OBJECT_TYPE_SURFACE_KHR) {
+#else
+   if (objectType == VK_OBJECT_TYPE_SURFACE_KHR) {
+#endif
       mtx_lock(&device->swapchain_private_mtx);
       VkResult result = get_swapchain_private_data_locked(device, objectHandle,
                                                           slot, private_data);
