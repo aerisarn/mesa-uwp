@@ -1162,7 +1162,7 @@ nir_is_sequential_comp_swizzle(uint8_t *swiz, unsigned nr_comp)
    return true;
 }
 
-typedef struct {
+typedef struct nir_alu_src {
    /** Base source */
    nir_src src;
 
@@ -2115,7 +2115,7 @@ nir_intrinsic_is_ray_query(nir_intrinsic_op intrinsic)
 }
 
 /** Texture instruction source type */
-typedef enum {
+typedef enum nir_tex_src_type {
    /** Texture coordinate
     *
     * Must have nir_tex_instr::coord_components components.
@@ -2252,7 +2252,7 @@ typedef enum {
 } nir_tex_src_type;
 
 /** A texture instruction source */
-typedef struct {
+typedef struct nir_tex_src {
    /** Base source */
    nir_src src;
 
@@ -2261,7 +2261,7 @@ typedef struct {
 } nir_tex_src;
 
 /** Texture instruction opcode */
-typedef enum {
+typedef enum nir_texop {
    nir_texop_tex,                     /**< Regular texture look-up */
    nir_texop_txb,                     /**< Texture look-up with LOD bias */
    nir_texop_txl,                     /**< Texture look-up with explicit LOD */
@@ -2289,7 +2289,7 @@ typedef enum {
 } nir_texop;
 
 /** Represents a texture instruction */
-typedef struct {
+typedef struct nir_tex_instr {
    /** Base instruction */
    nir_instr instr;
 
