@@ -892,3 +892,55 @@ agx_nir_lower_multisampled_image_store(nir_shader *s)
       s, lower_multisampled_store,
       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }
+
+/*
+ * Given a non-bindless instruction, return whether agx_nir_lower_texture will
+ * lower it to something involving a descriptor crawl. This requires the driver
+ * to lower the instruction to bindless before calling agx_nir_lower_texture.
+ * The implementation just enumerates the cases handled in this file.
+ */
+bool
+agx_nir_needs_texture_crawl(nir_instr *instr)
+{
+   if (instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+      switch (intr->intrinsic) {
+      /* Queries, atomics always become a crawl */
+      case nir_intrinsic_image_size:
+      case nir_intrinsic_image_deref_size:
+      case nir_intrinsic_image_atomic:
+      case nir_intrinsic_image_deref_atomic:
+      case nir_intrinsic_image_atomic_swap:
+      case nir_intrinsic_image_deref_atomic_swap:
+         return true;
+
+      /* Multisampled stores need a crawl, others do not */
+      case nir_intrinsic_image_store:
+      case nir_intrinsic_image_deref_store:
+         return nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_MS;
+
+      /* Loads do not need a crawl, even from buffers */
+      default:
+         return false;
+      }
+   } else if (instr->type == nir_instr_type_tex) {
+      nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+      /* Array textures get clamped to their size via txs */
+      if (tex->is_array)
+         return true;
+
+      switch (tex->op) {
+      /* Queries always become a crawl */
+      case nir_texop_txs:
+         return true;
+
+      /* Buffer textures need their format read */
+      default:
+         return tex->sampler_dim == GLSL_SAMPLER_DIM_BUF;
+      }
+   }
+
+   return false;
+}
