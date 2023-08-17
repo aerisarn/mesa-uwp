@@ -258,6 +258,8 @@ struct vk_device {
 
    mtx_t swapchain_private_mtx;
    struct hash_table *swapchain_private;
+   mtx_t swapchain_name_mtx;
+   struct hash_table *swapchain_name;
 };
 
 VK_DEFINE_HANDLE_CASTS(vk_device, base, VkDevice,
