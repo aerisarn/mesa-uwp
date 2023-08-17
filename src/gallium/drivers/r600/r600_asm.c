@@ -2814,6 +2814,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 	unsigned format, num_format, format_comp, endian;
 	uint32_t *bytecode;
 	int i, j, r, fs_size;
+	uint32_t buffer_mask = 0;
 	struct r600_fetch_shader *shader;
 	unsigned strides[PIPE_MAX_ATTRIBS];
 
@@ -2864,6 +2865,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 			}
 		}
 		strides[elements[i].vertex_buffer_index] = elements[i].src_stride;
+		buffer_mask |= BITFIELD_BIT(elements[i].vertex_buffer_index);
 	}
 
 	for (i = 0; i < count; i++) {
@@ -2929,6 +2931,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 		return NULL;
 	}
 	memcpy(shader->strides, strides, sizeof(strides));
+	shader->buffer_mask = buffer_mask;
 
 	u_suballocator_alloc(&rctx->allocator_fetch_shader, fs_size, 256,
 			     &shader->offset,
