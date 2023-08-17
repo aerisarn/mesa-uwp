@@ -1367,11 +1367,13 @@ vlVaQueryVideoProcFilterCaps(VADriverContextP ctx, VAContextID context,
 }
 
 static VAProcColorStandardType vpp_input_color_standards[] = {
-   VAProcColorStandardBT601
+   VAProcColorStandardBT601,
+   VAProcColorStandardBT709
 };
 
 static VAProcColorStandardType vpp_output_color_standards[] = {
-   VAProcColorStandardBT601
+   VAProcColorStandardBT601,
+   VAProcColorStandardBT709
 };
 
 VAStatus
