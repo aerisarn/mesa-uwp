@@ -2,3 +2,6 @@ New features
 ------------
 VK_EXT_image_compression_control on RADV
 VK_EXT_device_fault on RADV
+OpenGL 3.2 on Asahi
+Geometry shaders on Asahi
+GL_ARB_texture_cube_map_array on Asahi

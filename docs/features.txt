@@ -82,18 +82,18 @@ GL 3.1, GLSL 1.40 --- all DONE: freedreno, nv50, nvc0, r600, radeonsi, llvmpipe,
   GL_EXT_texture_snorm (Signed normalized textures)     DONE (v3d, crocus)
 
 
-GL 3.2, GLSL 1.50 --- all DONE: freedreno, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, virgl, zink, d3d12, iris, crocus/gen6+
+GL 3.2, GLSL 1.50 --- all DONE: freedreno, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, virgl, zink, d3d12, iris, crocus/gen6+, asahi
 
   Core/compatibility profiles                           DONE
   Geometry shaders                                      DONE (freedreno/a6xx, crocus)
-  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (v3d, panfrost, asahi, crocus)
-  GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (v3d, vc4, panfrost, lima, asahi, crocus)
-  GL_ARB_fragment_coord_conventions (Frag shader coord) DONE (v3d, vc4, panfrost, lima, asahi, crocus)
-  GL_ARB_provoking_vertex (Provoking vertex)            DONE (v3d, vc4, panfrost, lima, asahi, crocus)
-  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (panfrost, asahi, crocus)
+  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (v3d, panfrost, crocus)
+  GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (v3d, vc4, panfrost, lima, crocus)
+  GL_ARB_fragment_coord_conventions (Frag shader coord) DONE (v3d, vc4, panfrost, lima, crocus)
+  GL_ARB_provoking_vertex (Provoking vertex)            DONE (v3d, vc4, panfrost, lima, crocus)
+  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (panfrost, crocus)
   GL_ARB_texture_multisample (Multisample textures)     DONE (freedreno/a5xx+, v3d, vc4, panfrost, asahi)
-  GL_ARB_depth_clamp (Frag depth clamp)                 DONE (panfrost, asahi, crocus)
-  GL_ARB_sync (Fence objects)                           DONE (v3d, vc4, panfrost, lima, asahi, crocus)
+  GL_ARB_depth_clamp (Frag depth clamp)                 DONE (panfrost, crocus)
+  GL_ARB_sync (Fence objects)                           DONE (v3d, vc4, panfrost, lima, crocus)
   GLX_ARB_create_context_profile                        DONE
 
 
@@ -123,8 +123,8 @@ GL 4.0, GLSL 4.00 --- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, 
   - Fused multiply-add                                  DONE (softpipe, asahi)
   - Packing/bitfield/conversion functions               DONE (freedreno, softpipe, panfrost, asahi)
   - Enhanced textureGather                              DONE (freedreno, softpipe, panfrost, asahi)
-  - Geometry shader instancing                          DONE (softpipe, )
-  - Geometry shader multiple streams                    DONE (softpipe, )
+  - Geometry shader instancing                          DONE (softpipe, asahi)
+  - Geometry shader multiple streams                    DONE (softpipe, asahi)
   - Enhanced per-sample shading                         DONE (asahi)
   - Interpolation functions                             DONE (softpipe, asahi)
   - New overload resolution rules                       DONE (softpipe)
@@ -133,7 +133,7 @@ GL 4.0, GLSL 4.00 --- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, 
   GL_ARB_shader_subroutine                              DONE (freedreno, nv50, softpipe, crocus/gen6+)
   GL_ARB_tessellation_shader                            DONE (freedreno/a6xx)
   GL_ARB_texture_buffer_object_rgb32                    DONE (freedreno, softpipe, panfrost, asahi, crocus/gen6+)
-  GL_ARB_texture_cube_map_array                         DONE (freedreno/a4xx+, nv50, softpipe, v3d, crocus/gen6+)
+  GL_ARB_texture_cube_map_array                         DONE (freedreno/a4xx+, nv50, softpipe, v3d, crocus/gen6+, asahi)
   GL_ARB_texture_gather                                 DONE (freedreno, nv50, softpipe, v3d, panfrost, asahi)
   GL_ARB_texture_query_lod                              DONE (freedreno, nv50, softpipe, v3d, panfrost, crocus/gen5+)
   GL_ARB_transform_feedback2                            DONE (freedreno/a3xx+, nv50, softpipe, v3d, panfrost, asahi, crocus/gen6+)
@@ -278,7 +278,7 @@ GLES3.2, GLSL ES 3.2 -- all DONE: freedreno/a6xx, radeonsi, virgl, llvmpipe, zin
   GL_OES_copy_image                                     DONE (all drivers)
   GL_OES_draw_buffers_indexed                           DONE (all drivers that support GL_ARB_draw_buffers_blend)
   GL_OES_draw_elements_base_vertex                      DONE (all drivers)
-  GL_OES_geometry_shader                                DONE (freedreno/a6xx, nvc0, r600, softpipe, v3d)
+  GL_OES_geometry_shader                                DONE (freedreno/a6xx, nvc0, r600, softpipe, v3d, asahi)
   GL_OES_gpu_shader5                                    DONE (freedreno/a6xx, asahi, all drivers that support GL_ARB_gpu_shader5)
   GL_OES_primitive_bounding_box                         DONE (freedreno/a5xx+, nvc0, r600, softpipe, v3d)
   GL_OES_sample_shading                                 DONE (freedreno/a6xx, asahi, nvc0, r600, panfrost, d3d12)
@@ -289,7 +289,7 @@ GLES3.2, GLSL ES 3.2 -- all DONE: freedreno/a6xx, radeonsi, virgl, llvmpipe, zin
   GL_OES_tessellation_shader                            DONE (freedreno/a6xx, all drivers that support GL_ARB_tessellation_shader)
   GL_OES_texture_border_clamp                           DONE (all drivers)
   GL_OES_texture_buffer                                 DONE (freedreno, nvc0, r600, softpipe, panfrost, asahi, crocus/gen6+)
-  GL_OES_texture_cube_map_array                         DONE (freedreno/a4xx+, nvc0, r600, softpipe)
+  GL_OES_texture_cube_map_array                         DONE (freedreno/a4xx+, nvc0, r600, softpipe, asahi)
   GL_OES_texture_stencil8                               DONE (all drivers that support GL_ARB_texture_stencil8)
   GL_OES_texture_storage_multisample_2d_array           DONE (all drivers that support GL_ARB_texture_multisample)
 

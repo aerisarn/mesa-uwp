@@ -1555,8 +1555,6 @@ agx_get_name(struct pipe_screen *pscreen)
 static int
 agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
-   bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
-
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
    case PIPE_CAP_SHADER_STENCIL_EXPORT:
@@ -1636,7 +1634,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    case PIPE_CAP_CUBE_MAP_ARRAY:
-      return is_deqp;
+      return 1;
 
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
       return 0;
@@ -1657,10 +1655,19 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return is_deqp ? 330 : 140;
+      return 330;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
       return 320;
 
+   /* Settings from iris, may need tuning */
+   case PIPE_CAP_MAX_VERTEX_STREAMS:
+      return 4;
+   case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
+      return 256;
+   case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
+      return 1024;
+   case PIPE_CAP_MAX_GS_INVOCATIONS:
+      return 32;
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 16;
 
@@ -1749,13 +1756,17 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
              BITFIELD_BIT(MESA_PRIM_TRIANGLES) |
              BITFIELD_BIT(MESA_PRIM_TRIANGLE_STRIP) |
              BITFIELD_BIT(MESA_PRIM_TRIANGLE_FAN) |
+             BITFIELD_BIT(MESA_PRIM_LINES_ADJACENCY) |
+             BITFIELD_BIT(MESA_PRIM_LINE_STRIP_ADJACENCY) |
+             BITFIELD_BIT(MESA_PRIM_TRIANGLES_ADJACENCY) |
+             BITFIELD_BIT(MESA_PRIM_TRIANGLE_STRIP_ADJACENCY) |
              BITFIELD_BIT(MESA_PRIM_QUADS) | BITFIELD_BIT(MESA_PRIM_QUAD_STRIP);
 
    case PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE:
       return 1;
 
    case PIPE_CAP_VS_LAYER_VIEWPORT:
-      return is_deqp;
+      return true;
 
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
@@ -1811,6 +1822,7 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
    case PIPE_SHADER_VERTEX:
    case PIPE_SHADER_FRAGMENT:
    case PIPE_SHADER_COMPUTE:
+   case PIPE_SHADER_GEOMETRY:
       break;
    default:
       return false;
@@ -1819,7 +1831,8 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
    /* Don't allow side effects with vertex processing. The APIs don't require it
     * and it may be problematic on our hardware.
     */
-   bool allow_side_effects = (shader != PIPE_SHADER_VERTEX);
+   bool allow_side_effects =
+      (shader == PIPE_SHADER_FRAGMENT) || (shader == PIPE_SHADER_COMPUTE);
 
    /* this is probably not totally correct.. but it's a start: */
    switch (param) {
