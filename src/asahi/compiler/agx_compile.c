@@ -2724,6 +2724,11 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias, bool allow_mediump,
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, agx_nir_lower_texture, support_lod_bias);
 
+   /* Runs before we lower away idiv, to work at all. But runs after lowering
+    * textures, since the cube map array lowering generates division by 6.
+    */
+   NIR_PASS_V(nir, nir_opt_idiv_const, 16);
+
    nir_lower_idiv_options idiv_options = {
       .allow_fp16 = true,
    };
