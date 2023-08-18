@@ -687,12 +687,9 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
    return nir_iadd(b, base, nir_u2u64(b, total_B));
 }
 
-static bool
+static void
 lower_buffer_image(nir_builder *b, nir_intrinsic_instr *intr)
 {
-   if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_BUF)
-      return false;
-
    nir_def *coord_vector = intr->src[1].ssa;
    nir_def *coord = nir_channel(b, coord_vector, 0);
 
@@ -702,22 +699,36 @@ lower_buffer_image(nir_builder *b, nir_intrinsic_instr *intr)
    nir_def *coord2d = coords_for_buffer_texture(b, coord);
    nir_src_rewrite(&intr->src[1], nir_pad_vector(b, coord2d, 4));
    nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
-   return true;
 }
 
-static bool
+static void
 lower_1d_image(nir_builder *b, nir_intrinsic_instr *intr)
 {
-   if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_1D)
-      return false;
-
    nir_def *coord = intr->src[1].ssa;
    bool is_array = nir_intrinsic_image_array(intr);
    nir_def *coord2d = coords_for_1d_texture(b, coord, is_array);
 
    nir_src_rewrite(&intr->src[1], nir_pad_vector(b, coord2d, 4));
    nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
-   return true;
+}
+
+/*
+ * AGX needs the face and the layer specified separately. This matches how NIR
+ * texture instructions work, but not how NIR image intrinsics work. Here we
+ * lower by dividing the combined layer-face into separate components which the
+ * compiler can consume.
+ */
+static void
+lower_cube_array_image(nir_builder *b, nir_intrinsic_instr *intr)
+{
+   nir_def *x = nir_channel(b, intr->src[1].ssa, 0);
+   nir_def *y = nir_channel(b, intr->src[1].ssa, 1);
+   nir_def *z = nir_channel(b, intr->src[1].ssa, 2);
+
+   nir_def *face = nir_umod_imm(b, z, 6);
+   nir_def *layer = nir_udiv_imm(b, z, 6);
+
+   nir_src_rewrite(&intr->src[1], nir_vec4(b, x, y, face, layer));
 }
 
 static bool
@@ -729,8 +740,28 @@ lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_store:
    case nir_intrinsic_bindless_image_load:
-   case nir_intrinsic_bindless_image_store:
-      return lower_buffer_image(b, intr) || lower_1d_image(b, intr);
+   case nir_intrinsic_bindless_image_store: {
+      switch (nir_intrinsic_image_dim(intr)) {
+      case GLSL_SAMPLER_DIM_1D:
+         lower_1d_image(b, intr);
+         return true;
+
+      case GLSL_SAMPLER_DIM_BUF:
+         lower_buffer_image(b, intr);
+         return true;
+
+      case GLSL_SAMPLER_DIM_CUBE:
+         if (nir_intrinsic_image_array(intr)) {
+            lower_cube_array_image(b, intr);
+            return true;
+         }
+
+         return false;
+
+      default:
+         return false;
+      }
+   }
 
    case nir_intrinsic_bindless_image_size:
       nir_def_rewrite_uses(
