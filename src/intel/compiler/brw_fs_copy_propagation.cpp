@@ -1140,8 +1140,7 @@ can_propagate_from(fs_inst *inst)
            inst->src[0].type == inst->dst.type &&
            !inst->saturate &&
            /* Subset of !is_partial_write() conditions. */
-           !((inst->predicate && inst->opcode != BRW_OPCODE_SEL) ||
-             !inst->dst.is_contiguous())) ||
+           !inst->predicate && inst->dst.is_contiguous()) ||
           is_identity_payload(FIXED_GRF, inst);
 }
 
