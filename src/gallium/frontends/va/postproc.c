@@ -111,6 +111,46 @@ static void vlVaGetBox(struct pipe_video_buffer *buf, unsigned idx,
    box->height = height;
 }
 
+static bool vlVaGetFullRange(vlVaSurface *surface, uint8_t va_range)
+{
+   if (va_range != VA_SOURCE_RANGE_UNKNOWN)
+      return va_range == VA_SOURCE_RANGE_FULL;
+
+   /* Assume limited for YUV, full for RGB */
+   return !util_format_is_yuv(surface->buffer->buffer_format);
+}
+
+static void vlVaSetCscMatrix(vlVaDriver *drv,
+                             vlVaSurface *src,
+                             vlVaSurface *dst,
+                             VAProcPipelineParameterBuffer *param)
+{
+   enum VL_CSC_COLOR_STANDARD color_standard;
+   bool src_yuv = util_format_is_yuv(src->buffer->buffer_format);
+   bool dst_yuv = util_format_is_yuv(dst->buffer->buffer_format);
+
+   if (src_yuv == dst_yuv) {
+      color_standard = VL_CSC_COLOR_STANDARD_IDENTITY;
+   } else if (src_yuv) {
+      switch (param->surface_color_standard) {
+      case VAProcColorStandardBT601:
+         color_standard = VL_CSC_COLOR_STANDARD_BT_601;
+         break;
+      case VAProcColorStandardBT709:
+      default:
+         color_standard = src->full_range ?
+            VL_CSC_COLOR_STANDARD_BT_709_FULL :
+            VL_CSC_COLOR_STANDARD_BT_709;
+         break;
+      }
+   } else {
+      color_standard = VL_CSC_COLOR_STANDARD_BT_709_REV;
+   }
+
+   vl_csc_get_matrix(color_standard, NULL, dst->full_range, &drv->csc);
+   vl_compositor_set_csc_matrix(&drv->cstate, &drv->csc, 1.0f, 0.0f);
+}
+
 static VAStatus vlVaVidEngineBlit(vlVaDriver *drv, vlVaContext *context,
                                  const VARectangle *src_region,
                                  const VARectangle *dst_region,
@@ -422,12 +462,10 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
    if (!src_surface->buffer || !dst_surface->buffer)
       return VA_STATUS_ERROR_INVALID_SURFACE;
 
-   /* Assume full range input when not set */
-   src_surface->full_range =
-      param->input_color_properties.color_range != VA_SOURCE_RANGE_REDUCED;
-   /* Assume limited range output when not set */
-   dst_surface->full_range =
-      param->output_color_properties.color_range == VA_SOURCE_RANGE_FULL;
+   src_surface->full_range = vlVaGetFullRange(src_surface,
+      param->input_color_properties.color_range);
+   dst_surface->full_range = vlVaGetFullRange(dst_surface,
+      param->output_color_properties.color_range);
 
    pscreen = drv->vscreen->pscreen;
 
@@ -540,6 +578,8 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
                                                  src, context->target, deinterlace, param))
          return VA_STATUS_SUCCESS;
    }
+
+   vlVaSetCscMatrix(drv, src_surface, dst_surface, param);
 
    /* Try other post proc implementations */
    if (context->target->buffer_format != PIPE_FORMAT_NV12 &&
