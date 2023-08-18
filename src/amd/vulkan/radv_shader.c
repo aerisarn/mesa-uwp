@@ -1182,6 +1182,8 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, bool replaya
 
    alloc =
       insert_block(device, list_entry(arena->entries.next, union radv_shader_arena_block, list), 0, size, free_list);
+   alloc->freelist.prev = NULL;
+   alloc->freelist.next = ptr;
 
    ++device->shader_arena_shift;
    list_addtail(&arena->list, &device->shader_arenas);
