@@ -2450,7 +2450,7 @@ static void si_init_draw_vbo_all_pipeline_options(struct si_context *sctx)
     */
    if (GFX_VERSION >= GFX11 && sctx->screen->info.has_set_pairs_packets)
       sctx->blitter->draw_rectangle = si_draw_rectangle<GFX_VERSION, NGG_ON, HAS_PAIRS_ON>;
-   else if (GFX_VERSION >= GFX10 && !(sctx->screen->debug_flags & DBG(NO_NGG)))
+   else if (GFX_VERSION >= GFX10 && sctx->screen->use_ngg)
       sctx->blitter->draw_rectangle = si_draw_rectangle<GFX_VERSION, NGG_ON, HAS_PAIRS_OFF>;
    else
       sctx->blitter->draw_rectangle = si_draw_rectangle<GFX_VERSION, NGG_OFF, HAS_PAIRS_OFF>;
