@@ -2647,7 +2647,7 @@ radv_create_tcs_epilog(struct radv_device *device, const struct radv_tcs_epilog_
    struct radv_shader_info info = {0};
    info.stage = MESA_SHADER_TESS_CTRL;
    info.wave_size = device->physical_device->ge_wave_size;
-   info.workgroup_size = 64;
+   info.workgroup_size = 256;
 
    radv_declare_tcs_epilog_args(device, key, &args);
 
