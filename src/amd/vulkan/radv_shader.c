@@ -1078,7 +1078,7 @@ insert_block(struct radv_device *device, union radv_shader_arena_block *hole, ui
          add_hole(free_list, left_hole);
    }
 
-   if (hole_end > offset_in_hole + size) {
+   if (hole->size > offset_in_hole + size) {
       right_hole = alloc_block_obj(device);
       if (!right_hole) {
          free(left_hole);
