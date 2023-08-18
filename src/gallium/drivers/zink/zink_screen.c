@@ -2924,6 +2924,7 @@ init_optimal_keys(struct zink_screen *screen)
       screen->info.have_EXT_graphics_pipeline_library = false;
 
    if (!screen->optimal_keys ||
+       !screen->info.have_KHR_maintenance5 ||
       /* EXT_shader_object needs either dynamic feedback loop or per-app enablement */
        (!screen->driconf.zink_shader_object_enable && !screen->info.have_EXT_attachment_feedback_loop_dynamic_state))
       screen->info.have_EXT_shader_object = false;
