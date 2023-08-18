@@ -5572,9 +5572,11 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
                psiz = var;
          }
       }
-      if (have_fake_psiz && psiz) {
+      /* maintenance5 allows injected psiz deletion */
+      if (have_fake_psiz && (psiz || screen->info.have_KHR_maintenance5)) {
          psiz->data.mode = nir_var_shader_temp;
          nir_fixup_deref_modes(nir);
+         delete_psiz_store(nir, true);
          NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
       }
    }
