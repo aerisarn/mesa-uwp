@@ -1394,7 +1394,7 @@ zink_is_format_supported(struct pipe_screen *pscreen,
       }
    }
 
-   VkFormatProperties props = screen->format_props[format];
+   struct zink_format_props props = screen->format_props[format];
 
    if (target == PIPE_BUFFER) {
       if (bind & PIPE_BIND_VERTEX_BUFFER) {
@@ -2078,7 +2078,9 @@ retry:
          props3.pNext = props.pNext;
          props.pNext = &props3;
          VKSCR(GetPhysicalDeviceFormatProperties2)(screen->pdev, format, &props);
-         screen->format_props[i] = props.formatProperties;
+         screen->format_props[i].linearTilingFeatures = props3.linearTilingFeatures;
+         screen->format_props[i].optimalTilingFeatures = props3.optimalTilingFeatures;
+         screen->format_props[i].bufferFeatures = props3.bufferFeatures;
          if (props3.linearTilingFeatures & VK_FORMAT_FEATURE_2_LINEAR_COLOR_ATTACHMENT_BIT_NV)
             screen->format_props[i].linearTilingFeatures |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
          if (screen->info.have_EXT_image_drm_format_modifier && mod_props.drmFormatModifierCount) {
@@ -2089,8 +2091,13 @@ retry:
                   screen->modifier_props[i].pDrmFormatModifierProperties[j] = mod_props.pDrmFormatModifierProperties[j];
             }
          }
-      } else
-         VKSCR(GetPhysicalDeviceFormatProperties)(screen->pdev, format, &screen->format_props[i]);
+      } else {
+         VkFormatProperties props = {0};
+         VKSCR(GetPhysicalDeviceFormatProperties)(screen->pdev, format, &props);
+         screen->format_props[i].linearTilingFeatures = props.linearTilingFeatures;
+         screen->format_props[i].optimalTilingFeatures = props.optimalTilingFeatures;
+         screen->format_props[i].bufferFeatures = props.bufferFeatures;
+      }
       if (i == PIPE_FORMAT_A8_UNORM && !screen->driver_workarounds.missing_a8_unorm) {
          if (!screen->format_props[i].linearTilingFeatures &&
              !screen->format_props[i].optimalTilingFeatures &&

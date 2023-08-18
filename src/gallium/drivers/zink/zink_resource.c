@@ -371,7 +371,7 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
 }
 
 static VkImageUsageFlags
-get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats, const struct pipe_resource *templ, unsigned bind, bool *need_extended)
+get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags2 feats, const struct pipe_resource *templ, unsigned bind, bool *need_extended)
 {
    VkImageUsageFlags usage = 0;
    bool is_planar = util_format_get_num_planes(templ->format) > 1;
@@ -537,8 +537,8 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
          }
       }
    } else {
-      VkFormatProperties props = screen->format_props[templ->format];
-      VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
+      struct zink_format_props props = screen->format_props[templ->format];
+      VkFormatFeatureFlags2 feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
       if (ici->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)
          feats = UINT32_MAX;
       VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind, &need_extended);
