@@ -1181,10 +1181,13 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
             continue;
 
          foreach_in_list(acp_entry, entry, &acp[inst->src[i].nr % ACP_HASH_SIZE]) {
-            if (try_constant_propagate(inst, entry))
+            if (try_constant_propagate(inst, entry)) {
                progress = true;
-            else if (try_copy_propagate(inst, i, entry))
+               break;
+            } else if (try_copy_propagate(inst, i, entry)) {
                progress = true;
+               break;
+            }
          }
       }
 
