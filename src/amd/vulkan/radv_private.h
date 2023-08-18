@@ -1778,7 +1778,6 @@ struct radv_cmd_buffer {
 
    struct radv_device *device;
 
-   struct util_dynarray cached_vertex_formats;
    VkCommandBufferUsageFlags usage_flags;
    struct radeon_cmdbuf *cs;
    struct radv_cmd_state state;
