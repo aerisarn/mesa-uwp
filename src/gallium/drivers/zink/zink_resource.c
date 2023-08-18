@@ -340,7 +340,7 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
          VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY_EXT,
          props2.pNext,
       };
-      if (screen->info.have_EXT_host_image_copy)
+      if (screen->info.have_EXT_host_image_copy && ici->usage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT)
          props2.pNext = &hic;
       VkPhysicalDeviceImageFormatInfo2 info;
       info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
@@ -367,7 +367,7 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       if (vk_format_aspects(ici->format) & VK_IMAGE_ASPECT_PLANE_1_BIT)
          ret = VK_SUCCESS;
       image_props = props2.imageFormatProperties;
-      if (screen->info.have_EXT_host_image_copy)
+      if (screen->info.have_EXT_host_image_copy && ici->usage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT)
          optimalDeviceAccess = hic.optimalDeviceAccess;
    } else
       ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, ici->format, ici->imageType,
@@ -2418,6 +2418,109 @@ fail:
 }
 
 static void
+zink_image_subdata(struct pipe_context *pctx,
+                  struct pipe_resource *pres,
+                  unsigned level,
+                  unsigned usage,
+                  const struct pipe_box *box,
+                  const void *data,
+                  unsigned stride,
+                  uintptr_t layer_stride)
+{
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_resource *res = zink_resource(pres);
+
+   /* flush clears to avoid subdata conflict */
+   if (res->obj->vkusage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT)
+      zink_fb_clears_apply_or_discard(ctx, pres, zink_rect_from_box(box), false);
+   /* only use HIC if supported on image and no pending usage */
+   while (res->obj->vkusage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT &&
+          zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_RW)) {
+      /* uninit images are always supported */
+      bool change_layout = res->layout == VK_IMAGE_LAYOUT_UNDEFINED || res->layout == VK_IMAGE_LAYOUT_PREINITIALIZED;
+      if (!change_layout) {
+         /* image in some other layout: test for support */
+         bool can_copy_layout = false;
+         for (unsigned i = 0; i < screen->info.hic_props.copyDstLayoutCount; i++) {
+            if (screen->info.hic_props.pCopyDstLayouts[i] == res->layout) {
+               can_copy_layout = true;
+               break;
+            }
+         }
+         /* some layouts don't permit HIC copies */
+         if (!can_copy_layout)
+            break;
+      }
+      bool is_arrayed = false;
+      switch (pres->target) {
+      case PIPE_TEXTURE_1D_ARRAY:
+      case PIPE_TEXTURE_2D_ARRAY:
+      case PIPE_TEXTURE_CUBE:
+      case PIPE_TEXTURE_CUBE_ARRAY:
+         is_arrayed = true;
+         break;
+      default: break;
+      }
+      /* recalc strides into texel strides because HIC spec is insane */
+      unsigned vk_stride = util_format_get_stride(pres->format, 1);
+      stride /= vk_stride;
+      unsigned vk_layer_stride = util_format_get_2d_size(pres->format, stride, 1) * vk_stride;
+      layer_stride /= vk_layer_stride;
+
+      VkHostImageLayoutTransitionInfoEXT t = {
+         VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO_EXT,
+         NULL,
+         res->obj->image,
+         res->layout,
+         /* GENERAL support is guaranteed */
+         VK_IMAGE_LAYOUT_GENERAL,
+         {res->aspect, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS}
+      };
+      /* only pre-transition uninit images to avoid thrashing */
+      if (change_layout) {
+         VKSCR(TransitionImageLayoutEXT)(screen->dev, 1, &t);
+         res->layout = VK_IMAGE_LAYOUT_GENERAL;
+      }
+      VkMemoryToImageCopyEXT region = {
+         VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY_EXT,
+         NULL,
+         data,
+         stride,
+         layer_stride,
+         {res->aspect, level, is_arrayed ? box->z : 0, is_arrayed ? box->depth : 1},
+         {box->x, box->y, is_arrayed ? 0 : box->z},
+         {box->width, box->height, is_arrayed ? 1 : box->depth}
+      };
+      VkCopyMemoryToImageInfoEXT copy = {
+         VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT,
+         NULL,
+         0,
+         res->obj->image,
+         res->layout,
+         1,
+         &region
+      };
+      VKSCR(CopyMemoryToImageEXT)(screen->dev, &copy);
+      if (change_layout && screen->can_hic_shader_read && !pres->last_level && !box->x && !box->y && !box->z &&
+          box->width == pres->width0 && box->height == pres->height0 &&
+          ((is_arrayed && box->depth == pres->array_size) || (!is_arrayed && box->depth == pres->depth0))) {
+         /* assume full copy single-mip images use shader read access */
+         t.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+         t.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+         VKSCR(TransitionImageLayoutEXT)(screen->dev, 1, &t);
+         res->layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+         /* assume multi-mip where further subdata calls may happen */
+      }
+      /* make sure image is marked as having data */
+      res->valid = true;
+      return;
+   }
+   /* fallback case for per-resource unsupported or device-level unsupported */
+   u_default_texture_subdata(pctx, pres, level, usage, box, data, stride, layer_stride);
+}
+
+static void
 zink_transfer_flush_region(struct pipe_context *pctx,
                            struct pipe_transfer *ptrans,
                            const struct pipe_box *box)
@@ -2936,6 +3039,6 @@ zink_context_resource_init(struct pipe_context *pctx)
 
    pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
    pctx->buffer_subdata = zink_buffer_subdata;
-   pctx->texture_subdata = u_default_texture_subdata;
+   pctx->texture_subdata = zink_image_subdata;
    pctx->invalidate_resource = zink_resource_invalidate;
 }
