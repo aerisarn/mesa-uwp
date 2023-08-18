@@ -3984,24 +3984,6 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
          zs->non_fs.generated_tcs->precompile.obj = zink_shader_compile_separate(screen, zs->non_fs.generated_tcs);
          ralloc_free(nir_tcs);
       }
-      if (zs->info.stage == MESA_SHADER_VERTEX || zs->info.stage == MESA_SHADER_TESS_EVAL) {
-         /* create a second variant with PSIZ removed:
-          * this works around a bug in drivers using nir_assign_io_var_locations()
-          * where builtins that aren't read by following stages get assigned
-          * driver locations before varyings and break the i/o interface between shaders even
-          * though zink has correctly assigned all locations
-          */
-         nir_variable *var = nir_find_variable_with_location(nir_clone, nir_var_shader_out, VARYING_SLOT_PSIZ);
-         if (var && !var->data.explicit_location) {
-            var->data.mode = nir_var_shader_temp;
-            nir_fixup_deref_modes(nir_clone);
-            NIR_PASS_V(nir_clone, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-            optimize_nir(nir_clone, NULL);
-            zs->precompile.no_psiz_obj = compile_module(screen, zs, nir_clone, true, NULL);
-            spirv_shader_delete(zs->precompile.no_psiz_obj.spirv);
-            zs->precompile.no_psiz_obj.spirv = NULL;
-         }
-      }
    }
    ralloc_free(nir);
    spirv_shader_delete(obj.spirv);
@@ -5626,7 +5608,6 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
    zink_descriptor_shader_deinit(screen, shader);
    if (screen->info.have_EXT_shader_object) {
       VKSCR(DestroyShaderEXT)(screen->dev, shader->precompile.obj.obj, NULL);
-      VKSCR(DestroyShaderEXT)(screen->dev, shader->precompile.no_psiz_obj.obj, NULL);
    } else {
       if (shader->precompile.obj.mod)
          VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.obj.mod, NULL);
