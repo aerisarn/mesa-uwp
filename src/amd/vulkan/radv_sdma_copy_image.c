@@ -42,8 +42,9 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_device *device, struct radeon_c
 
    /* Linear -> linear sub-window copy. */
    if (image->planes[0].surface.is_linear) {
+      bool is_v5_2 = device->physical_device->rad_info.gfx_level >= GFX10_3;
       uint64_t bytes = (uint64_t)src_pitch * copy_height * bpp;
-      uint32_t chunk_size = 1u << 22;
+      uint32_t chunk_size = 1u << (is_v5_2 ? 30 : 22);
       uint32_t chunk_count = DIV_ROUND_UP(bytes, chunk_size);
 
       ASSERTED unsigned cdw_max = radeon_check_space(device->ws, cs, 7 * chunk_count);
