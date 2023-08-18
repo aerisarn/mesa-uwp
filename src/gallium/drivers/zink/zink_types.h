@@ -1469,6 +1469,7 @@ struct zink_screen {
    bool need_2D_zs;
    bool need_2D_sparse;
    bool faked_e5sparse; //drivers may not expose R9G9B9E5 but cts requires it
+   bool can_hic_shader_read;
 
    uint32_t gfx_queue;
    uint32_t sparse_queue;

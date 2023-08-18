@@ -2840,6 +2840,32 @@ init_driver_workarounds(struct zink_screen *screen)
 }
 
 static void
+fixup_driver_props(struct zink_screen *screen)
+{
+   VkPhysicalDeviceProperties2 props = {
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
+   };
+   if (screen->info.have_EXT_host_image_copy) {
+      /* fill in layouts */
+      screen->info.hic_props.pNext = props.pNext;
+      props.pNext = &screen->info.hic_props;
+      screen->info.hic_props.pCopySrcLayouts = ralloc_array(screen, VkImageLayout, screen->info.hic_props.copySrcLayoutCount);
+      screen->info.hic_props.pCopyDstLayouts = ralloc_array(screen, VkImageLayout, screen->info.hic_props.copyDstLayoutCount);
+   }
+   if (props.pNext)
+      screen->vk.GetPhysicalDeviceProperties2(screen->pdev, &props);
+
+   if (screen->info.have_EXT_host_image_copy) {
+      for (unsigned i = 0; i < screen->info.hic_props.copyDstLayoutCount; i++) {
+         if (screen->info.hic_props.pCopyDstLayouts[i] == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            screen->can_hic_shader_read = true;
+            break;
+         }
+      }
+   }
+}
+
+static void
 init_optimal_keys(struct zink_screen *screen)
 {
    screen->optimal_keys = !screen->need_decompose_attrs &&
@@ -3159,6 +3185,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
       simple_mtx_init(&screen->debug_mem_lock, mtx_plain);
       screen->debug_mem_sizes = _mesa_hash_table_create(screen, _mesa_hash_string, _mesa_key_string_equal);
    }
+
+   fixup_driver_props(screen);
 
    init_driver_workarounds(screen);
 
