@@ -324,6 +324,7 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
 {
    VkImageFormatProperties image_props;
    VkResult ret;
+   bool optimalDeviceAccess = true;
    assert(modifier == DRM_FORMAT_MOD_INVALID ||
           (VKSCR(GetPhysicalDeviceImageFormatProperties2) && screen->info.have_EXT_image_drm_format_modifier));
    if (VKSCR(GetPhysicalDeviceImageFormatProperties2)) {
@@ -335,6 +336,12 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       ycbcr_props.pNext = NULL;
       if (screen->info.have_KHR_sampler_ycbcr_conversion)
          props2.pNext = &ycbcr_props;
+      VkHostImageCopyDevicePerformanceQueryEXT hic = {
+         VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY_EXT,
+         props2.pNext,
+      };
+      if (screen->info.have_EXT_host_image_copy)
+         props2.pNext = &hic;
       VkPhysicalDeviceImageFormatInfo2 info;
       info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
       /* possibly VkImageFormatListCreateInfo */
@@ -360,6 +367,8 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       if (vk_format_aspects(ici->format) & VK_IMAGE_ASPECT_PLANE_1_BIT)
          ret = VK_SUCCESS;
       image_props = props2.imageFormatProperties;
+      if (screen->info.have_EXT_host_image_copy)
+         optimalDeviceAccess = hic.optimalDeviceAccess;
    } else
       ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, ici->format, ici->imageType,
                                                    ici->tiling, ici->usage, ici->flags, &image_props);
@@ -373,6 +382,8 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       return USAGE_FAIL_ERROR;
    if (ici->arrayLayers > image_props.maxArrayLayers)
       return USAGE_FAIL_ERROR;
+   if (!optimalDeviceAccess)
+      return USAGE_FAIL_SUBOPTIMAL;
    return USAGE_FAIL_NONE;
 }
 
@@ -439,6 +450,9 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags2 feat
    if (bind & PIPE_BIND_STREAM_OUTPUT)
       usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
+   if (screen->info.have_EXT_host_image_copy && feats & VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT)
+      usage |= VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT;
+
    return usage;
 }
 
@@ -454,6 +468,22 @@ find_modifier_feats(const struct zink_modifier_prop *prop, uint64_t modifier, ui
    return 0;
 }
 
+/* check HIC optimalness */
+static bool
+suboptimal_check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t *mod)
+{
+   usage_fail fail = check_ici(screen, ici, *mod);
+   if (!fail)
+      return true;
+   if (fail == USAGE_FAIL_SUBOPTIMAL) {
+      ici->usage &= ~VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT;
+      fail = check_ici(screen, ici, *mod);
+      if (!fail)
+         return true;
+   }
+   return false;
+}
+
 /* If the driver can't do mutable with this ICI, then try again after removing mutable (and
  * thus also the list of formats we might might mutate to)
  */
@@ -463,13 +493,20 @@ double_check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, VkImageUsag
    if (!usage)
       return false;
 
-   const void *pNext = ici->pNext;
    ici->usage = usage;
-   if (!check_ici(screen, ici, *mod))
-      return true;
-   if (ici->usage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT) {
 
+   if (suboptimal_check_ici(screen, ici, mod))
+      return true;
+   usage_fail fail = check_ici(screen, ici, *mod);
+   if (!fail)
+      return true;
+   if (fail == USAGE_FAIL_SUBOPTIMAL) {
+      ici->usage &= ~VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT;
+      fail = check_ici(screen, ici, *mod);
+      if (!fail)
+         return true;
    }
+   const void *pNext = ici->pNext;
    if (pNext) {
       VkBaseOutStructure *prev = NULL;
       VkBaseOutStructure *fmt_list = NULL;
@@ -487,7 +524,7 @@ double_check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, VkImageUsag
          prev = strct;
       }
       ici->flags &= ~VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-      if (!check_ici(screen, ici, *mod))
+      if (suboptimal_check_ici(screen, ici, mod))
          return true;
       fmt_list->pNext = (void*)ici->pNext;
       ici->pNext = fmt_list;
