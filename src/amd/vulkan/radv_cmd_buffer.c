@@ -2579,7 +2579,8 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
    assert(num_patches->sgpr_idx != -1 && num_patches->num_sgprs == 1);
 
    const unsigned tes_state = SET_SGPR_FIELD(TES_STATE_NUM_PATCHES, cmd_buffer->state.tess_num_patches) |
-                              SET_SGPR_FIELD(TES_STATE_TCS_VERTICES_OUT, tcs->info.tcs.tcs_vertices_out);
+                              SET_SGPR_FIELD(TES_STATE_TCS_VERTICES_OUT, tcs->info.tcs.tcs_vertices_out) |
+                              SET_SGPR_FIELD(TES_STATE_NUM_TCS_OUTPUTS, tcs->info.tcs.num_linked_outputs);
 
    const struct radv_shader *tes = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_TESS_EVAL);
    base_reg = tes->info.user_data_0;

@@ -296,13 +296,18 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    }
    case nir_intrinsic_load_hs_out_patch_data_offset_amd: {
-      nir_def *out_vertices_per_patch;
-      unsigned num_tcs_outputs =
-         stage == MESA_SHADER_TESS_CTRL ? s->info->tcs.num_linked_outputs : s->info->tes.num_linked_inputs;
+      nir_def *num_tcs_outputs, *out_vertices_per_patch;
 
       if (stage == MESA_SHADER_TESS_CTRL) {
+         num_tcs_outputs = nir_imm_int(b, s->info->tcs.num_linked_outputs);
          out_vertices_per_patch = nir_imm_int(b, s->info->tcs.tcs_vertices_out);
       } else {
+         if (s->info->inputs_linked) {
+            num_tcs_outputs = nir_imm_int(b, s->info->tes.num_linked_inputs);
+         } else {
+            num_tcs_outputs = GET_SGPR_FIELD_NIR(s->args->tes_state, TES_STATE_NUM_TCS_OUTPUTS);
+         }
+
          if (s->info->tes.tcs_vertices_out) {
             out_vertices_per_patch = nir_imm_int(b, s->info->tes.tcs_vertices_out);
          } else {
@@ -310,7 +315,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          }
       }
 
-      nir_def *per_vertex_output_patch_size = nir_imul_imm(b, out_vertices_per_patch, num_tcs_outputs * 16u);
+      nir_def *per_vertex_output_patch_size =
+         nir_imul(b, out_vertices_per_patch, nir_imul_imm(b, num_tcs_outputs, 16u));
 
       if (s->info->num_tess_patches) {
          unsigned num_patches = s->info->num_tess_patches;
