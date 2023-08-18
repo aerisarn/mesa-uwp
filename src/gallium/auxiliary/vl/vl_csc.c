@@ -120,6 +120,18 @@ static const vl_csc_matrix bt_709 =
 };
 
 /*
+ * Converts ITU-R BT.709 YCbCr pixels to RGB pixels where:
+ * Y, Cb, and Cr are in [0,255]
+ * R, G, and B are in [16,235]
+ */
+static const vl_csc_matrix bt_709_full =
+{
+   { 0.859f,  0.0f,    1.352f, 0.0625f, },
+   { 0.859f, -0.161f, -0.402f, 0.0625f, },
+   { 0.859f,  1.594f,  0.0f,   0.0625f, }
+};
+
+/*
  * Converts SMPTE 240M YCbCr pixels to RGB pixels where:
  * Y is in [16,235], Cb and Cr are in [16,240]
  * R, G, and B are in [16,235]
@@ -192,6 +204,9 @@ void vl_csc_get_matrix(enum VL_CSC_COLOR_STANDARD cs,
          break;
       case VL_CSC_COLOR_STANDARD_BT_709:
          cstd = &bt_709;
+         break;
+      case VL_CSC_COLOR_STANDARD_BT_709_FULL:
+         cstd = &bt_709_full;
          break;
       case VL_CSC_COLOR_STANDARD_SMPTE_240M:
          cstd = &smpte240m;
