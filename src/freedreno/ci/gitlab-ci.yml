@@ -40,10 +40,8 @@
     - !reference [.collabora-farm-rules, rules]
     - !reference [.freedreno-common-rules, rules]
     - !reference [.gl-rules, rules]
-    - changes: &freedreno_gl_file_list
-      - src/freedreno/ir2/**/*
-      - src/gallium/drivers/freedreno/**/*
-      - src/gallium/winsys/freedreno/**/*
+    - changes:
+        *freedreno_gl_file_list
       when: on_success
 
 .google-freedreno-manual-rules:
