@@ -625,8 +625,8 @@ init_context(isel_context* ctx, nir_shader* shader)
       }
    }
 
-   ctx->program->config->spi_ps_input_ena = ctx->program->info.ps.spi_ps_input;
-   ctx->program->config->spi_ps_input_addr = ctx->program->info.ps.spi_ps_input;
+   ctx->program->config->spi_ps_input_ena = ctx->program->info.ps.spi_ps_input_ena;
+   ctx->program->config->spi_ps_input_addr = ctx->program->info.ps.spi_ps_input_addr;
 
    ctx->cf_info.nir_to_aco = std::move(nir_to_aco);
 

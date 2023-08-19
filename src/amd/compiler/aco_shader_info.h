@@ -171,7 +171,8 @@ struct aco_shader_info {
    } tcs;
    struct {
       uint32_t num_interp;
-      unsigned spi_ps_input;
+      unsigned spi_ps_input_ena;
+      unsigned spi_ps_input_addr;
 
       /* Vulkan only */
       struct ac_arg epilog_pc;
