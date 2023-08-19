@@ -553,13 +553,6 @@ public:
 
    void andNot(const BitSet&);
 
-   // bits = (bits | setMask) & ~clrMask
-   inline void periodicMask32(uint32_t setMask, uint32_t clrMask)
-   {
-      for (unsigned int i = 0; i < (size + 31) / 32; ++i)
-         data[i] = (data[i] | setMask) & ~clrMask;
-   }
-
    unsigned int popCount() const;
 
    void print() const;
