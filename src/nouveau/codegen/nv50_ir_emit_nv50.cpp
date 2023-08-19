@@ -2131,7 +2131,6 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
    case OP_EXP:
    case OP_LOG:
    case OP_SQRT:
-   case OP_POW:
    case OP_SELP:
    case OP_SLCT:
    case OP_TXD:

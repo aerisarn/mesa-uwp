@@ -135,7 +135,6 @@ protected:
    bool handleDIV(Instruction *);
    bool handleMOD(Instruction *);
    bool handleSQRT(Instruction *);
-   bool handlePOW(Instruction *);
    bool handleTEX(TexInstruction *);
    bool handleTXD(TexInstruction *);
    bool handleTXQ(TexInstruction *);

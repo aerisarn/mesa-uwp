@@ -122,7 +122,6 @@ const char *operationStr[OP_LAST + 1] =
    "presin",
    "preex2",
    "sqrt",
-   "pow",
    "bra",
    "call",
    "ret",

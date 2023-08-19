@@ -439,7 +439,6 @@ TargetNV50::isOpSupported(operation op, DataType ty) const
       return chipset >= 0xa0;
    case OP_TXG:
       return chipset >= 0xa3 && chipset != 0xaa && chipset != 0xac;
-   case OP_POW:
    case OP_SQRT:
    case OP_DIV:
    case OP_MOD:

@@ -656,7 +656,6 @@ private:
 
    bool handleDIV(Instruction *);
    bool handleSQRT(Instruction *);
-   bool handlePOW(Instruction *);
 
    bool handleSET(Instruction *);
    bool handleSLCT(CmpInstruction *);
@@ -1360,22 +1359,6 @@ NV50LoweringPreSSA::handleSQRT(Instruction *i)
    bld.setPosition(i, true);
    i->op = OP_RSQ;
    bld.mkOp1(OP_RCP, i->dType, i->getDef(0), i->getDef(0));
-
-   return true;
-}
-
-bool
-NV50LoweringPreSSA::handlePOW(Instruction *i)
-{
-   LValue *val = bld.getScratch();
-
-   bld.mkOp1(OP_LG2, TYPE_F32, val, i->getSrc(0));
-   bld.mkOp2(OP_MUL, TYPE_F32, val, i->getSrc(1), val)->dnz = 1;
-   bld.mkOp1(OP_PREEX2, TYPE_F32, val, val);
-
-   i->op = OP_EX2;
-   i->setSrc(0, val);
-   i->setSrc(1, NULL);
 
    return true;
 }
@@ -2215,8 +2198,6 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleSLCT(i->asCmp());
    case OP_SELP:
       return handleSELP(i);
-   case OP_POW:
-      return handlePOW(i);
    case OP_DIV:
       return handleDIV(i);
    case OP_SQRT:

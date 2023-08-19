@@ -636,14 +636,6 @@ ConstantFolding::expr(Instruction *i,
          return;
       }
       break;
-   case OP_POW:
-      switch (i->dType) {
-      case TYPE_F32: res.data.f32 = pow(a->data.f32, b->data.f32); break;
-      case TYPE_F64: res.data.f64 = pow(a->data.f64, b->data.f64); break;
-      default:
-         return;
-      }
-      break;
    case OP_MAX:
       switch (i->dType) {
       case TYPE_F32: res.data.f32 = MAX2(a->data.f32, b->data.f32); break;

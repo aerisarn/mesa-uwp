@@ -2939,7 +2939,6 @@ CodeEmitterNVC0::emitInstruction(Instruction *insn)
    case OP_EXP:
    case OP_LOG:
    case OP_SQRT:
-   case OP_POW:
       ERROR("operation should have been lowered\n");
       return false;
    default:

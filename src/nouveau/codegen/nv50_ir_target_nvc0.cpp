@@ -482,7 +482,7 @@ TargetNVC0::isOpSupported(operation op, DataType ty) const
 {
    if (op == OP_SAD && ty != TYPE_S32 && ty != TYPE_U32)
       return false;
-   if (op == OP_POW || op == OP_SQRT || op == OP_DIV || op == OP_MOD)
+   if (op == OP_SQRT || op == OP_DIV || op == OP_MOD)
       return false;
    if (op == OP_XMAD)
       return false;

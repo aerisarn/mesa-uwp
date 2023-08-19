@@ -95,7 +95,6 @@ enum operation
    OP_PRESIN,
    OP_PREEX2,
    OP_SQRT,
-   OP_POW,
    OP_BRA,
    OP_CALL,
    OP_RET,
