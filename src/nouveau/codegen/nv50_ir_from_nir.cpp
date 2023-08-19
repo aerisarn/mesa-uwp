@@ -481,8 +481,6 @@ Converter::getOperation(nir_op op)
       return OP_NOT;
    case nir_op_ior:
       return OP_OR;
-   case nir_op_fpow:
-      return OP_POW;
    case nir_op_frcp:
       return OP_RCP;
    case nir_op_frsq:
@@ -2480,7 +2478,6 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_inot:
    case nir_op_ior:
    case nir_op_pack_64_2x32_split:
-   case nir_op_fpow:
    case nir_op_frcp:
    case nir_op_frem:
    case nir_op_irem:
@@ -3383,7 +3380,7 @@ nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type)
    op.lower_flrp16 = (chipset >= NVISA_GV100_CHIPSET);
    op.lower_flrp32 = true;
    op.lower_flrp64 = true;
-   op.lower_fpow = false; // TODO: nir's lowering is broken, or we could use it
+   op.lower_fpow = true;
    op.lower_fsat = false;
    op.lower_fsqrt = false; // TODO: only before gm200
    op.lower_sincos = false;
