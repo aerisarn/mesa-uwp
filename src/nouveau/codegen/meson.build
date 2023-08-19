@@ -25,8 +25,6 @@ files_libnouveau_codegen = files(
   'nv50_ir_build_util.h',
   'nv50_ir_driver.h',
   'nv50_ir_emit_nv50.cpp',
-  'nv50_ir_from_common.cpp',
-  'nv50_ir_from_common.h',
   'nv50_ir_from_nir.cpp',
   'nv50_ir_graph.cpp',
   'nv50_ir_graph.h',

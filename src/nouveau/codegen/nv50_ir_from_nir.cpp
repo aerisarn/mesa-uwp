@@ -29,7 +29,6 @@
 #include "util/u_prim.h"
 
 #include "nv50_ir.h"
-#include "nv50_ir_from_common.h"
 #include "nv50_ir_lowering_helper.h"
 #include "nv50_ir_target.h"
 #include "nv50_ir_util.h"
@@ -94,7 +93,7 @@ nv50_nir_lower_load_user_clip_plane(nir_shader *nir, struct nv50_ir_prog_info *i
                                      info);
 }
 
-class Converter : public ConverterCommon
+class Converter : public BuildUtil
 {
 public:
    Converter(Program *, nir_shader *, nv50_ir_prog_info *, nv50_ir_prog_info_out *);
@@ -132,6 +131,7 @@ private:
 
    uint32_t getSlotAddress(nir_intrinsic_instr *, uint8_t idx, uint8_t slot);
 
+   uint8_t translateInterpMode(const struct nv50_ir_varying *var, operation& op);
    void setInterpolate(nv50_ir_varying *,
                        uint8_t,
                        bool centroid,
@@ -191,6 +191,9 @@ private:
    // tex stuff
    unsigned int getNIRArgCount(TexInstruction::Target&);
 
+   struct nv50_ir_prog_info *info;
+   struct nv50_ir_prog_info_out *info_out;
+
    nir_shader *nir;
 
    NirDefMap ssaDefs;
@@ -205,6 +208,7 @@ private:
    Instruction *immInsertPos;
 
    int clipVertexOutput;
+   Value *outBase; // base address of vertex out patch (for TCP)
 
    union {
       struct {
@@ -215,13 +219,16 @@ private:
 
 Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info,
                      nv50_ir_prog_info_out *info_out)
-   : ConverterCommon(prog, info, info_out),
+   : BuildUtil(prog),
+     info(info),
+     info_out(info_out),
      nir(nir),
      curLoopDepth(0),
      curIfDepth(0),
      exit(NULL),
      immInsertPos(NULL),
-     clipVertexOutput(-1)
+     clipVertexOutput(-1),
+     outBase(nullptr)
 {
    zero = mkImm((uint32_t)0);
 }
@@ -830,6 +837,29 @@ vert_attrib_to_tgsi_semantic(gl_vert_attrib slot, unsigned *name, unsigned *inde
       assert(false);
       break;
    }
+}
+
+uint8_t
+Converter::translateInterpMode(const struct nv50_ir_varying *var, operation& op)
+{
+   uint8_t mode = NV50_IR_INTERP_PERSPECTIVE;
+
+   if (var->flat)
+      mode = NV50_IR_INTERP_FLAT;
+   else
+   if (var->linear)
+      mode = NV50_IR_INTERP_LINEAR;
+   else
+   if (var->sc)
+      mode = NV50_IR_INTERP_SC;
+
+   op = (mode == NV50_IR_INTERP_PERSPECTIVE || mode == NV50_IR_INTERP_SC)
+      ? OP_PINTERP : OP_LINTERP;
+
+   if (var->centroid)
+      mode |= NV50_IR_INTERP_CENTROID;
+
+   return mode;
 }
 
 void
