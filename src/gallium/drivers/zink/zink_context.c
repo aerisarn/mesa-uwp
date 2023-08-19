@@ -2288,7 +2288,7 @@ zink_make_texture_handle_resident(struct pipe_context *pctx, uint64_t handle, bo
          if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
             ctx->di.bindless[0].db.buffer_infos[handle].address = res->obj->bda + ds->db.offset;
             ctx->di.bindless[0].db.buffer_infos[handle].range = ds->db.size;
-            ctx->di.bindless[0].db.buffer_infos[handle].format = ds->db.format;
+            ctx->di.bindless[0].db.buffer_infos[handle].format = zink_get_format(zink_screen(ctx->base.screen), ds->db.format);
          } else {
             if (ds->bufferview->bvci.buffer != res->obj->buffer)
                rebind_bindless_bufferview(ctx, res, ds);
@@ -2430,7 +2430,7 @@ zink_make_image_handle_resident(struct pipe_context *pctx, uint64_t handle, unsi
          if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
             ctx->di.bindless[0].db.buffer_infos[handle].address = res->obj->bda + ds->db.offset;
             ctx->di.bindless[0].db.buffer_infos[handle].range = ds->db.size;
-            ctx->di.bindless[0].db.buffer_infos[handle].format = ds->db.format;
+            ctx->di.bindless[0].db.buffer_infos[handle].format = zink_get_format(zink_screen(ctx->base.screen), ds->db.format);
          } else {
             if (ds->bufferview->bvci.buffer != res->obj->buffer)
                rebind_bindless_bufferview(ctx, res, ds);
