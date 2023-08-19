@@ -744,7 +744,8 @@ ConstantFolding::expr(Instruction *i,
    switch (i->op) {
    case OP_MAD:
    case OP_FMA: {
-      ImmediateValue src0, src1 = *i->getSrc(0)->asImm();
+      ImmediateValue src0, src1;
+      src1 = *i->getSrc(0)->asImm();
 
       // Move the immediate into position 1, where we know it might be
       // emittable. However it might not be anyways, as there may be other
