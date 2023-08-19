@@ -36,6 +36,7 @@
 
 #include "util/bitset.h"
 #include "util/u_math.h"
+#include "util/rb_tree.h"
 #include "brw_fs.h"
 #include "brw_fs_live_variables.h"
 #include "brw_cfg.h"
@@ -45,6 +46,7 @@ using namespace brw;
 
 namespace { /* avoid conflict with opt_copy_propagation_elements */
 struct acp_entry : public exec_node {
+   struct rb_node by_src;
    fs_reg dst;
    fs_reg src;
    unsigned global_idx;
@@ -55,8 +57,84 @@ struct acp_entry : public exec_node {
    bool force_writemask_all;
 };
 
+/**
+ * Compare two acp_entry::src.nr
+ *
+ * This is intended to be used as the comparison function for rb_tree.
+ */
+static int
+cmp_entry_src_entry_src(const struct rb_node *a_node, const struct rb_node *b_node)
+{
+   const struct acp_entry *a_entry =
+      rb_node_data(struct acp_entry, a_node, by_src);
+
+   const struct acp_entry *b_entry =
+      rb_node_data(struct acp_entry, b_node, by_src);
+
+   return a_entry->src.nr - b_entry->src.nr;
+}
+
+/**
+ * Compare an acp_entry::src.nr with a raw nr.
+ *
+ * This is intended to be used as the comparison function for rb_tree.
+ */
+static int
+cmp_entry_src_nr(const struct rb_node *a_node, const void *b_key)
+{
+   const struct acp_entry *a_entry =
+      rb_node_data(struct acp_entry, a_node, by_src);
+
+   return a_entry->src.nr - (uintptr_t) b_key;
+}
+
+class acp_forward_iterator {
+public:
+   acp_forward_iterator(struct rb_node *n, unsigned offset)
+      : curr(n), next(nullptr), offset(offset)
+   {
+      next = rb_node_next_or_null(curr);
+   }
+
+   acp_forward_iterator &operator++()
+   {
+      curr = next;
+      next = rb_node_next_or_null(curr);
+
+      return *this;
+   }
+
+   bool operator!=(const acp_forward_iterator &other) const
+   {
+      return curr != other.curr;
+   }
+
+   struct acp_entry *operator*() const
+   {
+      /* This open-codes part of rb_node_data. */
+      return curr != NULL ? (struct acp_entry *)(((char *)curr) - offset)
+                          : NULL;
+   }
+
+private:
+   struct rb_node *curr;
+   struct rb_node *next;
+   unsigned offset;
+};
+
 struct acp {
    exec_list h[ACP_HASH_SIZE];
+   struct rb_tree by_src;
+
+   acp()
+   {
+      rb_tree_init(&by_src);
+   }
+
+   const acp_forward_iterator end() const
+   {
+      return acp_forward_iterator(nullptr, 0);
+   }
 
    unsigned length()
    {
@@ -71,11 +149,23 @@ struct acp {
    void add(acp_entry *entry)
    {
       h[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
+      rb_tree_insert(&by_src, &entry->by_src, cmp_entry_src_entry_src);
    }
 
    void remove(acp_entry *entry)
    {
       entry->remove();
+      rb_tree_remove(&by_src, &entry->by_src);
+   }
+
+   acp_forward_iterator find_by_src(unsigned nr)
+   {
+      struct rb_node *rbn = rb_tree_search(&by_src,
+                                           (void *)(uintptr_t) nr,
+                                           cmp_entry_src_nr);
+
+      return acp_forward_iterator(rbn, rb_tree_offsetof(struct acp_entry,
+                                                        by_src, rbn));
    }
 };
 
@@ -1229,19 +1319,16 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
                acp.remove(entry);
          }
 
-         /* Oops, we only have the chaining hash based on the destination, not
-          * the source, so walk across the entire table.
-          */
-         for (int i = 0; i < ACP_HASH_SIZE; i++) {
-            foreach_in_list_safe(acp_entry, entry, &acp.h[i]) {
-               /* Make sure we kill the entry if this instruction overwrites
-                * _any_ of the registers that it reads
-                */
-               if (grf_regions_overlap(entry->src, entry->size_read,
-                                       inst->dst, inst->size_written))
-                  acp.remove(entry);
-            }
-	 }
+         for (auto iter = acp.find_by_src(inst->dst.nr);
+              iter != acp.end() && (*iter)->src.nr == inst->dst.nr;
+              ++iter) {
+            /* Make sure we kill the entry if this instruction overwrites
+             * _any_ of the registers that it reads
+             */
+            if (grf_regions_overlap((*iter)->src, (*iter)->size_read,
+                                    inst->dst, inst->size_written))
+               acp.remove(*iter);
+         }
       }
 
       /* If this instruction's source could potentially be folded into the
