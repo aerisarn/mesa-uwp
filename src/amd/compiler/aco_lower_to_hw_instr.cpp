@@ -3065,6 +3065,12 @@ lower_to_hw_instr(Program* program)
 
       Builder bld(program, end_with_regs_block);
       bld.sopp(aco_opcode::s_branch, exit_block->index);
+
+      /* For insert waitcnt pass to add waitcnt in exit block, otherwise waitcnt will be added
+       * after the s_branch which won't be executed.
+       */
+      end_with_regs_block->kind &= ~block_kind_end_with_regs;
+      exit_block->kind |= block_kind_end_with_regs;
    }
 }
 
