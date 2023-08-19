@@ -1147,9 +1147,10 @@ can_propagate_from(fs_inst *inst)
 /* Walks a basic block and does copy propagation on it using the acp
  * list.
  */
-bool
-fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
-                                       exec_list *acp)
+static bool
+opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
+                           bblock_t *block, exec_list *acp,
+                           const brw::simple_allocator &alloc)
 {
    bool progress = false;
 
@@ -1285,8 +1286,8 @@ fs_visitor::opt_copy_propagation()
     * the set of copies available at the end of the block.
     */
    foreach_block (block, cfg) {
-      progress = opt_copy_propagation_local(copy_prop_ctx, block,
-                                            out_acp[block->num]) || progress;
+      progress = opt_copy_propagation_local(compiler, copy_prop_ctx, block,
+                                            out_acp[block->num], alloc) || progress;
 
       /* If the destination of an ACP entry exists only within this block,
        * then there's no need to keep it for dataflow analysis.  We can delete
@@ -1325,7 +1326,7 @@ fs_visitor::opt_copy_propagation()
          }
       }
 
-      progress = opt_copy_propagation_local(copy_prop_ctx, block, in_acp) ||
+      progress = opt_copy_propagation_local(compiler, copy_prop_ctx, block, in_acp, alloc) ||
                  progress;
    }
 
