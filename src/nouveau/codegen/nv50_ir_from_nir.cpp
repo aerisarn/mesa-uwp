@@ -207,7 +207,6 @@ private:
    Value *zero;
    Instruction *immInsertPos;
 
-   int clipVertexOutput;
    Value *outBase; // base address of vertex out patch (for TCP)
 
    union {
@@ -227,7 +226,6 @@ Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info,
      curIfDepth(0),
      exit(NULL),
      immInsertPos(NULL),
-     clipVertexOutput(-1),
      outBase(nullptr)
 {
    zero = mkImm((uint32_t)0);
@@ -1101,15 +1099,8 @@ bool Converter::assignSlots() {
             info_out->numPatchConstants = MAX2(info_out->numPatchConstants, index + slots);
 
          switch (name) {
-         case TGSI_SEMANTIC_CLIPVERTEX:
-            clipVertexOutput = vary;
-            break;
          case TGSI_SEMANTIC_EDGEFLAG:
             info_out->io.edgeFlagOut = vary;
-            break;
-         case TGSI_SEMANTIC_POSITION:
-            if (clipVertexOutput < 0)
-               clipVertexOutput = vary;
             break;
          default:
             break;
