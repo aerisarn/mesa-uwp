@@ -34,7 +34,6 @@ protected:
 
    struct nv50_ir_prog_info *info;
    struct nv50_ir_prog_info_out *info_out;
-   Value *fragCoord[4];
    Value *outBase; // base address of vertex out patch (for TCP)
 };
 

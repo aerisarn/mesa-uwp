@@ -1355,8 +1355,8 @@ Converter::visit(nir_function *function)
       break;
    case Program::TYPE_FRAGMENT: {
       Symbol *sv = mkSysVal(SV_POSITION, 3);
-      fragCoord[3] = mkOp1v(OP_RDSV, TYPE_F32, getSSA(), sv);
-      fp.position = mkOp1v(OP_RCP, TYPE_F32, fragCoord[3], fragCoord[3]);
+      Value *temp = mkOp1v(OP_RDSV, TYPE_F32, getSSA(), sv);
+      fp.position = mkOp1v(OP_RCP, TYPE_F32, temp, temp);
       break;
    }
    default:
