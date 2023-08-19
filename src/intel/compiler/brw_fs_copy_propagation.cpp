@@ -55,6 +55,30 @@ struct acp_entry : public exec_node {
    bool force_writemask_all;
 };
 
+struct acp {
+   exec_list h[ACP_HASH_SIZE];
+
+   unsigned length()
+   {
+      unsigned l = 0;
+
+      for (unsigned i = 0; i < ACP_HASH_SIZE; i++)
+         l += h[i].length();
+
+      return l;
+   }
+
+   void add(acp_entry *entry)
+   {
+      h[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
+   }
+
+   void remove(acp_entry *entry)
+   {
+      entry->remove();
+   }
+};
+
 struct block_data {
    /**
     * Which entries in the fs_copy_prop_dataflow acp table are live at the
@@ -115,7 +139,7 @@ class fs_copy_prop_dataflow
 public:
    fs_copy_prop_dataflow(void *mem_ctx, cfg_t *cfg,
                          const fs_live_variables &live,
-                         exec_list *out_acp[ACP_HASH_SIZE]);
+                         struct acp *out_acp);
 
    void setup_initial_values();
    void run();
@@ -136,17 +160,14 @@ public:
 
 fs_copy_prop_dataflow::fs_copy_prop_dataflow(void *mem_ctx, cfg_t *cfg,
                                              const fs_live_variables &live,
-                                             exec_list *out_acp[ACP_HASH_SIZE])
+                                             struct acp *out_acp)
    : mem_ctx(mem_ctx), cfg(cfg), live(live)
 {
    bd = rzalloc_array(mem_ctx, struct block_data, cfg->num_blocks);
 
    num_acp = 0;
-   foreach_block (block, cfg) {
-      for (int i = 0; i < ACP_HASH_SIZE; i++) {
-         num_acp += out_acp[block->num][i].length();
-      }
-   }
+   foreach_block (block, cfg)
+      num_acp += out_acp[block->num].length();
 
    acp = rzalloc_array(mem_ctx, struct acp_entry *, num_acp);
 
@@ -163,7 +184,7 @@ fs_copy_prop_dataflow::fs_copy_prop_dataflow(void *mem_ctx, cfg_t *cfg,
       bd[block->num].exec_mismatch = rzalloc_array(bd, BITSET_WORD, bitset_words);
 
       for (int i = 0; i < ACP_HASH_SIZE; i++) {
-         foreach_in_list(acp_entry, entry, &out_acp[block->num][i]) {
+         foreach_in_list(acp_entry, entry, &out_acp[block->num].h[i]) {
             acp[next_acp] = entry;
 
             entry->global_idx = next_acp;
@@ -1149,7 +1170,7 @@ can_propagate_from(fs_inst *inst)
  */
 static bool
 opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
-                           bblock_t *block, exec_list *acp,
+                           bblock_t *block, struct acp &acp,
                            const brw::simple_allocator &alloc)
 {
    bool progress = false;
@@ -1161,7 +1182,7 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
          if (inst->src[i].file != VGRF)
             continue;
 
-         foreach_in_list(acp_entry, entry, &acp[inst->src[i].nr % ACP_HASH_SIZE]) {
+         foreach_in_list(acp_entry, entry, &acp.h[inst->src[i].nr % ACP_HASH_SIZE]) {
             if (entry->src.file == IMM) {
                if (try_constant_propagate(compiler, inst, entry, i)) {
                   instruction_progress = true;
@@ -1202,23 +1223,23 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
 
       /* kill the destination from the ACP */
       if (inst->dst.file == VGRF || inst->dst.file == FIXED_GRF) {
-         foreach_in_list_safe(acp_entry, entry, &acp[inst->dst.nr % ACP_HASH_SIZE]) {
+         foreach_in_list_safe(acp_entry, entry, &acp.h[inst->dst.nr % ACP_HASH_SIZE]) {
             if (grf_regions_overlap(entry->dst, entry->size_written,
                                     inst->dst, inst->size_written))
-               entry->remove();
+               acp.remove(entry);
          }
 
          /* Oops, we only have the chaining hash based on the destination, not
           * the source, so walk across the entire table.
           */
          for (int i = 0; i < ACP_HASH_SIZE; i++) {
-            foreach_in_list_safe(acp_entry, entry, &acp[i]) {
+            foreach_in_list_safe(acp_entry, entry, &acp.h[i]) {
                /* Make sure we kill the entry if this instruction overwrites
                 * _any_ of the registers that it reads
                 */
                if (grf_regions_overlap(entry->src, entry->size_read,
                                        inst->dst, inst->size_written))
-                  entry->remove();
+                  acp.remove(entry);
             }
 	 }
       }
@@ -1236,7 +1257,7 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
          entry->opcode = inst->opcode;
          entry->is_partial_write = inst->is_partial_write();
          entry->force_writemask_all = inst->force_writemask_all;
-         acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
+         acp.add(entry);
       } else if (inst->opcode == SHADER_OPCODE_LOAD_PAYLOAD &&
                  inst->dst.file == VGRF) {
          int offset = 0;
@@ -1257,7 +1278,7 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
                entry->opcode = inst->opcode;
                entry->force_writemask_all = inst->force_writemask_all;
                if (!entry->dst.equals(inst->src[i])) {
-                  acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
+                  acp.add(entry);
                } else {
                   ralloc_free(entry);
                }
@@ -1275,10 +1296,7 @@ fs_visitor::opt_copy_propagation()
 {
    bool progress = false;
    void *copy_prop_ctx = ralloc_context(NULL);
-   exec_list *out_acp[cfg->num_blocks];
-
-   for (int i = 0; i < cfg->num_blocks; i++)
-      out_acp[i] = new exec_list [ACP_HASH_SIZE];
+   struct acp out_acp[cfg->num_blocks];
 
    const fs_live_variables &live = live_analysis.require();
 
@@ -1300,11 +1318,11 @@ fs_visitor::opt_copy_propagation()
        * it's safe to use the liveness information in this way.
        */
       for (unsigned a = 0; a < ACP_HASH_SIZE; a++) {
-         foreach_in_list_safe(acp_entry, entry, &out_acp[block->num][a]) {
+         foreach_in_list_safe(acp_entry, entry, &out_acp[block->num].h[a]) {
             assert(entry->dst.file == VGRF);
             if (block->start_ip <= live.vgrf_start[entry->dst.nr] &&
                 live.vgrf_end[entry->dst.nr] <= block->end_ip)
-               entry->remove();
+               out_acp[block->num].remove(entry);
          }
       }
    }
@@ -1316,13 +1334,13 @@ fs_visitor::opt_copy_propagation()
     * provided by the dataflow analysis available at the start of a block.
     */
    foreach_block (block, cfg) {
-      exec_list in_acp[ACP_HASH_SIZE];
+      struct acp in_acp;
 
       for (int i = 0; i < dataflow.num_acp; i++) {
          if (BITSET_TEST(dataflow.bd[block->num].livein, i) &&
              !BITSET_TEST(dataflow.bd[block->num].exec_mismatch, i)) {
             struct acp_entry *entry = dataflow.acp[i];
-            in_acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
+            in_acp.add(entry);
          }
       }
 
@@ -1330,8 +1348,6 @@ fs_visitor::opt_copy_propagation()
                  progress;
    }
 
-   for (int i = 0; i < cfg->num_blocks; i++)
-      delete [] out_acp[i];
    ralloc_free(copy_prop_ctx);
 
    if (progress)
