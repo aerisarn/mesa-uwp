@@ -160,6 +160,9 @@ public:
    DLList() : head(0) { }
    ~DLList() { clear(); }
 
+   DLList(const DLList&) = delete;
+   DLList& operator=(const DLList&) = delete;
+
    inline void insertHead(void *data)
    {
       Item *item = new Item(data);
@@ -248,6 +251,9 @@ public:
    Stack() : size(0), limit(0), array(0) { }
    ~Stack() { if (array) FREE(array); }
 
+   Stack(const Stack&) = delete;
+   Stack& operator=(const Stack&) = delete;
+
    inline void push(int i)          { Item data; data.u.i = i; push(data); }
    inline void push(unsigned int u) { Item data; data.u.u = u; push(data); }
    inline void push(void *p)        { Item data; data.u.p = p; push(data); }
@@ -315,6 +321,9 @@ public:
    DynArray() : data(NULL), size(0) { }
 
    ~DynArray() { if (data) FREE(data); }
+
+   DynArray(const DynArray&) = delete;
+   DynArray& operator=(const DynArray&) = delete;
 
    inline Item& operator[](unsigned int i)
    {
@@ -422,6 +431,8 @@ public:
    Interval(const Interval&);
    ~Interval();
 
+   Interval& operator=(const Interval&) = delete;
+
    bool extend(int, int);
    void insert(const Interval&);
    void unify(Interval&); // clears source interval
@@ -483,6 +494,8 @@ public:
       if (data)
          FREE(data);
    }
+
+   BitSet(const BitSet&) = delete;
 
    // allocate will keep old data iff size is unchanged
    bool allocate(unsigned int nBits, bool zero);
@@ -625,6 +638,9 @@ public:
       if (allocArray)
          FREE(allocArray);
    }
+
+   MemoryPool(const MemoryPool&) = delete;
+   MemoryPool& operator=(const MemoryPool&) = delete;
 
    void *allocate()
    {

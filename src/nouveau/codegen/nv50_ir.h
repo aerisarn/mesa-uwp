@@ -653,6 +653,8 @@ public:
    ValueRef(const ValueRef&);
    ~ValueRef();
 
+   ValueRef& operator=(const ValueRef&) = delete;
+
    inline bool exists() const { return value != NULL; }
 
    void set(Value *);
@@ -690,6 +692,8 @@ public:
    ValueDef(const ValueDef&);
    ~ValueDef();
 
+   ValueDef& operator=(const ValueDef&) = delete;
+
    inline bool exists() const { return value != NULL; }
 
    inline Value *get() const { return value; }
@@ -718,6 +722,9 @@ class Value
 public:
    Value();
    virtual ~Value() { }
+
+   Value(const Value&) = delete;
+   Value& operator=(const Value&) = delete;
 
    virtual Value *clone(ClonePolicy<Function>&) const = 0;
 
@@ -854,6 +861,9 @@ public:
    Instruction();
    Instruction(Function *, operation, DataType);
    virtual ~Instruction();
+
+   Instruction(const Instruction&) = delete;
+   Instruction& operator=(const Instruction&) = delete;
 
    virtual Instruction *clone(ClonePolicy<Function>&,
                               Instruction * = NULL) const;
@@ -1159,6 +1169,9 @@ public:
    BasicBlock(Function *);
    ~BasicBlock();
 
+   BasicBlock(const BasicBlock&) = delete;
+   BasicBlock& operator=(const BasicBlock&) = delete;
+
    BasicBlock *clone(ClonePolicy<Function>&) const;
 
    inline int getId() const { return id; }
@@ -1236,6 +1249,9 @@ class Function
 public:
    Function(Program *, const char *name, uint32_t label);
    ~Function();
+
+   Function(const Function&) = delete;
+   Function& operator=(const Function&) = delete;
 
    static inline Function *get(Graph::Node *node);
 
@@ -1321,6 +1337,9 @@ public:
 
    Program(Type type, Target *targ);
    ~Program();
+
+   Program(const Program&) = delete;
+   Program& operator=(const Program&) = delete;
 
    void print();
 
