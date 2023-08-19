@@ -29,6 +29,7 @@
 #include <unordered_map>
 
 namespace nv50_ir {
+namespace {
 
 #define MAX_REGISTER_FILE_SIZE 256
 
@@ -40,16 +41,10 @@ public:
    void init(const Target *);
    void reset(DataFile, bool resetMax = false);
 
-   void periodicMask(DataFile f, uint32_t lock, uint32_t unlock);
-   void intersect(DataFile f, const RegisterSet *);
-
    bool assign(int32_t& reg, DataFile f, unsigned int size, unsigned int maxReg);
-   void release(DataFile f, int32_t reg, unsigned int size);
    void occupy(DataFile f, int32_t reg, unsigned int size);
-   void occupy(const Value *);
    void occupyMask(DataFile f, int32_t reg, uint8_t mask);
    bool isOccupied(DataFile f, int32_t reg, unsigned int size) const;
-   bool testOccupy(const Value *);
    bool testOccupy(DataFile f, int32_t reg, unsigned int size);
 
    inline int getMaxAssigned(DataFile f) const { return fill[f]; }
@@ -128,18 +123,6 @@ RegisterSet::RegisterSet(const Target *targ)
 }
 
 void
-RegisterSet::periodicMask(DataFile f, uint32_t lock, uint32_t unlock)
-{
-   bits[f].periodicMask32(lock, unlock);
-}
-
-void
-RegisterSet::intersect(DataFile f, const RegisterSet *set)
-{
-   bits[f] |= set->bits[f];
-}
-
-void
 RegisterSet::print(DataFile f) const
 {
    INFO("GPR:");
@@ -164,12 +147,6 @@ RegisterSet::isOccupied(DataFile f, int32_t reg, unsigned int size) const
 }
 
 void
-RegisterSet::occupy(const Value *v)
-{
-   occupy(v->reg.file, idToUnits(v), v->reg.size >> unit[v->reg.file]);
-}
-
-void
 RegisterSet::occupyMask(DataFile f, int32_t reg, uint8_t mask)
 {
    bits[f].setMask(reg & ~31, static_cast<uint32_t>(mask) << (reg % 32));
@@ -186,27 +163,12 @@ RegisterSet::occupy(DataFile f, int32_t reg, unsigned int size)
 }
 
 bool
-RegisterSet::testOccupy(const Value *v)
-{
-   return testOccupy(v->reg.file,
-                     idToUnits(v), v->reg.size >> unit[v->reg.file]);
-}
-
-bool
 RegisterSet::testOccupy(DataFile f, int32_t reg, unsigned int size)
 {
    if (isOccupied(f, reg, size))
       return false;
    occupy(f, reg, size);
    return true;
-}
-
-void
-RegisterSet::release(DataFile f, int32_t reg, unsigned int size)
-{
-   bits[f].clrRange(reg, size);
-
-   INFO_DBG(0, REG_ALLOC, "reg release: %u[%i] %u\n", f, reg, size);
 }
 
 class RegAlloc
@@ -248,8 +210,6 @@ private:
 
       void addHazard(Instruction *i, const ValueRef *src);
       void textureMask(TexInstruction *);
-      void addConstraint(Instruction *, int s, int n);
-      bool detectConflict(Instruction *, int s);
 
       // target specific functions, TODO: put in subclass or Target
       void texConstraintNV50(TexInstruction *);
@@ -1888,12 +1848,6 @@ GCRA::resolveSplitsAndMerges()
    merges.clear();
 }
 
-bool Program::registerAllocation()
-{
-   RegAlloc ra(this);
-   return ra.exec();
-}
-
 bool
 RegAlloc::InsertConstraintsPass::exec(Function *ir)
 {
@@ -1928,62 +1882,6 @@ RegAlloc::InsertConstraintsPass::textureMask(TexInstruction *tex)
       tex->setDef(c, def[c]);
    for (; c < 4; ++c)
       tex->setDef(c, NULL);
-}
-
-bool
-RegAlloc::InsertConstraintsPass::detectConflict(Instruction *cst, int s)
-{
-   Value *v = cst->getSrc(s);
-
-   // current register allocation can't handle it if a value participates in
-   // multiple constraints
-   for (Value::UseIterator it = v->uses.begin(); it != v->uses.end(); ++it) {
-      if (cst != (*it)->getInsn())
-         return true;
-   }
-
-   // can start at s + 1 because detectConflict is called on all sources
-   for (int c = s + 1; cst->srcExists(c); ++c)
-      if (v == cst->getSrc(c))
-         return true;
-
-   Instruction *defi = v->getInsn();
-
-   return (!defi || defi->constrainedDefs());
-}
-
-void
-RegAlloc::InsertConstraintsPass::addConstraint(Instruction *i, int s, int n)
-{
-   Instruction *cst;
-   int d;
-
-   // first, look for an existing identical constraint op
-   for (std::list<Instruction *>::iterator it = constrList.begin();
-        it != constrList.end();
-        ++it) {
-      cst = (*it);
-      if (!i->bb->dominatedBy(cst->bb))
-         break;
-      for (d = 0; d < n; ++d)
-         if (cst->getSrc(d) != i->getSrc(d + s))
-            break;
-      if (d >= n) {
-         for (d = 0; d < n; ++d, ++s)
-            i->setSrc(s, cst->getDef(d));
-         return;
-      }
-   }
-   cst = new_Instruction(func, OP_CONSTRAINT, i->dType);
-
-   for (d = 0; d < n; ++s, ++d) {
-      cst->setDef(d, new_LValue(func, FILE_GPR));
-      cst->setSrc(d, i->getSrc(s));
-      i->setSrc(s, cst->getDef(d));
-   }
-   i->bb->insertBefore(i, cst);
-
-   constrList.push_back(cst);
 }
 
 // Add a dummy use of the pointer source of >= 8 byte loads after the load
@@ -2576,6 +2474,14 @@ RegAlloc::InsertConstraintsPass::insertConstraintMoves()
    }
 
    return true;
+}
+
+} // anonymous namespace
+
+bool Program::registerAllocation()
+{
+   RegAlloc ra(this);
+   return ra.exec();
 }
 
 } // namespace nv50_ir
