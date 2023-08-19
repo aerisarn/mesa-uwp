@@ -33,7 +33,7 @@ namespace nv50_ir {
 bool
 Instruction::isNop() const
 {
-   if (op == OP_PHI || op == OP_SPLIT || op == OP_MERGE || op == OP_CONSTRAINT)
+   if (op == OP_PHI || op == OP_SPLIT || op == OP_MERGE)
       return true;
    if (terminator || join) // XXX: should terminator imply flow ?
       return false;

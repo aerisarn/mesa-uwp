@@ -74,7 +74,6 @@ const char *operationStr[OP_LAST + 1] =
    "union",
    "split",
    "merge",
-   "consec",
    "mov",
    "ld",
    "st",

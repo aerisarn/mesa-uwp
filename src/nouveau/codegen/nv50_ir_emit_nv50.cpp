@@ -2125,7 +2125,6 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       break;
    case OP_PHI:
    case OP_UNION:
-   case OP_CONSTRAINT:
       ERROR("operation should have been eliminated\n");
       return false;
    case OP_SQRT:

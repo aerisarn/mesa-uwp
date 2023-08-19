@@ -45,7 +45,6 @@ enum operation
    OP_UNION, // unify a new definition and several source values
    OP_SPLIT, // $r0d -> { $r0, $r1 } ($r0d and $r0/$r1 will be coalesced)
    OP_MERGE, // opposite of split, e.g. combine 2 32 bit into a 64 bit value
-   OP_CONSTRAINT, // copy values into consecutive registers
    OP_MOV, // simple copy, no modifiers allowed
    OP_LOAD,
    OP_STORE,

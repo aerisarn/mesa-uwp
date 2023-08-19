@@ -28,7 +28,7 @@ namespace nv50_ir {
 const uint8_t Target::operationSrcNr[] =
 {
    0, 0,                   // NOP, PHI
-   0, 0, 0, 0,             // UNION, SPLIT, MERGE, CONSTRAINT
+   0, 0, 0,                // UNION, SPLIT, MERGE
    1, 1, 2,                // MOV, LOAD, STORE
    2, 2, 2, 2, 2, 3, 3, 3, // ADD, SUB, MUL, DIV, MOD, MAD, FMA, SAD
    3, 3,                   // SHLADD, XMAD
@@ -65,10 +65,10 @@ const uint8_t Target::operationSrcNr[] =
 
 const OpClass Target::operationClass[] =
 {
-   // NOP; PHI; UNION, SPLIT, MERGE, CONSTRAINT
+   // NOP; PHI; UNION, SPLIT, MERGE
    OPCLASS_OTHER,
    OPCLASS_PSEUDO,
-   OPCLASS_PSEUDO, OPCLASS_PSEUDO, OPCLASS_PSEUDO, OPCLASS_PSEUDO,
+   OPCLASS_PSEUDO, OPCLASS_PSEUDO, OPCLASS_PSEUDO,
    // MOV; LOAD; STORE
    OPCLASS_MOVE,
    OPCLASS_LOAD,
