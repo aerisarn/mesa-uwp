@@ -66,6 +66,7 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
       case nir_intrinsic_load_uniform:
          return options & nir_move_load_uniform;
       case nir_intrinsic_load_constant_agx:
+      case nir_intrinsic_load_local_pixel_agx:
          return true;
       default:
          return false;
