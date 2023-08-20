@@ -58,7 +58,23 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
          return options & nir_move_copies;
       if (nir_alu_instr_is_comparison(alu))
          return options & nir_move_comparisons;
-      return false;
+
+      /* Assuming that constants do not contribute to register pressure, it is
+       * beneficial to sink ALU instructions where all but one source is
+       * constant. Detect that case last.
+       */
+      if (!(options & nir_move_alu))
+         return false;
+
+      unsigned inputs = nir_op_infos[alu->op].num_inputs;
+      unsigned constant_inputs = 0;
+
+      for (unsigned i = 0; i < inputs; ++i) {
+         if (nir_src_is_const(alu->src[i].src))
+            constant_inputs++;
+      }
+
+      return (constant_inputs + 1 >= inputs);
    }
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
