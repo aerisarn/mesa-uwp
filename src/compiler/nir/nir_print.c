@@ -785,6 +785,37 @@ get_location_str(unsigned location, gl_shader_stage stage,
 }
 
 static void
+print_access(enum gl_access_qualifier access, print_state *state, const char *separator)
+{
+   if (!access) {
+      fputs("none", state->fp);
+      return;
+   }
+
+   static const struct {
+      enum gl_access_qualifier bit;
+      const char *name;
+   } modes[] = {
+      { ACCESS_COHERENT, "coherent" },
+      { ACCESS_VOLATILE, "volatile" },
+      { ACCESS_RESTRICT, "restrict" },
+      { ACCESS_NON_WRITEABLE, "readonly" },
+      { ACCESS_NON_READABLE, "writeonly" },
+      { ACCESS_CAN_REORDER, "reorderable" },
+      { ACCESS_NON_TEMPORAL, "non-temporal" },
+      { ACCESS_INCLUDE_HELPERS, "include-helpers" },
+   };
+
+   bool first = true;
+   for (unsigned i = 0; i < ARRAY_SIZE(modes); ++i) {
+      if (access & modes[i].bit) {
+         fprintf(state->fp, "%s%s", first ? "" : separator, modes[i].name);
+         first = false;
+      }
+   }
+}
+
+static void
 print_var_decl(nir_variable *var, print_state *state)
 {
    FILE *fp = state->fp;
@@ -804,17 +835,8 @@ print_var_decl(nir_variable *var, print_state *state)
            get_variable_mode_str(var->data.mode, false),
            glsl_interp_mode_name(var->data.interpolation));
 
-   enum gl_access_qualifier access = var->data.access;
-   const char *const coher = (access & ACCESS_COHERENT) ? "coherent " : "";
-   const char *const volat = (access & ACCESS_VOLATILE) ? "volatile " : "";
-   const char *const restr = (access & ACCESS_RESTRICT) ? "restrict " : "";
-   const char *const ronly = (access & ACCESS_NON_WRITEABLE) ? "readonly " : "";
-   const char *const wonly = (access & ACCESS_NON_READABLE) ? "writeonly " : "";
-   const char *const reorder = (access & ACCESS_CAN_REORDER) ? "reorderable " : "";
-   const char *const non_temporal = (access & ACCESS_NON_TEMPORAL) ? "non-temporal" : "";
-   const char *const include_helpers = (access & ACCESS_INCLUDE_HELPERS) ? "include-helpers " : "";
-   fprintf(fp, "%s%s%s%s%s%s%s%s", coher, volat, restr, ronly, wonly, reorder,
-           non_temporal, include_helpers);
+   print_access(var->data.access, state, " ");
+   fprintf(fp, " ");
 
    if (glsl_get_base_type(glsl_without_array(var->type)) == GLSL_TYPE_IMAGE) {
       fprintf(fp, "%s ", util_format_short_name(var->data.image.format));
@@ -1492,6 +1514,12 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
             }
             fprintf(fp, "%s", modes ? "|" : "");
          }
+         break;
+      }
+
+      case NIR_INTRINSIC_ACCESS: {
+         fprintf(fp, "access=");
+         print_access(nir_intrinsic_access(instr), state, "|");
          break;
       }
 
