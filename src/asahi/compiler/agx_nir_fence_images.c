@@ -14,6 +14,12 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    b->cursor = nir_after_instr(&intr->instr);
 
+   /* If the image is write-only, there is no fencing needed */
+   if (nir_intrinsic_has_access(intr) &&
+       (nir_intrinsic_access(intr) & ACCESS_NON_READABLE)) {
+      return false;
+   }
+
    switch (intr->intrinsic) {
    case nir_intrinsic_image_store:
    case nir_intrinsic_bindless_image_store:
