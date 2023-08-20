@@ -167,7 +167,7 @@ struct nir_xfb_info;
 /**
  * Description of built-in state associated with a uniform
  *
- * \sa nir_variable::state_slots
+ * :c:member:`nir_variable.state_slots`
  */
 typedef struct {
    gl_state_index16 tokens[STATE_LENGTH];
@@ -405,7 +405,7 @@ typedef struct nir_constant {
     * Value of the constant.
     *
     * The field used to back the values supplied by the constant is determined
-    * by the type associated with the \c nir_variable.  Constants may be
+    * by the type associated with the ``nir_variable``.  Constants may be
     * scalars, vectors, or matrices.
     */
    nir_const_value values[NIR_MAX_VEC_COMPONENTS];
@@ -423,7 +423,7 @@ typedef struct nir_constant {
 } nir_constant;
 
 /**
- * \brief Layout qualifiers for gl_FragDepth.
+ * Layout qualifiers for gl_FragDepth.
  *
  * The AMD/ARB_conservative_depth extensions allow gl_FragDepth to be redeclared
  * with a layout qualifier.
@@ -481,14 +481,14 @@ typedef struct nir_variable {
       /**
        * Storage class of the variable.
        *
-       * \sa nir_variable_mode
+       * :c:struct:`nir_variable_mode`
        */
       unsigned mode : 18;
 
       /**
        * Is the variable read-only?
        *
-       * This is set for variables declared as \c const, shader inputs,
+       * This is set for variables declared as ``const``, shader inputs,
        * and uniforms.
        */
       unsigned read_only : 1;
@@ -556,7 +556,7 @@ typedef struct nir_variable {
       /**
        * Interpolation mode for shader inputs / outputs
        *
-       * \sa glsl_interp_mode
+       * :c:enum:`glsl_interp_mode`
        */
       unsigned interpolation : 3;
 
@@ -565,7 +565,7 @@ typedef struct nir_variable {
        * into a single varying slot, so this offset should be applied when
        * accessing components.  For example, an offset of 1 means that the x
        * component of this variable is actually stored in component y of the
-       * location specified by \c location.
+       * location specified by ``location``.
        */
       unsigned location_frac : 2;
 
@@ -597,8 +597,8 @@ typedef struct nir_variable {
       /**
        * Was the location explicitly set in the shader?
        *
-       * If the location is explicitly set in the shader, it \b cannot be changed
-       * by the linker or by the API (e.g., calls to \c glBindAttribLocation have
+       * If the location is explicitly set in the shader, it **cannot** be changed
+       * by the linker or by the API (e.g., calls to ``glBindAttribLocation`` have
        * no effect).
        */
       unsigned explicit_location : 1;
@@ -685,10 +685,10 @@ typedef struct nir_variable {
       unsigned per_vertex : 1;
 
       /**
-       * \brief Layout qualifier for gl_FragDepth. See nir_depth_layout.
+       * Layout qualifier for gl_FragDepth. See nir_depth_layout.
        *
-       * This is not equal to \c ir_depth_layout_none if and only if this
-       * variable is \c gl_FragDepth and a layout qualifier is specified.
+       * This is not equal to ``ir_depth_layout_none`` if and only if this
+       * variable is ``gl_FragDepth`` and a layout qualifier is specified.
        */
       unsigned depth_layout : 3;
 
@@ -730,15 +730,15 @@ typedef struct nir_variable {
        *
        * The precise meaning of this field depends on the nature of the variable.
        *
-       *   - Vertex shader input: one of the values from \c gl_vert_attrib.
-       *   - Vertex shader output: one of the values from \c gl_varying_slot.
-       *   - Geometry shader input: one of the values from \c gl_varying_slot.
-       *   - Geometry shader output: one of the values from \c gl_varying_slot.
-       *   - Fragment shader input: one of the values from \c gl_varying_slot.
-       *   - Fragment shader output: one of the values from \c gl_frag_result.
-       *   - Task shader output: one of the values from \c gl_varying_slot.
-       *   - Mesh shader input: one of the values from \c gl_varying_slot.
-       *   - Mesh shader output: one of the values from \c gl_varying_slot.
+       *   - Vertex shader input: one of the values from ``gl_vert_attrib``.
+       *   - Vertex shader output: one of the values from ``gl_varying_slot``.
+       *   - Geometry shader input: one of the values from ``gl_varying_slot``.
+       *   - Geometry shader output: one of the values from ``gl_varying_slot``.
+       *   - Fragment shader input: one of the values from ``gl_varying_slot``.
+       *   - Fragment shader output: one of the values from ``gl_frag_result``.
+       *   - Task shader output: one of the values from ``gl_varying_slot``.
+       *   - Mesh shader input: one of the values from ``gl_varying_slot``.
+       *   - Mesh shader output: one of the values from ``gl_varying_slot``.
        *   - Uniforms: Per-stage uniform slot number for default uniform block.
        *   - Uniforms: Index within the uniform block definition for UBO members.
        *   - Non-UBO Uniforms: uniform slot number.
@@ -806,13 +806,13 @@ typedef struct nir_variable {
    /**
     * Built-in state that backs this uniform
     *
-    * Once set at variable creation, \c state_slots must remain invariant.
+    * Once set at variable creation, ``state_slots`` must remain invariant.
     * This is because, ideally, this array would be shared by all clones of
     * this variable in the IR tree.  In other words, we'd really like for it
     * to be a fly-weight.
     *
-    * If the variable is not a uniform, \c num_state_slots will be zero and
-    * \c state_slots will be \c NULL.
+    * If the variable is not a uniform, ``num_state_slots`` will be zero and
+    * ``state_slots`` will be ``NULL``.
     *
     * Number of state slots used.
     */
@@ -839,9 +839,9 @@ typedef struct nir_variable {
 
    /**
     * For variables that are in an interface block or are an instance of an
-    * interface block, this is the \c GLSL_TYPE_INTERFACE type for that block.
+    * interface block, this is the ``GLSL_TYPE_INTERFACE`` type for that block.
     *
-    * \sa ir_variable::location
+    * ``ir_variable.location``
     */
    const struct glsl_type *interface_type;
 
@@ -1164,6 +1164,7 @@ nir_is_sequential_comp_swizzle(uint8_t *swiz, unsigned nr_comp)
    return true;
 }
 
+/***/
 typedef struct nir_alu_src {
    /** Base source */
    nir_src src;
@@ -1463,6 +1464,7 @@ typedef enum {
  */
 #define NIR_ALU_MAX_INPUTS NIR_MAX_VEC_COMPONENTS
 
+/***/
 typedef struct nir_op_info {
    /** Name of the NIR ALU opcode */
    const char *name;
@@ -1530,6 +1532,7 @@ nir_op_is_derivative(nir_op op)
    return (nir_op_infos[op].algebraic_properties & NIR_OP_IS_DERIVATIVE) != 0;
 }
 
+/***/
 typedef struct nir_alu_instr {
    /** Base instruction */
    nir_instr instr;
@@ -1564,7 +1567,7 @@ typedef struct nir_alu_instr {
 
    /** Sources
     *
-    * The size of the array is given by nir_op_info::num_inputs.
+    * The size of the array is given by :c:member:`nir_op_info.num_inputs`.
     */
    nir_alu_src src[];
 } nir_alu_instr;
@@ -1874,11 +1877,11 @@ typedef enum {
 } nir_memory_semantics;
 
 /**
- * \name NIR intrinsics semantic flags
+ * NIR intrinsics semantic flags
  *
  * information about what the compiler can do with the intrinsics.
  *
- * \sa nir_intrinsic_info::flags
+ * :c:member:`nir_intrinsic_info.flags`
  */
 typedef enum {
    /**
@@ -2121,7 +2124,7 @@ nir_intrinsic_is_ray_query(nir_intrinsic_op intrinsic)
 typedef enum nir_tex_src_type {
    /** Texture coordinate
     *
-    * Must have nir_tex_instr::coord_components components.
+    * Must have :c:member:`nir_tex_instr.coord_components` components.
     */
    nir_tex_src_coord,
 
@@ -2142,7 +2145,8 @@ typedef enum nir_tex_src_type {
     * Interpolation happens after this conversion so the actual result may be
     * anywhere in the range [0.0, 1.0].
     *
-    * Only valid if nir_tex_instr::is_shadow and must be a float scalar.
+    * Only valid if :c:member:`nir_tex_instr.is_shadow` and must be a float
+    * scalar.
     */
    nir_tex_src_comparator,
 
@@ -2191,16 +2195,16 @@ typedef enum nir_tex_src_type {
 
    /** Texture index offset
     *
-    * This is added to nir_tex_instr::texture_index.  Unless
-    * nir_tex_instr::texture_non_uniform is set, this is guaranteed to be
-    * dynamically uniform.
+    * This is added to :c:member:`nir_tex_instr.texture_index`.  Unless
+    * :c:member:`nir_tex_instr.texture_non_uniform` is set, this is guaranteed
+    * to be dynamically uniform.
     */
    nir_tex_src_texture_offset,
 
    /** Dynamically uniform sampler index offset
     *
-    * This is added to nir_tex_instr::sampler_index.  Unless
-    * nir_tex_instr::sampler_non_uniform is set, this is guaranteed to be
+    * This is added to :c:member:`nir_tex_instr.sampler_index`.  Unless
+    * :c:member:`nir_tex_instr.sampler_non_uniform` is set, this is guaranteed to be
     * dynamically uniform.  This should not be present until GLSL ES 3.20, GLSL
     * 4.00, or ARB_gpu_shader5, because in ES 3.10 and GL 3.30 samplers said
     * "When aggregated into arrays within a shader, samplers can only be indexed
@@ -2345,7 +2349,7 @@ typedef struct nir_tex_instr {
 
    /** Array of sources
     *
-    * This array has nir_tex_instr::num_srcs elements
+    * This array has :c:member:`nir_tex_instr.num_srcs` elements
     */
    nir_tex_src *src;
 
@@ -2420,6 +2424,7 @@ typedef struct nir_tex_instr {
     *
     * The following operations do not require a sampler and, as such, this
     * field should be ignored:
+    *
     *    - nir_texop_txf
     *    - nir_texop_txf_ms
     *    - nir_texop_txs
@@ -2445,7 +2450,7 @@ typedef struct nir_tex_instr {
  * Note that the specific hw/driver backend could require to a sampler
  * object/configuration packet in any case, for some other reason.
  *
- * @see nir_tex_instr::sampler_index.
+ * See also :c:member:`nir_tex_instr.sampler_index`.
  */
 bool nir_tex_instr_need_sampler(const nir_tex_instr *instr);
 
@@ -3731,7 +3736,7 @@ typedef struct nir_shader_compiler_options {
     * If this flag is set, the lowering will be applied to all bit-sizes of
     * these instructions.
     *
-    * \sa ::lower_hadd64
+    * :c:member:`lower_hadd64`
     */
    bool lower_hadd;
 
@@ -3742,7 +3747,7 @@ typedef struct nir_shader_compiler_options {
     * If this flag is set, the lowering will be applied to only 64-bit
     * versions of these instructions.
     *
-    * \sa ::lower_hadd
+    * :c:member:`lower_hadd`
     */
    bool lower_hadd64;
 
@@ -5572,6 +5577,7 @@ bool
 nir_lower_sysvals_to_varyings(nir_shader *shader,
                               const struct nir_lower_sysvals_to_varyings_options *options);
 
+/***/
 enum ENUM_PACKED nir_lower_tex_packing {
    /** No packing */
    nir_lower_tex_packing_none = 0,
@@ -5584,6 +5590,7 @@ enum ENUM_PACKED nir_lower_tex_packing {
    nir_lower_tex_packing_8,
 };
 
+/***/
 typedef struct nir_lower_tex_options {
    /**
     * bitmask of (1 << GLSL_SAMPLER_DIM_x) to control for which
