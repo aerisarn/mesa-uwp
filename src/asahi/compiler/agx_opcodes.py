@@ -316,7 +316,7 @@ op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 1,
 op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 2,
       can_eliminate = False, imms = [FORMAT, MASK, PIXEL_OFFSET])
 
-for (name, exact) in [("any", 0xC000), ("none", 0xC200)]:
+for (name, exact) in [("any", 0xC000), ("none", 0xC020)]:
    op("jmp_exec_" + name, (exact, (1 << 16) - 1, 6, _), dests = 0, srcs = 0,
          can_eliminate = False, imms = [TARGET])
 
