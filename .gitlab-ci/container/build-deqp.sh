@@ -66,6 +66,10 @@ cts_commits_to_backport=(
 
         # dEQP-VK.wsi.acquire_drm_display.*invalid_fd
         98ad9402e7d94030d1689fd59135da7a2f52384c
+
+        # Test alpha-less 10bit formats correctly in wide_color tests
+        # Fixes dEQP-EGL.functional.wide_color.*_888_colorspace_*
+        dacf752adf388ce4399733ee9b4a3c8a4f317990
 )
 
 for commit in "${cts_commits_to_backport[@]}"
