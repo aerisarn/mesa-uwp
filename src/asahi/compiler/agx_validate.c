@@ -222,7 +222,7 @@ agx_validate(agx_context *ctx, const char *after)
       if ((int)block->index < last_index) {
          fprintf(stderr, "Out-of-order block index %d vs %d after %s\n",
                  block->index, last_index, after);
-         agx_print_block(block, stdout);
+         agx_print_block(block, stderr);
          fail = true;
       }
 
@@ -230,13 +230,13 @@ agx_validate(agx_context *ctx, const char *after)
 
       if (!agx_validate_block_form(block)) {
          fprintf(stderr, "Invalid block form after %s\n", after);
-         agx_print_block(block, stdout);
+         agx_print_block(block, stderr);
          fail = true;
       }
 
       if (!agx_validate_predecessors(block)) {
          fprintf(stderr, "Invalid loop header flag after %s\n", after);
-         agx_print_block(block, stdout);
+         agx_print_block(block, stderr);
          fail = true;
       }
    }
@@ -247,7 +247,7 @@ agx_validate(agx_context *ctx, const char *after)
       agx_foreach_instr_global(ctx, I) {
          if (!agx_validate_defs(I, defs)) {
             fprintf(stderr, "Invalid defs after %s\n", after);
-            agx_print_instr(I, stdout);
+            agx_print_instr(I, stderr);
             fail = true;
          }
       }
@@ -258,7 +258,7 @@ agx_validate(agx_context *ctx, const char *after)
    agx_foreach_instr_global(ctx, I) {
       if (!agx_validate_sources(I)) {
          fprintf(stderr, "Invalid sources form after %s\n", after);
-         agx_print_instr(I, stdout);
+         agx_print_instr(I, stderr);
          fail = true;
       }
    }
