@@ -795,23 +795,52 @@ init_fast_clear_color(struct anv_cmd_buffer *cmd_buffer,
    set_image_fast_clear_state(cmd_buffer, image, aspect,
                               ANV_FAST_CLEAR_NONE);
 
-   /* Initialize the struct fields that are accessed for fast-clears so that
+   /* Initialize the struct fields that are accessed for fast clears so that
     * the HW restrictions on the field values are satisfied.
+    *
+    * On generations that do not support indirect clear color natively, we
+    * can just skip initializing the values, because they will be set by
+    * BLORP before actually doing the fast clear.
+    *
+    * For newer generations, we may not be able to skip initialization.
+    * Testing shows that writing to CLEAR_COLOR causes corruption if
+    * the surface is currently being used. So, care must be taken here.
+    * There are two cases that we consider:
+    *
+    *    1. For CCS_E without FCV, we can skip initializing the color-related
+    *       fields, just like on the older platforms. Also, DWORDS 6 and 7
+    *       are marked MBZ (or have a usable field on gfx11), but we can skip
+    *       initializing them because in practice these fields need other
+    *       state to be programmed for their values to matter.
+    *
+    *    2. When the FCV optimization is enabled, we must initialize the
+    *       color-related fields. Otherwise, the engine might reference their
+    *       uninitialized contents before we fill them for a manual fast clear
+    *       with BLORP. Although the surface may be in use, no synchronization
+    *       is needed before initialization. The only possible clear color we
+    *       support in this mode is 0.
     */
-   struct anv_address addr =
-      anv_image_get_clear_color_addr(cmd_buffer->device, image, aspect);
+#if GFX_VER == 12
+   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
-   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
-   const unsigned num_dwords = GFX_VER >= 10 ?
-                               isl_dev->ss.clear_color_state_size / 4 :
-                               isl_dev->ss.clear_value_size / 4;
-   for (unsigned i = 0; i < num_dwords; i++) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
-         sdi.Address = addr;
-         sdi.Address.offset += i * 4;
-         sdi.ImmediateData = 0;
+   if (image->planes[plane].aux_usage == ISL_AUX_USAGE_FCV_CCS_E) {
+      assert(!image->planes[plane].can_non_zero_fast_clear);
+      assert(cmd_buffer->device->isl_dev.ss.clear_color_state_size == 32);
+
+      unsigned num_dwords = 6;
+      struct anv_address addr =
+         anv_image_get_clear_color_addr(cmd_buffer->device, image, aspect);
+
+      for (unsigned i = 0; i < num_dwords; i++) {
+         anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
+            sdi.Address = addr;
+            sdi.Address.offset += i * 4;
+            sdi.ImmediateData = 0;
+            sdi.ForceWriteCompletionCheck = i == (num_dwords - 1);
+         }
       }
    }
+#endif
 }
 
 /* Copy the fast-clear value dword(s) between a surface state object and an
