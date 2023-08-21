@@ -294,7 +294,6 @@ nv50_vertex_arrays_validate(struct nv50_context *nv50)
    uint32_t limits[PIPE_MAX_ATTRIBS];
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
    struct nv50_vertex_stateobj *vertex = nv50->vertex;
-   struct pipe_vertex_buffer *vb;
    struct nv50_vertex_element *ve;
    uint32_t mask;
    uint32_t refd = 0;
@@ -341,7 +340,6 @@ nv50_vertex_arrays_validate(struct nv50_context *nv50)
 
       assert(b < PIPE_MAX_ATTRIBS);
       ve = &vertex->element[i];
-      vb = &nv50->vtxbuf[b];
 
       if (likely(vertex->strides[b]) || !(nv50->vbo_user & (1 << b)))
          PUSH_DATA(push, ve->state);
@@ -368,6 +366,7 @@ nv50_vertex_arrays_validate(struct nv50_context *nv50)
    for (i = 0; i < vertex->num_elements; ++i) {
       uint64_t address, limit;
       const unsigned b = vertex->element[i].pipe.vertex_buffer_index;
+      struct pipe_vertex_buffer *vb;
 
       assert(b < PIPE_MAX_ATTRIBS);
       ve = &vertex->element[i];
