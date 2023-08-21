@@ -116,13 +116,25 @@ Additional GPU IDs are enumerated in the ``panfrost_model_list`` list in
 ``src/panfrost/lib/pan_props.c``.
 
 As an example: assuming Mesa is installed to a local path ``~/lib`` and Mesa's
-build directory is ``~/mesa/build``, a shader can be compiled for Mali-G52 as::
+build directory is ``~/mesa/build``, a shader can be compiled for Mali-G52 as:
 
-   ~/shader-db$ BIFROST_MESA_DEBUG=shaders LIBGL_DRIVERS_PATH=~/lib/dri/ LD_PRELOAD=~/mesa/build/src/panfrost/drm-shim/libpanfrost_noop_drm_shim.so PAN_GPU_ID=7212 ./run shaders/glmark/1-1.shader_test
+.. code-block:: console
 
-The same shader can be compiled for Mali-T720 as::
+   ~/shader-db$ BIFROST_MESA_DEBUG=shaders \
+   LIBGL_DRIVERS_PATH=~/lib/dri/ \
+   LD_PRELOAD=~/mesa/build/src/panfrost/drm-shim/libpanfrost_noop_drm_shim.so \
+   PAN_GPU_ID=7212 \
+   ./run shaders/glmark/1-1.shader_test
 
-   ~/shader-db$ MIDGARD_MESA_DEBUG=shaders LIBGL_DRIVERS_PATH=~/lib/dri/ LD_PRELOAD=~/mesa/build/src/panfrost/drm-shim/libpanfrost_noop_drm_shim.so PAN_GPU_ID=720 ./run shaders/glmark/1-1.shader_test
+The same shader can be compiled for Mali-T720 as:
+
+.. code-block:: console
+
+   ~/shader-db$ MIDGARD_MESA_DEBUG=shaders \
+   LIBGL_DRIVERS_PATH=~/lib/dri/ \
+   LD_PRELOAD=~/mesa/build/src/panfrost/drm-shim/libpanfrost_noop_drm_shim.so \
+   PAN_GPU_ID=720 \
+   ./run shaders/glmark/1-1.shader_test
 
 These examples set the compilers' ``shaders`` debug flags to dump the optimized
 NIR, backend IR after instruction selection, backend IR after register
@@ -134,9 +146,18 @@ pretty-printing GPU data structures and disassembling all shaders
 (``PAN_MESA_DEBUG=dump``). The ``EGL_PLATFORM=surfaceless`` environment variable
 and various flags to dEQP mimic the surfaceless environment that our
 continuous integration (CI) uses. This eliminates window system dependencies,
-although it requires a specially built CTS::
+although it requires a specially built CTS:
 
-   ~/VK-GL-CTS/build/external/openglcts/modules$ PAN_MESA_DEBUG=trace,dump LIBGL_DRIVERS_PATH=~/lib/dri/ LD_PRELOAD=~/mesa/build/src/panfrost/drm-shim/libpanfrost_noop_drm_shim.so PAN_GPU_ID=7212 EGL_PLATFORM=surfaceless ./glcts --deqp-surface-type=pbuffer --deqp-gl-config-name=rgba8888d24s8ms0 --deqp-surface-width=256 --deqp-surface-height=256 -n dEQP-GLES31.functional.shaders.builtin_functions.common.abs.float_highp_compute
+.. code-block:: console
+
+   ~/VK-GL-CTS/build/external/openglcts/modules$ PAN_MESA_DEBUG=trace,dump \
+   LIBGL_DRIVERS_PATH=~/lib/dri/ \
+   LD_PRELOAD=~/mesa/build/src/panfrost/drm-shim/libpanfrost_noop_drm_shim.so \
+   PAN_GPU_ID=7212 EGL_PLATFORM=surfaceless \
+   ./glcts --deqp-surface-type=pbuffer \
+   --deqp-gl-config-name=rgba8888d24s8ms0 --deqp-surface-width=256 \
+   --deqp-surface-height=256 -n \
+   dEQP-GLES31.functional.shaders.builtin_functions.common.abs.float_highp_compute
 
 U-interleaved tiling
 ---------------------
