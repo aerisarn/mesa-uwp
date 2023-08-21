@@ -313,7 +313,13 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    return bci;
 }
 
-static bool
+typedef enum {
+   USAGE_FAIL_NONE,
+   USAGE_FAIL_ERROR,
+   USAGE_FAIL_SUBOPTIMAL,
+} usage_fail;
+
+static usage_fail
 check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
 {
    VkImageFormatProperties image_props;
@@ -358,16 +364,16 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, ici->format, ici->imageType,
                                                    ici->tiling, ici->usage, ici->flags, &image_props);
    if (ret != VK_SUCCESS)
-      return false;
+      return USAGE_FAIL_ERROR;
    if (ici->extent.depth > image_props.maxExtent.depth ||
        ici->extent.height > image_props.maxExtent.height ||
        ici->extent.width > image_props.maxExtent.width)
-      return false;
+      return USAGE_FAIL_ERROR;
    if (ici->mipLevels > image_props.maxMipLevels)
-      return false;
+      return USAGE_FAIL_ERROR;
    if (ici->arrayLayers > image_props.maxArrayLayers)
-      return false;
-   return true;
+      return USAGE_FAIL_ERROR;
+   return USAGE_FAIL_NONE;
 }
 
 static VkImageUsageFlags
@@ -459,8 +465,11 @@ double_check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, VkImageUsag
 
    const void *pNext = ici->pNext;
    ici->usage = usage;
-   if (check_ici(screen, ici, *mod))
+   if (!check_ici(screen, ici, *mod))
       return true;
+   if (ici->usage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT) {
+
+   }
    if (pNext) {
       VkBaseOutStructure *prev = NULL;
       VkBaseOutStructure *fmt_list = NULL;
@@ -478,7 +487,7 @@ double_check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, VkImageUsag
          prev = strct;
       }
       ici->flags &= ~VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-      if (check_ici(screen, ici, *mod))
+      if (!check_ici(screen, ici, *mod))
          return true;
       fmt_list->pNext = (void*)ici->pNext;
       ici->pNext = fmt_list;
