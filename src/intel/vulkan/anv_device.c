@@ -141,7 +141,11 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
 #endif
 
 #ifdef ANDROID
+#if ANDROID_API_LEVEL >= 33
+#define ANV_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
+#else
 #define ANV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#endif
 #else
 #define ANV_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
 #endif
