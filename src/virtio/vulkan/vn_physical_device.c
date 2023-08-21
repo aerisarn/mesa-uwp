@@ -270,13 +270,16 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    struct vk_features *feats = &physical_dev->base.base.supported_features;
    vk_set_physical_device_features(feats, &feats2);
 
-   /* clang-format off */
+   /* Enable features for extensions natively implemented in Venus driver.
+    * See vn_physical_device_get_native_extensions.
+    */
+   VN_SET_CORE_VALUE(feats, deviceMemoryReport, true);
 
-   /* To support sparse binding with feedback, we require sparse binding queue families
-    * to  also support submiting feedback commands. Any queue families that exclusively
-    * support sparse binding are filtered out.
-    * If a device only supports sparse binding with exclusive queue families that get
-    * filtered out then disable the feature.
+   /* To support sparse binding with feedback, we require sparse binding queue
+    * families to  also support submiting feedback commands. Any queue
+    * families that exclusively support sparse binding are filtered out. If a
+    * device only supports sparse binding with exclusive queue families that
+    * get filtered out then disable the feature.
     */
    if (physical_dev->sparse_binding_disabled) {
       VN_SET_CORE_VALUE(feats, sparseBinding, false);
@@ -289,7 +292,6 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_SET_CORE_VALUE(feats, sparseResidency16Samples, false);
       VN_SET_CORE_VALUE(feats, sparseResidencyAliased, false);
    }
-   /* clang-format on */
 }
 
 static void
@@ -1657,7 +1659,6 @@ vn_physical_device_add_format_properties(
    }
    simple_mtx_unlock(&physical_dev->format_update_mutex);
 }
-
 
 void
 vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
