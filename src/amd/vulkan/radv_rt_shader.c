@@ -1488,7 +1488,7 @@ radv_build_traversal(struct radv_device *device, struct radv_ray_tracing_pipelin
    lower_hit_attrib_derefs(b->shader);
 
    /* Register storage for hit attributes */
-   nir_variable *hit_attribs[RADV_MAX_HIT_ATTRIB_SIZE / sizeof(uint32_t)];
+   nir_variable *hit_attribs[RADV_MAX_HIT_ATTRIB_DWORDS];
 
    if (!monolithic) {
       for (uint32_t i = 0; i < ARRAY_SIZE(hit_attribs); i++)
