@@ -132,6 +132,7 @@ zink_context_destroy(struct pipe_context *pctx)
       simple_mtx_lock((&ctx->program_lock[i]));
       hash_table_foreach(&ctx->program_cache[i], entry) {
          struct zink_program *pg = entry->data;
+         util_queue_fence_wait(&pg->cache_fence);
          pg->removed = true;
       }
       simple_mtx_unlock((&ctx->program_lock[i]));
