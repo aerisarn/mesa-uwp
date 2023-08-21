@@ -631,7 +631,8 @@ nir_shader *radv_parse_rt_stage(struct radv_device *device, const VkPipelineShad
 
 void radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                            const struct radv_shader_args *args, const struct radv_shader_info *info,
-                           uint32_t *stack_size, bool resume_shader);
+                           uint32_t *stack_size, bool resume_shader, struct radv_device *device,
+                           struct radv_ray_tracing_pipeline *pipeline, bool monolithic);
 
 struct radv_shader_stage;
 
@@ -852,8 +853,7 @@ bool radv_consider_culling(const struct radv_physical_device *pdevice, struct ni
 void radv_get_nir_options(struct radv_physical_device *device);
 
 nir_shader *radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline,
-                                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                                        const struct radv_pipeline_key *key);
+                                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo);
 
 enum radv_rt_priority {
    radv_rt_priority_raygen = 0,
