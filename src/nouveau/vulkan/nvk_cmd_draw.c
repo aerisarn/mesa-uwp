@@ -446,6 +446,7 @@ nvk_cmd_buffer_dirty_render_pass(struct nvk_cmd_buffer *cmd)
 
    /* These depend on color attachment count */
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES);
+   BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_ENABLES);
 
    /* These depend on the depth/stencil format */
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE);
@@ -1596,7 +1597,8 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 9 + 4 * NVK_MAX_RTS);
+   struct nv_push *p =
+      nvk_cmd_buffer_push(cmd, 13 + 2 * render->color_att_count);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
       P_IMMD(p, NV9097, SET_LOGIC_OP, dyn->cb.logic_op_enable);
@@ -1604,6 +1606,12 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP)) {
       const uint32_t func = vk_to_nv9097_logic_op(dyn->cb.logic_op);
       P_IMMD(p, NV9097, SET_LOGIC_OP_FUNC, func);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_ENABLES)) {
+      for (uint8_t a = 0; a < render->color_att_count; a++) {
+         P_IMMD(p, NV9097, SET_BLEND(a), dyn->cb.attachments[a].blend_enable);
+      }
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
