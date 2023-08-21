@@ -70,11 +70,6 @@ emit_pipeline_ms_state(struct nv_push *p,
                        const struct vk_multisample_state *ms,
                        bool force_max_samples)
 {
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS_ALPHA_CONTROL, {
-      .alpha_to_coverage   = ms->alpha_to_coverage_enable,
-      .alpha_to_one        = ms->alpha_to_one_enable,
-   });
-
    const float min_sample_shading = force_max_samples ? 1 :
       (ms->sample_shading_enable ? CLAMP(ms->min_sample_shading, 0, 1) : 0);
    uint32_t min_samples = ceilf(ms->rasterization_samples * min_sample_shading);
