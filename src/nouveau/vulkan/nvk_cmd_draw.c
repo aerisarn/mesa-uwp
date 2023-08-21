@@ -447,6 +447,7 @@ nvk_cmd_buffer_dirty_render_pass(struct nvk_cmd_buffer *cmd)
    /* These depend on color attachment count */
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_ENABLES);
+   BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS);
 
    /* These depend on the depth/stencil format */
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE);
@@ -1532,6 +1533,55 @@ vk_to_nv9097_logic_op(VkLogicOp vk_op)
    return nv9097_op;
 }
 
+static uint32_t
+vk_to_nv9097_blend_op(VkBlendOp vk_op)
+{
+#define OP(vk, nv) [VK_BLEND_OP_##vk] = NV9097_SET_BLEND_COLOR_OP_V_OGL_##nv
+   ASSERTED uint16_t vk_to_nv9097[] = {
+      OP(ADD,              FUNC_ADD),
+      OP(SUBTRACT,         FUNC_SUBTRACT),
+      OP(REVERSE_SUBTRACT, FUNC_REVERSE_SUBTRACT),
+      OP(MIN,              MIN),
+      OP(MAX,              MAX),
+   };
+   assert(vk_op < ARRAY_SIZE(vk_to_nv9097));
+#undef OP
+
+   return vk_to_nv9097[vk_op];
+}
+
+static uint32_t
+vk_to_nv9097_blend_factor(VkBlendFactor vk_factor)
+{
+#define FACTOR(vk, nv) [VK_BLEND_FACTOR_##vk] = \
+   NV9097_SET_BLEND_COLOR_SOURCE_COEFF_V_##nv
+   ASSERTED uint16_t vk_to_nv9097[] = {
+      FACTOR(ZERO,                     OGL_ZERO),
+      FACTOR(ONE,                      OGL_ONE),
+      FACTOR(SRC_COLOR,                OGL_SRC_COLOR),
+      FACTOR(ONE_MINUS_SRC_COLOR,      OGL_ONE_MINUS_SRC_COLOR),
+      FACTOR(DST_COLOR,                OGL_DST_COLOR),
+      FACTOR(ONE_MINUS_DST_COLOR,      OGL_ONE_MINUS_DST_COLOR),
+      FACTOR(SRC_ALPHA,                OGL_SRC_ALPHA),
+      FACTOR(ONE_MINUS_SRC_ALPHA,      OGL_ONE_MINUS_SRC_ALPHA),
+      FACTOR(DST_ALPHA,                OGL_DST_ALPHA),
+      FACTOR(ONE_MINUS_DST_ALPHA,      OGL_ONE_MINUS_DST_ALPHA),
+      FACTOR(CONSTANT_COLOR,           OGL_CONSTANT_COLOR),
+      FACTOR(ONE_MINUS_CONSTANT_COLOR, OGL_ONE_MINUS_CONSTANT_COLOR),
+      FACTOR(CONSTANT_ALPHA,           OGL_CONSTANT_ALPHA),
+      FACTOR(ONE_MINUS_CONSTANT_ALPHA, OGL_ONE_MINUS_CONSTANT_ALPHA),
+      FACTOR(SRC_ALPHA_SATURATE,       OGL_SRC_ALPHA_SATURATE),
+      FACTOR(SRC1_COLOR,               OGL_SRC1COLOR),
+      FACTOR(ONE_MINUS_SRC1_COLOR,     OGL_INVSRC1COLOR),
+      FACTOR(SRC1_ALPHA,               OGL_SRC1ALPHA),
+      FACTOR(ONE_MINUS_SRC1_ALPHA,     OGL_INVSRC1ALPHA),
+   };
+   assert(vk_factor < ARRAY_SIZE(vk_to_nv9097));
+#undef FACTOR
+
+   return vk_to_nv9097[vk_factor];
+}
+
 void
 nvk_mme_set_write_mask(struct mme_builder *b)
 {
@@ -1598,7 +1648,7 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
       &cmd->vk.dynamic_graphics_state;
 
    struct nv_push *p =
-      nvk_cmd_buffer_push(cmd, 13 + 2 * render->color_att_count);
+      nvk_cmd_buffer_push(cmd, 13 + 10 * render->color_att_count);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
       P_IMMD(p, NV9097, SET_LOGIC_OP, dyn->cb.logic_op_enable);
@@ -1611,6 +1661,27 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_ENABLES)) {
       for (uint8_t a = 0; a < render->color_att_count; a++) {
          P_IMMD(p, NV9097, SET_BLEND(a), dyn->cb.attachments[a].blend_enable);
+      }
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS)) {
+      for (uint8_t a = 0; a < render->color_att_count; a++) {
+         const struct vk_color_blend_attachment_state *att =
+            &dyn->cb.attachments[a];
+         P_MTHD(p, NV9097, SET_BLEND_PER_TARGET_SEPARATE_FOR_ALPHA(a));
+         P_NV9097_SET_BLEND_PER_TARGET_SEPARATE_FOR_ALPHA(p, a, ENABLE_TRUE);
+         P_NV9097_SET_BLEND_PER_TARGET_COLOR_OP(p, a,
+               vk_to_nv9097_blend_op(att->color_blend_op));
+         P_NV9097_SET_BLEND_PER_TARGET_COLOR_SOURCE_COEFF(p, a,
+               vk_to_nv9097_blend_factor(att->src_color_blend_factor));
+         P_NV9097_SET_BLEND_PER_TARGET_COLOR_DEST_COEFF(p, a,
+               vk_to_nv9097_blend_factor(att->dst_color_blend_factor));
+         P_NV9097_SET_BLEND_PER_TARGET_ALPHA_OP(p, a,
+               vk_to_nv9097_blend_op(att->alpha_blend_op));
+         P_NV9097_SET_BLEND_PER_TARGET_ALPHA_SOURCE_COEFF(p, a,
+               vk_to_nv9097_blend_factor(att->src_alpha_blend_factor));
+         P_NV9097_SET_BLEND_PER_TARGET_ALPHA_DEST_COEFF(p, a,
+               vk_to_nv9097_blend_factor(att->dst_alpha_blend_factor));
       }
    }
 
