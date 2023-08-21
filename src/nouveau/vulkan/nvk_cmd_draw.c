@@ -1385,6 +1385,15 @@ nvk_flush_ms_state(struct nvk_cmd_buffer *cmd)
          }
       }
    }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_MASK)) {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
+      P_MTHD(p, NV9097, SET_SAMPLE_MASK_X0_Y0);
+      P_NV9097_SET_SAMPLE_MASK_X0_Y0(p, dyn->ms.sample_mask & 0xffff);
+      P_NV9097_SET_SAMPLE_MASK_X1_Y0(p, dyn->ms.sample_mask & 0xffff);
+      P_NV9097_SET_SAMPLE_MASK_X0_Y1(p, dyn->ms.sample_mask & 0xffff);
+      P_NV9097_SET_SAMPLE_MASK_X1_Y1(p, dyn->ms.sample_mask & 0xffff);
+   }
 }
 
 static uint32_t

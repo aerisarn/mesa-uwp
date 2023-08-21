@@ -75,12 +75,6 @@ emit_pipeline_ms_state(struct nv_push *p,
       .alpha_to_one        = ms->alpha_to_one_enable,
    });
 
-   P_MTHD(p, NV9097, SET_SAMPLE_MASK_X0_Y0);
-   P_NV9097_SET_SAMPLE_MASK_X0_Y0(p, ms->sample_mask & 0xffff);
-   P_NV9097_SET_SAMPLE_MASK_X1_Y0(p, ms->sample_mask & 0xffff);
-   P_NV9097_SET_SAMPLE_MASK_X0_Y1(p, ms->sample_mask & 0xffff);
-   P_NV9097_SET_SAMPLE_MASK_X1_Y1(p, ms->sample_mask & 0xffff);
-
    const float min_sample_shading = force_max_samples ? 1 :
       (ms->sample_shading_enable ? CLAMP(ms->min_sample_shading, 0, 1) : 0);
    uint32_t min_samples = ceilf(ms->rasterization_samples * min_sample_shading);
