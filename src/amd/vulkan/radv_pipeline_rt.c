@@ -22,6 +22,7 @@
  */
 
 #include "nir/nir.h"
+#include "nir/nir_builder.h"
 
 #include "radv_debug.h"
 #include "radv_private.h"
@@ -371,16 +372,23 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
     */
    NIR_PASS_V(stage->nir, move_rt_instructions);
 
-   const nir_lower_shader_calls_options opts = {
-      .address_format = nir_address_format_32bit_offset,
-      .stack_alignment = 16,
-      .localized_loads = true,
-      .vectorizer_callback = radv_mem_vectorize_callback,
-      .vectorizer_data = &device->physical_device->rad_info.gfx_level,
-   };
    uint32_t num_resume_shaders = 0;
    nir_shader **resume_shaders = NULL;
-   nir_lower_shader_calls(stage->nir, &opts, &resume_shaders, &num_resume_shaders, stage->nir);
+
+   if (stage->stage != MESA_SHADER_INTERSECTION) {
+      nir_builder b = nir_builder_at(nir_after_cf_list(&nir_shader_get_entrypoint(stage->nir)->body));
+      nir_rt_return_amd(&b);
+
+      const nir_lower_shader_calls_options opts = {
+         .address_format = nir_address_format_32bit_offset,
+         .stack_alignment = 16,
+         .localized_loads = true,
+         .vectorizer_callback = radv_mem_vectorize_callback,
+         .vectorizer_data = &device->physical_device->rad_info.gfx_level,
+      };
+      nir_lower_shader_calls(stage->nir, &opts, &resume_shaders, &num_resume_shaders, stage->nir);
+   }
+
    unsigned num_shaders = num_resume_shaders + 1;
    nir_shader **shaders = ralloc_array(stage->nir, nir_shader *, num_shaders);
    if (!shaders)

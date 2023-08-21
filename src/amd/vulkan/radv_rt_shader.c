@@ -808,13 +808,6 @@ radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreat
 
    nir_shader *shader = radv_shader_spirv_to_nir(device, &rt_stage, key, false);
 
-   if (shader->info.stage == MESA_SHADER_RAYGEN || shader->info.stage == MESA_SHADER_CLOSEST_HIT ||
-       shader->info.stage == MESA_SHADER_CALLABLE || shader->info.stage == MESA_SHADER_MISS) {
-      nir_block *last_block = nir_impl_last_block(nir_shader_get_entrypoint(shader));
-      nir_builder b_inner = nir_builder_at(nir_after_block(last_block));
-      nir_rt_return_amd(&b_inner);
-   }
-
    NIR_PASS(_, shader, nir_split_struct_vars, nir_var_ray_hit_attrib);
    NIR_PASS(_, shader, nir_lower_indirect_derefs, nir_var_ray_hit_attrib, UINT32_MAX);
    NIR_PASS(_, shader, nir_split_array_vars, nir_var_ray_hit_attrib);
