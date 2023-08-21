@@ -162,6 +162,7 @@ static void pvr_physical_device_get_supported_extensions(
       .KHR_timeline_semaphore = true,
       .EXT_external_memory_dma_buf = true,
       .EXT_private_data = true,
+      .EXT_tooling_info = true,
    };
    /* clang-format on */
 }
