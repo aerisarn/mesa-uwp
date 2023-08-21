@@ -145,8 +145,6 @@ static void
 emit_pipeline_cb_state(struct nv_push *p,
                        const struct vk_color_blend_state *cb)
 {
-   P_IMMD(p, NV9097, SET_BLEND_STATE_PER_TARGET, ENABLE_TRUE);
-
    for (uint32_t a = 0; a < cb->attachment_count; a++) {
       const struct vk_color_blend_attachment_state *att = &cb->attachments[a];
       P_IMMD(p, NV9097, SET_BLEND(a), att->blend_enable);
