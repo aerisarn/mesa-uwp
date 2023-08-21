@@ -27,7 +27,8 @@ Mali G57   Valhall (v9) 3.1          3.1
 Other Midgard and Bifrost chips (T604, G71) are not yet supported.
 
 Older Mali chips based on the Utgard architecture (Mali 400, Mali 450) are
-supported in the Lima driver, not Panfrost. Lima is also available in Mesa.
+supported in the :doc:`Lima <lima>` driver, not Panfrost. Lima is also
+available in Mesa.
 
 Other graphics APIs (Vulkan, OpenCL) are not supported at this time.
 
