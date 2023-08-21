@@ -1499,6 +1499,9 @@ struct iris_blend_state {
 
    /** Does RT[0] use dual color blending? */
    bool dual_color_blending;
+
+   int ps_dst_blend_factor[BRW_MAX_DRAW_BUFFERS];
+   int ps_dst_alpha_blend_factor[BRW_MAX_DRAW_BUFFERS];
 };
 
 static enum pipe_blendfactor
@@ -1548,6 +1551,10 @@ iris_create_blend_state(struct pipe_context *ctx,
       enum pipe_blendfactor dst_alpha =
          fix_blendfactor(rt->alpha_dst_factor, state->alpha_to_one);
 
+      /* Stored separately in cso for dynamic emission. */
+      cso->ps_dst_blend_factor[i] = (int) dst_rgb;
+      cso->ps_dst_alpha_blend_factor[i] = (int) dst_alpha;
+
       if (rt->rgb_func != rt->alpha_func ||
           src_rgb != src_alpha || dst_rgb != dst_alpha)
          indep_alpha_blend = true;
@@ -1575,8 +1582,6 @@ iris_create_blend_state(struct pipe_context *ctx,
          /* The casts prevent warnings about implicit enum type conversions. */
          be.SourceBlendFactor           = (int) src_rgb;
          be.SourceAlphaBlendFactor      = (int) src_alpha;
-         be.DestinationBlendFactor      = (int) dst_rgb;
-         be.DestinationAlphaBlendFactor = (int) dst_alpha;
 
          be.WriteDisableRed   = !(rt->colormask & PIPE_MASK_R);
          be.WriteDisableGreen = !(rt->colormask & PIPE_MASK_G);
@@ -1602,10 +1607,6 @@ iris_create_blend_state(struct pipe_context *ctx,
          (int) fix_blendfactor(state->rt[0].rgb_src_factor, state->alpha_to_one);
       pb.SourceAlphaBlendFactor =
          (int) fix_blendfactor(state->rt[0].alpha_src_factor, state->alpha_to_one);
-      pb.DestinationBlendFactor =
-         (int) fix_blendfactor(state->rt[0].rgb_dst_factor, state->alpha_to_one);
-      pb.DestinationAlphaBlendFactor =
-         (int) fix_blendfactor(state->rt[0].alpha_dst_factor, state->alpha_to_one);
    }
 
    iris_pack_state(GENX(BLEND_STATE), cso->blend_state, bs) {
@@ -3594,6 +3595,13 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       /* We need to toggle 3DSTATE_PS::32 Pixel Dispatch Enable */
       if (GFX_VER >= 9 && (cso->samples == 16 || samples == 16))
          ice->state.stage_dirty |= IRIS_STAGE_DIRTY_FS;
+
+      /* We may need to emit blend state for Wa_14018912822. */
+      if ((cso->samples > 1) != (samples > 1) &&
+          intel_needs_workaround(devinfo, 14018912822)) {
+         ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
+         ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
+      }
    }
 
    if (cso->nr_cbufs != state->nr_cbufs) {
@@ -6405,6 +6413,13 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
 
+   /* When MSAA is enabled, instead of using BLENDFACTOR_ZERO use
+    * CONST_COLOR, CONST_ALPHA and supply zero by using blend constants.
+    */
+   bool needs_wa_14018912822 =
+      intel_needs_workaround(batch->screen->devinfo, 14018912822) &&
+       util_framebuffer_get_num_samples(&ice->state.framebuffer) > 1;
+
    if (dirty & IRIS_DIRTY_CC_VIEWPORT) {
       const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
       uint32_t cc_vp_address;
@@ -6524,6 +6539,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
       const int header_dwords = GENX(BLEND_STATE_length);
 
+      bool color_blend_zero = false;
+      bool alpha_blend_zero = false;
+
       /* Always write at least one BLEND_STATE - the final RT message will
        * reference BLEND_STATE[0] even if there aren't color writes.  There
        * may still be alpha testing, computed depth, and so on.
@@ -6537,6 +6555,51 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                       &ice->state.last_res.blend,
                       4 * (header_dwords + rt_dwords), 64, &blend_offset);
 
+      /* Copy of blend entries for merging dynamic changes. */
+      uint32_t blend_entries[4 * rt_dwords];
+      memcpy(blend_entries, &cso_blend->blend_state[1], sizeof(blend_entries));
+
+      unsigned cbufs = MAX2(cso_fb->nr_cbufs, 1);
+
+      uint32_t *blend_entry = blend_entries;
+      for (unsigned i = 0; i < cbufs; i++) {
+         int dst_blend_factor = cso_blend->ps_dst_blend_factor[i];
+         int dst_alpha_blend_factor = cso_blend->ps_dst_alpha_blend_factor[i];
+         uint32_t entry[GENX(BLEND_STATE_ENTRY_length)];
+         iris_pack_state(GENX(BLEND_STATE_ENTRY), entry, be) {
+            if (needs_wa_14018912822) {
+               if (dst_blend_factor == BLENDFACTOR_ZERO) {
+                  dst_blend_factor = BLENDFACTOR_CONST_COLOR;
+                  color_blend_zero = true;
+               }
+               if (dst_alpha_blend_factor == BLENDFACTOR_ZERO) {
+                  dst_alpha_blend_factor = BLENDFACTOR_CONST_COLOR;
+                  alpha_blend_zero = true;
+               }
+            }
+            be.DestinationBlendFactor = dst_blend_factor;
+            be.DestinationAlphaBlendFactor = dst_alpha_blend_factor;
+         }
+
+         /* Merge entry. */
+         uint32_t *dst = blend_entry;
+         uint32_t *src = entry;
+         for (unsigned j = 0; j < GENX(BLEND_STATE_ENTRY_length); j++)
+            *dst |= *src;
+
+         blend_entry += GENX(BLEND_STATE_ENTRY_length);
+      }
+
+      /* Blend constants modified for Wa_14018912822. */
+      if (ice->state.color_blend_zero != color_blend_zero) {
+         ice->state.color_blend_zero = color_blend_zero;
+         ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
+      }
+      if (ice->state.alpha_blend_zero != alpha_blend_zero) {
+         ice->state.alpha_blend_zero = alpha_blend_zero;
+         ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
+      }
+
       uint32_t blend_state_header;
       iris_pack_state(GENX(BLEND_STATE), &blend_state_header, bs) {
          bs.AlphaTestEnable = cso_zsa->alpha_enabled;
@@ -6544,7 +6607,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       blend_map[0] = blend_state_header | cso_blend->blend_state[0];
-      memcpy(&blend_map[1], &cso_blend->blend_state[1], 4 * rt_dwords);
+      memcpy(&blend_map[1], blend_entries, 4 * rt_dwords);
 
       iris_emit_cmd(batch, GENX(3DSTATE_BLEND_STATE_POINTERS), ptr) {
          ptr.BlendStatePointer = blend_offset;
@@ -6566,10 +6629,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       iris_pack_state(GENX(COLOR_CALC_STATE), cc_map, cc) {
          cc.AlphaTestFormat = ALPHATEST_FLOAT32;
          cc.AlphaReferenceValueAsFLOAT32 = cso->alpha_ref_value;
-         cc.BlendConstantColorRed   = ice->state.blend_color.color[0];
-         cc.BlendConstantColorGreen = ice->state.blend_color.color[1];
-         cc.BlendConstantColorBlue  = ice->state.blend_color.color[2];
-         cc.BlendConstantColorAlpha = ice->state.blend_color.color[3];
+         cc.BlendConstantColorRed   = ice->state.color_blend_zero ?
+            0.0 : ice->state.blend_color.color[0];
+         cc.BlendConstantColorGreen = ice->state.color_blend_zero ?
+            0.0 : ice->state.blend_color.color[1];
+         cc.BlendConstantColorBlue  = ice->state.color_blend_zero ?
+            0.0 : ice->state.blend_color.color[2];
+         cc.BlendConstantColorAlpha = ice->state.alpha_blend_zero ?
+            0.0 : ice->state.blend_color.color[3];
 #if GFX_VER == 8
 	 cc.StencilReferenceValue = p_stencil_refs->ref_value[0];
 	 cc.BackfaceStencilReferenceValue = p_stencil_refs->ref_value[1];
@@ -7112,10 +7179,26 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       const struct shader_info *fs_info =
          iris_get_shader_info(ice, MESA_SHADER_FRAGMENT);
 
+      int dst_blend_factor = cso_blend->ps_dst_blend_factor[0];
+      int dst_alpha_blend_factor = cso_blend->ps_dst_alpha_blend_factor[0];
+
+      /* When MSAA is enabled, instead of using BLENDFACTOR_ZERO use
+       * CONST_COLOR, CONST_ALPHA and supply zero by using blend constants.
+       */
+      if (needs_wa_14018912822) {
+         if (ice->state.color_blend_zero)
+            dst_blend_factor = BLENDFACTOR_CONST_COLOR;
+         if (ice->state.alpha_blend_zero)
+            dst_alpha_blend_factor = BLENDFACTOR_CONST_COLOR;
+      }
+
       uint32_t dynamic_pb[GENX(3DSTATE_PS_BLEND_length)];
       iris_pack_command(GENX(3DSTATE_PS_BLEND), &dynamic_pb, pb) {
          pb.HasWriteableRT = has_writeable_rt(cso_blend, fs_info);
          pb.AlphaTestEnable = cso_zsa->alpha_enabled;
+
+         pb.DestinationBlendFactor = dst_blend_factor;
+         pb.DestinationAlphaBlendFactor = dst_alpha_blend_factor;
 
          /* The dual source blending docs caution against using SRC1 factors
           * when the shader doesn't use a dual source render target write.
