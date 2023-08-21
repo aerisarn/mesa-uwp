@@ -407,16 +407,16 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
     hdr
 }
 
-fn print_hex(label: &str, data: &[u32]) {
-    print!("{}:", label);
+fn eprint_hex(label: &str, data: &[u32]) {
+    eprint!("{}:", label);
     for i in 0..data.len() {
         if (i % 8) == 0 {
-            println!("");
-            print!(" ");
+            eprintln!("");
+            eprint!(" ");
         }
-        print!(" {:08x}", data[i]);
+        eprint!(" {:08x}", data[i]);
     }
-    println!("");
+    eprintln!("");
 }
 
 #[no_mangle]
@@ -431,32 +431,32 @@ pub extern "C" fn nak_compile_shader(
     let mut s = nak_shader_from_nir(nir, nak.sm);
 
     if DEBUG.print() {
-        println!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     s.opt_copy_prop();
     if DEBUG.print() {
-        println!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     s.opt_lop();
     if DEBUG.print() {
-        println!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     s.opt_dce();
     if DEBUG.print() {
-        println!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     s.legalize();
     if DEBUG.print() {
-        println!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     s.assign_regs();
     if DEBUG.print() {
-        println!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     s.lower_vec_split();
@@ -466,7 +466,7 @@ pub extern "C" fn nak_compile_shader(
     s.calc_instr_deps();
 
     if DEBUG.print() {
-        println!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     let info = nak_shader_info {
@@ -500,24 +500,24 @@ pub extern "C" fn nak_compile_shader(
             let c_name = _mesa_shader_stage_to_string(info.stage as u32);
             CStr::from_ptr(c_name).to_str().expect("Invalid UTF-8")
         };
-        println!("Stage: {}", stage_name);
-        println!("Num GPRs: {}", info.num_gprs);
-        println!("TLS size: {}", info.tls_size);
+        eprintln!("Stage: {}", stage_name);
+        eprintln!("Num GPRs: {}", info.num_gprs);
+        eprintln!("TLS size: {}", info.tls_size);
         if info.stage == MESA_SHADER_COMPUTE {
-            println!(
+            eprintln!(
                 "Local size: {}x{}x{}",
                 info.cs.local_size[0],
                 info.cs.local_size[1],
                 info.cs.local_size[2],
             );
-            println!("Shared memory size: {:#x}", info.cs.smem_size);
+            eprintln!("Shared memory size: {:#x}", info.cs.smem_size);
         }
 
         if info.stage != MESA_SHADER_COMPUTE {
-            print_hex("Header", &info.hdr);
+            eprint_hex("Header", &info.hdr);
         }
 
-        print_hex("Encoded shader", &code);
+        eprint_hex("Encoded shader", &code);
     }
 
     Box::into_raw(Box::new(ShaderBin::new(info, code))) as *mut nak_shader_bin
