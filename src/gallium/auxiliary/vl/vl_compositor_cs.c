@@ -42,6 +42,10 @@ struct cs_viewport {
    int translate_y;
    float sampler0_w;
    float sampler0_h;
+   float clamp_x;
+   float clamp_y;
+   float chroma_clamp_x;
+   float chroma_clamp_y;
 };
 
 const char *compute_shader_video_buffer =
@@ -53,7 +57,7 @@ const char *compute_shader_video_buffer =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..6]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], RECT, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -87,6 +91,10 @@ const char *compute_shader_video_buffer =
          "DIV TEMP[2].xy, TEMP[2].xyyy, CONST[3].zwww\n"
          "DIV TEMP[3].xy, TEMP[3].xyyy, CONST[3].zwww\n"
 
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[3].xy, TEMP[3].xyyy, CONST[7].zwzw\n"
+
          /* Fetch texels */
          "TEX_LZ TEMP[4].x, TEMP[2].xyyy, SAMP[0], RECT\n"
          "TEX_LZ TEMP[4].y, TEMP[3].xyyy, SAMP[1], RECT\n"
@@ -119,7 +127,7 @@ const char *compute_shader_weave =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..5]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], 2D_ARRAY, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -190,6 +198,12 @@ const char *compute_shader_weave =
          "ADD TEMP[14].xyz, TEMP[14].xyzz, -TEMP[15].xyzz\n"
          "MOV TEMP[14].xyz, |TEMP[14].xyzz|\n"
          "MUL TEMP[14].xyz, TEMP[14].xyzz, IMM[1].yyyy\n"
+
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[12].xy, TEMP[12].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[3].xy, TEMP[3].xyyy, CONST[7].zwzw\n"
+         "MIN TEMP[13].xy, TEMP[13].xyyy, CONST[7].zwzw\n"
 
          /* Normalize */
          "DIV TEMP[2].xy, TEMP[2].xyyy, CONST[5].zwzw\n"
@@ -283,7 +297,7 @@ static const char *compute_shader_yuv_weave_y =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..5]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], 2D_ARRAY, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -351,6 +365,12 @@ static const char *compute_shader_yuv_weave_y =
          "ADD TEMP[14], TEMP[14], -TEMP[15]\n"
          "MOV TEMP[14], |TEMP[14]|\n"
          "MUL TEMP[14], TEMP[14], IMM[1].yyyy\n"
+
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[12].xy, TEMP[12].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[3].xy, TEMP[3].xyyy, CONST[7].zwzw\n"
+         "MIN TEMP[13].xy, TEMP[13].xyyy, CONST[7].zwzw\n"
 
          /* Normalize */
          "DIV TEMP[2].xy, TEMP[2], CONST[5].zwzw\n"
@@ -389,7 +409,7 @@ static const char *compute_shader_yuv_weave_uv =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..5]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], 2D_ARRAY, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -457,6 +477,12 @@ static const char *compute_shader_yuv_weave_uv =
          "ADD TEMP[14], TEMP[14], -TEMP[15]\n"
          "MOV TEMP[14], |TEMP[14]|\n"
          "MUL TEMP[14], TEMP[14], IMM[1].yyyy\n"
+
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[12].xy, TEMP[12].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[3].xy, TEMP[3].xyyy, CONST[7].zwzw\n"
+         "MIN TEMP[13].xy, TEMP[13].xyyy, CONST[7].zwzw\n"
 
          /* Normalize */
          "DIV TEMP[2].xy, TEMP[2], CONST[5].zwzw\n"
@@ -497,7 +523,7 @@ static const char *compute_shader_yuv_bob_y =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..5]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], RECT, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -528,6 +554,10 @@ static const char *compute_shader_yuv_bob_y =
          "DIV TEMP[3], TEMP[3], CONST[3].zwzw\n"
          "DIV TEMP[3], TEMP[3], IMM[1].xyxy\n"
 
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[3].xy, TEMP[3].xyyy, CONST[7].zwzw\n"
+
          /* Fetch texels */
          "TEX_LZ TEMP[4].x, TEMP[2], SAMP[0], RECT\n"
          "TEX_LZ TEMP[4].y, TEMP[3], SAMP[1], RECT\n"
@@ -549,7 +579,7 @@ static const char *compute_shader_yuv_bob_uv =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..5]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], RECT, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -580,6 +610,10 @@ static const char *compute_shader_yuv_bob_uv =
          "DIV TEMP[3], TEMP[3], CONST[3].zwzw\n"
          "DIV TEMP[3], TEMP[3], IMM[1].xyxy\n"
 
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+         "MIN TEMP[3].xy, TEMP[3].xyyy, CONST[7].zwzw\n"
+
          /* Fetch texels */
          "TEX_LZ TEMP[4].x, TEMP[2], SAMP[0], RECT\n"
          "TEX_LZ TEMP[4].y, TEMP[3], SAMP[1], RECT\n"
@@ -603,7 +637,7 @@ static const char *compute_shader_yuv_y =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..6]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], RECT, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -641,6 +675,9 @@ static const char *compute_shader_yuv_y =
          "I2F TEMP[4], TEMP[4]\n"
          "ADD TEMP[2], TEMP[2], TEMP[4]\n"
 
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+
          /* Fetch texels */
          "TEX_LZ TEMP[4].x, TEMP[2], SAMP[0], RECT\n"
 
@@ -660,7 +697,7 @@ static const char *compute_shader_yuv_uv =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..6]\n"
+      "DCL CONST[0..7]\n"
       "DCL SVIEW[0..2], RECT, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -699,6 +736,9 @@ static const char *compute_shader_yuv_uv =
          "MOV TEMP[4].xy, CONST[6].zwww\n"
          "I2F TEMP[4], TEMP[4]\n"
          "ADD TEMP[2], TEMP[2], TEMP[4]\n"
+
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].zwzw\n"
 
          /* Fetch texels */
          "TEX_LZ TEMP[4].y, TEMP[2], SAMP[1], RECT\n"
@@ -784,7 +824,7 @@ set_viewport(struct vl_compositor_state *s,
 
    void *ptr = pipe_buffer_map_range(s->pipe, s->shader_params,
                                      sizeof(vl_csc_matrix) + sizeof(float) * 2,
-                                     sizeof(float) * 6 + sizeof(int) * 8,
+                                     sizeof(float) * 10 + sizeof(int) * 8,
                                      PIPE_MAP_WRITE | PIPE_MAP_DISCARD_RANGE,
                                      &buf_transfer);
 
@@ -826,6 +866,12 @@ set_viewport(struct vl_compositor_state *s,
    *ptr_int++ = drawn->crop_x;
    *ptr_int++ = drawn->crop_y;
 
+   ptr_float = (float *)ptr_int;
+   *ptr_float++ = drawn->clamp_x;
+   *ptr_float++ = drawn->clamp_y;
+   *ptr_float++ = drawn->chroma_clamp_x;
+   *ptr_float++ = drawn->chroma_clamp_y;
+
    pipe_buffer_unmap(s->pipe, buf_transfer);
 
    return true;
@@ -845,6 +891,7 @@ draw_layers(struct vl_compositor       *c,
          struct vl_compositor_layer *layer = &s->layers[i];
          struct pipe_sampler_view **samplers = &layer->sampler_views[0];
          unsigned num_sampler_views = !samplers[1] ? 1 : !samplers[2] ? 2 : 3;
+         struct pipe_sampler_view *sampler1 = samplers[1] ? samplers[1] : samplers[0];
          struct cs_viewport drawn;
 
          drawn.area = calc_drawn_area(s, layer);
@@ -861,6 +908,14 @@ draw_layers(struct vl_compositor       *c,
          drawn.translate_y = layer->viewport.translate[1];
          drawn.sampler0_w = (float)layer->sampler_views[0]->texture->width0;
          drawn.sampler0_h = (float)layer->sampler_views[0]->texture->height0;
+         drawn.clamp_x = (float)samplers[0]->texture->width0 *
+            (layer->src.br.x - layer->src.tl.x) - 0.5;
+         drawn.clamp_y = (float)samplers[0]->texture->height0 *
+            (layer->src.br.y - layer->src.tl.y) - 0.5;
+         drawn.chroma_clamp_x = (float)sampler1->texture->width0 *
+            (layer->src.br.x - layer->src.tl.x) - 0.5;
+         drawn.chroma_clamp_y = (float)sampler1->texture->height0 *
+            (layer->src.br.y - layer->src.tl.y) - 0.5;
          set_viewport(s, &drawn, samplers);
 
          c->pipe->bind_sampler_states(c->pipe, PIPE_SHADER_COMPUTE, 0,
