@@ -496,7 +496,7 @@ vec4_gs_visitor::gs_emit_vertex(int stream_id)
 
    /* In stream mode we have to set control data bits for all vertices
     * unless we have disabled control data bits completely (which we do
-    * do for GL_POINTS outputs that don't use streams).
+    * do for MESA_PRIM_POINTS outputs that don't use streams).
     */
    if (c->control_data_header_size_bits > 0 &&
        gs_prog_data->control_data_format ==

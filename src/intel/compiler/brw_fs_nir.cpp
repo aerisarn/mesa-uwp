@@ -2419,7 +2419,7 @@ fs_visitor::emit_gs_vertex(const nir_src &vertex_count_nir_src,
 
    /* In stream mode we have to set control data bits for all vertices
     * unless we have disabled control data bits completely (which we do
-    * do for GL_POINTS outputs that don't use streams).
+    * do for MESA_PRIM_POINTS outputs that don't use streams).
     */
    if (gs_compile->control_data_header_size_bits > 0 &&
        gs_prog_data->control_data_format ==

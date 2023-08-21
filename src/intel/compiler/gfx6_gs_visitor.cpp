@@ -322,7 +322,7 @@ gfx6_gs_visitor::emit_thread_end()
     * first_vertex is not zero. This is only relevant for outputs other than
     * points because in the point case we set PrimEnd on all vertices.
     */
-   if (nir->info.gs.output_primitive != GL_POINTS) {
+   if (nir->info.gs.output_primitive != MESA_PRIM_POINTS) {
       emit(CMP(dst_null_ud(), this->first_vertex, brw_imm_ud(0u), BRW_CONDITIONAL_Z));
       emit(IF(BRW_PREDICATE_NORMAL));
       gs_end_primitive();
