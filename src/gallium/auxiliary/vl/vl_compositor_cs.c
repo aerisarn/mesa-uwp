@@ -46,6 +46,8 @@ struct cs_viewport {
    float clamp_y;
    float chroma_clamp_x;
    float chroma_clamp_y;
+   float chroma_offset_x;
+   float chroma_offset_y;
 };
 
 const char *compute_shader_video_buffer =
@@ -57,7 +59,7 @@ const char *compute_shader_video_buffer =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..7]\n"
+      "DCL CONST[0..8]\n"
       "DCL SVIEW[0..2], RECT, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -80,12 +82,13 @@ const char *compute_shader_video_buffer =
          /* Translate */
          "UADD TEMP[2].xy, TEMP[0].xyyy, -CONST[5].xyxy\n"
          "U2F TEMP[2].xy, TEMP[2].xyyy\n"
-         "MUL TEMP[3].xy, TEMP[2].xyyy, CONST[6].xyyy\n"
-         "TRUNC TEMP[3].xy, TEMP[3].xyyy\n"
 
          /* Texture offset */
          "ADD TEMP[2].xy, TEMP[2].xyxy, IMM[1].yyyy\n"
-         "ADD TEMP[3].xy, TEMP[3].xyxy, IMM[1].yyyy\n"
+
+         /* Chroma offset + subsampling */
+         "ADD TEMP[3].xy, TEMP[2].xyyy, CONST[8].xyxy\n"
+         "MUL TEMP[3].xy, TEMP[3].xyyy, CONST[6].xyxy\n"
 
          /* Scale */
          "DIV TEMP[2].xy, TEMP[2].xyyy, CONST[3].zwww\n"
@@ -813,6 +816,26 @@ calc_drawn_area(struct vl_compositor_state *s,
    return result;
 }
 
+static inline float
+chroma_offset_x(unsigned location)
+{
+   if (location & VL_COMPOSITOR_LOCATION_HORIZONTAL_LEFT)
+      return 0.5f;
+   else
+      return 0.0f;
+}
+
+static inline float
+chroma_offset_y(unsigned location)
+{
+   if (location & VL_COMPOSITOR_LOCATION_VERTICAL_TOP)
+      return 0.5f;
+   else if (location & VL_COMPOSITOR_LOCATION_VERTICAL_BOTTOM)
+      return -0.5f;
+   else
+      return 0.0f;
+}
+
 static bool
 set_viewport(struct vl_compositor_state *s,
              struct cs_viewport         *drawn,
@@ -824,7 +847,7 @@ set_viewport(struct vl_compositor_state *s,
 
    void *ptr = pipe_buffer_map_range(s->pipe, s->shader_params,
                                      sizeof(vl_csc_matrix) + sizeof(float) * 2,
-                                     sizeof(float) * 10 + sizeof(int) * 8,
+                                     sizeof(float) * 12 + sizeof(int) * 8,
                                      PIPE_MAP_WRITE | PIPE_MAP_DISCARD_RANGE,
                                      &buf_transfer);
 
@@ -871,6 +894,8 @@ set_viewport(struct vl_compositor_state *s,
    *ptr_float++ = drawn->clamp_y;
    *ptr_float++ = drawn->chroma_clamp_x;
    *ptr_float++ = drawn->chroma_clamp_y;
+   *ptr_float++ = drawn->chroma_offset_x;
+   *ptr_float++ = drawn->chroma_offset_y;
 
    pipe_buffer_unmap(s->pipe, buf_transfer);
 
@@ -916,6 +941,8 @@ draw_layers(struct vl_compositor       *c,
             (layer->src.br.x - layer->src.tl.x) - 0.5;
          drawn.chroma_clamp_y = (float)sampler1->texture->height0 *
             (layer->src.br.y - layer->src.tl.y) - 0.5;
+         drawn.chroma_offset_x = chroma_offset_x(s->chroma_location);
+         drawn.chroma_offset_y = chroma_offset_y(s->chroma_location);
          set_viewport(s, &drawn, samplers);
 
          c->pipe->bind_sampler_states(c->pipe, PIPE_SHADER_COMPUTE, 0,
