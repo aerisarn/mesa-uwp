@@ -705,8 +705,6 @@ x11_surface_get_capabilities(VkIcdSurfaceBase *icd_surface,
    }
    free(err);
    free(geom);
-   if (!geom)
-       return VK_ERROR_SURFACE_LOST_KHR;
 
    if (surface->has_alpha) {
       caps->supportedCompositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR |
