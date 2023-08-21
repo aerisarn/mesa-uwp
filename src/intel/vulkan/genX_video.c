@@ -26,6 +26,8 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
+#include "util/vl_zscan_data.h"
+
 void
 genX(CmdBeginVideoCodingKHR)(VkCommandBuffer commandBuffer,
                              const VkVideoBeginCodingInfoKHR *pBeginInfo)
@@ -1029,27 +1031,27 @@ anv_h264_decode_video(struct anv_cmd_buffer *cmd_buffer,
       qm.AVC = AVC_4x4_Intra_MATRIX;
       for (unsigned m = 0; m < 3; m++)
          for (unsigned q = 0; q < 16; q++)
-            qm.ForwardQuantizerMatrix[m * 16 + q] = scaling_lists.ScalingList4x4[m][q];
+            qm.ForwardQuantizerMatrix[m * 16 + vl_zscan_normal_16[q]] = scaling_lists.ScalingList4x4[m][q];
    }
    anv_batch_emit(&cmd_buffer->batch, GENX(MFX_QM_STATE), qm) {
       qm.DWordLength = 16;
       qm.AVC = AVC_4x4_Inter_MATRIX;
       for (unsigned m = 0; m < 3; m++)
          for (unsigned q = 0; q < 16; q++)
-            qm.ForwardQuantizerMatrix[m * 16 + q] = scaling_lists.ScalingList4x4[m + 3][q];
+            qm.ForwardQuantizerMatrix[m * 16 + vl_zscan_normal_16[q]] = scaling_lists.ScalingList4x4[m + 3][q];
    }
    if (pps->flags.transform_8x8_mode_flag) {
       anv_batch_emit(&cmd_buffer->batch, GENX(MFX_QM_STATE), qm) {
          qm.DWordLength = 16;
          qm.AVC = AVC_8x8_Intra_MATRIX;
          for (unsigned q = 0; q < 64; q++)
-            qm.ForwardQuantizerMatrix[q] = scaling_lists.ScalingList8x8[0][q];
+            qm.ForwardQuantizerMatrix[vl_zscan_normal[q]] = scaling_lists.ScalingList8x8[0][q];
       }
       anv_batch_emit(&cmd_buffer->batch, GENX(MFX_QM_STATE), qm) {
          qm.DWordLength = 16;
          qm.AVC = AVC_8x8_Inter_MATRIX;
          for (unsigned q = 0; q < 64; q++)
-            qm.ForwardQuantizerMatrix[q] = scaling_lists.ScalingList8x8[1][q];
+            qm.ForwardQuantizerMatrix[vl_zscan_normal[q]] = scaling_lists.ScalingList8x8[1][q];
       }
    }
 
