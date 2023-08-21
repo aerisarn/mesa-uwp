@@ -330,7 +330,7 @@ radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws, struct radeon_winsys_bo
       int r;
 
       /* Clear mappings of this PRT VA region. */
-      r = radv_amdgpu_bo_va_op(ws, bo->bo, 0, bo->size, bo->base.va, 0, 0, AMDGPU_VA_OP_CLEAR);
+      r = radv_amdgpu_bo_va_op(ws, NULL, 0, bo->size, bo->base.va, 0, 0, AMDGPU_VA_OP_CLEAR);
       if (r) {
          fprintf(stderr, "radv/amdgpu: Failed to clear a PRT VA region (%d).\n", r);
       }
