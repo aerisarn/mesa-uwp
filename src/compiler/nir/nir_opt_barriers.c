@@ -38,8 +38,9 @@ combine_all_barriers(nir_intrinsic_instr *a, nir_intrinsic_instr *b, void *_)
 }
 
 static bool
-nir_opt_combine_barriers_impl(
-   nir_function_impl *impl, nir_combine_barrier_cb combine_cb, void *data)
+nir_opt_combine_barriers_impl(nir_function_impl *impl,
+                              nir_combine_barrier_cb combine_cb,
+                              void *data)
 {
    bool progress = false;
 
@@ -80,8 +81,9 @@ nir_opt_combine_barriers_impl(
 
 /* Combine adjacent scoped barriers. */
 bool
-nir_opt_combine_barriers(
-   nir_shader *shader, nir_combine_barrier_cb combine_cb, void *data)
+nir_opt_combine_barriers(nir_shader *shader,
+                         nir_combine_barrier_cb combine_cb,
+                         void *data)
 {
    /* Default to combining everything. Only some backends can do better. */
    if (!combine_cb)
