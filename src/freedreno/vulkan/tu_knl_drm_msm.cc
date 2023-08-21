@@ -1098,13 +1098,6 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
    device->has_cached_coherent_memory =
       (device->msm_minor_version >= 8) &&
       tu_drm_is_memory_type_supported(fd, MSM_BO_CACHED_COHERENT);
-#ifdef _SC_LEVEL1_DCACHE_LINESIZE
-   if (DETECT_ARCH_AARCH64 || DETECT_ARCH_X86 || DETECT_ARCH_X86_64) {
-      long l1_dcache = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-      device->has_cached_non_coherent_memory = l1_dcache > 0;
-      device->level1_dcache_size = l1_dcache;
-   }
-#endif
 
    device->submitqueue_priority_count = tu_drm_get_priorities(device);
 

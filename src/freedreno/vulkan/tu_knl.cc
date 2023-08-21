@@ -221,6 +221,22 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
 
    assert(device);
 
+#ifdef _SC_LEVEL1_DCACHE_LINESIZE
+   if (DETECT_ARCH_AARCH64 || DETECT_ARCH_X86 || DETECT_ARCH_X86_64) {
+      long l1_dcache;
+#if defined(ANDROID) && DETECT_ARCH_AARCH64
+      /* Bionic does not implement _SC_LEVEL1_DCACHE_LINESIZE properly: */
+      uint64_t ctr_el0;
+      asm("mrs\t%x0, ctr_el0" : "=r"(ctr_el0));
+      l1_dcache = 4 << ((ctr_el0 >> 16) & 0xf);
+#else
+      l1_dcache = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+#endif
+      device->has_cached_non_coherent_memory = l1_dcache > 0;
+      device->level1_dcache_size = l1_dcache;
+   }
+#endif
+
    if (instance->vk.enabled_extensions.KHR_display) {
       master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
    }

@@ -1579,13 +1579,6 @@ tu_knl_drm_virtio_load(struct tu_instance *instance,
    device->gmem_size = debug_get_num_option("TU_GMEM", device->gmem_size);
 
    device->has_cached_coherent_memory = caps.u.msm.has_cached_coherent;
-#ifdef _SC_LEVEL1_DCACHE_LINESIZE
-   if (DETECT_ARCH_AARCH64 || DETECT_ARCH_X86 || DETECT_ARCH_X86_64) {
-      long l1_dcache = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-      device->has_cached_non_coherent_memory = l1_dcache > 0;
-      device->level1_dcache_size = l1_dcache;
-   }
-#endif
 
    device->submitqueue_priority_count = caps.u.msm.priorities;
 
