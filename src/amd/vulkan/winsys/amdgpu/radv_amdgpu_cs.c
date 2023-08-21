@@ -829,6 +829,7 @@ radv_amdgpu_add_cs_to_bo_list(struct radv_amdgpu_cs *cs, struct drm_amdgpu_bo_li
    }
    for (unsigned j = 0; j < cs->num_virtual_buffers; ++j) {
       struct radv_amdgpu_winsys_bo *virtual_bo = radv_amdgpu_winsys_bo(cs->virtual_buffers[j]);
+      u_rwlock_rdlock(&virtual_bo->lock);
       for (unsigned k = 0; k < virtual_bo->bo_count; ++k) {
          struct radv_amdgpu_winsys_bo *bo = virtual_bo->bos[k];
          bool found = false;
@@ -844,6 +845,7 @@ radv_amdgpu_add_cs_to_bo_list(struct radv_amdgpu_cs *cs, struct drm_amdgpu_bo_li
             ++num_handles;
          }
       }
+      u_rwlock_rdunlock(&virtual_bo->lock);
    }
 
    return num_handles;
