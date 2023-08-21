@@ -2275,24 +2275,18 @@ reparent_ir(exec_list *list, void *mem_ctx)
    }
 }
 
-unsigned
-vertices_per_prim(GLenum prim)
+enum mesa_prim
+gl_to_mesa_prim(GLenum prim)
 {
-   switch (prim) {
-   case GL_POINTS:
-      return 1;
-   case GL_LINES:
-      return 2;
-   case GL_TRIANGLES:
-      return 3;
-   case GL_LINES_ADJACENCY:
-      return 4;
-   case GL_TRIANGLES_ADJACENCY:
-      return 6;
-   default:
-      assert(!"Bad primitive");
-      return 3;
-   }
+   STATIC_ASSERT(GL_POINTS                == MESA_PRIM_POINTS);
+   STATIC_ASSERT(GL_LINES                 == MESA_PRIM_LINES);
+   STATIC_ASSERT(GL_LINES_ADJACENCY       == MESA_PRIM_LINES_ADJACENCY);
+   STATIC_ASSERT(GL_LINE_STRIP            == MESA_PRIM_LINE_STRIP);
+   STATIC_ASSERT(GL_TRIANGLES             == MESA_PRIM_TRIANGLES);
+   STATIC_ASSERT(GL_TRIANGLES_ADJACENCY   == MESA_PRIM_TRIANGLES_ADJACENCY);
+   STATIC_ASSERT(GL_TRIANGLE_STRIP        == MESA_PRIM_TRIANGLE_STRIP);
+
+   return (enum mesa_prim)prim;
 }
 
 /**

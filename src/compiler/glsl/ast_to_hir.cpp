@@ -4954,7 +4954,8 @@ handle_geometry_shader_input_decl(struct _mesa_glsl_parse_state *state,
    unsigned num_vertices = 0;
 
    if (state->gs_input_prim_type_specified) {
-      num_vertices = vertices_per_prim(state->in_qualifier->prim_type);
+      GLenum in_prim_type = state->in_qualifier->prim_type;
+      num_vertices = mesa_vertices_per_prim(gl_to_mesa_prim(in_prim_type));
    }
 
    /* Geometry shader input variables must be arrays.  Caller should have
@@ -8869,7 +8870,8 @@ ast_gs_input_layout::hir(exec_list *instructions,
     * array size, make sure the size they specified is consistent with the
     * primitive type.
     */
-   unsigned num_vertices = vertices_per_prim(this->prim_type);
+   unsigned num_vertices =
+      mesa_vertices_per_prim(gl_to_mesa_prim(this->prim_type));
    if (state->gs_input_size != 0 && state->gs_input_size != num_vertices) {
       _mesa_glsl_error(&loc, state,
                        "this geometry shader input layout implies %u vertices"

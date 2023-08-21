@@ -698,7 +698,7 @@ validate_geometry_shader_executable(struct gl_shader_program *prog,
       return;
 
    unsigned num_vertices =
-      vertices_per_prim(shader->Program->info.gs.input_primitive);
+      mesa_vertices_per_prim(shader->Program->info.gs.input_primitive);
    prog->Geom.VerticesIn = num_vertices;
 
    analyze_clip_cull_usage(prog, shader, consts, &shader->Program->info);
@@ -752,7 +752,7 @@ validate_geometry_shader_emissions(const struct gl_constants *consts,
        * stream.
        */
       if (prog->Geom.ActiveStreamMask & ~(1 << 0) &&
-          sh->Program->info.gs.output_primitive != GL_POINTS) {
+          sh->Program->info.gs.output_primitive != MESA_PRIM_POINTS) {
          linker_error(prog, "EmitStreamVertex(n) and EndStreamPrimitive(n) "
                       "with n>0 requires point output\n");
       }
@@ -2518,7 +2518,7 @@ link_intrastage_shaders(void *mem_ctx,
    /* Set the size of geometry shader input arrays */
    if (linked->Stage == MESA_SHADER_GEOMETRY) {
       unsigned num_vertices =
-         vertices_per_prim(gl_prog->info.gs.input_primitive);
+         mesa_vertices_per_prim(gl_prog->info.gs.input_primitive);
       array_resize_visitor input_resize_visitor(num_vertices, prog,
                                                 MESA_SHADER_GEOMETRY);
       foreach_in_list(ir_instruction, ir, linked->ir) {

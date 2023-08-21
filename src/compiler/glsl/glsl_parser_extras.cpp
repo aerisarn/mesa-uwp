@@ -1970,13 +1970,15 @@ set_shader_inout_layout(struct gl_shader *shader,
       }
 
       if (state->gs_input_prim_type_specified) {
-         shader->info.Geom.InputType = (enum mesa_prim)state->in_qualifier->prim_type;
+         shader->info.Geom.InputType =
+            gl_to_mesa_prim(state->in_qualifier->prim_type);
       } else {
          shader->info.Geom.InputType = MESA_PRIM_UNKNOWN;
       }
 
       if (state->out_qualifier->flags.q.prim_type) {
-         shader->info.Geom.OutputType = (enum mesa_prim)state->out_qualifier->prim_type;
+         shader->info.Geom.OutputType =
+            gl_to_mesa_prim(state->out_qualifier->prim_type);
       } else {
          shader->info.Geom.OutputType = MESA_PRIM_UNKNOWN;
       }

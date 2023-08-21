@@ -2483,7 +2483,7 @@ _mesa_glsl_get_builtin_uniform_desc(const char *name);
 } /* extern "C" */
 #endif
 
-unsigned
-vertices_per_prim(GLenum prim);
+enum mesa_prim
+gl_to_mesa_prim(GLenum prim);
 
 #endif /* IR_H */
