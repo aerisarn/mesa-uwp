@@ -714,7 +714,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (ctx->gfx_dirty) {
       struct zink_gfx_program *prog = NULL;
-      ctx->gfx_pipeline_state.optimal_key = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
+      ctx->gfx_pipeline_state.optimal_key = zink_sanitize_optimal_key(ctx->gfx_stages, ctx->gfx_pipeline_state.shader_keys_optimal.key.val);
       struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(ctx->shader_stages)];
       const uint32_t hash = ctx->gfx_hash;
       simple_mtx_lock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
@@ -752,7 +752,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
    } else if (ctx->dirty_gfx_stages) {
       /* remove old hash */
-      ctx->gfx_pipeline_state.optimal_key = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
+      ctx->gfx_pipeline_state.optimal_key = zink_sanitize_optimal_key(ctx->gfx_stages, ctx->gfx_pipeline_state.shader_keys_optimal.key.val);
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       if (ctx->curr_program->is_separable && !(zink_debug & ZINK_DEBUG_NOOPT)) {
          struct zink_gfx_program *prog = ctx->curr_program;
