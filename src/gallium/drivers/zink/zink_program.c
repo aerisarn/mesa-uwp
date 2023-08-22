@@ -469,7 +469,7 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
    }
 
    state->modules_changed = true;
-   prog->last_variant_hash = state->shader_keys_optimal.key.val;
+   prog->last_variant_hash = state->optimal_key;
 }
 
 static uint32_t
@@ -693,7 +693,7 @@ update_gfx_program_optimal(struct zink_context *ctx, struct zink_gfx_program *pr
       bool changed = update_gfx_shader_module_optimal(ctx, prog, MESA_SHADER_TESS_CTRL);
       ctx->gfx_pipeline_state.modules_changed |= changed;
    }
-   prog->last_variant_hash = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
+   prog->last_variant_hash = ctx->gfx_pipeline_state.optimal_key;
 }
 
 static struct zink_gfx_program *
