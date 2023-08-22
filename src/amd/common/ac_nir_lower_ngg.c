@@ -2304,6 +2304,43 @@ export_vertex_params_gfx11(nir_builder *b, nir_def *export_tid, nir_def *num_exp
    nir_pop_if(b, NULL);
 }
 
+static void
+export_pos0_wait_attr_ring(nir_builder *b, nir_if *if_es_thread, nir_def *outputs[VARYING_SLOT_MAX][4], const ac_nir_lower_ngg_options *options)
+{
+   b->cursor = nir_after_cf_node(&if_es_thread->cf_node);
+
+   /* Create phi for the position output values. */
+   vs_output pos_output = {
+      .slot = VARYING_SLOT_POS,
+      .chan = {
+         outputs[VARYING_SLOT_POS][0],
+         outputs[VARYING_SLOT_POS][1],
+         outputs[VARYING_SLOT_POS][2],
+         outputs[VARYING_SLOT_POS][3],
+      },
+   };
+   create_vertex_param_phis(b, 1, &pos_output);
+
+   b->cursor = nir_after_cf_list(&b->impl->body);
+
+   /* Wait for attribute stores to finish. */
+   nir_barrier(b, .execution_scope = SCOPE_SUBGROUP,
+                  .memory_scope = SCOPE_DEVICE,
+                  .memory_semantics = NIR_MEMORY_RELEASE,
+                  .memory_modes = nir_var_mem_ssbo | nir_var_shader_out | nir_var_mem_global | nir_var_image);
+
+   /* Export just the pos0 output. */
+   nir_if *if_export_empty_pos = nir_push_if(b, if_es_thread->condition.ssa);
+   {
+      ac_nir_export_position(b, options->gfx_level,
+                             options->clipdist_enable_mask,
+                             !options->has_param_exports,
+                             options->force_vrs, true,
+                             VARYING_BIT_POS, &pos_output.chan);
+   }
+   nir_pop_if(b, if_export_empty_pos);
+}
+
 void
 ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
 {
@@ -2502,11 +2539,15 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
    if (options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
 
+   const bool wait_attr_ring = options->gfx_level == GFX11 && options->has_param_exports;
+   if (wait_attr_ring)
+      export_outputs &= ~VARYING_BIT_POS;
+
    b->cursor = nir_after_cf_list(&if_es_thread->then_list);
    ac_nir_export_position(b, options->gfx_level,
                           options->clipdist_enable_mask,
                           !options->has_param_exports,
-                          options->force_vrs, true,
+                          options->force_vrs, !wait_attr_ring,
                           export_outputs, state.outputs);
 
    if (options->has_param_exports) {
@@ -2538,6 +2579,9 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
                                   state.outputs_16bit_hi);
       }
    }
+
+   if (wait_attr_ring)
+      export_pos0_wait_attr_ring(b, if_es_thread, state.outputs, options);
 
    nir_metadata_preserve(impl, nir_metadata_none);
    nir_validate_shader(shader, "after emitting NGG VS/TES");
@@ -3033,10 +3077,14 @@ ngg_gs_export_vertices(nir_builder *b, nir_def *max_num_out_vtx, nir_def *tid_in
    if (s->options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
 
+   const bool wait_attr_ring = s->options->gfx_level == GFX11 && s->options->has_param_exports;
+   if (wait_attr_ring)
+      export_outputs &= ~VARYING_BIT_POS;
+
    ac_nir_export_position(b, s->options->gfx_level,
                           s->options->clipdist_enable_mask,
                           !s->options->has_param_exports,
-                          s->options->force_vrs, true,
+                          s->options->force_vrs, !wait_attr_ring,
                           export_outputs, s->outputs);
 
    nir_pop_if(b, if_vtx_export_thread);
@@ -3066,6 +3114,9 @@ ngg_gs_export_vertices(nir_builder *b, nir_def *max_num_out_vtx, nir_def *tid_in
                                   s->outputs_16bit_hi);
       }
    }
+
+   if (wait_attr_ring)
+      export_pos0_wait_attr_ring(b, if_vtx_export_thread, s->outputs, s->options);
 }
 
 static void
