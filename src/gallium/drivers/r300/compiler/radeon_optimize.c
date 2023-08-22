@@ -625,8 +625,6 @@ static int peephole_add_presub_inv(
 	if ((inst_add->U.I.SrcReg[1].Negate & inst_add->U.I.DstReg.WriteMask) !=
 						inst_add->U.I.DstReg.WriteMask
 		|| inst_add->U.I.SrcReg[1].Abs
-		|| (inst_add->U.I.SrcReg[1].File != RC_FILE_TEMPORARY
-			&& inst_add->U.I.SrcReg[1].File != RC_FILE_CONSTANT)
 		|| src_has_const_swz(inst_add->U.I.SrcReg[1])) {
 
 		return 0;
