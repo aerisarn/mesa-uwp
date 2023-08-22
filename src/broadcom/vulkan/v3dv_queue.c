@@ -136,6 +136,8 @@ set_in_syncs(struct v3dv_queue *queue,
              struct v3dv_job *job,
              enum v3dv_queue_type queue_sync,
              uint32_t *count,
+             struct vk_sync_wait *waits,
+             unsigned wait_count,
              struct v3dv_submit_sync_info *sync_info)
 {
    struct v3dv_device *device = queue->device;
@@ -166,6 +168,8 @@ set_in_syncs(struct v3dv_queue *queue,
    if (sync_csd)
       (*count)++;
 
+   *count += wait_count;
+
    if (!*count)
       return NULL;
 
@@ -179,6 +183,11 @@ set_in_syncs(struct v3dv_queue *queue,
    for (int i = 0; i < n_syncs; i++) {
       syncs[i].handle =
          vk_sync_as_drm_syncobj(sync_info->waits[i].sync)->syncobj;
+   }
+
+   for (int i = 0; i < wait_count; i++) {
+      syncs[n_syncs++].handle =
+         vk_sync_as_drm_syncobj(waits[i].sync)->syncobj;
    }
 
    if (sync_cl)
@@ -248,6 +257,8 @@ set_ext(struct drm_v3d_extension *ext,
 static void
 set_multisync(struct drm_v3d_multi_sync *ms,
               struct v3dv_submit_sync_info *sync_info,
+              struct vk_sync_wait *waits,
+              unsigned wait_count,
               struct drm_v3d_extension *next,
               struct v3dv_device *device,
               struct v3dv_job *job,
@@ -261,7 +272,7 @@ set_multisync(struct drm_v3d_multi_sync *ms,
    struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    in_syncs = set_in_syncs(queue, job, in_queue_sync,
-                           &in_sync_count, sync_info);
+                           &in_sync_count, waits, wait_count, sync_info);
    if (!in_syncs && in_sync_count)
       goto fail;
 
@@ -769,7 +780,7 @@ handle_cl_job(struct v3dv_queue *queue,
    struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
       enum v3d_queue wait_stage = needs_rcl_sync ? V3D_RENDER : V3D_BIN;
-      set_multisync(&ms, sync_info, NULL, device, job,
+      set_multisync(&ms, sync_info, NULL, 0, NULL, device, job,
                     V3DV_QUEUE_CL, V3DV_QUEUE_CL, wait_stage, signal_syncs);
       if (!ms.base.id)
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -829,7 +840,7 @@ handle_tfu_job(struct v3dv_queue *queue,
     */
    struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
-      set_multisync(&ms, sync_info, NULL, device, job,
+      set_multisync(&ms, sync_info, NULL, 0, NULL, device, job,
                     V3DV_QUEUE_TFU, V3DV_QUEUE_TFU, V3D_TFU, signal_syncs);
       if (!ms.base.id)
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -899,7 +910,7 @@ handle_csd_job(struct v3dv_queue *queue,
     */
    struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
-      set_multisync(&ms, sync_info, NULL, device, job,
+      set_multisync(&ms, sync_info, NULL, 0, NULL, device, job,
                     V3DV_QUEUE_CSD, V3DV_QUEUE_CSD, V3D_CSD, signal_syncs);
       if (!ms.base.id)
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
