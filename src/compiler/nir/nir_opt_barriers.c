@@ -184,6 +184,16 @@ nir_opt_barrier_modes_impl(nir_function_impl *impl)
          nir_intrinsic_set_memory_modes(barrier, new_modes);
          progress = true;
       }
+
+      /* Shared memory only exists within a workgroup, so synchronizing it
+       * beyond workgroup scope is nonsense.
+       */
+      if (nir_intrinsic_execution_scope(barrier) == SCOPE_NONE &&
+          new_modes == nir_var_mem_shared) {
+         nir_intrinsic_set_memory_scope(barrier,
+            MIN2(nir_intrinsic_memory_scope(barrier), SCOPE_WORKGROUP));
+         progress = true;
+      }
    }
 
    nir_instr_worklist_destroy(barriers);
@@ -193,7 +203,7 @@ nir_opt_barrier_modes_impl(nir_function_impl *impl)
 }
 
 /**
- * Reduce barriers to remove unnecessary modes.
+ * Reduce barriers to remove unnecessary modes and scope.
  *
  * This pass must be called before nir_lower_explicit_io lowers derefs!
  *
@@ -212,6 +222,9 @@ nir_opt_barrier_modes_impl(nir_function_impl *impl)
  * various shared memory operations.  Image reads and writes do also exist,
  * but they are all on one side of the barrier, so it is a no-op for image
  * access.  We can drop the image mode from the barrier in this case too.
+ *
+ * In addition, we can reduce the memory scope of shared-only barriers, as
+ * shared local memory only exists within a workgroup.
  */
 bool
 nir_opt_barrier_modes(nir_shader *shader)
