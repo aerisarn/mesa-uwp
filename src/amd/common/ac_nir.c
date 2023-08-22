@@ -204,6 +204,25 @@ get_export_output(nir_builder *b, nir_def **output)
    return nir_vec(b, vec, 4);
 }
 
+static nir_def *
+get_pos0_output(nir_builder *b, nir_def **output)
+{
+   /* Some applications don't write position but expect (0, 0, 0, 1)
+    * so use that value instead of undef when it isn't written.
+    */
+
+   nir_def *vec[4];
+
+   for (int i = 0; i < 4; i++) {
+      if (output[i])
+         vec[i] = nir_u2u32(b, output[i]);
+     else
+         vec[i] = nir_imm_float(b, i == 3 ? 1.0 : 0.0);
+   }
+
+   return nir_vec(b, vec, 4);
+}
+
 void
 ac_nir_export_position(nir_builder *b,
                        enum amd_gfx_level gfx_level,
@@ -216,25 +235,22 @@ ac_nir_export_position(nir_builder *b,
 {
    nir_intrinsic_instr *exp[4];
    unsigned exp_num = 0;
+   unsigned exp_pos_offset = 0;
 
-   nir_def *pos;
    if (outputs_written & VARYING_BIT_POS) {
-      pos = get_export_output(b, outputs[VARYING_SLOT_POS]);
+      /* GFX10 (Navi1x) skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
+      * Setting valid_mask=1 prevents it and has no other effect.
+      */
+      const unsigned pos_flags = gfx_level == GFX10 ? AC_EXP_FLAG_VALID_MASK : 0;
+      nir_def *pos = get_pos0_output(b, outputs[VARYING_SLOT_POS]);
+
+      exp[exp_num] = nir_export_amd(
+         b, pos, .base = V_008DFC_SQ_EXP_POS + exp_num,
+         .flags = pos_flags, .write_mask = 0xf);
+      exp_num++;
    } else {
-      nir_def *zero = nir_imm_float(b, 0);
-      nir_def *one = nir_imm_float(b, 1);
-      pos = nir_vec4(b, zero, zero, zero, one);
+      exp_pos_offset++;
    }
-
-   /* GFX10 (Navi1x) skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
-    * Setting valid_mask=1 prevents it and has no other effect.
-    */
-   unsigned pos_flags = gfx_level == GFX10 ? AC_EXP_FLAG_VALID_MASK : 0;
-
-   exp[exp_num] = nir_export_amd(
-      b, pos, .base = V_008DFC_SQ_EXP_POS + exp_num,
-      .flags = pos_flags, .write_mask = 0xf);
-   exp_num++;
 
    uint64_t mask =
       VARYING_BIT_PSIZ |
@@ -276,7 +292,8 @@ ac_nir_export_position(nir_builder *b,
          rates = outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE][0];
       } else if (force_vrs) {
          /* If Pos.W != 1 (typical for non-GUI elements), use coarse shading. */
-         nir_def *pos_w = nir_channel(b, pos, 3);
+         nir_def *pos_w = outputs[VARYING_SLOT_POS][3];
+         pos_w = pos_w ? nir_u2u32(b, pos_w) : nir_imm_float(b, 1.0);
          nir_def *cond = nir_fneu_imm(b, pos_w, 1);
          rates = nir_bcsel(b, cond, nir_load_force_vrs_rates_amd(b), nir_imm_int(b, 0));
       }
@@ -305,7 +322,7 @@ ac_nir_export_position(nir_builder *b,
 
       exp[exp_num] = nir_export_amd(
          b, nir_vec(b, vec, 4),
-         .base = V_008DFC_SQ_EXP_POS + exp_num,
+         .base = V_008DFC_SQ_EXP_POS + exp_num + exp_pos_offset,
          .flags = flags,
          .write_mask = write_mask);
       exp_num++;
@@ -316,7 +333,7 @@ ac_nir_export_position(nir_builder *b,
           (clip_cull_mask & BITFIELD_RANGE(i * 4, 4))) {
          exp[exp_num] = nir_export_amd(
             b, get_export_output(b, outputs[VARYING_SLOT_CLIP_DIST0 + i]),
-            .base = V_008DFC_SQ_EXP_POS + exp_num,
+            .base = V_008DFC_SQ_EXP_POS + exp_num + exp_pos_offset,
             .write_mask = (clip_cull_mask >> (i * 4)) & 0xf);
          exp_num++;
       }
@@ -336,12 +353,15 @@ ac_nir_export_position(nir_builder *b,
          if (clip_cull_mask & BITFIELD_RANGE(i * 4, 4)) {
             exp[exp_num] = nir_export_amd(
                b, get_export_output(b, clip_dist + i * 4),
-               .base = V_008DFC_SQ_EXP_POS + exp_num,
+               .base = V_008DFC_SQ_EXP_POS + exp_num + exp_pos_offset,
                .write_mask = (clip_cull_mask >> (i * 4)) & 0xf);
             exp_num++;
          }
       }
    }
+
+   if (!exp_num)
+      return;
 
    nir_intrinsic_instr *final_exp = exp[exp_num - 1];
 
@@ -713,7 +733,7 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
          emit_streamout(&b, stream, info, &outputs);
 
       if (stream == 0) {
-         uint64_t export_outputs = b.shader->info.outputs_written;
+         uint64_t export_outputs = b.shader->info.outputs_written | VARYING_BIT_POS;
          if (kill_pointsize)
             export_outputs &= ~VARYING_BIT_PSIZ;
 
@@ -820,7 +840,7 @@ ac_nir_lower_legacy_vs(nir_shader *nir,
       preserved = nir_metadata_none;
    }
 
-   uint64_t export_outputs = nir->info.outputs_written;
+   uint64_t export_outputs = nir->info.outputs_written | VARYING_BIT_POS;
    if (kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
 

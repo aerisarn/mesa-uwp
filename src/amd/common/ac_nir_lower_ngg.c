@@ -2498,7 +2498,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, prim_exp_arg_var));
    }
 
-   uint64_t export_outputs = shader->info.outputs_written;
+   uint64_t export_outputs = shader->info.outputs_written | VARYING_BIT_POS;
    if (options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
 
@@ -3029,7 +3029,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_def *max_num_out_vtx, nir_def *tid_in
       }
    }
 
-   uint64_t export_outputs = b->shader->info.outputs_written;
+   uint64_t export_outputs = b->shader->info.outputs_written | VARYING_BIT_POS;
    if (s->options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
 
@@ -4335,7 +4335,7 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
 
       ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
                              !s->has_param_exports, false, true,
-                             s->per_vertex_outputs, s->outputs);
+                             s->per_vertex_outputs | VARYING_BIT_POS, s->outputs);
 
       /* Export generic attributes on GFX10.3
        * (On GFX11 they are already stored in the attribute ring.)
