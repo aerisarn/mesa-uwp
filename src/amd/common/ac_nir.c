@@ -210,6 +210,7 @@ ac_nir_export_position(nir_builder *b,
                        uint32_t clip_cull_mask,
                        bool no_param_export,
                        bool force_vrs,
+                       bool done,
                        uint64_t outputs_written,
                        nir_def *(*outputs)[4])
 {
@@ -342,10 +343,13 @@ ac_nir_export_position(nir_builder *b,
       }
    }
 
-   /* Specify that this is the last export */
    nir_intrinsic_instr *final_exp = exp[exp_num - 1];
-   unsigned final_exp_flags = nir_intrinsic_flags(final_exp);
-   nir_intrinsic_set_flags(final_exp, final_exp_flags | AC_EXP_FLAG_DONE);
+
+   if (done) {
+      /* Specify that this is the last export */
+      const unsigned final_exp_flags = nir_intrinsic_flags(final_exp);
+      nir_intrinsic_set_flags(final_exp, final_exp_flags | AC_EXP_FLAG_DONE);
+   }
 
    /* If a shader has no param exports, rasterization can start before
     * the shader finishes and thus memory stores might not finish before
@@ -714,7 +718,7 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
             export_outputs &= ~VARYING_BIT_PSIZ;
 
          ac_nir_export_position(&b, gfx_level, clip_cull_mask, !has_param_exports,
-                                force_vrs, export_outputs, outputs.data);
+                                force_vrs, true, export_outputs, outputs.data);
 
          if (has_param_exports) {
             ac_nir_export_parameters(&b, param_offsets,
@@ -821,7 +825,7 @@ ac_nir_lower_legacy_vs(nir_shader *nir,
       export_outputs &= ~VARYING_BIT_PSIZ;
 
    ac_nir_export_position(&b, gfx_level, clip_cull_mask, !has_param_exports,
-                          force_vrs, export_outputs, outputs.data);
+                          force_vrs, true, export_outputs, outputs.data);
 
    if (has_param_exports) {
       ac_nir_export_parameters(&b, param_offsets,
