@@ -1364,6 +1364,7 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
    struct zink_compute_program *comp = create_program(ctx, true);
    if (!comp)
       return NULL;
+   comp->scratch_size = nir->scratch_size;
    comp->nir = nir;
    comp->num_inlinable_uniforms = nir->info.num_inlinable_uniforms;
 

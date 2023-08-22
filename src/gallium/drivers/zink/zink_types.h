@@ -1127,6 +1127,8 @@ struct zink_compute_program {
 
    bool use_local_size;
 
+   unsigned scratch_size;
+
    unsigned num_inlinable_uniforms;
    nir_shader *nir; //only until precompile finishes
 
