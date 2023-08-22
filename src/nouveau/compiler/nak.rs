@@ -101,10 +101,10 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
     cw3.set_field(0..24, 0_u32 /* ShaderLocalMemoryCrsSize */);
     if nir.info.stage() == MESA_SHADER_GEOMETRY {
         let info_gs = unsafe { &nir.info.__bindgen_anon_1.gs };
-        let output_topology = match u32::from(info_gs.output_primitive) {
-            SHADER_PRIM_POINTS => 1_u8,    /* POINTLIST */
-            SHADER_PRIM_LINES => 6_u8,     /* LINESTRIP */
-            SHADER_PRIM_TRIANGLES => 6_u8, /* TRIANGLESTRIP */
+        let output_topology = match info_gs.output_primitive {
+            MESA_PRIM_POINTS => 1_u8,    /* POINTLIST */
+            MESA_PRIM_LINES => 6_u8,     /* LINESTRIP */
+            MESA_PRIM_TRIANGLES => 6_u8, /* TRIANGLESTRIP */
             _ => panic!("Invalid geometry output primitive type"),
         };
         cw3.set_field(24..28, output_topology);
