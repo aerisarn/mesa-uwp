@@ -11530,11 +11530,6 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
    nir_function_impl* func = nir_shader_get_entrypoint(nir);
    visit_cf_list(&ctx, &func->body);
 
-   if (endif_merged_wave_info) {
-      begin_divergent_if_else(&ctx, ic_merged_wave_info);
-      end_divergent_if(&ctx, ic_merged_wave_info);
-   }
-
    if (ctx.program->info.has_epilog) {
       if (ctx.stage == fragment_fs) {
          create_fs_jump_to_epilog(&ctx);
@@ -11549,6 +11544,11 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
          else
             create_tcs_jump_to_epilog(&ctx);
       }
+   }
+
+   if (endif_merged_wave_info) {
+      begin_divergent_if_else(&ctx, ic_merged_wave_info);
+      end_divergent_if(&ctx, ic_merged_wave_info);
    }
 
    if ((ctx.stage.sw == SWStage::VS &&
@@ -11714,7 +11714,9 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
    append_logical_end(ctx.block);
    ctx.block->kind |= block_kind_uniform;
 
-   if (!ctx.program->info.has_epilog) {
+   if (!ctx.program->info.has_epilog ||
+       (shaders[shader_count - 1]->info.stage == MESA_SHADER_TESS_CTRL &&
+        options->gfx_level >= GFX9)) {
       Builder bld(ctx.program, ctx.block);
       bld.sopp(aco_opcode::s_endpgm);
    }
