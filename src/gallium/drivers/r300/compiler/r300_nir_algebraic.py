@@ -76,6 +76,10 @@ r300_nir_prepare_presubtract = [
         (('ffma', -2.0, a, 1.0), ('fneg', ('ffma', ('fneg', a), 2.0, 1.0))),
         (('ffma', 2.0, a, -1.0), ('fneg', ('ffma', ('fneg', a), 2.0, 1.0))),
         (('ffma', a, 2.0, -1.0), ('fneg', ('ffma', ('fneg', a), 2.0, 1.0))),
+        # x * 2 can be usually folded into output modifier for the previous
+        # instruction, but that only works if x is a temporary. If it is input or
+        # constant just convert it to add instead.
+        (('fmul', 'a(is_ubo_or_input)', 2.0), ('fadd', a, a)),
 ]
 
 # Previous prepare_presubtract pass can sometimes produce double fneg patterns.
