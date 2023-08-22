@@ -2517,6 +2517,8 @@ emit_store_global(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                    dest_type);
    nir_alu_type atype;
    SpvId param = get_src(ctx, &intr->src[0], &atype);
+   if (atype != nir_type_uint)
+      param = emit_bitcast(ctx, dest_type, param);
    SpvId ptr = emit_bitcast(ctx, pointer_type, get_src(ctx, &intr->src[1], &atype));
    spirv_builder_emit_store_aligned(&ctx->builder, ptr, param, bit_size / 8);
 }
