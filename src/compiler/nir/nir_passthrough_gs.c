@@ -26,7 +26,7 @@
 #include "nir_builder.h"
 #include "nir_xfb_info.h"
 
-static unsigned int
+static enum mesa_prim
 gs_in_prim_for_topology(enum mesa_prim prim)
 {
    switch (prim) {
