@@ -21,6 +21,13 @@
     VARYING_BIT_VIEWPORT | \
     VARYING_BIT_PRIMITIVE_SHADING_RATE)
 
+#define MS_VERT_ARG_EXP_MASK \
+   (VARYING_BIT_CULL_DIST0 | \
+    VARYING_BIT_CULL_DIST1 | \
+    VARYING_BIT_CLIP_DIST0 | \
+    VARYING_BIT_CLIP_DIST1 | \
+    VARYING_BIT_PSIZ)
+
 enum {
    nggc_passflag_used_by_pos = 1,
    nggc_passflag_used_by_other = 2,
@@ -4424,69 +4431,117 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
     * current thread's vertex attributes in a way the HW can export.
     */
 
-   /* Export vertices. */
-   nir_def *has_output_vertex = nir_ilt(b, invocation_index, num_vtx);
-   nir_if *if_has_output_vertex = nir_push_if(b, has_output_vertex);
-   {
-      const uint64_t per_vertex_outputs =
-         s->per_vertex_outputs & ~s->layout.attr_ring.vtx_attr.mask;
-      ms_emit_arrayed_outputs(b, invocation_index, per_vertex_outputs, s);
+   uint64_t per_vertex_outputs =
+      s->per_vertex_outputs & ~s->layout.attr_ring.vtx_attr.mask;
+   uint64_t per_primitive_outputs =
+      s->per_primitive_outputs & ~s->layout.attr_ring.prm_attr.mask & ~SPECIAL_MS_OUT_MASK;
 
-      ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
-                             !s->has_param_exports, false, true,
-                             s->per_vertex_outputs | VARYING_BIT_POS, s->outputs);
-
-      /* Export generic attributes on GFX10.3
-       * (On GFX11 they are already stored in the attribute ring.)
-       */
-      if (s->has_param_exports && s->gfx_level == GFX10_3) {
-         ac_nir_export_parameters(b, s->vs_output_param_offset, per_vertex_outputs, 0, s->outputs,
-                                  NULL, NULL);
-      }
-
-      const uint64_t per_vertex_special = VARYING_BIT_CULL_DIST0 | VARYING_BIT_CULL_DIST1 |
-                                          VARYING_BIT_CLIP_DIST0 | VARYING_BIT_CLIP_DIST1 |
-                                          VARYING_BIT_PSIZ;
-
-      /* GFX11+: also store special outputs to the attribute ring so PS can load them. */
-      if (s->gfx_level >= GFX11 && (per_vertex_outputs & per_vertex_special)) {
-         ms_emit_attribute_ring_output_stores(b, per_vertex_outputs & per_vertex_special, s);
-      }
+   /* Insert layer output store if the pipeline uses multiview but the API shader doesn't write it. */
+   if (s->insert_layer_output) {
+      b->shader->info.outputs_written |= VARYING_BIT_LAYER;
+      b->shader->info.per_primitive_outputs |= VARYING_BIT_LAYER;
+      per_primitive_outputs |= VARYING_BIT_LAYER;
    }
-   nir_pop_if(b, if_has_output_vertex);
+
+   const bool has_special_param_exports =
+      (per_vertex_outputs & MS_VERT_ARG_EXP_MASK) ||
+      (per_primitive_outputs & MS_PRIM_ARG_EXP_MASK);
+
+   const bool wait_attr_ring = s->gfx_level == GFX11 && has_special_param_exports;
+
+   /* Export vertices. */
+   if ((per_vertex_outputs & ~VARYING_BIT_POS) || !wait_attr_ring) {
+      nir_def *has_output_vertex = nir_ilt(b, invocation_index, num_vtx);
+      nir_if *if_has_output_vertex = nir_push_if(b, has_output_vertex);
+      {
+         ms_emit_arrayed_outputs(b, invocation_index, per_vertex_outputs, s);
+
+         if (!wait_attr_ring)
+            ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
+                                 !s->has_param_exports, false, true,
+                                 s->per_vertex_outputs | VARYING_BIT_POS, s->outputs);
+
+         /* Export generic attributes on GFX10.3
+         * (On GFX11 they are already stored in the attribute ring.)
+         */
+         if (s->has_param_exports && s->gfx_level == GFX10_3) {
+            ac_nir_export_parameters(b, s->vs_output_param_offset, per_vertex_outputs, 0, s->outputs,
+                                    NULL, NULL);
+         }
+
+         /* GFX11+: also store special outputs to the attribute ring so PS can load them. */
+         if (s->gfx_level >= GFX11 && (per_vertex_outputs & MS_VERT_ARG_EXP_MASK)) {
+            ms_emit_attribute_ring_output_stores(b, per_vertex_outputs & MS_VERT_ARG_EXP_MASK, s);
+         }
+      }
+      nir_pop_if(b, if_has_output_vertex);
+   }
 
    /* Export primitives. */
-   nir_def *has_output_primitive = nir_ilt(b, invocation_index, num_prm);
-   nir_if *if_has_output_primitive = nir_push_if(b, has_output_primitive);
-   {
-      uint64_t per_primitive_outputs =
-         s->per_primitive_outputs & ~s->layout.attr_ring.prm_attr.mask & ~SPECIAL_MS_OUT_MASK;
-      ms_emit_arrayed_outputs(b, invocation_index, per_primitive_outputs, s);
+   if (per_primitive_outputs || !wait_attr_ring) {
+      nir_def *has_output_primitive = nir_ilt(b, invocation_index, num_prm);
+      nir_if *if_has_output_primitive = nir_push_if(b, has_output_primitive);
+      {
+         ms_emit_arrayed_outputs(b, invocation_index, per_primitive_outputs, s);
 
-      /* Insert layer output store if the pipeline uses multiview but the API shader doesn't write it. */
-      if (s->insert_layer_output) {
-         s->outputs[VARYING_SLOT_LAYER][0] = nir_load_view_index(b);
-         b->shader->info.outputs_written |= VARYING_BIT_LAYER;
-         b->shader->info.per_primitive_outputs |= VARYING_BIT_LAYER;
-         per_primitive_outputs |= VARYING_BIT_LAYER;
+         /* Insert layer output store if the pipeline uses multiview but the API shader doesn't write it. */
+         if (s->insert_layer_output) {
+            s->outputs[VARYING_SLOT_LAYER][0] = nir_load_view_index(b);
+         }
+
+         if (!wait_attr_ring)
+            ms_emit_primitive_export(b, invocation_index, num_vtx, per_primitive_outputs, s);
+
+         /* Export generic attributes on GFX10.3
+         * (On GFX11 they are already stored in the attribute ring.)
+         */
+         if (s->has_param_exports && s->gfx_level == GFX10_3) {
+            ac_nir_export_parameters(b, s->vs_output_param_offset, per_primitive_outputs, 0,
+                                    s->outputs, NULL, NULL);
+         }
+
+         /* GFX11+: also store special per-primitive outputs to the attribute ring so PS can load them. */
+         if (s->gfx_level >= GFX11) {
+            ms_emit_attribute_ring_output_stores(b, per_primitive_outputs & MS_PRIM_ARG_EXP_MASK, s);
+         }
       }
-
-      ms_emit_primitive_export(b, invocation_index, num_vtx, per_primitive_outputs, s);
-
-      /* Export generic attributes on GFX10.3
-       * (On GFX11 they are already stored in the attribute ring.)
-       */
-      if (s->has_param_exports && s->gfx_level == GFX10_3) {
-         ac_nir_export_parameters(b, s->vs_output_param_offset, per_primitive_outputs, 0,
-                                  s->outputs, NULL, NULL);
-      }
-
-      /* GFX11+: also store special per-primitive outputs to the attribute ring so PS can load them. */
-      if (s->gfx_level >= GFX11) {
-         ms_emit_attribute_ring_output_stores(b, per_primitive_outputs & MS_PRIM_ARG_EXP_MASK, s);
-      }
+      nir_pop_if(b, if_has_output_primitive);
    }
-   nir_pop_if(b, if_has_output_primitive);
+
+   /* When we need to wait for attribute ring stores, we emit both position and primitive
+    * export instructions after a barrier to make sure both per-vertex and per-primitive
+    * attribute ring stores are finished before the GPU starts rasterization.
+    */
+   if (wait_attr_ring) {
+      /* Wait for attribute stores to finish. */
+      nir_barrier(b, .execution_scope = SCOPE_SUBGROUP,
+                     .memory_scope = SCOPE_DEVICE,
+                     .memory_semantics = NIR_MEMORY_RELEASE,
+                     .memory_modes = nir_var_shader_out);
+
+      /* Position export only */
+      nir_def *has_output_vertex = nir_ilt(b, invocation_index, num_vtx);
+      nir_if *if_has_output_vertex = nir_push_if(b, has_output_vertex);
+      {
+         ms_emit_arrayed_outputs(b, invocation_index, per_vertex_outputs, s);
+         ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
+                                !s->has_param_exports, false, true,
+                                s->per_vertex_outputs | VARYING_BIT_POS, s->outputs);
+      }
+      nir_pop_if(b, if_has_output_vertex);
+
+      nir_def *has_output_primitive = nir_ilt(b, invocation_index, num_prm);
+      nir_if *if_has_output_primitive = nir_push_if(b, has_output_primitive);
+      {
+         ms_emit_arrayed_outputs(b, invocation_index, per_primitive_outputs, s);
+         if (s->insert_layer_output) {
+            s->outputs[VARYING_SLOT_LAYER][0] = nir_load_view_index(b);
+         }
+
+         ms_emit_primitive_export(b, invocation_index, num_vtx, per_primitive_outputs, s);
+      }
+      nir_pop_if(b, if_has_output_primitive);
+   }
 }
 
 static void
