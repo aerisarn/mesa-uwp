@@ -1009,6 +1009,7 @@ Rusticl environment variables
    - ``allow_invalid_spirv`` disables validation of any input SPIR-V
    - ``clc`` dumps all OpenCL C source being compiled
    - ``program`` dumps compilation logs to stderr
+   - ``sync`` waits on the GPU to complete after every event
 
 .. _clc-env-var:
 
