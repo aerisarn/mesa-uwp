@@ -1066,6 +1066,8 @@ preprocess_shader(const struct gl_constants *consts,
                  options->lower_to_scalar_filter, NULL);
    }
 
+   NIR_PASS_V(nir, nir_opt_barrier_modes);
+
    /* before buffers and vars_to_ssa */
    NIR_PASS_V(nir, gl_nir_lower_images, true);
 
