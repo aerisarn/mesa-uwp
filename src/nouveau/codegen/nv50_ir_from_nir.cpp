@@ -1731,7 +1731,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       const DataType dType = getDType(insn);
       Value *indirect;
       bool input = op != nir_intrinsic_load_output;
-      operation nvirOp;
+      operation nvirOp = OP_LAST;
       uint32_t mode = 0;
 
       uint32_t idx = getIndirect(insn, op == nir_intrinsic_load_interpolated_input ? 1 : 0, 0, indirect);
