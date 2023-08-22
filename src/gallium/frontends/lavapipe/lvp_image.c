@@ -427,15 +427,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateBuffer(
    if (pCreateInfo->size > UINT32_MAX)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
-   buffer = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*buffer), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   buffer = vk_buffer_create(&device->vk, pCreateInfo,
+                             pAllocator, sizeof(*buffer));
    if (buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
-   buffer->size = pCreateInfo->size;
-   const VkBufferUsageFlags2CreateInfoKHR *uinfo = vk_find_struct_const(pCreateInfo, BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR);
-   buffer->usage = uinfo ? uinfo->usage : pCreateInfo->usage;
 
    {
       struct pipe_resource template;
@@ -447,15 +442,15 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateBuffer(
       template.screen = device->pscreen;
       template.target = PIPE_BUFFER;
       template.format = PIPE_FORMAT_R8_UNORM;
-      template.width0 = buffer->size;
+      template.width0 = buffer->vk.size;
       template.height0 = 1;
       template.depth0 = 1;
       template.array_size = 1;
-      if (buffer->usage & VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR)
+      if (buffer->vk.usage & VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR)
          template.bind |= PIPE_BIND_SAMPLER_VIEW;
-      if (buffer->usage & VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR)
+      if (buffer->vk.usage & VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR)
          template.bind |= PIPE_BIND_SHADER_BUFFER;
-      if (buffer->usage & VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR)
+      if (buffer->vk.usage & VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR)
          template.bind |= PIPE_BIND_SHADER_IMAGE;
       template.flags = PIPE_RESOURCE_FLAG_DONT_OVER_ALLOCATE;
       buffer->bo = device->pscreen->resource_create_unbacked(device->pscreen,
@@ -491,8 +486,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyBuffer(
       simple_mtx_unlock(&device->bda_lock);
    }
    pipe_resource_reference(&buffer->bo, NULL);
-   vk_object_base_finish(&buffer->base);
-   vk_free2(&device->vk.alloc, pAllocator, buffer);
+   vk_buffer_destroy(&device->vk, pAllocator, &buffer->vk);
 }
 
 VKAPI_ATTR VkDeviceAddress VKAPI_CALL lvp_GetBufferDeviceAddress(
@@ -577,10 +571,8 @@ lvp_CreateBufferView(VkDevice _device,
    view->format = pCreateInfo->format;
    view->pformat = lvp_vk_format_to_pipe_format(pCreateInfo->format);
    view->offset = pCreateInfo->offset;
-   if (pCreateInfo->range == VK_WHOLE_SIZE)
-      view->range = view->buffer->size - view->offset;
-   else
-      view->range = pCreateInfo->range;
+   view->range = vk_buffer_range(&view->buffer->vk, view->offset,
+				 pCreateInfo->range);
 
    simple_mtx_lock(&device->queue.lock);
 

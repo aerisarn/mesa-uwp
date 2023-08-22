@@ -56,6 +56,7 @@ typedef uint32_t xcb_window_t;
 #include <vulkan/vk_icd.h>
 
 #include "lvp_entrypoints.h"
+#include "vk_buffer.h"
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_image.h"
@@ -535,11 +536,7 @@ struct lvp_event {
 };
 
 struct lvp_buffer {
-   struct vk_object_base base;
-
-   VkDeviceSize                                 size;
-
-   VkBufferUsageFlags2KHR                       usage;
+   struct vk_buffer vk;
 
    struct pipe_memory_allocation *pmem;
    struct pipe_resource *bo;
@@ -615,7 +612,7 @@ VK_DEFINE_HANDLE_CASTS(lvp_physical_device, vk.base, VkPhysicalDevice,
                        VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 VK_DEFINE_HANDLE_CASTS(lvp_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer, base, VkBuffer,
+VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer, vk.base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer_view, base, VkBufferView,
                                VK_OBJECT_TYPE_BUFFER_VIEW)

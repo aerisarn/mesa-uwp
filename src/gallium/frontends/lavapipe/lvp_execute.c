@@ -2462,14 +2462,14 @@ static void handle_fill_buffer(struct vk_cmd_queue_entry *cmd,
 {
    struct vk_cmd_fill_buffer *fillcmd = &cmd->u.fill_buffer;
    uint32_t size = fillcmd->size;
+   struct lvp_buffer *dst = lvp_buffer_from_handle(fillcmd->dst_buffer);
 
-   if (fillcmd->size == VK_WHOLE_SIZE) {
-      size = lvp_buffer_from_handle(fillcmd->dst_buffer)->bo->width0 - fillcmd->dst_offset;
+   size = vk_buffer_range(&dst->vk, fillcmd->dst_offset, fillcmd->size);
+   if (fillcmd->size == VK_WHOLE_SIZE)
       size = ROUND_DOWN_TO(size, 4);
-   }
 
    state->pctx->clear_buffer(state->pctx,
-                             lvp_buffer_from_handle(fillcmd->dst_buffer)->bo,
+                             dst->bo,
                              fillcmd->dst_offset,
                              size,
                              &fillcmd->data,
@@ -3207,10 +3207,9 @@ static void handle_bind_transform_feedback_buffers(struct vk_cmd_queue_entry *cm
    for (unsigned i = 0; i < btfb->binding_count; i++) {
       int idx = i + btfb->first_binding;
       uint32_t size;
-      if (btfb->sizes && btfb->sizes[i] != VK_WHOLE_SIZE)
-         size = btfb->sizes[i];
-      else
-         size = lvp_buffer_from_handle(btfb->buffers[i])->size - btfb->offsets[i];
+      struct lvp_buffer *buf = lvp_buffer_from_handle(btfb->buffers[i]);
+
+      size = vk_buffer_range(&buf->vk, btfb->offsets[i], btfb->sizes ? btfb->sizes[i] : VK_WHOLE_SIZE);
 
       if (state->so_targets[idx])
          state->pctx->stream_output_target_destroy(state->pctx, state->so_targets[idx]);
@@ -3760,7 +3759,7 @@ get_buffer(struct rendering_state *state, uint8_t *ptr, size_t *offset)
       if (ptr < bda)
          continue;
       struct lvp_buffer *buffer = he->data;
-      if (bda + buffer->size > ptr) {
+      if (bda + buffer->vk.size > ptr) {
          *offset = ptr - bda;
          simple_mtx_unlock(&state->device->bda_lock);
          return lvp_buffer_to_handle(buffer);
