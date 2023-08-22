@@ -157,8 +157,6 @@ nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
    }
 }
 
-#define NVC0_IB_ENTRY_1_NO_PREFETCH (1 << (31 - 8))
-
 void
 nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
                                     struct nvk_buffer *buffer,
@@ -167,12 +165,12 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
    nvk_cmd_buffer_flush_push(cmd);
 
    uint64_t addr = nvk_buffer_address(buffer, offset);
-   assert(range < NVC0_IB_ENTRY_1_NO_PREFETCH);
 
 #if NVK_NEW_UAPI == 1
    struct nvk_cmd_push push = {
       .addr = addr,
-      .range = NVC0_IB_ENTRY_1_NO_PREFETCH | range,
+      .range = range,
+      .no_prefetch = true,
    };
 #else
    struct nouveau_ws_bo *bo = buffer->mem->bo;
@@ -180,7 +178,8 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
    struct nvk_cmd_push push = {
       .bo = bo,
       .bo_offset = bo_offset,
-      .range = NVC0_IB_ENTRY_1_NO_PREFETCH | range,
+      .range = range,
+      .no_prefetch = true,
    };
 #endif
 
@@ -555,7 +554,7 @@ nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
          const uint64_t addr = p->bo->offset + p->bo_offset;
 #endif
          fprintf(fp, "<%u B of INDIRECT DATA at 0x%" PRIx64 ">\n",
-                 p->range & ~NVC0_IB_ENTRY_1_NO_PREFETCH, addr);
+                 p->range, addr);
       }
    }
 }

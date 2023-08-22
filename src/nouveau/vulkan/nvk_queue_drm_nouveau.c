@@ -265,30 +265,43 @@ push_add_image_opaque_bind(struct push_builder *pb,
 
 #if NVK_NEW_UAPI == 1
 static void
-push_add_push(struct push_builder *pb, uint64_t addr, uint32_t range)
+push_add_push(struct push_builder *pb, uint64_t addr, uint32_t range,
+              bool no_prefetch)
 {
    assert((addr % 4) == 0 && (range % 4) == 0);
 
    if (range == 0)
       return;
 
+   /* This is the hardware limit on all current GPUs */
+   assert(range < (1u << 23));
+
+   uint32_t flags = 0;
+   if (no_prefetch)
+      flags |= DRM_NOUVEAU_EXEC_PUSH_NO_PREFETCH;
+
    assert(pb->req.push_count < NVK_PUSH_MAX_PUSH);
    pb->req_push[pb->req.push_count++] = (struct drm_nouveau_exec_push) {
       .va = addr,
       .va_len = range,
+      .flags = flags,
    };
 }
 #endif
 
 static void
 push_add_push_bo(struct push_builder *pb, struct nouveau_ws_bo *bo,
-                 uint32_t offset, uint32_t range)
+                 uint32_t offset, uint32_t range, bool no_prefetch)
 {
 #if NVK_NEW_UAPI == 0
    assert((offset % 4) == 0 && (range % 4) == 0);
 
    if (range == 0)
       return;
+
+   assert(range < NOUVEAU_GEM_PUSHBUF_NO_PREFETCH);
+   if (no_prefetch)
+      range |= NOUVEAU_GEM_PUSHBUF_NO_PREFETCH;
 
    uint32_t bo_index = push_add_bo(pb, bo, NOUVEAU_WS_BO_RD);
 
@@ -298,7 +311,7 @@ push_add_push_bo(struct push_builder *pb, struct nouveau_ws_bo *bo,
       .length = range,
    };
 #else
-   push_add_push(pb, bo->offset + offset, range);
+   push_add_push(pb, bo->offset + offset, range, no_prefetch);
 #endif
 }
 
@@ -391,7 +404,7 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
    struct push_builder pb;
    push_builder_init(dev, &pb, false);
 
-   push_add_push_bo(&pb, push_bo, 0, push_dw_count * 4);
+   push_add_push_bo(&pb, push_bo, 0, push_dw_count * 4, false);
    for (uint32_t i = 0; i < extra_bo_count; i++)
       push_add_bo(&pb, extra_bos[i], NOUVEAU_WS_BO_RDWR);
 
@@ -408,7 +421,7 @@ push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
    if (qs->slm.bo)
       push_add_bo(pb, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
    if (qs->push.bo)
-      push_add_push_bo(pb, qs->push.bo, 0, qs->push.dw_count * 4);
+      push_add_push_bo(pb, qs->push.bo, 0, qs->push.dw_count * 4, false);
 }
 
 static void
@@ -460,7 +473,7 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
    } else if (submit->command_buffer_count == 0) {
 #if NVK_NEW_UAPI == 0
       push_add_push_bo(&pb, queue->empty_push, 0,
-                       queue->empty_push_dw_count * 4);
+                       queue->empty_push_dw_count * 4, false);
 #endif
    } else {
       push_add_queue_state(&pb, &queue->state);
@@ -483,10 +496,12 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
 
 #if NVK_NEW_UAPI == 1
          util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
-            push_add_push(&pb, push->addr, push->range);
+            push_add_push(&pb, push->addr, push->range, push->no_prefetch);
 #else
-         util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
-            push_add_push_bo(&pb, push->bo, push->bo_offset, push->range);
+         util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push) {
+            push_add_push_bo(&pb, push->bo, push->bo_offset, push->range,
+                             push->no_prefetch);
+         }
 #endif
 
          util_dynarray_foreach(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref)

@@ -111,6 +111,7 @@ struct nvk_cmd_push {
    uint64_t bo_offset;
 #endif
    uint32_t range;
+   bool no_prefetch;
 };
 
 struct nvk_cmd_bo_ref {
