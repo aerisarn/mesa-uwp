@@ -684,7 +684,7 @@ lvp_vk_format_to_pipe_format(VkFormat format)
 }
 
 void
-lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline);
+lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline, bool locked);
 
 void
 queue_thread_noop(void *data, void *gdata, int thread_index);

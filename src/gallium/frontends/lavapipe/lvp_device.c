@@ -1381,7 +1381,7 @@ destroy_pipelines(struct lvp_queue *queue)
 {
    simple_mtx_lock(&queue->lock);
    while (util_dynarray_contains(&queue->pipeline_destroys, struct lvp_pipeline*)) {
-      lvp_pipeline_destroy(queue->device, util_dynarray_pop(&queue->pipeline_destroys, struct lvp_pipeline*));
+      lvp_pipeline_destroy(queue->device, util_dynarray_pop(&queue->pipeline_destroys, struct lvp_pipeline*), true);
    }
    simple_mtx_unlock(&queue->lock);
 }
