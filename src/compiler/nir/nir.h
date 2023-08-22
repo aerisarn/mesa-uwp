@@ -5962,6 +5962,7 @@ typedef bool (*nir_combine_barrier_cb)(
 bool nir_opt_combine_barriers(nir_shader *shader,
                               nir_combine_barrier_cb combine_cb,
                               void *data);
+bool nir_opt_barrier_modes(nir_shader *shader);
 
 bool nir_opt_combine_stores(nir_shader *shader, nir_variable_mode modes);
 
