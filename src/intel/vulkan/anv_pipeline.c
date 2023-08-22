@@ -2008,6 +2008,8 @@ anv_pipeline_nir_preprocess(struct anv_pipeline *pipeline,
       NIR_PASS(_, stage->nir, nir_remove_dead_variables, nir_var_shader_out, NULL);
    }
 
+   NIR_PASS(_, stage->nir, nir_opt_barrier_modes);
+
    nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
 }
 
