@@ -57,6 +57,7 @@ typedef uint32_t xcb_window_t;
 
 #include "lvp_entrypoints.h"
 #include "vk_buffer.h"
+#include "vk_buffer_view.h"
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_image.h"
@@ -545,14 +546,10 @@ struct lvp_buffer {
 };
 
 struct lvp_buffer_view {
-   struct vk_object_base base;
-   VkFormat format;
+   struct vk_buffer_view vk;
    enum pipe_format pformat;
    struct pipe_sampler_view *sv;
    struct pipe_image_view iv;
-   struct lvp_buffer *buffer;
-   uint32_t offset;
-   uint64_t range;
 
    struct lp_texture_handle *texture_handle;
    struct lp_texture_handle *image_handle;
@@ -614,7 +611,7 @@ VK_DEFINE_HANDLE_CASTS(lvp_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer, vk.base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer_view, base, VkBufferView,
+VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer_view, vk.base, VkBufferView,
                                VK_OBJECT_TYPE_BUFFER_VIEW)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_pool, base, VkDescriptorPool,
                                VK_OBJECT_TYPE_DESCRIPTOR_POOL)

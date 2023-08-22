@@ -523,6 +523,7 @@ lvp_create_samplerview_buffer(struct pipe_context *pctx, struct lvp_buffer_view 
    if (!bv)
       return NULL;
 
+   struct pipe_resource *bo = ((struct lvp_buffer *)bv->vk.buffer)->bo;
    struct pipe_sampler_view templ;
    memset(&templ, 0, sizeof(templ));
    templ.target = PIPE_BUFFER;
@@ -531,11 +532,11 @@ lvp_create_samplerview_buffer(struct pipe_context *pctx, struct lvp_buffer_view 
    templ.swizzle_b = PIPE_SWIZZLE_Z;
    templ.swizzle_a = PIPE_SWIZZLE_W;
    templ.format = bv->pformat;
-   templ.u.buf.offset = bv->offset;
-   templ.u.buf.size = bv->range;
-   templ.texture = bv->buffer->bo;
+   templ.u.buf.offset = bv->vk.offset;
+   templ.u.buf.size = bv->vk.range;
+   templ.texture = bo;
    templ.context = pctx;
-   return pctx->create_sampler_view(pctx, bv->buffer->bo, &templ);
+   return pctx->create_sampler_view(pctx, bo, &templ);
 }
 
 static struct pipe_image_view
@@ -544,10 +545,10 @@ lvp_create_imageview_buffer(const struct lvp_buffer_view *bv)
    struct pipe_image_view view = {0};
    if (!bv)
       return view;
-   view.resource = bv->buffer->bo;
+   view.resource = ((struct lvp_buffer *)bv->vk.buffer)->bo;
    view.format = bv->pformat;
-   view.u.buf.offset = bv->offset;
-   view.u.buf.size = bv->range;
+   view.u.buf.offset = bv->vk.offset;
+   view.u.buf.size = bv->vk.range;
    return view;
 }
 
@@ -560,19 +561,15 @@ lvp_CreateBufferView(VkDevice _device,
    LVP_FROM_HANDLE(lvp_device, device, _device);
    LVP_FROM_HANDLE(lvp_buffer, buffer, pCreateInfo->buffer);
    struct lvp_buffer_view *view;
-   view = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*view), 8,
-                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   view = vk_buffer_view_create(&device->vk,
+				pCreateInfo,
+				pAllocator,
+				sizeof(*view));
    if (!view)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &view->base,
-                       VK_OBJECT_TYPE_BUFFER_VIEW);
-   view->buffer = buffer;
-   view->format = pCreateInfo->format;
    view->pformat = lvp_vk_format_to_pipe_format(pCreateInfo->format);
-   view->offset = pCreateInfo->offset;
-   view->range = vk_buffer_range(&view->buffer->vk, view->offset,
-				 pCreateInfo->range);
 
    simple_mtx_lock(&device->queue.lock);
 
@@ -612,8 +609,7 @@ lvp_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
 
    simple_mtx_unlock(&device->queue.lock);
 
-   vk_object_base_finish(&view->base);
-   vk_free2(&device->vk.alloc, pAllocator, view);
+   vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
