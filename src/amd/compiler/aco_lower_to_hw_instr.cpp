@@ -932,6 +932,19 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
 }
 
 void
+adjust_bpermute_dst(Builder& bld, Definition dst, Operand input_data)
+{
+   /* RA assumes that the result is always in the low part of the register, so we have to shift,
+    * if it's not there already.
+    */
+   if (input_data.physReg().byte()) {
+      unsigned right_shift = input_data.physReg().byte() * 8;
+      bld.vop2(aco_opcode::v_lshrrev_b32, dst, Operand::c32(right_shift),
+               Operand(dst.physReg(), dst.regClass()));
+   }
+}
+
+void
 emit_bpermute_permlane(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
 {
    /* Emulates proper bpermute on GFX11 in wave64 mode.
@@ -982,14 +995,7 @@ emit_bpermute_permlane(Program* program, aco_ptr<Instruction>& instr, Builder& b
    bld.vop2_e64(aco_opcode::v_cndmask_b32, dst, tmp_op, Operand(dst.physReg(), dst.regClass()),
                 same_half);
 
-   /* RA assumes that the result is always in the low part of the register, so we have to shift,
-    * if it's not there already.
-    */
-   if (input_data.physReg().byte()) {
-      unsigned right_shift = input_data.physReg().byte() * 8;
-      bld.vop2(aco_opcode::v_lshrrev_b32, dst, Operand::c32(right_shift),
-               Operand(dst.physReg(), dst.regClass()));
-   }
+   adjust_bpermute_dst(bld, dst, input_data);
 }
 
 void
@@ -1061,14 +1067,7 @@ emit_bpermute_shared_vgpr(Program* program, aco_ptr<Instruction>& instr, Builder
    /* Restore saved EXEC */
    bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(tmp_exec.physReg(), s2));
 
-   /* RA assumes that the result is always in the low part of the register, so we have to shift,
-    * if it's not there already.
-    */
-   if (input_data.physReg().byte()) {
-      unsigned right_shift = input_data.physReg().byte() * 8;
-      bld.vop2(aco_opcode::v_lshrrev_b32, dst, Operand::c32(right_shift),
-               Operand(dst.physReg(), v1));
-   }
+   adjust_bpermute_dst(bld, dst, input_data);
 }
 
 void
@@ -1111,14 +1110,7 @@ emit_bpermute_readlane(Program* program, aco_ptr<Instruction>& instr, Builder& b
       bld.sop1(Builder::s_mov, Definition(exec, bld.lm), Operand(temp_exec.physReg(), bld.lm));
    }
 
-   /* RA assumes that the result is always in the low part of the register, so we have to shift,
-    * if it's not there already.
-    */
-   if (input.physReg().byte()) {
-      unsigned right_shift = input.physReg().byte() * 8;
-      bld.vop2(aco_opcode::v_lshrrev_b32, dst, Operand::c32(right_shift),
-               Operand(dst.physReg(), v1));
-   }
+   adjust_bpermute_dst(bld, dst, input);
 }
 
 struct copy_operation {
