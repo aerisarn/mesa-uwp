@@ -1237,8 +1237,6 @@ radv_CmdBuildAccelerationStructuresKHR(VkCommandBuffer commandBuffer, uint32_t i
                             &header, sizeof(header));
    }
 
-   cmd_buffer->state.flush_bits |= flush_bits;
-
    build_leaves(commandBuffer, infoCount, pInfos, ppBuildRangeInfos, bvh_states, flush_bits);
 
    morton_generate(commandBuffer, infoCount, pInfos, bvh_states, flush_bits);
