@@ -1041,12 +1041,9 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 }
 
 static bool
-brw_nir_zero_inputs_instr(struct nir_builder *b, nir_instr *instr, void *data)
+brw_nir_zero_inputs_instr(struct nir_builder *b, nir_intrinsic_instr *intrin,
+                          void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_deref)
       return false;
 
@@ -1063,13 +1060,13 @@ brw_nir_zero_inputs_instr(struct nir_builder *b, nir_instr *instr, void *data)
    if (!(BITFIELD64_BIT(var->data.location) & zero_inputs))
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *zero = nir_imm_zero(b, 1, 32);
 
    nir_def_rewrite_uses(&intrin->def, zero);
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
 
    return true;
 }
@@ -1077,8 +1074,9 @@ brw_nir_zero_inputs_instr(struct nir_builder *b, nir_instr *instr, void *data)
 static bool
 brw_nir_zero_inputs(nir_shader *shader, uint64_t *zero_inputs)
 {
-   return nir_shader_instructions_pass(shader, brw_nir_zero_inputs_instr,
-         nir_metadata_block_index | nir_metadata_dominance, zero_inputs);
+   return nir_shader_intrinsics_pass(shader, brw_nir_zero_inputs_instr,
+                                     nir_metadata_block_index | nir_metadata_dominance,
+                                     zero_inputs);
 }
 
 /* Code for Wa_18019110168 may have created input/output variables beyond

@@ -420,13 +420,10 @@ lower_xfb(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 }
 
 static bool
-lower_xfb_intrinsics(struct nir_builder *b, nir_instr *instr, void *data)
+lower_xfb_intrinsics(struct nir_builder *b, nir_intrinsic_instr *intr,
+                     void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    struct agx_xfb_key *key = data;
 
@@ -550,7 +547,7 @@ agx_nir_lower_xfb(nir_shader *nir, struct agx_xfb_key *key)
    NIR_PASS_V(nir, insert_overflow_check, key);
    NIR_PASS_V(nir, nir_shader_intrinsics_pass, lower_xfb,
               nir_metadata_block_index | nir_metadata_dominance, key);
-   NIR_PASS_V(nir, nir_shader_instructions_pass, lower_xfb_intrinsics,
+   NIR_PASS_V(nir, nir_shader_intrinsics_pass, lower_xfb_intrinsics,
               nir_metadata_block_index | nir_metadata_dominance, key);
 
    /* Lowering XFB creates piles of dead code. Eliminate now so we don't

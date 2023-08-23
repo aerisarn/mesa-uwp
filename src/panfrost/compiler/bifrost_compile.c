@@ -4268,14 +4268,9 @@ bifrost_nir_valid_channel(nir_builder *b, nir_def *in, unsigned channel,
  * compiler. The DDK inserts these moves, so we will as well. */
 
 static bool
-bifrost_nir_lower_blend_components(struct nir_builder *b, nir_instr *instr,
-                                   void *data)
+bifrost_nir_lower_blend_components(struct nir_builder *b,
+                                   nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    if (intr->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -4406,7 +4401,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
    NIR_PASS(progress, nir, nir_opt_dce);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_shader_instructions_pass,
+      NIR_PASS_V(nir, nir_shader_intrinsics_pass,
                  bifrost_nir_lower_blend_components,
                  nir_metadata_block_index | nir_metadata_dominance, NULL);
    }

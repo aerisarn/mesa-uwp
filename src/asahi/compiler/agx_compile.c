@@ -2135,12 +2135,9 @@ agx_lower_sincos(nir_shader *shader)
 }
 
 static bool
-agx_lower_front_face(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
+agx_lower_front_face(struct nir_builder *b, nir_intrinsic_instr *intr,
+                     UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_front_face)
       return false;
 
@@ -2689,7 +2686,7 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias, bool allow_mediump,
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
    NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false);
    NIR_PASS_V(nir, agx_lower_sincos);
-   NIR_PASS_V(nir, nir_shader_instructions_pass, agx_lower_front_face,
+   NIR_PASS_V(nir, nir_shader_intrinsics_pass, agx_lower_front_face,
               nir_metadata_block_index | nir_metadata_dominance, NULL);
    NIR_PASS_V(nir, nir_lower_frag_coord_to_pixel_coord);
 

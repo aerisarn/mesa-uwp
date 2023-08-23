@@ -497,14 +497,9 @@ dxil_spirv_nir_lower_yz_flip(nir_shader *shader,
 }
 
 static bool
-discard_psiz_access(struct nir_builder *builder, nir_instr *instr,
+discard_psiz_access(struct nir_builder *builder, nir_intrinsic_instr *intrin,
                     void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    if (intrin->intrinsic != nir_intrinsic_store_deref &&
        intrin->intrinsic != nir_intrinsic_load_deref)
       return false;
@@ -514,12 +509,12 @@ discard_psiz_access(struct nir_builder *builder, nir_instr *instr,
        var->data.location != VARYING_SLOT_PSIZ)
       return false;
 
-   builder->cursor = nir_before_instr(instr);
+   builder->cursor = nir_before_instr(&intrin->instr);
 
    if (intrin->intrinsic == nir_intrinsic_load_deref)
       nir_def_rewrite_uses(&intrin->def, nir_imm_float(builder, 1.0));
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
    return true;
 }
 
@@ -542,7 +537,7 @@ dxil_spirv_nir_discard_point_size_var(nir_shader *shader)
    if (!psiz)
       return false;
 
-   if (!nir_shader_instructions_pass(shader, discard_psiz_access,
+   if (!nir_shader_intrinsics_pass(shader, discard_psiz_access,
                                      nir_metadata_block_index |
                                      nir_metadata_dominance |
                                      nir_metadata_loop_analysis,

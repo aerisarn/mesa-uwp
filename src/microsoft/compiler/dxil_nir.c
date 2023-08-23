@@ -1567,14 +1567,10 @@ dxil_reassign_driver_locations(nir_shader* s, nir_variable_mode modes,
 }
 
 static bool
-lower_ubo_array_one_to_static(struct nir_builder *b, nir_instr *inst,
+lower_ubo_array_one_to_static(struct nir_builder *b,
+                              nir_intrinsic_instr *intrin,
                               void *cb_data)
 {
-   if (inst->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(inst);
-
    if (intrin->intrinsic != nir_intrinsic_load_vulkan_descriptor)
       return false;
 
@@ -1617,8 +1613,9 @@ lower_ubo_array_one_to_static(struct nir_builder *b, nir_instr *inst,
 bool
 dxil_nir_lower_ubo_array_one_to_static(nir_shader *s)
 {
-   bool progress = nir_shader_instructions_pass(
-      s, lower_ubo_array_one_to_static, nir_metadata_none, NULL);
+   bool progress = nir_shader_intrinsics_pass(s,
+                                              lower_ubo_array_one_to_static,
+                                              nir_metadata_none, NULL);
 
    return progress;
 }
@@ -1784,20 +1781,16 @@ remove_after_discard(struct nir_builder *builder, nir_instr *instr,
 }
 
 static bool
-lower_kill(struct nir_builder *builder, nir_instr *instr, void *_cb_data)
+lower_kill(struct nir_builder *builder, nir_intrinsic_instr *intr,
+           void *_cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    if (intr->intrinsic != nir_intrinsic_discard &&
        intr->intrinsic != nir_intrinsic_terminate &&
        intr->intrinsic != nir_intrinsic_discard_if &&
        intr->intrinsic != nir_intrinsic_terminate_if)
       return false;
 
-   builder->cursor = nir_instr_remove(instr);
+   builder->cursor = nir_instr_remove(&intr->instr);
    if (intr->intrinsic == nir_intrinsic_discard ||
        intr->intrinsic == nir_intrinsic_terminate) {
       nir_demote(builder);
@@ -1822,16 +1815,13 @@ dxil_nir_lower_discard_and_terminate(nir_shader *s)
    state.active_block = NULL;
    nir_shader_instructions_pass(s, remove_after_discard, nir_metadata_none,
                                 &state);
-   return nir_shader_instructions_pass(s, lower_kill, nir_metadata_none,
+   return nir_shader_intrinsics_pass(s, lower_kill, nir_metadata_none,
                                        NULL);
 }
 
 static bool
-update_writes(struct nir_builder *b, nir_instr *instr, void *_state)
+update_writes(struct nir_builder *b, nir_intrinsic_instr *intr, void *_state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -1844,7 +1834,7 @@ update_writes(struct nir_builder *b, nir_instr *instr, void *_state)
    if (src->num_components == 4 && write_mask == 0xf)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    unsigned first_comp = nir_intrinsic_component(intr);
    nir_def *channels[4] = { NULL, NULL, NULL, NULL };
    assert(first_comp + src->num_components <= ARRAY_SIZE(channels));
@@ -1872,7 +1862,7 @@ dxil_nir_ensure_position_writes(nir_shader *s)
    if ((s->info.outputs_written & VARYING_BIT_POS) == 0)
       return false;
 
-   return nir_shader_instructions_pass(s, update_writes,
+   return nir_shader_intrinsics_pass(s, update_writes,
                                        nir_metadata_block_index | nir_metadata_dominance,
                                        NULL);
 }

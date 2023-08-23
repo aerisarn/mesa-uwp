@@ -1412,12 +1412,9 @@ nir_lower_stack_to_scratch(nir_shader *shader,
 }
 
 static bool
-opt_remove_respills_instr(struct nir_builder *b, nir_instr *instr, void *data)
+opt_remove_respills_instr(struct nir_builder *b,
+                          nir_intrinsic_instr *store_intrin, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *store_intrin = nir_instr_as_intrinsic(instr);
    if (store_intrin->intrinsic != nir_intrinsic_store_stack)
       return false;
 
@@ -1443,8 +1440,7 @@ opt_remove_respills_instr(struct nir_builder *b, nir_instr *instr, void *data)
 static bool
 nir_opt_remove_respills(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader,
-                                       opt_remove_respills_instr,
+   return nir_shader_intrinsics_pass(shader, opt_remove_respills_instr,
                                        nir_metadata_block_index |
                                           nir_metadata_dominance,
                                        NULL);
@@ -1846,12 +1842,9 @@ nir_opt_stack_loads(nir_shader *shader)
 }
 
 static bool
-split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data)
+split_stack_components_instr(struct nir_builder *b,
+                             nir_intrinsic_instr *intrin, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_stack &&
        intrin->intrinsic != nir_intrinsic_store_stack)
       return false;
@@ -1864,7 +1857,7 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
        intrin->src[0].ssa->num_components == 1)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    unsigned align_mul = nir_intrinsic_align_mul(intrin);
    unsigned align_offset = nir_intrinsic_align_offset(intrin);
@@ -1899,7 +1892,7 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
       }
    }
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
 
    return true;
 }
@@ -1910,8 +1903,7 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
 static bool
 nir_split_stack_components(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader,
-                                       split_stack_components_instr,
+   return nir_shader_intrinsics_pass(shader, split_stack_components_instr,
                                        nir_metadata_block_index |
                                           nir_metadata_dominance,
                                        NULL);

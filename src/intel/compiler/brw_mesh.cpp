@@ -177,12 +177,9 @@ brw_print_tue_map(FILE *fp, const struct brw_tue_map *map)
 
 static bool
 brw_nir_adjust_task_payload_offsets_instr(struct nir_builder *b,
-                                          nir_instr *instr, void *data)
+                                          nir_intrinsic_instr *intrin,
+                                          void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    switch (intrin->intrinsic) {
    case nir_intrinsic_store_task_payload:
    case nir_intrinsic_load_task_payload: {
@@ -217,7 +214,7 @@ brw_nir_adjust_task_payload_offsets_instr(struct nir_builder *b,
 static bool
 brw_nir_adjust_task_payload_offsets(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir,
+   return nir_shader_intrinsics_pass(nir,
                                        brw_nir_adjust_task_payload_offsets_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,

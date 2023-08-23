@@ -190,12 +190,9 @@ struct rq_range {
 #define RQ_NEW_INDEX_NONE 0xFFFFFFFF
 
 static bool
-count_ranges(struct nir_builder *b, nir_instr *instr, void *data)
+count_ranges(struct nir_builder *b, nir_intrinsic_instr *intrinsic,
+             void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
    if (intrinsic->intrinsic == nir_intrinsic_rq_initialize)
       (*(uint32_t *)data)++;
 
@@ -265,7 +262,8 @@ nir_opt_ray_query_ranges(nir_shader *shader)
    }
 
    uint32_t range_count = 0;
-   nir_shader_instructions_pass(shader, count_ranges, nir_metadata_all, &range_count);
+   nir_shader_intrinsics_pass(shader, count_ranges, nir_metadata_all,
+                              &range_count);
 
    struct rq_range *ranges = rzalloc_array(mem_ctx, struct rq_range, range_count);
 

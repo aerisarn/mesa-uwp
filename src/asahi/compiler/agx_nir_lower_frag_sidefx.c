@@ -32,12 +32,8 @@ insert_z_write(nir_builder *b)
 }
 
 static bool
-pass(struct nir_builder *b, nir_instr *instr, void *data)
+pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -47,7 +43,7 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
       return false;
    *done = true;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    insert_z_write(b);
    return true;
 }
@@ -87,7 +83,7 @@ agx_nir_lower_frag_sidefx(nir_shader *s)
       return false;
 
    bool done = false;
-   nir_shader_instructions_pass(
+   nir_shader_intrinsics_pass(
       s, pass, nir_metadata_block_index | nir_metadata_dominance, &done);
 
    /* If there's no render targets written, just put the write at the end */

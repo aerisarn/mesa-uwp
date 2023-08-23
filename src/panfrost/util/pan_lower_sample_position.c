@@ -33,17 +33,13 @@
  * it's a pretty trivial difference */
 
 static bool
-pan_lower_sample_pos_impl(struct nir_builder *b, nir_instr *instr,
+pan_lower_sample_pos_impl(struct nir_builder *b, nir_intrinsic_instr *intr,
                           UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_sample_pos)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    /* Elements are 4 bytes */
    nir_def *addr =
@@ -68,7 +64,7 @@ pan_lower_sample_pos(nir_shader *shader)
    if (shader->info.stage != MESA_SHADER_FRAGMENT)
       return false;
 
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       shader, pan_lower_sample_pos_impl,
       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }
