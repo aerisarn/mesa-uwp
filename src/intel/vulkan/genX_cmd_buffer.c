@@ -792,9 +792,6 @@ init_fast_clear_color(struct anv_cmd_buffer *cmd_buffer,
    assert(cmd_buffer && image);
    assert(image->vk.aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
-   set_image_fast_clear_state(cmd_buffer, image, aspect,
-                              ANV_FAST_CLEAR_NONE);
-
    /* Initialize the struct fields that are accessed for fast clears so that
     * the HW restrictions on the field values are satisfied.
     *
@@ -1122,8 +1119,11 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 #endif
 
    if (must_init_fast_clear_state) {
-      if (base_level == 0 && base_layer == 0)
-         init_fast_clear_color(cmd_buffer, image, aspect);
+      if (base_level == 0 && base_layer == 0) {
+         set_image_fast_clear_state(cmd_buffer, image, aspect,
+                                    ANV_FAST_CLEAR_NONE);
+      }
+      init_fast_clear_color(cmd_buffer, image, aspect);
    }
 
    if (must_init_aux_surface) {
