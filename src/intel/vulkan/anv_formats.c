@@ -1734,11 +1734,13 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
           * requires support for VK_IMAGE_TILING_OPTIMAL. Android systems
           * communicate the image's memory layout through backdoor channels.
           */
-         if (ahw_supported && external_props) {
-            external_props->externalMemoryProperties = android_image_props;
-            if (anv_ahb_format_for_vk_format(base_info->format)) {
-               external_props->externalMemoryProperties.externalMemoryFeatures |=
-                  VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT;
+         if (ahw_supported) {
+            if (external_props) {
+               external_props->externalMemoryProperties = android_image_props;
+               if (anv_ahb_format_for_vk_format(base_info->format)) {
+                  external_props->externalMemoryProperties.externalMemoryFeatures |=
+                     VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT;
+               }
             }
             break;
          }
