@@ -313,9 +313,6 @@ nir_const_value_for_raw_uint(uint64_t x, unsigned bit_size)
 static inline nir_const_value
 nir_const_value_for_int(int64_t i, unsigned bit_size)
 {
-   nir_const_value v;
-   memset(&v, 0, sizeof(v));
-
    assert(bit_size <= 64);
    if (bit_size < 64) {
       assert(i >= (-(1ll << (bit_size - 1))));
@@ -328,9 +325,6 @@ nir_const_value_for_int(int64_t i, unsigned bit_size)
 static inline nir_const_value
 nir_const_value_for_uint(uint64_t u, unsigned bit_size)
 {
-   nir_const_value v;
-   memset(&v, 0, sizeof(v));
-
    assert(bit_size <= 64);
    if (bit_size < 64)
       assert(u < (1ull << bit_size));
