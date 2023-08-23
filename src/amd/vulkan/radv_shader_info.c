@@ -1558,8 +1558,6 @@ radv_link_shaders_info(struct radv_device *device, struct radv_shader_stage *pro
             outinfo->vs_output_param_offset[VARYING_SLOT_CLIP_DIST0] = outinfo->param_exports++;
          if (producer->nir->info.outputs_written & VARYING_BIT_CLIP_DIST1)
             outinfo->vs_output_param_offset[VARYING_SLOT_CLIP_DIST1] = outinfo->param_exports++;
-
-         outinfo->export_clip_dists = true;
       }
    }
 

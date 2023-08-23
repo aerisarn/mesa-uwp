@@ -92,11 +92,6 @@ struct isel_context {
 
    Temp arg_temps[AC_MAX_ARGS];
 
-   /* VS output information */
-   bool export_clip_dists;
-   unsigned num_clip_distances;
-   unsigned num_cull_distances;
-
    /* tessellation information */
    uint64_t tcs_temp_only_inputs;
    bool tcs_in_out_eq = false;
