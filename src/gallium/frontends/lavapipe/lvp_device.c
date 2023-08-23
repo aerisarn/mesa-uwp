@@ -596,7 +596,6 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
 extern unsigned lp_native_vector_width;
 
 static VkImageLayout lvp_host_copy_image_layouts[] = {
-   VK_IMAGE_LAYOUT_UNDEFINED,
    VK_IMAGE_LAYOUT_GENERAL,
    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
