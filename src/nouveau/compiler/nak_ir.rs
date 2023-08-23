@@ -68,7 +68,7 @@ impl RegFile {
         }
     }
 
-    pub fn num_regs(&self, sm: u8) -> u8 {
+    pub fn num_regs(&self, sm: u8) -> u32 {
         match self {
             RegFile::GPR => 255,
             RegFile::UGPR => {
@@ -469,11 +469,11 @@ impl SSAValueAllocator {
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct RegRef {
-    packed: u16,
+    packed: u32,
 }
 
 impl RegRef {
-    fn zero_idx(file: RegFile) -> u8 {
+    fn zero_idx(file: RegFile) -> u32 {
         match file {
             RegFile::GPR => 255,
             RegFile::UGPR => 63,
@@ -482,13 +482,13 @@ impl RegRef {
         }
     }
 
-    pub fn new(file: RegFile, base_idx: u8, comps: u8) -> RegRef {
-        assert!(base_idx + (comps - 1) <= RegRef::zero_idx(file));
-        let mut packed = u16::from(base_idx);
+    pub fn new(file: RegFile, base_idx: u32, comps: u8) -> RegRef {
+        assert!(base_idx < (1 << 26));
+        let mut packed = base_idx;
         assert!(comps > 0 && comps <= 8);
-        packed |= u16::from(comps - 1) << 8;
-        assert!(u8::from(file) < 4);
-        packed |= u16::from(u8::from(file)) << 11;
+        packed |= u32::from(comps - 1) << 26;
+        assert!(u8::from(file) < 8);
+        packed |= u32::from(u8::from(file)) << 29;
         RegRef { packed: packed }
     }
 
@@ -496,24 +496,24 @@ impl RegRef {
         RegRef::new(file, RegRef::zero_idx(file), comps)
     }
 
-    pub fn base_idx(&self) -> u8 {
-        self.packed as u8
+    pub fn base_idx(&self) -> u32 {
+        self.packed & 0x03ffffff
     }
 
-    pub fn idx_range(&self) -> Range<u16> {
-        let start = u16::from(self.base_idx());
-        let end = start + u16::from(self.comps());
+    pub fn idx_range(&self) -> Range<u32> {
+        let start = self.base_idx();
+        let end = start + u32::from(self.comps());
         start..end
     }
 
     pub fn comps(&self) -> u8 {
-        (((self.packed >> 8) & 0x7) + 1).try_into().unwrap()
+        (((self.packed >> 26) & 0x7) + 1).try_into().unwrap()
     }
 }
 
 impl HasRegFile for RegRef {
     fn file(&self) -> RegFile {
-        ((self.packed >> 11) & 0xf).try_into().unwrap()
+        ((self.packed >> 29) & 0x7).try_into().unwrap()
     }
 }
 
@@ -526,8 +526,8 @@ impl fmt::Display for RegRef {
             RegFile::UPred => write!(f, "UP")?,
         }
         write!(f, "{}", self.base_idx())?;
-        if self.comps() > 1 {
-            write!(f, "..{}", self.base_idx() + self.comps())?;
+        if self.comps() >= 1 {
+            write!(f, "..{}", self.idx_range().end)?;
         }
         Ok(())
     }

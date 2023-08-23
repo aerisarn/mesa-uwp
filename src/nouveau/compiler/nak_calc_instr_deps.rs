@@ -29,8 +29,8 @@ impl<T: Copy> RegTracker<T> {
     fn get(&self, reg: &RegRef) -> &[T] {
         let range = reg.idx_range();
         let range = Range {
-            start: usize::from(range.start),
-            end: usize::from(range.end),
+            start: usize::try_from(range.start).unwrap(),
+            end: usize::try_from(range.end).unwrap(),
         };
 
         match reg.file() {
@@ -44,8 +44,8 @@ impl<T: Copy> RegTracker<T> {
     fn get_mut(&mut self, reg: &RegRef) -> &mut [T] {
         let range = reg.idx_range();
         let range = Range {
-            start: usize::from(range.start),
-            end: usize::from(range.end),
+            start: usize::try_from(range.start).unwrap(),
+            end: usize::try_from(range.end).unwrap(),
         };
 
         match reg.file() {

@@ -47,7 +47,7 @@ impl KillSet {
 }
 
 enum SSAUse {
-    FixedReg(u8),
+    FixedReg(u32),
     Vec(SSARef),
 }
 
@@ -56,7 +56,7 @@ struct SSAUseMap {
 }
 
 impl SSAUseMap {
-    fn add_fixed_reg_use(&mut self, ip: usize, ssa: SSAValue, reg: u8) {
+    fn add_fixed_reg_use(&mut self, ip: usize, ssa: SSAValue, reg: u32) {
         let v = self.ssa_map.entry(ssa).or_insert_with(|| Vec::new());
         v.push((ip, SSAUse::FixedReg(reg)));
     }
@@ -91,7 +91,7 @@ impl SSAUseMap {
             match &instr.op {
                 Op::FSOut(op) => {
                     for (i, src) in op.srcs.iter().enumerate() {
-                        let out_reg = u8::try_from(i).unwrap();
+                        let out_reg = u32::try_from(i).unwrap();
                         if let SrcRef::SSA(ssa) = src.src_ref {
                             assert!(ssa.comps() == 1);
                             self.add_fixed_reg_use(ip, ssa[0], out_reg);
@@ -156,14 +156,14 @@ impl PartialOrd for LiveValue {
 #[derive(Clone)]
 struct RegAllocator {
     file: RegFile,
-    num_regs: u8,
+    num_regs: u32,
     used: BitSet,
     reg_ssa: Vec<SSAValue>,
-    ssa_reg: HashMap<SSAValue, u8>,
+    ssa_reg: HashMap<SSAValue, u32>,
 }
 
 impl RegAllocator {
-    pub fn new(file: RegFile, num_regs: u8) -> Self {
+    pub fn new(file: RegFile, num_regs: u32) -> Self {
         Self {
             file: file,
             num_regs: num_regs,
@@ -177,84 +177,90 @@ impl RegAllocator {
         self.file
     }
 
-    fn reg_is_used(&self, reg: u8) -> bool {
-        self.used.get(reg.into())
+    fn reg_is_used(&self, reg: u32) -> bool {
+        self.used.get(reg.try_into().unwrap())
     }
 
-    fn reg_range_is_unused(&self, reg: u8, comps: u8) -> bool {
-        for i in 0..comps {
-            if self.reg_is_used(reg + i) {
+    fn reg_range_is_unused(&self, reg: u32, comps: u8) -> bool {
+        for c in 0..u32::from(comps) {
+            if self.reg_is_used(reg + c) {
                 return false;
             }
         }
         true
     }
 
-    pub fn try_get_reg(&self, ssa: SSAValue) -> Option<u8> {
+    pub fn try_get_reg(&self, ssa: SSAValue) -> Option<u32> {
         self.ssa_reg.get(&ssa).cloned()
     }
 
-    pub fn try_get_ssa(&self, reg: u8) -> Option<SSAValue> {
+    pub fn try_get_ssa(&self, reg: u32) -> Option<SSAValue> {
         if self.reg_is_used(reg) {
-            Some(self.reg_ssa[usize::from(reg)])
+            Some(self.reg_ssa[usize::try_from(reg).unwrap()])
         } else {
             None
         }
     }
 
-    pub fn try_get_vec_reg(&self, vec: &SSARef) -> Option<u8> {
+    pub fn try_get_vec_reg(&self, vec: &SSARef) -> Option<u32> {
         let Some(reg) = self.try_get_reg(vec[0]) else {
             return None;
         };
 
-        let align = vec.comps().next_power_of_two();
+        let align = u32::from(vec.comps()).next_power_of_two();
         if reg % align != 0 {
             return None;
         }
 
-        for i in 1..vec.comps() {
-            if self.try_get_reg(vec[usize::from(i)]) != Some(reg + i) {
+        for c in 1..vec.comps() {
+            let ssa = vec[usize::from(c)];
+            if self.try_get_reg(ssa) != Some(reg + u32::from(c)) {
                 return None;
             }
         }
         Some(reg)
     }
 
-    pub fn free_ssa(&mut self, ssa: SSAValue) -> u8 {
+    pub fn free_ssa(&mut self, ssa: SSAValue) -> u32 {
         assert!(ssa.file() == self.file);
         let reg = self.ssa_reg.remove(&ssa).unwrap();
         assert!(self.reg_is_used(reg));
-        assert!(self.reg_ssa[usize::from(reg)] == ssa);
-        self.used.remove(reg.into());
+        let reg_usize = usize::try_from(reg).unwrap();
+        assert!(self.reg_ssa[reg_usize] == ssa);
+        self.used.remove(reg_usize);
         reg
     }
 
-    pub fn assign_reg(&mut self, ssa: SSAValue, reg: u8) {
+    pub fn assign_reg(&mut self, ssa: SSAValue, reg: u32) {
         assert!(ssa.file() == self.file);
         assert!(reg < self.num_regs);
         assert!(!self.reg_is_used(reg));
 
-        if usize::from(reg) >= self.reg_ssa.len() {
-            self.reg_ssa.resize(usize::from(reg) + 1, SSAValue::NONE);
+        let reg_usize = usize::try_from(reg).unwrap();
+        if reg_usize >= self.reg_ssa.len() {
+            self.reg_ssa.resize(reg_usize + 1, SSAValue::NONE);
         }
-        self.reg_ssa[usize::from(reg)] = ssa;
+        self.reg_ssa[reg_usize] = ssa;
         let old = self.ssa_reg.insert(ssa, reg);
         assert!(old.is_none());
-        self.used.insert(reg.into());
+        self.used.insert(reg_usize);
     }
 
     pub fn try_find_unused_reg_range(
         &self,
-        start_reg: u8,
-        align: u8,
+        start_reg: u32,
+        align: u32,
         comps: u8,
-    ) -> Option<u8> {
-        assert!(comps > 0);
-        let align = usize::from(align);
+    ) -> Option<u32> {
+        assert!(comps > 0 && u32::from(comps) <= self.num_regs);
 
-        let mut next_reg = usize::from(start_reg);
+        let mut next_reg = start_reg;
         loop {
-            let reg = self.used.next_unset(next_reg.into());
+            let reg: u32 = self
+                .used
+                .next_unset(usize::try_from(next_reg).unwrap())
+                .try_into()
+                .unwrap();
 
             /* Ensure we're properly aligned */
             let reg = reg.next_multiple_of(align);
@@ -262,13 +268,12 @@ impl RegAllocator {
             /* Ensure we're in-bounds. This also serves as a check to ensure
              * that u8::try_from(reg + i) will succeed.
              */
-            if reg > usize::from(self.num_regs - comps) {
+            if reg > self.num_regs - u32::from(comps) {
                 return None;
             }
 
-            let reg_u8 = u8::try_from(reg).unwrap();
-            if self.reg_range_is_unused(reg_u8, comps) {
-                return Some(reg_u8);
+            if self.reg_range_is_unused(reg, comps) {
+                return Some(reg);
             }
 
             next_reg = reg + align;
@@ -280,7 +285,7 @@ impl RegAllocator {
         ip: usize,
         sum: &SSAUseMap,
         ssa: SSAValue,
-    ) -> u8 {
+    ) -> u32 {
         if let Some(u) = sum.find_vec_use_after(ssa, ip) {
             match u {
                 SSAUse::FixedReg(reg) => {
@@ -299,7 +304,7 @@ impl RegAllocator {
                     }
                     assert!(comp < vec.comps());
 
-                    let align = vec.comps().next_power_of_two();
+                    let align = u32::from(vec.comps()).next_power_of_two();
                     for c in 0..vec.comps() {
                         if c == comp {
                             continue;
@@ -311,11 +316,11 @@ impl RegAllocator {
                         };
 
                         let vec_reg = other_reg & !(align - 1);
-                        if other_reg != vec_reg + c {
+                        if other_reg != vec_reg + u32::from(c) {
                             continue;
                         }
 
-                        let reg = vec_reg + comp;
+                        let reg = vec_reg + u32::from(comp);
                         if reg < self.num_regs && !self.reg_is_used(reg) {
                             self.assign_reg(ssa, reg);
                             return reg;
@@ -347,7 +352,7 @@ struct PinnedRegAllocator<'a> {
     ra: &'a mut RegAllocator,
     pcopy: OpParCopy,
     pinned: BitSet,
-    evicted: HashMap<SSAValue, u8>,
+    evicted: HashMap<SSAValue, u32>,
 }
 
 impl<'a> PinnedRegAllocator<'a> {
@@ -364,53 +369,58 @@ impl<'a> PinnedRegAllocator<'a> {
         self.ra.file()
     }
 
-    fn pin_reg(&mut self, reg: u8) {
-        self.pinned.insert(reg.into());
+    fn pin_reg(&mut self, reg: u32) {
+        self.pinned.insert(reg.try_into().unwrap());
     }
 
-    fn pin_reg_range(&mut self, reg: u8, comps: u8) {
-        for i in 0..comps {
-            self.pin_reg(reg + i);
+    fn pin_reg_range(&mut self, reg: u32, comps: u8) {
+        for c in 0..u32::from(comps) {
+            self.pin_reg(reg + c);
         }
     }
 
-    fn reg_is_pinned(&self, reg: u8) -> bool {
-        self.pinned.get(reg.into())
+    fn reg_is_pinned(&self, reg: u32) -> bool {
+        self.pinned.get(reg.try_into().unwrap())
     }
 
-    fn reg_range_is_unpinned(&self, reg: u8, comps: u8) -> bool {
-        for i in 0..comps {
-            if self.pinned.get((reg + i).into()) {
+    fn reg_range_is_unpinned(&self, reg: u32, comps: u8) -> bool {
+        for c in 0..u32::from(comps) {
+            if self.reg_is_pinned(reg + c) {
                 return false;
             }
         }
         true
     }
 
-    fn assign_pin_reg(&mut self, ssa: SSAValue, reg: u8) -> RegRef {
+    fn assign_pin_reg(&mut self, ssa: SSAValue, reg: u32) -> RegRef {
         self.pin_reg(reg);
         self.ra.assign_reg(ssa, reg);
         RegRef::new(self.file(), reg, 1)
     }
 
-    pub fn assign_pin_vec_reg(&mut self, ssa: SSARef, reg: u8) -> RegRef {
-        for c in 0..ssa.comps() {
-            self.assign_pin_reg(ssa[usize::from(c)], reg + c);
+    pub fn assign_pin_vec_reg(&mut self, vec: SSARef, reg: u32) -> RegRef {
+        for c in 0..vec.comps() {
+            let ssa = vec[usize::from(c)];
+            self.assign_pin_reg(ssa, reg + u32::from(c));
         }
-        RegRef::new(self.file(), reg, ssa.comps())
+        RegRef::new(self.file(), reg, vec.comps())
     }
 
     fn try_find_unpinned_reg_range(
         &self,
-        start_reg: u8,
-        align: u8,
+        start_reg: u32,
+        align: u32,
         comps: u8,
-    ) -> Option<u8> {
-        let align = usize::from(align);
+    ) -> Option<u32> {
+        let align = align;
 
-        let mut next_reg = usize::from(start_reg);
+        let mut next_reg = start_reg;
         loop {
-            let reg = self.pinned.next_unset(next_reg);
+            let reg: u32 = self
+                .pinned
+                .next_unset(usize::try_from(next_reg).unwrap())
+                .try_into()
+                .unwrap();
 
             /* Ensure we're properly aligned */
             let reg = reg.next_multiple_of(align);
@@ -418,26 +428,25 @@ impl<'a> PinnedRegAllocator<'a> {
             /* Ensure we're in-bounds. This also serves as a check to ensure
              * that u8::try_from(reg + i) will succeed.
              */
-            if reg > usize::from(self.ra.num_regs - comps) {
+            if reg > self.ra.num_regs - u32::from(comps) {
                 return None;
             }
 
-            let reg_u8 = u8::try_from(reg).unwrap();
-            if self.reg_range_is_unpinned(reg_u8, comps) {
-                return Some(reg_u8);
+            if self.reg_range_is_unpinned(reg, comps) {
+                return Some(reg);
             }
 
             next_reg = reg + align;
         }
     }
 
-    pub fn evict_ssa(&mut self, ssa: SSAValue, old_reg: u8) {
+    pub fn evict_ssa(&mut self, ssa: SSAValue, old_reg: u32) {
         assert!(ssa.file() == self.file());
         assert!(!self.reg_is_pinned(old_reg));
         self.evicted.insert(ssa, old_reg);
     }
 
-    pub fn evict_reg_if_used(&mut self, reg: u8) {
+    pub fn evict_reg_if_used(&mut self, reg: u32) {
         assert!(!self.reg_is_pinned(reg));
 
         if let Some(ssa) = self.ra.try_get_ssa(reg) {
@@ -446,7 +455,7 @@ impl<'a> PinnedRegAllocator<'a> {
         }
     }
 
-    fn move_ssa_to_reg(&mut self, ssa: SSAValue, new_reg: u8) {
+    fn move_ssa_to_reg(&mut self, ssa: SSAValue, new_reg: u32) {
         if let Some(old_reg) = self.ra.try_get_reg(ssa) {
             assert!(self.evicted.get(&ssa).is_none());
             assert!(!self.reg_is_pinned(old_reg));
@@ -510,7 +519,7 @@ impl<'a> PinnedRegAllocator<'a> {
         }
     }
 
-    pub fn try_get_vec_reg(&self, vec: &SSARef) -> Option<u8> {
+    pub fn try_get_vec_reg(&self, vec: &SSARef) -> Option<u32> {
         self.ra.try_get_vec_reg(vec)
     }
 
@@ -521,13 +530,13 @@ impl<'a> PinnedRegAllocator<'a> {
         }
 
         let comps = vec.comps();
-        let align = comps.next_power_of_two();
+        let align = u32::from(comps).next_power_of_two();
 
         let reg = self
             .ra
             .try_find_unused_reg_range(0, align, comps)
             .or_else(|| {
-                for c in 0..vec.comps() {
+                for c in 0..comps {
                     let ssa = vec[usize::from(c)];
                     let Some(comp_reg) = self.ra.try_get_reg(ssa) else {
                         continue;
@@ -538,16 +547,12 @@ impl<'a> PinnedRegAllocator<'a> {
                         continue;
                     }
 
-                    if let Some(end) = reg.checked_add(comps) {
-                        if end > self.ra.num_regs {
-                            continue;
-                        }
-                    } else {
+                    if vec_reg + u32::from(comps) > self.ra.num_regs {
                         continue;
                     }
 
-                    if self.reg_range_is_unpinned(reg, comps) {
-                        return Some(reg);
+                    if self.reg_range_is_unpinned(vec_reg, comps) {
+                        return Some(vec_reg);
                     }
                 }
                 None
@@ -555,8 +560,9 @@ impl<'a> PinnedRegAllocator<'a> {
             .or_else(|| self.try_find_unpinned_reg_range(0, align, comps))
             .expect("Failed to find an unpinned register range");
 
-        for c in 0..vec.comps() {
-            self.move_ssa_to_reg(vec[usize::from(c)], reg + c);
+        for c in 0..comps {
+            let ssa = vec[usize::from(c)];
+            self.move_ssa_to_reg(ssa, reg + u32::from(c));
         }
 
         RegRef::new(self.file(), reg, comps)
@@ -564,7 +570,7 @@ impl<'a> PinnedRegAllocator<'a> {
 
     pub fn alloc_vector(&mut self, vec: SSARef) -> RegRef {
         let comps = vec.comps();
-        let align = comps.next_power_of_two();
+        let align = u32::from(comps).next_power_of_two();
 
         if let Some(reg) = self.ra.try_find_unused_reg_range(0, align, comps) {
             return self.assign_pin_vec_reg(vec, reg);
@@ -574,8 +580,8 @@ impl<'a> PinnedRegAllocator<'a> {
             .try_find_unpinned_reg_range(0, align, comps)
             .expect("Failed to find an unpinned register range");
 
-        for c in 0..vec.comps() {
-            self.evict_reg_if_used(reg + c);
+        for c in 0..comps {
+            self.evict_reg_if_used(reg + u32::from(c));
         }
         self.assign_pin_vec_reg(vec, reg)
     }
@@ -651,7 +657,7 @@ fn instr_assign_regs_file(
         dst_idx: usize,
         comps: u8,
         killed: Option<SSARef>,
-        reg: u8,
+        reg: u32,
     }
 
     let mut vec_dsts = Vec::new();
@@ -663,7 +669,7 @@ fn instr_assign_regs_file(
                     dst_idx: i,
                     comps: ssa.comps(),
                     killed: None,
-                    reg: u8::MAX,
+                    reg: u32::MAX,
                 });
                 vec_dst_comps += ssa.comps();
             }
@@ -726,12 +732,12 @@ fn instr_assign_regs_file(
             vec_dsts_map_to_killed_srcs = false;
         }
 
-        let align = vec_dst.comps.next_power_of_two();
+        let align = u32::from(vec_dst.comps).next_power_of_two();
         if let Some(reg) =
             ra.try_find_unused_reg_range(next_dst_reg, align, vec_dst.comps)
         {
             vec_dst.reg = reg;
-            next_dst_reg = reg + vec_dst.comps;
+            next_dst_reg = reg + u32::from(vec_dst.comps);
         } else {
             could_trivially_allocate = false;
         }
@@ -808,7 +814,7 @@ struct AssignRegsBlock {
 }
 
 impl AssignRegsBlock {
-    fn new(num_regs: &PerRegFile<u8>) -> AssignRegsBlock {
+    fn new(num_regs: &PerRegFile<u32>) -> AssignRegsBlock {
         AssignRegsBlock {
             ra: PerRegFile::new_with(|file| {
                 RegAllocator::new(file, num_regs[file])
@@ -1047,7 +1053,7 @@ impl AssignRegs {
             }
         });
 
-        s.num_gprs = num_regs[RegFile::GPR];
+        s.num_gprs = num_regs[RegFile::GPR].try_into().unwrap();
 
         for b_idx in 0..f.blocks.len() {
             let pred = f.blocks.pred_indices(b_idx);
