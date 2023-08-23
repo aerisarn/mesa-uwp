@@ -41,7 +41,7 @@ extern "C" {
 struct rb_node {
     /** Parent and color of this node
      *
-     * The least significant bit represents the color and is est to 1 for
+     * The least significant bit represents the color and is set to 1 for
      * black and 0 for red.  The other bits are the pointer to the parent
      * and that pointer can be retrieved by masking off the bottom bit and
      * casting to a pointer.
