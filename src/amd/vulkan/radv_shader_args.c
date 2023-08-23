@@ -538,6 +538,30 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_rel_ids);
 
          declare_vs_input_vgprs(gfx_level, info, args, true);
+
+         if (!info->is_monolithic) {
+            /* SGPRs */
+            ac_add_preserved(&args->ac, &args->ac.ring_offsets);
+            ac_add_preserved(&args->ac, &args->ac.tess_offchip_offset);
+            ac_add_preserved(&args->ac, &args->ac.merged_wave_info);
+            ac_add_preserved(&args->ac, &args->ac.tcs_factor_offset);
+
+            if (gfx_level >= GFX11) {
+               ac_add_preserved(&args->ac, &args->ac.tcs_wave_id);
+            } else {
+               ac_add_preserved(&args->ac, &args->ac.scratch_offset);
+            }
+
+            ac_add_preserved(&args->ac, &args->descriptor_sets[0]);
+            ac_add_preserved(&args->ac, &args->ac.push_constants);
+            ac_add_preserved(&args->ac, &args->ac.view_index);
+            ac_add_preserved(&args->ac, &args->tcs_offchip_layout);
+            ac_add_preserved(&args->ac, &args->tcs_epilog_pc);
+
+            /* VGPRs */
+            ac_add_preserved(&args->ac, &args->ac.tcs_patch_id);
+            ac_add_preserved(&args->ac, &args->ac.tcs_rel_ids);
+         }
       } else {
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
