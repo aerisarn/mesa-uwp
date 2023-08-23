@@ -789,7 +789,9 @@ panfrost_batch_submit(struct panfrost_context *ctx,
    if (!batch->scoreboard.first_job && !batch->clear)
       goto out;
 
-   if (batch->key.zsbuf && panfrost_has_fragment_job(batch)) {
+   bool has_frag = panfrost_has_fragment_job(batch);
+
+   if (batch->key.zsbuf && has_frag) {
       struct pipe_surface *surf = batch->key.zsbuf;
       struct panfrost_resource *z_rsrc = pan_resource(surf->texture);
 
@@ -823,7 +825,7 @@ panfrost_batch_submit(struct panfrost_context *ctx,
    screen->vtbl.emit_tls(batch);
    panfrost_emit_tile_map(batch, &fb);
 
-   if (batch->scoreboard.first_tiler || batch->clear)
+   if (has_frag)
       screen->vtbl.emit_fbd(batch, &fb);
 
    ret = panfrost_batch_submit_jobs(batch, &fb, 0, ctx->syncobj);
