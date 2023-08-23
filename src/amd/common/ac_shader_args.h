@@ -49,6 +49,7 @@ struct ac_shader_args {
       uint8_t size;
       bool skip : 1;
       bool pending_vmem : 1; /* Loaded from VMEM and needs waitcnt before use. */
+      bool preserved : 1;
    } args[AC_MAX_ARGS];
 
    uint16_t arg_count;
@@ -189,6 +190,7 @@ struct ac_shader_args {
 void ac_add_arg(struct ac_shader_args *info, enum ac_arg_regfile regfile, unsigned registers,
                 enum ac_arg_type type, struct ac_arg *arg);
 void ac_add_return(struct ac_shader_args *info, enum ac_arg_regfile regfile);
+void ac_add_preserved(struct ac_shader_args *info, const struct ac_arg *arg);
 void ac_compact_ps_vgpr_args(struct ac_shader_args *info, uint32_t spi_ps_input);
 
 #endif
