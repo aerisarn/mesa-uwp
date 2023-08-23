@@ -114,7 +114,7 @@ declare_global_input_sgprs(const struct radv_shader_info *info, const struct use
          add_ud_arg(args, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0], AC_UD_INDIRECT_DESCRIPTOR_SETS);
       }
 
-      if (info->loads_push_constants && !user_sgpr_info->inlined_all_push_consts) {
+      if (!info->is_monolithic || (info->loads_push_constants && !user_sgpr_info->inlined_all_push_consts)) {
          /* 1 for push constants and dynamic descriptors */
          add_ud_arg(args, 1, AC_ARG_CONST_PTR, &args->ac.push_constants, AC_UD_PUSH_CONSTANTS);
       }
@@ -519,7 +519,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
-         if (info->uses_view_index) {
+         if (!info->is_monolithic || info->uses_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
@@ -527,7 +527,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
             add_ud_arg(args, 1, AC_ARG_INT, &args->tcs_offchip_layout, AC_UD_TCS_OFFCHIP_LAYOUT);
          }
 
-         if (info->has_epilog) {
+         if (!info->is_monolithic || info->has_epilog) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->tcs_epilog_pc, AC_UD_TCS_EPILOG_PC);
          }
 
