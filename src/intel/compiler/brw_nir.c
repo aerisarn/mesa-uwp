@@ -1685,6 +1685,10 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
          brw_nir_optimize(nir, compiler);
    }
 
+   /* Do this only after the last opt_gcm. GCM will undo this lowering. */
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      OPT(brw_nir_lower_non_uniform_barycentric_at_sample);
+
    /* Clean up LCSSA phis */
    OPT(nir_opt_remove_phis);
 

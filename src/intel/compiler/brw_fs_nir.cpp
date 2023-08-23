@@ -3536,66 +3536,23 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       const glsl_interp_mode interpolation =
          (enum glsl_interp_mode) nir_intrinsic_interp_mode(instr);
 
+      fs_reg msg_data;
       if (nir_src_is_const(instr->src[0])) {
-         unsigned msg_data = nir_src_as_uint(instr->src[0]) << 4;
-
-         emit_pixel_interpolater_send(bld,
-                                      FS_OPCODE_INTERPOLATE_AT_SAMPLE,
-                                      dest,
-                                      fs_reg(), /* src */
-                                      brw_imm_ud(msg_data),
-                                      interpolation);
+         msg_data = brw_imm_ud(nir_src_as_uint(instr->src[0]) << 4);
       } else {
          const fs_reg sample_src = retype(get_nir_src(instr->src[0]),
                                           BRW_REGISTER_TYPE_UD);
-
-         if (nir_src_is_always_uniform(instr->src[0])) {
-            const fs_reg sample_id = bld.emit_uniformize(sample_src);
-            const fs_reg msg_data = vgrf(glsl_type::uint_type);
-            bld.exec_all().group(1, 0)
-               .SHL(msg_data, sample_id, brw_imm_ud(4u));
-            emit_pixel_interpolater_send(bld,
-                                         FS_OPCODE_INTERPOLATE_AT_SAMPLE,
-                                         dest,
-                                         fs_reg(), /* src */
-                                         component(msg_data, 0),
-                                         interpolation);
-         } else {
-            /* Make a loop that sends a message to the pixel interpolater
-             * for the sample number in each live channel. If there are
-             * multiple channels with the same sample number then these
-             * will be handled simultaneously with a single iteration of
-             * the loop.
-             */
-            bld.emit(BRW_OPCODE_DO);
-
-            /* Get the next live sample number into sample_id_reg */
-            const fs_reg sample_id = bld.emit_uniformize(sample_src);
-
-            /* Set the flag register so that we can perform the send
-             * message on all channels that have the same sample number
-             */
-            bld.CMP(bld.null_reg_ud(),
-                    sample_src, sample_id,
-                    BRW_CONDITIONAL_EQ);
-            const fs_reg msg_data = vgrf(glsl_type::uint_type);
-            bld.exec_all().group(1, 0)
-               .SHL(msg_data, sample_id, brw_imm_ud(4u));
-            fs_inst *inst =
-               emit_pixel_interpolater_send(bld,
-                                            FS_OPCODE_INTERPOLATE_AT_SAMPLE,
-                                            dest,
-                                            fs_reg(), /* src */
-                                            component(msg_data, 0),
-                                            interpolation);
-            set_predicate(BRW_PREDICATE_NORMAL, inst);
-
-            /* Continue the loop if there are any live channels left */
-            set_predicate_inv(BRW_PREDICATE_NORMAL,
-                              true, /* inverse */
-                              bld.emit(BRW_OPCODE_WHILE));
-         }
+         const fs_reg sample_id = bld.emit_uniformize(sample_src);
+         msg_data = component(bld.group(8, 0).vgrf(BRW_REGISTER_TYPE_UD), 0);
+         bld.exec_all().group(1, 0).SHL(msg_data, sample_id, brw_imm_ud(4u));
       }
+
+      emit_pixel_interpolater_send(bld,
+                                   FS_OPCODE_INTERPOLATE_AT_SAMPLE,
+                                   dest,
+                                   fs_reg(), /* src */
+                                   msg_data,
+                                   interpolation);
       break;
    }
 
