@@ -6736,6 +6736,42 @@ fs_visitor::compute_max_register_pressure()
    return max_pressure;
 }
 
+static fs_inst **
+save_instruction_order(const struct cfg_t *cfg)
+{
+   /* Before we schedule anything, stash off the instruction order as an array
+    * of fs_inst *.  This way, we can reset it between scheduling passes to
+    * prevent dependencies between the different scheduling modes.
+    */
+   int num_insts = cfg->last_block()->end_ip + 1;
+   fs_inst **inst_arr = new fs_inst * [num_insts];
+
+   int ip = 0;
+   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      assert(ip >= block->start_ip && ip <= block->end_ip);
+      inst_arr[ip++] = inst;
+   }
+   assert(ip == num_insts);
+
+   return inst_arr;
+}
+
+static void
+restore_instruction_order(struct cfg_t *cfg, fs_inst **inst_arr)
+{
+   int num_insts = cfg->last_block()->end_ip + 1;
+
+   int ip = 0;
+   foreach_block (block, cfg) {
+      block->instructions.make_empty();
+
+      assert(ip == block->start_ip);
+      for (; ip <= block->end_ip; ip++)
+         block->instructions.push_tail(inst_arr[ip]);
+   }
+   assert(ip == num_insts);
+}
+
 void
 fs_visitor::allocate_registers(bool allow_spilling)
 {
@@ -6769,15 +6805,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
     * of fs_inst *.  This way, we can reset it between scheduling passes to
     * prevent dependencies between the different scheduling modes.
     */
-   int num_insts = cfg->last_block()->end_ip + 1;
-   fs_inst **inst_arr = ralloc_array(mem_ctx, fs_inst *, num_insts);
-
-   int ip = 0;
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
-      assert(ip >= block->start_ip && ip <= block->end_ip);
-      inst_arr[ip++] = inst;
-   }
-   assert(ip == num_insts);
+   fs_inst **orig_order = save_instruction_order(cfg);
 
    /* Try each scheduling heuristic to see if it can successfully register
     * allocate without spilling.  They should be ordered by decreasing
@@ -6788,16 +6816,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
 
       if (i > 0) {
          /* Unless we're the first pass, reset back to the original order */
-         ip = 0;
-         foreach_block (block, cfg) {
-            block->instructions.make_empty();
-
-            assert(ip == block->start_ip);
-            for (; ip <= block->end_ip; ip++)
-               block->instructions.push_tail(inst_arr[ip]);
-         }
-         assert(ip == num_insts);
-
+         restore_instruction_order(cfg, orig_order);
          invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
       }
 
@@ -6820,6 +6839,8 @@ fs_visitor::allocate_registers(bool allow_spilling)
       if (allocated)
          break;
    }
+
+   delete[] orig_order;
 
    if (!allocated) {
       fail("Failure to register allocate.  Reduce number of "
