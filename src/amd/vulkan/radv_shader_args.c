@@ -389,7 +389,6 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
                     struct radv_shader_args *args, struct user_sgpr_info *user_sgpr_info)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-   bool needs_view_index = info->uses_view_index;
    bool has_shader_query = info->has_prim_query || info->has_xfb_query ||
                            (stage == MESA_SHADER_GEOMETRY && info->gs.has_pipeline_stat_query);
    bool has_ngg_provoking_vtx =
@@ -478,7 +477,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 
       declare_global_input_sgprs(info, user_sgpr_info, args);
 
-      if (needs_view_index) {
+      if (info->uses_view_index) {
          add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
       }
 
@@ -520,7 +519,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
-         if (needs_view_index) {
+         if (info->uses_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
@@ -539,7 +538,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
       } else {
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
-         if (needs_view_index) {
+         if (info->uses_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
@@ -566,7 +565,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 
       declare_global_input_sgprs(info, user_sgpr_info, args);
 
-      if (needs_view_index)
+      if (info->uses_view_index)
          add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
 
       if (radv_tes_needs_state_sgpr(info))
@@ -614,7 +613,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
-         if (needs_view_index) {
+         if (info->uses_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
@@ -652,7 +651,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
       } else {
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
-         if (needs_view_index) {
+         if (info->uses_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
