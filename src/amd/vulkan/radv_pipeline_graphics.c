@@ -2529,6 +2529,24 @@ radv_graphics_shaders_compile(struct radv_device *device, struct vk_pipeline_cac
 
    bool optimize_conservatively = pipeline_key->optimisations_disabled;
 
+   if (stages[MESA_SHADER_MESH].nir &&
+       BITSET_TEST(stages[MESA_SHADER_MESH].nir->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID)) {
+      nir_shader *mesh = stages[MESA_SHADER_MESH].nir;
+      nir_shader *task = stages[MESA_SHADER_TASK].nir;
+
+      /* Mesh shaders only have a 1D "vertex index" which we use
+       * as "workgroup index" to emulate the 3D workgroup ID.
+       */
+      nir_lower_compute_system_values_options o = {
+         .lower_workgroup_id_to_index = true,
+         .num_workgroups[0] = task ? task->info.mesh.ts_mesh_dispatch_dimensions[0] : 0,
+         .num_workgroups[1] = task ? task->info.mesh.ts_mesh_dispatch_dimensions[1] : 0,
+         .num_workgroups[2] = task ? task->info.mesh.ts_mesh_dispatch_dimensions[2] : 0,
+      };
+
+      NIR_PASS(_, mesh, nir_lower_compute_system_values, &o);
+   }
+
    radv_foreach_stage(i, active_nir_stages)
    {
       gl_shader_stage next_stage = radv_get_next_stage(i, active_nir_stages);

@@ -572,16 +572,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
    };
    NIR_PASS(_, nir, nir_lower_compute_system_values, &csv_options);
 
-   if (nir->info.stage == MESA_SHADER_MESH) {
-      /* Mesh shaders only have a 1D "vertex index" which we use
-       * as "workgroup index" to emulate the 3D workgroup ID.
-       */
-      nir_lower_compute_system_values_options o = {
-         .lower_workgroup_id_to_index = true,
-      };
-      NIR_PASS(_, nir, nir_lower_compute_system_values, &o);
-   }
-
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 
