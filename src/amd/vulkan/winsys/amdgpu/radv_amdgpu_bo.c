@@ -602,6 +602,7 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws, void *pointer, uint64_
    amdgpu_va_handle va_handle;
    uint64_t vm_alignment;
    VkResult result = VK_SUCCESS;
+   int ret;
 
    /* Just be robust for callers that might use NULL-ness for determining if things should be freed.
     */
@@ -611,8 +612,13 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws, void *pointer, uint64_
    if (!bo)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   if (amdgpu_create_bo_from_user_mem(ws->dev, pointer, size, &buf_handle)) {
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   ret = amdgpu_create_bo_from_user_mem(ws->dev, pointer, size, &buf_handle);
+   if (ret) {
+      if (ret == -EINVAL) {
+         result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      } else {
+         result = VK_ERROR_UNKNOWN;
+      }
       goto error;
    }
 
