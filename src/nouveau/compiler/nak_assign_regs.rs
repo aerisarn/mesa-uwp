@@ -229,7 +229,7 @@ impl RegAllocator {
         reg
     }
 
-    pub fn assign_reg(&mut self, ssa: SSAValue, reg: u8) -> RegRef {
+    pub fn assign_reg(&mut self, ssa: SSAValue, reg: u8) {
         assert!(ssa.file() == self.file);
         assert!(reg < self.num_regs);
         assert!(!self.reg_is_used(reg));
@@ -241,8 +241,6 @@ impl RegAllocator {
         let old = self.ssa_reg.insert(ssa, reg);
         assert!(old.is_none());
         self.used.insert(reg.into());
-
-        RegRef::new(self.file, reg, 1)
     }
 
     pub fn try_find_unused_reg_range(
@@ -277,22 +275,18 @@ impl RegAllocator {
         }
     }
 
-    pub fn get_scalar(&self, ssa: SSAValue) -> RegRef {
-        let reg = self.try_get_reg(ssa).expect("Unknown SSA value");
-        RegRef::new(self.file, reg, 1)
-    }
-
     pub fn alloc_scalar(
         &mut self,
         ip: usize,
         sum: &SSAUseMap,
         ssa: SSAValue,
-    ) -> RegRef {
+    ) -> u8 {
         if let Some(u) = sum.find_vec_use_after(ssa, ip) {
             match u {
                 SSAUse::FixedReg(reg) => {
-                    if !self.used.get((*reg).into()) {
-                        return self.assign_reg(ssa, *reg);
+                    if !self.reg_is_used(*reg) {
+                        self.assign_reg(ssa, *reg);
+                        return *reg;
                     }
                 }
                 SSAUse::Vec(vec) => {
@@ -312,19 +306,19 @@ impl RegAllocator {
                         }
 
                         let other = vec[usize::from(c)];
-                        if let Some(other_reg) = self.try_get_reg(other) {
-                            let vec_reg = other_reg & !(align - 1);
-                            if other_reg != vec_reg + c {
-                                continue;
-                            }
+                        let Some(other_reg) = self.try_get_reg(other) else {
+                            continue;
+                        };
 
-                            if vec_reg + comp >= self.num_regs {
-                                continue;
-                            }
+                        let vec_reg = other_reg & !(align - 1);
+                        if other_reg != vec_reg + c {
+                            continue;
+                        }
 
-                            if !self.used.get((vec_reg + comp).into()) {
-                                return self.assign_reg(ssa, vec_reg + comp);
-                            }
+                        let reg = vec_reg + comp;
+                        if reg < self.num_regs && !self.reg_is_used(reg) {
+                            self.assign_reg(ssa, reg);
+                            return reg;
                         }
                     }
 
@@ -334,7 +328,8 @@ impl RegAllocator {
                     if let Some(reg) =
                         self.try_find_unused_reg_range(0, align, 1)
                     {
-                        return self.assign_reg(ssa, reg);
+                        self.assign_reg(ssa, reg);
+                        return reg;
                     }
                 }
             }
@@ -343,7 +338,8 @@ impl RegAllocator {
         let reg = self
             .try_find_unused_reg_range(0, 1, 1)
             .expect("Failed to find free register");
-        self.assign_reg(ssa, reg)
+        self.assign_reg(ssa, reg);
+        reg
     }
 }
 
@@ -393,7 +389,8 @@ impl<'a> PinnedRegAllocator<'a> {
 
     fn assign_pin_reg(&mut self, ssa: SSAValue, reg: u8) -> RegRef {
         self.pin_reg(reg);
-        self.ra.assign_reg(ssa, reg)
+        self.ra.assign_reg(ssa, reg);
+        RegRef::new(self.file(), reg, 1)
     }
 
     pub fn assign_pin_vec_reg(&mut self, ssa: SSARef, reg: u8) -> RegRef {
@@ -536,10 +533,8 @@ impl<'a> PinnedRegAllocator<'a> {
                         continue;
                     };
 
-                    let Some(reg) = comp_reg.checked_sub(c) else {
-                        continue;
-                    };
-                    if reg % align != 0 {
+                    let vec_reg = comp_reg & !(align - 1);
+                    if comp_reg != vec_reg + u32::from(c) {
                         continue;
                     }
 
@@ -637,7 +632,8 @@ fn instr_alloc_scalar_dsts_file(
         if let Dst::SSA(ssa) = dst {
             assert!(ssa.comps() == 1);
             if ssa.file() == ra.file() {
-                *dst = ra.alloc_scalar(ip, sum, ssa[0]).into();
+                let reg = ra.alloc_scalar(ip, sum, ssa[0]);
+                *dst = RegRef::new(ra.file(), reg, 1).into();
             }
         }
     }
@@ -822,6 +818,23 @@ impl AssignRegsBlock {
         }
     }
 
+    fn get_scalar(&self, ssa: SSAValue) -> RegRef {
+        let ra = &self.ra[ssa.file()];
+        let reg = ra.try_get_reg(ssa).expect("Unknown SSA value");
+        RegRef::new(ssa.file(), reg, 1)
+    }
+
+    fn alloc_scalar(
+        &mut self,
+        ip: usize,
+        sum: &SSAUseMap,
+        ssa: SSAValue,
+    ) -> RegRef {
+        let ra = &mut self.ra[ssa.file()];
+        let reg = ra.alloc_scalar(ip, sum, ssa);
+        RegRef::new(ssa.file(), reg, 1)
+    }
+
     fn assign_regs_instr(
         &mut self,
         mut instr: Box<Instr>,
@@ -835,8 +848,7 @@ impl AssignRegsBlock {
             Op::Undef(undef) => {
                 if let Dst::SSA(ssa) = undef.dst {
                     assert!(ssa.comps() == 1);
-                    let ra = &mut self.ra[ssa.file()];
-                    ra.alloc_scalar(ip, sum, ssa[0]);
+                    self.alloc_scalar(ip, sum, ssa[0]);
                 }
                 assert!(srcs_killed.is_empty());
                 self.ra.free_killed(dsts_killed);
@@ -847,7 +859,7 @@ impl AssignRegsBlock {
                     assert!(src.src_mod.is_none());
                     if let SrcRef::SSA(ssa) = src.src_ref {
                         assert!(ssa.comps() == 1);
-                        let reg = self.ra[ssa.file()].get_scalar(ssa[0]);
+                        let reg = self.get_scalar(ssa[0]);
                         self.phi_out.insert(*id, reg.into());
                     } else {
                         self.phi_out.insert(*id, src.src_ref);
@@ -863,10 +875,10 @@ impl AssignRegsBlock {
                 for (id, dst) in phi.dsts.iter() {
                     if let Dst::SSA(ssa) = dst {
                         assert!(ssa.comps() == 1);
-                        let ra = &mut self.ra[ssa.file()];
+                        let reg = self.alloc_scalar(ip, sum, ssa[0]);
                         self.live_in.push(LiveValue {
                             live_ref: LiveRef::Phi(*id),
-                            reg_ref: ra.alloc_scalar(ip, sum, ssa[0]),
+                            reg_ref: reg,
                         });
                     }
                 }
@@ -979,9 +991,7 @@ impl AssignRegsBlock {
 
         for lv in &target.live_in {
             let src = match lv.live_ref {
-                LiveRef::SSA(ssa) => {
-                    SrcRef::from(self.ra[ssa.file()].get_scalar(ssa))
-                }
+                LiveRef::SSA(ssa) => SrcRef::from(self.get_scalar(ssa)),
                 LiveRef::Phi(phi) => *self.phi_out.get(&phi).unwrap(),
             };
             let dst = lv.reg_ref;
