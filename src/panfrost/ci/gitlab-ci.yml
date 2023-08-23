@@ -101,7 +101,7 @@
     FDO_CI_CONCURRENT: 6
     RUNNER_TAG: mesa-ci-x86-64-lava-rk3288-veyron-jaq
 
-panfrost-t720-gles2:arm64:
+.panfrost-t720-gles2:arm64:
   extends:
     - .lava-test-deqp:arm64
     - .panfrost-midgard-rules
