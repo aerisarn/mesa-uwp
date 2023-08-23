@@ -3045,6 +3045,13 @@ impl<A, B> VecPair<A, B> {
         self.a.iter().zip(self.b.iter())
     }
 
+    pub fn iter_mut(
+        &mut self,
+    ) -> Zip<slice::IterMut<'_, A>, slice::IterMut<'_, B>> {
+        debug_assert!(self.a.len() == self.b.len());
+        self.a.iter_mut().zip(self.b.iter_mut())
+    }
+
     pub fn len(&self) -> usize {
         debug_assert!(self.a.len() == self.b.len());
         self.a.len()
