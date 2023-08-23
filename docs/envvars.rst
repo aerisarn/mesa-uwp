@@ -183,7 +183,8 @@ Core Mesa environment variables
 
    if set to ``true``, disables the on-disk shader cache. If set to
    ``false``, enables the on-disk shader cache when it is disabled by
-   default.
+   default.  Note that EGL_ANDROID_blob_cache is still enabled even
+   if on-disk shader cache is disabled.
 
 .. envvar:: MESA_SHADER_CACHE_MAX_SIZE
 
