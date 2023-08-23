@@ -389,12 +389,8 @@ lower_xfb_output(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 static bool
-lower_xfb(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_xfb(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -419,7 +415,7 @@ lower_xfb(nir_builder *b, nir_instr *instr, UNUSED void *data)
       }
    }
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return progress;
 }
 
@@ -552,7 +548,7 @@ agx_nir_lower_xfb(nir_shader *nir, struct agx_xfb_key *key)
    NIR_PASS_V(nir, nir_io_add_intrinsic_xfb_info);
 
    NIR_PASS_V(nir, insert_overflow_check, key);
-   NIR_PASS_V(nir, nir_shader_instructions_pass, lower_xfb,
+   NIR_PASS_V(nir, nir_shader_intrinsics_pass, lower_xfb,
               nir_metadata_block_index | nir_metadata_dominance, key);
    NIR_PASS_V(nir, nir_shader_instructions_pass, lower_xfb_intrinsics,
               nir_metadata_block_index | nir_metadata_dominance, key);

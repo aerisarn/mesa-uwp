@@ -229,12 +229,9 @@ lower_store_bitsize(nir_builder *b,
 }
 
 static bool
-lower_load_store_bitsize(nir_builder *b, nir_instr *instr, void *data)
+lower_load_store_bitsize(nir_builder *b, nir_intrinsic_instr *intr,
+                         void *data)
 {
-        if (instr->type != nir_instr_type_intrinsic)
-                return false;
-        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
         switch (intr->intrinsic) {
         case nir_intrinsic_load_ssbo:
         case nir_intrinsic_load_ubo:
@@ -256,8 +253,7 @@ lower_load_store_bitsize(nir_builder *b, nir_instr *instr, void *data)
 bool
 v3d_nir_lower_load_store_bitsize(nir_shader *s)
 {
-        return nir_shader_instructions_pass(s,
-                                            lower_load_store_bitsize,
+        return nir_shader_intrinsics_pass(s, lower_load_store_bitsize,
                                             nir_metadata_block_index |
                                             nir_metadata_dominance,
                                             NULL);

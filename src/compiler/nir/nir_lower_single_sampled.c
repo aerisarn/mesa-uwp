@@ -26,23 +26,18 @@
 
 static bool
 lower_single_sampled_instr(nir_builder *b,
-                           nir_instr *instr,
+                           nir_intrinsic_instr *intrin,
                            UNUSED void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    nir_def *lowered;
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_sample_id:
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       lowered = nir_imm_int(b, 0);
       break;
 
    case nir_intrinsic_load_sample_pos:
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       lowered = nir_imm_vec2(b, 0.5, 0.5);
       break;
 
@@ -53,20 +48,20 @@ lower_single_sampled_instr(nir_builder *b,
       if (b->shader->options->lower_helper_invocation)
          return false;
 
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       lowered = nir_b2i32(b, nir_inot(b, nir_load_helper_invocation(b, 1)));
       break;
 
    case nir_intrinsic_interp_deref_at_centroid:
    case nir_intrinsic_interp_deref_at_sample:
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       lowered = nir_load_deref(b, nir_src_as_deref(intrin->src[0]));
       break;
 
    case nir_intrinsic_load_barycentric_centroid:
    case nir_intrinsic_load_barycentric_sample:
    case nir_intrinsic_load_barycentric_at_sample:
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intrin->instr);
       lowered = nir_load_barycentric(b, nir_intrinsic_load_barycentric_pixel,
                                      nir_intrinsic_interp_mode(intrin));
 
@@ -84,7 +79,7 @@ lower_single_sampled_instr(nir_builder *b,
    }
 
    nir_def_rewrite_uses(&intrin->def, lowered);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
    return true;
 }
 
@@ -120,7 +115,7 @@ nir_lower_single_sampled(nir_shader *shader)
    BITSET_CLEAR(shader->info.system_values_read,
                 SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID);
 
-   return nir_shader_instructions_pass(shader, lower_single_sampled_instr,
+   return nir_shader_intrinsics_pass(shader, lower_single_sampled_instr,
                                        nir_metadata_block_index |
                                           nir_metadata_dominance,
                                        NULL) ||

@@ -284,11 +284,8 @@ dxil_nir_lower_constant_to_temp(nir_shader *nir)
 }
 
 static bool
-flatten_var_arrays(nir_builder *b, nir_instr *instr, void *data)
+flatten_var_arrays(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    switch (intr->intrinsic) {
    case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:
@@ -335,7 +332,7 @@ flatten_var_arrays(nir_builder *b, nir_instr *instr, void *data)
 
    unsigned vector_comps = intr->num_components;
    if (vector_comps > 1) {
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intr->instr);
       if (intr->intrinsic == nir_intrinsic_load_deref) {
          nir_def *components[NIR_MAX_VEC_COMPONENTS];
          for (unsigned i = 0; i < vector_comps; ++i) {
@@ -353,7 +350,7 @@ flatten_var_arrays(nir_builder *b, nir_instr *instr, void *data)
             nir_store_deref(b, comp_deref, nir_channel(b, intr->src[1].ssa, i), 1);
          }
       }
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
    } else {
       nir_src_rewrite(&intr->src[0], &nir_build_deref_array(b, new_var_deref, index)->def);
    }
@@ -419,7 +416,7 @@ dxil_nir_flatten_var_arrays(nir_shader *shader, nir_variable_mode modes)
    if (!progress)
       return false;
 
-   nir_shader_instructions_pass(shader, flatten_var_arrays,
+   nir_shader_intrinsics_pass(shader, flatten_var_arrays,
                                 nir_metadata_block_index |
                                    nir_metadata_dominance |
                                    nir_metadata_loop_analysis,
@@ -429,11 +426,8 @@ dxil_nir_flatten_var_arrays(nir_shader *shader, nir_variable_mode modes)
 }
 
 static bool
-lower_deref_bit_size(nir_builder *b, nir_instr *instr, void *data)
+lower_deref_bit_size(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    switch (intr->intrinsic) {
    case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:
@@ -461,12 +455,12 @@ lower_deref_bit_size(nir_builder *b, nir_instr *instr, void *data)
       deref->type = var_scalar_type;
       if (intr->intrinsic == nir_intrinsic_load_deref) {
          intr->def.bit_size = glsl_get_bit_size(var_scalar_type);
-         b->cursor = nir_after_instr(instr);
+         b->cursor = nir_after_instr(&intr->instr);
          nir_def *downcast = nir_type_convert(b, &intr->def, new_type, old_type, nir_rounding_mode_undef);
          nir_def_rewrite_uses_after(&intr->def, downcast, downcast->parent_instr);
       }
       else {
-         b->cursor = nir_before_instr(instr);
+         b->cursor = nir_before_instr(&intr->instr);
          nir_def *upcast = nir_type_convert(b, intr->src[1].ssa, old_type, new_type, nir_rounding_mode_undef);
          nir_src_rewrite(&intr->src[1], upcast);
       }
@@ -486,7 +480,7 @@ lower_deref_bit_size(nir_builder *b, nir_instr *instr, void *data)
          deref = nir_build_deref_array_imm(b, parent, 0);
       nir_deref_instr *deref2 = nir_build_deref_array(b, parent,
                                                       nir_iadd_imm(b, deref->arr.index.ssa, 1));
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intr->instr);
       if (intr->intrinsic == nir_intrinsic_load_deref) {
          nir_def *src1 = nir_load_deref(b, deref);
          nir_def *src2 = nir_load_deref(b, deref2);
@@ -497,7 +491,7 @@ lower_deref_bit_size(nir_builder *b, nir_instr *instr, void *data)
          nir_store_deref(b, deref, src1, 1);
          nir_store_deref(b, deref, src2, 1);
       }
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
    }
    return true;
 }
@@ -605,7 +599,7 @@ dxil_nir_lower_var_bit_size(nir_shader *shader, nir_variable_mode modes,
    if (!progress)
       return false;
 
-   nir_shader_instructions_pass(shader, lower_deref_bit_size,
+   nir_shader_intrinsics_pass(shader, lower_deref_bit_size,
                                 nir_metadata_block_index |
                                    nir_metadata_dominance |
                                    nir_metadata_loop_analysis,
@@ -1163,11 +1157,9 @@ lower_load_local_group_size(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
-lower_system_values_impl(nir_builder *b, nir_instr *instr, void *_state)
+lower_system_values_impl(nir_builder *b, nir_intrinsic_instr *intr,
+                         void *_state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    switch (intr->intrinsic) {
    case nir_intrinsic_load_workgroup_size:
       lower_load_local_group_size(b, intr);
@@ -1180,8 +1172,9 @@ lower_system_values_impl(nir_builder *b, nir_instr *instr, void *_state)
 bool
 dxil_nir_lower_system_values(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, lower_system_values_impl,
-      nir_metadata_block_index | nir_metadata_dominance | nir_metadata_loop_analysis, NULL);
+   return nir_shader_intrinsics_pass(shader, lower_system_values_impl,
+                                     nir_metadata_block_index | nir_metadata_dominance | nir_metadata_loop_analysis,
+                                     NULL);
 }
 
 static const struct glsl_type *
@@ -1393,12 +1386,9 @@ dxil_nir_split_typed_samplers(nir_shader *nir)
 
 
 static bool
-lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
+lower_sysval_to_load_input_impl(nir_builder *b, nir_intrinsic_instr *intr,
+                                void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    gl_system_value sysval = SYSTEM_VALUE_MAX;
    switch (intr->intrinsic) {
    case nir_intrinsic_load_front_face:
@@ -1423,7 +1413,7 @@ lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
    const unsigned bit_size = (sysval == SYSTEM_VALUE_FRONT_FACE)
       ? 32 : intr->def.bit_size;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_def *result = nir_load_input(b, intr->def.num_components, bit_size, nir_imm_int(b, 0),
       .base = var->data.driver_location, .dest_type = dest_type);
 
@@ -1441,8 +1431,9 @@ lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
 bool
 dxil_nir_lower_sysval_to_load_input(nir_shader *s, nir_variable **sysval_vars)
 {
-   return nir_shader_instructions_pass(s, lower_sysval_to_load_input_impl,
-      nir_metadata_block_index | nir_metadata_dominance, sysval_vars);
+   return nir_shader_intrinsics_pass(s, lower_sysval_to_load_input_impl,
+                                     nir_metadata_block_index | nir_metadata_dominance,
+                                     sysval_vars);
 }
 
 /* Comparison function to sort io values so that first come normal varyings,
@@ -1908,11 +1899,8 @@ dxil_nir_lower_sample_pos(nir_shader *s)
 }
 
 static bool
-lower_subgroup_id(nir_builder *b, nir_instr *instr, void *data)
+lower_subgroup_id(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_subgroup_id)
       return false;
 
@@ -1961,19 +1949,17 @@ bool
 dxil_nir_lower_subgroup_id(nir_shader *s)
 {
    nir_def *subgroup_id = NULL;
-   return nir_shader_instructions_pass(s, lower_subgroup_id, nir_metadata_none, &subgroup_id);
+   return nir_shader_intrinsics_pass(s, lower_subgroup_id, nir_metadata_none,
+                                     &subgroup_id);
 }
 
 static bool
-lower_num_subgroups(nir_builder *b, nir_instr *instr, void *data)
+lower_num_subgroups(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_num_subgroups)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_def *subgroup_size = nir_load_subgroup_size(b);
    nir_def *size_minus_one = nir_iadd_imm(b, subgroup_size, -1);
    nir_def *workgroup_size_vec = nir_load_workgroup_size(b);
@@ -1988,7 +1974,7 @@ lower_num_subgroups(nir_builder *b, nir_instr *instr, void *data)
 bool
 dxil_nir_lower_num_subgroups(nir_shader *s)
 {
-   return nir_shader_instructions_pass(s, lower_num_subgroups,
+   return nir_shader_intrinsics_pass(s, lower_num_subgroups,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance |
                                        nir_metadata_loop_analysis, NULL);
@@ -2140,11 +2126,8 @@ lower_inclusive_to_exclusive(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
-lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
+lower_subgroup_scan(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    switch (intr->intrinsic) {
    case nir_intrinsic_exclusive_scan:
    case nir_intrinsic_inclusive_scan:
@@ -2165,7 +2148,7 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
       return false;
    }
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_op op = nir_intrinsic_reduction_op(intr);
    nir_def *subgroup_id = nir_load_subgroup_invocation(b);
    nir_def *active_threads = nir_ballot(b, 4, 32, nir_imm_true(b));
@@ -2216,7 +2199,8 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
 bool
 dxil_nir_lower_unsupported_subgroup_scan(nir_shader *s)
 {
-   bool ret = nir_shader_instructions_pass(s, lower_subgroup_scan, nir_metadata_none, NULL);
+   bool ret = nir_shader_intrinsics_pass(s, lower_subgroup_scan,
+                                         nir_metadata_none, NULL);
    if (ret) {
       /* Lower the ballot bitfield tests */
       nir_lower_subgroups_options options = { .ballot_bit_size = 32, .ballot_components = 4 };
@@ -2226,12 +2210,8 @@ dxil_nir_lower_unsupported_subgroup_scan(nir_shader *s)
 }
 
 static bool
-lower_load_face(nir_builder *b, nir_instr *instr, void *data)
+lower_load_face(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_front_face)
       return false;
 
@@ -2241,7 +2221,7 @@ lower_load_face(nir_builder *b, nir_instr *instr, void *data)
    nir_def *load = nir_ine_imm(b, nir_load_var(b, var), 0);
 
    nir_def_rewrite_uses(&intr->def, load);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
@@ -2256,7 +2236,7 @@ dxil_nir_forward_front_face(nir_shader *nir)
    var->data.location = VARYING_SLOT_VAR12;
    var->data.interpolation = INTERP_MODE_FLAT;
 
-   return nir_shader_instructions_pass(nir, lower_load_face,
+   return nir_shader_intrinsics_pass(nir, lower_load_face,
                                        nir_metadata_block_index | nir_metadata_dominance,
                                        var);
 }
@@ -2615,11 +2595,9 @@ guess_image_format_for_var(nir_shader *s, nir_variable *var)
 }
 
 static bool
-update_intrinsic_formats(nir_builder *b, nir_instr *instr, void *data)
+update_intrinsic_formats(nir_builder *b, nir_intrinsic_instr *intr,
+                         void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (!nir_intrinsic_has_format(intr))
       return false;
    nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
@@ -2651,6 +2629,7 @@ dxil_nir_guess_image_formats(nir_shader *s)
    nir_foreach_variable_with_modes(var, s, nir_var_image) {
       progress |= guess_image_format_for_var(s, var);
    }
-   nir_shader_instructions_pass(s, update_intrinsic_formats, nir_metadata_all, NULL);
+   nir_shader_intrinsics_pass(s, update_intrinsic_formats, nir_metadata_all,
+                              NULL);
    return progress;
 }

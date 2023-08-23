@@ -34,13 +34,9 @@
  */
 
 static bool
-nir_lower_64bit_intrin_instr(nir_builder *b, nir_instr *instr, void *data)
+nir_lower_64bit_intrin_instr(nir_builder *b, nir_intrinsic_instr *intr,
+                             void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    switch (intr->intrinsic) {
    case nir_intrinsic_load_global_invocation_id:
    case nir_intrinsic_load_global_invocation_id_zero_base:
@@ -55,7 +51,7 @@ nir_lower_64bit_intrin_instr(nir_builder *b, nir_instr *instr, void *data)
    if (intr->def.bit_size != 64)
       return false;
 
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
 
    intr->def.bit_size = 32;
 
@@ -69,7 +65,7 @@ nir_lower_64bit_intrin_instr(nir_builder *b, nir_instr *instr, void *data)
 bool
 pan_nir_lower_64bit_intrin(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       shader, nir_lower_64bit_intrin_instr,
       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }

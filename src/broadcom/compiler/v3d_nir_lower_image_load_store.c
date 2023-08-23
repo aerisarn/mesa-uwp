@@ -204,15 +204,9 @@ v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
 
 static bool
 v3d_nir_lower_image_load_store_cb(nir_builder *b,
-                                  nir_instr *instr,
+                                  nir_intrinsic_instr *intr,
                                   void *_state)
 {
-        if (instr->type != nir_instr_type_intrinsic)
-                return false;
-
-        nir_intrinsic_instr *intr =
-                nir_instr_as_intrinsic(instr);
-
         switch (intr->intrinsic) {
         case nir_intrinsic_image_load:
                 return v3d_nir_lower_image_load(b, intr);
@@ -228,7 +222,8 @@ v3d_nir_lower_image_load_store_cb(nir_builder *b,
 bool
 v3d_nir_lower_image_load_store(nir_shader *s)
 {
-        return nir_shader_instructions_pass(s, v3d_nir_lower_image_load_store_cb,
+        return nir_shader_intrinsics_pass(s,
+                                            v3d_nir_lower_image_load_store_cb,
                                             nir_metadata_block_index |
                                             nir_metadata_dominance, NULL);
 }

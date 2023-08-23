@@ -32,13 +32,9 @@
  */
 
 static bool
-lower_point_smooth(nir_builder *b, nir_instr *instr, UNUSED void *_state)
+lower_point_smooth(nir_builder *b, nir_intrinsic_instr *intr,
+                   UNUSED void *_state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    if (intr->intrinsic != nir_intrinsic_store_output &&
        intr->intrinsic != nir_intrinsic_store_deref)
       return false;
@@ -99,7 +95,7 @@ bool
 nir_lower_point_smooth(nir_shader *shader)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
-   return nir_shader_instructions_pass(shader, lower_point_smooth,
+   return nir_shader_intrinsics_pass(shader, lower_point_smooth,
                                        nir_metadata_loop_analysis |
                                           nir_metadata_block_index |
                                           nir_metadata_dominance,

@@ -280,13 +280,9 @@ skip_resource_intel_cleanup(nir_instr *instr)
 
 static bool
 brw_nir_cleanup_resource_intel_instr(nir_builder *b,
-                                     nir_instr *instr,
+                                     nir_intrinsic_instr *intrin,
                                      void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_resource_intel)
       return false;
 
@@ -311,7 +307,7 @@ brw_nir_cleanup_resource_intel(nir_shader *shader)
 {
    void *mem_ctx = ralloc_context(NULL);
 
-   bool ret = nir_shader_instructions_pass(shader,
+   bool ret = nir_shader_intrinsics_pass(shader,
                                            brw_nir_cleanup_resource_intel_instr,
                                            nir_metadata_block_index |
                                            nir_metadata_dominance,

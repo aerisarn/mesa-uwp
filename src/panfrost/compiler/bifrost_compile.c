@@ -4575,12 +4575,9 @@ bi_fp32_varying_mask(nir_shader *nir)
 }
 
 static bool
-bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
+bi_lower_sample_mask_writes(nir_builder *b, nir_intrinsic_instr *intr,
+                            void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -4601,12 +4598,9 @@ bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
 }
 
 static bool
-bi_lower_load_output(nir_builder *b, nir_instr *instr, UNUSED void *data)
+bi_lower_load_output(nir_builder *b, nir_intrinsic_instr *intr,
+                     UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_output)
       return false;
 
@@ -4633,7 +4627,7 @@ bifrost_nir_lower_load_output(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       nir, bi_lower_load_output,
       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }
@@ -4691,7 +4685,7 @@ bifrost_preprocess_nir(nir_shader *nir, unsigned gpu_id)
                  nir_var_shader_in | nir_var_shader_out,
                  ~bi_fp32_varying_mask(nir), false);
 
-      NIR_PASS_V(nir, nir_shader_instructions_pass, bi_lower_sample_mask_writes,
+      NIR_PASS_V(nir, nir_shader_intrinsics_pass, bi_lower_sample_mask_writes,
                  nir_metadata_block_index | nir_metadata_dominance, NULL);
 
       NIR_PASS_V(nir, bifrost_nir_lower_load_output);

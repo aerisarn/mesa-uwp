@@ -140,13 +140,10 @@ lower_sample_mask_write(nir_builder *b, nir_instr *instr, void *data)
  *    sample_mask_in --> sample_mask_in & api_sample_mask
  */
 static bool
-lower_sample_mask_read(nir_builder *b, nir_instr *instr, UNUSED void *_)
+lower_sample_mask_read(nir_builder *b, nir_intrinsic_instr *intr,
+                       UNUSED void *_)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
 
    if (intr->intrinsic != nir_intrinsic_load_sample_mask_in)
       return false;
@@ -196,9 +193,9 @@ agx_nir_lower_monolithic_msaa(nir_shader *shader, struct agx_msaa_state *state)
       insert_sample_mask_write(shader);
 
    /* Additional, sample_mask_in needs to account for the API-level mask */
-   nir_shader_instructions_pass(
-      shader, lower_sample_mask_read,
-      nir_metadata_block_index | nir_metadata_dominance, &state->nr_samples);
+   nir_shader_intrinsics_pass(shader, lower_sample_mask_read,
+                              nir_metadata_block_index | nir_metadata_dominance,
+                              &state->nr_samples);
 
    /* In single sampled programs, interpolateAtSample needs to return the
     * center pixel. TODO: Generalize for dynamic sample count.

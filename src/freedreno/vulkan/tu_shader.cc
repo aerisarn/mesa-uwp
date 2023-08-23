@@ -584,12 +584,8 @@ lower_instr(nir_builder *b, nir_instr *instr, void *cb_data)
  * them to load_uniform which turns into constant memory loads.
  */
 static bool
-lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
+lower_inline_ubo(nir_builder *b, nir_intrinsic_instr *intrin, void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_ubo)
       return false;
 
@@ -635,7 +631,7 @@ lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
 
    nir_def *offset = intrin->src[1].ssa;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
    nir_def *val;
 
    if (use_load) {
@@ -651,7 +647,7 @@ lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
    }
 
    nir_def_rewrite_uses(&intrin->def, val);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
    return true;
 }
 
@@ -794,8 +790,7 @@ tu_lower_io(nir_shader *shader, struct tu_device *dev,
 
    bool progress = false;
    if (const_state->num_inline_ubos) {
-      progress |= nir_shader_instructions_pass(shader,
-                                               lower_inline_ubo,
+      progress |= nir_shader_intrinsics_pass(shader, lower_inline_ubo,
                                                nir_metadata_none,
                                                &params);
    }

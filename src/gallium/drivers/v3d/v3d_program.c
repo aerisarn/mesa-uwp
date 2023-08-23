@@ -288,12 +288,9 @@ v3d_shader_precompile(struct v3d_context *v3d,
 }
 
 static bool
-lower_uniform_offset_to_bytes_cb(nir_builder *b, nir_instr *instr, void *_state)
+lower_uniform_offset_to_bytes_cb(nir_builder *b, nir_intrinsic_instr *intr,
+                                 void *_state)
 {
-        if (instr->type != nir_instr_type_intrinsic)
-                return false;
-
-        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
         if (intr->intrinsic != nir_intrinsic_load_uniform)
                 return false;
 
@@ -324,7 +321,7 @@ lower_textures_cb(nir_builder *b, nir_instr *instr, void *_state)
 static bool
 v3d_nir_lower_uniform_offset_to_bytes(nir_shader *s)
 {
-        return nir_shader_instructions_pass(s, lower_uniform_offset_to_bytes_cb,
+        return nir_shader_intrinsics_pass(s, lower_uniform_offset_to_bytes_cb,
                                             nir_metadata_block_index |
                                             nir_metadata_dominance, NULL);
 }

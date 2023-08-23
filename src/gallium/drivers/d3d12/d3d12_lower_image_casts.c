@@ -189,12 +189,8 @@ convert_value(nir_builder *b, nir_def *value,
 }
 
 static bool
-lower_image_cast_instr(nir_builder *b, nir_instr *instr, void *_data)
+lower_image_cast_instr(nir_builder *b, nir_intrinsic_instr *intr, void *_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_image_deref_load &&
        intr->intrinsic != nir_intrinsic_image_deref_store)
       return false;
@@ -216,12 +212,12 @@ lower_image_cast_instr(nir_builder *b, nir_instr *instr, void *_data)
    nir_def *value;
    const struct util_format_description *from_desc, *to_desc;
    if (intr->intrinsic == nir_intrinsic_image_deref_load) {
-      b->cursor = nir_after_instr(instr);
+      b->cursor = nir_after_instr(&intr->instr);
       value = &intr->def;
       from_desc = util_format_description(emulation_format);
       to_desc = util_format_description(real_format);
    } else {
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intr->instr);
       value = intr->src[3].ssa;
       from_desc = util_format_description(real_format);
       to_desc = util_format_description(emulation_format);
@@ -251,8 +247,9 @@ lower_image_cast_instr(nir_builder *b, nir_instr *instr, void *_data)
 bool
 d3d12_lower_image_casts(nir_shader *s, struct d3d12_image_format_conversion_info_arr *info)
 {
-   bool progress = nir_shader_instructions_pass(s, lower_image_cast_instr,
-      nir_metadata_block_index | nir_metadata_dominance, info);
+   bool progress = nir_shader_intrinsics_pass(s, lower_image_cast_instr,
+                                              nir_metadata_block_index | nir_metadata_dominance,
+                                              info);
 
    if (progress) {
       nir_foreach_image_variable(var, s) {

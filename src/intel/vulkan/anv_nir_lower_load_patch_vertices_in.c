@@ -36,16 +36,13 @@
 #define sizeof_field(type, field) sizeof(((type *)0)->field)
 
 static bool
-lower_patch_vertices_in_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
+lower_patch_vertices_in_instr(nir_builder *b, nir_intrinsic_instr *load,
+                              UNUSED void *_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
    if (load->intrinsic != nir_intrinsic_load_patch_vertices_in)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&load->instr);
 
    nir_def_rewrite_uses(
       &load->def,
@@ -62,7 +59,7 @@ lower_patch_vertices_in_instr(nir_builder *b, nir_instr *instr, UNUSED void *_da
 bool
 anv_nir_lower_load_patch_vertices_in(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, lower_patch_vertices_in_instr,
+   return nir_shader_intrinsics_pass(shader, lower_patch_vertices_in_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
                                        NULL);

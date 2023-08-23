@@ -101,12 +101,9 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdev,
 }
 
 static bool
-lower_image_size_to_txs(nir_builder *b, nir_instr *instr, UNUSED void *_data)
+lower_image_size_to_txs(nir_builder *b, nir_intrinsic_instr *intrin,
+                        UNUSED void *_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_image_deref_size)
       return false;
 
@@ -138,13 +135,10 @@ lower_image_size_to_txs(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 }
 
 static bool
-lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
+lower_load_global_constant_offset_instr(nir_builder *b,
+                                        nir_intrinsic_instr *intrin,
                                         UNUSED void *_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_global_constant_offset &&
        intrin->intrinsic != nir_intrinsic_load_global_constant_bounded)
       return false;
@@ -463,7 +457,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
 
-   NIR_PASS(_, nir, nir_shader_instructions_pass, lower_image_size_to_txs,
+   NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_image_size_to_txs,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    /* Lower non-uniform access before lower_descriptors */
@@ -494,7 +488,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
             nvk_buffer_addr_format(rs->storage_buffers));
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
             nvk_buffer_addr_format(rs->uniform_buffers));
-   NIR_PASS(_, nir, nir_shader_instructions_pass,
+   NIR_PASS(_, nir, nir_shader_intrinsics_pass,
             lower_load_global_constant_offset_instr,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
 

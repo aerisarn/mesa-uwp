@@ -106,14 +106,9 @@ emit_split_buffer_store(nir_builder *b, nir_def *d, nir_def *desc, nir_def *v_of
 
 static bool
 lower_es_output_store(nir_builder *b,
-                      nir_instr *instr,
+                      nir_intrinsic_instr *intrin,
                       void *state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    if (intrin->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -145,14 +140,14 @@ lower_es_output_store(nir_builder *b,
     */
    unsigned semantic = nir_intrinsic_io_semantics(intrin).location;
    if (semantic == VARYING_SLOT_LAYER || semantic == VARYING_SLOT_VIEWPORT) {
-      nir_instr_remove(instr);
+      nir_instr_remove(&intrin->instr);
       return true;
    }
 
    lower_esgs_io_state *st = (lower_esgs_io_state *) state;
    unsigned write_mask = nir_intrinsic_write_mask(intrin);
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
    nir_def *io_off = ac_nir_calc_io_offset(b, intrin, nir_imm_int(b, 16u), 4u, st->map_io);
 
    if (st->gfx_level <= GFX8) {
@@ -169,7 +164,7 @@ lower_es_output_store(nir_builder *b,
       nir_store_shared(b, intrin->src[0].ssa, off, .write_mask = write_mask);
    }
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
    return true;
 }
 
@@ -298,8 +293,7 @@ ac_nir_lower_es_outputs_to_mem(nir_shader *shader,
       .map_io = map,
    };
 
-   nir_shader_instructions_pass(shader,
-                                lower_es_output_store,
+   nir_shader_intrinsics_pass(shader, lower_es_output_store,
                                 nir_metadata_block_index | nir_metadata_dominance,
                                 &state);
 }

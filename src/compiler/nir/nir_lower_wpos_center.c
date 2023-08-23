@@ -65,12 +65,8 @@ update_fragcoord(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
-lower_wpos_center_instr(nir_builder *b, nir_instr *instr, void *data)
+lower_wpos_center_instr(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_frag_coord)
       return false;
 
@@ -83,8 +79,7 @@ nir_lower_wpos_center(nir_shader *shader)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   return nir_shader_instructions_pass(shader,
-                                       lower_wpos_center_instr,
+   return nir_shader_intrinsics_pass(shader, lower_wpos_center_instr,
                                        nir_metadata_block_index |
                                           nir_metadata_dominance,
                                        NULL);

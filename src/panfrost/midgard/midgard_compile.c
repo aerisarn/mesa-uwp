@@ -212,13 +212,9 @@ glsl_type_size(const struct glsl_type *type, bool bindless)
 }
 
 static bool
-midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
+midgard_nir_lower_global_load_instr(nir_builder *b, nir_intrinsic_instr *intr,
                                     void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_global &&
        intr->intrinsic != nir_intrinsic_load_shared)
       return false;
@@ -229,7 +225,7 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
    if (util_bitcount(totalsz) < 2 && totalsz <= 128)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    nir_def *addr = intr->src[0].ssa;
 
@@ -273,7 +269,7 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
 static bool
 midgard_nir_lower_global_load(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       shader, midgard_nir_lower_global_load_instr,
       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }

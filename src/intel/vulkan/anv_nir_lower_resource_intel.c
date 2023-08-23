@@ -30,12 +30,9 @@
  * This pass must be run before anv_nir_compute_push_layout().
  */
 static bool
-update_resource_intel_block(nir_builder *b, nir_instr *instr, UNUSED void *data)
+update_resource_intel_block(nir_builder *b, nir_intrinsic_instr *intrin,
+                            UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_resource_intel)
       return false;
 
@@ -69,7 +66,7 @@ update_resource_intel_block(nir_builder *b, nir_instr *instr, UNUSED void *data)
 bool
 anv_nir_update_resource_intel_block(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, update_resource_intel_block,
+   return nir_shader_intrinsics_pass(shader, update_resource_intel_block,
                                        nir_metadata_all,
                                        NULL);
 }
@@ -87,12 +84,8 @@ struct lower_resource_state {
  * combined the constant detection does not work anymore.
  */
 static bool
-lower_resource_intel(nir_builder *b, nir_instr *instr, void *data)
+lower_resource_intel(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_resource_intel)
       return false;
 
@@ -107,7 +100,7 @@ lower_resource_intel(nir_builder *b, nir_instr *instr, void *data)
    if (!is_bindless)
       return true;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *set_offset = intrin->src[0].ssa;
    nir_def *binding_offset = intrin->src[1].ssa;
@@ -168,7 +161,7 @@ anv_nir_lower_resource_intel(nir_shader *shader,
       .desc_type = desc_type,
       .device = device,
    };
-   return nir_shader_instructions_pass(shader, lower_resource_intel,
+   return nir_shader_intrinsics_pass(shader, lower_resource_intel,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
                                        &state);

@@ -26,12 +26,8 @@
 #include "compiler/nir/nir_builder.h"
 
 static bool
-lower(nir_builder *b, nir_instr *instr, void *data)
+lower(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    bool *lower_plain_stores = data;
 
    switch (intr->intrinsic) {
@@ -53,14 +49,14 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       return false;
    }
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    bool has_dest = nir_intrinsic_infos[intr->intrinsic].has_dest;
    nir_def *undef = NULL;
 
    nir_def *helper = nir_load_helper_invocation(b, 1);
    nir_push_if(b, nir_inot(b, helper));
-   nir_instr_remove(instr);
-   nir_builder_instr_insert(b, instr);
+   nir_instr_remove(&intr->instr);
+   nir_builder_instr_insert(b, &intr->instr);
 
    /* Per the spec, it does not matter what we return for helper threads.
     * Represent this by an ssa_undef in the hopes the backend will be clever
@@ -96,7 +92,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       nir_instr *phi_instr = phi->parent_instr;
       nir_phi_instr *phi_as_phi = nir_instr_as_phi(phi_instr);
       nir_phi_src *phi_src = nir_phi_get_src_from_block(phi_as_phi,
-                                                        instr->block);
+                                                        intr->instr.block);
       nir_src_rewrite(&phi_src->src, &intr->def);
    }
 
@@ -107,6 +103,6 @@ bool
 nir_lower_helper_writes(nir_shader *shader, bool lower_plain_stores)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
-   return nir_shader_instructions_pass(shader, lower, nir_metadata_none,
+   return nir_shader_intrinsics_pass(shader, lower, nir_metadata_none,
                                        &lower_plain_stores);
 }

@@ -95,13 +95,10 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 }
 
 static bool
-brw_nir_lower_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, void *data)
+brw_nir_lower_launch_mesh_workgroups_instr(nir_builder *b,
+                                           nir_intrinsic_instr *intrin,
+                                           void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    if (intrin->intrinsic != nir_intrinsic_launch_mesh_workgroups)
       return false;
 
@@ -131,7 +128,7 @@ brw_nir_lower_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, voi
    }
    nir_pop_if(b, if_stmt);
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
 
    return true;
 }
@@ -139,7 +136,7 @@ brw_nir_lower_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, voi
 static bool
 brw_nir_lower_launch_mesh_workgroups(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir,
+   return nir_shader_intrinsics_pass(nir,
                                        brw_nir_lower_launch_mesh_workgroups_instr,
                                        nir_metadata_none,
                                        NULL);
@@ -240,13 +237,10 @@ brw_nir_adjust_payload(nir_shader *shader, const struct brw_compiler *compiler)
 }
 
 static bool
-brw_nir_align_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, void *data)
+brw_nir_align_launch_mesh_workgroups_instr(nir_builder *b,
+                                           nir_intrinsic_instr *intrin,
+                                           void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    if (intrin->intrinsic != nir_intrinsic_launch_mesh_workgroups)
       return false;
 
@@ -263,7 +257,7 @@ brw_nir_align_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, voi
 static bool
 brw_nir_align_launch_mesh_workgroups(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir,
+   return nir_shader_intrinsics_pass(nir,
                                        brw_nir_align_launch_mesh_workgroups_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
@@ -1194,13 +1188,10 @@ brw_nir_adjust_offset(nir_builder *b, nir_intrinsic_instr *intrin, uint32_t pitc
 }
 
 static bool
-brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b, nir_instr *instr, void *data)
+brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b,
+                                                nir_intrinsic_instr *intrin,
+                                                void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    const struct brw_mue_map *map = (const struct brw_mue_map *) data;
 
    /* Remap per_vertex and per_primitive offsets using the extra source and
@@ -1235,7 +1226,7 @@ brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b, nir_instr *instr
 static bool
 brw_nir_adjust_offset_for_arrayed_indices(nir_shader *nir, const struct brw_mue_map *map)
 {
-   return nir_shader_instructions_pass(nir,
+   return nir_shader_intrinsics_pass(nir,
                                        brw_nir_adjust_offset_for_arrayed_indices_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
@@ -1335,12 +1326,9 @@ brw_can_pack_primitive_indices(nir_shader *nir, struct index_packing_state *stat
 }
 
 static bool
-brw_pack_primitive_indices_instr(nir_builder *b, nir_instr *instr, void *data)
+brw_pack_primitive_indices_instr(nir_builder *b, nir_intrinsic_instr *intrin,
+                                 void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_store_deref)
       return false;
 
@@ -1385,7 +1373,7 @@ brw_pack_primitive_indices_instr(nir_builder *b, nir_instr *instr, void *data)
 
    nir_build_store_deref(b, &new_array_deref->def, new_data);
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
 
    return true;
 }
@@ -1407,8 +1395,7 @@ brw_pack_primitive_indices(nir_shader *nir, void *data)
    state->packed_prim_indices->data.interpolation = INTERP_MODE_NONE;
    state->packed_prim_indices->data.per_primitive = 1;
 
-   return nir_shader_instructions_pass(nir,
-                                       brw_pack_primitive_indices_instr,
+   return nir_shader_intrinsics_pass(nir, brw_pack_primitive_indices_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
                                        data);

@@ -73,12 +73,10 @@ anv_nir_prim_count_store(nir_builder *b, nir_def *val)
 }
 
 static bool
-anv_nir_lower_set_vtx_and_prim_count_instr(nir_builder *b, nir_instr *instr, void *data)
+anv_nir_lower_set_vtx_and_prim_count_instr(nir_builder *b,
+                                           nir_intrinsic_instr *intrin,
+                                           void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_set_vertex_and_primitive_count)
       return false;
 
@@ -98,7 +96,7 @@ anv_nir_lower_set_vtx_and_prim_count_instr(nir_builder *b, nir_instr *instr, voi
 
    state->primitive_count = anv_nir_prim_count_store(b, intrin->src[1].ssa);
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
 
    return true;
 }
@@ -108,8 +106,7 @@ anv_nir_lower_set_vtx_and_prim_count(nir_shader *nir)
 {
    struct lower_set_vtx_and_prim_count_state state = { NULL, };
 
-   nir_shader_instructions_pass(nir,
-                                anv_nir_lower_set_vtx_and_prim_count_instr,
+   nir_shader_intrinsics_pass(nir, anv_nir_lower_set_vtx_and_prim_count_instr,
                                 nir_metadata_none,
                                 &state);
 

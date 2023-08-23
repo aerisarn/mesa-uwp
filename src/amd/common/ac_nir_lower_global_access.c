@@ -50,13 +50,8 @@ try_extract_additions(nir_builder *b, nir_scalar scalar, uint64_t *out_const,
 }
 
 static bool
-process_instr(nir_builder *b, nir_instr *instr, void *_)
+process_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *_)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    nir_intrinsic_op op;
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_global:
@@ -130,6 +125,6 @@ process_instr(nir_builder *b, nir_instr *instr, void *_)
 bool
 ac_nir_lower_global_access(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, process_instr,
+   return nir_shader_intrinsics_pass(shader, process_instr,
                                        nir_metadata_block_index | nir_metadata_dominance, NULL);
 }

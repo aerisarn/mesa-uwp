@@ -568,18 +568,14 @@ load_vs_input_from_vertex_buffer(nir_builder *b, unsigned input_index,
 }
 
 static bool
-lower_vs_input_instr(nir_builder *b, nir_instr *instr, void *state)
+lower_vs_input_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_input)
       return false;
 
    struct lower_vs_inputs_state *s = (struct lower_vs_inputs_state *)state;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    unsigned input_index = nir_intrinsic_base(intrin);
    unsigned component = nir_intrinsic_component(intrin);
@@ -594,8 +590,8 @@ lower_vs_input_instr(nir_builder *b, nir_instr *instr, void *state)
    nir_def *replacement = nir_vec(b, &comp[component], num_components);
 
    nir_def_rewrite_uses(&intrin->def, replacement);
-   nir_instr_remove(instr);
-   nir_instr_free(instr);
+   nir_instr_remove(&intrin->instr);
+   nir_instr_free(&intrin->instr);
 
    return true;
 }
@@ -617,7 +613,7 @@ si_nir_lower_vs_inputs(nir_shader *nir, struct si_shader *shader, struct si_shad
    if (!sel->info.base.vs.blit_sgprs_amd)
       get_vertex_index_for_all_inputs(nir, &state);
 
-   return nir_shader_instructions_pass(nir, lower_vs_input_instr,
+   return nir_shader_intrinsics_pass(nir, lower_vs_input_instr,
                                        nir_metadata_dominance | nir_metadata_block_index,
                                        &state);
 }

@@ -101,11 +101,8 @@ fields[member_idx].offset = offsetof(struct zink_gfx_push_constant, field);
 }
 
 static bool
-lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
+lower_basevertex_instr(nir_builder *b, nir_intrinsic_instr *instr, void *data)
 {
-   if (in->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
    if (instr->intrinsic != nir_intrinsic_load_base_vertex)
       return false;
 
@@ -136,16 +133,14 @@ lower_basevertex(nir_shader *shader)
    if (!BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX))
       return false;
 
-   return nir_shader_instructions_pass(shader, lower_basevertex_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(shader, lower_basevertex_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 
 static bool
-lower_drawid_instr(nir_builder *b, nir_instr *in, void *data)
+lower_drawid_instr(nir_builder *b, nir_intrinsic_instr *instr, void *data)
 {
-   if (in->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
    if (instr->intrinsic != nir_intrinsic_load_draw_id)
       return false;
 
@@ -170,7 +165,8 @@ lower_drawid(nir_shader *shader)
    if (!BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_DRAW_ID))
       return false;
 
-   return nir_shader_instructions_pass(shader, lower_drawid_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(shader, lower_drawid_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 struct lower_gl_point_state {
@@ -1167,13 +1163,10 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
 }
 
 static bool
-lower_system_values_to_inlined_uniforms_instr(nir_builder *b, nir_instr *instr, void *data)
+lower_system_values_to_inlined_uniforms_instr(nir_builder *b,
+                                              nir_intrinsic_instr *intrin,
+                                              void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    int inlined_uniform_offset;
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_flat_mask:
@@ -1192,14 +1185,15 @@ lower_system_values_to_inlined_uniforms_instr(nir_builder *b, nir_instr *instr, 
                                             .align_mul = 4, .align_offset = 0,
                                             .range_base = 0, .range = ~0);
    nir_def_rewrite_uses(&intrin->def, new_dest_def);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
    return true;
 }
 
 bool
 zink_lower_system_values_to_inlined_uniforms(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir, lower_system_values_to_inlined_uniforms_instr,
+   return nir_shader_intrinsics_pass(nir,
+                                       lower_system_values_to_inlined_uniforms_instr,
                                        nir_metadata_dominance, NULL);
 }
 
@@ -2614,11 +2608,8 @@ rewrite_read_as_0(nir_builder *b, nir_instr *instr, void *data)
 
 
 static bool
-delete_psiz_store_instr(nir_builder *b, nir_instr *instr, void *data)
+delete_psiz_store_instr(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    switch (intr->intrinsic) {
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_per_primitive_output:
@@ -2629,14 +2620,15 @@ delete_psiz_store_instr(nir_builder *b, nir_instr *instr, void *data)
    }
    if (nir_intrinsic_io_semantics(intr).location != VARYING_SLOT_PSIZ)
       return false;
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
 static bool
 delete_psiz_store(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir, delete_psiz_store_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(nir, delete_psiz_store_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 void
@@ -3387,14 +3379,12 @@ lower_zs_swizzle_tex(nir_shader *nir, const void *swizzle, bool shadow_only)
 }
 
 static bool
-invert_point_coord_instr(nir_builder *b, nir_instr *instr, void *data)
+invert_point_coord_instr(nir_builder *b, nir_intrinsic_instr *intr,
+                         void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_point_coord)
       return false;
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
    nir_def *def = nir_vec2(b, nir_channel(b, &intr->def, 0),
                                   nir_fsub_imm(b, 1.0, nir_channel(b, &intr->def, 1)));
    nir_def_rewrite_uses_after(&intr->def, def, def->parent_instr);
@@ -3406,15 +3396,13 @@ invert_point_coord(nir_shader *nir)
 {
    if (!BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_POINT_COORD))
       return false;
-   return nir_shader_instructions_pass(nir, invert_point_coord_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(nir, invert_point_coord_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 static bool
-add_derefs_instr(nir_builder *b, nir_instr *instr, void *data)
+add_derefs_instr(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    bool is_load = false;
    bool is_input = false;
    bool is_interp = false;
@@ -3465,7 +3453,7 @@ add_derefs_instr(nir_builder *b, nir_instr *instr, void *data)
       if (var->data.location_frac + size <= c || var->data.location_frac > c)
          continue;
 
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intr->instr);
       nir_deref_instr *deref = nir_build_deref_var(b, var);
       if (nir_is_arrayed_io(var, b->shader->info.stage)) {
          assert(intr->intrinsic != nir_intrinsic_store_output);
@@ -3562,7 +3550,7 @@ add_derefs_instr(nir_builder *b, nir_instr *instr, void *data)
          }
          nir_store_deref(b, deref, store, BITFIELD_RANGE(c - var->data.location_frac, intr->num_components));
       }
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
       return true;
    }
    unreachable("failed to find variable for explicit io!");
@@ -3572,7 +3560,8 @@ add_derefs_instr(nir_builder *b, nir_instr *instr, void *data)
 static bool
 add_derefs(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir, add_derefs_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(nir, add_derefs_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 static struct zink_shader_object
@@ -3880,14 +3869,12 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
 }
 
 static bool
-lower_baseinstance_instr(nir_builder *b, nir_instr *instr, void *data)
+lower_baseinstance_instr(nir_builder *b, nir_intrinsic_instr *intr,
+                         void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_instance_id)
       return false;
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
    nir_def *def = nir_isub(b, &intr->def, nir_load_base_instance(b));
    nir_def_rewrite_uses_after(&intr->def, def, def->parent_instr);
    return true;
@@ -3898,7 +3885,8 @@ lower_baseinstance(nir_shader *shader)
 {
    if (shader->info.stage != MESA_SHADER_VERTEX)
       return false;
-   return nir_shader_instructions_pass(shader, lower_baseinstance_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(shader, lower_baseinstance_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 /* gl_nir_lower_buffers makes variables unusable for all UBO/SSBO access
@@ -4193,11 +4181,9 @@ lower_bindless(nir_shader *shader, struct zink_bindless_info *bindless)
 
 /* convert shader image/texture io variables to int64 handles for bindless indexing */
 static bool
-lower_bindless_io_instr(nir_builder *b, nir_instr *in, void *data)
+lower_bindless_io_instr(nir_builder *b, nir_intrinsic_instr *instr,
+                        void *data)
 {
-   if (in->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
    bool is_load = false;
    bool is_input = false;
    bool is_interp = false;
@@ -4221,7 +4207,8 @@ lower_bindless_io_instr(nir_builder *b, nir_instr *in, void *data)
 static bool
 lower_bindless_io(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, lower_bindless_io_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(shader, lower_bindless_io_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 static uint32_t
@@ -4463,11 +4450,8 @@ is_residency_code(nir_def *src)
 }
 
 static bool
-lower_sparse_instr(nir_builder *b, nir_instr *in, void *data)
+lower_sparse_instr(nir_builder *b, nir_intrinsic_instr *instr, void *data)
 {
-   if (in->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
    if (instr->intrinsic == nir_intrinsic_sparse_residency_code_and) {
       b->cursor = nir_before_instr(&instr->instr);
       nir_def *src0;
@@ -4481,8 +4465,8 @@ lower_sparse_instr(nir_builder *b, nir_instr *in, void *data)
       else
          src1 = instr->src[1].ssa;
       nir_def *def = nir_iand(b, src0, src1);
-      nir_def_rewrite_uses_after(&instr->def, def, in);
-      nir_instr_remove(in);
+      nir_def_rewrite_uses_after(&instr->def, def, &instr->instr);
+      nir_instr_remove(&instr->instr);
       return true;
    }
    if (instr->intrinsic != nir_intrinsic_is_sparse_texels_resident)
@@ -4517,7 +4501,7 @@ lower_sparse_instr(nir_builder *b, nir_instr *in, void *data)
             src = nir_u2uN(b, src, instr->def.bit_size);
       }
       nir_def_rewrite_uses(&instr->def, src);
-      nir_instr_remove(in);
+      nir_instr_remove(&instr->instr);
    }
    return true;
 }
@@ -4525,7 +4509,8 @@ lower_sparse_instr(nir_builder *b, nir_instr *in, void *data)
 static bool
 lower_sparse(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, lower_sparse_instr, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(shader, lower_sparse_instr,
+                                     nir_metadata_dominance, NULL);
 }
 
 static bool

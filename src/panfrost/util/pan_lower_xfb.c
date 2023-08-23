@@ -58,18 +58,13 @@ lower_xfb_output(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 static bool
-lower_xfb(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_xfb(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    /* In transform feedback programs, vertex ID becomes zero-based, so apply
     * that lowering even on Valhall.
     */
    if (intr->intrinsic == nir_intrinsic_load_vertex_id) {
-      b->cursor = nir_instr_remove(instr);
+      b->cursor = nir_instr_remove(&intr->instr);
 
       nir_def *repl =
          nir_iadd(b, nir_load_vertex_id_zero_base(b), nir_load_first_vertex(b));
@@ -98,13 +93,13 @@ lower_xfb(nir_builder *b, nir_instr *instr, UNUSED void *data)
       }
    }
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return progress;
 }
 
 bool
 pan_lower_xfb(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       nir, lower_xfb, nir_metadata_block_index | nir_metadata_dominance, NULL);
 }

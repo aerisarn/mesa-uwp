@@ -65,19 +65,15 @@
 #define BASE_S      2
 
 static bool
-lower_sample_mask_to_zs(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_sample_mask_to_zs(nir_builder *b, nir_intrinsic_instr *intr,
+                        UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    bool depth_written =
       b->shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
    bool stencil_written =
       b->shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    /* Existing zs_emit instructions need to be fixed up to write their own depth
     * for consistency.
@@ -106,24 +102,20 @@ lower_sample_mask_to_zs(nir_builder *b, nir_instr *instr, UNUSED void *data)
                                     : nir_undef(b, 1, 16) /* stencil */,
                     .base = BASE_Z | (stencil_written ? BASE_S : 0));
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
 static bool
-lower_discard_to_sample_mask_0(nir_builder *b, nir_instr *instr,
+lower_discard_to_sample_mask_0(nir_builder *b, nir_intrinsic_instr *intr,
                                UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_discard_agx)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_sample_mask_agx(b, intr->src[0].ssa, nir_imm_intN_t(b, 0, 16));
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
@@ -162,7 +154,7 @@ agx_nir_lower_sample_mask(nir_shader *shader, unsigned nr_samples)
    /* sample_mask can't be used with zs_emit, so lower sample_mask to zs_emit */
    if (shader->info.outputs_written & (BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
                                        BITFIELD64_BIT(FRAG_RESULT_STENCIL))) {
-      bool progress = nir_shader_instructions_pass(
+      bool progress = nir_shader_intrinsics_pass(
          shader, lower_sample_mask_to_zs,
          nir_metadata_block_index | nir_metadata_dominance, NULL);
 
@@ -219,9 +211,9 @@ agx_nir_lower_sample_mask(nir_shader *shader, unsigned nr_samples)
       }
    }
 
-   nir_shader_instructions_pass(
-      shader, lower_discard_to_sample_mask_0,
-      nir_metadata_block_index | nir_metadata_dominance, NULL);
+   nir_shader_intrinsics_pass(shader, lower_discard_to_sample_mask_0,
+                              nir_metadata_block_index | nir_metadata_dominance,
+                              NULL);
 
    return true;
 }

@@ -774,11 +774,8 @@ dxil_spirv_write_pntc(nir_shader *nir, const struct dxil_spirv_runtime_conf *con
 }
 
 static bool
-lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
+lower_pntc_read(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_deref)
       return false;
    nir_variable *var = nir_intrinsic_get_var(intr, 0);
@@ -788,7 +785,7 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
    nir_def *point_center = &intr->def;
    nir_variable *pos_var = (nir_variable *)data;
 
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
 
    nir_def *pos;
    if (var->data.sample == pos_var->data.sample)
@@ -818,7 +815,7 @@ dxil_spirv_compute_pntc(nir_shader *nir)
       pos->data.location = VARYING_SLOT_POS;
       pos->data.sample = nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_PNTC)->data.sample;
    }
-   nir_shader_instructions_pass(nir, lower_pntc_read,
+   nir_shader_intrinsics_pass(nir, lower_pntc_read,
                                 nir_metadata_block_index |
                                 nir_metadata_dominance |
                                 nir_metadata_loop_analysis,
@@ -826,11 +823,9 @@ dxil_spirv_compute_pntc(nir_shader *nir)
 }
 
 static bool
-lower_view_index_to_rt_layer_instr(nir_builder *b, nir_instr *instr, void *data)
+lower_view_index_to_rt_layer_instr(nir_builder *b, nir_intrinsic_instr *intr,
+                                   void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_deref)
       return false;
 
@@ -840,7 +835,7 @@ lower_view_index_to_rt_layer_instr(nir_builder *b, nir_instr *instr, void *data)
        var->data.location != VARYING_SLOT_LAYER)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_def *layer = intr->src[1].ssa;
    nir_def *new_layer = nir_iadd(b, layer,
                                      nir_load_view_index(b));
@@ -869,8 +864,7 @@ static void
 lower_view_index_to_rt_layer(nir_shader *nir)
 {
    bool existing_write =
-      nir_shader_instructions_pass(nir,
-                                   lower_view_index_to_rt_layer_instr,
+      nir_shader_intrinsics_pass(nir, lower_view_index_to_rt_layer_instr,
                                    nir_metadata_block_index |
                                    nir_metadata_dominance |
                                    nir_metadata_loop_analysis, NULL);

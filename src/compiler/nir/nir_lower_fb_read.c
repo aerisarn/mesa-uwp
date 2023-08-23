@@ -47,12 +47,9 @@
  */
 
 static bool
-nir_lower_fb_read_instr(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
+nir_lower_fb_read_instr(nir_builder *b, nir_intrinsic_instr *intr,
+                        UNUSED void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_output)
       return false;
 
@@ -89,7 +86,7 @@ nir_lower_fb_read(nir_shader *shader)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   return nir_shader_instructions_pass(shader, nir_lower_fb_read_instr,
+   return nir_shader_intrinsics_pass(shader, nir_lower_fb_read_instr,
                                        nir_metadata_block_index |
                                           nir_metadata_dominance,
                                        NULL);

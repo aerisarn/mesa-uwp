@@ -191,12 +191,8 @@ lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
 
 /* Step 2: Record system value loads */
 static bool
-record_loads(nir_builder *b, nir_instr *instr, void *data)
+record_loads(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_sysval_agx)
       return false;
 
@@ -360,9 +356,9 @@ agx_nir_layout_uniforms(nir_shader *shader, bool internal_bindless,
                         unsigned *push_size)
 {
    struct state state = {0};
-   nir_shader_instructions_pass(
-      shader, record_loads, nir_metadata_block_index | nir_metadata_dominance,
-      &state);
+   nir_shader_intrinsics_pass(shader, record_loads,
+                              nir_metadata_block_index | nir_metadata_dominance,
+                              &state);
 
    if (internal_bindless)
       reserve_internal_bindless(&state, shader->info.stage);

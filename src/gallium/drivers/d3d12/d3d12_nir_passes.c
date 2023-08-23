@@ -255,13 +255,9 @@ d3d12_lower_uint_cast(nir_shader *nir, bool is_signed)
 }
 
 static bool
-lower_load_draw_params(nir_builder *b, nir_instr *instr, void *draw_params)
+lower_load_draw_params(nir_builder *b, nir_intrinsic_instr *intr,
+                       void *draw_params)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    if (intr->intrinsic != nir_intrinsic_load_first_vertex &&
        intr->intrinsic != nir_intrinsic_load_base_instance &&
        intr->intrinsic != nir_intrinsic_load_draw_id &&
@@ -276,7 +272,7 @@ lower_load_draw_params(nir_builder *b, nir_instr *instr, void *draw_params)
       intr->intrinsic == nir_intrinsic_load_base_instance ? 1 :
       intr->intrinsic == nir_intrinsic_load_draw_id ? 2 : 3;
    nir_def_rewrite_uses(&intr->def, nir_channel(b, load, channel));
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
 
    return true;
 }
@@ -288,16 +284,15 @@ d3d12_lower_load_draw_params(struct nir_shader *nir)
    if (nir->info.stage != MESA_SHADER_VERTEX)
       return false;
 
-   return nir_shader_instructions_pass(nir, lower_load_draw_params,
-      nir_metadata_block_index | nir_metadata_dominance, &draw_params);
+   return nir_shader_intrinsics_pass(nir, lower_load_draw_params,
+                                     nir_metadata_block_index | nir_metadata_dominance,
+                                     &draw_params);
 }
 
 static bool
-lower_load_patch_vertices_in(nir_builder *b, nir_instr *instr, void *_state)
+lower_load_patch_vertices_in(nir_builder *b, nir_intrinsic_instr *intr,
+                             void *_state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_patch_vertices_in)
       return false;
 
@@ -306,7 +301,7 @@ lower_load_patch_vertices_in(nir_builder *b, nir_instr *instr, void *_state)
       d3d12_get_state_var(b, D3D12_STATE_VAR_PATCH_VERTICES_IN, "d3d12_FirstVertex", glsl_uint_type(), _state) :
       nir_imm_int(b, b->shader->info.tess.tcs_vertices_out);
    nir_def_rewrite_uses(&intr->def, load);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
@@ -319,8 +314,9 @@ d3d12_lower_load_patch_vertices_in(struct nir_shader *nir)
        nir->info.stage != MESA_SHADER_TESS_EVAL)
       return false;
 
-   return nir_shader_instructions_pass(nir, lower_load_patch_vertices_in,
-      nir_metadata_block_index | nir_metadata_dominance, &var);
+   return nir_shader_intrinsics_pass(nir, lower_load_patch_vertices_in,
+                                     nir_metadata_block_index | nir_metadata_dominance,
+                                     &var);
 }
 
 struct invert_depth_state
@@ -857,11 +853,9 @@ struct multistream_state {
 };
 
 static bool
-split_multistream_varying_stores(nir_builder *b, nir_instr *instr, void *_state)
+split_multistream_varying_stores(nir_builder *b, nir_intrinsic_instr *intr,
+                                 void *_state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_deref)
       return false;
 
@@ -891,7 +885,7 @@ split_multistream_varying_stores(nir_builder *b, nir_instr *instr, void *_state)
          new_path = nir_build_deref_follower(b, new_path, path.path[i]);
       }
 
-      b->cursor = nir_before_instr(instr);
+      b->cursor = nir_before_instr(&intr->instr);
       unsigned mask_num_channels = (1 << var_state->subvars[subvar].num_components) - 1;
       unsigned orig_write_mask = nir_intrinsic_write_mask(intr);
       nir_def *sub_value = nir_channels(b, intr->src[1].ssa, mask_num_channels << first_channel);
@@ -903,7 +897,7 @@ split_multistream_varying_stores(nir_builder *b, nir_instr *instr, void *_state)
    }
 
    nir_deref_path_finish(&path);
-   nir_instr_free_and_dce(instr);
+   nir_instr_free_and_dce(&intr->instr);
    return true;
 }
 
@@ -958,8 +952,9 @@ d3d12_split_multistream_varyings(nir_shader *s)
    }
 
    if (progress) {
-      nir_shader_instructions_pass(s, split_multistream_varying_stores,
-         nir_metadata_block_index | nir_metadata_dominance, &state);
+      nir_shader_intrinsics_pass(s, split_multistream_varying_stores,
+                                 nir_metadata_block_index | nir_metadata_dominance,
+                                 &state);
    } else {
       nir_shader_preserve_all_metadata(s);
    }

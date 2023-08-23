@@ -71,17 +71,13 @@ lower_zs_emit(nir_block *block)
 }
 
 static bool
-lower_discard(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_discard(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_discard &&
        intr->intrinsic != nir_intrinsic_discard_if)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    nir_def *all_samples = nir_imm_intN_t(b, ALL_SAMPLES, 16);
    nir_def *no_samples = nir_imm_intN_t(b, 0, 16);
@@ -92,7 +88,7 @@ lower_discard(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    /* This will get lowered later as needed */
    nir_discard_agx(b, killed_samples);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
@@ -102,7 +98,7 @@ agx_nir_lower_discard(nir_shader *s)
    if (!s->info.fs.uses_discard)
       return false;
 
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       s, lower_discard, nir_metadata_block_index | nir_metadata_dominance,
       NULL);
 }

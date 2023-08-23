@@ -604,12 +604,9 @@ get_equation_str(const struct pan_blend_rt_state *rt_state, char *str,
 }
 
 static bool
-pan_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
+pan_inline_blend_constants(nir_builder *b, nir_intrinsic_instr *intr,
+                           void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_blend_const_color_rgba)
       return false;
 
@@ -620,10 +617,10 @@ pan_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
       nir_const_value_for_float(floats[2], 32),
       nir_const_value_for_float(floats[3], 32)};
 
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
    nir_def *constant = nir_build_imm(b, 4, 32, constants);
    nir_def_rewrite_uses(&intr->def, constant);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
@@ -720,10 +717,9 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
    b.shader->info.io_lowered = true;
 
    NIR_PASS_V(b.shader, nir_lower_blend, &options);
-   nir_shader_instructions_pass(
-      b.shader, pan_inline_blend_constants,
-      nir_metadata_block_index | nir_metadata_dominance,
-      (void *)state->constants);
+   nir_shader_intrinsics_pass(b.shader, pan_inline_blend_constants,
+                              nir_metadata_block_index | nir_metadata_dominance,
+                              (void *)state->constants);
 
    return b.shader;
 }
@@ -791,12 +787,8 @@ struct rt_conversion_inputs {
 };
 
 static bool
-inline_rt_conversion(nir_builder *b, nir_instr *instr, void *data)
+inline_rt_conversion(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_rt_conversion_pan)
       return false;
 
@@ -806,7 +798,7 @@ inline_rt_conversion(nir_builder *b, nir_instr *instr, void *data)
    uint64_t conversion = GENX(pan_blend_get_internal_desc)(
       inputs->dev, inputs->formats[rt], rt, size, false);
 
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
    nir_def_rewrite_uses(&intr->def, nir_imm_int(b, conversion >> 32));
    return true;
 }
@@ -815,7 +807,7 @@ bool
 GENX(pan_inline_rt_conversion)(nir_shader *s, const struct panfrost_device *dev,
                                enum pipe_format *formats)
 {
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       s, inline_rt_conversion,
       nir_metadata_block_index | nir_metadata_dominance,
       &(struct rt_conversion_inputs){.dev = dev, .formats = formats});

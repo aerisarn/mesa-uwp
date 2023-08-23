@@ -483,12 +483,8 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
 }
 
 static bool
-legalize_image_lod(nir_builder *b, nir_instr *instr, UNUSED void *data)
+legalize_image_lod(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    nir_src *src;
 
 #define CASE(op, idx)                                                          \
@@ -510,7 +506,7 @@ legalize_image_lod(nir_builder *b, nir_instr *instr, UNUSED void *data)
    if (src->ssa->bit_size == 16)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_src_rewrite(src, nir_i2i16(b, src->ssa));
    return true;
 }
@@ -717,13 +713,9 @@ lower_1d_image(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
-lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    switch (intr->intrinsic) {
    case nir_intrinsic_image_load:
@@ -808,9 +800,9 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
                nir_metadata_block_index | nir_metadata_dominance, NULL);
    }
 
-   NIR_PASS(progress, s, nir_shader_instructions_pass, legalize_image_lod,
+   NIR_PASS(progress, s, nir_shader_intrinsics_pass, legalize_image_lod,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
-   NIR_PASS(progress, s, nir_shader_instructions_pass, lower_images,
+   NIR_PASS(progress, s, nir_shader_intrinsics_pass, lower_images,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
    NIR_PASS(progress, s, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
@@ -827,13 +819,10 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
 }
 
 static bool
-lower_multisampled_store(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_multisampled_store(nir_builder *b, nir_intrinsic_instr *intr,
+                         UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    if (intr->intrinsic != nir_intrinsic_bindless_image_store)
       return false;
@@ -854,7 +843,7 @@ lower_multisampled_store(nir_builder *b, nir_instr *instr, UNUSED void *data)
 bool
 agx_nir_lower_multisampled_image_store(nir_shader *s)
 {
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       s, lower_multisampled_store,
       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }

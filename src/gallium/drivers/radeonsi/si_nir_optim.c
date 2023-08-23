@@ -106,12 +106,9 @@ struct replace_param {
 };
 
 static bool
-store_instr_depends_on_tex(nir_builder *b, nir_instr *instr, void *state)
+store_instr_depends_on_tex(nir_builder *b, nir_intrinsic_instr *intrin,
+                           void *state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -160,7 +157,7 @@ si_nir_is_output_const_if_tex_is_const(nir_shader *shader, float *in, float *out
    p.texunit = texunit;
 
    /* Test if the single store_output only depends on constants and a single texture op */
-   if (nir_shader_instructions_pass(shader, store_instr_depends_on_tex, nir_metadata_all, &p)) {
+   if (nir_shader_intrinsics_pass(shader, store_instr_depends_on_tex, nir_metadata_all, &p)) {
       assert(*p.texunit != -1);
 
       /* Replace nir_tex_instr using texunit by vec4(v) */

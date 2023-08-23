@@ -47,13 +47,9 @@
 #include "compiler/nir/nir_builder.h"
 
 static bool
-lower_shading_rate_output_instr(nir_builder *b, nir_instr *instr,
+lower_shading_rate_output_instr(nir_builder *b, nir_intrinsic_instr *intrin,
                                 UNUSED void *_state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    nir_intrinsic_op op = intrin->intrinsic;
 
    if (op != nir_intrinsic_load_output &&
@@ -69,7 +65,7 @@ lower_shading_rate_output_instr(nir_builder *b, nir_instr *instr,
    bool is_store = op == nir_intrinsic_store_output ||
                    op == nir_intrinsic_store_per_primitive_output;
 
-   b->cursor = is_store ? nir_before_instr(instr) : nir_after_instr(instr);
+   b->cursor = is_store ? nir_before_instr(&intrin->instr) : nir_after_instr(&intrin->instr);
 
    if (is_store) {
       nir_def *bit_field = intrin->src[0].ssa;
@@ -106,7 +102,7 @@ lower_shading_rate_output_instr(nir_builder *b, nir_instr *instr,
 bool
 brw_nir_lower_shading_rate_output(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir, lower_shading_rate_output_instr,
+   return nir_shader_intrinsics_pass(nir, lower_shading_rate_output_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance, NULL);
 }

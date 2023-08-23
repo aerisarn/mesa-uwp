@@ -385,18 +385,14 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
 }
 
 static bool
-lower_vs_input_instr(nir_builder *b, nir_instr *instr, void *state)
+lower_vs_input_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_input)
       return false;
 
    lower_vs_inputs_state *s = (lower_vs_inputs_state *)state;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *replacement = NULL;
 
@@ -407,8 +403,8 @@ lower_vs_input_instr(nir_builder *b, nir_instr *instr, void *state)
    }
 
    nir_def_rewrite_uses(&intrin->def, replacement);
-   nir_instr_remove(instr);
-   nir_instr_free(instr);
+   nir_instr_remove(&intrin->instr);
+   nir_instr_free(&intrin->instr);
 
    return true;
 }
@@ -426,6 +422,6 @@ radv_nir_lower_vs_inputs(nir_shader *shader, const struct radv_shader_stage *vs_
       .rad_info = rad_info,
    };
 
-   return nir_shader_instructions_pass(shader, lower_vs_input_instr, nir_metadata_dominance | nir_metadata_block_index,
-                                       &state);
+   return nir_shader_intrinsics_pass(shader, lower_vs_input_instr, nir_metadata_dominance | nir_metadata_block_index,
+                                     &state);
 }

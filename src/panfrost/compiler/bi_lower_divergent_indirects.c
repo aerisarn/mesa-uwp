@@ -38,12 +38,9 @@
  */
 
 static bool
-bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
+bi_lower_divergent_indirects_impl(nir_builder *b, nir_intrinsic_instr *intr,
+                                  void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    gl_shader_stage stage = b->shader->info.stage;
    nir_src *offset;
 
@@ -78,7 +75,7 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
 
    /* This indirect does need it */
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
    nir_def *lane = nir_load_subgroup_invocation(b);
    unsigned *lanes = data;
 
@@ -93,7 +90,7 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
    for (unsigned i = 0; i < (*lanes); ++i) {
       nir_push_if(b, nir_ieq_imm(b, lane, i));
 
-      nir_instr *c = nir_instr_clone(b->shader, instr);
+      nir_instr *c = nir_instr_clone(b->shader, &intr->instr);
       nir_intrinsic_instr *c_intr = nir_instr_as_intrinsic(c);
       nir_builder_instr_insert(b, c);
       nir_pop_if(b, NULL);
@@ -107,13 +104,13 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
    if (has_dest)
       nir_def_rewrite_uses(&intr->def, res);
 
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
 bool
 bi_lower_divergent_indirects(nir_shader *shader, unsigned lanes)
 {
-   return nir_shader_instructions_pass(
-      shader, bi_lower_divergent_indirects_impl, nir_metadata_none, &lanes);
+   return nir_shader_intrinsics_pass(shader, bi_lower_divergent_indirects_impl,
+                                     nir_metadata_none, &lanes);
 }

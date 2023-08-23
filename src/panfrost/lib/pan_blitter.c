@@ -386,12 +386,9 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev, unsigned rt_count,
  * unnecessary lowering.
  */
 static bool
-lower_sampler_parameters(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_sampler_parameters(nir_builder *b, nir_intrinsic_instr *intr,
+                         UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_sampler_lod_parameters_pan)
       return false;
 
@@ -401,7 +398,7 @@ lower_sampler_parameters(nir_builder *b, nir_instr *instr, UNUSED void *data)
       nir_const_value_for_float(0.0f, 32),     /* lod_bias */
    };
 
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
    nir_def_rewrite_uses(&intr->def, nir_build_imm(b, 3, 32, constants));
    return true;
 }
@@ -627,8 +624,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
    pan_shader_preprocess(b.shader, inputs.gpu_id);
 
    if (PAN_ARCH == 4) {
-      NIR_PASS_V(b.shader, nir_shader_instructions_pass,
-                 lower_sampler_parameters,
+      NIR_PASS_V(b.shader, nir_shader_intrinsics_pass, lower_sampler_parameters,
                  nir_metadata_block_index | nir_metadata_dominance, NULL);
    }
 

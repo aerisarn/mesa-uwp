@@ -24,12 +24,9 @@
 #include "nir_builder.h"
 
 static bool
-lower_pos_write(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
+lower_pos_write(nir_builder *b, nir_intrinsic_instr *intr,
+                UNUSED void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_deref)
       return false;
 
@@ -62,7 +59,7 @@ nir_lower_clip_halfz(nir_shader *shader)
        shader->info.stage != MESA_SHADER_TESS_EVAL)
       return;
 
-   nir_shader_instructions_pass(shader, lower_pos_write,
+   nir_shader_intrinsics_pass(shader, lower_pos_write,
                                 nir_metadata_block_index |
                                    nir_metadata_dominance,
                                 NULL);

@@ -148,12 +148,8 @@ lower_image_intrinsic(nir_builder *b,
 }
 
 static bool
-lower_load_ubo(nir_builder *b, nir_instr *instr, void *data_cb)
+lower_load_ubo(nir_builder *b, nir_intrinsic_instr *intrin, void *data_cb)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_ubo)
       return false;
 
@@ -169,7 +165,7 @@ lower_load_ubo(nir_builder *b, nir_instr *instr, void *data_cb)
    if (bind_layout->type != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_src_rewrite(&intrin->src[0], nir_imm_int(b, binding.desc_set + 1));
 
@@ -229,6 +225,8 @@ void lvp_lower_pipeline_layout(const struct lvp_device *device,
                                struct lvp_pipeline_layout *layout,
                                nir_shader *shader)
 {
-   nir_shader_instructions_pass(shader, lower_load_ubo, nir_metadata_block_index | nir_metadata_dominance, layout);
+   nir_shader_intrinsics_pass(shader, lower_load_ubo,
+                              nir_metadata_block_index | nir_metadata_dominance,
+                              layout);
    nir_shader_lower_instructions(shader, lower_vulkan_resource_index, lower_vri_instr, layout);
 }

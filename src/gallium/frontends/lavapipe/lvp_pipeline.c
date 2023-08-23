@@ -132,11 +132,8 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 }
 
 static bool
-remove_barriers_impl(nir_builder *b, nir_instr *instr, void *data)
+remove_barriers_impl(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_barrier)
       return false;
    if (data) {
@@ -145,22 +142,21 @@ remove_barriers_impl(nir_builder *b, nir_instr *instr, void *data)
           nir_intrinsic_memory_scope(intr) == SCOPE_QUEUE_FAMILY)
          return false;
    }
-   nir_instr_remove(instr);
+   nir_instr_remove(&intr->instr);
    return true;
 }
 
 static bool
 remove_barriers(nir_shader *nir, bool is_compute)
 {
-   return nir_shader_instructions_pass(nir, remove_barriers_impl, nir_metadata_dominance, (void*)is_compute);
+   return nir_shader_intrinsics_pass(nir, remove_barriers_impl,
+                                     nir_metadata_dominance,
+                                     (void*)is_compute);
 }
 
 static bool
-lower_demote_impl(nir_builder *b, nir_instr *instr, void *data)
+lower_demote_impl(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic == nir_intrinsic_demote || intr->intrinsic == nir_intrinsic_terminate) {
       intr->intrinsic = nir_intrinsic_discard;
       return true;
@@ -175,7 +171,8 @@ lower_demote_impl(nir_builder *b, nir_instr *instr, void *data)
 static bool
 lower_demote(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir, lower_demote_impl, nir_metadata_dominance, NULL);
+   return nir_shader_intrinsics_pass(nir, lower_demote_impl,
+                                     nir_metadata_dominance, NULL);
 }
 
 static bool

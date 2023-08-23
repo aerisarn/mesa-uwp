@@ -1671,12 +1671,9 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
    return progress;
 }
 
-static bool clamp_vertex_color_instr(nir_builder *b, nir_instr *instr, void *state)
+static bool clamp_vertex_color_instr(nir_builder *b,
+                                     nir_intrinsic_instr *intrin, void *state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -1690,7 +1687,7 @@ static bool clamp_vertex_color_instr(nir_builder *b, nir_instr *instr, void *sta
    /* only scalar output */
    assert(intrin->src[0].ssa->num_components == 1);
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *color = intrin->src[0].ssa;
    nir_def *clamp = nir_load_clamp_vertex_color_amd(b);
@@ -1706,7 +1703,7 @@ static bool si_nir_clamp_vertex_color(nir_shader *nir)
    if (!(nir->info.outputs_written & mask))
       return false;
 
-   return nir_shader_instructions_pass(nir, clamp_vertex_color_instr,
+   return nir_shader_intrinsics_pass(nir, clamp_vertex_color_instr,
                                        nir_metadata_dominance | nir_metadata_block_index,
                                        NULL);
 }

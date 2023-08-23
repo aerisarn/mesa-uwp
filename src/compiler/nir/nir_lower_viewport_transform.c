@@ -41,13 +41,9 @@
 #include "nir/nir_builder.h"
 
 static bool
-lower_viewport_transform_instr(nir_builder *b, nir_instr *instr,
+lower_viewport_transform_instr(nir_builder *b, nir_intrinsic_instr *intr,
                                void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_store_deref)
       return false;
 
@@ -56,7 +52,7 @@ lower_viewport_transform_instr(nir_builder *b, nir_instr *instr,
        var->data.location != VARYING_SLOT_POS)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    /* Grab the source and viewport */
    nir_def *input_point = nir_ssa_for_src(b, intr->src[1], 4);
@@ -95,8 +91,7 @@ nir_lower_viewport_transform(nir_shader *shader)
 {
    assert((shader->info.stage == MESA_SHADER_VERTEX) || (shader->info.stage == MESA_SHADER_GEOMETRY) || (shader->info.stage == MESA_SHADER_TESS_EVAL));
 
-   return nir_shader_instructions_pass(shader,
-                                       lower_viewport_transform_instr,
+   return nir_shader_intrinsics_pass(shader, lower_viewport_transform_instr,
                                        nir_metadata_block_index |
                                           nir_metadata_dominance,
                                        NULL);

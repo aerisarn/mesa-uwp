@@ -68,17 +68,12 @@ shader_query_bool_setting(nir_builder *b, unsigned mask, lower_abi_state *s)
 }
 
 static bool
-lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
+lower_abi_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    lower_abi_state *s = (lower_abi_state *)state;
    gl_shader_stage stage = b->shader->info.stage;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *replacement = NULL;
    bool progress = true;
@@ -507,8 +502,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    if (replacement)
       nir_def_rewrite_uses(&intrin->def, replacement);
 
-   nir_instr_remove(instr);
-   nir_instr_free(instr);
+   nir_instr_remove(&intrin->instr);
+   nir_instr_free(&intrin->instr);
 
    return true;
 }
@@ -560,5 +555,5 @@ radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level, const struc
          state.gsvs_ring[i] = load_gsvs_ring(&b, &state, i);
    }
 
-   nir_shader_instructions_pass(shader, lower_abi_instr, nir_metadata_dominance | nir_metadata_block_index, &state);
+   nir_shader_intrinsics_pass(shader, lower_abi_instr, nir_metadata_dominance | nir_metadata_block_index, &state);
 }

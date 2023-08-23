@@ -893,12 +893,8 @@ lower_pipeline_layout_info(nir_shader *shader,
 
 /* This flips gl_PointCoord.y to match Vulkan requirements */
 static bool
-lower_point_coord_cb(nir_builder *b, nir_instr *instr, void *_state)
+lower_point_coord_cb(nir_builder *b, nir_intrinsic_instr *intr, void *_state)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_input)
       return false;
 
@@ -919,7 +915,7 @@ static bool
 v3d_nir_lower_point_coord(nir_shader *s)
 {
    assert(s->info.stage == MESA_SHADER_FRAGMENT);
-   return nir_shader_instructions_pass(s, lower_point_coord_cb,
+   return nir_shader_intrinsics_pass(s, lower_point_coord_cb,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance, NULL);
 }

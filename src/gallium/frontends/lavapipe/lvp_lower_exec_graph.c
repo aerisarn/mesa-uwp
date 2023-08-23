@@ -93,31 +93,28 @@ lvp_build_initialize_node_payloads(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
-lvp_lower_node_payload_intrinsic(nir_builder *b, nir_instr *instr, void *data)
+lvp_lower_node_payload_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
+                                 void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic == nir_intrinsic_enqueue_node_payloads) {
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
       return false;
    }
 
-   b->cursor = nir_after_instr(instr);
+   b->cursor = nir_after_instr(&intr->instr);
 
    switch (intr->intrinsic) {
    case nir_intrinsic_initialize_node_payloads:
       lvp_build_initialize_node_payloads(b, intr);
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
       return true;
    case nir_intrinsic_finalize_incoming_node_payload:
       nir_def_rewrite_uses(&intr->def, nir_imm_true(b));
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
       return true;
    case nir_intrinsic_load_coalesced_input_count:
       nir_def_rewrite_uses(&intr->def, nir_imm_int(b, 1));
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
       return true;
    default:
       return false;
@@ -127,7 +124,7 @@ lvp_lower_node_payload_intrinsic(nir_builder *b, nir_instr *instr, void *data)
 static bool
 lvp_lower_exec_graph_intrinsics(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir, lvp_lower_node_payload_intrinsic,
+   return nir_shader_intrinsics_pass(nir, lvp_lower_node_payload_intrinsic,
                                        nir_metadata_block_index | nir_metadata_dominance, NULL);
 }
 

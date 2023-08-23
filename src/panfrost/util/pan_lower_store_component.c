@@ -34,13 +34,8 @@
  * Midgard and Bifrost is slot-based, writing out an entire vec4 slot at a time.
  */
 static bool
-lower_store_component(nir_builder *b, nir_instr *instr, void *data)
+lower_store_component(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
    if (intr->intrinsic != nir_intrinsic_store_output)
       return false;
 
@@ -95,7 +90,7 @@ pan_nir_lower_store_component(nir_shader *s)
    assert(s->info.stage == MESA_SHADER_VERTEX);
 
    struct hash_table_u64 *stores = _mesa_hash_table_u64_create(NULL);
-   bool progress = nir_shader_instructions_pass(
+   bool progress = nir_shader_intrinsics_pass(
       s, lower_store_component,
       nir_metadata_block_index | nir_metadata_dominance, stores);
    _mesa_hash_table_u64_destroy(stores);

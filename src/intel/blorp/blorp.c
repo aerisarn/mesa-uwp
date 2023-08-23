@@ -345,13 +345,9 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
 }
 
 static bool
-lower_base_workgroup_id(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *intrin,
+                        UNUSED void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    if (intrin->intrinsic != nir_intrinsic_load_base_workgroup_id)
       return false;
 
@@ -387,7 +383,7 @@ blorp_compile_cs(struct blorp_context *blorp, void *mem_ctx,
    cs_prog_data->base.param = rzalloc_array(NULL, uint32_t, nr_params);
 
    NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
-   NIR_PASS_V(nir, nir_shader_instructions_pass, lower_base_workgroup_id,
+   NIR_PASS_V(nir, nir_shader_intrinsics_pass, lower_base_workgroup_id,
               nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    struct brw_compile_cs_params params = {

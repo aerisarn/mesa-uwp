@@ -16,13 +16,9 @@ mask_by_sample_id(nir_builder *b, nir_def *mask)
 }
 
 static bool
-lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
+lower_to_sample(nir_builder *b, nir_intrinsic_instr *intr, void *_)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
    switch (intr->intrinsic) {
    case nir_intrinsic_load_sample_pos: {
@@ -57,7 +53,7 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
 
       /* Collect and rewrite */
       nir_def_rewrite_uses(&intr->def, nir_vec2(b, xy[0], xy[1]));
-      nir_instr_remove(instr);
+      nir_instr_remove(&intr->instr);
       return true;
    }
 
@@ -66,7 +62,7 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
        * of the sample currently being shaded when sample shading is used. Mask
        * by the sample ID to make that happen.
        */
-      b->cursor = nir_after_instr(instr);
+      b->cursor = nir_after_instr(&intr->instr);
       nir_def *old = &intr->def;
       nir_def *lowered = mask_by_sample_id(b, old);
       nir_def_rewrite_uses_after(old, lowered, lowered->parent_instr);
@@ -77,7 +73,7 @@ lower_to_sample(nir_builder *b, nir_instr *instr, void *_)
       /* Lower fragment varyings with "sample" interpolation to
        * interpolateAtSample() with the sample ID
        */
-      b->cursor = nir_after_instr(instr);
+      b->cursor = nir_after_instr(&intr->instr);
       nir_def *old = &intr->def;
 
       nir_def *lowered = nir_load_barycentric_at_sample(
@@ -116,7 +112,7 @@ agx_nir_lower_sample_intrinsics(nir_shader *shader)
    if (!shader->info.fs.uses_sample_shading)
       return false;
 
-   return nir_shader_instructions_pass(
+   return nir_shader_intrinsics_pass(
       shader, lower_to_sample,
       nir_metadata_block_index | nir_metadata_dominance, NULL);
 }

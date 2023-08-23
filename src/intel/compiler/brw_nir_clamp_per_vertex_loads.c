@@ -34,12 +34,9 @@
 #include "compiler/nir/nir_deref.h"
 
 static bool
-clamp_per_vertex_loads_instr(nir_builder *b, nir_instr *instr, void *cb_data)
+clamp_per_vertex_loads_instr(nir_builder *b, nir_intrinsic_instr *intrin,
+                             void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_deref)
       return false;
 
@@ -75,7 +72,7 @@ brw_nir_clamp_per_vertex_loads(nir_shader *shader)
 {
    void *mem_ctx = ralloc_context(NULL);
 
-   bool ret = nir_shader_instructions_pass(shader, clamp_per_vertex_loads_instr,
+   bool ret = nir_shader_intrinsics_pass(shader, clamp_per_vertex_loads_instr,
                                            nir_metadata_block_index |
                                            nir_metadata_dominance,
                                            mem_ctx);
@@ -86,18 +83,15 @@ brw_nir_clamp_per_vertex_loads(nir_shader *shader)
 }
 
 static bool
-lower_patch_vertices_instr(nir_builder *b, nir_instr *instr, void *cb_data)
+lower_patch_vertices_instr(nir_builder *b, nir_intrinsic_instr *intrin,
+                           void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_patch_vertices_in)
       return false;
 
    unsigned *input_vertices = cb_data;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def_rewrite_uses(&intrin->def, nir_imm_int(b, *input_vertices));
 
@@ -107,7 +101,7 @@ lower_patch_vertices_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 bool
 brw_nir_lower_patch_vertices_in(nir_shader *shader, unsigned input_vertices)
 {
-   return nir_shader_instructions_pass(shader, lower_patch_vertices_instr,
+   return nir_shader_intrinsics_pass(shader, lower_patch_vertices_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
                                        &input_vertices);

@@ -25,17 +25,14 @@
 #include "nir_builder.h"
 
 static bool
-lower_ubo_load_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
+lower_ubo_load_instr(nir_builder *b, nir_intrinsic_instr *load,
+                     UNUSED void *_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
    if (load->intrinsic != nir_intrinsic_load_global_constant_offset &&
        load->intrinsic != nir_intrinsic_load_global_constant_bounded)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&load->instr);
 
    nir_def *base_addr = load->src[0].ssa;
    nir_def *bound = NULL;
@@ -117,7 +114,7 @@ lower_ubo_load_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 bool
 anv_nir_lower_ubo_loads(nir_shader *shader)
 {
-   return nir_shader_instructions_pass(shader, lower_ubo_load_instr,
+   return nir_shader_intrinsics_pass(shader, lower_ubo_load_instr,
                                        nir_metadata_none,
                                        NULL);
 }

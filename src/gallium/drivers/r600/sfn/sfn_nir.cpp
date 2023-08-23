@@ -375,13 +375,9 @@ r600_map_atomic(nir_intrinsic_op op)
 }
 
 static bool
-r600_lower_deref_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
+r600_lower_deref_instr(nir_builder *b, nir_intrinsic_instr *instr,
+                       UNUSED void *cb_data)
 {
-   if (instr_->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(instr_);
-
    nir_intrinsic_op op = r600_map_atomic(instr->intrinsic);
    if (nir_num_intrinsics == op)
       return false;
@@ -464,10 +460,9 @@ r600_nir_lower_atomics(nir_shader *shader)
       shader->variables.push_tail(&var->node);
    }
 
-   return nir_shader_instructions_pass(shader,
-                                       r600_lower_deref_instr,
-                                       nir_metadata_block_index | nir_metadata_dominance,
-                                       NULL);
+   return nir_shader_intrinsics_pass(shader, r600_lower_deref_instr,
+                                     nir_metadata_block_index | nir_metadata_dominance,
+                                     NULL);
 }
 using r600::r600_lower_fs_out_to_vector;
 using r600::r600_lower_scratch_addresses;

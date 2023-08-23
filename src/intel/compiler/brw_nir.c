@@ -439,23 +439,19 @@ brw_nir_lower_tes_inputs(nir_shader *nir, const struct brw_vue_map *vue_map)
 
 static bool
 lower_barycentric_per_sample(nir_builder *b,
-                             nir_instr *instr,
+                             nir_intrinsic_instr *intrin,
                              UNUSED void *cb_data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_load_barycentric_pixel &&
        intrin->intrinsic != nir_intrinsic_load_barycentric_centroid)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
    nir_def *centroid =
       nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
                            nir_intrinsic_interp_mode(intrin));
    nir_def_rewrite_uses(&intrin->def, centroid);
-   nir_instr_remove(instr);
+   nir_instr_remove(&intrin->instr);
    return true;
 }
 
@@ -475,17 +471,13 @@ lower_barycentric_per_sample(nir_builder *b,
  *     FRAGMENT_INTERPOLATION_OFFSET_BITS."
  */
 static bool
-lower_barycentric_at_offset(nir_builder *b, nir_instr *instr, void *data)
+lower_barycentric_at_offset(nir_builder *b, nir_intrinsic_instr *intrin,
+                            void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
    if (intrin->intrinsic != nir_intrinsic_load_barycentric_at_offset)
       return false;
 
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    assert(intrin->src[0].ssa);
    nir_def *offset =
@@ -537,13 +529,13 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
    if (key->multisample_fbo == BRW_NEVER) {
       nir_lower_single_sampled(nir);
    } else if (key->persample_interp == BRW_ALWAYS) {
-      nir_shader_instructions_pass(nir, lower_barycentric_per_sample,
+      nir_shader_intrinsics_pass(nir, lower_barycentric_per_sample,
                                    nir_metadata_block_index |
                                    nir_metadata_dominance,
                                    NULL);
    }
 
-   nir_shader_instructions_pass(nir, lower_barycentric_at_offset,
+   nir_shader_intrinsics_pass(nir, lower_barycentric_at_offset,
                                 nir_metadata_block_index |
                                 nir_metadata_dominance,
                                 NULL);
