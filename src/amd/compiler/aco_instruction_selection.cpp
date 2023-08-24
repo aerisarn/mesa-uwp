@@ -11446,7 +11446,7 @@ pops_await_overlapped_waves(isel_context* ctx)
 }
 
 static void
-create_vs_jump_to_tcs(isel_context* ctx)
+create_merged_jump_to_epilog(isel_context* ctx)
 {
    Builder bld(ctx->program, ctx->block);
    std::vector<Operand> regs;
@@ -11551,9 +11551,11 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
       }
    }
 
-   if (ctx.stage.hw == AC_HW_HULL_SHADER && ctx.stage.sw == SWStage::VS) {
+   if ((ctx.stage.sw == SWStage::VS &&
+        (ctx.stage.hw == AC_HW_HULL_SHADER || ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) ||
+       (ctx.stage.sw == SWStage::TES && ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) {
       assert(program->gfx_level >= GFX9);
-      create_vs_jump_to_tcs(&ctx);
+      create_merged_jump_to_epilog(&ctx);
    }
 
    cleanup_context(&ctx);
@@ -11689,13 +11691,15 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
       bool need_barrier = false, check_merged_wave_info = false, endif_merged_wave_info = false;
       if_context ic_merged_wave_info;
 
-      /* Handle separate compilation of VS+TCS on GFX9+. */
+      /* Handle separate compilation of VS+TCS and {VS,TES}+GS on GFX9+. */
       if (!ctx.program->info.is_monolithic) {
          assert(ctx.program->gfx_level >= GFX9);
-         if (ctx.stage.hw == AC_HW_HULL_SHADER && ctx.stage.sw == SWStage::VS) {
+         if ((ctx.stage.sw == SWStage::VS && (ctx.stage.hw == AC_HW_HULL_SHADER ||
+                                              ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) ||
+             (ctx.stage.sw == SWStage::TES && ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) {
             check_merged_wave_info = endif_merged_wave_info = true;
          } else {
-            assert(ctx.stage == tess_control_hs);
+            assert(ctx.stage == tess_control_hs || ctx.stage == geometry_gs);
             check_merged_wave_info = endif_merged_wave_info = true;
             need_barrier = true;
          }
