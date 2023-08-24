@@ -1184,7 +1184,7 @@ gl_nir_link_spirv(const struct gl_constants *consts,
       }
    }
 
-   if (!gl_nir_link_uniform_blocks(prog))
+   if (!gl_nir_link_uniform_blocks(consts, prog))
       return false;
 
    if (!gl_nir_link_uniforms(consts, prog, options->fill_parameters))
