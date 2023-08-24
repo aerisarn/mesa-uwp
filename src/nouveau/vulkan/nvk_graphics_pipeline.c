@@ -37,13 +37,6 @@ emit_pipeline_vp_state(struct nv_push *p,
 }
 
 static void
-emit_pipeline_rs_state(struct nv_push *p,
-                       const struct vk_rasterization_state *rs)
-{
-   P_IMMD(p, NV9097, SET_RASTER_INPUT, rs->rasterization_stream);
-}
-
-static void
 nvk_populate_fs_key(struct nak_fs_key *key,
                     const struct vk_multisample_state *ms,
                     const struct vk_graphics_pipeline_state *state)
@@ -397,7 +390,6 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
 
    if (state.ts) emit_pipeline_ts_state(&push, state.ts);
    if (state.vp) emit_pipeline_vp_state(&push, state.vp);
-   if (state.rs) emit_pipeline_rs_state(&push, state.rs);
    if (state.ms) emit_pipeline_ms_state(&push, state.ms, force_max_samples);
    emit_pipeline_ct_write_state(&push, state.cb, state.rp);
 
