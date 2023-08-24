@@ -1387,7 +1387,7 @@ lower_stack_instr_to_scratch(struct nir_builder *b, nir_instr *instr, void *data
          nir_store_global(b, addr,
                           nir_intrinsic_align_mul(stack),
                           data,
-                          BITFIELD_MASK(data->num_components));
+                          nir_component_mask(data->num_components));
       } else {
          assert(state->address_format == nir_address_format_32bit_offset);
          nir_store_scratch(b, data,
