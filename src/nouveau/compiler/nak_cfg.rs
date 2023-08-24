@@ -13,6 +13,8 @@ use std::slice;
 pub struct CFGNode<N> {
     node: N,
     dom: usize,
+    dom_pre_idx: usize,
+    dom_post_idx: usize,
     lph: usize,
     pred: Vec<usize>,
     succ: Vec<usize>,
@@ -124,6 +126,23 @@ fn find_common_dom<N>(
     a
 }
 
+fn dom_idx_dfs<N>(
+    nodes: &mut Vec<CFGNode<N>>,
+    dom_children: &Vec<Vec<usize>>,
+    id: usize,
+    count: &mut usize,
+) {
+    nodes[id].dom_pre_idx = *count;
+    *count += 1;
+
+    for c in dom_children[id].iter() {
+        dom_idx_dfs(nodes, dom_children, *c, count);
+    }
+
+    nodes[id].dom_post_idx = *count;
+    *count += 1;
+}
+
 fn calc_dominance<N>(nodes: &mut Vec<CFGNode<N>>) {
     nodes[0].dom = 0;
     loop {
@@ -146,6 +165,20 @@ fn calc_dominance<N>(nodes: &mut Vec<CFGNode<N>>) {
             break;
         }
     }
+
+    let mut dom_children = Vec::new();
+    dom_children.resize(nodes.len(), Vec::new());
+
+    for i in 1..nodes.len() {
+        let p = nodes[i].dom;
+        if p != i {
+            dom_children[p].push(i);
+        }
+    }
+
+    let mut count = 0_usize;
+    dom_idx_dfs(nodes, &dom_children, 0, &mut count);
+    debug_assert!(count == nodes.len() * 2);
 }
 
 fn loop_detect_dfs<N>(
@@ -208,6 +241,8 @@ impl<N> CFG<N> {
         let mut nodes = Vec::from_iter(nodes.into_iter().map(|n| CFGNode {
             node: n,
             dom: usize::MAX,
+            dom_pre_idx: usize::MAX,
+            dom_post_idx: 0,
             lph: usize::MAX,
             pred: Vec::new(),
             succ: Vec::new(),
@@ -248,12 +283,29 @@ impl<N> CFG<N> {
         self.nodes.len()
     }
 
+    pub fn dom_dfs_pre_index(&self, idx: usize) -> usize {
+        self.nodes[idx].dom_pre_idx
+    }
+
+    pub fn dom_dfs_post_index(&self, idx: usize) -> usize {
+        self.nodes[idx].dom_post_idx
+    }
+
     pub fn dom_parent_index(&self, idx: usize) -> Option<usize> {
         if idx == 0 {
             None
         } else {
             Some(self.nodes[idx].dom)
         }
+    }
+
+    pub fn dominates(&self, parent: usize, child: usize) -> bool {
+        /* If a block is unreachable, then dom_pre_idx == usize::MAX and
+         * dom_post_idx == 0.  This allows us to trivially handle unreachable
+         * blocks here with zero extra work.
+         */
+        self.dom_dfs_pre_index(child) >= self.dom_dfs_pre_index(parent)
+            && self.dom_dfs_post_index(child) <= self.dom_dfs_post_index(parent)
     }
 
     pub fn has_loop(&self) -> bool {
