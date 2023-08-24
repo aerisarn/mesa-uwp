@@ -181,6 +181,13 @@ agx_resource_setup(struct agx_device *dev, struct agx_resource *nresource)
       .sample_count_sa = MAX2(templ->nr_samples, 1),
       .levels = templ->last_level + 1,
       .writeable_image = templ->bind & PIPE_BIND_SHADER_IMAGE,
+
+      /* Ostensibly this should be based on the bind, but Gallium bind flags are
+       * notoriously unreliable. The only cost of setting this excessively is a
+       * bit of extra memory use for layered textures, which isn't worth trying
+       * to optimize.
+       */
+      .renderable = true,
    };
 }
 
