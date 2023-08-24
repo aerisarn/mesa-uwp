@@ -166,7 +166,7 @@ impl DeadCodePass {
         }
 
         if self.any_dead {
-            f.map_instrs(&|instr, _| self.map_instr(instr));
+            f.map_instrs(|instr, _| self.map_instr(instr));
         }
     }
 }

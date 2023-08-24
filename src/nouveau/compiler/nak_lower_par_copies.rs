@@ -180,7 +180,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
 
 impl Shader {
     pub fn lower_par_copies(&mut self) {
-        self.map_instrs(&|instr, _| -> MappedInstrs {
+        self.map_instrs(|instr, _| -> MappedInstrs {
             match instr.op {
                 Op::ParCopy(pc) => {
                     assert!(instr.pred.is_true());

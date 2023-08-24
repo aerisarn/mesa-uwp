@@ -311,7 +311,7 @@ impl<'a> LegalizeInstr<'a> {
 
 impl Shader {
     pub fn legalize(&mut self) {
-        self.map_instrs(&|instr, ssa_alloc| -> MappedInstrs {
+        self.map_instrs(|instr, ssa_alloc| -> MappedInstrs {
             LegalizeInstr::new(ssa_alloc).map(instr)
         });
     }

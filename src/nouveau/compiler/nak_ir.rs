@@ -3957,11 +3957,9 @@ impl BasicBlock {
         }
     }
 
-    pub fn map_instrs<
-        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
-    >(
+    fn map_instrs_priv(
         &mut self,
-        map: &F,
+        map: &mut impl FnMut(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
         ssa_alloc: &mut SSAValueAllocator,
     ) {
         let mut instrs = Vec::new();
@@ -4019,15 +4017,20 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn map_instrs<
-        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
-    >(
+    fn map_instrs_priv(
         &mut self,
-        map: &F,
+        map: &mut impl FnMut(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
     ) {
         for b in &mut self.blocks {
-            b.map_instrs(map, &mut self.ssa_alloc);
+            b.map_instrs_priv(map, &mut self.ssa_alloc);
         }
+    }
+
+    pub fn map_instrs(
+        &mut self,
+        mut map: impl FnMut(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
+    ) {
+        self.map_instrs_priv(&mut map);
     }
 }
 
@@ -4077,19 +4080,17 @@ impl Shader {
         }
     }
 
-    pub fn map_instrs<
-        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
-    >(
+    pub fn map_instrs(
         &mut self,
-        map: &F,
+        mut map: impl FnMut(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
     ) {
         for f in &mut self.functions {
-            f.map_instrs(map);
+            f.map_instrs_priv(&mut map);
         }
     }
 
     pub fn lower_vec_split(&mut self) {
-        self.map_instrs(&|instr: Box<Instr>, _| -> MappedInstrs {
+        self.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
                 Op::INeg(neg) => MappedInstrs::One(Instr::new_boxed(OpIAdd3 {
                     dst: neg.dst,
@@ -4112,7 +4113,7 @@ impl Shader {
     }
 
     pub fn lower_swap(&mut self) {
-        self.map_instrs(&|instr: Box<Instr>, _| -> MappedInstrs {
+        self.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
                 Op::Swap(swap) => {
                     let x = *swap.dsts[0].as_reg().unwrap();
@@ -4151,7 +4152,7 @@ impl Shader {
     }
 
     pub fn lower_mov_predicate(&mut self) {
-        self.map_instrs(&|instr: Box<Instr>, _| -> MappedInstrs {
+        self.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
             match &instr.op {
                 Op::Mov(mov) => {
                     assert!(mov.src.src_mod.is_none());
