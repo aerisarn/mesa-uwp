@@ -142,7 +142,7 @@ mme_hw_runner::submit_push()
 #if NVK_NEW_UAPI == 1
    struct drm_nouveau_exec_push push = {
       .va = push_bo->offset,
-      .va_len = nv_push_dw_count(&this->push) * 4,
+      .va_len = (uint32_t)nv_push_dw_count(&this->push) * 4,
    };
 
    struct drm_nouveau_sync sync = {
