@@ -335,7 +335,15 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
        (res->queue == zink_screen(ctx->base.screen)->gfx_queue || res->queue == VK_QUEUE_FAMILY_IGNORED))
       return;
    bool is_write = zink_resource_access_is_write(flags);
+   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
+   bool completed = zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw);
+   bool usage_matches = !completed && zink_resource_usage_matches(res, ctx->batch.state);
    VkCommandBuffer cmdbuf;
+   if (!usage_matches) {
+      res->obj->unordered_write = true;
+      if (is_write || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, ZINK_RESOURCE_ACCESS_RW))
+         res->obj->unordered_read = true;
+   }
    /* if current batch usage exists with ordered non-transfer access, never promote
     * this avoids layout dsync
     * TODO: figure out how to link up unordered layout -> ordered layout and delete
@@ -359,7 +367,6 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    }
    assert(new_layout);
    bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
-   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
    if (HAS_SYNC2) {
       VkImageMemoryBarrier2 imb;
       zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline);
