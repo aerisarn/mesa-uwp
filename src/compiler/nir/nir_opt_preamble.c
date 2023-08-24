@@ -234,17 +234,10 @@ can_move_instr(nir_instr *instr, opt_preamble_ctx *ctx)
        * TODO: Replace derivatives with 0 instead, if real apps hit this.
        */
       nir_alu_instr *alu = nir_instr_as_alu(instr);
-      switch (alu->op) {
-      case nir_op_fddx:
-      case nir_op_fddy:
-      case nir_op_fddx_fine:
-      case nir_op_fddy_fine:
-      case nir_op_fddx_coarse:
-      case nir_op_fddy_coarse:
+      if (nir_op_is_derivative(alu->op))
          return false;
-      default:
+      else
          return can_move_srcs(instr, ctx);
-      }
    }
    case nir_instr_type_intrinsic:
       return can_move_intrinsic(nir_instr_as_intrinsic(instr), ctx);
