@@ -1432,6 +1432,12 @@ nir_op_is_selection(nir_op op)
    return (nir_op_infos[op].algebraic_properties & NIR_OP_IS_SELECTION) != 0;
 }
 
+static inline bool
+nir_op_is_derivative(nir_op op)
+{
+   return (nir_op_infos[op].algebraic_properties & NIR_OP_IS_DERIVATIVE) != 0;
+}
+
 typedef struct nir_alu_instr {
    /** Base instruction */
    nir_instr instr;
