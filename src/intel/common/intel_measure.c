@@ -80,7 +80,8 @@ intel_measure_init(struct intel_measure_device *device)
        * warning on the output filehandle.
        */
 
-      /* default batch_size allows for 64k renders in a single batch */
+      /* default batch_size allows for 32k renders in a single batch */
+      const int MINIMUM_BATCH_SIZE = 1024;
       const int DEFAULT_BATCH_SIZE = 64 * 1024;
       config.batch_size = DEFAULT_BATCH_SIZE;
 
@@ -88,6 +89,7 @@ intel_measure_init(struct intel_measure_device *device)
        * csv.  Overflow may occur for offscreen workloads or large 'interval'
        * settings.
        */
+      const int MINIMUM_BUFFER_SIZE = 1024;
       const int DEFAULT_BUFFER_SIZE = 64 * 1024;
       config.buffer_size = DEFAULT_BUFFER_SIZE;
 
@@ -179,12 +181,12 @@ intel_measure_init(struct intel_measure_device *device)
       if (batch_size_s) {
          batch_size_s += 11;
          const int batch_size = atoi(batch_size_s);
-         if (batch_size < DEFAULT_BATCH_SIZE) {
-            fprintf(stderr, "INTEL_MEASURE minimum batch_size is 4k: "
+         if (batch_size < MINIMUM_BATCH_SIZE ) {
+            fprintf(stderr, "INTEL_MEASURE minimum batch_size is 1k: "
                     "%d\n", batch_size);
             abort();
          }
-         if (batch_size > DEFAULT_BATCH_SIZE * 1024) {
+         if (batch_size > MINIMUM_BATCH_SIZE * 4 * 1024) {
             fprintf(stderr, "INTEL_MEASURE batch_size limited to 4M: "
                     "%d\n", batch_size);
             abort();
@@ -196,11 +198,11 @@ intel_measure_init(struct intel_measure_device *device)
       if (buffer_size_s) {
          buffer_size_s += 12;
          const int buffer_size = atoi(buffer_size_s);
-         if (buffer_size < DEFAULT_BUFFER_SIZE) {
+         if (buffer_size < MINIMUM_BUFFER_SIZE) {
             fprintf(stderr, "INTEL_MEASURE minimum buffer_size is 1k: "
                     "%d\n", DEFAULT_BUFFER_SIZE);
          }
-         if (buffer_size > DEFAULT_BUFFER_SIZE * 1024) {
+         if (buffer_size > MINIMUM_BUFFER_SIZE * 1024) {
             fprintf(stderr, "INTEL_MEASURE buffer_size limited to 1M: "
                     "%d\n", buffer_size);
          }
