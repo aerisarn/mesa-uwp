@@ -2807,25 +2807,20 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs, const struct radv_g
 }
 
 static void
-radv_pipeline_emit_vgt_gs_mode(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                               const struct radv_graphics_pipeline *pipeline)
+radv_emit_vgt_gs_mode(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                      const struct radv_shader *last_vgt_api_shader)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
-   const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
-   const struct radv_shader *vs = pipeline->base.shaders[MESA_SHADER_TESS_EVAL]
-                                     ? pipeline->base.shaders[MESA_SHADER_TESS_EVAL]
-                                     : pipeline->base.shaders[MESA_SHADER_VERTEX];
+   const struct radv_shader_info *info = &last_vgt_api_shader->info;
    unsigned vgt_primitiveid_en = 0;
    uint32_t vgt_gs_mode = 0;
 
-   if (radv_pipeline_has_ngg(pipeline))
+   if (info->is_ngg)
       return;
 
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
-      const struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
-
-      vgt_gs_mode = ac_vgt_gs_mode(gs->info.gs.vertices_out, pdevice->rad_info.gfx_level);
-   } else if (outinfo->export_prim_id || vs->info.uses_prim_id) {
+   if (info->stage == MESA_SHADER_GEOMETRY) {
+      vgt_gs_mode = ac_vgt_gs_mode(info->gs.vertices_out, pdevice->rad_info.gfx_level);
+   } else if (info->outinfo.export_prim_id || info->uses_prim_id) {
       vgt_gs_mode = S_028A40_MODE(V_028A40_GS_SCENARIO_A);
       vgt_primitiveid_en |= S_028A84_PRIMITIVEID_EN(1);
    }
@@ -3611,7 +3606,7 @@ radv_pipeline_emit_pm4(const struct radv_device *device, struct radv_graphics_pi
    struct radv_vgt_shader_key vgt_shader_key = radv_pipeline_generate_vgt_shader_key(device, pipeline);
 
    radv_pipeline_emit_blend_state(ctx_cs, pipeline, blend);
-   radv_pipeline_emit_vgt_gs_mode(device, ctx_cs, pipeline);
+   radv_emit_vgt_gs_mode(device, ctx_cs, pipeline->base.shaders[pipeline->last_vgt_api_stage]);
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_VERTEX)) {
       radv_emit_vertex_shader(device, ctx_cs, cs, pipeline->base.shaders[MESA_SHADER_VERTEX]);
