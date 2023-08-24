@@ -3150,10 +3150,12 @@ update_resource_refs_for_stage(struct zink_context *ctx, gl_shader_stage stage)
                   continue;
             }
             zink_batch_resource_usage_set(batch, res, is_write, is_buffer);
-            if (is_write || !res->obj->is_buffer)
-               res->obj->unordered_read = res->obj->unordered_write = false;
-            else
-               res->obj->unordered_read = false;
+            if (!ctx->unordered_blitting) {
+               if (is_write || !res->obj->is_buffer)
+                  res->obj->unordered_read = res->obj->unordered_write = false;
+               else
+                  res->obj->unordered_read = false;
+            }
          }
       }
    }
@@ -3176,7 +3178,8 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
          struct zink_resource *res = zink_resource(ctx->vertex_buffers[i].buffer.resource);
          if (res) {
             zink_batch_resource_usage_set(batch, res, false, true);
-            res->obj->unordered_read = false;
+            if (!ctx->unordered_blitting)
+               res->obj->unordered_read = false;
          }
       }
       if (ctx->curr_program)
@@ -3188,10 +3191,12 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
          util_dynarray_foreach(&ctx->di.bindless[i].resident, struct zink_bindless_descriptor*, bd) {
             struct zink_resource *res = zink_descriptor_surface_resource(&(*bd)->ds);
             zink_batch_resource_usage_set(&ctx->batch, res, (*bd)->access & PIPE_IMAGE_ACCESS_WRITE, res->obj->is_buffer);
-            if ((*bd)->access & PIPE_IMAGE_ACCESS_WRITE || !res->obj->is_buffer)
-               res->obj->unordered_read = res->obj->unordered_write = false;
-            else
-               res->obj->unordered_read = false;
+            if (!ctx->unordered_blitting) {
+               if ((*bd)->access & PIPE_IMAGE_ACCESS_WRITE || !res->obj->is_buffer)
+                  res->obj->unordered_read = res->obj->unordered_write = false;
+               else
+                  res->obj->unordered_read = false;
+            }
          }
       }
    }
