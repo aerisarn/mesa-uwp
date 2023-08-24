@@ -640,7 +640,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
-         if (info->uses_view_index) {
+         if (!info->is_monolithic || info->uses_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
@@ -655,7 +655,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.force_vrs_rates, AC_UD_FORCE_VRS_RATES);
          }
 
-         if (has_shader_query)
+         if (!info->is_monolithic || has_shader_query)
             add_ud_arg(args, 1, AC_ARG_INT, &args->shader_query_state, AC_UD_SHADER_QUERY_STATE);
 
          if (info->is_ngg) {
