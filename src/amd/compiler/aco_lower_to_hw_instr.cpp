@@ -2303,6 +2303,8 @@ lower_to_hw_instr(Program* program)
    Block* discard_exit_block = NULL;
    Block* discard_pops_done_and_exit_block = NULL;
 
+   int end_with_regs_block_index = -1;
+
    bool should_dealloc_vgprs = dealloc_vgprs(program);
 
    for (int block_idx = program->blocks.size() - 1; block_idx >= 0; block_idx--) {
@@ -2868,6 +2870,10 @@ lower_to_hw_instr(Program* program)
                        V_008DFC_SQ_EXP_MRT + 22, false);
                break;
             }
+            case aco_opcode::p_end_with_regs: {
+               end_with_regs_block_index = block->index;
+               break;
+            }
             default: break;
             }
          } else if (instr->isBranch()) {
@@ -3045,6 +3051,20 @@ lower_to_hw_instr(Program* program)
       }
 
       block->instructions = std::move(ctx.instructions);
+   }
+
+   /* If block with p_end_with_regs is not the last block (i.e. p_exit_early_if may append exit
+    * block at last), create an exit block for it to branch to.
+    */
+   int last_block_index = program->blocks.size() - 1;
+   if (end_with_regs_block_index >= 0 && end_with_regs_block_index != last_block_index) {
+      Block* exit_block = program->create_and_insert_block();
+      Block* end_with_regs_block = &program->blocks[end_with_regs_block_index];
+      exit_block->linear_preds.push_back(end_with_regs_block->index);
+      end_with_regs_block->linear_succs.push_back(exit_block->index);
+
+      Builder bld(program, end_with_regs_block);
+      bld.sopp(aco_opcode::s_branch, exit_block->index);
    }
 }
 
