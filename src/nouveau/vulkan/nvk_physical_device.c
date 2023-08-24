@@ -389,7 +389,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .extendedDynamicState2PatchControlPoints = true,
 
       /* VK_EXT_extended_dynamic_state3 */
-      .extendedDynamicState3TessellationDomainOrigin = false,
+      .extendedDynamicState3TessellationDomainOrigin = true,
       .extendedDynamicState3DepthClampEnable = true,
       .extendedDynamicState3PolygonMode = true,
       .extendedDynamicState3RasterizationSamples = false,

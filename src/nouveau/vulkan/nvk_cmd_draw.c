@@ -930,6 +930,15 @@ nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
    cmd->state.gfx.pipeline = pipeline;
    vk_cmd_set_dynamic_graphics_state(&cmd->vk, &pipeline->dynamic);
 
+   /* When a pipeline with tess shaders is bound we need to re-upload the
+    * tessellation parameters at flush_ts_state, as the domain origin can be
+    * dynamic.
+    */
+   if (nvk_shader_is_enabled(&pipeline->base.shaders[MESA_SHADER_TESS_EVAL])) {
+      BITSET_SET(cmd->vk.dynamic_graphics_state.dirty,
+                 MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
+   }
+
    struct nv_push *p = nvk_cmd_buffer_push(cmd, pipeline->push_dw_count);
    nv_push_raw(p, pipeline->push_data, pipeline->push_dw_count);
 }
@@ -999,10 +1008,33 @@ nvk_flush_ts_state(struct nvk_cmd_buffer *cmd)
 {
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS)) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
       P_IMMD(p, NV9097, SET_PATCH, dyn->ts.patch_control_points);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
+      const struct nvk_graphics_pipeline *pipeline= cmd->state.gfx.pipeline;
+      const struct nvk_shader *shader =
+         &pipeline->base.shaders[MESA_SHADER_TESS_EVAL];
+
+      if (nvk_shader_is_enabled(shader)) {
+         enum nak_ts_prims prims = shader->info.ts.prims;
+         /* When the origin is lower-left, we have to flip the winding order */
+         if (dyn->ts.domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
+            if (prims == NAK_TS_PRIMS_TRIANGLES_CW)
+               prims = NAK_TS_PRIMS_TRIANGLES_CCW;
+            else if (prims == NAK_TS_PRIMS_TRIANGLES_CCW)
+               prims = NAK_TS_PRIMS_TRIANGLES_CW;
+         }
+         P_MTHD(p, NV9097, SET_TESSELLATION_PARAMETERS);
+         P_NV9097_SET_TESSELLATION_PARAMETERS(p, {
+            shader->info.ts.domain,
+            shader->info.ts.spacing,
+            prims
+         });
+      }
    }
 }
 

@@ -64,6 +64,12 @@ nvk_shader_address(const struct nvk_shader *shader)
    return shader->upload_addr + shader->upload_padding;
 }
 
+static inline bool
+nvk_shader_is_enabled(const struct nvk_shader *shader)
+{
+   return shader->upload_size > 0;
+}
+
 VkShaderStageFlags nvk_nak_stages(const struct nv_device_info *info);
 
 uint64_t

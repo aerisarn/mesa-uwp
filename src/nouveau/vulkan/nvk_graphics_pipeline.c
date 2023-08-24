@@ -114,27 +114,6 @@ static const uint32_t mesa_to_nv9097_shader_type[] = {
 };
 
 static void
-emit_tessellation_paramaters(struct nv_push *p,
-                             const struct nvk_shader *shader,
-                             const struct vk_tessellation_state *state)
-{
-   enum nak_ts_prims prims = shader->info.ts.prims;
-   /* When the origin is lower-left, we have to flip the winding order */
-   if (state->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
-      if (prims == NAK_TS_PRIMS_TRIANGLES_CW)
-         prims = NAK_TS_PRIMS_TRIANGLES_CCW;
-      else if (prims == NAK_TS_PRIMS_TRIANGLES_CCW)
-         prims = NAK_TS_PRIMS_TRIANGLES_CW;
-   }
-   P_MTHD(p, NV9097, SET_TESSELLATION_PARAMETERS);
-   P_NV9097_SET_TESSELLATION_PARAMETERS(p, {
-      shader->info.ts.domain,
-      shader->info.ts.spacing,
-      prims
-   });
-}
-
-static void
 merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
 {
    /* The Vulkan 1.0.38 spec, section 21.1 Tessellator says:
@@ -267,11 +246,11 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
       uint32_t idx = mesa_to_nv9097_shader_type[stage];
 
       P_IMMD(p, NV9097, SET_PIPELINE_SHADER(idx), {
-         .enable  = shader->upload_size > 0,
+         .enable  = nvk_shader_is_enabled(shader),
          .type    = mesa_to_nv9097_shader_type[stage],
       });
 
-      if (shader->upload_size == 0)
+      if (!nvk_shader_is_enabled(shader))
          continue;
 
       if (stage != MESA_SHADER_FRAGMENT)
@@ -294,6 +273,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
       switch (stage) {
       case MESA_SHADER_VERTEX:
       case MESA_SHADER_GEOMETRY:
+      case MESA_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_EVAL:
          break;
 
       case MESA_SHADER_FRAGMENT:
@@ -327,13 +308,6 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
           */
          force_max_samples = shader->info.fs.reads_sample_mask ||
                              shader->info.fs.uses_sample_shading;
-         break;
-
-      case MESA_SHADER_TESS_CTRL:
-         break;
-
-      case MESA_SHADER_TESS_EVAL:
-         emit_tessellation_paramaters(p, shader, state.ts);
          break;
 
       default:
