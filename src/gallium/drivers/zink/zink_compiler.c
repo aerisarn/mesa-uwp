@@ -2578,7 +2578,12 @@ rewrite_read_as_0(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_input)
+   bool is_load = false;
+   bool is_input = false;
+   bool is_interp = false;
+   if (!filter_io_instr(intr, &is_load, &is_input, &is_interp))
+      return false;
+   if (!is_load)
       return false;
    unsigned location = nir_intrinsic_io_semantics(intr).location;
    if (location != var->data.location)
