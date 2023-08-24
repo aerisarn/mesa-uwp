@@ -1358,6 +1358,12 @@ typedef enum {
     * comparison.
     */
    NIR_OP_IS_SELECTION = (1 << 2),
+
+   /**
+    * Operation where a screen-space derivative is taken of src[0]. Must not be
+    * moved into non-uniform control flow.
+    */
+   NIR_OP_IS_DERIVATIVE = (1 << 3),
 } nir_op_algebraic_property;
 
 /* vec16 is the widest ALU op in NIR, making the max number of input of ALU
