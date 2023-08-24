@@ -368,7 +368,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    if (HAS_SYNC2) {
       VkImageMemoryBarrier2 imb;
       zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline);
-      if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
+      if (!res->obj->access_stage || completed)
          imb.srcAccessMask = 0;
       if (res->obj->needs_zs_evaluate)
          imb.pNext = &res->obj->zs_evaluate;
@@ -393,7 +393,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    } else {
       VkImageMemoryBarrier imb;
       zink_resource_image_barrier_init(&imb, res, new_layout, flags, pipeline);
-      if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
+      if (!res->obj->access_stage || completed)
          imb.srcAccessMask = 0;
       if (res->obj->needs_zs_evaluate)
          imb.pNext = &res->obj->zs_evaluate;
