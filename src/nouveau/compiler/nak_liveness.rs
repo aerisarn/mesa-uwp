@@ -7,7 +7,7 @@ use crate::bitset::BitSet;
 use crate::nak_ir::*;
 
 use std::cell::RefCell;
-use std::cmp::max;
+use std::cmp::{max, Ord, Ordering};
 use std::collections::{hash_set, HashMap, HashSet};
 
 struct LiveSet {
@@ -203,12 +203,16 @@ impl BlockLiveness for SimpleBlockLiveness {
 }
 
 pub struct SimpleLiveness {
+    ssa_block_ip: HashMap<SSAValue, (usize, usize)>,
     blocks: Vec<SimpleBlockLiveness>,
 }
 
 impl SimpleLiveness {
     pub fn for_function(func: &Function) -> SimpleLiveness {
-        let mut l = SimpleLiveness { blocks: Vec::new() };
+        let mut l = SimpleLiveness {
+            ssa_block_ip: HashMap::new(),
+            blocks: Vec::new(),
+        };
         let mut live_in = Vec::new();
 
         for (bi, b) in func.blocks.iter().enumerate() {
@@ -219,6 +223,7 @@ impl SimpleLiveness {
                     bl.add_use(*ssa, ip);
                 });
                 instr.for_each_ssa_def(|ssa| {
+                    l.ssa_block_ip.insert(*ssa, (bi, ip));
                     bl.add_def(*ssa);
                 });
             }
@@ -250,6 +255,23 @@ impl SimpleLiveness {
         }
 
         l
+    }
+}
+
+impl SimpleLiveness {
+    pub fn def_block_ip(&self, ssa: &SSAValue) -> (usize, usize) {
+        *self.ssa_block_ip.get(ssa).unwrap()
+    }
+
+    pub fn interferes(&self, a: &SSAValue, b: &SSAValue) -> bool {
+        let (ab, ai) = self.def_block_ip(a);
+        let (bb, bi) = self.def_block_ip(b);
+
+        match ab.cmp(&bb).then(ai.cmp(&bi)) {
+            Ordering::Equal => true,
+            Ordering::Less => self.block_live(bb).is_live_after_ip(a, bi),
+            Ordering::Greater => self.block_live(ab).is_live_after_ip(b, ai),
+        }
     }
 }
 
