@@ -507,6 +507,15 @@ vn_AllocateMemory(VkDevice device,
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
 
+   /* see vn_physical_device_init_memory_properties */
+   VkMemoryAllocateInfo local_info;
+   if (pAllocateInfo->memoryTypeIndex ==
+       dev->physical_device->incoherent_cached) {
+      local_info = *pAllocateInfo;
+      local_info.memoryTypeIndex = dev->physical_device->coherent_uncached;
+      pAllocateInfo = &local_info;
+   }
+
    const VkExportMemoryAllocateInfo *export_info = NULL;
    const VkImportAndroidHardwareBufferInfoANDROID *import_ahb_info = NULL;
    const VkImportMemoryFdInfoKHR *import_fd_info = NULL;

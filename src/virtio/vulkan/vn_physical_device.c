@@ -715,18 +715,49 @@ vn_physical_device_init_memory_properties(
    vn_call_vkGetPhysicalDeviceMemoryProperties2(
       instance, vn_physical_device_to_handle(physical_dev), props2);
 
+   /* Kernel makes every mapping coherent. If a memory type is truly
+    * incoherent, it's better to remove the host-visible flag than silently
+    * making it coherent. However, for app compatibility purpose, when
+    * coherent-cached memory type is unavailable, we emulate the first cached
+    * memory type with the first coherent memory type.
+    */
+   uint32_t coherent_uncached = VK_MAX_MEMORY_TYPES;
+   uint32_t incoherent_cached = VK_MAX_MEMORY_TYPES;
+
+   for (uint32_t i = 0; i < props1->memoryTypeCount; i++) {
+      const VkMemoryPropertyFlags flags =
+         props1->memoryTypes[i].propertyFlags;
+      const bool coherent = flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+      const bool cached = flags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+      if (coherent && cached) {
+         coherent_uncached = VK_MAX_MEMORY_TYPES;
+         incoherent_cached = VK_MAX_MEMORY_TYPES;
+         break;
+      } else if (coherent && coherent_uncached == VK_MAX_MEMORY_TYPES) {
+         coherent_uncached = i;
+      } else if (cached && incoherent_cached == VK_MAX_MEMORY_TYPES) {
+         incoherent_cached = i;
+      }
+   }
+
    for (uint32_t i = 0; i < props1->memoryTypeCount; i++) {
       VkMemoryType *type = &props1->memoryTypes[i];
-
-      /* Kernel makes every mapping coherent.  If a memory type is truly
-       * incoherent, it's better to remove the host-visible flag than silently
-       * making it coherent.
-       */
-      if (!(type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+      if (i == incoherent_cached) {
+         /* Only get here if no coherent+cached type is available, and the
+          * spec guarantees that there is at least one coherent type, so it
+          * must be coherent+uncached, hence the index is always valid.
+          */
+         assert(coherent_uncached < props1->memoryTypeCount);
+         type->heapIndex = props1->memoryTypes[coherent_uncached].heapIndex;
+      } else if (!(type->propertyFlags &
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
          type->propertyFlags &= ~(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                   VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
       }
    }
+
+   physical_dev->coherent_uncached = coherent_uncached;
+   physical_dev->incoherent_cached = incoherent_cached;
 }
 
 static void
