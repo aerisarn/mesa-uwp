@@ -208,6 +208,34 @@ agx_validate_predecessors(agx_block *block)
    return true;
 }
 
+static bool
+agx_validate_sr(const agx_instr *I)
+{
+   bool none = (I->op == AGX_OPCODE_GET_SR);
+   bool coverage = (I->op == AGX_OPCODE_GET_SR_COVERAGE);
+   bool barrier = false; /* unused so far, will be GET_SR_BARRIER */
+
+   /* Filter get_sr instructions */
+   if (!(none || coverage || barrier))
+      return true;
+
+   switch (I->sr) {
+   case AGX_SR_ACTIVE_THREAD_INDEX_IN_QUAD:
+   case AGX_SR_ACTIVE_THREAD_INDEX_IN_SUBGROUP:
+   case AGX_SR_COVERAGE_MASK:
+   case AGX_SR_IS_ACTIVE_THREAD:
+      return coverage;
+
+   case AGX_SR_OPFIFO_CMD:
+   case AGX_SR_OPFIFO_DATA_L:
+   case AGX_SR_OPFIFO_DATA_H:
+      return barrier;
+
+   default:
+      return none;
+   }
+}
+
 void
 agx_validate(agx_context *ctx, const char *after)
 {
@@ -259,6 +287,12 @@ agx_validate(agx_context *ctx, const char *after)
       if (!agx_validate_sources(I)) {
          fprintf(stderr, "Invalid sources form after %s\n", after);
          agx_print_instr(I, stderr);
+         fail = true;
+      }
+
+      if (!agx_validate_sr(I)) {
+         fprintf(stderr, "Invalid SR after %s\n", after);
+         agx_print_instr(I, stdout);
          fail = true;
       }
    }

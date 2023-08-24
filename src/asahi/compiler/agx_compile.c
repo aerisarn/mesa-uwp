@@ -1038,15 +1038,15 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_get_sr_to(b, dst, AGX_SR_INPUT_SAMPLE_MASK);
 
    case nir_intrinsic_load_sample_mask:
-      return agx_get_sr_to(b, dst, AGX_SR_COVERAGE_MASK);
+      return agx_get_sr_coverage_to(b, dst, AGX_SR_COVERAGE_MASK);
 
    case nir_intrinsic_load_helper_invocation:
       /* Compare special register to zero. We could lower this in NIR (letting
        * us fold in an inot) but meh?
        */
-      return agx_icmpsel_to(b, dst, agx_get_sr(b, 32, AGX_SR_IS_ACTIVE_THREAD),
-                            agx_zero(), agx_immediate(1), agx_zero(),
-                            AGX_ICOND_UEQ);
+      return agx_icmpsel_to(
+         b, dst, agx_get_sr_coverage(b, 32, AGX_SR_IS_ACTIVE_THREAD),
+         agx_zero(), agx_immediate(1), agx_zero(), AGX_ICOND_UEQ);
 
    case nir_intrinsic_load_vertex_id:
       assert(b->shader->stage == MESA_SHADER_VERTEX);

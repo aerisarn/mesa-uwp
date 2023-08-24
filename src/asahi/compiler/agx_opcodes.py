@@ -310,7 +310,9 @@ op("local_atomic",
 op("wait", (0x38, 0xFF, 2, _), dests = 0,
       can_eliminate = False, imms = [SCOREBOARD], schedule_class = "invalid")
 
-op("get_sr", (0x72, 0x7F | L, 4, _), dests = 1, imms = [SR])
+for (suffix, schedule_class) in [("", "none"), ("_coverage", "coverage")]:
+    op(f"get_sr{suffix}", (0x72, 0x7F | L, 4, _), dests = 1, imms = [SR],
+       schedule_class = schedule_class, can_reorder = schedule_class == "none")
 
 op("sample_mask", (0x7fc1, 0xffff, 6, _), dests = 0, srcs = 2,
     can_eliminate = False, schedule_class = "coverage")
