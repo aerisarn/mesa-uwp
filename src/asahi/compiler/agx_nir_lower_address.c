@@ -9,7 +9,6 @@
 /* Results of pattern matching */
 struct match {
    nir_scalar base, offset;
-   bool has_offset;
    bool sign_extend;
 
    /* Signed shift. A negative shift indicates that the offset needs ushr
