@@ -678,6 +678,32 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
          } else if (previous_stage == MESA_SHADER_MESH) {
             declare_ms_input_vgprs(args);
          }
+
+         if (!info->is_monolithic) {
+            /* SGPRs */
+            ac_add_preserved(&args->ac, &args->ac.ring_offsets);
+            ac_add_preserved(&args->ac, &args->ac.gs2vs_offset);
+            ac_add_preserved(&args->ac, &args->ac.merged_wave_info);
+            ac_add_preserved(&args->ac, &args->ac.tess_offchip_offset);
+
+            if (gfx_level >= GFX11) {
+               ac_add_preserved(&args->ac, &args->ac.gs_attr_offset);
+            } else {
+               ac_add_preserved(&args->ac, &args->ac.scratch_offset);
+            }
+
+            ac_add_preserved(&args->ac, &args->descriptor_sets[0]);
+            ac_add_preserved(&args->ac, &args->ac.push_constants);
+            ac_add_preserved(&args->ac, &args->ac.view_index);
+            ac_add_preserved(&args->ac, &args->shader_query_state);
+
+            /* VGPRs */
+            ac_add_preserved(&args->ac, &args->ac.gs_vtx_offset[0]);
+            ac_add_preserved(&args->ac, &args->ac.gs_vtx_offset[1]);
+            ac_add_preserved(&args->ac, &args->ac.gs_prim_id);
+            ac_add_preserved(&args->ac, &args->ac.gs_invocation_id);
+            ac_add_preserved(&args->ac, &args->ac.gs_vtx_offset[2]);
+         }
       } else {
          declare_global_input_sgprs(info, user_sgpr_info, args);
 
