@@ -835,21 +835,14 @@ gather_tex_info(nir_tex_instr *instr, nir_shader *shader)
 static void
 gather_alu_info(nir_alu_instr *instr, nir_shader *shader)
 {
-   switch (instr->op) {
-   case nir_op_fddx:
-   case nir_op_fddy:
-      shader->info.uses_fddx_fddy = true;
-      FALLTHROUGH;
-   case nir_op_fddx_fine:
-   case nir_op_fddy_fine:
-   case nir_op_fddx_coarse:
-   case nir_op_fddy_coarse:
-      if (shader->info.stage == MESA_SHADER_FRAGMENT)
-         shader->info.fs.needs_quad_helper_invocations = true;
-      break;
-   default:
-      break;
+   if (nir_op_is_derivative(instr->op) &&
+       shader->info.stage == MESA_SHADER_FRAGMENT) {
+
+      shader->info.fs.needs_quad_helper_invocations = true;
    }
+
+   if (instr->op == nir_op_fddx || instr->op == nir_op_fddy)
+      shader->info.uses_fddx_fddy = true;
 
    const nir_op_info *info = &nir_op_infos[instr->op];
 
