@@ -25,18 +25,6 @@
 #include "nvk_clc397.h"
 
 static void
-emit_pipeline_ts_state(struct nv_push *p,
-                       const struct vk_tessellation_state *ts)
-{
-}
-
-static void
-emit_pipeline_vp_state(struct nv_push *p,
-                       const struct vk_viewport_state *vp)
-{
-}
-
-static void
 nvk_populate_fs_key(struct nak_fs_key *key,
                     const struct vk_multisample_state *ms,
                     const struct vk_graphics_pipeline_state *state)
@@ -388,8 +376,6 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
 
    emit_pipeline_xfb_state(&push, &last_geom->info.vtg.xfb);
 
-   if (state.ts) emit_pipeline_ts_state(&push, state.ts);
-   if (state.vp) emit_pipeline_vp_state(&push, state.vp);
    if (state.ms) emit_pipeline_ms_state(&push, state.ms, force_max_samples);
    emit_pipeline_ct_write_state(&push, state.cb, state.rp);
 
