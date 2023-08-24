@@ -221,7 +221,7 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
 
    if (intr->intrinsic == nir_intrinsic_store_output) {
       /* Only write components that actually exist */
-      uint16_t write_mask = BITFIELD_MASK(comps);
+      uint16_t write_mask = (uint16_t)BITFIELD_MASK(comps);
 
       /* Delete stores to nonexistent render targets */
       if (logical_format == PIPE_FORMAT_NONE)

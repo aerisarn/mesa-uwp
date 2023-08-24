@@ -384,7 +384,7 @@ lower_xfb_output(nir_builder *b, nir_intrinsic_instr *intr,
 
    nir_def *value = nir_channels(
       b, intr->src[0].ssa, BITFIELD_MASK(num_components) << start_component);
-   nir_store_global(b, addr, 4, value, BITFIELD_MASK(num_components));
+   nir_store_global(b, addr, 4, value, nir_component_mask(num_components));
 }
 
 static bool

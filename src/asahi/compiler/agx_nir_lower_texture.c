@@ -186,9 +186,9 @@ load_rgb32(nir_builder *b, nir_tex_instr *tex, nir_def *coordinate)
       nir_iand_imm(b, nir_ushr_imm(b, desc_hi, 2), BITFIELD64_MASK(36));
    nir_def *base = nir_ishl_imm(b, base_shr4, 4);
 
-   nir_def *raw = nir_load_constant_agx(b, 3, tex->def.bit_size, base,
-                                        nir_imul_imm(b, coordinate, 3),
-                                        .format = AGX_INTERNAL_FORMAT_I32);
+   nir_def *raw = nir_load_constant_agx(
+      b, 3, tex->def.bit_size, base, nir_imul_imm(b, coordinate, 3),
+      .format = (enum pipe_format)AGX_INTERNAL_FORMAT_I32);
 
    /* Set alpha to 1 (in the appropriate format) */
    bool is_float = nir_alu_type_get_base_type(tex->dest_type) == nir_type_float;
