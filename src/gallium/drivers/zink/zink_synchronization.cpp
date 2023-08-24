@@ -172,7 +172,7 @@ zink_resource_image_needs_barrier(struct zink_resource *res, VkImageLayout new_l
           zink_resource_access_is_write(flags);
 }
 
-bool
+void
 zink_resource_image_barrier_init(VkImageMemoryBarrier *imb, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)
@@ -197,10 +197,9 @@ zink_resource_image_barrier_init(VkImageMemoryBarrier *imb, struct zink_resource
       res->obj->image,
       isr
    };
-   return res->obj->needs_zs_evaluate || zink_resource_image_needs_barrier(res, new_layout, flags, pipeline);
 }
 
-static bool
+static void
 zink_resource_image_barrier2_init(VkImageMemoryBarrier2 *imb, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)
@@ -227,7 +226,6 @@ zink_resource_image_barrier2_init(VkImageMemoryBarrier2 *imb, struct zink_resour
       res->obj->image,
       isr
    };
-   return res->obj->needs_zs_evaluate || zink_resource_image_needs_barrier(res, new_layout, flags, pipeline);
 }
 
 static inline bool
