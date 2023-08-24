@@ -160,34 +160,23 @@ pub struct SimpleBlockLiveness {
 }
 
 impl SimpleBlockLiveness {
-    fn add_def(&mut self, val: &SSAValue) {
-        self.defs.insert(val.idx().try_into().unwrap());
-    }
-
-    fn add_use(&mut self, val: &SSAValue, ip: usize) {
-        self.uses.insert(val.idx().try_into().unwrap());
-        self.last_use.insert(val.idx(), ip);
-    }
-
-    fn for_block(block: &BasicBlock) -> Self {
-        let mut bl = Self {
+    fn new() -> Self {
+        Self {
             defs: BitSet::new(),
             uses: BitSet::new(),
             last_use: HashMap::new(),
             live_in: BitSet::new(),
             live_out: BitSet::new(),
-        };
-
-        for (ip, instr) in block.instrs.iter().enumerate() {
-            instr.for_each_ssa_use(|ssa| {
-                bl.add_use(ssa, ip);
-            });
-            instr.for_each_ssa_def(|ssa| {
-                bl.add_def(ssa);
-            });
         }
+    }
 
-        bl
+    fn add_def(&mut self, ssa: SSAValue) {
+        self.defs.insert(ssa.idx().try_into().unwrap());
+    }
+
+    fn add_use(&mut self, ssa: SSAValue, ip: usize) {
+        self.uses.insert(ssa.idx().try_into().unwrap());
+        self.last_use.insert(ssa.idx(), ip);
     }
 }
 
@@ -222,8 +211,19 @@ impl SimpleLiveness {
         let mut l = SimpleLiveness { blocks: Vec::new() };
         let mut live_in = Vec::new();
 
-        for b in func.blocks.iter() {
-            l.blocks.push(SimpleBlockLiveness::for_block(b));
+        for (bi, b) in func.blocks.iter().enumerate() {
+            let mut bl = SimpleBlockLiveness::new();
+
+            for (ip, instr) in b.instrs.iter().enumerate() {
+                instr.for_each_ssa_use(|ssa| {
+                    bl.add_use(*ssa, ip);
+                });
+                instr.for_each_ssa_def(|ssa| {
+                    bl.add_def(*ssa);
+                });
+            }
+
+            l.blocks.push(bl);
             live_in.push(BitSet::new());
         }
         assert!(l.blocks.len() == func.blocks.len());
@@ -308,6 +308,13 @@ pub struct NextUseBlockLiveness {
 }
 
 impl NextUseBlockLiveness {
+    fn new(num_instrs: usize) -> Self {
+        Self {
+            num_instrs: num_instrs,
+            ssa_map: HashMap::new(),
+        }
+    }
+
     fn entry_mut(&mut self, ssa: SSAValue) -> &mut SSAUseDef {
         self.ssa_map.entry(ssa).or_insert_with(|| SSAUseDef {
             defined: false,
@@ -315,23 +322,12 @@ impl NextUseBlockLiveness {
         })
     }
 
-    fn for_block(block: &BasicBlock) -> Self {
-        let mut bl = Self {
-            num_instrs: block.instrs.len(),
-            ssa_map: HashMap::new(),
-        };
+    fn add_def(&mut self, ssa: SSAValue) {
+        self.entry_mut(ssa).add_def();
+    }
 
-        for (ip, instr) in block.instrs.iter().enumerate() {
-            instr.for_each_ssa_use(|ssa| {
-                bl.entry_mut(*ssa).add_in_block_use(ip);
-            });
-
-            instr.for_each_ssa_def(|ssa| {
-                bl.entry_mut(*ssa).add_def();
-            });
-        }
-
-        bl
+    fn add_use(&mut self, ssa: SSAValue, ip: usize) {
+        self.entry_mut(ssa).add_in_block_use(ip);
     }
 }
 
@@ -376,8 +372,20 @@ pub struct NextUseLiveness {
 impl NextUseLiveness {
     pub fn for_function(func: &Function) -> NextUseLiveness {
         let mut blocks = Vec::new();
-        for b in &func.blocks {
-            let bl = NextUseBlockLiveness::for_block(b);
+        for (bi, b) in func.blocks.iter().enumerate() {
+            let mut bl = NextUseBlockLiveness::new(b.instrs.len());
+
+            for (ip, instr) in b.instrs.iter().enumerate() {
+                instr.for_each_ssa_use(|ssa| {
+                    bl.add_use(*ssa, ip);
+                });
+
+                instr.for_each_ssa_def(|ssa| {
+                    bl.add_def(*ssa);
+                });
+            }
+
+            debug_assert!(bi == blocks.len());
             blocks.push(RefCell::new(bl));
         }
 
