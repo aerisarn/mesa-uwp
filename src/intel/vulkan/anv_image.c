@@ -674,6 +674,14 @@ add_aux_surface_if_supported(struct anv_device *device,
    if (anv_image_is_sparse(image))
       return VK_SUCCESS;
 
+   uint32_t binding;
+   if (image->vk.drm_format_mod == DRM_FORMAT_MOD_INVALID ||
+       isl_drm_modifier_has_aux(image->vk.drm_format_mod)) {
+      binding = ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane;
+   } else {
+      binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
+   }
+
    if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
       /* We don't advertise that depth buffers could be used as storage
        * images.
@@ -722,8 +730,7 @@ add_aux_surface_if_supported(struct anv_device *device,
       }
 
       result = add_surface(device, image, &image->planes[plane].aux_surface,
-                           ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane,
-                           ANV_OFFSET_IMPLICIT);
+                           binding, ANV_OFFSET_IMPLICIT);
       if (result != VK_SUCCESS)
          return result;
 
@@ -798,13 +805,6 @@ add_aux_surface_if_supported(struct anv_device *device,
       }
 
       if (!device->physical->has_implicit_ccs) {
-         enum anv_image_memory_binding binding =
-            ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane;
-
-         if (image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID &&
-             !isl_drm_modifier_has_aux(image->vk.drm_format_mod))
-            binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
-
          result = add_surface(device, image, &image->planes[plane].aux_surface,
                               binding, offset);
          if (result != VK_SUCCESS)
@@ -823,8 +823,7 @@ add_aux_surface_if_supported(struct anv_device *device,
       image->planes[plane].aux_usage = ISL_AUX_USAGE_MCS;
 
       result = add_surface(device, image, &image->planes[plane].aux_surface,
-                           ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane,
-                           ANV_OFFSET_IMPLICIT);
+                           binding, ANV_OFFSET_IMPLICIT);
       if (result != VK_SUCCESS)
          return result;
 
