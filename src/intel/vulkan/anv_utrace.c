@@ -104,9 +104,9 @@ anv_device_utrace_emit_copy_ts_buffer(struct u_trace_context *utctx,
       container_of(utctx, struct anv_device, ds.trace_context);
    struct anv_utrace_submit *submit = cmdstream;
    struct anv_address from_addr = (struct anv_address) {
-      .bo = ts_from, .offset = from_offset * sizeof(uint64_t) };
+      .bo = ts_from, .offset = from_offset * sizeof(union anv_utrace_timestamp) };
    struct anv_address to_addr = (struct anv_address) {
-      .bo = ts_to, .offset = to_offset * sizeof(uint64_t) };
+      .bo = ts_to, .offset = to_offset * sizeof(union anv_utrace_timestamp) };
 
    anv_genX(device->info, emit_so_memcpy)(&submit->memcpy_state,
                                           to_addr, from_addr,
