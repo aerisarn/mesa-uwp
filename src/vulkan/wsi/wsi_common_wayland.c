@@ -2272,7 +2272,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    if (result != VK_SUCCESS)
       goto fail;
 
-   if (chain->base.present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+   VkPresentModeKHR present_mode = wsi_swapchain_get_present_mode(wsi_device, pCreateInfo);
+   if (present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
       chain->tearing_control =
          wp_tearing_control_manager_v1_get_tearing_control(wsi_wl_surface->display->tearing_control_manager,
                                                            wsi_wl_surface->surface);
@@ -2351,7 +2352,7 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->base.release_images = wsi_wl_swapchain_release_images;
    chain->base.set_present_mode = wsi_wl_swapchain_set_present_mode;
    chain->base.wait_for_present = wsi_wl_swapchain_wait_for_present;
-   chain->base.present_mode = wsi_swapchain_get_present_mode(wsi_device, pCreateInfo);
+   chain->base.present_mode = present_mode;
    chain->base.image_count = num_images;
    chain->extent = pCreateInfo->imageExtent;
    chain->vk_format = pCreateInfo->imageFormat;
