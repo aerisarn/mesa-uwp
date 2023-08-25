@@ -1,3 +1,33 @@
+# The logic for each $FARM is as follows:
+#
+# If the disable file exists, we are disabling the farm, or it's already
+# disabled:
+#   - exists: [ .ci-farms-disabled/$FARM ]
+#     when: never
+#
+# Otherwise, changing the disable file means removing it, so we are
+# re-enabling the farm:
+#   - changes: [ .ci-farms-disabled/$FARM ]
+#     if: '$CI_PIPELINE_SOURCE != "schedule"'
+#     when: on_success
+# Note: the "manual" variant of each farm rules changes the above to `never`,
+# so that jobs meant to be manual don't run in re-enablement MRs. This is the
+# only difference between `.$FARM-farm-rules` and `.$FARM-farm-manual-rules`.
+#
+# If any other disable file is modified, we are disabling/re-enabling another
+# farm:
+#   - changes: [ .ci-farms-disabled/* ]
+#     if: '$CI_PIPELINE_SOURCE != "schedule"'
+#     when: never
+#
+# The `not schedule` condition is there to make sure scheduled pipelines
+# contains all the jobs, as `changes` conditions in scheduled pipelines are
+# always evaluated to `true`.
+#
+# The "fallback", if none of these rules match, is usually the list of files
+# that are used by a driver. See the various `.$DRIVER-rules` in the
+# corresponding `src/**/ci/gitlab-ci.yml`.
+
 .microsoft-farm-rules:
   rules:
     - exists: [ .ci-farms-disabled/microsoft ]  # 1. Is disabled, never run
