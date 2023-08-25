@@ -14,6 +14,14 @@ is_block_empty(nir_block *block)
 }
 
 static bool
+is_block_singular(nir_block *block)
+{
+   return nir_cf_node_is_last(&block->cf_node) &&
+          (exec_list_is_empty(&block->instr_list) ||
+           (exec_list_is_singular(&block->instr_list) && nir_block_ends_in_jump(block)));
+}
+
+static bool
 nir_block_ends_in_continue(nir_block *block)
 {
    if (exec_list_is_empty(&block->instr_list))
@@ -196,33 +204,42 @@ opt_loop_terminator(nir_if *nif)
  *
  */
 static bool
-opt_loop_last_block(nir_block *block, bool is_loop_last_block)
+opt_loop_last_block(nir_block *block, bool is_trivial_continue, bool is_trivial_break)
 {
    /* If this block has no predecessors, let nir_opt_dead_cf() do the cleanup */
    if (block->predecessors->entries == 0)
       return false;
 
-   const bool has_break = nir_block_ends_in_break(block);
-   const bool has_continue = nir_block_ends_in_continue(block) || is_loop_last_block;
-
-   /* This is already handled by opt_loop_last_block(is_loop_last_block=false) */
-   if (is_loop_last_block && has_break)
-      return false;
-
-   if (!has_continue && !has_break)
-      return false;
-
    bool progress = false;
+   bool has_break = nir_block_ends_in_break(block);
+   bool has_continue = nir_block_ends_in_continue(block);
 
-   /* First remove any "trivial" continue, i.e. those that are at the tail
-    * of a loop where we can just delete the continue instruction and
-    * control-flow will naturally take us back to the top of the loop.
+   /* Remove any "trivial" break and continue, i.e. those that are at the tail
+    * of a CF-list where we can just delete the instruction and
+    * control-flow will naturally take us to the same target block.
     */
-   if (is_loop_last_block && nir_block_ends_in_continue(block)) {
+   if ((has_break && is_trivial_break) || (has_continue && is_trivial_continue)) {
       nir_lower_phis_to_regs_block(block->successors[0]);
       nir_instr_remove_v(nir_block_last_instr(block));
-      progress = true;
+      return true;
    }
+
+   if (!nir_block_ends_in_jump(block)) {
+      has_break = is_trivial_break;
+      has_continue = is_trivial_continue;
+   } else if (is_trivial_continue || is_trivial_break) {
+      /* This block ends in a jump that cannot be removed because the implicit
+       * fallthrough leads to a different target block.
+       *
+       * We already optimized this block's jump with the predecessors' when visiting
+       * this block with opt_loop_last_block(block, is_trivial_* = false, false).
+       */
+      return false;
+   }
+
+   /* Nothing to do. */
+   if (!has_continue && !has_break)
+      return false;
 
    /* Walk backwards and check for previous IF statements whether one of the
     * branch legs ends with an equal jump instruction as this block.
@@ -257,10 +274,8 @@ opt_loop_last_block(nir_block *block, bool is_loop_last_block)
 
       if (merge_into_then) {
          nir_cf_reinsert(&tmp, nir_after_block(then_block));
-         nir_instr_remove_v(nir_block_last_instr(else_block));
       } else {
          nir_cf_reinsert(&tmp, nir_after_block(else_block));
-         nir_instr_remove_v(nir_block_last_instr(then_block));
       }
 
       /* Because we split the current block, the pointer is not valid anymore. */
@@ -268,13 +283,13 @@ opt_loop_last_block(nir_block *block, bool is_loop_last_block)
       progress = true;
    }
 
-   /* Revisit these blocks with is_loop_last_block=true to optimize with the implicit continue. */
-   if (is_loop_last_block && is_block_empty(block)) {
+   /* Revisit the predecessor blocks in order to remove implicit jump instructions. */
+   if (is_block_singular(block)) {
       nir_cf_node *prev = nir_cf_node_prev(&block->cf_node);
       if (prev && prev->type == nir_cf_node_if) {
          nir_if *nif = nir_cf_node_as_if(prev);
-         progress |= opt_loop_last_block(nir_if_last_then_block(nif), true);
-         progress |= opt_loop_last_block(nir_if_last_else_block(nif), true);
+         progress |= opt_loop_last_block(nir_if_last_then_block(nif), has_continue, has_break);
+         progress |= opt_loop_last_block(nir_if_last_else_block(nif), has_continue, has_break);
       }
    }
 
@@ -289,7 +304,7 @@ opt_loop_cf_list(struct exec_list *cf_list)
       switch (cf_node->type) {
       case nir_cf_node_block: {
          nir_block *block = nir_cf_node_as_block(cf_node);
-         progress |= opt_loop_last_block(block, false);
+         progress |= opt_loop_last_block(block, false, false);
          break;
       }
 
@@ -306,7 +321,7 @@ opt_loop_cf_list(struct exec_list *cf_list)
          nir_loop *loop = nir_cf_node_as_loop(cf_node);
          assert(!nir_loop_has_continue_construct(loop));
          progress |= opt_loop_cf_list(&loop->body);
-         progress |= opt_loop_last_block(nir_loop_last_block(loop), true);
+         progress |= opt_loop_last_block(nir_loop_last_block(loop), true, false);
          break;
       }
 
