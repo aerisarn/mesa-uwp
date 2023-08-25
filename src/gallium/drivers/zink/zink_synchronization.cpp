@@ -344,7 +344,6 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    }
    /* if current batch usage exists with ordered non-transfer access, never promote
     * this avoids layout dsync
-    * TODO: figure out how to link up unordered layout -> ordered layout and delete
     */
    if (zink_resource_usage_matches(res, ctx->batch.state) && !ctx->unordered_blitting &&
        (!res->obj->unordered_read || !res->obj->unordered_write)) {
