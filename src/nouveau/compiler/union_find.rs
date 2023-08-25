@@ -13,6 +13,80 @@ struct Node<K> {
     parent: K,
 }
 
+pub struct UnionFind {
+    nodes: Vec<Node<u32>>,
+}
+
+impl UnionFind {
+    pub fn new() -> UnionFind {
+        UnionFind { nodes: Vec::new() }
+    }
+
+    pub fn make_set(&mut self) -> u32 {
+        let k = self.nodes.len().try_into().unwrap();
+        self.nodes.push(Node { rank: 0, parent: k });
+        k
+    }
+
+    fn node(&self, k: u32) -> &Node<u32> {
+        &self.nodes[usize::try_from(k).unwrap()]
+    }
+
+    fn node_mut(&mut self, k: u32) -> &mut Node<u32> {
+        &mut self.nodes[usize::try_from(k).unwrap()]
+    }
+
+    fn find_set(&self, k: u32) -> u32 {
+        let p = self.node(k).parent;
+        if k == p {
+            return k;
+        }
+
+        self.find_set(p)
+    }
+
+    fn find_set_mut(&mut self, k: u32) -> u32 {
+        let p = self.node(k).parent;
+        if k == p {
+            return k;
+        }
+
+        let p = self.find_set_mut(p);
+        self.node_mut(k).parent = p;
+        p
+    }
+
+    fn link(&mut self, x: u32, y: u32) {
+        if self.node(x).rank > self.node(y).rank {
+            self.node_mut(y).parent = x;
+        } else if self.node(x).rank < self.node(y).rank {
+            self.node_mut(x).parent = y;
+        } else {
+            self.node_mut(x).parent = y;
+            self.node_mut(y).rank += 1;
+        }
+    }
+
+    pub fn equiv(&self, x: u32, y: u32) -> bool {
+        self.find_set(x) == self.find_set(y)
+    }
+
+    pub fn union(&mut self, x: u32, y: u32) -> bool {
+        if x == y {
+            return false;
+        }
+
+        let x = self.find_set_mut(x);
+        let y = self.find_set_mut(y);
+        if x == y {
+            return false;
+        }
+
+        self.link(x, y);
+        true
+    }
+}
+
 pub struct HashSetForest<K> {
     nodes: HashMap<K, UnsafeCell<Node<K>>>,
 }
