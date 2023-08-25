@@ -3221,6 +3221,24 @@ stall(struct zink_context *ctx)
    zink_batch_reset_all(ctx);
 }
 
+void
+zink_reset_ds3_states(struct zink_context *ctx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (!screen->info.have_EXT_extended_dynamic_state3)
+      return;
+   if (screen->have_full_ds3)
+      ctx->ds3_states = UINT32_MAX;
+   else
+      ctx->ds3_states = BITFIELD_MASK(ZINK_DS3_BLEND_A2C);
+   if (!screen->info.dynamic_state3_feats.extendedDynamicState3AlphaToOneEnable)
+      ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_BLEND_A21);
+   if (!screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
+      ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE_ON);
+   if (screen->driver_workarounds.no_linestipple)
+      ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE);
+}
+
 static void
 flush_batch(struct zink_context *ctx, bool sync)
 {
@@ -3249,18 +3267,8 @@ flush_batch(struct zink_context *ctx, bool sync)
 
       if (ctx->oom_stall)
          stall(ctx);
-      if (screen->info.have_EXT_extended_dynamic_state3) {
-         if (screen->have_full_ds3)
-            ctx->ds3_states = UINT32_MAX;
-         else
-            ctx->ds3_states = BITFIELD_MASK(ZINK_DS3_BLEND_A2C);
-         if (!screen->info.dynamic_state3_feats.extendedDynamicState3AlphaToOneEnable)
-            ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_BLEND_A21);
-         if (!screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
-            ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE_ON);
-         if (screen->driver_workarounds.no_linestipple)
-            ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE);
-      }
+      zink_reset_ds3_states(ctx);
+
       ctx->oom_flush = false;
       ctx->oom_stall = false;
       ctx->dd.bindless_bound = false;

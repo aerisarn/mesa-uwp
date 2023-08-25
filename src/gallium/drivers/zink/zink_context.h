@@ -99,7 +99,8 @@ zink_fence_wait(struct pipe_context *ctx);
 
 void
 zink_wait_on_batch(struct zink_context *ctx, uint64_t batch_id);
-
+void
+zink_reset_ds3_states(struct zink_context *ctx);
 bool
 zink_check_batch_completion(struct zink_context *ctx, uint64_t batch_id);
 VkCommandBuffer
