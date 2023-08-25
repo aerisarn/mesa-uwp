@@ -1677,10 +1677,6 @@ vk_graphics_pipeline_state_copy(const struct vk_device *device,
       *new_sample_locations = *old_state->ms->sample_locations;
    }
 
-   if (new_ms) {
-      new_ms->sample_locations = new_sample_locations;
-   }
-
 #define COPY_STATE_IF_NEEDED(STATE, type, s) \
    if (new_##s) { \
       *new_##s = *old_state->s; \
@@ -1688,6 +1684,10 @@ vk_graphics_pipeline_state_copy(const struct vk_device *device,
    state->s = new_##s;
 
    FOREACH_STATE_GROUP(COPY_STATE_IF_NEEDED)
+
+   if (new_ms) {
+      new_ms->sample_locations = new_sample_locations;
+   }
 
    state->shader_stages = old_state->shader_stages;
    BITSET_COPY(state->dynamic, old_state->dynamic);
