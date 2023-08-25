@@ -1065,7 +1065,9 @@ can_apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_i
       return false;
    } else if (sel.size() == 4) {
       return true;
-   } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel.size() == 1 && !sel.sign_extend()) {
+   } else if ((instr->opcode == aco_opcode::v_cvt_f32_u32 ||
+               instr->opcode == aco_opcode::v_cvt_f32_i32) &&
+              sel.size() == 1 && !sel.sign_extend()) {
       return true;
    } else if (instr->opcode == aco_opcode::v_lshlrev_b32 && instr->operands[0].isConstant() &&
               sel.offset() == 0 &&
@@ -1119,7 +1121,9 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
 
    if (sel.size() == 4) {
       /* full dword selection */
-   } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel.size() == 1 && !sel.sign_extend()) {
+   } else if ((instr->opcode == aco_opcode::v_cvt_f32_u32 ||
+               instr->opcode == aco_opcode::v_cvt_f32_i32) &&
+              sel.size() == 1 && !sel.sign_extend()) {
       switch (sel.offset()) {
       case 0: instr->opcode = aco_opcode::v_cvt_f32_ubyte0; break;
       case 1: instr->opcode = aco_opcode::v_cvt_f32_ubyte1; break;
