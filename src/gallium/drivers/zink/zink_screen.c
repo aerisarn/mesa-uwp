@@ -2835,6 +2835,8 @@ init_driver_workarounds(struct zink_screen *screen)
          screen->driver_workarounds.disable_optimized_compile = true;
       break;
    }
+   if (!screen->resizable_bar)
+      screen->info.have_EXT_host_image_copy = false;
 }
 
 static void
