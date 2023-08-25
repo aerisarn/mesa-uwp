@@ -10689,7 +10689,6 @@ export_fs_mrt_color(isel_context* ctx, const struct aco_ps_epilog_info* info, Te
       values[i] = Operand(colors[i]);
    }
 
-   unsigned target = V_008DFC_SQ_EXP_MRT + slot;
    unsigned enabled_channels = 0;
    aco_opcode compr_op = aco_opcode::num_opcodes;
    bool compr = false;
@@ -10831,7 +10830,7 @@ export_fs_mrt_color(isel_context* ctx, const struct aco_ps_epilog_info* info, Te
 
    for (unsigned i = 0; i < 4; i++)
       mrt->out[i] = values[i];
-   mrt->target = target;
+   mrt->target = V_008DFC_SQ_EXP_MRT;
    mrt->enabled_channels = enabled_channels;
    mrt->compr = compr;
 
@@ -12856,29 +12855,29 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
 
    /* Export all color render targets */
    struct aco_export_mrt mrts[MAX_DRAW_BUFFERS];
-   uint8_t exported_mrts = 0;
+   unsigned mrt_num = 0;
 
    if (einfo->broadcast_last_cbuf) {
       for (unsigned i = 0; i <= einfo->broadcast_last_cbuf; i++) {
-         if (export_fs_mrt_color(&ctx, einfo, colors[0], i, &mrts[i]))
-            exported_mrts |= 1 << i;
+         struct aco_export_mrt* mrt = &mrts[mrt_num];
+         if (export_fs_mrt_color(&ctx, einfo, colors[0], i, mrt))
+            mrt->target += mrt_num++;
       }
    } else {
       for (unsigned i = 0; i < MAX_DRAW_BUFFERS; i++) {
-         if (export_fs_mrt_color(&ctx, einfo, colors[i], i, &mrts[i]))
-            exported_mrts |= 1 << i;
+         struct aco_export_mrt* mrt = &mrts[mrt_num];
+         if (export_fs_mrt_color(&ctx, einfo, colors[i], i, mrt))
+            mrt->target += mrt_num++;
       }
    }
 
-   if (exported_mrts) {
+   if (mrt_num) {
       if (ctx.options->gfx_level >= GFX11 && einfo->mrt0_is_dual_src) {
-         struct aco_export_mrt* mrt0 = (exported_mrts & BITFIELD_BIT(0)) ? &mrts[0] : NULL;
-         struct aco_export_mrt* mrt1 = (exported_mrts & BITFIELD_BIT(1)) ? &mrts[1] : NULL;
-         create_fs_dual_src_export_gfx11(&ctx, mrt0, mrt1);
+         assert(mrt_num == 2);
+         create_fs_dual_src_export_gfx11(&ctx, &mrts[0], &mrts[1]);
       } else {
-         u_foreach_bit (i, exported_mrts) {
+         for (unsigned i = 0; i < mrt_num; i++)
             export_mrt(&ctx, &mrts[i]);
-         }
       }
    } else if (!has_mrtz_export && !einfo->skip_null_export) {
       create_fs_null_export(&ctx);
