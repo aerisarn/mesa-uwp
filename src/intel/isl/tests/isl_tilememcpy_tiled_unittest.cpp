@@ -38,7 +38,8 @@ typedef uint8_t *(*swizzle_func_t)(const uint8_t *base_addr, uint32_t x_B, uint3
 #define TILE_COORDINATES  std::make_tuple(0, 128, 0, 32), \
                           std::make_tuple(19, 20, 25, 32), \
                           std::make_tuple(59, 83, 13, 32), \
-                          std::make_tuple(10, 12, 5, 8)
+                          std::make_tuple(10, 12, 5, 8), \
+                          std::make_tuple(245, 521, 5, 8)
 
 struct tile_swizzle_ops {
    enum isl_tiling tiling;
@@ -105,9 +106,12 @@ protected:
    TILE_CONV conv;
    struct tile_swizzle_ops ops;
    bool print_results;
+   struct isl_tile_info tile_info;
 
 public:
-   void test_setup (TILE_CONV convert, enum isl_tiling tiling_fmt, enum isl_format format);
+   void test_setup(TILE_CONV convert, enum isl_tiling tiling_fmt,
+              enum isl_format format,
+              uint32_t max_width, uint32_t max_height);
    void TearDown();
    uint32_t swizzle_bitops(uint32_t num, uint8_t field,
                            uint8_t curr_ind, uint8_t swizzle_ind);
@@ -128,31 +132,39 @@ class tile4Fixture : public tileTFixture,
                                                                      int, int>>
 {};
 
-void tileTFixture::test_setup (TILE_CONV convert, enum isl_tiling tiling_fmt, enum isl_format format)
+void tileTFixture::test_setup(TILE_CONV convert,
+                         enum isl_tiling tiling_fmt,
+                         enum isl_format format,
+                         uint32_t max_width,
+                         uint32_t max_height)
 {
    print_results = debug_get_bool_option("ISL_TEST_DEBUG", false);
 
-   struct isl_tile_info tile_info;
    const struct isl_format_layout *fmtl = isl_format_get_layout(format);
    conv = convert;
    ops.tiling = tiling_fmt;
 
    isl_tiling_get_info(tiling_fmt, ISL_SURF_DIM_2D, ISL_MSAA_LAYOUT_NONE,
 		       fmtl->bpb, 1 , &tile_info);
-   tile_width = tile_info.phys_extent_B.w;
-   tile_height = tile_info.phys_extent_B.h;
+
+   tile_width = DIV_ROUND_UP(max_width, tile_info.logical_extent_el.w) *
+                tile_info.phys_extent_B.w;
+   tile_height = DIV_ROUND_UP(max_height, tile_info.logical_extent_el.h) *
+                 tile_info.phys_extent_B.h;
    tile_sz = tile_width * tile_height;
 
-   buf_src = (uint8_t *) std::calloc(tile_sz, sizeof(uint8_t));
+   buf_src = (uint8_t *) calloc(tile_sz, sizeof(uint8_t));
    ASSERT_TRUE(buf_src != nullptr);
 
-   buf_dst = (uint8_t *) std::calloc(tile_sz, sizeof(uint8_t));
+   buf_dst = (uint8_t *) calloc(tile_sz, sizeof(uint8_t));
    ASSERT_TRUE(buf_src != nullptr);
 
    for (uint8_t i = 0; i < ARRAY_SIZE(swizzle_opers); i++)
       if (ops.tiling == swizzle_opers[i].tiling)
          ops.linear_to_tile_swizzle = swizzle_opers[i].linear_to_tile_swizzle;
 
+   memset(buf_src, 0xcc, tile_sz);
+   memset(buf_dst, 0xcc, tile_sz);
 }
 
 void tileTFixture::TearDown()
@@ -222,19 +234,31 @@ void tileTFixture::convert_texture(uint8_t x1, uint8_t x2, uint8_t y1, uint8_t y
 void tileTFixture::compare_conv_result(uint8_t x1, uint8_t x2,
                                        uint8_t y1, uint8_t y2)
 {
+   uint32_t x_max = (uint32_t) align(x2, tile_info.logical_extent_el.w);
+   uint32_t y_max = (uint32_t) align(y2, tile_info.logical_extent_el.h);
 
-   for(auto y = y1; y < y2; y++) {
-      for (auto x = x1; x < x2; x++) {
+   for(uint32_t y = 0; y < y_max; y++) {
+      for (uint32_t x = 0; x < x_max; x++) {
 
-         if (conv == LIN_TO_TILE)
-            EXPECT_EQ(*(buf_src + LIN_OFF(y, tile_width, x)),
-                      *(ops.linear_to_tile_swizzle(buf_dst, x, y)))
-                      << "Not matching for x:" << x << "and y:" << y << std::endl;
-         else
-            EXPECT_EQ(*(buf_dst + LIN_OFF(y, tile_width, x)),
-                      *(ops.linear_to_tile_swizzle(buf_src, x, y)))
-                      << "Not matching for x:" << x << "and y:" << y << std::endl;
-
+         if (x < x1 || x > x2 || y < y1 || y > y2) {
+            if (conv == LIN_TO_TILE) {
+               EXPECT_EQ(*(buf_src + LIN_OFF(y, tile_width, x)), 0xcc)
+                  << "Not matching for x:" << x << "and y:" << y << std::endl;
+            } else {
+               EXPECT_EQ(*(buf_dst + LIN_OFF(y, tile_width, x)), 0xcc)
+                  << "Not matching for x:" << x << "and y:" << y << std::endl;
+            }
+         } else {
+            if (conv == LIN_TO_TILE) {
+               EXPECT_EQ(*(buf_src + LIN_OFF(y, tile_width, x)),
+                         *(ops.linear_to_tile_swizzle(buf_dst, x, y)))
+                  << "Not matching for x:" << x << "and y:" << y << std::endl;
+            } else {
+               EXPECT_EQ(*(buf_dst + LIN_OFF(y, tile_width, x)),
+                         *(ops.linear_to_tile_swizzle(buf_src, x, y)))
+                  << "Not matching for x:" << x << "and y:" << y << std::endl;
+            }
+         }
       }
    }
 }
@@ -250,7 +274,7 @@ void tileTFixture::run_test(uint8_t x1, uint8_t x2,
 TEST_P(tileYFixture, lintotile)
 {
     auto [x1, x2, y1, y2] = GetParam();
-    test_setup(LIN_TO_TILE, ISL_TILING_Y0, IMAGE_FORMAT);
+    test_setup(LIN_TO_TILE, ISL_TILING_Y0, IMAGE_FORMAT, x2, y2);
     if (print_results)
        printf("Coordinates: x1=%d x2=%d y1=%d y2=%d \n", x1, x2, y1, y2);
     run_test(x1, x2, y1, y2);
@@ -259,7 +283,7 @@ TEST_P(tileYFixture, lintotile)
 TEST_P(tileYFixture, tiletolin)
 {
     auto [x1, x2, y1, y2] = GetParam();
-    test_setup(TILE_TO_LIN, ISL_TILING_Y0, IMAGE_FORMAT);
+    test_setup(TILE_TO_LIN, ISL_TILING_Y0, IMAGE_FORMAT, x2, y2);
     if (print_results)
        printf("Coordinates: x1=%d x2=%d y1=%d y2=%d \n", x1, x2, y1, y2);
     run_test(x1, x2, y1, y2);
@@ -268,7 +292,7 @@ TEST_P(tileYFixture, tiletolin)
 TEST_P(tile4Fixture, lintotile)
 {
     auto [x1, x2, y1, y2] = GetParam();
-    test_setup(LIN_TO_TILE, ISL_TILING_4, IMAGE_FORMAT);
+    test_setup(LIN_TO_TILE, ISL_TILING_4, IMAGE_FORMAT, x2, y2);
     if (print_results)
        printf("Coordinates: x1=%d x2=%d y1=%d y2=%d \n", x1, x2, y1, y2);
     run_test(x1, x2, y1, y2);
@@ -277,7 +301,7 @@ TEST_P(tile4Fixture, lintotile)
 TEST_P(tile4Fixture, tiletolin)
 {
     auto [x1, x2, y1, y2] = GetParam();
-    test_setup(TILE_TO_LIN, ISL_TILING_4, IMAGE_FORMAT);
+    test_setup(TILE_TO_LIN, ISL_TILING_4, IMAGE_FORMAT, x2, y2);
     if (print_results)
        printf("Coordinates: x1=%d x2=%d y1=%d y2=%d \n", x1, x2, y1, y2);
     run_test(x1, x2, y1, y2);
