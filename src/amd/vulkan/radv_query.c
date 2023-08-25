@@ -2080,6 +2080,26 @@ radv_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
    }
 }
 
+void
+radv_write_timestamp(struct radv_cmd_buffer *cmd_buffer, uint64_t va, VkPipelineStageFlags2 stage)
+{
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+   if (stage == VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT) {
+      radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+      radeon_emit(cs, COPY_DATA_COUNT_SEL | COPY_DATA_WR_CONFIRM | COPY_DATA_SRC_SEL(COPY_DATA_TIMESTAMP) |
+                         COPY_DATA_DST_SEL(V_370_MEM));
+      radeon_emit(cs, 0);
+      radeon_emit(cs, 0);
+      radeon_emit(cs, va);
+      radeon_emit(cs, va >> 32);
+   } else {
+      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                                 V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_TIMESTAMP, va, 0,
+                                 cmd_buffer->gfx9_eop_bug_va);
+   }
+}
+
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 stage, VkQueryPool queryPool,
                         uint32_t query)
@@ -2106,19 +2126,7 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 28 * num_queries);
 
    for (unsigned i = 0; i < num_queries; i++) {
-      if (stage == VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT) {
-         radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-         radeon_emit(cs, COPY_DATA_COUNT_SEL | COPY_DATA_WR_CONFIRM | COPY_DATA_SRC_SEL(COPY_DATA_TIMESTAMP) |
-                            COPY_DATA_DST_SEL(V_370_MEM));
-         radeon_emit(cs, 0);
-         radeon_emit(cs, 0);
-         radeon_emit(cs, query_va);
-         radeon_emit(cs, query_va >> 32);
-      } else {
-         si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
-                                    V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_TIMESTAMP, query_va, 0,
-                                    cmd_buffer->gfx9_eop_bug_va);
-      }
+      radv_write_timestamp(cmd_buffer, query_va, stage);
       query_va += pool->stride;
    }
 
