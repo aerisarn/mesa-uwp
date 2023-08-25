@@ -30,6 +30,7 @@
 #include "drm-uapi/drm_fourcc.h"
 
 #include "anv_private.h"
+#include "common/intel_aux_map.h"
 #include "util/u_debug.h"
 #include "vk_util.h"
 #include "util/u_math.h"
@@ -641,6 +642,31 @@ add_aux_state_tracking_buffer(struct anv_device *device,
                              &image->planes[plane].fast_clear_memory_range);
 }
 
+static VkResult MUST_CHECK
+add_compression_control_buffer(struct anv_device *device,
+                               struct anv_image *image,
+                               uint32_t plane,
+                               uint32_t binding,
+                               uint64_t offset)
+{
+   assert(device->info->has_aux_map);
+
+   uint64_t ratio = intel_aux_get_main_to_aux_ratio(device->aux_map_ctx);
+   assert(image->planes[plane].primary_surface.isl.size_B % ratio == 0);
+   uint64_t size = image->planes[plane].primary_surface.isl.size_B / ratio;
+
+   /* The diagram in the Bspec section, Memory Compression - Gfx12 (44930),
+    * shows that the CCS is indexed in 256B chunks for TGL, 4K chunks for MTL.
+    * When modifiers are in use, the 4K alignment requirement of the
+    * PLANE_AUX_DIST::Auxiliary Surface Distance field must be considered
+    * (Bspec 50379). Keep things simple and just use 4K.
+    */
+   uint32_t alignment = 4096;
+
+   return image_binding_grow(device, image, binding, offset, size, alignment,
+                             &image->planes[plane].compr_ctrl_memory_range);
+}
+
 /**
  * The return code indicates whether creation of the VkImage should continue
  * or fail, not whether the creation of the aux surface succeeded.  If the aux
@@ -734,6 +760,14 @@ add_aux_surface_if_supported(struct anv_device *device,
       if (result != VK_SUCCESS)
          return result;
 
+      if (anv_image_plane_uses_aux_map(device, image, plane)) {
+         result = add_compression_control_buffer(device, image, plane,
+                                                 binding,
+                                                 ANV_OFFSET_IMPLICIT);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
       if (image->planes[plane].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT)
          return add_aux_state_tracking_buffer(device, image, plane);
    } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -743,6 +777,14 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
 
       image->planes[plane].aux_usage = ISL_AUX_USAGE_STC_CCS;
+
+      if (device->info->has_aux_map) {
+         result = add_compression_control_buffer(device, image, plane,
+                                                 binding,
+                                                 ANV_OFFSET_IMPLICIT);
+         if (result != VK_SUCCESS)
+            return result;
+      }
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->vk.samples == 1) {
       if (image->n_planes != 1) {
          /* Multiplanar images seem to hit a sampler bug with CCS and R16G16
@@ -804,12 +846,18 @@ add_aux_surface_if_supported(struct anv_device *device,
          image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_D;
       }
 
-      if (!device->physical->has_implicit_ccs) {
-         result = add_surface(device, image, &image->planes[plane].aux_surface,
-                              binding, offset);
-         if (result != VK_SUCCESS)
-            return result;
+      if (device->info->has_flat_ccs) {
+         result = VK_SUCCESS;
+      } else if (device->info->has_aux_map) {
+         result = add_compression_control_buffer(device, image, plane,
+                                                 binding, offset);
+      } else {
+         result = add_surface(device, image,
+                              &image->planes[plane].aux_surface, binding,
+                              offset);
       }
+      if (result != VK_SUCCESS)
+         return result;
 
       return add_aux_state_tracking_buffer(device, image, plane);
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->vk.samples > 1) {

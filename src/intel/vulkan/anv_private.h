@@ -4670,6 +4670,9 @@ struct anv_image {
 
       struct anv_surface aux_surface;
 
+      /** Location of the compression control surface.  */
+      struct anv_image_memory_range compr_ctrl_memory_range;
+
       /** Location of the fast clear state.  */
       struct anv_image_memory_range fast_clear_memory_range;
 
