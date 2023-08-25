@@ -2512,6 +2512,7 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_shader *vs = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_VERTEX);
    const struct radv_shader *tcs = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
+   const struct radv_shader *tes = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_TESS_EVAL);
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned ls_hs_config, base_reg;
 
@@ -2559,8 +2560,7 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
    }
 
    /* Emit user SGPRs for dynamic patch control points. */
-   const struct radv_userdata_info *offchip =
-      radv_get_user_sgpr(cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL], AC_UD_TCS_OFFCHIP_LAYOUT);
+   const struct radv_userdata_info *offchip = radv_get_user_sgpr(tcs, AC_UD_TCS_OFFCHIP_LAYOUT);
    if (offchip->sgpr_idx == -1)
       return;
    assert(offchip->num_sgprs == 1);
@@ -2571,18 +2571,16 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
       SET_SGPR_FIELD(TCS_OFFCHIP_LAYOUT_LSHS_VERTEX_STRIDE,
                      get_tcs_input_vertex_stride(vs->info.vs.num_linked_outputs) / 4);
 
-   base_reg = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL]->info.user_data_0;
+   base_reg = tcs->info.user_data_0;
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + offchip->sgpr_idx * 4, tcs_offchip_layout);
 
-   const struct radv_userdata_info *num_patches =
-      radv_get_user_sgpr(radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_TESS_EVAL), AC_UD_TES_STATE);
+   const struct radv_userdata_info *num_patches = radv_get_user_sgpr(tes, AC_UD_TES_STATE);
    assert(num_patches->sgpr_idx != -1 && num_patches->num_sgprs == 1);
 
    const unsigned tes_state = SET_SGPR_FIELD(TES_STATE_NUM_PATCHES, cmd_buffer->state.tess_num_patches) |
                               SET_SGPR_FIELD(TES_STATE_TCS_VERTICES_OUT, tcs->info.tcs.tcs_vertices_out) |
                               SET_SGPR_FIELD(TES_STATE_NUM_TCS_OUTPUTS, tcs->info.tcs.num_linked_outputs);
 
-   const struct radv_shader *tes = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_TESS_EVAL);
    base_reg = tes->info.user_data_0;
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + num_patches->sgpr_idx * 4, tes_state);
 }
