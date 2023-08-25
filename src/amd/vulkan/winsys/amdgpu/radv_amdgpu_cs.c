@@ -455,7 +455,8 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
    }
 
    /* Append the current (last) IB to the array of IB buffers. */
-   radv_amdgpu_cs_add_ib_buffer(cs, cs->ib_buffer, 0, cs->use_ib ? *cs->ib_size_ptr : cs->base.cdw, false);
+   radv_amdgpu_cs_add_ib_buffer(cs, cs->ib_buffer, 0, cs->use_ib ? G_3F2_IB_SIZE(*cs->ib_size_ptr) : cs->base.cdw,
+                                false);
 
    /* Prevent freeing this BO twice. */
    cs->ib_buffer = NULL;
