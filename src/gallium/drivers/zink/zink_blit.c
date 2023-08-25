@@ -416,15 +416,7 @@ zink_blit(struct pipe_context *pctx,
       ctx->queries_disabled = true;
       ctx->batch.state->has_barriers = true;
       ctx->pipeline_changed[0] = true;
-      struct zink_screen *screen = zink_screen(pctx->screen);
-      if (screen->info.have_EXT_extended_dynamic_state3) {
-         if (screen->have_full_ds3)
-            ctx->ds3_states = UINT32_MAX;
-         else
-            ctx->ds3_states = BITFIELD_MASK(ZINK_DS3_BLEND_A2C);
-         if (!screen->info.dynamic_state3_feats.extendedDynamicState3AlphaToOneEnable)
-            ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_BLEND_A21);
-      }
+      zink_reset_ds3_states(ctx);
       zink_select_draw_vbo(ctx);
    }
    zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
