@@ -339,113 +339,6 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
-
-#if GFX_VER == 12
-static void
-anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
-                      const struct anv_image *image,
-                      VkImageAspectFlagBits aspect,
-                      uint32_t base_level, uint32_t level_count,
-                      uint32_t base_layer, uint32_t layer_count)
-{
-   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
-
-   const struct anv_surface *surface = &image->planes[plane].primary_surface;
-   uint64_t base_address =
-      anv_address_physical(anv_image_address(image, &surface->memory_range));
-
-   const struct isl_surf *isl_surf = &image->planes[plane].primary_surface.isl;
-   uint64_t format_bits = intel_aux_map_format_bits_for_isl_surf(isl_surf);
-
-   /* We're about to live-update the AUX-TT.  We really don't want anyone else
-    * trying to read it while we're doing this.  We could probably get away
-    * with not having this stall in some cases if we were really careful but
-    * it's better to play it safe.  Full stall the GPU.
-    */
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
-                             "before update AUX-TT");
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
-
-   struct mi_builder b;
-   mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
-
-   for (uint32_t a = 0; a < layer_count; a++) {
-      const uint32_t layer = base_layer + a;
-
-      uint64_t start_offset_B = UINT64_MAX, end_offset_B = 0;
-      for (uint32_t l = 0; l < level_count; l++) {
-         const uint32_t level = base_level + l;
-
-         uint32_t logical_array_layer, logical_z_offset_px;
-         if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
-            logical_array_layer = 0;
-
-            /* If the given miplevel does not have this layer, then any higher
-             * miplevels won't either because miplevels only get smaller the
-             * higher the LOD.
-             */
-            assert(layer < image->vk.extent.depth);
-            if (layer >= u_minify(image->vk.extent.depth, level))
-               break;
-            logical_z_offset_px = layer;
-         } else {
-            assert(layer < image->vk.array_layers);
-            logical_array_layer = layer;
-            logical_z_offset_px = 0;
-         }
-
-         uint64_t slice_start_offset_B, slice_end_offset_B;
-         isl_surf_get_image_range_B_tile(isl_surf, level,
-                                         logical_array_layer,
-                                         logical_z_offset_px,
-                                         &slice_start_offset_B,
-                                         &slice_end_offset_B);
-
-         start_offset_B = MIN2(start_offset_B, slice_start_offset_B);
-         end_offset_B = MAX2(end_offset_B, slice_end_offset_B);
-      }
-
-      struct intel_aux_map_context *ctx = cmd_buffer->device->aux_map_ctx;
-      /* It depends on what the purpose you use that figure from AUX module,
-       * alignment, page size of main surface, or actually granularity...
-       */
-      uint64_t main_page_size = intel_aux_map_get_alignment(ctx);
-      start_offset_B = ROUND_DOWN_TO(start_offset_B, main_page_size);
-      end_offset_B = align64(end_offset_B, main_page_size);
-
-      for (uint64_t offset = start_offset_B;
-           offset < end_offset_B; offset += main_page_size) {
-         uint64_t address = base_address + offset;
-
-         uint64_t aux_entry_addr64, *aux_entry_map;
-         struct intel_aux_map_context *ctx = cmd_buffer->device->aux_map_ctx;
-         aux_entry_map = intel_aux_map_get_entry(ctx, address, &aux_entry_addr64);
-
-         struct anv_address aux_entry_address = {
-            .bo = NULL,
-            .offset = aux_entry_addr64,
-         };
-
-         const uint64_t old_aux_entry = READ_ONCE(*aux_entry_map);
-         uint64_t new_aux_entry =
-            (old_aux_entry & intel_aux_get_meta_address_mask(ctx)) |
-            format_bits;
-
-         if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage))
-            new_aux_entry |= INTEL_AUX_MAP_ENTRY_VALID_BIT;
-
-         mi_store(&b, mi_mem64(aux_entry_address), mi_imm(new_aux_entry));
-      }
-   }
-
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
-                             "after update AUX-TT");
-}
-#endif /* GFX_VER == 12 */
-
 /* Transitions a HiZ-enabled depth buffer from one layout to another. Unless
  * the initial layout is undefined, the HiZ buffer and depth buffer will
  * represent the same data at the end of this operation.
@@ -462,16 +355,6 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
       anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_DEPTH_BIT);
    if (image->planes[depth_plane].aux_usage == ISL_AUX_USAGE_NONE)
       return;
-
-#if GFX_VER == 12
-   if ((initial_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
-        initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
-       cmd_buffer->device->physical->has_implicit_ccs &&
-       cmd_buffer->device->info->has_aux_map) {
-      anv_image_init_aux_tt(cmd_buffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
-                            0, 1, base_layer, layer_count);
-   }
-#endif
 
    /* If will_full_fast_clear is set, the caller promises to fast-clear the
     * largest portion of the specified range as it can.  For depth images,
@@ -541,9 +424,6 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
         initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
        cmd_buffer->device->physical->has_implicit_ccs &&
        cmd_buffer->device->info->has_aux_map) {
-      anv_image_init_aux_tt(cmd_buffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
-                            base_level, level_count, base_layer, layer_count);
-
       /* If will_full_fast_clear is set, the caller promises to fast-clear the
        * largest portion of the specified range as it can.
        */
@@ -1159,18 +1039,6 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
          must_init_aux_surface = false;
       }
    }
-
-#if GFX_VER == 12
-   if (initial_layout_undefined) {
-      if (device->physical->has_implicit_ccs && devinfo->has_aux_map) {
-         anv_image_init_aux_tt(cmd_buffer, image, aspect,
-                               base_level, level_count,
-                               base_layer, layer_count);
-      }
-   }
-#else
-   assert(!(device->physical->has_implicit_ccs && devinfo->has_aux_map));
-#endif
 
    if (must_init_fast_clear_state) {
       if (base_level == 0 && base_layer == 0) {

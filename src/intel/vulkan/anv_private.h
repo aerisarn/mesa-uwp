@@ -4855,7 +4855,10 @@ static inline const struct anv_image_memory_range *
 anv_image_get_aux_memory_range(const struct anv_image *image,
                                uint32_t plane)
 {
-  return &image->planes[plane].aux_surface.memory_range;
+   if (image->planes[plane].aux_surface.memory_range.size > 0)
+     return &image->planes[plane].aux_surface.memory_range;
+   else
+     return &image->planes[plane].compr_ctrl_memory_range;
 }
 
 /* Returns true if a HiZ-enabled depth buffer can be sampled from. */

@@ -2273,8 +2273,25 @@ VkResult anv_BindImageMemory2(
          if (device->info->has_flat_ccs && bo->vram_only)
             continue;
 
+         /* Add the plane to the aux map when applicable. */
          if (anv_bo_allows_aux_map(device, bo)) {
-            continue;
+            const struct anv_address main_addr =
+               anv_image_address(image,
+                 &image->planes[p].primary_surface.memory_range);
+            const struct anv_address aux_addr =
+               anv_image_address(image,
+                 &image->planes[p].compr_ctrl_memory_range);
+            const struct isl_surf *surf =
+               &image->planes[p].primary_surface.isl;
+            const uint64_t format_bits =
+               intel_aux_map_format_bits_for_isl_surf(surf);
+            const bool mapped =
+               intel_aux_map_add_mapping(device->aux_map_ctx,
+                                         anv_address_physical(main_addr),
+                                         anv_address_physical(aux_addr),
+                                         surf->size_B, format_bits);
+            if (mapped)
+               continue;
          }
 
          /* Do nothing prior to gfx12. There are no special requirements. */

@@ -1508,15 +1508,6 @@ anv_device_alloc_bo(struct anv_device *device,
       return vk_errorf(device, VK_ERROR_UNKNOWN, "vm bind failed");
    }
 
-   if (new_bo._ccs_size > 0) {
-      assert(device->info->has_aux_map);
-      const bool mapped =
-         intel_aux_map_add_mapping(device->aux_map_ctx, new_bo.offset,
-                                   intel_canonical_address(new_bo.offset + new_bo.size),
-                                   new_bo.size, 0 /* format_bits */);
-      assert(mapped);
-   }
-
    assert(new_bo.gem_handle);
 
    /* If we just got this gem_handle from anv_bo_init_new then we know no one
@@ -1867,12 +1858,11 @@ anv_device_release_bo(struct anv_device *device,
    }
    assert(bo->refcount == 0);
 
-   if (bo->_ccs_size > 0) {
-      assert(device->physical->has_implicit_ccs);
-      assert(device->info->has_aux_map);
-      assert(bo->has_implicit_ccs);
+   /* Unmap the entire BO. In the case that some addresses lacked an aux-map
+    * entry, the unmapping function will add table entries for them.
+    */
+   if (anv_bo_allows_aux_map(device, bo))
       intel_aux_map_unmap_range(device->aux_map_ctx, bo->offset, bo->size);
-   }
 
    /* Memset the BO just in case.  The refcount being zero should be enough to
     * prevent someone from assuming the data is valid but it's safer to just
