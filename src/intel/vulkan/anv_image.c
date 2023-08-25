@@ -1898,6 +1898,24 @@ anv_image_get_memory_requirements(struct anv_device *device,
              */
             requirements->prefersDedicatedAllocation = true;
             requirements->requiresDedicatedAllocation = true;
+         } else if (anv_image_uses_aux_map(device, image)) {
+            /* We request a dedicated allocation to guarantee that the BO will
+             * be aux-map compatible (see anv_bo_vma_alloc_or_close and
+             * anv_bo_allows_aux_map).
+             *
+             * TODO: This is an untested heuristic. It's not known if this
+             *       guarantee is worth losing suballocation.
+             *
+             * If we don't have an aux-map compatible BO at the time we bind
+             * this image to device memory, we'll change the aux usage.
+             *
+             * It may be possible to handle an image using a modifier in the
+             * same way. However, we choose to keep things simple and require
+             * a dedicated allocation for that case.
+             */
+            requirements->prefersDedicatedAllocation = true;
+            requirements->requiresDedicatedAllocation =
+               isl_drm_modifier_has_aux(image->vk.drm_format_mod);
          } else {
             requirements->prefersDedicatedAllocation = false;
             requirements->requiresDedicatedAllocation = false;

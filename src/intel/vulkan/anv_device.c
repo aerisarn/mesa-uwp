@@ -3942,6 +3942,7 @@ VkResult anv_AllocateMemory(
 
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
          dedicated_info = (void *)ext;
+         alloc_flags |= ANV_BO_ALLOC_DEDICATED;
          break;
 
       case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO: {

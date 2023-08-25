@@ -400,6 +400,9 @@ enum anv_bo_alloc_flags {
 
    /** For descriptor pools */
    ANV_BO_ALLOC_DESCRIPTOR_POOL = (1 << 13),
+
+   /** This BO will be dedicated to a buffer or an image */
+   ANV_BO_ALLOC_DEDICATED = (1 << 14),
 };
 
 struct anv_bo {
@@ -4917,6 +4920,18 @@ anv_image_plane_uses_aux_map(const struct anv_device *device,
 {
    return device->info->has_aux_map &&
       isl_aux_usage_has_ccs(image->planes[plane].aux_usage);
+}
+
+static inline bool
+anv_image_uses_aux_map(const struct anv_device *device,
+                       const struct anv_image *image)
+{
+   for (uint32_t p = 0; p < image->n_planes; ++p) {
+      if (anv_image_plane_uses_aux_map(device, image, p))
+         return true;
+   }
+
+   return false;
 }
 
 static inline bool

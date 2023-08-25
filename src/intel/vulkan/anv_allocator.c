@@ -1375,7 +1375,7 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
    /* If we're using the AUX map, make sure we follow the required
     * alignment.
     */
-   if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
+   if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_DEDICATED))
       align = MAX2(intel_aux_map_get_alignment(device->aux_map_ctx), align);
 
    /* Opportunistically align addresses to 2Mb when above 1Mb. We do this
@@ -1563,6 +1563,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
 {
    assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
                            ANV_BO_ALLOC_SNOOPED |
+                           ANV_BO_ALLOC_DEDICATED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
 
    assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS) ||
