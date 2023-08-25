@@ -4319,7 +4319,7 @@ static struct radv_shader_part *
 lookup_tcs_epilog(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_shader *tcs = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
-   const struct radv_shader *tes = cmd_buffer->state.shaders[MESA_SHADER_TESS_EVAL];
+   const struct radv_shader *tes = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_TESS_EVAL);
    struct radv_device *device = cmd_buffer->device;
    struct radv_shader_part *epilog = NULL;
 
