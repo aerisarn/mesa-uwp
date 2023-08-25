@@ -1822,26 +1822,26 @@ static void
 radv_emit_tcs_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_part *tcs_epilog)
 {
    const enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
-   struct radv_shader *tcs_shader = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
+   struct radv_shader *tcs = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
 
    if (cmd_buffer->state.emitted_tcs_epilog == tcs_epilog)
       return;
 
-   assert(tcs_shader->config.num_shared_vgprs == 0);
-   uint32_t rsrc1 = tcs_shader->config.rsrc1;
-   if (G_00B848_VGPRS(tcs_epilog->rsrc1) > G_00B848_VGPRS(tcs_shader->config.rsrc1))
+   assert(tcs->config.num_shared_vgprs == 0);
+   uint32_t rsrc1 = tcs->config.rsrc1;
+   if (G_00B848_VGPRS(tcs_epilog->rsrc1) > G_00B848_VGPRS(tcs->config.rsrc1))
       rsrc1 = (rsrc1 & C_00B848_VGPRS) | (tcs_epilog->rsrc1 & ~C_00B848_VGPRS);
-   if (gfx_level < GFX10 && G_00B228_SGPRS(tcs_epilog->rsrc1) > G_00B228_SGPRS(tcs_shader->config.rsrc1))
+   if (gfx_level < GFX10 && G_00B228_SGPRS(tcs_epilog->rsrc1) > G_00B228_SGPRS(tcs->config.rsrc1))
       rsrc1 = (rsrc1 & C_00B228_SGPRS) | (tcs_epilog->rsrc1 & ~C_00B228_SGPRS);
-   if (rsrc1 != tcs_shader->config.rsrc1)
+   if (rsrc1 != tcs->config.rsrc1)
       radeon_set_sh_reg(cmd_buffer->cs, R_00B428_SPI_SHADER_PGM_RSRC1_HS, rsrc1);
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, tcs_epilog->bo);
 
    assert((tcs_epilog->va >> 32) == cmd_buffer->device->physical_device->rad_info.address32_hi);
 
-   struct radv_userdata_info *loc = &tcs_shader->info.user_sgprs_locs.shader_data[AC_UD_TCS_EPILOG_PC];
-   uint32_t base_reg = tcs_shader->info.user_data_0;
+   struct radv_userdata_info *loc = &tcs->info.user_sgprs_locs.shader_data[AC_UD_TCS_EPILOG_PC];
+   uint32_t base_reg = tcs->info.user_data_0;
    assert(loc->sgpr_idx != -1);
    assert(loc->num_sgprs == 1);
    radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, tcs_epilog->va, false);
