@@ -40,6 +40,7 @@
 #define VG(x) ((void)0)
 #endif
 
+#include "common/intel_aux_map.h"
 #include "common/intel_decoder.h"
 #include "common/intel_engine.h"
 #include "common/intel_gem.h"
@@ -4913,6 +4914,21 @@ anv_image_plane_uses_aux_map(const struct anv_device *device,
 {
    return device->info->has_aux_map &&
       isl_aux_usage_has_ccs(image->planes[plane].aux_usage);
+}
+
+static inline bool
+anv_bo_allows_aux_map(const struct anv_device *device,
+                      const struct anv_bo *bo)
+{
+   if (device->aux_map_ctx == NULL)
+      return false;
+
+   if (bo->has_implicit_ccs == false)
+      return false;
+
+   assert(bo->offset % intel_aux_map_get_alignment(device->aux_map_ctx) == 0);
+
+   return true;
 }
 
 void

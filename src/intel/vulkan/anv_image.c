@@ -2259,26 +2259,33 @@ VkResult anv_BindImageMemory2(
          did_bind = true;
       }
 
-      /* On platforms that use implicit CCS, if the plane's bo lacks implicit
-       * CCS then disable compression on the plane.
-       */
+      /* Now that we have the BO, finalize CCS setup. */
       for (int p = 0; p < image->n_planes; ++p) {
          enum anv_image_memory_binding binding =
             image->planes[p].primary_surface.memory_range.binding;
          const struct anv_bo *bo =
             image->bindings[binding].address.bo;
 
-         if (!bo || bo->has_implicit_ccs)
+         if (!bo || !isl_aux_usage_has_ccs(image->planes[p].aux_usage))
             continue;
 
-         if (!device->physical->has_implicit_ccs)
+         /* Do nothing if flat CCS requirements are satisfied. */
+         if (device->info->has_flat_ccs && bo->vram_only)
             continue;
 
-         if (!isl_aux_usage_has_ccs(image->planes[p].aux_usage))
+         if (anv_bo_allows_aux_map(device, bo)) {
             continue;
+         }
+
+         /* Do nothing prior to gfx12. There are no special requirements. */
+         if (device->info->ver < 12)
+            continue;
+
+         /* The plane's BO cannot support CCS, disable compression on it. */
+         assert(!isl_drm_modifier_has_aux(image->vk.drm_format_mod));
 
          anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
-                       "BO lacks implicit CCS. Disabling the CCS aux usage.");
+                       "BO lacks CCS support. Disabling the CCS aux usage.");
 
          if (image->planes[p].aux_surface.memory_range.size > 0) {
             assert(image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS ||
