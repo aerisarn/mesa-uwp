@@ -1142,7 +1142,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
               ANV_IMAGE_MEMORY_BINDING_PRIVATE);
       must_init_fast_clear_state = true;
 
-      if (image->planes[plane].aux_surface.memory_range.binding ==
+      if (anv_image_get_aux_memory_range(image, plane)->binding ==
           ANV_IMAGE_MEMORY_BINDING_PRIVATE) {
          /* The aux surface, like the fast clear state, lives in
           * a driver-private bo.  We must initialize the aux surface for the

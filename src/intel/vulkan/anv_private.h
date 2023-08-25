@@ -4850,6 +4850,13 @@ anv_image_get_compression_state_addr(const struct anv_device *device,
       offset);
 }
 
+static inline const struct anv_image_memory_range *
+anv_image_get_aux_memory_range(const struct anv_image *image,
+                               uint32_t plane)
+{
+  return &image->planes[plane].aux_surface.memory_range;
+}
+
 /* Returns true if a HiZ-enabled depth buffer can be sampled from. */
 static inline bool
 anv_can_sample_with_hiz(const struct intel_device_info * const devinfo,

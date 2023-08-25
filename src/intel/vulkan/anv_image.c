@@ -1064,7 +1064,9 @@ check_memory_bindings(const struct anv_device *device,
                          .expect_binding = primary_binding);
 
       /* Check aux_surface */
-      if (anv_surface_is_valid(&plane->aux_surface)) {
+      const struct anv_image_memory_range *aux_mem_range =
+         anv_image_get_aux_memory_range(image, p);
+      if (aux_mem_range->size > 0) {
          enum anv_image_memory_binding binding = primary_binding;
 
          /* If an auxiliary surface is used for an externally-shareable image,
@@ -1084,7 +1086,7 @@ check_memory_bindings(const struct anv_device *device,
           * the image is sent to display.
           */
          check_memory_range(accum_ranges,
-                            .test_surface = &plane->aux_surface,
+                            .test_range = aux_mem_range,
                             .expect_binding = binding);
       }
 
@@ -2299,7 +2301,8 @@ anv_get_image_subresource_layout(const struct anv_image *image,
                                  const VkImageSubresource2KHR *subresource,
                                  VkSubresourceLayout2KHR *layout)
 {
-   const struct anv_surface *surface;
+   const struct anv_image_memory_range *mem_range;
+   const struct isl_surf *isl_surf;
 
    assert(__builtin_popcount(subresource->imageSubresource.aspectMask) == 1);
 
@@ -2343,30 +2346,33 @@ anv_get_image_subresource_layout(const struct anv_image *image,
          /* If the memory binding differs between primary and aux, then the
           * returned offset will be incorrect.
           */
-         assert(image->planes[0].aux_surface.memory_range.binding ==
+         mem_range = anv_image_get_aux_memory_range(image, 0);
+         assert(mem_range->binding ==
                 image->planes[0].primary_surface.memory_range.binding);
-         surface = &image->planes[0].aux_surface;
+         isl_surf = &image->planes[0].aux_surface.isl;
       } else {
          assert(mem_plane < image->n_planes);
-         surface = &image->planes[mem_plane].primary_surface;
+         mem_range = &image->planes[mem_plane].primary_surface.memory_range;
+         isl_surf = &image->planes[mem_plane].primary_surface.isl;
       }
    } else {
       const uint32_t plane =
          anv_image_aspect_to_plane(image, subresource->imageSubresource.aspectMask);
-      surface = &image->planes[plane].primary_surface;
+      mem_range = &image->planes[plane].primary_surface.memory_range;
+      isl_surf = &image->planes[plane].primary_surface.isl;
    }
 
-   layout->subresourceLayout.offset = surface->memory_range.offset;
-   layout->subresourceLayout.rowPitch = surface->isl.row_pitch_B;
-   layout->subresourceLayout.depthPitch = isl_surf_get_array_pitch(&surface->isl);
-   layout->subresourceLayout.arrayPitch = isl_surf_get_array_pitch(&surface->isl);
+   layout->subresourceLayout.offset = mem_range->offset;
+   layout->subresourceLayout.rowPitch = isl_surf->row_pitch_B;
+   layout->subresourceLayout.depthPitch = isl_surf_get_array_pitch(isl_surf);
+   layout->subresourceLayout.arrayPitch = isl_surf_get_array_pitch(isl_surf);
 
    if (subresource->imageSubresource.mipLevel > 0 ||
        subresource->imageSubresource.arrayLayer > 0) {
-      assert(surface->isl.tiling == ISL_TILING_LINEAR);
+      assert(isl_surf->tiling == ISL_TILING_LINEAR);
 
       uint64_t offset_B;
-      isl_surf_get_image_offset_B_tile_sa(&surface->isl,
+      isl_surf_get_image_offset_B_tile_sa(isl_surf,
                                           subresource->imageSubresource.mipLevel,
                                           subresource->imageSubresource.arrayLayer,
                                           0 /* logical_z_offset_px */,
@@ -2378,7 +2384,7 @@ anv_get_image_subresource_layout(const struct anv_image *image,
                   subresource->imageSubresource.mipLevel) *
          image->vk.extent.depth;
    } else {
-      layout->subresourceLayout.size = surface->memory_range.size;
+      layout->subresourceLayout.size = mem_range->size;
    }
 }
 
