@@ -1105,7 +1105,30 @@ ac_sqtt_dump_data(const struct radeon_info *rad_info, struct ac_sqtt_trace *sqtt
       /* Queue event. */
       list_for_each_entry_safe(struct rgp_queue_event_record, record,
                                &rgp_queue_event->record, list) {
-         fwrite(record, sizeof(struct sqtt_queue_event_record), 1, output);
+         struct sqtt_queue_event_record queue_event = {
+            .event_type = record->event_type,
+            .sqtt_cb_id = record->sqtt_cb_id,
+            .frame_index = record->frame_index,
+            .queue_info_index = record->queue_info_index,
+            .submit_sub_index = record->submit_sub_index,
+            .api_id = record->api_id,
+            .cpu_timestamp = record->cpu_timestamp,
+         };
+
+         switch (queue_event.event_type)
+         case SQTT_QUEUE_TIMING_EVENT_CMDBUF_SUBMIT: {
+            queue_event.gpu_timestamps[0] = *record->gpu_timestamps[0];
+            queue_event.gpu_timestamps[1] = *record->gpu_timestamps[1];
+            break;
+         case SQTT_QUEUE_TIMING_EVENT_PRESENT:
+            queue_event.gpu_timestamps[0] = *record->gpu_timestamps[0];
+            break;
+         default:
+            /* GPU timestamps are ignored for other queue events. */
+            break;
+         }
+
+         fwrite(&queue_event, sizeof(struct sqtt_queue_event_record), 1, output);
       }
       file_offset += (rgp_queue_event->record_count *
                       sizeof(struct sqtt_queue_event_record));
