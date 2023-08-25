@@ -2714,11 +2714,15 @@ init_optimal_keys(struct zink_screen *screen)
                           !screen->driconf.emulate_point_smooth &&
                           !screen->driver_workarounds.needs_zs_shader_swizzle;
    if (!screen->optimal_keys && zink_debug & ZINK_DEBUG_OPTIMAL_KEYS) {
-      fprintf(stderr, "The following criteria are preventing optimal_keys enablement:");
+      fprintf(stderr, "The following criteria are preventing optimal_keys enablement:\n");
       if (screen->need_decompose_attrs)
          fprintf(stderr, "missing vertex attribute formats\n");
       if (screen->driconf.inline_uniforms)
          fprintf(stderr, "uniform inlining must be disabled (set ZINK_INLINE_UNIFORMS=0 in your env)\n");
+      if (screen->driconf.emulate_point_smooth)
+         fprintf(stderr, "smooth point emulation is enabled\n");
+      if (screen->driver_workarounds.needs_zs_shader_swizzle)
+         fprintf(stderr, "Z/S shader swizzle workaround is enabled\n");
       CHECK_OR_PRINT(have_EXT_line_rasterization);
       CHECK_OR_PRINT(line_rast_feats.stippledBresenhamLines);
       CHECK_OR_PRINT(feats.features.geometryShader);
@@ -2732,10 +2736,7 @@ init_optimal_keys(struct zink_screen *screen)
       CHECK_OR_PRINT(rb2_feats.robustImageAccess2);
       CHECK_OR_PRINT(feats.features.robustBufferAccess);
       CHECK_OR_PRINT(rb_image_feats.robustImageAccess);
-      if (screen->driconf.emulate_point_smooth)
-         fprintf(stderr, "smooth point emulation is enabled\n");
-      if (screen->driver_workarounds.needs_zs_shader_swizzle)
-         fprintf(stderr, "Z/S shader swizzle workaround is enabled\n");
+      printf("\n");
       mesa_logw("zink: force-enabling optimal_keys despite missing features. Good luck!");
       screen->optimal_keys = true;
    }
