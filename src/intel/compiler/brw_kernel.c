@@ -214,12 +214,7 @@ lower_kernel_intrinsics(nir_shader *nir)
             nir_intrinsic_set_range(load, 3 * 4);
             nir_def_init(&load->instr, &load->def, 3, 32);
             nir_builder_instr_insert(&b, &load->instr);
-
-            /* We may need to do a bit-size cast here */
-            nir_def *num_work_groups =
-               nir_u2uN(&b, &load->def, intrin->def.bit_size);
-
-            nir_def_rewrite_uses(&intrin->def, num_work_groups);
+            nir_def_rewrite_uses(&intrin->def, &load->def);
             progress = true;
             break;
          }
