@@ -319,32 +319,6 @@ vn_android_drm_format_is_yuv(uint32_t format)
    }
 }
 
-uint64_t
-vn_android_get_ahb_usage(const VkImageUsageFlags usage,
-                         const VkImageCreateFlags flags)
-{
-   uint64_t ahb_usage = 0;
-   if (usage &
-       (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
-   if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER;
-
-   if (flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_CUBE_MAP;
-
-   if (flags & VK_IMAGE_CREATE_PROTECTED_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT;
-
-   /* must include at least one GPU usage flag */
-   if (ahb_usage == 0)
-      ahb_usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
-   return ahb_usage;
-}
-
 VkResult
 vn_GetSwapchainGrallocUsage2ANDROID(
    VkDevice device,
@@ -909,7 +883,8 @@ vn_android_get_drm_format_modifier_info(
    if (!format)
       return false;
 
-   usage = vn_android_get_ahb_usage(format_info->usage, format_info->flags);
+   usage =
+      vk_image_usage_to_ahb_usage(format_info->flags, format_info->usage);
    ahb = vn_android_ahb_allocate(16, 16, 1, format, usage);
    if (!ahb)
       return false;
@@ -1090,7 +1065,8 @@ vn_android_device_allocate_ahb(struct vn_device *dev,
       height = image_info->extent.height;
       layers = image_info->arrayLayers;
       format = vk_image_format_to_ahb_format(image_info->format);
-      usage = vn_android_get_ahb_usage(image_info->usage, image_info->flags);
+      usage =
+         vk_image_usage_to_ahb_usage(image_info->flags, image_info->usage);
    } else {
       const VkPhysicalDeviceMemoryProperties *mem_props =
          &dev->physical_device->memory_properties;

@@ -15,6 +15,7 @@
 #include "git_sha1.h"
 #include "util/mesa-sha1.h"
 #include "venus-protocol/vn_protocol_driver_device.h"
+#include "vk_android.h"
 
 #include "vn_android.h"
 #include "vn_instance.h"
@@ -2042,8 +2043,8 @@ vn_GetPhysicalDeviceImageFormatProperties2(
          vk_find_struct(pImageFormatProperties->pNext,
                         ANDROID_HARDWARE_BUFFER_USAGE_ANDROID);
       if (ahb_usage) {
-         ahb_usage->androidHardwareBufferUsage = vn_android_get_ahb_usage(
-            pImageFormatInfo->usage, pImageFormatInfo->flags);
+         ahb_usage->androidHardwareBufferUsage = vk_image_usage_to_ahb_usage(
+            pImageFormatInfo->flags, pImageFormatInfo->usage);
       }
 
       /* AHBs with mipmap usage will ignore this property */
