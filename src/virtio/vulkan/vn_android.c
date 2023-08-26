@@ -246,29 +246,6 @@ vn_hal_open(const struct hw_module_t *mod,
    return 0;
 }
 
-static uint32_t
-vn_android_ahb_format_from_vk_format(VkFormat format)
-{
-   /* Only non-external AHB compatible formats are expected at:
-    * - image format query
-    * - memory export allocation
-    */
-   switch (format) {
-   case VK_FORMAT_R8G8B8A8_UNORM:
-      return AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
-   case VK_FORMAT_R8G8B8_UNORM:
-      return AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM;
-   case VK_FORMAT_R5G6B5_UNORM_PACK16:
-      return AHARDWAREBUFFER_FORMAT_R5G6B5_UNORM;
-   case VK_FORMAT_R16G16B16A16_SFLOAT:
-      return AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT;
-   case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-      return AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM;
-   default:
-      return 0;
-   }
-}
-
 const VkFormat *
 vn_android_format_to_view_formats(VkFormat format, uint32_t *out_count)
 {
@@ -928,7 +905,7 @@ vn_android_get_drm_format_modifier_info(
 
    assert(format_info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
 
-   format = vn_android_ahb_format_from_vk_format(format_info->format);
+   format = vk_image_format_to_ahb_format(format_info->format);
    if (!format)
       return false;
 
@@ -1112,7 +1089,7 @@ vn_android_device_allocate_ahb(struct vn_device *dev,
       width = image_info->extent.width;
       height = image_info->extent.height;
       layers = image_info->arrayLayers;
-      format = vn_android_ahb_format_from_vk_format(image_info->format);
+      format = vk_image_format_to_ahb_format(image_info->format);
       usage = vn_android_get_ahb_usage(image_info->usage, image_info->flags);
    } else {
       const VkPhysicalDeviceMemoryProperties *mem_props =
