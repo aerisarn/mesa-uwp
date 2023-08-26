@@ -850,7 +850,7 @@ system_value("local_invocation_id", 3)
 system_value("local_invocation_index", 1)
 # zero_base indicates it starts from 0 for the current dispatch
 # non-zero_base indicates the base is included
-system_value("workgroup_id", 3, bit_sizes=[32, 64])
+system_value("workgroup_id", 3)
 system_value("workgroup_id_zero_base", 3)
 # The workgroup_index is intended for situations when a 3 dimensional
 # workgroup_id is not available on the HW, but a 1 dimensional index is.
