@@ -1917,8 +1917,6 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
       LLVMValueRef tmp[3];
       for (unsigned i = 0; i < 3; i++) {
          tmp[i] = bld->system_values.block_id[i];
-         if (instr->def.bit_size == 64)
-            tmp[i] = LLVMBuildZExt(gallivm->builder, tmp[i], bld_base->uint64_bld.elem_type, "");
          result[i] = lp_build_broadcast_scalar(bld_broad, tmp[i]);
       }
       break;
@@ -1934,8 +1932,6 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
       LLVMValueRef tmp[3];
       for (unsigned i = 0; i < 3; i++) {
          tmp[i] = bld->system_values.grid_size[i];
-         if (instr->def.bit_size == 64)
-            tmp[i] = LLVMBuildZExt(gallivm->builder, tmp[i], bld_base->uint64_bld.elem_type, "");
          result[i] = lp_build_broadcast_scalar(bld_broad, tmp[i]);
       }
       break;
