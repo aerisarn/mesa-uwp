@@ -54,9 +54,9 @@ static nir_def *
 build_global_group_size(nir_builder *b, unsigned bit_size)
 {
    nir_def *group_size = nir_load_workgroup_size(b);
-   nir_def *num_workgroups = nir_load_num_workgroups(b, bit_size);
+   nir_def *num_workgroups = nir_load_num_workgroups(b);
    return nir_imul(b, nir_u2uN(b, group_size, bit_size),
-                   num_workgroups);
+                   nir_u2uN(b, num_workgroups, bit_size));
 }
 
 static bool
@@ -110,6 +110,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
 
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_local_invocation_index:
+   case nir_intrinsic_load_num_workgroups:
    case nir_intrinsic_load_workgroup_id:
    case nir_intrinsic_load_workgroup_size:
       return sanitize_32bit_sysval(b, intrin);
@@ -718,8 +719,9 @@ lower_compute_system_value_instr(nir_builder *b,
          if (val)
             return val;
 
+         nir_def *num_workgroups = nir_load_num_workgroups(b);
          return lower_id_to_index_no_umod(b, wg_idx,
-                                          nir_load_num_workgroups(b, bit_size),
+                                          nir_u2uN(b, num_workgroups, bit_size),
                                           bit_size,
                                           options->num_workgroups,
                                           options->shortcut_1d_workgroup_id);
