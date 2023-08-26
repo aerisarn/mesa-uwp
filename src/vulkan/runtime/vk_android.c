@@ -148,9 +148,6 @@ vk_image_usage_to_ahb_usage(const VkImageCreateFlags vk_create,
                    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
       ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
 
-   if (vk_usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
    if (vk_usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
       ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER;
