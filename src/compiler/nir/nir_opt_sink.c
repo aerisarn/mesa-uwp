@@ -35,6 +35,26 @@
  * anscestor of consuming instructions.
  */
 
+/*
+ * Detect whether a source is like a constant for the purposes of register
+ * pressure calculations (e.g. can be remat anywhere effectively for free).
+ */
+static bool
+is_constant_like(nir_src *src)
+{
+   /* Constants are constants */
+   if (nir_src_is_const(*src))
+      return true;
+
+   /* Otherwise, look for constant-like intrinsics */
+   nir_instr *parent = src->ssa->parent_instr;
+   if (parent->type != nir_instr_type_intrinsic)
+      return false;
+
+   return (nir_instr_as_intrinsic(parent)->intrinsic ==
+           nir_intrinsic_load_preamble);
+}
+
 bool
 nir_can_move_instr(nir_instr *instr, nir_move_options options)
 {
@@ -70,7 +90,7 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
       unsigned constant_inputs = 0;
 
       for (unsigned i = 0; i < inputs; ++i) {
-         if (nir_src_is_const(alu->src[i].src))
+         if (is_constant_like(&alu->src[i].src))
             constant_inputs++;
       }
 
