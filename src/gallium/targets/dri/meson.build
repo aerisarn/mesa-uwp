@@ -143,4 +143,5 @@ meson.add_install_script(
   libgallium_dri.full_path(),
   dri_drivers_path,
   gallium_dri_drivers,
+  install_tag : 'runtime',
 )
