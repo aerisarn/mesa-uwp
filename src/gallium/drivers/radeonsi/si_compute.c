@@ -577,7 +577,8 @@ static void setup_scratch_rsrc_user_sgprs(struct si_context *sctx,
 
    /* Disable address clamping */
    uint32_t scratch_dword2 = 0xffffffff;
-   uint32_t scratch_dword3 = S_008F0C_INDEX_STRIDE(3) | S_008F0C_ADD_TID_ENABLE(1);
+   uint32_t index_stride = sctx->cs_shader_state.program->shader.wave_size == 32 ? 2 : 3;
+   uint32_t scratch_dword3 = S_008F0C_INDEX_STRIDE(index_stride) | S_008F0C_ADD_TID_ENABLE(1);
 
    if (sctx->gfx_level >= GFX9) {
       assert(max_private_element_size == 1); /* only 4 bytes on GFX9 */
