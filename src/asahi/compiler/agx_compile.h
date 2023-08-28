@@ -43,6 +43,11 @@ struct agx_varyings_vs {
     * If the slot is not written, this must be ~0.
     */
    unsigned slots[AGX_MAX_VARYING_SLOTS];
+
+   /* Slot for the combined layer/viewport 32-bit sysval output, or ~0 if none
+    * is written. What's at slots[VARYING_SLOT_LAYER] is the varying output.
+    */
+   unsigned layer_viewport_slot;
 };
 
 /* Conservative bound, * 4 due to offsets (TODO: maybe worth eliminating

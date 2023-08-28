@@ -443,6 +443,17 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
    assert(nir_src_is_const(*offset) && "todo: indirects");
 
    unsigned imm_index = b->shader->out->varyings.vs.slots[sem.location];
+
+   if (sem.location == VARYING_SLOT_LAYER) {
+      /* Separate slots used for the sysval vs the varying. The default slot
+       * above is for the varying. Change for the sysval.
+       */
+      assert(sem.no_sysval_output || sem.no_varying);
+
+      if (sem.no_varying)
+         imm_index = b->shader->out->varyings.vs.layer_viewport_slot;
+   }
+
    assert(imm_index < ~0);
    imm_index += (nir_src_as_uint(*offset) * 4) + nir_intrinsic_component(instr);
 
@@ -2407,6 +2418,11 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings,
       base += 1;
    }
 
+   if (nir->info.outputs_written & VARYING_BIT_LAYER) {
+      varyings->layer_viewport_slot = base;
+      base += 1;
+   }
+
    /* All varyings linked now */
    varyings->nr_index = base;
 }
@@ -2841,8 +2857,10 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    /* Varying output is scalar, other I/O is vector. Lowered late because
     * transform feedback programs will use vector output.
     */
-   if (nir->info.stage == MESA_SHADER_VERTEX)
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
+      NIR_PASS_V(nir, agx_nir_lower_layer);
+   }
 
    out->push_count = key->reserved_preamble;
    agx_optimize_nir(nir, &out->push_count);
