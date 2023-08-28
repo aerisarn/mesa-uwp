@@ -180,7 +180,7 @@ emit_wqm(Builder& bld, Temp src, Temp dst = Temp(0, s1), bool program_needs_wqm 
       dst = bld.tmp(src.regClass());
    }
 
-   assert(src.size() == dst.size());
+   assert(src.bytes() == dst.bytes());
    bld.pseudo(aco_opcode::p_wqm, Definition(dst), src);
    bld.program->needs_wqm |= program_needs_wqm;
    return dst;
