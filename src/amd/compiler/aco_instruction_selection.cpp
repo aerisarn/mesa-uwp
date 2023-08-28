@@ -8659,19 +8659,15 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_demote:
-      bld.pseudo(aco_opcode::p_demote_to_helper, Operand::c32(-1u));
-
-      if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
-         ctx->cf_info.exec_potentially_empty_discard = true;
-
-      ctx->block->kind |= block_kind_uses_discard;
-      ctx->program->needs_exact = true;
-      break;
    case nir_intrinsic_demote_if: {
-      Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      assert(src.regClass() == bld.lm);
-      Temp cond =
-         bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
+      Operand cond = Operand::c32(-1u);
+      if (instr->intrinsic == nir_intrinsic_demote_if) {
+         Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+         assert(src.regClass() == bld.lm);
+         cond =
+            bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
+      }
+
       bld.pseudo(aco_opcode::p_demote_to_helper, cond);
 
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
