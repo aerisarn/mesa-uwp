@@ -57,6 +57,10 @@ pub trait Builder {
         });
     }
 
+    fn copy_to(&mut self, dst: Dst, src: Src) {
+        self.push_op(OpCopy { dst: dst, src: src });
+    }
+
     fn swap(&mut self, x: RegRef, y: RegRef) {
         assert!(x.file() == y.file());
         self.push_op(OpSwap {

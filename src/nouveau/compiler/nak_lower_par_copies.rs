@@ -123,7 +123,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
         if let Some(src_idx) = graph.src(dst_idx) {
             let dst = *vals[dst_idx].as_reg().unwrap();
             let src = vals[src_idx];
-            b.mov_to(dst.into(), src.into());
+            b.copy_to(dst.into(), src.into());
             if graph.del_edge(dst_idx, src_idx) {
                 ready.push(src_idx);
             }

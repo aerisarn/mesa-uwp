@@ -3181,6 +3181,19 @@ impl fmt::Display for OpPhiDsts {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpCopy {
+    pub dst: Dst,
+    pub src: Src,
+}
+
+impl fmt::Display for OpCopy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "COPY {} {}", self.dst, self.src)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpSwap {
     pub dsts: [Dst; 2],
     pub srcs: [Src; 2],
@@ -3511,6 +3524,7 @@ pub enum Op {
     Undef(OpUndef),
     PhiSrcs(OpPhiSrcs),
     PhiDsts(OpPhiDsts),
+    Copy(OpCopy),
     Swap(OpSwap),
     ParCopy(OpParCopy),
     FSOut(OpFSOut),
@@ -3891,6 +3905,7 @@ impl Instr {
             Op::Undef(_)
             | Op::PhiSrcs(_)
             | Op::PhiDsts(_)
+            | Op::Copy(_)
             | Op::Swap(_)
             | Op::ParCopy(_)
             | Op::FSOut(_) => {
@@ -4106,93 +4121,6 @@ impl Shader {
                         pcopy.push(dst.into(), *src);
                     }
                     MappedInstrs::One(Instr::new_boxed(pcopy))
-                }
-                _ => MappedInstrs::One(instr),
-            }
-        })
-    }
-
-    pub fn lower_swap(&mut self) {
-        self.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
-            match instr.op {
-                Op::Swap(swap) => {
-                    let x = *swap.dsts[0].as_reg().unwrap();
-                    let y = *swap.dsts[1].as_reg().unwrap();
-
-                    assert!(x.file() == y.file());
-                    assert!(x.comps() == 1 && y.comps() == 1);
-                    assert!(swap.srcs[0].src_mod.is_none());
-                    assert!(*swap.srcs[0].src_ref.as_reg().unwrap() == y);
-                    assert!(swap.srcs[1].src_mod.is_none());
-                    assert!(*swap.srcs[1].src_ref.as_reg().unwrap() == x);
-
-                    let mut b = InstrBuilder::new();
-                    if x == y {
-                        /* Nothing to do */
-                    } else if x.is_predicate() {
-                        b.push_op(OpPLop3 {
-                            dsts: [x.into(), y.into()],
-                            srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
-                            ops: [
-                                LogicOp::new_lut(&|_, y, _| y),
-                                LogicOp::new_lut(&|x, _, _| x),
-                            ],
-                        })
-                    } else {
-                        let xor = LogicOp::new_lut(&|x, y, _| x ^ y);
-                        b.lop2_to(x.into(), xor, x.into(), y.into());
-                        b.lop2_to(y.into(), xor, x.into(), y.into());
-                        b.lop2_to(x.into(), xor, x.into(), y.into());
-                    }
-                    b.as_mapped_instrs()
-                }
-                _ => MappedInstrs::One(instr),
-            }
-        })
-    }
-
-    pub fn lower_mov_predicate(&mut self) {
-        self.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
-            match &instr.op {
-                Op::Mov(mov) => {
-                    assert!(mov.src.src_mod.is_none());
-                    match mov.src.src_ref {
-                        SrcRef::True => {
-                            let mut b = InstrBuilder::new();
-                            b.lop2_to(
-                                mov.dst,
-                                LogicOp::new_const(true),
-                                Src::new_imm_bool(true),
-                                Src::new_imm_bool(true),
-                            );
-                            b.as_mapped_instrs()
-                        }
-                        SrcRef::False => {
-                            let mut b = InstrBuilder::new();
-                            b.lop2_to(
-                                mov.dst,
-                                LogicOp::new_const(false),
-                                Src::new_imm_bool(true),
-                                Src::new_imm_bool(true),
-                            );
-                            b.as_mapped_instrs()
-                        }
-                        SrcRef::Reg(reg) => {
-                            if reg.is_predicate() {
-                                let mut b = InstrBuilder::new();
-                                b.lop2_to(
-                                    mov.dst,
-                                    LogicOp::new_lut(&|x, _, _| x),
-                                    mov.src,
-                                    Src::new_imm_bool(true),
-                                );
-                                b.as_mapped_instrs()
-                            } else {
-                                MappedInstrs::One(instr)
-                            }
-                        }
-                        _ => MappedInstrs::One(instr),
-                    }
                 }
                 _ => MappedInstrs::One(instr),
             }
