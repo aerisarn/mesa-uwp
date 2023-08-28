@@ -89,8 +89,7 @@ agx_nir_lower_frag_sidefx(nir_shader *s)
    /* If there's no render targets written, just put the write at the end */
    if (!done) {
       nir_function_impl *impl = nir_shader_get_entrypoint(s);
-      nir_builder b =
-         nir_builder_at(nir_after_block(nir_impl_last_block(impl)));
+      nir_builder b = nir_builder_at(nir_after_impl(impl));
 
       insert_z_write(&b);
    }

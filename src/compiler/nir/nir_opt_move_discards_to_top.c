@@ -207,7 +207,7 @@ break_all:
        * This provides stability for the algorithm and ensures that we don't
        * accidentally get dependencies out-of-order.
        */
-      nir_cursor cursor = nir_before_block(nir_start_block(impl));
+      nir_cursor cursor = nir_before_impl(impl);
       nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->pass_flags == STOP_PROCESSING_INSTR_FLAG)

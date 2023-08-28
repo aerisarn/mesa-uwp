@@ -311,8 +311,7 @@ agx_nir_lower_tilebuffer(nir_shader *shader, struct agx_tilebuffer_layout *tib,
    /* Flush at end */
    if (ctx.any_memory_stores) {
       nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-      nir_builder b =
-         nir_builder_at(nir_after_block(nir_impl_last_block(impl)));
+      nir_builder b = nir_builder_at(nir_after_impl(impl));
       nir_fence_pbe_to_tex_pixel_agx(&b);
    }
 

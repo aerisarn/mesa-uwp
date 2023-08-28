@@ -5093,7 +5093,7 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
          nir_shader_add_variable(nir, var);
          store_location_var(vars, var, nir);
          /* write zero so it doesn't get pruned */
-         nir_builder b = nir_builder_at(nir_after_block(nir_impl_last_block(nir_shader_get_entrypoint(nir))));
+         nir_builder b = nir_builder_at(nir_after_impl(nir_shader_get_entrypoint(nir)));
          nir_def *store = nir_imm_intN_t(&b, j == 3 ? 1 : 0, glsl_type_is_64bit(glsl_without_array(var->type)) ? 64 : 32);
          if (nir_is_arrayed_io(copy, nir->info.stage)) {
             var->type = glsl_array_type(var->type, glsl_array_size(ref->type), glsl_get_explicit_stride(ref->type));
@@ -5605,7 +5605,7 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned ver
    fn->is_entrypoint = true;
    nir_function_impl *impl = nir_function_impl_create(fn);
 
-   nir_builder b = nir_builder_at(nir_before_block(nir_start_block(impl)));
+   nir_builder b = nir_builder_at(nir_before_impl(impl));
 
    nir_def *invocation_id = nir_load_invocation_id(&b);
 

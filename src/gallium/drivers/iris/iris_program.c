@@ -462,7 +462,7 @@ iris_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder b = nir_builder_at(nir_before_block(nir_start_block(impl)));
+   nir_builder b = nir_builder_at(nir_before_impl(impl));
 
    nir_def *temp_ubo_name = nir_undef(&b, 1, 32);
 

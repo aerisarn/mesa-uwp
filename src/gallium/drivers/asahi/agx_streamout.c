@@ -340,8 +340,7 @@ insert_overflow_check(nir_shader *nir, struct agx_xfb_key *key)
 
    /* Extract the current transform feedback shader */
    nir_cf_list list;
-   nir_cf_extract(&list, nir_before_block(nir_start_block(impl)),
-                  nir_after_block(nir_impl_last_block(impl)));
+   nir_cf_extract(&list, nir_before_impl(impl), nir_after_impl(impl));
 
    /* Get a builder for the (now empty) shader */
    nir_builder b = nir_builder_at(nir_after_block(nir_start_block(impl)));

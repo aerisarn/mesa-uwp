@@ -879,7 +879,7 @@ lower_view_index_to_rt_layer(nir_shader *nir)
                                    nir_metadata_loop_analysis, var);
    } else {
       nir_function_impl *func = nir_shader_get_entrypoint(nir);
-      nir_builder b = nir_builder_at(nir_after_block(nir_impl_last_block(func)));
+      nir_builder b = nir_builder_at(nir_after_impl(func));
       add_layer_write(&b, NULL, var);
    }
 }

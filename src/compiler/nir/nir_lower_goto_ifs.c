@@ -935,7 +935,7 @@ nir_lower_goto_ifs_impl(nir_function_impl *impl)
    /* From this point on, it's structured */
    impl->structured = true;
 
-   nir_builder b = nir_builder_at(nir_before_block(nir_start_block(impl)));
+   nir_builder b = nir_builder_at(nir_before_impl(impl));
 
    void *mem_ctx = ralloc_context(b.shader);
 
