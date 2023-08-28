@@ -130,8 +130,9 @@ agx_build_end_of_tile_shader(struct agx_meta_cache *cache,
 
       nir_block_image_store_agx(
          &b, nir_imm_int(&b, rt), nir_imm_intN_t(&b, offset_B, 16),
+         nir_imm_intN_t(&b, 0, 16),
          .format = agx_tilebuffer_physical_format(&key->tib, rt),
-         .image_dim = dim);
+         .image_dim = dim, .image_array = false);
    }
 
    struct agx_shader_key compiler_key = {

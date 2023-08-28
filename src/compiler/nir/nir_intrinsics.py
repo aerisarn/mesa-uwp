@@ -1744,9 +1744,9 @@ intrinsic("store_zs_agx", [1, 1, 1], indices=[BASE], flags=[])
 # The image dimension is used to distinguish multisampled images from
 # non-multisampled images. It must be 2D or MS.
 #
-# src[] = { image index, logical offset within shared memory }
-intrinsic("block_image_store_agx", [1, 1], bit_sizes=[32, 16],
-          indices=[FORMAT, IMAGE_DIM], flags=[CAN_REORDER])
+# src[] = { image index, logical offset within shared memory, layer }
+intrinsic("block_image_store_agx", [1, 1, 1], bit_sizes=[32, 16, 16],
+          indices=[FORMAT, IMAGE_DIM, IMAGE_ARRAY], flags=[CAN_REORDER])
 
 # Formatted load/store. The format is the pipe_format in memory (see
 # agx_internal_formats.h for the supported list). This accesses:
