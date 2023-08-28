@@ -116,6 +116,9 @@ struct agx_shader_info {
    /* Does the shader write point size? */
    bool writes_psiz;
 
+   /* Does the shader write layer and/or viewport index? Written together */
+   bool writes_layer_viewport;
+
    /* Does the shader control the sample mask? */
    bool writes_sample_mask;
 

@@ -2848,6 +2848,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       agx_ppp_push(&ppp, OUTPUT_SELECT, cfg) {
          cfg.varyings = !!fs->info.varyings.fs.nr_bindings;
          cfg.point_size = vs->info.writes_psiz;
+         cfg.viewport_target = vs->info.writes_layer_viewport;
+         cfg.render_target = vs->info.writes_layer_viewport;
          cfg.frag_coord_z = fs->info.varyings.fs.reads_z;
       }
    }
