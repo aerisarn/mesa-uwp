@@ -1602,6 +1602,9 @@ dri2_wl_swap_buffers_with_damage(_EGLDisplay *disp, _EGLSurface *draw,
       dri2_surf->current->wl_buffer =
          create_wl_buffer(dri2_dpy, dri2_surf, image);
 
+      if (dri2_surf->current->wl_buffer == NULL)
+         return _eglError(EGL_BAD_ALLOC, "dri2_swap_buffers");
+
       dri2_surf->current->wl_release = false;
 
       wl_buffer_add_listener(dri2_surf->current->wl_buffer, &wl_buffer_listener,
