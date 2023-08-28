@@ -248,6 +248,7 @@ def parse_args() -> None:
         "--force-manual", action="store_true", help="Force jobs marked as manual"
     )
     parser.add_argument("--stress", action="store_true", help="Stresstest job(s)")
+    parser.add_argument("--project", default="mesa", help="GitLab project name")
 
     mutex_group1 = parser.add_mutually_exclusive_group()
     mutex_group1.add_argument(
@@ -305,7 +306,7 @@ if __name__ == "__main__":
             pipe = cur_project.pipelines.get(pipeline_id)
             REV = pipe.sha
         else:
-            cur_project = get_gitlab_project(gl, "mesa")
+            cur_project = get_gitlab_project(gl, args.project)
             if not REV:
                 REV = check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
             pipe = wait_for_pipeline(cur_project, REV)
