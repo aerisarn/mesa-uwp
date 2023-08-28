@@ -286,7 +286,7 @@ declare_ps_input_vgprs(const struct radv_shader_info *info, struct radv_shader_a
 static void
 declare_ngg_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args, bool has_ngg_provoking_vtx)
 {
-   if (has_ngg_provoking_vtx)
+   if (!info->is_monolithic || has_ngg_provoking_vtx)
       add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_provoking_vtx, AC_UD_NGG_PROVOKING_VTX);
 
    if (info->has_ngg_culling) {
@@ -682,7 +682,11 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
          if (!info->is_monolithic) {
             /* SGPRs */
             ac_add_preserved(&args->ac, &args->ac.ring_offsets);
-            ac_add_preserved(&args->ac, &args->ac.gs2vs_offset);
+            if (info->is_ngg) {
+               ac_add_preserved(&args->ac, &args->ac.gs_tg_info);
+            } else {
+               ac_add_preserved(&args->ac, &args->ac.gs2vs_offset);
+            }
             ac_add_preserved(&args->ac, &args->ac.merged_wave_info);
             ac_add_preserved(&args->ac, &args->ac.tess_offchip_offset);
 
@@ -696,6 +700,8 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
             ac_add_preserved(&args->ac, &args->ac.push_constants);
             ac_add_preserved(&args->ac, &args->ac.view_index);
             ac_add_preserved(&args->ac, &args->shader_query_state);
+            if (info->is_ngg)
+               ac_add_preserved(&args->ac, &args->ngg_provoking_vtx);
 
             /* VGPRs */
             ac_add_preserved(&args->ac, &args->ac.gs_vtx_offset[0]);
