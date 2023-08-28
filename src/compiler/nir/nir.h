@@ -4293,6 +4293,18 @@ nir_after_cf_list(struct exec_list *cf_list)
    return nir_after_cf_node(last_node);
 }
 
+static inline nir_cursor
+nir_before_impl(nir_function_impl *impl)
+{
+   return nir_before_cf_list(&impl->body);
+}
+
+static inline nir_cursor
+nir_after_impl(nir_function_impl *impl)
+{
+   return nir_after_cf_list(&impl->body);
+}
+
 /**
  * Insert a NIR instruction at the given cursor.
  *
