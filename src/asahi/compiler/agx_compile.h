@@ -211,6 +211,9 @@ struct agx_shader_key {
    };
 };
 
+/* Texture backend flags */
+#define AGX_TEXTURE_FLAG_NO_CLAMP (1 << 0)
+
 bool agx_nir_lower_texture_early(nir_shader *s);
 
 void agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
