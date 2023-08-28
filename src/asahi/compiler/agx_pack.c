@@ -895,11 +895,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       assert(offset.size == AGX_SIZE_16);
       unsigned R = offset.value;
 
-      assert(I->dim == AGX_DIM_2D || I->dim == AGX_DIM_2D_MS);
-      bool msaa = (I->dim == AGX_DIM_2D_MS);
-
       bool unk1 = true;
-      unsigned unk2 = msaa ? 38 : 37; /* XXX */
       unsigned unk3 = 1;
 
       uint32_t word0 = agx_opcodes_info[I->op].encoding.exact |
@@ -907,8 +903,10 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
                        ((F & 1) << 8) | ((R & BITFIELD_MASK(6)) << 9) |
                        (unk1 ? (1u << 31) : 0);
 
-      uint32_t word1 =
-         (T & BITFIELD_MASK(6)) | (Tt << 2) | (unk2 << 9) | ((R >> 6) << 24);
+      uint32_t word1 = (T & BITFIELD_MASK(6)) | (Tt << 2) |
+                       ((I->dim & BITFIELD_MASK(3)) << 8) |
+                       ((I->dim & BITFIELD_BIT(3)) ? (1u << 23) : 0) |
+                       ((R >> 6) << 24);
 
       uint32_t word2 = (F >> 1) | (unk3 ? (1 << 3) : 0) | ((T >> 6) << 14);
 
