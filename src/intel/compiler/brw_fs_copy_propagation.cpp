@@ -46,6 +46,7 @@ using namespace brw;
 
 namespace { /* avoid conflict with opt_copy_propagation_elements */
 struct acp_entry : public exec_node {
+   struct rb_node by_dst;
    struct rb_node by_src;
    fs_reg dst;
    fs_reg src;
@@ -62,6 +63,27 @@ struct acp_entry : public exec_node {
  *
  * This is intended to be used as the comparison function for rb_tree.
  */
+static int
+cmp_entry_dst_entry_dst(const struct rb_node *a_node, const struct rb_node *b_node)
+{
+   const struct acp_entry *a_entry =
+      rb_node_data(struct acp_entry, a_node, by_dst);
+
+   const struct acp_entry *b_entry =
+      rb_node_data(struct acp_entry, b_node, by_dst);
+
+   return a_entry->dst.nr - b_entry->dst.nr;
+}
+
+static int
+cmp_entry_dst_nr(const struct rb_node *a_node, const void *b_key)
+{
+   const struct acp_entry *a_entry =
+      rb_node_data(struct acp_entry, a_node, by_dst);
+
+   return a_entry->dst.nr - (uintptr_t) b_key;
+}
+
 static int
 cmp_entry_src_entry_src(const struct rb_node *a_node, const struct rb_node *b_node)
 {
@@ -123,12 +145,19 @@ private:
 };
 
 struct acp {
-   exec_list h[ACP_HASH_SIZE];
+   struct rb_tree by_dst;
    struct rb_tree by_src;
 
    acp()
    {
+      rb_tree_init(&by_dst);
       rb_tree_init(&by_src);
+   }
+
+   acp_forward_iterator begin()
+   {
+      return acp_forward_iterator(rb_tree_first(&by_src),
+                                  rb_tree_offsetof(struct acp_entry, by_src, 0));
    }
 
    const acp_forward_iterator end() const
@@ -140,21 +169,22 @@ struct acp {
    {
       unsigned l = 0;
 
-      for (unsigned i = 0; i < ACP_HASH_SIZE; i++)
-         l += h[i].length();
+      for (rb_node *iter = rb_tree_first(&by_src);
+           iter != NULL; iter = rb_node_next(iter))
+         l++;
 
       return l;
    }
 
    void add(acp_entry *entry)
    {
-      h[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
+      rb_tree_insert(&by_dst, &entry->by_dst, cmp_entry_dst_entry_dst);
       rb_tree_insert(&by_src, &entry->by_src, cmp_entry_src_entry_src);
    }
 
    void remove(acp_entry *entry)
    {
-      entry->remove();
+      rb_tree_remove(&by_dst, &entry->by_dst);
       rb_tree_remove(&by_src, &entry->by_src);
    }
 
@@ -166,6 +196,16 @@ struct acp {
 
       return acp_forward_iterator(rbn, rb_tree_offsetof(struct acp_entry,
                                                         by_src, rbn));
+   }
+
+   acp_forward_iterator find_by_dst(unsigned nr)
+   {
+      struct rb_node *rbn = rb_tree_search(&by_dst,
+                                           (void *)(uintptr_t) nr,
+                                           cmp_entry_dst_nr);
+
+      return acp_forward_iterator(rbn, rb_tree_offsetof(struct acp_entry,
+                                                        by_dst, rbn));
    }
 };
 
@@ -273,20 +313,19 @@ fs_copy_prop_dataflow::fs_copy_prop_dataflow(void *mem_ctx, cfg_t *cfg,
       bd[block->num].reachin = rzalloc_array(bd, BITSET_WORD, bitset_words);
       bd[block->num].exec_mismatch = rzalloc_array(bd, BITSET_WORD, bitset_words);
 
-      for (int i = 0; i < ACP_HASH_SIZE; i++) {
-         foreach_in_list(acp_entry, entry, &out_acp[block->num].h[i]) {
-            acp[next_acp] = entry;
+      for (auto iter = out_acp[block->num].begin();
+           iter != out_acp[block->num].end(); ++iter) {
+         acp[next_acp] = *iter;
 
-            entry->global_idx = next_acp;
+         (*iter)->global_idx = next_acp;
 
-            /* opt_copy_propagation_local populates out_acp with copies created
-             * in a block which are still live at the end of the block.  This
-             * is exactly what we want in the COPY set.
-             */
-            BITSET_SET(bd[block->num].copy, next_acp);
+         /* opt_copy_propagation_local populates out_acp with copies created
+          * in a block which are still live at the end of the block.  This
+          * is exactly what we want in the COPY set.
+          */
+         BITSET_SET(bd[block->num].copy, next_acp);
 
-            next_acp++;
-         }
+         next_acp++;
       }
    }
 
@@ -1272,14 +1311,16 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
          if (inst->src[i].file != VGRF)
             continue;
 
-         foreach_in_list(acp_entry, entry, &acp.h[inst->src[i].nr % ACP_HASH_SIZE]) {
-            if (entry->src.file == IMM) {
-               if (try_constant_propagate(compiler, inst, entry, i)) {
+         for (auto iter = acp.find_by_dst(inst->src[i].nr);
+              iter != acp.end() && (*iter)->dst.nr == inst->src[i].nr;
+              ++iter) {
+            if ((*iter)->src.file == IMM) {
+               if (try_constant_propagate(compiler, inst, *iter, i)) {
                   instruction_progress = true;
                   break;
                }
             } else {
-               if (try_copy_propagate(compiler, inst, entry, i, alloc)) {
+               if (try_copy_propagate(compiler, inst, *iter, i, alloc)) {
                   instruction_progress = true;
                   break;
                }
@@ -1313,10 +1354,12 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
 
       /* kill the destination from the ACP */
       if (inst->dst.file == VGRF || inst->dst.file == FIXED_GRF) {
-         foreach_in_list_safe(acp_entry, entry, &acp.h[inst->dst.nr % ACP_HASH_SIZE]) {
-            if (grf_regions_overlap(entry->dst, entry->size_written,
+         for (auto iter = acp.find_by_dst(inst->dst.nr);
+              iter != acp.end() && (*iter)->dst.nr == inst->dst.nr;
+              ++iter) {
+            if (grf_regions_overlap((*iter)->dst, (*iter)->size_written,
                                     inst->dst, inst->size_written))
-               acp.remove(entry);
+               acp.remove(*iter);
          }
 
          for (auto iter = acp.find_by_src(inst->dst.nr);
@@ -1404,12 +1447,12 @@ fs_visitor::opt_copy_propagation()
        * extending the live range of an ACP destination beyond the block,
        * it's safe to use the liveness information in this way.
        */
-      for (unsigned a = 0; a < ACP_HASH_SIZE; a++) {
-         foreach_in_list_safe(acp_entry, entry, &out_acp[block->num].h[a]) {
-            assert(entry->dst.file == VGRF);
-            if (block->start_ip <= live.vgrf_start[entry->dst.nr] &&
-                live.vgrf_end[entry->dst.nr] <= block->end_ip)
-               out_acp[block->num].remove(entry);
+      for (auto iter = out_acp[block->num].begin();
+           iter != out_acp[block->num].end(); ++iter) {
+         assert((*iter)->dst.file == VGRF);
+         if (block->start_ip <= live.vgrf_start[(*iter)->dst.nr] &&
+             live.vgrf_end[(*iter)->dst.nr] <= block->end_ip) {
+            out_acp[block->num].remove(*iter);
          }
       }
    }
