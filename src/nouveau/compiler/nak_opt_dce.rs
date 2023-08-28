@@ -171,10 +171,16 @@ impl DeadCodePass {
     }
 }
 
+impl Function {
+    pub fn opt_dce(&mut self) {
+        DeadCodePass::new().run(self);
+    }
+}
+
 impl Shader {
     pub fn opt_dce(&mut self) {
         for f in &mut self.functions {
-            DeadCodePass::new().run(f);
+            f.opt_dce();
         }
     }
 }
