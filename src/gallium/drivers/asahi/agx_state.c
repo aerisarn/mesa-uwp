@@ -1061,7 +1061,8 @@ image_view_for_surface(struct pipe_surface *surf)
       .format = surf->format,
       .access = PIPE_IMAGE_ACCESS_READ_WRITE,
       .shader_access = PIPE_IMAGE_ACCESS_READ_WRITE,
-      .u.tex.single_layer_view = true,
+      .u.tex.single_layer_view =
+         surf->u.tex.first_layer == surf->u.tex.last_layer,
       .u.tex.first_layer = surf->u.tex.first_layer,
       .u.tex.last_layer = surf->u.tex.last_layer,
       .u.tex.level = surf->u.tex.level,
