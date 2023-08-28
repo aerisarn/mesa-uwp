@@ -1545,7 +1545,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       struct asahi_fs_shader_key *key = &key_->fs;
 
       struct agx_tilebuffer_layout tib = agx_build_tilebuffer_layout(
-         key->rt_formats, key->nr_cbufs, key->nr_samples, false);
+         key->rt_formats, key->nr_cbufs, key->nr_samples, key->layered);
 
       if (dev->debug & AGX_DBG_SMALLTILE)
          tib.tile_size = (struct agx_tile_size){16, 16};
@@ -1967,6 +1967,7 @@ agx_update_fs(struct agx_batch *batch)
       .nr_cbufs = batch->key.nr_cbufs,
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
       .nr_samples = nr_samples,
+      .layered = util_framebuffer_get_num_layers(&batch->key) > 1,
       .multisample = msaa,
 
       /* Only lower sample mask if at least one sample is masked out */
