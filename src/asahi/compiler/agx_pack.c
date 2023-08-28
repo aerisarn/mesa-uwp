@@ -890,6 +890,10 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       unsigned T = agx_pack_texture(agx_zero(), I->src[0], &U, &Tt);
       assert(T < 0x100);
 
+      bool Cs = false;
+      bool Ct = I->src[2].discard;
+      unsigned C = I->src[2].value;
+
       agx_index offset = I->src[1];
       assert(offset.type == AGX_INDEX_REGISTER);
       assert(offset.size == AGX_SIZE_16);
@@ -901,12 +905,14 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       uint32_t word0 = agx_opcodes_info[I->op].encoding.exact |
                        (1 << 15) /* we always set length bit for now */ |
                        ((F & 1) << 8) | ((R & BITFIELD_MASK(6)) << 9) |
+                       ((C & BITFIELD_MASK(6)) << 16) | (Ct ? (1 << 22) : 0) |
                        (unk1 ? (1u << 31) : 0);
 
       uint32_t word1 = (T & BITFIELD_MASK(6)) | (Tt << 2) |
-                       ((I->dim & BITFIELD_MASK(3)) << 8) |
+                       ((I->dim & BITFIELD_MASK(3)) << 8) | (9 << 11) |
+                       (Cs ? (1 << 15) : 0) |
                        ((I->dim & BITFIELD_BIT(3)) ? (1u << 23) : 0) |
-                       ((R >> 6) << 24);
+                       ((R >> 6) << 24) | ((C >> 6) << 26);
 
       uint32_t word2 = (F >> 1) | (unk3 ? (1 << 3) : 0) | ((T >> 6) << 14);
 

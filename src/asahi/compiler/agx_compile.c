@@ -635,14 +635,33 @@ agx_emit_block_image_store(agx_builder *b, nir_intrinsic_instr *instr)
 {
    unsigned image = nir_src_as_uint(instr->src[0]);
    agx_index offset = agx_src_index(&instr->src[1]);
+   agx_index layer = agx_src_index(&instr->src[2]);
    enum agx_format format = agx_format_for_pipe(nir_intrinsic_format(instr));
-   enum agx_dim dim = agx_tex_dim(nir_intrinsic_image_dim(instr), false);
+
+   bool ms = nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_MS;
+   bool array = nir_intrinsic_image_array(instr);
+   enum agx_dim dim = agx_tex_dim(nir_intrinsic_image_dim(instr), array);
+
+   /* Modified coordinate descriptor */
+   agx_index coords;
+   if (array) {
+      coords = agx_temp(b->shader, AGX_SIZE_32);
+      agx_emit_collect_to(
+         b, coords, 2,
+         (agx_index[]){
+            ms ? agx_mov_imm(b, 16, 0) : layer,
+            ms ? layer : agx_mov_imm(b, 16, 0xFFFF) /* TODO: Why can't zero? */,
+         });
+   } else {
+      coords = agx_null();
+   }
 
    // XXX: how does this possibly work
    if (format == AGX_FORMAT_F16)
       format = AGX_FORMAT_I16;
 
-   return agx_block_image_store(b, agx_immediate(image), offset, format, dim);
+   return agx_block_image_store(b, agx_immediate(image), offset, coords, format,
+                                dim);
 }
 
 static agx_instr *

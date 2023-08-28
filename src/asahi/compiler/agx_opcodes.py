@@ -384,9 +384,9 @@ op("signal_pix", (0x58, 0xFF, 4, _), dests = 0, imms = [WRITEOUT],
 op("image_write", (0xF1 | (1 << 23) | (9 << 43), 0xFF, 6, 8), dests = 0, srcs = 5, imms
    = [DIM], can_eliminate = False, schedule_class = "store")
 
-# Sources are the image and the offset within shared memory
+# Sources are the image, the offset within shared memory, and the layer.
 # TODO: Do we need the short encoding?
-op("block_image_store", (0xB1, 0xFF, 10, _), dests = 0, srcs = 2,
+op("block_image_store", (0xB1, 0xFF, 10, _), dests = 0, srcs = 3,
    imms = [FORMAT, DIM], can_eliminate = False, schedule_class = "store")
 
 # Barriers
