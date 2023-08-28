@@ -657,8 +657,9 @@ struct radv_shader_binary *radv_shader_nir_to_asm(struct radv_device *device, st
                                                   const struct radv_pipeline_key *key, bool keep_shader_info,
                                                   bool keep_statistic_info);
 
-void radv_shader_generate_debug_info(struct radv_device *device, bool dump_shader, struct radv_shader_binary *binary,
-                                     struct radv_shader *shader, struct nir_shader *const *shaders, int shader_count,
+void radv_shader_generate_debug_info(struct radv_device *device, bool dump_shader, bool keep_shader_info,
+                                     struct radv_shader_binary *binary, struct radv_shader *shader,
+                                     struct nir_shader *const *shaders, int shader_count,
                                      struct radv_shader_info *info);
 
 VkResult radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq);

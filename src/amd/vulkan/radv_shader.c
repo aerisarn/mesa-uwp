@@ -2383,11 +2383,12 @@ radv_shader_nir_to_asm(struct radv_device *device, struct radv_shader_stage *pl_
 }
 
 void
-radv_shader_generate_debug_info(struct radv_device *device, bool dump_shader, struct radv_shader_binary *binary,
-                                struct radv_shader *shader, struct nir_shader *const *shaders, int shader_count,
-                                struct radv_shader_info *info)
+radv_shader_generate_debug_info(struct radv_device *device, bool dump_shader, bool keep_shader_info,
+                                struct radv_shader_binary *binary, struct radv_shader *shader,
+                                struct nir_shader *const *shaders, int shader_count, struct radv_shader_info *info)
 {
-   radv_capture_shader_executable_info(device, shader, shaders, shader_count, binary);
+   if (dump_shader || keep_shader_info)
+      radv_capture_shader_executable_info(device, shader, shaders, shader_count, binary);
 
    if (dump_shader) {
       fprintf(stderr, "%s", radv_get_shader_name(info, shaders[0]->info.stage));

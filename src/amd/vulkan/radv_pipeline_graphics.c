@@ -2241,7 +2241,8 @@ radv_create_gs_copy_shader(struct radv_device *device, struct vk_pipeline_cache 
    struct radv_shader *copy_shader =
       radv_shader_create(device, cache, *gs_copy_binary, keep_executable_info || dump_shader);
    if (copy_shader)
-      radv_shader_generate_debug_info(device, dump_shader, *gs_copy_binary, copy_shader, &nir, 1, &gs_copy_stage.info);
+      radv_shader_generate_debug_info(device, dump_shader, keep_executable_info, *gs_copy_binary, copy_shader, &nir, 1,
+                                      &gs_copy_stage.info);
    return copy_shader;
 }
 
@@ -2283,8 +2284,8 @@ radv_graphics_shaders_nir_to_asm(struct radv_device *device, struct vk_pipeline_
       binaries[s] = radv_shader_nir_to_asm(device, &stages[s], nir_shaders, shader_count, pipeline_key,
                                            keep_executable_info, keep_statistic_info);
       shaders[s] = radv_shader_create(device, cache, binaries[s], keep_executable_info || dump_shader);
-      radv_shader_generate_debug_info(device, dump_shader, binaries[s], shaders[s], nir_shaders, shader_count,
-                                      &stages[s].info);
+      radv_shader_generate_debug_info(device, dump_shader, keep_executable_info, binaries[s], shaders[s], nir_shaders,
+                                      shader_count, &stages[s].info);
 
       if (s == MESA_SHADER_GEOMETRY && !stages[s].info.is_ngg) {
          *gs_copy_shader = radv_create_gs_copy_shader(device, cache, &stages[MESA_SHADER_GEOMETRY], pipeline_key,
