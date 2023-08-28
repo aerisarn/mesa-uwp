@@ -11566,9 +11566,8 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
       end_divergent_if(&ctx, ic_merged_wave_info);
    }
 
-   if ((ctx.stage.sw == SWStage::VS &&
-        (ctx.stage.hw == AC_HW_HULL_SHADER || ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) ||
-       (ctx.stage.sw == SWStage::TES && ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) {
+   if (!ctx.program->info.is_monolithic &&
+       (ctx.stage.sw == SWStage::VS || ctx.stage.sw == SWStage::TES)) {
       assert(program->gfx_level >= GFX9);
       create_merged_jump_to_epilog(&ctx);
       ctx.block->kind |= block_kind_export_end;
@@ -11759,14 +11758,14 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
       /* Handle separate compilation of VS+TCS and {VS,TES}+GS on GFX9+. */
       if (!ctx.program->info.is_monolithic) {
          assert(ctx.program->gfx_level >= GFX9);
-         if ((ctx.stage.sw == SWStage::VS && (ctx.stage.hw == AC_HW_HULL_SHADER ||
-                                              ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) ||
-             (ctx.stage.sw == SWStage::TES && ctx.stage.hw == AC_HW_LEGACY_GEOMETRY_SHADER)) {
+         if (ctx.stage.sw == SWStage::VS || ctx.stage.sw == SWStage::TES) {
             check_merged_wave_info = endif_merged_wave_info = true;
          } else {
-            assert(ctx.stage == tess_control_hs || ctx.stage == geometry_gs);
-            check_merged_wave_info = endif_merged_wave_info = true;
-            need_barrier = true;
+            const bool ngg_gs =
+               ctx.stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER && ctx.stage.sw == SWStage::GS;
+            assert(ctx.stage == tess_control_hs || ctx.stage == geometry_gs || ngg_gs);
+            check_merged_wave_info = endif_merged_wave_info = !ngg_gs;
+            need_barrier = !ngg_gs;
          }
       }
 
