@@ -1545,7 +1545,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       struct asahi_fs_shader_key *key = &key_->fs;
 
       struct agx_tilebuffer_layout tib = agx_build_tilebuffer_layout(
-         key->rt_formats, key->nr_cbufs, key->nr_samples);
+         key->rt_formats, key->nr_cbufs, key->nr_samples, false);
 
       if (dev->debug & AGX_DBG_SMALLTILE)
          tib.tile_size = (struct agx_tile_size){16, 16};
@@ -2585,7 +2585,8 @@ agx_batch_init_state(struct agx_batch *batch)
 
    batch->tilebuffer_layout = agx_build_tilebuffer_layout(
       formats, batch->key.nr_cbufs,
-      util_framebuffer_get_num_samples(&batch->key));
+      util_framebuffer_get_num_samples(&batch->key),
+      util_framebuffer_get_num_layers(&batch->key) > 1);
 
    if (agx_device(batch->ctx->base.screen)->debug & AGX_DBG_SMALLTILE)
       batch->tilebuffer_layout.tile_size = (struct agx_tile_size){16, 16};

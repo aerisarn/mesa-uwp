@@ -53,6 +53,9 @@ struct agx_tilebuffer_layout {
    /* Number of samples per pixel */
    uint8_t nr_samples;
 
+   /* If layered rendering is used */
+   bool layered;
+
    /* Selected tile size */
    struct agx_tile_size tile_size;
 };
@@ -83,7 +86,7 @@ agx_tilebuffer_spills(struct agx_tilebuffer_layout *layout)
 
 struct agx_tilebuffer_layout
 agx_build_tilebuffer_layout(enum pipe_format *formats, uint8_t nr_cbufs,
-                            uint8_t nr_samples);
+                            uint8_t nr_samples, bool layered);
 
 bool agx_nir_lower_tilebuffer(struct nir_shader *shader,
                               struct agx_tilebuffer_layout *tib,
