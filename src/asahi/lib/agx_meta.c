@@ -128,11 +128,14 @@ agx_build_end_of_tile_shader(struct agx_meta_cache *cache,
       assert(key->op[rt] == AGX_META_OP_STORE);
       unsigned offset_B = agx_tilebuffer_offset_B(&key->tib, rt);
 
+      nir_def *layer = nir_undef(&b, 1, 16);
+      if (key->tib.layered)
+         layer = nir_u2u16(&b, agx_internal_layer_id(&b));
+
       nir_block_image_store_agx(
-         &b, nir_imm_int(&b, rt), nir_imm_intN_t(&b, offset_B, 16),
-         nir_imm_intN_t(&b, 0, 16),
+         &b, nir_imm_int(&b, rt), nir_imm_intN_t(&b, offset_B, 16), layer,
          .format = agx_tilebuffer_physical_format(&key->tib, rt),
-         .image_dim = dim, .image_array = false);
+         .image_dim = dim, .image_array = key->tib.layered);
    }
 
    struct agx_shader_key compiler_key = {
