@@ -1408,9 +1408,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->use_call_secondary =
       !debug_get_bool_option("ANV_DISABLE_SECONDARY_CMD_BUFFER_CALLS", false);
 
-   device->has_implicit_ccs = device->info.has_aux_map ||
-                              device->info.verx10 >= 125;
-
    device->video_decode_enabled = debug_get_bool_option("ANV_VIDEO_DECODE", false);
 
    device->uses_ex_bso = device->info.verx10 >= 125;
@@ -3970,10 +3967,6 @@ VkResult anv_AllocateMemory(
          break;
       }
    }
-
-   /* By default, we want all VkDeviceMemory objects to support CCS */
-   if (device->physical->has_implicit_ccs && device->info->has_aux_map)
-      alloc_flags |= ANV_BO_ALLOC_IMPLICIT_CCS;
 
    /* If i915 reported a mappable/non_mappable vram regions and the
     * application want lmem mappable, then we need to use the

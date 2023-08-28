@@ -422,7 +422,6 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    if ((initial_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
         initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
-       cmd_buffer->device->physical->has_implicit_ccs &&
        cmd_buffer->device->info->has_aux_map) {
       /* If will_full_fast_clear is set, the caller promises to fast-clear the
        * largest portion of the specified range as it can.

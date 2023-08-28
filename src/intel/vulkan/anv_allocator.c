@@ -1342,7 +1342,7 @@ anv_bo_vma_free(struct anv_device *device, struct anv_bo *bo)
 {
    if (bo->offset != 0 && !bo->has_fixed_address) {
       assert(bo->vma_heap != NULL);
-      anv_vma_free(device, bo->vma_heap, bo->offset, bo->size + bo->_ccs_size);
+      anv_vma_free(device, bo->vma_heap, bo->offset, bo->size);
    }
    bo->vma_heap = NULL;
 }
@@ -1384,16 +1384,15 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
     *
     * Only available on ICL+.
     */
-   if (device->info->ver >= 11 && (bo->size + bo->_ccs_size) >= 1 * 1024 * 1024)
+   if (device->info->ver >= 11 && bo->size >= 1 * 1024 * 1024)
       align = MAX2(2 * 1024 * 1024, align);
 
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       bo->has_fixed_address = true;
       bo->offset = intel_canonical_address(explicit_address);
    } else {
-      bo->offset = anv_vma_alloc(device, bo->size + bo->_ccs_size,
-                                 align, alloc_flags, explicit_address,
-                                 &bo->vma_heap);
+      bo->offset = anv_vma_alloc(device, bo->size, align, alloc_flags,
+                                 explicit_address, &bo->vma_heap);
       if (bo->offset == 0) {
          anv_bo_unmap_close(device, bo);
          return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
@@ -1412,26 +1411,11 @@ anv_device_alloc_bo(struct anv_device *device,
                     uint64_t explicit_address,
                     struct anv_bo **bo_out)
 {
-   if (!device->physical->has_implicit_ccs)
-      assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS));
-
    const uint32_t bo_flags =
          device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
 
-   /* The kernel is going to give us whole pages anyway. And we
-    * also need 4KB alignment for 1MB AUX buffer that follows
-    * the main region. The 4KB also covers 64KB AUX granularity
-    * that has 256B AUX mapping to the main.
-    */
+   /* The kernel is going to give us whole pages anyway. */
    size = align64(size, 4096);
-
-   uint64_t ccs_size = 0;
-   if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS)) {
-      uint64_t aux_ratio =
-         intel_aux_get_main_to_aux_ratio(device->aux_map_ctx);
-      /* See anv_bo::_ccs_size */
-      ccs_size = align64(DIV_ROUND_UP(size, aux_ratio), 4096);
-   }
 
    const struct intel_memory_class_instance *regions[2];
    uint32_t nregions = 0;
@@ -1462,8 +1446,7 @@ anv_device_alloc_bo(struct anv_device *device,
 
    uint64_t actual_size;
    uint32_t gem_handle = device->kmd_backend->gem_create(device, regions,
-                                                         nregions,
-                                                         size + ccs_size,
+                                                         nregions, size,
                                                          alloc_flags,
                                                          &actual_size);
    if (gem_handle == 0)
@@ -1475,14 +1458,11 @@ anv_device_alloc_bo(struct anv_device *device,
       .refcount = 1,
       .offset = -1,
       .size = size,
-      ._ccs_size = ccs_size,
       .actual_size = actual_size,
       .flags = bo_flags,
       .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
       .has_client_visible_address =
          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
-      .has_implicit_ccs = ccs_size > 0 ||
-                          (device->info->verx10 >= 125 && !(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)),
       .vram_only = nregions == 1 &&
                    regions[0] == device->physical->vram_non_mappable.region,
    };
@@ -1565,9 +1545,6 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
                            ANV_BO_ALLOC_SNOOPED |
                            ANV_BO_ALLOC_DEDICATED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
-
-   assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS) ||
-          (device->physical->has_implicit_ccs && device->info->has_aux_map));
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
@@ -1670,9 +1647,6 @@ anv_device_import_bo(struct anv_device *device,
                            ANV_BO_ALLOC_SNOOPED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
 
-   assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS) ||
-          (device->physical->has_implicit_ccs && device->info->has_aux_map));
-
    struct anv_bo_cache *cache = &device->bo_cache;
 
    pthread_mutex_lock(&cache->mutex);
@@ -1731,7 +1705,6 @@ anv_device_import_bo(struct anv_device *device,
       new_bo.size = size;
       new_bo.actual_size = size;
 
-      assert(new_bo._ccs_size == 0);
       VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
                                                   alloc_flags,
                                                   client_address);
