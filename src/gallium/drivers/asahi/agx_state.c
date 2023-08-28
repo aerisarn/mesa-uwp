@@ -1620,7 +1620,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
                                (2 * BITSET_LAST_BIT(nir->info.images_used));
       unsigned rt_spill = rt_spill_base;
       NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib, colormasks, &rt_spill,
-                 &force_translucent);
+                 &force_translucent, false);
 
       /* If anything spilled, we have bindless texture */
       so->internal_bindless |= (rt_spill != rt_spill_base);
