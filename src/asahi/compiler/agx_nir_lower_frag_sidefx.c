@@ -72,7 +72,7 @@ agx_nir_lower_frag_sidefx(nir_shader *s)
    if (s->info.fs.early_fragment_tests) {
       assert(!writes_zs && "incompatible");
       nir_function_impl *impl = nir_shader_get_entrypoint(s);
-      nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
+      nir_builder b = nir_builder_at(nir_before_impl(impl));
       nir_sample_mask_agx(&b, nir_imm_intN_t(&b, ALL_SAMPLES, 16),
                           nir_imm_intN_t(&b, ALL_SAMPLES, 16));
       return true;

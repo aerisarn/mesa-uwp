@@ -777,7 +777,7 @@ reconstruct_tess_factor_outputs(nir_shader *shader, lower_tess_io_state *st)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_builder builder = nir_builder_create(impl);
    nir_builder *b = &builder;
-   b->cursor = nir_after_cf_list(&impl->body);
+   b->cursor = nir_after_impl(impl);
 
    if (st->tcs_tess_level_outer_mask) {
       nir_def *val = nir_load_var(b, st->tcs_tess_level_outer);

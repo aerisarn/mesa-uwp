@@ -1140,7 +1140,7 @@ crocus_lower_default_edgeflags(struct nir_shader *nir)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder b = nir_builder_at(nir_after_cf_list(&impl->body));
+   nir_builder b = nir_builder_at(nir_after_impl(impl));
 
    nir_variable *var = nir_variable_create(nir, nir_var_shader_out,
                                            glsl_float_type(),

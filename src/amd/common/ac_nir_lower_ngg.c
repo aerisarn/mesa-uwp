@@ -1502,7 +1502,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    /* Remove all non-position outputs, and put the position output into the variable. */
    nir_metadata_preserve(impl, nir_metadata_none);
    remove_culling_shader_outputs(b->shader, s);
-   b->cursor = nir_after_cf_list(&impl->body);
+   b->cursor = nir_after_impl(impl);
 
    nir_def *lds_scratch_base = nir_load_lds_ngg_scratch_base_amd(b);
 
@@ -2367,8 +2367,9 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
    }
 
    nir_cf_list extracted;
-   nir_cf_extract(&extracted, nir_before_cf_list(&impl->body), nir_after_cf_list(&impl->body));
-   b->cursor = nir_before_cf_list(&impl->body);
+   nir_cf_extract(&extracted, nir_before_impl(impl),
+                  nir_after_impl(impl));
+   b->cursor = nir_before_impl(impl);
 
    ngg_nogs_init_vertex_indices_vars(b, impl, &state);
 
@@ -2402,7 +2403,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
          nir_store_var(b, prim_exp_arg_var, emit_ngg_nogs_prim_exp_arg(b, &state), 0x1u);
    } else {
       add_deferred_attribute_culling(b, &extracted, &state);
-      b->cursor = nir_after_cf_list(&impl->body);
+      b->cursor = nir_after_impl(impl);
 
       if (state.early_prim_export)
          emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, state.prim_exp_arg_var));
@@ -2487,13 +2488,13 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
 
       ngg_nogs_store_xfb_outputs_to_lds(b, &state);
 
-      b->cursor = nir_after_cf_list(&impl->body);
+      b->cursor = nir_after_impl(impl);
       ngg_nogs_build_streamout(b, &state);
    }
 
    /* Take care of late primitive export */
    if (!state.early_prim_export) {
-      b->cursor = nir_after_cf_list(&impl->body);
+      b->cursor = nir_after_impl(impl);
       emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, prim_exp_arg_var));
    }
 
@@ -2522,7 +2523,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
             b->cursor = nir_after_cf_node(&if_es_thread->cf_node);
             create_vertex_param_phis(b, num_outputs, outputs);
 
-            b->cursor = nir_after_cf_list(&impl->body);
+            b->cursor = nir_after_impl(impl);
 
             if (!num_es_threads)
                num_es_threads = nir_load_merged_wave_info_amd(b);
@@ -3051,7 +3052,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_def *max_num_out_vtx, nir_def *tid_in
                                                   s->outputs_16bit_hi);
 
          if (num_outputs) {
-            b->cursor = nir_after_cf_list(&s->impl->body);
+            b->cursor = nir_after_impl(s->impl);
             create_vertex_param_phis(b, num_outputs, outputs);
 
             export_vertex_params_gfx11(b, tid_in_tg, max_num_out_vtx, num_outputs, outputs,
@@ -3432,9 +3433,10 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
 
    /* Extract the full control flow. It is going to be wrapped in an if statement. */
    nir_cf_list extracted;
-   nir_cf_extract(&extracted, nir_before_cf_list(&impl->body), nir_after_cf_list(&impl->body));
+   nir_cf_extract(&extracted, nir_before_impl(impl),
+                  nir_after_impl(impl));
 
-   nir_builder builder = nir_builder_at(nir_before_cf_list(&impl->body));
+   nir_builder builder = nir_builder_at(nir_before_impl(impl));
    nir_builder *b = &builder; /* This is to avoid the & */
 
    /* Workgroup barrier: wait for ES threads */
@@ -3476,7 +3478,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
                           state.vertex_count,
                           state.primitive_count);
 
-   b->cursor = nir_after_cf_list(&impl->body);
+   b->cursor = nir_after_impl(impl);
 
    /* Emit the finale sequence */
    ngg_gs_finale(b, &state);
@@ -4076,7 +4078,7 @@ ms_emit_legacy_workgroup_index(nir_builder *b, lower_ngg_ms_state *s)
    if (!BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_INDEX))
       return;
 
-   b->cursor = nir_before_cf_list(&b->impl->body);
+   b->cursor = nir_before_impl(b->impl);
 
    /* Legacy fast launch mode (FAST_LAUNCH=1):
     *
@@ -4485,8 +4487,9 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
 
    /* Extract the full control flow of the shader. */
    nir_cf_list extracted;
-   nir_cf_extract(&extracted, nir_before_cf_list(&b->impl->body), nir_after_cf_list(&b->impl->body));
-   b->cursor = nir_before_cf_list(&b->impl->body);
+   nir_cf_extract(&extracted, nir_before_impl(b->impl),
+                  nir_after_cf_list(&b->impl->body));
+   b->cursor = nir_before_impl(b->impl);
 
    /* Wrap the shader in an if to ensure that only the necessary amount of lanes run it. */
    nir_def *invocation_index = nir_load_local_invocation_index(b);
@@ -4759,7 +4762,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    state.primitive_count_var =
       nir_local_variable_create(impl, glsl_uint_type(), "primitive_count_var");
 
-   nir_builder builder = nir_builder_at(nir_before_cf_list(&impl->body));
+   nir_builder builder = nir_builder_at(nir_before_impl(impl));
    nir_builder *b = &builder; /* This is to avoid the & */
 
    handle_smaller_ms_api_workgroup(b, &state);

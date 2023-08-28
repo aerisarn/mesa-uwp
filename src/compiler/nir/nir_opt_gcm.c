@@ -743,7 +743,7 @@ gcm_replace_def_with_undef(nir_def *def, void *void_state)
    nir_undef_instr *undef =
       nir_undef_instr_create(state->impl->function->shader,
                              def->num_components, def->bit_size);
-   nir_instr_insert(nir_before_cf_list(&state->impl->body), &undef->instr);
+   nir_instr_insert(nir_before_impl(state->impl), &undef->instr);
    nir_def_rewrite_uses(def, &undef->def);
 
    return true;

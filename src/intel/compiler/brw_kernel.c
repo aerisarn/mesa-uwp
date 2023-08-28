@@ -60,7 +60,7 @@ static nir_builder
 builder_init_new_impl(nir_function *func)
 {
    nir_function_impl *impl = nir_function_impl_create(func);
-   return nir_builder_at(nir_before_cf_list(&impl->body));
+   return nir_builder_at(nir_before_impl(impl));
 }
 
 static void

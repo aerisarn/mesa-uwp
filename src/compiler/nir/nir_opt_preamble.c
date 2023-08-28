@@ -520,7 +520,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
       _mesa_pointer_hash_table_create(NULL);
    nir_function_impl *preamble =
       nir_shader_get_preamble(impl->function->shader);
-   nir_builder preamble_builder = nir_builder_at(nir_before_cf_list(&preamble->body));
+   nir_builder preamble_builder = nir_builder_at(nir_before_impl(preamble));
    nir_builder *b = &preamble_builder;
 
    nir_foreach_block(block, impl) {

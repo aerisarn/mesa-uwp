@@ -89,7 +89,7 @@ get_vertex_index_for_all_inputs(nir_shader *nir, struct lower_vs_inputs_state *s
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder builder = nir_builder_at(nir_before_cf_list(&impl->body));
+   nir_builder builder = nir_builder_at(nir_before_impl(impl));
    nir_builder *b = &builder;
 
    const struct si_shader_selector *sel = s->shader->selector;

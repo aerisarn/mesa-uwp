@@ -811,7 +811,7 @@ nir_visitor::visit(ir_function_signature *ir)
 
       this->is_global = false;
 
-      b = nir_builder_at(nir_after_cf_list(&impl->body));
+      b = nir_builder_at(nir_after_impl(impl));
 
       unsigned i = (ir->return_type != glsl_type::void_type) ? 1 : 0;
 

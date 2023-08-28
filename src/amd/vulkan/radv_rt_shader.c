@@ -42,7 +42,7 @@ lower_rt_derefs(nir_shader *shader)
 
    bool progress = false;
 
-   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
+   nir_builder b = nir_builder_at(nir_before_impl(impl));
 
    nir_def *arg_offset = nir_load_rt_arg_scratch_offset_amd(&b);
 
@@ -857,7 +857,7 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
    impl->function->params = ralloc_array(any_hit, nir_parameter, ARRAY_SIZE(params));
    memcpy(impl->function->params, params, sizeof(params));
 
-   nir_builder build = nir_builder_at(nir_before_cf_list(&impl->body));
+   nir_builder build = nir_builder_at(nir_before_impl(impl));
    nir_builder *b = &build;
 
    nir_def *commit_ptr = nir_load_param(b, 0);
@@ -977,7 +977,7 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
    nir_builder build = nir_builder_create(impl);
    nir_builder *b = &build;
 
-   b->cursor = nir_before_cf_list(&impl->body);
+   b->cursor = nir_before_impl(impl);
 
    nir_variable *commit = nir_local_variable_create(impl, glsl_bool_type(), "ray_commit");
    nir_store_var(b, commit, nir_imm_false(b), 0x1);
@@ -1536,10 +1536,10 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
    NIR_PASS(_, shader, nir_lower_returns);
 
    nir_cf_list list;
-   nir_cf_extract(&list, nir_before_cf_list(&impl->body), nir_after_cf_list(&impl->body));
+   nir_cf_extract(&list, nir_before_impl(impl), nir_after_impl(impl));
 
    /* initialize variables */
-   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
+   nir_builder b = nir_builder_at(nir_before_impl(impl));
 
    nir_def *traversal_addr = ac_nir_load_arg(&b, &args->ac, args->ac.rt.traversal_shader_addr);
    nir_store_var(&b, vars.traversal_addr, nir_pack_64_2x32(&b, traversal_addr), 1);
@@ -1587,7 +1587,7 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
       nir_pop_if(&b, shader_guard);
 
    /* select next shader */
-   b.cursor = nir_after_cf_list(&impl->body);
+   b.cursor = nir_after_impl(impl);
 
    shader_addr = nir_load_var(&b, vars.shader_addr);
    nir_def *next = select_next_shader(&b, shader_addr, info->wave_size);

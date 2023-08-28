@@ -229,7 +229,7 @@ nir_undef(nir_builder *build, unsigned num_components, unsigned bit_size)
    if (!undef)
       return NULL;
 
-   nir_instr_insert(nir_before_cf_list(&build->impl->body), &undef->instr);
+   nir_instr_insert(nir_before_impl(build->impl), &undef->instr);
    if (build->update_divergence)
       nir_update_instr_divergence(build->shader, &undef->instr);
 
@@ -1751,7 +1751,7 @@ nir_decl_reg(nir_builder *b, unsigned num_components, unsigned bit_size,
    nir_intrinsic_set_divergent(decl, true);
    nir_def_init(&decl->instr, &decl->def, 1, 32);
 
-   nir_instr_insert(nir_before_cf_list(&b->impl->body), &decl->instr);
+   nir_instr_insert(nir_before_impl(b->impl), &decl->instr);
 
    return &decl->def;
 }

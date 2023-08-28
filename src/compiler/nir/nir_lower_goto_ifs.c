@@ -929,8 +929,8 @@ nir_lower_goto_ifs_impl(nir_function_impl *impl)
       nir_lower_phis_to_regs_block(block);
 
    nir_cf_list cf_list;
-   nir_cf_extract(&cf_list, nir_before_cf_list(&impl->body),
-                  nir_after_cf_list(&impl->body));
+   nir_cf_extract(&cf_list, nir_before_impl(impl),
+                  nir_after_impl(impl));
 
    /* From this point on, it's structured */
    impl->structured = true;

@@ -2024,7 +2024,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
                             nir_metadata_dominance;
 
    bool progress = false;
-   nir_cursor iter = nir_before_cf_list(&impl->body);
+   nir_cursor iter = nir_before_impl(impl);
    nir_instr *instr;
    while ((instr = cursor_next_instr(iter)) != NULL) {
       if (filter && !filter(instr, cb_data)) {
