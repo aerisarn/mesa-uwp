@@ -624,3 +624,15 @@ class ISA(object):
                 display_string = display_string.replace("{" + m + "}", self.templates[m].display)
 
         return display_string
+
+    def instructions(self):
+        instr = []
+
+        for _, root in self.roots.items():
+            for _, leafs in self.leafs.items():
+                for leaf in leafs:
+                    if leaf.get_root() == root:
+                        if not leaf.get_c_name().startswith('__'):
+                            instr.append(leaf)
+
+        return instr
