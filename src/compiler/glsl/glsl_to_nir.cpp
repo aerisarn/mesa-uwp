@@ -163,7 +163,7 @@ public:
          return visit_continue;
 
       foreach_in_list(ir_variable, param, &ir->parameters) {
-         if (!param->type->is_vector() || !param->type->is_scalar()) {
+         if (!glsl_type_is_vector_or_scalar(param->type)) {
             unsupported = true;
             return visit_stop;
          }
