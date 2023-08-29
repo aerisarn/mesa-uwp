@@ -1747,6 +1747,7 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
    if (instr->type == nir_jump_continue) {
       nestings += 1;
       agx_block_add_successor(ctx->current_block, ctx->continue_block);
+      ctx->loop_continues = true;
    } else if (instr->type == nir_jump_break) {
       nestings += 2;
       agx_block_add_successor(ctx->current_block, ctx->break_block);
@@ -1946,6 +1947,8 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    ctx->loop_nesting = 0;
    ctx->total_nesting++;
 
+   bool old_continues = ctx->loop_continues;
+
    agx_block *popped_break = ctx->break_block;
    agx_block *popped_continue = ctx->continue_block;
 
@@ -1968,10 +1971,21 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    ctx->after_block->loop_header = true;
    agx_block *start_block = emit_cf_list(ctx, &nloop->body);
 
-   /* Fix up the nesting counter via an always true while_icmp, and branch back
-    * to start of loop if any lanes are active */
+   /* If we used any continue jumps, we need to reactivate the continued
+    * threads. We do this with an always true while_icmp, which behaves like:
+    *
+    *    if (r0l == 1) {
+    *       r0l = 0;
+    *    }
+    *    update_exec
+    *
+    * If we did not use continue, this would be a no-op so it is omitted.
+    */
    _b.cursor = agx_after_block(ctx->current_block);
-   agx_while_icmp(&_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false);
+
+   if (ctx->loop_continues)
+      agx_while_icmp(&_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false);
+
    agx_jmp_exec_any(&_b, start_block);
    agx_pop_exec(&_b, 2);
    agx_block_add_successor(ctx->current_block, ctx->continue_block);
@@ -1990,6 +2004,7 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    /* Restore loop nesting (we might be inside an if inside an outer loop) */
    ctx->loop_nesting = pushed_nesting;
    ctx->total_nesting--;
+   ctx->loop_continues = old_continues;
 }
 
 /* Before the first control flow structure, the nesting counter needs to be
