@@ -92,9 +92,7 @@ agx_opt_empty_else(agx_context *ctx)
 {
    agx_foreach_block(ctx, blk) {
       if (match_block(blk)) {
-         agx_instr *else_instr =
-            list_first_entry(&blk->instructions, agx_instr, link);
-
+         agx_instr *else_instr = agx_first_instr(blk);
          assert(state_for_instr(else_instr) == STATE_ELSE && "block matched");
 
          agx_remove_instruction(else_instr);
