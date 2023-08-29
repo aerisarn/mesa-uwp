@@ -6455,6 +6455,9 @@ typedef struct {
    /* True if the subgroup size is uniform. */
    bool subgroup_size_uniform;
 
+   /* True if load_workgroup_size is supported in the preamble. */
+   bool load_workgroup_size_allowed;
+
    /* size/align for load/store_preamble. */
    void (*def_size)(nir_def *def, unsigned *size, unsigned *align);
 
