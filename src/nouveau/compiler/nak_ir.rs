@@ -3759,15 +3759,6 @@ impl Instr {
         Box::new(Instr::new(op))
     }
 
-    pub fn new_mov(dst: Dst, src: Src) -> Instr {
-        OpMov {
-            dst: dst,
-            src: src,
-            quad_lanes: 0xf,
-        }
-        .into()
-    }
-
     pub fn dsts(&self) -> &[Dst] {
         self.op.dsts_as_slice()
     }
