@@ -1207,6 +1207,26 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return NULL;
    }
 
+   case nir_intrinsic_reduce: {
+      assert(nir_intrinsic_reduction_op(instr) == nir_op_iadd &&
+             "other reductions todo");
+
+      return agx_simd_iadd_to(b, dst, agx_src_index(&instr->src[0]));
+   }
+
+   case nir_intrinsic_exclusive_scan: {
+      assert(nir_intrinsic_reduction_op(instr) == nir_op_iadd &&
+             "other reductions todo");
+
+      return agx_simd_prefix_iadd_to(b, dst, agx_src_index(&instr->src[0]));
+   }
+
+   case nir_intrinsic_read_invocation: {
+      /* Lane ID guaranteed to be uniform */
+      return agx_simd_shuffle_to(b, dst, agx_src_index(&instr->src[0]),
+                                 agx_src_index(&instr->src[1]));
+   }
+
    case nir_intrinsic_load_barycentric_sample:
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_pos:
