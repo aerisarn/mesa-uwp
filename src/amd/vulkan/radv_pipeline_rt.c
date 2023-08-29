@@ -331,7 +331,7 @@ should_move_rt_instruction(nir_intrinsic_op intrinsic)
 static void
 move_rt_instructions(nir_shader *shader)
 {
-   nir_cursor target = nir_before_cf_list(&nir_shader_get_entrypoint(shader)->body);
+   nir_cursor target = nir_before_impl(nir_shader_get_entrypoint(shader));
 
    nir_foreach_block (block, nir_shader_get_entrypoint(shader)) {
       nir_foreach_instr_safe (instr, block) {
@@ -382,7 +382,7 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
    nir_shader **resume_shaders = NULL;
 
    if (stage->stage != MESA_SHADER_INTERSECTION) {
-      nir_builder b = nir_builder_at(nir_after_cf_list(&nir_shader_get_entrypoint(stage->nir)->body));
+      nir_builder b = nir_builder_at(nir_after_impl(nir_shader_get_entrypoint(stage->nir)));
       nir_rt_return_amd(&b);
 
       const nir_lower_shader_calls_options opts = {
