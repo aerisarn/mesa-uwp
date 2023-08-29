@@ -6367,8 +6367,6 @@ bool nir_opt_shrink_stores(nir_shader *shader, bool shrink_image_store);
 
 bool nir_opt_shrink_vectors(nir_shader *shader);
 
-bool nir_opt_trivial_continues(nir_shader *shader);
-
 bool nir_opt_undef(nir_shader *shader);
 
 bool nir_lower_undef_to_zero(nir_shader *shader);
