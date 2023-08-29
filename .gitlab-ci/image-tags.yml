@@ -23,12 +23,12 @@ variables:
 
    DEBIAN_X86_64_TEST_ANDROID_TAG: "2023-08-20-deqp-wide_color"
    DEBIAN_X86_64_TEST_GL_TAG: "2023-08-20-deqp-wide_color"
-   DEBIAN_X86_64_TEST_VK_TAG: "2023-08-03-deqp-mold"
+   DEBIAN_X86_64_TEST_VK_TAG: "2023-08-30-vkd3d-proton"
 
    ALPINE_X86_64_BUILD_TAG: "2023-05-01-3.18-bump-1"
    ALPINE_X86_64_LAVA_SSH_TAG: "2023-06-26-first-version"
    FEDORA_X86_64_BUILD_TAG: "2023-07-26-meson-1.2"
-   KERNEL_ROOTFS_TAG: "2023-08-20-deqp-wide_color"
+   KERNEL_ROOTFS_TAG: "2023-08-30-vkd3d-proton"
    KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
