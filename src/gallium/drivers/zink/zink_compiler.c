@@ -3515,12 +3515,16 @@ add_derefs_instr(nir_builder *b, nir_intrinsic_instr *intr, void *data)
             nir_def *interp = intr->src[0].ssa;
             nir_intrinsic_instr *interp_intr = nir_instr_as_intrinsic(interp->parent_instr);
             assert(interp_intr);
+            var->data.interpolation = nir_intrinsic_interp_mode(interp_intr);
             switch (interp_intr->intrinsic) {
             case nir_intrinsic_load_barycentric_centroid:
                load = nir_interp_deref_at_centroid(b, intr->num_components, bit_size, &deref->def);
                break;
-            case nir_intrinsic_load_barycentric_pixel:
             case nir_intrinsic_load_barycentric_sample:
+               var->data.sample = 1;
+               load = nir_load_deref(b, deref);
+               break;
+            case nir_intrinsic_load_barycentric_pixel:
                load = nir_load_deref(b, deref);
                break;
             case nir_intrinsic_load_barycentric_at_sample:
@@ -5126,13 +5130,23 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
             assert(!vars[location][c] ||
                    (nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(glsl_without_array(vars[location][c]->type))) == type &&
                     glsl_get_vector_elements(glsl_without_array(vars[location][c]->type)) >= intr->num_components));
-            nir_variable *var = nir_variable_clone(old_var, nir);
+            char name[1024];
+            if (c)
+               snprintf(name, sizeof(name), "slot_%u_c%u", location, c);
+            else
+               snprintf(name, sizeof(name), "slot_%u", location);
+            nir_variable *var = nir_variable_create(nir, mode, vec_type, old_var ? old_var->name : name);
             var->data.mode = mode;
             var->type = vec_type;
             var->data.driver_location = nir_intrinsic_base(intr) + slot_offset;
             var->data.location_frac = c;
             var->data.location = location;
-            nir_shader_add_variable(nir, var);
+            var->data.patch = location >= VARYING_SLOT_PATCH0;
+            /* set flat by default */
+            if (nir->info.stage == MESA_SHADER_FRAGMENT && mode == nir_var_shader_in)
+               var->data.interpolation = INTERP_MODE_FLAT;
+            var->data.fb_fetch_output = s.fb_fetch_output;
+            var->data.precision = s.medium_precision;
             store_location_var(vars, var, nir);
          }
       }
