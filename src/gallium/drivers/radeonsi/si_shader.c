@@ -3647,8 +3647,15 @@ void si_get_vs_prolog_args(enum amd_gfx_level gfx_level,
    args->ac.vertex_id = input_vgprs[vertex_id_vgpr];
    args->ac.instance_id = input_vgprs[instance_id_vgpr];
 
-   if (key->vs_prolog.as_ls && gfx_level < GFX11)
-      args->ac.vs_rel_patch_id = input_vgprs[first_vs_vgpr + 1];
+   if (key->vs_prolog.as_ls) {
+      if (gfx_level < GFX11)
+         args->ac.vs_rel_patch_id = input_vgprs[first_vs_vgpr + 1];
+
+      if (gfx_level >= GFX9) {
+         args->ac.tcs_patch_id = input_vgprs[0];
+         args->ac.tcs_rel_ids = input_vgprs[1];
+      }
+   }
 
    unsigned user_sgpr_base = key->vs_prolog.num_merged_next_stage_vgprs ? 8 : 0;
    args->internal_bindings = input_sgprs[user_sgpr_base + SI_SGPR_INTERNAL_BINDINGS];
