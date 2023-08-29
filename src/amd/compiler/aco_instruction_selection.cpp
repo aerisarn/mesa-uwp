@@ -11849,6 +11849,8 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
       end_divergent_if(&ctx, ic_merged_wave_info);
    }
 
+   bool is_first_stage_of_merged_shader = false;
+
    if (ctx.program->info.merged_shader_compiled_separately &&
        (ctx.stage.sw == SWStage::VS || ctx.stage.sw == SWStage::TES)) {
       assert(program->gfx_level >= GFX9);
@@ -11856,6 +11858,8 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
          create_end_for_merged_shader(&ctx);
       else
          create_merged_jump_to_epilog(&ctx);
+
+      is_first_stage_of_merged_shader = true;
    }
 
    cleanup_context(&ctx);
@@ -11866,7 +11870,7 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
       append_logical_end(ctx.block);
       ctx.block->kind |= block_kind_uniform;
 
-      if (!program->info.has_epilog ||
+      if ((!program->info.has_epilog && !is_first_stage_of_merged_shader) ||
           (nir->info.stage == MESA_SHADER_TESS_CTRL && program->gfx_level >= GFX9)) {
          Builder(program, ctx.block).sopp(aco_opcode::s_endpgm);
       }
