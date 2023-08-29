@@ -40,15 +40,15 @@ fn fold_lop_src(src: &Src, x: &mut u8) {
     }
 }
 
-fn mov_src(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
+fn copy_src(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
     let val = b.alloc_ssa(file, 1);
-    b.mov_to(val.into(), src.src_ref.into());
+    b.copy_to(val.into(), src.src_ref.into());
     src.src_ref = val.into();
 }
 
-fn mov_src_if_not_reg(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
+fn copy_src_if_not_reg(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
     if !src_is_reg(&src) {
-        mov_src(b, src, file);
+        copy_src(b, src, file);
     }
 }
 
@@ -63,23 +63,23 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
         Op::FAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::FFma(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
-            mov_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
         Op::FMnMx(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::FMul(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::FSet(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -87,7 +87,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                 std::mem::swap(src0, src1);
                 op.cmp_op = op.cmp_op.flip();
             }
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::FSetP(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -95,38 +95,38 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                 std::mem::swap(src0, src1);
                 op.cmp_op = op.cmp_op.flip();
             }
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::MuFu(_) => (), /* Nothing to do */
         Op::DAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::IAbs(_) | Op::INeg(_) => (), /* Nothing to do */
         Op::IAdd3(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
             swap_srcs_if_not_reg(src2, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
-            mov_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
         Op::IMad(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
-            mov_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
         Op::IMad64(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
-            mov_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
         Op::IMnMx(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::ISetP(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -134,7 +134,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                 std::mem::swap(src0, src1);
                 op.cmp_op = op.cmp_op.flip();
             }
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::Lop3(op) => {
             /* Fold constants if we can */
@@ -161,12 +161,12 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                 op.op = LogicOp::new_lut(&|x, y, z| op.op.eval(x, z, y))
             }
 
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
-            mov_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
         Op::Shf(op) => {
-            mov_src_if_not_reg(b, &mut op.low, RegFile::GPR);
-            mov_src_if_not_reg(b, &mut op.high, RegFile::GPR);
+            copy_src_if_not_reg(b, &mut op.low, RegFile::GPR);
+            copy_src_if_not_reg(b, &mut op.high, RegFile::GPR);
         }
         Op::F2F(_)
         | Op::F2I(_)
@@ -183,7 +183,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                 std::mem::swap(src0, src1);
                 op.cond.src_mod = op.cond.src_mod.bnot();
             }
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::PLop3(op) => {
             /* Fold constants if we can */
@@ -216,8 +216,8 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                 }
             }
 
-            mov_src_if_not_reg(b, src0, RegFile::GPR);
-            mov_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
         Op::Ldc(_) => (),  // Nothing to do
         Op::Copy(_) => (), // Nothing to do
@@ -227,11 +227,11 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                 match src_types[i] {
                     SrcType::SSA => {
                         if src.as_ssa().is_none() {
-                            mov_src(b, src, RegFile::GPR);
+                            copy_src(b, src, RegFile::GPR);
                         }
                     }
                     SrcType::GPR => {
-                        mov_src_if_not_reg(b, src, RegFile::GPR);
+                        copy_src_if_not_reg(b, src, RegFile::GPR);
                     }
                     SrcType::ALU
                     | SrcType::F32
