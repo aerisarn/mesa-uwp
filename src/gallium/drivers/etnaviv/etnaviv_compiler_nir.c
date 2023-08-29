@@ -1211,7 +1211,7 @@ etna_compile_shader(struct etna_shader_variant *v)
    NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(s, nir_opt_algebraic_late);
 
-   NIR_PASS_V(s, nir_move_vec_src_uses_to_dest);
+   NIR_PASS_V(s, nir_move_vec_src_uses_to_dest, false);
    NIR_PASS_V(s, nir_copy_prop);
    /* need copy prop after uses_to_dest, and before src mods: see
     * dEQP-GLES2.functional.shaders.random.all_features.fragment.95

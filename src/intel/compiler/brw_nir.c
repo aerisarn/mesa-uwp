@@ -1732,7 +1732,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_convert_from_ssa, true);
 
    if (!is_scalar) {
-      OPT(nir_move_vec_src_uses_to_dest);
+      OPT(nir_move_vec_src_uses_to_dest, true);
       OPT(nir_lower_vec_to_regs, NULL, NULL);
    }
 

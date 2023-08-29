@@ -477,7 +477,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
    NIR_PASS(progress, nir, nir_convert_from_ssa, true);
 
    /* We are a vector architecture; write combine where possible */
-   NIR_PASS(progress, nir, nir_move_vec_src_uses_to_dest);
+   NIR_PASS(progress, nir, nir_move_vec_src_uses_to_dest, false);
    NIR_PASS(progress, nir, nir_lower_vec_to_regs, NULL, NULL);
 
    NIR_PASS(progress, nir, nir_opt_dce);
