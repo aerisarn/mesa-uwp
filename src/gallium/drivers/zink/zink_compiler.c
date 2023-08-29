@@ -5008,11 +5008,7 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
             old_var->data.mode = oldmode;
             if (is_indirect) {
                /* indirect array access requires the full array in a single variable */
-               unsigned slot_count = 0;
-               if (is_arrayed)
-                  slot_count = glsl_count_vec4_slots(glsl_get_array_element(old_var->type), false, false);
-               else
-                  slot_count = glsl_count_vec4_slots(old_var->type, false, false);
+               unsigned slot_count = s.num_slots;
                if (bit_size == 64 && slot_count > 1)
                   slot_count /= 2;
                if (slot_count > 1)
