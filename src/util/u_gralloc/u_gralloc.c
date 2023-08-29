@@ -23,6 +23,7 @@ static const struct u_grallocs {
    enum u_gralloc_type type;
    struct u_gralloc *(*create)();
 } u_grallocs[] = {
+   /* Prefer the CrOS API as it is significantly faster than IMapper4 */
    {.type = U_GRALLOC_TYPE_CROS, .create = u_gralloc_cros_api_create},
 #ifdef USE_IMAPPER4_METADATA_API
    {.type = U_GRALLOC_TYPE_GRALLOC4, .create = u_gralloc_imapper_api_create},
