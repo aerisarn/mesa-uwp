@@ -3462,14 +3462,17 @@ isl_surf_get_image_surf(const struct isl_device *dev,
 
 bool
 isl_surf_get_uncompressed_surf(const struct isl_device *dev,
-                               const struct isl_surf *surf,
-                               const struct isl_view *view,
+                               const struct isl_surf *_surf,
+                               const struct isl_view *_view,
                                struct isl_surf *ucompr_surf,
                                struct isl_view *ucompr_view,
                                uint64_t *offset_B,
                                uint32_t *x_offset_el,
                                uint32_t *y_offset_el)
 {
+   /* Input and output pointers may be the same, save the input contents now. */
+   const struct isl_surf __surf = *_surf, *surf = &__surf;
+   const struct isl_view __view = *_view, *view = &__view;
    const struct isl_format_layout *fmtl =
       isl_format_get_layout(surf->format);
    const enum isl_format view_format = view->format;
