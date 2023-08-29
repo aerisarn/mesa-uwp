@@ -313,6 +313,7 @@ vl_deint_filter_init(struct vl_deint_filter *filter, struct pipe_context *pipe,
 
    memset(&ve, 0, sizeof(ve));
    ve.src_offset = 0;
+   ve.src_stride = sizeof(struct vertex2f);
    ve.instance_divisor = 0;
    ve.vertex_buffer_index = 0;
    ve.src_format = PIPE_FORMAT_R32G32_FLOAT;
