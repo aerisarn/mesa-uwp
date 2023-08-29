@@ -11747,6 +11747,30 @@ create_merged_jump_to_epilog(isel_context* ctx)
    ctx->block->instructions.emplace_back(std::move(jump));
 }
 
+static void
+create_end_for_merged_shader(isel_context* ctx)
+{
+   std::vector<Operand> regs;
+
+   unsigned max_args;
+   if (ctx->stage.sw == SWStage::VS) {
+      assert(ctx->args->vertex_id.used);
+      max_args = ctx->args->vertex_id.arg_index;
+   } else {
+      assert(ctx->stage.sw == SWStage::TES);
+      assert(ctx->args->tes_u.used);
+      max_args = ctx->args->tes_u.arg_index;
+   }
+
+   struct ac_arg arg;
+   arg.used = true;
+
+   for (arg.arg_index = 0; arg.arg_index < max_args; arg.arg_index++)
+      regs.emplace_back(get_arg_for_end(ctx, arg));
+
+   build_end_with_regs(ctx, regs);
+}
+
 void
 select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, const bool need_barrier,
               if_context* ic_merged_wave_info, const bool check_merged_wave_info,
@@ -11828,7 +11852,10 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
    if (ctx.program->info.merged_shader_compiled_separately &&
        (ctx.stage.sw == SWStage::VS || ctx.stage.sw == SWStage::TES)) {
       assert(program->gfx_level >= GFX9);
-      create_merged_jump_to_epilog(&ctx);
+      if (ctx.options->is_opengl)
+         create_end_for_merged_shader(&ctx);
+      else
+         create_merged_jump_to_epilog(&ctx);
    }
 
    cleanup_context(&ctx);
