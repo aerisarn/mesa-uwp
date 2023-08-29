@@ -12,7 +12,6 @@
  * Detect blocks with the sole contents:
  *
  *    else n=1
- *    logical_end
  *    pop_exec n=1
  *
  * The else instruction is a no-op. To see that, consider the pseudocode for the
@@ -50,7 +49,6 @@
 
 enum block_state {
    STATE_ELSE = 0,
-   STATE_LOGICAL_END,
    STATE_POP_EXEC,
    STATE_DONE,
 
@@ -65,9 +63,6 @@ state_for_instr(const agx_instr *I)
    case AGX_OPCODE_ELSE_ICMP:
    case AGX_OPCODE_ELSE_FCMP:
       return (I->nest == 1) ? STATE_ELSE : STATE_NONE;
-
-   case AGX_OPCODE_LOGICAL_END:
-      return STATE_LOGICAL_END;
 
    case AGX_OPCODE_POP_EXEC:
       return (I->nest == 1) ? STATE_POP_EXEC : STATE_NONE;

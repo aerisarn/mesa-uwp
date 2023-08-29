@@ -59,7 +59,7 @@ create_dag(agx_context *ctx, agx_block *block, void *memctx)
 
    agx_foreach_instr_in_block(block, I) {
       /* Don't touch control flow */
-      if (I->op == AGX_OPCODE_LOGICAL_END)
+      if (instr_after_logical_end(I))
          break;
 
       struct sched_node *node = rzalloc(memctx, struct sched_node);

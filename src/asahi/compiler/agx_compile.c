@@ -1719,20 +1719,6 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 }
 
 /*
- * Mark the logical end of the current block by emitting a p_logical_end marker.
- * Note if an unconditional jump is emitted (for instance, to break out of a
- * loop from inside an if), the block has already reached its logical end so we
- * don't re-emit p_logical_end. The validator checks this, and correct register
- * allocation depends on it.
- */
-static void
-agx_emit_logical_end(agx_builder *b)
-{
-   if (!b->shader->current_block->unconditional_jumps)
-      agx_logical_end(b);
-}
-
-/*
  * NIR loops are treated as a pair of AGX loops:
  *
  *    do {
@@ -1768,9 +1754,6 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 
    /* Update the counter and flush */
    agx_nest(b, nestings);
-
-   /* Jumps must come at the end of a block */
-   agx_emit_logical_end(b);
    agx_pop_exec(b, 0);
 
    ctx->current_block->unconditional_jumps = true;
@@ -1925,7 +1908,6 @@ emit_if(agx_context *ctx, nir_if *nif)
    agx_builder _b = agx_init_builder(ctx, agx_after_block(first_block));
    agx_index cond = agx_src_index(&nif->condition);
 
-   agx_emit_logical_end(&_b);
    agx_if_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, true);
    ctx->loop_nesting++;
 
@@ -1934,7 +1916,6 @@ emit_if(agx_context *ctx, nir_if *nif)
    agx_block *end_then = ctx->current_block;
 
    _b.cursor = agx_after_block(ctx->current_block);
-   agx_emit_logical_end(&_b);
 
    agx_block *else_block = emit_cf_list(ctx, &nif->else_list);
    agx_block *end_else = ctx->current_block;
@@ -1953,7 +1934,6 @@ emit_if(agx_context *ctx, nir_if *nif)
    agx_block_add_successor(end_else, ctx->after_block);
 
    _b.cursor = agx_after_block(ctx->current_block);
-   agx_emit_logical_end(&_b);
    agx_pop_exec(&_b, 1);
    ctx->loop_nesting--;
 }
@@ -1974,7 +1954,6 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
 
    /* Make room for break/continue nesting (TODO: skip if no divergent CF) */
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
-   agx_emit_logical_end(&_b);
    agx_push_exec(&_b, 2);
 
    /* Fallthrough to body */
@@ -1988,7 +1967,6 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    /* Fix up the nesting counter via an always true while_icmp, and branch back
     * to start of loop if any lanes are active */
    _b.cursor = agx_after_block(ctx->current_block);
-   agx_emit_logical_end(&_b);
    agx_while_icmp(&_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false);
    agx_jmp_exec_any(&_b, start_block);
    agx_pop_exec(&_b, 2);
@@ -2526,7 +2504,6 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     */
    agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
    agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
-   agx_logical_end(&_b);
    agx_stop(&_b);
 
    /* Index blocks now that we're done emitting so the order is consistent */

@@ -410,10 +410,6 @@ op("xor", _, srcs = 2)
 op("and", _, srcs = 2)
 op("or", _, srcs = 2)
 
-# Indicates the logical end of the block, before final branches/control flow
-op("logical_end", _, dests = 0, srcs = 0, can_eliminate = False,
-   schedule_class = "invalid")
-
 op("collect", _, srcs = VARIABLE)
 op("split", _, srcs = 1, dests = VARIABLE)
 op("phi", _, srcs = VARIABLE, schedule_class = "preload")

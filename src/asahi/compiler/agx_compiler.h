@@ -670,24 +670,6 @@ agx_after_instr(agx_instr *instr)
    };
 }
 
-/*
- * Get a cursor inserting at the logical end of the block. In particular, this
- * is before branches or control flow instructions, which occur after the
- * logical end but before the physical end.
- */
-static inline agx_cursor
-agx_after_block_logical(agx_block *block)
-{
-   /* Search for a p_logical_end */
-   agx_foreach_instr_in_block_rev(block, I) {
-      if (I->op == AGX_OPCODE_LOGICAL_END)
-         return agx_before_instr(I);
-   }
-
-   /* If there's no p_logical_end, use the physical end */
-   return agx_after_block(block);
-}
-
 static inline agx_cursor
 agx_before_nonempty_block(agx_block *block)
 {
@@ -704,6 +686,42 @@ agx_before_block(agx_block *block)
       return agx_after_block(block);
    else
       return agx_before_nonempty_block(block);
+}
+
+static inline bool
+instr_after_logical_end(const agx_instr *I)
+{
+   switch (I->op) {
+   case AGX_OPCODE_JMP_EXEC_ANY:
+   case AGX_OPCODE_JMP_EXEC_NONE:
+   case AGX_OPCODE_POP_EXEC:
+   case AGX_OPCODE_IF_ICMP:
+   case AGX_OPCODE_WHILE_ICMP:
+   case AGX_OPCODE_IF_FCMP:
+   case AGX_OPCODE_WHILE_FCMP:
+   case AGX_OPCODE_STOP:
+      return true;
+   default:
+      return false;
+   }
+}
+
+/*
+ * Get a cursor inserting at the logical end of the block. In particular, this
+ * is before branches or control flow instructions, which occur after the
+ * logical end but before the physical end.
+ */
+static inline agx_cursor
+agx_after_block_logical(agx_block *block)
+{
+   /* Search for the first instruction that's not past the logical end */
+   agx_foreach_instr_in_block_rev(block, I) {
+      if (!instr_after_logical_end(I))
+         return agx_after_instr(I);
+   }
+
+   /* If we got here, the block is either empty or entirely control flow */
+   return agx_before_block(block);
 }
 
 /* IR builder in terms of cursor infrastructure */
