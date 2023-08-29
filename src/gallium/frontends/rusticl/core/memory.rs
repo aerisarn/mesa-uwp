@@ -374,11 +374,10 @@ impl Mem {
             ResourceType::Normal
         };
 
-        let pipe_format = image_format.to_pipe_format().unwrap();
         let texture = if parent.is_none() {
             Some(context.create_texture(
                 &image_desc,
-                pipe_format,
+                image_format,
                 host_ptr,
                 bit_check(flags, CL_MEM_COPY_HOST_PTR),
                 res_type,
@@ -393,6 +392,7 @@ impl Mem {
             ptr::null_mut()
         };
 
+        let pipe_format = image_format.to_pipe_format().unwrap();
         Ok(Arc::new(Self {
             base: CLObjectBase::new(),
             context: context,
@@ -537,6 +537,7 @@ impl Mem {
                     cl_mem_type_to_texture_target(self.image_desc.image_type),
                     self.pipe_format,
                     ResourceType::Staging,
+                    false,
                 )
                 .ok_or(CL_OUT_OF_RESOURCES)?;
             let tx = ctx.texture_map_coherent(&shadow, bx, rw);
