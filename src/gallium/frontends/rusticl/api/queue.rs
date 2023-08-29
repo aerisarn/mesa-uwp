@@ -1,6 +1,7 @@
 use crate::api::event::create_and_queue;
 use crate::api::icd::*;
 use crate::api::util::*;
+use crate::core::device::*;
 use crate::core::event::*;
 use crate::core::queue::*;
 
@@ -45,9 +46,21 @@ fn valid_command_queue_properties(properties: cl_command_queue_properties) -> bo
     properties & !valid_flags == 0
 }
 
-fn supported_command_queue_properties(properties: cl_command_queue_properties) -> bool {
-    let valid_flags = cl_bitfield::from(CL_QUEUE_PROFILING_ENABLE);
-    properties & !valid_flags == 0
+fn supported_command_queue_properties(
+    dev: &Device,
+    properties: cl_command_queue_properties,
+) -> bool {
+    let profiling = cl_bitfield::from(CL_QUEUE_PROFILING_ENABLE);
+    let valid_flags = profiling;
+    if properties & !valid_flags != 0 {
+        return false;
+    }
+
+    if properties & profiling != 0 && !dev.has_timestamp {
+        return false;
+    }
+
+    true
 }
 
 pub fn create_command_queue_impl(
@@ -70,7 +83,7 @@ pub fn create_command_queue_impl(
     }
 
     // CL_INVALID_QUEUE_PROPERTIES if values specified in properties are valid but are not supported by the device.
-    if !supported_command_queue_properties(properties) {
+    if !supported_command_queue_properties(d, properties) {
         return Err(CL_INVALID_QUEUE_PROPERTIES);
     }
 
