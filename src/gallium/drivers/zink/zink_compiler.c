@@ -2310,6 +2310,22 @@ filter_io_instr(nir_intrinsic_instr *intr, bool *is_load, bool *is_input, bool *
 }
 
 static bool
+io_instr_is_arrayed(nir_intrinsic_instr *intr)
+{
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_per_vertex_input:
+   case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_load_per_primitive_output:
+   case nir_intrinsic_store_per_primitive_output:
+   case nir_intrinsic_store_per_vertex_output:
+      return true;
+   default:
+      break;
+   }
+   return false;
+}
+
+static bool
 find_var_deref(nir_shader *nir, nir_variable *var)
 {
    nir_foreach_function_impl(impl, nir) {
@@ -5002,10 +5018,7 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
                c = 0;
             const struct glsl_type *vec_type = glsl_vector_type(nir_get_glsl_base_type_for_nir_type(type), max_components);
             /* reset the mode for nir_is_arrayed_io to work */
-            nir_variable_mode oldmode = old_var->data.mode;
-            old_var->data.mode = mode;
-            bool is_arrayed = nir_is_arrayed_io(old_var, nir->info.stage);
-            old_var->data.mode = oldmode;
+            bool is_arrayed = io_instr_is_arrayed(intr);
             if (is_indirect) {
                /* indirect array access requires the full array in a single variable */
                unsigned slot_count = s.num_slots;
