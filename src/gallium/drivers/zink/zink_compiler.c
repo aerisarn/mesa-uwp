@@ -5207,6 +5207,12 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
       lower_io_flags |= nir_lower_io_lower_64bit_to_32;
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, zink_type_size, lower_io_flags);
    optimize_nir(nir, NULL);
+   nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out) {
+      if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
+         NIR_PASS_V(nir, lower_bindless_io);
+         break;
+      }
+   }
    nir_gather_xfb_info_from_intrinsics(nir);
    NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_in | nir_var_shader_out, eliminate_io_wrmasks_instr, nir);
    /* clean up io to improve direct access */
@@ -5275,15 +5281,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
 
    struct zink_bindless_info bindless = {0};
    bindless.bindless_set = screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS];
-   bool has_bindless_io = false;
-   nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out) {
+   nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out)
       var->data.is_xfb = false;
-      if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
-         has_bindless_io = true;
-      }
-   }
-   if (has_bindless_io)
-      NIR_PASS_V(nir, lower_bindless_io);
 
    optimize_nir(nir, NULL);
    prune_io(nir);
