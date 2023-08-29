@@ -259,7 +259,16 @@ def parse_args() -> None:
         help="URL of the pipeline to use, instead of auto-detecting it.",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # argparse doesn't support groups inside add_mutually_exclusive_group(),
+    # which means we can't just put `--project` and `--rev` in a group together,
+    # we have to do this by heand instead.
+    if args.pipeline_url and args.project != parser.get_default("project"):
+        # weird phrasing but it's the error add_mutually_exclusive_group() gives
+        parser.error("argument --project: not allowed with argument --pipeline-url")
+
+    return args
 
 
 def find_dependencies(target_job: str, project_path: str, sha: str) -> set[str]:
