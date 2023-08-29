@@ -210,6 +210,7 @@ if with_xlib_lease
 endif
 
 if with_platform_android
+  anv_deps += idep_u_gralloc
   libanv_files += files('anv_android.c')
 else
   libanv_files += files('anv_android_stubs.c')

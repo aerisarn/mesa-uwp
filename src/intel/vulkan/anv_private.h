@@ -63,6 +63,9 @@
 #include "util/set.h"
 #include "util/sparse_array.h"
 #include "util/u_atomic.h"
+#ifdef ANDROID
+#include "util/u_gralloc/u_gralloc.h"
+#endif
 #include "util/u_vector.h"
 #include "util/u_math.h"
 #include "util/vma.h"
@@ -1298,6 +1301,9 @@ struct anv_device {
 
     uint32_t                                    draw_call_count;
     struct anv_state                            breakpoint;
+#ifdef ANDROID
+    struct u_gralloc                            *u_gralloc;
+#endif
 };
 
 static inline struct anv_state
