@@ -1862,6 +1862,26 @@ agx_create_compute_state(struct pipe_context *pctx,
    return so;
 }
 
+static void
+agx_get_compute_state_info(struct pipe_context *pctx, void *cso,
+                           struct pipe_compute_state_object_info *info)
+{
+   union asahi_shader_key key = {0};
+   struct agx_compiled_shader *so =
+      agx_get_shader_variant(agx_screen(pctx->screen), cso, &pctx->debug, &key);
+
+   info->max_threads =
+      agx_occupancy_for_register_count(so->info.nr_gprs).max_threads;
+   info->private_memory = 0;
+   info->preferred_simd_size = 32;
+   info->simd_sizes = 32;
+
+   /* HACK: Clamp max_threads to what we advertise. When we fix the CAP
+    * situation around block sizes, we can drop this.
+    */
+   info->max_threads = MIN2(info->max_threads, 256);
+}
+
 /* Does not take ownership of key. Clones if necessary. */
 static bool
 agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
@@ -3421,4 +3441,5 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->draw_vbo = agx_draw_vbo;
    ctx->launch_grid = agx_launch_grid;
    ctx->texture_barrier = agx_texture_barrier;
+   ctx->get_compute_state_info = agx_get_compute_state_info;
 }

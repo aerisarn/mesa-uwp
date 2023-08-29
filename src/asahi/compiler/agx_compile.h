@@ -226,6 +226,13 @@ void agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
                             struct util_dynarray *binary,
                             struct agx_shader_info *out);
 
+struct agx_occupancy {
+   unsigned max_registers;
+   unsigned max_threads;
+};
+
+struct agx_occupancy agx_occupancy_for_register_count(unsigned halfregs);
+
 static const nir_shader_compiler_options agx_nir_options = {
    .lower_fdiv = true,
    .fuse_ffma16 = true,
