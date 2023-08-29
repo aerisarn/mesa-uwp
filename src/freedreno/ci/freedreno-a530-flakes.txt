@@ -132,6 +132,7 @@ spec@glsl-1.10@execution@vs-mat2-array-assignment
 spec@glsl-1.10@execution@vs-nested-return-sibling-loop2
 spec@glsl-1.20@execution@built-in-functions@fs-matrixcompmult-mat4x2-mat4x2
 spec@glsl-1.20@execution@built-in-functions@vs-op-ne-mat2x4-mat2x4-using-if
+spec@glsl-1.20@execution@built-in-functions@vs-op-neg-mat3x4
 spec@glsl-1.20@execution@clipping@vs-clip-vertex-different-from-position
 spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-distance
 spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-derivatives
