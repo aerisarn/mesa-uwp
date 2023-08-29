@@ -8,6 +8,42 @@
 #include "agx_opcodes.h"
 
 /* Lower pseudo instructions created during optimization. */
+
+static agx_instr *
+while_for_break_if(agx_builder *b, agx_instr *I)
+{
+   if (I->op == AGX_OPCODE_BREAK_IF_FCMP) {
+      return agx_while_fcmp(b, I->src[0], I->src[1], I->nest, I->fcond,
+                            !I->invert_cond);
+   } else {
+      return agx_while_icmp(b, I->src[0], I->src[1], I->nest, I->icond,
+                            !I->invert_cond);
+   }
+}
+
+static agx_instr *
+cmpsel_for_break_if(agx_builder *b, agx_instr *I)
+{
+   agx_index r0l = agx_register(0, AGX_SIZE_16);
+
+   /* If the condition is true, set r0l to nest to break */
+   agx_index t = agx_immediate(I->nest);
+   agx_index f = r0l;
+
+   if (I->invert_cond) {
+      agx_index temp = t;
+      t = f;
+      f = temp;
+   }
+
+   if (I->op == AGX_OPCODE_BREAK_IF_FCMP)
+      agx_fcmpsel_to(b, r0l, I->src[0], I->src[1], t, f, I->fcond);
+   else
+      agx_icmpsel_to(b, r0l, I->src[0], I->src[1], t, f, I->icond);
+
+   return agx_push_exec(b, 0);
+}
+
 static agx_instr *
 lower(agx_builder *b, agx_instr *I)
 {
@@ -36,6 +72,14 @@ lower(agx_builder *b, agx_instr *I)
    case AGX_OPCODE_BREAK:
       agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), I->nest);
       return agx_pop_exec(b, 0);
+
+   case AGX_OPCODE_BREAK_IF_ICMP:
+   case AGX_OPCODE_BREAK_IF_FCMP: {
+      if (I->nest == 1)
+         return while_for_break_if(b, I);
+      else
+         return cmpsel_for_break_if(b, I);
+   }
 
    default:
       return NULL;

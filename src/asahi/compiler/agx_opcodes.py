@@ -424,3 +424,8 @@ op("preload", _, srcs = 1, schedule_class = "preload")
 op("begin_cf", _, dests = 0, can_eliminate = False)
 op("break", _, dests = 0, imms = [NEST], can_eliminate = False,
    schedule_class = "invalid")
+
+for (name, is_float) in [("break_if_icmp", False), ("break_if_fcmp", True)]:
+    op(name, _, dests = 0, srcs = 2,
+       imms = [NEST, INVERT_COND, FCOND if is_float else ICOND],
+       can_eliminate = False, schedule_class = "invalid")
