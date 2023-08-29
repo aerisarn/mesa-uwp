@@ -77,6 +77,19 @@ move_vec_src_uses_to_dest_block(nir_block *block)
          continue; /* The loop */
       }
 
+      /* If the vec is used only in single store output than by reusing it
+       * we lose the ability to write it to the output directly.
+       */
+      if (list_is_singular(&vec->def.uses)) {
+         nir_src *src = list_first_entry(&vec->def.uses, nir_src, use_link);
+         nir_instr *use_instr = src->parent_instr;
+         if (use_instr->type == nir_instr_type_intrinsic) {
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(use_instr);
+            if (intr->intrinsic == nir_intrinsic_store_output)
+               return false;
+         }
+      }
+
       /* First, mark all of the sources we are going to consider for rewriting
        * to the destination
        */
