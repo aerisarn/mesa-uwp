@@ -2443,22 +2443,7 @@ static void si_determine_use_aco(struct si_shader *shader)
    if (!sel->screen->info.has_graphics)
       return;
 
-   switch (sel->stage) {
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-      shader->use_aco =
-         !si_is_multi_part_shader(shader) || shader->is_monolithic ||
-         shader->is_gs_copy_shader;
-      break;
-   case MESA_SHADER_FRAGMENT:
-   case MESA_SHADER_COMPUTE:
-      shader->use_aco = true;
-      break;
-   default:
-      break;
-   }
+   shader->use_aco = true;
 }
 
 /* Generate code for the hardware VS shader stage to go with a geometry shader */
@@ -2961,19 +2946,6 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    result->key = *key;
 
    bool use_aco = (sscreen->debug_flags & DBG(USE_ACO)) && sscreen->info.has_graphics;
-   if (use_aco) {
-      switch (stage) {
-      case MESA_SHADER_VERTEX:
-         use_aco = sscreen->info.gfx_level <= GFX8 ||
-            !(key->vs_prolog.as_ls || key->vs_prolog.as_es);
-         break;
-      case MESA_SHADER_TESS_CTRL:
-         use_aco = sscreen->info.gfx_level <= GFX8;
-         break;
-      default:
-         break;
-      }
-   }
 
    bool ok = use_aco ?
       si_aco_build_shader_part(sscreen, stage, prolog, debug, name, result) :
