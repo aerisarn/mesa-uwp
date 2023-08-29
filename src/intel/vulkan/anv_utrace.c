@@ -227,14 +227,19 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
       assert(queue->family->engine_class == INTEL_ENGINE_CLASS_RENDER ||
              queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE);
       if (queue->family->engine_class == INTEL_ENGINE_CLASS_RENDER) {
+
+         trace_intel_begin_trace_copy_cb(&submit->ds.trace, &submit->batch);
+
          anv_genX(device->info, emit_so_memcpy_init)(&submit->memcpy_state,
                                                      device,
                                                      &submit->batch);
+         uint32_t num_traces = 0;
          for (uint32_t i = 0; i < cmd_buffer_count; i++) {
             if (cmd_buffers[i]->usage_flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT) {
                intel_ds_queue_flush_data(&queue->ds, &cmd_buffers[i]->trace,
                                          &submit->ds, false);
             } else {
+               num_traces += cmd_buffers[i]->trace.num_traces;
                u_trace_clone_append(u_trace_begin_iterator(&cmd_buffers[i]->trace),
                                     u_trace_end_iterator(&cmd_buffers[i]->trace),
                                     &submit->ds.trace,
@@ -244,8 +249,13 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
          }
          anv_genX(device->info, emit_so_memcpy_fini)(&submit->memcpy_state);
 
+         trace_intel_end_trace_copy_cb(&submit->ds.trace, &submit->batch,
+                                       num_traces);
+
          anv_genX(device->info, emit_so_memcpy_end)(&submit->memcpy_state);
       } else {
+         trace_intel_begin_trace_copy_cb(&submit->ds.trace, &submit->batch);
+
          submit->simple_state = (struct anv_simple_shader) {
             .device               = device,
             .dynamic_state_stream = &submit->dynamic_state_stream,
@@ -257,11 +267,14 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
          };
          anv_genX(device->info, emit_simple_shader_init)(&submit->simple_state);
 
+         uint32_t num_traces = 0;
          for (uint32_t i = 0; i < cmd_buffer_count; i++) {
+            num_traces += cmd_buffers[i]->trace.num_traces;
             if (cmd_buffers[i]->usage_flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT) {
                intel_ds_queue_flush_data(&queue->ds, &cmd_buffers[i]->trace,
                                          &submit->ds, false);
             } else {
+               num_traces += cmd_buffers[i]->trace.num_traces;
                u_trace_clone_append(u_trace_begin_iterator(&cmd_buffers[i]->trace),
                                     u_trace_end_iterator(&cmd_buffers[i]->trace),
                                     &submit->ds.trace,
@@ -269,6 +282,9 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
                                     anv_device_utrace_emit_cs_copy_ts_buffer);
             }
          }
+
+         trace_intel_end_trace_copy_cb(&submit->ds.trace, &submit->batch,
+                                       num_traces);
 
          anv_genX(device->info, emit_simple_shader_end)(&submit->simple_state);
       }

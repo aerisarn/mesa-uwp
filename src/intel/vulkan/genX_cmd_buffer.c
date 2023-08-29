@@ -3794,9 +3794,11 @@ genX(CmdExecuteCommands)(
 
       struct anv_memcpy_state memcpy_state;
       genX(emit_so_memcpy_init)(&memcpy_state, device, &primary->batch);
+      uint32_t num_traces = 0;
       for (uint32_t i = 0; i < commandBufferCount; i++) {
          ANV_FROM_HANDLE(anv_cmd_buffer, secondary, pCmdBuffers[i]);
 
+         num_traces += secondary->trace.num_traces;
          u_trace_clone_append(u_trace_begin_iterator(&secondary->trace),
                               u_trace_end_iterator(&secondary->trace),
                               &primary->trace,
@@ -3805,7 +3807,7 @@ genX(CmdExecuteCommands)(
       }
       genX(emit_so_memcpy_fini)(&memcpy_state);
 
-      trace_intel_end_trace_copy(&primary->trace);
+      trace_intel_end_trace_copy(&primary->trace, num_traces);
 
       /* Memcpy is done using the 3D pipeline. */
       primary->state.current_pipeline = _3D;
