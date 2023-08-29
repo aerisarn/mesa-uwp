@@ -1328,6 +1328,9 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
       .filter = PIPE_TEX_FILTER_NEAREST,
    };
 
+   /* data_valid is not valid until flushed */
+   panfrost_flush_writer(ctx, rsrc, "AFBC decompressing blit");
+
    for (int i = 0; i <= rsrc->base.last_level; i++) {
       if (BITSET_TEST(rsrc->valid.data, i)) {
          blit.dst.level = blit.src.level = i;
@@ -1342,6 +1345,11 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
          panfrost_blit(&ctx->base, &blit);
       }
    }
+
+   /* we lose track of tmp_rsrc after this point, and the BO migration
+    * (from tmp_rsrc to rsrc) doesn't transfer the last_writer to rsrc
+    */
+   panfrost_flush_writer(ctx, tmp_rsrc, "AFBC decompressing blit");
 
    panfrost_bo_unreference(rsrc->image.data.bo);
 
