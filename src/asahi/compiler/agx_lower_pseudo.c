@@ -5,6 +5,7 @@
 
 #include "agx_builder.h"
 #include "agx_compiler.h"
+#include "agx_opcodes.h"
 
 /* Lower pseudo instructions created during optimization. */
 static agx_instr *
@@ -29,8 +30,12 @@ lower(agx_builder *b, agx_instr *I)
       return agx_bitop_to(b, I->dest[0], I->src[0], I->src[1], AGX_BITOP_OR);
 
    /* Writes to the nesting counter lowered to the real register */
-   case AGX_OPCODE_NEST:
-      return agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), I->imm);
+   case AGX_OPCODE_BEGIN_CF:
+      return agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), 0);
+
+   case AGX_OPCODE_BREAK:
+      agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), I->nest);
+      return agx_pop_exec(b, 0);
 
    default:
       return NULL;

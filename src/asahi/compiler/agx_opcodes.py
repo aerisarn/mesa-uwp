@@ -420,6 +420,7 @@ op("unit_test", _, dests = 0, srcs = 1, can_eliminate = False)
 # to be coalesced during RA, rather than lowered to a real move. 
 op("preload", _, srcs = 1, schedule_class = "preload")
 
-# Set the nesting counter. Lowers to mov_imm r0l, #nest after RA.
-op("nest", _, dests = 0, imms = [IMM], can_eliminate = False,
-   schedule_class = "barrier")
+# Pseudo-instructions to set the nesting counter. Lowers to r0l writes after RA.
+op("begin_cf", _, dests = 0, can_eliminate = False)
+op("break", _, dests = 0, imms = [NEST], can_eliminate = False,
+   schedule_class = "invalid")

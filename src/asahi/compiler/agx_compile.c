@@ -1752,10 +1752,7 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
       agx_block_add_successor(ctx->current_block, ctx->break_block);
    }
 
-   /* Update the counter and flush */
-   agx_nest(b, nestings);
-   agx_pop_exec(b, 0);
-
+   agx_break(b, nestings);
    ctx->current_block->unconditional_jumps = true;
 }
 
@@ -1999,7 +1996,7 @@ emit_first_cf(agx_context *ctx)
       return;
 
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
-   agx_nest(&_b, 0);
+   agx_begin_cf(&_b);
    ctx->any_cf = true;
 }
 

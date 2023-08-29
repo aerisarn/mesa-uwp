@@ -695,6 +695,7 @@ instr_after_logical_end(const agx_instr *I)
    case AGX_OPCODE_JMP_EXEC_ANY:
    case AGX_OPCODE_JMP_EXEC_NONE:
    case AGX_OPCODE_POP_EXEC:
+   case AGX_OPCODE_BREAK:
    case AGX_OPCODE_IF_ICMP:
    case AGX_OPCODE_WHILE_ICMP:
    case AGX_OPCODE_IF_FCMP:
