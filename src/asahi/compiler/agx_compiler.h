@@ -599,6 +599,24 @@ agx_prev_op(agx_instr *ins)
 }
 
 static inline agx_instr *
+agx_first_instr(agx_block *block)
+{
+   if (list_is_empty(&block->instructions))
+      return NULL;
+   else
+      return list_first_entry(&block->instructions, agx_instr, link);
+}
+
+static inline agx_instr *
+agx_last_instr(agx_block *block)
+{
+   if (list_is_empty(&block->instructions))
+      return NULL;
+   else
+      return list_last_entry(&block->instructions, agx_instr, link);
+}
+
+static inline agx_instr *
 agx_next_op(agx_instr *ins)
 {
    return list_first_entry(&(ins->link), agx_instr, link);
