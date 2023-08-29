@@ -258,6 +258,7 @@ class BitSet(object):
         self.xml = xml
         self.name = xml.attrib['name']
         self.display_name = xml.attrib['displayname'] if 'displayname' in xml.attrib else self.name
+        self.meta = {}
 
         # Used for generated encoder, to de-duplicate encoding for
         # similar instructions:
@@ -286,6 +287,9 @@ class BitSet(object):
                 self.gen_min = int(gen.attrib['min'])
             if 'max' in gen.attrib:
                 self.gen_max = int(gen.attrib['max'])
+
+        if xml.find('meta') is not None:
+            self.meta = xml.find('meta').attrib
 
         # Collect up the match/dontcare/mask bitmasks for
         # this bitset case:
@@ -380,6 +384,17 @@ class BitSet(object):
         if self.extends is not None:
             return self.isa.bitsets[self.extends].get_root()
         return self
+
+    def get_meta(self):
+        meta = {}
+
+        if self.extends is not None:
+            meta = self.isa.bitsets[self.extends].get_meta()
+
+        if self.meta:
+            meta.update(self.meta)
+
+        return meta
 
 class BitSetTemplate(object):
     """Class that encapsulates a template declaration
