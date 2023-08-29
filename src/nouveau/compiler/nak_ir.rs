@@ -39,15 +39,21 @@ pub enum RegFile {
     ///
     /// Uniform predicate registers are 1 bit and uniform across a wave.
     UPred = 3,
+
+    /// The memory register file
+    ///
+    /// This is a virtual register file for things which will get spilled to
+    /// local memory.  Each memory location is 32 bits per SIMT channel.
+    Mem = 4,
 }
 
-const NUM_REG_FILES: usize = 4;
+const NUM_REG_FILES: usize = 5;
 
 impl RegFile {
     /// Returns true if the register file is uniform across a wave
     pub fn is_uniform(&self) -> bool {
         match self {
-            RegFile::GPR | RegFile::Pred => false,
+            RegFile::GPR | RegFile::Pred | RegFile::Mem => false,
             RegFile::UGPR | RegFile::UPred => true,
         }
     }
@@ -56,14 +62,14 @@ impl RegFile {
     pub fn is_gpr(&self) -> bool {
         match self {
             RegFile::GPR | RegFile::UGPR => true,
-            RegFile::Pred | RegFile::UPred => false,
+            RegFile::Pred | RegFile::UPred | RegFile::Mem => false,
         }
     }
 
     /// Returns true if the register file is a predicate register file
     pub fn is_predicate(&self) -> bool {
         match self {
-            RegFile::GPR | RegFile::UGPR => false,
+            RegFile::GPR | RegFile::UGPR | RegFile::Mem => false,
             RegFile::Pred | RegFile::UPred => true,
         }
     }
@@ -86,6 +92,7 @@ impl RegFile {
                     0
                 }
             }
+            RegFile::Mem => 1 << 24,
         }
     }
 }
@@ -105,6 +112,7 @@ impl TryFrom<u32> for RegFile {
             1 => Ok(RegFile::UGPR),
             2 => Ok(RegFile::Pred),
             3 => Ok(RegFile::UPred),
+            4 => Ok(RegFile::Mem),
             _ => Err("Invalid register file number"),
         }
     }
@@ -224,6 +232,7 @@ impl<T> PerRegFile<T> {
                 f(RegFile::UGPR),
                 f(RegFile::Pred),
                 f(RegFile::UPred),
+                f(RegFile::Mem),
             ],
         }
     }
@@ -285,17 +294,16 @@ impl SSAValue {
 
     /// Returns an SSA value with the given register file and index
     pub fn new(file: RegFile, idx: u32) -> SSAValue {
-        /* Reserve 2 numbers for use for SSARef::comps() */
-        assert!(idx > 0 && idx < (1 << 30) - 2);
+        assert!(idx > 0 && idx < (1 << 29) - 2);
         let mut packed = idx;
-        assert!(u8::from(file) < 4);
-        packed |= u32::from(u8::from(file)) << 30;
+        assert!(u8::from(file) < 8);
+        packed |= u32::from(u8::from(file)) << 29;
         SSAValue { packed: packed }
     }
 
     /// Returns the index of this SSA value
     pub fn idx(&self) -> u32 {
-        self.packed & 0x3fffffff
+        self.packed & 0x1fffffff
     }
 
     /// Returns true if this SSA value is equal to SSAValue::NONE
@@ -308,7 +316,7 @@ impl SSAValue {
 impl HasRegFile for SSAValue {
     /// Returns the register file of this SSA value
     fn file(&self) -> RegFile {
-        RegFile::try_from(self.packed >> 30).unwrap()
+        RegFile::try_from(self.packed >> 29).unwrap()
     }
 }
 
@@ -319,6 +327,7 @@ impl fmt::Display for SSAValue {
             RegFile::UGPR => write!(f, "US")?,
             RegFile::Pred => write!(f, "PS")?,
             RegFile::UPred => write!(f, "UPS")?,
+            RegFile::Mem => write!(f, "MS")?,
         }
         write!(f, "{}", self.idx())
     }
@@ -479,6 +488,7 @@ impl RegRef {
             RegFile::UGPR => 63,
             RegFile::Pred => 7,
             RegFile::UPred => 7,
+            RegFile::Mem => panic!("Mem has no zero index"),
         }
     }
 
@@ -524,6 +534,7 @@ impl fmt::Display for RegRef {
             RegFile::UGPR => write!(f, "UR")?,
             RegFile::Pred => write!(f, "P")?,
             RegFile::UPred => write!(f, "UP")?,
+            RegFile::Mem => write!(f, "M")?,
         }
         write!(f, "{}", self.base_idx())?;
         if self.comps() >= 1 {

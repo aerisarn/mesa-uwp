@@ -3,11 +3,19 @@
 
 use crate::nak_ir::*;
 
-struct LowerCopySwap {}
+use std::cmp::max;
+
+struct LowerCopySwap {
+    tls_start: u32,
+    tls_size: u32,
+}
 
 impl LowerCopySwap {
-    fn new() -> Self {
-        Self {}
+    fn new(tls_size: u32) -> Self {
+        Self {
+            tls_start: tls_size,
+            tls_size: tls_size,
+        }
     }
 
     fn lower_copy(&mut self, b: &mut impl Builder, copy: OpCopy) {
@@ -33,6 +41,23 @@ impl LowerCopySwap {
                             dst: copy.dst,
                             src: copy.src,
                             quad_lanes: 0xf,
+                        });
+                    }
+                    RegFile::Mem => {
+                        let access = MemAccess {
+                            addr_type: MemAddrType::A32,
+                            mem_type: MemType::B32,
+                            space: MemSpace::Local,
+                            order: MemOrder::Strong,
+                            scope: MemScope::CTA,
+                        };
+                        let addr = self.tls_start + src_reg.base_idx() * 4;
+                        self.tls_size = max(self.tls_size, addr + 4);
+                        b.push_op(OpLd {
+                            dst: copy.dst,
+                            addr: Src::new_zero(),
+                            offset: addr.try_into().unwrap(),
+                            access: access,
                         });
                     }
                     _ => panic!("Cannot copy to GPR"),
@@ -72,6 +97,29 @@ impl LowerCopySwap {
                 },
                 SrcRef::SSA(_) => panic!("Should be run after RA"),
             },
+            RegFile::Mem => match copy.src.src_ref {
+                SrcRef::Reg(src_reg) => match src_reg.file() {
+                    RegFile::GPR => {
+                        let access = MemAccess {
+                            addr_type: MemAddrType::A32,
+                            mem_type: MemType::B32,
+                            space: MemSpace::Local,
+                            order: MemOrder::Strong,
+                            scope: MemScope::CTA,
+                        };
+                        let addr = self.tls_start + dst_reg.base_idx() * 4;
+                        self.tls_size = max(self.tls_size, addr + 4);
+                        b.push_op(OpSt {
+                            addr: Src::new_zero(),
+                            data: copy.src,
+                            offset: addr.try_into().unwrap(),
+                            access: access,
+                        });
+                    }
+                    _ => panic!("Cannot copy to Mem"),
+                },
+                _ => panic!("Cannot copy to Mem"),
+            },
             _ => panic!("Unhandled register file"),
         }
     }
@@ -81,6 +129,7 @@ impl LowerCopySwap {
         let y = *swap.dsts[1].as_reg().unwrap();
 
         assert!(x.file() == y.file());
+        assert!(x.file() != RegFile::Mem);
         assert!(x.comps() == 1 && y.comps() == 1);
         assert!(swap.srcs[0].src_mod.is_none());
         assert!(*swap.srcs[0].src_ref.as_reg().unwrap() == y);
@@ -129,7 +178,8 @@ impl LowerCopySwap {
 
 impl Shader {
     pub fn lower_copy_swap(&mut self) {
-        let mut pass = LowerCopySwap::new();
+        let mut pass = LowerCopySwap::new(self.tls_size);
         pass.run(self);
+        self.tls_size = pass.tls_size;
     }
 }

@@ -38,6 +38,7 @@ impl<T: Copy> RegTracker<T> {
             RegFile::UGPR => &self.ureg[range],
             RegFile::Pred => &self.pred[range],
             RegFile::UPred => &self.upred[range],
+            RegFile::Mem => panic!("Not a register"),
         }
     }
 
@@ -53,6 +54,7 @@ impl<T: Copy> RegTracker<T> {
             RegFile::UGPR => &mut self.ureg[range],
             RegFile::Pred => &mut self.pred[range],
             RegFile::UPred => &mut self.upred[range],
+            RegFile::Mem => panic!("Not a register"),
         }
     }
 }
