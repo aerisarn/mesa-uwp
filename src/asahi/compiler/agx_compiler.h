@@ -401,6 +401,9 @@ typedef struct {
     * statements in the loop */
    unsigned loop_nesting;
 
+   /* Total nesting across all loops, to determine if we need push_exec */
+   unsigned total_nesting;
+
    /* During instruction selection, for inserting control flow */
    agx_block *current_block;
    agx_block *continue_block;

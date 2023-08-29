@@ -1907,6 +1907,7 @@ emit_if(agx_context *ctx, nir_if *nif)
 
    agx_if_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, true);
    ctx->loop_nesting++;
+   ctx->total_nesting++;
 
    /* Emit the two subblocks. */
    agx_block *if_block = emit_cf_list(ctx, &nif->then_list);
@@ -1933,6 +1934,7 @@ emit_if(agx_context *ctx, nir_if *nif)
    _b.cursor = agx_after_block(ctx->current_block);
    agx_pop_exec(&_b, 1);
    ctx->loop_nesting--;
+   ctx->total_nesting--;
 }
 
 static void
@@ -1942,6 +1944,7 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    /* We only track nesting within the innermost loop, so push and reset */
    unsigned pushed_nesting = ctx->loop_nesting;
    ctx->loop_nesting = 0;
+   ctx->total_nesting++;
 
    agx_block *popped_break = ctx->break_block;
    agx_block *popped_continue = ctx->continue_block;
@@ -1949,9 +1952,13 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    ctx->break_block = agx_create_block(ctx);
    ctx->continue_block = agx_create_block(ctx);
 
-   /* Make room for break/continue nesting (TODO: skip if no divergent CF) */
+   /* If we are emitting a loop inside other control flow, there might be
+    * threads masked off (TODO: divergence analysis), so push_exec them so
+    * we get the lower nesting count values to ourselves.
+    */
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
-   agx_push_exec(&_b, 2);
+   if (ctx->total_nesting > 1)
+      agx_push_exec(&_b, 2);
 
    /* Fallthrough to body */
    agx_block_add_successor(ctx->current_block, ctx->continue_block);
@@ -1982,6 +1989,7 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
 
    /* Restore loop nesting (we might be inside an if inside an outer loop) */
    ctx->loop_nesting = pushed_nesting;
+   ctx->total_nesting--;
 }
 
 /* Before the first control flow structure, the nesting counter needs to be
