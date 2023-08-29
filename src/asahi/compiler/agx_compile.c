@@ -1783,9 +1783,8 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
    if (instr->type == nir_jump_continue) {
       nestings += 1;
       agx_block_add_successor(ctx->current_block, ctx->continue_block);
-      ctx->loop_continues = true;
    } else if (instr->type == nir_jump_break) {
-      nestings += 2;
+      nestings += ctx->loop_continues ? 2 : 1;
       agx_block_add_successor(ctx->current_block, ctx->break_block);
    }
 
@@ -1984,6 +1983,7 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    ctx->total_nesting++;
 
    bool old_continues = ctx->loop_continues;
+   ctx->loop_continues = loop_uses_continue(nloop);
 
    agx_block *popped_break = ctx->break_block;
    agx_block *popped_continue = ctx->continue_block;
@@ -1997,7 +1997,7 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
     */
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
    if (ctx->total_nesting > 1)
-      agx_push_exec(&_b, 2);
+      agx_push_exec(&_b, ctx->loop_continues ? 2 : 1);
 
    /* Fallthrough to body */
    agx_block_add_successor(ctx->current_block, ctx->continue_block);
@@ -2023,7 +2023,7 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
       agx_while_icmp(&_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false);
 
    agx_jmp_exec_any(&_b, start_block);
-   agx_pop_exec(&_b, 2);
+   agx_pop_exec(&_b, ctx->loop_continues ? 2 : 1);
    agx_block_add_successor(ctx->current_block, ctx->continue_block);
 
    /* Pop off */
