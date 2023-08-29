@@ -2552,9 +2552,9 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    if (ctx->stage == MESA_SHADER_VERTEX && !impl->function->is_preamble)
       agx_set_st_vary_final(ctx);
 
-   agx_lower_pseudo(ctx);
    agx_insert_waits(ctx);
    agx_opt_empty_else(ctx);
+   agx_lower_pseudo(ctx);
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       agx_print_shader(ctx, stdout);
