@@ -1077,6 +1077,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_load_compute_dimension(b, dst, instr,
                                         AGX_SR_THREADGROUP_POSITION_IN_GRID_X);
 
+   case nir_intrinsic_load_workgroup_size:
+      return agx_load_compute_dimension(b, dst, instr,
+                                        AGX_SR_THREADS_PER_THREADGROUP_X);
+
    case nir_intrinsic_load_global_invocation_id:
       return agx_load_compute_dimension(b, dst, instr,
                                         AGX_SR_THREAD_POSITION_IN_GRID_X);
