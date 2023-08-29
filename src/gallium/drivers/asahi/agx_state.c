@@ -1712,6 +1712,9 @@ static void
 agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
                       nir_shader *nir)
 {
+   if (nir->info.stage == MESA_SHADER_KERNEL)
+      nir->info.stage = MESA_SHADER_COMPUTE;
+
    so->type = pipe_shader_type_from_mesa(nir->info.stage);
 
    nir_lower_robust_access_options robustness = {
