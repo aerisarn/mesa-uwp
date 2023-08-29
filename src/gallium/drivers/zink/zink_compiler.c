@@ -1752,20 +1752,6 @@ get_slot_components(nir_variable *var, unsigned slot, unsigned so_slot)
    return num_components;
 }
 
-static bool
-is_var_type_bindless(nir_variable *var)
-{
-   switch (glsl_get_base_type(glsl_without_array(var->type))) {
-   case GLSL_TYPE_SAMPLER:
-   case GLSL_TYPE_TEXTURE:
-   case GLSL_TYPE_IMAGE:
-      return true;
-   default:
-      break;
-   }
-   return false;
-}
-
 static unsigned
 get_var_slot_count(nir_shader *nir, nir_variable *var)
 {
@@ -1775,7 +1761,7 @@ get_var_slot_count(nir_shader *nir, nir_variable *var)
       type = glsl_get_array_element(type);
    unsigned slot_count = 0;
    if (var->data.location >= VARYING_SLOT_VAR0)
-      slot_count = glsl_count_vec4_slots(type, false, is_var_type_bindless(var));
+      slot_count = glsl_count_vec4_slots(type, false, false);
    else if (glsl_type_is_array(type))
       slot_count = DIV_ROUND_UP(glsl_get_aoa_size(type), 4);
    else
@@ -4887,13 +4873,12 @@ store_location_var(nir_variable *vars[VARYING_SLOT_TESS_MAX][4], nir_variable *v
 {
    unsigned slot_count;
    const struct glsl_type *type;
-   bool is_bindless = is_var_type_bindless(var);
    if (nir_is_arrayed_io(var, nir->info.stage)) {
       type = glsl_get_array_element(var->type);
-      slot_count = glsl_count_vec4_slots(type, false, is_bindless);
+      slot_count = glsl_count_vec4_slots(type, false, false);
    } else {
       type = glsl_without_array(var->type);
-      slot_count = glsl_count_vec4_slots(var->type, false, is_bindless);
+      slot_count = glsl_count_vec4_slots(var->type, false, false);
    }
    unsigned num_components = glsl_get_vector_elements(glsl_without_array(type));
    if (glsl_type_is_64bit(glsl_without_array(var->type)))
@@ -4924,14 +4909,12 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
       if ((mode == nir_var_shader_out && var->data.location < VARYING_SLOT_VAR0) ||
           (mode == nir_var_shader_in && var->data.location < (nir->info.stage == MESA_SHADER_VERTEX ? VERT_ATTRIB_GENERIC0 : VARYING_SLOT_VAR0)))
          continue;
-      /* account for vertex attr aliasing and bindless io */
+      /* account for vertex attr aliasing */
       if (nir->info.stage != MESA_SHADER_VERTEX || mode == nir_var_shader_out ||
-          (mode == nir_var_shader_in && nir->info.stage == MESA_SHADER_VERTEX && !old_vars[var->data.location][var->data.location_frac]) ||
-          is_var_type_bindless(var))
+          (mode == nir_var_shader_in && nir->info.stage == MESA_SHADER_VERTEX && !old_vars[var->data.location][var->data.location_frac]))
          store_location_var(old_vars, var, nir);
-      /* skip interpolated inputs and bindless io */
-      if (is_var_type_bindless(var) ||
-          (mode == nir_var_shader_out && nir->info.stage == MESA_SHADER_FRAGMENT)) {
+      /* skip interpolated inputs */
+      if (mode == nir_var_shader_out && nir->info.stage == MESA_SHADER_FRAGMENT) {
          store_location_var(vars, var, nir);
       } else {
          var->data.mode = nir_var_shader_temp;
@@ -5009,8 +4992,6 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
             nir_alu_type type = is_load ? nir_intrinsic_dest_type(intr) : nir_intrinsic_src_type(intr);
             nir_variable *old_var = old_vars[location][c];
             assert(old_var);
-            if (is_var_type_bindless(old_var))
-               continue;
             /* ensure dword is filled with like-sized components */
             unsigned max_components = intr->num_components;
             if (bit_size == 16)
