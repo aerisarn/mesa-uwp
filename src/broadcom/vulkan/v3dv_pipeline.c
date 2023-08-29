@@ -231,6 +231,7 @@ const nir_shader_compiler_options v3dv_nir_options = {
    .lower_rotate = true,
    .lower_to_scalar = true,
    .lower_device_index_to_zero = true,
+   .lower_fquantize2f16 = true,
    .has_fsub = true,
    .has_isub = true,
    .vertex_id_zero_based = false, /* FIXME: to set this to true, the intrinsic
