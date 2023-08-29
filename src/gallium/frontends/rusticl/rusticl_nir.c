@@ -59,6 +59,10 @@ rusticl_lower_intrinsics_instr(
 
         return val;
     }
+    case nir_intrinsic_load_global_invocation_id_zero_base:
+        if (intrins->def.bit_size == 64)
+            return nir_u2u64(b, nir_load_global_invocation_id_zero_base(b, 32));
+        return NULL;
     case nir_intrinsic_load_base_global_invocation_id:
         return nir_load_var(b, state->base_global_invoc_id);
     case nir_intrinsic_load_constant_base_ptr:
