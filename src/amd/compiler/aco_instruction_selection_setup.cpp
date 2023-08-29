@@ -250,7 +250,7 @@ get_reg_class(isel_context* ctx, RegType type, unsigned components, unsigned bit
 }
 
 void
-setup_tcs_info(isel_context* ctx, nir_shader* nir, nir_shader* vs)
+setup_tcs_info(isel_context* ctx)
 {
    ctx->tcs_in_out_eq = ctx->program->info.vs.tcs_in_out_eq;
    ctx->tcs_temp_only_inputs = ctx->program->info.vs.tcs_temp_only_input_mask;
@@ -699,10 +699,7 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
    ASSERTED bool mesh_shading = ctx.stage.has(SWStage::TS) || ctx.stage.has(SWStage::MS);
    assert(!mesh_shading || ctx.program->gfx_level >= GFX10_3);
 
-   if (ctx.stage == tess_control_hs && !is_tcs_epilog)
-      setup_tcs_info(&ctx, shaders[0], NULL);
-   else if (ctx.stage == vertex_tess_control_hs)
-      setup_tcs_info(&ctx, shaders[1], shaders[0]);
+   setup_tcs_info(&ctx);
 
    calc_min_waves(program);
 
