@@ -243,6 +243,20 @@ op("asr",
       encoding_32 = (0x2E | L | (0x1 << 26), 0x7F | L | (0x3 << 26), 8, _),
       srcs = 2)
 
+def subgroup_op(name, op1, op2):
+    exact      = 0b01101111 | L | (op1 << 47) | (op2 << 26)
+    exact_mask = 0b11111111 | L | (1   << 47) | (0xFFFF << 26)
+
+    op(name, encoding_32 = (exact, exact_mask, 6, _), srcs = 1)
+
+subgroup_op("simd_prefix_iadd", 1, 0b0000000000011000)
+subgroup_op("simd_iadd", 1, 0b0000000000001000)
+
+op("simd_shuffle",
+    encoding_32 = (0b01101111 | (1 << 26),
+                   0xFF | L | (1 << 47) | (3 << 38) | (3 << 26), 6, _),
+    srcs = 2)
+
 op("icmpsel",
       encoding_32 = (0x12, 0x7F, 8, 10),
       srcs = 4, imms = [ICOND])
