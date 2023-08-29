@@ -4204,9 +4204,8 @@ lower_bindless_io_instr(nir_builder *b, nir_intrinsic_instr *instr,
    if (!glsl_type_is_image(var->type) && !glsl_type_is_sampler(var->type))
       return false;
 
-   var->type = glsl_int64_t_type();
+   var->type = glsl_vector_type(GLSL_TYPE_INT, 2);
    var->data.bindless = 1;
-   nir_intrinsic_set_dest_type(instr, nir_type_int64);
    return true;
 }
 
