@@ -1719,6 +1719,42 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 }
 
 /*
+ * Determine if a NIR loop (CF list) uses a continue jump, including within
+ * if-else statements but not including nested loops.
+ */
+static bool
+cf_list_uses_continue(struct exec_list *list)
+{
+   foreach_list_typed(nir_cf_node, node, node, list) {
+      if (node->type == nir_cf_node_block) {
+         nir_block *block = nir_cf_node_as_block(node);
+
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_jump &&
+                nir_instr_as_jump(instr)->type == nir_jump_continue)
+               return true;
+         }
+      } else if (node->type == nir_cf_node_if) {
+         nir_if *nif = nir_cf_node_as_if(node);
+
+         if (cf_list_uses_continue(&nif->then_list) ||
+             cf_list_uses_continue(&nif->else_list))
+            return true;
+      } else {
+         assert(node->type == nir_cf_node_loop && "don't care about nesting");
+      }
+   }
+
+   return false;
+}
+
+static bool
+loop_uses_continue(nir_loop *loop)
+{
+   return cf_list_uses_continue(&loop->body);
+}
+
+/*
  * NIR loops are treated as a pair of AGX loops:
  *
  *    do {
