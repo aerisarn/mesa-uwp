@@ -1481,9 +1481,9 @@ anv_queue_submit(struct vk_queue *vk_queue,
    /* Take submission ID under lock */
    intel_ds_end_submit(&queue->ds, start_ts);
 
-   u_trace_context_process(&device->ds.trace_context, true);
-
    pthread_mutex_unlock(&device->mutex);
+
+   intel_ds_device_process(&device->ds, true);
 
    return result;
 }

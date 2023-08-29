@@ -555,12 +555,14 @@ intel_ds_device_init(struct intel_ds_device *device,
    device->iid = get_iid();
    device->api = api;
    list_inithead(&device->queues);
+   simple_mtx_init(&device->trace_context_mutex, mtx_plain);
 }
 
 void
 intel_ds_device_fini(struct intel_ds_device *device)
 {
    u_trace_context_fini(&device->trace_context);
+   simple_mtx_destroy(&device->trace_context_mutex);
 }
 
 struct intel_ds_queue *
@@ -604,6 +606,24 @@ void intel_ds_flush_data_init(struct intel_ds_flush_data *data,
 void intel_ds_flush_data_fini(struct intel_ds_flush_data *data)
 {
    u_trace_fini(&data->trace);
+}
+
+void intel_ds_queue_flush_data(struct intel_ds_queue *queue,
+                               struct u_trace *ut,
+                               struct intel_ds_flush_data *data,
+                               bool free_data)
+{
+   simple_mtx_lock(&queue->device->trace_context_mutex);
+   u_trace_flush(ut, data, free_data);
+   simple_mtx_unlock(&queue->device->trace_context_mutex);
+}
+
+void intel_ds_device_process(struct intel_ds_device *device,
+                             bool eof)
+{
+   simple_mtx_lock(&device->trace_context_mutex);
+   u_trace_context_process(&device->trace_context, eof);
+   simple_mtx_unlock(&device->trace_context_mutex);
 }
 
 #ifdef __cplusplus
