@@ -5280,7 +5280,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
       var->data.is_xfb = false;
       if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
          has_bindless_io = true;
-         break;
       }
    }
    if (has_bindless_io)
