@@ -187,16 +187,14 @@ impl<'a> ShaderFromNir<'a> {
                     RegFile::GPR
                 };
 
-                let mut pcopy = OpParCopy::new();
                 let mut dst_vec = Vec::new();
                 for src in srcs {
                     for v in src.as_ssa().unwrap().iter() {
                         let dst = b.alloc_ssa(file, 1)[0];
-                        pcopy.push(dst.into(), (*v).into());
+                        b.copy_to(dst.into(), (*v).into());
                         dst_vec.push(dst);
                     }
                 }
-                b.push_op(pcopy);
                 self.set_ssa(&alu.def, dst_vec);
                 return;
             }
@@ -403,7 +401,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_fsat => {
                 assert!(alu.def.bit_size() == 32);
                 if self.alu_src_is_saturated(&alu.srcs_as_slice()[0]) {
-                    b.mov(srcs[0])
+                    b.copy(srcs[0])
                 } else {
                     let dst = b.alloc_ssa(RegFile::GPR, 1);
                     b.push_op(OpFAdd {
@@ -670,10 +668,8 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_pack_64_2x32_split => {
                 let dst = b.alloc_ssa(RegFile::GPR, 2);
-                let mut pcopy = OpParCopy::new();
-                pcopy.push(dst[0].into(), srcs[0]);
-                pcopy.push(dst[1].into(), srcs[1]);
-                b.push_op(pcopy);
+                b.copy_to(dst[0].into(), srcs[0]);
+                b.copy_to(dst[1].into(), srcs[1]);
                 dst
             }
             nir_op_pack_half_2x16_split => {
@@ -749,11 +745,11 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_unpack_64_2x32_split_x => {
                 let src0_x = srcs[0].as_ssa().unwrap()[0];
-                b.mov(src0_x.into())
+                b.copy(src0_x.into())
             }
             nir_op_unpack_64_2x32_split_y => {
                 let src0_y = srcs[0].as_ssa().unwrap()[1];
-                b.mov(src0_y.into())
+                b.copy(src0_y.into())
             }
             nir_op_unpack_half_2x16_split_x
             | nir_op_unpack_half_2x16_split_y => {
@@ -952,7 +948,7 @@ impl<'a> ShaderFromNir<'a> {
         let mut nir_dst = Vec::new();
         for i in 0..tex.def.num_components() {
             if mask & (1 << i) == 0 {
-                nir_dst.push(b.mov(Src::new_zero())[0]);
+                nir_dst.push(b.copy(Src::new_zero())[0]);
             } else {
                 nir_dst.push(dsts[di / 2].as_ssa().unwrap()[di % 2].into());
                 di += 1;
@@ -1310,12 +1306,10 @@ impl<'a> ShaderFromNir<'a> {
                         offset: off_imm.try_into().unwrap(),
                     };
                     if off.is_zero() {
-                        let mut pcopy = OpParCopy::new();
                         for (i, comp) in dst.iter().enumerate() {
                             let i = u16::try_from(i).unwrap();
-                            pcopy.push((*comp).into(), cb.offset(i * 4).into());
+                            b.copy_to((*comp).into(), cb.offset(i * 4).into());
                         }
-                        b.push_op(pcopy);
                     } else {
                         b.push_op(OpLdc {
                             dst: dst.into(),
@@ -1511,30 +1505,21 @@ impl<'a> ShaderFromNir<'a> {
             }
         }
 
-        let mut pcopy = OpParCopy::new();
         let mut dst_vec = Vec::new();
         for c in 0..load_const.def.num_components {
             if load_const.def.bit_size == 1 {
                 let imm_b1 = unsafe { load_const.values()[c as usize].b };
-                let dst = b.alloc_ssa(RegFile::Pred, 1);
-                pcopy.push(dst.into(), Src::new_imm_bool(imm_b1));
-                dst_vec.push(dst[0]);
+                dst_vec.push(b.copy(Src::new_imm_bool(imm_b1))[0]);
             } else if load_const.def.bit_size == 32 {
                 let imm_u32 = unsafe { load_const.values()[c as usize].u32_ };
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                pcopy.push(dst.into(), src_for_u32(imm_u32));
-                dst_vec.push(dst[0]);
+                dst_vec.push(b.copy(src_for_u32(imm_u32))[0]);
             } else if load_const.def.bit_size == 64 {
                 let imm_u64 = unsafe { load_const.values()[c as usize].u64_ };
-                let dst = b.alloc_ssa(RegFile::GPR, 2);
-                pcopy.push(dst[0].into(), src_for_u32(imm_u64 as u32));
-                pcopy.push(dst[1].into(), src_for_u32((imm_u64 >> 32) as u32));
-                dst_vec.push(dst[0]);
-                dst_vec.push(dst[1]);
+                dst_vec.push(b.copy(src_for_u32(imm_u64 as u32))[0]);
+                dst_vec.push(b.copy(src_for_u32((imm_u64 >> 32) as u32))[0]);
             }
         }
 
-        b.push_op(pcopy);
         self.set_ssa(&load_const.def, dst_vec);
     }
 

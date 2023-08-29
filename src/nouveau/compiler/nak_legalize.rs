@@ -249,7 +249,6 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
 
     let mut vec_src_map: HashMap<SSARef, SSARef> = HashMap::new();
     let mut vec_comps = HashSet::new();
-    let mut pcopy = OpParCopy::new();
     for src in instr.srcs_mut() {
         if let SrcRef::SSA(vec) = &src.src_ref {
             if vec.comps() == 1 {
@@ -275,7 +274,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                  */
                 if vec_comps.get(&ssa).is_some() {
                     let copy = b.alloc_ssa(ssa.file(), 1)[0];
-                    pcopy.push(copy.into(), ssa.into());
+                    b.copy_to(copy.into(), ssa.into());
                     new_vec[usize::from(c)] = copy;
                 } else {
                     vec_comps.insert(ssa);
@@ -285,10 +284,6 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             vec_src_map.insert(*vec, new_vec);
             src.src_ref = new_vec.into();
         }
-    }
-
-    if !pcopy.is_empty() {
-        b.push_op(pcopy);
     }
 }
 

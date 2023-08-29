@@ -49,14 +49,6 @@ pub trait Builder {
         }
     }
 
-    fn mov_to(&mut self, dst: Dst, src: Src) {
-        self.push_op(OpMov {
-            dst: dst,
-            src: src,
-            quad_lanes: 0xf,
-        });
-    }
-
     fn copy_to(&mut self, dst: Dst, src: Src) {
         self.push_op(OpCopy { dst: dst, src: src });
     }
@@ -175,13 +167,6 @@ pub trait SSABuilder: Builder {
         dst
     }
 
-    fn mov(&mut self, src: Src) -> SSARef {
-        assert!(!src.is_predicate());
-        let dst = self.alloc_ssa(RegFile::GPR, 1);
-        self.mov_to(dst.into(), src);
-        dst
-    }
-
     fn mufu(&mut self, op: MuFuOp, src: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.push_op(OpMuFu {
@@ -215,6 +200,16 @@ pub trait SSABuilder: Builder {
             });
             dst
         }
+    }
+
+    fn copy(&mut self, src: Src) -> SSARef {
+        let dst = if src.is_predicate() {
+            self.alloc_ssa(RegFile::Pred, 1)
+        } else {
+            self.alloc_ssa(RegFile::GPR, 1)
+        };
+        self.copy_to(dst.into(), src);
+        dst
     }
 }
 

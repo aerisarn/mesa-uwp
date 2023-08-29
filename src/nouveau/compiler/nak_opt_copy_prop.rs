@@ -360,13 +360,6 @@ impl CopyPropPass {
                             }
                         }
                     }
-                    Op::Mov(mov) => {
-                        let dst = mov.dst.as_ssa().unwrap();
-                        assert!(dst.comps() == 1);
-                        if mov.quad_lanes == 0xf {
-                            self.add_copy(dst[0], SrcType::GPR, mov.src);
-                        }
-                    }
                     Op::PLop3(lop) => {
                         for i in 0..2 {
                             let dst = match lop.dsts[i] {
