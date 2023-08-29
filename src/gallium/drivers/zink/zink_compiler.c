@@ -5028,7 +5028,7 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
                   vec_type = glsl_array_type(vec_type, slot_count, glsl_get_explicit_stride(vec_type));
             }
             if (is_arrayed)
-               vec_type = glsl_array_type(vec_type, glsl_array_size(old_var->type), glsl_get_explicit_stride(vec_type));
+               vec_type = glsl_array_type(vec_type, 32 /* MAX_PATCH_VERTICES */, glsl_get_explicit_stride(vec_type));
             if (vars[location][c]) {
                if (glsl_get_vector_elements(glsl_without_array(vars[location][c]->type)) < glsl_get_vector_elements(glsl_without_array(vec_type))) {
                   /* enlarge existing vars if necessary */
