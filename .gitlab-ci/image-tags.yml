@@ -7,7 +7,7 @@
 
 variables:
    DEBIAN_X86_64_BUILD_BASE_IMAGE: "debian/x86_64_build-base"
-   DEBIAN_BASE_TAG: "2023-08-03-mold"
+   DEBIAN_BASE_TAG: "2023-08-30-bindgen-cli"
 
    DEBIAN_X86_64_BUILD_IMAGE_PATH: "debian/x86_64_build"
    DEBIAN_BUILD_TAG: "2023-06-24-agility-711"
