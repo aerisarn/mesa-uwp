@@ -454,7 +454,7 @@ Vulkan 1.2 -- all DONE: anv, tu, vn
   VK_KHR_depth_stencil_resolve                          DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_draw_indirect_count                            DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, vn)
   VK_KHR_driver_properties                              DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
-  VK_KHR_image_format_list                              DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
+  VK_KHR_image_format_list                              DONE (anv, dzn, hasvk, lvp, nvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_imageless_framebuffer                          DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_separate_depth_stencil_layouts                 DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
