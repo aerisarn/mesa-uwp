@@ -2172,6 +2172,33 @@ zink_screen_init_semaphore(struct zink_screen *screen)
    return VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &screen->sem) == VK_SUCCESS;
 }
 
+VkSemaphore
+zink_create_exportable_semaphore(struct zink_screen *screen)
+{
+   VkExportSemaphoreCreateInfo eci = {
+      VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO,
+      NULL,
+      VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT
+   };
+   VkSemaphoreCreateInfo sci = {
+      VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      &eci,
+      0
+   };
+
+   VkSemaphore sem = VK_NULL_HANDLE;
+   if (util_dynarray_contains(&screen->fd_semaphores, VkSemaphore)) {
+      simple_mtx_lock(&screen->semaphores_lock);
+      if (util_dynarray_contains(&screen->fd_semaphores, VkSemaphore))
+         sem = util_dynarray_pop(&screen->fd_semaphores, VkSemaphore);
+      simple_mtx_unlock(&screen->semaphores_lock);
+   }
+   if (sem)
+      return sem;
+   VkResult ret = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &sem);
+   return ret == VK_SUCCESS ? sem : VK_NULL_HANDLE;
+}
+
 bool
 zink_screen_timeline_wait(struct zink_screen *screen, uint64_t batch_id, uint64_t timeout)
 {
