@@ -61,6 +61,13 @@ init_shaders(struct vl_compositor *c)
          debug_printf("Unable to create YCbCr i-to-YCbCr p deint fragment shader.\n");
          return false;
       }
+
+      c->fs_rgb_yuv.y = create_frag_shader_rgb_yuv(c, true);
+      c->fs_rgb_yuv.uv = create_frag_shader_rgb_yuv(c, false);
+      if (!c->fs_rgb_yuv.y || !c->fs_rgb_yuv.uv) {
+         debug_printf("Unable to create RGB-to-YUV fragment shader.\n");
+         return false;
+      }
    }
 
    if (c->pipe_gfx_supported) {
@@ -79,13 +86,6 @@ init_shaders(struct vl_compositor *c)
       c->fs_palette.rgb = create_frag_shader_palette(c, false);
       if (!c->fs_palette.rgb) {
          debug_printf("Unable to create RGB-Palette-to-RGB fragment shader.\n");
-         return false;
-      }
-
-      c->fs_rgb_yuv.y = create_frag_shader_rgb_yuv(c, true);
-      c->fs_rgb_yuv.uv = create_frag_shader_rgb_yuv(c, false);
-      if (!c->fs_rgb_yuv.y || !c->fs_rgb_yuv.uv) {
-         debug_printf("Unable to create RGB-to-YUV fragment shader.\n");
          return false;
       }
 
@@ -112,14 +112,14 @@ static void cleanup_shaders(struct vl_compositor *c)
       c->pipe->delete_fs_state(c->pipe, c->fs_yuv.weave.uv);
       c->pipe->delete_fs_state(c->pipe, c->fs_yuv.bob.y);
       c->pipe->delete_fs_state(c->pipe, c->fs_yuv.bob.uv);
+      c->pipe->delete_fs_state(c->pipe, c->fs_rgb_yuv.y);
+      c->pipe->delete_fs_state(c->pipe, c->fs_rgb_yuv.uv);
    }
 
    if (c->pipe_gfx_supported) {
       c->pipe->delete_vs_state(c->pipe, c->vs);
       c->pipe->delete_fs_state(c->pipe, c->fs_palette.yuv);
       c->pipe->delete_fs_state(c->pipe, c->fs_palette.rgb);
-      c->pipe->delete_fs_state(c->pipe, c->fs_rgb_yuv.y);
-      c->pipe->delete_fs_state(c->pipe, c->fs_rgb_yuv.uv);
       c->pipe->delete_fs_state(c->pipe, c->fs_rgba);
    }
 }
@@ -392,7 +392,10 @@ set_rgb_to_yuv_layer(struct vl_compositor_state *s, struct vl_compositor *c,
 
    s->used_layers |= 1 << layer;
 
-   s->layers[layer].fs = y? c->fs_rgb_yuv.y : c->fs_rgb_yuv.uv;
+   if (c->pipe_cs_composit_supported)
+      s->layers[layer].cs = y ? c->cs_rgb_yuv.y : c->cs_rgb_yuv.uv;
+   else if (c->pipe_gfx_supported)
+      s->layers[layer].fs = y ? c->fs_rgb_yuv.y : c->fs_rgb_yuv.uv;
 
    s->layers[layer].samplers[0] = c->sampler_linear;
    s->layers[layer].samplers[1] = NULL;

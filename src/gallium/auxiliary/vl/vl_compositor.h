@@ -178,6 +178,11 @@ struct vl_compositor
       void *y;
       void *uv;
    } fs_rgb_yuv;
+
+   struct {
+      void *y;
+      void *uv;
+   } cs_rgb_yuv;
 };
 
 /**

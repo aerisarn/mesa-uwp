@@ -756,6 +756,157 @@ static const char *compute_shader_yuv_uv =
 
       "END\n";
 
+static const char *compute_shader_rgb_yuv_y =
+      "COMP\n"
+      "PROPERTY CS_FIXED_BLOCK_WIDTH 8\n"
+      "PROPERTY CS_FIXED_BLOCK_HEIGHT 8\n"
+      "PROPERTY CS_FIXED_BLOCK_DEPTH 1\n"
+
+      "DCL SV[0], THREAD_ID\n"
+      "DCL SV[1], BLOCK_ID\n"
+
+      "DCL CONST[0..7]\n"
+      "DCL SVIEW[0], RECT, FLOAT\n"
+      "DCL SAMP[0]\n"
+
+      "DCL IMAGE[0], 2D, WR\n"
+      "DCL TEMP[0..4]\n"
+
+      "IMM[0] UINT32 { 8, 8, 1, 0}\n"
+      "IMM[1] FLT32 { 1.0, 2.0, 0.5, 0.0}\n"
+
+      "UMAD TEMP[0], SV[1], IMM[0], SV[0]\n"
+
+      /* Drawn area check */
+      "USGE TEMP[1].xy, TEMP[0].xyxy, CONST[4].xyxy\n"
+      "USLT TEMP[1].zw, TEMP[0].xyxy, CONST[4].zwzw\n"
+      "AND TEMP[1].x, TEMP[1].xxxx, TEMP[1].yyyy\n"
+      "AND TEMP[1].x, TEMP[1].xxxx, TEMP[1].zzzz\n"
+      "AND TEMP[1].x, TEMP[1].xxxx, TEMP[1].wwww\n"
+
+      "UIF TEMP[1]\n"
+         /* Translate */
+         "UADD TEMP[2].xy, TEMP[0], -CONST[5].xyxy\n"
+         "U2F TEMP[2], TEMP[2]\n"
+
+         /* Texture offset */
+         "ADD TEMP[2].xy, TEMP[2].xyxx, IMM[1].zzzz\n"
+
+         /* Scale */
+         "DIV TEMP[2], TEMP[2], CONST[3].zwzw\n"
+
+         /* Crop */
+         "MOV TEMP[4].xy, CONST[6].zwww\n"
+         "I2F TEMP[4], TEMP[4]\n"
+         "ADD TEMP[2], TEMP[2], TEMP[4]\n"
+
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].xyxy\n"
+
+         /* Fetch texels */
+         "TEX_LZ TEMP[4].xyz, TEMP[2], SAMP[0], RECT\n"
+
+         "MOV TEMP[4].w, IMM[1].xxxx\n"
+
+         /* Color Space Conversion */
+         "DP4 TEMP[4].x, CONST[0], TEMP[4]\n"
+
+         "MOV TEMP[4].yzw, IMM[1].xxxx\n"
+
+         "STORE IMAGE[0], TEMP[0], TEMP[4], 2D\n"
+      "ENDIF\n"
+
+      "END\n";
+
+static const char *compute_shader_rgb_yuv_uv =
+      "COMP\n"
+      "PROPERTY CS_FIXED_BLOCK_WIDTH 8\n"
+      "PROPERTY CS_FIXED_BLOCK_HEIGHT 8\n"
+      "PROPERTY CS_FIXED_BLOCK_DEPTH 1\n"
+
+      "DCL SV[0], THREAD_ID\n"
+      "DCL SV[1], BLOCK_ID\n"
+
+      "DCL CONST[0..8]\n"
+      "DCL SVIEW[0], RECT, FLOAT\n"
+      "DCL SAMP[0]\n"
+
+      "DCL IMAGE[0], 2D, WR\n"
+      "DCL TEMP[0..9]\n"
+
+      "IMM[0] UINT32 { 8, 8, 1, 0}\n"
+      "IMM[1] FLT32 { 1.0, 0.25, 0.5, -0.25}\n"
+
+      "UMAD TEMP[0], SV[1], IMM[0], SV[0]\n"
+
+      /* Drawn area check */
+      "USGE TEMP[1].xy, TEMP[0].xyxy, CONST[4].xyxy\n"
+      "USLT TEMP[1].zw, TEMP[0].xyxy, CONST[4].zwzw\n"
+      "AND TEMP[1].x, TEMP[1].xxxx, TEMP[1].yyyy\n"
+      "AND TEMP[1].x, TEMP[1].xxxx, TEMP[1].zzzz\n"
+      "AND TEMP[1].x, TEMP[1].xxxx, TEMP[1].wwww\n"
+
+      "UIF TEMP[1]\n"
+         /* Translate */
+         "UADD TEMP[2].xy, TEMP[0], -CONST[5].xyxy\n"
+         "U2F TEMP[2], TEMP[2]\n"
+
+         /* Texture offset */
+         "ADD TEMP[2].xy, TEMP[2].xyyy, IMM[1].zzzz\n"
+
+         /* Chroma offset */
+         "MAD TEMP[2].xy, CONST[8].xyxy, -IMM[1].zzzz, TEMP[2].xyxy\n"
+
+         /* Sample offset */
+         "ADD TEMP[3].xy, TEMP[2].xyyy, IMM[1].yyyy\n"
+         "ADD TEMP[6].xy, TEMP[2].xyyy, IMM[1].wwww\n"
+         "ADD TEMP[7].xy, TEMP[2].xyyy, IMM[1].wyyy\n"
+         "ADD TEMP[2].xy, TEMP[2].xyyy, IMM[1].ywww\n"
+
+         /* Scale */
+         "DIV TEMP[2], TEMP[2], CONST[3].zwzw\n"
+         "DIV TEMP[3], TEMP[3], CONST[3].zwzw\n"
+         "DIV TEMP[6], TEMP[6], CONST[3].zwzw\n"
+         "DIV TEMP[7], TEMP[7], CONST[3].zwzw\n"
+
+         /* Crop */
+         "MOV TEMP[4].xy, CONST[6].zwww\n"
+         "I2F TEMP[4], TEMP[4]\n"
+         "ADD TEMP[2], TEMP[2], TEMP[4]\n"
+         "ADD TEMP[3], TEMP[3], TEMP[4]\n"
+         "ADD TEMP[6], TEMP[6], TEMP[4]\n"
+         "ADD TEMP[7], TEMP[7], TEMP[4]\n"
+
+         /* Clamp coords */
+         "MIN TEMP[2].xy, TEMP[2].xyyy, CONST[7].zwzw\n"
+         "MIN TEMP[3].xy, TEMP[3].xyyy, CONST[7].zwzw\n"
+         "MIN TEMP[6].xy, TEMP[6].xyyy, CONST[7].zwzw\n"
+         "MIN TEMP[7].xy, TEMP[7].xyyy, CONST[7].zwzw\n"
+
+         /* Fetch texels */
+         "TEX_LZ TEMP[4].xyz, TEMP[2], SAMP[0], RECT\n"
+         "TEX_LZ TEMP[5].xyz, TEMP[3], SAMP[0], RECT\n"
+         "TEX_LZ TEMP[8].xyz, TEMP[6], SAMP[0], RECT\n"
+         "TEX_LZ TEMP[9].xyz, TEMP[7], SAMP[0], RECT\n"
+
+         "ADD TEMP[4].xyz, TEMP[4].xyzz, TEMP[5].xyzz\n"
+         "ADD TEMP[4].xyz, TEMP[4].xyzz, TEMP[8].xyzz\n"
+         "ADD TEMP[4].xyz, TEMP[4].xyzz, TEMP[9].xyzz\n"
+         "MUL TEMP[4].xyz, TEMP[4].xyzz, IMM[1].yyyy\n"
+
+         "MOV TEMP[4].w, IMM[1].xxxx\n"
+
+         /* Color Space Conversion */
+         "DP4 TEMP[5].x, CONST[1], TEMP[4]\n"
+         "DP4 TEMP[5].y, CONST[2], TEMP[4]\n"
+
+         "MOV TEMP[5].zw, IMM[1].xxxx\n"
+
+         "STORE IMAGE[0], TEMP[0], TEMP[5], 2D\n"
+      "ENDIF\n"
+
+      "END\n";
+
 static void
 cs_launch(struct vl_compositor *c,
           void                 *cs,
@@ -1059,6 +1210,13 @@ bool vl_compositor_cs_init_shaders(struct vl_compositor *c)
                 return false;
         }
 
+        c->cs_rgb_yuv.y = vl_compositor_cs_create_shader(c, compute_shader_rgb_yuv_y);
+        c->cs_rgb_yuv.uv = vl_compositor_cs_create_shader(c, compute_shader_rgb_yuv_uv);
+        if (!c->cs_rgb_yuv.y || !c->cs_rgb_yuv.uv) {
+                debug_printf("Unable to create RGB-to-NV12 compute shader.\n");
+                return false;
+        }
+
         return true;
 }
 
@@ -1082,4 +1240,8 @@ void vl_compositor_cs_cleanup_shaders(struct vl_compositor *c)
                 c->pipe->delete_compute_state(c->pipe, c->cs_yuv.progressive.y);
         if (c->cs_yuv.progressive.uv)
                 c->pipe->delete_compute_state(c->pipe, c->cs_yuv.progressive.uv);
+        if (c->cs_rgb_yuv.y)
+                c->pipe->delete_compute_state(c->pipe, c->cs_rgb_yuv.y);
+        if (c->cs_rgb_yuv.uv)
+                c->pipe->delete_compute_state(c->pipe, c->cs_rgb_yuv.uv);
 }
