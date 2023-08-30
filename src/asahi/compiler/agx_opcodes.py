@@ -350,7 +350,7 @@ for is_float in [False, True]:
       name = "{}_{}cmp".format(cf, "f" if is_float else "i")
       exact = 0x42 | (0x0 if is_float else 0x10) | (cf_op << 9)
       mask = 0x7F | (0x3 << 9) | mod_mask | (0x3 << 44)
-      imms = [NEST, FCOND if is_float else ICOND, INVERT_COND]
+      imms = [NEST, FCOND if is_float else ICOND, INVERT_COND, TARGET]
 
       op(name, (exact, mask, 6, _), dests = 0, srcs = 2, can_eliminate = False,
             imms = imms, is_float = is_float,
@@ -426,10 +426,10 @@ op("preload", _, srcs = 1, schedule_class = "preload")
 
 # Pseudo-instructions to set the nesting counter. Lowers to r0l writes after RA.
 op("begin_cf", _, dests = 0, can_eliminate = False)
-op("break", _, dests = 0, imms = [NEST], can_eliminate = False,
+op("break", _, dests = 0, imms = [NEST, TARGET], can_eliminate = False,
    schedule_class = "invalid")
 
 for (name, is_float) in [("break_if_icmp", False), ("break_if_fcmp", True)]:
     op(name, _, dests = 0, srcs = 2,
-       imms = [NEST, INVERT_COND, FCOND if is_float else ICOND],
+       imms = [NEST, INVERT_COND, FCOND if is_float else ICOND, TARGET],
        can_eliminate = False, schedule_class = "invalid")

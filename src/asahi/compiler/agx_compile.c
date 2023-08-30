@@ -1788,7 +1788,7 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
       agx_block_add_successor(ctx->current_block, ctx->break_block);
    }
 
-   agx_break(b, nestings);
+   agx_break(b, nestings, ctx->break_block);
    ctx->current_block->unconditional_jumps = true;
 }
 
@@ -1941,7 +1941,8 @@ emit_if(agx_context *ctx, nir_if *nif)
    agx_builder _b = agx_init_builder(ctx, agx_after_block(first_block));
    agx_index cond = agx_src_index(&nif->condition);
 
-   agx_if_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, true);
+   agx_instr *if_ = agx_if_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, true,
+                                NULL /* filled in later */);
    ctx->loop_nesting++;
    ctx->total_nesting++;
 
@@ -1954,11 +1955,16 @@ emit_if(agx_context *ctx, nir_if *nif)
    agx_block *else_block = emit_cf_list(ctx, &nif->else_list);
    agx_block *end_else = ctx->current_block;
 
+   /* If the "if" fails, we fallthrough to the else */
+   if_->target = else_block;
+
    /* Insert an else instruction at the beginning of the else block. We use
     * "else_fcmp 0.0, 0.0, eq" as unconditional else, matching the blob.
+    *
+    * If it fails, we fall through to the logical end of the last else block.
     */
    _b.cursor = agx_before_block(else_block);
-   agx_else_fcmp(&_b, agx_zero(), agx_zero(), 1, AGX_FCOND_EQ, false);
+   agx_else_fcmp(&_b, agx_zero(), agx_zero(), 1, AGX_FCOND_EQ, false, end_else);
 
    ctx->after_block = agx_create_block(ctx);
 
@@ -2019,8 +2025,11 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
     */
    _b.cursor = agx_after_block(ctx->current_block);
 
-   if (ctx->loop_continues)
-      agx_while_icmp(&_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false);
+   if (ctx->loop_continues) {
+      agx_while_icmp(
+         &_b, agx_zero(), agx_zero(), 2, AGX_ICOND_UEQ, false,
+         NULL /* no semantic target, used purely for side effects */);
+   }
 
    agx_jmp_exec_any(&_b, start_block);
    agx_pop_exec(&_b, ctx->loop_continues ? 2 : 1);

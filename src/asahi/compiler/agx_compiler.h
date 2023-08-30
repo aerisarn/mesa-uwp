@@ -275,6 +275,12 @@ typedef struct {
    uint8_t nr_dests;
    uint8_t nr_srcs;
 
+   /* TODO: More efficient */
+   union {
+      enum agx_icond icond;
+      enum agx_fcond fcond;
+   };
+
    union {
       uint64_t imm;
       uint32_t writeout;
@@ -285,8 +291,6 @@ typedef struct {
       uint16_t pixel_offset;
       uint16_t zs;
       enum agx_sr sr;
-      enum agx_icond icond;
-      enum agx_fcond fcond;
       enum agx_round round;
       enum agx_atomic_opc atomic_opc;
       enum agx_lod_mode lod_mode;
