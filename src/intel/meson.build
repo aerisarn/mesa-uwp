@@ -29,7 +29,9 @@ subdir('isl')
 subdir('common')
 subdir('compiler')
 subdir('perf')
-subdir('ds')
+if with_intel_hasvk or with_intel_vk or with_gallium_iris
+  subdir('ds')
+endif
 if with_intel_tools
   subdir('tools')
 endif
