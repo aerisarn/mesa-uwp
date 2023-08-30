@@ -60,6 +60,33 @@ impl CopyGraph {
     }
 }
 
+fn copy_needs_tmp(dst: &RegRef, src: &SrcRef) -> bool {
+    if let Some(src_reg) = src.as_reg() {
+        dst.file() == RegFile::Mem && src_reg.file() == RegFile::Mem
+    } else {
+        false
+    }
+}
+
+fn cycle_use_swap(pc: &OpParCopy, file: RegFile) -> bool {
+    match file {
+        RegFile::GPR => {
+            if let Some(tmp) = &pc.tmp {
+                debug_assert!(tmp.file() == RegFile::GPR);
+                false
+            } else {
+                true
+            }
+        }
+        RegFile::Mem => {
+            let tmp = &pc.tmp.expect("This copy needs a temporary");
+            assert!(tmp.comps() >= 2, "Memory cycles need 2 temporaries");
+            false
+        }
+        _ => true,
+    }
+}
+
 fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
     let mut graph = CopyGraph::new();
     let mut vals = Vec::new();
@@ -123,7 +150,13 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
         if let Some(src_idx) = graph.src(dst_idx) {
             let dst = *vals[dst_idx].as_reg().unwrap();
             let src = vals[src_idx];
-            b.copy_to(dst.into(), src.into());
+            if copy_needs_tmp(&dst, &src) {
+                let tmp = pc.tmp.expect("This copy needs a temporary").comp(0);
+                b.copy_to(tmp.into(), src.into());
+                b.copy_to(dst.into(), tmp.into());
+            } else {
+                b.copy_to(dst.into(), src.into());
+            }
             if graph.del_edge(dst_idx, src_idx) {
                 ready.push(src_idx);
             }
@@ -157,21 +190,61 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
      * QED
      */
     for i in 0..pc.dsts_srcs.len() {
-        loop {
-            if let Some(j) = graph.src(i) {
-                /* We're part of a cycle so j also has a source */
+        if graph.src(i).is_none() {
+            debug_assert!(graph.num_reads(i) == 0);
+            continue;
+        }
+
+        let file = vals[i].as_reg().unwrap().file();
+        if cycle_use_swap(&pc, file) {
+            loop {
+                let j = graph.src(i).unwrap();
+                // We're part of a cycle so j also has a source
                 let k = graph.src(j).unwrap();
-                b.swap(*vals[j].as_reg().unwrap(), *vals[k].as_reg().unwrap());
+                let j_reg = vals[j].as_reg().unwrap();
+                let k_reg = vals[k].as_reg().unwrap();
+                b.swap(*j_reg, *k_reg);
                 graph.del_edge(i, j);
                 graph.del_edge(j, k);
-                if i != k {
+                if i == k {
+                    // This was our last swap
+                    break;
+                } else {
                     graph.add_edge(i, k);
                 }
-            } else {
-                /* This is an isolated node */
-                assert!(graph.src(i).is_none() && graph.num_reads(i) == 0);
-                break;
             }
+        } else {
+            let pc_tmp = pc.tmp.expect("This copy needs a temporary");
+            let tmp = pc_tmp.comp(0);
+
+            let mut p = i;
+            let mut p_reg = *vals[p].as_reg().unwrap();
+            b.copy_to(tmp.into(), p_reg.into());
+
+            loop {
+                let j = graph.src(p).unwrap();
+                if j == i {
+                    break;
+                }
+
+                let j_reg = *vals[j].as_reg().unwrap();
+                debug_assert!(j_reg.file() == file);
+
+                if file == RegFile::Mem {
+                    let copy_tmp = pc_tmp.comp(1);
+                    b.copy_to(copy_tmp.into(), j_reg.into());
+                    b.copy_to(p_reg.into(), copy_tmp.into());
+                } else {
+                    b.copy_to(p_reg.into(), j_reg.into());
+                }
+                graph.del_edge(p, j);
+
+                p = j;
+                p_reg = j_reg;
+            }
+
+            b.copy_to(p_reg.into(), tmp.into());
+            graph.del_edge(p, i);
         }
     }
 

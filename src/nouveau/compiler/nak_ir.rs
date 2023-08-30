@@ -519,6 +519,11 @@ impl RegRef {
     pub fn comps(&self) -> u8 {
         (((self.packed >> 26) & 0x7) + 1).try_into().unwrap()
     }
+
+    pub fn comp(&self, c: u8) -> RegRef {
+        assert!(c < self.comps());
+        RegRef::new(self.file(), self.base_idx() + u32::from(c), 1)
+    }
 }
 
 impl HasRegFile for RegRef {
@@ -3223,12 +3228,14 @@ impl fmt::Display for OpSwap {
 #[repr(C)]
 pub struct OpParCopy {
     pub dsts_srcs: VecPair<Dst, Src>,
+    pub tmp: Option<RegRef>,
 }
 
 impl OpParCopy {
     pub fn new() -> OpParCopy {
         OpParCopy {
             dsts_srcs: VecPair::new(),
+            tmp: None,
         }
     }
 
