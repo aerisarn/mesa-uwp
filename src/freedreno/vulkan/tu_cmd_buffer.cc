@@ -2015,6 +2015,8 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          tu_fill_render_pass_state(&cmd_buffer->state.vk_rp,
                                    cmd_buffer->state.pass,
                                    cmd_buffer->state.subpass);
+         vk_cmd_set_cb_attachment_count(&cmd_buffer->vk,
+                                        cmd_buffer->state.subpass->color_count);
          cmd_buffer->state.dirty |= TU_CMD_DIRTY_SUBPASS;
 
          cmd_buffer->patchpoints_ctx = ralloc_parent(NULL);
@@ -3648,6 +3650,8 @@ tu_emit_subpass_begin(struct tu_cmd_buffer *cmd)
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
+
+   vk_cmd_set_cb_attachment_count(&cmd->vk, cmd->state.subpass->color_count);
 
    cmd->state.dirty |= TU_CMD_DIRTY_SUBPASS;
 }
