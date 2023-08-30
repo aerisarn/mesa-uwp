@@ -183,6 +183,17 @@ anv-tgl:
     VK_DRIVER: intel
   parallel: 6 # 15 - 3 zink - 3 post-merge perf + headroom
 
+anv-tgl-full:
+  extends:
+    - anv-tgl
+    - .intel-manual-rules
+  variables:
+    DEQP_SUITE: anv-tgl-full
+    DEQP_FRACTION: 1
+    JOB_TIMEOUT: 90
+  timeout: 100m
+  parallel: 4
+
 hasvk-hsw-full:
   extends:
     - .anholt-hsw-test
