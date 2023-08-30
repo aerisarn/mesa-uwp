@@ -186,6 +186,7 @@ static void pvr_physical_device_get_supported_extensions(
       .EXT_external_memory_dma_buf = true,
       .EXT_private_data = true,
       .EXT_scalar_block_layout = true,
+      .EXT_texel_buffer_alignment = true,
       .EXT_tooling_info = true,
    };
 }
@@ -260,9 +261,13 @@ static void pvr_physical_device_get_supported_features(
 
       /* Vulkan 1.3 / VK_EXT_private_data */
       .privateData = true,
-      
+
       /* Vulkan 1.2 / VK_EXT_scalar_block_layout */
       .scalarBlockLayout = true,
+
+      /* Vulkan 1.3 / VK_EXT_texel_buffer_alignment */
+      .texelBufferAlignment = true,
+
    };
 }
 
