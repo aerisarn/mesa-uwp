@@ -444,7 +444,7 @@ a618-traces-performance:
     RUNNER_TAG: mesa-ci-x86-64-lava-sm8350-hdk
     VK_DRIVER: freedreno
 
-.a660_gl:
+a660_gl:
   extends:
     - .lava-test-deqp:arm64
     - .collabora-freedreno-rules
@@ -453,7 +453,7 @@ a618-traces-performance:
   variables:
     DEQP_SUITE: freedreno-a660
 
-.a660_vk:
+a660_vk:
   extends:
     - .lava-test-deqp:arm64
     - .collabora-turnip-rules
@@ -463,9 +463,9 @@ a618-traces-performance:
     DEQP_SUITE: freedreno-a660-vk
     DEQP_FRACTION: 2
 
-.a660_vk_full:
+a660_vk_full:
   extends:
-    - .a660_vk
+    - a660_vk
     - .collabora-turnip-manual-rules
   parallel: 3
   timeout: 3h
