@@ -107,6 +107,10 @@ struct IntelRenderpassTraits : public perfetto::DefaultDataSourceTraits {
 
 class IntelRenderpassDataSource : public MesaRenderpassDataSource<IntelRenderpassDataSource,
                                                                   IntelRenderpassTraits> {
+public:
+   /* Make sure we're not losing traces due to lack of shared memory space */
+   constexpr static perfetto::BufferExhaustedPolicy kBufferExhaustedPolicy =
+      perfetto::BufferExhaustedPolicy::kDrop;
 };
 
 PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(IntelRenderpassDataSource);
