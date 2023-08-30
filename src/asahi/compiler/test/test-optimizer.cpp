@@ -214,3 +214,22 @@ TEST_F(Optimizer, IfCondition)
                               agx_zero(), 1, AGX_ICOND_UEQ, true),
                   agx_if_fcmp(b, hx, hy, 1, AGX_FCOND_LT, false));
 }
+
+TEST_F(Optimizer, SelectCondition)
+{
+   CASE32(agx_icmpsel_to(b, out, agx_icmp(b, wx, wy, AGX_ICOND_UEQ, false),
+                         agx_zero(), wz, wx, AGX_ICOND_UEQ),
+          agx_icmpsel_to(b, out, wx, wy, wx, wz, AGX_ICOND_UEQ));
+
+   CASE32(agx_icmpsel_to(b, out, agx_icmp(b, wx, wy, AGX_ICOND_UEQ, true),
+                         agx_zero(), wz, wx, AGX_ICOND_UEQ),
+          agx_icmpsel_to(b, out, wx, wy, wz, wx, AGX_ICOND_UEQ));
+
+   CASE32(agx_icmpsel_to(b, out, agx_fcmp(b, wx, wy, AGX_FCOND_EQ, false),
+                         agx_zero(), wz, wx, AGX_ICOND_UEQ),
+          agx_fcmpsel_to(b, out, wx, wy, wx, wz, AGX_FCOND_EQ));
+
+   CASE32(agx_icmpsel_to(b, out, agx_fcmp(b, wx, wy, AGX_FCOND_LT, true),
+                         agx_zero(), wz, wx, AGX_ICOND_UEQ),
+          agx_fcmpsel_to(b, out, wx, wy, wz, wx, AGX_FCOND_LT));
+}
