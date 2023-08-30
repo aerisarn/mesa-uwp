@@ -538,20 +538,22 @@ post_submit(void *data, void *gdata, int thread_index)
    memset(&bs->buffer_indices_hashlist, -1, sizeof(bs->buffer_indices_hashlist));
 }
 
+typedef enum {
+   ZINK_SUBMIT_WAIT_ACQUIRE,
+   ZINK_SUBMIT_CMDBUF,
+   ZINK_SUBMIT_SIGNAL,
+   ZINK_SUBMIT_MAX
+} zink_submit;
+
 static void
 submit_queue(void *data, void *gdata, int thread_index)
 {
    struct zink_batch_state *bs = data;
    struct zink_context *ctx = bs->ctx;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   /* 3 submit infos:
-    * - waits
-    * - main cmdbuf payload
-    * - signals
-    */
-   VkSubmitInfo si[3] = {0};
+   VkSubmitInfo si[ZINK_SUBMIT_MAX] = {0};
    VkSubmitInfo *submit = si;
-   int num_si = 2;
+   int num_si = ZINK_SUBMIT_MAX;
    while (!bs->fence.batch_id)
       bs->fence.batch_id = (uint32_t)p_atomic_inc_return(&screen->curr_batch);
    bs->usage.usage = bs->fence.batch_id;
@@ -559,48 +561,49 @@ submit_queue(void *data, void *gdata, int thread_index)
 
    uint64_t batch_id = bs->fence.batch_id;
    /* first submit is just for acquire waits since they have a separate array */
-   si[0].sType = si[1].sType = si[2].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-   si[0].waitSemaphoreCount = util_dynarray_num_elements(&bs->acquires, VkSemaphore);
-   si[0].pWaitSemaphores = bs->acquires.data;
-   while (util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags) < si[0].waitSemaphoreCount) {
+   for (unsigned i = 0; i < ARRAY_SIZE(si); i++)
+      si[i].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   si[ZINK_SUBMIT_WAIT_ACQUIRE].waitSemaphoreCount = util_dynarray_num_elements(&bs->acquires, VkSemaphore);
+   si[ZINK_SUBMIT_WAIT_ACQUIRE].pWaitSemaphores = bs->acquires.data;
+   while (util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags) < si[ZINK_SUBMIT_WAIT_ACQUIRE].waitSemaphoreCount) {
       VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       util_dynarray_append(&bs->acquire_flags, VkPipelineStageFlags, mask);
    }
    assert(util_dynarray_num_elements(&bs->acquires, VkSemaphore) <= util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags));
-   si[0].pWaitDstStageMask = bs->acquire_flags.data;
+   si[ZINK_SUBMIT_WAIT_ACQUIRE].pWaitDstStageMask = bs->acquire_flags.data;
 
-   if (si[0].waitSemaphoreCount == 0) {
+   if (si[ZINK_SUBMIT_WAIT_ACQUIRE].waitSemaphoreCount == 0) {
      num_si--;
      submit++;
    }
 
    /* then the real submit */
-   si[1].waitSemaphoreCount = util_dynarray_num_elements(&bs->wait_semaphores, VkSemaphore);
-   si[1].pWaitSemaphores = bs->wait_semaphores.data;
-   si[1].pWaitDstStageMask = bs->wait_semaphore_stages.data;
-   si[1].commandBufferCount = bs->has_barriers ? 2 : 1;
+   si[ZINK_SUBMIT_CMDBUF].waitSemaphoreCount = util_dynarray_num_elements(&bs->wait_semaphores, VkSemaphore);
+   si[ZINK_SUBMIT_CMDBUF].pWaitSemaphores = bs->wait_semaphores.data;
+   si[ZINK_SUBMIT_CMDBUF].pWaitDstStageMask = bs->wait_semaphore_stages.data;
+   si[ZINK_SUBMIT_CMDBUF].commandBufferCount = bs->has_barriers ? 2 : 1;
    VkCommandBuffer cmdbufs[2] = {
       bs->barrier_cmdbuf,
       bs->cmdbuf,
    };
-   si[1].pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
+   si[ZINK_SUBMIT_CMDBUF].pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
 
    VkSemaphore signals[3];
-   si[1].signalSemaphoreCount = !!bs->signal_semaphore;
+   si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount = !!bs->signal_semaphore;
    signals[0] = bs->signal_semaphore;
-   si[1].pSignalSemaphores = signals;
+   si[ZINK_SUBMIT_CMDBUF].pSignalSemaphores = signals;
    VkTimelineSemaphoreSubmitInfo tsi = {0};
    uint64_t signal_values[2] = {0};
    tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-   si[1].pNext = &tsi;
+   si[ZINK_SUBMIT_CMDBUF].pNext = &tsi;
    tsi.pSignalSemaphoreValues = signal_values;
-   signal_values[si[1].signalSemaphoreCount] = batch_id;
-   signals[si[1].signalSemaphoreCount++] = screen->sem;
-   tsi.signalSemaphoreValueCount = si[1].signalSemaphoreCount;
+   signal_values[si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount] = batch_id;
+   signals[si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount++] = screen->sem;
+   tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount;
 
    if (bs->present)
-      signals[si[1].signalSemaphoreCount++] = bs->present;
-   tsi.signalSemaphoreValueCount = si[1].signalSemaphoreCount;
+      signals[si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount++] = bs->present;
+   tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount;
 
    VkResult result = VKSCR(EndCommandBuffer)(bs->cmdbuf);
    if (result != VK_SUCCESS) {
@@ -626,6 +629,9 @@ submit_queue(void *data, void *gdata, int thread_index)
          goto end;
       }
    }
+
+   if (!si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount)
+      num_si--;
 
    simple_mtx_lock(&screen->queue_lock);
    result = VKSCR(QueueSubmit)(screen->queue, num_si, submit, VK_NULL_HANDLE);
