@@ -1045,9 +1045,9 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       /* Compare special register to zero. We could lower this in NIR (letting
        * us fold in an inot) but meh?
        */
-      return agx_icmpsel_to(
-         b, dst, agx_get_sr_coverage(b, 32, AGX_SR_IS_ACTIVE_THREAD),
-         agx_zero(), agx_immediate(1), agx_zero(), AGX_ICOND_UEQ);
+      return agx_icmp_to(b, dst,
+                         agx_get_sr_coverage(b, 32, AGX_SR_IS_ACTIVE_THREAD),
+                         agx_zero(), AGX_ICOND_UEQ, false);
 
    case nir_intrinsic_load_vertex_id:
       assert(b->shader->stage == MESA_SHADER_VERTEX);
@@ -1312,26 +1312,26 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       BINOP(interleave_agx, intl);
 
    case nir_op_feq:
-      return agx_fcmpsel_to(b, dst, s0, s1, i1, i0, AGX_FCOND_EQ);
+      return agx_fcmp_to(b, dst, s0, s1, AGX_FCOND_EQ, false);
    case nir_op_flt:
-      return agx_fcmpsel_to(b, dst, s0, s1, i1, i0, AGX_FCOND_LT);
+      return agx_fcmp_to(b, dst, s0, s1, AGX_FCOND_LT, false);
    case nir_op_fge:
-      return agx_fcmpsel_to(b, dst, s0, s1, i1, i0, AGX_FCOND_GE);
+      return agx_fcmp_to(b, dst, s0, s1, AGX_FCOND_GE, false);
    case nir_op_fneu:
-      return agx_fcmpsel_to(b, dst, s0, s1, i0, i1, AGX_FCOND_EQ);
+      return agx_fcmp_to(b, dst, s0, s1, AGX_FCOND_EQ, true);
 
    case nir_op_ieq:
-      return agx_icmpsel_to(b, dst, s0, s1, i1, i0, AGX_ICOND_UEQ);
+      return agx_icmp_to(b, dst, s0, s1, AGX_ICOND_UEQ, false);
    case nir_op_ine:
-      return agx_icmpsel_to(b, dst, s0, s1, i0, i1, AGX_ICOND_UEQ);
+      return agx_icmp_to(b, dst, s0, s1, AGX_ICOND_UEQ, true);
    case nir_op_ilt:
-      return agx_icmpsel_to(b, dst, s0, s1, i1, i0, AGX_ICOND_SLT);
+      return agx_icmp_to(b, dst, s0, s1, AGX_ICOND_SLT, false);
    case nir_op_ige:
-      return agx_icmpsel_to(b, dst, s0, s1, i0, i1, AGX_ICOND_SLT);
+      return agx_icmp_to(b, dst, s0, s1, AGX_ICOND_SLT, true);
    case nir_op_ult:
-      return agx_icmpsel_to(b, dst, s0, s1, i1, i0, AGX_ICOND_ULT);
+      return agx_icmp_to(b, dst, s0, s1, AGX_ICOND_ULT, false);
    case nir_op_uge:
-      return agx_icmpsel_to(b, dst, s0, s1, i0, i1, AGX_ICOND_ULT);
+      return agx_icmp_to(b, dst, s0, s1, AGX_ICOND_ULT, true);
 
    case nir_op_inot:
       if (sz == 1)
@@ -1340,7 +1340,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
          return agx_not_to(b, dst, s0);
 
    case nir_op_b2b1:
-      return agx_icmpsel_to(b, dst, s0, i0, i0, i1, AGX_ICOND_UEQ);
+      return agx_icmp_to(b, dst, s0, i0, AGX_ICOND_UEQ, true);
 
    case nir_op_fsqrt:
       return agx_fmul_to(b, dst, s0, agx_srsqrt(b, s0));
