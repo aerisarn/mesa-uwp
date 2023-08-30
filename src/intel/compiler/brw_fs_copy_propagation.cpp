@@ -32,8 +32,6 @@
  * 12.5 (p356).
  */
 
-#define ACP_HASH_SIZE 64
-
 #include "util/bitset.h"
 #include "util/u_math.h"
 #include "util/rb_tree.h"
@@ -45,7 +43,7 @@
 using namespace brw;
 
 namespace { /* avoid conflict with opt_copy_propagation_elements */
-struct acp_entry : public exec_node {
+struct acp_entry {
    struct rb_node by_dst;
    struct rb_node by_src;
    fs_reg dst;
@@ -366,59 +364,30 @@ fs_copy_prop_dataflow::setup_initial_values()
 {
    /* Initialize the COPY and KILL sets. */
    {
-      /* Create a temporary table of ACP entries which we'll use for efficient
-       * look-up.  Unfortunately, we have to do this in two steps because we
-       * have to match both sources and destinations and an ACP entry can only
-       * be in one list at a time.
-       *
-       * We choose to make the table size between num_acp/2 and num_acp/4 to
-       * try and trade off between the time it takes to initialize the table
-       * via exec_list constructors or make_empty() and the cost of
-       * collisions.  In practice, it doesn't appear to matter too much what
-       * size we make the table as long as it's roughly the same order of
-       * magnitude as num_acp.  We get most of the benefit of the table
-       * approach even if we use a table of size ACP_HASH_SIZE though a
-       * full-sized table is 1-2% faster in practice.
-       */
-      unsigned acp_table_size = util_next_power_of_two(num_acp) / 4;
-      acp_table_size = MAX2(acp_table_size, ACP_HASH_SIZE);
-      exec_list *acp_table = new exec_list[acp_table_size];
+      struct acp acp_table;
 
       /* First, get all the KILLs for instructions which overwrite ACP
        * destinations.
        */
-      for (int i = 0; i < num_acp; i++) {
-         unsigned idx = reg_space(acp[i]->dst) & (acp_table_size - 1);
-         acp_table[idx].push_tail(acp[i]);
-      }
+      for (int i = 0; i < num_acp; i++)
+         acp_table.add(acp[i]);
 
       foreach_block (block, cfg) {
          foreach_inst_in_block(fs_inst, inst, block) {
             if (inst->dst.file != VGRF)
                continue;
 
-            unsigned idx = reg_space(inst->dst) & (acp_table_size - 1);
-            foreach_in_list(acp_entry, entry, &acp_table[idx]) {
+            for (auto iter = acp_table.find_by_dst(inst->dst.nr);
+              iter != acp_table.end() && (*iter)->dst.nr == inst->dst.nr;
+              ++iter) {
                if (grf_regions_overlap(inst->dst, inst->size_written,
-                                       entry->dst, entry->size_written)) {
-                  BITSET_SET(bd[block->num].kill, entry->global_idx);
-                  if (inst->force_writemask_all && !entry->force_writemask_all)
-                     BITSET_SET(bd[block->num].exec_mismatch, entry->global_idx);
+                                       (*iter)->dst, (*iter)->size_written)) {
+                  BITSET_SET(bd[block->num].kill, (*iter)->global_idx);
+                  if (inst->force_writemask_all && !(*iter)->force_writemask_all)
+                     BITSET_SET(bd[block->num].exec_mismatch, (*iter)->global_idx);
                }
             }
          }
-      }
-
-      /* Clear the table for the second pass */
-      for (unsigned i = 0; i < acp_table_size; i++)
-         acp_table[i].make_empty();
-
-      /* Next, get all the KILLs for instructions which overwrite ACP
-       * sources.
-       */
-      for (int i = 0; i < num_acp; i++) {
-         unsigned idx = reg_space(acp[i]->src) & (acp_table_size - 1);
-         acp_table[idx].push_tail(acp[i]);
       }
 
       foreach_block (block, cfg) {
@@ -427,19 +396,18 @@ fs_copy_prop_dataflow::setup_initial_values()
                 inst->dst.file != FIXED_GRF)
                continue;
 
-            unsigned idx = reg_space(inst->dst) & (acp_table_size - 1);
-            foreach_in_list(acp_entry, entry, &acp_table[idx]) {
+            for (auto iter = acp_table.find_by_src(inst->dst.nr);
+              iter != acp_table.end() && (*iter)->src.nr == inst->dst.nr;
+              ++iter) {
                if (grf_regions_overlap(inst->dst, inst->size_written,
-                                       entry->src, entry->size_read)) {
-                  BITSET_SET(bd[block->num].kill, entry->global_idx);
-                  if (inst->force_writemask_all && !entry->force_writemask_all)
-                     BITSET_SET(bd[block->num].exec_mismatch, entry->global_idx);
+                                       (*iter)->src, (*iter)->size_read)) {
+                  BITSET_SET(bd[block->num].kill, (*iter)->global_idx);
+                  if (inst->force_writemask_all && !(*iter)->force_writemask_all)
+                     BITSET_SET(bd[block->num].exec_mismatch, (*iter)->global_idx);
                }
             }
          }
       }
-
-      delete [] acp_table;
    }
 
    /* Populate the initial values for the livein and liveout sets.  For the
