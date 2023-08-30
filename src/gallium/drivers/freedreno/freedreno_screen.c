@@ -181,6 +181,36 @@ fd_screen_destroy(struct pipe_screen *pscreen)
    free(screen);
 }
 
+static uint64_t
+get_memory_size(struct fd_screen *screen)
+{
+   uint64_t system_memory;
+
+   if (!os_get_total_physical_memory(&system_memory))
+      return 0;
+   if (fd_device_version(screen->dev) >= FD_VERSION_VA_SIZE) {
+      uint64_t va_size;
+      if (!fd_pipe_get_param(screen->pipe, FD_VA_SIZE, &va_size)) {
+         system_memory = MIN2(system_memory, va_size);
+      }
+   }
+
+   return system_memory;
+}
+
+static void
+fd_query_memory_info(struct pipe_screen *pscreen,
+                     struct pipe_memory_info *info)
+{
+   unsigned mem = get_memory_size(fd_screen(pscreen)) >> 10;
+
+   memset(info, 0, sizeof(*info));
+
+   info->total_device_memory = mem;
+   info->avail_device_memory = mem;
+}
+
+
 /*
 TODO either move caps to a2xx/a3xx specific code, or maybe have some
 tables for things that differ if the delta is not too much..
@@ -552,22 +582,11 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_ACCELERATED:
       return 1;
 
-   case PIPE_CAP_VIDEO_MEMORY: {
-      uint64_t system_memory;
+   case PIPE_CAP_VIDEO_MEMORY:
+      return (int)(get_memory_size(screen) >> 20);
 
-      if (!os_get_total_physical_memory(&system_memory))
-         return 0;
-
-      if (fd_device_version(screen->dev) >= FD_VERSION_VA_SIZE) {
-         uint64_t va_size;
-
-         if (!fd_pipe_get_param(screen->pipe, FD_VA_SIZE, &va_size)) {
-            system_memory = MIN2(system_memory, va_size);
-         }
-      }
-
-      return (int)(system_memory >> 20);
-   }
+   case PIPE_CAP_QUERY_MEMORY_INFO: /* Enables GL_ATI_meminfo */
+      return get_memory_size(screen) != 0;
 
    case PIPE_CAP_UMA:
       return 1;
@@ -1214,6 +1233,7 @@ fd_screen_create(int fd,
 
    pscreen->destroy = fd_screen_destroy;
    pscreen->get_screen_fd = fd_screen_get_fd;
+   pscreen->query_memory_info = fd_query_memory_info;
    pscreen->get_param = fd_screen_get_param;
    pscreen->get_paramf = fd_screen_get_paramf;
    pscreen->get_shader_param = fd_screen_get_shader_param;
