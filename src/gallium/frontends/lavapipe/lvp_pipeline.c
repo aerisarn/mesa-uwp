@@ -58,15 +58,16 @@ shader_destroy(struct lvp_device *device, struct lvp_shader *shader, bool locked
       device->queue.ctx->delete_ts_state,
       device->queue.ctx->delete_ms_state,
    };
+
+   if (!locked)
+      simple_mtx_lock(&device->queue.lock);
+
    set_foreach(&shader->inlines.variants, entry) {
       struct lvp_inline_variant *variant = (void*)entry->key;
       destroy[stage](device->queue.ctx, variant->cso);
       free(variant);
    }
    ralloc_free(shader->inlines.variants.table);
-
-   if (!locked)
-      simple_mtx_lock(&device->queue.lock);
 
    if (shader->shader_cso)
       destroy[stage](device->queue.ctx, shader->shader_cso);
