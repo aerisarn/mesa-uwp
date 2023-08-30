@@ -715,14 +715,19 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
       /* Grow the current CS and copy the contents of the secondary CS. */
       for (unsigned i = 0; i < child->num_ib_buffers; i++) {
          struct radv_amdgpu_ib *ib = &child->ib_buffers[i];
+         uint32_t cdw = ib->cdw;
          uint8_t *mapped;
+
+         /* Do not copy the original chain link for IBs. */
+         if (child->use_ib)
+            cdw -= 4;
 
          assert(!ib->is_external);
 
-         if (parent->base.cdw + ib->cdw > parent->base.max_dw)
-            radv_amdgpu_cs_grow(&parent->base, ib->cdw);
+         if (parent->base.cdw + cdw > parent->base.max_dw)
+            radv_amdgpu_cs_grow(&parent->base, cdw);
 
-         parent->base.reserved_dw = MAX2(parent->base.reserved_dw, parent->base.cdw + ib->cdw);
+         parent->base.reserved_dw = MAX2(parent->base.reserved_dw, parent->base.cdw + cdw);
 
          mapped = ws->base.buffer_map(ib->bo);
          if (!mapped) {
@@ -730,9 +735,8 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
             return;
          }
 
-         /* Copy the IB data without the original chain link. */
-         memcpy(parent->base.buf + parent->base.cdw, mapped, 4 * ib->cdw);
-         parent->base.cdw += ib->cdw;
+         memcpy(parent->base.buf + parent->base.cdw, mapped, 4 * cdw);
+         parent->base.cdw += cdw;
       }
    }
 }
