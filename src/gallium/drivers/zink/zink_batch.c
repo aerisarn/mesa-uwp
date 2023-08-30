@@ -540,6 +540,7 @@ post_submit(void *data, void *gdata, int thread_index)
 
 typedef enum {
    ZINK_SUBMIT_WAIT_ACQUIRE,
+   ZINK_SUBMIT_WAIT_FD,
    ZINK_SUBMIT_CMDBUF,
    ZINK_SUBMIT_SIGNAL,
    ZINK_SUBMIT_MAX
@@ -573,8 +574,12 @@ submit_queue(void *data, void *gdata, int thread_index)
    si[ZINK_SUBMIT_WAIT_ACQUIRE].pWaitDstStageMask = bs->acquire_flags.data;
 
    if (si[ZINK_SUBMIT_WAIT_ACQUIRE].waitSemaphoreCount == 0) {
-     num_si--;
-     submit++;
+      num_si--;
+      submit++;
+      if (si[ZINK_SUBMIT_WAIT_FD].waitSemaphoreCount == 0) {
+         num_si--;
+         submit++;
+      }
    }
 
    /* then the real submit */
