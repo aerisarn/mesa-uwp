@@ -1511,6 +1511,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    simple_mtx_destroy(&screen->semaphores_lock);
    while (util_dynarray_contains(&screen->semaphores, VkSemaphore))
       VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&screen->semaphores, VkSemaphore), NULL);
+   while (util_dynarray_contains(&screen->fd_semaphores, VkSemaphore))
+      VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&screen->fd_semaphores, VkSemaphore), NULL);
    if (screen->bindless_layout)
       VKSCR(DestroyDescriptorSetLayout)(screen->dev, screen->bindless_layout, NULL);
 
@@ -3248,6 +3250,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
 
    simple_mtx_init(&screen->semaphores_lock, mtx_plain);
    util_dynarray_init(&screen->semaphores, screen);
+   util_dynarray_init(&screen->fd_semaphores, screen);
 
    util_vertex_state_cache_init(&screen->vertex_state_cache,
                                 zink_create_vertex_state, zink_vertex_state_destroy);

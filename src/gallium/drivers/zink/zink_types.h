@@ -1387,6 +1387,7 @@ struct zink_screen {
 
    simple_mtx_t semaphores_lock;
    struct util_dynarray semaphores;
+   struct util_dynarray fd_semaphores;
 
    unsigned buffer_rebind_counter;
    unsigned image_rebind_counter;
