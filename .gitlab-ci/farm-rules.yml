@@ -79,22 +79,20 @@
 
 .collabora-farm-rules:
   rules:
-    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
-      exists: [ .ci-farms-disabled/collabora ]
+    - exists: [ .ci-farms-disabled/collabora ]
       when: never
-    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/ && $CI_PIPELINE_SOURCE != "schedule"'
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
       changes: [ .ci-farms-disabled/collabora ]
       when: on_success
-    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/ && $CI_PIPELINE_SOURCE != "schedule"'
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
       changes: [ .ci-farms-disabled/* ]
       when: never
 
 .collabora-farm-manual-rules:
   rules:
-    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
-      exists: [ .ci-farms-disabled/collabora ]
+    - exists: [ .ci-farms-disabled/collabora ]
       when: never
-    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/ && $CI_PIPELINE_SOURCE != "schedule"'
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
       changes: [ .ci-farms-disabled/collabora ]
       when: never
     - !reference [.collabora-farm-rules, rules]
