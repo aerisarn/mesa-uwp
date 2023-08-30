@@ -72,7 +72,12 @@ struct rb_tree {
 };
 
 /** Initialize a red-black tree */
-void rb_tree_init(struct rb_tree *T);
+static inline void
+rb_tree_init(struct rb_tree *T)
+{
+    T->root = NULL;
+}
+
 
 /** Returns true if the red-black tree is empty */
 static inline bool
