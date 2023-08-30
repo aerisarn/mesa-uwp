@@ -33,6 +33,7 @@
 #include "util/u_memory.h"
 #include "util/u_screen.h"
 #include "util/u_upload_mgr.h"
+#include "util/xmlconfig.h"
 #include "agx_device.h"
 #include "agx_disk_cache.h"
 #include "agx_fence.h"
@@ -2129,7 +2130,8 @@ agx_screen_get_fd(struct pipe_screen *pscreen)
 }
 
 struct pipe_screen *
-agx_screen_create(int fd, struct renderonly *ro)
+agx_screen_create(int fd, struct renderonly *ro,
+                  const struct pipe_screen_config *config)
 {
    struct agx_screen *agx_screen;
    struct pipe_screen *screen;
@@ -2143,6 +2145,10 @@ agx_screen_create(int fd, struct renderonly *ro)
    /* Set debug before opening */
    agx_screen->dev.debug =
       debug_get_flags_option("ASAHI_MESA_DEBUG", agx_debug_options, 0);
+
+   /* parse driconf configuration now for device specific overrides */
+   driParseConfigFiles(config->options, config->options_info, 0, "asahi", NULL,
+                       NULL, NULL, 0, NULL, 0);
 
    agx_screen->dev.fd = fd;
    agx_screen->dev.ro = ro;
