@@ -602,6 +602,12 @@ agx_predecessor_index(agx_block *succ, agx_block *pred)
    unreachable("Invalid predecessor");
 }
 
+static inline agx_block *
+agx_prev_block(agx_block *ins)
+{
+   return list_last_entry(&(ins->link), agx_block, link);
+}
+
 static inline agx_instr *
 agx_prev_op(agx_instr *ins)
 {
