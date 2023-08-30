@@ -5010,13 +5010,98 @@ rework_io_vars(nir_shader *nir, nir_variable_mode mode)
             assert(old_var);
             /* ensure dword is filled with like-sized components */
             unsigned max_components = intr->num_components;
-            if (bit_size == 16)
+            if (mode == nir_var_shader_out && nir->info.stage == MESA_SHADER_FRAGMENT) {
+                  switch (s.location) {
+                  case FRAG_RESULT_DEPTH:
+                  case FRAG_RESULT_STENCIL:
+                  case FRAG_RESULT_SAMPLE_MASK:
+                     max_components = 1;
+                     break;
+                  default:
+                     break;
+                  }
+            } else if ((nir->info.stage != MESA_SHADER_VERTEX || mode != nir_var_shader_in) && s.location < VARYING_SLOT_VAR0) {
+               switch (s.location) {
+               case VARYING_SLOT_FOGC:
+                  /* use intr components */
+                  break;
+               case VARYING_SLOT_POS:
+               case VARYING_SLOT_COL0:
+               case VARYING_SLOT_COL1:
+               case VARYING_SLOT_TEX0:
+               case VARYING_SLOT_TEX1:
+               case VARYING_SLOT_TEX2:
+               case VARYING_SLOT_TEX3:
+               case VARYING_SLOT_TEX4:
+               case VARYING_SLOT_TEX5:
+               case VARYING_SLOT_TEX6:
+               case VARYING_SLOT_TEX7:
+               case VARYING_SLOT_BFC0:
+               case VARYING_SLOT_BFC1:
+               case VARYING_SLOT_EDGE:
+               case VARYING_SLOT_CLIP_VERTEX:
+               case VARYING_SLOT_PNTC:
+               case VARYING_SLOT_BOUNDING_BOX0:
+               case VARYING_SLOT_BOUNDING_BOX1:
+                  max_components = 4;
+                  break;
+               case VARYING_SLOT_CLIP_DIST0:
+               case VARYING_SLOT_CLIP_DIST1:
+                  max_components = s.num_slots;
+                  break;
+               case VARYING_SLOT_CULL_DIST0:
+               case VARYING_SLOT_CULL_DIST1:
+                  max_components = s.num_slots;
+                  break;
+               case VARYING_SLOT_TESS_LEVEL_OUTER:
+                  max_components = 4;
+                  break;
+               case VARYING_SLOT_TESS_LEVEL_INNER:
+                  max_components = 2;
+                  break;
+               case VARYING_SLOT_PRIMITIVE_ID:
+               case VARYING_SLOT_LAYER:
+               case VARYING_SLOT_VIEWPORT:
+               case VARYING_SLOT_FACE:
+               case VARYING_SLOT_PSIZ:
+               case VARYING_SLOT_VIEW_INDEX:
+               case VARYING_SLOT_VIEWPORT_MASK:
+                  max_components = 1;
+                  break;
+               default:
+                  unreachable("???");
+               }
+            } else if (nir->info.stage == MESA_SHADER_VERTEX && mode == nir_var_shader_in) {
+               if (s.location == VERT_ATTRIB_POINT_SIZE)
+                  max_components = 1;
+               else if (s.location < VERT_ATTRIB_GENERIC0)
+                  max_components = 4;
+               else
+                  max_components = frac + max_components;
+            } else if (bit_size == 16)
                max_components = align(max_components, 2);
             else if (bit_size == 8)
                max_components = align(max_components, 4);
             if (c + (bit_size == 64 ? max_components * 2 : max_components) > 4)
                c = 0;
-            const struct glsl_type *vec_type = glsl_vector_type(nir_get_glsl_base_type_for_nir_type(type), max_components);
+            const struct glsl_type *vec_type;
+            if (nir->info.stage == MESA_SHADER_VERTEX && mode == nir_var_shader_in) {
+               vec_type = glsl_vector_type(nir_get_glsl_base_type_for_nir_type(type), max_components);
+            } else {
+               switch (s.location) {
+               case VARYING_SLOT_CLIP_DIST0:
+               case VARYING_SLOT_CLIP_DIST1:
+               case VARYING_SLOT_CULL_DIST0:
+               case VARYING_SLOT_CULL_DIST1:
+               case VARYING_SLOT_TESS_LEVEL_OUTER:
+               case VARYING_SLOT_TESS_LEVEL_INNER:
+                  vec_type = glsl_array_type(glsl_float_type(), max_components, sizeof(uint32_t));
+                  break;
+               default:
+                  vec_type = glsl_vector_type(nir_get_glsl_base_type_for_nir_type(type), max_components);
+                  break;
+               }
+            }
             /* reset the mode for nir_is_arrayed_io to work */
             bool is_arrayed = io_instr_is_arrayed(intr);
             if (is_indirect) {
