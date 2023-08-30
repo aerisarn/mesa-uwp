@@ -389,7 +389,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       }
 
       /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
-      if (shader->use_aco && sel->screen->info.gfx_level < GFX11)
+      if (sel->screen->use_aco && sel->screen->info.gfx_level < GFX11)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
 
       /* VGPRs */
@@ -407,7 +407,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_factor_offset);
 
       /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
-      if (shader->use_aco && sel->screen->info.gfx_level < GFX11)
+      if (sel->screen->use_aco && sel->screen->info.gfx_level < GFX11)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
 
       /* VGPRs */
@@ -473,7 +473,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
                ac_add_return(&args->ac, AC_ARG_VGPR);
 
             /* VS outputs passed via VGPRs to TCS. */
-            if (shader->key.ge.opt.same_patch_vertices && !shader->use_aco) {
+            if (shader->key.ge.opt.same_patch_vertices && !sel->screen->use_aco) {
                unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written);
                for (i = 0; i < num_outputs * 4; i++)
                   ac_add_return(&args->ac, AC_ARG_VGPR);
@@ -481,7 +481,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
          }
       } else {
          /* TCS inputs are passed via VGPRs from VS. */
-         if (shader->key.ge.opt.same_patch_vertices && !shader->use_aco) {
+         if (shader->key.ge.opt.same_patch_vertices && !sel->screen->use_aco) {
             unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->info.outputs_written);
             for (i = 0; i < num_inputs * 4; i++)
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
@@ -604,7 +604,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       }
 
       /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
-      if (shader->use_aco && sel->screen->info.gfx_level < GFX11)
+      if (sel->screen->use_aco && sel->screen->info.gfx_level < GFX11)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
 
       /* VGPRs */
@@ -618,7 +618,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs_wave_id);
 
       /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
-      if (shader->use_aco && sel->screen->info.gfx_level < GFX11)
+      if (sel->screen->use_aco && sel->screen->info.gfx_level < GFX11)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
 
       /* VGPRs */
@@ -671,7 +671,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.pos_fixed_pt,
                          SI_PARAM_POS_FIXED_PT);
 
-      if (shader->use_aco) {
+      if (sel->screen->use_aco) {
          ac_compact_ps_vgpr_args(&args->ac, shader->config.spi_ps_input_addr);
 
          /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
@@ -747,7 +747,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tg_size);
 
       /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
-      if (shader->use_aco && sel->screen->info.gfx_level < GFX11)
+      if (sel->screen->use_aco && sel->screen->info.gfx_level < GFX11)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
 
       /* Hardware VGPRs. */
@@ -2264,7 +2264,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       NIR_PASS(progress, nir, ac_nir_lower_image_opcodes);
 
    /* LLVM does not work well with this, so is handled in llvm backend waterfall. */
-   if (shader->use_aco && sel->info.has_non_uniform_tex_access) {
+   if (sel->screen->use_aco && sel->info.has_non_uniform_tex_access) {
       nir_lower_non_uniform_access_options options = {
          .types = nir_lower_non_uniform_texture_access,
       };
@@ -2348,7 +2348,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       ac_nir_lower_ps_options options = {
          .gfx_level = sel->screen->info.gfx_level,
          .family = sel->screen->info.family,
-         .use_aco = shader->use_aco,
+         .use_aco = sel->screen->use_aco,
          .uses_discard = si_shader_uses_discard(shader),
          .alpha_to_coverage_via_mrtz = key->ps.part.epilog.alpha_to_coverage_via_mrtz,
          .dual_src_blend_swizzle = key->ps.part.epilog.dual_src_blend_swizzle,
@@ -2407,7 +2407,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    /* aco only accept scalar const, must be done after si_nir_late_opts()
     * which may generate vec const.
     */
-   if (shader->use_aco)
+   if (sel->screen->use_aco)
       NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
 
    /* This helps LLVM form VMEM clauses and thus get more GPU cache hits.
@@ -2430,20 +2430,6 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
 
    shader->info.uses_vmem_load_other |= info.uses_vmem_load_other;
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
-}
-
-static void si_determine_use_aco(struct si_shader *shader)
-{
-   const struct si_shader_selector *sel = shader->selector;
-
-   if (!(sel->screen->debug_flags & DBG(USE_ACO)))
-      return;
-
-   /* ACO does not support compute cards yet. */
-   if (!sel->screen->info.has_graphics)
-      return;
-
-   shader->use_aco = true;
 }
 
 /* Generate code for the hardware VS shader stage to go with a geometry shader */
@@ -2506,8 +2492,6 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
                                    sscreen->options.vrs2x2,
                                    output_info);
 
-   si_determine_use_aco(shader);
-
    struct si_shader_args args;
    si_init_shader_args(shader, &args);
 
@@ -2517,7 +2501,7 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
    si_nir_opts(gs_selector->screen, nir, false);
 
    /* aco only accept scalar const */
-   if (shader->use_aco)
+   if (sscreen->use_aco)
       NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
 
    if (si_can_dump_shader(sscreen, MESA_SHADER_GEOMETRY, SI_DUMP_NIR)) {
@@ -2525,7 +2509,7 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
       nir_print_shader(nir, stderr);
    }
 
-   bool ok = shader->use_aco ?
+   bool ok = sscreen->use_aco ?
       si_aco_compile_shader(shader, &args, nir, debug) :
       si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir);
 
@@ -2715,10 +2699,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    bool ret = true;
    struct si_shader_selector *sel = shader->selector;
 
-   si_determine_use_aco(shader);
-
    /* ACO need spi_ps_input in advance to init args and used in compiler. */
-   if (sel->stage == MESA_SHADER_FRAGMENT && shader->use_aco)
+   if (sel->stage == MESA_SHADER_FRAGMENT && sscreen->use_aco)
       si_set_spi_ps_input_config(shader);
 
    /* We need this info only when legacy GS. */
@@ -2782,7 +2764,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
                                                   FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP64))
       float_mode &= ~V_00B028_FP_16_64_DENORMS;
 
-   ret = shader->use_aco ?
+   ret = sscreen->use_aco ?
       si_aco_compile_shader(shader, &args, nir, debug) :
       si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir);
    if (!ret)
@@ -2873,7 +2855,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    if (sel->screen->info.gfx_level < GFX11 &&
        (sel->screen->info.family < CHIP_GFX940 || sel->screen->info.has_graphics) &&
        !si_is_merged_shader(shader)) {
-      if (shader->use_aco) {
+      if (sscreen->use_aco) {
          /* When aco scratch_offset arg is added explicitly at the beginning.
           * After compile if no scratch used, reduce the input sgpr count.
           */
@@ -2945,9 +2927,7 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    result = CALLOC_STRUCT(si_shader_part);
    result->key = *key;
 
-   bool use_aco = (sscreen->debug_flags & DBG(USE_ACO)) && sscreen->info.has_graphics;
-
-   bool ok = use_aco ?
+   bool ok = sscreen->use_aco ?
       si_aco_build_shader_part(sscreen, stage, prolog, debug, name, result) :
       si_llvm_build_shader_part(sscreen, stage, prolog, compiler, debug, name, result);
 
@@ -3514,7 +3494,6 @@ nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
     */
    prev_shader->key.ge.opt.kill_outputs = 0;
    prev_shader->is_monolithic = true;
-   prev_shader->use_aco = shader->use_aco;
 
    si_init_shader_args(prev_shader, args);
 

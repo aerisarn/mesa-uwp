@@ -581,6 +581,7 @@ struct si_screen {
    bool use_ngg_culling;
    bool allow_dcc_msaa_clear_to_reg_for_bpp[5]; /* indexed by log2(Bpp) */
    bool always_allow_dcc_stores;
+   bool use_aco;
 
    struct {
 #define OPT_BOOL(name, dflt, description) bool name : 1;

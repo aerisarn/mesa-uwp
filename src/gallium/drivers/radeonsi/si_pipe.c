@@ -1192,6 +1192,9 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
                                             sscreen->info.has_dedicated_vram;
    }
 
+   /* ACO does not support compute cards yet. */
+   sscreen->use_aco = (sscreen->debug_flags & DBG(USE_ACO)) && sscreen->info.has_graphics;
+
    if (sscreen->debug_flags & DBG(NO_GFX))
       sscreen->info.has_graphics = false;
 
