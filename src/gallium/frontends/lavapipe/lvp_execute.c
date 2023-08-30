@@ -975,9 +975,10 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
       if (ps->vi) {
          u_foreach_bit(a, ps->vi->attributes_valid) {
             uint32_t b = ps->vi->attributes[a].binding;
-            state->velem.velems[a].src_stride = ps->vi->bindings[b].stride;
+            state->vb_strides[b] = ps->vi->bindings[b].stride;
+            state->vb_strides_dirty = true;
+            state->ve_dirty = true;
          }
-         state->vb_dirty = true;
       }
    }
 
