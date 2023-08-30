@@ -861,22 +861,9 @@ opt_if_simplification(nir_builder *b, nir_if *nif)
        is_block_empty(nir_if_first_else_block(nif)))
       return false;
 
-   /* Make sure the condition is a comparison operation. */
-   nir_instr *src_instr = nif->condition.ssa->parent_instr;
-   if (src_instr->type != nir_instr_type_alu)
-      return false;
-
-   nir_alu_instr *alu_instr = nir_instr_as_alu(src_instr);
-   if (!nir_alu_instr_is_comparison(alu_instr))
-      return false;
-
    /* Insert the inverted instruction and rewrite the condition. */
-   b->cursor = nir_after_instr(&alu_instr->instr);
-
-   nir_def *new_condition =
-      nir_inot(b, &alu_instr->def);
-
-   nir_src_rewrite(&nif->condition, new_condition);
+   b->cursor = nir_before_src(&nif->condition);
+   nir_src_rewrite(&nif->condition, nir_inot(b, nif->condition.ssa));
 
    /* Grab pointers to the last then/else blocks for fixing up the phis. */
    nir_block *then_block = nir_if_last_then_block(nif);
