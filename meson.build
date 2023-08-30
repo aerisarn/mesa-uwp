@@ -263,6 +263,7 @@ with_any_intel = [
   with_gallium_crocus,
   with_gallium_i915,
   with_gallium_iris,
+  with_intel_clc,
   with_intel_hasvk,
   with_intel_tools,
   with_intel_vk,
