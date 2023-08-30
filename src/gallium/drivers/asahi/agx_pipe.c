@@ -1478,6 +1478,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
 
    pctx->buffer_subdata = u_default_buffer_subdata;
+   pctx->clear_buffer = u_default_clear_buffer;
    pctx->texture_subdata = u_default_texture_subdata;
    pctx->set_debug_callback = u_default_set_debug_callback;
    pctx->get_sample_position = u_default_get_sample_position;
