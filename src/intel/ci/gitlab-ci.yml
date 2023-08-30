@@ -174,6 +174,26 @@
     FDO_CI_CONCURRENT: 9
     RUNNER_TAG: mesa-ci-x86-64-lava-asus-cx9400-volteer
 
+anv-jsl:
+  extends:
+    - .jsl-test
+    - .anv-test
+  variables:
+    DEQP_SUITE: anv-jsl
+    VK_DRIVER: intel
+  parallel: 4
+
+# We don't enable a full run of anv-jsl nightly because it's about 8 hours of
+# runtime, which would take too many boards at once.
+.anv-jsl-full:
+  extends:
+    - anv-jsl
+    - .intel-manual-rules
+  variables:
+    DEQP_SUITE: anv-jsl-full
+    JOB_TIMEOUT: 60
+  parallel: 4
+
 anv-tgl:
   extends:
     - .anv-tgl-test
@@ -212,17 +232,40 @@ hasvk-hsw:
   variables:
     DEQP_FRACTION: 10
 
-anv-tgl-angle:
+.anv-angle-test:
   extends:
-    - .anv-tgl-test
+    - .anv-test
     - .intel-rules # Note: Xorg uses iris, so depend on both GL and vulkan
   variables:
-    DEQP_SUITE: anv-tgl-angle
-    GPU_VERSION: angle-anv-tgl
     VK_DRIVER: intel
     USE_ANGLE: 1
     # ANGLE requires X11 running for some reason.
     HWCI_START_XORG: 1
+
+anv-jsl-angle:
+  extends:
+    - .jsl-test
+    - .anv-angle-test
+  variables:
+    DEQP_SUITE: anv-jsl-angle
+    GPU_VERSION: angle-anv-jsl
+
+anv-jsl-angle-full:
+  extends:
+    - anv-jsl-angle
+    - .intel-manual-rules
+  variables:
+    DEQP_SUITE: anv-jsl-angle-full
+    JOB_TIMEOUT: 60
+  parallel: 2
+
+anv-tgl-angle:
+  extends:
+    - .anv-tgl-test
+    - .anv-angle-test
+  variables:
+    DEQP_SUITE: anv-tgl-angle
+    GPU_VERSION: angle-anv-tgl
 
 anv-tgl-angle-full:
   extends:
@@ -296,9 +339,7 @@ anv-tgl-angle-full:
     FDO_CI_CONCURRENT: 9
 
 # 8 boards
-.iris-jsl-test:
-  extends:
-    - .iris-test
+.jsl-test:
   variables:
     DEVICE_TYPE: acer-cb317-1h-c3z6-dedede
     GPU_VERSION: iris-jsl
@@ -368,10 +409,12 @@ iris-cml-deqp:
 
 iris-jsl-deqp:
   extends:
-    - .iris-jsl-test
+    - .jsl-test
+    - .iris-test
   variables:
     DEQP_SUITE: iris-jsl
-  parallel: 8
+    DEQP_FRACTION: 4
+  parallel: 2
 
 iris-amly-egl:
   extends:
