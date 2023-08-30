@@ -373,7 +373,7 @@ typedef struct agx_block {
    bool loop_header;
 
    /* Offset of the block in the emitted binary */
-   off_t offset;
+   off_t offset, last_offset;
 
    /** Available for passes to use for metadata */
    uint8_t pass_flags;

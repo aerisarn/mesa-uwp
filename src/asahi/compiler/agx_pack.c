@@ -12,6 +12,9 @@ struct agx_branch_fixup {
 
    /* Value to patch with will be block->offset */
    agx_block *block;
+
+   /* If true, skips to the last instruction of the target block */
+   bool skip_to_end;
 };
 
 static void
@@ -939,13 +942,17 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
    }
 
    case AGX_OPCODE_JMP_EXEC_ANY:
-   case AGX_OPCODE_JMP_EXEC_NONE: {
+   case AGX_OPCODE_JMP_EXEC_NONE:
+   case AGX_OPCODE_JMP_EXEC_NONE_AFTER: {
       /* We don't implement indirect branches */
       assert(I->target != NULL);
 
       /* We'll fix the offset later. */
-      struct agx_branch_fixup fixup = {.block = I->target,
-                                       .offset = emission->size};
+      struct agx_branch_fixup fixup = {
+         .block = I->target,
+         .offset = emission->size,
+         .skip_to_end = I->op == AGX_OPCODE_JMP_EXEC_NONE_AFTER,
+      };
 
       util_dynarray_append(fixups, struct agx_branch_fixup, fixup);
 
@@ -971,8 +978,10 @@ agx_fixup_branch(struct util_dynarray *emission, struct agx_branch_fixup fix)
    /* Branch offset is 2 bytes into the jump instruction */
    uint8_t *location = ((uint8_t *)emission->data) + fix.offset + 2;
 
+   off_t target = fix.skip_to_end ? fix.block->last_offset : fix.block->offset;
+
    /* Offsets are relative to the jump instruction */
-   int32_t patch = (int32_t)fix.block->offset - (int32_t)fix.offset;
+   int32_t patch = (int32_t)target - (int32_t)fix.offset;
 
    /* Patch the binary */
    memcpy(location, &patch, sizeof(patch));
@@ -990,6 +999,7 @@ agx_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       block->offset = emission->size;
 
       agx_foreach_instr_in_block(block, ins) {
+         block->last_offset = emission->size;
          agx_pack_instr(emission, &fixups, ins, ctx->key->needs_g13x_coherency);
       }
    }
