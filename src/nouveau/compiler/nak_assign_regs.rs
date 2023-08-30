@@ -871,7 +871,6 @@ impl AssignRegsBlock {
                         self.phi_out.insert(*id, src.src_ref);
                     }
                 }
-                self.ra.free_killed(srcs_killed);
                 assert!(dsts_killed.is_empty());
                 None
             }
