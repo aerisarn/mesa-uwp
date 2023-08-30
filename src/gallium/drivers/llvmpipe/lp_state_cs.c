@@ -317,6 +317,7 @@ generate_compute(struct llvmpipe_context *lp,
                  struct lp_compute_shader_variant *variant)
 {
    struct gallivm_state *gallivm = variant->gallivm;
+   struct nir_shader *nir = shader->base.ir.nir;
    const struct lp_compute_shader_variant_key *key = &variant->key;
    char func_name[64], func_name_coro[64];
    LLVMTypeRef arg_types[CS_ARG_MAX];
@@ -334,16 +335,10 @@ generate_compute(struct llvmpipe_context *lp,
    LLVMValueRef function, coro;
    struct lp_type cs_type;
    struct lp_mesh_llvm_iface mesh_iface;
-   bool is_mesh = false;
+   bool is_mesh = nir->info.stage == MESA_SHADER_MESH;
    unsigned i;
 
    LLVMValueRef output_array = NULL;
-   if (shader->base.type == PIPE_SHADER_IR_NIR) {
-      struct nir_shader *nir = shader->base.ir.nir;
-      if (nir->info.stage == MESA_SHADER_MESH) {
-         is_mesh = true;
-      }
-   }
 
    /*
     * This function has two parts
@@ -457,7 +452,6 @@ generate_compute(struct llvmpipe_context *lp,
    image = lp_bld_llvm_image_soa_create(lp_cs_variant_key_images(key), key->nr_images);
 
    if (is_mesh) {
-      struct nir_shader *nir = shader->base.ir.nir;
       LLVMTypeRef output_type = create_mesh_jit_output_type_deref(gallivm);
       output_array = lp_build_array_alloca(gallivm, output_type, lp_build_const_int32(gallivm, align(MAX2(nir->info.mesh.max_primitives_out, nir->info.mesh.max_vertices_out), 8)), "outputs");
    }
@@ -789,7 +783,6 @@ generate_compute(struct llvmpipe_context *lp,
          vertex_count = LLVMBuildLoad2(gallivm->builder, i32t, vert_count_ptr, "");
          prim_count = LLVMBuildLoad2(gallivm->builder, i32t, prim_count_ptr, "");
 
-         nir_shader *nir = shader->base.ir.nir;
          int per_prim_count = util_bitcount64(nir->info.per_primitive_outputs);
          int out_count = util_bitcount64(nir->info.outputs_written);
          int per_vert_count = out_count - per_prim_count;
@@ -857,32 +850,26 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
 
    shader->no = cs_no++;
 
-   shader->base.type = templ->ir_type;
+   shader->base.type = PIPE_SHADER_IR_NIR;
 
-   if (shader->base.type == PIPE_SHADER_IR_TGSI) {
+   if (templ->ir_type == PIPE_SHADER_IR_TGSI) {
       shader->base.ir.nir = tgsi_to_nir(templ->prog, pipe->screen, false);
-      shader->base.type = PIPE_SHADER_IR_NIR;
    } else if (templ->ir_type == PIPE_SHADER_IR_NIR_SERIALIZED) {
       struct blob_reader reader;
       const struct pipe_binary_program_header *hdr = templ->prog;
 
       blob_reader_init(&reader, hdr->blob, hdr->num_bytes);
       shader->base.ir.nir = nir_deserialize(NULL, pipe->screen->get_compiler_options(pipe->screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE), &reader);
-      shader->base.type = PIPE_SHADER_IR_NIR;
 
       pipe->screen->finalize_nir(pipe->screen, shader->base.ir.nir);
-      shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
-      shader->zero_initialize_shared_memory = ((struct nir_shader *)shader->base.ir.nir)->info.zero_initialize_shared_memory;
    } else if (templ->ir_type == PIPE_SHADER_IR_NIR) {
       shader->base.ir.nir = (struct nir_shader *)templ->prog;
    }
 
-   if (shader->base.type == PIPE_SHADER_IR_NIR) {
-      shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
-      shader->zero_initialize_shared_memory = ((struct nir_shader *)shader->base.ir.nir)->info.zero_initialize_shared_memory;
-   }
-
    nir = (struct nir_shader *)shader->base.ir.nir;
+   shader->req_local_mem += nir->info.shared_size;
+   shader->zero_initialize_shared_memory = nir->info.zero_initialize_shared_memory;
+
    llvmpipe_register_shader(pipe, &shader->base, false);
 
    list_inithead(&shader->variants.list);
@@ -1175,13 +1162,12 @@ generate_variant(struct llvmpipe_context *lp,
    unsigned char ir_sha1_cache_key[20];
    struct lp_cached_code cached = { 0 };
    bool needs_caching = false;
-   if (shader->base.ir.nir) {
-      lp_cs_get_ir_cache_key(variant, ir_sha1_cache_key);
 
-      lp_disk_cache_find_shader(screen, &cached, ir_sha1_cache_key);
-      if (!cached.data_size)
-         needs_caching = true;
-   }
+   lp_cs_get_ir_cache_key(variant, ir_sha1_cache_key);
+
+   lp_disk_cache_find_shader(screen, &cached, ir_sha1_cache_key);
+   if (!cached.data_size)
+      needs_caching = true;
 
    variant->gallivm = gallivm_create(module_name, lp->context, &cached);
    if (!variant->gallivm) {
@@ -2026,8 +2012,7 @@ llvmpipe_delete_ts_state(struct pipe_context *pipe, void *_task)
    LIST_FOR_EACH_ENTRY_SAFE(li, next, &shader->variants.list, list) {
       llvmpipe_remove_cs_shader_variant(llvmpipe, li->base);
    }
-   if (shader->base.ir.nir)
-      ralloc_free(shader->base.ir.nir);
+   ralloc_free(shader->base.ir.nir);
    FREE(shader);
 }
 
@@ -2112,8 +2097,7 @@ llvmpipe_delete_ms_state(struct pipe_context *pipe, void *_mesh)
    }
 
    draw_delete_mesh_shader(llvmpipe->draw, shader->draw_mesh_data);
-   if (shader->base.ir.nir)
-      ralloc_free(shader->base.ir.nir);
+   ralloc_free(shader->base.ir.nir);
 
    FREE(shader);
 }
