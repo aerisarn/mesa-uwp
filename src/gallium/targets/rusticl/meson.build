@@ -49,6 +49,7 @@ librusticl = shared_library(
     libws_null,
   ],
   dependencies : [
+    driver_asahi,
     driver_iris,
     driver_nouveau,
     driver_r600,
