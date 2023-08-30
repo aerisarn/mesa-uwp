@@ -4814,7 +4814,8 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
                           VkImageLayout layout,
                           VkImageAspectFlags clear_aspects,
                           float depth_clear_value,
-                          VkRect2D render_area);
+                          VkRect2D render_area,
+                          const VkQueueFlagBits queue_flags);
 
 bool
 anv_can_fast_clear_color_view(struct anv_device *device,
@@ -4822,32 +4823,37 @@ anv_can_fast_clear_color_view(struct anv_device *device,
                               VkImageLayout layout,
                               union isl_color_value clear_color,
                               uint32_t num_layers,
-                              VkRect2D render_area);
+                              VkRect2D render_area,
+                              const VkQueueFlagBits queue_flags);
 
 enum isl_aux_state ATTRIBUTE_PURE
 anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
                         const struct anv_image *image,
                         const VkImageAspectFlagBits aspect,
-                        const VkImageLayout layout);
+                        const VkImageLayout layout,
+                        const VkQueueFlagBits queue_flags);
 
 enum isl_aux_usage ATTRIBUTE_PURE
 anv_layout_to_aux_usage(const struct intel_device_info * const devinfo,
                         const struct anv_image *image,
                         const VkImageAspectFlagBits aspect,
                         const VkImageUsageFlagBits usage,
-                        const VkImageLayout layout);
+                        const VkImageLayout layout,
+                        const VkQueueFlagBits queue_flags);
 
 enum anv_fast_clear_type ATTRIBUTE_PURE
 anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
                               const struct anv_image * const image,
                               const VkImageAspectFlagBits aspect,
-                              const VkImageLayout layout);
+                              const VkImageLayout layout,
+                              const VkQueueFlagBits queue_flags);
 
 bool ATTRIBUTE_PURE
 anv_layout_has_untracked_aux_writes(const struct intel_device_info * const devinfo,
                                     const struct anv_image * const image,
                                     const VkImageAspectFlagBits aspect,
-                                    const VkImageLayout layout);
+                                    const VkImageLayout layout,
+                                    const VkQueueFlagBits queue_flags);
 
 static inline bool
 anv_image_aspects_compatible(VkImageAspectFlags aspects1,

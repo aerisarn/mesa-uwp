@@ -2119,6 +2119,42 @@ void anv_GetImageSubresourceLayout2KHR(
    anv_get_image_subresource_layout(image, pSubresource, pLayout);
 }
 
+static VkImageUsageFlags
+anv_image_flags_filter_for_queue(VkImageUsageFlags usages,
+                                 VkQueueFlagBits queue_flags)
+{
+   /* Eliminate graphics usages if the queue is not graphics capable */
+   if (!(queue_flags & VK_QUEUE_GRAPHICS_BIT)) {
+      usages &= ~(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+                  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                  VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT |
+                  VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
+                  VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+   }
+
+   /* Eliminate sampling & storage usages if the queue is neither graphics nor
+    * compute capable
+    */
+   if (!(queue_flags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))) {
+      usages &= ~(VK_IMAGE_USAGE_SAMPLED_BIT |
+                  VK_IMAGE_USAGE_STORAGE_BIT);
+   }
+
+   /* Eliminate transfer usages if the queue is neither transfer, compute or
+    * graphics capable
+    */
+   if (!(queue_flags & (VK_QUEUE_TRANSFER_BIT |
+                        VK_QUEUE_COMPUTE_BIT |
+                        VK_QUEUE_GRAPHICS_BIT))) {
+      usages &= ~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                  VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+   }
+
+   return usages;
+}
+
 /**
  * This function returns the assumed isl_aux_state for a given VkImageLayout.
  * Because Vulkan image layouts don't map directly to isl_aux_state enums, the
@@ -2135,7 +2171,8 @@ enum isl_aux_state ATTRIBUTE_PURE
 anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
                         const struct anv_image * const image,
                         const VkImageAspectFlagBits aspect,
-                        const VkImageLayout layout)
+                        const VkImageLayout layout,
+                        const VkQueueFlagBits queue_flags)
 {
    /* Validate the inputs. */
 
@@ -2211,7 +2248,8 @@ anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
    const bool read_only = vk_image_layout_is_read_only(layout, aspect);
 
    const VkImageUsageFlags image_aspect_usage =
-      vk_image_usage(&image->vk, aspect);
+      anv_image_flags_filter_for_queue(
+         vk_image_usage(&image->vk, aspect), queue_flags);
    const VkImageUsageFlags usage =
       vk_image_layout_to_usage_flags(layout, aspect) & image_aspect_usage;
 
@@ -2343,7 +2381,8 @@ anv_layout_to_aux_usage(const struct intel_device_info * const devinfo,
                         const struct anv_image * const image,
                         const VkImageAspectFlagBits aspect,
                         const VkImageUsageFlagBits usage,
-                        const VkImageLayout layout)
+                        const VkImageLayout layout,
+                        const VkQueueFlagBits queue_flags)
 {
    const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
@@ -2354,7 +2393,7 @@ anv_layout_to_aux_usage(const struct intel_device_info * const devinfo,
       return ISL_AUX_USAGE_NONE;
 
    enum isl_aux_state aux_state =
-      anv_layout_to_aux_state(devinfo, image, aspect, layout);
+      anv_layout_to_aux_state(devinfo, image, aspect, layout, queue_flags);
 
    switch (aux_state) {
    case ISL_AUX_STATE_CLEAR:
@@ -2409,7 +2448,8 @@ enum anv_fast_clear_type ATTRIBUTE_PURE
 anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
                               const struct anv_image * const image,
                               const VkImageAspectFlagBits aspect,
-                              const VkImageLayout layout)
+                              const VkImageLayout layout,
+                              const VkQueueFlagBits queue_flags)
 {
    if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
       return ANV_FAST_CLEAR_NONE;
@@ -2421,7 +2461,7 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
       return ANV_FAST_CLEAR_NONE;
 
    enum isl_aux_state aux_state =
-      anv_layout_to_aux_state(devinfo, image, aspect, layout);
+      anv_layout_to_aux_state(devinfo, image, aspect, layout, queue_flags);
 
    const VkImageUsageFlags layout_usage =
       vk_image_layout_to_usage_flags(layout, aspect);
@@ -2502,7 +2542,8 @@ bool
 anv_layout_has_untracked_aux_writes(const struct intel_device_info * const devinfo,
                                     const struct anv_image * const image,
                                     const VkImageAspectFlagBits aspect,
-                                    const VkImageLayout layout)
+                                    const VkImageLayout layout,
+                                    const VkQueueFlagBits queue_flags)
 {
    const VkImageUsageFlags image_aspect_usage =
       vk_image_usage(&image->vk, aspect);
@@ -2684,7 +2725,8 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
                           VkImageLayout layout,
                           VkImageAspectFlags clear_aspects,
                           float depth_clear_value,
-                          VkRect2D render_area)
+                          VkRect2D render_area,
+                          const VkQueueFlagBits queue_flags)
 {
    if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
       return false;
@@ -2701,7 +2743,7 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
       anv_layout_to_aux_usage(device->info, iview->image,
                               VK_IMAGE_ASPECT_DEPTH_BIT,
                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                              layout);
+                              layout, queue_flags);
    if (!blorp_can_hiz_clear_depth(device->info,
                                   &iview->image->planes[0].primary_surface.isl,
                                   clear_aux_usage,
@@ -2747,7 +2789,8 @@ anv_can_fast_clear_color_view(struct anv_device *device,
                               VkImageLayout layout,
                               union isl_color_value clear_color,
                               uint32_t num_layers,
-                              VkRect2D render_area)
+                              VkRect2D render_area,
+                              const VkQueueFlagBits queue_flags)
 {
    if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
       return false;
@@ -2764,7 +2807,7 @@ anv_can_fast_clear_color_view(struct anv_device *device,
    enum anv_fast_clear_type fast_clear_type =
       anv_layout_to_fast_clear_type(device->info, iview->image,
                                     VK_IMAGE_ASPECT_COLOR_BIT,
-                                    layout);
+                                    layout, queue_flags);
    switch (fast_clear_type) {
    case ANV_FAST_CLEAR_NONE:
       return false;
@@ -2894,11 +2937,17 @@ anv_CreateImageView(VkDevice _device,
          enum isl_aux_usage general_aux_usage =
             anv_layout_to_aux_usage(device->info, image, 1UL << iaspect_bit,
                                     VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    VK_IMAGE_LAYOUT_GENERAL);
+                                    VK_IMAGE_LAYOUT_GENERAL,
+                                    VK_QUEUE_GRAPHICS_BIT |
+                                    VK_QUEUE_COMPUTE_BIT |
+                                    VK_QUEUE_TRANSFER_BIT);
          enum isl_aux_usage optimal_aux_usage =
             anv_layout_to_aux_usage(device->info, image, 1UL << iaspect_bit,
                                     VK_IMAGE_USAGE_SAMPLED_BIT,
-                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    VK_QUEUE_GRAPHICS_BIT |
+                                    VK_QUEUE_COMPUTE_BIT |
+                                    VK_QUEUE_TRANSFER_BIT);
 
          anv_image_fill_surface_state(device, image, 1ULL << iaspect_bit,
                                       &iview->planes[vplane].isl,
@@ -2926,7 +2975,10 @@ anv_CreateImageView(VkDevice _device,
          enum isl_aux_usage general_aux_usage =
             anv_layout_to_aux_usage(device->info, image, 1UL << iaspect_bit,
                                     VK_IMAGE_USAGE_STORAGE_BIT,
-                                    VK_IMAGE_LAYOUT_GENERAL);
+                                    VK_IMAGE_LAYOUT_GENERAL,
+                                    VK_QUEUE_GRAPHICS_BIT |
+                                    VK_QUEUE_COMPUTE_BIT |
+                                    VK_QUEUE_TRANSFER_BIT);
          iview->planes[vplane].storage.state =
             maybe_alloc_surface_state(device);
 

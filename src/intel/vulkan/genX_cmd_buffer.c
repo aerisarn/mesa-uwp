@@ -484,11 +484,13 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
    const enum isl_aux_state initial_state =
       anv_layout_to_aux_state(cmd_buffer->device->info, image,
                               VK_IMAGE_ASPECT_DEPTH_BIT,
-                              initial_layout);
+                              initial_layout,
+                              cmd_buffer->queue_family->queueFlags);
    const enum isl_aux_state final_state =
       anv_layout_to_aux_state(cmd_buffer->device->info, image,
                               VK_IMAGE_ASPECT_DEPTH_BIT,
-                              final_layout);
+                              final_layout,
+                              cmd_buffer->queue_family->queueFlags);
 
    const bool initial_depth_valid =
       isl_aux_state_has_valid_primary(initial_state);
@@ -962,6 +964,18 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
       dst_queue_family == VK_QUEUE_FAMILY_FOREIGN_EXT ||
       dst_queue_family == VK_QUEUE_FAMILY_EXTERNAL;
 
+   /* If the queues are external, consider the first queue family flags
+    * (should be the most capable)
+    */
+   const VkQueueFlagBits src_queue_flags =
+      device->physical->queue.families[
+         (src_queue_external || src_queue_family == VK_QUEUE_FAMILY_IGNORED) ?
+         0 : src_queue_family].queueFlags;
+   const VkQueueFlagBits dst_queue_flags =
+      device->physical->queue.families[
+         (dst_queue_external || src_queue_family == VK_QUEUE_FAMILY_IGNORED) ?
+         0 : dst_queue_family].queueFlags;
+
    /* Simultaneous acquire and release on external queues is illegal. */
    assert(!src_queue_external || !dst_queue_external);
 
@@ -1017,13 +1031,17 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
       return;
 
    enum isl_aux_usage initial_aux_usage =
-      anv_layout_to_aux_usage(devinfo, image, aspect, 0, initial_layout);
+      anv_layout_to_aux_usage(devinfo, image, aspect, 0,
+                              initial_layout, src_queue_flags);
    enum isl_aux_usage final_aux_usage =
-      anv_layout_to_aux_usage(devinfo, image, aspect, 0, final_layout);
+      anv_layout_to_aux_usage(devinfo, image, aspect, 0,
+                              final_layout, dst_queue_flags);
    enum anv_fast_clear_type initial_fast_clear =
-      anv_layout_to_fast_clear_type(devinfo, image, aspect, initial_layout);
+      anv_layout_to_fast_clear_type(devinfo, image, aspect, initial_layout,
+                                    src_queue_flags);
    enum anv_fast_clear_type final_fast_clear =
-      anv_layout_to_fast_clear_type(devinfo, image, aspect, final_layout);
+      anv_layout_to_fast_clear_type(devinfo, image, aspect, final_layout,
+                                    dst_queue_flags);
 
    /* We must override the anv_layout_to_* functions because they are unaware
     * of acquire/release direction.
@@ -3930,7 +3948,8 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
          if (anv_layout_has_untracked_aux_writes(
                 cmd_buffer->device->info,
                 image, aspect,
-                img_barrier->newLayout)) {
+                img_barrier->newLayout,
+                cmd_buffer->queue_family->queueFlags)) {
             for (uint32_t l = 0; l < level_count; l++) {
                set_image_compressed_bit(cmd_buffer, image, aspect,
                                         range->baseMipLevel + l,
@@ -6952,7 +6971,8 @@ void genX(CmdBeginRendering)(
                                  iview->image,
                                  VK_IMAGE_ASPECT_COLOR_BIT,
                                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                                 att->imageLayout);
+                                 att->imageLayout,
+                                 cmd_buffer->queue_family->queueFlags);
 
       union isl_color_value fast_clear_color = { .u32 = { 0, } };
 
@@ -6967,7 +6987,8 @@ void genX(CmdBeginRendering)(
             (!is_multiview || (gfx->view_mask & 1)) &&
             anv_can_fast_clear_color_view(cmd_buffer->device, iview,
                                           att->imageLayout, clear_color,
-                                          layers, render_area);
+                                          layers, render_area,
+                                          cmd_buffer->queue_family->queueFlags);
 
          if (att->imageLayout != initial_layout) {
             assert(render_area.offset.x == 0 && render_area.offset.y == 0 &&
@@ -7139,7 +7160,8 @@ void genX(CmdBeginRendering)(
                                     d_iview->image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                    depth_layout);
+                                    depth_layout,
+                                    cmd_buffer->queue_family->queueFlags);
          depth_clear_value = d_att->clearValue.depthStencil.depth;
       }
 
@@ -7152,7 +7174,8 @@ void genX(CmdBeginRendering)(
                                     s_iview->image,
                                     VK_IMAGE_ASPECT_STENCIL_BIT,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                    stencil_layout);
+                                    stencil_layout,
+                                    cmd_buffer->queue_family->queueFlags);
          stencil_clear_value = s_att->clearValue.depthStencil.stencil;
       }
 
@@ -7185,7 +7208,8 @@ void genX(CmdBeginRendering)(
             anv_can_hiz_clear_ds_view(cmd_buffer->device, d_iview,
                                       depth_layout, clear_aspects,
                                       depth_clear_value,
-                                      render_area);
+                                      render_area,
+                                      cmd_buffer->queue_family->queueFlags);
 
          if (depth_layout != initial_depth_layout) {
             assert(render_area.offset.x == 0 && render_area.offset.y == 0 &&
@@ -7441,13 +7465,15 @@ cmd_buffer_resolve_msaa_attachment(struct anv_cmd_buffer *cmd_buffer,
       anv_layout_to_aux_usage(cmd_buffer->device->info,
                               src_iview->image, aspect,
                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                              layout);
+                              layout,
+                              cmd_buffer->queue_family->queueFlags);
 
    enum isl_aux_usage dst_aux_usage =
       anv_layout_to_aux_usage(cmd_buffer->device->info,
                               dst_iview->image, aspect,
                               VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                              att->resolve_layout);
+                              att->resolve_layout,
+                              cmd_buffer->queue_family->queueFlags);
 
    enum blorp_filter filter = vk_to_blorp_resolve_mode(att->resolve_mode);
 
