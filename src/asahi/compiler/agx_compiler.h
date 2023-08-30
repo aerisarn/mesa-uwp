@@ -296,6 +296,9 @@ typedef struct {
    /* For local access */
    enum agx_format format;
 
+   /* Number of nested control flow layers to jump by. TODO: Optimize */
+   uint32_t nest;
+
    /* Invert icond/fcond */
    bool invert_cond : 1;
 
@@ -317,9 +320,6 @@ typedef struct {
    /* Scoreboard index, 0 or 1. Leave as 0 for instructions that do not require
     * scoreboarding (everything but memory load/store and texturing). */
    unsigned scoreboard : 1;
-
-   /* Number of nested control flow layers to jump by */
-   unsigned nest : 2;
 
    /* Output modifiers */
    bool saturate : 1;
