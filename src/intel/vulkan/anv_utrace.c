@@ -27,6 +27,7 @@
 #include "ds/intel_tracepoints.h"
 #include "genxml/gen8_pack.h"
 #include "perf/intel_perf.h"
+#include "util/perf/cpu_trace.h"
 
 #include "vulkan/runtime/vk_common_entrypoints.h"
 
@@ -402,6 +403,7 @@ anv_utrace_read_ts(struct u_trace_context *utctx,
 
    /* Only need to stall on results for the first entry: */
    if (idx == 0) {
+      MESA_TRACE_SCOPE("anv utrace wait timestamps");
       UNUSED VkResult result =
          vk_sync_wait(&device->vk,
                       submit->sync,
