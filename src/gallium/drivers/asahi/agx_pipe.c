@@ -2150,6 +2150,10 @@ agx_screen_create(int fd, struct renderonly *ro,
    driParseConfigFiles(config->options, config->options_info, 0, "asahi", NULL,
                        NULL, NULL, 0, NULL, 0);
 
+   /* Forward no16 flag from driconf */
+   if (driQueryOptionb(config->options, "no_fp16"))
+      agx_screen->dev.debug |= AGX_DBG_NO16;
+
    agx_screen->dev.fd = fd;
    agx_screen->dev.ro = ro;
 

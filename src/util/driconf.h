@@ -465,6 +465,10 @@
    DRI_CONF_OPT_B(allow_multisampled_copyteximage, def, \
                   "Allow CopyTexSubImage and other to copy sampled framebuffer")
 
+#define DRI_CONF_NO_FP16(def) \
+   DRI_CONF_OPT_B(no_fp16, def, \
+                  "Disable 16-bit float support")
+
 /**
  * \brief Initialization configuration options
  */
