@@ -251,6 +251,10 @@ op("fcmpsel",
       encoding_32 = (0x02, 0x7F, 8, 10),
       srcs = 4, imms = [FCOND])
 
+# Pseudo-instructions for compares returning 1/0
+op("icmp", _, srcs = 2, imms = [ICOND, INVERT_COND])
+op("fcmp", _, srcs = 2, imms = [FCOND, INVERT_COND])
+
 # sources are coordinates, LOD, texture bindless base (zero for texture state
 # registers), texture, sampler, shadow/offset
 # TODO: anything else?

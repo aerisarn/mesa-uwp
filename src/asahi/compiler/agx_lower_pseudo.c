@@ -65,6 +65,17 @@ lower(agx_builder *b, agx_instr *I)
    case AGX_OPCODE_OR:
       return agx_bitop_to(b, I->dest[0], I->src[0], I->src[1], AGX_BITOP_OR);
 
+   /* Unfused comparisons are fused with a 0/1 select */
+   case AGX_OPCODE_ICMP:
+      return agx_icmpsel_to(b, I->dest[0], I->src[0], I->src[1],
+                            agx_immediate(I->invert_cond ? 0 : 1),
+                            agx_immediate(I->invert_cond ? 1 : 0), I->icond);
+
+   case AGX_OPCODE_FCMP:
+      return agx_fcmpsel_to(b, I->dest[0], I->src[0], I->src[1],
+                            agx_immediate(I->invert_cond ? 0 : 1),
+                            agx_immediate(I->invert_cond ? 1 : 0), I->fcond);
+
    /* Writes to the nesting counter lowered to the real register */
    case AGX_OPCODE_BEGIN_CF:
       return agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), 0);
