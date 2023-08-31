@@ -728,6 +728,11 @@ struct v3dv_image {
       VkFormat vk_format;
    } planes[V3DV_MAX_PLANE_COUNT];
 
+   /* Used only when sampling a linear texture (which V3D doesn't support).
+    * This holds a tiled copy of the image we can use for that purpose.
+    */
+   struct v3dv_image *shadow;
+
 #ifdef ANDROID
    /* Image is backed by VK_ANDROID_native_buffer, */
    bool is_native_buffer_memory;
@@ -800,6 +805,11 @@ struct v3dv_image_view {
        */
       uint8_t texture_shader_state[2][V3DV_TEXTURE_SHADER_STATE_LENGTH];
    } planes[V3DV_MAX_PLANE_COUNT];
+
+   /* Used only when sampling a linear texture (which V3D doesn't support).
+    * This would represent a view over the tiled shadow image.
+    */
+   struct v3dv_image_view *shadow;
 };
 
 VkResult v3dv_create_image_view(struct v3dv_device *device,
@@ -1814,6 +1824,11 @@ bool v3dv_cmd_buffer_check_needs_store(const struct v3dv_cmd_buffer_state *state
 
 void v3dv_cmd_buffer_emit_pipeline_barrier(struct v3dv_cmd_buffer *cmd_buffer,
                                            const VkDependencyInfoKHR *info);
+
+bool v3dv_cmd_buffer_copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
+                                    struct v3dv_image *dst,
+                                    struct v3dv_image *src,
+                                    const VkImageCopy2 *region);
 
 struct v3dv_event {
    struct vk_object_base base;

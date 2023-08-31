@@ -1253,6 +1253,15 @@ copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
+inline bool
+v3dv_cmd_buffer_copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_image *dst,
+                               struct v3dv_image *src,
+                               const VkImageCopy2 *region)
+{
+   return copy_image_tfu(cmd_buffer, dst, src, region);
+}
+
 /**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).

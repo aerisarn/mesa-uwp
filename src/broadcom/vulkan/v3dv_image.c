@@ -659,6 +659,19 @@ v3dv_DestroyImage(VkDevice _device,
    if (image == NULL)
       return;
 
+   /* If we have created a shadow tiled image for this image we must also free
+    * it (along with its memory allocation).
+    */
+   if (image->shadow) {
+      assert(image->shadow->plane_count == 1);
+      v3dv_FreeMemory(_device,
+                      v3dv_device_memory_to_handle(image->shadow->planes[0].mem),
+                      pAllocator);
+      v3dv_DestroyImage(_device, v3dv_image_to_handle(image->shadow),
+                        pAllocator);
+      image->shadow = NULL;
+   }
+
 #ifdef ANDROID
    assert(image->plane_count == 1);
    if (image->is_native_buffer_memory)
@@ -816,6 +829,13 @@ v3dv_DestroyImageView(VkDevice _device,
 
    if (image_view == NULL)
       return;
+
+   if (image_view->shadow) {
+      v3dv_DestroyImageView(_device,
+                            v3dv_image_view_to_handle(image_view->shadow),
+                            pAllocator);
+      image_view->shadow = NULL;
+   }
 
    vk_image_view_destroy(&device->vk, pAllocator, &image_view->vk);
 }
