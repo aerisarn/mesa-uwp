@@ -324,7 +324,7 @@ struct glsl_type {
    unsigned packed:1;
 
 private:
-   glsl_type() : mem_ctx(NULL)
+   glsl_type()
    {
       // Dummy constructor, just for the sake of ASSERT_BITFIELD_SIZE.
    }
@@ -1235,44 +1235,37 @@ public:
       return (bool) interface_row_major;
    }
 
-   ~glsl_type();
-
 private:
-   /**
-    * ralloc context for the type itself.
-    */
-   void *mem_ctx;
-
    /** Constructor for builtins. */
    explicit glsl_type(const glsl_type_params &params);
 
    /** Constructor for vector and matrix types */
-   glsl_type(uint32_t gl_type,
+   glsl_type(void *mem_ctx, uint32_t gl_type,
              glsl_base_type base_type, unsigned vector_elements,
              unsigned matrix_columns, const char *name,
              unsigned explicit_stride = 0, bool row_major = false,
              unsigned explicit_alignment = 0);
 
    /** Constructor for sampler or image types */
-   glsl_type(uint32_t gl_type, glsl_base_type base_type,
+   glsl_type(void *mem_ctx, uint32_t gl_type, glsl_base_type base_type,
 	     enum glsl_sampler_dim dim, bool shadow, bool array,
 	     glsl_base_type type, const char *name);
 
    /** Constructor for record types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
+   glsl_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
 	     const char *name, bool packed = false,
 	     unsigned explicit_alignment = 0);
 
    /** Constructor for interface types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
+   glsl_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
 	     enum glsl_interface_packing packing,
 	     bool row_major, const char *name);
 
    /** Constructors for array types */
-   glsl_type(const glsl_type *array, unsigned length, unsigned explicit_stride);
+   glsl_type(void *mem_ctx, const glsl_type *array, unsigned length, unsigned explicit_stride);
 
    /** Constructor for subroutine types */
-   glsl_type(const char *name);
+   glsl_type(void *mem_ctx, const char *name);
 
    static bool record_key_compare(const void *a, const void *b);
    static unsigned record_key_hash(const void *key);
