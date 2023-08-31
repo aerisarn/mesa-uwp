@@ -174,11 +174,20 @@ pan_afbc_stride_blocks(uint64_t modifier, uint32_t row_stride_bytes)
 }
 
 /*
+ * Determine the required alignment for the slice offset of an image. For
+ * now, this is always aligned on 64-byte boundaries. */
+uint32_t
+pan_slice_align(uint64_t modifier)
+{
+   return 64;
+}
+
+/*
  * Determine the required alignment for the body offset of an AFBC image. For
  * now, this depends only on whether tiling is in use. These minimum alignments
  * are required on all current GPUs.
  */
-static inline uint32_t
+uint32_t
 pan_afbc_body_align(uint64_t modifier)
 {
    return (modifier & AFBC_FORMAT_MOD_TILED) ? 4096 : 64;
@@ -359,7 +368,7 @@ pan_image_layout_init(const struct panfrost_device *dev,
       /* Align levels to cache-line as a performance improvement for
        * linear/tiled and as a requirement for AFBC */
 
-      offset = ALIGN_POT(offset, 64);
+      offset = ALIGN_POT(offset, pan_slice_align(layout->modifier));
 
       slice->offset = offset;
 
