@@ -789,10 +789,11 @@ glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int row
 
    simple_mtx_lock(&glsl_type_cache_mutex);
    assert(glsl_type_cache.users > 0);
+   void *mem_ctx = glsl_type_cache.mem_ctx;
 
    if (glsl_type_cache.explicit_matrix_types == NULL) {
       glsl_type_cache.explicit_matrix_types =
-         _mesa_hash_table_create(NULL, hash_explicit_matrix_key, compare_explicit_matrix_key);
+         _mesa_hash_table_create(mem_ctx, hash_explicit_matrix_key, compare_explicit_matrix_key);
    }
    hash_table *explicit_matrix_types = glsl_type_cache.explicit_matrix_types;
 
@@ -1268,10 +1269,11 @@ glsl_type::get_array_instance(const glsl_type *element,
 
    simple_mtx_lock(&glsl_type_cache_mutex);
    assert(glsl_type_cache.users > 0);
+   void *mem_ctx = glsl_type_cache.mem_ctx;
 
    if (glsl_type_cache.array_types == NULL) {
       glsl_type_cache.array_types =
-         _mesa_hash_table_create(NULL, hash_array_key, compare_array_key);
+         _mesa_hash_table_create(mem_ctx, hash_array_key, compare_array_key);
    }
    hash_table *array_types = glsl_type_cache.array_types;
 
@@ -1482,10 +1484,11 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
 
    simple_mtx_lock(&glsl_type_cache_mutex);
    assert(glsl_type_cache.users > 0);
+   void *mem_ctx = glsl_type_cache.mem_ctx;
 
    if (glsl_type_cache.struct_types == NULL) {
       glsl_type_cache.struct_types =
-         _mesa_hash_table_create(NULL, record_key_hash, record_key_compare);
+         _mesa_hash_table_create(mem_ctx, record_key_hash, record_key_compare);
    }
    hash_table *struct_types = glsl_type_cache.struct_types;
 
@@ -1523,10 +1526,11 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
 
    simple_mtx_lock(&glsl_type_cache_mutex);
    assert(glsl_type_cache.users > 0);
+   void *mem_ctx = glsl_type_cache.mem_ctx;
 
    if (glsl_type_cache.interface_types == NULL) {
       glsl_type_cache.interface_types =
-         _mesa_hash_table_create(NULL, record_key_hash, record_key_compare);
+         _mesa_hash_table_create(mem_ctx, record_key_hash, record_key_compare);
    }
    hash_table *interface_types = glsl_type_cache.interface_types;
 
@@ -1556,10 +1560,11 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
 
    simple_mtx_lock(&glsl_type_cache_mutex);
    assert(glsl_type_cache.users > 0);
+   void *mem_ctx = glsl_type_cache.mem_ctx;
 
    if (glsl_type_cache.subroutine_types == NULL) {
       glsl_type_cache.subroutine_types =
-         _mesa_hash_table_create(NULL, _mesa_hash_string, _mesa_key_string_equal);
+         _mesa_hash_table_create(mem_ctx, _mesa_hash_string, _mesa_key_string_equal);
    }
    hash_table *subroutine_types = glsl_type_cache.subroutine_types;
 
