@@ -367,6 +367,8 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
    if (compiler->array_index_add_half)
       OPT_V(s, ir3_nir_lower_array_sampler);
 
+   OPT_V(s, nir_lower_is_helper_invocation);
+
    ir3_optimize_loop(compiler, s);
 
    /* do idiv lowering after first opt loop to get a chance to propagate

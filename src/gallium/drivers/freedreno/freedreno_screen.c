@@ -320,6 +320,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_POST_DEPTH_COVERAGE:
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
+   case PIPE_CAP_DEMOTE_TO_HELPER_INVOCATION:
       return is_a6xx(screen);
 
    case PIPE_CAP_SAMPLER_REDUCTION_MINMAX:
