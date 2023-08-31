@@ -580,6 +580,11 @@ radv_handle_sqtt(VkQueue _queue)
          return;
       }
 
+      /* Sample CPU/GPU clocks before starting the trace. */
+      if (!radv_sqtt_sample_clocks(queue->device)) {
+         fprintf(stderr, "radv: Failed to sample clocks\n");
+      }
+
       radv_begin_sqtt(queue);
       assert(!queue->device->sqtt_enabled);
       queue->device->sqtt_enabled = true;
