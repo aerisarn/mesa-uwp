@@ -105,6 +105,17 @@ panfrost_afbc_is_wide(uint64_t modifier)
 }
 
 /*
+ * Given an AFBC modifier, return the subblock size (subdivision of a
+ * superblock). This is always 4x4 for now as we only support one AFBC
+ * superblock layout.
+ */
+struct pan_block_size
+panfrost_afbc_subblock_size(uint64_t modifier)
+{
+   return (struct pan_block_size){4, 4};
+}
+
+/*
  * Given a format, determine the tile size used for u-interleaving. For formats
  * that are already block compressed, this is 4x4. For all other formats, this
  * is 16x16, hence the modifier name.
