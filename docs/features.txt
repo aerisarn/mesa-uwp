@@ -304,7 +304,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_ARB_parallel_shader_compile                        DONE (freedreno, radeonsi, etnaviv, zink, iris, crocus/gen6+)
   GL_ARB_post_depth_coverage                            DONE (freedreno/a6xx, nvc0, radeonsi, llvmpipe, zink, iris/gen9+)
   GL_ARB_robustness_isolation                           not started
-  GL_ARB_sample_locations                               DONE (nvc0, zink)
+  GL_ARB_sample_locations                               DONE (freedreno/a6xx, nvc0, zink)
   GL_ARB_seamless_cubemap_per_texture                   DONE (etnaviv/SEAMLESS_CUBE_MAP, freedreno, nvc0, r600, radeonsi, softpipe, virgl, zink, asahi, iris, crocus)
   GL_ARB_shader_ballot                                  DONE (nvc0, radeonsi, zink, iris, crocus/gen8)
   GL_ARB_shader_clock                                   DONE (nv50, nvc0, r600, radeonsi, llvmpipe, virgl, zink, iris, crocus/gen7+)

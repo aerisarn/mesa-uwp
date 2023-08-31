@@ -125,6 +125,14 @@ fd_screen_get_device_vendor(struct pipe_screen *pscreen)
    return "Qualcomm";
 }
 
+static void
+fd_get_sample_pixel_grid(struct pipe_screen *pscreen, unsigned sample_count,
+                         unsigned *out_width, unsigned *out_height)
+{
+   *out_width = 1;
+   *out_height = 1;
+}
+
 static uint64_t
 fd_screen_get_timestamp(struct pipe_screen *pscreen)
 {
@@ -313,6 +321,9 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_POST_DEPTH_COVERAGE:
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
       return is_a6xx(screen);
+
+   case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
+      return is_a6xx(screen) && screen->info->a6xx.has_sample_locations;
 
    case PIPE_CAP_POLYGON_OFFSET_CLAMP:
       return is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen);
@@ -1249,6 +1260,8 @@ fd_screen_create(int fd,
    pscreen->get_name = fd_screen_get_name;
    pscreen->get_vendor = fd_screen_get_vendor;
    pscreen->get_device_vendor = fd_screen_get_device_vendor;
+
+   pscreen->get_sample_pixel_grid = fd_get_sample_pixel_grid;
 
    pscreen->get_timestamp = fd_screen_get_timestamp;
 

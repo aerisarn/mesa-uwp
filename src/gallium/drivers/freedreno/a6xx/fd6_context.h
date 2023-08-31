@@ -103,8 +103,11 @@ struct fd6_context {
    struct fd_bo *control_mem;
    uint32_t seqno;
 
-   /* pre-backed stateobj for stream-out disable: */
+   /* pre-baked stateobj for stream-out disable: */
    struct fd_ringbuffer *streamout_disable_stateobj;
+
+   /* pre-baked stateobj for sample-locations disable: */
+   struct fd_ringbuffer *sample_locations_disable_stateobj;
 
    /* storage for ctx->last.key: */
    struct ir3_shader_key last_key;
