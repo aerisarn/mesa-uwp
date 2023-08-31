@@ -10,7 +10,7 @@ use crate::nak_ir::*;
 use crate::nak_liveness::{BlockLiveness, Liveness};
 use crate::util::NextMultipleOf;
 
-use std::cmp::Ordering;
+use std::cmp::{max, Ordering};
 use std::collections::{HashMap, HashSet};
 
 struct KillSet {
@@ -983,7 +983,22 @@ impl AssignRegs {
 
     pub fn run(&mut self, f: &mut Function) {
         let live = Liveness::for_function(f);
-        let num_regs = PerRegFile::new_with(|file| file.num_regs(self.sm));
+
+        let num_regs = PerRegFile::new_with(|file| {
+            let num_regs = file.num_regs(self.sm);
+            let max_live = live.max_live(file);
+            if max_live > u32::from(num_regs) {
+                panic!("Not enough registers. Needs {}", max_live);
+            }
+
+            if file == RegFile::GPR {
+                // Shrink the number of GPRs to fit.  We need at least 16
+                // registers for vectors to work.
+                max(max_live, 16).try_into().unwrap()
+            } else {
+                num_regs
+            }
+        });
 
         for b in &mut f.blocks {
             let bl = live.block(&b);
