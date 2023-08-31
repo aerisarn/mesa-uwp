@@ -2961,14 +2961,15 @@ agx_index_buffer_direct_ptr(struct agx_batch *batch,
                             const struct pipe_draw_info *info, size_t *extent)
 {
    off_t offset = draw->start * info->index_size;
+   uint32_t max_extent = draw->count * info->index_size;
 
    if (!info->has_user_indices) {
       uint64_t base = agx_index_buffer_rsrc_ptr(batch, info, extent);
 
-      *extent = ALIGN_POT(*extent - offset, 4);
+      *extent = ALIGN_POT(MIN2(*extent - offset, max_extent), 4);
       return base + offset;
    } else {
-      *extent = ALIGN_POT(draw->count * info->index_size, 4);
+      *extent = ALIGN_POT(max_extent, 4);
 
       return agx_pool_upload_aligned(&batch->pool,
                                      ((uint8_t *)info->index.user) + offset,
