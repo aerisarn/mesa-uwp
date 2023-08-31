@@ -315,7 +315,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_ARB_sparse_texture                                 DONE (radeonsi/gfx9+, zink)
   GL_ARB_sparse_texture2                                DONE (radeonsi/gfx9+, zink)
   GL_ARB_sparse_texture_clamp                           DONE (radeonsi/gfx9+, zink)
-  GL_ARB_texture_filter_minmax                          DONE (nvc0/gm200+, zink)
+  GL_ARB_texture_filter_minmax                          DONE (freedreno/a6xx, nvc0/gm200+, zink)
   GL_ARM_shader_framebuffer_fetch_depth_stencil         DONE (llvmpipe)
   GL_EXT_shader_framebuffer_fetch                       DONE (freedreno/a6xx, iris/gen9+, llvmpipe, panfrost, virgl, zink, asahi)
   GL_EXT_shader_framebuffer_fetch_non_coherent          DONE (freedreno/a6xx, iris, llvmpipe, panfrost, virgl, zink, asahi)

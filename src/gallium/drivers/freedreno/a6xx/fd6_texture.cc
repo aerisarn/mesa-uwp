@@ -91,6 +91,20 @@ tex_filter(unsigned filter, bool aniso)
    }
 }
 
+static enum a6xx_reduction_mode
+reduction_mode(unsigned reduction_mode)
+{
+   switch (reduction_mode) {
+   default:
+   case PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE:
+      return A6XX_REDUCTION_MODE_AVERAGE;
+   case PIPE_TEX_REDUCTION_MIN:
+      return A6XX_REDUCTION_MODE_MIN;
+   case PIPE_TEX_REDUCTION_MAX:
+      return A6XX_REDUCTION_MODE_MAX;
+   }
+}
+
 static void
 setup_border_color(struct fd_screen *screen,
                    const struct pipe_sampler_state *sampler,
@@ -302,6 +316,9 @@ fd6_sampler_state_create(struct pipe_context *pctx,
    if (cso->mag_img_filter == PIPE_TEX_FILTER_LINEAR &&
        cso->min_img_filter == PIPE_TEX_FILTER_LINEAR)
       so->texsamp2 |= A6XX_TEX_SAMP_2_CHROMA_LINEAR;
+
+   so->texsamp2 |=
+      A6XX_TEX_SAMP_2_REDUCTION_MODE(reduction_mode(cso->reduction_mode));
 
    return so;
 }

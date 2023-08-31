@@ -322,6 +322,10 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
       return is_a6xx(screen);
 
+   case PIPE_CAP_SAMPLER_REDUCTION_MINMAX:
+   case PIPE_CAP_SAMPLER_REDUCTION_MINMAX_ARB:
+      return is_a6xx(screen) && screen->info->a6xx.has_sampler_minmax;
+
    case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
       return is_a6xx(screen) && screen->info->a6xx.has_sample_locations;
 
