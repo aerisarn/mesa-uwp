@@ -279,22 +279,15 @@ enum {
    GLSL_PRECISION_LOW
 };
 
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
-
-/* C++ struct types for glsl */
-#ifdef __cplusplus
-
 struct glsl_type {
    uint32_t gl_type;
-   glsl_base_type base_type:8;
+   enum glsl_base_type base_type:8;
 
-   glsl_base_type sampled_type:8; /**< Type of data returned using this
-                                   * sampler or image.  Only \c
-                                   * GLSL_TYPE_FLOAT, \c GLSL_TYPE_INT,
-                                   * and \c GLSL_TYPE_UINT are valid.
-                                   */
+   enum glsl_base_type sampled_type:8; /**< Type of data returned using this
+                                        * sampler or image.  Only \c
+                                        * GLSL_TYPE_FLOAT, \c GLSL_TYPE_INT,
+                                        * and \c GLSL_TYPE_UINT are valid.
+                                        */
 
    unsigned sampler_dimensionality:4; /**< \see glsl_sampler_dim */
    unsigned sampler_shadow:1;
@@ -357,6 +350,8 @@ struct glsl_type {
       const struct glsl_struct_field *structure;      /**< List of struct fields. */
    } fields;
 
+/* C++ parts of glsl_type. */
+#ifdef __cplusplus
    /**
     * \name Pointers to various public type singletons
     */
@@ -1241,9 +1236,9 @@ private:
    static const glsl_type *get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
                                                         unsigned int explicit_stride, bool row_major,
                                                         unsigned int explicit_alignment);
-};
 
 #endif /* __cplusplus */
+};
 
 struct glsl_struct_field {
    const struct glsl_type *type;
@@ -1376,5 +1371,9 @@ struct glsl_struct_field {
 #undef DEFAULT_CONSTRUCTORS
 #endif
 };
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif /* GLSL_TYPES_H */
