@@ -230,6 +230,14 @@ zink-tu-a618-traces-performance:
     # Disable reporting, since DUTs don't have internet access
     FLAKES_CHANNEL: ""
 
+zink-radv-polaris10-valve:
+  extends:
+    - .radv-zink-test-valve
+    - .polaris10-test-valve
+    - .zink-radv-manual-rules
+  variables:
+    GPU_VERSION: zink-radv-polaris10
+
 zink-radv-navi10-valve:
   extends:
     - .radv-zink-test-valve
