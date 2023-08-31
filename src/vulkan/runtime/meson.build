@@ -109,6 +109,8 @@ vulkan_runtime_files = files(
   'vk_sync_timeline.c',
   'vk_sync_timeline.h',
   'vk_synchronization2.c',
+  'vk_texcompress_etc2.c',
+  'vk_texcompress_etc2.h',
   'vk_video.c',
   'vk_video.h',
   'vk_ycbcr_conversion.c',
