@@ -414,6 +414,41 @@ impl NextUseBlockLiveness {
     fn add_use(&mut self, ssa: SSAValue, ip: usize) {
         self.entry_mut(ssa).add_in_block_use(ip);
     }
+
+    pub fn iter_live_in<'a>(&'a self) -> impl Iterator<Item = &'a SSAValue> {
+        self.ssa_map.iter().filter_map(|(ssa, entry)| {
+            if entry.defined || entry.uses.is_empty() {
+                None
+            } else {
+                Some(ssa)
+            }
+        })
+    }
+
+    pub fn first_use(&self, val: &SSAValue) -> Option<usize> {
+        if let Some(entry) = self.ssa_map.get(val) {
+            entry.uses.first().cloned()
+        } else {
+            None
+        }
+    }
+
+    pub fn next_use_after_or_at_ip(
+        &self,
+        val: &SSAValue,
+        ip: usize,
+    ) -> Option<usize> {
+        if let Some(entry) = self.ssa_map.get(val) {
+            let i = entry.uses.partition_point(|u| *u < ip);
+            if i < entry.uses.len() {
+                Some(entry.uses[i])
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl BlockLiveness for NextUseBlockLiveness {
