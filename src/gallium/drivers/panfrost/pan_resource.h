@@ -172,6 +172,11 @@ panfrost_translate_texture_dimension(enum pipe_texture_target t)
    }
 }
 
+struct pipe_resource *
+panfrost_resource_create_with_modifier(struct pipe_screen *screen,
+                                       const struct pipe_resource *template,
+                                       uint64_t modifier);
+
 void pan_resource_modifier_convert(struct panfrost_context *ctx,
                                    struct panfrost_resource *rsrc,
                                    uint64_t modifier, const char *reason);

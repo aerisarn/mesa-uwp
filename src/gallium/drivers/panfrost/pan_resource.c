@@ -619,7 +619,7 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
    }
 }
 
-static struct pipe_resource *
+struct pipe_resource *
 panfrost_resource_create_with_modifier(struct pipe_screen *screen,
                                        const struct pipe_resource *template,
                                        uint64_t modifier)
