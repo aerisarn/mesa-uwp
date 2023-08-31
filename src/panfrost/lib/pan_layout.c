@@ -410,6 +410,9 @@ pan_image_layout_init(const struct panfrost_device *dev,
       if (afbc) {
          slice->row_stride =
             pan_afbc_row_stride(layout->modifier, effective_width);
+         slice->afbc.stride = effective_width / block_size.width;
+         slice->afbc.nr_blocks =
+            slice->afbc.stride * (effective_height / block_size.height);
          slice->afbc.header_size =
             ALIGN_POT(slice->row_stride * (effective_height / align_h),
                       pan_afbc_body_align(layout->modifier));

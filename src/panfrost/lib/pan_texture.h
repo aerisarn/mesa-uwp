@@ -63,6 +63,12 @@ struct pan_image_slice_layout {
    unsigned surface_stride;
 
    struct {
+      /* Stride in number of superblocks */
+      unsigned stride;
+
+      /* Number of superblocks */
+      unsigned nr_blocks;
+
       /* Size of the AFBC header preceding each slice */
       unsigned header_size;
 
