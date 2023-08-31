@@ -809,16 +809,18 @@ impl PerRegFile<RegAllocator> {
 
 struct AssignRegsBlock {
     ra: PerRegFile<RegAllocator>,
+    pcopy_tmp_gprs: u8,
     live_in: Vec<LiveValue>,
     phi_out: HashMap<u32, SrcRef>,
 }
 
 impl AssignRegsBlock {
-    fn new(num_regs: &PerRegFile<u32>) -> AssignRegsBlock {
+    fn new(num_regs: &PerRegFile<u32>, pcopy_tmp_gprs: u8) -> AssignRegsBlock {
         AssignRegsBlock {
             ra: PerRegFile::new_with(|file| {
                 RegAllocator::new(file, num_regs[file])
             }),
+            pcopy_tmp_gprs: pcopy_tmp_gprs,
             live_in: Vec::new(),
             phi_out: HashMap::new(),
         }
@@ -839,6 +841,18 @@ impl AssignRegsBlock {
         let ra = &mut self.ra[ssa.file()];
         let reg = ra.alloc_scalar(ip, sum, ssa);
         RegRef::new(ssa.file(), reg, 1)
+    }
+
+    fn pcopy_tmp(&self) -> Option<RegRef> {
+        if self.pcopy_tmp_gprs > 0 {
+            Some(RegRef::new(
+                RegFile::GPR,
+                self.ra[RegFile::GPR].num_regs,
+                self.pcopy_tmp_gprs,
+            ))
+        } else {
+            None
+        }
     }
 
     fn assign_regs_instr(
@@ -935,6 +949,8 @@ impl AssignRegsBlock {
                 }
 
                 self.ra.free_killed(dsts_killed);
+
+                pcopy.tmp = self.pcopy_tmp();
                 Some(instr)
             }
             _ => {
@@ -1011,6 +1027,7 @@ impl AssignRegsBlock {
             }
 
             let mut pcopy = OpParCopy::new();
+            pcopy.tmp = self.pcopy_tmp();
 
             let instr = self.assign_regs_instr(
                 instr,
@@ -1038,6 +1055,7 @@ impl AssignRegsBlock {
 
     fn second_pass(&self, target: &AssignRegsBlock, b: &mut BasicBlock) {
         let mut pcopy = OpParCopy::new();
+        pcopy.tmp = self.pcopy_tmp();
 
         for lv in &target.live_in {
             let src = match lv.live_ref {
@@ -1057,7 +1075,7 @@ impl AssignRegsBlock {
             b.instrs.insert(b.instrs.len() - 1, Instr::new_boxed(pcopy));
         } else {
             b.instrs.push(Instr::new_boxed(pcopy));
-        };
+        }
     }
 }
 
@@ -1066,26 +1084,57 @@ impl Shader {
         assert!(self.functions.len() == 1);
         let f = &mut self.functions[0];
 
-        let live = SimpleLiveness::for_function(f);
-        let max_live = live.calc_max_live(f);
+        // Convert to CSSA before we spill or assign registers
+        f.to_cssa();
 
-        let num_regs = PerRegFile::new_with(|file| {
+        let mut live = SimpleLiveness::for_function(f);
+        let mut max_live = live.calc_max_live(f);
+
+        let spill_files = [RegFile::Pred];
+        for file in spill_files {
             let num_regs = file.num_regs(self.sm);
-            let max_live = max_live[file];
-            if max_live > u32::from(num_regs) {
-                panic!("Not enough registers. Needs {}", max_live);
-            }
+            if max_live[file] > num_regs {
+                f.spill_values(file, num_regs);
 
+                // Re-calculate liveness after we spill
+                live = SimpleLiveness::for_function(f);
+                max_live = live.calc_max_live(f);
+            }
+        }
+
+        // An instruction can have at most 4 vector sources/destinations.  In
+        // order to ensure we always succeed at allocation, regardless of
+        // arbitrary choices, we need at least 16 GPRs.  We also want at least
+        // one temporary GPR reserved for parallel copies.
+        let mut tmp_gprs = 1_u8;
+        let mut gpr_limit = max(max_live[RegFile::GPR], 16);
+        let mut total_gprs = gpr_limit + u32::from(tmp_gprs);
+
+        let max_gprs = RegFile::GPR.num_regs(self.sm);
+        if total_gprs > max_gprs {
+            // If we're spilling GPRs, we need to reserve 2 GPRs for OpParCopy
+            // lowering because it needs to be able lower Mem copies which
+            // require a temporary
+            tmp_gprs = 2_u8;
+            total_gprs = max_gprs;
+            gpr_limit = total_gprs - u32::from(tmp_gprs);
+
+            f.spill_values(RegFile::GPR, gpr_limit);
+
+            // Re-calculate liveness after we spill
+            live = SimpleLiveness::for_function(f);
+            max_live = live.calc_max_live(f);
+        }
+
+        self.num_gprs = total_gprs.try_into().unwrap();
+
+        let limit = PerRegFile::new_with(|file| {
             if file == RegFile::GPR {
-                // Shrink the number of GPRs to fit.  We need at least 16
-                // registers for vectors to work.
-                max(max_live, 16).try_into().unwrap()
+                gpr_limit
             } else {
-                num_regs
+                file.num_regs(self.sm)
             }
         });
-
-        self.num_gprs = num_regs[RegFile::GPR].try_into().unwrap();
 
         let mut blocks: Vec<AssignRegsBlock> = Vec::new();
         for b_idx in 0..f.blocks.len() {
@@ -1099,7 +1148,7 @@ impl Shader {
 
             let bl = live.block_live(b_idx);
 
-            let mut arb = AssignRegsBlock::new(&num_regs);
+            let mut arb = AssignRegsBlock::new(&limit, tmp_gprs);
             arb.first_pass(&mut f.blocks[b_idx], bl, pred_ra);
 
             assert!(blocks.len() == b_idx);
