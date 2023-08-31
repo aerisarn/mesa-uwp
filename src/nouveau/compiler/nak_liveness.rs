@@ -10,7 +10,8 @@ use std::cell::RefCell;
 use std::cmp::{max, Ord, Ordering};
 use std::collections::{hash_set, HashMap, HashSet};
 
-struct LiveSet {
+#[derive(Clone)]
+pub struct LiveSet {
     live: PerRegFile<u32>,
     set: HashSet<SSAValue>,
 }
@@ -56,12 +57,120 @@ impl LiveSet {
             false
         }
     }
+
+    pub fn insert_instr_top_down<L: BlockLiveness>(
+        &mut self,
+        ip: usize,
+        instr: &Instr,
+        bl: &L,
+    ) -> PerRegFile<u32> {
+        /* Vector destinations go live before sources are killed.  Even
+         * in the case where the destination is immediately killed, it
+         * still may contribute to pressure temporarily.
+         */
+        for dst in instr.dsts() {
+            if let Dst::SSA(vec) = dst {
+                if vec.comps() > 1 {
+                    for ssa in vec.iter() {
+                        self.insert(*ssa);
+                    }
+                }
+            }
+        }
+
+        let after_dsts_live = self.live;
+
+        instr.for_each_ssa_use(|ssa| {
+            if !bl.is_live_after_ip(ssa, ip) {
+                self.remove(ssa);
+            }
+        });
+
+        /* Scalar destinations are allocated last */
+        for dst in instr.dsts() {
+            if let Dst::SSA(vec) = dst {
+                if vec.comps() == 1 {
+                    self.insert(vec[0]);
+                }
+            }
+        }
+
+        let max_live = PerRegFile::new_with(|file| {
+            max(self.live[file], after_dsts_live[file])
+        });
+
+        /* It's possible (but unlikely) that a destination is immediately
+         * killed. Remove any which are killed by this instruction.
+         */
+        instr.for_each_ssa_def(|ssa| {
+            debug_assert!(self.contains(ssa));
+            if !bl.is_live_after_ip(ssa, ip) {
+                self.remove(ssa);
+            }
+        });
+
+        max_live
+    }
+}
+
+impl FromIterator<SSAValue> for LiveSet {
+    fn from_iter<T: IntoIterator<Item = SSAValue>>(iter: T) -> Self {
+        let mut set = LiveSet::new();
+        for ssa in iter {
+            set.insert(ssa);
+        }
+        set
+    }
 }
 
 pub trait BlockLiveness {
     fn is_live_after_ip(&self, val: &SSAValue, ip: usize) -> bool;
     fn is_live_in(&self, val: &SSAValue) -> bool;
     fn is_live_out(&self, val: &SSAValue) -> bool;
+
+    fn get_instr_pressure(&self, ip: usize, instr: &Instr) -> PerRegFile<u8> {
+        let mut live = PerRegFile::new_with(|_| 0_i8);
+
+        /* Vector destinations go live before sources are killed. */
+        for dst in instr.dsts() {
+            if let Dst::SSA(vec) = dst {
+                if vec.comps() > 1 {
+                    for ssa in vec.iter() {
+                        live[ssa.file()] += 1;
+                    }
+                }
+            }
+        }
+
+        /* This is the first high point */
+        let vec_dst_live = live.clone();
+
+        /* Use a hash set because sources may occur more than once */
+        let mut killed = HashSet::new();
+        instr.for_each_ssa_use(|ssa| {
+            if !self.is_live_after_ip(ssa, ip) {
+                killed.insert(*ssa);
+            }
+        });
+        for ssa in killed.drain() {
+            live[ssa.file()] -= 1;
+        }
+
+        /* Scalar destinations are allocated last */
+        for dst in instr.dsts() {
+            if let Dst::SSA(vec) = dst {
+                if vec.comps() == 1 {
+                    live[vec[0].file()] += 1;
+                }
+            }
+        }
+
+        PerRegFile::new_with(|file| {
+            max(0, max(vec_dst_live[file], live[file]))
+                .try_into()
+                .unwrap()
+        })
+    }
 }
 
 pub trait Liveness {
@@ -91,55 +200,9 @@ pub trait Liveness {
             }
 
             for (ip, instr) in bb.instrs.iter().enumerate() {
-                /* Vector destinations go live before sources are killed.  Even
-                 * in the case where the destination is immediately killed, it
-                 * still may contribute to pressure temporarily.
-                 */
-                for dst in instr.dsts() {
-                    if let Dst::SSA(vec) = dst {
-                        if vec.comps() > 1 {
-                            for ssa in vec.iter() {
-                                live.insert(*ssa);
-                            }
-                        }
-                    }
-                }
-
-                for (ml, l) in max_live.values_mut().zip(live.counts().values())
-                {
-                    *ml = max(*ml, *l);
-                }
-
-                instr.for_each_ssa_use(|ssa| {
-                    if !bl.is_live_after_ip(ssa, ip) {
-                        live.remove(ssa);
-                    }
-                });
-
-                /* Scalar destinations are allocated last */
-                for dst in instr.dsts() {
-                    if let Dst::SSA(vec) = dst {
-                        if vec.comps() == 1 {
-                            live.insert(vec[0]);
-                        }
-                    }
-                }
-
-                for (ml, l) in max_live.values_mut().zip(live.counts().values())
-                {
-                    *ml = max(*ml, *l);
-                }
-
-                /* We already added destinations to the live count but haven't
-                 * inserted them into the live set yet.  If a destination is
-                 * killed immediately, subtract from the count, otherwise add to
-                 * the set.
-                 */
-                instr.for_each_ssa_def(|ssa| {
-                    debug_assert!(live.contains(ssa));
-                    if !bl.is_live_after_ip(ssa, ip) {
-                        live.remove(ssa);
-                    }
+                let live_at_instr = live.insert_instr_top_down(ip, instr, bl);
+                max_live = PerRegFile::new_with(|file| {
+                    max(max_live[file], live_at_instr[file])
                 });
             }
 

@@ -219,7 +219,7 @@ impl Iterator for RegFileSet {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct PerRegFile<T> {
     per_file: [T; NUM_REG_FILES],
 }
