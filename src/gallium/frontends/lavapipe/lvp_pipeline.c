@@ -138,6 +138,9 @@ remove_barriers_impl(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    if (intr->intrinsic != nir_intrinsic_barrier)
       return false;
    if (data) {
+      if (nir_intrinsic_execution_scope(intr) != SCOPE_NONE)
+         return false;
+
       if (nir_intrinsic_memory_scope(intr) == SCOPE_WORKGROUP ||
           nir_intrinsic_memory_scope(intr) == SCOPE_DEVICE ||
           nir_intrinsic_memory_scope(intr) == SCOPE_QUEUE_FAMILY)
