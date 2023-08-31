@@ -443,13 +443,16 @@ radeonsi-raven-va-full:x86_64:
   tags:
     - amdgpu:codename:STONEY
 
-.vkcts-polaris10-valve:
+vkcts-polaris10-valve:
   extends:
     - .vkcts-test-valve
     - .polaris10-test-valve
     - .radv-valve-manual-rules
+  timeout: 1h 15m
   variables:
     GPU_VERSION: radv-polaris10-aco
+    B2C_TIMEOUT_BOOT_MINUTES: 70
+    B2C_TIMEOUT_OVERALL_MINUTES: 70
 
 vkcts-vega10-valve:
   extends:
