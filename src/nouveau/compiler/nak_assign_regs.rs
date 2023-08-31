@@ -1017,22 +1017,10 @@ impl AssignRegsBlock {
     }
 }
 
-struct AssignRegs {
-    sm: u8,
-    blocks: Vec<AssignRegsBlock>,
-}
-
-impl AssignRegs {
-    pub fn new(sm: u8) -> Self {
-        Self {
-            sm: sm,
-            blocks: Vec::new(),
-        }
-    }
-
-    pub fn run(&mut self, s: &mut Shader) {
-        assert!(s.functions.len() == 1);
-        let f = &mut s.functions[0];
+impl Shader {
+    pub fn assign_regs(&mut self) {
+        assert!(self.functions.len() == 1);
+        let f = &mut self.functions[0];
 
         let live = SimpleLiveness::for_function(f);
         let max_live = live.calc_max_live(f);
@@ -1053,15 +1041,16 @@ impl AssignRegs {
             }
         });
 
-        s.num_gprs = num_regs[RegFile::GPR].try_into().unwrap();
+        self.num_gprs = num_regs[RegFile::GPR].try_into().unwrap();
 
+        let mut blocks: Vec<AssignRegsBlock> = Vec::new();
         for b_idx in 0..f.blocks.len() {
             let pred = f.blocks.pred_indices(b_idx);
             let pred_ra = if pred.is_empty() {
                 None
             } else {
                 /* Start with the previous block's. */
-                Some(&self.blocks[pred[0]].ra)
+                Some(&blocks[pred[0]].ra)
             };
 
             let bl = live.block_live(b_idx);
@@ -1069,21 +1058,15 @@ impl AssignRegs {
             let mut arb = AssignRegsBlock::new(&num_regs);
             arb.first_pass(&mut f.blocks[b_idx], bl, pred_ra);
 
-            assert!(self.blocks.len() == b_idx);
-            self.blocks.push(arb);
+            assert!(blocks.len() == b_idx);
+            blocks.push(arb);
         }
 
         for b_idx in 0..f.blocks.len() {
-            let arb = &self.blocks[b_idx];
+            let arb = &blocks[b_idx];
             for sb_idx in f.blocks.succ_indices(b_idx).to_vec() {
-                arb.second_pass(&self.blocks[sb_idx], &mut f.blocks[b_idx]);
+                arb.second_pass(&blocks[sb_idx], &mut f.blocks[b_idx]);
             }
         }
-    }
-}
-
-impl Shader {
-    pub fn assign_regs(&mut self) {
-        AssignRegs::new(self.sm).run(self);
     }
 }
