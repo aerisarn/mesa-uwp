@@ -249,7 +249,8 @@ build_lrz(struct fd6_emit *emit) assert_dt
    OUT_REG(ring,
            A6XX_GRAS_LRZ_CNTL(.enable = lrz.enable, .lrz_write = lrz.write,
                               .greater = lrz.direction == FD_LRZ_GREATER,
-                              .z_test_enable = lrz.test, ));
+                              .z_test_enable = lrz.test,
+                              .z_bounds_enable = lrz.z_bounds_enable, ));
    OUT_REG(ring, A6XX_RB_LRZ_CNTL(.enable = lrz.enable, ));
 
    OUT_REG(ring, A6XX_RB_DEPTH_PLANE_CNTL(.z_mode = lrz.z_mode, ));
@@ -894,8 +895,7 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
     */
    WRITE(REG_A6XX_SP_TP_MODE_CNTL, 0xa0 |
          A6XX_SP_TP_MODE_CNTL_ISAMMODE(ISAMMODE_GL));
-   WRITE(REG_A6XX_RB_Z_BOUNDS_MIN, 0);
-   WRITE(REG_A6XX_RB_Z_BOUNDS_MAX, 0);
+
    OUT_REG(ring, HLSQ_CONTROL_5_REG(
          CHIP,
          .linelengthregid = INVALID_REG,

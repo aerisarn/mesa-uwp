@@ -320,7 +320,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_EXT_shader_framebuffer_fetch                       DONE (freedreno/a6xx, iris/gen9+, llvmpipe, panfrost, virgl, zink, asahi)
   GL_EXT_shader_framebuffer_fetch_non_coherent          DONE (freedreno/a6xx, iris, llvmpipe, panfrost, virgl, zink, asahi)
   GL_EXT_color_buffer_half_float                        DONE (freedreno, iris, llvmpipe, nv50, nvc0, radeonsi, zink, crocus)
-  GL_EXT_depth_bounds_test                              DONE (nv50, nvc0, radeonsi, softpipe, zink, iris/gen12+)
+  GL_EXT_depth_bounds_test                              DONE (freedreno/a6xx, nv50, nvc0, radeonsi, softpipe, zink, iris/gen12+)
   GL_EXT_memory_object                                  DONE (freedreno, radeonsi, llvmpipe, zink, d3d12, iris, crocus/gen7+)
   GL_EXT_memory_object_fd                               DONE (freedreno, radeonsi, llvmpipe, zink, iris, crocus/gen7+)
   GL_EXT_memory_object_win32                            DONE (zink, d3d12)
