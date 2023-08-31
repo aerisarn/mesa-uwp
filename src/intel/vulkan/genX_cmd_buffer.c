@@ -2853,6 +2853,19 @@ genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
 {
    /* XXX - insert all workarounds and GFX specific things below. */
 
+   /* Wa_14014966230: For COMPUTE Workload - Any PIPE_CONTROL command with
+    * POST_SYNC Operation Enabled MUST be preceded by a PIPE_CONTROL
+    * with CS_STALL Bit set (with No POST_SYNC ENABLED)
+    */
+   if (intel_device_info_is_adln(devinfo) &&
+       current_pipeline == GPGPU &&
+       post_sync_op != NoWrite) {
+      anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe) {
+         pipe.CommandStreamerStallEnable = true;
+         anv_debug_dump_pc(pipe, "Wa_14014966230");
+      };
+   }
+
 #if INTEL_NEEDS_WA_1409600907
    /* Wa_1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
     * be set with any PIPE_CONTROL with Depth Flush Enable bit set.
