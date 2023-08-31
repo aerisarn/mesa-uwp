@@ -488,6 +488,15 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
       break;
    }
 
+   case nir_intrinsic_bindless_image_load: {
+      enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
+      if (dim != GLSL_SAMPLER_DIM_SUBPASS &&
+          dim != GLSL_SAMPLER_DIM_SUBPASS_MS)
+         break;
+      shader->info.fs.uses_fbfetch_output = true;
+      break;
+   }
+
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_per_vertex_input:
    case nir_intrinsic_load_input_vertex:
