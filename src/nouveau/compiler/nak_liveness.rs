@@ -455,18 +455,25 @@ pub struct NextUseLiveness {
 }
 
 impl NextUseLiveness {
-    pub fn for_function(func: &Function) -> NextUseLiveness {
+    pub fn for_function(
+        func: &Function,
+        files: &RegFileSet,
+    ) -> NextUseLiveness {
         let mut blocks = Vec::new();
         for (bi, b) in func.blocks.iter().enumerate() {
             let mut bl = NextUseBlockLiveness::new(b.instrs.len());
 
             for (ip, instr) in b.instrs.iter().enumerate() {
                 instr.for_each_ssa_use(|ssa| {
-                    bl.add_use(*ssa, ip);
+                    if files.contains(ssa.file()) {
+                        bl.add_use(*ssa, ip);
+                    }
                 });
 
                 instr.for_each_ssa_def(|ssa| {
-                    bl.add_def(*ssa);
+                    if files.contains(ssa.file()) {
+                        bl.add_def(*ssa);
+                    }
                 });
             }
 
