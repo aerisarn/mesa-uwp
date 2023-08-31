@@ -351,6 +351,14 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
 }
 
 void
+panfrost_batch_write_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
+                        enum pipe_shader_type stage)
+{
+   panfrost_batch_add_bo_old(
+      batch, bo, PAN_BO_ACCESS_WRITE | panfrost_access_for_stage(stage));
+}
+
+void
 panfrost_batch_read_rsrc(struct panfrost_batch *batch,
                          struct panfrost_resource *rsrc,
                          enum pipe_shader_type stage)
