@@ -1637,8 +1637,14 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          /* Follower needs to be first because the last CS must match the queue's IP type. */
          if (radv_cmd_buffer_has_follower(cmd_buffer)) {
             queue->device->ws->cs_unchain(cmd_buffer->gang.cs);
-            if (!chainable_ace || !queue->device->ws->cs_chain(chainable_ace, cmd_buffer->gang.cs, false))
+            if (!chainable_ace || !queue->device->ws->cs_chain(chainable_ace, cmd_buffer->gang.cs, false)) {
                cs_array[num_submitted_cs++] = cmd_buffer->gang.cs;
+               /* Reset chaining for GFX when the cmdbuf has GFX+ACE because the follower CS (ACE)
+                * must always be before the leader CS (GFX). Otherwise, the GFX CS might be chained
+                * to previous one and ordering would be incorrect.
+                */
+               chainable = NULL;
+            }
 
             chainable_ace = can_chain_next ? cmd_buffer->gang.cs : NULL;
             submit_ace = true;
