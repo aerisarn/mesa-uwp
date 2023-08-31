@@ -3042,6 +3042,19 @@ impl fmt::Display for OpBar {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpCS2R {
+    pub dst: Dst,
+    pub idx: u8,
+}
+
+impl fmt::Display for OpCS2R {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CS2R {} sr[{:#x}]", self.dst, self.idx)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpS2R {
     pub dst: Dst,
     pub idx: u8,
@@ -3586,6 +3599,7 @@ pub enum Op {
     Bra(OpBra),
     Exit(OpExit),
     Bar(OpBar),
+    CS2R(OpCS2R),
     S2R(OpS2R),
     Undef(OpUndef),
     PhiSrcs(OpPhiSrcs),
@@ -3938,6 +3952,7 @@ impl Instr {
                 Some(15)
             }
             Op::Sel(_) => Some(15),
+            Op::CS2R(_) => None,
             Op::S2R(_) => None,
             Op::ALd(_) => None,
             Op::ASt(_) => Some(15),

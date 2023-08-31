@@ -1285,12 +1285,21 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_intrinsic_load_sysval_nv => {
                 let idx = u8::try_from(intrin.base()).unwrap();
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-
-                b.push_op(OpS2R {
-                    dst: dst.into(),
-                    idx: idx,
-                });
+                debug_assert!(intrin.def.num_components == 1);
+                let dst = b.alloc_ssa(RegFile::GPR, intrin.def.bit_size() / 32);
+                if intrin.def.bit_size() == 32 {
+                    b.push_op(OpS2R {
+                        dst: dst.into(),
+                        idx: idx,
+                    });
+                } else if intrin.def.bit_size() == 64 {
+                    b.push_op(OpCS2R {
+                        dst: dst.into(),
+                        idx: idx,
+                    });
+                } else {
+                    panic!("Unknown sysval_nv bit size");
+                }
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_ubo => {

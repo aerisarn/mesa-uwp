@@ -1480,6 +1480,12 @@ impl SM75Instr {
         self.set_pred_src(87..90, 90, SrcRef::True.into());
     }
 
+    fn encode_cs2r(&mut self, op: &OpCS2R) {
+        self.set_opcode(0x805);
+        self.set_dst(op.dst);
+        self.set_field(72..80, op.idx);
+    }
+
     fn encode_s2r(&mut self, op: &OpS2R) {
         self.set_opcode(0x919);
         self.set_dst(op.dst);
@@ -1591,6 +1597,7 @@ impl SM75Instr {
             Op::Bra(op) => si.encode_bra(&op, ip, block_offsets),
             Op::Exit(op) => si.encode_exit(&op),
             Op::Bar(op) => si.encode_bar(&op),
+            Op::CS2R(op) => si.encode_cs2r(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             Op::PopC(op) => si.encode_popc(&op),
             Op::Brev(op) => si.encode_brev(&op),

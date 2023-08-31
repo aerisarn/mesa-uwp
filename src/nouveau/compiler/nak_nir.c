@@ -482,6 +482,11 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    }
 
+   case nir_intrinsic_shader_clock:
+      val = nir_load_sysval_nv(b, 64, .base = 0x50);
+      val = nir_unpack_64_2x32(b, val);
+      break;
+
    default:
       return false;
    }
