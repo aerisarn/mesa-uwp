@@ -4001,6 +4001,54 @@ impl BasicBlock {
         self.instrs = instrs;
     }
 
+    pub fn phi_dsts(&self) -> Option<&OpPhiDsts> {
+        for instr in self.instrs.iter() {
+            match &instr.op {
+                Op::PhiDsts(phi) => return Some(phi),
+                _ => break,
+            }
+        }
+        None
+    }
+
+    pub fn phi_dsts_mut(&mut self) -> Option<&mut OpPhiDsts> {
+        for instr in self.instrs.iter_mut() {
+            match &mut instr.op {
+                Op::PhiDsts(phi) => return Some(phi),
+                _ => break,
+            }
+        }
+        None
+    }
+
+    pub fn phi_srcs(&self) -> Option<&OpPhiSrcs> {
+        for instr in self.instrs.iter().rev() {
+            if instr.is_branch() {
+                continue;
+            }
+
+            match &instr.op {
+                Op::PhiSrcs(phi) => return Some(phi),
+                _ => break,
+            }
+        }
+        None
+    }
+
+    pub fn phi_srcs_mut(&mut self) -> Option<&mut OpPhiSrcs> {
+        for instr in self.instrs.iter_mut().rev() {
+            if instr.is_branch() {
+                continue;
+            }
+
+            match &mut instr.op {
+                Op::PhiSrcs(phi) => return Some(phi),
+                _ => break,
+            }
+        }
+        None
+    }
+
     pub fn branch(&self) -> Option<&Instr> {
         if let Some(i) = self.instrs.last() {
             if i.is_branch() {
