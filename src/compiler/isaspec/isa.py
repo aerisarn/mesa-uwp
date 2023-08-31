@@ -43,7 +43,7 @@ class BitSetPattern(object):
         self.match      = bitset.match
         self.dontcare   = bitset.dontcare
         self.mask       = bitset.mask
-        self.field_mask = bitset.field_mask;
+        self.field_mask = bitset.field_mask
 
     def merge(self, pattern):
         p = BitSetPattern(pattern)
@@ -76,9 +76,9 @@ def extract_pattern(xml, name, is_defined_bits=None):
 
     assert (len(patstr) == (1 + high - low)), "Invalid {} length in {}: {}..{}".format(xml.tag, name, low, high)
     if is_defined_bits is not None:
-        assert not is_defined_bits(mask), "Redefined bits in {} {}: {}..{}".format(xml.tag, name, low, high);
+        assert not is_defined_bits(mask), "Redefined bits in {} {}: {}..{}".format(xml.tag, name, low, high)
 
-    match = 0;
+    match = 0
     dontcare = 0
 
     for n in range(0, len(patstr)):
@@ -305,7 +305,7 @@ class BitSet(object):
             dbg("field: {}.{} => {:016x}".format(self.name, field.name, m))
             # For default case, we don't expect any bits to be doubly defined:
             assert not is_defined_bits(m), "Redefined bits in field {}.{}: {}..{}".format(
-                self.name, field.name, field.low, field.high);
+                self.name, field.name, field.low, field.high)
             self.field_mask |= m
 
         def update_override_bitmask_field(bs, field):
