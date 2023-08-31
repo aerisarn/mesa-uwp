@@ -97,6 +97,18 @@ impl RegFile {
     }
 }
 
+impl fmt::Display for RegFile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RegFile::GPR => write!(f, "GPR"),
+            RegFile::UGPR => write!(f, "UGPR"),
+            RegFile::Pred => write!(f, "Pred"),
+            RegFile::UPred => write!(f, "UPred"),
+            RegFile::Mem => write!(f, "Mem"),
+        }
+    }
+}
+
 impl From<RegFile> for u8 {
     fn from(value: RegFile) -> u8 {
         value as u8
@@ -910,6 +922,22 @@ impl Src {
             self.src_ref.as_ssa()
         } else {
             None
+        }
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self.src_ref {
+            SrcRef::True => Some(!self.src_mod.is_bnot()),
+            SrcRef::False => Some(self.src_mod.is_bnot()),
+            SrcRef::SSA(vec) => {
+                assert!(vec.is_predicate() && vec.comps() == 1);
+                None
+            }
+            SrcRef::Reg(reg) => {
+                assert!(reg.is_predicate() && reg.comps() == 1);
+                None
+            }
+            _ => panic!("Not a boolean source"),
         }
     }
 

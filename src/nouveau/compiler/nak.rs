@@ -20,6 +20,7 @@ mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nak_opt_lop;
 mod nak_repair_ssa;
+mod nak_spill_values;
 mod nak_to_cssa;
 mod nir;
 mod util;
