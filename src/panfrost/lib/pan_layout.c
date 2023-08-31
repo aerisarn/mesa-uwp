@@ -148,7 +148,7 @@ pan_afbc_tile_size(uint64_t modifier)
  * Determine the number of bytes between header rows for an AFBC image. For an
  * image with linear headers, this is simply the number of header blocks
  * (=superblocks) per row times the numbers of bytes per header block. For an
- * image with linear headers, this is multipled by the number of rows of
+ * image with tiled headers, this is multipled by the number of rows of
  * header blocks are in a tile together.
  */
 uint32_t
