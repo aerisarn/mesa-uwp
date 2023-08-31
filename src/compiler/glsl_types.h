@@ -34,7 +34,6 @@
 #include "util/blob.h"
 #include "util/format/u_format.h"
 #include "util/macros.h"
-#include "util/simple_mtx.h"
 
 struct glsl_type;
 
@@ -1239,9 +1238,6 @@ public:
    ~glsl_type();
 
 private:
-
-   static simple_mtx_t hash_mutex;
-
    /**
     * ralloc context for the type itself.
     */
@@ -1278,24 +1274,6 @@ private:
    /** Constructor for subroutine types */
    glsl_type(const char *name);
 
-   /** Hash table containing the known explicit matrix and vector types. */
-   static struct hash_table *explicit_matrix_types;
-
-   /** Hash table containing the known array types. */
-   static struct hash_table *array_types;
-
-   /** Hash table containing the known struct types. */
-   static struct hash_table *struct_types;
-
-   /** Hash table containing the known interface types. */
-   static struct hash_table *interface_types;
-
-   /** Hash table containing the known subroutine types. */
-   static struct hash_table *subroutine_types;
-
-   /** Hash table containing the known function types. */
-   static struct hash_table *function_types;
-
    static bool record_key_compare(const void *a, const void *b);
    static unsigned record_key_hash(const void *key);
 
@@ -1316,8 +1294,6 @@ private:
     * data.
     */
    /*@{*/
-   friend void glsl_type_singleton_init_or_ref(void);
-   friend void glsl_type_singleton_decref(void);
    friend void _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *);
    /*@}*/
 

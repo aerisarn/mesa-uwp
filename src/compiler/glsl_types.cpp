@@ -31,21 +31,23 @@
 #include "util/ralloc.h"
 #include "util/u_math.h"
 #include "util/u_string.h"
+#include "util/simple_mtx.h"
 
+static simple_mtx_t glsl_type_cache_mutex = SIMPLE_MTX_INITIALIZER;
 
-simple_mtx_t glsl_type::hash_mutex = SIMPLE_MTX_INITIALIZER;
-hash_table *glsl_type::explicit_matrix_types = NULL;
-hash_table *glsl_type::array_types = NULL;
-hash_table *glsl_type::struct_types = NULL;
-hash_table *glsl_type::interface_types = NULL;
-hash_table *glsl_type::function_types = NULL;
-hash_table *glsl_type::subroutine_types = NULL;
+static struct {
+   /* There might be multiple users for types (e.g. application using OpenGL
+    * and Vulkan simultaneously or app using multiple Vulkan instances). Counter
+    * is used to make sure we don't release the types if a user is still present.
+    */
+   uint32_t users;
 
-/* There might be multiple users for types (e.g. application using OpenGL
- * and Vulkan simultaneously or app using multiple Vulkan instances). Counter
- * is used to make sure we don't release the types if a user is still present.
- */
-static uint32_t glsl_type_users = 0;
+   hash_table *explicit_matrix_types;
+   hash_table *array_types;
+   hash_table *struct_types;
+   hash_table *interface_types;
+   hash_table *subroutine_types;
+} glsl_type_cache;
 
 glsl_type::glsl_type(const glsl_type_params &params)
 {
@@ -475,55 +477,50 @@ hash_free_type_function(struct hash_entry *entry)
 void
 glsl_type_singleton_init_or_ref()
 {
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   glsl_type_users++;
-   simple_mtx_unlock(&glsl_type::hash_mutex);
+   simple_mtx_lock(&glsl_type_cache_mutex);
+   glsl_type_cache.users++;
+   simple_mtx_unlock(&glsl_type_cache_mutex);
 }
 
 void
 glsl_type_singleton_decref()
 {
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   assert(glsl_type_users > 0);
+   simple_mtx_lock(&glsl_type_cache_mutex);
+   assert(glsl_type_cache.users > 0);
 
    /* Do not release glsl_types if they are still used. */
-   if (--glsl_type_users) {
-      simple_mtx_unlock(&glsl_type::hash_mutex);
+   if (--glsl_type_cache.users) {
+      simple_mtx_unlock(&glsl_type_cache_mutex);
       return;
    }
 
-   if (glsl_type::explicit_matrix_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type::explicit_matrix_types,
+   if (glsl_type_cache.explicit_matrix_types != NULL) {
+      _mesa_hash_table_destroy(glsl_type_cache.explicit_matrix_types,
                                hash_free_type_function);
-      glsl_type::explicit_matrix_types = NULL;
+      glsl_type_cache.explicit_matrix_types = NULL;
    }
 
-   if (glsl_type::array_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type::array_types, hash_free_type_function);
-      glsl_type::array_types = NULL;
+   if (glsl_type_cache.array_types != NULL) {
+      _mesa_hash_table_destroy(glsl_type_cache.array_types, hash_free_type_function);
+      glsl_type_cache.array_types = NULL;
    }
 
-   if (glsl_type::struct_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type::struct_types, hash_free_type_function);
-      glsl_type::struct_types = NULL;
+   if (glsl_type_cache.struct_types != NULL) {
+      _mesa_hash_table_destroy(glsl_type_cache.struct_types, hash_free_type_function);
+      glsl_type_cache.struct_types = NULL;
    }
 
-   if (glsl_type::interface_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type::interface_types, hash_free_type_function);
-      glsl_type::interface_types = NULL;
+   if (glsl_type_cache.interface_types != NULL) {
+      _mesa_hash_table_destroy(glsl_type_cache.interface_types, hash_free_type_function);
+      glsl_type_cache.interface_types = NULL;
    }
 
-   if (glsl_type::function_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type::function_types, hash_free_type_function);
-      glsl_type::function_types = NULL;
+   if (glsl_type_cache.subroutine_types != NULL) {
+      _mesa_hash_table_destroy(glsl_type_cache.subroutine_types, hash_free_type_function);
+      glsl_type_cache.subroutine_types = NULL;
    }
 
-   if (glsl_type::subroutine_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type::subroutine_types, hash_free_type_function);
-      glsl_type::subroutine_types = NULL;
-   }
-
-   simple_mtx_unlock(&glsl_type::hash_mutex);
+   simple_mtx_unlock(&glsl_type_cache_mutex);
 }
 
 
@@ -783,13 +780,14 @@ glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int row
 
    const uint32_t key_hash = hash_explicit_matrix_key(&key);
 
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   assert(glsl_type_users > 0);
+   simple_mtx_lock(&glsl_type_cache_mutex);
+   assert(glsl_type_cache.users > 0);
 
-   if (explicit_matrix_types == NULL) {
-      explicit_matrix_types =
+   if (glsl_type_cache.explicit_matrix_types == NULL) {
+      glsl_type_cache.explicit_matrix_types =
          _mesa_hash_table_create(NULL, hash_explicit_matrix_key, compare_explicit_matrix_key);
    }
+   hash_table *explicit_matrix_types = glsl_type_cache.explicit_matrix_types;
 
    const struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(explicit_matrix_types, key_hash, &key);
@@ -813,7 +811,7 @@ glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int row
    }
 
    auto t = (const glsl_type *) entry->data;
-   simple_mtx_unlock(&glsl_type::hash_mutex);
+   simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == base_type);
    assert(t->vector_elements == rows);
@@ -1261,11 +1259,14 @@ glsl_type::get_array_instance(const glsl_type *element,
 
    const uint32_t key_hash = hash_array_key(&key);
 
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   assert(glsl_type_users > 0);
+   simple_mtx_lock(&glsl_type_cache_mutex);
+   assert(glsl_type_cache.users > 0);
 
-   if (array_types == NULL)
-      array_types = _mesa_hash_table_create(NULL, hash_array_key, compare_array_key);
+   if (glsl_type_cache.array_types == NULL) {
+      glsl_type_cache.array_types =
+         _mesa_hash_table_create(NULL, hash_array_key, compare_array_key);
+   }
+   hash_table *array_types = glsl_type_cache.array_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(array_types, key_hash, &key);
    if (entry == NULL) {
@@ -1279,7 +1280,7 @@ glsl_type::get_array_instance(const glsl_type *element,
    }
 
    auto t = (const glsl_type *) entry->data;
-   simple_mtx_unlock(&glsl_type::hash_mutex);
+   simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_ARRAY);
    assert(t->length == array_size);
@@ -1472,13 +1473,14 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
    const glsl_type key(fields, num_fields, name, packed, explicit_alignment);
    const uint32_t key_hash = record_key_hash(&key);
 
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   assert(glsl_type_users > 0);
+   simple_mtx_lock(&glsl_type_cache_mutex);
+   assert(glsl_type_cache.users > 0);
 
-   if (struct_types == NULL) {
-      struct_types = _mesa_hash_table_create(NULL, record_key_hash,
-                                             record_key_compare);
+   if (glsl_type_cache.struct_types == NULL) {
+      glsl_type_cache.struct_types =
+         _mesa_hash_table_create(NULL, record_key_hash, record_key_compare);
    }
+   hash_table *struct_types = glsl_type_cache.struct_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(struct_types,
                                                                        key_hash, &key);
@@ -1490,7 +1492,7 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
    }
 
    auto t = (const glsl_type *) entry->data;
-   simple_mtx_unlock(&glsl_type::hash_mutex);
+   simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_STRUCT);
    assert(t->length == num_fields);
@@ -1512,13 +1514,14 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
    const glsl_type key(fields, num_fields, packing, row_major, block_name);
    const uint32_t key_hash = record_key_hash(&key);
 
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   assert(glsl_type_users > 0);
+   simple_mtx_lock(&glsl_type_cache_mutex);
+   assert(glsl_type_cache.users > 0);
 
-   if (interface_types == NULL) {
-      interface_types = _mesa_hash_table_create(NULL, record_key_hash,
-                                                record_key_compare);
+   if (glsl_type_cache.interface_types == NULL) {
+      glsl_type_cache.interface_types =
+         _mesa_hash_table_create(NULL, record_key_hash, record_key_compare);
    }
+   hash_table *interface_types = glsl_type_cache.interface_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(interface_types,
                                                                        key_hash, &key);
@@ -1530,7 +1533,7 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
    }
 
    auto t = (const glsl_type *) entry->data;
-   simple_mtx_unlock(&glsl_type::hash_mutex);
+   simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_INTERFACE);
    assert(t->length == num_fields);
@@ -1544,13 +1547,14 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
 {
    const uint32_t key_hash = _mesa_hash_string(subroutine_name);
 
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   assert(glsl_type_users > 0);
+   simple_mtx_lock(&glsl_type_cache_mutex);
+   assert(glsl_type_cache.users > 0);
 
-   if (subroutine_types == NULL) {
-      subroutine_types = _mesa_hash_table_create(NULL, _mesa_hash_string,
-                                                 _mesa_key_string_equal);
+   if (glsl_type_cache.subroutine_types == NULL) {
+      glsl_type_cache.subroutine_types =
+         _mesa_hash_table_create(NULL, _mesa_hash_string, _mesa_key_string_equal);
    }
+   hash_table *subroutine_types = glsl_type_cache.subroutine_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(subroutine_types,
                                                                        key_hash, subroutine_name);
@@ -1561,7 +1565,7 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
    }
 
    auto t = (const glsl_type *) entry->data;
-   simple_mtx_unlock(&glsl_type::hash_mutex);
+   simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_SUBROUTINE);
    assert(strcmp(t->name, subroutine_name) == 0);
