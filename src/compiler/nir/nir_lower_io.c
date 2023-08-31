@@ -3156,6 +3156,15 @@ nir_lower_io_passes(nir_shader *nir, bool renumber_vs_inputs)
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out | nir_var_shader_in,
               type_size_vec4, nir_lower_io_lower_64bit_to_32);
 
+   /* nir_io_add_const_offset_to_base needs actual constants. */
+   NIR_PASS_V(nir, nir_opt_constant_folding);
+   NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in | nir_var_shader_out);
+
+   /* Lower and remove dead derefs and variables to clean up the IR. */
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_opt_dce);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+
    /* If IO is lowered before var->data.driver_location is assigned, driver
     * locations are all 0, which means IO bases are all 0. It's not necessary
     * to set driver_location before lowering IO because the only thing that
@@ -3166,22 +3175,12 @@ nir_lower_io_passes(nir_shader *nir, bool renumber_vs_inputs)
     * intrinsics refer to the same IO. If the bases already exist, they
     * will be reassigned, sorted by the semantic, and all holes removed.
     * This kind of canonicalizes all bases.
+    *
+    * This must be done after DCE to remove dead load_input intrinsics.
     */
    NIR_PASS_V(nir, nir_recompute_io_bases,
-              (nir->info.stage != MESA_SHADER_VERTEX ||
-                     renumber_vs_inputs
-                  ? nir_var_shader_in
-                  : 0) |
-                 nir_var_shader_out);
-
-   /* nir_io_add_const_offset_to_base needs actual constants. */
-   NIR_PASS_V(nir, nir_opt_constant_folding);
-   NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in | nir_var_shader_out);
-
-   /* Lower and remove dead derefs and variables to clean up the IR. */
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_opt_dce);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+              (nir->info.stage != MESA_SHADER_VERTEX || renumber_vs_inputs ?
+               nir_var_shader_in : 0) | nir_var_shader_out);
 
    if (nir->xfb_info)
       NIR_PASS_V(nir, nir_io_add_intrinsic_xfb_info);
