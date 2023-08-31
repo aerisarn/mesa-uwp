@@ -1207,10 +1207,12 @@ static bool
 can_fast_clear_color_att(struct anv_cmd_buffer *cmd_buffer,
                          struct blorp_batch *batch,
                          const struct anv_attachment *att,
-                         const union isl_color_value clear_color,
                          const VkClearAttachment *attachment,
                          uint32_t rectCount, const VkClearRect *pRects)
 {
+   union isl_color_value clear_color =
+      vk_to_isl_color(attachment->clearValue.color);
+
    if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
       return false;
 
@@ -1570,7 +1572,7 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
 
    const struct anv_image_view *iview = att->iview;
    if (iview &&
-       can_fast_clear_color_att(cmd_buffer, batch, att, clear_color,
+       can_fast_clear_color_att(cmd_buffer, batch, att,
                                 attachment, rectCount, pRects)) {
       if (iview->image->vk.samples == 1) {
          exec_ccs_op(cmd_buffer, batch, iview->image,
