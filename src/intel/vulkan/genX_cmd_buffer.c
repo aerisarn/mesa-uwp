@@ -4374,13 +4374,7 @@ void genX(CmdDraw)(
 
    genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
-   anv_batch_emit(&cmd_buffer->batch,
-#if GFX_VER < 11
-                  GENX(3DPRIMITIVE),
-#else
-                  GENX(3DPRIMITIVE_EXTENDED),
-#endif
-                  prim) {
+   anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = SEQUENTIAL;
       prim.VertexCountPerInstance   = vertexCount;
@@ -4476,7 +4470,7 @@ void genX(CmdDrawMultiEXT)(
 
       genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
-      anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
+      anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = SEQUENTIAL;
          prim.VertexCountPerInstance   = draw->vertexCount;
@@ -4544,13 +4538,7 @@ void genX(CmdDrawIndexed)(
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
    genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
-   anv_batch_emit(&cmd_buffer->batch,
-#if GFX_VER < 11
-                  GENX(3DPRIMITIVE),
-#else
-                  GENX(3DPRIMITIVE_EXTENDED),
-#endif
-                  prim) {
+   anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = RANDOM;
       prim.VertexCountPerInstance   = indexCount;
@@ -4853,13 +4841,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
 #endif
 
    genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
-   anv_batch_emit(&cmd_buffer->batch,
-#if GFX_VER < 11
-                  GENX(3DPRIMITIVE),
-#else
-                  GENX(3DPRIMITIVE_EXTENDED),
-#endif
-                  prim) {
+   anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
       prim.IndirectParameterEnable  = true;
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = SEQUENTIAL;
@@ -4988,13 +4970,7 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
       genX(emit_ds)(cmd_buffer);
 
       genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
-      anv_batch_emit(&cmd_buffer->batch,
-#if GFX_VER < 11
-                     GENX(3DPRIMITIVE),
-#else
-                     GENX(3DPRIMITIVE_EXTENDED),
-#endif
-                     prim) {
+      anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = indexed ? RANDOM : SEQUENTIAL;
@@ -5218,13 +5194,7 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
       genX(emit_ds)(cmd_buffer);
 
       genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
-      anv_batch_emit(&cmd_buffer->batch,
-#if GFX_VER < 11
-                     GENX(3DPRIMITIVE),
-#else
-                     GENX(3DPRIMITIVE_EXTENDED),
-#endif
-                     prim) {
+      anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = true;
          prim.VertexAccessType         = indexed ? RANDOM : SEQUENTIAL;
