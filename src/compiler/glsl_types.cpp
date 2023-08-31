@@ -36,6 +36,8 @@
 static simple_mtx_t glsl_type_cache_mutex = SIMPLE_MTX_INITIALIZER;
 
 static struct {
+   void *mem_ctx;
+
    /* There might be multiple users for types (e.g. application using OpenGL
     * and Vulkan simultaneously or app using multiple Vulkan instances). Counter
     * is used to make sure we don't release the types if a user is still present.
@@ -478,6 +480,8 @@ void
 glsl_type_singleton_init_or_ref()
 {
    simple_mtx_lock(&glsl_type_cache_mutex);
+   if (glsl_type_cache.users == 0)
+      glsl_type_cache.mem_ctx = ralloc_context(NULL);
    glsl_type_cache.users++;
    simple_mtx_unlock(&glsl_type_cache_mutex);
 }
@@ -519,6 +523,9 @@ glsl_type_singleton_decref()
       _mesa_hash_table_destroy(glsl_type_cache.subroutine_types, hash_free_type_function);
       glsl_type_cache.subroutine_types = NULL;
    }
+
+   ralloc_free(glsl_type_cache.mem_ctx);
+   glsl_type_cache.mem_ctx = NULL;
 
    simple_mtx_unlock(&glsl_type_cache_mutex);
 }
