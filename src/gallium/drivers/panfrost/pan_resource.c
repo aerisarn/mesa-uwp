@@ -1216,6 +1216,10 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
 
    panfrost_resource_setup(pan_device(ctx->base.screen), rsrc, modifier,
                            blit.dst.format);
+   /* panfrost_resource_setup will force the modifier to stay constant when
+    * called with a specific modifier. We don't want that here, we want to
+    * be able to convert back to another modifier if needed */
+   rsrc->modifier_constant = false;
    pipe_resource_reference(&tmp_prsrc, NULL);
 }
 
