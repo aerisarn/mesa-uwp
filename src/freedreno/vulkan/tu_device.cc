@@ -1375,6 +1375,17 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->fragmentDensityInvocations = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: {
+         VkPhysicalDeviceMaintenance5PropertiesKHR *properties =
+            (VkPhysicalDeviceMaintenance5PropertiesKHR *)ext;
+         properties->earlyFragmentMultisampleCoverageAfterSampleCounting = true;
+         properties->earlyFragmentSampleMaskTestBeforeSampleCounting = true;
+         properties->depthStencilSwizzleOneSupport = true;
+         properties->polygonModePointSize = true;
+         properties->nonStrictWideLinesUseParallelogram = false;
+         properties->nonStrictSinglePixelWideLinesUseParallelogram = false;
+         break;
+      }
       default:
          break;
       }
