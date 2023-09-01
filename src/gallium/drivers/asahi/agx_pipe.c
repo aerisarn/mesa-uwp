@@ -499,8 +499,10 @@ agx_select_best_modifier(const struct agx_resource *pres)
          return DRM_FORMAT_MOD_APPLE_TWIDDLED;
    }
 
-   assert(agx_linear_allowed(pres));
-   return DRM_FORMAT_MOD_LINEAR;
+   if (agx_linear_allowed(pres))
+      return DRM_FORMAT_MOD_LINEAR;
+   else
+      return DRM_FORMAT_MOD_INVALID;
 }
 
 static struct pipe_resource *
@@ -521,16 +523,14 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
    if (modifiers) {
       nresource->modifier =
          agx_select_modifier_from_list(nresource, modifiers, count);
-
-      /* There may not be a matching modifier, bail if so */
-      if (nresource->modifier == DRM_FORMAT_MOD_INVALID) {
-         free(nresource);
-         return NULL;
-      }
    } else {
       nresource->modifier = agx_select_best_modifier(nresource);
+   }
 
-      assert(nresource->modifier != DRM_FORMAT_MOD_INVALID);
+   /* There may not be a matching modifier, bail if so */
+   if (nresource->modifier == DRM_FORMAT_MOD_INVALID) {
+      free(nresource);
+      return NULL;
    }
 
    /* If there's only 1 layer and there's no compression, there's no harm in
