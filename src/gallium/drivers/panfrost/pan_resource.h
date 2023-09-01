@@ -190,6 +190,6 @@ void pan_resource_modifier_convert(struct panfrost_context *ctx,
 
 void pan_legalize_afbc_format(struct panfrost_context *ctx,
                               struct panfrost_resource *rsrc,
-                              enum pipe_format format);
+                              enum pipe_format format, bool write);
 
 #endif /* PAN_RESOURCE_H */

@@ -257,10 +257,7 @@ static struct pipe_surface *
 panfrost_create_surface(struct pipe_context *pipe, struct pipe_resource *pt,
                         const struct pipe_surface *surf_tmpl)
 {
-   struct panfrost_context *ctx = pan_context(pipe);
    struct pipe_surface *ps = NULL;
-
-   pan_legalize_afbc_format(ctx, pan_resource(pt), surf_tmpl->format);
 
    ps = CALLOC_STRUCT(pipe_surface);
 
@@ -1180,7 +1177,8 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
 {
    assert(!rsrc->modifier_constant);
 
-   perf_debug_ctx(ctx, "Disabling AFBC with a blit. Reason: %s", reason);
+   perf_debug_ctx(ctx, "%s AFBC with a blit. Reason: %s",
+                  drm_is_afbc(modifier) ? "Unpacking" : "Disabling", reason);
 
    struct pipe_resource *tmp_prsrc = panfrost_resource_create_with_modifier(
       ctx->base.screen, &rsrc->base, modifier);
@@ -1228,20 +1226,25 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
 void
 pan_legalize_afbc_format(struct panfrost_context *ctx,
                          struct panfrost_resource *rsrc,
-                         enum pipe_format format)
+                         enum pipe_format format, bool write)
 {
    struct panfrost_device *dev = pan_device(ctx->base.screen);
 
    if (!drm_is_afbc(rsrc->image.layout.modifier))
       return;
 
-   if (panfrost_afbc_format(dev->arch, rsrc->base.format) ==
-       panfrost_afbc_format(dev->arch, format))
+   if (panfrost_afbc_format(dev->arch, rsrc->base.format) !=
+       panfrost_afbc_format(dev->arch, format)) {
+      pan_resource_modifier_convert(
+         ctx, rsrc, DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
+         "Reinterpreting AFBC surface as incompatible format");
       return;
+   }
 
-   pan_resource_modifier_convert(
-      ctx, rsrc, DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
-      "Reinterpreting AFBC surface as incompatible format");
+   if (write && (rsrc->image.layout.modifier & AFBC_FORMAT_MOD_SPARSE) == 0)
+      pan_resource_modifier_convert(
+         ctx, rsrc, rsrc->image.layout.modifier | AFBC_FORMAT_MOD_SPARSE,
+         "Legalizing resource to allow writing");
 }
 
 static bool
