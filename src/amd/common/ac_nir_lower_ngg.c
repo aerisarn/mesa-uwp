@@ -137,8 +137,8 @@ typedef struct
 enum {
    /* DW0: number of primitives */
    lds_ms_num_prims = 0,
-   /* DW1: reserved for future use */
-   lds_ms_dw1_reserved = 4,
+   /* DW1: number of vertices */
+   lds_ms_num_vtx = 4,
    /* DW2: workgroup index within the current dispatch */
    lds_ms_wg_index = 8,
    /* DW3: number of API workgroups in flight */
@@ -3653,34 +3653,6 @@ ms_store_prim_indices(nir_builder *b,
       offset_src = nir_imm_int(b, 0);
 
    nir_store_shared(b, nir_u2u8(b, val), offset_src, .base = s->layout.lds.indices_addr);
-}
-
-static nir_def *
-ms_load_prim_indices(nir_builder *b,
-                     nir_def *offset_src,
-                     lower_ngg_ms_state *s)
-{
-   if (!offset_src)
-      offset_src = nir_imm_int(b, 0);
-
-   return nir_load_shared(b, 1, 8, offset_src, .base = s->layout.lds.indices_addr);
-}
-
-static void
-ms_store_num_prims(nir_builder *b,
-                   nir_def *store_val,
-                   lower_ngg_ms_state *s)
-{
-   nir_def *addr = nir_imm_int(b, 0);
-   nir_store_shared(b, nir_u2u32(b, store_val), addr, .base = s->layout.lds.workgroup_info_addr + lds_ms_num_prims);
-}
-
-static nir_def *
-ms_load_num_prims(nir_builder *b,
-                  lower_ngg_ms_state *s)
-{
-   nir_def *addr = nir_imm_int(b, 0);
-   return nir_load_shared(b, 1, 32, addr, .base = s->layout.lds.workgroup_info_addr + lds_ms_num_prims);
 }
 
 static void
