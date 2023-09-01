@@ -584,6 +584,10 @@ VECN(components, uint16_t, u16vec)
 VECN(components, int8_t, i8vec)
 VECN(components, uint8_t, u8vec)
 
+static const glsl_type *
+get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
+                             unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment);
+
 const glsl_type *
 glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
                         unsigned explicit_stride, bool row_major,
@@ -724,9 +728,9 @@ compare_explicit_matrix_key(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct explicit_matrix_key)) == 0;
 }
 
-const glsl_type *
-glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
-                                        unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment)
+static const glsl_type *
+get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
+                             unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment)
 {
    assert(explicit_stride > 0 || explicit_alignment > 0);
    assert(base_type != GLSL_TYPE_VOID);
@@ -736,7 +740,7 @@ glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int row
       assert(explicit_stride % explicit_alignment == 0);
    }
 
-   const glsl_type *bare_type = get_instance(base_type, rows, columns);
+   const glsl_type *bare_type = glsl_type::get_instance(base_type, rows, columns);
 
    assert(columns > 1 || (rows > 1 && !row_major));
 
@@ -1468,8 +1472,8 @@ glsl_type::record_compare(const glsl_type *b, bool match_name,
 }
 
 
-bool
-glsl_type::record_key_compare(const void *a, const void *b)
+static bool
+record_key_compare(const void *a, const void *b)
 {
    const glsl_type *const key1 = (glsl_type *) a;
    const glsl_type *const key2 = (glsl_type *) b;
@@ -1482,8 +1486,8 @@ glsl_type::record_key_compare(const void *a, const void *b)
 /**
  * Generate an integer hash value for a glsl_type structure type.
  */
-unsigned
-glsl_type::record_key_hash(const void *a)
+static unsigned
+record_key_hash(const void *a)
 {
    const glsl_type *const key = (glsl_type *) a;
    uintptr_t hash = key->length;
