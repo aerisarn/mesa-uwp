@@ -1651,10 +1651,11 @@ system_value("lds_ngg_scratch_base_amd", 1)
 system_value("lds_ngg_gs_out_vertex_base_amd", 1)
 
 # AMD GPU shader output export instruction
-# src[] = { export_value }
+# src[] = { export_value, row }
 # BASE = export target
 # FLAGS = AC_EXP_FLAG_*
 intrinsic("export_amd", [0], indices=[BASE, WRITE_MASK, FLAGS])
+intrinsic("export_row_amd", [0, 1], indices=[BASE, WRITE_MASK, FLAGS])
 
 # Export dual source blend outputs with swizzle operation
 # src[] = { mrt0, mrt1 }

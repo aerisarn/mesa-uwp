@@ -9087,7 +9087,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       }
       break;
    }
-   case nir_intrinsic_export_amd: {
+   case nir_intrinsic_export_amd:
+   case nir_intrinsic_export_row_amd: {
       unsigned flags = nir_intrinsic_flags(instr);
       unsigned target = nir_intrinsic_base(instr);
       unsigned write_mask = nir_intrinsic_write_mask(instr);
@@ -9099,8 +9100,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       if (target < V_008DFC_SQ_EXP_MRTZ)
          ctx->program->has_color_exports = true;
 
+      const bool row_en = instr->intrinsic == nir_intrinsic_export_row_amd;
+
       aco_ptr<Export_instruction> exp{
-         create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
+         create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4 + row_en, 0)};
 
       exp->dest = target;
       exp->enabled_mask = write_mask;
@@ -9124,6 +9127,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       else
          exp->valid_mask = false;
 
+      exp->row_en = row_en;
+
       /* Compressed export uses two bits for a channel. */
       uint32_t channel_mask =
          exp->compressed ? (write_mask & 0x3 ? 1 : 0) | (write_mask & 0xc ? 2 : 0) : write_mask;
@@ -9133,6 +9138,13 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          exp->operands[i] = channel_mask & BITFIELD_BIT(i)
                                ? Operand(emit_extract_vector(ctx, value, i, v1))
                                : Operand(v1);
+      }
+
+      if (row_en) {
+         Temp row = bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa));
+         /* Hack to prevent the RA from moving the source into m0 and then back to a normal SGPR. */
+         row = bld.copy(bld.def(s1, m0), row);
+         exp->operands[4] = bld.m0(row);
       }
 
       ctx->block->instructions.emplace_back(std::move(exp));
