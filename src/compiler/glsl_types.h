@@ -86,7 +86,6 @@ enum glsl_base_type {
    GLSL_TYPE_ARRAY,
    GLSL_TYPE_VOID,
    GLSL_TYPE_SUBROUTINE,
-   GLSL_TYPE_FUNCTION,
    GLSL_TYPE_ERROR
 };
 
@@ -363,7 +362,6 @@ public:
     */
    union {
       const struct glsl_type *array;            /**< Type of array elements. */
-      const struct glsl_function_param *parameters;   /**< Parameters to function. */
       const struct glsl_struct_field *structure;      /**< List of struct fields. */
    } fields;
 
@@ -493,13 +491,6 @@ public:
     * Get the instance of an subroutine type
     */
    static const glsl_type *get_subroutine_instance(const char *subroutine_name);
-
-   /**
-    * Get the instance of a function type
-    */
-   static const glsl_type *get_function_instance(const struct glsl_type *return_type,
-                                                 const glsl_function_param *parameters,
-                                                 unsigned num_params);
 
    /**
     * Get the type resulting from a multiplication of \p type_a * \p type_b
@@ -1267,10 +1258,6 @@ private:
 	     enum glsl_interface_packing packing,
 	     bool row_major, const char *name);
 
-   /** Constructor for interface types */
-   glsl_type(const glsl_type *return_type,
-             const glsl_function_param *params, unsigned num_params);
-
    /** Constructors for array types */
    glsl_type(const glsl_type *array, unsigned length, unsigned explicit_stride);
 
@@ -1461,13 +1448,6 @@ struct glsl_struct_field {
    }
 #undef DEFAULT_CONSTRUCTORS
 #endif
-};
-
-struct glsl_function_param {
-   const struct glsl_type *type;
-
-   bool in;
-   bool out;
 };
 
 #endif /* GLSL_TYPES_H */

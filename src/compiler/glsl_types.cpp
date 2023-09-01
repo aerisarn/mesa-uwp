@@ -169,40 +169,6 @@ glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
    this->fields.structure = copied_struct;
 }
 
-glsl_type::glsl_type(const glsl_type *return_type,
-                     const glsl_function_param *params, unsigned num_params) :
-   gl_type(0),
-   base_type(GLSL_TYPE_FUNCTION), sampled_type(GLSL_TYPE_VOID),
-   sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   interface_packing(0), interface_row_major(0), packed(0),
-   vector_elements(0), matrix_columns(0),
-   length(num_params), explicit_stride(0), explicit_alignment(0)
-{
-   unsigned int i;
-
-   this->mem_ctx = ralloc_context(NULL);
-   assert(this->mem_ctx != NULL);
-
-   this->name = "";
-
-   struct glsl_function_param *copied_params =
-      rzalloc_array(this->mem_ctx, glsl_function_param, num_params + 1);
-
-   /* We store the return type as the first parameter */
-   copied_params[0].type = return_type;
-   copied_params[0].in = false;
-   copied_params[0].out = true;
-
-   /* We store the i'th parameter in slot i+1 */
-   for (i = 0; i < length; i++) {
-      copied_params[i + 1].type = params[i].type;
-      copied_params[i + 1].in = params[i].in;
-      copied_params[i + 1].out = params[i].out;
-   }
-
-   this->fields.parameters = copied_params;
-}
-
 glsl_type::glsl_type(const char *subroutine_name) :
    gl_type(0),
    base_type(GLSL_TYPE_SUBROUTINE), sampled_type(GLSL_TYPE_VOID),
@@ -444,7 +410,6 @@ const glsl_type *glsl_type::get_bare_type() const
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_SUBROUTINE:
-   case GLSL_TYPE_FUNCTION:
    case GLSL_TYPE_ERROR:
       return this;
    }
@@ -1589,62 +1554,6 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
    return t;
 }
 
-
-static bool
-function_key_compare(const void *a, const void *b)
-{
-   const glsl_type *const key1 = (glsl_type *) a;
-   const glsl_type *const key2 = (glsl_type *) b;
-
-   if (key1->length != key2->length)
-      return false;
-
-   return memcmp(key1->fields.parameters, key2->fields.parameters,
-                 (key1->length + 1) * sizeof(*key1->fields.parameters)) == 0;
-}
-
-
-static uint32_t
-function_key_hash(const void *a)
-{
-   const glsl_type *const key = (glsl_type *) a;
-   return _mesa_hash_data(key->fields.parameters,
-                          (key->length + 1) * sizeof(*key->fields.parameters));
-}
-
-const glsl_type *
-glsl_type::get_function_instance(const glsl_type *return_type,
-                                 const glsl_function_param *params,
-                                 unsigned num_params)
-{
-   const glsl_type key(return_type, params, num_params);
-   const uint32_t key_hash = function_key_hash(&key);
-
-   simple_mtx_lock(&glsl_type::hash_mutex);
-   assert(glsl_type_users > 0);
-
-   if (function_types == NULL) {
-      function_types = _mesa_hash_table_create(NULL, function_key_hash,
-                                               function_key_compare);
-   }
-
-   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(function_types, key_hash, &key);
-   if (entry == NULL) {
-      const glsl_type *t = new glsl_type(return_type, params, num_params);
-
-      entry = _mesa_hash_table_insert_pre_hashed(function_types, key_hash, t, (void *) t);
-   }
-
-   auto t = (const glsl_type *)entry->data;
-   simple_mtx_unlock(&glsl_type::hash_mutex);
-
-   assert(t->base_type == GLSL_TYPE_FUNCTION);
-   assert(t->length == num_params);
-
-   return t;
-}
-
-
 const glsl_type *
 glsl_type::get_mul_type(const glsl_type *type_a, const glsl_type *type_b)
 {
@@ -1785,7 +1694,6 @@ glsl_type::component_slots() const
    case GLSL_TYPE_SUBROUTINE:
       return 1;
 
-   case GLSL_TYPE_FUNCTION:
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
@@ -1852,7 +1760,6 @@ glsl_type::component_slots_aligned(unsigned offset) const
    case GLSL_TYPE_SUBROUTINE:
       return 1;
 
-   case GLSL_TYPE_FUNCTION:
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
@@ -2930,7 +2837,6 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
    case GLSL_TYPE_SUBROUTINE:
       return 1;
 
-   case GLSL_TYPE_FUNCTION:
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
@@ -2987,7 +2893,6 @@ glsl_type::count_dword_slots(bool is_bindless) const
       return 1;
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
-   case GLSL_TYPE_FUNCTION:
    default:
       unreachable("invalid type in st_glsl_type_dword_size()");
    }
