@@ -453,6 +453,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    case PIPE_CAP_VS_LAYER_VIEWPORT:
+   case PIPE_CAP_TES_LAYER_VIEWPORT:
       return is_a6xx(screen);
 
    case PIPE_CAP_MAX_VIEWPORTS:

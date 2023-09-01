@@ -309,7 +309,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_ARB_shader_ballot                                  DONE (nvc0, radeonsi, zink, iris, crocus/gen8)
   GL_ARB_shader_clock                                   DONE (nv50, nvc0, r600, radeonsi, llvmpipe, virgl, zink, iris, crocus/gen7+)
   GL_ARB_shader_stencil_export                          DONE (r600, radeonsi, softpipe, llvmpipe, virgl, panfrost, zink, asahi, iris/gen9+)
-  GL_ARB_shader_viewport_layer_array                    DONE (nvc0, radeonsi, zink, iris, crocus/gen6+)
+  GL_ARB_shader_viewport_layer_array                    DONE (freedreno/a6xx, nvc0, radeonsi, zink, iris, crocus/gen6+)
   GL_ARB_shading_language_include                       DONE
   GL_ARB_sparse_buffer                                  DONE (radeonsi/gfx9+, zink)
   GL_ARB_sparse_texture                                 DONE (radeonsi/gfx9+, zink)
