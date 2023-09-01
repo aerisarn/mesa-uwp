@@ -576,29 +576,6 @@ do_int_mod(struct lp_build_nir_context *bld_base,
    return LLVMBuildOr(builder, div_mask, result, "");
 }
 
-
-static LLVMValueRef
-do_quantize_to_f16(struct lp_build_nir_context *bld_base,
-                   LLVMValueRef src)
-{
-   struct gallivm_state *gallivm = bld_base->base.gallivm;
-   LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef result, cond, cond2, temp;
-
-   result = LLVMBuildFPTrunc(builder, src, bld_base->half_bld.vec_type, "");
-   result = LLVMBuildFPExt(builder, result, bld_base->base.vec_type, "");
-
-   temp = lp_build_abs(get_flt_bld(bld_base, 32), result);
-   cond = LLVMBuildFCmp(builder, LLVMRealOGT,
-                        LLVMBuildBitCast(builder, lp_build_const_int_vec(gallivm, bld_base->uint_bld.type, 0x38800000), bld_base->base.vec_type, ""),
-                        temp, "");
-   cond2 = LLVMBuildFCmp(builder, LLVMRealONE, temp, bld_base->base.zero, "");
-   cond = LLVMBuildAnd(builder, cond, cond2, "");
-   result = LLVMBuildSelect(builder, cond, bld_base->base.zero, result, "");
-   return result;
-}
-
-
 static LLVMValueRef
 do_alu_action(struct lp_build_nir_context *bld_base,
               const nir_alu_instr *instr,
@@ -821,9 +798,6 @@ do_alu_action(struct lp_build_nir_context *bld_base,
       break;
    case nir_op_fpow:
       result = lp_build_pow(get_flt_bld(bld_base, src_bit_size[0]), src[0], src[1]);
-      break;
-   case nir_op_fquantize2f16:
-      result = do_quantize_to_f16(bld_base, src[0]);
       break;
    case nir_op_frcp:
       result = lp_build_rcp(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
