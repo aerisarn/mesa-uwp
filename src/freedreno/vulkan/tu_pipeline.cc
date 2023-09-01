@@ -246,6 +246,7 @@ struct tu_pipeline_builder
    struct vk_pipeline_cache *cache;
    const VkAllocationCallbacks *alloc;
    const VkGraphicsPipelineCreateInfo *create_info;
+   VkPipelineCreateFlags2KHR create_flags;
 
    struct tu_pipeline_layout layout;
 
@@ -1741,8 +1742,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    VkPipelineCreationFeedback stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
 
    const bool executable_info =
-      builder->create_info->flags &
-      VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
+      builder->create_flags &
+      VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
 
    int64_t pipeline_start = os_time_get_nano();
 
@@ -1772,8 +1773,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       tu_shader_key_init(&keys[stage], stage_infos[stage], builder->device);
    }
 
-   if (builder->create_info->flags &
-       VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT) {
+   if (builder->create_flags &
+       VK_PIPELINE_CREATE_2_LINK_TIME_OPTIMIZATION_BIT_EXT) {
       for (unsigned i = 0; i < builder->num_libraries; i++) {
          struct tu_graphics_lib_pipeline *library = builder->libraries[i];
 
@@ -1849,8 +1850,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
        * still need to recompile in order to get the NIR.
        */
       if (cache_hit &&
-          (builder->create_info->flags &
-           VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT)) {
+          (builder->create_flags &
+           VK_PIPELINE_CREATE_2_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT)) {
          bool nir_application_cache_hit = false;
          nir_shaders =
             tu_nir_cache_lookup(builder->cache, &nir_sha1,
@@ -1870,8 +1871,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          goto done;
    }
 
-   if (builder->create_info->flags &
-       VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+   if (builder->create_flags &
+       VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR) {
       return VK_PIPELINE_COMPILE_REQUIRED;
    }
 
@@ -1907,8 +1908,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    tu_link_shaders(builder, nir, ARRAY_SIZE(nir));
 
-   if (builder->create_info->flags &
-       VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT) {
+   if (builder->create_flags &
+       VK_PIPELINE_CREATE_2_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT) {
       nir_shaders =
          tu_nir_shaders_init(builder->device, &nir_sha1, sizeof(nir_sha1));
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -3826,7 +3827,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 {
    VkResult result;
 
-   if (builder->create_info->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) {
+   if (builder->create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR) {
       *pipeline = (struct tu_pipeline *) vk_object_zalloc(
          &builder->device->vk, builder->alloc,
          sizeof(struct tu_graphics_lib_pipeline),
@@ -3999,6 +4000,7 @@ tu_pipeline_builder_init_graphics(
    struct tu_device *dev,
    struct vk_pipeline_cache *cache,
    const VkGraphicsPipelineCreateInfo *create_info,
+   VkPipelineCreateFlags2KHR flags,
    const VkAllocationCallbacks *alloc)
 {
    *builder = (struct tu_pipeline_builder) {
@@ -4007,6 +4009,7 @@ tu_pipeline_builder_init_graphics(
       .cache = cache,
       .alloc = alloc,
       .create_info = create_info,
+      .create_flags = flags,
    };
 
    const VkGraphicsPipelineLibraryCreateInfoEXT *gpl_info =
@@ -4033,7 +4036,7 @@ tu_pipeline_builder_init_graphics(
        *    pipeline).
        */
       if ((library_info && library_info->libraryCount > 0) ||
-          (builder->create_info->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
+          (builder->create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR)) {
          builder->state = 0;
       } else {
          builder->state =
@@ -4103,9 +4106,9 @@ tu_pipeline_builder_init_graphics(
       /* Feedback loop flags can come from either the user (in which case they
        * may involve textures) or from the driver (in which case they don't).
        */
-      VkPipelineCreateFlags feedback_flags = builder->create_info->flags &
-         (VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
-          VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+      VkPipelineCreateFlags feedback_flags = builder->create_flags &
+         (VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+          VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       if (feedback_flags) {
          rp_state.feedback_loop_input_only = false;
          rp_state.pipeline_flags |= feedback_flags;
@@ -4158,6 +4161,7 @@ static VkResult
 tu_graphics_pipeline_create(VkDevice device,
                             VkPipelineCache pipelineCache,
                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                            VkPipelineCreateFlags2KHR flags,
                             const VkAllocationCallbacks *pAllocator,
                             VkPipeline *pPipeline)
 {
@@ -4168,7 +4172,7 @@ tu_graphics_pipeline_create(VkDevice device,
 
    struct tu_pipeline_builder builder;
    tu_pipeline_builder_init_graphics(&builder, dev, cache,
-                                     pCreateInfo, pAllocator);
+                                     pCreateInfo, flags, pAllocator);
 
    struct tu_pipeline *pipeline = NULL;
    VkResult result = tu_pipeline_builder_build<CHIP>(&builder, &pipeline);
@@ -4196,16 +4200,23 @@ tu_CreateGraphicsPipelines(VkDevice device,
    uint32_t i = 0;
 
    for (; i < count; i++) {
-      VkResult result = tu_graphics_pipeline_create<CHIP>(device, pipelineCache,
-                                                    &pCreateInfos[i], pAllocator,
-                                                    &pPipelines[i]);
+      VkPipelineCreateFlags2KHR flags = pCreateInfos[i].flags;
+      const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
+         vk_find_struct_const(pCreateInfos[i].pNext,
+                              PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
+      if (flags2)
+         flags = flags2->flags;
+
+      VkResult result =
+         tu_graphics_pipeline_create<CHIP>(device, pipelineCache,
+                                           &pCreateInfos[i], flags,
+                                           pAllocator, &pPipelines[i]);
 
       if (result != VK_SUCCESS) {
          final_result = result;
          pPipelines[i] = VK_NULL_HANDLE;
 
-         if (pCreateInfos[i].flags &
-             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+         if (flags & VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR)
             break;
       }
    }
@@ -4222,6 +4233,7 @@ static VkResult
 tu_compute_pipeline_create(VkDevice device,
                            VkPipelineCache pipelineCache,
                            const VkComputePipelineCreateInfo *pCreateInfo,
+                           VkPipelineCreateFlags2KHR flags,
                            const VkAllocationCallbacks *pAllocator,
                            VkPipeline *pPipeline)
 {
@@ -4267,8 +4279,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    struct tu_shader *shader = NULL;
 
-   const bool executable_info = pCreateInfo->flags &
-      VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
+   const bool executable_info = flags &
+      VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
 
    bool application_cache_hit = false;
 
@@ -4286,8 +4298,8 @@ tu_compute_pipeline_create(VkDevice device,
    char *nir_initial_disasm = NULL;
 
    if (!shader) {
-      if (pCreateInfo->flags &
-          VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+      if (flags &
+          VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR) {
          result = VK_PIPELINE_COMPILE_REQUIRED;
          goto fail;
       }
@@ -4373,15 +4385,23 @@ tu_CreateComputePipelines(VkDevice device,
    uint32_t i = 0;
 
    for (; i < count; i++) {
-      VkResult result = tu_compute_pipeline_create<CHIP>(device, pipelineCache,
-                                                   &pCreateInfos[i],
-                                                   pAllocator, &pPipelines[i]);
+      VkPipelineCreateFlags2KHR flags = pCreateInfos[i].flags;
+      const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
+         vk_find_struct_const(pCreateInfos[i].pNext,
+                              PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
+      if (flags2)
+         flags = flags2->flags;
+
+      VkResult result =
+         tu_compute_pipeline_create<CHIP>(device, pipelineCache,
+                                          &pCreateInfos[i], flags,
+                                          pAllocator, &pPipelines[i]);
       if (result != VK_SUCCESS) {
          final_result = result;
          pPipelines[i] = VK_NULL_HANDLE;
 
-         if (pCreateInfos[i].flags &
-             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+         if (flags &
+             VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR)
             break;
       }
    }
