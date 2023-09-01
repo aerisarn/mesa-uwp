@@ -51,139 +51,125 @@ static struct {
    hash_table *subroutine_types;
 } glsl_type_cache;
 
-glsl_type::glsl_type(const glsl_type_params &params)
-{
-   gl_type = params.gl_type;
-   base_type = params.base_type;
-   sampled_type = params.sampled_type;
-   sampler_dimensionality = params.sampler_dimensionality;
-   sampler_shadow = params.sampler_shadow;
-   sampler_array = params.sampler_array;
-   vector_elements = params.vector_elements;
-   matrix_columns = params.matrix_columns;
-   length = params.length;
-   name = params.name;
-}
-
-glsl_type::glsl_type(void *mem_ctx, uint32_t gl_type,
-                     glsl_base_type base_type, unsigned vector_elements,
-                     unsigned matrix_columns, const char *name,
-                     unsigned explicit_stride, bool row_major,
-                     unsigned explicit_alignment) :
-   gl_type(gl_type),
-   base_type(base_type), sampled_type(GLSL_TYPE_VOID),
-   sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   interface_packing(0), interface_row_major(row_major), packed(0),
-   vector_elements(vector_elements), matrix_columns(matrix_columns),
-   length(0), explicit_stride(explicit_stride),
-   explicit_alignment(explicit_alignment)
+static const glsl_type *
+make_vector_matrix_type(void *mem_ctx, uint32_t gl_type,
+                        glsl_base_type base_type, unsigned vector_elements,
+                        unsigned matrix_columns, const char *name,
+                        unsigned explicit_stride, bool row_major,
+                        unsigned explicit_alignment)
 {
    assert(mem_ctx != NULL);
-
    assert(name != NULL);
-   this->name = ralloc_strdup(mem_ctx, name);
+   assert(util_is_power_of_two_or_zero(explicit_alignment));
 
-   /* Neither dimension is zero or both dimensions are zero.
-    */
+   /* Neither dimension is zero or both dimensions are zero. */
    assert((vector_elements == 0) == (matrix_columns == 0));
-   assert(util_is_power_of_two_or_zero(explicit_alignment));
-   memset(& fields, 0, sizeof(fields));
+
+   glsl_type *t = rzalloc(mem_ctx, glsl_type);
+   t->gl_type = gl_type;
+   t->base_type = base_type;
+   t->sampled_type = GLSL_TYPE_VOID;
+   t->interface_row_major = row_major;
+   t->vector_elements = vector_elements;
+   t->matrix_columns = matrix_columns;
+   t->explicit_stride = explicit_stride;
+   t->explicit_alignment = explicit_alignment;
+   t->name = ralloc_strdup(mem_ctx, name);
+
+   return t;
 }
 
-glsl_type::glsl_type(void *mem_ctx, uint32_t gl_type, glsl_base_type base_type,
-                     enum glsl_sampler_dim dim, bool shadow, bool array,
-                     glsl_base_type type, const char *name) :
-   gl_type(gl_type),
-   base_type(base_type), sampled_type(type),
-   sampler_dimensionality(dim), sampler_shadow(shadow),
-   sampler_array(array), interface_packing(0),
-   interface_row_major(0), packed(0),
-   length(0), explicit_stride(0), explicit_alignment(0)
+static void
+fill_struct_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_fields,
+                 const char *name, bool packed, unsigned explicit_alignment)
 {
-   assert(mem_ctx != NULL);
-
-   assert(name != NULL);
-   this->name = ralloc_strdup(mem_ctx, name);
-
-   memset(& fields, 0, sizeof(fields));
-
-   matrix_columns = vector_elements = 1;
+   assert(util_is_power_of_two_or_zero(explicit_alignment));
+   t->base_type = GLSL_TYPE_STRUCT;
+   t->sampled_type = GLSL_TYPE_VOID;
+   t->packed = packed;
+   t->length = num_fields;
+   t->name = name;
+   t->explicit_alignment = explicit_alignment;
+   t->fields.structure = fields;
 }
 
-glsl_type::glsl_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
-                     const char *name, bool packed,
-                     unsigned explicit_alignment) :
-   gl_type(0),
-   base_type(GLSL_TYPE_STRUCT), sampled_type(GLSL_TYPE_VOID),
-   sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   interface_packing(0), interface_row_major(0), packed(packed),
-   vector_elements(0), matrix_columns(0),
-   length(num_fields), explicit_stride(0),
-   explicit_alignment(explicit_alignment)
+static const glsl_type *
+make_struct_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
+                 const char *name, bool packed,
+                 unsigned explicit_alignment)
 {
-   unsigned int i;
-
-   assert(util_is_power_of_two_or_zero(explicit_alignment));
-
    assert(mem_ctx != NULL);
-
    assert(name != NULL);
-   this->name = ralloc_strdup(mem_ctx, name);
+
+   glsl_type *t = rzalloc(mem_ctx, glsl_type);
+   const char *copied_name = ralloc_strdup(mem_ctx, name);
 
    /* Zero-fill to prevent spurious Valgrind errors when serializing NIR
     * due to uninitialized unused bits in bit fields. */
-   struct glsl_struct_field *copied_struct =
-      rzalloc_array(mem_ctx, glsl_struct_field, length);
-
-   for (i = 0; i < length; i++) {
-      copied_struct[i] = fields[i];
-      copied_struct[i].name = ralloc_strdup(copied_struct, fields[i].name);
+   struct glsl_struct_field *copied_fields =
+      rzalloc_array(mem_ctx, glsl_struct_field, num_fields);
+   for (unsigned i = 0; i < num_fields; i++) {
+      copied_fields[i] = fields[i];
+      copied_fields[i].name = ralloc_strdup(copied_fields, fields[i].name);
    }
 
-   this->fields.structure = copied_struct;
+   fill_struct_type(t, copied_fields, num_fields, copied_name, packed, explicit_alignment);
+
+   return t;
 }
 
-glsl_type::glsl_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
-                     enum glsl_interface_packing packing,
-                     bool row_major, const char *name) :
-   gl_type(0),
-   base_type(GLSL_TYPE_INTERFACE), sampled_type(GLSL_TYPE_VOID),
-   sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   interface_packing((unsigned) packing),
-   interface_row_major((unsigned) row_major), packed(0),
-   vector_elements(0), matrix_columns(0),
-   length(num_fields), explicit_stride(0), explicit_alignment(0)
+static void
+fill_interface_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_fields,
+                    enum glsl_interface_packing packing,
+                    bool row_major, const char *name)
 {
-   unsigned int i;
+   t->base_type = GLSL_TYPE_INTERFACE;
+   t->sampled_type = GLSL_TYPE_VOID;
+   t->interface_packing = (unsigned)packing;
+   t->interface_row_major = (unsigned)row_major;
+   t->length = num_fields;
+   t->name = name;
+   t->fields.structure = fields;
+}
 
+static const glsl_type *
+make_interface_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
+                    enum glsl_interface_packing packing,
+                    bool row_major, const char *name)
+{
    assert(mem_ctx != NULL);
-
    assert(name != NULL);
-   this->name = ralloc_strdup(mem_ctx, name);
 
-   struct glsl_struct_field *copied_struct =
-      rzalloc_array(mem_ctx, glsl_struct_field, length);
+   glsl_type *t = rzalloc(mem_ctx, glsl_type);
+   const char *copied_name = ralloc_strdup(mem_ctx, name);
 
-   for (i = 0; i < length; i++) {
-      copied_struct[i] = fields[i];
-      copied_struct[i].name = ralloc_strdup(copied_struct, fields[i].name);
+   struct glsl_struct_field *copied_fields =
+      rzalloc_array(mem_ctx, glsl_struct_field, num_fields);
+
+   for (unsigned i = 0; i < num_fields; i++) {
+      copied_fields[i] = fields[i];
+      copied_fields[i].name = ralloc_strdup(copied_fields, fields[i].name);
    }
 
-   this->fields.structure = copied_struct;
+   fill_interface_type(t, copied_fields, num_fields, packing, row_major, copied_name);
+
+   return t;
 }
 
-glsl_type::glsl_type(void *mem_ctx, const char *subroutine_name) :
-   gl_type(0),
-   base_type(GLSL_TYPE_SUBROUTINE), sampled_type(GLSL_TYPE_VOID),
-   sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   interface_packing(0), interface_row_major(0), packed(0),
-   vector_elements(1), matrix_columns(1),
-   length(0), explicit_stride(0), explicit_alignment(0)
+static const glsl_type *
+make_subroutine_type(void *mem_ctx, const char *subroutine_name)
 {
    assert(mem_ctx != NULL);
-
    assert(subroutine_name != NULL);
-   this->name = ralloc_strdup(mem_ctx, subroutine_name);
+
+   glsl_type *t = rzalloc(mem_ctx, glsl_type);
+   t->base_type = GLSL_TYPE_SUBROUTINE;
+   t->sampled_type = GLSL_TYPE_VOID;
+   t->vector_elements = 1;
+   t->matrix_columns = 1;
+   t->name = ralloc_strdup(mem_ctx, subroutine_name);
+
+   return t;
 }
 
 bool
@@ -487,51 +473,54 @@ glsl_type_singleton_decref()
    simple_mtx_unlock(&glsl_type_cache_mutex);
 }
 
-
-glsl_type::glsl_type(void *mem_ctx, const glsl_type *array, unsigned length,
-                     unsigned explicit_stride) :
-   base_type(GLSL_TYPE_ARRAY), sampled_type(GLSL_TYPE_VOID),
-   sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   interface_packing(0), interface_row_major(0), packed(0),
-   vector_elements(0), matrix_columns(0),
-   length(length), name(NULL), explicit_stride(explicit_stride),
-   explicit_alignment(array->explicit_alignment)
+static const glsl_type *
+make_array_type(void *mem_ctx, const glsl_type *element_type, unsigned length,
+                unsigned explicit_stride)
 {
-   this->fields.array = array;
+   assert(mem_ctx != NULL);
+
+   glsl_type *t = rzalloc(mem_ctx, glsl_type);
+   t->base_type = GLSL_TYPE_ARRAY;
+   t->sampled_type = GLSL_TYPE_VOID;
+   t->length = length;
+   t->explicit_stride = explicit_stride;
+   t->explicit_alignment = element_type->explicit_alignment;
+   t->fields.array = element_type;
+
    /* Inherit the gl type of the base. The GL type is used for
     * uniform/statevar handling in Mesa and the arrayness of the type
     * is represented by the size rather than the type.
     */
-   this->gl_type = array->gl_type;
+   t->gl_type = element_type->gl_type;
 
    /* Allow a maximum of 10 characters for the array size.  This is enough
     * for 32-bits of ~0.  The extra 3 are for the '[', ']', and terminating
     * NUL.
     */
-   const unsigned name_length = strlen(array->name) + 10 + 3;
-
-   assert(mem_ctx);
+   const unsigned name_length = strlen(element_type->name) + 10 + 3;
 
    char *const n = (char *) ralloc_size(mem_ctx, name_length);
 
-   if (length == 0)
-      snprintf(n, name_length, "%s[]", array->name);
+   if (t->length == 0)
+      snprintf(n, name_length, "%s[]", element_type->name);
    else {
       /* insert outermost dimensions in the correct spot
        * otherwise the dimension order will be backwards
        */
-      const char *pos = strchr(array->name, '[');
+      const char *pos = strchr(element_type->name, '[');
       if (pos) {
-         int idx = pos - array->name;
-         snprintf(n, idx+1, "%s", array->name);
+         int idx = pos - element_type->name;
+         snprintf(n, idx+1, "%s", element_type->name);
          snprintf(n + idx, name_length - idx, "[%u]%s",
-                       length, array->name + idx);
+                       length, element_type->name + idx);
       } else {
-         snprintf(n, name_length, "%s[%u]", array->name, length);
+         snprintf(n, name_length, "%s[%u]", element_type->name, length);
       }
    }
 
-   this->name = n;
+   t->name = n;
+
+   return t;
 }
 
 const glsl_type *
@@ -761,11 +750,12 @@ glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int row
       snprintf(name, sizeof(name), "%sx%ua%uB%s", bare_type->name,
                explicit_stride, explicit_alignment, row_major ? "RM" : "");
 
-      const glsl_type *t = new glsl_type(mem_ctx, bare_type->gl_type,
-                                         (glsl_base_type)base_type,
-                                         rows, columns, name,
-                                         explicit_stride, row_major,
-                                         explicit_alignment);
+      const glsl_type *t =
+         make_vector_matrix_type(mem_ctx, bare_type->gl_type,
+                                 (glsl_base_type)base_type,
+                                 rows, columns, name,
+                                 explicit_stride, row_major,
+                                 explicit_alignment);
 
       struct explicit_matrix_key *stored_key = ralloc(mem_ctx, struct explicit_matrix_key);
       memcpy(stored_key, &key, sizeof(key));
@@ -1235,7 +1225,7 @@ glsl_type::get_array_instance(const glsl_type *element,
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(array_types, key_hash, &key);
    if (entry == NULL) {
-      const glsl_type *t = new glsl_type(mem_ctx, element, array_size, explicit_stride);
+      const glsl_type *t = make_array_type(mem_ctx, element, array_size, explicit_stride);
       struct array_key *stored_key = ralloc(mem_ctx, struct array_key);
       memcpy(stored_key, &key, sizeof(key));
 
@@ -1435,8 +1425,8 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
                                const char *name,
                                bool packed, unsigned explicit_alignment)
 {
-   void *tmp_ctx = ralloc_context(NULL);
-   const glsl_type key(tmp_ctx, fields, num_fields, name, packed, explicit_alignment);
+   glsl_type key = {0};
+   fill_struct_type(&key, fields, num_fields, name, packed, explicit_alignment);
    const uint32_t key_hash = record_key_hash(&key);
 
    simple_mtx_lock(&glsl_type_cache_mutex);
@@ -1452,8 +1442,8 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(struct_types,
                                                                        key_hash, &key);
    if (entry == NULL) {
-      const glsl_type *t = new glsl_type(mem_ctx, fields, num_fields, name, packed,
-                                         explicit_alignment);
+      const glsl_type *t = make_struct_type(mem_ctx, fields, num_fields, name, packed,
+                                            explicit_alignment);
 
       entry = _mesa_hash_table_insert_pre_hashed(struct_types, key_hash, t, (void *) t);
    }
@@ -1467,8 +1457,6 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
    assert(t->packed == packed);
    assert(t->explicit_alignment == explicit_alignment);
 
-   ralloc_free(tmp_ctx);
-
    return t;
 }
 
@@ -1480,8 +1468,8 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
                                   bool row_major,
                                   const char *block_name)
 {
-   void *tmp_ctx = ralloc_context(NULL);
-   const glsl_type key(tmp_ctx, fields, num_fields, packing, row_major, block_name);
+   glsl_type key = {0};
+   fill_interface_type(&key, fields, num_fields, packing, row_major, block_name);
    const uint32_t key_hash = record_key_hash(&key);
 
    simple_mtx_lock(&glsl_type_cache_mutex);
@@ -1497,8 +1485,8 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(interface_types,
                                                                        key_hash, &key);
    if (entry == NULL) {
-      const glsl_type *t = new glsl_type(mem_ctx, fields, num_fields,
-                                         packing, row_major, block_name);
+      const glsl_type *t = make_interface_type(mem_ctx, fields, num_fields,
+                                               packing, row_major, block_name);
 
       entry = _mesa_hash_table_insert_pre_hashed(interface_types, key_hash, t, (void *) t);
    }
@@ -1509,8 +1497,6 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
    assert(t->base_type == GLSL_TYPE_INTERFACE);
    assert(t->length == num_fields);
    assert(strcmp(t->name, block_name) == 0);
-
-   ralloc_free(tmp_ctx);
 
    return t;
 }
@@ -1533,7 +1519,7 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(subroutine_types,
                                                                        key_hash, subroutine_name);
    if (entry == NULL) {
-      const glsl_type *t = new glsl_type(mem_ctx, subroutine_name);
+      const glsl_type *t = make_subroutine_type(mem_ctx, subroutine_name);
 
       entry = _mesa_hash_table_insert_pre_hashed(subroutine_types, key_hash, t->name, (void *) t);
    }
@@ -2916,7 +2902,7 @@ glsl_type::coordinate_components() const
  * @{
  */
 #define DECL_TYPE(NAME, ...)                                    \
-   const glsl_type glsl_type::_##NAME##_type = glsl_type((glsl_type_params)__VA_ARGS__); \
+   const glsl_type glsl_type::_##NAME##_type = __VA_ARGS__; \
    const glsl_type *const glsl_type::NAME##_type = &glsl_type::_##NAME##_type;
 #include "compiler/builtin_type_macros.h"
 #undef DECL_TYPE

@@ -286,20 +286,6 @@ enum {
 /* C++ struct types for glsl */
 #ifdef __cplusplus
 
-/* TODO: Remove this once glsl_type is a plain struct. */
-struct glsl_type_params {
-   uint32_t gl_type;
-   glsl_base_type base_type:8;
-   glsl_base_type sampled_type:8;
-   unsigned sampler_dimensionality:4;
-   unsigned sampler_shadow:1;
-   unsigned sampler_array:1;
-   uint8_t vector_elements;
-   uint8_t matrix_columns;
-   unsigned length;
-   const char *name;
-};
-
 struct glsl_type {
    uint32_t gl_type;
    glsl_base_type base_type:8;
@@ -322,11 +308,6 @@ struct glsl_type {
     * Only used for Compute kernels
     */
    unsigned packed:1;
-
-   glsl_type()
-   {
-      // Dummy constructor, just for the sake of ASSERT_BITFIELD_SIZE.
-   }
 
    /**
     * \name Vector and matrix element counts
@@ -1234,37 +1215,6 @@ struct glsl_type {
    }
 
 private:
-   /** Constructor for builtins. */
-   explicit glsl_type(const glsl_type_params &params);
-
-   /** Constructor for vector and matrix types */
-   glsl_type(void *mem_ctx, uint32_t gl_type,
-             glsl_base_type base_type, unsigned vector_elements,
-             unsigned matrix_columns, const char *name,
-             unsigned explicit_stride = 0, bool row_major = false,
-             unsigned explicit_alignment = 0);
-
-   /** Constructor for sampler or image types */
-   glsl_type(void *mem_ctx, uint32_t gl_type, glsl_base_type base_type,
-	     enum glsl_sampler_dim dim, bool shadow, bool array,
-	     glsl_base_type type, const char *name);
-
-   /** Constructor for record types */
-   glsl_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
-	     const char *name, bool packed = false,
-	     unsigned explicit_alignment = 0);
-
-   /** Constructor for interface types */
-   glsl_type(void *mem_ctx, const glsl_struct_field *fields, unsigned num_fields,
-	     enum glsl_interface_packing packing,
-	     bool row_major, const char *name);
-
-   /** Constructors for array types */
-   glsl_type(void *mem_ctx, const glsl_type *array, unsigned length, unsigned explicit_stride);
-
-   /** Constructor for subroutine types */
-   glsl_type(void *mem_ctx, const char *name);
-
    static bool record_key_compare(const void *a, const void *b);
    static unsigned record_key_hash(const void *key);
 
