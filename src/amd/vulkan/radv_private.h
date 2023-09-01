@@ -1039,6 +1039,9 @@ struct radv_device {
    /* Whether primitives generated query features are enabled. */
    bool primitives_generated_query;
 
+   /* Whether to use GS_FAST_LAUNCH(2) for mesh shaders. */
+   bool mesh_fast_launch_2;
+
    /* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
    int force_aniso;
 

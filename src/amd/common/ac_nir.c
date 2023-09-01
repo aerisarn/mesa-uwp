@@ -129,6 +129,22 @@ lower_intrinsic_to_arg(nir_builder *b, nir_instr *instr, void *state)
 
       break;
    }
+   case nir_intrinsic_load_workgroup_id:
+      if (b->shader->info.stage == MESA_SHADER_MESH) {
+         /* This lowering is only valid with fast_launch = 2, otherwise we assume that
+          * lower_workgroup_id_to_index removed any uses of the workgroup id by this point.
+          */
+         assert(s->gfx_level >= GFX11);
+         nir_def *xy = ac_nir_load_arg(b, s->args, s->args->tess_offchip_offset);
+         nir_def *z = ac_nir_load_arg(b, s->args, s->args->gs_attr_offset);
+         replacement = nir_vec3(b, nir_extract_u16(b, xy, nir_imm_int(b, 0)),
+                                nir_extract_u16(b, xy, nir_imm_int(b, 1)),
+                                nir_extract_u16(b, z, nir_imm_int(b, 1)));
+      } else {
+         return false;
+      }
+
+      break;
    default:
       return false;
    }

@@ -222,6 +222,7 @@
 #define   S_4D1_XYZ_DIM_ENABLE(x)                     ((x & 1) << 30) /* GFX11+ */
 #define   S_4D1_MODE1_ENABLE(x)                       ((x & 1) << 29) /* GFX11+ */
 #define   S_4D1_LINEAR_DISPATCH_ENABLE(x)             ((x & 1) << 28) /* GFX11+ */
+#define PKT3_DISPATCH_MESH_DIRECT                  0x4E /* Direct mesh shader only dispatch [GFX only], GFX11+ */
 #define PKT3_DMA_DATA                              0x50 /* GFX7+ */
 #define PKT3_CONTEXT_REG_RMW                       0x51 /* older firmware versions on older chips don't have this */
 #define PKT3_ONE_REG_WRITE                         0x57 /* GFX6 only */

@@ -8064,7 +8064,7 @@ radv_cs_emit_indirect_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer, uint3
    uint32_t draw_id_reg = xyz_dim_reg + (xyz_dim_enable ? 3 : 0);
 
    uint32_t draw_id_enable = !!cmd_buffer->state.uses_drawid;
-   uint32_t mode1_enable = 1; /* legacy fast launch mode */
+   uint32_t mode1_enable = !cmd_buffer->device->mesh_fast_launch_2;
    const bool sqtt_en = !!cmd_buffer->device->sqtt.bo;
 
    radeon_emit(cs, PKT3(PKT3_DISPATCH_MESH_INDIRECT_MULTI, 7, predicating) | PKT3_RESET_FILTER_CAM_S(1));
@@ -8166,7 +8166,7 @@ radv_cs_emit_dispatch_taskmesh_gfx_packet(struct radv_cmd_buffer *cmd_buffer)
    uint32_t xyz_dim_reg = (cmd_buffer->state.vtx_base_sgpr - SI_SH_REG_OFFSET) >> 2;
    uint32_t ring_entry_reg = ((mesh_shader->info.user_data_0 - SI_SH_REG_OFFSET) >> 2) + ring_entry_loc->sgpr_idx;
    uint32_t xyz_dim_en = mesh_shader->info.cs.uses_grid_size;
-   uint32_t mode1_en = 1; /* legacy fast launch mode */
+   uint32_t mode1_en = !cmd_buffer->device->mesh_fast_launch_2;
    uint32_t linear_dispatch_en = cmd_buffer->state.shaders[MESA_SHADER_TASK]->info.cs.linear_taskmesh_dispatch;
    const bool sqtt_en = !!cmd_buffer->device->sqtt.bo;
 
@@ -8471,20 +8471,41 @@ radv_emit_direct_draw_packets(struct radv_cmd_buffer *cmd_buffer, const struct r
    }
 }
 
+static void
+radv_cs_emit_mesh_dispatch_packet(struct radv_cmd_buffer *cmd_buffer, uint32_t x, uint32_t y, uint32_t z)
+{
+   radeon_emit(cmd_buffer->cs, PKT3(PKT3_DISPATCH_MESH_DIRECT, 3, cmd_buffer->state.predicating));
+   radeon_emit(cmd_buffer->cs, x);
+   radeon_emit(cmd_buffer->cs, y);
+   radeon_emit(cmd_buffer->cs, z);
+   radeon_emit(cmd_buffer->cs, S_0287F0_SOURCE_SELECT(V_0287F0_DI_SRC_SEL_AUTO_INDEX));
+}
+
 ALWAYS_INLINE static void
 radv_emit_direct_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer, uint32_t x, uint32_t y, uint32_t z)
 {
    const uint32_t view_mask = cmd_buffer->state.render.view_mask;
-   const uint32_t count = x * y * z;
 
    radv_emit_userdata_mesh(cmd_buffer, x, y, z);
 
-   if (!view_mask) {
-      radv_cs_emit_draw_packet(cmd_buffer, count, 0);
+   if (cmd_buffer->device->mesh_fast_launch_2) {
+      if (!view_mask) {
+         radv_cs_emit_mesh_dispatch_packet(cmd_buffer, x, y, z);
+      } else {
+         u_foreach_bit (view, view_mask) {
+            radv_emit_view_index(cmd_buffer, view);
+            radv_cs_emit_mesh_dispatch_packet(cmd_buffer, x, y, z);
+         }
+      }
    } else {
-      u_foreach_bit (view, view_mask) {
-         radv_emit_view_index(cmd_buffer, view);
+      const uint32_t count = x * y * z;
+      if (!view_mask) {
          radv_cs_emit_draw_packet(cmd_buffer, count, 0);
+      } else {
+         u_foreach_bit (view, view_mask) {
+            radv_emit_view_index(cmd_buffer, view);
+            radv_cs_emit_draw_packet(cmd_buffer, count, 0);
+         }
       }
    }
 }
