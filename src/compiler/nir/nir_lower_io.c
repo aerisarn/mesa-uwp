@@ -3127,6 +3127,19 @@ nir_lower_io_passes(nir_shader *nir, bool renumber_vs_inputs)
       (nir->options->support_indirect_outputs >> nir->info.stage) & 0x1 &&
       nir->xfb_info == NULL;
 
+   /* TODO: Sorting variables by location is required due to some bug
+    * in nir_lower_io_to_temporaries. If variables are not sorted,
+    * dEQP-GLES31.functional.separate_shader.random.0 fails.
+    *
+    * This isn't needed if nir_assign_io_var_locations is called because it
+    * also sorts variables. However, if IO is lowered sooner than that, we
+    * must sort explicitly here to get what nir_assign_io_var_locations does.
+    */
+   unsigned varying_var_mask =
+      (nir->info.stage != MESA_SHADER_VERTEX ? nir_var_shader_in : 0) |
+      (nir->info.stage != MESA_SHADER_FRAGMENT ? nir_var_shader_out : 0);
+   nir_sort_variables_by_location(nir, varying_var_mask);
+
    if (!has_indirect_inputs || !has_indirect_outputs) {
       NIR_PASS_V(nir, nir_lower_io_to_temporaries,
                  nir_shader_get_entrypoint(nir), !has_indirect_outputs,

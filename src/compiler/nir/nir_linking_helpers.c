@@ -1474,6 +1474,15 @@ sort_varyings(nir_shader *shader, nir_variable_mode mode,
 }
 
 void
+nir_sort_variables_by_location(nir_shader *shader, nir_variable_mode mode)
+{
+   struct exec_list vars;
+
+   sort_varyings(shader, mode, &vars);
+   exec_list_append(&shader->variables, &vars);
+}
+
+void
 nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
                             unsigned *size, gl_shader_stage stage)
 {
