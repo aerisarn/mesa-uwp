@@ -125,6 +125,7 @@ static const struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    _TC(R5G6B5_UNORM,   5_6_5_UNORM,             WZYX),
    _TC(B5G6R5_UNORM,   5_6_5_UNORM,             WXYZ),
 
+   _TC(R5G5B5A1_UNORM, 5_5_5_1_UNORM,           WZYX),
    _TC(B5G5R5A1_UNORM, 5_5_5_1_UNORM,           WXYZ),
    _TC(B5G5R5X1_UNORM, 5_5_5_1_UNORM,           WXYZ),
    _TC(A1R5G5B5_UNORM, 5_5_5_1_UNORM,           ZYXW),
