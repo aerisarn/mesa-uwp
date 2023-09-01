@@ -1812,9 +1812,10 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
       src1_z = info->srcOffsets[0].z;
    }
 
-   if (info->dstSubresource.layerCount > 1) {
+   if (vk_image_subresource_layer_count(&dst_image->vk, &info->dstSubresource) > 1) {
       assert(layers <= 1);
-      layers = info->dstSubresource.layerCount;
+      layers = vk_image_subresource_layer_count(&dst_image->vk,
+                                                &info->dstSubresource);
    }
 
    /* BC1_RGB_* formats need to have their last components overriden with 1
@@ -1972,7 +1973,9 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
                         const VkBufferImageCopy2 *info)
 {
    struct tu_cs *cs = &cmd->cs;
-   uint32_t layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount);
+   uint32_t layers = MAX2(info->imageExtent.depth,
+                          vk_image_subresource_layer_count(&dst_image->vk,
+                                                           &info->imageSubresource));
    enum pipe_format src_format =
       copy_format(dst_image->vk.format, info->imageSubresource.aspectMask);
    enum pipe_format dst_format =
@@ -2058,7 +2061,9 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
                         const VkBufferImageCopy2 *info)
 {
    struct tu_cs *cs = &cmd->cs;
-   uint32_t layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount);
+   uint32_t layers = MAX2(info->imageExtent.depth,
+                          vk_image_subresource_layer_count(&src_image->vk,
+                                                           &info->imageSubresource));
    enum pipe_format dst_format =
       copy_format(src_image->vk.format, info->imageSubresource.aspectMask);
    enum pipe_format src_format =
@@ -2175,7 +2180,9 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    VkOffset3D src_offset = info->srcOffset;
    VkOffset3D dst_offset = info->dstOffset;
    VkExtent3D extent = info->extent;
-   uint32_t layers_to_copy = MAX2(info->extent.depth, info->srcSubresource.layerCount);
+   uint32_t layers_to_copy = MAX2(info->extent.depth,
+                                  vk_image_subresource_layer_count(&src_image->vk,
+                                                                   &info->srcSubresource));
 
    /* From the Vulkan 1.2.140 spec, section 19.3 "Copying Data Between
     * Images":
@@ -2253,6 +2260,9 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       staging_layout.tile_mode = TILE6_LINEAR;
       staging_layout.ubwc = false;
 
+      uint32_t layer_count =
+         vk_image_subresource_layer_count(&src_image->vk,
+                                          &info->srcSubresource);
       fdl6_layout(&staging_layout,
                   src_format,
                   src_image->layout[0].nr_samples,
@@ -2260,7 +2270,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
                   extent.height,
                   extent.depth,
                   1,
-                  info->srcSubresource.layerCount,
+                  layer_count,
                   extent.depth > 1,
                   NULL);
 
@@ -2281,7 +2291,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
          .base_miplevel = 0,
          .level_count = 1,
          .base_array_layer = 0,
-         .layer_count = info->srcSubresource.layerCount,
+         .layer_count = layer_count,
          .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
          .format = tu_format_for_aspect(src_format, VK_IMAGE_ASPECT_COLOR_BIT),
          .type = FDL_VIEW_TYPE_2D,
@@ -2311,7 +2321,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
          .base_miplevel = 0,
          .level_count = 1,
          .base_array_layer = 0,
-         .layer_count = info->srcSubresource.layerCount,
+         .layer_count = layer_count,
          .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
          .format = tu_format_for_aspect(dst_format, VK_IMAGE_ASPECT_COLOR_BIT),
          .type = FDL_VIEW_TYPE_2D,
@@ -2516,9 +2526,10 @@ tu_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
 
    for (uint32_t i = 0; i < pResolveImageInfo->regionCount; ++i) {
       const VkImageResolve2 *info = &pResolveImageInfo->pRegions[i];
-      uint32_t layers = MAX2(info->extent.depth, info->dstSubresource.layerCount);
+      uint32_t layers = MAX2(info->extent.depth,
+                             vk_image_subresource_layer_count(&dst_image->vk,
+                                                              &info->dstSubresource));
 
-      assert(info->srcSubresource.layerCount == info->dstSubresource.layerCount);
       /* TODO: aspect masks possible ? */
 
       coords(ops, cs, info->dstOffset, info->srcOffset, info->extent);
