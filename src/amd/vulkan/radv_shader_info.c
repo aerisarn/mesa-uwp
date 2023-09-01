@@ -724,14 +724,24 @@ gather_shader_info_mesh(const nir_shader *nir, const struct radv_pipeline_key *p
    ngg_info->prim_amp_factor = nir->info.mesh.max_primitives_out;
    ngg_info->vgt_esgs_ring_itemsize = 1;
 
-   unsigned min_ngg_workgroup_size = ac_compute_ngg_workgroup_size(ngg_info->hw_max_esverts, ngg_info->max_gsprims,
-                                                                   ngg_info->max_out_verts, ngg_info->prim_amp_factor);
+   info->ms.has_query = pipeline_key->mesh_shader_queries;
+}
 
+static void
+calc_mesh_workgroup_size(const struct radv_device *device, const nir_shader *nir, struct radv_shader_info *info)
+{
    unsigned api_workgroup_size = ac_compute_cs_workgroup_size(nir->info.workgroup_size, false, UINT32_MAX);
 
-   info->workgroup_size = MAX2(min_ngg_workgroup_size, api_workgroup_size);
+   if (device->mesh_fast_launch_2) {
+      /* Use multi-row export. It is also necessary to use the API workgroup size for non-emulated queries. */
+      info->workgroup_size = api_workgroup_size;
+   } else {
+      struct gfx10_ngg_info *ngg_info = &info->ngg_info;
+      unsigned min_ngg_workgroup_size = ac_compute_ngg_workgroup_size(
+         ngg_info->hw_max_esverts, ngg_info->max_gsprims, ngg_info->max_out_verts, ngg_info->prim_amp_factor);
 
-   info->ms.has_query = pipeline_key->mesh_shader_queries;
+      info->workgroup_size = MAX2(min_ngg_workgroup_size, api_workgroup_size);
+   }
 }
 
 static void
@@ -1221,7 +1231,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
                                      (info->workgroup_size % info->wave_size) == 0;
       break;
    case MESA_SHADER_MESH:
-      /* Already computed in gather_shader_info_mesh(). */
+      calc_mesh_workgroup_size(device, nir, info);
       break;
    default:
       /* FS always operates without workgroups. Other stages are computed during linking but assume
