@@ -22,6 +22,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "glsl_types.h"
 #include "util/compiler.h"
 #include "util/glheader.h"
@@ -45,6 +46,20 @@ hash_table *glsl_type::subroutine_types = NULL;
  * is used to make sure we don't release the types if a user is still present.
  */
 static uint32_t glsl_type_users = 0;
+
+glsl_type::glsl_type(const glsl_type_params &params)
+{
+   gl_type = params.gl_type;
+   base_type = params.base_type;
+   sampled_type = params.sampled_type;
+   sampler_dimensionality = params.sampler_dimensionality;
+   sampler_shadow = params.sampler_shadow;
+   sampler_array = params.sampler_array;
+   vector_elements = params.vector_elements;
+   matrix_columns = params.matrix_columns;
+   length = params.length;
+   name = params.name;
+}
 
 glsl_type::glsl_type(uint32_t gl_type,
                      glsl_base_type base_type, unsigned vector_elements,
@@ -2923,7 +2938,7 @@ glsl_type::coordinate_components() const
  * @{
  */
 #define DECL_TYPE(NAME, ...)                                    \
-   const glsl_type glsl_type::_##NAME##_type = glsl_type(__VA_ARGS__, #NAME); \
+   const glsl_type glsl_type::_##NAME##_type = glsl_type((glsl_type_params)__VA_ARGS__); \
    const glsl_type *const glsl_type::NAME##_type = &glsl_type::_##NAME##_type;
 #include "compiler/builtin_type_macros.h"
 #undef DECL_TYPE

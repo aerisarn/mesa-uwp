@@ -287,6 +287,20 @@ enum {
 /* C++ struct types for glsl */
 #ifdef __cplusplus
 
+/* TODO: Remove this once glsl_type is a plain struct. */
+struct glsl_type_params {
+   uint32_t gl_type;
+   glsl_base_type base_type:8;
+   glsl_base_type sampled_type:8;
+   unsigned sampler_dimensionality:4;
+   unsigned sampler_shadow:1;
+   unsigned sampler_array:1;
+   uint8_t vector_elements;
+   uint8_t matrix_columns;
+   unsigned length;
+   const char *name;
+};
+
 struct glsl_type {
    uint32_t gl_type;
    glsl_base_type base_type:8;
@@ -1232,6 +1246,9 @@ private:
     * ralloc context for the type itself.
     */
    void *mem_ctx;
+
+   /** Constructor for builtins. */
+   explicit glsl_type(const glsl_type_params &params);
 
    /** Constructor for vector and matrix types */
    glsl_type(uint32_t gl_type,

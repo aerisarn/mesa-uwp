@@ -29,10 +29,10 @@
  */
 
 #define DECL_SIMPLE_TYPE(NAME, GLTYPE, BASE_TYPE, ELEMENTS, COLS) \
-  DECL_TYPE(NAME, GLTYPE, BASE_TYPE, ELEMENTS, COLS)
+  DECL_TYPE(NAME, { .gl_type = GLTYPE, .base_type = BASE_TYPE, .vector_elements = ELEMENTS, .matrix_columns = COLS, .name = #NAME })
 
 #define DECL_SAMPLER_TYPE(NAME, GLTYPE, BASE_TYPE, DIM, SHADOW, ARRAY, SAMPLED_TYPE) \
-  DECL_TYPE(NAME, GLTYPE, BASE_TYPE, DIM, SHADOW, ARRAY, SAMPLED_TYPE)
+  DECL_TYPE(NAME, { .gl_type = GLTYPE, .base_type = BASE_TYPE, .sampled_type = SAMPLED_TYPE, .sampler_dimensionality = DIM, .sampler_shadow = SHADOW, .sampler_array = ARRAY, .vector_elements = 1, .matrix_columns = 1, .name = #NAME })
 
 DECL_SIMPLE_TYPE(error,  GL_INVALID_ENUM, GLSL_TYPE_ERROR, 0, 0)
 DECL_SIMPLE_TYPE(void,   GL_INVALID_ENUM, GLSL_TYPE_VOID,  0, 0)
