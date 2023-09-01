@@ -2311,15 +2311,16 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
-                      VkBuffer buffer,
-                      VkDeviceSize offset,
-                      VkIndexType indexType)
+tu_CmdBindIndexBuffer2KHR(VkCommandBuffer commandBuffer,
+                          VkBuffer buffer,
+                          VkDeviceSize offset,
+                          VkDeviceSize size,
+                          VkIndexType indexType)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_buffer, buf, buffer);
 
-
+   size = vk_buffer_range(&buf->vk, offset, size);
 
    uint32_t index_size, index_shift, restart_index;
 
@@ -2347,10 +2348,8 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    if (cmd->state.index_size != index_size)
       tu_cs_emit_regs(&cmd->draw_cs, A6XX_PC_RESTART_INDEX(restart_index));
 
-   assert(buf->vk.size >= offset);
-
    cmd->state.index_va = buf->iova + offset;
-   cmd->state.max_index_count = (buf->vk.size - offset) >> index_shift;
+   cmd->state.max_index_count = size >> index_shift;
    cmd->state.index_size = index_size;
 }
 
