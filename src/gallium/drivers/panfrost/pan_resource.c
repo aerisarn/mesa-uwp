@@ -37,6 +37,7 @@
 
 #include "frontend/winsys_handle.h"
 #include "util/format/u_format.h"
+#include "util/u_debug_image.h"
 #include "util/u_drm.h"
 #include "util/u_gen_mipmap.h"
 #include "util/u_memory.h"
@@ -919,6 +920,121 @@ panfrost_load_tiled_images(struct panfrost_transfer *transfer,
                                 rsrc->image.layout.format);
    }
 }
+
+#ifdef DEBUG
+
+static unsigned
+get_superblock_size(uint32_t *hdr, unsigned uncompressed_size)
+{
+   /* AFBC superblock layout 0 */
+   unsigned body_base_ptr_len = 32;
+   unsigned nr_subblocks = 16;
+   unsigned sz_len = 6; /* bits */
+   unsigned mask = (1 << sz_len) - 1;
+   unsigned size = 0;
+
+   /* Sum up all of the subblock sizes */
+   for (int i = 0; i < nr_subblocks; i++) {
+      unsigned bitoffset = body_base_ptr_len + (i * sz_len);
+      unsigned start = bitoffset / 32;
+      unsigned end = (bitoffset + (sz_len - 1)) / 32;
+      unsigned offset = bitoffset % 32;
+      unsigned subblock_size;
+
+      if (start != end)
+         subblock_size = (hdr[start] >> offset) | (hdr[end] << (32 - offset));
+      else
+         subblock_size = hdr[start] >> offset;
+      subblock_size = (subblock_size == 1) ? uncompressed_size : subblock_size;
+      size += subblock_size & mask;
+
+      if (i == 0 && size == 0)
+         return 0;
+   }
+
+   return size;
+}
+
+static void
+dump_block(struct panfrost_resource *rsrc, uint32_t idx)
+{
+   panfrost_bo_wait(rsrc->image.data.bo, INT64_MAX, false);
+
+   uint8_t *ptr = rsrc->image.data.bo->ptr.cpu;
+   uint32_t *header = (uint32_t *)(ptr + (idx * AFBC_HEADER_BYTES_PER_TILE));
+   uint32_t body_base_ptr = header[0];
+   uint32_t *body = (uint32_t *)(ptr + body_base_ptr);
+   struct pan_block_size block_sz =
+      panfrost_afbc_subblock_size(rsrc->image.layout.modifier);
+   unsigned pixel_sz = util_format_get_blocksize(rsrc->base.format);
+   unsigned uncompressed_size = pixel_sz * block_sz.width * block_sz.height;
+   unsigned size = get_superblock_size(header, uncompressed_size);
+
+   fprintf(stderr, "  Header: %08x %08x %08x %08x (size: %u bytes)\n",
+           header[0], header[1], header[2], header[3], size);
+   if (size > 0) {
+      fprintf(stderr, "  Body:   %08x %08x %08x %08x\n", body[0], body[1],
+              body[2], body[3]);
+   } else {
+      uint8_t *comp = (uint8_t *)(header + 2);
+      fprintf(stderr, "  Color:  0x%02x%02x%02x%02x\n", comp[0], comp[1],
+              comp[2], comp[3]);
+   }
+   fprintf(stderr, "\n");
+}
+
+void
+pan_dump_resource(struct panfrost_context *ctx, struct panfrost_resource *rsc)
+{
+   struct pipe_context *pctx = &ctx->base;
+   struct pipe_resource tmpl = rsc->base;
+   struct pipe_resource *plinear = NULL;
+   struct panfrost_resource *linear = rsc;
+   struct pipe_blit_info blit = {0};
+   struct pipe_box box;
+   char buffer[1024];
+
+   if (rsc->image.layout.modifier != DRM_FORMAT_MOD_LINEAR) {
+      tmpl.bind |= PIPE_BIND_LINEAR;
+      tmpl.bind &= ~PAN_BIND_SHARED_MASK;
+
+      plinear = pctx->screen->resource_create(pctx->screen, &tmpl);
+      u_box_2d(0, 0, rsc->base.width0, rsc->base.height0, &box);
+
+      blit.src.resource = &rsc->base;
+      blit.src.format = rsc->base.format;
+      blit.src.level = 0;
+      blit.src.box = box;
+      blit.dst.resource = plinear;
+      blit.dst.format = rsc->base.format;
+      blit.dst.level = 0;
+      blit.dst.box = box;
+      blit.mask = util_format_get_mask(blit.dst.format);
+      blit.filter = PIPE_TEX_FILTER_NEAREST;
+
+      panfrost_blit(pctx, &blit);
+
+      linear = pan_resource(plinear);
+   }
+
+   panfrost_flush_writer(ctx, linear, "dump image");
+   panfrost_bo_wait(linear->image.data.bo, INT64_MAX, false);
+   panfrost_bo_mmap(linear->image.data.bo);
+
+   static unsigned frame_count = 0;
+   frame_count++;
+   snprintf(buffer, sizeof(buffer), "dump_image.%04d", frame_count);
+
+   debug_dump_image(buffer, rsc->base.format, 0 /* UNUSED */, rsc->base.width0,
+                    rsc->base.height0,
+                    linear->image.layout.slices[0].row_stride,
+                    linear->image.data.bo->ptr.cpu);
+
+   if (plinear)
+      pipe_resource_reference(&plinear, NULL);
+}
+
+#endif
 
 /* Get scan-order index from (x, y) position when blocks are
  * arranged in z-order in 8x8 tiles */
