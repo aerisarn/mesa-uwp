@@ -375,13 +375,27 @@ impl Mem {
         };
 
         let texture = if parent.is_none() {
-            Some(context.create_texture(
+            let mut texture = context.create_texture(
                 &image_desc,
                 image_format,
                 host_ptr,
                 bit_check(flags, CL_MEM_COPY_HOST_PTR),
                 res_type,
-            )?)
+            );
+
+            // if we error allocating a Staging resource, just try with normal as
+            // `CL_MEM_ALLOC_HOST_PTR` is just a performance hint.
+            if res_type == ResourceType::Staging && texture.is_err() {
+                texture = context.create_texture(
+                    &image_desc,
+                    image_format,
+                    host_ptr,
+                    bit_check(flags, CL_MEM_COPY_HOST_PTR),
+                    ResourceType::Normal,
+                )
+            }
+
+            Some(texture?)
         } else {
             None
         };

@@ -69,7 +69,7 @@ impl ComputeParam<Vec<u64>> for PipeScreen {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ResourceType {
     Normal,
     Staging,
