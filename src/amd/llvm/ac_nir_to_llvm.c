@@ -3500,6 +3500,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
           */
          const unsigned fetch_num_components =
             num_components * MAX2(32, instr->def.bit_size) / 32;
+
          LLVMTypeRef channel_type =
             LLVMIntTypeInContext(ctx->ac.context, MIN2(32, instr->def.bit_size));
 
@@ -3510,12 +3511,10 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
             const unsigned align_offset = nir_intrinsic_align_offset(instr);
             const unsigned align_mul = nir_intrinsic_align_mul(instr);
             const enum pipe_format format = nir_intrinsic_format(instr);
-            const struct ac_vtx_format_info *vtx_info =
-               ac_get_vtx_format_info(ctx->ac.gfx_level, ctx->ac.info->family, format);
 
             result =
                ac_build_safe_tbuffer_load(&ctx->ac, descriptor, vidx, addr_voffset, addr_soffset,
-                                          channel_type, vtx_info, const_offset, align_offset,
+                                          format, MIN2(32, instr->def.bit_size), const_offset, align_offset,
                                           align_mul, fetch_num_components, access, reorder);
          }
 
