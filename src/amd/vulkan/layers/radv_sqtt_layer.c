@@ -358,12 +358,17 @@ radv_describe_draw(struct radv_cmd_buffer *cmd_buffer)
 }
 
 void
-radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, int z)
+radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_info *info)
 {
    if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
-   radv_write_event_with_dims_marker(cmd_buffer, cmd_buffer->state.current_event_type, x, y, z);
+   if (info->indirect) {
+      radv_write_event_marker(cmd_buffer, cmd_buffer->state.current_event_type, UINT_MAX, UINT_MAX, UINT_MAX);
+   } else {
+      radv_write_event_with_dims_marker(cmd_buffer, cmd_buffer->state.current_event_type, info->blocks[0],
+                                        info->blocks[1], info->blocks[2]);
+   }
 }
 
 void
