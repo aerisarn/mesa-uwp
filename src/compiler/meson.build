@@ -51,6 +51,7 @@ float64_glsl_file = files('glsl/float64.glsl')
 files_libcompiler = files(
   'glsl_types.cpp',
   'glsl_types.h',
+  'glsl_types_impl.h',
   'nir_types.cpp',
   'nir_types.h',
   'shader_enums.c',

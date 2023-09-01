@@ -515,10 +515,7 @@ struct glsl_type {
    /**
     * Query the total number of scalars that make up a scalar, vector or matrix
     */
-   unsigned components() const
-   {
-      return vector_elements * matrix_columns;
-   }
+   unsigned components() const;
 
    /**
     * Calculate the number of components slots required to hold this type
@@ -585,9 +582,7 @@ struct glsl_type {
     * Vulkan doesn’t make this distinction so the argument should always be
     * false.
     */
-   unsigned count_attribute_slots(bool is_gl_vertex_input) const {
-      return count_vec4_slots(is_gl_vertex_input, true);
-   }
+   unsigned count_attribute_slots(bool is_gl_vertex_input) const;
 
    /**
     * Alignment in bytes of the start of this type in a std140 uniform
@@ -684,98 +679,57 @@ struct glsl_type {
    /**
     * Query whether or not a type is a scalar (non-vector and non-matrix).
     */
-   bool is_scalar() const
-   {
-      return (vector_elements == 1)
-	 && (base_type >= GLSL_TYPE_UINT)
-	 && (base_type <= GLSL_TYPE_IMAGE);
-   }
+   bool is_scalar() const;
 
    /**
     * Query whether or not a type is a vector
     */
-   bool is_vector() const
-   {
-      return (vector_elements > 1)
-	 && (matrix_columns == 1)
-	 && (base_type >= GLSL_TYPE_UINT)
-	 && (base_type <= GLSL_TYPE_BOOL);
-   }
+   bool is_vector() const;
 
    /**
     * Query whether or not a type is a matrix
     */
-   bool is_matrix() const
-   {
-      /* GLSL only has float matrices. */
-      return (matrix_columns > 1) && (base_type == GLSL_TYPE_FLOAT ||
-                                      base_type == GLSL_TYPE_DOUBLE ||
-                                      base_type == GLSL_TYPE_FLOAT16);
-   }
+   bool is_matrix() const;
 
    /**
     * Query whether or not a type is a non-array numeric type
     */
-   bool is_numeric() const
-   {
-      return (base_type >= GLSL_TYPE_UINT) && (base_type <= GLSL_TYPE_INT64);
-   }
+   bool is_numeric() const;
 
    /**
     * Query whether or not a type is an integer.
     */
-   bool is_integer() const
-   {
-      return glsl_base_type_is_integer(base_type);
-   }
+   bool is_integer() const;
 
    /**
     * Query whether or not a type is a 16-bit integer.
     */
-   bool is_integer_16() const
-   {
-      return base_type == GLSL_TYPE_UINT16 || base_type == GLSL_TYPE_INT16;
-   }
+   bool is_integer_16() const;
 
    /**
     * Query whether or not a type is an 32-bit integer.
     */
-   bool is_integer_32() const
-   {
-      return (base_type == GLSL_TYPE_UINT) || (base_type == GLSL_TYPE_INT);
-   }
+   bool is_integer_32() const;
 
    /**
     * Query whether or not a type is a 64-bit integer.
     */
-   bool is_integer_64() const
-   {
-      return base_type == GLSL_TYPE_UINT64 || base_type == GLSL_TYPE_INT64;
-   }
+   bool is_integer_64() const;
 
    /**
     * Query whether or not a type is a 32-bit or 64-bit integer
     */
-   bool is_integer_32_64() const
-   {
-      return is_integer_32() || is_integer_64();
-   }
+   bool is_integer_32_64() const;
 
    /**
     * Query whether or not a type is a 16-bit or 32-bit integer
     */
-   bool is_integer_16_32() const
-   {
-      return is_integer_16() || is_integer_32();
-   }
+   bool is_integer_16_32() const;
 
    /**
     * Query whether or not a type is a 16-bit, 32-bit or 64-bit integer
     */
-   bool is_integer_16_32_64() const
-   {
-      return is_integer_16() || is_integer_32() || is_integer_64();
-   }
+   bool is_integer_16_32_64() const;
 
    /**
     * Query whether or not type is an integral type, or for struct and array
@@ -798,126 +752,70 @@ struct glsl_type {
    /**
     * Query whether or not a type is a float type
     */
-   bool is_float() const
-   {
-      return base_type == GLSL_TYPE_FLOAT;
-   }
+   bool is_float() const;
 
    /**
     * Query whether or not a type is a half-float or float type
     */
-   bool is_float_16_32() const
-   {
-      return base_type == GLSL_TYPE_FLOAT16 || is_float();
-   }
+   bool is_float_16_32() const;
 
    /**
     * Query whether or not a type is a half-float, float or double
     */
-   bool is_float_16_32_64() const
-   {
-      return base_type == GLSL_TYPE_FLOAT16 || is_float() || is_double();
-   }
+   bool is_float_16_32_64() const;
 
    /**
     * Query whether or not a type is a float or double
     */
-   bool is_float_32_64() const
-   {
-      return is_float() || is_double();
-   }
+   bool is_float_32_64() const;
 
-   bool is_int_16_32_64() const
-   {
-      return base_type == GLSL_TYPE_INT16 ||
-             base_type == GLSL_TYPE_INT ||
-             base_type == GLSL_TYPE_INT64;
-   }
+   bool is_int_16_32_64() const;
 
-   bool is_uint_16_32_64() const
-   {
-      return base_type == GLSL_TYPE_UINT16 ||
-             base_type == GLSL_TYPE_UINT ||
-             base_type == GLSL_TYPE_UINT64;
-   }
+   bool is_uint_16_32_64() const;
 
-   bool is_int_16_32() const
-   {
-      return base_type == GLSL_TYPE_INT ||
-             base_type == GLSL_TYPE_INT16;
-   }
+   bool is_int_16_32() const;
 
-   bool is_uint_16_32() const
-   {
-      return base_type == GLSL_TYPE_UINT ||
-             base_type == GLSL_TYPE_UINT16;
-   }
+   bool is_uint_16_32() const;
 
    /**
     * Query whether or not a type is a double type
     */
-   bool is_double() const
-   {
-      return base_type == GLSL_TYPE_DOUBLE;
-   }
+   bool is_double() const;
 
    /**
     * Query whether a 64-bit type takes two slots.
     */
-   bool is_dual_slot() const
-   {
-      return is_64bit() && vector_elements > 2;
-   }
+   bool is_dual_slot() const;
 
    /**
     * Query whether or not a type is 64-bit
     */
-   bool is_64bit() const
-   {
-      return glsl_base_type_is_64bit(base_type);
-   }
+   bool is_64bit() const;
 
    /**
     * Query whether or not a type is 16-bit
     */
-   bool is_16bit() const
-   {
-      return glsl_base_type_is_16bit(base_type);
-   }
+   bool is_16bit() const;
 
    /**
     * Query whether or not a type is 32-bit
     */
-   bool is_32bit() const
-   {
-      return base_type == GLSL_TYPE_UINT ||
-             base_type == GLSL_TYPE_INT ||
-             base_type == GLSL_TYPE_FLOAT;
-   }
+   bool is_32bit() const;
 
    /**
     * Query whether or not a type is a non-array boolean type
     */
-   bool is_boolean() const
-   {
-      return base_type == GLSL_TYPE_BOOL;
-   }
+   bool is_boolean() const;
 
    /**
     * Query whether or not a type is a sampler
     */
-   bool is_sampler() const
-   {
-      return base_type == GLSL_TYPE_SAMPLER;
-   }
+   bool is_sampler() const;
 
    /**
     * Query whether or not a type is a texture
     */
-   bool is_texture() const
-   {
-      return base_type == GLSL_TYPE_TEXTURE;
-   }
+   bool is_texture() const;
 
    /**
     * Query whether or not type is a sampler, or for struct, interface and
@@ -940,75 +838,44 @@ struct glsl_type {
    /**
     * Query whether or not a type is an image
     */
-   bool is_image() const
-   {
-      return base_type == GLSL_TYPE_IMAGE;
-   }
+   bool is_image() const;
 
    /**
     * Query whether or not a type is an array
     */
-   bool is_array() const
-   {
-      return base_type == GLSL_TYPE_ARRAY;
-   }
+   bool is_array() const;
 
-   bool is_array_of_arrays() const
-   {
-      return is_array() && fields.array->is_array();
-   }
+   bool is_array_of_arrays() const;
 
-   bool is_cmat() const
-   {
-      return base_type == GLSL_TYPE_COOPERATIVE_MATRIX;
-   }
+   bool is_cmat() const;
 
    /**
     * Query whether or not a type is a record
     */
-   bool is_struct() const
-   {
-      return base_type == GLSL_TYPE_STRUCT;
-   }
+   bool is_struct() const;
 
    /**
     * Query whether or not a type is an interface
     */
-   bool is_interface() const
-   {
-      return base_type == GLSL_TYPE_INTERFACE;
-   }
+   bool is_interface() const;
 
    /**
     * Query whether or not a type is the void type singleton.
     */
-   bool is_void() const
-   {
-      return base_type == GLSL_TYPE_VOID;
-   }
+   bool is_void() const;
 
    /**
     * Query whether or not a type is the error type singleton.
     */
-   bool is_error() const
-   {
-      return base_type == GLSL_TYPE_ERROR;
-   }
+   bool is_error() const;
 
    /**
     * Query if a type is unnamed/anonymous (named by the parser)
     */
 
-   bool is_subroutine() const
-   {
-      return base_type == GLSL_TYPE_SUBROUTINE;
-   }
+   bool is_subroutine() const;
    bool contains_subroutine() const;
-
-   bool is_anonymous() const
-   {
-      return !strncmp(glsl_get_type_name(this), "#anon", 5);
-   }
+   bool is_anonymous() const;
 
    /**
     * Get the type stripped of any arrays
@@ -1017,72 +884,34 @@ struct glsl_type {
     * Pointer to the type of elements of the first non-array type for array
     * types, or pointer to itself for non-array types.
     */
-   const glsl_type *without_array() const
-   {
-      const glsl_type *t = this;
-
-      while (t->is_array())
-         t = t->fields.array;
-
-      return t;
-   }
+   const glsl_type *without_array() const;
 
    /**
     * Return the total number of elements in an array including the elements
     * in arrays of arrays.
     */
-   unsigned arrays_of_arrays_size() const
-   {
-      if (!is_array())
-         return 0;
-
-      unsigned size = length;
-      const glsl_type *array_base_type = fields.array;
-
-      while (array_base_type->is_array()) {
-         size = size * array_base_type->length;
-         array_base_type = array_base_type->fields.array;
-      }
-      return size;
-   }
+   unsigned arrays_of_arrays_size() const;
 
    /**
     * Return bit size for this type.
     */
-   unsigned bit_size() const
-   {
-      return glsl_base_type_bit_size(this->base_type);
-   }
+   unsigned bit_size() const;
 
 
    /**
     * Query whether or not a type is an atomic_uint.
     */
-   bool is_atomic_uint() const
-   {
-      return base_type == GLSL_TYPE_ATOMIC_UINT;
-   }
+   bool is_atomic_uint() const;
 
    /**
     * Return the amount of atomic counter storage required for a type.
     */
-   unsigned atomic_size() const
-   {
-      if (is_atomic_uint())
-         return 4; /* ATOMIC_COUNTER_SIZE */
-      else if (is_array())
-         return length * fields.array->atomic_size();
-      else
-         return 0;
-   }
+   unsigned atomic_size() const;
 
    /**
     * Return whether a type contains any atomic counters.
     */
-   bool contains_atomic() const
-   {
-      return atomic_size() > 0;
-   }
+   bool contains_atomic() const;
 
    /**
     * Return whether a type contains any opaque types.
@@ -1096,16 +925,7 @@ struct glsl_type {
     * If the type is not a matrix, \c glsl_type::error_type is returned.
     * Otherwise a type matching the rows of the matrix is returned.
     */
-   const glsl_type *row_type() const
-   {
-      if (!is_matrix())
-         return error_type;
-
-      if (explicit_stride && !interface_row_major)
-         return get_instance(base_type, matrix_columns, 1, explicit_stride);
-      else
-         return get_instance(base_type, matrix_columns, 1);
-   }
+   const glsl_type *row_type() const;
 
    /**
     * Query the full type of a matrix column
@@ -1114,27 +934,7 @@ struct glsl_type {
     * If the type is not a matrix, \c glsl_type::error_type is returned.
     * Otherwise a type matching the columns of the matrix is returned.
     */
-   const glsl_type *column_type() const
-   {
-      if (!is_matrix())
-         return error_type;
-
-      if (interface_row_major) {
-         /* If we're row-major, the vector element stride is the same as the
-          * matrix stride and we have no alignment (i.e. component-aligned).
-          */
-         return get_instance(base_type, vector_elements, 1,
-                             explicit_stride, false, 0);
-      } else {
-         /* Otherwise, the vector is tightly packed (stride=0).  For
-          * alignment, we treat a matrix as an array of columns make the same
-          * assumption that the alignment of the column is the same as the
-          * alignment of the whole matrix.
-          */
-         return get_instance(base_type, vector_elements, 1,
-                             0, false, explicit_alignment);
-      }
-   }
+   const glsl_type *column_type() const;
 
    /**
     * Get the type of a structure field
@@ -1158,18 +958,12 @@ struct glsl_type {
     * types.  If the number of elements in the array has not yet been declared,
     * zero is returned.
     */
-   int array_size() const
-   {
-      return is_array() ? length : -1;
-   }
+   int array_size() const;
 
    /**
     * Query whether the array size for all dimensions has been declared.
     */
-   bool is_unsized_array() const
-   {
-      return is_array() && length == 0;
-   }
+   bool is_unsized_array() const;
 
    /**
     * Return the number of coordinate components needed for this
@@ -1210,39 +1004,18 @@ struct glsl_type {
    /**
     * Get the type interface packing.
     */
-   enum glsl_interface_packing get_interface_packing() const
-   {
-      return (enum glsl_interface_packing)interface_packing;
-   }
+   enum glsl_interface_packing get_interface_packing() const;
 
    /**
     * Get the type interface packing used internally. For shared and packing
     * layouts this is implementation defined.
     */
-   enum glsl_interface_packing get_internal_ifc_packing(bool std430_supported) const
-   {
-      enum glsl_interface_packing packing = this->get_interface_packing();
-      if (packing == GLSL_INTERFACE_PACKING_STD140 ||
-          (!std430_supported &&
-           (packing == GLSL_INTERFACE_PACKING_SHARED ||
-            packing == GLSL_INTERFACE_PACKING_PACKED))) {
-         return GLSL_INTERFACE_PACKING_STD140;
-      } else {
-         assert(packing == GLSL_INTERFACE_PACKING_STD430 ||
-                (std430_supported &&
-                 (packing == GLSL_INTERFACE_PACKING_SHARED ||
-                  packing == GLSL_INTERFACE_PACKING_PACKED)));
-         return GLSL_INTERFACE_PACKING_STD430;
-      }
-   }
+   enum glsl_interface_packing get_internal_ifc_packing(bool std430_supported) const;
 
    /**
     * Check if the type interface is row major
     */
-   bool get_interface_row_major() const
-   {
-      return (bool) interface_row_major;
-   }
+   bool get_interface_row_major() const;
 
 #endif /* __cplusplus */
 };
@@ -1386,9 +1159,7 @@ struct glsl_struct_field {
 #endif
 
 #ifdef __cplusplus
-#define BUILTIN_TYPES_CPP_DEFINITIONS
-#include "builtin_types_cpp.h"
-#undef BUILTIN_TYPES_CPP_DEFINITIONS
+#include "glsl_types_impl.h"
 #endif
 
 #endif /* GLSL_TYPES_H */
