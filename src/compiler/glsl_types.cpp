@@ -459,13 +459,6 @@ const glsl_type *glsl_type::get_uint16_type() const
                        this->interface_row_major);
 }
 
-static void
-hash_free_type_function(struct hash_entry *entry)
-{
-   glsl_type *type = (glsl_type *) entry->data;
-   delete type;
-}
-
 void
 glsl_type_singleton_init_or_ref()
 {
@@ -488,34 +481,8 @@ glsl_type_singleton_decref()
       return;
    }
 
-   if (glsl_type_cache.explicit_matrix_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type_cache.explicit_matrix_types,
-                               hash_free_type_function);
-      glsl_type_cache.explicit_matrix_types = NULL;
-   }
-
-   if (glsl_type_cache.array_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type_cache.array_types, hash_free_type_function);
-      glsl_type_cache.array_types = NULL;
-   }
-
-   if (glsl_type_cache.struct_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type_cache.struct_types, hash_free_type_function);
-      glsl_type_cache.struct_types = NULL;
-   }
-
-   if (glsl_type_cache.interface_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type_cache.interface_types, hash_free_type_function);
-      glsl_type_cache.interface_types = NULL;
-   }
-
-   if (glsl_type_cache.subroutine_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type_cache.subroutine_types, hash_free_type_function);
-      glsl_type_cache.subroutine_types = NULL;
-   }
-
    ralloc_free(glsl_type_cache.mem_ctx);
-   glsl_type_cache.mem_ctx = NULL;
+   memset(&glsl_type_cache, 0, sizeof(glsl_type_cache));
 
    simple_mtx_unlock(&glsl_type_cache_mutex);
 }
