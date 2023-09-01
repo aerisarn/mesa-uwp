@@ -3303,8 +3303,8 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
       .RenderStreamSelect = dyn->rs.rasterization_stream,
    };
 
-#if INTEL_NEEDS_WA_14017076903
-   /* Wa_14017076903 :
+#if INTEL_NEEDS_WA_18022508906
+   /* Wa_18022508906 :
     *
     * SKL PRMs, Volume 7: 3D-Media-GPGPU, Stream Output Logic (SOL) Stage:
     *
