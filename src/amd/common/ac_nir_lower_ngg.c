@@ -604,7 +604,7 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *s, nir_def *arg)
          arg = nir_iand(b, arg, mask);
       }
 
-      ac_nir_export_primitive(b, arg);
+      ac_nir_export_primitive(b, arg, NULL);
    }
    nir_pop_if(b, if_gs_thread);
 }
@@ -2367,7 +2367,7 @@ export_pos0_wait_attr_ring(nir_builder *b, nir_if *if_es_thread, nir_def *output
                              options->clipdist_enable_mask,
                              !options->has_param_exports,
                              options->force_vrs, true,
-                             VARYING_BIT_POS, pos_output_array);
+                             VARYING_BIT_POS, pos_output_array, NULL);
    }
    nir_pop_if(b, if_export_empty_pos);
 }
@@ -2619,7 +2619,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
                           options->clipdist_enable_mask,
                           !options->has_param_exports,
                           options->force_vrs, !wait_attr_ring,
-                          export_outputs, state.outputs);
+                          export_outputs, state.outputs, NULL);
 
    nogs_export_vertex_params(b, impl, if_es_thread, num_es_threads, &state);
 
@@ -3043,7 +3043,7 @@ ngg_gs_export_primitives(nir_builder *b, nir_def *max_num_out_prims, nir_def *ti
 
    nir_def *arg = emit_pack_ngg_prim_exp_arg(b, s->num_vertices_per_primitive, vtx_indices,
                                                  is_null_prim);
-   ac_nir_export_primitive(b, arg);
+   ac_nir_export_primitive(b, arg, NULL);
    nir_pop_if(b, if_prim_export_thread);
 }
 
@@ -3128,7 +3128,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_def *max_num_out_vtx, nir_def *tid_in
                           s->options->clipdist_enable_mask,
                           !s->options->has_param_exports,
                           s->options->force_vrs, !wait_attr_ring,
-                          export_outputs, s->outputs);
+                          export_outputs, s->outputs, NULL);
 
    nir_pop_if(b, if_vtx_export_thread);
 
@@ -4473,7 +4473,7 @@ ms_emit_primitive_export(nir_builder *b,
    nir_def *prim_exp_arg = prim_exp_arg_ch2 ?
       nir_vec2(b, prim_exp_arg_ch1, prim_exp_arg_ch2) : prim_exp_arg_ch1;
 
-   ac_nir_export_primitive(b, prim_exp_arg);
+   ac_nir_export_primitive(b, prim_exp_arg, NULL);
 }
 
 static void
@@ -4531,7 +4531,7 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
          if (!wait_attr_ring)
             ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
                                  !s->has_param_exports, false, true,
-                                 s->per_vertex_outputs | VARYING_BIT_POS, s->outputs);
+                                 s->per_vertex_outputs | VARYING_BIT_POS, s->outputs, NULL);
 
          /* Export generic attributes on GFX10.3
          * (On GFX11 they are already stored in the attribute ring.)
@@ -4598,7 +4598,7 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
          ms_emit_arrayed_outputs(b, invocation_index, per_vertex_outputs, s);
          ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
                                 !s->has_param_exports, false, true,
-                                s->per_vertex_outputs | VARYING_BIT_POS, s->outputs);
+                                s->per_vertex_outputs | VARYING_BIT_POS, s->outputs, NULL);
       }
       nir_pop_if(b, if_has_output_vertex);
 

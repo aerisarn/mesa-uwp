@@ -75,7 +75,7 @@ ac_nir_store_var_components(nir_builder *b, nir_variable *var, nir_def *value,
                             unsigned component, unsigned writemask);
 
 void
-ac_nir_export_primitive(nir_builder *b, nir_def *prim);
+ac_nir_export_primitive(nir_builder *b, nir_def *prim, nir_def *row);
 
 void
 ac_nir_export_position(nir_builder *b,
@@ -85,7 +85,8 @@ ac_nir_export_position(nir_builder *b,
                        bool force_vrs,
                        bool done,
                        uint64_t outputs_written,
-                       nir_def *(*outputs)[4]);
+                       nir_def *(*outputs)[4],
+                       nir_def *row);
 
 void
 ac_nir_export_parameters(nir_builder *b,
