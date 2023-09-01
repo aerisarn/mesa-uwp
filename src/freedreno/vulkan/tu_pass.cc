@@ -1300,6 +1300,16 @@ tu_GetRenderAreaGranularity(VkDevice _device,
    pGranularity->height = device->physical_device->info->gmem_align_h;
 }
 
+VKAPI_ATTR void VKAPI_CALL
+tu_GetRenderingAreaGranularityKHR(VkDevice _device,
+                                  const VkRenderingAreaInfoKHR *pRenderingAreaInfo,
+                                  VkExtent2D *pGranularity)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   pGranularity->width = device->physical_device->info->gmem_align_w;
+   pGranularity->height = device->physical_device->info->gmem_align_h;
+}
+
 uint32_t
 tu_subpass_get_attachment_to_resolve(const struct tu_subpass *subpass, uint32_t index)
 {
