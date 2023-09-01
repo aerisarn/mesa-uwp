@@ -154,6 +154,16 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name,
    struct disk_cache *cache;
    int err;
 
+   /* Before doing anything else, ensure that with
+    * MESA_SHADER_CACHE_DISABLE set to true, that disk_cache_create returns NO-OP cache.
+    */
+   setenv("MESA_SHADER_CACHE_DISABLE", "true", 1);
+   cache = disk_cache_create("test", driver_id, 0);
+   EXPECT_EQ(cache->type, DISK_CACHE_NONE) << "disk_cache_create with MESA_SHADER_CACHE_DISABLE set";
+   disk_cache_destroy(cache);
+
+   unsetenv("MESA_SHADER_CACHE_DISABLE");
+
 #ifdef SHADER_CACHE_DISABLE_BY_DEFAULT
    /* With SHADER_CACHE_DISABLE_BY_DEFAULT, ensure that with
     * MESA_SHADER_CACHE_DISABLE set to nothing, disk_cache_create returns NULL.
