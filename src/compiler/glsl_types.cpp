@@ -125,16 +125,18 @@ glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
 
    assert(name != NULL);
    this->name = ralloc_strdup(this->mem_ctx, name);
+
    /* Zero-fill to prevent spurious Valgrind errors when serializing NIR
     * due to uninitialized unused bits in bit fields. */
-   this->fields.structure = rzalloc_array(this->mem_ctx,
-                                          glsl_struct_field, length);
+   struct glsl_struct_field *copied_struct =
+      rzalloc_array(this->mem_ctx, glsl_struct_field, length);
 
    for (i = 0; i < length; i++) {
-      this->fields.structure[i] = fields[i];
-      this->fields.structure[i].name = ralloc_strdup(this->fields.structure,
-                                                     fields[i].name);
+      copied_struct[i] = fields[i];
+      copied_struct[i].name = ralloc_strdup(copied_struct, fields[i].name);
    }
+
+   this->fields.structure = copied_struct;
 }
 
 glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
@@ -155,13 +157,16 @@ glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
 
    assert(name != NULL);
    this->name = ralloc_strdup(this->mem_ctx, name);
-   this->fields.structure = rzalloc_array(this->mem_ctx,
-                                          glsl_struct_field, length);
+
+   struct glsl_struct_field *copied_struct =
+      rzalloc_array(this->mem_ctx, glsl_struct_field, length);
+
    for (i = 0; i < length; i++) {
-      this->fields.structure[i] = fields[i];
-      this->fields.structure[i].name = ralloc_strdup(this->fields.structure,
-                                                     fields[i].name);
+      copied_struct[i] = fields[i];
+      copied_struct[i].name = ralloc_strdup(copied_struct, fields[i].name);
    }
+
+   this->fields.structure = copied_struct;
 }
 
 glsl_type::glsl_type(const glsl_type *return_type,
@@ -180,20 +185,22 @@ glsl_type::glsl_type(const glsl_type *return_type,
 
    this->name = "";
 
-   this->fields.parameters = rzalloc_array(this->mem_ctx,
-                                           glsl_function_param, num_params + 1);
+   struct glsl_function_param *copied_params =
+      rzalloc_array(this->mem_ctx, glsl_function_param, num_params + 1);
 
    /* We store the return type as the first parameter */
-   this->fields.parameters[0].type = return_type;
-   this->fields.parameters[0].in = false;
-   this->fields.parameters[0].out = true;
+   copied_params[0].type = return_type;
+   copied_params[0].in = false;
+   copied_params[0].out = true;
 
    /* We store the i'th parameter in slot i+1 */
    for (i = 0; i < length; i++) {
-      this->fields.parameters[i + 1].type = params[i].type;
-      this->fields.parameters[i + 1].in = params[i].in;
-      this->fields.parameters[i + 1].out = params[i].out;
+      copied_params[i + 1].type = params[i].type;
+      copied_params[i + 1].in = params[i].in;
+      copied_params[i + 1].out = params[i].out;
    }
+
+   this->fields.parameters = copied_params;
 }
 
 glsl_type::glsl_type(const char *subroutine_name) :
@@ -3320,7 +3327,7 @@ glsl_type::cl_alignment() const
 
       unsigned res = 1;
       for (unsigned i = 0; i < this->length; ++i) {
-         struct glsl_struct_field &field = this->fields.structure[i];
+         const struct glsl_struct_field &field = this->fields.structure[i];
          res = MAX2(res, field.type->cl_alignment());
       }
       return res;
@@ -3341,7 +3348,7 @@ glsl_type::cl_size() const
       unsigned size = 0;
       unsigned max_alignment = 1;
       for (unsigned i = 0; i < this->length; ++i) {
-         struct glsl_struct_field &field = this->fields.structure[i];
+         const struct glsl_struct_field &field = this->fields.structure[i];
          /* if a struct is packed, members don't get aligned */
          if (!this->packed) {
             unsigned alignment = field.type->cl_alignment();

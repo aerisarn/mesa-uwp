@@ -363,8 +363,8 @@ public:
     */
    union {
       const struct glsl_type *array;            /**< Type of array elements. */
-      struct glsl_function_param *parameters;   /**< Parameters to function. */
-      struct glsl_struct_field *structure;      /**< List of struct fields. */
+      const struct glsl_function_param *parameters;   /**< Parameters to function. */
+      const struct glsl_struct_field *structure;      /**< List of struct fields. */
    } fields;
 
    /**
