@@ -508,10 +508,41 @@ fn spill_values<S: Spill>(
                 p_s.iter().filter(|ssa| bl.is_live_in(ssa)).cloned(),
             )
         } else {
-            HashSet::from_iter(
-                bl.iter_live_in().filter(|ssa| !w.contains(ssa)).cloned(),
-            )
+            let mut s = HashSet::new();
+            for p_idx in &preds {
+                if *p_idx >= b_idx {
+                    continue;
+                }
+
+                // We diverge a bit from Braun and Hack here.  They assume that
+                // S is is a subset of W which is clearly bogus.  Instead, we
+                // take the union of all forward edge predecessor S_out and
+                // intersect with live-in for the current block.
+                for ssa in ssa_state_out[*p_idx].s.iter() {
+                    if bl.is_live_in(ssa) {
+                        s.insert(*ssa);
+                    }
+                }
+            }
+
+            // The loop header heuristic sometimes drops stuff from W that has
+            // never been spilled so we need to make sure everything live-in
+            // which isn't in W is included in the spill set so that it gets
+            // properly spilled when we spill across CF edges.
+            if blocks.is_loop_header(b_idx) {
+                for ssa in bl.iter_live_in() {
+                    if !w.contains(ssa) {
+                        s.insert(*ssa);
+                    }
+                }
+            }
+
+            s
         };
+
+        for ssa in bl.iter_live_in() {
+            debug_assert!(w.contains(ssa) || s.contains(ssa));
+        }
 
         let mut b = SSAState { w: w, s: s };
 
