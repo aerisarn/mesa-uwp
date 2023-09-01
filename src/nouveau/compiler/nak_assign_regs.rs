@@ -843,6 +843,26 @@ impl AssignRegsBlock {
         RegRef::new(ssa.file(), reg, 1)
     }
 
+    fn try_coalesce(&mut self, ssa: SSAValue, src: &Src) -> bool {
+        debug_assert!(src.src_mod.is_none());
+        let SrcRef::Reg(src_reg) = src.src_ref else {
+            return false;
+        };
+        debug_assert!(src_reg.comps() == 1);
+
+        if src_reg.file() != ssa.file() {
+            return false;
+        }
+
+        let ra = &mut self.ra[src_reg.file()];
+        if ra.reg_is_used(src_reg.base_idx()) {
+            return false;
+        }
+
+        ra.assign_reg(ssa, src_reg.base_idx());
+        true
+    }
+
     fn pcopy_tmp(&self) -> Option<RegRef> {
         if self.pcopy_tmp_gprs > 0 {
             Some(RegRef::new(
@@ -906,6 +926,35 @@ impl AssignRegsBlock {
 
                 None
             }
+            Op::Copy(copy) => {
+                if let SrcRef::SSA(src_vec) = &copy.src.src_ref {
+                    debug_assert!(src_vec.comps() == 1);
+                    let src_ssa = &src_vec[0];
+                    copy.src.src_ref = self.get_scalar(*src_ssa).into();
+                }
+
+                self.ra.free_killed(srcs_killed);
+
+                let mut del_copy = false;
+                if let Dst::SSA(dst_vec) = &mut copy.dst {
+                    debug_assert!(dst_vec.comps() == 1);
+                    let dst_ssa = &dst_vec[0];
+
+                    if self.try_coalesce(*dst_ssa, &copy.src) {
+                        del_copy = true;
+                    } else {
+                        copy.dst = self.alloc_scalar(ip, sum, *dst_ssa).into();
+                    }
+                }
+
+                self.ra.free_killed(dsts_killed);
+
+                if del_copy {
+                    None
+                } else {
+                    Some(instr)
+                }
+            }
             Op::ParCopy(pcopy) => {
                 for (_, src) in pcopy.dsts_srcs.iter_mut() {
                     if let SrcRef::SSA(src_vec) = src.src_ref {
@@ -917,29 +966,15 @@ impl AssignRegsBlock {
 
                 self.ra.free_killed(srcs_killed);
 
-                // Try to propagate sources if possible
-                for (dst, src) in pcopy.dsts_srcs.iter_mut() {
-                    let SrcRef::Reg(src_reg) = src.src_ref else {
-                        continue;
-                    };
-                    debug_assert!(src_reg.comps() == 1);
-
-                    let Dst::SSA(dst_vec) = dst else {
-                        continue;
-                    };
-                    debug_assert!(dst_vec.comps() == 1);
-                    let dst_ssa = &dst_vec[0];
-
-                    if dst_ssa.file() != src_reg.file() {
-                        continue;
+                // Try to coalesce destinations into sources, if possible
+                pcopy.dsts_srcs.retain(|dst, src| match dst {
+                    Dst::None => false,
+                    Dst::SSA(dst_vec) => {
+                        debug_assert!(dst_vec.comps() == 1);
+                        !self.try_coalesce(dst_vec[0], src)
                     }
-
-                    let ra = &mut self.ra[src_reg.file()];
-                    if !ra.reg_is_used(src_reg.base_idx()) {
-                        ra.assign_reg(*dst_ssa, src_reg.base_idx());
-                        *dst = src_reg.into();
-                    }
-                }
+                    Dst::Reg(_) => true,
+                });
 
                 for (dst, _) in pcopy.dsts_srcs.iter_mut() {
                     if let Dst::SSA(dst_vec) = dst {
@@ -951,7 +986,11 @@ impl AssignRegsBlock {
                 self.ra.free_killed(dsts_killed);
 
                 pcopy.tmp = self.pcopy_tmp();
-                Some(instr)
+                if pcopy.is_empty() {
+                    None
+                } else {
+                    Some(instr)
+                }
             }
             _ => {
                 for file in self.ra.values_mut() {

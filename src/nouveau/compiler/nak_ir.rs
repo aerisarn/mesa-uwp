@@ -3126,7 +3126,7 @@ impl<A, B> VecPair<A, B> {
 }
 
 impl<A: Clone, B: Clone> VecPair<A, B> {
-    pub fn retain(&mut self, f: impl Fn(&A, &B) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(&A, &B) -> bool) {
         debug_assert!(self.a.len() == self.b.len());
         let len = self.a.len();
         let mut i = 0_usize;
