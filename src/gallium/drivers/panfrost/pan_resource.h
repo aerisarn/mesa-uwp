@@ -181,6 +181,9 @@ struct panfrost_bo *panfrost_get_afbc_superblock_sizes(
    struct panfrost_context *ctx, struct panfrost_resource *rsrc,
    unsigned first_level, unsigned last_level, unsigned *out_offsets);
 
+void panfrost_pack_afbc(struct panfrost_context *ctx,
+                        struct panfrost_resource *prsrc);
+
 void pan_resource_modifier_convert(struct panfrost_context *ctx,
                                    struct panfrost_resource *rsrc,
                                    uint64_t modifier, const char *reason);

@@ -42,6 +42,7 @@ struct pan_afbc_shader_key {
 struct pan_afbc_shader_data {
    struct pan_afbc_shader_key key;
    void *size_cso;
+   void *pack_cso;
 };
 
 struct pan_afbc_shaders {
@@ -57,6 +58,16 @@ struct pan_afbc_block_info {
 struct panfrost_afbc_size_info {
    mali_ptr src;
    mali_ptr metadata;
+} PACKED;
+
+struct panfrost_afbc_pack_info {
+   mali_ptr src;
+   mali_ptr dst;
+   mali_ptr metadata;
+   uint32_t header_size;
+   uint32_t src_stride;
+   uint32_t dst_stride;
+   uint32_t padding[3]; // FIXME
 } PACKED;
 
 void panfrost_afbc_context_init(struct panfrost_context *ctx);

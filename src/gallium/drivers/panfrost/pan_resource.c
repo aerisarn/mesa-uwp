@@ -907,6 +907,16 @@ panfrost_load_tiled_images(struct panfrost_transfer *transfer,
    }
 }
 
+/* Get scan-order index from (x, y) position when blocks are
+ * arranged in z-order in 8x8 tiles */
+static unsigned
+get_morton_index(unsigned x, unsigned y, unsigned stride)
+{
+   unsigned i = ((x << 0) & 1) | ((y << 1) & 2) | ((x << 1) & 4) |
+                ((y << 2) & 8) | ((x << 2) & 16) | ((y << 3) & 32);
+   return (((y & ~7) * stride) + ((x & ~7) << 3)) + i;
+}
+
 static void
 panfrost_store_tiled_images(struct panfrost_transfer *transfer,
                             struct panfrost_resource *rsrc)
@@ -1301,6 +1311,110 @@ panfrost_get_afbc_superblock_sizes(struct panfrost_context *ctx,
    panfrost_flush_batches_accessing_rsrc(ctx, rsrc, "AFBC after size flush");
 
    return bo;
+}
+
+void
+panfrost_pack_afbc(struct panfrost_context *ctx,
+                   struct panfrost_resource *prsrc)
+{
+   struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+   struct panfrost_device *dev = pan_device(ctx->base.screen);
+   struct panfrost_bo *metadata_bo;
+   unsigned metadata_offsets[PIPE_MAX_TEXTURE_LEVELS];
+
+   uint64_t src_modifier = prsrc->image.layout.modifier;
+   uint64_t dst_modifier =
+      src_modifier & ~(AFBC_FORMAT_MOD_TILED | AFBC_FORMAT_MOD_SPARSE);
+   bool is_tiled = src_modifier & AFBC_FORMAT_MOD_TILED;
+   unsigned last_level = prsrc->base.last_level;
+   struct pan_image_slice_layout slice_infos[PIPE_MAX_TEXTURE_LEVELS] = {0};
+   unsigned total_size = 0;
+
+   /* It doesn't make sense to pack everything if we need to unpack right
+    * away to upload data to another level */
+   for (int i = 0; i <= last_level; i++) {
+      if (!BITSET_TEST(prsrc->valid.data, i))
+         return;
+   }
+
+   metadata_bo = panfrost_get_afbc_superblock_sizes(ctx, prsrc, 0, last_level,
+                                                    metadata_offsets);
+   panfrost_bo_wait(metadata_bo, INT64_MAX, false);
+
+   for (unsigned level = 0; level <= last_level; ++level) {
+      struct pan_image_slice_layout *src_slice =
+         &prsrc->image.layout.slices[level];
+      struct pan_image_slice_layout *dst_slice = &slice_infos[level];
+
+      unsigned width = u_minify(prsrc->base.width0, level);
+      unsigned height = u_minify(prsrc->base.height0, level);
+      unsigned src_stride =
+         pan_afbc_stride_blocks(src_modifier, src_slice->row_stride);
+      unsigned dst_stride =
+         DIV_ROUND_UP(width, panfrost_afbc_superblock_width(dst_modifier));
+      unsigned dst_height =
+         DIV_ROUND_UP(height, panfrost_afbc_superblock_height(dst_modifier));
+
+      uint32_t offset = 0;
+      struct pan_afbc_block_info *meta =
+         metadata_bo->ptr.cpu + metadata_offsets[level];
+
+      for (unsigned y = 0, i = 0; y < dst_height; ++y) {
+         for (unsigned x = 0; x < dst_stride; ++x, ++i) {
+            unsigned idx = is_tiled ? get_morton_index(x, y, src_stride) : i;
+            uint32_t size = meta[idx].size;
+            meta[idx].offset = offset; /* write the start offset */
+            offset += size;
+         }
+      }
+
+      total_size = ALIGN_POT(total_size, pan_slice_align(dst_modifier));
+      {
+         dst_slice->afbc.stride = dst_stride;
+         dst_slice->afbc.nr_blocks = dst_stride * dst_height;
+         dst_slice->afbc.header_size =
+            ALIGN_POT(dst_stride * dst_height * AFBC_HEADER_BYTES_PER_TILE,
+                      pan_afbc_body_align(dst_modifier));
+         dst_slice->afbc.body_size = offset;
+         dst_slice->afbc.surface_stride = dst_slice->afbc.header_size + offset;
+
+         dst_slice->offset = total_size;
+         dst_slice->row_stride = dst_stride * AFBC_HEADER_BYTES_PER_TILE;
+         dst_slice->surface_stride = dst_slice->afbc.surface_stride;
+         dst_slice->size = dst_slice->afbc.surface_stride;
+      }
+      total_size += dst_slice->afbc.surface_stride;
+   }
+
+   unsigned new_size = ALIGN_POT(total_size, 4096); // FIXME
+   unsigned old_size = prsrc->image.data.bo->size;
+
+   if (new_size == old_size)
+      return;
+
+   if (dev->debug & PAN_DBG_PERF) {
+      printf("%i%%: %i KB -> %i KB\n", 100 * new_size / old_size,
+             old_size / 1024, new_size / 1024);
+   }
+
+   struct panfrost_bo *dst =
+      panfrost_bo_create(dev, new_size, 0, "AFBC compact texture");
+   struct panfrost_batch *batch =
+      panfrost_get_fresh_batch_for_fbo(ctx, "AFBC compaction");
+
+   for (unsigned level = 0; level <= last_level; ++level) {
+      struct pan_image_slice_layout *slice = &slice_infos[level];
+      screen->vtbl.afbc_pack(batch, prsrc, dst, slice, metadata_bo,
+                             metadata_offsets[level], level);
+      prsrc->image.layout.slices[level] = *slice;
+   }
+
+   panfrost_flush_batches_accessing_rsrc(ctx, prsrc, "AFBC compaction flush");
+
+   prsrc->image.layout.modifier = dst_modifier;
+   panfrost_bo_unreference(prsrc->image.data.bo);
+   prsrc->image.data.bo = dst;
+   panfrost_bo_unreference(metadata_bo);
 }
 
 static void

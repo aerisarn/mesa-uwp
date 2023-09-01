@@ -3953,6 +3953,31 @@ panfrost_afbc_size(struct panfrost_batch *batch, struct panfrost_resource *src,
    LAUNCH_AFBC_SHADER(size, batch, src, consts, slice->afbc.nr_blocks);
 }
 
+static void
+panfrost_afbc_pack(struct panfrost_batch *batch, struct panfrost_resource *src,
+                   struct panfrost_bo *dst,
+                   struct pan_image_slice_layout *dst_slice,
+                   struct panfrost_bo *metadata, unsigned metadata_offset,
+                   unsigned level)
+{
+   struct pan_image_slice_layout *src_slice = &src->image.layout.slices[level];
+   struct panfrost_afbc_pack_info consts = {
+      .src = src->image.data.bo->ptr.gpu + src->image.data.offset +
+             src_slice->offset,
+      .dst = dst->ptr.gpu + dst_slice->offset,
+      .metadata = metadata->ptr.gpu + metadata_offset,
+      .header_size = dst_slice->afbc.header_size,
+      .src_stride = src_slice->afbc.stride,
+      .dst_stride = dst_slice->afbc.stride,
+   };
+
+   panfrost_batch_write_rsrc(batch, src, PIPE_SHADER_COMPUTE);
+   panfrost_batch_write_bo(batch, dst, PIPE_SHADER_COMPUTE);
+   panfrost_batch_add_bo(batch, metadata, PIPE_SHADER_COMPUTE);
+
+   LAUNCH_AFBC_SHADER(pack, batch, src, consts, dst_slice->afbc.nr_blocks);
+}
+
 static void *
 panfrost_create_rasterizer_state(struct pipe_context *pctx,
                                  const struct pipe_rasterizer_state *cso)
@@ -4570,6 +4595,7 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
    screen->vtbl.get_compiler_options = GENX(pan_shader_get_compiler_options);
    screen->vtbl.compile_shader = GENX(pan_shader_compile);
    screen->vtbl.afbc_size = panfrost_afbc_size;
+   screen->vtbl.afbc_pack = panfrost_afbc_pack;
 
    GENX(pan_blitter_init)
    (dev, &screen->blitter.bin_pool.base, &screen->blitter.desc_pool.base);

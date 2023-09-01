@@ -105,6 +105,13 @@ struct panfrost_vtable {
                      struct panfrost_resource *src,
                      struct panfrost_bo *metadata, unsigned offset,
                      unsigned level);
+
+   /* Run a compute shader to compact a sparse layout afbc resource */
+   void (*afbc_pack)(struct panfrost_batch *batch,
+                     struct panfrost_resource *src, struct panfrost_bo *dst,
+                     struct pan_image_slice_layout *slice,
+                     struct panfrost_bo *metadata, unsigned metadata_offset,
+                     unsigned level);
 };
 
 struct panfrost_screen {
