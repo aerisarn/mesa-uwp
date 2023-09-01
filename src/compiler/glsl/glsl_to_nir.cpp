@@ -1636,8 +1636,10 @@ nir_visitor::visit(ir_call *ir)
       ir_variable *sig_param = (ir_variable *) formal_node;
 
       if (sig_param->data.mode == ir_var_function_out) {
-         nir_deref_instr *out_deref = evaluate_deref(param_rvalue);
-         call->params[i] = nir_src_for_ssa(&out_deref->def);
+         nir_variable *out_param =
+            nir_local_variable_create(this->impl, sig_param->type, "param");
+         nir_deref_instr *out_param_deref = nir_build_deref_var(&b, out_param);
+         call->params[i] = nir_src_for_ssa(&out_param_deref->def);
       } else if (sig_param->data.mode == ir_var_function_in) {
          nir_def *val = evaluate_rvalue(param_rvalue);
          nir_src src = nir_src_for_ssa(val);
@@ -1651,6 +1653,25 @@ nir_visitor::visit(ir_call *ir)
    }
 
    nir_builder_instr_insert(&b, &call->instr);
+
+   /* Copy out params. We must do this after the function call to ensure we
+    * do not overwrite global variables prematurely.
+    */
+   i = ir->return_deref ? 1 : 0;
+   foreach_two_lists(formal_node, &ir->callee->parameters,
+                     actual_node, &ir->actual_parameters) {
+      ir_rvalue *param_rvalue = (ir_rvalue *) actual_node;
+      ir_variable *sig_param = (ir_variable *) formal_node;
+
+      if (sig_param->data.mode == ir_var_function_out) {
+         nir_store_deref(&b, evaluate_deref(param_rvalue),
+                         nir_load_deref(&b, nir_src_as_deref(call->params[i])),
+                         ~0);
+      }
+
+      i++;
+   }
+
 
    if (ir->return_deref)
       nir_store_deref(&b, evaluate_deref(ir->return_deref), nir_load_deref(&b, ret_deref), ~0);
