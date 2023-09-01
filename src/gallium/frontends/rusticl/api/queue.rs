@@ -41,8 +41,12 @@ impl CLInfo<cl_command_queue_info> for cl_command_queue {
 }
 
 fn valid_command_queue_properties(properties: cl_command_queue_properties) -> bool {
-    let valid_flags =
-        cl_bitfield::from(CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE);
+    let valid_flags = cl_bitfield::from(
+        CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
+            | CL_QUEUE_PROFILING_ENABLE
+            | CL_QUEUE_ON_DEVICE
+            | CL_QUEUE_ON_DEVICE_DEFAULT,
+    );
     properties & !valid_flags == 0
 }
 
@@ -110,9 +114,6 @@ fn create_command_queue_with_properties(
     device: cl_device_id,
     properties: *const cl_queue_properties,
 ) -> CLResult<cl_command_queue> {
-    let c = context.get_arc()?;
-    let d = device.get_ref()?.to_static().ok_or(CL_INVALID_DEVICE)?;
-
     let mut queue_properties = cl_command_queue_properties::default();
     let properties = if properties.is_null() {
         None
@@ -132,12 +133,7 @@ fn create_command_queue_with_properties(
         Some(properties)
     };
 
-    Ok(cl_command_queue::from_arc(Queue::new(
-        c,
-        d,
-        queue_properties,
-        properties,
-    )?))
+    create_command_queue_impl(context, device, queue_properties, properties)
 }
 
 #[cl_entrypoint]
