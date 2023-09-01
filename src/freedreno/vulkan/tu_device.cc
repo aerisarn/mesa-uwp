@@ -2778,8 +2778,8 @@ tu_BindBufferMemory2(VkDevice device,
          buffer->bo = mem->bo;
          buffer->iova = mem->bo->iova + pBindInfos[i].memoryOffset;
          if (buffer->vk.usage &
-             (VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT |
-              VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT))
+             (VK_BUFFER_USAGE_2_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT |
+              VK_BUFFER_USAGE_2_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT))
             tu_bo_allow_dump(dev, mem->bo);
       } else {
          buffer->bo = NULL;
