@@ -111,8 +111,8 @@ struct aco_shader_info {
    bool has_ngg_early_prim_export;
    bool image_2d_view_of_3d;
    unsigned workgroup_size;
-   bool has_epilog; /* Only for TCS or PS. */
-   bool is_monolithic;
+   bool has_epilog;                        /* Only for TCS or PS. */
+   bool merged_shader_compiled_separately; /* GFX9+ */
    struct ac_arg next_stage_pc;
    struct {
       bool tcs_in_out_eq;

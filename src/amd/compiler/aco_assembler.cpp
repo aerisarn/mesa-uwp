@@ -1023,7 +1023,7 @@ fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
              */
             exported |= (program->stage.sw == SWStage::VS || program->stage.sw == SWStage::TES) &&
                         program->stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER &&
-                        !program->info.is_monolithic;
+                        program->info.merged_shader_compiled_separately;
          }
          ++it;
       }

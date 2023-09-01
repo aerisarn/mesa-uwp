@@ -199,7 +199,7 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
    const bool avoid_shared_vgprs =
       ctx->options->gfx_level >= GFX10 && ctx->options->gfx_level < GFX11 &&
       ctx->program->wave_size == 64 &&
-      (ctx->program->info.has_epilog || !ctx->program->info.is_monolithic ||
+      (ctx->program->info.has_epilog || ctx->program->info.merged_shader_compiled_separately ||
        ctx->stage == raytracing_cs);
 
    if (ctx->options->gfx_level <= GFX7 || avoid_shared_vgprs) {
@@ -11609,7 +11609,7 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
       end_divergent_if(&ctx, ic_merged_wave_info);
    }
 
-   if (!ctx.program->info.is_monolithic &&
+   if (ctx.program->info.merged_shader_compiled_separately &&
        (ctx.stage.sw == SWStage::VS || ctx.stage.sw == SWStage::TES)) {
       assert(program->gfx_level >= GFX9);
       create_merged_jump_to_epilog(&ctx);
@@ -11799,7 +11799,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
       if_context ic_merged_wave_info;
 
       /* Handle separate compilation of VS+TCS and {VS,TES}+GS on GFX9+. */
-      if (!ctx.program->info.is_monolithic) {
+      if (ctx.program->info.merged_shader_compiled_separately) {
          assert(ctx.program->gfx_level >= GFX9);
          if (ctx.stage.sw == SWStage::VS || ctx.stage.sw == SWStage::TES) {
             check_merged_wave_info = endif_merged_wave_info = true;

@@ -311,8 +311,8 @@ struct radv_shader_info {
    uint32_t user_data_0;
    bool inputs_linked;
    bool outputs_linked;
-   bool has_epilog;    /* Only for TCS or PS */
-   bool is_monolithic; /* False only for merged shaders which are compiled separately */
+   bool has_epilog;                        /* Only for TCS or PS */
+   bool merged_shader_compiled_separately; /* GFX9+ */
 
    struct {
       uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];

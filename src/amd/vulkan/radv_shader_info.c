@@ -1012,7 +1012,7 @@ radv_get_user_data_0(const struct radv_device *device, struct radv_shader_info *
 }
 
 static bool
-radv_is_shader_monolithic(const struct radv_device *device, const struct radv_shader_info *info)
+radv_is_merged_shader_compiled_separately(const struct radv_device *device, const struct radv_shader_info *info)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
 
@@ -1020,21 +1020,21 @@ radv_is_shader_monolithic(const struct radv_device *device, const struct radv_sh
       switch (info->stage) {
       case MESA_SHADER_VERTEX:
          if (info->next_stage == MESA_SHADER_TESS_CTRL || info->next_stage == MESA_SHADER_GEOMETRY)
-            return info->outputs_linked;
+            return !info->outputs_linked;
          break;
       case MESA_SHADER_TESS_EVAL:
          if (info->next_stage == MESA_SHADER_GEOMETRY)
-            return info->outputs_linked;
+            return !info->outputs_linked;
          break;
       case MESA_SHADER_TESS_CTRL:
       case MESA_SHADER_GEOMETRY:
-         return info->inputs_linked;
+         return !info->inputs_linked;
       default:
          break;
       }
    }
 
-   return true;
+   return false;
 }
 
 void
@@ -1160,7 +1160,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    }
 
    info->user_data_0 = radv_get_user_data_0(device, info);
-   info->is_monolithic = radv_is_shader_monolithic(device, info);
+   info->merged_shader_compiled_separately = radv_is_merged_shader_compiled_separately(device, info);
 
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
