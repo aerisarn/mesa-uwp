@@ -338,7 +338,6 @@ radeonsi-raven-va-full:x86_64:
 
 .polaris10-test-valve:
   variables:
-    RUNNER_FARM_LOCATION: keywords
     FDO_CI_CONCURRENT: 16
     B2C_TIMEOUT_BOOT_RETRIES: 4
     # (2022-01) tsc=unstable was added in response to this message in kmsg,
@@ -346,6 +345,16 @@ radeonsi-raven-va-full:x86_64:
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g tsc=unstable'
   tags:
     - amdgpu:codename:POLARIS10
+
+.polaris10-test-valve-mupuf:
+  extends: .polaris10-test-valve
+  variables:
+    RUNNER_FARM_LOCATION: mupuf
+
+.polaris10-test-valve-kws:
+  extends: .polaris10-test-valve
+  variables:
+    RUNNER_FARM_LOCATION: keywords
 
 .vega10-test-valve:
   variables:
@@ -446,7 +455,7 @@ radeonsi-raven-va-full:x86_64:
 vkcts-polaris10-valve:
   extends:
     - .vkcts-test-valve
-    - .polaris10-test-valve
+    - .polaris10-test-valve-mupuf
     - .radv-valve-manual-rules
   timeout: 1h 15m
   variables:
@@ -580,7 +589,7 @@ radv-fossils:
 .vkd3d-polaris10-valve:
   extends:
     - .vkd3d-test-valve
-    - .polaris10-test-valve
+    - .polaris10-test-valve-kws
     - .radv-valve-manual-rules
   variables:
     VKD3D_PROTON_RESULTS: radv-polaris10-vkd3d

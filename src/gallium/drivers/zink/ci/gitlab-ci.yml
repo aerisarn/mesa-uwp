@@ -233,7 +233,7 @@ zink-tu-a618-traces-performance:
 zink-radv-polaris10-valve:
   extends:
     - .radv-zink-test-valve
-    - .polaris10-test-valve
+    - .polaris10-test-valve-kws
     - .zink-radv-manual-rules
   variables:
     GPU_VERSION: zink-radv-polaris10
