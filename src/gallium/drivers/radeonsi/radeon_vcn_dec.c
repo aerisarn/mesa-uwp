@@ -2130,8 +2130,13 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    chroma = (struct si_texture *)((struct vl_video_buffer *)out_surf)->resources[1];
 
    decode->dpb_size = (dec->dpb_type != DPB_DYNAMIC_TIER_2) ? dec->dpb.res->buf->size : 0;
-   decode->dt_size = si_resource(((struct vl_video_buffer *)out_surf)->resources[0])->buf->size +
-                     si_resource(((struct vl_video_buffer *)out_surf)->resources[1])->buf->size;
+
+   /* When texture being created, the bo will be created with total size of planes,
+    * and all planes point to the same buffer */
+   assert(si_resource(((struct vl_video_buffer *)out_surf)->resources[0])->buf->size ==
+      si_resource(((struct vl_video_buffer *)out_surf)->resources[1])->buf->size);
+
+   decode->dt_size = si_resource(((struct vl_video_buffer *)out_surf)->resources[0])->buf->size;
 
    decode->sct_size = 0;
    decode->sc_coeff_size = 0;
