@@ -30,8 +30,11 @@
 bool
 xe_gem_read_render_timestamp(int fd, uint64_t *value)
 {
-   /* TODO: re-implement with DRM_XE_QUERY_CS_CYCLES */
-   return false;
+   UNUSED uint64_t cpu;
+
+   return xe_gem_read_correlate_cpu_gpu_timestamp(fd, INTEL_ENGINE_CLASS_RENDER,
+                                                  0, CLOCK_MONOTONIC, &cpu,
+                                                  value, NULL);
 }
 
 bool
