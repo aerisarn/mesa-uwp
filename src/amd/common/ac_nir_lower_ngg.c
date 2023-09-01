@@ -4496,6 +4496,21 @@ emit_ms_primitive(nir_builder *b, nir_def *index, nir_def *row, bool exports, bo
 }
 
 static void
+emit_ms_outputs(nir_builder *b, nir_def *invocation_index, nir_def *row_start,
+                nir_def *count, bool exports, bool parameters, uint64_t mask,
+                void (*cb)(nir_builder *, nir_def *, nir_def *, bool, bool,
+                           uint64_t, lower_ngg_ms_state *),
+                lower_ngg_ms_state *s)
+{
+   nir_def *has_output = nir_ilt(b, invocation_index, count);
+   nir_if *if_has_output = nir_push_if(b, has_output);
+   {
+      cb(b, invocation_index, row_start, exports, parameters, mask, s);
+   }
+   nir_pop_if(b, if_has_output);
+}
+
+static void
 emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
 {
    /* We assume there is always a single end block in the shader. */
@@ -4546,22 +4561,14 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
 
    /* Export vertices. */
    if ((per_vertex_outputs & ~VARYING_BIT_POS) || !wait_attr_ring) {
-      nir_def *has_output_vertex = nir_ilt(b, invocation_index, num_vtx);
-      nir_if *if_has_output_vertex = nir_push_if(b, has_output_vertex);
-      {
-         emit_ms_vertex(b, invocation_index, row_start, !wait_attr_ring, true, per_vertex_outputs, s);
-      }
-      nir_pop_if(b, if_has_output_vertex);
+      emit_ms_outputs(b, invocation_index, row_start, num_vtx, !wait_attr_ring, true,
+                      per_vertex_outputs, &emit_ms_vertex, s);
    }
 
    /* Export primitives. */
    if (per_primitive_outputs || !wait_attr_ring) {
-      nir_def *has_output_primitive = nir_ilt(b, invocation_index, num_prm);
-      nir_if *if_has_output_primitive = nir_push_if(b, has_output_primitive);
-      {
-         emit_ms_primitive(b, invocation_index, row_start, !wait_attr_ring, true, per_primitive_outputs, s);
-      }
-      nir_pop_if(b, if_has_output_primitive);
+      emit_ms_outputs(b, invocation_index, row_start, num_prm, !wait_attr_ring, true,
+                      per_primitive_outputs, &emit_ms_primitive, s);
    }
 
    /* When we need to wait for attribute ring stores, we emit both position and primitive
@@ -4575,20 +4582,11 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
                      .memory_semantics = NIR_MEMORY_RELEASE,
                      .memory_modes = nir_var_shader_out);
 
-      /* Position export only */
-      nir_def *has_output_vertex = nir_ilt(b, invocation_index, num_vtx);
-      nir_if *if_has_output_vertex = nir_push_if(b, has_output_vertex);
-      {
-         emit_ms_vertex(b, invocation_index, row_start, true, false, per_vertex_outputs, s);
-      }
-      nir_pop_if(b, if_has_output_vertex);
-
-      nir_def *has_output_primitive = nir_ilt(b, invocation_index, num_prm);
-      nir_if *if_has_output_primitive = nir_push_if(b, has_output_primitive);
-      {
-         emit_ms_primitive(b, invocation_index, row_start, true, false, per_primitive_outputs, s);
-      }
-      nir_pop_if(b, if_has_output_primitive);
+      /* Position/primitive export only */
+      emit_ms_outputs(b, invocation_index, row_start, num_vtx, true, false,
+                      per_vertex_outputs, &emit_ms_vertex, s);
+      emit_ms_outputs(b, invocation_index, row_start, num_prm, true, false,
+                      per_primitive_outputs, &emit_ms_primitive, s);
    }
 }
 
