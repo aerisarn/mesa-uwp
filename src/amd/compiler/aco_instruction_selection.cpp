@@ -11829,7 +11829,6 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
        (ctx.stage.sw == SWStage::VS || ctx.stage.sw == SWStage::TES)) {
       assert(program->gfx_level >= GFX9);
       create_merged_jump_to_epilog(&ctx);
-      ctx.block->kind |= block_kind_export_end;
    }
 
    cleanup_context(&ctx);
