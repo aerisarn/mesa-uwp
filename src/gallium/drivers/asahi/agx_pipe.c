@@ -1980,7 +1980,8 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
    if (format == PIPE_FORMAT_NONE)
       return true;
 
-   if (usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) {
+   if (usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW |
+                PIPE_BIND_SHADER_IMAGE)) {
       enum pipe_format tex_format = format;
 
       /* Mimic the fixup done in create_sampler_view and u_transfer_helper so we
