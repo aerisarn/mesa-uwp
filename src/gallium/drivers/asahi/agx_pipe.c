@@ -833,6 +833,7 @@ agx_alloc_staging(struct pipe_screen *screen, struct agx_resource *rsc,
 {
    struct pipe_resource tmpl = rsc->base;
 
+   tmpl.usage = PIPE_USAGE_STAGING;
    tmpl.width0 = box->width;
    tmpl.height0 = box->height;
    tmpl.depth0 = 1;
