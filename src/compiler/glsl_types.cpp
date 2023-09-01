@@ -78,18 +78,6 @@ glsl_type::glsl_type(void *mem_ctx, uint32_t gl_type,
    length(0), explicit_stride(explicit_stride),
    explicit_alignment(explicit_alignment)
 {
-   /* Values of these types must fit in the two bits of
-    * glsl_type::sampled_type.
-    */
-   STATIC_ASSERT((unsigned(GLSL_TYPE_UINT)  & 3) == unsigned(GLSL_TYPE_UINT));
-   STATIC_ASSERT((unsigned(GLSL_TYPE_INT)   & 3) == unsigned(GLSL_TYPE_INT));
-   STATIC_ASSERT((unsigned(GLSL_TYPE_FLOAT) & 3) == unsigned(GLSL_TYPE_FLOAT));
-
-   ASSERT_BITFIELD_SIZE(glsl_type, base_type, GLSL_TYPE_ERROR);
-   ASSERT_BITFIELD_SIZE(glsl_type, sampled_type, GLSL_TYPE_ERROR);
-   ASSERT_BITFIELD_SIZE(glsl_type, sampler_dimensionality,
-                        GLSL_SAMPLER_DIM_SUBPASS_MS);
-
    assert(mem_ctx != NULL);
 
    assert(name != NULL);
@@ -462,6 +450,18 @@ const glsl_type *glsl_type::get_uint16_type() const
 void
 glsl_type_singleton_init_or_ref()
 {
+   /* Values of these types must fit in the two bits of
+    * glsl_type::sampled_type.
+    */
+   STATIC_ASSERT((unsigned(GLSL_TYPE_UINT)  & 3) == unsigned(GLSL_TYPE_UINT));
+   STATIC_ASSERT((unsigned(GLSL_TYPE_INT)   & 3) == unsigned(GLSL_TYPE_INT));
+   STATIC_ASSERT((unsigned(GLSL_TYPE_FLOAT) & 3) == unsigned(GLSL_TYPE_FLOAT));
+
+   ASSERT_BITFIELD_SIZE(glsl_type, base_type, GLSL_TYPE_ERROR);
+   ASSERT_BITFIELD_SIZE(glsl_type, sampled_type, GLSL_TYPE_ERROR);
+   ASSERT_BITFIELD_SIZE(glsl_type, sampler_dimensionality,
+                        GLSL_SAMPLER_DIM_SUBPASS_MS);
+
    simple_mtx_lock(&glsl_type_cache_mutex);
    if (glsl_type_cache.users == 0)
       glsl_type_cache.mem_ctx = ralloc_context(NULL);

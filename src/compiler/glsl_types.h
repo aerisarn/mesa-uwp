@@ -323,13 +323,11 @@ struct glsl_type {
     */
    unsigned packed:1;
 
-private:
    glsl_type()
    {
       // Dummy constructor, just for the sake of ASSERT_BITFIELD_SIZE.
    }
 
-public:
    /**
     * \name Vector and matrix element counts
     *
