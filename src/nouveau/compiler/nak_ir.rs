@@ -9,6 +9,7 @@ pub use crate::nak_builder::{
     Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
 };
 use crate::nak_cfg::CFG;
+use crate::{GetDebugFlags, DEBUG};
 use nak_ir_proc::*;
 use std::fmt;
 use std::iter::Zip;
@@ -77,7 +78,11 @@ impl RegFile {
     pub fn num_regs(&self, sm: u8) -> u32 {
         match self {
             RegFile::GPR => {
-                if sm >= 75 {
+                if DEBUG.spill() {
+                    // We need at least 16 registers to satisfy RA constraints
+                    // for texture ops and another 2 for parallel copy lowering
+                    18
+                } else if sm >= 75 {
                     // Turing+ has a maximum of 253 registers.  Presumably
                     // because two registers get burned for UGPRs?
                     253

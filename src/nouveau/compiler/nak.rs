@@ -40,6 +40,7 @@ use util::NextMultipleOf;
 enum DebugFlags {
     Print,
     Serial,
+    Spill,
 }
 
 struct Debug {
@@ -61,6 +62,7 @@ impl Debug {
             match flag.trim() {
                 "print" => flags |= 1 << DebugFlags::Print as u8,
                 "serial" => flags |= 1 << DebugFlags::Serial as u8,
+                "spill" => flags |= 1 << DebugFlags::Spill as u8,
                 unk => eprintln!("Unknown NAK_DEBUG flag \"{}\"", unk),
             }
         }
@@ -77,6 +79,10 @@ trait GetDebugFlags {
 
     fn serial(&self) -> bool {
         self.debug_flags() & (1 << DebugFlags::Serial as u8) != 0
+    }
+
+    fn spill(&self) -> bool {
+        self.debug_flags() & (1 << DebugFlags::Spill as u8) != 0
     }
 }
 
