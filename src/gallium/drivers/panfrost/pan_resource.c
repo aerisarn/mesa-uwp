@@ -387,7 +387,23 @@ panfrost_should_tile_afbc(const struct panfrost_device *dev,
                           const struct panfrost_resource *pres)
 {
    return panfrost_afbc_can_tile(dev) && pres->base.width0 >= 128 &&
-          pres->base.height0 >= 128;
+          pres->base.height0 >= 128 && !(dev->debug & PAN_DBG_FORCE_PACK);
+}
+
+bool
+panfrost_should_pack_afbc(struct panfrost_device *dev,
+                          const struct panfrost_resource *prsrc)
+{
+   const unsigned valid_binding = PIPE_BIND_DEPTH_STENCIL |
+                                  PIPE_BIND_RENDER_TARGET |
+                                  PIPE_BIND_SAMPLER_VIEW;
+
+   return panfrost_afbc_can_pack(prsrc->base.format) && panfrost_is_2d(prsrc) &&
+          drm_is_afbc(prsrc->image.layout.modifier) &&
+          (prsrc->image.layout.modifier & AFBC_FORMAT_MOD_SPARSE) &&
+          (prsrc->base.bind & ~valid_binding) == 0 &&
+          !prsrc->modifier_constant && prsrc->base.width0 >= 32 &&
+          prsrc->base.height0 >= 32;
 }
 
 static bool
@@ -1429,6 +1445,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx, struct pipe_transfer *transfer)
 {
    /* Gallium expects writeback here, so we tile */
 
+   struct panfrost_context *ctx = pan_context(pctx);
    struct panfrost_transfer *trans = pan_transfer(transfer);
    struct panfrost_resource *prsrc =
       (struct panfrost_resource *)transfer->resource;
@@ -1457,8 +1474,13 @@ panfrost_ptr_unmap(struct pipe_context *pctx, struct pipe_transfer *transfer)
          } else {
             pan_blit_from_staging(pctx, trans);
             panfrost_flush_batches_accessing_rsrc(
-               pan_context(pctx), pan_resource(trans->staging.rsrc),
+               ctx, pan_resource(trans->staging.rsrc),
                "AFBC write staging blit");
+
+            if (dev->debug & PAN_DBG_FORCE_PACK) {
+               if (panfrost_should_pack_afbc(dev, prsrc))
+                  panfrost_pack_afbc(ctx, prsrc);
+            }
          }
       }
 

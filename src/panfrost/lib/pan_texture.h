@@ -233,6 +233,8 @@ enum pan_afbc_mode panfrost_afbc_format(unsigned arch, enum pipe_format format);
 
 bool panfrost_afbc_can_ytr(enum pipe_format format);
 
+bool panfrost_afbc_can_pack(enum pipe_format format);
+
 bool panfrost_afbc_can_tile(const struct panfrost_device *dev);
 
 /*
