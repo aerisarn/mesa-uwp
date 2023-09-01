@@ -2296,7 +2296,8 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
       } else {
          struct tu_buffer *buf = tu_buffer_from_handle(pBuffers[i]);
          cmd->state.vb[firstBinding + i].base = buf->iova + pOffsets[i];
-         cmd->state.vb[firstBinding + i].size = pSizes ? pSizes[i] : (buf->vk.size - pOffsets[i]);
+         cmd->state.vb[firstBinding + i].size =
+            vk_buffer_range(&buf->vk, pOffsets[i], pSizes ? pSizes[i] : VK_WHOLE_SIZE);
       }
    }
 
