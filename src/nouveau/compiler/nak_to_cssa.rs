@@ -1,17 +1,6 @@
 // Copyright © 2023 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
-// Implements conversion to CSSA as described in "Revisiting Out-of-SSA
-// Translation for Correctness, Code Quality, and Eﬃciency" by Boissinot et.
-// al.
-//
-// The primary difference between this algorithm and that of the Boissinot
-// paper is that we don't actually insert parallel copies and remove redundant
-// entries.  Instead, we treat OpPhiSrcs and OpPhiDsts as as the parallel
-// copies with the phi index standing in for all of the SSA values used
-// directly by the phi.  This lets us avoid adding and removing parallel copies
-// and can instead add the parallel copies at the end.
-
 use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
 use crate::nak_liveness::{BlockLiveness, Liveness, SimpleLiveness};
@@ -272,6 +261,33 @@ impl<'a> CoalesceGraph<'a> {
 }
 
 impl Function {
+    /// Convert a function to CSSA (Conventional SSA) form
+    ///
+    /// In "Translating Out of Static Single Assignment Form" by Sreedhar, et.
+    /// al., they define CSSA form via what they call the Phi Congruence
+    /// Property:
+    ///
+    /// > The occurrences of all resources which belong to the same phi
+    /// > congruence class in a program can be replaced by a representative
+    /// > resource. After the replacement, the phi instruction can be
+    /// > eliminated without violating the semantics of the original program.
+    ///
+    /// A more compiler-theoretic definition of CSSA form is a version of SSA
+    /// form in which, for each phi, none of the SSA values involved in the phi
+    /// (either as a source or destination) interfere.  While most of the papers
+    /// discussing CSSA form do so in the context of out-of-SSA, this property
+    /// is also useful for SSA-based spilling and register allocation.
+    ///
+    /// Our implementation is based on the algorithm described in "Revisiting
+    /// Out-of-SSA Translation for Correctness, Code Quality, and Effciency" by
+    /// Boissinot et. al.  The primary difference between this algorithm and
+    /// the one in that paper is that we don't actually insert parallel copies
+    /// and remove redundant entries.  Instead, we treat OpPhiSrcs and OpPhiDsts
+    /// as as the parallel copies with the phi index standing in for all of the
+    /// SSA values used directly by the phi.  Then, instead of removing copies
+    /// where the source and destination don't interfere, we insert copies
+    /// whenever the source or destination and phi index do interfere.  This
+    /// lets us avoid inserting pointless instructions.
     pub fn to_cssa(&mut self) {
         let live = SimpleLiveness::for_function(self);
 

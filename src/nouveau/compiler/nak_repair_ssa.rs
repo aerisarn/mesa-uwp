@@ -50,7 +50,7 @@ fn get_ssa_or_phi(
     }
 
     if all_same {
-        let pred_ssa = pred_ssa.expect("Unreachable block");
+        let pred_ssa = pred_ssa.expect("Undefined value");
         b_defs.insert(ssa, pred_ssa);
         pred_ssa
     } else {
@@ -119,6 +119,22 @@ fn get_or_insert_phi_srcs<'a>(bb: &'a mut BasicBlock) -> &'a mut OpPhiSrcs {
 }
 
 impl Function {
+    /// Repairs SSA form
+    ///
+    /// Certain passes such as register spilling may produce a program that is
+    /// no longer in SSA form.  This pass is able to repair SSA by inserting
+    /// phis as needed.  Even though we do not require dominance or that each
+    /// value be defined once we do require that, for every use of an SSAValue
+    /// and for every path from the start of the program to that use, there must
+    /// be some definition of the value along that path.
+    ///
+    /// The algorithm implemented here is based on the one in "Simple and
+    /// Efficient Construction of Static Single Assignment Form" by Braun, et.
+    /// al.  The primary difference between our implementation and the paper is
+    /// that we can't rewrite the IR on-the-fly.  Instead, we store everything
+    /// in hash tables and handle removing redundant phis with back-edges as a
+    /// separate pass between figuring out where phis are needed and actually
+    /// constructing the phi instructions.
     pub fn repair_ssa(&mut self) {
         // First, count the number of defs for each SSA value.  This will allow
         // us to skip any SSA values which only have a single definition in

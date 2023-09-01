@@ -124,8 +124,13 @@ impl FromIterator<SSAValue> for LiveSet {
 }
 
 pub trait BlockLiveness {
+    /// Returns true if @val is still live after @ip
     fn is_live_after_ip(&self, val: &SSAValue, ip: usize) -> bool;
+
+    /// Returns true if @val is live-in to this block
     fn is_live_in(&self, val: &SSAValue) -> bool;
+
+    /// Returns true if @val is live-out of this block
     fn is_live_out(&self, val: &SSAValue) -> bool;
 
     fn get_instr_pressure(&self, ip: usize, instr: &Instr) -> PerRegFile<u8> {
@@ -415,6 +420,7 @@ impl NextUseBlockLiveness {
         self.entry_mut(ssa).add_in_block_use(ip);
     }
 
+    /// Returns an iterator over all the values which are live-in to this block
     pub fn iter_live_in<'a>(&'a self) -> impl Iterator<Item = &'a SSAValue> {
         self.ssa_map.iter().filter_map(|(ssa, entry)| {
             if entry.defined || entry.uses.is_empty() {
@@ -425,6 +431,12 @@ impl NextUseBlockLiveness {
         })
     }
 
+    /// Returns the IP of the first use of @val
+    ///
+    /// The returned IP is relative to the start of this block.  If the next use
+    /// is in some successor block, the returned IP is relative to the start of
+    /// this block.  If @val is not used in this block and is not live-out, None
+    /// is returned.
     pub fn first_use(&self, val: &SSAValue) -> Option<usize> {
         if let Some(entry) = self.ssa_map.get(val) {
             entry.uses.first().cloned()
@@ -433,6 +445,11 @@ impl NextUseBlockLiveness {
         }
     }
 
+    /// Returns the IP of the first use of @val which is greater than or equal
+    /// to @ip
+    ///
+    /// All IPs are relative to the start of the block.  If the next use is some
+    /// successor block, the returned IP is relative to the start of this block.
     pub fn next_use_after_or_at_ip(
         &self,
         val: &SSAValue,
@@ -485,6 +502,12 @@ impl BlockLiveness for NextUseBlockLiveness {
     }
 }
 
+/// An implementation of Liveness that tracks next-use IPs for each SSAValue
+///
+/// Along with the usual liveness information, this tracks next-use IPs for each
+/// SSAValue.  Cross-block next-use IPs computed are as per the global next-use
+/// distance algorithm described in "Register Spilling and Live-Range Splitting
+/// for SSA-Form Programs" by Braun and Hack.
 pub struct NextUseLiveness {
     blocks: Vec<NextUseBlockLiveness>,
 }
