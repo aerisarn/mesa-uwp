@@ -179,8 +179,12 @@ r2d_clear_value(struct tu_cs *cs, enum pipe_format format, const VkClearValue *v
       assert(desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ||
              format == PIPE_FORMAT_R11G11B10_FLOAT);
 
-      for (unsigned i = 0; i < desc->nr_channels; i++) {
-         const struct util_format_channel_description *ch = &desc->channel[i];
+      for (unsigned i = 0; i < 4; i++) {
+         if (desc->swizzle[i] > PIPE_SWIZZLE_W)
+            continue;
+
+         const struct util_format_channel_description *ch =
+            &desc->channel[desc->swizzle[i]];
          if (ifmt == R2D_UNORM8) {
             float linear = val->color.float32[i];
             if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB && i < 3)
@@ -2980,6 +2984,10 @@ pack_gmem_clear_value(const VkClearValue *val, enum pipe_format format, uint32_t
       break;
    case 32:
       memcpy(clear_value, val->color.float32, 4 * sizeof(float));
+      break;
+   case 0:
+      assert(format == PIPE_FORMAT_A8_UNORM);
+      PACK_F(a8_unorm);
       break;
    default:
       unreachable("unexpected channel size");
