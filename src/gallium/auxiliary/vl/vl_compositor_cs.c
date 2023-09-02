@@ -130,7 +130,7 @@ const char *compute_shader_weave =
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
 
-      "DCL CONST[0..7]\n"
+      "DCL CONST[0..8]\n"
       "DCL SVIEW[0..2], 2D_ARRAY, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
@@ -160,8 +160,9 @@ const char *compute_shader_weave =
 
          /* Top UV */
          "MOV TEMP[3].xy, TEMP[2].xyyy\n"
+         /* Chroma offset */
+         "ADD TEMP[3].xy, TEMP[3].xyyy, CONST[8].xyxy\n"
          "DIV TEMP[3].xy, TEMP[3], IMM[1].yyyy\n"
-         "TRUNC TEMP[3].xy, TEMP[3].xyyy\n"
          "DIV TEMP[3].y, TEMP[3].yyyy, IMM[1].yyyy\n"
          /* Down UV */
          "MOV TEMP[13].xy, TEMP[3].xyyy\n"
