@@ -168,20 +168,13 @@ emit_mbcnt(isel_context* ctx, Temp dst, Operand mask = Operand(), Operand base =
       return bld.vop3(aco_opcode::v_mbcnt_hi_u32_b32_e64, Definition(dst), mask_hi, mbcnt_lo);
 }
 
-Temp
-emit_wqm(Builder& bld, Temp src, Temp dst = Temp(0, s1), bool program_needs_wqm = false)
+inline void
+emit_wqm(Builder& bld, bool program_needs_wqm = false)
 {
-   if (dst.id())
-      bld.copy(Definition(dst), src);
-   else
-      dst = src;
-
    if (bld.program->stage == fragment_fs) {
       bld.pseudo(aco_opcode::p_wqm);
       bld.program->needs_wqm |= program_needs_wqm;
    }
-
-   return dst;
 }
 
 static Temp
@@ -3836,13 +3829,13 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       Temp tmp;
       if (ctx->program->gfx_level >= GFX8) {
          Temp tl = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl1);
-         tmp = bld.vop2_dpp(aco_opcode::v_sub_f32, bld.def(v1), src, tl, dpp_ctrl2);
+         bld.vop2_dpp(aco_opcode::v_sub_f32, Definition(dst), src, tl, dpp_ctrl2);
       } else {
          Temp tl = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl1);
          Temp tr = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl2);
-         tmp = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), tr, tl);
+         bld.vop2(aco_opcode::v_sub_f32, Definition(dst), tr, tl);
       }
-      emit_wqm(bld, tmp, dst, true);
+      emit_wqm(bld, true);
       break;
    }
    default: isel_err(&instr->instr, "Unknown NIR ALU instr");
@@ -5315,15 +5308,13 @@ emit_interp_instr_gfx11(isel_context* ctx, unsigned idx, unsigned component, Tem
       Temp p10 =
          bld.vinterp_inreg(aco_opcode::v_interp_p10_f16_f32_inreg, bld.def(v1), p, coord1, p);
       res = bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, bld.def(v1), p, coord2, p10);
+      emit_extract_vector(ctx, res, 0, dst);
    } else {
       Temp p10 = bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, bld.def(v1), p, coord1, p);
-      res = bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, bld.def(v1), p, coord2, p10);
+      bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, Definition(dst), p, coord2, p10);
    }
    /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
-   if (dst.regClass() != v2b)
-      emit_wqm(bld, res, dst, true);
-   else
-      emit_extract_vector(ctx, emit_wqm(bld, res, Temp(0, s1), true), 0, dst);
+   emit_wqm(bld, true);
 }
 
 void
@@ -5389,13 +5380,14 @@ emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsig
       } else {
          Temp p =
             bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
-         Temp res = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p, dpp_ctrl);
-
+         if (dst.regClass() == v2b) {
+            Temp res = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p, dpp_ctrl);
+            emit_extract_vector(ctx, res, 0, dst);
+         } else {
+            bld.vop1_dpp(aco_opcode::v_mov_b32, Definition(dst), p, dpp_ctrl);
+         }
          /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
-         if (dst.regClass() != v2b)
-            emit_wqm(bld, res, dst, true);
-         else
-            emit_extract_vector(ctx, emit_wqm(bld, res, Temp(0, s1), true), 0, dst);
+         emit_wqm(bld, true);
       }
    } else {
       bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32((vertex_id + 2) % 3),
@@ -5943,12 +5935,11 @@ emit_mimg(Builder& bld, aco_opcode op, Temp dst, Temp rsrc, Operand samp, std::v
 
    bool has_dst = dst.id() != 0;
    assert(!needs_wqm || has_dst);
-   Temp tmp_dst = needs_wqm ? bld.tmp(dst.regClass()) : dst;
 
    aco_ptr<MIMG_instruction> mimg{
       create_instruction<MIMG_instruction>(op, Format::MIMG, 3 + coords.size(), has_dst)};
    if (has_dst)
-      mimg->definitions[0] = Definition(tmp_dst);
+      mimg->definitions[0] = Definition(dst);
    mimg->operands[0] = Operand(rsrc);
    mimg->operands[1] = samp;
    mimg->operands[2] = vdata;
@@ -5959,7 +5950,7 @@ emit_mimg(Builder& bld, aco_opcode op, Temp dst, Temp rsrc, Operand samp, std::v
    MIMG_instruction* res = mimg.get();
    bld.insert(std::move(mimg));
    if (needs_wqm)
-      emit_wqm(bld, tmp_dst, dst, true);
+      emit_wqm(bld, true);
    return res;
 }
 
@@ -7528,24 +7519,25 @@ visit_store_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 }
 
-Temp
-emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp src)
+void
+emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp src, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
+   assert(dst.regClass() == bld.lm);
 
    if (cluster_size == 1) {
-      return src;
+      bld.copy(Definition(dst), src);
    }
    if (op == nir_op_iand && cluster_size == 4) {
       /* subgroupClusteredAnd(val, 4) -> ~wqm(~val & exec) */
       Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
       tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm));
-      return bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc),
-                      bld.sop1(Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc), tmp));
+      bld.sop1(Builder::s_not, Definition(dst), bld.def(s1, scc),
+               bld.sop1(Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc), tmp));
    } else if (op == nir_op_ior && cluster_size == 4) {
       /* subgroupClusteredOr(val, 4) -> wqm(val & exec) */
-      return bld.sop1(
-         Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc),
+      bld.sop1(
+         Builder::s_wqm, Definition(dst), bld.def(s1, scc),
          bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm)));
    } else if (op == nir_op_iand && cluster_size == ctx->program->wave_size) {
       /* subgroupAnd(val) -> (~val & exec) == 0 */
@@ -7553,15 +7545,15 @@ emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp sr
       tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm))
                .def(1)
                .getTemp();
-      Temp cond = bool_to_vector_condition(ctx, emit_wqm(bld, tmp));
-      return bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), cond);
+      Temp cond = bool_to_vector_condition(ctx, tmp);
+      bld.sop1(Builder::s_not, Definition(dst), bld.def(s1, scc), cond);
    } else if (op == nir_op_ior && cluster_size == ctx->program->wave_size) {
       /* subgroupOr(val) -> (val & exec) != 0 */
       Temp tmp =
          bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm))
             .def(1)
             .getTemp();
-      return bool_to_vector_condition(ctx, tmp);
+      bool_to_vector_condition(ctx, tmp, dst);
    } else if (op == nir_op_ixor && cluster_size == ctx->program->wave_size) {
       /* subgroupXor(val) -> s_bcnt1_i32_b64(val & exec) & 1 */
       Temp tmp =
@@ -7570,7 +7562,7 @@ emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp sr
       tmp = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), tmp, Operand::c32(1u))
                .def(1)
                .getTemp();
-      return bool_to_vector_condition(ctx, tmp);
+      bool_to_vector_condition(ctx, tmp, dst);
    } else {
       /* subgroupClustered{And,Or,Xor}(val, n):
        *   lane_id = v_mbcnt_hi_u32_b32(-1, v_mbcnt_lo_u32_b32(-1, 0)) (just v_mbcnt_lo on wave32)
@@ -7607,22 +7599,19 @@ emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp sr
          tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(cluster_mask), tmp);
 
       if (op == nir_op_iand) {
-         return bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm), Operand::c32(cluster_mask),
-                         tmp);
+         bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(dst), Operand::c32(cluster_mask), tmp);
       } else if (op == nir_op_ior) {
-         return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand::zero(), tmp);
+         bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), tmp);
       } else if (op == nir_op_ixor) {
          tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(1u),
                         bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), tmp, Operand::zero()));
-         return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand::zero(), tmp);
+         bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), tmp);
       }
-      assert(false);
-      return Temp();
    }
 }
 
-Temp
-emit_boolean_exclusive_scan(isel_context* ctx, nir_op op, Temp src)
+void
+emit_boolean_exclusive_scan(isel_context* ctx, nir_op op, Temp src, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
    assert(src.regClass() == bld.lm);
@@ -7640,19 +7629,16 @@ emit_boolean_exclusive_scan(isel_context* ctx, nir_op op, Temp src)
    Temp mbcnt = emit_mbcnt(ctx, bld.tmp(v1), Operand(tmp));
 
    if (op == nir_op_iand)
-      return bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm), Operand::zero(), mbcnt);
+      bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(dst), Operand::zero(), mbcnt);
    else if (op == nir_op_ior)
-      return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand::zero(), mbcnt);
+      bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), mbcnt);
    else if (op == nir_op_ixor)
-      return bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand::zero(),
-                      bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(1u), mbcnt));
-
-   assert(false);
-   return Temp();
+      bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(),
+               bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(1u), mbcnt));
 }
 
-Temp
-emit_boolean_inclusive_scan(isel_context* ctx, nir_op op, Temp src)
+void
+emit_boolean_inclusive_scan(isel_context* ctx, nir_op op, Temp src, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
 
@@ -7660,16 +7646,14 @@ emit_boolean_inclusive_scan(isel_context* ctx, nir_op op, Temp src)
     * subgroupInclusiveOr(val) -> subgroupExclusiveOr(val) || val
     * subgroupInclusiveXor(val) -> subgroupExclusiveXor(val) ^^ val
     */
-   Temp tmp = emit_boolean_exclusive_scan(ctx, op, src);
+   Temp tmp = bld.tmp(bld.lm);
+   emit_boolean_exclusive_scan(ctx, op, src, tmp);
    if (op == nir_op_iand)
-      return bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, src);
+      bld.sop2(Builder::s_and, Definition(dst), bld.def(s1, scc), tmp, src);
    else if (op == nir_op_ior)
-      return bld.sop2(Builder::s_or, bld.def(bld.lm), bld.def(s1, scc), tmp, src);
+      bld.sop2(Builder::s_or, Definition(dst), bld.def(s1, scc), tmp, src);
    else if (op == nir_op_ixor)
-      return bld.sop2(Builder::s_xor, bld.def(bld.lm), bld.def(s1, scc), tmp, src);
-
-   assert(false);
-   return Temp();
+      bld.sop2(Builder::s_xor, Definition(dst), bld.def(s1, scc), tmp, src);
 }
 
 ReduceOp
@@ -7790,7 +7774,7 @@ emit_uniform_reduce(isel_context* ctx, nir_intrinsic_instr* instr)
 
       Temp thread_count =
          bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), Operand(exec, bld.lm));
-      thread_count = emit_wqm(bld, thread_count, Temp(0, s1), nir_intrinsic_include_helpers(instr));
+      emit_wqm(bld, nir_intrinsic_include_helpers(instr));
 
       emit_addition_uniform_reduce(ctx, op, dst, instr->src[0], thread_count);
    } else {
@@ -7820,7 +7804,7 @@ emit_uniform_scan(isel_context* ctx, nir_intrinsic_instr* instr)
          packed_tid = emit_mbcnt(ctx, bld.tmp(v1), Operand(exec, bld.lm), Operand::c32(1u));
       else
          packed_tid = emit_mbcnt(ctx, bld.tmp(v1), Operand(exec, bld.lm));
-      packed_tid = emit_wqm(bld, packed_tid);
+      emit_wqm(bld);
 
       emit_addition_uniform_reduce(ctx, op, dst, instr->src[0], packed_tid);
       return true;
@@ -7855,6 +7839,7 @@ emit_uniform_scan(isel_context* ctx, nir_intrinsic_instr* instr)
                     as_vgpr(ctx, src));
    }
 
+   emit_wqm(bld);
    return true;
 }
 
@@ -7915,14 +7900,17 @@ emit_reduction_instr(isel_context* ctx, aco_opcode aco_op, ReduceOp op, unsigned
 }
 
 Temp
-inclusive_scan_to_exclusive(isel_context* ctx, ReduceOp op, Temp scan, Temp src)
+inclusive_scan_to_exclusive(isel_context* ctx, ReduceOp op, Definition dst, Temp src)
 {
    Builder bld(ctx->program, ctx->block);
+
+   Temp scan = emit_reduction_instr(ctx, aco_opcode::p_inclusive_scan, op, ctx->program->wave_size,
+                                    bld.def(dst.regClass()), src);
 
    switch (op) {
    case iadd8:
    case iadd16:
-   case iadd32: return bld.vsub32(bld.def(scan.regClass()), scan, src);
+   case iadd32: return bld.vsub32(dst, scan, src);
    case ixor64:
    case iadd64: {
       Temp src00 = bld.tmp(v1);
@@ -7941,11 +7929,11 @@ inclusive_scan_to_exclusive(isel_context* ctx, ReduceOp op, Temp scan, Temp src)
          bld.vop2(aco_opcode::v_xor_b32, Definition(lower), src00, src10);
          bld.vop2(aco_opcode::v_xor_b32, Definition(upper), src01, src11);
       }
-      return bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), lower, upper);
+      return bld.pseudo(aco_opcode::p_create_vector, dst, lower, upper);
    }
    case ixor8:
    case ixor16:
-   case ixor32: return bld.vop2(aco_opcode::v_xor_b32, bld.def(scan.regClass()), scan, src);
+   case ixor32: return bld.vop2(aco_opcode::v_xor_b32, dst, scan, src);
    default: unreachable("Unsupported op");
    }
 }
@@ -7991,11 +7979,8 @@ emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
    Temp tmp2 = bld.vop3(mad, bld.def(v1), ddx_2, pos1, p2);
    tmp1 = bld.vop3(mad, bld.def(v1), ddy_1, pos2, tmp1);
    tmp2 = bld.vop3(mad, bld.def(v1), ddy_2, pos2, tmp2);
-   Temp wqm1 = bld.tmp(v1);
-   emit_wqm(bld, tmp1, wqm1, true);
-   Temp wqm2 = bld.tmp(v1);
-   emit_wqm(bld, tmp2, wqm2, true);
-   bld.pseudo(aco_opcode::p_create_vector, Definition(dst), wqm1, wqm2);
+   bld.pseudo(aco_opcode::p_create_vector, Definition(dst), tmp1, tmp2);
+   emit_wqm(bld, true);
    return;
 }
 
@@ -8314,14 +8299,14 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       /* Make sure that all inactive lanes return zero.
        * Value-numbering might remove the comparison above */
-      src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
+      Definition def = dst.size() == bld.lm.size() ? Definition(dst) : bld.def(bld.lm);
+      src = bld.sop2(Builder::s_and, def, bld.def(s1, scc), src, Operand(exec, bld.lm));
       if (dst.size() != bld.lm.size()) {
          /* Wave32 with ballot size set to 64 */
-         src =
-            bld.pseudo(aco_opcode::p_create_vector, bld.def(dst.regClass()), src, Operand::zero());
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src, Operand::zero());
       }
 
-      emit_wqm(bld, src, dst);
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_shuffle:
@@ -8341,25 +8326,26 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
          if (src.regClass() == v1b || src.regClass() == v2b) {
             Temp tmp = bld.tmp(v1);
-            tmp = emit_wqm(bld, emit_bpermute(ctx, bld, tid, src), tmp);
+            tmp = emit_bpermute(ctx, bld, tid, src);
             if (dst.type() == RegType::vgpr)
                bld.pseudo(aco_opcode::p_split_vector, Definition(dst),
                           bld.def(src.regClass() == v1b ? v3b : v2b), tmp);
             else
                bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), tmp);
          } else if (src.regClass() == v1) {
-            emit_wqm(bld, emit_bpermute(ctx, bld, tid, src), dst);
+            Temp tmp = emit_bpermute(ctx, bld, tid, src);
+            bld.copy(Definition(dst), tmp);
          } else if (src.regClass() == v2) {
             Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
             bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-            lo = emit_wqm(bld, emit_bpermute(ctx, bld, tid, lo));
-            hi = emit_wqm(bld, emit_bpermute(ctx, bld, tid, hi));
+            lo = emit_bpermute(ctx, bld, tid, lo);
+            hi = emit_bpermute(ctx, bld, tid, hi);
             bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
             emit_split_vector(ctx, dst, 2);
          } else if (instr->def.bit_size == 1 && tid.regClass() == s1) {
             assert(src.regClass() == bld.lm);
             Temp tmp = bld.sopc(Builder::s_bitcmp1, bld.def(s1, scc), src, tid);
-            bool_to_vector_condition(ctx, emit_wqm(bld, tmp), dst);
+            bool_to_vector_condition(ctx, tmp, dst);
          } else if (instr->def.bit_size == 1 && tid.regClass() == v1) {
             assert(src.regClass() == bld.lm);
             Temp tmp;
@@ -8371,11 +8357,11 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
                tmp = bld.vop2_e64(aco_opcode::v_lshrrev_b32, bld.def(v1), tid, src);
             tmp = emit_extract_vector(ctx, tmp, 0, v1);
             tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(1u), tmp);
-            emit_wqm(bld, bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand::zero(), tmp),
-                     dst);
+            bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), tmp);
          } else {
             isel_err(&instr->instr, "Unimplemented NIR instr bit size");
          }
+         emit_wqm(bld);
       }
       break;
    }
@@ -8388,22 +8374,23 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->def);
       if (src.regClass() == v1b || src.regClass() == v2b || src.regClass() == v1) {
-         emit_wqm(bld, bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), src), dst);
+         bld.vop1(aco_opcode::v_readfirstlane_b32, Definition(dst), src);
       } else if (src.regClass() == v2) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-         lo = emit_wqm(bld, bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), lo));
-         hi = emit_wqm(bld, bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), hi));
+         lo = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), lo);
+         hi = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), hi);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
          emit_split_vector(ctx, dst, 2);
       } else if (instr->def.bit_size == 1) {
          assert(src.regClass() == bld.lm);
          Temp tmp = bld.sopc(Builder::s_bitcmp1, bld.def(s1, scc), src,
                              bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm)));
-         bool_to_vector_condition(ctx, emit_wqm(bld, tmp), dst);
+         bool_to_vector_condition(ctx, tmp, dst);
       } else {
          bld.copy(Definition(dst), src);
       }
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_vote_all: {
@@ -8416,8 +8403,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm))
                .def(1)
                .getTemp();
-      Temp cond = bool_to_vector_condition(ctx, emit_wqm(bld, tmp));
+      Temp cond = bool_to_vector_condition(ctx, tmp);
       bld.sop1(Builder::s_not, Definition(dst), bld.def(s1, scc), cond);
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_vote_any: {
@@ -8427,7 +8415,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       assert(dst.regClass() == bld.lm);
 
       Temp tmp = bool_to_scalar_condition(ctx, src);
-      bool_to_vector_condition(ctx, emit_wqm(bld, tmp), dst);
+      bool_to_vector_condition(ctx, tmp, dst);
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_reduce:
@@ -8470,15 +8459,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          assert(op == nir_op_iand || op == nir_op_ior || op == nir_op_ixor);
 
          switch (instr->intrinsic) {
-         case nir_intrinsic_reduce:
-            emit_wqm(bld, emit_boolean_reduce(ctx, op, cluster_size, src), dst, create_helpers);
-            break;
-         case nir_intrinsic_exclusive_scan:
-            emit_wqm(bld, emit_boolean_exclusive_scan(ctx, op, src), dst);
-            break;
-         case nir_intrinsic_inclusive_scan:
-            emit_wqm(bld, emit_boolean_inclusive_scan(ctx, op, src), dst);
-            break;
+         case nir_intrinsic_reduce: emit_boolean_reduce(ctx, op, cluster_size, src, dst); break;
+         case nir_intrinsic_exclusive_scan: emit_boolean_exclusive_scan(ctx, op, src, dst); break;
+         case nir_intrinsic_inclusive_scan: emit_boolean_inclusive_scan(ctx, op, src, dst); break;
          default: assert(false);
          }
       } else if (cluster_size == 1) {
@@ -8503,16 +8486,11 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
                                                   (op == nir_op_iadd || op == nir_op_ixor) &&
                                                   dst.type() == RegType::vgpr;
          if (use_inclusive_for_exclusive)
-            aco_op = aco_opcode::p_inclusive_scan;
-
-         Temp tmp_dst = emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size,
-                                             bld.def(dst.regClass()), src);
-
-         if (use_inclusive_for_exclusive)
-            tmp_dst = inclusive_scan_to_exclusive(ctx, reduce_op, tmp_dst, src);
-
-         emit_wqm(bld, tmp_dst, dst, create_helpers);
+            inclusive_scan_to_exclusive(ctx, reduce_op, Definition(dst), src);
+         else
+            emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size, Definition(dst), src);
       }
+      emit_wqm(bld, create_helpers);
       break;
    }
    case nir_intrinsic_quad_broadcast:
@@ -8524,6 +8502,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (!instr->def.divergent) {
          emit_uniform_subgroup(ctx, instr, src);
+         emit_wqm(bld, true);
          break;
       }
 
@@ -8548,7 +8527,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       }
 
       Temp dst = get_ssa_temp(ctx, &instr->def);
-      Temp tmp(dst);
 
       /* Setup source. */
       if (bool_use_valu)
@@ -8557,15 +8535,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       else if (instr->def.bit_size != 1)
          src = as_vgpr(ctx, src);
 
-      /* Setup temporary destination. */
-      if (bool_use_valu)
-         tmp = bld.tmp(v1);
-      else if (ctx->program->stage == fragment_fs)
-         tmp = bld.tmp(dst.regClass());
-
       if (instr->def.bit_size == 1 && instr->intrinsic == nir_intrinsic_quad_broadcast) {
          /* Special case for quad broadcast using SALU only. */
-         assert(src.regClass() == bld.lm && tmp.regClass() == bld.lm);
+         assert(src.regClass() == bld.lm && dst.regClass() == bld.lm);
 
          uint32_t half_mask = 0x11111111u << lane;
          Operand mask_tmp = bld.lm.bytes() == 4
@@ -8576,10 +8548,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          src =
             bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
          src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), mask_tmp, src);
-         bld.sop1(Builder::s_wqm, Definition(tmp), src);
+         bld.sop1(Builder::s_wqm, Definition(dst), src);
       } else if (instr->def.bit_size <= 32 || bool_use_valu) {
          unsigned excess_bytes = bool_use_valu ? 0 : 4 - instr->def.bit_size / 8;
-         Definition def = excess_bytes ? bld.def(v1) : Definition(tmp);
+         Definition def = (excess_bytes || bool_use_valu) ? bld.def(v1) : Definition(dst);
 
          if (ctx->program->gfx_level >= GFX8)
             bld.vop1_dpp(aco_opcode::v_mov_b32, def, src, dpp_ctrl);
@@ -8587,8 +8559,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
             bld.ds(aco_opcode::ds_swizzle_b32, def, src, (1 << 15) | dpp_ctrl);
 
          if (excess_bytes)
-            bld.pseudo(aco_opcode::p_split_vector, Definition(tmp),
-                       bld.def(RegClass::get(tmp.type(), excess_bytes)), def.getTemp());
+            bld.pseudo(aco_opcode::p_split_vector, Definition(dst),
+                       bld.def(RegClass::get(dst.type(), excess_bytes)), def.getTemp());
+         if (bool_use_valu)
+            bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), def.getTemp());
       } else if (instr->def.bit_size == 64) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
@@ -8601,20 +8575,14 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
             hi = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), hi, (1 << 15) | dpp_ctrl);
          }
 
-         bld.pseudo(aco_opcode::p_create_vector, Definition(tmp), lo, hi);
-         emit_split_vector(ctx, tmp, 2);
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
+         emit_split_vector(ctx, dst, 2);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR quad group instruction bit size.");
       }
 
-      if (tmp.id() != dst.id()) {
-         if (bool_use_valu)
-            tmp = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand::zero(), tmp);
-
-         /* Vulkan spec 9.25: Helper invocations must be active for quad group instructions. */
-         emit_wqm(bld, tmp, dst, true);
-      }
-
+      /* Vulkan spec 9.25: Helper invocations must be active for quad group instructions. */
+      emit_wqm(bld, true);
       break;
    }
    case nir_intrinsic_masked_swizzle_amd: {
@@ -8634,26 +8602,26 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          src = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand::zero(),
                             Operand::c32(-1), src);
          src = emit_masked_swizzle(ctx, bld, src, mask);
-         Temp tmp = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand::zero(), src);
-         emit_wqm(bld, tmp, dst);
+         bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), src);
       } else if (dst.regClass() == v1b) {
-         Temp tmp = emit_wqm(bld, emit_masked_swizzle(ctx, bld, src, mask));
+         Temp tmp = emit_masked_swizzle(ctx, bld, src, mask);
          emit_extract_vector(ctx, tmp, 0, dst);
       } else if (dst.regClass() == v2b) {
-         Temp tmp = emit_wqm(bld, emit_masked_swizzle(ctx, bld, src, mask));
+         Temp tmp = emit_masked_swizzle(ctx, bld, src, mask);
          emit_extract_vector(ctx, tmp, 0, dst);
       } else if (dst.regClass() == v1) {
-         emit_wqm(bld, emit_masked_swizzle(ctx, bld, src, mask), dst);
+         bld.copy(Definition(dst), emit_masked_swizzle(ctx, bld, src, mask));
       } else if (dst.regClass() == v2) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-         lo = emit_wqm(bld, emit_masked_swizzle(ctx, bld, lo, mask));
-         hi = emit_wqm(bld, emit_masked_swizzle(ctx, bld, hi, mask));
+         lo = emit_masked_swizzle(ctx, bld, lo, mask);
+         hi = emit_masked_swizzle(ctx, bld, hi, mask);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
          emit_split_vector(ctx, dst, 2);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_write_invocation_amd: {
@@ -8663,14 +8631,14 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       Temp dst = get_ssa_temp(ctx, &instr->def);
       if (dst.regClass() == v1) {
          /* src2 is ignored for writelane. RA assigns the same reg for dst */
-         emit_wqm(bld, bld.writelane(bld.def(v1), val, lane, src), dst);
+         bld.writelane(Definition(dst), val, lane, src);
       } else if (dst.regClass() == v2) {
          Temp src_lo = bld.tmp(v1), src_hi = bld.tmp(v1);
          Temp val_lo = bld.tmp(s1), val_hi = bld.tmp(s1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(src_lo), Definition(src_hi), src);
          bld.pseudo(aco_opcode::p_split_vector, Definition(val_lo), Definition(val_hi), val);
-         Temp lo = emit_wqm(bld, bld.writelane(bld.def(v1), val_lo, lane, src_hi));
-         Temp hi = emit_wqm(bld, bld.writelane(bld.def(v1), val_hi, lane, src_hi));
+         Temp lo = bld.writelane(bld.def(v1), val_lo, lane, src_hi);
+         Temp hi = bld.writelane(bld.def(v1), val_hi, lane, src_hi);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
          emit_split_vector(ctx, dst, 2);
       } else {
@@ -8684,8 +8652,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       Temp dst = get_ssa_temp(ctx, &instr->def);
       /* Fit 64-bit mask for wave32 */
       src = emit_extract_vector(ctx, src, 0, RegClass(src.type(), bld.lm.size()));
-      Temp wqm_tmp = emit_mbcnt(ctx, bld.tmp(v1), Operand(src), Operand(add_src));
-      emit_wqm(bld, wqm_tmp, dst);
+      emit_mbcnt(ctx, dst, Operand(src), Operand(add_src));
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_lane_permute_16_amd: {
@@ -8757,15 +8725,16 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_first_invocation: {
-      emit_wqm(bld, bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm)),
-               get_ssa_temp(ctx, &instr->def));
+      bld.sop1(Builder::s_ff1_i32, Definition(get_ssa_temp(ctx, &instr->def)),
+               Operand(exec, bld.lm));
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_last_invocation: {
       Temp flbit = bld.sop1(Builder::s_flbit_i32, bld.def(s1), Operand(exec, bld.lm));
-      Temp last = bld.sop2(aco_opcode::s_sub_i32, bld.def(s1), bld.def(s1, scc),
-                           Operand::c32(ctx->program->wave_size - 1u), flbit);
-      emit_wqm(bld, last, get_ssa_temp(ctx, &instr->def));
+      bld.sop2(aco_opcode::s_sub_i32, Definition(get_ssa_temp(ctx, &instr->def)), bld.def(s1, scc),
+               Operand::c32(ctx->program->wave_size - 1u), flbit);
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_elect: {
@@ -8773,8 +8742,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
        * Use exec as an operand so value numbering and the pre-RA optimizer won't recognize
        * two p_elect with different exec masks as the same.
        */
-      Temp elected = bld.pseudo(aco_opcode::p_elect, bld.def(bld.lm), Operand(exec, bld.lm));
-      emit_wqm(bld, elected, get_ssa_temp(ctx, &instr->def));
+      bld.pseudo(aco_opcode::p_elect, Definition(get_ssa_temp(ctx, &instr->def)),
+                 Operand(exec, bld.lm));
+      emit_wqm(bld);
       break;
    }
    case nir_intrinsic_shader_clock: {
