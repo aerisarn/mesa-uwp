@@ -44,12 +44,10 @@ void fd6_emit_cs_driver_params(struct fd_context *ctx,
 void fd6_emit_cs_user_consts(struct fd_context *ctx,
                              struct fd_ringbuffer *ring,
                              struct fd6_compute_state *cs) assert_dt;
-void fd6_emit_immediates(struct fd_screen *screen,
-                         const struct ir3_shader_variant *v,
+void fd6_emit_immediates(const struct ir3_shader_variant *v,
                          struct fd_ringbuffer *ring) assert_dt;
-void fd6_emit_link_map(struct fd_screen *screen,
-                       const struct ir3_shader_variant *producer,
-                       const struct ir3_shader_variant *v,
+void fd6_emit_link_map(const struct ir3_shader_variant *producer,
+                       const struct ir3_shader_variant *consumer,
                        struct fd_ringbuffer *ring) assert_dt;
 
 #endif /* FD6_CONST_H */

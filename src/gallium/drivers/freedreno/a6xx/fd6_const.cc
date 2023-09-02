@@ -350,18 +350,16 @@ fd6_emit_cs_user_consts(struct fd_context *ctx,
 }
 
 void
-fd6_emit_immediates(struct fd_screen *screen,
-                    const struct ir3_shader_variant *v,
+fd6_emit_immediates(const struct ir3_shader_variant *v,
                     struct fd_ringbuffer *ring)
 {
-   ir3_emit_immediates(screen, v, ring);
+   ir3_emit_immediates(v, ring);
 }
 
 void
-fd6_emit_link_map(struct fd_screen *screen,
-                  const struct ir3_shader_variant *producer,
-                  const struct ir3_shader_variant *v,
+fd6_emit_link_map(const struct ir3_shader_variant *producer,
+                  const struct ir3_shader_variant *consumer,
                   struct fd_ringbuffer *ring)
 {
-   ir3_emit_link_map(screen, producer, v, ring);
+   ir3_emit_link_map(producer, consumer, ring);
 }

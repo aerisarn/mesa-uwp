@@ -109,7 +109,7 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
    }
 
    fd6_emit_shader(ctx, ring, v);
-   fd6_emit_immediates(ctx->screen, v, ring);
+   fd6_emit_immediates(v, ring);
 }
 
 template <chip CHIP>

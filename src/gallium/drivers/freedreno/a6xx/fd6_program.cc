@@ -598,7 +598,7 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
          A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(vs)));
 
    fd6_emit_shader(ctx, ring, vs);
-   fd6_emit_immediates(ctx->screen, vs, ring);
+   fd6_emit_immediates(vs, ring);
    if (hs) {
       fd6_emit_tess_bos(ctx->screen, ring, hs);
       fd6_emit_tess_bos(ctx->screen, ring, ds);
@@ -743,8 +743,8 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
             A6XX_SP_HS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(hs)));
 
       fd6_emit_shader(ctx, ring, hs);
-      fd6_emit_immediates(ctx->screen, hs, ring);
-      fd6_emit_link_map(ctx->screen, vs, hs, ring);
+      fd6_emit_immediates(hs, ring);
+      fd6_emit_link_map(vs, hs, ring);
 
       OUT_PKT4(ring, REG_A6XX_SP_DS_CTRL_REG0, 1);
       OUT_RING(
@@ -754,8 +754,8 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
             A6XX_SP_DS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(ds)));
 
       fd6_emit_shader(ctx, ring, ds);
-      fd6_emit_immediates(ctx->screen, ds, ring);
-      fd6_emit_link_map(ctx->screen, hs, ds, ring);
+      fd6_emit_immediates(ds, ring);
+      fd6_emit_link_map(hs, ds, ring);
 
       OUT_PKT4(ring, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
       OUT_RING(ring, hs->tess.tcs_vertices_out);
@@ -1023,11 +1023,11 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
             A6XX_SP_GS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(gs)));
 
       fd6_emit_shader(ctx, ring, gs);
-      fd6_emit_immediates(ctx->screen, gs, ring);
+      fd6_emit_immediates(gs, ring);
       if (ds)
-         fd6_emit_link_map(ctx->screen, ds, gs, ring);
+         fd6_emit_link_map(ds, gs, ring);
       else
-         fd6_emit_link_map(ctx->screen, vs, gs, ring);
+         fd6_emit_link_map(vs, gs, ring);
 
       OUT_PKT4(ring, REG_A6XX_VPC_GS_PACK, 1);
       OUT_RING(ring, A6XX_VPC_GS_PACK_POSITIONLOC(pos_loc) |
@@ -1178,7 +1178,7 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
                        A6XX_VFD_CONTROL_6_PRIMID4PSEN)); /* VFD_CONTROL_6 */
 
    if (!binning_pass)
-      fd6_emit_immediates(ctx->screen, fs, ring);
+      fd6_emit_immediates(fs, ring);
 }
 
 static void emit_interp_state(struct fd_ringbuffer *ring,
