@@ -479,24 +479,11 @@ vl_compositor_set_csc_matrix(struct vl_compositor_state *s,
                              vl_csc_matrix const *matrix,
                              float luma_min, float luma_max)
 {
-   struct pipe_transfer *buf_transfer;
-
    assert(s);
 
-   float *ptr = pipe_buffer_map(s->pipe, s->shader_params,
-                               PIPE_MAP_WRITE | PIPE_MAP_DISCARD_RANGE,
-                               &buf_transfer);
-
-   if (!ptr)
-      return false;
-
-   memcpy(ptr, matrix, sizeof(vl_csc_matrix));
-
-   ptr += sizeof(vl_csc_matrix)/sizeof(float);
-   ptr[0] = luma_min;
-   ptr[1] = luma_max;
-
-   pipe_buffer_unmap(s->pipe, buf_transfer);
+   memcpy(&s->csc_matrix, matrix, sizeof(vl_csc_matrix));
+   s->luma_min = luma_min;
+   s->luma_max = luma_max;
 
    return true;
 }

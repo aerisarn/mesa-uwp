@@ -114,6 +114,9 @@ struct vl_compositor_state
    struct vl_compositor_layer layers[VL_COMPOSITOR_MAX_LAYERS];
    bool interlaced;
    unsigned chroma_location;
+
+   vl_csc_matrix csc_matrix;
+   float luma_min, luma_max;
 };
 
 struct vl_compositor
