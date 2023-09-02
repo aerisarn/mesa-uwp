@@ -99,68 +99,6 @@ glsl_get_base_type(const struct glsl_type *type)
    return type->base_type;
 }
 
-unsigned
-glsl_get_vector_elements(const struct glsl_type *type)
-{
-   return type->vector_elements;
-}
-
-unsigned
-glsl_get_components(const struct glsl_type *type)
-{
-   return type->components();
-}
-
-unsigned
-glsl_get_matrix_columns(const struct glsl_type *type)
-{
-   return type->matrix_columns;
-}
-
-unsigned
-glsl_get_aoa_size(const struct glsl_type *type)
-{
-   return type->arrays_of_arrays_size();
-}
-
-unsigned
-glsl_count_vec4_slots(const struct glsl_type *type,
-                      bool is_gl_vertex_input, bool is_bindless)
-{
-   return type->count_vec4_slots(is_gl_vertex_input, is_bindless);
-}
-
-unsigned
-glsl_count_dword_slots(const struct glsl_type *type, bool is_bindless)
-{
-   return type->count_dword_slots(is_bindless);
-}
-
-unsigned
-glsl_count_attribute_slots(const struct glsl_type *type,
-                           bool is_gl_vertex_input)
-{
-   return type->count_attribute_slots(is_gl_vertex_input);
-}
-
-unsigned
-glsl_get_component_slots(const struct glsl_type *type)
-{
-   return type->component_slots();
-}
-
-unsigned
-glsl_get_component_slots_aligned(const struct glsl_type *type, unsigned offset)
-{
-   return type->component_slots_aligned(offset);
-}
-
-unsigned
-glsl_varying_count(const struct glsl_type *type)
-{
-   return type->varying_count();
-}
-
 const char *
 glsl_get_struct_elem_name(const struct glsl_type *type, unsigned index)
 {

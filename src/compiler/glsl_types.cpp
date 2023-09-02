@@ -1725,10 +1725,10 @@ glsl_type::field_index(const char *name) const
 }
 
 
-unsigned
-glsl_type::component_slots() const
+extern "C" unsigned
+glsl_get_component_slots(const struct glsl_type *t)
 {
-   switch (this->base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_UINT8:
@@ -1738,25 +1738,25 @@ glsl_type::component_slots() const
    case GLSL_TYPE_FLOAT:
    case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_BOOL:
-      return this->components();
+      return t->components();
 
    case GLSL_TYPE_DOUBLE:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
-      return 2 * this->components();
+      return 2 * t->components();
 
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE: {
       unsigned size = 0;
 
-      for (unsigned i = 0; i < this->length; i++)
-         size += this->fields.structure[i].type->component_slots();
+      for (unsigned i = 0; i < t->length; i++)
+         size += t->fields.structure[i].type->component_slots();
 
       return size;
    }
 
    case GLSL_TYPE_ARRAY:
-      return this->length * this->fields.array->component_slots();
+      return t->length * t->fields.array->component_slots();
 
    case GLSL_TYPE_SAMPLER:
    case GLSL_TYPE_TEXTURE:
@@ -1776,11 +1776,11 @@ glsl_type::component_slots() const
    return 0;
 }
 
-unsigned
-glsl_type::component_slots_aligned(unsigned offset) const
+extern "C" unsigned
+glsl_get_component_slots_aligned(const struct glsl_type *t, unsigned offset)
 {
    /* Align 64bit type only if it crosses attribute slot boundary. */
-   switch (this->base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_UINT8:
@@ -1790,12 +1790,12 @@ glsl_type::component_slots_aligned(unsigned offset) const
    case GLSL_TYPE_FLOAT:
    case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_BOOL:
-      return this->components();
+      return t->components();
 
    case GLSL_TYPE_DOUBLE:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64: {
-      unsigned size = 2 * this->components();
+      unsigned size = 2 * t->components();
       if (offset % 2 == 1 && (offset % 4 + size) > 4) {
          size++;
       }
@@ -1807,8 +1807,8 @@ glsl_type::component_slots_aligned(unsigned offset) const
    case GLSL_TYPE_INTERFACE: {
       unsigned size = 0;
 
-      for (unsigned i = 0; i < this->length; i++) {
-         const struct glsl_type *member = this->fields.structure[i].type;
+      for (unsigned i = 0; i < t->length; i++) {
+         const struct glsl_type *member = t->fields.structure[i].type;
          size += member->component_slots_aligned(size + offset);
       }
 
@@ -1818,8 +1818,8 @@ glsl_type::component_slots_aligned(unsigned offset) const
    case GLSL_TYPE_ARRAY: {
       unsigned size = 0;
 
-      for (unsigned i = 0; i < this->length; i++) {
-         size += this->fields.array->component_slots_aligned(size + offset);
+      for (unsigned i = 0; i < t->length; i++) {
+         size += t->fields.array->component_slots_aligned(size + offset);
       }
 
       return size;
@@ -1920,12 +1920,12 @@ glsl_type::uniform_locations() const
    }
 }
 
-unsigned
-glsl_type::varying_count() const
+extern "C" unsigned
+glsl_varying_count(const struct glsl_type *t)
 {
    unsigned size = 0;
 
-   switch (this->base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_FLOAT:
@@ -1942,17 +1942,17 @@ glsl_type::varying_count() const
 
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE:
-      for (unsigned i = 0; i < this->length; i++)
-         size += this->fields.structure[i].type->varying_count();
+      for (unsigned i = 0; i < t->length; i++)
+         size += t->fields.structure[i].type->varying_count();
       return size;
    case GLSL_TYPE_ARRAY:
       /* Don't count innermost array elements */
-      if (this->without_array()->is_struct() ||
-          this->without_array()->is_interface() ||
-          this->fields.array->is_array())
-         return this->length * this->fields.array->varying_count();
+      if (t->without_array()->is_struct() ||
+          t->without_array()->is_interface() ||
+          t->fields.array->is_array())
+         return t->length * t->fields.array->varying_count();
       else
-         return this->fields.array->varying_count();
+         return t->fields.array->varying_count();
    default:
       assert(!"unsupported varying type");
       return 0;
@@ -2842,8 +2842,8 @@ glsl_type::replace_vec3_with_vec4() const
    }
 }
 
-unsigned
-glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
+extern "C" unsigned
+glsl_count_vec4_slots(const struct glsl_type *t, bool is_gl_vertex_input, bool is_bindless)
 {
    /* From page 31 (page 37 of the PDF) of the GLSL 1.50 spec:
     *
@@ -2870,7 +2870,7 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
     * take one location no matter what size they are, otherwise dvec3/4
     * take two locations.
     */
-   switch (this->base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_UINT8:
@@ -2880,20 +2880,20 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
    case GLSL_TYPE_FLOAT:
    case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_BOOL:
-      return this->matrix_columns;
+      return t->matrix_columns;
    case GLSL_TYPE_DOUBLE:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
-      if (this->vector_elements > 2 && !is_gl_vertex_input)
-         return this->matrix_columns * 2;
+      if (t->vector_elements > 2 && !is_gl_vertex_input)
+         return t->matrix_columns * 2;
       else
-         return this->matrix_columns;
+         return t->matrix_columns;
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE: {
       unsigned size = 0;
 
-      for (unsigned i = 0; i < this->length; i++) {
-         const struct glsl_type *member_type = this->fields.structure[i].type;
+      for (unsigned i = 0; i < t->length; i++) {
+         const struct glsl_type *member_type = t->fields.structure[i].type;
          size += member_type->count_vec4_slots(is_gl_vertex_input, is_bindless);
       }
 
@@ -2901,9 +2901,9 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
    }
 
    case GLSL_TYPE_ARRAY: {
-      const struct glsl_type *element = this->fields.array;
-      return this->length * element->count_vec4_slots(is_gl_vertex_input,
-                                                      is_bindless);
+      const struct glsl_type *element = t->fields.array;
+      return t->length * element->count_vec4_slots(is_gl_vertex_input,
+                                                   is_bindless);
    }
 
    case GLSL_TYPE_SAMPLER:
@@ -2929,22 +2929,22 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
    return 0;
 }
 
-unsigned
-glsl_type::count_dword_slots(bool is_bindless) const
+extern "C" unsigned
+glsl_count_dword_slots(const struct glsl_type *t, bool is_bindless)
 {
-   switch (this->base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_FLOAT:
    case GLSL_TYPE_BOOL:
-      return this->components();
+      return t->components();
    case GLSL_TYPE_UINT16:
    case GLSL_TYPE_INT16:
    case GLSL_TYPE_FLOAT16:
-      return DIV_ROUND_UP(this->vector_elements, 2) * this->matrix_columns;
+      return DIV_ROUND_UP(t->vector_elements, 2) * t->matrix_columns;
    case GLSL_TYPE_UINT8:
    case GLSL_TYPE_INT8:
-      return DIV_ROUND_UP(this->components(), 4);
+      return DIV_ROUND_UP(t->components(), 4);
    case GLSL_TYPE_IMAGE:
    case GLSL_TYPE_SAMPLER:
    case GLSL_TYPE_TEXTURE:
@@ -2954,16 +2954,16 @@ glsl_type::count_dword_slots(bool is_bindless) const
    case GLSL_TYPE_DOUBLE:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
-      return this->components() * 2;
+      return t->components() * 2;
    case GLSL_TYPE_ARRAY:
-      return this->fields.array->count_dword_slots(is_bindless) *
-             this->length;
+      return t->fields.array->count_dword_slots(is_bindless) *
+             t->length;
 
    case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_STRUCT: {
       unsigned size = 0;
-      for (unsigned i = 0; i < this->length; i++) {
-         size += this->fields.structure[i].type->count_dword_slots(is_bindless);
+      for (unsigned i = 0; i < t->length; i++) {
+         size += t->fields.structure[i].type->count_dword_slots(is_bindless);
       }
       return size;
    }
@@ -3500,7 +3500,20 @@ glsl_get_length(const struct glsl_type *t)
    return t->is_matrix() ? t->matrix_columns : t->length;
 }
 
+unsigned
+glsl_get_aoa_size(const struct glsl_type *t)
+{
+   if (!t->is_array())
+      return 0;
 
+   unsigned size = t->length;
+   const struct glsl_type *array_base_type = t->fields.array;
 
+   while (array_base_type->is_array()) {
+      size = size * array_base_type->length;
+      array_base_type = array_base_type->fields.array;
+   }
+   return size;
+}
 
 }

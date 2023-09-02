@@ -1279,9 +1279,24 @@ glsl_struct_type_is_packed(const struct glsl_type *t)
 const struct glsl_type *glsl_get_bare_type(const struct glsl_type *t);
 
 unsigned glsl_get_length(const struct glsl_type *t);
-unsigned glsl_get_vector_elements(const struct glsl_type *t);
-unsigned glsl_get_components(const struct glsl_type *t);
-unsigned glsl_get_matrix_columns(const struct glsl_type *t);
+
+static inline unsigned
+glsl_get_vector_elements(const struct glsl_type *t)
+{
+   return t->vector_elements;
+}
+
+static inline unsigned
+glsl_get_components(const struct glsl_type *t)
+{
+   return t->vector_elements * t->matrix_columns;
+}
+
+static inline unsigned
+glsl_get_matrix_columns(const struct glsl_type *t)
+{
+   return t->matrix_columns;
+}
 
 static inline int
 glsl_array_size(const struct glsl_type *t)
@@ -1451,7 +1466,12 @@ unsigned glsl_count_dword_slots(const struct glsl_type *t, bool is_bindless);
 unsigned glsl_get_component_slots(const struct glsl_type *t);
 unsigned glsl_get_component_slots_aligned(const struct glsl_type *t, unsigned offset);
 unsigned glsl_varying_count(const struct glsl_type *t);
-unsigned glsl_count_attribute_slots(const struct glsl_type *t, bool is_gl_vertex_input);
+
+static inline unsigned
+glsl_count_attribute_slots(const struct glsl_type *t, bool is_gl_vertex_input)
+{
+   return glsl_count_vec4_slots(t, is_gl_vertex_input, true);
+}
 
 unsigned glsl_get_cl_size(const struct glsl_type *t);
 unsigned glsl_get_cl_alignment(const struct glsl_type *t);

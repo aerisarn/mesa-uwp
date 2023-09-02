@@ -45,25 +45,21 @@ inline bool glsl_type::contains_opaque() const { return glsl_contains_opaque(thi
 inline bool glsl_type::contains_double() const { return glsl_contains_double(this); }
 inline bool glsl_type::contains_integer() const { return glsl_contains_integer(this); }
 
-inline unsigned
-glsl_type::components() const
-{
-   return vector_elements * matrix_columns;
-}
-
 inline int glsl_type::array_size() const { return glsl_array_size(this); }
 inline const glsl_type *glsl_type::without_array() const { return glsl_without_array(this); }
+
+inline unsigned glsl_type::components() const { return glsl_get_components(this); }
+inline unsigned glsl_type::component_slots() const { return glsl_get_component_slots(this); }
+inline unsigned glsl_type::component_slots_aligned(unsigned int offset) const { return glsl_get_component_slots_aligned(this, offset); }
+inline unsigned glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool bindless) const { return glsl_count_vec4_slots(this, is_gl_vertex_input, bindless); }
+inline unsigned glsl_type::count_dword_slots(bool bindless) const { return glsl_count_dword_slots(this, bindless); };
+inline unsigned glsl_type::count_attribute_slots(bool is_gl_vertex_input) const { return glsl_count_attribute_slots(this, is_gl_vertex_input); }
+inline unsigned glsl_type::varying_count() const { return glsl_varying_count(this); }
 
 inline unsigned glsl_type::cl_size() const { return glsl_get_cl_size(this); }
 inline unsigned glsl_type::cl_alignment() const { return glsl_get_cl_alignment(this); }
 
 inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
-
-inline unsigned
-glsl_type::count_attribute_slots(bool is_gl_vertex_input) const
-{
-   return count_vec4_slots(is_gl_vertex_input, true);
-}
 
 inline const glsl_type *glsl_type::vec(unsigned components) { return glsl_vec_type(components); }
 inline const glsl_type *glsl_type::f16vec(unsigned components) { return glsl_f16vec_type(components); }
@@ -174,21 +170,7 @@ glsl_type::is_anonymous() const
    return !strncmp(glsl_get_type_name(this), "#anon", 5);
 }
 
-inline unsigned
-glsl_type::arrays_of_arrays_size() const
-{
-   if (!is_array())
-      return 0;
-
-   unsigned size = length;
-   const glsl_type *array_base_type = fields.array;
-
-   while (array_base_type->is_array()) {
-      size = size * array_base_type->length;
-      array_base_type = array_base_type->fields.array;
-   }
-   return size;
-}
+inline unsigned glsl_type::arrays_of_arrays_size() const { return glsl_get_aoa_size(this); }
 
 inline unsigned
 glsl_type::bit_size() const
