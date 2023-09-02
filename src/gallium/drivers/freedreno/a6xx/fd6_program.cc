@@ -42,59 +42,58 @@
 #include "fd6_program.h"
 #include "fd6_texture.h"
 
+
+static const struct xs_config {
+   uint16_t reg_sp_xs_instrlen;
+   uint16_t reg_hlsq_xs_ctrl;
+   uint16_t reg_sp_xs_first_exec_offset;
+   uint16_t reg_sp_xs_pvt_mem_hw_stack_offset;
+} xs_config[] = {
+   [MESA_SHADER_VERTEX] = {
+      REG_A6XX_SP_VS_INSTRLEN,
+      REG_A6XX_HLSQ_VS_CNTL,
+      REG_A6XX_SP_VS_OBJ_FIRST_EXEC_OFFSET,
+      REG_A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET,
+   },
+   [MESA_SHADER_TESS_CTRL] = {
+      REG_A6XX_SP_HS_INSTRLEN,
+      REG_A6XX_HLSQ_HS_CNTL,
+      REG_A6XX_SP_HS_OBJ_FIRST_EXEC_OFFSET,
+      REG_A6XX_SP_HS_PVT_MEM_HW_STACK_OFFSET,
+   },
+   [MESA_SHADER_TESS_EVAL] = {
+      REG_A6XX_SP_DS_INSTRLEN,
+      REG_A6XX_HLSQ_DS_CNTL,
+      REG_A6XX_SP_DS_OBJ_FIRST_EXEC_OFFSET,
+      REG_A6XX_SP_DS_PVT_MEM_HW_STACK_OFFSET,
+   },
+   [MESA_SHADER_GEOMETRY] = {
+      REG_A6XX_SP_GS_INSTRLEN,
+      REG_A6XX_HLSQ_GS_CNTL,
+      REG_A6XX_SP_GS_OBJ_FIRST_EXEC_OFFSET,
+      REG_A6XX_SP_GS_PVT_MEM_HW_STACK_OFFSET,
+   },
+   [MESA_SHADER_FRAGMENT] = {
+      REG_A6XX_SP_FS_INSTRLEN,
+      REG_A6XX_HLSQ_FS_CNTL,
+      REG_A6XX_SP_FS_OBJ_FIRST_EXEC_OFFSET,
+      REG_A6XX_SP_FS_PVT_MEM_HW_STACK_OFFSET,
+   },
+   [MESA_SHADER_COMPUTE] = {
+      REG_A6XX_SP_CS_INSTRLEN,
+      REG_A6XX_HLSQ_CS_CNTL,
+      REG_A6XX_SP_CS_OBJ_FIRST_EXEC_OFFSET,
+      REG_A6XX_SP_CS_PVT_MEM_HW_STACK_OFFSET,
+   },
+};
+
 void
 fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
                 const struct ir3_shader_variant *so)
 {
-   enum a6xx_state_block sb = fd6_stage2shadersb(so->type);
-
-   uint32_t first_exec_offset = 0;
-   uint32_t instrlen = 0;
-   uint32_t hw_stack_offset = 0;
-
-   switch (so->type) {
-   case MESA_SHADER_VERTEX:
-      first_exec_offset = REG_A6XX_SP_VS_OBJ_FIRST_EXEC_OFFSET;
-      instrlen = REG_A6XX_SP_VS_INSTRLEN;
-      hw_stack_offset = REG_A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET;
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      first_exec_offset = REG_A6XX_SP_HS_OBJ_FIRST_EXEC_OFFSET;
-      instrlen = REG_A6XX_SP_HS_INSTRLEN;
-      hw_stack_offset = REG_A6XX_SP_HS_PVT_MEM_HW_STACK_OFFSET;
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      first_exec_offset = REG_A6XX_SP_DS_OBJ_FIRST_EXEC_OFFSET;
-      instrlen = REG_A6XX_SP_DS_INSTRLEN;
-      hw_stack_offset = REG_A6XX_SP_DS_PVT_MEM_HW_STACK_OFFSET;
-      break;
-   case MESA_SHADER_GEOMETRY:
-      first_exec_offset = REG_A6XX_SP_GS_OBJ_FIRST_EXEC_OFFSET;
-      instrlen = REG_A6XX_SP_GS_INSTRLEN;
-      hw_stack_offset = REG_A6XX_SP_GS_PVT_MEM_HW_STACK_OFFSET;
-      break;
-   case MESA_SHADER_FRAGMENT:
-      first_exec_offset = REG_A6XX_SP_FS_OBJ_FIRST_EXEC_OFFSET;
-      instrlen = REG_A6XX_SP_FS_INSTRLEN;
-      hw_stack_offset = REG_A6XX_SP_FS_PVT_MEM_HW_STACK_OFFSET;
-      break;
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_KERNEL:
-      first_exec_offset = REG_A6XX_SP_CS_OBJ_FIRST_EXEC_OFFSET;
-      instrlen = REG_A6XX_SP_CS_INSTRLEN;
-      hw_stack_offset = REG_A6XX_SP_CS_PVT_MEM_HW_STACK_OFFSET;
-      break;
-   case MESA_SHADER_TASK:
-   case MESA_SHADER_MESH:
-   case MESA_SHADER_RAYGEN:
-   case MESA_SHADER_ANY_HIT:
-   case MESA_SHADER_CLOSEST_HIT:
-   case MESA_SHADER_MISS:
-   case MESA_SHADER_INTERSECTION:
-   case MESA_SHADER_CALLABLE:
-      unreachable("Unsupported shader stage");
-   case MESA_SHADER_NONE:
-      unreachable("");
+   if (!so) {
+      /* shader stage disabled */
+      return;
    }
 
 #ifdef DEBUG
@@ -104,14 +103,84 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
       fd_emit_string5(ring, name, strlen(name));
 #endif
 
+   gl_shader_stage type = so->type;
+   if (type == MESA_SHADER_COMPUTE)
+      type = MESA_SHADER_COMPUTE;
+
+   enum a6xx_threadsize thrsz =
+      so->info.double_threadsize ? THREAD128 : THREAD64;
+
+   switch (type) {
+   case MESA_SHADER_VERTEX:
+      OUT_REG(ring, A6XX_SP_VS_CTRL_REG0(
+               .halfregfootprint = so->info.max_half_reg + 1,
+               .fullregfootprint = so->info.max_reg + 1,
+               .branchstack = ir3_shader_branchstack_hw(so),
+               .mergedregs = so->mergedregs,
+      ));
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      OUT_REG(ring, A6XX_SP_HS_CTRL_REG0(
+               .halfregfootprint = so->info.max_half_reg + 1,
+               .fullregfootprint = so->info.max_reg + 1,
+               .branchstack = ir3_shader_branchstack_hw(so),
+      ));
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      OUT_REG(ring, A6XX_SP_DS_CTRL_REG0(
+               .halfregfootprint = so->info.max_half_reg + 1,
+               .fullregfootprint = so->info.max_reg + 1,
+               .branchstack = ir3_shader_branchstack_hw(so),
+      ));
+      break;
+   case MESA_SHADER_GEOMETRY:
+      OUT_REG(ring, A6XX_SP_GS_CTRL_REG0(
+               .halfregfootprint = so->info.max_half_reg + 1,
+               .fullregfootprint = so->info.max_reg + 1,
+               .branchstack = ir3_shader_branchstack_hw(so),
+      ));
+      break;
+   case MESA_SHADER_FRAGMENT:
+      OUT_REG(ring, A6XX_SP_FS_CTRL_REG0(
+               .halfregfootprint = so->info.max_half_reg + 1,
+               .fullregfootprint = so->info.max_reg + 1,
+               .branchstack = ir3_shader_branchstack_hw(so),
+               .threadsize = thrsz,
+               .varying = so->total_in != 0,
+               .lodpixmask = so->need_full_quad,
+               /* unknown bit, seems unnecessary */
+               .unk24 = true,
+               .pixlodenable = so->need_pixlod,
+               .mergedregs = so->mergedregs,
+      ));
+      break;
+   case MESA_SHADER_COMPUTE:
+      thrsz = ctx->screen->info->a6xx.supports_double_threadsize ? thrsz : THREAD128;
+      OUT_REG(ring, A6XX_SP_CS_CTRL_REG0(
+               .halfregfootprint = so->info.max_half_reg + 1,
+               .fullregfootprint = so->info.max_reg + 1,
+               .branchstack = ir3_shader_branchstack_hw(so),
+               .threadsize = thrsz,
+               .mergedregs = so->mergedregs,
+      ));
+      break;
+   default:
+      unreachable("bad shader stage");
+   }
+
+   const struct xs_config *cfg = &xs_config[type];
+
+   OUT_PKT4(ring, cfg->reg_sp_xs_instrlen, 1);
+   OUT_RING(ring, so->instrlen);
+
+   /* emit program binary & private memory layout
+    */
+
    ir3_get_private_mem(ctx, so);
 
    uint32_t per_sp_size = ctx->pvtmem[so->pvtmem_per_wave].per_sp_size;
 
-   OUT_PKT4(ring, instrlen, 1);
-   OUT_RING(ring, so->instrlen);
-
-   OUT_PKT4(ring, first_exec_offset, 7);
+   OUT_PKT4(ring, cfg->reg_sp_xs_first_exec_offset, 7);
    OUT_RING(ring, 0);                /* SP_xS_OBJ_FIRST_EXEC_OFFSET */
    OUT_RELOC(ring, so->bo, 0, 0, 0); /* SP_xS_OBJ_START_LO */
    OUT_RING(ring, A6XX_SP_VS_PVT_MEM_PARAM_MEMSIZEPERITEM(ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size));
@@ -126,12 +195,13 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
                      COND(so->pvtmem_per_wave,
                           A6XX_SP_VS_PVT_MEM_SIZE_PERWAVEMEMLAYOUT));
 
-   OUT_PKT4(ring, hw_stack_offset, 1);
+   OUT_PKT4(ring, cfg->reg_sp_xs_pvt_mem_hw_stack_offset, 1);
    OUT_RING(ring, A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET_OFFSET(per_sp_size));
 
    uint32_t shader_preload_size =
       MIN2(so->instrlen, ctx->screen->info->a6xx.instr_cache_size);
 
+   enum a6xx_state_block sb = fd6_stage2shadersb(so->type);
    OUT_PKT7(ring, fd6_stage2opcode(so->type), 3);
    OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
                      CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
@@ -141,6 +211,8 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_RELOC(ring, so->bo, 0, 0, 0);
 
    fd_ringbuffer_attach_bo(ring, so->bo);
+
+   fd6_emit_immediates(so, ring);
 }
 
 /**
@@ -589,16 +661,7 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
                COND(fs_has_dual_src_color,
                     A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
 
-   OUT_PKT4(ring, REG_A6XX_SP_VS_CTRL_REG0, 1);
-   OUT_RING(
-      ring,
-      A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(vs->info.max_reg + 1) |
-         A6XX_SP_VS_CTRL_REG0_HALFREGFOOTPRINT(vs->info.max_half_reg + 1) |
-         COND(vs->mergedregs, A6XX_SP_VS_CTRL_REG0_MERGEDREGS) |
-         A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(vs)));
-
    fd6_emit_shader(ctx, ring, vs);
-   fd6_emit_immediates(vs, ring);
    if (hs) {
       fd6_emit_tess_bos(ctx->screen, ring, hs);
       fd6_emit_tess_bos(ctx->screen, ring, ds);
@@ -735,26 +798,11 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
 
    if (hs) {
       assert(vs->mergedregs == hs->mergedregs);
-      OUT_PKT4(ring, REG_A6XX_SP_HS_CTRL_REG0, 1);
-      OUT_RING(
-         ring,
-         A6XX_SP_HS_CTRL_REG0_FULLREGFOOTPRINT(hs->info.max_reg + 1) |
-            A6XX_SP_HS_CTRL_REG0_HALFREGFOOTPRINT(hs->info.max_half_reg + 1) |
-            A6XX_SP_HS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(hs)));
 
       fd6_emit_shader(ctx, ring, hs);
-      fd6_emit_immediates(hs, ring);
       fd6_emit_link_map(vs, hs, ring);
 
-      OUT_PKT4(ring, REG_A6XX_SP_DS_CTRL_REG0, 1);
-      OUT_RING(
-         ring,
-         A6XX_SP_DS_CTRL_REG0_FULLREGFOOTPRINT(ds->info.max_reg + 1) |
-            A6XX_SP_DS_CTRL_REG0_HALFREGFOOTPRINT(ds->info.max_half_reg + 1) |
-            A6XX_SP_DS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(ds)));
-
       fd6_emit_shader(ctx, ring, ds);
-      fd6_emit_immediates(ds, ring);
       fd6_emit_link_map(hs, ds, ring);
 
       OUT_PKT4(ring, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
@@ -913,18 +961,6 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
            ),
    );
 
-   OUT_PKT4(ring, REG_A6XX_SP_FS_CTRL_REG0, 1);
-   OUT_RING(
-      ring,
-      A6XX_SP_FS_CTRL_REG0_THREADSIZE(fssz) |
-         COND(enable_varyings, A6XX_SP_FS_CTRL_REG0_VARYING) | 0x1000000 |
-         COND(fs->need_full_quad, A6XX_SP_FS_CTRL_REG0_LODPIXMASK) |
-         A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(fs->info.max_reg + 1) |
-         A6XX_SP_FS_CTRL_REG0_HALFREGFOOTPRINT(fs->info.max_half_reg + 1) |
-         COND(fs->mergedregs, A6XX_SP_FS_CTRL_REG0_MERGEDREGS) |
-         A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(fs)) |
-         COND(fs->need_pixlod, A6XX_SP_FS_CTRL_REG0_PIXLODENABLE));
-
    OUT_PKT4(ring, REG_A6XX_VPC_VS_LAYER_CNTL, 1);
    OUT_RING(ring, A6XX_VPC_VS_LAYER_CNTL_LAYERLOC(layer_loc) |
                      A6XX_VPC_VS_LAYER_CNTL_VIEWLOC(view_loc));
@@ -1015,15 +1051,8 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
 
    if (gs) {
       assert(gs->mergedregs == (ds ? ds->mergedregs : vs->mergedregs));
-      OUT_PKT4(ring, REG_A6XX_SP_GS_CTRL_REG0, 1);
-      OUT_RING(
-         ring,
-         A6XX_SP_GS_CTRL_REG0_FULLREGFOOTPRINT(gs->info.max_reg + 1) |
-            A6XX_SP_GS_CTRL_REG0_HALFREGFOOTPRINT(gs->info.max_half_reg + 1) |
-            A6XX_SP_GS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(gs)));
 
       fd6_emit_shader(ctx, ring, gs);
-      fd6_emit_immediates(gs, ring);
       if (ds)
          fd6_emit_link_map(ds, gs, ring);
       else
@@ -1176,9 +1205,6 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
                      0xfc00); /* VFD_CONTROL_5 */
    OUT_RING(ring, COND(fs->reads_primid,
                        A6XX_VFD_CONTROL_6_PRIMID4PSEN)); /* VFD_CONTROL_6 */
-
-   if (!binning_pass)
-      fd6_emit_immediates(fs, ring);
 }
 
 static void emit_interp_state(struct fd_ringbuffer *ring,
