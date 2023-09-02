@@ -47,16 +47,6 @@ glsl_array_size(const struct glsl_type *type)
 }
 
 const struct glsl_type *
-glsl_get_array_element(const struct glsl_type* type)
-{
-   if (type->is_matrix())
-      return type->column_type();
-   else if (type->is_vector())
-      return type->get_scalar_type();
-   return type->fields.array;
-}
-
-const struct glsl_type *
 glsl_without_array(const struct glsl_type *type)
 {
    return type->without_array();
@@ -248,120 +238,6 @@ glsl_get_struct_location_offset(const struct glsl_type *type,
                                 unsigned length)
 {
    return type->struct_location_offset(length);
-}
-
-bool
-glsl_type_is_16bit(const struct glsl_type *type)
-{
-   return type->is_16bit();
-}
-
-bool
-glsl_type_is_32bit(const struct glsl_type *type)
-{
-   return type->is_32bit();
-}
-
-bool
-glsl_type_is_64bit(const struct glsl_type *type)
-{
-   return type->is_64bit();
-}
-
-bool
-glsl_type_is_vector(const struct glsl_type *type)
-{
-   return type->is_vector();
-}
-
-bool
-glsl_type_is_scalar(const struct glsl_type *type)
-{
-   return type->is_scalar();
-}
-
-bool
-glsl_type_is_vector_or_scalar(const struct glsl_type *type)
-{
-   return type->is_vector() || type->is_scalar();
-}
-
-bool
-glsl_type_is_matrix(const struct glsl_type *type)
-{
-   return type->is_matrix();
-}
-
-bool
-glsl_matrix_type_is_row_major(const struct glsl_type *type)
-{
-   assert((type->is_matrix() && type->explicit_stride) || type->is_interface());
-   return type->interface_row_major;
-}
-
-bool
-glsl_type_is_unsized_array(const struct glsl_type *type)
-{
-   return type->is_unsized_array();
-}
-
-bool
-glsl_type_is_array_of_arrays(const struct glsl_type *type)
-{
-   return type->is_array_of_arrays();
-}
-
-bool
-glsl_type_is_array_or_matrix(const struct glsl_type *type)
-{
-   return type->is_array() || type->is_matrix();
-}
-
-bool
-glsl_type_is_bare_sampler(const struct glsl_type *type)
-{
-   return type->is_sampler() && type->sampled_type == GLSL_TYPE_VOID;
-}
-
-bool
-glsl_sampler_type_is_shadow(const struct glsl_type *type)
-{
-   assert(glsl_type_is_sampler(type));
-   return type->sampler_shadow;
-}
-
-bool
-glsl_sampler_type_is_array(const struct glsl_type *type)
-{
-   assert(glsl_type_is_sampler(type) ||
-          glsl_type_is_texture(type) ||
-          glsl_type_is_image(type));
-   return type->sampler_array;
-}
-
-bool
-glsl_struct_type_is_packed(const struct glsl_type *type)
-{
-   assert(glsl_type_is_struct(type));
-   return type->packed;
-}
-
-bool
-glsl_type_is_dual_slot(const struct glsl_type *type)
-{
-   return type->is_dual_slot();
-}
-
-bool
-glsl_type_is_numeric(const struct glsl_type *type)
-{
-   return type->is_numeric();
-}
-
-bool
-glsl_type_is_integer(const struct glsl_type *type)
-{
-   return type->is_integer();
 }
 
 bool
@@ -1004,25 +880,6 @@ unsigned
 glsl_get_explicit_alignment(const struct glsl_type *type)
 {
    return type->explicit_alignment;
-}
-
-bool
-glsl_type_is_packed(const struct glsl_type *type)
-{
-   return type->packed;
-}
-
-bool
-glsl_type_is_leaf(const struct glsl_type *type)
-{
-   if (glsl_type_is_struct_or_ifc(type) ||
-       (glsl_type_is_array(type) &&
-        (glsl_type_is_array(glsl_get_array_element(type)) ||
-         glsl_type_is_struct_or_ifc(glsl_get_array_element(type))))) {
-      return false;
-   } else {
-      return true;
-   }
 }
 
 const struct glsl_type *

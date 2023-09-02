@@ -25,72 +25,18 @@ inline bool glsl_type::is_error() const { return glsl_type_is_error(this); }
 inline bool glsl_type::is_subroutine() const { return glsl_type_is_subroutine(this); }
 inline bool glsl_type::is_atomic_uint() const { return glsl_type_is_atomic_uint(this); }
 
-inline bool
-glsl_type::is_scalar() const
-{
-   return (vector_elements == 1)
-          && (base_type >= GLSL_TYPE_UINT)
-          && (base_type <= GLSL_TYPE_IMAGE);
-}
+inline bool glsl_type::is_scalar() const { return glsl_type_is_scalar(this); }
+inline bool glsl_type::is_vector() const { return glsl_type_is_vector(this); }
+inline bool glsl_type::is_matrix() const { return glsl_type_is_matrix(this); }
+inline bool glsl_type::is_numeric() const { return glsl_type_is_numeric(this); }
+inline bool glsl_type::is_integer() const { return glsl_type_is_integer(this); }
+inline bool glsl_type::is_double() const { return glsl_type_is_double(this); }
 
-inline bool
-glsl_type::is_vector() const
-{
-   return (vector_elements > 1)
-          && (matrix_columns == 1)
-          && (base_type >= GLSL_TYPE_UINT)
-          && (base_type <= GLSL_TYPE_BOOL);
-}
-
-inline bool
-glsl_type::is_matrix() const
-{
-   /* GLSL only has float matrices. */
-   return (matrix_columns > 1) && (base_type == GLSL_TYPE_FLOAT ||
-                                   base_type == GLSL_TYPE_DOUBLE ||
-                                   base_type == GLSL_TYPE_FLOAT16);
-}
-
-inline bool
-glsl_type::is_numeric() const
-{
-   return (base_type >= GLSL_TYPE_UINT) && (base_type <= GLSL_TYPE_INT64);
-}
-
-inline bool glsl_type::is_integer() const { return glsl_base_type_is_integer(base_type); }
-inline bool glsl_type::is_double() const { return base_type == GLSL_TYPE_DOUBLE; }
-
-inline bool
-glsl_type::is_array_of_arrays() const
-{
-   return is_array() && fields.array->is_array();
-}
-
-inline bool
-glsl_type::is_dual_slot() const
-{
-   return is_64bit() && vector_elements > 2;
-}
-
-inline bool
-glsl_type::is_64bit() const
-{
-   return glsl_base_type_is_64bit(base_type);
-}
-
-inline bool
-glsl_type::is_16bit() const
-{
-   return glsl_base_type_is_16bit(base_type);
-}
-
-inline bool
-glsl_type::is_32bit() const
-{
-   return base_type == GLSL_TYPE_UINT ||
-          base_type == GLSL_TYPE_INT ||
-          base_type == GLSL_TYPE_FLOAT;
-}
+inline bool glsl_type::is_array_of_arrays() const { return glsl_type_is_array_of_arrays(this); }
+inline bool glsl_type::is_dual_slot() const { return glsl_type_is_dual_slot(this); }
+inline bool glsl_type::is_16bit() const { return glsl_type_is_16bit(this); }
+inline bool glsl_type::is_32bit() const { return glsl_type_is_32bit(this); }
+inline bool glsl_type::is_64bit() const { return glsl_type_is_64bit(this); }
 
 inline unsigned
 glsl_type::components() const
@@ -291,11 +237,7 @@ glsl_type::array_size() const
    return is_array() ? length : -1;
 }
 
-inline bool
-glsl_type::is_unsized_array() const
-{
-   return is_array() && length == 0;
-}
+inline bool glsl_type::is_unsized_array() const { return glsl_type_is_unsized_array(this); }
 
 inline enum glsl_interface_packing
 glsl_type::get_interface_packing() const

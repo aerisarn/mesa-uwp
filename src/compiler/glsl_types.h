@@ -1174,6 +1174,20 @@ static inline bool glsl_type_is_cmat(const struct glsl_type *t) { return t->base
 static inline bool glsl_type_is_void(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_VOID; }
 static inline bool glsl_type_is_subroutine(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_SUBROUTINE; }
 static inline bool glsl_type_is_error(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_ERROR; }
+static inline bool glsl_type_is_double(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_DOUBLE; }
+
+static inline bool
+glsl_type_is_numeric(const struct glsl_type *t)
+{
+   return t->base_type >= GLSL_TYPE_UINT &&
+          t->base_type <= GLSL_TYPE_INT64;
+}
+
+static inline bool
+glsl_type_is_integer(const struct glsl_type *t)
+{
+   return glsl_base_type_is_integer(t->base_type);
+}
 
 static inline bool
 glsl_type_is_struct_or_ifc(const struct glsl_type *t)
@@ -1181,17 +1195,50 @@ glsl_type_is_struct_or_ifc(const struct glsl_type *t)
    return glsl_type_is_struct(t) || glsl_type_is_interface(t);
 }
 
-bool glsl_type_is_packed(const struct glsl_type *t);
-bool glsl_type_is_16bit(const struct glsl_type *t);
-bool glsl_type_is_32bit(const struct glsl_type *t);
-bool glsl_type_is_64bit(const struct glsl_type *t);
+static inline bool
+glsl_type_is_packed(const struct glsl_type *t)
+{
+   return t->packed;
+}
 
-bool glsl_type_is_unsized_array(const struct glsl_type *t);
-bool glsl_type_is_numeric(const struct glsl_type *t);
-bool glsl_type_is_integer(const struct glsl_type *t);
-bool glsl_type_is_double(const struct glsl_type *t);
-bool glsl_type_is_array_of_arrays(const struct glsl_type *t);
-bool glsl_type_is_bare_sampler(const struct glsl_type *t);
+static inline bool
+glsl_type_is_16bit(const struct glsl_type *t)
+{
+   return glsl_base_type_is_16bit(t->base_type);
+}
+
+static inline bool
+glsl_type_is_32bit(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_UINT ||
+          t->base_type == GLSL_TYPE_INT ||
+          t->base_type == GLSL_TYPE_FLOAT;
+}
+
+static inline bool
+glsl_type_is_64bit(const struct glsl_type *t)
+{
+   return glsl_base_type_is_64bit(t->base_type);
+}
+
+static inline bool
+glsl_type_is_unsized_array(const struct glsl_type *t)
+{
+   return glsl_type_is_array(t) && t->length == 0;
+}
+
+static inline bool
+glsl_type_is_array_of_arrays(const struct glsl_type *t)
+{
+   return glsl_type_is_array(t) && glsl_type_is_array(t->fields.array);
+}
+
+static inline bool
+glsl_type_is_bare_sampler(const struct glsl_type *t)
+{
+   return glsl_type_is_sampler(t) && t->sampled_type == GLSL_TYPE_VOID;
+}
+
 bool glsl_type_is_vector(const struct glsl_type *t);
 bool glsl_type_is_scalar(const struct glsl_type *t);
 bool glsl_type_is_vector_or_scalar(const struct glsl_type *t);
@@ -1200,10 +1247,35 @@ bool glsl_type_is_array_or_matrix(const struct glsl_type *t);
 bool glsl_type_is_dual_slot(const struct glsl_type *t);
 bool glsl_type_is_leaf(const struct glsl_type *type);
 
-bool glsl_matrix_type_is_row_major(const struct glsl_type *t);
-bool glsl_sampler_type_is_shadow(const struct glsl_type *t);
-bool glsl_sampler_type_is_array(const struct glsl_type *t);
-bool glsl_struct_type_is_packed(const struct glsl_type *t);
+static inline bool
+glsl_matrix_type_is_row_major(const struct glsl_type *t)
+{
+   assert((glsl_type_is_matrix(t) && t->explicit_stride) || glsl_type_is_interface(t));
+   return t->interface_row_major;
+}
+
+static inline bool
+glsl_sampler_type_is_shadow(const struct glsl_type *t)
+{
+   assert(glsl_type_is_sampler(t));
+   return t->sampler_shadow;
+}
+
+static inline bool
+glsl_sampler_type_is_array(const struct glsl_type *t)
+{
+   assert(glsl_type_is_sampler(t) ||
+          glsl_type_is_texture(t) ||
+          glsl_type_is_image(t));
+   return t->sampler_array;
+}
+
+static inline bool
+glsl_struct_type_is_packed(const struct glsl_type *t)
+{
+   assert(glsl_type_is_struct(t));
+   return t->packed;
+}
 
 const struct glsl_type *glsl_get_bare_type(const struct glsl_type *t);
 
