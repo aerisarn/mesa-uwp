@@ -2306,7 +2306,8 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    /* Cleanup optimizations */
    nir_move_options move_all = nir_move_const_undef | nir_move_load_ubo |
                                nir_move_load_input | nir_move_comparisons |
-                               nir_move_copies | nir_move_load_ssbo;
+                               nir_move_copies | nir_move_load_ssbo |
+                               nir_move_alu;
 
    NIR_PASS_V(nir, nir_opt_sink, move_all);
    NIR_PASS_V(nir, nir_opt_move, move_all);
