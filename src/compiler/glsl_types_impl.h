@@ -51,6 +51,11 @@ glsl_type::components() const
    return vector_elements * matrix_columns;
 }
 
+inline int glsl_type::array_size() const { return glsl_array_size(this); }
+inline const glsl_type *glsl_type::without_array() const { return glsl_without_array(this); }
+
+inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
+
 inline unsigned
 glsl_type::count_attribute_slots(bool is_gl_vertex_input) const
 {
@@ -166,17 +171,6 @@ glsl_type::is_anonymous() const
    return !strncmp(glsl_get_type_name(this), "#anon", 5);
 }
 
-inline const glsl_type *
-glsl_type::without_array() const
-{
-   const glsl_type *t = this;
-
-   while (t->is_array())
-      t = t->fields.array;
-
-   return t;
-}
-
 inline unsigned
 glsl_type::arrays_of_arrays_size() const
 {
@@ -243,12 +237,6 @@ glsl_type::column_type() const
       return get_instance(base_type, vector_elements, 1,
                           0, false, explicit_alignment);
    }
-}
-
-inline int
-glsl_type::array_size() const
-{
-   return is_array() ? length : -1;
 }
 
 inline bool glsl_type::is_unsized_array() const { return glsl_type_is_unsized_array(this); }

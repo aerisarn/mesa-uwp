@@ -40,33 +40,6 @@ glsl_get_type_name(const struct glsl_type *type)
    }
 }
 
-int
-glsl_array_size(const struct glsl_type *type)
-{
-   return type->array_size();
-}
-
-const struct glsl_type *
-glsl_without_array(const struct glsl_type *type)
-{
-   return type->without_array();
-}
-
-const struct glsl_type *
-glsl_without_array_or_matrix(const struct glsl_type *type)
-{
-   type = type->without_array();
-   if (type->is_matrix())
-      type = type->column_type();
-   return type;
-}
-
-const struct glsl_type *
-glsl_get_bare_type(const struct glsl_type *type)
-{
-   return type->get_bare_type();
-}
-
 const struct glsl_type *
 glsl_get_struct_field(const struct glsl_type *type, unsigned index)
 {
@@ -88,12 +61,6 @@ glsl_get_struct_field_data(const struct glsl_type *type, unsigned index)
    assert(type->is_struct() || type->is_interface());
    assert(index < type->length);
    return &type->fields.structure[index];
-}
-
-unsigned
-glsl_get_explicit_stride(const struct glsl_type *type)
-{
-   return type->explicit_stride;
 }
 
 const struct glsl_type *
@@ -148,12 +115,6 @@ unsigned
 glsl_get_matrix_columns(const struct glsl_type *type)
 {
    return type->matrix_columns;
-}
-
-unsigned
-glsl_get_length(const struct glsl_type *type)
-{
-   return type->is_matrix() ? type->matrix_columns : type->length;
 }
 
 unsigned
@@ -700,19 +661,6 @@ glsl_get_explicit_type_for_size_align(const struct glsl_type *type,
                                       unsigned *size, unsigned *align)
 {
    return type->get_explicit_type_for_size_align(type_info, size, align);
-}
-
-const struct glsl_type *
-glsl_type_wrap_in_arrays(const struct glsl_type *type,
-                         const struct glsl_type *arrays)
-{
-   if (!glsl_type_is_array(arrays))
-      return type;
-
-   const struct glsl_type *elem_type =
-      glsl_type_wrap_in_arrays(type, glsl_get_array_element(arrays));
-   return glsl_array_type(elem_type, glsl_get_length(arrays),
-                          glsl_get_explicit_stride(arrays));
 }
 
 const struct glsl_type *

@@ -1283,7 +1283,12 @@ unsigned glsl_get_vector_elements(const struct glsl_type *t);
 unsigned glsl_get_components(const struct glsl_type *t);
 unsigned glsl_get_matrix_columns(const struct glsl_type *t);
 
-int glsl_array_size(const struct glsl_type *t);
+static inline int
+glsl_array_size(const struct glsl_type *t)
+{
+   return glsl_type_is_array(t) ? t->length : -1;
+}
+
 unsigned glsl_get_aoa_size(const struct glsl_type *t);
 const struct glsl_type *glsl_get_array_element(const struct glsl_type *t);
 const struct glsl_type *glsl_without_array(const struct glsl_type *t);
@@ -1461,7 +1466,13 @@ unsigned glsl_get_std140_size(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_std430_base_alignment(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_std430_size(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_explicit_size(const struct glsl_type *t, bool align_to_stride);
-unsigned glsl_get_explicit_stride(const struct glsl_type *t);
+
+static inline unsigned
+glsl_get_explicit_stride(const struct glsl_type *t)
+{
+   return t->explicit_stride;
+}
+
 unsigned glsl_get_explicit_alignment(const struct glsl_type *t);
 
 void glsl_get_natural_size_align_bytes(const struct glsl_type *t, unsigned *size, unsigned *align);

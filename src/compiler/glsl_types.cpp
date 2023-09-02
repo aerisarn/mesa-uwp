@@ -358,9 +358,10 @@ const struct glsl_type *glsl_type::get_scalar_type() const
 }
 
 
-const struct glsl_type *glsl_type::get_bare_type() const
+extern "C" const struct glsl_type *
+glsl_get_bare_type(const struct glsl_type *t)
 {
-   switch (this->base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT8:
    case GLSL_TYPE_INT8:
    case GLSL_TYPE_UINT16:
@@ -373,26 +374,26 @@ const struct glsl_type *glsl_type::get_bare_type() const
    case GLSL_TYPE_DOUBLE:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
-      return get_instance(this->base_type, this->vector_elements,
-                          this->matrix_columns);
+      return glsl_type::get_instance(t->base_type, t->vector_elements,
+                                     t->matrix_columns);
 
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE: {
       struct glsl_struct_field *bare_fields = (struct glsl_struct_field *)
-         calloc(this->length, sizeof(struct glsl_struct_field));
-      for (unsigned i = 0; i < this->length; i++) {
-         bare_fields[i].type = this->fields.structure[i].type->get_bare_type();
-         bare_fields[i].name = this->fields.structure[i].name;
+         calloc(t->length, sizeof(struct glsl_struct_field));
+      for (unsigned i = 0; i < t->length; i++) {
+         bare_fields[i].type = t->fields.structure[i].type->get_bare_type();
+         bare_fields[i].name = t->fields.structure[i].name;
       }
       const struct glsl_type *bare_type =
-         get_struct_instance(bare_fields, this->length, glsl_get_type_name(this));
+         glsl_type::get_struct_instance(bare_fields, t->length, glsl_get_type_name(t));
       free(bare_fields);
       return bare_type;
    }
 
    case GLSL_TYPE_ARRAY:
-      return get_array_instance(this->fields.array->get_bare_type(),
-                                this->length);
+      return glsl_type::get_array_instance(t->fields.array->get_bare_type(),
+                                           t->length);
 
    case GLSL_TYPE_COOPERATIVE_MATRIX:
    case GLSL_TYPE_SAMPLER:
@@ -402,7 +403,7 @@ const struct glsl_type *glsl_type::get_bare_type() const
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_SUBROUTINE:
    case GLSL_TYPE_ERROR:
-      return this;
+      return t;
    }
 
    unreachable("Invalid base type");
@@ -3440,5 +3441,44 @@ glsl_contains_atomic(const struct glsl_type *t)
 {
    return t->atomic_size() > 0;
 }
+
+const struct glsl_type *
+glsl_without_array(const struct glsl_type *t)
+{
+   while (t->is_array())
+      t = t->fields.array;
+   return t;
+}
+
+const struct glsl_type *
+glsl_without_array_or_matrix(const struct glsl_type *t)
+{
+   t = t->without_array();
+   if (t->is_matrix())
+      t = t->column_type();
+   return t;
+}
+
+const struct glsl_type *
+glsl_type_wrap_in_arrays(const struct glsl_type *t,
+                         const struct glsl_type *arrays)
+{
+   if (!glsl_type_is_array(arrays))
+      return t;
+
+   const struct glsl_type *elem_type =
+      glsl_type_wrap_in_arrays(t, glsl_get_array_element(arrays));
+   return glsl_type::get_array_instance(elem_type, glsl_get_length(arrays),
+                                        glsl_get_explicit_stride(arrays));
+}
+
+unsigned
+glsl_get_length(const struct glsl_type *t)
+{
+   return t->is_matrix() ? t->matrix_columns : t->length;
+}
+
+
+
 
 }
