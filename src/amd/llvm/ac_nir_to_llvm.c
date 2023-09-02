@@ -2080,6 +2080,22 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
 
    LLVMTypeRef data_type = LLVMTypeOf(data);
 
+   assert(instr->src[1].ssa->num_components == 1);
+   if (is_float) {
+      switch (instr->src[1].ssa->bit_size) {
+      case 32:
+         data_type = ctx->ac.f32;
+         break;
+      case 64:
+         data_type = ctx->ac.f64;
+         break;
+      default:
+         unreachable("Unsupported float bit size");
+      }
+
+      data = LLVMBuildBitCast(ctx->ac.builder, data, data_type, "");
+   }
+
    LLVMValueRef addr = get_global_address(ctx, instr, data_type);
 
    if (instr->intrinsic == nir_intrinsic_global_atomic_swap ||
@@ -2097,14 +2113,15 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
       params[arg_count++] = data;
 
       ac_build_type_name_for_intr(data_type, type, sizeof(type));
-      snprintf(name, sizeof(name), "llvm.amdgcn.global.atomic.%s.%s.p1%s.%s", op, type, type, type);
+      snprintf(name, sizeof(name), "llvm.amdgcn.global.atomic.%s.%s.p1.%s", op, type, type);
 
       result = ac_build_intrinsic(&ctx->ac, name, data_type, params, arg_count, 0);
-      result = ac_to_integer(&ctx->ac, result);
    } else {
       op = translate_atomic_op(nir_op);
       result = ac_build_atomic_rmw(&ctx->ac, op, addr, ac_to_integer(&ctx->ac, data), sync_scope);
    }
+
+   result = ac_to_integer(&ctx->ac, result);
 
    return result;
 }
