@@ -736,6 +736,8 @@ struct v3dv_image {
 #ifdef ANDROID
    /* Image is backed by VK_ANDROID_native_buffer, */
    bool is_native_buffer_memory;
+   VkImageDrmFormatModifierExplicitCreateInfoEXT *android_explicit_layout;
+   VkSubresourceLayout *android_plane_layouts;
 #endif
 };
 

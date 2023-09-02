@@ -169,10 +169,7 @@ v3dv_import_native_buffer_fd(VkDevice device_h,
                              const VkAllocationCallbacks *alloc,
                              VkImage image_h)
 {
-   struct v3dv_image *image = NULL;
    VkResult result;
-
-   image = v3dv_image_from_handle(image_h);
 
    VkDeviceMemory memory_h;
 
@@ -190,13 +187,12 @@ v3dv_import_native_buffer_fd(VkDevice device_h,
       .fd = os_dupfd_cloexec(native_buffer_fd),
    };
 
-   assert(image->plane_count == 1);
    result =
       v3dv_AllocateMemory(device_h,
                           &(VkMemoryAllocateInfo) {
                              .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                              .pNext = &import_info,
-                             .allocationSize = image->planes[0].size,
+                             .allocationSize = lseek(native_buffer_fd, 0, SEEK_END),
                              .memoryTypeIndex = 0,
                           },
                           alloc, &memory_h);
@@ -211,8 +207,6 @@ v3dv_import_native_buffer_fd(VkDevice device_h,
       .memoryOffset = 0,
    };
    v3dv_BindImageMemory2(device_h, 1, &bind_info);
-
-   image->is_native_buffer_memory = true;
 
    return VK_SUCCESS;
 

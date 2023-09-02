@@ -28,6 +28,9 @@
 #include "util/u_math.h"
 #include "vk_util.h"
 #include "vulkan/wsi/wsi_common.h"
+#ifdef ANDROID
+#include "vk_android.h"
+#endif
 
 /**
  * Computes the HW's UIFblock padding for a given height/cpp.
@@ -378,6 +381,13 @@ v3dv_image_init(struct v3dv_device *device,
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
    const VkImageDrmFormatModifierListCreateInfoEXT *mod_info = NULL;
    const VkImageDrmFormatModifierExplicitCreateInfoEXT *explicit_mod_info = NULL;
+#ifdef ANDROID
+   if (image->is_native_buffer_memory) {
+      assert(image->android_explicit_layout);
+      explicit_mod_info = image->android_explicit_layout;
+      modifier = explicit_mod_info->drmFormatModifier;
+   }
+#endif
    if (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
       mod_info =
          vk_find_struct_const(pCreateInfo->pNext,
@@ -408,27 +418,6 @@ v3dv_image_init(struct v3dv_device *device,
               image->vk.wsi_legacy_scanout) {
       tiling = VK_IMAGE_TILING_LINEAR;
    }
-
-#ifdef ANDROID
-   const VkNativeBufferANDROID *native_buffer =
-      vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
-
-   struct u_gralloc_buffer_basic_info buffer_info;
-
-   if (native_buffer != NULL) {
-      struct u_gralloc_buffer_handle u_gralloc_handle = {
-         .handle = native_buffer->handle,
-         .hal_format = native_buffer->format,
-         .pixel_stride = native_buffer->stride,
-      };
-
-      if (u_gralloc_get_buffer_basic_info(device->gralloc, &u_gralloc_handle, &buffer_info))
-         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-
-      if (buffer_info.modifier != DRM_FORMAT_MOD_BROADCOM_UIF)
-         tiling = VK_IMAGE_TILING_LINEAR;
-   }
-#endif
 
    const struct v3dv_format *format =
       v3dv_X(device, get_format)(pCreateInfo->format);
@@ -463,9 +452,10 @@ v3dv_image_init(struct v3dv_device *device,
             ycbcr_info->planes[plane].denominator_scales[1];
       }
    }
-   image->tiled = tiling == VK_IMAGE_TILING_OPTIMAL ||
-                  (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&
-                   modifier != DRM_FORMAT_MOD_LINEAR);
+   if (modifier == DRM_FORMAT_MOD_INVALID)
+      modifier = (tiling == VK_IMAGE_TILING_OPTIMAL) ? DRM_FORMAT_MOD_BROADCOM_UIF
+                                                     : DRM_FORMAT_MOD_LINEAR;
+   image->tiled = modifier != DRM_FORMAT_MOD_LINEAR;
 
    image->vk.drm_format_mod = modifier;
 
@@ -484,22 +474,6 @@ v3dv_image_init(struct v3dv_device *device,
       return VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT;
    }
 
-#ifdef ANDROID
-   if (native_buffer != NULL) {
-      assert(image->plane_count == 1);
-      image->planes[0].slices[0].stride = buffer_info.strides[0];
-      image->non_disjoint_size =
-         image->planes[0].slices[0].size =
-         image->planes[0].size = lseek(buffer_info.fds[0], 0, SEEK_END);
-
-      VkResult result = v3dv_import_native_buffer_fd(v3dv_device_to_handle(device),
-                                                     buffer_info.fds[0], pAllocator,
-                                                     v3dv_image_to_handle(image));
-      if (result != VK_SUCCESS)
-         return result;
-   }
-#endif
-
    return VK_SUCCESS;
 }
 
@@ -509,21 +483,85 @@ create_image(struct v3dv_device *device,
              const VkAllocationCallbacks *pAllocator,
              VkImage *pImage)
 {
+   VkResult result;
    struct v3dv_image *image = NULL;
 
    image = vk_image_create(&device->vk, pCreateInfo, pAllocator, sizeof(*image));
    if (image == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = v3dv_image_init(device, pCreateInfo, pAllocator, image);
-   if (result != VK_SUCCESS) {
-      vk_image_destroy(&device->vk, pAllocator, &image->vk);
-      return result;
+#ifdef ANDROID
+   const VkExternalMemoryImageCreateInfo *external_info =
+      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
+
+   const VkNativeBufferANDROID *native_buffer =
+      vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
+
+   if (native_buffer != NULL)
+      image->is_native_buffer_memory = true;
+
+   if (image->is_native_buffer_memory) {
+      image->android_explicit_layout = vk_alloc2(&device->vk.alloc, pAllocator,
+                                                 sizeof(VkImageDrmFormatModifierExplicitCreateInfoEXT),
+                                                 8,
+                                                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!image->android_explicit_layout) {
+         result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         goto fail;
+      }
+
+      image->android_plane_layouts = vk_alloc2(&device->vk.alloc, pAllocator,
+         sizeof(VkSubresourceLayout) * V3DV_MAX_PLANE_COUNT,
+         8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!image->android_plane_layouts) {
+         result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         goto fail;
+      }
+
+      struct u_gralloc_buffer_handle gr_handle = {
+         .handle = native_buffer->handle,
+         .hal_format = native_buffer->format,
+         .pixel_stride = native_buffer->stride,
+      };
+
+      result = v3dv_gralloc_to_drm_explicit_layout(device->gralloc,
+                                                   &gr_handle,
+                                                   image->android_explicit_layout,
+                                                   image->android_plane_layouts,
+                                                   V3DV_MAX_PLANE_COUNT);
+      if (result != VK_SUCCESS)
+         goto fail;
    }
+#endif
+
+   result = v3dv_image_init(device, pCreateInfo, pAllocator, image);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+#ifdef ANDROID
+   if (image->is_native_buffer_memory) {
+      result = v3dv_import_native_buffer_fd(v3dv_device_to_handle(device),
+                                            native_buffer->handle->data[0], pAllocator,
+                                            v3dv_image_to_handle(image));
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+#endif
 
    *pImage = v3dv_image_to_handle(image);
 
    return VK_SUCCESS;
+
+fail:
+#ifdef ANDROID
+   if (image->android_explicit_layout)
+      vk_free2(&device->vk.alloc, pAllocator, image->android_explicit_layout);
+   if (image->android_plane_layouts)
+      vk_free2(&device->vk.alloc, pAllocator, image->android_plane_layouts);
+#endif
+
+   vk_image_destroy(&device->vk, pAllocator, &image->vk);
+   return result;
 }
 
 static VkResult
@@ -677,11 +715,15 @@ v3dv_DestroyImage(VkDevice _device,
    }
 
 #ifdef ANDROID
-   assert(image->plane_count == 1);
    if (image->is_native_buffer_memory)
       v3dv_FreeMemory(_device,
                       v3dv_device_memory_to_handle(image->planes[0].mem),
                       pAllocator);
+
+   if (image->android_explicit_layout)
+      vk_free2(&device->vk.alloc, pAllocator, image->android_explicit_layout);
+   if (image->android_plane_layouts)
+      vk_free2(&device->vk.alloc, pAllocator, image->android_plane_layouts);
 #endif
 
    vk_image_destroy(&device->vk, pAllocator, &image->vk);
