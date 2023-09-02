@@ -2000,6 +2000,32 @@ nir_goto_if(nir_builder *build, struct nir_block *target, nir_src cond,
    nir_builder_instr_insert(build, &jump->instr);
 }
 
+static inline void
+nir_build_call(nir_builder *build, nir_function *func, size_t count,
+               nir_def **args)
+{
+   assert(count == func->num_params && "parameter count must match");
+   nir_call_instr *call = nir_call_instr_create(build->shader, func);
+
+   for (unsigned i = 0; i < count; ++i) {
+      call->params[i] = nir_src_for_ssa(args[i]);
+   }
+
+   nir_builder_instr_insert(build, &call->instr);
+}
+
+/*
+ * Call a given nir_function * with a variadic number of nir_def * arguments.
+ *
+ * Defined with __VA_ARGS__ instead of va_list so we can assert the correct
+ * number of parameters are passed in.
+ */
+#define nir_call(build, func, ...)                         \
+   do {                                                    \
+      nir_def *args[] = { __VA_ARGS__ };                   \
+      nir_build_call(build, func, ARRAY_SIZE(args), args); \
+   } while (0)
+
 nir_def *
 nir_compare_func(nir_builder *b, enum compare_func func,
                  nir_def *src0, nir_def *src1);
