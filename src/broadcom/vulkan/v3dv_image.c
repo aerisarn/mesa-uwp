@@ -490,6 +490,14 @@ v3dv_image_init(struct v3dv_device *device,
     */
    image->vk.create_flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
+#ifdef ANDROID
+   /* At this time, an AHB handle is not yet provided.
+    * Image layout will be filled up during vkBindImageMemory2
+    */
+   if (image->is_ahb)
+      return VK_SUCCESS;
+#endif
+
    bool disjoint = image->vk.create_flags & VK_IMAGE_CREATE_DISJOINT_BIT;
 
    return v3dv_update_image_layout(device, image, modifier, disjoint,
@@ -519,7 +527,12 @@ create_image(struct v3dv_device *device,
    if (native_buffer != NULL)
       image->is_native_buffer_memory = true;
 
-   if (image->is_native_buffer_memory) {
+   image->is_ahb = external_info && (external_info->handleTypes &
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
+
+   assert(!(image->is_ahb && image->is_native_buffer_memory));
+
+   if (image->is_ahb || image->is_native_buffer_memory) {
       image->android_explicit_layout = vk_alloc2(&device->vk.alloc, pAllocator,
                                                  sizeof(VkImageDrmFormatModifierExplicitCreateInfoEXT),
                                                  8,
@@ -536,7 +549,9 @@ create_image(struct v3dv_device *device,
          result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
       }
+   }
 
+   if (image->is_native_buffer_memory) {
       struct u_gralloc_buffer_handle gr_handle = {
          .handle = native_buffer->handle,
          .hal_format = native_buffer->format,

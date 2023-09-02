@@ -66,6 +66,7 @@
 #endif
 
 #ifdef ANDROID
+#include <vndk/hardware_buffer.h>
 #include "util/u_gralloc/u_gralloc.h"
 #endif
 
@@ -736,6 +737,8 @@ struct v3dv_image {
 #ifdef ANDROID
    /* Image is backed by VK_ANDROID_native_buffer, */
    bool is_native_buffer_memory;
+   /* Image is backed by VK_ANDROID_external_memory_android_hardware_buffer */
+   bool is_ahb;
    VkImageDrmFormatModifierExplicitCreateInfoEXT *android_explicit_layout;
    VkSubresourceLayout *android_plane_layouts;
 #endif
