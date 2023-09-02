@@ -304,6 +304,12 @@ v3dv_GetSwapchainGrallocUsage2ANDROID(
       *grallocConsumerUsage |= GRALLOC1_CONSUMER_USAGE_HWCOMPOSER;
    }
 
+   if (swapchainImageUsage & VK_SWAPCHAIN_IMAGE_USAGE_SHARED_BIT_ANDROID) {
+      uint64_t front_rendering_usage = 0;
+      u_gralloc_get_front_rendering_usage(device->gralloc, &front_rendering_usage);
+      *grallocProducerUsage |= front_rendering_usage;
+   }
+
    return VK_SUCCESS;
 }
 #endif
