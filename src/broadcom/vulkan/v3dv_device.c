@@ -2325,7 +2325,7 @@ free_memory(struct v3dv_device *device,
 
    device_free(device, mem);
 
-   vk_object_free(&device->vk, pAllocator, mem);
+   vk_device_memory_destroy(&device->vk, pAllocator, &mem->vk);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2350,9 +2350,6 @@ v3dv_AllocateMemory(VkDevice _device,
 
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
 
-   /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
-   assert(pAllocateInfo->allocationSize > 0);
-
    /* We always allocate device memory in multiples of a page, so round up
     * requested size to that.
     */
@@ -2365,8 +2362,8 @@ v3dv_AllocateMemory(VkDevice _device,
    if (unlikely(heap_used + alloc_size > pdevice->memory.memoryHeaps[0].size))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   mem = vk_object_zalloc(&device->vk, pAllocator, sizeof(*mem),
-                          VK_OBJECT_TYPE_DEVICE_MEMORY);
+   mem = vk_device_memory_create(&device->vk, pAllocateInfo,
+                                 pAllocator, sizeof(*mem));
    if (mem == NULL)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2406,6 +2403,12 @@ v3dv_AllocateMemory(VkDevice _device,
    }
 
    VkResult result;
+
+   if (mem->vk.ahardware_buffer) {
+      result = VK_ERROR_FEATURE_NOT_PRESENT;
+      goto done;
+   }
+
    if (wsi_info) {
       result = device_alloc_for_wsi(device, pAllocator, mem, alloc_size);
    } else if (fd_info && fd_info->handleType) {
@@ -2419,8 +2422,9 @@ v3dv_AllocateMemory(VkDevice _device,
       result = device_alloc(device, mem, alloc_size);
    }
 
+done:
    if (result != VK_SUCCESS) {
-      vk_object_free(&device->vk, pAllocator, mem);
+      vk_device_memory_destroy(&device->vk, pAllocator, &mem->vk);
       return vk_error(device, result);
    }
 

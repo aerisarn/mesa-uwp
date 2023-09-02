@@ -38,6 +38,7 @@
 
 #include "vk_descriptor_update_template.h"
 #include "vk_device.h"
+#include "vk_device_memory.h"
 #include "vk_format.h"
 #include "vk_instance.h"
 #include "vk_image.h"
@@ -597,7 +598,7 @@ struct v3dv_device {
 };
 
 struct v3dv_device_memory {
-   struct vk_object_base base;
+   struct vk_device_memory vk;
 
    struct v3dv_bo *bo;
    const VkMemoryType *type;
@@ -2483,7 +2484,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer_view, base, VkBufferView,
                                VK_OBJECT_TYPE_BUFFER_VIEW)
-VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, base, VkDeviceMemory,
+VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_device_memory, vk.base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_descriptor_pool, base, VkDescriptorPool,
                                VK_OBJECT_TYPE_DESCRIPTOR_POOL)
