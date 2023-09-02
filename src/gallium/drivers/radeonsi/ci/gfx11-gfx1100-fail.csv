@@ -144,6 +144,3 @@ KHR-GL46.transform_feedback_overflow_query_ARB.advanced-single-stream-interleave
 KHR-GL46.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-multiple-buffers-per-stream,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-one-buffer-per-stream,Fail
-
-dEQP-GLES31.functional.separate_shader.random.113,Fail
-dEQP-GLES31.functional.separate_shader.random.82,Fail
