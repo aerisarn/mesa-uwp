@@ -1489,7 +1489,12 @@ void glsl_get_cl_type_size_align(const struct glsl_type *t,
                                  unsigned *size, unsigned *align);
 
 enum glsl_interface_packing glsl_get_internal_ifc_packing(const struct glsl_type *t, bool std430_supported);
-enum glsl_interface_packing glsl_get_ifc_packing(const struct glsl_type *t);
+
+static inline enum glsl_interface_packing
+glsl_get_ifc_packing(const struct glsl_type *t)
+{
+   return (enum glsl_interface_packing)t->interface_packing;
+}
 
 unsigned glsl_get_std140_base_alignment(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_std140_size(const struct glsl_type *t, bool row_major);

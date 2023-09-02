@@ -3532,4 +3532,23 @@ glsl_get_struct_field_data(const struct glsl_type *t, unsigned index)
    return &t->fields.structure[index];
 }
 
+enum glsl_interface_packing
+glsl_get_internal_ifc_packing(const struct glsl_type *t,
+                              bool std430_supported)
+{
+   enum glsl_interface_packing packing = t->get_interface_packing();
+   if (packing == GLSL_INTERFACE_PACKING_STD140 ||
+       (!std430_supported &&
+        (packing == GLSL_INTERFACE_PACKING_SHARED ||
+         packing == GLSL_INTERFACE_PACKING_PACKED))) {
+      return GLSL_INTERFACE_PACKING_STD140;
+   } else {
+      assert(packing == GLSL_INTERFACE_PACKING_STD430 ||
+             (std430_supported &&
+              (packing == GLSL_INTERFACE_PACKING_SHARED ||
+               packing == GLSL_INTERFACE_PACKING_PACKED)));
+      return GLSL_INTERFACE_PACKING_STD430;
+   }
+}
+
 }

@@ -51,6 +51,9 @@ inline const glsl_type *glsl_type::without_array() const { return glsl_without_a
 inline unsigned glsl_type::struct_location_offset(unsigned len) const { return glsl_get_struct_location_offset(this, len); }
 inline int glsl_type::field_index(const char *n) const { return glsl_get_field_index(this, n); }
 
+inline enum glsl_interface_packing glsl_type::get_interface_packing() const { return glsl_get_ifc_packing(this); }
+inline enum glsl_interface_packing glsl_type::get_internal_ifc_packing(bool std430_supported) const { return glsl_get_internal_ifc_packing(this, std430_supported); }
+
 inline unsigned glsl_type::components() const { return glsl_get_components(this); }
 inline unsigned glsl_type::component_slots() const { return glsl_get_component_slots(this); }
 inline unsigned glsl_type::component_slots_aligned(unsigned int offset) const { return glsl_get_component_slots_aligned(this, offset); }
@@ -228,30 +231,6 @@ glsl_type::column_type() const
 }
 
 inline bool glsl_type::is_unsized_array() const { return glsl_type_is_unsized_array(this); }
-
-inline enum glsl_interface_packing
-glsl_type::get_interface_packing() const
-{
-   return (enum glsl_interface_packing)interface_packing;
-}
-
-inline enum glsl_interface_packing
-glsl_type::get_internal_ifc_packing(bool std430_supported) const
-{
-   enum glsl_interface_packing packing = this->get_interface_packing();
-   if (packing == GLSL_INTERFACE_PACKING_STD140 ||
-       (!std430_supported &&
-        (packing == GLSL_INTERFACE_PACKING_SHARED ||
-         packing == GLSL_INTERFACE_PACKING_PACKED))) {
-      return GLSL_INTERFACE_PACKING_STD140;
-   } else {
-      assert(packing == GLSL_INTERFACE_PACKING_STD430 ||
-             (std430_supported &&
-              (packing == GLSL_INTERFACE_PACKING_SHARED ||
-               packing == GLSL_INTERFACE_PACKING_PACKED)));
-      return GLSL_INTERFACE_PACKING_STD430;
-   }
-}
 
 inline bool
 glsl_type::get_interface_row_major() const
