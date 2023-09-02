@@ -1207,8 +1207,9 @@ void ir3_link_stream_out(struct ir3_shader_linkage *l,
 static inline uint32_t
 ir3_find_sysval_regid(const struct ir3_shader_variant *so, unsigned slot)
 {
-   int j;
-   for (j = 0; j < so->inputs_count; j++)
+   if (!so)
+      return regid(63, 0);
+   for (int j = 0; j < so->inputs_count; j++)
       if (so->inputs[j].sysval && (so->inputs[j].slot == slot))
          return so->inputs[j].regid;
    return regid(63, 0);

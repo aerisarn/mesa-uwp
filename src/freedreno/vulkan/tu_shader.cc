@@ -1668,12 +1668,10 @@ void
 tu6_emit_hs(struct tu_cs *cs,
             const struct ir3_shader_variant *hs)
 {
-   const uint32_t hs_rel_patch_regid = hs ?
-         ir3_find_sysval_regid(hs, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
-         regid(63, 0);
-   const uint32_t hs_invocation_regid = hs ?
-         ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3) :
-         regid(63, 0);
+   const uint32_t hs_rel_patch_regid =
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_REL_PATCH_ID_IR3);
+   const uint32_t hs_invocation_regid =
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_2, 1);
    tu_cs_emit(cs, A6XX_VFD_CONTROL_2_REGID_HSRELPATCHID(hs_rel_patch_regid) |
@@ -1691,18 +1689,15 @@ void
 tu6_emit_ds(struct tu_cs *cs,
             const struct ir3_shader_variant *ds)
 {
-   const uint32_t ds_rel_patch_regid = ds ?
-         ir3_find_sysval_regid(ds, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
-         regid(63, 0);
-   const uint32_t tess_coord_x_regid = ds ?
-         ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD) :
-         regid(63, 0);
+   const uint32_t ds_rel_patch_regid =
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_REL_PATCH_ID_IR3);
+   const uint32_t tess_coord_x_regid =
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD);
    const uint32_t tess_coord_y_regid = VALIDREG(tess_coord_x_regid) ?
          tess_coord_x_regid + 1 :
          regid(63, 0);
-   const uint32_t ds_primitiveid_regid = ds ?
-         ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
-         regid(63, 0);
+   const uint32_t ds_primitiveid_regid =
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_3, 2);
    tu_cs_emit(cs, A6XX_VFD_CONTROL_3_REGID_DSRELPATCHID(ds_rel_patch_regid) |
@@ -1732,9 +1727,8 @@ void
 tu6_emit_gs(struct tu_cs *cs,
             const struct ir3_shader_variant *gs)
 {
-   const uint32_t gsheader_regid = gs ?
-         ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3) :
-         regid(63, 0);
+   const uint32_t gsheader_regid =
+         ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_5, 1);
    tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
