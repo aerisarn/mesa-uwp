@@ -2115,11 +2115,10 @@ radv_emit_depth_bias(struct radv_cmd_buffer *cmd_buffer)
    unsigned slope = fui(d->vk.rs.depth_bias.slope * 16.0f);
    unsigned pa_su_poly_offset_db_fmt_cntl = 0;
 
-   if (render->ds_att.iview && vk_format_has_depth(render->ds_att.iview->image->vk.format) &&
+   if (vk_format_has_depth(render->ds_att.format) &&
        d->vk.rs.depth_bias.representation != VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT &&
        !device->instance->absolute_depth_bias) {
-      const struct radv_image_view *iview = render->ds_att.iview;
-      VkFormat format = vk_format_depth_only(iview->image->vk.format);
+      VkFormat format = vk_format_depth_only(render->ds_att.format);
 
       if (format == VK_FORMAT_D16_UNORM) {
          pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
