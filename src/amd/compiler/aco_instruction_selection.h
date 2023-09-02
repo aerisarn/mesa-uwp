@@ -102,6 +102,10 @@ struct isel_context {
    /* I/O information */
    shader_io_state inputs;
    shader_io_state outputs;
+
+   /* WQM information */
+   uint32_t wqm_block_idx;
+   uint32_t wqm_instruction_idx;
 };
 
 inline Temp

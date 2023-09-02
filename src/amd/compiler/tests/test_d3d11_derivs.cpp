@@ -599,13 +599,11 @@ BEGIN_TEST(d3d11_derivs.get_lod)
    //>> v2: %vec = p_create_vector %x, %y
    //>> lv2: %wqm = p_start_linear_vgpr (kill)%vec
    //>> v1: %x0 = v_mov_b32 %x quad_perm:[0,0,0,0] bound_ctrl:1
-   //>> v1: %x1_m_x0 = v_sub_f32 %x, (kill)%x0 quad_perm:[1,1,1,1] bound_ctrl:1
-   //>> v1: %x1 = v_mov_b32 %x quad_perm:[0,0,0,0] bound_ctrl:1
-   //>> v1: %x2_m_x0 = v_sub_f32 (kill)%x, (kill)%x1 quad_perm:[2,2,2,2] bound_ctrl:1
+   //>> v1: %x1_m_x0 = v_sub_f32 %x, %x0 quad_perm:[1,1,1,1] bound_ctrl:1
+   //>> v1: %x2_m_x0 = v_sub_f32 (kill)%x, (kill)%x0 quad_perm:[2,2,2,2] bound_ctrl:1
    //>> v1: %y0 = v_mov_b32 %y quad_perm:[0,0,0,0] bound_ctrl:1
-   //>> v1: %y1_m_y0 = v_sub_f32 %y, (kill)%y0 quad_perm:[1,1,1,1] bound_ctrl:1
-   //>> v1: %y1 = v_mov_b32 %y quad_perm:[0,0,0,0] bound_ctrl:1
-   //>> v1: %y2_m_y0 = v_sub_f32 (kill)%y, (kill)%y1 quad_perm:[2,2,2,2] bound_ctrl:1
+   //>> v1: %y1_m_y0 = v_sub_f32 %y, %y0 quad_perm:[1,1,1,1] bound_ctrl:1
+   //>> v1: %y2_m_y0 = v_sub_f32 (kill)%y, (kill)%y0 quad_perm:[2,2,2,2] bound_ctrl:1
    //>> BB1
    //>> v2: %_ = image_get_lod (kill)%_, (kill)%_, v1: undef, %wqm 2d
    //>> BB2

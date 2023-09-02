@@ -133,7 +133,7 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
    for (int i = block->instructions.size() - 1; i >= 0; --i) {
       aco_ptr<Instruction>& instr = block->instructions[i];
 
-      if (instr->opcode == aco_opcode::p_wqm)
+      if (instr->opcode == aco_opcode::p_end_wqm)
          propagate_wqm = true;
 
       bool pred_by_exec = needs_exec_mask(instr.get()) ||
@@ -153,7 +153,7 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
 
    /* for "if (<cond>) <wqm code>" or "while (<cond>) <wqm code>",
     * <cond> should be computed in WQM */
-   if (info.block_needs & WQM) {
+   if (propagate_wqm) {
       mark_block_wqm(ctx, block->index);
    }
 }
