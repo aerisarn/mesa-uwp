@@ -54,6 +54,9 @@ glsl_type::components() const
 inline int glsl_type::array_size() const { return glsl_array_size(this); }
 inline const glsl_type *glsl_type::without_array() const { return glsl_without_array(this); }
 
+inline unsigned glsl_type::cl_size() const { return glsl_get_cl_size(this); }
+inline unsigned glsl_type::cl_alignment() const { return glsl_get_cl_alignment(this); }
+
 inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
 
 inline unsigned

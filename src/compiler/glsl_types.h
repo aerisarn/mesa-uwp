@@ -1453,8 +1453,8 @@ unsigned glsl_get_component_slots_aligned(const struct glsl_type *t, unsigned of
 unsigned glsl_varying_count(const struct glsl_type *t);
 unsigned glsl_count_attribute_slots(const struct glsl_type *t, bool is_gl_vertex_input);
 
-int glsl_get_cl_size(const struct glsl_type *t);
-int glsl_get_cl_alignment(const struct glsl_type *t);
+unsigned glsl_get_cl_size(const struct glsl_type *t);
+unsigned glsl_get_cl_alignment(const struct glsl_type *t);
 void glsl_get_cl_type_size_align(const struct glsl_type *t,
                                  unsigned *size, unsigned *align);
 

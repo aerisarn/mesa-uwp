@@ -3292,22 +3292,22 @@ decode_type_from_blob(struct blob_reader *blob)
    }
 }
 
-unsigned
-glsl_type::cl_alignment() const
+extern "C" unsigned
+glsl_get_cl_alignment(const struct glsl_type *t)
 {
    /* vectors unlike arrays are aligned to their size */
-   if (this->is_scalar() || this->is_vector())
-      return this->cl_size();
-   else if (this->is_array())
-      return this->fields.array->cl_alignment();
-   else if (this->is_struct()) {
+   if (t->is_scalar() || t->is_vector())
+      return t->cl_size();
+   else if (t->is_array())
+      return t->fields.array->cl_alignment();
+   else if (t->is_struct()) {
       /* Packed Structs are 0x1 aligned despite their size. */
-      if (this->packed)
+      if (t->packed)
          return 1;
 
       unsigned res = 1;
-      for (unsigned i = 0; i < this->length; ++i) {
-         const struct glsl_struct_field *field = &this->fields.structure[i];
+      for (unsigned i = 0; i < t->length; ++i) {
+         const struct glsl_struct_field *field = &t->fields.structure[i];
          res = MAX2(res, field->type->cl_alignment());
       }
       return res;
@@ -3315,22 +3315,22 @@ glsl_type::cl_alignment() const
    return 1;
 }
 
-unsigned
-glsl_type::cl_size() const
+extern "C" unsigned
+glsl_get_cl_size(const struct glsl_type *t)
 {
-   if (this->is_scalar() || this->is_vector()) {
-      return util_next_power_of_two(this->vector_elements) *
-             explicit_type_scalar_byte_size(this);
-   } else if (this->is_array()) {
-      unsigned size = this->fields.array->cl_size();
-      return size * this->length;
-   } else if (this->is_struct()) {
+   if (t->is_scalar() || t->is_vector()) {
+      return util_next_power_of_two(t->vector_elements) *
+             explicit_type_scalar_byte_size(t);
+   } else if (t->is_array()) {
+      unsigned size = t->fields.array->cl_size();
+      return size * t->length;
+   } else if (t->is_struct()) {
       unsigned size = 0;
       unsigned max_alignment = 1;
-      for (unsigned i = 0; i < this->length; ++i) {
-         const struct glsl_struct_field *field = &this->fields.structure[i];
+      for (unsigned i = 0; i < t->length; ++i) {
+         const struct glsl_struct_field *field = &t->fields.structure[i];
          /* if a struct is packed, members don't get aligned */
-         if (!this->packed) {
+         if (!t->packed) {
             unsigned alignment = field->type->cl_alignment();
             max_alignment = MAX2(max_alignment, alignment);
             size = align(size, alignment);
@@ -3346,6 +3346,14 @@ glsl_type::cl_size() const
 }
 
 extern "C" {
+
+void
+glsl_get_cl_type_size_align(const struct glsl_type *t,
+                            unsigned *size, unsigned *align)
+{
+   *size = glsl_get_cl_size(t);
+   *align = glsl_get_cl_alignment(t);
+}
 
 int
 glsl_get_sampler_dim_coordinate_components(enum glsl_sampler_dim dim)

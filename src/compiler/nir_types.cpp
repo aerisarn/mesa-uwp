@@ -538,26 +538,6 @@ glsl_atomic_size(const struct glsl_type *type)
    return type->atomic_size();
 }
 
-int
-glsl_get_cl_size(const struct glsl_type *type)
-{
-   return type->cl_size();
-}
-
-int
-glsl_get_cl_alignment(const struct glsl_type *type)
-{
-   return type->cl_alignment();
-}
-
-void
-glsl_get_cl_type_size_align(const struct glsl_type *type,
-                            unsigned *size, unsigned *align)
-{
-   *size = glsl_get_cl_size(type);
-   *align = glsl_get_cl_alignment(type);
-}
-
 static unsigned
 glsl_type_count(const struct glsl_type *type, enum glsl_base_type base_type)
 {
