@@ -222,7 +222,7 @@ static LLVMValueRef emit_uint_carry(struct ac_llvm_context *ctx, const char *int
    LLVMTypeRef types[] = {ctx->i32, ctx->i1};
    LLVMValueRef res;
    LLVMValueRef params[] = {src0, src1};
-   ret_type = LLVMStructTypeInContext(ctx->context, types, 2, true);
+   ret_type = LLVMStructTypeInContext(ctx->context, types, 2, false);
 
    res = ac_build_intrinsic(ctx, intrin, ret_type, params, 2, 0);
 
