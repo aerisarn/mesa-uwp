@@ -253,10 +253,11 @@ with_any_broadcom = [
 
 if ['x86_64'].contains(host_machine.cpu_family())
   with_intel_clc = get_option('intel-clc') == 'enabled'
+  with_intel_vk_rt = with_intel_vk and get_option('intel-clc') != 'disabled'
 else
   with_intel_clc = false
+  with_intel_vk_rt = false
 endif
-with_intel_vk_rt = with_intel_vk and get_option('intel-clc') != 'disabled'
 
 with_any_intel = [
   with_gallium_crocus,
