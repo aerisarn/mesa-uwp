@@ -12,19 +12,18 @@
 #include "compiler/builtin_types_cpp.h"
 #undef BUILTIN_TYPES_CPP_DEFINITIONS
 
-inline bool glsl_type::is_boolean() const { return base_type == GLSL_TYPE_BOOL; }
-inline bool glsl_type::is_sampler() const { return base_type == GLSL_TYPE_SAMPLER; }
-inline bool glsl_type::is_texture() const { return base_type == GLSL_TYPE_TEXTURE; }
-inline bool glsl_type::is_image() const { return base_type == GLSL_TYPE_IMAGE; }
-inline bool glsl_type::is_array() const { return base_type == GLSL_TYPE_ARRAY; }
-inline bool glsl_type::is_struct() const { return base_type == GLSL_TYPE_STRUCT; }
-inline bool glsl_type::is_interface() const { return base_type == GLSL_TYPE_INTERFACE; }
-inline bool glsl_type::is_cmat() const { return base_type == GLSL_TYPE_COOPERATIVE_MATRIX; }
-inline bool glsl_type::is_void() const { return base_type == GLSL_TYPE_VOID; }
-inline bool glsl_type::is_error() const { return base_type == GLSL_TYPE_ERROR; }
-inline bool glsl_type::is_subroutine() const { return base_type == GLSL_TYPE_SUBROUTINE; }
-inline bool glsl_type::is_atomic_uint() const { return base_type == GLSL_TYPE_ATOMIC_UINT; }
-
+inline bool glsl_type::is_boolean() const { return glsl_type_is_boolean(this); }
+inline bool glsl_type::is_sampler() const { return glsl_type_is_sampler(this); }
+inline bool glsl_type::is_texture() const { return glsl_type_is_texture(this); }
+inline bool glsl_type::is_image() const { return glsl_type_is_image(this); }
+inline bool glsl_type::is_array() const { return glsl_type_is_array(this); }
+inline bool glsl_type::is_struct() const { return glsl_type_is_struct(this); }
+inline bool glsl_type::is_interface() const { return glsl_type_is_interface(this); }
+inline bool glsl_type::is_cmat() const { return glsl_type_is_cmat(this); }
+inline bool glsl_type::is_void() const { return glsl_type_is_void(this); }
+inline bool glsl_type::is_error() const { return glsl_type_is_error(this); }
+inline bool glsl_type::is_subroutine() const { return glsl_type_is_subroutine(this); }
+inline bool glsl_type::is_atomic_uint() const { return glsl_type_is_atomic_uint(this); }
 
 inline bool
 glsl_type::is_scalar() const

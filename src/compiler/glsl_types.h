@@ -1162,20 +1162,25 @@ glsl_get_bit_size(const struct glsl_type *t)
    return glsl_base_type_get_bit_size(glsl_get_base_type(t));
 }
 
-bool glsl_type_is_boolean(const struct glsl_type *t);
-bool glsl_type_is_sampler(const struct glsl_type *t);
-bool glsl_type_is_texture(const struct glsl_type *t);
-bool glsl_type_is_image(const struct glsl_type *t);
-bool glsl_type_is_atomic_uint(const struct glsl_type *t);
-bool glsl_type_is_struct(const struct glsl_type *t);
-bool glsl_type_is_interface(const struct glsl_type *t);
-bool glsl_type_is_array(const struct glsl_type *t);
-bool glsl_type_is_cmat(const struct glsl_type *t);
-bool glsl_type_is_void(const struct glsl_type *t);
-bool glsl_type_is_subroutine(const struct glsl_type *t);
-bool glsl_type_is_error(const struct glsl_type *t);
+static inline bool glsl_type_is_boolean(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_BOOL; }
+static inline bool glsl_type_is_sampler(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_SAMPLER; }
+static inline bool glsl_type_is_texture(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_TEXTURE; }
+static inline bool glsl_type_is_image(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_IMAGE; }
+static inline bool glsl_type_is_atomic_uint(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_ATOMIC_UINT; }
+static inline bool glsl_type_is_struct(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_STRUCT; }
+static inline bool glsl_type_is_interface(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_INTERFACE; }
+static inline bool glsl_type_is_array(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_ARRAY; }
+static inline bool glsl_type_is_cmat(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_COOPERATIVE_MATRIX; }
+static inline bool glsl_type_is_void(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_VOID; }
+static inline bool glsl_type_is_subroutine(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_SUBROUTINE; }
+static inline bool glsl_type_is_error(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_ERROR; }
 
-bool glsl_type_is_struct_or_ifc(const struct glsl_type *t);
+static inline bool
+glsl_type_is_struct_or_ifc(const struct glsl_type *t)
+{
+   return glsl_type_is_struct(t) || glsl_type_is_interface(t);
+}
+
 bool glsl_type_is_packed(const struct glsl_type *t);
 bool glsl_type_is_16bit(const struct glsl_type *t);
 bool glsl_type_is_32bit(const struct glsl_type *t);

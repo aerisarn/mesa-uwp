@@ -269,18 +269,6 @@ glsl_type_is_64bit(const struct glsl_type *type)
 }
 
 bool
-glsl_type_is_void(const struct glsl_type *type)
-{
-   return type->is_void();
-}
-
-bool
-glsl_type_is_error(const struct glsl_type *type)
-{
-   return type->is_error();
-}
-
-bool
 glsl_type_is_vector(const struct glsl_type *type)
 {
    return type->is_vector();
@@ -312,12 +300,6 @@ glsl_matrix_type_is_row_major(const struct glsl_type *type)
 }
 
 bool
-glsl_type_is_array(const struct glsl_type *type)
-{
-   return type->is_array();
-}
-
-bool
 glsl_type_is_unsized_array(const struct glsl_type *type)
 {
    return type->is_unsized_array();
@@ -336,51 +318,9 @@ glsl_type_is_array_or_matrix(const struct glsl_type *type)
 }
 
 bool
-glsl_type_is_cmat(const struct glsl_type *type)
-{
-   return type->is_cmat();
-}
-
-bool
-glsl_type_is_struct(const struct glsl_type *type)
-{
-   return type->is_struct();
-}
-
-bool
-glsl_type_is_interface(const struct glsl_type *type)
-{
-   return type->is_interface();
-}
-
-bool
-glsl_type_is_struct_or_ifc(const struct glsl_type *type)
-{
-   return type->is_struct() || type->is_interface();
-}
-
-bool
-glsl_type_is_sampler(const struct glsl_type *type)
-{
-   return type->is_sampler();
-}
-
-bool
 glsl_type_is_bare_sampler(const struct glsl_type *type)
 {
    return type->is_sampler() && type->sampled_type == GLSL_TYPE_VOID;
-}
-
-bool
-glsl_type_is_texture(const struct glsl_type *type)
-{
-   return type->is_texture();
-}
-
-bool
-glsl_type_is_image(const struct glsl_type *type)
-{
-   return type->is_image();
 }
 
 bool
@@ -418,11 +358,6 @@ glsl_type_is_numeric(const struct glsl_type *type)
    return type->is_numeric();
 }
 
-bool
-glsl_type_is_boolean(const struct glsl_type *type)
-{
-   return type->is_boolean();
-}
 bool
 glsl_type_is_integer(const struct glsl_type *type)
 {
