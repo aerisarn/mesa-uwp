@@ -65,6 +65,12 @@ inline unsigned glsl_type::varying_count() const { return glsl_varying_count(thi
 inline unsigned glsl_type::cl_size() const { return glsl_get_cl_size(this); }
 inline unsigned glsl_type::cl_alignment() const { return glsl_get_cl_alignment(this); }
 
+inline unsigned glsl_type::std140_base_alignment(bool row_major) const { return glsl_get_std140_base_alignment(this, row_major); }
+inline unsigned glsl_type::std140_size(bool row_major) const { return glsl_get_std140_size(this, row_major); }
+inline unsigned glsl_type::std430_base_alignment(bool row_major) const { return glsl_get_std430_base_alignment(this, row_major); }
+inline unsigned glsl_type::std430_size(bool row_major) const { return glsl_get_std430_size(this, row_major); }
+inline unsigned glsl_type::explicit_size(bool align_to_stride) const { return glsl_get_explicit_size(this, align_to_stride); }
+
 inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
 
 inline const glsl_type *glsl_type::vec(unsigned components) { return glsl_vec_type(components); }

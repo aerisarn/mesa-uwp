@@ -482,42 +482,6 @@ glsl_type_get_image_count(const struct glsl_type *type)
    return glsl_type_count(type, GLSL_TYPE_IMAGE);
 }
 
-unsigned
-glsl_get_std140_base_alignment(const struct glsl_type *type, bool row_major)
-{
-   return type->std140_base_alignment(row_major);
-}
-
-unsigned
-glsl_get_std140_size(const struct glsl_type *type, bool row_major)
-{
-   return type->std140_size(row_major);
-}
-
-unsigned
-glsl_get_std430_base_alignment(const struct glsl_type *type, bool row_major)
-{
-   return type->std430_base_alignment(row_major);
-}
-
-unsigned
-glsl_get_std430_size(const struct glsl_type *type, bool row_major)
-{
-   return type->std430_size(row_major);
-}
-
-unsigned
-glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride)
-{
-   return type->explicit_size(align_to_stride);
-}
-
-unsigned
-glsl_get_explicit_alignment(const struct glsl_type *type)
-{
-   return type->explicit_alignment;
-}
-
 const struct glsl_type *
 glsl_get_explicit_type_for_size_align(const struct glsl_type *type,
                                       glsl_type_size_align_func type_info,

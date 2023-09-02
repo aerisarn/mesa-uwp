@@ -1508,7 +1508,11 @@ glsl_get_explicit_stride(const struct glsl_type *t)
    return t->explicit_stride;
 }
 
-unsigned glsl_get_explicit_alignment(const struct glsl_type *t);
+static inline unsigned
+glsl_get_explicit_alignment(const struct glsl_type *t)
+{
+   return t->explicit_alignment;
+}
 
 void glsl_get_natural_size_align_bytes(const struct glsl_type *t, unsigned *size, unsigned *align);
 void glsl_get_vec4_size_align_bytes(const struct glsl_type *type, unsigned *size, unsigned *align);

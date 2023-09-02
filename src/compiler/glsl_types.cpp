@@ -1959,10 +1959,10 @@ glsl_varying_count(const struct glsl_type *t)
    }
 }
 
-unsigned
-glsl_type::std140_base_alignment(bool row_major) const
+extern "C" unsigned
+glsl_get_std140_base_alignment(const struct glsl_type *t, bool row_major)
 {
-   unsigned N = is_64bit() ? 8 : 4;
+   unsigned N = t->is_64bit() ? 8 : 4;
 
    /* (1) If the member is a scalar consuming <N> basic machine units, the
     *     base alignment is <N>.
@@ -1974,8 +1974,8 @@ glsl_type::std140_base_alignment(bool row_major) const
     * (3) If the member is a three-component vector with components consuming
     *     <N> basic machine units, the base alignment is 4<N>.
     */
-   if (this->is_scalar() || this->is_vector()) {
-      switch (this->vector_elements) {
+   if (t->is_scalar() || t->is_vector()) {
+      switch (t->vector_elements) {
       case 1:
          return N;
       case 2:
@@ -2005,15 +2005,15 @@ glsl_type::std140_base_alignment(bool row_major) const
     * (10) If the member is an array of <S> structures, the <S> elements of
     *      the array are laid out in order, according to rule (9).
     */
-   if (this->is_array()) {
-      if (this->fields.array->is_scalar() ||
-          this->fields.array->is_vector() ||
-          this->fields.array->is_matrix()) {
-         return MAX2(this->fields.array->std140_base_alignment(row_major), 16);
+   if (t->is_array()) {
+      if (t->fields.array->is_scalar() ||
+          t->fields.array->is_vector() ||
+          t->fields.array->is_matrix()) {
+         return MAX2(t->fields.array->std140_base_alignment(row_major), 16);
       } else {
-         assert(this->fields.array->is_struct() ||
-                this->fields.array->is_array());
-         return this->fields.array->std140_base_alignment(row_major);
+         assert(t->fields.array->is_struct() ||
+                t->fields.array->is_array());
+         return t->fields.array->std140_base_alignment(row_major);
       }
    }
 
@@ -2026,16 +2026,16 @@ glsl_type::std140_base_alignment(bool row_major) const
     *     rows, the matrix is stored identically to an array of <R>
     *     row vectors with <C> components each, according to rule (4).
     */
-   if (this->is_matrix()) {
+   if (t->is_matrix()) {
       const struct glsl_type *vec_type, *array_type;
-      int c = this->matrix_columns;
-      int r = this->vector_elements;
+      int c = t->matrix_columns;
+      int r = t->vector_elements;
 
       if (row_major) {
-         vec_type = get_instance(base_type, c, 1);
+         vec_type = glsl_type::get_instance(t->base_type, c, 1);
          array_type = glsl_type::get_array_instance(vec_type, r);
       } else {
-         vec_type = get_instance(base_type, r, 1);
+         vec_type = glsl_type::get_instance(t->base_type, r, 1);
          array_type = glsl_type::get_array_instance(vec_type, c);
       }
 
@@ -2054,19 +2054,19 @@ glsl_type::std140_base_alignment(bool row_major) const
     *     rounded up to the next multiple of the base alignment of the
     *     structure.
     */
-   if (this->is_struct()) {
+   if (t->is_struct()) {
       unsigned base_alignment = 16;
-      for (unsigned i = 0; i < this->length; i++) {
+      for (unsigned i = 0; i < t->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
+            (enum glsl_matrix_layout)t->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
             field_row_major = false;
          }
 
-         const struct glsl_type *field_type = this->fields.structure[i].type;
+         const struct glsl_type *field_type = t->fields.structure[i].type;
          base_alignment = MAX2(base_alignment,
                                field_type->std140_base_alignment(field_row_major));
       }
@@ -2077,10 +2077,10 @@ glsl_type::std140_base_alignment(bool row_major) const
    return -1;
 }
 
-unsigned
-glsl_type::std140_size(bool row_major) const
+extern "C" unsigned
+glsl_get_std140_size(const struct glsl_type *t, bool row_major)
 {
-   unsigned N = is_64bit() ? 8 : 4;
+   unsigned N = t->is_64bit() ? 8 : 4;
 
    /* (1) If the member is a scalar consuming <N> basic machine units, the
     *     base alignment is <N>.
@@ -2092,9 +2092,9 @@ glsl_type::std140_size(bool row_major) const
     * (3) If the member is a three-component vector with components consuming
     *     <N> basic machine units, the base alignment is 4<N>.
     */
-   if (this->is_scalar() || this->is_vector()) {
-      assert(this->explicit_stride == 0);
-      return this->vector_elements * N;
+   if (t->is_scalar() || t->is_vector()) {
+      assert(t->explicit_stride == 0);
+      return t->vector_elements * N;
    }
 
    /* (5) If the member is a column-major matrix with <C> columns and
@@ -2115,27 +2115,27 @@ glsl_type::std140_size(bool row_major) const
     *     and <R> rows, the matrix is stored identically to a row of <S>*<R>
     *     row vectors with <C> components each, according to rule (4).
     */
-   if (this->without_array()->is_matrix()) {
+   if (t->without_array()->is_matrix()) {
       const struct glsl_type *element_type;
       const struct glsl_type *vec_type;
       unsigned int array_len;
 
-      if (this->is_array()) {
-         element_type = this->without_array();
-         array_len = this->arrays_of_arrays_size();
+      if (t->is_array()) {
+         element_type = t->without_array();
+         array_len = t->arrays_of_arrays_size();
       } else {
-         element_type = this;
+         element_type = t;
          array_len = 1;
       }
 
       if (row_major) {
-         vec_type = get_instance(element_type->base_type,
-                                 element_type->matrix_columns, 1);
+         vec_type = glsl_type::get_instance(element_type->base_type,
+                                            element_type->matrix_columns, 1);
 
          array_len *= element_type->vector_elements;
       } else {
-         vec_type = get_instance(element_type->base_type,
-                                 element_type->vector_elements, 1);
+         vec_type = glsl_type::get_instance(element_type->base_type,
+                                            element_type->vector_elements, 1);
          array_len *= element_type->matrix_columns;
       }
       const struct glsl_type *array_type =
@@ -2154,19 +2154,19 @@ glsl_type::std140_size(bool row_major) const
     * (10) If the member is an array of <S> structures, the <S> elements of
     *      the array are laid out in order, according to rule (9).
     */
-   if (this->is_array()) {
+   if (t->is_array()) {
       unsigned stride;
-      if (this->without_array()->is_struct()) {
-	 stride = this->without_array()->std140_size(row_major);
+      if (t->without_array()->is_struct()) {
+	 stride = t->without_array()->std140_size(row_major);
       } else {
 	 unsigned element_base_align =
-	    this->without_array()->std140_base_alignment(row_major);
+	    t->without_array()->std140_base_alignment(row_major);
          stride = MAX2(element_base_align, 16);
       }
 
-      unsigned size = this->arrays_of_arrays_size() * stride;
-      assert(this->explicit_stride == 0 ||
-             size == this->length * this->explicit_stride);
+      unsigned size = t->arrays_of_arrays_size() * stride;
+      assert(t->explicit_stride == 0 ||
+             size == t->length * t->explicit_stride);
       return size;
    }
 
@@ -2182,21 +2182,21 @@ glsl_type::std140_size(bool row_major) const
     *     rounded up to the next multiple of the base alignment of the
     *     structure.
     */
-   if (this->is_struct() || this->is_interface()) {
+   if (t->is_struct() || t->is_interface()) {
       unsigned size = 0;
       unsigned max_align = 0;
 
-      for (unsigned i = 0; i < this->length; i++) {
+      for (unsigned i = 0; i < t->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
+            (enum glsl_matrix_layout)t->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
             field_row_major = false;
          }
 
-         const struct glsl_type *field_type = this->fields.structure[i].type;
+         const struct glsl_type *field_type = t->fields.structure[i].type;
          unsigned base_alignment = field_type->std140_base_alignment(field_row_major);
 
          /* Ignore unsized arrays when calculating size */
@@ -2208,7 +2208,7 @@ glsl_type::std140_size(bool row_major) const
 
          max_align = MAX2(base_alignment, max_align);
 
-         if (field_type->is_struct() && (i + 1 < this->length))
+         if (field_type->is_struct() && (i + 1 < t->length))
             size = align(size, 16);
       }
       size = align(size, MAX2(max_align, 16));
@@ -2293,11 +2293,11 @@ glsl_type::get_explicit_std140_type(bool row_major) const
    }
 }
 
-unsigned
-glsl_type::std430_base_alignment(bool row_major) const
+extern "C" unsigned
+glsl_get_std430_base_alignment(const struct glsl_type *t, bool row_major)
 {
 
-   unsigned N = is_64bit() ? 8 : 4;
+   unsigned N = t->is_64bit() ? 8 : 4;
 
    /* (1) If the member is a scalar consuming <N> basic machine units, the
     *     base alignment is <N>.
@@ -2309,8 +2309,8 @@ glsl_type::std430_base_alignment(bool row_major) const
     * (3) If the member is a three-component vector with components consuming
     *     <N> basic machine units, the base alignment is 4<N>.
     */
-   if (this->is_scalar() || this->is_vector()) {
-      switch (this->vector_elements) {
+   if (t->is_scalar() || t->is_vector()) {
+      switch (t->vector_elements) {
       case 1:
          return N;
       case 2:
@@ -2340,8 +2340,8 @@ glsl_type::std430_base_alignment(bool row_major) const
     * (3) If the member is a three-component vector with components consuming
     *     <N> basic machine units, the base alignment is 4<N>.
     */
-   if (this->is_array())
-      return this->fields.array->std430_base_alignment(row_major);
+   if (t->is_array())
+      return t->fields.array->std430_base_alignment(row_major);
 
    /* (5) If the member is a column-major matrix with <C> columns and
     *     <R> rows, the matrix is stored identically to an array of
@@ -2352,16 +2352,16 @@ glsl_type::std430_base_alignment(bool row_major) const
     *     rows, the matrix is stored identically to an array of <R>
     *     row vectors with <C> components each, according to rule (4).
     */
-   if (this->is_matrix()) {
+   if (t->is_matrix()) {
       const struct glsl_type *vec_type, *array_type;
-      int c = this->matrix_columns;
-      int r = this->vector_elements;
+      int c = t->matrix_columns;
+      int r = t->vector_elements;
 
       if (row_major) {
-         vec_type = get_instance(base_type, c, 1);
+         vec_type = glsl_type::get_instance(t->base_type, c, 1);
          array_type = glsl_type::get_array_instance(vec_type, r);
       } else {
-         vec_type = get_instance(base_type, r, 1);
+         vec_type = glsl_type::get_instance(t->base_type, r, 1);
          array_type = glsl_type::get_array_instance(vec_type, c);
       }
 
@@ -2380,19 +2380,19 @@ glsl_type::std430_base_alignment(bool row_major) const
     *     rounded up to the next multiple of the base alignment of the
     *     structure.
     */
-   if (this->is_struct()) {
+   if (t->is_struct()) {
       unsigned base_alignment = 0;
-      for (unsigned i = 0; i < this->length; i++) {
+      for (unsigned i = 0; i < t->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
+            (enum glsl_matrix_layout)t->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
             field_row_major = false;
          }
 
-         const struct glsl_type *field_type = this->fields.structure[i].type;
+         const struct glsl_type *field_type = t->fields.structure[i].type;
          base_alignment = MAX2(base_alignment,
                                field_type->std430_base_alignment(field_row_major));
       }
@@ -2428,17 +2428,17 @@ glsl_type::std430_array_stride(bool row_major) const
  * Should not be used with GLSL shaders.
  */
 
-unsigned
-glsl_type::explicit_size(bool align_to_stride) const
+extern "C" unsigned
+glsl_get_explicit_size(const struct glsl_type *t, bool align_to_stride)
 {
-   if (this->is_struct() || this->is_interface()) {
-      if (this->length > 0) {
+   if (t->is_struct() || t->is_interface()) {
+      if (t->length > 0) {
          unsigned size = 0;
 
-         for (unsigned i = 0; i < this->length; i++) {
-            assert(this->fields.structure[i].offset >= 0);
-            unsigned last_byte = this->fields.structure[i].offset +
-               this->fields.structure[i].type->explicit_size();
+         for (unsigned i = 0; i < t->length; i++) {
+            assert(t->fields.structure[i].offset >= 0);
+            unsigned last_byte = t->fields.structure[i].offset +
+               t->fields.structure[i].type->explicit_size();
             size = MAX2(size, last_byte);
          }
 
@@ -2446,7 +2446,7 @@ glsl_type::explicit_size(bool align_to_stride) const
       } else {
          return 0;
       }
-   } else if (this->is_array()) {
+   } else if (t->is_array()) {
       /* From ARB_program_interface_query spec:
        *
        *   "For the property of BUFFER_DATA_SIZE, then the implementation-dependent
@@ -2458,43 +2458,43 @@ glsl_type::explicit_size(bool align_to_stride) const
        *   as an array with one element."
        *
        */
-      if (this->is_unsized_array())
-         return this->explicit_stride;
+      if (t->is_unsized_array())
+         return t->explicit_stride;
 
-      assert(this->length > 0);
-      unsigned elem_size = align_to_stride ? this->explicit_stride : this->fields.array->explicit_size();
-      assert(this->explicit_stride == 0 || this->explicit_stride >= elem_size);
+      assert(t->length > 0);
+      unsigned elem_size = align_to_stride ? t->explicit_stride : t->fields.array->explicit_size();
+      assert(t->explicit_stride == 0 || t->explicit_stride >= elem_size);
 
-      return this->explicit_stride * (this->length - 1) + elem_size;
-   } else if (this->is_matrix()) {
+      return t->explicit_stride * (t->length - 1) + elem_size;
+   } else if (t->is_matrix()) {
       const struct glsl_type *elem_type;
       unsigned length;
 
-      if (this->interface_row_major) {
-         elem_type = get_instance(this->base_type,
-                                  this->matrix_columns, 1);
-         length = this->vector_elements;
+      if (t->interface_row_major) {
+         elem_type = glsl_type::get_instance(t->base_type,
+                                             t->matrix_columns, 1);
+         length = t->vector_elements;
       } else {
-         elem_type = get_instance(this->base_type,
-                                  this->vector_elements, 1);
-         length = this->matrix_columns;
+         elem_type = glsl_type::get_instance(t->base_type,
+                                             t->vector_elements, 1);
+         length = t->matrix_columns;
       }
 
-      unsigned elem_size = align_to_stride ? this->explicit_stride : elem_type->explicit_size();
+      unsigned elem_size = align_to_stride ? t->explicit_stride : elem_type->explicit_size();
 
-      assert(this->explicit_stride);
-      return this->explicit_stride * (length - 1) + elem_size;
+      assert(t->explicit_stride);
+      return t->explicit_stride * (length - 1) + elem_size;
    }
 
-   unsigned N = this->bit_size() / 8;
+   unsigned N = t->bit_size() / 8;
 
-   return this->vector_elements * N;
+   return t->vector_elements * N;
 }
 
-unsigned
-glsl_type::std430_size(bool row_major) const
+extern "C" unsigned
+glsl_get_std430_size(const struct glsl_type *t, bool row_major)
 {
-   unsigned N = is_64bit() ? 8 : 4;
+   unsigned N = t->is_64bit() ? 8 : 4;
 
    /* OpenGL 4.30 spec, section 7.6.2.2 "Standard Uniform Block Layout":
     *
@@ -2504,32 +2504,32 @@ glsl_type::std430_size(bool row_major) const
     * stride of arrays of scalars and vectors in rule 4 and of structures
     * in rule 9 are not rounded up a multiple of the base alignment of a vec4.
     */
-   if (this->is_scalar() || this->is_vector()) {
-      assert(this->explicit_stride == 0);
-      return this->vector_elements * N;
+   if (t->is_scalar() || t->is_vector()) {
+      assert(t->explicit_stride == 0);
+      return t->vector_elements * N;
    }
 
-   if (this->without_array()->is_matrix()) {
+   if (t->without_array()->is_matrix()) {
       const struct glsl_type *element_type;
       const struct glsl_type *vec_type;
       unsigned int array_len;
 
-      if (this->is_array()) {
-         element_type = this->without_array();
-         array_len = this->arrays_of_arrays_size();
+      if (t->is_array()) {
+         element_type = t->without_array();
+         array_len = t->arrays_of_arrays_size();
       } else {
-         element_type = this;
+         element_type = t;
          array_len = 1;
       }
 
       if (row_major) {
-         vec_type = get_instance(element_type->base_type,
-                                 element_type->matrix_columns, 1);
+         vec_type = glsl_type::get_instance(element_type->base_type,
+                                            element_type->matrix_columns, 1);
 
          array_len *= element_type->vector_elements;
       } else {
-         vec_type = get_instance(element_type->base_type,
-                                 element_type->vector_elements, 1);
+         vec_type = glsl_type::get_instance(element_type->base_type,
+                                            element_type->vector_elements, 1);
          array_len *= element_type->matrix_columns;
       }
       const struct glsl_type *array_type =
@@ -2538,34 +2538,34 @@ glsl_type::std430_size(bool row_major) const
       return array_type->std430_size(false);
    }
 
-   if (this->is_array()) {
+   if (t->is_array()) {
       unsigned stride;
-      if (this->without_array()->is_struct())
-         stride = this->without_array()->std430_size(row_major);
+      if (t->without_array()->is_struct())
+         stride = t->without_array()->std430_size(row_major);
       else
-         stride = this->without_array()->std430_base_alignment(row_major);
+         stride = t->without_array()->std430_base_alignment(row_major);
 
-      unsigned size = this->arrays_of_arrays_size() * stride;
-      assert(this->explicit_stride == 0 ||
-             size == this->length * this->explicit_stride);
+      unsigned size = t->arrays_of_arrays_size() * stride;
+      assert(t->explicit_stride == 0 ||
+             size == t->length * t->explicit_stride);
       return size;
    }
 
-   if (this->is_struct() || this->is_interface()) {
+   if (t->is_struct() || t->is_interface()) {
       unsigned size = 0;
       unsigned max_align = 0;
 
-      for (unsigned i = 0; i < this->length; i++) {
+      for (unsigned i = 0; i < t->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
+            (enum glsl_matrix_layout)t->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
             field_row_major = false;
          }
 
-         const struct glsl_type *field_type = this->fields.structure[i].type;
+         const struct glsl_type *field_type = t->fields.structure[i].type;
          unsigned base_alignment = field_type->std430_base_alignment(field_row_major);
          size = align(size, base_alignment);
          size += field_type->std430_size(field_row_major);
