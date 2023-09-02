@@ -207,67 +207,68 @@ glsl_type::contains_array() const
    }
 }
 
-bool
-glsl_type::contains_integer() const
+extern "C" bool
+glsl_contains_integer(const struct glsl_type *t)
 {
-   if (this->is_array()) {
-      return this->fields.array->contains_integer();
-   } else if (this->is_struct() || this->is_interface()) {
-      for (unsigned int i = 0; i < this->length; i++) {
-         if (this->fields.structure[i].type->contains_integer())
+   if (t->is_array()) {
+      return t->fields.array->contains_integer();
+   } else if (t->is_struct() || t->is_interface()) {
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_integer())
             return true;
       }
       return false;
    } else {
-      return this->is_integer();
+      return t->is_integer();
    }
 }
 
-bool
-glsl_type::contains_double() const
+extern "C" bool
+glsl_contains_double(const struct glsl_type *t)
 {
-   if (this->is_array()) {
-      return this->fields.array->contains_double();
-   } else if (this->is_struct() || this->is_interface()) {
-      for (unsigned int i = 0; i < this->length; i++) {
-         if (this->fields.structure[i].type->contains_double())
+   if (t->is_array()) {
+      return t->fields.array->contains_double();
+   } else if (t->is_struct() || t->is_interface()) {
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_double())
             return true;
       }
       return false;
    } else {
-      return this->is_double();
+      return t->is_double();
    }
 }
 
-bool
-glsl_type::contains_64bit() const
+extern "C" bool
+glsl_type_contains_64bit(const struct glsl_type *t)
 {
-   if (this->is_array()) {
-      return this->fields.array->contains_64bit();
-   } else if (this->is_struct() || this->is_interface()) {
-      for (unsigned int i = 0; i < this->length; i++) {
-         if (this->fields.structure[i].type->contains_64bit())
+   if (t->is_array()) {
+      return t->fields.array->contains_64bit();
+   } else if (t->is_struct() || t->is_interface()) {
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_64bit())
             return true;
       }
       return false;
    } else {
-      return this->is_64bit();
+      return t->is_64bit();
    }
 }
 
-bool
-glsl_type::contains_opaque() const {
-   switch (base_type) {
+extern "C" bool
+glsl_contains_opaque(const struct glsl_type *t)
+{
+   switch (t->base_type) {
    case GLSL_TYPE_SAMPLER:
    case GLSL_TYPE_IMAGE:
    case GLSL_TYPE_ATOMIC_UINT:
       return true;
    case GLSL_TYPE_ARRAY:
-      return fields.array->contains_opaque();
+      return t->fields.array->contains_opaque();
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE:
-      for (unsigned int i = 0; i < length; i++) {
-         if (fields.structure[i].type->contains_opaque())
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_opaque())
             return true;
       }
       return false;
@@ -292,19 +293,19 @@ glsl_type::contains_subroutine() const
    }
 }
 
-bool
-glsl_type::contains_image() const
+extern "C" bool
+glsl_type_contains_image(const struct glsl_type *t)
 {
-   if (this->is_array()) {
-      return this->fields.array->contains_image();
-   } else if (this->is_struct() || this->is_interface()) {
-      for (unsigned int i = 0; i < this->length; i++) {
-         if (this->fields.structure[i].type->contains_image())
+   if (t->is_array()) {
+      return t->fields.array->contains_image();
+   } else if (t->is_struct() || t->is_interface()) {
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_image())
             return true;
       }
       return false;
    } else {
-      return this->is_image();
+      return t->is_image();
    }
 }
 
@@ -3432,6 +3433,12 @@ glsl_type_is_leaf(const struct glsl_type *t)
    } else {
       return true;
    }
+}
+
+bool
+glsl_contains_atomic(const struct glsl_type *t)
+{
+   return t->atomic_size() > 0;
 }
 
 }

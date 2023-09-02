@@ -241,30 +241,6 @@ glsl_get_struct_location_offset(const struct glsl_type *type,
 }
 
 bool
-glsl_type_contains_64bit(const struct glsl_type *type)
-{
-   return type->contains_64bit();
-}
-
-bool
-glsl_type_contains_image(const struct glsl_type *type)
-{
-   return type->contains_image();
-}
-
-bool
-glsl_contains_double(const struct glsl_type *type)
-{
-   return type->contains_double();
-}
-
-bool
-glsl_contains_integer(const struct glsl_type *type)
-{
-   return type->contains_integer();
-}
-
-bool
 glsl_record_compare(const struct glsl_type *a, const struct glsl_type *b,
                     bool match_name, bool match_locations, bool match_precision)
 {
@@ -599,18 +575,6 @@ unsigned
 glsl_atomic_size(const struct glsl_type *type)
 {
    return type->atomic_size();
-}
-
-bool
-glsl_contains_atomic(const struct glsl_type *type)
-{
-   return type->contains_atomic();
-}
-
-bool
-glsl_contains_opaque(const struct glsl_type *type)
-{
-   return type->contains_opaque();
 }
 
 int

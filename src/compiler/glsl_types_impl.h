@@ -38,6 +38,13 @@ inline bool glsl_type::is_16bit() const { return glsl_type_is_16bit(this); }
 inline bool glsl_type::is_32bit() const { return glsl_type_is_32bit(this); }
 inline bool glsl_type::is_64bit() const { return glsl_type_is_64bit(this); }
 
+inline bool glsl_type::contains_64bit() const { return glsl_type_contains_64bit(this); }
+inline bool glsl_type::contains_image() const { return glsl_type_contains_image(this); }
+inline bool glsl_type::contains_atomic() const { return glsl_contains_atomic(this); }
+inline bool glsl_type::contains_opaque() const { return glsl_contains_opaque(this); }
+inline bool glsl_type::contains_double() const { return glsl_contains_double(this); }
+inline bool glsl_type::contains_integer() const { return glsl_contains_integer(this); }
+
 inline unsigned
 glsl_type::components() const
 {
@@ -201,12 +208,6 @@ glsl_type::atomic_size() const
       return length * fields.array->atomic_size();
    else
       return 0;
-}
-
-inline bool
-glsl_type::contains_atomic() const
-{
-   return atomic_size() > 0;
 }
 
 inline const glsl_type *
