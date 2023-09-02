@@ -54,6 +54,8 @@ inline int glsl_type::field_index(const char *n) const { return glsl_get_field_i
 inline enum glsl_interface_packing glsl_type::get_interface_packing() const { return glsl_get_ifc_packing(this); }
 inline enum glsl_interface_packing glsl_type::get_internal_ifc_packing(bool std430_supported) const { return glsl_get_internal_ifc_packing(this, std430_supported); }
 
+inline bool glsl_type::record_compare(const glsl_type *b, bool match_name, bool match_locations, bool match_precision) const { return glsl_record_compare(this, b, match_name, match_locations, match_precision); }
+
 inline unsigned glsl_type::components() const { return glsl_get_components(this); }
 inline unsigned glsl_type::component_slots() const { return glsl_get_component_slots(this); }
 inline unsigned glsl_type::component_slots_aligned(unsigned int offset) const { return glsl_get_component_slots_aligned(this, offset); }

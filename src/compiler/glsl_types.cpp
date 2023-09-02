@@ -1368,23 +1368,23 @@ glsl_type::compare_no_precision(const struct glsl_type *b) const
                          false /* match_precision */);
 }
 
-bool
-glsl_type::record_compare(const struct glsl_type *b, bool match_name,
-                          bool match_locations, bool match_precision) const
+extern "C" bool
+glsl_record_compare(const struct glsl_type *a, const struct glsl_type *b, bool match_name,
+                    bool match_locations, bool match_precision)
 {
-   if (this->length != b->length)
+   if (a->length != b->length)
       return false;
 
-   if (this->interface_packing != b->interface_packing)
+   if (a->interface_packing != b->interface_packing)
       return false;
 
-   if (this->interface_row_major != b->interface_row_major)
+   if (a->interface_row_major != b->interface_row_major)
       return false;
 
-   if (this->explicit_alignment != b->explicit_alignment)
+   if (a->explicit_alignment != b->explicit_alignment)
       return false;
 
-   if (this->packed != b->packed)
+   if (a->packed != b->packed)
       return false;
 
    /* From the GLSL 4.20 specification (Sec 4.2):
@@ -1401,75 +1401,75 @@ glsl_type::record_compare(const struct glsl_type *b, bool match_name,
     *     type, qualification, and declaration order."
     */
    if (match_name)
-      if (strcmp(glsl_get_type_name(this), glsl_get_type_name(b)) != 0)
+      if (strcmp(glsl_get_type_name(a), glsl_get_type_name(b)) != 0)
          return false;
 
-   for (unsigned i = 0; i < this->length; i++) {
+   for (unsigned i = 0; i < a->length; i++) {
       if (match_precision) {
-         if (this->fields.structure[i].type != b->fields.structure[i].type)
+         if (a->fields.structure[i].type != b->fields.structure[i].type)
             return false;
       } else {
-         const struct glsl_type *ta = this->fields.structure[i].type;
+         const struct glsl_type *ta = a->fields.structure[i].type;
          const struct glsl_type *tb = b->fields.structure[i].type;
          if (!ta->compare_no_precision(tb))
             return false;
       }
-      if (strcmp(this->fields.structure[i].name,
+      if (strcmp(a->fields.structure[i].name,
                  b->fields.structure[i].name) != 0)
          return false;
-      if (this->fields.structure[i].matrix_layout
+      if (a->fields.structure[i].matrix_layout
          != b->fields.structure[i].matrix_layout)
         return false;
-      if (match_locations && this->fields.structure[i].location
+      if (match_locations && a->fields.structure[i].location
           != b->fields.structure[i].location)
          return false;
-      if (this->fields.structure[i].component
+      if (a->fields.structure[i].component
           != b->fields.structure[i].component)
          return false;
-      if (this->fields.structure[i].offset
+      if (a->fields.structure[i].offset
           != b->fields.structure[i].offset)
          return false;
-      if (this->fields.structure[i].interpolation
+      if (a->fields.structure[i].interpolation
           != b->fields.structure[i].interpolation)
          return false;
-      if (this->fields.structure[i].centroid
+      if (a->fields.structure[i].centroid
           != b->fields.structure[i].centroid)
          return false;
-      if (this->fields.structure[i].sample
+      if (a->fields.structure[i].sample
           != b->fields.structure[i].sample)
          return false;
-      if (this->fields.structure[i].patch
+      if (a->fields.structure[i].patch
           != b->fields.structure[i].patch)
          return false;
-      if (this->fields.structure[i].memory_read_only
+      if (a->fields.structure[i].memory_read_only
           != b->fields.structure[i].memory_read_only)
          return false;
-      if (this->fields.structure[i].memory_write_only
+      if (a->fields.structure[i].memory_write_only
           != b->fields.structure[i].memory_write_only)
          return false;
-      if (this->fields.structure[i].memory_coherent
+      if (a->fields.structure[i].memory_coherent
           != b->fields.structure[i].memory_coherent)
          return false;
-      if (this->fields.structure[i].memory_volatile
+      if (a->fields.structure[i].memory_volatile
           != b->fields.structure[i].memory_volatile)
          return false;
-      if (this->fields.structure[i].memory_restrict
+      if (a->fields.structure[i].memory_restrict
           != b->fields.structure[i].memory_restrict)
          return false;
-      if (this->fields.structure[i].image_format
+      if (a->fields.structure[i].image_format
           != b->fields.structure[i].image_format)
          return false;
       if (match_precision &&
-          this->fields.structure[i].precision
+          a->fields.structure[i].precision
           != b->fields.structure[i].precision)
          return false;
-      if (this->fields.structure[i].explicit_xfb_buffer
+      if (a->fields.structure[i].explicit_xfb_buffer
           != b->fields.structure[i].explicit_xfb_buffer)
          return false;
-      if (this->fields.structure[i].xfb_buffer
+      if (a->fields.structure[i].xfb_buffer
           != b->fields.structure[i].xfb_buffer)
          return false;
-      if (this->fields.structure[i].xfb_stride
+      if (a->fields.structure[i].xfb_stride
           != b->fields.structure[i].xfb_stride)
          return false;
    }
