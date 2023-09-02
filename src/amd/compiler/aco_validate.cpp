@@ -468,8 +468,7 @@ validate_ir(Program* program)
                      check(program->gfx_level >= GFX9 || !def.regClass().is_subdword(),
                            "Cannot split SGPR into subdword VGPRs before GFX9+", instr.get());
                }
-            } else if (instr->opcode == aco_opcode::p_parallelcopy ||
-                       instr->opcode == aco_opcode::p_wqm) {
+            } else if (instr->opcode == aco_opcode::p_parallelcopy) {
                check(instr->definitions.size() == instr->operands.size(),
                      "Number of Operands does not match number of Definitions", instr.get());
                for (unsigned i = 0; i < instr->operands.size(); i++) {
