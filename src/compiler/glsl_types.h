@@ -1335,8 +1335,18 @@ const struct glsl_type *glsl_get_struct_field(const struct glsl_type *t, unsigne
 const struct glsl_struct_field *glsl_get_struct_field_data(const struct glsl_type *t, unsigned index);
 unsigned glsl_get_struct_location_offset(const struct glsl_type *t, unsigned length);
 int glsl_get_field_index(const struct glsl_type *t, const char *name);
-int glsl_get_struct_field_offset(const struct glsl_type *t, unsigned index);
-const char *glsl_get_struct_elem_name(const struct glsl_type *t, unsigned index);
+
+static inline int
+glsl_get_struct_field_offset(const struct glsl_type *t, unsigned index)
+{
+   return t->fields.structure[index].offset;
+}
+
+static inline const char *
+glsl_get_struct_elem_name(const struct glsl_type *t, unsigned index)
+{
+   return t->fields.structure[index].name;
+}
 
 static inline const struct glsl_type *glsl_void_type(void) { return &glsl_type_builtin_void; }
 static inline const struct glsl_type *glsl_float_type(void) { return &glsl_type_builtin_float; }

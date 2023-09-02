@@ -41,29 +41,6 @@ glsl_get_type_name(const struct glsl_type *type)
 }
 
 const struct glsl_type *
-glsl_get_struct_field(const struct glsl_type *type, unsigned index)
-{
-   assert(type->is_struct() || type->is_interface());
-   assert(index < type->length);
-   return type->fields.structure[index].type;
-}
-
-int
-glsl_get_struct_field_offset(const struct glsl_type *type,
-                             unsigned index)
-{
-   return type->fields.structure[index].offset;
-}
-
-const struct glsl_struct_field *
-glsl_get_struct_field_data(const struct glsl_type *type, unsigned index)
-{
-   assert(type->is_struct() || type->is_interface());
-   assert(index < type->length);
-   return &type->fields.structure[index];
-}
-
-const struct glsl_type *
 glsl_texture_type_to_sampler(const struct glsl_type *type, bool is_shadow)
 {
    assert(glsl_type_is_texture(type));
@@ -99,12 +76,6 @@ glsl_get_base_type(const struct glsl_type *type)
    return type->base_type;
 }
 
-const char *
-glsl_get_struct_elem_name(const struct glsl_type *type, unsigned index)
-{
-   return type->fields.structure[index].name;
-}
-
 glsl_sampler_dim
 glsl_get_sampler_dim(const struct glsl_type *type)
 {
@@ -130,13 +101,6 @@ glsl_get_sampler_coordinate_components(const struct glsl_type *type)
           glsl_type_is_texture(type) ||
           glsl_type_is_image(type));
    return type->coordinate_components();
-}
-
-unsigned
-glsl_get_struct_location_offset(const struct glsl_type *type,
-                                unsigned length)
-{
-   return type->struct_location_offset(length);
 }
 
 bool
@@ -516,12 +480,6 @@ unsigned
 glsl_type_get_image_count(const struct glsl_type *type)
 {
    return glsl_type_count(type, GLSL_TYPE_IMAGE);
-}
-
-int
-glsl_get_field_index(const struct glsl_type *type, const char *name)
-{
-   return type->field_index(name);
 }
 
 enum glsl_interface_packing

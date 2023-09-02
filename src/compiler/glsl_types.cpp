@@ -1709,15 +1709,15 @@ glsl_type::field_type(const char *name) const
 }
 
 
-int
-glsl_type::field_index(const char *name) const
+extern "C" int
+glsl_get_field_index(const struct glsl_type *t, const char *name)
 {
-   if (this->base_type != GLSL_TYPE_STRUCT
-       && this->base_type != GLSL_TYPE_INTERFACE)
+   if (t->base_type != GLSL_TYPE_STRUCT &&
+       t->base_type != GLSL_TYPE_INTERFACE)
       return -1;
 
-   for (unsigned i = 0; i < this->length; i++) {
-      if (strcmp(name, this->fields.structure[i].name) == 0)
+   for (unsigned i = 0; i < t->length; i++) {
+      if (strcmp(name, t->fields.structure[i].name) == 0)
          return i;
    }
 
@@ -1843,11 +1843,11 @@ glsl_get_component_slots_aligned(const struct glsl_type *t, unsigned offset)
    return 0;
 }
 
-unsigned
-glsl_type::struct_location_offset(unsigned length) const
+extern "C" unsigned
+glsl_get_struct_location_offset(const struct glsl_type *t, unsigned length)
 {
    unsigned offset = 0;
-   const struct glsl_type *t = this->without_array();
+   t = t->without_array();
    if (t->is_struct()) {
       assert(length <= t->length);
 
@@ -3514,6 +3514,22 @@ glsl_get_aoa_size(const struct glsl_type *t)
       array_base_type = array_base_type->fields.array;
    }
    return size;
+}
+
+const struct glsl_type *
+glsl_get_struct_field(const struct glsl_type *t, unsigned index)
+{
+   assert(t->is_struct() || t->is_interface());
+   assert(index < t->length);
+   return t->fields.structure[index].type;
+}
+
+const struct glsl_struct_field *
+glsl_get_struct_field_data(const struct glsl_type *t, unsigned index)
+{
+   assert(t->is_struct() || t->is_interface());
+   assert(index < t->length);
+   return &t->fields.structure[index];
 }
 
 }

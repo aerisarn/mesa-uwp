@@ -48,6 +48,9 @@ inline bool glsl_type::contains_integer() const { return glsl_contains_integer(t
 inline int glsl_type::array_size() const { return glsl_array_size(this); }
 inline const glsl_type *glsl_type::without_array() const { return glsl_without_array(this); }
 
+inline unsigned glsl_type::struct_location_offset(unsigned len) const { return glsl_get_struct_location_offset(this, len); }
+inline int glsl_type::field_index(const char *n) const { return glsl_get_field_index(this, n); }
+
 inline unsigned glsl_type::components() const { return glsl_get_components(this); }
 inline unsigned glsl_type::component_slots() const { return glsl_get_component_slots(this); }
 inline unsigned glsl_type::component_slots_aligned(unsigned int offset) const { return glsl_get_component_slots_aligned(this, offset); }
