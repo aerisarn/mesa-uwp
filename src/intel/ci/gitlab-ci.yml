@@ -342,7 +342,7 @@ iris-kbl-deqp:
     DEQP_SUITE: iris-kbl
   parallel: 3
 
-iris-whl-deqp:
+.iris-whl-deqp:
   extends:
     - .iris-whl-test
   variables:
@@ -421,7 +421,7 @@ iris-kbl-traces:
     - .iris-kbl-test
     - .iris-traces
 
-iris-whl-traces:
+.iris-whl-traces:
   variables:
     GPU_VERSION: intel-whl
   extends:
@@ -484,7 +484,7 @@ iris-kbl-traces-performance:
   variables:
     GPU_VERSION: intel-kbl
 
-iris-whl-traces-performance:
+.iris-whl-traces-performance:
   extends:
     - .iris-whl-test
     - .profile-traces
@@ -521,7 +521,7 @@ intel-tgl-skqp:
     VK_DRIVER: intel
     HWCI_START_XORG: 1
 
-intel-whl-skqp:
+.intel-whl-skqp:
   extends:
     - .intel-whl-test
   variables:
