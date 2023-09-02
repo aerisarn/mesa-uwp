@@ -64,6 +64,10 @@
 #define VG(x) ((void)0)
 #endif
 
+#ifdef ANDROID
+#include "util/u_gralloc/u_gralloc.h"
+#endif
+
 #include "v3dv_limits.h"
 
 #include "common/v3d_device_info.h"
@@ -588,12 +592,7 @@ struct v3dv_device {
    struct util_dynarray device_address_bo_list; /* Array of struct v3dv_bo * */
 
 #ifdef ANDROID
-   const void *gralloc;
-   enum {
-      V3DV_GRALLOC_UNKNOWN,
-      V3DV_GRALLOC_CROS,
-      V3DV_GRALLOC_OTHER,
-   } gralloc_type;
+   struct u_gralloc *gralloc;
 #endif
 };
 
@@ -2587,14 +2586,6 @@ u64_compare(const void *key1, const void *key2)
 #endif
 
 #ifdef ANDROID
-VkResult
-v3dv_gralloc_info(struct v3dv_device *device,
-                  const VkNativeBufferANDROID *gralloc_info,
-                  int *out_dmabuf,
-                  int *out_stride,
-                  int *out_size,
-                  uint64_t *out_modifier);
-
 VkResult
 v3dv_import_native_buffer_fd(VkDevice device_h,
                              int dma_buf,

@@ -361,18 +361,19 @@ v3dv_image_init(struct v3dv_device *device,
    const VkNativeBufferANDROID *native_buffer =
       vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
 
-   int native_buf_fd = -1;
-   int native_buf_stride = 0;
-   int native_buf_size = 0;
+   struct u_gralloc_buffer_basic_info buffer_info;
 
    if (native_buffer != NULL) {
-      VkResult result = v3dv_gralloc_info(device, native_buffer, &native_buf_fd,
-                                          &native_buf_stride, &native_buf_size,
-                                          &modifier);
-      if (result != VK_SUCCESS)
-         return result;
+      struct u_gralloc_buffer_handle u_gralloc_handle = {
+         .handle = native_buffer->handle,
+         .hal_format = native_buffer->format,
+         .pixel_stride = native_buffer->stride,
+      };
 
-      if (modifier != DRM_FORMAT_MOD_BROADCOM_UIF)
+      if (u_gralloc_get_buffer_basic_info(device->gralloc, &u_gralloc_handle, &buffer_info))
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+      if (buffer_info.modifier != DRM_FORMAT_MOD_BROADCOM_UIF)
          tiling = VK_IMAGE_TILING_LINEAR;
    }
 #endif
@@ -427,13 +428,13 @@ v3dv_image_init(struct v3dv_device *device,
 #ifdef ANDROID
    if (native_buffer != NULL) {
       assert(image->plane_count == 1);
-      image->planes[0].slices[0].stride = native_buf_stride;
+      image->planes[0].slices[0].stride = buffer_info.strides[0];
       image->non_disjoint_size =
          image->planes[0].slices[0].size =
-         image->planes[0].size = native_buf_size;
+         image->planes[0].size = lseek(buffer_info.fds[0], 0, SEEK_END);
 
       VkResult result = v3dv_import_native_buffer_fd(v3dv_device_to_handle(device),
-                                                     native_buf_fd, pAllocator,
+                                                     buffer_info.fds[0], pAllocator,
                                                      v3dv_image_to_handle(image));
       if (result != VK_SUCCESS)
          return result;

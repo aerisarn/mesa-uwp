@@ -101,7 +101,7 @@ if with_platform_wayland
 endif
 
 if with_platform_android
-  v3dv_deps += dep_android
+  v3dv_deps += [dep_android, idep_u_gralloc]
   v3dv_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
   libv3dv_files += files('v3dv_android.c')
 endif
