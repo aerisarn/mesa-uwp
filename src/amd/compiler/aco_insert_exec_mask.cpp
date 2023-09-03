@@ -281,9 +281,8 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
 
       if (ctx.handle_wqm) {
          ctx.info[idx].exec.emplace_back(start_exec, mask_type_global | mask_type_exact);
-         /* if this block needs WQM, initialize already */
-         if (ctx.info[idx].block_needs & WQM)
-            transition_to_WQM(ctx, bld, idx);
+         /* Initialize WQM already */
+         transition_to_WQM(ctx, bld, idx);
       } else {
          uint8_t mask = mask_type_global;
          if (ctx.program->needs_wqm) {
@@ -474,13 +473,14 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
       i++;
    }
 
-   /* try to satisfy the block's needs */
    if (ctx.handle_wqm) {
+      /* End WQM handling if not needed anymore */
       if (block->kind & block_kind_top_level && ctx.info[idx].exec.size() == 2) {
-         if (ctx.info[idx].block_needs == 0 || ctx.info[idx].block_needs == Exact) {
+         if (block->instructions[i]->opcode == aco_opcode::p_end_wqm) {
             ctx.info[idx].exec.back().second |= mask_type_global;
             transition_to_Exact(ctx, bld, idx);
             ctx.handle_wqm = false;
+            i++;
          }
       }
    }
@@ -557,21 +557,16 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
       if (instr->opcode == aco_opcode::p_discard_if) {
          Operand current_exec = Operand(exec, bld.lm);
 
-         if (ctx.info[block->index].exec.size() >= 2) {
-            if (needs == WQM) {
-               /* Preserve the WQM mask */
-               ctx.info[block->index].exec[1].second &= ~mask_type_global;
-            } else if (block->kind & block_kind_top_level) {
-               /* Transition to Exact without extra instruction. Since needs != WQM, we won't need
-                * WQM again.
-                */
-               ctx.info[block->index].exec.resize(1);
-               assert(ctx.info[block->index].exec[0].second ==
-                      (mask_type_exact | mask_type_global));
-               current_exec = get_exec_op(ctx.info[block->index].exec.back().first);
-               ctx.info[block->index].exec[0].first = Operand(bld.lm);
-               state = Exact;
-            }
+         if (block->instructions[idx + 1]->opcode == aco_opcode::p_end_wqm) {
+            /* Transition to Exact without extra instruction. */
+            ctx.info[block->index].exec.resize(1);
+            assert(ctx.info[block->index].exec[0].second == (mask_type_exact | mask_type_global));
+            current_exec = get_exec_op(ctx.info[block->index].exec[0].first);
+            ctx.info[block->index].exec[0].first = Operand(bld.lm);
+            state = Exact;
+         } else if (ctx.info[block->index].exec.size() >= 2 && needs == WQM) {
+            /* Preserve the WQM mask */
+            ctx.info[block->index].exec[1].second &= ~mask_type_global;
          }
 
          Temp cond, exit_cond;
@@ -688,7 +683,15 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
             bld.sop2(Builder::s_lshl, Definition(dst), bld.def(s1, scc),
                      Operand::c32_or_c64(1u, dst.size() == 2), Operand(first_lane_idx));
          }
-         instr.reset();
+         continue;
+      } else if (instr->opcode == aco_opcode::p_end_wqm) {
+         assert(block->kind & block_kind_top_level);
+         assert(ctx.info[block->index].exec.size() <= 2);
+         /* This instruction indicates the end of WQM mode. */
+         ctx.info[block->index].exec.back().second |= mask_type_global;
+         transition_to_Exact(ctx, bld, block->index);
+         state = Exact;
+         ctx.handle_wqm = false;
          continue;
       }
 
@@ -704,25 +707,6 @@ add_branch_code(exec_ctx& ctx, Block* block)
 
    if (block->linear_succs.empty())
       return;
-
-   /* try to disable wqm handling */
-   if (ctx.handle_wqm && block->kind & block_kind_top_level) {
-      if (ctx.info[idx].exec.size() == 3) {
-         assert(ctx.info[idx].exec[1].second & mask_type_wqm);
-         ctx.info[idx].exec.pop_back();
-      }
-      assert(ctx.info[idx].exec.size() <= 2);
-
-      if (!(ctx.info[idx].instr_needs.back() & WQM)) {
-         /* transition to Exact if the branch doesn't need WQM */
-         aco_ptr<Instruction> branch = std::move(block->instructions.back());
-         block->instructions.pop_back();
-         ctx.info[idx].exec.back().second |= mask_type_global;
-         transition_to_Exact(ctx, bld, idx);
-         bld.insert(std::move(branch));
-         ctx.handle_wqm = false;
-      }
-   }
 
    if (block->kind & block_kind_loop_preheader) {
       /* collect information about the succeeding loop */
