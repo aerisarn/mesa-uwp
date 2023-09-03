@@ -27,7 +27,8 @@ libasahi_decode_files = files(
 )
 
 libagx_shader_files = files(
-  'shaders/placeholder.cl'
+  'shaders/libagx.h',
+  'shaders/texture.cl',
 )
 
 agx_pack = custom_target(
