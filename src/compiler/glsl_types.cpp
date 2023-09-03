@@ -594,14 +594,14 @@ static const struct glsl_type *
 get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
                              unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment);
 
-const struct glsl_type *
-glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
-                        unsigned explicit_stride, bool row_major,
-                        unsigned explicit_alignment)
+extern "C" const struct glsl_type *
+glsl_simple_type(unsigned base_type, unsigned rows, unsigned columns,
+                 unsigned explicit_stride, bool row_major,
+                 unsigned explicit_alignment)
 {
    if (base_type == GLSL_TYPE_VOID) {
       assert(explicit_stride == 0 && explicit_alignment == 0 && !row_major);
-      return void_type;
+      return &glsl_type_builtin_void;
    }
 
    /* Matrix and vector types with explicit strides or alignment have to be
@@ -620,37 +620,37 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
    if (columns == 1) {
       switch (base_type) {
       case GLSL_TYPE_UINT:
-         return uvec(rows);
+         return glsl_uvec_type(rows);
       case GLSL_TYPE_INT:
-         return ivec(rows);
+         return glsl_ivec_type(rows);
       case GLSL_TYPE_FLOAT:
-         return vec(rows);
+         return glsl_vec_type(rows);
       case GLSL_TYPE_FLOAT16:
-         return f16vec(rows);
+         return glsl_f16vec_type(rows);
       case GLSL_TYPE_DOUBLE:
-         return dvec(rows);
+         return glsl_dvec_type(rows);
       case GLSL_TYPE_BOOL:
-         return bvec(rows);
+         return glsl_bvec_type(rows);
       case GLSL_TYPE_UINT64:
-         return u64vec(rows);
+         return glsl_u64vec_type(rows);
       case GLSL_TYPE_INT64:
-         return i64vec(rows);
+         return glsl_i64vec_type(rows);
       case GLSL_TYPE_UINT16:
-         return u16vec(rows);
+         return glsl_u16vec_type(rows);
       case GLSL_TYPE_INT16:
-         return i16vec(rows);
+         return glsl_i16vec_type(rows);
       case GLSL_TYPE_UINT8:
-         return u8vec(rows);
+         return glsl_u8vec_type(rows);
       case GLSL_TYPE_INT8:
-         return i8vec(rows);
+         return glsl_i8vec_type(rows);
       default:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    } else {
       if ((base_type != GLSL_TYPE_FLOAT &&
            base_type != GLSL_TYPE_DOUBLE &&
            base_type != GLSL_TYPE_FLOAT16) || (rows == 1))
-         return error_type;
+         return &glsl_type_builtin_error;
 
       /* GLSL matrix types are named mat{COLUMNS}x{ROWS}.  Only the following
        * combinations are valid:
@@ -666,52 +666,52 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
       switch (base_type) {
       case GLSL_TYPE_DOUBLE: {
          switch (IDX(columns, rows)) {
-         case IDX(2,2): return dmat2_type;
-         case IDX(2,3): return dmat2x3_type;
-         case IDX(2,4): return dmat2x4_type;
-         case IDX(3,2): return dmat3x2_type;
-         case IDX(3,3): return dmat3_type;
-         case IDX(3,4): return dmat3x4_type;
-         case IDX(4,2): return dmat4x2_type;
-         case IDX(4,3): return dmat4x3_type;
-         case IDX(4,4): return dmat4_type;
-         default: return error_type;
+         case IDX(2,2): return &glsl_type_builtin_dmat2;
+         case IDX(2,3): return &glsl_type_builtin_dmat2x3;
+         case IDX(2,4): return &glsl_type_builtin_dmat2x4;
+         case IDX(3,2): return &glsl_type_builtin_dmat3x2;
+         case IDX(3,3): return &glsl_type_builtin_dmat3;
+         case IDX(3,4): return &glsl_type_builtin_dmat3x4;
+         case IDX(4,2): return &glsl_type_builtin_dmat4x2;
+         case IDX(4,3): return &glsl_type_builtin_dmat4x3;
+         case IDX(4,4): return &glsl_type_builtin_dmat4;
+         default: return &glsl_type_builtin_error;
          }
       }
       case GLSL_TYPE_FLOAT: {
          switch (IDX(columns, rows)) {
-         case IDX(2,2): return mat2_type;
-         case IDX(2,3): return mat2x3_type;
-         case IDX(2,4): return mat2x4_type;
-         case IDX(3,2): return mat3x2_type;
-         case IDX(3,3): return mat3_type;
-         case IDX(3,4): return mat3x4_type;
-         case IDX(4,2): return mat4x2_type;
-         case IDX(4,3): return mat4x3_type;
-         case IDX(4,4): return mat4_type;
-         default: return error_type;
+         case IDX(2,2): return &glsl_type_builtin_mat2;
+         case IDX(2,3): return &glsl_type_builtin_mat2x3;
+         case IDX(2,4): return &glsl_type_builtin_mat2x4;
+         case IDX(3,2): return &glsl_type_builtin_mat3x2;
+         case IDX(3,3): return &glsl_type_builtin_mat3;
+         case IDX(3,4): return &glsl_type_builtin_mat3x4;
+         case IDX(4,2): return &glsl_type_builtin_mat4x2;
+         case IDX(4,3): return &glsl_type_builtin_mat4x3;
+         case IDX(4,4): return &glsl_type_builtin_mat4;
+         default: return &glsl_type_builtin_error;
          }
       }
       case GLSL_TYPE_FLOAT16: {
          switch (IDX(columns, rows)) {
-         case IDX(2,2): return f16mat2_type;
-         case IDX(2,3): return f16mat2x3_type;
-         case IDX(2,4): return f16mat2x4_type;
-         case IDX(3,2): return f16mat3x2_type;
-         case IDX(3,3): return f16mat3_type;
-         case IDX(3,4): return f16mat3x4_type;
-         case IDX(4,2): return f16mat4x2_type;
-         case IDX(4,3): return f16mat4x3_type;
-         case IDX(4,4): return f16mat4_type;
-         default: return error_type;
+         case IDX(2,2): return &glsl_type_builtin_f16mat2;
+         case IDX(2,3): return &glsl_type_builtin_f16mat2x3;
+         case IDX(2,4): return &glsl_type_builtin_f16mat2x4;
+         case IDX(3,2): return &glsl_type_builtin_f16mat3x2;
+         case IDX(3,3): return &glsl_type_builtin_f16mat3;
+         case IDX(3,4): return &glsl_type_builtin_f16mat3x4;
+         case IDX(4,2): return &glsl_type_builtin_f16mat4x2;
+         case IDX(4,3): return &glsl_type_builtin_f16mat4x3;
+         case IDX(4,4): return &glsl_type_builtin_f16mat4;
+         default: return &glsl_type_builtin_error;
          }
       }
-      default: return error_type;
+      default: return &glsl_type_builtin_error;
       }
    }
 
    assert(!"Should not get here.");
-   return error_type;
+   return &glsl_type_builtin_error;
 }
 
 struct PACKED explicit_matrix_key {

@@ -1417,6 +1417,11 @@ const struct glsl_type *glsl_u16vec_type(unsigned components);
 const struct glsl_type *glsl_i8vec_type(unsigned components);
 const struct glsl_type *glsl_u8vec_type(unsigned components);
 
+const struct glsl_type *glsl_simple_type(unsigned base_type, unsigned rows,
+                                         unsigned columns,
+                                         unsigned explicit_stride,
+                                         bool row_major,
+                                         unsigned explicit_alignment);
 const struct glsl_type *glsl_sampler_type(enum glsl_sampler_dim dim,
                                           bool shadow,
                                           bool array,

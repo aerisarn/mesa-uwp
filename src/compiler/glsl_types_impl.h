@@ -88,6 +88,15 @@ inline const glsl_type *glsl_type::u16vec(unsigned components) { return glsl_u16
 inline const glsl_type *glsl_type::i8vec(unsigned components) { return glsl_i8vec_type(components); }
 inline const glsl_type *glsl_type::u8vec(unsigned components) { return glsl_u8vec_type(components); }
 
+inline const glsl_type *
+glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
+                        unsigned explicit_stride, bool row_major,
+                        unsigned explicit_alignment)
+{
+   return glsl_simple_type(base_type, rows, columns, explicit_stride,
+                           row_major, explicit_alignment);
+}
+
 inline bool
 glsl_type::is_integer_16() const
 {
