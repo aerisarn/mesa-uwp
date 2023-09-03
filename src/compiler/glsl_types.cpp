@@ -3559,4 +3559,39 @@ glsl_get_internal_ifc_packing(const struct glsl_type *t,
    }
 }
 
+const struct glsl_type *
+glsl_get_row_type(const struct glsl_type *t)
+{
+   if (!glsl_type_is_matrix(t))
+      return &glsl_type_builtin_error;
+
+   if (t->explicit_stride && !t->interface_row_major)
+      return glsl_type::get_instance(t->base_type, t->matrix_columns, 1, t->explicit_stride);
+   else
+      return glsl_type::get_instance(t->base_type, t->matrix_columns, 1);
+}
+
+const struct glsl_type *
+glsl_get_column_type(const struct glsl_type *t)
+{
+   if (!t->is_matrix())
+      return glsl_type::error_type;
+
+   if (t->interface_row_major) {
+      /* If we're row-major, the vector element stride is the same as the
+       * matrix stride and we have no alignment (i.e. component-aligned).
+       */
+      return glsl_type::get_instance(t->base_type, t->vector_elements, 1,
+                                     t->explicit_stride, false, 0);
+   } else {
+      /* Otherwise, the vector is tightly packed (stride=0).  For
+       * alignment, we treat a matrix as an array of columns make the same
+       * assumption that the alignment of the column is the same as the
+       * alignment of the whole matrix.
+       */
+      return glsl_type::get_instance(t->base_type, t->vector_elements, 1,
+                                     0, false, t->explicit_alignment);
+   }
+}
+
 }

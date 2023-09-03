@@ -73,6 +73,8 @@ inline unsigned glsl_type::std430_base_alignment(bool row_major) const { return 
 inline unsigned glsl_type::std430_size(bool row_major) const { return glsl_get_std430_size(this, row_major); }
 inline unsigned glsl_type::explicit_size(bool align_to_stride) const { return glsl_get_explicit_size(this, align_to_stride); }
 
+inline const glsl_type *glsl_type::row_type() const { return glsl_get_row_type(this); }
+inline const glsl_type *glsl_type::column_type() const { return glsl_get_column_type(this); }
 inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
 
 inline const glsl_type *glsl_type::vec(unsigned components) { return glsl_vec_type(components); }
@@ -263,41 +265,6 @@ glsl_type::atomic_size() const
       return length * fields.array->atomic_size();
    else
       return 0;
-}
-
-inline const glsl_type *
-glsl_type::row_type() const
-{
-   if (!is_matrix())
-      return error_type;
-
-   if (explicit_stride && !interface_row_major)
-      return get_instance(base_type, matrix_columns, 1, explicit_stride);
-   else
-      return get_instance(base_type, matrix_columns, 1);
-}
-
-inline const glsl_type *
-glsl_type::column_type() const
-{
-   if (!is_matrix())
-      return error_type;
-
-   if (interface_row_major) {
-      /* If we're row-major, the vector element stride is the same as the
-       * matrix stride and we have no alignment (i.e. component-aligned).
-       */
-      return get_instance(base_type, vector_elements, 1,
-                          explicit_stride, false, 0);
-   } else {
-      /* Otherwise, the vector is tightly packed (stride=0).  For
-       * alignment, we treat a matrix as an array of columns make the same
-       * assumption that the alignment of the column is the same as the
-       * alignment of the whole matrix.
-       */
-      return get_instance(base_type, vector_elements, 1,
-                          0, false, explicit_alignment);
-   }
 }
 
 inline bool glsl_type::is_unsized_array() const { return glsl_type_is_unsized_array(this); }

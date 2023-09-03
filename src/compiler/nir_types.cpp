@@ -58,12 +58,6 @@ glsl_sampler_type_to_texture(const struct glsl_type *type)
                             (enum glsl_base_type)type->sampled_type);
 }
 
-const struct glsl_type *
-glsl_get_column_type(const struct glsl_type *type)
-{
-   return type->column_type();
-}
-
 GLenum
 glsl_get_gl_type(const struct glsl_type *type)
 {
