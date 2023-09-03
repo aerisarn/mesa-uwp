@@ -20,7 +20,7 @@ struct vn_device_memory_pool {
 };
 
 struct vn_device_memory {
-   struct vn_object_base base;
+   struct vn_device_memory_base base;
 
    VkDeviceSize size;
    VkMemoryType type;
@@ -68,7 +68,7 @@ struct vn_device_memory {
    struct AHardwareBuffer *ahb;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_device_memory,
-                               base.base,
+                               base.base.base,
                                VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 
