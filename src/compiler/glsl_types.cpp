@@ -806,405 +806,413 @@ get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned
    return t;
 }
 
-const struct glsl_type *
-glsl_type::get_sampler_instance(enum glsl_sampler_dim dim,
-                                bool shadow,
-                                bool array,
-                                enum glsl_base_type type)
+extern "C" const struct glsl_type *
+glsl_sampler_type(enum glsl_sampler_dim dim, bool shadow,
+                  bool array, enum glsl_base_type type)
 {
    switch (type) {
    case GLSL_TYPE_FLOAT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
          if (shadow)
-            return (array ? sampler1DArrayShadow_type : sampler1DShadow_type);
+            return (array ? &glsl_type_builtin_sampler1DArrayShadow : &glsl_type_builtin_sampler1DShadow);
          else
-            return (array ? sampler1DArray_type : sampler1D_type);
+            return (array ? &glsl_type_builtin_sampler1DArray : &glsl_type_builtin_sampler1D);
       case GLSL_SAMPLER_DIM_2D:
          if (shadow)
-            return (array ? sampler2DArrayShadow_type : sampler2DShadow_type);
+            return (array ? &glsl_type_builtin_sampler2DArrayShadow : &glsl_type_builtin_sampler2DShadow);
          else
-            return (array ? sampler2DArray_type : sampler2D_type);
+            return (array ? &glsl_type_builtin_sampler2DArray : &glsl_type_builtin_sampler2D);
       case GLSL_SAMPLER_DIM_3D:
          if (shadow || array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return sampler3D_type;
+            return &glsl_type_builtin_sampler3D;
       case GLSL_SAMPLER_DIM_CUBE:
          if (shadow)
-            return (array ? samplerCubeArrayShadow_type : samplerCubeShadow_type);
+            return (array ? &glsl_type_builtin_samplerCubeArrayShadow : &glsl_type_builtin_samplerCubeShadow);
          else
-            return (array ? samplerCubeArray_type : samplerCube_type);
+            return (array ? &glsl_type_builtin_samplerCubeArray : &glsl_type_builtin_samplerCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
+            return &glsl_type_builtin_error;
          if (shadow)
-            return sampler2DRectShadow_type;
+            return &glsl_type_builtin_sampler2DRectShadow;
          else
-            return sampler2DRect_type;
+            return &glsl_type_builtin_sampler2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (shadow || array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return samplerBuffer_type;
+            return &glsl_type_builtin_samplerBuffer;
       case GLSL_SAMPLER_DIM_MS:
          if (shadow)
-            return error_type;
-         return (array ? sampler2DMSArray_type : sampler2DMS_type);
+            return &glsl_type_builtin_error;
+         return (array ? &glsl_type_builtin_sampler2DMSArray : &glsl_type_builtin_sampler2DMS);
       case GLSL_SAMPLER_DIM_EXTERNAL:
          if (shadow || array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return samplerExternalOES_type;
+            return &glsl_type_builtin_samplerExternalOES;
       case GLSL_SAMPLER_DIM_SUBPASS:
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_INT:
       if (shadow)
-         return error_type;
+         return &glsl_type_builtin_error;
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? isampler1DArray_type : isampler1D_type);
+         return (array ? &glsl_type_builtin_isampler1DArray : &glsl_type_builtin_isampler1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? isampler2DArray_type : isampler2D_type);
+         return (array ? &glsl_type_builtin_isampler2DArray : &glsl_type_builtin_isampler2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return isampler3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_isampler3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? isamplerCubeArray_type : isamplerCube_type);
+         return (array ? &glsl_type_builtin_isamplerCubeArray : &glsl_type_builtin_isamplerCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return isampler2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_isampler2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return isamplerBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_isamplerBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? isampler2DMSArray_type : isampler2DMS_type);
+         return (array ? &glsl_type_builtin_isampler2DMSArray : &glsl_type_builtin_isampler2DMS);
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       case GLSL_SAMPLER_DIM_SUBPASS:
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_UINT:
       if (shadow)
-         return error_type;
+         return &glsl_type_builtin_error;
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? usampler1DArray_type : usampler1D_type);
+         return (array ? &glsl_type_builtin_usampler1DArray : &glsl_type_builtin_usampler1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? usampler2DArray_type : usampler2D_type);
+         return (array ? &glsl_type_builtin_usampler2DArray : &glsl_type_builtin_usampler2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return usampler3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_usampler3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? usamplerCubeArray_type : usamplerCube_type);
+         return (array ? &glsl_type_builtin_usamplerCubeArray : &glsl_type_builtin_usamplerCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return usampler2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_usampler2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return usamplerBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_usamplerBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? usampler2DMSArray_type : usampler2DMS_type);
+         return (array ? &glsl_type_builtin_usampler2DMSArray : &glsl_type_builtin_usampler2DMS);
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       case GLSL_SAMPLER_DIM_SUBPASS:
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_VOID:
-      return shadow ? samplerShadow_type : sampler_type;
+      return shadow ? &glsl_type_builtin_samplerShadow : &glsl_type_builtin_sampler;
    default:
-      return error_type;
+      return &glsl_type_builtin_error;
    }
 
    unreachable("switch statement above should be complete");
 }
 
-const struct glsl_type *
-glsl_type::get_texture_instance(enum glsl_sampler_dim dim,
-                                bool array, enum glsl_base_type type)
+extern "C" const struct glsl_type *
+glsl_bare_sampler_type()
+{
+   return &glsl_type_builtin_sampler;
+}
+
+extern "C" const struct glsl_type *
+glsl_bare_shadow_sampler_type()
+{
+   return &glsl_type_builtin_samplerShadow;
+}
+
+extern "C" const struct glsl_type *
+glsl_texture_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type type)
 {
    switch (type) {
    case GLSL_TYPE_FLOAT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? texture1DArray_type : texture1D_type);
+         return (array ? &glsl_type_builtin_texture1DArray : &glsl_type_builtin_texture1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? texture2DArray_type : texture2D_type);
+         return (array ? &glsl_type_builtin_texture2DArray : &glsl_type_builtin_texture2D);
       case GLSL_SAMPLER_DIM_3D:
-         return texture3D_type;
+         return &glsl_type_builtin_texture3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? textureCubeArray_type : textureCube_type);
+         return (array ? &glsl_type_builtin_textureCubeArray : &glsl_type_builtin_textureCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return texture2DRect_type;
+            return &glsl_type_builtin_texture2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return textureBuffer_type;
+            return &glsl_type_builtin_textureBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? texture2DMSArray_type : texture2DMS_type);
+         return (array ? &glsl_type_builtin_texture2DMSArray : &glsl_type_builtin_texture2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return textureSubpassInput_type;
+         return &glsl_type_builtin_textureSubpassInput;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return textureSubpassInputMS_type;
+         return &glsl_type_builtin_textureSubpassInputMS;
       case GLSL_SAMPLER_DIM_EXTERNAL:
          if (array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return textureExternalOES_type;
+            return &glsl_type_builtin_textureExternalOES;
       }
    case GLSL_TYPE_INT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? itexture1DArray_type : itexture1D_type);
+         return (array ? &glsl_type_builtin_itexture1DArray : &glsl_type_builtin_itexture1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? itexture2DArray_type : itexture2D_type);
+         return (array ? &glsl_type_builtin_itexture2DArray : &glsl_type_builtin_itexture2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return itexture3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_itexture3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? itextureCubeArray_type : itextureCube_type);
+         return (array ? &glsl_type_builtin_itextureCubeArray : &glsl_type_builtin_itextureCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return itexture2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_itexture2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return itextureBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_itextureBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? itexture2DMSArray_type : itexture2DMS_type);
+         return (array ? &glsl_type_builtin_itexture2DMSArray : &glsl_type_builtin_itexture2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return itextureSubpassInput_type;
+         return &glsl_type_builtin_itextureSubpassInput;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return itextureSubpassInputMS_type;
+         return &glsl_type_builtin_itextureSubpassInputMS;
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_UINT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? utexture1DArray_type : utexture1D_type);
+         return (array ? &glsl_type_builtin_utexture1DArray : &glsl_type_builtin_utexture1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? utexture2DArray_type : utexture2D_type);
+         return (array ? &glsl_type_builtin_utexture2DArray : &glsl_type_builtin_utexture2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return utexture3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_utexture3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? utextureCubeArray_type : utextureCube_type);
+         return (array ? &glsl_type_builtin_utextureCubeArray : &glsl_type_builtin_utextureCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return utexture2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_utexture2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return utextureBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_utextureBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? utexture2DMSArray_type : utexture2DMS_type);
+         return (array ? &glsl_type_builtin_utexture2DMSArray : &glsl_type_builtin_utexture2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return utextureSubpassInput_type;
+         return &glsl_type_builtin_utextureSubpassInput;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return utextureSubpassInputMS_type;
+         return &glsl_type_builtin_utextureSubpassInputMS;
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_VOID:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? vtexture1DArray_type : vtexture1D_type);
+         return (array ? &glsl_type_builtin_vtexture1DArray : &glsl_type_builtin_vtexture1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? vtexture2DArray_type : vtexture2D_type);
+         return (array ? &glsl_type_builtin_vtexture2DArray : &glsl_type_builtin_vtexture2D);
       case GLSL_SAMPLER_DIM_3D:
-         return (array ? error_type : vtexture3D_type);
+         return (array ? &glsl_type_builtin_error : &glsl_type_builtin_vtexture3D);
       case GLSL_SAMPLER_DIM_BUF:
-         return (array ? error_type : vtextureBuffer_type);
+         return (array ? &glsl_type_builtin_error : &glsl_type_builtin_vtextureBuffer);
       default:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    default:
-      return error_type;
+      return &glsl_type_builtin_error;
    }
 
    unreachable("switch statement above should be complete");
 }
 
-const struct glsl_type *
-glsl_type::get_image_instance(enum glsl_sampler_dim dim,
-                              bool array, enum glsl_base_type type)
+extern "C" const struct glsl_type *
+glsl_image_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type type)
 {
    switch (type) {
    case GLSL_TYPE_FLOAT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? image1DArray_type : image1D_type);
+         return (array ? &glsl_type_builtin_image1DArray : &glsl_type_builtin_image1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? image2DArray_type : image2D_type);
+         return (array ? &glsl_type_builtin_image2DArray : &glsl_type_builtin_image2D);
       case GLSL_SAMPLER_DIM_3D:
-         return image3D_type;
+         return &glsl_type_builtin_image3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? imageCubeArray_type : imageCube_type);
+         return (array ? &glsl_type_builtin_imageCubeArray : &glsl_type_builtin_imageCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return image2DRect_type;
+            return &glsl_type_builtin_image2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
+            return &glsl_type_builtin_error;
          else
-            return imageBuffer_type;
+            return &glsl_type_builtin_imageBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? image2DMSArray_type : image2DMS_type);
+         return (array ? &glsl_type_builtin_image2DMSArray : &glsl_type_builtin_image2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return subpassInput_type;
+         return &glsl_type_builtin_subpassInput;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return subpassInputMS_type;
+         return &glsl_type_builtin_subpassInputMS;
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_INT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? iimage1DArray_type : iimage1D_type);
+         return (array ? &glsl_type_builtin_iimage1DArray : &glsl_type_builtin_iimage1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? iimage2DArray_type : iimage2D_type);
+         return (array ? &glsl_type_builtin_iimage2DArray : &glsl_type_builtin_iimage2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return iimage3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_iimage3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? iimageCubeArray_type : iimageCube_type);
+         return (array ? &glsl_type_builtin_iimageCubeArray : &glsl_type_builtin_iimageCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return iimage2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_iimage2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return iimageBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_iimageBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? iimage2DMSArray_type : iimage2DMS_type);
+         return (array ? &glsl_type_builtin_iimage2DMSArray : &glsl_type_builtin_iimage2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return isubpassInput_type;
+         return &glsl_type_builtin_isubpassInput;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return isubpassInputMS_type;
+         return &glsl_type_builtin_isubpassInputMS;
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_UINT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? uimage1DArray_type : uimage1D_type);
+         return (array ? &glsl_type_builtin_uimage1DArray : &glsl_type_builtin_uimage1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? uimage2DArray_type : uimage2D_type);
+         return (array ? &glsl_type_builtin_uimage2DArray : &glsl_type_builtin_uimage2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return uimage3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_uimage3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? uimageCubeArray_type : uimageCube_type);
+         return (array ? &glsl_type_builtin_uimageCubeArray : &glsl_type_builtin_uimageCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return uimage2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_uimage2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return uimageBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_uimageBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? uimage2DMSArray_type : uimage2DMS_type);
+         return (array ? &glsl_type_builtin_uimage2DMSArray : &glsl_type_builtin_uimage2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return usubpassInput_type;
+         return &glsl_type_builtin_usubpassInput;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return usubpassInputMS_type;
+         return &glsl_type_builtin_usubpassInputMS;
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_INT64:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? i64image1DArray_type : i64image1D_type);
+         return (array ? &glsl_type_builtin_i64image1DArray : &glsl_type_builtin_i64image1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? i64image2DArray_type : i64image2D_type);
+         return (array ? &glsl_type_builtin_i64image2DArray : &glsl_type_builtin_i64image2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return i64image3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_i64image3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? i64imageCubeArray_type : i64imageCube_type);
+         return (array ? &glsl_type_builtin_i64imageCubeArray : &glsl_type_builtin_i64imageCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return i64image2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_i64image2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return i64imageBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_i64imageBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? i64image2DMSArray_type : i64image2DMS_type);
+         return (array ? &glsl_type_builtin_i64image2DMSArray : &glsl_type_builtin_i64image2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_UINT64:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? u64image1DArray_type : u64image1D_type);
+         return (array ? &glsl_type_builtin_u64image1DArray : &glsl_type_builtin_u64image1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? u64image2DArray_type : u64image2D_type);
+         return (array ? &glsl_type_builtin_u64image2DArray : &glsl_type_builtin_u64image2D);
       case GLSL_SAMPLER_DIM_3D:
          if (array)
-            return error_type;
-         return u64image3D_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_u64image3D;
       case GLSL_SAMPLER_DIM_CUBE:
-         return (array ? u64imageCubeArray_type : u64imageCube_type);
+         return (array ? &glsl_type_builtin_u64imageCubeArray : &glsl_type_builtin_u64imageCube);
       case GLSL_SAMPLER_DIM_RECT:
          if (array)
-            return error_type;
-         return u64image2DRect_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_u64image2DRect;
       case GLSL_SAMPLER_DIM_BUF:
          if (array)
-            return error_type;
-         return u64imageBuffer_type;
+            return &glsl_type_builtin_error;
+         return &glsl_type_builtin_u64imageBuffer;
       case GLSL_SAMPLER_DIM_MS:
-         return (array ? u64image2DMSArray_type : u64image2DMS_type);
+         return (array ? &glsl_type_builtin_u64image2DMSArray : &glsl_type_builtin_u64image2DMS);
       case GLSL_SAMPLER_DIM_SUBPASS:
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    case GLSL_TYPE_VOID:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
-         return (array ? vimage1DArray_type : vimage1D_type);
+         return (array ? &glsl_type_builtin_vimage1DArray : &glsl_type_builtin_vimage1D);
       case GLSL_SAMPLER_DIM_2D:
-         return (array ? vimage2DArray_type : vimage2D_type);
+         return (array ? &glsl_type_builtin_vimage2DArray : &glsl_type_builtin_vimage2D);
       case GLSL_SAMPLER_DIM_3D:
-         return (array ? error_type : vimage3D_type);
+         return (array ? &glsl_type_builtin_error : &glsl_type_builtin_vimage3D);
       case GLSL_SAMPLER_DIM_BUF:
-         return (array ? error_type : vbuffer_type);
+         return (array ? &glsl_type_builtin_error : &glsl_type_builtin_vbuffer);
       default:
-         return error_type;
+         return &glsl_type_builtin_error;
       }
    default:
-      return error_type;
+      return &glsl_type_builtin_error;
    }
 
    unreachable("switch statement above should be complete");

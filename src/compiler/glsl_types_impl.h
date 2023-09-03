@@ -97,6 +97,25 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
                            row_major, explicit_alignment);
 }
 
+inline const glsl_type *
+glsl_type::get_sampler_instance(enum glsl_sampler_dim dim, bool shadow,
+                                bool array, glsl_base_type type)
+{
+   return glsl_sampler_type(dim, shadow, array, type);
+}
+
+inline const glsl_type *
+glsl_type::get_texture_instance(enum glsl_sampler_dim dim, bool array, glsl_base_type type)
+{
+   return glsl_texture_type(dim, array, type);
+}
+
+inline const glsl_type *
+glsl_type::get_image_instance(enum glsl_sampler_dim dim, bool array, glsl_base_type type)
+{
+   return glsl_image_type(dim, array, type);
+}
+
 inline bool
 glsl_type::is_integer_16() const
 {
