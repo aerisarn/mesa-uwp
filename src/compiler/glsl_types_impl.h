@@ -152,6 +152,15 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
    return glsl_subroutine_type(subroutine_name);
 }
 
+inline const glsl_type *
+glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
+                                            unsigned *size, unsigned *align) const
+{
+   return glsl_get_explicit_type_for_size_align(this, type_info, size, align);
+}
+
+inline const glsl_type *glsl_type::replace_vec3_with_vec4() const { return glsl_type_replace_vec3_with_vec4(this); }
+
 inline bool
 glsl_type::is_integer_16() const
 {

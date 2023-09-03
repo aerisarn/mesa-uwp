@@ -2690,53 +2690,54 @@ explicit_type_scalar_byte_size(const struct glsl_type *type)
  * - overrides any struct field offsets but get_explicit_std430_type() tries to
  *   respect any existing ones
  */
-const struct glsl_type *
-glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
-                                            unsigned *size, unsigned *alignment) const
+extern "C" const struct glsl_type *
+glsl_get_explicit_type_for_size_align(const struct glsl_type *t,
+                                      glsl_type_size_align_func type_info,
+                                      unsigned *size, unsigned *alignment)
 {
-   if (this->is_image() || this->is_sampler()) {
-      type_info(this, size, alignment);
+   if (t->is_image() || t->is_sampler()) {
+      type_info(t, size, alignment);
       assert(*alignment > 0);
-      return this;
-   } else if (this->is_cmat()) {
+      return t;
+   } else if (t->is_cmat()) {
       *size = 0;
       *alignment = 0;
-      return this;
-   } else if (this->is_scalar()) {
-      type_info(this, size, alignment);
-      assert(*size == explicit_type_scalar_byte_size(this));
-      assert(*alignment == explicit_type_scalar_byte_size(this));
-      return this;
-   } else if (this->is_vector()) {
-      type_info(this, size, alignment);
+      return t;
+   } else if (t->is_scalar()) {
+      type_info(t, size, alignment);
+      assert(*size == explicit_type_scalar_byte_size(t));
+      assert(*alignment == explicit_type_scalar_byte_size(t));
+      return t;
+   } else if (t->is_vector()) {
+      type_info(t, size, alignment);
       assert(*alignment > 0);
-      assert(*alignment % explicit_type_scalar_byte_size(this) == 0);
-      return glsl_type::get_instance(this->base_type, this->vector_elements,
+      assert(*alignment % explicit_type_scalar_byte_size(t) == 0);
+      return glsl_type::get_instance(t->base_type, t->vector_elements,
                                      1, 0, false, *alignment);
-   } else if (this->is_array()) {
+   } else if (t->is_array()) {
       unsigned elem_size, elem_align;
       const struct glsl_type *explicit_element =
-         this->fields.array->get_explicit_type_for_size_align(type_info, &elem_size, &elem_align);
+         t->fields.array->get_explicit_type_for_size_align(type_info, &elem_size, &elem_align);
 
       unsigned stride = align(elem_size, elem_align);
 
-      *size = stride * (this->length - 1) + elem_size;
+      *size = stride * (t->length - 1) + elem_size;
       *alignment = elem_align;
-      return glsl_type::get_array_instance(explicit_element, this->length, stride);
-   } else if (this->is_struct() || this->is_interface()) {
+      return glsl_type::get_array_instance(explicit_element, t->length, stride);
+   } else if (t->is_struct() || t->is_interface()) {
       struct glsl_struct_field *fields = (struct glsl_struct_field *)
-         malloc(sizeof(struct glsl_struct_field) * this->length);
+         malloc(sizeof(struct glsl_struct_field) * t->length);
 
       *size = 0;
       *alignment = 1;
-      for (unsigned i = 0; i < this->length; i++) {
-         fields[i] = this->fields.structure[i];
+      for (unsigned i = 0; i < t->length; i++) {
+         fields[i] = t->fields.structure[i];
          assert(fields[i].matrix_layout != GLSL_MATRIX_LAYOUT_ROW_MAJOR);
 
          unsigned field_size, field_align;
          fields[i].type =
             fields[i].type->get_explicit_type_for_size_align(type_info, &field_size, &field_align);
-         field_align = this->packed ? 1 : field_align;
+         field_align = t->packed ? 1 : field_align;
          fields[i].offset = align(*size, field_align);
 
          *size = fields[i].offset + field_size;
@@ -2754,94 +2755,94 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
       *size = align(*size, *alignment);
 
       const struct glsl_type *type;
-      if (this->is_struct()) {
-         type = get_struct_instance(fields, this->length, glsl_get_type_name(this),
-                                    this->packed, *alignment);
+      if (t->is_struct()) {
+         type = glsl_type::get_struct_instance(fields, t->length, glsl_get_type_name(t),
+                                               t->packed, *alignment);
       } else {
-         assert(!this->packed);
-         type = get_interface_instance(fields, this->length,
-                                       (enum glsl_interface_packing)this->interface_packing,
-                                       this->interface_row_major,
-                                       glsl_get_type_name(this));
+         assert(!t->packed);
+         type = glsl_type::get_interface_instance(fields, t->length,
+                                                  (enum glsl_interface_packing)t->interface_packing,
+                                                  t->interface_row_major,
+                                                  glsl_get_type_name(t));
       }
       free(fields);
       return type;
-   } else if (this->is_matrix()) {
+   } else if (t->is_matrix()) {
       unsigned col_size, col_align;
-      type_info(this->column_type(), &col_size, &col_align);
+      type_info(t->column_type(), &col_size, &col_align);
       unsigned stride = align(col_size, col_align);
 
-      *size = this->matrix_columns * stride;
+      *size = t->matrix_columns * stride;
       /* Matrix and column alignments match. See glsl_type::column_type() */
       assert(col_align > 0);
       *alignment = col_align;
-      return glsl_type::get_instance(this->base_type, this->vector_elements,
-                                     this->matrix_columns, stride, false, *alignment);
+      return glsl_type::get_instance(t->base_type, t->vector_elements,
+                                     t->matrix_columns, stride, false, *alignment);
    } else {
       unreachable("Unhandled type.");
    }
 }
 
-const struct glsl_type *
-glsl_type::replace_vec3_with_vec4() const
+extern "C" const struct glsl_type *
+glsl_type_replace_vec3_with_vec4(const struct glsl_type *t)
 {
-   if (this->is_scalar() || this->is_vector() || this->is_matrix()) {
-      if (this->interface_row_major) {
-         if (this->matrix_columns == 3) {
-            return glsl_type::get_instance(this->base_type,
-                                           this->vector_elements,
+   if (t->is_scalar() || t->is_vector() || t->is_matrix()) {
+      if (t->interface_row_major) {
+         if (t->matrix_columns == 3) {
+            return glsl_type::get_instance(t->base_type,
+                                           t->vector_elements,
                                            4, /* matrix columns */
-                                           this->explicit_stride,
-                                           this->interface_row_major,
-                                           this->explicit_alignment);
+                                           t->explicit_stride,
+                                           t->interface_row_major,
+                                           t->explicit_alignment);
          } else {
-            return this;
+            return t;
          }
       } else {
-         if (this->vector_elements == 3) {
-            return glsl_type::get_instance(this->base_type,
+         if (t->vector_elements == 3) {
+            return glsl_type::get_instance(t->base_type,
                                            4, /* vector elements */
-                                           this->matrix_columns,
-                                           this->explicit_stride,
-                                           this->interface_row_major,
-                                           this->explicit_alignment);
+                                           t->matrix_columns,
+                                           t->explicit_stride,
+                                           t->interface_row_major,
+                                           t->explicit_alignment);
          } else {
-            return this;
+            return t;
          }
       }
-   } else if (this->is_array()) {
+   } else if (t->is_array()) {
       const struct glsl_type *vec4_elem_type =
-         this->fields.array->replace_vec3_with_vec4();
-      if (vec4_elem_type == this->fields.array)
-         return this;
+         t->fields.array->replace_vec3_with_vec4();
+      if (vec4_elem_type == t->fields.array)
+         return t;
       return glsl_type::get_array_instance(vec4_elem_type,
-                                           this->length,
-                                           this->explicit_stride);
-   } else if (this->is_struct() || this->is_interface()) {
+                                           t->length,
+                                           t->explicit_stride);
+   } else if (t->is_struct() || t->is_interface()) {
       struct glsl_struct_field *fields = (struct glsl_struct_field *)
-         malloc(sizeof(struct glsl_struct_field) * this->length);
+         malloc(sizeof(struct glsl_struct_field) * t->length);
 
       bool needs_new_type = false;
-      for (unsigned i = 0; i < this->length; i++) {
-         fields[i] = this->fields.structure[i];
+      for (unsigned i = 0; i < t->length; i++) {
+         fields[i] = t->fields.structure[i];
          assert(fields[i].matrix_layout != GLSL_MATRIX_LAYOUT_ROW_MAJOR);
          fields[i].type = fields[i].type->replace_vec3_with_vec4();
-         if (fields[i].type != this->fields.structure[i].type)
+         if (fields[i].type != t->fields.structure[i].type)
             needs_new_type = true;
       }
 
       const struct glsl_type *type;
       if (!needs_new_type) {
-         type = this;
-      } else if (this->is_struct()) {
-         type = get_struct_instance(fields, this->length, glsl_get_type_name(this),
-                                    this->packed, this->explicit_alignment);
+         type = t;
+      } else if (t->is_struct()) {
+         type = glsl_type::get_struct_instance(fields, t->length, glsl_get_type_name(t),
+                                               t->packed, t->explicit_alignment);
       } else {
-         assert(!this->packed);
-         type = get_interface_instance(fields, this->length,
-                                       (enum glsl_interface_packing)this->interface_packing,
-                                       this->interface_row_major,
-                                       glsl_get_type_name(this));
+         assert(!t->packed);
+         type = glsl_type::get_interface_instance(fields, t->length,
+                                                  (enum glsl_interface_packing)t->interface_packing,
+                                                  t->interface_row_major,
+                                                  glsl_get_type_name(t));
       }
       free(fields);
       return type;
