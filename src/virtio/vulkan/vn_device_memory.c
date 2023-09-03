@@ -523,7 +523,8 @@ vn_device_memory_emit_report(struct vn_device *dev,
    const uint64_t mem_obj_id =
       mem->is_external ? mem->base_bo->res_id : mem->base.id;
    vn_device_emit_device_memory_report(dev, type, mem_obj_id, mem->size,
-                                       &mem->base, mem->type.heapIndex);
+                                       VK_OBJECT_TYPE_DEVICE_MEMORY,
+                                       mem->base.id, mem->type.heapIndex);
 }
 
 VkResult
