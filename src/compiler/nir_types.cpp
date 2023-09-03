@@ -139,19 +139,6 @@ glsl_explicit_matrix_type(const struct glsl_type *mat,
 }
 
 const struct glsl_type *
-glsl_array_type(const struct glsl_type *element, unsigned array_size,
-                unsigned explicit_stride)
-{
-   return glsl_type::get_array_instance(element, array_size, explicit_stride);
-}
-
-const struct glsl_type *
-glsl_cmat_type(const struct glsl_cmat_description *desc)
-{
-   return glsl_type::get_cmat_instance(*desc);
-}
-
-const struct glsl_type *
 glsl_replace_vector_type(const struct glsl_type *t, unsigned components)
 {
    if (glsl_type_is_array(t)) {
@@ -163,25 +150,6 @@ glsl_replace_vector_type(const struct glsl_type *t, unsigned components)
    } else {
       unreachable("Unhandled base type glsl_replace_vector_type()");
    }
-}
-
-const struct glsl_type *
-glsl_struct_type(const struct glsl_struct_field *fields,
-                 unsigned num_fields, const char *name,
-                 bool packed)
-{
-   return glsl_type::get_struct_instance(fields, num_fields, name, packed);
-}
-
-const struct glsl_type *
-glsl_interface_type(const struct glsl_struct_field *fields,
-                    unsigned num_fields,
-                    enum glsl_interface_packing packing,
-                    bool row_major,
-                    const char *block_name)
-{
-   return glsl_type::get_interface_instance(fields, num_fields, packing,
-                                            row_major, block_name);
 }
 
 const struct glsl_type *

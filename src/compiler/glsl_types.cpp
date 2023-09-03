@@ -1236,10 +1236,10 @@ compare_array_key(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct array_key)) == 0;
 }
 
-const struct glsl_type *
-glsl_type::get_array_instance(const struct glsl_type *element,
-                              unsigned array_size,
-                              unsigned explicit_stride)
+extern "C" const struct glsl_type *
+glsl_array_type(const struct glsl_type *element,
+                unsigned array_size,
+                unsigned explicit_stride)
 {
    /* Ensure there's no internal padding, to avoid multiple hashes for same key. */
    STATIC_ASSERT(sizeof(struct array_key) == (3 * sizeof(uintptr_t)));
@@ -1304,14 +1304,14 @@ make_cmat_type(linear_ctx *lin_ctx, const struct glsl_cmat_description desc)
    return t;
 }
 
-const struct glsl_type *
-glsl_type::get_cmat_instance(const struct glsl_cmat_description desc)
+extern "C" const struct glsl_type *
+glsl_cmat_type(const struct glsl_cmat_description *desc)
 {
    STATIC_ASSERT(sizeof(struct glsl_cmat_description) == 4);
 
-   const uint32_t key = desc.element_type | desc.scope << 5 |
-                        desc.rows << 8 | desc.cols << 16 |
-                        desc.use << 24;
+   const uint32_t key = desc->element_type | desc->scope << 5 |
+                        desc->rows << 8 | desc->cols << 16 |
+                        desc->use << 24;
    const uint32_t key_hash = _mesa_hash_uint(&key);
 
    simple_mtx_lock(&glsl_type_cache_mutex);
@@ -1327,7 +1327,7 @@ glsl_type::get_cmat_instance(const struct glsl_cmat_description desc)
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(
       cmat_types, key_hash, (void *) (uintptr_t) key);
    if (entry == NULL) {
-      const struct glsl_type *t = make_cmat_type(glsl_type_cache.lin_ctx, desc);
+      const struct glsl_type *t = make_cmat_type(glsl_type_cache.lin_ctx, *desc);
       entry = _mesa_hash_table_insert_pre_hashed(cmat_types, key_hash,
                                                  (void *) (uintptr_t) key, (void *) t);
    }
@@ -1336,11 +1336,11 @@ glsl_type::get_cmat_instance(const struct glsl_cmat_description desc)
    simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_COOPERATIVE_MATRIX);
-   assert(t->cmat_desc.element_type == desc.element_type);
-   assert(t->cmat_desc.scope == desc.scope);
-   assert(t->cmat_desc.rows == desc.rows);
-   assert(t->cmat_desc.cols == desc.cols);
-   assert(t->cmat_desc.use == desc.use);
+   assert(t->cmat_desc.element_type == desc->element_type);
+   assert(t->cmat_desc.scope == desc->scope);
+   assert(t->cmat_desc.rows == desc->rows);
+   assert(t->cmat_desc.cols == desc->cols);
+   assert(t->cmat_desc.use == desc->use);
 
    return t;
 }
@@ -1520,11 +1520,11 @@ record_key_hash(const void *a)
    return retval;
 }
 
-const struct glsl_type *
-glsl_type::get_struct_instance(const struct glsl_struct_field *fields,
-                               unsigned num_fields,
-                               const char *name,
-                               bool packed, unsigned explicit_alignment)
+extern "C" const struct glsl_type *
+glsl_struct_type_with_explicit_alignment(const struct glsl_struct_field *fields,
+                                         unsigned num_fields,
+                                         const char *name,
+                                         bool packed, unsigned explicit_alignment)
 {
    struct glsl_type key = {0};
    fill_struct_type(&key, fields, num_fields, name, packed, explicit_alignment);
@@ -1562,12 +1562,12 @@ glsl_type::get_struct_instance(const struct glsl_struct_field *fields,
 }
 
 
-const struct glsl_type *
-glsl_type::get_interface_instance(const struct glsl_struct_field *fields,
-                                  unsigned num_fields,
-                                  enum glsl_interface_packing packing,
-                                  bool row_major,
-                                  const char *block_name)
+extern "C" const struct glsl_type *
+glsl_interface_type(const struct glsl_struct_field *fields,
+                    unsigned num_fields,
+                    enum glsl_interface_packing packing,
+                    bool row_major,
+                    const char *block_name)
 {
    struct glsl_type key = {0};
    fill_interface_type(&key, fields, num_fields, packing, row_major, block_name);
@@ -1602,8 +1602,8 @@ glsl_type::get_interface_instance(const struct glsl_struct_field *fields,
    return t;
 }
 
-const struct glsl_type *
-glsl_type::get_subroutine_instance(const char *subroutine_name)
+extern "C" const struct glsl_type *
+glsl_subroutine_type(const char *subroutine_name)
 {
    const uint32_t key_hash = _mesa_hash_string(subroutine_name);
 

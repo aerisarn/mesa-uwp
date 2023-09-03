@@ -116,6 +116,40 @@ glsl_type::get_image_instance(enum glsl_sampler_dim dim, bool array, glsl_base_t
    return glsl_image_type(dim, array, type);
 }
 
+inline const glsl_type *
+glsl_type::get_array_instance(const glsl_type *element, unsigned array_size,
+                              unsigned explicit_stride)
+{
+   return glsl_array_type(element, array_size, explicit_stride);
+}
+
+inline const glsl_type *
+glsl_type::get_cmat_instance(const struct glsl_cmat_description desc)
+{
+   return glsl_cmat_type(&desc);
+}
+
+inline const glsl_type *
+glsl_type::get_struct_instance(const glsl_struct_field *fields, unsigned num_fields,
+                               const char *name, bool packed, unsigned explicit_alignment)
+{
+   return glsl_struct_type_with_explicit_alignment(fields, num_fields, name, packed, explicit_alignment);
+}
+
+inline const glsl_type *
+glsl_type::get_interface_instance(const glsl_struct_field *fields, unsigned num_fields,
+                                  enum glsl_interface_packing packing,
+                                  bool row_major, const char *block_name)
+{
+   return glsl_interface_type(fields, num_fields, packing, row_major, block_name);
+}
+
+inline const glsl_type *
+glsl_type::get_subroutine_instance(const char *subroutine_name)
+{
+   return glsl_subroutine_type(subroutine_name);
+}
+
 inline bool
 glsl_type::is_integer_16() const
 {
