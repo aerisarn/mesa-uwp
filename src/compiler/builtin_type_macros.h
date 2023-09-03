@@ -46,7 +46,22 @@ DECL_SIMPLE_TYPE(void,   GL_INVALID_ENUM, GLSL_TYPE_VOID,  0, 0)
    DECL_SIMPLE_TYPE(vtype ## 8,  0, btype, 8, 1)   \
    DECL_SIMPLE_TYPE(vtype ## 16, 0, btype, 16, 1)
 
+#ifndef __cplusplus
+#if defined(bool)
+#define BOOL_NEEDS_REDEFINITION_WORKAROUND
+#undef bool
+#endif
+#endif
+
 DECL_VEC_TYPE(bool,      bvec,   GLSL_TYPE_BOOL,    GL_BOOL)
+
+#ifndef __cplusplus
+#if defined(BOOL_NEEDS_REDEFINITION_WORKAROUND)
+#undef BOOL_NEEDS_REDEFINITION_WORKAROUND
+#define bool _Bool
+#endif
+#endif
+
 DECL_VEC_TYPE(int,       ivec,   GLSL_TYPE_INT,     GL_INT)
 DECL_VEC_TYPE(uint,      uvec,   GLSL_TYPE_UINT,    GL_UNSIGNED_INT)
 DECL_VEC_TYPE(float,     vec,    GLSL_TYPE_FLOAT,   GL_FLOAT)
