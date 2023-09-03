@@ -28,18 +28,6 @@
 #include "nir_types.h"
 #include "nir_gl_types.h"
 
-extern "C" const char glsl_type_builtin_names[];
-
-const char *
-glsl_get_type_name(const struct glsl_type *type)
-{
-   if (type->has_builtin_name) {
-      return &glsl_type_builtin_names[type->name_id];
-   } else {
-      return (const char *) type->name_id;
-   }
-}
-
 const struct glsl_type *
 glsl_texture_type_to_sampler(const struct glsl_type *type, bool is_shadow)
 {
@@ -56,45 +44,6 @@ glsl_sampler_type_to_texture(const struct glsl_type *type)
    return glsl_texture_type((glsl_sampler_dim)type->sampler_dimensionality,
                             type->sampler_array,
                             (enum glsl_base_type)type->sampled_type);
-}
-
-GLenum
-glsl_get_gl_type(const struct glsl_type *type)
-{
-   return type->gl_type;
-}
-
-enum glsl_base_type
-glsl_get_base_type(const struct glsl_type *type)
-{
-   return type->base_type;
-}
-
-glsl_sampler_dim
-glsl_get_sampler_dim(const struct glsl_type *type)
-{
-   assert(glsl_type_is_sampler(type) ||
-          glsl_type_is_texture(type) ||
-          glsl_type_is_image(type));
-   return (glsl_sampler_dim)type->sampler_dimensionality;
-}
-
-enum glsl_base_type
-glsl_get_sampler_result_type(const struct glsl_type *type)
-{
-   assert(glsl_type_is_sampler(type) ||
-          glsl_type_is_texture(type) ||
-          glsl_type_is_image(type));
-   return (enum glsl_base_type)type->sampled_type;
-}
-
-int
-glsl_get_sampler_coordinate_components(const struct glsl_type *type)
-{
-   assert(glsl_type_is_sampler(type) ||
-          glsl_type_is_texture(type) ||
-          glsl_type_is_image(type));
-   return type->coordinate_components();
 }
 
 const struct glsl_type *
@@ -354,12 +303,6 @@ glsl_get_vec4_size_align_bytes(const struct glsl_type *type,
    case GLSL_TYPE_ERROR:
       unreachable("type does not make sense for glsl_get_vec4_size_align_bytes()");
    }
-}
-
-unsigned
-glsl_atomic_size(const struct glsl_type *type)
-{
-   return type->atomic_size();
 }
 
 static unsigned

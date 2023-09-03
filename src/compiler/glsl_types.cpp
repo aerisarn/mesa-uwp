@@ -2990,18 +2990,22 @@ glsl_count_dword_slots(const struct glsl_type *t, bool is_bindless)
    return 0;
 }
 
-int
-glsl_type::coordinate_components() const
+extern "C" int
+glsl_get_sampler_coordinate_components(const struct glsl_type *t)
 {
-   enum glsl_sampler_dim dim = (enum glsl_sampler_dim)sampler_dimensionality;
+   assert(glsl_type_is_sampler(t) ||
+          glsl_type_is_texture(t) ||
+          glsl_type_is_image(t));
+
+   enum glsl_sampler_dim dim = (enum glsl_sampler_dim)t->sampler_dimensionality;
    int size = glsl_get_sampler_dim_coordinate_components(dim);
 
    /* Array textures need an additional component for the array index, except
     * for cubemap array images that behave like a 2D array of interleaved
     * cubemap faces.
     */
-   if (sampler_array &&
-       !(is_image() && sampler_dimensionality == GLSL_SAMPLER_DIM_CUBE))
+   if (t->sampler_array &&
+       !(t->is_image() && t->sampler_dimensionality == GLSL_SAMPLER_DIM_CUBE))
       size += 1;
 
    return size;
@@ -3356,6 +3360,18 @@ glsl_get_cl_size(const struct glsl_type *t)
 
 extern "C" {
 
+extern const char glsl_type_builtin_names[];
+
+const char *
+glsl_get_type_name(const struct glsl_type *type)
+{
+   if (type->has_builtin_name) {
+      return &glsl_type_builtin_names[type->name_id];
+   } else {
+      return (const char *) type->name_id;
+   }
+}
+
 void
 glsl_get_cl_type_size_align(const struct glsl_type *t,
                             unsigned *size, unsigned *align)
@@ -3593,6 +3609,17 @@ glsl_get_column_type(const struct glsl_type *t)
       return glsl_type::get_instance(t->base_type, t->vector_elements, 1,
                                      0, false, t->explicit_alignment);
    }
+}
+
+unsigned
+glsl_atomic_size(const struct glsl_type *t)
+{
+   if (t->is_atomic_uint())
+      return 4; /* ATOMIC_COUNTER_SIZE */
+   else if (t->is_array())
+      return t->length * t->fields.array->atomic_size();
+   else
+      return 0;
 }
 
 }

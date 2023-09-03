@@ -1153,7 +1153,7 @@ struct glsl_struct_field {
 #endif
 };
 
-enum glsl_base_type glsl_get_base_type(const struct glsl_type *t);
+static inline enum glsl_base_type glsl_get_base_type(const struct glsl_type *t) { return t->base_type; }
 
 static inline unsigned
 glsl_get_bit_size(const struct glsl_type *t)
@@ -1323,8 +1323,24 @@ bool glsl_contains_double(const struct glsl_type *t);
 bool glsl_contains_integer(const struct glsl_type *t);
 bool glsl_contains_opaque(const struct glsl_type *t);
 
-enum glsl_sampler_dim glsl_get_sampler_dim(const struct glsl_type *t);
-enum glsl_base_type glsl_get_sampler_result_type(const struct glsl_type *t);
+static inline enum glsl_sampler_dim
+glsl_get_sampler_dim(const struct glsl_type *t)
+{
+   assert(glsl_type_is_sampler(t) ||
+          glsl_type_is_texture(t) ||
+          glsl_type_is_image(t));
+   return (enum glsl_sampler_dim)t->sampler_dimensionality;
+}
+
+static inline enum glsl_base_type
+glsl_get_sampler_result_type(const struct glsl_type *t)
+{
+   assert(glsl_type_is_sampler(t) ||
+          glsl_type_is_texture(t) ||
+          glsl_type_is_image(t));
+   return (enum glsl_base_type)t->sampled_type;
+}
+
 int glsl_get_sampler_coordinate_components(const struct glsl_type *t);
 
 bool glsl_record_compare(const struct glsl_type *a, const struct glsl_type *b,

@@ -63,6 +63,8 @@ inline unsigned glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool bindle
 inline unsigned glsl_type::count_dword_slots(bool bindless) const { return glsl_count_dword_slots(this, bindless); };
 inline unsigned glsl_type::count_attribute_slots(bool is_gl_vertex_input) const { return glsl_count_attribute_slots(this, is_gl_vertex_input); }
 inline unsigned glsl_type::varying_count() const { return glsl_varying_count(this); }
+inline unsigned glsl_type::atomic_size() const { return glsl_atomic_size(this); }
+inline int glsl_type::coordinate_components() const { return glsl_get_sampler_coordinate_components(this); }
 
 inline unsigned glsl_type::cl_size() const { return glsl_get_cl_size(this); }
 inline unsigned glsl_type::cl_alignment() const { return glsl_get_cl_alignment(this); }
@@ -263,17 +265,6 @@ inline unsigned
 glsl_type::bit_size() const
 {
    return glsl_base_type_bit_size(this->base_type);
-}
-
-inline unsigned
-glsl_type::atomic_size() const
-{
-   if (is_atomic_uint())
-      return 4; /* ATOMIC_COUNTER_SIZE */
-   else if (is_array())
-      return length * fields.array->atomic_size();
-   else
-      return 0;
 }
 
 inline bool glsl_type::is_unsized_array() const { return glsl_type_is_unsized_array(this); }
