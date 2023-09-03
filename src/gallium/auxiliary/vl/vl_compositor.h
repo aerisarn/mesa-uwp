@@ -162,10 +162,6 @@ struct vl_compositor
       struct {
          void *y;
          void *uv;
-      } bob;
-      struct {
-         void *y;
-         void *uv;
       } progressive;
    } cs_yuv;
 

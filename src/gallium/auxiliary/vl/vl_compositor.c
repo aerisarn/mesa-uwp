@@ -330,7 +330,6 @@ set_yuv_layer(struct vl_compositor_state *s, struct vl_compositor *c,
 
    assert(layer < VL_COMPOSITOR_MAX_LAYERS);
 
-   s->interlaced = buffer->interlaced;
    s->used_layers |= 1 << layer;
    sampler_views = buffer->get_sampler_view_components(buffer);
    for (i = 0; i < 3; ++i) {
@@ -352,7 +351,7 @@ set_yuv_layer(struct vl_compositor_state *s, struct vl_compositor *c,
       if (c->pipe_gfx_supported)
           s->layers[layer].fs = (y) ? c->fs_yuv.bob.y : c->fs_yuv.bob.uv;
       if (c->pipe_cs_composit_supported)
-          s->layers[layer].cs = (y) ? c->cs_yuv.bob.y : c->cs_yuv.bob.uv;
+          s->layers[layer].cs = (y) ? c->cs_yuv.progressive.y : c->cs_yuv.progressive.uv;
       break;
 
    case VL_COMPOSITOR_BOB_BOTTOM:
@@ -362,7 +361,7 @@ set_yuv_layer(struct vl_compositor_state *s, struct vl_compositor *c,
       if (c->pipe_gfx_supported)
           s->layers[layer].fs = (y) ? c->fs_yuv.bob.y : c->fs_yuv.bob.uv;
       if (c->pipe_cs_composit_supported)
-          s->layers[layer].cs = (y) ? c->cs_yuv.bob.y : c->cs_yuv.bob.uv;
+          s->layers[layer].cs = (y) ? c->cs_yuv.progressive.y : c->cs_yuv.progressive.uv;
       break;
 
    case VL_COMPOSITOR_NONE:
@@ -443,7 +442,6 @@ vl_compositor_clear_layers(struct vl_compositor_state *s)
    unsigned i, j;
 
    assert(s);
-   s->interlaced = false;
    s->used_layers = 0;
    for ( i = 0; i < VL_COMPOSITOR_MAX_LAYERS; ++i) {
       struct vertex4f v_one = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -563,7 +561,6 @@ vl_compositor_set_buffer_layer(struct vl_compositor_state *s,
 
    assert(layer < VL_COMPOSITOR_MAX_LAYERS);
 
-   s->interlaced = buffer->interlaced;
    s->used_layers |= 1 << layer;
    sampler_views = buffer->get_sampler_view_components(buffer);
    for (i = 0; i < 3; ++i) {
