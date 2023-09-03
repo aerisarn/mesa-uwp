@@ -379,17 +379,20 @@ agx_linear_allowed(const struct agx_resource *pres)
       return false;
 
    switch (pres->base.target) {
-   /* 1D is always linear, even with image atomics */
+   /* Buffers are always linear, even with image atomics */
    case PIPE_BUFFER:
-   case PIPE_TEXTURE_1D:
-   case PIPE_TEXTURE_1D_ARRAY:
 
    /* Linear textures require specifying their strides explicitly, which only
     * works for 2D textures. Rectangle textures are a special case of 2D.
     *
+    * 1D textures only exist in GLES and are lowered to 2D to bypass hardware
+    * limitations.
+    *
     * However, we don't want to support this case in the image atomic
     * implementation, so linear shader images are specially forbidden.
     */
+   case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_2D_ARRAY:
    case PIPE_TEXTURE_RECT:
