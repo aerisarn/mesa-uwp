@@ -270,12 +270,7 @@ lower_function_link_call_instr(nir_instr *instr, nir_builder *b,
    if (!call->callee->name)
       return false;
 
-   nir_foreach_function(function, link_shader) {
-      if (strcmp(function->name, call->callee->name) == 0) {
-         func = function;
-         break;
-      }
-   }
+   func = nir_shader_get_function_for_name(link_shader, call->callee->name);
    if (!func || !func->impl) {
       return false;
    }
