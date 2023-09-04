@@ -134,6 +134,8 @@ libanv_files = files(
   'i915/anv_batch_chain.h',
   'i915/anv_device.c',
   'i915/anv_device.h',
+  'i915/anv_gem.c',
+  'i915/anv_gem.h',
   'i915/anv_kmd_backend.c',
   'i915/anv_queue.c',
   'i915/anv_queue.h',
