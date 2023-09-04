@@ -9,7 +9,6 @@
 #include "radeon_vce.h"
 #include "radeon_video.h"
 #include "si_pipe.h"
-#include "ac_llvm_util.h"
 #include "util/u_cpu_detect.h"
 #include "util/u_screen.h"
 #include "util/u_video.h"
