@@ -24,7 +24,11 @@
 
 #include <stdint.h>
 
+#include "vulkan/vulkan_core.h"
+
+struct anv_bo;
 struct anv_device;
+enum anv_bo_alloc_flags;
 
 int anv_i915_gem_get_tiling(struct anv_device *device, uint32_t gem_handle);
 int anv_i915_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,
@@ -32,3 +36,8 @@ int anv_i915_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,
 
 int anv_i915_gem_wait(struct anv_device *device, uint32_t gem_handle,
                       int64_t *timeout_ns);
+
+VkResult anv_i915_gem_import_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                                                        struct anv_bo *bo,
+                                                        enum anv_bo_alloc_flags alloc_flags,
+                                                        uint32_t *out_bo_flags);

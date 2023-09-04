@@ -157,6 +157,15 @@ anv_gem_fd_to_handle(struct anv_device *device, int fd)
    unreachable("Unused");
 }
 
+VkResult
+anv_gem_import_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                                          struct anv_bo *bo,
+                                          enum anv_bo_alloc_flags alloc_flags,
+                                          uint32_t *bo_flags)
+{
+   return VK_SUCCESS;
+}
+
 static int
 stub_vm_bind(struct anv_device *device, int num_binds,
              struct anv_vm_bind *binds)

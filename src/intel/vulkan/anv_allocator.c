@@ -1683,8 +1683,6 @@ anv_device_import_bo(struct anv_device *device,
           (device->physical->has_implicit_ccs && device->info->has_aux_map));
 
    struct anv_bo_cache *cache = &device->bo_cache;
-   const uint32_t bo_flags =
-         device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
 
    pthread_mutex_lock(&cache->mutex);
 
@@ -1695,46 +1693,17 @@ anv_device_import_bo(struct anv_device *device,
    }
 
    struct anv_bo *bo = anv_device_lookup_bo(device, gem_handle);
+
+   uint32_t bo_flags;
+   VkResult result = anv_gem_import_bo_alloc_flags_to_bo_flags(device, bo,
+                                                               alloc_flags,
+                                                               &bo_flags);
+   if (result != VK_SUCCESS) {
+      pthread_mutex_unlock(&cache->mutex);
+      return result;
+   }
+
    if (bo->refcount > 0) {
-      /* We have to be careful how we combine flags so that it makes sense.
-       * Really, though, if we get to this case and it actually matters, the
-       * client has imported a BO twice in different ways and they get what
-       * they have coming.
-       */
-      uint64_t new_flags = 0;
-      new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_WRITE;
-      new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_ASYNC;
-      new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
-      new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_PINNED;
-      new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_CAPTURE;
-
-      /* It's theoretically possible for a BO to get imported such that it's
-       * both pinned and not pinned.  The only way this can happen is if it
-       * gets imported as both a semaphore and a memory object and that would
-       * be an application error.  Just fail out in that case.
-       */
-      if ((bo->flags & EXEC_OBJECT_PINNED) !=
-          (bo_flags & EXEC_OBJECT_PINNED)) {
-         pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
-                          "The same BO was imported two different ways");
-      }
-
-      /* It's also theoretically possible that someone could export a BO from
-       * one heap and import it into another or to import the same BO into two
-       * different heaps.  If this happens, we could potentially end up both
-       * allowing and disallowing 48-bit addresses.  There's not much we can
-       * do about it if we're pinning so we just throw an error and hope no
-       * app is actually that stupid.
-       */
-      if ((new_flags & EXEC_OBJECT_PINNED) &&
-          (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) !=
-          (bo_flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS)) {
-         pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
-                          "The same BO was imported on two different heaps");
-      }
-
       if (bo->has_client_visible_address !=
           ((alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0)) {
          pthread_mutex_unlock(&cache->mutex);
@@ -1750,8 +1719,6 @@ anv_device_import_bo(struct anv_device *device,
                           "addresses");
       }
 
-      bo->flags = new_flags;
-
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
       struct anv_bo new_bo = {
@@ -1759,7 +1726,6 @@ anv_device_import_bo(struct anv_device *device,
          .gem_handle = gem_handle,
          .refcount = 1,
          .offset = -1,
-         .flags = bo_flags,
          .is_external = true,
          .has_client_visible_address =
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
@@ -1791,6 +1757,8 @@ anv_device_import_bo(struct anv_device *device,
 
       *bo = new_bo;
    }
+
+   bo->flags = bo_flags;
 
    pthread_mutex_unlock(&cache->mutex);
    *bo_out = bo;

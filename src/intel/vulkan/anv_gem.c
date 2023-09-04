@@ -133,6 +133,26 @@ anv_gem_fd_to_handle(struct anv_device *device, int fd)
    return args.handle;
 }
 
+VkResult
+anv_gem_import_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                                          struct anv_bo *bo,
+                                          enum anv_bo_alloc_flags alloc_flags,
+                                          uint32_t *bo_flags)
+{
+   switch (device->info->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      return anv_i915_gem_import_bo_alloc_flags_to_bo_flags(device, bo,
+                                                            alloc_flags,
+                                                            bo_flags);
+   case INTEL_KMD_TYPE_XE:
+      *bo_flags = device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
+      return VK_SUCCESS;
+   default:
+      unreachable("missing");
+      return VK_ERROR_UNKNOWN;
+   }
+}
+
 const struct anv_kmd_backend *anv_stub_kmd_backend_get(void)
 {
    return NULL;

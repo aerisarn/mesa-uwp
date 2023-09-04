@@ -85,3 +85,55 @@ anv_i915_gem_wait(struct anv_device *device, uint32_t gem_handle,
 
    return ret;
 }
+
+VkResult
+anv_i915_gem_import_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                                               struct anv_bo *bo,
+                                               enum anv_bo_alloc_flags alloc_flags,
+                                               uint32_t *out_bo_flags)
+{
+   const uint32_t bo_flags =
+         device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
+   if (bo->refcount == 0) {
+      *out_bo_flags = bo_flags;
+      return VK_SUCCESS;
+   }
+
+   /* We have to be careful how we combine flags so that it makes sense.
+    * Really, though, if we get to this case and it actually matters, the
+    * client has imported a BO twice in different ways and they get what
+    * they have coming.
+    */
+   uint32_t new_flags = 0;
+   new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_WRITE;
+   new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_ASYNC;
+   new_flags |= (bo->flags & bo_flags) & EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
+   new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_PINNED;
+   new_flags |= (bo->flags | bo_flags) & EXEC_OBJECT_CAPTURE;
+
+   /* It's theoretically possible for a BO to get imported such that it's
+    * both pinned and not pinned.  The only way this can happen is if it
+    * gets imported as both a semaphore and a memory object and that would
+    * be an application error.  Just fail out in that case.
+    */
+   if ((bo->flags & EXEC_OBJECT_PINNED) !=
+       (bo_flags & EXEC_OBJECT_PINNED))
+      return vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                       "The same BO was imported two different ways");
+
+   /* It's also theoretically possible that someone could export a BO from
+    * one heap and import it into another or to import the same BO into two
+    * different heaps.  If this happens, we could potentially end up both
+    * allowing and disallowing 48-bit addresses.  There's not much we can
+    * do about it if we're pinning so we just throw an error and hope no
+    * app is actually that stupid.
+    */
+   if ((new_flags & EXEC_OBJECT_PINNED) &&
+       (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) !=
+       (bo_flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS))
+      return vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                       "The same BO was imported on two different heaps");
+
+   *out_bo_flags = new_flags;
+   return VK_SUCCESS;
+}
