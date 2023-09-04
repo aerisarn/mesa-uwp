@@ -1766,8 +1766,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(builder->create_info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
-   bool must_compile =
-      builder->state & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT;
+   bool must_compile = false;
    for (uint32_t i = 0; i < builder->create_info->stageCount; i++) {
       if (!(builder->active_stages & builder->create_info->pStages[i].stage))
          continue;
@@ -1854,9 +1853,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       
       for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
            stage = (gl_shader_stage) (stage + 1)) {
-         if (stage_infos[stage] || nir[stage] ||
-             (stage == MESA_SHADER_FRAGMENT &&
-              (builder->state & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT))) {
+         if (stage_infos[stage] || nir[stage]) {
             bool shader_application_cache_hit;
             shader_sha1[20] = (unsigned char) stage;
             shaders[stage] =
@@ -1918,16 +1915,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
       stage_feedbacks[stage].flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
       stage_feedbacks[stage].duration += os_time_get_nano() - stage_start;
-   }
-
-   if (!nir[MESA_SHADER_FRAGMENT] &&
-       (builder->state & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
-         const nir_shader_compiler_options *nir_options =
-            ir3_get_compiler_options(builder->device->compiler);
-         nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
-                                                           nir_options,
-                                                           "noop_fs");
-         nir[MESA_SHADER_FRAGMENT] = fs_b.shader;
    }
 
    if (executable_info) {
@@ -2020,14 +2007,25 @@ done:
     */
    if (builder->state &
        VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
-      for (gl_shader_stage stage = MESA_SHADER_TESS_CTRL; stage <= MESA_SHADER_GEOMETRY;
-           stage = (gl_shader_stage) (stage + 1)) {
-         if (!shaders[stage]) {
-            result = tu_empty_shader_create(builder->device, &shaders[stage],
-                                            stage);
-            if (result != VK_SUCCESS)
-               goto fail;
-         }
+      if (!shaders[MESA_SHADER_TESS_CTRL]) {
+         shaders[MESA_SHADER_TESS_CTRL] = builder->device->empty_tcs;
+         vk_pipeline_cache_object_ref(&shaders[MESA_SHADER_TESS_CTRL]->base);
+      }
+      if (!shaders[MESA_SHADER_TESS_EVAL]) {
+         shaders[MESA_SHADER_TESS_EVAL] = builder->device->empty_tes;
+         vk_pipeline_cache_object_ref(&shaders[MESA_SHADER_TESS_EVAL]->base);
+      }
+      if (!shaders[MESA_SHADER_GEOMETRY]) {
+         shaders[MESA_SHADER_GEOMETRY] = builder->device->empty_gs;
+         vk_pipeline_cache_object_ref(&shaders[MESA_SHADER_GEOMETRY]->base);
+      }
+   }
+
+   if (builder->state &
+       VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
+      if (!shaders[MESA_SHADER_FRAGMENT]) {
+         shaders[MESA_SHADER_FRAGMENT] = builder->device->empty_fs;
+         vk_pipeline_cache_object_ref(&shaders[MESA_SHADER_FRAGMENT]->base);
       }
    }
 

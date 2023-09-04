@@ -2184,6 +2184,12 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->global_bo_map = global;
    tu_init_clear_blit_shaders(device);
 
+   result = tu_init_empty_shaders(device);
+   if (result != VK_SUCCESS) {
+      vk_startup_errorf(device->instance, result, "empty shaders");
+      goto fail_empty_shaders;
+   }
+
    global->predicate = 0;
    global->vtx_stats_query_not_running = 1;
    global->dbg_one = (uint32_t)-1;
@@ -2327,6 +2333,8 @@ fail_perfcntrs_pass_alloc:
 fail_pipeline_cache:
    tu_destroy_dynamic_rendering(device);
 fail_dynamic_rendering:
+   tu_destroy_empty_shaders(device);
+fail_empty_shaders:
    tu_destroy_clear_blit_shaders(device);
 fail_global_bo_map:
    tu_bo_finish(device, device->global_bo);
@@ -2376,6 +2384,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       tu_bo_finish(device, device->wave_pvtmem_bo.bo);
 
    tu_destroy_clear_blit_shaders(device);
+
+   tu_destroy_empty_shaders(device);
 
    tu_destroy_dynamic_rendering(device);
 

@@ -122,9 +122,10 @@ tu_shader_create(struct tu_device *dev,
                  bool executable_info);
 
 VkResult
-tu_empty_shader_create(struct tu_device *device,
-                       struct tu_shader **shader_out,
-                       gl_shader_stage stage);
+tu_init_empty_shaders(struct tu_device *device);
+
+void
+tu_destroy_empty_shaders(struct tu_device *device);
 
 void
 tu_shader_destroy(struct tu_device *dev,

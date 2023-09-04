@@ -2289,7 +2289,7 @@ tu_shader_create(struct tu_device *dev,
    return VK_SUCCESS;
 }
 
-VkResult
+static VkResult
 tu_empty_shader_create(struct tu_device *dev,
                        struct tu_shader **shader_out,
                        gl_shader_stage stage)
@@ -2320,6 +2320,74 @@ tu_empty_shader_create(struct tu_device *dev,
 
    *shader_out = shader;
    return VK_SUCCESS;
+}
+
+static VkResult
+tu_empty_fs_create(struct tu_device *dev, struct tu_shader **shader)
+{
+   struct ir3_shader_key key = {};
+   const struct ir3_shader_options options = {};
+   struct ir3_stream_output_info so_info = {};
+   const nir_shader_compiler_options *nir_options =
+      ir3_get_compiler_options(dev->compiler);
+   nir_builder fs_b;
+
+   fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, nir_options,
+                                         "noop_fs");
+
+   *shader = tu_shader_init(dev, NULL, 0);
+   if (!*shader)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   struct ir3_shader *ir3_shader =
+      ir3_shader_from_nir(dev->compiler, fs_b.shader, &options, &so_info);
+   (*shader)->variant = ir3_shader_create_variant(ir3_shader, &key, false);
+
+   return tu_upload_shader(dev, *shader);
+}
+
+VkResult
+tu_init_empty_shaders(struct tu_device *dev)
+{
+   VkResult result;
+
+   result = tu_empty_shader_create(dev, &dev->empty_tcs, MESA_SHADER_TESS_CTRL);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   result = tu_empty_shader_create(dev, &dev->empty_tes, MESA_SHADER_TESS_EVAL);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   result = tu_empty_shader_create(dev, &dev->empty_gs, MESA_SHADER_GEOMETRY);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   result = tu_empty_fs_create(dev, &dev->empty_fs);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   return VK_SUCCESS;
+
+out:
+   if (dev->empty_tcs)
+      vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_tcs->base);
+   if (dev->empty_tes)
+      vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_tes->base);
+   if (dev->empty_gs)
+      vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_gs->base);
+   if (dev->empty_fs)
+      vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_fs->base);
+   return result;
+}
+
+void
+tu_destroy_empty_shaders(struct tu_device *dev)
+{
+   vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_tcs->base);
+   vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_tes->base);
+   vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_gs->base);
+   vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_fs->base);
 }
 
 void
