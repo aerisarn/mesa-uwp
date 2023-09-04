@@ -1330,40 +1330,6 @@ anv_bo_cache_finish(struct anv_bo_cache *cache)
    pthread_mutex_destroy(&cache->mutex);
 }
 
-#define ANV_BO_CACHE_SUPPORTED_FLAGS \
-   (EXEC_OBJECT_WRITE | \
-    EXEC_OBJECT_ASYNC | \
-    EXEC_OBJECT_SUPPORTS_48B_ADDRESS | \
-    EXEC_OBJECT_PINNED | \
-    EXEC_OBJECT_CAPTURE)
-
-static uint32_t
-anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
-                               enum anv_bo_alloc_flags alloc_flags)
-{
-   struct anv_physical_device *pdevice = device->physical;
-
-   uint64_t bo_flags = EXEC_OBJECT_PINNED;
-
-   if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS))
-      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
-
-   if (((alloc_flags & ANV_BO_ALLOC_CAPTURE) ||
-        INTEL_DEBUG(DEBUG_CAPTURE_ALL)) &&
-       pdevice->has_exec_capture)
-      bo_flags |= EXEC_OBJECT_CAPTURE;
-
-   if (alloc_flags & ANV_BO_ALLOC_IMPLICIT_WRITE) {
-      assert(alloc_flags & ANV_BO_ALLOC_IMPLICIT_SYNC);
-      bo_flags |= EXEC_OBJECT_WRITE;
-   }
-
-   if (!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_SYNC) && pdevice->has_exec_async)
-      bo_flags |= EXEC_OBJECT_ASYNC;
-
-   return bo_flags;
-}
-
 static void
 anv_bo_unmap_close(struct anv_device *device, struct anv_bo *bo)
 {
@@ -1453,8 +1419,7 @@ anv_device_alloc_bo(struct anv_device *device,
       assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS));
 
    const uint32_t bo_flags =
-      anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
-   assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
+         device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
 
    /* The kernel is going to give us whole pages anyway. And we
     * also need 4KB alignment for 1MB AUX buffer that follows
@@ -1615,8 +1580,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
-      anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
-   assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
+         device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
 
    uint32_t gem_handle = device->kmd_backend->gem_create_userptr(device, host_ptr, size);
    if (!gem_handle)
@@ -1720,8 +1684,7 @@ anv_device_import_bo(struct anv_device *device,
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
-      anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
-   assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
+         device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
 
    pthread_mutex_lock(&cache->mutex);
 

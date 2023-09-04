@@ -231,6 +231,33 @@ i915_gem_create_userptr(struct anv_device *device, void *mem, uint64_t size)
    return userptr.handle;
 }
 
+static uint32_t
+i915_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                                enum anv_bo_alloc_flags alloc_flags)
+{
+   struct anv_physical_device *pdevice = device->physical;
+
+   uint64_t bo_flags = EXEC_OBJECT_PINNED;
+
+   if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS))
+      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
+
+   if (((alloc_flags & ANV_BO_ALLOC_CAPTURE) ||
+        INTEL_DEBUG(DEBUG_CAPTURE_ALL)) &&
+       pdevice->has_exec_capture)
+      bo_flags |= EXEC_OBJECT_CAPTURE;
+
+   if (alloc_flags & ANV_BO_ALLOC_IMPLICIT_WRITE) {
+      assert(alloc_flags & ANV_BO_ALLOC_IMPLICIT_SYNC);
+      bo_flags |= EXEC_OBJECT_WRITE;
+   }
+
+   if (!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_SYNC) && pdevice->has_exec_async)
+      bo_flags |= EXEC_OBJECT_ASYNC;
+
+   return bo_flags;
+}
+
 const struct anv_kmd_backend *
 anv_i915_kmd_backend_get(void)
 {
@@ -245,6 +272,7 @@ anv_i915_kmd_backend_get(void)
       .execute_simple_batch = i915_execute_simple_batch,
       .queue_exec_locked = i915_queue_exec_locked,
       .queue_exec_trace = i915_queue_exec_trace,
+      .bo_alloc_flags_to_bo_flags = i915_bo_alloc_flags_to_bo_flags,
    };
    return &i915_backend;
 }

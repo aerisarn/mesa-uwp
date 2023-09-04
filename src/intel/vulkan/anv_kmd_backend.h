@@ -89,6 +89,8 @@ struct anv_kmd_backend {
                                  uint32_t perf_query_pass);
    VkResult (*queue_exec_trace)(struct anv_queue *queue,
                                 struct anv_utrace_submit *submit);
+   uint32_t (*bo_alloc_flags_to_bo_flags)(struct anv_device *device,
+                                          enum anv_bo_alloc_flags alloc_flags);
 };
 
 const struct anv_kmd_backend *anv_kmd_backend_get(enum intel_kmd_type type);

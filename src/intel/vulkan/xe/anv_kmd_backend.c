@@ -226,6 +226,13 @@ xe_gem_create_userptr(struct anv_device *device, void *mem, uint64_t size)
    return device->workaround_bo->gem_handle;
 }
 
+static uint32_t
+xe_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                              enum anv_bo_alloc_flags alloc_flags)
+{
+   return 0;
+}
+
 const struct anv_kmd_backend *
 anv_xe_kmd_backend_get(void)
 {
@@ -240,6 +247,7 @@ anv_xe_kmd_backend_get(void)
       .execute_simple_batch = xe_execute_simple_batch,
       .queue_exec_locked = xe_queue_exec_locked,
       .queue_exec_trace = xe_queue_exec_utrace_locked,
+      .bo_alloc_flags_to_bo_flags = xe_bo_alloc_flags_to_bo_flags,
    };
    return &xe_backend;
 }

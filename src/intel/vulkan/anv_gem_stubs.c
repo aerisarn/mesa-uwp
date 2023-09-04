@@ -79,6 +79,19 @@ stub_queue_exec_locked(struct anv_queue *queue,
    return VK_ERROR_UNKNOWN;
 }
 
+static VkResult
+stub_queue_exec_trace(struct anv_queue *queue, struct anv_utrace_submit *submit)
+{
+   return VK_ERROR_UNKNOWN;
+}
+
+static uint32_t
+stub_bo_alloc_flags_to_bo_flags(struct anv_device *device,
+                                enum anv_bo_alloc_flags alloc_flags)
+{
+   return 0;
+}
+
 void *
 anv_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
              uint64_t size, VkMemoryPropertyFlags property_flags)
@@ -169,6 +182,8 @@ const struct anv_kmd_backend *anv_stub_kmd_backend_get(void)
       .vm_unbind_bo = stub_vm_bind_bo,
       .execute_simple_batch = stub_execute_simple_batch,
       .queue_exec_locked = stub_queue_exec_locked,
+      .queue_exec_trace = stub_queue_exec_trace,
+      .bo_alloc_flags_to_bo_flags = stub_bo_alloc_flags_to_bo_flags,
    };
    return &stub_backend;
 }
