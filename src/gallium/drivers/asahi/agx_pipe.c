@@ -1527,6 +1527,8 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    /* By default all samples are enabled */
    ctx->sample_mask = ~0;
 
+   ctx->support_lod_bias = !(flags & PIPE_CONTEXT_NO_LOD_BIAS);
+
    return pctx;
 }
 
