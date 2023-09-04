@@ -836,10 +836,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       case FAMILY_MDN:
          identify_chip2(MENDOCINO, RAPHAEL_MENDOCINO);
          break;
-      case FAMILY_GFX1100:
-         identify_chip(GFX1100);
-         identify_chip(GFX1101);
-         identify_chip(GFX1102);
+      case FAMILY_NV3:
+         identify_chip(NAVI31);
+         identify_chip(NAVI32);
+         identify_chip(NAVI33);
          break;
       case FAMILY_GFX1103:
          identify_chip(GFX1103_R1);
@@ -1767,7 +1767,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    fprintf(f, "Multimedia info:\n");
    fprintf(f, "    vce_encode = %u\n", info->ip[AMD_IP_VCE].num_queues);
 
-   if (info->family >= CHIP_GFX1100 || info->family == CHIP_GFX940)
+   if (info->family >= CHIP_NAVI31 || info->family == CHIP_GFX940)
       fprintf(f, "    vcn_unified = %u\n", info->ip[AMD_IP_VCN_UNIFIED].num_queues);
    else {
       fprintf(f, "    vcn_decode = %u\n", info->ip[AMD_IP_VCN_DEC].num_queues);

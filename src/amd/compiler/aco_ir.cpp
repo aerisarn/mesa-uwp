@@ -89,7 +89,7 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
       case GFX9: program->family = CHIP_VEGA10; break;
       case GFX10: program->family = CHIP_NAVI10; break;
       case GFX10_3: program->family = CHIP_NAVI21; break;
-      case GFX11: program->family = CHIP_GFX1100; break;
+      case GFX11: program->family = CHIP_NAVI31; break;
       default: program->family = CHIP_UNKNOWN; break;
       }
    } else {
@@ -119,7 +119,7 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
       program->dev.sgpr_limit =
          108; /* includes VCC, which can be treated as s[106-107] on GFX10+ */
 
-      if (family == CHIP_GFX1100 || family == CHIP_GFX1101) {
+      if (family == CHIP_NAVI31 || family == CHIP_NAVI32) {
          program->dev.physical_vgprs = program->wave_size == 32 ? 1536 : 768;
          program->dev.vgpr_alloc_granule = program->wave_size == 32 ? 24 : 12;
       } else {

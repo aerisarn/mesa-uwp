@@ -125,7 +125,7 @@ si_vid_alloc_stream_handle(struct radv_physical_device *pdevice)
 void
 radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
 {
-   if (pdevice->rad_info.family >= CHIP_GFX1100 || pdevice->rad_info.family == CHIP_GFX940)
+   if (pdevice->rad_info.family >= CHIP_NAVI31 || pdevice->rad_info.family == CHIP_GFX940)
       pdevice->vid_decode_ip = AMD_IP_VCN_UNIFIED;
    else if (radv_has_uvd(pdevice))
       pdevice->vid_decode_ip = AMD_IP_UVD;
@@ -181,9 +181,9 @@ radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
    case CHIP_GFX940:
       pdevice->vid_addr_gfx_mode = RDECODE_ARRAY_MODE_ADDRLIB_SEL_GFX9;
       break;
-   case CHIP_GFX1100:
-   case CHIP_GFX1101:
-   case CHIP_GFX1102:
+   case CHIP_NAVI31:
+   case CHIP_NAVI32:
+   case CHIP_NAVI33:
    case CHIP_GFX1103_R1:
    case CHIP_GFX1103_R2:
       pdevice->vid_addr_gfx_mode = RDECODE_ARRAY_MODE_ADDRLIB_SEL_GFX11;
