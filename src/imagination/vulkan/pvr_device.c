@@ -155,7 +155,6 @@ static const struct vk_instance_extension_table pvr_instance_extensions = {
 static void pvr_physical_device_get_supported_extensions(
    struct vk_device_extension_table *extensions)
 {
-   /* clang-format off */
    *extensions = (struct vk_device_extension_table){
       .KHR_copy_commands2 = true,
       .KHR_external_memory = true,
@@ -168,7 +167,6 @@ static void pvr_physical_device_get_supported_extensions(
       .EXT_private_data = true,
       .EXT_tooling_info = true,
    };
-   /* clang-format on */
 }
 
 static void pvr_physical_device_get_supported_features(
@@ -233,10 +231,10 @@ static void pvr_physical_device_get_supported_features(
       .variableMultisampleRate = false,
       .inheritedQueries = false,
 
-      /* VK_KHR_timeline_semaphore (promoted to Vulkan 1.2) */
+      /* Vulkan 1.2 / VK_KHR_timeline_semaphore */
       .timelineSemaphore = true,
 
-      /* VK_EXT_private_data (promoted to Vulkan 1.3) */
+      /* Vulkan 1.3 / VK_EXT_private_data */
       .privateData = true,
    };
 }
