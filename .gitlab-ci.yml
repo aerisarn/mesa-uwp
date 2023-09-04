@@ -173,8 +173,9 @@ stages:
       # Source code
       - include/**/*
       - src/**/*
-      - .ci-farms/*
       when: on_success
+    # Run when re-enabling a disabled farm, but not when disabling it
+    - !reference [.re-enable-farm-rules, rules]
     # Otherwise, build/test jobs won't run because no rule matched.
 
 
@@ -199,6 +200,8 @@ stages:
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
       when: on_success
+    # Run when re-enabling a disabled farm, but not when disabling it
+    - !reference [.re-enable-farm-rules, rules]
     # Run pipeline by default if it was triggered by Marge Bot, is for a
     # merge request, and any files affecting the pipeline were changed
     - if: *is-pre-merge-for-marge
