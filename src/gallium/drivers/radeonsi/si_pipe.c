@@ -1118,7 +1118,7 @@ static void si_test_gds_memory_management(struct si_context *sctx, unsigned allo
 static void si_disk_cache_create(struct si_screen *sscreen)
 {
    /* Don't use the cache if shader dumping is enabled. */
-   if (sscreen->debug_flags & (DBG_ALL_SHADERS | DBG(USE_ACO)))
+   if (sscreen->debug_flags & DBG_ALL_SHADERS)
       return;
 
    struct mesa_sha1 ctx;
@@ -1127,9 +1127,18 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 
    _mesa_sha1_init(&ctx);
 
-   if (!disk_cache_get_function_identifier(si_disk_cache_create, &ctx) ||
+   if (!disk_cache_get_function_identifier(si_disk_cache_create, &ctx))
+      return;
+
+   /* ACO and LLVM shader binary have different cache id distinguished by if adding
+    * the LLVM function identifier. ACO is a built-in component in mesa, so no need
+    * to add aco function here.
+    */
+#ifdef LLVM_AVAILABLE
+   if (!sscreen->use_aco &&
        !disk_cache_get_function_identifier(LLVMInitializeAMDGPUTargetInfo, &ctx))
       return;
+#endif
 
    _mesa_sha1_final(&ctx, sha1);
    mesa_bytes_to_hex(cache_id, sha1, 20);
