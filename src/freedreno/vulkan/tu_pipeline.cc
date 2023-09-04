@@ -2208,6 +2208,12 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
       if (contains_all_shader_state(library->state)) {
          pipeline->program = library->base.program;
          pipeline->load_state = library->base.load_state;
+         for (unsigned i = 0; i < ARRAY_SIZE(pipeline->shaders); i++) {
+            if (library->base.shaders[i]) {
+               pipeline->shaders[i] = library->base.shaders[i];
+               vk_pipeline_cache_object_ref(&pipeline->shaders[i]->base);
+            }
+         }
       }
 
       vk_graphics_pipeline_state_merge(&builder->graphics_state,

@@ -387,6 +387,8 @@ struct tu_cmd_state
    struct tu_graphics_pipeline *pipeline;
    struct tu_compute_pipeline *compute_pipeline;
 
+   struct tu_shader *shaders[MESA_SHADER_STAGES];
+
    struct tu_render_pass_state rp;
 
    struct vk_render_pass_state vk_rp;

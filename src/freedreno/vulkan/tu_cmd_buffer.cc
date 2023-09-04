@@ -2947,6 +2947,36 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 }
 TU_GENX(tu_EndCommandBuffer);
 
+static void
+tu_bind_vs(struct tu_cmd_buffer *cmd, struct tu_shader *vs)
+{
+   cmd->state.shaders[MESA_SHADER_VERTEX] = vs;
+}
+
+static void
+tu_bind_tcs(struct tu_cmd_buffer *cmd, struct tu_shader *tcs)
+{
+   cmd->state.shaders[MESA_SHADER_TESS_CTRL] = tcs;
+}
+
+static void
+tu_bind_tes(struct tu_cmd_buffer *cmd, struct tu_shader *tes)
+{
+   cmd->state.shaders[MESA_SHADER_TESS_EVAL] = tes;
+}
+
+static void
+tu_bind_gs(struct tu_cmd_buffer *cmd, struct tu_shader *gs)
+{
+   cmd->state.shaders[MESA_SHADER_GEOMETRY] = gs;
+}
+
+static void
+tu_bind_fs(struct tu_cmd_buffer *cmd, struct tu_shader *fs)
+{
+   cmd->state.shaders[MESA_SHADER_FRAGMENT] = fs;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
                    VkPipelineBindPoint pipelineBindPoint,
@@ -2968,6 +2998,12 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS | TU_CMD_DIRTY_SHADER_CONSTS |
                        TU_CMD_DIRTY_VS_PARAMS | TU_CMD_DIRTY_LRZ |
                        TU_CMD_DIRTY_PIPELINE;
+
+   tu_bind_vs(cmd, pipeline->shaders[MESA_SHADER_VERTEX]);
+   tu_bind_tcs(cmd, pipeline->shaders[MESA_SHADER_TESS_CTRL]);
+   tu_bind_tes(cmd, pipeline->shaders[MESA_SHADER_TESS_EVAL]);
+   tu_bind_gs(cmd, pipeline->shaders[MESA_SHADER_GEOMETRY]);
+   tu_bind_fs(cmd, pipeline->shaders[MESA_SHADER_FRAGMENT]);
 
    vk_cmd_set_dynamic_graphics_state(&cmd->vk,
                                      &cmd->state.pipeline->dynamic_state);
