@@ -405,18 +405,36 @@ class BitSetTemplate(object):
         self.display = xml.text.strip()
         dbg("found template '{}: {}'".format(self.name, self.display))
 
+class BitSetEnumValue(object):
+    """Class that encapsulates an enum value
+    """
+    def __init__(self, isa, xml):
+        self.isa = isa
+        self.displayname = xml.attrib['display']
+        self.value = xml.attrib['val']
+        self.name = xml.attrib.get('name')
+
+    def __str__(self):
+        return self.displayname
+
+    def get_name(self):
+        return self.name or self.displayname
+
+    def get_value(self):
+        return self.value
+
 class BitSetEnum(object):
     """Class that encapsulates an enum declaration
     """
     def __init__(self, isa, xml):
         self.isa = isa
         self.name = xml.attrib['name']
+
         # Table mapping value to name
-        # TODO currently just mapping to 'display' name, but if we
-        # need more attributes then maybe need BitSetEnumValue?
         self.values = {}
         for value in xml.findall('value'):
-            self.values[value.attrib['val']] = value.attrib['display']
+            v = BitSetEnumValue(self, value)
+            self.values[v.get_value()] = v
 
     def get_c_name(self):
         return 'enum_' + get_c_name(self.name)
