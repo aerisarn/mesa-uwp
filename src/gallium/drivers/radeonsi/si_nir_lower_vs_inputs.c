@@ -399,7 +399,7 @@ opencoded_load_format(nir_builder *b, nir_def *rsrc, nir_def *vindex,
          /* 2_10_10_10 data formats */
          unsigned bits = log_size == 3 ? (chan == 3 ? 2 : 10) : (8 << log_size);
          nir_def *tmp = nir_u2f32(b, loads[chan]);
-         loads[chan] = nir_fmul_imm(b, tmp, 1.0 / BITFIELD64_MASK(bits));
+         loads[chan] = nir_fmul_imm(b, tmp, 1.0 / (double)BITFIELD64_MASK(bits));
       }
       break;
    case AC_FETCH_FORMAT_SNORM:
@@ -407,7 +407,7 @@ opencoded_load_format(nir_builder *b, nir_def *rsrc, nir_def *vindex,
          /* 2_10_10_10 data formats */
          unsigned bits = log_size == 3 ? (chan == 3 ? 2 : 10) : (8 << log_size);
          nir_def *tmp = nir_i2f32(b, loads[chan]);
-         tmp = nir_fmul_imm(b, tmp, 1.0 / BITFIELD64_MASK(bits - 1));
+         tmp = nir_fmul_imm(b, tmp, 1.0 / (double)BITFIELD64_MASK(bits - 1));
          /* Clamp to [-1, 1] */
          tmp = nir_fmax(b, tmp, nir_imm_float(b, -1));
          loads[chan] = nir_fmin(b, tmp, nir_imm_float(b, 1));

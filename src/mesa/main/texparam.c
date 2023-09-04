@@ -54,7 +54,7 @@
 /**
  * Use macro to resolve undefined clamping behaviour when using lroundf
  */
-#define LCLAMPF(a, lmin, lmax) ((a) > (lmin) ? ( (a) >= (lmax) ? (lmax) : (lroundf(a)) ) : (lmin))
+#define LCLAMPF(a, lmin, lmax) ((a) > (float)(lmin) ? ( (a) >= (float)(lmax) ? (lmax) : (lroundf(a)) ) : (lmin))
 
 /**
  * Check if a coordinate wrap mode is supported for the texture target.
@@ -965,8 +965,8 @@ _mesa_texture_parameterf(struct gl_context *ctx,
       {
          GLint p[4];
          p[0] = (param > 0) ?
-                ((param > INT_MAX) ? INT_MAX : (GLint) (param + 0.5)) :
-                ((param < INT_MIN) ? INT_MIN : (GLint) (param - 0.5));
+                ((param > (float)INT32_MAX) ? INT32_MAX : (GLint) (param + 0.5)) :
+                ((param < (float)INT32_MIN) ? INT32_MIN : (GLint) (param - 0.5));
 
          p[1] = p[2] = p[3] = 0;
          need_update = set_tex_parameteri(ctx, texObj, pname, p, dsa);
@@ -2607,7 +2607,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = LCLAMPF(obj->Sampler.Attrib.MinLod, INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.MinLod, INT32_MIN, INT32_MAX);
          break;
       case GL_TEXTURE_MAX_LOD:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -2622,7 +2622,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = LCLAMPF(obj->Sampler.Attrib.MaxLod, INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.MaxLod, INT32_MIN, INT32_MAX);
          break;
       case GL_TEXTURE_BASE_LEVEL:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -2646,7 +2646,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = LCLAMPF(obj->Sampler.Attrib.MaxAnisotropy, INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.MaxAnisotropy, INT32_MIN, INT32_MAX);
          break;
       case GL_GENERATE_MIPMAP_SGIS:
          if (ctx->API != API_OPENGL_COMPAT && ctx->API != API_OPENGLES)
@@ -2691,7 +2691,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = LCLAMPF(obj->Sampler.Attrib.LodBias, INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.LodBias, INT32_MIN, INT32_MAX);
          break;
       case GL_TEXTURE_CROP_RECT_OES:
          if (ctx->API != API_OPENGLES || !ctx->Extensions.OES_draw_texture)
