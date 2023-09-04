@@ -1,0 +1,3 @@
+# New CTS failures in 1.3.6.3
+dEQP-VK.api.info.image_format_properties.2d.linear.g8_b8r8_2plane_420_unorm,Fail
+dEQP-VK.rasterization.frag_side_effects.color_at_beginning.sample_mask_after,Fail
