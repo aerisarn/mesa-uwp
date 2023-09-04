@@ -10,7 +10,6 @@
 #include "driver_ddebug/dd_util.h"
 #include "radeon_uvd.h"
 #include "si_public.h"
-#include "si_shader_internal.h"
 #include "sid.h"
 #include "ac_shadowed_regs.h"
 #include "compiler/nir/nir.h"
@@ -25,6 +24,10 @@
 #include "util/xmlconfig.h"
 #include "vl/vl_decoder.h"
 #include "si_utrace.h"
+
+#ifdef LLVM_AVAILABLE
+#include "ac_llvm_util.h"
+#endif
 
 #include <xf86drm.h>
 
