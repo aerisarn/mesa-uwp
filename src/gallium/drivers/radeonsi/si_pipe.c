@@ -1205,15 +1205,17 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       return NULL;
    }
 
-   /* Initialize just one compiler instance to check for errors. The other compiler instances are
-    * initialized on demand.
-    */
-   sscreen->compiler[0] = si_create_llvm_compiler(sscreen);
-   if (!sscreen->compiler[0]) {
-      /* The callee prints the error message. */
-      FREE(sscreen->nir_options);
-      FREE(sscreen);
-      return NULL;
+   if (!sscreen->use_aco) {
+      /* Initialize just one compiler instance to check for errors. The other compiler instances
+       * are initialized on demand.
+       */
+      sscreen->compiler[0] = si_create_llvm_compiler(sscreen);
+      if (!sscreen->compiler[0]) {
+         /* The callee prints the error message. */
+         FREE(sscreen->nir_options);
+         FREE(sscreen);
+         return NULL;
+      }
    }
 
    util_idalloc_mt_init_tc(&sscreen->buffer_ids);
