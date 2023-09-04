@@ -184,6 +184,7 @@ static void pvr_physical_device_get_supported_extensions(
       .KHR_timeline_semaphore = true,
       .KHR_uniform_buffer_standard_layout = true,
       .EXT_external_memory_dma_buf = true,
+      .EXT_host_query_reset = true,
       .EXT_private_data = true,
       .EXT_scalar_block_layout = true,
       .EXT_texel_buffer_alignment = true,
@@ -258,6 +259,9 @@ static void pvr_physical_device_get_supported_features(
 
       /* Vulkan 1.2 / VK_KHR_uniform_buffer_standard_layout */
       .uniformBufferStandardLayout = true,
+
+      /* Vulkan 1.2 / VK_EXT_host_query_reset */
+      .hostQueryReset = true,
 
       /* Vulkan 1.3 / VK_EXT_private_data */
       .privateData = true,
