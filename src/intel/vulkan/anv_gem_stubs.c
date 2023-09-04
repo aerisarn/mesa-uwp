@@ -133,13 +133,6 @@ anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle)
 }
 
 int
-anv_gem_set_caching(struct anv_device *device, uint32_t gem_handle,
-                    uint32_t caching)
-{
-   return 0;
-}
-
-int
 anv_gem_handle_to_fd(struct anv_device *device, uint32_t gem_handle)
 {
    unreachable("Unused");

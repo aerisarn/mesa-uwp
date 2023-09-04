@@ -1534,26 +1534,6 @@ anv_device_alloc_bo(struct anv_device *device,
       }
    }
 
-   if (alloc_flags & ANV_BO_ALLOC_SNOOPED) {
-      assert(alloc_flags & ANV_BO_ALLOC_MAPPED);
-      /* We don't want to change these defaults if it's going to be shared
-       * with another process.
-       */
-      assert(!(alloc_flags & ANV_BO_ALLOC_EXTERNAL));
-
-      /* Regular objects are created I915_CACHING_CACHED on LLC platforms and
-       * I915_CACHING_NONE on non-LLC platforms.  For many internal state
-       * objects, we'd rather take the snooping overhead than risk forgetting
-       * a CLFLUSH somewhere.  Userptr objects are always created as
-       * I915_CACHING_CACHED, which on non-LLC means snooped so there's no
-       * need to do this there.
-       */
-      if (device->info->has_caching_uapi && !device->info->has_llc) {
-         anv_gem_set_caching(device, new_bo.gem_handle,
-                             I915_CACHING_CACHED);
-      }
-   }
-
    VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
                                                alloc_flags,
                                                explicit_address);

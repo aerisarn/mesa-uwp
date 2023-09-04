@@ -55,24 +55,6 @@ anv_gem_munmap(struct anv_device *device, void *p, uint64_t size)
    munmap(p, size);
 }
 
-int
-anv_gem_set_caching(struct anv_device *device,
-                    uint32_t gem_handle, uint32_t caching)
-{
-   /* Guard by has_caching_uapi */
-   if (unlikely(device->info->kmd_type != INTEL_KMD_TYPE_I915)) {
-      assert(!"Missing implementation of anv_gem_set_caching\n");
-      return -1;
-   }
-
-   struct drm_i915_gem_caching gem_caching = {
-      .handle = gem_handle,
-      .caching = caching,
-   };
-
-   return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &gem_caching);
-}
-
 /**
  * On error, \a timeout_ns holds the remaining time.
  */
