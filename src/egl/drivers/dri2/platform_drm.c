@@ -632,8 +632,6 @@ dri2_initialize_drm(_EGLDisplay *disp)
    disp->Device = dev;
 
    dri2_dpy->driver_name = strdup(dri2_dpy->gbm_dri->driver_name);
-   dri2_dpy->is_render_node =
-      drmGetNodeTypeFromFd(dri2_dpy->fd_render_gpu) == DRM_NODE_RENDER;
 
    if (!dri2_load_driver_dri3(disp)) {
       err = "DRI3: failed to load driver";
