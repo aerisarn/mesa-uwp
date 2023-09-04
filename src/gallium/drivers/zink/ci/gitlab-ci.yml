@@ -44,6 +44,8 @@
   rules:
     - !reference [.collabora-turnip-rules, rules]
     - !reference [.zink-common-rules, rules]
+  variables:
+    ZINK_DEBUG: optimal_keys
 
 .zink-turnip-manual-rules:
   stage: layered-backends
