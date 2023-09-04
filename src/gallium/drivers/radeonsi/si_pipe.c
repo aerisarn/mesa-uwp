@@ -135,6 +135,7 @@ static const struct debug_named_value test_options[] = {
 
 struct ac_llvm_compiler *si_create_llvm_compiler(struct si_screen *sscreen)
 {
+#ifdef LLVM_AVAILABLE
    struct ac_llvm_compiler *compiler = CALLOC_STRUCT(ac_llvm_compiler);
    if (!compiler)
       return NULL;
@@ -156,6 +157,9 @@ struct ac_llvm_compiler *si_create_llvm_compiler(struct si_screen *sscreen)
       compiler->low_opt_passes = ac_create_llvm_passes(compiler->low_opt_tm);
 
    return compiler;
+#else
+   return NULL;
+#endif
 }
 
 void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
@@ -175,8 +179,10 @@ void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
 
 static void si_destroy_llvm_compiler(struct ac_llvm_compiler *compiler)
 {
+#ifdef LLVM_AVAILABLE
    ac_destroy_llvm_compiler(compiler);
    FREE(compiler);
+#endif
 }
 
 
