@@ -311,7 +311,7 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
    }
 
    NIR_PASS_V(nir, implement_intel_builtins);
-   NIR_PASS_V(nir, nir_lower_libclc, spirv_options.clc_shader);
+   NIR_PASS_V(nir, nir_link_shader_functions, spirv_options.clc_shader);
 
    /* We have to lower away local constant initializers right before we
     * inline functions.  That way they get properly initialized at the top

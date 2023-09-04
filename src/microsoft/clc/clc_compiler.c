@@ -700,7 +700,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    // according to the comment on nir_inline_functions
    NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
    NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_lower_libclc, clc_libclc_get_clc_shader(lib));
+   NIR_PASS_V(nir, nir_link_shader_functions, clc_libclc_get_clc_shader(lib));
    NIR_PASS_V(nir, nir_inline_functions);
 
    // Pick off the single entrypoint that we want.

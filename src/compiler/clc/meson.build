@@ -24,7 +24,6 @@ files_libmesaclc = files(
   'clc.c',
   'clc_helpers.cpp',
   'nir_load_libclc.c',
-  'nir_lower_libclc.c',
 )
 
 _libmesaclc_c_args = []
