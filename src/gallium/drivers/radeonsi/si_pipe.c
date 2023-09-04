@@ -25,6 +25,8 @@
 #include "vl/vl_decoder.h"
 #include "si_utrace.h"
 
+#include "aco_interface.h"
+
 #ifdef LLVM_AVAILABLE
 #include "ac_llvm_util.h"
 #endif
@@ -1200,8 +1202,18 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
                                             sscreen->info.has_dedicated_vram;
    }
 
-   /* ACO does not support compute cards yet. */
-   sscreen->use_aco = (sscreen->debug_flags & DBG(USE_ACO)) && sscreen->info.has_graphics;
+#ifdef LLVM_AVAILABLE
+   sscreen->use_aco = (sscreen->debug_flags & DBG(USE_ACO));
+#else
+   sscreen->use_aco = true;
+#endif
+
+   if (sscreen->use_aco && !aco_is_gpu_supported(&sscreen->info)) {
+      fprintf(stderr, "radeonsi: ACO does not support this chip yet\n");
+      FREE(sscreen->nir_options);
+      FREE(sscreen);
+      return NULL;
+   }
 
    if (sscreen->debug_flags & DBG(NO_GFX))
       sscreen->info.has_graphics = false;
