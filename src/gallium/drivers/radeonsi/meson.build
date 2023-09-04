@@ -72,12 +72,6 @@ files_libradeonsi = files(
   'si_shader_aco.c',
   'si_shader_info.c',
   'si_shader_internal.h',
-  'si_shader_llvm.c',
-  'si_shader_llvm.h',
-  'si_shader_llvm_gs.c',
-  'si_shader_llvm_ps.c',
-  'si_shader_llvm_tess.c',
-  'si_shader_llvm_vs.c',
   'si_shader_nir.c',
   'si_shaderlib_nir.c',
   'si_shaderlib_tgsi.c',
@@ -123,14 +117,31 @@ files_libradeonsi = files(
 )
 
 radeonsi_include_dirs = [inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_amd_common,
-                         inc_amd_common_llvm, inc_gallium_drivers, inc_compiler]
-radeonsi_deps = [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h, idep_mesautil, idep_aco, idep_u_tracepoints, idep_si_tracepoints]
+                         inc_gallium_drivers]
+radeonsi_deps = [dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h, idep_mesautil, idep_aco, idep_u_tracepoints, idep_si_tracepoints]
 
 if with_perfetto
   radeonsi_deps += dep_perfetto
 endif
 
 files_libradeonsi += ['si_perfetto.cpp', 'si_perfetto.h']
+
+amd_common_libs = [libamd_common]
+
+if with_llvm
+  files_libradeonsi += files(
+    'si_shader_llvm.c',
+    'si_shader_llvm.h',
+    'si_shader_llvm_gs.c',
+    'si_shader_llvm_ps.c',
+    'si_shader_llvm_tess.c',
+    'si_shader_llvm_vs.c',
+  )
+
+  radeonsi_include_dirs += [inc_amd_common_llvm]
+  radeonsi_deps += [dep_llvm]
+  amd_common_libs += [libamd_common_llvm]
+endif
 
 radeonsi_gfx_libs = []
 foreach ver : ['6', '7', '8', '9', '10', '103', '11', '115']
@@ -154,8 +165,8 @@ libradeonsi = static_library(
 
 driver_radeonsi = declare_dependency(
   compile_args : '-DGALLIUM_RADEONSI',
-  link_with : radeonsi_gfx_libs + [
-    libradeonsi, libradeonwinsys, libamdgpuwinsys, libamd_common, libamd_common_llvm, libgalliumvl
+  link_with : radeonsi_gfx_libs + amd_common_libs + [
+    libradeonsi, libradeonwinsys, libamdgpuwinsys, libgalliumvl
   ],
   dependencies : idep_nir,
 )
