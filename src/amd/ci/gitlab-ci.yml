@@ -586,7 +586,7 @@ radv-fossils:
   variables:
     VKD3D_PROTON_RESULTS: radv-kabini-vkd3d
 
-.vkd3d-polaris10-valve:
+vkd3d-polaris10-valve:
   extends:
     - .vkd3d-test-valve
     - .polaris10-test-valve-kws
