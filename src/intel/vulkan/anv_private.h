@@ -30,7 +30,6 @@
 #include <pthread.h>
 #include <assert.h>
 #include <stdint.h>
-#include "drm-uapi/i915_drm.h"
 #include "drm-uapi/drm_fourcc.h"
 
 #ifdef HAVE_VALGRIND
