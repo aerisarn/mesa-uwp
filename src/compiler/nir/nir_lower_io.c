@@ -1335,6 +1335,15 @@ get_load_global_op_from_addr_format(nir_address_format addr_format)
       return nir_intrinsic_load_global_2x32;
 }
 
+static nir_intrinsic_op
+get_load_global_constant_op_from_addr_format(nir_address_format addr_format)
+{
+   if (addr_format != nir_address_format_2x32bit_global)
+      return nir_intrinsic_load_global_constant;
+   else
+      return nir_intrinsic_load_global_2x32; /* no dedicated op, fallback */
+}
+
 static nir_def *
 build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
                        nir_def *addr, nir_address_format addr_format,
@@ -1446,7 +1455,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
             op = nir_intrinsic_load_constant;
          } else {
             assert(addr_format_is_global(addr_format, mode));
-            op = get_load_global_op_from_addr_format(addr_format);
+            op = get_load_global_constant_op_from_addr_format(addr_format);
          }
          break;
       default:
