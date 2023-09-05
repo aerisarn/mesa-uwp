@@ -172,6 +172,37 @@ public:
             unsupported = true;
             return visit_stop;
          }
+
+         if (param->data.mode != ir_var_function_in &&
+             param->data.mode != ir_var_const_in)
+            continue;
+
+         /* SSBO and shared vars might be passed to a built-in such as an
+          * atomic memory function, where copying these to a temp before
+          * passing to the atomic function is not valid so we must replace
+          * these instead. Also, shader inputs for interpolateAt functions
+          * also need to be replaced.
+          *
+          * We have no way to handle this in NIR or the glsl to nir pass
+          * currently so let the GLSL IR lowering handle it.
+          */
+         if (ir->is_builtin()) {
+            unsupported = true;
+            return visit_stop;
+         }
+
+         /* For opaque types, we want the inlined variable references
+          * referencing the passed in variable, since that will have
+          * the location information, which an assignment of an opaque
+          * variable wouldn't.
+          *
+          * We have no way to handle this in NIR or the glsl to nir pass
+          * currently so let the GLSL IR lowering handle it.
+          */
+         if (param->type->contains_opaque()) {
+            unsupported = true;
+            return visit_stop;
+         }
       }
 
       if (!glsl_type_is_vector_or_scalar(ir->return_type) &&
