@@ -557,11 +557,14 @@ struct brw_wm_prog_key {
 
    enum brw_sometimes line_aa:2;
 
+   /* Whether the preceding shader stage is mesh */
+   enum brw_sometimes mesh_input:2;
+
    bool coherent_fb_fetch:1;
    bool ignore_sample_mask_out:1;
    bool coarse_pixel:1;
 
-   uint64_t padding:55;
+   uint64_t padding:53;
 };
 
 struct brw_cs_prog_key {
