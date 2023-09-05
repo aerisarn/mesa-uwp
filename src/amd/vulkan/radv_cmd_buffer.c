@@ -711,10 +711,10 @@ radv_gang_finalize(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer, enum radv_cmd_flush_bits flags)
+radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer, enum radv_cmd_flush_bits flags, bool dgc)
 {
    const struct radv_device *device = cmd_buffer->device;
-   if (unlikely(device->sqtt.bo)) {
+   if (unlikely(device->sqtt.bo) && !dgc) {
       radeon_check_space(device->ws, cmd_buffer->cs, 2);
 
       radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -8995,7 +8995,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
 /* MUST inline this function to avoid massive perf loss in drawoverhead */
 ALWAYS_INLINE static bool
-radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info, uint32_t drawCount)
+radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info, uint32_t drawCount, bool dgc)
 {
    const bool has_prefetch = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7;
 
@@ -9064,7 +9064,8 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
       radv_emit_all_graphics_states(cmd_buffer, info);
    }
 
-   radv_describe_draw(cmd_buffer);
+   if (!dgc)
+      radv_describe_draw(cmd_buffer);
    if (likely(!info->indirect)) {
       struct radv_cmd_state *state = &cmd_buffer->state;
       struct radeon_cmdbuf *cs = cmd_buffer->cs;
@@ -9150,7 +9151,7 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 }
 
 ALWAYS_INLINE static void
-radv_after_draw(struct radv_cmd_buffer *cmd_buffer)
+radv_after_draw(struct radv_cmd_buffer *cmd_buffer, bool dgc)
 {
    const struct radeon_info *rad_info = &cmd_buffer->device->physical_device->rad_info;
    bool has_prefetch = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7;
@@ -9170,7 +9171,7 @@ radv_after_draw(struct radv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VGT_STREAMOUT_SYNC;
    }
 
-   radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_PS_PARTIAL_FLUSH);
+   radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_PS_PARTIAL_FLUSH, dgc);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9187,11 +9188,11 @@ radv_CmdDraw(VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t insta
    info.indirect = NULL;
    info.indexed = false;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
+   if (!radv_before_draw(cmd_buffer, &info, 1, false))
       return;
    const VkMultiDrawInfoEXT minfo = {firstVertex, vertexCount};
    radv_emit_direct_draw_packets(cmd_buffer, &info, 1, &minfo, 0, 0);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9211,10 +9212,10 @@ radv_CmdDrawMultiEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const Vk
    info.indirect = NULL;
    info.indexed = false;
 
-   if (!radv_before_draw(cmd_buffer, &info, drawCount))
+   if (!radv_before_draw(cmd_buffer, &info, drawCount, false))
       return;
    radv_emit_direct_draw_packets(cmd_buffer, &info, drawCount, pVertexInfo, 0, stride);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9231,11 +9232,11 @@ radv_CmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t
    info.strmout_buffer = NULL;
    info.indirect = NULL;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
+   if (!radv_before_draw(cmd_buffer, &info, 1, false))
       return;
    const VkMultiDrawIndexedInfoEXT minfo = {firstIndex, indexCount, vertexOffset};
    radv_emit_draw_packets_indexed(cmd_buffer, &info, 1, &minfo, 0, NULL);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9257,10 +9258,10 @@ radv_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCount,
    info.strmout_buffer = NULL;
    info.indirect = NULL;
 
-   if (!radv_before_draw(cmd_buffer, &info, drawCount))
+   if (!radv_before_draw(cmd_buffer, &info, drawCount, false))
       return;
    radv_emit_draw_packets_indexed(cmd_buffer, &info, drawCount, pIndexInfo, stride, pVertexOffset);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9280,10 +9281,10 @@ radv_CmdDrawIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDeviceSi
    info.indexed = false;
    info.instance_count = 0;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
+   if (!radv_before_draw(cmd_buffer, &info, 1, false))
       return;
    radv_emit_indirect_draw_packets(cmd_buffer, &info);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9303,10 +9304,10 @@ radv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkD
    info.strmout_buffer = NULL;
    info.instance_count = 0;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
+   if (!radv_before_draw(cmd_buffer, &info, 1, false))
       return;
    radv_emit_indirect_draw_packets(cmd_buffer, &info);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9328,10 +9329,10 @@ radv_CmdDrawIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDev
    info.indexed = false;
    info.instance_count = 0;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
+   if (!radv_before_draw(cmd_buffer, &info, 1, false))
       return;
    radv_emit_indirect_draw_packets(cmd_buffer, &info);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9354,10 +9355,10 @@ radv_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer
    info.strmout_buffer = NULL;
    info.instance_count = 0;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
+   if (!radv_before_draw(cmd_buffer, &info, 1, false))
       return;
    radv_emit_indirect_draw_packets(cmd_buffer, &info);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9384,7 +9385,7 @@ radv_CmdDrawMeshTasksEXT(VkCommandBuffer commandBuffer, uint32_t x, uint32_t y, 
       radv_emit_direct_mesh_draw_packet(cmd_buffer, x, y, z);
    }
 
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9417,7 +9418,7 @@ radv_CmdDrawMeshTasksIndirectEXT(VkCommandBuffer commandBuffer, VkBuffer _buffer
       radv_emit_indirect_mesh_draw_packets(cmd_buffer, &info);
    }
 
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -9451,7 +9452,7 @@ radv_CmdDrawMeshTasksIndirectCountEXT(VkCommandBuffer commandBuffer, VkBuffer _b
       radv_emit_indirect_mesh_draw_packets(cmd_buffer, &info);
    }
 
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 /* TODO: Use these functions with the normal dispatch path. */
@@ -9491,7 +9492,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       info.indexed = layout->indexed;
       info.instance_count = 0;
 
-      if (!radv_before_draw(cmd_buffer, &info, 1))
+      if (!radv_before_draw(cmd_buffer, &info, 1, true))
          return;
    }
 
@@ -9547,7 +9548,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       cmd_buffer->state.last_first_instance = -1;
       cmd_buffer->state.last_drawid = -1;
 
-      radv_after_draw(cmd_buffer);
+      radv_after_draw(cmd_buffer, true);
    }
 }
 
@@ -9777,7 +9778,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
    if (compute_shader->info.cs.regalloc_hang_bug)
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
 
-   radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_CS_PARTIAL_FLUSH);
+   radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_CS_PARTIAL_FLUSH, false);
 }
 
 static void
@@ -9825,7 +9826,7 @@ radv_dgc_after_dispatch(struct radv_cmd_buffer *cmd_buffer)
    if (compute_shader->info.cs.regalloc_hang_bug)
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
 
-   radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_CS_PARTIAL_FLUSH);
+   radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_CS_PARTIAL_FLUSH, true);
 }
 
 void
@@ -11070,12 +11071,12 @@ radv_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer, uint32_t instanc
    info.indexed = false;
    info.indirect = NULL;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
+   if (!radv_before_draw(cmd_buffer, &info, 1, false))
       return;
    struct VkMultiDrawInfoEXT minfo = {0, 0};
    radv_emit_strmout_buffer(cmd_buffer, &info);
    radv_emit_direct_draw_packets(cmd_buffer, &info, 1, &minfo, S_0287F0_USE_OPAQUE(1), 0);
-   radv_after_draw(cmd_buffer);
+   radv_after_draw(cmd_buffer, false);
 }
 
 /* VK_AMD_buffer_marker */
