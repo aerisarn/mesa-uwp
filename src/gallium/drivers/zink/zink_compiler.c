@@ -3267,6 +3267,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
             .demote_to_helper_invocation = true,
             .sparse_residency = true,
             .min_lod = true,
+            .workgroup_memory_explicit_layout = true,
          },
          .ubo_addr_format = nir_address_format_32bit_index_offset,
          .ssbo_addr_format = nir_address_format_32bit_index_offset,
