@@ -173,7 +173,7 @@ etc2_build_shader(struct vk_device *dev, const struct nir_shader_compiler_option
    nir_def *global_id = get_global_ids(&b, 3);
 
    nir_def *consts = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .range = 16);
-   nir_def *consts2 = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 0, .range = 4);
+   nir_def *consts2 = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 16, .range = 4);
    nir_def *offset = nir_channels(&b, consts, 7);
    nir_def *format = nir_channel(&b, consts, 3);
    nir_def *image_type = nir_channel(&b, consts2, 0);
