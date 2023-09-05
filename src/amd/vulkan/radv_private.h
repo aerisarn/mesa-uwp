@@ -1655,6 +1655,7 @@ struct radv_cmd_state {
    unsigned active_pipeline_queries;
    unsigned active_pipeline_gds_queries;
    unsigned active_prims_gen_queries;
+   unsigned active_prims_xfb_queries;
    unsigned active_prims_gen_gds_queries;
    unsigned active_prims_xfb_gds_queries;
    uint32_t trace_id;
@@ -1875,6 +1876,14 @@ static inline bool
 radv_cmdbuf_has_stage(const struct radv_cmd_buffer *cmd_buffer, gl_shader_stage stage)
 {
    return !!(cmd_buffer->state.active_stages & mesa_to_vk_shader_stage(stage));
+}
+
+static inline uint32_t
+radv_get_num_pipeline_stat_queries(struct radv_cmd_buffer *cmd_buffer)
+{
+   /* SAMPLE_STREAMOUTSTATS also requires PIPELINESTAT_START to be enabled. */
+   return cmd_buffer->state.active_pipeline_queries + cmd_buffer->state.active_prims_gen_queries +
+          cmd_buffer->state.active_prims_xfb_queries;
 }
 
 extern const struct vk_command_buffer_ops radv_cmd_buffer_ops;
