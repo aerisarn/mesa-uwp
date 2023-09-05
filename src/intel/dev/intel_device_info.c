@@ -1136,11 +1136,9 @@ static const struct intel_device_info intel_device_info_atsm_g11 = {
    .has_coarse_pixel_primitive_and_cb = true,                   \
    .has_mesh_shading = true,                                    \
    .has_ray_tracing = true,                                     \
-   .pat = {                                                     \
-      .coherent = 3, /* 1-way coherent */                       \
-      .scanout = 3, /* 1-way coherent */                        \
-      .writeback = 0,                                           \
-   }
+   .pat.coherent = PAT_ENTRY(3, WB, 1WAY),                      \
+   .pat.scanout = PAT_ENTRY(3, WB, 1WAY),                       \
+   .pat.writeback = PAT_ENTRY(0, WB, NONE)
 
 static const struct intel_device_info intel_device_info_mtl_u = {
    MTL_FEATURES,

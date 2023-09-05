@@ -92,11 +92,11 @@ i915_gem_create(struct anv_device *device,
    if (device->info->has_set_pat_uapi) {
       /* Set PAT param */
       if (alloc_flags & (ANV_BO_ALLOC_SNOOPED))
-         set_pat_param.pat_index = device->info->pat.coherent;
+         set_pat_param.pat_index = device->info->pat.coherent.index;
       else if (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT))
-         set_pat_param.pat_index = device->info->pat.scanout;
+         set_pat_param.pat_index = device->info->pat.scanout.index;
       else
-         set_pat_param.pat_index = device->info->pat.writeback;
+         set_pat_param.pat_index = device->info->pat.writeback.index;
       intel_i915_gem_add_ext(&gem_create.extensions,
                              I915_GEM_CREATE_EXT_SET_PAT,
                              &set_pat_param.base);

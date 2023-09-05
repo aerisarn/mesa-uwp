@@ -320,7 +320,7 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
 
    const struct intel_device_info *devinfo = &bufmgr->devinfo;
    if (devinfo->has_set_pat_uapi &&
-       iris_pat_index_for_bo_flags(devinfo, flags) != devinfo->pat.writeback)
+       iris_pat_index_for_bo_flags(devinfo, flags) != devinfo->pat.writeback.index)
       return NULL;
 
    if (devinfo->kmd_type == INTEL_KMD_TYPE_XE &&

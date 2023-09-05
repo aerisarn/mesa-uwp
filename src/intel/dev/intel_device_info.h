@@ -110,6 +110,31 @@ struct intel_memory_class_instance {
    uint16_t instance;
 };
 
+enum intel_device_info_mmap_mode {
+      INTEL_DEVICE_INFO_MMAP_MODE_UC = 0,
+      INTEL_DEVICE_INFO_MMAP_MODE_WC,
+      INTEL_DEVICE_INFO_MMAP_MODE_WB,
+};
+
+enum intel_device_info_coherency_mode {
+   INTEL_DEVICE_INFO_COHERENCY_MODE_NONE = 0,
+   INTEL_DEVICE_INFO_COHERENCY_MODE_1WAY, /* CPU caches are snooped by GPU */
+   INTEL_DEVICE_INFO_COHERENCY_MODE_2WAY /* Fully coherent between GPU and CPU */
+};
+
+struct intel_device_info_pat_entry {
+   uint8_t index;
+   enum intel_device_info_mmap_mode mmap;
+   enum intel_device_info_coherency_mode coherency;
+};
+
+#define PAT_ENTRY(index_, mmap_, coh_)                      \
+{                                                           \
+   .index = index_,                                         \
+   .mmap = INTEL_DEVICE_INFO_MMAP_MODE_##mmap_,             \
+   .coherency = INTEL_DEVICE_INFO_COHERENCY_MODE_##coh_     \
+}
+
 /**
  * Intel hardware information and quirks
  */
@@ -462,9 +487,9 @@ struct intel_device_info
    } mem;
 
    struct {
-      uint8_t coherent;
-      uint8_t scanout;
-      uint8_t writeback;
+      struct intel_device_info_pat_entry coherent;
+      struct intel_device_info_pat_entry scanout;
+      struct intel_device_info_pat_entry writeback;
    } pat;
 
    BITSET_DECLARE(workarounds, INTEL_WA_NUM);

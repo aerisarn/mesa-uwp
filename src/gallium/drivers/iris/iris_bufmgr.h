@@ -547,12 +547,12 @@ iris_pat_index_for_bo_flags(const struct intel_device_info *devinfo,
                             unsigned alloc_flags)
 {
    if (alloc_flags & BO_ALLOC_COHERENT)
-      return devinfo->pat.coherent;
+      return devinfo->pat.coherent.index;
 
    if (alloc_flags & (BO_ALLOC_SHARED | BO_ALLOC_SCANOUT))
-      return devinfo->pat.scanout;
+      return devinfo->pat.scanout.index;
 
-   return devinfo->pat.writeback;
+   return devinfo->pat.writeback.index;
 }
 
 enum iris_memory_zone iris_memzone_for_address(uint64_t address);
