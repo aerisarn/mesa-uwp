@@ -80,8 +80,8 @@ struct panfrost_vtable {
    /* Preload framebuffer */
    void (*preload)(struct panfrost_batch *, struct pan_fb_info *);
 
-   /* Initialize a Gallium context */
-   void (*context_init)(struct pipe_context *pipe);
+   /* Populate context vtable */
+   void (*context_populate_vtbl)(struct pipe_context *pipe);
 
    /* Device-dependent initialization of a panfrost_batch */
    void (*init_batch)(struct panfrost_batch *batch);

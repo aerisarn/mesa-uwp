@@ -940,7 +940,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    gallium->set_global_binding = panfrost_set_global_binding;
    gallium->memory_barrier = panfrost_memory_barrier;
 
-   pan_screen(screen)->vtbl.context_init(gallium);
+   pan_screen(screen)->vtbl.context_populate_vtbl(gallium);
 
    panfrost_resource_context_init(gallium);
    panfrost_shader_context_init(gallium);

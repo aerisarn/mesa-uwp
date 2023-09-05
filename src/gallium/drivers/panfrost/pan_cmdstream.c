@@ -4521,7 +4521,7 @@ panfrost_sampler_view_destroy(struct pipe_context *pctx,
 }
 
 static void
-context_init(struct pipe_context *pipe)
+context_populate_vtbl(struct pipe_context *pipe)
 {
    pipe->draw_vbo = panfrost_draw_vbo;
    pipe->launch_grid = panfrost_launch_grid;
@@ -4607,7 +4607,7 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
    screen->vtbl.emit_fragment_job = emit_fragment_job;
    screen->vtbl.screen_destroy = screen_destroy;
    screen->vtbl.preload = preload;
-   screen->vtbl.context_init = context_init;
+   screen->vtbl.context_populate_vtbl = context_populate_vtbl;
    screen->vtbl.init_batch = init_batch;
    screen->vtbl.get_blend_shader = GENX(pan_blend_get_shader_locked);
    screen->vtbl.init_polygon_list = init_polygon_list;
