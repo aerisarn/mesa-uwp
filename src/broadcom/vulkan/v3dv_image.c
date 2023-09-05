@@ -91,13 +91,12 @@ v3d_get_dimension_mpad(uint32_t dimension, uint32_t level, uint32_t block_dimens
    return u_minify(padded_dim, level - 1);
 }
 
-static void
+static bool
 v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
-                       uint32_t plane_offset)
+                       uint32_t plane_offset,
+                       const VkSubresourceLayout *plane_layouts)
 {
    assert(image->planes[plane].cpp > 0);
-   /* Texture Base Address needs to be 64-byte aligned */
-   assert(plane_offset % 64 == 0);
 
    uint32_t width = image->planes[plane].width;
    uint32_t height = image->planes[plane].height;
@@ -136,7 +135,20 @@ v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
    assert(depth > 0);
    assert(image->vk.mip_levels >= 1);
 
-   uint32_t offset = plane_offset;
+   /* Texture Base Address needs to be 64-byte aligned. If we have an explicit
+    * plane layout we will return false to fail image creation with appropriate
+    * error code.
+    */
+   uint32_t offset;
+   if (plane_layouts) {
+      offset = plane_layouts[plane].offset;
+      if (offset % 64 != 0)
+         return false;
+   } else {
+      offset = plane_offset;
+   }
+   assert(plane_offset % 64 == 0);
+
    for (int32_t i = image->vk.mip_levels - 1; i >= 0; i--) {
       struct v3d_resource_slice *slice = &image->planes[plane].slices[i];
 
@@ -209,6 +221,18 @@ v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
 
       slice->offset = offset;
       slice->stride = level_width * image->planes[plane].cpp;
+
+      /* We assume that rowPitch in the plane layout refers to level 0 */
+      if (plane_layouts && i == 0) {
+         if (plane_layouts[plane].rowPitch < slice->stride)
+            return false;
+         if (plane_layouts[plane].rowPitch % image->planes[plane].cpp)
+            return false;
+         if (image->tiled && (plane_layouts[plane].rowPitch % (4 * uif_block_w)))
+            return false;
+         slice->stride = plane_layouts[plane].rowPitch;
+      }
+
       slice->padded_height = level_height;
       if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
           slice->tiling == V3D_TILING_UIF_XOR) {
@@ -252,7 +276,8 @@ v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
       image->planes[plane].alignment = 4096;
    } else {
       image->planes[plane].alignment =
-         (image->vk.usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) ? 64 : image->planes[plane].cpp;
+         (image->vk.usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) ?
+            64 : image->planes[plane].cpp;
    }
 
    uint32_t align_offset =
@@ -273,15 +298,36 @@ v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
       image->planes[plane].cube_map_stride =
          align(image->planes[plane].slices[0].offset +
                image->planes[plane].slices[0].size, 64);
+
+      if (plane_layouts && image->vk.array_layers > 1) {
+         if (plane_layouts[plane].arrayPitch % 64 != 0)
+            return false;
+         if (plane_layouts[plane].arrayPitch <
+             image->planes[plane].cube_map_stride) {
+            return false;
+         }
+         image->planes[plane].cube_map_stride = plane_layouts[plane].arrayPitch;
+      }
+
       image->planes[plane].size += image->planes[plane].cube_map_stride *
                                    (image->vk.array_layers - 1);
    } else {
       image->planes[plane].cube_map_stride = image->planes[plane].slices[0].size;
+      if (plane_layouts) {
+         /* We assume that depthPitch in the plane layout refers to level 0 */
+         if (plane_layouts[plane].depthPitch !=
+             image->planes[plane].slices[0].size) {
+               return false;
+         }
+      }
    }
+
+   return true;
 }
 
-static void
-v3d_setup_slices(struct v3dv_image *image, bool disjoint)
+static bool
+v3d_setup_slices(struct v3dv_image *image, bool disjoint,
+                 const VkSubresourceLayout *plane_layouts)
 {
    if (disjoint && image->plane_count == 1)
       disjoint = false;
@@ -289,11 +335,15 @@ v3d_setup_slices(struct v3dv_image *image, bool disjoint)
    uint32_t offset = 0;
    for (uint8_t plane = 0; plane < image->plane_count; plane++) {
       offset = disjoint ? 0 : offset;
-      v3d_setup_plane_slices(image, plane, offset);
+      if (!v3d_setup_plane_slices(image, plane, offset, plane_layouts)) {
+         assert(plane_layouts);
+         return false;
+      }
       offset += align(image->planes[plane].size, 64);
    }
 
    image->non_disjoint_size = disjoint ? 0 : offset;
+   return true;
 }
 
 uint32_t
@@ -326,11 +376,13 @@ v3dv_image_init(struct v3dv_device *device,
     */
    VkImageTiling tiling = pCreateInfo->tiling;
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+   const VkImageDrmFormatModifierListCreateInfoEXT *mod_info = NULL;
+   const VkImageDrmFormatModifierExplicitCreateInfoEXT *explicit_mod_info = NULL;
    if (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
-      const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
+      mod_info =
          vk_find_struct_const(pCreateInfo->pNext,
                               IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
-      const VkImageDrmFormatModifierExplicitCreateInfoEXT *explicit_mod_info =
+      explicit_mod_info =
          vk_find_struct_const(pCreateInfo->pNext,
                               IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT);
       assert(mod_info || explicit_mod_info);
@@ -387,6 +439,8 @@ v3dv_image_init(struct v3dv_device *device,
 
    image->format = format;
    image->plane_count = vk_format_get_plane_count(pCreateInfo->format);
+   assert(!explicit_mod_info ||
+          image->plane_count == explicit_mod_info->drmFormatModifierPlaneCount);
 
    const struct vk_format_ycbcr_info *ycbcr_info =
       vk_format_get_ycbcr_info(image->vk.format);
@@ -423,7 +477,13 @@ v3dv_image_init(struct v3dv_device *device,
    image->vk.create_flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
    bool disjoint = image->vk.create_flags & VK_IMAGE_CREATE_DISJOINT_BIT;
-   v3d_setup_slices(image, disjoint);
+   bool ok =
+      v3d_setup_slices(image, disjoint,
+                       explicit_mod_info ? explicit_mod_info->pPlaneLayouts : NULL);
+   if (!ok) {
+      assert(explicit_mod_info);
+      return VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT;
+   }
 
 #ifdef ANDROID
    if (native_buffer != NULL) {
