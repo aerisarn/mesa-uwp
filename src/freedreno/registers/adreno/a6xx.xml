@@ -3976,7 +3976,7 @@ to upconvert to 32b float internally?
 	<bitset name="a6xx_hlsq_xs_cntl" inline="yes">
 		<bitfield name="CONSTLEN" low="0" high="7" shr="2" type="uint"/>
 		<bitfield name="ENABLED" pos="8" type="boolean"/>
-		<bitfield name="UNK9" pos="9" type="boolean" variants="A7XX-"/>
+		<bitfield name="READ_IMM_SHARED_CONSTS" pos="9" type="boolean" variants="A7XX-"/>
 	</bitset>
 
 	<reg32 offset="0xb800" name="HLSQ_VS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A6XX" usage="rp_blit"/>
@@ -4266,7 +4266,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xbb10" name="HLSQ_FS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A6XX" usage="rp_blit"/>
 	<reg32 offset="0xab03" name="HLSQ_FS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX-" usage="rp_blit"/>
 
-	<array offset="0xab40" name="HLSQ_SHARED_CONSTS_IMM" stride="1" length="32" variants="A7XX-"/>
+	<array offset="0xab40" name="HLSQ_SHARED_CONSTS_IMM" stride="1" length="64" variants="A7XX-"/>
 
 	<reg32 offset="0xbb11" name="HLSQ_SHARED_CONSTS" variants="A6XX" usage="cmd">
 		<doc>
