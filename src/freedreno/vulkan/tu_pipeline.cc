@@ -975,6 +975,8 @@ static const enum mesa_vk_dynamic_graphics_state tu_patch_control_points_state[]
 template <chip CHIP>
 static unsigned
 tu6_patch_control_points_size(struct tu_device *dev,
+                              const struct tu_shader *vs,
+                              const struct tu_shader *tcs,
                               const struct tu_pipeline *pipeline,
                               uint32_t patch_control_points)
 {
@@ -987,10 +989,12 @@ tu6_patch_control_points_size(struct tu_device *dev,
 template <chip CHIP>
 void
 tu6_emit_patch_control_points(struct tu_cs *cs,
+                              const struct tu_shader *vs,
+                              const struct tu_shader *tcs,
                               const struct tu_pipeline *pipeline,
                               uint32_t patch_control_points)
 {
-   if (!(pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT))
+   if (!tcs->variant)
       return;
 
    struct tu_device *dev = cs->device;
@@ -998,16 +1002,16 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
    tu6_emit_vs_params(cs,
                       &pipeline->program.link[MESA_SHADER_VERTEX].const_state,
                       pipeline->program.link[MESA_SHADER_VERTEX].constlen,
-                      pipeline->program.vs_param_stride,
+                      vs->variant->output_size,
                       patch_control_points);
 
    uint64_t tess_factor_iova, tess_param_iova;
    tu_get_tess_iova(dev, &tess_factor_iova, &tess_param_iova);
 
    uint32_t hs_params[8] = {
-      pipeline->program.vs_param_stride * patch_control_points * 4,  /* hs primitive stride */
-      pipeline->program.vs_param_stride * 4,                         /* hs vertex stride */
-      pipeline->program.hs_param_stride,
+      vs->variant->output_size * patch_control_points * 4,  /* hs primitive stride */
+      vs->variant->output_size * 4,                         /* hs vertex stride */
+      tcs->variant->output_size,
       patch_control_points,
       tess_param_iova,
       tess_param_iova >> 32,
@@ -1022,7 +1026,7 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
                   pipeline->program.hs_param_dwords, hs_params);
 
    uint32_t patch_local_mem_size_16b =
-      patch_control_points * pipeline->program.vs_param_stride / 4;
+      patch_control_points * vs->variant->output_size / 4;
 
    /* Total attribute slots in HS incoming patch. */
    tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
@@ -1037,12 +1041,12 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
        * making barriers less expensive. VS can't have barriers so we
        * don't care about VS invocations being in the same wave.
        */
-      max_patches_per_wave = wavesize / pipeline->program.hs_vertices_out;
+      max_patches_per_wave = wavesize / tcs->variant->tess.tcs_vertices_out;
    } else {
       /* VS is also in the same wave */
       max_patches_per_wave =
          wavesize / MAX2(patch_control_points,
-                         pipeline->program.hs_vertices_out);
+                         tcs->variant->tess.tcs_vertices_out);
    }
 
    uint32_t patches_per_wave =
@@ -1057,7 +1061,7 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
 
    /* maximum number of patches that can fit in tess factor/param buffers */
    uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
-                        TU_TESS_PARAM_SIZE / (pipeline->program.hs_param_stride * 4));
+                        TU_TESS_PARAM_SIZE / (tcs->variant->output_size * 4));
    /* convert from # of patches to draw count */
    subdraw_size *= patch_control_points;
 
@@ -2335,10 +2339,6 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    pipeline->program.vpc_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
    
    if (hs) {
-      pipeline->program.vs_param_stride = vs->output_size;
-      pipeline->program.hs_param_stride = hs->output_size;
-      pipeline->program.hs_vertices_out = hs->tess.tcs_vertices_out;
-
       const struct ir3_const_state *hs_const =
          &pipeline->program.link[MESA_SHADER_TESS_CTRL].const_state;
       unsigned hs_constlen =
@@ -3494,6 +3494,8 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
    DRAW_STATE_COND(patch_control_points,
                    TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
                    pipeline_contains_all_shader_state(pipeline),
+                   pipeline->shaders[MESA_SHADER_VERTEX],
+                   pipeline->shaders[MESA_SHADER_TESS_CTRL],
                    pipeline,
                    builder->graphics_state.ts->patch_control_points);
 #undef DRAW_STATE
@@ -3674,6 +3676,8 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
    DRAW_STATE_COND(patch_control_points,
                    TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
                    cmd->state.dirty & TU_CMD_DIRTY_PIPELINE,
+                   cmd->state.shaders[MESA_SHADER_VERTEX],
+                   cmd->state.shaders[MESA_SHADER_TESS_CTRL],
                    &cmd->state.pipeline->base,
                    cmd->vk.dynamic_graphics_state.ts.patch_control_points);
 #undef DRAW_STATE

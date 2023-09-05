@@ -153,10 +153,7 @@ struct tu_pipeline
       struct tu_draw_state vpc_state;
       struct tu_draw_state fs_state;
 
-      uint32_t vs_param_stride;
-      uint32_t hs_param_stride;
       uint32_t hs_param_dwords;
-      uint32_t hs_vertices_out;
 
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
 
