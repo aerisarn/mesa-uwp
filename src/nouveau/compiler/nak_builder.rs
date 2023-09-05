@@ -122,9 +122,7 @@ pub trait SSABuilder: Builder {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.push_op(OpIAdd3 {
             dst: dst.into(),
-            overflow: Dst::None,
             srcs: [Src::new_zero(), x, y],
-            carry: Src::new_imm_bool(false),
         });
         dst
     }

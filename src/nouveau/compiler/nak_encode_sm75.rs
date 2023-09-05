@@ -551,40 +551,41 @@ impl SM75Instr {
     }
 
     fn encode_iadd3(&mut self, op: &OpIAdd3) {
-        /* TODO: This should happen as part of a legalization pass */
-        assert!(op.srcs[0].is_reg_or_zero());
-        if op.srcs[2].is_reg_or_zero() {
-            self.encode_alu(
-                0x010,
-                Some(op.dst),
-                ALUSrc::from_src(&op.srcs[0]),
-                ALUSrc::from_src(&op.srcs[1]),
-                ALUSrc::from_src(&op.srcs[2]),
-            );
-        } else {
-            self.encode_alu(
-                0x010,
-                Some(op.dst),
-                ALUSrc::from_src(&op.srcs[0]),
-                ALUSrc::from_src(&op.srcs[2]),
-                ALUSrc::from_src(&op.srcs[1]),
-            );
-        }
+        // Hardware requires at least one of these be unmodified
+        assert!(op.srcs[0].src_mod.is_none() || op.srcs[1].src_mod.is_none());
 
-        self.set_pred_dst(81..84, op.overflow);
-
-        /* Carry for IADD3 is special because the default (register 7) is false
-         * instead of the usual true and it doesn't have a not modifier.
-         */
-        assert!(op.carry.src_mod.is_none());
-        self.set_pred_reg(
-            84..87,
-            match op.carry.src_ref {
-                SrcRef::False => RegRef::new(RegFile::Pred, 7, 1),
-                SrcRef::Reg(reg) => reg,
-                _ => panic!("Invalid carry source"),
-            },
+        self.encode_alu(
+            0x010,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&op.srcs[2]),
         );
+
+        self.set_pred_dst(81..84, Dst::None);
+        self.set_pred_dst(84..87, Dst::None);
+    }
+
+    fn encode_iadd3x(&mut self, op: &OpIAdd3X) {
+        // Hardware requires at least one of these be unmodified
+        assert!(op.srcs[0].src_mod.is_none() || op.srcs[1].src_mod.is_none());
+
+        self.encode_alu(
+            0x010,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&op.srcs[2]),
+        );
+
+        // .X
+        self.set_bit(74, op.high);
+
+        self.set_pred_dst(81..84, op.overflow[0]);
+        self.set_pred_dst(84..87, op.overflow[1]);
+
+        self.set_pred_src(87..90, 90, op.carry[0]);
+        self.set_pred_src(77..80, 80, op.carry[1]);
     }
 
     fn encode_imad(&mut self, op: &OpIMad) {
@@ -1563,6 +1564,7 @@ impl SM75Instr {
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
+            Op::IAdd3X(op) => si.encode_iadd3x(&op),
             Op::IMad(op) => si.encode_imad(&op),
             Op::IMad64(op) => si.encode_imad64(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),

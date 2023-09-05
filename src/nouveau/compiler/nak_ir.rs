@@ -591,6 +591,13 @@ pub enum Dst {
 }
 
 impl Dst {
+    pub fn is_none(&self) -> bool {
+        match self {
+            Dst::None => true,
+            _ => false,
+        }
+    }
+
     pub fn as_reg(&self) -> Option<&RegRef> {
         match self {
             Dst::Reg(r) => Some(r),
@@ -1000,6 +1007,14 @@ impl Src {
     pub fn is_zero(&self) -> bool {
         match self.src_ref {
             SrcRef::Zero => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_false(&self) -> bool {
+        match self.src_ref {
+            SrcRef::True => self.src_mod.is_bnot(),
+            SrcRef::False => !self.src_mod.is_bnot(),
             _ => false,
         }
     }
@@ -2080,27 +2095,58 @@ impl fmt::Display for OpINeg {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd3 {
     pub dst: Dst,
-    pub overflow: Dst,
 
     #[src_type(I32)]
     pub srcs: [Src; 3],
-
-    #[src_type(Pred)]
-    pub carry: Src,
 }
 
 impl fmt::Display for OpIAdd3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "IADD3 {{ {} {} }} {{ {}, {}, {}, {} }}",
-            self.dst,
-            self.overflow,
-            self.srcs[0],
-            self.srcs[1],
-            self.srcs[2],
-            self.carry,
+            "IADD3 {} {{ {}, {}, {} }}",
+            self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
         )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIAdd3X {
+    pub dst: Dst,
+    pub overflow: [Dst; 2],
+
+    pub high: bool,
+
+    #[src_type(ALU)]
+    pub srcs: [Src; 3],
+
+    #[src_type(Pred)]
+    pub carry: [Src; 2],
+}
+
+impl fmt::Display for OpIAdd3X {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "IADD3")?;
+        if self.high {
+            write!(f, ".HI ")?;
+        } else {
+            write!(f, ".LO ")?;
+        }
+        if self.overflow[0].is_none() && self.overflow[1].is_none() {
+            write!(f, "{} ", self.dst)?;
+        } else {
+            write!(
+                f,
+                "{{ {}, {}, {} }} ",
+                self.dst, self.overflow[0], self.overflow[1],
+            )?;
+        }
+        write!(f, "{{ {}, {}, {}", self.srcs[0], self.srcs[1], self.srcs[2])?;
+        if self.high {
+            write!(f, ", {}, {}", self.carry[0], self.carry[1])?;
+        }
+        write!(f, " }}")
     }
 }
 
@@ -3574,6 +3620,7 @@ pub enum Op {
     IAbs(OpIAbs),
     INeg(OpINeg),
     IAdd3(OpIAdd3),
+    IAdd3X(OpIAdd3X),
     IMad(OpIMad),
     IMad64(OpIMad64),
     IMnMx(OpIMnMx),
@@ -3950,6 +3997,7 @@ impl Instr {
             | Op::IAbs(_)
             | Op::INeg(_)
             | Op::IAdd3(_)
+            | Op::IAdd3X(_)
             | Op::IMad(_)
             | Op::IMad64(_)
             | Op::IMnMx(_)
@@ -4238,9 +4286,7 @@ impl Shader {
             match instr.op {
                 Op::INeg(neg) => MappedInstrs::One(Instr::new_boxed(OpIAdd3 {
                     dst: neg.dst,
-                    overflow: Dst::None,
                     srcs: [Src::new_zero(), neg.src.ineg(), Src::new_zero()],
-                    carry: Src::new_imm_bool(false),
                 })),
                 Op::FSOut(out) => {
                     let mut pcopy = OpParCopy::new();

@@ -445,17 +445,19 @@ impl<'a> ShaderFromNir<'a> {
                     let y = srcs[1].as_ssa().unwrap();
                     let sum = b.alloc_ssa(RegFile::GPR, 2);
                     let carry = b.alloc_ssa(RegFile::Pred, 1);
-                    b.push_op(OpIAdd3 {
+                    b.push_op(OpIAdd3X {
                         dst: sum[0].into(),
-                        overflow: carry.into(),
+                        overflow: [carry.into(), Dst::None],
+                        high: false,
                         srcs: [x[0].into(), y[0].into(), Src::new_zero()],
-                        carry: Src::new_imm_bool(false),
+                        carry: [SrcRef::False.into(), SrcRef::False.into()],
                     });
-                    b.push_op(OpIAdd3 {
+                    b.push_op(OpIAdd3X {
                         dst: sum[1].into(),
-                        overflow: Dst::None,
+                        overflow: [Dst::None, Dst::None],
+                        high: true,
                         srcs: [x[1].into(), y[1].into(), Src::new_zero()],
-                        carry: carry.into(),
+                        carry: [carry.into(), SrcRef::False.into()],
                     });
                     sum
                 } else {
@@ -634,9 +636,7 @@ impl<'a> ShaderFromNir<'a> {
                         let gt_neg = b.ineg(gt.into());
                         b.push_op(OpIAdd3 {
                             dst: dst.into(),
-                            overflow: Dst::None,
                             srcs: [lt.into(), gt_neg.into(), Src::new_zero()],
-                            carry: Src::new_imm_bool(false),
                         });
                     }
                     IntType::I64 => {
@@ -644,9 +644,7 @@ impl<'a> ShaderFromNir<'a> {
                         let gt_neg = b.ineg(gt.into());
                         b.push_op(OpIAdd3 {
                             dst: high.into(),
-                            overflow: Dst::None,
                             srcs: [lt.into(), gt_neg.into(), Src::new_zero()],
-                            carry: Src::new_imm_bool(false),
                         });
                         b.push_op(OpShf {
                             dst: dst.into(),
