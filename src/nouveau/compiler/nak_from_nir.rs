@@ -699,27 +699,30 @@ impl<'a> ShaderFromNir<'a> {
                 });
 
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
+
+                let selection = PrmtSelectionEval::from([
+                    PrmtSelection {
+                        src: PrmtSrc::Byte5,
+                        sign_extend: false,
+                    },
+                    PrmtSelection {
+                        src: PrmtSrc::Byte4,
+                        sign_extend: false,
+                    },
+                    PrmtSelection {
+                        src: PrmtSrc::Byte1,
+                        sign_extend: false,
+                    },
+                    PrmtSelection {
+                        src: PrmtSrc::Byte0,
+                        sign_extend: false,
+                    },
+                ]);
+
                 b.push_op(OpPrmt {
                     dst: dst.into(),
                     srcs: [low.into(), high.into()],
-                    selection: PrmtSelectionEval::from([
-                        PrmtSelection {
-                            src: PrmtSrc::Byte5,
-                            sign_extend: false,
-                        },
-                        PrmtSelection {
-                            src: PrmtSrc::Byte4,
-                            sign_extend: false,
-                        },
-                        PrmtSelection {
-                            src: PrmtSrc::Byte1,
-                            sign_extend: false,
-                        },
-                        PrmtSelection {
-                            src: PrmtSrc::Byte0,
-                            sign_extend: false,
-                        },
-                    ]),
+                    selection: Src::new_imm_u32(selection.inner()),
                 });
                 dst
             }

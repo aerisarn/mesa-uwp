@@ -2584,22 +2584,15 @@ pub struct OpPrmt {
     #[src_type(ALU)]
     pub srcs: [Src; 2],
 
-    pub selection: PrmtSelectionEval,
+    pub selection: Src,
 }
 
 impl fmt::Display for OpPrmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sel: [PrmtSelection; 4] = self.selection.into();
         write!(
             f,
-            "PRMT {}, {} [{:?}, {:?}, {:?}, {:?}], {}",
-            self.dst,
-            self.srcs[0],
-            sel[0].src,
-            sel[1].src,
-            sel[2].src,
-            sel[3].src,
-            self.srcs[1],
+            "PRMT {}, {} [{}], {}",
+            self.dst, self.srcs[0], self.selection, self.srcs[1],
         )
     }
 }

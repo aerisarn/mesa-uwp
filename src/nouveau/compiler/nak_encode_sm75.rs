@@ -837,7 +837,7 @@ impl SM75Instr {
             0x16,
             Some(op.dst),
             ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::Imm32(op.selection.inner()),
+            ALUSrc::from_src(&op.selection),
             ALUSrc::from_src(&op.srcs[1]),
         );
     }
