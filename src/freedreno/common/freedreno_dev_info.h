@@ -191,6 +191,10 @@ struct fd_dev_info {
    } a6xx;
 
    struct {
+      /* stsc may need to be done twice for the same range to workaround
+       * _something_, observed in blob's disassembly.
+       */
+      bool stsc_duplication_quirk;
    } a7xx;
 };
 

@@ -704,7 +704,9 @@ add_gpus([
 
 a7xx_730 = A7XXProps()
 
-a7xx_740 = A7XXProps()
+a7xx_740 = A7XXProps(
+        stsc_duplication_quirk = True,
+    )
 
 add_gpus([
         GPUId(chip_id=0x07030001, name="FD730"), # KGSL, no speedbin data

@@ -4256,9 +4256,10 @@ tu6_user_consts_size(const struct tu_const_state *const_state,
 {
    uint32_t dwords = 0;
 
-   if (const_state->push_consts.dwords > 0) {
+   if (const_state->push_consts.type == IR3_PUSH_CONSTS_PER_STAGE) {
       unsigned num_units = const_state->push_consts.dwords;
       dwords += 4 + num_units;
+      assert(num_units > 0);
    }
 
    dwords += 8 * const_state->num_inline_ubos;
@@ -4267,12 +4268,10 @@ tu6_user_consts_size(const struct tu_const_state *const_state,
 }
 
 static void
-tu6_emit_user_consts(struct tu_cs *cs,
-                     const struct tu_const_state *const_state,
-                     unsigned constlen,
-                     gl_shader_stage type,
-                     struct tu_descriptor_state *descriptors,
-                     uint32_t *push_constants)
+tu6_emit_per_stage_push_consts(struct tu_cs *cs,
+                               const struct tu_const_state *const_state,
+                               gl_shader_stage type,
+                               uint32_t *push_constants)
 {
    if (const_state->push_consts.type == IR3_PUSH_CONSTS_PER_STAGE) {
       unsigned num_units = const_state->push_consts.dwords;
@@ -4291,7 +4290,15 @@ tu6_emit_user_consts(struct tu_cs *cs,
       for (unsigned i = 0; i < num_units; i++)
          tu_cs_emit(cs, push_constants[i + offset]);
    }
+}
 
+static void
+tu6_emit_inline_ubo(struct tu_cs *cs,
+                    const struct tu_const_state *const_state,
+                    unsigned constlen,
+                    gl_shader_stage type,
+                    struct tu_descriptor_state *descriptors)
+{
    /* Emit loads of inline uniforms. These load directly from the uniform's
     * storage space inside the descriptor set.
     */
@@ -4349,6 +4356,18 @@ tu6_emit_shared_consts(struct tu_cs *cs,
    }
 }
 
+static void
+tu7_emit_shared_preamble_consts(
+   struct tu_cs *cs,
+   const struct tu_push_constant_range *shared_consts,
+   uint32_t *push_constants)
+{
+   tu_cs_emit_pkt4(cs, REG_A7XX_HLSQ_SHARED_CONSTS_IMM(shared_consts->lo),
+                   shared_consts->dwords);
+   tu_cs_emit_array(cs, push_constants + shared_consts->lo,
+                    shared_consts->dwords);
+}
+
 static uint32_t
 tu6_const_size(struct tu_cmd_buffer *cmd,
                const struct tu_push_constant_range *shared_consts,
@@ -4358,6 +4377,8 @@ tu6_const_size(struct tu_cmd_buffer *cmd,
 
    if (shared_consts->type == IR3_PUSH_CONSTS_SHARED) {
       dwords += shared_consts->dwords + 4;
+   } else if (shared_consts->type == IR3_PUSH_CONSTS_SHARED_PREAMBLE) {
+      dwords += shared_consts->dwords + 1;
    }
 
    if (compute) {
@@ -4372,8 +4393,7 @@ tu6_const_size(struct tu_cmd_buffer *cmd,
 }
 
 static struct tu_draw_state
-tu6_emit_consts(struct tu_cmd_buffer *cmd,
-                bool compute)
+tu_emit_consts(struct tu_cmd_buffer *cmd, bool compute)
 {
    uint32_t dwords = 0;
    const struct tu_push_constant_range *shared_consts =
@@ -4390,24 +4410,30 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
 
    if (shared_consts->type == IR3_PUSH_CONSTS_SHARED) {
       tu6_emit_shared_consts(&cs, shared_consts, cmd->push_constants, compute);
+   } else if (shared_consts->type == IR3_PUSH_CONSTS_SHARED_PREAMBLE) {
+      tu7_emit_shared_preamble_consts(&cs, shared_consts, cmd->push_constants);
    }
 
    if (compute) {
-      tu6_emit_user_consts(&cs,
-                           &cmd->state.shaders[MESA_SHADER_COMPUTE]->const_state,
-                           cmd->state.shaders[MESA_SHADER_COMPUTE]->variant->constlen,
-                           MESA_SHADER_COMPUTE,
-                           tu_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_COMPUTE),
-                           cmd->push_constants);
+      tu6_emit_per_stage_push_consts(
+         &cs, &cmd->state.shaders[MESA_SHADER_COMPUTE]->const_state,
+         MESA_SHADER_COMPUTE, cmd->push_constants);
+      tu6_emit_inline_ubo(
+         &cs, &cmd->state.shaders[MESA_SHADER_COMPUTE]->const_state,
+         cmd->state.shaders[MESA_SHADER_COMPUTE]->variant->constlen,
+         MESA_SHADER_COMPUTE,
+         tu_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_COMPUTE));
    } else {
-      struct tu_descriptor_state *descriptors  =
+      struct tu_descriptor_state *descriptors =
          tu_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
       for (uint32_t type = MESA_SHADER_VERTEX; type <= MESA_SHADER_FRAGMENT; type++) {
          const struct tu_program_descriptor_linkage *link =
             &cmd->state.program.link[type];
-         tu6_emit_user_consts(&cs, &link->tu_const_state, link->constlen,
-                              (gl_shader_stage) type,
-                              descriptors, cmd->push_constants);
+         tu6_emit_per_stage_push_consts(&cs, &link->tu_const_state,
+                                        (gl_shader_stage) type,
+                                        cmd->push_constants);
+         tu6_emit_inline_ubo(&cs, &link->tu_const_state, link->constlen,
+                             (gl_shader_stage) type, descriptors);
       }
    }
 
@@ -4751,7 +4777,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    }
 
    if (dirty & TU_CMD_DIRTY_SHADER_CONSTS)
-      cmd->state.shader_const = tu6_emit_consts(cmd, false);
+      cmd->state.shader_const = tu_emit_consts(cmd, false);
 
    if (dirty & TU_CMD_DIRTY_DESC_SETS)
       tu6_emit_descriptor_sets<CHIP>(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -5502,7 +5528,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    tu_emit_cache_flush<CHIP>(cmd);
 
    /* note: no reason to have this in a separate IB */
-   tu_cs_emit_state_ib(cs, tu6_emit_consts(cmd, true));
+   tu_cs_emit_state_ib(cs, tu_emit_consts(cmd, true));
 
    tu_emit_compute_driver_params<CHIP>(cmd, cs, info);
 

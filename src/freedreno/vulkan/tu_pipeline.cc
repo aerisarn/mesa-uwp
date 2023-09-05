@@ -318,7 +318,11 @@ tu_push_consts_type(const struct tu_pipeline_layout *layout,
    if (tu6_shared_constants_enable(layout, compiler)) {
       return IR3_PUSH_CONSTS_SHARED;
    } else {
-      return IR3_PUSH_CONSTS_PER_STAGE;
+      if (compiler->gen >= 7) {
+         return IR3_PUSH_CONSTS_SHARED_PREAMBLE;
+      } else {
+         return IR3_PUSH_CONSTS_PER_STAGE;
+      }
    }
 }
 
@@ -385,7 +389,9 @@ tu6_emit_xs_config(struct tu_cs *cs,
 
    tu_cs_emit_pkt4(cs, cfg->reg_hlsq_xs_ctrl, 1);
    tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(xs->constlen) |
-                  A6XX_HLSQ_VS_CNTL_ENABLED);
+                     A6XX_HLSQ_VS_CNTL_ENABLED |
+                     COND(xs->shader_options.push_consts_type == IR3_PUSH_CONSTS_SHARED_PREAMBLE,
+                          A7XX_HLSQ_VS_CNTL_READ_IMM_SHARED_CONSTS));
 }
 TU_GENX(tu6_emit_xs_config);
 
@@ -2335,10 +2341,11 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                               &pipeline->shaders[i]->const_state,
                               variants[i]);
 
-      if (pipeline->shaders[i]->const_state.push_consts.type ==
-          IR3_PUSH_CONSTS_SHARED) {
-         pipeline->program.shared_consts =
-            pipeline->shaders[i]->const_state.push_consts;
+      struct tu_push_constant_range *push_consts =
+         &pipeline->shaders[i]->const_state.push_consts;
+      if (push_consts->type == IR3_PUSH_CONSTS_SHARED ||
+          push_consts->type == IR3_PUSH_CONSTS_SHARED_PREAMBLE) {
+         pipeline->program.shared_consts = *push_consts;
       }
    }
 

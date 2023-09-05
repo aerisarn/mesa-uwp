@@ -245,6 +245,8 @@ struct ir3_compiler {
    uint64_t geom_shared_consts_size_quirk;
 
    bool has_fs_tex_prefetch;
+
+   bool stsc_duplication_quirk;
 };
 
 void ir3_compiler_destroy(struct ir3_compiler *compiler);

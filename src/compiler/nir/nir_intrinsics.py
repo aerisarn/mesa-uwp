@@ -1329,6 +1329,10 @@ store("uniform_ir3", [], indices=[BASE])
 # vec4's.
 intrinsic("copy_ubo_to_uniform_ir3", [1, 1], indices=[BASE, RANGE])
 
+# IR3-specific intrinsic for stsc. Loads from push consts to constant file
+# Should be used in the shader preamble.
+intrinsic("copy_push_const_to_uniform_ir3", [1], indices=[BASE, RANGE])
+
 # Intrinsics used by the Midgard/Bifrost blend pipeline. These are defined
 # within a blend shader to read/write the raw value from the tile buffer,
 # without applying any format conversion in the process. If the shader needs

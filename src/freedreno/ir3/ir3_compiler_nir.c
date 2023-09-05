@@ -2678,6 +2678,16 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       array_insert(b, b->keeps, stc);
       break;
    }
+   case nir_intrinsic_copy_push_const_to_uniform_ir3: {
+      struct ir3_instruction *load =
+         ir3_instr_create(ctx->block, OPC_PUSH_CONSTS_LOAD_MACRO, 0, 0);
+      array_insert(b, b->keeps, load);
+
+      load->push_consts.dst_base = nir_src_as_uint(intr->src[0]);
+      load->push_consts.src_base = nir_intrinsic_base(intr);
+      load->push_consts.src_size = nir_intrinsic_range(intr);
+      break;
+   }
    default:
       ir3_context_error(ctx, "Unhandled intrinsic type: %s\n",
                         nir_intrinsic_infos[intr->intrinsic].name);

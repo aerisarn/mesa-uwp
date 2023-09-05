@@ -747,6 +747,9 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 
    progress |= OPT(s, ir3_nir_lower_ubo_loads, so);
 
+   if (so->shader_options.push_consts_type == IR3_PUSH_CONSTS_SHARED_PREAMBLE)
+      progress |= OPT(s, ir3_nir_lower_push_consts_to_preamble, so);
+
    progress |= OPT(s, ir3_nir_lower_preamble, so);
 
    OPT_V(s, nir_lower_amul, ir3_glsl_type_size);

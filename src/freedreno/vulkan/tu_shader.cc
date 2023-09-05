@@ -2286,6 +2286,8 @@ tu_shader_create(struct tu_device *dev,
       .api_wavesize = key->api_wavesize,
       .real_wavesize = key->real_wavesize,
       .push_consts_type = shader->const_state.push_consts.type,
+      .push_consts_base = shader->const_state.push_consts.lo,
+      .push_consts_dwords = shader->const_state.push_consts.dwords,
    };
 
    struct ir3_shader *ir3_shader =

@@ -151,6 +151,7 @@ enum ir3_push_consts_type {
    IR3_PUSH_CONSTS_NONE,
    IR3_PUSH_CONSTS_PER_STAGE,
    IR3_PUSH_CONSTS_SHARED,
+   IR3_PUSH_CONSTS_SHARED_PREAMBLE,
 };
 
 /**
@@ -507,6 +508,9 @@ struct ir3_shader_options {
     */
    enum ir3_wavesize_option real_wavesize;
    enum ir3_push_consts_type push_consts_type;
+
+   uint32_t push_consts_base;
+   uint32_t push_consts_dwords;
 };
 
 /**
