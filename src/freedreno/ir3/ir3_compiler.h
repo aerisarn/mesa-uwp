@@ -70,6 +70,8 @@ struct ir3_compiler_options {
 
   /* If base_vertex should be lowered in nir */
   bool lower_base_vertex;
+
+  bool shared_push_consts;
 };
 
 struct ir3_compiler {

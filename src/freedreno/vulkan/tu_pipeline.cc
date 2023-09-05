@@ -315,6 +315,9 @@ tu_push_consts_type(const struct tu_pipeline_layout *layout,
    if (!layout->push_constant_size)
       return IR3_PUSH_CONSTS_NONE;
 
+   if (TU_DEBUG(PUSH_CONSTS_PER_STAGE))
+      return IR3_PUSH_CONSTS_PER_STAGE;
+
    if (tu6_shared_constants_enable(layout, compiler)) {
       return IR3_PUSH_CONSTS_SHARED;
    } else {
