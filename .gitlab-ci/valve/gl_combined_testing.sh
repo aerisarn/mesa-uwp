@@ -16,10 +16,7 @@ function execute_testsuite {
     fi
 }
 
-echo -e "\n# GL CTS testing"
-DEQP_VER=gl46 execute_testsuite gl ./install/deqp-runner.sh
-
-echo -e "\n# GLES CTS testing"
+echo -e "\n# GLES/GL CTS testing"
 DEQP_SUITE=zink-radv execute_testsuite gles ./install/deqp-runner.sh
 
 echo -e "\n# Piglit testing"
