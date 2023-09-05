@@ -743,7 +743,7 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
 
 static void
 radv_amdgpu_cs_execute_ib(struct radeon_cmdbuf *_cs, struct radeon_winsys_bo *bo, const uint64_t offset,
-                          const uint32_t cdw)
+                          const uint32_t cdw, const bool predicate)
 {
    struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
    const uint64_t va = bo->va + offset;
@@ -752,13 +752,15 @@ radv_amdgpu_cs_execute_ib(struct radeon_cmdbuf *_cs, struct radeon_winsys_bo *bo
       return;
 
    if (cs->hw_ip == AMD_IP_GFX && cs->use_ib) {
-      radeon_emit(&cs->base, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
+      radeon_emit(&cs->base, PKT3(PKT3_INDIRECT_BUFFER, 2, predicate));
       radeon_emit(&cs->base, va);
       radeon_emit(&cs->base, va >> 32);
       radeon_emit(&cs->base, cdw);
    } else {
       const uint32_t ib_size = radv_amdgpu_cs_get_initial_size(cs->ws, cs->hw_ip);
       VkResult result;
+
+      assert(!predicate);
 
       /* Finalize the current CS without chaining to execute the external IB. */
       radv_amdgpu_cs_finalize(_cs);

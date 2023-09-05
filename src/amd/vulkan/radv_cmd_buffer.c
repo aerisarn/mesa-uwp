@@ -9459,6 +9459,18 @@ radv_CmdDrawMeshTasksIndirectCountEXT(VkCommandBuffer commandBuffer, VkBuffer _b
 static void radv_dgc_before_dispatch(struct radv_cmd_buffer *cmd_buffer);
 static void radv_dgc_after_dispatch(struct radv_cmd_buffer *cmd_buffer);
 
+static bool
+radv_use_dgc_predication(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
+{
+   VK_FROM_HANDLE(radv_buffer, seq_count_buffer, pGeneratedCommandsInfo->sequencesCountBuffer);
+
+   /* Enable conditional rendering (if not enabled by user) to skip prepare/execute DGC calls when
+    * the indirect sequence count might be zero. This can only be enabled on GFX because on ACE it's
+    * not possible to skip the execute DGC call (ie. no INDIRECT_PACKET)
+    */
+   return cmd_buffer->qf == RADV_QUEUE_GENERAL && seq_count_buffer && !cmd_buffer->state.predicating;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPreprocessed,
                                    const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
@@ -9468,12 +9480,22 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
    VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
    const bool compute = layout->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
+   const bool use_predication = radv_use_dgc_predication(cmd_buffer, pGeneratedCommandsInfo);
    const struct radv_device *device = cmd_buffer->device;
 
    /* Secondary command buffers are needed for the full extension but can't use
     * PKT3_INDIRECT_BUFFER.
     */
    assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+   if (use_predication) {
+      VK_FROM_HANDLE(radv_buffer, seq_count_buffer, pGeneratedCommandsInfo->sequencesCountBuffer);
+      const uint64_t va = radv_buffer_get_va(seq_count_buffer->bo) + seq_count_buffer->offset +
+                          pGeneratedCommandsInfo->sequencesCountOffset;
+
+      radv_begin_conditional_rendering(cmd_buffer, va, true);
+      cmd_buffer->state.predicating = true;
+   }
 
    radv_prepare_dgc(cmd_buffer, pGeneratedCommandsInfo);
 
@@ -9507,12 +9529,12 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    }
 
    if (compute || !view_mask) {
-      device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2);
+      device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2, cmd_buffer->state.predicating);
    } else {
       u_foreach_bit (view, view_mask) {
          radv_emit_view_index(cmd_buffer, view);
 
-         device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2);
+         device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2, cmd_buffer->state.predicating);
       }
    }
 
@@ -9549,6 +9571,11 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       cmd_buffer->state.last_drawid = -1;
 
       radv_after_draw(cmd_buffer, true);
+   }
+
+   if (use_predication) {
+      cmd_buffer->state.predicating = false;
+      radv_end_conditional_rendering(cmd_buffer);
    }
 }
 
@@ -10625,28 +10652,11 @@ radv_CmdWaitEvents2(VkCommandBuffer commandBuffer, uint32_t eventCount, const Vk
    radv_barrier(cmd_buffer, pDependencyInfos, RGP_BARRIER_EXTERNAL_CMD_WAIT_EVENTS);
 }
 
-/* VK_EXT_conditional_rendering */
-VKAPI_ATTR void VKAPI_CALL
-radv_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
-                                     const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
+void
+radv_begin_conditional_rendering(struct radv_cmd_buffer *cmd_buffer, uint64_t va, bool draw_visible)
 {
-   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   RADV_FROM_HANDLE(radv_buffer, buffer, pConditionalRenderingBegin->buffer);
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    unsigned pred_op = PREDICATION_OP_BOOL32;
-   bool draw_visible = true;
-   uint64_t va;
-
-   va = radv_buffer_get_va(buffer->bo) + buffer->offset + pConditionalRenderingBegin->offset;
-
-   /* By default, if the 32-bit value at offset in buffer memory is zero,
-    * then the rendering commands are discarded, otherwise they are
-    * executed as normal. If the inverted flag is set, all commands are
-    * discarded if the value is non zero.
-    */
-   if (pConditionalRenderingBegin->flags & VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT) {
-      draw_visible = false;
-   }
 
    si_emit_cache_flush(cmd_buffer);
 
@@ -10705,6 +10715,40 @@ radv_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
    if (!radv_cmd_buffer_uses_mec(cmd_buffer)) {
       si_emit_set_predication_state(cmd_buffer, draw_visible, pred_op, va);
    }
+}
+
+void
+radv_end_conditional_rendering(struct radv_cmd_buffer *cmd_buffer)
+{
+   /* MEC doesn't support predication, no need to emit anything here. */
+   if (!radv_cmd_buffer_uses_mec(cmd_buffer)) {
+      si_emit_set_predication_state(cmd_buffer, false, 0, 0);
+   }
+}
+
+/* VK_EXT_conditional_rendering */
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
+                                     const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_buffer, buffer, pConditionalRenderingBegin->buffer);
+   unsigned pred_op = PREDICATION_OP_BOOL32;
+   bool draw_visible = true;
+   uint64_t va;
+
+   va = radv_buffer_get_va(buffer->bo) + buffer->offset + pConditionalRenderingBegin->offset;
+
+   /* By default, if the 32-bit value at offset in buffer memory is zero,
+    * then the rendering commands are discarded, otherwise they are
+    * executed as normal. If the inverted flag is set, all commands are
+    * discarded if the value is non zero.
+    */
+   if (pConditionalRenderingBegin->flags & VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT) {
+      draw_visible = false;
+   }
+
+   radv_begin_conditional_rendering(cmd_buffer, va, draw_visible);
 
    /* Store conditional rendering user info. */
    cmd_buffer->state.predicating = true;
@@ -10719,10 +10763,7 @@ radv_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   /* MEC doesn't support predication, no need to emit anything here. */
-   if (!radv_cmd_buffer_uses_mec(cmd_buffer)) {
-      si_emit_set_predication_state(cmd_buffer, false, 0, 0);
-   }
+   radv_end_conditional_rendering(cmd_buffer);
 
    /* Reset conditional rendering user info. */
    cmd_buffer->state.predicating = false;

@@ -3697,6 +3697,9 @@ void radv_destroy_graphics_lib_pipeline(struct radv_device *device, struct radv_
 void radv_destroy_compute_pipeline(struct radv_device *device, struct radv_compute_pipeline *pipeline);
 void radv_destroy_ray_tracing_pipeline(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline);
 
+void radv_begin_conditional_rendering(struct radv_cmd_buffer *cmd_buffer, uint64_t va, bool draw_visible);
+void radv_end_conditional_rendering(struct radv_cmd_buffer *cmd_buffer);
+
 #define RADV_FROM_HANDLE(__radv_type, __name, __handle) VK_FROM_HANDLE(__radv_type, __name, __handle)
 
 VK_DEFINE_HANDLE_CASTS(radv_cmd_buffer, vk.base, VkCommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER)
