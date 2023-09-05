@@ -125,6 +125,14 @@ spec@ext_framebuffer_multisample@sample-alpha-to-one 4,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 6,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 8,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv12,Fail
+
+# implicit modifier selection is broken with radeonsi display server
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y210,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y212,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y216,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
+
 spec@ext_packed_float@query-rgba-signed-components,Fail
 
 spec@glsl-1.10@execution@glsl-fs-inline-explosion,Crash
