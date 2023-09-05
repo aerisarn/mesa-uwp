@@ -565,8 +565,10 @@ v3dv_GetImageSubresourceLayout(VkDevice device,
       v3dv_layer_offset(image, subresource->mipLevel, subresource->arrayLayer,
                         plane) - image->planes[plane].mem_offset;
    layout->rowPitch = slice->stride;
-   layout->depthPitch = image->planes[plane].cube_map_stride;
-   layout->arrayPitch = image->planes[plane].cube_map_stride;
+   layout->depthPitch = image->vk.image_type == VK_IMAGE_TYPE_3D ?
+                        image->planes[plane].cube_map_stride : 0;
+   layout->arrayPitch = image->vk.array_layers > 1 ?
+                        image->planes[plane].cube_map_stride : 0;
 
    if (image->vk.image_type != VK_IMAGE_TYPE_3D) {
       layout->size = slice->size;
