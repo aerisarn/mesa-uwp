@@ -934,29 +934,6 @@ tu6_emit_vpc(struct tu_cs *cs,
 TU_GENX(tu6_emit_vpc);
 
 static void
-tu_emit_fs_pipeline(const struct ir3_shader_variant *fs,
-                    struct tu_pipeline *pipeline)
-{
-   if (fs->has_kill) {
-      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
-   }
-   if (fs->no_earlyz || fs->writes_pos) {
-      pipeline->lrz.lrz_status = TU_LRZ_FORCE_DISABLE_LRZ;
-   }
-   pipeline->lrz.fs.has_kill = fs->has_kill;
-   pipeline->lrz.fs.early_fragment_tests = fs->fs.early_fragment_tests;
-
-   if (!fs->fs.early_fragment_tests &&
-       (fs->no_earlyz || fs->writes_pos || fs->writes_stencilref || fs->writes_smask)) {
-      pipeline->lrz.force_late_z = true;
-   }
-
-   pipeline->lrz.fs.force_early_z = fs->fs.early_fragment_tests;
-
-   pipeline->fs.per_samp = fs->per_samp || fs->key.sample_shading;
-}
-
-static void
 tu6_emit_vs_params(struct tu_cs *cs,
                    const struct ir3_const_state *const_state,
                    unsigned constlen,
@@ -2024,7 +2001,9 @@ done:
    if (builder->state &
        VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
       if (!shaders[MESA_SHADER_FRAGMENT]) {
-         shaders[MESA_SHADER_FRAGMENT] = builder->device->empty_fs;
+         shaders[MESA_SHADER_FRAGMENT] =
+            builder->fragment_density_map ?
+            builder->device->empty_fs_fdm : builder->device->empty_fs;
          vk_pipeline_cache_object_ref(&shaders[MESA_SHADER_FRAGMENT]->base);
       }
    }
@@ -2177,10 +2156,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
          pipeline->ds = library->base.ds;
-         pipeline->fs = library->base.fs;
-         pipeline->lrz.fs = library->base.lrz.fs;
          pipeline->lrz.lrz_status |= library->base.lrz.lrz_status;
-         pipeline->lrz.force_late_z |= library->base.lrz.force_late_z;
          pipeline->shared_consts = library->base.shared_consts;
       }
 
@@ -2188,7 +2164,6 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
          pipeline->output = library->base.output;
          pipeline->lrz.lrz_status |= library->base.lrz.lrz_status;
-         pipeline->lrz.force_late_z |= library->base.lrz.force_late_z;
          pipeline->prim_order = library->base.prim_order;
       }
 
@@ -2422,8 +2397,6 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       !last_shader->writes_viewport &&
       builder->fragment_density_map &&
       builder->device->physical_device->info->a6xx.has_per_view_viewport;
-
-   tu_emit_fs_pipeline(fs, pipeline);
 }
 
 static const enum mesa_vk_dynamic_graphics_state tu_vertex_input_state[] = {
@@ -3608,7 +3581,7 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
 #define DRAW_STATE_FDM(name, id, ...)                                         \
    if ((EMIT_STATE(name) || (cmd->state.dirty & TU_CMD_DIRTY_FDM)) &&         \
        !(cmd->state.pipeline->base.set_state_mask & (1u << id))) {            \
-      if (cmd->state.pipeline->has_fdm) {                                     \
+      if (cmd->state.shaders[MESA_SHADER_FRAGMENT]->fs.has_fdm) {             \
          tu_cs_set_writeable(&cmd->sub_cs, true);                             \
          tu6_emit_##name##_fdm(&cs, cmd, __VA_ARGS__);                        \
          cmd->state.dynamic_state[id] =                                       \
@@ -3727,14 +3700,6 @@ tu_pipeline_builder_parse_depth_stencil(
          (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM |
           VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM);
    }
-
-   /* FDM isn't compatible with LRZ, because the LRZ image uses the original
-    * resolution and we would need to use the low resolution.
-    *
-    * TODO: Use a patchpoint to only disable LRZ for scaled bins.
-    */
-   if (builder->fragment_density_map)
-      pipeline->lrz.lrz_status = TU_LRZ_FORCE_DISABLE_LRZ;
 }
 
 static void
@@ -3767,9 +3732,6 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       (builder->graphics_state.rp->attachment_aspects &
        VK_IMAGE_ASPECT_COLOR_BIT) ? builder->create_info->pColorBlendState :
       &dummy_blend_info;
-
-   pipeline->lrz.force_late_z |=
-      builder->graphics_state.rp->depth_attachment_format == VK_FORMAT_S8_UINT;
 
    if (builder->graphics_state.rp->attachment_aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       pipeline->output.raster_order_attachment_access =
@@ -4017,7 +3979,6 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
          (gfx_pipeline->feedback_loop_color ||
           gfx_pipeline->feedback_loop_ds) &&
          !builder->graphics_state.rp->feedback_loop_input_only;
-      gfx_pipeline->has_fdm = builder->fragment_density_map;
    }
 
    return VK_SUCCESS;

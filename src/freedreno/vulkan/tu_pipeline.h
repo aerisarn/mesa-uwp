@@ -40,13 +40,6 @@ struct tu_lrz_pipeline
 {
    uint32_t lrz_status;
 
-   struct {
-      bool has_kill;
-      bool force_early_z;
-      bool early_fragment_tests;
-   } fs;
-
-   bool force_late_z;
    bool blend_valid;
 };
 
@@ -150,10 +143,6 @@ struct tu_pipeline
 
    struct tu_shader *shaders[MESA_SHADER_STAGES];
 
-   struct {
-      bool per_samp;
-   } fs;
-
    struct
    {
       struct tu_draw_state config_state;
@@ -222,7 +211,6 @@ struct tu_graphics_pipeline {
 
    bool feedback_loop_color, feedback_loop_ds;
    bool feedback_loop_may_involve_textures;
-   bool has_fdm;
 };
 
 struct tu_compute_pipeline {

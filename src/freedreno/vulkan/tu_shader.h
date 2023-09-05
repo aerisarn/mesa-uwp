@@ -62,6 +62,18 @@ struct tu_shader
    struct tu_const_state const_state;
    uint32_t view_mask;
    uint8_t active_desc_sets;
+
+   union {
+      struct {
+         bool per_samp;
+         bool has_fdm;
+
+         struct {
+            uint32_t status;
+            bool force_late_z;
+         } lrz;
+      } fs;
+   };
 };
 
 struct tu_shader_key {

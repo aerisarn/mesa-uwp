@@ -2974,7 +2974,10 @@ tu_bind_gs(struct tu_cmd_buffer *cmd, struct tu_shader *gs)
 static void
 tu_bind_fs(struct tu_cmd_buffer *cmd, struct tu_shader *fs)
 {
-   cmd->state.shaders[MESA_SHADER_FRAGMENT] = fs;
+   if (cmd->state.shaders[MESA_SHADER_FRAGMENT] != fs) {
+      cmd->state.shaders[MESA_SHADER_FRAGMENT] = fs;
+      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4457,8 +4460,11 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    bool depth_test_enable = cmd->vk.dynamic_graphics_state.ds.depth.test_enable;
    bool depth_write = tu6_writes_depth(cmd, depth_test_enable);
    bool stencil_write = tu6_writes_stencil(cmd);
+   const struct tu_shader *fs = cmd->state.shaders[MESA_SHADER_FRAGMENT];
+   const struct tu_render_pass *pass = cmd->state.pass;
+   const struct tu_subpass *subpass = cmd->state.subpass;
 
-   if ((cmd->state.pipeline->base.lrz.fs.has_kill ||
+   if ((fs->variant->has_kill ||
         cmd->state.pipeline->feedback_loop_ds) &&
        (depth_write || stencil_write)) {
       zmode = (cmd->state.lrz.valid && cmd->state.lrz.enabled)
@@ -4466,15 +4472,19 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                  : A6XX_LATE_Z;
    }
 
-   bool force_late_z = cmd->state.pipeline->base.lrz.force_late_z ||
+   bool force_late_z = 
+      (subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED &&
+       pass->attachments[subpass->depth_stencil_attachment.attachment].format
+       == VK_FORMAT_S8_UINT) ||
+      fs->fs.lrz.force_late_z ||
       /* alpha-to-coverage can behave like a discard. */
       cmd->vk.dynamic_graphics_state.ms.alpha_to_coverage_enable;
-   if ((force_late_z && !cmd->state.pipeline->base.lrz.fs.force_early_z) ||
+   if ((force_late_z && !fs->variant->fs.early_fragment_tests) ||
        !depth_test_enable)
       zmode = A6XX_LATE_Z;
 
    /* User defined early tests take precedence above all else */
-   if (cmd->state.pipeline->base.lrz.fs.early_fragment_tests)
+   if (fs->variant->fs.early_fragment_tests)
       zmode = A6XX_EARLY_Z;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_DEPTH_PLANE_CNTL, 1);
@@ -4544,11 +4554,11 @@ tu6_emit_fs_params(struct tu_cmd_buffer *cmd)
       return;
    }
 
-   struct tu_graphics_pipeline *pipeline = cmd->state.pipeline;
+   struct tu_shader *fs = cmd->state.shaders[MESA_SHADER_FRAGMENT];
 
    unsigned num_units = fs_params_size(cmd);
 
-   if (pipeline->has_fdm)
+   if (fs->fs.has_fdm)
       tu_cs_set_writeable(&cmd->sub_cs, true);
 
    struct tu_cs cs;
@@ -4569,7 +4579,7 @@ tu6_emit_fs_params(struct tu_cmd_buffer *cmd)
    tu_cs_emit(&cs, 0);
 
    STATIC_ASSERT(IR3_DP_FS_FRAG_INVOCATION_COUNT == IR3_DP_FS_DYNAMIC);
-   tu_cs_emit(&cs, pipeline->base.fs.per_samp ?
+   tu_cs_emit(&cs, fs->fs.per_samp ?
               cmd->vk.dynamic_graphics_state.ms.rasterization_samples : 1);
    tu_cs_emit(&cs, 0);
    tu_cs_emit(&cs, 0);
@@ -4578,7 +4588,7 @@ tu6_emit_fs_params(struct tu_cmd_buffer *cmd)
    STATIC_ASSERT(IR3_DP_FS_FRAG_SIZE == IR3_DP_FS_DYNAMIC + 4);
    STATIC_ASSERT(IR3_DP_FS_FRAG_OFFSET == IR3_DP_FS_DYNAMIC + 6);
    if (num_units > 1) {
-      if (pipeline->has_fdm) {
+      if (fs->fs.has_fdm) {
          struct apply_fs_params_state state = {
             .num_consts = num_units - 1,
          };
@@ -4596,7 +4606,7 @@ tu6_emit_fs_params(struct tu_cmd_buffer *cmd)
 
    cmd->state.fs_params = tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 
-   if (pipeline->has_fdm)
+   if (fs->fs.has_fdm)
       tu_cs_set_writeable(&cmd->sub_cs, false);
 }
 

@@ -18,6 +18,7 @@
 #include "tu_device.h"
 #include "tu_descriptor_set.h"
 #include "tu_pipeline.h"
+#include "tu_lrz.h"
 
 nir_shader *
 tu_spirv_to_nir(struct tu_device *dev,
@@ -2095,6 +2096,14 @@ tu_shader_serialize(struct vk_pipeline_cache_object *object,
       blob_write_uint8(blob, 0);
    }
 
+   switch (shader->variant->type) {
+   case MESA_SHADER_FRAGMENT:
+      blob_write_bytes(blob, &shader->fs, sizeof(shader->fs));
+      break;
+   default:
+      break;
+   }
+
    return true;
 }
 
@@ -2121,6 +2130,14 @@ tu_shader_deserialize(struct vk_pipeline_cache *cache,
    bool has_safe_const = blob_read_uint8(blob);
    if (has_safe_const)
       shader->safe_const_variant = ir3_retrieve_variant(blob, dev->compiler, NULL);
+
+   switch (shader->variant->type) {
+   case MESA_SHADER_FRAGMENT:
+      blob_copy_bytes(blob, &shader->fs, sizeof(shader->fs));
+      break;
+   default:
+      break;
+   }
 
    VkResult result = tu_upload_shader(dev, shader);
    if (result != VK_SUCCESS) {
@@ -2279,6 +2296,32 @@ tu_shader_create(struct tu_device *dev,
 
    shader->view_mask = key->multiview_mask;
 
+   switch (shader->variant->type) {
+   case MESA_SHADER_FRAGMENT: {
+      const struct ir3_shader_variant *fs = shader->variant;
+      shader->fs.per_samp = fs->per_samp || ir3_key->sample_shading;
+      shader->fs.has_fdm = key->fragment_density_map;
+      if (fs->has_kill)
+         shader->fs.lrz.status |= TU_LRZ_FORCE_DISABLE_WRITE;
+      if (fs->no_earlyz || fs->writes_pos)
+         shader->fs.lrz.status = TU_LRZ_FORCE_DISABLE_LRZ;
+      /* FDM isn't compatible with LRZ, because the LRZ image uses the original
+       * resolution and we would need to use the low resolution.
+       *
+       * TODO: Use a patchpoint to only disable LRZ for scaled bins.
+       */
+      if (key->fragment_density_map)
+         shader->fs.lrz.status = TU_LRZ_FORCE_DISABLE_LRZ;
+      if (!fs->fs.early_fragment_tests &&
+          (fs->no_earlyz || fs->writes_pos || fs->writes_stencilref || fs->writes_smask)) {
+         shader->fs.lrz.force_late_z = true;
+      }
+      break;
+   }
+   default:
+      break;
+   }
+
    VkResult result = tu_upload_shader(dev, shader);
    if (result != VK_SUCCESS) {
       vk_free(&dev->vk.alloc, shader);
@@ -2323,7 +2366,8 @@ tu_empty_shader_create(struct tu_device *dev,
 }
 
 static VkResult
-tu_empty_fs_create(struct tu_device *dev, struct tu_shader **shader)
+tu_empty_fs_create(struct tu_device *dev, struct tu_shader **shader,
+                   bool fragment_density_map)
 {
    struct ir3_shader_key key = {};
    const struct ir3_shader_options options = {};
@@ -2338,6 +2382,10 @@ tu_empty_fs_create(struct tu_device *dev, struct tu_shader **shader)
    *shader = tu_shader_init(dev, NULL, 0);
    if (!*shader)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   (*shader)->fs.has_fdm = fragment_density_map;
+   if (fragment_density_map)
+      (*shader)->fs.lrz.status = TU_LRZ_FORCE_DISABLE_LRZ;
 
    struct ir3_shader *ir3_shader =
       ir3_shader_from_nir(dev->compiler, fs_b.shader, &options, &so_info);
@@ -2363,7 +2411,11 @@ tu_init_empty_shaders(struct tu_device *dev)
    if (result != VK_SUCCESS)
       goto out;
 
-   result = tu_empty_fs_create(dev, &dev->empty_fs);
+   result = tu_empty_fs_create(dev, &dev->empty_fs, false);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   result = tu_empty_fs_create(dev, &dev->empty_fs_fdm, true);
    if (result != VK_SUCCESS)
       goto out;
 
@@ -2378,6 +2430,8 @@ out:
       vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_gs->base);
    if (dev->empty_fs)
       vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_fs->base);
+   if (dev->empty_fs_fdm)
+      vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_fs_fdm->base);
    return result;
 }
 
@@ -2388,6 +2442,7 @@ tu_destroy_empty_shaders(struct tu_device *dev)
    vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_tes->base);
    vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_gs->base);
    vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_fs->base);
+   vk_pipeline_cache_object_unref(&dev->vk, &dev->empty_fs_fdm->base);
 }
 
 void
