@@ -611,6 +611,26 @@ void *ralloc_parent_of_linear_parent(void *ptr);
  */
 void *linear_realloc(void *parent, void *old, unsigned new_size);
 
+/**
+ * Do a fast allocation of an array from the linear buffer and initialize it to zero.
+ *
+ * Similar to \c calloc, but does not initialize the memory to zero.
+ *
+ * More than a convenience function, this also checks for integer overflow when
+ * multiplying \p size and \p count.  This is necessary for security.
+ */
+void *linear_alloc_child_array(void *parent, size_t size, unsigned count);
+
+/**
+ * Do a fast allocation of an array from the linear buffer.
+ *
+ * Similar to \c calloc.
+ *
+ * More than a convenience function, this also checks for integer overflow when
+ * multiplying \p size and \p count.  This is necessary for security.
+ */
+void *linear_zalloc_child_array(void *parent, size_t size, unsigned count);
+
 /* The functions below have the same semantics as their ralloc counterparts,
  * except that they always allocate a linear child node.
  */
@@ -625,6 +645,62 @@ bool linear_asprintf_rewrite_tail(void *parent, char **str, size_t *start,
 bool linear_vasprintf_rewrite_tail(void *parent, char **str, size_t *start,
                                    const char *fmt, va_list args);
 bool linear_strcat(void *parent, char **dest, const char *str);
+
+/**
+ * \def linear_alloc(parent, type)
+ * Do a fast allocation from the linear buffer.
+ *
+ * This is equivalent to:
+ * \code
+ * ((type *) linear_alloc_child(parent, sizeof(type))
+ * \endcode
+ */
+#define linear_alloc(parent, type)  ((type *) linear_alloc_child(parent, sizeof(type)))
+
+/**
+ * \def linear_zalloc(parent, type)
+ * Do a fast allocation from the linear buffer and initialize it to zero.
+ *
+ * This is equivalent to:
+ * \code
+ * ((type *) linear_zalloc_child(parent, sizeof(type))
+ * \endcode
+ */
+#define linear_zalloc(parent, type) ((type *) linear_zalloc_child(parent, sizeof(type)))
+
+/**
+ * \def linear_alloc_array(parent, type, count)
+ * Do a fast allocation of an array from the linear buffer.
+ *
+ * Similar to \c calloc, but does not initialize the memory to zero.
+ *
+ * More than a convenience function, this also checks for integer overflow when
+ * multiplying \c sizeof(type) and \p count.  This is necessary for security.
+ *
+ * This is equivalent to:
+ * \code
+ * ((type *) linear_alloc_child_array(parent, sizeof(type), count)
+ * \endcode
+ */
+#define linear_alloc_array(parent, type, count) \
+   ((type *) linear_alloc_child_array(parent, sizeof(type), count))
+
+/**
+ * \def linear_zalloc_array(parent, type, count)
+ * Do a fast allocation of an array from the linear buffer and initialize it to zero
+ *
+ * Similar to \c calloc.
+ *
+ * More than a convenience function, this also checks for integer overflow when
+ * multiplying \c sizeof(type) and \p count.  This is necessary for security.
+ *
+ * This is equivalent to:
+ * \code
+ * ((type *) linear_zalloc_child_array(parent, sizeof(type), count)
+ * \endcode
+ */
+#define linear_zalloc_array(parent, type, count) \
+   ((type *) linear_zalloc_child_array(parent, sizeof(type), count))
 
 #ifdef __cplusplus
 } /* end of extern "C" */
