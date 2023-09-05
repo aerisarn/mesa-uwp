@@ -1218,9 +1218,15 @@ static void si_init_renderer_string(struct si_screen *sscreen)
    if (uname(&uname_data) == 0)
       snprintf(kernel_version, sizeof(kernel_version), ", %s", uname_data.release);
 
+   const char *compiler_name =
+#ifdef LLVM_AVAILABLE
+      !sscreen->use_aco ? "LLVM " MESA_LLVM_VERSION_STRING :
+#endif
+      "ACO";
+
    snprintf(sscreen->renderer_string, sizeof(sscreen->renderer_string),
-            "%s (radeonsi, %sLLVM " MESA_LLVM_VERSION_STRING ", DRM %i.%i%s)", first_name,
-            second_name, sscreen->info.drm_major, sscreen->info.drm_minor, kernel_version);
+            "%s (radeonsi, %s%s, DRM %i.%i%s)", first_name, second_name, compiler_name,
+            sscreen->info.drm_major, sscreen->info.drm_minor, kernel_version);
 }
 
 static int si_get_screen_fd(struct pipe_screen *screen)
