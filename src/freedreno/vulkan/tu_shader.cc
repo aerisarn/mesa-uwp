@@ -682,8 +682,7 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
    }
 
    if (min >= max) {
-      tu_shader->const_state.push_consts.lo = 0;
-      tu_shader->const_state.push_consts.dwords = 0;
+      tu_shader->const_state.push_consts = (struct tu_push_constant_range) {};
       return;
    }
 
@@ -706,7 +705,7 @@ tu_lower_io(nir_shader *shader, struct tu_device *dev,
             const struct tu_pipeline_layout *layout,
             unsigned *reserved_consts_vec4_out)
 {
-   if (!tu6_shared_constants_enable(layout, dev->compiler))
+   if (tu_shader->const_state.push_consts.type == IR3_PUSH_CONSTS_PER_STAGE)
       gather_push_constants(shader, tu_shader);
 
    struct tu_const_state *const_state = &tu_shader->const_state;
@@ -1227,7 +1226,8 @@ tu6_emit_cs_config(struct tu_cs *cs,
                    const struct tu_pvtmem_config *pvtmem,
                    uint64_t binary_iova)
 {
-   bool shared_consts_enable = ir3_const_state(v)->shared_consts_enable;
+   bool shared_consts_enable =
+      ir3_const_state(v)->push_consts_type == IR3_PUSH_CONSTS_SHARED;
    tu6_emit_shared_consts_enable<CHIP>(cs, shared_consts_enable);
 
    tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
@@ -2084,7 +2084,6 @@ tu_shader_serialize(struct vk_pipeline_cache_object *object,
       container_of(object, struct tu_shader, base);
 
    blob_write_bytes(blob, &shader->const_state, sizeof(shader->const_state));
-   blob_write_bytes(blob, &shader->shared_consts, sizeof(shader->shared_consts));
    blob_write_uint32(blob, shader->view_mask);
    blob_write_uint8(blob, shader->active_desc_sets);
 
@@ -2126,7 +2125,6 @@ tu_shader_deserialize(struct vk_pipeline_cache *cache,
       return NULL;
 
    blob_copy_bytes(blob, &shader->const_state, sizeof(shader->const_state));
-   blob_copy_bytes(blob, &shader->shared_consts, sizeof(shader->shared_consts));
    shader->view_mask = blob_read_uint32(blob);
    shader->active_desc_sets = blob_read_uint8(blob);
 
@@ -2270,6 +2268,12 @@ tu_shader_create(struct tu_device *dev,
          nir->info.stage == MESA_SHADER_GEOMETRY)
       tu_gather_xfb_info(nir, &so_info);
 
+   shader->const_state.push_consts = (struct tu_push_constant_range) {
+      .lo = 0,
+      .dwords = layout->push_constant_size / 4,
+      .type = tu_push_consts_type(layout, dev->compiler),
+   };
+
    unsigned reserved_consts_vec4 = 0;
    NIR_PASS_V(nir, tu_lower_io, dev, shader, layout, &reserved_consts_vec4);
 
@@ -2277,20 +2281,11 @@ tu_shader_create(struct tu_device *dev,
 
    ir3_finalize_nir(dev->compiler, nir);
 
-   bool shared_consts_enable = tu6_shared_constants_enable(layout, dev->compiler);
-   if (shared_consts_enable) {
-      assert(!shader->const_state.push_consts.dwords);
-      shader->shared_consts = (struct tu_push_constant_range) {
-         .lo = 0,
-         .dwords = layout->push_constant_size / 4,
-      };
-   }
-
    const struct ir3_shader_options options = {
-      .reserved_user_consts = reserved_consts_vec4,
+      .num_reserved_user_consts = reserved_consts_vec4,
       .api_wavesize = key->api_wavesize,
       .real_wavesize = key->real_wavesize,
-      .shared_consts_enable = shared_consts_enable,
+      .push_consts_type = shader->const_state.push_consts.type,
    };
 
    struct ir3_shader *ir3_shader =

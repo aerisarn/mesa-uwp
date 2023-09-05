@@ -531,7 +531,7 @@ ir3_nir_post_finalize(struct ir3_shader *shader)
        * the "real" subgroup size.
        */
       unsigned subgroup_size = 0, max_subgroup_size = 0;
-      switch (shader->api_wavesize) {
+      switch (shader->options.api_wavesize) {
       case IR3_SINGLE_ONLY:
          subgroup_size = max_subgroup_size = compiler->threadsize_base;
          break;
@@ -981,7 +981,7 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
    const_state->num_ubos = nir->info.num_ubos;
 
    assert((const_state->ubo_state.size % 16) == 0);
-   unsigned constoff = v->num_reserved_user_consts +
+   unsigned constoff = v->shader_options.num_reserved_user_consts +
       const_state->ubo_state.size / 16 +
       const_state->preamble_size;
    unsigned ptrsz = ir3_pointer_size(compiler);

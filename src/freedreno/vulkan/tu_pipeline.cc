@@ -308,6 +308,20 @@ tu_blend_state_is_dual_src(const struct vk_color_blend_state *cb)
    return false;
 }
 
+enum ir3_push_consts_type
+tu_push_consts_type(const struct tu_pipeline_layout *layout,
+                    const struct ir3_compiler *compiler)
+{
+   if (!layout->push_constant_size)
+      return IR3_PUSH_CONSTS_NONE;
+
+   if (tu6_shared_constants_enable(layout, compiler)) {
+      return IR3_PUSH_CONSTS_SHARED;
+   } else {
+      return IR3_PUSH_CONSTS_PER_STAGE;
+   }
+}
+
 template <chip CHIP>
 struct xs_config {
    uint16_t reg_sp_xs_config;
@@ -2321,9 +2335,10 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                               &pipeline->shaders[i]->const_state,
                               variants[i]);
 
-      if (pipeline->shaders[i]->shared_consts.dwords != 0) {
+      if (pipeline->shaders[i]->const_state.push_consts.type ==
+          IR3_PUSH_CONSTS_SHARED) {
          pipeline->program.shared_consts =
-            pipeline->shaders[i]->shared_consts;
+            pipeline->shaders[i]->const_state.push_consts;
       }
    }
 

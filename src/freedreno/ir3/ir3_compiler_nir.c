@@ -2087,7 +2087,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
           */
          ctx->so->constlen =
             MAX2(ctx->so->constlen,
-                 ctx->so->num_reserved_user_consts +
+                 ctx->so->shader_options.num_reserved_user_consts +
                  const_state->ubo_state.size / 16);
       }
       break;

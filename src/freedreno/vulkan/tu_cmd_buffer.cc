@@ -4274,9 +4274,10 @@ tu6_emit_user_consts(struct tu_cs *cs,
                      struct tu_descriptor_state *descriptors,
                      uint32_t *push_constants)
 {
-   if (const_state->push_consts.dwords > 0) {
+   if (const_state->push_consts.type == IR3_PUSH_CONSTS_PER_STAGE) {
       unsigned num_units = const_state->push_consts.dwords;
       unsigned offset = const_state->push_consts.lo;
+      assert(num_units > 0);
 
       /* DST_OFF and NUM_UNIT requires vec4 units */
       tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + num_units);
@@ -4355,7 +4356,7 @@ tu6_const_size(struct tu_cmd_buffer *cmd,
 {
    uint32_t dwords = 0;
 
-   if (shared_consts->dwords > 0) {
+   if (shared_consts->type == IR3_PUSH_CONSTS_SHARED) {
       dwords += shared_consts->dwords + 4;
    }
 
@@ -4376,7 +4377,7 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
 {
    uint32_t dwords = 0;
    const struct tu_push_constant_range *shared_consts =
-      compute ? &cmd->state.shaders[MESA_SHADER_COMPUTE]->shared_consts :
+      compute ? &cmd->state.shaders[MESA_SHADER_COMPUTE]->const_state.push_consts :
       &cmd->state.program.shared_consts;
 
    dwords = tu6_const_size(cmd, shared_consts, compute);
@@ -4387,14 +4388,8 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    struct tu_cs cs;
    tu_cs_begin_sub_stream(&cmd->sub_cs, dwords, &cs);
 
-   if (shared_consts->dwords > 0) {
+   if (shared_consts->type == IR3_PUSH_CONSTS_SHARED) {
       tu6_emit_shared_consts(&cs, shared_consts, cmd->push_constants, compute);
-
-      for (uint32_t i = 0; i < ARRAY_SIZE(cmd->state.program.link); i++) {
-         const struct tu_program_descriptor_linkage *link =
-            &cmd->state.program.link[i];
-         assert(!link->tu_const_state.push_consts.dwords);
-      }
    }
 
    if (compute) {

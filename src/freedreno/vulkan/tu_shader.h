@@ -30,10 +30,16 @@ struct tu_inline_ubo
    unsigned size_vec4;
 };
 
+/* The meaning of the range depends on "type". If it's
+ * IR3_PUSH_CONSTS_PER_STAGE, then it's the range used by this shader. If
+ * it's IR3_PUSH_CONSTS_SHARED then it's the overall range as provided by
+ * the pipeline layout and must match between shaders where it's non-zero.
+ */
 struct tu_push_constant_range
 {
    uint32_t lo;
    uint32_t dwords;
+   enum ir3_push_consts_type type;
 };
 
 struct tu_const_state
@@ -62,11 +68,6 @@ struct tu_shader
    struct tu_const_state const_state;
    uint32_t view_mask;
    uint8_t active_desc_sets;
-
-   /* This is the range of shared consts used by all shaders. It must be the
-    * same between shaders.
-    */
-   struct tu_push_constant_range shared_consts;
 
    union {
       struct {

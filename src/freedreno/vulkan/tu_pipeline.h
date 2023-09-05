@@ -70,6 +70,10 @@ tu6_shared_constants_enable(const struct tu_pipeline_layout *layout,
           layout->push_constant_size <= (compiler->shared_consts_size * 16);
 }
 
+enum ir3_push_consts_type
+tu_push_consts_type(const struct tu_pipeline_layout *layout,
+                    const struct ir3_compiler *compiler);
+
 struct tu_program_descriptor_linkage
 {
    struct ir3_const_state const_state;
