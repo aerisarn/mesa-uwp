@@ -444,13 +444,10 @@ nir_opt_phi_precision(nir_shader *shader)
    unsigned bit_sizes_used = shader->info.bit_sizes_float |
                              shader->info.bit_sizes_int;
 
-   if (!bit_sizes_used) {
-      nir_shader_gather_info(shader, nir_shader_get_entrypoint(shader));
-      bit_sizes_used = shader->info.bit_sizes_float |
-                       shader->info.bit_sizes_int;
-   }
-
-   if (!(bit_sizes_used & (8 | 16)))
+   /* Note: if the info is zeroed, we conservatively run to avoid gathering
+    * info, which doesn't work for libraries.
+    */
+   if (bit_sizes_used && !(bit_sizes_used & (8 | 16)))
       return false;
 
    nir_foreach_function_impl(impl, shader) {
