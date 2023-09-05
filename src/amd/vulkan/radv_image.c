@@ -532,37 +532,12 @@ radv_patch_image_from_extra_info(struct radv_device *device, struct radv_image *
 }
 
 static VkFormat
-etc2_emulation_format(VkFormat format)
-{
-   switch (format) {
-   case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
-   case VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
-   case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
-      return VK_FORMAT_R8G8B8A8_UNORM;
-   case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
-   case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
-   case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
-      return VK_FORMAT_R8G8B8A8_SRGB;
-   case VK_FORMAT_EAC_R11_UNORM_BLOCK:
-      return VK_FORMAT_R16_UNORM;
-   case VK_FORMAT_EAC_R11_SNORM_BLOCK:
-      return VK_FORMAT_R16_SNORM;
-   case VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
-      return VK_FORMAT_R16G16_UNORM;
-   case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
-      return VK_FORMAT_R16G16_SNORM;
-   default:
-      unreachable("Unhandled ETC format");
-   }
-}
-
-static VkFormat
 radv_image_get_plane_format(const struct radv_physical_device *pdev, const struct radv_image *image, unsigned plane)
 {
    if (pdev->emulate_etc2 && vk_format_description(image->vk.format)->layout == UTIL_FORMAT_LAYOUT_ETC) {
       if (plane == 0)
          return image->vk.format;
-      return etc2_emulation_format(image->vk.format);
+      return vk_texcompress_etc2_emulation_format(image->vk.format);
    }
    return vk_format_get_plane_format(image->vk.format, plane);
 }
@@ -2197,8 +2172,8 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       const struct util_format_description *desc = vk_format_description(iview->vk.format);
       if (desc->layout == UTIL_FORMAT_LAYOUT_ETC) {
          iview->plane_id = 1;
-         iview->vk.view_format = etc2_emulation_format(iview->vk.format);
-         iview->vk.format = etc2_emulation_format(iview->vk.format);
+         iview->vk.view_format = vk_texcompress_etc2_emulation_format(iview->vk.format);
+         iview->vk.format = vk_texcompress_etc2_emulation_format(iview->vk.format);
       }
 
       plane_count = 1;
