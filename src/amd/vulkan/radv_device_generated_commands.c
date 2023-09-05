@@ -148,12 +148,29 @@ radv_align_cmdbuf_size(const struct radv_device *device, uint32_t size)
    return align(size, ib_pad_dw_mask + 1);
 }
 
+static unsigned
+radv_dgc_preamble_cmdbuf_size(const struct radv_device *device)
+{
+   return radv_align_cmdbuf_size(device, 16);
+}
+
+static bool
+radv_dgc_use_preamble(const VkGeneratedCommandsInfoNV *cmd_info)
+{
+   /* Heuristic on when the overhead for the preamble (i.e. double jump) is worth it. Obviously
+    * a bit of a guess as it depends on the actual count which we don't know. */
+   return cmd_info->sequencesCountBuffer != VK_NULL_HANDLE && cmd_info->sequencesCount >= 64;
+}
+
 uint32_t
 radv_get_indirect_cmdbuf_size(const VkGeneratedCommandsInfoNV *cmd_info)
 {
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, cmd_info->indirectCommandsLayout);
    VK_FROM_HANDLE(radv_pipeline, pipeline, cmd_info->pipeline);
    const struct radv_device *device = container_of(layout->base.device, struct radv_device, vk);
+
+   if (radv_dgc_use_preamble(cmd_info))
+      return radv_dgc_preamble_cmdbuf_size(device);
 
    uint32_t cmd_size, upload_size;
    radv_get_sequence_size(layout, pipeline, &cmd_size, &upload_size);
@@ -202,6 +219,7 @@ struct radv_dgc_params {
    uint16_t push_constant_shader_cnt;
 
    uint8_t is_dispatch;
+   uint8_t use_preamble;
 };
 
 enum {
@@ -450,16 +468,42 @@ dgc_emit_grid_size_pointer(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *grid_
    dgc_emit(b, cs, nir_vec(b, values, 4));
 }
 
+static nir_def *
+dgc_cmd_buf_size(nir_builder *b, nir_def *sequence_count, const struct radv_device *device)
+{
+   nir_def *use_preamble = nir_ine_imm(b, load_param8(b, use_preamble), 0);
+   nir_def *cmd_buf_size = load_param32(b, cmd_buf_size);
+   nir_def *cmd_buf_stride = load_param32(b, cmd_buf_stride);
+   nir_def *size = nir_imul(b, cmd_buf_stride, sequence_count);
+   unsigned align_mask = radv_align_cmdbuf_size(device, 1) - 1;
+
+   size = nir_iand_imm(b, nir_iadd_imm(b, size, align_mask), ~align_mask);
+
+   /* Ensure we don't have to deal with a jump to an empty IB in the preamble. */
+   size = nir_imax(b, size, nir_imm_int(b, align_mask + 1));
+
+   return nir_bcsel(b, use_preamble, size, cmd_buf_size);
+}
+
+static nir_def *
+dgc_main_cmd_buf_offset(nir_builder *b, const struct radv_device *device)
+{
+   nir_def *use_preamble = nir_ine_imm(b, load_param8(b, use_preamble), 0);
+   nir_def *base_offset = nir_imm_int(b, radv_dgc_preamble_cmdbuf_size(device));
+   return nir_bcsel(b, use_preamble, base_offset, nir_imm_int(b, 0));
+}
+
 static void
 build_dgc_buffer_tail(nir_builder *b, nir_def *sequence_count, const struct radv_device *device)
 {
    nir_def *global_id = get_global_ids(b, 1);
 
    nir_def *cmd_buf_stride = load_param32(b, cmd_buf_stride);
-   nir_def *cmd_buf_size = load_param32(b, cmd_buf_size);
+   nir_def *cmd_buf_size = dgc_cmd_buf_size(b, sequence_count, device);
 
    nir_push_if(b, nir_ieq_imm(b, global_id, 0));
    {
+      nir_def *base_offset = dgc_main_cmd_buf_offset(b, device);
       nir_def *cmd_buf_tail_start = nir_imul(b, cmd_buf_stride, sequence_count);
 
       nir_variable *offset = nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "offset");
@@ -491,10 +535,60 @@ build_dgc_buffer_tail(nir_builder *b, nir_def *sequence_count, const struct radv
             packet = nir_pkt3(b, PKT3_NOP, len);
          }
 
-         nir_store_ssbo(b, packet, dst_buf, curr_offset, .access = ACCESS_NON_READABLE);
+         nir_store_ssbo(b, packet, dst_buf, nir_iadd(b, curr_offset, base_offset), .access = ACCESS_NON_READABLE);
          nir_store_var(b, offset, nir_iadd(b, curr_offset, packet_size), 0x1);
       }
       nir_pop_loop(b, NULL);
+   }
+   nir_pop_if(b, NULL);
+}
+
+static void
+build_dgc_buffer_preamble(nir_builder *b, nir_def *sequence_count, const struct radv_device *device)
+{
+   nir_def *global_id = get_global_ids(b, 1);
+   nir_def *use_preamble = nir_ine_imm(b, load_param8(b, use_preamble), 0);
+
+   nir_push_if(b, nir_iand(b, nir_ieq_imm(b, global_id, 0), use_preamble));
+   {
+      unsigned preamble_size = radv_dgc_preamble_cmdbuf_size(device);
+      nir_def *cmd_buf_size = dgc_cmd_buf_size(b, sequence_count, device);
+      nir_def *dst_buf = radv_meta_load_descriptor(b, 0, DGC_DESC_PREPARE);
+
+      nir_def *words = nir_ushr_imm(b, cmd_buf_size, 2);
+
+      nir_def *addr = nir_iadd_imm(b, load_param32(b, upload_addr), preamble_size);
+
+      nir_def *nop_packet = dgc_get_nop_packet(b, device);
+
+      nir_def *nop_packets[] = {
+         nop_packet,
+         nop_packet,
+         nop_packet,
+         nop_packet,
+      };
+
+      const unsigned jump_size = 16;
+      unsigned offset;
+
+      /* Do vectorized store if possible */
+      for (offset = 0; offset + 16 <= preamble_size - jump_size; offset += 16) {
+         nir_store_ssbo(b, nir_vec(b, nop_packets, 4), dst_buf, nir_imm_int(b, offset), .access = ACCESS_NON_READABLE);
+      }
+
+      for (; offset + 4 <= preamble_size - jump_size; offset += 4) {
+         nir_store_ssbo(b, nop_packet, dst_buf, nir_imm_int(b, offset), .access = ACCESS_NON_READABLE);
+      }
+
+      nir_def *chain_packets[] = {
+         nir_imm_int(b, PKT3(PKT3_INDIRECT_BUFFER, 2, 0)),
+         addr,
+         nir_imm_int(b, device->physical_device->rad_info.address32_hi),
+         nir_ior_imm(b, words, S_3F2_CHAIN(1) | S_3F2_VALID(1) | S_3F2_PRE_ENA(false)),
+      };
+
+      nir_store_ssbo(b, nir_vec(b, chain_packets, 4), dst_buf, nir_imm_int(b, preamble_size - jump_size),
+                     .access = ACCESS_NON_READABLE);
    }
    nir_pop_if(b, NULL);
 }
@@ -954,6 +1048,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
    nir_def *use_count = nir_iand_imm(&b, sequence_count, 1u << 31);
    sequence_count = nir_iand_imm(&b, sequence_count, UINT32_MAX >> 1);
 
+   nir_def *cmd_buf_base_offset = dgc_main_cmd_buf_offset(&b, dev);
+
    /* The effective number of draws is
     * min(sequencesCount, sequencesCountBuffer[sequencesCountOffset]) when
     * using sequencesCountBuffer. Otherwise it is sequencesCount. */
@@ -982,7 +1078,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
          .gfx_level = dev->physical_device->rad_info.gfx_level,
          .sqtt_enabled = !!dev->sqtt.bo,
       };
-      nir_store_var(&b, cmd_buf.offset, nir_imul(&b, global_id, cmd_buf_stride), 1);
+      nir_store_var(&b, cmd_buf.offset, nir_iadd(&b, nir_imul(&b, global_id, cmd_buf_stride), cmd_buf_base_offset), 1);
       nir_def *cmd_buf_end = nir_iadd(&b, nir_load_var(&b, cmd_buf.offset), cmd_buf_stride);
 
       nir_def *stream_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_STREAM);
@@ -990,9 +1086,9 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
       nir_variable *upload_offset =
          nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "upload_offset");
-      nir_store_var(
-         &b, upload_offset,
-         nir_iadd(&b, load_param32(&b, cmd_buf_size), nir_imul(&b, load_param32(&b, upload_stride), sequence_id)), 0x1);
+      nir_def *upload_offset_init = nir_iadd(&b, nir_iadd(&b, load_param32(&b, cmd_buf_size), cmd_buf_base_offset),
+                                             nir_imul(&b, load_param32(&b, upload_stride), sequence_id));
+      nir_store_var(&b, upload_offset, upload_offset_init, 0x1);
 
       nir_def *vbo_bind_mask = load_param32(&b, vbo_bind_mask);
       nir_push_if(&b, nir_ine_imm(&b, vbo_bind_mask, 0));
@@ -1084,6 +1180,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
    nir_pop_if(&b, NULL);
 
    build_dgc_buffer_tail(&b, sequence_count, dev);
+   build_dgc_buffer_preamble(&b, sequence_count, dev);
    return b.shader;
 }
 
@@ -1271,7 +1368,8 @@ radv_GetGeneratedCommandsMemoryRequirementsNV(VkDevice _device,
    uint32_t cmd_stride, upload_stride;
    radv_get_sequence_size(layout, pipeline, &cmd_stride, &upload_stride);
 
-   VkDeviceSize cmd_buf_size = radv_align_cmdbuf_size(device, cmd_stride * pInfo->maxSequencesCount);
+   VkDeviceSize cmd_buf_size =
+      radv_align_cmdbuf_size(device, cmd_stride * pInfo->maxSequencesCount) + radv_dgc_preamble_cmdbuf_size(device);
    VkDeviceSize upload_buf_size = upload_stride * pInfo->maxSequencesCount;
 
    pMemoryRequirements->memoryRequirements.memoryTypeBits = device->physical_device->memory_types_32bit;
@@ -1414,14 +1512,13 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
    uint64_t upload_addr =
       radv_buffer_get_va(prep_buffer->bo) + prep_buffer->offset + pGeneratedCommandsInfo->preprocessOffset;
 
-   struct radv_dgc_params params = {
-      .cmd_buf_stride = cmd_stride,
-      .cmd_buf_size = cmd_buf_size,
-      .upload_addr = (uint32_t)upload_addr,
-      .upload_stride = upload_stride,
-      .sequence_count = pGeneratedCommandsInfo->sequencesCount,
-      .stream_stride = layout->input_stride,
-   };
+   struct radv_dgc_params params = {.cmd_buf_stride = cmd_stride,
+                                    .cmd_buf_size = cmd_buf_size,
+                                    .upload_addr = (uint32_t)upload_addr,
+                                    .upload_stride = upload_stride,
+                                    .sequence_count = pGeneratedCommandsInfo->sequencesCount,
+                                    .stream_stride = layout->input_stride,
+                                    .use_preamble = radv_dgc_use_preamble(pGeneratedCommandsInfo)};
 
    upload_size = pipeline->push_constant_size + 16 * pipeline->dynamic_offset_count +
                  sizeof(layout->push_constant_offsets) + ARRAY_SIZE(pipeline->shaders) * 12;
