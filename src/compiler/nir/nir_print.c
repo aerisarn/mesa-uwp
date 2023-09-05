@@ -2551,6 +2551,7 @@ print_shader_info(const struct shader_info *info, FILE *fp)
       break;
 
    case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_KERNEL:
       if (info->cs.workgroup_size_hint[0] || info->cs.workgroup_size_hint[1] || info->cs.workgroup_size_hint[2])
          fprintf(fp, "workgroup_size_hint: {%u, %u, %u}\n",
                  info->cs.workgroup_size_hint[0],
