@@ -526,16 +526,16 @@ impl SM75Instr {
         self.set_field(
             74..80,
             match op.op {
-                MuFuOp::Cos => 0,
-                MuFuOp::Sin => 1,
-                MuFuOp::Exp2 => 2,
-                MuFuOp::Log2 => 3,
-                MuFuOp::Rcp => 4,
-                MuFuOp::Rsq => 5,
-                MuFuOp::Rcp64H => 6,
-                MuFuOp::Rsq64H => 7,
-                MuFuOp::Sqrt => 8,
-                MuFuOp::Tanh => 9,
+                MuFuOp::Cos => 0_u8,
+                MuFuOp::Sin => 1_u8,
+                MuFuOp::Exp2 => 2_u8,
+                MuFuOp::Log2 => 3_u8,
+                MuFuOp::Rcp => 4_u8,
+                MuFuOp::Rsq => 5_u8,
+                MuFuOp::Rcp64H => 6_u8,
+                MuFuOp::Rsq64H => 7_u8,
+                MuFuOp::Sqrt => 8_u8,
+                MuFuOp::Tanh => 9_u8,
             },
         );
     }
