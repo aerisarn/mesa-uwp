@@ -4687,8 +4687,8 @@ should_print_nir(UNUSED nir_shader *shader)
       }                                                                 \
       do_pass if (NIR_DEBUG(CLONE))                                     \
       {                                                                 \
-         nir_shader *clone = nir_shader_clone(ralloc_parent(nir), nir); \
-         nir_shader_replace(nir, clone);                                \
+         nir_shader *_clone = nir_shader_clone(ralloc_parent(nir), nir);\
+         nir_shader_replace(nir, _clone);                               \
       }                                                                 \
       if (NIR_DEBUG(SERIALIZE)) {                                       \
          nir_shader_serialize_deserialize(nir);                         \
