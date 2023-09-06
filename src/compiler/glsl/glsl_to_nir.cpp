@@ -1673,9 +1673,7 @@ nir_visitor::visit(ir_call *ir)
          call->params[i] = nir_src_for_ssa(&out_param_deref->def);
       } else if (sig_param->data.mode == ir_var_function_in) {
          nir_def *val = evaluate_rvalue(param_rvalue);
-         nir_src src = nir_src_for_ssa(val);
-
-         nir_src_copy(&call->params[i], &src, &call->instr);
+         call->params[i] = nir_src_for_ssa(val);
       } else if (sig_param->data.mode == ir_var_function_inout) {
          unreachable("unimplemented: inout parameters");
       }

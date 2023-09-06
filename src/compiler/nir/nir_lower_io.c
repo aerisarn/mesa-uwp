@@ -563,7 +563,7 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    if (intrin->intrinsic == nir_intrinsic_interp_deref_at_sample ||
        intrin->intrinsic == nir_intrinsic_interp_deref_at_offset ||
        intrin->intrinsic == nir_intrinsic_interp_deref_at_vertex)
-      nir_src_copy(&bary_setup->src[0], &intrin->src[1], &bary_setup->instr);
+      bary_setup->src[0] = nir_src_for_ssa(intrin->src[1].ssa);
 
    nir_builder_instr_insert(b, &bary_setup->instr);
 

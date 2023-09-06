@@ -172,7 +172,7 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_def *coor
                                           nir_tex_instr_src_size(array_tex, s));
          array_tex->src[s].src = nir_src_for_ssa(c);
       } else
-         nir_src_copy(&array_tex->src[s].src, psrc, &array_tex->instr);
+         array_tex->src[s].src = nir_src_for_ssa(psrc->ssa);
       s++;
    }
 
@@ -434,7 +434,7 @@ lower_tex_to_txl(nir_builder *b, nir_tex_instr *tex)
    for (int i = 0; i < tex->num_srcs; i++) {
       if (i == bias_idx)
          continue;
-      nir_src_copy(&txl->src[s].src, &tex->src[i].src, &txl->instr);
+      txl->src[s].src = nir_src_for_ssa(tex->src[i].src.ssa);
       txl->src[s].src_type = tex->src[i].src_type;
       s++;
    }

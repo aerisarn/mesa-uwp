@@ -1587,11 +1587,11 @@ lower_txf_lod_robustness_instr(nir_builder *b, nir_instr *in, void *data)
    levels->dest_type = nir_type_int | lod->bit_size;
    if (offset_idx >= 0) {
       levels->src[0].src_type = nir_tex_src_texture_offset;
-      nir_src_copy(&levels->src[0].src, &txf->src[offset_idx].src, &levels->instr);
+      levels->src[0].src = nir_src_for_ssa(txf->src[offset_idx].src.ssa);
    }
    if (handle_idx >= 0) {
       levels->src[!!(offset_idx >= 0)].src_type = nir_tex_src_texture_handle;
-      nir_src_copy(&levels->src[!!(offset_idx >= 0)].src, &txf->src[handle_idx].src, &levels->instr);
+      levels->src[!!(offset_idx >= 0)].src = nir_src_for_ssa(txf->src[handle_idx].src.ssa);
    }
    nir_def_init(&levels->instr, &levels->def,
                 nir_tex_instr_dest_size(levels), 32);
@@ -2207,7 +2207,7 @@ rewrite_atomic_ssbo_instr(nir_builder *b, nir_instr *instr, struct bo_vars *bo)
       new_instr->src[0] = nir_src_for_ssa(&deref_arr->def);
       /* deref ops have no offset src, so copy the srcs after it */
       for (unsigned i = 2; i < nir_intrinsic_infos[intr->intrinsic].num_srcs; i++)
-         nir_src_copy(&new_instr->src[i - 1], &intr->src[i], &new_instr->instr);
+         new_instr->src[i - 1] = nir_src_for_ssa(intr->src[i].ssa);
       nir_builder_instr_insert(b, &new_instr->instr);
 
       result[i] = &new_instr->def;
