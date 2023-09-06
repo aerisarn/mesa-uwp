@@ -125,11 +125,6 @@ struct tu_pipeline
       unsigned patch_type;
    } tess;
 
-   /* for dynamic states which use the same register: */
-   struct {
-      bool per_view_viewport;
-   } viewport;
-
    struct {
       bool raster_order_attachment_access;
    } ds;
