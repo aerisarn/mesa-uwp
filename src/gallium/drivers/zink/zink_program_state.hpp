@@ -213,11 +213,16 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pc_entry->gpl.ikey = ikey;
          pc_entry->gpl.gkey = gkey;
          pc_entry->gpl.okey = okey;
-         /* create the non-optimized pipeline first using fast-linking to avoid stuttering */
-         pc_entry->pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false, false);
+         /* try to hit optimized compile cache first if possible */
          if (!prog->is_separable)
-            /* trigger async optimized pipeline compile if this was the fast-linked unoptimized pipeline */
-            zink_gfx_program_compile_queue(ctx, pc_entry);
+            pc_entry->pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, true, true);
+         if (!pc_entry->pipeline) {
+            /* create the non-optimized pipeline first using fast-linking to avoid stuttering */
+            pc_entry->pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false, false);
+            if (!prog->is_separable)
+               /* trigger async optimized pipeline compile if this was the fast-linked unoptimized pipeline */
+               zink_gfx_program_compile_queue(ctx, pc_entry);
+         }
       } else {
          /* optimize by default only when expecting precompiles in order to reduce stuttering */
          if (DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT2 && DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT)
