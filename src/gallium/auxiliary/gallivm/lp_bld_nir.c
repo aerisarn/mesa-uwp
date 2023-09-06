@@ -2859,22 +2859,20 @@ get_register_type(struct lp_build_nir_context *bld_base,
    return type;
 }
 
-
-bool lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
-                       struct nir_shader *nir)
+void
+lp_build_nir_prepasses(struct nir_shader *nir)
 {
-   struct nir_function *func;
-
    NIR_PASS_V(nir, nir_convert_to_lcssa, true, true);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
    NIR_PASS_V(nir, nir_lower_locals_to_regs, 32);
    NIR_PASS_V(nir, nir_remove_dead_derefs);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+}
 
-   if (is_aos(bld_base)) {
-      NIR_PASS_V(nir, nir_move_vec_src_uses_to_dest);
-      NIR_PASS_V(nir, nir_lower_vec_to_regs, NULL, NULL);
-   }
+bool lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
+                       struct nir_shader *nir)
+{
+   struct nir_function *func;
 
    nir_foreach_shader_out_variable(variable, nir)
       handle_shader_output_decl(bld_base, nir, variable);

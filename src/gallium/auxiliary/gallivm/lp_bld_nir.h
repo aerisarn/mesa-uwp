@@ -295,6 +295,8 @@ struct lp_build_nir_soa_context
    unsigned gs_vertex_streams;
 };
 
+void
+lp_build_nir_prepasses(struct nir_shader *nir);
 
 bool
 lp_build_nir_llvm(struct lp_build_nir_context *bld_base,

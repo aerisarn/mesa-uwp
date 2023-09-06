@@ -2973,6 +2973,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    }
 
    emit_prologue(&bld);
+   lp_build_nir_prepasses(shader);
    lp_build_nir_llvm(&bld.bld_base, shader);
 
    if (bld.gs_iface) {
