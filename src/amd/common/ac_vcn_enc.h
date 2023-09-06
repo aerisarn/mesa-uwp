@@ -546,6 +546,7 @@ typedef struct rvcn_enc_vui_info_s
       uint32_t timing_info_present_flag : 1;
       uint32_t video_signal_type_present_flag : 1;
       uint32_t colour_description_present_flag : 1;
+      uint32_t chroma_loc_info_present_flag : 1;
    } flags;
    uint32_t aspect_ratio_idc;
    uint32_t sar_width;
@@ -557,6 +558,8 @@ typedef struct rvcn_enc_vui_info_s
    uint32_t colour_primaries;
    uint32_t transfer_characteristics;
    uint32_t matrix_coefficients;
+   uint32_t chroma_sample_loc_type_top_field;
+   uint32_t chroma_sample_loc_type_bottom_field;
 }rvcn_enc_vui_info;
 
 typedef struct rvcn_enc_input_format_s

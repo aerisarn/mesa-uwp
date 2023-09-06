@@ -173,6 +173,8 @@ static void radeon_vcn_enc_h264_get_vui_param(struct radeon_encoder *enc,
       pic->seq.vui_flags.video_signal_type_present_flag;
    enc->enc_pic.vui_info.flags.colour_description_present_flag =
       pic->seq.vui_flags.colour_description_present_flag;
+   enc->enc_pic.vui_info.flags.chroma_loc_info_present_flag =
+      pic->seq.vui_flags.chroma_loc_info_present_flag;
    enc->enc_pic.vui_info.aspect_ratio_idc = pic->seq.aspect_ratio_idc;
    enc->enc_pic.vui_info.sar_width = pic->seq.sar_width;
    enc->enc_pic.vui_info.sar_height = pic->seq.sar_height;
@@ -183,6 +185,10 @@ static void radeon_vcn_enc_h264_get_vui_param(struct radeon_encoder *enc,
    enc->enc_pic.vui_info.colour_primaries = pic->seq.colour_primaries;
    enc->enc_pic.vui_info.transfer_characteristics = pic->seq.transfer_characteristics;
    enc->enc_pic.vui_info.matrix_coefficients = pic->seq.matrix_coefficients;
+   enc->enc_pic.vui_info.chroma_sample_loc_type_top_field =
+      pic->seq.chroma_sample_loc_type_top_field;
+   enc->enc_pic.vui_info.chroma_sample_loc_type_bottom_field =
+      pic->seq.chroma_sample_loc_type_bottom_field;
 }
 
 /* only checking the first slice to get num of mbs in slice to
@@ -401,6 +407,8 @@ static void radeon_vcn_enc_hevc_get_vui_param(struct radeon_encoder *enc,
       pic->seq.vui_flags.video_signal_type_present_flag;
    enc->enc_pic.vui_info.flags.colour_description_present_flag =
       pic->seq.vui_flags.colour_description_present_flag;
+   enc->enc_pic.vui_info.flags.chroma_loc_info_present_flag =
+      pic->seq.vui_flags.chroma_loc_info_present_flag;
    enc->enc_pic.vui_info.aspect_ratio_idc = pic->seq.aspect_ratio_idc;
    enc->enc_pic.vui_info.sar_width = pic->seq.sar_width;
    enc->enc_pic.vui_info.sar_height = pic->seq.sar_height;
@@ -411,6 +419,10 @@ static void radeon_vcn_enc_hevc_get_vui_param(struct radeon_encoder *enc,
    enc->enc_pic.vui_info.colour_primaries = pic->seq.colour_primaries;
    enc->enc_pic.vui_info.transfer_characteristics = pic->seq.transfer_characteristics;
    enc->enc_pic.vui_info.matrix_coefficients = pic->seq.matrix_coefficients;
+   enc->enc_pic.vui_info.chroma_sample_loc_type_top_field =
+      pic->seq.chroma_sample_loc_type_top_field;
+   enc->enc_pic.vui_info.chroma_sample_loc_type_bottom_field =
+      pic->seq.chroma_sample_loc_type_bottom_field;
 }
 
 /* only checking the first slice to get num of ctbs in slice to
