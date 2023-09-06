@@ -2871,6 +2871,9 @@ fixup_driver_props(struct zink_screen *screen)
 static void
 init_optimal_keys(struct zink_screen *screen)
 {
+   /* assume that anyone who knows enough to enable optimal_keys on turnip doesn't care about missing line stipple */
+   if (zink_debug & ZINK_DEBUG_OPTIMAL_KEYS && screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_TURNIP)
+      zink_debug |= ZINK_DEBUG_QUIET;
    screen->optimal_keys = !screen->need_decompose_attrs &&
                           screen->info.have_EXT_non_seamless_cube_map &&
                           screen->info.have_EXT_provoking_vertex &&
