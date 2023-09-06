@@ -490,8 +490,7 @@ nir_function_create(nir_shader *shader, const char *name)
 }
 
 void
-nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
-                 nir_alu_instr *instr)
+nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src)
 {
    dest->src = nir_src_for_ssa(src->src.ssa);
    for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
