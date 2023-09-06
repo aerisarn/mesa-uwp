@@ -289,29 +289,23 @@ genX(emit_gs)(struct anv_cmd_buffer *cmd_buffer)
       return;
    }
 
-   uint32_t dwords[GENX(3DSTATE_GS_length)];
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
+   anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_GS),
+                        pipeline->gfx8.gs, gs) {
+      switch (dyn->rs.provoking_vertex) {
+      case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+         gs.ReorderMode = LEADING;
+         break;
 
-   struct GENX(3DSTATE_GS) gs = {
-      GENX(3DSTATE_GS_header),
-   };
+      case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+         gs.ReorderMode = TRAILING;
+         break;
 
-   switch (dyn->rs.provoking_vertex) {
-   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
-      gs.ReorderMode = LEADING;
-      break;
-
-   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
-      gs.ReorderMode = TRAILING;
-      break;
-
-   default:
-      unreachable("Invalid provoking vertex mode");
+      default:
+         unreachable("Invalid provoking vertex mode");
+      }
    }
-
-   GENX(3DSTATE_GS_pack)(NULL, dwords, &gs);
-   anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.gs);
 }
 
 static void
@@ -552,40 +546,35 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_WIDTH) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
-      uint32_t sf_dw[GENX(3DSTATE_SF_length)];
-      struct GENX(3DSTATE_SF) sf = {
-         GENX(3DSTATE_SF_header),
-      };
+      anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_SF),
+                           pipeline->gfx8.sf, sf) {
+         ANV_SETUP_PROVOKING_VERTEX(sf, dyn->rs.provoking_vertex);
 
-      ANV_SETUP_PROVOKING_VERTEX(sf, dyn->rs.provoking_vertex);
+         sf.LineWidth = dyn->rs.line.width;
 
-      sf.LineWidth = dyn->rs.line.width;
-
-      /**
-       * From the Vulkan Spec:
-       *
-       *    "VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT specifies that the depth
-       *     bias representation is a factor of constant r equal to 1."
-       *
-       * From the SKL PRMs, Volume 7: 3D-Media-GPGPU, Depth Offset:
-       *
-       *    "When UNORM Depth Buffer is at Output Merger (or no Depth Buffer):
-       *
-       *     Bias = GlobalDepthOffsetConstant * r + GlobalDepthOffsetScale * MaxDepthSlope
-       *
-       *     Where r is the minimum representable value > 0 in the depth
-       *     buffer format, converted to float32 (note: If state bit Legacy
-       *     Global Depth Bias Enable is set, the r term will be forced to
-       *     1.0)"
-       *
-       * When VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT is set, enable
-       * LegacyGlobalDepthBiasEnable.
-       */
-      sf.LegacyGlobalDepthBiasEnable =
-         dyn->rs.depth_bias.representation == VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT;
-
-      GENX(3DSTATE_SF_pack)(NULL, sf_dw, &sf);
-      anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gfx8.sf);
+         /**
+          * From the Vulkan Spec:
+          *
+          *    "VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT specifies that the depth
+          *     bias representation is a factor of constant r equal to 1."
+          *
+          * From the SKL PRMs, Volume 7: 3D-Media-GPGPU, Depth Offset:
+          *
+          *    "When UNORM Depth Buffer is at Output Merger (or no Depth Buffer):
+          *
+          *     Bias = GlobalDepthOffsetConstant * r + GlobalDepthOffsetScale * MaxDepthSlope
+          *
+          *     Where r is the minimum representable value > 0 in the depth
+          *     buffer format, converted to float32 (note: If state bit Legacy
+          *     Global Depth Bias Enable is set, the r term will be forced to
+          *     1.0)"
+          *
+          * When VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT is set, enable
+          * LegacyGlobalDepthBiasEnable.
+          */
+         sf.LegacyGlobalDepthBiasEnable =
+            dyn->rs.depth_bias.representation == VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT;
+      }
    }
 
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
@@ -639,30 +628,31 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       bool depth_clip_enable =
          vk_rasterization_state_depth_clip_enable(&dyn->rs);
 
-      uint32_t raster_dw[GENX(3DSTATE_RASTER_length)];
-      struct GENX(3DSTATE_RASTER) raster = {
-         GENX(3DSTATE_RASTER_header),
-         .APIMode = api_mode,
-         .DXMultisampleRasterizationEnable = msaa_raster_enable,
-         .AntialiasingEnable = aa_enable,
-         .CullMode     = genX(vk_to_intel_cullmode)[dyn->rs.cull_mode],
-         .FrontWinding = genX(vk_to_intel_front_face)[dyn->rs.front_face],
-         .GlobalDepthOffsetEnableSolid       = dyn->rs.depth_bias.enable,
-         .GlobalDepthOffsetEnableWireframe   = dyn->rs.depth_bias.enable,
-         .GlobalDepthOffsetEnablePoint       = dyn->rs.depth_bias.enable,
-         .GlobalDepthOffsetConstant          = dyn->rs.depth_bias.constant,
-         .GlobalDepthOffsetScale             = dyn->rs.depth_bias.slope,
-         .GlobalDepthOffsetClamp             = dyn->rs.depth_bias.clamp,
-         .FrontFaceFillMode = genX(vk_to_intel_fillmode)[dyn->rs.polygon_mode],
-         .BackFaceFillMode = genX(vk_to_intel_fillmode)[dyn->rs.polygon_mode],
-         .ViewportZFarClipTestEnable = depth_clip_enable,
-         .ViewportZNearClipTestEnable = depth_clip_enable,
-         .ConservativeRasterizationEnable = dyn->rs.conservative_mode !=
-                                            VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT,
-      };
-      GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
-      anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,
-                           pipeline->gfx8.raster);
+      anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_RASTER),
+                           pipeline->gfx8.raster, raster) {
+         raster.APIMode = api_mode;
+         raster.DXMultisampleRasterizationEnable   = msaa_raster_enable;
+         raster.AntialiasingEnable                 = aa_enable;
+         raster.CullMode                           = genX(vk_to_intel_cullmode)[
+                                                        dyn->rs.cull_mode];
+         raster.FrontWinding                       = genX(vk_to_intel_front_face)[
+                                                        dyn->rs.front_face];
+         raster.GlobalDepthOffsetEnableSolid       = dyn->rs.depth_bias.enable;
+         raster.GlobalDepthOffsetEnableWireframe   = dyn->rs.depth_bias.enable;
+         raster.GlobalDepthOffsetEnablePoint       = dyn->rs.depth_bias.enable;
+         raster.GlobalDepthOffsetConstant          = dyn->rs.depth_bias.constant;
+         raster.GlobalDepthOffsetScale             = dyn->rs.depth_bias.slope;
+         raster.GlobalDepthOffsetClamp             = dyn->rs.depth_bias.clamp;
+         raster.FrontFaceFillMode                  = genX(vk_to_intel_fillmode)[
+                                                        dyn->rs.polygon_mode];
+         raster.BackFaceFillMode                   = genX(vk_to_intel_fillmode)[
+                                                        dyn->rs.polygon_mode];
+         raster.ViewportZFarClipTestEnable         = depth_clip_enable;
+         raster.ViewportZNearClipTestEnable        = depth_clip_enable;
+         raster.ConservativeRasterizationEnable    =
+            dyn->rs.conservative_mode !=
+            VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+      }
    }
 
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE) ||
@@ -822,19 +812,14 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
-      uint32_t wm_dwords[GENX(3DSTATE_WM_length)];
-      struct GENX(3DSTATE_WM) wm = {
-         GENX(3DSTATE_WM_header),
-
-         .ForceThreadDispatchEnable = anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
-                                      (pipeline->force_fragment_thread_dispatch ||
-                                       anv_cmd_buffer_all_color_write_masked(cmd_buffer)) ?
-                                      ForceON : 0,
-         .LineStippleEnable = dyn->rs.line.stipple.enable,
+      anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_WM),
+                           pipeline->gfx8.wm, wm) {
+         wm.ForceThreadDispatchEnable = anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
+                                        (pipeline->force_fragment_thread_dispatch ||
+                                        anv_cmd_buffer_all_color_write_masked(cmd_buffer)) ?
+                                        ForceON : 0;
+         wm.LineStippleEnable = dyn->rs.line.stipple.enable;
       };
-      GENX(3DSTATE_WM_pack)(NULL, wm_dwords, &wm);
-
-      anv_batch_emit_merge(&cmd_buffer->batch, wm_dwords, pipeline->gfx8.wm);
    }
 
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||

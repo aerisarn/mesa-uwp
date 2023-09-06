@@ -2887,46 +2887,42 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX))
       return;
 
-   /* Take dynamic primitive topology in to account with
-    *    3DSTATE_CLIP::ViewportXYClipTestEnable
-    */
-   const VkPolygonMode dynamic_raster_mode =
-      genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
-                                dyn->rs.polygon_mode,
-                                dyn->ia.primitive_topology);
-   const bool xy_clip_test_enable =
-      (dynamic_raster_mode == VK_POLYGON_MODE_FILL);
-
-   struct GENX(3DSTATE_CLIP) clip = {
-      GENX(3DSTATE_CLIP_header),
-      .APIMode = dyn->vp.depth_clip_negative_one_to_one ? APIMODE_OGL : APIMODE_D3D,
-      .ViewportXYClipTestEnable = xy_clip_test_enable,
-   };
-
-   ANV_SETUP_PROVOKING_VERTEX(clip, dyn->rs.provoking_vertex);
-
-   uint32_t dwords[GENX(3DSTATE_CLIP_length)];
-
-   /* TODO(mesh): Multiview. */
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
-   if (anv_pipeline_is_primitive(pipeline)) {
-      const struct brw_vue_prog_data *last =
-         anv_pipeline_get_last_vue_prog_data(pipeline);
-      if (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT) {
-         clip.MaximumVPIndex = dyn->vp.viewport_count > 0 ?
-                               dyn->vp.viewport_count - 1 : 0;
-      }
-   } else if (anv_pipeline_is_mesh(pipeline)) {
-      const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-      if (mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
-         clip.MaximumVPIndex = dyn->vp.viewport_count > 0 ?
-                               dyn->vp.viewport_count - 1 : 0;
+
+   anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_CLIP),
+                        pipeline->gfx8.clip, clip) {
+      /* Take dynamic primitive topology in to account with
+       *    3DSTATE_CLIP::ViewportXYClipTestEnable
+       */
+      const VkPolygonMode dynamic_raster_mode =
+         genX(raster_polygon_mode)(pipeline,
+                                   dyn->rs.polygon_mode,
+                                   dyn->ia.primitive_topology);
+      const bool xy_clip_test_enable =
+         (dynamic_raster_mode == VK_POLYGON_MODE_FILL);
+
+      clip.APIMode = dyn->vp.depth_clip_negative_one_to_one ?
+                     APIMODE_OGL : APIMODE_D3D;
+      clip.ViewportXYClipTestEnable = xy_clip_test_enable;
+
+      ANV_SETUP_PROVOKING_VERTEX(clip, dyn->rs.provoking_vertex);
+
+      /* TODO(mesh): Multiview. */
+      if (anv_pipeline_is_primitive(pipeline)) {
+         const struct brw_vue_prog_data *last =
+            anv_pipeline_get_last_vue_prog_data(pipeline);
+         if (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT) {
+            clip.MaximumVPIndex = dyn->vp.viewport_count > 0 ?
+                                  dyn->vp.viewport_count - 1 : 0;
+         }
+      } else if (anv_pipeline_is_mesh(pipeline)) {
+         const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
+         if (mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
+            clip.MaximumVPIndex = dyn->vp.viewport_count > 0 ?
+                                  dyn->vp.viewport_count - 1 : 0;
+         }
       }
    }
-
-   GENX(3DSTATE_CLIP_pack)(NULL, dwords, &clip);
-   anv_batch_emit_merge(&cmd_buffer->batch, dwords,
-                        pipeline->gfx8.clip);
 }
 
 static void
@@ -3295,64 +3291,58 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
       &cmd_buffer->vk.dynamic_graphics_state;
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
 
-   uint32_t dwords[GENX(3DSTATE_STREAMOUT_length)];
-
-   struct GENX(3DSTATE_STREAMOUT) so = {
-      GENX(3DSTATE_STREAMOUT_header),
-      .RenderingDisable = dyn->rs.rasterizer_discard_enable,
-      .RenderStreamSelect = dyn->rs.rasterization_stream,
-   };
-
-#if INTEL_NEEDS_WA_18022508906
-   /* Wa_18022508906 :
-    *
-    * SKL PRMs, Volume 7: 3D-Media-GPGPU, Stream Output Logic (SOL) Stage:
-    *
-    * SOL_INT::Render_Enable =
-    *   (3DSTATE_STREAMOUT::Force_Rending == Force_On) ||
-    *   (
-    *     (3DSTATE_STREAMOUT::Force_Rending != Force_Off) &&
-    *     !(3DSTATE_GS::Enable && 3DSTATE_GS::Output Vertex Size == 0) &&
-    *     !3DSTATE_STREAMOUT::API_Render_Disable &&
-    *     (
-    *       3DSTATE_DEPTH_STENCIL_STATE::Stencil_TestEnable ||
-    *       3DSTATE_DEPTH_STENCIL_STATE::Depth_TestEnable ||
-    *       3DSTATE_DEPTH_STENCIL_STATE::Depth_WriteEnable ||
-    *       3DSTATE_PS_EXTRA::PS_Valid ||
-    *       3DSTATE_WM::Legacy Depth_Buffer_Clear ||
-    *       3DSTATE_WM::Legacy Depth_Buffer_Resolve_Enable ||
-    *       3DSTATE_WM::Legacy Hierarchical_Depth_Buffer_Resolve_Enable
-    *     )
-    *   )
-    *
-    * If SOL_INT::Render_Enable is false, the SO stage will not forward any
-    * topologies down the pipeline. Which is not what we want for occlusion
-    * queries.
-    *
-    * Here we force rendering to get SOL_INT::Render_Enable when occlusion
-    * queries are active.
-    */
-   if (!so.RenderingDisable && cmd_buffer->state.gfx.n_occlusion_queries > 0)
-      so.ForceRendering = Force_on;
-#endif
-
-   switch (dyn->rs.provoking_vertex) {
-   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
-      so.ReorderMode = LEADING;
-      break;
-
-   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
-      so.ReorderMode = TRAILING;
-      break;
-
-   default:
-      unreachable("Invalid provoking vertex mode");
-   }
-
    genX(streamout_prologue)(cmd_buffer);
 
-   GENX(3DSTATE_STREAMOUT_pack)(NULL, dwords, &so);
-   anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.streamout_state);
+   anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_STREAMOUT),
+                        pipeline->gfx8.streamout_state, so) {
+      so.RenderingDisable = dyn->rs.rasterizer_discard_enable;
+      so.RenderStreamSelect = dyn->rs.rasterization_stream;
+#if INTEL_NEEDS_WA_18022508906
+      /* Wa_18022508906 :
+       *
+       * SKL PRMs, Volume 7: 3D-Media-GPGPU, Stream Output Logic (SOL) Stage:
+       *
+       * SOL_INT::Render_Enable =
+       *   (3DSTATE_STREAMOUT::Force_Rending == Force_On) ||
+       *   (
+       *     (3DSTATE_STREAMOUT::Force_Rending != Force_Off) &&
+       *     !(3DSTATE_GS::Enable && 3DSTATE_GS::Output Vertex Size == 0) &&
+       *     !3DSTATE_STREAMOUT::API_Render_Disable &&
+       *     (
+       *       3DSTATE_DEPTH_STENCIL_STATE::Stencil_TestEnable ||
+       *       3DSTATE_DEPTH_STENCIL_STATE::Depth_TestEnable ||
+       *       3DSTATE_DEPTH_STENCIL_STATE::Depth_WriteEnable ||
+       *       3DSTATE_PS_EXTRA::PS_Valid ||
+       *       3DSTATE_WM::Legacy Depth_Buffer_Clear ||
+       *       3DSTATE_WM::Legacy Depth_Buffer_Resolve_Enable ||
+       *       3DSTATE_WM::Legacy Hierarchical_Depth_Buffer_Resolve_Enable
+       *     )
+       *   )
+       *
+       * If SOL_INT::Render_Enable is false, the SO stage will not forward any
+       * topologies down the pipeline. Which is not what we want for occlusion
+       * queries.
+       *
+       * Here we force rendering to get SOL_INT::Render_Enable when occlusion
+       * queries are active.
+       */
+      if (!so.RenderingDisable && cmd_buffer->state.gfx.n_occlusion_queries > 0)
+         so.ForceRendering = Force_on;
+#endif
+
+      switch (dyn->rs.provoking_vertex) {
+      case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+         so.ReorderMode = LEADING;
+         break;
+
+      case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+         so.ReorderMode = TRAILING;
+         break;
+
+      default:
+         unreachable("Invalid provoking vertex mode");
+      }
+   }
 }
 
 ALWAYS_INLINE static void
