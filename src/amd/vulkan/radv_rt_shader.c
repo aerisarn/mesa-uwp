@@ -38,6 +38,8 @@
  * performance. */
 #define MAX_STACK_ENTRY_COUNT 16
 
+#define RADV_RT_SWITCH_NULL_CHECK_THRESHOLD 3
+
 struct radv_rt_case_data {
    struct radv_device *device;
    struct radv_ray_tracing_pipeline *pipeline;
@@ -82,6 +84,9 @@ radv_visit_inlined_shaders(nir_builder *b, nir_def *sbt_idx, bool can_have_null_
       if (!duplicate)
          groups[case_count++] = group;
    }
+
+   /* Do not emit 'if (sbt_idx != 0) { ... }' is there are only a few cases. */
+   can_have_null_shaders &= case_count >= RADV_RT_SWITCH_NULL_CHECK_THRESHOLD;
 
    if (can_have_null_shaders)
       nir_push_if(b, nir_ine_imm(b, sbt_idx, 0));
