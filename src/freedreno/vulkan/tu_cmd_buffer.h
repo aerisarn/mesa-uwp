@@ -69,9 +69,10 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_SUBPASS = BIT(7),
    TU_CMD_DIRTY_FDM = BIT(8),
    TU_CMD_DIRTY_PER_VIEW_VIEWPORT = BIT(9),
-   TU_CMD_DIRTY_PIPELINE = BIT(10),
+   TU_CMD_DIRTY_TES = BIT(10),
+   TU_CMD_DIRTY_PIPELINE = BIT(11),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(11)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(12)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or

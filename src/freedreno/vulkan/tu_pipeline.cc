@@ -977,6 +977,7 @@ static unsigned
 tu6_patch_control_points_size(struct tu_device *dev,
                               const struct tu_shader *vs,
                               const struct tu_shader *tcs,
+                              const struct tu_shader *tes,
                               const struct tu_pipeline *pipeline,
                               uint32_t patch_control_points)
 {
@@ -991,6 +992,7 @@ void
 tu6_emit_patch_control_points(struct tu_cs *cs,
                               const struct tu_shader *vs,
                               const struct tu_shader *tcs,
+                              const struct tu_shader *tes,
                               const struct tu_pipeline *pipeline,
                               uint32_t patch_control_points)
 {
@@ -1060,7 +1062,7 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
    tu_cs_emit(cs, wave_input_size);
 
    /* maximum number of patches that can fit in tess factor/param buffers */
-   uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
+   uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(tes->variant->key.tessellation),
                         TU_TESS_PARAM_SIZE / (tcs->variant->output_size * 4));
    /* convert from # of patches to draw count */
    subdraw_size *= patch_control_points;
@@ -1927,18 +1929,38 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       nir_shaders = tu_nir_cache_insert(builder->cache, nir_shaders);
    }
 
+   /* With pipelines, tessellation modes can be set on either shader, for
+    * compatibility with HLSL and GLSL, and the driver is supposed to merge
+    * them. Shader objects requires modes to be set on at least the TES except
+    * for OutputVertices which has to be set at least on the TCS. Make sure
+    * all modes are set on the TES when compiling together multiple shaders,
+    * and then from this point on we will use the modes in the TES (and output
+    * vertices on the TCS).
+    */
+   if (nir[MESA_SHADER_TESS_EVAL]) {
+      nir_shader *tcs = nir[MESA_SHADER_TESS_CTRL];
+      nir_shader *tes = nir[MESA_SHADER_TESS_EVAL];
+
+      if (tes->info.tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED)
+         tes->info.tess._primitive_mode = tcs->info.tess._primitive_mode;
+
+      tes->info.tess.point_mode |= tcs->info.tess.point_mode;
+      tes->info.tess.ccw |= tcs->info.tess.ccw;
+
+      if (tes->info.tess.spacing == TESS_SPACING_UNSPECIFIED) {
+         tes->info.tess.spacing = tcs->info.tess.spacing;
+      }
+
+      if (tcs->info.tess.tcs_vertices_out == 0)
+         tcs->info.tess.tcs_vertices_out = tes->info.tess.tcs_vertices_out;
+
+      ir3_key.tessellation = tu6_get_tessmode(tes);
+   }
+
    for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
         stage = (gl_shader_stage) (stage + 1)) {
       if (!nir[stage])
          continue;
-
-      /* In SPIR-V generated from GLSL, the primitive mode is specified in the
-       * tessellation evaluation shader, but in SPIR-V generated from HLSL,
-       * the mode is specified in the tessellation control shader. */
-      if ((stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_TESS_CTRL) &&
-          ir3_key.tessellation == IR3_TESS_NONE) {
-         ir3_key.tessellation = tu6_get_tessmode(nir[stage]);
-      }
 
       if (stage > MESA_SHADER_TESS_CTRL) {
          if (stage == MESA_SHADER_FRAGMENT) {
@@ -2050,12 +2072,6 @@ done:
       }
    }
 
-   if (shaders[MESA_SHADER_TESS_CTRL] &&
-       shaders[MESA_SHADER_TESS_CTRL]->variant) {
-      pipeline->tess.patch_type =
-         shaders[MESA_SHADER_TESS_CTRL]->variant->key.tessellation;
-   }
-
    if (shaders[MESA_SHADER_VERTEX]) {
       const struct ir3_shader_variant *vs =
          shaders[MESA_SHADER_VERTEX]->variant;
@@ -2150,11 +2166,6 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT) {
          pipeline->shared_consts = library->base.shared_consts;
-      }
-
-      if (library->state &
-          VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
-         pipeline->tess = library->base.tess;
       }
 
       if (library->state &
@@ -2346,43 +2357,6 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       uint32_t hs_base = hs_const->offsets.primitive_param;
       pipeline->program.hs_param_dwords =
          MIN2((hs_constlen - hs_base) * 4, 8);
-
-      /* In SPIR-V generated from GLSL, the tessellation primitive params are
-       * are specified in the tess eval shader, but in SPIR-V generated from
-       * HLSL, they are specified in the tess control shader. */
-      const struct ir3_shader_variant *tess =
-         ds->tess.spacing == TESS_SPACING_UNSPECIFIED ? hs : ds;
-      if (tess->tess.point_mode) {
-         pipeline->program.tess_output_lower_left =
-            pipeline->program.tess_output_upper_left = TESS_POINTS;
-      } else if (tess->tess.primitive_mode == TESS_PRIMITIVE_ISOLINES) {
-         pipeline->program.tess_output_lower_left =
-            pipeline->program.tess_output_upper_left = TESS_LINES;
-      } else if (tess->tess.ccw) {
-         /* Tessellation orientation in HW is specified with a lower-left
-          * origin, we need to swap them if the origin is upper-left.
-          */
-         pipeline->program.tess_output_lower_left = TESS_CCW_TRIS;
-         pipeline->program.tess_output_upper_left = TESS_CW_TRIS;
-      } else {
-         pipeline->program.tess_output_lower_left = TESS_CW_TRIS;
-         pipeline->program.tess_output_upper_left = TESS_CCW_TRIS;
-      }
-
-      switch (tess->tess.spacing) {
-      case TESS_SPACING_EQUAL:
-         pipeline->program.tess_spacing = TESS_EQUAL;
-         break;
-      case TESS_SPACING_FRACTIONAL_ODD:
-         pipeline->program.tess_spacing = TESS_FRACTIONAL_ODD;
-         break;
-      case TESS_SPACING_FRACTIONAL_EVEN:
-         pipeline->program.tess_spacing = TESS_FRACTIONAL_EVEN;
-         break;
-      case TESS_SPACING_UNSPECIFIED:
-      default:
-         unreachable("invalid tess spacing");
-      }
    }
 
    const struct ir3_shader_variant *last_shader;
@@ -3496,6 +3470,7 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
                    pipeline_contains_all_shader_state(pipeline),
                    pipeline->shaders[MESA_SHADER_VERTEX],
                    pipeline->shaders[MESA_SHADER_TESS_CTRL],
+                   pipeline->shaders[MESA_SHADER_TESS_EVAL],
                    pipeline,
                    builder->graphics_state.ts->patch_control_points);
 #undef DRAW_STATE
@@ -3678,6 +3653,7 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
                    cmd->state.dirty & TU_CMD_DIRTY_PIPELINE,
                    cmd->state.shaders[MESA_SHADER_VERTEX],
                    cmd->state.shaders[MESA_SHADER_TESS_CTRL],
+                   cmd->state.shaders[MESA_SHADER_TESS_EVAL],
                    &cmd->state.pipeline->base,
                    cmd->vk.dynamic_graphics_state.ts.patch_control_points);
 #undef DRAW_STATE

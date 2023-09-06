@@ -2097,6 +2097,9 @@ tu_shader_serialize(struct vk_pipeline_cache_object *object,
    }
 
    switch (shader->variant->type) {
+   case MESA_SHADER_TESS_EVAL:
+      blob_write_bytes(blob, &shader->tes, sizeof(shader->tes));
+      break;
    case MESA_SHADER_FRAGMENT:
       blob_write_bytes(blob, &shader->fs, sizeof(shader->fs));
       break;
@@ -2132,6 +2135,9 @@ tu_shader_deserialize(struct vk_pipeline_cache *cache,
       shader->safe_const_variant = ir3_retrieve_variant(blob, dev->compiler, NULL);
 
    switch (shader->variant->type) {
+   case MESA_SHADER_TESS_EVAL:
+      blob_copy_bytes(blob, &shader->tes, sizeof(shader->tes));
+      break;
    case MESA_SHADER_FRAGMENT:
       blob_copy_bytes(blob, &shader->fs, sizeof(shader->fs));
       break;
@@ -2297,6 +2303,42 @@ tu_shader_create(struct tu_device *dev,
    shader->view_mask = key->multiview_mask;
 
    switch (shader->variant->type) {
+   case MESA_SHADER_TESS_EVAL: {
+      const struct ir3_shader_variant *tes = shader->variant;
+      if (tes->tess.point_mode) {
+         shader->tes.tess_output_lower_left =
+            shader->tes.tess_output_upper_left = TESS_POINTS;
+      } else if (tes->tess.primitive_mode == TESS_PRIMITIVE_ISOLINES) {
+         shader->tes.tess_output_lower_left =
+            shader->tes.tess_output_upper_left = TESS_LINES;
+      } else if (tes->tess.ccw) {
+         /* Tessellation orientation in HW is specified with a lower-left
+          * origin, we need to swap them if the origin is upper-left.
+          */
+         shader->tes.tess_output_lower_left = TESS_CCW_TRIS;
+         shader->tes.tess_output_upper_left = TESS_CW_TRIS;
+      } else {
+         shader->tes.tess_output_lower_left = TESS_CW_TRIS;
+         shader->tes.tess_output_upper_left = TESS_CCW_TRIS;
+      }
+
+      switch (tes->tess.spacing) {
+      case TESS_SPACING_EQUAL:
+         shader->tes.tess_spacing = TESS_EQUAL;
+         break;
+      case TESS_SPACING_FRACTIONAL_ODD:
+         shader->tes.tess_spacing = TESS_FRACTIONAL_ODD;
+         break;
+      case TESS_SPACING_FRACTIONAL_EVEN:
+         shader->tes.tess_spacing = TESS_FRACTIONAL_EVEN;
+         break;
+      case TESS_SPACING_UNSPECIFIED:
+      default:
+         unreachable("invalid tess spacing");
+      }
+
+      break;
+   }
    case MESA_SHADER_FRAGMENT: {
       const struct ir3_shader_variant *fs = shader->variant;
       shader->fs.per_samp = fs->per_samp || ir3_key->sample_shading;

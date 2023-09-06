@@ -65,6 +65,12 @@ struct tu_shader
 
    union {
       struct {
+         unsigned patch_type;
+         enum a6xx_tess_output tess_output_upper_left, tess_output_lower_left;
+         enum a6xx_tess_spacing tess_spacing;
+      } tes;
+
+      struct {
          bool per_samp;
          bool has_fdm;
 

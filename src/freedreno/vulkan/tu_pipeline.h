@@ -115,10 +115,6 @@ struct tu_pipeline
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
 
    struct {
-      unsigned patch_type;
-   } tess;
-
-   struct {
       bool raster_order_attachment_access;
    } ds;
 
@@ -158,9 +154,6 @@ struct tu_pipeline
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
 
       bool per_view_viewport;
-
-      enum a6xx_tess_output tess_output_upper_left, tess_output_lower_left;
-      enum a6xx_tess_spacing tess_spacing;
    } program;
 
    struct tu_lrz_pipeline lrz;

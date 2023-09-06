@@ -758,8 +758,9 @@ tu6_update_msaa_disable(struct tu_cmd_buffer *cmd)
       topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP ||
       topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY ||
       (topology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST &&
-       cmd->state.pipeline &&
-       cmd->state.pipeline->base.tess.patch_type == IR3_TESS_ISOLINES);
+       cmd->state.shaders[MESA_SHADER_TESS_EVAL] &&
+       cmd->state.shaders[MESA_SHADER_TESS_EVAL]->variant &&
+       cmd->state.shaders[MESA_SHADER_TESS_EVAL]->variant->key.tessellation == IR3_TESS_ISOLINES);
    bool msaa_disable = is_line &&
       cmd->vk.dynamic_graphics_state.rs.line.mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
 
@@ -2962,7 +2963,25 @@ tu_bind_tcs(struct tu_cmd_buffer *cmd, struct tu_shader *tcs)
 static void
 tu_bind_tes(struct tu_cmd_buffer *cmd, struct tu_shader *tes)
 {
-   cmd->state.shaders[MESA_SHADER_TESS_EVAL] = tes;
+   if (cmd->state.shaders[MESA_SHADER_TESS_EVAL] != tes) {
+      cmd->state.shaders[MESA_SHADER_TESS_EVAL] = tes;
+      cmd->state.dirty |= TU_CMD_DIRTY_TES;
+
+      if (!cmd->state.tess_params.valid ||
+          cmd->state.tess_params.output_upper_left !=
+          tes->tes.tess_output_upper_left ||
+          cmd->state.tess_params.output_lower_left !=
+          tes->tes.tess_output_lower_left ||
+          cmd->state.tess_params.spacing != tes->tes.tess_spacing) {
+         cmd->state.tess_params.output_upper_left =
+            tes->tes.tess_output_upper_left;
+         cmd->state.tess_params.output_lower_left =
+            tes->tes.tess_output_lower_left;
+         cmd->state.tess_params.spacing = tes->tes.tess_spacing;
+         cmd->state.tess_params.valid = true;
+         cmd->state.dirty |= TU_CMD_DIRTY_TESS_PARAMS;
+      }
+   }
 }
 
 static void
@@ -3083,23 +3102,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (pipeline->program.per_view_viewport != cmd->state.per_view_viewport) {
       cmd->state.per_view_viewport = pipeline->program.per_view_viewport;
       cmd->state.dirty |= TU_CMD_DIRTY_PER_VIEW_VIEWPORT;
-   }
-
-   if (pipeline->active_stages & MESA_SHADER_TESS_CTRL) {
-      if (!cmd->state.tess_params.valid ||
-          cmd->state.tess_params.output_upper_left !=
-          pipeline->program.tess_output_upper_left ||
-          cmd->state.tess_params.output_lower_left !=
-          pipeline->program.tess_output_lower_left ||
-          cmd->state.tess_params.spacing != pipeline->program.tess_spacing) {
-         cmd->state.tess_params.output_upper_left =
-            pipeline->program.tess_output_upper_left;
-         cmd->state.tess_params.output_lower_left =
-            pipeline->program.tess_output_lower_left;
-         cmd->state.tess_params.spacing = pipeline->program.tess_spacing;
-         cmd->state.tess_params.valid = true;
-         cmd->state.dirty |= TU_CMD_DIRTY_TESS_PARAMS;
-      }
    }
 }
 
@@ -4738,7 +4740,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
                    MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) ||
        BITSET_TEST(cmd->vk.dynamic_graphics_state.dirty,
                    MESA_VK_DYNAMIC_RS_LINE_MODE) ||
-       (cmd->state.dirty & TU_CMD_DIRTY_PIPELINE)) {
+       (cmd->state.dirty & TU_CMD_DIRTY_TES)) {
       tu6_update_msaa_disable(cmd);
    }
 
@@ -4859,22 +4861,22 @@ tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
    if (pipeline->active_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
       initiator |= CP_DRAW_INDX_OFFSET_0_GS_ENABLE;
 
-   switch (pipeline->tess.patch_type) {
-   case IR3_TESS_TRIANGLES:
-      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_TRIANGLES) |
-                   CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
-      break;
-   case IR3_TESS_ISOLINES:
-      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_ISOLINES) |
-                   CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
-      break;
-   case IR3_TESS_NONE:
-      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_QUADS);
-      break;
-   case IR3_TESS_QUADS:
-      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_QUADS) |
-                   CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
-      break;
+   const struct tu_shader *tes = cmd->state.shaders[MESA_SHADER_TESS_EVAL];
+   if (tes->variant) {
+      switch (tes->variant->key.tessellation) {
+      case IR3_TESS_TRIANGLES:
+         initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_TRIANGLES) |
+                      CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
+         break;
+      case IR3_TESS_ISOLINES:
+         initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_ISOLINES) |
+                      CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
+         break;
+      case IR3_TESS_QUADS:
+         initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_QUADS) |
+                      CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
+         break;
+      }
    }
    return initiator;
 }
