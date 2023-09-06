@@ -240,6 +240,7 @@ enum zink_debug {
    ZINK_DEBUG_NOBGC = (1<<16),
    ZINK_DEBUG_DGC = (1<<17),
    ZINK_DEBUG_MEM = (1<<18),
+   ZINK_DEBUG_QUIET = (1<<19),
 };
 
 enum zink_pv_emulation_primitive {

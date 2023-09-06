@@ -105,6 +105,7 @@ zink_debug_options[] = {
    { "nobgc", ZINK_DEBUG_NOBGC, "Disable all async pipeline compiles" },
    { "dgc", ZINK_DEBUG_DGC, "Use DGC (driver testing only)" },
    { "mem", ZINK_DEBUG_MEM, "Debug memory allocations" },
+   { "quiet", ZINK_DEBUG_QUIET, "Suppress warnings" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2573,6 +2574,8 @@ zink_create_logical_device(struct zink_screen *screen)
 static void
 check_base_requirements(struct zink_screen *screen)
 {
+   if (zink_debug & ZINK_DEBUG_QUIET)
+      return;
    if (!screen->info.feats.features.logicOp ||
        !screen->info.feats.features.fillModeNonSolid ||
        !screen->info.feats.features.shaderClipDistance ||
@@ -2878,7 +2881,7 @@ init_optimal_keys(struct zink_screen *screen)
                           !screen->driver_workarounds.lower_robustImageAccess2 &&
                           !screen->driconf.emulate_point_smooth &&
                           !screen->driver_workarounds.needs_zs_shader_swizzle;
-   if (!screen->optimal_keys && zink_debug & ZINK_DEBUG_OPTIMAL_KEYS) {
+   if (!screen->optimal_keys && zink_debug & ZINK_DEBUG_OPTIMAL_KEYS && !(zink_debug & ZINK_DEBUG_QUIET)) {
       fprintf(stderr, "The following criteria are preventing optimal_keys enablement:\n");
       if (screen->need_decompose_attrs)
          fprintf(stderr, "missing vertex attribute formats\n");
@@ -2903,8 +2906,9 @@ init_optimal_keys(struct zink_screen *screen)
       CHECK_OR_PRINT(rb_image_feats.robustImageAccess);
       printf("\n");
       mesa_logw("zink: force-enabling optimal_keys despite missing features. Good luck!");
-      screen->optimal_keys = true;
    }
+   if (zink_debug & ZINK_DEBUG_OPTIMAL_KEYS)
+      screen->optimal_keys = true;
    if (!screen->optimal_keys)
       screen->info.have_EXT_graphics_pipeline_library = false;
 
