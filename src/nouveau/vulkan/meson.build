@@ -1,3 +1,5 @@
+# Copyright © 2022 Collabora Ltd. and Red Hat Inc.
+# SPDX-License-Identifier: MIT
 nvk_files = files(
   '../../gallium/auxiliary/tgsi/tgsi_from_mesa.c',
   'nvk_buffer.c',

@@ -1,3 +1,7 @@
+/*
+ * Copyright © 2022 Collabora Ltd. and Red Hat Inc.
+ * SPDX-License-Identifier: MIT
+ */
 #include "nvk_cmd_buffer.h"
 #include "nvk_descriptor_set.h"
 #include "nvk_descriptor_set_layout.h"

@@ -1,3 +1,7 @@
+/*
+ * Copyright © 2022 Collabora, Ltd.
+ * SPDX-License-Identifier: MIT
+ */
 #ifndef NVK_PRIVATE_H
 #define NVK_PRIVATE_H 1
 
