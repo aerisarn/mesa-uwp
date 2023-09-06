@@ -6,9 +6,12 @@
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
 #include "nvk_device_memory.h"
+#include "nvk_entrypoints.h"
 #include "nvk_mme.h"
 #include "nvk_physical_device.h"
 #include "nvk_pipeline.h"
+
+#include "vk_pipeline_layout.h"
 
 #include "nouveau_context.h"
 

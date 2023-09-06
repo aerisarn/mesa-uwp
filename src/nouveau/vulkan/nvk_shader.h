@@ -7,11 +7,12 @@
 #include "nir.h"
 #include "nouveau_bo.h"
 
-struct vk_shader_module;
-struct vk_pipeline_robustness_state;
 struct nvk_device;
 struct nvk_physical_device;
 struct nvk_pipeline_compilation_ctx;
+struct vk_pipeline_layout;
+struct vk_pipeline_robustness_state;
+struct vk_shader_module;
 
 #define GF100_SHADER_HEADER_SIZE (20 * 4)
 #define TU102_SHADER_HEADER_SIZE (32 * 4)

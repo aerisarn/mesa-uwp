@@ -2,7 +2,9 @@
 #include "nvk_descriptor_set.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_shader.h"
+
 #include "vk_pipeline.h"
+#include "vk_pipeline_layout.h"
 
 #include "nir_builder.h"
 #include "nir_deref.h"

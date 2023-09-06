@@ -4,9 +4,11 @@
 #include "nvk_buffer_view.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
+#include "nvk_entrypoints.h"
 #include "nvk_image_view.h"
 #include "nvk_physical_device.h"
 #include "nvk_sampler.h"
+
 #include "nouveau_bo.h"
 
 static inline uint32_t

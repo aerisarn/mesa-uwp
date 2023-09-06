@@ -1,6 +1,7 @@
 #include "nvk_cmd_pool.h"
 
 #include "nvk_device.h"
+#include "nvk_entrypoints.h"
 #include "nvk_physical_device.h"
 
 static VkResult

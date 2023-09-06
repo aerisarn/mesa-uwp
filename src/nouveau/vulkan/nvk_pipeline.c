@@ -1,7 +1,7 @@
-
-#include "nvk_private.h"
-#include "nvk_device.h"
 #include "nvk_pipeline.h"
+
+#include "nvk_device.h"
+#include "nvk_entrypoints.h"
 
 #include "vk_pipeline_cache.h"
 

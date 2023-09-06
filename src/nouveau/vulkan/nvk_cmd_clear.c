@@ -1,6 +1,7 @@
 #include "nvk_cmd_buffer.h"
 
 #include "nvk_device.h"
+#include "nvk_entrypoints.h"
 #include "nvk_image.h"
 #include "nvk_image_view.h"
 #include "nvk_mme.h"

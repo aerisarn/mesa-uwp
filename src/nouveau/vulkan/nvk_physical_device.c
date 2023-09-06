@@ -17,6 +17,7 @@
 
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <xf86drm.h>
 
 #include "cl90c0.h"
 #include "cl91c0.h"
@@ -25,7 +26,6 @@
 #include "cla1c0.h"
 #include "clb097.h"
 #include "clb0c0.h"
-#include "clb097.h"
 #include "clb197.h"
 #include "clb1c0.h"
 #include "clc0c0.h"
@@ -33,7 +33,6 @@
 #include "clc3c0.h"
 #include "clc597.h"
 #include "clc5c0.h"
-#include "clc597.h"
 #include "clc997.h"
 
 PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL

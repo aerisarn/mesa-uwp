@@ -2,6 +2,7 @@
 
 #include "nvk_device.h"
 #include "nvk_device_memory.h"
+#include "nvk_entrypoints.h"
 #include "nvk_format.h"
 #include "nvk_physical_device.h"
 

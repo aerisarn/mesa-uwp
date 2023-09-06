@@ -7,17 +7,16 @@
 #include "nvk_pipeline.h"
 #include "nvk_sampler.h"
 
-#include "nouveau_bo.h"
-#include "nouveau_context.h"
 #include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"
+#include "vk_pipeline_layout.h"
 #include "vk_shader_module.h"
 #include "vk_ycbcr_conversion.h"
 
 #include "nir.h"
 #include "nir_builder.h"
+#include "nir_xfb_info.h"
 #include "compiler/spirv/nir_spirv.h"
-#include "compiler/nir/nir_xfb_info.h"
 
 #include "nv50_ir_driver.h"
 

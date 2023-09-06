@@ -2,7 +2,10 @@
 
 #include "nvk_descriptor_set.h"
 #include "nvk_device.h"
+#include "nvk_entrypoints.h"
 #include "nvk_sampler.h"
+
+#include "vk_pipeline_layout.h"
 
 #include "util/mesa-sha1.h"
 

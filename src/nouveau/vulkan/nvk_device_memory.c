@@ -3,8 +3,10 @@
 #include "nouveau_bo.h"
 
 #include "nvk_device.h"
+#include "nvk_entrypoints.h"
 #include "nvk_image.h"
 #include "nvk_physical_device.h"
+
 #include "nv_push.h"
 
 #include <inttypes.h>

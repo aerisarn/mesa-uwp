@@ -7,6 +7,8 @@
 
 #include "nouveau_context.h"
 
+#include <xf86drm.h>
+
 #include "nvk_cl9097.h"
 #include "nvk_cl90b5.h"
 #include "nvk_cla0c0.h"

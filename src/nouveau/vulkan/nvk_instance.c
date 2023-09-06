@@ -1,9 +1,11 @@
 #include "nvk_instance.h"
 
+#include "nvk_entrypoints.h"
 #include "nvk_physical_device.h"
-#include "util/build_id.h"
 
 #include "vulkan/wsi/wsi_common.h"
+
+#include "util/build_id.h"
 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_EnumerateInstanceVersion(uint32_t *pApiVersion)

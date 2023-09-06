@@ -1,12 +1,16 @@
 #include "nvk_device.h"
 
 #include "nvk_cmd_buffer.h"
+#include "nvk_entrypoints.h"
 #include "nvk_instance.h"
 #include "nvk_physical_device.h"
 
+#include "vulkan/wsi/wsi_common.h"
+
 #include "nouveau_context.h"
 
-#include "vulkan/wsi/wsi_common.h"
+#include <fcntl.h>
+#include <xf86drm.h>
 
 #include "cl9097.h"
 #include "clb097.h"
