@@ -127,48 +127,36 @@ nir_inline_function_impl(struct nir_builder *b,
 
 static bool inline_function_impl(nir_function_impl *impl, struct set *inlined);
 
-static bool
-inline_functions_block(nir_block *block, nir_builder *b,
-                       struct set *inlined)
+static bool inline_functions_pass(nir_builder *b,
+                                  nir_instr *instr,
+                                  void *cb_data)
 {
-   bool progress = false;
-   /* This is tricky.  We're iterating over instructions in a block but, as
-    * we go, the block and its instruction list are being split into
-    * pieces.  However, this *should* be safe since foreach_safe always
-    * stashes the next thing in the iteration.  That next thing will
-    * properly get moved to the next block when it gets split, and we
-    * continue iterating there.
+   struct set *inlined = cb_data;
+   if (instr->type != nir_instr_type_call)
+      return false;
+
+   nir_call_instr *call = nir_instr_as_call(instr);
+   assert(call->callee->impl);
+
+   /* Make sure that the function we're calling is already inlined */
+   inline_function_impl(call->callee->impl, inlined);
+
+   b->cursor = nir_instr_remove(&call->instr);
+
+   /* Rewrite all of the uses of the callee's parameters to use the call
+    * instructions sources.  In order to ensure that the "load" happens
+    * here and not later (for register sources), we make sure to convert it
+    * to an SSA value first.
     */
-   nir_foreach_instr_safe(instr, block) {
-      if (instr->type != nir_instr_type_call)
-         continue;
-
-      progress = true;
-
-      nir_call_instr *call = nir_instr_as_call(instr);
-      assert(call->callee->impl);
-
-      /* Make sure that the function we're calling is already inlined */
-      inline_function_impl(call->callee->impl, inlined);
-
-      b->cursor = nir_instr_remove(&call->instr);
-
-      /* Rewrite all of the uses of the callee's parameters to use the call
-       * instructions sources.  In order to ensure that the "load" happens
-       * here and not later (for register sources), we make sure to convert it
-       * to an SSA value first.
-       */
-      const unsigned num_params = call->num_params;
-      NIR_VLA(nir_def *, params, num_params);
-      for (unsigned i = 0; i < num_params; i++) {
-         params[i] = nir_ssa_for_src(b, call->params[i],
-                                     call->callee->params[i].num_components);
-      }
-
-      nir_inline_function_impl(b, call->callee->impl, params, NULL);
+   const unsigned num_params = call->num_params;
+   NIR_VLA(nir_def *, params, num_params);
+   for (unsigned i = 0; i < num_params; i++) {
+      params[i] = nir_ssa_for_src(b, call->params[i],
+                                  call->callee->params[i].num_components);
    }
 
-   return progress;
+   nir_inline_function_impl(b, call->callee->impl, params, NULL);
+   return true;
 }
 
 static bool
@@ -177,20 +165,12 @@ inline_function_impl(nir_function_impl *impl, struct set *inlined)
    if (_mesa_set_search(inlined, impl))
       return false; /* Already inlined */
 
-   nir_builder b = nir_builder_create(impl);
-
-   bool progress = false;
-   nir_foreach_block_safe(block, impl) {
-      progress |= inline_functions_block(block, &b, inlined);
-   }
-
+   bool progress;
+   progress = nir_function_instructions_pass(impl, inline_functions_pass,
+                                             nir_metadata_none, inlined);
    if (progress) {
       /* Indices are completely messed up now */
       nir_index_ssa_defs(impl);
-
-      nir_metadata_preserve(impl, nir_metadata_none);
-   } else {
-      nir_metadata_preserve(impl, nir_metadata_all);
    }
 
    _mesa_set_add(inlined, impl);
