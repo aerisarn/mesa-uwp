@@ -47,3 +47,13 @@ deqp_args = [
     "--deqp-visibility=hidden"
 ]
 timeout = 180.0
+
+[[piglit]]
+piglit_folder = "/piglit"
+profile = "gpu"
+process_isolation = true
+timeout = 180.0
+  [piglit.env]
+  PIGLIT_NO_WINDOW = "1"
+  PIGLIT_PLATFORM = "gbm"
+  WAFFLE_PLATFORM = "gbm"
