@@ -273,15 +273,7 @@ impl<'a> Builder for SSAInstrBuilder<'a> {
 
 impl<'a> SSABuilder for SSAInstrBuilder<'a> {
     fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> SSARef {
-        if comps == 1 {
-            self.alloc.alloc(file).into()
-        } else {
-            let mut vec = Vec::new();
-            for _ in 0..comps {
-                vec.push(self.alloc.alloc(file));
-            }
-            vec.try_into().unwrap()
-        }
+        self.alloc.alloc_vec(file, comps)
     }
 }
 

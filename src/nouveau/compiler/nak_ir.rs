@@ -499,6 +499,15 @@ impl SSAValueAllocator {
         self.count += 1;
         SSAValue::new(file, self.count)
     }
+
+    pub fn alloc_vec(&mut self, file: RegFile, comps: u8) -> SSARef {
+        assert!(comps >= 1 && comps <= 4);
+        let mut vec = [SSAValue::NONE; 4];
+        for c in 0..comps {
+            vec[usize::from(c)] = self.alloc(file);
+        }
+        vec[0..usize::from(comps)].try_into().unwrap()
+    }
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
