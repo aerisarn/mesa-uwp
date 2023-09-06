@@ -177,7 +177,6 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    if (!entry) {
       /* always wait on async precompile/cache fence */
       util_queue_fence_wait(&prog->base.cache_fence);
-      VkPipeline pipeline = VK_NULL_HANDLE;
       struct zink_gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(zink_gfx_pipeline_cache_entry);
       if (!pc_entry)
          return VK_NULL_HANDLE;
@@ -215,23 +214,21 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pc_entry->gpl.gkey = gkey;
          pc_entry->gpl.okey = okey;
          /* create the non-optimized pipeline first using fast-linking to avoid stuttering */
-         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false, false);
-         pc_entry->pipeline = pipeline;
+         pc_entry->pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false, false);
          if (!prog->is_separable)
             /* trigger async optimized pipeline compile if this was the fast-linked unoptimized pipeline */
             zink_gfx_program_compile_queue(ctx, pc_entry);
       } else {
          /* optimize by default only when expecting precompiles in order to reduce stuttering */
          if (DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT2 && DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT)
-            pipeline = zink_create_gfx_pipeline(screen, prog, prog->objs, state, state->element_state->binding_map, vkmode, !HAVE_LIB, NULL);
+            pc_entry->pipeline = zink_create_gfx_pipeline(screen, prog, prog->objs, state, state->element_state->binding_map, vkmode, !HAVE_LIB, NULL);
          else
-            pipeline = zink_create_gfx_pipeline(screen, prog, prog->objs, state, NULL, vkmode, !HAVE_LIB, NULL);
-         pc_entry->pipeline = pipeline;
+            pc_entry->pipeline = zink_create_gfx_pipeline(screen, prog, prog->objs, state, NULL, vkmode, !HAVE_LIB, NULL);
          if (HAVE_LIB && !prog->is_separable)
             /* trigger async optimized pipeline compile if this was an unoptimized pipeline */
             zink_gfx_program_compile_queue(ctx, pc_entry);
       }
-      if (pipeline == VK_NULL_HANDLE)
+      if (pc_entry->pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
       zink_screen_update_pipeline_cache(screen, &prog->base, false);
