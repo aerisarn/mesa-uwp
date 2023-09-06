@@ -830,7 +830,7 @@ zink_create_gfx_pipeline_separate(struct zink_screen *screen, struct zink_shader
 }
 
 VkPipeline
-zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_program *prog, VkPipeline input, VkPipeline *library, unsigned libcount, VkPipeline output, bool optimized)
+zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_program *prog, VkPipeline input, VkPipeline *library, unsigned libcount, VkPipeline output, bool optimized, bool testonly)
 {
    VkPipeline libraries[4];
    VkPipelineLibraryCreateInfoKHR libstate = {0};
@@ -850,6 +850,8 @@ zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_pr
       pci.flags = VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT;
    else
       pci.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
+   if (testonly)
+      pci.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT;
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
       pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
    pci.pNext = &libstate;
@@ -859,8 +861,8 @@ zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_pr
 
    VkPipeline pipeline;
    u_rwlock_wrlock(&prog->base.pipeline_cache_lock);
-   if (VKSCR(CreateGraphicsPipelines)(screen->dev, prog->base.pipeline_cache, 1, &pci,
-                                      NULL, &pipeline) != VK_SUCCESS) {
+   VkResult result = VKSCR(CreateGraphicsPipelines)(screen->dev, prog->base.pipeline_cache, 1, &pci, NULL, &pipeline);
+   if (result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
       mesa_loge("ZINK: vkCreateGraphicsPipelines failed");
       u_rwlock_wrunlock(&prog->base.pipeline_cache_lock);
       return VK_NULL_HANDLE;

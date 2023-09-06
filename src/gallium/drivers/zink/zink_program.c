@@ -784,7 +784,7 @@ optimized_compile_job(void *data, void *gdata, int thread_index)
    struct zink_screen *screen = gdata;
    VkPipeline pipeline;
    if (pc_entry->gpl.gkey)
-      pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->gpl.ikey->pipeline, &pc_entry->gpl.gkey->pipeline, 1, pc_entry->gpl.okey->pipeline, true);
+      pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->gpl.ikey->pipeline, &pc_entry->gpl.gkey->pipeline, 1, pc_entry->gpl.okey->pipeline, true, false);
    else
       pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, pc_entry->prog->objs, &pc_entry->state, pc_entry->state.element_state->binding_map, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true, NULL);
    if (pipeline) {
@@ -1267,7 +1267,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
       }
       gkey->optimal_key = prog->last_variant_hash;
       assert(gkey->optimal_key);
-      gkey->pipeline = zink_create_gfx_pipeline_combined(screen, prog, VK_NULL_HANDLE, libs, 2, VK_NULL_HANDLE, false);
+      gkey->pipeline = zink_create_gfx_pipeline_combined(screen, prog, VK_NULL_HANDLE, libs, 2, VK_NULL_HANDLE, false, false);
       _mesa_set_add(&prog->libs->libs, gkey);
    }
 

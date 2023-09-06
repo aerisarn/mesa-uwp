@@ -215,7 +215,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pc_entry->gpl.gkey = gkey;
          pc_entry->gpl.okey = okey;
          /* create the non-optimized pipeline first using fast-linking to avoid stuttering */
-         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false);
+         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false, false);
          pc_entry->pipeline = pipeline;
          if (!prog->is_separable)
             /* trigger async optimized pipeline compile if this was the fast-linked unoptimized pipeline */
