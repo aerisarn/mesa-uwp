@@ -259,10 +259,14 @@ nir_inline_functions(nir_shader *shader)
    return progress;
 }
 
+struct lower_link_state {
+   struct hash_table *shader_var_remap;
+   const nir_shader *link_shader;
+};
+
 static bool
 lower_function_link_call_instr(nir_instr *instr, nir_builder *b,
-                               const nir_shader *link_shader,
-                               struct hash_table *copy_vars)
+                               struct lower_link_state *state)
 {
    nir_call_instr *call = nir_instr_as_call(instr);
    nir_function *func = NULL;
@@ -270,7 +274,7 @@ lower_function_link_call_instr(nir_instr *instr, nir_builder *b,
    if (!call->callee->name)
       return false;
 
-   func = nir_shader_get_function_for_name(link_shader, call->callee->name);
+   func = nir_shader_get_function_for_name(state->link_shader, call->callee->name);
    if (!func || !func->impl) {
       return false;
    }
@@ -283,7 +287,7 @@ lower_function_link_call_instr(nir_instr *instr, nir_builder *b,
    }
 
    b->cursor = nir_instr_remove(&call->instr);
-   nir_inline_function_impl(b, func->impl, params, copy_vars);
+   nir_inline_function_impl(b, func->impl, params, state->shader_var_remap);
 
    ralloc_free(params);
 
@@ -292,8 +296,7 @@ lower_function_link_call_instr(nir_instr *instr, nir_builder *b,
 
 static bool
 lower_function_link_impl(nir_function_impl *impl,
-                         const nir_shader *link_shader,
-                         struct hash_table *copy_vars)
+                         struct lower_link_state *state)
 {
    nir_builder b = nir_builder_create(impl);
 
@@ -301,7 +304,7 @@ lower_function_link_impl(nir_function_impl *impl,
    nir_foreach_block_safe(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type == nir_instr_type_call)
-            progress |= lower_function_link_call_instr(instr, &b, link_shader, copy_vars);
+            progress |= lower_function_link_call_instr(instr, &b, state);
       }
    }
 
@@ -323,11 +326,15 @@ nir_link_shader_functions(nir_shader *shader,
    struct hash_table *copy_vars = _mesa_pointer_hash_table_create(ra_ctx);
    bool progress = false, overall_progress = false;
 
+   struct lower_link_state state = {
+      .shader_var_remap = copy_vars,
+      .link_shader = link_shader,
+   };
    /* do progress passes inside the pass */
    do {
       progress = false;
       nir_foreach_function_impl(impl, shader) {
-         progress |= lower_function_link_impl(impl, link_shader, copy_vars);
+         progress |= lower_function_link_impl(impl, &state);
       }
       overall_progress |= progress;
    } while (progress);
