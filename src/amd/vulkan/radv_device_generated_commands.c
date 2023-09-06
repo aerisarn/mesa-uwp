@@ -24,6 +24,8 @@
 #include "meta/radv_meta.h"
 #include "radv_private.h"
 
+#include "ac_rgp.h"
+
 #include "nir_builder.h"
 
 #include "vk_common_entrypoints.h"
@@ -48,6 +50,11 @@ radv_get_sequence_size_compute(const struct radv_indirect_command_layout *layout
          *cmd_size += 4 * 4;
       }
    }
+
+   if (device->sqtt.bo) {
+      /* sqtt markers */
+      *cmd_size += 8 * 3 * 4;
+   }
 }
 
 static void
@@ -55,6 +62,7 @@ radv_get_sequence_size_graphics(const struct radv_indirect_command_layout *layou
                                 const struct radv_graphics_pipeline *pipeline, uint32_t *cmd_size,
                                 uint32_t *upload_size)
 {
+   const struct radv_device *device = container_of(layout->base.device, struct radv_device, vk);
    const struct radv_shader *vs = radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX);
 
    if (layout->bind_vbo_mask) {
@@ -79,12 +87,19 @@ radv_get_sequence_size_graphics(const struct radv_indirect_command_layout *layou
       /* userdata writes + instance count + non-indexed draw */
       *cmd_size += (5 + 2 + 3) * 4;
    }
+
+   if (device->sqtt.bo) {
+      /* sqtt markers */
+      *cmd_size += 5 * 3 * 4;
+   }
 }
 
 static void
 radv_get_sequence_size(const struct radv_indirect_command_layout *layout, struct radv_pipeline *pipeline,
                        uint32_t *cmd_size, uint32_t *upload_size)
 {
+   const struct radv_device *device = container_of(layout->base.device, struct radv_device, vk);
+
    *cmd_size = 0;
    *upload_size = 0;
 
@@ -107,6 +122,11 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout, struct
       }
       if (need_copy)
          *upload_size += align(pipeline->push_constant_size + 16 * pipeline->dynamic_offset_count, 16);
+   }
+
+   if (device->sqtt.bo) {
+      /* THREAD_TRACE_MARKER */
+      *cmd_size += 2 * 4;
    }
 
    if (layout->pipeline_bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
@@ -204,6 +224,9 @@ enum {
 struct dgc_cmdbuf {
    nir_def *descriptor;
    nir_variable *offset;
+
+   enum amd_gfx_level gfx_level;
+   bool sqtt_enabled;
 };
 
 static void
@@ -235,10 +258,16 @@ dgc_emit(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *value)
                                                 .base = offsetof(struct radv_dgc_params, field), .range = 8))
 
 static nir_def *
-nir_pkt3(nir_builder *b, unsigned op, nir_def *len)
+nir_pkt3_base(nir_builder *b, unsigned op, nir_def *len, bool predicate)
 {
    len = nir_iand_imm(b, len, 0x3fff);
-   return nir_ior_imm(b, nir_ishl_imm(b, len, 16), PKT_TYPE_S(3) | PKT3_IT_OPCODE_S(op));
+   return nir_ior_imm(b, nir_ishl_imm(b, len, 16), PKT_TYPE_S(3) | PKT3_IT_OPCODE_S(op) | PKT3_PREDICATE(predicate));
+}
+
+static nir_def *
+nir_pkt3(nir_builder *b, unsigned op, nir_def *len)
+{
+   return nir_pkt3_base(b, op, len, false);
 }
 
 static nir_def *
@@ -273,6 +302,90 @@ dgc_emit_userdata_vertex(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *vtx_bas
    values[4] = nir_bcsel(b, nir_iand(b, has_drawid, has_baseinstance), first_instance, values[4]);
 
    dgc_emit(b, cs, nir_vec(b, values, 5));
+}
+
+static void
+dgc_emit_sqtt_userdata(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *data)
+{
+   if (!cs->sqtt_enabled)
+      return;
+
+   nir_def *values[3] = {
+      nir_pkt3_base(b, PKT3_SET_UCONFIG_REG, nir_imm_int(b, 1), cs->gfx_level >= GFX10),
+      nir_imm_int(b, (R_030D08_SQ_THREAD_TRACE_USERDATA_2 - CIK_UCONFIG_REG_OFFSET) >> 2),
+      data,
+   };
+
+   dgc_emit(b, cs, nir_vec(b, values, 3));
+}
+
+static void
+dgc_emit_sqtt_thread_trace_marker(nir_builder *b, struct dgc_cmdbuf *cs)
+{
+   if (!cs->sqtt_enabled)
+      return;
+
+   nir_def *values[2] = {
+      nir_pkt3(b, PKT3_EVENT_WRITE, nir_imm_int(b, 0)),
+      nir_imm_int(b, EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER | EVENT_INDEX(0))),
+   };
+
+   dgc_emit(b, cs, nir_vec(b, values, 2));
+}
+
+static void
+dgc_emit_sqtt_marker_event(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *sequence_id,
+                           enum rgp_sqtt_marker_event_type event)
+{
+   struct rgp_sqtt_marker_event marker = {0};
+
+   marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
+   marker.api_type = event;
+
+   dgc_emit_sqtt_userdata(b, cs, nir_imm_int(b, marker.dword01));
+   dgc_emit_sqtt_userdata(b, cs, nir_imm_int(b, marker.dword02));
+   dgc_emit_sqtt_userdata(b, cs, sequence_id);
+}
+
+static void
+dgc_emit_sqtt_marker_event_with_dims(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *sequence_id, nir_def *x,
+                                     nir_def *y, nir_def *z, enum rgp_sqtt_marker_event_type event)
+{
+   struct rgp_sqtt_marker_event_with_dims marker = {0};
+
+   marker.event.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
+   marker.event.api_type = event;
+   marker.event.has_thread_dims = 1;
+
+   dgc_emit_sqtt_userdata(b, cs, nir_imm_int(b, marker.event.dword01));
+   dgc_emit_sqtt_userdata(b, cs, nir_imm_int(b, marker.event.dword02));
+   dgc_emit_sqtt_userdata(b, cs, sequence_id);
+   dgc_emit_sqtt_userdata(b, cs, x);
+   dgc_emit_sqtt_userdata(b, cs, y);
+   dgc_emit_sqtt_userdata(b, cs, z);
+}
+
+static void
+dgc_emit_sqtt_begin_api_marker(nir_builder *b, struct dgc_cmdbuf *cs, enum rgp_sqtt_marker_general_api_type api_type)
+{
+   struct rgp_sqtt_marker_general_api marker = {0};
+
+   marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_GENERAL_API;
+   marker.api_type = api_type;
+
+   dgc_emit_sqtt_userdata(b, cs, nir_imm_int(b, marker.dword01));
+}
+
+static void
+dgc_emit_sqtt_end_api_marker(nir_builder *b, struct dgc_cmdbuf *cs, enum rgp_sqtt_marker_general_api_type api_type)
+{
+   struct rgp_sqtt_marker_general_api marker = {0};
+
+   marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_GENERAL_API;
+   marker.api_type = api_type;
+   marker.is_end = 1;
+
+   dgc_emit_sqtt_userdata(b, cs, nir_imm_int(b, marker.dword01));
 }
 
 static void
@@ -404,9 +517,15 @@ dgc_emit_draw(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf, nir_de
 
    nir_push_if(b, nir_iand(b, nir_ine_imm(b, vertex_count, 0), nir_ine_imm(b, instance_count, 0)));
    {
+      dgc_emit_sqtt_begin_api_marker(b, cs, ApiCmdDraw);
+      dgc_emit_sqtt_marker_event(b, cs, sequence_id, EventCmdDraw);
+
       dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id, device);
       dgc_emit_instance_count(b, cs, instance_count);
       dgc_emit_draw_index_auto(b, cs, vertex_count);
+
+      dgc_emit_sqtt_thread_trace_marker(b, cs);
+      dgc_emit_sqtt_end_api_marker(b, cs, ApiCmdDraw);
    }
    nir_pop_if(b, 0);
 }
@@ -432,9 +551,15 @@ dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf
 
    nir_push_if(b, nir_iand(b, nir_ine_imm(b, index_count, 0), nir_ine_imm(b, instance_count, 0)));
    {
+      dgc_emit_sqtt_begin_api_marker(b, cs, ApiCmdDrawIndexed);
+      dgc_emit_sqtt_marker_event(b, cs, sequence_id, EventCmdDrawIndexed);
+
       dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id, device);
       dgc_emit_instance_count(b, cs, instance_count);
       dgc_emit_draw_index_offset_2(b, cs, first_index, index_count, max_index_count);
+
+      dgc_emit_sqtt_thread_trace_marker(b, cs);
+      dgc_emit_sqtt_end_api_marker(b, cs, ApiCmdDrawIndexed);
    }
    nir_pop_if(b, 0);
 }
@@ -779,7 +904,7 @@ dgc_emit_vertex_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_bu
  */
 static void
 dgc_emit_dispatch(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf, nir_def *stream_base,
-                  nir_def *dispatch_params_offset, const struct radv_device *device)
+                  nir_def *dispatch_params_offset, nir_def *sequence_id, const struct radv_device *device)
 {
    nir_def *stream_offset = nir_iadd(b, dispatch_params_offset, stream_base);
 
@@ -801,7 +926,13 @@ dgc_emit_dispatch(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf, ni
 
    nir_push_if(b, nir_iand(b, nir_ine_imm(b, wg_x, 0), nir_iand(b, nir_ine_imm(b, wg_y, 0), nir_ine_imm(b, wg_z, 0))));
    {
+      dgc_emit_sqtt_begin_api_marker(b, cs, ApiCmdDispatch);
+      dgc_emit_sqtt_marker_event_with_dims(b, cs, sequence_id, wg_x, wg_y, wg_z, EventCmdDispatch);
+
       dgc_emit_dispatch_direct(b, cs, wg_x, wg_y, wg_z, load_param32(b, dispatch_initiator));
+
+      dgc_emit_sqtt_thread_trace_marker(b, cs);
+      dgc_emit_sqtt_end_api_marker(b, cs, ApiCmdDispatch);
    }
    nir_pop_if(b, 0);
 }
@@ -848,6 +979,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
       struct dgc_cmdbuf cmd_buf = {
          .descriptor = radv_meta_load_descriptor(&b, 0, DGC_DESC_PREPARE),
          .offset = nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "cmd_buf_offset"),
+         .gfx_level = dev->physical_device->rad_info.gfx_level,
+         .sqtt_enabled = !!dev->sqtt.bo,
       };
       nir_store_var(&b, cmd_buf.offset, nir_imul(&b, global_id, cmd_buf_stride), 1);
       nir_def *cmd_buf_end = nir_iadd(&b, nir_load_var(&b, cmd_buf.offset), cmd_buf_stride);
@@ -913,7 +1046,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
       }
       nir_push_else(&b, NULL);
       {
-         dgc_emit_dispatch(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, dispatch_params_offset), dev);
+         dgc_emit_dispatch(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, dispatch_params_offset), sequence_id,
+                           dev);
       }
       nir_pop_if(&b, NULL);
 

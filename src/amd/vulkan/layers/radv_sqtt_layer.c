@@ -946,6 +946,14 @@ sqtt_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 }
 
 VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPreprocessed,
+                                   const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
+{
+   /* There is no ExecuteIndirect Vulkan event in RGP yet. */
+   API_MARKER_ALIAS(ExecuteGeneratedCommandsNV, ExecuteCommands, commandBuffer, isPreprocessed, pGeneratedCommandsInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 sqtt_CmdSetViewport(VkCommandBuffer commandBuffer, uint32_t firstViewport, uint32_t viewportCount,
                     const VkViewport *pViewports)
 {
