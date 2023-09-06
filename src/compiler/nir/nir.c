@@ -489,21 +489,6 @@ nir_function_create(nir_shader *shader, const char *name)
    return func;
 }
 
-static void
-src_copy(nir_src *dest, const nir_src *src, gc_ctx *ctx)
-{
-   dest->ssa = src->ssa;
-}
-
-/* NOTE: if the instruction you are copying a src to is already added
- * to the IR, use nir_instr_rewrite_src() instead.
- */
-void
-nir_src_copy(nir_src *dest, const nir_src *src, nir_instr *instr)
-{
-   src_copy(dest, src, instr ? gc_get_context(instr) : NULL);
-}
-
 void
 nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
                  nir_alu_instr *instr)

@@ -1096,8 +1096,6 @@ nir_is_sequential_comp_swizzle(uint8_t *swiz, unsigned nr_comp)
    return true;
 }
 
-void nir_src_copy(nir_src *dest, const nir_src *src, nir_instr *instr);
-
 typedef struct {
    /** Base source */
    nir_src src;
