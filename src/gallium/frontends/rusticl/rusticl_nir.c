@@ -30,10 +30,10 @@ rusticl_lower_intrinsics_instr(
 
         if (intrins->intrinsic == nir_intrinsic_image_deref_format) {
             offset = CL_SNORM_INT8;
-            var = state->format_arr;
+            var = nir_find_variable_with_location(b->shader, nir_var_uniform, state->format_arr_loc);
         } else {
             offset = CL_R;
-            var = state->order_arr;
+            var = nir_find_variable_with_location(b->shader, nir_var_uniform, state->order_arr_loc);
         }
 
         val = intrins->src[0].ssa;
@@ -64,14 +64,14 @@ rusticl_lower_intrinsics_instr(
             return nir_u2u64(b, nir_load_global_invocation_id_zero_base(b, 32));
         return NULL;
     case nir_intrinsic_load_base_global_invocation_id:
-        return nir_load_var(b, state->base_global_invoc_id);
+        return nir_load_var(b, nir_find_variable_with_location(b->shader, nir_var_uniform, state->base_global_invoc_id_loc));
     case nir_intrinsic_load_constant_base_ptr:
-        return nir_load_var(b, state->const_buf);
+        return nir_load_var(b, nir_find_variable_with_location(b->shader, nir_var_uniform, state->const_buf_loc));
     case nir_intrinsic_load_printf_buffer_address:
-        return nir_load_var(b, state->printf_buf);
+        return nir_load_var(b, nir_find_variable_with_location(b->shader, nir_var_uniform, state->printf_buf_loc));
     case nir_intrinsic_load_work_dim:
-        assert(state->work_dim);
-        return nir_u2uN(b, nir_load_var(b, state->work_dim),
+        assert(nir_find_variable_with_location(b->shader, nir_var_uniform, state->work_dim_loc));
+        return nir_u2uN(b, nir_load_var(b, nir_find_variable_with_location(b->shader, nir_var_uniform, state->work_dim_loc)),
                         intrins->def.bit_size);
     default:
         return NULL;

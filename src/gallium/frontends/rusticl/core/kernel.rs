@@ -526,10 +526,11 @@ fn lower_and_optimize_nir(
         size: (3 * dev.address_bits() / 8) as usize,
     });
 
-    lower_state.base_global_invoc_id = nir.add_var(
+    lower_state.base_global_invoc_id_loc = args.len() + internal_args.len() - 1;
+    nir.add_var(
         nir_variable_mode::nir_var_uniform,
         unsafe { glsl_vector_type(address_bits_base_type, 3) },
-        args.len() + internal_args.len() - 1,
+        lower_state.base_global_invoc_id_loc,
         "base_global_invocation_id",
     );
     if nir.has_constant() {
@@ -538,10 +539,11 @@ fn lower_and_optimize_nir(
             offset: 0,
             size: 8,
         });
-        lower_state.const_buf = nir.add_var(
+        lower_state.const_buf_loc = args.len() + internal_args.len() - 1;
+        nir.add_var(
             nir_variable_mode::nir_var_uniform,
             address_bits_ptr_type,
-            args.len() + internal_args.len() - 1,
+            lower_state.const_buf_loc,
             "constant_buffer_addr",
         );
     }
@@ -551,10 +553,11 @@ fn lower_and_optimize_nir(
             offset: 0,
             size: 8,
         });
-        lower_state.printf_buf = nir.add_var(
+        lower_state.printf_buf_loc = args.len() + internal_args.len() - 1;
+        nir.add_var(
             nir_variable_mode::nir_var_uniform,
             address_bits_ptr_type,
-            args.len() + internal_args.len() - 1,
+            lower_state.printf_buf_loc,
             "printf_buffer_addr",
         );
     }
@@ -579,17 +582,19 @@ fn lower_and_optimize_nir(
             size: 2 * count as usize,
         });
 
-        lower_state.format_arr = nir.add_var(
+        lower_state.format_arr_loc = args.len() + internal_args.len() - 2;
+        nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_array_type(glsl_int16_t_type(), count as u32, 2) },
-            args.len() + internal_args.len() - 2,
+            lower_state.format_arr_loc,
             "image_formats",
         );
 
-        lower_state.order_arr = nir.add_var(
+        lower_state.order_arr_loc = args.len() + internal_args.len() - 1;
+        nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_array_type(glsl_int16_t_type(), count as u32, 2) },
-            args.len() + internal_args.len() - 1,
+            lower_state.order_arr_loc,
             "image_orders",
         );
     }
@@ -600,10 +605,11 @@ fn lower_and_optimize_nir(
             size: 1,
             offset: 0,
         });
-        lower_state.work_dim = nir.add_var(
+        lower_state.work_dim_loc = args.len() + internal_args.len() - 1;
+        nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_uint8_t_type() },
-            args.len() + internal_args.len() - 1,
+            lower_state.work_dim_loc,
             "work_dim",
         );
     }

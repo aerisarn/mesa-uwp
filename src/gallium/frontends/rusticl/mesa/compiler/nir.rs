@@ -443,12 +443,11 @@ impl NirShader {
         glsl_type: *const glsl_type,
         loc: usize,
         name: &str,
-    ) -> *mut nir_variable {
+    ) {
         let name = CString::new(name).unwrap();
         unsafe {
             let var = nir_variable_create(self.nir.as_ptr(), mode, glsl_type, name.as_ptr());
             (*var).data.location = loc.try_into().unwrap();
-            var
         }
     }
 }
