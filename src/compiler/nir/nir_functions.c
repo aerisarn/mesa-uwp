@@ -265,9 +265,15 @@ struct lower_link_state {
 };
 
 static bool
-lower_function_link_call_instr(nir_instr *instr, nir_builder *b,
-                               struct lower_link_state *state)
+function_link_pass(struct nir_builder *b,
+                   nir_instr *instr,
+                   void *cb_data)
 {
+   struct lower_link_state *state = cb_data;
+
+   if (instr->type != nir_instr_type_call)
+      return false;
+
    nir_call_instr *call = nir_instr_as_call(instr);
    nir_function *func = NULL;
 
@@ -294,30 +300,6 @@ lower_function_link_call_instr(nir_instr *instr, nir_builder *b,
    return true;
 }
 
-static bool
-lower_function_link_impl(nir_function_impl *impl,
-                         struct lower_link_state *state)
-{
-   nir_builder b = nir_builder_create(impl);
-
-   bool progress = false;
-   nir_foreach_block_safe(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type == nir_instr_type_call)
-            progress |= lower_function_link_call_instr(instr, &b, state);
-      }
-   }
-
-   if (progress) {
-      nir_index_ssa_defs(impl);
-      nir_metadata_preserve(impl, nir_metadata_none);
-   } else {
-      nir_metadata_preserve(impl, nir_metadata_all);
-   }
-
-   return progress;
-}
-
 bool
 nir_link_shader_functions(nir_shader *shader,
                           const nir_shader *link_shader)
@@ -334,7 +316,13 @@ nir_link_shader_functions(nir_shader *shader,
    do {
       progress = false;
       nir_foreach_function_impl(impl, shader) {
-         progress |= lower_function_link_impl(impl, &state);
+         bool this_progress = nir_function_instructions_pass(impl,
+                                                             function_link_pass,
+                                                             nir_metadata_none,
+                                                             &state);
+         if (this_progress)
+            nir_index_ssa_defs(impl);
+         progress |= this_progress;
       }
       overall_progress |= progress;
    } while (progress);
