@@ -371,7 +371,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (objs[MESA_SHADER_TESS_CTRL].mod && objs[MESA_SHADER_TESS_EVAL].mod) {
+   unsigned tess_bits = BITFIELD_BIT(MESA_SHADER_TESS_CTRL) | BITFIELD_BIT(MESA_SHADER_TESS_EVAL);
+   if ((prog->stages_present & tess_bits) == tess_bits) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       tci.patchControlPoints = state->dyn_state2.vertices_per_patch;
       pci.pTessellationState = &tci;
@@ -384,7 +385,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkShaderModuleCreateInfo smci[ZINK_GFX_SHADER_COUNT] = {0};
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      if (!objs[i].obj)
+      if (!(prog->stages_present & BITFIELD_BIT(i)))
          continue;
 
       VkPipelineShaderStageCreateInfo stage = {0};
@@ -682,7 +683,7 @@ zink_create_gfx_pipeline_input(struct zink_screen *screen,
 }
 
 static VkPipeline
-create_gfx_pipeline_library(struct zink_screen *screen, struct zink_shader_object *objs, VkPipelineLayout layout, VkPipelineCache pipeline_cache)
+create_gfx_pipeline_library(struct zink_screen *screen, struct zink_shader_object *objs, unsigned stage_mask, VkPipelineLayout layout, VkPipelineCache pipeline_cache)
 {
    assert(screen->info.have_EXT_extended_dynamic_state && screen->info.have_EXT_extended_dynamic_state2);
    VkPipelineRenderingCreateInfo rendering_info;
@@ -694,9 +695,9 @@ create_gfx_pipeline_library(struct zink_screen *screen, struct zink_shader_objec
       &rendering_info,
       0
    };
-   if (objs[MESA_SHADER_VERTEX].mod)
+   if (stage_mask & BITFIELD_BIT(MESA_SHADER_VERTEX))
       gplci.flags |= VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT;
-   if (objs[MESA_SHADER_FRAGMENT].mod)
+   if (stage_mask & BITFIELD_BIT(MESA_SHADER_FRAGMENT))
       gplci.flags |= VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT;
 
    VkPipelineViewportStateCreateInfo viewport_state = {0};
@@ -767,7 +768,8 @@ create_gfx_pipeline_library(struct zink_screen *screen, struct zink_shader_objec
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (objs[MESA_SHADER_TESS_CTRL].mod && objs[MESA_SHADER_TESS_EVAL].mod) {
+   unsigned tess_bits = BITFIELD_BIT(MESA_SHADER_TESS_CTRL) | BITFIELD_BIT(MESA_SHADER_TESS_EVAL);
+   if ((stage_mask & tess_bits) == tess_bits) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       //this is a wild guess; pray for extendedDynamicState2PatchControlPoints
       if (!screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) {
@@ -784,7 +786,7 @@ create_gfx_pipeline_library(struct zink_screen *screen, struct zink_shader_objec
    VkPipelineShaderStageCreateInfo shader_stages[ZINK_GFX_SHADER_COUNT];
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      if (!objs[i].mod)
+      if (!(stage_mask & BITFIELD_BIT(i)))
          continue;
 
       VkPipelineShaderStageCreateInfo stage = {0};
@@ -818,15 +820,15 @@ VkPipeline
 zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_program *prog)
 {
    u_rwlock_wrlock(&prog->base.pipeline_cache_lock);
-   VkPipeline pipeline = create_gfx_pipeline_library(screen, prog->objs, prog->base.layout, prog->base.pipeline_cache);
+   VkPipeline pipeline = create_gfx_pipeline_library(screen, prog->objs, prog->stages_present, prog->base.layout, prog->base.pipeline_cache);
    u_rwlock_wrunlock(&prog->base.pipeline_cache_lock);
    return pipeline;
 }
 
 VkPipeline
-zink_create_gfx_pipeline_separate(struct zink_screen *screen, struct zink_shader_object *objs, VkPipelineLayout layout)
+zink_create_gfx_pipeline_separate(struct zink_screen *screen, struct zink_shader_object *objs, VkPipelineLayout layout, gl_shader_stage stage)
 {
-   return create_gfx_pipeline_library(screen, objs, layout, VK_NULL_HANDLE);
+   return create_gfx_pipeline_library(screen, objs, BITFIELD_BIT(stage), layout, VK_NULL_HANDLE);
 }
 
 VkPipeline
