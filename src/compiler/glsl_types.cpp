@@ -543,8 +543,8 @@ glsl_cmat_use_to_string(enum glsl_cmat_use use)
    }
 };
 
-const struct glsl_type *
-glsl_type::vec(unsigned components, const struct glsl_type *const ts[])
+static const struct glsl_type *
+vec(unsigned components, const struct glsl_type *const ts[])
 {
    unsigned n = components;
 
@@ -554,22 +554,25 @@ glsl_type::vec(unsigned components, const struct glsl_type *const ts[])
       n = 7;
 
    if (n == 0 || n > 7)
-      return error_type;
+      return &glsl_type_builtin_error;
 
    return ts[n - 1];
 }
 
 #define VECN(components, sname, vname)           \
-const struct glsl_type *                                \
-glsl_type:: vname (unsigned components)          \
+extern "C" const struct glsl_type *              \
+glsl_ ## vname ## _type (unsigned components)    \
 {                                                \
    static const struct glsl_type *const ts[] = { \
-      sname ## _type, vname ## 2_type,           \
-      vname ## 3_type, vname ## 4_type,          \
-      vname ## 5_type,                           \
-      vname ## 8_type, vname ## 16_type,         \
+      &glsl_type_builtin_ ## sname,              \
+      &glsl_type_builtin_ ## vname ## 2,         \
+      &glsl_type_builtin_ ## vname ## 3,         \
+      &glsl_type_builtin_ ## vname ## 4,         \
+      &glsl_type_builtin_ ## vname ## 5,         \
+      &glsl_type_builtin_ ## vname ## 8,         \
+      &glsl_type_builtin_ ## vname ## 16,        \
    };                                            \
-   return glsl_type::vec(components, ts);        \
+   return vec(components, ts);                   \
 }
 
 VECN(components, float, vec)

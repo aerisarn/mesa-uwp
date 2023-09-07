@@ -308,18 +308,6 @@ glsl_floatN_t_type(unsigned bit_size)
 }
 
 const struct glsl_type *
-glsl_vec_type(unsigned n)
-{
-   return glsl_type::vec(n);
-}
-
-const struct glsl_type *
-glsl_dvec_type(unsigned n)
-{
-   return glsl_type::dvec(n);
-}
-
-const struct glsl_type *
 glsl_vec4_type(void)
 {
    return glsl_type::vec4_type;

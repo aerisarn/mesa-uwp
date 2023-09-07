@@ -50,6 +50,19 @@ glsl_type::count_attribute_slots(bool is_gl_vertex_input) const
    return count_vec4_slots(is_gl_vertex_input, true);
 }
 
+inline const glsl_type *glsl_type::vec(unsigned components) { return glsl_vec_type(components); }
+inline const glsl_type *glsl_type::f16vec(unsigned components) { return glsl_f16vec_type(components); }
+inline const glsl_type *glsl_type::dvec(unsigned components) { return glsl_dvec_type(components); }
+inline const glsl_type *glsl_type::ivec(unsigned components) { return glsl_ivec_type(components); }
+inline const glsl_type *glsl_type::uvec(unsigned components) { return glsl_uvec_type(components); }
+inline const glsl_type *glsl_type::bvec(unsigned components) { return glsl_bvec_type(components); }
+inline const glsl_type *glsl_type::i64vec(unsigned components) { return glsl_i64vec_type(components); }
+inline const glsl_type *glsl_type::u64vec(unsigned components) { return glsl_u64vec_type(components); }
+inline const glsl_type *glsl_type::i16vec(unsigned components) { return glsl_i16vec_type(components); }
+inline const glsl_type *glsl_type::u16vec(unsigned components) { return glsl_u16vec_type(components); }
+inline const glsl_type *glsl_type::i8vec(unsigned components) { return glsl_i8vec_type(components); }
+inline const glsl_type *glsl_type::u8vec(unsigned components) { return glsl_u8vec_type(components); }
+
 inline bool
 glsl_type::is_integer_16() const
 {

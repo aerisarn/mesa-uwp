@@ -391,7 +391,6 @@ struct glsl_type {
     * Convenience accessors for vector types (shorter than get_instance()).
     * @{
     */
-   static const glsl_type *vec(unsigned components, const glsl_type *const ts[]);
    static const glsl_type *vec(unsigned components);
    static const glsl_type *f16vec(unsigned components);
    static const glsl_type *dvec(unsigned components);
@@ -1342,7 +1341,17 @@ const struct glsl_type *glsl_intN_t_type(unsigned bit_size);
 const struct glsl_type *glsl_uintN_t_type(unsigned bit_size);
 
 const struct glsl_type *glsl_vec_type(unsigned components);
+const struct glsl_type *glsl_f16vec_type(unsigned components);
 const struct glsl_type *glsl_dvec_type(unsigned components);
+const struct glsl_type *glsl_ivec_type(unsigned components);
+const struct glsl_type *glsl_uvec_type(unsigned components);
+const struct glsl_type *glsl_bvec_type(unsigned components);
+const struct glsl_type *glsl_i64vec_type(unsigned components);
+const struct glsl_type *glsl_u64vec_type(unsigned components);
+const struct glsl_type *glsl_i16vec_type(unsigned components);
+const struct glsl_type *glsl_u16vec_type(unsigned components);
+const struct glsl_type *glsl_i8vec_type(unsigned components);
+const struct glsl_type *glsl_u8vec_type(unsigned components);
 
 const struct glsl_type *glsl_sampler_type(enum glsl_sampler_dim dim,
                                           bool shadow,
