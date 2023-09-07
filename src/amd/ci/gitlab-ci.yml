@@ -492,9 +492,6 @@ vkcts-navi10-valve:
     - .radv-valve-manual-rules
   variables:
     GPU_VERSION: radv-navi10-aco
-    # Use Linux 5.17 to work around hitting __vm_enough_memory then hanging on Linux 6.1
-    # See https://gitlab.freedesktop.org/mesa/mesa/-/issues/7888 for details
-    B2C_KERNEL_URL: 'https://gitlab.freedesktop.org/mupuf/valve-infra/-/package_files/144/download'  # 5.17.1
 
 vkcts-navi21-valve:
   parallel: 3
