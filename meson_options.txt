@@ -31,6 +31,15 @@ option(
 )
 
 option(
+  'android-strict',
+  type : 'boolean',
+  value : true,
+  description : 'Enable strict Android compliance. Disabling may cause CTS ' +
+                'failures or other problems, but allows drivers to expose ' +
+                'capabilities that are normally hidden. Default: true'
+)
+
+option(
   'android-libbacktrace',
   type : 'feature',
   description : 'Use Android\'s libbacktrace',
