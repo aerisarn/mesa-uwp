@@ -135,6 +135,16 @@ if with_platform_android
   vulkan_runtime_deps += dep_android
 endif
 
+if prog_glslang.found()
+  vulkan_runtime_files += files('vk_texcompress_astc.c', 'vk_texcompress_astc.h')
+  vulkan_runtime_files += custom_target(
+    'astc_spv.h',
+    input : astc_decoder_glsl_file,
+    output : 'astc_spv.h',
+    command : [prog_glslang, '-V', '-S', 'comp', '-x', '-o', '@OUTPUT@', '@INPUT@'] + glslang_quiet,
+    )
+endif
+
 vk_common_entrypoints = custom_target(
   'vk_common_entrypoints',
   input : [vk_entrypoints_gen, vk_api_xml],

@@ -564,8 +564,8 @@ if vdpau_drivers_path == ''
   vdpau_drivers_path = join_paths(get_option('libdir'), 'vdpau')
 endif
 
-if with_vulkan_overlay_layer or with_aco_tests or with_amd_vk or with_intel_vk
-  prog_glslang = find_program('glslangValidator', native : true)
+prog_glslang = find_program('glslangValidator', native : true, required : with_vulkan_overlay_layer or with_aco_tests or with_amd_vk or with_intel_vk)
+if prog_glslang.found()
   if run_command(prog_glslang, [ '--quiet', '--version' ], check : false).returncode() == 0
     glslang_quiet = ['--quiet']
   else
