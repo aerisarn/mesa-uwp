@@ -2638,6 +2638,105 @@ delete_psiz_store(nir_shader *nir)
                                      nir_metadata_dominance, NULL);
 }
 
+struct write_components {
+   unsigned slot;
+   uint32_t component_mask;
+};
+
+static bool
+fill_zero_reads(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   struct write_components *wc = data;
+   bool is_load = false;
+   bool is_input = false;
+   bool is_interp = false;
+   if (!filter_io_instr(intr, &is_load, &is_input, &is_interp))
+      return false;
+   if (!is_input)
+      return false;
+   nir_io_semantics s = nir_intrinsic_io_semantics(intr);
+   if (wc->slot < s.location || wc->slot >= s.location + s.num_slots)
+      return false;
+   unsigned num_components = intr->num_components;
+   unsigned c = nir_intrinsic_component(intr);
+   if (intr->def.bit_size == 64)
+      num_components *= 2;
+   nir_src *src_offset = nir_get_io_offset_src(intr);
+   if (nir_src_is_const(*src_offset)) {
+      unsigned slot_offset = nir_src_as_uint(*src_offset);
+      if (s.location + slot_offset != wc->slot)
+         return false;
+   } else if (s.location > wc->slot || s.location + s.num_slots <= wc->slot) {
+      return false;
+   }
+   uint32_t readmask = BITFIELD_MASK(intr->num_components) << c;
+   if (intr->def.bit_size == 64)
+      readmask |= readmask << (intr->num_components + c);
+   /* handle dvec3/dvec4 */
+   if (num_components + c > 4)
+      readmask >>= 4;
+   if ((wc->component_mask & readmask) == readmask)
+      return false;
+   uint32_t rewrite_mask = readmask & ~wc->component_mask;
+   if (!rewrite_mask)
+      return false;
+   b->cursor = nir_after_instr(&intr->instr);
+   nir_def *zero = nir_imm_zero(b, intr->def.num_components, intr->def.bit_size);
+   if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+      switch (wc->slot) {
+      case VARYING_SLOT_COL0:
+      case VARYING_SLOT_COL1:
+      case VARYING_SLOT_BFC0:
+      case VARYING_SLOT_BFC1:
+         /* default color is 0,0,0,1 */
+         if (intr->def.num_components == 4)
+            zero = nir_vector_insert_imm(b, zero, nir_imm_float(b, 1.0), 3);
+         break;
+      default:
+         break;
+      }
+   }
+   rewrite_mask >>= c;
+   nir_def *dest = &intr->def;
+   u_foreach_bit(component, rewrite_mask)
+      dest = nir_vector_insert_imm(b, dest, nir_channel(b, zero, component), component);
+   nir_def_rewrite_uses_after(&intr->def, dest, dest->parent_instr);
+   return true;
+}
+
+static bool
+find_max_write_components(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   struct write_components *wc = data;
+   bool is_load = false;
+   bool is_input = false;
+   bool is_interp = false;
+   if (!filter_io_instr(intr, &is_load, &is_input, &is_interp))
+      return false;
+   if (is_input || is_load)
+      return false;
+   nir_io_semantics s = nir_intrinsic_io_semantics(intr);
+   if (wc->slot < s.location || wc->slot >= s.location + s.num_slots)
+      return false;
+   unsigned location = s.location;
+   unsigned c = nir_intrinsic_component(intr);
+   uint32_t wrmask = nir_intrinsic_write_mask(intr) << c;
+   if ((nir_intrinsic_src_type(intr) & NIR_ALU_TYPE_SIZE_MASK) == 64) {
+      unsigned num_components = intr->num_components * 2;
+      nir_src *src_offset = nir_get_io_offset_src(intr);
+      if (nir_src_is_const(*src_offset)) {
+         if (location + nir_src_as_uint(*src_offset) != wc->slot && num_components + c < 4)
+            return false;
+      }
+      wrmask |= wrmask << intr->num_components;
+      /* handle dvec3/dvec4 */
+      if (num_components + c > 4)
+         wrmask >>= 4;
+   }
+   wc->component_mask |= wrmask;
+   return false;
+}
+
 void
 zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_shader *consumer)
 {
@@ -2678,6 +2777,16 @@ zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_sh
       }
       if (consumer->info.stage == MESA_SHADER_FRAGMENT && screen->driver_workarounds.needs_sanitised_layer)
          do_fixup |= clamp_layer_output(producer, consumer, &reserved);
+   }
+   nir_shader_gather_info(producer, nir_shader_get_entrypoint(producer));
+   if (producer->info.io_lowered && consumer->info.io_lowered) {
+      u_foreach_bit64(slot, producer->info.outputs_written & BITFIELD64_RANGE(VARYING_SLOT_VAR0, 31)) {
+         struct write_components wc = {slot, 0};
+         nir_shader_intrinsics_pass(producer, find_max_write_components, nir_metadata_all, &wc);
+         assert(wc.component_mask);
+         if (wc.component_mask != BITFIELD_MASK(4))
+            do_fixup |= nir_shader_intrinsics_pass(consumer, fill_zero_reads, nir_metadata_dominance, &wc);
+      }
    }
    if (!do_fixup)
       return;
@@ -5294,6 +5403,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
    if (nir->info.stage == MESA_SHADER_VERTEX)
       lower_io_flags |= nir_lower_io_lower_64bit_to_32;
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, zink_type_size, lower_io_flags);
+   nir->info.io_lowered = true;
    optimize_nir(nir, NULL);
    nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out) {
       if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
