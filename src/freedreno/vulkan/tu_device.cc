@@ -1953,8 +1953,8 @@ tu_init_dbg_reg_stomper(struct tu_device *device)
    tu_cs_begin(rp_cs);
 
    bool inverse = debug_flags & TU_DEBUG_REG_STOMP_INVERSE;
-   tu_cs_dbg_stomp_regs<A6XX>(cmdbuf_cs, false, first_reg, last_reg, inverse);
-   tu_cs_dbg_stomp_regs<A6XX>(rp_cs, true, first_reg, last_reg, inverse);
+   TU_CALLX(device, tu_cs_dbg_stomp_regs)(cmdbuf_cs, false, first_reg, last_reg, inverse);
+   TU_CALLX(device, tu_cs_dbg_stomp_regs)(rp_cs, true, first_reg, last_reg, inverse);
 
    tu_cs_end(cmdbuf_cs);
    tu_cs_end(rp_cs);
