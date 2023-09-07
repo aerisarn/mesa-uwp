@@ -1214,15 +1214,6 @@ private:
    static unsigned record_key_hash(const void *key);
 
    /**
-    * \name Built-in type flyweights
-    */
-   /*@{*/
-#define DECL_TYPE(NAME, ...) static const glsl_type _##NAME##_type;
-#include "compiler/builtin_type_macros.h"
-#undef  DECL_TYPE
-   /*@}*/
-
-   /**
     * \name Friend functions.
     *
     * These functions are friends because they must have C linkage and the
@@ -1239,6 +1230,11 @@ private:
 
 #endif /* __cplusplus */
 };
+
+#define DECL_TYPE(NAME, ...) \
+extern const struct glsl_type glsl_type_builtin_##NAME;
+#include "compiler/builtin_type_macros.h"
+#undef  DECL_TYPE
 
 struct glsl_struct_field {
    const struct glsl_type *type;
