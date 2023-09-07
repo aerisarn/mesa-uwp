@@ -1343,6 +1343,22 @@ d3d12_video_encoder_update_current_frame_pic_params_info_av1(struct d3d12_video_
    // AV1 spec matches w/D3D12 enum definition
    picParams.pAV1PicData->TxMode = static_cast<D3D12_VIDEO_ENCODER_AV1_TX_MODE>(pAV1Pic->tx_mode);
 
+   // Workaround for mismatch between VAAPI/D3D12 and TxMode support for all/some frame types
+   // If D3D12 driver doesn't support requested TxMode, fallback to the first supported by D3D12
+   // driver for the requested frame type
+   if (((pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.SupportedTxModes[picParams.pAV1PicData->FrameType] &
+      (1 << picParams.pAV1PicData->TxMode)) == 0) /* See definition of D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAGS */ == 0) {
+      debug_printf("[d3d12_video_encoder_update_current_frame_pic_params_info_av1] Requested tx_mode not supported"
+                     ", auto selecting from D3D12 SupportedTxModes for current frame type...");
+      for(uint8_t i = D3D12_VIDEO_ENCODER_AV1_TX_MODE_ONLY4x4; i <= D3D12_VIDEO_ENCODER_AV1_TX_MODE_SELECT; i++) {
+         if ((pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.SupportedTxModes[picParams.pAV1PicData->FrameType] &
+             (1 << i)) /* See definition of D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAGS */ != 0) {
+            picParams.pAV1PicData->TxMode = static_cast<D3D12_VIDEO_ENCODER_AV1_TX_MODE>(i);
+            break;
+         }
+      }
+   }
+
    // UINT SuperResDenominator;
    picParams.pAV1PicData->SuperResDenominator = pAV1Pic->superres_scale_denominator;
 
