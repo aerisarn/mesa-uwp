@@ -1110,16 +1110,12 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
       if (image->planes[plane].aux_surface.memory_range.binding ==
           ANV_IMAGE_MEMORY_BINDING_PRIVATE) {
-         assert(!isl_drm_modifier_has_aux(isl_mod_info->modifier));
-
          /* The aux surface, like the fast clear state, lives in
           * a driver-private bo.  We must initialize the aux surface for the
           * same reasons we must initialize the fast clear state.
           */
          must_init_aux_surface = true;
       } else {
-         assert(isl_drm_modifier_has_aux(isl_mod_info->modifier));
-
          /* The aux surface, unlike the fast clear state, lives in
           * application-visible VkDeviceMemory and is shared with the
           * external/foreign queue. Therefore, when we acquire ownership of the
