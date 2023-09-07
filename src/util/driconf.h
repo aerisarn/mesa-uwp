@@ -641,6 +641,10 @@
   DRI_CONF_OPT_B(radv_require_etc2, def,                                       \
                  "Implement emulated ETC2 on HW that does not support it")
 
+#define DRI_CONF_RADV_REQUIRE_ASTC(def)                                      \
+   DRI_CONF_OPT_B(radv_require_astc, def,                                    \
+                  "Implement emulated ASTC on HW that does not support it")
+
 #define DRI_CONF_RADV_DISABLE_ANISO_SINGLE_LEVEL(def) \
   DRI_CONF_OPT_B(radv_disable_aniso_single_level, def, \
                  "Disable anisotropic filtering for single level images")

@@ -535,11 +535,14 @@ static VkFormat
 radv_image_get_plane_format(const struct radv_physical_device *pdev, const struct radv_image *image, unsigned plane)
 {
    if (radv_is_format_emulated(pdev, image->vk.format)) {
-      assert(vk_format_description(image->vk.format)->layout == UTIL_FORMAT_LAYOUT_ETC);
       if (plane == 0)
          return image->vk.format;
-      return vk_texcompress_etc2_emulation_format(image->vk.format);
+      if (vk_format_description(image->vk.format)->layout == UTIL_FORMAT_LAYOUT_ASTC)
+         return vk_texcompress_astc_emulation_format(image->vk.format);
+      else
+         return vk_texcompress_etc2_emulation_format(image->vk.format);
    }
+
    return vk_format_get_plane_format(image->vk.format, plane);
 }
 

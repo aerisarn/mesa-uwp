@@ -623,6 +623,9 @@ radv_is_format_emulated(const struct radv_physical_device *physical_device, VkFo
    if (physical_device->emulate_etc2 && vk_texcompress_etc2_emulation_format(format) != VK_FORMAT_UNDEFINED)
       return true;
 
+   if (physical_device->emulate_astc && vk_texcompress_astc_emulation_format(format) != VK_FORMAT_UNDEFINED)
+      return true;
+
    return false;
 }
 
@@ -649,7 +652,8 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
       return;
    }
 
-   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC && !radv_device_supports_etc(physical_device)) {
+   if ((desc->layout == UTIL_FORMAT_LAYOUT_ETC && !radv_device_supports_etc(physical_device)) ||
+       desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
       if (radv_is_format_emulated(physical_device, format)) {
          /* required features for compressed formats */
          tiled = VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT |

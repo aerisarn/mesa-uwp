@@ -69,6 +69,7 @@
 #include "vk_queue.h"
 #include "vk_sampler.h"
 #include "vk_shader_module.h"
+#include "vk_texcompress_astc.h"
 #include "vk_texcompress_etc2.h"
 #include "vk_util.h"
 #include "vk_video.h"
@@ -324,6 +325,9 @@ struct radv_physical_device {
 
    /* Whether to emulate ETC2 image support on HW without support. */
    bool emulate_etc2;
+
+   /* Whether to emulate ASTC image support on HW without support. */
+   bool emulate_astc;
 
    VkPhysicalDeviceMemoryProperties memory_properties;
    enum radeon_bo_domain memory_domains[VK_MAX_MEMORY_TYPES];
@@ -740,6 +744,8 @@ struct radv_meta_state {
    } accel_struct_build;
 
    struct vk_texcompress_etc2_state etc_decode;
+
+   struct vk_texcompress_astc_state *astc_decode;
 
    struct {
       VkDescriptorSetLayout ds_layout;
