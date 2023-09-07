@@ -409,37 +409,40 @@ glsl_get_bare_type(const struct glsl_type *t)
    unreachable("Invalid base type");
 }
 
-const struct glsl_type *glsl_type::get_float16_type() const
+extern "C" const struct glsl_type *
+glsl_float16_type(const struct glsl_type *t)
 {
-   assert(this->base_type == GLSL_TYPE_FLOAT);
+   assert(t->base_type == GLSL_TYPE_FLOAT);
 
-   return get_instance(GLSL_TYPE_FLOAT16,
-                       this->vector_elements,
-                       this->matrix_columns,
-                       this->explicit_stride,
-                       this->interface_row_major);
+   return glsl_type::get_instance(GLSL_TYPE_FLOAT16,
+                                  t->vector_elements,
+                                  t->matrix_columns,
+                                  t->explicit_stride,
+                                  t->interface_row_major);
 }
 
-const struct glsl_type *glsl_type::get_int16_type() const
+extern "C" const struct glsl_type *
+glsl_int16_type(const struct glsl_type *t)
 {
-   assert(this->base_type == GLSL_TYPE_INT);
+   assert(t->base_type == GLSL_TYPE_INT);
 
-   return get_instance(GLSL_TYPE_INT16,
-                       this->vector_elements,
-                       this->matrix_columns,
-                       this->explicit_stride,
-                       this->interface_row_major);
+   return glsl_type::get_instance(GLSL_TYPE_INT16,
+                                  t->vector_elements,
+                                  t->matrix_columns,
+                                  t->explicit_stride,
+                                  t->interface_row_major);
 }
 
-const struct glsl_type *glsl_type::get_uint16_type() const
+extern "C" const struct glsl_type *
+glsl_uint16_type(const struct glsl_type *t)
 {
-   assert(this->base_type == GLSL_TYPE_UINT);
+   assert(t->base_type == GLSL_TYPE_UINT);
 
-   return get_instance(GLSL_TYPE_UINT16,
-                       this->vector_elements,
-                       this->matrix_columns,
-                       this->explicit_stride,
-                       this->interface_row_major);
+   return glsl_type::get_instance(GLSL_TYPE_UINT16,
+                                  t->vector_elements,
+                                  t->matrix_columns,
+                                  t->explicit_stride,
+                                  t->interface_row_major);
 }
 
 void
@@ -3620,6 +3623,31 @@ glsl_atomic_size(const struct glsl_type *t)
       return t->length * t->fields.array->atomic_size();
    else
       return 0;
+}
+
+const struct glsl_type *
+glsl_type_to_16bit(const struct glsl_type *old_type)
+{
+   if (glsl_type_is_array(old_type)) {
+      return glsl_array_type(glsl_type_to_16bit(glsl_get_array_element(old_type)),
+                             glsl_get_length(old_type),
+                             glsl_get_explicit_stride(old_type));
+   }
+
+   if (glsl_type_is_vector_or_scalar(old_type)) {
+      switch (glsl_get_base_type(old_type)) {
+      case GLSL_TYPE_FLOAT:
+         return glsl_float16_type(old_type);
+      case GLSL_TYPE_UINT:
+         return glsl_uint16_type(old_type);
+      case GLSL_TYPE_INT:
+         return glsl_int16_type(old_type);
+      default:
+         break;
+      }
+   }
+
+   return old_type;
 }
 
 }

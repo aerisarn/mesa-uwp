@@ -79,6 +79,10 @@ inline const glsl_type *glsl_type::row_type() const { return glsl_get_row_type(t
 inline const glsl_type *glsl_type::column_type() const { return glsl_get_column_type(this); }
 inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
 
+inline const glsl_type *glsl_type::get_float16_type() const { return glsl_float16_type(this); }
+inline const glsl_type *glsl_type::get_int16_type() const { return glsl_int16_type(this); }
+inline const glsl_type *glsl_type::get_uint16_type() const { return glsl_uint16_type(this); }
+
 inline const glsl_type *glsl_type::vec(unsigned components) { return glsl_vec_type(components); }
 inline const glsl_type *glsl_type::f16vec(unsigned components) { return glsl_f16vec_type(components); }
 inline const glsl_type *glsl_type::dvec(unsigned components) { return glsl_dvec_type(components); }
