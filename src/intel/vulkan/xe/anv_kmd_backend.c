@@ -81,7 +81,7 @@ xe_gem_close(struct anv_device *device, struct anv_bo *bo)
 
 static void *
 xe_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
-            uint64_t size, VkMemoryPropertyFlags property_flags)
+            uint64_t size)
 {
    struct drm_xe_gem_mmap_offset args = {
       .handle = bo->gem_handle,

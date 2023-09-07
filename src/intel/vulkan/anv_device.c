@@ -4326,8 +4326,7 @@ VkResult anv_MapMemory2KHR(
    map_size = align64(map_size, 4096);
 
    void *map;
-   VkResult result = anv_device_map_bo(device, mem->bo, map_offset, map_size,
-                                       mem->type->propertyFlags, &map);
+   VkResult result = anv_device_map_bo(device, mem->bo, map_offset, map_size, &map);
    if (result != VK_SUCCESS)
       return result;
 

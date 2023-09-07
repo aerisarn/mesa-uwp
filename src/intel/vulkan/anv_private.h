@@ -455,6 +455,8 @@ struct anv_bo {
    /** Flags to pass to the kernel through drm_i915_exec_object2::flags */
    uint32_t flags;
 
+   enum anv_bo_alloc_flags alloc_flags;
+
    /** True if this BO may be shared with other processes */
    bool is_external:1;
 
@@ -477,6 +479,9 @@ anv_bo_ref(struct anv_bo *bo)
    p_atomic_inc(&bo->refcount);
    return bo;
 }
+
+enum intel_device_info_mmap_mode
+anv_bo_get_mmap_mode(struct anv_device *device, struct anv_bo *bo);
 
 struct anv_address {
    struct anv_bo *bo;
@@ -1800,7 +1805,6 @@ VkResult anv_device_map_bo(struct anv_device *device,
                            struct anv_bo *bo,
                            uint64_t offset,
                            size_t size,
-                           uint32_t gem_flags,
                            void **map_out);
 void anv_device_unmap_bo(struct anv_device *device,
                          struct anv_bo *bo,
@@ -1859,7 +1863,7 @@ void anv_queue_trace(struct anv_queue *queue, const char *label,
 
 void *
 anv_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
-             uint64_t size, VkMemoryPropertyFlags property_flags);
+             uint64_t size);
 void anv_gem_munmap(struct anv_device *device, void *p, uint64_t size);
 int anv_gem_wait(struct anv_device *device, uint32_t gem_handle, int64_t *timeout_ns);
 int anv_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,

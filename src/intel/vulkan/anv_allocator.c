@@ -1423,6 +1423,39 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
    return VK_SUCCESS;
 }
 
+enum intel_device_info_mmap_mode
+anv_bo_get_mmap_mode(struct anv_device *device, struct anv_bo *bo)
+{
+   enum anv_bo_alloc_flags alloc_flags = bo->alloc_flags;
+
+   if (device->info->has_set_pat_uapi)
+      return anv_device_get_pat_entry(device, alloc_flags)->mmap;
+
+   if (anv_physical_device_has_vram(device->physical)) {
+      if (alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)
+         return INTEL_DEVICE_INFO_MMAP_MODE_WB;
+
+      return INTEL_DEVICE_INFO_MMAP_MODE_WC;
+   }
+
+   /* gfx9 atom */
+   if (!device->info->has_llc) {
+      /* ANV_BO_ALLOC_SNOOPED means that user wants a cached and coherent memory
+       * but to achieve it without LLC in older platforms
+       * DRM_IOCTL_I915_GEM_SET_CACHING needs to be supported and set.
+       */
+      if (alloc_flags & ANV_BO_ALLOC_SNOOPED)
+         return INTEL_DEVICE_INFO_MMAP_MODE_WB;
+
+      return INTEL_DEVICE_INFO_MMAP_MODE_WC;
+   }
+
+   if (alloc_flags & (ANV_BO_ALLOC_SCANOUT | ANV_BO_ALLOC_EXTERNAL))
+      return INTEL_DEVICE_INFO_MMAP_MODE_WC;
+
+   return INTEL_DEVICE_INFO_MMAP_MODE_WB;
+}
+
 VkResult
 anv_device_alloc_bo(struct anv_device *device,
                     const char *name,
@@ -1480,6 +1513,7 @@ anv_device_alloc_bo(struct anv_device *device,
       .size = size,
       .actual_size = actual_size,
       .flags = bo_flags,
+      .alloc_flags = alloc_flags,
       .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
       .has_client_visible_address =
          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
@@ -1488,8 +1522,7 @@ anv_device_alloc_bo(struct anv_device *device,
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
-      VkResult result = anv_device_map_bo(device, &new_bo, 0, size,
-                                          0 /* propertyFlags */, &new_bo.map);
+      VkResult result = anv_device_map_bo(device, &new_bo, 0, size, &new_bo.map);
       if (unlikely(result != VK_SUCCESS)) {
          device->kmd_backend->gem_close(device, &new_bo);
          return result;
@@ -1526,13 +1559,12 @@ anv_device_map_bo(struct anv_device *device,
                   struct anv_bo *bo,
                   uint64_t offset,
                   size_t size,
-                  VkMemoryPropertyFlags property_flags,
                   void **map_out)
 {
    assert(!bo->from_host_ptr);
    assert(size > 0);
 
-   void *map = anv_gem_mmap(device, bo, offset, size, property_flags);
+   void *map = anv_gem_mmap(device, bo, offset, size);
    if (unlikely(map == MAP_FAILED))
       return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
 
@@ -1617,6 +1649,8 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
 
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
+      /* Makes sure that userptr gets WB mmap caching and right VM PAT index */
+      alloc_flags |= (ANV_BO_ALLOC_SNOOPED | ANV_BO_ALLOC_NO_LOCAL_MEM);
       struct anv_bo new_bo = {
          .name = "host-ptr",
          .gem_handle = gem_handle,
@@ -1626,6 +1660,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
          .actual_size = size,
          .map = host_ptr,
          .flags = bo_flags,
+         .alloc_flags = alloc_flags,
          .is_external = true,
          .from_host_ptr = true,
          .has_client_visible_address =
@@ -1707,12 +1742,15 @@ anv_device_import_bo(struct anv_device *device,
 
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
+      /* so imported bos get WB and correct PAT index */
+      alloc_flags |= (ANV_BO_ALLOC_SNOOPED | ANV_BO_ALLOC_NO_LOCAL_MEM);
       struct anv_bo new_bo = {
          .name = "imported",
          .gem_handle = gem_handle,
          .refcount = 1,
          .offset = -1,
          .is_external = true,
+         .alloc_flags = alloc_flags,
          .has_client_visible_address =
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
