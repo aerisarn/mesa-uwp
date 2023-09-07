@@ -1874,6 +1874,9 @@ anv_gem_import_bo_alloc_flags_to_bo_flags(struct anv_device *device,
                                           struct anv_bo *bo,
                                           enum anv_bo_alloc_flags alloc_flags,
                                           uint32_t *bo_flags);
+const struct intel_device_info_pat_entry *
+anv_device_get_pat_entry(struct anv_device *device,
+                         enum anv_bo_alloc_flags alloc_flags);
 
 uint64_t anv_vma_alloc(struct anv_device *device,
                        uint64_t size, uint64_t align,
