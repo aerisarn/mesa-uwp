@@ -75,7 +75,7 @@ ${extension_table('device', device_extensions)}
 struct ${driver}_physical_device;
 
 %if driver == 'vk':
-#ifdef ANDROID
+#ifdef ANDROID_STRICT
 extern const struct vk_instance_extension_table vk_android_allowed_instance_extensions;
 extern const struct vk_device_extension_table vk_android_allowed_device_extensions;
 #endif
@@ -111,7 +111,7 @@ const VkExtensionProperties ${driver}_device_extensions[${driver.upper()}_DEVICE
 %endfor
 };
 
-#ifdef ANDROID
+#ifdef ANDROID_STRICT
 const struct vk_instance_extension_table vk_android_allowed_instance_extensions = {
 %for ext in instance_extensions:
    .${ext.name[3:]} = ${ext.c_android_condition()},
