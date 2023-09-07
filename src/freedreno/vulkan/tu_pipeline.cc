@@ -1760,13 +1760,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       must_compile = true;
    }
 
-   if (tu6_shared_constants_enable(&builder->layout, builder->device->compiler)) {
-      pipeline->shared_consts = (struct tu_push_constant_range) {
-         .lo = 0,
-         .dwords = builder->layout.push_constant_size / 4,
-      };
-   }
-
    /* Forward declare everything due to the goto usage */
    nir_shader *nir[ARRAY_SIZE(stage_infos)] = { NULL };
    struct tu_shader *shaders[ARRAY_SIZE(stage_infos)] = { NULL };
@@ -2164,18 +2157,6 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
          tu_pipeline_to_graphics_lib(pipeline)->state |= library->state;
 
       if (library->state &
-          VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT) {
-         pipeline->shared_consts = library->base.shared_consts;
-      }
-
-      if (library->state &
-          VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
-         pipeline->ds = library->base.ds;
-         pipeline->lrz.lrz_status |= library->base.lrz.lrz_status;
-         pipeline->shared_consts = library->base.shared_consts;
-      }
-
-      if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
          pipeline->output = library->base.output;
          pipeline->lrz.lrz_status |= library->base.lrz.lrz_status;
@@ -2337,6 +2318,11 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       tu_pipeline_set_linkage(&pipeline->program.link[i],
                               &pipeline->shaders[i]->const_state,
                               variants[i]);
+
+      if (pipeline->shaders[i]->shared_consts.dwords != 0) {
+         pipeline->program.shared_consts =
+            pipeline->shaders[i]->shared_consts;
+      }
    }
 
    const struct ir3_shader_variant *vs = variants[MESA_SHADER_VERTEX];
@@ -4297,13 +4283,6 @@ tu_compute_pipeline_create(VkDevice device,
          VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
    }
 
-   if (tu6_shared_constants_enable(layout, dev->compiler)) {
-      pipeline->base.shared_consts = (struct tu_push_constant_range) {
-         .lo = 0,
-         .dwords = layout->push_constant_size / 4,
-      };
-   }
-
    char *nir_initial_disasm = NULL;
 
    if (!shader) {
@@ -4338,6 +4317,8 @@ tu_compute_pipeline_create(VkDevice device,
       assert(creation_feedback->pipelineStageCreationFeedbackCount == 1);
       creation_feedback->pPipelineStageCreationFeedbacks[0] = pipeline_feedback;
    }
+
+   pipeline->base.program.shared_consts = shader->shared_consts;
 
    pipeline->base.active_desc_sets = shader->active_desc_sets;
 

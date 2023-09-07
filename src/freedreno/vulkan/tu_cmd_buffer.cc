@@ -4309,10 +4309,10 @@ tu6_emit_shared_consts(struct tu_cs *cs,
                        uint32_t *push_constants,
                        bool compute)
 {
-   if (pipeline->shared_consts.dwords > 0) {
+   if (pipeline->program.shared_consts.dwords > 0) {
       /* Offset and num_units for shared consts are in units of dwords. */
-      unsigned num_units = pipeline->shared_consts.dwords;
-      unsigned offset = pipeline->shared_consts.lo;
+      unsigned num_units = pipeline->program.shared_consts.dwords;
+      unsigned offset = pipeline->program.shared_consts.lo;
 
       enum a6xx_state_type st = compute ? ST6_UBO : ST6_CONSTANTS;
       uint32_t cp_load_state = compute ? CP_LOAD_STATE6_FRAG : CP_LOAD_STATE6;
@@ -4338,8 +4338,8 @@ tu6_const_size(struct tu_cmd_buffer *cmd,
 {
    uint32_t dwords = 0;
 
-   if (pipeline->shared_consts.dwords > 0) {
-      dwords += pipeline->shared_consts.dwords + 4;
+   if (pipeline->program.shared_consts.dwords > 0) {
+      dwords += pipeline->program.shared_consts.dwords + 4;
    }
 
    if (compute) {
@@ -4367,7 +4367,7 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    struct tu_cs cs;
    tu_cs_begin_sub_stream(&cmd->sub_cs, dwords, &cs);
 
-   if (pipeline->shared_consts.dwords > 0) {
+   if (pipeline->program.shared_consts.dwords > 0) {
       tu6_emit_shared_consts(&cs, pipeline, cmd->push_constants, compute);
 
       for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->program.link); i++) {

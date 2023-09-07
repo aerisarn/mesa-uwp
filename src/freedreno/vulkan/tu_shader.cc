@@ -2084,6 +2084,7 @@ tu_shader_serialize(struct vk_pipeline_cache_object *object,
       container_of(object, struct tu_shader, base);
 
    blob_write_bytes(blob, &shader->const_state, sizeof(shader->const_state));
+   blob_write_bytes(blob, &shader->shared_consts, sizeof(shader->shared_consts));
    blob_write_uint32(blob, shader->view_mask);
    blob_write_uint8(blob, shader->active_desc_sets);
 
@@ -2125,6 +2126,7 @@ tu_shader_deserialize(struct vk_pipeline_cache *cache,
       return NULL;
 
    blob_copy_bytes(blob, &shader->const_state, sizeof(shader->const_state));
+   blob_copy_bytes(blob, &shader->shared_consts, sizeof(shader->shared_consts));
    shader->view_mask = blob_read_uint32(blob);
    shader->active_desc_sets = blob_read_uint8(blob);
 
@@ -2276,8 +2278,13 @@ tu_shader_create(struct tu_device *dev,
    ir3_finalize_nir(dev->compiler, nir);
 
    bool shared_consts_enable = tu6_shared_constants_enable(layout, dev->compiler);
-   if (shared_consts_enable)
+   if (shared_consts_enable) {
       assert(!shader->const_state.push_consts.dwords);
+      shader->shared_consts = (struct tu_push_constant_range) {
+         .lo = 0,
+         .dwords = layout->push_constant_size / 4,
+      };
+   }
 
    const struct ir3_shader_options options = {
       .reserved_user_consts = reserved_consts_vec4,

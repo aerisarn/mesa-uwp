@@ -63,6 +63,11 @@ struct tu_shader
    uint32_t view_mask;
    uint8_t active_desc_sets;
 
+   /* This is the range of shared consts used by all shaders. It must be the
+    * same between shaders.
+    */
+   struct tu_push_constant_range shared_consts;
+
    union {
       struct {
          unsigned patch_type;

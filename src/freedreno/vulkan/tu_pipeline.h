@@ -135,8 +135,6 @@ struct tu_pipeline
    /* draw states for the pipeline */
    struct tu_draw_state load_state;
 
-   struct tu_push_constant_range shared_consts;
-
    struct tu_shader *shaders[MESA_SHADER_STAGES];
 
    struct
@@ -150,6 +148,8 @@ struct tu_pipeline
       struct tu_draw_state fs_state;
 
       uint32_t hs_param_dwords;
+
+      struct tu_push_constant_range shared_consts;
 
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
 
