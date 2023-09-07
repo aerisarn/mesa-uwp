@@ -961,7 +961,13 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
    .has_integer_dword_mul = false,                              \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \
-   .max_eus_per_subslice = 16
+   .max_eus_per_subslice = 16,                                  \
+   .pat = {                                                     \
+         .cached_coherent = PAT_ENTRY(0, WB, 2WAY),             \
+         .scanout = PAT_ENTRY(1, WC, NONE),                     \
+         .writeback_incoherent = PAT_ENTRY(0, WB, 2WAY),        \
+         .writecombining = PAT_ENTRY(1, WC, NONE),              \
+   }
 
 #define dual_subslices(args...) { args, }
 
@@ -1031,13 +1037,20 @@ static const struct intel_device_info intel_device_info_rpl_p = {
    .display_ver = 13,
 };
 
-#define GFX12_DG1_SG1_FEATURES                  \
-   GFX12_GT_FEATURES(2),                        \
-   .platform = INTEL_PLATFORM_DG1,              \
-   .has_llc = false,                            \
-   .has_local_mem = true,                       \
-   .urb.size = 768,                             \
-   .simulator_id = 30
+#define GFX12_DG1_SG1_FEATURES                           \
+   GFX12_GT_FEATURES(2),                                 \
+   .platform = INTEL_PLATFORM_DG1,                       \
+   .has_llc = false,                                     \
+   .has_local_mem = true,                                \
+   .urb.size = 768,                                      \
+   .simulator_id = 30,                                   \
+   /* There is no PAT table for DG1, using TGL one */    \
+   .pat = {                                              \
+         .cached_coherent = PAT_ENTRY(0, WB, 2WAY),      \
+         .scanout = PAT_ENTRY(1, WC, NONE),              \
+         .writeback_incoherent = PAT_ENTRY(0, WB, 2WAY), \
+         .writecombining = PAT_ENTRY(1, WC, NONE),       \
+   }
 
 static const struct intel_device_info intel_device_info_dg1 = {
    GFX12_DG1_SG1_FEATURES,
@@ -1097,7 +1110,14 @@ static const struct intel_device_info intel_device_info_sg1 = {
    .has_coarse_pixel_primitive_and_cb = true,                   \
    .has_mesh_shading = true,                                    \
    .has_ray_tracing = true,                                     \
-   .has_flat_ccs = true
+   .has_flat_ccs = true,                                        \
+   /* There is no PAT table for DG2, using TGL ones */          \
+   .pat = {                                                     \
+         .cached_coherent = PAT_ENTRY(0, WB, 1WAY),             \
+         .scanout = PAT_ENTRY(1, WC, NONE),                     \
+         .writeback_incoherent = PAT_ENTRY(0, WB, 2WAY),        \
+         .writecombining = PAT_ENTRY(1, WC, NONE),              \
+   }
 
 static const struct intel_device_info intel_device_info_dg2_g10 = {
    DG2_FEATURES,
