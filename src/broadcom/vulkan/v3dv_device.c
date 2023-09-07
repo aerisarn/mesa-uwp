@@ -70,7 +70,7 @@
 
 #define V3DV_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
 
-#ifdef ANDROID
+#ifdef ANDROID_STRICT
 #if ANDROID_API_LEVEL <= 32
 /* Android 12.1 and lower support only Vulkan API v1.1 */
 #undef V3DV_API_VERSION
