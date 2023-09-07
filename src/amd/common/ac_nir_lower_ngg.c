@@ -4958,5 +4958,18 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    nir_lower_alu_to_scalar(shader, NULL, NULL);
    nir_lower_phis_to_scalar(shader, true);
 
+   /* Optimize load_local_invocation_index. When the API workgroup is smaller than the HW workgroup,
+    * local_invocation_id isn't initialized for all lanes and we can't perform this optimization for
+    * all load_local_invocation_index.
+    */
+   if (fast_launch_2 && api_workgroup_size == hw_workgroup_size &&
+       ((shader->info.workgroup_size[0] == 1) + (shader->info.workgroup_size[1] == 1) +
+        (shader->info.workgroup_size[2] == 1)) == 2) {
+      nir_lower_compute_system_values_options csv_options = {
+         .lower_local_invocation_index = true,
+      };
+      nir_lower_compute_system_values(shader, &csv_options);
+   }
+
    nir_validate_shader(shader, "after emitting NGG MS");
 }
