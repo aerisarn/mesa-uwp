@@ -40,18 +40,9 @@
 #include "main/consts_exts.h"
 
 /**
- * Declarations of type flyweights (glsl_type::_foo_type) and
- * convenience pointers (glsl_type::foo_type).
+ * Declarations of struct builtins types.
  * @{
  */
-#define DECL_TYPE(NAME, ...)
-
-#define STRUCT_TYPE(NAME)                                       \
-   const glsl_type glsl_type::_struct_##NAME##_type =           \
-      glsl_type(NAME##_fields, ARRAY_SIZE(NAME##_fields), #NAME); \
-   const glsl_type *const glsl_type::struct_##NAME##_type =     \
-      &glsl_type::_struct_##NAME##_type;
-
 static const struct glsl_struct_field gl_DepthRangeParameters_fields[] = {
    glsl_struct_field(glsl_type::float_type, GLSL_PRECISION_HIGH, "near"),
    glsl_struct_field(glsl_type::float_type, GLSL_PRECISION_HIGH, "far"),
@@ -113,7 +104,22 @@ static const struct glsl_struct_field gl_FogParameters_fields[] = {
    glsl_struct_field(glsl_type::float_type, "scale"),
 };
 
-#include "compiler/builtin_type_macros.h"
+#define STRUCT_TYPE(NAME)                                         \
+   const glsl_type _struct_##NAME##_type =                        \
+      glsl_type(NAME##_fields, ARRAY_SIZE(NAME##_fields), #NAME); \
+   const glsl_type *const struct_##NAME##_type =                  \
+      &_struct_##NAME##_type;
+
+STRUCT_TYPE(gl_DepthRangeParameters)
+STRUCT_TYPE(gl_PointParameters)
+STRUCT_TYPE(gl_MaterialParameters)
+STRUCT_TYPE(gl_LightSourceParameters)
+STRUCT_TYPE(gl_LightModelParameters)
+STRUCT_TYPE(gl_LightModelProducts)
+STRUCT_TYPE(gl_LightProducts)
+STRUCT_TYPE(gl_FogParameters)
+
+#undef STRUCT_TYPE
 /** @} */
 
 /**
@@ -125,6 +131,9 @@ static const struct glsl_struct_field gl_FogParameters_fields[] = {
  */
 #define T(TYPE, MIN_GL, MIN_ES) \
    { glsl_type::TYPE##_type, MIN_GL, MIN_ES },
+
+#define S(TYPE, MIN_GL, MIN_ES) \
+   { TYPE##_type, MIN_GL, MIN_ES },
 
 static const struct builtin_type_versions {
    const glsl_type *const type;
@@ -216,7 +225,7 @@ static const struct builtin_type_versions {
    T(samplerCubeArrayShadow,          400, 320)
    T(sampler2DRectShadow,             140, 999)
 
-   T(struct_gl_DepthRangeParameters,  110, 100)
+   S(struct_gl_DepthRangeParameters,  110, 100)
 
    T(image1D,                         420, 999)
    T(image2D,                         420, 310)
@@ -255,14 +264,17 @@ static const struct builtin_type_versions {
    T(atomic_uint,                     420, 310)
 };
 
+#undef T
+#undef S
+
 static const glsl_type *const deprecated_types[] = {
-   glsl_type::struct_gl_PointParameters_type,
-   glsl_type::struct_gl_MaterialParameters_type,
-   glsl_type::struct_gl_LightSourceParameters_type,
-   glsl_type::struct_gl_LightModelParameters_type,
-   glsl_type::struct_gl_LightModelProducts_type,
-   glsl_type::struct_gl_LightProducts_type,
-   glsl_type::struct_gl_FogParameters_type,
+   struct_gl_PointParameters_type,
+   struct_gl_MaterialParameters_type,
+   struct_gl_LightSourceParameters_type,
+   struct_gl_LightModelParameters_type,
+   struct_gl_LightModelProducts_type,
+   struct_gl_LightProducts_type,
+   struct_gl_FogParameters_type,
 };
 
 static inline void

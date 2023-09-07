@@ -369,13 +369,10 @@ public:
     * \name Pointers to various public type singletons
     */
    /*@{*/
-#undef  DECL_TYPE
 #define DECL_TYPE(NAME, ...) \
    static const glsl_type *const NAME##_type;
-#undef  STRUCT_TYPE
-#define STRUCT_TYPE(NAME) \
-   static const glsl_type *const struct_##NAME##_type;
 #include "compiler/builtin_type_macros.h"
+#undef  DECL_TYPE
    /*@}*/
 
    /**
@@ -1227,6 +1224,11 @@ public:
 
    ~glsl_type();
 
+   /** Constructor for record types */
+   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
+             const char *name, bool packed = false,
+             unsigned explicit_alignment = 0);
+
 private:
 
    static simple_mtx_t hash_mutex;
@@ -1247,11 +1249,6 @@ private:
    glsl_type(uint32_t gl_type, glsl_base_type base_type,
 	     enum glsl_sampler_dim dim, bool shadow, bool array,
 	     glsl_base_type type, const char *name);
-
-   /** Constructor for record types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-	     const char *name, bool packed = false,
-	     unsigned explicit_alignment = 0);
 
    /** Constructor for interface types */
    glsl_type(const glsl_struct_field *fields, unsigned num_fields,
@@ -1289,11 +1286,9 @@ private:
     * \name Built-in type flyweights
     */
    /*@{*/
-#undef  DECL_TYPE
 #define DECL_TYPE(NAME, ...) static const glsl_type _##NAME##_type;
-#undef  STRUCT_TYPE
-#define STRUCT_TYPE(NAME)        static const glsl_type _struct_##NAME##_type;
 #include "compiler/builtin_type_macros.h"
+#undef  DECL_TYPE
    /*@}*/
 
    /**
@@ -1314,8 +1309,6 @@ private:
                                                         unsigned int explicit_alignment);
 };
 
-#undef DECL_TYPE
-#undef STRUCT_TYPE
 #endif /* __cplusplus */
 
 struct glsl_struct_field {

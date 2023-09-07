@@ -260,11 +260,3 @@ DECL_TYPE(utextureSubpassInputMS, 0,                                 GLSL_TYPE_T
 
 DECL_TYPE(atomic_uint, GL_UNSIGNED_INT_ATOMIC_COUNTER, GLSL_TYPE_ATOMIC_UINT, 1, 1)
 
-STRUCT_TYPE(gl_DepthRangeParameters)
-STRUCT_TYPE(gl_PointParameters)
-STRUCT_TYPE(gl_MaterialParameters)
-STRUCT_TYPE(gl_LightSourceParameters)
-STRUCT_TYPE(gl_LightModelParameters)
-STRUCT_TYPE(gl_LightModelProducts)
-STRUCT_TYPE(gl_LightProducts)
-STRUCT_TYPE(gl_FogParameters)

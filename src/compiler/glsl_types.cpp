@@ -2925,10 +2925,8 @@ glsl_type::coordinate_components() const
 #define DECL_TYPE(NAME, ...)                                    \
    const glsl_type glsl_type::_##NAME##_type = glsl_type(__VA_ARGS__, #NAME); \
    const glsl_type *const glsl_type::NAME##_type = &glsl_type::_##NAME##_type;
-
-#define STRUCT_TYPE(NAME)
-
 #include "compiler/builtin_type_macros.h"
+#undef DECL_TYPE
 /** @} */
 
 union packed_type {
