@@ -580,8 +580,10 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
 
-   NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_image_size_to_txs,
-            nir_metadata_block_index | nir_metadata_dominance, NULL);
+   if (!use_nak(nir->info.stage)) {
+      NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_image_size_to_txs,
+               nir_metadata_block_index | nir_metadata_dominance, NULL);
+   }
 
    /* Lower non-uniform access before lower_descriptors */
    enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
