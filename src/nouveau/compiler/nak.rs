@@ -160,7 +160,7 @@ pub extern "C" fn nak_compiler_create(
 
 #[no_mangle]
 pub extern "C" fn nak_compiler_destroy(nak: *mut nak_compiler) {
-    unsafe { Box::from_raw(nak) };
+    unsafe { drop(Box::from_raw(nak)) };
 }
 
 #[no_mangle]
