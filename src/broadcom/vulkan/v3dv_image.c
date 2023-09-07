@@ -663,10 +663,14 @@ v3dv_DestroyImage(VkDevice _device,
     * it (along with its memory allocation).
     */
    if (image->shadow) {
-      assert(image->shadow->plane_count == 1);
-      v3dv_FreeMemory(_device,
-                      v3dv_device_memory_to_handle(image->shadow->planes[0].mem),
-                      pAllocator);
+      bool disjoint = image->vk.create_flags & VK_IMAGE_CREATE_DISJOINT_BIT;
+      for (int i = 0; i < (disjoint ? image->plane_count : 1); i++) {
+         if (image->shadow->planes[i].mem) {
+            v3dv_FreeMemory(_device,
+                            v3dv_device_memory_to_handle(image->shadow->planes[i].mem),
+                            pAllocator);
+         }
+      }
       v3dv_DestroyImage(_device, v3dv_image_to_handle(image->shadow),
                         pAllocator);
       image->shadow = NULL;
