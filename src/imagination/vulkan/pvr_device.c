@@ -175,6 +175,7 @@ static void pvr_physical_device_get_supported_extensions(
       .KHR_image_format_list = true,
       .KHR_swapchain = PVR_USE_WSI_PLATFORM,
       .KHR_timeline_semaphore = true,
+      .KHR_uniform_buffer_standard_layout = true,
       .EXT_external_memory_dma_buf = true,
       .EXT_private_data = true,
       .EXT_scalar_block_layout = true,
@@ -246,6 +247,9 @@ static void pvr_physical_device_get_supported_features(
 
       /* Vulkan 1.2 / VK_KHR_timeline_semaphore */
       .timelineSemaphore = true,
+
+      /* Vulkan 1.2 / VK_KHR_uniform_buffer_standard_layout */
+      .uniformBufferStandardLayout = true,
 
       /* Vulkan 1.3 / VK_EXT_private_data */
       .privateData = true,
