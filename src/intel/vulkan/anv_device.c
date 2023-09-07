@@ -156,7 +156,7 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
 #define ANV_USE_WSI_PLATFORM
 #endif
 
-#ifdef ANDROID
+#ifdef ANDROID_STRICT
 #if ANDROID_API_LEVEL >= 33
 #define ANV_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
 #else

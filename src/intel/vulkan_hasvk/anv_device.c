@@ -132,7 +132,7 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
 #define ANV_USE_WSI_PLATFORM
 #endif
 
-#ifdef ANDROID
+#ifdef ANDROID_STRICT
 #define ANV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
 #else
 #define ANV_API_VERSION_1_3 VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
@@ -142,7 +142,7 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
 VkResult anv_EnumerateInstanceVersion(
     uint32_t*                                   pApiVersion)
 {
-#ifdef ANDROID
+#ifdef ANDROID_STRICT
    *pApiVersion = ANV_API_VERSION;
 #else
    *pApiVersion = ANV_API_VERSION_1_3;
@@ -1571,7 +1571,7 @@ void anv_GetPhysicalDeviceProperties(
    };
 
    *pProperties = (VkPhysicalDeviceProperties) {
-#ifdef ANDROID
+#ifdef ANDROID_STRICT
       .apiVersion = ANV_API_VERSION,
 #else
       .apiVersion =  (pdevice->use_softpin || pdevice->instance->report_vk_1_3) ?
