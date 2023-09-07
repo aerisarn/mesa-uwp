@@ -116,6 +116,7 @@ struct cros_gralloc0_buffer_info {
 
 struct vn_android_gralloc_buffer_properties {
    uint32_t drm_fourcc;
+   uint32_t num_planes;
    uint64_t modifier;
 
    /* plane order matches VkImageDrmFormatModifierExplicitCreateInfoEXT */
@@ -142,7 +143,12 @@ vn_android_gralloc_get_buffer_properties(
    }
 
    out_props->drm_fourcc = info.drm_fourcc;
+   out_props->num_planes = 4;
    for (uint32_t i = 0; i < 4; i++) {
+      if (!info.stride[i]) {
+         out_props->num_planes = i;
+         break;
+      }
       out_props->stride[i] = info.stride[i];
       out_props->offset[i] = info.offset[i];
    }
@@ -426,15 +432,8 @@ static VkResult
 vn_android_get_image_builder(struct vn_device *dev,
                              const VkImageCreateInfo *create_info,
                              const native_handle_t *handle,
-                             const VkAllocationCallbacks *alloc,
                              struct vn_android_image_builder *out_builder)
 {
-   VkResult result = VK_SUCCESS;
-   struct vn_android_gralloc_buffer_properties buf_props;
-   VkDrmFormatModifierPropertiesEXT mod_props;
-   uint32_t vcount = 0;
-   const VkFormat *vformats = NULL;
-
    /* Android image builder is only used by ANB or AHB. For ANB, Android
     * Vulkan loader will never pass the below structs. For AHB, struct
     * vn_image_create_deferred_info will never carry below either.
@@ -445,13 +444,9 @@ vn_android_get_image_builder(struct vn_device *dev,
    assert(!vk_find_struct_const(create_info->pNext,
                                 EXTERNAL_MEMORY_IMAGE_CREATE_INFO));
 
+   struct vn_android_gralloc_buffer_properties buf_props;
    if (!vn_android_gralloc_get_buffer_properties(handle, &buf_props))
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-
-   result = vn_android_get_modifier_properties(
-      dev, create_info->format, buf_props.modifier, alloc, &mod_props);
-   if (result != VK_SUCCESS)
-      return result;
 
    /* fill VkImageCreateInfo */
    memset(out_builder, 0, sizeof(*out_builder));
@@ -459,7 +454,7 @@ vn_android_get_image_builder(struct vn_device *dev,
    out_builder->create.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
 
    /* fill VkImageDrmFormatModifierExplicitCreateInfoEXT */
-   for (uint32_t i = 0; i < mod_props.drmFormatModifierPlaneCount; i++) {
+   for (uint32_t i = 0; i < buf_props.num_planes; i++) {
       out_builder->layouts[i].offset = buf_props.offset[i];
       out_builder->layouts[i].rowPitch = buf_props.stride[i];
    }
@@ -468,7 +463,7 @@ vn_android_get_image_builder(struct vn_device *dev,
          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
       .pNext = out_builder->create.pNext,
       .drmFormatModifier = buf_props.modifier,
-      .drmFormatModifierPlaneCount = mod_props.drmFormatModifierPlaneCount,
+      .drmFormatModifierPlaneCount = buf_props.num_planes,
       .pPlaneLayouts = out_builder->layouts,
    };
    out_builder->create.pNext = &out_builder->modifier;
@@ -496,7 +491,8 @@ vn_android_get_image_builder(struct vn_device *dev,
        * must include a VkImageFormatListCreateInfo structure with non-zero
        * viewFormatCount.
        */
-      vformats =
+      uint32_t vcount = 0;
+      const VkFormat *vformats =
          vn_android_format_to_view_formats(create_info->format, &vcount);
       if (!vformats) {
          /* image builder struct persists through the image creation call */
@@ -559,7 +555,7 @@ vn_android_image_from_anb(struct vn_device *dev,
    local_create_info = *create_info;
    local_create_info.pNext = NULL;
    result = vn_android_get_image_builder(dev, &local_create_info,
-                                         anb_info->handle, alloc, &builder);
+                                         anb_info->handle, &builder);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -713,6 +709,15 @@ vn_android_get_ahb_format_properties(
       dev, format, buf_props.modifier, &dev->base.base.alloc, &mod_props);
    if (result != VK_SUCCESS)
       return result;
+
+   if (mod_props.drmFormatModifierPlaneCount != buf_props.num_planes) {
+      vn_log(dev->instance,
+             "drmFormatModifierPlaneCount(%u) != buf_props.num_planes(%u) "
+             "for DRM format modifier(%" PRIu64 ")",
+             mod_props.drmFormatModifierPlaneCount, buf_props.num_planes,
+             buf_props.modifier);
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
 
    /* The spec requires that formatFeatures must include at least one of
     * VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT or
@@ -913,7 +918,6 @@ VkResult
 vn_android_device_import_ahb(struct vn_device *dev,
                              struct vn_device_memory *mem,
                              const VkMemoryAllocateInfo *alloc_info,
-                             const VkAllocationCallbacks *alloc,
                              struct AHardwareBuffer *ahb,
                              bool internal_ahb)
 {
@@ -944,7 +948,7 @@ vn_android_device_import_ahb(struct vn_device *dev,
       struct vn_android_image_builder builder;
 
       result = vn_android_get_image_builder(dev, &img->deferred_info->create,
-                                            handle, alloc, &builder);
+                                            handle, &builder);
       if (result != VK_SUCCESS)
          return result;
 
@@ -1088,7 +1092,7 @@ vn_android_device_allocate_ahb(struct vn_device *dev,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    VkResult result =
-      vn_android_device_import_ahb(dev, mem, alloc_info, alloc, ahb, true);
+      vn_android_device_import_ahb(dev, mem, alloc_info, ahb, true);
 
    /* ahb alloc has already acquired a ref and import will acquire another,
     * must release one here to avoid leak.
