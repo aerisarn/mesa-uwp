@@ -804,6 +804,68 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
+            nir_op_fddx | nir_op_fddx_coarse | nir_op_fddx_fine => {
+                // TODO: Real coarse derivatives
+
+                assert!(alu.def.bit_size() == 32);
+                let scratch = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpWarpSync { mask: u32::MAX });
+                b.push_op(OpShfl {
+                    dst: scratch[0].into(),
+                    src: srcs[0],
+                    lane: Src::new_imm_u32(1),
+                    c: Src::new_imm_u32(0x3 | 0x1c << 8),
+                    op: ShflOp::Bfly,
+                });
+
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpFSwzAdd {
+                    dst: dst[0].into(),
+                    srcs: [scratch[0].into(), srcs[0]],
+                    ops: [
+                        FSwzAddOp::SubLeft,
+                        FSwzAddOp::SubRight,
+                        FSwzAddOp::SubLeft,
+                        FSwzAddOp::SubRight,
+                    ],
+                    rnd_mode: FRndMode::NearestEven,
+                });
+
+                dst
+            }
+            nir_op_fddy | nir_op_fddy_coarse | nir_op_fddy_fine => {
+                // TODO: Real coarse derivatives
+
+                assert!(alu.def.bit_size() == 32);
+                let scratch = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpWarpSync { mask: u32::MAX });
+                b.push_op(OpShfl {
+                    dst: scratch[0].into(),
+                    src: srcs[0],
+                    lane: Src::new_imm_u32(2),
+                    c: Src::new_imm_u32(0x3 | 0x1c << 8),
+                    op: ShflOp::Bfly,
+                });
+
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpFSwzAdd {
+                    dst: dst[0].into(),
+                    srcs: [scratch[0].into(), srcs[0]],
+                    ops: [
+                        FSwzAddOp::SubLeft,
+                        FSwzAddOp::SubLeft,
+                        FSwzAddOp::SubRight,
+                        FSwzAddOp::SubRight,
+                    ],
+                    rnd_mode: FRndMode::NearestEven,
+                });
+
+                dst
+            }
             _ => panic!("Unsupported ALU instruction: {}", alu.info().name()),
         };
         self.set_dst(&alu.def, dst);

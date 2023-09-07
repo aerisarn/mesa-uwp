@@ -46,6 +46,13 @@ fn copy_src(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
     src.src_ref = val.into();
 }
 
+fn copy_src_if_cbuf(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
+    match src.src_ref {
+        SrcRef::CBuf(_) => copy_src(b, src, file),
+        _ => (),
+    }
+}
+
 fn copy_src_if_not_reg(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
     if !src_is_reg(&src) {
         copy_src(b, src, file);
@@ -231,6 +238,16 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
 
             copy_src_if_not_reg(b, src0, RegFile::GPR);
             copy_src_if_not_reg(b, src2, RegFile::GPR);
+        }
+        Op::FSwzAdd(op) => {
+            let [ref mut src0, ref mut src1] = op.srcs;
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src1, RegFile::GPR);
+        }
+        Op::Shfl(op) => {
+            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_src_if_cbuf(b, &mut op.lane, RegFile::GPR);
+            copy_src_if_cbuf(b, &mut op.c, RegFile::GPR);
         }
         Op::Ldc(_) => (),  // Nothing to do
         Op::Copy(_) => (), // Nothing to do

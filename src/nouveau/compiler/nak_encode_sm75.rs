@@ -515,6 +515,33 @@ impl SM75Instr {
         self.set_pred_src(87..90, 90, op.accum);
     }
 
+    fn encode_fswzadd(&mut self, op: &OpFSwzAdd) {
+        self.set_opcode(0x822);
+        self.set_dst(op.dst);
+
+        self.set_reg_src(24..32, op.srcs[0]);
+        self.set_reg_src(64..72, op.srcs[1]);
+
+        let mut subop = 0x0_u8;
+
+        for (i, swz_op) in op.ops.iter().enumerate() {
+            let swz_op = match swz_op {
+                FSwzAddOp::Add => 0,
+                FSwzAddOp::SubRight => 2,
+                FSwzAddOp::SubLeft => 1,
+                FSwzAddOp::MoveLeft => 3,
+            };
+
+            subop |= swz_op << ((op.ops.len() - i - 1) * 2);
+        }
+
+        self.set_field(32..40, subop);
+
+        self.set_bit(77, false); /* NDV */
+        self.set_rnd_mode(78..80, op.rnd_mode);
+        self.set_bit(80, false); /* TODO: FTZ */
+    }
+
     fn encode_mufu(&mut self, op: &OpMuFu) {
         self.encode_alu(
             0x108,
@@ -852,6 +879,54 @@ impl SM75Instr {
         );
 
         self.set_pred_src(87..90, 90, op.cond);
+    }
+
+    fn encode_shfl(&mut self, op: &OpShfl) {
+        assert!(op.lane.src_mod.is_none());
+        assert!(op.c.src_mod.is_none());
+
+        match &op.lane.src_ref {
+            SrcRef::Reg(_) => match &op.c.src_ref {
+                SrcRef::Reg(_) => {
+                    self.set_opcode(0x389);
+                    self.set_reg_src(32..40, op.lane);
+                    self.set_reg_src(64..72, op.c);
+                }
+                SrcRef::Imm32(imm_c) => {
+                    self.set_opcode(0x589);
+                    self.set_reg_src(32..40, op.lane);
+                    self.set_field(40..53, *imm_c);
+                }
+                _ => panic!("Invalid instruction form"),
+            },
+            SrcRef::Imm32(imm_lane) => match &op.c.src_ref {
+                SrcRef::Reg(_) => {
+                    self.set_opcode(0x989);
+                    self.set_field(53..58, *imm_lane);
+                    self.set_reg_src(64..72, op.c);
+                }
+                SrcRef::Imm32(imm_c) => {
+                    self.set_opcode(0xf89);
+                    self.set_field(40..53, *imm_c);
+                    self.set_field(53..58, *imm_lane);
+                }
+                _ => panic!("Invalid instruction form"),
+            },
+            _ => panic!("Invalid instruction form"),
+        };
+
+        self.set_dst(op.dst);
+        self.set_pred_dst(81..84, Dst::None);
+        self.set_reg_src(24..32, op.src);
+        self.set_field(
+            58..60,
+            match op.op {
+                ShflOp::Idx => 0_u8,
+                ShflOp::Up => 1_u8,
+                ShflOp::Down => 2_u8,
+                ShflOp::Bfly => 3_u8,
+            },
+        );
     }
 
     fn encode_plop3(&mut self, op: &OpPLop3) {
@@ -1506,6 +1581,17 @@ impl SM75Instr {
         self.set_field(90..91, false); /* NOT */
     }
 
+    fn encode_warpsync(&mut self, op: &OpWarpSync) {
+        self.encode_alu(
+            0x148,
+            None,
+            ALUSrc::None,
+            ALUSrc::Imm32(op.mask),
+            ALUSrc::None,
+        );
+        self.set_pred_src(87..90, 90, SrcRef::True.into());
+    }
+
     fn encode_bar(&mut self, _op: &OpBar) {
         self.set_opcode(0x31d);
 
@@ -1583,6 +1669,7 @@ impl SM75Instr {
             Op::FMul(op) => si.encode_fmul(&op),
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
+            Op::FSwzAdd(op) => si.encode_fswzadd(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::Brev(op) => si.encode_brev(&op),
             Op::Flo(op) => si.encode_flo(&op),
@@ -1603,6 +1690,7 @@ impl SM75Instr {
             Op::Mov(op) => si.encode_mov(&op),
             Op::Prmt(op) => si.encode_prmt(&op),
             Op::Sel(op) => si.encode_sel(&op),
+            Op::Shfl(op) => si.encode_shfl(&op),
             Op::PLop3(op) => si.encode_plop3(&op),
             Op::Tex(op) => si.encode_tex(&op),
             Op::Tld(op) => si.encode_tld(&op),
@@ -1624,6 +1712,7 @@ impl SM75Instr {
             Op::MemBar(op) => si.encode_membar(&op),
             Op::Bra(op) => si.encode_bra(&op, ip, block_offsets),
             Op::Exit(op) => si.encode_exit(&op),
+            Op::WarpSync(op) => si.encode_warpsync(&op),
             Op::Bar(op) => si.encode_bar(&op),
             Op::CS2R(op) => si.encode_cs2r(&op),
             Op::Kill(op) => si.encode_kill(&op),

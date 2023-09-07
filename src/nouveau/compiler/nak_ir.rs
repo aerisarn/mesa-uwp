@@ -1990,6 +1990,59 @@ impl fmt::Display for OpFSetP {
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq)]
+pub enum FSwzAddOp {
+    Add,
+    SubRight,
+    SubLeft,
+    MoveLeft,
+}
+
+impl fmt::Display for FSwzAddOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FSwzAddOp::Add => write!(f, "ADD"),
+            FSwzAddOp::SubRight => write!(f, "SUBR"),
+            FSwzAddOp::SubLeft => write!(f, "SUB"),
+            FSwzAddOp::MoveLeft => write!(f, "MOV2"),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpFSwzAdd {
+    pub dst: Dst,
+
+    #[src_type(GPR)]
+    pub srcs: [Src; 2],
+
+    pub rnd_mode: FRndMode,
+
+    pub ops: [FSwzAddOp; 4],
+}
+
+impl fmt::Display for OpFSwzAdd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FSWZADD",)?;
+        if self.rnd_mode != FRndMode::NearestEven {
+            write!(f, ".{}", self.rnd_mode)?;
+        }
+        write!(
+            f,
+            " {} {{ {}, {} }} [{}, {}, {}, {}]",
+            self.dst,
+            self.srcs[0],
+            self.srcs[1],
+            self.ops[0],
+            self.ops[1],
+            self.ops[2],
+            self.ops[3],
+        )
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum MuFuOp {
     Cos,
     Sin,
@@ -2296,6 +2349,26 @@ impl fmt::Display for OpLop3 {
             "LOP3.{} {} {{ {}, {}, {} }}",
             self.op, self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
         )
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum ShflOp {
+    Idx,
+    Up,
+    Down,
+    Bfly,
+}
+
+impl fmt::Display for ShflOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ShflOp::Idx => write!(f, "IDX"),
+            ShflOp::Up => write!(f, "UP"),
+            ShflOp::Down => write!(f, "DOWN"),
+            ShflOp::Bfly => write!(f, "BFLY"),
+        }
     }
 }
 
@@ -2615,6 +2688,33 @@ impl fmt::Display for OpSel {
             f,
             "SEL {} {{ {}, {}, {} }}",
             self.dst, self.cond, self.srcs[0], self.srcs[1],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpShfl {
+    pub dst: Dst,
+
+    #[src_type(SSA)]
+    pub src: Src,
+
+    #[src_type(ALU)]
+    pub lane: Src,
+
+    #[src_type(ALU)]
+    pub c: Src,
+
+    pub op: ShflOp,
+}
+
+impl fmt::Display for OpShfl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SHFL.{} {} {{ {}, {}, {} }}",
+            self.op, self.dst, self.src, self.lane, self.c
         )
     }
 }
@@ -3256,6 +3356,18 @@ impl fmt::Display for OpExit {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpWarpSync {
+    pub mask: u32,
+}
+
+impl fmt::Display for OpWarpSync {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "WARPSYNC 0x{:x}", self.mask)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBar {}
 
 impl fmt::Display for OpBar {
@@ -3651,6 +3763,7 @@ pub enum Op {
     MuFu(OpMuFu),
     FSet(OpFSet),
     FSetP(OpFSetP),
+    FSwzAdd(OpFSwzAdd),
     DAdd(OpDAdd),
     Brev(OpBrev),
     Flo(OpFlo),
@@ -3672,6 +3785,7 @@ pub enum Op {
     Mov(OpMov),
     Prmt(OpPrmt),
     Sel(OpSel),
+    Shfl(OpShfl),
     PLop3(OpPLop3),
     Tex(OpTex),
     Tld(OpTld),
@@ -3693,6 +3807,7 @@ pub enum Op {
     MemBar(OpMemBar),
     Bra(OpBra),
     Exit(OpExit),
+    WarpSync(OpWarpSync),
     Bar(OpBar),
     CS2R(OpCS2R),
     Kill(OpKill),
@@ -4016,6 +4131,7 @@ impl Instr {
             | Op::Kill(_)
             | Op::Bra(_)
             | Op::Exit(_)
+            | Op::WarpSync(_)
             | Op::Bar(_)
             | Op::FSOut(_) => false,
             _ => true,
@@ -4030,7 +4146,8 @@ impl Instr {
             | Op::FMnMx(_)
             | Op::FMul(_)
             | Op::FSet(_)
-            | Op::FSetP(_) => true,
+            | Op::FSetP(_)
+            | Op::FSwzAdd(_) => true,
 
             // Multi-function unit is variable latency
             Op::MuFu(_) => false,
@@ -4056,6 +4173,7 @@ impl Instr {
 
             // Move ops
             Op::Mov(_) | Op::Prmt(_) | Op::Sel(_) => true,
+            Op::Shfl(_) => false,
 
             // Predicate ops
             Op::PLop3(_) => true,
@@ -4084,6 +4202,7 @@ impl Instr {
 
             // Control-flow ops
             Op::Bra(_) | Op::Exit(_) => true,
+            Op::WarpSync(_) => false,
 
             // Miscellaneous ops
             Op::Bar(_)
