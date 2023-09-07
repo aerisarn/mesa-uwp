@@ -8054,6 +8054,15 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
                               struct anv_address addr,
                               enum anv_timestamp_capture_type type,
                               void *data) {
+   /* Make sure ANV_TIMESTAMP_CAPTURE_AT_CS_STALL and
+    * ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER capture type are not set for
+    * transfer queue.
+    */
+   if (batch->engine_class == INTEL_ENGINE_CLASS_COPY) {
+      assert(type != ANV_TIMESTAMP_CAPTURE_AT_CS_STALL ||
+             type != ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER);
+   }
+
    switch (type) {
    case ANV_TIMESTAMP_CAPTURE_TOP_OF_PIPE: {
       struct mi_builder b;
@@ -8062,10 +8071,18 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
       break;
    }
 
-   case ANV_TIMESTAMP_CAPTURE_END_OF_PIPE:
-      genx_batch_emit_pipe_control_write
-         (batch, device->info, WriteTimestamp, addr, 0, 0);
+   case ANV_TIMESTAMP_CAPTURE_END_OF_PIPE: {
+      if (batch->engine_class == INTEL_ENGINE_CLASS_COPY) {
+         anv_batch_emit(batch, GENX(MI_FLUSH_DW), fd) {
+            fd.PostSyncOperation = WriteTimestamp;
+            fd.Address = addr;
+         }
+      } else {
+         genx_batch_emit_pipe_control_write(batch, device->info,
+                                            WriteTimestamp, addr, 0, 0);
+      }
       break;
+   }
 
    case ANV_TIMESTAMP_CAPTURE_AT_CS_STALL:
       genx_batch_emit_pipe_control_write

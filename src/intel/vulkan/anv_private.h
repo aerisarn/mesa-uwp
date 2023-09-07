@@ -1897,6 +1897,8 @@ struct anv_batch {
     * of the driver.
     */
    VkResult                                     status;
+
+   enum intel_engine_class                      engine_class;
 };
 
 void *anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords);

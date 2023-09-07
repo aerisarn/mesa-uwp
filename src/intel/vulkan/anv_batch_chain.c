@@ -833,6 +833,7 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->batch.allocated_batch_size = ANV_MIN_CMD_BUFFER_BATCH_SIZE;
 
    cmd_buffer->batch.extend_cb = anv_cmd_buffer_chain_batch;
+   cmd_buffer->batch.engine_class = cmd_buffer->queue_family->engine_class;
 
    anv_batch_bo_start(batch_bo, &cmd_buffer->batch,
                       GFX8_MI_BATCH_BUFFER_START_length * 4);
@@ -846,6 +847,8 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->generation_batch.user_data = cmd_buffer;
    cmd_buffer->generation_batch.allocated_batch_size = 0;
    cmd_buffer->generation_batch.extend_cb = anv_cmd_buffer_chain_generation_batch;
+   cmd_buffer->generation_batch.engine_class =
+      cmd_buffer->queue_family->engine_class;
 
    int success = u_vector_init_pow2(&cmd_buffer->seen_bbos, 8,
                                     sizeof(struct anv_bo *));
