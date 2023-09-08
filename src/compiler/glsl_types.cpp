@@ -1348,35 +1348,35 @@ glsl_cmat_type(const struct glsl_cmat_description *desc)
    return t;
 }
 
-bool
-glsl_type::compare_no_precision(const struct glsl_type *b) const
+extern "C" bool
+glsl_type_compare_no_precision(const struct glsl_type *a, const struct glsl_type *b)
 {
-   if (this == b)
+   if (a == b)
       return true;
 
-   if (this->is_array()) {
-      if (!b->is_array() || this->length != b->length)
+   if (a->is_array()) {
+      if (!b->is_array() || a->length != b->length)
          return false;
 
       const struct glsl_type *b_no_array = b->fields.array;
 
-      return this->fields.array->compare_no_precision(b_no_array);
+      return a->fields.array->compare_no_precision(b_no_array);
    }
 
-   if (this->is_struct()) {
+   if (a->is_struct()) {
       if (!b->is_struct())
          return false;
-   } else if (this->is_interface()) {
+   } else if (a->is_interface()) {
       if (!b->is_interface())
          return false;
    } else {
       return false;
    }
 
-   return record_compare(b,
-                         true, /* match_name */
-                         true, /* match_locations */
-                         false /* match_precision */);
+   return glsl_record_compare(a, b,
+                              true, /* match_name */
+                              true, /* match_locations */
+                              false /* match_precision */);
 }
 
 extern "C" bool

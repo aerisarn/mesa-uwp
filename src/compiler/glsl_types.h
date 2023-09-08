@@ -1346,6 +1346,7 @@ glsl_get_sampler_result_type(const struct glsl_type *t)
 
 int glsl_get_sampler_coordinate_components(const struct glsl_type *t);
 
+bool glsl_type_compare_no_precision(const struct glsl_type *a, const struct glsl_type *b);
 bool glsl_record_compare(const struct glsl_type *a, const struct glsl_type *b,
                          bool match_name, bool match_locations,
                          bool match_precision);
