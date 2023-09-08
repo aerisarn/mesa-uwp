@@ -7,6 +7,16 @@
 #include "nir_builder.h"
 #include "nir_format_convert.h"
 
+static enum glsl_sampler_dim
+remap_sampler_dim(enum glsl_sampler_dim dim)
+{
+   switch (dim) {
+   case GLSL_SAMPLER_DIM_SUBPASS: return GLSL_SAMPLER_DIM_2D;
+   case GLSL_SAMPLER_DIM_SUBPASS_MS: return GLSL_SAMPLER_DIM_MS;
+   default: return dim;
+   }
+}
+
 static bool
 lower_tex(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
 {
@@ -196,6 +206,8 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
    while (tex->num_srcs > 2)
       nir_tex_instr_remove_src(tex, tex->num_srcs - 1);
 
+   tex->sampler_dim = remap_sampler_dim(tex->sampler_dim);
+
    struct nak_nir_tex_flags flags = {
       .lod_mode = lod_mode,
       .offset_mode = offset_mode,
@@ -281,6 +293,8 @@ lower_txq(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
    while (tex->num_srcs > 1)
       nir_tex_instr_remove_src(tex, tex->num_srcs - 1);
 
+   tex->sampler_dim = remap_sampler_dim(tex->sampler_dim);
+
    b->cursor = nir_after_instr(&tex->instr);
 
    /* Only pick off slected components */
@@ -301,7 +315,7 @@ lower_image_txq(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_def *img_h = nir_u2u32(b, intrin->src[0].ssa);
 
    nir_tex_instr *txq = nir_tex_instr_create(b->shader, 1);
-   txq->sampler_dim = nir_intrinsic_image_dim(intrin);
+   txq->sampler_dim = remap_sampler_dim(nir_intrinsic_image_dim(intrin));
    txq->is_array = nir_intrinsic_image_array(intrin);
    txq->dest_type = nir_type_int32;
 
