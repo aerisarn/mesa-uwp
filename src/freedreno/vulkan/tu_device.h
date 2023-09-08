@@ -457,7 +457,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
 
 uint64_t
-tu_get_system_heap_size(void);
+tu_get_system_heap_size(struct tu_physical_device *physical_device);
 
 VkResult
 tu_physical_device_init(struct tu_physical_device *device,

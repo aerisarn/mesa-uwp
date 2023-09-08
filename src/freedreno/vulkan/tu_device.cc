@@ -1479,7 +1479,7 @@ tu_GetPhysicalDeviceQueueFamilyProperties2(
 }
 
 uint64_t
-tu_get_system_heap_size()
+tu_get_system_heap_size(struct tu_physical_device *physical_device)
 {
    struct sysinfo info;
    sysinfo(&info);
@@ -1495,6 +1495,9 @@ tu_get_system_heap_size()
    else
       available_ram = total_ram * 3 / 4;
 
+   if (physical_device->va_size)
+      available_ram = MIN2(available_ram, physical_device->va_size);
+
    return available_ram;
 }
 
@@ -1507,6 +1510,9 @@ tu_get_budget_memory(struct tu_physical_device *physical_device)
    ASSERTED bool has_available_memory =
       os_get_available_system_memory(&sys_available);
    assert(has_available_memory);
+
+   if (physical_device->va_size)
+      sys_available = MIN2(sys_available, physical_device->va_size);
 
    /*
     * Let's not incite the app to starve the system: report at most 90% of
