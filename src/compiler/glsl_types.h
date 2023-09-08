@@ -1485,17 +1485,68 @@ const struct glsl_type *glsl_int16_type(const struct glsl_type *t);
 const struct glsl_type *glsl_uint16_type(const struct glsl_type *t);
 const struct glsl_type *glsl_type_to_16bit(const struct glsl_type *old_type);
 
-const struct glsl_type *glsl_scalar_type(enum glsl_base_type base_type);
-const struct glsl_type *glsl_vector_type(enum glsl_base_type base_type, unsigned components);
-const struct glsl_type *glsl_matrix_type(enum glsl_base_type base_type,
-                                         unsigned rows, unsigned columns);
-const struct glsl_type *glsl_explicit_matrix_type(const struct glsl_type *mat,
-                                                  unsigned stride,
-                                                  bool row_major);
+static inline const struct glsl_type *
+glsl_scalar_type(enum glsl_base_type base_type)
+{
+   return glsl_simple_type(base_type, 1, 1, 0, false, 0);
+}
 
-const struct glsl_type *glsl_transposed_type(const struct glsl_type *t);
-const struct glsl_type *glsl_texture_type_to_sampler(const struct glsl_type *t, bool is_shadow);
-const struct glsl_type *glsl_sampler_type_to_texture(const struct glsl_type *t);
+static inline const struct glsl_type *
+glsl_vector_type(enum glsl_base_type base_type, unsigned components)
+{
+   const struct glsl_type *t = glsl_simple_type(base_type, components, 1, 0, false, 0);
+   assert(t != &glsl_type_builtin_error);
+   return t;
+}
+
+static inline const struct glsl_type *
+glsl_matrix_type(enum glsl_base_type base_type,
+                 unsigned rows, unsigned columns)
+{
+   const struct glsl_type *t = glsl_simple_type(base_type, rows, columns, 0, false, 0);
+   assert(t != &glsl_type_builtin_error);
+   return t;
+}
+
+static inline const struct glsl_type *
+glsl_explicit_matrix_type(const struct glsl_type *mat, unsigned stride,
+                          bool row_major) {
+   assert(stride > 0);
+   const struct glsl_type *t = glsl_simple_type(mat->base_type,
+                                                mat->vector_elements,
+                                                mat->matrix_columns,
+                                                stride, row_major, 0);
+   assert(t != &glsl_type_builtin_error);
+   return t;
+
+}
+
+static inline const struct glsl_type *
+glsl_transposed_type(const struct glsl_type *t)
+{
+   assert(glsl_type_is_matrix(t));
+   return glsl_simple_type(t->base_type, t->matrix_columns,
+                           t->vector_elements, 0, false, 0);
+}
+
+static inline const struct glsl_type *
+glsl_texture_type_to_sampler(const struct glsl_type *t, bool is_shadow)
+{
+   assert(glsl_type_is_texture(t));
+   return glsl_sampler_type((enum glsl_sampler_dim)t->sampler_dimensionality,
+                            is_shadow, t->sampler_array,
+                            (enum glsl_base_type)t->sampled_type);
+}
+
+static inline const struct glsl_type *
+glsl_sampler_type_to_texture(const struct glsl_type *t)
+{
+   assert(glsl_type_is_sampler(t) && !glsl_type_is_bare_sampler(t));
+   return glsl_texture_type((enum glsl_sampler_dim)t->sampler_dimensionality,
+                            t->sampler_array,
+                            (enum glsl_base_type)t->sampled_type);
+}
+
 const struct glsl_type *glsl_replace_vector_type(const struct glsl_type *t, unsigned components);
 const struct glsl_type *glsl_channel_type(const struct glsl_type *t);
 
