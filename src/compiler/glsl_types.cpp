@@ -1637,8 +1637,8 @@ glsl_subroutine_type(const char *subroutine_name)
    return t;
 }
 
-const struct glsl_type *
-glsl_type::get_mul_type(const struct glsl_type *type_a, const struct glsl_type *type_b)
+extern "C" const struct glsl_type *
+glsl_get_mul_type(const struct glsl_type *type_a, const struct glsl_type *type_b)
 {
    if (type_a->is_matrix() && type_b->is_matrix()) {
       /* Matrix multiply.  The columns of A must match the rows of B.  Given
@@ -1653,10 +1653,10 @@ glsl_type::get_mul_type(const struct glsl_type *type_a, const struct glsl_type *
           * transpose (size of a row) is done for B.
           */
          const struct glsl_type *const type =
-            get_instance(type_a->base_type,
-                         type_a->column_type()->vector_elements,
-                         type_b->row_type()->vector_elements);
-         assert(type != error_type);
+            glsl_type::get_instance(type_a->base_type,
+                                    type_a->column_type()->vector_elements,
+                                    type_b->row_type()->vector_elements);
+         assert(type != &glsl_type_builtin_error);
 
          return type;
       }
@@ -1672,10 +1672,10 @@ glsl_type::get_mul_type(const struct glsl_type *type_a, const struct glsl_type *
          /* The resulting vector has a number of elements equal to
           * the number of rows of matrix A. */
          const struct glsl_type *const type =
-            get_instance(type_a->base_type,
-                         type_a->column_type()->vector_elements,
-                         1);
-         assert(type != error_type);
+            glsl_type::get_instance(type_a->base_type,
+                                    type_a->column_type()->vector_elements,
+                                    1);
+         assert(type != &glsl_type_builtin_error);
 
          return type;
       }
@@ -1691,16 +1691,16 @@ glsl_type::get_mul_type(const struct glsl_type *type_a, const struct glsl_type *
          /* The resulting vector has a number of elements equal to
           * the number of columns of matrix B. */
          const struct glsl_type *const type =
-            get_instance(type_a->base_type,
-                         type_b->row_type()->vector_elements,
-                         1);
-         assert(type != error_type);
+            glsl_type::get_instance(type_a->base_type,
+                                    type_b->row_type()->vector_elements,
+                                    1);
+         assert(type != &glsl_type_builtin_error);
 
          return type;
       }
    }
 
-   return error_type;
+   return &glsl_type_builtin_error;
 }
 
 

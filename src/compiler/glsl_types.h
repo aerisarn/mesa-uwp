@@ -1552,6 +1552,7 @@ glsl_sampler_type_to_texture(const struct glsl_type *t)
 
 const struct glsl_type *glsl_replace_vector_type(const struct glsl_type *t, unsigned components);
 const struct glsl_type *glsl_channel_type(const struct glsl_type *t);
+const struct glsl_type *glsl_get_mul_type(const struct glsl_type *type_a, const struct glsl_type *type_b);
 
 unsigned glsl_type_get_sampler_count(const struct glsl_type *t);
 unsigned glsl_type_get_texture_count(const struct glsl_type *t);
