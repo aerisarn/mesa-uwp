@@ -856,6 +856,7 @@ glsl_sampler_type(enum glsl_sampler_dim dim, bool shadow,
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_INT:
       if (shadow)
          return &glsl_type_builtin_error;
@@ -886,6 +887,7 @@ glsl_sampler_type(enum glsl_sampler_dim dim, bool shadow,
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_UINT:
       if (shadow)
          return &glsl_type_builtin_error;
@@ -916,6 +918,7 @@ glsl_sampler_type(enum glsl_sampler_dim dim, bool shadow,
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_VOID:
       return shadow ? &glsl_type_builtin_samplerShadow : &glsl_type_builtin_sampler;
    default:
@@ -973,6 +976,7 @@ glsl_texture_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type typ
          else
             return &glsl_type_builtin_textureExternalOES;
       }
+      break;
    case GLSL_TYPE_INT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -1002,6 +1006,7 @@ glsl_texture_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type typ
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_UINT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -1031,6 +1036,7 @@ glsl_texture_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type typ
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_VOID:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -1084,6 +1090,7 @@ glsl_image_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type type)
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_INT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -1113,6 +1120,7 @@ glsl_image_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type type)
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_UINT:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -1142,6 +1150,7 @@ glsl_image_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type type)
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_INT64:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -1169,6 +1178,7 @@ glsl_image_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type type)
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_UINT64:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
@@ -1196,6 +1206,7 @@ glsl_image_type(enum glsl_sampler_dim dim, bool array, enum glsl_base_type type)
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return &glsl_type_builtin_error;
       }
+      break;
    case GLSL_TYPE_VOID:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
