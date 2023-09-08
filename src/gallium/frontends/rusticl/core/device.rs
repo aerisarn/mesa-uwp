@@ -598,6 +598,10 @@ impl Device {
             add_feat(1, 0, 0, "__opencl_c_fp64");
         }
 
+        if self.is_gl_sharing_supported() {
+            add_ext(1, 0, 0, "cl_khr_gl_sharing");
+        }
+
         if self.int64_supported() {
             if self.embedded {
                 add_ext(1, 0, 0, "cles_khr_int64");
