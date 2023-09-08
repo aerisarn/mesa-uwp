@@ -2615,6 +2615,12 @@ zink_update_rendering_info(struct zink_context *ctx)
 }
 
 static unsigned
+calc_max_dummy_fbo_size(struct zink_context *ctx)
+{
+   return MIN2(4096, zink_screen(ctx->base.screen)->info.props.limits.maxImageDimension2D);
+}
+
+static unsigned
 begin_rendering(struct zink_context *ctx)
 {
    unsigned clear_buffers = 0;
@@ -2644,9 +2650,9 @@ begin_rendering(struct zink_context *ctx)
             else
                ctx->dynamic_fb.attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
          }
-         /* use dummy fb size of 1024 if no surf exists */
-         unsigned width = surf ? surf->base.texture->width0 : 1024;
-         unsigned height = surf ? surf->base.texture->height0 : 1024;
+         /* use dummy fb if no surf exists */
+         unsigned width = surf ? surf->base.texture->width0 : calc_max_dummy_fbo_size(ctx);
+         unsigned height = surf ? surf->base.texture->height0 : calc_max_dummy_fbo_size(ctx);
          unsigned prev_width = ctx->dynamic_fb.info.renderArea.extent.width;
          unsigned prev_height = ctx->dynamic_fb.info.renderArea.extent.height;
          ctx->dynamic_fb.info.renderArea.extent.width = MIN2(ctx->dynamic_fb.info.renderArea.extent.width, width);
@@ -5057,12 +5063,13 @@ struct pipe_surface *
 zink_get_dummy_pipe_surface(struct zink_context *ctx, int samples_index)
 {
    if (!ctx->dummy_surface[samples_index]) {
-      ctx->dummy_surface[samples_index] = zink_surface_create_null(ctx, PIPE_TEXTURE_2D, 1024, 1024, BITFIELD_BIT(samples_index));
+      unsigned size = calc_max_dummy_fbo_size(ctx);
+      ctx->dummy_surface[samples_index] = zink_surface_create_null(ctx, PIPE_TEXTURE_2D, size, size, BITFIELD_BIT(samples_index));
       /* This is possibly used with imageLoad which according to GL spec must return 0 */
       if (!samples_index) {
          union pipe_color_union color = {0};
          struct pipe_box box;
-         u_box_2d(0, 0, 1024, 1024, &box);
+         u_box_2d(0, 0, size, size, &box);
          ctx->base.clear_texture(&ctx->base, ctx->dummy_surface[samples_index]->texture, 0, &box, &color);
       }
    }
