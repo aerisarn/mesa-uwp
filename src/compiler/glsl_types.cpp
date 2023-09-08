@@ -49,17 +49,17 @@ static struct {
     */
    uint32_t users;
 
-   hash_table *explicit_matrix_types;
-   hash_table *array_types;
-   hash_table *cmat_types;
-   hash_table *struct_types;
-   hash_table *interface_types;
-   hash_table *subroutine_types;
+   struct hash_table *explicit_matrix_types;
+   struct hash_table *array_types;
+   struct hash_table *cmat_types;
+   struct hash_table *struct_types;
+   struct hash_table *interface_types;
+   struct hash_table *subroutine_types;
 } glsl_type_cache;
 
-static const glsl_type *
+static const struct glsl_type *
 make_vector_matrix_type(linear_ctx *lin_ctx, uint32_t gl_type,
-                        glsl_base_type base_type, unsigned vector_elements,
+                        enum glsl_base_type base_type, unsigned vector_elements,
                         unsigned matrix_columns, const char *name,
                         unsigned explicit_stride, bool row_major,
                         unsigned explicit_alignment)
@@ -86,7 +86,7 @@ make_vector_matrix_type(linear_ctx *lin_ctx, uint32_t gl_type,
 }
 
 static void
-fill_struct_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_fields,
+fill_struct_type(struct glsl_type *t, const struct glsl_struct_field *fields, unsigned num_fields,
                  const char *name, bool packed, unsigned explicit_alignment)
 {
    assert(util_is_power_of_two_or_zero(explicit_alignment));
@@ -99,8 +99,8 @@ fill_struct_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_fie
    t->fields.structure = fields;
 }
 
-static const glsl_type *
-make_struct_type(linear_ctx *lin_ctx, const glsl_struct_field *fields, unsigned num_fields,
+static const struct glsl_type *
+make_struct_type(linear_ctx *lin_ctx, const struct glsl_struct_field *fields, unsigned num_fields,
                  const char *name, bool packed,
                  unsigned explicit_alignment)
 {
@@ -124,7 +124,7 @@ make_struct_type(linear_ctx *lin_ctx, const glsl_struct_field *fields, unsigned 
 }
 
 static void
-fill_interface_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_fields,
+fill_interface_type(struct glsl_type *t, const struct glsl_struct_field *fields, unsigned num_fields,
                     enum glsl_interface_packing packing,
                     bool row_major, const char *name)
 {
@@ -137,8 +137,8 @@ fill_interface_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_
    t->fields.structure = fields;
 }
 
-static const glsl_type *
-make_interface_type(linear_ctx *lin_ctx, const glsl_struct_field *fields, unsigned num_fields,
+static const struct glsl_type *
+make_interface_type(linear_ctx *lin_ctx, const struct glsl_struct_field *fields, unsigned num_fields,
                     enum glsl_interface_packing packing,
                     bool row_major, const char *name)
 {
@@ -161,7 +161,7 @@ make_interface_type(linear_ctx *lin_ctx, const glsl_struct_field *fields, unsign
    return t;
 }
 
-static const glsl_type *
+static const struct glsl_type *
 make_subroutine_type(linear_ctx *lin_ctx, const char *subroutine_name)
 {
    assert(lin_ctx != NULL);
@@ -308,7 +308,7 @@ glsl_type::contains_image() const
    }
 }
 
-const glsl_type *glsl_type::get_base_type() const
+const struct glsl_type *glsl_type::get_base_type() const
 {
    switch (base_type) {
    case GLSL_TYPE_UINT:
@@ -341,15 +341,15 @@ const glsl_type *glsl_type::get_base_type() const
 }
 
 
-const glsl_type *glsl_type::get_scalar_type() const
+const struct glsl_type *glsl_type::get_scalar_type() const
 {
-   const glsl_type *type = this;
+   const struct glsl_type *type = this;
 
    /* Handle arrays */
    while (type->base_type == GLSL_TYPE_ARRAY)
       type = type->fields.array;
 
-   const glsl_type *scalar_type = type->get_base_type();
+   const struct glsl_type *scalar_type = type->get_base_type();
    if (scalar_type == error_type)
       return type;
 
@@ -357,7 +357,7 @@ const glsl_type *glsl_type::get_scalar_type() const
 }
 
 
-const glsl_type *glsl_type::get_bare_type() const
+const struct glsl_type *glsl_type::get_bare_type() const
 {
    switch (this->base_type) {
    case GLSL_TYPE_UINT8:
@@ -383,7 +383,7 @@ const glsl_type *glsl_type::get_bare_type() const
          bare_fields[i].type = this->fields.structure[i].type->get_bare_type();
          bare_fields[i].name = this->fields.structure[i].name;
       }
-      const glsl_type *bare_type =
+      const struct glsl_type *bare_type =
          get_struct_instance(bare_fields, this->length, glsl_get_type_name(this));
       free(bare_fields);
       return bare_type;
@@ -407,7 +407,7 @@ const glsl_type *glsl_type::get_bare_type() const
    unreachable("Invalid base type");
 }
 
-const glsl_type *glsl_type::get_float16_type() const
+const struct glsl_type *glsl_type::get_float16_type() const
 {
    assert(this->base_type == GLSL_TYPE_FLOAT);
 
@@ -418,7 +418,7 @@ const glsl_type *glsl_type::get_float16_type() const
                        this->interface_row_major);
 }
 
-const glsl_type *glsl_type::get_int16_type() const
+const struct glsl_type *glsl_type::get_int16_type() const
 {
    assert(this->base_type == GLSL_TYPE_INT);
 
@@ -429,7 +429,7 @@ const glsl_type *glsl_type::get_int16_type() const
                        this->interface_row_major);
 }
 
-const glsl_type *glsl_type::get_uint16_type() const
+const struct glsl_type *glsl_type::get_uint16_type() const
 {
    assert(this->base_type == GLSL_TYPE_UINT);
 
@@ -450,9 +450,9 @@ glsl_type_singleton_init_or_ref()
    STATIC_ASSERT((((unsigned)GLSL_TYPE_INT)   & 3) == (unsigned)GLSL_TYPE_INT);
    STATIC_ASSERT((((unsigned)GLSL_TYPE_FLOAT) & 3) == (unsigned)GLSL_TYPE_FLOAT);
 
-   ASSERT_BITFIELD_SIZE(glsl_type, base_type, GLSL_TYPE_ERROR);
-   ASSERT_BITFIELD_SIZE(glsl_type, sampled_type, GLSL_TYPE_ERROR);
-   ASSERT_BITFIELD_SIZE(glsl_type, sampler_dimensionality,
+   ASSERT_BITFIELD_SIZE(struct glsl_type, base_type, GLSL_TYPE_ERROR);
+   ASSERT_BITFIELD_SIZE(struct glsl_type, sampled_type, GLSL_TYPE_ERROR);
+   ASSERT_BITFIELD_SIZE(struct glsl_type, sampler_dimensionality,
                         GLSL_SAMPLER_DIM_SUBPASS_MS);
 
    simple_mtx_lock(&glsl_type_cache_mutex);
@@ -482,8 +482,8 @@ glsl_type_singleton_decref()
    simple_mtx_unlock(&glsl_type_cache_mutex);
 }
 
-static const glsl_type *
-make_array_type(linear_ctx *lin_ctx, const glsl_type *element_type, unsigned length,
+static const struct glsl_type *
+make_array_type(linear_ctx *lin_ctx, const struct glsl_type *element_type, unsigned length,
                 unsigned explicit_stride)
 {
    assert(lin_ctx != NULL);
@@ -543,8 +543,8 @@ glsl_cmat_use_to_string(enum glsl_cmat_use use)
    }
 };
 
-const glsl_type *
-glsl_type::vec(unsigned components, const glsl_type *const ts[])
+const struct glsl_type *
+glsl_type::vec(unsigned components, const struct glsl_type *const ts[])
 {
    unsigned n = components;
 
@@ -560,10 +560,10 @@ glsl_type::vec(unsigned components, const glsl_type *const ts[])
 }
 
 #define VECN(components, sname, vname)           \
-const glsl_type *                                \
+const struct glsl_type *                                \
 glsl_type:: vname (unsigned components)          \
 {                                                \
-   static const glsl_type *const ts[] = {        \
+   static const struct glsl_type *const ts[] = { \
       sname ## _type, vname ## 2_type,           \
       vname ## 3_type, vname ## 4_type,          \
       vname ## 5_type,                           \
@@ -585,11 +585,11 @@ VECN(components, uint16_t, u16vec)
 VECN(components, int8_t, i8vec)
 VECN(components, uint8_t, u8vec)
 
-static const glsl_type *
+static const struct glsl_type *
 get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
                              unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment);
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
                         unsigned explicit_stride, bool row_major,
                         unsigned explicit_alignment)
@@ -729,7 +729,7 @@ compare_explicit_matrix_key(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct explicit_matrix_key)) == 0;
 }
 
-static const glsl_type *
+static const struct glsl_type *
 get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
                              unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment)
 {
@@ -741,7 +741,7 @@ get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned
       assert(explicit_stride % explicit_alignment == 0);
    }
 
-   const glsl_type *bare_type = glsl_type::get_instance(base_type, rows, columns);
+   const struct glsl_type *bare_type = glsl_type::get_instance(base_type, rows, columns);
 
    assert(columns > 1 || (rows > 1 && !row_major));
 
@@ -764,7 +764,7 @@ get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned
       glsl_type_cache.explicit_matrix_types =
          _mesa_hash_table_create(mem_ctx, hash_explicit_matrix_key, compare_explicit_matrix_key);
    }
-   hash_table *explicit_matrix_types = glsl_type_cache.explicit_matrix_types;
+   struct hash_table *explicit_matrix_types = glsl_type_cache.explicit_matrix_types;
 
    const struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(explicit_matrix_types, key_hash, &key);
@@ -775,9 +775,9 @@ get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned
                explicit_stride, explicit_alignment, row_major ? "RM" : "");
 
       linear_ctx *lin_ctx = glsl_type_cache.lin_ctx;
-      const glsl_type *t =
+      const struct glsl_type *t =
          make_vector_matrix_type(lin_ctx, bare_type->gl_type,
-                                 (glsl_base_type)base_type,
+                                 (enum glsl_base_type)base_type,
                                  rows, columns, name,
                                  explicit_stride, row_major,
                                  explicit_alignment);
@@ -801,11 +801,11 @@ get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned
    return t;
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_sampler_instance(enum glsl_sampler_dim dim,
                                 bool shadow,
                                 bool array,
-                                glsl_base_type type)
+                                enum glsl_base_type type)
 {
    switch (type) {
    case GLSL_TYPE_FLOAT:
@@ -924,9 +924,9 @@ glsl_type::get_sampler_instance(enum glsl_sampler_dim dim,
    unreachable("switch statement above should be complete");
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_texture_instance(enum glsl_sampler_dim dim,
-                                bool array, glsl_base_type type)
+                                bool array, enum glsl_base_type type)
 {
    switch (type) {
    case GLSL_TYPE_FLOAT:
@@ -1039,9 +1039,9 @@ glsl_type::get_texture_instance(enum glsl_sampler_dim dim,
    unreachable("switch statement above should be complete");
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_image_instance(enum glsl_sampler_dim dim,
-                              bool array, glsl_base_type type)
+                              bool array, enum glsl_base_type type)
 {
    switch (type) {
    case GLSL_TYPE_FLOAT:
@@ -1223,8 +1223,8 @@ compare_array_key(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct array_key)) == 0;
 }
 
-const glsl_type *
-glsl_type::get_array_instance(const glsl_type *element,
+const struct glsl_type *
+glsl_type::get_array_instance(const struct glsl_type *element,
                               unsigned array_size,
                               unsigned explicit_stride)
 {
@@ -1246,12 +1246,12 @@ glsl_type::get_array_instance(const glsl_type *element,
       glsl_type_cache.array_types =
          _mesa_hash_table_create(mem_ctx, hash_array_key, compare_array_key);
    }
-   hash_table *array_types = glsl_type_cache.array_types;
+   struct hash_table *array_types = glsl_type_cache.array_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(array_types, key_hash, &key);
    if (entry == NULL) {
       linear_ctx *lin_ctx = glsl_type_cache.lin_ctx;
-      const glsl_type *t = make_array_type(lin_ctx, element, array_size, explicit_stride);
+      const struct glsl_type *t = make_array_type(lin_ctx, element, array_size, explicit_stride);
       struct array_key *stored_key = linear_zalloc(lin_ctx, struct array_key);
       memcpy(stored_key, &key, sizeof(key));
 
@@ -1291,7 +1291,7 @@ make_cmat_type(linear_ctx *lin_ctx, const struct glsl_cmat_description desc)
    return t;
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_cmat_instance(const struct glsl_cmat_description desc)
 {
    STATIC_ASSERT(sizeof(struct glsl_cmat_description) == 4);
@@ -1309,7 +1309,7 @@ glsl_type::get_cmat_instance(const struct glsl_cmat_description desc)
       glsl_type_cache.cmat_types =
          _mesa_hash_table_create_u32_keys(mem_ctx);
    }
-   hash_table *cmat_types = glsl_type_cache.cmat_types;
+   struct hash_table *cmat_types = glsl_type_cache.cmat_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(
       cmat_types, key_hash, (void *) (uintptr_t) key);
@@ -1333,7 +1333,7 @@ glsl_type::get_cmat_instance(const struct glsl_cmat_description desc)
 }
 
 bool
-glsl_type::compare_no_precision(const glsl_type *b) const
+glsl_type::compare_no_precision(const struct glsl_type *b) const
 {
    if (this == b)
       return true;
@@ -1342,7 +1342,7 @@ glsl_type::compare_no_precision(const glsl_type *b) const
       if (!b->is_array() || this->length != b->length)
          return false;
 
-      const glsl_type *b_no_array = b->fields.array;
+      const struct glsl_type *b_no_array = b->fields.array;
 
       return this->fields.array->compare_no_precision(b_no_array);
    }
@@ -1364,7 +1364,7 @@ glsl_type::compare_no_precision(const glsl_type *b) const
 }
 
 bool
-glsl_type::record_compare(const glsl_type *b, bool match_name,
+glsl_type::record_compare(const struct glsl_type *b, bool match_name,
                           bool match_locations, bool match_precision) const
 {
    if (this->length != b->length)
@@ -1404,8 +1404,8 @@ glsl_type::record_compare(const glsl_type *b, bool match_name,
          if (this->fields.structure[i].type != b->fields.structure[i].type)
             return false;
       } else {
-         const glsl_type *ta = this->fields.structure[i].type;
-         const glsl_type *tb = b->fields.structure[i].type;
+         const struct glsl_type *ta = this->fields.structure[i].type;
+         const struct glsl_type *tb = b->fields.structure[i].type;
          if (!ta->compare_no_precision(tb))
             return false;
       }
@@ -1476,8 +1476,8 @@ glsl_type::record_compare(const glsl_type *b, bool match_name,
 static bool
 record_key_compare(const void *a, const void *b)
 {
-   const glsl_type *const key1 = (glsl_type *) a;
-   const glsl_type *const key2 = (glsl_type *) b;
+   const struct glsl_type *const key1 = (struct glsl_type *) a;
+   const struct glsl_type *const key2 = (struct glsl_type *) b;
 
    return strcmp(glsl_get_type_name(key1), glsl_get_type_name(key2)) == 0 &&
                  key1->record_compare(key2, true);
@@ -1490,7 +1490,7 @@ record_key_compare(const void *a, const void *b)
 static unsigned
 record_key_hash(const void *a)
 {
-   const glsl_type *const key = (glsl_type *) a;
+   const struct glsl_type *const key = (struct glsl_type *) a;
    uintptr_t hash = key->length;
    unsigned retval;
 
@@ -1507,13 +1507,13 @@ record_key_hash(const void *a)
    return retval;
 }
 
-const glsl_type *
-glsl_type::get_struct_instance(const glsl_struct_field *fields,
+const struct glsl_type *
+glsl_type::get_struct_instance(const struct glsl_struct_field *fields,
                                unsigned num_fields,
                                const char *name,
                                bool packed, unsigned explicit_alignment)
 {
-   glsl_type key = {0};
+   struct glsl_type key = {0};
    fill_struct_type(&key, fields, num_fields, name, packed, explicit_alignment);
    const uint32_t key_hash = record_key_hash(&key);
 
@@ -1525,12 +1525,12 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
       glsl_type_cache.struct_types =
          _mesa_hash_table_create(mem_ctx, record_key_hash, record_key_compare);
    }
-   hash_table *struct_types = glsl_type_cache.struct_types;
+   struct hash_table *struct_types = glsl_type_cache.struct_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(struct_types,
                                                                        key_hash, &key);
    if (entry == NULL) {
-      const glsl_type *t = make_struct_type(glsl_type_cache.lin_ctx, fields, num_fields,
+      const struct glsl_type *t = make_struct_type(glsl_type_cache.lin_ctx, fields, num_fields,
                                             name, packed, explicit_alignment);
 
       entry = _mesa_hash_table_insert_pre_hashed(struct_types, key_hash, t, (void *) t);
@@ -1549,14 +1549,14 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
 }
 
 
-const glsl_type *
-glsl_type::get_interface_instance(const glsl_struct_field *fields,
+const struct glsl_type *
+glsl_type::get_interface_instance(const struct glsl_struct_field *fields,
                                   unsigned num_fields,
                                   enum glsl_interface_packing packing,
                                   bool row_major,
                                   const char *block_name)
 {
-   glsl_type key = {0};
+   struct glsl_type key = {0};
    fill_interface_type(&key, fields, num_fields, packing, row_major, block_name);
    const uint32_t key_hash = record_key_hash(&key);
 
@@ -1568,12 +1568,12 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
       glsl_type_cache.interface_types =
          _mesa_hash_table_create(mem_ctx, record_key_hash, record_key_compare);
    }
-   hash_table *interface_types = glsl_type_cache.interface_types;
+   struct hash_table *interface_types = glsl_type_cache.interface_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(interface_types,
                                                                        key_hash, &key);
    if (entry == NULL) {
-      const glsl_type *t = make_interface_type(glsl_type_cache.lin_ctx, fields, num_fields,
+      const struct glsl_type *t = make_interface_type(glsl_type_cache.lin_ctx, fields, num_fields,
                                                packing, row_major, block_name);
 
       entry = _mesa_hash_table_insert_pre_hashed(interface_types, key_hash, t, (void *) t);
@@ -1589,7 +1589,7 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
    return t;
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_subroutine_instance(const char *subroutine_name)
 {
    const uint32_t key_hash = _mesa_hash_string(subroutine_name);
@@ -1602,12 +1602,12 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
       glsl_type_cache.subroutine_types =
          _mesa_hash_table_create(mem_ctx, _mesa_hash_string, _mesa_key_string_equal);
    }
-   hash_table *subroutine_types = glsl_type_cache.subroutine_types;
+   struct hash_table *subroutine_types = glsl_type_cache.subroutine_types;
 
    const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(subroutine_types,
                                                                        key_hash, subroutine_name);
    if (entry == NULL) {
-      const glsl_type *t = make_subroutine_type(glsl_type_cache.lin_ctx, subroutine_name);
+      const struct glsl_type *t = make_subroutine_type(glsl_type_cache.lin_ctx, subroutine_name);
 
       entry = _mesa_hash_table_insert_pre_hashed(subroutine_types, key_hash, glsl_get_type_name(t), (void *) t);
    }
@@ -1621,8 +1621,8 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
    return t;
 }
 
-const glsl_type *
-glsl_type::get_mul_type(const glsl_type *type_a, const glsl_type *type_b)
+const struct glsl_type *
+glsl_type::get_mul_type(const struct glsl_type *type_a, const struct glsl_type *type_b)
 {
    if (type_a->is_matrix() && type_b->is_matrix()) {
       /* Matrix multiply.  The columns of A must match the rows of B.  Given
@@ -1636,7 +1636,7 @@ glsl_type::get_mul_type(const glsl_type *type_a, const glsl_type *type_b)
           * looking at the size of a vector that makes up a column.  The
           * transpose (size of a row) is done for B.
           */
-         const glsl_type *const type =
+         const struct glsl_type *const type =
             get_instance(type_a->base_type,
                          type_a->column_type()->vector_elements,
                          type_b->row_type()->vector_elements);
@@ -1655,7 +1655,7 @@ glsl_type::get_mul_type(const glsl_type *type_a, const glsl_type *type_b)
       if (type_a->row_type() == type_b) {
          /* The resulting vector has a number of elements equal to
           * the number of rows of matrix A. */
-         const glsl_type *const type =
+         const struct glsl_type *const type =
             get_instance(type_a->base_type,
                          type_a->column_type()->vector_elements,
                          1);
@@ -1674,7 +1674,7 @@ glsl_type::get_mul_type(const glsl_type *type_a, const glsl_type *type_b)
       if (type_a == type_b->column_type()) {
          /* The resulting vector has a number of elements equal to
           * the number of columns of matrix B. */
-         const glsl_type *const type =
+         const struct glsl_type *const type =
             get_instance(type_a->base_type,
                          type_b->row_type()->vector_elements,
                          1);
@@ -1688,7 +1688,7 @@ glsl_type::get_mul_type(const glsl_type *type_a, const glsl_type *type_b)
 }
 
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::field_type(const char *name) const
 {
    if (this->base_type != GLSL_TYPE_STRUCT
@@ -1803,7 +1803,7 @@ glsl_type::component_slots_aligned(unsigned offset) const
       unsigned size = 0;
 
       for (unsigned i = 0; i < this->length; i++) {
-         const glsl_type *member = this->fields.structure[i].type;
+         const struct glsl_type *member = this->fields.structure[i].type;
          size += member->component_slots_aligned(size + offset);
       }
 
@@ -1842,20 +1842,20 @@ unsigned
 glsl_type::struct_location_offset(unsigned length) const
 {
    unsigned offset = 0;
-   const glsl_type *t = this->without_array();
+   const struct glsl_type *t = this->without_array();
    if (t->is_struct()) {
       assert(length <= t->length);
 
       for (unsigned i = 0; i < length; i++) {
-         const glsl_type *st = t->fields.structure[i].type;
-         const glsl_type *wa = st->without_array();
+         const struct glsl_type *st = t->fields.structure[i].type;
+         const struct glsl_type *wa = st->without_array();
          if (wa->is_struct()) {
             unsigned r_offset = wa->struct_location_offset(wa->length);
             offset += st->is_array() ?
                st->arrays_of_arrays_size() * r_offset : r_offset;
          } else if (st->is_array() && st->fields.array->is_array()) {
             unsigned outer_array_size = st->length;
-            const glsl_type *base_type = st->fields.array;
+            const struct glsl_type *base_type = st->fields.array;
 
             /* For arrays of arrays the outer arrays take up a uniform
              * slot for each element. The innermost array elements share a
@@ -2133,8 +2133,8 @@ glsl_type::std140_size(bool row_major) const
                                  element_type->vector_elements, 1);
          array_len *= element_type->matrix_columns;
       }
-      const glsl_type *array_type = glsl_type::get_array_instance(vec_type,
-                                                                  array_len);
+      const struct glsl_type *array_type =
+         glsl_type::get_array_instance(vec_type, array_len);
 
       return array_type->std140_size(false);
    }
@@ -2214,13 +2214,13 @@ glsl_type::std140_size(bool row_major) const
    return -1;
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_explicit_std140_type(bool row_major) const
 {
    if (this->is_vector() || this->is_scalar()) {
       return this;
    } else if (this->is_matrix()) {
-      const glsl_type *vec_type;
+      const struct glsl_type *vec_type;
       if (row_major)
          vec_type = get_instance(this->base_type, this->matrix_columns, 1);
       else
@@ -2231,7 +2231,7 @@ glsl_type::get_explicit_std140_type(bool row_major) const
                           this->matrix_columns, stride, row_major);
    } else if (this->is_array()) {
       unsigned elem_size = this->fields.array->std140_size(row_major);
-      const glsl_type *elem_type =
+      const struct glsl_type *elem_type =
          this->fields.array->get_explicit_std140_type(row_major);
       unsigned stride = align(elem_size, 16);
       return get_array_instance(elem_type, this->length, stride);
@@ -2272,7 +2272,7 @@ glsl_type::get_explicit_std140_type(bool row_major) const
          offset += fsize;
       }
 
-      const glsl_type *type;
+      const struct glsl_type *type;
       if (this->is_struct())
          type = get_struct_instance(fields, this->length, glsl_get_type_name(this));
       else
@@ -2527,8 +2527,8 @@ glsl_type::std430_size(bool row_major) const
                                  element_type->vector_elements, 1);
          array_len *= element_type->matrix_columns;
       }
-      const glsl_type *array_type = glsl_type::get_array_instance(vec_type,
-                                                                  array_len);
+      const struct glsl_type *array_type =
+         glsl_type::get_array_instance(vec_type, array_len);
 
       return array_type->std430_size(false);
    }
@@ -2575,13 +2575,13 @@ glsl_type::std430_size(bool row_major) const
    return -1;
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_explicit_std430_type(bool row_major) const
 {
    if (this->is_vector() || this->is_scalar()) {
       return this;
    } else if (this->is_matrix()) {
-      const glsl_type *vec_type;
+      const struct glsl_type *vec_type;
       if (row_major)
          vec_type = get_instance(this->base_type, this->matrix_columns, 1);
       else
@@ -2590,7 +2590,7 @@ glsl_type::get_explicit_std430_type(bool row_major) const
       return get_instance(this->base_type, this->vector_elements,
                           this->matrix_columns, stride, row_major);
    } else if (this->is_array()) {
-      const glsl_type *elem_type =
+      const struct glsl_type *elem_type =
          this->fields.array->get_explicit_std430_type(row_major);
       unsigned stride = this->fields.array->std430_array_stride(row_major);
       return get_array_instance(elem_type, this->length, stride);
@@ -2631,7 +2631,7 @@ glsl_type::get_explicit_std430_type(bool row_major) const
          offset += fsize;
       }
 
-      const glsl_type *type;
+      const struct glsl_type *type;
       if (this->is_struct())
          type = get_struct_instance(fields, this->length, glsl_get_type_name(this));
       else
@@ -2647,7 +2647,7 @@ glsl_type::get_explicit_std430_type(bool row_major) const
    }
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_explicit_interface_type(bool supports_std430) const
 {
    enum glsl_interface_packing packing =
@@ -2661,7 +2661,7 @@ glsl_type::get_explicit_interface_type(bool supports_std430) const
 }
 
 static unsigned
-explicit_type_scalar_byte_size(const glsl_type *type)
+explicit_type_scalar_byte_size(const struct glsl_type *type)
 {
    if (type->base_type == GLSL_TYPE_BOOL)
       return 4;
@@ -2677,7 +2677,7 @@ explicit_type_scalar_byte_size(const glsl_type *type)
  * - overrides any struct field offsets but get_explicit_std430_type() tries to
  *   respect any existing ones
  */
-const glsl_type *
+const struct glsl_type *
 glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
                                             unsigned *size, unsigned *alignment) const
 {
@@ -2740,7 +2740,7 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
        */
       *size = align(*size, *alignment);
 
-      const glsl_type *type;
+      const struct glsl_type *type;
       if (this->is_struct()) {
          type = get_struct_instance(fields, this->length, glsl_get_type_name(this),
                                     this->packed, *alignment);
@@ -2769,7 +2769,7 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
    }
 }
 
-const glsl_type *
+const struct glsl_type *
 glsl_type::replace_vec3_with_vec4() const
 {
    if (this->is_scalar() || this->is_vector() || this->is_matrix()) {
@@ -2797,7 +2797,7 @@ glsl_type::replace_vec3_with_vec4() const
          }
       }
    } else if (this->is_array()) {
-      const glsl_type *vec4_elem_type =
+      const struct glsl_type *vec4_elem_type =
          this->fields.array->replace_vec3_with_vec4();
       if (vec4_elem_type == this->fields.array)
          return this;
@@ -2817,7 +2817,7 @@ glsl_type::replace_vec3_with_vec4() const
             needs_new_type = true;
       }
 
-      const glsl_type *type;
+      const struct glsl_type *type;
       if (!needs_new_type) {
          type = this;
       } else if (this->is_struct()) {
@@ -2888,7 +2888,7 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
       unsigned size = 0;
 
       for (unsigned i = 0; i < this->length; i++) {
-         const glsl_type *member_type = this->fields.structure[i].type;
+         const struct glsl_type *member_type = this->fields.structure[i].type;
          size += member_type->count_vec4_slots(is_gl_vertex_input, is_bindless);
       }
 
@@ -2896,7 +2896,7 @@ glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
    }
 
    case GLSL_TYPE_ARRAY: {
-      const glsl_type *element = this->fields.array;
+      const struct glsl_type *element = this->fields.array;
       return this->length * element->count_vec4_slots(is_gl_vertex_input,
                                                       is_bindless);
    }
@@ -3027,7 +3027,7 @@ union packed_type {
 };
 
 static void
-encode_glsl_struct_field(blob *blob, const glsl_struct_field *struct_field)
+encode_glsl_struct_field(struct blob *blob, const struct glsl_struct_field *struct_field)
 {
    encode_type_to_blob(blob, struct_field->type);
    blob_write_string(blob, struct_field->name);
@@ -3041,7 +3041,7 @@ encode_glsl_struct_field(blob *blob, const glsl_struct_field *struct_field)
 }
 
 static void
-decode_glsl_struct_field_from_blob(blob_reader *blob, glsl_struct_field *struct_field)
+decode_glsl_struct_field_from_blob(struct blob_reader *blob, struct glsl_struct_field *struct_field)
 {
    struct_field->type = decode_type_from_blob(blob);
    struct_field->name = blob_read_string(blob);
@@ -3050,12 +3050,12 @@ decode_glsl_struct_field_from_blob(blob_reader *blob, glsl_struct_field *struct_
    struct_field->offset = blob_read_uint32(blob);
    struct_field->xfb_buffer = blob_read_uint32(blob);
    struct_field->xfb_stride = blob_read_uint32(blob);
-   struct_field->image_format = (pipe_format)blob_read_uint32(blob);
+   struct_field->image_format = (enum pipe_format)blob_read_uint32(blob);
    struct_field->flags = blob_read_uint32(blob);
 }
 
 void
-encode_type_to_blob(struct blob *blob, const glsl_type *type)
+encode_type_to_blob(struct blob *blob, const struct glsl_type *type)
 {
    if (!type) {
       blob_write_uint32(blob, 0);
@@ -3170,7 +3170,7 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
    blob_write_uint32(blob, encoded.u32);
 }
 
-const glsl_type *
+const struct glsl_type *
 decode_type_from_blob(struct blob_reader *blob)
 {
    union packed_type encoded;
@@ -3180,7 +3180,7 @@ decode_type_from_blob(struct blob_reader *blob)
       return NULL;
    }
 
-   glsl_base_type base_type = (glsl_base_type)encoded.basic.base_type;
+   enum glsl_base_type base_type = (enum glsl_base_type)encoded.basic.base_type;
 
    switch (base_type) {
    case GLSL_TYPE_UINT:
@@ -3218,17 +3218,17 @@ decode_type_from_blob(struct blob_reader *blob)
       return glsl_type::get_sampler_instance((enum glsl_sampler_dim)encoded.sampler.dimensionality,
                                              encoded.sampler.shadow,
                                              encoded.sampler.array,
-                                             (glsl_base_type) encoded.sampler.sampled_type);
+                                             (enum glsl_base_type) encoded.sampler.sampled_type);
    case GLSL_TYPE_TEXTURE:
       return glsl_type::get_texture_instance((enum glsl_sampler_dim)encoded.sampler.dimensionality,
                                              encoded.sampler.array,
-                                             (glsl_base_type) encoded.sampler.sampled_type);
+                                             (enum glsl_base_type) encoded.sampler.sampled_type);
    case GLSL_TYPE_SUBROUTINE:
       return glsl_type::get_subroutine_instance(blob_read_string(blob));
    case GLSL_TYPE_IMAGE:
       return glsl_type::get_image_instance((enum glsl_sampler_dim)encoded.sampler.dimensionality,
                                            encoded.sampler.array,
-                                           (glsl_base_type) encoded.sampler.sampled_type);
+                                           (enum glsl_base_type) encoded.sampler.sampled_type);
    case GLSL_TYPE_ATOMIC_UINT:
       return glsl_type::atomic_uint_type;
    case GLSL_TYPE_ARRAY: {
@@ -3256,16 +3256,16 @@ decode_type_from_blob(struct blob_reader *blob)
       else if (explicit_alignment > 0)
          explicit_alignment = 1 << (explicit_alignment - 1);
 
-      glsl_struct_field *fields =
-         (glsl_struct_field *) malloc(sizeof(glsl_struct_field) * num_fields);
+      struct glsl_struct_field *fields = (struct glsl_struct_field *)
+         malloc(sizeof(struct glsl_struct_field) * num_fields);
       for (unsigned i = 0; i < num_fields; i++)
          decode_glsl_struct_field_from_blob(blob, &fields[i]);
 
-      const glsl_type *t;
+      const struct glsl_type *t;
       if (base_type == GLSL_TYPE_INTERFACE) {
          assert(explicit_alignment == 0);
          enum glsl_interface_packing packing =
-            (glsl_interface_packing) encoded.strct.interface_packing_or_packed;
+            (enum glsl_interface_packing) encoded.strct.interface_packing_or_packed;
          bool row_major = encoded.strct.interface_row_major;
          t = glsl_type::get_interface_instance(fields, num_fields, packing,
                                                row_major, name);
