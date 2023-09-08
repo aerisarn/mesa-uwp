@@ -394,7 +394,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
       }
    }
 #if GFX_VERx10 >= 125
-   if (device->physical->vk.supported_extensions.EXT_mesh_shader) {
+   if (device->vk.enabled_extensions.EXT_mesh_shader) {
       anv_batch_emit(batch, GENX(3DSTATE_URB_ALLOC_MESH), zero);
       anv_batch_emit(batch, GENX(3DSTATE_URB_ALLOC_TASK), zero);
    }
