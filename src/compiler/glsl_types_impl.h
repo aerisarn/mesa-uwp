@@ -44,6 +44,9 @@ inline bool glsl_type::contains_atomic() const { return glsl_contains_atomic(thi
 inline bool glsl_type::contains_opaque() const { return glsl_contains_opaque(this); }
 inline bool glsl_type::contains_double() const { return glsl_contains_double(this); }
 inline bool glsl_type::contains_integer() const { return glsl_contains_integer(this); }
+inline bool glsl_type::contains_sampler() const { return glsl_contains_sampler(this); }
+inline bool glsl_type::contains_array() const { return glsl_contains_array(this); }
+inline bool glsl_type::contains_subroutine() const { return glsl_contains_subroutine(this); }
 
 inline int glsl_type::array_size() const { return glsl_array_size(this); }
 inline const glsl_type *glsl_type::without_array() const { return glsl_without_array(this); }

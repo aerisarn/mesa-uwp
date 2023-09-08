@@ -1322,6 +1322,9 @@ bool glsl_contains_atomic(const struct glsl_type *t);
 bool glsl_contains_double(const struct glsl_type *t);
 bool glsl_contains_integer(const struct glsl_type *t);
 bool glsl_contains_opaque(const struct glsl_type *t);
+bool glsl_contains_sampler(const struct glsl_type *t);
+bool glsl_contains_array(const struct glsl_type *t);
+bool glsl_contains_subroutine(const struct glsl_type *t);
 
 static inline enum glsl_sampler_dim
 glsl_get_sampler_dim(const struct glsl_type *t)

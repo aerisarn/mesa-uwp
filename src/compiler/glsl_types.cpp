@@ -177,33 +177,33 @@ make_subroutine_type(linear_ctx *lin_ctx, const char *subroutine_name)
    return t;
 }
 
-bool
-glsl_type::contains_sampler() const
+extern "C" bool
+glsl_contains_sampler(const struct glsl_type *t)
 {
-   if (this->is_array()) {
-      return this->fields.array->contains_sampler();
-   } else if (this->is_struct() || this->is_interface()) {
-      for (unsigned int i = 0; i < this->length; i++) {
-         if (this->fields.structure[i].type->contains_sampler())
+   if (t->is_array()) {
+      return t->fields.array->contains_sampler();
+   } else if (t->is_struct() || t->is_interface()) {
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_sampler())
             return true;
       }
       return false;
    } else {
-      return this->is_sampler();
+      return t->is_sampler();
    }
 }
 
-bool
-glsl_type::contains_array() const
+extern "C" bool
+glsl_contains_array(const struct glsl_type *t)
 {
-   if (this->is_struct() || this->is_interface()) {
-      for (unsigned int i = 0; i < this->length; i++) {
-         if (this->fields.structure[i].type->contains_array())
+   if (t->is_struct() || t->is_interface()) {
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_array())
             return true;
       }
       return false;
    } else {
-      return this->is_array();
+      return t->is_array();
    }
 }
 
@@ -277,19 +277,19 @@ glsl_contains_opaque(const struct glsl_type *t)
    }
 }
 
-bool
-glsl_type::contains_subroutine() const
+extern "C" bool
+glsl_contains_subroutine(const struct glsl_type *t)
 {
-   if (this->is_array()) {
-      return this->fields.array->contains_subroutine();
-   } else if (this->is_struct() || this->is_interface()) {
-      for (unsigned int i = 0; i < this->length; i++) {
-         if (this->fields.structure[i].type->contains_subroutine())
+   if (t->is_array()) {
+      return t->fields.array->contains_subroutine();
+   } else if (t->is_struct() || t->is_interface()) {
+      for (unsigned int i = 0; i < t->length; i++) {
+         if (t->fields.structure[i].type->contains_subroutine())
             return true;
       }
       return false;
    } else {
-      return this->is_subroutine();
+      return t->is_subroutine();
    }
 }
 
