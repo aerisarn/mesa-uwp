@@ -2414,10 +2414,10 @@ glsl_get_std430_base_alignment(const struct glsl_type *t, bool row_major)
    return -1;
 }
 
-unsigned
-glsl_type::std430_array_stride(bool row_major) const
+extern "C" unsigned
+glsl_get_std430_array_stride(const struct glsl_type *t, bool row_major)
 {
-   unsigned N = is_64bit() ? 8 : 4;
+   unsigned N = t->is_64bit() ? 8 : 4;
 
    /* Notice that the array stride of a vec3 is not 3 * N but 4 * N.
     * See OpenGL 4.30 spec, section 7.6.2.2 "Standard Uniform Block Layout"
@@ -2425,12 +2425,12 @@ glsl_type::std430_array_stride(bool row_major) const
     * (3) If the member is a three-component vector with components consuming
     *     <N> basic machine units, the base alignment is 4<N>.
     */
-   if (this->is_vector() && this->vector_elements == 3)
+   if (t->is_vector() && t->vector_elements == 3)
       return 4 * N;
 
    /* By default use std430_size(row_major) */
-   unsigned stride = this->std430_size(row_major);
-   assert(this->explicit_stride == 0 || this->explicit_stride == stride);
+   unsigned stride = t->std430_size(row_major);
+   assert(t->explicit_stride == 0 || t->explicit_stride == stride);
    return stride;
 }
 

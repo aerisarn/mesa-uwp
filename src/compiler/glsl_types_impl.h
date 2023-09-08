@@ -77,6 +77,7 @@ inline unsigned glsl_type::cl_alignment() const { return glsl_get_cl_alignment(t
 inline unsigned glsl_type::std140_base_alignment(bool row_major) const { return glsl_get_std140_base_alignment(this, row_major); }
 inline unsigned glsl_type::std140_size(bool row_major) const { return glsl_get_std140_size(this, row_major); }
 inline unsigned glsl_type::std430_base_alignment(bool row_major) const { return glsl_get_std430_base_alignment(this, row_major); }
+inline unsigned glsl_type::std430_array_stride(bool row_major) const { return glsl_get_std430_array_stride(this, row_major); }
 inline unsigned glsl_type::std430_size(bool row_major) const { return glsl_get_std430_size(this, row_major); }
 inline unsigned glsl_type::explicit_size(bool align_to_stride) const { return glsl_get_explicit_size(this, align_to_stride); }
 

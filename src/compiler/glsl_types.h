@@ -1587,6 +1587,7 @@ glsl_get_ifc_packing(const struct glsl_type *t)
 
 unsigned glsl_get_std140_base_alignment(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_std140_size(const struct glsl_type *t, bool row_major);
+unsigned glsl_get_std430_array_stride(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_std430_base_alignment(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_std430_size(const struct glsl_type *t, bool row_major);
 unsigned glsl_get_explicit_size(const struct glsl_type *t, bool align_to_stride);
