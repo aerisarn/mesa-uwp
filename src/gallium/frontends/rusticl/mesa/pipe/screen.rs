@@ -328,6 +328,13 @@ impl PipeScreen {
         }
     }
 
+    pub fn is_res_handle_supported(&self) -> bool {
+        unsafe {
+            (*self.screen).resource_from_handle.is_some()
+                && (*self.screen).resource_get_handle.is_some()
+        }
+    }
+
     pub fn nir_shader_compiler_options(
         &self,
         shader: pipe_shader_type,

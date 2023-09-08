@@ -700,6 +700,17 @@ impl Device {
         self.screen.param(pipe_cap::PIPE_CAP_DOUBLES) == 1
     }
 
+    pub fn is_gl_sharing_supported(&self) -> bool {
+        self.screen.param(pipe_cap::PIPE_CAP_DMABUF) != 0
+            && !self.is_device_software()
+            && self.screen.is_res_handle_supported()
+            && self.screen.device_uuid().is_some()
+    }
+
+    pub fn is_device_software(&self) -> bool {
+        self.screen.device_type() == pipe_loader_device_type::PIPE_LOADER_DEVICE_SOFTWARE
+    }
+
     pub fn get_nir_options(&self) -> nir_shader_compiler_options {
         unsafe {
             *self
