@@ -73,6 +73,9 @@ After farm restore functionality can be enabled by pushing a new merge request, 
 
    git mv .ci-farms{-disabled,}/$farm_name
 
+.. warning::
+   Pushing (``git push``) directly to ``main`` is forbidden; this change must
+   be sent as a :ref:`Merge Request <merging>`.
 
 Application traces replay
 -------------------------

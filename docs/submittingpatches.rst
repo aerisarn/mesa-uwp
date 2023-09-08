@@ -270,6 +270,34 @@ project. The submitter is expected to evaluate whether they have an
 appropriate amount of review feedback from people who also understand
 the code before merging their patches.
 
+.. _merging:
+
+Merging merge requests
+----------------------
+
+Once a merge request has been appropriately reviewed, its author can decide to
+merge it.
+
+.. warning::
+   Pushing (``git push``) directly to ``main`` is forbidden. This bypasses all
+   the CI checks and is likely to cause issues for everyone else.
+
+.. warning::
+   Do not use the "Merge"/"Merge when pipeline succeeds"/"Set to auto-merge"
+   buttons.
+
+We use a `custom script <https://gitlab.com/marge-org/marge-bot>`__ to manage
+this, triggered by **assigning the MR** to the pseudo-user `@marge-bot
+<https://gitlab.freedesktop.org/marge-bot>`__.
+
+Authors who do not have ``Developer`` access (or above) should ask on the
+merge request for someone else to do it for them, or reach on `other channels
+<lists>`__ if the MR reviewers don't have access themselves.
+
+Do not merge someone else's MR unless you are sure they don't have a new
+version that they are testing locally for instance.
+**When in doubt, ask**, for instance by leaving a comment on that MR.
+
 Nominating a commit for a stable branch
 ---------------------------------------
 
