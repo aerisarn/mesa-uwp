@@ -1972,6 +1972,7 @@ _anv_combine_address(struct anv_batch *batch, void *location,
         *_dst = anv_batch_emit_dwords(batch, __anv_cmd_length(cmd));    \
         __builtin_expect(_dst != NULL, 1);                              \
         ({ uint32_t _partial[__anv_cmd_length(cmd)];                    \
+           assert((pipeline)->state.len == __anv_cmd_length(cmd));      \
            __anv_cmd_pack(cmd)(batch, _partial, &name);                 \
            for (uint32_t i = 0; i < __anv_cmd_length(cmd); i++) {       \
               ((uint32_t *)_dst)[i] = _partial[i] |                     \
