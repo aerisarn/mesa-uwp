@@ -1946,7 +1946,8 @@ static void
 link_fs_inout_layout_qualifiers(struct gl_shader_program *prog,
                                 struct gl_linked_shader *linked_shader,
                                 struct gl_shader **shader_list,
-                                unsigned num_shaders)
+                                unsigned num_shaders,
+                                bool arb_fragment_coord_conventions_enable)
 {
    bool redeclares_gl_fragcoord = false;
    bool uses_gl_fragcoord = false;
@@ -1954,8 +1955,7 @@ link_fs_inout_layout_qualifiers(struct gl_shader_program *prog,
    bool pixel_center_integer = false;
 
    if (linked_shader->Stage != MESA_SHADER_FRAGMENT ||
-       (prog->GLSL_Version < 150 &&
-        !prog->ARB_fragment_coord_conventions_enable))
+       (prog->GLSL_Version < 150 && !arb_fragment_coord_conventions_enable))
       return;
 
    for (unsigned i = 0; i < num_shaders; i++) {
@@ -2301,6 +2301,7 @@ link_intrastage_shaders(void *mem_ctx,
    struct gl_uniform_block *ssbo_blocks = NULL;
    unsigned num_ubo_blocks = 0;
    unsigned num_ssbo_blocks = 0;
+   bool arb_fragment_coord_conventions_enable = false;
 
    /* Check that global variables defined in multiple shaders are consistent.
     */
@@ -2310,6 +2311,8 @@ link_intrastage_shaders(void *mem_ctx,
          continue;
       cross_validate_globals(&ctx->Const, prog, shader_list[i]->ir, &variables,
                              false);
+      if (shader_list[i]->ARB_fragment_coord_conventions_enable)
+         arb_fragment_coord_conventions_enable = true;
    }
 
    if (!prog->data->LinkStatus)
@@ -2403,7 +2406,8 @@ link_intrastage_shaders(void *mem_ctx,
    linked->ir = new(linked) exec_list;
    clone_ir_list(mem_ctx, linked->ir, main->ir);
 
-   link_fs_inout_layout_qualifiers(prog, linked, shader_list, num_shaders);
+   link_fs_inout_layout_qualifiers(prog, linked, shader_list, num_shaders,
+                                   arb_fragment_coord_conventions_enable);
    link_tcs_out_layout_qualifiers(prog, gl_prog, shader_list, num_shaders);
    link_tes_in_layout_qualifiers(prog, gl_prog, shader_list, num_shaders);
    link_gs_inout_layout_qualifiers(prog, gl_prog, shader_list, num_shaders);
@@ -2909,8 +2913,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
    void *mem_ctx = ralloc_context(NULL); // temporary linker context
 
-   prog->ARB_fragment_coord_conventions_enable = false;
-
    /* Separate the shaders into groups based on their type.
     */
    struct gl_shader **shader_list[MESA_SHADER_STAGES];
@@ -2933,10 +2935,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
          linker_error(prog, "all shaders must use same shading "
                       "language version\n");
          goto done;
-      }
-
-      if (prog->Shaders[i]->ARB_fragment_coord_conventions_enable) {
-         prog->ARB_fragment_coord_conventions_enable = true;
       }
 
       gl_shader_stage shader_type = prog->Shaders[i]->Stage;
