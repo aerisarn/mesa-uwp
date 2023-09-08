@@ -45,10 +45,10 @@ struct _mesa_glsl_parse_state;
 struct glsl_symbol_table;
 
 extern void
-glsl_type_singleton_init_or_ref();
+glsl_type_singleton_init_or_ref(void);
 
 extern void
-glsl_type_singleton_decref();
+glsl_type_singleton_decref(void);
 
 extern void
 _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state);
