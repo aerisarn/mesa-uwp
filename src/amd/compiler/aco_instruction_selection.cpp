@@ -249,40 +249,41 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
       unsigned or_mask = (mask >> 5) & 0x1f;
       unsigned xor_mask = (mask >> 10) & 0x1f;
 
+      /* Eliminate or_mask. */
+      and_mask &= ~or_mask;
+      xor_mask ^= or_mask;
+
       uint16_t dpp_ctrl = 0xffff;
 
       /* DPP16 before DPP8 before v_permlane(x)16_b32
        * because DPP16 supports modifiers and v_permlane
        * can't be folded into valu instructions.
        */
-      if ((and_mask & 0x1c) == 0x1c && or_mask < 4 && xor_mask < 4) {
-         unsigned res[4] = {0, 1, 2, 3};
+      if ((and_mask & 0x1c) == 0x1c && xor_mask < 4) {
+         unsigned res[4];
          for (unsigned i = 0; i < 4; i++)
-            res[i] = (((res[i] & and_mask) | or_mask) ^ xor_mask) & 0x3;
+            res[i] = ((i & and_mask) ^ xor_mask);
          dpp_ctrl = dpp_quad_perm(res[0], res[1], res[2], res[3]);
-      } else if (and_mask == 0x1f && !or_mask && xor_mask == 8) {
+      } else if (and_mask == 0x1f && xor_mask == 8) {
          dpp_ctrl = dpp_row_rr(8);
-      } else if (and_mask == 0x1f && !or_mask && xor_mask == 0xf) {
+      } else if (and_mask == 0x1f && xor_mask == 0xf) {
          dpp_ctrl = dpp_row_mirror;
-      } else if (and_mask == 0x1f && !or_mask && xor_mask == 0x7) {
+      } else if (and_mask == 0x1f && xor_mask == 0x7) {
          dpp_ctrl = dpp_row_half_mirror;
-      } else if (ctx->options->gfx_level >= GFX11 && and_mask == 0x10 && or_mask < 0x10 &&
-                 xor_mask < 0x10) {
-         dpp_ctrl = dpp_row_share(or_mask ^ xor_mask);
-      } else if (ctx->options->gfx_level >= GFX11 && and_mask == 0x1f && !or_mask &&
-                 xor_mask < 0x10) {
+      } else if (ctx->options->gfx_level >= GFX11 && and_mask == 0x10 && xor_mask < 0x10) {
+         dpp_ctrl = dpp_row_share(xor_mask);
+      } else if (ctx->options->gfx_level >= GFX11 && and_mask == 0x1f && xor_mask < 0x10) {
          dpp_ctrl = dpp_row_xmask(xor_mask);
-      } else if (ctx->options->gfx_level >= GFX10 && (and_mask & 0x18) == 0x18 && or_mask < 8 &&
-                 xor_mask < 8) {
+      } else if (ctx->options->gfx_level >= GFX10 && (and_mask & 0x18) == 0x18 && xor_mask < 8) {
          Builder::Result ret = bld.vop1_dpp8(aco_opcode::v_mov_b32, bld.def(v1), src);
          for (unsigned i = 0; i < 8; i++) {
-            ret->dpp8().lane_sel[i] = (((i & and_mask) | or_mask) ^ xor_mask) & 0x7;
+            ret->dpp8().lane_sel[i] = ((i & and_mask) ^ xor_mask);
          }
          return ret;
-      } else if (ctx->options->gfx_level >= GFX10 && (and_mask & 0x10) == 0x10 && or_mask < 0x10) {
+      } else if (ctx->options->gfx_level >= GFX10 && (and_mask & 0x10) == 0x10) {
          uint64_t lane_mask = 0;
          for (unsigned i = 0; i < 16; i++)
-            lane_mask |= uint64_t(((i & and_mask) | or_mask) ^ (xor_mask & 0xf)) << i * 4;
+            lane_mask |= uint64_t((i & and_mask) ^ (xor_mask & 0xf)) << i * 4;
          aco_opcode opcode =
             xor_mask & 0x10 ? aco_opcode::v_permlanex16_b32 : aco_opcode::v_permlane16_b32;
          Temp op1 = bld.copy(bld.def(s1), Operand::c32(lane_mask & 0xffffffff));
