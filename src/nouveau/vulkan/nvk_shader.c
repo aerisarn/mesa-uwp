@@ -946,7 +946,8 @@ nvk_hdr_interp_mode(const struct nv50_ir_varying *var)
 
 
 static int
-nvk_fs_gen_header(struct nvk_shader *fs, struct nv50_ir_prog_info_out *info)
+nvk_fs_gen_header(struct nvk_shader *fs, const struct nvk_fs_key *key,
+                  struct nv50_ir_prog_info_out *info)
 {
    unsigned i, c, a, m;
 
@@ -954,7 +955,7 @@ nvk_fs_gen_header(struct nvk_shader *fs, struct nv50_ir_prog_info_out *info)
    fs->hdr[0] = 0x20062 | (5 << 10);
    fs->hdr[5] = 0x80000000; /* getting a trap if FRAG_COORD_UMASK.w = 0 */
 
-   if (info->prop.fp.usesDiscard)
+   if (info->prop.fp.usesDiscard || key->zs_self_dep)
       fs->hdr[0] |= 0x8000;
    if (!info->prop.fp.separateFragData)
       fs->hdr[0] |= 0x4000;
@@ -1144,7 +1145,7 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
       ret = nvk_vs_gen_header(shader, &info_out);
       break;
    case PIPE_SHADER_FRAGMENT:
-      ret = nvk_fs_gen_header(shader, &info_out);
+      ret = nvk_fs_gen_header(shader, fs_key, &info_out);
       shader->fs.uses_sample_shading = nir->info.fs.uses_sample_shading;
       break;
    case PIPE_SHADER_GEOMETRY:

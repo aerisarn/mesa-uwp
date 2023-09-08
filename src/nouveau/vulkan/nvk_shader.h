@@ -25,6 +25,7 @@ struct vk_shader_module;
 struct nvk_fs_key {
    bool msaa;
    bool force_per_sample;
+   bool zs_self_dep;
 };
 
 struct nvk_transform_feedback_state {
