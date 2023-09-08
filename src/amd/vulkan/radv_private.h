@@ -2378,6 +2378,8 @@ struct radv_ray_tracing_stage {
    gl_shader_stage stage;
    uint32_t stack_size;
 
+   bool can_inline;
+
    uint8_t sha1[SHA1_DIGEST_LENGTH];
 };
 

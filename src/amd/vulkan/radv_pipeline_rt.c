@@ -454,6 +454,30 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
    return shader ? VK_SUCCESS : VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
+static bool
+radv_rt_can_inline_shader(nir_shader *nir)
+{
+   if (nir->info.stage == MESA_SHADER_RAYGEN || nir->info.stage == MESA_SHADER_ANY_HIT ||
+       nir->info.stage == MESA_SHADER_INTERSECTION)
+      return true;
+
+   if (nir->info.stage == MESA_SHADER_CALLABLE)
+      return false;
+
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   nir_foreach_block (block, impl) {
+      nir_foreach_instr (instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         if (nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_trace_ray)
+            return false;
+      }
+   }
+
+   return true;
+}
+
 static VkResult
 radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *cache,
                         const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
@@ -473,7 +497,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
    if (!stages)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   bool monolithic = false;
+   bool monolithic = !(pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR);
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       if (rt_stages[i].shader || rt_stages[i].nir)
          continue;
@@ -486,15 +510,15 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       /* precompile the shader */
       stage->nir = radv_parse_rt_stage(device, &pCreateInfo->pStages[i], key, pipeline_layout);
 
+      rt_stages[i].can_inline = radv_rt_can_inline_shader(stage->nir);
+
       stage->feedback.duration = os_time_get_nano() - stage_start;
    }
 
    bool has_callable = false;
    for (uint32_t i = 0; i < pipeline->stage_count; i++) {
-      if (rt_stages[i].stage == MESA_SHADER_CALLABLE) {
-         has_callable = true;
-         break;
-      }
+      has_callable |= rt_stages[i].stage == MESA_SHADER_CALLABLE;
+      monolithic &= rt_stages[i].can_inline;
    }
 
    for (uint32_t idx = 0; idx < pCreateInfo->stageCount; idx++) {
