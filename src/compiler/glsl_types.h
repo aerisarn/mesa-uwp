@@ -1277,6 +1277,8 @@ glsl_struct_type_is_packed(const struct glsl_type *t)
 }
 
 const struct glsl_type *glsl_get_bare_type(const struct glsl_type *t);
+const struct glsl_type *glsl_get_scalar_type(const struct glsl_type *t);
+const struct glsl_type *glsl_get_base_glsl_type(const struct glsl_type *t);
 
 unsigned glsl_get_length(const struct glsl_type *t);
 
@@ -1298,6 +1300,8 @@ glsl_get_matrix_columns(const struct glsl_type *t)
    return t->matrix_columns;
 }
 
+const struct glsl_type *glsl_type_wrap_in_arrays(const struct glsl_type *t,
+                                                 const struct glsl_type *arrays);
 static inline int
 glsl_array_size(const struct glsl_type *t)
 {

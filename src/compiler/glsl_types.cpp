@@ -309,49 +309,50 @@ glsl_type_contains_image(const struct glsl_type *t)
    }
 }
 
-const struct glsl_type *glsl_type::get_base_type() const
+extern "C" const struct glsl_type *
+glsl_get_base_glsl_type(const struct glsl_type *t)
 {
-   switch (base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT:
-      return uint_type;
+      return &glsl_type_builtin_uint;
    case GLSL_TYPE_UINT16:
-      return uint16_t_type;
+      return &glsl_type_builtin_uint16_t;
    case GLSL_TYPE_UINT8:
-      return uint8_t_type;
+      return &glsl_type_builtin_uint8_t;
    case GLSL_TYPE_INT:
-      return int_type;
+      return &glsl_type_builtin_int;
    case GLSL_TYPE_INT16:
-      return int16_t_type;
+      return &glsl_type_builtin_int16_t;
    case GLSL_TYPE_INT8:
-      return int8_t_type;
+      return &glsl_type_builtin_int8_t;
    case GLSL_TYPE_FLOAT:
-      return float_type;
+      return &glsl_type_builtin_float;
    case GLSL_TYPE_FLOAT16:
-      return float16_t_type;
+      return &glsl_type_builtin_float16_t;
    case GLSL_TYPE_DOUBLE:
-      return double_type;
+      return &glsl_type_builtin_double;
    case GLSL_TYPE_BOOL:
-      return bool_type;
+      return &glsl_type_builtin_bool;
    case GLSL_TYPE_UINT64:
-      return uint64_t_type;
+      return &glsl_type_builtin_uint64_t;
    case GLSL_TYPE_INT64:
-      return int64_t_type;
+      return &glsl_type_builtin_int64_t;
    default:
-      return error_type;
+      return &glsl_type_builtin_error;
    }
 }
 
-
-const struct glsl_type *glsl_type::get_scalar_type() const
+extern "C" const struct glsl_type *
+glsl_get_scalar_type(const struct glsl_type *t)
 {
-   const struct glsl_type *type = this;
+   const struct glsl_type *type = t;
 
    /* Handle arrays */
    while (type->base_type == GLSL_TYPE_ARRAY)
       type = type->fields.array;
 
    const struct glsl_type *scalar_type = type->get_base_type();
-   if (scalar_type == error_type)
+   if (scalar_type == &glsl_type_builtin_error)
       return type;
 
    return scalar_type;

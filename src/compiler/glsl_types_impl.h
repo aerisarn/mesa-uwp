@@ -88,6 +88,8 @@ inline const glsl_type *glsl_type::get_explicit_interface_type(bool supports_std
 inline const glsl_type *glsl_type::row_type() const { return glsl_get_row_type(this); }
 inline const glsl_type *glsl_type::column_type() const { return glsl_get_column_type(this); }
 inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
+inline const glsl_type *glsl_type::get_base_type() const { return glsl_get_base_glsl_type(this); }
+inline const glsl_type *glsl_type::get_scalar_type() const { return glsl_get_scalar_type(this); }
 
 inline const glsl_type *glsl_type::get_float16_type() const { return glsl_float16_type(this); }
 inline const glsl_type *glsl_type::get_int16_type() const { return glsl_int16_type(this); }
