@@ -1007,7 +1007,9 @@ nvk_fs_gen_header(struct nvk_shader *fs, struct nv50_ir_prog_info_out *info)
     * executed. It seems like it wants to think that it has some color
     * outputs in order to actually run.
     */
-   if (info->prop.fp.numColourResults == 0 && !info->prop.fp.writesDepth)
+   if (info->prop.fp.numColourResults == 0 &&
+       !info->prop.fp.writesDepth &&
+       info->io.sampleMask >= 80 /* PIPE_MAX_SHADER_OUTPUTS */)
       fs->hdr[18] |= 0xf;
 
    fs->fs.early_z = info->prop.fp.earlyFragTests;
