@@ -70,7 +70,7 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_FDM = BIT(8),
    TU_CMD_DIRTY_PER_VIEW_VIEWPORT = BIT(9),
    TU_CMD_DIRTY_TES = BIT(10),
-   TU_CMD_DIRTY_PIPELINE = BIT(11),
+   TU_CMD_DIRTY_PROGRAM = BIT(11),
    /* all draw states were disabled and need to be re-enabled: */
    TU_CMD_DIRTY_DRAW_STATE = BIT(12)
 };
@@ -389,6 +389,8 @@ struct tu_cmd_state
    struct tu_compute_pipeline *compute_pipeline;
 
    struct tu_shader *shaders[MESA_SHADER_STAGES];
+
+   struct tu_program_state program;
 
    struct tu_render_pass_state rp;
 

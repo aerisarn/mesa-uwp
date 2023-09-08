@@ -978,12 +978,12 @@ tu6_patch_control_points_size(struct tu_device *dev,
                               const struct tu_shader *vs,
                               const struct tu_shader *tcs,
                               const struct tu_shader *tes,
-                              const struct tu_pipeline *pipeline,
+                              const struct tu_program_state *program,
                               uint32_t patch_control_points)
 {
 #define EMIT_CONST_DWORDS(const_dwords) (4 + const_dwords)
    return EMIT_CONST_DWORDS(4) +
-      EMIT_CONST_DWORDS(pipeline->program.hs_param_dwords) + 2 + 2 + 2;
+      EMIT_CONST_DWORDS(program->hs_param_dwords) + 2 + 2 + 2;
 #undef EMIT_CONST_DWORDS
 }
 
@@ -993,7 +993,7 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
                               const struct tu_shader *vs,
                               const struct tu_shader *tcs,
                               const struct tu_shader *tes,
-                              const struct tu_pipeline *pipeline,
+                              const struct tu_program_state *program,
                               uint32_t patch_control_points)
 {
    if (!tcs->variant)
@@ -1002,8 +1002,8 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
    struct tu_device *dev = cs->device;
 
    tu6_emit_vs_params(cs,
-                      &pipeline->program.link[MESA_SHADER_VERTEX].const_state,
-                      pipeline->program.link[MESA_SHADER_VERTEX].constlen,
+                      &program->link[MESA_SHADER_VERTEX].const_state,
+                      program->link[MESA_SHADER_VERTEX].constlen,
                       vs->variant->output_size,
                       patch_control_points);
 
@@ -1022,10 +1022,10 @@ tu6_emit_patch_control_points(struct tu_cs *cs,
    };
 
    const struct ir3_const_state *hs_const =
-      &pipeline->program.link[MESA_SHADER_TESS_CTRL].const_state;
+      &program->link[MESA_SHADER_TESS_CTRL].const_state;
    uint32_t hs_base = hs_const->offsets.primitive_param;
    tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, hs_base, SB6_HS_SHADER, 0,
-                  pipeline->program.hs_param_dwords, hs_params);
+                  program->hs_param_dwords, hs_params);
 
    uint32_t patch_local_mem_size_16b =
       patch_control_points * vs->variant->output_size / 4;
@@ -3457,7 +3457,7 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
                    pipeline->shaders[MESA_SHADER_VERTEX],
                    pipeline->shaders[MESA_SHADER_TESS_CTRL],
                    pipeline->shaders[MESA_SHADER_TESS_EVAL],
-                   pipeline,
+                   &pipeline->program,
                    builder->graphics_state.ts->patch_control_points);
 #undef DRAW_STATE
 #undef DRAW_STATE_COND
@@ -3636,11 +3636,11 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
                    &cmd->vk.dynamic_graphics_state.rs);
    DRAW_STATE_COND(patch_control_points,
                    TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
-                   cmd->state.dirty & TU_CMD_DIRTY_PIPELINE,
+                   cmd->state.dirty & TU_CMD_DIRTY_PROGRAM,
                    cmd->state.shaders[MESA_SHADER_VERTEX],
                    cmd->state.shaders[MESA_SHADER_TESS_CTRL],
                    cmd->state.shaders[MESA_SHADER_TESS_EVAL],
-                   &cmd->state.pipeline->base,
+                   &cmd->state.program,
                    cmd->vk.dynamic_graphics_state.ts.patch_control_points);
 #undef DRAW_STATE
 #undef DRAW_STATE_COND
@@ -4318,8 +4318,6 @@ tu_compute_pipeline_create(VkDevice device,
       creation_feedback->pPipelineStageCreationFeedbacks[0] = pipeline_feedback;
    }
 
-   pipeline->base.program.shared_consts = shader->shared_consts;
-
    pipeline->base.active_desc_sets = shader->active_desc_sets;
 
    v = shader->variant;
@@ -4333,8 +4331,6 @@ tu_compute_pipeline_create(VkDevice device,
 
    for (int i = 0; i < 3; i++)
       pipeline->local_size[i] = v->local_size[i];
-
-   pipeline->subgroup_size = v->info.subgroup_size;
 
    if (CHIP == A6XX) {
       tu6_emit_load_state(&pipeline->base, layout);

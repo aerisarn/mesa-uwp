@@ -80,6 +80,25 @@ struct tu_program_descriptor_linkage
    struct tu_const_state tu_const_state;
 };
 
+struct tu_program_state
+{
+      struct tu_draw_state config_state;
+      struct tu_draw_state vs_state, vs_binning_state;
+      struct tu_draw_state hs_state;
+      struct tu_draw_state ds_state;
+      struct tu_draw_state gs_state, gs_binning_state;
+      struct tu_draw_state vpc_state;
+      struct tu_draw_state fs_state;
+
+      uint32_t hs_param_dwords;
+
+      struct tu_push_constant_range shared_consts;
+
+      struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
+
+      bool per_view_viewport;
+};
+
 struct tu_pipeline_executable {
    gl_shader_stage stage;
 
@@ -137,24 +156,7 @@ struct tu_pipeline
 
    struct tu_shader *shaders[MESA_SHADER_STAGES];
 
-   struct
-   {
-      struct tu_draw_state config_state;
-      struct tu_draw_state vs_state, vs_binning_state;
-      struct tu_draw_state hs_state;
-      struct tu_draw_state ds_state;
-      struct tu_draw_state gs_state, gs_binning_state;
-      struct tu_draw_state vpc_state;
-      struct tu_draw_state fs_state;
-
-      uint32_t hs_param_dwords;
-
-      struct tu_push_constant_range shared_consts;
-
-      struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
-
-      bool per_view_viewport;
-   } program;
+   struct tu_program_state program;
 
    struct tu_lrz_pipeline lrz;
    struct tu_bandwidth bandwidth;
@@ -207,7 +209,6 @@ struct tu_compute_pipeline {
    struct tu_pipeline base;
 
    uint32_t local_size[3];
-   uint32_t subgroup_size;
    uint32_t instrlen;
 };
 
