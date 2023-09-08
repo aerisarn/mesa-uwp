@@ -78,6 +78,24 @@ default:
       - data_integrity_failure
       - unknown_failure
 
+stages:
+  - sanity
+  - container
+  - git-archive
+  - build-x86_64
+  - build-misc
+  - lint
+  - amd
+  - intel
+  - nouveau
+  - arm
+  - broadcom
+  - freedreno
+  - etnaviv
+  - software-renderer
+  - layered-backends
+  - deploy
+
 include:
   - project: 'freedesktop/ci-templates'
     ref: 16bc29078de5e0a067ff84a1a199a3760d3b3811
@@ -115,24 +133,6 @@ include:
   - local: 'src/microsoft/ci/gitlab-ci.yml'
   - local: 'src/panfrost/ci/gitlab-ci.yml'
   - local: 'src/virtio/ci/gitlab-ci.yml'
-
-stages:
-  - sanity
-  - container
-  - git-archive
-  - build-x86_64
-  - build-misc
-  - lint
-  - amd
-  - intel
-  - nouveau
-  - arm
-  - broadcom
-  - freedreno
-  - etnaviv
-  - software-renderer
-  - layered-backends
-  - deploy
 
 
 # YAML anchors for rule conditions
