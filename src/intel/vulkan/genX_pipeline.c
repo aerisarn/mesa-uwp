@@ -1937,6 +1937,8 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
    }
 #endif
 
+   emit_3dstate_vf_statistics(pipeline);
+
    if (anv_pipeline_is_primitive(pipeline)) {
       emit_vertex_input(pipeline, state, state->vi);
 
@@ -1944,8 +1946,6 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
       emit_3dstate_hs_ds(pipeline, state->ts);
       emit_3dstate_te(pipeline);
       emit_3dstate_gs(pipeline);
-
-      emit_3dstate_vf_statistics(pipeline);
 
       emit_3dstate_streamout(pipeline, state->rs);
 
@@ -1961,6 +1961,12 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 #endif
    } else {
       assert(anv_pipeline_is_mesh(pipeline));
+
+      anv_pipeline_emit(pipeline, final.vs, GENX(3DSTATE_VS), vs);
+      anv_pipeline_emit(pipeline, final.hs, GENX(3DSTATE_HS), hs);
+      anv_pipeline_emit(pipeline, final.ds, GENX(3DSTATE_DS), ds);
+      anv_pipeline_emit(pipeline, partial.te, GENX(3DSTATE_TE), te);
+      anv_pipeline_emit(pipeline, partial.gs, GENX(3DSTATE_GS), gs);
 
       /* BSpec 46303 forbids both 3DSTATE_MESH_CONTROL.MeshShaderEnable
        * and 3DSTATE_STREAMOUT.SOFunctionEnable to be 1.
