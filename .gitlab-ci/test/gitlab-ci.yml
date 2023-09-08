@@ -339,7 +339,7 @@ clang-format:
       [ -d "$CI_COMMON_SCRIPTS" ] || exit 1
 
 
-      B2C_TEST_SCRIPT="bash -euc 'if [ -f ${INSTALL_TARBALL_NAME} ]; then tar xf ${INSTALL_TARBALL_NAME} && rm ${INSTALL_TARBALL_NAME}; fi; [ -d install/ ]; ./install/common/init-stage2.sh'"
+      B2C_TEST_SCRIPT="bash -euc 'tar xf ${INSTALL_TARBALL_NAME}; ./install/common/init-stage2.sh'"
 
       # The Valve CI gateway receives jobs in a YAML format. Create a
       # job description from the CI environment.
