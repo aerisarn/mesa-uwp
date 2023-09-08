@@ -725,6 +725,11 @@ pvr_get_image_format_properties(struct pvr_physical_device *pdevice,
       goto err_unsupported_format;
    }
 
+   if (info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
+      result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
+      goto err_unsupported_format;
+   }
+
    /* If VK_IMAGE_CREATE_EXTENDED_USAGE_BIT is set, the driver can't decide if a
     * specific format isn't supported based on the usage.
     */
