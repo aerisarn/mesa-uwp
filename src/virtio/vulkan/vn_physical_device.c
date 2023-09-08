@@ -840,10 +840,10 @@ vn_physical_device_init_external_fence_handles(
 
    physical_dev->external_fence_handles = 0;
 
-#ifdef ANDROID
-   physical_dev->external_fence_handles =
-      VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
-#endif
+   if (physical_dev->instance->renderer->info.has_external_sync) {
+      physical_dev->external_fence_handles =
+         VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
+   }
 }
 
 static void
@@ -891,10 +891,10 @@ vn_physical_device_init_external_semaphore_handles(
    physical_dev->external_binary_semaphore_handles = 0;
    physical_dev->external_timeline_semaphore_handles = 0;
 
-#ifdef ANDROID
-   physical_dev->external_binary_semaphore_handles =
-      VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
-#endif
+   if (physical_dev->instance->renderer->info.has_external_sync) {
+      physical_dev->external_binary_semaphore_handles =
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
+   }
 }
 
 static inline bool
@@ -924,11 +924,17 @@ vn_physical_device_get_native_extensions(
 {
    memset(exts, 0, sizeof(*exts));
 
+   if (physical_dev->renderer_sync_fd.fence_exportable)
+      exts->KHR_external_fence_fd = true;
+
+   if (physical_dev->renderer_sync_fd.semaphore_importable &&
+       physical_dev->renderer_sync_fd.semaphore_exportable)
+      exts->KHR_external_semaphore_fd = true;
+
    const bool can_external_mem =
       vn_physical_device_get_external_memory_support(physical_dev);
-
-#ifdef ANDROID
    if (can_external_mem) {
+#ifdef ANDROID
       exts->ANDROID_external_memory_android_hardware_buffer = true;
 
       /* For wsi, we require renderer:
@@ -944,21 +950,11 @@ vn_physical_device_get_native_extensions(
       if (physical_dev->renderer_sync_fd.semaphore_importable &&
           physical_dev->renderer_sync_fd.fence_exportable)
          exts->ANDROID_native_buffer = true;
-   }
-
-   if (physical_dev->renderer_sync_fd.fence_exportable)
-      exts->KHR_external_fence_fd = true;
-
-   if (physical_dev->renderer_sync_fd.semaphore_importable &&
-       physical_dev->renderer_sync_fd.semaphore_exportable)
-      exts->KHR_external_semaphore_fd = true;
-
 #else  /* ANDROID */
-   if (can_external_mem) {
       exts->KHR_external_memory_fd = true;
       exts->EXT_external_memory_dma_buf = true;
-   }
 #endif /* ANDROID */
+   }
 
 #ifdef VN_USE_WSI_PLATFORM
    if (can_external_mem &&
