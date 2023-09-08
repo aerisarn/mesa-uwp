@@ -3222,7 +3222,7 @@ decode_type_from_blob(struct blob_reader *blob)
                                            encoded.sampler.array,
                                            (enum glsl_base_type) encoded.sampler.sampled_type);
    case GLSL_TYPE_ATOMIC_UINT:
-      return glsl_type::atomic_uint_type;
+      return &glsl_type_builtin_atomic_uint;
    case GLSL_TYPE_ARRAY: {
       unsigned length = encoded.array.length;
       if (length == 0x1fff)
@@ -3271,7 +3271,7 @@ decode_type_from_blob(struct blob_reader *blob)
       return t;
    }
    case GLSL_TYPE_VOID:
-      return glsl_type::void_type;
+      return &glsl_type_builtin_void;
    case GLSL_TYPE_ERROR:
    default:
       assert(!"Cannot decode type!");
@@ -3566,7 +3566,7 @@ const struct glsl_type *
 glsl_get_column_type(const struct glsl_type *t)
 {
    if (!t->is_matrix())
-      return glsl_type::error_type;
+      return &glsl_type_builtin_error;
 
    if (t->interface_row_major) {
       /* If we're row-major, the vector element stride is the same as the
