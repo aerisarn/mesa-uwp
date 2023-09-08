@@ -255,6 +255,8 @@ zink-radv-vangogh-valve:
     - .zink-radv-rules
   variables:
     GPU_VERSION: zink-radv-vangogh
+    B2C_SESSION_REBOOT_REGEX: 'BUG: kernel NULL pointer dereference, address'
+    B2C_TIMEOUT_BOOT_RETRIES: 1
   # Override the list of tags to drop `priority:low`
   tags:
     - amdgpu:codename:VANGOGH
