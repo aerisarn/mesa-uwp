@@ -3838,6 +3838,16 @@ stage_is_transfer(const VkPipelineStageFlags2 stage)
 }
 
 static inline bool
+stage_is_video(const VkPipelineStageFlags2 stage)
+{
+   return (stage & (VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+                    VK_PIPELINE_STAGE_2_VIDEO_ENCODE_BIT_KHR |
+#endif
+                    VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR));
+}
+
+static inline bool
 mask_is_shader_write(const VkAccessFlags2 access)
 {
    return (access & (VK_ACCESS_2_SHADER_WRITE_BIT |
@@ -3868,10 +3878,85 @@ mask_is_write(const VkAccessFlags2 access)
 }
 
 static void
+cmd_buffer_barrier_video(struct anv_cmd_buffer *cmd_buffer,
+                        const VkDependencyInfo *dep_info)
+{
+   assert(anv_cmd_buffer_is_video_queue(cmd_buffer));
+
+   bool flush_llc = false;
+   bool flush_ccs = false;
+   for (uint32_t i = 0; i < dep_info->imageMemoryBarrierCount; i++) {
+      const VkImageMemoryBarrier2 *img_barrier =
+         &dep_info->pImageMemoryBarriers[i];
+
+      ANV_FROM_HANDLE(anv_image, image, img_barrier->image);
+      const VkImageSubresourceRange *range = &img_barrier->subresourceRange;
+
+      /* If srcQueueFamilyIndex is not equal to dstQueueFamilyIndex, this
+       * memory barrier defines a queue family ownership transfer.
+       */
+      if (img_barrier->srcQueueFamilyIndex != img_barrier->dstQueueFamilyIndex)
+         flush_llc = true;
+
+      VkImageAspectFlags img_aspects =
+            vk_image_expand_aspect_mask(&image->vk, range->aspectMask);
+      anv_foreach_image_aspect_bit(aspect_bit, image, img_aspects) {
+         const uint32_t plane =
+            anv_image_aspect_to_plane(image, 1UL << aspect_bit);
+         if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage)) {
+            flush_ccs = true;
+         }
+      }
+   }
+
+   for (uint32_t i = 0; i < dep_info->bufferMemoryBarrierCount; i++) {
+      /* Flush the cache if something is written by the video operations and
+       * used by any other stages except video encode/decode stages or if
+       * srcQueueFamilyIndex is not equal to dstQueueFamilyIndex, this memory
+       * barrier defines a queue family ownership transfer.
+       */
+      if ((stage_is_video(dep_info->pBufferMemoryBarriers[i].srcStageMask) &&
+           mask_is_write(dep_info->pBufferMemoryBarriers[i].srcAccessMask) &&
+           !stage_is_video(dep_info->pBufferMemoryBarriers[i].dstStageMask)) ||
+          (dep_info->pBufferMemoryBarriers[i].srcQueueFamilyIndex !=
+           dep_info->pBufferMemoryBarriers[i].dstQueueFamilyIndex)) {
+         flush_llc = true;
+         break;
+      }
+   }
+
+   for (uint32_t i = 0; i < dep_info->memoryBarrierCount; i++) {
+      /* Flush the cache if something is written by the video operations and
+       * used by any other stages except video encode/decode stage.
+       */
+      if (stage_is_video(dep_info->pMemoryBarriers[i].srcStageMask) &&
+          mask_is_write(dep_info->pMemoryBarriers[i].srcAccessMask) &&
+          !stage_is_video(dep_info->pMemoryBarriers[i].dstStageMask)) {
+         flush_llc = true;
+         break;
+      }
+   }
+
+   if (flush_ccs || flush_llc) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_FLUSH_DW), fd) {
+#if GFX_VERx10 >= 125
+         fd.FlushCCS = flush_ccs;
+#endif
+         fd.FlushLLC = flush_llc;
+      }
+   }
+}
+
+static void
 cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
                    const VkDependencyInfo *dep_info,
                    const char *reason)
 {
+   if (anv_cmd_buffer_is_video_queue(cmd_buffer)) {
+      cmd_buffer_barrier_video(cmd_buffer, dep_info);
+      return;
+   }
+
    struct anv_device *device = cmd_buffer->device;
 
    /* XXX: Right now, we're really dumb and just flush whatever categories
@@ -3882,9 +3967,6 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
    VkAccessFlags2 dst_flags = 0;
 
    bool apply_sparse_flushes = false;
-
-   if (anv_cmd_buffer_is_video_queue(cmd_buffer))
-      return;
 
    for (uint32_t i = 0; i < dep_info->memoryBarrierCount; i++) {
       src_flags |= dep_info->pMemoryBarriers[i].srcAccessMask;
