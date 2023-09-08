@@ -111,8 +111,8 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
                         unsigned explicit_stride, bool row_major,
                         unsigned explicit_alignment)
 {
-   return glsl_simple_type(base_type, rows, columns, explicit_stride,
-                           row_major, explicit_alignment);
+   return glsl_simple_explicit_type(base_type, rows, columns, explicit_stride,
+                                    row_major, explicit_alignment);
 }
 
 inline const glsl_type *

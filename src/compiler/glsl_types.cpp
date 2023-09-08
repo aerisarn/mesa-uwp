@@ -598,9 +598,9 @@ get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned
                              unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment);
 
 extern "C" const struct glsl_type *
-glsl_simple_type(unsigned base_type, unsigned rows, unsigned columns,
-                 unsigned explicit_stride, bool row_major,
-                 unsigned explicit_alignment)
+glsl_simple_explicit_type(unsigned base_type, unsigned rows, unsigned columns,
+                          unsigned explicit_stride, bool row_major,
+                          unsigned explicit_alignment)
 {
    if (base_type == GLSL_TYPE_VOID) {
       assert(explicit_stride == 0 && explicit_alignment == 0 && !row_major);

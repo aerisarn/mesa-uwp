@@ -1437,11 +1437,18 @@ const struct glsl_type *glsl_u16vec_type(unsigned components);
 const struct glsl_type *glsl_i8vec_type(unsigned components);
 const struct glsl_type *glsl_u8vec_type(unsigned components);
 
-const struct glsl_type *glsl_simple_type(unsigned base_type, unsigned rows,
-                                         unsigned columns,
-                                         unsigned explicit_stride,
-                                         bool row_major,
-                                         unsigned explicit_alignment);
+const struct glsl_type *glsl_simple_explicit_type(unsigned base_type, unsigned rows,
+                                                  unsigned columns,
+                                                  unsigned explicit_stride,
+                                                  bool row_major,
+                                                  unsigned explicit_alignment);
+
+static inline const struct glsl_type *
+glsl_simple_type(unsigned base_type, unsigned rows, unsigned columns)
+{
+   return glsl_simple_explicit_type(base_type, rows, columns, 0, false, 0);
+}
+
 const struct glsl_type *glsl_sampler_type(enum glsl_sampler_dim dim,
                                           bool shadow,
                                           bool array,
@@ -1492,13 +1499,13 @@ const struct glsl_type *glsl_type_to_16bit(const struct glsl_type *old_type);
 static inline const struct glsl_type *
 glsl_scalar_type(enum glsl_base_type base_type)
 {
-   return glsl_simple_type(base_type, 1, 1, 0, false, 0);
+   return glsl_simple_type(base_type, 1, 1);
 }
 
 static inline const struct glsl_type *
 glsl_vector_type(enum glsl_base_type base_type, unsigned components)
 {
-   const struct glsl_type *t = glsl_simple_type(base_type, components, 1, 0, false, 0);
+   const struct glsl_type *t = glsl_simple_type(base_type, components, 1);
    assert(t != &glsl_type_builtin_error);
    return t;
 }
@@ -1507,7 +1514,7 @@ static inline const struct glsl_type *
 glsl_matrix_type(enum glsl_base_type base_type,
                  unsigned rows, unsigned columns)
 {
-   const struct glsl_type *t = glsl_simple_type(base_type, rows, columns, 0, false, 0);
+   const struct glsl_type *t = glsl_simple_type(base_type, rows, columns);
    assert(t != &glsl_type_builtin_error);
    return t;
 }
@@ -1516,10 +1523,10 @@ static inline const struct glsl_type *
 glsl_explicit_matrix_type(const struct glsl_type *mat, unsigned stride,
                           bool row_major) {
    assert(stride > 0);
-   const struct glsl_type *t = glsl_simple_type(mat->base_type,
-                                                mat->vector_elements,
-                                                mat->matrix_columns,
-                                                stride, row_major, 0);
+   const struct glsl_type *t = glsl_simple_explicit_type(mat->base_type,
+                                                         mat->vector_elements,
+                                                         mat->matrix_columns,
+                                                         stride, row_major, 0);
    assert(t != &glsl_type_builtin_error);
    return t;
 
@@ -1529,8 +1536,7 @@ static inline const struct glsl_type *
 glsl_transposed_type(const struct glsl_type *t)
 {
    assert(glsl_type_is_matrix(t));
-   return glsl_simple_type(t->base_type, t->matrix_columns,
-                           t->vector_elements, 0, false, 0);
+   return glsl_simple_type(t->base_type, t->matrix_columns, t->vector_elements);
 }
 
 static inline const struct glsl_type *
