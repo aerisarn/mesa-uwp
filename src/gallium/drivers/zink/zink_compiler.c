@@ -5326,7 +5326,7 @@ eliminate_io_wrmasks_instr(const nir_instr *instr, const void *data)
    unsigned num_components = util_bitcount(wrmask);
    if (num_components != src_components)
       return true;
-   if ((nir_intrinsic_instr_src_type(intr, 0) & NIR_ALU_TYPE_SIZE_MASK) == 64)
+   if ((nir_intrinsic_src_type(intr) & NIR_ALU_TYPE_SIZE_MASK) == 64)
       num_components *= 2;
    if (nir->xfb_info) {
       nir_io_semantics s = nir_intrinsic_io_semantics(intr);
