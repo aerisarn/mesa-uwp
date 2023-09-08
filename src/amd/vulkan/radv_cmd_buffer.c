@@ -3919,10 +3919,13 @@ emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
 
    unsigned pgm_lo_reg = R_00B120_SPI_SHADER_PGM_LO_VS;
    unsigned rsrc1_reg = R_00B128_SPI_SHADER_PGM_RSRC1_VS;
-   if (vs_shader->info.is_ngg || cmd_buffer->state.shaders[MESA_SHADER_GEOMETRY] == vs_shader) {
+   if (vs_shader->info.is_ngg || cmd_buffer->state.shaders[MESA_SHADER_GEOMETRY] == vs_shader ||
+       (vs_shader->info.merged_shader_compiled_separately && vs_shader->info.next_stage == MESA_SHADER_GEOMETRY)) {
       pgm_lo_reg = chip >= GFX10 ? R_00B320_SPI_SHADER_PGM_LO_ES : R_00B210_SPI_SHADER_PGM_LO_ES;
       rsrc1_reg = R_00B228_SPI_SHADER_PGM_RSRC1_GS;
-   } else if (cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL] == vs_shader) {
+   } else if (cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL] == vs_shader ||
+              (vs_shader->info.merged_shader_compiled_separately &&
+               vs_shader->info.next_stage == MESA_SHADER_TESS_CTRL)) {
       pgm_lo_reg = chip >= GFX10 ? R_00B520_SPI_SHADER_PGM_LO_LS : R_00B410_SPI_SHADER_PGM_LO_LS;
       rsrc1_reg = R_00B428_SPI_SHADER_PGM_RSRC1_HS;
    } else if (vs_shader->info.vs.as_ls) {
