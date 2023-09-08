@@ -33,8 +33,6 @@
 #include "util/u_string.h"
 #include "util/simple_mtx.h"
 
-extern "C" {
-
 static simple_mtx_t glsl_type_cache_mutex = SIMPLE_MTX_INITIALIZER;
 
 static struct {
@@ -3838,5 +3836,3 @@ glsl_type_get_image_count(const struct glsl_type *type)
 {
    return glsl_type_count(type, GLSL_TYPE_IMAGE);
 }
-
-} /* extern "C" */
