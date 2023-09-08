@@ -1895,12 +1895,12 @@ glsl_get_struct_location_offset(const struct glsl_type *t, unsigned length)
    return offset;
 }
 
-unsigned
-glsl_type::uniform_locations() const
+extern "C" unsigned
+glsl_type_uniform_locations(const struct glsl_type *t)
 {
    unsigned size = 0;
 
-   switch (this->base_type) {
+   switch (t->base_type) {
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_FLOAT:
@@ -1921,11 +1921,11 @@ glsl_type::uniform_locations() const
 
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE:
-      for (unsigned i = 0; i < this->length; i++)
-         size += this->fields.structure[i].type->uniform_locations();
+      for (unsigned i = 0; i < t->length; i++)
+         size += glsl_type_uniform_locations(t->fields.structure[i].type);
       return size;
    case GLSL_TYPE_ARRAY:
-      return this->length * this->fields.array->uniform_locations();
+      return t->length * glsl_type_uniform_locations(t->fields.array);
    default:
       return 0;
    }

@@ -69,6 +69,7 @@ inline unsigned glsl_type::count_attribute_slots(bool is_gl_vertex_input) const 
 inline unsigned glsl_type::varying_count() const { return glsl_varying_count(this); }
 inline unsigned glsl_type::atomic_size() const { return glsl_atomic_size(this); }
 inline int glsl_type::coordinate_components() const { return glsl_get_sampler_coordinate_components(this); }
+inline unsigned glsl_type::uniform_locations() const { return glsl_type_uniform_locations(this); }
 
 inline unsigned glsl_type::cl_size() const { return glsl_get_cl_size(this); }
 inline unsigned glsl_type::cl_alignment() const { return glsl_get_cl_alignment(this); }

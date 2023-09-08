@@ -1564,6 +1564,7 @@ unsigned glsl_count_dword_slots(const struct glsl_type *t, bool is_bindless);
 unsigned glsl_get_component_slots(const struct glsl_type *t);
 unsigned glsl_get_component_slots_aligned(const struct glsl_type *t, unsigned offset);
 unsigned glsl_varying_count(const struct glsl_type *t);
+unsigned glsl_type_uniform_locations(const struct glsl_type *t);
 
 static inline unsigned
 glsl_count_attribute_slots(const struct glsl_type *t, bool is_gl_vertex_input)
