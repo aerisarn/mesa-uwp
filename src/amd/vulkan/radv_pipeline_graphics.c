@@ -2683,7 +2683,8 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
     */
    if (fast_linking_enabled || keep_executable_info) {
       skip_shaders_cache = true;
-   } else if ((pipeline->base.create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR) && retain_shaders) {
+   } else if (retain_shaders) {
+      assert(pipeline->base.create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR);
       for (uint32_t i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
          if (stages[i].entrypoint && !stages[i].spirv.size) {
             skip_shaders_cache = true;
