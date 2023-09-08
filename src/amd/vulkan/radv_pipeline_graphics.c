@@ -2539,6 +2539,7 @@ radv_graphics_shaders_compile(struct radv_device *device, struct vk_pipeline_cac
        */
       nir_lower_compute_system_values_options o = {
          .lower_workgroup_id_to_index = true,
+         .shortcut_1d_workgroup_id = true,
          .num_workgroups[0] = task ? task->info.mesh.ts_mesh_dispatch_dimensions[0] : 0,
          .num_workgroups[1] = task ? task->info.mesh.ts_mesh_dispatch_dimensions[1] : 0,
          .num_workgroups[2] = task ? task->info.mesh.ts_mesh_dispatch_dimensions[2] : 0,
