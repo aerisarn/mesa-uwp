@@ -596,6 +596,7 @@ impl SM75Instr {
             ALUSrc::from_src(&op.srcs[1]),
             ALUSrc::from_src(&op.srcs[2]),
         );
+        self.set_pred_dst(81..84, Dst::None);
         self.set_bit(73, op.signed);
     }
 
@@ -607,7 +608,7 @@ impl SM75Instr {
             ALUSrc::from_src(&op.srcs[1]),
             ALUSrc::from_src(&op.srcs[2]),
         );
-        self.set_field(81..84, 0x7_u8); /* TODO: Pred? */
+        self.set_pred_dst(81..84, Dst::None);
         self.set_bit(73, op.signed);
     }
 
