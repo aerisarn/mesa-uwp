@@ -4082,6 +4082,16 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_d
             nir_resource_insts[def->index] = ubld1.SHR(dst, src0, src1);
             break;
          }
+         case nir_op_ishl: {
+            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
+            ubld1.UNDEF(dst);
+            fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
+            assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
+            assert(src0.type == BRW_REGISTER_TYPE_UD);
+            nir_resource_insts[def->index] = ubld1.SHL(dst, src0, src1);
+            break;
+         }
          case nir_op_mov: {
             break;
          }
