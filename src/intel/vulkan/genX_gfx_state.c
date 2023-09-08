@@ -1233,13 +1233,17 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 
       if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_REDISTRIB))
          anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.task_redistrib);
+
+      if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_SBE_MESH))
+         anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.sbe_mesh);
    } else {
       assert(!BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_MESH_CONTROL) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_MESH_SHADER) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_MESH_DISTRIB) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_CONTROL) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_SHADER) &&
-             !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_REDISTRIB));
+             !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_REDISTRIB) &&
+             !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_SBE_MESH));
    }
 
 #define INIT(category, name) \
