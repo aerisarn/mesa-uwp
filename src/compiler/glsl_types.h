@@ -1604,6 +1604,21 @@ glsl_get_explicit_alignment(const struct glsl_type *t)
    return t->explicit_alignment;
 }
 
+const struct glsl_type *glsl_get_explicit_std140_type(const struct glsl_type *t, bool row_major);
+const struct glsl_type *glsl_get_explicit_std430_type(const struct glsl_type *t, bool row_major);
+
+static inline const struct glsl_type *
+glsl_get_explicit_interface_type(const struct glsl_type *t, bool supports_std430)
+{
+   enum glsl_interface_packing packing = glsl_get_internal_ifc_packing(t, supports_std430);
+   if (packing == GLSL_INTERFACE_PACKING_STD140) {
+      return glsl_get_explicit_std140_type(t, t->interface_row_major);
+   } else {
+      assert(packing == GLSL_INTERFACE_PACKING_STD430);
+      return glsl_get_explicit_std430_type(t, t->interface_row_major);
+   }
+}
+
 void glsl_get_natural_size_align_bytes(const struct glsl_type *t, unsigned *size, unsigned *align);
 void glsl_get_vec4_size_align_bytes(const struct glsl_type *type, unsigned *size, unsigned *align);
 

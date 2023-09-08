@@ -81,6 +81,10 @@ inline unsigned glsl_type::std430_array_stride(bool row_major) const { return gl
 inline unsigned glsl_type::std430_size(bool row_major) const { return glsl_get_std430_size(this, row_major); }
 inline unsigned glsl_type::explicit_size(bool align_to_stride) const { return glsl_get_explicit_size(this, align_to_stride); }
 
+inline const glsl_type *glsl_type::get_explicit_std140_type(bool row_major) const { return glsl_get_explicit_std140_type(this, row_major); }
+inline const glsl_type *glsl_type::get_explicit_std430_type(bool row_major) const { return glsl_get_explicit_std430_type(this, row_major); }
+inline const glsl_type *glsl_type::get_explicit_interface_type(bool supports_std430) const { return glsl_get_explicit_interface_type(this, supports_std430); }
+
 inline const glsl_type *glsl_type::row_type() const { return glsl_get_row_type(this); }
 inline const glsl_type *glsl_type::column_type() const { return glsl_get_column_type(this); }
 inline const glsl_type *glsl_type::get_bare_type() const { return glsl_get_bare_type(this); }
