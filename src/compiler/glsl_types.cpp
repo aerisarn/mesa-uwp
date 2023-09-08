@@ -446,9 +446,9 @@ glsl_type_singleton_init_or_ref()
    /* Values of these types must fit in the two bits of
     * glsl_type::sampled_type.
     */
-   STATIC_ASSERT((unsigned(GLSL_TYPE_UINT)  & 3) == unsigned(GLSL_TYPE_UINT));
-   STATIC_ASSERT((unsigned(GLSL_TYPE_INT)   & 3) == unsigned(GLSL_TYPE_INT));
-   STATIC_ASSERT((unsigned(GLSL_TYPE_FLOAT) & 3) == unsigned(GLSL_TYPE_FLOAT));
+   STATIC_ASSERT((((unsigned)GLSL_TYPE_UINT)  & 3) == (unsigned)GLSL_TYPE_UINT);
+   STATIC_ASSERT((((unsigned)GLSL_TYPE_INT)   & 3) == (unsigned)GLSL_TYPE_INT);
+   STATIC_ASSERT((((unsigned)GLSL_TYPE_FLOAT) & 3) == (unsigned)GLSL_TYPE_FLOAT);
 
    ASSERT_BITFIELD_SIZE(glsl_type, base_type, GLSL_TYPE_ERROR);
    ASSERT_BITFIELD_SIZE(glsl_type, sampled_type, GLSL_TYPE_ERROR);
@@ -2054,7 +2054,7 @@ glsl_type::std140_base_alignment(bool row_major) const
       for (unsigned i = 0; i < this->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            glsl_matrix_layout(this->fields.structure[i].matrix_layout);
+            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
@@ -2184,7 +2184,7 @@ glsl_type::std140_size(bool row_major) const
       for (unsigned i = 0; i < this->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            glsl_matrix_layout(this->fields.structure[i].matrix_layout);
+            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
@@ -2380,7 +2380,7 @@ glsl_type::std430_base_alignment(bool row_major) const
       for (unsigned i = 0; i < this->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            glsl_matrix_layout(this->fields.structure[i].matrix_layout);
+            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
@@ -2553,7 +2553,7 @@ glsl_type::std430_size(bool row_major) const
       for (unsigned i = 0; i < this->length; i++) {
          bool field_row_major = row_major;
          const enum glsl_matrix_layout matrix_layout =
-            glsl_matrix_layout(this->fields.structure[i].matrix_layout);
+            (enum glsl_matrix_layout)this->fields.structure[i].matrix_layout;
          if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
             field_row_major = true;
          } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
