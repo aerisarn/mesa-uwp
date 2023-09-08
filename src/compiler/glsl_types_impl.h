@@ -178,6 +178,15 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
 inline const glsl_type *glsl_type::replace_vec3_with_vec4() const { return glsl_type_replace_vec3_with_vec4(this); }
 inline const glsl_type *glsl_type::get_mul_type(const glsl_type *type_a, const glsl_type *type_b) { return glsl_get_mul_type(type_a, type_b); }
 
+inline const glsl_type *
+glsl_type::field_type(const char *n) const
+{
+   const int idx = glsl_get_field_index(this, n);
+   if (idx == -1)
+      return &glsl_type_builtin_error;
+   return glsl_get_struct_field(this, (unsigned)idx);
+}
+
 inline bool
 glsl_type::is_integer_16() const
 {

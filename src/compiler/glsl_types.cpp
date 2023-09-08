@@ -1703,23 +1703,6 @@ glsl_get_mul_type(const struct glsl_type *type_a, const struct glsl_type *type_b
    return &glsl_type_builtin_error;
 }
 
-
-const struct glsl_type *
-glsl_type::field_type(const char *name) const
-{
-   if (this->base_type != GLSL_TYPE_STRUCT
-       && this->base_type != GLSL_TYPE_INTERFACE)
-      return error_type;
-
-   for (unsigned i = 0; i < this->length; i++) {
-      if (strcmp(name, this->fields.structure[i].name) == 0)
-         return this->fields.structure[i].type;
-   }
-
-   return error_type;
-}
-
-
 extern "C" int
 glsl_get_field_index(const struct glsl_type *t, const char *name)
 {
