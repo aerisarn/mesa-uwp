@@ -40,8 +40,8 @@ vn_device_memory_pool_grow_alloc(struct vn_device *dev,
 
    vn_object_base_init(&mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY, &dev->base);
    mem->size = size;
-   mem->type = dev->physical_device->memory_properties.memoryProperties
-                  .memoryTypes[mem_type_index];
+   mem->type =
+      dev->physical_device->memory_properties.memoryTypes[mem_type_index];
 
    mem_handle = vn_device_memory_to_handle(mem);
    result = vn_call_vkAllocateMemory(
@@ -253,7 +253,7 @@ vn_device_memory_import_dma_buf(struct vn_device *dev,
    VkDevice device = vn_device_to_handle(dev);
    VkDeviceMemory memory = vn_device_memory_to_handle(mem);
    const VkPhysicalDeviceMemoryProperties *mem_props =
-      &dev->physical_device->memory_properties.memoryProperties;
+      &dev->physical_device->memory_properties;
    VkMemoryPropertyFlags mem_flags =
       mem_props->memoryTypes[alloc_info->memoryTypeIndex].propertyFlags;
    struct vn_renderer_bo *bo;
@@ -539,7 +539,7 @@ vn_AllocateMemory(VkDevice device,
 
    vn_object_base_init(&mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY, &dev->base);
    mem->size = pAllocateInfo->allocationSize;
-   mem->type = dev->physical_device->memory_properties.memoryProperties
+   mem->type = dev->physical_device->memory_properties
                   .memoryTypes[pAllocateInfo->memoryTypeIndex];
    mem->is_import = import_ahb_info || import_fd_info;
    mem->is_external = mem->is_import || export_info;
