@@ -420,14 +420,14 @@ v3dv_image_init(struct v3dv_device *device,
    }
 
    const struct v3dv_format *format =
-      v3dv_X(device, get_format)(pCreateInfo->format);
+      v3dv_X(device, get_format)(image->vk.format);
    v3dv_assert(format != NULL && format->plane_count);
 
    assert(pCreateInfo->samples == VK_SAMPLE_COUNT_1_BIT ||
           pCreateInfo->samples == VK_SAMPLE_COUNT_4_BIT);
 
    image->format = format;
-   image->plane_count = vk_format_get_plane_count(pCreateInfo->format);
+   image->plane_count = vk_format_get_plane_count(image->vk.format);
    assert(!explicit_mod_info ||
           image->plane_count == explicit_mod_info->drmFormatModifierPlaneCount);
 
@@ -793,7 +793,7 @@ create_image_view(struct v3dv_device *device,
     */
    VkFormat format;
    uint8_t image_view_swizzle[4];
-   if (pCreateInfo->format == VK_FORMAT_D24_UNORM_S8_UINT &&
+   if (image->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
        range->aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
       format = VK_FORMAT_R8G8B8A8_UINT;
       uint8_t stencil_aspect_swizzle[4] = {
@@ -805,7 +805,7 @@ create_image_view(struct v3dv_device *device,
       util_format_compose_swizzles(stencil_aspect_swizzle, view_swizzle,
                                    image_view_swizzle);
    } else {
-      format = pCreateInfo->format;
+      format = iview->vk.format;
       vk_component_mapping_to_pipe_swizzle(iview->vk.swizzle,
                                            image_view_swizzle);
    }
