@@ -1755,6 +1755,10 @@ emit_task_state(struct anv_graphics_pipeline *pipeline)
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
       anv_pipeline_emit(pipeline, final.task_control,
                         GENX(3DSTATE_TASK_CONTROL), zero);
+      anv_pipeline_emit(pipeline, final.task_shader,
+                        GENX(3DSTATE_TASK_SHADER), zero);
+      anv_pipeline_emit(pipeline, final.task_redistrib,
+                        GENX(3DSTATE_TASK_REDISTRIB), zero);
       return;
    }
 
@@ -1955,13 +1959,29 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
       if (device->vk.enabled_extensions.EXT_mesh_shader) {
          anv_pipeline_emit(pipeline, final.mesh_control,
                            GENX(3DSTATE_MESH_CONTROL), zero);
+         anv_pipeline_emit(pipeline, final.mesh_shader,
+                           GENX(3DSTATE_MESH_SHADER), zero);
+         anv_pipeline_emit(pipeline, final.mesh_distrib,
+                           GENX(3DSTATE_MESH_DISTRIB), zero);
+         anv_pipeline_emit(pipeline, final.clip_mesh,
+                           GENX(3DSTATE_CLIP_MESH), zero);
+         anv_pipeline_emit(pipeline, final.sbe_mesh,
+                           GENX(3DSTATE_SBE_MESH), zero);
          anv_pipeline_emit(pipeline, final.task_control,
                            GENX(3DSTATE_TASK_CONTROL), zero);
+         anv_pipeline_emit(pipeline, final.task_shader,
+                           GENX(3DSTATE_TASK_SHADER), zero);
+         anv_pipeline_emit(pipeline, final.task_redistrib,
+                           GENX(3DSTATE_TASK_REDISTRIB), zero);
       }
 #endif
    } else {
       assert(anv_pipeline_is_mesh(pipeline));
 
+      anv_pipeline_emit(pipeline, final.vf_sgvs, GENX(3DSTATE_VF_SGVS), sgvs);
+#if GFX_VER >= 11
+      anv_pipeline_emit(pipeline, final.vf_sgvs_2, GENX(3DSTATE_VF_SGVS_2), sgvs);
+#endif
       anv_pipeline_emit(pipeline, final.vs, GENX(3DSTATE_VS), vs);
       anv_pipeline_emit(pipeline, final.hs, GENX(3DSTATE_HS), hs);
       anv_pipeline_emit(pipeline, final.ds, GENX(3DSTATE_DS), ds);
