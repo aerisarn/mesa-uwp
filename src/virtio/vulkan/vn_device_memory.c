@@ -530,8 +530,6 @@ vn_AllocateMemory(VkDevice device,
 {
    VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
-   const VkAllocationCallbacks *alloc =
-      pAllocator ? pAllocator : &dev->base.base.alloc;
 
    /* see vn_physical_device_init_memory_properties */
    VkMemoryAllocateInfo local_info;
@@ -545,15 +543,12 @@ vn_AllocateMemory(VkDevice device,
    const VkExportMemoryAllocateInfo *export_info = NULL;
    const VkImportAndroidHardwareBufferInfoANDROID *import_ahb_info = NULL;
    const VkImportMemoryFdInfoKHR *import_fd_info = NULL;
-   bool export_ahb = false;
+   const VkMemoryDedicatedAllocateInfo *dedicated_info = NULL;
    vk_foreach_struct_const(pnext, pAllocateInfo->pNext) {
       switch (pnext->sType) {
       case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
          export_info = (void *)pnext;
-         if (export_info->handleTypes &
-             VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
-            export_ahb = true;
-         else if (!export_info->handleTypes)
+         if (!export_info->handleTypes)
             export_info = NULL;
          break;
       case VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID:
@@ -561,6 +556,9 @@ vn_AllocateMemory(VkDevice device,
          break;
       case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
          import_fd_info = (void *)pnext;
+         break;
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
+         dedicated_info = (void *)pnext;
          break;
       default:
          break;
@@ -580,13 +578,9 @@ vn_AllocateMemory(VkDevice device,
    mem->is_import = import_ahb_info || import_fd_info;
    mem->is_external = mem->is_import || export_info;
 
-   VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    VkResult result;
-   if (import_ahb_info) {
-      result = vn_android_device_import_ahb(dev, mem, pAllocateInfo,
-                                            import_ahb_info->buffer, false);
-   } else if (export_ahb) {
-      result = vn_android_device_allocate_ahb(dev, mem, pAllocateInfo, alloc);
+   if (mem->base.base.ahardware_buffer) {
+      result = vn_android_device_import_ahb(dev, mem, dedicated_info);
    } else if (import_fd_info) {
       result = vn_device_memory_import_dma_buf(dev, mem, pAllocateInfo, false,
                                                import_fd_info->fd);
@@ -608,7 +602,7 @@ vn_AllocateMemory(VkDevice device,
       return vn_error(dev->instance, result);
    }
 
-   *pMemory = mem_handle;
+   *pMemory = vn_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
 }
@@ -637,9 +631,6 @@ vn_FreeMemory(VkDevice device,
 
       vn_device_memory_free_simple(dev, mem);
    }
-
-   if (mem->ahb)
-      vn_android_release_ahb(mem->ahb);
 
    vk_device_memory_destroy(&dev->base.base, pAllocator, &mem->base.base);
 }

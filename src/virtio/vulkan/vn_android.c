@@ -915,24 +915,22 @@ vn_android_get_drm_format_modifier_info(
 }
 
 VkResult
-vn_android_device_import_ahb(struct vn_device *dev,
-                             struct vn_device_memory *mem,
-                             const VkMemoryAllocateInfo *alloc_info,
-                             struct AHardwareBuffer *ahb,
-                             bool internal_ahb)
+vn_android_device_import_ahb(
+   struct vn_device *dev,
+   struct vn_device_memory *mem,
+   const struct VkMemoryDedicatedAllocateInfo *dedicated_info)
 {
-   const VkMemoryDedicatedAllocateInfo *dedicated_info =
-      vk_find_struct_const(alloc_info->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
+   const struct vk_device_memory *mem_vk = &mem->base.base;
    const native_handle_t *handle = NULL;
    int dma_buf_fd = -1;
    int dup_fd = -1;
    uint64_t alloc_size = 0;
    uint32_t mem_type_bits = 0;
-   uint32_t mem_type_index = alloc_info->memoryTypeIndex;
+   uint32_t mem_type_index = mem_vk->memory_type_index;
    bool force_unmappable = false;
    VkResult result = VK_SUCCESS;
 
-   handle = AHardwareBuffer_getNativeHandle(ahb);
+   handle = AHardwareBuffer_getNativeHandle(mem_vk->ahardware_buffer);
    dma_buf_fd = vn_android_gralloc_get_dma_buf_fd(handle);
    if (dma_buf_fd < 0)
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
@@ -967,14 +965,19 @@ vn_android_device_import_ahb(struct vn_device *dev,
 
       alloc_size = mem_req->size;
 
-      /* XXX Workaround before spec issue #2762 gets resolved. If importing an
-       * internally allocated AHB from the exportable path, memoryTypeIndex is
-       * undefined while defaulting to zero, which can be incompatible with
-       * the queried memoryTypeBits from the combined memory requirement and
-       * dma_buf fd properties. Thus we override the requested memoryTypeIndex
-       * to an applicable one if existed.
+      /* Per spec 11.2.3. Device Memory Allocation
+       *
+       * If the parameters define an export operation and the external handle
+       * type is
+       * VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
+       * implementations should not strictly follow memoryTypeIndex. Instead,
+       * they should modify the allocation internally to use the required
+       * memory type for the application’s given usage. This is because for an
+       * export operation, there is currently no way for the client to know
+       * the memory type index before allocating.
        */
-      if (internal_ahb) {
+      if (!(mem_vk->import_handle_type &
+            VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)) {
          if ((mem_type_bits & mem_req->memoryTypeBits) == 0) {
             vn_log(dev->instance, "memoryTypeBits: img(0x%X) fd(0x%X)",
                    mem_req->memoryTypeBits, mem_type_bits);
@@ -1039,85 +1042,6 @@ vn_android_device_import_ahb(struct vn_device *dev,
       close(dup_fd);
       return result;
    }
-
-   AHardwareBuffer_acquire(ahb);
-   mem->ahb = ahb;
-
-   return VK_SUCCESS;
-}
-
-VkResult
-vn_android_device_allocate_ahb(struct vn_device *dev,
-                               struct vn_device_memory *mem,
-                               const VkMemoryAllocateInfo *alloc_info,
-                               const VkAllocationCallbacks *alloc)
-{
-   const VkMemoryDedicatedAllocateInfo *dedicated_info =
-      vk_find_struct_const(alloc_info->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
-   uint32_t width = 0;
-   uint32_t height = 1;
-   uint32_t layers = 1;
-   uint32_t format = 0;
-   uint64_t usage = 0;
-   struct AHardwareBuffer *ahb = NULL;
-
-   if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
-      const VkImageCreateInfo *image_info =
-         &vn_image_from_handle(dedicated_info->image)->deferred_info->create;
-      assert(image_info);
-      width = image_info->extent.width;
-      height = image_info->extent.height;
-      layers = image_info->arrayLayers;
-      format = vk_image_format_to_ahb_format(image_info->format);
-      usage =
-         vk_image_usage_to_ahb_usage(image_info->flags, image_info->usage);
-   } else {
-      const VkPhysicalDeviceMemoryProperties *mem_props =
-         &dev->physical_device->memory_properties;
-
-      assert(alloc_info->memoryTypeIndex < mem_props->memoryTypeCount);
-
-      width = alloc_info->allocationSize;
-      format = AHARDWAREBUFFER_FORMAT_BLOB;
-      usage = AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER;
-      if (mem_props->memoryTypes[alloc_info->memoryTypeIndex].propertyFlags &
-          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-         usage |= AHARDWAREBUFFER_USAGE_CPU_READ_RARELY |
-                  AHARDWAREBUFFER_USAGE_CPU_WRITE_RARELY;
-      }
-   }
-
-   ahb = vn_android_ahb_allocate(width, height, layers, format, usage);
-   if (!ahb)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   VkResult result =
-      vn_android_device_import_ahb(dev, mem, alloc_info, ahb, true);
-
-   /* ahb alloc has already acquired a ref and import will acquire another,
-    * must release one here to avoid leak.
-    */
-   AHardwareBuffer_release(ahb);
-
-   return result;
-}
-
-void
-vn_android_release_ahb(struct AHardwareBuffer *ahb)
-{
-   AHardwareBuffer_release(ahb);
-}
-
-VkResult
-vn_GetMemoryAndroidHardwareBufferANDROID(
-   VkDevice device,
-   const VkMemoryGetAndroidHardwareBufferInfoANDROID *pInfo,
-   struct AHardwareBuffer **pBuffer)
-{
-   struct vn_device_memory *mem = vn_device_memory_from_handle(pInfo->memory);
-
-   AHardwareBuffer_acquire(mem->ahb);
-   *pBuffer = mem->ahb;
 
    return VK_SUCCESS;
 }
