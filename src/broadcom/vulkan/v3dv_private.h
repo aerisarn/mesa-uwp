@@ -2603,6 +2603,13 @@ u64_compare(const void *key1, const void *key2)
 
 #ifdef ANDROID
 VkResult
+v3dv_gralloc_to_drm_explicit_layout(struct u_gralloc *gralloc,
+                                    struct u_gralloc_buffer_handle *in_hnd,
+                                    VkImageDrmFormatModifierExplicitCreateInfoEXT *out,
+                                    VkSubresourceLayout *out_layouts,
+                                    int max_planes);
+
+VkResult
 v3dv_import_native_buffer_fd(VkDevice device_h,
                              int dma_buf,
                              const VkAllocationCallbacks *alloc,

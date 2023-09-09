@@ -113,6 +113,57 @@ v3dv_hal_close(struct hw_device_t *dev)
 }
 
 VkResult
+v3dv_gralloc_to_drm_explicit_layout(struct u_gralloc *gralloc,
+                                    struct u_gralloc_buffer_handle *in_hnd,
+                                    VkImageDrmFormatModifierExplicitCreateInfoEXT *out,
+                                    VkSubresourceLayout *out_layouts,
+                                    int max_planes)
+{
+   struct u_gralloc_buffer_basic_info info;
+
+   if (u_gralloc_get_buffer_basic_info(gralloc, in_hnd, &info) != 0)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+   if (info.num_planes > max_planes)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+   bool is_disjoint = false;
+   for (int i = 1; i < info.num_planes; i++) {
+      if (info.offsets[i] == 0) {
+         is_disjoint = true;
+         break;
+      }
+   }
+
+   if (is_disjoint) {
+      /* We don't support disjoint planes yet */
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
+
+   memset(out_layouts, 0, sizeof(*out_layouts) * info.num_planes);
+   memset(out, 0, sizeof(*out));
+
+   out->sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT;
+   out->pPlaneLayouts = out_layouts;
+
+   out->drmFormatModifier = info.modifier;
+   out->drmFormatModifierPlaneCount = info.num_planes;
+   for (int i = 0; i < info.num_planes; i++) {
+      out_layouts[i].offset = info.offsets[i];
+      out_layouts[i].rowPitch = info.strides[i];
+   }
+
+   if (info.drm_fourcc == DRM_FORMAT_YVU420) {
+      /* Swap the U and V planes to match the VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM */
+      VkSubresourceLayout tmp = out_layouts[1];
+      out_layouts[1] = out_layouts[2];
+      out_layouts[2] = tmp;
+   }
+
+   return VK_SUCCESS;
+}
+
+VkResult
 v3dv_import_native_buffer_fd(VkDevice device_h,
                              int native_buffer_fd,
                              const VkAllocationCallbacks *alloc,
