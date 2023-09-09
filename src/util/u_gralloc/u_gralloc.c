@@ -58,6 +58,7 @@ u_gralloc_create(enum u_gralloc_type type)
          assert(u_gralloc_cache[type].u_gralloc->ops.get_buffer_basic_info);
          assert(u_gralloc_cache[type].u_gralloc->ops.destroy);
 
+         u_gralloc_cache[type].u_gralloc->type = u_grallocs[i].type;
          u_gralloc_cache[type].refcount = 1;
 
          out_gralloc = u_gralloc_cache[type].u_gralloc;
@@ -147,4 +148,10 @@ u_gralloc_get_front_rendering_usage(struct u_gralloc *gralloc,
       return -ENOTSUP;
 
    return gralloc->ops.get_front_rendering_usage(gralloc, out_usage);
+}
+
+int
+u_gralloc_get_type(struct u_gralloc *gralloc)
+{
+   return gralloc->type;
 }

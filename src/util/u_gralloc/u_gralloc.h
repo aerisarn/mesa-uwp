@@ -49,9 +49,7 @@ struct u_gralloc_buffer_color_info {
 
 enum u_gralloc_type {
    U_GRALLOC_TYPE_AUTO,
-#ifdef USE_IMAPPER4_METADATA_API
    U_GRALLOC_TYPE_GRALLOC4,
-#endif
    U_GRALLOC_TYPE_CROS,
    U_GRALLOC_TYPE_FALLBACK,
    U_GRALLOC_TYPE_COUNT,
@@ -73,6 +71,8 @@ int u_gralloc_get_buffer_color_info(
 
 int u_gralloc_get_front_rendering_usage(struct u_gralloc *gralloc,
                                         uint64_t *out_usage);
+
+int u_gralloc_get_type(struct u_gralloc *gralloc);
 
 #ifdef __cplusplus
 }
