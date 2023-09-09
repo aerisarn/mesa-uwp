@@ -1236,6 +1236,9 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 
       if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_SBE_MESH))
          anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.sbe_mesh);
+
+      if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_CLIP_MESH))
+         anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.clip_mesh);
    } else {
       assert(!BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_MESH_CONTROL) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_MESH_SHADER) &&
@@ -1243,6 +1246,7 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_CONTROL) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_SHADER) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_TASK_REDISTRIB) &&
+             !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_CLIP_MESH) &&
              !BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_SBE_MESH));
    }
 
