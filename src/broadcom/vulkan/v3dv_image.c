@@ -363,6 +363,34 @@ v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer
 }
 
 VkResult
+v3dv_update_image_layout(struct v3dv_device *device,
+                         struct v3dv_image *image,
+                         uint64_t modifier,
+                         bool disjoint,
+                         const VkImageDrmFormatModifierExplicitCreateInfoEXT *explicit_mod_info)
+{
+   assert(!explicit_mod_info ||
+          image->plane_count == explicit_mod_info->drmFormatModifierPlaneCount);
+
+   assert(!explicit_mod_info ||
+          modifier == explicit_mod_info->drmFormatModifier);
+
+   image->tiled = modifier != DRM_FORMAT_MOD_LINEAR;
+
+   image->vk.drm_format_mod = modifier;
+
+   bool ok =
+      v3d_setup_slices(image, disjoint,
+                       explicit_mod_info ? explicit_mod_info->pPlaneLayouts : NULL);
+   if (!ok) {
+      assert(explicit_mod_info);
+      return VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT;
+   }
+
+   return VK_SUCCESS;
+}
+
+VkResult
 v3dv_image_init(struct v3dv_device *device,
                 const VkImageCreateInfo *pCreateInfo,
                 const VkAllocationCallbacks *pAllocator,
@@ -419,6 +447,10 @@ v3dv_image_init(struct v3dv_device *device,
       tiling = VK_IMAGE_TILING_LINEAR;
    }
 
+   if (modifier == DRM_FORMAT_MOD_INVALID)
+      modifier = (tiling == VK_IMAGE_TILING_OPTIMAL) ? DRM_FORMAT_MOD_BROADCOM_UIF
+                                                     : DRM_FORMAT_MOD_LINEAR;
+
    const struct v3dv_format *format =
       v3dv_X(device, get_format)(image->vk.format);
    v3dv_assert(format != NULL && format->plane_count);
@@ -427,9 +459,8 @@ v3dv_image_init(struct v3dv_device *device,
           pCreateInfo->samples == VK_SAMPLE_COUNT_4_BIT);
 
    image->format = format;
+
    image->plane_count = vk_format_get_plane_count(image->vk.format);
-   assert(!explicit_mod_info ||
-          image->plane_count == explicit_mod_info->drmFormatModifierPlaneCount);
 
    const struct vk_format_ycbcr_info *ycbcr_info =
       vk_format_get_ycbcr_info(image->vk.format);
@@ -452,12 +483,6 @@ v3dv_image_init(struct v3dv_device *device,
             ycbcr_info->planes[plane].denominator_scales[1];
       }
    }
-   if (modifier == DRM_FORMAT_MOD_INVALID)
-      modifier = (tiling == VK_IMAGE_TILING_OPTIMAL) ? DRM_FORMAT_MOD_BROADCOM_UIF
-                                                     : DRM_FORMAT_MOD_LINEAR;
-   image->tiled = modifier != DRM_FORMAT_MOD_LINEAR;
-
-   image->vk.drm_format_mod = modifier;
 
    /* Our meta paths can create image views with compatible formats for any
     * image, so always set this flag to keep the common Vulkan image code
@@ -466,15 +491,9 @@ v3dv_image_init(struct v3dv_device *device,
    image->vk.create_flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
    bool disjoint = image->vk.create_flags & VK_IMAGE_CREATE_DISJOINT_BIT;
-   bool ok =
-      v3d_setup_slices(image, disjoint,
-                       explicit_mod_info ? explicit_mod_info->pPlaneLayouts : NULL);
-   if (!ok) {
-      assert(explicit_mod_info);
-      return VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT;
-   }
 
-   return VK_SUCCESS;
+   return v3dv_update_image_layout(device, image, modifier, disjoint,
+                                   explicit_mod_info);
 }
 
 static VkResult

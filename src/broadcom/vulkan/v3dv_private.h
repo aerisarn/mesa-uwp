@@ -2603,6 +2603,13 @@ u64_compare(const void *key1, const void *key2)
 #  undef v3dX
 #endif
 
+VkResult
+v3dv_update_image_layout(struct v3dv_device *device,
+                         struct v3dv_image *image,
+                         uint64_t modifier,
+                         bool disjoint,
+                         const VkImageDrmFormatModifierExplicitCreateInfoEXT *explicit_mod_info);
+
 #ifdef ANDROID
 VkResult
 v3dv_gralloc_to_drm_explicit_layout(struct u_gralloc *gralloc,
