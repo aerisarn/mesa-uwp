@@ -467,7 +467,6 @@ v3dv_image_init(struct v3dv_device *device,
                   (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&
                    modifier != DRM_FORMAT_MOD_LINEAR);
 
-   image->vk.tiling = tiling;
    image->vk.drm_format_mod = modifier;
 
    /* Our meta paths can create image views with compatible formats for any
