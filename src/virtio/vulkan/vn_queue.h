@@ -16,7 +16,7 @@
 #include "vn_feedback.h"
 
 struct vn_queue {
-   struct vn_object_base base;
+   struct vn_queue_base base;
 
    struct vn_device *device;
    uint32_t family;
@@ -38,7 +38,7 @@ struct vn_queue {
    VkSemaphore sparse_semaphore;
    uint64_t sparse_semaphore_counter;
 };
-VK_DEFINE_HANDLE_CASTS(vn_queue, base.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
+VK_DEFINE_HANDLE_CASTS(vn_queue, base.base.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
 enum vn_sync_type {
    /* no payload */
