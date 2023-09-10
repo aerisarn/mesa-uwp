@@ -198,3 +198,6 @@ spec@intel_shader_atomic_float_minmax@execution@ssbo-atomiccompswap-float-nan,Cr
 spec@intel_shader_atomic_float_minmax@execution@ssbo-atomiccompswap-float-negative-zero,Crash
 spec@!opengl 1.1@line-flat-clip-color,Fail
 spec@intel_shader_atomic_float_minmax@execution@shared-atomiccompswap-float,Crash
+spec@arb_cull_distance@basic-cull-3,Crash
+spec@arb_cull_distance@basic-cull-4,Crash
+spec@arb_cull_distance@vs-cull-distance-vertex-outside-cull-volume,Crash

@@ -207,7 +207,6 @@ spec@!opengl 1.5@depth-tex-compare,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
 spec@!opengl 3.2@layered-rendering@clear-color-mismatched-layer-count,Fail
-spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend-pattern_gles2,Fail
 spec@arb_clear_texture@arb_clear_texture-depth,Fail
 spec@arb_copy_image@arb_copy_image-formats,Fail
@@ -679,3 +678,6 @@ spec@arb_viewport_array@display-list,Fail
 spec@arb_gl_spirv@execution@ssbo@unsized-array,Fail
 spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
+spec@arb_cull_distance@basic-cull-3,Crash
+spec@arb_cull_distance@basic-cull-4,Crash
+spec@arb_cull_distance@vs-cull-distance-vertex-outside-cull-volume,Crash
