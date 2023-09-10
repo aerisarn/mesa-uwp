@@ -29,9 +29,6 @@ vn_queue_fini(struct vn_queue *queue)
    if (queue->wait_fence != VK_NULL_HANDLE) {
       vn_DestroyFence(dev_handle, queue->wait_fence, NULL);
    }
-   if (queue->sync_fence != VK_NULL_HANDLE) {
-      vn_DestroyFence(dev_handle, queue->sync_fence, NULL);
-   }
    if (queue->sparse_semaphore != VK_NULL_HANDLE) {
       vn_DestroySemaphore(dev_handle, queue->sparse_semaphore, NULL);
    }

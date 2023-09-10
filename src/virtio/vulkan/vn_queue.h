@@ -29,9 +29,6 @@ struct vn_queue {
    /* wait fence used for vn_QueueWaitIdle */
    VkFence wait_fence;
 
-   /* sync fence used for Android wsi */
-   VkFence sync_fence;
-
    /* semaphore for gluing vkQueueSubmit feedback commands to
     * vkQueueBindSparse
     */
