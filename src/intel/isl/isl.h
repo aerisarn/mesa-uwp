@@ -572,19 +572,32 @@ enum isl_txc {
  * clearly distinguish it from Yf and Ys.
  */
 enum isl_tiling {
-   ISL_TILING_LINEAR = 0, /**< Linear, or no tiling */
-   ISL_TILING_W, /**< W tiling */
-   ISL_TILING_X, /**< X tiling */
-   ISL_TILING_Y0, /**< Legacy Y tiling */
-   ISL_TILING_SKL_Yf, /**< Standard 4K tiling. The 'f' means "four". */
-   ISL_TILING_SKL_Ys, /**< Standard 64K tiling. The 's' means "sixty-four". */
-   ISL_TILING_ICL_Yf, /**< Standard 4K tiling. The 'f' means "four". */
-   ISL_TILING_ICL_Ys, /**< Standard 64K tiling. The 's' means "sixty-four". */
-   ISL_TILING_4,  /**< 4K tiling. */
-   ISL_TILING_64,  /**< 64K tiling.*/
-   ISL_TILING_HIZ, /**< Tiling format for HiZ surfaces */
-   ISL_TILING_CCS, /**< Tiling format for CCS surfaces */
-   ISL_TILING_GFX12_CCS, /**< Tiling format for Gfx12 CCS surfaces */
+   /** Linear, or no tiling */
+   ISL_TILING_LINEAR = 0,
+   /** W tiling */
+   ISL_TILING_W,
+   /** X tiling */
+   ISL_TILING_X,
+   /** Legacy Y tiling */
+   ISL_TILING_Y0,
+   /** Standard 4K tiling. The 'f' means "four". */
+   ISL_TILING_SKL_Yf,
+   /** Standard 64K tiling. The 's' means "sixty-four". */
+   ISL_TILING_SKL_Ys,
+   /** Standard 4K tiling. The 'f' means "four". */
+   ISL_TILING_ICL_Yf,
+   /** Standard 64K tiling. The 's' means "sixty-four". */
+   ISL_TILING_ICL_Ys,
+   /** 4K tiling. */
+   ISL_TILING_4,
+   /** 64K tiling.*/
+   ISL_TILING_64,
+   /** Tiling format for HiZ surfaces */
+   ISL_TILING_HIZ,
+   /** Tiling format for CCS surfaces */
+   ISL_TILING_CCS,
+   /** Tiling format for Gfx12 CCS surfaces */
+   ISL_TILING_GFX12_CCS,
 };
 
 /**
@@ -1359,9 +1372,12 @@ struct isl_extent4d {
  * Describes a single channel of an isl_format
  */
 struct isl_channel_layout {
-   enum isl_base_type type; /**< Channel data encoding */
-   uint8_t start_bit; /**< Bit at which this channel starts */
-   uint8_t bits; /**< Size in bits */
+   /** Channel data encoding */
+   enum isl_base_type type;
+   /** Bit at which this channel starts */
+   uint8_t start_bit;
+   /** Size in bits */
+   uint8_t bits;
 };
 
 /**
@@ -1374,22 +1390,34 @@ struct isl_channel_layout {
  * is `(w=1, h=1, d=1)`.
  */
 struct isl_format_layout {
-   enum isl_format format; /**< Format */
+   /** Format */
+   enum isl_format format;
 
-   uint16_t bpb; /**< Bits per block */
-   uint8_t bw; /**< Block width, in pixels */
-   uint8_t bh; /**< Block height, in pixels */
-   uint8_t bd; /**< Block depth, in pixels */
+   /** Bits per block */
+   uint16_t bpb;
+   /** Block width, in pixels */
+   uint8_t bw;
+   /** Block height, in pixels */
+   uint8_t bh;
+   /** Block depth, in pixels */
+   uint8_t bd;
 
    union {
       struct {
-         struct isl_channel_layout r; /**< Red channel */
-         struct isl_channel_layout g; /**< Green channel */
-         struct isl_channel_layout b; /**< Blue channel */
-         struct isl_channel_layout a; /**< Alpha channel */
-         struct isl_channel_layout l; /**< Luminance channel */
-         struct isl_channel_layout i; /**< Intensity channel */
-         struct isl_channel_layout p; /**< Palette channel */
+         /** Red channel */
+         struct isl_channel_layout r;
+         /** Green channel */
+         struct isl_channel_layout g;
+         /** Blue channel */
+         struct isl_channel_layout b;
+         /** Alpha channel */
+         struct isl_channel_layout a;
+         /** Luminance channel */
+         struct isl_channel_layout l;
+         /** Intensity channel */
+         struct isl_channel_layout i;
+         /** Palette channel */
+         struct isl_channel_layout p;
       } channels;
       struct isl_channel_layout channels_array[7];
    };
