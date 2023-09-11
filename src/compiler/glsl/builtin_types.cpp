@@ -39,10 +39,6 @@
 #include "util/macros.h"
 #include "main/consts_exts.h"
 
-/**
- * Declarations of struct builtins types.
- * @{
- */
 static const struct glsl_struct_field gl_DepthRangeParameters_fields[] = {
    glsl_struct_field(glsl_type::float_type, GLSL_PRECISION_HIGH, "near"),
    glsl_struct_field(glsl_type::float_type, GLSL_PRECISION_HIGH, "far"),
@@ -104,24 +100,6 @@ static const struct glsl_struct_field gl_FogParameters_fields[] = {
    glsl_struct_field(glsl_type::float_type, "scale"),
 };
 
-#define STRUCT_TYPE(NAME)                                         \
-   const glsl_type _struct_##NAME##_type =                        \
-      glsl_type(NAME##_fields, ARRAY_SIZE(NAME##_fields), #NAME); \
-   const glsl_type *const struct_##NAME##_type =                  \
-      &_struct_##NAME##_type;
-
-STRUCT_TYPE(gl_DepthRangeParameters)
-STRUCT_TYPE(gl_PointParameters)
-STRUCT_TYPE(gl_MaterialParameters)
-STRUCT_TYPE(gl_LightSourceParameters)
-STRUCT_TYPE(gl_LightModelParameters)
-STRUCT_TYPE(gl_LightModelProducts)
-STRUCT_TYPE(gl_LightProducts)
-STRUCT_TYPE(gl_FogParameters)
-
-#undef STRUCT_TYPE
-/** @} */
-
 /**
  * Code to populate a symbol table with the built-in types available in a
  * particular shading language version.  The table below contains tags every
@@ -131,9 +109,6 @@ STRUCT_TYPE(gl_FogParameters)
  */
 #define T(TYPE, MIN_GL, MIN_ES) \
    { glsl_type::TYPE##_type, MIN_GL, MIN_ES },
-
-#define S(TYPE, MIN_GL, MIN_ES) \
-   { TYPE##_type, MIN_GL, MIN_ES },
 
 static const struct builtin_type_versions {
    const glsl_type *const type;
@@ -225,8 +200,6 @@ static const struct builtin_type_versions {
    T(samplerCubeArrayShadow,          400, 320)
    T(sampler2DRectShadow,             140, 999)
 
-   S(struct_gl_DepthRangeParameters,  110, 100)
-
    T(image1D,                         420, 999)
    T(image2D,                         420, 310)
    T(image3D,                         420, 310)
@@ -265,17 +238,6 @@ static const struct builtin_type_versions {
 };
 
 #undef T
-#undef S
-
-static const glsl_type *const deprecated_types[] = {
-   struct_gl_PointParameters_type,
-   struct_gl_MaterialParameters_type,
-   struct_gl_LightSourceParameters_type,
-   struct_gl_LightModelParameters_type,
-   struct_gl_LightModelProducts_type,
-   struct_gl_LightProducts_type,
-   struct_gl_FogParameters_type,
-};
 
 static inline void
 add_type(glsl_symbol_table *symbols, const glsl_type *const type)
@@ -298,13 +260,30 @@ _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state)
       }
    }
 
-   /* Add deprecated structure types.  While these were deprecated in 1.30,
-    * they're still present.  We've removed them in 1.40+ (OpenGL 3.1+).
+   /* Note: use glsl_type::get_struct_instance() to get the properly cached
+    * copy of the struct types.
     */
-   if (state->compat_shader || state->ARB_compatibility_enable) {
-      for (unsigned i = 0; i < ARRAY_SIZE(deprecated_types); i++) {
-         add_type(symbols, deprecated_types[i]);
+   {
+      #define GET_STRUCT_TYPE(NAME) glsl_type::get_struct_instance(NAME##_fields, ARRAY_SIZE(NAME##_fields), #NAME)
+
+      if (state->is_version(110, 100)) {
+         add_type(symbols, GET_STRUCT_TYPE(gl_DepthRangeParameters));
       }
+
+      /* Add deprecated structure types.  While these were deprecated in 1.30,
+      * they're still present.  We've removed them in 1.40+ (OpenGL 3.1+).
+      */
+      if (state->compat_shader || state->ARB_compatibility_enable) {
+         add_type(symbols, GET_STRUCT_TYPE(gl_PointParameters));
+         add_type(symbols, GET_STRUCT_TYPE(gl_MaterialParameters));
+         add_type(symbols, GET_STRUCT_TYPE(gl_LightSourceParameters));
+         add_type(symbols, GET_STRUCT_TYPE(gl_LightModelParameters));
+         add_type(symbols, GET_STRUCT_TYPE(gl_LightModelProducts));
+         add_type(symbols, GET_STRUCT_TYPE(gl_LightProducts));
+         add_type(symbols, GET_STRUCT_TYPE(gl_FogParameters));
+      };
+
+      #undef GET_STRUCT_TYPE
    }
 
    /* Add types for enabled extensions.  They may have already been added

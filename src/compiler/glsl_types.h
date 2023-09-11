@@ -1224,11 +1224,6 @@ public:
 
    ~glsl_type();
 
-   /** Constructor for record types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-             const char *name, bool packed = false,
-             unsigned explicit_alignment = 0);
-
 private:
 
    static simple_mtx_t hash_mutex;
@@ -1249,6 +1244,11 @@ private:
    glsl_type(uint32_t gl_type, glsl_base_type base_type,
 	     enum glsl_sampler_dim dim, bool shadow, bool array,
 	     glsl_base_type type, const char *name);
+
+   /** Constructor for record types */
+   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
+	     const char *name, bool packed = false,
+	     unsigned explicit_alignment = 0);
 
    /** Constructor for interface types */
    glsl_type(const glsl_struct_field *fields, unsigned num_fields,
