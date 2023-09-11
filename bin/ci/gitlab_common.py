@@ -32,7 +32,7 @@ def read_token(token_arg: Optional[str]) -> str:
 
 def wait_for_pipeline(project, sha: str):
     """await until pipeline appears in Gitlab"""
-    print("⏲ for the pipeline to appear..", end="")
+    print(f"⏲ for the pipeline to appear in {project.path_with_namespace}..", end="")
     while True:
         pipelines = project.pipelines.list(sha=sha)
         if pipelines:
