@@ -678,6 +678,3 @@ spec@arb_viewport_array@display-list,Fail
 spec@arb_gl_spirv@execution@ssbo@unsized-array,Fail
 spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
-spec@arb_cull_distance@basic-cull-3,Crash
-spec@arb_cull_distance@basic-cull-4,Crash
-spec@arb_cull_distance@vs-cull-distance-vertex-outside-cull-volume,Crash
