@@ -117,7 +117,7 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
                              V_0367B8_TOKEN_EXCLUDE_VALUINST | V_0367B8_TOKEN_EXCLUDE_IMMEDIATE |
                              V_0367B8_TOKEN_EXCLUDE_INST;
          }
-         sqtt_token_mask |= S_0367B8_TOKEN_EXCLUDE(token_exclude);
+         sqtt_token_mask |= S_0367B8_TOKEN_EXCLUDE(token_exclude) | S_0367B8_BOP_EVENTS_TOKEN_INCLUDE(1);
 
          radeon_set_perfctr_reg(gfx_level, qf, cs, R_0367B8_SQ_THREAD_TRACE_TOKEN_MASK, sqtt_token_mask);
 
@@ -149,7 +149,8 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
                              V_008D18_TOKEN_EXCLUDE_VALUINST | V_008D18_TOKEN_EXCLUDE_IMMEDIATE |
                              V_008D18_TOKEN_EXCLUDE_INST;
          }
-         sqtt_token_mask |= S_008D18_TOKEN_EXCLUDE(token_exclude);
+         sqtt_token_mask |=
+            S_008D18_TOKEN_EXCLUDE(token_exclude) | S_008D18_BOP_EVENTS_TOKEN_INCLUDE(gfx_level == GFX10_3);
 
          radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK, sqtt_token_mask);
 
