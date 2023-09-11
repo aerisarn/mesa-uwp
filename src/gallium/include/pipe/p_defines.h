@@ -186,6 +186,7 @@ enum pipe_tex_reduction_mode {
  */
 enum pipe_map_flags
 {
+   PIPE_MAP_NONE = 0,
    /**
     * Resource contents read back (or accessed directly) at transfer
     * create time.
