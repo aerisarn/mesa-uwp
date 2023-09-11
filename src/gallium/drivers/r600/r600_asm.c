@@ -2508,11 +2508,16 @@ void r600_bytecode_disasm(struct r600_bytecode *bc)
 			o += print_swizzle(tex->src_sel_z);
 			o += print_swizzle(tex->src_sel_w);
 
-			o += fprintf(stderr, ",  RID:%d", tex->resource_id);
+			o += fprintf(stderr, ",  RID:%d ", tex->resource_id);
+                        if (tex->resource_index_mode)
+				fprintf(stderr, "RQ_%s", index_mode[tex->resource_index_mode]);
+
 			o += fprintf(stderr, ", SID:%d  ", tex->sampler_id);
 
 			if (tex->sampler_index_mode)
 				fprintf(stderr, "SQ_%s ", index_mode[tex->sampler_index_mode]);
+
+
 
 			if (tex->lod_bias)
 				fprintf(stderr, "LB:%d ", tex->lod_bias);
