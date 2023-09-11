@@ -1458,6 +1458,13 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
 
 
    if (tc->options.parse_renderpass_info) {
+      /* ensure this is treated as the first fb set if no fb activity has occurred */
+      if (!tc->renderpass_info_recording->has_draw &&
+          !tc->renderpass_info_recording->cbuf_clear &&
+          !tc->renderpass_info_recording->cbuf_load &&
+          !tc->renderpass_info_recording->zsbuf_load &&
+          !tc->renderpass_info_recording->zsbuf_clear_partial)
+         tc->batch_slots[tc->next].first_set_fb = false;
       /* store existing zsbuf data for possible persistence */
       uint8_t zsbuf = tc->renderpass_info_recording->has_draw ?
                       0 :
