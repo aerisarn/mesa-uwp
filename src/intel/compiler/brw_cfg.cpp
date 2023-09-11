@@ -439,18 +439,28 @@ void
 cfg_t::remove_block(bblock_t *block)
 {
    foreach_list_typed_safe (bblock_link, predecessor, link, &block->parents) {
+      /* cfg_t::validate checks that predecessor and successor lists are well
+       * formed, so it is known that the loop here would find exactly one
+       * block. Set old_link_kind to silence "variable used but not set"
+       * warnings.
+       */
+      bblock_link_kind old_link_kind = bblock_link_logical;
+
       /* Remove block from all of its predecessors' successor lists. */
       foreach_list_typed_safe (bblock_link, successor, link,
                                &predecessor->block->children) {
          if (block == successor->block) {
+            old_link_kind = successor->kind;
             successor->link.remove();
             ralloc_free(successor);
+            break;
          }
       }
 
       /* Add removed-block's successors to its predecessors' successor lists. */
       foreach_list_typed (bblock_link, successor, link, &block->children) {
          bool need_to_link = true;
+         bblock_link_kind new_link_kind = MAX2(old_link_kind, successor->kind);
 
          foreach_list_typed_safe (bblock_link, child, link, &predecessor->block->children) {
             /* There is already a link between the two blocks. If the links
@@ -462,7 +472,7 @@ cfg_t::remove_block(bblock_t *block)
              * kind and the proposed link kind.
              */
             if (child->block == successor->block) {
-               child->kind = MIN2(child->kind, successor->kind);
+               child->kind = MIN2(child->kind, new_link_kind);
                need_to_link = false;
                break;
             }
@@ -471,16 +481,24 @@ cfg_t::remove_block(bblock_t *block)
          if (need_to_link) {
             predecessor->block->children.push_tail(link(mem_ctx,
                                                         successor->block,
-                                                        successor->kind));
+                                                        new_link_kind));
          }
       }
    }
 
    foreach_list_typed_safe (bblock_link, successor, link, &block->children) {
+      /* cfg_t::validate checks that predecessor and successor lists are well
+       * formed, so it is known that the loop here would find exactly one
+       * block. Set old_link_kind to silence "variable used but not set"
+       * warnings.
+       */
+      bblock_link_kind old_link_kind = bblock_link_logical;
+
       /* Remove block from all of its childrens' parents lists. */
       foreach_list_typed_safe (bblock_link, predecessor, link,
                                &successor->block->parents) {
          if (block == predecessor->block) {
+            old_link_kind = predecessor->kind;
             predecessor->link.remove();
             ralloc_free(predecessor);
          }
@@ -489,6 +507,7 @@ cfg_t::remove_block(bblock_t *block)
       /* Add removed-block's predecessors to its successors' predecessor lists. */
       foreach_list_typed (bblock_link, predecessor, link, &block->parents) {
          bool need_to_link = true;
+         bblock_link_kind new_link_kind = MAX2(old_link_kind, predecessor->kind);
 
          foreach_list_typed_safe (bblock_link, parent, link, &successor->block->parents) {
             /* There is already a link between the two blocks. If the links
@@ -500,7 +519,7 @@ cfg_t::remove_block(bblock_t *block)
              * kind and the proposed link kind.
              */
             if (parent->block == predecessor->block) {
-               parent->kind = MIN2(parent->kind, predecessor->kind);
+               parent->kind = MIN2(parent->kind, new_link_kind);
                need_to_link = false;
                break;
             }
@@ -509,7 +528,7 @@ cfg_t::remove_block(bblock_t *block)
          if (need_to_link) {
             successor->block->parents.push_tail(link(mem_ctx,
                                                      predecessor->block,
-                                                     predecessor->kind));
+                                                     new_link_kind));
          }
       }
    }
@@ -696,11 +715,20 @@ cfg_t::validate(const char *stage_abbrev)
          foreach_list_typed(bblock_link, predecessor, link, &succ_block->parents) {
             if (predecessor->block == block) {
                cfgv_assert(!successor_links_back_to_predecessor);
+               cfgv_assert(successor->kind == predecessor->kind);
                successor_links_back_to_predecessor = true;
             }
          }
 
          cfgv_assert(successor_links_back_to_predecessor);
+
+         /* Each successor block must appear only once in the list of
+          * successors.
+          */
+         foreach_list_typed_from(bblock_link, later_successor, link,
+                                 &block->children, successor->link.next) {
+            cfgv_assert(successor->block != later_successor->block);
+         }
       }
 
       foreach_list_typed(bblock_link, predecessor, link, &block->parents) {
@@ -713,11 +741,44 @@ cfg_t::validate(const char *stage_abbrev)
          foreach_list_typed(bblock_link, successor, link, &pred_block->children) {
             if (successor->block == block) {
                cfgv_assert(!predecessor_links_back_to_successor);
+               cfgv_assert(successor->kind == predecessor->kind);
                predecessor_links_back_to_successor = true;
             }
          }
 
          cfgv_assert(predecessor_links_back_to_successor);
+
+         /* Each precessor block must appear only once in the list of
+          * precessors.
+          */
+         foreach_list_typed_from(bblock_link, later_precessor, link,
+                                 &block->parents, predecessor->link.next) {
+            cfgv_assert(predecessor->block != later_precessor->block);
+         }
+      }
+
+      backend_instruction *first_inst = block->start();
+      if (first_inst->opcode == BRW_OPCODE_DO) {
+         /* A block starting with DO should have exactly two successors. One
+          * is a physical link to the block starting after the WHILE
+          * instruction. The other is a logical link to the block starting the
+          * body of the loop.
+          */
+         bblock_t *physical_block = nullptr;
+         bblock_t *logical_block = nullptr;
+
+         foreach_list_typed(bblock_link, child, link, &block->children) {
+            if (child->kind == bblock_link_physical) {
+               cfgv_assert(physical_block == nullptr);
+               physical_block = child->block;
+            } else {
+               cfgv_assert(logical_block == nullptr);
+               logical_block = child->block;
+            }
+         }
+
+         cfgv_assert(logical_block != nullptr);
+         cfgv_assert(physical_block != nullptr);
       }
    }
 }
