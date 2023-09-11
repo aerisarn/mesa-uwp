@@ -4827,18 +4827,6 @@ type_image(nir_shader *nir, nir_variable *var)
    var->data.mode = nir_var_shader_temp;
 }
 
-static nir_variable *
-find_sampler_var(nir_shader *nir, unsigned texture_index)
-{
-   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
-      unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
-      if ((glsl_type_is_texture(glsl_without_array(var->type)) || glsl_type_is_sampler(glsl_without_array(var->type))) &&
-          (var->data.binding == texture_index || (var->data.binding < texture_index && var->data.binding + size > texture_index)))
-         return var;
-   }
-   return NULL;
-}
-
 static bool
 type_sampler_vars(nir_shader *nir, unsigned *sampler_mask)
 {
@@ -4860,7 +4848,7 @@ type_sampler_vars(nir_shader *nir, unsigned *sampler_mask)
                break;
             }
             *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
-            nir_variable *var = find_sampler_var(nir, tex->texture_index);
+            nir_variable *var = nir_find_sampler_variable_with_tex_index(nir, tex->texture_index);
             assert(var);
             if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
                continue;
@@ -4890,7 +4878,7 @@ type_sampler_vars(nir_shader *nir, unsigned *sampler_mask)
                continue;
             }
             *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
-            nir_variable *var = find_sampler_var(nir, tex->texture_index);
+            nir_variable *var = nir_find_sampler_variable_with_tex_index(nir, tex->texture_index);
             assert(var);
             if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
                continue;
