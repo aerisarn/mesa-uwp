@@ -450,8 +450,25 @@ cfg_t::remove_block(bblock_t *block)
 
       /* Add removed-block's successors to its predecessors' successor lists. */
       foreach_list_typed (bblock_link, successor, link, &block->children) {
-         if (!successor->block->is_successor_of(predecessor->block,
-                                                successor->kind)) {
+         bool need_to_link = true;
+
+         foreach_list_typed_safe (bblock_link, child, link, &predecessor->block->children) {
+            /* There is already a link between the two blocks. If the links
+             * are the same kind or the link is logical, do nothing. If the
+             * existing link is physical and the proposed new link is logical,
+             * promote the existing link to logical.
+             *
+             * This is accomplished by taking the minimum of the existing link
+             * kind and the proposed link kind.
+             */
+            if (child->block == successor->block) {
+               child->kind = MIN2(child->kind, successor->kind);
+               need_to_link = false;
+               break;
+            }
+         }
+
+         if (need_to_link) {
             predecessor->block->children.push_tail(link(mem_ctx,
                                                         successor->block,
                                                         successor->kind));
@@ -471,8 +488,25 @@ cfg_t::remove_block(bblock_t *block)
 
       /* Add removed-block's predecessors to its successors' predecessor lists. */
       foreach_list_typed (bblock_link, predecessor, link, &block->parents) {
-         if (!predecessor->block->is_predecessor_of(successor->block,
-                                                    predecessor->kind)) {
+         bool need_to_link = true;
+
+         foreach_list_typed_safe (bblock_link, parent, link, &successor->block->parents) {
+            /* There is already a link between the two blocks. If the links
+             * are the same kind or the link is logical, do nothing. If the
+             * existing link is physical and the proposed new link is logical,
+             * promote the existing link to logical.
+             *
+             * This is accomplished by taking the minimum of the existing link
+             * kind and the proposed link kind.
+             */
+            if (parent->block == predecessor->block) {
+               parent->kind = MIN2(parent->kind, predecessor->kind);
+               need_to_link = false;
+               break;
+            }
+         }
+
+         if (need_to_link) {
             successor->block->parents.push_tail(link(mem_ctx,
                                                      predecessor->block,
                                                      predecessor->kind));
@@ -653,7 +687,7 @@ cfg_t::validate(const char *stage_abbrev)
 {
    foreach_block(block, this) {
       foreach_list_typed(bblock_link, successor, link, &block->children) {
-         /* Each successor of a block must have a predecessor link back to
+         /* Each successor of a block must have one predecessor link back to
           * the block.
           */
          bool successor_links_back_to_predecessor = false;
@@ -661,8 +695,8 @@ cfg_t::validate(const char *stage_abbrev)
 
          foreach_list_typed(bblock_link, predecessor, link, &succ_block->parents) {
             if (predecessor->block == block) {
+               cfgv_assert(!successor_links_back_to_predecessor);
                successor_links_back_to_predecessor = true;
-               break;
             }
          }
 
@@ -670,7 +704,7 @@ cfg_t::validate(const char *stage_abbrev)
       }
 
       foreach_list_typed(bblock_link, predecessor, link, &block->parents) {
-         /* Each predecessor of a block must have a successor link back to
+         /* Each predecessor of a block must have one successor link back to
           * the block.
           */
          bool predecessor_links_back_to_successor = false;
@@ -678,8 +712,8 @@ cfg_t::validate(const char *stage_abbrev)
 
          foreach_list_typed(bblock_link, successor, link, &pred_block->children) {
             if (successor->block == block) {
+               cfgv_assert(!predecessor_links_back_to_successor);
                predecessor_links_back_to_successor = true;
-               break;
             }
          }
 
