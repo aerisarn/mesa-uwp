@@ -615,3 +615,54 @@ cfg_t::dump_cfg()
    }
    printf("}\n");
 }
+
+#define cfgv_assert(assertion)                                          \
+   {                                                                    \
+      if (!(assertion)) {                                               \
+         fprintf(stderr, "ASSERT: CFG validation in %s failed!\n", stage_abbrev); \
+         fprintf(stderr, "%s:%d: '%s' failed\n", __FILE__, __LINE__, #assertion);  \
+         abort();                                                       \
+      }                                                                 \
+   }
+
+#ifndef NDEBUG
+void
+cfg_t::validate(const char *stage_abbrev)
+{
+   foreach_block(block, this) {
+      foreach_list_typed(bblock_link, successor, link, &block->children) {
+         /* Each successor of a block must have a predecessor link back to
+          * the block.
+          */
+         bool successor_links_back_to_predecessor = false;
+         bblock_t *succ_block = successor->block;
+
+         foreach_list_typed(bblock_link, predecessor, link, &succ_block->parents) {
+            if (predecessor->block == block) {
+               successor_links_back_to_predecessor = true;
+               break;
+            }
+         }
+
+         cfgv_assert(successor_links_back_to_predecessor);
+      }
+
+      foreach_list_typed(bblock_link, predecessor, link, &block->parents) {
+         /* Each predecessor of a block must have a successor link back to
+          * the block.
+          */
+         bool predecessor_links_back_to_successor = false;
+         bblock_t *pred_block = predecessor->block;
+
+         foreach_list_typed(bblock_link, successor, link, &pred_block->children) {
+            if (successor->block == block) {
+               predecessor_links_back_to_successor = true;
+               break;
+            }
+         }
+
+         cfgv_assert(predecessor_links_back_to_successor);
+      }
+   }
+}
+#endif

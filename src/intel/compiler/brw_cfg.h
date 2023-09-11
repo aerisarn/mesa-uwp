@@ -325,6 +325,12 @@ struct cfg_t {
    void dump();
    void dump_cfg();
 
+#ifdef NDEBUG
+   void validate(UNUSED const char *stage_abbrev) { }
+#else
+   void validate(const char *stage_abbrev);
+#endif
+
    /**
     * Propagate bblock_t::end_ip_delta data through the CFG.
     */

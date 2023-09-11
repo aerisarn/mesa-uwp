@@ -2392,6 +2392,7 @@ vec4_visitor::run()
    emit_thread_end();
 
    calculate_cfg();
+   cfg->validate(_mesa_shader_stage_to_abbrev(stage));
 
    /* Before any optimization, push array accesses out to scratch
     * space where we need them to be.  This pass may allocate new
@@ -2417,6 +2418,7 @@ vec4_visitor::run()
          backend_shader::dump_instructions(filename);                  \
       }                                                                \
                                                                        \
+      cfg->validate(_mesa_shader_stage_to_abbrev(stage));              \
       progress = progress || this_progress;                            \
       this_progress;                                                   \
    })
