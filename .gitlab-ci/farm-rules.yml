@@ -238,9 +238,8 @@
     - !reference [.freedreno-farm-rules, rules]
 
 
-# Skip container & build jobs when disabling any farm, and run them if any farm
-# gets re-enabled.
-.re-enable-farm-rules:
+# Skip container & build jobs when disabling any farm
+.disable-farm-rules:
   rules:
     # changes(disabled) + exists(disabled) = disabling the farm
     - changes: [ .ci-farms-disabled/microsoft ]
@@ -270,6 +269,3 @@
     - changes: [ .ci-farms-disabled/freedreno ]
       exists: [ .ci-farms-disabled/freedreno ]
       when: never
-    # Any other change to ci-farms-disabled/* means some farm is getting re-enabled
-    - changes: [ .ci-farms-disabled/* ]
-      when: on_success
