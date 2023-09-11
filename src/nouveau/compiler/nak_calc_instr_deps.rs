@@ -295,73 +295,27 @@ fn assign_barriers(f: &mut Function) {
     }
 }
 
-struct CalcDelay {
-    cycle: u32,
-    ready: RegTracker<u32>,
-}
-
-impl CalcDelay {
-    pub fn new() -> CalcDelay {
-        CalcDelay {
-            cycle: 0,
-            ready: RegTracker::new(0),
-        }
-    }
-
-    fn set_reg_ready(&mut self, reg: &RegRef, ready: u32) {
-        for r in &mut self.ready[*reg] {
-            assert!(*r <= ready);
-            *r = ready;
-        }
-    }
-
-    fn reg_ready(&self, reg: &RegRef) -> u32 {
-        *self.ready[*reg].iter().max().unwrap_or(&0_u32)
-    }
-
-    fn instr_dsts_ready(&self, instr: &Instr) -> u32 {
-        instr
-            .dsts()
-            .iter()
-            .map(|dst| match dst {
-                Dst::None => 0,
-                Dst::Reg(reg) => self.reg_ready(reg),
-                _ => panic!("Should be run after RA"),
-            })
-            .max()
-            .unwrap_or(0)
-    }
-
-    fn set_instr_ready(&mut self, instr: &Instr, ready: u32) {
-        for src in instr.srcs() {
-            if let Some(reg) = src.get_reg() {
-                self.set_reg_ready(reg, ready);
+fn calc_delays(f: &mut Function) {
+    for b in f.blocks.iter_mut().rev() {
+        let mut cycle = 0_u32;
+        let mut ready = RegTracker::new(0_u32);
+        for instr in b.instrs.iter_mut().rev() {
+            let mut min_start = cycle + 1; /* TODO: co-issue */
+            if let Some(latency) = instr.get_latency() {
+                ready.for_each_instr_dst_mut(instr, |c| {
+                    min_start = max(min_start, *c + latency);
+                });
             }
-        }
-    }
 
-    fn calc_instr_delay(&mut self, instr: &mut Instr) {
-        let mut ready = self.cycle + 1; /* TODO: co-issue */
-        if let Some(latency) = instr.get_latency() {
-            ready = max(ready, self.instr_dsts_ready(instr) + latency);
-        }
+            let delay = min_start - cycle;
+            let delay = delay
+                .clamp(MIN_INSTR_DELAY.into(), MAX_INSTR_DELAY.into())
+                .try_into()
+                .unwrap();
+            instr.deps.set_delay(delay);
 
-        self.set_instr_ready(instr, ready);
-
-        let delay = ready - self.cycle;
-        let delay = delay.clamp(MIN_INSTR_DELAY.into(), MAX_INSTR_DELAY.into());
-        instr.deps.set_delay(u8::try_from(delay).unwrap());
-
-        self.cycle = ready;
-    }
-
-    pub fn calc_delay(&mut self, s: &mut Shader) {
-        for f in &mut s.functions {
-            for b in &mut f.blocks.iter_mut().rev() {
-                for instr in &mut b.instrs.iter_mut().rev() {
-                    self.calc_instr_delay(instr);
-                }
-            }
+            ready.for_each_instr_src_mut(instr, |c| *c = min_start);
+            cycle = min_start;
         }
     }
 }
@@ -400,8 +354,8 @@ impl Shader {
         } else {
             for f in &mut self.functions {
                 assign_barriers(f);
+                calc_delays(f);
             }
-            CalcDelay::new().calc_delay(self);
         }
     }
 }
