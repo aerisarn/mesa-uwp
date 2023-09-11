@@ -238,7 +238,7 @@ impl<'a> ShaderFromNir<'a> {
                     src: srcs[0],
                 });
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpBFind {
+                b.push_op(OpFlo {
                     dst: dst.into(),
                     src: tmp.into(),
                     signed: alu.op == nir_op_ifind_msb,
@@ -478,7 +478,7 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_ifind_msb | nir_op_ufind_msb => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpBFind {
+                b.push_op(OpFlo {
                     dst: dst.into(),
                     src: srcs[0],
                     signed: alu.op == nir_op_ifind_msb,

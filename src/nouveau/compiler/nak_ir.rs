@@ -2078,7 +2078,7 @@ impl fmt::Display for OpBrev {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpBFind {
+pub struct OpFlo {
     pub dst: Dst,
 
     #[src_type(ALU)]
@@ -2088,9 +2088,9 @@ pub struct OpBFind {
     pub return_shift_amount: bool,
 }
 
-impl fmt::Display for OpBFind {
+impl fmt::Display for OpFlo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BFIND")?;
+        write!(f, "FLO")?;
         if self.return_shift_amount {
             write!(f, ".SAMT")?;
         }
@@ -3618,7 +3618,7 @@ pub enum Op {
     FSetP(OpFSetP),
     DAdd(OpDAdd),
     Brev(OpBrev),
-    BFind(OpBFind),
+    Flo(OpFlo),
     IAbs(OpIAbs),
     INeg(OpINeg),
     IAdd3(OpIAdd3),
@@ -4040,7 +4040,7 @@ impl Instr {
             | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
-            Op::PopC(_) | Op::Brev(_) | Op::BFind(_) | Op::Prmt(_) => Some(15),
+            Op::PopC(_) | Op::Brev(_) | Op::Flo(_) | Op::Prmt(_) => Some(15),
         }
     }
 }

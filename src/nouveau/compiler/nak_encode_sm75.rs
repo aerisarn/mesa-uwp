@@ -550,7 +550,7 @@ impl SM75Instr {
         );
     }
 
-    fn encode_bfind(&mut self, op: &OpBFind) {
+    fn encode_flo(&mut self, op: &OpFlo) {
         self.encode_alu(
             0x100,
             Some(op.dst),
@@ -1564,7 +1564,7 @@ impl SM75Instr {
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::Brev(op) => si.encode_brev(&op),
-            Op::BFind(op) => si.encode_bfind(&op),
+            Op::Flo(op) => si.encode_flo(&op),
             Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::IAdd3X(op) => si.encode_iadd3x(&op),
