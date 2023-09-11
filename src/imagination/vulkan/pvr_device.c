@@ -148,6 +148,7 @@ static const struct pvr_drm_device_config pvr_drm_configs[] = {
 
 static const struct vk_instance_extension_table pvr_instance_extensions = {
    .KHR_display = PVR_USE_WSI_PLATFORM_DISPLAY,
+   .KHR_external_fence_capabilities = true,
    .KHR_external_memory_capabilities = true,
    .KHR_get_display_properties2 = PVR_USE_WSI_PLATFORM_DISPLAY,
    .KHR_get_physical_device_properties2 = true,
@@ -168,6 +169,8 @@ static void pvr_physical_device_get_supported_extensions(
        * test fail
        */
       .KHR_driver_properties = false,
+      .KHR_external_fence = true,
+      .KHR_external_fence_fd = true,
       .KHR_external_memory = true,
       .KHR_external_memory_fd = true,
       .KHR_format_feature_flags2 = true,

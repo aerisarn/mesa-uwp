@@ -428,8 +428,8 @@ Vulkan 1.1 -- all DONE: anv, lvp, radv, tu, vn
   VK_KHR_descriptor_update_template                     DONE (anv, dzn, hasvk, lvp, nvk, panvk, radv, tu, v3dv, vn)
   VK_KHR_device_group                                   DONE (anv, dzn, hasvk, lvp, nvk, tu, v3dv, vn)
   VK_KHR_device_group_creation                          DONE (anv, hasvk, nvk, dzn, lvp, tu, v3dv, vn)
-  VK_KHR_external_fence                                 DONE (anv, hasvk, lvp, nvk, radv, tu, v3dv, vn)
-  VK_KHR_external_fence_capabilities                    DONE (anv, hasvk, lvp, nvk, radv, tu, v3dv, vn)
+  VK_KHR_external_fence                                 DONE (anv, hasvk, lvp, nvk, pvr, radv, tu, v3dv, vn)
+  VK_KHR_external_fence_capabilities                    DONE (anv, hasvk, lvp, nvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_external_memory                                DONE (anv, dzn, hasvk, lvp, nvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_external_memory_capabilities                   DONE (anv, dzn, hasvk, lvp, nvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_external_semaphore                             DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
@@ -506,7 +506,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_deferred_host_operations                       DONE (anv, hasvk, radv)
   VK_KHR_display                                        DONE (anv, pvr, radv, tu, v3dv)
   VK_KHR_display_swapchain                              not started
-  VK_KHR_external_fence_fd                              DONE (anv, hasvk, nvk, radv, tu, v3dv, vn)
+  VK_KHR_external_fence_fd                              DONE (anv, hasvk, nvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_external_fence_win32                           not started
   VK_KHR_external_memory_fd                             DONE (anv, dzn, hasvk, lvp, nvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_external_memory_win32                          DONE (dzn)
