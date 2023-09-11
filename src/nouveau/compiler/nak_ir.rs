@@ -3977,53 +3977,73 @@ impl Instr {
         }
     }
 
-    pub fn get_latency(&self) -> Option<u32> {
+    pub fn has_fixed_latency(&self) -> bool {
         match self.op {
+            // Float ALU
             Op::FAdd(_)
             | Op::FFma(_)
             | Op::FMnMx(_)
             | Op::FMul(_)
             | Op::FSet(_)
-            | Op::FSetP(_)
-            | Op::MuFu(_)
-            | Op::DAdd(_)
-            | Op::IAbs(_)
+            | Op::FSetP(_) => true,
+
+            // Multi-function unit is variable latency
+            Op::MuFu(_) => false,
+
+            // Double-precision float ALU
+            Op::DAdd(_) => false,
+
+            // Integer ALU
+            Op::Brev(_) | Op::Flo(_) | Op::PopC(_) => false,
+            Op::IAbs(_)
             | Op::INeg(_)
             | Op::IAdd3(_)
             | Op::IAdd3X(_)
             | Op::IMad(_)
             | Op::IMad64(_)
             | Op::IMnMx(_)
-            | Op::Lop3(_)
-            | Op::PLop3(_)
             | Op::ISetP(_)
-            | Op::Shf(_) => Some(6),
-            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) | Op::FRnd(_) => {
-                Some(15)
-            }
-            Op::Sel(_) => Some(15),
-            Op::CS2R(_) => None,
-            Op::S2R(_) => None,
-            Op::ALd(_) => None,
-            Op::ASt(_) => Some(15),
-            Op::Ipa(_) => None,
-            Op::Tex(_) => None,
-            Op::Tld(_) => None,
-            Op::Tld4(_) => None,
-            Op::Tmml(_) => None,
-            Op::Txd(_) => None,
-            Op::Txq(_) => None,
-            Op::SuLd(_) => None,
-            Op::SuSt(_) => None,
-            Op::SuAtom(_) => None,
-            Op::Ld(_) => None,
-            Op::Ldc(_) => None,
-            Op::St(_) => None,
-            Op::Atom(_) => None,
-            Op::AtomCas(_) => None,
-            Op::MemBar(_) => None,
-            Op::Bar(_) => None,
-            Op::Bra(_) | Op::Exit(_) => Some(15),
+            | Op::Lop3(_)
+            | Op::Shf(_) => true,
+
+            // Conversions are variable latency?!?
+            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::FRnd(_) => false,
+
+            // Move ops
+            Op::Mov(_) | Op::Prmt(_) | Op::Sel(_) => true,
+
+            // Predicate ops
+            Op::PLop3(_) => true,
+
+            // Texture ops
+            Op::Tex(_)
+            | Op::Tld(_)
+            | Op::Tld4(_)
+            | Op::Tmml(_)
+            | Op::Txd(_)
+            | Op::Txq(_) => false,
+
+            // Surface ops
+            Op::SuLd(_) | Op::SuSt(_) | Op::SuAtom(_) => false,
+
+            // Memory ops
+            Op::Ld(_)
+            | Op::Ldc(_)
+            | Op::St(_)
+            | Op::Atom(_)
+            | Op::AtomCas(_)
+            | Op::ALd(_)
+            | Op::ASt(_)
+            | Op::Ipa(_)
+            | Op::MemBar(_) => false,
+
+            // Control-flow ops
+            Op::Bra(_) | Op::Exit(_) => true,
+
+            // Miscellaneous ops
+            Op::Bar(_) | Op::CS2R(_) | Op::S2R(_) => false,
+
+            // Virtual ops
             Op::Undef(_)
             | Op::PhiSrcs(_)
             | Op::PhiDsts(_)
@@ -4033,7 +4053,20 @@ impl Instr {
             | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
-            Op::PopC(_) | Op::Brev(_) | Op::Flo(_) | Op::Prmt(_) => Some(15),
+        }
+    }
+
+    pub fn get_dst_latency(&self, dst_idx: usize) -> u32 {
+        debug_assert!(self.has_fixed_latency());
+        let file = match self.dsts()[dst_idx] {
+            Dst::None => return 0,
+            Dst::SSA(vec) => vec.file(),
+            Dst::Reg(reg) => reg.file(),
+        };
+        if file.is_predicate() {
+            13
+        } else {
+            6
         }
     }
 }

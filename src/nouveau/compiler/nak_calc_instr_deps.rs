@@ -231,7 +231,7 @@ fn assign_barriers(f: &mut Function) {
                 wait_mask &= !(1 << bar);
             }
 
-            if instr.get_latency().is_some() {
+            if instr.has_fixed_latency() {
                 continue;
             }
 
@@ -301,10 +301,15 @@ fn calc_delays(f: &mut Function) {
         let mut ready = RegTracker::new(0_u32);
         for instr in b.instrs.iter_mut().rev() {
             let mut min_start = cycle + 1; /* TODO: co-issue */
-            if let Some(latency) = instr.get_latency() {
-                ready.for_each_instr_dst_mut(instr, |c| {
-                    min_start = max(min_start, *c + latency);
-                });
+            if instr.has_fixed_latency() {
+                for (idx, dst) in instr.dsts().iter().enumerate() {
+                    if let Dst::Reg(reg) = dst {
+                        let latency = instr.get_dst_latency(idx);
+                        for c in &ready[*reg] {
+                            min_start = max(min_start, *c + latency);
+                        }
+                    }
+                }
             }
 
             let delay = min_start - cycle;
