@@ -130,12 +130,15 @@ radeon_set_uconfig_reg_seq(struct radeon_cmdbuf *cs, unsigned reg, unsigned num)
 }
 
 static inline void
-radeon_set_uconfig_reg_seq_perfctr(struct radeon_cmdbuf *cs, unsigned reg, unsigned num)
+radeon_set_uconfig_reg_seq_perfctr(enum amd_gfx_level gfx_level, enum radv_queue_family qf, struct radeon_cmdbuf *cs,
+                                   unsigned reg, unsigned num)
 {
+   const bool filter_cam_workaround = gfx_level >= GFX10 && qf == RADV_QUEUE_GENERAL;
+
    assert(reg >= CIK_UCONFIG_REG_OFFSET && reg < CIK_UCONFIG_REG_END);
    assert(cs->cdw + 2 + num <= cs->reserved_dw);
    assert(num);
-   radeon_emit(cs, PKT3(PKT3_SET_UCONFIG_REG, num, 1));
+   radeon_emit(cs, PKT3(PKT3_SET_UCONFIG_REG, num, 0) | PKT3_RESET_FILTER_CAM_S(filter_cam_workaround));
    radeon_emit(cs, (reg - CIK_UCONFIG_REG_OFFSET) >> 2);
 }
 
