@@ -315,10 +315,13 @@ if __name__ == "__main__":
             pipe = cur_project.pipelines.get(pipeline_id)
             REV = pipe.sha
         else:
-            cur_project = get_gitlab_project(gl, args.project)
             if not REV:
                 REV = check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
-            pipe = wait_for_pipeline(cur_project, REV)
+            cur_project = gl.projects.get("mesa/mesa")
+            pipe = wait_for_pipeline(cur_project, REV, timeout=10)
+            if not pipe:
+                cur_project = get_gitlab_project(gl, args.project)
+                pipe = wait_for_pipeline(cur_project, REV)
 
         print(f"Revision: {REV}")
         print(f"Pipeline: {pipe.web_url}")
