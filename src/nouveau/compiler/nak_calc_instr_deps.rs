@@ -10,8 +10,8 @@ use std::ops::{Index, IndexMut, Range};
 struct RegTracker<T> {
     reg: [T; 255],
     ureg: [T; 63],
-    pred: [T; 6],
-    upred: [T; 6],
+    pred: [T; 7],
+    upred: [T; 7],
 }
 
 impl<T: Copy> RegTracker<T> {
@@ -19,8 +19,8 @@ impl<T: Copy> RegTracker<T> {
         Self {
             reg: [v; 255],
             ureg: [v; 63],
-            pred: [v; 6],
-            upred: [v; 6],
+            pred: [v; 7],
+            upred: [v; 7],
         }
     }
 }
