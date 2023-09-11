@@ -125,6 +125,13 @@ radv_sqtt_emit_relocated_shaders(struct radv_cmd_buffer *cmd_buffer, struct radv
       radeon_emit(cs, va >> 8);
       radeon_emit(cs, S_00B024_MEM_BASE(va >> 40));
    }
+
+   /* MS */
+   if (pipeline->base.shaders[MESA_SHADER_MESH]) {
+      va = reloc->va[MESA_SHADER_MESH];
+
+      radeon_set_sh_reg(cs, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
+   }
 }
 
 static uint64_t

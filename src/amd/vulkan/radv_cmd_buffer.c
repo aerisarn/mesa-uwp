@@ -9111,8 +9111,9 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 
    const VkShaderStageFlags stages =
       VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | (task_shader ? VK_SHADER_STAGE_TASK_BIT_EXT : 0);
-   const bool pipeline_is_dirty = cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE &&
-                                  cmd_buffer->state.graphics_pipeline != cmd_buffer->state.emitted_graphics_pipeline;
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const bool pipeline_is_dirty =
+      cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE && pipeline != cmd_buffer->state.emitted_graphics_pipeline;
    const bool need_task_semaphore = task_shader && radv_flush_gang_leader_semaphore(cmd_buffer);
 
    ASSERTED const unsigned cdw_max =
@@ -9126,6 +9127,14 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    radv_emit_all_graphics_states(cmd_buffer, info);
    if (task_shader && pipeline_is_dirty) {
       radv_emit_compute_shader(pdevice, ace_cs, task_shader);
+
+      /* Relocate the task shader because RGP requires shaders to be contiguous in memory. */
+      if (pipeline->sqtt_shaders_reloc) {
+         const struct radv_sqtt_shaders_reloc *reloc = pipeline->sqtt_shaders_reloc;
+         const uint64_t va = reloc->va[MESA_SHADER_TASK];
+
+         radeon_set_sh_reg(ace_cs, R_00B830_COMPUTE_PGM_LO, va >> 8);
+      }
    }
 
    si_emit_cache_flush(cmd_buffer);
