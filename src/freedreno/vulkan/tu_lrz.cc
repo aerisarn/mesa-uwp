@@ -558,7 +558,6 @@ static struct A6XX_GRAS_LRZ_CNTL
 tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
                         const uint32_t a)
 {
-   struct tu_pipeline *pipeline = &cmd->state.pipeline->base;
    const struct tu_shader *fs = cmd->state.shaders[MESA_SHADER_FRAGMENT];
    bool z_test_enable = cmd->vk.dynamic_graphics_state.ds.depth.test_enable;
    bool z_write_enable = cmd->vk.dynamic_graphics_state.ds.depth.write_enable;
@@ -585,10 +584,13 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
       return gras_lrz_cntl;
    }
 
+   /* See comment in tu_pipeline about disabling LRZ write for blending. */
+   bool reads_dest = cmd->state.blend_reads_dest;
+
    gras_lrz_cntl.enable = true;
    gras_lrz_cntl.lrz_write =
       z_write_enable &&
-      !(pipeline->lrz.lrz_status & TU_LRZ_FORCE_DISABLE_WRITE) &&
+      !reads_dest &&
       !(fs->fs.lrz.status & TU_LRZ_FORCE_DISABLE_WRITE);
    gras_lrz_cntl.z_test_enable = z_write_enable;
    gras_lrz_cntl.z_bounds_enable = z_bounds_enable;
@@ -596,9 +598,6 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    gras_lrz_cntl.dir_write = cmd->state.lrz.gpu_dir_tracking;
    gras_lrz_cntl.disable_on_wrong_dir = cmd->state.lrz.gpu_dir_tracking;
 
-
-   /* See comment in tu_pipeline about disabling LRZ write for blending. */
-   bool reads_dest = cmd->state.blend_reads_dest;
 
    /* LRZ is disabled until it is cleared, which means that one "wrong"
     * depth test or shader could disable LRZ until depth buffer is cleared.

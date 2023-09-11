@@ -3020,8 +3020,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    cmd->state.pipeline = tu_pipeline_to_graphics(pipeline);
    cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS | TU_CMD_DIRTY_SHADER_CONSTS |
-                       TU_CMD_DIRTY_VS_PARAMS | TU_CMD_DIRTY_LRZ |
-                       TU_CMD_DIRTY_PROGRAM;
+                       TU_CMD_DIRTY_VS_PARAMS | TU_CMD_DIRTY_PROGRAM;
 
    tu_bind_vs(cmd, pipeline->shaders[MESA_SHADER_VERTEX]);
    tu_bind_tcs(cmd, pipeline->shaders[MESA_SHADER_TESS_CTRL]);
@@ -3067,8 +3066,13 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.rp.sysmem_single_prim_mode = true;
    }
 
-   if (pipeline->lrz.blend_valid)
-      cmd->state.blend_reads_dest = pipeline->lrz.lrz_status & TU_LRZ_READS_DEST;
+   if (pipeline->lrz_blend.valid) {
+      if (cmd->state.blend_reads_dest != pipeline->lrz_blend.reads_dest) {
+         cmd->state.blend_reads_dest = pipeline->lrz_blend.reads_dest;
+         cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+      }
+   }
+   cmd->state.pipeline_blend_lrz = pipeline->lrz_blend.valid;
 
    if (pipeline->bandwidth.valid)
       cmd->state.bandwidth = pipeline->bandwidth;

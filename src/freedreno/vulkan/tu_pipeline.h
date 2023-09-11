@@ -36,11 +36,10 @@ enum tu_dynamic_state
 
 struct cache_entry;
 
-struct tu_lrz_pipeline
+struct tu_lrz_blend
 {
-   uint32_t lrz_status;
-
-   bool blend_valid;
+   bool valid;
+   bool reads_dest;
 };
 
 struct tu_bandwidth
@@ -158,7 +157,7 @@ struct tu_pipeline
 
    struct tu_program_state program;
 
-   struct tu_lrz_pipeline lrz;
+   struct tu_lrz_blend lrz_blend;
    struct tu_bandwidth bandwidth;
 
    void *executables_mem_ctx;

@@ -483,6 +483,8 @@ struct tu_cmd_state
    bool stencil_back_write;
    bool pipeline_feedback_loop_ds;
 
+   bool pipeline_blend_lrz;
+
    /* VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT and
     * VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT are allowed to run simultaniously,
     * but they use the same {START,STOP}_PRIMITIVE_CTRS control.

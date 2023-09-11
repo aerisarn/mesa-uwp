@@ -2159,7 +2159,8 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
          pipeline->output = library->base.output;
-         pipeline->lrz.lrz_status |= library->base.lrz.lrz_status;
+         pipeline->lrz_blend.reads_dest |= library->base.lrz_blend.reads_dest;
+         pipeline->lrz_blend.valid |= library->base.lrz_blend.valid;
          pipeline->prim_order = library->base.prim_order;
       }
 
@@ -2956,13 +2957,12 @@ static const enum mesa_vk_dynamic_graphics_state tu_blend_lrz_state[] = {
 };
 
 static void
-tu_emit_blend_lrz(struct tu_lrz_pipeline *lrz,
+tu_emit_blend_lrz(struct tu_lrz_blend *lrz,
                   const struct vk_color_blend_state *cb,
                   const struct vk_render_pass_state *rp)
 {
-   if (tu6_calc_blend_lrz(cb, rp))
-      lrz->lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE | TU_LRZ_READS_DEST;
-   lrz->blend_valid = true;
+   lrz->reads_dest = tu6_calc_blend_lrz(cb, rp);
+   lrz->valid = true;
 }
 
 static const enum mesa_vk_dynamic_graphics_state tu_blend_state[] = {
@@ -3417,7 +3417,7 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
               builder->graphics_state.ms->alpha_to_one_enable,
               builder->graphics_state.ms->sample_mask);
    if (EMIT_STATE(blend_lrz, attachments_valid))
-      tu_emit_blend_lrz(&pipeline->lrz, cb,
+      tu_emit_blend_lrz(&pipeline->lrz_blend, cb,
                         builder->graphics_state.rp);
    if (EMIT_STATE(bandwidth, attachments_valid))
       tu_calc_bandwidth(&pipeline->bandwidth, cb,
@@ -3605,7 +3605,7 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
               cmd->vk.dynamic_graphics_state.ms.sample_mask);
    if (EMIT_STATE(blend_lrz) ||
        ((cmd->state.dirty & TU_CMD_DIRTY_SUBPASS) &&
-        !cmd->state.pipeline->base.lrz.blend_valid)) {
+        !cmd->state.pipeline_blend_lrz)) {
       bool blend_reads_dest = tu6_calc_blend_lrz(&cmd->vk.dynamic_graphics_state.cb,
                                                  &cmd->state.vk_rp);
       if (blend_reads_dest != cmd->state.blend_reads_dest) {
