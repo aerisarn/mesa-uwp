@@ -481,6 +481,7 @@ struct tu_cmd_state
    bool blend_reads_dest;
    bool stencil_front_write;
    bool stencil_back_write;
+   bool pipeline_feedback_loop_ds;
 
    /* VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT and
     * VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT are allowed to run simultaniously,

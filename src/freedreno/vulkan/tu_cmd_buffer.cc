@@ -3106,6 +3106,13 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.per_view_viewport = pipeline->program.per_view_viewport;
       cmd->state.dirty |= TU_CMD_DIRTY_PER_VIEW_VIEWPORT;
    }
+
+   if (cmd->state.pipeline->feedback_loop_ds !=
+       cmd->state.pipeline_feedback_loop_ds) {
+      cmd->state.pipeline_feedback_loop_ds =
+         cmd->state.pipeline->feedback_loop_ds;
+      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+   }
 }
 
 static void
@@ -4476,7 +4483,7 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    const struct tu_subpass *subpass = cmd->state.subpass;
 
    if ((fs->variant->has_kill ||
-        cmd->state.pipeline->feedback_loop_ds) &&
+        cmd->state.pipeline_feedback_loop_ds) &&
        (depth_write || stencil_write)) {
       zmode = (cmd->state.lrz.valid && cmd->state.lrz.enabled)
                  ? A6XX_EARLY_LRZ_LATE_Z
