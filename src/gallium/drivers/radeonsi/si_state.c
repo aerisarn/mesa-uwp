@@ -5735,7 +5735,7 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx)
       si_pm4_set_reg(pm4, R_028408_VGT_INDX_OFFSET, 0);
    }
 
-   if (sscreen->info.gfx_level == GFX9) {
+   if (sctx->gfx_level == GFX9) {
       si_pm4_set_reg(pm4, R_00B414_SPI_SHADER_PGM_HI_LS,
                      S_00B414_MEM_BASE(sscreen->info.address32_hi >> 8));
       si_pm4_set_reg(pm4, R_00B214_SPI_SHADER_PGM_HI_ES,
