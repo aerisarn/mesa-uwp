@@ -1,15 +1,13 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::nak_ir::*;
 use crate::{GetDebugFlags, DEBUG};
 
 use std::cmp::max;
-use std::ops::Range;
+use std::ops::{Index, IndexMut, Range};
 
-struct RegTracker<T: Clone> {
+struct RegTracker<T> {
     reg: [T; 255],
     ureg: [T; 63],
     pred: [T; 6],
@@ -25,8 +23,12 @@ impl<T: Copy> RegTracker<T> {
             upred: [v; 6],
         }
     }
+}
 
-    fn get(&self, reg: &RegRef) -> &[T] {
+impl<T> Index<RegRef> for RegTracker<T> {
+    type Output = [T];
+
+    fn index(&self, reg: RegRef) -> &[T] {
         let range = reg.idx_range();
         let range = Range {
             start: usize::try_from(range.start).unwrap(),
@@ -41,8 +43,10 @@ impl<T: Copy> RegTracker<T> {
             RegFile::Mem => panic!("Not a register"),
         }
     }
+}
 
-    fn get_mut(&mut self, reg: &RegRef) -> &mut [T] {
+impl<T> IndexMut<RegRef> for RegTracker<T> {
+    fn index_mut(&mut self, reg: RegRef) -> &mut [T] {
         let range = reg.idx_range();
         let range = Range {
             start: usize::try_from(range.start).unwrap(),
@@ -158,7 +162,7 @@ impl AllocBarriers {
 
     fn take_reg_barrier_mask(&mut self, reg: &RegRef) -> u8 {
         let mut mask = 0_u8;
-        for d in self.deps.get_mut(reg) {
+        for d in &mut self.deps[*reg] {
             if *d != usize::MAX {
                 if let Some(bar) = self.bars.get_bar(*d) {
                     self.bars.free_bar(bar);
@@ -170,7 +174,7 @@ impl AllocBarriers {
     }
 
     fn set_reg_dep(&mut self, reg: &RegRef, dep: usize) {
-        for d in self.deps.get_mut(reg) {
+        for d in &mut self.deps[*reg] {
             *d = dep;
         }
     }
@@ -260,14 +264,14 @@ impl CalcDelay {
     }
 
     fn set_reg_ready(&mut self, reg: &RegRef, ready: u32) {
-        for r in self.ready.get_mut(reg) {
+        for r in &mut self.ready[*reg] {
             assert!(*r <= ready);
             *r = ready;
         }
     }
 
     fn reg_ready(&self, reg: &RegRef) -> u32 {
-        *self.ready.get(reg).iter().max().unwrap_or(&0_u32)
+        *self.ready[*reg].iter().max().unwrap_or(&0_u32)
     }
 
     fn instr_dsts_ready(&self, instr: &Instr) -> u32 {
