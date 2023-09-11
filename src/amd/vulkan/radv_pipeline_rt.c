@@ -263,7 +263,8 @@ radv_rt_fill_stage_info(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, st
          RADV_FROM_HANDLE(radv_pipeline, pipeline, pCreateInfo->pLibraryInfo->pLibraries[i]);
          struct radv_ray_tracing_pipeline *library_pipeline = radv_pipeline_to_ray_tracing(pipeline);
          for (unsigned j = 0; j < library_pipeline->stage_count; ++j) {
-            stages[idx].nir = vk_pipeline_cache_object_ref(library_pipeline->stages[j].nir);
+            if (library_pipeline->stages[j].nir)
+               stages[idx].nir = vk_pipeline_cache_object_ref(library_pipeline->stages[j].nir);
             if (library_pipeline->stages[j].shader)
                stages[idx].shader = vk_pipeline_cache_object_ref(library_pipeline->stages[j].shader);
 
