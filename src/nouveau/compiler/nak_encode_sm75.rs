@@ -540,6 +540,31 @@ impl SM75Instr {
         );
     }
 
+    fn encode_brev(&mut self, op: &OpBrev) {
+        self.encode_alu(
+            0x101,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+    }
+
+    fn encode_bfind(&mut self, op: &OpBFind) {
+        self.encode_alu(
+            0x100,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+        self.set_pred_dst(81..84, Dst::None);
+        self.set_field(74..75, op.return_shift_amount as u8);
+        self.set_field(73..74, op.signed as u8);
+        let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
+        self.set_field(63..64, not_mod)
+    }
+
     fn encode_iabs(&mut self, op: &OpIAbs) {
         self.encode_alu(
             0x013,
@@ -687,6 +712,19 @@ impl SM75Instr {
         self.set_pred_src(87..90, 90, SrcRef::False.into());
     }
 
+    fn encode_popc(&mut self, op: &OpPopC) {
+        self.encode_alu(
+            0x109,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+
+        let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
+        self.set_field(63..64, not_mod)
+    }
+
     fn encode_shf(&mut self, op: &OpShf) {
         self.encode_alu(
             0x019,
@@ -792,6 +830,16 @@ impl SM75Instr {
             ALUSrc::None,
         );
         self.set_field(72..76, op.quad_lanes);
+    }
+
+    fn encode_prmt(&mut self, op: &OpPrmt) {
+        self.encode_alu(
+            0x16,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::Imm32(op.selection.inner()),
+            ALUSrc::from_src(&op.srcs[1]),
+        );
     }
 
     fn encode_sel(&mut self, op: &OpSel) {
@@ -1494,54 +1542,6 @@ impl SM75Instr {
         self.set_field(72..80, op.idx);
     }
 
-    fn encode_popc(&mut self, op: &OpPopC) {
-        self.encode_alu(
-            0x109,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src),
-            ALUSrc::None,
-        );
-
-        let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
-        self.set_field(63..64, not_mod)
-    }
-
-    fn encode_brev(&mut self, op: &OpBrev) {
-        self.encode_alu(
-            0x101,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src),
-            ALUSrc::None,
-        );
-    }
-
-    fn encode_bfind(&mut self, op: &OpBFind) {
-        self.encode_alu(
-            0x100,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src),
-            ALUSrc::None,
-        );
-        self.set_pred_dst(81..84, Dst::None);
-        self.set_field(74..75, op.return_shift_amount as u8);
-        self.set_field(73..74, op.signed as u8);
-        let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
-        self.set_field(63..64, not_mod)
-    }
-
-    fn encode_prmt(&mut self, op: &OpPrmt) {
-        self.encode_alu(
-            0x16,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::Imm32(op.selection.inner()),
-            ALUSrc::from_src(&op.srcs[1]),
-        );
-    }
-
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1563,6 +1563,8 @@ impl SM75Instr {
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
+            Op::Brev(op) => si.encode_brev(&op),
+            Op::BFind(op) => si.encode_bfind(&op),
             Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::IAdd3X(op) => si.encode_iadd3x(&op),
@@ -1571,12 +1573,14 @@ impl SM75Instr {
             Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
+            Op::PopC(op) => si.encode_popc(&op),
             Op::Shf(op) => si.encode_shf(&op),
             Op::F2F(op) => si.encode_f2f(&op),
             Op::F2I(op) => si.encode_f2i(&op),
             Op::I2F(op) => si.encode_i2f(&op),
             Op::FRnd(op) => si.encode_frnd(&op),
             Op::Mov(op) => si.encode_mov(&op),
+            Op::Prmt(op) => si.encode_prmt(&op),
             Op::Sel(op) => si.encode_sel(&op),
             Op::PLop3(op) => si.encode_plop3(&op),
             Op::Tex(op) => si.encode_tex(&op),
@@ -1602,10 +1606,6 @@ impl SM75Instr {
             Op::Bar(op) => si.encode_bar(&op),
             Op::CS2R(op) => si.encode_cs2r(&op),
             Op::S2R(op) => si.encode_s2r(&op),
-            Op::PopC(op) => si.encode_popc(&op),
-            Op::Brev(op) => si.encode_brev(&op),
-            Op::BFind(op) => si.encode_bfind(&op),
-            Op::Prmt(op) => si.encode_prmt(&op),
             _ => panic!("Unhandled instruction"),
         }
 

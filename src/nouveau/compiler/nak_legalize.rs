@@ -103,7 +103,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             swap_srcs_if_not_reg(src0, src1);
             copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
-        Op::IAbs(_) | Op::INeg(_) => (), /* Nothing to do */
+        Op::Brev(_) | Op::BFind(_) | Op::IAbs(_) | Op::INeg(_) => (),
         Op::IAdd3(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
@@ -179,6 +179,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             copy_src_if_not_reg(b, src0, RegFile::GPR);
             copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
+        Op::PopC(_) => (),
         Op::Shf(op) => {
             copy_src_if_not_reg(b, &mut op.low, RegFile::GPR);
             copy_src_if_not_reg(b, &mut op.high, RegFile::GPR);
@@ -188,9 +189,6 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
         | Op::I2F(_)
         | Op::Mov(_)
         | Op::FRnd(_)
-        | Op::PopC(_)
-        | Op::Brev(_)
-        | Op::BFind(_)
         | Op::Prmt(_) => (),
         Op::Sel(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
