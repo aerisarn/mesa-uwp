@@ -5,6 +5,7 @@ use crate::nak_ir::*;
 use crate::{GetDebugFlags, DEBUG};
 
 use std::cmp::max;
+use std::collections::HashSet;
 use std::ops::{Index, IndexMut, Range};
 
 struct RegTracker<T> {
@@ -21,6 +22,39 @@ impl<T: Copy> RegTracker<T> {
             ureg: [v; 63],
             pred: [v; 7],
             upred: [v; 7],
+        }
+    }
+
+    pub fn for_each_instr_src_mut(
+        &mut self,
+        instr: &Instr,
+        mut f: impl FnMut(&mut T),
+    ) {
+        if let PredRef::Reg(reg) = &instr.pred.pred_ref {
+            for i in &mut self[*reg] {
+                f(i);
+            }
+        }
+        for src in instr.srcs() {
+            if let SrcRef::Reg(reg) = &src.src_ref {
+                for i in &mut self[*reg] {
+                    f(i);
+                }
+            }
+        }
+    }
+
+    pub fn for_each_instr_dst_mut(
+        &mut self,
+        instr: &Instr,
+        mut f: impl FnMut(&mut T),
+    ) {
+        for dst in instr.dsts() {
+            if let Dst::Reg(reg) = dst {
+                for i in &mut self[*reg] {
+                    f(i);
+                }
+            }
         }
     }
 }
@@ -69,7 +103,8 @@ struct BarDep {
 }
 
 struct BarAlloc {
-    bars: u8,
+    num_bars: u8,
+    wr_bars: u8,
     bar_dep: [usize; 6],
     dep_bar: Vec<u8>,
 }
@@ -77,21 +112,25 @@ struct BarAlloc {
 impl BarAlloc {
     pub fn new() -> BarAlloc {
         BarAlloc {
-            bars: 6,
+            num_bars: 6,
+            wr_bars: 0,
             bar_dep: [usize::MAX; 6],
             dep_bar: Vec::new(),
         }
     }
 
-    pub fn get_dep(&self, bar: u8) -> Option<usize> {
-        assert!(bar < self.bars);
-        let dep = self.bar_dep[usize::from(bar)];
-        if dep == usize::MAX {
-            None
-        } else {
-            assert!(self.dep_bar[dep] == bar);
-            Some(dep)
-        }
+    pub fn bar_is_free(&self, bar: u8) -> bool {
+        assert!(bar < self.num_bars);
+        self.bar_dep[usize::from(bar)] == usize::MAX
+    }
+
+    pub fn is_wr_bar(&self, bar: u8) -> bool {
+        assert!(!self.bar_is_free(bar));
+        self.wr_bars & (1 << bar) != 0
+    }
+
+    pub fn is_rd_bar(&self, bar: u8) -> bool {
+        !self.is_wr_bar(bar)
     }
 
     pub fn get_bar(&self, dep: usize) -> Option<u8> {
@@ -104,146 +143,152 @@ impl BarAlloc {
         }
     }
 
-    fn alloc_dep(&mut self, bar: u8) -> BarDep {
+    pub fn free_bar(&mut self, bar: u8) {
+        assert!(bar < self.num_bars);
+        let dep = self.bar_dep[usize::from(bar)];
+        assert!(dep != usize::MAX);
+
+        self.wr_bars &= !(1 << bar);
+        self.bar_dep[usize::from(bar)] = usize::MAX;
+        self.dep_bar[dep] = u8::MAX;
+    }
+
+    pub fn free_some_bar(&mut self) -> u8 {
+        // Get the oldest by looking for the one with the smallest dep
+        let mut bar = 0;
+        for b in 1..self.num_bars {
+            if self.bar_dep[usize::from(b)] < self.bar_dep[usize::from(bar)] {
+                bar = b;
+            }
+        }
+        self.free_bar(bar);
+        bar
+    }
+
+    pub fn alloc_dep_for_bar(&mut self, bar: u8, is_write: bool) -> BarDep {
+        assert!(self.bar_is_free(bar));
+        assert!(self.wr_bars & (1 << bar) == 0);
+
         let dep = self.dep_bar.len();
         self.bar_dep[usize::from(bar)] = dep;
         self.dep_bar.push(bar);
+        if is_write {
+            self.wr_bars |= 1 << bar;
+        }
         BarDep { dep: dep, bar: bar }
     }
 
-    pub fn try_alloc(&mut self) -> Option<BarDep> {
-        for bar in 0..self.bars {
-            if self.bar_dep[usize::from(bar)] == usize::MAX {
-                return Some(self.alloc_dep(bar));
+    pub fn try_alloc_bar_dep(&mut self, is_write: bool) -> Option<BarDep> {
+        for bar in 0..self.num_bars {
+            if self.bar_is_free(bar) {
+                return Some(self.alloc_dep_for_bar(bar, is_write));
             }
         }
         None
     }
-
-    pub fn alloc(&mut self) -> (BarDep, bool) {
-        if let Some(bd) = self.try_alloc() {
-            (bd, false)
-        } else {
-            /* Get the oldest by looking for the one with the smallest dep */
-            let mut old_bar = 0;
-            let mut old_dep = self.bar_dep[0];
-            for bar in 1..self.bars {
-                let dep = self.bar_dep[usize::from(bar)];
-                if dep < old_dep {
-                    old_bar = bar;
-                    old_dep = dep;
-                }
-            }
-            self.free_bar(old_bar);
-            let bd = self.alloc_dep(old_bar);
-            (bd, true)
-        }
-    }
-
-    pub fn free_bar(&mut self, bar: u8) {
-        let dep = self.get_dep(bar).unwrap();
-        self.bar_dep[usize::from(bar)] = usize::MAX;
-        self.dep_bar[dep] = u8::MAX;
-    }
 }
 
-struct AllocBarriers {
-    deps: RegTracker<usize>,
-    bars: BarAlloc,
-}
+fn assign_barriers(f: &mut Function) {
+    let mut deps = RegTracker::new(usize::MAX);
+    let mut bars = BarAlloc::new();
 
-impl AllocBarriers {
-    pub fn new() -> AllocBarriers {
-        AllocBarriers {
-            deps: RegTracker::new(usize::MAX),
-            bars: BarAlloc::new(),
-        }
-    }
+    for b in f.blocks.iter_mut() {
+        for instr in b.instrs.iter_mut() {
+            let mut wait_mask = 0_u8;
+            if instr.is_branch() {
+                // For branch instructions, we grab everything
+                for bar in 0..bars.num_bars {
+                    if !bars.bar_is_free(bar) {
+                        wait_mask |= 1 << bar;
+                    }
+                }
+            } else {
+                deps.for_each_instr_src_mut(instr, |dep| {
+                    if *dep != usize::MAX {
+                        if let Some(bar) = bars.get_bar(*dep) {
+                            // We don't care about RaR deps
+                            if bars.is_wr_bar(bar) {
+                                wait_mask |= 1 << bar;
+                            }
+                        }
+                    }
+                });
+                deps.for_each_instr_dst_mut(instr, |dep| {
+                    if *dep != usize::MAX {
+                        if let Some(bar) = bars.get_bar(*dep) {
+                            wait_mask |= 1 << bar;
+                        }
+                    }
+                });
+            }
 
-    fn take_reg_barrier_mask(&mut self, reg: &RegRef) -> u8 {
-        let mut mask = 0_u8;
-        for d in &mut self.deps[*reg] {
-            if *d != usize::MAX {
-                if let Some(bar) = self.bars.get_bar(*d) {
-                    self.bars.free_bar(bar);
-                    mask |= 1_u8 << bar;
+            instr.deps.add_wt_bar_mask(wait_mask);
+
+            // Free any barriers we just waited on
+            while wait_mask != 0 {
+                let bar: u8 = wait_mask.trailing_zeros().try_into().unwrap();
+                bars.free_bar(bar);
+                wait_mask &= !(1 << bar);
+            }
+
+            if instr.get_latency().is_some() {
+                continue;
+            }
+
+            // Gather sources and destinations into a hash sets
+            let mut srcs = HashSet::new();
+            if let PredRef::Reg(reg) = &instr.pred.pred_ref {
+                for c in 0..reg.comps() {
+                    srcs.insert(reg.comp(c));
                 }
             }
-        }
-        mask
-    }
-
-    fn set_reg_dep(&mut self, reg: &RegRef, dep: usize) {
-        for d in &mut self.deps[*reg] {
-            *d = dep;
-        }
-    }
-
-    fn take_instr_read_barrier_mask(&mut self, instr: &Instr) -> u8 {
-        let mut bar_mask = 0_u8;
-        for src in instr.srcs() {
-            if let Some(reg) = src.get_reg() {
-                bar_mask |= self.take_reg_barrier_mask(reg);
-            }
-        }
-        bar_mask
-    }
-
-    fn set_instr_read_dep(&mut self, instr: &Instr, dep: usize) {
-        for src in instr.srcs() {
-            if let Some(reg) = src.get_reg() {
-                self.set_reg_dep(reg, dep);
-            }
-        }
-    }
-
-    fn take_instr_write_barrier_mask(&mut self, instr: &Instr) -> u8 {
-        let mut bar_mask = 0_u8;
-        for dst in instr.dsts() {
-            if let Some(reg) = dst.as_reg() {
-                bar_mask |= self.take_reg_barrier_mask(reg);
-            }
-        }
-        bar_mask
-    }
-
-    fn set_instr_write_dep(&mut self, instr: &Instr, dep: usize) {
-        for dst in instr.dsts() {
-            if let Some(reg) = dst.as_reg() {
-                self.set_reg_dep(reg, dep);
-            }
-        }
-    }
-
-    pub fn alloc_barriers(&mut self, s: &mut Shader) {
-        for f in &mut s.functions {
-            for b in &mut f.blocks.iter_mut() {
-                for instr in &mut b.instrs.iter_mut() {
-                    /* TODO: Don't barrier read-after-read */
-                    let wait = self.take_instr_read_barrier_mask(instr)
-                        | self.take_instr_write_barrier_mask(instr);
-                    instr.deps.add_wt_bar_mask(wait);
-
-                    if instr.get_latency().is_some() {
-                        continue;
+            for src in instr.srcs() {
+                if let SrcRef::Reg(reg) = &src.src_ref {
+                    for c in 0..reg.comps() {
+                        srcs.insert(reg.comp(c));
                     }
+                }
+            }
 
-                    if !instr.srcs().is_empty() {
-                        let (bd, stall) = self.bars.alloc();
-                        if stall {
-                            instr.deps.add_wt_bar(bd.bar);
-                        }
-                        instr.deps.set_rd_bar(bd.bar);
-                        self.set_instr_read_dep(instr, bd.dep);
+            let mut dsts = HashSet::new();
+            for dst in instr.dsts() {
+                if let Dst::Reg(reg) = dst {
+                    for c in 0..reg.comps() {
+                        dsts.insert(reg.comp(c));
+                        // Remove any sources which this instruction overwrites.
+                        // We are going to set a write barrier for those so
+                        // there's no point in also setting a read barrier for
+                        // them.
+                        srcs.remove(&reg.comp(c));
                     }
-                    if !instr.dsts().is_empty() {
-                        let (bd, stall) = self.bars.alloc();
-                        if stall {
-                            instr.deps.add_wt_bar(bd.bar);
-                        }
-                        instr.deps.set_wr_bar(bd.bar);
-                        self.set_instr_write_dep(instr, bd.dep);
-                    }
+                }
+            }
+
+            // Note: It's okay to use hash sets for sources and destinations
+            // because we allocate a single barrier for the entire set of
+            // sources or destinations so the order of the set doesn't matter.
+
+            if !srcs.is_empty() {
+                let bd = bars.try_alloc_bar_dep(false).unwrap_or_else(|| {
+                    let bar = bars.free_some_bar();
+                    instr.deps.add_wt_bar(bar);
+                    bars.alloc_dep_for_bar(bar, false)
+                });
+                instr.deps.set_rd_bar(bd.bar);
+                for src in srcs {
+                    deps[src][0] = bd.dep;
+                }
+            }
+
+            if !dsts.is_empty() {
+                let bd = bars.try_alloc_bar_dep(true).unwrap_or_else(|| {
+                    let bar = bars.free_some_bar();
+                    instr.deps.add_wt_bar(bar);
+                    bars.alloc_dep_for_bar(bar, true)
+                });
+                instr.deps.set_wr_bar(bd.bar);
+                for dst in dsts {
+                    deps[dst][0] = bd.dep;
                 }
             }
         }
@@ -353,7 +398,9 @@ impl Shader {
         if DEBUG.serial() {
             self.assign_deps_serial();
         } else {
-            AllocBarriers::new().alloc_barriers(self);
+            for f in &mut self.functions {
+                assign_barriers(f);
+            }
             CalcDelay::new().calc_delay(self);
         }
     }
