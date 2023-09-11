@@ -3560,7 +3560,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx, unsigned index)
    }
 
    /* Framebuffer dimensions. */
-   /* PA_SC_WINDOW_SCISSOR_TL is set in si_init_cs_preamble_state */
+   /* PA_SC_WINDOW_SCISSOR_TL is set to 0,0 in gfx*_init_gfx_preamble_state */
    radeon_set_context_reg(R_028208_PA_SC_WINDOW_SCISSOR_BR,
                           S_028208_BR_X(state->width) | S_028208_BR_Y(state->height));
 
