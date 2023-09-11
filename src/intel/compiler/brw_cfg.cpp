@@ -180,7 +180,6 @@ cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
    bblock_t *entry = new_block();
    bblock_t *cur_if = NULL;    /**< BB ending with IF. */
    bblock_t *cur_else = NULL;  /**< BB ending with ELSE. */
-   bblock_t *cur_endif = NULL; /**< BB starting with ENDIF. */
    bblock_t *cur_do = NULL;    /**< BB starting with DO. */
    bblock_t *cur_while = NULL; /**< BB immediately following WHILE. */
    exec_list if_stack, else_stack, do_stack, while_stack;
@@ -206,7 +205,6 @@ cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
 
 	 cur_if = cur;
 	 cur_else = NULL;
-         cur_endif = NULL;
 
 	 /* Set up our immediately following block, full of "then"
 	  * instructions.
@@ -231,6 +229,8 @@ cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
 	 break;
 
       case BRW_OPCODE_ENDIF: {
+         bblock_t *cur_endif;
+
          if (cur->instructions.is_empty()) {
             /* New block was just created; use it. */
             cur_endif = cur;
