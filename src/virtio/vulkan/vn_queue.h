@@ -18,11 +18,6 @@
 struct vn_queue {
    struct vn_queue_base base;
 
-   struct vn_device *device;
-   uint32_t family;
-   uint32_t index;
-   uint32_t flags;
-
    /* only used if renderer supports multiple timelines */
    uint32_t ring_idx;
 

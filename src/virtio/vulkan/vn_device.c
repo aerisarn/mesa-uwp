@@ -24,7 +24,7 @@
 static void
 vn_queue_fini(struct vn_queue *queue)
 {
-   VkDevice dev_handle = vn_device_to_handle(queue->device);
+   VkDevice dev_handle = vk_device_to_handle(queue->base.base.base.device);
 
    if (queue->wait_fence != VK_NULL_HANDLE) {
       vn_DestroyFence(dev_handle, queue->wait_fence, NULL);
@@ -75,11 +75,6 @@ vn_queue_init(struct vn_device *dev,
    VkQueue queue_handle = vn_queue_to_handle(queue);
    vn_async_vkGetDeviceQueue2(dev->instance, vn_device_to_handle(dev),
                               &device_queue_info, &queue_handle);
-
-   queue->device = dev;
-   queue->family = queue_info->queueFamilyIndex;
-   queue->index = queue_index;
-   queue->flags = queue_info->flags;
 
    return VK_SUCCESS;
 }
