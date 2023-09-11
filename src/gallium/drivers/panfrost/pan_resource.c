@@ -4,6 +4,7 @@
  * Copyright (C) 2014-2017 Broadcom
  * Copyright (C) 2018-2019 Alyssa Rosenzweig
  * Copyright (C) 2019 Collabora, Ltd.
+ * Copyright (C) 2023 Amazon.com, Inc. or its affiliates
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -1267,6 +1268,39 @@ panfrost_should_linear_convert(struct panfrost_device *dev,
    } else {
       return false;
    }
+}
+
+struct panfrost_bo *
+panfrost_get_afbc_superblock_sizes(struct panfrost_context *ctx,
+                                   struct panfrost_resource *rsrc,
+                                   unsigned first_level, unsigned last_level,
+                                   unsigned *out_offsets)
+{
+   struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+   struct panfrost_device *dev = pan_device(ctx->base.screen);
+   struct panfrost_batch *batch;
+   struct panfrost_bo *bo;
+   unsigned metadata_size = 0;
+
+   for (int level = first_level; level <= last_level; ++level) {
+      struct pan_image_slice_layout *slice = &rsrc->image.layout.slices[level];
+      unsigned sz = slice->afbc.nr_blocks * sizeof(struct pan_afbc_block_info);
+      out_offsets[level - first_level] = metadata_size;
+      metadata_size += sz;
+   }
+
+   panfrost_flush_batches_accessing_rsrc(ctx, rsrc, "AFBC before size flush");
+   batch = panfrost_get_fresh_batch_for_fbo(ctx, "AFBC superblock sizes");
+   bo = panfrost_bo_create(dev, metadata_size, 0, "AFBC superblock sizes");
+
+   for (int level = first_level; level <= last_level; ++level) {
+      unsigned offset = out_offsets[level - first_level];
+      screen->vtbl.afbc_size(batch, rsrc, bo, offset, level);
+   }
+
+   panfrost_flush_batches_accessing_rsrc(ctx, rsrc, "AFBC after size flush");
+
+   return bo;
 }
 
 static void

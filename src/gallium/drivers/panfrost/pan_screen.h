@@ -99,6 +99,12 @@ struct panfrost_vtable {
    void (*compile_shader)(nir_shader *s, struct panfrost_compile_inputs *inputs,
                           struct util_dynarray *binary,
                           struct pan_shader_info *info);
+
+   /* Run a compute shader to get the compressed size of each superblock */
+   void (*afbc_size)(struct panfrost_batch *batch,
+                     struct panfrost_resource *src,
+                     struct panfrost_bo *metadata, unsigned offset,
+                     unsigned level);
 };
 
 struct panfrost_screen {

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2023 Amazon.com, Inc. or its affiliates.
  * Copyright (C) 2018 Alyssa Rosenzweig
  * Copyright (C) 2020 Collabora Ltd.
  * Copyright © 2017 Intel Corporation
@@ -37,6 +38,7 @@
 
 #include "genxml/gen_macros.h"
 
+#include "pan_afbc_cso.h"
 #include "pan_blend.h"
 #include "pan_blitter.h"
 #include "pan_bo.h"
@@ -3933,6 +3935,24 @@ panfrost_launch_afbc_shader(struct panfrost_batch *batch, void *cso,
    panfrost_launch_afbc_shader(batch, shaders->name##_cso, &constant_buffer,   \
                                nr_blocks);
 
+static void
+panfrost_afbc_size(struct panfrost_batch *batch, struct panfrost_resource *src,
+                   struct panfrost_bo *metadata, unsigned offset,
+                   unsigned level)
+{
+   struct pan_image_slice_layout *slice = &src->image.layout.slices[level];
+   struct panfrost_afbc_size_info consts = {
+      .src =
+         src->image.data.bo->ptr.gpu + src->image.data.offset + slice->offset,
+      .metadata = metadata->ptr.gpu + offset,
+   };
+
+   panfrost_batch_read_rsrc(batch, src, PIPE_SHADER_COMPUTE);
+   panfrost_batch_write_bo(batch, metadata, PIPE_SHADER_COMPUTE);
+
+   LAUNCH_AFBC_SHADER(size, batch, src, consts, slice->afbc.nr_blocks);
+}
+
 static void *
 panfrost_create_rasterizer_state(struct pipe_context *pctx,
                                  const struct pipe_rasterizer_state *cso)
@@ -4549,6 +4569,7 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
    screen->vtbl.init_polygon_list = init_polygon_list;
    screen->vtbl.get_compiler_options = GENX(pan_shader_get_compiler_options);
    screen->vtbl.compile_shader = GENX(pan_shader_compile);
+   screen->vtbl.afbc_size = panfrost_afbc_size;
 
    GENX(pan_blitter_init)
    (dev, &screen->blitter.bin_pool.base, &screen->blitter.desc_pool.base);

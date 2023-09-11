@@ -41,12 +41,23 @@ struct pan_afbc_shader_key {
 
 struct pan_afbc_shader_data {
    struct pan_afbc_shader_key key;
+   void *size_cso;
 };
 
 struct pan_afbc_shaders {
    struct hash_table *shaders;
    pthread_mutex_t lock;
 };
+
+struct pan_afbc_block_info {
+   uint32_t size;
+   uint32_t offset;
+};
+
+struct panfrost_afbc_size_info {
+   mali_ptr src;
+   mali_ptr metadata;
+} PACKED;
 
 void panfrost_afbc_context_init(struct panfrost_context *ctx);
 void panfrost_afbc_context_destroy(struct panfrost_context *ctx);
