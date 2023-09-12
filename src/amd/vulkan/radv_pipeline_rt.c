@@ -191,7 +191,6 @@ radv_rt_fill_group_info(struct radv_device *device, const struct radv_ray_tracin
          if (groups[idx].recursive_shader < pCreateInfo->stageCount) {
             capture_replay_blocks[groups[idx].recursive_shader] = handle->recursive_shader_alloc;
          } else if (groups[idx].recursive_shader != VK_SHADER_UNUSED_KHR) {
-            assert(stages[groups[idx].recursive_shader].shader);
             struct radv_shader *library_shader =
                container_of(stages[groups[idx].recursive_shader].shader, struct radv_shader, base);
             simple_mtx_lock(&library_shader->replay_mtx);
