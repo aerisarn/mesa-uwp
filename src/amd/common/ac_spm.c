@@ -496,7 +496,7 @@ bool ac_init_spm(const struct radeon_info *info,
       spm->num_muxsel_lines[s] = num_lines;
    }
 
-   /* RLC uses the following order: Global, SE0, SE1, SE2, SE3. */
+   /* RLC uses the following order: Global, SE0, SE1, SE2, SE3, SE4, SE5. */
    ac_spm_fill_muxsel_ram(spm, AC_SPM_SEGMENT_TYPE_GLOBAL, 0);
    offset += spm->num_muxsel_lines[AC_SPM_SEGMENT_TYPE_GLOBAL];
 
