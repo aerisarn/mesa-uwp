@@ -3277,6 +3277,16 @@ impl fmt::Display for OpCS2R {
     }
 }
 
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpKill {}
+
+impl fmt::Display for OpKill {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "KILL")
+    }
+}
+
 pub enum PixVal {
     MsCount,
     CovMask,
@@ -3685,6 +3695,7 @@ pub enum Op {
     Exit(OpExit),
     Bar(OpBar),
     CS2R(OpCS2R),
+    Kill(OpKill),
     PixLd(OpPixLd),
     S2R(OpS2R),
     Undef(OpUndef),
@@ -4002,6 +4013,7 @@ impl Instr {
             | Op::Atom(_)
             | Op::AtomCas(_)
             | Op::MemBar(_)
+            | Op::Kill(_)
             | Op::Bra(_)
             | Op::Exit(_)
             | Op::Bar(_)
@@ -4074,7 +4086,11 @@ impl Instr {
             Op::Bra(_) | Op::Exit(_) => true,
 
             // Miscellaneous ops
-            Op::Bar(_) | Op::CS2R(_) | Op::PixLd(_) | Op::S2R(_) => false,
+            Op::Bar(_)
+            | Op::CS2R(_)
+            | Op::Kill(_)
+            | Op::PixLd(_)
+            | Op::S2R(_) => false,
 
             // Virtual ops
             Op::Undef(_)

@@ -1536,6 +1536,11 @@ impl SM75Instr {
         self.set_field(72..80, op.idx);
     }
 
+    fn encode_kill(&mut self, op: &OpKill) {
+        self.set_opcode(0x95b);
+        self.set_pred_src(87..90, 90, SrcRef::True.into());
+    }
+
     fn encode_pixld(&mut self, op: &OpPixLd) {
         self.set_opcode(0x925);
         self.set_dst(op.dst);
@@ -1621,6 +1626,7 @@ impl SM75Instr {
             Op::Exit(op) => si.encode_exit(&op),
             Op::Bar(op) => si.encode_bar(&op),
             Op::CS2R(op) => si.encode_cs2r(&op),
+            Op::Kill(op) => si.encode_kill(&op),
             Op::PixLd(op) => si.encode_pixld(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             _ => panic!("Unhandled instruction"),

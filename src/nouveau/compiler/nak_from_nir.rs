@@ -1110,6 +1110,13 @@ impl<'a> ShaderFromNir<'a> {
                     data: data,
                 });
             }
+            nir_intrinsic_demote | nir_intrinsic_discard => {
+                b.push_op(OpKill {});
+            }
+            nir_intrinsic_demote_if | nir_intrinsic_discard_if => {
+                let cond = self.get_ssa(&srcs[0].as_def())[0];
+                b.predicate(cond.into()).push_op(OpKill {});
+            }
             nir_intrinsic_global_atomic => {
                 let bit_size = intrin.def.bit_size();
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
