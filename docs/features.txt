@@ -870,7 +870,7 @@ Rusticl OpenCL 2.0 -- all DONE:
   - from sRGB images                                    in progress
   clCreateSamplerWithProperties                         DONE
   Non-uniform work-group sizes                          not started
-  cl_khr_3d_image_writes                                DONE
+  cl_khr_3d_image_writes                                DONE (iris, llvmpipe, nvc0, panfrost, radeonsi)
   OpenCL C 2.0                                          in progress
   - Work-group Collective Functions                     not started
   - Generic address space                               in progress
