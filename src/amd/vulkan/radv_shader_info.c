@@ -1148,8 +1148,10 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    info->uses_invocation_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_INVOCATION_ID);
    info->uses_prim_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
 
-   /* Used by compute and mesh shaders. */
-   info->cs.uses_grid_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_NUM_WORKGROUPS);
+   /* Used by compute and mesh shaders. Mesh shaders must always declare this before GFX11. */
+   info->cs.uses_grid_size =
+      BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_NUM_WORKGROUPS) ||
+      (nir->info.stage == MESA_SHADER_MESH && device->physical_device->rad_info.gfx_level < GFX11);
    info->cs.uses_local_invocation_idx = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_LOCAL_INVOCATION_INDEX) |
                                         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SUBGROUP_ID) |
                                         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_NUM_SUBGROUPS);

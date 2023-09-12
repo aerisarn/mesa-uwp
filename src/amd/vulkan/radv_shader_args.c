@@ -242,7 +242,9 @@ declare_tes_input_vgprs(struct radv_shader_args *args)
 static void
 declare_ms_input_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args)
 {
-   add_ud_arg(args, 3, AC_ARG_INT, &args->ac.num_work_groups, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
+   if (info->cs.uses_grid_size) {
+      add_ud_arg(args, 3, AC_ARG_INT, &args->ac.num_work_groups, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
+   }
    if (info->vs.needs_draw_id) {
       add_ud_arg(args, 1, AC_ARG_INT, &args->ac.draw_id, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
    }
