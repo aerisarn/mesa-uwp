@@ -320,7 +320,8 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
 
    const struct intel_device_info *devinfo = &bufmgr->devinfo;
    if (devinfo->has_set_pat_uapi &&
-       iris_bufmgr_get_pat_entry_for_bo_flags(bufmgr, flags) != &devinfo->pat.writeback)
+       iris_bufmgr_get_pat_entry_for_bo_flags(bufmgr, flags) !=
+       iris_bufmgr_get_pat_entry_for_bo_flags(bufmgr, 0 /* alloc_flags */))
       return NULL;
 
    if (devinfo->kmd_type == INTEL_KMD_TYPE_XE &&
@@ -2632,5 +2633,6 @@ iris_bufmgr_get_pat_entry_for_bo_flags(const struct iris_bufmgr *bufmgr,
    if (alloc_flags & (BO_ALLOC_SHARED | BO_ALLOC_SCANOUT))
       return &devinfo->pat.scanout;
 
-   return &devinfo->pat.writeback;
+   /* Iris don't have any clflush() calls so it can't use incoherent WB */
+   return &devinfo->pat.writecombining;
 }
