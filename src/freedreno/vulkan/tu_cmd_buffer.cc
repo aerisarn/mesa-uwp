@@ -4871,7 +4871,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 static uint32_t
 tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
 {
-   const struct tu_pipeline *pipeline = &cmd->state.pipeline->base;
    enum pc_di_primtype primtype =
       tu6_primtype((VkPrimitiveTopology)cmd->vk.dynamic_graphics_state.ia.primitive_topology);
 
@@ -4885,7 +4884,7 @@ tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
       CP_DRAW_INDX_OFFSET_0_INDEX_SIZE((enum a4xx_index_size) cmd->state.index_size) |
       CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY);
 
-   if (pipeline->active_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
+   if (cmd->state.shaders[MESA_SHADER_GEOMETRY]->variant)
       initiator |= CP_DRAW_INDX_OFFSET_0_GS_ENABLE;
 
    const struct tu_shader *tes = cmd->state.shaders[MESA_SHADER_TESS_EVAL];
@@ -5032,8 +5031,7 @@ tu_CmdDrawMultiEXT(VkCommandBuffer commandBuffer,
    if (!drawCount)
       return;
 
-   bool has_tess =
-         cmd->state.pipeline->base.active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+   bool has_tess = cmd->state.shaders[MESA_SHADER_TESS_CTRL]->variant;
 
    uint32_t max_vertex_count = 0;
    if (has_tess) {
@@ -5106,8 +5104,7 @@ tu_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer,
    if (!drawCount)
       return;
 
-   bool has_tess =
-         cmd->state.pipeline->base.active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+   bool has_tess = cmd->state.shaders[MESA_SHADER_TESS_CTRL]->variant;
 
    uint32_t max_index_count = 0;
    if (has_tess) {
