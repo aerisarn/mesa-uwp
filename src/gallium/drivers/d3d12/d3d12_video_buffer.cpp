@@ -151,13 +151,6 @@ d3d12_video_buffer_destroy(struct pipe_video_buffer *buffer)
       pD3D12VideoBuffer->base.associated_data = nullptr;
    }
 
-   // Destroy (if any) codec where the associated data came from
-   if (pD3D12VideoBuffer->base.codec != nullptr) {
-      d3d12_video_decoder_destroy(pD3D12VideoBuffer->base.codec);
-      // Set to nullptr after cleanup, no dangling pointers
-      pD3D12VideoBuffer->base.codec = nullptr;
-   }
-
    for (uint i = 0; i < pD3D12VideoBuffer->surfaces.size(); ++i) {
       if (pD3D12VideoBuffer->surfaces[i] != NULL) {
          pipe_surface_reference(&pD3D12VideoBuffer->surfaces[i], NULL);
