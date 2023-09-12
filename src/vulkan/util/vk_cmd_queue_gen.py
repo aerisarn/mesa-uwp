@@ -52,7 +52,13 @@ MANUAL_COMMANDS = [
 
 NO_ENQUEUE_COMMANDS = [
     # pData's size cannot be calculated from the xml
+    'CmdBindDescriptorBufferEmbeddedSamplers2EXT',
+    'CmdBindDescriptorSets2KHR',
+    'CmdPushConstants2KHR',
+    'CmdPushDescriptorSet2KHR',
+    'CmdPushDescriptorSetWithTemplate2KHR',
     'CmdPushDescriptorSetWithTemplateKHR',
+    'CmdSetDescriptorBufferOffsets2EXT',
 
     # These don't return void
     'CmdSetPerformanceMarkerINTEL',
