@@ -2654,7 +2654,7 @@ tu6_emit_viewport_fdm(struct tu_cs *cs, struct tu_cmd_buffer *cmd,
    unsigned num_views = MAX2(cmd->state.pass->num_views, 1);
    struct apply_viewport_state state = {
       .vp = *vp,
-      .share_scale = !cmd->state.pipeline->base.program.per_view_viewport,
+      .share_scale = !cmd->state.per_view_viewport,
    };
    if (!state.share_scale)
       state.vp.viewport_count = num_views;
@@ -2765,7 +2765,7 @@ tu6_emit_scissor_fdm(struct tu_cs *cs, struct tu_cmd_buffer *cmd,
    unsigned num_views = MAX2(cmd->state.pass->num_views, 1);
    struct apply_viewport_state state = {
       .vp = *vp,
-      .share_scale = !cmd->state.pipeline->base.program.per_view_viewport,
+      .share_scale = !cmd->state.per_view_viewport,
    };
    if (!state.share_scale)
       state.vp.scissor_count = num_views;
