@@ -3013,6 +3013,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.compute_pipeline = tu_pipeline_to_compute(pipeline);
       tu_cs_emit_state_ib(&cmd->cs,
                           pipeline->shaders[MESA_SHADER_COMPUTE]->state);
+      cmd->state.compute_load_state = pipeline->load_state;
       return;
    }
 
@@ -3031,6 +3032,10 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    vk_cmd_set_dynamic_graphics_state(&cmd->vk,
                                      &cmd->state.pipeline->dynamic_state);
    cmd->state.program = pipeline->program;
+
+   cmd->state.load_state = pipeline->load_state;
+   cmd->state.prim_order_sysmem = pipeline->prim_order.state_sysmem;
+   cmd->state.prim_order_gmem = pipeline->prim_order.state_gmem;
 
    if (cmd->state.pipeline->feedback_loop_may_involve_textures &&
        !cmd->state.rp.disable_gmem) {
@@ -4640,7 +4645,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
                 /* note: draw_count is 0 for indirect */
                 uint32_t draw_count)
 {
-   const struct tu_pipeline *pipeline = &cmd->state.pipeline->base;
    const struct tu_program_state *program = &cmd->state.program;
    struct tu_render_pass_state *rp = &cmd->state.rp;
 
@@ -4800,11 +4804,11 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS_BINNING, program->gs_binning_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS, program->fs_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VPC, program->vpc_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, pipeline->prim_order.state_sysmem);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, pipeline->prim_order.state_gmem);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, cmd->state.prim_order_sysmem);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, cmd->state.prim_order_gmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_CONST, cmd->state.shader_const);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.load_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_PARAMS, cmd->state.fs_params);
@@ -4834,7 +4838,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_CONST, cmd->state.shader_const);
       if (dirty & TU_CMD_DIRTY_DESC_SETS) {
          /* tu6_emit_descriptor_sets emitted the cmd->state.desc_sets draw state. */
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.load_state);
       }
       if (dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
@@ -5513,7 +5517,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESC_SETS) {
       tu6_emit_descriptor_sets<CHIP>(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
-      tu_cs_emit_state_ib(cs, pipeline->base.load_state);
+      tu_cs_emit_state_ib(cs, cmd->state.compute_load_state);
    }
 
    cmd->state.dirty &= ~TU_CMD_DIRTY_COMPUTE_DESC_SETS;

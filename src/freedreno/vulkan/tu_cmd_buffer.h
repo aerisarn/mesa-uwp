@@ -418,6 +418,9 @@ struct tu_cmd_state
    struct tu_draw_state vertex_buffers;
    struct tu_draw_state shader_const;
    struct tu_draw_state desc_sets;
+   struct tu_draw_state load_state;
+   struct tu_draw_state compute_load_state;
+   struct tu_draw_state prim_order_sysmem, prim_order_gmem;
 
    struct tu_draw_state vs_params;
    struct tu_draw_state fs_params;
