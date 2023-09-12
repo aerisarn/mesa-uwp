@@ -540,11 +540,15 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    }
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS(_, nir, nir_shader_instructions_pass, lower_fragcoord_instr,
-               nir_metadata_block_index | nir_metadata_dominance, NULL);
+      if (!use_nak(nir->info.stage)) {
+         NIR_PASS(_, nir, nir_shader_instructions_pass, lower_fragcoord_instr,
+                  nir_metadata_block_index | nir_metadata_dominance, NULL);
+      }
       NIR_PASS(_, nir, nir_lower_input_attachments,
                &(nir_input_attachment_options) {
-                  .use_layer_id_sysval = is_multiview,
+                  .use_fragcoord_sysval = use_nak(nir->info.stage),
+                  .use_layer_id_sysval = use_nak(nir->info.stage) ||
+                                         is_multiview,
                   .use_view_id_for_layer = is_multiview,
                });
    }
