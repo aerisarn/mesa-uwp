@@ -1115,7 +1115,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(x11_swapchain, base.base, VkSwapchainKHR,
 static void x11_present_complete(struct x11_swapchain *swapchain,
                                  struct x11_image *image)
 {
-   if (image->present_id) {
+   if (image->signal_present_id) {
       pthread_mutex_lock(&swapchain->present_progress_mutex);
       if (image->signal_present_id > swapchain->present_id) {
          swapchain->present_id = image->signal_present_id;
