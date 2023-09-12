@@ -1185,32 +1185,50 @@ impl<'a> ShaderFromNir<'a> {
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_input | nir_intrinsic_load_per_vertex_input => {
-                let (vtx, offset) = match intrin.intrinsic {
-                    nir_intrinsic_load_input => {
-                        (Src::new_zero(), self.get_src(&srcs[0]))
-                    }
-                    nir_intrinsic_load_per_vertex_input => {
-                        (self.get_src(&srcs[0]), self.get_src(&srcs[1]))
-                    }
-                    _ => panic!("Unhandled intrinsic"),
-                };
-
                 assert!(intrin.def.bit_size() == 32);
-                let access = AttrAccess {
-                    addr: intrin.base().try_into().unwrap(),
-                    comps: intrin.def.num_components(),
-                    patch: false,
-                    out_load: false,
-                    flags: 0,
-                };
-                let dst = b.alloc_ssa(RegFile::GPR, access.comps);
+                let comps = intrin.def.num_components();
+                let dst = b.alloc_ssa(RegFile::GPR, comps);
 
-                b.push_op(OpALd {
-                    dst: dst.into(),
-                    vtx: vtx,
-                    offset: offset,
-                    access: access,
-                });
+                if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
+                    assert!(intrin.intrinsic == nir_intrinsic_load_input);
+                    let addr = u16::try_from(intrin.base()).unwrap()
+                        + u16::try_from(srcs[0].as_uint().unwrap()).unwrap();
+
+                    for c in 0..comps {
+                        b.push_op(OpIpa {
+                            dst: dst[usize::from(c)].into(),
+                            addr: addr + 4 * u16::from(c),
+                            freq: InterpFreq::Constant,
+                            loc: InterpLoc::Default,
+                            offset: SrcRef::Zero.into(),
+                        });
+                    }
+                } else {
+                    let (vtx, offset) = match intrin.intrinsic {
+                        nir_intrinsic_load_input => {
+                            (Src::new_zero(), self.get_src(&srcs[0]))
+                        }
+                        nir_intrinsic_load_per_vertex_input => {
+                            (self.get_src(&srcs[0]), self.get_src(&srcs[1]))
+                        }
+                        _ => panic!("Unhandled intrinsic"),
+                    };
+
+                    let access = AttrAccess {
+                        addr: intrin.base().try_into().unwrap(),
+                        comps: comps,
+                        patch: false,
+                        out_load: false,
+                        flags: 0,
+                    };
+
+                    b.push_op(OpALd {
+                        dst: dst.into(),
+                        vtx: vtx,
+                        offset: offset,
+                        access: access,
+                    });
+                }
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_interpolated_input => {
