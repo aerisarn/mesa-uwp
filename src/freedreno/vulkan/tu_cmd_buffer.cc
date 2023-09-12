@@ -3080,6 +3080,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    if (pipeline->bandwidth.valid)
       cmd->state.bandwidth = pipeline->bandwidth;
+   cmd->state.pipeline_bandwidth = pipeline->bandwidth.valid;
 
    struct tu_cs *cs = &cmd->draw_cs;
 

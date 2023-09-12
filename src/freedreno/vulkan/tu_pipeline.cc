@@ -3615,7 +3615,7 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
    }
    if (EMIT_STATE(bandwidth) ||
        ((cmd->state.dirty & TU_CMD_DIRTY_SUBPASS) &&
-        !cmd->state.pipeline->base.bandwidth.valid))
+        !cmd->state.pipeline_bandwidth))
       tu_calc_bandwidth(&cmd->state.bandwidth, &cmd->vk.dynamic_graphics_state.cb,
                         &cmd->state.vk_rp);
    DRAW_STATE(blend_constants, VK_DYNAMIC_STATE_BLEND_CONSTANTS,
