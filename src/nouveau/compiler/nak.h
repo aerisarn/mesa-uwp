@@ -33,6 +33,10 @@ void nak_optimize_nir(nir_shader *nir, const struct nak_compiler *nak);
 void nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
 void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
 
+struct nak_fs_key {
+   bool zs_self_dep;
+};
+
 struct nak_shader_info {
    gl_shader_stage stage;
 
@@ -66,7 +70,9 @@ struct nak_shader_bin {
 void nak_shader_bin_destroy(struct nak_shader_bin *bin);
 
 struct nak_shader_bin *
-nak_compile_shader(nir_shader *nir, const struct nak_compiler *nak);
+nak_compile_shader(nir_shader *nir,
+                   const struct nak_compiler *nak,
+                   const struct nak_fs_key *fs_key);
 
 #ifdef __cplusplus
 }

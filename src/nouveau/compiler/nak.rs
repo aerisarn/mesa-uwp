@@ -203,7 +203,11 @@ pub extern "C" fn nak_shader_bin_destroy(bin: *mut nak_shader_bin) {
     };
 }
 
-fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
+fn encode_hdr_for_nir(
+    nir: &nir_shader,
+    tls_size: u32,
+    fs_key: Option<&nak_fs_key>,
+) -> [u32; 32] {
     if nir.info.stage() == MESA_SHADER_COMPUTE {
         return [0_u32; 32];
     }
@@ -232,7 +236,8 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
     if nir.info.stage() == MESA_SHADER_FRAGMENT {
         cw0.set_bit(14, nir.num_outputs > 1);
         let info_fs = unsafe { &nir.info.__bindgen_anon_1.fs };
-        cw0.set_bit(15, info_fs.uses_discard());
+        let zs_self_dep = fs_key.map_or(false, |key| key.zs_self_dep);
+        cw0.set_bit(15, info_fs.uses_discard() || zs_self_dep);
     }
     cw0.set_bit(16, false /* TODO: DoesGlobalStore */);
     cw0.set_field(17..21, 1_u32 /* SassVersion */);
@@ -434,10 +439,16 @@ fn eprint_hex(label: &str, data: &[u32]) {
 pub extern "C" fn nak_compile_shader(
     nir: *mut nir_shader,
     nak: *const nak_compiler,
+    fs_key: *const nak_fs_key,
 ) -> *mut nak_shader_bin {
     unsafe { nak_postprocess_nir(nir, nak) };
-    let nir = unsafe { &*nir };
     let nak = unsafe { &*nak };
+    let nir = unsafe { &*nir };
+    let fs_key = if fs_key.is_null() {
+        None
+    } else {
+        Some(unsafe { &*fs_key })
+    };
 
     let mut s = nak_shader_from_nir(nir, nak.sm);
 

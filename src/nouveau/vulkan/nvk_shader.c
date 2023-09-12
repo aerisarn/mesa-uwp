@@ -1221,10 +1221,19 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
 static VkResult
 nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
                          nir_shader *nir,
-                         const struct nvk_fs_key *fs_key,
+                         const struct nvk_fs_key *nvk_fs_key,
                          struct nvk_shader *shader)
 {
-   struct nak_shader_bin *bin = nak_compile_shader(nir, pdev->nak);
+   struct nak_fs_key fs_key_tmp;
+   const struct nak_fs_key *fs_key = NULL;
+   if (nir->info.stage == MESA_SHADER_FRAGMENT && nvk_fs_key != NULL) {
+      fs_key_tmp = (struct nak_fs_key) {
+         .zs_self_dep = nvk_fs_key->zs_self_dep,
+      };
+      fs_key = &fs_key_tmp;
+   }
+
+   struct nak_shader_bin *bin = nak_compile_shader(nir, pdev->nak, fs_key);
 
    shader->stage = nir->info.stage;
 
