@@ -2638,13 +2638,15 @@ static void handle_index_buffer2(struct vk_cmd_queue_entry *cmd,
                                  struct rendering_state *state)
 {
    struct vk_cmd_bind_index_buffer2_khr *ib = &cmd->u.bind_index_buffer2_khr;
-   state->index_size = vk_index_type_to_bytes(ib->index_type);
-   state->index_buffer_size = ib->size;
 
    if (ib->buffer) {
+      state->index_size = vk_index_type_to_bytes(ib->index_type);
+      state->index_buffer_size = ib->size;
       state->index_offset = ib->offset;
       state->index_buffer = lvp_buffer_from_handle(ib->buffer)->bo;
    } else {
+      state->index_size = 4;
+      state->index_buffer_size = sizeof(uint32_t);
       state->index_offset = 0;
       state->index_buffer = state->device->zero_buffer;
    }
@@ -4327,12 +4329,9 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdEndQuery)
    ENQUEUE_CMD(CmdResetQueryPool)
    ENQUEUE_CMD(CmdCopyQueryPoolResults)
-   // ENQUEUE_CMD(CmdPushConstants2KHR)
    ENQUEUE_CMD(CmdExecuteCommands)
    ENQUEUE_CMD(CmdDrawIndirectCount)
    ENQUEUE_CMD(CmdDrawIndexedIndirectCount)
-   ENQUEUE_CMD(CmdPushDescriptorSet2KHR)
-//   ENQUEUE_CMD(CmdPushDescriptorSetWithTemplateKHR)
    ENQUEUE_CMD(CmdBindTransformFeedbackBuffersEXT)
    ENQUEUE_CMD(CmdBeginTransformFeedbackEXT)
    ENQUEUE_CMD(CmdEndTransformFeedbackEXT)
@@ -4820,6 +4819,10 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->rs_state.scissor = true;
    state->rs_state.no_ms_sample_mask_out = true;
    state->blend_state.independent_blend_enable = true;
+
+   state->index_size = 4;
+   state->index_buffer_size = sizeof(uint32_t);
+   state->index_buffer = state->device->zero_buffer;
 
    /* create a gallium context */
    lvp_execute_cmd_buffer(&cmd_buffer->vk.cmd_queue.cmds, state, device->print_cmds);
