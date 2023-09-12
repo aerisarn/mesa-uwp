@@ -500,7 +500,9 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
    if (!stages)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   bool monolithic = !(pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR);
+   bool library = pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR;
+
+   bool monolithic = !library;
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       if (rt_stages[i].shader || rt_stages[i].nir)
          continue;
@@ -519,9 +521,14 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
    }
 
    bool has_callable = false;
+   /* TODO: Recompile recursive raygen shaders instead. */
+   bool raygen_imported = false;
    for (uint32_t i = 0; i < pipeline->stage_count; i++) {
       has_callable |= rt_stages[i].stage == MESA_SHADER_CALLABLE;
       monolithic &= rt_stages[i].can_inline;
+
+      if (i > pCreateInfo->stageCount)
+         raygen_imported |= rt_stages[i].stage == MESA_SHADER_RAYGEN;
    }
 
    for (uint32_t idx = 0; idx < pCreateInfo->stageCount; idx++) {
@@ -540,7 +547,6 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
        *    - monolithic:       Callable shaders (chit/miss) are inlined into the raygen shader.
        */
       bool compiled = radv_ray_tracing_stage_is_compiled(&rt_stages[idx]);
-      bool library = pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
       bool nir_needed =
          (library && !has_callable) || !compiled || (monolithic && rt_stages[idx].stage != MESA_SHADER_RAYGEN);
       nir_needed &= !rt_stages[idx].nir;
@@ -589,7 +595,11 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       }
    }
 
-   if (pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR)
+   /* Monolithic raygen shaders do not need a traversal shader. Skip compiling one if there are only monolithic raygen
+    * shaders.
+    */
+   bool traversal_needed = !library && (!monolithic || raygen_imported);
+   if (!traversal_needed)
       return VK_SUCCESS;
 
    /* create traversal shader */
@@ -716,7 +726,10 @@ compile_rt_prolog(struct radv_device *device, struct radv_ray_tracing_pipeline *
          combine_config(config, &shader->config);
       }
    }
-   combine_config(config, &pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]->config);
+
+   if (pipeline->base.base.shaders[MESA_SHADER_INTERSECTION])
+      combine_config(config, &pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]->config);
+
    postprocess_rt_config(config, device->physical_device->rad_info.gfx_level, device->physical_device->rt_wave_size);
 }
 
