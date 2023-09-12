@@ -3106,6 +3106,10 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i, pipeline->dynamic_state[i]);
    }
 
+   cmd->state.pipeline_draw_states = pipeline->set_state_mask;
+   u_foreach_bit(i, pipeline->set_state_mask)
+      cmd->state.dynamic_state[i] = pipeline->dynamic_state[i];
+
    if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
       cmd->state.rp.has_tess = true;
    }
@@ -4815,9 +4819,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 
       for (uint32_t i = 0; i < ARRAY_SIZE(cmd->state.dynamic_state); i++) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i,
-                               ((pipeline->set_state_mask & BIT(i)) ?
-                                pipeline->dynamic_state[i] :
-                                cmd->state.dynamic_state[i]));
+                               cmd->state.dynamic_state[i]);
       }
    } else {
       /* emit draw states that were just updated */

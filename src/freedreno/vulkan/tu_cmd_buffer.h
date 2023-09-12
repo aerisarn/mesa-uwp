@@ -486,6 +486,7 @@ struct tu_cmd_state
    bool pipeline_feedback_loop_ds;
 
    bool pipeline_blend_lrz;
+   uint32_t pipeline_draw_states;
 
    /* VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT and
     * VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT are allowed to run simultaniously,
