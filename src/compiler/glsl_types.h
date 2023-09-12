@@ -279,6 +279,8 @@ enum {
    GLSL_PRECISION_LOW
 };
 
+const char *glsl_get_type_name(const struct glsl_type *type);
+
 struct glsl_type {
    uint32_t gl_type;
    enum glsl_base_type base_type:8;
@@ -971,7 +973,7 @@ struct glsl_type {
 
    bool is_anonymous() const
    {
-      return !strncmp(name, "#anon", 5);
+      return !strncmp(glsl_get_type_name(this), "#anon", 5);
    }
 
    /**

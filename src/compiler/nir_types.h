@@ -39,8 +39,6 @@
 extern "C" {
 #endif
 
-const char *glsl_get_type_name(const struct glsl_type *type);
-
 const struct glsl_type *glsl_get_struct_field(const struct glsl_type *type,
                                               unsigned index);
 

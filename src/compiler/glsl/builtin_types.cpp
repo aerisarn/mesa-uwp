@@ -242,7 +242,7 @@ static const struct builtin_type_versions {
 static inline void
 add_type(glsl_symbol_table *symbols, const glsl_type *const type)
 {
-   symbols->add_type(type->name, type);
+   symbols->add_type(glsl_get_type_name(type), type);
 }
 
 /**

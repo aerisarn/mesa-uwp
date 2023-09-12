@@ -742,7 +742,7 @@ log_uniform(const void *values, enum glsl_base_type basicType,
 
    printf("Mesa: set program %u %s \"%s\" (loc %d, type \"%s\", "
 	  "transpose = %s) to: ",
-	  shProg->Name, extra, uni->name.string, location, uni->type->name,
+	  shProg->Name, extra, uni->name.string, location, glsl_get_type_name(uni->type),
 	  transpose ? "true" : "false");
    for (unsigned i = 0; i < elems; i++) {
       if (i != 0 && ((i % rows) == 0))

@@ -788,7 +788,7 @@ validate_intrastage_arrays(struct gl_shader_program *prog,
                            "`%s' but outermost dimension has an index"
                            " of `%i'\n",
                            mode_string(var),
-                           var->name, var->type->name,
+                           var->name, glsl_get_type_name(var->type),
                            existing->data.max_array_access);
             }
             existing->type = var->type;
@@ -800,7 +800,7 @@ validate_intrastage_arrays(struct gl_shader_program *prog,
                            "`%s' but outermost dimension has an index"
                            " of `%i'\n",
                            mode_string(var),
-                           var->name, existing->type->name,
+                           var->name, glsl_get_type_name(existing->type),
                            var->data.max_array_access);
             }
             return true;
@@ -869,8 +869,8 @@ cross_validate_globals(const struct gl_constants *consts,
                   linker_error(prog, "%s `%s' declared as type "
                                  "`%s' and type `%s'\n",
                                  mode_string(var),
-                                 var->name, var->type->name,
-                                 existing->type->name);
+                                 var->name, glsl_get_type_name(var->type),
+                                 glsl_get_type_name(existing->type));
                   return;
                }
             }
@@ -1076,14 +1076,14 @@ cross_validate_globals(const struct gl_constants *consts,
                linker_error(prog, "declarations for %s `%s` are inside block "
                             "`%s` and outside a block",
                             mode_string(var), var->name,
-                            var_itype ? var_itype->name : existing_itype->name);
+                            glsl_get_type_name(var_itype ? var_itype : existing_itype));
                return;
-            } else if (strcmp(var_itype->name, existing_itype->name) != 0) {
+            } else if (strcmp(glsl_get_type_name(var_itype), glsl_get_type_name(existing_itype)) != 0) {
                linker_error(prog, "declarations for %s `%s` are inside blocks "
                             "`%s` and `%s`",
                             mode_string(var), var->name,
-                            existing_itype->name,
-                            var_itype->name);
+                            glsl_get_type_name(existing_itype),
+                            glsl_get_type_name(var_itype));
                return;
             }
          }
@@ -1584,7 +1584,7 @@ private:
       bool row_major = (bool) type->interface_row_major;
       const glsl_type *new_ifc_type =
          glsl_type::get_interface_instance(fields, num_fields,
-                                           packing, row_major, type->name);
+                                           packing, row_major, glsl_get_type_name(type));
       delete [] fields;
       return new_ifc_type;
    }
@@ -1615,7 +1615,7 @@ private:
       bool row_major = (bool) ifc_type->interface_row_major;
       const glsl_type *new_ifc_type =
          glsl_type::get_interface_instance(fields, num_fields, packing,
-                                           row_major, ifc_type->name);
+                                           row_major, glsl_get_type_name(ifc_type));
       delete [] fields;
       for (unsigned i = 0; i < num_fields; i++) {
          if (interface_vars[i] != NULL)

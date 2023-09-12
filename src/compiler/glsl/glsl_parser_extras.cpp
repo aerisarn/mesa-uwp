@@ -2108,11 +2108,11 @@ _mesa_glsl_copy_symbols_from_table(struct exec_list *shader_ir,
       const glsl_type *iface =
          src->get_interface("gl_PerVertex", ir_var_shader_in);
       if (iface)
-         dest->add_interface(iface->name, iface, ir_var_shader_in);
+         dest->add_interface(glsl_get_type_name(iface), iface, ir_var_shader_in);
 
       iface = src->get_interface("gl_PerVertex", ir_var_shader_out);
       if (iface)
-         dest->add_interface(iface->name, iface, ir_var_shader_out);
+         dest->add_interface(glsl_get_type_name(iface), iface, ir_var_shader_out);
    }
 }
 
