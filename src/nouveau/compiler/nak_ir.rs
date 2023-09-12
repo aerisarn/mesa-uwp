@@ -9,6 +9,7 @@ pub use crate::nak_builder::{
     Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
 };
 use crate::nak_cfg::CFG;
+use crate::nak_sph::{OutputTopology, PixelImap};
 use crate::{GetDebugFlags, DEBUG};
 use nak_ir_proc::*;
 use std::fmt;
@@ -4486,9 +4487,53 @@ pub struct FragmentShaderInfo {
 }
 
 #[derive(Debug)]
+pub struct GeometryShaderInfo {
+    pub stream_out_mask: u8,
+    pub threads_per_input_primitive: u8,
+    pub output_topology: OutputTopology,
+    pub max_output_vertex_count: u16,
+}
+
+impl Default for GeometryShaderInfo {
+    fn default() -> Self {
+        Self {
+            stream_out_mask: 0,
+            threads_per_input_primitive: 0,
+            output_topology: OutputTopology::LineStrip,
+            max_output_vertex_count: 0,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct TessellationControlShaderInfo {
+    pub per_patch_attribute_count: u8,
+    pub threads_per_patch: u8,
+}
+
+#[derive(Debug)]
 pub enum ShaderStageInfo {
     Compute(ComputeShaderInfo),
+    Vertex,
     Fragment(FragmentShaderInfo),
+    Geometry(GeometryShaderInfo),
+    TessellationControl(TessellationControlShaderInfo),
+    Tessellation,
+}
+
+#[derive(Debug, Default)]
+pub struct SystemValueInfo {
+    pub ab: u32,
+    pub c: u16,
+}
+
+#[derive(Debug, Default)]
+pub struct ShaderStageVtgInfo {
+    pub output_attributes: [u8; 32],
+    pub store_req_start: u8,
+    pub store_req_end: u8,
+    pub system_values_out: SystemValueInfo,
+    pub omap_color: u16,
 }
 
 #[derive(Debug)]
@@ -4498,12 +4543,72 @@ pub struct ShaderInfo {
     pub tls_size: u32,
     pub uses_global_mem: bool,
     pub writes_global_mem: bool,
+    pub uses_fp64: bool,
     pub stage: ShaderStageInfo,
+    pub vtg_stage_info: Option<ShaderStageVtgInfo>,
+    pub input_attributes: [u8; 32],
+    pub imap_color: u16,
+    pub system_values_in: SystemValueInfo,
 }
 
 pub struct Shader {
     pub info: ShaderInfo,
     pub functions: Vec<Function>,
+}
+
+impl ShaderInfo {
+    pub fn set_used_attribute_id(
+        &mut self,
+        attribute_id: u16,
+        pixel_opt: Option<PixelImap>,
+        is_store: bool,
+    ) {
+        if attribute_id < 0x080 {
+            let bit = attribute_id / 4;
+
+            if is_store {
+                if let Some(vtg) = &mut self.vtg_stage_info {
+                    vtg.system_values_out.ab |= 1 << bit;
+                }
+            } else {
+                self.system_values_in.ab |= 1 << bit;
+            }
+        } else if attribute_id >= 0x080 && attribute_id < 0x280 {
+            let user_attribute_base = attribute_id - 0x080;
+            let user_attribute_index = (user_attribute_base / 0x10) as usize;
+            let user_attribute_component_bit_start =
+                (user_attribute_base % 0x10) as usize / 4;
+
+            if let Some(vtg) = &mut self.vtg_stage_info {
+                let attributes = if is_store {
+                    &mut vtg.output_attributes
+                } else {
+                    &mut self.input_attributes
+                };
+
+                attributes[user_attribute_index] |=
+                    1 << user_attribute_component_bit_start;
+            } else if !is_store {
+                if let ShaderStageInfo::Fragment(_) = &mut self.stage {
+                    let pixel = pixel_opt.unwrap_or(PixelImap::Perspective);
+
+                    self.input_attributes[user_attribute_index] |=
+                        u8::from(pixel)
+                            << user_attribute_component_bit_start * 2;
+                }
+            }
+        } else if attribute_id >= 0x2c0 && attribute_id < 0x300 {
+            let bit = (attribute_id - 0x2c0) / 4;
+
+            if is_store {
+                if let Some(vtg) = &mut self.vtg_stage_info {
+                    vtg.system_values_out.c |= 1 << bit;
+                }
+            } else {
+                self.system_values_in.c |= 1 << bit;
+            }
+        }
+    }
 }
 
 impl Shader {

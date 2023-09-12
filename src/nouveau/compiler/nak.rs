@@ -524,8 +524,9 @@ pub extern "C" fn nak_compile_shader(
                     },
                 }
             }
+            _ => nak_shader_info__bindgen_ty_1 { dummy: 0 },
         },
-        hdr: encode_hdr_for_nir(nir, &s.info, fs_key),
+        hdr: nak_sph::encode_header(&s.info, fs_key),
     };
 
     let code = if nak.sm >= 75 {

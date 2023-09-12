@@ -8,6 +8,7 @@
 
 use crate::nak_cfg::CFGBuilder;
 use crate::nak_ir::*;
+use crate::nak_sph::{OutputTopology, PixelImap};
 use crate::nir::*;
 use crate::util::DivCeil;
 
@@ -17,12 +18,14 @@ use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 
 fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
-    ShaderInfo {
+    let mut res = ShaderInfo {
         sm: sm,
         num_gprs: 0,
         tls_size: nir.scratch_size,
         uses_global_mem: false,
         writes_global_mem: false,
+        // TODO: handle this.
+        uses_fp64: false,
         stage: match nir.info.stage() {
             MESA_SHADER_COMPUTE => {
                 ShaderStageInfo::Compute(ComputeShaderInfo {
@@ -34,12 +37,56 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
                     smem_size: nir.info.shared_size.try_into().unwrap(),
                 })
             }
+            MESA_SHADER_VERTEX => ShaderStageInfo::Vertex,
             MESA_SHADER_FRAGMENT => {
                 ShaderStageInfo::Fragment(Default::default())
             }
+            MESA_SHADER_GEOMETRY => {
+                let info_gs = unsafe { &nir.info.__bindgen_anon_1.gs };
+
+                ShaderStageInfo::Geometry(GeometryShaderInfo {
+                    stream_out_mask: info_gs.active_stream_mask(),
+                    threads_per_input_primitive: info_gs.invocations,
+                    output_topology: OutputTopology::from(
+                        info_gs.input_primitive,
+                    ),
+                    max_output_vertex_count: info_gs.vertices_out,
+                })
+            }
+            MESA_SHADER_TESS_CTRL => {
+                ShaderStageInfo::TessellationControl(Default::default())
+            }
+            MESA_SHADER_TESS_EVAL => ShaderStageInfo::Tessellation,
             _ => panic!("Unknown shader stage"),
         },
+        vtg_stage_info: match nir.info.stage() {
+            MESA_SHADER_COMPUTE | MESA_SHADER_FRAGMENT => None,
+            MESA_SHADER_VERTEX
+            | MESA_SHADER_GEOMETRY
+            | MESA_SHADER_TESS_CTRL
+            | MESA_SHADER_TESS_EVAL => Some(Default::default()),
+            _ => panic!("Unknown shader stage"),
+        },
+        input_attributes: [0; 32],
+        imap_color: 0,
+        system_values_in: SystemValueInfo {
+            ab: if nir.info.stage() == MESA_SHADER_FRAGMENT {
+                // Required on fragment shaders, otherwise it cause a trap.
+                1 << 31
+            } else {
+                0
+            },
+            c: 0,
+        },
+    };
+
+    if let Some(vtg_stage_info) = &mut res.vtg_stage_info {
+        // TODO: figure out how to fill this.
+        vtg_stage_info.store_req_start = 0xff;
+        vtg_stage_info.store_req_end = 0x0;
     }
+
+    res
 }
 
 fn alloc_ssa_for_nir(b: &mut impl SSABuilder, ssa: &nir_def) -> Vec<SSAValue> {
@@ -1298,9 +1345,15 @@ impl<'a> ShaderFromNir<'a> {
                         + u16::try_from(intrin.component()).unwrap() * 4;
 
                     for c in 0..comps {
+                        let attribute_id = addr + 4 * u16::from(c);
+                        self.info.set_used_attribute_id(
+                            attribute_id,
+                            None,
+                            false,
+                        );
                         b.push_op(OpIpa {
                             dst: dst[usize::from(c)].into(),
-                            addr: addr + 4 * u16::from(c),
+                            addr: attribute_id,
                             freq: InterpFreq::Constant,
                             loc: InterpLoc::Default,
                             offset: SrcRef::Zero.into(),
@@ -1327,6 +1380,17 @@ impl<'a> ShaderFromNir<'a> {
                         out_load: false,
                         flags: 0,
                     };
+
+                    let attribute_base_index = access.addr / 4;
+                    for attribute_index in attribute_base_index
+                        ..attribute_base_index + comps as u16
+                    {
+                        self.info.set_used_attribute_id(
+                            attribute_index * 4,
+                            None,
+                            false,
+                        );
+                    }
 
                     b.push_op(OpALd {
                         dst: dst.into(),
@@ -1371,14 +1435,22 @@ impl<'a> ShaderFromNir<'a> {
                     _ => panic!("Unsupported interp mode"),
                 };
 
+                let interp_mode = PixelImap::from(bary.interp_mode());
+
                 assert!(intrin.def.bit_size() == 32);
                 let dst =
                     b.alloc_ssa(RegFile::GPR, intrin.def.num_components());
 
                 for c in 0..intrin.def.num_components() {
+                    let attribute_id = addr + 4 * u16::from(c);
+                    self.info.set_used_attribute_id(
+                        attribute_id,
+                        Some(interp_mode),
+                        false,
+                    );
                     b.push_op(OpIpa {
                         dst: dst[usize::from(c)].into(),
-                        addr: addr + 4 * u16::from(c),
+                        addr: attribute_id,
                         freq: freq,
                         loc: loc,
                         offset: offset,
@@ -1615,6 +1687,17 @@ impl<'a> ShaderFromNir<'a> {
                         out_load: false,
                         flags: 0,
                     };
+
+                    let attribute_base_index = access.addr / 4;
+                    for attribute_index in attribute_base_index
+                        ..attribute_base_index + access.comps as u16
+                    {
+                        self.info.set_used_attribute_id(
+                            attribute_index * 4,
+                            None,
+                            true,
+                        );
+                    }
 
                     b.push_op(OpASt {
                         vtx: vtx,

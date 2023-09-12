@@ -5,9 +5,12 @@ use std::ops::Range;
 
 use nak_bindings::*;
 
-use crate::bitview::{
-    BitMutView, BitMutViewable, BitView, BitViewable, SetBit, SetField,
-    SetFieldU64,
+use crate::{
+    bitview::{
+        BitMutView, BitMutViewable, BitView, BitViewable, SetBit, SetField,
+        SetFieldU64,
+    },
+    nak_ir::{ShaderInfo, ShaderStageInfo},
 };
 
 pub const FERMI_SHADER_HEADER_SIZE: usize = 20;
@@ -25,15 +28,17 @@ pub enum ShaderType {
     Fragment,
 }
 
-impl From<pipe_shader_type> for ShaderType {
-    fn from(value: pipe_shader_type) -> Self {
+impl From<&ShaderStageInfo> for ShaderType {
+    fn from(value: &ShaderStageInfo) -> Self {
         match value {
-            MESA_SHADER_VERTEX => ShaderType::Vertex,
-            MESA_SHADER_TESS_CTRL => ShaderType::TessellationControl,
-            MESA_SHADER_TESS_EVAL => ShaderType::Tessellation,
-            MESA_SHADER_GEOMETRY => ShaderType::Geometry,
-            MESA_SHADER_FRAGMENT => ShaderType::Fragment,
-            _ => panic!("Invalid pipe_shader_type {}", value),
+            ShaderStageInfo::Vertex => ShaderType::Vertex,
+            ShaderStageInfo::Fragment(_) => ShaderType::Fragment,
+            ShaderStageInfo::Geometry(_) => ShaderType::Geometry,
+            ShaderStageInfo::TessellationControl(_) => {
+                ShaderType::TessellationControl
+            }
+            ShaderStageInfo::Tessellation => ShaderType::Tessellation,
+            _ => panic!("Invalid ShaderStageInfo {:?}", value),
         }
     }
 }
@@ -426,4 +431,78 @@ impl ShaderProgramHeader {
         assert!(self.shader_type == ShaderType::Fragment);
         self.set_bit(609, depth);
     }
+}
+
+pub fn encode_header(
+    shader_info: &ShaderInfo,
+    fs_key: Option<&nak_fs_key>,
+) -> [u32; CURRENT_MAX_SHADER_HEADER_SIZE] {
+    if let ShaderStageInfo::Compute(_) = shader_info.stage {
+        return [0_u32; CURRENT_MAX_SHADER_HEADER_SIZE];
+    }
+
+    let mut sph = ShaderProgramHeader::new(
+        ShaderType::from(&shader_info.stage),
+        shader_info.sm,
+    );
+
+    sph.set_sass_version(1);
+    sph.set_does_load_or_store(shader_info.uses_global_mem);
+    sph.set_does_global_store(shader_info.writes_global_mem);
+    sph.set_does_fp64(shader_info.uses_fp64);
+    sph.set_shader_local_memory_size(shader_info.tls_size.into());
+
+    sph.set_imap_system_values_ab(shader_info.system_values_in.ab);
+    sph.set_imap_system_values_c(shader_info.system_values_in.c);
+
+    for (index, vec) in shader_info.input_attributes.iter().enumerate() {
+        sph.set_imap_vector(index, *vec);
+    }
+    sph.set_imap_color(shader_info.imap_color);
+
+    if let Some(vtg_stage_info) = &shader_info.vtg_stage_info {
+        for (index, vec) in vtg_stage_info.output_attributes.iter().enumerate()
+        {
+            sph.set_omap_vector(index, *vec);
+        }
+        sph.set_omap_color(vtg_stage_info.omap_color);
+
+        sph.set_store_req_start(vtg_stage_info.store_req_start);
+        sph.set_store_req_end(vtg_stage_info.store_req_end);
+
+        sph.set_omap_system_values_ab(vtg_stage_info.system_values_out.ab);
+        sph.set_omap_system_values_c(vtg_stage_info.system_values_out.c);
+    }
+
+    match &shader_info.stage {
+        // Already covered by VTG common data.
+        ShaderStageInfo::Vertex | ShaderStageInfo::Tessellation => {}
+        ShaderStageInfo::Fragment(stage) => {
+            let zs_self_dep = fs_key.map_or(false, |key| key.zs_self_dep);
+
+            sph.set_multiple_render_target_enable(stage.writes_color > 0xf);
+            sph.set_kills_pixels(stage.uses_kill || zs_self_dep);
+            sph.set_omap_sample_mask(stage.writes_sample_mask);
+            sph.set_omap_depth(stage.writes_depth);
+
+            sph.set_omap_targets(stage.writes_color);
+        }
+        ShaderStageInfo::Geometry(stage) => {
+            sph.set_stream_out_mask(stage.stream_out_mask);
+            sph.set_threads_per_input_primitive(
+                stage.threads_per_input_primitive,
+            );
+            sph.set_output_topology(stage.output_topology);
+            sph.set_max_output_vertex_count(stage.max_output_vertex_count);
+        }
+        ShaderStageInfo::TessellationControl(stage) => {
+            sph.set_per_patch_attribute_count(stage.per_patch_attribute_count);
+            sph.set_threads_per_input_primitive(stage.threads_per_patch);
+        }
+        ShaderStageInfo::Compute(_) => {
+            panic!("Compute shaders don't have a SPH!")
+        }
+    };
+
+    sph.data
 }
