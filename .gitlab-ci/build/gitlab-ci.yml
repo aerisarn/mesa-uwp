@@ -35,12 +35,9 @@
     - !reference [default, after_script]
 
 .build-windows:
-  extends: .build-common
-  tags:
-    - windows
-    - docker
-    - "2022"
-    - mesa
+  extends:
+    - .build-common
+    - .windows-docker-tags
   cache:
     key: ${CI_JOB_NAME}
     paths:

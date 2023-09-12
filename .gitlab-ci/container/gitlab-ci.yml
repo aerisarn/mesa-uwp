@@ -447,17 +447,13 @@ debian/arm64_test:
   extends:
     - .container
     - .windows-docker-vs2019
+    - .windows-shell-tags
   rules:
     - !reference [.microsoft-farm-container-rules, rules]
     - !reference [.container-rules, rules]
   variables:
     GIT_STRATEGY: fetch # we do actually need the full repository though
     MESA_BASE_IMAGE: None
-  tags:
-    - windows
-    - shell
-    - "2022"
-    - mesa
   script:
     - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $MESA_IMAGE $MESA_UPSTREAM_IMAGE ${DOCKERFILE} ${MESA_BASE_IMAGE}
 

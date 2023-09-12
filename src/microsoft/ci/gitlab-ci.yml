@@ -1,3 +1,18 @@
+.windows-docker-tags:
+  tags:
+    - windows
+    - docker
+    - "2022"
+    - mesa
+
+.windows-shell-tags:
+  tags:
+    - windows
+    - shell
+    - "2022"
+    - mesa
+
+
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
 .windows-build-rules:
