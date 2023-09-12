@@ -496,7 +496,7 @@ pub extern "C" fn nak_compile_shader(
             ],
             smem_size: nir.info.shared_size.try_into().unwrap(),
         },
-        hdr: encode_hdr_for_nir(nir, nir.scratch_size),
+        hdr: encode_hdr_for_nir(nir, s.tls_size, fs_key),
     };
 
     let code = if nak.sm >= 75 {
