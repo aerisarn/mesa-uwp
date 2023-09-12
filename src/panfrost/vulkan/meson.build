@@ -99,6 +99,12 @@ if with_platform_wayland
   libpanvk_files += [wayland_drm_client_protocol_h, wayland_drm_protocol_c]
 endif
 
+if with_platform_android
+  panvk_deps += [dep_android]
+  panvk_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
+  libpanvk_files += files('panvk_android.c')
+endif
+
 libvulkan_panfrost = shared_library(
   'vulkan_panfrost',
   [libpanvk_files, panvk_entrypoints],
