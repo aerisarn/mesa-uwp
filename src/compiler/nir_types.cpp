@@ -28,10 +28,16 @@
 #include "nir_types.h"
 #include "nir_gl_types.h"
 
+extern "C" const char glsl_type_builtin_names[];
+
 const char *
 glsl_get_type_name(const glsl_type *type)
 {
-   return (const char *)type->name_id;
+   if (type->has_builtin_name) {
+      return &glsl_type_builtin_names[type->name_id];
+   } else {
+      return (const char *) type->name_id;
+   }
 }
 
 int

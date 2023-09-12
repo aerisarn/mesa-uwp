@@ -17,13 +17,20 @@ template = """\
 #include "glsl_types.h"
 #include "util/glheader.h"
 
+const char glsl_type_builtin_names[] =
+%for n in NAME_ARRAY:
+   "${n}"
+%endfor
+;
+
 %for t in BUILTIN_TYPES:
 const struct glsl_type glsl_type_builtin_${t["name"]} = {
    %for k, v in t.items():
-       %if v is None:
+       %if v is None or k == "name":
           <% continue %>
-       %elif k == "name":
-          .name_id = (uintptr_t) "${v}",
+       %elif k == "name_id":
+          .name_id = ${v},
+          .has_builtin_name = 1,
        %else:
           .${k} = ${v},
        %endif
@@ -38,5 +45,16 @@ if len(sys.argv) < 2:
 
 output = sys.argv[1]
 
+# Add padding to make sure zero is an invalid name.
+invalid = "INVALID"
+NAME_ARRAY = [invalid + "\\0"]
+id = len(invalid) + 1
+
+for t in BUILTIN_TYPES:
+    name = t["name"]
+    NAME_ARRAY.append(name + "\\0")
+    t["name_id"] = id
+    id += len(name) + 1
+
 with open(output, 'w') as f:
-    f.write(Template(template).render(BUILTIN_TYPES=BUILTIN_TYPES))
+    f.write(Template(template).render(BUILTIN_TYPES=BUILTIN_TYPES, NAME_ARRAY=NAME_ARRAY))

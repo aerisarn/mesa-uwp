@@ -304,6 +304,8 @@ struct glsl_type {
     */
    unsigned packed:1;
 
+   unsigned has_builtin_name:1;
+
    /**
     * \name Vector and matrix element counts
     *
