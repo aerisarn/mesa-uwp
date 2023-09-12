@@ -177,6 +177,10 @@ impl RegAllocator {
         self.file
     }
 
+    pub fn num_regs_used(&self) -> u32 {
+        self.ssa_reg.len().try_into().unwrap()
+    }
+
     pub fn reg_is_used(&self, reg: u32) -> bool {
         self.used.get(reg.try_into().unwrap())
     }
@@ -991,6 +995,30 @@ impl AssignRegsBlock {
                 } else {
                     Some(instr)
                 }
+            }
+            Op::FSOut(out) => {
+                for src in out.srcs.iter_mut() {
+                    if let SrcRef::SSA(src_vec) = src.src_ref {
+                        debug_assert!(src_vec.comps() == 1);
+                        let src_ssa = &src_vec[0];
+                        src.src_ref = self.get_scalar(*src_ssa).into();
+                    }
+                }
+
+                self.ra.free_killed(srcs_killed);
+                assert!(dsts_killed.is_empty());
+
+                // This should be the last instruction and its sources should
+                // be the last free GPRs.
+                debug_assert!(self.ra[RegFile::GPR].num_regs_used() == 0);
+
+                for (i, src) in out.srcs.iter().enumerate() {
+                    let reg = u32::try_from(i).unwrap();
+                    let dst = RegRef::new(RegFile::GPR, reg, 1);
+                    pcopy.push(dst.into(), *src);
+                }
+
+                None
             }
             _ => {
                 for file in self.ra.values_mut() {

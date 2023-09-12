@@ -4314,15 +4314,6 @@ impl Shader {
                     dst: neg.dst,
                     srcs: [Src::new_zero(), neg.src.ineg(), Src::new_zero()],
                 })),
-                Op::FSOut(out) => {
-                    let mut pcopy = OpParCopy::new();
-                    for (i, src) in out.srcs.iter().enumerate() {
-                        let dst =
-                            RegRef::new(RegFile::GPR, i.try_into().unwrap(), 1);
-                        pcopy.push(dst.into(), *src);
-                    }
-                    MappedInstrs::One(Instr::new_boxed(pcopy))
-                }
                 _ => MappedInstrs::One(instr),
             }
         })

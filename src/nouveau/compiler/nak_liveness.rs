@@ -209,6 +209,15 @@ pub trait Liveness {
                 max_live = PerRegFile::new_with(|file| {
                     max(max_live[file], live_at_instr[file])
                 });
+
+                if let Op::FSOut(fs_out) = &instr.op {
+                    // This should be the last instruction.  Everything should
+                    // be dead once we've processed it.
+                    debug_assert!(live.count(RegFile::GPR) == 0);
+                    let num_gprs_out = fs_out.srcs.len().try_into().unwrap();
+                    max_live[RegFile::GPR] =
+                        max(max_live[RegFile::GPR], num_gprs_out);
+                }
             }
 
             assert!(block_live_out.len() == bb_idx);
