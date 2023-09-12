@@ -78,6 +78,7 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    uint32_t shifted_size = device->sqtt.buffer_size >> SQTT_BUFFER_ALIGN_SHIFT;
    const struct radeon_info *rad_info = &device->physical_device->rad_info;
+   const unsigned shader_mask = ac_sqtt_get_shader_mask(rad_info);
    unsigned max_se = rad_info->max_se;
 
    for (unsigned se = 0; se < max_se; se++) {
@@ -101,8 +102,8 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
          radeon_set_perfctr_reg(gfx_level, qf, cs, R_0367A0_SQ_THREAD_TRACE_BUF0_BASE, shifted_va);
 
          radeon_set_perfctr_reg(gfx_level, qf, cs, R_0367B4_SQ_THREAD_TRACE_MASK,
-                                S_0367B4_WTYPE_INCLUDE(0x7f) | /* all shader stages */
-                                   S_0367B4_SA_SEL(0) | S_0367B4_WGP_SEL(first_active_cu / 2) | S_0367B4_SIMD_SEL(0));
+                                S_0367B4_WTYPE_INCLUDE(shader_mask) | S_0367B4_SA_SEL(0) |
+                                   S_0367B4_WGP_SEL(first_active_cu / 2) | S_0367B4_SIMD_SEL(0));
 
          uint32_t sqtt_token_mask = S_0367B8_REG_INCLUDE(V_0367B8_REG_INCLUDE_SQDEC | V_0367B8_REG_INCLUDE_SHDEC |
                                                          V_0367B8_REG_INCLUDE_GFXUDEC | V_0367B8_REG_INCLUDE_COMP |
@@ -132,9 +133,8 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
          radeon_set_privileged_config_reg(cs, R_008D00_SQ_THREAD_TRACE_BUF0_BASE, shifted_va);
 
          radeon_set_privileged_config_reg(cs, R_008D14_SQ_THREAD_TRACE_MASK,
-                                          S_008D14_WTYPE_INCLUDE(0x7f) | /* all shader stages */
-                                             S_008D14_SA_SEL(0) | S_008D14_WGP_SEL(first_active_cu / 2) |
-                                             S_008D14_SIMD_SEL(0));
+                                          S_008D14_WTYPE_INCLUDE(shader_mask) | S_008D14_SA_SEL(0) |
+                                             S_008D14_WGP_SEL(first_active_cu / 2) | S_008D14_SIMD_SEL(0));
 
          uint32_t sqtt_token_mask = S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC | V_008D18_REG_INCLUDE_SHDEC |
                                                          V_008D18_REG_INCLUDE_GFXUDEC | V_008D18_REG_INCLUDE_COMP |
@@ -681,7 +681,7 @@ radv_begin_sqtt(struct radv_queue *queue)
 
    if (device->spm.bo) {
       /* Enable all shader stages by default. */
-      radv_perfcounter_emit_shaders(cs, 0x7f);
+      radv_perfcounter_emit_shaders(cs, ac_sqtt_get_shader_mask(&device->physical_device->rad_info));
 
       radv_emit_spm_setup(device, cs);
    }

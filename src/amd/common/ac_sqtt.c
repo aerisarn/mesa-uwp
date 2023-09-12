@@ -277,3 +277,16 @@ ac_sqtt_get_trace(struct ac_sqtt *data, const struct radeon_info *info,
 
    return true;
 }
+
+uint32_t
+ac_sqtt_get_shader_mask(const struct radeon_info *info)
+{
+   unsigned shader_mask = 0x7f; /* all shader stages */
+
+   if (info->gfx_level >= GFX11) {
+      /* Disable unsupported hw shader stages */
+      shader_mask &= ~(0x02 /* VS */ | 0x08 /* ES */ | 0x20 /* LS */);
+   }
+
+   return shader_mask;
+}
