@@ -918,7 +918,7 @@ brw_compute_mue_map(const struct brw_compiler *compiler,
 
       uint64_t per_prim_outputs = outputs_written & nir->info.per_primitive_outputs;
       while (per_prim_outputs) {
-         uint64_t location = ffsl(per_prim_outputs) - 1;
+         uint64_t location = ffsll(per_prim_outputs) - 1;
 
          assert(map->start_dw[location] == -1);
          assert(location == VARYING_SLOT_PRIMITIVE_ID ||
@@ -1040,7 +1040,7 @@ brw_compute_mue_map(const struct brw_compiler *compiler,
 
       uint64_t per_vertex_outputs = outputs_written & ~nir->info.per_primitive_outputs;
       while (per_vertex_outputs) {
-         uint64_t location = ffsl(per_vertex_outputs) - 1;
+         uint64_t location = ffsll(per_vertex_outputs) - 1;
 
          assert(map->start_dw[location] == -1);
          assert(location >= VARYING_SLOT_VAR0);
