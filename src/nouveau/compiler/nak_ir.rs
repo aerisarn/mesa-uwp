@@ -3277,6 +3277,35 @@ impl fmt::Display for OpCS2R {
     }
 }
 
+pub enum PixVal {
+    MsCount,
+    CovMask,
+    CentroidOffset,
+    MyIndex,
+    InnerCoverage,
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpPixLd {
+    pub dst: Dst,
+    pub val: PixVal,
+}
+
+impl fmt::Display for OpPixLd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PIXLD")?;
+        match self.val {
+            PixVal::MsCount => write!(f, ".MSCOUNT")?,
+            PixVal::CovMask => write!(f, ".COVMASK")?,
+            PixVal::CentroidOffset => write!(f, ".CENTROID_OFFSET")?,
+            PixVal::MyIndex => write!(f, ".MY_INDEX")?,
+            PixVal::InnerCoverage => write!(f, ".INNER_COVERAGE")?,
+        }
+        write!(f, " {}", self.dst)
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpS2R {
@@ -3656,6 +3685,7 @@ pub enum Op {
     Exit(OpExit),
     Bar(OpBar),
     CS2R(OpCS2R),
+    PixLd(OpPixLd),
     S2R(OpS2R),
     Undef(OpUndef),
     PhiSrcs(OpPhiSrcs),
@@ -4044,7 +4074,7 @@ impl Instr {
             Op::Bra(_) | Op::Exit(_) => true,
 
             // Miscellaneous ops
-            Op::Bar(_) | Op::CS2R(_) | Op::S2R(_) => false,
+            Op::Bar(_) | Op::CS2R(_) | Op::PixLd(_) | Op::S2R(_) => false,
 
             // Virtual ops
             Op::Undef(_)

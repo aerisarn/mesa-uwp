@@ -1536,6 +1536,22 @@ impl SM75Instr {
         self.set_field(72..80, op.idx);
     }
 
+    fn encode_pixld(&mut self, op: &OpPixLd) {
+        self.set_opcode(0x925);
+        self.set_dst(op.dst);
+        self.set_field(
+            78..81,
+            match op.val {
+                PixVal::MsCount => 0_u8,
+                PixVal::CovMask => 1_u8,
+                PixVal::CentroidOffset => 2_u8,
+                PixVal::MyIndex => 3_u8,
+                PixVal::InnerCoverage => 4_u8,
+            },
+        );
+        self.set_pred_dst(81..84, Dst::None);
+    }
+
     fn encode_s2r(&mut self, op: &OpS2R) {
         self.set_opcode(0x919);
         self.set_dst(op.dst);
@@ -1605,6 +1621,7 @@ impl SM75Instr {
             Op::Exit(op) => si.encode_exit(&op),
             Op::Bar(op) => si.encode_bar(&op),
             Op::CS2R(op) => si.encode_cs2r(&op),
+            Op::PixLd(op) => si.encode_pixld(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             _ => panic!("Unhandled instruction"),
         }

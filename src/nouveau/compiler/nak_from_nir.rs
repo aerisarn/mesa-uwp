@@ -1264,6 +1264,22 @@ impl<'a> ShaderFromNir<'a> {
                 }
                 self.set_dst(&intrin.def, dst);
             }
+            nir_intrinsic_load_sample_id => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpPixLd {
+                    dst: dst.into(),
+                    val: PixVal::MyIndex,
+                });
+                self.set_dst(&intrin.def, dst);
+            }
+            nir_intrinsic_load_sample_mask_in => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpPixLd {
+                    dst: dst.into(),
+                    val: PixVal::CovMask,
+                });
+                self.set_dst(&intrin.def, dst);
+            }
             nir_intrinsic_load_scratch => {
                 let size_B =
                     (intrin.def.bit_size() / 8) * intrin.def.num_components();
