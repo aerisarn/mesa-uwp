@@ -868,35 +868,11 @@ si_spm_init(struct si_context *sctx)
    sctx->screen->perfcounters->num_instance_cs_dwords = 3;
 
    struct ac_perfcounters *pc = &sctx->screen->perfcounters->base;
-   struct ac_spm_counter_create_info spm_counters[] = {
-
-      /* XXX: doesn't work */
-      {TCP, 0, 0x9},    /* Number of L2 requests. */
-      {TCP, 0, 0x12},   /* Number of L2 misses. */
-
-      /* Scalar cache hit */
-      {SQ, 0, 0x14f},   /* Number of SCACHE hits. */
-      {SQ, 0, 0x150},   /* Number of SCACHE misses. */
-      {SQ, 0, 0x151},   /* Number of SCACHE misses duplicate. */
-
-      /* Instruction cache hit */
-      {SQ, 0, 0x12c},   /* Number of ICACHE hits. */
-      {SQ, 0, 0x12d},   /* Number of ICACHE misses. */
-      {SQ, 0, 0x12e},   /* Number of ICACHE misses duplicate. */
-
-      /* XXX: doesn't work */
-      {GL1C, 0, 0xe},   /* Number of GL1C requests. */
-      {GL1C, 0, 0x12},  /* Number of GL1C misses. */
-
-      /* L2 cache hit */
-      {GL2C, 0, 0x3},   /* Number of GL2C requests. */
-      {GL2C, 0, info->gfx_level >= GFX10_3 ? 0x2b : 0x23},  /* Number of GL2C misses. */
-   };
 
    if (!ac_init_perfcounters(info, false, false, pc))
       return false;
 
-   if (!ac_init_spm(info, pc, ARRAY_SIZE(spm_counters), spm_counters, &sctx->spm))
+   if (!ac_init_spm(info, pc, &sctx->spm))
       return false;
 
    if (!si_spm_init_bo(sctx))

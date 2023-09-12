@@ -182,26 +182,12 @@ radv_spm_init(struct radv_device *device)
 {
    const struct radeon_info *info = &device->physical_device->rad_info;
    struct ac_perfcounters *pc = &device->physical_device->ac_perfcounters;
-   struct ac_spm_counter_create_info spm_counters[] = {
-      {TCP, 0, 0x9},                                       /* Number of L2 requests. */
-      {TCP, 0, 0x12},                                      /* Number of L2 misses. */
-      {SQ, 0, 0x14f},                                      /* Number of SCACHE hits. */
-      {SQ, 0, 0x150},                                      /* Number of SCACHE misses. */
-      {SQ, 0, 0x151},                                      /* Number of SCACHE misses duplicate. */
-      {SQ, 0, 0x12c},                                      /* Number of ICACHE hits. */
-      {SQ, 0, 0x12d},                                      /* Number of ICACHE misses. */
-      {SQ, 0, 0x12e},                                      /* Number of ICACHE misses duplicate. */
-      {GL1C, 0, 0xe},                                      /* Number of GL1C requests. */
-      {GL1C, 0, 0x12},                                     /* Number of GL1C misses. */
-      {GL2C, 0, 0x3},                                      /* Number of GL2C requests. */
-      {GL2C, 0, info->gfx_level >= GFX10_3 ? 0x2b : 0x23}, /* Number of GL2C misses. */
-   };
 
    /* We failed to initialize the performance counters. */
    if (!pc->blocks)
       return false;
 
-   if (!ac_init_spm(info, pc, ARRAY_SIZE(spm_counters), spm_counters, &device->spm))
+   if (!ac_init_spm(info, pc, &device->spm))
       return false;
 
    if (!radv_spm_init_bo(device))

@@ -26,10 +26,14 @@ enum ac_spm_segment_type {
    AC_SPM_SEGMENT_TYPE_COUNT,
 };
 
-struct ac_spm_counter_create_info {
+struct ac_spm_counter_descr {
    enum ac_pc_gpu_block gpu_block;
    uint32_t instance;
    uint32_t event_id;
+};
+
+struct ac_spm_counter_create_info {
+   struct ac_spm_counter_descr *b;
 };
 
 struct ac_spm_muxsel {
@@ -105,8 +109,6 @@ struct ac_spm_trace {
 
 bool ac_init_spm(const struct radeon_info *info,
                  const struct ac_perfcounters *pc,
-                 unsigned num_counters,
-                 const struct ac_spm_counter_create_info *counters,
                  struct ac_spm *spm);
 void ac_destroy_spm(struct ac_spm *spm);
 
