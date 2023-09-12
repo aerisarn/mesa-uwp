@@ -989,9 +989,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
               radv_spm_trace_enabled(device->instance) ? "enabled" : "disabled");
 
       if (radv_spm_trace_enabled(device->instance)) {
-         /* TODO: add SPM counters for GFX11. */
-         if (device->physical_device->rad_info.gfx_level == GFX10 ||
-             device->physical_device->rad_info.gfx_level == GFX10_3) {
+         if (device->physical_device->rad_info.gfx_level >= GFX10) {
             if (!radv_spm_init(device)) {
                result = VK_ERROR_INITIALIZATION_FAILED;
                goto fail;
