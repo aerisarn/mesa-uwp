@@ -3442,6 +3442,9 @@ handle_sample_from_linear_image(struct v3dv_cmd_buffer *cmd_buffer,
          continue;
 
       struct v3dv_descriptor *desc = &set->descriptors[blayout->descriptor_index];
+      if (!desc->image_view)
+         continue;
+
       struct v3dv_image *image = (struct v3dv_image *) desc->image_view->vk.image;
       struct v3dv_image_view *view = (struct v3dv_image_view *) desc->image_view;
       if (image->tiled || view->vk.view_type == VK_IMAGE_VIEW_TYPE_1D)
