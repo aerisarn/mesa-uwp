@@ -85,7 +85,7 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
       uint64_t va = radv_buffer_get_va(device->sqtt.bo);
       uint64_t data_va = ac_sqtt_get_data_va(rad_info, &device->sqtt, va, se);
       uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
-      int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
+      int active_cu = ac_sqtt_get_active_cu(&device->physical_device->rad_info, se);
 
       if (ac_sqtt_se_is_disabled(rad_info, se))
          continue;
@@ -103,7 +103,7 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
 
          radeon_set_perfctr_reg(gfx_level, qf, cs, R_0367B4_SQ_THREAD_TRACE_MASK,
                                 S_0367B4_WTYPE_INCLUDE(shader_mask) | S_0367B4_SA_SEL(0) |
-                                   S_0367B4_WGP_SEL(first_active_cu / 2) | S_0367B4_SIMD_SEL(0));
+                                   S_0367B4_WGP_SEL(active_cu / 2) | S_0367B4_SIMD_SEL(0));
 
          uint32_t sqtt_token_mask = S_0367B8_REG_INCLUDE(V_0367B8_REG_INCLUDE_SQDEC | V_0367B8_REG_INCLUDE_SHDEC |
                                                          V_0367B8_REG_INCLUDE_GFXUDEC | V_0367B8_REG_INCLUDE_COMP |
@@ -134,7 +134,7 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
 
          radeon_set_privileged_config_reg(cs, R_008D14_SQ_THREAD_TRACE_MASK,
                                           S_008D14_WTYPE_INCLUDE(shader_mask) | S_008D14_SA_SEL(0) |
-                                             S_008D14_WGP_SEL(first_active_cu / 2) | S_008D14_SIMD_SEL(0));
+                                             S_008D14_WGP_SEL(active_cu / 2) | S_008D14_SIMD_SEL(0));
 
          uint32_t sqtt_token_mask = S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC | V_008D18_REG_INCLUDE_SHDEC |
                                                          V_008D18_REG_INCLUDE_GFXUDEC | V_008D18_REG_INCLUDE_COMP |
@@ -166,7 +166,7 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
 
          radeon_set_uconfig_reg(cs, R_030CD4_SQ_THREAD_TRACE_CTRL, S_030CD4_RESET_BUFFER(1));
 
-         uint32_t sqtt_mask = S_030CC8_CU_SEL(first_active_cu) | S_030CC8_SH_SEL(0) | S_030CC8_SIMD_EN(0xf) |
+         uint32_t sqtt_mask = S_030CC8_CU_SEL(active_cu) | S_030CC8_SH_SEL(0) | S_030CC8_SIMD_EN(0xf) |
                               S_030CC8_VM_ID_MASK(0) | S_030CC8_REG_STALL_EN(1) | S_030CC8_SPI_STALL_EN(1) |
                               S_030CC8_SQ_STALL_EN(1);
 

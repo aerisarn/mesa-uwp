@@ -233,6 +233,22 @@ ac_sqtt_se_is_disabled(const struct radeon_info *info, unsigned se)
    return info->cu_mask[se][0] == 0;
 }
 
+uint32_t
+ac_sqtt_get_active_cu(const struct radeon_info *info, unsigned se)
+{
+   uint32_t cu_index;
+
+   if (info->gfx_level >= GFX11) {
+      /* GFX11 seems to operate on the last active CU. */
+      cu_index = util_last_bit(info->cu_mask[se][0]) - 1;
+   } else {
+      /* Default to the first active CU. */
+      cu_index = ffs(info->cu_mask[se][0]);
+   }
+
+   return cu_index;
+}
+
 bool
 ac_sqtt_get_trace(struct ac_sqtt *data, const struct radeon_info *info,
                   struct ac_sqtt_trace *sqtt_trace)
@@ -249,7 +265,7 @@ ac_sqtt_get_trace(struct ac_sqtt *data, const struct radeon_info *info,
       void *data_ptr = (uint8_t *)ptr + data_offset;
       struct ac_sqtt_data_info *trace_info = (struct ac_sqtt_data_info *)info_ptr;
       struct ac_sqtt_data_se data_se = {0};
-      int first_active_cu = ffs(info->cu_mask[se][0]);
+      int active_cu = ac_sqtt_get_active_cu(info, se);
 
       if (ac_sqtt_se_is_disabled(info, se))
          continue;
@@ -262,7 +278,7 @@ ac_sqtt_get_trace(struct ac_sqtt *data, const struct radeon_info *info,
       data_se.shader_engine = se;
 
       /* RGP seems to expect units of WGP on GFX10+. */
-      data_se.compute_unit = info->gfx_level >= GFX10 ? (first_active_cu / 2) : first_active_cu;
+      data_se.compute_unit = info->gfx_level >= GFX10 ? (active_cu / 2) : active_cu;
 
       sqtt_trace->traces[sqtt_trace->num_traces] = data_se;
       sqtt_trace->num_traces++;
