@@ -3592,11 +3592,14 @@ impl SrcsAsSlice for OpFSOut {
 
 impl fmt::Display for OpFSOut {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FS_OUT {{ {}", self.srcs[0])?;
-        for src in &self.srcs[1..] {
+        write!(f, "FS_OUT {{")?;
+        for (i, src) in self.srcs.iter().enumerate() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
             write!(f, " {}", src)?;
         }
-        write!(f, "}}")
+        write!(f, " }}")
     }
 }
 
