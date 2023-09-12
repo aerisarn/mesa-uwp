@@ -2902,11 +2902,6 @@ glsl_type::coordinate_components() const
    return size;
 }
 
-#define DECL_TYPE(NAME, ...)                                    \
-   const glsl_type *const glsl_type::NAME##_type = &glsl_type_builtin_##NAME;
-#include "compiler/builtin_type_macros.h"
-#undef DECL_TYPE
-
 union packed_type {
    uint32_t u32;
    struct {

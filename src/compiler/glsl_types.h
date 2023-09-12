@@ -356,10 +356,9 @@ struct glsl_type {
     * \name Pointers to various public type singletons
     */
    /*@{*/
-#define DECL_TYPE(NAME, ...) \
-   static const glsl_type *const NAME##_type;
-#include "compiler/builtin_type_macros.h"
-#undef  DECL_TYPE
+#define BUILTIN_TYPES_CPP_DECLARATIONS
+#include "compiler/builtin_types_cpp.h"
+#undef BUILTIN_TYPES_CPP_DECLARATIONS
    /*@}*/
 
    /**
@@ -1231,10 +1230,7 @@ private:
 #endif /* __cplusplus */
 };
 
-#define DECL_TYPE(NAME, ...) \
-extern const struct glsl_type glsl_type_builtin_##NAME;
-#include "compiler/builtin_type_macros.h"
-#undef  DECL_TYPE
+#include "compiler/builtin_types.h"
 
 struct glsl_struct_field {
    const struct glsl_type *type;
@@ -1370,6 +1366,12 @@ struct glsl_struct_field {
 
 #ifdef __cplusplus
 } /* extern "C" */
+#endif
+
+#ifdef __cplusplus
+#define BUILTIN_TYPES_CPP_DEFINITIONS
+#include "compiler/builtin_types_cpp.h"
+#undef BUILTIN_TYPES_CPP_DEFINITIONS
 #endif
 
 #endif /* GLSL_TYPES_H */
