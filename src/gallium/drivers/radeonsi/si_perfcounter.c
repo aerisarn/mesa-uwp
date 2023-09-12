@@ -804,13 +804,13 @@ si_emit_spm_setup(struct si_context *sctx, struct radeon_cmdbuf *cs)
    radeon_set_uconfig_reg(R_03726C_RLC_SPM_ACCUM_MODE, 0);
    radeon_set_uconfig_reg(R_037210_RLC_SPM_PERFMON_SEGMENT_SIZE, 0);
    radeon_set_uconfig_reg(R_03727C_RLC_SPM_PERFMON_SE3TO0_SEGMENT_SIZE,
-                          S_03727C_SE0_NUM_LINE(spm->num_muxsel_lines[0]) |
-                          S_03727C_SE1_NUM_LINE(spm->num_muxsel_lines[1]) |
-                          S_03727C_SE2_NUM_LINE(spm->num_muxsel_lines[2]) |
-                          S_03727C_SE3_NUM_LINE(spm->num_muxsel_lines[3]));
+                          S_03727C_SE0_NUM_LINE(spm->num_muxsel_lines[AC_SPM_SEGMENT_TYPE_SE0]) |
+                          S_03727C_SE1_NUM_LINE(spm->num_muxsel_lines[AC_SPM_SEGMENT_TYPE_SE1]) |
+                          S_03727C_SE2_NUM_LINE(spm->num_muxsel_lines[AC_SPM_SEGMENT_TYPE_SE2]) |
+                          S_03727C_SE3_NUM_LINE(spm->num_muxsel_lines[AC_SPM_SEGMENT_TYPE_SE3]));
    radeon_set_uconfig_reg(R_037280_RLC_SPM_PERFMON_GLB_SEGMENT_SIZE,
                           S_037280_PERFMON_SEGMENT_SIZE(total_muxsel_lines) |
-                          S_037280_GLOBAL_NUM_LINE(spm->num_muxsel_lines[4]));
+                          S_037280_GLOBAL_NUM_LINE(spm->num_muxsel_lines[AC_SPM_SEGMENT_TYPE_GLOBAL]));
 
    /* Upload each muxsel ram to the RLC. */
    for (unsigned s = 0; s < AC_SPM_SEGMENT_TYPE_COUNT; s++) {
