@@ -58,6 +58,30 @@ static struct ac_spm_counter_create_info gfx103_spm_counters[] = {
    {&gfx103_num_gl2c_misses},
 };
 
+/* GFX11+ */
+static struct ac_spm_counter_descr gfx11_num_l2_misses = {TCP, 0, 0x11};
+static struct ac_spm_counter_descr gfx11_num_scache_hits = {SQ_WGP, 0, 0x126};
+static struct ac_spm_counter_descr gfx11_num_scache_misses = {SQ_WGP, 0, 0x127};
+static struct ac_spm_counter_descr gfx11_num_scache_misses_dup = {SQ_WGP, 0, 0x128};
+static struct ac_spm_counter_descr gfx11_num_icache_hits = {SQ_WGP, 0, 0x10e};
+static struct ac_spm_counter_descr gfx11_num_icache_misses = {SQ_WGP, 0, 0x10f};
+static struct ac_spm_counter_descr gfx11_num_icache_misses_dup = {SQ_WGP, 0, 0x110};
+
+static struct ac_spm_counter_create_info gfx11_spm_counters[] = {
+   {&gfx10_num_l2_hits},
+   {&gfx11_num_l2_misses},
+   {&gfx11_num_scache_hits},
+   {&gfx11_num_scache_misses},
+   {&gfx11_num_scache_misses_dup},
+   {&gfx11_num_icache_hits},
+   {&gfx11_num_icache_misses},
+   {&gfx11_num_icache_misses_dup},
+   {&gfx10_num_gl1c_hits},
+   {&gfx10_num_gl1c_misses},
+   {&gfx10_num_gl2c_hits},
+   {&gfx103_num_gl2c_misses},
+};
+
 static struct ac_spm_counter_create_info *
 ac_spm_get_counters(const struct radeon_info *info, unsigned *num_counters)
 {
@@ -68,6 +92,9 @@ ac_spm_get_counters(const struct radeon_info *info, unsigned *num_counters)
    case GFX10_3:
       *num_counters = ARRAY_SIZE(gfx103_spm_counters);
       return gfx103_spm_counters;
+   case GFX11:
+      *num_counters = ARRAY_SIZE(gfx11_spm_counters);
+      return gfx11_spm_counters;
    default:
       unreachable("invalid gfx_level for SPM counters");
    }
