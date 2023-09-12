@@ -3695,7 +3695,7 @@ void radv_perfcounter_emit_spm_stop(struct radv_device *device, struct radeon_cm
 /* radv_spm.c */
 bool radv_spm_init(struct radv_device *device);
 void radv_spm_finish(struct radv_device *device);
-void radv_emit_spm_setup(struct radv_device *device, struct radeon_cmdbuf *cs);
+void radv_emit_spm_setup(struct radv_device *device, struct radeon_cmdbuf *cs, enum radv_queue_family qf);
 
 void radv_destroy_graphics_pipeline(struct radv_device *device, struct radv_graphics_pipeline *pipeline);
 void radv_destroy_graphics_lib_pipeline(struct radv_device *device, struct radv_graphics_lib_pipeline *pipeline);
