@@ -3010,7 +3010,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
       cmd->state.shaders[MESA_SHADER_COMPUTE] =
          pipeline->shaders[MESA_SHADER_COMPUTE];
-      cmd->state.compute_pipeline = tu_pipeline_to_compute(pipeline);
       tu_cs_emit_state_ib(&cmd->cs,
                           pipeline->shaders[MESA_SHADER_COMPUTE]->state);
       cmd->state.compute_load_state = pipeline->load_state;
@@ -5471,18 +5470,17 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       return;
 
    struct tu_cs *cs = &cmd->cs;
-   struct tu_compute_pipeline *pipeline = cmd->state.compute_pipeline;
+   struct tu_shader *shader = cmd->state.shaders[MESA_SHADER_COMPUTE];
 
    bool emit_instrlen_workaround =
-      pipeline->instrlen >
+      shader->variant->instrlen >
       cmd->device->physical_device->info->a6xx.instr_cache_size;
 
    /* We don't use draw states for dispatches, so the bound pipeline
     * could be overwritten by reg stomping in a renderpass or blit.
     */
    if (cmd->device->dbg_renderpass_stomp_cs) {
-      tu_cs_emit_state_ib(&cmd->cs,
-                          cmd->state.compute_pipeline->base.shaders[MESA_SHADER_COMPUTE]->state);
+      tu_cs_emit_state_ib(&cmd->cs, shader->state);
    }
 
    /* There appears to be a HW bug where in some rare circumstances it appears
@@ -5501,7 +5499,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
     * See https://gitlab.freedesktop.org/mesa/mesa/-/issues/5892
     */
    if (emit_instrlen_workaround) {
-      tu_cs_emit_regs(cs, A6XX_SP_FS_INSTRLEN(pipeline->instrlen));
+      tu_cs_emit_regs(cs, A6XX_SP_FS_INSTRLEN(shader->variant->instrlen));
       tu_emit_event_write<CHIP>(cmd, cs, FD_LABEL);
    }
 
@@ -5525,7 +5523,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_COMPUTE));
 
-   const uint32_t *local_size = pipeline->local_size;
+   const uint16_t *local_size = shader->variant->local_size;
    const uint32_t *num_groups = info->blocks;
    tu_cs_emit_regs(cs,
                    HLSQ_CS_NDRANGE_0(CHIP, .kerneldim = 3,

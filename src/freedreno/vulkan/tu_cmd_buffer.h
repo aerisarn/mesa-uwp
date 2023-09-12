@@ -386,7 +386,6 @@ struct tu_cmd_state
    uint32_t dirty;
 
    struct tu_graphics_pipeline *pipeline;
-   struct tu_compute_pipeline *compute_pipeline;
 
    struct tu_shader *shaders[MESA_SHADER_STAGES];
 
