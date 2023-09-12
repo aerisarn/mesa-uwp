@@ -316,13 +316,6 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
    return progress;
 }
 
-static int
-vec_size_4(const struct glsl_type *type, bool bindless)
-{
-   assert(glsl_type_is_vector_or_scalar(type));
-   return 4;
-}
-
 static bool
 nak_nir_lower_fs_inputs(nir_shader *nir)
 {
@@ -372,9 +365,30 @@ nak_nir_lower_fs_inputs(nir_shader *nir)
    return true;
 }
 
+static int
+fs_out_size(const struct glsl_type *type, bool bindless)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+   return 4;
+}
+
 static bool
 nak_nir_lower_fs_outputs(nir_shader *nir)
 {
+   if (nir->info.outputs_written == 0)
+      return false;
+
+   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
+
+   nir_foreach_shader_out_variable(var, nir) {
+      if (var->data.index > 0) {
+         assert(var->data.location == FRAG_RESULT_DATA0);
+         assert(!(nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_DATA1)));
+         var->data.location = FRAG_RESULT_DATA1;
+         nir->info.outputs_written |= BITFIELD_BIT(FRAG_RESULT_DATA1);
+      }
+   }
+
    const uint32_t color_targets =
       (nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) ?
       1 : (nir->info.outputs_written >> FRAG_RESULT_DATA0);
@@ -384,35 +398,33 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
       nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_SAMPLE_MASK);
 
    nir->num_outputs = util_bitcount(color_targets) * 4 +
-                      writes_depth + writes_sample_mask;
+                      (writes_depth || writes_sample_mask) * 2;
 
    nir_foreach_shader_out_variable(var, nir) {
       assert(nir->info.outputs_written & BITFIELD_BIT(var->data.location));
       switch (var->data.location) {
       case FRAG_RESULT_DEPTH:
-         var->data.driver_location = util_bitcount(color_targets) * 4;
+         var->data.driver_location = util_bitcount(color_targets) * 4 + 1;
          break;
       case FRAG_RESULT_COLOR:
          var->data.driver_location = 0;
          break;
       case FRAG_RESULT_SAMPLE_MASK:
          var->data.driver_location = util_bitcount(color_targets) * 4;
-         var->data.driver_location += writes_depth;
          break;
       default: {
          assert(var->data.location >= FRAG_RESULT_DATA0);
          const unsigned out = var->data.location - FRAG_RESULT_DATA0;
          var->data.driver_location =
-            util_bitcount(color_targets & BITFIELD_MASK(out));
+            util_bitcount(color_targets & BITFIELD_MASK(out)) * 4;
          break;
       }
       }
    }
 
-   bool progress = nir->info.outputs_written != 0;
-   progress |= OPT(nir, nir_lower_io, nir_var_shader_out, vec_size_4, 0);
+   NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out, fs_out_size, 0);
 
-   return progress;
+   return true;
 }
 
 static bool
