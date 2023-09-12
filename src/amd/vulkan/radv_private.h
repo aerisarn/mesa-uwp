@@ -2132,7 +2132,7 @@ struct radv_ray_tracing_group {
 
 struct radv_ray_tracing_stage {
    struct vk_pipeline_cache_object *nir;
-   struct vk_pipeline_cache_object *shader;
+   struct radv_shader *shader;
    gl_shader_stage stage;
    uint32_t stack_size;
 

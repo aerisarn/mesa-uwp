@@ -835,7 +835,7 @@ radv_get_shader_from_executable_index(struct radv_pipeline *pipeline, int index,
 
          if (!index) {
             *stage = rt_stage->stage;
-            return container_of(rt_stage->shader, struct radv_shader, base);
+            return rt_stage->shader;
          }
 
          index--;

@@ -449,7 +449,7 @@ radv_ray_tracing_pipeline_cache_search(struct radv_device *device, struct vk_pip
       pipeline->stages[i].stack_size = data->stages[i].stack_size;
 
       if (data->stages[i].has_shader)
-         pipeline->stages[i].shader = &radv_shader_ref(pipeline_obj->shaders[idx++])->base;
+         pipeline->stages[i].shader = radv_shader_ref(pipeline_obj->shaders[idx++]);
 
       if (is_library) {
          pipeline->stages[i].nir = radv_pipeline_cache_search_nir(device, cache, pipeline->stages[i].sha1);
@@ -512,8 +512,7 @@ radv_ray_tracing_pipeline_cache_insert(struct radv_device *device, struct vk_pip
       data->stages[i].has_shader = !!pipeline->stages[i].shader;
 
       if (pipeline->stages[i].shader)
-         pipeline_obj->shaders[idx++] =
-            radv_shader_ref(container_of(pipeline->stages[i].shader, struct radv_shader, base));
+         pipeline_obj->shaders[idx++] = radv_shader_ref(pipeline->stages[i].shader);
    }
    assert(idx == num_shaders);
 
