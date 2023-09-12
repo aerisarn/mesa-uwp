@@ -1649,6 +1649,14 @@ impl<'a> ShaderFromNir<'a> {
             assert!(succ[1].is_none());
             let s0 = succ[0].unwrap();
             if s0.index == self.end_block_id {
+                if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
+                    b.push_op(OpFSOut {
+                        srcs: std::mem::replace(
+                            &mut self.fs_out_regs,
+                            Vec::new(),
+                        ),
+                    });
+                }
                 b.push_op(OpExit {});
             } else {
                 self.cfg.add_edge(nb.index, s0.index);
@@ -1720,18 +1728,6 @@ impl<'a> ShaderFromNir<'a> {
             if cfg[i].falls_through() {
                 assert!(cfg.succ_indices(i)[0] == i + 1);
             }
-        }
-
-        if self.nir.info.stage() == MESA_SHADER_FRAGMENT
-            && nfi.function().is_entrypoint
-        {
-            let end_block_idx = cfg.len() - 1;
-            let end_block = &mut cfg[end_block_idx];
-
-            let fs_out = Instr::new_boxed(OpFSOut {
-                srcs: std::mem::replace(&mut self.fs_out_regs, Vec::new()),
-            });
-            end_block.instrs.insert(end_block.instrs.len() - 1, fs_out);
         }
 
         Function {
