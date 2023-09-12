@@ -6266,7 +6266,7 @@ radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_compu
 
       struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(&pipeline->base);
       for (unsigned i = 0; i < rt_pipeline->stage_count; ++i) {
-         if (!radv_ray_tracing_stage_is_compiled(&rt_pipeline->stages[i]))
+         if (!rt_pipeline->stages[i].shader)
             continue;
 
          struct radv_shader *shader = container_of(rt_pipeline->stages[i].shader, struct radv_shader, base);

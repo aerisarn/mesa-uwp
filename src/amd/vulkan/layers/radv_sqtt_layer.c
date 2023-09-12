@@ -1571,6 +1571,10 @@ radv_register_rt_pipeline(struct radv_device *device, struct radv_ray_tracing_pi
             unreachable("invalid non-compiled stage");
          continue;
       }
+
+      if (!pipeline->stages[i].shader)
+         continue;
+
       struct radv_shader *shader = container_of(pipeline->stages[i].shader, struct radv_shader, base);
       result = radv_register_rt_stage(device, pipeline, i, stage->stack_size, shader);
       if (result != VK_SUCCESS)

@@ -567,9 +567,11 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
        *    TODO: - monolithic: Extend the loop to cover imported stages and force compilation of imported raygen
        *                        shaders since pipeline library shaders use separate compilation.
        *    - separate:   Compile any recursive stage if wasn't compiled yet.
-       * TODO: Skip chit and miss shaders in the monolithic case.
        */
       bool shader_needed = radv_ray_tracing_stage_is_compiled(&rt_stages[idx]) && !rt_stages[idx].shader;
+      if (rt_stages[idx].stage == MESA_SHADER_CLOSEST_HIT || rt_stages[idx].stage == MESA_SHADER_MISS)
+         shader_needed &= !monolithic || raygen_imported;
+
       if (shader_needed) {
          uint32_t stack_size = 0;
          struct radv_serialized_shader_arena_block *replay_block =
@@ -721,7 +723,7 @@ compile_rt_prolog(struct radv_device *device, struct radv_ray_tracing_pipeline *
    /* create combined config */
    struct ac_shader_config *config = &pipeline->prolog->config;
    for (unsigned i = 0; i < pipeline->stage_count; i++) {
-      if (radv_ray_tracing_stage_is_compiled(&pipeline->stages[i])) {
+      if (pipeline->stages[i].shader) {
          struct radv_shader *shader = container_of(pipeline->stages[i].shader, struct radv_shader, base);
          combine_config(config, &shader->config);
       }
@@ -814,9 +816,11 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
    /* write shader VAs into group handles */
    for (unsigned i = 0; i < pipeline->group_count; i++) {
       if (pipeline->groups[i].recursive_shader != VK_SHADER_UNUSED_KHR) {
-         struct radv_shader *shader =
-            container_of(pipeline->stages[pipeline->groups[i].recursive_shader].shader, struct radv_shader, base);
-         pipeline->groups[i].handle.recursive_shader_ptr = shader->va | radv_get_rt_priority(shader->info.stage);
+         if (pipeline->stages[pipeline->groups[i].recursive_shader].shader) {
+            struct radv_shader *shader =
+               container_of(pipeline->stages[pipeline->groups[i].recursive_shader].shader, struct radv_shader, base);
+            pipeline->groups[i].handle.recursive_shader_ptr = shader->va | radv_get_rt_priority(shader->info.stage);
+         }
       }
    }
 
