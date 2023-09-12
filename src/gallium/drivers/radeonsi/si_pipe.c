@@ -1545,6 +1545,7 @@ struct pipe_screen *radeonsi_screen_create(int fd, const struct pipe_screen_conf
    if (!version)
      return NULL;
 
+#ifdef LLVM_AVAILABLE
    /* LLVM must be initialized before util_queue because both u_queue and LLVM call atexit,
     * and LLVM must call it first because its atexit handler executes C++ destructors,
     * which must be done after our compiler threads using LLVM in u_queue are finished
@@ -1552,6 +1553,7 @@ struct pipe_screen *radeonsi_screen_create(int fd, const struct pipe_screen_conf
     * LLVM must be initialized first, followed by u_queue.
     */
    ac_init_llvm_once();
+#endif
 
    driParseConfigFiles(config->options, config->options_info, 0, "radeonsi",
                        NULL, NULL, NULL, 0, NULL, 0);
