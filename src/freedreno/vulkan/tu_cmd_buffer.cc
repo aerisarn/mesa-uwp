@@ -3018,7 +3018,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-   cmd->state.pipeline = tu_pipeline_to_graphics(pipeline);
+   struct tu_graphics_pipeline *gfx_pipeline = tu_pipeline_to_graphics(pipeline);
    cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS | TU_CMD_DIRTY_SHADER_CONSTS |
                        TU_CMD_DIRTY_VS_PARAMS | TU_CMD_DIRTY_PROGRAM;
 
@@ -3029,14 +3029,14 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    tu_bind_fs(cmd, pipeline->shaders[MESA_SHADER_FRAGMENT]);
 
    vk_cmd_set_dynamic_graphics_state(&cmd->vk,
-                                     &cmd->state.pipeline->dynamic_state);
+                                     &gfx_pipeline->dynamic_state);
    cmd->state.program = pipeline->program;
 
    cmd->state.load_state = pipeline->load_state;
    cmd->state.prim_order_sysmem = pipeline->prim_order.state_sysmem;
    cmd->state.prim_order_gmem = pipeline->prim_order.state_gmem;
 
-   if (cmd->state.pipeline->feedback_loop_may_involve_textures &&
+   if (gfx_pipeline->feedback_loop_may_involve_textures &&
        !cmd->state.rp.disable_gmem) {
       /* VK_EXT_attachment_feedback_loop_layout allows feedback loop to involve
        * not only input attachments but also sampled images or image resources.
@@ -3061,8 +3061,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    if (pipeline->prim_order.sysmem_single_prim_mode &&
        !cmd->state.rp.sysmem_single_prim_mode) {
-      if (cmd->state.pipeline->feedback_loop_color ||
-          cmd->state.pipeline->feedback_loop_ds) {
+      if (gfx_pipeline->feedback_loop_color ||
+          gfx_pipeline->feedback_loop_ds) {
          perf_debug(cmd->device, "single_prim_mode due to feedback loop");
       } else {
          perf_debug(cmd->device, "single_prim_mode due to rast order access");
@@ -3120,10 +3120,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.dirty |= TU_CMD_DIRTY_PER_VIEW_VIEWPORT;
    }
 
-   if (cmd->state.pipeline->feedback_loop_ds !=
-       cmd->state.pipeline_feedback_loop_ds) {
-      cmd->state.pipeline_feedback_loop_ds =
-         cmd->state.pipeline->feedback_loop_ds;
+   if (gfx_pipeline->feedback_loop_ds != cmd->state.pipeline_feedback_loop_ds) {
+      cmd->state.pipeline_feedback_loop_ds = gfx_pipeline->feedback_loop_ds;
       cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
    }
 }
