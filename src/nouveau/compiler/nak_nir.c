@@ -426,11 +426,25 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_def *val;
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    switch (intrin->intrinsic) {
+   case nir_intrinsic_load_frag_coord:
    case nir_intrinsic_load_sample_pos: {
+      nir_def *bary = nir_load_barycentric_sample(b, 32,
+         .interp_mode = INTERP_MODE_SMOOTH);
       const uint32_t addr = nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD);
-      val = nir_load_input(b, 2, 32, nir_imm_int(b, 0), .base = addr,
-                           .dest_type = nir_type_float32);
-      val = nir_ffract(b, val);
+      nir_def *coord_in =
+         nir_load_interpolated_input(b, 4, 32, bary, nir_imm_int(b, 0),
+                                     .base = addr,
+                                     .dest_type = nir_type_float32);
+
+      /* gl_FragCoord = (x, y, z, 1/w) */
+      val = nir_fdiv(b, nir_vec4(b, nir_channel(b, coord_in, 0),
+                                    nir_channel(b, coord_in, 1),
+                                    nir_channel(b, coord_in, 2),
+                                    nir_imm_float(b, 1.0f)),
+                        nir_channel(b, coord_in, 3));
+
+      if (intrin->intrinsic == nir_intrinsic_load_sample_pos)
+         val = nir_ffract(b, nir_trim_vector(b, val, 2));
       break;
    }
 
@@ -442,7 +456,6 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    }
 
-   case nir_intrinsic_load_frag_coord:
    case nir_intrinsic_load_point_coord:
    case nir_intrinsic_load_tess_coord:
    case nir_intrinsic_load_instance_id:
