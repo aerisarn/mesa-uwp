@@ -324,11 +324,11 @@ struct glsl_type {
    unsigned length;
 
    /**
-    * Name of the data type
+    * Identifier to the name of the data type
     *
-    * Will never be \c NULL.
+    * Use glsl_get_type_name() to access the actual name.
     */
-   const char *name;
+   uintptr_t name_id;
 
    /**
     * Explicit array, matrix, or vector stride.  This is used to communicate

@@ -31,7 +31,7 @@
 const char *
 glsl_get_type_name(const glsl_type *type)
 {
-   return type->name;
+   return (const char *)type->name_id;
 }
 
 int

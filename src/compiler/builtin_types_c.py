@@ -23,7 +23,7 @@ const struct glsl_type glsl_type_builtin_${t["name"]} = {
        %if v is None:
           <% continue %>
        %elif k == "name":
-          .${k} = "${v}",
+          .name_id = (uintptr_t) "${v}",
        %else:
           .${k} = ${v},
        %endif

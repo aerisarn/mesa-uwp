@@ -79,7 +79,7 @@ make_vector_matrix_type(void *lin_ctx, uint32_t gl_type,
    t->matrix_columns = matrix_columns;
    t->explicit_stride = explicit_stride;
    t->explicit_alignment = explicit_alignment;
-   t->name = linear_strdup(lin_ctx, name);
+   t->name_id = (uintptr_t)linear_strdup(lin_ctx, name);
 
    return t;
 }
@@ -93,7 +93,7 @@ fill_struct_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_fie
    t->sampled_type = GLSL_TYPE_VOID;
    t->packed = packed;
    t->length = num_fields;
-   t->name = name;
+   t->name_id = (uintptr_t)name;
    t->explicit_alignment = explicit_alignment;
    t->fields.structure = fields;
 }
@@ -132,7 +132,7 @@ fill_interface_type(glsl_type *t, const glsl_struct_field *fields, unsigned num_
    t->interface_packing = (unsigned)packing;
    t->interface_row_major = (unsigned)row_major;
    t->length = num_fields;
-   t->name = name;
+   t->name_id = (uintptr_t)name;
    t->fields.structure = fields;
 }
 
@@ -171,7 +171,7 @@ make_subroutine_type(void *lin_ctx, const char *subroutine_name)
    t->sampled_type = GLSL_TYPE_VOID;
    t->vector_elements = 1;
    t->matrix_columns = 1;
-   t->name = linear_strdup(lin_ctx, subroutine_name);
+   t->name_id = (uintptr_t)linear_strdup(lin_ctx, subroutine_name);
 
    return t;
 }
@@ -522,7 +522,7 @@ make_array_type(void *lin_ctx, const glsl_type *element_type, unsigned length,
       memcpy(base + array_part, pos, element_part);
    }
 
-   t->name = n;
+   t->name_id = (uintptr_t)n;
 
    return t;
 }
