@@ -214,11 +214,8 @@ include:
       changes:
         *all_paths
       when: on_success
-    # Allow triggering jobs manually in other cases if any files affecting the
-    # pipeline were changed
-    - changes:
-        *all_paths
-      when: manual
+    # Allow triggering jobs manually in other cases
+    - when: manual
     # Otherwise, container jobs won't run because no rule matched.
 
 # Git archive
