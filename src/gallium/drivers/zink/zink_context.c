@@ -2597,9 +2597,9 @@ zink_update_rendering_info(struct zink_context *ctx)
 {
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
-      ctx->gfx_pipeline_state.rendering_formats[i] = surf ? surf->info.format[0] : VK_FORMAT_R8G8B8A8_UNORM;
+      ctx->gfx_pipeline_state.rendering_formats[i] = surf ? surf->info.format[0] : VK_FORMAT_UNDEFINED;
    }
-      ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+   ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
    ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
    if (ctx->fb_state.zsbuf && zink_is_zsbuf_used(ctx)) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
@@ -2639,8 +2639,10 @@ begin_rendering(struct zink_context *ctx)
       /* init imageviews, base loadOp, formats */
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
+         if (!surf)
+            continue;
 
-         if (!surf || !zink_resource(surf->base.texture)->valid)
+         if (!zink_resource(surf->base.texture)->valid)
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          else
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -2650,15 +2652,6 @@ begin_rendering(struct zink_context *ctx)
             else
                ctx->dynamic_fb.attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
          }
-         /* use dummy fb if no surf exists */
-         unsigned width = surf ? surf->base.texture->width0 : calc_max_dummy_fbo_size(ctx);
-         unsigned height = surf ? surf->base.texture->height0 : calc_max_dummy_fbo_size(ctx);
-         unsigned prev_width = ctx->dynamic_fb.info.renderArea.extent.width;
-         unsigned prev_height = ctx->dynamic_fb.info.renderArea.extent.height;
-         ctx->dynamic_fb.info.renderArea.extent.width = MIN2(ctx->dynamic_fb.info.renderArea.extent.width, width);
-         ctx->dynamic_fb.info.renderArea.extent.height = MIN2(ctx->dynamic_fb.info.renderArea.extent.height, height);
-         changed_size |= ctx->dynamic_fb.info.renderArea.extent.width != prev_width;
-         changed_size |= ctx->dynamic_fb.info.renderArea.extent.height != prev_height;
       }
 
       /* unset depth and stencil info: reset below */
@@ -2767,11 +2760,14 @@ begin_rendering(struct zink_context *ctx)
 
    zink_batch_no_rp(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      VkImageView iv = VK_NULL_HANDLE;
       struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
-      VkImageView iv = zink_prep_fb_attachment(ctx, surf, i);
-      if (!iv)
-         /* dead swapchain */
-         return 0;
+      if (surf) {
+         iv = zink_prep_fb_attachment(ctx, surf, i);
+         if (!iv)
+            /* dead swapchain */
+            return 0;
+      }
       ctx->dynamic_fb.attachments[i].imageView = iv;
    }
    if (has_swapchain) {
