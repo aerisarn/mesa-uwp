@@ -1537,8 +1537,8 @@ ast_expression::do_hir(exec_list *instructions,
        */
 
       if (op[0]->type == glsl_type::void_type || op[1]->type == glsl_type::void_type) {
-         _mesa_glsl_error(& loc, state, "`%s':  wrong operand types: "
-                         "no operation `%1$s' exists that takes a left-hand "
+         _mesa_glsl_error(& loc, state, "wrong operand types: "
+                         "no operation `%s' exists that takes a left-hand "
                          "operand of type 'void' or a right operand of type "
                          "'void'", (this->oper == ast_equal) ? "==" : "!=");
          error_emitted = true;
@@ -3676,14 +3676,15 @@ static inline void
 validate_array_dimensions(const glsl_type *t,
                           struct _mesa_glsl_parse_state *state,
                           YYLTYPE *loc) {
+   const glsl_type *top = t;
    if (t->is_array()) {
       t = t->fields.array;
       while (t->is_array()) {
          if (t->is_unsized_array()) {
             _mesa_glsl_error(loc, state,
                              "only the outermost array dimension can "
-                             "be unsized",
-                             t->name);
+                             "be unsized, but got %s",
+                             top->name);
             break;
          }
          t = t->fields.array;

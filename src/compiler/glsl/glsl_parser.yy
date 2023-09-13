@@ -1800,7 +1800,7 @@ layout_qualifier_id:
          if (!state->has_geometry_shader()) {
             _mesa_glsl_error(& @3, state,
                              "#version 150 max_vertices qualifier "
-                             "specified", $3);
+                             "specified");
          }
       }
 
