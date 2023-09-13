@@ -3181,7 +3181,7 @@ tc_texture_subdata(struct pipe_context *_pipe,
                width *= blocksize;
 
                if (width == fmt_stride && width == (unsigned)stride) {
-                  uint64_t size = (uint64_t)height * width;
+                  ASSERTED uint64_t size = (uint64_t)height * width;
 
                   assert(size <= SIZE_MAX);
                   assert(dst_x + src_box.width < u_minify(pres->width0, level));
