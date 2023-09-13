@@ -176,6 +176,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_image_robustness                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_inline_uniform_block              = true,
+   .EXT_load_store_op_none                = true,
    .EXT_memory_budget                     = true,
 #if DETECT_OS_LINUX
    .EXT_memory_priority                   = true,
