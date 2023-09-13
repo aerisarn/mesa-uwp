@@ -138,8 +138,56 @@ ac_spm_get_block_select(struct ac_spm *spm, const struct ac_pc_block *block)
    return new_block_sel;
 }
 
+struct ac_spm_instance_mapping {
+   uint32_t se_index;         /* SE index or 0 if global */
+   uint32_t sa_index;         /* SA index or 0 if global or per-SE */
+   uint32_t instance_index;
+};
+
+static bool
+ac_spm_init_instance_mapping(const struct radeon_info *info,
+                             const struct ac_pc_block *block,
+                             const struct ac_spm_counter_info *counter,
+                             struct ac_spm_instance_mapping *mapping)
+{
+   uint32_t instance_index = 0, se_index = 0, sa_index = 0;
+
+   switch (block->b->b->gpu_block) {
+   case GL2C:
+      /* Global blocks. */
+      instance_index = counter->instance;
+      break;
+   case SQ:
+      /* Per-SE blocks. */
+      se_index = counter->instance / block->num_instances;
+      instance_index = counter->instance % block->num_instances;
+      break;
+   case GL1C:
+   case TCP:
+      /* Per-SA blocks. */
+      se_index = (counter->instance / block->num_instances) / info->max_sa_per_se;
+      sa_index = (counter->instance / block->num_instances) % info->max_sa_per_se;
+      instance_index = counter->instance % block->num_instances;
+      break;
+   default:
+      unreachable("invalid SPM block found");
+   }
+
+   if (se_index >= info->num_se ||
+       sa_index >= info->max_sa_per_se ||
+       instance_index >= block->num_instances)
+      return false;
+
+   mapping->se_index = se_index;
+   mapping->sa_index = sa_index;
+   mapping->instance_index = instance_index;
+
+   return true;
+}
+
 static void
 ac_spm_init_muxsel(const struct ac_pc_block *block,
+                   const struct ac_spm_instance_mapping *mapping,
                    struct ac_spm_counter_info *counter,
                    uint32_t spm_wire)
 {
@@ -147,8 +195,8 @@ ac_spm_init_muxsel(const struct ac_pc_block *block,
 
    muxsel->counter = 2 * spm_wire + (counter->is_even ? 0 : 1);
    muxsel->block = block->b->b->spm_block_select;
-   muxsel->shader_array = 0;
-   muxsel->instance = 0;
+   muxsel->shader_array = mapping->sa_index;
+   muxsel->instance = mapping->instance_index;
 }
 
 static bool
@@ -223,30 +271,32 @@ ac_spm_map_counter(struct ac_spm *spm, struct ac_spm_block_select *block_sel,
 }
 
 static bool
-ac_spm_add_counter(const struct ac_perfcounters *pc,
+ac_spm_add_counter(const struct radeon_info *info,
+                   const struct ac_perfcounters *pc,
                    struct ac_spm *spm,
-                   const struct ac_spm_counter_create_info *info)
+                   const struct ac_spm_counter_create_info *counter_info)
 {
+   struct ac_spm_instance_mapping instance_mapping = {0};
    struct ac_spm_counter_info *counter;
    struct ac_spm_block_select *block_sel;
    struct ac_pc_block *block;
    uint32_t spm_wire;
 
    /* Check if the GPU block is valid. */
-   block = ac_pc_get_block(pc, info->b->gpu_block);
+   block = ac_pc_get_block(pc, counter_info->b->gpu_block);
    if (!block) {
       fprintf(stderr, "ac/spm: Invalid GPU block.\n");
       return false;
    }
 
    /* Check if the number of instances is valid. */
-   if (info->b->instance > block->num_global_instances - 1) {
+   if (counter_info->b->instance > block->num_global_instances - 1) {
       fprintf(stderr, "ac/spm: Invalid instance ID.\n");
       return false;
    }
 
    /* Check if the event ID is valid. */
-   if (info->b->event_id > block->b->selectors) {
+   if (counter_info->b->event_id > block->b->selectors) {
       fprintf(stderr, "ac/spm: Invalid event ID.\n");
       return false;
    }
@@ -254,14 +304,20 @@ ac_spm_add_counter(const struct ac_perfcounters *pc,
    counter = &spm->counters[spm->num_counters];
    spm->num_counters++;
 
-   counter->gpu_block = info->b->gpu_block;
-   counter->instance = info->b->instance;
-   counter->event_id = info->b->event_id;
+   counter->gpu_block = counter_info->b->gpu_block;
+   counter->instance = counter_info->b->instance;
+   counter->event_id = counter_info->b->event_id;
 
    /* Get the select block used to configure the counter. */
    block_sel = ac_spm_get_block_select(spm, block);
    if (!block_sel)
       return false;
+
+   /* Initialize instance mapping for the counter. */
+   if (!ac_spm_init_instance_mapping(info, block, counter, &instance_mapping)) {
+      fprintf(stderr, "ac/spm: Failed to initialize instance mapping.\n");
+      return false;
+   }
 
    /* Map the counter to the select block. */
    if (!ac_spm_map_counter(spm, block_sel, counter, &spm_wire)) {
@@ -277,7 +333,7 @@ ac_spm_add_counter(const struct ac_perfcounters *pc,
    }
 
    /* Configure the muxsel for SPM. */
-   ac_spm_init_muxsel(block, counter, spm_wire);
+   ac_spm_init_muxsel(block, &instance_mapping, counter, spm_wire);
 
    return true;
 }
@@ -346,7 +402,7 @@ bool ac_init_spm(const struct radeon_info *info,
       return false;
 
    for (unsigned i = 0; i < num_counters; i++) {
-      if (!ac_spm_add_counter(pc, spm, &counters[i])) {
+      if (!ac_spm_add_counter(info, pc, spm, &counters[i])) {
          fprintf(stderr, "ac/spm: Failed to add SPM counter (%d).\n", i);
          return false;
       }
