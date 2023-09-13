@@ -739,7 +739,8 @@ add_gpus([
 
 add_gpus([
         GPUId(740), # Deprecated, used for dev kernels.
-        GPUId(chip_id=0x43050a01, name="FD740"),
+        GPUId(chip_id=0x43050a01, name="FD740"), # KGSL, no speedbin data
+        GPUId(chip_id=0xffff43050a01, name="FD740"), # Default no-speedbin fallback
     ], A6xxGPUInfo(
         CHIP.A7XX,
         a6xx_gen4,
