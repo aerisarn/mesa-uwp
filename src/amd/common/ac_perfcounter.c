@@ -979,7 +979,7 @@ static struct ac_pc_block_gfxdescr groups_gfx10[] = {
    {&cik_GDS, 123},
    {&gfx10_GE, 315},
    {&gfx10_GL1A, 36},
-   {&gfx10_GL1C, 64},
+   {&gfx10_GL1C, 64, 4},
    {&gfx10_GL2A, 91},
    {&gfx10_GL2C, 235},
    {&cik_GRBM, 47},
