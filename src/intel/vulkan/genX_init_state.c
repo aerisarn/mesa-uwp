@@ -654,7 +654,10 @@ init_compute_queue_state(struct anv_queue *queue)
           ANV_PIPE_HDC_PIPELINE_FLUSH_BIT);
    }
 
-   anv_batch_emit(&batch, GENX(STATE_COMPUTE_MODE), zero);
+   anv_batch_emit(&batch, GENX(STATE_COMPUTE_MODE), cm) {
+      cm.PixelAsyncComputeThreadLimit = 4;
+      cm.PixelAsyncComputeThreadLimitMask = 0x7;
+   }
 #endif
 
    init_common_queue_state(queue, &batch);
