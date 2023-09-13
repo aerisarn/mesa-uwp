@@ -425,6 +425,13 @@ enum anv_bo_alloc_flags {
 
    /** Protected buffer */
    ANV_BO_ALLOC_PROTECTED =               (1 << 15),
+
+   /** Specifies that the BO should be cached and incoherent.
+    *
+    * If ANV_BO_ALLOC_HOST_CACHED or ANV_BO_ALLOC_HOST_CACHED_COHERENT are not
+    * set it will allocate a coherent BO.
+    **/
+   ANV_BO_ALLOC_HOST_CACHED =             (1 << 16),
 };
 
 struct anv_bo {

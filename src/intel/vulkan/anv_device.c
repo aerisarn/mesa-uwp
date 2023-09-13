@@ -4146,10 +4146,13 @@ VkResult anv_AllocateMemory(
    if (mem->vk.export_handle_types || mem->vk.import_handle_type)
       alloc_flags |= (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_IMPLICIT_SYNC);
 
-   if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) &&
-       (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) &&
-       (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT)) == 0)
-      alloc_flags |= ANV_BO_ALLOC_HOST_CACHED_COHERENT;
+   if ((alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT)) == 0) {
+      if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) &&
+          (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
+         alloc_flags |= ANV_BO_ALLOC_HOST_CACHED_COHERENT;
+      else if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
+         alloc_flags |= ANV_BO_ALLOC_HOST_CACHED;
+   }
 
    if (mem->vk.ahardware_buffer) {
       result = anv_import_ahw_memory(_device, mem);
@@ -5188,6 +5191,8 @@ anv_device_get_pat_entry(struct anv_device *device,
       return &device->info->pat.cached_coherent;
    else if (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT))
       return &device->info->pat.scanout;
+   else if (alloc_flags & ANV_BO_ALLOC_HOST_CACHED)
+      return &device->info->pat.writeback_incoherent;
    else
       return &device->info->pat.writecombining;
 }

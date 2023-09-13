@@ -1463,6 +1463,10 @@ anv_device_alloc_bo(struct anv_device *device,
                     uint64_t explicit_address,
                     struct anv_bo **bo_out)
 {
+   /* bo can only be one: cached+coherent, cached(incoherent) or coherent(no flags) */
+   assert(!(!!(alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT) &&
+            !!(alloc_flags & ANV_BO_ALLOC_HOST_CACHED)));
+
    const uint32_t bo_flags =
          device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
 
