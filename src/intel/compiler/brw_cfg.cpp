@@ -166,6 +166,28 @@ bblock_t::dump() const
    }
 }
 
+void
+bblock_t::unlink_list(exec_list *list)
+{
+   assert(list == &parents || list == &children);
+   const bool remove_parent = list == &children;
+
+   foreach_list_typed_safe(bblock_link, link, link, list) {
+      /* Also break the links from the other block back to this block. */
+      exec_list *sub_list = remove_parent ? &link->block->parents : &link->block->children;
+
+      foreach_list_typed_safe(bblock_link, sub_link, link, sub_list) {
+         if (sub_link->block == this) {
+            sub_link->link.remove();
+            ralloc_free(sub_link);
+         }
+      }
+
+      link->link.remove();
+      ralloc_free(link);
+   }
+}
+
 cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
    s(s)
 {

@@ -159,13 +159,13 @@ opt_predicated_break(backend_shader *s)
       endif_inst->remove(endif_block);
 
       if (!earlier_block->ends_with_control_flow()) {
-         earlier_block->children.make_empty();
+         earlier_block->unlink_children();
          earlier_block->add_successor(s->cfg->mem_ctx, jump_block,
                                       bblock_link_logical);
       }
 
       if (!later_block->starts_with_control_flow()) {
-         later_block->parents.make_empty();
+         later_block->unlink_parents();
       }
       jump_block->add_successor(s->cfg->mem_ctx, later_block,
                                 bblock_link_logical);

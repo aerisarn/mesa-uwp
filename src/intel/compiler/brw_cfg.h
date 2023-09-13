@@ -107,6 +107,23 @@ struct bblock_t {
 
    backend_instruction *first_non_control_flow_inst();
    backend_instruction *last_non_control_flow_inst();
+
+private:
+   /**
+    * \sa unlink_parents, unlink_children
+    */
+   void unlink_list(exec_list *);
+
+public:
+   void unlink_parents()
+   {
+      unlink_list(&parents);
+   }
+
+   void unlink_children()
+   {
+      unlink_list(&children);
+   }
 #endif
 
    struct exec_node link;
