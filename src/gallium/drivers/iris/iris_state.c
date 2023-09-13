@@ -2488,9 +2488,12 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
          memset(map, 0, 4 * GENX(SAMPLER_STATE_length));
       } else {
          const uint32_t *sampler_state = state->sampler_state;
+
 #if GFX_VERx10 == 125
-         if (tex && tex->res->base.b.target == PIPE_TEXTURE_3D)
-            sampler_state = state->sampler_state_3d;
+         if (intel_needs_workaround(screen->devinfo, 14014414195) &&
+             tex && tex->res->base.b.target == PIPE_TEXTURE_3D) {
+               sampler_state = state->sampler_state_3d;
+         }
 #endif
 
          if (!state->needs_border_color) {
