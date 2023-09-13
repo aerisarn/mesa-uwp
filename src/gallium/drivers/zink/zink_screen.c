@@ -2798,6 +2798,14 @@ init_driver_workarounds(struct zink_screen *screen)
       abort();
    }
 
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_V3DV) {
+      /* v3dv doesn't support straddling i/o, but zink doesn't do that so this is effectively supported:
+       * don't spam errors in this case
+       */
+      screen->info.feats12.scalarBlockLayout = true;
+      screen->info.have_EXT_scalar_block_layout = true;
+   }
+
    /* these drivers benefit from renderpass optimization */
    switch (screen->info.driver_props.driverID) {
    case VK_DRIVER_ID_MESA_LLVMPIPE:
