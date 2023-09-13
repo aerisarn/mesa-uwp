@@ -49,13 +49,18 @@ struct nak_shader_info {
    /** Size of thread-local storage */
    uint32_t tls_size;
 
-   struct {
-      /* Local workgroup size */
-      uint16_t local_size[3];
+   union {
+      struct {
+         /* Local workgroup size */
+         uint16_t local_size[3];
 
-      /* Shared memory size */
-      uint16_t smem_size;
-   } cs;
+         /* Shared memory size */
+         uint16_t smem_size;
+      } cs;
+
+      /* Used to initialize the union for other stages */
+      uint32_t dummy;
+   };
 
    /** Shader header for 3D stages */
    uint32_t hdr[32];

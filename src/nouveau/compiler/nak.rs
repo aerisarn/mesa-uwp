@@ -496,13 +496,22 @@ pub extern "C" fn nak_compile_shader(
             0
         },
         tls_size: s.info.tls_size,
-        cs: nak_shader_info__bindgen_ty_1 {
-            local_size: [
-                nir.info.workgroup_size[0].into(),
-                nir.info.workgroup_size[1].into(),
-                nir.info.workgroup_size[2].into(),
-            ],
-            smem_size: nir.info.shared_size.try_into().unwrap(),
+        __bindgen_anon_1: match &s.info.stage {
+            ShaderStageInfo::Compute(cs_info) => {
+                nak_shader_info__bindgen_ty_1 {
+                    cs: nak_shader_info__bindgen_ty_1__bindgen_ty_1 {
+                        local_size: [
+                            cs_info.local_size[0],
+                            cs_info.local_size[1],
+                            cs_info.local_size[2],
+                        ],
+                        smem_size: cs_info.smem_size,
+                    },
+                }
+            }
+            _ => nak_shader_info__bindgen_ty_1 {
+                dummy: 0,
+            },
         },
         hdr: encode_hdr_for_nir(nir, &s.info, fs_key),
     };
@@ -521,15 +530,6 @@ pub extern "C" fn nak_compile_shader(
         eprintln!("Stage: {}", stage_name);
         eprintln!("Num GPRs: {}", info.num_gprs);
         eprintln!("TLS size: {}", info.tls_size);
-        if info.stage == MESA_SHADER_COMPUTE {
-            eprintln!(
-                "Local size: {}x{}x{}",
-                info.cs.local_size[0],
-                info.cs.local_size[1],
-                info.cs.local_size[2],
-            );
-            eprintln!("Shared memory size: {:#x}", info.cs.smem_size);
-        }
 
         if info.stage != MESA_SHADER_COMPUTE {
             eprint_hex("Header", &info.hdr);

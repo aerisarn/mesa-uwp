@@ -4330,6 +4330,12 @@ impl fmt::Display for Function {
     }
 }
 
+#[derive(Debug)]
+pub struct ComputeShaderInfo {
+    pub local_size: [u16; 3],
+    pub smem_size: u16,
+}
+
 #[derive(Debug, Default)]
 pub struct FragmentShaderInfo {
     pub writes_color: u32,
@@ -4339,7 +4345,7 @@ pub struct FragmentShaderInfo {
 
 #[derive(Debug)]
 pub enum ShaderStageInfo {
-    Compute,
+    Compute(ComputeShaderInfo),
     Fragment(FragmentShaderInfo),
 }
 

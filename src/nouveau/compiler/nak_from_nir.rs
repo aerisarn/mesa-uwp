@@ -22,7 +22,16 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
         num_gprs: 0,
         tls_size: nir.scratch_size,
         stage: match nir.info.stage() {
-            MESA_SHADER_COMPUTE => ShaderStageInfo::Compute,
+            MESA_SHADER_COMPUTE => {
+                ShaderStageInfo::Compute(ComputeShaderInfo {
+                    local_size: [
+                        nir.info.workgroup_size[0].into(),
+                        nir.info.workgroup_size[1].into(),
+                        nir.info.workgroup_size[2].into(),
+                    ],
+                    smem_size: nir.info.shared_size.try_into().unwrap(),
+                })
+            }
             MESA_SHADER_FRAGMENT => {
                 ShaderStageInfo::Fragment(Default::default())
             }
