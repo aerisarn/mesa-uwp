@@ -71,7 +71,7 @@ ir_expression_operation_h = custom_target(
 libcompiler = static_library(
   'compiler',
   [files_libcompiler, ir_expression_operation_h, builtin_types_h, builtin_types_c, builtin_types_cpp_h],
-  include_directories : [inc_mapi, inc_mesa, inc_compiler, inc_include, inc_src, inc_gallium, inc_gallium_aux],
+  include_directories : [inc_compiler, inc_include, inc_src],
   c_args : [c_msvc_compat_args, no_override_init_args],
   cpp_args : [cpp_msvc_compat_args],
   gnu_symbol_visibility : 'hidden',
