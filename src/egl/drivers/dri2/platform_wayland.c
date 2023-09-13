@@ -2657,6 +2657,16 @@ registry_handle_global_swrast(void *data, struct wl_registry *registry,
    if (strcmp(interface, wl_shm_interface.name) == 0) {
       dri2_dpy->wl_shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
       wl_shm_add_listener(dri2_dpy->wl_shm, &shm_listener, dri2_dpy);
+   } else if (strcmp(interface, wl_drm_interface.name) == 0) {
+      dri2_dpy->wl_drm_version = MIN2(version, 2);
+      dri2_dpy->wl_drm_name = name;
+   } else if (strcmp(interface, zwp_linux_dmabuf_v1_interface.name) == 0 &&
+              version >= 3) {
+      dri2_dpy->wl_dmabuf = wl_registry_bind(
+         registry, name, &zwp_linux_dmabuf_v1_interface,
+         MIN2(version, ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION));
+      zwp_linux_dmabuf_v1_add_listener(dri2_dpy->wl_dmabuf, &dmabuf_listener,
+                                       dri2_dpy);
    }
 }
 
@@ -2743,14 +2753,6 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
       dri2_dpy->wl_dpy = disp->PlatformDisplay;
    }
 
-   dev = _eglFindDevice(dri2_dpy->fd_render_gpu, true);
-   if (!dev) {
-      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to find EGLDevice");
-      goto cleanup;
-   }
-
-   disp->Device = dev;
-
    dri2_dpy->wl_queue = wl_display_create_queue(dri2_dpy->wl_dpy);
 
    dri2_dpy->wl_dpy_wrapper = wl_proxy_create_wrapper(dri2_dpy->wl_dpy);
@@ -2774,6 +2776,17 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
        !BITSET_TEST_RANGE(dri2_dpy->formats.formats_bitmap, 0,
                           dri2_dpy->formats.num_formats))
       goto cleanup;
+
+   if (disp->Options.Zink)
+      dri2_initialize_wayland_drm_extensions(dri2_dpy);
+
+   dev = _eglFindDevice(dri2_dpy->fd_render_gpu, true);
+   if (!dev) {
+      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to find EGLDevice");
+      goto cleanup;
+   }
+
+   disp->Device = dev;
 
    dri2_dpy->driver_name = strdup(disp->Options.Zink ? "zink" : "swrast");
    if (!dri2_load_driver_swrast(disp))
