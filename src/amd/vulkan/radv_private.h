@@ -2570,6 +2570,7 @@ bool radv_dcc_formats_compatible(enum amd_gfx_level gfx_level, VkFormat format1,
                                  bool *sign_reinterpret);
 bool radv_is_atomic_format_supported(VkFormat format);
 bool radv_device_supports_etc(const struct radv_physical_device *physical_device);
+bool radv_is_format_emulated(const struct radv_physical_device *physical_device, VkFormat format);
 
 static const VkImageUsageFlags RADV_IMAGE_USAGE_WRITE_BITS =
    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |

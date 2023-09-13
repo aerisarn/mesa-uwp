@@ -618,6 +618,15 @@ radv_is_filter_minmax_format_supported(VkFormat format)
 }
 
 bool
+radv_is_format_emulated(const struct radv_physical_device *physical_device, VkFormat format)
+{
+   if (physical_device->emulate_etc2 && vk_texcompress_etc2_emulation_format(format) != VK_FORMAT_UNDEFINED)
+      return true;
+
+   return false;
+}
+
+bool
 radv_device_supports_etc(const struct radv_physical_device *physical_device)
 {
    return physical_device->rad_info.family == CHIP_VEGA10 || physical_device->rad_info.family == CHIP_RAVEN ||
@@ -1201,13 +1210,12 @@ static VkResult
 radv_check_modifier_support(struct radv_physical_device *dev, const VkPhysicalDeviceImageFormatInfo2 *info,
                             VkImageFormatProperties *props, VkFormat format, uint64_t modifier)
 {
-   const struct util_format_description *desc = vk_format_description(format);
    uint32_t max_width, max_height;
 
    if (info->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC && dev->emulate_etc2)
+   if (radv_is_format_emulated(dev, format))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    /* We did not add modifiers for sparse textures. */
@@ -1335,7 +1343,7 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
    if (format_feature_flags == 0)
       goto unsupported;
 
-   if (info->type == VK_IMAGE_TYPE_1D && (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2))
+   if (info->type == VK_IMAGE_TYPE_1D && radv_is_format_emulated(physical_device, format))
       goto unsupported;
    if (info->type != VK_IMAGE_TYPE_2D && vk_format_is_depth_or_stencil(format))
       goto unsupported;
@@ -1485,7 +1493,7 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
    }
 
    if ((info->flags & (VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT | VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) &&
-       (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2)) {
+       radv_is_format_emulated(physical_device, format)) {
       goto unsupported;
    }
 
@@ -1531,9 +1539,8 @@ get_external_image_format_properties(struct radv_physical_device *physical_devic
    VkExternalMemoryFeatureFlagBits flags = 0;
    VkExternalMemoryHandleTypeFlags export_flags = 0;
    VkExternalMemoryHandleTypeFlags compat_flags = 0;
-   const struct util_format_description *desc = vk_format_description(pImageFormatInfo->format);
 
-   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2)
+   if (radv_is_format_emulated(physical_device, pImageFormatInfo->format))
       return;
 
    if (pImageFormatInfo->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)
