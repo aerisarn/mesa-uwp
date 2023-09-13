@@ -1138,7 +1138,8 @@ static const struct intel_device_info intel_device_info_atsm_g11 = {
    .has_ray_tracing = true,                                     \
    .pat.coherent = PAT_ENTRY(3, WB, 1WAY),                      \
    .pat.scanout = PAT_ENTRY(1, WC, NONE),                       \
-   .pat.writeback = PAT_ENTRY(0, WB, NONE)
+   .pat.writeback = PAT_ENTRY(0, WB, NONE),                     \
+   .pat.writecombining = PAT_ENTRY(1, WC, NONE)
 
 static const struct intel_device_info intel_device_info_mtl_u = {
    MTL_FEATURES,

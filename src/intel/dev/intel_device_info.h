@@ -490,6 +490,7 @@ struct intel_device_info
       struct intel_device_info_pat_entry coherent;
       struct intel_device_info_pat_entry scanout;
       struct intel_device_info_pat_entry writeback;
+      struct intel_device_info_pat_entry writecombining;
    } pat;
 
    BITSET_DECLARE(workarounds, INTEL_WA_NUM);
