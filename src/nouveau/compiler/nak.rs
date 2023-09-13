@@ -378,7 +378,8 @@ fn encode_hdr_for_nir(
             let loc_u32 = u32::try_from(var.data.location).unwrap();
             let slot =
                 (loc_u32 - VARYING_SLOT_VAR0) * 4 + var.data.location_frac();
-            let num_slots = unsafe { glsl_get_component_slots(var.type_) };
+            let num_slots =
+                unsafe { glsl_count_attribute_slots(var.type_, false) * 4 };
             let mode: u8 = match var.data.interpolation() {
                 INTERP_MODE_NONE | INTERP_MODE_SMOOTH => 2, /* Perspective */
                 INTERP_MODE_FLAT => 1,                      /* Constant */
