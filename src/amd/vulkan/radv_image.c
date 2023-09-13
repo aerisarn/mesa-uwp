@@ -2168,14 +2168,12 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       plane_count = vk_format_get_plane_count(iview->vk.format);
    }
 
-   if (radv_is_format_emulated(device->physical_device, image->vk.format)) {
-      const struct util_format_description *desc = vk_format_description(iview->vk.format);
-      if (desc->layout == UTIL_FORMAT_LAYOUT_ETC) {
-         iview->plane_id = 1;
-         iview->vk.view_format = vk_texcompress_etc2_emulation_format(iview->vk.format);
-         iview->vk.format = vk_texcompress_etc2_emulation_format(iview->vk.format);
-      }
-
+   /* when the view format is emulated, redirect the view to the hidden plane 1 */
+   if (radv_is_format_emulated(device->physical_device, iview->vk.format)) {
+      assert(radv_is_format_emulated(device->physical_device, image->vk.format));
+      iview->plane_id = 1;
+      iview->vk.view_format = image->planes[iview->plane_id].format;
+      iview->vk.format = image->planes[iview->plane_id].format;
       plane_count = 1;
    }
 
