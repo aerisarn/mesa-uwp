@@ -563,8 +563,7 @@ set_tex_parameteri(struct gl_context *ctx,
    case GL_TEXTURE_SWIZZLE_G_EXT:
    case GL_TEXTURE_SWIZZLE_B_EXT:
    case GL_TEXTURE_SWIZZLE_A_EXT:
-      if ((_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_swizzle)
-          || _mesa_is_gles3(ctx)) {
+      if (_mesa_has_EXT_texture_swizzle(ctx) || _mesa_is_gles3(ctx)) {
          const GLuint comp = pname - GL_TEXTURE_SWIZZLE_R_EXT;
          const GLint swz = comp_to_swizzle(params[0]);
          if (swz < 0) {
@@ -583,11 +582,9 @@ set_tex_parameteri(struct gl_context *ctx,
       goto invalid_pname;
 
    case GL_TEXTURE_SWIZZLE_RGBA_EXT:
-      if ((_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_swizzle)
-          || _mesa_is_gles3(ctx)) {
-         GLuint comp;
+      if (_mesa_has_EXT_texture_swizzle(ctx) || _mesa_is_gles3(ctx)) {
          flush(ctx);
-         for (comp = 0; comp < 4; comp++) {
+         for (GLuint comp = 0; comp < 4; comp++) {
             const GLint swz = comp_to_swizzle(params[comp]);
             if (swz >= 0) {
                texObj->Attrib.Swizzle[comp] = params[comp];
@@ -642,8 +639,7 @@ set_tex_parameteri(struct gl_context *ctx,
       goto invalid_pname;
 
    case GL_TEXTURE_CUBE_MAP_SEAMLESS:
-      if (_mesa_is_desktop_gl(ctx)
-          && ctx->Extensions.AMD_seamless_cubemap_per_texture) {
+      if (_mesa_has_AMD_seamless_cubemap_per_texture(ctx)) {
          GLenum param = params[0];
 
          if (!_mesa_target_allows_setting_sampler_parameters(texObj->Target))
@@ -2410,30 +2406,20 @@ get_tex_parameterfv(struct gl_context *ctx,
       case GL_TEXTURE_SWIZZLE_G_EXT:
       case GL_TEXTURE_SWIZZLE_B_EXT:
       case GL_TEXTURE_SWIZZLE_A_EXT:
-         if ((!_mesa_is_desktop_gl(ctx)
-              || !ctx->Extensions.EXT_texture_swizzle)
-             && !_mesa_is_gles3(ctx))
+         if (!_mesa_has_EXT_texture_swizzle(ctx) && !_mesa_is_gles3(ctx))
             goto invalid_pname;
          *params = (GLfloat) obj->Attrib.Swizzle[pname - GL_TEXTURE_SWIZZLE_R_EXT];
          break;
 
       case GL_TEXTURE_SWIZZLE_RGBA_EXT:
-         if ((!_mesa_is_desktop_gl(ctx)
-              || !ctx->Extensions.EXT_texture_swizzle)
-             && !_mesa_is_gles3(ctx)) {
+         if (!_mesa_has_EXT_texture_swizzle(ctx) && !_mesa_is_gles3(ctx))
             goto invalid_pname;
-         }
-         else {
-            GLuint comp;
-            for (comp = 0; comp < 4; comp++) {
-               params[comp] = (GLfloat) obj->Attrib.Swizzle[comp];
-            }
-         }
+         for (GLuint comp = 0; comp < 4; comp++)
+            params[comp] = (GLfloat) obj->Attrib.Swizzle[comp];
          break;
 
       case GL_TEXTURE_CUBE_MAP_SEAMLESS:
-         if (!_mesa_is_desktop_gl(ctx)
-             || !ctx->Extensions.AMD_seamless_cubemap_per_texture)
+         if (!_mesa_has_AMD_seamless_cubemap_per_texture(ctx))
             goto invalid_pname;
          *params = (GLfloat) obj->Sampler.Attrib.CubeMapSeamless;
          break;
@@ -2706,24 +2692,19 @@ get_tex_parameteriv(struct gl_context *ctx,
       case GL_TEXTURE_SWIZZLE_G_EXT:
       case GL_TEXTURE_SWIZZLE_B_EXT:
       case GL_TEXTURE_SWIZZLE_A_EXT:
-         if ((!_mesa_is_desktop_gl(ctx)
-              || !ctx->Extensions.EXT_texture_swizzle)
-             && !_mesa_is_gles3(ctx))
+         if (!_mesa_has_EXT_texture_swizzle(ctx) && !_mesa_is_gles3(ctx))
             goto invalid_pname;
          *params = obj->Attrib.Swizzle[pname - GL_TEXTURE_SWIZZLE_R_EXT];
          break;
 
       case GL_TEXTURE_SWIZZLE_RGBA_EXT:
-         if ((!_mesa_is_desktop_gl(ctx)
-              || !ctx->Extensions.EXT_texture_swizzle)
-             && !_mesa_is_gles3(ctx))
+         if (!_mesa_has_EXT_texture_swizzle(ctx) && !_mesa_is_gles3(ctx))
             goto invalid_pname;
          COPY_4V(params, obj->Attrib.Swizzle);
          break;
 
       case GL_TEXTURE_CUBE_MAP_SEAMLESS:
-         if (!_mesa_is_desktop_gl(ctx)
-             || !ctx->Extensions.AMD_seamless_cubemap_per_texture)
+         if (_mesa_has_AMD_seamless_cubemap_per_texture(ctx))
             goto invalid_pname;
          *params = (GLint) obj->Sampler.Attrib.CubeMapSeamless;
          break;
@@ -2733,8 +2714,7 @@ get_tex_parameteriv(struct gl_context *ctx,
          break;
 
       case GL_TEXTURE_IMMUTABLE_LEVELS:
-         if (_mesa_is_gles3(ctx) ||
-             (_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_view))
+         if (_mesa_has_ARB_texture_view(ctx) || _mesa_is_gles3(ctx))
             *params = obj->Attrib.ImmutableLevels;
          else
             goto invalid_pname;
