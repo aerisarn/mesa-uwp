@@ -2109,15 +2109,13 @@ radv_emit_depth_bounds(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_depth_bias(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_device *device = cmd_buffer->device;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_rendering_state *render = &cmd_buffer->state.render;
    unsigned slope = fui(d->vk.rs.depth_bias.slope * 16.0f);
    unsigned pa_su_poly_offset_db_fmt_cntl = 0;
 
    if (vk_format_has_depth(render->ds_att.format) &&
-       d->vk.rs.depth_bias.representation != VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT &&
-       !device->instance->absolute_depth_bias) {
+       d->vk.rs.depth_bias.representation != VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT) {
       VkFormat format = vk_format_depth_only(render->ds_att.format);
 
       if (format == VK_FORMAT_D16_UNORM) {
