@@ -125,6 +125,9 @@ spec@ext_framebuffer_multisample@sample-alpha-to-one 4,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 6,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 8,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv12,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv21,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_vyuy,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvyu,Fail
 
 # implicit modifier selection is broken with radeonsi display server
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
@@ -380,11 +383,6 @@ spec@!opengl 1.0@gl-1.0-polygon-line-aa,Fail
 
 # Regression noticed in https://gitlab.freedesktop.org/mesa/mesa/-/pipelines/891104
 spec@arb_viewport_array@display-list,Fail
-
-# Leaks due to test bug https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/825
-spec@ext_transform_feedback@api-errors bind_pipeline,Crash
-spec@ext_transform_feedback@api-errors useprogstage_active,Crash
-spec@ext_transform_feedback@api-errors useprogstage_noactive,Crash
 
 KHR-GL46.geometry_shader.rendering.rendering.triangles_with_adjacency_input_line_strip_output_triangle_strip_adjacency_drawcall,Fail
 KHR-GL46.geometry_shader.rendering.rendering.triangles_with_adjacency_input_triangle_strip_output_triangle_strip_adjacency_drawcall,Fail
