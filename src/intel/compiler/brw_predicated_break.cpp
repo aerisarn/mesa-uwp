@@ -159,6 +159,14 @@ opt_predicated_break(backend_shader *s)
       endif_inst->remove(endif_block);
 
       if (!earlier_block->ends_with_control_flow()) {
+         /* FIXME: There is a potential problem here. If earlier_block starts
+          * with a DO instruction, this will delete the physical link to the
+          * WHILE block. It is unclear whether ENDIF has the same potential
+          * problem.
+          */
+         assert(earlier_block->start() == NULL ||
+                earlier_block->start()->opcode != BRW_OPCODE_DO);
+
          earlier_block->unlink_children();
          earlier_block->add_successor(s->cfg->mem_ctx, jump_block,
                                       bblock_link_logical);
@@ -167,8 +175,32 @@ opt_predicated_break(backend_shader *s)
       if (!later_block->starts_with_control_flow()) {
          later_block->unlink_parents();
       }
-      jump_block->add_successor(s->cfg->mem_ctx, later_block,
-                                bblock_link_logical);
+
+      /* If jump_block already has a link to later_block, don't create another
+       * one. Instead, promote the link to logical.
+       */
+      bool need_to_link = true;
+      foreach_list_typed(bblock_link, link, link, &jump_block->children) {
+         if (link->block == later_block) {
+            assert(later_block->starts_with_control_flow());
+
+            /* Update the link from later_block back to jump_block. */
+            foreach_list_typed(bblock_link, parent_link, link, &later_block->parents) {
+               if (parent_link->block == jump_block) {
+                  parent_link->kind = bblock_link_logical;
+               }
+            }
+
+            /* Update the link from jump_block to later_block. */
+            link->kind = bblock_link_logical;
+            need_to_link = false;
+         }
+      }
+
+      if (need_to_link) {
+         jump_block->add_successor(s->cfg->mem_ctx, later_block,
+                                   bblock_link_logical);
+      }
 
       if (earlier_block->can_combine_with(jump_block)) {
          earlier_block->combine_with(jump_block);
