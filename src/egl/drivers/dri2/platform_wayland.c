@@ -2788,6 +2788,9 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
       goto cleanup;
    }
 
+   disp->Extensions.EXT_swap_buffers_with_damage = EGL_TRUE;
+   disp->Extensions.EXT_present_opaque = EGL_TRUE;
+
    /* Fill vtbl last to prevent accidentally calling virtual function during
     * initialization.
     */
