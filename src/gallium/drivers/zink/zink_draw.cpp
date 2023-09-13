@@ -170,7 +170,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       if (elems->hw_state.num_bindings)
          VKCTX(CmdBindVertexBuffers2EXT)(batch->state->cmdbuf, 0,
                                              elems->hw_state.num_bindings,
-                                             buffers, buffer_offsets, NULL, (VkDeviceSize*)elems->hw_state.b.strides);
+                                             buffers, buffer_offsets, NULL, elems->hw_state.b.strides);
    } else if (elems->hw_state.num_bindings)
       VKSCR(CmdBindVertexBuffers)(batch->state->cmdbuf, 0,
                              elems->hw_state.num_bindings,

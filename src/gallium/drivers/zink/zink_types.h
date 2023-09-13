@@ -302,7 +302,7 @@ struct zink_vertex_elements_hw_state {
       struct {
          VkVertexInputBindingDivisorDescriptionEXT divisors[PIPE_MAX_ATTRIBS];
          VkVertexInputBindingDescription bindings[PIPE_MAX_ATTRIBS]; // combination of element_state and stride
-         unsigned strides[PIPE_MAX_ATTRIBS];
+         VkDeviceSize strides[PIPE_MAX_ATTRIBS];
          uint8_t divisors_present;
       } b;
       VkVertexInputBindingDescription2EXT dynbindings[PIPE_MAX_ATTRIBS];
