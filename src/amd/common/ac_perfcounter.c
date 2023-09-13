@@ -1182,6 +1182,18 @@ bool ac_init_perfcounters(const struct radeon_info *info,
          block->num_instances = MAX2(1, info->max_good_cu_per_sa);
       }
 
+      if (info->gfx_level >= GFX10) {
+         if (!strcmp(block->b->b->name, "TCP")) {
+            block->num_global_instances = MAX2(1, info->num_cu_per_sh) * info->num_se * info->max_sa_per_se;
+         } else if (!strcmp(block->b->b->name, "SQ")) {
+            block->num_global_instances = block->num_instances * info->num_se;
+         } else if (!strcmp(block->b->b->name, "GL1C")) {
+            block->num_global_instances = block->num_instances * info->num_se * info->max_sa_per_se;
+         } else if (!strcmp(block->b->b->name, "GL2C")) {
+            block->num_global_instances = info->num_tcc_blocks;
+         }
+      }
+
       if (ac_pc_block_has_per_instance_groups(pc, block)) {
          block->num_groups = block->num_instances;
       } else {
