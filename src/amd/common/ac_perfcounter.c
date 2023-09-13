@@ -136,7 +136,6 @@ static struct ac_pc_block_base cik_DB = {
 
    .num_spm_counters = 2,
    .num_spm_wires = 3,
-   .spm_block_select = 0x1,
 };
 
 /* cik_GDS */
@@ -218,7 +217,6 @@ static struct ac_pc_block_base cik_IA = {
 
    .num_spm_counters = 1,
    .num_spm_wires = 2,
-   .spm_block_select = 0x6,
 };
 
 /* cik_PA_SC */
@@ -274,7 +272,6 @@ static struct ac_pc_block_base cik_PA_SU = {
 
    .num_spm_counters = 2,
    .num_spm_wires = 3,
-   .spm_block_select = 0x2,
 };
 
 /* cik_SPI */
@@ -337,7 +334,6 @@ static struct ac_pc_block_base cik_SQ = {
    .counter0_lo = R_034700_SQ_PERFCOUNTER0_LO,
 
    .num_spm_wires = 8,
-   .spm_block_select = 0x9,
 };
 
 /* cik_SX */
@@ -435,7 +431,6 @@ static struct ac_pc_block_base cik_TCA = {
 
    .num_spm_counters = 2,
    .num_spm_wires = 4,
-   .spm_block_select = 0x5,
 };
 
 /* cik_TCC */
@@ -461,7 +456,6 @@ static struct ac_pc_block_base cik_TCC = {
 
    .num_spm_counters = 2,
    .num_spm_wires = 4,
-   .spm_block_select = 0x4,
 };
 
 /* cik_TCP */
@@ -487,7 +481,6 @@ static struct ac_pc_block_base cik_TCP = {
 
    .num_spm_counters = 2,
    .num_spm_wires = 3,
-   .spm_block_select = 0x7,
 };
 
 /* cik_VGT */
@@ -513,7 +506,6 @@ static struct ac_pc_block_base cik_VGT = {
 
    .num_spm_counters = 2,
    .num_spm_wires = 3,
-   .spm_block_select = 0xa,
 };
 
 /* cik_WD */
