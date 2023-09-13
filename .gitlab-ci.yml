@@ -156,6 +156,8 @@ include:
 # When to automatically run the CI for build jobs
 .build-rules:
   rules:
+    # Don't run when disabling a farm
+    - !reference [.disable-farm-rules, rules]
     # If any files affecting the pipeline are changed, build/test jobs run
     # automatically once all dependency jobs have passed
     - changes: &all_paths
@@ -174,8 +176,6 @@ include:
       - include/**/*
       - src/**/*
       when: on_success
-    # Don't run when disabling a farm
-    - !reference [.disable-farm-rules, rules]
     # Otherwise, build/test jobs won't run because no rule matched.
 
 
@@ -193,6 +193,8 @@ include:
 
 .container-rules:
   rules:
+    # Don't run when disabling a farm
+    - !reference [.disable-farm-rules, rules]
     # Run pipeline by default in the main project if any CI pipeline
     # configuration files were changed, to ensure docker images are up to date
     - if: *is-post-merge
@@ -200,8 +202,6 @@ include:
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
       when: on_success
-    # Don't run when disabling a farm
-    - !reference [.disable-farm-rules, rules]
     # Run pipeline by default if it was triggered by Marge Bot, is for a
     # merge request, and any files affecting the pipeline were changed
     - if: *is-pre-merge-for-marge
