@@ -2809,6 +2809,9 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
       goto cleanup;
    }
 
+   if (disp->Options.Zink && dri2_dpy->fd_render_gpu >= 0 &&
+       (dri2_dpy->wl_dmabuf || dri2_dpy->wl_drm))
+      dri2_set_WL_bind_wayland_display(disp);
    disp->Extensions.EXT_swap_buffers_with_damage = EGL_TRUE;
    disp->Extensions.EXT_present_opaque = EGL_TRUE;
 
