@@ -240,7 +240,7 @@ ac_spm_add_counter(const struct ac_perfcounters *pc,
    }
 
    /* Check if the number of instances is valid. */
-   if (info->b->instance > block->num_instances) {
+   if (info->b->instance > block->num_global_instances - 1) {
       fprintf(stderr, "ac/spm: Invalid instance ID.\n");
       return false;
    }
