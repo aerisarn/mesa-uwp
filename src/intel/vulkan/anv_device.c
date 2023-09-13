@@ -4965,5 +4965,5 @@ anv_device_get_pat_entry(struct anv_device *device,
    else if (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT))
       return &device->info->pat.scanout;
    else
-      return &device->info->pat.writeback;
+      return &device->info->pat.writecombining;
 }
