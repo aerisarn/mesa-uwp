@@ -61,8 +61,6 @@
   extends:
     - .container
     - .incorporate-base-tag+templates-commit
-    # Don't want the .container rules
-    - .build-rules
 
 # Debian based x86_64 build image base
 debian/x86_64_build-base:
