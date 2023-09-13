@@ -282,12 +282,64 @@ ac_spm_add_counter(const struct ac_perfcounters *pc,
    return true;
 }
 
+static void
+ac_spm_fill_muxsel_ram(struct ac_spm *spm,
+                       enum ac_spm_segment_type segment_type,
+                       uint32_t offset)
+{
+   struct ac_spm_muxsel_line *mappings = spm->muxsel_lines[segment_type];
+   uint32_t even_counter_idx = 0, even_line_idx = 0;
+   uint32_t odd_counter_idx = 0, odd_line_idx = 1;
+
+   /* Add the global timestamps first. */
+   if (segment_type == AC_SPM_SEGMENT_TYPE_GLOBAL) {
+      struct ac_spm_muxsel global_timestamp_muxsel = {
+         .counter = 0x30,
+         .block = 0x3,
+         .shader_array = 0,
+         .instance = 0x1e,
+      };
+
+      for (unsigned i = 0; i < 4; i++) {
+         mappings[even_line_idx].muxsel[even_counter_idx++] = global_timestamp_muxsel;
+      }
+   }
+
+   for (unsigned i = 0; i < spm->num_counters; i++) {
+      struct ac_spm_counter_info *counter = &spm->counters[i];
+
+      if (counter->segment_type != segment_type)
+         continue;
+
+      if (counter->is_even) {
+         counter->offset =
+            (offset + even_line_idx) * AC_SPM_NUM_COUNTER_PER_MUXSEL + even_counter_idx;
+
+         mappings[even_line_idx].muxsel[even_counter_idx] = spm->counters[i].muxsel;
+         if (++even_counter_idx == AC_SPM_NUM_COUNTER_PER_MUXSEL) {
+            even_counter_idx = 0;
+            even_line_idx += 2;
+         }
+      } else {
+         counter->offset =
+            (offset + odd_line_idx) * AC_SPM_NUM_COUNTER_PER_MUXSEL + odd_counter_idx;
+
+         mappings[odd_line_idx].muxsel[odd_counter_idx] = spm->counters[i].muxsel;
+         if (++odd_counter_idx == AC_SPM_NUM_COUNTER_PER_MUXSEL) {
+            odd_counter_idx = 0;
+            odd_line_idx += 2;
+         }
+      }
+   }
+}
+
 bool ac_init_spm(const struct radeon_info *info,
                  const struct ac_perfcounters *pc,
                  struct ac_spm *spm)
 {
    unsigned num_counters;
    const struct ac_spm_counter_create_info *counters = ac_spm_get_counters(info, &num_counters);
+   uint32_t offset = 0;
 
    spm->counters = CALLOC(num_counters, sizeof(*spm->counters));
    if (!spm->counters)
@@ -337,68 +389,13 @@ bool ac_init_spm(const struct radeon_info *info,
    }
 
    /* RLC uses the following order: Global, SE0, SE1, SE2, SE3. */
-   const enum ac_spm_segment_type ordered_segment[AC_SPM_SEGMENT_TYPE_COUNT] =
-   {
-      AC_SPM_SEGMENT_TYPE_GLOBAL,
-      AC_SPM_SEGMENT_TYPE_SE0,
-      AC_SPM_SEGMENT_TYPE_SE1,
-      AC_SPM_SEGMENT_TYPE_SE2,
-      AC_SPM_SEGMENT_TYPE_SE3,
-   };
+   ac_spm_fill_muxsel_ram(spm, AC_SPM_SEGMENT_TYPE_GLOBAL, 0);
+   offset += spm->num_muxsel_lines[AC_SPM_SEGMENT_TYPE_GLOBAL];
 
-   for (unsigned s = 0; s < AC_SPM_SEGMENT_TYPE_COUNT; s++) {
-      if (!spm->muxsel_lines[s])
-         continue;
-
-      uint32_t segment_offset = 0;
-      for (unsigned i = 0; s != ordered_segment[i]; i++) {
-         segment_offset += spm->num_muxsel_lines[ordered_segment[i]] *
-                           AC_SPM_NUM_COUNTER_PER_MUXSEL;
-      }
-
-      uint32_t even_counter_idx = 0, even_line_idx = 0;
-      uint32_t odd_counter_idx = 0, odd_line_idx = 1;
-
-      /* Add the global timestamps first. */
-      if (s == AC_SPM_SEGMENT_TYPE_GLOBAL) {
-         struct ac_spm_muxsel global_timestamp_muxsel = {
-            .counter = 0x30,
-            .block = 0x3,
-            .shader_array = 0,
-            .instance = 0x1e,
-         };
-
-         for (unsigned i = 0; i < 4; i++) {
-            spm->muxsel_lines[s][even_line_idx].muxsel[even_counter_idx++] = global_timestamp_muxsel;
-         }
-      }
-
-      for (unsigned i = 0; i < spm->num_counters; i++) {
-         struct ac_spm_counter_info *counter = &spm->counters[i];
-
-         if (counter->segment_type != s)
-            continue;
-
-         if (counter->is_even) {
-            counter->offset = segment_offset + even_line_idx *
-                              AC_SPM_NUM_COUNTER_PER_MUXSEL + even_counter_idx;
-
-            spm->muxsel_lines[s][even_line_idx].muxsel[even_counter_idx] = spm->counters[i].muxsel;
-            if (++even_counter_idx == AC_SPM_NUM_COUNTER_PER_MUXSEL) {
-               even_counter_idx = 0;
-               even_line_idx += 2;
-            }
-         } else {
-            counter->offset = segment_offset + odd_line_idx *
-                              AC_SPM_NUM_COUNTER_PER_MUXSEL + odd_counter_idx;
-
-            spm->muxsel_lines[s][odd_line_idx].muxsel[odd_counter_idx] = spm->counters[i].muxsel;
-            if (++odd_counter_idx == AC_SPM_NUM_COUNTER_PER_MUXSEL) {
-               odd_counter_idx = 0;
-               odd_line_idx += 2;
-            }
-         }
-      }
+   for (unsigned i = 0; i < info->num_se; i++) {
+      assert(i < AC_SPM_SEGMENT_TYPE_GLOBAL);
+      ac_spm_fill_muxsel_ram(spm, i, offset);
+      offset += spm->num_muxsel_lines[i];
    }
 
    return true;
