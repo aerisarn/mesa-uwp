@@ -11344,9 +11344,6 @@ merged_wave_info_to_mask(isel_context* ctx, unsigned i)
 static void
 insert_rt_jump_next(isel_context& ctx, const struct ac_shader_args* args)
 {
-   append_logical_end(ctx.block);
-   ctx.block->kind |= block_kind_uniform;
-
    unsigned src_count = ctx.args->arg_count;
    Pseudo_instruction* ret =
       create_instruction<Pseudo_instruction>(aco_opcode::p_return, Format::PSEUDO, src_count, 0);
@@ -11384,6 +11381,8 @@ select_program_rt(isel_context& ctx, unsigned shader_count, struct nir_shader* c
       append_logical_start(ctx.block);
       split_arguments(&ctx, startpgm);
       visit_cf_list(&ctx, &nir_shader_get_entrypoint(nir)->body);
+      append_logical_end(ctx.block);
+      ctx.block->kind |= block_kind_uniform;
 
       /* Fix output registers and jump to next shader. We can skip this when dealing with a raygen
        * shader without shader calls.
