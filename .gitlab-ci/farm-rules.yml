@@ -242,30 +242,41 @@
 .disable-farm-rules:
   rules:
     # changes(disabled) + exists(disabled) = disabling the farm
-    - changes: [ .ci-farms-disabled/microsoft ]
+    # only run in MR context, because otherwise we get a false positive on
+    # files being 'created' when pushing to a branch, and nuke our pipeline
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/microsoft ]
       exists: [ .ci-farms-disabled/microsoft ]
       when: never
-    - changes: [ .ci-farms-disabled/collabora ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/collabora ]
       exists: [ .ci-farms-disabled/collabora ]
       when: never
-    - changes: [ .ci-farms-disabled/igalia ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/igalia ]
       exists: [ .ci-farms-disabled/igalia ]
       when: never
-    - changes: [ .ci-farms-disabled/lima ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/lima ]
       exists: [ .ci-farms-disabled/lima ]
       when: never
-    - changes: [ .ci-farms-disabled/anholt ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/anholt ]
       exists: [ .ci-farms-disabled/anholt ]
       when: never
-    - changes: [ .ci-farms-disabled/valve-mupuf ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/valve-mupuf ]
       exists: [ .ci-farms-disabled/valve-mupuf ]
       when: never
-    - changes: [ .ci-farms-disabled/valve-kws ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/valve-kws ]
       exists: [ .ci-farms-disabled/valve-kws ]
       when: never
-    - changes: [ .ci-farms-disabled/austriancoder ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/austriancoder ]
       exists: [ .ci-farms-disabled/austriancoder ]
       when: never
-    - changes: [ .ci-farms-disabled/freedreno ]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [ .ci-farms-disabled/freedreno ]
       exists: [ .ci-farms-disabled/freedreno ]
       when: never
