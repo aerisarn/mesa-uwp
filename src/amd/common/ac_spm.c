@@ -82,24 +82,6 @@ static struct ac_spm_counter_create_info gfx11_spm_counters[] = {
    {&gfx103_num_gl2c_misses},
 };
 
-static struct ac_spm_counter_create_info *
-ac_spm_get_counters(const struct radeon_info *info, unsigned *num_counters)
-{
-   switch (info->gfx_level) {
-   case GFX10:
-      *num_counters = ARRAY_SIZE(gfx10_spm_counters);
-      return gfx10_spm_counters;
-   case GFX10_3:
-      *num_counters = ARRAY_SIZE(gfx103_spm_counters);
-      return gfx103_spm_counters;
-   case GFX11:
-      *num_counters = ARRAY_SIZE(gfx11_spm_counters);
-      return gfx11_spm_counters;
-   default:
-      unreachable("invalid gfx_level for SPM counters");
-   }
-}
-
 static struct ac_spm_block_select *
 ac_spm_get_block_select(struct ac_spm *spm, const struct ac_pc_block *block)
 {
@@ -428,18 +410,53 @@ bool ac_init_spm(const struct radeon_info *info,
                  const struct ac_perfcounters *pc,
                  struct ac_spm *spm)
 {
-   unsigned num_counters;
-   const struct ac_spm_counter_create_info *counters = ac_spm_get_counters(info, &num_counters);
+   const struct ac_spm_counter_create_info *create_info;
+   unsigned create_info_count;
+   unsigned num_counters = 0;
    uint32_t offset = 0;
+
+   switch (info->gfx_level) {
+   case GFX10:
+      create_info_count = ARRAY_SIZE(gfx10_spm_counters);
+      create_info = gfx10_spm_counters;
+      break;
+   case GFX10_3:
+      create_info_count = ARRAY_SIZE(gfx103_spm_counters);
+      create_info = gfx103_spm_counters;
+      break;
+   case GFX11:
+      create_info_count = ARRAY_SIZE(gfx11_spm_counters);
+      create_info = gfx11_spm_counters;
+      break;
+   default:
+      return false; /* not implemented */
+   }
+
+   /* Count the total number of counters. */
+   for (unsigned i = 0; i < create_info_count; i++) {
+      const struct ac_pc_block *block = ac_pc_get_block(pc, create_info[i].b->gpu_block);
+
+      if (!block)
+         return false;
+
+      num_counters += block->num_global_instances;
+   }
 
    spm->counters = CALLOC(num_counters, sizeof(*spm->counters));
    if (!spm->counters)
       return false;
 
-   for (unsigned i = 0; i < num_counters; i++) {
-      if (!ac_spm_add_counter(info, pc, spm, &counters[i])) {
-         fprintf(stderr, "ac/spm: Failed to add SPM counter (%d).\n", i);
-         return false;
+   for (unsigned i = 0; i < create_info_count; i++) {
+      const struct ac_pc_block *block = ac_pc_get_block(pc, create_info[i].b->gpu_block);
+      struct ac_spm_counter_create_info counter = create_info[i];
+
+      for (unsigned j = 0; j < block->num_global_instances; j++) {
+         counter.instance = j;
+
+         if (!ac_spm_add_counter(info, pc, spm, &counter)) {
+            fprintf(stderr, "ac/spm: Failed to add SPM counter (%d).\n", i);
+            return false;
+         }
       }
    }
 
