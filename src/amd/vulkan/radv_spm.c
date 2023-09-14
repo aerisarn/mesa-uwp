@@ -65,19 +65,25 @@ radv_emit_spm_counters(struct radv_device *device, struct radeon_cmdbuf *cs, enu
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    struct ac_spm *spm = &device->spm;
 
-   radeon_check_space(device->ws, cs, 3 + spm->num_used_sq_block_sel * 3);
+   for (uint32_t instance = 0; instance < ARRAY_SIZE(spm->sqg); instance++) {
+      uint32_t num_counters = spm->sqg[instance].num_counters;
 
-   radeon_set_uconfig_reg(
-      cs, R_030800_GRBM_GFX_INDEX,
-      S_030800_SH_BROADCAST_WRITES(1) | S_030800_INSTANCE_BROADCAST_WRITES(1) | S_030800_SE_INDEX(0));
+      if (!num_counters)
+         continue;
 
-   for (uint32_t b = 0; b < spm->num_used_sq_block_sel; b++) {
-      struct ac_spm_block_select *sq_block_sel = &spm->sq_block_sel[b];
-      const struct ac_spm_counter_select *cntr_sel = &sq_block_sel->counters[0];
-      uint32_t reg_base = R_036700_SQ_PERFCOUNTER0_SELECT;
+      radeon_check_space(device->ws, cs, 3 + num_counters * 3);
 
-      radeon_set_uconfig_reg_seq_perfctr(gfx_level, qf, cs, reg_base + b * 4, 1);
-      radeon_emit(cs, cntr_sel->sel0 | S_036700_SQC_BANK_MASK(0xf)); /* SQC_BANK_MASK only gfx10 */
+      radeon_set_uconfig_reg(
+         cs, R_030800_GRBM_GFX_INDEX,
+         S_030800_SH_BROADCAST_WRITES(1) | S_030800_INSTANCE_BROADCAST_WRITES(1) | S_030800_SE_INDEX(instance));
+
+      for (uint32_t b = 0; b < num_counters; b++) {
+         const struct ac_spm_counter_select *cntr_sel = &spm->sqg[instance].counters[b];
+         uint32_t reg_base = R_036700_SQ_PERFCOUNTER0_SELECT;
+
+         radeon_set_uconfig_reg_seq_perfctr(gfx_level, qf, cs, reg_base + b * 4, 1);
+         radeon_emit(cs, cntr_sel->sel0 | S_036700_SQC_BANK_MASK(0xf)); /* SQC_BANK_MASK only gfx10 */
+      }
    }
 
    for (uint32_t b = 0; b < spm->num_block_sel; b++) {

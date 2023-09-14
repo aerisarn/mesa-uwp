@@ -144,8 +144,11 @@ struct ac_spm {
    /* Block/counters selection. */
    uint32_t num_block_sel;
    struct ac_spm_block_select *block_sel;
-   uint32_t num_used_sq_block_sel;
-   struct ac_spm_block_select sq_block_sel[16];
+
+   struct {
+      uint32_t num_counters;
+      struct ac_spm_counter_select counters[16];
+   } sqg[AC_SPM_SEGMENT_TYPE_GLOBAL];
 
    /* Muxsel lines. */
    unsigned num_muxsel_lines[AC_SPM_SEGMENT_TYPE_COUNT];

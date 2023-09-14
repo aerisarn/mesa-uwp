@@ -202,11 +202,13 @@ ac_spm_map_counter(struct ac_spm *spm, struct ac_spm_block_select *block_sel,
                    struct ac_spm_counter_info *counter,
                    uint32_t *spm_wire)
 {
+   uint32_t instance = counter->instance;
+
    if (block_sel->b->b->b->gpu_block == SQ) {
-      for (unsigned i = 0; i < ARRAY_SIZE(spm->sq_block_sel); i++) {
-         struct ac_spm_block_select *sq_block_sel = &spm->sq_block_sel[i];
-         struct ac_spm_counter_select *cntr_sel = &sq_block_sel->counters[0];
-         if (i < spm->num_used_sq_block_sel)
+      for (unsigned i = 0; i < ARRAY_SIZE(spm->sqg[instance].counters); i++) {
+         struct ac_spm_counter_select *cntr_sel = &spm->sqg[instance].counters[i];
+
+         if (i < spm->sqg[instance].num_counters)
             continue;
 
          /* SQ doesn't support 16-bit counters. */
@@ -221,7 +223,7 @@ ac_spm_map_counter(struct ac_spm *spm, struct ac_spm_block_select *block_sel,
          /* One wire per SQ module. */
          *spm_wire = i;
 
-         spm->num_used_sq_block_sel++;
+         spm->sqg[instance].num_counters++;
          return true;
       }
    } else {
