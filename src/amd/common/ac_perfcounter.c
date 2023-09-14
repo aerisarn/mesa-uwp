@@ -1190,7 +1190,7 @@ bool ac_init_perfcounters(const struct radeon_info *info,
          } else if (!strcmp(block->b->b->name, "GL1C")) {
             block->num_global_instances = block->num_instances * info->num_se * info->max_sa_per_se;
          } else if (!strcmp(block->b->b->name, "GL2C")) {
-            block->num_global_instances = info->num_tcc_blocks;
+            block->num_instances = block->num_global_instances = info->num_tcc_blocks;
          }
       }
 
