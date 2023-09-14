@@ -351,7 +351,7 @@ handle_file(const char *filename, int start, int end, int draw)
       case RD_CHIP_ID:
          if (!got_gpu_id) {
             options.dev_id.chip_id = parse_chip_id(ps.buf);
-            printl(2, "chip_id: 0x" PRIx64 "\n", options.dev_id.chip_id);
+            printl(2, "chip_id: 0x%" PRIx64 "\n", options.dev_id.chip_id);
 
             const struct fd_dev_info *info = fd_dev_info(&options.dev_id);
             if (!info)
