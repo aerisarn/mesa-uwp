@@ -733,6 +733,11 @@ si_emit_spm_counters(struct si_context *sctx, struct radeon_cmdbuf *cs)
 
    radeon_begin(cs);
 
+   radeon_set_uconfig_reg(R_030800_GRBM_GFX_INDEX,
+                          S_030800_SH_BROADCAST_WRITES(1) |
+                          S_030800_INSTANCE_BROADCAST_WRITES(1) |
+                          S_030800_SE_INDEX(0));
+
    for (uint32_t b = 0; b < spm->num_used_sq_block_sel; b++) {
       struct ac_spm_block_select *sq_block_sel = &spm->sq_block_sel[b];
       const struct ac_spm_counter_select *cntr_sel = &sq_block_sel->counters[0];

@@ -65,7 +65,11 @@ radv_emit_spm_counters(struct radv_device *device, struct radeon_cmdbuf *cs, enu
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    struct ac_spm *spm = &device->spm;
 
-   radeon_check_space(device->ws, cs, spm->num_used_sq_block_sel * 3);
+   radeon_check_space(device->ws, cs, 3 + spm->num_used_sq_block_sel * 3);
+
+   radeon_set_uconfig_reg(
+      cs, R_030800_GRBM_GFX_INDEX,
+      S_030800_SH_BROADCAST_WRITES(1) | S_030800_INSTANCE_BROADCAST_WRITES(1) | S_030800_SE_INDEX(0));
 
    for (uint32_t b = 0; b < spm->num_used_sq_block_sel; b++) {
       struct ac_spm_block_select *sq_block_sel = &spm->sq_block_sel[b];
