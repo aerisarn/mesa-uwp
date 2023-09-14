@@ -3993,13 +3993,16 @@ combine_output_conversion(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       return false;
    Instruction* conv = def_info.instr;
 
-   if (!can_use_mad_mix(ctx, instr) || ctx.uses[instr->definitions[0].tempId()] != 1)
-      return false;
-
-   if (!ctx.uses[conv->definitions[0].tempId()])
+   if (!ctx.uses[conv->definitions[0].tempId()] || ctx.uses[instr->definitions[0].tempId()] != 1)
       return false;
 
    if (conv->usesModifiers())
+      return false;
+
+   if (instr->opcode == aco_opcode::v_interp_p2_f32_inreg)
+      interp_p2_f32_inreg_to_fma_dpp(instr);
+
+   if (!can_use_mad_mix(ctx, instr))
       return false;
 
    if (!instr->isVOP3P())

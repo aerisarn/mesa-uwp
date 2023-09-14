@@ -2225,5 +2225,11 @@ BEGIN_TEST(optimize.vinterp_inreg_output_modifiers)
    tmp = bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand::c16(0x4000u), tmp);
    writeout(3, tmp);
 
+   //! v2b: %res4 = v_fma_mixlo_f16 %c, %b, %a quad_perm:[2,2,2,2] fi
+   //! p_unit_test 4, %res4
+   tmp = bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, bld.def(v1), inputs[2], inputs[1],
+                           inputs[0]);
+   writeout(4, f2f16(tmp));
+
    finish_opt_test();
 END_TEST
