@@ -176,7 +176,14 @@ include:
       - include/**/*
       - src/**/*
       when: on_success
-    # Otherwise, build/test jobs won't run because no rule matched.
+    # Just skip everything for MRs which don't actually change anything in the
+    # build
+    - if: *is-pre-merge-for-marge
+      when: never
+    - if: *is-post-merge
+      when: never
+    # Always allow user branches etc to trigger jobs manually
+    - when: manual
 
 
 .ci-deqp-artifacts:
@@ -214,9 +221,14 @@ include:
       changes:
         *all_paths
       when: on_success
-    # Allow triggering jobs manually in other cases
+    # Just skip everything for MRs which don't actually change anything in the
+    # build - the same rules as above, but without the file-change rules
+    - if: *is-pre-merge-for-marge
+      when: never
+    - if: *is-post-merge
+      when: never
+    # Always allow user branches etc to trigger jobs manually
     - when: manual
-    # Otherwise, container jobs won't run because no rule matched.
 
 # Git archive
 
