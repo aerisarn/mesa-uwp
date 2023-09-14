@@ -3602,7 +3602,7 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
 #define DRAW_STATE_FDM(name, id, ...)                                         \
    if ((EMIT_STATE(name) || (cmd->state.dirty & TU_CMD_DIRTY_FDM)) &&         \
        !(cmd->state.pipeline->base.set_state_mask & (1u << id))) {            \
-      if (cmd->state.pipeline_has_fdm) {                                      \
+      if (cmd->state.pipeline->has_fdm) {                                     \
          tu_cs_set_writeable(&cmd->sub_cs, true);                             \
          tu6_emit_##name##_fdm(&cs, cmd, __VA_ARGS__);                        \
          cmd->state.dynamic_state[id] =                                       \

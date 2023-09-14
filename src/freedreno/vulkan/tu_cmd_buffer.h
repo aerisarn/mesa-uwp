@@ -407,7 +407,6 @@ struct tu_cmd_state
    uint32_t max_vbs_bound;
 
    bool per_view_viewport;
-   bool pipeline_has_fdm;
 
    /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
