@@ -3605,9 +3605,9 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
       if (cmd->state.pipeline_has_fdm) {                                      \
          tu_cs_set_writeable(&cmd->sub_cs, true);                             \
          tu6_emit_##name##_fdm(&cs, cmd, __VA_ARGS__);                        \
-         tu_cs_set_writeable(&cmd->sub_cs, false);                            \
          cmd->state.dynamic_state[id] =                                       \
             tu_cs_end_draw_state(&cmd->sub_cs, &cs);                          \
+         tu_cs_set_writeable(&cmd->sub_cs, false);                            \
       } else {                                                                \
          unsigned size = tu6_##name##_size<CHIP>(cmd->device, __VA_ARGS__);   \
          if (size > 0) {                                                      \
