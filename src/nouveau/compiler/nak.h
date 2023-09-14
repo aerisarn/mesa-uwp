@@ -58,6 +58,14 @@ struct nak_shader_info {
          uint16_t smem_size;
       } cs;
 
+      struct {
+         bool writes_depth;
+         bool reads_sample_mask;
+         bool post_depth_coverage;
+         bool uses_sample_shading;
+         bool early_fragment_tests;
+      } fs;
+
       /* Used to initialize the union for other stages */
       uint32_t dummy;
    };

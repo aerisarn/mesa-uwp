@@ -1300,6 +1300,12 @@ impl<'a> ShaderFromNir<'a> {
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_sample_mask_in => {
+                if let ShaderStageInfo::Fragment(info) = &mut self.info.stage {
+                    info.reads_sample_mask = true;
+                } else {
+                    panic!("sample_mask_in is only available in fragment shaders");
+                }
+
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpPixLd {
                     dst: dst.into(),

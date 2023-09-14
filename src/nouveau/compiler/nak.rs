@@ -509,9 +509,19 @@ pub extern "C" fn nak_compile_shader(
                     },
                 }
             }
-            _ => nak_shader_info__bindgen_ty_1 {
-                dummy: 0,
-            },
+            ShaderStageInfo::Fragment(fs_info) => {
+                let nir_fs_info = unsafe { &nir.info.__bindgen_anon_1.fs };
+                nak_shader_info__bindgen_ty_1 {
+                    fs: nak_shader_info__bindgen_ty_1__bindgen_ty_2 {
+                        writes_depth: fs_info.writes_depth,
+                        reads_sample_mask: fs_info.reads_sample_mask,
+                        post_depth_coverage: nir_fs_info.post_depth_coverage(),
+                        uses_sample_shading: nir_fs_info.uses_sample_shading(),
+                        early_fragment_tests: nir_fs_info
+                            .early_fragment_tests(),
+                    },
+                }
+            }
         },
         hdr: encode_hdr_for_nir(nir, &s.info, fs_key),
     };
