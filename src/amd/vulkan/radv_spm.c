@@ -65,6 +65,8 @@ radv_emit_spm_counters(struct radv_device *device, struct radeon_cmdbuf *cs, enu
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    struct ac_spm *spm = &device->spm;
 
+   radeon_check_space(device->ws, cs, spm->num_used_sq_block_sel * 3);
+
    for (uint32_t b = 0; b < spm->num_used_sq_block_sel; b++) {
       struct ac_spm_block_select *sq_block_sel = &spm->sq_block_sel[b];
       const struct ac_spm_counter_select *cntr_sel = &sq_block_sel->counters[0];
@@ -77,6 +79,8 @@ radv_emit_spm_counters(struct radv_device *device, struct radeon_cmdbuf *cs, enu
    for (uint32_t b = 0; b < spm->num_block_sel; b++) {
       struct ac_spm_block_select *block_sel = &spm->block_sel[b];
       struct ac_pc_block_base *regs = block_sel->b->b->b;
+
+      radeon_check_space(device->ws, cs, 3 + (AC_SPM_MAX_COUNTER_PER_BLOCK * 6));
 
       radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX, block_sel->grbm_gfx_index);
 
@@ -112,6 +116,8 @@ radv_emit_spm_setup(struct radv_device *device, struct radeon_cmdbuf *cs, enum r
    assert(!(va & (SPM_RING_BASE_ALIGN - 1)));
    assert(!(ring_size & (SPM_RING_BASE_ALIGN - 1)));
    assert(spm->sample_interval >= 32);
+
+   radeon_check_space(device->ws, cs, 27);
 
    /* Configure the SPM ring buffer. */
    radeon_set_uconfig_reg(cs, R_037200_RLC_SPM_PERFMON_CNTL,
@@ -157,6 +163,8 @@ radv_emit_spm_setup(struct radv_device *device, struct radeon_cmdbuf *cs, enum r
          rlc_muxsel_addr = R_03721C_RLC_SPM_SE_MUXSEL_ADDR;
          rlc_muxsel_data = R_037220_RLC_SPM_SE_MUXSEL_DATA;
       }
+
+      radeon_check_space(device->ws, cs, 3 + spm->num_muxsel_lines[s] * (7 + AC_SPM_MUXSEL_LINE_SIZE));
 
       radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX, grbm_gfx_index);
 

@@ -81,6 +81,8 @@ radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
    const unsigned shader_mask = ac_sqtt_get_shader_mask(rad_info);
    unsigned max_se = rad_info->max_se;
 
+   radeon_check_space(device->ws, cs, 6 + max_se * 33);
+
    for (unsigned se = 0; se < max_se; se++) {
       uint64_t va = radv_buffer_get_va(device->sqtt.bo);
       uint64_t data_va = ac_sqtt_get_data_va(rad_info, &device->sqtt, va, se);
@@ -306,6 +308,8 @@ radv_emit_sqtt_stop(const struct radv_device *device, struct radeon_cmdbuf *cs, 
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    unsigned max_se = device->physical_device->rad_info.max_se;
+
+   radeon_check_space(device->ws, cs, 8 + max_se * 64);
 
    /* Stop the thread trace with a different event based on the queue. */
    if (qf == RADV_QUEUE_COMPUTE) {
