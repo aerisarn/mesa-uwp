@@ -695,8 +695,13 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
    if (tc->options.parse_renderpass_info) {
       int renderpass_info_idx = next->renderpass_info_idx;
       if (renderpass_info_idx > 0) {
+         /* don't reset if fb state is unflushed */
+         bool fb_no_draw = tc->seen_fb_state && !tc->renderpass_info_recording->has_draw;
+         uint32_t fb_info = tc->renderpass_info_recording->data32[0];
          next->renderpass_info_idx = -1;
          tc_batch_increment_renderpass_info(tc, tc->next, false);
+         if (fb_no_draw)
+            tc->renderpass_info_recording->data32[0] = fb_info;
       } else if (tc->renderpass_info_recording->has_draw) {
          tc->renderpass_info_recording->data32[0] = 0;
       }
