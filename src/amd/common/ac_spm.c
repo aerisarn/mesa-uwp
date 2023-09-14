@@ -152,25 +152,23 @@ ac_spm_init_instance_mapping(const struct radeon_info *info,
 {
    uint32_t instance_index = 0, se_index = 0, sa_index = 0;
 
-   switch (block->b->b->gpu_block) {
-   case GL2C:
+   if (block->b->b->flags & AC_PC_BLOCK_SE) {
+      if (block->b->b->gpu_block == SQ) {
+         /* Per-SE blocks. */
+         se_index = counter->instance / block->num_instances;
+         instance_index = counter->instance % block->num_instances;
+      } else {
+         /* Per-SA blocks. */
+         assert(block->b->b->gpu_block == GL1C ||
+                block->b->b->gpu_block == TCP);
+         se_index = (counter->instance / block->num_instances) / info->max_sa_per_se;
+         sa_index = (counter->instance / block->num_instances) % info->max_sa_per_se;
+         instance_index = counter->instance % block->num_instances;
+      }
+   } else {
       /* Global blocks. */
+      assert(block->b->b->gpu_block == GL2C);
       instance_index = counter->instance;
-      break;
-   case SQ:
-      /* Per-SE blocks. */
-      se_index = counter->instance / block->num_instances;
-      instance_index = counter->instance % block->num_instances;
-      break;
-   case GL1C:
-   case TCP:
-      /* Per-SA blocks. */
-      se_index = (counter->instance / block->num_instances) / info->max_sa_per_se;
-      sa_index = (counter->instance / block->num_instances) % info->max_sa_per_se;
-      instance_index = counter->instance % block->num_instances;
-      break;
-   default:
-      unreachable("invalid SPM block found");
    }
 
    if (se_index >= info->num_se ||
