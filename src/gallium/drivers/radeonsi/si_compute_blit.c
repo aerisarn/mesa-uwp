@@ -317,8 +317,6 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
                                             const uint32_t *clear_value, unsigned flags,
                                             enum si_coherency coher)
 {
-   struct pipe_context *ctx = &sctx->b;
-
    assert(dst_offset % 4 == 0);
    assert(size % 4 == 0);
    unsigned size_12 = DIV_ROUND_UP(size, 12);
@@ -333,7 +331,7 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    struct pipe_grid_info info = {0};
 
    if (!sctx->cs_clear_12bytes_buffer)
-      sctx->cs_clear_12bytes_buffer = si_clear_12bytes_buffer_shader(ctx);
+      sctx->cs_clear_12bytes_buffer = si_clear_12bytes_buffer_shader(sctx);
 
    info.block[0] = 64;
    info.last_block[0] = size_12 % 64;

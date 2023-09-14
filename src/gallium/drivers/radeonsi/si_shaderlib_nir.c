@@ -611,3 +611,24 @@ void *si_clear_render_target_shader(struct si_context *sctx, enum pipe_texture_t
 
    return create_shader_state(sctx, b.shader);
 }
+
+void *si_clear_12bytes_buffer_shader(struct si_context *sctx)
+{
+   const nir_shader_compiler_options *options =
+   sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
+
+   nir_builder b =
+   nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "clear_12bytes_buffer");
+   b.shader->info.workgroup_size[0] = 64;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.cs.user_data_components_amd = 3;
+
+   nir_def *offset = nir_imul_imm(&b, get_global_ids(&b, 1), 12);
+   nir_def *value = nir_trim_vector(&b, nir_load_user_data_amd(&b), 3);
+
+   nir_store_ssbo(&b, value, nir_imm_int(&b, 0), offset,
+      .access = SI_COMPUTE_DST_CACHE_POLICY != L2_LRU ? ACCESS_NON_TEMPORAL : 0);
+
+   return create_shader_state(sctx, b.shader);
+}
