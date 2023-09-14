@@ -374,24 +374,6 @@ fs_copy_prop_dataflow::setup_initial_values()
 
       foreach_block (block, cfg) {
          foreach_inst_in_block(fs_inst, inst, block) {
-            if (inst->dst.file != VGRF)
-               continue;
-
-            for (auto iter = acp_table.find_by_dst(inst->dst.nr);
-              iter != acp_table.end() && (*iter)->dst.nr == inst->dst.nr;
-              ++iter) {
-               if (grf_regions_overlap(inst->dst, inst->size_written,
-                                       (*iter)->dst, (*iter)->size_written)) {
-                  BITSET_SET(bd[block->num].kill, (*iter)->global_idx);
-                  if (inst->force_writemask_all && !(*iter)->force_writemask_all)
-                     BITSET_SET(bd[block->num].exec_mismatch, (*iter)->global_idx);
-               }
-            }
-         }
-      }
-
-      foreach_block (block, cfg) {
-         foreach_inst_in_block(fs_inst, inst, block) {
             if (inst->dst.file != VGRF &&
                 inst->dst.file != FIXED_GRF)
                continue;
@@ -401,6 +383,20 @@ fs_copy_prop_dataflow::setup_initial_values()
               ++iter) {
                if (grf_regions_overlap(inst->dst, inst->size_written,
                                        (*iter)->src, (*iter)->size_read)) {
+                  BITSET_SET(bd[block->num].kill, (*iter)->global_idx);
+                  if (inst->force_writemask_all && !(*iter)->force_writemask_all)
+                     BITSET_SET(bd[block->num].exec_mismatch, (*iter)->global_idx);
+               }
+            }
+
+            if (inst->dst.file != VGRF)
+               continue;
+
+            for (auto iter = acp_table.find_by_dst(inst->dst.nr);
+              iter != acp_table.end() && (*iter)->dst.nr == inst->dst.nr;
+              ++iter) {
+               if (grf_regions_overlap(inst->dst, inst->size_written,
+                                       (*iter)->dst, (*iter)->size_written)) {
                   BITSET_SET(bd[block->num].kill, (*iter)->global_idx);
                   if (inst->force_writemask_all && !(*iter)->force_writemask_all)
                      BITSET_SET(bd[block->num].exec_mismatch, (*iter)->global_idx);
