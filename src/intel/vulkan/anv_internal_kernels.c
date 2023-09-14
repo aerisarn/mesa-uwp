@@ -143,6 +143,7 @@ lower_load_ubo_to_uniforms(nir_builder *b, nir_intrinsic_instr *intrin,
 static struct anv_shader_bin *
 compile_upload_spirv(struct anv_device *device,
                      gl_shader_stage stage,
+                     const char *name,
                      const void *hash_key,
                      uint32_t hash_key_size,
                      const struct anv_internal_kernel_bind_map *bind_map,
@@ -169,6 +170,8 @@ compile_upload_spirv(struct anv_device *device,
                       NULL);
 
    assert(nir != NULL);
+
+   nir->info.name = ralloc_strdup(nir, name);
 
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(nir, nir_opt_cse);
@@ -471,6 +474,7 @@ anv_device_init_internal_kernels(struct anv_device *device)
          device->internal_kernels[i] =
             compile_upload_spirv(device,
                                  internal_kernels[i].stage,
+                                 internal_kernels[i].key.name,
                                  &internal_kernels[i].key,
                                  sizeof(internal_kernels[i].key),
                                  &internal_kernels[i].bind_map,
