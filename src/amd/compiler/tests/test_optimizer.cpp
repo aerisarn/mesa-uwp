@@ -2192,3 +2192,38 @@ BEGIN_TEST(optimize.neg_mul_opsel)
 
    finish_opt_test();
 END_TEST
+
+BEGIN_TEST(optimize.vinterp_inreg_output_modifiers)
+   //>> v1: %a, v1: %b, v1: %c = p_startpgm
+   if (!setup_cs("v1 v1 v1", GFX11))
+      return;
+
+   //! v1: %res0 = v_interp_p2_f32_inreg %a, %b, %c clamp
+   //! p_unit_test 0, %res0
+   Temp tmp = bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, bld.def(v1), inputs[0],
+                                inputs[1], inputs[2]);
+   writeout(0, fsat(tmp));
+
+   //! v1: %res1 = v_fma_f32 %b, %a, %c *2 quad_perm:[2,2,2,2] fi
+   //! p_unit_test 1, %res1
+   tmp = bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, bld.def(v1), inputs[1], inputs[0],
+                           inputs[2]);
+   tmp = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand::c32(0x40000000u), tmp);
+   writeout(1, tmp);
+
+   //! v2b: %res2 = v_interp_p2_f16_f32_inreg %a, %b, %c clamp
+   //! p_unit_test 2, %res2
+   tmp = bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, bld.def(v2b), inputs[0],
+                           inputs[1], inputs[2]);
+   writeout(2, fsat(tmp));
+
+   //! v2b: %tmp3 = v_interp_p2_f16_f32_inreg %b, %a, %c
+   //! v2b: %res3 = v_mul_f16 2.0, %tmp3
+   //! p_unit_test 3, %res3
+   tmp = bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, bld.def(v2b), inputs[1],
+                           inputs[0], inputs[2]);
+   tmp = bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand::c16(0x4000u), tmp);
+   writeout(3, tmp);
+
+   finish_opt_test();
+END_TEST

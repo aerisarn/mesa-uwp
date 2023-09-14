@@ -1074,7 +1074,7 @@ VINTERP = {
    (0x05, "v_interp_p2_rtz_f16_f32_inreg"),
 }
 for (code, name) in VINTERP:
-   opcode(name, -1, -1, -1, code, Format.VINTERP_INREG, InstrClass.Valu32)
+   opcode(name, -1, -1, -1, code, Format.VINTERP_INREG, InstrClass.Valu32, False, True)
 
 
 # VOP3 instructions: 3 inputs, 1 output
