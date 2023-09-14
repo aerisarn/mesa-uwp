@@ -775,11 +775,14 @@ lower_2f(nir_builder *b, nir_def *x, unsigned dest_bit_size,
                                     COND_LOWER_OP(b, iand, x, lsb_mask));
    nir_def *round_up = nir_ior(b, COND_LOWER_CMP(b, ilt, half, rem),
                                nir_iand(b, halfway, is_odd));
-   if (significand_bits >= 32)
-      significand = COND_LOWER_OP(b, iadd, significand,
-                                  COND_LOWER_CAST(b, b2i64, round_up));
-   else
-      significand = nir_iadd(b, significand, nir_b2i32(b, round_up));
+   if (!nir_is_rounding_mode_rtz(b->shader->info.float_controls_execution_mode,
+                                 dest_bit_size)) {
+      if (significand_bits >= 32)
+         significand = COND_LOWER_OP(b, iadd, significand,
+                                     COND_LOWER_CAST(b, b2i64, round_up));
+      else
+         significand = nir_iadd(b, significand, nir_b2i32(b, round_up));
+   }
 
    nir_def *res;
 
