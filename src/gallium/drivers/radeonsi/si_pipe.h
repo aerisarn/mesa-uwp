@@ -1641,8 +1641,7 @@ void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type,
 void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy);
 void *si_create_clear_buffer_rmw_cs(struct si_context *sctx);
-void *si_clear_render_target_shader(struct si_context *sctx);
-void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);
+void *si_clear_render_target_shader(struct si_context *sctx, enum pipe_texture_target type);
 void *si_clear_12bytes_buffer_shader(struct pipe_context *ctx);
 void *si_create_fmask_expand_cs(struct pipe_context *ctx, unsigned num_samples, bool is_array);
 void *si_create_query_result_cs(struct si_context *sctx);

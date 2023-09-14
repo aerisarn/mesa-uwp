@@ -1000,7 +1000,7 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
 
    if (dstsurf->texture->target != PIPE_TEXTURE_1D_ARRAY) {
       if (!sctx->cs_clear_render_target)
-         sctx->cs_clear_render_target = si_clear_render_target_shader(sctx);
+         sctx->cs_clear_render_target = si_clear_render_target_shader(sctx, PIPE_TEXTURE_2D_ARRAY);
       shader = sctx->cs_clear_render_target;
 
       info.block[0] = 8;
@@ -1013,7 +1013,7 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
       info.grid[2] = num_layers;
    } else {
       if (!sctx->cs_clear_render_target_1d_array)
-         sctx->cs_clear_render_target_1d_array = si_clear_render_target_shader_1d_array(ctx);
+         sctx->cs_clear_render_target_1d_array = si_clear_render_target_shader(sctx, PIPE_TEXTURE_1D_ARRAY);
       shader = sctx->cs_clear_render_target_1d_array;
 
       info.block[0] = 64;
