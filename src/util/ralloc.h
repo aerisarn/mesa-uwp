@@ -565,7 +565,7 @@ public:                                                                  \
  * \param parent   parent node of the linear allocator
  * \param size     size to allocate (max 32 bits)
  */
-void *linear_alloc_child(void *parent, unsigned size);
+void *linear_alloc_child(void *parent, unsigned size) MALLOCLIKE;
 
 /**
  * Allocate a parent node that will hold linear buffers. The returned
@@ -575,17 +575,17 @@ void *linear_alloc_child(void *parent, unsigned size);
  * \param ralloc_ctx  ralloc context, must not be NULL
  * \param size        size to allocate (max 32 bits)
  */
-void *linear_alloc_parent(void *ralloc_ctx, unsigned size);
+void *linear_alloc_parent(void *ralloc_ctx, unsigned size) MALLOCLIKE;
 
 /**
  * Same as linear_alloc_child, but also clears memory.
  */
-void *linear_zalloc_child(void *parent, unsigned size);
+void *linear_zalloc_child(void *parent, unsigned size) MALLOCLIKE;
 
 /**
  * Same as linear_alloc_parent, but also clears memory.
  */
-void *linear_zalloc_parent(void *ralloc_ctx, unsigned size);
+void *linear_zalloc_parent(void *ralloc_ctx, unsigned size) MALLOCLIKE;
 
 /**
  * Free the linear parent node. This will free all child nodes too.
@@ -619,7 +619,7 @@ void *linear_realloc(void *parent, void *old, unsigned new_size);
  * More than a convenience function, this also checks for integer overflow when
  * multiplying \p size and \p count.  This is necessary for security.
  */
-void *linear_alloc_child_array(void *parent, size_t size, unsigned count);
+void *linear_alloc_child_array(void *parent, size_t size, unsigned count) MALLOCLIKE;
 
 /**
  * Do a fast allocation of an array from the linear buffer.
@@ -629,19 +629,19 @@ void *linear_alloc_child_array(void *parent, size_t size, unsigned count);
  * More than a convenience function, this also checks for integer overflow when
  * multiplying \p size and \p count.  This is necessary for security.
  */
-void *linear_zalloc_child_array(void *parent, size_t size, unsigned count);
+void *linear_zalloc_child_array(void *parent, size_t size, unsigned count) MALLOCLIKE;
 
 /* The functions below have the same semantics as their ralloc counterparts,
  * except that they always allocate a linear child node.
  */
-char *linear_strdup(void *parent, const char *str);
-char *linear_asprintf(void *parent, const char *fmt, ...);
-char *linear_vasprintf(void *parent, const char *fmt, va_list args);
-bool linear_asprintf_append(void *parent, char **str, const char *fmt, ...);
+char *linear_strdup(void *parent, const char *str) MALLOCLIKE;
+char *linear_asprintf(void *parent, const char *fmt, ...) PRINTFLIKE(2, 3) MALLOCLIKE;
+char *linear_vasprintf(void *parent, const char *fmt, va_list args) MALLOCLIKE;
+bool linear_asprintf_append(void *parent, char **str, const char *fmt, ...) PRINTFLIKE(3, 4);
 bool linear_vasprintf_append(void *parent, char **str, const char *fmt,
                              va_list args);
 bool linear_asprintf_rewrite_tail(void *parent, char **str, size_t *start,
-                                  const char *fmt, ...);
+                                  const char *fmt, ...) PRINTFLIKE(4, 5);
 bool linear_vasprintf_rewrite_tail(void *parent, char **str, size_t *start,
                                    const char *fmt, va_list args);
 bool linear_strcat(void *parent, char **dest, const char *str);
