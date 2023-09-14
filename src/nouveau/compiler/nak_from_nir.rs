@@ -16,6 +16,14 @@ use nak_bindings::*;
 use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 
+fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
+    ShaderInfo {
+        sm: sm,
+        num_gprs: 0,
+        tls_size: nir.scratch_size,
+    }
+}
+
 fn alloc_ssa_for_nir(b: &mut impl SSABuilder, ssa: &nir_def) -> Vec<SSAValue> {
     let (file, comps) = if ssa.bit_size == 1 {
         (RegFile::Pred, ssa.num_components)
@@ -54,6 +62,7 @@ impl<'a> PhiAllocMap<'a> {
 
 struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
+    info: ShaderInfo,
     cfg: CFGBuilder<u32, BasicBlock>,
     fs_out_regs: Vec<Src>,
     end_block_id: u32,
@@ -62,7 +71,7 @@ struct ShaderFromNir<'a> {
 }
 
 impl<'a> ShaderFromNir<'a> {
-    fn new(nir: &'a nir_shader) -> Self {
+    fn new(nir: &'a nir_shader, sm: u8) -> Self {
         let mut fs_out_regs = Vec::new();
         if nir.info.stage() == MESA_SHADER_FRAGMENT {
             fs_out_regs
@@ -71,6 +80,7 @@ impl<'a> ShaderFromNir<'a> {
 
         Self {
             nir: nir,
+            info: init_info_from_nir(nir, sm),
             cfg: CFGBuilder::new(),
             fs_out_regs: fs_out_regs,
             end_block_id: 0,
@@ -1785,20 +1795,21 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
-    pub fn parse_shader(&mut self, sm: u8) -> Shader {
-        let mut s = Shader::new(sm);
+    pub fn parse_shader(mut self) -> Shader {
+        let mut functions = Vec::new();
         for nf in self.nir.iter_functions() {
             if let Some(nfi) = nf.get_impl() {
                 let f = self.parse_function_impl(nfi);
-                s.functions.push(f);
+                functions.push(f);
             }
         }
-        assert!(s.info.tls_size == 0);
-        s.info.tls_size = self.nir.scratch_size;
-        s
+        Shader {
+            info: self.info,
+            functions: functions,
+        }
     }
 }
 
 pub fn nak_shader_from_nir(ns: &nir_shader, sm: u8) -> Shader {
-    ShaderFromNir::new(ns).parse_shader(sm)
+    ShaderFromNir::new(ns, sm).parse_shader()
 }

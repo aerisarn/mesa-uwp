@@ -4343,17 +4343,6 @@ pub struct Shader {
 }
 
 impl Shader {
-    pub fn new(sm: u8) -> Shader {
-        Shader {
-            info: ShaderInfo {
-                sm: sm,
-                num_gprs: 0,
-                tls_size: 0,
-            },
-            functions: Vec::new(),
-        }
-    }
-
     pub fn map_instrs(
         &mut self,
         mut map: impl FnMut(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
