@@ -33,7 +33,7 @@
 
 /* This needs to match common_generated_draws.glsl :
  *
- *    layout(set = 0, binding = 3) uniform block
+ *    layout(set = 0, binding = 4) uniform block
  */
 struct anv_generated_indirect_draw_params {
    /* Draw ID buffer address (only used on Gfx9) */
@@ -47,18 +47,12 @@ struct anv_generated_indirect_draw_params {
     * gl_FragCoord
     */
    uint32_t draw_base;
-
-   /* Number of draws to generate */
-   uint32_t draw_count;
-
    /* Maximum number of draws (equals to draw_count for indirect draws without
     * an indirect count)
     */
    uint32_t max_draw_count;
-
    /* Instance multiplier for multi view */
    uint32_t instance_multiplier;
-
    /* Address where to jump at after the generated draw (only used with
     * indirect draw count variants)
     */
@@ -68,6 +62,9 @@ struct anv_generated_indirect_draw_params {
 struct anv_generated_indirect_params {
    struct anv_generated_indirect_draw_params draw;
 
+   /* Draw count value for non count variants of draw indirect commands */
+   uint32_t draw_count;
+
    /* Global address of binding 0 */
    uint64_t indirect_data_addr;
 
@@ -76,6 +73,9 @@ struct anv_generated_indirect_params {
 
    /* Global address of binding 2 */
    uint64_t draw_ids_addr;
+
+   /* Global address of binding 3 (points to the draw_count field above) */
+   uint64_t draw_count_addr;
 
    /* CPU side pointer to the previous item when number of draws has to be
     * split into smaller chunks, see while loop in

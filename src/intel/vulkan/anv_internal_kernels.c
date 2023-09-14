@@ -355,10 +355,10 @@ anv_device_init_internal_kernels(struct anv_device *device)
                        ARRAY_SIZE(gfx11_generated_draws_spv_source) :
                        ARRAY_SIZE(gfx9_generated_draws_spv_source),
          .send_count = device->info->ver >= 11 ?
-                       11 /* 2 * (2 loads + 3 stores) + 1 store */ :
-                       17 /* 2 * (2 loads + 6 stores) + 1 store */,
+                       12 /* 2 * (2 loads + 3 stores) + 1 load + 1 store */ :
+                       18 /* 2 * (2 loads + 6 stores) + 1 load + 1 store */,
          .bind_map   = {
-            .num_bindings = 4,
+            .num_bindings = 5,
             .bindings     = {
                {
                   .address_offset = offsetof(struct anv_generated_indirect_params,
@@ -371,6 +371,10 @@ anv_device_init_internal_kernels(struct anv_device *device)
                {
                   .address_offset = offsetof(struct anv_generated_indirect_params,
                                              draw_ids_addr),
+               },
+               {
+                  .address_offset = offsetof(struct anv_generated_indirect_params,
+                                             draw_count_addr),
                },
                {
                   .push_constant = true,

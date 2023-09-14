@@ -80,6 +80,7 @@ void main()
    uint item_idx = uint(gl_FragCoord.y) * 8192 + uint(gl_FragCoord.x);
    uint cmd_idx = item_idx * _3dprim_dw_size;
    uint draw_id = draw_base + item_idx;
+   uint draw_count = _draw_count;
 
    if (draw_id < draw_count)
       write_draw(item_idx, cmd_idx, draw_id);

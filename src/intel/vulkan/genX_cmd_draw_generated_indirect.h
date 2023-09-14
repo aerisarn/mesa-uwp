@@ -53,7 +53,6 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
                                      bool indexed)
 {
    struct anv_device *device = cmd_buffer->device;
-   struct anv_batch *batch = &cmd_buffer->generation_batch;
 
    struct anv_state push_data_state =
       genX(simple_shader_alloc_push)(&cmd_buffer->generation_shader_state,
@@ -61,6 +60,16 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
 
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+
+   struct anv_address draw_count_addr;
+   if (anv_address_is_null(count_addr)) {
+      draw_count_addr = anv_address_add(
+         genX(simple_shader_push_state_address)(
+            &cmd_buffer->generation_shader_state, push_data_state),
+         offsetof(struct anv_generated_indirect_params, draw_count));
+   } else {
+      draw_count_addr = count_addr;
+   }
 
    struct anv_generated_indirect_params *push_data = push_data_state.map;
    *push_data = (struct anv_generated_indirect_params) {
@@ -79,38 +88,15 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
                                              ISL_SURF_USAGE_VERTEX_BUFFER_BIT) << 8) |
                                    ((generated_cmd_stride / 4) << 16),
          .draw_base              = item_base,
-         /* If count_addr is not NULL, we'll edit it through a the command
-          * streamer.
-          */
-         .draw_count             = anv_address_is_null(count_addr) ? max_count : 0,
          .max_draw_count         = max_count,
          .instance_multiplier    = pipeline->instance_multiplier,
       },
+      .draw_count                = anv_address_is_null(count_addr) ? max_count : 0,
       .indirect_data_addr        = anv_address_physical(indirect_data_addr),
       .generated_cmds_addr       = anv_address_physical(generated_cmds_addr),
       .draw_ids_addr             = anv_address_physical(draw_id_addr),
+      .draw_count_addr           = anv_address_physical(draw_count_addr),
    };
-
-   if (!anv_address_is_null(count_addr)) {
-      /* Copy the draw count into the push constants so that the generation
-       * gets the value straight away and doesn't even need to access memory.
-       */
-      struct mi_builder b;
-      mi_builder_init(&b, device->info, batch);
-      mi_memcpy(&b,
-                anv_address_add(
-                   genX(simple_shader_push_state_address)(
-                      &cmd_buffer->generation_shader_state,
-                      push_data_state),
-                   offsetof(struct anv_generated_indirect_params, draw.draw_count)),
-                count_addr, 4);
-
-      /* Make sure the memcpy landed for the generating draw call to pick up
-       * the value.
-       */
-      genx_batch_emit_pipe_control(batch, cmd_buffer->device->info,
-                                   ANV_PIPE_CS_STALL_BIT);
-   }
 
    genX(emit_simple_shader_dispatch)(&cmd_buffer->generation_shader_state,
                                      item_count, push_data_state);

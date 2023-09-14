@@ -41,14 +41,26 @@ layout(set = 0, binding = 2, std430) buffer Storage2 {
    uint draw_ids[];
 };
 
+/* We're not using a uniform block for this because our compiler
+ * infrastructure relies on UBOs to be 32-bytes aligned so that we can push
+ * them into registers. This value can come directly from the indirect buffer
+ * given to indirect draw commands and the requirement there is 4-bytes
+ * alignment.
+ *
+ * Also use a prefix to the variable to remember to make a copy of it, avoid
+ * unnecessary accesses.
+ */
+layout(set = 0, binding = 3) buffer Storage3 {
+   uint _draw_count;
+};
+
 /* This data will be provided through push constants. */
-layout(set = 0, binding = 3) uniform block {
+layout(set = 0, binding = 4) uniform block {
    uint64_t draw_id_addr;
    uint64_t indirect_data_addr;
    uint indirect_data_stride;
    uint flags;
    uint draw_base;
-   uint draw_count;
    uint max_draw_count;
    uint instance_multiplier;
    uint64_t end_addr;
