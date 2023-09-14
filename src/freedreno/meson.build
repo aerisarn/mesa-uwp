@@ -46,10 +46,14 @@ subdir('isa')
 subdir('ir2')
 subdir('ir3')
 subdir('fdl')
-subdir('perfcntrs')
 
 if system_has_kms_drm
   subdir('drm')
+endif
+
+subdir('perfcntrs')
+
+if system_has_kms_drm
   subdir('computerator')
 endif
 
