@@ -1,4 +1,4 @@
-# Copyright © 
+# Copyright ©
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -221,6 +221,23 @@ rusticl_mesa_bindings_inline_wrapper = static_library(
   ],
 )
 
+rusticl_libc_bindings_rs = rust.bindgen(
+  input : 'rusticl_libc_bindings.h',
+  output : 'rusticl_libc_bindings.rs',
+  dependencies: [
+    dep_valgrind,
+  ],
+  c_args : [
+    rusticl_bindgen_c_args,
+    pre_args,
+  ],
+  args : [
+    rusticl_bindgen_args,
+    '--allowlist-function',     'free',
+    '--allowlist-function',     'malloc',
+  ]
+)
+
 rusticl_mesa_bindings_rs = rust.bindgen(
   input : 'rusticl_mesa_bindings.h',
   output : 'rusticl_mesa_bindings.rs',
@@ -240,10 +257,6 @@ rusticl_mesa_bindings_rs = rust.bindgen(
   ],
   args : [
     rusticl_bindgen_args,
-    # libc
-    '--allowlist-function',     'free',
-    '--allowlist-function',     'malloc',
-
     # mesa utils
     '--allowlist-function',     'blob_.*',
     '--allowlist-function',     'disk_cache_.*',
@@ -324,6 +337,16 @@ libmesa_rust_gen = static_library(
   ],
 )
 
+libc_rust_gen = static_library(
+  'libc_rust_gen',
+  rusticl_libc_bindings_rs,
+  gnu_symbol_visibility : 'hidden',
+  rust_crate_type : 'rlib',
+  rust_args : [
+    rusticl_gen_args,
+  ],
+)
+
 libmesa_rust_util = static_library(
   'mesa_rust_util',
   [libmesa_rust_util_files],
@@ -343,6 +366,7 @@ libmesa_rust = static_library(
     rusticl_args,
   ],
   link_with : [
+    libc_rust_gen,
     libmesa_rust_gen,
     libmesa_rust_util,
     rusticl_mesa_bindings_inline_wrapper,
@@ -368,6 +392,7 @@ librusticl = static_library(
     rusticl_args,
   ],
   link_with : [
+    libc_rust_gen,
     libmesa_rust,
     libmesa_rust_gen,
     libmesa_rust_util,
