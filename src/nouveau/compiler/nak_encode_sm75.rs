@@ -1655,7 +1655,7 @@ pub fn encode_shader(shader: &Shader) -> Vec<u32> {
         for instr in &b.instrs {
             let e = SM75Instr::encode(
                 instr,
-                shader.sm,
+                shader.info.sm,
                 encoded.len(),
                 &block_offsets,
             );

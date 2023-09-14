@@ -1793,8 +1793,8 @@ impl<'a> ShaderFromNir<'a> {
                 s.functions.push(f);
             }
         }
-        assert!(s.tls_size == 0);
-        s.tls_size = self.nir.scratch_size;
+        assert!(s.info.tls_size == 0);
+        s.info.tls_size = self.nir.scratch_size;
         s
     }
 }

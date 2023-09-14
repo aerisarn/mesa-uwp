@@ -178,8 +178,8 @@ impl LowerCopySwap {
 
 impl Shader {
     pub fn lower_copy_swap(&mut self) {
-        let mut pass = LowerCopySwap::new(self.tls_size);
+        let mut pass = LowerCopySwap::new(self.info.tls_size);
         pass.run(self);
-        self.tls_size = pass.tls_size;
+        self.info.tls_size = pass.tls_size;
     }
 }

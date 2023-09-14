@@ -1159,7 +1159,7 @@ impl Shader {
 
         let spill_files = [RegFile::Pred];
         for file in spill_files {
-            let num_regs = file.num_regs(self.sm);
+            let num_regs = file.num_regs(self.info.sm);
             if max_live[file] > num_regs {
                 f.spill_values(file, num_regs);
 
@@ -1177,7 +1177,7 @@ impl Shader {
         let mut gpr_limit = max(max_live[RegFile::GPR], 16);
         let mut total_gprs = gpr_limit + u32::from(tmp_gprs);
 
-        let max_gprs = RegFile::GPR.num_regs(self.sm);
+        let max_gprs = RegFile::GPR.num_regs(self.info.sm);
         if total_gprs > max_gprs {
             // If we're spilling GPRs, we need to reserve 2 GPRs for OpParCopy
             // lowering because it needs to be able lower Mem copies which
@@ -1193,13 +1193,13 @@ impl Shader {
             max_live = live.calc_max_live(f);
         }
 
-        self.num_gprs = total_gprs.try_into().unwrap();
+        self.info.num_gprs = total_gprs.try_into().unwrap();
 
         let limit = PerRegFile::new_with(|file| {
             if file == RegFile::GPR {
                 gpr_limit
             } else {
-                file.num_regs(self.sm)
+                file.num_regs(self.info.sm)
             }
         });
 

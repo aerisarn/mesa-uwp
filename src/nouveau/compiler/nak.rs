@@ -25,6 +25,7 @@ mod nak_to_cssa;
 mod nir;
 mod util;
 
+use crate::nak_ir::ShaderInfo;
 use crate::nir::NirShader;
 
 use bitview::*;
@@ -205,7 +206,7 @@ pub extern "C" fn nak_shader_bin_destroy(bin: *mut nak_shader_bin) {
 
 fn encode_hdr_for_nir(
     nir: &nir_shader,
-    tls_size: u32,
+    shader_info: &ShaderInfo,
     fs_key: Option<&nak_fs_key>,
 ) -> [u32; 32] {
     if nir.info.stage() == MESA_SHADER_COMPUTE {
@@ -248,7 +249,9 @@ fn encode_hdr_for_nir(
 
     /* [32, 63]: CommonWord1 */
     let mut cw1 = hdr_view.subset_mut(32..64);
-    cw1.set_field(0..24, NextMultipleOf::next_multiple_of(&tls_size, 0x10));
+    let tls_size_aligned =
+        NextMultipleOf::next_multiple_of(&shader_info.tls_size, 0x10);
+    cw1.set_field(0..24, tls_size_aligned);
     if nir.info.stage() == MESA_SHADER_TESS_CTRL {
         cw1.set_field(24..32, 0_u32 /* TODO: PerPatchAttributeCount */);
     }
@@ -493,13 +496,13 @@ pub extern "C" fn nak_compile_shader(
 
     let info = nak_shader_info {
         stage: nir.info.stage(),
-        num_gprs: s.num_gprs,
+        num_gprs: s.info.num_gprs,
         num_barriers: if nir.info.uses_control_barrier() {
             1
         } else {
             0
         },
-        tls_size: s.tls_size,
+        tls_size: s.info.tls_size,
         cs: nak_shader_info__bindgen_ty_1 {
             local_size: [
                 nir.info.workgroup_size[0].into(),
@@ -508,7 +511,7 @@ pub extern "C" fn nak_compile_shader(
             ],
             smem_size: nir.info.shared_size.try_into().unwrap(),
         },
-        hdr: encode_hdr_for_nir(nir, s.tls_size, fs_key),
+        hdr: encode_hdr_for_nir(nir, &s.info, fs_key),
     };
 
     let code = if nak.sm >= 75 {

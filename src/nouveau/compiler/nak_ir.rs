@@ -4330,19 +4330,26 @@ impl fmt::Display for Function {
     }
 }
 
-pub struct Shader {
+#[derive(Debug)]
+pub struct ShaderInfo {
     pub sm: u8,
     pub num_gprs: u8,
     pub tls_size: u32,
+}
+
+pub struct Shader {
+    pub info: ShaderInfo,
     pub functions: Vec<Function>,
 }
 
 impl Shader {
     pub fn new(sm: u8) -> Shader {
         Shader {
-            sm: sm,
-            num_gprs: 0,
-            tls_size: 0,
+            info: ShaderInfo {
+                sm: sm,
+                num_gprs: 0,
+                tls_size: 0,
+            },
             functions: Vec::new(),
         }
     }
