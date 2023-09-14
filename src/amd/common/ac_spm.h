@@ -82,12 +82,12 @@ enum ac_spm_segment_type {
 
 struct ac_spm_counter_descr {
    enum ac_pc_gpu_block gpu_block;
-   uint32_t instance;
    uint32_t event_id;
 };
 
 struct ac_spm_counter_create_info {
    struct ac_spm_counter_descr *b;
+   uint32_t instance;
 };
 
 struct ac_spm_muxsel {

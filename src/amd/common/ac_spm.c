@@ -12,18 +12,18 @@
 
 /* SPM counters definition. */
 /* GFX10+ */
-static struct ac_spm_counter_descr gfx10_num_l2_hits = {TCP, 0, 0x9};
-static struct ac_spm_counter_descr gfx10_num_l2_misses = {TCP, 0, 0x12};
-static struct ac_spm_counter_descr gfx10_num_scache_hits = {SQ, 0, 0x14f};
-static struct ac_spm_counter_descr gfx10_num_scache_misses = {SQ, 0, 0x150};
-static struct ac_spm_counter_descr gfx10_num_scache_misses_dup = {SQ, 0, 0x151};
-static struct ac_spm_counter_descr gfx10_num_icache_hits = {SQ, 0, 0x12c};
-static struct ac_spm_counter_descr gfx10_num_icache_misses = {SQ, 0, 0x12d};
-static struct ac_spm_counter_descr gfx10_num_icache_misses_dup = {SQ, 0, 0x12e};
-static struct ac_spm_counter_descr gfx10_num_gl1c_hits = {GL1C, 0, 0xe};
-static struct ac_spm_counter_descr gfx10_num_gl1c_misses = {GL1C, 0, 0x12};
-static struct ac_spm_counter_descr gfx10_num_gl2c_hits = {GL2C, 0, 0x3};
-static struct ac_spm_counter_descr gfx10_num_gl2c_misses = {GL2C, 0, 0x23};
+static struct ac_spm_counter_descr gfx10_num_l2_hits = {TCP, 0x9};
+static struct ac_spm_counter_descr gfx10_num_l2_misses = {TCP, 0x12};
+static struct ac_spm_counter_descr gfx10_num_scache_hits = {SQ, 0x14f};
+static struct ac_spm_counter_descr gfx10_num_scache_misses = {SQ, 0x150};
+static struct ac_spm_counter_descr gfx10_num_scache_misses_dup = {SQ, 0x151};
+static struct ac_spm_counter_descr gfx10_num_icache_hits = {SQ, 0x12c};
+static struct ac_spm_counter_descr gfx10_num_icache_misses = {SQ, 0x12d};
+static struct ac_spm_counter_descr gfx10_num_icache_misses_dup = {SQ, 0x12e};
+static struct ac_spm_counter_descr gfx10_num_gl1c_hits = {GL1C, 0xe};
+static struct ac_spm_counter_descr gfx10_num_gl1c_misses = {GL1C, 0x12};
+static struct ac_spm_counter_descr gfx10_num_gl2c_hits = {GL2C, 0x3};
+static struct ac_spm_counter_descr gfx10_num_gl2c_misses = {GL2C, 0x23};
 
 static struct ac_spm_counter_create_info gfx10_spm_counters[] = {
    {&gfx10_num_l2_hits},
@@ -41,7 +41,7 @@ static struct ac_spm_counter_create_info gfx10_spm_counters[] = {
 };
 
 /* GFX10.3+ */
-static struct ac_spm_counter_descr gfx103_num_gl2c_misses = {GL2C, 0, 0x2b};
+static struct ac_spm_counter_descr gfx103_num_gl2c_misses = {GL2C, 0x2b};
 
 static struct ac_spm_counter_create_info gfx103_spm_counters[] = {
    {&gfx10_num_l2_hits},
@@ -59,13 +59,13 @@ static struct ac_spm_counter_create_info gfx103_spm_counters[] = {
 };
 
 /* GFX11+ */
-static struct ac_spm_counter_descr gfx11_num_l2_misses = {TCP, 0, 0x11};
-static struct ac_spm_counter_descr gfx11_num_scache_hits = {SQ_WGP, 0, 0x126};
-static struct ac_spm_counter_descr gfx11_num_scache_misses = {SQ_WGP, 0, 0x127};
-static struct ac_spm_counter_descr gfx11_num_scache_misses_dup = {SQ_WGP, 0, 0x128};
-static struct ac_spm_counter_descr gfx11_num_icache_hits = {SQ_WGP, 0, 0x10e};
-static struct ac_spm_counter_descr gfx11_num_icache_misses = {SQ_WGP, 0, 0x10f};
-static struct ac_spm_counter_descr gfx11_num_icache_misses_dup = {SQ_WGP, 0, 0x110};
+static struct ac_spm_counter_descr gfx11_num_l2_misses = {TCP, 0x11};
+static struct ac_spm_counter_descr gfx11_num_scache_hits = {SQ_WGP, 0x126};
+static struct ac_spm_counter_descr gfx11_num_scache_misses = {SQ_WGP, 0x127};
+static struct ac_spm_counter_descr gfx11_num_scache_misses_dup = {SQ_WGP, 0x128};
+static struct ac_spm_counter_descr gfx11_num_icache_hits = {SQ_WGP, 0x10e};
+static struct ac_spm_counter_descr gfx11_num_icache_misses = {SQ_WGP, 0x10f};
+static struct ac_spm_counter_descr gfx11_num_icache_misses_dup = {SQ_WGP, 0x110};
 
 static struct ac_spm_counter_create_info gfx11_spm_counters[] = {
    {&gfx10_num_l2_hits},
@@ -325,7 +325,7 @@ ac_spm_add_counter(const struct radeon_info *info,
    }
 
    /* Check if the number of instances is valid. */
-   if (counter_info->b->instance > block->num_global_instances - 1) {
+   if (counter_info->instance > block->num_global_instances - 1) {
       fprintf(stderr, "ac/spm: Invalid instance ID.\n");
       return false;
    }
@@ -340,8 +340,8 @@ ac_spm_add_counter(const struct radeon_info *info,
    spm->num_counters++;
 
    counter->gpu_block = counter_info->b->gpu_block;
-   counter->instance = counter_info->b->instance;
    counter->event_id = counter_info->b->event_id;
+   counter->instance = counter_info->instance;
 
    /* Get the select block used to configure the counter. */
    block_sel = ac_spm_get_block_select(spm, block);
