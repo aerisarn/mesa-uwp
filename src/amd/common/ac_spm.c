@@ -325,7 +325,7 @@ ac_spm_add_counter(const struct radeon_info *info,
 
    /* Determine the counter segment type. */
    if (block->b->b->flags & AC_PC_BLOCK_SE) {
-      counter->segment_type = AC_SPM_SEGMENT_TYPE_SE0; // XXX
+      counter->segment_type = instance_mapping.se_index;
    } else {
       counter->segment_type = AC_SPM_SEGMENT_TYPE_GLOBAL;
    }
