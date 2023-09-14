@@ -1244,10 +1244,24 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
    shader->num_barriers = bin->info.num_barriers;
    shader->slm_size = bin->info.tls_size;
 
-   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+   switch (nir->info.stage) {
+   case MESA_SHADER_COMPUTE:
       for (unsigned i = 0; i < 3; i++)
          shader->cp.block_size[i] = bin->info.cs.local_size[i];
       shader->cp.smem_size = bin->info.cs.smem_size;
+      break;
+
+   case MESA_SHADER_FRAGMENT:
+      if (bin->info.fs.writes_depth)
+         shader->flags[0] = 0x11; /* deactivate ZCULL */
+      shader->fs.sample_mask_in = bin->info.fs.reads_sample_mask;
+      shader->fs.post_depth_coverage = bin->info.fs.post_depth_coverage;
+      shader->fs.uses_sample_shading = bin->info.fs.uses_sample_shading;
+      shader->fs.early_z = bin->info.fs.early_fragment_tests;
+      break;
+
+   default:
+      break;
    }
 
    STATIC_ASSERT(sizeof(shader->hdr) == sizeof(bin->info.hdr));
