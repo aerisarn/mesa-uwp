@@ -125,15 +125,14 @@ ac_spm_get_block_select(struct ac_spm *spm, const struct ac_pc_block *block)
    memset(new_block_sel, 0, sizeof(*new_block_sel));
 
    new_block_sel->b = block;
-   new_block_sel->num_counters = block->b->b->num_spm_counters;
+   new_block_sel->instances =
+      calloc(block->num_global_instances, sizeof(*new_block_sel->instances));
+   if (!new_block_sel->instances)
+      return NULL;
+   new_block_sel->num_instances = block->num_global_instances;
 
-   /* Broadcast global block writes to SEs and SAs */
-   if (!(block->b->b->flags & (AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER)))
-      new_block_sel->grbm_gfx_index = S_030800_SE_BROADCAST_WRITES(1) |
-                                      S_030800_SH_BROADCAST_WRITES(1);
-   /* Broadcast per SE block writes to SAs */
-   else if (block->b->b->flags & AC_PC_BLOCK_SE)
-      new_block_sel->grbm_gfx_index = S_030800_SH_BROADCAST_WRITES(1);
+   for (unsigned i = 0; i < new_block_sel->num_instances; i++)
+      new_block_sel->instances[i].num_counters = block->b->b->num_spm_counters;
 
    return new_block_sel;
 }
@@ -197,9 +196,37 @@ ac_spm_init_muxsel(const struct ac_pc_block *block,
    muxsel->instance = mapping->instance_index;
 }
 
+static uint32_t
+ac_spm_init_grbm_gfx_index(const struct ac_pc_block *block,
+                           const struct ac_spm_instance_mapping *mapping)
+{
+   uint32_t grbm_gfx_index = 0;
+
+   grbm_gfx_index |= S_030800_SE_INDEX(mapping->se_index) |
+                     S_030800_SH_INDEX(mapping->sa_index) |
+                     S_030800_INSTANCE_INDEX(mapping->instance_index);
+
+   switch (block->b->b->gpu_block) {
+   case GL2C:
+      /* Global blocks. */
+      grbm_gfx_index |= S_030800_SE_BROADCAST_WRITES(1);
+      break;
+   case SQ:
+      /* Per-SE blocks. */
+      grbm_gfx_index |= S_030800_SH_BROADCAST_WRITES(1);
+      break;
+   default:
+      /* Other blocks shouldn't broadcast. */
+      break;
+   }
+
+   return grbm_gfx_index;
+}
+
 static bool
 ac_spm_map_counter(struct ac_spm *spm, struct ac_spm_block_select *block_sel,
                    struct ac_spm_counter_info *counter,
+                   const struct ac_spm_instance_mapping *mapping,
                    uint32_t *spm_wire)
 {
    uint32_t instance = counter->instance;
@@ -228,8 +255,16 @@ ac_spm_map_counter(struct ac_spm *spm, struct ac_spm_block_select *block_sel,
       }
    } else {
       /* Generic blocks. */
-      for (unsigned i = 0; i < block_sel->num_counters; i++) {
-         struct ac_spm_counter_select *cntr_sel = &block_sel->counters[i];
+      struct ac_spm_block_instance *block_instance =
+         &block_sel->instances[instance];
+
+      if (!block_instance->grbm_gfx_index) {
+         block_instance->grbm_gfx_index =
+            ac_spm_init_grbm_gfx_index(block_sel->b, mapping);
+      }
+
+      for (unsigned i = 0; i < block_instance->num_counters; i++) {
+         struct ac_spm_counter_select *cntr_sel = &block_instance->counters[i];
          int index = ffs(~cntr_sel->active) - 1;
 
          switch (index) {
@@ -320,7 +355,7 @@ ac_spm_add_counter(const struct radeon_info *info,
    }
 
    /* Map the counter to the select block. */
-   if (!ac_spm_map_counter(spm, block_sel, counter, &spm_wire)) {
+   if (!ac_spm_map_counter(spm, block_sel, counter, &instance_mapping, &spm_wire)) {
       fprintf(stderr, "ac/spm: No free slots available!\n");
       return false;
    }
@@ -462,6 +497,11 @@ void ac_destroy_spm(struct ac_spm *spm)
    for (unsigned s = 0; s < AC_SPM_SEGMENT_TYPE_COUNT; s++) {
       FREE(spm->muxsel_lines[s]);
    }
+
+   for (unsigned i = 0; i < spm->num_block_sel; i++) {
+      FREE(spm->block_sel[i].instances);
+   }
+
    FREE(spm->block_sel);
    FREE(spm->counters);
 }

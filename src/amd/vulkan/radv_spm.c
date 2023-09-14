@@ -90,21 +90,25 @@ radv_emit_spm_counters(struct radv_device *device, struct radeon_cmdbuf *cs, enu
       struct ac_spm_block_select *block_sel = &spm->block_sel[b];
       struct ac_pc_block_base *regs = block_sel->b->b->b;
 
-      radeon_check_space(device->ws, cs, 3 + (AC_SPM_MAX_COUNTER_PER_BLOCK * 6));
+      for (unsigned i = 0; i < block_sel->num_instances; i++) {
+         struct ac_spm_block_instance *block_instance = &block_sel->instances[i];
 
-      radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX, block_sel->grbm_gfx_index);
+         radeon_check_space(device->ws, cs, 3 + (AC_SPM_MAX_COUNTER_PER_BLOCK * 6));
 
-      for (unsigned c = 0; c < block_sel->num_counters; c++) {
-         const struct ac_spm_counter_select *cntr_sel = &block_sel->counters[c];
+         radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX, block_instance->grbm_gfx_index);
 
-         if (!cntr_sel->active)
-            continue;
+         for (unsigned c = 0; c < block_instance->num_counters; c++) {
+            const struct ac_spm_counter_select *cntr_sel = &block_instance->counters[c];
 
-         radeon_set_uconfig_reg_seq_perfctr(gfx_level, qf, cs, regs->select0[c], 1);
-         radeon_emit(cs, cntr_sel->sel0);
+            if (!cntr_sel->active)
+               continue;
 
-         radeon_set_uconfig_reg_seq_perfctr(gfx_level, qf, cs, regs->select1[c], 1);
-         radeon_emit(cs, cntr_sel->sel1);
+            radeon_set_uconfig_reg_seq_perfctr(gfx_level, qf, cs, regs->select0[c], 1);
+            radeon_emit(cs, cntr_sel->sel0);
+
+            radeon_set_uconfig_reg_seq_perfctr(gfx_level, qf, cs, regs->select1[c], 1);
+            radeon_emit(cs, cntr_sel->sel1);
+         }
       }
    }
 

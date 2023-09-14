@@ -122,12 +122,18 @@ struct ac_spm_counter_select {
    uint32_t sel1;
 };
 
-struct ac_spm_block_select {
-   const struct ac_pc_block *b;
+struct ac_spm_block_instance {
    uint32_t grbm_gfx_index;
 
    uint32_t num_counters;
    struct ac_spm_counter_select counters[AC_SPM_MAX_COUNTER_PER_BLOCK];
+};
+
+struct ac_spm_block_select {
+   const struct ac_pc_block *b;
+
+   uint32_t num_instances;
+   struct ac_spm_block_instance *instances;
 };
 
 struct ac_spm {

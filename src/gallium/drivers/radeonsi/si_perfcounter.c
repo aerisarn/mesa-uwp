@@ -757,19 +757,23 @@ si_emit_spm_counters(struct si_context *sctx, struct radeon_cmdbuf *cs)
       struct ac_spm_block_select *block_sel = &spm->block_sel[b];
       struct ac_pc_block_base *regs = block_sel->b->b->b;
 
-      radeon_set_uconfig_reg(R_030800_GRBM_GFX_INDEX, block_sel->grbm_gfx_index);
+      for (unsigned i = 0; i < block_sel->num_instances; i++) {
+         struct ac_spm_block_instance *block_instance = &block_sel->instances[i];
 
-      for (unsigned c = 0; c < block_sel->num_counters; c++) {
-         const struct ac_spm_counter_select *cntr_sel = &block_sel->counters[c];
+         radeon_set_uconfig_reg(R_030800_GRBM_GFX_INDEX, block_instance->grbm_gfx_index);
 
-         if (!cntr_sel->active)
-            continue;
+         for (unsigned c = 0; c < block_instance->num_counters; c++) {
+            const struct ac_spm_counter_select *cntr_sel = &block_instance->counters[c];
 
-         radeon_set_uconfig_reg_seq(regs->select0[c], 1, false);
-         radeon_emit(cntr_sel->sel0);
+            if (!cntr_sel->active)
+               continue;
 
-         radeon_set_uconfig_reg_seq(regs->select1[c], 1, false);
-         radeon_emit(cntr_sel->sel1);
+            radeon_set_uconfig_reg_seq(regs->select0[c], 1, false);
+            radeon_emit(cntr_sel->sel0);
+
+            radeon_set_uconfig_reg_seq(regs->select1[c], 1, false);
+            radeon_emit(cntr_sel->sel1);
+         }
       }
    }
 
