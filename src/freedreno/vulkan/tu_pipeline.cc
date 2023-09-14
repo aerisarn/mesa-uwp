@@ -2720,7 +2720,7 @@ tu6_emit_viewport_fdm(struct tu_cs *cs, struct tu_cmd_buffer *cmd,
    };
    if (!state.share_scale)
       state.vp.viewport_count = num_views;
-   unsigned size = TU_CALLX(cs->device, tu6_viewport_size)(cmd->device, &state.vp);
+   unsigned size = TU_CALLX(cmd->device, tu6_viewport_size)(cmd->device, &state.vp);
    tu_cs_begin_sub_stream(&cmd->sub_cs, size, cs);
    tu_create_fdm_bin_patchpoint(cmd, cs, size, fdm_apply_viewports, state);
 }
@@ -2831,7 +2831,7 @@ tu6_emit_scissor_fdm(struct tu_cs *cs, struct tu_cmd_buffer *cmd,
    };
    if (!state.share_scale)
       state.vp.scissor_count = num_views;
-   unsigned size = TU_CALLX(cs->device, tu6_scissor_size)(cmd->device, &state.vp);
+   unsigned size = TU_CALLX(cmd->device, tu6_scissor_size)(cmd->device, &state.vp);
    tu_cs_begin_sub_stream(&cmd->sub_cs, size, cs);
    tu_create_fdm_bin_patchpoint(cmd, cs, size, fdm_apply_scissors, state);
 }
