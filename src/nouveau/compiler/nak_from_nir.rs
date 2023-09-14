@@ -21,6 +21,13 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
         sm: sm,
         num_gprs: 0,
         tls_size: nir.scratch_size,
+        stage: match nir.info.stage() {
+            MESA_SHADER_COMPUTE => ShaderStageInfo::Compute,
+            MESA_SHADER_FRAGMENT => {
+                ShaderStageInfo::Fragment(Default::default())
+            }
+            _ => panic!("Unknown shader stage"),
+        },
     }
 }
 
@@ -64,7 +71,7 @@ struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
     info: ShaderInfo,
     cfg: CFGBuilder<u32, BasicBlock>,
-    fs_out_regs: Vec<Src>,
+    fs_out_regs: [SSAValue; 34],
     end_block_id: u32,
     ssa_map: HashMap<u32, Vec<SSAValue>>,
     saturated: HashSet<*const nir_def>,
@@ -72,17 +79,11 @@ struct ShaderFromNir<'a> {
 
 impl<'a> ShaderFromNir<'a> {
     fn new(nir: &'a nir_shader, sm: u8) -> Self {
-        let mut fs_out_regs = Vec::new();
-        if nir.info.stage() == MESA_SHADER_FRAGMENT {
-            fs_out_regs
-                .resize(nir.num_outputs.try_into().unwrap(), Src::new_zero());
-        }
-
         Self {
             nir: nir,
             info: init_info_from_nir(nir, sm),
             cfg: CFGBuilder::new(),
-            fs_out_regs: fs_out_regs,
+            fs_out_regs: [SSAValue::NONE; 34],
             end_block_id: 0,
             ssa_map: HashMap::new(),
             saturated: HashSet::new(),
@@ -1483,10 +1484,10 @@ impl<'a> ShaderFromNir<'a> {
                      */
                     let data = *self.get_src(&srcs[0]).as_ssa().unwrap();
                     assert!(srcs[1].is_zero());
-                    let base: u8 = intrin.base().try_into().unwrap();
-                    for c in 0..intrin.num_components {
-                        self.fs_out_regs[usize::from(base + c)] =
-                            data[usize::from(c)].into();
+                    let base: usize = intrin.base().try_into().unwrap();
+                    assert!(base % 4 == 0);
+                    for c in 0..usize::from(intrin.num_components) {
+                        self.fs_out_regs[(base / 4) + c] = data[c];
                     }
                 } else {
                     let data = self.get_src(&srcs[0]);
@@ -1603,6 +1604,48 @@ impl<'a> ShaderFromNir<'a> {
         self.set_ssa(&undef.def, dst);
     }
 
+    fn store_fs_outputs(&mut self, b: &mut impl SSABuilder) {
+        let ShaderStageInfo::Fragment(info) = &mut self.info.stage else {
+            return;
+        };
+
+        for i in 0..32 {
+            // Assume that colors have to come a vec4 at a time
+            if !self.fs_out_regs[i].is_none() {
+                info.writes_color |= 0xf << (i & !3)
+            }
+        }
+        let mask_idx = (NAK_FS_OUT_SAMPLE_MASK / 4) as usize;
+        info.writes_sample_mask = !self.fs_out_regs[mask_idx].is_none();
+        let depth_idx = (NAK_FS_OUT_DEPTH / 4) as usize;
+        info.writes_depth = !self.fs_out_regs[depth_idx].is_none();
+
+        let mut srcs = Vec::new();
+        for i in 0..32 {
+            if info.writes_color & (1 << i) != 0 {
+                if self.fs_out_regs[i].is_none() {
+                    srcs.push(Src::new_zero());
+                } else {
+                    srcs.push(self.fs_out_regs[i].into());
+                }
+            }
+        }
+
+        // These always come together for some reason
+        if info.writes_sample_mask || info.writes_depth {
+            if info.writes_sample_mask {
+                srcs.push(self.fs_out_regs[mask_idx].into());
+            } else {
+                srcs.push(Src::new_zero());
+            }
+            if info.writes_depth {
+                srcs.push(self.fs_out_regs[depth_idx].into());
+            }
+        }
+
+        b.push_op(OpFSOut { srcs: srcs });
+    }
+
     fn parse_block<'b>(
         &mut self,
         ssa_alloc: &mut SSAValueAllocator,
@@ -1707,14 +1750,7 @@ impl<'a> ShaderFromNir<'a> {
             assert!(succ[1].is_none());
             let s0 = succ[0].unwrap();
             if s0.index == self.end_block_id {
-                if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
-                    b.push_op(OpFSOut {
-                        srcs: std::mem::replace(
-                            &mut self.fs_out_regs,
-                            Vec::new(),
-                        ),
-                    });
-                }
+                self.store_fs_outputs(&mut b);
                 b.push_op(OpExit {});
             } else {
                 self.cfg.add_edge(nb.index, s0.index);

@@ -4330,11 +4330,25 @@ impl fmt::Display for Function {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct FragmentShaderInfo {
+    pub writes_color: u32,
+    pub writes_sample_mask: bool,
+    pub writes_depth: bool,
+}
+
+#[derive(Debug)]
+pub enum ShaderStageInfo {
+    Compute,
+    Fragment(FragmentShaderInfo),
+}
+
 #[derive(Debug)]
 pub struct ShaderInfo {
     pub sm: u8,
     pub num_gprs: u8,
     pub tls_size: u32,
+    pub stage: ShaderStageInfo,
 }
 
 pub struct Shader {

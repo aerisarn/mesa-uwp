@@ -54,6 +54,21 @@ struct nak_nir_tex_flags {
 
 bool nak_nir_lower_tex(nir_shader *nir, const struct nak_compiler *nak);
 
+enum nak_fs_out {
+   NAK_FS_OUT_COLOR0 = 0x00,
+   NAK_FS_OUT_COLOR1 = 0x10,
+   NAK_FS_OUT_COLOR2 = 0x20,
+   NAK_FS_OUT_COLOR3 = 0x30,
+   NAK_FS_OUT_COLOR4 = 0x40,
+   NAK_FS_OUT_COLOR5 = 0x50,
+   NAK_FS_OUT_COLOR6 = 0x60,
+   NAK_FS_OUT_COLOR7 = 0x70,
+   NAK_FS_OUT_SAMPLE_MASK = 0x80,
+   NAK_FS_OUT_DEPTH = 0x84,
+};
+
+#define NAK_FS_OUT_COLOR(n) (NAK_FS_OUT_COLOR0 + (n) * 16)
+
 #ifdef __cplusplus
 }
 #endif

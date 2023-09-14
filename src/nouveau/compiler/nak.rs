@@ -25,7 +25,7 @@ mod nak_to_cssa;
 mod nir;
 mod util;
 
-use crate::nak_ir::ShaderInfo;
+use crate::nak_ir::{ShaderInfo, ShaderStageInfo};
 use crate::nir::NirShader;
 
 use bitview::*;
@@ -234,8 +234,8 @@ fn encode_hdr_for_nir(
         _ => panic!("Unknown shader stage"),
     };
     cw0.set_field(10..14, shader_type);
-    if nir.info.stage() == MESA_SHADER_FRAGMENT {
-        cw0.set_bit(14, nir.num_outputs > 1);
+    if let ShaderStageInfo::Fragment(fs_info) = &shader_info.stage {
+        cw0.set_bit(14, fs_info.writes_color > 0xf);
         let info_fs = unsafe { &nir.info.__bindgen_anon_1.fs };
         let zs_self_dep = fs_key.map_or(false, |key| key.zs_self_dep);
         cw0.set_bit(15, info_fs.uses_discard() || zs_self_dep);
@@ -401,25 +401,18 @@ fn encode_hdr_for_nir(
         /* [480, 559]: ImapFixedFncTexture[10] */
         /* [560, 575]: ImapReserved */
 
-        /* [576, 607]: OmapTarget[8] */
-        let mut omap_color = hdr_view.subset_mut(576..608);
+        let ShaderStageInfo::Fragment(fs_info) = &shader_info.stage else {
+            panic!("Not a fragment shader");
+        };
 
-        let nir_ow = BitView::new(&nir.info.outputs_written);
-        let output0 = usize::try_from(FRAG_RESULT_DATA0).unwrap();
-        for i in 0..8 {
-            if nir_ow.get_bit(output0 + i) {
-                omap_color.set_field((i * 4)..(i * 4 + 4), 0xf_u32);
-            }
-        }
+        /* [576, 607]: OmapTarget[8] */
+        hdr_view.set_field(576..608, fs_info.writes_color);
 
         /* [608]: OmapSampleMask */
-        let has_sample_mask =
-            nir_ow.get_bit(FRAG_RESULT_SAMPLE_MASK.try_into().unwrap());
-        hdr_view.set_bit(608, has_sample_mask);
+        hdr_view.set_bit(608, fs_info.writes_sample_mask);
 
         /* [609]: OmapDepth */
-        let has_depth = nir_ow.get_bit(FRAG_RESULT_DEPTH.try_into().unwrap());
-        hdr_view.set_bit(609, has_depth);
+        hdr_view.set_bit(609, fs_info.writes_depth);
 
         /* [610, 639]: Reserved */
     }

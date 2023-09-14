@@ -369,7 +369,7 @@ static int
 fs_out_size(const struct glsl_type *type, bool bindless)
 {
    assert(glsl_type_is_vector_or_scalar(type));
-   return 4;
+   return 16;
 }
 
 static bool
@@ -380,43 +380,35 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
 
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
 
-   nir_foreach_shader_out_variable(var, nir) {
-      if (var->data.index > 0) {
-         assert(var->data.location == FRAG_RESULT_DATA0);
-         assert(!(nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_DATA1)));
-         var->data.location = FRAG_RESULT_DATA1;
-         nir->info.outputs_written |= BITFIELD_BIT(FRAG_RESULT_DATA1);
-      }
-   }
-
-   const uint32_t color_targets =
-      (nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) ?
-      1 : (nir->info.outputs_written >> FRAG_RESULT_DATA0);
-   const bool writes_depth =
-      nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_DEPTH);
-   const bool writes_sample_mask =
-      nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_SAMPLE_MASK);
-
-   nir->num_outputs = util_bitcount(color_targets) * 4 +
-                      (writes_depth || writes_sample_mask) * 2;
-
+   nir->num_outputs = 0;
    nir_foreach_shader_out_variable(var, nir) {
       assert(nir->info.outputs_written & BITFIELD_BIT(var->data.location));
       switch (var->data.location) {
       case FRAG_RESULT_DEPTH:
-         var->data.driver_location = util_bitcount(color_targets) * 4 + 1;
+         assert(var->data.index == 0);
+         assert(var->data.location_frac == 0);
+         var->data.driver_location = NAK_FS_OUT_DEPTH;
+         break;
+      case FRAG_RESULT_STENCIL:
+         unreachable("EXT_shader_stencil_export not supported");
          break;
       case FRAG_RESULT_COLOR:
-         var->data.driver_location = 0;
+         assert(var->data.index == 0);
+         var->data.driver_location =
+            NAK_FS_OUT_COLOR0 + var->data.location_frac * 4;
          break;
       case FRAG_RESULT_SAMPLE_MASK:
-         var->data.driver_location = util_bitcount(color_targets) * 4;
+         assert(var->data.index == 0);
+         assert(var->data.location_frac == 0);
+         var->data.driver_location = NAK_FS_OUT_SAMPLE_MASK;
          break;
       default: {
          assert(var->data.location >= FRAG_RESULT_DATA0);
-         const unsigned out = var->data.location - FRAG_RESULT_DATA0;
+         assert(var->data.index < 2);
+         const unsigned out =
+            (var->data.location - FRAG_RESULT_DATA0) + var->data.index;
          var->data.driver_location =
-            util_bitcount(color_targets & BITFIELD_MASK(out)) * 4;
+            NAK_FS_OUT_COLOR(out) + var->data.location_frac * 4;
          break;
       }
       }
