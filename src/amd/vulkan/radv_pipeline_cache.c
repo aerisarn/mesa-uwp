@@ -434,7 +434,10 @@ radv_ray_tracing_pipeline_cache_search(struct radv_device *device, struct vk_pip
    if (!is_library)
       pipeline->base.base.shaders[MESA_SHADER_INTERSECTION] = radv_shader_ref(pipeline_obj->shaders[idx++]);
 
+   uint32_t *stack_sizes = pipeline_obj->data;
    for (unsigned i = 0; i < pCreateInfo->stageCount; i++) {
+      pipeline->stages[i].stack_size = stack_sizes[i];
+
       if (radv_ray_tracing_stage_is_compiled(&pipeline->stages[i]))
          pipeline->stages[i].shader = &radv_shader_ref(pipeline_obj->shaders[idx++])->base;
 
@@ -445,11 +448,7 @@ radv_ray_tracing_pipeline_cache_search(struct radv_device *device, struct vk_pip
    }
 
    assert(idx == pipeline_obj->num_shaders);
-   assert(pipeline->stage_count == pipeline_obj->data_size / sizeof(uint32_t));
-
-   uint32_t *stack_sizes = pipeline_obj->data;
-   for (unsigned i = 0; i < pipeline->stage_count; i++)
-      pipeline->stages[i].stack_size = stack_sizes[i];
+   assert(pCreateInfo->stageCount == pipeline_obj->data_size / sizeof(uint32_t));
 
    if (cache_hit && cache != device->mem_cache) {
       const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
@@ -487,22 +486,21 @@ radv_ray_tracing_pipeline_cache_insert(struct radv_device *device, struct vk_pip
       num_shaders += radv_ray_tracing_stage_is_compiled(&pipeline->stages[i]) ? 1 : 0;
 
    struct radv_pipeline_cache_object *pipeline_obj =
-      radv_pipeline_cache_object_create(&device->vk, num_shaders, sha1, pipeline->stage_count * sizeof(uint32_t));
+      radv_pipeline_cache_object_create(&device->vk, num_shaders, sha1, num_stages * sizeof(uint32_t));
 
    unsigned idx = 0;
    if (pipeline->base.base.shaders[MESA_SHADER_INTERSECTION])
       pipeline_obj->shaders[idx++] = radv_shader_ref(pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]);
 
+   uint32_t *stack_sizes = pipeline_obj->data;
    for (unsigned i = 0; i < num_stages; ++i) {
+      stack_sizes[i] = pipeline->stages[i].stack_size;
+
       if (radv_ray_tracing_stage_is_compiled(&pipeline->stages[i]))
          pipeline_obj->shaders[idx++] =
             radv_shader_ref(container_of(pipeline->stages[i].shader, struct radv_shader, base));
    }
    assert(idx == num_shaders);
-
-   uint32_t *stack_sizes = pipeline_obj->data;
-   for (unsigned i = 0; i < pipeline->stage_count; i++)
-      stack_sizes[i] = pipeline->stages[i].stack_size;
 
    /* Add the object to the cache */
    pipeline->base.base.cache_object = vk_pipeline_cache_add_object(cache, &pipeline_obj->base);
