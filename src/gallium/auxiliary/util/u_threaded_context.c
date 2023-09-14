@@ -3165,7 +3165,8 @@ tc_texture_subdata(struct pipe_context *_pipe,
          uint64_t fmt_layer_stride = util_format_get_2d_size(format, stride, box->height);
          assert(fmt_layer_stride * box->depth <= UINT32_MAX);
 
-         struct pipe_resource *pres = pipe_buffer_create_with_data(pipe, 0, PIPE_USAGE_STREAM, layer_stride * box->depth, data);
+         struct pipe_resource *pres = pipe_buffer_create(pipe->screen, 0, PIPE_USAGE_STREAM, layer_stride * box->depth);
+         pipe->buffer_subdata(pipe, pres, PIPE_MAP_WRITE | TC_TRANSFER_MAP_THREADED_UNSYNC, 0, layer_stride * box->depth, data);
          struct pipe_box src_box = *box;
          src_box.x = src_box.y = src_box.z = 0;
 
