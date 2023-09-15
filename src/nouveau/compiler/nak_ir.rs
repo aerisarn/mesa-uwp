@@ -4484,6 +4484,16 @@ pub struct Shader {
 }
 
 impl Shader {
+    pub fn for_each_instr(&self, f: &mut impl FnMut(&Instr)) {
+        for func in &self.functions {
+            for b in &func.blocks {
+                for i in &b.instrs {
+                    f(i);
+                }
+            }
+        }
+    }
+
     pub fn map_instrs(
         &mut self,
         mut map: impl FnMut(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
