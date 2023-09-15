@@ -472,8 +472,6 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       val = nir_load_input(b, intrin->def.num_components, 32,
                            nir_imm_int(b, 0), .base = addr,
                            .dest_type = nir_type_int32);
-      if (intrin->def.bit_size == 1)
-         val = nir_i2b(b, val);
       break;
    }
 
@@ -504,6 +502,14 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    }
 
+   case nir_intrinsic_is_helper_invocation: {
+      const uint32_t idx =
+         nak_sysval_sysval_idx(SYSTEM_VALUE_HELPER_INVOCATION);
+      /* Unlike load_helper_invocation, this one isn't re-orderable */
+      val = nir_load_sysval_nv(b, 32, .base = idx);
+      break;
+   }
+
    case nir_intrinsic_shader_clock:
       val = nir_load_sysval_nv(b, 64, .base = 0x50);
       val = nir_unpack_64_2x32(b, val);
@@ -512,6 +518,9 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
    default:
       return false;
    }
+
+   if (intrin->def.bit_size == 1)
+      val = nir_i2b(b, val);
 
    nir_def_rewrite_uses(&intrin->def, val);
 
