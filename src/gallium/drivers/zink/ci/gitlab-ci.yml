@@ -161,7 +161,6 @@ zink-anv-tgl-traces:
     # dependencies right.
     - .lava-traces-base
   variables:
-    MESA_LOADER_DRIVER_OVERRIDE: zink
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-zink.yml"
 
 zink-anv-tgl-traces-restricted:
