@@ -277,6 +277,7 @@ nak_sysval_attr_addr(gl_system_value sysval)
    case SYSTEM_VALUE_TESS_COORD:    return 0x2f0;
    case SYSTEM_VALUE_INSTANCE_ID:   return 0x2f8;
    case SYSTEM_VALUE_VERTEX_ID:     return 0x2fc;
+   case SYSTEM_VALUE_FRONT_FACE:    return 0x3fc;
    default: unreachable("Invalid system value");
    }
 }
@@ -460,6 +461,7 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    }
 
+   case nir_intrinsic_load_front_face:
    case nir_intrinsic_load_point_coord:
    case nir_intrinsic_load_tess_coord:
    case nir_intrinsic_load_instance_id:
@@ -470,6 +472,8 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       val = nir_load_input(b, intrin->def.num_components, 32,
                            nir_imm_int(b, 0), .base = addr,
                            .dest_type = nir_type_int32);
+      if (intrin->def.bit_size == 1)
+         val = nir_i2b(b, val);
       break;
    }
 
