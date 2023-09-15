@@ -11003,6 +11003,8 @@ build_end_with_regs(isel_context* ctx, std::vector<Operand>& regs)
       end->operands[i] = regs[i];
 
    ctx->block->instructions.emplace_back(std::move(end));
+
+   ctx->block->kind |= block_kind_end_with_regs;
 }
 
 static void

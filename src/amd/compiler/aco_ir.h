@@ -1901,6 +1901,7 @@ enum block_kind {
    block_kind_uses_discard = 1 << 12,
    block_kind_resume = 1 << 13,
    block_kind_export_end = 1 << 14,
+   block_kind_end_with_regs = 1 << 15,
 };
 
 struct RegisterDemand {
