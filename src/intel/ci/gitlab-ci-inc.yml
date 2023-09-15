@@ -182,6 +182,72 @@
     - !reference [.anv-manual-rules, rules]
 
 
+# Status: https://lava.collabora.dev/scheduler/device_type/acer-cb317-1h-c3z6-dedede
+.lava-acer-cb317-1h-c3z6-dedede:x86_64:
+  variables:
+    DEVICE_TYPE: acer-cb317-1h-c3z6-dedede
+    FDO_CI_CONCURRENT: 3
+    GPU_VERSION: iris-jsl
+    RUNNER_TAG: mesa-ci-x86-64-lava-acer-cb317-1h-c3z6-dedede
+
+# Status: https://lava.collabora.dev/scheduler/device_type/asus-C523NA-A20057-coral
+.lava-asus-C523NA-A20057-coral:x86_64:
+  variables:
+    DEVICE_TYPE: asus-C523NA-A20057-coral
+    FDO_CI_CONCURRENT: 5
+    GPU_VERSION: iris-apl
+    RUNNER_TAG: mesa-ci-x86-64-lava-asus-C523NA-A20057-coral
+
+# Status: https://lava.collabora.dev/scheduler/device_type/hp-x360-12b-ca0010nr-n4020-octopus
+.lava-hp-x360-12b-ca0010nr-n4020-octopus:x86_64:
+  variables:
+    DEVICE_TYPE: hp-x360-12b-ca0010nr-n4020-octopus
+    FDO_CI_CONCURRENT: 3
+    GPU_VERSION: iris-glk
+    RUNNER_TAG: mesa-ci-x86-64-lava-hp-x360-12b-ca0010nr-n4020-octopus
+
+# Status: https://lava.collabora.dev/scheduler/device_type/asus-cx9400-volteer
+.lava-asus-cx9400-volteer:x86_64:
+  variables:
+    BOOT_METHOD: depthcharge
+    DEVICE_TYPE: asus-cx9400-volteer
+    FDO_CI_CONCURRENT: 9
+    GPU_VERSION: anv-tgl
+    RUNNER_TAG: mesa-ci-x86-64-lava-asus-cx9400-volteer
+
+# Status: https://lava.collabora.dev/scheduler/device_type/asus-C433TA-AJ0005-rammus
+.lava-asus-C433TA-AJ0005-rammus:x86_64:
+  variables:
+    DEVICE_TYPE: asus-C433TA-AJ0005-rammus
+    FDO_CI_CONCURRENT: 5
+    GPU_VERSION: iris-amly
+    RUNNER_TAG: mesa-ci-x86-64-lava-asus-C433TA-AJ0005-rammus
+
+# Status: https://lava.collabora.dev/scheduler/device_type/hp-x360-14-G1-sona
+.lava-hp-x360-14-G1-sona:x86_64:
+  variables:
+    DEVICE_TYPE: hp-x360-14-G1-sona
+    FDO_CI_CONCURRENT: 9
+    GPU_VERSION: iris-kbl
+    RUNNER_TAG: mesa-ci-x86-64-lava-hp-x360-14-G1-sona
+
+# Status: https://lava.collabora.dev/scheduler/device_type/dell-latitude-5400-8665U-sarien
+.lava-dell-latitude-5400-8665U-sarien:x86_64:
+  variables:
+    DEVICE_TYPE: dell-latitude-5400-8665U-sarien
+    FDO_CI_CONCURRENT: 9
+    GPU_VERSION: iris-whl
+    RUNNER_TAG: mesa-ci-x86-64-lava-dell-latitude-5400-8665U-sarien
+
+# Status: https://lava.collabora.dev/scheduler/device_type/asus-C436FA-Flip-hatch
+.lava-asus-C436FA-Flip-hatch:x86_64:
+  variables:
+    DEVICE_TYPE: asus-C436FA-Flip-hatch
+    FDO_CI_CONCURRENT: 9
+    GPU_VERSION: iris-cml
+    RUNNER_TAG: mesa-ci-x86-64-lava-asus-C436FA-flip-hatch
+
+
 .intel-common-test:
   extends:
     - .lava-test-deqp:x86_64
@@ -212,15 +278,10 @@
     - .intel-rules
 
 ## ANV only
-# 15; 10 i5 boards + 5 i7 boards (2023-01-17)
 .anv-tgl-test:
   extends:
     - .anv-test
-  variables:
-    DEVICE_TYPE: asus-cx9400-volteer
-    GPU_VERSION: anv-tgl
-    FDO_CI_CONCURRENT: 9
-    RUNNER_TAG: mesa-ci-x86-64-lava-asus-cx9400-volteer
+    - .lava-asus-cx9400-volteer:x86_64
 
 .anv-angle-test:
   extends:
@@ -233,75 +294,37 @@
     HWCI_START_XORG: 1
 
 ## Iris only
-# 5 boards
 .iris-apl-test:
   extends:
     - .iris-test
-  variables:
-    DEVICE_TYPE: asus-C523NA-A20057-coral
-    GPU_VERSION: iris-apl
-    RUNNER_TAG: mesa-ci-x86-64-lava-asus-C523NA-A20057-coral
-    FDO_CI_CONCURRENT: 5
+    - .lava-asus-C523NA-A20057-coral:x86_64
 
-# 4 boards
 .iris-glk-test:
   extends:
     - .iris-test
-  variables:
-    DEVICE_TYPE: hp-x360-12b-ca0010nr-n4020-octopus
-    GPU_VERSION: iris-glk
-    RUNNER_TAG: mesa-ci-x86-64-lava-hp-x360-12b-ca0010nr-n4020-octopus
-    FDO_CI_CONCURRENT: 3
+    - .lava-hp-x360-12b-ca0010nr-n4020-octopus:x86_64
 
-# 5 boards, manual for now due to the GPU being occasionally stuck
 .iris-amly-test:
   extends:
     - .iris-test
-    - .iris-manual-rules
-  variables:
-    DEVICE_TYPE: asus-C433TA-AJ0005-rammus
-    GPU_VERSION: iris-amly
-    RUNNER_TAG: mesa-ci-x86-64-lava-asus-C433TA-AJ0005-rammus
-    FDO_CI_CONCURRENT: 5
+    - .iris-manual-rules  # GPU being occasionally stuck
+    - .lava-asus-C433TA-AJ0005-rammus:x86_64
 
-# 6 boards
 .iris-kbl-test:
   extends:
     - .iris-test
-  variables:
-    DEVICE_TYPE: hp-x360-14-G1-sona
-    GPU_VERSION: iris-kbl
-    RUNNER_TAG: mesa-ci-x86-64-lava-hp-x360-14-G1-sona
-    FDO_CI_CONCURRENT: 9
+    - .lava-hp-x360-14-G1-sona:x86_64
 
-# 5 boards
 .iris-whl-test:
   extends:
     - .iris-test
-  variables:
-    DEVICE_TYPE: dell-latitude-5400-8665U-sarien
-    GPU_VERSION: iris-whl
-    RUNNER_TAG: mesa-ci-x86-64-lava-dell-latitude-5400-8665U-sarien
-    FDO_CI_CONCURRENT: 9
+    - .lava-dell-latitude-5400-8665U-sarien:x86_64
 
-# 5 boards
 .iris-cml-test:
   extends:
     - .iris-test
     - .iris-manual-rules    # Devices have too often network problems and fail to boot.
-  variables:
-    DEVICE_TYPE: asus-C436FA-Flip-hatch
-    GPU_VERSION: iris-cml
-    RUNNER_TAG: mesa-ci-x86-64-lava-asus-C436FA-flip-hatch
-    FDO_CI_CONCURRENT: 9
-
-# 8 boards
-.jsl-test:
-  variables:
-    DEVICE_TYPE: acer-cb317-1h-c3z6-dedede
-    GPU_VERSION: iris-jsl
-    RUNNER_TAG: mesa-ci-x86-64-lava-acer-cb317-1h-c3z6-dedede
-    FDO_CI_CONCURRENT: 3
+    - .lava-asus-C436FA-Flip-hatch:x86_64
 
 .iris-whl-deqp:
   extends:

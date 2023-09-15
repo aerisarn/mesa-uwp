@@ -115,65 +115,83 @@
       when: manual
 
 
-############### LAVA
-# job prefixes: radeonsi (OpenGL), radv (Vulkan), amd (radeonsi+radv)
-.stoney-test:x86_64:
+# Status: https://lava.collabora.dev/scheduler/device_type/acer-R721T-grunt
+.lava-acer-R721T-grunt:x86_64:
   variables:
     BOOT_METHOD: depthcharge
-    DEQP_EXPECTED_RENDERER: STONEY
+    DEVICE_TYPE: acer-R721T-grunt
     DTB: ""
     FDO_CI_CONCURRENT: 3
     HWCI_FREQ_MAX: "true"
     HWCI_KERNEL_MODULES: amdgpu
     KERNEL_IMAGE_TYPE: ""
-    FLAKES_CHANNEL: "#amd-ci"
-
-.radeonsi-stoney-test:x86_64:
-  extends:
-    - .stoney-test:x86_64
-    - .radeonsi-rules
-  variables:
-    GPU_VERSION: radeonsi-stoney
-    DRIVER_NAME: radeonsi
-    # 12 devices (2023-01-10)
     RUNNER_TAG: mesa-ci-x86-64-lava-acer-R721T-grunt
-    DEVICE_TYPE: acer-R721T-grunt
-    PIGLIT_PLATFORM: mixed_glx_egl
-
-.radv-stoney-test:x86_64:
-  extends:
-    - .stoney-test:x86_64
-    - .radv-collabora-rules
-  variables:
-    DEQP_VER: vk
-    DRIVER_NAME: radv
-    GPU_VERSION: radv-stoney-aco
     VK_DRIVER: radeon
-    # 6 devices (2022-11-30)
-    DEVICE_TYPE: hp-14-db0003na-grunt
-    RUNNER_TAG: mesa-ci-x86-64-lava-hp-14-db0003na-grunt
 
-# 10 devices (2023-01-17)
+# Status: https://lava.collabora.dev/scheduler/device_type/hp-14-db0003na-grunt
+.lava-hp-14-db0003na-grunt:x86_64:
+  variables:
+    BOOT_METHOD: depthcharge
+    DEVICE_TYPE: hp-14-db0003na-grunt
+    DTB: ""
+    FDO_CI_CONCURRENT: 3
+    HWCI_FREQ_MAX: "true"
+    HWCI_KERNEL_MODULES: amdgpu
+    KERNEL_IMAGE_TYPE: ""
+    RUNNER_TAG: mesa-ci-x86-64-lava-hp-14-db0003na-grunt
+    VK_DRIVER: radeon
+
+# Status: https://lava.collabora.dev/scheduler/device_type/asus-CM1400CXA-dalboz
 .lava-asus-CM1400CXA-dalboz:x86_64:
   variables:
     BOOT_METHOD: depthcharge
     DEVICE_TYPE: asus-CM1400CXA-dalboz
     DTB: ""
+#   FDO_CI_CONCURRENT: ?
     HWCI_FREQ_MAX: "true"
     HWCI_KERNEL_MODULES: amdgpu
     KERNEL_IMAGE_TYPE: ""
     RUNNER_TAG: mesa-ci-x86-64-lava-asus-CM1400CXA-dalboz
 
-# 5 devices (2023-05-03)
+# Status: https://lava.collabora.dev/scheduler/device_type/lenovo-TPad-C13-Yoga-zork
 .lava-lenovo-TPad-C13-Yoga-zork:x86_64:
   variables:
     BOOT_METHOD: depthcharge
     DEVICE_TYPE: lenovo-TPad-C13-Yoga-zork
     DTB: ""
+#   FDO_CI_CONCURRENT: ?
     HWCI_FREQ_MAX: "true"
     HWCI_KERNEL_MODULES: amdgpu
     KERNEL_IMAGE_TYPE: ""
     RUNNER_TAG: mesa-ci-x86-64-lava-lenovo-TPad-C13-Yoga-zork
+
+
+############### LAVA
+# job prefixes: radeonsi (OpenGL), radv (Vulkan), amd (radeonsi+radv)
+.stoney-test:x86_64:
+  variables:
+    DEQP_EXPECTED_RENDERER: STONEY
+    FLAKES_CHANNEL: "#amd-ci"
+
+.radeonsi-stoney-test:x86_64:
+  extends:
+    - .stoney-test:x86_64
+    - .lava-acer-R721T-grunt:x86_64
+    - .radeonsi-rules
+  variables:
+    GPU_VERSION: radeonsi-stoney
+    DRIVER_NAME: radeonsi
+    PIGLIT_PLATFORM: mixed_glx_egl
+
+.radv-stoney-test:x86_64:
+  extends:
+    - .stoney-test:x86_64
+    - .lava-hp-14-db0003na-grunt:x86_64
+    - .radv-collabora-rules
+  variables:
+    DEQP_VER: vk
+    DRIVER_NAME: radv
+    GPU_VERSION: radv-stoney-aco
 
 .radeonsi-raven-test:x86_64:
   extends:

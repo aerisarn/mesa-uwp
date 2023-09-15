@@ -66,18 +66,15 @@ zink-anv-tgl-traces-restricted:
 zink-tu-a618:
   extends:
     - .lava-test-deqp:arm64
-    - .a618-test
     - .zink-turnip-rules
     - .zink-test
+    - .lava-sc7180-trogdor-lazor-limozeen:arm64
   parallel: 2
   variables:
     DEQP_SUITE: zink-freedreno-a618
+    FLAKES_CHANNEL: "#freedreno-ci"
     HWCI_START_WESTON: 1
     GPU_VERSION: zink-freedreno-a618
-    VK_DRIVER: freedreno
-    DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
-    DTB: sc7180-trogdor-lazor-limozeen-nots-r5
-    RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
 
 zink-tu-a618-traces:
   extends:

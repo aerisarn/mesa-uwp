@@ -46,11 +46,12 @@ a530-traces:
 a618_vk:
   extends:
     - .lava-test-deqp:arm64
-    - .a618-test-kingoftown
+    - .lava-sc7180-trogdor-kingoftown:arm64
     - .collabora-turnip-rules
   parallel: 12
   variables:
     DEQP_SUITE: freedreno-a618-vk
+    FLAKES_CHANNEL: "#freedreno-ci"
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
     DEQP_FRACTION: 2
 
@@ -72,21 +73,23 @@ a618_vk_full:
 a618_gl:
   extends:
     - .lava-test-deqp:arm64
-    - .a618-test-limozeen-nots-r5
+    - .lava-sc7180-trogdor-lazor-limozeen:arm64
     - .collabora-freedreno-rules
   parallel: 4
   variables:
     DEQP_SUITE: freedreno-a618
+    FLAKES_CHANNEL: "#freedreno-ci"
 
 # Run dEQP EGL window system tests separately with the window systems available.
 # X11 takes over the screen, wayland is run headless.
 a618_egl:
   extends:
     - .lava-test-deqp:arm64
-    - .a618-test-limozeen-nots-r5
+    - .lava-sc7180-trogdor-lazor-limozeen:arm64
     - .collabora-freedreno-rules
   variables:
     DEQP_VER: egl
+    FLAKES_CHANNEL: "#freedreno-ci"
     HWCI_START_XORG: 1
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a618-egl
@@ -94,11 +97,12 @@ a618_egl:
 a618_skqp:
   extends:
     - .lava-test-deqp:arm64
-    - .a618-test-limozeen-nots-r5
+    - .lava-sc7180-trogdor-lazor-limozeen:arm64
     - .collabora-freedreno-rules
     # SKQP tests both the GL and VK drivers.
     - .collabora-freedreno-turnip-rules
   variables:
+    FLAKES_CHANNEL: "#freedreno-ci"
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a618-skqp
 
@@ -106,24 +110,26 @@ a618_piglit:
   extends:
     - .piglit-test
     - .lava-piglit:arm64
-    - .a618-test-limozeen-nots-r5
+    - .lava-sc7180-trogdor-lazor-limozeen:arm64
     - .collabora-freedreno-rules
     # Note that piglit has GL+VK integration testing.
     - .collabora-freedreno-turnip-rules
   variables:
+    FLAKES_CHANNEL: "#freedreno-ci"
     HWCI_START_WESTON: 1
     PIGLIT_PROFILES: gpu
 
 a618-traces:
   extends:
     - .lava-piglit-traces:arm64
-    - .a618-test-limozeen-nots-r5
+    - .lava-sc7180-trogdor-lazor-limozeen:arm64
     - .collabora-freedreno-rules
   variables:
     HWCI_START_WESTON: 1
     # So we aren't capped by VSync by the X server
     EGL_PLATFORM: surfaceless
     FDO_CI_CONCURRENT: 5  # 6 is too much leading to OOM
+    FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_REPLAY_DEVICE_NAME: "${GPU_VERSION}"
     PIGLIT_RESULTS: "${GPU_VERSION}-replay"
     # This lets us run several more traces which don't use any features we're
@@ -149,7 +155,7 @@ a660_gl:
   extends:
     - .lava-test-deqp:arm64
     - .collabora-freedreno-rules
-    - .lava-sm8350-hdk
+    - .lava-sm8350-hdk:arm64
   parallel: 2
   variables:
     DEQP_SUITE: freedreno-a660
@@ -159,7 +165,7 @@ a660_gl:
   extends:
     - .lava-test-deqp:arm64
     - .collabora-turnip-rules
-    - .lava-sm8350-hdk
+    - .lava-sm8350-hdk:arm64
   parallel: 5
   variables:
     DEQP_SUITE: freedreno-a660-vk
