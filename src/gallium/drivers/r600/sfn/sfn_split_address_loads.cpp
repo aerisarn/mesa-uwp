@@ -291,6 +291,9 @@ void AddressSplitVisitor::visit(TexInstr *instr)
 {
    if (instr->resource_offset())
       load_index_register(instr, instr->resource_offset());
+   if (instr->sampler_offset())
+      load_index_register(instr, instr->sampler_offset());
+
    m_prev_non_alu.push_back(instr);
    m_current_addr = nullptr;
 }

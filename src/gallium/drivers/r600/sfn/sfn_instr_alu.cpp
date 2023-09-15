@@ -3032,7 +3032,7 @@ emit_tex_fdd(const nir_alu_instr& alu, TexInstr::Opcode opcode, bool fine, Shade
       dst_swz[i] = i;
    }
 
-   auto tex = new TexInstr(opcode, dst, dst_swz, tmp, 0, R600_MAX_CONST_BUFFERS);
+   auto tex = new TexInstr(opcode, dst, dst_swz, tmp, R600_MAX_CONST_BUFFERS, nullptr);
 
    if (fine)
       tex->set_tex_flag(TexInstr::grad_fine);

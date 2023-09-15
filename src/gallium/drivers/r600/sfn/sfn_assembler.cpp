@@ -514,8 +514,6 @@ AssamblerVisitor::visit(const TexInstr& tex_instr)
 {
    clear_states(sf_vtx | sf_alu);
 
-   EBufferIndexMode index_mode = get_index_mode(tex_instr, 1);
-
    if (tex_fetch_results.find(tex_instr.src().sel()) != tex_fetch_results.end()) {
       m_bc->force_add_cf = 1;
       tex_fetch_results.clear();
@@ -524,8 +522,8 @@ AssamblerVisitor::visit(const TexInstr& tex_instr)
    r600_bytecode_tex tex;
    memset(&tex, 0, sizeof(struct r600_bytecode_tex));
    tex.op = tex_instr.opcode();
-   tex.sampler_id = tex_instr.resource_id();
-   tex.resource_id = tex_instr.texture_id();
+   tex.sampler_id = tex_instr.sampler_id();
+   tex.resource_id = tex_instr.resource_id();
    tex.src_gpr = tex_instr.src().sel();
    tex.dst_gpr = tex_instr.dst().sel();
    tex.dst_sel_x = tex_instr.dest_swizzle(0);
@@ -543,8 +541,8 @@ AssamblerVisitor::visit(const TexInstr& tex_instr)
    tex.offset_x = tex_instr.get_offset(0);
    tex.offset_y = tex_instr.get_offset(1);
    tex.offset_z = tex_instr.get_offset(2);
-   tex.resource_index_mode = index_mode;
-   tex.sampler_index_mode = index_mode;
+   tex.resource_index_mode = tex_instr.resource_index_mode();
+   tex.sampler_index_mode = tex_instr.sampler_index_mode();
 
    if (tex.dst_sel_x < 4 && tex.dst_sel_y < 4 && tex.dst_sel_z < 4 && tex.dst_sel_w < 4)
       tex_fetch_results.insert(tex.dst_gpr);

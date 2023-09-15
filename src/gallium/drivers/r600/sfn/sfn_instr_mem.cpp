@@ -929,7 +929,6 @@ RatInstr::emit_image_size(nir_intrinsic_instr *intrin, Shader& shader)
                                               dest,
                                               {0, 1, 7, 3},
                                               src,
-                                              0 /* ?? */,
                                               res_id,
                                               dyn_offset));
 
@@ -993,7 +992,6 @@ RatInstr::emit_image_size(nir_intrinsic_instr *intrin, Shader& shader)
                                               dest,
                                               {0, 1, 2, 3},
                                               src,
-                                              0 /* ?? */,
                                               res_id,
                                               dyn_offset));
       }
@@ -1024,7 +1022,6 @@ RatInstr::emit_image_samples(nir_intrinsic_instr *intrin, Shader& shader)
                                         tmp,
                                         {3, 7, 7, 7},
                                         src,
-                                        0 /* ?? */,
                                         res_id,
                                         dyn_offset));
 
