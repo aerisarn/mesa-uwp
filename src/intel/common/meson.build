@@ -85,7 +85,7 @@ libintel_common = static_library(
   'intel_common',
   [files_libintel_common, genX_xml_h, sha1_h],
   include_directories : [inc_include, inc_src, inc_intel],
-  c_args : [no_override_init_args],
+  c_args : [no_override_init_args, sse2_args],
   gnu_symbol_visibility : 'hidden',
   link_with : libintel_common_links,
   dependencies : [batch_decoder_dependencies, dep_libdrm, dep_thread, idep_genxml, idep_mesautil, idep_intel_dev],
