@@ -3313,7 +3313,7 @@ impl fmt::Display for OpIpa {
         }
 
         write!(f, " {} a[{:#x}]", self.dst, self.addr)?;
-        if !self.offset.is_zero() {
+        if self.loc == InterpLoc::Offset {
             write!(f, " {}", self.offset)?;
         }
         Ok(())

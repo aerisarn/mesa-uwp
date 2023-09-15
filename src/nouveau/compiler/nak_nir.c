@@ -323,6 +323,24 @@ lower_fs_input_intrin(struct nir_builder *b,
                       UNUSED void *data)
 {
    switch (intrin->intrinsic) {
+   case nir_intrinsic_load_barycentric_at_offset: {
+      b->cursor = nir_before_instr(&intrin->instr);
+
+      nir_def *offset_f = intrin->src[0].ssa;
+      offset_f = nir_fclamp(b, offset_f, nir_imm_float(b, -0.5),
+                            nir_imm_float(b, 0.437500));
+      nir_def *offset_fixed =
+         nir_f2i32(b, nir_fmul_imm(b, offset_f, 4096.0));
+      nir_def *offset_packed =
+         nir_ior(b, nir_ishl_imm(b, nir_channel(b, offset_fixed, 1), 16),
+                    nir_iand_imm(b, nir_channel(b, offset_fixed, 0), 0xffff));
+
+      intrin->intrinsic = nir_intrinsic_load_barycentric_at_offset_nv;
+      nir_src_rewrite(&intrin->src[0], offset_packed);
+
+      return true;
+   }
+
    case nir_intrinsic_load_interpolated_input: {
       nir_intrinsic_instr *bary = nir_src_as_intrinsic(intrin->src[0]);
       if (nir_intrinsic_interp_mode(bary) != INTERP_MODE_SMOOTH &&

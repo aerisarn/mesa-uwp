@@ -1248,6 +1248,7 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 self.set_dst(&intrin.def, dst);
             }
+            nir_intrinsic_load_barycentric_at_offset_nv => (),
             nir_intrinsic_load_barycentric_centroid => (),
             nir_intrinsic_load_barycentric_pixel => (),
             nir_intrinsic_load_barycentric_sample => (),
@@ -1326,6 +1327,9 @@ impl<'a> ShaderFromNir<'a> {
                 let addr = u16::try_from(intrin.base()).unwrap()
                     + u16::try_from(srcs[1].as_uint().unwrap()).unwrap();
                 let (freq, loc) = match bary.intrinsic {
+                    nir_intrinsic_load_barycentric_at_offset_nv => {
+                        (InterpFreq::Pass, InterpLoc::Offset)
+                    },
                     nir_intrinsic_load_barycentric_centroid => {
                         (InterpFreq::Pass, InterpLoc::Centroid)
                     }
@@ -1334,6 +1338,18 @@ impl<'a> ShaderFromNir<'a> {
                     }
                     nir_intrinsic_load_barycentric_sample => {
                         (InterpFreq::Pass, InterpLoc::Centroid)
+                    }
+                    _ => panic!("Unsupported interp mode"),
+                };
+
+                let offset = match bary.intrinsic {
+                    nir_intrinsic_load_barycentric_at_offset_nv => {
+                        self.get_src(&bary.get_src(0))
+                    }
+                    nir_intrinsic_load_barycentric_centroid
+                    | nir_intrinsic_load_barycentric_pixel
+                    | nir_intrinsic_load_barycentric_sample => {
+                        Src::new_zero()
                     }
                     _ => panic!("Unsupported interp mode"),
                 };
@@ -1348,7 +1364,7 @@ impl<'a> ShaderFromNir<'a> {
                         addr: addr + 4 * u16::from(c),
                         freq: freq,
                         loc: loc,
-                        offset: SrcRef::Zero.into(),
+                        offset: offset,
                     });
                 }
                 self.set_dst(&intrin.def, dst);
