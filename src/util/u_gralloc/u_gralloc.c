@@ -100,7 +100,7 @@ u_gralloc_destroy(struct u_gralloc **gralloc NONNULL)
    *gralloc = NULL;
 }
 
-inline int
+int
 u_gralloc_get_buffer_basic_info(struct u_gralloc *gralloc NONNULL,
                                 struct u_gralloc_buffer_handle *hnd NONNULL,
                                 struct u_gralloc_buffer_basic_info *out
@@ -119,7 +119,7 @@ u_gralloc_get_buffer_basic_info(struct u_gralloc *gralloc NONNULL,
    return 0;
 }
 
-inline int
+int
 u_gralloc_get_buffer_color_info(struct u_gralloc *gralloc NONNULL,
                                 struct u_gralloc_buffer_handle *hnd NONNULL,
                                 struct u_gralloc_buffer_color_info *out
@@ -141,7 +141,7 @@ u_gralloc_get_buffer_color_info(struct u_gralloc *gralloc NONNULL,
    return 0;
 }
 
-inline int
+int
 u_gralloc_get_front_rendering_usage(struct u_gralloc *gralloc NONNULL,
                                     uint64_t *out_usage NONNULL)
 {
