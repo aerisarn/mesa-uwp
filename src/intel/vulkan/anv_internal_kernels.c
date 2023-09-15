@@ -165,11 +165,10 @@ compile_upload_spirv(struct anv_device *device,
    nir_shader* nir =
       vk_spirv_to_nir(&device->vk, spirv_source, spirv_source_size * 4,
                       stage, "main", 0, NULL, &spirv_options,
-                      nir_options, NULL);
+                      nir_options, true /* internal */,
+                      NULL);
 
    assert(nir != NULL);
-
-   nir->info.internal = true;
 
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(nir, nir_opt_cse);
