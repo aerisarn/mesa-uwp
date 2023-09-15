@@ -156,7 +156,7 @@ include:
 # When to automatically run the CI for build jobs
 .build-rules:
   rules:
-    # Don't run when disabling a farm
+    # Run when re-enabling a disabled farm, but not when disabling it
     - !reference [.disable-farm-mr-rules, rules]
     # If any files affecting the pipeline are changed, build/test jobs run
     # automatically once all dependency jobs have passed
@@ -200,7 +200,7 @@ include:
 
 .container-rules:
   rules:
-    # Don't run when disabling a farm
+    # Run when re-enabling a disabled farm, but not when disabling it
     - !reference [.disable-farm-mr-rules, rules]
     # Run pipeline by default in the main project if any CI pipeline
     # configuration files were changed, to ensure docker images are up to date
