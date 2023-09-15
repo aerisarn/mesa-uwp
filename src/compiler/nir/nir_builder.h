@@ -1349,9 +1349,6 @@ nir_resize_vector(nir_builder *b, nir_def *src, unsigned num_components)
 }
 
 nir_def *
-nir_ssa_for_src(nir_builder *build, nir_src src, int num_components);
-
-nir_def *
 nir_ssa_for_alu_src(nir_builder *build, nir_alu_instr *instr, unsigned srcn);
 
 static inline unsigned
