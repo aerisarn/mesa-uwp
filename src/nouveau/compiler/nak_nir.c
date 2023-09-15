@@ -318,49 +318,50 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
 }
 
 static bool
+lower_fs_input_intrin(struct nir_builder *b,
+                      nir_intrinsic_instr *intrin,
+                      UNUSED void *data)
+{
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_interpolated_input: {
+      nir_intrinsic_instr *bary = nir_src_as_intrinsic(intrin->src[0]);
+      if (nir_intrinsic_interp_mode(bary) != INTERP_MODE_SMOOTH &&
+          nir_intrinsic_interp_mode(bary) != INTERP_MODE_NONE)
+         return false;
+
+      b->cursor = nir_after_instr(&intrin->instr);
+
+      const uint16_t w_addr =
+         nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD) + 12;
+
+      /* Perspective-correc interpolated inputs need to be divided by .w */
+      nir_def *w = nir_load_interpolated_input(b, 1, 32, &bary->def,
+                                               nir_imm_int(b, 0),
+                                               .base = w_addr,
+                                               .dest_type = nir_type_float32);
+      nir_def *res = nir_fdiv(b, &intrin->def, w);
+      nir_def_rewrite_uses_after(&intrin->def, res, res->parent_instr);
+
+      return true;
+   }
+
+   default:
+      return false;
+   }
+}
+
+static bool
 nak_nir_lower_fs_inputs(nir_shader *nir)
 {
    bool progress = false;
 
    OPT(nir, nak_nir_lower_varyings, nir_var_shader_in);
 
-   if (!progress)
-      return false;
-
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-
-   const uint16_t w_addr =
-      nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD) + 12;
-
-   nir_builder b = nir_builder_create(impl);
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         if (intrin->intrinsic != nir_intrinsic_load_interpolated_input)
-            continue;
-
-         nir_intrinsic_instr *bary = nir_src_as_intrinsic(intrin->src[0]);
-         if (nir_intrinsic_interp_mode(bary) == INTERP_MODE_SMOOTH ||
-             nir_intrinsic_interp_mode(bary) == INTERP_MODE_NONE) {
-            /* Perspective-correct interpolation requires that we divide by
-             * gl_FragCoord.w.
-             */
-            b.cursor = nir_after_instr(&intrin->instr);
-
-            nir_def *w =
-               nir_load_interpolated_input(&b, 1, 32, intrin->src[0].ssa,
-                                           nir_imm_int(&b, 0), .base = w_addr,
-                                           .dest_type = nir_type_float32);
-
-            /* Interpolated inputs need to be divided by .w */
-            nir_def *res = nir_fdiv(&b, &intrin->def, w);
-            nir_def_rewrite_uses_after(&intrin->def, res, res->parent_instr);
-         }
-      }
+   if (progress) {
+      nir_shader_intrinsics_pass(nir, lower_fs_input_intrin,
+                                 nir_metadata_block_index |
+                                 nir_metadata_dominance,
+                                 NULL);
    }
 
    return true;
