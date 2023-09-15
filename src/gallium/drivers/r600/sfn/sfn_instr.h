@@ -303,11 +303,11 @@ public:
       return !m_offset && !other.m_offset;
    }
 
-   auto resource_base() const { return m_base; }
+   auto resource_id() const { return m_base; }
 
    auto resource_offset() const { return m_offset; }
 
-   auto buffer_index_mode() const -> EBufferIndexMode
+   auto resource_index_mode() const -> EBufferIndexMode
    {
       if (!m_offset || !m_offset->has_flag(Register::addr_or_idx))
          return bim_none;

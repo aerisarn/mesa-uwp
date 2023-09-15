@@ -111,7 +111,7 @@ TexInstr::is_equal_to(const TexInstr& lhs) const
       if (m_coord_offset[i] != lhs.m_coord_offset[i])
          return false;
    }
-   return m_inst_mode == lhs.m_inst_mode && resource_base() == lhs.resource_base() &&
+   return m_inst_mode == lhs.m_inst_mode && resource_id() == lhs.resource_id() &&
           m_resource_id == lhs.m_resource_id;
 }
 
@@ -159,7 +159,7 @@ TexInstr::do_print(std::ostream& os) const
    os << " : ";
    m_src.print(os);
 
-   os << " RID:" << m_resource_id << " SID:" << resource_base();
+   os << " RID:" << m_resource_id << " SID:" << resource_id();
 
    if (resource_offset())
       os << " SO:" << *resource_offset();

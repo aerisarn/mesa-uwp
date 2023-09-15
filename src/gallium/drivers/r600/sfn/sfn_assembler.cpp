@@ -524,8 +524,8 @@ AssamblerVisitor::visit(const TexInstr& tex_instr)
    r600_bytecode_tex tex;
    memset(&tex, 0, sizeof(struct r600_bytecode_tex));
    tex.op = tex_instr.opcode();
-   tex.sampler_id = tex_instr.resource_base();
-   tex.resource_id = tex_instr.resource_id();
+   tex.sampler_id = tex_instr.resource_id();
+   tex.resource_id = tex_instr.texture_id();
    tex.src_gpr = tex_instr.src().sel();
    tex.dst_gpr = tex_instr.dst().sel();
    tex.dst_sel_x = tex_instr.dest_swizzle(0);
@@ -743,7 +743,7 @@ AssamblerVisitor::visit(const FetchInstr& fetch_instr)
    struct r600_bytecode_vtx vtx;
    memset(&vtx, 0, sizeof(vtx));
    vtx.op = fetch_instr.opcode();
-   vtx.buffer_id = fetch_instr.resource_base();
+   vtx.buffer_id = fetch_instr.resource_id();
    vtx.fetch_type = fetch_instr.fetch_type();
    vtx.src_gpr = fetch_instr.src().sel();
    vtx.src_sel_x = fetch_instr.src().chan();
@@ -841,7 +841,7 @@ AssamblerVisitor::visit(const RatInstr& instr)
 
    EBufferIndexMode index_mode = get_index_mode(instr, 1);
 
-   int rat_idx = instr.resource_base();
+   int rat_idx = instr.resource_id();
 
    memset(&gds, 0, sizeof(struct r600_bytecode_gds));
 
@@ -1012,7 +1012,7 @@ AssamblerVisitor::visit(const GDSInstr& instr)
    memset(&gds, 0, sizeof(struct r600_bytecode_gds));
 
    gds.op = ds_opcode_map.at(instr.opcode());
-   gds.uav_id = instr.resource_base();
+   gds.uav_id = instr.resource_id();
    gds.uav_index_mode = index_mode;
    gds.src_gpr = instr.src().sel();
 
@@ -1240,7 +1240,7 @@ AssamblerVisitor::copy_dst(r600_bytecode_alu_dst& dst, const Register& d, bool w
 EBufferIndexMode AssamblerVisitor::get_index_mode(const Resource& res,
                                                   unsigned idx)
 {
-   EBufferIndexMode index_mode = res.buffer_index_mode();
+   EBufferIndexMode index_mode = res.resource_index_mode();
 
    if (index_mode == bim_none && res.resource_offset())
       index_mode = emit_index_reg(*res.resource_offset(), idx);

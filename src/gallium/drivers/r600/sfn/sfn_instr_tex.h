@@ -128,7 +128,7 @@ public:
    auto& src() { return m_src; }
 
    unsigned opcode() const { return m_opcode; }
-   unsigned resource_id() const { return m_resource_id; }
+   unsigned texture_id() const { return m_resource_id; }
 
    void set_offset(unsigned index, int32_t val);
    int get_offset(unsigned index) const;

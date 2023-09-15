@@ -91,7 +91,7 @@ GDSInstr::do_print(std::ostream& os) const
    else
       os << "___";
    os << " " << m_src;
-   os << " BASE:" << resource_base();
+   os << " BASE:" << resource_id();
 
    print_resource_offset(os);
 }
@@ -438,7 +438,7 @@ RatInstr::do_ready() const
 void
 RatInstr::do_print(std::ostream& os) const
 {
-   os << "MEM_RAT RAT " << resource_base();
+   os << "MEM_RAT RAT " << resource_id();
    print_resource_offset(os);
    os << " @" << m_index;
    os << " OP:" << m_rat_op << " " << m_data;
