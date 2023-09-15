@@ -932,6 +932,21 @@ static struct ac_pc_block_base gfx10_UTCL1 = {
    .num_spm_counters = 0,
 };
 
+/* gfx11_SQ_WQP */
+static struct ac_pc_block_base gfx11_SQ_WGP = {
+   .gpu_block = SQ_WGP,
+   .name = "SQ_WGP",
+   .num_counters = 16,
+   .flags = AC_PC_BLOCK_SE | AC_PC_BLOCK_SHADER,
+
+   .select0 = cik_SQ_select0,
+   .counter0_lo = R_034700_SQ_PERFCOUNTER0_LO,
+
+   .num_spm_counters = 8,
+   .num_spm_wires = 8,
+   .spm_block_select = AC_SPM_SE_BLOCK_SQC,
+};
+
 /* Both the number of instances and selectors varies between chips of the same
  * class. We only differentiate by class here and simply expose the maximum
  * number over all chips in a class.
@@ -1187,7 +1202,8 @@ bool ac_init_perfcounters(const struct radeon_info *info,
             block->num_global_instances = MAX2(1, info->num_cu_per_sh) * info->num_se * info->max_sa_per_se;
          } else if (!strcmp(block->b->b->name, "SQ")) {
             block->num_global_instances = block->num_instances * info->num_se;
-         } else if (!strcmp(block->b->b->name, "GL1C")) {
+         } else if (!strcmp(block->b->b->name, "GL1C") ||
+                    !strcmp(block->b->b->name, "SQ_WGP")) {
             block->num_global_instances = block->num_instances * info->num_se * info->max_sa_per_se;
          } else if (!strcmp(block->b->b->name, "GL2C")) {
             block->num_instances = block->num_global_instances = info->num_tcc_blocks;
