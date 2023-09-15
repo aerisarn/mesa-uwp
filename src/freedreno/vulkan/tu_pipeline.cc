@@ -2948,7 +2948,9 @@ tu_calc_bandwidth(struct tu_bandwidth *bandwidth,
       const VkFormat format = rp->color_attachment_formats[i];
 
       uint32_t write_bpp = 0;
-      if (att->write_mask == 0xf) {
+      if (format == VK_FORMAT_UNDEFINED) {
+         /* do nothing */
+      } else if (att->write_mask == 0xf) {
          write_bpp = vk_format_get_blocksizebits(format);
       } else {
          const enum pipe_format pipe_format = vk_format_to_pipe_format(format);
