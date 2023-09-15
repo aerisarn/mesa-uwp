@@ -1014,6 +1014,7 @@ barycentric("at_sample", 2, [1])
 barycentric("coord_at_sample", 3, [1])
 # src[] = { offset.xy }.
 barycentric("at_offset", 2, [2])
+barycentric("at_offset_nv", 2, [1])
 barycentric("coord_at_offset", 3, [2])
 
 # Load sample position:
