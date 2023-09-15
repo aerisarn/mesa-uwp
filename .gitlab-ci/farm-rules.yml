@@ -239,11 +239,12 @@
 
 
 # Skip container & build jobs when disabling any farm
-.disable-farm-rules:
+# Only apply these rules in MR context, because otherwise we get a false
+# positive on files being 'created' when pushing to a new branch, and break
+# our pipeline
+.disable-farm-mr-rules:
   rules:
     # changes(disabled) + exists(disabled) = disabling the farm
-    # only run in MR context, because otherwise we get a false positive on
-    # files being 'created' when pushing to a branch, and nuke our pipeline
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes: [ .ci-farms-disabled/microsoft ]
       exists: [ .ci-farms-disabled/microsoft ]

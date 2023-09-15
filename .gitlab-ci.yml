@@ -157,7 +157,7 @@ include:
 .build-rules:
   rules:
     # Don't run when disabling a farm
-    - !reference [.disable-farm-rules, rules]
+    - !reference [.disable-farm-mr-rules, rules]
     # If any files affecting the pipeline are changed, build/test jobs run
     # automatically once all dependency jobs have passed
     - changes: &all_paths
@@ -201,7 +201,7 @@ include:
 .container-rules:
   rules:
     # Don't run when disabling a farm
-    - !reference [.disable-farm-rules, rules]
+    - !reference [.disable-farm-mr-rules, rules]
     # Run pipeline by default in the main project if any CI pipeline
     # configuration files were changed, to ensure docker images are up to date
     - if: *is-post-merge
