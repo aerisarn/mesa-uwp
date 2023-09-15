@@ -110,8 +110,7 @@ lower_subgroup_op_to_scalar(nir_builder *b, nir_intrinsic_instr *intrin,
    /* This is safe to call on scalar things but it would be silly */
    assert(intrin->def.num_components > 1);
 
-   nir_def *value = nir_ssa_for_src(b, intrin->src[0],
-                                    intrin->num_components);
+   nir_def *value = intrin->src[0].ssa;
    nir_def *reads[NIR_MAX_VEC_COMPONENTS];
 
    for (unsigned i = 0; i < intrin->num_components; i++) {
@@ -623,7 +622,7 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
    case nir_intrinsic_vote_any:
    case nir_intrinsic_vote_all:
       if (options->lower_vote_trivial)
-         return nir_ssa_for_src(b, intrin->src[0], 1);
+         return intrin->src[0].ssa;
       break;
 
    case nir_intrinsic_vote_feq:

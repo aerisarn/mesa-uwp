@@ -215,7 +215,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
                /* Multiply by the number of per-vertex slots. */
                nir_def *vertex_offset =
                   nir_imul(b,
-                           nir_ssa_for_src(b, *vertex, 1),
+                           vertex->ssa,
                            nir_imm_int(b,
                                        vue_map->num_per_vertex_slots));
 
@@ -223,7 +223,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
                nir_src *offset = nir_get_io_offset_src(intrin);
                nir_def *total_offset =
                   nir_iadd(b, vertex_offset,
-                           nir_ssa_for_src(b, *offset, 1));
+                           offset->ssa);
 
                nir_src_rewrite(offset, total_offset);
             }

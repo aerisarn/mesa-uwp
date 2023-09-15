@@ -193,8 +193,8 @@ brw_nir_lower_intersection_shader(nir_shader *intersection,
             switch (intrin->intrinsic) {
             case nir_intrinsic_report_ray_intersection: {
                b->cursor = nir_instr_remove(&intrin->instr);
-               nir_def *hit_t = nir_ssa_for_src(b, intrin->src[0], 1);
-               nir_def *hit_kind = nir_ssa_for_src(b, intrin->src[1], 1);
+               nir_def *hit_t = intrin->src[0].ssa;
+               nir_def *hit_kind = intrin->src[1].ssa;
                nir_def *min_t = nir_load_ray_t_min(b);
                nir_def *max_t = nir_load_global(b, t_addr, 4, 1, 32);
 

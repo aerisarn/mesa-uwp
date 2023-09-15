@@ -85,10 +85,10 @@ nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
                if (alpha_to_one) {
                   alpha = nir_imm_float(&b, 1.0);
                } else if (intr->intrinsic == nir_intrinsic_store_deref) {
-                  alpha = nir_channel(&b, nir_ssa_for_src(&b, intr->src[1], 4),
+                  alpha = nir_channel(&b, intr->src[1].ssa,
                                       3);
                } else {
-                  alpha = nir_channel(&b, nir_ssa_for_src(&b, intr->src[0], 4),
+                  alpha = nir_channel(&b, intr->src[0].ssa,
                                       3);
                }
 

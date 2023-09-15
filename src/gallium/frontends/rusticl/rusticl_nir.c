@@ -97,7 +97,7 @@ rusticl_lower_input_instr(struct nir_builder *b, nir_instr *instr, void *_)
       return NULL;
 
    nir_def *ubo_idx = nir_imm_int(b, 0);
-   nir_def *uniform_offset = nir_ssa_for_src(b, intrins->src[0], 1);
+   nir_def *uniform_offset = intrins->src[0].ssa;
 
    assert(intrins->def.bit_size >= 8);
    nir_def *load_result =

@@ -236,7 +236,7 @@ get_aoa_deref_offset(nir_builder *b,
       assert(deref->deref_type == nir_deref_type_array);
 
       /* This level's element size is the previous level's array size */
-      nir_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
+      nir_def *index = deref->arr.index.ssa;
       assert(deref->arr.index.ssa);
       offset = nir_iadd(b, offset,
                            nir_imul_imm(b, index, array_size));
@@ -494,7 +494,7 @@ iris_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
             b.cursor = nir_instr_remove(&intrin->instr);
 
             nir_def *offset =
-               nir_iadd_imm(&b, nir_ssa_for_src(&b, intrin->src[0], 1),
+               nir_iadd_imm(&b, intrin->src[0].ssa,
                                 nir_intrinsic_base(intrin));
 
             assert(load_size < b.shader->constant_data_size);

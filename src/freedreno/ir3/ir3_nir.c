@@ -309,7 +309,7 @@ ir3_nir_lower_array_sampler_cb(struct nir_builder *b, nir_instr *instr, void *_d
    b->cursor = nir_before_instr(&tex->instr);
 
    unsigned ncomp = tex->coord_components;
-   nir_def *src = nir_ssa_for_src(b, tex->src[coord_idx].src, ncomp);
+   nir_def *src = tex->src[coord_idx].src.ssa;
 
    assume(ncomp >= 1);
    nir_def *ai = nir_channel(b, src, ncomp - 1);

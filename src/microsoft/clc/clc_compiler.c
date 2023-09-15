@@ -360,7 +360,7 @@ clc_lower_nonnormalized_samplers(nir_shader *nir,
             int coords_idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
             assert(coords_idx != -1);
             nir_def *coords =
-               nir_ssa_for_src(&b, tex->src[coords_idx].src, tex->coord_components);
+               tex->src[coords_idx].src.ssa;
 
             nir_def *txs = nir_i2f32(&b, nir_get_texture_size(&b, tex));
 

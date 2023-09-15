@@ -84,8 +84,7 @@ agx_txs(nir_builder *b, nir_tex_instr *tex)
    /* Add LOD offset to first level to get the interesting LOD */
    int lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_lod);
    if (lod_idx >= 0) {
-      lod = nir_iadd(
-         b, lod, nir_u2u32(b, nir_ssa_for_src(b, tex->src[lod_idx].src, 1)));
+      lod = nir_iadd(b, lod, nir_u2u32(b, tex->src[lod_idx].src.ssa));
    }
 
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_2D && tex->is_array) {

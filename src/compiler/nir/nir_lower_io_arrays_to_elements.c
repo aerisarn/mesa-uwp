@@ -47,7 +47,7 @@ get_io_offset(nir_builder *b, nir_deref_instr *deref, nir_variable *var,
     * inputs), skip the outermost array index.  Process the rest normally.
     */
    if (nir_is_arrayed_io(var, b->shader->info.stage)) {
-      *array_index = nir_ssa_for_src(b, (*p)->arr.index, 1);
+      *array_index = (*p)->arr.index.ssa;
       p++;
    }
 

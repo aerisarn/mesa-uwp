@@ -88,7 +88,7 @@ lower_ssbo_instr(nir_builder *b, nir_intrinsic_instr *intr)
 
    nir_src index = intr->src[is_store ? 1 : 0];
    nir_src *offset_src = nir_get_io_offset_src(intr);
-   nir_def *offset = nir_ssa_for_src(b, *offset_src, 1);
+   nir_def *offset = offset_src->ssa;
 
    nir_def *address =
       nir_iadd(b,

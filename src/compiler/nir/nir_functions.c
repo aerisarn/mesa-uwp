@@ -179,8 +179,7 @@ static bool inline_functions_pass(nir_builder *b,
    const unsigned num_params = call->num_params;
    NIR_VLA(nir_def *, params, num_params);
    for (unsigned i = 0; i < num_params; i++) {
-      params[i] = nir_ssa_for_src(b, call->params[i],
-                                  call->callee->params[i].num_components);
+      params[i] = call->params[i].ssa;
    }
 
    nir_inline_function_impl(b, call->callee->impl, params, NULL);

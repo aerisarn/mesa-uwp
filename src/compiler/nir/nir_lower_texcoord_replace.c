@@ -45,7 +45,7 @@ get_io_index(nir_builder *b, nir_deref_instr *deref)
          unsigned size = glsl_get_length((*p)->type);
 
          nir_def *mul =
-            nir_amul_imm(b, nir_ssa_for_src(b, (*p)->arr.index, 1), size);
+            nir_amul_imm(b, (*p)->arr.index.ssa, size);
 
          offset = nir_iadd(b, offset, mul);
       } else

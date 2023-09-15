@@ -1429,7 +1429,7 @@ brw_pack_primitive_indices_instr(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_src *data_src = &intrin->src[1];
    nir_def *data_def =
-         nir_ssa_for_src(b, *data_src, vertices_per_primitive);
+         data_src->ssa;
 
    nir_def *new_data =
          nir_ior(b, nir_ishl_imm(b, nir_channel(b, data_def, 0), 0),

@@ -351,7 +351,7 @@ nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
       switch ((*p)->deref_type) {
       case nir_deref_type_array:
       case nir_deref_type_ptr_as_array: {
-         nir_def *index = nir_ssa_for_src(b, (*p)->arr.index, 1);
+         nir_def *index = (*p)->arr.index.ssa;
          int stride = type_get_array_stride((*p)->type, size_align);
          offset = nir_iadd(b, offset, nir_amul_imm(b, index, stride));
          break;

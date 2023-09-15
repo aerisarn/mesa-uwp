@@ -374,7 +374,7 @@ build_bindless(struct tu_device *dev, nir_builder *b,
       if (deref->deref_type == nir_deref_type_var)
          return nir_imm_int(b, idx);
 
-      nir_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
+      nir_def *arr_index = deref->arr.index.ssa;
       return nir_iadd_imm(b, nir_imul_imm(b, arr_index, 2), idx);
    }
 
@@ -398,7 +398,7 @@ build_bindless(struct tu_device *dev, nir_builder *b,
    if (deref->deref_type != nir_deref_type_var) {
       assert(deref->deref_type == nir_deref_type_array);
 
-      nir_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
+      nir_def *arr_index = deref->arr.index.ssa;
       desc_offset = nir_iadd(b, desc_offset,
                              nir_imul_imm(b, arr_index, descriptor_stride));
    }

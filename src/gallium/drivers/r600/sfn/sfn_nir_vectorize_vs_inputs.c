@@ -51,7 +51,7 @@ r600_clone_deref_array(nir_builder *b,
 
    dst_tail = r600_clone_deref_array(b, dst_tail, parent);
 
-   return nir_build_deref_array(b, dst_tail, nir_ssa_for_src(b, src_head->arr.index, 1));
+   return nir_build_deref_array(b, dst_tail, src_head->arr.index.ssa);
 }
 
 static bool

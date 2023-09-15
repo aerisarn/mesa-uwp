@@ -201,7 +201,7 @@ get_io_offset(nir_builder *b, nir_deref_instr *deref,
     */
    if (array_index != NULL) {
       assert((*p)->deref_type == nir_deref_type_array);
-      *array_index = nir_ssa_for_src(b, (*p)->arr.index, 1);
+      *array_index = (*p)->arr.index.ssa;
       p++;
    }
 
@@ -225,7 +225,7 @@ get_io_offset(nir_builder *b, nir_deref_instr *deref,
          unsigned size = type_size((*p)->type, bts);
 
          nir_def *mul =
-            nir_amul_imm(b, nir_ssa_for_src(b, (*p)->arr.index, 1), size);
+            nir_amul_imm(b, (*p)->arr.index.ssa, size);
 
          offset = nir_iadd(b, offset, mul);
       } else if ((*p)->deref_type == nir_deref_type_struct) {
@@ -1847,7 +1847,7 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
       assert(stride > 0);
 
       unsigned offset_bit_size = addr_get_offset_bit_size(base_addr, addr_format);
-      nir_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
+      nir_def *index = deref->arr.index.ssa;
       nir_def *offset;
 
       /* If the access chain has been declared in-bounds, then we know it doesn't

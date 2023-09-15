@@ -94,7 +94,7 @@ st_nir_lower_fog_instr(nir_builder *b, nir_instr *instr, void *_state)
 
    b->cursor = nir_before_instr(instr);
 
-   nir_def *color = nir_ssa_for_src(b, intr->src[0], intr->num_components);
+   nir_def *color = intr->src[0].ssa;
    color = nir_resize_vector(b, color, 4);
 
    nir_def *fog = fog_result(b, color, state->fog_mode, state->paramList);

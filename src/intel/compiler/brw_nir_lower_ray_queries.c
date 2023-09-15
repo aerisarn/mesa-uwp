@@ -131,7 +131,7 @@ get_ray_query_shadow_addr(nir_builder *b,
    nir_deref_instr **p = &path.path[1];
    for (; *p; p++) {
       if ((*p)->deref_type == nir_deref_type_array) {
-         nir_def *index = nir_ssa_for_src(b, (*p)->arr.index, 1);
+         nir_def *index = (*p)->arr.index.ssa;
 
          /**/
          *out_state_deref = nir_build_deref_array(b, *out_state_deref, index);

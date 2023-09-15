@@ -485,7 +485,8 @@ ac_nir_calc_io_offset(nir_builder *b,
     * so the instruction effectively reads/writes another input/output
     * when it has an offset
     */
-   nir_def *offset_op = nir_imul(b, base_stride, nir_ssa_for_src(b, *nir_get_io_offset_src(intrin), 1));
+   nir_def *offset_op = nir_imul(b, base_stride,
+                                 nir_get_io_offset_src(intrin)->ssa);
 
    /* component is in bytes */
    unsigned const_op = nir_intrinsic_component(intrin) * component_stride;

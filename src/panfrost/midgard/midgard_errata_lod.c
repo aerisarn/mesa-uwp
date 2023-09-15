@@ -67,7 +67,7 @@ nir_lod_errata_instr(nir_builder *b, nir_instr *instr, void *data)
       if (tex->src[i].src_type != nir_tex_src_lod)
          continue;
 
-      nir_def *lod = nir_ssa_for_src(b, tex->src[i].src, 1);
+      nir_def *lod = tex->src[i].src.ssa;
 
       nir_def *biased = nir_fadd(b, lod, lod_bias);
       nir_def *clamped = nir_fmin(b, nir_fmax(b, biased, min_lod), max_lod);

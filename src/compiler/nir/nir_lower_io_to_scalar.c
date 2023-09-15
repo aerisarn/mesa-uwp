@@ -130,7 +130,7 @@ lower_store_output_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_def *value = nir_ssa_for_src(b, intr->src[0], intr->num_components);
+   nir_def *value = intr->src[0].ssa;
 
    for (unsigned i = 0; i < intr->num_components; i++) {
       if (!(nir_intrinsic_write_mask(intr) & (1 << i)))
@@ -195,7 +195,7 @@ lower_store_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_def *value = nir_ssa_for_src(b, intr->src[0], intr->num_components);
+   nir_def *value = intr->src[0].ssa;
    nir_def *base_offset = nir_get_io_offset_src(intr)->ssa;
 
    /* iterate wrmask instead of num_components to handle split components */
@@ -345,7 +345,7 @@ clone_deref_array(nir_builder *b, nir_deref_instr *dst_tail,
    dst_tail = clone_deref_array(b, dst_tail, parent);
 
    return nir_build_deref_array(b, dst_tail,
-                                nir_ssa_for_src(b, src_head->arr.index, 1));
+                                src_head->arr.index.ssa);
 }
 
 static void
@@ -412,7 +412,7 @@ lower_store_output_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_def *value = nir_ssa_for_src(b, intr->src[1], intr->num_components);
+   nir_def *value = intr->src[1].ssa;
 
    nir_variable **chan_vars = get_channel_variables(split_outputs, var);
    for (unsigned i = 0; i < intr->num_components; i++) {

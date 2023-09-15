@@ -116,7 +116,7 @@ project_src(nir_builder *b, nir_tex_instr *tex)
          continue;
       }
       nir_def *unprojected =
-         nir_ssa_for_src(b, tex->src[i].src, nir_tex_instr_src_size(tex, i));
+         tex->src[i].src.ssa;
       nir_def *projected = nir_fmul(b, unprojected, inv_proj);
 
       /* Array indices don't get projected, so make an new vector with the
@@ -225,7 +225,7 @@ lower_rect(nir_builder *b, nir_tex_instr *tex)
 
    if (coord_index != -1) {
       nir_def *coords =
-         nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
+         tex->src[coord_index].src.ssa;
       nir_src_rewrite(&tex->src[coord_index].src, nir_fmul(b, coords, scale));
    }
 }
@@ -241,7 +241,7 @@ lower_rect_tex_scale(nir_builder *b, nir_tex_instr *tex)
 
    if (coord_index != -1) {
       nir_def *coords =
-         nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
+         tex->src[coord_index].src.ssa;
       nir_src_rewrite(&tex->src[coord_index].src, nir_fmul(b, coords, scale));
    }
 }
@@ -916,7 +916,7 @@ lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
 
    int bias_idx = nir_tex_instr_src_index(tex, nir_tex_src_bias);
    assert(bias_idx >= 0);
-   lod = nir_fadd(b, nir_channel(b, lod, 1), nir_ssa_for_src(b, tex->src[bias_idx].src, 1));
+   lod = nir_fadd(b, nir_channel(b, lod, 1), tex->src[bias_idx].src.ssa);
    txl->src[tex->num_srcs - 1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
    nir_def_init(&txl->instr, &txl->def,
@@ -941,7 +941,7 @@ saturate_src(nir_builder *b, nir_tex_instr *tex, unsigned sat_mask)
 
    if (coord_index != -1) {
       nir_def *src =
-         nir_ssa_for_src(b, tex->src[coord_index].src, tex->coord_components);
+         tex->src[coord_index].src.ssa;
 
       /* split src into components: */
       nir_def *comp[4];
@@ -1245,7 +1245,7 @@ nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
    unsigned dest_size = nir_tex_instr_dest_size(tex);
 
    b->cursor = nir_before_instr(&tex->instr);
-   nir_def *lod = nir_ssa_for_src(b, tex->src[lod_idx].src, 1);
+   nir_def *lod = tex->src[lod_idx].src.ssa;
 
    /* Replace the non-0-LOD in the initial TXS operation by a 0-LOD. */
    nir_src_rewrite(&tex->src[lod_idx].src, nir_imm_int(b, 0));

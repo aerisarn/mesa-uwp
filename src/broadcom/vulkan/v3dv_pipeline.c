@@ -622,7 +622,7 @@ lower_tex_src(nir_builder *b,
          }
 
          index = nir_iadd(b, index,
-                          nir_imul_imm(b, nir_ssa_for_src(b, deref->arr.index, 1),
+                          nir_imul_imm(b, deref->arr.index.ssa,
                                        array_elements));
       }
 
@@ -760,7 +760,7 @@ lower_image_deref(nir_builder *b,
          }
 
          index = nir_iadd(b, index,
-                          nir_imul_imm(b, nir_ssa_for_src(b, deref->arr.index, 1),
+                          nir_imul_imm(b, deref->arr.index.ssa,
                                        array_elements));
       }
 
