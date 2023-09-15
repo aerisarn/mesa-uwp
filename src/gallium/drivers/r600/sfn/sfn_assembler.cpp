@@ -450,9 +450,7 @@ AssamblerVisitor::visit(const AluGroup& group)
    if (group.slots() == 0)
       return;
 
-
-   static const unsigned slot_limit = r600::sfn_log.has_debug_flag(r600::SfnLog::noaddrsplit) ?
-                                         248 : 256;
+   static const unsigned slot_limit = 256;
 
    if (m_bc->cf_last && !m_bc->force_add_cf) {
       if (group.has_lds_group_start()) {
@@ -478,7 +476,6 @@ AssamblerVisitor::visit(const AluGroup& group)
                 instr->opcode() == op0_group_barrier && m_bc->cf_last->ndw + 14 > slot_limit) {
                assert(0 && "Not allowed to start new alu group here");
                assert(m_bc->cf_last->nlds_read == 0);
-               assert(r600::sfn_log.has_debug_flag(r600::SfnLog::noaddrsplit));
                m_bc->force_add_cf = 1;
                m_last_addr = nullptr;
             }
