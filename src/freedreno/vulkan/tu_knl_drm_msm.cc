@@ -23,6 +23,7 @@
 #include "tu_device.h"
 #include "tu_dynamic_rendering.h"
 #include "tu_knl_drm.h"
+#include "redump.h"
 
 struct tu_queue_submit
 {
@@ -869,6 +870,41 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
       .nr_out_syncobjs = submit->nr_out_syncobjs,
       .syncobj_stride = sizeof(struct drm_msm_gem_submit_syncobj),
    };
+
+   if (TU_DEBUG(RD)) {
+      struct tu_device *device = queue->device;
+      static uint32_t submit_idx;
+      char path[32];
+      sprintf(path, "%.5d.rd", p_atomic_inc_return(&submit_idx));
+      int rd = open(path, O_CLOEXEC | O_WRONLY | O_CREAT | O_TRUNC, 0777);
+      if (rd >= 0) {
+         rd_write_section(rd, RD_CHIP_ID, &device->physical_device->dev_id.chip_id, 4);
+
+         rd_write_section(rd, RD_CMD, "tu-dump", 8);
+
+         for (unsigned i = 0; i < device->bo_count; i++) {
+            struct drm_msm_gem_submit_bo bo = device->bo_list[i];
+            struct tu_bo *tu_bo = tu_device_lookup_bo(device, bo.handle);
+            uint64_t iova = bo.presumed;
+
+            uint32_t buf[3] = { iova, tu_bo->size, iova >> 32 };
+            rd_write_section(rd, RD_GPUADDR, buf, 12);
+            if (bo.flags & MSM_SUBMIT_BO_DUMP) {
+               msm_bo_map(device, tu_bo); /* note: this would need locking to be safe */
+               rd_write_section(rd, RD_BUFFER_CONTENTS, tu_bo->map, tu_bo->size);
+            }
+         }
+
+         for (unsigned i = 0; i < req.nr_cmds; i++) {
+            struct drm_msm_gem_submit_cmd *cmd = &submit->cmds[i];
+            uint64_t iova = device->bo_list[cmd->submit_idx].presumed + cmd->submit_offset;
+            uint32_t size = cmd->size >> 2;
+            uint32_t buf[3] = { iova, size, iova >> 32 };
+            rd_write_section(rd, RD_CMDSTREAM_ADDR, buf, 12);
+         }
+         close(rd);
+      }
+   }
 
    int ret = drmCommandWriteRead(queue->device->fd,
                                  DRM_MSM_GEM_SUBMIT,
