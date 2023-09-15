@@ -1282,7 +1282,8 @@ impl<'a> ShaderFromNir<'a> {
                 if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
                     assert!(intrin.intrinsic == nir_intrinsic_load_input);
                     let addr = u16::try_from(intrin.base()).unwrap()
-                        + u16::try_from(srcs[0].as_uint().unwrap()).unwrap();
+                        + u16::try_from(srcs[0].as_uint().unwrap()).unwrap()
+                        + u16::try_from(intrin.component()).unwrap() * 4;
 
                     for c in 0..comps {
                         b.push_op(OpIpa {
@@ -1294,6 +1295,9 @@ impl<'a> ShaderFromNir<'a> {
                         });
                     }
                 } else {
+                    let addr = u16::try_from(intrin.base()).unwrap()
+                        + u16::try_from(intrin.component()).unwrap() * 4;
+
                     let (vtx, offset) = match intrin.intrinsic {
                         nir_intrinsic_load_input => {
                             (Src::new_zero(), self.get_src(&srcs[0]))
@@ -1305,7 +1309,7 @@ impl<'a> ShaderFromNir<'a> {
                     };
 
                     let access = AttrAccess {
-                        addr: intrin.base().try_into().unwrap(),
+                        addr: addr,
                         comps: comps,
                         patch: false,
                         out_load: false,
@@ -1325,7 +1329,8 @@ impl<'a> ShaderFromNir<'a> {
                 let bary =
                     srcs[0].as_def().parent_instr().as_intrinsic().unwrap();
                 let addr = u16::try_from(intrin.base()).unwrap()
-                    + u16::try_from(srcs[1].as_uint().unwrap()).unwrap();
+                    + u16::try_from(srcs[1].as_uint().unwrap()).unwrap()
+                    + u16::try_from(intrin.component()).unwrap() * 4;
                 let (freq, loc) = match bary.intrinsic {
                     nir_intrinsic_load_barycentric_at_offset_nv => {
                         (InterpFreq::Pass, InterpLoc::Offset)
