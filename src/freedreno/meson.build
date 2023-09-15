@@ -25,13 +25,8 @@ rnn_src_path = dir_source_root + '/src/freedreno/registers'
 rnn_install_path = get_option('datadir') + '/freedreno/registers'
 rnn_path = rnn_src_path + ':' + get_option('prefix') + '/' + rnn_install_path
 
-# TODO: use multi-argument dependency() in meson 0.60
-foreach lua : ['lua54', 'lua53', 'lua52', 'lua']
-    dep_lua = dependency(lua, required: false, fallback : ['lua', 'lua_dep'], version: '>=5.2')
-    if dep_lua.found()
-        break
-    endif
-endforeach
+dep_lua = dependency('lua54', 'lua53', 'lua52', 'lua', required: false,
+                     fallback : ['lua', 'lua_dep'], version: '>=5.2')
 
 dep_libarchive = dependency('libarchive', fallback : ['libarchive', 'libarchive_dep'], required: false)
 dep_libxml2 = dependency('libxml-2.0', fallback: ['libxml2', 'libxml2_dep'], required: false)
