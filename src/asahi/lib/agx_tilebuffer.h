@@ -22,6 +22,8 @@ extern "C" {
 
 /* Forward declarations to keep the header lean */
 struct nir_shader;
+struct nir_def;
+struct nir_builder;
 struct agx_usc_builder;
 
 struct agx_tile_size {
@@ -87,6 +89,8 @@ bool agx_nir_lower_tilebuffer(struct nir_shader *shader,
                               struct agx_tilebuffer_layout *tib,
                               uint8_t *colormasks, unsigned *bindless_base,
                               bool *translucent);
+
+struct nir_def *agx_internal_layer_id(struct nir_builder *b);
 
 struct agx_msaa_state {
    uint8_t nr_samples;

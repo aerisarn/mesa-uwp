@@ -205,6 +205,15 @@ load_memory(nir_builder *b, unsigned bindless_base, unsigned nr_samples,
    }
 }
 
+nir_def *
+agx_internal_layer_id(nir_builder *b)
+{
+   /* In the background and end-of-tile programs, the layer ID is available as
+    * sr2, the Z component of the workgroup index.
+    */
+   return nir_channel(b, nir_load_workgroup_id(b), 2);
+}
+
 static nir_def *
 tib_impl(nir_builder *b, nir_instr *instr, void *data)
 {
