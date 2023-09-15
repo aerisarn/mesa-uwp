@@ -188,12 +188,12 @@ class LowerSplit64op : public NirLowerInstruction {
          case nir_op_bcsel: {
             auto lo =
                nir_bcsel(b,
-                         nir_ssa_for_src(b, alu->src[0].src, 1),
+                         alu->src[0].src.ssa,
                          nir_unpack_64_2x32_split_x(b, nir_ssa_for_alu_src(b, alu, 1)),
                          nir_unpack_64_2x32_split_x(b, nir_ssa_for_alu_src(b, alu, 2)));
             auto hi =
                nir_bcsel(b,
-                         nir_ssa_for_src(b, alu->src[0].src, 1),
+                         alu->src[0].src.ssa,
                          nir_unpack_64_2x32_split_y(b, nir_ssa_for_alu_src(b, alu, 1)),
                          nir_unpack_64_2x32_split_y(b, nir_ssa_for_alu_src(b, alu, 2)));
             return nir_pack_64_2x32_split(b, lo, hi);
@@ -253,8 +253,8 @@ class LowerSplit64op : public NirLowerInstruction {
             &phi_hi->instr, &phi_hi->def, phi->def.num_components * 2, 32);
          nir_foreach_phi_src(s, phi)
          {
-            auto lo = nir_unpack_32_2x16_split_x(b, nir_ssa_for_src(b, s->src, 1));
-            auto hi = nir_unpack_32_2x16_split_x(b, nir_ssa_for_src(b, s->src, 1));
+            auto lo = nir_unpack_32_2x16_split_x(b, s->src.ssa);
+            auto hi = nir_unpack_32_2x16_split_x(b, s->src.ssa);
             nir_phi_instr_add_src(phi_lo, s->pred, lo);
             nir_phi_instr_add_src(phi_hi, s->pred, hi);
          }

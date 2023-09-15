@@ -166,12 +166,11 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          switch (deref->var->data.location) {
          case SYSTEM_VALUE_TESS_LEVEL_INNER:
          case SYSTEM_VALUE_TESS_LEVEL_OUTER: {
-            nir_def *index = nir_ssa_for_src(b, arr_deref->arr.index, 1);
             nir_def *sysval = (deref->var->data.location ==
                                SYSTEM_VALUE_TESS_LEVEL_INNER)
                                  ? nir_load_tess_level_inner(b)
                                  : nir_load_tess_level_outer(b);
-            return nir_vector_extract(b, sysval, index);
+            return nir_vector_extract(b, sysval, arr_deref->arr.index.ssa);
          }
 
          case SYSTEM_VALUE_SAMPLE_MASK_IN:

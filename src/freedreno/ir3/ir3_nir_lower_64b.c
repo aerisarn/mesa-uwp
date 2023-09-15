@@ -258,13 +258,12 @@ lower_64b_global(nir_builder *b, nir_instr *instr, void *unused)
    if (intr->intrinsic == nir_intrinsic_global_atomic) {
       return nir_global_atomic_ir3(
             b, intr->def.bit_size, addr,
-            nir_ssa_for_src(b, intr->src[1], 1),
+            intr->src[1].ssa,
          .atomic_op = nir_intrinsic_atomic_op(intr));
    } else if (intr->intrinsic == nir_intrinsic_global_atomic_swap) {
       return nir_global_atomic_swap_ir3(
          b, intr->def.bit_size, addr,
-         nir_ssa_for_src(b, intr->src[1], 1),
-         nir_ssa_for_src(b, intr->src[2], 1),
+         intr->src[1].ssa, intr->src[2].ssa,
          .atomic_op = nir_intrinsic_atomic_op(intr));
    }
 
