@@ -169,7 +169,7 @@ void AddressSplitVisitor::visit(AluInstr *instr)
          s->accept(collector);
       }
 
-      instr->update_indirect_addr(m_vf.addr());
+      instr->update_indirect_addr(addr, m_vf.addr());
       addr->del_use(instr);
       m_last_ar_load->inc_ar_uses();
       m_last_ar_use.push_back(instr);
@@ -188,7 +188,7 @@ auto AddressSplitVisitor::load_index_register(Instr *instr, PRegister index) -> 
    m_last_idx_use[idx_id].push_back(instr);
 
    index->del_use(instr);
-   instr->update_indirect_addr(m_current_idx[idx_id]);
+   instr->update_indirect_addr(index, m_current_idx[idx_id]);
    m_last_idx_load_index[idx_id] = (instr->block_id() << 16) | instr->index();
    return idx_id == 0 ? bim_zero : bim_one;
 }

@@ -134,7 +134,8 @@ public:
    virtual AluInstr *as_alu() { return nullptr; }
    virtual uint8_t allowed_src_chan_mask() const { return 0; }
 
-   virtual void update_indirect_addr(PRegister addr) {
+   virtual void update_indirect_addr(PRegister old_reg, PRegister addr) {
+      (void)old_reg;
       (void)addr;
       unreachable("Instruction type has no indirect addess");
    };
@@ -352,7 +353,7 @@ public:
    const RegisterVec4::Swizzle& all_dest_swizzle() const { return m_dest_swizzle; }
    const RegisterVec4& dst() const { return m_dest; }
 
-   void update_indirect_addr(PRegister addr) override;
+   void update_indirect_addr(PRegister old_reg, PRegister addr) override;
 
 protected:
    InstrWithVectorResult(const InstrWithVectorResult& orig);

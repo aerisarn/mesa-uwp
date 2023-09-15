@@ -380,9 +380,10 @@ void ReplaceIndirectArrayAddr::visit(UniformValue& value)
    }
 }
 
-void AluInstr::update_indirect_addr(PRegister reg)
+void AluInstr::update_indirect_addr(UNUSED PRegister old_reg, PRegister reg)
 {
    ReplaceIndirectArrayAddr visitor;
+
    visitor.new_addr = reg;
    assert(reg->has_flag(Register::addr_or_idx));
 

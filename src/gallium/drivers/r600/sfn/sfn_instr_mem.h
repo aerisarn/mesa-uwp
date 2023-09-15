@@ -59,7 +59,7 @@ public:
    uint32_t slots() const override { return 1; };
    uint8_t allowed_src_chan_mask() const override;
 
-   void update_indirect_addr(PRegister addr) override;
+   void update_indirect_addr(PRegister old_reg, PRegister addr) override;
 
 private:
    static bool emit_atomic_read(nir_intrinsic_instr *intr, Shader& shader);
@@ -168,7 +168,7 @@ public:
 
    static bool emit(nir_intrinsic_instr *intr, Shader& shader);
 
-   void update_indirect_addr(PRegister addr) override;
+   void update_indirect_addr(PRegister old_reg, PRegister addr) override;
 
 private:
    static bool emit_global_store(nir_intrinsic_instr *intr, Shader& shader);

@@ -373,8 +373,9 @@ GDSInstr::emit_atomic_pre_dec(nir_intrinsic_instr *instr, Shader& shader)
    return true;
 }
 
-void GDSInstr::update_indirect_addr(PRegister addr)
+void GDSInstr::update_indirect_addr(PRegister old_reg, PRegister addr)
 {
+   (void)old_reg;
    set_resource_offset(addr);
 }
 
@@ -447,7 +448,7 @@ RatInstr::do_print(std::ostream& os) const
       os << " ACK";
 }
 
-void RatInstr::update_indirect_addr(PRegister addr)
+void RatInstr::update_indirect_addr(UNUSED PRegister old_reg, PRegister addr)
 {
    set_resource_offset(addr);
 }

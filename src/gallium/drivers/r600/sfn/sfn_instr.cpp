@@ -510,7 +510,7 @@ InstrWithVectorResult::InstrWithVectorResult(const InstrWithVectorResult& orig):
 {
 }
 
-void InstrWithVectorResult::update_indirect_addr(PRegister addr)
+void InstrWithVectorResult::update_indirect_addr(UNUSED PRegister old_reg, PRegister addr)
 {
    set_resource_offset(addr);
 }
