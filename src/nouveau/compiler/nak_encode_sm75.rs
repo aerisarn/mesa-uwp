@@ -1150,7 +1150,7 @@ impl SM75Instr {
                 77..79,
                 match scope {
                     MemScope::CTA => 0_u8,
-                    MemScope::Cluster => 1_u8,
+                    /* SM => 1_u8, */
                     MemScope::GPU => 2_u8,
                     MemScope::System => 3_u8,
                 },
@@ -1561,7 +1561,7 @@ impl SM75Instr {
             76..79,
             match op.scope {
                 MemScope::CTA => 0_u8,
-                MemScope::Cluster => 1_u8,
+                /* SM => 1_u8, */
                 MemScope::GPU => 2_u8,
                 MemScope::System => 3_u8,
             },

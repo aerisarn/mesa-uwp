@@ -1766,7 +1766,6 @@ impl fmt::Display for MemOrder {
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemScope {
     CTA,
-    Cluster,
     GPU,
     System,
 }
@@ -1775,7 +1774,6 @@ impl fmt::Display for MemScope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MemScope::CTA => write!(f, "CTA"),
-            MemScope::Cluster => write!(f, "SM"),
             MemScope::GPU => write!(f, "GPU"),
             MemScope::System => write!(f, "SYS"),
         }
