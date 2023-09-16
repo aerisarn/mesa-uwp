@@ -1145,7 +1145,7 @@ impl SM75Instr {
     }
 
     fn set_mem_order_scope(&mut self, order: &MemOrder, scope: &MemScope) {
-        if self.sm <= 75 {
+        if self.sm < 80 {
             self.set_field(
                 77..79,
                 match scope {
@@ -1165,9 +1165,15 @@ impl SM75Instr {
                 },
             );
         } else {
-            assert!(*scope == MemScope::System);
-            assert!(*order == MemOrder::Strong);
-            self.set_field(77..81, 0xa_u8);
+            self.set_field(
+                77..81,
+                match (order, scope) {
+                    (MemOrder::Weak, _) => 0x0_u8,
+                    (MemOrder::Strong, MemScope::CTA) => 0x5_u8,
+                    (MemOrder::Strong, MemScope::GPU) => 0x7_u8,
+                    (MemOrder::Strong, MemScope::System) => 0xa_u8,
+                },
+            );
         }
     }
 
