@@ -651,22 +651,6 @@ vn_GetDeviceGroupPeerMemoryFeatures(
 }
 
 VkResult
-vn_DeviceWaitIdle(VkDevice device)
-{
-   VN_TRACE_FUNC();
-   struct vn_device *dev = vn_device_from_handle(device);
-
-   for (uint32_t i = 0; i < dev->queue_count; i++) {
-      struct vn_queue *queue = &dev->queues[i];
-      VkResult result = vn_QueueWaitIdle(vn_queue_to_handle(queue));
-      if (result != VK_SUCCESS)
-         return vn_error(dev->instance, result);
-   }
-
-   return VK_SUCCESS;
-}
-
-VkResult
 vn_GetCalibratedTimestampsEXT(
    VkDevice device,
    uint32_t timestampCount,

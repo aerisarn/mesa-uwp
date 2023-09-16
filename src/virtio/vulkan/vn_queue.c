@@ -25,25 +25,6 @@
 
 /* queue commands */
 
-void
-vn_GetDeviceQueue2(VkDevice device,
-                   const VkDeviceQueueInfo2 *pQueueInfo,
-                   VkQueue *pQueue)
-{
-   struct vn_device *dev = vn_device_from_handle(device);
-
-   for (uint32_t i = 0; i < dev->queue_count; i++) {
-      struct vn_queue *queue = &dev->queues[i];
-      if (queue->family == pQueueInfo->queueFamilyIndex &&
-          queue->index == pQueueInfo->queueIndex &&
-          queue->flags == pQueueInfo->flags) {
-         *pQueue = vn_queue_to_handle(queue);
-         return;
-      }
-   }
-   unreachable("bad queue family/index");
-}
-
 static bool
 vn_semaphore_wait_external(struct vn_device *dev, struct vn_semaphore *sem);
 
