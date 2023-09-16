@@ -23,7 +23,6 @@
 
 #include "vk_android.h"
 
-#include "vk_buffer.h"
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
 #include "vk_image.h"
@@ -194,14 +193,9 @@ vk_alloc_ahardware_buffer(const VkMemoryAllocateInfo *pAllocateInfo)
       format = image->ahb_format;
       usage = vk_image_usage_to_ahb_usage(image->create_flags,
                                           image->usage);
-   } else if (dedicated_info && dedicated_info->buffer) {
-      VK_FROM_HANDLE(vk_buffer, buffer, dedicated_info->buffer);
-      w = buffer->size;
-      format = AHARDWAREBUFFER_FORMAT_BLOB;
-      usage = AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER |
-              AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
-              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
    } else {
+      /* AHB export allocation for VkBuffer requires a valid allocationSize */
+      assert(pAllocateInfo->allocationSize);
       w = pAllocateInfo->allocationSize;
       format = AHARDWAREBUFFER_FORMAT_BLOB;
       usage = AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER |
