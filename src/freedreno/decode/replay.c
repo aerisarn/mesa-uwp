@@ -25,6 +25,7 @@
 #include "../vulkan/msm_kgsl.h"
 #endif
 
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
