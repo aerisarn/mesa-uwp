@@ -58,5 +58,6 @@ foreach item : anv_internal_shaders
       '--glsl-version', '450',
       '--stage', stage,
       '-I' + meson.current_source_dir(),
+      '-D_IN_SHADER_=1',
     ])
 endforeach

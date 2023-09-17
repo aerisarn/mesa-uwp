@@ -29,14 +29,14 @@
 
 void write_draw(uint item_idx, uint cmd_idx, uint draw_id)
 {
-   bool is_indexed = (flags & ANV_GENERATED_FLAG_INDEXED) != 0;
-   bool is_predicated = (flags & ANV_GENERATED_FLAG_PREDICATED) != 0;
-   uint indirect_data_offset = item_idx * indirect_data_stride / 4;
+   bool is_indexed = (params.flags & ANV_GENERATED_FLAG_INDEXED) != 0;
+   bool is_predicated = (params.flags & ANV_GENERATED_FLAG_PREDICATED) != 0;
+   uint indirect_data_offset = item_idx * params.indirect_data_stride / 4;
 
    if (is_indexed) {
       /* Loading a VkDrawIndexedIndirectCommand */
       uint index_count    = indirect_data[indirect_data_offset + 0];
-      uint instance_count = indirect_data[indirect_data_offset + 1] * instance_multiplier;
+      uint instance_count = indirect_data[indirect_data_offset + 1] * params.instance_multiplier;
       uint first_index    = indirect_data[indirect_data_offset + 2];
       uint vertex_offset  = indirect_data[indirect_data_offset + 3];
       uint first_instance = indirect_data[indirect_data_offset + 4];
@@ -55,7 +55,7 @@ void write_draw(uint item_idx, uint cmd_idx, uint draw_id)
    } else {
       /* Loading a VkDrawIndirectCommand structure */
       uint vertex_count   = indirect_data[indirect_data_offset + 0];
-      uint instance_count = indirect_data[indirect_data_offset + 1] * instance_multiplier;
+      uint instance_count = indirect_data[indirect_data_offset + 1] * params.instance_multiplier;
       uint first_vertex   = indirect_data[indirect_data_offset + 2];
       uint first_instance = indirect_data[indirect_data_offset + 3];
 
@@ -76,10 +76,10 @@ void write_draw(uint item_idx, uint cmd_idx, uint draw_id)
 
 void main()
 {
-   uint _3dprim_dw_size = (flags >> 16) & 0xff;
+   uint _3dprim_dw_size = (params.flags >> 16) & 0xff;
    uint item_idx = uint(gl_FragCoord.y) * 8192 + uint(gl_FragCoord.x);
    uint cmd_idx = item_idx * _3dprim_dw_size;
-   uint draw_id = draw_base + item_idx;
+   uint draw_id = params.draw_base + item_idx;
    uint draw_count = _draw_count;
 
    if (draw_id < draw_count)

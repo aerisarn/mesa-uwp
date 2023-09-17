@@ -21,12 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#define BITFIELD_BIT(i) (1u << i)
-
-#define ANV_GENERATED_FLAG_INDEXED    BITFIELD_BIT(0)
-#define ANV_GENERATED_FLAG_PREDICATED BITFIELD_BIT(1)
-#define ANV_GENERATED_FLAG_DRAWID     BITFIELD_BIT(2)
-#define ANV_GENERATED_FLAG_BASE       BITFIELD_BIT(3)
+#include "interface.h"
 
 /* These 3 bindings will be accessed through A64 messages */
 layout(set = 0, binding = 0, std430) buffer Storage0 {
@@ -56,14 +51,7 @@ layout(set = 0, binding = 3) buffer Storage3 {
 
 /* This data will be provided through push constants. */
 layout(set = 0, binding = 4) uniform block {
-   uint64_t draw_id_addr;
-   uint64_t indirect_data_addr;
-   uint indirect_data_stride;
-   uint flags;
-   uint draw_base;
-   uint max_draw_count;
-   uint instance_multiplier;
-   uint64_t end_addr;
+   anv_generated_indirect_draw_params params;
 };
 
 void write_VERTEX_BUFFER_STATE(uint write_offset,
@@ -146,15 +134,15 @@ void write_MI_BATCH_BUFFER_START(uint write_offset,
 
 void end_generated_draws(uint cmd_idx, uint draw_id, uint draw_count)
 {
-   uint _3dprim_dw_size = (flags >> 16) & 0xff;
+   uint _3dprim_dw_size = (params.flags >> 16) & 0xff;
    /* We can have an indirect draw count = 0. */
-   uint last_draw_id = draw_count == 0 ? 0 : (min(draw_count, max_draw_count) - 1);
+   uint last_draw_id = draw_count == 0 ? 0 : (min(draw_count, params.max_draw_count) - 1);
    uint jump_offset = draw_count == 0 ? 0 : _3dprim_dw_size;
 
-   if (draw_id == last_draw_id && draw_count < max_draw_count) {
+   if (draw_id == last_draw_id && draw_count < params.max_draw_count) {
       /* Only write a jump forward in the batch if we have fewer elements than
        * the max draw count.
        */
-      write_MI_BATCH_BUFFER_START(cmd_idx + jump_offset, end_addr);
+      write_MI_BATCH_BUFFER_START(cmd_idx + jump_offset, params.end_addr);
    }
 }
