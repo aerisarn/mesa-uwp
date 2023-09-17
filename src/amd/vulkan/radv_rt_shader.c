@@ -1401,7 +1401,7 @@ load_stack_entry(nir_builder *b, nir_def *index, const struct radv_ray_traversal
 static void
 radv_build_traversal(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline,
                      const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, bool monolithic, nir_builder *b,
-                     struct rt_variables *vars)
+                     struct rt_variables *vars, bool ignore_cull_mask)
 {
    nir_variable *barycentrics =
       nir_variable_create(b->shader, nir_var_ray_hit_attrib, glsl_vector_type(GLSL_TYPE_FLOAT, 2), "barycentrics");
@@ -1474,6 +1474,7 @@ radv_build_traversal(struct radv_device *device, struct radv_ray_tracing_pipelin
       .stack_stride = device->physical_device->rt_wave_size * sizeof(uint32_t),
       .stack_entries = MAX_STACK_ENTRY_COUNT,
       .stack_base = 0,
+      .ignore_cull_mask = ignore_cull_mask,
       .stack_store_cb = store_stack_entry,
       .stack_load_cb = load_stack_entry,
       .aabb_cb = (pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_AABBS_BIT_KHR)
@@ -1565,7 +1566,7 @@ radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_
    nir_store_var(&b, vars.arg, nir_load_rt_arg_scratch_offset_amd(&b), 0x1);
    nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, 0), 0x1);
 
-   radv_build_traversal(device, pipeline, pCreateInfo, false, &b, &vars);
+   radv_build_traversal(device, pipeline, pCreateInfo, false, &b, &vars, false);
 
    /* Deal with all the inline functions. */
    nir_index_ssa_defs(nir_shader_get_entrypoint(b.shader));
@@ -1606,9 +1607,12 @@ lower_rt_instruction_monolithic(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_trace_ray: {
       nir_store_var(b, vars->arg, nir_iadd_imm(b, intr->src[10].ssa, -b->shader->scratch_size), 1);
 
+      nir_src cull_mask = intr->src[2];
+      bool ignore_cull_mask = nir_src_is_const(cull_mask) && (nir_src_as_uint(cull_mask) & 0xFF) == 0xFF;
+
       /* Per the SPIR-V extension spec we have to ignore some bits for some arguments. */
       nir_store_var(b, vars->accel_struct, intr->src[0].ssa, 0x1);
-      nir_store_var(b, vars->cull_mask_and_flags, nir_ior(b, nir_ishl_imm(b, intr->src[2].ssa, 24), intr->src[1].ssa),
+      nir_store_var(b, vars->cull_mask_and_flags, nir_ior(b, nir_ishl_imm(b, cull_mask.ssa, 24), intr->src[1].ssa),
                     0x1);
       nir_store_var(b, vars->sbt_offset, nir_iand_imm(b, intr->src[3].ssa, 0xf), 0x1);
       nir_store_var(b, vars->sbt_stride, nir_iand_imm(b, intr->src[4].ssa, 0xf), 0x1);
@@ -1621,7 +1625,7 @@ lower_rt_instruction_monolithic(nir_builder *b, nir_instr *instr, void *data)
       nir_def *stack_ptr = nir_load_var(b, vars->stack_ptr);
       nir_store_var(b, vars->stack_ptr, nir_iadd_imm(b, stack_ptr, b->shader->scratch_size), 0x1);
 
-      radv_build_traversal(state->device, state->pipeline, state->pCreateInfo, true, b, vars);
+      radv_build_traversal(state->device, state->pipeline, state->pCreateInfo, true, b, vars, ignore_cull_mask);
       b->shader->info.shared_size = MAX2(b->shader->info.shared_size, state->device->physical_device->rt_wave_size *
                                                                          MAX_STACK_ENTRY_COUNT * sizeof(uint32_t));
 
