@@ -27,115 +27,120 @@
 
 #include "common_generated_draws.glsl"
 
-void main()
+void write_draw(uint item_idx, uint cmd_idx, uint draw_id)
 {
    bool is_indexed = (flags & ANV_GENERATED_FLAG_INDEXED) != 0;
    bool is_predicated = (flags & ANV_GENERATED_FLAG_PREDICATED) != 0;
    bool uses_base = (flags & ANV_GENERATED_FLAG_BASE) != 0;
    bool uses_drawid = (flags & ANV_GENERATED_FLAG_DRAWID) != 0;
    uint mocs = (flags >> 8) & 0xff;
+   uint indirect_data_offset = item_idx * indirect_data_stride / 4;
+
+   if (is_indexed) {
+      /* Loading a VkDrawIndexedIndirectCommand */
+      uint index_count    = indirect_data[indirect_data_offset + 0];
+      uint instance_count = indirect_data[indirect_data_offset + 1] * instance_multiplier;
+      uint first_index    = indirect_data[indirect_data_offset + 2];
+      uint vertex_offset  = indirect_data[indirect_data_offset + 3];
+      uint first_instance = indirect_data[indirect_data_offset + 4];
+
+      if (uses_base || uses_drawid) {
+         uint state_vertex_len =
+            1 + (uses_base ? 4 : 0) + (uses_drawid ? 4 : 0);
+         commands[cmd_idx] =
+            (3  << 29 |                    /* Command Type */
+             3  << 27 |                    /* Command SubType */
+             0  << 24 |                    /* 3D Command Opcode */
+             8  << 16 |                    /* 3D Command Sub Opcode */
+             (state_vertex_len - 2) << 0); /* DWord Length */
+         cmd_idx += 1;
+         if (uses_base) {
+            uint64_t indirect_draw_data_addr =
+               indirect_data_addr + item_idx * indirect_data_stride + 12;
+            write_VERTEX_BUFFER_STATE(cmd_idx,
+                                      mocs,
+                                      31,
+                                      indirect_draw_data_addr,
+                                      8);
+            cmd_idx += 4;
+         }
+         if (uses_drawid) {
+            uint64_t draw_idx_addr = draw_id_addr + 4 * item_idx;
+            draw_ids[item_idx] = draw_id;
+            write_VERTEX_BUFFER_STATE(cmd_idx,
+                                      mocs,
+                                      32,
+                                      draw_idx_addr,
+                                      4);
+            cmd_idx += 4;
+         }
+      }
+      write_3DPRIMITIVE(cmd_idx,
+                        is_predicated,
+                        is_indexed,
+                        index_count,
+                        first_index,
+                        instance_count,
+                        first_instance,
+                        vertex_offset);
+   } else {
+      /* Loading a VkDrawIndirectCommand structure */
+      uint vertex_count   = indirect_data[indirect_data_offset + 0];
+      uint instance_count = indirect_data[indirect_data_offset + 1] * instance_multiplier;
+      uint first_vertex   = indirect_data[indirect_data_offset + 2];
+      uint first_instance = indirect_data[indirect_data_offset + 3];
+
+      if (uses_base || uses_drawid) {
+         uint state_vertex_len =
+            1 + (uses_base ? 4 : 0) + (uses_drawid ? 4 : 0);
+         commands[cmd_idx] =
+               (3  << 29 |                    /* Command Type */
+                3  << 27 |                    /* Command SubType */
+                0  << 24 |                    /* 3D Command Opcode */
+                8  << 16 |                    /* 3D Command Sub Opcode */
+                (state_vertex_len - 2) << 0); /* DWord Length */
+         cmd_idx += 1;
+         if (uses_base) {
+            uint64_t indirect_draw_data_addr =
+               indirect_data_addr + item_idx * indirect_data_stride + 8;
+            write_VERTEX_BUFFER_STATE(cmd_idx,
+                                      mocs,
+                                      31,
+                                      indirect_draw_data_addr,
+                                      8);
+            cmd_idx += 4;
+         }
+         if (uses_drawid) {
+            uint64_t draw_idx_addr = draw_id_addr + 4 * item_idx;
+            draw_ids[item_idx] = draw_id;
+            write_VERTEX_BUFFER_STATE(cmd_idx,
+                                      mocs,
+                                      32,
+                                      draw_idx_addr,
+                                      4);
+            cmd_idx += 4;
+         }
+      }
+      write_3DPRIMITIVE(cmd_idx,
+                        is_predicated,
+                        is_indexed,
+                        vertex_count,
+                        first_vertex,
+                        instance_count,
+                        first_instance,
+                        0 /* base_vertex_location */);
+   }
+}
+
+void main()
+{
    uint _3dprim_dw_size = (flags >> 16) & 0xff;
    uint item_idx = uint(gl_FragCoord.y) * 8192 + uint(gl_FragCoord.x);
-   uint indirect_data_offset = item_idx * indirect_data_stride / 4;
    uint cmd_idx = item_idx * _3dprim_dw_size;
    uint draw_id = draw_base + item_idx;
 
-   if (draw_id < draw_count) {
-      if (is_indexed) {
-         /* Loading a VkDrawIndexedIndirectCommand */
-         uint index_count    = indirect_data[indirect_data_offset + 0];
-         uint instance_count = indirect_data[indirect_data_offset + 1] * instance_multiplier;
-         uint first_index    = indirect_data[indirect_data_offset + 2];
-         uint vertex_offset  = indirect_data[indirect_data_offset + 3];
-         uint first_instance = indirect_data[indirect_data_offset + 4];
-
-         if (uses_base || uses_drawid) {
-            uint state_vertex_len =
-               1 + (uses_base ? 4 : 0) + (uses_drawid ? 4 : 0);
-            commands[cmd_idx] =
-               (3  << 29 |                    /* Command Type */
-                3  << 27 |                    /* Command SubType */
-                0  << 24 |                    /* 3D Command Opcode */
-                8  << 16 |                    /* 3D Command Sub Opcode */
-                (state_vertex_len - 2) << 0); /* DWord Length */
-            cmd_idx += 1;
-            if (uses_base) {
-               uint64_t indirect_draw_data_addr =
-                  indirect_data_addr + item_idx * indirect_data_stride + 12;
-               write_VERTEX_BUFFER_STATE(cmd_idx,
-                                         mocs,
-                                         31,
-                                         indirect_draw_data_addr,
-                                         8);
-               cmd_idx += 4;
-            }
-            if (uses_drawid) {
-               uint64_t draw_idx_addr = draw_id_addr + 4 * item_idx;
-               draw_ids[item_idx] = draw_id;
-               write_VERTEX_BUFFER_STATE(cmd_idx,
-                                         mocs,
-                                         32,
-                                         draw_idx_addr,
-                                         4);
-               cmd_idx += 4;
-            }
-         }
-         write_3DPRIMITIVE(cmd_idx,
-                           is_predicated,
-                           is_indexed,
-                           index_count,
-                           first_index,
-                           instance_count,
-                           first_instance,
-                           vertex_offset);
-      } else {
-         /* Loading a VkDrawIndirectCommand structure */
-         uint vertex_count   = indirect_data[indirect_data_offset + 0];
-         uint instance_count = indirect_data[indirect_data_offset + 1] * instance_multiplier;
-         uint first_vertex   = indirect_data[indirect_data_offset + 2];
-         uint first_instance = indirect_data[indirect_data_offset + 3];
-
-         if (uses_base || uses_drawid) {
-            uint state_vertex_len =
-               1 + (uses_base ? 4 : 0) + (uses_drawid ? 4 : 0);
-            commands[cmd_idx] =
-               (3  << 29 |                    /* Command Type */
-                3  << 27 |                    /* Command SubType */
-                0  << 24 |                    /* 3D Command Opcode */
-                8  << 16 |                    /* 3D Command Sub Opcode */
-                (state_vertex_len - 2) << 0); /* DWord Length */
-            cmd_idx += 1;
-            if (uses_base) {
-               uint64_t indirect_draw_data_addr =
-                  indirect_data_addr + item_idx * indirect_data_stride + 8;
-               write_VERTEX_BUFFER_STATE(cmd_idx,
-                                         mocs,
-                                         31,
-                                         indirect_draw_data_addr,
-                                         8);
-               cmd_idx += 4;
-            }
-            if (uses_drawid) {
-               uint64_t draw_idx_addr = draw_id_addr + 4 * item_idx;
-               draw_ids[item_idx] = draw_id;
-               write_VERTEX_BUFFER_STATE(cmd_idx,
-                                         mocs,
-                                         32,
-                                         draw_idx_addr,
-                                         4);
-               cmd_idx += 4;
-            }
-         }
-         write_3DPRIMITIVE(cmd_idx,
-                           is_predicated,
-                           is_indexed,
-                           vertex_count,
-                           first_vertex,
-                           instance_count,
-                           first_instance,
-                           0 /* base_vertex_location */);
-      }
-   }
+   if (draw_id < draw_count)
+      write_draw(item_idx, cmd_idx, draw_id);
 
    end_generated_draws(cmd_idx, draw_id, draw_count);
 }
