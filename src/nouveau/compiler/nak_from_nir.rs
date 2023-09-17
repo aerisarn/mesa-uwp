@@ -1236,9 +1236,16 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[0].as_def().parent_instr().as_intrinsic().unwrap();
                 let addr = u16::try_from(intrin.base()).unwrap()
                     + u16::try_from(srcs[1].as_uint().unwrap()).unwrap();
-                let freq = InterpFreq::Pass;
-                let loc = match bary.intrinsic {
-                    nir_intrinsic_load_barycentric_pixel => InterpLoc::Default,
+                let (freq, loc) = match bary.intrinsic {
+                    nir_intrinsic_load_barycentric_centroid => {
+                        (InterpFreq::Pass, InterpLoc::Centroid)
+                    }
+                    nir_intrinsic_load_barycentric_pixel => {
+                        (InterpFreq::Pass, InterpLoc::Default)
+                    }
+                    nir_intrinsic_load_barycentric_sample => {
+                        (InterpFreq::Pass, InterpLoc::Centroid)
+                    }
                     _ => panic!("Unsupported interp mode"),
                 };
 
