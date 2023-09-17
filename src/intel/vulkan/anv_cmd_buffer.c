@@ -135,7 +135,7 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
       &cmd_buffer->state.gfx.vertex_input;
 
    cmd_buffer->batch.status = VK_SUCCESS;
-   cmd_buffer->generation_batch.status = VK_SUCCESS;
+   cmd_buffer->generation.batch.status = VK_SUCCESS;
 
    cmd_buffer->device = device;
 
@@ -165,13 +165,13 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
    cmd_buffer->companion_rcs_cmd_buffer = NULL;
    cmd_buffer->is_companion_rcs_cmd_buffer = false;
 
-   cmd_buffer->generation_jump_addr = ANV_NULL_ADDRESS;
-   cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
+   cmd_buffer->generation.jump_addr = ANV_NULL_ADDRESS;
+   cmd_buffer->generation.return_addr = ANV_NULL_ADDRESS;
 
    cmd_buffer->last_compute_walker = NULL;
 
-   memset(&cmd_buffer->generation_shader_state, 0,
-          sizeof(cmd_buffer->generation_shader_state));
+   memset(&cmd_buffer->generation.shader_state, 0,
+          sizeof(cmd_buffer->generation.shader_state));
 
    anv_cmd_state_init(cmd_buffer);
 
@@ -252,11 +252,11 @@ reset_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
    anv_cmd_buffer_reset_batch_bo_chain(cmd_buffer);
    anv_cmd_state_reset(cmd_buffer);
 
-   memset(&cmd_buffer->generation_shader_state, 0,
-          sizeof(cmd_buffer->generation_shader_state));
+   memset(&cmd_buffer->generation.shader_state, 0,
+          sizeof(cmd_buffer->generation.shader_state));
 
-   cmd_buffer->generation_jump_addr = ANV_NULL_ADDRESS;
-   cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
+   cmd_buffer->generation.jump_addr = ANV_NULL_ADDRESS;
+   cmd_buffer->generation.return_addr = ANV_NULL_ADDRESS;
 
    anv_state_stream_finish(&cmd_buffer->surface_state_stream);
    anv_state_stream_init(&cmd_buffer->surface_state_stream,

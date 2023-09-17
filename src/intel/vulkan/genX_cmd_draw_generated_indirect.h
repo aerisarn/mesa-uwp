@@ -55,7 +55,7 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
    struct anv_device *device = cmd_buffer->device;
 
    struct anv_state push_data_state =
-      genX(simple_shader_alloc_push)(&cmd_buffer->generation_shader_state,
+      genX(simple_shader_alloc_push)(&cmd_buffer->generation.shader_state,
                                      sizeof(struct anv_generated_indirect_params));
 
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -65,7 +65,7 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
    if (anv_address_is_null(count_addr)) {
       draw_count_addr = anv_address_add(
          genX(simple_shader_push_state_address)(
-            &cmd_buffer->generation_shader_state, push_data_state),
+            &cmd_buffer->generation.shader_state, push_data_state),
          offsetof(struct anv_generated_indirect_params, draw_count));
    } else {
       draw_count_addr = count_addr;
@@ -98,7 +98,7 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
       .draw_count_addr           = anv_address_physical(draw_count_addr),
    };
 
-   genX(emit_simple_shader_dispatch)(&cmd_buffer->generation_shader_state,
+   genX(emit_simple_shader_dispatch)(&cmd_buffer->generation.shader_state,
                                      item_count, push_data_state);
 
    return push_data;
@@ -114,28 +114,28 @@ genX(cmd_buffer_emit_indirect_generated_draws_init)(struct anv_cmd_buffer *cmd_b
    }
 #endif
 
-   anv_batch_emit_ensure_space(&cmd_buffer->generation_batch, 4);
+   anv_batch_emit_ensure_space(&cmd_buffer->generation.batch, 4);
 
    trace_intel_begin_generate_draws(&cmd_buffer->trace);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_BATCH_BUFFER_START), bbs) {
       bbs.AddressSpaceIndicator = ASI_PPGTT;
       bbs.BatchBufferStartAddress =
-         anv_batch_current_address(&cmd_buffer->generation_batch);
+         anv_batch_current_address(&cmd_buffer->generation.batch);
    }
 
-   cmd_buffer->generation_return_addr = anv_batch_current_address(&cmd_buffer->batch);
+   cmd_buffer->generation.return_addr = anv_batch_current_address(&cmd_buffer->batch);
 
    trace_intel_end_generate_draws(&cmd_buffer->trace);
 
    struct anv_device *device = cmd_buffer->device;
-   struct anv_simple_shader *state = &cmd_buffer->generation_shader_state;
+   struct anv_simple_shader *state = &cmd_buffer->generation.shader_state;
    *state = (struct anv_simple_shader) {
       .device               = device,
       .cmd_buffer           = cmd_buffer,
       .dynamic_state_stream = &cmd_buffer->dynamic_state_stream,
       .general_state_stream = &cmd_buffer->general_state_stream,
-      .batch                = &cmd_buffer->generation_batch,
+      .batch                = &cmd_buffer->generation.batch,
       .kernel               = device->internal_kernels[
          ANV_INTERNAL_KERNEL_GENERATED_DRAWS],
       .l3_config            = device->internal_kernels_l3_config,
@@ -219,7 +219,7 @@ genX(cmd_buffer_emit_indirect_generated_draws)(struct anv_cmd_buffer *cmd_buffer
                                                bool indexed)
 {
    const bool start_generation_batch =
-      anv_address_is_null(cmd_buffer->generation_return_addr);
+      anv_address_is_null(cmd_buffer->generation.return_addr);
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
@@ -344,10 +344,10 @@ static void
 genX(cmd_buffer_flush_generated_draws)(struct anv_cmd_buffer *cmd_buffer)
 {
    /* No return address setup means we don't have to do anything */
-   if (anv_address_is_null(cmd_buffer->generation_return_addr))
+   if (anv_address_is_null(cmd_buffer->generation.return_addr))
       return;
 
-   struct anv_batch *batch = &cmd_buffer->generation_batch;
+   struct anv_batch *batch = &cmd_buffer->generation.batch;
 
    /* Wait for all the generation vertex shader to generate the commands. */
    genX(emit_apply_pipe_flushes)(batch,
@@ -374,10 +374,10 @@ genX(cmd_buffer_flush_generated_draws)(struct anv_cmd_buffer *cmd_buffer)
    /* Return to the main batch. */
    anv_batch_emit(batch, GENX(MI_BATCH_BUFFER_START), bbs) {
       bbs.AddressSpaceIndicator = ASI_PPGTT;
-      bbs.BatchBufferStartAddress = cmd_buffer->generation_return_addr;
+      bbs.BatchBufferStartAddress = cmd_buffer->generation.return_addr;
    }
 
-   cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
+   cmd_buffer->generation.return_addr = ANV_NULL_ADDRESS;
 }
 
 #endif /* GENX_CMD_GENERATED_INDIRECT_DRAW_H */
