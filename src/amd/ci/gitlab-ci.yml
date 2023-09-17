@@ -328,3 +328,12 @@ vkd3d-vangogh-valve:
     - .radv-valve-manual-rules
   variables:
     VKD3D_PROTON_RESULTS: radv-vangogh-vkd3d
+
+vkd3d-navi31-valve:
+  extends:
+    - .vkd3d-test-valve
+    - .navi31-test-valve
+    - .radv-valve-manual-rules
+  variables:
+    VKD3D_PROTON_RESULTS: radv-navi31-vkd3d
+    VKD3D_CONFIG: dxr11
