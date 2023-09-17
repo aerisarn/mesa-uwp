@@ -296,6 +296,15 @@
     - amdgpu:codename:VANGOGH
     - $VALVE_INFRA_VANGOGH_JOB_PRIORITY
 
+.navi31-test-valve:
+  variables:
+    RUNNER_FARM_LOCATION: keywords
+    FDO_CI_CONCURRENT: 32
+    B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
+    B2C_KERNEL_URL: 'https://gitlab.freedesktop.org/mupuf/boot2container/-/releases/v0.9.10/downloads/linux-x86_64'  # Linux 6.3
+  tags:
+    - amdgpu:codename:NAVI31
+
 ############### VKCTS tests ###############
 
 # A note on the variables to control fractional VKCTS runs

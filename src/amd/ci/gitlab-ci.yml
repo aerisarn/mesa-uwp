@@ -239,6 +239,14 @@ glcts-vangogh-valve:
     GPU_VERSION: radeonsi-vangogh
     DEQP_SUITE: radeonsi-vangogh
 
+vkcts-navi31-valve:
+  extends:
+    - .vkcts-test-valve
+    - .navi31-test-valve
+    - .radv-valve-manual-rules
+  variables:
+    GPU_VERSION: radv-gfx1100-aco
+
 ############### Fossilize
 radv-fossils:
   extends:
