@@ -1094,7 +1094,8 @@ radv_get_modifier_flags(struct radv_physical_device *dev, VkFormat format, uint6
       /* Only disable support for STORAGE_IMAGE on modifiers that
        * do not support DCC image stores.
        */
-      if (!ac_modifier_supports_dcc_image_stores(modifier) || radv_is_atomic_format_supported(format))
+      if (!ac_modifier_supports_dcc_image_stores(dev->rad_info.gfx_level, modifier) ||
+          radv_is_atomic_format_supported(format))
          features &= ~VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
 
       if (dev->instance->debug_flags & (RADV_DEBUG_NO_DCC | RADV_DEBUG_NO_DISPLAY_DCC))

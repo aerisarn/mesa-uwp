@@ -112,18 +112,23 @@ bool ac_modifier_has_dcc_retile(uint64_t modifier)
    return IS_AMD_FMT_MOD(modifier) && AMD_FMT_MOD_GET(DCC_RETILE, modifier);
 }
 
-bool ac_modifier_supports_dcc_image_stores(uint64_t modifier)
+bool ac_modifier_supports_dcc_image_stores(enum amd_gfx_level gfx_level, uint64_t modifier)
 {
    if (!ac_modifier_has_dcc(modifier))
       return false;
 
    return (!AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier) &&
-            AMD_FMT_MOD_GET(DCC_INDEPENDENT_128B, modifier) &&
-            AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier) == AMD_FMT_MOD_DCC_BLOCK_128B) ||
-           (AMD_FMT_MOD_GET(TILE_VERSION, modifier) >= AMD_FMT_MOD_TILE_VER_GFX10_RBPLUS && /* gfx10.3 */
-            AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier) &&
-            AMD_FMT_MOD_GET(DCC_INDEPENDENT_128B, modifier) &&
-            AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier) == AMD_FMT_MOD_DCC_BLOCK_64B);
+           AMD_FMT_MOD_GET(DCC_INDEPENDENT_128B, modifier) &&
+           AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier) == AMD_FMT_MOD_DCC_BLOCK_128B) ||
+          (AMD_FMT_MOD_GET(TILE_VERSION, modifier) >= AMD_FMT_MOD_TILE_VER_GFX10_RBPLUS && /* gfx10.3 */
+           AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier) &&
+           AMD_FMT_MOD_GET(DCC_INDEPENDENT_128B, modifier) &&
+           AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier) == AMD_FMT_MOD_DCC_BLOCK_64B) ||
+          (gfx_level >= GFX11_5 &&
+           AMD_FMT_MOD_GET(TILE_VERSION, modifier) >= AMD_FMT_MOD_TILE_VER_GFX11 &&
+           !AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier) &&
+           AMD_FMT_MOD_GET(DCC_INDEPENDENT_128B, modifier) &&
+           AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier) == AMD_FMT_MOD_DCC_BLOCK_256B);
 
 }
 
@@ -147,6 +152,12 @@ bool ac_surface_supports_dcc_image_stores(enum amd_gfx_level gfx_level,
     * - MAX_COMPRESSED_BLOCK_SIZE = 64B
     * - MAX_UNCOMPRESSED_BLOCK_SIZE = 256B (always used)
     *
+    * gfx11.5 also supports the following:
+    * - INDEPENDENT_64B_BLOCKS = 0
+    * - INDEPENDENT_128B_BLOCKS = 1
+    * - MAX_COMPRESSED_BLOCK_SIZE = 256B
+    * - MAX_UNCOMPRESSED_BLOCK_SIZE = 256B (always used)
+    *
     * The compressor only looks at MAX_COMPRESSED_BLOCK_SIZE to determine
     * the INDEPENDENT_xx_BLOCKS settings. 128B implies INDEP_128B, while 64B
     * implies INDEP_64B && INDEP_128B.
@@ -155,12 +166,16 @@ bool ac_surface_supports_dcc_image_stores(enum amd_gfx_level gfx_level,
     * SDMA uses the same DCC codec.
     */
    return (!surf->u.gfx9.color.dcc.independent_64B_blocks &&
-            surf->u.gfx9.color.dcc.independent_128B_blocks &&
-            surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_128B) ||
-           (gfx_level >= GFX10_3 && /* gfx10.3 */
-            surf->u.gfx9.color.dcc.independent_64B_blocks &&
-            surf->u.gfx9.color.dcc.independent_128B_blocks &&
-            surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B);
+           surf->u.gfx9.color.dcc.independent_128B_blocks &&
+           surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_128B) ||
+          (gfx_level >= GFX10_3 && /* gfx10.3 - old 64B compression */
+           surf->u.gfx9.color.dcc.independent_64B_blocks &&
+           surf->u.gfx9.color.dcc.independent_128B_blocks &&
+           surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B) ||
+          (gfx_level >= GFX11_5 && /* gfx11.5 - new 256B compression */
+           !surf->u.gfx9.color.dcc.independent_64B_blocks &&
+           surf->u.gfx9.color.dcc.independent_128B_blocks &&
+           surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_256B);
 }
 
 static
@@ -401,7 +416,8 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
       ADD_MOD(DRM_FORMAT_MOD_LINEAR)
       break;
    }
-   case GFX11: {
+   case GFX11:
+   case GFX11_5: {
       /* GFX11 has new microblock organization. No S modes for 2D. */
       unsigned pipe_xor_bits = G_0098F8_NUM_PIPES(info->gb_addr_config);
       unsigned pkrs = G_0098F8_NUM_PKRS(info->gb_addr_config);
@@ -428,6 +444,12 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
                                  AMD_FMT_MOD_SET(PACKERS, pkrs);
 
          /* DCC_CONSTANT_ENCODE is not set because it can't vary with gfx11 (it's implied to be 1). */
+         uint64_t modifier_dcc_best_gfx11_5 = modifier_r_x |
+                                              AMD_FMT_MOD_SET(DCC, 1) |
+                                              AMD_FMT_MOD_SET(DCC_INDEPENDENT_64B, 0) |
+                                              AMD_FMT_MOD_SET(DCC_INDEPENDENT_128B, 1) |
+                                              AMD_FMT_MOD_SET(DCC_MAX_COMPRESSED_BLOCK, AMD_FMT_MOD_DCC_BLOCK_256B);
+
          uint64_t modifier_dcc_best = modifier_r_x |
                                       AMD_FMT_MOD_SET(DCC, 1) |
                                       AMD_FMT_MOD_SET(DCC_INDEPENDENT_64B, 0) |
@@ -452,6 +474,9 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
           */
 
          /* Add the best non-displayable modifier first. */
+         if (info->gfx_level == GFX11_5)
+            ADD_MOD(modifier_dcc_best_gfx11_5 | AMD_FMT_MOD_SET(DCC_PIPE_ALIGN, 1));
+
          ADD_MOD(modifier_dcc_best | AMD_FMT_MOD_SET(DCC_PIPE_ALIGN, 1));
 
          /* Displayable modifiers are next. */
@@ -1604,7 +1629,9 @@ ASSERTED static bool is_dcc_supported_by_L2(const struct radeon_info *info,
    bool valid_64b = surf->u.gfx9.color.dcc.independent_64B_blocks &&
                     surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B;
    bool valid_128b = surf->u.gfx9.color.dcc.independent_128B_blocks &&
-                     (surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_128B);
+                     (surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_128B ||
+                      (info->gfx_level >= GFX11_5 &&
+                       surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_256B));
 
    if (info->gfx_level <= GFX9) {
       /* Only independent 64B blocks are supported. */
@@ -1695,6 +1722,9 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
       return (!gfx10_DCN_requires_independent_64B_blocks(info, config) ||
               (surf->u.gfx9.color.dcc.independent_64B_blocks &&
                surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B));
+   case GFX11_5:
+      // TODO: clarify DCN support for 256B compressed block sizes and other modes with the DAL team
+      return true;
    default:
       unreachable("unhandled chip");
       return false;
@@ -2280,14 +2310,18 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
       /* Optimal values for the L2 cache. */
       /* Don't change the DCC settings for imported buffers - they might differ. */
       if (!(surf->flags & RADEON_SURF_IMPORTED)) {
-         if (info->gfx_level == GFX9) {
-            surf->u.gfx9.color.dcc.independent_64B_blocks = 1;
-            surf->u.gfx9.color.dcc.independent_128B_blocks = 0;
-            surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
+         if (info->gfx_level >= GFX11_5) {
+            surf->u.gfx9.color.dcc.independent_64B_blocks = 0;
+            surf->u.gfx9.color.dcc.independent_128B_blocks = 1;
+            surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
          } else if (info->gfx_level >= GFX10) {
             surf->u.gfx9.color.dcc.independent_64B_blocks = 0;
             surf->u.gfx9.color.dcc.independent_128B_blocks = 1;
             surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
+         } else if (info->gfx_level == GFX9) {
+            surf->u.gfx9.color.dcc.independent_64B_blocks = 1;
+            surf->u.gfx9.color.dcc.independent_128B_blocks = 0;
+            surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
          }
       }
 
@@ -2308,6 +2342,8 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
          /* Don't change the DCC settings for imported buffers - they might differ. */
          if (!(surf->flags & RADEON_SURF_IMPORTED) &&
              (info->use_display_dcc_unaligned || info->use_display_dcc_with_retile_blit)) {
+            // TODO: clarify DCN support with the DAL team for gfx11.5
+
             /* Only Navi12/14 support independent 64B blocks in L2,
              * but without DCC image stores.
              */
