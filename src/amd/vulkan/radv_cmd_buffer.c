@@ -5914,12 +5914,18 @@ radv_CmdBindIndexBuffer2KHR(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDe
    RADV_FROM_HANDLE(radv_buffer, index_buffer, buffer);
 
    cmd_buffer->state.index_type = vk_to_index_type(indexType);
-   cmd_buffer->state.index_va = radv_buffer_get_va(index_buffer->bo);
-   cmd_buffer->state.index_va += index_buffer->offset + offset;
 
-   int index_size = radv_get_vgt_index_size(vk_to_index_type(indexType));
-   cmd_buffer->state.max_index_count = (vk_buffer_range(&index_buffer->vk, offset, size)) / index_size;
-   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, index_buffer->bo);
+   if (index_buffer) {
+      cmd_buffer->state.index_va = radv_buffer_get_va(index_buffer->bo);
+      cmd_buffer->state.index_va += index_buffer->offset + offset;
+
+      int index_size = radv_get_vgt_index_size(vk_to_index_type(indexType));
+      cmd_buffer->state.max_index_count = (vk_buffer_range(&index_buffer->vk, offset, size)) / index_size;
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, index_buffer->bo);
+   } else {
+      cmd_buffer->state.index_va = 0;
+      cmd_buffer->state.max_index_count = 0;
+   }
 
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
 
