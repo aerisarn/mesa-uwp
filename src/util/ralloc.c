@@ -956,75 +956,88 @@ gc_sweep_end(gc_ctx *ctx)
 
 #define MIN_LINEAR_BUFSIZE 2048
 #define SUBALLOC_ALIGNMENT 8
-#define LMAGIC 0x87b9c7d3
+#define LMAGIC_CONTEXT 0x87b9c7d3
+#define LMAGIC_NODE    0x87b910d3
 
-struct linear_header {
+struct linear_ctx {
 
    alignas(HEADER_ALIGN)
 
 #ifndef NDEBUG
    unsigned magic;   /* for debugging */
 #endif
-   unsigned offset;  /* points to the first unused byte in the buffer */
-   unsigned size;    /* size of the buffer */
-   struct linear_header *latest; /* the only buffer that has free space */
-
-   /* After this structure, the buffer begins. */
+   unsigned offset;  /* points to the first unused byte in the latest buffer */
+   unsigned size;    /* size of the latest buffer */
+   void *latest;     /* the only buffer that has free space */
 };
 
-struct linear_ctx {
-   struct linear_header header;
-};
-
-typedef struct linear_header linear_header;
-
-/* Allocate the linear buffer with its header. */
-static linear_header *
-create_linear_node(void *ralloc_ctx, unsigned min_size)
-{
-   linear_header *node;
-
-   if (likely(min_size < MIN_LINEAR_BUFSIZE))
-      min_size = MIN_LINEAR_BUFSIZE;
-
-   node = ralloc_size(ralloc_ctx, sizeof(linear_header) + min_size);
-   if (unlikely(!node))
-      return NULL;
+typedef struct linear_ctx linear_ctx;
 
 #ifndef NDEBUG
-   node->magic = LMAGIC;
+struct linear_node_canary {
+   alignas(HEADER_ALIGN)
+   unsigned magic;
+   unsigned offset;  /* points to the first unused byte in *this* buffer */
+};
+
+typedef struct linear_node_canary linear_node_canary;
+
+static linear_node_canary *
+get_node_canary(void *ptr)
+{
+   return (void *)((char *)ptr - sizeof(linear_node_canary));
+}
 #endif
-   node->offset = 0;
-   node->size = min_size;
-   node->latest = node;
-   return node;
+
+static unsigned
+get_node_canary_size()
+{
+#ifndef NDEBUG
+   return sizeof(linear_node_canary);
+#else
+   return 0;
+#endif
 }
 
 void *
 linear_alloc_child(linear_ctx *ctx, unsigned size)
 {
-   linear_header *first = &ctx->header;
-   linear_header *latest = first->latest;
-   linear_header *new_node;
-
-   assert(first->magic == LMAGIC);
+   assert(ctx->magic == LMAGIC_CONTEXT);
+   assert(get_node_canary(ctx->latest)->magic == LMAGIC_NODE);
+   assert(get_node_canary(ctx->latest)->offset == ctx->offset);
 
    size = ALIGN_POT(size, SUBALLOC_ALIGNMENT);
 
-   if (unlikely(latest->offset + size > latest->size)) {
+   if (unlikely(ctx->offset + size > ctx->size)) {
       /* allocate a new node */
-      void *ralloc_ctx = first;
-      new_node = create_linear_node(ralloc_ctx, size);
-      if (unlikely(!new_node))
+      if (likely(size < MIN_LINEAR_BUFSIZE))
+         size = MIN_LINEAR_BUFSIZE;
+      
+      const unsigned canary_size = get_node_canary_size();
+      const unsigned full_size = canary_size + size;
+
+      /* linear context is also a ralloc context */
+      char *ptr = ralloc_size(ctx, full_size);
+      if (unlikely(!ptr))
          return NULL;
 
-      first->latest = new_node;
-      latest->latest = new_node;
-      latest = new_node;
+      ctx->offset = 0;
+      ctx->size = size;
+      ctx->latest = ptr + canary_size;
+#ifndef NDEBUG
+      linear_node_canary *canary = get_node_canary(ctx->latest);
+      canary->magic = LMAGIC_NODE;
+      canary->offset = 0;
+#endif
    }
 
-   void *ptr = (char*)&latest[1] + latest->offset;
-   latest->offset += size;
+   void *ptr = (char *)ctx->latest + ctx->offset;
+   ctx->offset += size;
+
+#ifndef NDEBUG
+   linear_node_canary *canary = get_node_canary(ctx->latest);
+   canary->offset += size;
+#endif
 
    assert((uintptr_t)ptr % SUBALLOC_ALIGNMENT == 0);
    return ptr;
@@ -1033,16 +1046,31 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
 linear_ctx *
 linear_context(void *ralloc_ctx)
 {
-   linear_header *node;
+   linear_ctx *ctx;
 
    if (unlikely(!ralloc_ctx))
       return NULL;
 
-   node = create_linear_node(ralloc_ctx, 0);
-   if (unlikely(!node))
+   const unsigned size = MIN_LINEAR_BUFSIZE;
+   const unsigned canary_size = get_node_canary_size();
+   const unsigned full_size =
+      sizeof(linear_ctx) + canary_size + size;                 
+
+   ctx = ralloc_size(ralloc_ctx, full_size);
+   if (unlikely(!ctx))
       return NULL;
 
-   return (linear_ctx *)node;
+   ctx->offset = 0;
+   ctx->size = size;
+   ctx->latest = (char *)&ctx[1] + canary_size;
+#ifndef NDEBUG
+   ctx->magic = LMAGIC_CONTEXT;
+   linear_node_canary *canary = get_node_canary(ctx->latest);
+   canary->magic = LMAGIC_NODE;
+   canary->offset = 0;
+#endif
+
+   return ctx;
 }
 
 void *
@@ -1061,10 +1089,9 @@ linear_free_context(linear_ctx *ctx)
    if (unlikely(!ctx))
       return;
 
-   linear_header *first = &ctx->header;
-   assert(first->magic == LMAGIC);
+   assert(ctx->magic == LMAGIC_CONTEXT);
 
-   /* Other nodes are ralloc children of the first node. */
+   /* Linear context is also the ralloc parent of extra nodes. */
    ralloc_free(ctx);
 }
 
@@ -1073,20 +1100,18 @@ ralloc_steal_linear_context(void *new_ralloc_ctx, linear_ctx *ctx)
 {
    if (unlikely(!ctx))
       return;
+ 
+   assert(ctx->magic == LMAGIC_CONTEXT);
 
-   linear_header *first = &ctx->header;
-   assert(first->magic == LMAGIC);
-
-   /* Other nodes are ralloc children of the first node. */
+   /* Linear context is also the ralloc parent of extra nodes. */
    ralloc_steal(new_ralloc_ctx, ctx);
 }
 
 void *
 ralloc_parent_of_linear_context(linear_ctx *ctx)
 {
-   linear_header *node = &ctx->header;
-   assert(node->magic == LMAGIC);
-   return PTR_FROM_HEADER(get_header(node)->parent);
+   assert(ctx->magic == LMAGIC_CONTEXT);
+   return PTR_FROM_HEADER(get_header(ctx)->parent);
 }
 
 /* All code below is pretty much copied from ralloc and only the alloc
