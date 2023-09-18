@@ -991,10 +991,6 @@ struct linear_size_chunk {
 typedef struct linear_header linear_header;
 typedef struct linear_size_chunk linear_size_chunk;
 
-#define LINEAR_PARENT_TO_HEADER(parent) \
-   (linear_header*) \
-   ((char*)(parent) - sizeof(linear_size_chunk) - sizeof(linear_header))
-
 /* Allocate the linear buffer with its header. */
 static linear_header *
 create_linear_node(void *ralloc_ctx, unsigned min_size)
@@ -1022,7 +1018,7 @@ create_linear_node(void *ralloc_ctx, unsigned min_size)
 void *
 linear_alloc_child(void *parent, unsigned size)
 {
-   linear_header *first = LINEAR_PARENT_TO_HEADER(parent);
+   linear_header *first = parent;
    linear_header *latest = first->latest;
    linear_header *new_node;
    linear_size_chunk *ptr;
@@ -1054,22 +1050,18 @@ linear_alloc_child(void *parent, unsigned size)
 }
 
 void *
-linear_alloc_parent(void *ralloc_ctx, unsigned size)
+linear_alloc_parent(void *ralloc_ctx)
 {
    linear_header *node;
 
    if (unlikely(!ralloc_ctx))
       return NULL;
 
-   size = ALIGN_POT(size, SUBALLOC_ALIGNMENT);
-
-   node = create_linear_node(ralloc_ctx, size);
+   node = create_linear_node(ralloc_ctx, 0);
    if (unlikely(!node))
       return NULL;
 
-   return linear_alloc_child((char*)node +
-                             sizeof(linear_header) +
-                             sizeof(linear_size_chunk), size);
+   return node;
 }
 
 void *
@@ -1082,23 +1074,13 @@ linear_zalloc_child(void *parent, unsigned size)
    return ptr;
 }
 
-void *
-linear_zalloc_parent(void *parent, unsigned size)
-{
-   void *ptr = linear_alloc_parent(parent, size);
-
-   if (likely(ptr))
-      memset(ptr, 0, size);
-   return ptr;
-}
-
 void
 linear_free_parent(void *ptr)
 {
    if (unlikely(!ptr))
       return;
 
-   linear_header *first = LINEAR_PARENT_TO_HEADER(ptr);
+   linear_header *first = ptr;
    assert(first->magic == LMAGIC);
 
    /* Other nodes are ralloc children of the first node. */
@@ -1111,7 +1093,7 @@ ralloc_steal_linear_parent(void *new_ralloc_ctx, void *ptr)
    if (unlikely(!ptr))
       return;
 
-   linear_header *first = LINEAR_PARENT_TO_HEADER(ptr);
+   linear_header *first = ptr;
    assert(first->magic == LMAGIC);
 
    /* Other nodes are ralloc children of the first node. */
@@ -1121,7 +1103,7 @@ ralloc_steal_linear_parent(void *new_ralloc_ctx, void *ptr)
 void *
 ralloc_parent_of_linear_parent(void *ptr)
 {
-   linear_header *node = LINEAR_PARENT_TO_HEADER(ptr);
+   linear_header *node = ptr;
    assert(node->magic == LMAGIC);
    return PTR_FROM_HEADER(get_header(node)->parent);
 }

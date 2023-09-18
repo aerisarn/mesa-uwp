@@ -310,7 +310,7 @@ dead_code_local_basic_block(ir_instruction *first,
    bool progress = false;
 
    void *ctx = ralloc_context(NULL);
-   void *lin_ctx = linear_alloc_parent(ctx, 0);
+   void *lin_ctx = linear_alloc_parent(ctx);
 
    /* Safe looping, since process_assignment */
    for (ir = first, ir_next = (ir_instruction *)first->next;;

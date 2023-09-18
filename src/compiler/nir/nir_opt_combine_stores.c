@@ -417,7 +417,7 @@ nir_opt_combine_stores(nir_shader *shader, nir_variable_mode modes)
    void *mem_ctx = ralloc_context(NULL);
    struct combine_stores_state state = {
       .modes = modes,
-      .lin_ctx = linear_zalloc_parent(mem_ctx, 0),
+      .lin_ctx = linear_alloc_parent(mem_ctx),
    };
 
    list_inithead(&state.pending);

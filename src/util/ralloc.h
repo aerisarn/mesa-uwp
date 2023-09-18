@@ -556,7 +556,6 @@ public:                                                                  \
 #define DECLARE_LINEAR_ZALLOC_CXX_OPERATORS(type) \
    DECLARE_ALLOC_CXX_OPERATORS_TEMPLATE(type, linear_zalloc_child)
 
-
 /**
  * Do a fast allocation from the linear buffer, also known as the child node
  * from the allocator's point of view. It can't be freed directly. You have
@@ -568,24 +567,17 @@ public:                                                                  \
 void *linear_alloc_child(void *parent, unsigned size) MALLOCLIKE;
 
 /**
- * Allocate a parent node that will hold linear buffers. The returned
- * allocation is actually the first child node, but it's also the handle
- * of the parent node. Use it for all child node allocations.
+ * Allocate a parent node that will hold linear buffers.
+ * Use it for all child node allocations.
  *
  * \param ralloc_ctx  ralloc context, must not be NULL
- * \param size        size to allocate (max 32 bits)
  */
-void *linear_alloc_parent(void *ralloc_ctx, unsigned size) MALLOCLIKE;
+void *linear_alloc_parent(void *ralloc_ctx);
 
 /**
  * Same as linear_alloc_child, but also clears memory.
  */
 void *linear_zalloc_child(void *parent, unsigned size) MALLOCLIKE;
-
-/**
- * Same as linear_alloc_parent, but also clears memory.
- */
-void *linear_zalloc_parent(void *ralloc_ctx, unsigned size) MALLOCLIKE;
 
 /**
  * Free the linear parent node. This will free all child nodes too.

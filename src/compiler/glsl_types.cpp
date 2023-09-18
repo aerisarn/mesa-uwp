@@ -455,7 +455,7 @@ glsl_type_singleton_init_or_ref()
    simple_mtx_lock(&glsl_type_cache_mutex);
    if (glsl_type_cache.users == 0) {
       glsl_type_cache.mem_ctx = ralloc_context(NULL);
-      glsl_type_cache.lin_ctx = linear_zalloc_parent(glsl_type_cache.mem_ctx, 0);
+      glsl_type_cache.lin_ctx = linear_alloc_parent(glsl_type_cache.mem_ctx);
    }
    glsl_type_cache.users++;
    simple_mtx_unlock(&glsl_type_cache_mutex);

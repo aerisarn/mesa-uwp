@@ -96,7 +96,7 @@ protected:
 nir_vars_test::nir_vars_test()
    : nir_test::nir_test("nir_vars_test")
 {
-   lin_ctx = linear_alloc_parent(b->shader, 0);
+   lin_ctx = linear_alloc_parent(b->shader);
 }
 
 nir_vars_test::~nir_vars_test()

@@ -1482,7 +1482,7 @@ nir_copy_prop_vars_impl(nir_function_impl *impl)
    struct copy_prop_var_state state = {
       .impl = impl,
       .mem_ctx = mem_ctx,
-      .lin_ctx = linear_zalloc_parent(mem_ctx, 0),
+      .lin_ctx = linear_alloc_parent(mem_ctx),
 
       .vars_written_map = _mesa_pointer_hash_table_create(mem_ctx),
    };
