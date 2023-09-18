@@ -968,7 +968,6 @@ struct linear_header {
 #endif
    unsigned offset;  /* points to the first unused byte in the buffer */
    unsigned size;    /* size of the buffer */
-   void *ralloc_parent;          /* new buffers will use this */
    struct linear_header *next;   /* next buffer if we have more */
    struct linear_header *latest; /* the only buffer that has free space */
 
@@ -1018,7 +1017,6 @@ create_linear_node(void *ralloc_ctx, unsigned min_size)
 #endif
    node->offset = 0;
    node->size = min_size;
-   node->ralloc_parent = ralloc_ctx;
    node->next = NULL;
    node->latest = node;
    return node;
@@ -1041,7 +1039,8 @@ linear_alloc_child(void *parent, unsigned size)
 
    if (unlikely(latest->offset + full_size > latest->size)) {
       /* allocate a new node */
-      new_node = create_linear_node(latest->ralloc_parent, size);
+      void *ralloc_ctx = ralloc_parent_of_linear_parent(parent);
+      new_node = create_linear_node(ralloc_ctx, size);
       if (unlikely(!new_node))
          return NULL;
 
@@ -1130,7 +1129,6 @@ ralloc_steal_linear_parent(void *new_ralloc_ctx, void *ptr)
 
    while (node) {
       ralloc_steal(new_ralloc_ctx, node);
-      node->ralloc_parent = new_ralloc_ctx;
       node = node->next;
    }
 }
@@ -1140,7 +1138,7 @@ ralloc_parent_of_linear_parent(void *ptr)
 {
    linear_header *node = LINEAR_PARENT_TO_HEADER(ptr);
    assert(node->magic == LMAGIC);
-   return node->ralloc_parent;
+   return PTR_FROM_HEADER(get_header(node)->parent);
 }
 
 void *
