@@ -95,6 +95,8 @@ const char *ac_get_family_name(enum radeon_family family)
       return "GFX1103_R1";
    case CHIP_GFX1103_R2:
       return "GFX1103_R2";
+   case CHIP_GFX1150:
+      return "GFX1150";
    default:
       unreachable("Unknown GPU family");
    }
@@ -219,6 +221,8 @@ const char *ac_get_llvm_processor_name(enum radeon_family family)
    case CHIP_GFX1103_R1:
    case CHIP_GFX1103_R2:
       return "gfx1103";
+   case CHIP_GFX1150:
+      return "gfx1150";
    default:
       return "";
    }

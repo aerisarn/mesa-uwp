@@ -2329,7 +2329,7 @@ export_vertex_params_gfx11(nir_builder *b, nir_def *export_tid, nir_def *num_exp
 
 static bool must_wait_attr_ring(enum amd_gfx_level gfx_level, bool has_param_exports)
 {
-   return gfx_level == GFX11 && has_param_exports;
+   return (gfx_level == GFX11 || gfx_level == GFX11_5) && has_param_exports;
 }
 
 static void

@@ -856,9 +856,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          identify_chip(GFX1103_R1);
          identify_chip(GFX1103_R2);
          break;
+      case FAMILY_GFX1150:
+         identify_chip(GFX1150);
+         break;
       }
 
-      if (info->ip[AMD_IP_GFX].ver_major == 11)
+      if (info->ip[AMD_IP_GFX].ver_major == 11 && info->ip[AMD_IP_GFX].ver_minor == 5)
+         info->gfx_level = GFX11_5;
+      else if (info->ip[AMD_IP_GFX].ver_major == 11)
          info->gfx_level = GFX11;
       else if (info->ip[AMD_IP_GFX].ver_major == 10 && info->ip[AMD_IP_GFX].ver_minor == 3)
          info->gfx_level = GFX10_3;
