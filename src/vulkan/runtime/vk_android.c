@@ -336,8 +336,10 @@ vk_common_QueueSignalReleaseImageANDROID(VkQueue _queue,
       stage_flags[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
    result = vk_anb_semaphore_init_once(queue, device);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      STACK_ARRAY_FINISH(stage_flags);
       return result;
+   }
 
    const VkSubmitInfo submit_info = {
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -349,6 +351,7 @@ vk_common_QueueSignalReleaseImageANDROID(VkQueue _queue,
    };
    result = device->dispatch_table.QueueSubmit(_queue, 1, &submit_info,
                                                VK_NULL_HANDLE);
+   STACK_ARRAY_FINISH(stage_flags);
    if (result != VK_SUCCESS)
       return result;
 
