@@ -376,8 +376,6 @@ radeonsi-raven-va-full:x86_64:
 
 .navi10-test-valve:
   variables:
-    RUNNER_FARM_LOCATION: mupuf
-    FDO_CI_CONCURRENT: 24
     # (2022-01) noapic is set because the serial adapter on this
     # machine is using non-MSI IRQs and is generating a lot of
     # IRQs. This tends to confuse the interrupt controller and breaks
@@ -385,6 +383,20 @@ radeonsi-raven-va-full:x86_64:
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g noapic'
   tags:
     - amdgpu:codename:NAVI10
+
+.navi10-test-valve-mupuf:
+  extends:
+    - .navi10-test-valve
+  variables:
+    RUNNER_FARM_LOCATION: mupuf
+    FDO_CI_CONCURRENT: 24
+
+.navi10-test-valve-kws:
+  extends:
+    - .navi10-test-valve
+  variables:
+    RUNNER_FARM_LOCATION: keywords
+    FDO_CI_CONCURRENT: 16
 
 .navi21-test-valve:
   variables:
@@ -486,9 +498,10 @@ vkcts-renoir-valve:
     B2C_TIMEOUT_OVERALL_MINUTES: 130
 
 vkcts-navi10-valve:
+  parallel: 2
   extends:
     - .vkcts-test-valve
-    - .navi10-test-valve
+    - .navi10-test-valve-kws
     - .radv-valve-manual-rules
   variables:
     GPU_VERSION: radv-navi10-aco
@@ -606,7 +619,7 @@ vkd3d-renoir-valve:
 vkd3d-navi10-valve:
   extends:
     - .vkd3d-test-valve
-    - .navi10-test-valve
+    - .navi10-test-valve-mupuf
     - .radv-valve-manual-rules
   variables:
     VKD3D_PROTON_RESULTS: radv-navi10-vkd3d
