@@ -17,6 +17,7 @@ extern "C" {
 
 #define AMD_MAX_SE         32
 #define AMD_MAX_SA_PER_SE  2
+#define AMD_MAX_WGP        60
 
 struct amdgpu_gpu_info;
 
