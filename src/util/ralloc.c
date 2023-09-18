@@ -969,39 +969,20 @@ struct linear_header {
    unsigned size;    /* size of the buffer */
    struct linear_header *latest; /* the only buffer that has free space */
 
-   /* After this structure, the buffer begins.
-    * Each suballocation consists of linear_size_chunk as its header followed
-    * by the suballocation, so it goes:
-    *
-    * - linear_size_chunk
-    * - allocated space
-    * - linear_size_chunk
-    * - allocated space
-    * etc.
-    *
-    * linear_size_chunk is only needed by linear_realloc.
-    */
+   /* After this structure, the buffer begins. */
 };
 
 struct linear_ctx {
    struct linear_header header;
 };
 
-struct linear_size_chunk {
-   unsigned size; /* for realloc */
-   unsigned _padding;
-};
-
 typedef struct linear_header linear_header;
-typedef struct linear_size_chunk linear_size_chunk;
 
 /* Allocate the linear buffer with its header. */
 static linear_header *
 create_linear_node(void *ralloc_ctx, unsigned min_size)
 {
    linear_header *node;
-
-   min_size += sizeof(linear_size_chunk);
 
    if (likely(min_size < MIN_LINEAR_BUFSIZE))
       min_size = MIN_LINEAR_BUFSIZE;
@@ -1025,15 +1006,12 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
    linear_header *first = &ctx->header;
    linear_header *latest = first->latest;
    linear_header *new_node;
-   linear_size_chunk *ptr;
-   unsigned full_size;
 
    assert(first->magic == LMAGIC);
 
    size = ALIGN_POT(size, SUBALLOC_ALIGNMENT);
-   full_size = sizeof(linear_size_chunk) + size;
 
-   if (unlikely(latest->offset + full_size > latest->size)) {
+   if (unlikely(latest->offset + size > latest->size)) {
       /* allocate a new node */
       void *ralloc_ctx = first;
       new_node = create_linear_node(ralloc_ctx, size);
@@ -1045,12 +1023,11 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
       latest = new_node;
    }
 
-   ptr = (linear_size_chunk *)((char*)&latest[1] + latest->offset);
-   ptr->size = size;
-   latest->offset += full_size;
+   void *ptr = (char*)&latest[1] + latest->offset;
+   latest->offset += size;
 
-   assert((uintptr_t)&ptr[1] % SUBALLOC_ALIGNMENT == 0);
-   return &ptr[1];
+   assert((uintptr_t)ptr % SUBALLOC_ALIGNMENT == 0);
+   return ptr;
 }
 
 linear_ctx *
