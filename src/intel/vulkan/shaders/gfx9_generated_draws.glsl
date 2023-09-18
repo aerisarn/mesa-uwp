@@ -34,7 +34,7 @@ void write_draw(uint item_idx, uint cmd_idx, uint draw_id)
    bool uses_base = (params.flags & ANV_GENERATED_FLAG_BASE) != 0;
    bool uses_drawid = (params.flags & ANV_GENERATED_FLAG_DRAWID) != 0;
    uint mocs = (params.flags >> 8) & 0xff;
-   uint indirect_data_offset = item_idx * params.indirect_data_stride / 4;
+   uint indirect_data_offset = draw_id * params.indirect_data_stride / 4;
 
    if (is_indexed) {
       /* Loading a VkDrawIndexedIndirectCommand */

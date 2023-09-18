@@ -31,7 +31,7 @@ void write_draw(uint item_idx, uint cmd_idx, uint draw_id)
 {
    bool is_indexed = (params.flags & ANV_GENERATED_FLAG_INDEXED) != 0;
    bool is_predicated = (params.flags & ANV_GENERATED_FLAG_PREDICATED) != 0;
-   uint indirect_data_offset = item_idx * params.indirect_data_stride / 4;
+   uint indirect_data_offset = draw_id * params.indirect_data_stride / 4;
 
    if (is_indexed) {
       /* Loading a VkDrawIndexedIndirectCommand */
