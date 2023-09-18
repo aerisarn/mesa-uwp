@@ -28,6 +28,7 @@
 #include "zink_context.h"
 #include "zink_descriptors.h"
 #include "zink_fence.h"
+#include "vk_format.h"
 #include "zink_format.h"
 #include "zink_framebuffer.h"
 #include "zink_program.h"
@@ -1794,7 +1795,7 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
    else if (!screen->driver_workarounds.broken_l4a4 || format != PIPE_FORMAT_L4A4_UNORM)
       format = zink_format_get_emulated_alpha(format);
 
-   VkFormat ret = zink_pipe_format_to_vk_format(emulate_x8(format));
+   VkFormat ret = vk_format_from_pipe_format(emulate_x8(format));
 
    if (format == PIPE_FORMAT_X32_S8X24_UINT &&
        screen->have_D32_SFLOAT_S8_UINT)
