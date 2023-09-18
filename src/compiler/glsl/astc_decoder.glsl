@@ -34,12 +34,16 @@ precision highp uimage2D;
 precision highp utextureBuffer;
 precision highp utexture2DArray;
 precision highp uimage2DArray;
+precision highp uimage3D;
+precision highp utexture3D;
 
 #extension GL_EXT_samplerless_texture_functions : require
 layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z = 4) in;
 
 layout(set = 0, binding = 0) writeonly uniform uimage2DArray OutputImage2Darray;
+layout(set = 0, binding = 0) writeonly uniform uimage3D OutputImage3D;
 layout(set = 0, binding = 1) uniform utexture2DArray PayloadInput2Darray;
+layout(set = 0, binding = 1) uniform utexture3D PayloadInput3D;
 layout(set = 0, binding = 2) uniform utextureBuffer LUTRemainingBitsToEndpointQuantizer;
 layout(set = 0, binding = 3) uniform utextureBuffer LUTEndpointUnquantize;
 layout(set = 0, binding = 4) uniform utextureBuffer LUTWeightQuantizer;
@@ -52,6 +56,7 @@ layout(constant_id = 2) const bool DECODE_8BIT = false;
 layout(push_constant, std430) uniform pc {
    ivec2 texel_blk_start;
    ivec2 texel_end;
+   bool is_3Dimage;
 };
 
 #else /* VULKAN */
@@ -1150,7 +1155,10 @@ void decode_endpoint(out ivec4 ep0, out ivec4 ep1, out int decode_mode,
 void emit_decode_error(ivec2 coord)
 {
 #ifdef VULKAN
-    imageStore(OutputImage2Darray, ivec3(coord, gl_WorkGroupID.z), error_color);
+    if (is_3Dimage)
+        imageStore(OutputImage3D, ivec3(coord, gl_WorkGroupID.z), error_color);
+    else
+        imageStore(OutputImage2Darray, ivec3(coord, gl_WorkGroupID.z), error_color);
 #else /* VULKAN */
     imageStore(OutputImage, coord, error_color);
 #endif /* VULKAN */
@@ -1258,7 +1266,10 @@ void main()
     int linear_pixel = int(gl_WorkGroupSize.x) * pixel_coord.y + pixel_coord.x;
     uvec4 payload;
 #ifdef VULKAN
-    payload = texelFetch(PayloadInput2Darray,ivec3(coord.zw, gl_WorkGroupID.z), 0);
+    if (is_3Dimage)
+        payload = texelFetch(PayloadInput3D, ivec3(coord.zw, gl_WorkGroupID.z), 0);
+    else
+        payload = texelFetch(PayloadInput2Darray,ivec3(coord.zw, gl_WorkGroupID.z), 0);
 #else /* VULKAN */
     payload = texelFetch(PayloadInput, coord.zw, 0);
 #endif /* VULKAN */
@@ -1344,7 +1355,10 @@ void main()
     if (DECODE_8BIT)
     {
 #ifdef VULKAN
-        imageStore(OutputImage2Darray, ivec3(coord.xy, gl_WorkGroupID.z), uvec4(final_color >> 8));
+        if (is_3Dimage)
+            imageStore(OutputImage3D, ivec3(coord.xy, gl_WorkGroupID.z), uvec4(final_color >> 8));
+        else
+            imageStore(OutputImage2Darray, ivec3(coord.xy, gl_WorkGroupID.z), uvec4(final_color >> 8));
 #else /* VULKAN */
         imageStore(OutputImage, coord.xy, uvec4(final_color >> 8));
 #endif /* VULKAN */
@@ -1357,7 +1371,10 @@ void main()
         else
             encoded = decode_fp16(final_color, decode_mode);
 #ifdef VULKAN
-        imageStore(OutputImage2Darray, ivec3(coord.xy, gl_WorkGroupID.z), encoded);
+        if (is_3Dimage)
+            imageStore(OutputImage3D, ivec3(coord.xy, gl_WorkGroupID.z), encoded);
+        else
+            imageStore(OutputImage2Darray, ivec3(coord.xy, gl_WorkGroupID.z), encoded);
 #else /* VULKAN */
         imageStore(OutputImage, coord.xy, encoded);
 #endif /* VULKAN */

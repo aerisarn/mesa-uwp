@@ -382,7 +382,7 @@ create_layout(struct vk_device *device, VkAllocationCallbacks *allocator,
       .setLayoutCount = 1,
       .pSetLayouts = &astc->ds_layout,
       .pushConstantRangeCount = 1,
-      .pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_COMPUTE_BIT, 0, 16},
+      .pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_COMPUTE_BIT, 0, 20},
    };
    result = disp->CreatePipelineLayout(_device, &pl_create_info, allocator,
                                        &astc->p_layout);
