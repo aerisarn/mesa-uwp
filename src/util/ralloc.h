@@ -517,7 +517,7 @@ void gc_sweep_end(gc_ctx *ctx);
  *
  * which is more idiomatic in C++ than calling ralloc.
  */
-#define DECLARE_ALLOC_CXX_OPERATORS_TEMPLATE(TYPE, ALLOC_FUNC)           \
+#define DECLARE_RALLOC_CXX_OPERATORS_TEMPLATE(TYPE, ALLOC_FUNC)          \
 private:                                                                 \
    static void _ralloc_destructor(void *p)                               \
    {                                                                     \
@@ -545,16 +545,27 @@ public:                                                                  \
    }
 
 #define DECLARE_RALLOC_CXX_OPERATORS(type) \
-   DECLARE_ALLOC_CXX_OPERATORS_TEMPLATE(type, ralloc_size)
+   DECLARE_RALLOC_CXX_OPERATORS_TEMPLATE(type, ralloc_size)
 
 #define DECLARE_RZALLOC_CXX_OPERATORS(type) \
-   DECLARE_ALLOC_CXX_OPERATORS_TEMPLATE(type, rzalloc_size)
+   DECLARE_RALLOC_CXX_OPERATORS_TEMPLATE(type, rzalloc_size)
+
+
+#define DECLARE_LINEAR_ALLOC_CXX_OPERATORS_TEMPLATE(TYPE, ALLOC_FUNC)    \
+public:                                                                  \
+   static void* operator new(size_t size, void *mem_ctx)                 \
+   {                                                                     \
+      void *p = ALLOC_FUNC(mem_ctx, size);                               \
+      assert(p != NULL);                                                 \
+      static_assert(HAS_TRIVIAL_DESTRUCTOR(TYPE));                       \
+      return p;                                                          \
+   }
 
 #define DECLARE_LINEAR_ALLOC_CXX_OPERATORS(type) \
-   DECLARE_ALLOC_CXX_OPERATORS_TEMPLATE(type, linear_alloc_child)
+   DECLARE_LINEAR_ALLOC_CXX_OPERATORS_TEMPLATE(type, linear_alloc_child)
 
 #define DECLARE_LINEAR_ZALLOC_CXX_OPERATORS(type) \
-   DECLARE_ALLOC_CXX_OPERATORS_TEMPLATE(type, linear_zalloc_child)
+   DECLARE_LINEAR_ALLOC_CXX_OPERATORS_TEMPLATE(type, linear_zalloc_child)
 
 /**
  * Do a fast allocation from the linear buffer, also known as the child node
