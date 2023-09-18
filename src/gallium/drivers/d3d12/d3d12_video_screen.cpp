@@ -1344,10 +1344,10 @@ d3d12_has_video_process_support(struct pipe_screen *pscreen,
                                 D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC& outMinSupportedInput,
                                 D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC& outMaxSupportedInput)
 {
-   ComPtr<ID3D12VideoDevice2> spD3D12VideoDevice;
+   ComPtr<ID3D12VideoDevice> spD3D12VideoDevice;
    struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) pscreen;
    if (FAILED(pD3D12Screen->dev->QueryInterface(IID_PPV_ARGS(spD3D12VideoDevice.GetAddressOf())))) {
-      // No video encode support in underlying d3d12 device (needs ID3D12VideoDevice2)
+      // No video process support in underlying d3d12 device (needs ID3D12VideoDevice)
       return false;
    }
 
@@ -1753,10 +1753,10 @@ is_d3d12_video_decode_format_supported(struct pipe_screen *screen,
                                        pipe_format format,
                                        enum pipe_video_profile profile)
 {
-   ComPtr<ID3D12VideoDevice3> spD3D12VideoDevice;
+   ComPtr<ID3D12VideoDevice> spD3D12VideoDevice;
    struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) screen;
    if (FAILED(pD3D12Screen->dev->QueryInterface(IID_PPV_ARGS(spD3D12VideoDevice.GetAddressOf()))))
-      return false; // No video encode support in underlying d3d12 device (needs ID3D12VideoDevice3)
+      return false; // No video decode support in underlying d3d12 device (needs ID3D12VideoDevice)
 
    GUID decodeGUID = d3d12_video_decoder_convert_pipe_video_profile_to_d3d12_profile(profile);
    GUID emptyGUID = {};
