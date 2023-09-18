@@ -863,25 +863,13 @@ nir_rematerialize_deref_in_use_blocks(nir_deref_instr *instr)
 bool
 nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
 {
-   struct rematerialize_deref_state state = { 0 };
-   state.builder = nir_builder_create(impl);
-
+   bool progress = false;
    nir_foreach_block_unstructured(block, impl) {
-      state.block = block;
-
       nir_foreach_instr_safe(instr, block) {
-         if (instr->type == nir_instr_type_deref &&
-             nir_deref_instr_remove_if_unused(nir_instr_as_deref(instr)))
-            continue;
-
-         /* If a deref is used in a phi, we can't rematerialize it, as the new
-          * derefs would appear before the phi, which is not valid.
-          */
-         if (instr->type == nir_instr_type_phi)
-            continue;
-
-         state.builder.cursor = nir_before_instr(instr);
-         nir_foreach_src(instr, rematerialize_deref_src, &state);
+         if (instr->type == nir_instr_type_deref) {
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+            progress |= nir_rematerialize_deref_in_use_blocks(deref);
+         }
       }
 
 #ifndef NDEBUG
@@ -891,7 +879,7 @@ nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
 #endif
    }
 
-   return state.progress;
+   return progress;
 }
 
 static void
