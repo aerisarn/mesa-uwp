@@ -4,6 +4,7 @@
 
 #include "radv_cs.h"
 #include "sid.h"
+#include "vk_common_entrypoints.h"
 
 static nir_shader *
 build_buffer_fill_shader(struct radv_device *dev)
@@ -172,8 +173,8 @@ fill_buffer_shader(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t siz
       .data = data,
    };
 
-   radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer), device->meta_state.buffer.fill_p_layout,
-                         VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(fill_consts), &fill_consts);
+   vk_common_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer), device->meta_state.buffer.fill_p_layout,
+                              VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(fill_consts), &fill_consts);
 
    radv_unaligned_dispatch(cmd_buffer, DIV_ROUND_UP(size, 16), 1, 1);
 
@@ -199,8 +200,8 @@ copy_buffer_shader(struct radv_cmd_buffer *cmd_buffer, uint64_t src_va, uint64_t
       .max_offset = size - 16,
    };
 
-   radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer), device->meta_state.buffer.copy_p_layout,
-                         VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(copy_consts), &copy_consts);
+   vk_common_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer), device->meta_state.buffer.copy_p_layout,
+                              VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(copy_consts), &copy_consts);
 
    radv_unaligned_dispatch(cmd_buffer, DIV_ROUND_UP(size, 16), 1, 1);
 

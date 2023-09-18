@@ -5949,22 +5949,18 @@ radv_bind_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint
       radv_cs_add_buffer(ws, cmd_buffer->cs, set->header.bo);
 }
 
-VKAPI_ATTR void VKAPI_CALL
-radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
-                           VkPipelineLayout _layout, uint32_t firstSet, uint32_t descriptorSetCount,
-                           const VkDescriptorSet *pDescriptorSets, uint32_t dynamicOffsetCount,
-                           const uint32_t *pDynamicOffsets)
+static void
+radv_bind_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
+                          const VkBindDescriptorSetsInfoKHR *pBindDescriptorSetsInfo, VkPipelineBindPoint bind_point)
 {
-   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   RADV_FROM_HANDLE(radv_pipeline_layout, layout, _layout);
+   RADV_FROM_HANDLE(radv_pipeline_layout, layout, pBindDescriptorSetsInfo->layout);
+   const bool no_dynamic_bounds = cmd_buffer->device->instance->debug_flags & RADV_DEBUG_NO_DYNAMIC_BOUNDS;
+   struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, bind_point);
    unsigned dyn_idx = 0;
 
-   const bool no_dynamic_bounds = cmd_buffer->device->instance->debug_flags & RADV_DEBUG_NO_DYNAMIC_BOUNDS;
-   struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, pipelineBindPoint);
-
-   for (unsigned i = 0; i < descriptorSetCount; ++i) {
-      unsigned set_idx = i + firstSet;
-      RADV_FROM_HANDLE(radv_descriptor_set, set, pDescriptorSets[i]);
+   for (unsigned i = 0; i < pBindDescriptorSetsInfo->descriptorSetCount; ++i) {
+      unsigned set_idx = i + pBindDescriptorSetsInfo->firstSet;
+      RADV_FROM_HANDLE(radv_descriptor_set, set, pBindDescriptorSetsInfo->pDescriptorSets[i]);
 
       if (!set)
          continue;
@@ -5972,20 +5968,20 @@ radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pi
       /* If the set is already bound we only need to update the
        * (potentially changed) dynamic offsets. */
       if (descriptors_state->sets[set_idx] != set || !(descriptors_state->valid & (1u << set_idx))) {
-         radv_bind_descriptor_set(cmd_buffer, pipelineBindPoint, set, set_idx);
+         radv_bind_descriptor_set(cmd_buffer, bind_point, set, set_idx);
       }
 
       for (unsigned j = 0; j < set->header.layout->dynamic_offset_count; ++j, ++dyn_idx) {
-         unsigned idx = j + layout->set[i + firstSet].dynamic_offset_start;
+         unsigned idx = j + layout->set[i + pBindDescriptorSetsInfo->firstSet].dynamic_offset_start;
          uint32_t *dst = descriptors_state->dynamic_buffers + idx * 4;
-         assert(dyn_idx < dynamicOffsetCount);
+         assert(dyn_idx < pBindDescriptorSetsInfo->dynamicOffsetCount);
 
          struct radv_descriptor_range *range = set->header.dynamic_descriptors + j;
 
          if (!range->va) {
             memset(dst, 0, 4 * 4);
          } else {
-            uint64_t va = range->va + pDynamicOffsets[dyn_idx];
+            uint64_t va = range->va + pBindDescriptorSetsInfo->pDynamicOffsets[dyn_idx];
             dst[0] = va;
             dst[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
             dst[2] = no_dynamic_bounds ? 0xffffffffu : range->size;
@@ -6005,6 +6001,25 @@ radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pi
 
          cmd_buffer->push_constant_stages |= set->header.layout->dynamic_shader_stages;
       }
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdBindDescriptorSets2KHR(VkCommandBuffer commandBuffer,
+                               const VkBindDescriptorSetsInfoKHR *pBindDescriptorSetsInfo)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (pBindDescriptorSetsInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+      radv_bind_descriptor_sets(cmd_buffer, pBindDescriptorSetsInfo, VK_PIPELINE_BIND_POINT_COMPUTE);
+   }
+
+   if (pBindDescriptorSetsInfo->stageFlags & RADV_GRAPHICS_STAGE_BITS) {
+      radv_bind_descriptor_sets(cmd_buffer, pBindDescriptorSetsInfo, VK_PIPELINE_BIND_POINT_GRAPHICS);
+   }
+
+   if (pBindDescriptorSetsInfo->stageFlags & RADV_RT_STAGE_BITS) {
+      radv_bind_descriptor_sets(cmd_buffer, pBindDescriptorSetsInfo, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
    }
 }
 
@@ -6070,68 +6085,90 @@ radv_meta_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBind
    radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, push_set, set);
 }
 
-VKAPI_ATTR void VKAPI_CALL
-radv_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
-                             VkPipelineLayout _layout, uint32_t set, uint32_t descriptorWriteCount,
-                             const VkWriteDescriptorSet *pDescriptorWrites)
+static void
+radv_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer, const VkPushDescriptorSetInfoKHR *pPushDescriptorSetInfo,
+                         VkPipelineBindPoint bind_point)
 {
-   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   RADV_FROM_HANDLE(radv_pipeline_layout, layout, _layout);
-   struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, pipelineBindPoint);
+   RADV_FROM_HANDLE(radv_pipeline_layout, layout, pPushDescriptorSetInfo->layout);
+   struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, bind_point);
    struct radv_descriptor_set *push_set = (struct radv_descriptor_set *)&descriptors_state->push_set.set;
 
-   assert(layout->set[set].layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+   assert(layout->set[pPushDescriptorSetInfo->set].layout->flags &
+          VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
-   if (!radv_init_push_descriptor_set(cmd_buffer, push_set, layout->set[set].layout, pipelineBindPoint))
+   if (!radv_init_push_descriptor_set(cmd_buffer, push_set, layout->set[pPushDescriptorSetInfo->set].layout,
+                                      bind_point))
       return;
 
    /* Check that there are no inline uniform block updates when calling vkCmdPushDescriptorSetKHR()
     * because it is invalid, according to Vulkan spec.
     */
-   for (int i = 0; i < descriptorWriteCount; i++) {
-      ASSERTED const VkWriteDescriptorSet *writeset = &pDescriptorWrites[i];
+   for (int i = 0; i < pPushDescriptorSetInfo->descriptorWriteCount; i++) {
+      ASSERTED const VkWriteDescriptorSet *writeset = &pPushDescriptorSetInfo->pDescriptorWrites[i];
       assert(writeset->descriptorType != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK);
    }
 
    radv_cmd_update_descriptor_sets(cmd_buffer->device, cmd_buffer, radv_descriptor_set_to_handle(push_set),
-                                   descriptorWriteCount, pDescriptorWrites, 0, NULL);
+                                   pPushDescriptorSetInfo->descriptorWriteCount,
+                                   pPushDescriptorSetInfo->pDescriptorWrites, 0, NULL);
 
-   radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, push_set, set);
+   radv_set_descriptor_set(cmd_buffer, bind_point, push_set, pPushDescriptorSetInfo->set);
 
    radv_flush_push_descriptors(cmd_buffer, descriptors_state);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
-                                         VkDescriptorUpdateTemplate descriptorUpdateTemplate, VkPipelineLayout _layout,
-                                         uint32_t set, const void *pData)
+radv_CmdPushDescriptorSet2KHR(VkCommandBuffer commandBuffer, const VkPushDescriptorSetInfoKHR *pPushDescriptorSetInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   RADV_FROM_HANDLE(radv_pipeline_layout, layout, _layout);
-   RADV_FROM_HANDLE(radv_descriptor_update_template, templ, descriptorUpdateTemplate);
+
+   if (pPushDescriptorSetInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+      radv_push_descriptor_set(cmd_buffer, pPushDescriptorSetInfo, VK_PIPELINE_BIND_POINT_COMPUTE);
+   }
+
+   if (pPushDescriptorSetInfo->stageFlags & RADV_GRAPHICS_STAGE_BITS) {
+      radv_push_descriptor_set(cmd_buffer, pPushDescriptorSetInfo, VK_PIPELINE_BIND_POINT_GRAPHICS);
+   }
+
+   if (pPushDescriptorSetInfo->stageFlags & RADV_RT_STAGE_BITS) {
+      radv_push_descriptor_set(cmd_buffer, pPushDescriptorSetInfo, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdPushDescriptorSetWithTemplate2KHR(
+   VkCommandBuffer commandBuffer, const VkPushDescriptorSetWithTemplateInfoKHR *pPushDescriptorSetWithTemplateInfo)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_pipeline_layout, layout, pPushDescriptorSetWithTemplateInfo->layout);
+   RADV_FROM_HANDLE(radv_descriptor_update_template, templ,
+                    pPushDescriptorSetWithTemplateInfo->descriptorUpdateTemplate);
    struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, templ->bind_point);
    struct radv_descriptor_set *push_set = (struct radv_descriptor_set *)&descriptors_state->push_set.set;
 
-   assert(layout->set[set].layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+   assert(layout->set[pPushDescriptorSetWithTemplateInfo->set].layout->flags &
+          VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
-   if (!radv_init_push_descriptor_set(cmd_buffer, push_set, layout->set[set].layout, templ->bind_point))
+   if (!radv_init_push_descriptor_set(cmd_buffer, push_set, layout->set[pPushDescriptorSetWithTemplateInfo->set].layout,
+                                      templ->bind_point))
       return;
 
-   radv_cmd_update_descriptor_set_with_template(cmd_buffer->device, cmd_buffer, push_set, descriptorUpdateTemplate,
-                                                pData);
+   radv_cmd_update_descriptor_set_with_template(cmd_buffer->device, cmd_buffer, push_set,
+                                                pPushDescriptorSetWithTemplateInfo->descriptorUpdateTemplate,
+                                                pPushDescriptorSetWithTemplateInfo->pData);
 
-   radv_set_descriptor_set(cmd_buffer, templ->bind_point, push_set, set);
+   radv_set_descriptor_set(cmd_buffer, templ->bind_point, push_set, pPushDescriptorSetWithTemplateInfo->set);
 
    radv_flush_push_descriptors(cmd_buffer, descriptors_state);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags,
-                      uint32_t offset, uint32_t size, const void *pValues)
+radv_CmdPushConstants2KHR(VkCommandBuffer commandBuffer, const VkPushConstantsInfoKHR *pPushConstantsInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   memcpy(cmd_buffer->push_constants + offset, pValues, size);
-   cmd_buffer->push_constant_stages |= stageFlags;
+   memcpy(cmd_buffer->push_constants + pPushConstantsInfo->offset, pPushConstantsInfo->pValues,
+          pPushConstantsInfo->size);
+   cmd_buffer->push_constant_stages |= pPushConstantsInfo->stageFlags;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -11192,26 +11229,48 @@ radv_CmdBindDescriptorBuffersEXT(VkCommandBuffer commandBuffer, uint32_t bufferC
    }
 }
 
-VKAPI_ATTR void VKAPI_CALL
-radv_CmdSetDescriptorBufferOffsetsEXT(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
-                                      VkPipelineLayout _layout, uint32_t firstSet, uint32_t setCount,
-                                      const uint32_t *pBufferIndices, const VkDeviceSize *pOffsets)
+static void
+radv_set_descriptor_buffer_offsets(struct radv_cmd_buffer *cmd_buffer,
+                                   const VkSetDescriptorBufferOffsetsInfoEXT *pSetDescriptorBufferOffsetsInfo,
+                                   VkPipelineBindPoint bind_point)
 {
-   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, pipelineBindPoint);
+   struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, bind_point);
 
-   for (unsigned i = 0; i < setCount; i++) {
-      unsigned idx = i + firstSet;
+   for (unsigned i = 0; i < pSetDescriptorBufferOffsetsInfo->setCount; i++) {
+      const uint32_t buffer_idx = pSetDescriptorBufferOffsetsInfo->pBufferIndices[i];
+      const uint64_t offset = pSetDescriptorBufferOffsetsInfo->pOffsets[i];
+      unsigned idx = i + pSetDescriptorBufferOffsetsInfo->firstSet;
 
-      descriptors_state->descriptor_buffers[idx] = cmd_buffer->descriptor_buffers[pBufferIndices[i]] + pOffsets[i];
+      descriptors_state->descriptor_buffers[idx] = cmd_buffer->descriptor_buffers[buffer_idx] + offset;
 
-      radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, NULL, idx);
+      radv_set_descriptor_set(cmd_buffer, bind_point, NULL, idx);
    }
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdBindDescriptorBufferEmbeddedSamplersEXT(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
-                                                VkPipelineLayout _layout, uint32_t set)
+radv_CmdSetDescriptorBufferOffsets2EXT(VkCommandBuffer commandBuffer,
+                                       const VkSetDescriptorBufferOffsetsInfoEXT *pSetDescriptorBufferOffsetsInfo)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (pSetDescriptorBufferOffsetsInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+      radv_set_descriptor_buffer_offsets(cmd_buffer, pSetDescriptorBufferOffsetsInfo, VK_PIPELINE_BIND_POINT_COMPUTE);
+   }
+
+   if (pSetDescriptorBufferOffsetsInfo->stageFlags & RADV_GRAPHICS_STAGE_BITS) {
+      radv_set_descriptor_buffer_offsets(cmd_buffer, pSetDescriptorBufferOffsetsInfo, VK_PIPELINE_BIND_POINT_GRAPHICS);
+   }
+
+   if (pSetDescriptorBufferOffsetsInfo->stageFlags & RADV_RT_STAGE_BITS) {
+      radv_set_descriptor_buffer_offsets(cmd_buffer, pSetDescriptorBufferOffsetsInfo,
+                                         VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdBindDescriptorBufferEmbeddedSamplers2EXT(
+   VkCommandBuffer commandBuffer,
+   const VkBindDescriptorBufferEmbeddedSamplersInfoEXT *pBindDescriptorBufferEmbeddedSamplersInfo)
 {
    /* This is a no-op because embedded samplers are inlined at compile time. */
 }
