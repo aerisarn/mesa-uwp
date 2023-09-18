@@ -5184,7 +5184,7 @@ anv_device_get_pat_entry(struct anv_device *device,
                          enum anv_bo_alloc_flags alloc_flags)
 {
    if (alloc_flags & (ANV_BO_ALLOC_SNOOPED))
-      return &device->info->pat.coherent;
+      return &device->info->pat.cached_coherent;
    else if (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT))
       return &device->info->pat.scanout;
    else

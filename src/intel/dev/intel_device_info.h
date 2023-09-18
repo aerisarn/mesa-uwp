@@ -487,9 +487,12 @@ struct intel_device_info
    } mem;
 
    struct {
-      struct intel_device_info_pat_entry coherent;
+      /* To be used when CPU access is frequent, WB + 1 or 2 way coherent */
+      struct intel_device_info_pat_entry cached_coherent;
+      /* scanout and external BOs */
       struct intel_device_info_pat_entry scanout;
-      struct intel_device_info_pat_entry writeback;
+      /* BOs without special needs, can be WB not coherent or WC it depends on the platforms and KMD */
+      struct intel_device_info_pat_entry writeback_incoherent;
       struct intel_device_info_pat_entry writecombining;
    } pat;
 

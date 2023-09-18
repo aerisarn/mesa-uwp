@@ -2628,7 +2628,7 @@ iris_bufmgr_get_pat_entry_for_bo_flags(const struct iris_bufmgr *bufmgr,
    const struct intel_device_info *devinfo = &bufmgr->devinfo;
 
    if (alloc_flags & BO_ALLOC_COHERENT)
-      return &devinfo->pat.coherent;
+      return &devinfo->pat.cached_coherent;
 
    if (alloc_flags & (BO_ALLOC_SHARED | BO_ALLOC_SCANOUT))
       return &devinfo->pat.scanout;
