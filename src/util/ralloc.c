@@ -1112,25 +1112,6 @@ ralloc_parent_of_linear_context(linear_ctx *ctx)
    return PTR_FROM_HEADER(get_header(node)->parent);
 }
 
-void *
-linear_realloc(linear_ctx *ctx, void *old, unsigned new_size)
-{
-   unsigned old_size = 0;
-   ralloc_header *new_ptr;
-
-   new_ptr = linear_alloc_child(ctx, new_size);
-
-   if (unlikely(!old))
-      return new_ptr;
-
-   old_size = ((linear_size_chunk*)old)[-1].size;
-
-   if (likely(new_ptr && old_size))
-      memcpy(new_ptr, old, MIN2(old_size, new_size));
-
-   return new_ptr;
-}
-
 /* All code below is pretty much copied from ralloc and only the alloc
  * calls are different.
  */

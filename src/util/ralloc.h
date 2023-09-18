@@ -610,14 +610,6 @@ void ralloc_steal_linear_context(void *new_ralloc_ctx, linear_ctx *ctx);
 void *ralloc_parent_of_linear_context(linear_ctx *ctx);
 
 /**
- * Same as realloc except that the linear allocator doesn't free child nodes,
- * so it's reduced to memory duplication. It's used in places where
- * reallocation is required. Don't use it often. It's much slower than
- * realloc.
- */
-void *linear_realloc(linear_ctx *ctx, void *old, unsigned new_size);
-
-/**
  * Do a fast allocation of an array from the linear context and initialize it to zero.
  *
  * Similar to \c calloc, but does not initialize the memory to zero.
