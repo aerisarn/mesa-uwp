@@ -85,7 +85,7 @@ typedef void *drmDevicePtr;
 static bool
 radv_spm_trace_enabled(struct radv_instance *instance)
 {
-   return (instance->vk.trace_mode == RADV_TRACE_MODE_RGP) &&
+   return (instance->vk.trace_mode & RADV_TRACE_MODE_RGP) &&
           debug_get_bool_option("RADV_THREAD_TRACE_CACHE_COUNTERS", true);
 }
 
