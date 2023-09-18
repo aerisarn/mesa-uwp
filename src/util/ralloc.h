@@ -700,6 +700,12 @@ bool linear_strcat(linear_ctx *ctx, char **dest, const char *str);
 #define linear_zalloc_array(ctx, type, count) \
    ((type *) linear_zalloc_child_array(ctx, sizeof(type), count))
 
+enum {
+   RALLOC_PRINT_INFO_SUMMARY_ONLY = 1 << 0,
+};
+
+void ralloc_print_info(FILE *f, const void *p, unsigned flags);
+
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

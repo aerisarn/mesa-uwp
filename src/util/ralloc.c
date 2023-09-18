@@ -1276,3 +1276,121 @@ linear_zalloc_child_array(linear_ctx *ctx, size_t size, unsigned count)
 
    return linear_zalloc_child(ctx, size * count);
 }
+
+typedef struct {
+   FILE *f;
+   unsigned indent;
+
+   unsigned ralloc_count;
+   unsigned linear_count;
+   unsigned gc_count;
+
+   /* These don't include padding or metadata from suballocators. */
+   unsigned content_bytes;
+   unsigned ralloc_metadata_bytes;
+   unsigned linear_metadata_bytes;
+   unsigned gc_metadata_bytes;
+
+   bool inside_linear;
+   bool inside_gc;
+} ralloc_print_info_state;
+
+static void
+ralloc_print_info_helper(ralloc_print_info_state *state, const ralloc_header *info)
+{
+   FILE *f = state->f;
+
+   if (f) {
+      for (unsigned i = 0; i < state->indent; i++) fputc(' ', f);
+      fprintf(f, "%p", info);
+   }
+
+   /* TODO: Account for padding used in various places. */
+
+#ifndef NDEBUG
+   assert(info->canary == CANARY);
+   if (f) fprintf(f, " (%d bytes)", info->size);
+   state->content_bytes += info->size;
+   state->ralloc_metadata_bytes += sizeof(ralloc_header);
+
+   const void *ptr = PTR_FROM_HEADER(info);
+   const linear_ctx *lin_ctx = ptr;
+   const gc_ctx *gc_ctx = ptr;
+
+   if (lin_ctx->magic == LMAGIC_CONTEXT) {
+      if (f) fprintf(f, " (linear context)");
+      assert(!state->inside_gc && !state->inside_linear);
+      state->inside_linear = true;
+      state->linear_metadata_bytes += sizeof(linear_ctx);
+      state->content_bytes -= sizeof(linear_ctx);
+      state->linear_count++;
+   } else if (gc_ctx->canary == GC_CONTEXT_CANARY) {
+      if (f) fprintf(f, " (gc context)");
+      assert(!state->inside_gc && !state->inside_linear);
+      state->inside_gc = true;
+      state->gc_metadata_bytes += sizeof(gc_block_header);
+   } else if (state->inside_linear) {
+      const linear_node_canary *lin_node = ptr;
+      if (lin_node->magic == LMAGIC_NODE) {
+         if (f) fprintf(f, " (linear node buffer)");
+         state->content_bytes -= sizeof(linear_node_canary);
+         state->linear_metadata_bytes += sizeof(linear_node_canary);
+         state->linear_count++;
+      }
+   } else if (state->inside_gc) {
+      if (f) fprintf(f, " (gc slab or large block)");
+      state->gc_count++;
+   }
+#endif
+
+   state->ralloc_count++;
+   if (f) fprintf(f, "\n");
+
+   const ralloc_header *c = info->child;
+   state->indent += 2;
+   while (c != NULL) {
+      ralloc_print_info_helper(state, c);
+      c = c->next;
+   }
+   state->indent -= 2;
+
+#ifndef NDEBUG
+   if (lin_ctx->magic == LMAGIC_CONTEXT) state->inside_linear = false;
+   else if (gc_ctx->canary == GC_CONTEXT_CANARY) state->inside_gc = false;
+#endif
+}
+
+void
+ralloc_print_info(FILE *f, const void *p, unsigned flags)
+{
+   ralloc_print_info_state state = {
+      .f =  ((flags & RALLOC_PRINT_INFO_SUMMARY_ONLY) == 1) ? NULL : f,
+   };
+
+   const ralloc_header *info = get_header(p);
+   ralloc_print_info_helper(&state, info);
+
+   fprintf(f, "==== RALLOC INFO ptr=%p info=%p\n"
+              "ralloc allocations    = %d\n"
+              "  - linear            = %d\n"
+              "  - gc                = %d\n"
+              "  - other             = %d\n",
+              p, info,
+              state.ralloc_count,
+              state.linear_count,
+              state.gc_count,
+              state.ralloc_count - state.linear_count - state.gc_count);
+
+   if (state.content_bytes) {
+      fprintf(f,
+              "content bytes         = %d\n"
+              "ralloc metadata bytes = %d\n"
+              "linear metadata bytes = %d\n",
+              state.content_bytes,
+              state.ralloc_metadata_bytes,
+              state.linear_metadata_bytes);
+   }
+
+   fprintf(f, "====\n");
+}
+
