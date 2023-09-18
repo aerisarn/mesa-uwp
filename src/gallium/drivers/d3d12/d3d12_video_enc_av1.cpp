@@ -1309,6 +1309,23 @@ d3d12_video_encoder_update_current_frame_pic_params_info_av1(struct d3d12_video_
    picParams.pAV1PicData->InterpolationFilter =
       static_cast<D3D12_VIDEO_ENCODER_AV1_INTERPOLATION_FILTERS>(pAV1Pic->interpolation_filter);
 
+   // Workaround for apps sending interpolation_filter values not supported even when reporting
+   // them in pipe_av1_enc_cap_features_ext1.interpolation_filter. If D3D12 driver doesn't support
+   // requested InterpolationFilter, fallback to the first supported by D3D12 driver
+   if ( (pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.SupportedInterpolationFilters &
+      (1 << picParams.pAV1PicData->InterpolationFilter)) == 0 ) { /* See definition of D3D12_VIDEO_ENCODER_AV1_INTERPOLATION_FILTERS_FLAGS */
+      debug_printf("[d3d12_video_encoder_update_current_frame_pic_params_info_av1] Requested interpolation_filter"
+                   " not supported in pipe_av1_enc_cap_features_ext1.interpolation_filter"
+                   ", auto selecting from D3D12 SupportedInterpolationFilters...");
+      for(uint8_t i = D3D12_VIDEO_ENCODER_AV1_INTERPOLATION_FILTERS_EIGHTTAP; i <= D3D12_VIDEO_ENCODER_AV1_INTERPOLATION_FILTERS_SWITCHABLE; i++) {
+         if ((pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.SupportedInterpolationFilters &
+             (1 << i)) /* See definition of D3D12_VIDEO_ENCODER_AV1_INTERPOLATION_FILTERS_FLAGS */ != 0) {
+            picParams.pAV1PicData->InterpolationFilter = static_cast<D3D12_VIDEO_ENCODER_AV1_INTERPOLATION_FILTERS>(i);
+            break;
+         }
+      }
+   }
+
    // D3D12_VIDEO_ENCODER_AV1_RESTORATION_CONFIG FrameRestorationConfig;
    // AV1 spec matches w/D3D12 FrameRestorationType enum definition
 
@@ -1346,8 +1363,8 @@ d3d12_video_encoder_update_current_frame_pic_params_info_av1(struct d3d12_video_
    // Workaround for mismatch between VAAPI/D3D12 and TxMode support for all/some frame types
    // If D3D12 driver doesn't support requested TxMode, fallback to the first supported by D3D12
    // driver for the requested frame type
-   if (((pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.SupportedTxModes[picParams.pAV1PicData->FrameType] &
-      (1 << picParams.pAV1PicData->TxMode)) == 0) /* See definition of D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAGS */ == 0) {
+   if ((pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.SupportedTxModes[picParams.pAV1PicData->FrameType] &
+      (1 << picParams.pAV1PicData->TxMode)) == 0) /* See definition of D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAGS */ {
       debug_printf("[d3d12_video_encoder_update_current_frame_pic_params_info_av1] Requested tx_mode not supported"
                      ", auto selecting from D3D12 SupportedTxModes for current frame type...");
       for(uint8_t i = D3D12_VIDEO_ENCODER_AV1_TX_MODE_ONLY4x4; i <= D3D12_VIDEO_ENCODER_AV1_TX_MODE_SELECT; i++) {
