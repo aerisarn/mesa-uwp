@@ -948,8 +948,7 @@ gc_sweep_end(gc_ctx *ctx)
  *
  * The allocator uses a fixed-sized buffer with a monotonically increasing
  * offset after each allocation. If the buffer is all used, another buffer
- * is allocated, sharing the same ralloc parent, so all buffers are at
- * the same level in the ralloc hierarchy.
+ * is allocated, using the linear parent node as ralloc parent.
  *
  * The linear parent node is always the first buffer and keeps track of all
  * other buffers.
@@ -968,7 +967,6 @@ struct linear_header {
 #endif
    unsigned offset;  /* points to the first unused byte in the buffer */
    unsigned size;    /* size of the buffer */
-   struct linear_header *next;   /* next buffer if we have more */
    struct linear_header *latest; /* the only buffer that has free space */
 
    /* After this structure, the buffer begins.
@@ -1017,7 +1015,6 @@ create_linear_node(void *ralloc_ctx, unsigned min_size)
 #endif
    node->offset = 0;
    node->size = min_size;
-   node->next = NULL;
    node->latest = node;
    return node;
 }
@@ -1032,21 +1029,19 @@ linear_alloc_child(void *parent, unsigned size)
    unsigned full_size;
 
    assert(first->magic == LMAGIC);
-   assert(!latest->next);
 
    size = ALIGN_POT(size, SUBALLOC_ALIGNMENT);
    full_size = sizeof(linear_size_chunk) + size;
 
    if (unlikely(latest->offset + full_size > latest->size)) {
       /* allocate a new node */
-      void *ralloc_ctx = ralloc_parent_of_linear_parent(parent);
+      void *ralloc_ctx = first;
       new_node = create_linear_node(ralloc_ctx, size);
       if (unlikely(!new_node))
          return NULL;
 
       first->latest = new_node;
       latest->latest = new_node;
-      latest->next = new_node;
       latest = new_node;
    }
 
@@ -1100,37 +1095,27 @@ linear_zalloc_parent(void *parent, unsigned size)
 void
 linear_free_parent(void *ptr)
 {
-   linear_header *node;
-
    if (unlikely(!ptr))
       return;
 
-   node = LINEAR_PARENT_TO_HEADER(ptr);
-   assert(node->magic == LMAGIC);
+   linear_header *first = LINEAR_PARENT_TO_HEADER(ptr);
+   assert(first->magic == LMAGIC);
 
-   while (node) {
-      void *ptr = node;
-
-      node = node->next;
-      ralloc_free(ptr);
-   }
+   /* Other nodes are ralloc children of the first node. */
+   ralloc_free(first);
 }
 
 void
 ralloc_steal_linear_parent(void *new_ralloc_ctx, void *ptr)
 {
-   linear_header *node;
-
    if (unlikely(!ptr))
       return;
 
-   node = LINEAR_PARENT_TO_HEADER(ptr);
-   assert(node->magic == LMAGIC);
+   linear_header *first = LINEAR_PARENT_TO_HEADER(ptr);
+   assert(first->magic == LMAGIC);
 
-   while (node) {
-      ralloc_steal(new_ralloc_ctx, node);
-      node = node->next;
-   }
+   /* Other nodes are ralloc children of the first node. */
+   ralloc_steal(new_ralloc_ctx, first);
 }
 
 void *
