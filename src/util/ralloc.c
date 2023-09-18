@@ -55,6 +55,7 @@ struct ralloc_header
 #ifndef NDEBUG
    /* A canary value used to determine whether a pointer is ralloc'd. */
    unsigned canary;
+   unsigned size;
 #endif
 
    struct ralloc_header *parent;
@@ -139,6 +140,7 @@ ralloc_size(const void *ctx, size_t size)
 
 #ifndef NDEBUG
    info->canary = CANARY;
+   info->size = size;
 #endif
 
    return PTR_FROM_HEADER(info);
