@@ -199,6 +199,7 @@ enum vcn_version{
    VCN_4_0_2,
    VCN_4_0_3,
    VCN_4_0_4,
+   VCN_4_0_5,
 };
 
 const char *ac_get_family_name(enum radeon_family family);
