@@ -1226,9 +1226,11 @@ linear_vasprintf_rewrite_tail(linear_ctx *ctx, char **str, size_t *start,
 
    new_length = u_printf_length(fmt, args);
 
-   ptr = linear_realloc(ctx, *str, *start + new_length + 1);
+   ptr = linear_alloc_child(ctx, *start + new_length + 1);
    if (unlikely(ptr == NULL))
       return false;
+
+   memcpy(ptr, *str, *start);
 
    vsnprintf(ptr + *start, new_length + 1, fmt, args);
    *str = ptr;
@@ -1245,10 +1247,11 @@ linear_cat(linear_ctx *ctx, char **dest, const char *str, unsigned n)
    assert(dest != NULL && *dest != NULL);
 
    existing_length = strlen(*dest);
-   both = linear_realloc(ctx, *dest, existing_length + n + 1);
+   both = linear_alloc_child(ctx, existing_length + n + 1);
    if (unlikely(both == NULL))
       return false;
 
+   memcpy(both, *dest, existing_length);
    memcpy(both + existing_length, str, n);
    both[existing_length + n] = '\0';
 
