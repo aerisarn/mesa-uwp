@@ -1598,8 +1598,12 @@ radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount, const VkBindImag
    for (uint32_t i = 0; i < bindInfoCount; ++i) {
       RADV_FROM_HANDLE(radv_device_memory, mem, pBindInfos[i].memory);
       RADV_FROM_HANDLE(radv_image, image, pBindInfos[i].image);
+      VkBindMemoryStatusKHR *status = (void *)vk_find_struct_const(&pBindInfos[i], BIND_MEMORY_STATUS_KHR);
 
-      /* Ignore this struct on Android, we cannot access swapchain structures there. */
+      if (status)
+         *status->pResult = VK_SUCCESS;
+
+         /* Ignore this struct on Android, we cannot access swapchain structures there. */
 #ifdef RADV_USE_WSI_PLATFORM
       const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
          vk_find_struct_const(pBindInfos[i].pNext, BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR);
@@ -1626,6 +1630,8 @@ radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount, const VkBindImag
          radv_GetImageMemoryRequirements2(_device, &info, &reqs);
 
          if (pBindInfos[i].memoryOffset + reqs.memoryRequirements.size > mem->alloc_size) {
+            if (status)
+               *status->pResult = VK_ERROR_UNKNOWN;
             return vk_errorf(device, VK_ERROR_UNKNOWN, "Device memory object too small for the image.\n");
          }
       }
