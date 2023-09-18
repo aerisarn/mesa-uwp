@@ -370,6 +370,18 @@ d3d12_video_encode_supported_tile_structures(const D3D12_VIDEO_ENCODER_CODEC &co
                                                   sizeof(capDataTilesSupport));
       }
 
+      // Try with lower resolution as fallback
+      D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC fallbackRes = { 1920u, 1080u };
+      if(SUCCEEDED(hr) && !capDataTilesSupport.IsSupported && (fallbackRes.Width <= maxRes.Width)
+        && (fallbackRes.Height <= maxRes.Height) ) {
+         auto oldRes = capDataTilesSupport.FrameResolution;
+         capDataTilesSupport.FrameResolution = fallbackRes;
+         hr = pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_CONFIG,
+                                                  &capDataTilesSupport,
+                                                  sizeof(capDataTilesSupport));
+         capDataTilesSupport.FrameResolution = oldRes;
+      }
+
       if(SUCCEEDED(hr) && capDataTilesSupport.IsSupported)
          supportedSliceStructures |= (PIPE_VIDEO_CAP_SLICE_STRUCTURE_POWER_OF_TWO_ROWS |
                                       PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_ROWS |
