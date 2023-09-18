@@ -37,6 +37,7 @@
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
 #include "vk_device.h"
+#include "vk_image.h"
 #include "vk_instance.h"
 #include "vk_object.h"
 #include "vk_physical_device.h"
@@ -143,6 +144,12 @@ struct vn_device_base {
 /* base class of vn_queue */
 struct vn_queue_base {
    struct vk_queue base;
+   vn_object_id id;
+};
+
+/* base class of vn_image */
+struct vn_image_base {
+   struct vk_image base;
    vn_object_id id;
 };
 
@@ -364,6 +371,9 @@ vn_object_set_id(void *obj, vn_object_id id, VkObjectType type)
    case VK_OBJECT_TYPE_QUEUE:
       ((struct vn_queue_base *)obj)->id = id;
       break;
+   case VK_OBJECT_TYPE_IMAGE:
+      ((struct vn_image_base *)obj)->id = id;
+      break;
    default:
       ((struct vn_object_base *)obj)->id = id;
       break;
@@ -383,6 +393,8 @@ vn_object_get_id(const void *obj, VkObjectType type)
       return ((struct vn_device_base *)obj)->id;
    case VK_OBJECT_TYPE_QUEUE:
       return ((struct vn_queue_base *)obj)->id;
+   case VK_OBJECT_TYPE_IMAGE:
+      return ((struct vn_image_base *)obj)->id;
    default:
       return ((struct vn_object_base *)obj)->id;
    }
