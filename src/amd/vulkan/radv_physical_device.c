@@ -454,6 +454,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_maintenance3 = true,
       .KHR_maintenance4 = true,
       .KHR_maintenance5 = true,
+      .KHR_maintenance6 = true,
       .KHR_map_memory2 = true,
       .KHR_multiview = true,
       .KHR_performance_query = radv_perf_query_supported(device),
@@ -1093,6 +1094,9 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
 
       /* VK_EXT_depth_clamp_zero_one */
       .depthClampZeroOne = true,
+
+      /* VK_KHR_maintenance6 */
+      .maintenance6 = true,
    };
 }
 
@@ -1769,6 +1773,11 @@ radv_get_physical_device_properties(struct radv_physical_device *pdevice)
 
    /* VK_KHR_cooperative_matrix */
    p->cooperativeMatrixSupportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
+
+   /* VK_KHR_maintenance6 */
+   p->blockTexelViewCompatibleMultipleLayers = true;
+   p->maxCombinedImageSamplerDescriptorCount = 1;
+   p->fragmentShadingRateClampCombinerInputs = true;
 }
 
 static VkResult
