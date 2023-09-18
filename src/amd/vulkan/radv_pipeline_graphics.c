@@ -2642,6 +2642,18 @@ radv_graphics_shaders_compile(struct radv_device *device, struct vk_pipeline_cac
    }
 }
 
+static bool
+radv_should_compute_pipeline_hash(const struct radv_device *device, const struct radv_graphics_pipeline *pipeline,
+                                  bool fast_linking_enabled)
+{
+   /* Skip computing the pipeline hash when GPL fast-linking is enabled because these shaders aren't
+    * supposed to be cached and computing the hash is costly. Though, make sure it's always computed
+    * when RGP is enabled, otherwise ISA isn't reported.
+    */
+   return !fast_linking_enabled ||
+          ((device->instance->vk.trace_mode & RADV_TRACE_MODE_RGP) && pipeline->base.type == RADV_PIPELINE_GRAPHICS);
+}
+
 static VkResult
 radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                struct radv_pipeline_layout *pipeline_layout, struct radv_device *device,
@@ -2687,7 +2699,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
 
    radv_pipeline_load_retained_shaders(device, pipeline, pCreateInfo, stages);
 
-   if (!fast_linking_enabled) {
+   if (radv_should_compute_pipeline_hash(device, pipeline, fast_linking_enabled)) {
       radv_hash_shaders(hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key,
                         radv_get_hash_flags(device, keep_statistic_info));
 
@@ -3951,7 +3963,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       return result;
    }
 
-   if (!fast_linking_enabled)
+   if (radv_should_compute_pipeline_hash(device, pipeline, fast_linking_enabled))
       radv_pipeline_layout_hash(&pipeline_layout);
 
    if (!radv_skip_graphics_pipeline_compile(device, pipeline, needed_lib_flags, fast_linking_enabled)) {
@@ -4130,7 +4142,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline, str
    if (result != VK_SUCCESS)
       return result;
 
-   if (!fast_linking_enabled)
+   if (radv_should_compute_pipeline_hash(device, &pipeline->base, fast_linking_enabled))
       radv_pipeline_layout_hash(pipeline_layout);
 
    struct radv_pipeline_key key =
