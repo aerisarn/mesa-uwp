@@ -983,6 +983,10 @@ struct linear_header {
     */
 };
 
+struct linear_ctx {
+   struct linear_header header;
+};
+
 struct linear_size_chunk {
    unsigned size; /* for realloc */
    unsigned _padding;
@@ -1016,9 +1020,9 @@ create_linear_node(void *ralloc_ctx, unsigned min_size)
 }
 
 void *
-linear_alloc_child(void *parent, unsigned size)
+linear_alloc_child(linear_ctx *ctx, unsigned size)
 {
-   linear_header *first = parent;
+   linear_header *first = &ctx->header;
    linear_header *latest = first->latest;
    linear_header *new_node;
    linear_size_chunk *ptr;
@@ -1049,8 +1053,8 @@ linear_alloc_child(void *parent, unsigned size)
    return &ptr[1];
 }
 
-void *
-linear_alloc_parent(void *ralloc_ctx)
+linear_ctx *
+linear_context(void *ralloc_ctx)
 {
    linear_header *node;
 
@@ -1061,13 +1065,13 @@ linear_alloc_parent(void *ralloc_ctx)
    if (unlikely(!node))
       return NULL;
 
-   return node;
+   return (linear_ctx *)node;
 }
 
 void *
-linear_zalloc_child(void *parent, unsigned size)
+linear_zalloc_child(linear_ctx *ctx, unsigned size)
 {
-   void *ptr = linear_alloc_child(parent, size);
+   void *ptr = linear_alloc_child(ctx, size);
 
    if (likely(ptr))
       memset(ptr, 0, size);
@@ -1075,46 +1079,46 @@ linear_zalloc_child(void *parent, unsigned size)
 }
 
 void
-linear_free_parent(void *ptr)
+linear_free_context(linear_ctx *ctx)
 {
-   if (unlikely(!ptr))
+   if (unlikely(!ctx))
       return;
 
-   linear_header *first = ptr;
+   linear_header *first = &ctx->header;
    assert(first->magic == LMAGIC);
 
    /* Other nodes are ralloc children of the first node. */
-   ralloc_free(first);
+   ralloc_free(ctx);
 }
 
 void
-ralloc_steal_linear_parent(void *new_ralloc_ctx, void *ptr)
+ralloc_steal_linear_context(void *new_ralloc_ctx, linear_ctx *ctx)
 {
-   if (unlikely(!ptr))
+   if (unlikely(!ctx))
       return;
 
-   linear_header *first = ptr;
+   linear_header *first = &ctx->header;
    assert(first->magic == LMAGIC);
 
    /* Other nodes are ralloc children of the first node. */
-   ralloc_steal(new_ralloc_ctx, first);
+   ralloc_steal(new_ralloc_ctx, ctx);
 }
 
 void *
-ralloc_parent_of_linear_parent(void *ptr)
+ralloc_parent_of_linear_context(linear_ctx *ctx)
 {
-   linear_header *node = ptr;
+   linear_header *node = &ctx->header;
    assert(node->magic == LMAGIC);
    return PTR_FROM_HEADER(get_header(node)->parent);
 }
 
 void *
-linear_realloc(void *parent, void *old, unsigned new_size)
+linear_realloc(linear_ctx *ctx, void *old, unsigned new_size)
 {
    unsigned old_size = 0;
    ralloc_header *new_ptr;
 
-   new_ptr = linear_alloc_child(parent, new_size);
+   new_ptr = linear_alloc_child(ctx, new_size);
 
    if (unlikely(!old))
       return new_ptr;
@@ -1132,7 +1136,7 @@ linear_realloc(void *parent, void *old, unsigned new_size)
  */
 
 char *
-linear_strdup(void *parent, const char *str)
+linear_strdup(linear_ctx *ctx, const char *str)
 {
    unsigned n;
    char *ptr;
@@ -1141,7 +1145,7 @@ linear_strdup(void *parent, const char *str)
       return NULL;
 
    n = strlen(str);
-   ptr = linear_alloc_child(parent, n + 1);
+   ptr = linear_alloc_child(ctx, n + 1);
    if (unlikely(!ptr))
       return NULL;
 
@@ -1151,22 +1155,22 @@ linear_strdup(void *parent, const char *str)
 }
 
 char *
-linear_asprintf(void *parent, const char *fmt, ...)
+linear_asprintf(linear_ctx *ctx, const char *fmt, ...)
 {
    char *ptr;
    va_list args;
    va_start(args, fmt);
-   ptr = linear_vasprintf(parent, fmt, args);
+   ptr = linear_vasprintf(ctx, fmt, args);
    va_end(args);
    return ptr;
 }
 
 char *
-linear_vasprintf(void *parent, const char *fmt, va_list args)
+linear_vasprintf(linear_ctx *ctx, const char *fmt, va_list args)
 {
    unsigned size = u_printf_length(fmt, args) + 1;
 
-   char *ptr = linear_alloc_child(parent, size);
+   char *ptr = linear_alloc_child(ctx, size);
    if (ptr != NULL)
       vsnprintf(ptr, size, fmt, args);
 
@@ -1174,39 +1178,39 @@ linear_vasprintf(void *parent, const char *fmt, va_list args)
 }
 
 bool
-linear_asprintf_append(void *parent, char **str, const char *fmt, ...)
+linear_asprintf_append(linear_ctx *ctx, char **str, const char *fmt, ...)
 {
    bool success;
    va_list args;
    va_start(args, fmt);
-   success = linear_vasprintf_append(parent, str, fmt, args);
+   success = linear_vasprintf_append(ctx, str, fmt, args);
    va_end(args);
    return success;
 }
 
 bool
-linear_vasprintf_append(void *parent, char **str, const char *fmt, va_list args)
+linear_vasprintf_append(linear_ctx *ctx, char **str, const char *fmt, va_list args)
 {
    size_t existing_length;
    assert(str != NULL);
    existing_length = *str ? strlen(*str) : 0;
-   return linear_vasprintf_rewrite_tail(parent, str, &existing_length, fmt, args);
+   return linear_vasprintf_rewrite_tail(ctx, str, &existing_length, fmt, args);
 }
 
 bool
-linear_asprintf_rewrite_tail(void *parent, char **str, size_t *start,
+linear_asprintf_rewrite_tail(linear_ctx *ctx, char **str, size_t *start,
                              const char *fmt, ...)
 {
    bool success;
    va_list args;
    va_start(args, fmt);
-   success = linear_vasprintf_rewrite_tail(parent, str, start, fmt, args);
+   success = linear_vasprintf_rewrite_tail(ctx, str, start, fmt, args);
    va_end(args);
    return success;
 }
 
 bool
-linear_vasprintf_rewrite_tail(void *parent, char **str, size_t *start,
+linear_vasprintf_rewrite_tail(linear_ctx *ctx, char **str, size_t *start,
                               const char *fmt, va_list args)
 {
    size_t new_length;
@@ -1215,14 +1219,14 @@ linear_vasprintf_rewrite_tail(void *parent, char **str, size_t *start,
    assert(str != NULL);
 
    if (unlikely(*str == NULL)) {
-      *str = linear_vasprintf(parent, fmt, args);
+      *str = linear_vasprintf(ctx, fmt, args);
       *start = strlen(*str);
       return true;
    }
 
    new_length = u_printf_length(fmt, args);
 
-   ptr = linear_realloc(parent, *str, *start + new_length + 1);
+   ptr = linear_realloc(ctx, *str, *start + new_length + 1);
    if (unlikely(ptr == NULL))
       return false;
 
@@ -1234,14 +1238,14 @@ linear_vasprintf_rewrite_tail(void *parent, char **str, size_t *start,
 
 /* helper routine for strcat/strncat - n is the exact amount to copy */
 static bool
-linear_cat(void *parent, char **dest, const char *str, unsigned n)
+linear_cat(linear_ctx *ctx, char **dest, const char *str, unsigned n)
 {
    char *both;
    unsigned existing_length;
    assert(dest != NULL && *dest != NULL);
 
    existing_length = strlen(*dest);
-   both = linear_realloc(parent, *dest, existing_length + n + 1);
+   both = linear_realloc(ctx, *dest, existing_length + n + 1);
    if (unlikely(both == NULL))
       return false;
 
@@ -1253,25 +1257,25 @@ linear_cat(void *parent, char **dest, const char *str, unsigned n)
 }
 
 bool
-linear_strcat(void *parent, char **dest, const char *str)
+linear_strcat(linear_ctx *ctx, char **dest, const char *str)
 {
-   return linear_cat(parent, dest, str, strlen(str));
+   return linear_cat(ctx, dest, str, strlen(str));
 }
 
 void *
-linear_alloc_child_array(void *parent, size_t size, unsigned count)
+linear_alloc_child_array(linear_ctx *ctx, size_t size, unsigned count)
 {
    if (count > SIZE_MAX/size)
       return NULL;
 
-   return linear_alloc_child(parent, size * count);
+   return linear_alloc_child(ctx, size * count);
 }
 
 void *
-linear_zalloc_child_array(void *parent, size_t size, unsigned count)
+linear_zalloc_child_array(linear_ctx *ctx, size_t size, unsigned count)
 {
    if (count > SIZE_MAX/size)
       return NULL;
 
-   return linear_zalloc_child(parent, size * count);
+   return linear_zalloc_child(ctx, size * count);
 }
