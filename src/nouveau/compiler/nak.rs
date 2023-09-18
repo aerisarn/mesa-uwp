@@ -236,9 +236,8 @@ fn encode_hdr_for_nir(
     cw0.set_field(10..14, shader_type);
     if let ShaderStageInfo::Fragment(fs_info) = &shader_info.stage {
         cw0.set_bit(14, fs_info.writes_color > 0xf);
-        let info_fs = unsafe { &nir.info.__bindgen_anon_1.fs };
         let zs_self_dep = fs_key.map_or(false, |key| key.zs_self_dep);
-        cw0.set_bit(15, info_fs.uses_discard() || zs_self_dep);
+        cw0.set_bit(15, fs_info.uses_kill || zs_self_dep);
     }
     cw0.set_bit(16, false /* TODO: DoesGlobalStore */);
     cw0.set_field(17..21, 1_u32 /* SassVersion */);

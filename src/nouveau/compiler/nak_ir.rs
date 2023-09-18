@@ -4458,6 +4458,7 @@ pub struct ComputeShaderInfo {
 #[derive(Debug, Default)]
 pub struct FragmentShaderInfo {
     pub reads_sample_mask: bool,
+    pub uses_kill: bool,
     pub writes_color: u32,
     pub writes_sample_mask: bool,
     pub writes_depth: bool,

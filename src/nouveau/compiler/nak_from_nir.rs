@@ -1193,9 +1193,19 @@ impl<'a> ShaderFromNir<'a> {
                 });
             }
             nir_intrinsic_demote | nir_intrinsic_discard => {
+                if let ShaderStageInfo::Fragment(info) = &mut self.info.stage {
+                    info.uses_kill = true;
+                } else {
+                    panic!("OpKill is only available in fragment shaders");
+                }
                 b.push_op(OpKill {});
             }
             nir_intrinsic_demote_if | nir_intrinsic_discard_if => {
+                if let ShaderStageInfo::Fragment(info) = &mut self.info.stage {
+                    info.uses_kill = true;
+                } else {
+                    panic!("OpKill is only available in fragment shaders");
+                }
                 let cond = self.get_ssa(&srcs[0].as_def())[0];
                 b.predicate(cond.into()).push_op(OpKill {});
             }
