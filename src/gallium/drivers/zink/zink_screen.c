@@ -1557,9 +1557,7 @@ zink_get_display_device(const struct zink_screen *screen, uint32_t pdev_count,
          return i;
    }
 
-   mesa_loge("ZINK: could not find the Display GPU, choosing default device!");
-
-   return 0;
+   return -1;
 }
 
 static int

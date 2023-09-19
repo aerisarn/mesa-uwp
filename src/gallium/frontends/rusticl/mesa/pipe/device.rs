@@ -39,10 +39,10 @@ impl Drop for PipeLoaderDevice {
 }
 
 fn load_devs() -> Vec<PipeLoaderDevice> {
-    let n = unsafe { pipe_loader_probe(ptr::null_mut(), 0) };
+    let n = unsafe { pipe_loader_probe(ptr::null_mut(), 0, true) };
     let mut devices: Vec<*mut pipe_loader_device> = vec![ptr::null_mut(); n as usize];
     unsafe {
-        pipe_loader_probe(devices.as_mut_ptr(), n);
+        pipe_loader_probe(devices.as_mut_ptr(), n, true);
     }
 
     devices
