@@ -1204,8 +1204,8 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 
 #if GFX_VERx10 == 125
       /* Wa_14015946265: Send PC with CS stall after SO_DECL. */
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch, device->info,
-                                    ANV_PIPE_CS_STALL_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch, device->info,
+                                   ANV_PIPE_CS_STALL_BIT);
 #endif
    }
 
@@ -1664,8 +1664,8 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 
 #if INTEL_NEEDS_WA_18019816803
    if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_WA_18019816803)) {
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch, cmd_buffer->device->info,
-                                    ANV_PIPE_PSS_STALL_SYNC_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch, cmd_buffer->device->info,
+                                   ANV_PIPE_PSS_STALL_SYNC_BIT);
    }
 #endif
 
@@ -1697,7 +1697,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
     * streamer stall.  However, the hardware seems to violently disagree.
     * A full command streamer stall seems to be needed in both cases.
     */
-   genX(batch_emit_pipe_control)
+   genx_batch_emit_pipe_control
       (&cmd_buffer->batch, cmd_buffer->device->info,
        ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
        ANV_PIPE_CS_STALL_BIT |
@@ -1725,7 +1725,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
     * Again, the Skylake docs give a different set of flushes but the BDW
     * flushes seem to work just as well.
     */
-   genX(batch_emit_pipe_control)
+   genx_batch_emit_pipe_control
       (&cmd_buffer->batch, cmd_buffer->device->info,
        ANV_PIPE_DEPTH_STALL_BIT |
        ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |

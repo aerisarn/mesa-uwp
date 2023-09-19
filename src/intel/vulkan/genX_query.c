@@ -673,7 +673,7 @@ emit_ps_depth_count(struct anv_cmd_buffer *cmd_buffer,
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    bool cs_stall_needed = (GFX_VER == 9 && cmd_buffer->device->info->gt == 4);
-   genX(batch_emit_pipe_control_write)
+   genx_batch_emit_pipe_control_write
       (&cmd_buffer->batch, cmd_buffer->device->info, WritePSDepthCount, addr, 0,
        ANV_PIPE_DEPTH_STALL_BIT | (cs_stall_needed ? ANV_PIPE_CS_STALL_BIT : 0));
 }
@@ -694,7 +694,7 @@ emit_query_pc_availability(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   genX(batch_emit_pipe_control_write)
+   genx_batch_emit_pipe_control_write
       (&cmd_buffer->batch, cmd_buffer->device->info, WriteImmediateData, addr,
        available, ANV_PIPE_CS_STALL_BIT);
 }
@@ -1022,20 +1022,20 @@ void genX(CmdBeginQueryIndexedEXT)(
       break;
 
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       mi_store(&b, mi_mem64(anv_address_add(query_addr, 8)),
                    mi_reg64(GENX(CL_INVOCATION_COUNT_num)));
       break;
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
       /* TODO: This might only be necessary for certain stats */
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
 
       uint32_t statistics = pool->vk.pipeline_statistics;
       uint32_t offset = 8;
@@ -1048,10 +1048,10 @@ void genX(CmdBeginQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       emit_xfb_query(&b, index, anv_address_add(query_addr, 8));
       break;
 
@@ -1107,10 +1107,10 @@ void genX(CmdBeginQueryIndexedEXT)(
       const enum intel_engine_class engine_class = cmd_buffer->queue_family->engine_class;
       mi_self_mod_barrier(&b, devinfo->engine_class_prefetch[engine_class]);
 
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       cmd_buffer->perf_query_pool = pool;
 
       cmd_buffer->perf_reloc_idx = 0;
@@ -1169,10 +1169,10 @@ void genX(CmdBeginQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL: {
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       emit_perf_intel_query(cmd_buffer, pool, &b, query_addr, false);
       break;
    }
@@ -1209,10 +1209,10 @@ void genX(CmdEndQueryIndexedEXT)(
       /* Ensure previous commands have completed before capturing the register
        * value.
        */
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
 
       mi_store(&b, mi_mem64(anv_address_add(query_addr, 16)),
                    mi_reg64(GENX(CL_INVOCATION_COUNT_num)));
@@ -1221,10 +1221,10 @@ void genX(CmdEndQueryIndexedEXT)(
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
       /* TODO: This might only be necessary for certain stats */
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
 
       uint32_t statistics = pool->vk.pipeline_statistics;
       uint32_t offset = 16;
@@ -1239,19 +1239,19 @@ void genX(CmdEndQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       emit_xfb_query(&b, index, anv_address_add(query_addr, 16));
       emit_query_mi_availability(&b, query_addr, true);
       break;
 
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       cmd_buffer->perf_query_pool = pool;
 
       if (!khr_perf_query_ensure_relocs(cmd_buffer))
@@ -1326,10 +1326,10 @@ void genX(CmdEndQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL: {
-      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
-                                    cmd_buffer->device->info,
-                                    ANV_PIPE_CS_STALL_BIT |
-                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT |
+                                   ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       uint32_t marker_offset = intel_perf_marker_offset();
       mi_store(&b, mi_mem64(anv_address_add(query_addr, marker_offset)),
                    mi_imm(cmd_buffer->intel_perf_marker));
@@ -1392,7 +1392,7 @@ void genX(CmdWriteTimestamp2)(
 
       bool cs_stall_needed =
          (GFX_VER == 9 && cmd_buffer->device->info->gt == 4);
-      genX(batch_emit_pipe_control_write)
+      genx_batch_emit_pipe_control_write
          (&cmd_buffer->batch, cmd_buffer->device->info, WriteTimestamp,
           anv_address_add(query_addr, 8), 0,
           cs_stall_needed ? ANV_PIPE_CS_STALL_BIT : 0);

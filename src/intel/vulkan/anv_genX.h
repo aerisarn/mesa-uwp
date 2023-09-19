@@ -224,7 +224,8 @@ genX(cmd_buffer_set_preemption)(struct anv_cmd_buffer *cmd_buffer, bool value);
 void
 genX(batch_emit_pipe_control)(struct anv_batch *batch,
                               const struct intel_device_info *devinfo,
-                              enum anv_pipe_bits bits);
+                              enum anv_pipe_bits bits,
+                              const char *reason);
 
 void
 genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
@@ -232,7 +233,14 @@ genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
                                     uint32_t post_sync_op,
                                     struct anv_address address,
                                     uint32_t imm_data,
-                                    enum anv_pipe_bits bits);
+                                    enum anv_pipe_bits bits,
+                                    const char *reason);
+
+#define genx_batch_emit_pipe_control(a, b, c) \
+genX(batch_emit_pipe_control) (a, b, c, __func__)
+
+#define genx_batch_emit_pipe_control_write(a, b, c, d, e, f) \
+genX(batch_emit_pipe_control_write) (a, b, c, d, e, f, __func__)
 
 void genX(batch_emit_breakpoint)(struct anv_batch *batch,
                                  struct anv_device *device,
