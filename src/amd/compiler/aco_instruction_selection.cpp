@@ -8985,7 +8985,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          aco_opcode::p_create_vector, Format::PSEUDO, instr->num_components, 1)};
       unsigned write_mask = nir_intrinsic_write_mask(instr);
 
-      bool use_gds_registers = ctx->options->gfx_level >= GFX11 && ctx->options->is_opengl;
+      const bool use_gds_registers = ctx->options->gfx_level >= GFX11;
 
       for (unsigned i = 0; i < instr->num_components; i++) {
          if (write_mask & (1 << i)) {
@@ -9022,7 +9022,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_xfb_counter_sub_amd: {
-      bool use_gds_registers = ctx->options->gfx_level >= GFX11 && ctx->options->is_opengl;
+      const bool use_gds_registers = ctx->options->gfx_level >= GFX11;
 
       unsigned write_mask = nir_intrinsic_write_mask(instr);
       Temp counter = get_ssa_temp(ctx, instr->src[0].ssa);

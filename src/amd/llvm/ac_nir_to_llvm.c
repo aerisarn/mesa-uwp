@@ -3654,9 +3654,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    }
    case nir_intrinsic_ordered_xfb_counter_add_amd: {
       /* must be called in a single lane of a workgroup. */
-      /* TODO: Add RADV support. */
-      bool use_gds_registers = ctx->ac.gfx_level >= GFX11 &&
-                               ctx->ac.float_mode == AC_FLOAT_MODE_DEFAULT_OPENGL;
+      const bool use_gds_registers = ctx->ac.gfx_level >= GFX11;
       LLVMTypeRef gdsptr = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);
       LLVMValueRef gdsbase = LLVMBuildIntToPtr(ctx->ac.builder, ctx->ac.i32_0, gdsptr, "");
 
@@ -3736,9 +3734,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    }
    case nir_intrinsic_xfb_counter_sub_amd: {
       /* must be called in a single lane of a workgroup. */
-      /* TODO: Add RADV support. */
-      bool use_gds_registers = ctx->ac.gfx_level >= GFX11 &&
-                               ctx->ac.float_mode == AC_FLOAT_MODE_DEFAULT_OPENGL;
+      const bool use_gds_registers = ctx->ac.gfx_level >= GFX11;
       LLVMTypeRef gdsptr = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);
       LLVMValueRef gdsbase = LLVMBuildIntToPtr(ctx->ac.builder, ctx->ac.i32_0, gdsptr, "");
       LLVMValueRef sub_vec = get_src(ctx, instr->src[0]);

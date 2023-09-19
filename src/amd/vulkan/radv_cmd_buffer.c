@@ -10983,14 +10983,30 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
       }
 
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-         radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, 0));
-         radeon_emit(cs, S_411_SRC_SEL(append ? V_411_SRC_ADDR_TC_L2 : V_411_DATA) | S_411_DST_SEL(V_411_GDS) |
-                            S_411_CP_SYNC(i == last_target));
-         radeon_emit(cs, va);
-         radeon_emit(cs, va >> 32);
-         radeon_emit(cs, 4 * i); /* destination in GDS */
-         radeon_emit(cs, 0);
-         radeon_emit(cs, S_415_BYTE_COUNT_GFX9(4) | S_415_DISABLE_WR_CONFIRM_GFX9(i != last_target));
+         if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+            if (append) {
+               radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+               radeon_emit(
+                  cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) | COPY_DATA_DST_SEL(COPY_DATA_REG) | COPY_DATA_WR_CONFIRM);
+               radeon_emit(cs, va);
+               radeon_emit(cs, va >> 32);
+               radeon_emit(cs, (R_031088_GDS_STRMOUT_DWORDS_WRITTEN_0 >> 2) + i);
+               radeon_emit(cs, 0);
+            } else {
+               /* The PKT3 CAM bit workaround seems needed for initializing this GDS register to zero. */
+               radeon_set_perfctr_reg(cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf, cs,
+                                      R_031088_GDS_STRMOUT_DWORDS_WRITTEN_0 + i * 4, 0);
+            }
+         } else {
+            radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, 0));
+            radeon_emit(cs, S_411_SRC_SEL(append ? V_411_SRC_ADDR_TC_L2 : V_411_DATA) | S_411_DST_SEL(V_411_GDS) |
+                               S_411_CP_SYNC(i == last_target));
+            radeon_emit(cs, va);
+            radeon_emit(cs, va >> 32);
+            radeon_emit(cs, 4 * i); /* destination in GDS */
+            radeon_emit(cs, 0);
+            radeon_emit(cs, S_415_BYTE_COUNT_GFX9(4) | S_415_DISABLE_WR_CONFIRM_GFX9(i != last_target));
+         }
       } else {
          /* AMD GCN binds streamout buffers as shader resources.
           * VGT only counts primitives and tells the shader through
@@ -11038,8 +11054,13 @@ radv_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCou
 
    assert(firstCounterBuffer + counterBufferCount <= MAX_SO_BUFFERS);
 
-   if (!cmd_buffer->device->physical_device->use_ngg_streamout)
+   if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+      /* Wait for streamout to finish before reading GDS_STRMOUT registers. */
+      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VS_PARTIAL_FLUSH;
+      si_emit_cache_flush(cmd_buffer);
+   } else {
       radv_flush_vgt_streamout(cmd_buffer);
+   }
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SO_BUFFERS * 12);
 
@@ -11065,10 +11086,22 @@ radv_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCou
       }
 
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-         if (append) {
-            si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
-                                       radv_cmd_buffer_uses_mec(cmd_buffer), V_028A90_PS_DONE, 0, EOP_DST_SEL_TC_L2,
-                                       EOP_DATA_SEL_GDS, va, EOP_DATA_GDS(i, 1), 0);
+         if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+            if (append) {
+               radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+               radeon_emit(
+                  cs, COPY_DATA_SRC_SEL(COPY_DATA_REG) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) | COPY_DATA_WR_CONFIRM);
+               radeon_emit(cs, (R_031088_GDS_STRMOUT_DWORDS_WRITTEN_0 >> 2) + i);
+               radeon_emit(cs, 0);
+               radeon_emit(cs, va);
+               radeon_emit(cs, va >> 32);
+            }
+         } else {
+            if (append) {
+               si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
+                                          radv_cmd_buffer_uses_mec(cmd_buffer), V_028A90_PS_DONE, 0, EOP_DST_SEL_TC_L2,
+                                          EOP_DATA_SEL_GDS, va, EOP_DATA_GDS(i, 1), 0);
+            }
          }
       } else {
          if (append) {
