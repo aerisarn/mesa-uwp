@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 #
 # Copyright © 2020 Google LLC
@@ -63,6 +62,7 @@ class CrosServoRun:
         self.ec_write("reboot\n")
 
         bootloader_done = False
+        tftp_failures = 0
         # This is emitted right when the bootloader pauses to check for input.
         # Emit a ^N character to request network boot, because we don't have a
         # direct-to-netboot firmware on cheza.
@@ -71,6 +71,17 @@ class CrosServoRun:
                 self.cpu_write("\016")
                 bootloader_done = True
                 break
+
+            # The Cheza firmware seems to occasionally get stuck looping in
+            # this error state during TFTP booting, possibly based on amount of
+            # network traffic around it, but it'll usually recover after a
+            # reboot. Currently mostly visible on google-freedreno-cheza-14.
+            if re.search("R8152: Bulk read error 0xffffffbf", line):
+                tftp_failures += 1
+                if tftp_failures >= 10:
+                    self.print_error(
+                        "Detected intermittent tftp failure, restarting run...")
+                    return 2
 
             # If the board has a netboot firmware and we made it to booting the
             # kernel, proceed to processing of the test run.
@@ -90,21 +101,9 @@ class CrosServoRun:
             print("Failed to make it through bootloader, restarting run...")
             return 2
 
-        tftp_failures = 0
         for line in self.cpu_ser.lines(timeout=self.test_timeout, phase="test"):
             if re.search("---. end Kernel panic", line):
                 return 1
-
-            # The Cheza firmware seems to occasionally get stuck looping in
-            # this error state during TFTP booting, possibly based on amount of
-            # network traffic around it, but it'll usually recover after a
-            # reboot.
-            if re.search("R8152: Bulk read error 0xffffffbf", line):
-                tftp_failures += 1
-                if tftp_failures >= 100:
-                    self.print_error(
-                        "Detected intermittent tftp failure, restarting run...")
-                    return 2
 
             # There are very infrequent bus errors during power management transitions
             # on cheza, which we don't expect to be the case on future boards.
