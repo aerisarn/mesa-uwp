@@ -2402,7 +2402,8 @@ iris_create_sampler_state(struct pipe_context *ctx,
    /* Fill an extra sampler state structure with anisotropic filtering
     * disabled used to implement Wa_14014414195.
     */
-   fill_sampler_state(cso->sampler_state_3d, state, 0);
+   if (intel_needs_workaround(screen->devinfo, 14014414195))
+      fill_sampler_state(cso->sampler_state_3d, state, 0);
 #endif
 
    return cso;
@@ -3322,9 +3323,11 @@ iris_set_sampler_views(struct pipe_context *ctx,
       struct iris_sampler_view *view = (void *) pview;
 
 #if GFX_VERx10 == 125
-      if (is_sampler_view_3d(shs->textures[start + i]) !=
-          is_sampler_view_3d(view))
-         ice->state.stage_dirty |= IRIS_STAGE_DIRTY_SAMPLER_STATES_VS << stage;
+      if (intel_needs_workaround(screen->devinfo, 14014414195)) {
+         if (is_sampler_view_3d(shs->textures[start + i]) !=
+             is_sampler_view_3d(view))
+            ice->state.stage_dirty |= IRIS_STAGE_DIRTY_SAMPLER_STATES_VS << stage;
+      }
 #endif
 
       if (take_ownership) {
