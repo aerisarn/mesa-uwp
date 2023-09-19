@@ -219,7 +219,10 @@ struct svga_shader_emitter_v10
    unsigned num_immediates;      /**< Number of immediates emitted */
    unsigned common_immediate_pos[20];  /**< literals for common immediates */
    unsigned num_common_immediates;
-   bool immediates_emitted;
+   unsigned num_immediates_emitted;
+   unsigned num_new_immediates;        /** pending immediates to be declared */
+   unsigned immediates_block_start_token;
+   unsigned immediates_block_next_token;
 
    unsigned num_outputs;      /**< include any extra outputs */
                               /**  The first extra output is reserved for
@@ -2568,7 +2571,7 @@ find_immediate(struct svga_shader_emitter_v10 *emit,
    const unsigned endIndex = emit->num_immediates;
    unsigned i;
 
-   assert(emit->immediates_emitted);
+   assert(emit->num_immediates_emitted > 0);
 
    /* Search immediates for x, y, z, w */
    for (i = startIndex; i < endIndex; i++) {
@@ -2579,8 +2582,7 @@ find_immediate(struct svga_shader_emitter_v10 *emit,
          return i;
       }
    }
-   /* Should never try to use an immediate value that wasn't pre-declared */
-   assert(!"find_immediate() failed!");
+   /* immediate not declared yet */
    return -1;
 }
 
@@ -2595,7 +2597,7 @@ find_immediate_dbl(struct svga_shader_emitter_v10 *emit,
    const unsigned endIndex = emit->num_immediates;
    unsigned i;
 
-   assert(emit->immediates_emitted);
+   assert(emit->num_immediates_emitted > 0);
 
    /* Search immediates for x, y, z, w */
    for (i = 0; i < endIndex; i++) {
@@ -2777,7 +2779,6 @@ alloc_immediate_4(struct svga_shader_emitter_v10 *emit,
                   const union tgsi_immediate_data imm[4])
 {
    unsigned n = emit->num_immediates++;
-   assert(!emit->immediates_emitted);
    assert(n < ARRAY_SIZE(emit->immediates));
    emit->immediates[n][0] = imm[0];
    emit->immediates[n][1] = imm[1];
@@ -2821,12 +2822,34 @@ alloc_immediate_int4(struct svga_shader_emitter_v10 *emit,
 }
 
 
+/**
+ * Add a new immediate after the immediate block has been declared.
+ * Any new immediates will be appended to the immediate block after the
+ * shader has been parsed.
+ * \return  the index/position of the immediate.
+ */
+static unsigned
+add_immediate_int(struct svga_shader_emitter_v10 *emit, int x)
+{
+   union tgsi_immediate_data imm[4];
+   imm[0].Int = x;
+   imm[1].Int = x+1;
+   imm[2].Int = x+2;
+   imm[3].Int = x+3;
+
+   unsigned immpos = alloc_immediate_4(emit, imm);
+   emit->num_new_immediates++;
+
+   return immpos;
+}
+
+
 static unsigned
 alloc_immediate_double2(struct svga_shader_emitter_v10 *emit,
                         double x, double y)
 {
    unsigned n = emit->num_immediates++;
-   assert(!emit->immediates_emitted);
+   assert(!emit->num_immediates_emitted);
    assert(n < ARRAY_SIZE(emit->immediates));
    emit->immediates_dbl[n][0] = x;
    emit->immediates_dbl[n][1] = y;
@@ -2873,21 +2896,69 @@ emit_vgpu10_immediates_block(struct svga_shader_emitter_v10 *emit)
 {
    VGPU10OpcodeToken0 token;
 
-   assert(!emit->immediates_emitted);
+   assert(!emit->num_immediates_emitted);
 
    token.value = 0;
    token.opcodeType = VGPU10_OPCODE_CUSTOMDATA;
    token.customDataClass = VGPU10_CUSTOMDATA_DCL_IMMEDIATE_CONSTANT_BUFFER;
+
+   emit->immediates_block_start_token =
+      (emit->ptr - emit->buf) / sizeof(VGPU10OpcodeToken0);
 
    /* Note: no begin/end_emit_instruction() calls */
    emit_dword(emit, token.value);
    emit_dword(emit, 2 + 4 * emit->num_immediates);
    emit_dwords(emit, (unsigned *) emit->immediates, 4 * emit->num_immediates);
 
-   emit->immediates_emitted = true;
+   emit->num_immediates_emitted = emit->num_immediates;
+
+   emit->immediates_block_next_token =
+      (emit->ptr - emit->buf) / sizeof(VGPU10OpcodeToken0);
 
    return true;
 }
+
+
+/**
+ * Reemit the immediate constant buffer block to include the new
+ * immediates that are allocated after the block is declared. Those
+ * immediates are used as constant indices to constant buffers.
+ */
+static boolean
+reemit_immediates_block(struct svga_shader_emitter_v10 *emit)
+{
+   unsigned num_tokens = emit_get_num_tokens(emit);
+   unsigned num_new_immediates = emit->num_new_immediates;
+
+   /* Reserve room for the new immediates */
+   if (!reserve(emit, 4 * num_new_immediates))
+      return FALSE;
+
+   /* Move the tokens after the immediates block to make room for the
+    * new immediates.
+    */
+   VGPU10ProgramToken *tokens = (VGPU10ProgramToken *)emit->buf;
+   char *next = (char *) (tokens + emit->immediates_block_next_token);
+   char *new_next = (char *) (tokens + emit->immediates_block_next_token +
+                                 num_new_immediates * 4);
+
+   char *end = emit->ptr;
+   unsigned len = end - next;
+   memmove(new_next, next, len);
+
+   /* Append the new immediates to the end of the immediates block */
+   char *start = (char *) (tokens + emit->immediates_block_start_token+1);
+   unsigned immediates_block_size = *(uint32 *)start;
+
+   char *new_immediates = (char *)&emit->immediates[emit->num_immediates_emitted][0];
+   *(uint32 *)start = immediates_block_size + 4 * num_new_immediates;
+   memcpy(next, new_immediates, 4 * num_new_immediates * sizeof(uint32));
+
+   emit->ptr = (char *) (tokens + num_tokens + 4 * num_new_immediates);
+
+   return TRUE;
+}
+
 
 
 /**
@@ -12419,8 +12490,14 @@ emit_rawbuf_instruction(struct svga_shader_emitter_v10 *emit,
                               &element_index, &element_rel);
       }
       else {
-         element_src =
-            make_immediate_reg_int(emit, emit->raw_buf_tmp[i].element_index);
+         unsigned element_index = emit->raw_buf_tmp[i].element_index;
+         union tgsi_immediate_data imm;
+         imm.Int = element_index;
+         int immpos = find_immediate(emit, imm, 0);
+         if (immpos < 0) {
+            unsigned element_index_imm = add_immediate_int(emit, element_index);
+         }
+         element_src = make_immediate_reg_int(emit, element_index);
       }
 
       /* byte offset = element index << 4 */
@@ -13051,6 +13128,10 @@ svga_tgsi_vgpu10_translate(struct svga_context *svga,
    if (!emit_vgpu10_instructions(emit, tokens)) {
       debug_printf("svga: emit VGPU10 instructions failed\n");
       goto cleanup;
+   }
+
+   if (emit->num_new_immediates > 0) {
+      reemit_immediates_block(emit);
    }
 
    if (!emit_vgpu10_tail(emit)) {
