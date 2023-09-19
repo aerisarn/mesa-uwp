@@ -1295,13 +1295,13 @@ hash_compute_pipeline_state(const void *key)
 }
 
 void
-zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3])
+zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const struct pipe_grid_info *info)
 {
    if (comp->use_local_size) {
       for (int i = 0; i < ARRAY_SIZE(ctx->compute_pipeline_state.local_size); i++) {
-         if (ctx->compute_pipeline_state.local_size[i] != block[i])
+         if (ctx->compute_pipeline_state.local_size[i] != info->block[i])
             ctx->compute_pipeline_state.dirty = true;
-         ctx->compute_pipeline_state.local_size[i] = block[i];
+         ctx->compute_pipeline_state.local_size[i] = info->block[i];
       }
    }
 }
