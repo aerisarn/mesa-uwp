@@ -3167,7 +3167,7 @@ fs_visitor::opt_split_sends()
       next_ip++;
 
       if (send->opcode != SHADER_OPCODE_SEND ||
-          send->mlen == 1 || send->ex_mlen > 0)
+          send->mlen <= reg_unit(devinfo) || send->ex_mlen > 0)
          continue;
 
       /* Don't split payloads which are also read later. */
