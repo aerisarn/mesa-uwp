@@ -6346,7 +6346,11 @@ radv_bind_pre_rast_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
 
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-         cmd_buffer->gds_needed = true;
+         /* GFX11 only needs GDS OA for streamout. */
+         if (cmd_buffer->device->physical_device->rad_info.gfx_level < GFX11) {
+            cmd_buffer->gds_needed = true;
+         }
+
          cmd_buffer->gds_oa_needed = true;
       }
    }
