@@ -1937,6 +1937,7 @@ struct zink_context {
       uint8_t num_ubos[MESA_SHADER_STAGES];
 
       uint8_t num_ssbos[MESA_SHADER_STAGES];
+      struct util_dynarray global_bindings;
 
       VkDescriptorImageInfo textures[MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
       uint32_t emulate_nonseamless[MESA_SHADER_STAGES];
