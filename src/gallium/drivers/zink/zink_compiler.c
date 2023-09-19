@@ -1210,6 +1210,8 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_flrp32 = true,
       .lower_fpow = true,
       .lower_fsat = true,
+      .lower_hadd = true,
+      .lower_iadd_sat = true,
       .lower_extract_byte = true,
       .lower_extract_word = true,
       .lower_insert_byte = true,
