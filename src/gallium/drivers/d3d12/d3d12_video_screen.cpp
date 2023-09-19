@@ -314,7 +314,8 @@ d3d12_video_encode_supported_references_per_frame_structures(const D3D12_VIDEO_E
          * frames supported for encoding.
          */
          supportedMaxRefFrames = capPictureControlData.PictureSupport.pAV1Support->MaxUniqueReferencesPerFrame;
-         supportedMaxRefFrames = (supportedMaxRefFrames & 0xffff) | ((supportedMaxRefFrames & 0xffff) << 16);
+         if (capPictureControlData.PictureSupport.pAV1Support->PredictionMode)
+            supportedMaxRefFrames = (supportedMaxRefFrames & 0xffff) | ((supportedMaxRefFrames & 0xffff) << 16);
       }
    }
 #endif
