@@ -3447,8 +3447,10 @@ handle_sample_from_linear_image(struct v3dv_cmd_buffer *cmd_buffer,
 
       struct v3dv_image *image = (struct v3dv_image *) desc->image_view->vk.image;
       struct v3dv_image_view *view = (struct v3dv_image_view *) desc->image_view;
-      if (image->tiled || view->vk.view_type == VK_IMAGE_VIEW_TYPE_1D)
+      if (image->tiled || view->vk.view_type == VK_IMAGE_VIEW_TYPE_1D ||
+                          view->vk.view_type == VK_IMAGE_VIEW_TYPE_1D_ARRAY) {
          continue;
+      }
 
       /* FIXME: we can probably handle most of these restrictions too with
        * a bit of extra effort.
