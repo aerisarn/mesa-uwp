@@ -3,7 +3,7 @@
     BUILDER: html
   extends:
     - .fdo.ci-fairy
-    - .build-rules
+    - .container+build-rules
   artifacts:
     expose_as: 'Documentation preview'
     paths:
