@@ -31,11 +31,27 @@
 #include "util/u_handle_table.h"
 #include "util/u_video.h"
 #include "util/u_memory.h"
+#include "util/set.h"
 
 #include "util/vl_vlc.h"
 #include "vl/vl_winsys.h"
 
 #include "va_private.h"
+
+static void
+vlVaSetSurfaceContext(vlVaSurface *surf, vlVaContext *context)
+{
+   if (surf->ctx == context)
+      return;
+
+   if (surf->ctx) {
+      assert(_mesa_set_search(surf->ctx->surfaces, surf));
+      _mesa_set_remove_key(surf->ctx->surfaces, surf);
+   }
+
+   surf->ctx = context;
+   _mesa_set_add(surf->ctx->surfaces, surf);
+}
 
 VAStatus
 vlVaBeginPicture(VADriverContextP ctx, VAContextID context_id, VASurfaceID render_target)
@@ -69,7 +85,7 @@ vlVaBeginPicture(VADriverContextP ctx, VAContextID context_id, VASurfaceID rende
       return VA_STATUS_ERROR_INVALID_SURFACE;
 
    context->target_id = render_target;
-   surf->ctx = context_id;
+   vlVaSetSurfaceContext(surf, context);
    context->target = surf->buffer;
    context->mjpeg.sampling_factor = 0;
 
@@ -977,7 +993,7 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
    }
 
    if (apply_av1_fg) {
-      surf->ctx = context_id;
+      vlVaSetSurfaceContext(surf, context);
       *out_target = surf->buffer;
    }
 
