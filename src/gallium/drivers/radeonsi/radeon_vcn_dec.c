@@ -2924,9 +2924,9 @@ static void radeon_dec_end_frame(struct pipe_video_codec *decoder, struct pipe_v
       return;
 
    dec->send_cmd(dec, target, picture);
-   flush(dec, PIPE_FLUSH_ASYNC, &dec->prev_fence);
+   flush(dec, PIPE_FLUSH_ASYNC, picture->fence);
    if (picture->fence)
-      *picture->fence = dec->prev_fence;
+      dec->ws->fence_reference(&dec->prev_fence, *picture->fence);
    next_buffer(dec);
 }
 
@@ -2970,10 +2970,16 @@ static int radeon_dec_get_decoder_fence(struct pipe_video_codec *decoder,
                                         uint64_t timeout) {
 
    struct radeon_decoder *dec = (struct radeon_decoder *)decoder;
-   /* Only last fence is valid */
-   if (fence != dec->prev_fence)
-      return true;
+
    return dec->ws->fence_wait(dec->ws, fence, timeout);
+}
+
+static void radeon_dec_destroy_fence(struct pipe_video_codec *decoder,
+                                     struct pipe_fence_handle *fence)
+{
+   struct radeon_decoder *dec = (struct radeon_decoder *)decoder;
+
+   dec->ws->fence_reference(&fence, NULL);
 }
 
 /**
@@ -3064,6 +3070,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    dec->base.end_frame = radeon_dec_end_frame;
    dec->base.flush = radeon_dec_flush;
    dec->base.get_decoder_fence = radeon_dec_get_decoder_fence;
+   dec->base.destroy_fence = radeon_dec_destroy_fence;
    dec->base.update_decoder_target =  radeon_dec_update_render_list;
 
    dec->stream_type = stream_type;

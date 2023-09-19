@@ -991,6 +991,14 @@ static void radeon_enc_get_feedback(struct pipe_video_codec *encoder, void *feed
    FREE(fb);
 }
 
+static void radeon_enc_destroy_fence(struct pipe_video_codec *encoder,
+                                     struct pipe_fence_handle *fence)
+{
+   struct radeon_encoder *enc = (struct radeon_encoder *)encoder;
+
+   enc->ws->fence_reference(&fence, NULL);
+}
+
 struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
                                                const struct pipe_video_codec *templ,
                                                struct radeon_winsys *ws,
@@ -1020,6 +1028,7 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
    enc->base.end_frame = radeon_enc_end_frame;
    enc->base.flush = radeon_enc_flush;
    enc->base.get_feedback = radeon_enc_get_feedback;
+   enc->base.destroy_fence = radeon_enc_destroy_fence;
    enc->get_buffer = get_buffer;
    enc->bits_in_shifter = 0;
    enc->screen = context->screen;
