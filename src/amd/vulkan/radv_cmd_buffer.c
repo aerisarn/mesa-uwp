@@ -10884,11 +10884,10 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
       radv_emit_streamout_enable(cmd_buffer);
 
    if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
-
-      /* Re-emit streamout buffers to unbind them. */
-      if (!enable)
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
+      /* Re-emit streamout desciptors because with NGG streamout, a buffer size of 0 acts like a
+       * disable bit and this is needed when streamout needs to be ignored in shaders.
+       */
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY | RADV_CMD_DIRTY_STREAMOUT_BUFFER;
    }
 }
 
