@@ -117,8 +117,10 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
    STACK_ARRAY(struct drm_xe_vm_bind_op, xe_binds_stackarray, num_binds);
    struct drm_xe_vm_bind_op *xe_binds;
    if (num_binds > 1) {
-      if (!xe_binds_stackarray)
+      if (!xe_binds_stackarray) {
+         ret = -ENOMEM;
          goto out_syncobj;
+      }
 
       xe_binds = xe_binds_stackarray;
       args.vector_of_binds = (uintptr_t)xe_binds;
@@ -138,12 +140,18 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
          .addr = intel_48b_address(bind->address),
          .tile_mask = 0,
          .op = XE_VM_BIND_OP_UNMAP,
+         /* TODO: do proper error handling here, once the way to do it is
+          * settled. As of right now the final interface is still under
+          * discussion.
+          */
+         .flags = XE_VM_BIND_FLAG_ASYNC,
          .region = 0,
       };
 
       if (bind->op == ANV_VM_BIND) {
          if (!bo) {
-            xe_bind->op = XE_VM_BIND_OP_MAP | XE_VM_BIND_FLAG_NULL;
+            xe_bind->op = XE_VM_BIND_OP_MAP;
+            xe_bind->flags |= XE_VM_BIND_FLAG_NULL;
             assert(xe_bind->obj_offset == 0);
          } else if (bo->from_host_ptr) {
             xe_bind->op = XE_VM_BIND_OP_MAP_USERPTR;
@@ -152,12 +160,6 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
             xe_bind->obj = bo->gem_handle;
          }
       }
-
-      /* TODO: do proper error handling here, once the way to do it is
-       * settled. As of right now the final interface is still under
-       * discussion.
-       */
-      xe_bind->op |= XE_VM_BIND_FLAG_ASYNC;
 
       /* userptr and bo_offset are an union! */
       if (bo && bo->from_host_ptr)
