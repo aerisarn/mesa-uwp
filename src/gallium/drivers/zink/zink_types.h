@@ -1537,6 +1537,7 @@ struct zink_screen {
       bool no_hw_gl_point;
       bool lower_robustImageAccess2;
       bool needs_zs_shader_swizzle;
+      bool can_do_invalid_linear_modifier;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;
    } driver_workarounds;

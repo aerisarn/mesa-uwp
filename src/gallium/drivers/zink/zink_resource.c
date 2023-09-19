@@ -1851,8 +1851,13 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
    int modifier_count = 1;
    if (whandle->modifier != DRM_FORMAT_MOD_INVALID)
       modifier = whandle->modifier;
-   else
+   else {
+      if (!zink_screen(pscreen)->driver_workarounds.can_do_invalid_linear_modifier) {
+         mesa_loge("zink: display server doesn't support DRI3 modifiers and driver can't handle INVALID<->LINEAR!");
+         return NULL;
+      }
       whandle->modifier = modifier;
+   }
    templ2.bind |= ZINK_BIND_DMABUF;
    struct pipe_resource *pres = resource_create(pscreen, &templ2, whandle, usage, &modifier, modifier_count, NULL, NULL);
    if (pres) {
