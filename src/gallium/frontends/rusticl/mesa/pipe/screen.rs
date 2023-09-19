@@ -240,6 +240,10 @@ impl PipeScreen {
         }
     }
 
+    pub fn driver_name(&self) -> String {
+        self.ldev.driver_name()
+    }
+
     pub fn name(&self) -> String {
         unsafe {
             let s = *self.screen;

@@ -24,6 +24,10 @@ impl PipeLoaderDevice {
         let s = unsafe { pipe_loader_create_screen(self.ldev) };
         PipeScreen::new(self, s)
     }
+
+    pub fn driver_name(&self) -> String {
+        c_string_to_string(unsafe { *self.ldev }.driver_name)
+    }
 }
 
 impl Drop for PipeLoaderDevice {
