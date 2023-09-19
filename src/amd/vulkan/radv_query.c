@@ -1782,6 +1782,9 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
          gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 8);
          radv_emit_write_data_imm(cs, V_370_ME, va + 12, 0x80000000);
 
+         /* Record that the command buffer needs GDS. */
+         cmd_buffer->gds_needed = true;
+
          if (!cmd_buffer->state.active_prims_xfb_gds_queries)
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
 
