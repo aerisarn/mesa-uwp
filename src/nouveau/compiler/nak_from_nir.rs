@@ -21,6 +21,8 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
         sm: sm,
         num_gprs: 0,
         tls_size: nir.scratch_size,
+        uses_global_mem: false,
+        writes_global_mem: false,
         stage: match nir.info.stage() {
             MESA_SHADER_COMPUTE => {
                 ShaderStageInfo::Compute(ComputeShaderInfo {

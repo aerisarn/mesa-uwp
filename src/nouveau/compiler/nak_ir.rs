@@ -4119,6 +4119,27 @@ impl Instr {
         }
     }
 
+    pub fn uses_global_mem(&self) -> bool {
+        match &self.op {
+            Op::Atom(op) => op.mem_space != MemSpace::Local,
+            Op::AtomCas(op) => op.mem_space != MemSpace::Local,
+            Op::Ld(op) => op.access.space != MemSpace::Local,
+            Op::St(op) => op.access.space != MemSpace::Local,
+            Op::SuAtom(_) | Op::SuLd(_) | Op::SuSt(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn writes_global_mem(&self) -> bool {
+        match &self.op {
+            Op::Atom(op) => op.mem_space == MemSpace::Global,
+            Op::AtomCas(op) => op.mem_space == MemSpace::Global,
+            Op::St(op) => op.access.space == MemSpace::Global,
+            Op::SuAtom(_) | Op::SuSt(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn can_eliminate(&self) -> bool {
         match self.op {
             Op::ASt(_)
@@ -4475,6 +4496,8 @@ pub struct ShaderInfo {
     pub sm: u8,
     pub num_gprs: u8,
     pub tls_size: u32,
+    pub uses_global_mem: bool,
+    pub writes_global_mem: bool,
     pub stage: ShaderStageInfo,
 }
 
@@ -4513,6 +4536,28 @@ impl Shader {
                 _ => MappedInstrs::One(instr),
             }
         })
+    }
+
+    pub fn gather_global_mem_usage(&mut self) {
+        if let ShaderStageInfo::Compute(_) = self.info.stage {
+            return;
+        }
+
+        let mut uses_global_mem = false;
+        let mut writes_global_mem = false;
+
+        self.for_each_instr(&mut |instr| {
+            if !uses_global_mem {
+                uses_global_mem = instr.uses_global_mem();
+            }
+
+            if !writes_global_mem {
+                writes_global_mem = instr.writes_global_mem();
+            }
+        });
+
+        self.info.uses_global_mem = uses_global_mem;
+        self.info.writes_global_mem = writes_global_mem;
     }
 }
 

@@ -239,10 +239,10 @@ fn encode_hdr_for_nir(
         let zs_self_dep = fs_key.map_or(false, |key| key.zs_self_dep);
         cw0.set_bit(15, fs_info.uses_kill || zs_self_dep);
     }
-    cw0.set_bit(16, false /* TODO: DoesGlobalStore */);
+    cw0.set_bit(16, shader_info.writes_global_mem);
     cw0.set_field(17..21, 1_u32 /* SassVersion */);
     cw0.set_field(21..26, 0_u32 /* Reserved */);
-    cw0.set_bit(26, false /* TODO: DoesLoadOrStore */);
+    cw0.set_bit(26, shader_info.uses_global_mem);
     cw0.set_bit(27, false /* TODO: DoesFp64 */);
     cw0.set_field(28..32, 0_u32 /* StreamOutMask */);
 
@@ -485,6 +485,8 @@ pub extern "C" fn nak_compile_shader(
     if DEBUG.print() {
         eprintln!("NAK IR:\n{}", &s);
     }
+
+    s.gather_global_mem_usage();
 
     let info = nak_shader_info {
         stage: nir.info.stage(),
