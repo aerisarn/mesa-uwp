@@ -145,6 +145,7 @@ destroy_swapchain(struct zink_screen *screen, struct kopper_swapchain *cswap)
 {
    if (!cswap)
       return;
+   util_queue_fence_destroy(&cswap->present_fence);
    for (unsigned i = 0; i < cswap->num_images; i++) {
       simple_mtx_lock(&screen->semaphores_lock);
       util_dynarray_append(&screen->semaphores, VkSemaphore, cswap->images[i].acquire);
@@ -237,7 +238,6 @@ zink_kopper_deinit_displaytarget(struct zink_screen *screen, struct kopper_displ
    VKSCR(DestroySurfaceKHR)(screen->instance, cdt->surface, NULL);
    cdt->swapchain = cdt->old_swapchain = NULL;
    cdt->surface = VK_NULL_HANDLE;
-   util_queue_fence_destroy(&cdt->present_fence);
 }
 
 static struct kopper_swapchain *
@@ -250,6 +250,7 @@ kopper_CreateSwapchain(struct zink_screen *screen, struct kopper_displaytarget *
       return NULL;
    }
    cswap->last_present_prune = 1;
+   util_queue_fence_init(&cswap->present_fence);
 
    bool has_alpha = cdt->info.has_alpha && (cdt->caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR);
    if (cdt->swapchain) {
@@ -427,7 +428,6 @@ zink_kopper_displaytarget_create(struct zink_screen *screen, unsigned tex_usage,
    cdt->refcount = 1;
    cdt->loader_private = (void*)loader_private;
    cdt->info = *info;
-   util_queue_fence_init(&cdt->present_fence);
 
    enum pipe_format srgb = PIPE_FORMAT_NONE;
    if (screen->info.have_KHR_swapchain_mutable_format) {
@@ -529,7 +529,7 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
       }
       if (timeout == UINT64_MAX && util_queue_is_initialized(&screen->flush_queue) &&
           p_atomic_read_relaxed(&cdt->swapchain->num_acquires) >= cdt->swapchain->max_acquires) {
-         util_queue_fence_wait(&cdt->present_fence);
+         util_queue_fence_wait(&cdt->swapchain->present_fence);
       }
       VkResult ret;
       if (!acquire) {
@@ -813,7 +813,7 @@ zink_kopper_present_queue(struct zink_screen *screen, struct zink_resource *res)
       p_atomic_inc(&cpi->swapchain->async_presents);
       struct pipe_resource *pres = NULL;
       pipe_resource_reference(&pres, &res->base.b);
-      util_queue_add_job(&screen->flush_queue, cpi, &cdt->present_fence,
+      util_queue_add_job(&screen->flush_queue, cpi, &cdt->swapchain->present_fence,
                          kopper_present, NULL, 0);
    } else {
       kopper_present(cpi, screen, -1);
