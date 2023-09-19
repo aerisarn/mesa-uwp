@@ -1304,6 +1304,10 @@ zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink
          ctx->compute_pipeline_state.local_size[i] = info->block[i];
       }
    }
+   if (ctx->compute_pipeline_state.variable_shared_mem != info->variable_shared_mem) {
+      ctx->compute_pipeline_state.dirty = true;
+      ctx->compute_pipeline_state.variable_shared_mem = info->variable_shared_mem;
+   }
 }
 
 static bool

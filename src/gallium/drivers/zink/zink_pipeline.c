@@ -457,8 +457,8 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
    stage.pName = "main";
 
    VkSpecializationInfo sinfo = {0};
-   VkSpecializationMapEntry me[3];
-   uint32_t data[3];
+   VkSpecializationMapEntry me[4];
+   uint32_t data[4];
    if (state)  {
       int i = 0;
 
@@ -473,6 +473,16 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
             me[i].constantID = ids[l];
             me[i].offset = i * sizeof(uint32_t);
          }
+      }
+
+      if (comp->has_variable_shared_mem) {
+         sinfo.mapEntryCount += 1;
+         sinfo.dataSize += sizeof(uint32_t);
+         data[i] = state->variable_shared_mem;
+         me[i].size = sizeof(uint32_t);
+         me[i].constantID = ZINK_VARIABLE_SHARED_MEM;
+         me[i].offset = i * sizeof(uint32_t);
+         i++;
       }
 
       if (sinfo.dataSize) {

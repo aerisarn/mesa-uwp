@@ -937,6 +937,7 @@ struct zink_compute_pipeline_state {
    uint32_t final_hash;
    bool dirty;
    uint32_t local_size[3];
+   uint32_t variable_shared_mem;
 
    uint32_t module_hash;
    VkShaderModule module;
