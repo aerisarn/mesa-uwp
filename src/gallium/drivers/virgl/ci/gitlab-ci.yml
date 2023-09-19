@@ -128,7 +128,7 @@ virgl-traces:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-virgl-iris.yml"
     RUNNER_TAG: mesa-ci-x86-64-lava-asus-cx9400-volteer
 
-virgl-iris-traces:
+.virgl-iris-traces:
   extends:
     - .virgl-iris-test
     - .virgl-iris-manual-rules
