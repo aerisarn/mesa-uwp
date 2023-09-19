@@ -518,21 +518,28 @@ fn lower_and_optimize_nir(
     );
     nir.extract_constant_initializers();
 
-    // TODO 32 bit devices
-    // add vars for global offsets
-    internal_args.push(InternalKernelArg {
-        kind: InternalKernelArgType::GlobalWorkOffsets,
-        offset: 0,
-        size: (3 * dev.address_bits() / 8) as usize,
-    });
+    // run before gather info
+    nir_pass!(nir, nir_lower_system_values);
+    let mut compute_options = nir_lower_compute_system_values_options::default();
+    compute_options.set_has_base_global_invocation_id(true);
+    nir_pass!(nir, nir_lower_compute_system_values, &compute_options);
+    nir.gather_info();
 
-    lower_state.base_global_invoc_id_loc = args.len() + internal_args.len() - 1;
-    nir.add_var(
-        nir_variable_mode::nir_var_uniform,
-        unsafe { glsl_vector_type(address_bits_base_type, 3) },
-        lower_state.base_global_invoc_id_loc,
-        "base_global_invocation_id",
-    );
+    if nir.reads_sysval(gl_system_value::SYSTEM_VALUE_BASE_GLOBAL_INVOCATION_ID) {
+        internal_args.push(InternalKernelArg {
+            kind: InternalKernelArgType::GlobalWorkOffsets,
+            offset: 0,
+            size: (3 * dev.address_bits() / 8) as usize,
+        });
+        lower_state.base_global_invoc_id_loc = args.len() + internal_args.len() - 1;
+        nir.add_var(
+            nir_variable_mode::nir_var_uniform,
+            unsafe { glsl_vector_type(address_bits_base_type, 3) },
+            lower_state.base_global_invoc_id_loc,
+            "base_global_invocation_id",
+        );
+    }
+
     if nir.has_constant() {
         internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::ConstantBuffer,
@@ -562,12 +569,6 @@ fn lower_and_optimize_nir(
         );
     }
 
-    // run before gather info
-    nir_pass!(nir, nir_lower_system_values);
-    let mut compute_options = nir_lower_compute_system_values_options::default();
-    compute_options.set_has_base_global_invocation_id(true);
-    nir_pass!(nir, nir_lower_compute_system_values, &compute_options);
-    nir.gather_info();
     if nir.num_images() > 0 || nir.num_textures() > 0 {
         let count = nir.num_images() + nir.num_textures();
         internal_args.push(InternalKernelArg {
