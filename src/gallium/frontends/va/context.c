@@ -400,6 +400,10 @@ vlVaDestroyContext(VADriverContextP ctx, VAContextID context_id)
       vlVaSurface *surf = (vlVaSurface *)entry->key;
       assert(surf->ctx == context);
       surf->ctx = NULL;
+      if (surf->fence && context->decoder && context->decoder->destroy_fence) {
+         context->decoder->destroy_fence(context->decoder, surf->fence);
+         surf->fence = NULL;
+      }
    }
    _mesa_set_destroy(context->surfaces, NULL);
 
