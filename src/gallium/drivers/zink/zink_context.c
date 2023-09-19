@@ -55,6 +55,8 @@
 #include "nir.h"
 #include "nir_builder.h"
 
+#include "vk_format.h"
+
 #include "driver_trace/tr_context.h"
 
 #include "util/u_memory.h"
@@ -1161,6 +1163,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
                } else
                   assert(state->format == linear);
             }
+         } else if (util_format_is_red_alpha(pres->format)) {
+            /* RA formats are mapped to RG with adjusted swizzle */
+            assert(util_format_is_red_green(vk_format_to_pipe_format(ivci.format)));
+            swizzle[3] = PIPE_SWIZZLE_Y;
          }
 
          ivci.components.r = zink_component_mapping(swizzle[0]);
