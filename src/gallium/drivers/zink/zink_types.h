@@ -1131,6 +1131,7 @@ struct zink_compute_program {
    struct zink_program base;
 
    bool use_local_size;
+   bool has_variable_shared_mem;
 
    unsigned scratch_size;
 
