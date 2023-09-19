@@ -99,10 +99,10 @@ __gen_from_groups(uint32_t value, uint32_t group_size, uint32_t length)
 
 #define agx_pack(dst, T, name)                              \\
    for (struct AGX_ ## T name = { AGX_ ## T ## _header }, \\
-        *_loop_terminate = (void *) (dst);                  \\
-        __builtin_expect(_loop_terminate != NULL, 1);       \\
+        *_loop_count = (void *) ((uintptr_t) 0);                  \\
+        (uintptr_t)_loop_count < 1;       \\
         ({ AGX_ ## T ## _pack((uint32_t *) (dst), &name);  \\
-           _loop_terminate = NULL; }))
+           _loop_count = (void*)(((uintptr_t)_loop_count) + 1); }))
 
 #define agx_unpack(fp, src, T, name)                        \\
         struct AGX_ ## T name;                         \\
