@@ -2101,6 +2101,17 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = spirv_builder_emit_quadop(&ctx->builder, SpvOpBitFieldInsert, dest_type, src[0], src[1], src[2], src[3]);
       break;
 
+   /* those are all simple bitcasts, we could do better, but it doesn't matter */
+   case nir_op_pack_32_4x8:
+   case nir_op_pack_32_2x16:
+   case nir_op_pack_64_4x16:
+   case nir_op_unpack_32_4x8:
+   case nir_op_unpack_32_2x16:
+   case nir_op_unpack_64_4x16: {
+      result = emit_bitcast(ctx, dest_type, src[0]);
+      break;
+   }
+
    case nir_op_pack_32_2x16_split:
    case nir_op_pack_64_2x32_split: {
       nir_alu_type type = nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[0]);
