@@ -255,6 +255,9 @@ kopper_CreateSwapchain(struct zink_screen *screen, struct kopper_displaytarget *
    bool has_alpha = cdt->info.has_alpha && (cdt->caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR);
    if (cdt->swapchain) {
       cswap->scci = cdt->swapchain->scci;
+      /* avoid UAF if async present needs to-be-retired swapchain */
+      if (cdt->type == KOPPER_WAYLAND && cdt->swapchain->swapchain)
+         util_queue_fence_wait(&cdt->swapchain->present_fence);
       cswap->scci.oldSwapchain = cdt->swapchain->swapchain;
    } else {
       cswap->scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
