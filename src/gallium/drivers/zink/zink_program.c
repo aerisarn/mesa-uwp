@@ -1955,6 +1955,25 @@ zink_bind_cs_state(struct pipe_context *pctx,
 }
 
 static void
+zink_get_compute_state_info(struct pipe_context *pctx, void *cso, struct pipe_compute_state_object_info *info)
+{
+   struct zink_compute_program *comp = cso;
+   struct zink_screen *screen = zink_screen(pctx->screen);
+
+   info->max_threads = screen->info.props.limits.maxComputeWorkGroupInvocations;
+   info->private_memory = comp->scratch_size;
+   if (screen->info.props11.subgroupSize) {
+      info->preferred_simd_size = screen->info.props11.subgroupSize;
+      info->simd_sizes = info->preferred_simd_size;
+   } else {
+      // just guess it
+      info->preferred_simd_size = 64;
+      // only used for actual subgroup support
+      info->simd_sizes = 0;
+   }
+}
+
+static void
 zink_delete_cs_shader_state(struct pipe_context *pctx, void *cso)
 {
    struct zink_compute_program *comp = cso;
@@ -2242,6 +2261,7 @@ zink_program_init(struct zink_context *ctx)
 
    ctx->base.create_compute_state = zink_create_cs_state;
    ctx->base.bind_compute_state = zink_bind_cs_state;
+   ctx->base.get_compute_state_info = zink_get_compute_state_info;
    ctx->base.delete_compute_state = zink_delete_cs_shader_state;
 
    if (zink_screen(ctx->base.screen)->info.have_EXT_vertex_input_dynamic_state)
