@@ -694,3 +694,5 @@ spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-vs-getuniformdv,Crash
 
 # ../src/util/simple_mtx.h:131: simple_mtx_unlock: Assertion `c != _SIMPLE_MTX_INVALID_VALUE' failed.
 dEQP-EGL.functional.sharing.gles2.multithread.simple_egl_sync.programs.link,Crash
+
+spec@arb_fragment_layer_viewport@layer-no-gs,Fail
