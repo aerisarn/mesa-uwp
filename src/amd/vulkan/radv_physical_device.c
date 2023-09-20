@@ -929,7 +929,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       .taskShader = taskmesh_en,
       .multiviewMeshShader = taskmesh_en,
       .primitiveFragmentShadingRateMeshShader = taskmesh_en,
-      .meshShaderQueries = false,
+      .meshShaderQueries = pdevice->rad_info.gfx_level == GFX10_3,
 
       /* VK_VALVE_descriptor_set_host_mapping */
       .descriptorSetHostMapping = true,
