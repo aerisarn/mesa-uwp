@@ -707,6 +707,7 @@ struct radv_meta_state {
       VkPipeline tfb_query_pipeline;
       VkPipeline timestamp_query_pipeline;
       VkPipeline pg_query_pipeline;
+      VkPipeline ms_prim_gen_query_pipeline;
    } query;
 
    struct {
