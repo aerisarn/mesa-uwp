@@ -42,7 +42,6 @@ libtu_files = files(
 libtu_includes = [
     inc_include,
     inc_src,
-    inc_compiler,
     inc_freedreno,
 ]
 

@@ -256,7 +256,7 @@ libglsl = static_library(
   cpp_args : [cpp_msvc_compat_args],
   gnu_symbol_visibility : 'hidden',
   link_with : libglcpp,
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   dependencies : idep_nir,
   build_by_default : false,
 )

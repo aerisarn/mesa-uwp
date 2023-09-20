@@ -102,7 +102,7 @@ files_libradeonsi = files(
 )
 
 radeonsi_include_dirs = [inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_amd_common,
-                         inc_amd_common_llvm, inc_gallium_drivers, inc_compiler]
+                         inc_amd_common_llvm, inc_gallium_drivers]
 radeonsi_deps = [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h, idep_mesautil, idep_aco]
 
 radeonsi_gfx_libs = []

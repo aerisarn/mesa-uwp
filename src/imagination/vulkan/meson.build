@@ -118,7 +118,6 @@ libvulkan_powervr_mesa = shared_library(
     inc_imagination,
     inc_include,
     inc_src,
-    inc_compiler,
   ],
   link_with : [
     libpowervr_common,

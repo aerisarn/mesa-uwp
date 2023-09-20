@@ -76,7 +76,6 @@ foreach arch : ['6', '7']
     include_directories : [
       inc_include,
       inc_src,
-      inc_compiler,
       inc_gallium, # XXX: util/format/u_formats.h
       inc_gallium_aux, # XXX: renderonly
       inc_panfrost,
@@ -111,7 +110,6 @@ libvulkan_panfrost = shared_library(
   include_directories : [
     inc_include,
     inc_src,
-    inc_compiler,
     inc_gallium, # XXX: util/format/u_formats.h
     inc_gallium_aux, # XXX: renderonly
     inc_panfrost,
