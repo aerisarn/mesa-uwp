@@ -60,19 +60,6 @@
 
 #endif /* HAVE_GPUVIS */
 
-
-#define _MESA_COMBINED_TRACE_BEGIN(name)                                     \
-   do {                                                                      \
-      _MESA_TRACE_BEGIN(name);                                               \
-      _MESA_GPUVIS_TRACE_BEGIN(name);                                        \
-   } while (0)
-
-#define _MESA_COMBINED_TRACE_END()                                           \
-   do {                                                                      \
-      _MESA_GPUVIS_TRACE_END();                                              \
-      _MESA_TRACE_END();                                                     \
-   } while (0)
-
 #if __has_attribute(cleanup) && __has_attribute(unused)
 
 #define _MESA_TRACE_SCOPE_VAR_CONCAT(name, suffix) name##suffix
@@ -94,14 +81,16 @@
 static inline int
 _mesa_trace_scope_begin(const char *name)
 {
-   _MESA_COMBINED_TRACE_BEGIN(name);
+   _MESA_TRACE_BEGIN(name);
+   _MESA_GPUVIS_TRACE_BEGIN(name);
    return 0;
 }
 
 static inline void
 _mesa_trace_scope_end(UNUSED int *scope)
 {
-   _MESA_COMBINED_TRACE_END();
+   _MESA_GPUVIS_TRACE_END();
+   _MESA_TRACE_END();
 }
 
 #else
@@ -110,8 +99,6 @@ _mesa_trace_scope_end(UNUSED int *scope)
 
 #endif /* __has_attribute(cleanup) && __has_attribute(unused) */
 
-#define MESA_TRACE_BEGIN(name) _MESA_COMBINED_TRACE_BEGIN(name)
-#define MESA_TRACE_END() _MESA_COMBINED_TRACE_END()
 #define MESA_TRACE_SCOPE(name) _MESA_TRACE_SCOPE(name)
 #define MESA_TRACE_FUNC() _MESA_TRACE_SCOPE(__func__)
 

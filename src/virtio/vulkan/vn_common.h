@@ -55,8 +55,6 @@
 #define vn_result(instance, result)                                          \
    ((result) >= VK_SUCCESS ? (result) : vn_error((instance), (result)))
 
-#define VN_TRACE_BEGIN(name) MESA_TRACE_BEGIN(name)
-#define VN_TRACE_END() MESA_TRACE_END()
 #define VN_TRACE_SCOPE(name) MESA_TRACE_SCOPE(name)
 #define VN_TRACE_FUNC() MESA_TRACE_SCOPE(__func__)
 
