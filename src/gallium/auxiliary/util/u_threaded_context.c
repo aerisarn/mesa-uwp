@@ -642,7 +642,7 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
    struct tc_batch *next = &tc->batch_slots[tc->next];
    bool synced = false;
 
-   MESA_TRACE_BEGIN(func);
+   MESA_TRACE_SCOPE(func);
 
    tc_debug_check(tc);
 
@@ -708,8 +708,6 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
       tc->seen_fb_state = false;
       tc->query_ended = false;
    }
-
-   MESA_TRACE_END();
 }
 
 #define tc_sync(tc) _tc_sync(tc, "", __func__)
