@@ -1821,6 +1821,17 @@ nir_cf_node_cf_tree_next(nir_cf_node *node)
       return nir_cf_node_as_block(nir_cf_node_next(node));
 }
 
+nir_block *
+nir_cf_node_cf_tree_prev(nir_cf_node *node)
+{
+   if (node->type == nir_cf_node_block)
+      return nir_block_cf_tree_prev(nir_cf_node_as_block(node));
+   else if (node->type == nir_cf_node_function)
+      return NULL;
+   else
+      return nir_cf_node_as_block(nir_cf_node_prev(node));
+}
+
 nir_if *
 nir_block_get_following_if(nir_block *block)
 {

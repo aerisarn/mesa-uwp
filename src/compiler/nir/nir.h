@@ -4551,6 +4551,10 @@ nir_block *nir_cf_node_cf_tree_last(nir_cf_node *node);
 
 nir_block *nir_cf_node_cf_tree_next(nir_cf_node *node);
 
+/* Gets the block before a CF node in source-code order */
+
+nir_block *nir_cf_node_cf_tree_prev(nir_cf_node *node);
+
 /* Macros for loops that visit blocks in source-code order */
 
 #define nir_foreach_block(block, impl)                           \
