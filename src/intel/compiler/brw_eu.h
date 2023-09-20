@@ -1908,6 +1908,10 @@ void brw_CMPN(struct brw_codegen *p,
               struct brw_reg src0,
               struct brw_reg src1);
 
+brw_inst *brw_DPAS(struct brw_codegen *p, enum gfx12_systolic_depth sdepth,
+                   unsigned rcount, struct brw_reg dest, struct brw_reg src0,
+                   struct brw_reg src1, struct brw_reg src2);
+
 void
 brw_untyped_atomic(struct brw_codegen *p,
                    struct brw_reg dst,

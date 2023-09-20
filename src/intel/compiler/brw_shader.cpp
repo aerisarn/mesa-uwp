@@ -164,6 +164,13 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
       if (devinfo->ver > 7 && op == BRW_OPCODE_F16TO32)
          return "f16to32";
 
+      /* DPAS instructions may transiently exist on platforms that do not
+       * support DPAS. They will eventually be lowered, but in the meantime it
+       * must be possible to query the instruction name.
+       */
+      if (devinfo->verx10 < 125 && op == BRW_OPCODE_DPAS)
+         return "dpas";
+
       assert(brw_opcode_desc(isa, op)->name);
       return brw_opcode_desc(isa, op)->name;
    case FS_OPCODE_FB_WRITE:
@@ -936,6 +943,7 @@ backend_instruction::can_do_source_mods() const
    case BRW_OPCODE_ROR:
    case BRW_OPCODE_SUBB:
    case BRW_OPCODE_DP4A:
+   case BRW_OPCODE_DPAS:
    case SHADER_OPCODE_BROADCAST:
    case SHADER_OPCODE_CLUSTER_BROADCAST:
    case SHADER_OPCODE_MOV_INDIRECT:

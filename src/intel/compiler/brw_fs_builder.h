@@ -834,6 +834,27 @@ namespace brw {
          return inst;
       }
 
+      instruction *
+      DPAS(const dst_reg &dst, const src_reg &src0, const src_reg &src1, const src_reg &src2,
+           unsigned sdepth, unsigned rcount) const
+      {
+         assert(_dispatch_width == 8);
+         assert(sdepth == 8);
+         assert(rcount == 1 || rcount == 2 || rcount == 4 || rcount == 8);
+
+         instruction *inst = emit(BRW_OPCODE_DPAS, dst, src0, src1, src2);
+         inst->sdepth = sdepth;
+         inst->rcount = rcount;
+
+         if (dst.type == BRW_REGISTER_TYPE_HF) {
+            inst->size_written = rcount * REG_SIZE / 2;
+         } else {
+            inst->size_written = rcount * REG_SIZE;
+         }
+
+         return inst;
+      }
+
       fs_visitor *shader;
 
       fs_inst *BREAK()    { return emit(BRW_OPCODE_BREAK); }

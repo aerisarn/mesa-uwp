@@ -1016,6 +1016,60 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
    return inst;
 }
 
+static brw_inst *
+brw_dpas_three_src(struct brw_codegen *p, enum gfx12_systolic_depth opcode,
+                   unsigned sdepth, unsigned rcount, struct brw_reg dest,
+                   struct brw_reg src0, struct brw_reg src1, struct brw_reg src2)
+{
+   const struct intel_device_info *devinfo = p->devinfo;
+   brw_inst *inst = next_insn(p, opcode);
+
+   assert(dest.file == BRW_GENERAL_REGISTER_FILE);
+   brw_inst_set_dpas_3src_dst_reg_file(devinfo, inst,
+                                       BRW_GENERAL_REGISTER_FILE);
+   brw_inst_set_dpas_3src_dst_reg_nr(devinfo, inst, dest.nr);
+   brw_inst_set_dpas_3src_dst_subreg_nr(devinfo, inst, dest.subnr);
+
+   if (brw_reg_type_is_floating_point(dest.type)) {
+      brw_inst_set_dpas_3src_exec_type(devinfo, inst,
+                                       BRW_ALIGN1_3SRC_EXEC_TYPE_FLOAT);
+   } else {
+      brw_inst_set_dpas_3src_exec_type(devinfo, inst,
+                                       BRW_ALIGN1_3SRC_EXEC_TYPE_INT);
+   }
+
+   brw_inst_set_dpas_3src_sdepth(devinfo, inst, sdepth);
+   brw_inst_set_dpas_3src_rcount(devinfo, inst, rcount - 1);
+
+   brw_inst_set_dpas_3src_dst_type(devinfo, inst, dest.type);
+   brw_inst_set_dpas_3src_src0_type(devinfo, inst, src0.type);
+   brw_inst_set_dpas_3src_src1_type(devinfo, inst, src1.type);
+   brw_inst_set_dpas_3src_src2_type(devinfo, inst, src2.type);
+
+   assert(src0.file == BRW_GENERAL_REGISTER_FILE ||
+          (src0.file == BRW_ARCHITECTURE_REGISTER_FILE &&
+           src0.nr == BRW_ARF_NULL));
+
+   brw_inst_set_dpas_3src_src0_reg_file(devinfo, inst, src0.file);
+   brw_inst_set_dpas_3src_src0_reg_nr(devinfo, inst, src0.nr);
+   brw_inst_set_dpas_3src_src0_subreg_nr(devinfo, inst, src0.subnr);
+
+   assert(src1.file == BRW_GENERAL_REGISTER_FILE);
+
+   brw_inst_set_dpas_3src_src1_reg_file(devinfo, inst, src1.file);
+   brw_inst_set_dpas_3src_src1_reg_nr(devinfo, inst, src1.nr);
+   brw_inst_set_dpas_3src_src1_subreg_nr(devinfo, inst, src1.subnr);
+   brw_inst_set_dpas_3src_src1_subbyte(devinfo, inst, BRW_SUB_BYTE_PRECISION_NONE);
+
+   assert(src2.file == BRW_GENERAL_REGISTER_FILE);
+
+   brw_inst_set_dpas_3src_src2_reg_file(devinfo, inst, src2.file);
+   brw_inst_set_dpas_3src_src2_reg_nr(devinfo, inst, src2.nr);
+   brw_inst_set_dpas_3src_src2_subreg_nr(devinfo, inst, src2.subnr);
+   brw_inst_set_dpas_3src_src2_subbyte(devinfo, inst, BRW_SUB_BYTE_PRECISION_NONE);
+
+   return inst;
+}
 
 /***********************************************************************
  * Convenience routines.
@@ -1246,6 +1300,15 @@ brw_PLN(struct brw_codegen *p, struct brw_reg dest,
    src1.width = BRW_WIDTH_8;
    src1.hstride = BRW_HORIZONTAL_STRIDE_1;
    return brw_alu2(p, BRW_OPCODE_PLN, dest, src0, src1);
+}
+
+brw_inst *
+brw_DPAS(struct brw_codegen *p, enum gfx12_systolic_depth sdepth,
+         unsigned rcount, struct brw_reg dest, struct brw_reg src0,
+         struct brw_reg src1, struct brw_reg src2)
+{
+   return brw_dpas_three_src(p, BRW_OPCODE_DPAS, sdepth, rcount, dest, src0,
+                             src1, src2);
 }
 
 brw_inst *

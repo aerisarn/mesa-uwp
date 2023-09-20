@@ -395,6 +395,21 @@ fs_inst::has_source_and_destination_hazard() const
       default:
          return !is_uniform(src[0]);
       }
+   case BRW_OPCODE_DPAS:
+      /* This is overly conservative. The actual hazard is more complicated to
+       * describe. When the repeat count is N, the single instruction behaves
+       * like N instructions with a repeat count of one, but the destination
+       * and source registers are incremented (in somewhat complex ways) for
+       * each instruction.
+       *
+       * This means the source and destination register is actually a range of
+       * registers. The hazard exists of an earlier iteration would write a
+       * register that should be read by a later iteration.
+       *
+       * There may be some advantage to properly modeling this, but for now,
+       * be overly conservative.
+       */
+      return rcount > 1;
    default:
       /* The SIMD16 compressed instruction
        *
@@ -844,6 +859,9 @@ fs_inst::components_read(unsigned i) const
       else
          return 1;
 
+   case BRW_OPCODE_DPAS:
+      unreachable("Do not use components_read() for DPAS.");
+
    default:
       return 1;
    }
@@ -901,6 +919,26 @@ fs_inst::size_read(int arg) const
       if (arg == 0) {
          assert(src[2].file == IMM);
          return src[2].ud;
+      }
+      break;
+
+   case BRW_OPCODE_DPAS:
+      switch (arg) {
+      case 0:
+         if (src[0].type == BRW_REGISTER_TYPE_HF) {
+            return rcount * REG_SIZE / 2;
+         } else {
+            return rcount * REG_SIZE;
+         }
+      case 1:
+         return sdepth * REG_SIZE;
+      case 2:
+         /* This is simpler than the formula described in the Bspec, but it
+          * covers all of the cases that we support on DG2.
+          */
+         return rcount * REG_SIZE;
+      default:
+         unreachable("Invalid source number.");
       }
       break;
 

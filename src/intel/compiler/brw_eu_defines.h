@@ -254,6 +254,7 @@ enum opcode {
    BRW_OPCODE_DP2,
    BRW_OPCODE_DP4A, /**< Gfx12+ */
    BRW_OPCODE_LINE,
+   BRW_OPCODE_DPAS,  /**< Gfx12.5+ */
    BRW_OPCODE_PLN, /**< G45+ */
    BRW_OPCODE_MAD, /**< Gfx6+ */
    BRW_OPCODE_LRP, /**< Gfx6+ */
@@ -1135,6 +1136,24 @@ enum tgl_sbid_mode {
    TGL_SBID_SRC = 1,
    TGL_SBID_DST = 2,
    TGL_SBID_SET = 4
+};
+
+
+enum gfx12_sub_byte_precision {
+   BRW_SUB_BYTE_PRECISION_NONE = 0,
+
+   /** 4 bits. Signedness determined by base type */
+   BRW_SUB_BYTE_PRECISION_4BIT = 1,
+
+   /** 2 bits. Signedness determined by base type */
+   BRW_SUB_BYTE_PRECISION_2BIT = 2,
+};
+
+enum gfx12_systolic_depth {
+   BRW_SYSTOLIC_DEPTH_16 = 0,
+   BRW_SYSTOLIC_DEPTH_2 = 1,
+   BRW_SYSTOLIC_DEPTH_4 = 2,
+   BRW_SYSTOLIC_DEPTH_8 = 3,
 };
 
 #ifdef __cplusplus

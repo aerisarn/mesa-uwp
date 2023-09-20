@@ -627,6 +627,21 @@ schedule_node::set_latency_gfx7(const struct brw_isa_info *isa)
       }
       break;
 
+   case BRW_OPCODE_DPAS:
+      switch (inst->rcount) {
+      case 1:
+         latency = 21;
+         break;
+      case 2:
+         latency = 22;
+         break;
+      case 8:
+      default:
+         latency = 32;
+         break;
+      }
+      break;
+
    default:
       /* 2 cycles:
        * mul(8) g4<1>F g2<0,1,0>F      0.5F            { align1 WE_normal 1Q };

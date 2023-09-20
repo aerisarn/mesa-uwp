@@ -687,7 +687,10 @@ general_restrictions_based_on_operand_types(const struct brw_isa_info *isa,
       return error_msg;
 
    if (devinfo->ver >= 11) {
-      if (num_sources == 3) {
+      /* A register type of B or UB for DPAS actually means 4 bytes packed into
+       * a D or UD, so it is allowed.
+       */
+      if (num_sources == 3 && brw_inst_opcode(isa, inst) != BRW_OPCODE_DPAS) {
          ERROR_IF(brw_reg_type_to_size(brw_inst_3src_a1_src1_type(devinfo, inst)) == 1 ||
                   brw_reg_type_to_size(brw_inst_3src_a1_src2_type(devinfo, inst)) == 1,
                   "Byte data type is not supported for src1/2 register regioning. This includes "
