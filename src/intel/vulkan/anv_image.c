@@ -2246,183 +2246,200 @@ void anv_GetDeviceImageSparseMemoryRequirements(
    anv_image_finish(&image);
 }
 
+static VkResult
+anv_bind_image_memory(struct anv_device *device,
+                      const VkBindImageMemoryInfo *bind_info)
+{
+   ANV_FROM_HANDLE(anv_device_memory, mem, bind_info->memory);
+   ANV_FROM_HANDLE(anv_image, image, bind_info->image);
+   bool did_bind = false;
+
+   const VkBindMemoryStatusKHR *bind_status =
+      vk_find_struct_const(bind_info->pNext, BIND_MEMORY_STATUS_KHR);
+
+   assert(!anv_image_is_sparse(image));
+
+   /* Resolve will alter the image's aspects, do this first. */
+   if (mem && mem->vk.ahardware_buffer)
+      resolve_ahw_image(device, image, mem);
+
+   vk_foreach_struct_const(s, bind_info->pNext) {
+      switch (s->sType) {
+      case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
+         const VkBindImagePlaneMemoryInfo *plane_info =
+            (const VkBindImagePlaneMemoryInfo *) s;
+
+         /* Workaround for possible spec bug.
+          *
+          * Unlike VkImagePlaneMemoryRequirementsInfo, which requires that
+          * the image be disjoint (that is, multi-planar format and
+          * VK_IMAGE_CREATE_DISJOINT_BIT), VkBindImagePlaneMemoryInfo allows
+          * the image to be non-disjoint and requires only that the image
+          * have the DISJOINT flag. In this case, regardless of the value of
+          * VkImagePlaneMemoryRequirementsInfo::planeAspect, the behavior is
+          * the same as if VkImagePlaneMemoryRequirementsInfo were omitted.
+          */
+         if (!image->disjoint)
+            break;
+
+         struct anv_image_binding *binding =
+            anv_image_aspect_to_binding(image, plane_info->planeAspect);
+
+         binding->address = (struct anv_address) {
+            .bo = mem->bo,
+            .offset = bind_info->memoryOffset,
+         };
+
+         did_bind = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
+         /* Ignore this struct on Android, we cannot access swapchain
+          * structures there.
+          */
+#ifndef VK_USE_PLATFORM_ANDROID_KHR
+         const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
+            (const VkBindImageMemorySwapchainInfoKHR *) s;
+         struct anv_image *swapchain_image =
+            anv_swapchain_get_image(swapchain_info->swapchain,
+                                    swapchain_info->imageIndex);
+         assert(swapchain_image);
+         assert(image->vk.aspects == swapchain_image->vk.aspects);
+         assert(mem == NULL);
+
+         for (int j = 0; j < ARRAY_SIZE(image->bindings); ++j) {
+            assert(memory_ranges_equal(image->bindings[j].memory_range,
+                                       swapchain_image->bindings[j].memory_range));
+            image->bindings[j].address = swapchain_image->bindings[j].address;
+         }
+
+         /* We must bump the private binding's bo's refcount because, unlike the other
+          * bindings, its lifetime is not application-managed.
+          */
+         struct anv_bo *private_bo =
+            image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].address.bo;
+         if (private_bo)
+            anv_bo_ref(private_bo);
+
+         did_bind = true;
+#endif
+         break;
+      }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch"
+      case VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID: {
+         const VkNativeBufferANDROID *gralloc_info =
+            (const VkNativeBufferANDROID *)s;
+         VkResult result = anv_image_bind_from_gralloc(device, image,
+                                                       gralloc_info);
+         if (result != VK_SUCCESS)
+            return result;
+         did_bind = true;
+         break;
+      }
+#pragma GCC diagnostic pop
+      default:
+         anv_debug_ignored_stype(s->sType);
+         break;
+      }
+   }
+
+   if (!did_bind) {
+      assert(!image->disjoint);
+
+      image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address =
+         (struct anv_address) {
+         .bo = mem->bo,
+         .offset = bind_info->memoryOffset,
+      };
+
+      did_bind = true;
+   }
+
+   /* Now that we have the BO, finalize CCS setup. */
+   for (int p = 0; p < image->n_planes; ++p) {
+      enum anv_image_memory_binding binding =
+         image->planes[p].primary_surface.memory_range.binding;
+      const struct anv_bo *bo =
+         image->bindings[binding].address.bo;
+
+      if (!bo || !isl_aux_usage_has_ccs(image->planes[p].aux_usage))
+         continue;
+
+      /* Do nothing if flat CCS requirements are satisfied.
+       *
+       * Also, assume that imported BOs with a modifier including
+       * CCS live only in local memory. Otherwise the exporter should
+       * have failed the creation of the BO.
+       */
+      if (device->info->has_flat_ccs &&
+          (anv_bo_is_vram_only(bo) ||
+           (bo->alloc_flags & ANV_BO_ALLOC_IMPORTED)))
+         continue;
+
+      /* Add the plane to the aux map when applicable. */
+      const struct anv_address main_addr = anv_image_address(
+         image, &image->planes[p].primary_surface.memory_range);
+      if (anv_address_allows_aux_map(device, main_addr)) {
+         const struct anv_address aux_addr =
+            anv_image_address(image,
+                              &image->planes[p].compr_ctrl_memory_range);
+         const struct isl_surf *surf =
+            &image->planes[p].primary_surface.isl;
+         const uint64_t format_bits =
+            intel_aux_map_format_bits_for_isl_surf(surf);
+         image->planes[p].aux_ccs_mapped =
+            intel_aux_map_add_mapping(device->aux_map_ctx,
+                                      anv_address_physical(main_addr),
+                                      anv_address_physical(aux_addr),
+                                      surf->size_B, format_bits);
+         if (image->planes[p].aux_ccs_mapped)
+            continue;
+      }
+
+      /* Do nothing prior to gfx12. There are no special requirements. */
+      if (device->info->ver < 12)
+         continue;
+
+      /* The plane's BO cannot support CCS, disable compression on it. */
+      assert(!isl_drm_modifier_has_aux(image->vk.drm_format_mod));
+
+      anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
+                    "BO lacks CCS support. Disabling the CCS aux usage.");
+
+      if (image->planes[p].aux_surface.memory_range.size > 0) {
+         assert(image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS ||
+                image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT);
+         image->planes[p].aux_usage = ISL_AUX_USAGE_HIZ;
+      } else {
+         assert(image->planes[p].aux_usage == ISL_AUX_USAGE_CCS_E ||
+                image->planes[p].aux_usage == ISL_AUX_USAGE_FCV_CCS_E ||
+                image->planes[p].aux_usage == ISL_AUX_USAGE_STC_CCS);
+         image->planes[p].aux_usage = ISL_AUX_USAGE_NONE;
+      }
+   }
+
+   if (bind_status)
+      *bind_status->pResult = VK_SUCCESS;
+
+   return VK_SUCCESS;
+}
+
 VkResult anv_BindImageMemory2(
     VkDevice                                    _device,
     uint32_t                                    bindInfoCount,
     const VkBindImageMemoryInfo*                pBindInfos)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
+   VkResult result = VK_SUCCESS;
 
    for (uint32_t i = 0; i < bindInfoCount; i++) {
-      const VkBindImageMemoryInfo *bind_info = &pBindInfos[i];
-      ANV_FROM_HANDLE(anv_device_memory, mem, bind_info->memory);
-      ANV_FROM_HANDLE(anv_image, image, bind_info->image);
-      bool did_bind = false;
-
-      assert(!anv_image_is_sparse(image));
-
-      /* Resolve will alter the image's aspects, do this first. */
-      if (mem && mem->vk.ahardware_buffer)
-         resolve_ahw_image(device, image, mem);
-
-      vk_foreach_struct_const(s, bind_info->pNext) {
-         switch (s->sType) {
-         case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
-            const VkBindImagePlaneMemoryInfo *plane_info =
-               (const VkBindImagePlaneMemoryInfo *) s;
-
-            /* Workaround for possible spec bug.
-             *
-             * Unlike VkImagePlaneMemoryRequirementsInfo, which requires that
-             * the image be disjoint (that is, multi-planar format and
-             * VK_IMAGE_CREATE_DISJOINT_BIT), VkBindImagePlaneMemoryInfo allows
-             * the image to be non-disjoint and requires only that the image
-             * have the DISJOINT flag. In this case, regardless of the value of
-             * VkImagePlaneMemoryRequirementsInfo::planeAspect, the behavior is
-             * the same as if VkImagePlaneMemoryRequirementsInfo were omitted.
-             */
-            if (!image->disjoint)
-               break;
-
-            struct anv_image_binding *binding =
-               anv_image_aspect_to_binding(image, plane_info->planeAspect);
-
-            binding->address = (struct anv_address) {
-               .bo = mem->bo,
-               .offset = bind_info->memoryOffset,
-            };
-
-            did_bind = true;
-            break;
-         }
-         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
-            /* Ignore this struct on Android, we cannot access swapchain
-             * structures there.
-             */
-#ifndef VK_USE_PLATFORM_ANDROID_KHR
-            const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
-               (const VkBindImageMemorySwapchainInfoKHR *) s;
-            struct anv_image *swapchain_image =
-               anv_swapchain_get_image(swapchain_info->swapchain,
-                                       swapchain_info->imageIndex);
-            assert(swapchain_image);
-            assert(image->vk.aspects == swapchain_image->vk.aspects);
-            assert(mem == NULL);
-
-            for (int j = 0; j < ARRAY_SIZE(image->bindings); ++j) {
-               assert(memory_ranges_equal(image->bindings[j].memory_range,
-                                          swapchain_image->bindings[j].memory_range));
-               image->bindings[j].address = swapchain_image->bindings[j].address;
-            }
-
-            /* We must bump the private binding's bo's refcount because, unlike the other
-             * bindings, its lifetime is not application-managed.
-             */
-            struct anv_bo *private_bo =
-               image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].address.bo;
-            if (private_bo)
-               anv_bo_ref(private_bo);
-
-            did_bind = true;
-#endif
-            break;
-         }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wswitch"
-         case VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID: {
-            const VkNativeBufferANDROID *gralloc_info =
-               (const VkNativeBufferANDROID *)s;
-            VkResult result = anv_image_bind_from_gralloc(device, image,
-                                                          gralloc_info);
-            if (result != VK_SUCCESS)
-               return result;
-            did_bind = true;
-            break;
-         }
-#pragma GCC diagnostic pop
-         default:
-            anv_debug_ignored_stype(s->sType);
-            break;
-         }
-      }
-
-      if (!did_bind) {
-         assert(!image->disjoint);
-
-         image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address =
-            (struct anv_address) {
-               .bo = mem->bo,
-               .offset = bind_info->memoryOffset,
-            };
-
-         did_bind = true;
-      }
-
-      /* Now that we have the BO, finalize CCS setup. */
-      for (int p = 0; p < image->n_planes; ++p) {
-         enum anv_image_memory_binding binding =
-            image->planes[p].primary_surface.memory_range.binding;
-         const struct anv_bo *bo =
-            image->bindings[binding].address.bo;
-
-         if (!bo || !isl_aux_usage_has_ccs(image->planes[p].aux_usage))
-            continue;
-
-         /* Do nothing if flat CCS requirements are satisfied.
-          *
-          * Also, assume that imported BOs with a modifier including
-          * CCS live only in local memory. Otherwise the exporter should
-          * have failed the creation of the BO.
-          */
-         if (device->info->has_flat_ccs &&
-             (anv_bo_is_vram_only(bo) ||
-              (bo->alloc_flags & ANV_BO_ALLOC_IMPORTED)))
-            continue;
-
-         /* Add the plane to the aux map when applicable. */
-         const struct anv_address main_addr = anv_image_address(
-            image, &image->planes[p].primary_surface.memory_range);
-         if (anv_address_allows_aux_map(device, main_addr)) {
-            const struct anv_address aux_addr =
-               anv_image_address(image,
-                 &image->planes[p].compr_ctrl_memory_range);
-            const struct isl_surf *surf =
-               &image->planes[p].primary_surface.isl;
-            const uint64_t format_bits =
-               intel_aux_map_format_bits_for_isl_surf(surf);
-            image->planes[p].aux_ccs_mapped =
-               intel_aux_map_add_mapping(device->aux_map_ctx,
-                                         anv_address_physical(main_addr),
-                                         anv_address_physical(aux_addr),
-                                         surf->size_B, format_bits);
-            if (image->planes[p].aux_ccs_mapped)
-               continue;
-         }
-
-         /* Do nothing prior to gfx12. There are no special requirements. */
-         if (device->info->ver < 12)
-            continue;
-
-         /* The plane's BO cannot support CCS, disable compression on it. */
-         assert(!isl_drm_modifier_has_aux(image->vk.drm_format_mod));
-
-         anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
-                       "BO lacks CCS support. Disabling the CCS aux usage.");
-
-         if (image->planes[p].aux_surface.memory_range.size > 0) {
-            assert(image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS ||
-                   image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT);
-            image->planes[p].aux_usage = ISL_AUX_USAGE_HIZ;
-         } else {
-            assert(image->planes[p].aux_usage == ISL_AUX_USAGE_CCS_E ||
-                   image->planes[p].aux_usage == ISL_AUX_USAGE_FCV_CCS_E ||
-                   image->planes[p].aux_usage == ISL_AUX_USAGE_STC_CCS);
-            image->planes[p].aux_usage = ISL_AUX_USAGE_NONE;
-         }
-      }
+      VkResult res = anv_bind_image_memory(device, &pBindInfos[i]);
+      if (result == VK_SUCCESS && res != VK_SUCCESS)
+         result = res;
    }
 
-   return VK_SUCCESS;
+   return result;
 }
 
 static inline void
