@@ -195,7 +195,8 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
                     bool has_param_exports,
                     bool *out_needs_scratch_ring,
                     unsigned wave_size,
-                    bool multiview);
+                    bool multiview,
+                    bool has_query);
 
 void
 ac_nir_lower_task_outputs_to_mem(nir_shader *shader,

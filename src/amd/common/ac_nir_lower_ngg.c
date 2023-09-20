@@ -227,6 +227,9 @@ typedef struct
    uint32_t clipdist_enable_mask;
    const uint8_t *vs_output_param_offset;
    bool has_param_exports;
+
+   /* True if the lowering needs to insert shader query. */
+   bool has_query;
 } lower_ngg_ms_state;
 
 /* Per-vertex LDS layout of culling shaders */
@@ -4402,6 +4405,45 @@ ms_prim_exp_arg_ch2(nir_builder *b, uint64_t outputs_mask, lower_ngg_ms_state *s
 }
 
 static void
+ms_prim_gen_query(nir_builder *b,
+                  nir_def *invocation_index,
+                  nir_def *num_prm,
+                  lower_ngg_ms_state *s)
+{
+   if (!s->has_query)
+      return;
+
+   nir_if *if_invocation_index_zero = nir_push_if(b, nir_ieq_imm(b, invocation_index, 0));
+   {
+      nir_if *if_shader_query = nir_push_if(b, nir_load_prim_gen_query_enabled_amd(b));
+      {
+         nir_atomic_add_gen_prim_count_amd(b, num_prm, .stream_id = 0);
+      }
+      nir_pop_if(b, if_shader_query);
+   }
+   nir_pop_if(b, if_invocation_index_zero);
+}
+
+static void
+ms_invocation_query(nir_builder *b,
+                    nir_def *invocation_index,
+                    lower_ngg_ms_state *s)
+{
+   if (!s->has_query)
+      return;
+
+   nir_if *if_invocation_index_zero = nir_push_if(b, nir_ieq_imm(b, invocation_index, 0));
+   {
+      nir_if *if_pipeline_query = nir_push_if(b, nir_load_pipeline_stat_query_enabled_amd(b));
+      {
+         nir_atomic_add_shader_invocation_count_amd(b, nir_imm_int(b, s->api_workgroup_size));
+      }
+      nir_pop_if(b, if_pipeline_query);
+   }
+   nir_pop_if(b, if_invocation_index_zero);
+}
+
+static void
 ms_emit_primitive_export(nir_builder *b,
                          nir_def *invocation_index,
                          nir_def *num_vtx,
@@ -4434,6 +4476,8 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
    set_ms_final_output_counts(b, s, &num_prm, &num_vtx);
 
    nir_def *invocation_index = nir_load_local_invocation_index(b);
+
+   ms_prim_gen_query(b, invocation_index, num_prm, s);
 
    /* Load vertex/primitive attributes from shared memory and
     * emit store_output intrinsics for them.
@@ -4664,6 +4708,8 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
                                .memory_semantics = NIR_MEMORY_ACQ_REL,
                                .memory_modes = nir_var_shader_out | nir_var_mem_shared);
       }
+
+      ms_invocation_query(b, invocation_index, s);
    }
    nir_pop_if(b, if_has_api_ms_invocation);
 
@@ -4832,7 +4878,8 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
                     bool has_param_exports,
                     bool *out_needs_scratch_ring,
                     unsigned wave_size,
-                    bool multiview)
+                    bool multiview,
+                    bool has_query)
 {
    unsigned vertices_per_prim =
       num_mesh_vertices_per_primitive(shader->info.mesh.primitive_type);
@@ -4886,6 +4933,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
       .clipdist_enable_mask = clipdist_enable_mask,
       .vs_output_param_offset = vs_output_param_offset,
       .has_param_exports = has_param_exports,
+      .has_query = has_query,
    };
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
