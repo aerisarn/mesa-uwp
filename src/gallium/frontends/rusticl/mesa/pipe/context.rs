@@ -389,7 +389,7 @@ impl PipeContext {
                 pipe_shader_type::PIPE_SHADER_COMPUTE,
                 idx,
                 false,
-                &cb,
+                if data.is_empty() { ptr::null() } else { &cb },
             )
         }
     }
