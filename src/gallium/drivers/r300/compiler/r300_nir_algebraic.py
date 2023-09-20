@@ -110,7 +110,10 @@ r300_nir_post_integer_lowering = [
         # This actually checks for the lowered ffloor(a) = a - ffract(a) patterns.
         (('fadd(is_only_used_by_load_ubo_vec4)', a, ('fneg', ('ffract', a))), a),
         # This is a D3D9 pattern from Wine when shader wants ffloor instead of fround on register load.
-        (('fround_even(is_only_used_by_load_ubo_vec4)', ('fadd', a, ('fneg', ('ffract', a)))), a)
+        (('fround_even(is_only_used_by_load_ubo_vec4)', ('fadd', a, ('fneg', ('ffract', a)))), a),
+        # Lower ftrunc
+        (('ftrunc', 'a@32'), ('fcsel_ge', a, ('fadd', ('fabs', a), ('fneg', ('ffract', ('fabs', a)))),
+                                     ('fneg', ('fadd', ('fabs', a), ('fneg', ('ffract', ('fabs', a)))))))
 ]
 
 def main():

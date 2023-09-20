@@ -81,7 +81,6 @@ static unsigned translate_opcode(unsigned opcode)
         case TGSI_OPCODE_ELSE: return RC_OPCODE_ELSE;
         case TGSI_OPCODE_ENDIF: return RC_OPCODE_ENDIF;
         case TGSI_OPCODE_ENDLOOP: return RC_OPCODE_ENDLOOP;
-        case TGSI_OPCODE_TRUNC: return RC_OPCODE_TRUNC;
         case TGSI_OPCODE_CONT: return RC_OPCODE_CONT;
         case TGSI_OPCODE_NOP: return RC_OPCODE_NOP;
         case TGSI_OPCODE_KILL_IF: return RC_OPCODE_KIL;
