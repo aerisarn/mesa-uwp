@@ -91,6 +91,7 @@ pvr_deps = [
 ]
 
 pvr_flags = [
+  imagination_c_args,
   no_override_init_args,
 ]
 
