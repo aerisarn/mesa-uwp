@@ -908,6 +908,11 @@ anv_cmd_buffer_fini_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
       list_del(&bbo->link);
       anv_batch_bo_destroy(bbo, cmd_buffer);
    }
+
+   if (cmd_buffer->generation.ring_bo) {
+      anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool,
+                       cmd_buffer->generation.ring_bo);
+   }
 }
 
 void
@@ -957,6 +962,12 @@ anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->generation.batch.start = NULL;
    cmd_buffer->generation.batch.end   = NULL;
    cmd_buffer->generation.batch.next  = NULL;
+
+   if (cmd_buffer->generation.ring_bo) {
+      anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool,
+                       cmd_buffer->generation.ring_bo);
+      cmd_buffer->generation.ring_bo = NULL;
+   }
 
    cmd_buffer->total_batch_size = 0;
 }

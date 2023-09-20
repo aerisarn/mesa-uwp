@@ -23,7 +23,7 @@
 
 #include "interface.h"
 
-/* These 3 bindings will be accessed through A64 messages */
+/* All storage bindings will be accessed through A64 messages */
 layout(set = 0, binding = 0, std430) buffer Storage0 {
    uint indirect_data[];
 };
@@ -132,17 +132,27 @@ void write_MI_BATCH_BUFFER_START(uint write_offset,
    commands[write_offset + 2] = uint(addr >> 32);
 }
 
-void end_generated_draws(uint cmd_idx, uint draw_id, uint draw_count)
+void end_generated_draws(uint item_idx, uint cmd_idx, uint draw_id, uint draw_count)
 {
    uint _3dprim_dw_size = (params.flags >> 16) & 0xff;
+   bool indirect_count = (params.flags & ANV_GENERATED_FLAG_COUNT) != 0;
+   bool ring_mode = (params.flags & ANV_GENERATED_FLAG_RING_MODE) != 0;
    /* We can have an indirect draw count = 0. */
    uint last_draw_id = draw_count == 0 ? 0 : (min(draw_count, params.max_draw_count) - 1);
    uint jump_offset = draw_count == 0 ? 0 : _3dprim_dw_size;
 
-   if (draw_id == last_draw_id && draw_count < params.max_draw_count) {
-      /* Only write a jump forward in the batch if we have fewer elements than
-       * the max draw count.
-       */
-      write_MI_BATCH_BUFFER_START(cmd_idx + jump_offset, params.end_addr);
+   if (ring_mode) {
+      if (draw_id == last_draw_id) {
+         /* Exit the ring buffer to the next user commands */
+         write_MI_BATCH_BUFFER_START(cmd_idx + jump_offset, params.end_addr);
+      } else if (item_idx == (params.ring_count - 1)) {
+         /* Jump back to the generation shader to generate mode draws */
+         write_MI_BATCH_BUFFER_START(cmd_idx + jump_offset, params.gen_addr);
+      }
+   } else {
+      if (draw_id == last_draw_id && draw_count < params.max_draw_count) {
+         /* Skip forward to the end of the generated draws */
+         write_MI_BATCH_BUFFER_START(cmd_idx + jump_offset, params.end_addr);
+      }
    }
 }

@@ -36,8 +36,16 @@
 
 #define ANV_GENERATED_FLAG_INDEXED    BITFIELD_BIT(0)
 #define ANV_GENERATED_FLAG_PREDICATED BITFIELD_BIT(1)
+/* Only used on Gfx9, means the pipeline is using gl_DrawID */
 #define ANV_GENERATED_FLAG_DRAWID     BITFIELD_BIT(2)
+/* Only used on Gfx9, means the pipeline is using gl_BaseVertex or
+ * gl_BaseInstance
+ */
 #define ANV_GENERATED_FLAG_BASE       BITFIELD_BIT(3)
+/* Whether the count is indirect  */
+#define ANV_GENERATED_FLAG_COUNT      BITFIELD_BIT(4)
+/* Whether the generation shader writes to the ring buffer */
+#define ANV_GENERATED_FLAG_RING_MODE  BITFIELD_BIT(5)
 
 struct anv_generated_indirect_draw_params {
    /* Draw ID buffer address (only used on Gfx9) */
@@ -57,10 +65,17 @@ struct anv_generated_indirect_draw_params {
    uint32_t max_draw_count;
    /* Instance multiplier for multi view */
    uint32_t instance_multiplier;
+   /* Address where to jump at to generate further draws (used with ring mode)
+    */
+   uint64_t gen_addr;
    /* Address where to jump at after the generated draw (only used with
     * indirect draw count variants)
     */
    uint64_t end_addr;
+   /* Number of draws to generate in the ring buffer (only useful in ring
+    * buffer mode)
+    */
+   uint32_t ring_count;
 };
 
 #define ANV_COPY_QUERY_FLAG_RESULT64  BITFIELD_BIT(0)

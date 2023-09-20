@@ -82,8 +82,8 @@ void main()
    uint draw_id = params.draw_base + item_idx;
    uint draw_count = _draw_count;
 
-   if (draw_id < draw_count)
+   if (draw_id < min(draw_count, params.max_draw_count))
       write_draw(item_idx, cmd_idx, draw_id);
 
-   end_generated_draws(cmd_idx, draw_id, draw_count);
+   end_generated_draws(item_idx, cmd_idx, draw_id, draw_count);
 }

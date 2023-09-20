@@ -1058,6 +1058,7 @@ struct anv_instance {
     bool                                        fp64_workaround_enabled;
     float                                       lower_depth_range_rate;
     unsigned                                    generated_indirect_threshold;
+    unsigned                                    generated_indirect_ring_threshold;
     unsigned                                    query_clear_with_blorp_threshold;
     unsigned                                    query_copy_with_shader_threshold;
     unsigned                                    force_vk_vendor;
@@ -3610,8 +3611,16 @@ struct anv_cmd_buffer {
        */
       struct list_head                          batch_bos;
 
+      /** Ring buffer of generated commands
+       *
+       * When generating draws in ring mode, this buffer will hold generated
+       * 3DPRIMITIVE commands.
+       */
+      struct anv_bo                            *ring_bo;
+
       /**
-       * State tracking of the generation shader.
+       * State tracking of the generation shader (only used for the non-ring
+       * mode).
        */
       struct anv_simple_shader                  shader_state;
    } generation;
