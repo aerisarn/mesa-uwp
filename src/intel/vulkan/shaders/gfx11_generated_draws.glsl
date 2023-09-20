@@ -76,10 +76,7 @@ void main()
                                     first_instance,
                                     draw_id);
       }
-   } else if (draw_id == draw_count && draw_id < max_draw_count) {
-      /* Only write a jump forward in the batch if we have fewer elements than
-       * the max draw count.
-       */
-      write_MI_BATCH_BUFFER_START(cmd_idx, end_addr);
    }
+
+   end_generated_draws(cmd_idx, draw_id, draw_count);
 }

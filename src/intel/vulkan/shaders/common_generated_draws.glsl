@@ -131,3 +131,18 @@ void write_MI_BATCH_BUFFER_START(uint write_offset,
    commands[write_offset + 1] = uint(addr & 0xffffffff);
    commands[write_offset + 2] = uint(addr >> 32);
 }
+
+void end_generated_draws(uint cmd_idx, uint draw_id, uint draw_count)
+{
+   uint _3dprim_dw_size = (flags >> 16) & 0xff;
+   /* We can have an indirect draw count = 0. */
+   uint last_draw_id = draw_count == 0 ? 0 : (min(draw_count, max_draw_count) - 1);
+   uint jump_offset = draw_count == 0 ? 0 : _3dprim_dw_size;
+
+   if (draw_id == last_draw_id && draw_count < max_draw_count) {
+      /* Only write a jump forward in the batch if we have fewer elements than
+       * the max draw count.
+       */
+      write_MI_BATCH_BUFFER_START(cmd_idx + jump_offset, end_addr);
+   }
+}
