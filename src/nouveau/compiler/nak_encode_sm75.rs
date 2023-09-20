@@ -1478,8 +1478,8 @@ impl SM75Instr {
         self.set_opcode(0x321);
 
         self.set_dst(op.dst);
-        self.set_reg_src(24..32, op.vtx);
-        self.set_reg_src(32..40, op.offset);
+        self.set_reg_src(32..40, op.vtx);
+        self.set_reg_src(24..32, op.offset);
 
         self.set_field(40..50, op.access.addr);
         self.set_field(74..76, op.access.comps - 1);
@@ -1492,8 +1492,8 @@ impl SM75Instr {
         self.set_opcode(0x322);
 
         self.set_reg_src(32..40, op.data);
-        self.set_reg_src(24..32, op.vtx);
-        self.set_reg_src(64..72, op.offset);
+        self.set_reg_src(64..72, op.vtx);
+        self.set_reg_src(24..32, op.offset);
 
         self.set_field(40..50, op.access.addr);
         self.set_field(74..76, op.access.comps - 1);
