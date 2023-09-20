@@ -588,7 +588,8 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
    }
 
    if (physical_device->rad_info.gfx_level >= GFX11) {
-      radeon_set_context_reg(cs, R_028C54_PA_SC_BINNER_CNTL_2, 0);
+      radeon_set_context_reg(cs, R_028C54_PA_SC_BINNER_CNTL_2,
+                             S_028C54_ENABLE_PING_PONG_BIN_ORDER(physical_device->rad_info.gfx_level >= GFX11_5));
 
       uint64_t rb_mask = BITFIELD64_MASK(physical_device->rad_info.max_render_backends);
 
