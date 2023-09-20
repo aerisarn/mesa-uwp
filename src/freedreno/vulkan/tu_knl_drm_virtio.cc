@@ -101,9 +101,8 @@ struct tu_virtio_device {
 };
 
 #define virtio_ioctl(fd, name, args) ({                              \
-      MESA_TRACE_BEGIN(#name);                                       \
+      MESA_TRACE_SCOPE(#name);                                       \
       int ret = drmIoctl((fd), DRM_IOCTL_ ## name, (args));          \
-      MESA_TRACE_END();                                              \
       ret;                                                           \
    })
 
@@ -236,10 +235,9 @@ out_unlock:
       return ret;
 
    if (sync) {
-      MESA_TRACE_BEGIN("virtio_execbuf sync");
+      MESA_TRACE_SCOPE("virtio_execbuf sync");
       sync_wait(fence_fd, -1);
       close(fence_fd);
-      MESA_TRACE_END();
    }
 
    return 0;
