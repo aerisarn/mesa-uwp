@@ -2336,7 +2336,7 @@ VkResult pvr_MapMemory(VkDevice _device,
 
    /* Check if already mapped */
    if (mem->bo->map) {
-      *ppData = mem->bo->map + offset;
+      *ppData = (uint8_t *)mem->bo->map + offset;
       return VK_SUCCESS;
    }
 
@@ -2345,7 +2345,7 @@ VkResult pvr_MapMemory(VkDevice _device,
    if (result != VK_SUCCESS)
       return result;
 
-   *ppData = mem->bo->map + offset;
+   *ppData = (uint8_t *)mem->bo->map + offset;
 
    return VK_SUCCESS;
 }
