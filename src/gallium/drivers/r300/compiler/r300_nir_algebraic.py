@@ -94,6 +94,15 @@ r300_nir_clean_double_fneg = [
         (('fneg', ('fneg', a)), a)
 ]
 
+r300_nir_post_integer_lowering = [
+        # If ffloor result is used only for indirect constant load, we can get rid of it
+        # completelly as ntt emits ARL by default which already does the flooring.
+        # This actually checks for the lowered ffloor(a) = a - ffract(a) patterns.
+        (('fadd(is_only_used_by_load_ubo_vec4)', a, ('fneg', ('ffract', a))), a),
+        # This is a D3D9 pattern from Wine when shader wants ffloor instead of fround on register load.
+        (('fround_even(is_only_used_by_load_ubo_vec4)', ('fadd', a, ('fneg', ('ffract', a)))), a)
+]
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--import-path', required=True)
@@ -139,6 +148,9 @@ def main():
 
         f.write(nir_algebraic.AlgebraicPass("r300_nir_clean_double_fneg",
                                             r300_nir_clean_double_fneg).render())
+
+        f.write(nir_algebraic.AlgebraicPass("r300_nir_post_integer_lowering",
+                                            r300_nir_post_integer_lowering).render())
 
 if __name__ == '__main__':
     main()

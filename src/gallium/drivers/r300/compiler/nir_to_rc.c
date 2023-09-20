@@ -2440,6 +2440,8 @@ const void *nir_to_rc_options(struct nir_shader *s,
    }
 
    NIR_PASS_V(s, nir_lower_int_to_float);
+   NIR_PASS_V(s, nir_copy_prop);
+   NIR_PASS_V(s, r300_nir_post_integer_lowering);
    NIR_PASS_V(s, nir_lower_bool_to_float,
               !options->lower_cmp && !options->lower_fabs);
    /* bool_to_float generates MOVs for b2f32 that we want to clean up. */
