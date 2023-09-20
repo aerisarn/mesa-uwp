@@ -218,7 +218,14 @@ anv_shader_bin_serialize(struct vk_pipeline_cache_object *object,
    blob_write_bytes(blob, shader->kernel.map, shader->kernel_size);
 
    blob_write_uint32(blob, shader->prog_data_size);
-   blob_write_bytes(blob, shader->prog_data, shader->prog_data_size);
+
+   union brw_any_prog_data prog_data;
+   assert(shader->prog_data_size <= sizeof(prog_data));
+   memcpy(&prog_data, shader->prog_data, shader->prog_data_size);
+   prog_data.base.relocs = NULL;
+   prog_data.base.param = NULL;
+   blob_write_bytes(blob, &prog_data, shader->prog_data_size);
+
    blob_write_bytes(blob, shader->prog_data->relocs,
                     shader->prog_data->num_relocs *
                     sizeof(shader->prog_data->relocs[0]));
