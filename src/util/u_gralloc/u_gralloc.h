@@ -59,20 +59,20 @@ enum u_gralloc_type {
 
 struct u_gralloc *u_gralloc_create(enum u_gralloc_type type);
 
-void u_gralloc_destroy(struct u_gralloc **gralloc NONNULL);
+void u_gralloc_destroy(struct u_gralloc **gralloc);
 
 int u_gralloc_get_buffer_basic_info(
-   struct u_gralloc *gralloc NONNULL,
-   struct u_gralloc_buffer_handle *hnd NONNULL,
-   struct u_gralloc_buffer_basic_info *out NONNULL);
+   struct u_gralloc *gralloc,
+   struct u_gralloc_buffer_handle *hnd,
+   struct u_gralloc_buffer_basic_info *out);
 
 int u_gralloc_get_buffer_color_info(
-   struct u_gralloc *gralloc NONNULL,
-   struct u_gralloc_buffer_handle *hnd NONNULL,
-   struct u_gralloc_buffer_color_info *out NONNULL);
+   struct u_gralloc *gralloc,
+   struct u_gralloc_buffer_handle *hnd,
+   struct u_gralloc_buffer_color_info *out);
 
-int u_gralloc_get_front_rendering_usage(struct u_gralloc *gralloc NONNULL,
-                                        uint64_t *out_usage NONNULL);
+int u_gralloc_get_front_rendering_usage(struct u_gralloc *gralloc,
+                                        uint64_t *out_usage);
 
 #ifdef __cplusplus
 }
