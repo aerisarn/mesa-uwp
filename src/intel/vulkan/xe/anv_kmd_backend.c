@@ -65,6 +65,20 @@ xe_gem_create(struct anv_device *device,
    for (uint16_t i = 0; i < regions_count; i++)
       gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
 
+   const struct intel_device_info_pat_entry *pat_entry =
+         anv_device_get_pat_entry(device, alloc_flags);
+   switch (pat_entry->mmap) {
+   case INTEL_DEVICE_INFO_MMAP_MODE_WC:
+      gem_create.cpu_caching = DRM_XE_GEM_CPU_CACHING_WC;
+      break;
+   case INTEL_DEVICE_INFO_MMAP_MODE_WB:
+      gem_create.cpu_caching = DRM_XE_GEM_CPU_CACHING_WB;
+      break;
+   default:
+      unreachable("missing");
+      gem_create.cpu_caching = DRM_XE_GEM_CPU_CACHING_WC;
+   }
+
    if (intel_ioctl(device->fd, DRM_IOCTL_XE_GEM_CREATE, &gem_create))
       return 0;
 
@@ -137,6 +151,7 @@ xe_vm_bind_op(struct anv_device *device,
          .op = DRM_XE_VM_BIND_OP_UNMAP,
          .flags = 0,
          .prefetch_mem_region_instance = 0,
+         .pat_index = anv_device_get_pat_entry(device, bo->alloc_flags)->index,
       };
 
       if (bind->op == ANV_VM_BIND) {
