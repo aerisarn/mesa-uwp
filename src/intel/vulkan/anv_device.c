@@ -257,6 +257,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_maintenance3                      = true,
       .KHR_maintenance4                      = true,
       .KHR_maintenance5                      = true,
+      .KHR_maintenance6                      = true,
       .KHR_map_memory2                       = true,
       .KHR_multiview                         = true,
       .KHR_performance_query =
@@ -859,6 +860,9 @@ get_features(const struct anv_physical_device *pdevice,
       /* VK_KHR_maintenance5 */
       .maintenance5 = true,
 
+      /* VK_KHR_maintenance6 */
+      .maintenance6 = true,
+
       /* VK_EXT_nested_command_buffer */
       .nestedCommandBuffer = true,
       .nestedCommandBufferRendering = true,
@@ -1402,6 +1406,13 @@ get_properties(const struct anv_physical_device *pdevice,
       props->polygonModePointSize = true;
       props->nonStrictSinglePixelWideLinesUseParallelogram = false;
       props->nonStrictWideLinesUseParallelogram = false;
+   }
+
+   /* VK_KHR_maintenance6 */
+   {
+      props->blockTexelViewCompatibleMultipleLayers = true;
+      props->maxCombinedImageSamplerDescriptorCount = 3;
+      props->fragmentShadingRateClampCombinerInputs = true;
    }
 
    /* VK_KHR_performance_query */
