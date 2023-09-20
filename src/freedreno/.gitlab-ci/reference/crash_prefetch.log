@@ -6,7 +6,7 @@ comm: deqp-vk
 cmdline: ./deqp-vk --deqp-log-images=enable --deqp-log-filename=/home/anholt/TestResults.qpa --deqp-surface-type=pbuffer --deqp-surface-width=256 --deqp-surface-height=256 --deqp-gl-config-name=rgba8888d24s8ms0 --deqp-case=dEQP-VK.renderpass2.dedicated_allocation.attachment_allocation.roll.46
 gpu-initialized: 1
 revision: 618 (6.1.8.0)
-Got gpu_id=618
+Got chip_id=0x6010800
 rbbm-status: 0x00000000
 ringbuffer:
   - id: 0

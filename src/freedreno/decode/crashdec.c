@@ -767,14 +767,19 @@ decode(void)
       if (startswith(line, "revision:")) {
          unsigned core, major, minor, patchid;
 
-         parseline(line, "revision: %u (%u.%u.%u.%u)", &options.gpu_id,
+         parseline(line, "revision: %u (%u.%u.%u.%u)", &options.dev_id.gpu_id,
                    &core, &major, &minor, &patchid);
 
-         if (options.gpu_id == 0) {
-            options.gpu_id = (core * 100) + (major * 10) + minor;
+         options.dev_id.chip_id = (core << 24) | (major << 16) | (minor << 8) | patchid;
+         options.info = fd_dev_info(&options.dev_id);
+         if (!options.info) {
+            printf("Unsupported device\n");
+            break;
          }
 
-         printf("Got gpu_id=%u\n", options.gpu_id);
+         options.gpu_id = options.dev_id.gpu_id;
+
+         printf("Got chip_id=0x%"PRIx64"\n", options.dev_id.chip_id);
 
          cffdec_init(&options);
 

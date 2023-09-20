@@ -74,7 +74,7 @@ is_64b(void)
 static inline bool
 is_gmu_legacy(void)
 {
-   switch (options.gpu_id) {
+   switch (options.dev_id.gpu_id) {
    case 615:
    case 618:
    case 630:

@@ -339,10 +339,10 @@ handle_file(const char *filename, int start, int end, int draw)
             options.dev_id.gpu_id = gpu_id;
             printl(2, "gpu_id: %d\n", options.dev_id.gpu_id);
 
-            const struct fd_dev_info *info = fd_dev_info(&options.dev_id);
-            if (!info)
+            options.info = fd_dev_info(&options.dev_id);
+            if (!options.info)
                break;
-            options.gpu_id = info->chip * 100;
+            options.gpu_id = options.info->chip * 100;
 
             cffdec_init(&options);
             got_gpu_id = 1;
@@ -353,10 +353,10 @@ handle_file(const char *filename, int start, int end, int draw)
             options.dev_id.chip_id = parse_chip_id(ps.buf);
             printl(2, "chip_id: 0x%" PRIx64 "\n", options.dev_id.chip_id);
 
-            const struct fd_dev_info *info = fd_dev_info(&options.dev_id);
-            if (!info)
+            options.info = fd_dev_info(&options.dev_id);
+            if (!options.info)
                break;
-            options.gpu_id = info->chip * 100;
+            options.gpu_id = options.info->chip * 100;
 
             cffdec_init(&options);
             got_gpu_id = 1;

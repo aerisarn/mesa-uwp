@@ -5,7 +5,7 @@ time: 1593887022.767858793
 comm: crashit
 cmdline: ./crashit IB1 4 5
 revision: 630 (6.3.0.2)
-Got gpu_id=630
+Got chip_id=0x6030002
 rbbm-status: 0x00000000
 ringbuffer:
   - id: 0
