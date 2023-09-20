@@ -8408,7 +8408,7 @@ void genX(CmdBindIndexBuffer2KHR)(
       cmd_buffer->state.gfx.index_buffer = buffer;
       cmd_buffer->state.gfx.index_type = vk_to_intel_index_type(indexType);
       cmd_buffer->state.gfx.index_offset = offset;
-      cmd_buffer->state.gfx.index_size = vk_buffer_range(&buffer->vk, offset, size);
+      cmd_buffer->state.gfx.index_size = buffer ? vk_buffer_range(&buffer->vk, offset, size) : 0;
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
    }
 }
