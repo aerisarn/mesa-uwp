@@ -2438,7 +2438,7 @@ print_shader_info(const struct shader_info *info, FILE *fp)
    print_nz_bitset(fp, "image_buffers", info->image_buffers, ARRAY_SIZE(info->image_buffers));
    print_nz_bitset(fp, "msaa_images", info->msaa_images, ARRAY_SIZE(info->msaa_images));
 
-   print_nz_x16(fp, "float_controls_execution_mode", info->float_controls_execution_mode);
+   print_nz_x32(fp, "float_controls_execution_mode", info->float_controls_execution_mode);
 
    print_nz_unsigned(fp, "shared_size", info->shared_size);
 

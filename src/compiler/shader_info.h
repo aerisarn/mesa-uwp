@@ -227,7 +227,7 @@ typedef struct shader_info {
    BITSET_DECLARE(msaa_images, 64);
 
    /* SPV_KHR_float_controls: execution mode for floating point ops */
-   uint16_t float_controls_execution_mode;
+   uint32_t float_controls_execution_mode;
 
    /**
     * Size of shared variables accessed by compute/task/mesh shaders.
