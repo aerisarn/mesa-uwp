@@ -173,7 +173,7 @@ radv_nir_lower_io_to_mem(struct radv_device *device, struct radv_shader_stage *s
       return true;
    } else if (nir->info.stage == MESA_SHADER_TASK) {
       ac_nir_lower_task_outputs_to_mem(nir, AC_TASK_PAYLOAD_ENTRY_BYTES, device->physical_device->task_info.num_entries,
-                                       false);
+                                       info->cs.has_query);
       return true;
    } else if (nir->info.stage == MESA_SHADER_MESH) {
       ac_nir_lower_mesh_inputs_to_mem(nir, AC_TASK_PAYLOAD_ENTRY_BYTES, device->physical_device->task_info.num_entries);

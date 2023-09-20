@@ -1116,6 +1116,9 @@ struct radv_device {
    /* Whether smooth lines is enabled. */
    bool smooth_lines;
 
+   /* Whether mesh shader queries are enabled. */
+   bool mesh_shader_queries;
+
    bool uses_shadow_regs;
 
    struct hash_table *rt_handles;

@@ -1993,6 +1993,8 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
       }
    }
 
+   key.mesh_shader_queries = device->mesh_shader_queries;
+
    return key;
 }
 
