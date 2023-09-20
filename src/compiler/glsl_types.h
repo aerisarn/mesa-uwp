@@ -361,7 +361,7 @@ struct glsl_type {
     */
    /*@{*/
 #define BUILTIN_TYPES_CPP_DECLARATIONS
-#include "compiler/builtin_types_cpp.h"
+#include "builtin_types_cpp.h"
 #undef BUILTIN_TYPES_CPP_DECLARATIONS
    /*@}*/
 
@@ -1234,7 +1234,7 @@ private:
 #endif /* __cplusplus */
 };
 
-#include "compiler/builtin_types.h"
+#include "builtin_types.h"
 
 struct glsl_struct_field {
    const struct glsl_type *type;
@@ -1374,7 +1374,7 @@ struct glsl_struct_field {
 
 #ifdef __cplusplus
 #define BUILTIN_TYPES_CPP_DEFINITIONS
-#include "compiler/builtin_types_cpp.h"
+#include "builtin_types_cpp.h"
 #undef BUILTIN_TYPES_CPP_DEFINITIONS
 #endif
 

@@ -314,8 +314,7 @@ _libnir = static_library(
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler],
   c_args : [c_msvc_compat_args, no_override_init_args],
   gnu_symbol_visibility : 'hidden',
-  dependencies : dep_valgrind,
-  link_with : libcompiler,
+  dependencies : [idep_compiler, dep_valgrind],
   build_by_default : false,
 )
 
@@ -323,13 +322,14 @@ inc_nir = include_directories('.')
 
 # Headers-only dependency
 idep_nir_headers = declare_dependency(
-  sources : [nir_opcodes_h, nir_builder_opcodes_h, nir_intrinsics_h, nir_intrinsics_indices_h],
-  include_directories : inc_nir,
+  sources : [nir_opcodes_h, nir_builder_opcodes_h, nir_intrinsics_h, nir_intrinsics_indices_h,
+             ir_expression_operation_h, builtin_types_h, builtin_types_cpp_h],
+  include_directories : [inc_nir, inc_compiler],
 )
 
 # Also link with nir
 idep_nir = declare_dependency(
-  dependencies : [idep_nir_headers, idep_mesautil],
+  dependencies : [idep_nir_headers, idep_mesautil, idep_compiler],
   link_with : _libnir,
 )
 

@@ -39,8 +39,8 @@ if dep_dxheaders.found() and host_machine.system() == 'windows' and with_tests
     ['clc_compiler_test.cpp', 'compute_test.cpp'],
     link_with : [libclc_compiler],
     dependencies : [idep_gtest, idep_mesautil, idep_libdxil_compiler, dep_dxheaders,
-                    dep_spirv_tools],
-    include_directories : [inc_include, inc_src, inc_compiler, inc_spirv],
+                    dep_spirv_tools, idep_compiler],
+    include_directories : [inc_include, inc_src, inc_spirv],
   )
 
   if build_machine.system() == 'windows'
