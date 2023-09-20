@@ -325,7 +325,8 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
 
    case nir_intrinsic_load_primitive_id: {
       assert(b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
-             b->shader->info.stage == MESA_SHADER_TESS_EVAL);
+             b->shader->info.stage == MESA_SHADER_TESS_EVAL ||
+             b->shader->info.stage == MESA_SHADER_GEOMETRY);
       val = nir_load_per_vertex_input(b, 1, 32, nir_imm_int(b, 0),
                                       nir_imm_int(b, 0),
                                       .base = NAK_ATTR_PRIMITIVE_ID,
@@ -749,7 +750,6 @@ nak_postprocess_nir(nir_shader *nir,
 
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
       OPT(nir, nak_nir_lower_varyings, nir_var_shader_in | nir_var_shader_out);
       OPT(nir, nir_opt_constant_folding);
       OPT(nir, nak_nir_lower_vtg_io, nak);
@@ -758,6 +758,13 @@ nak_postprocess_nir(nir_shader *nir,
    case MESA_SHADER_FRAGMENT:
       OPT(nir, nak_nir_lower_fs_inputs, fs_key);
       OPT(nir, nak_nir_lower_fs_outputs);
+      break;
+
+   case MESA_SHADER_GEOMETRY:
+      OPT(nir, nak_nir_lower_varyings, nir_var_shader_in | nir_var_shader_out);
+      OPT(nir, nir_opt_constant_folding);
+      OPT(nir, nak_nir_lower_vtg_io, nak);
+      OPT(nir, nak_nir_lower_gs_intrinsics);
       break;
 
    case MESA_SHADER_COMPUTE:

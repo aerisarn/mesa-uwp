@@ -17,6 +17,7 @@ libnak_c_files = files(
   'nak_nir.c',
   'nak_nir_lower_tex.c',
   'nak_nir_lower_vtg_io.c',
+  'nak_nir_lower_gs_intrinsics.c',
 )
 
 libnak_rs_files = files(

@@ -19,6 +19,7 @@ mod nak_lower_par_copies;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nak_opt_lop;
+mod nak_opt_out;
 mod nak_repair_ssa;
 mod nak_sph;
 mod nak_spill_values;
@@ -249,6 +250,11 @@ pub extern "C" fn nak_compile_shader(
     s.opt_dce();
     if DEBUG.print() {
         eprintln!("NAK IR after dce:\n{}", &s);
+    }
+
+    s.opt_out();
+    if DEBUG.print() {
+        eprintln!("NAK IR:\n{}", &s);
     }
 
     s.legalize();

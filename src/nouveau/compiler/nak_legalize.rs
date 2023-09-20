@@ -252,6 +252,13 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             copy_src_if_cbuf(b, &mut op.lane, RegFile::GPR);
             copy_src_if_cbuf(b, &mut op.c, RegFile::GPR);
         }
+        Op::Out(op) => {
+            copy_src_if_not_reg(b, &mut op.handle, RegFile::GPR);
+            copy_src_if_cbuf(b, &mut op.stream, RegFile::GPR);
+        }
+        Op::OutFinal(op) => {
+            copy_src_if_not_reg(b, &mut op.handle, RegFile::GPR);
+        }
         Op::Ldc(_) => (), // Nothing to do
         Op::BMov(_) | Op::BSSy(_) | Op::BSync(_) => (), // Nothing to do
         Op::Copy(_) => (), // Nothing to do

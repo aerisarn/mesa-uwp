@@ -1739,6 +1739,35 @@ impl SM75Instr {
         self.set_field(72..80, op.idx);
     }
 
+    fn encode_out(&mut self, op: &OpOut) {
+        self.encode_alu(
+            0x124,
+            Some(op.dst),
+            ALUSrc::from_src(&op.handle),
+            ALUSrc::from_src(&op.stream),
+            ALUSrc::None,
+        );
+
+        self.set_field(
+            78..80,
+            match op.out_type {
+                OutType::Emit => 1_u8,
+                OutType::Cut => 2_u8,
+                OutType::EmitThenCut => 3_u8,
+            },
+        );
+    }
+
+    fn encode_out_final(&mut self, op: &OpOutFinal) {
+        self.encode_alu(
+            0x124,
+            Some(Dst::None),
+            ALUSrc::from_src(&op.handle),
+            ALUSrc::from_src(&Src::new_zero()),
+            ALUSrc::None,
+        );
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1814,6 +1843,8 @@ impl SM75Instr {
             Op::Nop(op) => si.encode_nop(&op),
             Op::PixLd(op) => si.encode_pixld(&op),
             Op::S2R(op) => si.encode_s2r(&op),
+            Op::Out(op) => si.encode_out(&op),
+            Op::OutFinal(op) => si.encode_out_final(&op),
             _ => panic!("Unhandled instruction"),
         }
 

@@ -896,7 +896,7 @@ impl fmt::Display for SrcRef {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum SrcMod {
     None,
     FAbs,
@@ -981,7 +981,7 @@ pub enum SrcType {
     Pred,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Src {
     pub src_ref: SrcRef,
     pub src_mod: SrcMod,
@@ -4000,6 +4000,60 @@ impl fmt::Display for OpFSOut {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum OutType {
+    Emit,
+    Cut,
+    EmitThenCut,
+}
+
+impl fmt::Display for OutType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OutType::Emit => write!(f, "EMIT"),
+            OutType::Cut => write!(f, "CUT"),
+            OutType::EmitThenCut => write!(f, "EMIT_THEN_CUT"),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpOut {
+    pub dst: Dst,
+
+    #[src_type(SSA)]
+    pub handle: Src,
+
+    #[src_type(ALU)]
+    pub stream: Src,
+
+    pub out_type: OutType,
+}
+
+impl fmt::Display for OpOut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "OUT.{} {} {{ {}, {} }}",
+            self.out_type, self.dst, self.handle, self.stream
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpOutFinal {
+    #[src_type(SSA)]
+    pub handle: Src,
+}
+
+impl fmt::Display for OpOutFinal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "OUT.FINAL {{ {} }}", self.handle)
+    }
+}
+
 #[derive(Display, DstsAsSlice, SrcsAsSlice, FromVariants)]
 pub enum Op {
     FAdd(OpFAdd),
@@ -4072,6 +4126,8 @@ pub enum Op {
     Swap(OpSwap),
     ParCopy(OpParCopy),
     FSOut(OpFSOut),
+    Out(OpOut),
+    OutFinal(OpOutFinal),
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -4411,7 +4467,9 @@ impl Instr {
             | Op::Exit(_)
             | Op::WarpSync(_)
             | Op::Bar(_)
-            | Op::FSOut(_) => false,
+            | Op::FSOut(_)
+            | Op::Out(_)
+            | Op::OutFinal(_) => false,
             Op::BMov(op) => !op.clear,
             Op::Nop(op) => op.label.is_none(),
             _ => true,
@@ -4485,6 +4543,9 @@ impl Instr {
             Op::BMov(_) | Op::BSSy(_) | Op::BSync(_) => false,
             Op::Bra(_) | Op::Exit(_) => true,
             Op::WarpSync(_) => false,
+
+            // Geometry ops
+            Op::Out(_) | Op::OutFinal(_) => false,
 
             // Miscellaneous ops
             Op::Bar(_)

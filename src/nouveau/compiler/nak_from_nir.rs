@@ -42,13 +42,14 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
             MESA_SHADER_FRAGMENT => ShaderStageInfo::Fragment,
             MESA_SHADER_GEOMETRY => {
                 let info_gs = unsafe { &nir.info.__bindgen_anon_1.gs };
-                let output_topology = match info_gs.input_primitive {
+                let output_topology = match info_gs.output_primitive {
                     MESA_PRIM_POINTS => OutputTopology::PointList,
-                    MESA_PRIM_TRIANGLES | MESA_PRIM_LINE_STRIP => {
-                        OutputTopology::LineStrip
-                    }
+                    MESA_PRIM_LINE_STRIP => OutputTopology::LineStrip,
                     MESA_PRIM_TRIANGLE_STRIP => OutputTopology::TriangleStrip,
-                    _ => panic!("Invalid GS input primitive"),
+                    _ => panic!(
+                        "Invalid GS input primitive {}",
+                        info_gs.input_primitive
+                    ),
                 };
 
                 ShaderStageInfo::Geometry(GeometryShaderInfo {
@@ -1881,6 +1882,36 @@ impl<'a> ShaderFromNir<'a> {
                     access: access,
                 });
             }
+            nir_intrinsic_emit_vertex_nv | nir_intrinsic_end_primitive_nv => {
+                assert!(intrin.def.bit_size() == 32);
+                assert!(intrin.def.num_components() == 1);
+
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                let handle = self.get_src(&srcs[0]);
+                let stream_id = intrin.stream_id();
+
+                b.push_op(OpOut {
+                    dst: dst.into(),
+                    handle: handle,
+                    stream: stream_id.into(),
+                    out_type: if intrin.intrinsic
+                        == nir_intrinsic_emit_vertex_nv
+                    {
+                        OutType::Emit
+                    } else {
+                        OutType::Cut
+                    },
+                });
+                self.set_dst(&intrin.def, dst);
+            }
+
+            nir_intrinsic_final_primitive_nv => {
+                let handle = self.get_src(&srcs[0]);
+
+                if self.info.sm >= 70 {
+                    b.push_op(OpOutFinal { handle: handle });
+                }
+            }
             _ => panic!(
                 "Unsupported intrinsic instruction: {}",
                 intrin.info().name()
@@ -2219,8 +2250,8 @@ impl<'a> ShaderFromNir<'a> {
                     io.mark_attrs_written(tc..(tc + 8));
                 }
                 _ => panic!("Tessellation must have ShaderIoInfo::Vtg"),
-            }
-            _ => ()
+            },
+            _ => (),
         }
 
         Shader {
