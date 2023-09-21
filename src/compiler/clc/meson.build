@@ -122,7 +122,7 @@ _libmesaclc = static_library(
   c_args : _libmesaclc_c_args,
   cpp_args : [_libmesaclc_cpp_args, _libmesaclc_c_args],
   dependencies: [idep_nir, dep_clang, dep_llvm, dep_llvmspirvlib,
-                 idep_mesautil, dep_spirv_tools]
+                 idep_mesautil, dep_spirv_tools, idep_vtn]
 )
 
 idep_mesaclc = declare_dependency(
