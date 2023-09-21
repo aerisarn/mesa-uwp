@@ -4853,9 +4853,9 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
    const uint32_t subpass_idx = pass_info->subpass_idx;
    const uint32_t depth_stencil_attachment_idx =
       pass_info->pass->subpasses[subpass_idx].depth_stencil_attachment;
-   const struct pvr_image_view *const attachment =
+   const struct pvr_render_pass_attachment *const attachment =
       depth_stencil_attachment_idx != VK_ATTACHMENT_UNUSED
-         ? pass_info->attachments[depth_stencil_attachment_idx]
+         ? &pass_info->pass->attachments[depth_stencil_attachment_idx]
          : NULL;
 
    const enum PVRX(TA_OBJTYPE)
@@ -4863,7 +4863,7 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
 
    const VkImageAspectFlags ds_aspects =
       (!rasterizer_discard && attachment)
-         ? vk_format_aspects(attachment->vk.format) &
+         ? vk_format_aspects(attachment->vk_format) &
               (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)
          : VK_IMAGE_ASPECT_NONE;
 
