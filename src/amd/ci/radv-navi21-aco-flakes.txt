@@ -1,5 +1,9 @@
+dEQP-VK.draw.dynamic_rendering.complete_secondary_cmd_buff.linear_interpolation.offset_max_2_samples
+dEQP-VK.draw.renderpass.linear_interpolation.no_offset_\d_samples
 dEQP-VK.dynamic_rendering.basic.*
+dEQP-VK.dynamic_rendering.primary_cmd_buff.basic.contents_secondary_primary_cmdbuffers_resuming
 dEQP-VK.dynamic_rendering.primary_cmd_buff.basic.*
+dEQP-VK.pipeline.monolithic.extended_dynamic_state.two_draws_dynamic.line_stipple_enable
 dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.separate.view_type.2d.format.a2b10g10r10_uint_pack32.count_4.size.13x23
 dEQP-VK.pipeline.monolithic.image.suballocation.sampling_type.combined.view_type.cube_array.format.r8g8_sint.count_4.size.13x13_array_of_36
 
@@ -12,9 +16,14 @@ dEQP-VK.rasterization.primitives_multisample_2_bit.static_stipple.bresenham_line
 # runs, let's mark this test as a flake until it gets fixed.
 #
 # See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/7220
-dEQP-VK.draw.renderpass.linear_interpolation.no_offset_8_samples
+dEQP-VK.draw.renderpass.linear_interpolation.no_offset_\d_samples
+dEQP-VK.draw.renderpass.multi_draw.mosaic.indexed_mixed.max_draws.stride_extra_12.2_instances_base_3.with_tess.multiview.offset_6
 
 dEQP-VK.pipeline.fast_linked_library.multisample_interpolation.sample_interpolate_at_ignores_centroid.128_128_1.samples_8
 dEQP-VK.pipeline.fast_linked_library.extended_dynamic_state.before_draw.line_stipple_enable
+dEQP-VK.pipeline.fast_linked_library.extended_dynamic_state.cmd_buffer_start.line_stipple_enable
+dEQP-VK.pipeline.fast_linked_library.extended_dynamic_state.cmd_buffer_start.line_stipple_params
 
 dEQP-VK.mesh_shader.ext.query.all_stats_query.triangles.host_reset.copy.wait.indirect_draw.32bit.with_availability.single_block.task_mesh.inside_rp.single_view.only_primary
+
+dEQP-VK.query_pool.statistics_query.host_query_reset.geometry_shader_primitives.secondary.32bits_dstoffset_cmdcopyquerypoolresults_line_list_with_adjacency
