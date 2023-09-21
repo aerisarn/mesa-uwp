@@ -613,27 +613,28 @@ submit_queue(void *data, void *gdata, int thread_index)
       bs->cmdbuf,
    };
    si[ZINK_SUBMIT_CMDBUF].pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
+   /* assorted signal submit from wsi/externals */
+   si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount = util_dynarray_num_elements(&bs->signal_semaphores, VkSemaphore);
+   si[ZINK_SUBMIT_CMDBUF].pSignalSemaphores = bs->signal_semaphores.data;
 
+   /* then the signal submit with the timeline (fence) semaphore */
    VkSemaphore signals[3];
-   si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount = !!bs->signal_semaphore;
+   si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount = !!bs->signal_semaphore;
    signals[0] = bs->signal_semaphore;
-   si[ZINK_SUBMIT_CMDBUF].pSignalSemaphores = signals;
+   si[ZINK_SUBMIT_SIGNAL].pSignalSemaphores = signals;
    VkTimelineSemaphoreSubmitInfo tsi = {0};
    uint64_t signal_values[2] = {0};
    tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-   si[ZINK_SUBMIT_CMDBUF].pNext = &tsi;
+   si[ZINK_SUBMIT_SIGNAL].pNext = &tsi;
    tsi.pSignalSemaphoreValues = signal_values;
-   signal_values[si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount] = batch_id;
-   signals[si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount++] = screen->sem;
-   tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount;
+   signal_values[si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount] = batch_id;
+   signals[si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount++] = screen->sem;
+   tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount;
 
    if (bs->present)
-      signals[si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount++] = bs->present;
-   tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount;
+      signals[si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount++] = bs->present;
+   tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount;
 
-   /* then the optional signal submit */
-   si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount = util_dynarray_num_elements(&bs->signal_semaphores, VkSemaphore);
-   si[ZINK_SUBMIT_SIGNAL].pSignalSemaphores = bs->signal_semaphores.data;
 
    VkResult result = VKSCR(EndCommandBuffer)(bs->cmdbuf);
    if (result != VK_SUCCESS) {
