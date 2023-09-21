@@ -1605,9 +1605,9 @@ intrinsic("atomic_add_gs_emit_prim_count_amd", [1])
 intrinsic("atomic_add_gen_prim_count_amd", [1], indices=[STREAM_ID])
 intrinsic("atomic_add_xfb_prim_count_amd", [1], indices=[STREAM_ID])
 
-# Atomically add current wave's invocation count to query result
+# Atomically add current shader's invocation count to query result
 # src[] = { invocation_count }.
-intrinsic("atomic_add_gs_invocation_count_amd", [1])
+intrinsic("atomic_add_shader_invocation_count_amd", [1])
 
 # LDS offset for scratch section in NGG shader
 system_value("lds_ngg_scratch_base_amd", 1)

@@ -390,7 +390,7 @@ lower_abi_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
                              nir_imm_int(b, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(nir_intrinsic_stream_id(intrin))),
                              nir_imm_int(b, 0x100));
       break;
-   case nir_intrinsic_atomic_add_gs_invocation_count_amd:
+   case nir_intrinsic_atomic_add_shader_invocation_count_amd:
       nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa, nir_imm_int(b, RADV_SHADER_QUERY_GS_INVOCATION_OFFSET),
                              nir_imm_int(b, 0x100));
       break;

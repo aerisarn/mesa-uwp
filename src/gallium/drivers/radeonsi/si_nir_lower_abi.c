@@ -470,7 +470,7 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       break;
    }
    case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
-   case nir_intrinsic_atomic_add_gs_invocation_count_amd: {
+   case nir_intrinsic_atomic_add_shader_invocation_count_amd: {
       nir_def *buf =
          si_nir_load_internal_binding(b, args, SI_GS_QUERY_EMULATED_COUNTERS_BUF, 4);
 
