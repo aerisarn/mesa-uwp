@@ -126,6 +126,14 @@ def main():
         (('bcsel@32(is_only_used_as_float)', ignore_exact('fge', 'a@32', 'b@32'), c, d),
              ('fadd', ('fmul', c, ('sge', a, b)), ('fsub', d, ('fmul', d, ('sge', a, b)))),
           "!options->has_fused_comp_and_csel"),
+        (('bcsel@32(is_only_used_as_float)', ('feq', 'a@32', 'b@32'), c, d),
+             ('fcsel', ('seq', a, b), c, d), "options->has_fused_comp_and_csel"),
+        (('bcsel@32(is_only_used_as_float)', ('fneu', 'a@32', 'b@32'), c, d),
+             ('fcsel', ('sne', a, b), c, d), "options->has_fused_comp_and_csel"),
+        (('bcsel@32(is_only_used_as_float)', ('flt', 'a@32', 'b@32'), c, d),
+             ('fcsel', ('slt', a, b), c, d), "options->has_fused_comp_and_csel"),
+        (('bcsel@32(is_only_used_as_float)', ('fge', 'a@32', 'b@32'), c, d),
+             ('fcsel', ('sge', a, b), c, d), "options->has_fused_comp_and_csel"),
 ]
 
     with open(args.output, 'w') as f:
