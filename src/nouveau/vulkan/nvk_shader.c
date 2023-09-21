@@ -1229,6 +1229,7 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
    if (nir->info.stage == MESA_SHADER_FRAGMENT && nvk_fs_key != NULL) {
       fs_key_tmp = (struct nak_fs_key) {
          .zs_self_dep = nvk_fs_key->zs_self_dep,
+         .force_sample_shading = nvk_fs_key->force_per_sample,
       };
       fs_key = &fs_key_tmp;
    }

@@ -34,6 +34,11 @@ void nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
 
 struct nak_fs_key {
    bool zs_self_dep;
+
+   /** True if sample shading is forced on via an API knob such as
+    * VkPipelineMultisampleStateCreateInfo::minSampleShading
+    */
+   bool force_sample_shading;
 };
 
 void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak,

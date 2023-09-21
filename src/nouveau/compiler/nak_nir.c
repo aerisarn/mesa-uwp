@@ -323,6 +323,14 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
    const struct nak_fs_key *fs_key = data;
 
    switch (intrin->intrinsic) {
+   case nir_intrinsic_load_barycentric_pixel: {
+      if (!(fs_key && fs_key->force_sample_shading))
+         return false;
+
+      intrin->intrinsic = nir_intrinsic_load_barycentric_sample;
+      return true;
+   }
+
    case nir_intrinsic_load_barycentric_at_offset: {
       b->cursor = nir_before_instr(&intrin->instr);
 
@@ -345,8 +353,14 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
    case nir_intrinsic_load_sample_pos: {
       b->cursor = nir_before_instr(&intrin->instr);
 
-      nir_def *bary = nir_load_barycentric_sample(b, 32,
-         .interp_mode = INTERP_MODE_SMOOTH);
+      nir_def *bary;
+      if (b->shader->info.fs.uses_sample_shading) {
+         bary = nir_load_barycentric_sample(b, 32,
+            .interp_mode = INTERP_MODE_SMOOTH);
+      } else {
+         bary = nir_load_barycentric_pixel(b, 32,
+            .interp_mode = INTERP_MODE_SMOOTH);
+      }
       const uint32_t addr = nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD);
       nir_def *coord =
          nir_load_interpolated_input(b, 4, 32, bary, nir_imm_int(b, 0),
