@@ -54,6 +54,8 @@
 
 #include "pan_context.h"
 
+#define DEFAULT_MAX_AFBC_PACKING_RATIO 90
+
 /* clang-format off */
 static const struct debug_named_value panfrost_debug_options[] = {
    {"perf",       PAN_DBG_PERF,     "Enable performance warnings"},
@@ -840,6 +842,8 @@ panfrost_create_screen(int fd, const struct pipe_screen_config *config,
    /* Debug must be set first for pandecode to work correctly */
    dev->debug =
       debug_get_flags_option("PAN_MESA_DEBUG", panfrost_debug_options, 0);
+   screen->max_afbc_packing_ratio = debug_get_num_option(
+      "PAN_MAX_AFBC_PACKING_RATIO", DEFAULT_MAX_AFBC_PACKING_RATIO);
    panfrost_open_device(screen, fd, dev);
 
    if (dev->debug & PAN_DBG_NO_AFBC)

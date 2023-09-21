@@ -124,6 +124,7 @@ struct panfrost_screen {
 
    struct panfrost_vtable vtbl;
    struct disk_cache *disk_cache;
+   unsigned max_afbc_packing_ratio;
 };
 
 static inline struct panfrost_screen *

@@ -1527,13 +1527,13 @@ panfrost_pack_afbc(struct panfrost_context *ctx,
 
    unsigned new_size = ALIGN_POT(total_size, 4096); // FIXME
    unsigned old_size = prsrc->image.data.bo->size;
+   unsigned ratio = 100 * new_size / old_size;
 
-   if (new_size == old_size)
+   if (ratio > screen->max_afbc_packing_ratio)
       return;
 
    if (dev->debug & PAN_DBG_PERF) {
-      printf("%i%%: %i KB -> %i KB\n", 100 * new_size / old_size,
-             old_size / 1024, new_size / 1024);
+      printf("%i%%: %i KB -> %i KB\n", ratio, old_size / 1024, new_size / 1024);
    }
 
    struct panfrost_bo *dst =
