@@ -3674,6 +3674,7 @@ VkResult anv_CreateDevice(
    util_vma_heap_finish(&device->vma_hi);
    util_vma_heap_finish(&device->vma_cva);
    util_vma_heap_finish(&device->vma_lo);
+   pthread_mutex_destroy(&device->vma_mutex);
  fail_queues:
    for (uint32_t i = 0; i < device->queue_count; i++)
       anv_queue_finish(&device->queues[i]);
@@ -3785,6 +3786,7 @@ void anv_DestroyDevice(
    util_vma_heap_finish(&device->vma_hi);
    util_vma_heap_finish(&device->vma_cva);
    util_vma_heap_finish(&device->vma_lo);
+   pthread_mutex_destroy(&device->vma_mutex);
 
    pthread_cond_destroy(&device->queue_submit);
    pthread_mutex_destroy(&device->mutex);
