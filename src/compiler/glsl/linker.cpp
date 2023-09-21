@@ -3076,18 +3076,15 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    if (!prog->data->LinkStatus)
       goto done;
 
-   unsigned first, last, prev;
+   unsigned first, prev;
 
    first = MESA_SHADER_STAGES;
-   last = 0;
-
    /* Determine first and last stage. */
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (!prog->_LinkedShaders[i])
          continue;
       if (first == MESA_SHADER_STAGES)
          first = i;
-      last = i;
    }
 
    check_explicit_uniform_locations(&ctx->Extensions, prog);
@@ -3120,15 +3117,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
       prev = i;
    }
-
-   /* The cross validation of outputs/inputs above validates interstage
-    * explicit locations. We need to do this also for the inputs in the first
-    * stage and outputs of the last stage included in the program, since there
-    * is no cross validation for these.
-    */
-   validate_first_and_last_interface_explicit_locations(consts, prog,
-                                                        (gl_shader_stage) first,
-                                                        (gl_shader_stage) last);
 
    /* Cross-validate uniform blocks between shader stages */
    validate_interstage_uniform_blocks(prog, prog->_LinkedShaders);

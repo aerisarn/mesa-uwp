@@ -1337,6 +1337,27 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       break;
    }
 
+   unsigned first = MESA_SHADER_STAGES;
+   unsigned last = 0;
+
+   /* Determine first and last stage. */
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (!prog->_LinkedShaders[i])
+         continue;
+      if (first == MESA_SHADER_STAGES)
+         first = i;
+      last = i;
+   }
+
+   /* The cross validation of outputs/inputs above validates interstage
+    * explicit locations. We need to do this also for the inputs in the first
+    * stage and outputs of the last stage included in the program, since there
+    * is no cross validation for these.
+    */
+   gl_nir_validate_first_and_last_interface_explicit_locations(consts, prog,
+                                                               (gl_shader_stage) first,
+                                                               (gl_shader_stage) last);
+
    if (prog->SeparateShader)
       disable_varying_optimizations_for_sso(prog);
 
