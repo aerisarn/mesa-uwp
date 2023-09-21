@@ -659,7 +659,8 @@ instruction_requires_packed_data(fs_inst *inst)
 static bool
 try_copy_propagate(const brw_compiler *compiler, fs_inst *inst,
                    acp_entry *entry, int arg,
-                   const brw::simple_allocator &alloc)
+                   const brw::simple_allocator &alloc,
+                   uint8_t max_polygons)
 {
    if (inst->src[arg].file != VGRF)
       return false;
@@ -1264,7 +1265,8 @@ can_propagate_from(fs_inst *inst)
 static bool
 opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
                            bblock_t *block, struct acp &acp,
-                           const brw::simple_allocator &alloc)
+                           const brw::simple_allocator &alloc,
+                           uint8_t max_polygons)
 {
    bool progress = false;
 
@@ -1284,7 +1286,8 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
                   break;
                }
             } else {
-               if (try_copy_propagate(compiler, inst, *iter, i, alloc)) {
+               if (try_copy_propagate(compiler, inst, *iter, i, alloc,
+                                      max_polygons)) {
                   instruction_progress = true;
                   break;
                }
@@ -1399,7 +1402,8 @@ fs_visitor::opt_copy_propagation()
     */
    foreach_block (block, cfg) {
       progress = opt_copy_propagation_local(compiler, copy_prop_ctx, block,
-                                            out_acp[block->num], alloc) || progress;
+                                            out_acp[block->num], alloc,
+                                            max_polygons) || progress;
 
       /* If the destination of an ACP entry exists only within this block,
        * then there's no need to keep it for dataflow analysis.  We can delete
@@ -1438,7 +1442,8 @@ fs_visitor::opt_copy_propagation()
          }
       }
 
-      progress = opt_copy_propagation_local(compiler, copy_prop_ctx, block, in_acp, alloc) ||
+      progress = opt_copy_propagation_local(compiler, copy_prop_ctx, block,
+                                            in_acp, alloc, max_polygons) ||
                  progress;
    }
 
