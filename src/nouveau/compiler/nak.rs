@@ -437,7 +437,7 @@ pub extern "C" fn nak_compile_shader(
     nak: *const nak_compiler,
     fs_key: *const nak_fs_key,
 ) -> *mut nak_shader_bin {
-    unsafe { nak_postprocess_nir(nir, nak) };
+    unsafe { nak_postprocess_nir(nir, nak, fs_key) };
     let nak = unsafe { &*nak };
     let nir = unsafe { &*nir };
     let fs_key = if fs_key.is_null() {

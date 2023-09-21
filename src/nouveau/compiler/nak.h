@@ -31,11 +31,13 @@ nak_nir_options(const struct nak_compiler *nak);
 
 void nak_optimize_nir(nir_shader *nir, const struct nak_compiler *nak);
 void nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
-void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
 
 struct nak_fs_key {
    bool zs_self_dep;
 };
+
+void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak,
+                         const struct nak_fs_key *fs_key);
 
 struct nak_shader_info {
    gl_shader_stage stage;

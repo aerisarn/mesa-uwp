@@ -318,10 +318,10 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
 }
 
 static bool
-lower_fs_input_intrin(struct nir_builder *b,
-                      nir_intrinsic_instr *intrin,
-                      UNUSED void *data)
+lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 {
+   const struct nak_fs_key *fs_key = data;
+
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_barycentric_at_offset: {
       b->cursor = nir_before_instr(&intrin->instr);
@@ -369,7 +369,8 @@ lower_fs_input_intrin(struct nir_builder *b,
 }
 
 static bool
-nak_nir_lower_fs_inputs(nir_shader *nir)
+nak_nir_lower_fs_inputs(nir_shader *nir,
+                        const struct nak_fs_key *fs_key)
 {
    bool progress = false;
 
@@ -379,7 +380,7 @@ nak_nir_lower_fs_inputs(nir_shader *nir)
       nir_shader_intrinsics_pass(nir, lower_fs_input_intrin,
                                  nir_metadata_block_index |
                                  nir_metadata_dominance,
-                                 NULL);
+                                 (void *)fs_key);
    }
 
    return true;
@@ -606,7 +607,9 @@ nir_shader_has_local_variables(const nir_shader *nir)
 }
 
 void
-nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
+nak_postprocess_nir(nir_shader *nir,
+                    const struct nak_compiler *nak,
+                    const struct nak_fs_key *fs_key)
 {
    UNUSED bool progress = false;
 
@@ -640,7 +643,7 @@ nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
       break;
 
    case MESA_SHADER_FRAGMENT:
-      OPT(nir, nak_nir_lower_fs_inputs);
+      OPT(nir, nak_nir_lower_fs_inputs, fs_key);
       OPT(nir, nak_nir_lower_fs_outputs);
       break;
 
