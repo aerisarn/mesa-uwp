@@ -71,7 +71,7 @@ void main()
             }
             if (uses_drawid) {
                uint64_t draw_idx_addr = draw_id_addr + 4 * item_idx;
-               draw_ids[draw_id] = draw_id;
+               draw_ids[item_idx] = draw_id;
                write_VERTEX_BUFFER_STATE(cmd_idx,
                                          mocs,
                                          32,
@@ -117,7 +117,7 @@ void main()
             }
             if (uses_drawid) {
                uint64_t draw_idx_addr = draw_id_addr + 4 * item_idx;
-               draw_ids[draw_id] = draw_id;
+               draw_ids[item_idx] = draw_id;
                write_VERTEX_BUFFER_STATE(cmd_idx,
                                          mocs,
                                          32,
