@@ -50,9 +50,7 @@
 #include "script.h"
 #include "rdutil.h"
 
-static struct cffdec_options options = {
-   .gpu_id = 220,
-};
+static struct cffdec_options options;
 
 static bool needs_wfi = false;
 static bool is_blob = false;
@@ -342,7 +340,6 @@ handle_file(const char *filename, int start, int end, int draw)
             options.info = fd_dev_info(&options.dev_id);
             if (!options.info)
                break;
-            options.gpu_id = options.info->chip * 100;
 
             cffdec_init(&options);
             got_gpu_id = 1;
@@ -356,7 +353,6 @@ handle_file(const char *filename, int start, int end, int draw)
             options.info = fd_dev_info(&options.dev_id);
             if (!options.info)
                break;
-            options.gpu_id = options.info->chip * 100;
 
             cffdec_init(&options);
             got_gpu_id = 1;

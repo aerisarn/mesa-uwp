@@ -777,8 +777,6 @@ decode(void)
             break;
          }
 
-         options.gpu_id = options.dev_id.gpu_id;
-
          printf("Got chip_id=0x%"PRIx64"\n", options.dev_id.chip_id);
 
          cffdec_init(&options);
