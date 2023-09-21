@@ -81,4 +81,6 @@ extern bool r300_nir_clean_double_fneg(struct nir_shader *shader);
 
 extern bool r300_nir_post_integer_lowering(struct nir_shader *shader);
 
+extern bool r300_nir_lower_fcsel_r500(nir_shader *shader);
+
 #endif /* R300_NIR_H */

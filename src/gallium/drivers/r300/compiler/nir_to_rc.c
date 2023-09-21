@@ -27,6 +27,7 @@
 #include "compiler/nir/nir_worklist.h"
 #include "nir_to_rc.h"
 #include "r300_nir.h"
+#include "r300_screen.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
 #include "tgsi/tgsi_dump.h"
@@ -2372,6 +2373,7 @@ const void *nir_to_rc_options(struct nir_shader *s,
 {
    struct ntr_compile *c;
    const void *tgsi_tokens;
+   bool is_r500 = r300_screen(screen)->caps.is_r500;
    nir_variable_mode no_indirects_mask = ntr_no_indirects_mask(s, screen);
 
    /* Lower array indexing on FS inputs.  Since we don't set
@@ -2446,6 +2448,10 @@ const void *nir_to_rc_options(struct nir_shader *s,
               !options->lower_cmp && !options->lower_fabs);
    /* bool_to_float generates MOVs for b2f32 that we want to clean up. */
    NIR_PASS_V(s, nir_copy_prop);
+   if (s->info.stage == MESA_SHADER_VERTEX) {
+      if (is_r500)
+         NIR_PASS_V(s, r300_nir_lower_fcsel_r500);
+   }
    NIR_PASS_V(s, nir_opt_dce);
 
    nir_move_options move_all =
