@@ -2317,7 +2317,8 @@ has_edge_flags(struct zink_context *ctx)
    default:
       break;
    }
-   return ctx->gfx_pipeline_state.rast_prim == MESA_PRIM_LINES &&
+   return (ctx->gfx_pipeline_state.rast_prim == MESA_PRIM_LINES ||
+           ctx->gfx_pipeline_state.rast_prim == MESA_PRIM_POINTS) &&
           ctx->gfx_stages[MESA_SHADER_VERTEX]->has_edgeflags;
 }
 
