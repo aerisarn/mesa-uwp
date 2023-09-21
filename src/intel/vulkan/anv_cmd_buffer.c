@@ -876,30 +876,73 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.push_constants_dirty |= dirty_stages;
 }
 
-void anv_CmdBindDescriptorSets(
+#define ANV_GRAPHICS_STAGE_BITS \
+   (VK_SHADER_STAGE_ALL_GRAPHICS | \
+    VK_SHADER_STAGE_MESH_BIT_EXT | \
+    VK_SHADER_STAGE_TASK_BIT_EXT)
+
+#define ANV_RT_STAGE_BITS \
+   (VK_SHADER_STAGE_RAYGEN_BIT_KHR | \
+    VK_SHADER_STAGE_ANY_HIT_BIT_KHR | \
+    VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | \
+    VK_SHADER_STAGE_MISS_BIT_KHR | \
+    VK_SHADER_STAGE_INTERSECTION_BIT_KHR | \
+    VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+
+void anv_CmdBindDescriptorSets2KHR(
     VkCommandBuffer                             commandBuffer,
-    VkPipelineBindPoint                         pipelineBindPoint,
-    VkPipelineLayout                            _layout,
-    uint32_t                                    firstSet,
-    uint32_t                                    descriptorSetCount,
-    const VkDescriptorSet*                      pDescriptorSets,
-    uint32_t                                    dynamicOffsetCount,
-    const uint32_t*                             pDynamicOffsets)
+    const VkBindDescriptorSetsInfoKHR*          pInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_pipeline_layout, pipeline_layout, _layout);
+   ANV_FROM_HANDLE(anv_pipeline_layout, pipeline_layout, pInfo->layout);
    struct anv_pipeline_sets_layout *layout = &pipeline_layout->sets_layout;
 
-   assert(firstSet + descriptorSetCount <= MAX_SETS);
+   assert(pInfo->firstSet + pInfo->descriptorSetCount <= MAX_SETS);
 
-   for (uint32_t i = 0; i < descriptorSetCount; i++) {
-      ANV_FROM_HANDLE(anv_descriptor_set, set, pDescriptorSets[i]);
-      if (set == NULL)
-         continue;
-      anv_cmd_buffer_bind_descriptor_set(cmd_buffer, pipelineBindPoint,
-                                         layout, firstSet + i, set,
-                                         &dynamicOffsetCount,
-                                         &pDynamicOffsets);
+   if (pInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+      uint32_t dynamicOffsetCount = pInfo->dynamicOffsetCount;
+      const uint32_t *pDynamicOffsets = pInfo->pDynamicOffsets;
+
+      for (uint32_t i = 0; i < pInfo->descriptorSetCount; i++) {
+         ANV_FROM_HANDLE(anv_descriptor_set, set, pInfo->pDescriptorSets[i]);
+         if (set == NULL)
+            continue;
+         anv_cmd_buffer_bind_descriptor_set(cmd_buffer,
+                                            VK_PIPELINE_BIND_POINT_COMPUTE,
+                                            layout, pInfo->firstSet + i, set,
+                                            &dynamicOffsetCount,
+                                            &pDynamicOffsets);
+      }
+   }
+   if (pInfo->stageFlags & ANV_GRAPHICS_STAGE_BITS) {
+      uint32_t dynamicOffsetCount = pInfo->dynamicOffsetCount;
+      const uint32_t *pDynamicOffsets = pInfo->pDynamicOffsets;
+
+      for (uint32_t i = 0; i < pInfo->descriptorSetCount; i++) {
+         ANV_FROM_HANDLE(anv_descriptor_set, set, pInfo->pDescriptorSets[i]);
+         if (set == NULL)
+            continue;
+         anv_cmd_buffer_bind_descriptor_set(cmd_buffer,
+                                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            layout, pInfo->firstSet + i, set,
+                                            &dynamicOffsetCount,
+                                            &pDynamicOffsets);
+      }
+   }
+   if (pInfo->stageFlags & ANV_RT_STAGE_BITS) {
+      uint32_t dynamicOffsetCount = pInfo->dynamicOffsetCount;
+      const uint32_t *pDynamicOffsets = pInfo->pDynamicOffsets;
+
+      for (uint32_t i = 0; i < pInfo->descriptorSetCount; i++) {
+         ANV_FROM_HANDLE(anv_descriptor_set, set, pInfo->pDescriptorSets[i]);
+         if (set == NULL)
+            continue;
+         anv_cmd_buffer_bind_descriptor_set(cmd_buffer,
+                                            VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+                                            layout, pInfo->firstSet + i, set,
+                                            &dynamicOffsetCount,
+                                            &pDynamicOffsets);
+      }
    }
 }
 
@@ -1098,43 +1141,35 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
    return state;
 }
 
-void anv_CmdPushConstants(
+void anv_CmdPushConstants2KHR(
     VkCommandBuffer                             commandBuffer,
-    VkPipelineLayout                            layout,
-    VkShaderStageFlags                          stageFlags,
-    uint32_t                                    offset,
-    uint32_t                                    size,
-    const void*                                 pValues)
+    const VkPushConstantsInfoKHR*               pInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   if (stageFlags & (VK_SHADER_STAGE_ALL_GRAPHICS |
-                     VK_SHADER_STAGE_TASK_BIT_EXT |
-                     VK_SHADER_STAGE_MESH_BIT_EXT)) {
+   if (pInfo->stageFlags & ANV_GRAPHICS_STAGE_BITS) {
       struct anv_cmd_pipeline_state *pipe_state =
          &cmd_buffer->state.gfx.base;
 
-      memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
+      memcpy(pipe_state->push_constants.client_data + pInfo->offset,
+             pInfo->pValues, pInfo->size);
    }
-   if (stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+   if (pInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
       struct anv_cmd_pipeline_state *pipe_state =
          &cmd_buffer->state.compute.base;
 
-      memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
+      memcpy(pipe_state->push_constants.client_data + pInfo->offset,
+             pInfo->pValues, pInfo->size);
    }
-   if (stageFlags & (VK_SHADER_STAGE_RAYGEN_BIT_KHR |
-                     VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-                     VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-                     VK_SHADER_STAGE_MISS_BIT_KHR |
-                     VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
-                     VK_SHADER_STAGE_CALLABLE_BIT_KHR)) {
+   if (pInfo->stageFlags & ANV_RT_STAGE_BITS) {
       struct anv_cmd_pipeline_state *pipe_state =
          &cmd_buffer->state.rt.base;
 
-      memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
+      memcpy(pipe_state->push_constants.client_data + pInfo->offset,
+             pInfo->pValues, pInfo->size);
    }
 
-   cmd_buffer->state.push_constants_dirty |= stageFlags;
+   cmd_buffer->state.push_constants_dirty |= pInfo->stageFlags;
 }
 
 static struct anv_cmd_pipeline_state *
@@ -1154,52 +1189,66 @@ anv_cmd_buffer_get_pipe_state(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-void anv_CmdPushDescriptorSetKHR(
-    VkCommandBuffer commandBuffer,
-    VkPipelineBindPoint pipelineBindPoint,
-    VkPipelineLayout _layout,
-    uint32_t _set,
-    uint32_t descriptorWriteCount,
-    const VkWriteDescriptorSet* pDescriptorWrites)
+static void
+anv_cmd_buffer_push_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
+                                    VkPipelineBindPoint bind_point,
+                                    const VkPushDescriptorSetInfoKHR *pInfo)
 {
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_pipeline_layout, pipeline_layout, _layout);
+   ANV_FROM_HANDLE(anv_pipeline_layout, pipeline_layout, pInfo->layout);
    struct anv_pipeline_sets_layout *layout = &pipeline_layout->sets_layout;
 
-   assert(_set < MAX_SETS);
+   assert(pInfo->set < MAX_SETS);
 
-   struct anv_descriptor_set_layout *set_layout = layout->set[_set].layout;
+   struct anv_descriptor_set_layout *set_layout = layout->set[pInfo->set].layout;
 
    struct anv_push_descriptor_set *push_set =
       &anv_cmd_buffer_get_pipe_state(cmd_buffer,
-                                     pipelineBindPoint)->push_descriptor;
+                                     bind_point)->push_descriptor;
    if (!anv_push_descriptor_set_init(cmd_buffer, push_set, set_layout))
       return;
 
    anv_descriptor_set_write(cmd_buffer->device, &push_set->set,
-                            descriptorWriteCount, pDescriptorWrites);
+                            pInfo->descriptorWriteCount,
+                            pInfo->pDescriptorWrites);
 
-   anv_cmd_buffer_bind_descriptor_set(cmd_buffer, pipelineBindPoint,
-                                      layout, _set, &push_set->set,
+   anv_cmd_buffer_bind_descriptor_set(cmd_buffer, bind_point,
+                                      layout, pInfo->set, &push_set->set,
                                       NULL, NULL);
 }
 
-void anv_CmdPushDescriptorSetWithTemplateKHR(
-    VkCommandBuffer                             commandBuffer,
-    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
-    VkPipelineLayout                            _layout,
-    uint32_t                                    _set,
-    const void*                                 pData)
+void anv_CmdPushDescriptorSet2KHR(
+    VkCommandBuffer                            commandBuffer,
+    const VkPushDescriptorSetInfoKHR*          pInfo)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (pInfo->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT)
+      anv_cmd_buffer_push_descriptor_sets(cmd_buffer,
+                                          VK_PIPELINE_BIND_POINT_COMPUTE,
+                                          pInfo);
+   if (pInfo->stageFlags & ANV_GRAPHICS_STAGE_BITS)
+      anv_cmd_buffer_push_descriptor_sets(cmd_buffer,
+                                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                          pInfo);
+   if (pInfo->stageFlags & ANV_RT_STAGE_BITS)
+      anv_cmd_buffer_push_descriptor_sets(cmd_buffer,
+                                          VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+                                          pInfo);
+}
+
+void anv_CmdPushDescriptorSetWithTemplate2KHR(
+    VkCommandBuffer                                commandBuffer,
+    const VkPushDescriptorSetWithTemplateInfoKHR*  pInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    VK_FROM_HANDLE(vk_descriptor_update_template, template,
-                  descriptorUpdateTemplate);
-   ANV_FROM_HANDLE(anv_pipeline_layout, pipeline_layout, _layout);
+                  pInfo->descriptorUpdateTemplate);
+   ANV_FROM_HANDLE(anv_pipeline_layout, pipeline_layout, pInfo->layout);
    struct anv_pipeline_sets_layout *layout = &pipeline_layout->sets_layout;
 
-   assert(_set < MAX_PUSH_DESCRIPTORS);
+   assert(pInfo->set < MAX_PUSH_DESCRIPTORS);
 
-   struct anv_descriptor_set_layout *set_layout = layout->set[_set].layout;
+   struct anv_descriptor_set_layout *set_layout = layout->set[pInfo->set].layout;
 
    struct anv_push_descriptor_set *push_set =
       &anv_cmd_buffer_get_pipe_state(cmd_buffer,
@@ -1209,10 +1258,10 @@ void anv_CmdPushDescriptorSetWithTemplateKHR(
 
    anv_descriptor_set_write_template(cmd_buffer->device, &push_set->set,
                                      template,
-                                     pData);
+                                     pInfo->pData);
 
    anv_cmd_buffer_bind_descriptor_set(cmd_buffer, template->bind_point,
-                                      layout, _set, &push_set->set,
+                                      layout, pInfo->set, &push_set->set,
                                       NULL, NULL);
 }
 
