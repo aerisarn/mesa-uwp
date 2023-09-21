@@ -1218,7 +1218,8 @@ radv_create_query_pool(struct radv_device *device, const VkQueryPoolCreateInfo *
                                         VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT))) ||
       (device->physical_device->use_ngg && pCreateInfo->queryType == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT) ||
       (device->physical_device->emulate_mesh_shader_queries &&
-       pCreateInfo->queryType == VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT);
+       (pCreateInfo->queryType == VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT ||
+        pool->vk.pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT));
 
    switch (pCreateInfo->queryType) {
    case VK_QUERY_TYPE_OCCLUSION:
@@ -1976,6 +1977,13 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
             gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_INVOCATION_OFFSET, va + gs_invoc_offset);
          }
 
+         if (pool->vk.pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) {
+            uint32_t mesh_invoc_offset =
+               radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT);
+
+            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_MS_INVOCATION_OFFSET, va + mesh_invoc_offset);
+         }
+
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
 
@@ -2148,6 +2156,13 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
                radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT);
 
             gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_INVOCATION_OFFSET, va + gs_invoc_offset);
+         }
+
+         if (pool->vk.pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) {
+            uint32_t mesh_invoc_offset =
+               radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT);
+
+            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_MS_INVOCATION_OFFSET, va + mesh_invoc_offset);
          }
 
          cmd_buffer->state.active_pipeline_gds_queries--;
