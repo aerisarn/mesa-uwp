@@ -325,7 +325,7 @@ decode_gmu_hfi(void)
 static bool
 valid_header(uint32_t pkt)
 {
-   if (options.gpu_id >= 500) {
+   if (options.info->chip >= 5) {
       return pkt_is_type4(pkt) || pkt_is_type7(pkt);
    } else {
       /* TODO maybe we can check validish looking pkt3 opc or pkt0
@@ -700,7 +700,7 @@ decode_shader_blocks(void)
              * (or parts of shaders?), so perhaps we should search
              * for ends of shaders and decode each?
              */
-            try_disasm_a3xx(buf, sizedwords, 1, stdout, options.gpu_id);
+            try_disasm_a3xx(buf, sizedwords, 1, stdout, options.info->chip * 100);
          }
 
          if (dump)

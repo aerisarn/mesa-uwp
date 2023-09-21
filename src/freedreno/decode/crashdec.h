@@ -56,19 +56,19 @@ extern struct cffdec_options options;
 static inline bool
 is_a6xx(void)
 {
-   return (600 <= options.gpu_id) && (options.gpu_id < 700);
+   return options.info->chip == 6;
 }
 
 static inline bool
 is_a5xx(void)
 {
-   return (500 <= options.gpu_id) && (options.gpu_id < 600);
+   return options.info->chip == 5;
 }
 
 static inline bool
 is_64b(void)
 {
-   return options.gpu_id >= 500;
+   return options.info->chip >= 5;
 }
 
 static inline bool
