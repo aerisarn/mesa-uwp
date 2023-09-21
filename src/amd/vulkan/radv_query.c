@@ -53,7 +53,10 @@ radv_get_pipelinestat_query_offset(VkQueryPipelineStatisticFlagBits query)
 static unsigned
 radv_get_pipelinestat_query_size(struct radv_device *device)
 {
-   unsigned num_results = device->physical_device->rad_info.gfx_level >= GFX11 ? 14 : 11;
+   /* GFX10_3 only has 11 valid pipeline statistics queries but in order to emulate mesh/task shader
+    * invocations, it's easier to use the same size as GFX11.
+    */
+   unsigned num_results = device->physical_device->rad_info.gfx_level >= GFX10_3 ? 14 : 11;
    return num_results * 8;
 }
 
