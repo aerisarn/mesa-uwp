@@ -422,6 +422,22 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       return true;
    }
 
+   case nir_intrinsic_load_sample_mask_in: {
+      if (!b->shader->info.fs.uses_sample_shading &&
+          !(fs_key && fs_key->force_sample_shading))
+         return false;
+
+      b->cursor = nir_after_instr(&intrin->instr);
+
+      /* Mask off just the current sample */
+      nir_def *sample = nir_load_sample_id(b);
+      nir_def *mask = nir_ishl(b, nir_imm_int(b, 1), sample);
+      mask = nir_iand(b, &intrin->def, mask);
+      nir_def_rewrite_uses_after(&intrin->def, mask, mask->parent_instr);
+
+      return true;
+   }
+
    default:
       return false;
    }
