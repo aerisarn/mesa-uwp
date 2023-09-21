@@ -65,6 +65,23 @@ compare_attr(const void *a, const void *b)
 }
 
 /**
+ * Get the varying type stripped of the outermost array if we're processing
+ * a stage whose varyings are arrays indexed by a vertex number (such as
+ * geometry shader inputs).
+ */
+static const struct glsl_type *
+get_varying_type(const nir_variable *var, gl_shader_stage stage)
+{
+   const struct glsl_type *type = var->type;
+   if (nir_is_arrayed_io(var, stage) || var->data.per_view) {
+      assert(glsl_type_is_array(type));
+      type = glsl_get_array_element(type);
+   }
+
+   return type;
+}
+
+/**
  * Find a contiguous set of available bits in a bitmask.
  *
  * \param used_mask     Bits representing used (1) and unused (0) locations
@@ -561,23 +578,6 @@ assign_attribute_or_color_locations(void *mem_ctx,
    }
 
    return true;
-}
-
-/**
- * Get the varying type stripped of the outermost array if we're processing
- * a stage whose varyings are arrays indexed by a vertex number (such as
- * geometry shader inputs).
- */
-static const struct glsl_type *
-get_varying_type(const nir_variable *var, gl_shader_stage stage)
-{
-   const struct glsl_type *type = var->type;
-   if (nir_is_arrayed_io(var, stage) || var->data.per_view) {
-      assert(glsl_type_is_array(type));
-      type = glsl_get_array_element(type);
-   }
-
-   return type;
 }
 
 static bool
