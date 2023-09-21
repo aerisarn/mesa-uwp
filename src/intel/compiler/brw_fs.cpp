@@ -8202,7 +8202,6 @@ brw_compile_cs(const struct brw_compiler *compiler,
    }
 
    brw_simd_selection_state simd_state{
-      .mem_ctx = params->base.mem_ctx,
       .devinfo = compiler->devinfo,
       .prog_data = prog_data,
       .required_width = brw_required_dispatch_width(&nir->info),
@@ -8260,7 +8259,8 @@ brw_compile_cs(const struct brw_compiler *compiler,
    if (selected_simd < 0) {
       params->base.error_str =
          ralloc_asprintf(params->base.mem_ctx,
-                         "Can't compile shader: %s, %s and %s.\n",
+                         "Can't compile shader: "
+                         "SIMD8 '%s', SIMD16 '%s' and SIMD32 '%s'.\n",
                          simd_state.error[0], simd_state.error[1],
                          simd_state.error[2]);
       return NULL;
@@ -8353,7 +8353,6 @@ compile_single_bs(const struct brw_compiler *compiler,
                        key->base.robust_flags);
 
    brw_simd_selection_state simd_state{
-      .mem_ctx = params->base.mem_ctx,
       .devinfo = compiler->devinfo,
       .prog_data = prog_data,
 
@@ -8396,7 +8395,8 @@ compile_single_bs(const struct brw_compiler *compiler,
    if (selected_simd < 0) {
       params->base.error_str =
          ralloc_asprintf(params->base.mem_ctx,
-                         "Can't compile shader: %s and %s.",
+                         "Can't compile shader: "
+                         "SIMD8 '%s' and SIMD16 '%s'.\n",
                          simd_state.error[0], simd_state.error[1]);
       return 0;
    }
