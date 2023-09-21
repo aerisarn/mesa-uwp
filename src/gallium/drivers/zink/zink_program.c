@@ -2458,6 +2458,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                   &screen->nir_options,
                   prev_stage,
                   prim,
+                  ctx->gfx_pipeline_state.rast_prim,
                   lower_edge_flags,
                   lower_line_stipple || lower_quad_prim);
             }
