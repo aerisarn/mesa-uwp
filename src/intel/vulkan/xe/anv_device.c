@@ -131,8 +131,19 @@ anv_xe_physical_device_init_memory_types(struct anv_physical_device *device)
          .heapIndex = 0,
       };
    } else {
-      return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                       "No memory heaps types set for non llc devices yet on Xe");
+      device->memory.types[device->memory.type_count++] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+         .heapIndex = 0,
+      };
+      device->memory.types[device->memory.type_count++] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+         .heapIndex = 0,
+      };
    }
    return VK_SUCCESS;
 }
