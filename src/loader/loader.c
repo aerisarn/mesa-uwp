@@ -133,7 +133,7 @@ iris_predicate(int fd)
 }
 
 int
-loader_open_render_node(const char *name)
+loader_open_render_node_platform_device(const char *name)
 {
    drmDevicePtr devices[MAX_DRM_DEVICES], device;
    int i, num_devices, fd = -1;

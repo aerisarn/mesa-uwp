@@ -44,7 +44,7 @@ int
 loader_open_device(const char *);
 
 int
-loader_open_render_node(const char *name);
+loader_open_render_node_platform_device(const char *name);
 
 char *
 loader_get_render_node(dev_t device);
