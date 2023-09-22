@@ -377,9 +377,9 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    P_IMMD(p, NV9097, SET_VIEWPORT_SCALE_OFFSET, ENABLE_TRUE);
 
    P_IMMD(p, NV9097, SET_VIEWPORT_CLIP_CONTROL, {
-      .min_z_zero_max_z_one      = MIN_Z_ZERO_MAX_Z_ONE_TRUE,
+      .min_z_zero_max_z_one      = MIN_Z_ZERO_MAX_Z_ONE_FALSE,
       .pixel_min_z               = PIXEL_MIN_Z_CLAMP,
-      .pixel_max_z               = PIXEL_MAX_Z_CLIP,
+      .pixel_max_z               = PIXEL_MAX_Z_CLAMP,
       .geometry_guardband        = GEOMETRY_GUARDBAND_SCALE_256,
       .line_point_cull_guardband = LINE_POINT_CULL_GUARDBAND_SCALE_256,
       .geometry_clip             = GEOMETRY_CLIP_WZERO_CLIP,
@@ -988,6 +988,8 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
          float xmax = vp->x + vp->width;
          float ymin = MIN2(vp->y, vp->y + vp->height);
          float ymax = MAX2(vp->y, vp->y + vp->height);
+         float zmin = MIN2(vp->minDepth, vp->maxDepth);
+         float zmax = MAX2(vp->minDepth, vp->maxDepth);
          assert(xmin <= xmax && ymin <= ymax);
 
          const float max_dim = (float)0xffff;
@@ -1005,8 +1007,8 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
             .y0      = ymin,
             .height  = ymax - ymin,
          });
-         P_NV9097_SET_VIEWPORT_CLIP_MIN_Z(p, i, fui(vp->minDepth));
-         P_NV9097_SET_VIEWPORT_CLIP_MAX_Z(p, i, fui(vp->maxDepth));
+         P_NV9097_SET_VIEWPORT_CLIP_MIN_Z(p, i, fui(zmin));
+         P_NV9097_SET_VIEWPORT_CLIP_MAX_Z(p, i, fui(zmax));
 
          if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
             P_IMMD(p, NVB197, SET_VIEWPORT_COORDINATE_SWIZZLE(i), {

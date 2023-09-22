@@ -34,6 +34,7 @@
 #include "clb1c0.h"
 #include "clc0c0.h"
 #include "clc1c0.h"
+#include "clc397.h"
 #include "clc3c0.h"
 #include "clc597.h"
 #include "clc5c0.h"
@@ -267,7 +268,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .customBorderColorWithoutFormat = true,
 
       /* VK_EXT_depth_clip_control */
-      .depthClipControl = true,
+      .depthClipControl = info->cls_eng3d >= VOLTA_A,
 
       /* VK_EXT_depth_clip_enable */
       .depthClipEnable = true,

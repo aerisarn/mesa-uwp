@@ -35,18 +35,34 @@ emit_pipeline_vp_state(struct nv_push *p,
 }
 
 static void
-emit_pipeline_rs_state(struct nv_push *p,
+emit_pipeline_rs_state(struct nv_push *p, struct nvk_device *dev,
                        const struct vk_rasterization_state *rs)
 {
-   bool depth_clip_enable = vk_rasterization_state_depth_clip_enable(rs);
-   P_IMMD(p, NV9097, SET_VIEWPORT_CLIP_CONTROL, {
-      .min_z_zero_max_z_one      = MIN_Z_ZERO_MAX_Z_ONE_TRUE,
-      .pixel_min_z               = !depth_clip_enable ? PIXEL_MIN_Z_CLAMP : PIXEL_MIN_Z_CLIP,
-      .pixel_max_z               = !depth_clip_enable ? PIXEL_MAX_Z_CLAMP : PIXEL_MAX_Z_CLIP,
-      .geometry_guardband        = GEOMETRY_GUARDBAND_SCALE_256,
+   bool z_clamp = rs->depth_clamp_enable;
+   bool z_clip = vk_rasterization_state_depth_clip_enable(rs);
+
+   P_IMMD(p, NVC397, SET_VIEWPORT_CLIP_CONTROL, {
+      /* TODO: Fix pre-Volta
+       *
+       * This probably involves a few macros, one which stases viewport
+       * min/maxDepth in scratch states and one which goes here and
+       * emits either min/maxDepth or -/+INF as needed.
+       */
+      .min_z_zero_max_z_one = MIN_Z_ZERO_MAX_Z_ONE_FALSE,
+      .z_clip_range = dev->pdev->info.cls_eng3d >= VOLTA_A
+                      ? ((z_clamp || z_clip)
+                         ? Z_CLIP_RANGE_MIN_Z_MAX_Z
+                         :Z_CLIP_RANGE_MINUS_INF_PLUS_INF)
+                      : Z_CLIP_RANGE_USE_FIELD_MIN_Z_ZERO_MAX_Z_ONE,
+
+      .pixel_min_z = z_clip ? PIXEL_MIN_Z_CLIP : PIXEL_MIN_Z_CLAMP,
+      .pixel_max_z = z_clip ? PIXEL_MAX_Z_CLIP : PIXEL_MAX_Z_CLAMP,
+
+      .geometry_guardband = GEOMETRY_GUARDBAND_SCALE_256,
       .line_point_cull_guardband = LINE_POINT_CULL_GUARDBAND_SCALE_256,
-      .geometry_clip             = !rs->depth_clip_enable ? GEOMETRY_CLIP_WZERO_CLIP_NO_Z_CULL : GEOMETRY_CLIP_WZERO_CLIP,
-      .geometry_guardband_z      = GEOMETRY_GUARDBAND_Z_SAME_AS_XY_GUARDBAND,
+      .geometry_clip = z_clip ? GEOMETRY_CLIP_FRUSTUM_XYZ_CLIP :
+                                GEOMETRY_CLIP_FRUSTUM_XY_CLIP,
+      .geometry_guardband_z = GEOMETRY_GUARDBAND_Z_SCALE_256,
    });
 
    P_IMMD(p, NV9097, SET_RASTER_INPUT, rs->rasterization_stream);
@@ -485,7 +501,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
 
    if (state.ts) emit_pipeline_ts_state(&push, state.ts);
    if (state.vp) emit_pipeline_vp_state(&push, state.vp);
-   if (state.rs) emit_pipeline_rs_state(&push, state.rs);
+   if (state.rs) emit_pipeline_rs_state(&push, dev, state.rs);
    if (state.ms) emit_pipeline_ms_state(&push, state.ms, force_max_samples);
    if (state.cb) emit_pipeline_cb_state(&push, state.cb);
 
