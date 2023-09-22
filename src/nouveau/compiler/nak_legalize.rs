@@ -38,6 +38,9 @@ fn fold_lop_src(src: &Src, x: &mut u8) {
     if let Some(i) = src_as_lop_imm(src) {
         *x = if i { !0 } else { 0 };
     }
+    if src.src_mod.is_bnot() {
+        *x = !*x;
+    }
 }
 
 fn copy_src(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
@@ -159,7 +162,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::Lop3(op) => {
-            /* Fold constants if we can */
+            /* Fold constants and modifiers if we can */
             op.op = LogicOp::new_lut(&|mut x, mut y, mut z| {
                 fold_lop_src(&op.srcs[0], &mut x);
                 fold_lop_src(&op.srcs[1], &mut y);
@@ -206,7 +209,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::PLop3(op) => {
-            /* Fold constants if we can */
+            /* Fold constants and modifiers if we can */
             for lop in &mut op.ops {
                 *lop = LogicOp::new_lut(&|mut x, mut y, mut z| {
                     fold_lop_src(&op.srcs[0], &mut x);
