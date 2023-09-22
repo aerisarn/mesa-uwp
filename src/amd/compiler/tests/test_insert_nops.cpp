@@ -577,6 +577,16 @@ BEGIN_TEST(insert_nops.lds_direct_vmem)
    bld.sopp(aco_opcode::s_waitcnt, -1, 0x3ff);
    bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
 
+   //! p_unit_test 14
+   //! v1: %0:v[0] = buffer_load_dword %0:s[0-3], %0:v[1], 0 offen
+   //! s1: %0:null = s_waitcnt_vscnt imm:0
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! v1: %0:v[0] = lds_direct_load %0:m0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(14));
+   create_mubuf(0, PhysReg(256), PhysReg(257));
+   bld.sopk(aco_opcode::s_waitcnt_vscnt, Definition(sgpr_null, s1), 0);
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
    finish_insert_nops_test();
 END_TEST
 

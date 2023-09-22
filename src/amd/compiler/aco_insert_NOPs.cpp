@@ -1396,7 +1396,7 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
     */
    if (instr->isVMEM() || instr->isFlatLike()) {
       for (Definition& def : instr->definitions)
-         fill_vgpr_bitset(ctx.vgpr_used_by_vmem_store, def.physReg(), def.bytes());
+         fill_vgpr_bitset(ctx.vgpr_used_by_vmem_load, def.physReg(), def.bytes());
       if (instr->definitions.empty()) {
          for (Operand& op : instr->operands)
             fill_vgpr_bitset(ctx.vgpr_used_by_vmem_store, op.physReg(), op.bytes());
