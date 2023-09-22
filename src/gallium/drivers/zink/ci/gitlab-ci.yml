@@ -241,7 +241,7 @@ zink-radv-polaris10-valve:
 zink-radv-navi10-valve:
   extends:
     - .radv-zink-test-valve
-    - .navi10-test-valve
+    - .navi10-test-valve-mupuf
     - .zink-radv-manual-rules
   variables:
     GPU_VERSION: zink-radv-navi10
