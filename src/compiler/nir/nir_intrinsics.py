@@ -1972,6 +1972,13 @@ intrinsic("ald_nv", dest_comp=0, src_comp=[1, 1], bit_sizes=[32],
 intrinsic("ast_nv", src_comp=[0, 1, 1],
           indices=[BASE, RANGE_BASE, RANGE, FLAGS], flags=[])
 
+# NVIDIA-specific Geometry Shader intrinsics.
+# These contain an additional integer source and destination with the primitive handle input/output.
+intrinsic("emit_vertex_nv", dest_comp=1, src_comp=[1], indices=[STREAM_ID])
+intrinsic("end_primitive_nv", dest_comp=1, src_comp=[1], indices=[STREAM_ID])
+# Contains the final primitive handle and indicate the end of emission.
+intrinsic("final_primitive_nv", src_comp=[1])
+
 # In order to deal with flipped render targets, gl_PointCoord may be flipped
 # in the shader requiring a shader key or extra instructions or it may be
 # flipped in hardware based on a state bit.  This version of gl_PointCoord

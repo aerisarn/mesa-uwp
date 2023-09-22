@@ -765,12 +765,14 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 
    case nir_intrinsic_end_primitive:
    case nir_intrinsic_end_primitive_with_counter:
+   case nir_intrinsic_end_primitive_nv:
       assert(shader->info.stage == MESA_SHADER_GEOMETRY);
       shader->info.gs.uses_end_primitive = 1;
       FALLTHROUGH;
 
    case nir_intrinsic_emit_vertex:
    case nir_intrinsic_emit_vertex_with_counter:
+   case nir_intrinsic_emit_vertex_nv:
       shader->info.gs.active_stream_mask |= 1 << nir_intrinsic_stream_id(instr);
 
       break;
