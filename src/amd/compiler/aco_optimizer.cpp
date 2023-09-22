@@ -298,6 +298,8 @@ struct ssa_info {
 
    void set_omod2(Instruction* mul)
    {
+      if (label & temp_labels)
+         return;
       add_label(label_omod2);
       instr = mul;
    }
@@ -306,6 +308,8 @@ struct ssa_info {
 
    void set_omod4(Instruction* mul)
    {
+      if (label & temp_labels)
+         return;
       add_label(label_omod4);
       instr = mul;
    }
@@ -314,6 +318,8 @@ struct ssa_info {
 
    void set_omod5(Instruction* mul)
    {
+      if (label & temp_labels)
+         return;
       add_label(label_omod5);
       instr = mul;
    }
@@ -322,6 +328,8 @@ struct ssa_info {
 
    void set_clamp(Instruction* med3)
    {
+      if (label & temp_labels)
+         return;
       add_label(label_clamp);
       instr = med3;
    }
@@ -330,6 +338,8 @@ struct ssa_info {
 
    void set_f2f16(Instruction* conv)
    {
+      if (label & temp_labels)
+         return;
       add_label(label_f2f16);
       instr = conv;
    }
@@ -466,6 +476,8 @@ struct ssa_info {
 
    void set_insert(Instruction* insert)
    {
+      if (label & temp_labels)
+         return;
       add_label(label_insert);
       instr = insert;
    }
