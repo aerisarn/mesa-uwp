@@ -497,6 +497,13 @@ typedef struct nir_variable {
       unsigned invariant : 1;
 
       /**
+       * Was an 'invariant' qualifier explicitly set in the shader?
+       *
+       * This is used to cross validate glsl qualifiers.
+       */
+      unsigned explicit_invariant:1;
+
+      /**
        * Is the variable a ray query?
        */
       unsigned ray_query : 1;
