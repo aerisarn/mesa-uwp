@@ -872,8 +872,6 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
       state->dsa_dirty = true;
    }
 
-   state->blend_state.independent_blend_enable = ps->rp->color_attachment_count > 1;
-
    if (ps->cb) {
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
          state->blend_state.logicop_enable = ps->cb->logic_op_enable;
@@ -3710,7 +3708,6 @@ handle_shaders(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
    }
 
    if (gfx) {
-      state->blend_state.independent_blend_enable = true;
       state->push_size[0] = 0;
       for (unsigned i = 0; i < ARRAY_SIZE(state->gfx_push_sizes); i++)
          state->push_size[0] += state->gfx_push_sizes[i];
@@ -4796,6 +4793,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->rs_state.half_pixel_center = true;
    state->rs_state.scissor = true;
    state->rs_state.no_ms_sample_mask_out = true;
+   state->blend_state.independent_blend_enable = true;
 
    /* create a gallium context */
    lvp_execute_cmd_buffer(&cmd_buffer->vk.cmd_queue.cmds, state, device->print_cmds);
