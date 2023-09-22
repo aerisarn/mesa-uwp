@@ -137,7 +137,7 @@ setup_cs(const char* input_spec, enum amd_gfx_level gfx_level, enum radeon_famil
 }
 
 void
-finish_program(Program* prog)
+finish_program(Program* prog, bool endpgm)
 {
    for (Block& BB : prog->blocks) {
       for (unsigned idx : BB.linear_preds)
@@ -146,10 +146,12 @@ finish_program(Program* prog)
          prog->blocks[idx].logical_succs.emplace_back(BB.index);
    }
 
-   for (Block& block : prog->blocks) {
-      if (block.linear_succs.size() == 0) {
-         block.kind |= block_kind_uniform;
-         Builder(prog, &block).sopp(aco_opcode::s_endpgm);
+   if (endpgm) {
+      for (Block& block : prog->blocks) {
+         if (block.linear_succs.size() == 0) {
+            block.kind |= block_kind_uniform;
+            Builder(prog, &block).sopp(aco_opcode::s_endpgm);
+         }
       }
    }
 }
@@ -249,9 +251,9 @@ finish_waitcnt_test()
 }
 
 void
-finish_insert_nops_test()
+finish_insert_nops_test(bool endpgm)
 {
-   finish_program(program.get());
+   finish_program(program.get(), endpgm);
    aco::insert_NOPs(program.get());
    aco_print_program(program.get(), output);
 }
