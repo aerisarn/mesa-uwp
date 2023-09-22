@@ -703,6 +703,14 @@ Intel driver environment variables
 
    ``INTEL_MEASURE=cpu {workload}``
 
+.. envvar:: INTEL_MODIFIER_OVERRIDE
+
+   if set, determines the single DRM modifier reported back to (Vulkan)
+   applications, in order to make selecting modifier deterministic
+   between Vulkan driver and applications. The value can be one of the
+   supported modifiers on a platform, but other values are also acceptable
+   for debug purposes.
+
 .. envvar:: INTEL_NO_HW
 
    if set to 1, true or yes, prevents batches from being submitted to the
