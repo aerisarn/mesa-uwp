@@ -361,6 +361,7 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
    }
 
    case nir_intrinsic_load_frag_coord:
+   case nir_intrinsic_load_point_coord:
    case nir_intrinsic_load_sample_pos: {
       b->cursor = nir_before_instr(&intrin->instr);
 
@@ -372,7 +373,12 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
          bary = nir_load_barycentric_pixel(b, 32,
             .interp_mode = INTERP_MODE_SMOOTH);
       }
-      const uint32_t addr = nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD);
+
+      const uint32_t addr =
+         intrin->intrinsic == nir_intrinsic_load_point_coord ?
+         nak_sysval_attr_addr(SYSTEM_VALUE_POINT_COORD) :
+         nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD);
+
       nir_def *coord =
          nir_load_interpolated_input(b, intrin->def.num_components, 32,
                                      bary, nir_imm_int(b, 0),
@@ -385,6 +391,8 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       switch (intrin->intrinsic) {
       case nir_intrinsic_load_frag_coord:
          coord = nir_vector_insert_imm(b, coord, w, 3);
+         break;
+      case nir_intrinsic_load_point_coord:
          break;
       case nir_intrinsic_load_sample_pos:
          coord = nir_ffract(b, coord);
@@ -505,7 +513,6 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
    }
 
    case nir_intrinsic_load_front_face:
-   case nir_intrinsic_load_point_coord:
    case nir_intrinsic_load_tess_coord:
    case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_vertex_id: {
