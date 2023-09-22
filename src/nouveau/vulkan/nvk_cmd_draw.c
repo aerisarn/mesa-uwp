@@ -960,20 +960,29 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
       for (uint32_t i = 0; i < dyn->vp.viewport_count; i++) {
          const VkViewport *vp = &dyn->vp.viewports[i];
 
-         P_MTHD(p, NV9097, SET_VIEWPORT_SCALE_X(i));
-         P_NV9097_SET_VIEWPORT_SCALE_X(p, i, fui(0.5f * vp->width));
-         P_NV9097_SET_VIEWPORT_SCALE_Y(p, i, fui(0.5f * vp->height));
-         if (dyn->vp.depth_clip_negative_one_to_one)
-            P_NV9097_SET_VIEWPORT_SCALE_Z(p, i, fui(0.5f * (vp->maxDepth - vp->minDepth)));
-         else
-            P_NV9097_SET_VIEWPORT_SCALE_Z(p, i, fui(vp->maxDepth - vp->minDepth));
+         /* These exactly match the spec values.  Nvidia hardware oddities
+          * are accounted for later.
+          */
+         const float o_x = vp->x + 0.5f * vp->width;
+         const float o_y = vp->y + 0.5f * vp->height;
+         const float o_z = !dyn->vp.depth_clip_negative_one_to_one ?
+                           vp->minDepth :
+                           (vp->maxDepth + vp->minDepth) * 0.5f;
 
-         P_NV9097_SET_VIEWPORT_OFFSET_X(p, i, fui(vp->x + 0.5f * vp->width));
-         P_NV9097_SET_VIEWPORT_OFFSET_Y(p, i, fui(vp->y + 0.5f * vp->height));
-         if (dyn->vp.depth_clip_negative_one_to_one)
-            P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(0.5f * (vp->minDepth + vp->maxDepth)));
-         else
-            P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(vp->minDepth));
+         const float p_x = vp->width;
+         const float p_y = vp->height;
+         const float p_z = !dyn->vp.depth_clip_negative_one_to_one ?
+                           vp->maxDepth - vp->minDepth :
+                           (vp->maxDepth - vp->minDepth) * 0.5f;
+
+         P_MTHD(p, NV9097, SET_VIEWPORT_SCALE_X(i));
+         P_NV9097_SET_VIEWPORT_SCALE_X(p, i, fui(0.5f * p_x));
+         P_NV9097_SET_VIEWPORT_SCALE_Y(p, i, fui(0.5f * p_y));
+         P_NV9097_SET_VIEWPORT_SCALE_Z(p, i, fui(p_z));
+
+         P_NV9097_SET_VIEWPORT_OFFSET_X(p, i, fui(o_x));
+         P_NV9097_SET_VIEWPORT_OFFSET_Y(p, i, fui(o_y));
+         P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(o_z));
 
          float xmin = vp->x;
          float xmax = vp->x + vp->width;
