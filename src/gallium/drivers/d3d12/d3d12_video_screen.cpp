@@ -784,7 +784,9 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                uint32_t &maxReferencesPerFrame,
                                struct d3d12_encode_codec_support& codecSupport,
                                uint32_t &isRCMaxFrameSizeSupported,
-                               uint32_t &maxQualityLevels)
+                               uint32_t &maxQualityLevels,
+                               uint32_t &max_tile_rows,
+                               uint32_t &max_tile_cols)
 {
    ComPtr<ID3D12VideoDevice3> spD3D12VideoDevice;
    struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) pscreen;
@@ -1266,6 +1268,8 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                                          );
                // Cannot pass pipe 2 bit-field as reference, use aux variable instead.
                codecSupport.av1_support.features_ext2.bits.tile_size_bytes_minus1 = av1TileSupport.TileSizeBytesMinus1;
+               max_tile_rows = av1TileSupport.MaxTileRows;
+               max_tile_cols = av1TileSupport.MaxTileCols;
 
                DXGI_FORMAT encodeFormat = d3d12_convert_pipe_video_profile_to_dxgi_format(profile);
 
@@ -1593,6 +1597,8 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
    uint32_t maxReferencesPerFrame = 0u;
    uint32_t isRCMaxFrameSizeSupported = 0u;
    uint32_t maxQualityLevels = 0u;
+   uint32_t max_tile_rows = 0u;
+   uint32_t max_tile_cols = 0u;
    struct d3d12_encode_codec_support codec_specific_support;
    memset(&codec_specific_support, 0, sizeof(codec_specific_support));
    switch (param) {
@@ -1620,6 +1626,8 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
       case PIPE_VIDEO_CAP_ENC_SUPPORTS_TILE:
       case PIPE_VIDEO_CAP_ENC_SUPPORTS_MAX_FRAME_SIZE:
       case PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL:
+      case PIPE_VIDEO_CAP_ENC_MAX_TILE_ROWS:
+      case PIPE_VIDEO_CAP_ENC_MAX_TILE_COLS:
       {
          if (d3d12_has_video_encode_support(pscreen,
                                             profile,
@@ -1631,7 +1639,9 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                                             maxReferencesPerFrame,
                                             codec_specific_support,
                                             isRCMaxFrameSizeSupported,
-                                            maxQualityLevels)) {
+                                            maxQualityLevels,
+                                            max_tile_rows,
+                                            max_tile_cols)) {
 
             DXGI_FORMAT format = d3d12_convert_pipe_video_profile_to_dxgi_format(profile);
             auto pipeFmt = d3d12_get_pipe_format(format);
@@ -1653,6 +1663,10 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                   return maxSlices;
                } else if (param == PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE) {
                   return supportedSliceStructures;
+               } else if (param == PIPE_VIDEO_CAP_ENC_MAX_TILE_ROWS) {
+                  return max_tile_rows;
+               } else if (param == PIPE_VIDEO_CAP_ENC_MAX_TILE_COLS) {
+                  return max_tile_cols;
                } else if (param == PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME) {
                   return maxReferencesPerFrame;
                } else if (param == PIPE_VIDEO_CAP_ENC_SUPPORTS_MAX_FRAME_SIZE) {
