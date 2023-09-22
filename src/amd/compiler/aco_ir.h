@@ -1052,7 +1052,7 @@ struct Instruction {
    constexpr bool reads_exec() const noexcept
    {
       for (const Operand& op : operands) {
-         if (op.isFixed() && op.physReg() == exec)
+         if (op.isFixed() && (op.physReg() == exec_lo || op.physReg() == exec_hi))
             return true;
       }
       return false;
