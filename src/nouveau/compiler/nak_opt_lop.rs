@@ -72,14 +72,30 @@ impl LopPass {
     }
 
     fn dedup_srcs(&self, op: &mut LogicOp, srcs: &[Src; 3]) {
-        if srcs[0].src_ref == srcs[1].src_ref {
-            *op = LogicOp::new_lut(&|x, _, z| op.eval(x, x, z))
-        }
-        if srcs[0].src_ref == srcs[2].src_ref {
-            *op = LogicOp::new_lut(&|x, y, _| op.eval(x, y, x))
-        }
-        if srcs[1].src_ref == srcs[2].src_ref {
-            *op = LogicOp::new_lut(&|x, y, _| op.eval(x, y, y))
+        for i in 0..2 {
+            for j in (i + 1)..3 {
+                if srcs[i].src_ref == srcs[j].src_ref {
+                    *op = LogicOp::new_lut(&|x, y, z| {
+                        let dup = [x, y, z][i];
+                        let si = match srcs[i].src_mod {
+                            SrcMod::None => dup,
+                            SrcMod::BNot => !dup,
+                            _ => panic!("Not a bitwise modifer"),
+                        };
+                        let sj = match srcs[j].src_mod {
+                            SrcMod::None => dup,
+                            SrcMod::BNot => !dup,
+                            _ => panic!("Not a bitwise modifer"),
+                        };
+
+                        let mut s = [x, y, z];
+                        s[i] = si;
+                        s[j] = sj;
+
+                        op.eval(s[0], s[1], s[2])
+                    });
+                }
+            }
         }
     }
 
