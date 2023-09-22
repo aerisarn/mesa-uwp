@@ -1881,7 +1881,14 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                   ctx.info[instr->definitions[0].tempId()].set_neg(other);
                else if (!abs && !neg)
                   ctx.info[instr->definitions[0].tempId()].set_fcanonicalize(other);
-            } else if (uses_mods) {
+            } else if (uses_mods || ((fp16 ? ctx.fp_mode.preserve_signed_zero_inf_nan16_64
+                                           : ctx.fp_mode.preserve_signed_zero_inf_nan32) &&
+                                     instr->opcode != aco_opcode::v_mul_legacy_f32)) {
+               continue; /* omod uses a legacy multiplication. */
+            } else if (instr->operands[!i].constantValue() == 0u) { /* 0.0 */
+               ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->gfx_level, 0u);
+            } else if ((fp16 ? ctx.fp_mode.denorm16_64 : ctx.fp_mode.denorm32) != fp_denorm_flush) {
+               /* omod has no effect if denormals are enabled. */
                continue;
             } else if (instr->operands[!i].constantValue() ==
                        (fp16 ? 0x4000 : 0x40000000)) { /* 2.0 */
@@ -1892,11 +1899,6 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             } else if (instr->operands[!i].constantValue() ==
                        (fp16 ? 0x3800 : 0x3f000000)) { /* 0.5 */
                ctx.info[instr->operands[i].tempId()].set_omod5(instr.get());
-            } else if (instr->operands[!i].constantValue() == 0u &&
-                       (!(fp16 ? ctx.fp_mode.preserve_signed_zero_inf_nan16_64
-                               : ctx.fp_mode.preserve_signed_zero_inf_nan32) ||
-                        instr->opcode == aco_opcode::v_mul_legacy_f32)) { /* 0.0 */
-               ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->gfx_level, 0u);
             } else {
                continue;
             }
@@ -3409,14 +3411,8 @@ apply_omod_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (!instr->isSDWA() && !is_mad_mix && !can_vop3)
       return false;
 
-   /* omod flushes -0 to +0 and has no effect if denormals are enabled. SDWA omod is GFX9+. */
+   /* SDWA omod is GFX9+. */
    bool can_use_omod = (can_vop3 || ctx.program->gfx_level >= GFX9) && !instr->isVOP3P();
-   if (instr->definitions[0].bytes() == 4)
-      can_use_omod =
-         can_use_omod && ctx.fp_mode.denorm32 == 0 && !ctx.fp_mode.preserve_signed_zero_inf_nan32;
-   else
-      can_use_omod = can_use_omod && ctx.fp_mode.denorm16_64 == 0 &&
-                     !ctx.fp_mode.preserve_signed_zero_inf_nan16_64;
 
    ssa_info& def_info = ctx.info[instr->definitions[0].tempId()];
 
