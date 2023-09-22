@@ -243,7 +243,9 @@ zink-radv-navi10-valve:
     - .radv-zink-test-valve
     - .navi10-test-valve-mupuf
     - .zink-radv-manual-rules
+  timeout: 40m
   variables:
+    B2C_TIMEOUT_OVERALL_MINUTES: 30
     GPU_VERSION: zink-radv-navi10
 
 zink-radv-vangogh-valve:
