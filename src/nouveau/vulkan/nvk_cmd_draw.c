@@ -1115,13 +1115,42 @@ vk_to_nv9097_provoking_vertex(VkProvokingVertexModeEXT vk_mode)
 static void
 nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 34);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 36);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))
       P_IMMD(p, NV9097, SET_RASTER_ENABLE, !dyn->rs.rasterizer_discard_enable);
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE)) {
+      const bool z_clamp = dyn->rs.depth_clamp_enable;
+      const bool z_clip = vk_rasterization_state_depth_clip_enable(&dyn->rs);
+      P_IMMD(p, NVC397, SET_VIEWPORT_CLIP_CONTROL, {
+         /* TODO: Fix pre-Volta
+          *
+          * This probably involves a few macros, one which stases viewport
+          * min/maxDepth in scratch states and one which goes here and
+          * emits either min/maxDepth or -/+INF as needed.
+          */
+         .min_z_zero_max_z_one = MIN_Z_ZERO_MAX_Z_ONE_FALSE,
+         .z_clip_range = nvk_cmd_buffer_3d_cls(cmd) >= VOLTA_A
+                         ? ((z_clamp || z_clip)
+                            ? Z_CLIP_RANGE_MIN_Z_MAX_Z
+                            :Z_CLIP_RANGE_MINUS_INF_PLUS_INF)
+                         : Z_CLIP_RANGE_USE_FIELD_MIN_Z_ZERO_MAX_Z_ONE,
+
+         .pixel_min_z = z_clip ? PIXEL_MIN_Z_CLIP : PIXEL_MIN_Z_CLAMP,
+         .pixel_max_z = z_clip ? PIXEL_MAX_Z_CLIP : PIXEL_MAX_Z_CLAMP,
+
+         .geometry_guardband = GEOMETRY_GUARDBAND_SCALE_256,
+         .line_point_cull_guardband = LINE_POINT_CULL_GUARDBAND_SCALE_256,
+         .geometry_clip = z_clip ? GEOMETRY_CLIP_FRUSTUM_XYZ_CLIP :
+                                   GEOMETRY_CLIP_FRUSTUM_XY_CLIP,
+         .geometry_guardband_z = GEOMETRY_GUARDBAND_Z_SCALE_256,
+      });
+   }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE)) {
       uint32_t polygon_mode = vk_to_nv9097_polygon_mode(dyn->rs.polygon_mode);
