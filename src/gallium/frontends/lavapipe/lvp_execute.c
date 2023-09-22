@@ -4780,6 +4780,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    util_dynarray_init(&state->push_desc_sets, NULL);
 
    /* default values */
+   state->min_sample_shading = 1;
    state->num_viewports = 1;
    state->num_scissors = 1;
    state->rs_state.line_width = 1.0;
