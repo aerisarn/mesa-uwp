@@ -681,7 +681,7 @@ handle_instruction_gfx6(State& state, NOP_ctx_gfx6& ctx, aco_ptr<Instruction>& i
             }
          }
       }
-   } else if (instr->isSALU() && !instr->definitions.empty()) {
+   } else if (instr->isSALU()) {
       if (!instr->definitions.empty()) {
          /* all other definitions should be SCC */
          Definition def = instr->definitions[0];
