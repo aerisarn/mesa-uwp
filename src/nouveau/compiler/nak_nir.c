@@ -317,6 +317,17 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
    return progress;
 }
 
+static nir_def *
+load_frag_w(nir_builder *b, nir_def *bary)
+{
+   const uint16_t w_addr =
+      nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD) + 12;
+
+   return nir_load_interpolated_input(b, 1, 32, bary,
+                                      nir_imm_int(b, 0), .base = w_addr,
+                                      .dest_type = nir_type_float32);
+}
+
 static bool
 lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 {
@@ -363,19 +374,24 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       }
       const uint32_t addr = nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD);
       nir_def *coord =
-         nir_load_interpolated_input(b, 4, 32, bary, nir_imm_int(b, 0),
+         nir_load_interpolated_input(b, intrin->def.num_components, 32,
+                                     bary, nir_imm_int(b, 0),
                                      .base = addr,
                                      .dest_type = nir_type_float32);
 
-      /* gl_FragCoord = (x, y, z, 1/w) */
-      coord = nir_fdiv(b, nir_vec4(b, nir_channel(b, coord, 0),
-                                      nir_channel(b, coord, 1),
-                                      nir_channel(b, coord, 2),
-                                      nir_imm_float(b, 1.0f)),
-                          nir_channel(b, coord, 3));
+      nir_def *w = load_frag_w(b, bary);
+      coord = nir_fdiv(b, coord, w);
 
-      if (intrin->intrinsic == nir_intrinsic_load_sample_pos)
-         coord = nir_ffract(b, nir_trim_vector(b, coord, 2));
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_load_frag_coord:
+         coord = nir_vector_insert_imm(b, coord, w, 3);
+         break;
+      case nir_intrinsic_load_sample_pos:
+         coord = nir_ffract(b, coord);
+         break;
+      default:
+         unreachable("Unknown intrinsic");
+      }
 
       nir_def_rewrite_uses(&intrin->def, coord);
       nir_instr_remove(&intrin->instr);
@@ -391,15 +407,8 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 
       b->cursor = nir_after_instr(&intrin->instr);
 
-      const uint16_t w_addr =
-         nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD) + 12;
-
-      /* Perspective-correc interpolated inputs need to be divided by .w */
-      nir_def *w = nir_load_interpolated_input(b, 1, 32, &bary->def,
-                                               nir_imm_int(b, 0),
-                                               .base = w_addr,
-                                               .dest_type = nir_type_float32);
-      nir_def *res = nir_fdiv(b, &intrin->def, w);
+      /* Perspective-correct interpolated inputs need to be divided by .w */
+      nir_def *res = nir_fdiv(b, &intrin->def, load_frag_w(b, &bary->def));
       nir_def_rewrite_uses_after(&intrin->def, res, res->parent_instr);
 
       return true;
