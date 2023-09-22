@@ -192,6 +192,22 @@ loader_open_render_node_platform_device(const char * const drivers[],
    return fd;
 }
 
+bool
+loader_is_device_render_capable(int fd)
+{
+   drmDevicePtr dev_ptr;
+   bool ret;
+
+   if (drmGetDevice2(fd, 0, &dev_ptr) != 0)
+      return false;
+
+   ret = (dev_ptr->available_nodes & (1 << DRM_NODE_RENDER));
+
+   drmFreeDevice(&dev_ptr);
+
+   return ret;
+}
+
 char *
 loader_get_render_node(dev_t device)
 {

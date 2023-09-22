@@ -50,6 +50,9 @@ int
 loader_open_render_node_platform_device(const char * const drivers[],
                                         unsigned int n_drivers);
 
+bool
+loader_is_device_render_capable(int fd);
+
 char *
 loader_get_render_node(dev_t device);
 
