@@ -906,7 +906,7 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
     */
    if (!instr->isVALU() && instr->reads_exec()) {
       ctx.has_nonVALU_exec_read = true;
-   } else if (instr->isVALU()) {
+   } else if (instr->isVALU() && ctx.has_nonVALU_exec_read) {
       if (instr->writes_exec()) {
          ctx.has_nonVALU_exec_read = false;
 
