@@ -454,27 +454,27 @@ pub extern "C" fn nak_compile_shader(
 
     s.opt_copy_prop();
     if DEBUG.print() {
-        eprintln!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR after opt_copy_prop:\n{}", &s);
     }
 
     s.opt_lop();
     if DEBUG.print() {
-        eprintln!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR after opt_lop:\n{}", &s);
     }
 
     s.opt_dce();
     if DEBUG.print() {
-        eprintln!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR after dce:\n{}", &s);
     }
 
     s.legalize();
     if DEBUG.print() {
-        eprintln!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR after legalize:\n{}", &s);
     }
 
     s.assign_regs();
     if DEBUG.print() {
-        eprintln!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR after assign_regs:\n{}", &s);
     }
 
     s.lower_vec_split();
