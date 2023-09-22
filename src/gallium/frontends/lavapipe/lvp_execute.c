@@ -969,17 +969,6 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
       state->rs_dirty = true;
    }
 
-   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
-      if (ps->vi) {
-         u_foreach_bit(a, ps->vi->attributes_valid) {
-            uint32_t b = ps->vi->attributes[a].binding;
-            state->vb_strides[b] = ps->vi->bindings[b].stride;
-            state->vb_strides_dirty = true;
-            state->ve_dirty = true;
-         }
-      }
-   }
-
    if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI) && ps->vi) {
       u_foreach_bit(a, ps->vi->attributes_valid) {
          uint32_t b = ps->vi->attributes[a].binding;
@@ -999,6 +988,12 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
             break;
          default:
             unreachable("Invalid vertex input rate");
+         }
+
+         if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
+            state->vb_strides[b] = ps->vi->bindings[b].stride;
+            state->vb_strides_dirty = true;
+            state->ve_dirty = true;
          }
       }
 
@@ -3342,6 +3337,7 @@ static void handle_set_vertex_input(struct vk_cmd_queue_entry *cmd,
          max_location = location;
    }
    state->velem.count = max_location + 1;
+   state->vb_strides_dirty = false;
    state->vb_dirty = true;
    state->ve_dirty = true;
 }
