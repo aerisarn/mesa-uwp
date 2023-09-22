@@ -4643,6 +4643,7 @@ fs_nir_emit_cs_intrinsic(nir_to_brw_state &ntb,
          }
       }
 
+      cs_prog_data->uses_systolic = true;
       break;
    }
 

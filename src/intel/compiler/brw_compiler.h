@@ -1343,6 +1343,7 @@ struct brw_cs_prog_data {
    bool uses_num_work_groups;
    bool uses_inline_data;
    bool uses_btd_stack_ids;
+   bool uses_systolic;
 
    struct {
       struct brw_push_const_block cross_thread;

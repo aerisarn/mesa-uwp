@@ -5999,6 +5999,9 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
          .MessageSIMD                    = dispatch.simd_size / 16,
          .IndirectDataStartAddress       = comp_state->push_data.offset,
          .IndirectDataLength             = comp_state->push_data.alloc_size,
+#if GFX_VERx10 == 125
+         .SystolicModeEnable             = prog_data->uses_systolic,
+#endif
          .LocalXMaximum                  = prog_data->local_size[0] - 1,
          .LocalYMaximum                  = prog_data->local_size[1] - 1,
          .LocalZMaximum                  = prog_data->local_size[2] - 1,
