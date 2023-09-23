@@ -1600,13 +1600,16 @@ impl<'a> ShaderFromNir<'a> {
                         self.fs_out_regs[(base / 4) + c] = data[c];
                     }
                 } else {
+                    let addr = u16::try_from(intrin.base()).unwrap()
+                        + u16::try_from(intrin.component()).unwrap() * 4;
+
                     let data = self.get_src(&srcs[0]);
                     let vtx = Src::new_zero();
                     let offset = self.get_src(&srcs[1]);
 
                     assert!(intrin.get_src(0).bit_size() == 32);
                     let access = AttrAccess {
-                        addr: intrin.base().try_into().unwrap(),
+                        addr: addr,
                         comps: intrin.get_src(0).num_components(),
                         patch: false,
                         out_load: false,
