@@ -132,12 +132,7 @@ nvk_cmd_buffer_flush_push(struct nvk_cmd_buffer *cmd)
 
       struct nvk_cmd_push push = {
          .map = cmd->push.start,
-#if NVK_NEW_UAPI == 1
          .addr = cmd->push_bo->bo->offset + bo_offset,
-#else
-         .bo = cmd->push_bo->bo,
-         .bo_offset = bo_offset,
-#endif
          .range = nv_push_dw_count(&cmd->push) * 4,
       };
       util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
@@ -173,22 +168,11 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
 
    uint64_t addr = nvk_buffer_address(buffer, offset);
 
-#if NVK_NEW_UAPI == 1
    struct nvk_cmd_push push = {
       .addr = addr,
       .range = range,
       .no_prefetch = true,
    };
-#else
-   struct nouveau_ws_bo *bo = buffer->mem->bo;
-   uint64_t bo_offset = addr - bo->offset;
-   struct nvk_cmd_push push = {
-      .bo = bo,
-      .bo_offset = bo_offset,
-      .range = range,
-      .no_prefetch = true,
-   };
-#endif
 
    util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
 }
@@ -559,11 +543,7 @@ nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
          };
          vk_push_print(fp, &push, &dev->pdev->info);
       } else {
-#if NVK_NEW_UAPI == 1
          const uint64_t addr = p->addr;
-#else
-         const uint64_t addr = p->bo->offset + p->bo_offset;
-#endif
          fprintf(fp, "<%u B of INDIRECT DATA at 0x%" PRIx64 ">\n",
                  p->range, addr);
       }

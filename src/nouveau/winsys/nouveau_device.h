@@ -15,9 +15,6 @@ struct hash_table;
 extern "C" {
 #endif
 
-#ifndef NVK_NEW_UAPI
-#define NVK_NEW_UAPI 1
-#endif
 
 enum nvk_debug {
    /* dumps all push buffers after submission */
@@ -51,11 +48,9 @@ struct nouveau_ws_device {
    simple_mtx_t bos_lock;
    struct hash_table *bos;
 
-#if NVK_NEW_UAPI == 1
    bool has_vm_bind;
    struct util_vma_heap vma_heap;
    simple_mtx_t vma_mutex;
-#endif
 };
 
 struct nouveau_ws_device *nouveau_ws_device_new(struct _drmDevice *drm_device);

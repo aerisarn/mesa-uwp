@@ -4,7 +4,6 @@
  */
 #include "nvk_physical_device.h"
 
-#include "nvk_bo_sync.h"
 #include "nvk_buffer.h"
 #include "nvk_entrypoints.h"
 #include "nvk_format.h"
@@ -63,12 +62,12 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_draw_indirect_count = info->cls_eng3d >= TURING_A,
       .KHR_driver_properties = true,
       .KHR_dynamic_rendering = true,
-      .KHR_external_fence = NVK_NEW_UAPI,
-      .KHR_external_fence_fd = NVK_NEW_UAPI,
+      .KHR_external_fence = true,
+      .KHR_external_fence_fd = true,
       .KHR_external_memory = true,
       .KHR_external_memory_fd = true,
-      .KHR_external_semaphore = NVK_NEW_UAPI,
-      .KHR_external_semaphore_fd = NVK_NEW_UAPI,
+      .KHR_external_semaphore = true,
+      .KHR_external_semaphore_fd = true,
       .KHR_format_feature_flags2 = true,
       .KHR_get_memory_requirements2 = true,
       .KHR_image_format_list = true,
@@ -89,9 +88,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_shader_non_semantic_info = true,
       .KHR_spirv_1_4 = true,
       .KHR_storage_buffer_storage_class = true,
-#if NVK_NEW_UAPI == 1
       .KHR_timeline_semaphore = true,
-#endif
 #ifdef NVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
       .KHR_swapchain_mutable_format = true,
@@ -188,10 +185,8 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* TODO: shaderInt16 */
       /* TODO: shaderResourceResidency */
       .shaderResourceMinLod = true,
-#if NVK_NEW_UAPI == 1
       .sparseBinding = true,
       .sparseResidencyBuffer = info->cls_eng3d >= MAXWELL_A,
-#endif
       /* TODO: sparseResidency* */
       /* TODO: variableMultisampleRate */
       /* TODO: inheritedQueries */
@@ -232,9 +227,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .uniformBufferStandardLayout = true,
       .separateDepthStencilLayouts = true,
       .hostQueryReset = true,
-#if NVK_NEW_UAPI == 1
       .timelineSemaphore = true,
-#endif
       .bufferDeviceAddress = true,
       .bufferDeviceAddressCaptureReplay = false,
       .bufferDeviceAddressMultiDevice = false,
@@ -673,11 +666,9 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
    const struct nv_device_info info = ws_dev->info;
-#if NVK_NEW_UAPI == 1
    const bool has_vm_bind = ws_dev->has_vm_bind;
    const struct vk_sync_type syncobj_sync_type =
       vk_drm_syncobj_get_type(ws_dev->fd);
-#endif
 
    nouveau_ws_device_destroy(ws_dev);
 
@@ -694,12 +685,10 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
                        info.device_name);
    }
 
-#if NVK_NEW_UAPI == 1
    if (!has_vm_bind) {
       return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                        "NVK Requires a Linux kernel version 6.6 or later");
    }
-#endif
 
    if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER))) {
       return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
@@ -793,12 +782,8 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    }
 
    unsigned st_idx = 0;
-#if NVK_NEW_UAPI == 1
    pdev->syncobj_sync_type = syncobj_sync_type;
    pdev->sync_types[st_idx++] = &pdev->syncobj_sync_type;
-#else
-   pdev->sync_types[st_idx++] = &nvk_bo_sync_type;
-#endif
    pdev->sync_types[st_idx++] = NULL;
    assert(st_idx <= ARRAY_SIZE(pdev->sync_types));
    pdev->vk.supported_sync_types = pdev->sync_types;
@@ -870,9 +855,7 @@ nvk_GetPhysicalDeviceQueueFamilyProperties2(
       p->queueFamilyProperties.queueFlags = VK_QUEUE_GRAPHICS_BIT |
                                             VK_QUEUE_COMPUTE_BIT |
                                             VK_QUEUE_TRANSFER_BIT;
-#if NVK_NEW_UAPI == 1
       p->queueFamilyProperties.queueFlags |= VK_QUEUE_SPARSE_BINDING_BIT;
-#endif
       p->queueFamilyProperties.queueCount = 1;
       p->queueFamilyProperties.timestampValidBits = 64;
       p->queueFamilyProperties.minImageTransferGranularity = (VkExtent3D){1, 1, 1};

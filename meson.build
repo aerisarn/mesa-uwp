@@ -278,12 +278,6 @@ with_any_intel = [
 ].contains(true)
 with_any_nouveau = with_gallium_nouveau or with_nouveau_vk
 
-if with_nouveau_vk and get_option('nvk-legacy-uapi')
-  pre_args += '-DNVK_NEW_UAPI=0'
-else
-  pre_args += '-DNVK_NEW_UAPI=1'
-endif
-
 if with_swrast_vk and not with_gallium_softpipe
   error('swrast vulkan requires gallium swrast')
 endif

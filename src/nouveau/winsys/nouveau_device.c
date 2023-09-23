@@ -269,7 +269,6 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (version < 0x01000301)
       goto out_err;
 
-#if NVK_NEW_UAPI == 1
    const uint64_t TOP = 1ull << 40;
    const uint64_t KERN = 1ull << 39;
    struct drm_nouveau_vm_init vminit = { TOP-KERN, KERN };
@@ -279,7 +278,6 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
       util_vma_heap_init(&device->vma_heap, 4096, (TOP - KERN) - 4096);
       simple_mtx_init(&device->vma_mutex, mtx_plain);
    }
-#endif
 
    if (nouveau_ws_device_alloc(fd, device))
       goto out_err;
@@ -342,12 +340,10 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    return device;
 
 out_err:
-#if NVK_NEW_UAPI == 1
    if (device->has_vm_bind) {
       util_vma_heap_finish(&device->vma_heap);
       simple_mtx_destroy(&device->vma_mutex);
    }
-#endif
    if (ver)
       drmFreeVersion(ver);
 out_open:
@@ -365,12 +361,10 @@ nouveau_ws_device_destroy(struct nouveau_ws_device *device)
    _mesa_hash_table_destroy(device->bos, NULL);
    simple_mtx_destroy(&device->bos_lock);
 
-#if NVK_NEW_UAPI == 1
    if (device->has_vm_bind) {
       util_vma_heap_finish(&device->vma_heap);
       simple_mtx_destroy(&device->vma_mutex);
    }
-#endif
 
    close(device->fd);
    FREE(device);
