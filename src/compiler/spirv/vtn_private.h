@@ -251,8 +251,11 @@ vtn_foreach_instruction(struct vtn_builder *b, const uint32_t *start,
                         const uint32_t *end, vtn_instruction_handler handler);
 
 struct vtn_ssa_value {
+   bool is_variable;
+
    union {
       nir_def *def;
+      nir_variable *var;
       struct vtn_ssa_value **elems;
    };
 
@@ -856,6 +859,10 @@ struct vtn_value *vtn_push_ssa_value(struct vtn_builder *b, uint32_t value_id,
 nir_def *vtn_get_nir_ssa(struct vtn_builder *b, uint32_t value_id);
 struct vtn_value *vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id,
                                    nir_def *def);
+nir_deref_instr *vtn_get_deref_for_id(struct vtn_builder *b, uint32_t value_id);
+nir_deref_instr *vtn_get_deref_for_ssa_value(struct vtn_builder *b, struct vtn_ssa_value *ssa);
+struct vtn_value *vtn_push_var_ssa(struct vtn_builder *b, uint32_t value_id,
+                                   nir_variable *var);
 
 struct vtn_value *vtn_push_pointer(struct vtn_builder *b,
                                    uint32_t value_id,
@@ -875,6 +882,7 @@ vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
 
 struct vtn_ssa_value *vtn_create_ssa_value(struct vtn_builder *b,
                                            const struct glsl_type *type);
+void vtn_set_ssa_value_var(struct vtn_builder *b, struct vtn_ssa_value *ssa, nir_variable *var);
 
 struct vtn_ssa_value *vtn_ssa_transpose(struct vtn_builder *b,
                                         struct vtn_ssa_value *src);

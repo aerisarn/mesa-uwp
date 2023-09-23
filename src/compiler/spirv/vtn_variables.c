@@ -139,7 +139,6 @@ vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
 {
    struct vtn_value *src = vtn_untyped_value(b, src_value_id);
    struct vtn_value *dst = vtn_untyped_value(b, dst_value_id);
-   struct vtn_value src_copy = *src;
 
    vtn_fail_if(dst->value_type != vtn_value_type_invalid,
                "SPIR-V id %u has already been written by another instruction",
@@ -148,6 +147,19 @@ vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
    vtn_fail_if(dst->type->id != src->type->id,
                "Result Type must equal Operand type");
 
+   if (src->value_type == vtn_value_type_ssa && src->ssa->is_variable) {
+      nir_variable *dst_var =
+         nir_local_variable_create(b->nb.impl, src->ssa->type, "var_copy");
+      nir_deref_instr *dst_deref = nir_build_deref_var(&b->nb, dst_var);
+      nir_deref_instr *src_deref = vtn_get_deref_for_ssa_value(b, src->ssa);
+
+      vtn_local_store(b, vtn_local_load(b, src_deref, 0), dst_deref, 0);
+
+      vtn_push_var_ssa(b, dst_value_id, dst_var);
+      return;
+   }
+
+   struct vtn_value src_copy = *src;
    src_copy.name = dst->name;
    src_copy.decoration = dst->decoration;
    src_copy.type = dst->type;

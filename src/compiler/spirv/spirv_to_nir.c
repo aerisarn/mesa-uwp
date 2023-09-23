@@ -395,6 +395,27 @@ vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id, nir_def *def)
    return vtn_push_ssa_value(b, value_id, ssa);
 }
 
+nir_deref_instr *
+vtn_get_deref_for_id(struct vtn_builder *b, uint32_t value_id)
+{
+   return vtn_get_deref_for_ssa_value(b, vtn_ssa_value(b, value_id));
+}
+
+nir_deref_instr *
+vtn_get_deref_for_ssa_value(struct vtn_builder *b, struct vtn_ssa_value *ssa)
+{
+   vtn_fail_if(!ssa->is_variable, "Expected an SSA value with a nir_variable");
+   return nir_build_deref_var(&b->nb, ssa->var);
+}
+
+struct vtn_value *
+vtn_push_var_ssa(struct vtn_builder *b, uint32_t value_id, nir_variable *var)
+{
+   struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, var->type);
+   vtn_set_ssa_value_var(b, ssa, var);
+   return vtn_push_ssa_value(b, value_id, ssa);
+}
+
 static enum gl_access_qualifier
 spirv_to_gl_access_qualifier(struct vtn_builder *b,
                              SpvAccessQualifier access_qualifier)
@@ -2680,6 +2701,15 @@ vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
    return val;
 }
 
+void
+vtn_set_ssa_value_var(struct vtn_builder *b, struct vtn_ssa_value *ssa, nir_variable *var)
+{
+   vtn_assert(glsl_type_is_cmat(var->type));
+   vtn_assert(var->type == ssa->type);
+   ssa->is_variable = true;
+   ssa->var = var;
+}
+
 static nir_tex_src
 vtn_tex_src(struct vtn_builder *b, unsigned index, nir_tex_src_type type)
 {
@@ -4163,6 +4193,8 @@ vtn_vector_construct(struct vtn_builder *b, unsigned num_components,
 static struct vtn_ssa_value *
 vtn_composite_copy(void *mem_ctx, struct vtn_ssa_value *src)
 {
+   assert(!src->is_variable);
+
    struct vtn_ssa_value *dest = rzalloc(mem_ctx, struct vtn_ssa_value);
    dest->type = src->type;
 
@@ -5668,7 +5700,27 @@ vtn_nir_select(struct vtn_builder *b, struct vtn_ssa_value *src0,
    struct vtn_ssa_value *dest = rzalloc(b, struct vtn_ssa_value);
    dest->type = src1->type;
 
-   if (glsl_type_is_vector_or_scalar(src1->type)) {
+   if (src1->is_variable || src2->is_variable) {
+      vtn_assert(src1->is_variable && src2->is_variable);
+
+      nir_variable *dest_var =
+         nir_local_variable_create(b->nb.impl, dest->type, "var_select");
+      nir_deref_instr *dest_deref = nir_build_deref_var(&b->nb, dest_var);
+
+      nir_push_if(&b->nb, src0->def);
+      {
+         nir_deref_instr *src1_deref = vtn_get_deref_for_ssa_value(b, src1);
+         vtn_local_store(b, vtn_local_load(b, src1_deref, 0), dest_deref, 0);
+      }
+      nir_push_else(&b->nb, NULL);
+      {
+         nir_deref_instr *src2_deref = vtn_get_deref_for_ssa_value(b, src2);
+         vtn_local_store(b, vtn_local_load(b, src2_deref, 0), dest_deref, 0);
+      }
+      nir_pop_if(&b->nb, NULL);
+
+      vtn_set_ssa_value_var(b, dest, dest_var);
+   } else if (glsl_type_is_vector_or_scalar(src1->type)) {
       dest->def = nir_bcsel(&b->nb, src0->def, src1->def, src2->def);
    } else {
       unsigned elems = glsl_get_length(src1->type);
