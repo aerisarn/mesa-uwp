@@ -181,46 +181,29 @@ try_lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static bool
-lower_num_workgroups(nir_builder *b, nir_intrinsic_instr *load,
-                     const struct lower_descriptors_ctx *ctx)
+_lower_sysval_to_root_table(nir_builder *b, nir_intrinsic_instr *intrin,
+                            uint32_t root_table_offset,
+                            const struct lower_descriptors_ctx *ctx)
 {
-   const uint32_t root_table_offset =
-      nvk_root_descriptor_offset(cs.group_count);
+   b->cursor = nir_instr_remove(&intrin->instr);
 
-   b->cursor = nir_instr_remove(&load->instr);
+   nir_def *val = nir_load_ubo(b, intrin->def.num_components,
+                               intrin->def.bit_size,
+                               nir_imm_int(b, 0), /* Root table */
+                               nir_imm_int(b, root_table_offset),
+                               .align_mul = 4,
+                               .align_offset = 0,
+                               .range = root_table_offset + 3 * 4);
 
-   nir_def *val = nir_load_ubo(b, 3, 32,
-                                   nir_imm_int(b, 0), /* Root table */
-                                   nir_imm_int(b, root_table_offset),
-                                   .align_mul = 4,
-                                   .align_offset = 0,
-                                   .range = root_table_offset + 3 * 4);
-
-   nir_def_rewrite_uses(&load->def, val);
+   nir_def_rewrite_uses(&intrin->def, val);
 
    return true;
 }
 
-static bool
-lower_load_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *load,
-                             const struct lower_descriptors_ctx *ctx)
-{
-   const uint32_t root_table_offset =
-      nvk_root_descriptor_offset(cs.base_group);
-
-   b->cursor = nir_instr_remove(&load->instr);
-
-   nir_def *val = nir_load_ubo(b, 3, 32,
-                                   nir_imm_int(b, 0),
-                                   nir_imm_int(b, root_table_offset),
-                                   .align_mul = 4,
-                                   .align_offset = 0,
-                                   .range = root_table_offset + 3 * 4);
-
-   nir_def_rewrite_uses(&load->def, val);
-
-   return true;
-}
+#define lower_sysval_to_root_table(b, intrin, member, ctx)           \
+   _lower_sysval_to_root_table(b, intrin,                            \
+                               nvk_root_descriptor_offset(member),   \
+                               ctx)
 
 static bool
 lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
@@ -242,27 +225,6 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
                    .align_offset = 0,
                    .range = push_region_offset + base +
                             nir_intrinsic_range(load));
-
-   nir_def_rewrite_uses(&load->def, val);
-
-   return true;
-}
-
-static bool
-lower_load_view_index(nir_builder *b, nir_intrinsic_instr *load,
-                      const struct lower_descriptors_ctx *ctx)
-{
-   const uint32_t root_table_offset =
-      nvk_root_descriptor_offset(draw.view_index);
-
-   b->cursor = nir_instr_remove(&load->instr);
-
-   nir_def *val = nir_load_ubo(b, 1, 32,
-                                   nir_imm_int(b, 0),
-                                   nir_imm_int(b, root_table_offset),
-                                   .align_mul = 4,
-                                   .align_offset = 0,
-                                   .range = root_table_offset + 4);
 
    nir_def_rewrite_uses(&load->def, val);
 
@@ -365,16 +327,16 @@ try_lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Should have been lowered by nir_lower_cs_intrinsics()");
 
    case nir_intrinsic_load_num_workgroups:
-      return lower_num_workgroups(b, intrin, ctx);
+      return lower_sysval_to_root_table(b, intrin, cs.group_count, ctx);
 
    case nir_intrinsic_load_base_workgroup_id:
-      return lower_load_base_workgroup_id(b, intrin, ctx);
+      return lower_sysval_to_root_table(b, intrin, cs.base_group, ctx);
 
    case nir_intrinsic_load_push_constant:
       return lower_load_push_constant(b, intrin, ctx);
 
    case nir_intrinsic_load_view_index:
-      return lower_load_view_index(b, intrin, ctx);
+      return lower_sysval_to_root_table(b, intrin, draw.view_index, ctx);
 
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_store:
