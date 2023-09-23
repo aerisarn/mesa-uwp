@@ -3276,7 +3276,7 @@ pub struct OpASt {
 
 impl fmt::Display for OpASt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ALD a")?;
+        write!(f, "AST a")?;
         if !self.vtx.is_zero() {
             write!(f, "[{}]", self.vtx)?;
         }
