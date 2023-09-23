@@ -1146,9 +1146,16 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
 
          .geometry_guardband = GEOMETRY_GUARDBAND_SCALE_256,
          .line_point_cull_guardband = LINE_POINT_CULL_GUARDBAND_SCALE_256,
-         .geometry_clip = z_clip ? GEOMETRY_CLIP_FRUSTUM_XYZ_CLIP :
-                                   GEOMETRY_CLIP_FRUSTUM_XY_CLIP,
-         .geometry_guardband_z = GEOMETRY_GUARDBAND_Z_SCALE_256,
+         .geometry_clip = z_clip ? GEOMETRY_CLIP_FRUSTUM_XYZ_CLIP
+                                 : GEOMETRY_CLIP_FRUSTUM_XY_CLIP,
+
+         /* TODO: I don't know why we need this.  It seems to be required for
+          * proper Z clipping but I don't know why.  Does the screen-space
+          * clip just not do Z?  Can it only do [0, 1] Z?  More investigation
+          * needed.
+          */
+         .geometry_guardband_z = z_clip ? GEOMETRY_GUARDBAND_Z_SCALE_1
+                                        : GEOMETRY_GUARDBAND_Z_SCALE_256,
       });
    }
 
