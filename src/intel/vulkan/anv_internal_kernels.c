@@ -33,8 +33,7 @@
 
 #include "anv_internal_kernels.h"
 
-#include "shaders/gfx9_generated_draws_spv.h"
-#include "shaders/gfx11_generated_draws_spv.h"
+#include "shaders/generated_draws_spv.h"
 #include "shaders/query_copy_compute_spv.h"
 #include "shaders/query_copy_fragment_spv.h"
 #include "shaders/memcpy_compute_spv.h"
@@ -348,15 +347,12 @@ anv_device_init_internal_kernels(struct anv_device *device)
             .name    = "anv-generated-indirect-draws",
          },
          .stage      = MESA_SHADER_FRAGMENT,
-         .spirv_data = device->info->ver >= 11 ?
-                       gfx11_generated_draws_spv_source :
-                       gfx9_generated_draws_spv_source,
-         .spirv_size = device->info->ver >= 11 ?
-                       ARRAY_SIZE(gfx11_generated_draws_spv_source) :
-                       ARRAY_SIZE(gfx9_generated_draws_spv_source),
-         .send_count = device->info->ver >= 11 ?
-                       14 /* 2 * (2 loads + 3 stores) + 1 load + 3 store */ :
-                       20 /* 2 * (2 loads + 6 stores) + 1 load + 3 store */,
+         .spirv_data = generated_draws_spv_source,
+         .spirv_size = ARRAY_SIZE(generated_draws_spv_source),
+         .send_count = /* 2 * (2 loads + 3 stores) +  ** gfx11 **
+                        * 2 * (2 loads + 6 stores) +  ** gfx9  **
+                        * 1 load + 3 store
+                        */ 29,
          .bind_map   = {
             .num_bindings = 5,
             .bindings     = {

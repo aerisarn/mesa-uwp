@@ -54,7 +54,7 @@ struct anv_generated_indirect_draw_params {
    uint64_t indirect_data_addr;
    /* Stride between each elements of the indirect data buffer */
    uint32_t indirect_data_stride;
-   uint32_t flags; /* 0-7: bits, 8-15: mocs, 16-23: cmd_dws */
+   uint32_t flags; /* 0-7: bits, 8-15: mocs, 16-23: cmd_dws, 24-31: gfx_ver */
    /* Base number of the draw ID, it is added to the index computed from the
     * gl_FragCoord
     */

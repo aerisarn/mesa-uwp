@@ -92,7 +92,8 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
                                    (!anv_address_is_null(count_addr) ?
                                     ANV_GENERATED_FLAG_COUNT : 0) |
                                    (ring_count != 0 ? ANV_GENERATED_FLAG_RING_MODE : 0) |
-                                   ((generated_cmd_stride / 4) << 16),
+                                   ((generated_cmd_stride / 4) << 16) |
+                                   device->info->ver << 24,
          .draw_base              = item_base,
          .max_draw_count         = max_count,
          .ring_count             = ring_count,
