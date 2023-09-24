@@ -520,19 +520,30 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
    for (uint32_t i = 0; i < pass->subpass_count; i++) {
       const VkSubpassDescription2 *desc = &pCreateInfo->pSubpasses[i];
       struct pvr_render_subpass *subpass = &pass->subpasses[i];
+      bool has_used_color_attachment = false;
 
       subpass->pipeline_bind_point = desc->pipelineBindPoint;
       subpass->sample_count = 1;
 
+      /* From the Vulkan spec. 1.3.265
+       * VUID-VkSubpassDescription2-multisampledRenderToSingleSampled-06872:
+       *
+       *   "If none of the VK_AMD_mixed_attachment_samples extension, the
+       *   VK_NV_framebuffer_mixed_samples extension, or the
+       *   multisampledRenderToSingleSampled feature are enabled, all
+       *   attachments in pDepthStencilAttachment or pColorAttachments that are
+       *   not VK_ATTACHMENT_UNUSED must have the same sample count"
+       *
+       */
+
       subpass->color_count = desc->colorAttachmentCount;
       if (subpass->color_count > 0) {
-         bool has_used_color_attachment = false;
-         uint32_t index;
-
          subpass->color_attachments = subpass_attachments;
          subpass_attachments += subpass->color_count;
 
          for (uint32_t j = 0; j < subpass->color_count; j++) {
+            uint32_t index;
+
             subpass->color_attachments[j] =
                desc->pColorAttachments[j].attachment;
 
@@ -543,13 +554,13 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
             subpass->sample_count = pass->attachments[index].sample_count;
             has_used_color_attachment = true;
          }
+      }
 
-         if (!has_used_color_attachment && desc->pDepthStencilAttachment &&
-             desc->pDepthStencilAttachment->attachment !=
-                VK_ATTACHMENT_UNUSED) {
-            index = desc->pDepthStencilAttachment->attachment;
-            subpass->sample_count = pass->attachments[index].sample_count;
-         }
+      if (!has_used_color_attachment && desc->pDepthStencilAttachment &&
+          desc->pDepthStencilAttachment->attachment != VK_ATTACHMENT_UNUSED) {
+         uint32_t index;
+         index = desc->pDepthStencilAttachment->attachment;
+         subpass->sample_count = pass->attachments[index].sample_count;
       }
 
       if (desc->pResolveAttachments) {
