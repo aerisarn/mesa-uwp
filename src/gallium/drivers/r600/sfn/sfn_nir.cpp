@@ -780,8 +780,7 @@ r600_shader_from_nir(struct r600_context *rctx,
    }
 
    auto sh = nir_shader_clone(sel->nir, sel->nir);
-   r600::sort_uniforms(sel->nir);
-
+   r600::sort_uniforms(sh);
 
    while (optimize_once(sh))
       ;
