@@ -78,7 +78,6 @@
 #include "string_to_uint_map.h"
 #include "linker.h"
 #include "linker_util.h"
-#include "link_varyings.h"
 #include "ir_optimization.h"
 #include "ir_rvalue_visitor.h"
 #include "ir_uniform.h"

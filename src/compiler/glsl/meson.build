@@ -195,8 +195,6 @@ files_libglsl = files(
   'link_uniform_block_active_visitor.cpp',
   'link_uniform_block_active_visitor.h',
   'link_uniform_blocks.cpp',
-  'link_varyings.cpp',
-  'link_varyings.h',
   'list.h',
   'lower_builtins.cpp',
   'lower_discard.cpp',
