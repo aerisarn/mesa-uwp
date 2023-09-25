@@ -22,7 +22,7 @@
 
 #define NVK_PUSH_MAX_SYNCS 16
 #define NVK_PUSH_MAX_BINDS 4096
-#define NVK_PUSH_MAX_PUSH 4096
+#define NVK_PUSH_MAX_PUSH NOUVEAU_GEM_MAX_PUSH
 
 struct push_builder {
    struct nvk_device *dev;
@@ -203,12 +203,8 @@ static void
 push_add_push(struct push_builder *pb, uint64_t addr, uint32_t range,
               bool no_prefetch)
 {
-   assert((addr % 4) == 0 && (range % 4) == 0);
-
-   if (range == 0)
-      return;
-
    /* This is the hardware limit on all current GPUs */
+   assert((addr % 4) == 0 && (range % 4) == 0);
    assert(range < (1u << 23));
 
    uint32_t flags = 0;
@@ -314,9 +310,6 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
    for (uint32_t i = 0; i < submit->wait_count; i++)
       push_add_sync_wait(&pb, &submit->waits[i]);
 
-   for (uint32_t i = 0; i < submit->signal_count; i++)
-      push_add_sync_signal(&pb, &submit->signals[i]);
-
    if (is_vmbind) {
       assert(submit->command_buffer_count == 0);
 
@@ -335,10 +328,25 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
          struct nvk_cmd_buffer *cmd =
             container_of(submit->command_buffers[i], struct nvk_cmd_buffer, vk);
 
-         util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
+         util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push) {
+            if (push->range == 0)
+               continue;
+
+            if (pb.req.push_count >= NVK_PUSH_MAX_PUSH) {
+               VkResult result = push_submit(&pb, queue, sync);
+               if (result != VK_SUCCESS)
+                  return result;
+
+               push_builder_init(dev, &pb, is_vmbind);
+            }
+
             push_add_push(&pb, push->addr, push->range, push->no_prefetch);
+         }
       }
    }
+
+   for (uint32_t i = 0; i < submit->signal_count; i++)
+      push_add_sync_signal(&pb, &submit->signals[i]);
 
    if (is_vmbind)
       return bind_submit(&pb, queue, sync);
