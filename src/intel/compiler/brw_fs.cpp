@@ -36,6 +36,7 @@
 #include "brw_cfg.h"
 #include "brw_dead_control_flow.h"
 #include "brw_private.h"
+#include "shader_enums.h"
 #include "dev/intel_debug.h"
 #include "dev/intel_wa.h"
 #include "compiler/glsl_types.h"
@@ -591,7 +592,7 @@ fs_visitor::vfail(const char *format, va_list va)
 
    msg = ralloc_vasprintf(mem_ctx, format, va);
    msg = ralloc_asprintf(mem_ctx, "SIMD%d %s compile failed: %s\n",
-         dispatch_width, stage_abbrev, msg);
+         dispatch_width, _mesa_shader_stage_to_abbrev(stage), msg);
 
    this->fail_msg = msg;
 
@@ -6259,7 +6260,7 @@ fs_visitor::debug_optimizer(const nir_shader *nir,
    char *filename;
    int ret = asprintf(&filename, "%s/%s%d-%s-%02d-%02d-%s",
                       debug_get_option("INTEL_SHADER_OPTIMIZER_PATH", "./"),
-                      stage_abbrev, dispatch_width, nir->info.name,
+                      _mesa_shader_stage_to_abbrev(stage), dispatch_width, nir->info.name,
                       iteration, pass_num, pass_name);
    if (ret == -1)
       return;
@@ -6922,7 +6923,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
                           "%s shader triggered register spilling.  "
                           "Try reducing the number of live scalar "
                           "values to improve performance.\n",
-                          stage_name);
+                          _mesa_shader_stage_to_string(stage));
    }
 
    /* This must come after all optimization and register allocation, since

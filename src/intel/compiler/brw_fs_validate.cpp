@@ -33,7 +33,8 @@
 #define fsv_assert(assertion)                                           \
    {                                                                    \
       if (!(assertion)) {                                               \
-         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n", stage_abbrev); \
+         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n",      \
+                 _mesa_shader_stage_to_abbrev(stage));                  \
          dump_instruction(inst, stderr);                                \
          fprintf(stderr, "%s:%d: '%s' failed\n", __FILE__, __LINE__, #assertion);  \
          abort();                                                       \
@@ -45,7 +46,8 @@
       unsigned f = (first);                                             \
       unsigned s = (second);                                            \
       if (f != s) {                                                     \
-         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n", stage_abbrev); \
+         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n",      \
+                 _mesa_shader_stage_to_abbrev(stage));                  \
          dump_instruction(inst, stderr);                                \
          fprintf(stderr, "%s:%d: A == B failed\n", __FILE__, __LINE__); \
          fprintf(stderr, "  A = %s = %u\n", #first, f);                 \
@@ -59,7 +61,8 @@
       unsigned f = (first);                                             \
       unsigned s = (second);                                            \
       if (f == s) {                                                     \
-         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n", stage_abbrev); \
+         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n",      \
+                 _mesa_shader_stage_to_abbrev(stage));                  \
          dump_instruction(inst, stderr);                                \
          fprintf(stderr, "%s:%d: A != B failed\n", __FILE__, __LINE__); \
          fprintf(stderr, "  A = %s = %u\n", #first, f);                 \
@@ -73,7 +76,8 @@
       unsigned f = (first);                                             \
       unsigned s = (second);                                            \
       if (f > s) {                                                      \
-         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n", stage_abbrev); \
+         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n",      \
+                 _mesa_shader_stage_to_abbrev(stage));                  \
          dump_instruction(inst, stderr);                                \
          fprintf(stderr, "%s:%d: A <= B failed\n", __FILE__, __LINE__); \
          fprintf(stderr, "  A = %s = %u\n", #first, f);                 \

@@ -1415,7 +1415,8 @@ vec4_visitor::fail(const char *format, ...)
    va_start(va, format);
    msg = ralloc_vasprintf(mem_ctx, format, va);
    va_end(va);
-   msg = ralloc_asprintf(mem_ctx, "%s compile failed: %s\n", stage_abbrev, msg);
+   msg = ralloc_asprintf(mem_ctx, "%s compile failed: %s\n",
+                         _mesa_shader_stage_to_abbrev(stage), msg);
 
    this->fail_msg = msg;
 

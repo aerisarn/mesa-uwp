@@ -697,8 +697,6 @@ backend_shader::backend_shader(const struct brw_compiler *compiler,
      stage(shader->info.stage),
      debug_enabled(debug_enabled)
 {
-   stage_name = _mesa_shader_stage_to_string(stage);
-   stage_abbrev = _mesa_shader_stage_to_abbrev(stage);
 }
 
 backend_shader::~backend_shader()
