@@ -491,7 +491,7 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       .maxClipDistances = 8,
       .maxCullDistances = 8,
       .maxCombinedClipAndCullDistances = 8,
-      /* discreteQueuePriorities */
+      .discreteQueuePriorities = 2,
       .pointSizeRange = { 1.0, 2047.94 },
       .lineWidthRange = { 1, 64 },
       .pointSizeGranularity = 0.0625,
