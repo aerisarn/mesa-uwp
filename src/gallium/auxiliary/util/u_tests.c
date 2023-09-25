@@ -134,8 +134,8 @@ util_set_max_viewport(struct cso_context *cso, struct pipe_resource *tex)
    cso_set_viewport(cso, &viewport);
 }
 
-static void
-util_set_interleaved_vertex_elements(struct cso_context *cso,
+static struct cso_velems_state
+util_get_interleaved_vertex_elements(struct cso_context *cso,
                                      unsigned num_elements)
 {
    struct cso_velems_state velem;
@@ -149,7 +149,7 @@ util_set_interleaved_vertex_elements(struct cso_context *cso,
       velem.velems[i].src_stride = num_elements * 4 * sizeof(float);
    }
 
-   cso_set_vertex_elements(cso, &velem);
+   return velem;
 }
 
 static void *
@@ -194,8 +194,9 @@ util_draw_fullscreen_quad(struct cso_context *cso)
       1,  1, 0, 1,   1, 1, 0, 0,
       1, -1, 0, 1,   1, 0, 0, 0
    };
-   util_set_interleaved_vertex_elements(cso, 2);
-   util_draw_user_vertex_buffer(cso, vertices, MESA_PRIM_QUADS, 4, 2);
+   struct cso_velems_state ve = util_get_interleaved_vertex_elements(cso, 2);
+
+   util_draw_user_vertices(cso, &ve, vertices, MESA_PRIM_QUADS, 4);
 }
 
 static void
@@ -208,8 +209,9 @@ util_draw_fullscreen_quad_fill(struct cso_context *cso,
       1,  1, 0, 1,   r, g, b, a,
       1, -1, 0, 1,   r, g, b, a,
    };
-   util_set_interleaved_vertex_elements(cso, 2);
-   util_draw_user_vertex_buffer(cso, vertices, MESA_PRIM_QUADS, 4, 2);
+   struct cso_velems_state ve = util_get_interleaved_vertex_elements(cso, 2);
+
+   util_draw_user_vertices(cso, &ve, vertices, MESA_PRIM_QUADS, 4);
 }
 
 /**
@@ -349,8 +351,9 @@ tgsi_vs_window_space_position(struct pipe_context *ctx)
         256, 256, 0, 0,   1,  0, 0, 1,
         256,   0, 0, 0,   1,  0, 0, 1,
       };
-      util_set_interleaved_vertex_elements(cso, 2);
-      util_draw_user_vertex_buffer(cso, vertices, MESA_PRIM_QUADS, 4, 2);
+      struct cso_velems_state ve = util_get_interleaved_vertex_elements(cso, 2);
+
+      util_draw_user_vertices(cso, &ve, vertices, MESA_PRIM_QUADS, 4);
    }
 
    /* Probe pixels. */
