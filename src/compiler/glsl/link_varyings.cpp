@@ -35,6 +35,7 @@
 #include "glsl_symbol_table.h"
 #include "ir.h"
 #include "linker.h"
+#include "linker_util.h"
 #include "link_varyings.h"
 
 
