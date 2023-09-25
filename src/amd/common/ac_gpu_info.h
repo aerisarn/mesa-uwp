@@ -113,6 +113,9 @@ struct radeon_info {
    bool has_vrs_ds_export_bug;
    bool has_taskmesh_indirect0_bug;
    bool has_set_pairs_packets;
+   bool sdma_supports_sparse;      /* Whether SDMA can safely access sparse resources. */
+   bool sdma_supports_compression; /* Whether SDMA supports DCC and HTILE. */
+
 
    /* conformant_trunc_coord is equal to TA_CNTL2.TRUNCATE_COORD_MODE, which exists since gfx11.
     *

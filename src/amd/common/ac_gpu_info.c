@@ -1263,6 +1263,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                                  info->register_shadowing_required &&
                                  info->has_dedicated_vram;
 
+   /* GFX6-8 SDMA can't ignore page faults on unmapped sparse resources. */
+   info->sdma_supports_sparse = info->gfx_level >= GFX9;
+
+   /* GFX10+ SDMA supports DCC and HTILE, but Navi 10 has issues with it according to PAL. */
+   info->sdma_supports_compression = info->gfx_level >= GFX10 && info->family != CHIP_NAVI10;
+
    /* Get the number of good compute units. */
    info->num_cu = 0;
    for (i = 0; i < info->max_se; i++) {
