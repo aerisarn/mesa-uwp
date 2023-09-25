@@ -118,10 +118,6 @@ struct nvk_cmd_push {
    bool no_prefetch;
 };
 
-struct nvk_cmd_bo_ref {
-   struct nouveau_ws_bo *bo;
-};
-
 struct nvk_cmd_buffer {
    struct vk_command_buffer vk;
 
@@ -155,13 +151,6 @@ struct nvk_cmd_buffer {
     * buffer to use as a pushbuf.
     */
    struct util_dynarray pushes;
-
-   /** Array of struct nvk_cmd_bo_ref
-    *
-    * This is for any internal allocations which we want to reference which
-    * aren't push buffers.
-    */
-   struct util_dynarray bo_refs;
 
    uint64_t tls_space_needed;
 };
@@ -206,14 +195,6 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
                                     struct nvk_buffer *buffer,
                                     uint64_t offset,
                                     uint64_t dw_count);
-
-static inline void
-nvk_cmd_buffer_ref_bo(struct nvk_cmd_buffer *cmd,
-                      struct nouveau_ws_bo *bo)
-{
-   struct nvk_cmd_bo_ref ref = { .bo = bo };
-   util_dynarray_append(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref);
-}
 
 void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                                    const VkCommandBufferBeginInfo *pBeginInfo);
