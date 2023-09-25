@@ -1010,11 +1010,12 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
 
    if (unlikely(ctx->offset + size > ctx->size)) {
       /* allocate a new node */
-      if (likely(size < MIN_LINEAR_BUFSIZE))
-         size = MIN_LINEAR_BUFSIZE;
+      unsigned node_size = size;
+      if (likely(node_size < MIN_LINEAR_BUFSIZE))
+         node_size = MIN_LINEAR_BUFSIZE;
       
       const unsigned canary_size = get_node_canary_size();
-      const unsigned full_size = canary_size + size;
+      const unsigned full_size = canary_size + node_size;
 
       /* linear context is also a ralloc context */
       char *ptr = ralloc_size(ctx, full_size);
@@ -1022,7 +1023,7 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
          return NULL;
 
       ctx->offset = 0;
-      ctx->size = size;
+      ctx->size = node_size;
       ctx->latest = ptr + canary_size;
 #ifndef NDEBUG
       linear_node_canary *canary = get_node_canary(ctx->latest);
