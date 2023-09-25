@@ -230,15 +230,16 @@ anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 {
    struct anv_cmd_buffer *cmd_buffer =
       container_of(vk_cmd_buffer, struct anv_cmd_buffer, vk);
+   struct anv_device *device = cmd_buffer->device;
 
-   pthread_mutex_lock(&cmd_buffer->device->mutex);
+   pthread_mutex_lock(&device->mutex);
    if (cmd_buffer->companion_rcs_cmd_buffer) {
       destroy_cmd_buffer(cmd_buffer->companion_rcs_cmd_buffer);
       cmd_buffer->companion_rcs_cmd_buffer = NULL;
    }
 
    destroy_cmd_buffer(cmd_buffer);
-   pthread_mutex_unlock(&cmd_buffer->device->mutex);
+   pthread_mutex_unlock(&device->mutex);
 }
 
 static void
