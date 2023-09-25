@@ -90,7 +90,8 @@ void genX(cmd_buffer_emit_hashing_mode)(struct anv_cmd_buffer *cmd_buffer,
 
 void genX(flush_pipeline_select_3d)(struct anv_cmd_buffer *cmd_buffer);
 void genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer);
-void genX(emit_pipeline_select)(struct anv_batch *batch, uint32_t pipeline);
+void genX(emit_pipeline_select)(struct anv_batch *batch, uint32_t pipeline,
+                                const struct anv_device *device);
 
 void genX(apply_task_urb_workaround)(struct anv_cmd_buffer *cmd_buffer);
 

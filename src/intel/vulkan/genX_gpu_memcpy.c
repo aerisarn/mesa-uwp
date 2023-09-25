@@ -256,7 +256,7 @@ genX(emit_so_memcpy_init)(struct anv_memcpy_state *state,
 
    const struct intel_l3_config *cfg = intel_get_default_l3_config(device->info);
    genX(emit_l3_config)(batch, device, cfg);
-   genX(emit_pipeline_select)(batch, _3D);
+   genX(emit_pipeline_select)(batch, _3D, device);
 
    emit_common_so_memcpy(batch, device, cfg);
 }

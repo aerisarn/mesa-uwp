@@ -1764,6 +1764,7 @@
     </field>
     <field name="Media Sampler DOP Clock Gate Enable" start="4" end="4" type="bool" />
     <field name="Force Media Awake" start="5" end="5" type="bool" />
+    <field name="Systolic Mode Enable" start="7" end="7" type="bool" />
     <field name="Mask Bits" start="8" end="15" type="uint" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="4" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
