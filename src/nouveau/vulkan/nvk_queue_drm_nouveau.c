@@ -311,26 +311,24 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
                           submit->image_opaque_bind_count > 0;
    push_builder_init(dev, &pb, is_vmbind);
 
-   for (uint32_t i = 0; i < submit->wait_count; i++) {
+   for (uint32_t i = 0; i < submit->wait_count; i++)
       push_add_sync_wait(&pb, &submit->waits[i]);
-   }
 
-   for (uint32_t i = 0; i < submit->signal_count; i++) {
+   for (uint32_t i = 0; i < submit->signal_count; i++)
       push_add_sync_signal(&pb, &submit->signals[i]);
-   }
-
-   for (uint32_t i = 0; i < submit->buffer_bind_count; i++) {
-      push_add_buffer_bind(&pb, &submit->buffer_binds[i]);
-   }
-
-   for (uint32_t i = 0; i < submit->image_opaque_bind_count; i++) {
-      push_add_image_opaque_bind(&pb, &submit->image_opaque_binds[i]);
-   }
 
    if (is_vmbind) {
       assert(submit->command_buffer_count == 0);
-   } else if (submit->command_buffer_count == 0) {
-   } else {
+
+      for (uint32_t i = 0; i < submit->buffer_bind_count; i++)
+         push_add_buffer_bind(&pb, &submit->buffer_binds[i]);
+
+      for (uint32_t i = 0; i < submit->image_opaque_bind_count; i++)
+         push_add_image_opaque_bind(&pb, &submit->image_opaque_binds[i]);
+   } else if (submit->command_buffer_count > 0) {
+      assert(submit->buffer_bind_count == 0);
+      assert(submit->image_opaque_bind_count == 0);
+
       push_add_queue_state(&pb, &queue->state);
 
       for (unsigned i = 0; i < submit->command_buffer_count; i++) {
@@ -342,12 +340,8 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
       }
    }
 
-   VkResult result;
-   if (is_vmbind) {
-      result = bind_submit(&pb, queue, sync);
-   } else {
-      result = push_submit(&pb, queue, sync);
-   }
-
-   return result;
+   if (is_vmbind)
+      return bind_submit(&pb, queue, sync);
+   else
+      return push_submit(&pb, queue, sync);
 }
