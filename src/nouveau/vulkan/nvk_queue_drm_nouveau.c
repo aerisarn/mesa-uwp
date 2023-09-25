@@ -315,8 +315,6 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
       push_add_sync_wait(&pb, &submit->waits[i]);
    }
 
-   pthread_mutex_lock(&dev->mutex);
-
    for (uint32_t i = 0; i < submit->signal_count; i++) {
       push_add_sync_signal(&pb, &submit->signals[i]);
    }
@@ -350,10 +348,6 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
    } else {
       result = push_submit(&pb, queue, sync);
    }
-
-
-   pthread_cond_broadcast(&dev->queue_submit);
-   pthread_mutex_unlock(&dev->mutex);
 
    return result;
 }

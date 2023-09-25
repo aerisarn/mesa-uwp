@@ -215,35 +215,13 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    nvk_slm_area_init(&dev->slm);
 
-   if (pthread_mutex_init(&dev->mutex, NULL) != 0) {
-      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_slm;
-   }
-
-   pthread_condattr_t condattr;
-   if (pthread_condattr_init(&condattr) != 0) {
-      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_mutex;
-   }
-   if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0) {
-      pthread_condattr_destroy(&condattr);
-      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_mutex;
-   }
-   if (pthread_cond_init(&dev->queue_submit, &condattr) != 0) {
-      pthread_condattr_destroy(&condattr);
-      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_mutex;
-   }
-   pthread_condattr_destroy(&condattr);
-
    void *zero_map;
    dev->zero_page = nouveau_ws_bo_new_mapped(dev->ws_dev, 0x1000, 0,
                                              NOUVEAU_WS_BO_LOCAL |
                                              NOUVEAU_WS_BO_NO_SHARE,
                                              NOUVEAU_WS_BO_WR, &zero_map);
    if (dev->zero_page == NULL)
-      goto fail_queue_submit;
+      goto fail_slm;
 
    memset(zero_map, 0, 0x1000);
    nouveau_ws_bo_unmap(dev->zero_page, zero_map);
@@ -278,10 +256,6 @@ fail_vab_memory:
       nouveau_ws_bo_destroy(dev->vab_memory);
 fail_zero_page:
    nouveau_ws_bo_destroy(dev->zero_page);
-fail_queue_submit:
-   pthread_cond_destroy(&dev->queue_submit);
-fail_mutex:
-   pthread_mutex_destroy(&dev->mutex);
 fail_slm:
    nvk_slm_area_finish(&dev->slm);
    nvk_heap_finish(dev, &dev->event_heap);
@@ -312,8 +286,6 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    nvk_device_finish_meta(dev);
 
-   pthread_cond_destroy(&dev->queue_submit);
-   pthread_mutex_destroy(&dev->mutex);
    nvk_queue_finish(dev, &dev->queue);
    if (dev->vab_memory)
       nouveau_ws_bo_destroy(dev->vab_memory);

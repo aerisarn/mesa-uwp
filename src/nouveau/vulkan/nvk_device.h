@@ -46,9 +46,6 @@ struct nvk_device {
 
    struct nvk_queue queue;
 
-   pthread_mutex_t mutex;
-   pthread_cond_t queue_submit;
-
    struct vk_meta_device meta;
 };
 
