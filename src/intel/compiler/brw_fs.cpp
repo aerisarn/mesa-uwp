@@ -4918,13 +4918,23 @@ get_fpu_lowered_simd_width(const struct brw_compiler *compiler,
     * restrictions.  The code below intentionally doesn't check whether the
     * destination type is integer because empirically the hardware doesn't
     * seem to care what the actual type is as long as it's dword-aligned.
+    *
+    * HSW PRMs also add a note to the second exception:
+    *  "When lower 8 channels are disabled, the sub register of source1
+    *   operand is not incremented. If the lower 8 channels are expected
+    *   to be disabled, say by predication, the instruction must be split
+    *   into pair of simd8 operations."
+    *
+    * We can't reliably know if the channels won't be disabled due to,
+    * for example, IMASK. So, play it safe and disallow packed-word exception
+    * for src1.
     */
    if (devinfo->ver < 8) {
       for (unsigned i = 0; i < inst->sources; i++) {
          /* IVB implements DF scalars as <0;2,1> regions. */
          const bool is_scalar_exception = is_uniform(inst->src[i]) &&
             (devinfo->platform == INTEL_PLATFORM_HSW || type_sz(inst->src[i].type) != 8);
-         const bool is_packed_word_exception =
+         const bool is_packed_word_exception = i != 1 &&
             type_sz(inst->dst.type) == 4 && inst->dst.stride == 1 &&
             type_sz(inst->src[i].type) == 2 && inst->src[i].stride == 1;
 
