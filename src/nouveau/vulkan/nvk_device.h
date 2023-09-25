@@ -36,9 +36,6 @@ struct nvk_device {
    struct nouveau_ws_device *ws_dev;
    struct nouveau_ws_context *ws_ctx;
 
-   /* Protected by nvk_device::mutex */
-   struct list_head memory_objects;
-
    struct nvk_descriptor_table images;
    struct nvk_descriptor_table samplers;
    struct nvk_heap shader_heap;

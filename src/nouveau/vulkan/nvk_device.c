@@ -174,8 +174,6 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_ws_dev;
    }
 
-   list_inithead(&dev->memory_objects);
-
    result = nvk_descriptor_table_init(dev, &dev->images,
                                       8 * 4 /* tic entry size */,
                                       1024, 1024 * 1024);
@@ -326,7 +324,6 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    nvk_heap_finish(dev, &dev->shader_heap);
    nvk_descriptor_table_finish(dev, &dev->samplers);
    nvk_descriptor_table_finish(dev, &dev->images);
-   assert(list_is_empty(&dev->memory_objects));
    nouveau_ws_context_destroy(dev->ws_ctx);
    nouveau_ws_device_destroy(dev->ws_dev);
    vk_free(&dev->vk.alloc, dev);

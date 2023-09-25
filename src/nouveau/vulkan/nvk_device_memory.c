@@ -254,10 +254,6 @@ nvk_allocate_memory(struct nvk_device *dev,
       close(fd_info->fd);
    }
 
-   pthread_mutex_lock(&dev->mutex);
-   list_addtail(&mem->link, &dev->memory_objects);
-   pthread_mutex_unlock(&dev->mutex);
-
    *mem_out = mem;
 
    return VK_SUCCESS;
@@ -276,10 +272,6 @@ nvk_free_memory(struct nvk_device *dev,
 {
    if (mem->map)
       nouveau_ws_bo_unmap(mem->bo, mem->map);
-
-   pthread_mutex_lock(&dev->mutex);
-   list_del(&mem->link);
-   pthread_mutex_unlock(&dev->mutex);
 
    nouveau_ws_bo_destroy(mem->bo);
 

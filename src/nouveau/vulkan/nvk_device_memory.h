@@ -17,9 +17,6 @@ struct nvk_image_plane;
 struct nvk_device_memory {
    struct vk_device_memory vk;
 
-   struct list_head link;
-
-
    struct nouveau_ws_bo *bo;
 
    void *map;
