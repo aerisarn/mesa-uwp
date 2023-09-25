@@ -165,6 +165,20 @@ struct alu_delay_info {
    {
       return valu_instrs == valu_nop && trans_instrs == trans_nop && salu_cycles == 0;
    }
+
+   UNUSED void print(FILE* output) const
+   {
+      if (valu_instrs != valu_nop)
+         fprintf(output, "valu_instrs: %u\n", valu_instrs);
+      if (valu_cycles)
+         fprintf(output, "valu_cycles: %u\n", valu_cycles);
+      if (trans_instrs != trans_nop)
+         fprintf(output, "trans_instrs: %u\n", trans_instrs);
+      if (trans_cycles)
+         fprintf(output, "trans_cycles: %u\n", trans_cycles);
+      if (salu_cycles)
+         fprintf(output, "salu_cycles: %u\n", salu_cycles);
+   }
 };
 
 uint8_t
@@ -254,6 +268,23 @@ struct wait_entry {
          events &= ~(event_valu | event_trans | event_salu);
       }
    }
+
+   UNUSED void print(FILE* output) const
+   {
+      fprintf(output, "logical: %u\n", logical);
+      imm.print(output);
+      delay.print(output);
+      if (events)
+         fprintf(output, "events: %u\n", events);
+      if (counters)
+         fprintf(output, "counters: %u\n", counters);
+      if (!wait_on_read)
+         fprintf(output, "wait_on_read: %u\n", wait_on_read);
+      if (!logical)
+         fprintf(output, "logical: %u\n", logical);
+      if (vmem_types)
+         fprintf(output, "vmem_types: %u\n", vmem_types);
+   }
 };
 
 struct wait_ctx {
@@ -327,6 +358,31 @@ struct wait_ctx {
    void wait_and_remove_from_entry(PhysReg reg, wait_entry& entry, counter_type counter)
    {
       entry.remove_counter(counter);
+   }
+
+   UNUSED void print(FILE* output) const
+   {
+      fprintf(output, "exp_nonzero: %u\n", exp_nonzero);
+      fprintf(output, "vm_nonzero: %u\n", vm_nonzero);
+      fprintf(output, "lgkm_nonzero: %u\n", lgkm_nonzero);
+      fprintf(output, "vs_nonzero: %u\n", vs_nonzero);
+      fprintf(output, "pending_flat_lgkm: %u\n", pending_flat_lgkm);
+      fprintf(output, "pending_flat_vm: %u\n", pending_flat_vm);
+      for (const auto& entry : gpr_map) {
+         fprintf(output, "gpr_map[%c%u] = {\n", entry.first.reg() >= 256 ? 'v' : 's',
+                 entry.first.reg() & 0xff);
+         entry.second.print(output);
+         fprintf(output, "}\n");
+      }
+
+      for (unsigned i = 0; i < storage_count; i++) {
+         if (!barrier_imm[i].empty() || barrier_events[i]) {
+            fprintf(output, "barriers[%u] = {\n", i);
+            barrier_imm[i].print(output);
+            fprintf(output, "events: %u\n", barrier_events[i]);
+            fprintf(output, "}\n");
+         }
+      }
    }
 };
 

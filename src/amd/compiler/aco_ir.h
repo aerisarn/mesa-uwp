@@ -283,6 +283,8 @@ struct wait_imm {
    bool combine(const wait_imm& other);
 
    bool empty() const;
+
+   void print(FILE* output) const;
 };
 
 /* s_wait_event immediate bits. */

@@ -1287,6 +1287,19 @@ wait_imm::empty() const
           vs == unset_counter;
 }
 
+void
+wait_imm::print(FILE* output) const
+{
+   if (exp != unset_counter)
+      fprintf(output, "exp: %u\n", exp);
+   if (vm != unset_counter)
+      fprintf(output, "vm: %u\n", vm);
+   if (lgkm != unset_counter)
+      fprintf(output, "lgkm: %u\n", lgkm);
+   if (vs != unset_counter)
+      fprintf(output, "vs: %u\n", vs);
+}
+
 bool
 should_form_clause(const Instruction* a, const Instruction* b)
 {
