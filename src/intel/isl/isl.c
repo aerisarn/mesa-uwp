@@ -2471,42 +2471,26 @@ isl_calc_size(const struct isl_device *dev,
    if (info->usage & ISL_SURF_USAGE_SPARSE_BIT)
       size_B = isl_align(size_B, 64 * 1024);
 
-   if (ISL_GFX_VER(dev) < 9) {
-      /* From the Broadwell PRM Vol 5, Surface Layout:
-       *
-       *    "In addition to restrictions on maximum height, width, and depth,
-       *     surfaces are also restricted to a maximum size in bytes. This
-       *     maximum is 2 GB for all products and all surface types."
-       *
-       * This comment is applicable to all Pre-gfx9 platforms.
-       */
-      if (size_B > (uint64_t) 1 << 31) {
-         return notify_failure(
-            info,
-            "calculated size (%"PRIu64"B) exceeds platform limit of (1 << 31)",
-            size_B);
-      }
-   } else if (ISL_GFX_VER(dev) < 11) {
-      /* From the Skylake PRM Vol 5, Maximum Surface Size in Bytes:
-       *    "In addition to restrictions on maximum height, width, and depth,
-       *     surfaces are also restricted to a maximum size of 2^38 bytes.
-       *     All pixels within the surface must be contained within 2^38 bytes
-       *     of the base address."
-       */
-      if (size_B > (uint64_t) 1 << 38) {
-         return notify_failure(
-            info,
-            "calculated size (%"PRIu64"B) exceeds platform limit of (1 << 38)",
-            size_B);
-      }
-   } else {
-      /* gfx11+ platforms raised this limit to 2^44 bytes. */
-      if (size_B > (uint64_t) 1 << 44) {
-         return notify_failure(
-            info,
-            "calculated size (%"PRIu64"B) exceeds platform limit of (1 << 44)",
-            size_B);
-      }
+   /* Pre-gfx9: from the Broadwell PRM Vol 5, Surface Layout:
+    *    "In addition to restrictions on maximum height, width, and depth,
+    *     surfaces are also restricted to a maximum size in bytes. This
+    *     maximum is 2 GB for all products and all surface types."
+    *
+    * gfx9-10: from the Skylake PRM Vol 5, Maximum Surface Size in Bytes:
+    *    "In addition to restrictions on maximum height, width, and depth,
+    *     surfaces are also restricted to a maximum size of 2^38 bytes.
+    *     All pixels within the surface must be contained within 2^38 bytes
+    *     of the base address."
+    *
+    * gfx11+ platforms raised this limit to 2^44 bytes.
+    */
+   uint64_t max_surface_B = 1ull << (ISL_GFX_VER(dev) >= 11 ? 44 :
+                                     ISL_GFX_VER(dev) >= 9 ? 38 : 31);
+   if (size_B > max_surface_B) {
+      return notify_failure(
+         info,
+         "calculated size (%"PRIu64"B) exceeds platform limit of %"PRIu64"B",
+         size_B, max_surface_B);
    }
 
    *out_size_B = size_B;
