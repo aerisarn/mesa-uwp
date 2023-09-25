@@ -231,13 +231,6 @@ push_add_push(struct push_builder *pb, uint64_t addr, uint32_t range,
    };
 }
 
-static void
-push_add_push_bo(struct push_builder *pb, struct nouveau_ws_bo *bo,
-                 uint32_t offset, uint32_t range, bool no_prefetch)
-{
-   push_add_push(pb, bo->offset + offset, range, no_prefetch);
-}
-
 static VkResult
 bind_submit(struct push_builder *pb, struct nvk_queue *queue, bool sync)
 {
@@ -302,7 +295,7 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
    struct push_builder pb;
    push_builder_init(dev, &pb, false);
 
-   push_add_push_bo(&pb, push_bo, 0, push_dw_count * 4, false);
+   push_add_push(&pb, push_bo->offset, push_dw_count * 4, false);
    for (uint32_t i = 0; i < extra_bo_count; i++)
       push_add_bo(&pb, extra_bos[i], NOUVEAU_WS_BO_RDWR);
 
@@ -319,7 +312,7 @@ push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
    if (qs->slm.bo)
       push_add_bo(pb, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
    if (qs->push.bo)
-      push_add_push_bo(pb, qs->push.bo, 0, qs->push.dw_count * 4, false);
+      push_add_push(pb, qs->push.bo->offset, qs->push.dw_count * 4, false);
 }
 
 static void
