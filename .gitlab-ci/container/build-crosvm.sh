@@ -12,7 +12,7 @@ pushd /platform/crosvm
 git checkout "$CROSVM_VERSION"
 git submodule update --init
 
-VIRGLRENDERER_VERSION=45bb2449b81336b88c267b1c1735f3b4946c7b3a
+VIRGLRENDERER_VERSION=e69b3a3225c810e3707191c3c5a9dc20e7e83dc3
 rm -rf third_party/virglrenderer
 git clone --single-branch -b main --no-checkout https://gitlab.freedesktop.org/virgl/virglrenderer.git third_party/virglrenderer
 pushd third_party/virglrenderer
