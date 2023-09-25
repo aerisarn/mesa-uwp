@@ -3114,15 +3114,11 @@ anv_CreateImageView(VkDevice _device,
     * planes in the image view.
     */
    anv_foreach_image_aspect_bit(iaspect_bit, image, iview->vk.aspects) {
-      const uint32_t iplane =
-         anv_aspect_to_plane(image->vk.aspects, 1UL << iaspect_bit);
       const uint32_t vplane =
          anv_aspect_to_plane(iview->vk.aspects, 1UL << iaspect_bit);
       struct anv_format_plane format;
       format = anv_get_format_plane(device->info, iview->vk.view_format,
                                     vplane, image->vk.tiling);
-
-      iview->planes[vplane].image_plane = iplane;
 
       iview->planes[vplane].isl = (struct isl_view) {
          .format = format.isl_format,
