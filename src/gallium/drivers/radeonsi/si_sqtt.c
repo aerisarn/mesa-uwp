@@ -677,12 +677,14 @@ void si_destroy_sqtt(struct si_context *sctx) {
   list_for_each_entry_safe(struct rgp_pso_correlation_record, record,
                            &pso_correlation->record, list) {
     list_del(&record->list);
+    pso_correlation->record_count--;
     free(record);
   }
 
   list_for_each_entry_safe(struct rgp_loader_events_record, record,
                            &loader_events->record, list) {
     list_del(&record->list);
+    loader_events->record_count--;
     free(record);
   }
 
@@ -698,6 +700,7 @@ void si_destroy_sqtt(struct si_context *sctx) {
     }
     list_del(&record->list);
     free(record);
+    code_object->record_count--;
   }
 
   ac_sqtt_finish(sctx->sqtt);
