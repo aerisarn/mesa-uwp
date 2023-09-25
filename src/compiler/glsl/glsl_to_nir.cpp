@@ -561,6 +561,7 @@ nir_visitor::visit(ir_variable *ir)
    var->data.matrix_layout = ir->data.matrix_layout;
    var->data.from_named_ifc_block = ir->data.from_named_ifc_block;
    var->data.compact = false;
+   var->data.used = ir->data.used;
 
    switch(ir->data.mode) {
    case ir_var_auto:
