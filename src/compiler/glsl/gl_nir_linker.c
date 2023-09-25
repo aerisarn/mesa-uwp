@@ -1340,6 +1340,23 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       last = i;
    }
 
+   /* Validate the inputs of each stage with the output of the preceding
+    * stage.
+    */
+   unsigned prev = first;
+   for (unsigned i = prev + 1; i <= MESA_SHADER_FRAGMENT; i++) {
+      if (prog->_LinkedShaders[i] == NULL)
+         continue;
+
+      gl_nir_cross_validate_outputs_to_inputs(consts, prog,
+                                              prog->_LinkedShaders[prev],
+                                              prog->_LinkedShaders[i]);
+      if (!prog->data->LinkStatus)
+         return false;
+
+      prev = i;
+   }
+
    /* The cross validation of outputs/inputs above validates interstage
     * explicit locations. We need to do this also for the inputs in the first
     * stage and outputs of the last stage included in the program, since there

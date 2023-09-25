@@ -3109,12 +3109,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       if (!prog->data->LinkStatus)
          goto done;
 
-      cross_validate_outputs_to_inputs(consts, prog,
-                                       prog->_LinkedShaders[prev],
-                                       prog->_LinkedShaders[i]);
-      if (!prog->data->LinkStatus)
-         goto done;
-
       prev = i;
    }
 
