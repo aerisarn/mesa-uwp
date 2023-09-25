@@ -61,14 +61,6 @@ push_builder_init(struct nvk_device *dev, struct push_builder *pb,
    pb->is_vmbind = is_vmbind;
 }
 
-static uint32_t
-push_add_bo(struct push_builder *pb,
-            struct nouveau_ws_bo *bo,
-            enum nouveau_ws_bo_map_flags flags)
-{
-   return 0;
-}
-
 static void
 push_add_sync_wait(struct push_builder *pb,
                    struct vk_sync_wait *wait)
@@ -296,8 +288,6 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
    push_builder_init(dev, &pb, false);
 
    push_add_push(&pb, push_bo->offset, push_dw_count * 4, false);
-   for (uint32_t i = 0; i < extra_bo_count; i++)
-      push_add_bo(&pb, extra_bos[i], NOUVEAU_WS_BO_RDWR);
 
    return push_submit(&pb, queue, true);
 }
@@ -305,23 +295,8 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
 static void
 push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
 {
-   if (qs->images.bo)
-      push_add_bo(pb, qs->images.bo, NOUVEAU_WS_BO_RD);
-   if (qs->samplers.bo)
-      push_add_bo(pb, qs->samplers.bo, NOUVEAU_WS_BO_RD);
-   if (qs->slm.bo)
-      push_add_bo(pb, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
    if (qs->push.bo)
       push_add_push(pb, qs->push.bo->offset, qs->push.dw_count * 4, false);
-}
-
-static void
-push_add_heap(struct push_builder *pb, struct nvk_heap *heap)
-{
-   simple_mtx_lock(&heap->mutex);
-   for (uint32_t i = 0; i < heap->bo_count; i++)
-      push_add_bo(pb, heap->bos[i].bo, NOUVEAU_WS_BO_RDWR);
-   simple_mtx_unlock(&heap->mutex);
 }
 
 VkResult
@@ -360,21 +335,12 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
    } else {
       push_add_queue_state(&pb, &queue->state);
 
-      push_add_heap(&pb, &dev->shader_heap);
-
-
       for (unsigned i = 0; i < submit->command_buffer_count; i++) {
          struct nvk_cmd_buffer *cmd =
             container_of(submit->command_buffers[i], struct nvk_cmd_buffer, vk);
 
-         list_for_each_entry_safe(struct nvk_cmd_bo, bo, &cmd->bos, link)
-            push_add_bo(&pb, bo->bo, NOUVEAU_WS_BO_RD);
-
          util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
             push_add_push(&pb, push->addr, push->range, push->no_prefetch);
-
-         util_dynarray_foreach(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref)
-            push_add_bo(&pb, ref->bo, NOUVEAU_WS_BO_RDWR);
       }
    }
 
