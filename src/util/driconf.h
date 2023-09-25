@@ -328,6 +328,14 @@
    DRI_CONF_OPT_B(intel_enable_wa_14018912822, def, \
                   "Intel workaround for using zero blend constants")
 
+#define DRI_CONF_VK_REQUIRE_ETC2(def) \
+  DRI_CONF_OPT_B(vk_require_etc2, def, \
+                 "Implement emulated ETC2 on HW that does not support it")
+
+#define DRI_CONF_VK_REQUIRE_ASTC(def) \
+   DRI_CONF_OPT_B(vk_require_astc, def, \
+                  "Implement emulated ASTC on HW that does not support it")
+
 /**
  * \brief Image quality-related options
  */
@@ -636,14 +644,6 @@
 #define DRI_CONF_RADV_DISABLE_DCC(def) \
    DRI_CONF_OPT_B(radv_disable_dcc, def, \
                   "Disable DCC for color images")
-
-#define DRI_CONF_RADV_REQUIRE_ETC2(def)                                        \
-  DRI_CONF_OPT_B(radv_require_etc2, def,                                       \
-                 "Implement emulated ETC2 on HW that does not support it")
-
-#define DRI_CONF_RADV_REQUIRE_ASTC(def)                                      \
-   DRI_CONF_OPT_B(radv_require_astc, def,                                    \
-                  "Implement emulated ASTC on HW that does not support it")
 
 #define DRI_CONF_RADV_DISABLE_ANISO_SINGLE_LEVEL(def) \
   DRI_CONF_OPT_B(radv_disable_aniso_single_level, def, \
