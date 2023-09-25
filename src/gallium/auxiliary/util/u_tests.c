@@ -800,7 +800,7 @@ test_texture_barrier(struct pipe_context *ctx, bool use_fbfetch,
 }
 
 static void
-test_compute_clear_image(struct pipe_context *ctx)
+test_compute_clear_image_shader(struct pipe_context *ctx)
 {
    struct pipe_resource *cb;
    const char *text;
@@ -866,6 +866,70 @@ test_compute_clear_image(struct pipe_context *ctx)
    /* Cleanup. */
    ctx->delete_compute_state(ctx, compute_shader);
    pipe_resource_reference(&cb, NULL);
+
+   util_report_result(pass);
+}
+
+static void
+test_compute_clear_texture(struct pipe_context *ctx)
+{
+   struct pipe_resource *tex;
+
+   tex = util_create_texture2d(ctx->screen, 256, 256,
+                              PIPE_FORMAT_R8G8B8A8_UNORM, 1);
+   srand(time(NULL));
+   uint8_t data[] = {rand() % 256, rand() % 256, rand() % 256, rand() % 256};
+   float expected[] = {
+      ubyte_to_float(data[0]),
+      ubyte_to_float(data[1]),
+      ubyte_to_float(data[2]),
+      ubyte_to_float(data[3]),
+   };
+
+   struct pipe_box box;
+   u_box_2d(0, 0, tex->width0, tex->height0, &box);
+   ctx->clear_texture(ctx, tex, 0, &box, &data);
+
+   /* Check pixels. */
+   bool pass = util_probe_rect_rgba(ctx, tex, 0, 0,
+                                    tex->width0, tex->height0, expected);
+
+   /* Cleanup. */
+   pipe_resource_reference(&tex, NULL);
+
+   util_report_result(pass);
+}
+
+static void
+test_compute_resource_copy_region(struct pipe_context *ctx)
+{
+   struct pipe_resource *src, *dst;
+
+   src = util_create_texture2d(ctx->screen, 256, 256,
+                              PIPE_FORMAT_R8G8B8A8_UNORM, 1);
+   dst = util_create_texture2d(ctx->screen, 256, 256,
+                              PIPE_FORMAT_R8G8B8A8_UNORM, 1);
+   srand(time(NULL));
+   uint8_t data[] = {rand() % 256, rand() % 256, rand() % 256, rand() % 256};
+   float expected[] = {
+      ubyte_to_float(data[0]),
+      ubyte_to_float(data[1]),
+      ubyte_to_float(data[2]),
+      ubyte_to_float(data[3]),
+   };
+
+   struct pipe_box box;
+   u_box_2d(0, 0, src->width0, src->height0, &box);
+   ctx->clear_texture(ctx, src, 0, &box, &data);
+   ctx->resource_copy_region(ctx, dst, 0, 0, 0, 0, src, 0, &box);
+
+   /* Check pixels. */
+   bool pass = util_probe_rect_rgba(ctx, dst, 0, 0,
+                                    dst->width0, dst->height0, expected);
+
+   /* Cleanup. */
+   pipe_resource_reference(&src, NULL);
+   pipe_resource_reference(&dst, NULL);
 
    util_report_result(pass);
 }
@@ -1049,7 +1113,9 @@ util_run_tests(struct pipe_screen *screen)
    ctx->destroy(ctx);
 
    ctx = screen->context_create(screen, NULL, PIPE_CONTEXT_COMPUTE_ONLY);
-   test_compute_clear_image(ctx);
+   test_compute_clear_image_shader(ctx);
+   test_compute_clear_texture(ctx);
+   test_compute_resource_copy_region(ctx);
    ctx->destroy(ctx);
 
    test_nv12(screen);
