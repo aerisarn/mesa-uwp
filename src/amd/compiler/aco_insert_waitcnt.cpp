@@ -265,10 +265,10 @@ struct wait_ctx {
    uint16_t max_vs_cnt;
    uint16_t unordered_events = event_smem | event_flat;
 
-   uint8_t vm_cnt = 0;
-   uint8_t exp_cnt = 0;
-   uint8_t lgkm_cnt = 0;
-   uint8_t vs_cnt = 0;
+   bool vm_nonzero = false;
+   bool exp_nonzero = false;
+   bool lgkm_nonzero = false;
+   bool vs_nonzero = false;
    bool pending_flat_lgkm = false;
    bool pending_flat_vm = false;
    bool pending_s_buffer_store = false; /* GFX10 workaround */
@@ -289,15 +289,15 @@ struct wait_ctx {
 
    bool join(const wait_ctx* other, bool logical)
    {
-      bool changed = other->exp_cnt > exp_cnt || other->vm_cnt > vm_cnt ||
-                     other->lgkm_cnt > lgkm_cnt || other->vs_cnt > vs_cnt ||
+      bool changed = other->exp_nonzero > exp_nonzero || other->vm_nonzero > vm_nonzero ||
+                     other->lgkm_nonzero > lgkm_nonzero || other->vs_nonzero > vs_nonzero ||
                      (other->pending_flat_lgkm && !pending_flat_lgkm) ||
                      (other->pending_flat_vm && !pending_flat_vm);
 
-      exp_cnt = std::max(exp_cnt, other->exp_cnt);
-      vm_cnt = std::max(vm_cnt, other->vm_cnt);
-      lgkm_cnt = std::max(lgkm_cnt, other->lgkm_cnt);
-      vs_cnt = std::max(vs_cnt, other->vs_cnt);
+      exp_nonzero |= other->exp_nonzero;
+      vm_nonzero |= other->vm_nonzero;
+      lgkm_nonzero |= other->lgkm_nonzero;
+      vs_nonzero |= other->vs_nonzero;
       pending_flat_lgkm |= other->pending_flat_lgkm;
       pending_flat_vm |= other->pending_flat_vm;
       pending_s_buffer_store |= other->pending_s_buffer_store;
@@ -456,15 +456,15 @@ perform_barrier(wait_ctx& ctx, wait_imm& imm, memory_sync_info sync, unsigned se
 void
 force_waitcnt(wait_ctx& ctx, wait_imm& imm)
 {
-   if (ctx.vm_cnt)
+   if (ctx.vm_nonzero)
       imm.vm = 0;
-   if (ctx.exp_cnt)
+   if (ctx.exp_nonzero)
       imm.exp = 0;
-   if (ctx.lgkm_cnt)
+   if (ctx.lgkm_nonzero)
       imm.lgkm = 0;
 
    if (ctx.gfx_level >= GFX10) {
-      if (ctx.vs_cnt)
+      if (ctx.vs_nonzero)
          imm.vs = 0;
    }
 }
@@ -516,15 +516,15 @@ kill(wait_imm& imm, alu_delay_info& delay, Instruction* instr, wait_ctx& ctx,
        (ctx.gfx_level >= GFX11 ? instr->isEXP() && instr->exp().done
                                : (instr->opcode == aco_opcode::s_sendmsg &&
                                   instr->sopp().imm == sendmsg_ordered_ps_done))) {
-      if (ctx.vm_cnt)
+      if (ctx.vm_nonzero)
          imm.vm = 0;
-      if (ctx.gfx_level >= GFX10 && ctx.vs_cnt)
+      if (ctx.gfx_level >= GFX10 && ctx.vs_nonzero)
          imm.vs = 0;
       /* Await SMEM loads too, as it's possible for an application to create them, like using a
        * scalarization loop - pointless and unoptimal for an inherently divergent address of
        * per-pixel data, but still can be done at least synthetically and must be handled correctly.
        */
-      if (ctx.program->has_smem_buffer_or_global_loads && ctx.lgkm_cnt)
+      if (ctx.program->has_smem_buffer_or_global_loads && ctx.lgkm_nonzero)
          imm.lgkm = 0;
    }
 
@@ -533,7 +533,7 @@ kill(wait_imm& imm, alu_delay_info& delay, Instruction* instr, wait_ctx& ctx,
    /* It's required to wait for scalar stores before "writing back" data.
     * It shouldn't cost anything anyways since we're about to do s_endpgm.
     */
-   if (ctx.lgkm_cnt && instr->opcode == aco_opcode::s_dcache_wb) {
+   if (ctx.lgkm_nonzero && instr->opcode == aco_opcode::s_dcache_wb) {
       assert(ctx.gfx_level >= GFX8);
       imm.lgkm = 0;
    }
@@ -568,10 +568,10 @@ kill(wait_imm& imm, alu_delay_info& delay, Instruction* instr, wait_ctx& ctx,
          imm.lgkm = 0;
 
       /* reset counters */
-      ctx.exp_cnt = std::min(ctx.exp_cnt, imm.exp);
-      ctx.vm_cnt = std::min(ctx.vm_cnt, imm.vm);
-      ctx.lgkm_cnt = std::min(ctx.lgkm_cnt, imm.lgkm);
-      ctx.vs_cnt = std::min(ctx.vs_cnt, imm.vs);
+      ctx.exp_nonzero &= imm.exp != 0;
+      ctx.vm_nonzero &= imm.vm != 0;
+      ctx.lgkm_nonzero &= imm.lgkm != 0;
+      ctx.vs_nonzero &= imm.vs != 0;
 
       /* update barrier wait imms */
       for (unsigned i = 0; i < storage_count; i++) {
@@ -676,14 +676,14 @@ update_counters(wait_ctx& ctx, wait_event event, memory_sync_info sync = memory_
 {
    uint8_t counters = get_counters_for_event(event);
 
-   if (counters & counter_lgkm && ctx.lgkm_cnt <= ctx.max_lgkm_cnt)
-      ctx.lgkm_cnt++;
-   if (counters & counter_vm && ctx.vm_cnt <= ctx.max_vm_cnt)
-      ctx.vm_cnt++;
-   if (counters & counter_exp && ctx.exp_cnt <= ctx.max_exp_cnt)
-      ctx.exp_cnt++;
-   if (counters & counter_vs && ctx.vs_cnt <= ctx.max_vs_cnt)
-      ctx.vs_cnt++;
+   if (counters & counter_lgkm)
+      ctx.lgkm_nonzero = true;
+   if (counters & counter_vm)
+      ctx.vm_nonzero = true;
+   if (counters & counter_exp)
+      ctx.exp_nonzero = true;
+   if (counters & counter_vs)
+      ctx.vs_nonzero = true;
 
    update_barrier_imm(ctx, counters, event, sync);
 
@@ -723,10 +723,8 @@ update_counters_for_flat_load(wait_ctx& ctx, memory_sync_info sync = memory_sync
 {
    assert(ctx.gfx_level < GFX10);
 
-   if (ctx.lgkm_cnt <= ctx.max_lgkm_cnt)
-      ctx.lgkm_cnt++;
-   if (ctx.vm_cnt <= ctx.max_vm_cnt)
-      ctx.vm_cnt++;
+   ctx.lgkm_nonzero = true;
+   ctx.vm_nonzero = true;
 
    update_barrier_imm(ctx, counter_vm | counter_lgkm, event_flat, sync);
 
