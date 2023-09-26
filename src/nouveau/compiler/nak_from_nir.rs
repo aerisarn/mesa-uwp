@@ -1347,14 +1347,17 @@ impl<'a> ShaderFromNir<'a> {
                 let comps = intrin.def.num_components();
                 let dst = b.alloc_ssa(RegFile::GPR, comps);
 
-                // TODO: should be in the vtg block but we cannot have two mutability around.
-                let (vtx, offset) = match intrin.intrinsic {
-                    nir_intrinsic_load_input => {
-                        (Src::new_zero(), self.get_src(&srcs[0]))
-                    }
-                    nir_intrinsic_load_per_vertex_input => {
-                        (self.get_src(&srcs[0]), self.get_src(&srcs[1]))
-                    }
+                let (vtx, offset, offset_as_u32) = match intrin.intrinsic {
+                    nir_intrinsic_load_input => (
+                        Src::new_zero(),
+                        self.get_src(&srcs[0]),
+                        srcs[0].as_uint(),
+                    ),
+                    nir_intrinsic_load_per_vertex_input => (
+                        self.get_src(&srcs[0]),
+                        self.get_src(&srcs[1]),
+                        srcs[1].as_uint(),
+                    ),
                     _ => panic!("Unhandled intrinsic"),
                 };
 
@@ -1365,8 +1368,7 @@ impl<'a> ShaderFromNir<'a> {
                     ShaderIoInfo::Fragment(io) => {
                         assert!(intrin.intrinsic == nir_intrinsic_load_input);
                         let addr = u16::try_from(intrin.base()).unwrap()
-                            + u16::try_from(srcs[0].as_uint().unwrap())
-                                .unwrap()
+                            + u16::try_from(offset_as_u32.unwrap()).unwrap()
                             + u16::try_from(intrin.component()).unwrap() * 4;
 
                         for c in 0..comps {
@@ -1384,11 +1386,24 @@ impl<'a> ShaderFromNir<'a> {
                         }
                     }
                     ShaderIoInfo::Vtg(io) => {
-                        let addr = u16::try_from(intrin.base()).unwrap()
-                            + u16::try_from(intrin.component()).unwrap() * 4;
+                        let base = u16::try_from(intrin.base()).unwrap();
+                        let range = u16::try_from(intrin.base()).unwrap();
+                        let comp = u16::try_from(intrin.component()).unwrap();
 
-                        let addr_range = addr..(addr + 4 * u16::from(comps));
-                        io.mark_attrs_read(addr_range);
+                        let (addr, offset) = match offset_as_u32 {
+                            Some(imm) => {
+                                let imm = u16::try_from(imm).unwrap();
+                                let addr = base + imm + 4 * comp;
+                                io.mark_attrs_read(
+                                    addr..(addr + 4 * u16::from(comps)),
+                                );
+                                (addr, Src::new_zero())
+                            }
+                            None => {
+                                io.mark_attrs_read(base..(base + range));
+                                (base + 4 * comp, offset)
+                            }
+                        };
 
                         let access = AttrAccess {
                             addr: addr,
@@ -1684,6 +1699,7 @@ impl<'a> ShaderFromNir<'a> {
                 let data = self.get_src(&srcs[0]);
                 let vtx = Src::new_zero();
                 let offset = self.get_src(&srcs[1]);
+                let offset_as_u32 = srcs[1].as_uint();
 
                 match &mut self.info.io {
                     ShaderIoInfo::None => {
@@ -1694,7 +1710,7 @@ impl<'a> ShaderFromNir<'a> {
                          * This is ensured by nir_lower_io_to_temporaries()
                          */
                         let data = *self.get_src(&srcs[0]).as_ssa().unwrap();
-                        assert!(srcs[1].is_zero());
+                        assert!(offset_as_u32 == Some(0));
                         let base: usize = intrin.base().try_into().unwrap();
                         assert!(base % 4 == 0);
                         for c in 0..usize::from(comps) {
@@ -1702,11 +1718,24 @@ impl<'a> ShaderFromNir<'a> {
                         }
                     }
                     ShaderIoInfo::Vtg(io) => {
-                        let addr = u16::try_from(intrin.base()).unwrap()
-                            + u16::try_from(intrin.component()).unwrap() * 4;
+                        let base = u16::try_from(intrin.base()).unwrap();
+                        let range = u16::try_from(intrin.base()).unwrap();
+                        let comp = u16::try_from(intrin.component()).unwrap();
 
-                        let addr_range = addr..(addr + 4 * u16::from(comps));
-                        io.mark_attrs_written(addr_range);
+                        let (addr, offset) = match offset_as_u32 {
+                            Some(imm) => {
+                                let imm = u16::try_from(imm).unwrap();
+                                let addr = base + imm + 4 * comp;
+                                io.mark_attrs_written(
+                                    addr..(addr + 4 * u16::from(comps)),
+                                );
+                                (addr, Src::new_zero())
+                            }
+                            None => {
+                                io.mark_attrs_written(base..(base + range));
+                                (base + 4 * comp, offset)
+                            }
+                        };
 
                         let access = AttrAccess {
                             addr: addr,
