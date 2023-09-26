@@ -35,6 +35,7 @@ extern struct u_gralloc *u_gralloc_cros_api_create(void);
 #ifdef USE_IMAPPER4_METADATA_API
 extern struct u_gralloc *u_gralloc_imapper_api_create(void);
 #endif
+extern struct u_gralloc *u_gralloc_qcom_create(void);
 extern struct u_gralloc *u_gralloc_fallback_create(void);
 
 /* Helpers for legacy grallocs */
