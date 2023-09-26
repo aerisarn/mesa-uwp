@@ -254,7 +254,7 @@ pvr_create_subpass_load_op(struct pvr_device *device,
          pass->attachments[attachment_idx].vk_format;
 
       if (pass->attachments[attachment_idx].sample_count > 1)
-         load_op->clears_loads_state.unresolved_msaa_mask = BITFIELD_BIT(i);
+         load_op->clears_loads_state.unresolved_msaa_mask |= BITFIELD_BIT(i);
 
       if (hw_subpass->color_initops[i] == VK_ATTACHMENT_LOAD_OP_LOAD)
          load_op->clears_loads_state.rt_load_mask |= BITFIELD_BIT(i);
@@ -296,7 +296,7 @@ pvr_create_render_load_op(struct pvr_device *device,
          pass->attachments[color_init->index].vk_format;
 
       if (pass->attachments[color_init->index].sample_count > 1)
-         load_op->clears_loads_state.unresolved_msaa_mask = BITFIELD_BIT(i);
+         load_op->clears_loads_state.unresolved_msaa_mask |= BITFIELD_BIT(i);
 
       if (color_init->op == VK_ATTACHMENT_LOAD_OP_LOAD)
          load_op->clears_loads_state.rt_load_mask |= BITFIELD_BIT(i);
