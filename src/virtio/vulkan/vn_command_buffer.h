@@ -14,6 +14,7 @@
 #include "vn_common.h"
 
 #include "vn_cs.h"
+#include "vn_feedback.h"
 
 struct vn_command_pool {
    struct vn_object_base base;
@@ -61,8 +62,6 @@ struct vn_command_buffer_builder {
    const struct vn_image **present_src_images;
    /* track if inside a render pass instance */
    bool in_render_pass;
-   /* track whether the active render pass instance is suspending */
-   bool suspending;
    /* track the active subpass for view mask used in the subpass */
    uint32_t subpass_index;
    /* track the active view mask inside a render pass instance */
@@ -96,4 +95,10 @@ VK_DEFINE_HANDLE_CASTS(vn_command_buffer,
                        VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 
+struct vn_feedback_query_batch *
+vn_cmd_query_batch_alloc(struct vn_command_pool *pool,
+                         struct vn_query_pool *query_pool,
+                         uint32_t query,
+                         uint32_t query_count,
+                         bool copy);
 #endif /* VN_COMMAND_BUFFER_H */

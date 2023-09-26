@@ -513,7 +513,7 @@ vn_feedback_cmd_record(VkCommandBuffer cmd_handle,
    return vn_EndCommandBuffer(cmd_handle);
 }
 
-void
+static void
 vn_feedback_query_cmd_record(VkCommandBuffer cmd_handle,
                              VkQueryPool pool_handle,
                              uint32_t query,

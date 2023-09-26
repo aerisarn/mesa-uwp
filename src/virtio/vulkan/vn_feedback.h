@@ -146,13 +146,6 @@ vn_feedback_event_cmd_record(VkCommandBuffer cmd_handle,
                              VkResult status,
                              bool sync2);
 
-void
-vn_feedback_query_cmd_record(VkCommandBuffer cmd_handle,
-                             VkQueryPool pool_handle,
-                             uint32_t query,
-                             uint32_t count,
-                             bool copy);
-
 VkResult
 vn_feedback_query_batch_record(VkDevice dev_handle,
                                struct vn_feedback_cmd_pool *feedback_pool,

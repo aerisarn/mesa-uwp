@@ -21,6 +21,7 @@
 #include "vn_device.h"
 #include "vn_device_memory.h"
 #include "vn_physical_device.h"
+#include "vn_query_pool.h"
 #include "vn_renderer.h"
 #include "vn_wsi.h"
 
@@ -509,6 +510,59 @@ vn_get_feedback_cmd_handle(struct vn_queue_submission *submit,
 }
 
 static VkResult
+vn_combine_query_feedback_batches(VkCommandBuffer *src_cmd_handles,
+                                  uint32_t cmd_buffer_count,
+                                  uint32_t stride,
+                                  struct vn_feedback_cmd_pool *feedback_pool,
+                                  struct list_head *combined_query_batches)
+{
+   struct vn_command_pool *cmd_pool =
+      vn_command_pool_from_handle(feedback_pool->pool);
+
+   uintptr_t cmd_handle_ptr = (uintptr_t)src_cmd_handles;
+   for (uint32_t i = 0; i < cmd_buffer_count; i++) {
+      struct vn_command_buffer *cmd_buffer =
+         vn_command_buffer_from_handle(*(VkCommandBuffer *)cmd_handle_ptr);
+
+      list_for_each_entry_safe(struct vn_feedback_query_batch, new_batch,
+                               &cmd_buffer->builder.query_batches, head) {
+
+         if (!new_batch->copy) {
+            list_for_each_entry_safe(struct vn_feedback_query_batch,
+                                     combined_batch, combined_query_batches,
+                                     head) {
+               /* If we previously added a query feedback that is now getting
+                * reset, remove it since it is now a no-op and the deferred
+                * feedback copy will cause a hang waiting for the reset query
+                * to become available.
+                */
+               if (combined_batch->copy &&
+                   (vn_query_pool_to_handle(combined_batch->query_pool) ==
+                    vn_query_pool_to_handle(new_batch->query_pool)) &&
+                   combined_batch->query >= new_batch->query &&
+                   combined_batch->query <=
+                      new_batch->query + new_batch->query_count) {
+                  list_move_to(&combined_batch->head,
+                               &cmd_pool->free_query_batches);
+               }
+            }
+         }
+         struct vn_feedback_query_batch *batch = vn_cmd_query_batch_alloc(
+            cmd_pool, new_batch->query_pool, new_batch->query,
+            new_batch->query_count, new_batch->copy);
+         if (!batch)
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+         list_addtail(&batch->head, combined_query_batches);
+      }
+
+      cmd_handle_ptr += stride;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 vn_queue_submission_add_query_feedback(struct vn_queue_submission *submit,
                                        uint32_t cmd_buffer_count,
                                        struct vn_feedback_cmds *feedback_cmds)
@@ -530,10 +584,21 @@ vn_queue_submission_add_query_feedback(struct vn_queue_submission *submit,
       if (dev->queue_families[pool_index] == queue_vk->queue_family_index)
          break;
    }
+   struct vn_feedback_cmd_pool *feedback_cmd_pool =
+      &dev->cmd_pools[pool_index];
 
-   result = vn_feedback_query_batch_record(
-      dev_handle, &dev->cmd_pools[pool_index], src_cmd_handles,
-      cmd_buffer_count, stride, feedback_cmd_handle);
+   struct list_head combined_query_batches;
+   list_inithead(&combined_query_batches);
+
+   result = vn_combine_query_feedback_batches(
+      src_cmd_handles, cmd_buffer_count, stride, feedback_cmd_pool,
+      &combined_query_batches);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = vn_feedback_query_batch_record(dev_handle, feedback_cmd_pool,
+                                           &combined_query_batches,
+                                           feedback_cmd_handle);
    if (result != VK_SUCCESS)
       return result;
 
