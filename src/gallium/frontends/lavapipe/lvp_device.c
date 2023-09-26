@@ -2252,7 +2252,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    simple_mtx_unlock(&device->queue.lock);
 
    lp_jit_sampler_from_pipe(&sampler->desc.sampler, &state);
-   sampler->desc.sampler_index = sampler->texture_handle->sampler_index;
+   sampler->desc.texture.sampler_index = sampler->texture_handle->sampler_index;
 
    *pSampler = lvp_sampler_to_handle(sampler);
 

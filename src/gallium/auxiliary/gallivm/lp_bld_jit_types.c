@@ -146,6 +146,7 @@ lp_build_create_jit_texture_type(struct gallivm_state *gallivm)
    LLVMTypeRef elem_types[LP_JIT_TEXTURE_NUM_FIELDS];
 
    /* struct lp_jit_texture */
+   elem_types[LP_JIT_SAMPLER_INDEX_DUMMY] =
    elem_types[LP_JIT_TEXTURE_WIDTH] = LLVMInt32TypeInContext(lc);
    elem_types[LP_JIT_TEXTURE_HEIGHT] =
    elem_types[LP_JIT_TEXTURE_DEPTH] = LLVMInt16TypeInContext(lc);

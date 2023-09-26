@@ -73,6 +73,7 @@ struct lp_jit_texture
    uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS]; /* sample stride is in mip_offsets[15] */
+   uint32_t sampler_index;
 };
 
 enum {
@@ -85,6 +86,7 @@ enum {
    LP_JIT_TEXTURE_ROW_STRIDE,
    LP_JIT_TEXTURE_IMG_STRIDE,
    LP_JIT_TEXTURE_MIP_OFFSETS,
+   LP_JIT_SAMPLER_INDEX_DUMMY,
    LP_JIT_TEXTURE_NUM_FIELDS  /* number of fields above */
 };
 
@@ -239,7 +241,6 @@ struct lp_descriptor {
    /* Store sample/image functions in the same location since some d3d12 games
     * rely on mismatched descriptor types with null descriptors.
     */
-   uint32_t sampler_index;
    void *functions;
 };
 
