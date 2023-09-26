@@ -1625,6 +1625,10 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
    if (r)
       return NULL;
 
+   /* This is a hack to skip alignment checking for 3D textures */
+   if (templ->target == PIPE_TEXTURE_3D)
+      stride = 0;
+
    tex = si_texture_create_object(&sscreen->b, templ, &surface, NULL, buf,
                                   offset, stride, 0, 0);
    if (!tex)
