@@ -1482,9 +1482,7 @@ impl<'a> ShaderFromNir<'a> {
                     }
                     nir_intrinsic_load_barycentric_centroid
                     | nir_intrinsic_load_barycentric_pixel
-                    | nir_intrinsic_load_barycentric_sample => {
-                        Src::new_zero()
-                    }
+                    | nir_intrinsic_load_barycentric_sample => Src::new_zero(),
                     _ => panic!("Unsupported interp mode"),
                 };
 
@@ -1567,7 +1565,9 @@ impl<'a> ShaderFromNir<'a> {
                 if let ShaderIoInfo::Fragment(info) = &mut self.info.io {
                     info.reads_sample_mask = true;
                 } else {
-                    panic!("sample_mask_in is only available in fragment shaders");
+                    panic!(
+                        "sample_mask_in is only available in fragment shaders"
+                    );
                 }
 
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
