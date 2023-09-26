@@ -716,6 +716,7 @@ vn_CreateCommandPool(VkDevice device,
    pool->queue_family_index = pCreateInfo->queueFamilyIndex;
    list_inithead(&pool->command_buffers);
    list_inithead(&pool->free_query_batches);
+   list_inithead(&pool->free_query_feedback_cmds);
 
    VkCommandPool pool_handle = vn_command_pool_to_handle(pool);
    vn_async_vkCreateCommandPool(dev->instance, device, pCreateInfo, NULL,
@@ -724,6 +725,16 @@ vn_CreateCommandPool(VkDevice device,
    *pCommandPool = pool_handle;
 
    return VK_SUCCESS;
+}
+
+static inline void
+vn_recycle_query_feedback_cmd(struct vn_command_buffer *cmd)
+{
+   vn_ResetCommandBuffer(
+      vn_command_buffer_to_handle(cmd->linked_query_feedback_cmd), 0);
+   list_add(&cmd->linked_query_feedback_cmd->feedback_head,
+            &cmd->linked_query_feedback_cmd->pool->free_query_feedback_cmds);
+   cmd->linked_query_feedback_cmd = NULL;
 }
 
 void
@@ -760,6 +771,9 @@ vn_DestroyCommandPool(VkDevice device,
                                &cmd->builder.query_batches, head)
          vk_free(alloc, batch);
 
+      if (cmd->linked_query_feedback_cmd)
+         vn_recycle_query_feedback_cmd(cmd);
+
       vk_free(alloc, cmd);
    }
 
@@ -788,6 +802,9 @@ vn_cmd_reset(struct vn_command_buffer *cmd)
    list_for_each_entry_safe(struct vn_feedback_query_batch, batch,
                             &cmd->builder.query_batches, head)
       vn_cmd_query_batch_pop(cmd, batch);
+
+   if (cmd->linked_query_feedback_cmd)
+      vn_recycle_query_feedback_cmd(cmd);
 
    memset(&cmd->builder, 0, sizeof(cmd->builder));
 
@@ -905,6 +922,9 @@ vn_FreeCommandBuffers(VkDevice device,
       list_for_each_entry_safe(struct vn_feedback_query_batch, batch,
                                &cmd->builder.query_batches, head)
          vn_cmd_query_batch_pop(cmd, batch);
+
+      if (cmd->linked_query_feedback_cmd)
+         vn_recycle_query_feedback_cmd(cmd);
 
       vn_object_base_fini(&cmd->base);
       vk_free(alloc, cmd);
@@ -1045,6 +1065,8 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
       return vn_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
+   cmd->builder.is_simultaneous =
+      pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
    vn_encode_vkBeginCommandBuffer(&cmd->cs, 0, commandBuffer, pBeginInfo);
 

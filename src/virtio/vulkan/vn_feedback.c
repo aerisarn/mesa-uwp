@@ -620,15 +620,25 @@ vn_feedback_query_batch_record(VkDevice dev_handle,
       .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
       .commandBufferCount = 1,
    };
+   struct vn_command_pool *cmd_pool =
+      vn_command_pool_from_handle(feedback_pool->pool);
    VkCommandBuffer feedback_cmd_handle;
    VkResult result;
 
    simple_mtx_lock(&feedback_pool->mutex);
 
-   result =
-      vn_AllocateCommandBuffers(dev_handle, &info, &feedback_cmd_handle);
-   if (result != VK_SUCCESS)
-      goto out_unlock;
+   if (!list_is_empty(&cmd_pool->free_query_feedback_cmds)) {
+      struct vn_command_buffer *free_cmd =
+         list_first_entry(&cmd_pool->free_query_feedback_cmds,
+                          struct vn_command_buffer, feedback_head);
+      feedback_cmd_handle = vn_command_buffer_to_handle(free_cmd);
+      list_del(&free_cmd->feedback_head);
+   } else {
+      result =
+         vn_AllocateCommandBuffers(dev_handle, &info, &feedback_cmd_handle);
+      if (result != VK_SUCCESS)
+         goto out_unlock;
+   }
 
    static const VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
