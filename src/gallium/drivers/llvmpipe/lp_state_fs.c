@@ -3782,7 +3782,7 @@ generate_variant(struct llvmpipe_context *lp,
          !key->blend.alpha_to_coverage &&
          !key->depth.enabled &&
          !nir->info.fs.uses_discard &&
-         (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) &&
+         !(nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) &&
          !nir->info.fs.uses_fbfetch_output;
 
    variant->opaque =
