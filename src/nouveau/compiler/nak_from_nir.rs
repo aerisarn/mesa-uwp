@@ -43,13 +43,19 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
             MESA_SHADER_FRAGMENT => ShaderStageInfo::Fragment,
             MESA_SHADER_GEOMETRY => {
                 let info_gs = unsafe { &nir.info.__bindgen_anon_1.gs };
+                let output_topology = match info_gs.input_primitive {
+                    MESA_PRIM_POINTS => OutputTopology::PointList,
+                    MESA_PRIM_TRIANGLES | MESA_PRIM_LINE_STRIP => {
+                        OutputTopology::LineStrip
+                    }
+                    MESA_PRIM_TRIANGLE_STRIP => OutputTopology::TriangleStrip,
+                    _ => panic!("Invalid GS input primitive"),
+                };
 
                 ShaderStageInfo::Geometry(GeometryShaderInfo {
                     stream_out_mask: info_gs.active_stream_mask(),
                     threads_per_input_primitive: info_gs.invocations,
-                    output_topology: OutputTopology::from(
-                        info_gs.input_primitive,
-                    ),
+                    output_topology: output_topology,
                     max_output_vertex_count: info_gs.vertices_out,
                 })
             }
@@ -1457,6 +1463,16 @@ impl<'a> ShaderFromNir<'a> {
                     nir_intrinsic_load_barycentric_sample => {
                         (InterpFreq::Pass, InterpLoc::Centroid)
                     }
+                    _ => panic!("Unsupported barycentric"),
+                };
+
+                let interp_mode = match bary.interp_mode() {
+                    INTERP_MODE_NONE | INTERP_MODE_SMOOTH => {
+                        PixelImap::Perspective
+                    }
+                    INTERP_MODE_FLAT => PixelImap::Constant,
+                    INTERP_MODE_NOPERSPECTIVE => PixelImap::ScreenLinear,
+                    INTERP_MODE_EXPLICIT => PixelImap::Unused,
                     _ => panic!("Unsupported interp mode"),
                 };
 
@@ -1471,8 +1487,6 @@ impl<'a> ShaderFromNir<'a> {
                     }
                     _ => panic!("Unsupported interp mode"),
                 };
-
-                let interp_mode = PixelImap::from(bary.interp_mode());
 
                 assert!(intrin.def.bit_size() == 32);
                 let dst =

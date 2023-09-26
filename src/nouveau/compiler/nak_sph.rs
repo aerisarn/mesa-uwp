@@ -50,37 +50,12 @@ pub enum OutputTopology {
     TriangleStrip,
 }
 
-impl From<mesa_prim> for OutputTopology {
-    fn from(value: mesa_prim) -> Self {
-        match value {
-            MESA_PRIM_POINTS => OutputTopology::PointList,
-            MESA_PRIM_TRIANGLES | MESA_PRIM_LINE_STRIP => {
-                OutputTopology::LineStrip
-            }
-            MESA_PRIM_TRIANGLE_STRIP => OutputTopology::TriangleStrip,
-            _ => panic!("Invalid mesa_prim {}", value),
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PixelImap {
     Unused,
     Constant,
     Perspective,
     ScreenLinear,
-}
-
-impl From<glsl_interp_mode> for PixelImap {
-    fn from(value: glsl_interp_mode) -> Self {
-        match value {
-            INTERP_MODE_NONE | INTERP_MODE_SMOOTH => PixelImap::Perspective,
-            INTERP_MODE_FLAT => PixelImap::Constant,
-            INTERP_MODE_NOPERSPECTIVE => PixelImap::ScreenLinear,
-            INTERP_MODE_EXPLICIT => PixelImap::Unused,
-            _ => panic!("Unsupported INTERP_MODE"),
-        }
-    }
 }
 
 impl From<PixelImap> for u8 {
