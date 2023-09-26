@@ -315,12 +315,16 @@ emit_load(struct lower_io_state *state,
    load->num_components = num_components;
 
    nir_intrinsic_set_base(load, var->data.driver_location);
+   if (nir_intrinsic_has_range(load)) {
+      const struct glsl_type *type = var->type;
+      if (array_index)
+         type = glsl_get_array_element(type);
+      unsigned var_size = state->type_size(type, var->data.bindless);
+      nir_intrinsic_set_range(load, var_size);
+   }
+
    if (mode == nir_var_shader_in || mode == nir_var_shader_out)
       nir_intrinsic_set_component(load, component);
-
-   if (load->intrinsic == nir_intrinsic_load_uniform)
-      nir_intrinsic_set_range(load,
-                              state->type_size(var->type, var->data.bindless));
 
    if (nir_intrinsic_has_access(load))
       nir_intrinsic_set_access(load, var->data.access);
@@ -441,7 +445,12 @@ emit_store(struct lower_io_state *state, nir_def *data,
 
    store->src[0] = nir_src_for_ssa(data);
 
+   const struct glsl_type *type = var->type;
+   if (array_index)
+      type = glsl_get_array_element(type);
+   unsigned var_size = state->type_size(type, var->data.bindless);
    nir_intrinsic_set_base(store, var->data.driver_location);
+   nir_intrinsic_set_range(store, var_size);
    nir_intrinsic_set_component(store, component);
    nir_intrinsic_set_src_type(store, src_type);
 
