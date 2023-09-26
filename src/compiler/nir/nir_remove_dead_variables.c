@@ -169,7 +169,7 @@ remove_dead_vars(struct exec_list *var_list, nir_variable_mode modes,
 
       struct set_entry *entry = _mesa_set_search(live, var);
       if (entry == NULL) {
-         /* Mark this variable as used by setting the mode to 0 */
+         /* Mark this variable as dead by setting the mode to 0 */
          var->data.mode = 0;
          exec_node_remove(&var->node);
          progress = true;
