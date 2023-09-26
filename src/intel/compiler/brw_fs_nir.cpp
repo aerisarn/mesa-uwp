@@ -6266,7 +6266,8 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
                   bld.emit_uniformize(get_nir_src(ntb, load_offset));
             }
 
-            const unsigned total_dwords = ALIGN(instr->num_components, REG_SIZE / 4);
+            const unsigned total_dwords =
+               ALIGN(instr->num_components, REG_SIZE * reg_unit(devinfo) / 4);
             unsigned loaded_dwords = 0;
 
             const fs_reg packed_consts =
@@ -6283,7 +6284,8 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
                const fs_builder &ubld = block <= 8 ? ubld8 : ubld16;
                ubld.emit(SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL,
                          retype(byte_offset(packed_consts, loaded_dwords * 4), BRW_REGISTER_TYPE_UD),
-                         srcs, SURFACE_LOGICAL_NUM_SRCS)->size_written = align(block_bytes, REG_SIZE);
+                         srcs, SURFACE_LOGICAL_NUM_SRCS)->size_written =
+                  align(block_bytes, REG_SIZE * reg_unit(devinfo));
 
                loaded_dwords += block;
 
