@@ -8858,6 +8858,14 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       assert(flags & PIPE_CONTROL_WRITE_IMMEDIATE);
    }
 
+   /* Emulate a HDC flush with a full Data Cache Flush on older hardware which
+    * doesn't support the new lightweight flush.
+    */
+#if GFX_VER < 12
+      if (flags & PIPE_CONTROL_FLUSH_HDC)
+         flags |= PIPE_CONTROL_DATA_CACHE_FLUSH;
+#endif
+
    /* "Post-Sync Operation" workarounds -------------------------------- */
 
    /* Project: All / Argument: Global Snapshot Count Reset [19]
