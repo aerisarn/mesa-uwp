@@ -1129,6 +1129,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_atomic_op_fadd => AtomType::F(bit_size),
             nir_atomic_op_fmin => AtomType::F(bit_size),
             nir_atomic_op_fmax => AtomType::F(bit_size),
+            nir_atomic_op_cmpxchg => AtomType::U(bit_size),
             _ => panic!("Unsupported NIR atomic op"),
         }
     }
@@ -1147,6 +1148,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_atomic_op_fadd => AtomOp::Add,
             nir_atomic_op_fmin => AtomOp::Min,
             nir_atomic_op_fmax => AtomOp::Max,
+            nir_atomic_op_cmpxchg => AtomOp::CmpExch,
             _ => panic!("Unsupported NIR atomic op"),
         }
     }
@@ -1299,18 +1301,30 @@ impl<'a> ShaderFromNir<'a> {
                     panic!("Invalid VTG I/O intrinsic");
                 }
             }
-            nir_intrinsic_bindless_image_atomic => {
+            nir_intrinsic_bindless_image_atomic
+            | nir_intrinsic_bindless_image_atomic_swap => {
                 let handle = self.get_src(&srcs[0]);
                 let dim = self.get_image_dim(intrin);
                 let coord = self.get_image_coord(intrin, dim);
                 /* let sample = self.get_src(&srcs[2]); */
-                let data = self.get_src(&srcs[3]);
                 let atom_type = self.get_atomic_type(intrin);
                 let atom_op = self.get_atomic_op(intrin);
 
                 assert!(intrin.def.bit_size() == 32);
                 assert!(intrin.def.num_components() == 1);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
+
+                let data = if intrin.intrinsic
+                    == nir_intrinsic_bindless_image_atomic_swap
+                {
+                    SSARef::from([
+                        self.get_ssa(srcs[3].as_def())[0],
+                        self.get_ssa(srcs[4].as_def())[0],
+                    ])
+                    .into()
+                } else {
+                    self.get_src(&srcs[3])
+                };
 
                 b.push_op(OpSuAtom {
                     dst: dst.into(),

@@ -1882,6 +1882,7 @@ pub enum AtomOp {
     Or,
     Xor,
     Exch,
+    CmpExch,
 }
 
 impl fmt::Display for AtomOp {
@@ -1896,6 +1897,7 @@ impl fmt::Display for AtomOp {
             AtomOp::Or => write!(f, "OR"),
             AtomOp::Xor => write!(f, "XOR"),
             AtomOp::Exch => write!(f, "EXCH"),
+            AtomOp::CmpExch => write!(f, "CMPEXCH"),
         }
     }
 }

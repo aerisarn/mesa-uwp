@@ -1201,7 +1201,11 @@ impl SM75Instr {
     }
 
     fn encode_suatom(&mut self, op: &OpSuAtom) {
-        self.set_opcode(0x394);
+        if matches!(op.atom_op, AtomOp::CmpExch) {
+            self.set_opcode(0x396);
+        } else {
+            self.set_opcode(0x394);
+        }
 
         self.set_dst(op.dst);
         self.set_reg_src(24..32, op.coord);
@@ -1353,7 +1357,7 @@ impl SM75Instr {
         self.set_field(
             range,
             match atom_op {
-                AtomOp::Add => 0_u8,
+                AtomOp::Add | AtomOp::CmpExch => 0_u8,
                 AtomOp::Min => 1_u8,
                 AtomOp::Max => 2_u8,
                 AtomOp::Inc => 3_u8,
