@@ -337,15 +337,19 @@
 #define SDMA_WRITE_SUB_OPCODE_LINEAR               0x0
 #define SDMA_WRITE_SUB_OPCODE_TILED                0x1
 #define CIK_SDMA_OPCODE_INDIRECT_BUFFER            0x4
-#define CIK_SDMA_PACKET_FENCE                      0x5
-#define CIK_SDMA_PACKET_TRAP                       0x6
-#define CIK_SDMA_PACKET_SEMAPHORE                  0x7
-#define CIK_SDMA_PACKET_CONSTANT_FILL              0xb
+#define CIK_SDMA_OPCODE_FENCE                      0x5
+#define SDMA_FENCE_MTYPE_UC                        0x3
+#define CIK_SDMA_OPCODE_TRAP                       0x6
+#define CIK_SDMA_OPCODE_SEMAPHORE                  0x7
+#define CIK_SDMA_OPCODE_POLL_REGMEM                0x8
+#define SDMA_POLL_INTERVAL_160_CLK                 0xa
+#define SDMA_POLL_RETRY_INDEFINITELY               0xfff
+#define CIK_SDMA_OPCODE_CONSTANT_FILL              0xb
 #define CIK_SDMA_OPCODE_TIMESTAMP                  0xd
 #define SDMA_TS_SUB_OPCODE_SET_LOCAL_TIMESTAMP     0x0
 #define SDMA_TS_SUB_OPCODE_GET_LOCAL_TIMESTAMP     0x1
 #define SDMA_TS_SUB_OPCODE_GET_GLOBAL_TIMESTAMP    0x2
-#define CIK_SDMA_PACKET_SRBM_WRITE                 0xe
+#define CIK_SDMA_OPCODE_SRBM_WRITE                 0xe
 /* There is apparently an undocumented HW limitation that
    prevents the HW from copying the last 255 bytes of (1 << 22) - 1 */
 #define CIK_SDMA_COPY_MAX_SIZE    0x3fff00   /* almost 4 MB*/
