@@ -71,8 +71,6 @@ static inline VkImageViewType
 vk_texcompress_etc2_image_view_type(VkImageType image_type)
 {
    switch (image_type) {
-   case VK_IMAGE_TYPE_1D:
-      return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
    case VK_IMAGE_TYPE_2D:
       return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
    case VK_IMAGE_TYPE_3D:

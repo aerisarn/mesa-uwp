@@ -1335,6 +1335,8 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
    if (format_feature_flags == 0)
       goto unsupported;
 
+   if (info->type == VK_IMAGE_TYPE_1D && (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2))
+      goto unsupported;
    if (info->type != VK_IMAGE_TYPE_2D && vk_format_is_depth_or_stencil(format))
       goto unsupported;
 
