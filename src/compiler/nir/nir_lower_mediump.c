@@ -67,8 +67,10 @@ nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
    BITSET_DECLARE(inputs, NUM_TOTAL_VARYING_SLOTS);
+   BITSET_DECLARE(dual_slot_inputs, NUM_TOTAL_VARYING_SLOTS);
    BITSET_DECLARE(outputs, NUM_TOTAL_VARYING_SLOTS);
    BITSET_ZERO(inputs);
+   BITSET_ZERO(dual_slot_inputs);
    BITSET_ZERO(outputs);
 
    /* Gather the bitmasks of used locations. */
@@ -85,8 +87,11 @@ nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
             num_slots = (num_slots + sem.high_16bits + 1) / 2;
 
          if (mode == nir_var_shader_in) {
-            for (unsigned i = 0; i < num_slots; i++)
+            for (unsigned i = 0; i < num_slots; i++) {
                BITSET_SET(inputs, sem.location + i);
+               if (sem.high_dvec2)
+                  BITSET_SET(dual_slot_inputs, sem.location + i);
+            }
          } else if (!sem.dual_source_blend_index) {
             for (unsigned i = 0; i < num_slots; i++)
                BITSET_SET(outputs, sem.location + i);
@@ -111,7 +116,9 @@ nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
 
          if (mode == nir_var_shader_in) {
             nir_intrinsic_set_base(intr,
-                                   BITSET_PREFIX_SUM(inputs, sem.location));
+                                   BITSET_PREFIX_SUM(inputs, sem.location) +
+                                   BITSET_PREFIX_SUM(dual_slot_inputs, sem.location) +
+                                   (sem.high_dvec2 ? 1 : 0));
          } else if (sem.dual_source_blend_index) {
             nir_intrinsic_set_base(intr,
                                    BITSET_PREFIX_SUM(outputs, NUM_TOTAL_VARYING_SLOTS));
