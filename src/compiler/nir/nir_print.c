@@ -2397,6 +2397,7 @@ print_shader_info(const struct shader_info *info, FILE *fp)
    print_nz_unsigned(fp, "num_images", info->num_images);
 
    print_nz_x64(fp, "inputs_read", info->inputs_read);
+   print_nz_x64(fp, "dual_slot_inputs", info->dual_slot_inputs);
    print_nz_x64(fp, "outputs_written", info->outputs_written);
    print_nz_x64(fp, "outputs_read", info->outputs_read);
 

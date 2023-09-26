@@ -167,6 +167,8 @@ typedef struct shader_info {
 
    /* Which inputs are actually read */
    uint64_t inputs_read;
+   /* Which inputs occupy 2 slots. */
+   uint64_t dual_slot_inputs;
    /* Which outputs are actually written */
    uint64_t outputs_written;
    /* Which outputs are actually read */
