@@ -392,8 +392,29 @@ static inline uint8_t v3d_slot_get_component(struct v3d_varying_slot slot)
         return slot.slot_and_component & 3;
 }
 
+/* Given a v3d_key start address, skips over the 'void *'
+ * shader_state pointer to get the 'static' portion of the
+ * key.
+ */
+static inline uint8_t *
+v3d_key_static_addr(const void *key_addr)
+{
+        return ((uint8_t *)key_addr) + sizeof(void*);
+}
+
+/* Returns the size of the key adjusted to the static
+ * portion.
+ */
+static inline uint32_t
+v3d_key_static_size(uint32_t key_size)
+{
+        return key_size - sizeof(void *);
+}
+
 struct v3d_key {
+        /* Keep this field first */
         void *shader_state;
+
         struct {
                 uint8_t swizzle[4];
         } tex[V3D_MAX_TEXTURE_SAMPLERS];
