@@ -27,7 +27,6 @@
 
 #include "v3d_context.h"
 
-#include "compiler/nir/nir_serialize.h"
 #include "util/blob.h"
 #include "util/u_upload_mgr.h"
 
@@ -86,17 +85,15 @@ v3d_disk_cache_compute_key(struct disk_cache *cache,
         assert(uncompiled->base.type == PIPE_SHADER_IR_NIR);
         nir_shader *nir = uncompiled->base.ir.nir;
 
-        struct blob blob;
-        blob_init(&blob);
-
         uint32_t ckey_size = v3d_key_size(nir->info.stage);
         struct v3d_key *ckey = malloc(ckey_size);
         memcpy(ckey, key, ckey_size);
         ckey->shader_state = NULL;
 
+        struct blob blob;
+        blob_init(&blob);
         blob_write_bytes(&blob, ckey, ckey_size);
-
-        nir_serialize(&blob, nir, true);
+        blob_write_bytes(&blob, uncompiled->sha1, 20);
 
         disk_cache_compute_key(cache, blob.data, blob.size, cache_key);
 
