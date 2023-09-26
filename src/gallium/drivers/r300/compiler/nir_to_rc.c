@@ -2452,6 +2452,11 @@ const void *nir_to_rc_options(struct nir_shader *s,
 
    NIR_PASS_V(s, nir_opt_move, move_all);
    NIR_PASS_V(s, nir_move_vec_src_uses_to_dest, true);
+   /* Late vectorizing after nir_move_vec_src_uses_to_dest helps instructions but
+    * increases register usage. Testing shows this is beneficial only in VS.
+    */
+   if (s->info.stage == MESA_SHADER_VERTEX)
+      NIR_PASS_V(s, nir_opt_vectorize, ntr_should_vectorize_instr, NULL);
 
    NIR_PASS_V(s, nir_convert_from_ssa, true);
    NIR_PASS_V(s, nir_lower_vec_to_regs, NULL, NULL);
