@@ -447,6 +447,12 @@ v3d_shader_state_create(struct pipe_context *pctx,
         return so;
 }
 
+/* Key ued with the RAM cache */
+struct v3d_cache_key {
+        struct v3d_key *key;
+        unsigned char sha1[20];
+};
+
 struct v3d_compiled_shader *
 v3d_get_compiled_shader(struct v3d_context *v3d,
                         struct v3d_key *key,
@@ -454,9 +460,11 @@ v3d_get_compiled_shader(struct v3d_context *v3d,
 {
         struct v3d_uncompiled_shader *shader_state = key->shader_state;
         nir_shader *s = shader_state->base.ir.nir;
-
         struct hash_table *ht = v3d->prog.cache[s->info.stage];
-        struct hash_entry *entry = _mesa_hash_table_search(ht, key);
+        struct v3d_cache_key cache_key;
+        cache_key.key = key;
+        memcpy(cache_key.sha1, shader_state->sha1, sizeof(cache_key.sha1));
+        struct hash_entry *entry = _mesa_hash_table_search(ht, &cache_key);
         if (entry)
                 return entry->data;
 
@@ -506,10 +514,13 @@ v3d_get_compiled_shader(struct v3d_context *v3d,
         v3d_set_shader_uniform_dirty_flags(shader);
 
         if (ht) {
-                struct v3d_key *dup_key;
-                dup_key = ralloc_size(shader, key_size);
-                memcpy(dup_key, key, key_size);
-                _mesa_hash_table_insert(ht, dup_key, shader);
+                struct v3d_cache_key *dup_cache_key =
+                        ralloc_size(shader, sizeof(struct v3d_cache_key));
+                dup_cache_key->key = ralloc_size(shader, key_size);
+                memcpy(dup_cache_key->key, cache_key.key, key_size);
+                dup_cache_key->key->shader_state = NULL;
+                memcpy(dup_cache_key->sha1, cache_key.sha1 ,sizeof(dup_cache_key->sha1));
+                _mesa_hash_table_insert(ht, dup_cache_key, shader);
         }
 
         if (shader->prog_data.base->spill_size >
@@ -944,52 +955,82 @@ v3d_update_compiled_cs(struct v3d_context *v3d)
         }
 }
 
+static inline uint32_t
+cache_hash(const void *_key, uint32_t key_size)
+{
+        const struct v3d_cache_key *key = (struct v3d_cache_key *) _key;
+
+        struct mesa_sha1 ctx;
+        unsigned char sha1[20];
+        _mesa_sha1_init(&ctx);
+        _mesa_sha1_update(&ctx, v3d_key_static_addr(key->key),
+                                v3d_key_static_size(key_size));
+        _mesa_sha1_update(&ctx, key->sha1, 20);
+        _mesa_sha1_final(&ctx, sha1);
+        return _mesa_hash_data(sha1, 20);
+}
+
+static inline bool
+cache_compare(const void *_key1, const void *_key2, uint32_t key_size)
+{
+        const struct v3d_cache_key *key1 = (struct v3d_cache_key *) _key1;
+        const struct v3d_cache_key *key2 = (struct v3d_cache_key *) _key2;
+
+        if (memcmp(v3d_key_static_addr(key1->key),
+                   v3d_key_static_addr(key2->key),
+                   v3d_key_static_size(key_size)) != 0) {
+            return false;
+        }
+
+        return memcmp(key1->sha1, key2->sha1, 20) == 0;
+}
+
 static uint32_t
 fs_cache_hash(const void *key)
 {
-        return _mesa_hash_data(key, sizeof(struct v3d_fs_key));
+        return cache_hash(key, sizeof(struct v3d_fs_key));
 }
 
 static uint32_t
 gs_cache_hash(const void *key)
 {
-        return _mesa_hash_data(key, sizeof(struct v3d_gs_key));
+        return cache_hash(key, sizeof(struct v3d_gs_key));
 }
 
 static uint32_t
 vs_cache_hash(const void *key)
 {
-        return _mesa_hash_data(key, sizeof(struct v3d_vs_key));
+        return cache_hash(key, sizeof(struct v3d_vs_key));
 }
 
 static uint32_t
 cs_cache_hash(const void *key)
 {
-        return _mesa_hash_data(key, sizeof(struct v3d_key));
+        return cache_hash(key, sizeof(struct v3d_key));
 }
 
 static bool
 fs_cache_compare(const void *key1, const void *key2)
 {
-        return memcmp(key1, key2, sizeof(struct v3d_fs_key)) == 0;
+        return cache_compare(key1, key2, sizeof(struct v3d_fs_key));
 }
 
 static bool
 gs_cache_compare(const void *key1, const void *key2)
 {
-        return memcmp(key1, key2, sizeof(struct v3d_gs_key)) == 0;
+        return cache_compare(key1, key2, sizeof(struct v3d_gs_key));
 }
 
 static bool
 vs_cache_compare(const void *key1, const void *key2)
 {
-        return memcmp(key1, key2, sizeof(struct v3d_vs_key)) == 0;
+        return cache_compare(key1, key2, sizeof(struct v3d_vs_key));
 }
 
 static bool
 cs_cache_compare(const void *key1, const void *key2)
 {
-        return memcmp(key1, key2, sizeof(struct v3d_key)) == 0;
+        return cache_compare(key1, key2, sizeof(struct v3d_key));
 }
 
 static void
@@ -1000,10 +1041,10 @@ v3d_shader_state_delete(struct pipe_context *pctx, void *hwcso)
         nir_shader *s = so->base.ir.nir;
 
         hash_table_foreach(v3d->prog.cache[s->info.stage], entry) {
-                const struct v3d_key *key = entry->key;
+                const struct v3d_cache_key *cache_key = entry->key;
                 struct v3d_compiled_shader *shader = entry->data;
 
-                if (key->shader_state != so)
+                if (memcmp(cache_key->sha1, so->sha1, 20) != 0)
                         continue;
 
                 if (v3d->prog.fs == shader)
