@@ -190,6 +190,11 @@ struct iris_slab {
 
 #define BUCKET_ARRAY_SIZE (14 * 4)
 
+struct iris_bucket_cache {
+   struct bo_cache_bucket bucket[BUCKET_ARRAY_SIZE];
+   int num_buckets;
+};
+
 struct iris_bufmgr {
    /**
     * List into the list of bufmgr.
@@ -204,16 +209,7 @@ struct iris_bufmgr {
    simple_mtx_t bo_deps_lock;
 
    /** Array of lists of cached gem objects of power-of-two sizes */
-   struct bo_cache_bucket cache_bucket[BUCKET_ARRAY_SIZE];
-   int num_buckets;
-
-   /** Same as cache_bucket, but for local memory gem objects */
-   struct bo_cache_bucket local_cache_bucket[BUCKET_ARRAY_SIZE];
-   int num_local_buckets;
-
-   /** Same as cache_bucket, but for local-preferred memory gem objects */
-   struct bo_cache_bucket local_preferred_cache_bucket[BUCKET_ARRAY_SIZE];
-   int num_local_preferred_buckets;
+   struct iris_bucket_cache bucket_cache[IRIS_HEAP_MAX];
 
    time_t time;
 
@@ -280,32 +276,6 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
    return bo;
 }
 
-static void
-bucket_info_for_heap(struct iris_bufmgr *bufmgr, enum iris_heap heap,
-                     struct bo_cache_bucket **cache_bucket, int **num_buckets)
-{
-   switch (heap) {
-   case IRIS_HEAP_SYSTEM_MEMORY:
-      *cache_bucket = bufmgr->cache_bucket;
-      *num_buckets = &bufmgr->num_buckets;
-      break;
-   case IRIS_HEAP_DEVICE_LOCAL:
-      *cache_bucket = bufmgr->local_cache_bucket;
-      *num_buckets = &bufmgr->num_local_buckets;
-      break;
-   case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
-      *cache_bucket = bufmgr->local_preferred_cache_bucket;
-      *num_buckets = &bufmgr->num_local_preferred_buckets;
-      break;
-   case IRIS_HEAP_MAX:
-   default:
-      *cache_bucket = NULL;
-      *num_buckets = NULL;
-      unreachable("invalid heap");
-   }
-
-   assert(**num_buckets < BUCKET_ARRAY_SIZE);
-}
 /**
  * This function finds the correct bucket fit for the input size.
  * The function works with O(1) complexity when the requested size
@@ -319,6 +289,8 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
       return NULL;
 
    const struct intel_device_info *devinfo = &bufmgr->devinfo;
+   struct iris_bucket_cache *cache = &bufmgr->bucket_cache[heap];
+
    if (devinfo->has_set_pat_uapi &&
        iris_bufmgr_get_pat_entry_for_bo_flags(bufmgr, flags) !=
        iris_bufmgr_get_pat_entry_for_bo_flags(bufmgr, 0 /* alloc_flags */))
@@ -356,11 +328,7 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
    /* Calculating the index based on the row and column. */
    const unsigned index = (row * 4) + (col - 1);
 
-   int *num_buckets;
-   struct bo_cache_bucket *buckets;
-   bucket_info_for_heap(bufmgr, heap, &buckets, &num_buckets);
-
-   return (index < *num_buckets) ? &buckets[index] : NULL;
+   return (index < cache->num_buckets) ? &cache->bucket[index] : NULL;
 }
 
 enum iris_memory_zone
@@ -1163,7 +1131,8 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
    enum iris_heap heap = flags_to_heap(bufmgr, flags);
-   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, heap, flags);
+   struct bo_cache_bucket *bucket =
+      bucket_for_size(bufmgr, size, heap, flags);
 
    if (memzone != IRIS_MEMZONE_OTHER || (flags & BO_ALLOC_COHERENT))
       flags |= BO_ALLOC_NO_SUBALLOC;
@@ -1535,49 +1504,25 @@ bo_free(struct iris_bo *bo)
 static void
 cleanup_bo_cache(struct iris_bufmgr *bufmgr, time_t time)
 {
-   int i;
-
    simple_mtx_assert_locked(&bufmgr->lock);
 
    if (bufmgr->time == time)
       return;
 
-   for (i = 0; i < bufmgr->num_buckets; i++) {
-      struct bo_cache_bucket *bucket = &bufmgr->cache_bucket[i];
+   for (int h = 0; h < IRIS_HEAP_MAX; h++) {
+      struct iris_bucket_cache *cache = &bufmgr->bucket_cache[h];
 
-      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         if (time - bo->real.free_time <= 1)
-            break;
+      for (int i = 0; i < cache->num_buckets; i++) {
+         struct bo_cache_bucket *bucket = &cache->bucket[i];
 
-         list_del(&bo->head);
+         list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
+            if (time - bo->real.free_time <= 1)
+               break;
 
-         bo_free(bo);
-      }
-   }
+            list_del(&bo->head);
 
-   for (i = 0; i < bufmgr->num_local_buckets; i++) {
-      struct bo_cache_bucket *bucket = &bufmgr->local_cache_bucket[i];
-
-      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         if (time - bo->real.free_time <= 1)
-            break;
-
-         list_del(&bo->head);
-
-         bo_free(bo);
-      }
-   }
-
-   for (i = 0; i < bufmgr->num_local_preferred_buckets; i++) {
-      struct bo_cache_bucket *bucket = &bufmgr->local_preferred_cache_bucket[i];
-
-      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         if (time - bo->real.free_time <= 1)
-            break;
-
-         list_del(&bo->head);
-
-         bo_free(bo);
+            bo_free(bo);
+         }
       }
    }
 
@@ -1599,15 +1544,14 @@ static void
 bo_unreference_final(struct iris_bo *bo, time_t time)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
-   struct bo_cache_bucket *bucket;
 
    DBG("bo_unreference final: %d (%s)\n", bo->gem_handle, bo->name);
 
    assert(iris_bo_is_real(bo));
 
-   bucket = NULL;
-   if (bo->real.reusable)
-      bucket = bucket_for_size(bufmgr, bo->size, bo->real.heap, 0);
+   struct bo_cache_bucket *bucket = !bo->real.reusable ? NULL :
+      bucket_for_size(bufmgr, bo->size, bo->real.heap, 0);
+
    /* Put the buffer into our internal cache for reuse if we can. */
    if (bucket && iris_bo_madvise(bo, IRIS_MADVICE_DONT_NEED)) {
       bo->real.free_time = time;
@@ -1824,34 +1768,19 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
    }
 
    simple_mtx_lock(&bufmgr->lock);
+
    /* Free any cached buffer objects we were going to reuse */
-   for (int i = 0; i < bufmgr->num_buckets; i++) {
-      struct bo_cache_bucket *bucket = &bufmgr->cache_bucket[i];
+   for (int h = 0; h < IRIS_HEAP_MAX; h++) {
+      struct iris_bucket_cache *cache = &bufmgr->bucket_cache[h];
 
-      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         list_del(&bo->head);
+      for (int i = 0; i < cache->num_buckets; i++) {
+         struct bo_cache_bucket *bucket = &cache->bucket[i];
 
-         bo_free(bo);
-      }
-   }
+         list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
+            list_del(&bo->head);
 
-   for (int i = 0; i < bufmgr->num_local_buckets; i++) {
-      struct bo_cache_bucket *bucket = &bufmgr->local_cache_bucket[i];
-
-      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         list_del(&bo->head);
-
-         bo_free(bo);
-      }
-   }
-
-   for (int i = 0; i < bufmgr->num_local_preferred_buckets; i++) {
-      struct bo_cache_bucket *bucket = &bufmgr->local_preferred_cache_bucket[i];
-
-      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-         list_del(&bo->head);
-
-         bo_free(bo);
+            bo_free(bo);
+         }
       }
    }
 
@@ -2182,18 +2111,15 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
 static void
 add_bucket(struct iris_bufmgr *bufmgr, int size, enum iris_heap heap)
 {
-   int *num_buckets;
-   struct bo_cache_bucket *buckets;
-   bucket_info_for_heap(bufmgr, heap, &buckets, &num_buckets);
+   struct iris_bucket_cache *cache = &bufmgr->bucket_cache[heap];
+   unsigned int i = cache->num_buckets++;
 
-   unsigned int i = (*num_buckets)++;
+   list_inithead(&cache->bucket[i].head);
+   cache->bucket[i].size = size;
 
-   list_inithead(&buckets[i].head);
-   buckets[i].size = size;
-
-   assert(bucket_for_size(bufmgr, size, heap, 0) == &buckets[i]);
-   assert(bucket_for_size(bufmgr, size - 2048, heap, 0) == &buckets[i]);
-   assert(bucket_for_size(bufmgr, size + 1, heap, 0) != &buckets[i]);
+   assert(bucket_for_size(bufmgr, size, heap, 0) == &cache->bucket[i]);
+   assert(bucket_for_size(bufmgr, size - 2048, heap, 0) == &cache->bucket[i]);
+   assert(bucket_for_size(bufmgr, size + 1, heap, 0) != &cache->bucket[i]);
 }
 
 static void
@@ -2209,7 +2135,7 @@ init_cache_buckets(struct iris_bufmgr *bufmgr, enum iris_heap heap)
     * width/height alignment and rounding of sizes to pages will
     * get us useful cache hit rates anyway)
     */
-   add_bucket(bufmgr, PAGE_SIZE, heap);
+   add_bucket(bufmgr, PAGE_SIZE,     heap);
    add_bucket(bufmgr, PAGE_SIZE * 2, heap);
    add_bucket(bufmgr, PAGE_SIZE * 3, heap);
 
@@ -2433,9 +2359,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
                       IRIS_MEMZONE_OTHER_START,
                       (devinfo->gtt_size - _4GB) - IRIS_MEMZONE_OTHER_START);
 
-   init_cache_buckets(bufmgr, IRIS_HEAP_SYSTEM_MEMORY);
-   init_cache_buckets(bufmgr, IRIS_HEAP_DEVICE_LOCAL);
-   init_cache_buckets(bufmgr, IRIS_HEAP_DEVICE_LOCAL_PREFERRED);
+   for (int h = 0; h < IRIS_HEAP_MAX; h++)
+      init_cache_buckets(bufmgr, h);
 
    unsigned min_slab_order = 8;  /* 256 bytes */
    unsigned max_slab_order = 20; /* 1 MB (slab size = 2 MB) */
