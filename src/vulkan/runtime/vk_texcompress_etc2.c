@@ -159,8 +159,8 @@ etc2_build_shader(struct vk_device *dev, const struct nir_shader_compiler_option
    input_img_2d->data.binding = 0;
 
    nir_variable *input_img_3d = nir_variable_create(b.shader, nir_var_uniform, sampler_type_3d, "s_tex_3d");
-   input_img_2d->data.descriptor_set = 0;
-   input_img_2d->data.binding = 0;
+   input_img_3d->data.descriptor_set = 0;
+   input_img_3d->data.binding = 0;
 
    nir_variable *output_img_2d = nir_variable_create(b.shader, nir_var_image, img_type_2d, "out_img_2d");
    output_img_2d->data.descriptor_set = 0;
