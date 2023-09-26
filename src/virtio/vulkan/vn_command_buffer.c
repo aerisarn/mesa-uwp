@@ -506,22 +506,13 @@ vn_cmd_transfer_present_src_images(
                                  count, img_barriers);
 }
 
-/* query feedback batch for deferred recording */
-struct vn_command_buffer_query_batch {
-   struct vn_query_pool *query_pool;
-   uint32_t query;
-   uint32_t query_count;
-
-   struct list_head head;
-};
-
 static bool
 vn_cmd_query_batch_push(struct vn_command_buffer *cmd,
                         struct vn_query_pool *query_pool,
                         uint32_t query,
                         uint32_t query_count)
 {
-   struct vn_command_buffer_query_batch *batch;
+   struct vn_feedback_query_batch *batch;
    if (list_is_empty(&cmd->pool->free_query_batches)) {
       batch = vk_alloc(&cmd->pool->allocator, sizeof(*batch),
                        VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -529,7 +520,7 @@ vn_cmd_query_batch_push(struct vn_command_buffer *cmd,
          return false;
    } else {
       batch = list_first_entry(&cmd->pool->free_query_batches,
-                               struct vn_command_buffer_query_batch, head);
+                               struct vn_feedback_query_batch, head);
       list_del(&batch->head);
    }
 
@@ -543,7 +534,7 @@ vn_cmd_query_batch_push(struct vn_command_buffer *cmd,
 
 static inline void
 vn_cmd_query_batch_pop(struct vn_command_buffer *cmd,
-                       struct vn_command_buffer_query_batch *batch)
+                       struct vn_feedback_query_batch *batch)
 {
    list_move_to(&batch->head, &cmd->pool->free_query_batches);
 }
@@ -551,7 +542,7 @@ vn_cmd_query_batch_pop(struct vn_command_buffer *cmd,
 static void
 vn_cmd_record_batched_query_feedback(struct vn_command_buffer *cmd)
 {
-   list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
+   list_for_each_entry_safe(struct vn_feedback_query_batch, batch,
                             &cmd->builder.query_batches, head) {
       vn_feedback_query_cmd_record(vn_command_buffer_to_handle(cmd),
                                    vn_query_pool_to_handle(batch->query_pool),
@@ -565,8 +556,7 @@ static inline void
 vn_cmd_merge_batched_query_feedback(struct vn_command_buffer *primary_cmd,
                                     struct vn_command_buffer *secondary_cmd)
 {
-   list_for_each_entry_safe(struct vn_command_buffer_query_batch,
-                            secondary_batch,
+   list_for_each_entry_safe(struct vn_feedback_query_batch, secondary_batch,
                             &secondary_cmd->builder.query_batches, head) {
       if (!vn_cmd_query_batch_push(primary_cmd, secondary_batch->query_pool,
                                    secondary_batch->query,
@@ -766,14 +756,14 @@ vn_DestroyCommandPool(VkDevice device,
       if (cmd->builder.present_src_images)
          vk_free(alloc, cmd->builder.present_src_images);
 
-      list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
+      list_for_each_entry_safe(struct vn_feedback_query_batch, batch,
                                &cmd->builder.query_batches, head)
          vk_free(alloc, batch);
 
       vk_free(alloc, cmd);
    }
 
-   list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
+   list_for_each_entry_safe(struct vn_feedback_query_batch, batch,
                             &pool->free_query_batches, head)
       vk_free(alloc, batch);
 
@@ -795,7 +785,7 @@ vn_cmd_reset(struct vn_command_buffer *cmd)
    if (cmd->builder.present_src_images)
       vk_free(&cmd->pool->allocator, cmd->builder.present_src_images);
 
-   list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
+   list_for_each_entry_safe(struct vn_feedback_query_batch, batch,
                             &cmd->builder.query_batches, head)
       vn_cmd_query_batch_pop(cmd, batch);
 
@@ -912,7 +902,7 @@ vn_FreeCommandBuffers(VkDevice device,
       if (cmd->builder.present_src_images)
          vk_free(alloc, cmd->builder.present_src_images);
 
-      list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
+      list_for_each_entry_safe(struct vn_feedback_query_batch, batch,
                                &cmd->builder.query_batches, head)
          vn_cmd_query_batch_pop(cmd, batch);
 
