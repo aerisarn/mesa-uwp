@@ -234,13 +234,8 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 {
    struct fd_context *ctx = batch->ctx;
 
-   /* NOTE: needs to be before resource_written(batch->query_buf), otherwise
-    * query_buf may not be created yet.
-    */
-   fd_batch_update_queries(batch);
-
    if (!needs_draw_tracking(batch, info, indirect))
-      return;
+      goto out;
 
    /*
     * Figure out the buffers/features we need:
@@ -268,6 +263,9 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
    resource_written(batch, batch->query_buf);
 
    fd_screen_unlock(ctx->screen);
+
+out:
+   fd_batch_update_queries(batch);
 }
 
 static void
@@ -585,11 +583,6 @@ fd_launch_grid(struct pipe_context *pctx,
    fd_batch_reference(&save_batch, ctx->batch);
    fd_batch_reference(&ctx->batch, batch);
 
-   /* NOTE: needs to be before resource_written(batch->query_buf), otherwise
-    * query_buf may not be created yet.
-    */
-   fd_batch_update_queries(batch);
-
    fd_screen_lock(ctx->screen);
 
    /* Mark SSBOs */
@@ -635,6 +628,8 @@ fd_launch_grid(struct pipe_context *pctx,
       fd_batch_reference_locked(&save_batch, NULL);
 
    fd_screen_unlock(ctx->screen);
+
+   fd_batch_update_queries(batch);
 
    DBG("%p: work_dim=%u, block=%ux%ux%u, grid=%ux%ux%u",
        batch, info->work_dim,
