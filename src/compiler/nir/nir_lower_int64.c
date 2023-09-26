@@ -713,8 +713,11 @@ lower_find_lsb64(nir_builder *b, nir_def *x)
 
    /* Use umin so that -1 (no bits found) becomes larger (0xFFFFFFFF)
     * than any actual bit position, so we return a found bit instead.
+    * This is similar to the ufind_msb lowering. If you need this lowering
+    * without uadd_sat, add code like in lower_ufind_msb64.
     */
-   return nir_umin(b, lo_lsb, nir_iadd_imm(b, hi_lsb, 32));
+   assert(!b->shader->options->lower_uadd_sat);
+   return nir_umin(b, lo_lsb, nir_uadd_sat(b, hi_lsb, nir_imm_int(b, 32)));
 }
 
 static nir_def *
