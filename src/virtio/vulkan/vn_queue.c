@@ -176,6 +176,21 @@ vn_get_cmd_buffer_ptr(struct vn_queue_submission *submit,
                   .pCommandBufferInfos;
 }
 
+static inline const VkCommandBuffer
+vn_get_cmd_handle(struct vn_queue_submission *submit,
+                  uint32_t batch_index,
+                  uint32_t cmd_index)
+{
+   assert((submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO) ||
+          (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2));
+
+   return submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO
+             ? submit->submit_batches[batch_index].pCommandBuffers[cmd_index]
+             : submit->submit_batches2[batch_index]
+                  .pCommandBufferInfos[cmd_index]
+                  .commandBuffer;
+}
+
 static uint64_t
 vn_get_signal_semaphore_counter(struct vn_queue_submission *submit,
                                 uint32_t batch_index,
@@ -454,9 +469,9 @@ struct vn_feedback_cmds {
 };
 
 static inline VkCommandBuffer *
-vn_get_cmd_handle(struct vn_queue_submission *submit,
-                  struct vn_feedback_cmds *feedback_cmds,
-                  uint32_t cmd_index)
+vn_get_feedback_cmd_handle(struct vn_queue_submission *submit,
+                           struct vn_feedback_cmds *feedback_cmds,
+                           uint32_t cmd_index)
 {
    assert((submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO) ||
           (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2));
@@ -525,7 +540,7 @@ vn_queue_submission_add_semaphore_feedback(
 
       if (sem->feedback.slot) {
          VkCommandBuffer *cmd_handle =
-            vn_get_cmd_handle(submit, feedback_cmds, cmd_index);
+            vn_get_feedback_cmd_handle(submit, feedback_cmds, cmd_index);
 
          uint64_t counter =
             vn_get_signal_semaphore_counter(submit, batch_index, i);
