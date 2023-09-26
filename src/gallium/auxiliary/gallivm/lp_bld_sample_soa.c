@@ -233,10 +233,16 @@ get_first_level(struct gallivm_state *gallivm,
 {
    if (static_state->level_zero_only)
       return lp_build_const_int32(gallivm, 0);
-   else
-      return dynamic_state->first_level(gallivm, resources_type,
-                                        resources_ptr, texture_unit,
-                                        texture_unit_offset);
+   else {
+      LLVMValueRef first_level;
+
+      first_level = dynamic_state->first_level(gallivm, resources_type,
+                                               resources_ptr, texture_unit,
+                                               texture_unit_offset);
+      first_level = LLVMBuildZExt(gallivm->builder, first_level,
+                                  LLVMInt32TypeInContext(gallivm->context), "");
+      return first_level;
+   }
 }
 
 
@@ -251,10 +257,16 @@ get_last_level(struct gallivm_state *gallivm,
 {
    if (static_state->level_zero_only)
       return lp_build_const_int32(gallivm, 0);
-   else
-      return dynamic_state->last_level(gallivm, resources_type,
-                                       resources_ptr, texture_unit,
-                                       texture_unit_offset);
+   else {
+      LLVMValueRef last_level;
+
+      last_level = dynamic_state->last_level(gallivm, resources_type,
+                                             resources_ptr, texture_unit,
+                                             texture_unit_offset);
+      last_level = LLVMBuildZExt(gallivm->builder, last_level,
+                                 LLVMInt32TypeInContext(gallivm->context), "");
+      return last_level;
+   }
 }
 
 /**
@@ -2054,7 +2066,8 @@ lp_build_layer_coord(struct lp_build_sample_context *bld,
 
    num_layers = bld->dynamic_state->depth(bld->gallivm, bld->resources_type,
                                           bld->resources_ptr, texture_unit, NULL);
-
+   num_layers = LLVMBuildZExt(bld->gallivm->builder, num_layers,
+                              bld->int_bld.elem_type, "");
    if (out_of_bounds) {
       LLVMValueRef out1, out;
       assert(!is_cube_array);
@@ -3144,6 +3157,7 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
    LLVMValueRef x = coords[0], y = coords[1], z = coords[2];
    LLVMValueRef width, height, depth, i, j;
    LLVMValueRef offset, out_of_bounds, out1;
+
    LLVMValueRef first_level;
 
    first_level = get_first_level(bld->gallivm,
@@ -3161,6 +3175,7 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
       } else {
          ilevel = explicit_lod;
       }
+
       LLVMValueRef last_level;
 
       last_level = get_last_level(bld->gallivm,
@@ -3248,6 +3263,8 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
                                                                  bld->resources_type,
                                                                  bld->resources_ptr,
                                                                  texture_unit, NULL);
+      num_samples = LLVMBuildZExt(bld->gallivm->builder, num_samples,
+                                  bld->int_bld.elem_type, "");
       LLVMValueRef sample_stride = bld->dynamic_state->sample_stride(bld->gallivm,
                                                                      bld->resources_type,
                                                                      bld->resources_ptr,
@@ -3662,6 +3679,8 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
          LLVMValueRef tex_height =
             dynamic_state->height(gallivm, resources_type,
                                   resources_ptr, texture_index, NULL);
+         tex_height = LLVMBuildZExt(gallivm->builder, tex_height,
+                                    bld.int_bld.elem_type, "");
          bld.int_size = LLVMBuildInsertElement(builder, bld.int_size,
                                                tex_height,
                                                LLVMConstInt(i32t, 1, 0), "");
@@ -3678,6 +3697,8 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
             LLVMValueRef tex_depth =
                dynamic_state->depth(gallivm, resources_type, resources_ptr,
                                     texture_index, NULL);
+            tex_depth = LLVMBuildZExt(gallivm->builder, tex_depth,
+                                      bld.int_bld.elem_type, "");
             bld.int_size = LLVMBuildInsertElement(builder, bld.int_size,
                                                   tex_depth,
                                                   LLVMConstInt(i32t, 2, 0), "");
@@ -4505,6 +4526,8 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
                                                   resources_ptr,
                                                   texture_unit,
                                                   texture_unit_offset);
+         num_samples = LLVMBuildZExt(gallivm->builder, num_samples,
+                                     bld_int_vec4.elem_type, "");
       } else {
          num_samples = lp_build_const_int32(gallivm, 0);
       }
@@ -4545,12 +4568,14 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
       res_bw = bw = 1;
    if (res_bh == bh)
       res_bh = bh = 1;
+
+   LLVMValueRef tex_width = dynamic_state->width(gallivm,
+                                                 resources_type,
+                                                 resources_ptr,
+                                                 texture_unit,
+                                                 texture_unit_offset);
    size = LLVMBuildInsertElement(gallivm->builder, size,
-                                 dynamic_state->width(gallivm,
-                                                      resources_type,
-                                                      resources_ptr,
-                                                      texture_unit,
-                                                      texture_unit_offset),
+                                 tex_width,
                                  lp_build_const_int32(gallivm, 0), "");
    tex_blocksize = LLVMBuildInsertElement(gallivm->builder, tex_blocksize,
                                           lp_build_const_int32(gallivm, res_bw),
@@ -4562,12 +4587,12 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
                                            lp_build_const_int32(gallivm, bw),
                                            lp_build_const_int32(gallivm, 0), "");
    if (dims >= 2) {
-      size = LLVMBuildInsertElement(gallivm->builder, size,
-                                    dynamic_state->height(gallivm,
-                                                          resources_type,
-                                                          resources_ptr,
-                                                          texture_unit,
-                                                          texture_unit_offset),
+      LLVMValueRef tex_height =
+         dynamic_state->height(gallivm, resources_type,
+                               resources_ptr, texture_unit, texture_unit_offset);
+      tex_height = LLVMBuildZExt(gallivm->builder, tex_height,
+                                 bld_int_vec4.elem_type, "");
+      size = LLVMBuildInsertElement(gallivm->builder, size, tex_height,
                                     lp_build_const_int32(gallivm, 1), "");
       tex_blocksize = LLVMBuildInsertElement(gallivm->builder, tex_blocksize,
                                              lp_build_const_int32(gallivm, res_bh),
@@ -4581,12 +4606,12 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
    }
 
    if (dims >= 3) {
-      size = LLVMBuildInsertElement(gallivm->builder, size,
-                                    dynamic_state->depth(gallivm,
-                                                         resources_type,
-                                                         resources_ptr,
-                                                         texture_unit,
-                                                         texture_unit_offset),
+      LLVMValueRef tex_depth  =
+         dynamic_state->depth(gallivm, resources_type,
+                              resources_ptr, texture_unit, texture_unit_offset);
+      tex_depth = LLVMBuildZExt(gallivm->builder, tex_depth,
+                                bld_int_vec4.elem_type, "");
+      size = LLVMBuildInsertElement(gallivm->builder, size, tex_depth,
                                     lp_build_const_int32(gallivm, 2), "");
       tex_blocksize = LLVMBuildInsertElement(gallivm->builder, tex_blocksize,
                                              lp_build_const_int32(gallivm, 1),
@@ -4607,6 +4632,8 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
       LLVMValueRef layers = dynamic_state->depth(gallivm, resources_type,
                                                  resources_ptr, texture_unit,
                                                  texture_unit_offset);
+      layers = LLVMBuildZExt(gallivm->builder, layers,
+                             bld_int_vec4.elem_type, "");
       if (target == PIPE_TEXTURE_CUBE_ARRAY) {
          /*
           * It looks like GL wants number of cubes, d3d10.1 has it undefined?

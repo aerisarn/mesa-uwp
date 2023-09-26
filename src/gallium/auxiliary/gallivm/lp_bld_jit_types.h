@@ -64,14 +64,14 @@ struct lp_jit_texture
 {
    const void *base;
    uint32_t width;        /* same as number of elements */
-   uint32_t height;
-   uint32_t depth;        /* doubles as array size */
-   uint32_t num_samples;
+   uint16_t height;
+   uint16_t depth;        /* doubles as array size */
+   uint8_t num_samples;
+   uint8_t first_level;
+   uint8_t last_level;
    uint32_t sample_stride;
    uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
-   uint32_t first_level;
-   uint32_t last_level;
    uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS];
 };
 
@@ -81,11 +81,11 @@ enum {
    LP_JIT_TEXTURE_HEIGHT,
    LP_JIT_TEXTURE_DEPTH,
    LP_JIT_TEXTURE_NUM_SAMPLES,
+   LP_JIT_TEXTURE_FIRST_LEVEL,
+   LP_JIT_TEXTURE_LAST_LEVEL,
    LP_JIT_TEXTURE_SAMPLE_STRIDE,
    LP_JIT_TEXTURE_ROW_STRIDE,
    LP_JIT_TEXTURE_IMG_STRIDE,
-   LP_JIT_TEXTURE_FIRST_LEVEL,
-   LP_JIT_TEXTURE_LAST_LEVEL,
    LP_JIT_TEXTURE_MIP_OFFSETS,
    LP_JIT_TEXTURE_NUM_FIELDS  /* number of fields above */
 };

@@ -146,13 +146,13 @@ lp_build_create_jit_texture_type(struct gallivm_state *gallivm)
    LLVMTypeRef elem_types[LP_JIT_TEXTURE_NUM_FIELDS];
 
    /* struct lp_jit_texture */
-   elem_types[LP_JIT_TEXTURE_WIDTH]  =
+   elem_types[LP_JIT_TEXTURE_WIDTH] =
+   elem_types[LP_JIT_TEXTURE_SAMPLE_STRIDE] = LLVMInt32TypeInContext(lc);
    elem_types[LP_JIT_TEXTURE_HEIGHT] =
-   elem_types[LP_JIT_TEXTURE_DEPTH] =
+   elem_types[LP_JIT_TEXTURE_DEPTH] = LLVMInt16TypeInContext(lc);
    elem_types[LP_JIT_TEXTURE_NUM_SAMPLES] =
-   elem_types[LP_JIT_TEXTURE_SAMPLE_STRIDE] =
    elem_types[LP_JIT_TEXTURE_FIRST_LEVEL] =
-   elem_types[LP_JIT_TEXTURE_LAST_LEVEL] = LLVMInt32TypeInContext(lc);
+   elem_types[LP_JIT_TEXTURE_LAST_LEVEL] = LLVMInt8TypeInContext(lc);
    elem_types[LP_JIT_TEXTURE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
    elem_types[LP_JIT_TEXTURE_ROW_STRIDE] =
    elem_types[LP_JIT_TEXTURE_IMG_STRIDE] =
