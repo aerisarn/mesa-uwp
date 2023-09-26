@@ -186,7 +186,7 @@ const struct pan_blendable_format
 const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
    FMT(NONE,                    CONSTANT,        0000, L, VTR_),
 
-#if PAN_ARCH == 7
+#if PAN_ARCH >= 7
    /* Multiplane formats */
    FMT_YUV(R8G8_R8B8_UNORM, YUYV8, UVYA, NO_SWAP, CENTER_Y, _T__),
    FMT_YUV(G8R8_B8R8_UNORM, VYUY8, UYVA, SWAP,    CENTER_Y, _T__),
