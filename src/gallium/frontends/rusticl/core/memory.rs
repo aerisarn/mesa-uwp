@@ -457,6 +457,7 @@ impl Mem {
             export_out.dmabuf_fd as u32,
             export_out.modifier,
             mem_type,
+            export_in.target,
             pipe_format,
             gl_mem_props.clone(),
         )?;

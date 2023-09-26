@@ -211,11 +211,12 @@ impl Context {
         handle: u32,
         modifier: u64,
         image_type: cl_mem_object_type,
+        gl_target: cl_GLenum,
         format: pipe_format,
         gl_props: GLMemProps,
     ) -> CLResult<HashMap<&'static Device, Arc<PipeResource>>> {
         let mut res = HashMap::new();
-        let target = cl_mem_type_to_texture_target(image_type);
+        let target = cl_mem_type_to_texture_target_gl(image_type, gl_target);
 
         for dev in &self.devs {
             let resource = dev
