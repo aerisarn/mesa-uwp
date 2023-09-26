@@ -31,6 +31,7 @@ use crate::nak_ir::ShaderStageInfo;
 use bitview::*;
 use nak_bindings::*;
 use nak_from_nir::*;
+use nak_ir::ShaderIoInfo;
 use std::env;
 use std::ffi::CStr;
 use std::os::raw::c_void;
@@ -294,7 +295,12 @@ pub extern "C" fn nak_compile_shader(
                     },
                 }
             }
-            ShaderStageInfo::Fragment(fs_info) => {
+            ShaderStageInfo::Fragment => {
+                let fs_info = match &s.info.io {
+                    ShaderIoInfo::Fragment(io) => io,
+                    _ => unreachable!(),
+                };
+
                 let nir_fs_info = unsafe { &nir.info.__bindgen_anon_1.fs };
                 nak_shader_info__bindgen_ty_1 {
                     fs: nak_shader_info__bindgen_ty_1__bindgen_ty_2 {

@@ -10,7 +10,7 @@ use crate::{
         BitMutView, BitMutViewable, BitView, BitViewable, SetBit, SetField,
         SetFieldU64,
     },
-    nak_ir::{ShaderInfo, ShaderStageInfo},
+    nak_ir::{ShaderInfo, ShaderIoInfo, ShaderStageInfo},
 };
 
 pub const FERMI_SHADER_HEADER_SIZE: usize = 20;
@@ -32,7 +32,7 @@ impl From<&ShaderStageInfo> for ShaderType {
     fn from(value: &ShaderStageInfo) -> Self {
         match value {
             ShaderStageInfo::Vertex => ShaderType::Vertex,
-            ShaderStageInfo::Fragment(_) => ShaderType::Fragment,
+            ShaderStageInfo::Fragment => ShaderType::Fragment,
             ShaderStageInfo::Geometry(_) => ShaderType::Geometry,
             ShaderStageInfo::TessellationControl(_) => {
                 ShaderType::TessellationControl
@@ -374,22 +374,21 @@ impl ShaderProgramHeader {
     }
 
     #[inline]
-    pub fn set_imap_vector(&mut self, index: usize, value: u8) {
-        assert!(index < 32);
+    pub fn set_imap_vector_ps(&mut self, index: usize, value: PixelImap) {
+        assert!(index < 128);
+        assert!(self.shader_type == ShaderType::Fragment);
 
-        let (mut imap_g, elem_size) =
-            if self.shader_type == ShaderType::Fragment {
-                (self.imap_g_ps(), 8)
-            } else {
-                (self.imap_g_vtg(), 4)
-            };
-
-        imap_g.set_field(index * elem_size..(index + 1) * elem_size, value);
+        self.imap_g_ps()
+            .set_field(index * 2..(index + 1) * 2, u8::from(value));
     }
 
     #[inline]
-    pub fn set_imap_color(&mut self, value: u16) {
-        self.set_field(320..336, value);
+    pub fn set_imap_vector_vtg(&mut self, index: usize, value: u32) {
+        assert!(index < 4);
+        assert!(self.shader_type != ShaderType::Fragment);
+
+        self.imap_g_vtg()
+            .set_field(index * 32..(index + 1) * 32, value);
     }
 
     #[inline]
@@ -403,16 +402,11 @@ impl ShaderProgramHeader {
     }
 
     #[inline]
-    pub fn set_omap_vector(&mut self, index: usize, value: u8) {
-        assert!(index < 32);
+    pub fn set_omap_vector(&mut self, index: usize, value: u32) {
+        assert!(index < 4);
+        assert!(self.shader_type != ShaderType::Fragment);
 
-        let (mut omap_g, elem_size) = (self.omap_g(), 4);
-        omap_g.set_field(index * elem_size..(index + 1) * elem_size, value);
-    }
-
-    #[inline]
-    pub fn set_omap_color(&mut self, value: u16) {
-        self.set_field(560..576, value);
+        self.omap_g().set_field(index * 32..(index + 1) * 32, value);
     }
 
     #[inline]
@@ -452,41 +446,45 @@ pub fn encode_header(
     sph.set_does_fp64(shader_info.uses_fp64);
     sph.set_shader_local_memory_size(shader_info.tls_size.into());
 
-    sph.set_imap_system_values_ab(shader_info.system_values_in.ab);
-    sph.set_imap_system_values_c(shader_info.system_values_in.c);
+    match &shader_info.io {
+        ShaderIoInfo::Vtg(io) => {
+            sph.set_imap_system_values_ab(io.sysvals_in.ab);
+            sph.set_imap_system_values_c(io.sysvals_in.c);
 
-    for (index, vec) in shader_info.input_attributes.iter().enumerate() {
-        sph.set_imap_vector(index, *vec);
-    }
-    sph.set_imap_color(shader_info.imap_color);
+            for (index, value) in io.attr_in.iter().enumerate() {
+                sph.set_imap_vector_vtg(index, *value);
+            }
 
-    if let Some(vtg_stage_info) = &shader_info.vtg_stage_info {
-        for (index, vec) in vtg_stage_info.output_attributes.iter().enumerate()
-        {
-            sph.set_omap_vector(index, *vec);
+            for (index, value) in io.attr_out.iter().enumerate() {
+                sph.set_omap_vector(index, *value);
+            }
+
+            sph.set_store_req_start(io.store_req_start);
+            sph.set_store_req_end(io.store_req_end);
+
+            sph.set_omap_system_values_ab(io.sysvals_out.ab);
+            sph.set_omap_system_values_c(io.sysvals_out.c);
         }
-        sph.set_omap_color(vtg_stage_info.omap_color);
+        ShaderIoInfo::Fragment(io) => {
+            sph.set_imap_system_values_ab(io.sysvals_in.ab);
+            sph.set_imap_system_values_c(io.sysvals_in.c);
 
-        sph.set_store_req_start(vtg_stage_info.store_req_start);
-        sph.set_store_req_end(vtg_stage_info.store_req_end);
+            for (index, imap) in io.attr_in.iter().enumerate() {
+                sph.set_imap_vector_ps(index, *imap);
+            }
 
-        sph.set_omap_system_values_ab(vtg_stage_info.system_values_out.ab);
-        sph.set_omap_system_values_c(vtg_stage_info.system_values_out.c);
+            let zs_self_dep = fs_key.map_or(false, |key| key.zs_self_dep);
+
+            sph.set_multiple_render_target_enable(io.writes_color > 0xf);
+            sph.set_kills_pixels(io.uses_kill || zs_self_dep);
+            sph.set_omap_sample_mask(io.writes_sample_mask);
+            sph.set_omap_depth(io.writes_depth);
+            sph.set_omap_targets(io.writes_color);
+        }
+        _ => {}
     }
 
     match &shader_info.stage {
-        // Already covered by VTG common data.
-        ShaderStageInfo::Vertex | ShaderStageInfo::Tessellation => {}
-        ShaderStageInfo::Fragment(stage) => {
-            let zs_self_dep = fs_key.map_or(false, |key| key.zs_self_dep);
-
-            sph.set_multiple_render_target_enable(stage.writes_color > 0xf);
-            sph.set_kills_pixels(stage.uses_kill || zs_self_dep);
-            sph.set_omap_sample_mask(stage.writes_sample_mask);
-            sph.set_omap_depth(stage.writes_depth);
-
-            sph.set_omap_targets(stage.writes_color);
-        }
         ShaderStageInfo::Geometry(stage) => {
             sph.set_stream_out_mask(stage.stream_out_mask);
             sph.set_threads_per_input_primitive(
@@ -502,6 +500,7 @@ pub fn encode_header(
         ShaderStageInfo::Compute(_) => {
             panic!("Compute shaders don't have a SPH!")
         }
+        _ => {}
     };
 
     sph.data

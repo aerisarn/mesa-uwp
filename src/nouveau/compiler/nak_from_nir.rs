@@ -6,6 +6,8 @@
 #![allow(non_upper_case_globals)]
 #![allow(unstable_name_collisions)]
 
+use crate::bitset::BitSet;
+use crate::bitview::{BitMutView, BitView, SetField};
 use crate::nak_cfg::CFGBuilder;
 use crate::nak_ir::*;
 use crate::nak_sph::{OutputTopology, PixelImap};
@@ -18,7 +20,7 @@ use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 
 fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
-    let mut res = ShaderInfo {
+    ShaderInfo {
         sm: sm,
         num_gprs: 0,
         tls_size: nir.scratch_size,
@@ -38,9 +40,7 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
                 })
             }
             MESA_SHADER_VERTEX => ShaderStageInfo::Vertex,
-            MESA_SHADER_FRAGMENT => {
-                ShaderStageInfo::Fragment(Default::default())
-            }
+            MESA_SHADER_FRAGMENT => ShaderStageInfo::Fragment,
             MESA_SHADER_GEOMETRY => {
                 let info_gs = unsafe { &nir.info.__bindgen_anon_1.gs };
 
@@ -59,34 +59,37 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
             MESA_SHADER_TESS_EVAL => ShaderStageInfo::Tessellation,
             _ => panic!("Unknown shader stage"),
         },
-        vtg_stage_info: match nir.info.stage() {
-            MESA_SHADER_COMPUTE | MESA_SHADER_FRAGMENT => None,
+        io: match nir.info.stage() {
+            MESA_SHADER_COMPUTE => ShaderIoInfo::None,
+            MESA_SHADER_FRAGMENT => ShaderIoInfo::Fragment(FragmentIoInfo {
+                sysvals_in: SysValInfo {
+                    // Required on fragment shaders, otherwise it cause a trap.
+                    ab: 1 << 31,
+                    c: 0,
+                },
+                attr_in: [PixelImap::Unused; 128],
+                reads_sample_mask: false,
+                uses_kill: false,
+                writes_color: 0,
+                writes_sample_mask: false,
+                writes_depth: false,
+            }),
             MESA_SHADER_VERTEX
             | MESA_SHADER_GEOMETRY
             | MESA_SHADER_TESS_CTRL
-            | MESA_SHADER_TESS_EVAL => Some(Default::default()),
+            | MESA_SHADER_TESS_EVAL => ShaderIoInfo::Vtg(VtgIoInfo {
+                sysvals_in: SysValInfo::default(),
+                sysvals_out: SysValInfo::default(),
+                attr_in: [0; 4],
+                attr_out: [0; 4],
+
+                // TODO: figure out how to fill this.
+                store_req_start: 0xff,
+                store_req_end: 0,
+            }),
             _ => panic!("Unknown shader stage"),
         },
-        input_attributes: [0; 32],
-        imap_color: 0,
-        system_values_in: SystemValueInfo {
-            ab: if nir.info.stage() == MESA_SHADER_FRAGMENT {
-                // Required on fragment shaders, otherwise it cause a trap.
-                1 << 31
-            } else {
-                0
-            },
-            c: 0,
-        },
-    };
-
-    if let Some(vtg_stage_info) = &mut res.vtg_stage_info {
-        // TODO: figure out how to fill this.
-        vtg_stage_info.store_req_start = 0xff;
-        vtg_stage_info.store_req_end = 0x0;
     }
-
-    res
 }
 
 fn alloc_ssa_for_nir(b: &mut impl SSABuilder, ssa: &nir_def) -> Vec<SSAValue> {
@@ -1242,7 +1245,7 @@ impl<'a> ShaderFromNir<'a> {
                 });
             }
             nir_intrinsic_demote | nir_intrinsic_discard => {
-                if let ShaderStageInfo::Fragment(info) = &mut self.info.stage {
+                if let ShaderIoInfo::Fragment(info) = &mut self.info.io {
                     info.uses_kill = true;
                 } else {
                     panic!("OpKill is only available in fragment shaders");
@@ -1250,7 +1253,7 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpKill {});
             }
             nir_intrinsic_demote_if | nir_intrinsic_discard_if => {
-                if let ShaderStageInfo::Fragment(info) = &mut self.info.stage {
+                if let ShaderIoInfo::Fragment(info) = &mut self.info.io {
                     info.uses_kill = true;
                 } else {
                     panic!("OpKill is only available in fragment shaders");
@@ -1338,67 +1341,101 @@ impl<'a> ShaderFromNir<'a> {
                 let comps = intrin.def.num_components();
                 let dst = b.alloc_ssa(RegFile::GPR, comps);
 
-                if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
-                    assert!(intrin.intrinsic == nir_intrinsic_load_input);
-                    let addr = u16::try_from(intrin.base()).unwrap()
-                        + u16::try_from(srcs[0].as_uint().unwrap()).unwrap()
-                        + u16::try_from(intrin.component()).unwrap() * 4;
+                // TODO: should be in the vtg block but we cannot have two mutability around.
+                let (vtx, offset) = match intrin.intrinsic {
+                    nir_intrinsic_load_input => {
+                        (Src::new_zero(), self.get_src(&srcs[0]))
+                    }
+                    nir_intrinsic_load_per_vertex_input => {
+                        (self.get_src(&srcs[0]), self.get_src(&srcs[1]))
+                    }
+                    _ => panic!("Unhandled intrinsic"),
+                };
 
-                    for c in 0..comps {
-                        let attribute_id = addr + 4 * u16::from(c);
-                        self.info.set_used_attribute_id(
-                            attribute_id,
-                            None,
-                            false,
-                        );
-                        b.push_op(OpIpa {
-                            dst: dst[usize::from(c)].into(),
-                            addr: attribute_id,
-                            freq: InterpFreq::Constant,
-                            loc: InterpLoc::Default,
-                            offset: SrcRef::Zero.into(),
+                match &mut self.info.io {
+                    ShaderIoInfo::None => {
+                        panic!("Stage does not support load_input")
+                    }
+                    ShaderIoInfo::Fragment(io) => {
+                        assert!(intrin.intrinsic == nir_intrinsic_load_input);
+                        let addr = u16::try_from(intrin.base()).unwrap()
+                            + u16::try_from(srcs[0].as_uint().unwrap())
+                                .unwrap()
+                            + u16::try_from(intrin.component()).unwrap() * 4;
+
+                        for c in 0..comps {
+                            let attribute_id = addr + 4 * u16::from(c);
+
+                            if attribute_id < 0x080 {
+                                io.sysvals_in.ab |= 1 << (attribute_id / 4);
+                            } else if attribute_id >= 0x080
+                                && attribute_id < 0x280
+                            {
+                                let user_attribute_index =
+                                    (attribute_id - 0x080) as usize / 4;
+
+                                io.attr_in[user_attribute_index] =
+                                    PixelImap::Constant;
+                            } else if attribute_id >= 0x2c0
+                                && attribute_id < 0x300
+                            {
+                                io.sysvals_in.c |=
+                                    1 << ((attribute_id - 0x2c0) / 4);
+                            }
+
+                            b.push_op(OpIpa {
+                                dst: dst[usize::from(c)].into(),
+                                addr: attribute_id,
+                                freq: InterpFreq::Constant,
+                                loc: InterpLoc::Default,
+                                offset: SrcRef::Zero.into(),
+                            });
+                        }
+                    }
+                    ShaderIoInfo::Vtg(io) => {
+                        let addr = u16::try_from(intrin.base()).unwrap()
+                            + u16::try_from(intrin.component()).unwrap() * 4;
+
+                        let access = AttrAccess {
+                            addr: addr,
+                            comps: comps,
+                            patch: false,
+                            out_load: false,
+                            flags: 0,
+                        };
+
+                        let attribute_base_index = access.addr / 4;
+                        for attribute_index in attribute_base_index
+                            ..attribute_base_index + access.comps as u16
+                        {
+                            let attribute_id = attribute_index * 4;
+
+                            if attribute_id < 0x080 {
+                                io.sysvals_in.ab |= 1 << (attribute_id / 4);
+                            } else if attribute_id >= 0x080
+                                && attribute_id < 0x280
+                            {
+                                BitMutView::new(&mut io.attr_in).set_bit(
+                                    (attribute_id as usize - 0x080) / 4,
+                                    true,
+                                );
+                            } else if attribute_id >= 0x2c0
+                                && attribute_id < 0x300
+                            {
+                                io.sysvals_in.c |=
+                                    1 << ((attribute_id - 0x2c0) / 4);
+                            }
+                        }
+
+                        b.push_op(OpALd {
+                            dst: dst.into(),
+                            vtx: vtx,
+                            offset: offset,
+                            access: access,
                         });
                     }
-                } else {
-                    let addr = u16::try_from(intrin.base()).unwrap()
-                        + u16::try_from(intrin.component()).unwrap() * 4;
-
-                    let (vtx, offset) = match intrin.intrinsic {
-                        nir_intrinsic_load_input => {
-                            (Src::new_zero(), self.get_src(&srcs[0]))
-                        }
-                        nir_intrinsic_load_per_vertex_input => {
-                            (self.get_src(&srcs[0]), self.get_src(&srcs[1]))
-                        }
-                        _ => panic!("Unhandled intrinsic"),
-                    };
-
-                    let access = AttrAccess {
-                        addr: addr,
-                        comps: comps,
-                        patch: false,
-                        out_load: false,
-                        flags: 0,
-                    };
-
-                    let attribute_base_index = access.addr / 4;
-                    for attribute_index in attribute_base_index
-                        ..attribute_base_index + comps as u16
-                    {
-                        self.info.set_used_attribute_id(
-                            attribute_index * 4,
-                            None,
-                            false,
-                        );
-                    }
-
-                    b.push_op(OpALd {
-                        dst: dst.into(),
-                        vtx: vtx,
-                        offset: offset,
-                        access: access,
-                    });
                 }
+
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_interpolated_input => {
@@ -1410,7 +1447,7 @@ impl<'a> ShaderFromNir<'a> {
                 let (freq, loc) = match bary.intrinsic {
                     nir_intrinsic_load_barycentric_at_offset_nv => {
                         (InterpFreq::Pass, InterpLoc::Offset)
-                    },
+                    }
                     nir_intrinsic_load_barycentric_centroid => {
                         (InterpFreq::Pass, InterpLoc::Centroid)
                     }
@@ -1443,11 +1480,57 @@ impl<'a> ShaderFromNir<'a> {
 
                 for c in 0..intrin.def.num_components() {
                     let attribute_id = addr + 4 * u16::from(c);
-                    self.info.set_used_attribute_id(
-                        attribute_id,
-                        Some(interp_mode),
-                        false,
-                    );
+
+                    if attribute_id < 0x080 {
+                        match &mut self.info.io {
+                            ShaderIoInfo::None => {
+                                panic!("Stage does not support load_interpolated_input")
+                            }
+                            ShaderIoInfo::Vtg(VtgIoInfo {
+                                sysvals_in, ..
+                            })
+                            | ShaderIoInfo::Fragment(FragmentIoInfo {
+                                sysvals_in,
+                                ..
+                            }) => {
+                                sysvals_in.ab |= 1 << (attribute_id / 4);
+                            }
+                        }
+                    } else if attribute_id >= 0x080 && attribute_id < 0x280 {
+                        let user_attribute_index =
+                            (attribute_id - 0x080) as usize / 4;
+
+                        match &mut self.info.io {
+                            ShaderIoInfo::None => {
+                                panic!("Stage does not support load_interpolated_input")
+                            }
+                            ShaderIoInfo::Vtg(io) => {
+                                BitMutView::new(&mut io.attr_in)
+                                    .set_bit(user_attribute_index, true);
+                            }
+                            ShaderIoInfo::Fragment(io) => {
+                                io.attr_in[user_attribute_index] = interp_mode;
+                            }
+                            _ => {}
+                        }
+                    } else if attribute_id >= 0x2c0 && attribute_id < 0x300 {
+                        match &mut self.info.io {
+                            ShaderIoInfo::None => {
+                                panic!("Stage does not support load_interpolated_input")
+                            }
+                            ShaderIoInfo::Vtg(VtgIoInfo {
+                                sysvals_in, ..
+                            })
+                            | ShaderIoInfo::Fragment(FragmentIoInfo {
+                                sysvals_in,
+                                ..
+                            }) => {
+                                sysvals_in.c |=
+                                    1 << ((attribute_id - 0x2c0) / 4);
+                            }
+                        }
+                    }
+
                     b.push_op(OpIpa {
                         dst: dst[usize::from(c)].into(),
                         addr: attribute_id,
@@ -1467,7 +1550,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_sample_mask_in => {
-                if let ShaderStageInfo::Fragment(info) = &mut self.info.stage {
+                if let ShaderIoInfo::Fragment(info) = &mut self.info.io {
                     info.reads_sample_mask = true;
                 } else {
                     panic!("sample_mask_in is only available in fragment shaders");
@@ -1660,51 +1743,69 @@ impl<'a> ShaderFromNir<'a> {
                 });
             }
             nir_intrinsic_store_output => {
-                if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
-                    /* We assume these only ever happen in the last block.
-                     * This is ensured by nir_lower_io_to_temporaries()
-                     */
-                    let data = *self.get_src(&srcs[0]).as_ssa().unwrap();
-                    assert!(srcs[1].is_zero());
-                    let base: usize = intrin.base().try_into().unwrap();
-                    assert!(base % 4 == 0);
-                    for c in 0..usize::from(intrin.num_components) {
-                        self.fs_out_regs[(base / 4) + c] = data[c];
+                let data = self.get_src(&srcs[0]);
+                let vtx = Src::new_zero();
+                let offset = self.get_src(&srcs[1]);
+
+                match &mut self.info.io {
+                    ShaderIoInfo::None => {
+                        panic!("Stage does not support load_input")
                     }
-                } else {
-                    let addr = u16::try_from(intrin.base()).unwrap()
-                        + u16::try_from(intrin.component()).unwrap() * 4;
-
-                    let data = self.get_src(&srcs[0]);
-                    let vtx = Src::new_zero();
-                    let offset = self.get_src(&srcs[1]);
-
-                    assert!(intrin.get_src(0).bit_size() == 32);
-                    let access = AttrAccess {
-                        addr: addr,
-                        comps: intrin.get_src(0).num_components(),
-                        patch: false,
-                        out_load: false,
-                        flags: 0,
-                    };
-
-                    let attribute_base_index = access.addr / 4;
-                    for attribute_index in attribute_base_index
-                        ..attribute_base_index + access.comps as u16
-                    {
-                        self.info.set_used_attribute_id(
-                            attribute_index * 4,
-                            None,
-                            true,
-                        );
+                    ShaderIoInfo::Fragment(io) => {
+                        /* We assume these only ever happen in the last block.
+                         * This is ensured by nir_lower_io_to_temporaries()
+                         */
+                        let data = *self.get_src(&srcs[0]).as_ssa().unwrap();
+                        assert!(srcs[1].is_zero());
+                        let base: usize = intrin.base().try_into().unwrap();
+                        assert!(base % 4 == 0);
+                        for c in 0..usize::from(intrin.num_components) {
+                            self.fs_out_regs[(base / 4) + c] = data[c];
+                        }
                     }
+                    ShaderIoInfo::Vtg(io) => {
+                        let addr = u16::try_from(intrin.base()).unwrap()
+                            + u16::try_from(intrin.component()).unwrap() * 4;
 
-                    b.push_op(OpASt {
-                        vtx: vtx,
-                        offset: offset,
-                        data: data,
-                        access: access,
-                    });
+                        assert!(intrin.get_src(0).bit_size() == 32);
+                        let access = AttrAccess {
+                            addr: addr,
+                            comps: intrin.get_src(0).num_components(),
+                            patch: false,
+                            out_load: false,
+                            flags: 0,
+                        };
+
+                        let attribute_base_index = access.addr / 4;
+                        for attribute_index in attribute_base_index
+                            ..attribute_base_index + access.comps as u16
+                        {
+                            let attribute_id = attribute_index * 4;
+
+                            if attribute_id < 0x080 {
+                                io.sysvals_out.ab |= 1 << (attribute_id / 4);
+                            } else if attribute_id >= 0x080
+                                && attribute_id < 0x280
+                            {
+                                BitMutView::new(&mut io.attr_out).set_bit(
+                                    (attribute_id as usize - 0x080) / 4,
+                                    true,
+                                );
+                            } else if attribute_id >= 0x2c0
+                                && attribute_id < 0x300
+                            {
+                                io.sysvals_out.c |=
+                                    1 << ((attribute_id - 0x2c0) / 4);
+                            }
+                        }
+
+                        b.push_op(OpASt {
+                            vtx: vtx,
+                            offset: offset,
+                            data: data,
+                            access: access,
+                        });
+                    }
                 }
             }
             nir_intrinsic_store_scratch => {
@@ -1801,7 +1902,7 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn store_fs_outputs(&mut self, b: &mut impl SSABuilder) {
-        let ShaderStageInfo::Fragment(info) = &mut self.info.stage else {
+        let ShaderIoInfo::Fragment(info) = &mut self.info.io else {
             return;
         };
 

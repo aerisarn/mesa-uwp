@@ -5,6 +5,7 @@
 
 extern crate nak_ir_proc;
 
+use crate::bitview::{BitMutView, SetField};
 pub use crate::nak_builder::{
     Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
 };
@@ -4477,15 +4478,6 @@ pub struct ComputeShaderInfo {
     pub smem_size: u16,
 }
 
-#[derive(Debug, Default)]
-pub struct FragmentShaderInfo {
-    pub reads_sample_mask: bool,
-    pub uses_kill: bool,
-    pub writes_color: u32,
-    pub writes_sample_mask: bool,
-    pub writes_depth: bool,
-}
-
 #[derive(Debug)]
 pub struct GeometryShaderInfo {
     pub stream_out_mask: u8,
@@ -4515,25 +4507,45 @@ pub struct TessellationControlShaderInfo {
 pub enum ShaderStageInfo {
     Compute(ComputeShaderInfo),
     Vertex,
-    Fragment(FragmentShaderInfo),
+    Fragment,
     Geometry(GeometryShaderInfo),
     TessellationControl(TessellationControlShaderInfo),
     Tessellation,
 }
 
 #[derive(Debug, Default)]
-pub struct SystemValueInfo {
+pub struct SysValInfo {
     pub ab: u32,
     pub c: u16,
 }
 
-#[derive(Debug, Default)]
-pub struct ShaderStageVtgInfo {
-    pub output_attributes: [u8; 32],
+#[derive(Debug)]
+pub struct VtgIoInfo {
+    pub sysvals_in: SysValInfo,
+    pub sysvals_out: SysValInfo,
+    pub attr_in: [u32; 4],
+    pub attr_out: [u32; 4],
     pub store_req_start: u8,
     pub store_req_end: u8,
-    pub system_values_out: SystemValueInfo,
-    pub omap_color: u16,
+}
+
+#[derive(Debug)]
+pub struct FragmentIoInfo {
+    pub sysvals_in: SysValInfo,
+    pub attr_in: [PixelImap; 128],
+
+    pub reads_sample_mask: bool,
+    pub uses_kill: bool,
+    pub writes_color: u32,
+    pub writes_sample_mask: bool,
+    pub writes_depth: bool,
+}
+
+#[derive(Debug)]
+pub enum ShaderIoInfo {
+    None,
+    Vtg(VtgIoInfo),
+    Fragment(FragmentIoInfo),
 }
 
 #[derive(Debug)]
@@ -4545,70 +4557,12 @@ pub struct ShaderInfo {
     pub writes_global_mem: bool,
     pub uses_fp64: bool,
     pub stage: ShaderStageInfo,
-    pub vtg_stage_info: Option<ShaderStageVtgInfo>,
-    pub input_attributes: [u8; 32],
-    pub imap_color: u16,
-    pub system_values_in: SystemValueInfo,
+    pub io: ShaderIoInfo,
 }
 
 pub struct Shader {
     pub info: ShaderInfo,
     pub functions: Vec<Function>,
-}
-
-impl ShaderInfo {
-    pub fn set_used_attribute_id(
-        &mut self,
-        attribute_id: u16,
-        pixel_opt: Option<PixelImap>,
-        is_store: bool,
-    ) {
-        if attribute_id < 0x080 {
-            let bit = attribute_id / 4;
-
-            if is_store {
-                if let Some(vtg) = &mut self.vtg_stage_info {
-                    vtg.system_values_out.ab |= 1 << bit;
-                }
-            } else {
-                self.system_values_in.ab |= 1 << bit;
-            }
-        } else if attribute_id >= 0x080 && attribute_id < 0x280 {
-            let user_attribute_base = attribute_id - 0x080;
-            let user_attribute_index = (user_attribute_base / 0x10) as usize;
-            let user_attribute_component_bit_start =
-                (user_attribute_base % 0x10) as usize / 4;
-
-            if let Some(vtg) = &mut self.vtg_stage_info {
-                let attributes = if is_store {
-                    &mut vtg.output_attributes
-                } else {
-                    &mut self.input_attributes
-                };
-
-                attributes[user_attribute_index] |=
-                    1 << user_attribute_component_bit_start;
-            } else if !is_store {
-                if let ShaderStageInfo::Fragment(_) = &mut self.stage {
-                    let pixel = pixel_opt.unwrap_or(PixelImap::Perspective);
-
-                    self.input_attributes[user_attribute_index] |=
-                        u8::from(pixel)
-                            << user_attribute_component_bit_start * 2;
-                }
-            }
-        } else if attribute_id >= 0x2c0 && attribute_id < 0x300 {
-            let bit = (attribute_id - 0x2c0) / 4;
-
-            if is_store {
-                if let Some(vtg) = &mut self.vtg_stage_info {
-                    vtg.system_values_out.c |= 1 << bit;
-                }
-            } else {
-                self.system_values_in.c |= 1 << bit;
-            }
-        }
-    }
 }
 
 impl Shader {
