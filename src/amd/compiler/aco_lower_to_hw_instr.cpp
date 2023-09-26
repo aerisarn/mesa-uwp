@@ -2615,7 +2615,7 @@ lower_to_hw_instr(Program* program)
                      bld.sop2(signext ? aco_opcode::s_bfe_i32 : aco_opcode::s_bfe_u32, dst,
                               bld.def(s1, scc), op, Operand::c32((bits << 16) | offset));
                   }
-               } else if ((dst.regClass() == v1 && op.regClass() == v1) ||
+               } else if ((dst.regClass() == v1 && op.physReg().byte() == 0) ||
                           ctx.program->gfx_level <= GFX7) {
                   assert(op.physReg().byte() == 0 && dst.physReg().byte() == 0);
                   if (offset == (32 - bits) && op.regClass() != s1) {
