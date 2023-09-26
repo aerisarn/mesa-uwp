@@ -1753,6 +1753,13 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          emit_vop1_instruction(ctx, instr, aco_opcode::v_ffbl_b32, dst);
       } else if (src.regClass() == s2) {
          bld.sop1(aco_opcode::s_ff1_i32_b64, Definition(dst), src);
+      } else if (src.regClass() == v2) {
+         Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
+         lo = bld.vop1(aco_opcode::v_ffbl_b32, bld.def(v1), lo);
+         hi = bld.vop1(aco_opcode::v_ffbl_b32, bld.def(v1), hi);
+         hi = uadd32_sat(bld, bld.def(v1), bld.copy(bld.def(s1), Operand::c32(32u)), hi);
+         bld.vop2(aco_opcode::v_min_u32, Definition(dst), lo, hi);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
