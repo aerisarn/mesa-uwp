@@ -31,6 +31,7 @@
 #include "tgsi/tgsi_dump.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_serialize.h"
 #include "nir/tgsi_to_nir.h"
 #include "compiler/v3d_compiler.h"
 #include "v3d_context.h"
@@ -399,6 +400,14 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
 
         so->base.type = PIPE_SHADER_IR_NIR;
         so->base.ir.nir = s;
+
+        /* Generate sha1 from NIR for caching */
+        struct blob blob;
+        blob_init(&blob);
+        nir_serialize(&blob, s, true);
+        assert(!blob.out_of_memory);
+        _mesa_sha1_compute(blob.data, blob.size, so->sha1);
+        blob_finish(&blob);
 
         if (V3D_DBG(NIR) || v3d_debug_flag_for_shader_stage(s->info.stage)) {
                 fprintf(stderr, "%s prog %d NIR:\n",
