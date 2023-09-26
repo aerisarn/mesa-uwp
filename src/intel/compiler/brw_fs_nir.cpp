@@ -6517,7 +6517,8 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
    }
 
    case nir_intrinsic_load_global_constant_uniform_block_intel: {
-      const unsigned total_dwords = ALIGN(instr->num_components, REG_SIZE / 4);
+      const unsigned total_dwords = ALIGN(instr->num_components,
+                                          REG_SIZE * reg_unit(devinfo) / 4);
       unsigned loaded_dwords = 0;
 
       const fs_builder ubld1 = bld.exec_all().group(1, 0);
@@ -6543,7 +6544,8 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
          srcs[A64_LOGICAL_ENABLE_HELPERS] = brw_imm_ud(0);
          ubld.emit(SHADER_OPCODE_A64_UNALIGNED_OWORD_BLOCK_READ_LOGICAL,
                    retype(byte_offset(packed_consts, loaded_dwords * 4), BRW_REGISTER_TYPE_UD),
-                   srcs, A64_LOGICAL_NUM_SRCS)->size_written = block_bytes;
+                   srcs, A64_LOGICAL_NUM_SRCS)->size_written =
+            align(block_bytes, REG_SIZE * reg_unit(devinfo));
 
          increment_a64_address(ubld1, address, block_bytes);
          loaded_dwords += block;
