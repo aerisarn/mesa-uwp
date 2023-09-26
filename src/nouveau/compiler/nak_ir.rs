@@ -4529,6 +4529,45 @@ pub struct VtgIoInfo {
     pub store_req_end: u8,
 }
 
+impl VtgIoInfo {
+    fn mark_attrs(&mut self, addrs: Range<u16>, written: bool) {
+        let sysvals = if written {
+            &mut self.sysvals_out
+        } else {
+            &mut self.sysvals_in
+        };
+
+        let mut attr = BitMutView::new(if written {
+            &mut self.attr_out
+        } else {
+            &mut self.attr_in
+        });
+
+        let mut addrs = addrs;
+        addrs.start &= !3;
+        for addr in addrs.step_by(4) {
+            if addr < 0x080 {
+                sysvals.ab |= 1 << (addr / 4);
+            } else if addr < 0x280 {
+                let attr_idx = (addr - 0x080) as usize / 4;
+                attr.set_bit(attr_idx, true);
+            } else if addr < 0x2c0 {
+                panic!("FF color I/O not supported");
+            } else if addr < 0x300 {
+                sysvals.c |= 1 << ((addr - 0x2c0) / 4);
+            }
+        }
+    }
+
+    pub fn mark_attrs_read(&mut self, addrs: Range<u16>) {
+        self.mark_attrs(addrs, false);
+    }
+
+    pub fn mark_attrs_written(&mut self, addrs: Range<u16>) {
+        self.mark_attrs(addrs, true);
+    }
+}
+
 #[derive(Debug)]
 pub struct FragmentIoInfo {
     pub sysvals_in: SysValInfo,
@@ -4539,6 +4578,21 @@ pub struct FragmentIoInfo {
     pub writes_color: u32,
     pub writes_sample_mask: bool,
     pub writes_depth: bool,
+}
+
+impl FragmentIoInfo {
+    pub fn mark_attr_read(&mut self, addr: u16, interp: PixelImap) {
+        if addr < 0x080 {
+            self.sysvals_in.ab |= 1 << (addr / 4);
+        } else if addr < 0x280 {
+            let attr_idx = (addr - 0x080) as usize / 4;
+            self.attr_in[attr_idx] = interp;
+        } else if addr < 0x2c0 {
+            panic!("FF color I/O not supported");
+        } else if addr < 0x300 {
+            self.sysvals_in.c |= 1 << ((addr - 0x2c0) / 4);
+        }
+    }
 }
 
 #[derive(Debug)]

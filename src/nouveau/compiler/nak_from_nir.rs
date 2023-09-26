@@ -1370,28 +1370,13 @@ impl<'a> ShaderFromNir<'a> {
                             + u16::try_from(intrin.component()).unwrap() * 4;
 
                         for c in 0..comps {
-                            let attribute_id = addr + 4 * u16::from(c);
+                            let c_addr = addr + 4 * u16::from(c);
 
-                            if attribute_id < 0x080 {
-                                io.sysvals_in.ab |= 1 << (attribute_id / 4);
-                            } else if attribute_id >= 0x080
-                                && attribute_id < 0x280
-                            {
-                                let user_attribute_index =
-                                    (attribute_id - 0x080) as usize / 4;
-
-                                io.attr_in[user_attribute_index] =
-                                    PixelImap::Constant;
-                            } else if attribute_id >= 0x2c0
-                                && attribute_id < 0x300
-                            {
-                                io.sysvals_in.c |=
-                                    1 << ((attribute_id - 0x2c0) / 4);
-                            }
+                            io.mark_attr_read(c_addr, PixelImap::Constant);
 
                             b.push_op(OpIpa {
                                 dst: dst[usize::from(c)].into(),
-                                addr: attribute_id,
+                                addr: c_addr,
                                 freq: InterpFreq::Constant,
                                 loc: InterpLoc::Default,
                                 offset: SrcRef::Zero.into(),
@@ -1402,6 +1387,9 @@ impl<'a> ShaderFromNir<'a> {
                         let addr = u16::try_from(intrin.base()).unwrap()
                             + u16::try_from(intrin.component()).unwrap() * 4;
 
+                        let addr_range = addr..(addr + 4 * u16::from(comps));
+                        io.mark_attrs_read(addr_range);
+
                         let access = AttrAccess {
                             addr: addr,
                             comps: comps,
@@ -1409,29 +1397,6 @@ impl<'a> ShaderFromNir<'a> {
                             out_load: false,
                             flags: 0,
                         };
-
-                        let attribute_base_index = access.addr / 4;
-                        for attribute_index in attribute_base_index
-                            ..attribute_base_index + access.comps as u16
-                        {
-                            let attribute_id = attribute_index * 4;
-
-                            if attribute_id < 0x080 {
-                                io.sysvals_in.ab |= 1 << (attribute_id / 4);
-                            } else if attribute_id >= 0x080
-                                && attribute_id < 0x280
-                            {
-                                BitMutView::new(&mut io.attr_in).set_bit(
-                                    (attribute_id as usize - 0x080) / 4,
-                                    true,
-                                );
-                            } else if attribute_id >= 0x2c0
-                                && attribute_id < 0x300
-                            {
-                                io.sysvals_in.c |=
-                                    1 << ((attribute_id - 0x2c0) / 4);
-                            }
-                        }
 
                         b.push_op(OpALd {
                             dst: dst.into(),
@@ -1487,65 +1452,21 @@ impl<'a> ShaderFromNir<'a> {
                 };
 
                 assert!(intrin.def.bit_size() == 32);
-                let dst =
-                    b.alloc_ssa(RegFile::GPR, intrin.def.num_components());
+                let comps = intrin.def.num_components();
+                let dst = b.alloc_ssa(RegFile::GPR, comps);
 
-                for c in 0..intrin.def.num_components() {
-                    let attribute_id = addr + 4 * u16::from(c);
+                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
+                    panic!("input interpolation is only allowed in fragment shaders");
+                };
 
-                    if attribute_id < 0x080 {
-                        match &mut self.info.io {
-                            ShaderIoInfo::None => {
-                                panic!("Stage does not support load_interpolated_input")
-                            }
-                            ShaderIoInfo::Vtg(VtgIoInfo {
-                                sysvals_in, ..
-                            })
-                            | ShaderIoInfo::Fragment(FragmentIoInfo {
-                                sysvals_in,
-                                ..
-                            }) => {
-                                sysvals_in.ab |= 1 << (attribute_id / 4);
-                            }
-                        }
-                    } else if attribute_id >= 0x080 && attribute_id < 0x280 {
-                        let user_attribute_index =
-                            (attribute_id - 0x080) as usize / 4;
+                for c in 0..comps {
+                    let c_addr = addr + 4 * u16::from(c);
 
-                        match &mut self.info.io {
-                            ShaderIoInfo::None => {
-                                panic!("Stage does not support load_interpolated_input")
-                            }
-                            ShaderIoInfo::Vtg(io) => {
-                                BitMutView::new(&mut io.attr_in)
-                                    .set_bit(user_attribute_index, true);
-                            }
-                            ShaderIoInfo::Fragment(io) => {
-                                io.attr_in[user_attribute_index] = interp_mode;
-                            }
-                            _ => {}
-                        }
-                    } else if attribute_id >= 0x2c0 && attribute_id < 0x300 {
-                        match &mut self.info.io {
-                            ShaderIoInfo::None => {
-                                panic!("Stage does not support load_interpolated_input")
-                            }
-                            ShaderIoInfo::Vtg(VtgIoInfo {
-                                sysvals_in, ..
-                            })
-                            | ShaderIoInfo::Fragment(FragmentIoInfo {
-                                sysvals_in,
-                                ..
-                            }) => {
-                                sysvals_in.c |=
-                                    1 << ((attribute_id - 0x2c0) / 4);
-                            }
-                        }
-                    }
+                    io.mark_attr_read(c_addr, interp_mode);
 
                     b.push_op(OpIpa {
                         dst: dst[usize::from(c)].into(),
-                        addr: attribute_id,
+                        addr: c_addr,
                         freq: freq,
                         loc: loc,
                         offset: offset,
@@ -1757,6 +1678,9 @@ impl<'a> ShaderFromNir<'a> {
                 });
             }
             nir_intrinsic_store_output => {
+                assert!(intrin.get_src(0).bit_size() == 32);
+                let comps = intrin.num_components;
+
                 let data = self.get_src(&srcs[0]);
                 let vtx = Src::new_zero();
                 let offset = self.get_src(&srcs[1]);
@@ -1773,7 +1697,7 @@ impl<'a> ShaderFromNir<'a> {
                         assert!(srcs[1].is_zero());
                         let base: usize = intrin.base().try_into().unwrap();
                         assert!(base % 4 == 0);
-                        for c in 0..usize::from(intrin.num_components) {
+                        for c in 0..usize::from(comps) {
                             self.fs_out_regs[(base / 4) + c] = data[c];
                         }
                     }
@@ -1781,37 +1705,16 @@ impl<'a> ShaderFromNir<'a> {
                         let addr = u16::try_from(intrin.base()).unwrap()
                             + u16::try_from(intrin.component()).unwrap() * 4;
 
-                        assert!(intrin.get_src(0).bit_size() == 32);
+                        let addr_range = addr..(addr + 4 * u16::from(comps));
+                        io.mark_attrs_written(addr_range);
+
                         let access = AttrAccess {
                             addr: addr,
-                            comps: intrin.get_src(0).num_components(),
+                            comps: comps,
                             patch: false,
                             out_load: false,
                             flags: 0,
                         };
-
-                        let attribute_base_index = access.addr / 4;
-                        for attribute_index in attribute_base_index
-                            ..attribute_base_index + access.comps as u16
-                        {
-                            let attribute_id = attribute_index * 4;
-
-                            if attribute_id < 0x080 {
-                                io.sysvals_out.ab |= 1 << (attribute_id / 4);
-                            } else if attribute_id >= 0x080
-                                && attribute_id < 0x280
-                            {
-                                BitMutView::new(&mut io.attr_out).set_bit(
-                                    (attribute_id as usize - 0x080) / 4,
-                                    true,
-                                );
-                            } else if attribute_id >= 0x2c0
-                                && attribute_id < 0x300
-                            {
-                                io.sysvals_out.c |=
-                                    1 << ((attribute_id - 0x2c0) / 4);
-                            }
-                        }
 
                         b.push_op(OpASt {
                             vtx: vtx,
