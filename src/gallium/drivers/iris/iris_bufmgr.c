@@ -1103,7 +1103,7 @@ iris_bo_alloc_get_mmap_mode(struct iris_bufmgr *bufmgr, enum iris_heap heap,
       return iris_xe_bo_flags_to_mmap_mode(bufmgr, heap, flags);
 
    /* i915 */
-   const bool local = heap != IRIS_HEAP_SYSTEM_MEMORY;
+   const bool local = iris_heap_is_device_local(heap);
    const bool is_coherent = bufmgr->devinfo.has_llc ||
                             (bufmgr->vram.size > 0 && !local) ||
                             (flags & BO_ALLOC_COHERENT);
@@ -2155,7 +2155,7 @@ iris_bo_alloc_aux_map_get_mmap_mode(struct iris_bufmgr *bufmgr,
 {
    switch (bufmgr->devinfo.kmd_type) {
    case INTEL_KMD_TYPE_I915:
-      return heap != IRIS_HEAP_SYSTEM_MEMORY ||
+      return iris_heap_is_device_local(heap) ||
          bufmgr->devinfo.has_set_pat_uapi ?
          IRIS_MMAP_WC : IRIS_MMAP_WB;
    case INTEL_KMD_TYPE_XE:

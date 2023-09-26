@@ -164,6 +164,13 @@ enum iris_heap {
 
 extern const char *iris_heap_to_string[];
 
+static inline bool
+iris_heap_is_device_local(enum iris_heap heap)
+{
+   return heap == IRIS_HEAP_DEVICE_LOCAL ||
+          heap == IRIS_HEAP_DEVICE_LOCAL_PREFERRED;
+}
+
 #define IRIS_BATCH_COUNT 3
 
 struct iris_bo_screen_deps {
@@ -455,7 +462,7 @@ iris_bo_likely_local(const struct iris_bo *bo)
       return false;
 
    bo = iris_get_backing_bo((struct iris_bo *) bo);
-   return bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY;
+   return iris_heap_is_device_local(bo->real.heap);
 }
 
 static inline enum iris_mmap_mode

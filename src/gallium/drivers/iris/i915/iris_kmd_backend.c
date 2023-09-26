@@ -176,7 +176,7 @@ i915_gem_mmap_offset(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
        * across PCIe, it's always snooped.  The only caching mode allowed by
        * DG1 hardware for LMEM is WC.
        */
-      if (bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY)
+      if (iris_heap_is_device_local(bo->real.heap))
          assert(bo->real.mmap_mode == IRIS_MMAP_WC);
       else
          assert(bo->real.mmap_mode == IRIS_MMAP_WB);
