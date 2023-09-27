@@ -75,7 +75,7 @@ gather_intrinsic_store_output_info(const nir_shader *nir, const nir_intrinsic_in
       break;
    case MESA_SHADER_FRAGMENT:
       if (idx >= FRAG_RESULT_DATA0) {
-         info->ps.colors_written |= 0xf << (4 * (idx - FRAG_RESULT_DATA0));
+         info->ps.colors_written |= 0xfu << (4 * (idx - FRAG_RESULT_DATA0));
 
          if (idx == FRAG_RESULT_DATA0)
             info->ps.color0_written = write_mask;
