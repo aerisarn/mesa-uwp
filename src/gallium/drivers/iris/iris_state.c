@@ -6582,7 +6582,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                   color_blend_zero = true;
                }
                if (dst_alpha_blend_factor == BLENDFACTOR_ZERO) {
-                  dst_alpha_blend_factor = BLENDFACTOR_CONST_COLOR;
+                  dst_alpha_blend_factor = BLENDFACTOR_CONST_ALPHA;
                   alpha_blend_zero = true;
                }
             }
@@ -7205,7 +7205,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          if (ice->state.color_blend_zero)
             dst_blend_factor = BLENDFACTOR_CONST_COLOR;
          if (ice->state.alpha_blend_zero)
-            dst_alpha_blend_factor = BLENDFACTOR_CONST_COLOR;
+            dst_alpha_blend_factor = BLENDFACTOR_CONST_ALPHA;
       }
 
       uint32_t dynamic_pb[GENX(3DSTATE_PS_BLEND_length)];
