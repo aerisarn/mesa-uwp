@@ -2996,7 +2996,7 @@ lower_get_buffer_size(const fs_builder &bld, fs_inst *inst)
    /* Since we can only execute this instruction on uniform bti/surface
     * handles, brw_fs_nir.cpp should already have limited this to SIMD8.
     */
-   assert(inst->exec_size == 8);
+   assert(inst->exec_size == (devinfo->ver < 20 ? 8 : 16));
 
    fs_reg surface = inst->src[GET_BUFFER_SIZE_SRC_SURFACE];
    fs_reg surface_handle = inst->src[GET_BUFFER_SIZE_SRC_SURFACE_HANDLE];
