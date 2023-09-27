@@ -44,7 +44,8 @@ int
 loader_open_device(const char *);
 
 int
-loader_open_render_node_platform_device(const char *name);
+loader_open_render_node_platform_device(const char * const drivers[],
+                                        unsigned int n_drivers);
 
 char *
 loader_get_render_node(dev_t device);

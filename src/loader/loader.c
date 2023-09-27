@@ -132,11 +132,19 @@ iris_predicate(int fd)
    return ret;
 }
 
+/**
+ * Goes through all the platform devices whose driver is on the given list and
+ * try to open their render node. It returns the fd of the first device that
+ * it can open.
+ */
 int
-loader_open_render_node_platform_device(const char *name)
+loader_open_render_node_platform_device(const char * const drivers[],
+                                        unsigned int n_drivers)
 {
    drmDevicePtr devices[MAX_DRM_DEVICES], device;
-   int i, num_devices, fd = -1;
+   int num_devices, fd = -1;
+   int i, j;
+   bool found = false;
 
    num_devices = drmGetDevices2(0, devices, MAX_DRM_DEVICES);
    if (num_devices <= 0)
@@ -159,7 +167,13 @@ loader_open_render_node_platform_device(const char *name)
             continue;
          }
 
-         if (strcmp(version->name, name) != 0) {
+         for (j = 0; j < n_drivers; j++) {
+            if (strcmp(version->name, drivers[j]) == 0) {
+               found = true;
+               break;
+            }
+         }
+         if (!found) {
             drmFreeVersion(version);
             close(fd);
             continue;
