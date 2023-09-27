@@ -303,6 +303,11 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
 
    device->fd = fd;
 
+   if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_EXEC_PUSH_MAX, &value))
+      device->max_push = NOUVEAU_GEM_MAX_PUSH;
+   else
+      device->max_push = value;
+
    if (device->info.vram_size_B == 0)
       device->local_mem_domain = NOUVEAU_GEM_DOMAIN_GART;
    else

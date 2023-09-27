@@ -22,10 +22,11 @@
 
 #define NVK_PUSH_MAX_SYNCS 16
 #define NVK_PUSH_MAX_BINDS 4096
-#define NVK_PUSH_MAX_PUSH NOUVEAU_GEM_MAX_PUSH
+#define NVK_PUSH_MAX_PUSH 1024
 
 struct push_builder {
    struct nvk_device *dev;
+   uint32_t max_push;
    struct drm_nouveau_sync req_wait[NVK_PUSH_MAX_SYNCS];
    struct drm_nouveau_sync req_sig[NVK_PUSH_MAX_SYNCS];
    struct drm_nouveau_exec_push req_push[NVK_PUSH_MAX_PUSH];
@@ -40,6 +41,8 @@ push_builder_init(struct nvk_device *dev, struct push_builder *pb,
                   bool is_vmbind)
 {
    pb->dev = dev;
+   pb->max_push = is_vmbind ? 0 :
+      MIN2(NVK_PUSH_MAX_PUSH, dev->ws_dev->max_push);
    pb->req = (struct drm_nouveau_exec) {
       .channel = dev->ws_ctx->channel,
       .push_count = 0,
@@ -211,7 +214,7 @@ push_add_push(struct push_builder *pb, uint64_t addr, uint32_t range,
    if (no_prefetch)
       flags |= DRM_NOUVEAU_EXEC_PUSH_NO_PREFETCH;
 
-   assert(pb->req.push_count < NVK_PUSH_MAX_PUSH);
+   assert(pb->req.push_count < pb->max_push);
    pb->req_push[pb->req.push_count++] = (struct drm_nouveau_exec_push) {
       .va = addr,
       .va_len = range,
@@ -332,7 +335,7 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
             if (push->range == 0)
                continue;
 
-            if (pb.req.push_count >= NVK_PUSH_MAX_PUSH) {
+            if (pb.req.push_count >= pb.max_push) {
                VkResult result = push_submit(&pb, queue, sync);
                if (result != VK_SUCCESS)
                   return result;

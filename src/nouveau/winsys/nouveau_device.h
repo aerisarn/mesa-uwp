@@ -41,6 +41,7 @@ struct nouveau_ws_device {
 
    struct nv_device_info info;
 
+   uint32_t max_push;
    uint32_t local_mem_domain;
 
    enum nvk_debug debug_flags;
