@@ -242,13 +242,13 @@ lp_build_create_jit_image_type(struct gallivm_state *gallivm)
    LLVMContextRef lc = gallivm->context;
    LLVMTypeRef image_type;
    LLVMTypeRef elem_types[LP_JIT_IMAGE_NUM_FIELDS];
-   elem_types[LP_JIT_IMAGE_WIDTH] =
+   elem_types[LP_JIT_IMAGE_WIDTH] = LLVMInt32TypeInContext(lc);
    elem_types[LP_JIT_IMAGE_HEIGHT] =
-   elem_types[LP_JIT_IMAGE_DEPTH] = LLVMInt32TypeInContext(lc);
+   elem_types[LP_JIT_IMAGE_DEPTH] = LLVMInt16TypeInContext(lc);
+   elem_types[LP_JIT_IMAGE_NUM_SAMPLES] = LLVMInt8TypeInContext(lc);
    elem_types[LP_JIT_IMAGE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
    elem_types[LP_JIT_IMAGE_ROW_STRIDE] =
    elem_types[LP_JIT_IMAGE_IMG_STRIDE] =
-   elem_types[LP_JIT_IMAGE_NUM_SAMPLES] =
    elem_types[LP_JIT_IMAGE_SAMPLE_STRIDE] = LLVMInt32TypeInContext(lc);
 
    image_type = LLVMStructTypeInContext(lc, elem_types,

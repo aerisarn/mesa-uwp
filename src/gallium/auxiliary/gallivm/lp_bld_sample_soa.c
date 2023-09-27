@@ -4921,10 +4921,14 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                                                params->resources_type,
                                                params->resources_ptr,
                                                params->image_index, NULL);
+   height = LLVMBuildZExt(gallivm->builder, height,
+                          int_coord_bld.elem_type, "");
    LLVMValueRef depth = dynamic_state->depth(gallivm,
                                              params->resources_type,
                                              params->resources_ptr,
                                              params->image_index, NULL);
+   depth = LLVMBuildZExt(gallivm->builder, depth,
+                         int_coord_bld.elem_type, "");
    bool layer_coord = has_layer_coord(target);
 
    width = lp_build_scale_view_dim(gallivm, width, res_format_desc->block.width,
@@ -4965,6 +4969,8 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                                                             params->resources_type,
                                                             params->resources_ptr,
                                                             params->image_index, NULL);
+      num_samples = LLVMBuildZExt(gallivm->builder, num_samples,
+                                  int_coord_bld.elem_type, "");
       LLVMValueRef sample_stride = dynamic_state->sample_stride(gallivm,
                                                                 params->resources_type,
                                                                 params->resources_ptr,

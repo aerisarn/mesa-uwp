@@ -112,9 +112,9 @@ struct lp_jit_image
 {
    const void *base;
    uint32_t width;        /* same as number of elements */
-   uint32_t height;
-   uint32_t depth;
-   uint32_t num_samples;
+   uint16_t height;
+   uint16_t depth;
+   uint8_t num_samples;
    uint32_t sample_stride;
    uint32_t row_stride;
    uint32_t img_stride;
