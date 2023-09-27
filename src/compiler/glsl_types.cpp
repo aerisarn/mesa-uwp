@@ -789,7 +789,7 @@ get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned
                                                  key_hash, stored_key, (void *)t);
    }
 
-   auto t = (const glsl_type *) entry->data;
+   const struct glsl_type *t = (const struct glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == base_type);
@@ -1260,7 +1260,7 @@ glsl_type::get_array_instance(const glsl_type *element,
                                                  (void *) t);
    }
 
-   auto t = (const glsl_type *) entry->data;
+   const struct glsl_type *t = (const struct glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_ARRAY);
@@ -1536,7 +1536,7 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
       entry = _mesa_hash_table_insert_pre_hashed(struct_types, key_hash, t, (void *) t);
    }
 
-   auto t = (const glsl_type *) entry->data;
+   const struct glsl_type *t = (const struct glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_STRUCT);
@@ -1579,7 +1579,7 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
       entry = _mesa_hash_table_insert_pre_hashed(interface_types, key_hash, t, (void *) t);
    }
 
-   auto t = (const glsl_type *) entry->data;
+   const struct glsl_type *t = (const struct glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_INTERFACE);
@@ -1612,7 +1612,7 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
       entry = _mesa_hash_table_insert_pre_hashed(subroutine_types, key_hash, glsl_get_type_name(t), (void *) t);
    }
 
-   auto t = (const glsl_type *) entry->data;
+   const struct glsl_type *t = (const struct glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type_cache_mutex);
 
    assert(t->base_type == GLSL_TYPE_SUBROUTINE);
