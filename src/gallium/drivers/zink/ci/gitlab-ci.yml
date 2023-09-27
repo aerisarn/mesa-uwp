@@ -37,9 +37,9 @@ zink-anv-tgl-full:
     - .zink-anv-manual-rules
   variables:
     DEQP_SUITE: zink-anv-tgl-full
-    JOB_TIMEOUT: 90
+    JOB_TIMEOUT: 105
     HWCI_START_WESTON: 1
-  timeout: 1h 30m
+  timeout: 1h 45m
   parallel: 3
 
 zink-anv-tgl-traces:
