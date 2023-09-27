@@ -314,7 +314,7 @@ impl SimpleLiveness {
         let mut to_do = true;
         while to_do {
             to_do = false;
-            for (b_idx, bl) in l.blocks.iter_mut().enumerate() {
+            for (b_idx, bl) in l.blocks.iter_mut().enumerate().rev() {
                 /* Compute live-out */
                 for sb_idx in func.blocks.succ_indices(b_idx) {
                     to_do |= bl.live_out.union_with(&live_in[*sb_idx]);
