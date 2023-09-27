@@ -60,19 +60,19 @@ lp_llvm_buffer_num_elements(struct gallivm_state *gallivm,
                             LLVMValueRef buffers_ptr,
                             LLVMValueRef buffers_offset, unsigned buffers_limit);
 
+#define LP_JIT_TEXTURE_SAMPLE_STRIDE 15 /* mip_offsets[15] */
+
 struct lp_jit_texture
 {
    const void *base;
    uint32_t width;        /* same as number of elements */
    uint16_t height;
    uint16_t depth;        /* doubles as array size */
-   uint8_t num_samples;
    uint8_t first_level;
-   uint8_t last_level;
-   uint32_t sample_stride;
+   uint8_t last_level;    /* contains num_samples for multisample */
    uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
-   uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS];
+   uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS]; /* sample stride is in mip_offsets[15] */
 };
 
 enum {
@@ -80,10 +80,8 @@ enum {
    LP_JIT_TEXTURE_WIDTH,
    LP_JIT_TEXTURE_HEIGHT,
    LP_JIT_TEXTURE_DEPTH,
-   LP_JIT_TEXTURE_NUM_SAMPLES,
    LP_JIT_TEXTURE_FIRST_LEVEL,
    LP_JIT_TEXTURE_LAST_LEVEL,
-   LP_JIT_TEXTURE_SAMPLE_STRIDE,
    LP_JIT_TEXTURE_ROW_STRIDE,
    LP_JIT_TEXTURE_IMG_STRIDE,
    LP_JIT_TEXTURE_MIP_OFFSETS,

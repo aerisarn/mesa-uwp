@@ -3259,17 +3259,16 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
    }
 
    if (bld->fetch_ms && bld->static_texture_state->level_zero_only) {
-      LLVMValueRef num_samples = bld->dynamic_state->num_samples(bld->gallivm,
-                                                                 bld->resources_type,
-                                                                 bld->resources_ptr,
-                                                                 texture_unit, NULL);
+      LLVMValueRef num_samples = bld->dynamic_state->last_level(bld->gallivm,
+                                                                bld->resources_type,
+                                                                bld->resources_ptr,
+                                                                texture_unit, NULL);
       num_samples = LLVMBuildZExt(bld->gallivm->builder, num_samples,
                                   bld->int_bld.elem_type, "");
-      LLVMValueRef sample_stride = bld->dynamic_state->sample_stride(bld->gallivm,
-                                                                     bld->resources_type,
-                                                                     bld->resources_ptr,
-                                                                     texture_unit,
-                                                                     NULL);
+      LLVMValueRef sample_stride = lp_sample_load_mip_value(bld->gallivm,
+                                                            bld->mip_offsets_type,
+                                                            bld->mip_offsets,
+                                                            lp_build_const_int32(bld->gallivm, LP_JIT_TEXTURE_SAMPLE_STRIDE));
       lp_build_sample_ms_offset(int_coord_bld, ms_index, num_samples, sample_stride,
                                 &offset, &out_of_bounds);
    }
@@ -4518,14 +4517,13 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    if (params->samples_only) {
       LLVMValueRef num_samples;
-
       if (params->ms && static_state->level_zero_only) {
          /* multisample never has levels. */
-         num_samples = dynamic_state->num_samples(gallivm,
-                                                  resources_type,
-                                                  resources_ptr,
-                                                  texture_unit,
-                                                  texture_unit_offset);
+         num_samples = dynamic_state->last_level(gallivm,
+                                                 resources_type,
+                                                 resources_ptr,
+                                                 texture_unit,
+                                                 texture_unit_offset);
          num_samples = LLVMBuildZExt(gallivm->builder, num_samples,
                                      bld_int_vec4.elem_type, "");
       } else {
@@ -4965,10 +4963,10 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                           &offset, &i, &j);
 
    if (params->ms_index && static_texture_state->level_zero_only) {
-      LLVMValueRef num_samples = dynamic_state->num_samples(gallivm,
-                                                            params->resources_type,
-                                                            params->resources_ptr,
-                                                            params->image_index, NULL);
+      LLVMValueRef num_samples = dynamic_state->last_level(gallivm,
+                                                           params->resources_type,
+                                                           params->resources_ptr,
+                                                           params->image_index, NULL);
       num_samples = LLVMBuildZExt(gallivm->builder, num_samples,
                                   int_coord_bld.elem_type, "");
       LLVMValueRef sample_stride = dynamic_state->sample_stride(gallivm,

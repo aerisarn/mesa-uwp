@@ -146,11 +146,9 @@ lp_build_create_jit_texture_type(struct gallivm_state *gallivm)
    LLVMTypeRef elem_types[LP_JIT_TEXTURE_NUM_FIELDS];
 
    /* struct lp_jit_texture */
-   elem_types[LP_JIT_TEXTURE_WIDTH] =
-   elem_types[LP_JIT_TEXTURE_SAMPLE_STRIDE] = LLVMInt32TypeInContext(lc);
+   elem_types[LP_JIT_TEXTURE_WIDTH] = LLVMInt32TypeInContext(lc);
    elem_types[LP_JIT_TEXTURE_HEIGHT] =
    elem_types[LP_JIT_TEXTURE_DEPTH] = LLVMInt16TypeInContext(lc);
-   elem_types[LP_JIT_TEXTURE_NUM_SAMPLES] =
    elem_types[LP_JIT_TEXTURE_FIRST_LEVEL] =
    elem_types[LP_JIT_TEXTURE_LAST_LEVEL] = LLVMInt8TypeInContext(lc);
    elem_types[LP_JIT_TEXTURE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
@@ -189,12 +187,6 @@ lp_build_create_jit_texture_type(struct gallivm_state *gallivm)
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, mip_offsets,
                           gallivm->target, texture_type,
                           LP_JIT_TEXTURE_MIP_OFFSETS);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, num_samples,
-                          gallivm->target, texture_type,
-                          LP_JIT_TEXTURE_NUM_SAMPLES);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, sample_stride,
-                          gallivm->target, texture_type,
-                          LP_JIT_TEXTURE_SAMPLE_STRIDE);
    LP_CHECK_STRUCT_SIZE(struct lp_jit_texture,
                         gallivm->target, texture_type);
    return texture_type;
@@ -460,8 +452,6 @@ LP_BUILD_LLVM_TEXTURE_MEMBER(base_ptr,   LP_JIT_TEXTURE_BASE, true)
 LP_BUILD_LLVM_TEXTURE_MEMBER_OUTTYPE(row_stride, LP_JIT_TEXTURE_ROW_STRIDE, false)
 LP_BUILD_LLVM_TEXTURE_MEMBER_OUTTYPE(img_stride, LP_JIT_TEXTURE_IMG_STRIDE, false)
 LP_BUILD_LLVM_TEXTURE_MEMBER_OUTTYPE(mip_offsets, LP_JIT_TEXTURE_MIP_OFFSETS, false)
-LP_BUILD_LLVM_TEXTURE_MEMBER(num_samples, LP_JIT_TEXTURE_NUM_SAMPLES, true)
-LP_BUILD_LLVM_TEXTURE_MEMBER(sample_stride, LP_JIT_TEXTURE_SAMPLE_STRIDE, true)
 
 /**
  * Fetch the specified member of the lp_jit_sampler structure.
@@ -674,8 +664,6 @@ lp_build_jit_fill_sampler_dynamic_state(struct lp_sampler_dynamic_state *state)
    state->row_stride = lp_build_llvm_texture_row_stride;
    state->img_stride = lp_build_llvm_texture_img_stride;
    state->mip_offsets = lp_build_llvm_texture_mip_offsets;
-   state->num_samples = lp_build_llvm_texture_num_samples;
-   state->sample_stride = lp_build_llvm_texture_sample_stride;
 
    state->min_lod = lp_build_llvm_sampler_min_lod;
    state->max_lod = lp_build_llvm_sampler_max_lod;
@@ -694,7 +682,7 @@ lp_build_jit_fill_image_dynamic_state(struct lp_sampler_dynamic_state *state)
    state->base_ptr = lp_build_llvm_image_base_ptr;
    state->row_stride = lp_build_llvm_image_row_stride;
    state->img_stride = lp_build_llvm_image_img_stride;
-   state->num_samples = lp_build_llvm_image_num_samples;
+   state->last_level = lp_build_llvm_image_num_samples;
    state->sample_stride = lp_build_llvm_image_sample_stride;
 }
 
