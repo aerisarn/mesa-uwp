@@ -82,6 +82,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_ANV_FP64_WORKAROUND_ENABLED(false)
       DRI_CONF_ANV_GENERATED_INDIRECT_THRESHOLD(4)
       DRI_CONF_NO_16BIT(false)
+      DRI_CONF_INTEL_ENABLE_WA_14018912822(false)
       DRI_CONF_ANV_QUERY_CLEAR_WITH_BLORP_THRESHOLD(6)
       DRI_CONF_ANV_QUERY_COPY_WITH_SHADER_THRESHOLD(6)
       DRI_CONF_ANV_FORCE_INDIRECT_DESCRIPTORS(false)
@@ -1557,6 +1558,8 @@ anv_init_dri_options(struct anv_instance *instance)
             driQueryOptionf(&instance->dri_options, "lower_depth_range_rate");
     instance->no_16bit =
             driQueryOptionb(&instance->dri_options, "no_16bit");
+    instance->intel_enable_wa_14018912822 =
+            driQueryOptionb(&instance->dri_options, "intel_enable_wa_14018912822");
     instance->mesh_conv_prim_attrs_to_vert_attrs =
             driQueryOptioni(&instance->dri_options, "anv_mesh_conv_prim_attrs_to_vert_attrs");
     instance->fp64_workaround_enabled =

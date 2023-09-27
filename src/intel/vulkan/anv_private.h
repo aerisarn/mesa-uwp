@@ -1059,6 +1059,7 @@ struct anv_instance {
 
     /* HW workarounds */
     bool                                        no_16bit;
+    bool                                        intel_enable_wa_14018912822;
 };
 
 VkResult anv_init_wsi(struct anv_physical_device *physical_device);

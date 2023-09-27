@@ -6426,8 +6426,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
     * CONST_COLOR, CONST_ALPHA and supply zero by using blend constants.
     */
    bool needs_wa_14018912822 =
+      screen->driconf.intel_enable_wa_14018912822 &&
       intel_needs_workaround(batch->screen->devinfo, 14018912822) &&
-       util_framebuffer_get_num_samples(&ice->state.framebuffer) > 1;
+      util_framebuffer_get_num_samples(&ice->state.framebuffer) > 1;
 
    if (dirty & IRIS_DIRTY_CC_VIEWPORT) {
       const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;

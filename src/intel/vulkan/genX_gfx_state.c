@@ -304,6 +304,7 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
    struct anv_gfx_dynamic_state *hw_state = &gfx->dyn_state;
+   struct anv_instance *instance = cmd_buffer->device->physical->instance;
 
 #define GET(field) hw_state->field
 #define SET(bit, field, value)                               \
@@ -853,7 +854,8 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
                dyn->cb.attachments[i].dst_alpha_blend_factor];
          }
 
-         if (intel_needs_workaround(cmd_buffer->device->info, 14018912822) &&
+         if (instance->intel_enable_wa_14018912822 &&
+             intel_needs_workaround(cmd_buffer->device->info, 14018912822) &&
              pipeline->rasterization_samples > 1) {
             if (DestinationBlendFactor == BLENDFACTOR_ZERO) {
                DestinationBlendFactor = BLENDFACTOR_CONST_COLOR;

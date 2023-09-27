@@ -874,6 +874,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
       driQueryOptionb(config->options, "limit_trig_input_range");
    screen->driconf.lower_depth_range_rate =
       driQueryOptionf(config->options, "lower_depth_range_rate");
+   screen->driconf.intel_enable_wa_14018912822 =
+      driQueryOptionb(config->options, "intel_enable_wa_14018912822");
 
    screen->precompile = debug_get_bool_option("shader_precompile", true);
 
