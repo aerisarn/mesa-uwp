@@ -95,6 +95,9 @@ nvk_shader_address(const struct nvk_shader *shader)
    return shader->upload_addr + shader->upload_padding;
 }
 
+uint64_t
+nvk_physical_device_compiler_flags(const struct nvk_physical_device *pdev);
+
 const nir_shader_compiler_options *
 nvk_physical_device_nir_options(const struct nvk_physical_device *pdev,
                                 gl_shader_stage stage);

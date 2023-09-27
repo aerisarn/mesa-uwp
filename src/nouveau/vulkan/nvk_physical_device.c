@@ -12,6 +12,7 @@
 #include "nvk_shader.h"
 #include "nvk_wsi.h"
 #include "git_sha1.h"
+#include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
 
 #include "vulkan/runtime/vk_device.h"
@@ -627,6 +628,24 @@ nvk_get_device_properties(const struct nvk_instance *instance,
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 }
 
+static void
+nvk_physical_device_init_disk_cache(struct nvk_physical_device *pdev)
+{
+#ifdef ENABLE_SHADER_CACHE
+   char renderer[10];
+   ASSERTED int len = snprintf(renderer, sizeof(renderer), "nvk_%04x",
+                               pdev->info.chipset);
+   assert(len == sizeof(renderer) - 2);
+
+   char timestamp[41];
+   struct nvk_instance *instance = nvk_physical_device_instance(pdev);
+   _mesa_sha1_format(timestamp, instance->driver_build_sha);
+
+   const uint64_t driver_flags = nvk_physical_device_compiler_flags(pdev);
+   pdev->vk.disk_cache = disk_cache_create(renderer, timestamp, driver_flags);
+#endif
+}
+
 VkResult
 nvk_create_drm_physical_device(struct vk_instance *_instance,
                                drmDevicePtr drm_device,
@@ -751,6 +770,8 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
    pdev->render_dev = render_dev;
    pdev->info = info;
+
+   nvk_physical_device_init_disk_cache(pdev);
 
    pdev->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    pdev->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;

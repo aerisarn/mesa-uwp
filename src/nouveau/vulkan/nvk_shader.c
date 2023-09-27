@@ -61,6 +61,29 @@ pipe_shader_type_from_mesa(gl_shader_stage stage)
    }
 }
 
+static uint64_t
+get_prog_debug(void)
+{
+   return debug_get_num_option("NV50_PROG_DEBUG", 0);
+}
+
+static uint64_t
+get_prog_optimize(void)
+{
+   return debug_get_num_option("NV50_PROG_OPTIMIZE", 0);
+}
+
+uint64_t
+nvk_physical_device_compiler_flags(const struct nvk_physical_device *pdev)
+{
+   uint64_t prog_debug = get_prog_debug();
+   uint64_t prog_optimize = get_prog_optimize();
+
+   assert(prog_debug <= UINT8_MAX);
+   assert(prog_optimize <= UINT8_MAX);
+   return prog_debug | (prog_optimize << 8);
+}
+
 const nir_shader_compiler_options *
 nvk_physical_device_nir_options(const struct nvk_physical_device *pdev,
                                 gl_shader_stage stage)
@@ -1108,8 +1131,8 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
       shader->cp.block_size[i] = nir->info.workgroup_size[i];
 
    info->bin.smemSize = shader->cp.smem_size;
-   info->dbgFlags = debug_get_num_option("NV50_PROG_DEBUG", 0);
-   info->optLevel = debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
+   info->dbgFlags = get_prog_debug();
+   info->optLevel = get_prog_optimize();
    info->io.auxCBSlot = 1;
    info->io.uboInfoBase = 0;
    info->io.drawInfoBase = nvk_root_descriptor_offset(draw.base_vertex);
