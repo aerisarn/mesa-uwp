@@ -3302,8 +3302,8 @@ glsl_type::cl_alignment() const
 
       unsigned res = 1;
       for (unsigned i = 0; i < this->length; ++i) {
-         const struct glsl_struct_field &field = this->fields.structure[i];
-         res = MAX2(res, field.type->cl_alignment());
+         const struct glsl_struct_field *field = &this->fields.structure[i];
+         res = MAX2(res, field->type->cl_alignment());
       }
       return res;
    }
@@ -3323,14 +3323,14 @@ glsl_type::cl_size() const
       unsigned size = 0;
       unsigned max_alignment = 1;
       for (unsigned i = 0; i < this->length; ++i) {
-         const struct glsl_struct_field &field = this->fields.structure[i];
+         const struct glsl_struct_field *field = &this->fields.structure[i];
          /* if a struct is packed, members don't get aligned */
          if (!this->packed) {
-            unsigned alignment = field.type->cl_alignment();
+            unsigned alignment = field->type->cl_alignment();
             max_alignment = MAX2(max_alignment, alignment);
             size = align(size, alignment);
          }
-         size += field.type->cl_size();
+         size += field->type->cl_size();
       }
 
       /* Size of C structs are aligned to the biggest alignment of its fields */
