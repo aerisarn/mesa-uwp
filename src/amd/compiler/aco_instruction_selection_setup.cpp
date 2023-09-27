@@ -486,7 +486,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_first_invocation:
                case nir_intrinsic_ballot:
                case nir_intrinsic_bindless_image_samples:
-               case nir_intrinsic_load_force_vrs_rates_amd:
                case nir_intrinsic_load_scalar_arg_amd:
                case nir_intrinsic_load_lds_ngg_scratch_base_amd:
                case nir_intrinsic_load_lds_ngg_gs_out_vertex_base_amd:
