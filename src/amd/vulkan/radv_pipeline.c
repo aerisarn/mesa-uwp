@@ -1178,7 +1178,8 @@ radv_copy_shader_stage_create_info(struct radv_device *device, uint32_t stageCou
    if (!new_stages)
       return NULL;
 
-   memcpy(new_stages, pStages, size);
+   if (size)
+      memcpy(new_stages, pStages, size);
 
    for (uint32_t i = 0; i < stageCount; i++) {
       RADV_FROM_HANDLE(vk_shader_module, module, new_stages[i].module);

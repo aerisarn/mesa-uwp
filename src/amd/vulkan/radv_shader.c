@@ -2249,8 +2249,10 @@ radv_aco_build_shader_binary(void **bin, const struct ac_shader_config *config, 
    legacy_binary->disasm_size = 0;
    legacy_binary->ir_size = llvm_ir_size;
 
-   memcpy((char *)legacy_binary->data + legacy_binary->stats_size + legacy_binary->code_size, llvm_ir_str,
-          llvm_ir_size);
+   if (llvm_ir_size) {
+      memcpy((char *)legacy_binary->data + legacy_binary->stats_size + legacy_binary->code_size, llvm_ir_str,
+             llvm_ir_size);
+   }
 
    legacy_binary->disasm_size = disasm_size;
    if (disasm_size) {
