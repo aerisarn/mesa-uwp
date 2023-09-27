@@ -11441,6 +11441,7 @@ finish_program(isel_context* ctx)
          /* End WQM before: */
          if (instr->isVMEM() || instr->isFlatLike() || instr->isDS() || instr->isEXP() ||
              instr->opcode == aco_opcode::p_dual_src_export_gfx11 ||
+             instr->opcode == aco_opcode::p_jump_to_epilog ||
              instr->opcode == aco_opcode::p_logical_start)
             break;
 
