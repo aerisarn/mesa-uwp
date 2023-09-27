@@ -3686,8 +3686,12 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    SpvId load;
    if (ctx->stage == MESA_SHADER_KERNEL) {
       SpvId image_load = spirv_builder_emit_load(&ctx->builder, image_type, sampler_id);
-      SpvId sampler_load = spirv_builder_emit_load(&ctx->builder, spirv_builder_type_sampler(&ctx->builder), ctx->cl_samplers[tex->sampler_index]);
-      load = spirv_builder_emit_sampled_image(&ctx->builder, sampled_type, image_load, sampler_load);
+      if (nir_tex_instr_need_sampler(tex)) {
+         SpvId sampler_load = spirv_builder_emit_load(&ctx->builder, spirv_builder_type_sampler(&ctx->builder), ctx->cl_samplers[tex->sampler_index]);
+         load = spirv_builder_emit_sampled_image(&ctx->builder, sampled_type, image_load, sampler_load);
+      } else {
+         load = image_load;
+      }
    } else {
       load = spirv_builder_emit_load(&ctx->builder, sampled_type, sampler_id);
    }
@@ -3705,7 +3709,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
             tex->op == nir_texop_tex && ctx->explicit_lod && !lod)
       lod = emit_float_const(ctx, 32, 0.0);
    if (tex->op == nir_texop_txs) {
-      SpvId image = is_buffer ?
+      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
                     load :
                     spirv_builder_emit_image(&ctx->builder, image_type, load);
       /* Its Dim operand must be one of 1D, 2D, 3D, or Cube
@@ -3726,7 +3730,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       return;
    }
    if (tex->op == nir_texop_query_levels) {
-      SpvId image = is_buffer ?
+      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
                     load :
                     spirv_builder_emit_image(&ctx->builder, image_type, load);
       SpvId result = spirv_builder_emit_image_query_levels(&ctx->builder,
@@ -3735,7 +3739,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       return;
    }
    if (tex->op == nir_texop_texture_samples) {
-      SpvId image = is_buffer ?
+      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
                     load :
                     spirv_builder_emit_image(&ctx->builder, image_type, load);
       SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples,
@@ -3800,7 +3804,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    if (tex->op == nir_texop_txf ||
        tex->op == nir_texop_txf_ms ||
        tex->op == nir_texop_tg4) {
-      SpvId image = is_buffer ?
+      SpvId image = is_buffer || ctx->stage == MESA_SHADER_KERNEL ?
                     load :
                     spirv_builder_emit_image(&ctx->builder, image_type, load);
 

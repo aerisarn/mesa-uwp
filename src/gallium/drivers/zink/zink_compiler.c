@@ -4831,50 +4831,12 @@ type_sampler_vars(nir_shader *nir, unsigned *sampler_mask)
             if (instr->type != nir_instr_type_tex)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
-            switch (tex->op) {
-            case nir_texop_lod:
-            case nir_texop_txs:
-            case nir_texop_query_levels:
-            case nir_texop_texture_samples:
-            case nir_texop_samples_identical:
-               continue;
-            default:
-               break;
-            }
-            *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
+            if (nir_tex_instr_need_sampler(tex))
+               *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
             nir_variable *var = nir_find_sampler_variable_with_tex_index(nir, tex->texture_index);
             assert(var);
-            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
-               continue;
-            const struct glsl_type *img_type = glsl_sampler_type(glsl_get_sampler_dim(glsl_without_array(var->type)), tex->is_shadow, tex->is_array, nir_get_glsl_base_type_for_nir_type(tex->dest_type));
-            unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
-            if (size > 1)
-               img_type = glsl_array_type(img_type, size, 0);
-            var->type = img_type;
-            progress = true;
-         }
-      }
-   }
-   nir_foreach_function_impl(impl, nir) {
-      nir_foreach_block(block, impl) {
-         nir_foreach_instr(instr, block) {
-            if (instr->type != nir_instr_type_tex)
-               continue;
-            nir_tex_instr *tex = nir_instr_as_tex(instr);
-            switch (tex->op) {
-            case nir_texop_lod:
-            case nir_texop_txs:
-            case nir_texop_query_levels:
-            case nir_texop_texture_samples:
-            case nir_texop_samples_identical:
-               break;
-            default:
-               continue;
-            }
-            *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
-            nir_variable *var = nir_find_sampler_variable_with_tex_index(nir, tex->texture_index);
-            assert(var);
-            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
+            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID &&
+                nir_tex_instr_is_query(tex))
                continue;
             const struct glsl_type *img_type = glsl_sampler_type(glsl_get_sampler_dim(glsl_without_array(var->type)), tex->is_shadow, tex->is_array, nir_get_glsl_base_type_for_nir_type(tex->dest_type));
             unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
