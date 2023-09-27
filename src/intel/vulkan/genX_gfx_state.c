@@ -1548,6 +1548,17 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
          SET(ls, ls, LineStippleInverseRepeatCount);
          SET(ls, ls, LineStippleRepeatCount);
       }
+#if GFX_VER >= 11
+      /* ICL PRMs, Volume 2a - Command Reference: Instructions,
+       * 3DSTATE_LINE_STIPPLE:
+       *
+       *    "Workaround: This command must be followed by a PIPE_CONTROL with
+       *     CS Stall bit set."
+       */
+      genx_batch_emit_pipe_control(&cmd_buffer->batch,
+                                   cmd_buffer->device->info,
+                                   ANV_PIPE_CS_STALL_BIT);
+#endif
    }
 
    if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_VF)) {
