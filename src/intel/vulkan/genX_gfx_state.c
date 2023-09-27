@@ -1202,8 +1202,15 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline,
                                     final.so_decl_list);
 
-#if GFX_VERx10 == 125
-      /* Wa_14015946265: Send PC with CS stall after SO_DECL. */
+#if GFX_VER >= 11
+      /* ICL PRMs, Volume 2a - Command Reference: Instructions,
+       * 3DSTATE_SO_DECL_LIST:
+       *
+       *    "Workaround: This command must be followed by a PIPE_CONTROL with
+       *     CS Stall bit set."
+       *
+       * On DG2+ also known as Wa_1509820217.
+       */
       genx_batch_emit_pipe_control(&cmd_buffer->batch, device->info,
                                    ANV_PIPE_CS_STALL_BIT);
 #endif

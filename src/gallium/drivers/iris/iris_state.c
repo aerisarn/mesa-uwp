@@ -7003,8 +7003,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             ice->state.streamout + GENX(3DSTATE_STREAMOUT_length);
          iris_batch_emit(batch, decl_list, 4 * ((decl_list[0] & 0xff) + 2));
 
-#if GFX_VERx10 == 125
-         /* Wa_14015946265: Send PC with CS stall after SO_DECL. */
+#if GFX_VER >= 11
+         /* ICL PRMs, Volume 2a - Command Reference: Instructions,
+          * 3DSTATE_SO_DECL_LIST:
+          *
+          *    "Workaround: This command must be followed by a PIPE_CONTROL
+          *     with CS Stall bit set."
+          *
+          * On DG2+ also known as Wa_1509820217.
+          */
          iris_emit_pipe_control_flush(batch,
                                       "workaround: cs stall after so_decl",
                                       PIPE_CONTROL_CS_STALL);
