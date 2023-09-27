@@ -7,7 +7,7 @@
 use crate::util::DivCeil;
 
 use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not,
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Range,
 };
 
 #[derive(Clone)]
@@ -45,6 +45,10 @@ impl BitSet {
         } else {
             false
         }
+    }
+
+    pub fn get_word(&self, word: usize) -> u32 {
+        self.words.get(word).cloned().unwrap_or(0)
     }
 
     #[allow(dead_code)]
@@ -101,6 +105,33 @@ impl BitSet {
         let exists = self.words[w] & (1_u32 << b) != 0;
         self.words[w] &= !(1_u32 << b);
         exists
+    }
+
+    pub fn set_words(
+        &mut self,
+        bits: Range<usize>,
+        mut f: impl FnMut(usize) -> u32,
+    ) {
+        if bits.is_empty() {
+            return;
+        }
+
+        let first_word = bits.start / 32;
+        let last_word = (bits.end - 1) / 32;
+        let start_mask = !0_u32 << (bits.start % 32);
+        let end_mask = !0_u32 >> (31 - ((bits.end - 1) % 32));
+
+        self.reserve(last_word + 1);
+
+        if first_word == last_word {
+            self.words[first_word] = f(first_word) & start_mask & end_mask;
+        } else {
+            self.words[first_word] = f(first_word) & start_mask;
+            for w in (first_word + 1)..last_word {
+                self.words[w] = f(w);
+            }
+            self.words[last_word] = f(last_word) & end_mask;
+        }
     }
 
     pub fn union_with(&mut self, other: &BitSet) -> bool {
