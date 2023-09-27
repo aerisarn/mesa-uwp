@@ -508,10 +508,11 @@ zink_create_sampler_state(struct pipe_context *pctx,
                }
             } else {
                cbci.format = zink_get_format(screen, state->border_color_format);
+               union pipe_color_union color;
                for (unsigned i = 0; i < 4; i++) {
-                  zink_format_clamp_channel_color(util_format_description(state->border_color_format), (void*)&cbci.customBorderColor, &state->border_color, i);
-                  zink_format_clamp_channel_srgb(util_format_description(state->border_color_format), (void*)&cbci.customBorderColor, (void*)&cbci.customBorderColor, i);
+                  zink_format_clamp_channel_srgb(util_format_description(state->border_color_format), &color, &state->border_color, i);
                }
+               zink_convert_color(screen, state->border_color_format, (void*)&cbci.customBorderColor, &color);
             }
          }
          cbci.pNext = sci.pNext;

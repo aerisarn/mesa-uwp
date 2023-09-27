@@ -1829,6 +1829,44 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
    return ret;
 }
 
+void
+zink_convert_color(const struct zink_screen *screen, enum pipe_format format,
+                   union pipe_color_union *dst,
+                   const union pipe_color_union *src)
+{
+   const struct util_format_description *desc = util_format_description(format);
+   union pipe_color_union tmp = *src;
+
+   for (unsigned i = 0; i < 4; i++)
+      zink_format_clamp_channel_color(desc, &tmp, src, i);
+
+   if (zink_format_is_emulated_alpha(format) &&
+       /* Don't swizzle colors if the driver supports real A8_UNORM */
+       (format != PIPE_FORMAT_A8_UNORM ||
+         screen->driver_workarounds.missing_a8_unorm)) {
+      if (util_format_is_alpha(format)) {
+         tmp.ui[0] = tmp.ui[3];
+         tmp.ui[1] = 0;
+         tmp.ui[2] = 0;
+         tmp.ui[3] = 0;
+      } else if (util_format_is_luminance(format)) {
+         tmp.ui[1] = 0;
+         tmp.ui[2] = 0;
+         tmp.f[3] = 1.0;
+      } else if (util_format_is_luminance_alpha(format)) {
+         tmp.ui[1] = tmp.ui[3];
+         tmp.ui[2] = 0;
+         tmp.f[3] = 1.0;
+      } else /* zink_format_is_red_alpha */ {
+         tmp.ui[1] = tmp.ui[3];
+         tmp.ui[2] = 0;
+         tmp.ui[3] = 0;
+      }
+   }
+
+   memcpy(dst, &tmp, sizeof(union pipe_color_union));
+}
+
 static bool
 check_have_device_time(struct zink_screen *screen)
 {

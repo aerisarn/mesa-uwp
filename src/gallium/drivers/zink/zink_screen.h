@@ -132,6 +132,11 @@ zink_screen_import_dmabuf_semaphore(struct zink_screen *screen, struct zink_reso
 VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format);
 
+void
+zink_convert_color(const struct zink_screen *screen, enum pipe_format format,
+                   union pipe_color_union *dst,
+                   const union pipe_color_union *src);
+
 bool
 zink_screen_timeline_wait(struct zink_screen *screen, uint64_t batch_id, uint64_t timeout);
 

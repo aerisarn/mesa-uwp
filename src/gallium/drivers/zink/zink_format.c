@@ -381,13 +381,13 @@ zink_format_is_voidable_rgba_variant(enum pipe_format format)
    return true;
 }
 
-
 void
 zink_format_clamp_channel_color(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i)
 {
    int non_void = util_format_get_first_non_void_channel(desc->format);
-   switch (desc->channel[i].type) {
-   case UTIL_FORMAT_TYPE_VOID:
+   unsigned channel = desc->swizzle[i];
+
+   if (channel > PIPE_SWIZZLE_W || desc->channel[channel].type == UTIL_FORMAT_TYPE_VOID) {
       if (non_void != -1) {
          if (desc->channel[non_void].type == UTIL_FORMAT_TYPE_FLOAT) {
             dst->f[i] = uif(UINT32_MAX);
@@ -402,20 +402,26 @@ zink_format_clamp_channel_color(const struct util_format_description *desc, unio
       } else {
          dst->ui[i] = src->ui[i];
       }
+      return;
+   }
+
+   switch (desc->channel[channel].type) {
+   case UTIL_FORMAT_TYPE_VOID:
+      unreachable("handled above");
       break;
    case UTIL_FORMAT_TYPE_SIGNED:
-      if (desc->channel[i].normalized)
+      if (desc->channel[channel].normalized)
          dst->i[i] = src->i[i];
       else {
-         dst->i[i] = MAX2(src->i[i], -(1<<(desc->channel[i].size - 1)));
-         dst->i[i] = MIN2(dst->i[i], (1 << (desc->channel[i].size - 1)) - 1);
+         dst->i[i] = MAX2(src->i[i], -(1<<(desc->channel[channel].size - 1)));
+         dst->i[i] = MIN2(dst->i[i], (1 << (desc->channel[channel].size - 1)) - 1);
       }
       break;
    case UTIL_FORMAT_TYPE_UNSIGNED:
-      if (desc->channel[i].normalized)
+      if (desc->channel[channel].normalized)
          dst->ui[i] = src->ui[i];
       else
-         dst->ui[i] = MIN2(src->ui[i], BITFIELD_MASK(desc->channel[i].size));
+         dst->ui[i] = MIN2(src->ui[i], BITFIELD_MASK(desc->channel[channel].size));
       break;
    case UTIL_FORMAT_TYPE_FIXED:
    case UTIL_FORMAT_TYPE_FLOAT:
@@ -427,14 +433,18 @@ zink_format_clamp_channel_color(const struct util_format_description *desc, unio
 void
 zink_format_clamp_channel_srgb(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i)
 {
-   if (desc->colorspace != UTIL_FORMAT_COLORSPACE_SRGB)
-      return;
-   switch (desc->channel[i].type) {
-   case UTIL_FORMAT_TYPE_SIGNED:
-   case UTIL_FORMAT_TYPE_UNSIGNED:
-      dst->f[i] = CLAMP(src->f[i], 0.0, 1.0);
-      break;
-   default:
-      break;
+   unsigned channel = desc->swizzle[i];
+   if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB &&
+       channel <= PIPE_SWIZZLE_W) {
+      switch (desc->channel[channel].type) {
+      case UTIL_FORMAT_TYPE_SIGNED:
+      case UTIL_FORMAT_TYPE_UNSIGNED:
+         dst->f[i] = CLAMP(src->f[i], 0.0, 1.0);
+         return;
+      default:
+         break;
+      }
    }
+
+   dst->ui[i] = src->ui[i];
 }
