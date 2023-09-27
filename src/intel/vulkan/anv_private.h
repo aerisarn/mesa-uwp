@@ -3797,6 +3797,28 @@ anv_cmd_buffer_get_view_count(struct anv_cmd_buffer *cmd_buffer)
    return MAX2(1, util_bitcount(gfx->view_mask));
 }
 
+/* Save/restore cmd buffer states for meta operations */
+enum anv_cmd_saved_state_flags {
+   ANV_CMD_SAVED_STATE_COMPUTE_PIPELINE         = BITFIELD_BIT(0),
+   ANV_CMD_SAVED_STATE_DESCRIPTOR_SET_0         = BITFIELD_BIT(1),
+   ANV_CMD_SAVED_STATE_PUSH_CONSTANTS           = BITFIELD_BIT(2),
+};
+
+struct anv_cmd_saved_state {
+   uint32_t flags;
+
+   struct anv_pipeline *pipeline;
+   struct anv_descriptor_set *descriptor_set;
+   uint8_t push_constants[MAX_PUSH_CONSTANTS_SIZE];
+};
+
+void anv_cmd_buffer_save_state(struct anv_cmd_buffer *cmd_buffer,
+                               uint32_t flags,
+                               struct anv_cmd_saved_state *state);
+
+void anv_cmd_buffer_restore_state(struct anv_cmd_buffer *cmd_buffer,
+                                  struct anv_cmd_saved_state *state);
+
 enum anv_bo_sync_state {
    /** Indicates that this is a new (or newly reset fence) */
    ANV_BO_SYNC_STATE_RESET,

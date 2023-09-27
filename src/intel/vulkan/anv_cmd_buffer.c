@@ -741,9 +741,7 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
     */
    assert(!set->pool || !set->pool->host_only);
 
-   struct anv_descriptor_set_layout *set_layout =
-      layout->set[set_index].layout;
-
+   struct anv_descriptor_set_layout *set_layout = set->layout;
    VkShaderStageFlags stages = set_layout->shader_stages;
    struct anv_cmd_pipeline_state *pipe_state;
 
@@ -1254,4 +1252,66 @@ void anv_CmdSetRayTracingPipelineStackSizeKHR(
    }
 
    rt->scratch.bo = bo;
+}
+
+void
+anv_cmd_buffer_save_state(struct anv_cmd_buffer *cmd_buffer,
+                          uint32_t flags,
+                          struct anv_cmd_saved_state *state)
+{
+   state->flags = flags;
+
+   /* we only support the compute pipeline at the moment */
+   assert(state->flags & ANV_CMD_SAVED_STATE_COMPUTE_PIPELINE);
+   const struct anv_cmd_pipeline_state *pipe_state =
+      &cmd_buffer->state.compute.base;
+
+   if (state->flags & ANV_CMD_SAVED_STATE_COMPUTE_PIPELINE)
+      state->pipeline = pipe_state->pipeline;
+
+   if (state->flags & ANV_CMD_SAVED_STATE_DESCRIPTOR_SET_0)
+      state->descriptor_set = pipe_state->descriptors[0];
+
+   if (state->flags & ANV_CMD_SAVED_STATE_PUSH_CONSTANTS) {
+      memcpy(state->push_constants, pipe_state->push_constants.client_data,
+             sizeof(state->push_constants));
+   }
+}
+
+void
+anv_cmd_buffer_restore_state(struct anv_cmd_buffer *cmd_buffer,
+                             struct anv_cmd_saved_state *state)
+{
+   VkCommandBuffer cmd_buffer_ = anv_cmd_buffer_to_handle(cmd_buffer);
+
+   assert(state->flags & ANV_CMD_SAVED_STATE_COMPUTE_PIPELINE);
+   const VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+   const VkShaderStageFlags stage_flags = VK_SHADER_STAGE_COMPUTE_BIT;
+   struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
+   struct anv_cmd_pipeline_state *pipe_state = &comp_state->base;
+
+   if (state->flags & ANV_CMD_SAVED_STATE_COMPUTE_PIPELINE) {
+       if (state->pipeline) {
+          anv_CmdBindPipeline(cmd_buffer_, bind_point,
+                              anv_pipeline_to_handle(state->pipeline));
+       } else {
+          comp_state->pipeline = NULL;
+          pipe_state->pipeline = NULL;
+       }
+   }
+
+   if (state->flags & ANV_CMD_SAVED_STATE_DESCRIPTOR_SET_0) {
+      if (state->descriptor_set) {
+         anv_cmd_buffer_bind_descriptor_set(cmd_buffer, bind_point, NULL, 0,
+                                            state->descriptor_set, NULL, NULL);
+      } else {
+         pipe_state->descriptors[0] = NULL;
+      }
+   }
+
+   if (state->flags & ANV_CMD_SAVED_STATE_PUSH_CONSTANTS) {
+      anv_CmdPushConstants(cmd_buffer_, VK_NULL_HANDLE, stage_flags, 0,
+                           sizeof(state->push_constants),
+                           state->push_constants);
+   }
 }
