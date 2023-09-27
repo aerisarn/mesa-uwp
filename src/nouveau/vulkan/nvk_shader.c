@@ -1261,6 +1261,16 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
       shader->fs.early_z = bin->info.fs.early_fragment_tests;
       break;
 
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_GEOMETRY:
+      shader->vs.clip_enable =
+         BITFIELD_RANGE(0, nir->info.clip_distance_array_size);
+      shader->vs.cull_enable =
+         BITFIELD_RANGE(nir->info.clip_distance_array_size,
+                        nir->info.cull_distance_array_size);
+      break;
+
    default:
       break;
    }
