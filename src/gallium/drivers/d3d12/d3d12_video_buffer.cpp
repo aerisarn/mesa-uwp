@@ -73,9 +73,10 @@ d3d12_video_buffer_create_impl(struct pipe_context *pipe,
    templ.target     = PIPE_TEXTURE_2D;
    templ.bind       = pD3D12VideoBuffer->base.bind;
    templ.format     = pD3D12VideoBuffer->base.buffer_format;
-   // YUV 4:2:0 formats in D3D12 need to have multiple of 2 dimensions
+   // YUV 4:2:0 formats in D3D12 need to at least be multiple of 2 dimensions
+   // However, we allocate with a higher alignment to maximize HW compatibility
    templ.width0     = align(pD3D12VideoBuffer->base.width, 2);
-   templ.height0    = align(pD3D12VideoBuffer->base.height, 2);
+   templ.height0    = align(pD3D12VideoBuffer->base.height, 16);
    templ.depth0     = 1;
    templ.array_size = 1;
    templ.flags      = 0;
