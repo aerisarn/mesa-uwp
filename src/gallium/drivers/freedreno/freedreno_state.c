@@ -159,8 +159,10 @@ fd_set_constant_buffer(struct pipe_context *pctx, enum pipe_shader_type shader,
       return;
    }
 
-   if (cb->user_buffer && ctx->screen->gen >= 6)
+   if (cb->user_buffer && ctx->screen->gen >= 6) {
       upload_user_buffer(pctx, &so->cb[index]);
+      cb = &so->cb[index];
+   }
 
    so->enabled_mask |= 1 << index;
 
