@@ -7368,6 +7368,17 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_LINE_STIPPLE) {
       struct iris_rasterizer_state *cso = ice->state.cso_rast;
       iris_batch_emit(batch, cso->line_stipple, sizeof(cso->line_stipple));
+#if GFX_VER >= 11
+      /* ICL PRMs, Volume 2a - Command Reference: Instructions,
+       * 3DSTATE_LINE_STIPPLE:
+       *
+       *    "Workaround: This command must be followed by a PIPE_CONTROL with
+       *     CS Stall bit set."
+       */
+      iris_emit_pipe_control_flush(batch,
+                                   "workaround: post 3DSTATE_LINE_STIPPLE",
+                                   PIPE_CONTROL_CS_STALL);
+#endif
    }
 
    if (dirty & IRIS_DIRTY_VF_TOPOLOGY) {
