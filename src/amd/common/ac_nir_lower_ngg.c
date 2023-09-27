@@ -2360,11 +2360,14 @@ export_pos0_wait_attr_ring(nir_builder *b, nir_if *if_es_thread, nir_def *output
    /* Export just the pos0 output. */
    nir_if *if_export_empty_pos = nir_push_if(b, if_es_thread->condition.ssa);
    {
+      nir_def *pos_output_array[VARYING_SLOT_MAX][4] = {0};
+      memcpy(pos_output_array[VARYING_SLOT_POS], pos_output.chan, sizeof(pos_output.chan));
+
       ac_nir_export_position(b, options->gfx_level,
                              options->clipdist_enable_mask,
                              !options->has_param_exports,
                              options->force_vrs, true,
-                             VARYING_BIT_POS, &pos_output.chan);
+                             VARYING_BIT_POS, pos_output_array);
    }
    nir_pop_if(b, if_export_empty_pos);
 }
