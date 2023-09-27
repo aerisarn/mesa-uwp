@@ -16,6 +16,7 @@
 
 struct novueau_ws_context;
 struct nvk_physical_device;
+struct vk_pipeline_cache;
 
 struct nvk_slm_area {
    simple_mtx_t mutex;
@@ -45,6 +46,8 @@ struct nvk_device {
    struct nouveau_ws_bo *vab_memory;
 
    struct nvk_queue queue;
+
+   struct vk_pipeline_cache *mem_cache;
 
    struct vk_meta_device meta;
 };

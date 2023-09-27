@@ -9,6 +9,7 @@
 #include "nvk_instance.h"
 #include "nvk_physical_device.h"
 
+#include "vk_pipeline_cache.h"
 #include "vulkan/wsi/wsi_common.h"
 
 #include "nouveau_context.h"
@@ -241,14 +242,25 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_vab_memory;
 
+   struct vk_pipeline_cache_create_info cache_info = {
+      .weak_ref = true,
+   };
+   dev->mem_cache = vk_pipeline_cache_create(&dev->vk, &cache_info, NULL);
+   if (dev->mem_cache == NULL) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto fail_queue;
+   }
+
    result = nvk_device_init_meta(dev);
    if (result != VK_SUCCESS)
-      goto fail_queue;
+      goto fail_mem_cache;
 
    *pDevice = nvk_device_to_handle(dev);
 
    return VK_SUCCESS;
 
+fail_mem_cache:
+   vk_pipeline_cache_destroy(dev->mem_cache, NULL);
 fail_queue:
    nvk_queue_finish(dev, &dev->queue);
 fail_vab_memory:
@@ -286,6 +298,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    nvk_device_finish_meta(dev);
 
+   vk_pipeline_cache_destroy(dev->mem_cache, NULL);
    nvk_queue_finish(dev, &dev->queue);
    if (dev->vab_memory)
       nouveau_ws_bo_destroy(dev->vab_memory);
