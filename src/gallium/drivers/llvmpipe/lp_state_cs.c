@@ -1566,70 +1566,8 @@ lp_csctx_set_cs_images(struct lp_cs_context *csctx,
       jit_image = &csctx->cs.current.jit_resources.images[i];
       if (!lp_res)
          continue;
-      if (!lp_res->dt) {
-         /* regular texture - csctx array of mipmap level offsets */
-         if (llvmpipe_resource_is_texture(res)) {
-            jit_image->base = lp_res->tex_data;
-         } else
-            jit_image->base = lp_res->data;
 
-         jit_image->width = res->width0;
-         jit_image->height = res->height0;
-         jit_image->depth = res->depth0;
-         jit_image->num_samples = res->nr_samples;
-
-         if (llvmpipe_resource_is_texture(res)) {
-            uint32_t mip_offset = lp_res->mip_offsets[image->u.tex.level];
-
-            jit_image->width = u_minify(jit_image->width, image->u.tex.level);
-            jit_image->height = u_minify(jit_image->height, image->u.tex.level);
-
-            if (res->target == PIPE_TEXTURE_1D_ARRAY ||
-                res->target == PIPE_TEXTURE_2D_ARRAY ||
-                res->target == PIPE_TEXTURE_3D ||
-                res->target == PIPE_TEXTURE_CUBE ||
-                res->target == PIPE_TEXTURE_CUBE_ARRAY) {
-               /*
-                * For array textures, we don't have first_layer, instead
-                * adjust last_layer (stored as depth) plus the mip level
-                * offsets (as we have mip-first layout can't just adjust base
-                * ptr).  XXX For mip levels, could do something similar.
-                */
-               jit_image->depth = image->u.tex.last_layer - image->u.tex.first_layer + 1;
-               mip_offset += image->u.tex.first_layer * lp_res->img_stride[image->u.tex.level];
-            } else
-               jit_image->depth = u_minify(jit_image->depth, image->u.tex.level);
-
-            jit_image->row_stride = lp_res->row_stride[image->u.tex.level];
-            jit_image->img_stride = lp_res->img_stride[image->u.tex.level];
-            jit_image->sample_stride = lp_res->sample_stride;
-            jit_image->base = (uint8_t *)jit_image->base + mip_offset;
-         } else {
-            unsigned image_blocksize = util_format_get_blocksize(image->format);
-
-            jit_image->img_stride = 0;
-
-            /* If it's not a 2D image view of a buffer, adjust using size. */
-            if (!(image->access & PIPE_IMAGE_ACCESS_TEX2D_FROM_BUFFER)) {
-               /* everything specified in number of elements here. */
-               jit_image->width = image->u.buf.size / image_blocksize;
-               jit_image->row_stride = 0;
-
-               /* Adjust base pointer with offset. */
-               jit_image->base = (uint8_t *)jit_image->base + image->u.buf.offset;
-
-               /* XXX Unsure if we need to sanitize parameters? */
-               assert(image->u.buf.offset + image->u.buf.size <= res->width0);
-            } else {
-               jit_image->width = image->u.tex2d_from_buf.width;
-               jit_image->height = image->u.tex2d_from_buf.height;
-               jit_image->row_stride = image->u.tex2d_from_buf.row_stride * image_blocksize;
-
-               jit_image->base = (uint8_t *)jit_image->base +
-                  image->u.tex2d_from_buf.offset * image_blocksize;
-            }
-         }
-      }
+      lp_jit_image_from_pipe(jit_image, image);
    }
    for (; i < ARRAY_SIZE(csctx->images); i++) {
       util_copy_image_view(&csctx->images[i].current, NULL);

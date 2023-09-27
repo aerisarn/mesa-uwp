@@ -587,9 +587,29 @@ lp_jit_image_from_pipe(struct lp_jit_image *jit, const struct pipe_image_view *v
          jit->sample_stride = lp_res->sample_stride;
          jit->base = (uint8_t *)jit->base + mip_offset;
       } else {
-         unsigned view_blocksize = util_format_get_blocksize(view->format);
-         jit->width = view->u.buf.size / view_blocksize;
-         jit->base = (uint8_t *)jit->base + view->u.buf.offset;
+         unsigned image_blocksize = util_format_get_blocksize(view->format);
+
+         jit->img_stride = 0;
+
+         /* If it's not a 2D image view of a buffer, adjust using size. */
+         if (!(view->access & PIPE_IMAGE_ACCESS_TEX2D_FROM_BUFFER)) {
+            /* everything specified in number of elements here. */
+            jit->width = view->u.buf.size / image_blocksize;
+            jit->row_stride = 0;
+
+            /* Adjust base pointer with offset. */
+            jit->base = (uint8_t *)jit->base + view->u.buf.offset;
+
+            /* XXX Unsure if we need to sanitize parameters? */
+            assert(view->u.buf.offset + view->u.buf.size <= res->width0);
+         } else {
+            jit->width = view->u.tex2d_from_buf.width;
+            jit->height = view->u.tex2d_from_buf.height;
+            jit->row_stride = view->u.tex2d_from_buf.row_stride * image_blocksize;
+
+            jit->base = (uint8_t *)jit->base +
+               view->u.tex2d_from_buf.offset * image_blocksize;
+         }
       }
    }
 }
