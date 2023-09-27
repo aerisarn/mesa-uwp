@@ -139,13 +139,13 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
          /* Mark constbuf as being read: */
          if (dirty_shader & FD_DIRTY_SHADER_CONST) {
             u_foreach_bit (i, ctx->constbuf[s].enabled_mask)
-                  resource_read(batch, ctx->constbuf[s].cb[i].buffer);
+               resource_read(batch, ctx->constbuf[s].cb[i].buffer);
          }
 
          /* Mark textures as being read */
          if (dirty_shader & FD_DIRTY_SHADER_TEX) {
             u_foreach_bit (i, ctx->tex[s].valid_textures)
-                  resource_read(batch, ctx->tex[s].textures[i]->texture);
+               resource_read(batch, ctx->tex[s].textures[i]->texture);
          }
 
          /* Mark SSBOs as being read or written: */
