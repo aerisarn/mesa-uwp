@@ -183,7 +183,7 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
 
    nir_shader *nir;
    result = nvk_shader_stage_to_nir(dev, &pCreateInfo->stage, &robustness,
-                                    NULL, &nir);
+                                    cache, NULL, &nir);
    if (result != VK_SUCCESS)
       goto fail;
 

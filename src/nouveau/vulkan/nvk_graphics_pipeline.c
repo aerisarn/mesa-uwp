@@ -310,7 +310,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
                                         pCreateInfo->pNext, sinfo->pNext);
 
       result = nvk_shader_stage_to_nir(dev, sinfo, &robustness[stage],
-                                       NULL, &nir[stage]);
+                                       cache, NULL, &nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
    }

@@ -13,6 +13,7 @@
 
 #include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"
+#include "vk_pipeline_cache.h"
 #include "vk_pipeline_layout.h"
 #include "vk_shader_module.h"
 #include "vk_ycbcr_conversion.h"
@@ -23,6 +24,8 @@
 #include "compiler/spirv/nir_spirv.h"
 
 #include "nv50_ir_driver.h"
+
+#include "util/mesa-sha1.h"
 
 #include "cla097.h"
 #include "clc397.h"
@@ -421,22 +424,40 @@ VkResult
 nvk_shader_stage_to_nir(struct nvk_device *dev,
                         const VkPipelineShaderStageCreateInfo *sinfo,
                         const struct vk_pipeline_robustness_state *rstate,
+                        struct vk_pipeline_cache *cache,
                         void *mem_ctx, struct nir_shader **nir_out)
 {
    struct nvk_physical_device *pdev = nvk_device_physical(dev);
    const gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
    const nir_shader_compiler_options *nir_options =
       nvk_physical_device_nir_options(pdev, stage);
+
+   unsigned char stage_sha1[SHA1_DIGEST_LENGTH];
+   vk_pipeline_hash_shader_stage(sinfo, rstate, stage_sha1);
+
+   if (cache == NULL)
+      cache = dev->mem_cache;
+
+   nir_shader *nir = vk_pipeline_cache_lookup_nir(cache, stage_sha1,
+                                                  sizeof(stage_sha1),
+                                                  nir_options, NULL,
+                                                  mem_ctx);
+   if (nir != NULL) {
+      *nir_out = nir;
+      return VK_SUCCESS;
+   }
+
    const struct spirv_to_nir_options spirv_options =
       nvk_physical_device_spirv_options(pdev, rstate);
 
-   nir_shader *nir;
    VkResult result = vk_pipeline_shader_stage_to_nir(&dev->vk, sinfo,
                                                      &spirv_options,
                                                      nir_options,
                                                      mem_ctx, &nir);
    if (result != VK_SUCCESS)
       return result;
+
+   vk_pipeline_cache_add_nir(cache, stage_sha1, sizeof(stage_sha1), nir);
 
    *nir_out = nir;
 

@@ -14,6 +14,7 @@
 struct nvk_device;
 struct nvk_physical_device;
 struct nvk_pipeline_compilation_ctx;
+struct vk_pipeline_cache;
 struct vk_pipeline_layout;
 struct vk_pipeline_robustness_state;
 struct vk_shader_module;
@@ -129,6 +130,7 @@ VkResult
 nvk_shader_stage_to_nir(struct nvk_device *dev,
                         const VkPipelineShaderStageCreateInfo *sinfo,
                         const struct vk_pipeline_robustness_state *rstate,
+                        struct vk_pipeline_cache *cache,
                         void *mem_ctx, struct nir_shader **nir_out);
 
 void
