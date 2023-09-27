@@ -417,6 +417,32 @@ nvk_optimize_nir(nir_shader *nir)
             nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
 }
 
+VkResult
+nvk_shader_stage_to_nir(struct nvk_device *dev,
+                        const VkPipelineShaderStageCreateInfo *sinfo,
+                        const struct vk_pipeline_robustness_state *rstate,
+                        void *mem_ctx, struct nir_shader **nir_out)
+{
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+   const gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
+   const nir_shader_compiler_options *nir_options =
+      nvk_physical_device_nir_options(pdev, stage);
+   const struct spirv_to_nir_options spirv_options =
+      nvk_physical_device_spirv_options(pdev, rstate);
+
+   nir_shader *nir;
+   VkResult result = vk_pipeline_shader_stage_to_nir(&dev->vk, sinfo,
+                                                     &spirv_options,
+                                                     nir_options,
+                                                     mem_ctx, &nir);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *nir_out = nir;
+
+   return VK_SUCCESS;
+}
+
 void
 nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,

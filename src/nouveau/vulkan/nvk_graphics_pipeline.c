@@ -309,14 +309,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
       vk_pipeline_robustness_state_fill(&dev->vk, &robustness[stage],
                                         pCreateInfo->pNext, sinfo->pNext);
 
-      const nir_shader_compiler_options *nir_options =
-         nvk_physical_device_nir_options(pdev, stage);
-      const struct spirv_to_nir_options spirv_options =
-         nvk_physical_device_spirv_options(pdev, &robustness[stage]);
-
-      result = vk_pipeline_shader_stage_to_nir(&dev->vk, sinfo,
-                                               &spirv_options, nir_options,
-                                               NULL, &nir[stage]);
+      result = nvk_shader_stage_to_nir(dev, sinfo, &robustness[stage],
+                                       NULL, &nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
    }

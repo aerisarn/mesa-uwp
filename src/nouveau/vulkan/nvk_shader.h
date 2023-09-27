@@ -125,6 +125,12 @@ nvk_nir_lower_descriptors(nir_shader *nir,
                           const struct vk_pipeline_robustness_state *rs,
                           const struct vk_pipeline_layout *layout);
 
+VkResult
+nvk_shader_stage_to_nir(struct nvk_device *dev,
+                        const VkPipelineShaderStageCreateInfo *sinfo,
+                        const struct vk_pipeline_robustness_state *rstate,
+                        void *mem_ctx, struct nir_shader **nir_out);
+
 void
 nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
