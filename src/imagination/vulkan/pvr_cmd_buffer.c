@@ -1307,7 +1307,7 @@ pvr_setup_emit_state(const struct pvr_device_info *dev_info,
                      struct pvr_render_pass_info *render_pass_info,
                      struct pvr_emit_state *emit_state)
 {
-   assert(hw_render->eot_surface_count < PVR_MAX_COLOR_ATTACHMENTS);
+   assert(hw_render->pbe_emits <= PVR_NUM_PBE_EMIT_REGS);
 
    if (hw_render->eot_surface_count == 0) {
       emit_state->emit_count = 1;
@@ -1346,6 +1346,9 @@ pvr_setup_emit_state(const struct pvr_device_info *dev_info,
          samples = (uint32_t)resolve_src->vk.image->samples;
       }
 
+      assert(emit_state->emit_count < ARRAY_SIZE(emit_state->pbe_cs_words));
+      assert(emit_state->emit_count < ARRAY_SIZE(emit_state->pbe_reg_words));
+
       pvr_setup_pbe_state(dev_info,
                           framebuffer,
                           emit_state->emit_count,
@@ -1358,6 +1361,8 @@ pvr_setup_emit_state(const struct pvr_device_info *dev_info,
                           emit_state->pbe_reg_words[i]);
       emit_state->emit_count += 1;
    }
+
+   assert(emit_state->emit_count == hw_render->pbe_emits);
 }
 
 static inline bool
