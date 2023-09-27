@@ -377,14 +377,15 @@ const glsl_type *glsl_type::get_bare_type() const
 
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE: {
-      glsl_struct_field *bare_fields = new glsl_struct_field[this->length];
+      struct glsl_struct_field *bare_fields = (struct glsl_struct_field *)
+         calloc(this->length, sizeof(struct glsl_struct_field));
       for (unsigned i = 0; i < this->length; i++) {
          bare_fields[i].type = this->fields.structure[i].type->get_bare_type();
          bare_fields[i].name = this->fields.structure[i].name;
       }
       const glsl_type *bare_type =
          get_struct_instance(bare_fields, this->length, glsl_get_type_name(this));
-      delete[] bare_fields;
+      free(bare_fields);
       return bare_type;
    }
 
@@ -2235,7 +2236,8 @@ glsl_type::get_explicit_std140_type(bool row_major) const
       unsigned stride = align(elem_size, 16);
       return get_array_instance(elem_type, this->length, stride);
    } else if (this->is_struct() || this->is_interface()) {
-      glsl_struct_field *fields = new glsl_struct_field[this->length];
+      struct glsl_struct_field *fields = (struct glsl_struct_field *)
+         calloc(this->length, sizeof(struct glsl_struct_field));
       unsigned offset = 0;
       for (unsigned i = 0; i < length; i++) {
          fields[i] = this->fields.structure[i];
@@ -2279,7 +2281,7 @@ glsl_type::get_explicit_std140_type(bool row_major) const
                                        this->interface_row_major,
                                        glsl_get_type_name(this));
 
-      delete[] fields;
+      free(fields);
       return type;
    } else {
       unreachable("Invalid type for UBO or SSBO");
@@ -2593,7 +2595,8 @@ glsl_type::get_explicit_std430_type(bool row_major) const
       unsigned stride = this->fields.array->std430_array_stride(row_major);
       return get_array_instance(elem_type, this->length, stride);
    } else if (this->is_struct() || this->is_interface()) {
-      glsl_struct_field *fields = new glsl_struct_field[this->length];
+      struct glsl_struct_field *fields = (struct glsl_struct_field *)
+         calloc(this->length, sizeof(struct glsl_struct_field));
       unsigned offset = 0;
       for (unsigned i = 0; i < length; i++) {
          fields[i] = this->fields.structure[i];
@@ -2637,7 +2640,7 @@ glsl_type::get_explicit_std430_type(bool row_major) const
                                        this->interface_row_major,
                                        glsl_get_type_name(this));
 
-      delete[] fields;
+      free(fields);
       return type;
    } else {
       unreachable("Invalid type for SSBO");
