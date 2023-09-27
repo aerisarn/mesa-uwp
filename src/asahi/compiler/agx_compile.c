@@ -2619,6 +2619,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
                          struct agx_shader_info *out)
 {
    nir_index_blocks(impl);
+   nir_index_ssa_defs(impl);
 
    agx_context *ctx = rzalloc(NULL, agx_context);
    ctx->nir = nir;
