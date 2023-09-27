@@ -1457,7 +1457,7 @@ bound_bo_access(nir_shader *shader, struct zink_shader *zs)
 }
 
 static void
-optimize_nir(struct nir_shader *s, struct zink_shader *zs)
+optimize_nir(struct nir_shader *s, struct zink_shader *zs, bool can_shrink)
 {
    bool progress;
    do {
@@ -1486,6 +1486,8 @@ optimize_nir(struct nir_shader *s, struct zink_shader *zs)
       NIR_PASS(progress, s, zink_nir_lower_b2b);
       if (zs)
          NIR_PASS(progress, s, bound_bo_access, zs);
+      if (can_shrink)
+         NIR_PASS(progress, s, nir_opt_shrink_vectors);
    } while (progress);
 
    do {
@@ -1988,7 +1990,7 @@ decompose_attribs(nir_shader *nir, uint32_t decomposed_attrs, uint32_t decompose
    }
    nir_fixup_deref_modes(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(nir, NULL);
+   optimize_nir(nir, NULL, true);
    return true;
 }
 
@@ -2466,7 +2468,7 @@ clamp_layer_output(nir_shader *vs, nir_shader *fs, unsigned *next_location)
       clamp_layer_output_emit(&b, &state);
       nir_metadata_preserve(impl, nir_metadata_dominance);
    }
-   optimize_nir(vs, NULL);
+   optimize_nir(vs, NULL, true);
    NIR_PASS_V(vs, nir_remove_dead_variables, nir_var_shader_temp, NULL);
    return true;
 }
@@ -2767,7 +2769,7 @@ zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_sh
          nir_fixup_deref_modes(producer);
          delete_psiz_store(producer, false);
          NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-         optimize_nir(producer, NULL);
+         optimize_nir(producer, NULL, true);
       }
    }
    if (producer->info.stage == MESA_SHADER_TESS_CTRL) {
@@ -2806,7 +2808,7 @@ zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_sh
       return;
    nir_fixup_deref_modes(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(nir, NULL);
+   optimize_nir(nir, NULL, true);
 }
 
 /* all types that hit this function contain something that is 64bit */
@@ -3144,7 +3146,7 @@ lower_64bit_vars(nir_shader *shader, bool doubles_only)
    if (progress) {
       nir_lower_alu_to_scalar(shader, filter_64_bit_instr, NULL);
       nir_lower_phis_to_scalar(shader, false);
-      optimize_nir(shader, NULL);
+      optimize_nir(shader, NULL, true);
    }
    return progress;
 }
@@ -3914,7 +3916,7 @@ zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shad
       need_optimize = true;
    }
    if (inlined_uniforms) {
-      optimize_nir(nir, zs);
+      optimize_nir(nir, zs, true);
 
       /* This must be done again. */
       NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
@@ -3924,7 +3926,7 @@ zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shad
       if (impl->ssa_alloc > ZINK_ALWAYS_INLINE_LIMIT)
          zs->can_inline = false;
    } else if (need_optimize)
-      optimize_nir(nir, zs);
+      optimize_nir(nir, zs, true);
    
    struct zink_shader_object obj = compile_module(screen, zs, nir, can_shobj, pg);
    ralloc_free(nir);
@@ -3969,7 +3971,7 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
       NIR_PASS_V(nir, rewrite_bo_access, screen);
       NIR_PASS_V(nir, remove_bo_access, zs);
    }
-   optimize_nir(nir, zs);
+   optimize_nir(nir, zs, true);
    zink_descriptor_shader_init(screen, zs);
    nir_shader *nir_clone = NULL;
    if (screen->info.have_EXT_shader_object)
@@ -4062,7 +4064,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
    }
    nir_fixup_deref_modes(shader);
    NIR_PASS_V(shader, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(shader, NULL);
+   optimize_nir(shader, NULL, true);
 
    struct glsl_struct_field field = {0};
    field.name = ralloc_strdup(shader, "base");
@@ -4304,7 +4306,7 @@ lower_bindless(nir_shader *shader, struct zink_bindless_info *bindless)
       return false;
    nir_fixup_deref_modes(shader);
    NIR_PASS_V(shader, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(shader, NULL);
+   optimize_nir(shader, NULL, true);
    return true;
 }
 
@@ -5392,7 +5394,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
       NIR_PASS_V(nir, nir_lower_alu_vec8_16_srcs);
    }
 
-   optimize_nir(nir, NULL);
+   optimize_nir(nir, NULL, true);
    nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out) {
       if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
          NIR_PASS_V(nir, lower_bindless_io);
@@ -5402,7 +5404,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
    nir_gather_xfb_info_from_intrinsics(nir);
    NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_in | nir_var_shader_out, eliminate_io_wrmasks_instr, nir);
    /* clean up io to improve direct access */
-   optimize_nir(nir, NULL);
+   optimize_nir(nir, NULL, true);
    rework_io_vars(nir, nir_var_shader_in);
    rework_io_vars(nir, nir_var_shader_out);
 
@@ -5451,7 +5453,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
       NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
    }
 
-   optimize_nir(nir, NULL);
+   optimize_nir(nir, NULL, true);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, nir_lower_discard_if, (nir_lower_discard_if_to_cf |
                                           nir_lower_demote_if_to_cf |
@@ -5471,7 +5473,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
    nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out)
       var->data.is_xfb = false;
 
-   optimize_nir(nir, NULL);
+   optimize_nir(nir, NULL, true);
    prune_io(nir);
 
    scan_nir(screen, nir, ret);
@@ -5633,8 +5635,9 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
    if (!screen->info.feats.features.shaderImageGatherExtended)
       tex_opts.lower_tg4_offsets = true;
    NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
-   optimize_nir(nir, NULL);
-   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+   optimize_nir(nir, NULL, false);
+   if (nir->info.stage == MESA_SHADER_VERTEX)
+      nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    if (screen->driconf.inline_uniforms)
       nir_find_inlinable_uniforms(nir);
 
@@ -5851,7 +5854,7 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned ver
    nir->info.tess.tcs_vertices_out = vertices_per_patch;
    nir_validate_shader(nir, "created");
 
-   optimize_nir(nir, NULL);
+   optimize_nir(nir, NULL, true);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
