@@ -497,6 +497,10 @@ impl SSAValueAllocator {
         SSAValueAllocator { count: 0 }
     }
 
+    pub fn max_idx(&self) -> u32 {
+        self.count
+    }
+
     pub fn alloc(&mut self, file: RegFile) -> SSAValue {
         self.count += 1;
         SSAValue::new(file, self.count)
