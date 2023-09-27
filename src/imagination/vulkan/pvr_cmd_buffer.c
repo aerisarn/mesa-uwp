@@ -1357,8 +1357,8 @@ pvr_setup_emit_state(const struct pvr_device_info *dev_info,
                           &render_pass_info->render_area,
                           surface->need_resolve,
                           samples,
-                          emit_state->pbe_cs_words[i],
-                          emit_state->pbe_reg_words[i]);
+                          emit_state->pbe_cs_words[emit_state->emit_count],
+                          emit_state->pbe_reg_words[emit_state->emit_count]);
       emit_state->emit_count += 1;
    }
 
