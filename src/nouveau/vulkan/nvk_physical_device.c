@@ -619,7 +619,8 @@ nvk_get_device_properties(const struct nvk_instance *instance,
    };
    STATIC_ASSERT(sizeof(dev_uuid) == VK_UUID_SIZE);
    memcpy(properties->deviceUUID, &dev_uuid, VK_UUID_SIZE);
-   memcpy(properties->driverUUID, instance->driver_uuid, VK_UUID_SIZE);
+   STATIC_ASSERT(sizeof(instance->driver_build_sha) >= VK_UUID_SIZE);
+   memcpy(properties->driverUUID, instance->driver_build_sha, VK_UUID_SIZE);
 
    snprintf(properties->driverName, VK_MAX_DRIVER_NAME_SIZE, "NVK");
    snprintf(properties->driverInfo, VK_MAX_DRIVER_INFO_SIZE,

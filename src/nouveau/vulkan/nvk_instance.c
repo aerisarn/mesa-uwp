@@ -10,6 +10,7 @@
 #include "vulkan/wsi/wsi_common.h"
 
 #include "util/build_id.h"
+#include "util/mesa-sha1.h"
 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_EnumerateInstanceVersion(uint32_t *pApiVersion)
@@ -152,14 +153,14 @@ nvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    }
 
    unsigned build_id_len = build_id_length(note);
-   if (build_id_len < 20) {
+   if (build_id_len < SHA1_DIGEST_LENGTH) {
       result = vk_errorf(NULL, VK_ERROR_INITIALIZATION_FAILED,
                         "build-id too short.  It needs to be a SHA");
       goto fail_init;
    }
 
-   assert(build_id_len >= VK_UUID_SIZE);
-   memcpy(instance->driver_uuid, build_id_data(note), VK_UUID_SIZE);
+   STATIC_ASSERT(sizeof(instance->driver_build_sha) == SHA1_DIGEST_LENGTH);
+   memcpy(instance->driver_build_sha, build_id_data(note), SHA1_DIGEST_LENGTH);
 
    *pInstance = nvk_instance_to_handle(instance);
    return VK_SUCCESS;
