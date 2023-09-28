@@ -382,6 +382,7 @@ EXT(MESA_framebuffer_flip_y                 , MESA_framebuffer_flip_y           
 EXT(MESA_pack_invert                        , MESA_pack_invert                       , GLL, GLC,  x ,  x , 2002)
 EXT(MESA_sampler_objects                    , dummy_true                             ,  x ,  x ,  x , ES2, 2019)
 EXT(MESA_shader_integer_functions           , MESA_shader_integer_functions          , GLL, GLC,  x ,  30, 2016)
+EXT(MESA_texture_const_bandwidth            , MESA_texture_const_bandwidth           , GLL, GLC,  x , ES2, 2023)
 EXT(MESA_texture_signed_rgba                , EXT_texture_snorm                      , GLL, GLC,  x ,  x , 2009)
 EXT(MESA_tile_raster_order                  , MESA_tile_raster_order                 , GLL, GLC,  x , ES2, 2017)
 EXT(MESA_window_pos                         , MESA_window_pos                        , GLL,  x ,  x ,  x , 2000)
