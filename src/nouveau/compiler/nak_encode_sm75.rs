@@ -1553,7 +1553,7 @@ impl SM75Instr {
         &mut self,
         op: &OpBra,
         ip: usize,
-        block_offsets: &HashMap<u32, usize>,
+        labels: &HashMap<Label, usize>,
     ) {
         let ip = u64::try_from(ip).unwrap();
         assert!(ip < i64::MAX as u64);
@@ -1653,7 +1653,7 @@ impl SM75Instr {
         instr: &Instr,
         sm: u8,
         ip: usize,
-        block_offsets: &HashMap<u32, usize>,
+        block_offsets: &HashMap<Label, usize>,
     ) -> [u32; 4] {
         assert!(sm >= 75);
 
@@ -1736,7 +1736,7 @@ pub fn encode_shader(shader: &Shader) -> Vec<u32> {
     let mut num_instrs = 0_usize;
     let mut block_offsets = HashMap::new();
     for b in &func.blocks {
-        block_offsets.insert(b.id, num_instrs);
+        block_offsets.insert(b.label, num_instrs);
         num_instrs += b.instrs.len() * 4;
     }
 

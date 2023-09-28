@@ -138,6 +138,8 @@ struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
     info: ShaderInfo,
     cfg: CFGBuilder<u32, BasicBlock>,
+    label_alloc: LabelAllocator,
+    block_label: HashMap<u32, Label>,
     fs_out_regs: [SSAValue; 34],
     end_block_id: u32,
     ssa_map: HashMap<u32, Vec<SSAValue>>,
@@ -150,11 +152,20 @@ impl<'a> ShaderFromNir<'a> {
             nir: nir,
             info: init_info_from_nir(nir, sm),
             cfg: CFGBuilder::new(),
+            label_alloc: LabelAllocator::new(),
+            block_label: HashMap::new(),
             fs_out_regs: [SSAValue::NONE; 34],
             end_block_id: 0,
             ssa_map: HashMap::new(),
             saturated: HashSet::new(),
         }
+    }
+
+    fn get_block_label(&mut self, block: &nir_block) -> Label {
+        *self
+            .block_label
+            .entry(block.index)
+            .or_insert_with(|| self.label_alloc.alloc())
     }
 
     fn get_ssa(&mut self, ssa: &nir_def) -> &[SSAValue] {
@@ -1992,7 +2003,7 @@ impl<'a> ShaderFromNir<'a> {
             self.cfg.add_edge(nb.index, ni.first_else_block().index);
 
             let mut bra = Instr::new_boxed(OpBra {
-                target: ni.first_else_block().index,
+                target: self.get_block_label(ni.first_else_block()),
             });
 
             let cond = self.get_ssa(&ni.condition.as_def())[0];
@@ -2009,13 +2020,15 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpExit {});
             } else {
                 self.cfg.add_edge(nb.index, s0.index);
-                b.push_op(OpBra { target: s0.index });
+                b.push_op(OpBra {
+                    target: self.get_block_label(s0),
+                });
             }
         }
 
-        let mut bb = BasicBlock::new(nb.index);
+        let mut bb = BasicBlock::new(self.get_block_label(nb));
         bb.instrs.append(&mut b.as_vec());
-        self.cfg.add_node(bb.id, bb);
+        self.cfg.add_node(nb.index, bb);
     }
 
     fn parse_if<'b>(

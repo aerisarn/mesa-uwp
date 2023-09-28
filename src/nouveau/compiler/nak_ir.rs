@@ -18,6 +18,33 @@ use std::iter::Zip;
 use std::ops::{BitAnd, BitOr, Deref, DerefMut, Index, IndexMut, Not, Range};
 use std::slice;
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub struct Label {
+    idx: u32,
+}
+
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "L{}", self.idx)
+    }
+}
+
+pub struct LabelAllocator {
+    count: u32,
+}
+
+impl LabelAllocator {
+    pub fn new() -> LabelAllocator {
+        LabelAllocator { count: 0 }
+    }
+
+    pub fn alloc(&mut self) -> Label {
+        let idx = self.count;
+        self.count += 1;
+        Label { idx: idx }
+    }
+}
+
 /// Represents a register file
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -3341,12 +3368,12 @@ impl fmt::Display for OpMemBar {
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBra {
-    pub target: u32,
+    pub target: Label,
 }
 
 impl fmt::Display for OpBra {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BRA B{}", self.target)
+        write!(f, "BRA {}", self.target)
     }
 }
 
@@ -4310,14 +4337,14 @@ impl MappedInstrs {
 }
 
 pub struct BasicBlock {
-    pub id: u32,
+    pub label: Label,
     pub instrs: Vec<Box<Instr>>,
 }
 
 impl BasicBlock {
-    pub fn new(id: u32) -> BasicBlock {
+    pub fn new(label: Label) -> BasicBlock {
         BasicBlock {
-            id: id,
+            label: label,
             instrs: Vec::new(),
         }
     }
@@ -4450,7 +4477,7 @@ impl Function {
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for i in 0..self.blocks.len() {
-            write!(f, "block {}(id={}) [", i, self.blocks[i].id)?;
+            write!(f, "block {} {} [", i, self.blocks[i].label)?;
             for (pi, p) in self.blocks.pred_indices(i).iter().enumerate() {
                 if pi > 0 {
                     write!(f, ", ")?;
