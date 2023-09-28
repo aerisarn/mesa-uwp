@@ -3790,6 +3790,10 @@ zink_flush(struct pipe_context *pctx,
          mfence->submit_count = submit_count;
          util_dynarray_append(&fence->mfences, struct zink_tc_fence *, mfence);
       }
+      if (export_sem) {
+         pipe_reference(NULL, &mfence->reference);
+         util_dynarray_append(&ctx->batch.state->fences, struct zink_tc_fence*, mfence);
+      }
 
       if (deferred_fence) {
          assert(fence);

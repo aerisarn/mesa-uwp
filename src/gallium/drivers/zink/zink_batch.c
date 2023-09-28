@@ -172,6 +172,10 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    }
    bs->swapchain = NULL;
 
+   util_dynarray_foreach(&bs->fences, struct zink_tc_fence*, mfence)
+      zink_fence_reference(screen, mfence, NULL);
+   util_dynarray_clear(&bs->fences);
+
    bs->unordered_write_access = 0;
    bs->unordered_write_stages = 0;
 
@@ -354,6 +358,7 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->signal_semaphores, NULL);
    util_dynarray_init(&bs->wait_semaphores, NULL);
    util_dynarray_init(&bs->fd_wait_semaphores, NULL);
+   util_dynarray_init(&bs->fences, NULL);
    util_dynarray_init(&bs->dead_querypools, NULL);
    util_dynarray_init(&bs->dgc.pipelines, NULL);
    util_dynarray_init(&bs->dgc.layouts, NULL);

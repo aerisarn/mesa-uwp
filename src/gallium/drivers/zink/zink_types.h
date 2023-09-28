@@ -605,6 +605,7 @@ struct zink_batch_state {
    struct util_dynarray wait_semaphore_stages; //external wait semaphores
    struct util_dynarray fd_wait_semaphores; //dmabuf wait semaphores
    struct util_dynarray fd_wait_semaphore_stages; //dmabuf wait semaphores
+   struct util_dynarray fences; //zink_tc_fence refs
 
    VkSemaphore present;
    struct zink_resource *swapchain;
