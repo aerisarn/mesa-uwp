@@ -922,6 +922,8 @@ struct anv_physical_device {
      */
     bool                                        has_sparse;
 
+    /** True if HW supports ASTC LDR */
+    bool                                        has_astc_ldr;
     /** True if ASTC LDR is supported via emulation */
     bool                                        emu_astc_ldr;
 
