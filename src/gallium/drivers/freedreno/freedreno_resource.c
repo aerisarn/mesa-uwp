@@ -53,14 +53,6 @@
 /* XXX this should go away, needed for 'struct winsys_handle' */
 #include "frontend/drm_driver.h"
 
-/* A private modifier for now, so we have a way to request tiled but not
- * compressed.  It would perhaps be good to get real modifiers for the
- * tiled formats, but would probably need to do some work to figure out
- * the layout(s) of the tiled modes, and whether they are the same
- * across generations.
- */
-#define FD_FORMAT_MOD_QCOM_TILED fourcc_mod_code(QCOM, 0xffffffff)
-
 /**
  * Go through the entire state and see if the resource is bound
  * anywhere. If it is, mark the relevant state as dirty. This is
@@ -574,7 +566,7 @@ fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc, bool lin
 {
    tc_assert_driver_thread(ctx->tc);
 
-   uint64_t modifier = linear ? DRM_FORMAT_MOD_LINEAR : FD_FORMAT_MOD_QCOM_TILED;
+   uint64_t modifier = linear ? DRM_FORMAT_MOD_LINEAR : DRM_FORMAT_MOD_QCOM_TILED3;
 
    ASSERTED bool success = fd_try_shadow_resource(ctx, rsc, 0, NULL, modifier);
 
@@ -1302,15 +1294,8 @@ get_best_layout(struct fd_screen *screen,
    if (ubwc_ok)
       return UBWC;
 
-   /* We can't use tiled with explicit modifiers, as there is no modifier token
-    * defined for it. But we might internally force tiled allocation using a
-    * private modifier token.
-    *
-    * TODO we should probably also limit TILED in a similar way to UBWC above,
-    * once we have a public modifier token defined.
-    */
    if (can_implicit ||
-       drm_find_modifier(FD_FORMAT_MOD_QCOM_TILED, modifiers, count))
+       drm_find_modifier(DRM_FORMAT_MOD_QCOM_TILED3, modifiers, count))
       return TILED;
 
    if (!drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count)) {
