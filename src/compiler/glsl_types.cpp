@@ -3021,7 +3021,7 @@ union packed_type {
       unsigned length:13;
       unsigned explicit_stride:14;
    } array;
-   glsl_cmat_description cmat_desc;
+   struct glsl_cmat_description cmat_desc;
    struct {
       unsigned base_type:5;
       unsigned interface_packing_or_packed:2;
@@ -3470,6 +3470,20 @@ glsl_type_wrap_in_arrays(const struct glsl_type *t,
       glsl_type_wrap_in_arrays(t, glsl_get_array_element(arrays));
    return glsl_type::get_array_instance(elem_type, glsl_get_length(arrays),
                                         glsl_get_explicit_stride(arrays));
+}
+
+const struct glsl_type *
+glsl_get_cmat_element(const struct glsl_type *t)
+{
+   assert(t->base_type == GLSL_TYPE_COOPERATIVE_MATRIX);
+   return glsl_type::get_instance(t->cmat_desc.element_type, 1, 1);
+}
+
+const struct glsl_cmat_description *
+glsl_get_cmat_description(const struct glsl_type *t)
+{
+   assert(t->base_type == GLSL_TYPE_COOPERATIVE_MATRIX);
+   return &t->cmat_desc;
 }
 
 unsigned

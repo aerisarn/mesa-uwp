@@ -669,16 +669,3 @@ glsl_type_replace_vec3_with_vec4(const struct glsl_type *type)
    return type->replace_vec3_with_vec4();
 }
 
-const struct glsl_type *
-glsl_get_cmat_element(const struct glsl_type *type)
-{
-   assert(type->base_type == GLSL_TYPE_COOPERATIVE_MATRIX);
-   return glsl_type::get_instance(type->cmat_desc.element_type, 1, 1);
-}
-
-const struct glsl_cmat_description *
-glsl_get_cmat_description(const struct glsl_type *type)
-{
-   assert(type->base_type == GLSL_TYPE_COOPERATIVE_MATRIX);
-   return &type->cmat_desc;
-}
