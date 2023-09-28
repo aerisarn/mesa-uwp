@@ -114,8 +114,8 @@ struct entry_point {
    gl_shader_stage stage;
 };
 
-static bool
-check_entry_point(void *mem_ctx, const uint32_t *words, size_t word_count,
+static struct entry_point
+select_entry_point(void *mem_ctx, const uint32_t *words, size_t word_count,
                   struct entry_point args)
 {
    /* Create a dummy vtn_builder to use with vtn_string_literal. */
@@ -151,39 +151,48 @@ check_entry_point(void *mem_ctx, const uint32_t *words, size_t word_count,
       w += count;
    }
 
+   struct entry_point r = {0};
    if (util_dynarray_num_elements(&candidates, struct entry_point) == 0) {
       fprintf(stderr, "ERROR: No entry-points available.\n");
-      return false;
+      return r;
    }
 
    int matches = 0;
    util_dynarray_foreach(&candidates, struct entry_point, e) {
       if ((!args.name || !strcmp(args.name, e->name)) &&
           (args.stage == MESA_SHADER_NONE || args.stage == e->stage)) {
+         if (matches == 0) {
+            /* Save the first match we found. */
+            r = *e;
+         }
          matches++;
-      } 
+      }
    }
 
    if (matches != 1) {
-      if (matches == 0)
+      if (matches == 0) {
          fprintf(stderr, "No matching entry-point for arguments passed.\n");
-      else
+      } else {
          fprintf(stderr, "Multiple entry-points available, select with --stage and/or --entry.\n");
+
+         /* Discard whatever we found before. */
+         r.name = NULL;
+         r.stage = MESA_SHADER_NONE;
+      }
 
       fprintf(stderr, "Entry-points available:\n");
       util_dynarray_foreach(&candidates, struct entry_point, e)
          fprintf(stderr, "  --entry e \"%s\" --stage %s\n", e->name, stage_to_abbrev(e->stage));
-      return false;
    }
 
-   return true;
+   return r;
 }
 
 int main(int argc, char **argv)
 {
    struct entry_point entry_point = {
-      .name = "main",
-      .stage = MESA_SHADER_FRAGMENT,
+      .name = NULL,
+      .stage = MESA_SHADER_NONE,
    };
    int ch;
    bool optimize = false;
@@ -264,7 +273,8 @@ int main(int argc, char **argv)
 
    void *mem_ctx = ralloc_context(NULL);
 
-   if (!check_entry_point(mem_ctx, map, word_count, entry_point))
+   entry_point = select_entry_point(mem_ctx, map, word_count, entry_point);
+   if (!entry_point.name)
       return 1;
 
    glsl_type_singleton_init_or_ref();
