@@ -4603,6 +4603,12 @@ struct anv_image {
    bool from_gralloc;
 
    /**
+    * If not UNDEFINED, image has a hidden plane at planes[n_planes] for ASTC
+    * LDR emulation.
+    */
+   VkFormat emu_plane_format;
+
+   /**
     * The memory bindings created by vkCreateImage and vkBindImageMemory.
     *
     * For details on the image's memory layout, see check_memory_bindings().

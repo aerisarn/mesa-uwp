@@ -1532,6 +1532,30 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
    image->disjoint = image->n_planes > 1 &&
                      (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);
 
+   isl_surf_usage_flags_t isl_extra_usage_flags = create_info->isl_extra_usage_flags;
+   if (anv_is_format_emulated(device->physical, pCreateInfo->format)) {
+      assert(image->n_planes == 1 &&
+             vk_format_is_compressed(image->vk.format));
+      assert(!(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT));
+
+      image->emu_plane_format =
+         vk_texcompress_astc_emulation_format(image->vk.format);
+
+      /* for fetching the raw copmressed data and storing the decompressed
+       * data
+       */
+      image->vk.create_flags |=
+         VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT |
+         VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
+      if (image->vk.image_type == VK_IMAGE_TYPE_3D)
+         image->vk.create_flags |= VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT;
+      image->vk.usage |=
+         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+
+      /* TODO: enable compression on emulation plane */
+      isl_extra_usage_flags |= ISL_SURF_USAGE_DISABLE_AUX_BIT;
+   }
+
    const isl_tiling_flags_t isl_tiling_flags =
       choose_isl_tiling_flags(device->info, create_info, isl_mod_info,
                               image->vk.wsi_legacy_scanout);
@@ -1543,15 +1567,32 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
    if (mod_explicit_info) {
       r = add_all_surfaces_explicit_layout(device, image, fmt_list,
                                            mod_explicit_info, isl_tiling_flags,
-                                           create_info->isl_extra_usage_flags);
+                                           isl_extra_usage_flags);
    } else {
       r = add_all_surfaces_implicit_layout(device, image, fmt_list, create_info->stride,
                                            isl_tiling_flags,
-                                           create_info->isl_extra_usage_flags);
+                                           isl_extra_usage_flags);
    }
 
    if (r != VK_SUCCESS)
       goto fail;
+
+   if (image->emu_plane_format != VK_FORMAT_UNDEFINED) {
+      const struct intel_device_info *devinfo = device->info;
+      const uint32_t plane = image->n_planes;
+      const struct anv_format_plane plane_format = anv_get_format_plane(
+            devinfo, image->emu_plane_format, 0, image->vk.tiling);
+
+      isl_surf_usage_flags_t isl_usage = anv_image_choose_isl_surf_usage(
+            image->vk.create_flags, image->vk.usage, isl_extra_usage_flags,
+            VK_IMAGE_ASPECT_COLOR_BIT);
+
+      r = add_primary_surface(device, image, plane, plane_format,
+                              ANV_OFFSET_IMPLICIT, 0,
+                              isl_tiling_flags, isl_usage);
+      if (r != VK_SUCCESS)
+         goto fail;
+   }
 
    const VkVideoProfileListInfoKHR *video_profile =
       vk_find_struct_const(pCreateInfo->pNext,
