@@ -745,8 +745,23 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
                                    VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                    dst_image_layout, ISL_AUX_USAGE_NONE, &dst);
 
+      VkFormat src_vk_format = src_image->vk.format;
+
+      if (src_image->emu_plane_format != VK_FORMAT_UNDEFINED) {
+         /* redirect src to the hidden plane */
+         const uint32_t plane = src_image->n_planes;
+         const struct anv_surface *surface =
+            &src_image->planes[plane].primary_surface;
+         const struct anv_address address =
+            anv_image_address(src_image, &surface->memory_range);
+         src.surf = &surface->isl,
+         src.addr.offset = address.offset;
+
+         src_vk_format = src_image->emu_plane_format;
+      }
+
       struct anv_format_plane src_format =
-         anv_get_format_aspect(cmd_buffer->device->info, src_image->vk.format,
+         anv_get_format_aspect(cmd_buffer->device->info, src_vk_format,
                                1U << aspect_bit, src_image->vk.tiling);
       struct anv_format_plane dst_format =
          anv_get_format_aspect(cmd_buffer->device->info, dst_image->vk.format,
