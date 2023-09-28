@@ -25,6 +25,7 @@ METHOD_ARRAY_SIZES = {
     'SET_PIPELINE_*'                    : 6,
     'SET_SCISSOR_*'                     : 16,
     'SET_STREAM_OUT_BUFFER_*'           : 4,
+    'SET_STREAM_OUT_CONTROL_*'          : 4,
     'SET_VIEWPORT_*'                    : 16,
     'SET_VERTEX_ATTRIBUTE_*'            : 16,
     'SET_VERTEX_STREAM_*'               : 16,
