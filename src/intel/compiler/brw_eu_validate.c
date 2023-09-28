@@ -1678,6 +1678,16 @@ region_alignment_rules(const struct brw_isa_info *isa,
     *
     * Additionally the simulator source code indicates that the real condition
     * is that the size of the destination type is 4 bytes.
+    *
+    * HSW PRMs also add a note to the second exception:
+    *  "When lower 8 channels are disabled, the sub register of source1
+    *   operand is not incremented. If the lower 8 channels are expected
+    *   to be disabled, say by predication, the instruction must be split
+    *   into pair of simd8 operations."
+    *
+    * We can't reliably know if the channels won't be disabled due to,
+    * for example, IMASK. So, play it safe and disallow packed-word exception
+    * for src1.
     */
    if (devinfo->ver <= 7 && dst_regs == 2) {
       enum brw_reg_type dst_type = inst_dst_type(isa, inst);
@@ -1692,7 +1702,7 @@ region_alignment_rules(const struct brw_isa_info *isa,
          width = WIDTH(brw_inst_src ## n ## _width(devinfo, inst));                \
          hstride = STRIDE(brw_inst_src ## n ## _hstride(devinfo, inst));           \
          bool src ## n ## _is_packed_word =                                        \
-            is_packed(vstride, width, hstride) &&                                  \
+            n != 1 && is_packed(vstride, width, hstride) &&                        \
             (brw_inst_src ## n ## _type(devinfo, inst) == BRW_REGISTER_TYPE_W ||   \
              brw_inst_src ## n ## _type(devinfo, inst) == BRW_REGISTER_TYPE_UW);   \
                                                                                    \
@@ -1701,7 +1711,7 @@ region_alignment_rules(const struct brw_isa_info *isa,
                   !(dst_is_packed_dword && src ## n ## _is_packed_word),           \
                   "When the destination spans two registers, the source must "     \
                   "span two registers\n" ERROR_INDENT "(exceptions for scalar "    \
-                  "source and packed-word to packed-dword expansion)")
+                  "sources, and packed-word to packed-dword expansion for src0)")
 
          if (i == 0) {
             DO_SRC(0);
