@@ -1351,6 +1351,9 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->has_protected_contexts = device->info.ver >= 12 &&
       intel_gem_supports_protected_context(fd, device->info.kmd_type);
 
+   /* always false for now */
+   device->emu_astc_ldr = false;
+
    result = anv_physical_device_init_heaps(device, fd);
    if (result != VK_SUCCESS)
       goto fail_base;
