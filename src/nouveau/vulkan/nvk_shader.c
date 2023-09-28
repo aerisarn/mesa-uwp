@@ -108,12 +108,17 @@ nvk_physical_device_compiler_flags(const struct nvk_physical_device *pdev)
    uint64_t prog_debug = get_prog_debug();
    uint64_t prog_optimize = get_prog_optimize();
    uint64_t nak_stages = get_nak_stages();
+   uint64_t nak_flags = nak_debug_flags(pdev->nak);
 
    assert(prog_debug <= UINT8_MAX);
    assert(prog_optimize <= UINT8_MAX);
    assert(nak_stages <= UINT32_MAX);
+   assert(nak_flags <= UINT16_MAX);
 
-   return prog_debug | (prog_optimize << 8) | (nak_stages << 16);
+   return prog_debug
+      | (prog_optimize << 8)
+      | (nak_stages << 16)
+      | (nak_flags << 48);
 }
 
 const nir_shader_compiler_options *
