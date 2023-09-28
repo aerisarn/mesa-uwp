@@ -63,9 +63,9 @@ dump_anv_vm_bind(struct anv_device *device,
    else
       sparse_debug("bo:---- ");
    sparse_debug("res_offset:%08"PRIx64" size:%08"PRIx64" "
-                "mem_offset:%08"PRIx64"\n",
+                "mem_offset:%08"PRIx64" addr:%016"PRIx64"\n",
                 bind->address - sparse->address, bind->size,
-                bind->bo_offset);
+                bind->bo_offset, bind->address);
 }
 
 static void
