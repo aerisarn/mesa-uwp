@@ -242,7 +242,11 @@ impl SM75Instr {
     }
 
     fn set_dst(&mut self, dst: Dst) {
-        self.set_reg(16..24, *dst.as_reg().unwrap());
+        match dst {
+            Dst::None => self.set_reg(16..24, RegRef::zero(RegFile::GPR, 1)),
+            Dst::Reg(reg) => self.set_reg(16..24, reg),
+            _ => panic!("Not a register"),
+        }
     }
 
     fn set_alu_reg(
