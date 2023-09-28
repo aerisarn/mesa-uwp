@@ -17,13 +17,15 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
    struct util_dynarray binary;
    util_dynarray_init(&binary, NULL);
 
-   agx_preprocess_nir(shader, false, false, NULL);
+   agx_preprocess_nir(shader, cache->dev->libagx, false, false, NULL);
    if (tib) {
       unsigned bindless_base = 0;
       agx_nir_lower_tilebuffer(shader, tib, NULL, &bindless_base, NULL, true);
       agx_nir_lower_monolithic_msaa(
          shader, &(struct agx_msaa_state){.nr_samples = tib->nr_samples});
    }
+
+   key->libagx = cache->dev->libagx;
 
    struct agx_meta_shader *res = rzalloc(cache->ht, struct agx_meta_shader);
    agx_compile_shader_nir(shader, key, NULL, &binary, &res->info);
@@ -200,6 +202,7 @@ agx_meta_init(struct agx_meta_cache *cache, struct agx_device *dev)
 {
    agx_pool_init(&cache->pool, dev, AGX_BO_EXEC | AGX_BO_LOW_VA, true);
    cache->ht = _mesa_hash_table_create(NULL, key_hash, key_compare);
+   cache->dev = dev;
 }
 
 void
@@ -208,4 +211,5 @@ agx_meta_cleanup(struct agx_meta_cache *cache)
    agx_pool_cleanup(&cache->pool);
    _mesa_hash_table_destroy(cache->ht, NULL);
    cache->ht = NULL;
+   cache->dev = NULL;
 }

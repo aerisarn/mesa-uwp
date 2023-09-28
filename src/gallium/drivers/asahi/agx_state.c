@@ -1675,6 +1675,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       .needs_g13x_coherency = (dev->params.gpu_generation == 13 &&
                                dev->params.num_clusters_total > 1) ||
                               dev->params.num_dies > 1,
+      .libagx = dev->libagx,
    };
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
@@ -1788,7 +1789,8 @@ agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
    }
 
    bool allow_mediump = !(dev->debug & AGX_DBG_NO16);
-   agx_preprocess_nir(nir, support_lod_bias, allow_mediump, &so->info);
+   agx_preprocess_nir(nir, dev->libagx, support_lod_bias, allow_mediump,
+                      &so->info);
 
    blob_init(&so->serialized_nir);
    nir_serialize(&so->serialized_nir, nir, true);

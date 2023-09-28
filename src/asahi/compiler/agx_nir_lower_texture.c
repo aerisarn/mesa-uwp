@@ -612,8 +612,8 @@ calculate_twiddled_coordinates(nir_builder *b, nir_def *coord,
 }
 
 static nir_def *
-image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
-                    bool return_index)
+image_texel_address(nir_builder *b, const nir_shader *libagx,
+                    nir_intrinsic_instr *intr, bool return_index)
 {
    /* First, calculate the address of the PBE descriptor */
    nir_def *desc_address =

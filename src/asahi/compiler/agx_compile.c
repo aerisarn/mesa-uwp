@@ -2733,6 +2733,22 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    return offset;
 }
 
+static void
+link_libagx(nir_shader *nir, const nir_shader *libagx)
+{
+   nir_link_shader_functions(nir, libagx);
+   NIR_PASS_V(nir, nir_inline_functions);
+   NIR_PASS_V(nir, nir_remove_non_entrypoints);
+   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp,
+              glsl_get_cl_type_size_align);
+   NIR_PASS_V(nir, nir_opt_deref);
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_shader_temp | nir_var_function_temp | nir_var_mem_shared |
+                 nir_var_mem_global,
+              nir_address_format_62bit_generic);
+}
+
 /*
  * Preprocess NIR. In particular, this lowers I/O. Drivers should call this
  * as soon as they don't need unlowered I/O.
@@ -2749,7 +2765,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
  * lowered here to avoid duplicate work with shader variants.
  */
 void
-agx_preprocess_nir(nir_shader *nir, bool support_lod_bias, bool allow_mediump,
+agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
+                   bool support_lod_bias, bool allow_mediump,
                    struct agx_uncompiled_shader_info *out)
 {
    if (out)
@@ -2799,6 +2816,8 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias, bool allow_mediump,
    /* Clean up deref gunk after lowering I/O */
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, agx_nir_lower_texture, support_lod_bias);
+
+   link_libagx(nir, libagx);
 
    /* Runs before we lower away idiv, to work at all. But runs after lowering
     * textures, since the cube map array lowering generates division by 6.
@@ -2860,8 +2879,10 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       out->tag_write_disable = !nir->info.writes_memory;
 
+   bool needs_libagx = false;
+
    /* Late tilebuffer lowering creates multisampled image stores */
-   NIR_PASS_V(nir, agx_nir_lower_multisampled_image_store);
+   NIR_PASS(needs_libagx, nir, agx_nir_lower_multisampled_image_store);
 
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
    nir_lower_mem_access_bit_sizes_options lower_mem_access_options = {
@@ -2878,7 +2899,10 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS_V(nir, agx_nir_lower_interpolation);
+      NIR_PASS(needs_libagx, nir, agx_nir_lower_interpolation);
+
+   if (needs_libagx)
+      link_libagx(nir, key->libagx);
 
    /* Late VBO lowering creates constant udiv instructions */
    NIR_PASS_V(nir, nir_opt_idiv_const, 16);

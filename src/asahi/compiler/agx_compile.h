@@ -213,6 +213,9 @@ struct agx_shader_key {
     */
    bool needs_g13x_coherency;
 
+   /* Library routines to link against */
+   const nir_shader *libagx;
+
    union {
       struct agx_vs_shader_key vs;
       struct agx_fs_shader_key fs;
@@ -224,8 +227,8 @@ struct agx_shader_key {
 
 bool agx_nir_lower_texture_early(nir_shader *s);
 
-void agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
-                        bool allow_mediump,
+void agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
+                        bool support_lod_bias, bool allow_mediump,
                         struct agx_uncompiled_shader_info *out);
 
 bool agx_nir_lower_discard_zs_emit(nir_shader *s);
