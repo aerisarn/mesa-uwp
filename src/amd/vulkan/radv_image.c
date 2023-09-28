@@ -273,8 +273,9 @@ radv_use_dcc_for_image_early(struct radv_device *device, struct radv_image *imag
          return false;
    }
 
-   /* FIXME: Figure out how to use DCC for MSAA images without FMASK. */
-   if (pCreateInfo->samples > 1 && !device->physical_device->use_fmask)
+   /* DCC MSAA can't work on GFX10.3 and earlier without FMASK. */
+   if (pCreateInfo->samples > 1 && device->physical_device->rad_info.gfx_level < GFX11 &&
+       (device->instance->debug_flags & RADV_DEBUG_NO_FMASK))
       return false;
 
    return radv_are_formats_dcc_compatible(device->physical_device, pCreateInfo->pNext, format, pCreateInfo->flags,
