@@ -1038,18 +1038,18 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
                           const VkGraphicsPipelineCreateInfo *info,
                           VkGraphicsPipelineLibraryFlagsEXT lib)
 {
-   VkPipelineCreateFlags valid_pipeline_flags = 0;
+   VkPipelineCreateFlags2KHR valid_pipeline_flags = 0;
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
       valid_pipeline_flags |=
-         VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
-         VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
+         VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
+         VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
    }
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
       valid_pipeline_flags |=
-         VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
-         VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+         VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+         VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
    }
-   const VkPipelineCreateFlags pipeline_flags =
+   const VkPipelineCreateFlags2KHR pipeline_flags =
       (driver_rp ? driver_rp->pipeline_flags :
        vk_get_pipeline_rendering_flags(info)) & valid_pipeline_flags;
 

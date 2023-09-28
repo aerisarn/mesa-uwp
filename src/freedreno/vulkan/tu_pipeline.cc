@@ -3775,8 +3775,8 @@ tu_pipeline_builder_parse_rasterization_order(
        * for advanced_blend in sysmem mode if a feedback loop is detected.
        */
       if (builder->graphics_state.rp->pipeline_flags &
-          (VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
-           VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)) {
+          (VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+           VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)) {
          sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
          pipeline->prim_order.sysmem_single_prim_mode = true;
       }
@@ -3967,10 +3967,10 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
                                      &builder->graphics_state);
       gfx_pipeline->feedback_loop_color =
          (builder->graphics_state.rp->pipeline_flags &
-          VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+          VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       gfx_pipeline->feedback_loop_ds =
          (builder->graphics_state.rp->pipeline_flags &
-          VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+          VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       gfx_pipeline->feedback_loop_may_involve_textures =
          (gfx_pipeline->feedback_loop_color ||
           gfx_pipeline->feedback_loop_ds) &&
@@ -4137,17 +4137,17 @@ tu_pipeline_builder_init_graphics(
 
       if (subpass->feedback_loop_color) {
          rp_state.pipeline_flags |=
-            VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+            VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
       }
 
       if (subpass->feedback_loop_ds) {
          rp_state.pipeline_flags |=
-            VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+            VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
       }
 
       if (pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED) {
          rp_state.pipeline_flags |=
-            VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
+            VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
       }
 
       builder->unscaled_input_fragcoord = 0;
@@ -4172,7 +4172,7 @@ tu_pipeline_builder_init_graphics(
 
    if (builder->graphics_state.rp) {
       builder->fragment_density_map = (builder->graphics_state.rp->pipeline_flags &
-         VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT) ||
+         VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT) ||
          TU_DEBUG(FDM);
    }
 }

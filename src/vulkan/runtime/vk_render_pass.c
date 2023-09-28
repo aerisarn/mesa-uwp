@@ -30,6 +30,7 @@
 #include "vk_format.h"
 #include "vk_framebuffer.h"
 #include "vk_image.h"
+#include "vk_pipeline.h"
 #include "vk_util.h"
 
 #include "util/log.h"
@@ -838,14 +839,15 @@ vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info)
    return vk_find_struct_const(info->pNext, PIPELINE_RENDERING_CREATE_INFO);
 }
 
-VkPipelineCreateFlags
+VkPipelineCreateFlags2KHR
 vk_get_pipeline_rendering_flags(const VkGraphicsPipelineCreateInfo *info)
 {
-   VkPipelineCreateFlags rendering_flags = info->flags &
-      (VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
-       VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
-       VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
-       VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT);
+   VkPipelineCreateFlags2KHR rendering_flags =
+      vk_graphics_pipeline_create_flags(info) &
+      (VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+       VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+       VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
+       VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT);
 
    VK_FROM_HANDLE(vk_render_pass, render_pass, info->renderPass);
    if (render_pass != NULL) {

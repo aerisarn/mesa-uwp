@@ -1487,7 +1487,7 @@ static bool
 rp_has_ds_self_dep(const struct vk_render_pass_state *rp)
 {
    return rp->pipeline_flags &
-      VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+      VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
 }
 
 static void

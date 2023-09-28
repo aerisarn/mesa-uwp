@@ -155,7 +155,7 @@ struct vk_subpass {
    VkExtent2D fragment_shading_rate_attachment_texel_size;
 
    /** Extra VkPipelineCreateFlags for this subpass */
-   VkPipelineCreateFlagBits pipeline_flags;
+   VkPipelineCreateFlagBits2KHR pipeline_flags;
 
    /** VkAttachmentSampleCountInfoAMD for this subpass
     *
@@ -329,7 +329,7 @@ vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info);
  *
  * :param info: |in|  One of the pCreateInfos from vkCreateGraphicsPipelines
  */
-VkPipelineCreateFlags
+VkPipelineCreateFlags2KHR
 vk_get_pipeline_rendering_flags(const VkGraphicsPipelineCreateInfo *info);
 
 /** Returns the VkAttachmentSampleCountInfoAMD for a graphics pipeline

@@ -680,7 +680,7 @@ struct vk_render_pass_state {
     * For drivers which use vk_render_pass, this will also include flags
     * generated based on subpass self-dependencies and fragment density map.
     */
-   VkPipelineCreateFlags pipeline_flags;
+   VkPipelineCreateFlags2KHR pipeline_flags;
 
    /* True if any feedback loops only involve input attachments. */
    bool feedback_loop_input_only;
