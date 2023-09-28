@@ -103,8 +103,7 @@ impl PipeScreen {
                 (*self.screen).context_create.unwrap()(
                     self.screen,
                     ptr::null_mut(),
-                    // TODO: PIPE_CONTEXT_COMPUTE_ONLY
-                    PIPE_CONTEXT_NO_LOD_BIAS,
+                    PIPE_CONTEXT_COMPUTE_ONLY | PIPE_CONTEXT_NO_LOD_BIAS,
                 )
             },
             self,
