@@ -2615,6 +2615,13 @@ check_base_requirements(struct zink_screen *screen)
 {
    if (zink_debug & ZINK_DEBUG_QUIET)
       return;
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_V3DV) {
+      /* v3dv doesn't support straddling i/o, but zink doesn't do that so this is effectively supported:
+       * don't spam errors in this case
+       */
+      screen->info.feats12.scalarBlockLayout = true;
+      screen->info.have_EXT_scalar_block_layout = true;
+   }
    if (!screen->info.feats.features.logicOp ||
        !screen->info.feats.features.fillModeNonSolid ||
        !screen->info.feats.features.shaderClipDistance ||
@@ -2638,6 +2645,10 @@ check_base_requirements(struct zink_screen *screen)
       CHECK_OR_PRINT(have_EXT_custom_border_color);
       CHECK_OR_PRINT(have_EXT_line_rasterization);
       fprintf(stderr, "\n");
+   }
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_V3DV) {
+      screen->info.feats12.scalarBlockLayout = false;
+      screen->info.have_EXT_scalar_block_layout = false;
    }
 }
 
@@ -2835,14 +2846,6 @@ init_driver_workarounds(struct zink_screen *screen)
    if ((zink_debug & illegal) == illegal) {
       mesa_loge("Cannot specify ZINK_DEBUG=rp and ZINK_DEBUG=norp");
       abort();
-   }
-
-   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_V3DV) {
-      /* v3dv doesn't support straddling i/o, but zink doesn't do that so this is effectively supported:
-       * don't spam errors in this case
-       */
-      screen->info.feats12.scalarBlockLayout = true;
-      screen->info.have_EXT_scalar_block_layout = true;
    }
 
    /* these drivers benefit from renderpass optimization */
