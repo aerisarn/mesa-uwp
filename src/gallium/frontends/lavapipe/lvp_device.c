@@ -661,6 +661,7 @@ lvp_get_properties(const struct lvp_physical_device *device, struct vk_propertie
 
    int texel_buffer_alignment = device->pscreen->get_param(device->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
 
+   STATIC_ASSERT(sizeof(struct lp_descriptor) <= 256);
    *p = (struct vk_properties) {
       /* Vulkan 1.0 */
       .apiVersion = LVP_API_VERSION,
@@ -968,7 +969,7 @@ lvp_get_properties(const struct lvp_physical_device *device, struct vk_propertie
       .inputAttachmentDescriptorSize = sizeof(struct lp_descriptor),
       .accelerationStructureDescriptorSize = 0,
       .maxSamplerDescriptorBufferRange = 1<<27, //spec minimum
-      .maxResourceDescriptorBufferRange = 1<<27, //spec minimum
+      .maxResourceDescriptorBufferRange = 1<<28, //spec minimum
       .resourceDescriptorBufferAddressSpaceSize = 1<<27, //spec minimum
       .samplerDescriptorBufferAddressSpaceSize = 1<<27, //spec minimum
       .descriptorBufferAddressSpaceSize = 1<<27, //spec minimum
