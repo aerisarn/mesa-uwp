@@ -2875,7 +2875,19 @@ anv_image_fill_surface_state(struct anv_device *device,
                              enum anv_image_view_state_flags flags,
                              struct anv_surface_state *state_inout)
 {
-   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
+   uint32_t plane = anv_image_aspect_to_plane(image, aspect);
+   if (image->emu_plane_format != VK_FORMAT_UNDEFINED) {
+      const uint16_t view_bpb = isl_format_get_layout(view_in->format)->bpb;
+      enum isl_format format =
+         image->planes[plane].primary_surface.isl.format;
+
+      /* redirect to the hidden plane if not size-compatible */
+      if (isl_format_get_layout(format)->bpb != view_bpb) {
+         plane = image->n_planes;
+         format = image->planes[plane].primary_surface.isl.format;
+         assert(isl_format_get_layout(format)->bpb == view_bpb);
+      }
+   }
 
    const struct anv_surface *surface = &image->planes[plane].primary_surface,
       *aux_surface = &image->planes[plane].aux_surface;

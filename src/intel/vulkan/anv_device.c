@@ -3546,6 +3546,8 @@ VkResult anv_CreateDevice(
 
    anv_device_init_internal_kernels(device);
 
+   anv_device_init_astc_emu(device);
+
    anv_device_perf_init(device);
 
    anv_device_utrace_init(device);
@@ -3671,6 +3673,8 @@ void anv_DestroyDevice(
    anv_device_finish_blorp(device);
 
    anv_device_finish_rt_shaders(device);
+
+   anv_device_finish_astc_emu(device);
 
    anv_device_finish_internal_kernels(device);
 
