@@ -1559,7 +1559,7 @@ impl SM75Instr {
         assert!(ip < i64::MAX as u64);
         let ip = ip as i64;
 
-        let target_ip = *block_offsets.get(&op.target).unwrap();
+        let target_ip = *labels.get(&op.target).unwrap();
         let target_ip = u64::try_from(target_ip).unwrap();
         assert!(target_ip < i64::MAX as u64);
         let target_ip = target_ip as i64;
@@ -1627,6 +1627,10 @@ impl SM75Instr {
         self.set_pred_src(87..90, 90, SrcRef::True.into());
     }
 
+    fn encode_nop(&mut self, op: &OpNop) {
+        self.set_opcode(0x918);
+    }
+
     fn encode_pixld(&mut self, op: &OpPixLd) {
         self.set_opcode(0x925);
         self.set_dst(op.dst);
@@ -1653,7 +1657,7 @@ impl SM75Instr {
         instr: &Instr,
         sm: u8,
         ip: usize,
-        block_offsets: &HashMap<Label, usize>,
+        labels: &HashMap<Label, usize>,
     ) -> [u32; 4] {
         assert!(sm >= 75);
 
@@ -1710,12 +1714,13 @@ impl SM75Instr {
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
             Op::MemBar(op) => si.encode_membar(&op),
-            Op::Bra(op) => si.encode_bra(&op, ip, block_offsets),
+            Op::Bra(op) => si.encode_bra(&op, ip, labels),
             Op::Exit(op) => si.encode_exit(&op),
             Op::WarpSync(op) => si.encode_warpsync(&op),
             Op::Bar(op) => si.encode_bar(&op),
             Op::CS2R(op) => si.encode_cs2r(&op),
             Op::Kill(op) => si.encode_kill(&op),
+            Op::Nop(op) => si.encode_nop(&op),
             Op::PixLd(op) => si.encode_pixld(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             _ => panic!("Unhandled instruction"),
@@ -1733,11 +1738,21 @@ pub fn encode_shader(shader: &Shader) -> Vec<u32> {
     assert!(shader.functions.len() == 1);
     let func = &shader.functions[0];
 
-    let mut num_instrs = 0_usize;
-    let mut block_offsets = HashMap::new();
+    let mut ip = 0_usize;
+    let mut labels = HashMap::new();
     for b in &func.blocks {
-        block_offsets.insert(b.label, num_instrs);
-        num_instrs += b.instrs.len() * 4;
+        labels.insert(b.label, ip);
+        for instr in &b.instrs {
+            match &instr.op {
+                Op::Nop(op) => {
+                    if let Some(label) = op.label {
+                        labels.insert(label, ip);
+                    }
+                }
+                _ => (),
+            }
+            ip += 4;
+        }
     }
 
     for b in &func.blocks {
@@ -1746,7 +1761,7 @@ pub fn encode_shader(shader: &Shader) -> Vec<u32> {
                 instr,
                 shader.info.sm,
                 encoded.len(),
-                &block_offsets,
+                &labels,
             );
             encoded.extend_from_slice(&e[..]);
         }

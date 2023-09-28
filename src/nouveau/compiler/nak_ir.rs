@@ -3432,6 +3432,22 @@ impl fmt::Display for OpKill {
     }
 }
 
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpNop {
+    pub label: Option<Label>,
+}
+
+impl fmt::Display for OpNop {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NOP")?;
+        if let Some(label) = &self.label {
+            write!(f, " {}", label)?;
+        }
+        Ok(())
+    }
+}
+
 pub enum PixVal {
     MsCount,
     CovMask,
@@ -3844,6 +3860,7 @@ pub enum Op {
     Bar(OpBar),
     CS2R(OpCS2R),
     Kill(OpKill),
+    Nop(OpNop),
     PixLd(OpPixLd),
     S2R(OpS2R),
     Undef(OpUndef),
@@ -4174,7 +4191,7 @@ impl Instr {
     }
 
     pub fn can_eliminate(&self) -> bool {
-        match self.op {
+        match &self.op {
             Op::ASt(_)
             | Op::SuSt(_)
             | Op::SuAtom(_)
@@ -4188,6 +4205,7 @@ impl Instr {
             | Op::WarpSync(_)
             | Op::Bar(_)
             | Op::FSOut(_) => false,
+            Op::Nop(op) => op.label.is_none(),
             _ => true,
         }
     }
@@ -4264,6 +4282,7 @@ impl Instr {
             | Op::Kill(_)
             | Op::PixLd(_)
             | Op::S2R(_) => false,
+            Op::Nop(_) => true,
 
             // Virtual ops
             Op::Undef(_)
