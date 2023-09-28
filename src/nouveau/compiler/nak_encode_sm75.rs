@@ -1572,6 +1572,52 @@ impl SM75Instr {
         self.set_field(range, rel_offset);
     }
 
+    fn encode_bmov(&mut self, op: &OpBMov) {
+        self.set_opcode(0x355);
+        self.set_dst(op.dst);
+
+        let src = match op.src {
+            BMovSrc::Barrier(bar) => bar.idx(),
+            BMovSrc::TreadStateEnum0 => 0x10,
+            BMovSrc::TreadStateEnum1 => 0x11,
+            BMovSrc::TreadStateEnum2 => 0x12,
+            BMovSrc::TreadStateEnum3 => 0x13,
+            BMovSrc::TreadStateEnum4 => 0x14,
+            BMovSrc::TrapReturnPCLo => 0x15,
+            BMovSrc::TrapReturnPCHi => 0x16,
+            BMovSrc::TrapReturnMask => 0x17,
+            BMovSrc::MExited => 0x18,
+            BMovSrc::MKill => 0x19,
+            BMovSrc::MActive => 0x1a,
+            BMovSrc::MAtExit => 0x1b,
+            BMovSrc::OptStack => 0x1c,
+            BMovSrc::APICallDepth => 0x1d,
+            BMovSrc::AtExitPCLo => 0x1e,
+            BMovSrc::AtExitPCHi => 0x1f,
+        };
+        self.set_field(24..29, src);
+
+        self.set_bit(84, op.clear);
+    }
+
+    fn encode_bssy(
+        &mut self,
+        op: &OpBSSy,
+        ip: usize,
+        labels: &HashMap<Label, usize>,
+    ) {
+        self.set_opcode(0x945);
+        self.set_field(16..20, op.bar.idx());
+        self.set_rel_offset(34..64, &op.target, ip, labels);
+        self.set_pred_src(87..90, 90, op.cond);
+    }
+
+    fn encode_bsync(&mut self, op: &OpBSync) {
+        self.set_opcode(0x941);
+        self.set_field(16..20, op.bar.idx());
+        self.set_pred_src(87..90, 90, op.cond);
+    }
+
     fn encode_bra(
         &mut self,
         op: &OpBra,
@@ -1726,6 +1772,9 @@ impl SM75Instr {
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
             Op::MemBar(op) => si.encode_membar(&op),
+            Op::BMov(op) => si.encode_bmov(&op),
+            Op::BSSy(op) => si.encode_bssy(&op, ip, labels),
+            Op::BSync(op) => si.encode_bsync(&op),
             Op::Bra(op) => si.encode_bra(&op, ip, labels),
             Op::Exit(op) => si.encode_exit(&op),
             Op::WarpSync(op) => si.encode_warpsync(&op),

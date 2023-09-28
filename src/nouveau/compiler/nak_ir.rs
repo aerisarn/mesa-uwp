@@ -616,6 +616,28 @@ impl fmt::Display for RegRef {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub struct BarRef {
+    idx: u8,
+}
+
+impl BarRef {
+    pub fn new(idx: u8) -> BarRef {
+        assert!(idx < 16);
+        BarRef { idx: idx }
+    }
+
+    pub fn idx(&self) -> u8 {
+        self.idx
+    }
+}
+
+impl fmt::Display for BarRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "B{}", self.idx())
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum Dst {
     None,
@@ -3365,6 +3387,100 @@ impl fmt::Display for OpMemBar {
     }
 }
 
+pub enum BMovSrc {
+    Barrier(BarRef),
+    TreadStateEnum0,
+    TreadStateEnum1,
+    TreadStateEnum2,
+    TreadStateEnum3,
+    TreadStateEnum4,
+    TrapReturnPCLo,
+    TrapReturnPCHi,
+    TrapReturnMask,
+    MExited,
+    MKill,
+    MActive,
+    MAtExit,
+    OptStack,
+    APICallDepth,
+    AtExitPCLo,
+    AtExitPCHi,
+}
+
+impl fmt::Display for BMovSrc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BMovSrc::Barrier(bar) => bar.fmt(f),
+            BMovSrc::TreadStateEnum0 => write!(f, "THREAD_STATE_ENUM.0"),
+            BMovSrc::TreadStateEnum1 => write!(f, "THREAD_STATE_ENUM.1"),
+            BMovSrc::TreadStateEnum2 => write!(f, "THREAD_STATE_ENUM.2"),
+            BMovSrc::TreadStateEnum3 => write!(f, "THREAD_STATE_ENUM.3"),
+            BMovSrc::TreadStateEnum4 => write!(f, "THREAD_STATE_ENUM.4"),
+            BMovSrc::TrapReturnPCLo => write!(f, "TRAP_RETURN_PC.LO"),
+            BMovSrc::TrapReturnPCHi => write!(f, "TRAP_RETURN_PC.HI"),
+            BMovSrc::TrapReturnMask => write!(f, "TRAP_RETURN_MASK"),
+            BMovSrc::MExited => write!(f, "MEXITED"),
+            BMovSrc::MKill => write!(f, "MKILL"),
+            BMovSrc::MActive => write!(f, "MACTIVE"),
+            BMovSrc::MAtExit => write!(f, "MATEXIT"),
+            BMovSrc::OptStack => write!(f, "OPT_STACK"),
+            BMovSrc::APICallDepth => write!(f, "API_CALL_DEPTH"),
+            BMovSrc::AtExitPCLo => write!(f, "ATEXIT_PC.LO"),
+            BMovSrc::AtExitPCHi => write!(f, "ATEXIT_PC.HI"),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBMov {
+    pub dst: Dst,
+    pub src: BMovSrc,
+    pub clear: bool,
+}
+
+impl fmt::Display for OpBMov {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BMOV.32")?;
+        if self.clear {
+            write!(f, ".CLEAR")?;
+        }
+        write!(f, " {} {}", self.dst, self.src)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBSSy {
+    pub bar: BarRef,
+
+    #[src_type(Pred)]
+    pub cond: Src,
+
+    pub target: Label,
+}
+
+impl fmt::Display for OpBSSy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BSSY {} {} {}", self.cond, self.bar, self.target)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBSync {
+    pub bar: BarRef,
+
+    #[src_type(Pred)]
+    pub cond: Src,
+}
+
+impl fmt::Display for OpBSync {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BSYNC {} {}", self.cond, self.bar)
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBra {
@@ -3854,6 +3970,9 @@ pub enum Op {
     ASt(OpASt),
     Ipa(OpIpa),
     MemBar(OpMemBar),
+    BMov(OpBMov),
+    BSSy(OpBSSy),
+    BSync(OpBSync),
     Bra(OpBra),
     Exit(OpExit),
     WarpSync(OpWarpSync),
@@ -4200,11 +4319,14 @@ impl Instr {
             | Op::AtomCas(_)
             | Op::MemBar(_)
             | Op::Kill(_)
+            | Op::BSSy(_)
+            | Op::BSync(_)
             | Op::Bra(_)
             | Op::Exit(_)
             | Op::WarpSync(_)
             | Op::Bar(_)
             | Op::FSOut(_) => false,
+            Op::BMov(op) => !op.clear,
             Op::Nop(op) => op.label.is_none(),
             _ => true,
         }
@@ -4273,6 +4395,7 @@ impl Instr {
             | Op::MemBar(_) => false,
 
             // Control-flow ops
+            Op::BMov(_) | Op::BSSy(_) | Op::BSync(_) => false,
             Op::Bra(_) | Op::Exit(_) => true,
             Op::WarpSync(_) => false,
 
