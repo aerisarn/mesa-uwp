@@ -32,6 +32,8 @@
 #include "radv_rt_common.h"
 #include "radv_shader.h"
 
+#include "vk_pipeline.h"
+
 /* Traversal stack size. This stack is put in LDS and experimentally 16 entries results in best
  * performance. */
 #define MAX_STACK_ENTRY_COUNT 16
@@ -1437,7 +1439,7 @@ nir_shader *
 radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline,
                             const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
 {
-   const VkPipelineCreateFlagBits2KHR create_flags = radv_get_pipeline_create_flags(pCreateInfo);
+   const VkPipelineCreateFlagBits2KHR create_flags = vk_rt_pipeline_create_flags(pCreateInfo);
 
    /* Create the traversal shader as an intersection shader to prevent validation failures due to
     * invalid variable modes.*/
@@ -1612,7 +1614,7 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
-   const VkPipelineCreateFlagBits2KHR create_flags = radv_get_pipeline_create_flags(pCreateInfo);
+   const VkPipelineCreateFlagBits2KHR create_flags = vk_rt_pipeline_create_flags(pCreateInfo);
 
    struct rt_variables vars = create_rt_variables(shader, create_flags);
 

@@ -1926,36 +1926,6 @@ struct radv_dispatch_info {
 
 void radv_compute_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_info *info);
 
-static VkPipelineCreateFlagBits2KHR
-radv_get_pipeline_create_flags(const void *pCreateInfo)
-{
-   const VkBaseInStructure *base = pCreateInfo;
-   const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
-      vk_find_struct_const(base->pNext, PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
-
-   if (flags2)
-      return flags2->flags;
-
-   switch (((VkBaseInStructure *)pCreateInfo)->sType) {
-   case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: {
-      const VkGraphicsPipelineCreateInfo *create_info = (VkGraphicsPipelineCreateInfo *)pCreateInfo;
-      return create_info->flags;
-   }
-   case VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO: {
-      const VkComputePipelineCreateInfo *create_info = (VkComputePipelineCreateInfo *)pCreateInfo;
-      return create_info->flags;
-   }
-   case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR: {
-      const VkRayTracingPipelineCreateInfoKHR *create_info = (VkRayTracingPipelineCreateInfoKHR *)pCreateInfo;
-      return create_info->flags;
-   }
-   default:
-      unreachable("invalid pCreateInfo pipeline struct");
-   }
-
-   return 0;
-}
-
 struct radv_image;
 struct radv_image_view;
 

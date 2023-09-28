@@ -2676,18 +2676,6 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    return VK_SUCCESS;
 }
 
-static VkPipelineCreateFlags2KHR
-get_pipeline_flags(VkPipelineCreateFlags flags, const void *pNext)
-{
-   const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
-      vk_find_struct_const(pNext, PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
-
-   if (flags2)
-      return flags2->flags;
-
-   return (VkPipelineCreateFlags2KHR)flags;
-}
-
 static VkResult
 anv_compute_pipeline_create(struct anv_device *device,
                             struct vk_pipeline_cache *cache,
@@ -2707,8 +2695,7 @@ anv_compute_pipeline_create(struct anv_device *device,
 
    result = anv_pipeline_init(&pipeline->base, device,
                               ANV_PIPELINE_COMPUTE,
-                              get_pipeline_flags(pCreateInfo->flags,
-                                                 pCreateInfo->pNext),
+                              vk_compute_pipeline_create_flags(pCreateInfo),
                               pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
@@ -2754,7 +2741,7 @@ VkResult anv_CreateComputePipelines(
    unsigned i;
    for (i = 0; i < count; i++) {
       const VkPipelineCreateFlags2KHR flags =
-         get_pipeline_flags(pCreateInfos[i].flags, pCreateInfos[i].pNext);
+         vk_compute_pipeline_create_flags(&pCreateInfos[i]);
       VkResult res = anv_compute_pipeline_create(device, pipeline_cache,
                                                  &pCreateInfos[i],
                                                  pAllocator, &pPipelines[i]);
@@ -3020,7 +3007,7 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
    VkResult result;
 
    const VkPipelineCreateFlags2KHR flags =
-      get_pipeline_flags(pCreateInfo->flags, pCreateInfo->pNext);
+      vk_graphics_pipeline_create_flags(pCreateInfo);
    assert(flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR);
 
    const VkPipelineLibraryCreateInfoKHR *libs_info =
@@ -3129,7 +3116,7 @@ anv_graphics_pipeline_create(struct anv_device *device,
    VkResult result;
 
    const VkPipelineCreateFlags2KHR flags =
-      get_pipeline_flags(pCreateInfo->flags, pCreateInfo->pNext);
+      vk_graphics_pipeline_create_flags(pCreateInfo);
    assert((flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR) == 0);
 
    const VkPipelineLibraryCreateInfoKHR *libs_info =
@@ -3266,7 +3253,7 @@ VkResult anv_CreateGraphicsPipelines(
       assert(pCreateInfos[i].sType == VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
 
       const VkPipelineCreateFlags2KHR flags =
-         get_pipeline_flags(pCreateInfos[i].flags, pCreateInfos[i].pNext);
+         vk_graphics_pipeline_create_flags(&pCreateInfos[i]);
       VkResult res;
       if (flags & VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR) {
          res = anv_graphics_lib_pipeline_create(device, pipeline_cache,
@@ -4018,8 +4005,7 @@ anv_ray_tracing_pipeline_create(
 
    result = anv_pipeline_init(&pipeline->base, device,
                               ANV_PIPELINE_RAY_TRACING,
-                              get_pipeline_flags(pCreateInfo->flags,
-                                                 pCreateInfo->pNext),
+                              vk_rt_pipeline_create_flags(pCreateInfo),
                               pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
@@ -4135,7 +4121,7 @@ anv_CreateRayTracingPipelinesKHR(
    unsigned i;
    for (i = 0; i < createInfoCount; i++) {
       const VkPipelineCreateFlags2KHR flags =
-         get_pipeline_flags(pCreateInfos[i].flags, pCreateInfos[i].pNext);
+         vk_rt_pipeline_create_flags(&pCreateInfos[i]);
       VkResult res = anv_ray_tracing_pipeline_create(_device, pipeline_cache,
                                                      &pCreateInfos[i],
                                                      pAllocator, &pPipelines[i]);

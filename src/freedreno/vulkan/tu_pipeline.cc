@@ -4221,12 +4221,8 @@ tu_CreateGraphicsPipelines(VkDevice device,
    uint32_t i = 0;
 
    for (; i < count; i++) {
-      VkPipelineCreateFlags2KHR flags = pCreateInfos[i].flags;
-      const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
-         vk_find_struct_const(pCreateInfos[i].pNext,
-                              PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
-      if (flags2)
-         flags = flags2->flags;
+      VkPipelineCreateFlags2KHR flags =
+         vk_graphics_pipeline_create_flags(&pCreateInfos[i]);
 
       VkResult result =
          tu_graphics_pipeline_create<CHIP>(device, pipelineCache,
@@ -4406,12 +4402,8 @@ tu_CreateComputePipelines(VkDevice device,
    uint32_t i = 0;
 
    for (; i < count; i++) {
-      VkPipelineCreateFlags2KHR flags = pCreateInfos[i].flags;
-      const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
-         vk_find_struct_const(pCreateInfos[i].pNext,
-                              PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
-      if (flags2)
-         flags = flags2->flags;
+      VkPipelineCreateFlags2KHR flags =
+         vk_compute_pipeline_create_flags(&pCreateInfos[i]);
 
       VkResult result =
          tu_compute_pipeline_create<CHIP>(device, pipelineCache,
