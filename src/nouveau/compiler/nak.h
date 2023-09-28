@@ -44,6 +44,13 @@ struct nak_fs_key {
 void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak,
                          const struct nak_fs_key *fs_key);
 
+struct nvk_xfb_info {
+   uint32_t stride[4];
+   uint8_t stream[4];
+   uint8_t attr_count[4];
+   uint8_t attr_index[4][128];
+};
+
 struct nak_shader_info {
    gl_shader_stage stage;
 
@@ -76,6 +83,8 @@ struct nak_shader_info {
       /* Used to initialize the union for other stages */
       uint32_t dummy;
    };
+
+   struct nvk_xfb_info xfb;
 
    /** Shader header for 3D stages */
    uint32_t hdr[32];

@@ -5,6 +5,7 @@
 
 #include "nak_private.h"
 #include "nir_builder.h"
+#include "nir_xfb_info.h"
 
 #include "util/u_math.h"
 
@@ -315,6 +316,40 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
    progress |= OPT(nir, nir_lower_io, modes, count_location_bytes, 0);
 
    return progress;
+}
+
+struct nvk_xfb_info
+nak_xfb_from_nir(const struct nir_xfb_info *nir_xfb)
+{
+   if (nir_xfb == NULL)
+      return (struct nvk_xfb_info) { };
+
+   struct nvk_xfb_info nak_xfb = { };
+
+   u_foreach_bit(b, nir_xfb->buffers_written) {
+      nak_xfb.stride[b] = nir_xfb->buffers[b].stride;
+      nak_xfb.stream[b] = nir_xfb->buffer_to_stream[b];
+   }
+
+   for (unsigned o = 0; o < nir_xfb->output_count; o++) {
+      const nir_xfb_output_info *out = &nir_xfb->outputs[o];
+      const uint8_t b = out->buffer;
+      assert(nir_xfb->buffers_written & BITFIELD_BIT(b));
+
+      const uint16_t attr_addr = nak_varying_attr_addr(out->location);
+      assert(attr_addr % 4 == 0);
+      const uint16_t attr_idx = attr_addr / 4;
+
+      assert(out->offset % 4 == 0);
+      uint8_t out_idx = out->offset / 4;
+
+      u_foreach_bit(c, out->component_mask)
+         nak_xfb.attr_index[b][out_idx++] = attr_idx + c;
+
+      nak_xfb.attr_count[b] = MAX2(nak_xfb.attr_count[b], out_idx);
+   }
+
+   return nak_xfb;
 }
 
 static nir_def *

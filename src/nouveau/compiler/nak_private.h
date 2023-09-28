@@ -22,6 +22,9 @@ struct nak_compiler {
    struct nir_shader_compiler_options nir_options;
 };
 
+struct nvk_xfb_info
+nak_xfb_from_nir(const struct nir_xfb_info *nir_xfb);
+
 struct nak_io_addr_offset {
    nir_scalar base;
    int32_t offset;
