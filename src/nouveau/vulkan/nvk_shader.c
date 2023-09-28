@@ -1263,13 +1263,28 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
 
    case MESA_SHADER_VERTEX:
    case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY: {
       shader->vs.clip_enable =
          BITFIELD_RANGE(0, nir->info.clip_distance_array_size);
       shader->vs.cull_enable =
          BITFIELD_RANGE(nir->info.clip_distance_array_size,
                         nir->info.cull_distance_array_size);
+
+      bool has_xfb = false;
+      for (unsigned b = 0; b < 4; b++) {
+         if (bin->info.xfb.attr_count[b] > 0) {
+            has_xfb = true;
+            break;
+         }
+      }
+
+      if (has_xfb) {
+         shader->xfb = malloc(sizeof(*shader->xfb));
+         STATIC_ASSERT(sizeof(*shader->xfb) == sizeof(bin->info.xfb));
+         memcpy(shader->xfb, &bin->info.xfb, sizeof(*shader->xfb));
+      }
       break;
+   }
 
    default:
       break;
