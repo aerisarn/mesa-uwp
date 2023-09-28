@@ -2954,7 +2954,7 @@ genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
 #if GFX_VER >= 12
       pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
 #endif
-#if GFX_VER >= 11
+#if GFX_VER > 11
       pipe.HDCPipelineFlushEnable = bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
 #endif
       pipe.DepthCacheFlushEnable = bits & ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
