@@ -7,15 +7,21 @@
 #include "agx_device.h"
 #include <inttypes.h>
 #include "agx_bo.h"
+#include "agx_compile.h"
 #include "decode.h"
+#include "glsl_types.h"
+#include "libagx_shaders.h"
 
 #include <fcntl.h>
 #include <xf86drm.h>
 #include "drm-uapi/dma-buf.h"
+#include "util/blob.h"
 #include "util/log.h"
 #include "util/os_file.h"
 #include "util/os_mman.h"
 #include "util/simple_mtx.h"
+#include "git_sha1.h"
+#include "nir_serialize.h"
 
 /* TODO: Linux UAPI. Dummy defines to get some things to compile. */
 #define ASAHI_BIND_READ  0
@@ -333,6 +339,12 @@ agx_open_device(void *memctx, struct agx_device *dev)
 
    dev->queue_id = agx_create_command_queue(dev, 0 /* TODO: CAPS */);
    agx_get_global_ids(dev);
+
+   glsl_type_singleton_init_or_ref();
+   struct blob_reader blob;
+   blob_reader_init(&blob, (void *)libagx_shaders_nir,
+                    sizeof(libagx_shaders_nir));
+   dev->libagx = nir_deserialize(memctx, &agx_nir_options, &blob);
 
    return true;
 }

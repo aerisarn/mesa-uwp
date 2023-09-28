@@ -61,8 +61,14 @@ struct drm_asahi_params_global {
 /* Fencepost problem, hence the off-by-one */
 #define NR_BO_CACHE_BUCKETS (MAX_BO_CACHE_BUCKET - MIN_BO_CACHE_BUCKET + 1)
 
+/* Forward decl only, do not pull in all of NIR */
+struct nir_shader;
+
 struct agx_device {
    uint32_t debug;
+
+   /* NIR library of AGX helpers/shaders. Immutable once created. */
+   const struct nir_shader *libagx;
 
    char name[64];
    struct drm_asahi_params_global params;
