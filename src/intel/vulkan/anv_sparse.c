@@ -656,11 +656,6 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
     * they're guaranteed to be contiguous, so we calculate how many blocks
     * that is and how big is each block to figure the bind size of a whole
     * line.
-    *
-    * TODO: if we're binding mip_level 0 and bind_extent_el.width is the total
-    * line, the whole rectangle is contiguous so we could do this with a
-    * single bind instead of per-line. We should figure out how common this is
-    * and consider implementing this special-case.
     */
    uint64_t line_bind_size_in_blocks = bind_extent_el.width /
                                        block_shape_el.width;
@@ -712,11 +707,27 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
          assert(opaque_bind.size % block_size_B == 0);
 
          assert(num_binds < binds_array_len);
-         binds[num_binds] = vk_bind_to_anv_vm_bind(sparse_data,
-                                                   &opaque_bind);
-         dump_anv_vm_bind(device, sparse_data, &binds[num_binds]);
-         num_binds++;
+
+         struct anv_vm_bind anv_bind = vk_bind_to_anv_vm_bind(sparse_data,
+                                                              &opaque_bind);
+         struct anv_vm_bind *prev_bind = num_binds > 0 ?
+                                          &binds[num_binds - 1] : NULL;
+         if (prev_bind &&
+             anv_bind.op == prev_bind->op &&
+             anv_bind.bo == prev_bind->bo &&
+             anv_bind.address == prev_bind->address + prev_bind->size &&
+             anv_bind.bo_offset == prev_bind->bo_offset + prev_bind->size) {
+            prev_bind->size += anv_bind.size;
+         } else {
+            binds[num_binds] = anv_bind;
+            num_binds++;
+         }
       }
+   }
+
+   if (INTEL_DEBUG(DEBUG_SPARSE)) {
+      for (int b = 0; b < num_binds; b++)
+         dump_anv_vm_bind(device, sparse_data, &binds[b]);
    }
 
    /* FIXME: here we were supposed to issue a single vm_bind ioctl by calling
