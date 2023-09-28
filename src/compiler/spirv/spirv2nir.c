@@ -41,29 +41,38 @@
 
 #define WORD_SIZE 4
 
+struct {
+   const char *name;
+   gl_shader_stage stage;
+} abbrev_stage_table[] = {
+   { "vs",    MESA_SHADER_VERTEX },
+   { "tcs",   MESA_SHADER_TESS_CTRL },
+   { "tes",   MESA_SHADER_TESS_EVAL },
+   { "gs",    MESA_SHADER_GEOMETRY },
+   { "fs",    MESA_SHADER_FRAGMENT },
+   { "cs",    MESA_SHADER_COMPUTE },
+   { "cl",    MESA_SHADER_KERNEL },
+   { "task",  MESA_SHADER_TASK },
+   { "mesh",  MESA_SHADER_MESH },
+
+   /* Keep previously used shader names working. */
+   { "vertex",    MESA_SHADER_VERTEX },
+   { "tess-ctrl", MESA_SHADER_TESS_CTRL },
+   { "tess-eval", MESA_SHADER_TESS_EVAL },
+   { "geometry",  MESA_SHADER_GEOMETRY },
+   { "fragment",  MESA_SHADER_FRAGMENT },
+   { "compute",   MESA_SHADER_COMPUTE },
+   { "kernel",    MESA_SHADER_KERNEL },
+};
+
 static gl_shader_stage
-stage_to_enum(char *stage)
+abbrev_to_stage(const char *name)
 {
-   if (!strcmp(stage, "vertex"))
-      return MESA_SHADER_VERTEX;
-   else if (!strcmp(stage, "tess-ctrl"))
-      return MESA_SHADER_TESS_CTRL;
-   else if (!strcmp(stage, "tess-eval"))
-      return MESA_SHADER_TESS_EVAL;
-   else if (!strcmp(stage, "geometry"))
-      return MESA_SHADER_GEOMETRY;
-   else if (!strcmp(stage, "fragment"))
-      return MESA_SHADER_FRAGMENT;
-   else if (!strcmp(stage, "compute"))
-      return MESA_SHADER_COMPUTE;
-   else if (!strcmp(stage, "kernel"))
-      return MESA_SHADER_KERNEL;
-   else if (!strcmp(stage, "task"))
-      return MESA_SHADER_TASK;
-   else if (!strcmp(stage, "mesh"))
-      return MESA_SHADER_MESH;
-   else
-      return MESA_SHADER_NONE;
+   for (unsigned i = 0; i < ARRAY_SIZE(abbrev_stage_table); i++) {
+      if (!strcasecmp(abbrev_stage_table[i].name, name))
+         return abbrev_stage_table[i].stage;
+   }
+   return MESA_SHADER_NONE;
 }
 
 static void
@@ -74,8 +83,8 @@ print_usage(char *exec_name, FILE *f)
            "Options:\n"
            "  -h  --help              Print this help.\n"
            "  -s, --stage <stage>     Specify the shader stage.  Valid stages are:\n"
-           "                          vertex, tess-ctrl, tess-eval, geometry, fragment,\n"
-           "                          task, mesh, compute, and kernel (OpenCL-style compute).\n"
+           "                          vs, tcs, tes, gs, fs, cs, cl (OpenCL-style compute),\n"
+           "                          task and mesh.  Case insensitive.\n"
            "  -e, --entry <name>      Specify the entry-point name.\n"
            "  -g, --opengl            Use OpenGL environment instead of Vulkan for\n"
            "                          graphics stages.\n"
@@ -106,7 +115,7 @@ int main(int argc, char **argv)
          print_usage(argv[0], stdout);
          return 0;
       case 's':
-         shader_stage = stage_to_enum(optarg);
+         shader_stage = abbrev_to_stage(optarg);
          if (shader_stage == MESA_SHADER_NONE) {
             fprintf(stderr, "Unknown stage \"%s\"\n", optarg);
             print_usage(argv[0], stderr);
