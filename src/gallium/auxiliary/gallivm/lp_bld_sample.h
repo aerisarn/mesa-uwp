@@ -880,6 +880,11 @@ struct lp_type
 lp_build_texel_type(struct lp_type texel_type,
                     const struct util_format_description *format_desc);
 
+LLVMValueRef lp_sample_load_mip_value(struct gallivm_state *gallivm,
+                                      LLVMTypeRef ptr_type,
+                                      LLVMValueRef offsets,
+                                      LLVMValueRef index1);
+
 const float *lp_build_sample_aniso_filter_table(void);
 #ifdef __cplusplus
 }
