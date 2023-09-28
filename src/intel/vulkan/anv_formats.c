@@ -538,6 +538,23 @@ anv_get_image_format_features2(const struct anv_physical_device *physical_device
    assert((isl_mod_info != NULL) ==
           (vk_tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT));
 
+   if (anv_is_format_emulated(physical_device, vk_format)) {
+      assert(isl_format_is_compressed(anv_format->planes[0].isl_format));
+
+      /* require optimal tiling so that we can decompress on upload */
+      if (vk_tiling != VK_IMAGE_TILING_OPTIMAL)
+         return 0;
+
+      /* required features for compressed formats */
+      flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
+               VK_FORMAT_FEATURE_2_BLIT_SRC_BIT |
+               VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+               VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
+               VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+
+      return flags;
+   }
+
    const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
 
    if (aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
@@ -1308,6 +1325,12 @@ anv_get_image_format_properties(
        */
       if (!(info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) ||
           !(info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT))
+         goto unsupported;
+
+      /* We don't want emulated formats to gain unexpected usage (storage in
+       * particular) from its compatible view formats.
+       */
+      if (anv_is_format_emulated(physical_device, info->format))
          goto unsupported;
 
       /* From the Vulkan 1.3.224 spec "43.1.6. Format Compatibility Classes":
