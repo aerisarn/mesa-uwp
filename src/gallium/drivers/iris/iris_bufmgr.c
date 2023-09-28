@@ -1067,6 +1067,15 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
    if (!bo)
       return NULL;
 
+   /* Try to allocate memory in multiples of 2MB, as this allows us to use
+    * 64K pages rather than the less-efficient 4K pages.  Most BOs smaller
+    * than 64MB should hit the BO cache or slab allocations anyway, so this
+    * shouldn't waste too much memory.  We do exclude small (< 1MB) sizes to
+    * be defensive in case any of those bypass the caches and end up here.
+    */
+   if (bo_size >= 1024 * 1024)
+      bo_size = ALIGN(bo_size, 2 * 1024 * 1024);
+
    bo->real.heap = flags_to_heap(bufmgr, flags);
 
    const struct intel_memory_class_instance *regions[2];
