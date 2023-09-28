@@ -371,9 +371,17 @@ vma_alloc(struct iris_bufmgr *bufmgr,
 {
    simple_mtx_assert_locked(&bufmgr->lock);
 
+   const unsigned _2mb = 2 * 1024 * 1024;
+
    /* Force minimum alignment based on device requirements */
    assert((alignment & (alignment - 1)) == 0);
    alignment = MAX2(alignment, bufmgr->devinfo.mem_alignment);
+
+   /* If the allocation is a multiple of 2MB, ensure the virtual address is
+    * aligned to 2MB, so that it's possible for the kernel to use 64K pages.
+    */
+   if (size % _2mb == 0)
+      alignment = MAX2(alignment, _2mb);
 
    if (memzone == IRIS_MEMZONE_BORDER_COLOR_POOL)
       return IRIS_BORDER_COLOR_POOL_ADDRESS;
