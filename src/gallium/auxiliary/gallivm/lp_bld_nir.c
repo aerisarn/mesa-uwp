@@ -1821,7 +1821,8 @@ visit_image_size(struct lp_build_nir_context *bld_base,
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr),
                                         nir_intrinsic_image_array(instr));
    params.sizes_out = result;
-
+   params.ms = nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_MS ||
+      nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_SUBPASS_MS;
    params.format = nir_intrinsic_format(instr);
 
    bld_base->image_size(bld_base, &params);
@@ -1840,6 +1841,8 @@ visit_image_samples(struct lp_build_nir_context *bld_base,
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr),
                                         nir_intrinsic_image_array(instr));
    params.sizes_out = result;
+   params.ms = nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_MS ||
+      nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_SUBPASS_MS;
    params.samples_only = true;
 
    params.format = nir_intrinsic_format(instr);
@@ -2369,6 +2372,8 @@ visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    params.sizes_out = sizes_out;
    params.samples_only = (instr->op == nir_texop_texture_samples);
    params.texture_unit_offset = texture_unit_offset;
+   params.ms = instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
+      instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS;
 
    if (instr->op == nir_texop_query_levels)
       params.explicit_lod = bld_base->uint_bld.zero;

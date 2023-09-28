@@ -136,6 +136,7 @@ struct lp_sampler_size_query_params
    LLVMValueRef resources_ptr;
    bool is_sviewinfo;
    bool samples_only;
+   bool ms;
    enum lp_sampler_lod_property lod_property;
    LLVMValueRef explicit_lod;
    LLVMValueRef *sizes_out;

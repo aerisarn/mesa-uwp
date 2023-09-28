@@ -3243,7 +3243,7 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
                             lp_build_get_mip_offsets(bld, ilevel));
    }
 
-   if (bld->fetch_ms) {
+   if (bld->fetch_ms && bld->static_texture_state->level_zero_only) {
       LLVMValueRef num_samples = bld->dynamic_state->num_samples(bld->gallivm,
                                                                  bld->resources_type,
                                                                  bld->resources_ptr,
@@ -4496,14 +4496,22 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
    lp_build_context_init(&bld_int_vec4, gallivm, lp_type_int_vec(32, 128));
 
    if (params->samples_only) {
+      LLVMValueRef num_samples;
+
+      if (params->ms && static_state->level_zero_only) {
+         /* multisample never has levels. */
+         num_samples = dynamic_state->num_samples(gallivm,
+                                                  resources_type,
+                                                  resources_ptr,
+                                                  texture_unit,
+                                                  texture_unit_offset);
+      } else {
+         num_samples = lp_build_const_int32(gallivm, 0);
+      }
       params->sizes_out[0] =
          lp_build_broadcast(gallivm,
                             lp_build_vec_type(gallivm, params->int_type),
-                            dynamic_state->num_samples(gallivm,
-                                                       resources_type,
-                                                       resources_ptr,
-                                                       texture_unit,
-                                                       texture_unit_offset));
+                            num_samples);
       return;
    }
 
@@ -4925,7 +4933,7 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                           x, y, z, row_stride_vec, img_stride_vec,
                           &offset, &i, &j);
 
-   if (params->ms_index) {
+   if (params->ms_index && static_texture_state->level_zero_only) {
       LLVMValueRef num_samples = dynamic_state->num_samples(gallivm,
                                                             params->resources_type,
                                                             params->resources_ptr,

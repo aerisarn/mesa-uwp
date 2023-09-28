@@ -166,7 +166,7 @@ lp_sampler_static_texture_state_image(struct lp_static_texture_state *state,
    state->pot_width = util_is_power_of_two_or_zero(resource->width0);
    state->pot_height = util_is_power_of_two_or_zero(resource->height0);
    state->pot_depth = util_is_power_of_two_or_zero(resource->depth0);
-   state->level_zero_only = 0;
+   state->level_zero_only = view->u.tex.level == 0;
 
    /*
     * the layer / element / level parameters are all either dynamic
