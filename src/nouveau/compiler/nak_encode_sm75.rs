@@ -1549,25 +1549,33 @@ impl SM75Instr {
         self.set_bit(80, false); /* .SC */
     }
 
+    fn set_rel_offset(
+        &mut self,
+        range: Range<usize>,
+        label: &Label,
+        ip: usize,
+        labels: &HashMap<Label, usize>,
+    ) {
+        let ip = u64::try_from(ip).unwrap();
+        let ip = i64::try_from(ip).unwrap();
+
+        let target_ip = *labels.get(label).unwrap();
+        let target_ip = u64::try_from(target_ip).unwrap();
+        let target_ip = i64::try_from(target_ip).unwrap();
+
+        let rel_offset = target_ip - ip - 4;
+
+        self.set_field(range, rel_offset);
+    }
+
     fn encode_bra(
         &mut self,
         op: &OpBra,
         ip: usize,
         labels: &HashMap<Label, usize>,
     ) {
-        let ip = u64::try_from(ip).unwrap();
-        assert!(ip < i64::MAX as u64);
-        let ip = ip as i64;
-
-        let target_ip = *labels.get(&op.target).unwrap();
-        let target_ip = u64::try_from(target_ip).unwrap();
-        assert!(target_ip < i64::MAX as u64);
-        let target_ip = target_ip as i64;
-
-        let rel_offset = target_ip - ip - 4;
-
         self.set_opcode(0x947);
-        self.set_field(34..82, rel_offset);
+        self.set_rel_offset(34..82, &op.target, ip, labels);
         self.set_field(87..90, 0x7_u8); /* TODO: Pred? */
     }
 
