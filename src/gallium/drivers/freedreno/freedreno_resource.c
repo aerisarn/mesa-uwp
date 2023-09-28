@@ -1283,6 +1283,11 @@ get_best_layout(struct fd_screen *screen,
    if (tmpl->bind & PIPE_BIND_USE_FRONT_RENDERING)
       ubwc_ok = false;
 
+   /* Disallow UBWC when asked not to use data dependent bandwidth compression:
+    */
+   if (tmpl->bind & PIPE_BIND_CONST_BW)
+      ubwc_ok = false;
+
    if (ubwc_ok && !can_implicit &&
        !drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count)) {
       perf_debug("%" PRSC_FMT
