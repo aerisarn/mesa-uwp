@@ -702,6 +702,10 @@ fd_set_stream_output_targets(struct pipe_context *pctx, unsigned num_targets,
       if (targets[i]) {
          fd_resource_set_usage(targets[i]->buffer, FD_DIRTY_STREAMOUT);
          fd_dirty_resource(ctx, targets[i]->buffer, FD_DIRTY_STREAMOUT, true);
+
+         struct fd_stream_output_target *target = fd_stream_output_target(targets[i]);
+         fd_resource_set_usage(target->offset_buf, FD_DIRTY_STREAMOUT);
+         fd_dirty_resource(ctx, target->offset_buf, FD_DIRTY_STREAMOUT, true);
       }
 
       if (!changed && !reset)

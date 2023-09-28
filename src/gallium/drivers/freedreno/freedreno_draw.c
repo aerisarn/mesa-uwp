@@ -182,9 +182,15 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
 
    /* Mark streamout buffers as being written.. */
    if (dirty & FD_DIRTY_STREAMOUT) {
-      for (unsigned i = 0; i < ctx->streamout.num_targets; i++)
-         if (ctx->streamout.targets[i])
-            resource_written(batch, ctx->streamout.targets[i]->buffer);
+      for (unsigned i = 0; i < ctx->streamout.num_targets; i++) {
+         struct fd_stream_output_target *target =
+            fd_stream_output_target(ctx->streamout.targets[i]);
+
+         if (target) {
+            resource_written(batch, target->base.buffer);
+            resource_written(batch, target->offset_buf);
+         }
+      }
    }
 
    if (dirty & FD_DIRTY_QUERY) {
