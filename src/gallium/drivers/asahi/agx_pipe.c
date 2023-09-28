@@ -2175,7 +2175,7 @@ agx_screen_create(int fd, struct renderonly *ro,
    agx_screen->dev.ro = ro;
 
    /* Try to open an AGX device */
-   if (!agx_open_device(screen, &agx_screen->dev)) {
+   if (!agx_open_device(agx_screen, &agx_screen->dev)) {
       ralloc_free(agx_screen);
       return NULL;
    }
