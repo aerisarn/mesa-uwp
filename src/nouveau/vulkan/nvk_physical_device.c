@@ -629,8 +629,25 @@ nvk_get_device_properties(const struct nvk_instance *instance,
 }
 
 static void
-nvk_physical_device_init_disk_cache(struct nvk_physical_device *pdev)
+nvk_physical_device_init_pipeline_cache(struct nvk_physical_device *pdev)
 {
+   struct nvk_instance *instance = nvk_physical_device_instance(pdev);
+
+   struct mesa_sha1 sha_ctx;
+   _mesa_sha1_init(&sha_ctx);
+
+   _mesa_sha1_update(&sha_ctx, instance->driver_build_sha,
+                     sizeof(instance->driver_build_sha));
+
+   const uint64_t compiler_flags = nvk_physical_device_compiler_flags(pdev);
+   _mesa_sha1_update(&sha_ctx, &compiler_flags, sizeof(compiler_flags));
+
+   unsigned char sha[SHA1_DIGEST_LENGTH];
+   _mesa_sha1_final(&sha_ctx, sha);
+
+   STATIC_ASSERT(SHA1_DIGEST_LENGTH >= VK_UUID_SIZE);
+   memcpy(pdev->vk.properties.pipelineCacheUUID, sha, VK_UUID_SIZE);
+
 #ifdef ENABLE_SHADER_CACHE
    char renderer[10];
    ASSERTED int len = snprintf(renderer, sizeof(renderer), "nvk_%04x",
@@ -638,7 +655,6 @@ nvk_physical_device_init_disk_cache(struct nvk_physical_device *pdev)
    assert(len == sizeof(renderer) - 2);
 
    char timestamp[41];
-   struct nvk_instance *instance = nvk_physical_device_instance(pdev);
    _mesa_sha1_format(timestamp, instance->driver_build_sha);
 
    const uint64_t driver_flags = nvk_physical_device_compiler_flags(pdev);
@@ -771,7 +787,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    pdev->render_dev = render_dev;
    pdev->info = info;
 
-   nvk_physical_device_init_disk_cache(pdev);
+   nvk_physical_device_init_pipeline_cache(pdev);
 
    pdev->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    pdev->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
