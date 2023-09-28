@@ -3167,9 +3167,14 @@ anv_image_view_init(struct anv_device *device,
    anv_foreach_image_aspect_bit(iaspect_bit, image, iview->vk.aspects) {
       const uint32_t vplane =
          anv_aspect_to_plane(iview->vk.aspects, 1UL << iaspect_bit);
-      struct anv_format_plane format;
-      format = anv_get_format_plane(device->info, iview->vk.view_format,
-                                    vplane, image->vk.tiling);
+
+      VkFormat view_format = iview->vk.view_format;
+      if (anv_is_format_emulated(device->physical, view_format)) {
+         assert(image->emu_plane_format != VK_FORMAT_UNDEFINED);
+         view_format = vk_texcompress_astc_emulation_format(view_format);
+      }
+      const struct anv_format_plane format = anv_get_format_plane(
+            device->info, view_format, vplane, image->vk.tiling);
 
       iview->planes[vplane].isl = (struct isl_view) {
          .format = format.isl_format,
