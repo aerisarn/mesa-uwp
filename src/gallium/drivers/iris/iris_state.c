@@ -9093,7 +9093,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
 #if GFX_VER >= 12
       pc.TileCacheFlushEnable = flags & PIPE_CONTROL_TILE_CACHE_FLUSH;
 #endif
-#if GFX_VER >= 11
+#if GFX_VER > 11
       pc.HDCPipelineFlushEnable = flags & PIPE_CONTROL_FLUSH_HDC;
 #endif
 #if GFX_VERx10 >= 125
