@@ -13,6 +13,7 @@ use crate::nak_cfg::CFG;
 use crate::nak_sph::{OutputTopology, PixelImap};
 use crate::{GetDebugFlags, DEBUG};
 use nak_ir_proc::*;
+use std::cmp::{max, min};
 use std::fmt;
 use std::iter::Zip;
 use std::ops::{BitAnd, BitOr, Deref, DerefMut, Index, IndexMut, Not, Range};
@@ -4735,7 +4736,7 @@ impl Default for GeometryShaderInfo {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TessellationInitShaderInfo {
     pub per_patch_attribute_count: u8,
     pub threads_per_patch: u8,
@@ -4803,6 +4804,13 @@ impl VtgIoInfo {
 
     pub fn mark_attrs_written(&mut self, addrs: Range<u16>) {
         self.mark_attrs(addrs, true);
+    }
+
+    pub fn mark_store_req(&mut self, addrs: Range<u16>) {
+        let start = (addrs.start / 4).try_into().unwrap();
+        let end = ((addrs.end - 1) / 4).try_into().unwrap();
+        self.store_req_start = min(self.store_req_start, start);
+        self.store_req_end = max(self.store_req_end, end);
     }
 }
 
