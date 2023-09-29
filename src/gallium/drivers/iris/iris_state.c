@@ -7981,7 +7981,9 @@ iris_upload_render_state(struct iris_context *ice,
    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
       prim.PredicateEnable = use_predicate;
-
+#if GFX_VERx10 >= 125
+      prim.TBIMREnable = ice->state.use_tbimr;
+#endif
       if (indirect) {
          prim.IndirectParameterEnable = true;
       } else {

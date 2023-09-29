@@ -4221,6 +4221,9 @@ void genX(CmdDraw)(
 
    anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
+#if GFX_VERx10 >= 125
+      prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
       prim.VertexAccessType         = SEQUENTIAL;
       prim.VertexCountPerInstance   = vertexCount;
       prim.StartVertexLocation      = firstVertex;
@@ -4316,6 +4319,9 @@ void genX(CmdDrawMultiEXT)(
       genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
       anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
+#if GFX_VERx10 >= 125
+         prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = SEQUENTIAL;
          prim.VertexCountPerInstance   = draw->vertexCount;
@@ -4385,6 +4391,9 @@ void genX(CmdDrawIndexed)(
 
    anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
+#if GFX_VERx10 >= 125
+      prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
       prim.VertexAccessType         = RANDOM;
       prim.VertexCountPerInstance   = indexCount;
       prim.StartVertexLocation      = firstIndex;
@@ -4562,6 +4571,9 @@ void genX(CmdDrawMultiIndexedEXT)(
       genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
+#if GFX_VERx10 >= 125
+         prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = RANDOM;
          prim.VertexCountPerInstance   = draw->indexCount;
@@ -4687,6 +4699,9 @@ void genX(CmdDrawIndirectByteCountEXT)(
 
    genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
    anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
+#if GFX_VERx10 >= 125
+      prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
       prim.IndirectParameterEnable  = true;
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = SEQUENTIAL;
@@ -4816,6 +4831,9 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
 
       genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
       anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
+#if GFX_VERx10 >= 125
+         prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = indexed ? RANDOM : SEQUENTIAL;
@@ -5040,6 +5058,9 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
 
       genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
       anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
+#if GFX_VERx10 >= 125
+         prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = true;
          prim.VertexAccessType         = indexed ? RANDOM : SEQUENTIAL;

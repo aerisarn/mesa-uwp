@@ -1429,6 +1429,8 @@ struct anv_gfx_dynamic_state {
       uint32_t BackfaceStencilTestFunction;
    } ds;
 
+   bool use_tbimr;
+
    bool pma_fix;
 
    BITSET_DECLARE(dirty, ANV_GFX_STATE_MAX);

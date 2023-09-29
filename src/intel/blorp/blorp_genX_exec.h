@@ -2047,12 +2047,17 @@ blorp_exec_3d(struct blorp_batch *batch, const struct blorp_params *params)
    if (!(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
       blorp_emit_depth_stencil_config(batch, params);
 
+   const UNUSED bool use_tbimr = false;
+
    blorp_emit_breakpoint_pre_draw(batch);
    blorp_emit(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = SEQUENTIAL;
       prim.PrimitiveTopologyType = _3DPRIM_RECTLIST;
 #if GFX_VER >= 7
       prim.PredicateEnable = batch->flags & BLORP_BATCH_PREDICATE_ENABLE;
+#endif
+#if GFX_VERx10 >= 125
+      prim.TBIMREnable = use_tbimr;
 #endif
       prim.VertexCountPerInstance = 3;
       prim.InstanceCount = params->num_layers;
