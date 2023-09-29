@@ -98,8 +98,8 @@ def monitor_pipeline(
     stress: bool,
 ) -> tuple[Optional[int], Optional[int]]:
     """Monitors pipeline and delegate canceling jobs"""
-    statuses = {}
-    target_statuses = {}
+    statuses: dict[int, str] = defaultdict(str)
+    target_statuses: dict[int, str] = defaultdict(str)
     stress_status_counter = defaultdict(lambda: defaultdict(int))
 
     if target_job:
@@ -117,9 +117,7 @@ def monitor_pipeline(
                     stress_status_counter[job.name][job.status] += 1
                     retry_job(project, job)
 
-                if (job.id not in target_statuses) or (
-                    job.status not in target_statuses[job.id]
-                ):
+                if job.status not in target_statuses[job.id]:
                     print_job_status_change(job)
                     target_statuses[job.id] = job.status
                 else:
@@ -128,7 +126,7 @@ def monitor_pipeline(
                 continue
 
             # all jobs
-            if (job.id not in statuses) or (job.status not in statuses[job.id]):
+            if job.status not in statuses[job.id]:
                 print_job_status_change(job)
                 statuses[job.id] = job.status
 
