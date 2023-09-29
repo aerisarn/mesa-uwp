@@ -1308,11 +1308,10 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 	}
 	bc->cf_last->op = type;
 
-	/* Load index register if required */
 	if (bc->gfx_level >= EVERGREEN) {
 		for (i = 0; i < 3; i++)
 			if (nalu->src[i].kc_bank &&  nalu->src[i].kc_rel)
-				egcm_load_index_reg(bc, nalu->src[i].kc_rel - 1, true);
+				assert(bc->index_loaded[nalu->src[i].kc_rel - 1]);
 	}
 
 	/* Check AR usage and load it if required */
@@ -1457,10 +1456,9 @@ static int r600_bytecode_add_vtx_internal(struct r600_bytecode *bc, const struct
 		return -ENOMEM;
 	memcpy(nvtx, vtx, sizeof(struct r600_bytecode_vtx));
 
-	/* Load index register if required */
 	if (bc->gfx_level >= EVERGREEN) {
-		if (vtx->buffer_index_mode)
-			egcm_load_index_reg(bc, vtx->buffer_index_mode - 1, false);
+		assert(!vtx->buffer_index_mode ||
+		       bc->index_loaded[vtx->buffer_index_mode - 1]);
 	}
 
 
@@ -1525,10 +1523,11 @@ int r600_bytecode_add_tex(struct r600_bytecode *bc, const struct r600_bytecode_t
 		return -ENOMEM;
 	memcpy(ntex, tex, sizeof(struct r600_bytecode_tex));
 
-	/* Load index register if required */
 	if (bc->gfx_level >= EVERGREEN) {
-		if (tex->sampler_index_mode || tex->resource_index_mode)
-			egcm_load_index_reg(bc, tex->resource_index_mode - 1, false);
+		assert(!tex->sampler_index_mode ||
+		       bc->index_loaded[tex->sampler_index_mode - 1]);
+		assert(!tex->resource_index_mode ||
+                       bc->index_loaded[tex->resource_index_mode - 1]);
 	}
 
 	/* we can't fetch data und use it as texture lookup address in the same TEX clause */
@@ -1599,8 +1598,8 @@ int r600_bytecode_add_gds(struct r600_bytecode *bc, const struct r600_bytecode_g
 	memcpy(ngds, gds, sizeof(struct r600_bytecode_gds));
 
 	if (bc->gfx_level >= EVERGREEN) {
-		if (gds->uav_index_mode)
-			egcm_load_index_reg(bc, gds->uav_index_mode - 1, false);
+		assert(!gds->uav_index_mode ||
+		       bc->index_loaded[gds->uav_index_mode - 1]);
 	}
 
 	if (bc->cf_last == NULL ||
