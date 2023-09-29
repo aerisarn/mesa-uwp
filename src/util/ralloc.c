@@ -550,6 +550,7 @@ ralloc_vasprintf_rewrite_tail(char **str, size_t *start, const char *fmt,
 /* The size of a slab. */
 #define SLAB_SIZE (32 * 1024)
 
+#define GC_CONTEXT_CANARY 0xAF6B6C83
 #define GC_CANARY 0xAF6B5B72
 
 enum gc_flags {
@@ -605,6 +606,10 @@ typedef struct gc_slab {
 } gc_slab;
 
 struct gc_ctx {
+#ifndef NDEBUG
+   unsigned canary;
+#endif
+
    /* Array of slabs for fixed-size allocations. Each slab tracks allocations
     * of specific sized blocks. User allocations are rounded up to the nearest
     * fixed size. slabs[N] contains allocations of size
@@ -671,6 +676,9 @@ gc_context(const void *parent)
       list_inithead(&ctx->slabs[i].slabs);
       list_inithead(&ctx->slabs[i].free_slabs);
    }
+#ifndef NDEBUG
+   ctx->canary = GC_CONTEXT_CANARY;
+#endif
    return ctx;
 }
 
