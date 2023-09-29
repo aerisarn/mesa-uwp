@@ -146,7 +146,7 @@ impl LowerCopySwap {
                     LogicOp::new_lut(&|_, y, _| y),
                     LogicOp::new_lut(&|x, _, _| x),
                 ],
-            })
+            });
         } else {
             let xor = LogicOp::new_lut(&|x, y, _| x ^ y);
             b.lop2_to(x.into(), xor, x.into(), y.into());

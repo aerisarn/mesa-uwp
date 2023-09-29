@@ -4476,6 +4476,14 @@ impl MappedInstrs {
             }
         }
     }
+
+    pub fn last_mut(&mut self) -> Option<&mut Box<Instr>> {
+        match self {
+            MappedInstrs::None => None,
+            MappedInstrs::One(instr) => Some(instr),
+            MappedInstrs::Many(v) => v.last_mut(),
+        }
+    }
 }
 
 pub struct BasicBlock {

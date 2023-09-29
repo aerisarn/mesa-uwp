@@ -744,7 +744,7 @@ impl<'a> ShaderFromNir<'a> {
                             wrap: true,
                             data_type: dst_type,
                             dst_high: true,
-                        })
+                        });
                     }
                     _ => panic!("Invalid IntType {}", dst_type),
                 }

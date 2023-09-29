@@ -6,10 +6,10 @@
 use crate::nak_ir::*;
 
 pub trait Builder {
-    fn push_instr(&mut self, instr: Box<Instr>);
+    fn push_instr(&mut self, instr: Box<Instr>) -> &mut Instr;
 
-    fn push_op(&mut self, op: impl Into<Op>) {
-        self.push_instr(Instr::new_boxed(op));
+    fn push_op(&mut self, op: impl Into<Op>) -> &mut Instr {
+        self.push_instr(Instr::new_boxed(op))
     }
 
     fn predicate<'a>(&'a mut self, pred: Pred) -> PredicatedBuilder<'a, Self>
@@ -236,8 +236,9 @@ impl InstrBuilder {
 }
 
 impl Builder for InstrBuilder {
-    fn push_instr(&mut self, instr: Box<Instr>) {
+    fn push_instr(&mut self, instr: Box<Instr>) -> &mut Instr {
         self.instrs.push(instr);
+        self.instrs.last_mut().unwrap().as_mut()
     }
 }
 
@@ -264,8 +265,8 @@ impl<'a> SSAInstrBuilder<'a> {
 }
 
 impl<'a> Builder for SSAInstrBuilder<'a> {
-    fn push_instr(&mut self, instr: Box<Instr>) {
-        self.b.push_instr(instr);
+    fn push_instr(&mut self, instr: Box<Instr>) -> &mut Instr {
+        self.b.push_instr(instr)
     }
 }
 
@@ -281,11 +282,11 @@ pub struct PredicatedBuilder<'a, T: Builder> {
 }
 
 impl<'a, T: Builder> Builder for PredicatedBuilder<'a, T> {
-    fn push_instr(&mut self, instr: Box<Instr>) {
+    fn push_instr(&mut self, instr: Box<Instr>) -> &mut Instr {
         let mut instr = instr;
         assert!(instr.pred.is_true());
         instr.pred = self.pred;
-        self.b.push_instr(instr);
+        self.b.push_instr(instr)
     }
 }
 
