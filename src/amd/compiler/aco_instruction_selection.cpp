@@ -9343,10 +9343,8 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          if (pack_const && pack != Temp())
             pack = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), Operand::c32(pack_const), pack);
       }
-      if ((pack_const || has_wqm_coord) && pack == Temp())
+      if (pack == Temp())
          offset = bld.copy(bld.def(v1), Operand::c32(pack_const));
-      else if (pack == Temp())
-         has_offset = false;
       else
          offset = pack;
    }
