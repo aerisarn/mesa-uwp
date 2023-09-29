@@ -1199,6 +1199,7 @@ enum anv_gfx_state_bits {
    ANV_GFX_STATE_WM_DEPTH_STENCIL,
    ANV_GFX_STATE_PMA_FIX, /* Fake state to implement workaround */
    ANV_GFX_STATE_WA_18019816803, /* Fake state to implement workaround */
+   ANV_GFX_STATE_TBIMR_TILE_PASS_INFO,
 
    ANV_GFX_STATE_MAX,
 };
@@ -1431,6 +1432,14 @@ struct anv_gfx_dynamic_state {
       uint32_t BackfaceStencilTestFunction;
    } ds;
 
+   /* 3DSTATE_TBIMR_TILE_PASS_INFO */
+   struct {
+      unsigned TileRectangleHeight;
+      unsigned TileRectangleWidth;
+      unsigned VerticalTileCount;
+      unsigned HorizontalTileCount;
+      unsigned TBIMRBatchSize;
+   } tbimr;
    bool use_tbimr;
 
    bool pma_fix;
