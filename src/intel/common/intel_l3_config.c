@@ -350,14 +350,21 @@ unsigned
 intel_get_l3_config_urb_size(const struct intel_device_info *devinfo,
                              const struct intel_l3_config *cfg)
 {
+   unsigned urb_size;
+
    /* We don't have to program the URB size for some platforms. It's a fixed
     * value.
     */
    if (cfg == NULL) {
       ASSERTED const struct intel_l3_list *const list = get_l3_list(devinfo);
       assert(list->length == 0);
-      return devinfo->urb.size;
+      urb_size = 0;
+   } else {
+      urb_size = intel_get_l3_partition_size(devinfo, cfg, INTEL_L3P_URB);
    }
+
+   if (urb_size == 0)
+      return devinfo->urb.size;
 
    /* From the SKL "L3 Allocation and Programming" documentation:
     *
@@ -368,8 +375,7 @@ intel_get_l3_config_urb_size(const struct intel_device_info *devinfo,
     * only 1008KB of this will be used."
     */
    const unsigned max = (devinfo->ver == 9 ? 1008 : ~0);
-   return MIN2(max, intel_get_l3_partition_size(devinfo, cfg, INTEL_L3P_URB)) /
-          get_urb_size_scale(devinfo);
+   return MIN2(max, urb_size) / get_urb_size_scale(devinfo);
 }
 
 /**
