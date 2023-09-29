@@ -97,30 +97,19 @@ static inline int
 xe_vm_bind_op(struct anv_device *device, int num_binds,
               struct anv_vm_bind *binds)
 {
-   uint32_t syncobj_handle;
-   int ret = drmSyncobjCreate(device->fd, 0, &syncobj_handle);
-   if (ret)
-      return ret;
+   int ret;
 
-   struct drm_xe_sync sync = {
-      .flags = DRM_XE_SYNC_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
-      .handle = syncobj_handle,
-   };
    struct drm_xe_vm_bind args = {
       .vm_id = device->vm_id,
       .num_binds = num_binds,
       .bind = {},
-      .num_syncs = 1,
-      .syncs = (uintptr_t)&sync,
    };
 
    STACK_ARRAY(struct drm_xe_vm_bind_op, xe_binds_stackarray, num_binds);
    struct drm_xe_vm_bind_op *xe_binds;
    if (num_binds > 1) {
-      if (!xe_binds_stackarray) {
-         ret = -ENOMEM;
-         goto out_syncobj;
-      }
+      if (!xe_binds_stackarray)
+         return -ENOMEM;
 
       xe_binds = xe_binds_stackarray;
       args.vector_of_binds = (uintptr_t)xe_binds;
@@ -140,11 +129,7 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
          .addr = intel_48b_address(bind->address),
          .tile_mask = 0,
          .op = XE_VM_BIND_OP_UNMAP,
-         /* TODO: do proper error handling here, once the way to do it is
-          * settled. As of right now the final interface is still under
-          * discussion.
-          */
-         .flags = XE_VM_BIND_FLAG_ASYNC,
+         .flags = 0,
          .region = 0,
       };
 
@@ -167,23 +152,8 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
    }
 
    ret = intel_ioctl(device->fd, DRM_IOCTL_XE_VM_BIND, &args);
-   if (ret)
-      goto bind_error;
-
-   struct drm_syncobj_wait wait = {
-      .handles = (uintptr_t)&syncobj_handle,
-      .timeout_nsec = INT64_MAX,
-      .count_handles = 1,
-      .flags = 0,
-      .first_signaled = 0,
-      .pad = 0,
-   };
-   ret = intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
-
-bind_error:
    STACK_ARRAY_FINISH(xe_binds_stackarray);
-out_syncobj:
-   drmSyncobjDestroy(device->fd, syncobj_handle);
+
    return ret;
 }
 
