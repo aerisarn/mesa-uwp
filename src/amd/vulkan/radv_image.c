@@ -966,7 +966,7 @@ gfx9_border_color_swizzle(const struct util_format_description *desc)
 }
 
 bool
-vi_alpha_is_on_msb(struct radv_device *device, VkFormat format)
+vi_alpha_is_on_msb(const struct radv_device *device, const VkFormat format)
 {
    if (device->physical_device->rad_info.gfx_level >= GFX11)
       return false;

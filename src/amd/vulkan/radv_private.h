@@ -2938,7 +2938,7 @@ VkResult radv_image_create(VkDevice _device, const struct radv_image_create_info
 bool radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev, const void *pNext, VkFormat format,
                                      VkImageCreateFlags flags, bool *sign_reinterpret);
 
-bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format);
+bool vi_alpha_is_on_msb(const struct radv_device *device, const VkFormat format);
 
 VkResult radv_image_from_gralloc(VkDevice device_h, const VkImageCreateInfo *base_info,
                                  const VkNativeBufferANDROID *gralloc_info, const VkAllocationCallbacks *alloc,
