@@ -842,6 +842,13 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
             return lower_subgroup_op_to_32bit(b, intrin);
       }
       break;
+   case nir_intrinsic_masked_swizzle_amd:
+      if (options->lower_to_scalar && intrin->num_components > 1) {
+         return lower_subgroup_op_to_scalar(b, intrin);
+      } else if (options->lower_shuffle_to_32bit && intrin->src[0].ssa->bit_size == 64) {
+         return lower_subgroup_op_to_32bit(b, intrin);
+      }
+      break;
 
    default:
       break;
