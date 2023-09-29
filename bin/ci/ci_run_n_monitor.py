@@ -76,7 +76,7 @@ def pretty_wait(sec: int) -> None:
 def monitor_pipeline(
     project,
     pipeline,
-    target_job: Optional[str],
+    target_job: str,
     dependencies,
     force_manual: bool,
     stress: bool,
@@ -86,14 +86,13 @@ def monitor_pipeline(
     target_statuses: dict[int, str] = defaultdict(str)
     stress_status_counter = defaultdict(lambda: defaultdict(int))
 
-    if target_job:
-        target_jobs_regex = re.compile(target_job.strip())
+    target_jobs_regex = re.compile(target_job.strip())
 
     while True:
         to_cancel = []
         for job in pipeline.jobs.list(all=True, sort="desc"):
             # target jobs
-            if target_job and target_jobs_regex.match(job.name):
+            if target_jobs_regex.match(job.name):
                 if force_manual and job.status == "manual":
                     enable_job(project, job, True)
 
@@ -115,7 +114,7 @@ def monitor_pipeline(
                 if job.status == "manual":
                     enable_job(project, job, False)
 
-            elif target_job and job.status not in [
+            elif job.status not in [
                 "canceled",
                 "success",
                 "failed",
@@ -123,8 +122,7 @@ def monitor_pipeline(
             ]:
                 to_cancel.append(job)
 
-        if target_job:
-            cancel_jobs(project, to_cancel)
+        cancel_jobs(project, to_cancel)
 
         if stress:
             for job_name, status in stress_status_counter.items():
@@ -220,6 +218,7 @@ def parse_args() -> None:
         "--target",
         metavar="target-job",
         help="Target job regex. For multiple targets, separate with pipe | character",
+        required=True,
     )
     parser.add_argument(
         "--token",
