@@ -856,7 +856,7 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
     * generates txs for array textures).
     */
    NIR_PASS(progress, s, nir_shader_instructions_pass, lower_regular_texture,
-            nir_metadata_block_index | nir_metadata_dominance, NULL);
+            nir_metadata_none, NULL);
    NIR_PASS(progress, s, nir_shader_instructions_pass, lower_txs,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
 
