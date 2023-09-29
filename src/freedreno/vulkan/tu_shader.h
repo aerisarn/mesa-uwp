@@ -13,6 +13,7 @@
 #include "tu_common.h"
 #include "tu_cs.h"
 #include "tu_suballoc.h"
+#include "tu_descriptor_set.h"
 
 struct tu_inline_ubo
 {
@@ -68,6 +69,13 @@ struct tu_shader
    struct tu_const_state const_state;
    uint32_t view_mask;
    uint8_t active_desc_sets;
+
+   /* The dynamic buffer descriptor size for descriptor sets that we know
+    * about. This is used when linking to piece together the sizes and from
+    * there calculate the offsets. It's -1 if we don't know because the
+    * descriptor set layout is NULL.
+    */
+   int dynamic_descriptor_sizes[MAX_SETS];
 
    union {
       struct {

@@ -188,8 +188,18 @@ lower_vulkan_resource_index(struct tu_device *dev, nir_builder *b,
 
    switch (binding_layout->type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      if (layout->independent_sets) {
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+      int offset = 0;
+      for (unsigned i = 0; i < set; i++) {
+         if (shader->dynamic_descriptor_sizes[i] >= 0) {
+            offset += shader->dynamic_descriptor_sizes[i];
+         } else {
+            offset = -1;
+            break;
+         }
+      }
+
+      if (offset < 0) {
          /* With independent sets, we don't know
           * layout->set[set].dynamic_offset_start until after link time which
           * with fast linking means after the shader is compiled. We have to
@@ -201,12 +211,13 @@ lower_vulkan_resource_index(struct tu_device *dev, nir_builder *b,
                              .base = shader->const_state.dynamic_offset_loc + set);
          base = nir_iadd(b, base, dynamic_offset_start);
       } else {
-         base = nir_imm_int(b, (layout->set[set].dynamic_offset_start +
+         base = nir_imm_int(b, (offset +
             binding_layout->dynamic_offset_offset) / (4 * A6XX_TEX_CONST_DWORDS));
       }
       assert(dev->physical_device->reserved_set_idx >= 0);
       set = dev->physical_device->reserved_set_idx;
       break;
+   }
    default:
       base = nir_imm_int(b, binding_layout->offset / (4 * A6XX_TEX_CONST_DWORDS));
       break;
@@ -749,7 +760,21 @@ tu_lower_io(nir_shader *shader, struct tu_device *dev,
       align(DIV_ROUND_UP(const_state->push_consts.dwords, 4),
             dev->compiler->const_upload_unit);
 
-   if (layout->independent_sets) {
+   bool unknown_dynamic_size = false;
+   bool unknown_dynamic_offset = false;
+   for (unsigned i = 0; i < layout->num_sets; i++) {
+      if (tu_shader->dynamic_descriptor_sizes[i] == -1) {
+         unknown_dynamic_size = true;
+      } else if (unknown_dynamic_size &&
+                 tu_shader->dynamic_descriptor_sizes[i] > 0) {
+         /* If there is an unknown size followed by a known size, then we may
+          * need to dynamically determine the offset when linking.
+          */
+         unknown_dynamic_offset = true;
+      }
+   }
+
+   if (unknown_dynamic_offset) {
       const_state->dynamic_offset_loc = reserved_consts_vec4 * 4;
       assert(dev->physical_device->reserved_set_idx >= 0);
       reserved_consts_vec4 += DIV_ROUND_UP(dev->physical_device->reserved_set_idx, 4);
@@ -2121,6 +2146,8 @@ tu_shader_serialize(struct vk_pipeline_cache_object *object,
       container_of(object, struct tu_shader, base);
 
    blob_write_bytes(blob, &shader->const_state, sizeof(shader->const_state));
+   blob_write_bytes(blob, &shader->dynamic_descriptor_sizes,
+                    sizeof(shader->dynamic_descriptor_sizes));
    blob_write_uint32(blob, shader->view_mask);
    blob_write_uint8(blob, shader->active_desc_sets);
 
@@ -2132,6 +2159,8 @@ tu_shader_serialize(struct vk_pipeline_cache_object *object,
    } else {
       blob_write_uint8(blob, 0);
    }
+
+
 
    switch (shader->variant->type) {
    case MESA_SHADER_TESS_EVAL:
@@ -2162,6 +2191,8 @@ tu_shader_deserialize(struct vk_pipeline_cache *cache,
       return NULL;
 
    blob_copy_bytes(blob, &shader->const_state, sizeof(shader->const_state));
+   blob_copy_bytes(blob, &shader->dynamic_descriptor_sizes,
+                   sizeof(shader->dynamic_descriptor_sizes));
    shader->view_mask = blob_read_uint32(blob);
    shader->active_desc_sets = blob_read_uint8(blob);
 
@@ -2304,6 +2335,15 @@ tu_shader_create(struct tu_device *dev,
          nir->info.stage == MESA_SHADER_TESS_EVAL ||
          nir->info.stage == MESA_SHADER_GEOMETRY)
       tu_gather_xfb_info(nir, &so_info);
+
+   for (unsigned i = 0; i < layout->num_sets; i++) {
+      if (layout->set[i].layout) {
+         shader->dynamic_descriptor_sizes[i] =
+            layout->set[i].layout->dynamic_offset_size;
+      } else {
+         shader->dynamic_descriptor_sizes[i] = -1;
+      }
+   }
 
    unsigned reserved_consts_vec4 = 0;
    NIR_PASS_V(nir, tu_lower_io, dev, shader, layout, &reserved_consts_vec4);
@@ -2463,6 +2503,9 @@ tu_empty_fs_create(struct tu_device *dev, struct tu_shader **shader,
    (*shader)->fs.has_fdm = fragment_density_map;
    if (fragment_density_map)
       (*shader)->fs.lrz.status = TU_LRZ_FORCE_DISABLE_LRZ;
+
+   for (unsigned i = 0; i < MAX_SETS; i++)
+      (*shader)->dynamic_descriptor_sizes[i] = -1;
 
    struct ir3_shader *ir3_shader =
       ir3_shader_from_nir(dev->compiler, fs_b.shader, &options, &so_info);

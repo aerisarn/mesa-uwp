@@ -2475,6 +2475,11 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    descriptors_state->max_sets_bound =
       MAX2(descriptors_state->max_sets_bound, firstSet + descriptorSetCount);
 
+   unsigned dynamic_offset_offset = 0;
+   for (unsigned i = 0; i < firstSet; i++) {
+      dynamic_offset_offset += layout->set[i].layout->dynamic_offset_size;
+   }
+
    for (unsigned i = 0; i < descriptorSetCount; ++i) {
       unsigned idx = i + firstSet;
       TU_FROM_HANDLE(tu_descriptor_set, set, pDescriptorSets[i]);
@@ -2494,7 +2499,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       uint32_t *src = set->dynamic_descriptors;
       uint32_t *dst = descriptors_state->dynamic_descriptors +
-         layout->set[idx].dynamic_offset_start / 4;
+         dynamic_offset_offset / 4;
       for (unsigned j = 0; j < set->layout->binding_count; j++) {
          struct tu_descriptor_set_binding_layout *binding =
             &set->layout->binding[j];
@@ -2550,15 +2555,17 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
             }
          }
       }
+
+      dynamic_offset_offset += layout->set[idx].layout->dynamic_offset_size;
    }
    assert(dyn_idx == dynamicOffsetCount);
 
-   if (layout->dynamic_offset_size) {
+   if (dynamic_offset_offset) {
       /* allocate and fill out dynamic descriptor set */
       struct tu_cs_memory dynamic_desc_set;
       int reserved_set_idx = cmd->device->physical_device->reserved_set_idx;
       VkResult result = tu_cs_alloc(&cmd->sub_cs,
-                                    layout->dynamic_offset_size / (4 * A6XX_TEX_CONST_DWORDS),
+                                    dynamic_offset_offset / (4 * A6XX_TEX_CONST_DWORDS),
                                     A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
       if (result != VK_SUCCESS) {
          vk_command_buffer_set_error(&cmd->vk, result);
@@ -2566,7 +2573,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       }
 
       memcpy(dynamic_desc_set.map, descriptors_state->dynamic_descriptors,
-             layout->dynamic_offset_size);
+             dynamic_offset_offset);
       assert(reserved_set_idx >= 0); /* reserved set must be bound */
       descriptors_state->set_iova[reserved_set_idx] = dynamic_desc_set.iova | BINDLESS_DESCRIPTOR_64B;
       descriptors_state->dynamic_bound = true;

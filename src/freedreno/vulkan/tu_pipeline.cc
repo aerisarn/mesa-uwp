@@ -168,7 +168,7 @@ tu6_emit_load_state(struct tu_device *device,
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             assert(device->physical_device->reserved_set_idx >= 0);
             base = device->physical_device->reserved_set_idx;
-            offset = (layout->set[i].dynamic_offset_start +
+            offset = (pipeline->program.dynamic_descriptor_offsets[i] +
                       binding->dynamic_offset_offset) / 4;
             FALLTHROUGH;
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
@@ -205,7 +205,7 @@ tu6_emit_load_state(struct tu_device *device,
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             assert(device->physical_device->reserved_set_idx >= 0);
             base = device->physical_device->reserved_set_idx;
-            offset = (layout->set[i].dynamic_offset_start +
+            offset = (pipeline->program.dynamic_descriptor_offsets[i] +
                       binding->dynamic_offset_offset) / 4;
             FALLTHROUGH;
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
@@ -405,7 +405,7 @@ static void
 tu6_emit_dynamic_offset(struct tu_cs *cs,
                         const struct ir3_shader_variant *xs,
                         const struct tu_shader *shader,
-                        struct tu_pipeline_builder *builder)
+                        const struct tu_program_state *program)
 {
    const struct tu_physical_device *phys_dev = cs->device->physical_device;
    if (!xs || shader->const_state.dynamic_offset_loc == UINT32_MAX)
@@ -422,8 +422,8 @@ tu6_emit_dynamic_offset(struct tu_cs *cs,
 
    for (unsigned i = 0; i < phys_dev->usable_sets; i++) {
       unsigned dynamic_offset_start =
-         builder->layout.set[i].dynamic_offset_start / (A6XX_TEX_CONST_DWORDS * 4);
-      tu_cs_emit(cs, i < builder->layout.num_sets ? dynamic_offset_start : 0);
+         program->dynamic_descriptor_offsets[i] / (A6XX_TEX_CONST_DWORDS * 4);
+      tu_cs_emit(cs, dynamic_offset_start);
    }
 }
 
@@ -1151,14 +1151,14 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
 template <chip CHIP>
 static void
 tu6_emit_program_config(struct tu_cs *cs,
-                        struct tu_pipeline *pipeline,
-                        struct tu_pipeline_builder *builder,
+                        const struct tu_program_state *prog,
+                        struct tu_shader **shaders,
                         const struct ir3_shader_variant **variants)
 {
    STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
 
    bool shared_consts_enable =
-      pipeline->program.shared_consts.type == IR3_PUSH_CONSTS_SHARED;
+      prog->shared_consts.type == IR3_PUSH_CONSTS_SHARED;
    tu6_emit_shared_consts_enable<CHIP>(cs, shared_consts_enable);
 
    tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
@@ -1178,7 +1178,7 @@ tu6_emit_program_config(struct tu_cs *cs,
    for (size_t stage_idx = MESA_SHADER_VERTEX;
         stage_idx <= MESA_SHADER_FRAGMENT; stage_idx++) {
       gl_shader_stage stage = (gl_shader_stage) stage_idx;
-      tu6_emit_dynamic_offset(cs, variants[stage], pipeline->shaders[stage], builder);
+      tu6_emit_dynamic_offset(cs, variants[stage], shaders[stage], prog);
    }
 
    const struct ir3_shader_variant *vs = variants[MESA_SHADER_VERTEX];
@@ -2245,7 +2245,6 @@ tu_pipeline_builder_parse_layout(struct tu_pipeline_builder *builder,
          }
 
          builder->layout.push_constant_size = library->push_constant_size;
-         builder->layout.independent_sets |= library->independent_sets;
       }
 
       tu_pipeline_layout_init(&builder->layout);
@@ -2261,7 +2260,6 @@ tu_pipeline_builder_parse_layout(struct tu_pipeline_builder *builder,
             vk_descriptor_set_layout_ref(&library->layouts[i]->vk);
       }
       library->push_constant_size = builder->layout.push_constant_size;
-      library->independent_sets = builder->layout.independent_sets;
    }
 }
 
@@ -2294,6 +2292,8 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    uint32_t safe_variants =
       ir3_trim_constlen(variants, builder->device->compiler);
 
+   unsigned dynamic_descriptor_sizes[MAX_SETS] = { };
+
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < ARRAY_SIZE(variants); stage = (gl_shader_stage) (stage+1)) {
       if (pipeline->shaders[stage]) {
@@ -2302,6 +2302,13 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
             draw_states[stage] = pipeline->shaders[stage]->safe_const_state;
          } else {
             draw_states[stage] = pipeline->shaders[stage]->state;
+         }
+
+         for (unsigned i = 0; i < MAX_SETS; i++) {
+            if (pipeline->shaders[stage]->dynamic_descriptor_sizes[i] >= 0) {
+               dynamic_descriptor_sizes[i] =
+                  pipeline->shaders[stage]->dynamic_descriptor_sizes[i];
+            }
          }
       }
    }
@@ -2322,6 +2329,13 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       }
    }
 
+   unsigned dynamic_descriptor_offset = 0;
+   for (unsigned i = 0; i < MAX_SETS; i++) {
+      pipeline->program.dynamic_descriptor_offsets[i] =
+         dynamic_descriptor_offset;
+      dynamic_descriptor_offset += dynamic_descriptor_sizes[i];
+   }
+
    /* Emit HLSQ_xS_CNTL/HLSQ_SP_xS_CONFIG *first*, before emitting anything
     * else that could depend on that state (like push constants)
     *
@@ -2334,7 +2348,8 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
     * and draw passes.
     */
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_program_config<CHIP>(&prog_cs, pipeline, builder, variants);
+   tu6_emit_program_config<CHIP>(&prog_cs, &pipeline->program,
+                                 pipeline->shaders, variants);
    pipeline->program.config_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
    pipeline->program.vs_state = draw_states[MESA_SHADER_VERTEX];

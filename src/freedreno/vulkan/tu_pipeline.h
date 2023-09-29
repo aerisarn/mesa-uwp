@@ -99,6 +99,8 @@ struct tu_program_state
 
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
 
+      unsigned dynamic_descriptor_offsets[MAX_SETS];
+
       bool per_view_viewport;
 };
 
