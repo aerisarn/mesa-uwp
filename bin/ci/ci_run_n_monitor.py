@@ -82,9 +82,10 @@ def monitor_pipeline(
     stress: bool,
 ) -> tuple[Optional[int], Optional[int]]:
     """Monitors pipeline and delegate canceling jobs"""
-    statuses: dict[int, str] = defaultdict(str)
-    target_statuses: dict[int, str] = defaultdict(str)
+    statuses: dict[str, str] = defaultdict(str)
+    target_statuses: dict[str, str] = defaultdict(str)
     stress_status_counter = defaultdict(lambda: defaultdict(int))
+    target_id = None
 
     target_jobs_regex = re.compile(target_job.strip())
 
@@ -93,33 +94,27 @@ def monitor_pipeline(
         for job in pipeline.jobs.list(all=True, sort="desc"):
             # target jobs
             if target_jobs_regex.match(job.name):
-                if force_manual and job.status == "manual":
-                    enable_job(project, job, "target")
+                target_id = job.id
 
                 if stress and job.status in ["success", "failed"]:
                     stress_status_counter[job.name][job.status] += 1
-                    enable_job(project, job, "retry")
+                    enable_job(project, job, "retry", force_manual)
+                else:
+                    enable_job(project, job, "target", force_manual)
 
-                print_job_status(job, job.status not in target_statuses[job.id])
-                target_statuses[job.id] = job.status
+                print_job_status(job, job.status not in target_statuses[job.name])
+                target_statuses[job.name] = job.status
                 continue
 
             # all jobs
-            if job.status not in statuses[job.id]:
+            if job.status != statuses[job.name]:
                 print_job_status(job, True)
-                statuses[job.id] = job.status
+                statuses[job.name] = job.status
 
-            # dependencies and cancelling the rest
+            # run dependencies and cancel the rest
             if job.name in dependencies:
-                if job.status == "manual":
-                    enable_job(project, job, "dep")
-
-            elif job.status not in [
-                "canceled",
-                "success",
-                "failed",
-                "skipped",
-            ]:
+                enable_job(project, job, "dep", force_manual)
+            else:
                 to_cancel.append(job)
 
         cancel_jobs(project, to_cancel)
@@ -140,9 +135,9 @@ def monitor_pipeline(
         if len(target_statuses) == 1 and {"running"}.intersection(
             target_statuses.values()
         ):
-            return next(iter(target_statuses)), None
+            return target_id, None
 
-        if {"failed", "canceled"}.intersection(target_statuses.values()):
+        if {"failed"}.intersection(target_statuses.values()):
             return None, 1
 
         if {"success", "manual"}.issuperset(target_statuses.values()):
@@ -151,8 +146,17 @@ def monitor_pipeline(
         pretty_wait(REFRESH_WAIT_JOBS)
 
 
-def enable_job(project, job, action_type: Literal["target", "dep", "retry"]) -> None:
+def enable_job(
+    project, job, action_type: Literal["target", "dep", "retry"], force_manual: bool
+) -> None:
     """enable job"""
+    if (
+        (job.status in ["success", "failed"] and action_type != "retry")
+        or (job.status == "manual" and not force_manual)
+        or job.status in ["skipped", "running", "created", "pending"]
+    ):
+        return
+
     pjob = project.jobs.get(job.id, lazy=True)
 
     if job.status in ["success", "failed", "canceled"]:
@@ -172,6 +176,13 @@ def enable_job(project, job, action_type: Literal["target", "dep", "retry"]) -> 
 
 def cancel_job(project, job) -> None:
     """Cancel GitLab job"""
+    if job.status in [
+        "canceled",
+        "success",
+        "failed",
+        "skipped",
+    ]:
+        return
     pjob = project.jobs.get(job.id, lazy=True)
     pjob.cancel()
     print(f"♲ {job.name}", end=" ")
