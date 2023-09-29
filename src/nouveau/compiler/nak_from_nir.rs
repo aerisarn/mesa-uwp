@@ -23,6 +23,7 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
     ShaderInfo {
         sm: sm,
         num_gprs: 0,
+        num_barriers: (nir.info.shared_size > 0).into(),
         tls_size: nir.scratch_size,
         uses_global_mem: false,
         writes_global_mem: false,
@@ -1629,8 +1630,13 @@ impl<'a> ShaderFromNir<'a> {
                     };
                     b.push_op(OpMemBar { scope: mem_scope });
                 }
-                if intrin.execution_scope() != SCOPE_NONE {
-                    b.push_op(OpBar {});
+                match intrin.execution_scope() {
+                    SCOPE_NONE => (),
+                    SCOPE_WORKGROUP => {
+                        b.push_op(OpWarpSync { mask: u32::MAX });
+                        b.push_op(OpBar {}).deps.yld = true;
+                    }
+                    _ => panic!("Unhandled execution scope"),
                 }
             }
             nir_intrinsic_shared_atomic => {
@@ -1919,6 +1925,35 @@ impl<'a> ShaderFromNir<'a> {
         nb: &nir_block,
     ) {
         let mut b = SSAInstrBuilder::new(ssa_alloc);
+
+        if nb.index == 0 && self.nir.info.shared_size > 0 {
+            // The blob seems to always do a BSYNC before accessing shared
+            // memory.  Perhaps this is to ensure that our allocation is
+            // actually available and not in use by another thread?
+            let label = self.label_alloc.alloc();
+            let bar = BarRef::new(0);
+            let bmov = b.push_op(OpBMov {
+                dst: Dst::None,
+                src: BMovSrc::Barrier(bar),
+                clear: true,
+            });
+            bmov.deps.yld = true;
+
+            let bssy = b.push_op(OpBSSy {
+                bar: bar,
+                cond: SrcRef::True.into(),
+                target: label,
+            });
+            bssy.deps.yld = true;
+
+            let bsync = b.push_op(OpBSync {
+                bar: bar,
+                cond: SrcRef::True.into(),
+            });
+            bsync.deps.yld = true;
+
+            b.push_op(OpNop { label: Some(label) });
+        }
 
         let mut phi = OpPhiDsts::new();
         for ni in nb.iter_instr_list() {

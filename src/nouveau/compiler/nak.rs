@@ -276,11 +276,7 @@ pub extern "C" fn nak_compile_shader(
     let info = nak_shader_info {
         stage: nir.info.stage(),
         num_gprs: s.info.num_gprs,
-        num_barriers: if nir.info.uses_control_barrier() {
-            1
-        } else {
-            0
-        },
+        num_barriers: s.info.num_barriers,
         tls_size: s.info.tls_size,
         __bindgen_anon_1: match &s.info.stage {
             ShaderStageInfo::Compute(cs_info) => {

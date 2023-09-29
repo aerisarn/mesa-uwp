@@ -4193,6 +4193,9 @@ impl fmt::Display for InstrDeps {
         if self.reuse_mask != 0 {
             write!(f, " reuse={:06b}", self.reuse_mask)?;
         }
+        if self.yld {
+            write!(f, " yld")?;
+        }
         Ok(())
     }
 }
@@ -4787,6 +4790,7 @@ pub enum ShaderIoInfo {
 pub struct ShaderInfo {
     pub sm: u8,
     pub num_gprs: u8,
+    pub num_barriers: u8,
     pub tls_size: u32,
     pub uses_global_mem: bool,
     pub writes_global_mem: bool,
