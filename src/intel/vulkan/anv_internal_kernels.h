@@ -135,6 +135,7 @@ struct anv_query_copy_params {
  */
 struct anv_memcpy_shader_params {
    uint32_t num_dwords;
+   uint32_t pad;
 };
 
 struct anv_memcpy_params {

@@ -39,6 +39,7 @@ layout(set = 0, binding = 1, std430) buffer Storage1 {
 /* This data will be provided through push constants. */
 layout(set = 0, binding = 2) uniform block {
    uint num_dwords;
+   uint pad;
 };
 
 void main()
