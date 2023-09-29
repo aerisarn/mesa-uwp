@@ -6232,13 +6232,12 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
       }
 
       si_emit_cache_flush(cmd_buffer);
-   }
 
-   /* Make sure CP DMA is idle at the end of IBs because the kernel
-    * doesn't wait for it.
-    */
-   if (cmd_buffer->qf != RADV_QUEUE_VIDEO_DEC)
+      /* Make sure CP DMA is idle at the end of IBs because the kernel
+       * doesn't wait for it.
+       */
       si_cp_dma_wait_for_idle(cmd_buffer);
+   }
 
    radv_describe_end_cmd_buffer(cmd_buffer);
 
