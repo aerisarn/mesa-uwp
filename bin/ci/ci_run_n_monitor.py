@@ -17,6 +17,7 @@ import re
 from subprocess import check_output
 import sys
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from itertools import chain
@@ -99,8 +100,7 @@ def monitor_pipeline(
     """Monitors pipeline and delegate canceling jobs"""
     statuses = {}
     target_statuses = {}
-    stress_succ = 0
-    stress_fail = 0
+    stress_status_counter = defaultdict(lambda: defaultdict(int))
 
     if target_job:
         target_jobs_regex = re.compile(target_job.strip())
@@ -114,10 +114,7 @@ def monitor_pipeline(
                     enable_job(project, job, True)
 
                 if stress and job.status in ["success", "failed"]:
-                    if job.status == "success":
-                        stress_succ += 1
-                    if job.status == "failed":
-                        stress_fail += 1
+                    stress_status_counter[job.name][job.status] += 1
                     retry_job(project, job)
 
                 if (job.id not in target_statuses) or (
@@ -152,10 +149,13 @@ def monitor_pipeline(
             cancel_jobs(project, to_cancel)
 
         if stress:
-            print(
-                "∑ succ: " + str(stress_succ) + "; fail: " + str(stress_fail),
-                flush=False,
-            )
+            for job_name, status in stress_status_counter.items():
+                print(
+                    f"{job_name}\tsucc: {status['success']}; "
+                    f"fail: {status['failed']}; "
+                    f"total: {sum(status.values())}",
+                    flush=False,
+                )
             pretty_wait(REFRESH_WAIT_JOBS)
             continue
 
