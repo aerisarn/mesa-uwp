@@ -2269,6 +2269,20 @@ agx_optimize_loop_nir(nir_shader *nir)
    } while (progress);
 }
 
+static bool
+mem_vectorize_cb(unsigned align_mul, unsigned align_offset, unsigned bit_size,
+                 unsigned num_components, nir_intrinsic_instr *low,
+                 nir_intrinsic_instr *high, void *data)
+{
+   if (num_components > 4)
+      return false;
+
+   if (bit_size > 32)
+      return false;
+
+   return true;
+}
+
 static void
 agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 {
@@ -2276,6 +2290,13 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, nir_opt_shrink_stores, true);
 
    agx_optimize_loop_nir(nir);
+
+   NIR_PASS_V(nir, nir_opt_load_store_vectorize,
+              &(const nir_load_store_vectorize_options){
+                 .modes = nir_var_mem_global | nir_var_mem_constant,
+                 .callback = mem_vectorize_cb,
+              });
+   NIR_PASS_V(nir, nir_lower_pack);
 
    bool progress = false;
    NIR_PASS(progress, nir, agx_nir_lower_address);
@@ -2851,7 +2872,6 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    };
    NIR_PASS_V(nir, nir_lower_mem_access_bit_sizes, &lower_mem_access_options);
    NIR_PASS_V(nir, nir_lower_bit_size, lower_bit_size_callback, NULL);
-   NIR_PASS_V(nir, nir_lower_pack);
 
    /* Late blend lowering creates vectors */
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
