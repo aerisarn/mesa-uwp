@@ -89,17 +89,17 @@ util_sign_extend(uint64_t val, unsigned width)
 #define __gen_unpack_float(x, y, z) uif(__gen_unpack_uint(x, y, z))
 
 static inline uint64_t
-__gen_unpack_uint(CONSTANT uint8_t *restrict cl, uint32_t start, uint32_t end)
+__gen_unpack_uint(CONSTANT uint32_t *restrict cl, uint32_t start, uint32_t end)
 {
    uint64_t val = 0;
    const int width = end - start + 1;
    const uint64_t mask = (width == 64) ? ~((uint64_t)0) : ((uint64_t)1 << width) - 1;
 
-   for (unsigned byte = start / 8; byte <= end / 8; byte++) {
-      val |= ((uint64_t) cl[byte]) << ((byte - start / 8) * 8);
+   for (unsigned word = start / 32; word <= end / 32; word++) {
+      val |= ((uint64_t) cl[word]) << ((word - start / 32) * 32);
    }
 
-   return (val >> (start % 8)) & mask;
+   return (val >> (start % 32)) & mask;
 }
 
 /*
@@ -114,13 +114,13 @@ __gen_pack_lod(float f, uint32_t start, uint32_t end)
 }
 
 static inline float
-__gen_unpack_lod(CONSTANT uint8_t *restrict cl, uint32_t start, uint32_t end)
+__gen_unpack_lod(CONSTANT uint32_t *restrict cl, uint32_t start, uint32_t end)
 {
     return ((float) __gen_unpack_uint(cl, start, end)) / (1 << 6);
 }
 
 static inline uint64_t
-__gen_unpack_sint(CONSTANT uint8_t *restrict cl, uint32_t start, uint32_t end)
+__gen_unpack_sint(CONSTANT uint32_t *restrict cl, uint32_t start, uint32_t end)
 {
    int size = end - start + 1;
    int64_t val = __gen_unpack_uint(cl, start, end);
@@ -516,7 +516,7 @@ class Group(object):
             convert = None
 
             args = []
-            args.append('cl')
+            args.append('(CONSTANT uint32_t *) cl')
             args.append(str(fieldref.start))
             args.append(str(fieldref.end))
 
