@@ -1318,27 +1318,61 @@ int glsl_get_field_index(const struct glsl_type *t, const char *name);
 int glsl_get_struct_field_offset(const struct glsl_type *t, unsigned index);
 const char *glsl_get_struct_elem_name(const struct glsl_type *t, unsigned index);
 
-const struct glsl_type *glsl_void_type(void);
-const struct glsl_type *glsl_float_type(void);
-const struct glsl_type *glsl_float16_t_type(void);
-const struct glsl_type *glsl_double_type(void);
-const struct glsl_type *glsl_vec4_type(void);
-const struct glsl_type *glsl_uvec4_type(void);
-const struct glsl_type *glsl_ivec4_type(void);
-const struct glsl_type *glsl_int_type(void);
-const struct glsl_type *glsl_uint_type(void);
-const struct glsl_type *glsl_int64_t_type(void);
-const struct glsl_type *glsl_uint64_t_type(void);
-const struct glsl_type *glsl_int16_t_type(void);
-const struct glsl_type *glsl_uint16_t_type(void);
-const struct glsl_type *glsl_int8_t_type(void);
-const struct glsl_type *glsl_uint8_t_type(void);
-const struct glsl_type *glsl_bool_type(void);
-const struct glsl_type *glsl_atomic_uint_type(void);
+static inline const struct glsl_type *glsl_void_type(void) { return &glsl_type_builtin_void; }
+static inline const struct glsl_type *glsl_float_type(void) { return &glsl_type_builtin_float; }
+static inline const struct glsl_type *glsl_float16_t_type(void) { return &glsl_type_builtin_float16_t; }
+static inline const struct glsl_type *glsl_double_type(void) { return &glsl_type_builtin_double; }
+static inline const struct glsl_type *glsl_vec4_type(void) { return &glsl_type_builtin_vec4; }
+static inline const struct glsl_type *glsl_uvec4_type(void) { return &glsl_type_builtin_uvec4; }
+static inline const struct glsl_type *glsl_ivec4_type(void) { return &glsl_type_builtin_ivec4; }
+static inline const struct glsl_type *glsl_int_type(void) { return &glsl_type_builtin_int; }
+static inline const struct glsl_type *glsl_uint_type(void) { return &glsl_type_builtin_uint; }
+static inline const struct glsl_type *glsl_int64_t_type(void) { return &glsl_type_builtin_int64_t; }
+static inline const struct glsl_type *glsl_uint64_t_type(void) { return &glsl_type_builtin_uint64_t; }
+static inline const struct glsl_type *glsl_int16_t_type(void) { return &glsl_type_builtin_int16_t; }
+static inline const struct glsl_type *glsl_uint16_t_type(void) { return &glsl_type_builtin_uint16_t; }
+static inline const struct glsl_type *glsl_int8_t_type(void) { return &glsl_type_builtin_int8_t; }
+static inline const struct glsl_type *glsl_uint8_t_type(void) { return &glsl_type_builtin_uint8_t; }
+static inline const struct glsl_type *glsl_bool_type(void) { return &glsl_type_builtin_bool; }
+static inline const struct glsl_type *glsl_atomic_uint_type(void) { return &glsl_type_builtin_atomic_uint; }
 
-const struct glsl_type *glsl_floatN_t_type(unsigned bit_size);
-const struct glsl_type *glsl_intN_t_type(unsigned bit_size);
-const struct glsl_type *glsl_uintN_t_type(unsigned bit_size);
+static inline const struct glsl_type *
+glsl_floatN_t_type(unsigned bit_size)
+{
+   switch (bit_size) {
+   case 16: return &glsl_type_builtin_float16_t;
+   case 32: return &glsl_type_builtin_float;
+   case 64: return &glsl_type_builtin_double;
+   default:
+      unreachable("Unsupported bit size");
+   }
+}
+
+static inline const struct glsl_type *
+glsl_intN_t_type(unsigned bit_size)
+{
+   switch (bit_size) {
+   case 8:  return &glsl_type_builtin_int8_t;
+   case 16: return &glsl_type_builtin_int16_t;
+   case 32: return &glsl_type_builtin_int;
+   case 64: return &glsl_type_builtin_int64_t;
+   default:
+      unreachable("Unsupported bit size");
+   }
+}
+
+static inline const struct glsl_type *
+glsl_uintN_t_type(unsigned bit_size)
+{
+   switch (bit_size) {
+   case 8:  return &glsl_type_builtin_uint8_t;
+   case 16: return &glsl_type_builtin_uint16_t;
+   case 32: return &glsl_type_builtin_uint;
+   case 64: return &glsl_type_builtin_uint64_t;
+   default:
+      unreachable("Unsupported bit size");
+   }
+}
 
 const struct glsl_type *glsl_vec_type(unsigned components);
 const struct glsl_type *glsl_f16vec_type(unsigned components);
