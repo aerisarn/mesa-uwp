@@ -542,6 +542,15 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
    }
 #endif
 
+#if GFX_VERx10 == 125
+   anv_batch_write_reg(&batch, GENX(CHICKEN_RASTER_2), reg) {
+      reg.TBIMROpenBatchEnable = true;
+      reg.TBIMRFastClip = true;
+      reg.TBIMROpenBatchEnableMask = true;
+      reg.TBIMRFastClipMask = true;
+   }
+#endif
+
    /* Set the "CONSTANT_BUFFER Address Offset Disable" bit, so
     * 3DSTATE_CONSTANT_XS buffer 0 is an absolute address.
     *

@@ -1310,6 +1310,15 @@ iris_init_render_context(struct iris_batch *batch)
    }
 #endif
 
+#if GFX_VERx10 == 125
+   iris_emit_reg(batch, GENX(CHICKEN_RASTER_2), reg) {
+      reg.TBIMROpenBatchEnable = true;
+      reg.TBIMRFastClip = true;
+      reg.TBIMROpenBatchEnableMask = true;
+      reg.TBIMRFastClipMask = true;
+   };
+#endif
+
    upload_pixel_hashing_tables(batch);
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
