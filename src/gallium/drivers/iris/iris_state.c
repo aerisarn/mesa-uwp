@@ -848,12 +848,16 @@ iris_emit_l3_config(struct iris_batch *batch,
       reg.ErrorDetectionBehaviorControl = true;
       reg.UseFullWays = true;
 #endif
-      if (GFX_VER < 12 || cfg) {
+      if (GFX_VER < 12 || (cfg && cfg->n[INTEL_L3P_ALL] <= 126)) {
          reg.URBAllocation = cfg->n[INTEL_L3P_URB];
          reg.ROAllocation = cfg->n[INTEL_L3P_RO];
          reg.DCAllocation = cfg->n[INTEL_L3P_DC];
          reg.AllAllocation = cfg->n[INTEL_L3P_ALL];
       } else {
+         assert(!cfg || !(cfg->n[INTEL_L3P_SLM] || cfg->n[INTEL_L3P_URB] ||
+                          cfg->n[INTEL_L3P_DC] || cfg->n[INTEL_L3P_RO] ||
+                          cfg->n[INTEL_L3P_IS] || cfg->n[INTEL_L3P_C] ||
+                          cfg->n[INTEL_L3P_T] || cfg->n[INTEL_L3P_TC]));
 #if GFX_VER >= 12
          reg.L3FullWayAllocationEnable = true;
 #endif

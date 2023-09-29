@@ -827,7 +827,11 @@ genX(emit_l3_config)(struct anv_batch *batch,
 #endif
 
    anv_batch_write_reg(batch, L3_ALLOCATION_REG, l3cr) {
-      if (cfg == NULL) {
+      if (cfg == NULL || (GFX_VER >= 12 && cfg->n[INTEL_L3P_ALL] > 126)) {
+         assert(!cfg || !(cfg->n[INTEL_L3P_SLM] || cfg->n[INTEL_L3P_URB] ||
+                          cfg->n[INTEL_L3P_DC] || cfg->n[INTEL_L3P_RO] ||
+                          cfg->n[INTEL_L3P_IS] || cfg->n[INTEL_L3P_C] ||
+                          cfg->n[INTEL_L3P_T] || cfg->n[INTEL_L3P_TC]));
 #if GFX_VER >= 12
          l3cr.L3FullWayAllocationEnable = true;
 #else
