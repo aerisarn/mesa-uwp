@@ -50,7 +50,7 @@ STATUS_COLORS = {
 COMPLETED_STATUSES = ["success", "failed"]
 
 
-def print_job_status(job) -> None:
+def print_job_status(job, new_status=False) -> None:
     """It prints a nice, colored job status with a link to the job."""
     if job.status == "canceled":
         return
@@ -61,23 +61,7 @@ def print_job_status(job) -> None:
         + URL_START
         + f"{job.web_url}\a{job.name}"
         + URL_END
-        + f" :: {job.status}"
-        + Style.RESET_ALL
-    )
-
-
-def print_job_status_change(job) -> None:
-    """It reports job status changes."""
-    if job.status == "canceled":
-        return
-
-    print(
-        STATUS_COLORS[job.status]
-        + "🗘 job "
-        + URL_START
-        + f"{job.web_url}\a{job.name}"
-        + URL_END
-        + f" has new status: {job.status}"
+        + (f" has new status: {job.status}" if new_status else f" :: {job.status}")
         + Style.RESET_ALL
     )
 
@@ -117,17 +101,13 @@ def monitor_pipeline(
                     stress_status_counter[job.name][job.status] += 1
                     retry_job(project, job)
 
-                if job.status not in target_statuses[job.id]:
-                    print_job_status_change(job)
-                    target_statuses[job.id] = job.status
-                else:
-                    print_job_status(job)
-
+                print_job_status(job, job.status not in target_statuses[job.id])
+                target_statuses[job.id] = job.status
                 continue
 
             # all jobs
             if job.status not in statuses[job.id]:
-                print_job_status_change(job)
+                print_job_status(job, True)
                 statuses[job.id] = job.status
 
             # dependencies and cancelling the rest
