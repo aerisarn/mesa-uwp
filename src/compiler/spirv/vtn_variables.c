@@ -1575,7 +1575,7 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
          location += VERT_ATTRIB_GENERIC0;
       } else if (vtn_var->mode == vtn_variable_mode_input ||
                  vtn_var->mode == vtn_variable_mode_output) {
-         location += vtn_var->var->data.patch ? VARYING_SLOT_PATCH0 : VARYING_SLOT_VAR0;
+         location += VARYING_SLOT_VAR0;
       } else if (vtn_var->mode == vtn_variable_mode_call_data ||
                  vtn_var->mode == vtn_variable_mode_ray_payload) {
          /* This location is fine as-is */
@@ -1982,6 +1982,23 @@ assign_missing_member_locations(struct vtn_variable *var)
    }
 }
 
+static void
+adjust_patch_locations(struct vtn_builder *b, struct vtn_variable *var)
+{
+   uint16_t num_data = 1;
+   struct nir_variable_data *data = &var->var->data;
+   if (var->var->members) {
+      num_data = var->var->num_members;
+      data = var->var->members;
+   }
+
+   for (uint16_t i = 0; i < num_data; i++) {
+      vtn_assert(data[i].location < VARYING_SLOT_PATCH0);
+      if (data[i].patch && data[i].location >= VARYING_SLOT_VAR0)
+         data[i].location += VARYING_SLOT_PATCH0 - VARYING_SLOT_VAR0;
+   }
+}
+
 nir_deref_instr *
 vtn_get_call_payload_for_location(struct vtn_builder *b, uint32_t location_id)
 {
@@ -2328,6 +2345,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        var->var->members) {
       assign_missing_member_locations(var);
    }
+
+   if ((b->shader->info.stage == MESA_SHADER_TESS_CTRL &&
+        var->mode == vtn_variable_mode_output) ||
+       (b->shader->info.stage == MESA_SHADER_TESS_EVAL &&
+        var->mode == vtn_variable_mode_input))
+      adjust_patch_locations(b, var);
 
    if (var->mode == vtn_variable_mode_uniform ||
        var->mode == vtn_variable_mode_image ||
