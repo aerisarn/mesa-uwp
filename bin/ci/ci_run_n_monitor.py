@@ -238,7 +238,11 @@ def parse_args() -> None:
         epilog="Example: mesa-monitor.py --rev $(git rev-parse HEAD) "
         + '--target ".*traces" ',
     )
-    parser.add_argument("--target", metavar="target-job", help="Target job")
+    parser.add_argument(
+        "--target",
+        metavar="target-job",
+        help="Target job regex. For multiple targets, separate with pipe | character",
+    )
     parser.add_argument(
         "--token",
         metavar="token",
