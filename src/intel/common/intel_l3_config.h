@@ -48,6 +48,8 @@ enum intel_l3_partition {
    INTEL_L3P_C,
    /** Texture cache. */
    INTEL_L3P_T,
+   /** Unified tile cache. */
+   INTEL_L3P_TC,
    /** Number of supported L3 partitions. */
    INTEL_NUM_L3P
 };
