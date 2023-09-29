@@ -606,6 +606,9 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
 
    assert(batch.next <= batch.end);
 
+   if (!device->trtt.queue)
+      device->trtt.queue = queue;
+
    return anv_queue_submit_simple_batch(queue, &batch, is_companion_rcs_batch);
 }
 
@@ -1204,4 +1207,57 @@ genX(apply_task_urb_workaround)(struct anv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.current_pipeline,
        WriteImmediateData, cmd_buffer->device->workaround_address, 0, 0);
 #endif
+}
+
+VkResult
+genX(init_trtt_context_state)(struct anv_queue *queue)
+{
+#if GFX_VER >= 12
+   struct anv_device *device = queue->device;
+   struct anv_trtt *trtt = &device->trtt;
+
+   uint32_t cmds[128];
+   struct anv_batch batch = {
+      .start = cmds,
+      .next = cmds,
+      .end = (void *)cmds + sizeof(cmds),
+   };
+
+   anv_batch_write_reg(&batch, GENX(GFX_TRTT_INVAL), trtt_inval) {
+      trtt_inval.InvalidTileDetectionValue = ANV_TRTT_L1_INVALID_TILE_VAL;
+   }
+   anv_batch_write_reg(&batch, GENX(GFX_TRTT_NULL), trtt_null) {
+      trtt_null.NullTileDetectionValue = ANV_TRTT_L1_NULL_TILE_VAL;
+   }
+   anv_batch_write_reg(&batch, GENX(GFX_TRTT_VA_RANGE), trtt_va_range) {
+      trtt_va_range.TRVAMaskValue = 0xF;
+      trtt_va_range.TRVADataValue = 0xF;
+   }
+
+   uint64_t l3_addr = trtt->l3_addr;
+   assert((l3_addr & 0xFFF) == 0);
+   anv_batch_write_reg(&batch, GENX(GFX_TRTT_L3_BASE_LOW), trtt_base_low) {
+      trtt_base_low.TRVAL3PointerLowerAddress =
+         (l3_addr & 0xFFFFF000) >> 12;
+   }
+   anv_batch_write_reg(&batch, GENX(GFX_TRTT_L3_BASE_HIGH),
+         trtt_base_high) {
+      trtt_base_high.TRVAL3PointerUpperAddress =
+         (l3_addr >> 32) & 0xFFFF;
+   }
+   /* Enabling TR-TT needs to be done after setting up the other registers.
+   */
+   anv_batch_write_reg(&batch, GENX(GFX_TRTT_CR), trtt_cr) {
+      trtt_cr.TRTTEnable = true;
+   }
+
+   anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
+   assert(batch.next <= batch.end);
+
+   VkResult res = anv_queue_submit_simple_batch(queue, &batch, false);
+   if (res != VK_SUCCESS)
+      return res;
+
+#endif
+   return VK_SUCCESS;
 }

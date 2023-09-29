@@ -276,6 +276,275 @@ anv_sparse_get_standard_image_block_shape(enum isl_format format,
    return vk_extent3d_el_to_px(block_shape, layout);
 }
 
+/* We really want to try to have all the page tables on as few BOs as possible
+ * to benefit from cache locality and to keep the i915.ko relocation lists
+ * small. On the other hand, we don't want to waste memory on unused space.
+ */
+#define ANV_TRTT_PAGE_TABLE_BO_SIZE (2 * 1024 * 1024)
+
+static VkResult
+trtt_make_page_table_bo(struct anv_device *device, struct anv_bo **bo)
+{
+   VkResult result;
+   struct anv_trtt *trtt = &device->trtt;
+
+   result = anv_device_alloc_bo(device, "trtt-page-table",
+                                ANV_TRTT_PAGE_TABLE_BO_SIZE, 0, 0, bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (trtt->num_page_table_bos < trtt->page_table_bos_capacity) {
+      trtt->page_table_bos[trtt->num_page_table_bos++] = *bo;
+   } else {
+
+      int new_capacity = MAX2(8, trtt->page_table_bos_capacity * 2);
+      struct anv_bo **new_page_table_bos =
+         vk_realloc(&device->vk.alloc, trtt->page_table_bos,
+                    new_capacity * sizeof(*trtt->page_table_bos), 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+      if (!new_page_table_bos) {
+         anv_device_release_bo(device, *bo);
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+
+      new_page_table_bos[trtt->num_page_table_bos] = *bo;
+
+      trtt->page_table_bos = new_page_table_bos;
+      trtt->page_table_bos_capacity = new_capacity;
+      trtt->num_page_table_bos++;
+   }
+
+   trtt->cur_page_table_bo = *bo;
+   trtt->next_page_table_bo_offset = 0;
+
+   sparse_debug("new number of page table BOs: %d\n",
+                trtt->num_page_table_bos);
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+trtt_get_page_table_bo(struct anv_device *device, struct anv_bo **bo,
+                       uint64_t *bo_addr)
+{
+   struct anv_trtt *trtt = &device->trtt;
+   VkResult result;
+
+   if (!trtt->cur_page_table_bo) {
+      result = trtt_make_page_table_bo(device, bo);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   *bo = trtt->cur_page_table_bo;
+   *bo_addr = trtt->cur_page_table_bo->offset +
+              trtt->next_page_table_bo_offset;
+
+   trtt->next_page_table_bo_offset += 4096;
+   if (trtt->next_page_table_bo_offset >= ANV_TRTT_PAGE_TABLE_BO_SIZE)
+      trtt->cur_page_table_bo = NULL;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+anv_trtt_init_context_state(struct anv_queue *queue)
+{
+   struct anv_device *device = queue->device;
+   struct anv_trtt *trtt = &device->trtt;
+
+   struct anv_bo *l3_bo;
+   VkResult result = trtt_get_page_table_bo(device, &l3_bo, &trtt->l3_addr);
+   if (result != VK_SUCCESS)
+      return result;
+
+   trtt->l3_mirror = vk_zalloc(&device->vk.alloc, 4096, 8,
+                                VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!trtt->l3_mirror) {
+      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return result;
+   }
+
+   /* L3 has 512 entries, so we can have up to 512 L2 tables. */
+   trtt->l2_mirror = vk_zalloc(&device->vk.alloc, 512 * 4096, 8,
+                               VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!trtt->l2_mirror) {
+      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto fail_free_l3;
+   }
+
+   result = anv_genX(device->info, init_trtt_context_state)(queue);
+
+   return result;
+
+fail_free_l3:
+   vk_free(&device->vk.alloc, trtt->l3_mirror);
+   return result;
+}
+
+static void
+anv_trtt_bind_list_add_entry(struct anv_trtt_bind *binds, int *binds_len,
+                             uint64_t pte_addr, uint64_t entry_addr)
+{
+   binds[*binds_len] = (struct anv_trtt_bind) {
+      .pte_addr = pte_addr,
+      .entry_addr = entry_addr,
+   };
+   (*binds_len)++;
+}
+
+/* For L3 and L2 pages, null and invalid entries are indicated by bits 1 and 0
+ * respectively. For L1 entries, the hardware compares the addresses against
+ * what we program to the GFX_TRTT_NULL and GFX_TRTT_INVAL registers.
+ */
+#define ANV_TRTT_L3L2_NULL_ENTRY (1 << 1)
+#define ANV_TRTT_L3L2_INVALID_ENTRY (1 << 0)
+
+/* Adds elements to the anv_trtt_bind structs passed. This doesn't write the
+ * entries to the HW yet.
+ */
+static VkResult
+anv_trtt_bind_add(struct anv_device *device,
+                  uint64_t trtt_addr, uint64_t dest_addr,
+                  struct anv_trtt_submission *s)
+{
+   VkResult result = VK_SUCCESS;
+   struct anv_trtt *trtt = &device->trtt;
+   bool is_null_bind = dest_addr == ANV_TRTT_L1_NULL_TILE_VAL;
+
+   int l3_index = (trtt_addr >> 35) & 0x1FF;
+   int l2_index = (trtt_addr >> 26) & 0x1FF;
+   int l1_index = (trtt_addr >> 16) & 0x3FF;
+
+   uint64_t l2_addr = trtt->l3_mirror[l3_index];
+   if (l2_addr == ANV_TRTT_L3L2_NULL_ENTRY && is_null_bind) {
+      return VK_SUCCESS;
+   } else if (l2_addr == 0 || l2_addr == ANV_TRTT_L3L2_NULL_ENTRY) {
+      if (is_null_bind) {
+         trtt->l3_mirror[l3_index] = ANV_TRTT_L3L2_NULL_ENTRY;
+
+         anv_trtt_bind_list_add_entry(s->l3l2_binds, &s->l3l2_binds_len,
+               trtt->l3_addr + l3_index * sizeof(uint64_t),
+               ANV_TRTT_L3L2_NULL_ENTRY);
+
+         return VK_SUCCESS;
+      }
+
+      struct anv_bo *l2_bo;
+      result = trtt_get_page_table_bo(device, &l2_bo, &l2_addr);
+      if (result != VK_SUCCESS)
+         return result;
+
+      trtt->l3_mirror[l3_index] = l2_addr;
+
+      anv_trtt_bind_list_add_entry(s->l3l2_binds, &s->l3l2_binds_len,
+            trtt->l3_addr + l3_index * sizeof(uint64_t), l2_addr);
+   }
+   assert(l2_addr != 0 && l2_addr != ANV_TRTT_L3L2_NULL_ENTRY);
+
+   /* The first page in the l2_mirror corresponds to l3_index=0 and so on. */
+   uint64_t l1_addr = trtt->l2_mirror[l3_index * 512 + l2_index];
+   if (l1_addr == ANV_TRTT_L3L2_NULL_ENTRY && is_null_bind) {
+      return VK_SUCCESS;
+   } else if (l1_addr == 0 || l1_addr == ANV_TRTT_L3L2_NULL_ENTRY) {
+      if (is_null_bind) {
+         trtt->l2_mirror[l3_index * 512 + l2_index] =
+            ANV_TRTT_L3L2_NULL_ENTRY;
+
+         anv_trtt_bind_list_add_entry(s->l3l2_binds, &s->l3l2_binds_len,
+               l2_addr + l2_index * sizeof(uint64_t),
+               ANV_TRTT_L3L2_NULL_ENTRY);
+
+         return VK_SUCCESS;
+      }
+
+      struct anv_bo *l1_bo;
+      result = trtt_get_page_table_bo(device, &l1_bo, &l1_addr);
+      if (result != VK_SUCCESS)
+         return result;
+
+      trtt->l2_mirror[l3_index * 512 + l2_index] = l1_addr;
+
+      anv_trtt_bind_list_add_entry(s->l3l2_binds, &s->l3l2_binds_len,
+            l2_addr + l2_index * sizeof(uint64_t), l1_addr);
+   }
+   assert(l1_addr != 0 && l1_addr != ANV_TRTT_L3L2_NULL_ENTRY);
+
+   anv_trtt_bind_list_add_entry(s->l1_binds, &s->l1_binds_len,
+            l1_addr + l1_index * sizeof(uint32_t), dest_addr);
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+anv_sparse_bind_trtt(struct anv_device *device, int num_vm_binds,
+                     struct anv_vm_bind *vm_binds)
+{
+   struct anv_trtt *trtt = &device->trtt;
+   VkResult result;
+
+   /* These capacities are conservative estimations. For L1 binds the
+    * number will match exactly unless we skip NULL binds due to L2 already
+    * being NULL. For L3/L2 things are harder to estimate, but the resulting
+    * numbers are so small that a little overestimation won't hurt.
+    *
+    * We have assertions below to catch estimation errors.
+    */
+   int l3l2_binds_capacity = 1;
+   int l1_binds_capacity = 0;
+   for (int b = 0; b < num_vm_binds; b++) {
+      int pages = vm_binds[b].size / (64 * 1024);
+      l1_binds_capacity += pages;
+      l3l2_binds_capacity += (pages / 1024 + 1) * 2;
+   }
+
+   STACK_ARRAY(struct anv_trtt_bind, l3l2_binds, l3l2_binds_capacity);
+   STACK_ARRAY(struct anv_trtt_bind, l1_binds, l1_binds_capacity);
+   struct anv_trtt_submission s = {
+      .queue = trtt->queue,
+      .l3l2_binds = l3l2_binds,
+      .l1_binds = l1_binds,
+      .l3l2_binds_len = 0,
+      .l1_binds_len = 0,
+   };
+
+   pthread_mutex_lock(&trtt->mutex);
+
+   if (!trtt->l3_addr)
+      anv_trtt_init_context_state(s.queue);
+
+   assert(trtt->l3_addr);
+
+   for (int b = 0; b < num_vm_binds; b++) {
+      for (size_t i = 0; i < vm_binds[b].size; i += 64 * 1024) {
+         uint64_t trtt_addr = vm_binds[b].address + i;
+         uint64_t dest_addr =
+            (vm_binds[b].op == ANV_VM_BIND && vm_binds[b].bo) ?
+               vm_binds[b].bo->offset + vm_binds[b].bo_offset + i :
+               ANV_TRTT_L1_NULL_TILE_VAL;
+
+         result = anv_trtt_bind_add(device, trtt_addr, dest_addr, &s);
+         if (result != VK_SUCCESS)
+            goto out;
+      }
+   }
+
+   assert(s.l3l2_binds_len <= l3l2_binds_capacity);
+   assert(s.l1_binds_len <= l1_binds_capacity);
+
+   sparse_debug("trtt_binds: num_vm_binds:%02d l3l2:%04d l1:%04d\n",
+                num_vm_binds, s.l3l2_binds_len, s.l1_binds_len);
+
+   if (s.l3l2_binds_len || s.l1_binds_len)
+      result = anv_genX(device->info, write_trtt_entries)(&s);
+
+out:
+   pthread_mutex_unlock(&trtt->mutex);
+   STACK_ARRAY_FINISH(l1_binds);
+   STACK_ARRAY_FINISH(l3l2_binds);
+   return result;
+}
+
 static VkResult
 anv_sparse_bind_vm_bind(struct anv_device *device, int num_binds,
                         struct anv_vm_bind *binds)
@@ -303,7 +572,9 @@ anv_sparse_bind(struct anv_device *device,
          dump_anv_vm_bind(device, sparse, &binds[b]);
    }
 
-   return anv_sparse_bind_vm_bind(device, num_binds, binds);
+   return device->physical->sparse_uses_trtt ?
+            anv_sparse_bind_trtt(device, num_binds, binds) :
+            anv_sparse_bind_vm_bind(device, num_binds, binds);
 }
 
 VkResult
@@ -315,6 +586,9 @@ anv_init_sparse_bindings(struct anv_device *device,
                          struct anv_address *out_address)
 {
    uint64_t size = align64(size_, ANV_SPARSE_BLOCK_SIZE);
+
+   if (device->physical->sparse_uses_trtt)
+      alloc_flags |= ANV_BO_ALLOC_TRTT;
 
    sparse->address = anv_vma_alloc(device, size, ANV_SPARSE_BLOCK_SIZE,
                                    alloc_flags,

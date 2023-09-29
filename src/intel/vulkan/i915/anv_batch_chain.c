@@ -339,6 +339,31 @@ get_context_and_exec_flags(struct anv_queue *queue,
 }
 
 static VkResult
+anv_execbuf_add_trtt_bos(struct anv_device *device,
+                         struct anv_execbuf *execbuf)
+{
+   struct anv_trtt *trtt = &device->trtt;
+   VkResult result = VK_SUCCESS;
+
+   /* If l3_addr is zero we're not using TR-TT, there's no bo to add. */
+   if (!trtt->l3_addr)
+      return VK_SUCCESS;
+
+   pthread_mutex_lock(&trtt->mutex);
+
+   for (int i = 0; i < trtt->num_page_table_bos; i++) {
+      result = anv_execbuf_add_bo(device, execbuf, trtt->page_table_bos[i],
+                                  NULL, 0);
+      if (result != VK_SUCCESS)
+         goto out;
+   }
+
+out:
+   pthread_mutex_unlock(&trtt->mutex);
+   return result;
+}
+
+static VkResult
 setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
                               struct anv_queue *queue,
                               struct anv_cmd_buffer **cmd_buffers,
@@ -401,7 +426,8 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       return result;
 
    /* Add the BOs for all user allocated memory objects because we can't
-    * track after binding updates of VK_EXT_descriptor_indexing.
+    * track after binding updates of VK_EXT_descriptor_indexing and due to how
+    * sparse resources work.
     */
    list_for_each_entry(struct anv_device_memory, mem,
                        &device->memory_objects, link) {
@@ -409,6 +435,10 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       if (result != VK_SUCCESS)
          return result;
    }
+
+   result = anv_execbuf_add_trtt_bos(device, execbuf);
+   if (result != VK_SUCCESS)
+      return result;
 
    /* Add all the private BOs from images because we can't track after binding
     * updates of VK_EXT_descriptor_indexing.
@@ -950,6 +980,73 @@ i915_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
                                   "anv_device_wait failed: %m");
 
 fail:
+   anv_execbuf_finish(&execbuf);
+   return result;
+}
+
+VkResult
+i915_execute_trtt_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
+                        uint32_t batch_size)
+{
+   struct anv_device *device = queue->device;
+   struct anv_trtt *trtt = &device->trtt;
+   struct anv_execbuf execbuf = {
+      .alloc = &device->vk.alloc,
+      .alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE,
+   };
+   VkResult result;
+
+   result = anv_execbuf_add_bo(device, &execbuf, device->workaround_bo, NULL,
+                               0);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   for (int i = 0; i < trtt->num_page_table_bos; i++) {
+      result = anv_execbuf_add_bo(device, &execbuf, trtt->page_table_bos[i],
+                                  NULL, EXEC_OBJECT_WRITE);
+      if (result != VK_SUCCESS)
+         goto out;
+   }
+
+   result = anv_execbuf_add_bo(device, &execbuf, batch_bo, NULL, 0);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   if (INTEL_DEBUG(DEBUG_SUBMIT))
+      anv_i915_debug_submit(&execbuf);
+
+   uint64_t exec_flags = 0;
+   uint32_t context_id;
+   get_context_and_exec_flags(queue, false, &exec_flags, &context_id);
+
+   execbuf.execbuf = (struct drm_i915_gem_execbuffer2) {
+      .buffers_ptr = (uintptr_t) execbuf.objects,
+      .buffer_count = execbuf.bo_count,
+      .batch_start_offset = 0,
+      .batch_len = batch_size,
+      .flags = I915_EXEC_HANDLE_LUT | I915_EXEC_NO_RELOC | exec_flags,
+      .rsvd1 = context_id,
+      .rsvd2 = 0,
+   };
+
+   int ret = queue->device->info->no_hw ? 0 :
+      anv_gem_execbuffer(device, &execbuf.execbuf);
+   if (ret) {
+      result = vk_device_set_lost(&device->vk,
+                                  "trtt anv_gem_execbuffer failed: %m");
+      goto out;
+   }
+
+   /* TODO: we can get rid of this wait once we can properly handle the buffer
+    * lifetimes.
+    */
+   result = anv_device_wait(device, batch_bo, INT64_MAX);
+   if (result != VK_SUCCESS) {
+      result = vk_device_set_lost(&device->vk,
+                                  "trtt anv_device_wait failed: %m");
+   }
+
+out:
    anv_execbuf_finish(&execbuf);
    return result;
 }

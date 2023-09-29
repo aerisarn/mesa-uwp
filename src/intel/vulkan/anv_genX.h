@@ -283,3 +283,7 @@ genX(simple_shader_push_state_address)(struct anv_simple_shader *state,
 
 void
 genX(emit_simple_shader_end)(struct anv_simple_shader *state);
+
+VkResult genX(init_trtt_context_state)(struct anv_queue *queue);
+
+VkResult genX(write_trtt_entries)(struct anv_trtt_submission *submit);

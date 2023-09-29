@@ -238,6 +238,22 @@ struct intel_perf_query_result;
 #define SO_BUFFER_INDEX_0_CMD 0x60
 #define anv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
+/* The TR-TT L1 page table entries may contain these values instead of actual
+ * pointers to indicate the regions are either NULL or invalid. We program
+ * these values to TR-TT registers, so we could change them, but it's super
+ * convenient to have the NULL value be 0 because everything is
+ * zero-initialized when allocated.
+ *
+ * Since we reserve these values for NULL/INVALID, then we can't use them as
+ * destinations for TR-TT address translation. Both values are shifted by 16
+ * bits, wich results in graphic addresses 0 and 64k. On Anv the first vma
+ * starts at 2MB, so we already don't use 0 and 64k for anything, so there's
+ * nothing really to reserve. We could instead just reserve random 64kb
+ * ranges from any of the non-TR-TT vmas and use their addresses.
+ */
+#define ANV_TRTT_L1_NULL_TILE_VAL 0
+#define ANV_TRTT_L1_INVALID_TILE_VAL 1
+
 static inline uint32_t
 align_down_npot_u32(uint32_t v, uint32_t a)
 {
@@ -695,6 +711,21 @@ struct anv_state_stream {
    struct util_dynarray all_blocks;
 };
 
+struct anv_trtt_bind {
+   uint64_t pte_addr;
+   uint64_t entry_addr;
+};
+
+struct anv_trtt_submission {
+   struct anv_queue *queue;
+
+   struct anv_trtt_bind *l3l2_binds;
+   struct anv_trtt_bind *l1_binds;
+
+   int l3l2_binds_len;
+   int l1_binds_len;
+};
+
 /* The block_pool functions exported for testing only.  The block pool should
  * only be used via a state pool (see below).
  */
@@ -912,6 +943,7 @@ struct anv_physical_device {
      * a vm_bind ioctl).
      */
     bool                                        has_sparse;
+    bool                                        sparse_uses_trtt;
 
     /** True if HW supports ASTC LDR */
     bool                                        has_astc_ldr;
@@ -1724,6 +1756,40 @@ struct anv_device {
      */
     VkCommandPool                               companion_rcs_cmd_pool;
 
+    struct anv_trtt {
+       pthread_mutex_t mutex;
+
+       /* Sometimes we need to run batches from places where we don't have a
+        * queue coming from the API, so we use this.
+        */
+       struct anv_queue *queue;
+
+       /* There's only one L3 table, so if l3_addr is zero that means we
+        * didn't initialize the TR-TT context yet (i.e., we're not using TR-TT
+        * yet in this context).
+        */
+       uint64_t l3_addr;
+
+       /* We don't want to access the page tables from the CPU, so just
+        * maintain a mirror that we can use.
+        */
+       uint64_t *l3_mirror;
+       uint64_t *l2_mirror;
+
+       /* We keep a dynamic list of page table bos, and each bo can store
+        * multiple page tables.
+        */
+       struct anv_bo **page_table_bos;
+       int num_page_table_bos;
+       int page_table_bos_capacity;
+
+       /* These are used to keep track of space available for more page tables
+        * within a bo.
+        */
+       struct anv_bo *cur_page_table_bo;
+       uint64_t next_page_table_bo_offset;
+    } trtt;
+
     /* This is true if the user ever bound a sparse resource to memory. This
      * is used for a workaround that makes every memoryBarrier flush more
      * things than it should. Many applications request for the sparse
@@ -1861,6 +1927,8 @@ VkResult anv_queue_submit(struct vk_queue *queue,
 VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
                                        struct anv_batch *batch,
                                        bool is_companion_rcs_batch);
+VkResult anv_queue_submit_trtt_batch(struct anv_queue *queue,
+                                     struct anv_batch *batch);
 
 void anv_queue_trace(struct anv_queue *queue, const char *label,
                      bool frame, bool begin);

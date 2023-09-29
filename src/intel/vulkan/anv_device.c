@@ -1444,8 +1444,17 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    device->uses_relocs = device->info.kmd_type != INTEL_KMD_TYPE_XE;
 
-   device->has_sparse = device->info.kmd_type == INTEL_KMD_TYPE_XE &&
-      debug_get_bool_option("ANV_SPARSE", true);
+   /* While xe.ko can use both vm_bind and TR-TT, i915.ko only has TR-TT. */
+   if (device->info.kmd_type == INTEL_KMD_TYPE_XE) {
+      device->has_sparse = true;
+      device->sparse_uses_trtt =
+         debug_get_bool_option("ANV_SPARSE_USE_TRTT", false);
+   } else {
+      device->has_sparse =
+         device->info.ver >= 12 &&
+         debug_get_bool_option("ANV_SPARSE", false);
+      device->sparse_uses_trtt = true;
+   }
 
    device->always_flush_cache = INTEL_DEBUG(DEBUG_STALL) ||
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
@@ -1732,6 +1741,11 @@ void anv_GetPhysicalDeviceProperties(
    const bool has_sparse_or_fake = pdevice->instance->has_fake_sparse ||
                                    pdevice->has_sparse;
 
+   uint64_t sparse_addr_space_size =
+      !has_sparse_or_fake ? 0 :
+      pdevice->sparse_uses_trtt ? pdevice->va.trtt.size :
+      1ULL << 48;
+
    VkSampleCountFlags sample_counts =
       isl_device_get_sample_counts(&pdevice->isl_dev);
 
@@ -1749,7 +1763,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxMemoryAllocationCount                 = UINT32_MAX,
       .maxSamplerAllocationCount                = 64 * 1024,
       .bufferImageGranularity                   = 1,
-      .sparseAddressSpaceSize                   = has_sparse_or_fake ? (1uLL << 48) : 0,
+      .sparseAddressSpaceSize                   = sparse_addr_space_size,
       .maxBoundDescriptorSets                   = MAX_SETS,
       .maxPerStageDescriptorSamplers            = max_samplers,
       .maxPerStageDescriptorUniformBuffers      = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS,
@@ -3083,6 +3097,33 @@ anv_device_destroy_context_or_vm(struct anv_device *device)
    }
 }
 
+static VkResult
+anv_device_init_trtt(struct anv_device *device)
+{
+   struct anv_trtt *trtt = &device->trtt;
+
+   if (pthread_mutex_init(&trtt->mutex, NULL) != 0)
+      return vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+
+   return VK_SUCCESS;
+}
+
+static void
+anv_device_finish_trtt(struct anv_device *device)
+{
+   struct anv_trtt *trtt = &device->trtt;
+
+   pthread_mutex_destroy(&trtt->mutex);
+
+   vk_free(&device->vk.alloc, trtt->l3_mirror);
+   vk_free(&device->vk.alloc, trtt->l2_mirror);
+
+   for (int i = 0; i < trtt->num_page_table_bos; i++)
+      anv_device_release_bo(device, trtt->page_table_bos[i]);
+
+   vk_free(&device->vk.alloc, trtt->page_table_bos);
+}
+
 VkResult anv_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -3542,16 +3583,20 @@ VkResult anv_CreateDevice(
          goto fail_trivial_batch_bo_and_scratch_pool;
    }
 
-   result = anv_genX(device->info, init_device_state)(device);
+   result = anv_device_init_trtt(device);
    if (result != VK_SUCCESS)
       goto fail_btd_fifo_bo;
+
+   result = anv_genX(device->info, init_device_state)(device);
+   if (result != VK_SUCCESS)
+      goto fail_trtt;
 
    struct vk_pipeline_cache_create_info pcc_info = { };
    device->default_pipeline_cache =
       vk_pipeline_cache_create(&device->vk, &pcc_info, NULL);
    if (!device->default_pipeline_cache) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail_btd_fifo_bo;
+      goto fail_trtt;
    }
 
    /* Internal shaders need their own pipeline cache because, unlike the rest
@@ -3654,6 +3699,8 @@ VkResult anv_CreateDevice(
    vk_pipeline_cache_destroy(device->internal_cache, NULL);
  fail_default_pipeline_cache:
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
+ fail_trtt:
+   anv_device_finish_trtt(device);
  fail_btd_fifo_bo:
    if (ANV_SUPPORT_RT && device->info->has_ray_tracing)
       anv_device_release_bo(device, device->btd_fifo_bo);
@@ -3753,6 +3800,8 @@ void anv_DestroyDevice(
 
    vk_pipeline_cache_destroy(device->internal_cache, NULL);
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
+
+   anv_device_finish_trtt(device);
 
    if (ANV_SUPPORT_RT && device->info->has_ray_tracing)
       anv_device_release_bo(device, device->btd_fifo_bo);

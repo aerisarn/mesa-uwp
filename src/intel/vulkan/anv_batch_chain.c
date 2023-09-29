@@ -118,6 +118,10 @@ VkResult
 anv_reloc_list_add_bo_impl(struct anv_reloc_list *list,
                            struct anv_bo *target_bo)
 {
+   /* This can happen with sparse resources. */
+   if (!target_bo)
+      return VK_SUCCESS;
+
    uint32_t idx = target_bo->gem_handle;
    VkResult result = anv_reloc_list_grow_deps(list,
                                               (idx / BITSET_WORDBITS) + 1);
@@ -1687,6 +1691,39 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
    result = device->kmd_backend->execute_simple_batch(queue, batch_bo,
                                                       batch_size,
                                                       is_companion_rcs_batch);
+
+   anv_bo_pool_free(&device->batch_bo_pool, batch_bo);
+
+   return result;
+}
+
+VkResult
+anv_queue_submit_trtt_batch(struct anv_queue *queue,
+                            struct anv_batch *batch)
+{
+   struct anv_device *device = queue->device;
+   VkResult result = VK_SUCCESS;
+
+   uint32_t batch_size = align(batch->next - batch->start, 8);
+
+   struct anv_bo *batch_bo;
+   result = anv_bo_pool_alloc(&device->batch_bo_pool, batch_size, &batch_bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   memcpy(batch_bo->map, batch->start, batch_size);
+#ifdef SUPPORT_INTEL_INTEGRATED_GPUS
+   if (device->physical->memory.need_flush)
+      intel_flush_range(batch_bo->map, batch_size);
+#endif
+
+   if (INTEL_DEBUG(DEBUG_BATCH)) {
+      intel_print_batch(queue->decoder, batch_bo->map, batch_bo->size,
+                        batch_bo->offset, false);
+   }
+
+   result = device->kmd_backend->execute_trtt_batch(queue, batch_bo,
+                                                    batch_size);
 
    anv_bo_pool_free(&device->batch_bo_pool, batch_bo);
 

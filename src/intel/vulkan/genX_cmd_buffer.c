@@ -8426,3 +8426,57 @@ genX(cmd_buffer_end_companion_rcs_syncpoint)(struct anv_cmd_buffer *cmd_buffer,
    unreachable("Not implemented");
 #endif
 }
+
+VkResult
+genX(write_trtt_entries)(struct anv_trtt_submission *submit)
+{
+#if GFX_VER >= 12
+   struct anv_queue *queue = submit->queue;
+   size_t batch_size = submit->l3l2_binds_len * 20 +
+                       submit->l1_binds_len * 16 + 8;
+   STACK_ARRAY(uint32_t, cmds, batch_size);
+   struct anv_batch batch = {
+      .start = cmds,
+      .next = cmds,
+      .end = (void *)cmds + batch_size,
+   };
+
+   /* TODO: writes to contiguous addresses can be combined into a single big
+    * MI_STORE_DATA_IMM instruction.
+    */
+
+   for (int i = 0; i < submit->l3l2_binds_len; i++) {
+      bool is_last_write = submit->l1_binds_len == 0 &&
+                           i + 1 == submit->l3l2_binds_len;
+
+      anv_batch_emitn(&batch, 5, GENX(MI_STORE_DATA_IMM),
+         .ForceWriteCompletionCheck = is_last_write,
+         .StoreQword = true,
+         .Address = anv_address_from_u64(submit->l3l2_binds[i].pte_addr),
+         .ImmediateData = submit->l3l2_binds[i].entry_addr,
+      );
+   }
+
+   for (int i = 0; i < submit->l1_binds_len; i++) {
+      bool is_last_write = i + 1 == submit->l1_binds_len;
+
+      anv_batch_emit(&batch, GENX(MI_STORE_DATA_IMM), sdi) {
+         sdi.ForceWriteCompletionCheck = is_last_write;
+         sdi.Address = anv_address_from_u64(submit->l1_binds[i].pte_addr);
+         sdi.ImmediateData =
+            (submit->l1_binds[i].entry_addr >> 16) & 0xFFFFFFFF;
+      }
+   }
+
+   anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
+
+   assert(batch.next <= batch.end);
+
+   VkResult result = anv_queue_submit_trtt_batch(queue, &batch);
+   STACK_ARRAY_FINISH(cmds);
+
+   return result;
+
+#endif
+   return VK_SUCCESS;
+}

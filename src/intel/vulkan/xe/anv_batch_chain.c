@@ -179,6 +179,51 @@ xe_exec_print_debug(struct anv_queue *queue, uint32_t cmd_buffer_count,
 }
 
 VkResult
+xe_execute_trtt_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
+                      uint32_t batch_size)
+{
+   struct anv_device *device = queue->device;
+   VkResult result = VK_SUCCESS;
+
+   uint32_t syncobj_handle;
+   if (drmSyncobjCreate(device->fd, 0, &syncobj_handle))
+      return vk_errorf(device, VK_ERROR_UNKNOWN, "Unable to create sync obj");
+
+   struct drm_xe_sync sync = {
+      .flags = DRM_XE_SYNC_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
+      .handle = syncobj_handle,
+   };
+   struct drm_xe_exec exec = {
+      .exec_queue_id = queue->exec_queue_id,
+      .num_batch_buffer = 1,
+      .address = batch_bo->offset,
+      .num_syncs = 1,
+      .syncs = (uintptr_t)&sync,
+   };
+
+   if (!device->info->no_hw) {
+      if (intel_ioctl(device->fd, DRM_IOCTL_XE_EXEC, &exec)) {
+         result = vk_device_set_lost(&device->vk, "XE_EXEC failed: %m");
+         goto exec_error;
+      }
+   }
+
+   /* FIXME: we shouldn't need this wait, figure out a way to remove it. */
+   struct drm_syncobj_wait wait = {
+      .handles = (uintptr_t)&syncobj_handle,
+      .timeout_nsec = INT64_MAX,
+      .count_handles = 1,
+   };
+   if (intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait))
+      result = vk_device_set_lost(&device->vk, "DRM_IOCTL_SYNCOBJ_WAIT failed: %m");
+
+exec_error:
+   drmSyncobjDestroy(device->fd, syncobj_handle);
+
+   return result;
+}
+
+VkResult
 xe_queue_exec_utrace_locked(struct anv_queue *queue,
                             struct anv_utrace_submit *utrace_submit)
 {
