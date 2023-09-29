@@ -1058,6 +1058,15 @@ struct Instruction {
       return false;
    }
 
+   constexpr bool writes_exec() const noexcept
+   {
+      for (const Definition& def : definitions) {
+         if (def.isFixed() && (def.physReg() == exec_lo || def.physReg() == exec_hi))
+            return true;
+      }
+      return false;
+   }
+
    Pseudo_instruction& pseudo() noexcept
    {
       assert(isPseudo());

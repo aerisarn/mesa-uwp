@@ -513,6 +513,28 @@ BEGIN_TEST(optimizer_postRA.dpp_across_exec)
    }
 END_TEST
 
+BEGIN_TEST(optimizer_postRA.dpp_vcmpx)
+   //>> v1: %a:v[0], v1: %b:v[1] = p_startpgm
+   if (!setup_cs("v1 v1", GFX11))
+      return;
+
+   bld.instructions->at(0)->definitions[0].setFixed(PhysReg(256));
+   bld.instructions->at(0)->definitions[1].setFixed(PhysReg(257));
+
+   PhysReg reg_v2(258);
+   Operand a(inputs[0], PhysReg(256));
+   Operand b(inputs[1], PhysReg(257));
+
+   //! v1: %tmp0:v[2] = v_mov_b32 %a:v[0] row_mirror bound_ctrl:1
+   //! s2: %res0:exec = v_cmpx_lt_f32 %tmp0:v[2], %b:v[1]
+   //! p_unit_test 0, %res0:exec
+   Temp tmp0 = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1, reg_v2), a, dpp_row_mirror);
+   Temp res0 = bld.vopc(aco_opcode::v_cmpx_lt_f32, bld.def(bld.lm, exec), Operand(tmp0, reg_v2), b);
+   writeout(0, Operand(res0, exec));
+
+   finish_optimizer_postRA_test();
+END_TEST
+
 BEGIN_TEST(optimizer_postRA.dpp_across_cf)
    //>> v1: %a:v[0], v1: %b:v[1], v1: %c:v[2], v1: %d:v[3], s2: %e:s[0-1] = p_startpgm
    if (!setup_cs("v1 v1 v1 v1 s2", GFX10_3))
