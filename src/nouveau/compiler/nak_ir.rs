@@ -4930,6 +4930,7 @@ pub struct ComputeShaderInfo {
 
 #[derive(Debug)]
 pub struct GeometryShaderInfo {
+    pub passthrough_enable: bool,
     pub stream_out_mask: u8,
     pub threads_per_input_primitive: u8,
     pub output_topology: OutputTopology,
@@ -4939,6 +4940,7 @@ pub struct GeometryShaderInfo {
 impl Default for GeometryShaderInfo {
     fn default() -> Self {
         Self {
+            passthrough_enable: false,
             stream_out_mask: 0,
             threads_per_input_primitive: 0,
             output_topology: OutputTopology::LineStrip,
@@ -4972,7 +4974,9 @@ pub struct SysValInfo {
 #[derive(Debug)]
 pub struct VtgIoInfo {
     pub sysvals_in: SysValInfo,
+    pub sysvals_in_d: u8,
     pub sysvals_out: SysValInfo,
+    pub sysvals_out_d: u8,
     pub attr_in: [u32; 4],
     pub attr_out: [u32; 4],
     pub store_req_start: u8,
@@ -4985,6 +4989,12 @@ impl VtgIoInfo {
             &mut self.sysvals_out
         } else {
             &mut self.sysvals_in
+        };
+
+        let sysvals_d = if written {
+            &mut self.sysvals_out_d
+        } else {
+            &mut self.sysvals_in_d
         };
 
         let mut attr = BitMutView::new(if written {
@@ -5005,6 +5015,8 @@ impl VtgIoInfo {
                 panic!("FF color I/O not supported");
             } else if addr < 0x300 {
                 sysvals.c |= 1 << ((addr - 0x2c0) / 4);
+            } else if addr >= 0x3a0 && addr < 0x3c0 {
+                *sysvals_d |= 1 << ((addr - 0x3a0) / 4);
             }
         }
     }
@@ -5028,13 +5040,16 @@ impl VtgIoInfo {
 #[derive(Debug)]
 pub struct FragmentIoInfo {
     pub sysvals_in: SysValInfo,
+    pub sysvals_in_d: [PixelImap; 8],
     pub attr_in: [PixelImap; 128],
+    pub barycentric_attr_in: [u32; 4],
 
     pub reads_sample_mask: bool,
     pub uses_kill: bool,
     pub writes_color: u32,
     pub writes_sample_mask: bool,
     pub writes_depth: bool,
+    pub does_interlock: bool,
 }
 
 impl FragmentIoInfo {
@@ -5048,7 +5063,19 @@ impl FragmentIoInfo {
             panic!("FF color I/O not supported");
         } else if addr < 0x300 {
             self.sysvals_in.c |= 1 << ((addr - 0x2c0) / 4);
+        } else if addr >= 0x3a0 && addr < 0x3c0 {
+            let attr_idx = (addr - 0x3a0) as usize / 4;
+            self.sysvals_in_d[attr_idx] = interp;
         }
+    }
+
+    pub fn mark_barycentric_attr_in(&mut self, addr: u16) {
+        assert!(addr >= 0x80 && addr < 0x280);
+
+        let mut attr = BitMutView::new(&mut self.barycentric_attr_in);
+
+        let attr_idx = (addr - 0x080) as usize / 4;
+        attr.set_bit(attr_idx, true);
     }
 }
 

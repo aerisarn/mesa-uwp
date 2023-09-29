@@ -173,6 +173,12 @@ impl ShaderProgramHeader {
     }
 
     #[inline]
+    fn imap_system_values_d_vtg(&mut self) -> SubSPHView<'_> {
+        assert!(self.shader_type != ShaderType::Fragment);
+        BitMutView::new_subset(&mut self.data, 392..400)
+    }
+
+    #[inline]
     fn omap_system_values_ab(&mut self) -> SubSPHView<'_> {
         assert!(self.shader_type != ShaderType::Fragment);
         BitMutView::new_subset(&mut self.data, 400..432)
@@ -192,10 +198,22 @@ impl ShaderProgramHeader {
     }
 
     #[inline]
+    fn imap_system_values_d_ps(&mut self) -> SubSPHView<'_> {
+        assert!(self.shader_type == ShaderType::Fragment);
+        BitMutView::new_subset(&mut self.data, 560..576)
+    }
+
+    #[inline]
     fn omap_target(&mut self) -> SubSPHView<'_> {
         assert!(self.shader_type == ShaderType::Fragment);
 
         BitMutView::new_subset(&mut self.data, 576..608)
+    }
+
+    #[inline]
+    fn omap_system_values_d_vtg(&mut self) -> SubSPHView<'_> {
+        assert!(self.shader_type != ShaderType::Fragment);
+        BitMutView::new_subset(&mut self.data, 632..640)
     }
 
     #[inline]
@@ -238,6 +256,12 @@ impl ShaderProgramHeader {
     #[inline]
     pub fn set_sass_version(&mut self, sass_version: u8) {
         self.common_word0().set_field(17..21, sass_version);
+    }
+
+    #[inline]
+    pub fn set_gs_passthrough_enable(&mut self, gs_passthrough_enable: bool) {
+        assert!(self.shader_type == ShaderType::Geometry);
+        self.common_word0().set_bit(24, gs_passthrough_enable);
     }
 
     #[inline]
@@ -349,12 +373,30 @@ impl ShaderProgramHeader {
         self.imap_system_values_c().set_field(0..16, val);
     }
 
+    pub fn set_imap_system_values_d_vtg(&mut self, val: u8) {
+        assert!(self.shader_type != ShaderType::Fragment);
+        self.imap_system_values_d_vtg().set_field(0..8, val);
+    }
+
     #[inline]
     pub fn set_imap_vector_ps(&mut self, index: usize, value: PixelImap) {
         assert!(index < 128);
         assert!(self.shader_type == ShaderType::Fragment);
 
         self.imap_g_ps()
+            .set_field(index * 2..(index + 1) * 2, u8::from(value));
+    }
+
+    #[inline]
+    pub fn set_imap_system_values_d_ps(
+        &mut self,
+        index: usize,
+        value: PixelImap,
+    ) {
+        assert!(index < 8);
+        assert!(self.shader_type == ShaderType::Fragment);
+
+        self.imap_system_values_d_ps()
             .set_field(index * 2..(index + 1) * 2, u8::from(value));
     }
 
@@ -375,6 +417,11 @@ impl ShaderProgramHeader {
     #[inline]
     pub fn set_omap_system_values_c(&mut self, val: u16) {
         self.omap_system_values_c().set_field(0..16, val);
+    }
+
+    pub fn set_omap_system_values_d_vtg(&mut self, val: u8) {
+        assert!(self.shader_type != ShaderType::Fragment);
+        self.omap_system_values_d_vtg().set_field(0..8, val);
     }
 
     #[inline]
@@ -400,6 +447,35 @@ impl ShaderProgramHeader {
     pub fn set_omap_depth(&mut self, depth: bool) {
         assert!(self.shader_type == ShaderType::Fragment);
         self.set_bit(609, depth);
+    }
+
+    #[inline]
+    pub fn set_does_interlock(&mut self, does_interlock: bool) {
+        assert!(self.shader_type == ShaderType::Fragment);
+        self.set_bit(610, does_interlock);
+    }
+
+    // TODO: This seems always set on fragment shaders, figure out what this is for.
+    #[inline]
+    pub fn set_unknown_bit611(&mut self, value: bool) {
+        assert!(self.shader_type == ShaderType::Fragment);
+        self.set_bit(611, value);
+    }
+
+    #[inline]
+    fn pervertex_imap_vector_ps(&mut self) -> SubSPHView<'_> {
+        assert!(self.shader_type == ShaderType::Fragment);
+
+        BitMutView::new_subset(&mut self.data, 672..800)
+    }
+
+    #[inline]
+    pub fn set_pervertex_imap_vector(&mut self, index: usize, value: u32) {
+        assert!(index < 4);
+        assert!(self.shader_type == ShaderType::Fragment);
+
+        self.pervertex_imap_vector_ps()
+            .set_field(index * 32..(index + 1) * 32, value);
     }
 }
 
@@ -428,6 +504,7 @@ pub fn encode_header(
         ShaderIoInfo::Vtg(io) => {
             sph.set_imap_system_values_ab(io.sysvals_in.ab);
             sph.set_imap_system_values_c(io.sysvals_in.c);
+            sph.set_imap_system_values_d_vtg(io.sysvals_in_d);
 
             for (index, value) in io.attr_in.iter().enumerate() {
                 sph.set_imap_vector_vtg(index, *value);
@@ -442,10 +519,15 @@ pub fn encode_header(
 
             sph.set_omap_system_values_ab(io.sysvals_out.ab);
             sph.set_omap_system_values_c(io.sysvals_out.c);
+            sph.set_omap_system_values_d_vtg(io.sysvals_out_d);
         }
         ShaderIoInfo::Fragment(io) => {
             sph.set_imap_system_values_ab(io.sysvals_in.ab);
             sph.set_imap_system_values_c(io.sysvals_in.c);
+
+            for (index, imap) in io.sysvals_in_d.iter().enumerate() {
+                sph.set_imap_system_values_d_ps(index, *imap);
+            }
 
             for (index, imap) in io.attr_in.iter().enumerate() {
                 sph.set_imap_vector_ps(index, *imap);
@@ -458,12 +540,18 @@ pub fn encode_header(
             sph.set_omap_sample_mask(io.writes_sample_mask);
             sph.set_omap_depth(io.writes_depth);
             sph.set_omap_targets(io.writes_color);
+            sph.set_does_interlock(io.does_interlock);
+
+            for (index, value) in io.barycentric_attr_in.iter().enumerate() {
+                sph.set_pervertex_imap_vector(index, *value);
+            }
         }
         _ => {}
     }
 
     match &shader_info.stage {
         ShaderStageInfo::Geometry(stage) => {
+            sph.set_gs_passthrough_enable(stage.passthrough_enable);
             sph.set_stream_out_mask(stage.stream_out_mask);
             sph.set_threads_per_input_primitive(
                 stage.threads_per_input_primitive,

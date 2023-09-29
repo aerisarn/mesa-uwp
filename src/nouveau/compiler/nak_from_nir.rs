@@ -51,6 +51,8 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
                 };
 
                 ShaderStageInfo::Geometry(GeometryShaderInfo {
+                    // TODO: Should be set if VK_NV_geometry_shader_passthrough is in use.
+                    passthrough_enable: false,
                     stream_out_mask: info_gs.active_stream_mask(),
                     threads_per_input_primitive: info_gs.invocations,
                     output_topology: output_topology,
@@ -75,19 +77,25 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
                     ab: 1 << 31,
                     c: 0,
                 },
+                sysvals_in_d: [PixelImap::Unused; 8],
                 attr_in: [PixelImap::Unused; 128],
+                barycentric_attr_in: [0; 4],
                 reads_sample_mask: false,
                 uses_kill: false,
                 writes_color: 0,
                 writes_sample_mask: false,
                 writes_depth: false,
+                // TODO: Should be set if interlocks are in use. (VK_EXT_fragment_shader_interlock)
+                does_interlock: false,
             }),
             MESA_SHADER_VERTEX
             | MESA_SHADER_GEOMETRY
             | MESA_SHADER_TESS_CTRL
             | MESA_SHADER_TESS_EVAL => ShaderIoInfo::Vtg(VtgIoInfo {
                 sysvals_in: SysValInfo::default(),
+                sysvals_in_d: 0,
                 sysvals_out: SysValInfo::default(),
+                sysvals_out_d: 0,
                 attr_in: [0; 4],
                 attr_out: [0; 4],
 
