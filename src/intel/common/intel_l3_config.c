@@ -156,6 +156,17 @@ static const struct intel_l3_config empty_l3_configs[] = {
 DECLARE_L3_LIST(empty);
 
 /**
+ * DG2 validated L3 configurations. \sa dg2_l3_configs.
+ */
+static const struct intel_l3_config dg2_l3_configs[] = {
+   /* SLM URB  ALL   DC   RO  IS   C   T  TC */
+   {{  0,  0,  128,   0,   0,  0,  0,  0,  0 }},
+   {{  0,  0,   96,   0,   0,  0,  0,  0, 32 }},
+   {{  0,  0,   64,   0,   0,  0,  0,  0, 64 }},
+};
+DECLARE_L3_LIST(dg2);
+
+/**
  * Return a zero-terminated array of validated L3 configurations for the
  * specified device.
  */
@@ -178,7 +189,9 @@ get_l3_list(const struct intel_device_info *devinfo)
       return &icl_l3_list;
 
    case 12:
-      if (devinfo->platform == INTEL_PLATFORM_DG1 || devinfo->verx10 == 125)
+      if (intel_device_info_is_dg2(devinfo))
+         return &dg2_l3_list;
+      else if (devinfo->platform == INTEL_PLATFORM_DG1 || devinfo->verx10 == 125)
          return &empty_l3_list;
       else
          return &tgl_l3_list;
