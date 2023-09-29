@@ -61,7 +61,7 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
                 })
             }
             MESA_SHADER_TESS_CTRL => {
-                ShaderStageInfo::TessellationControl(Default::default())
+                ShaderStageInfo::TessellationInit(Default::default())
             }
             MESA_SHADER_TESS_EVAL => ShaderStageInfo::Tessellation,
             _ => panic!("Unknown shader stage"),

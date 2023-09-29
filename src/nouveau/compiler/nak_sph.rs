@@ -22,7 +22,7 @@ type SubSPHView<'a> = BitMutView<'a, [u32; CURRENT_MAX_SHADER_HEADER_SIZE]>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShaderType {
     Vertex,
-    TessellationControl,
+    TessellationInit,
     Tessellation,
     Geometry,
     Fragment,
@@ -34,8 +34,8 @@ impl From<&ShaderStageInfo> for ShaderType {
             ShaderStageInfo::Vertex => ShaderType::Vertex,
             ShaderStageInfo::Fragment => ShaderType::Fragment,
             ShaderStageInfo::Geometry(_) => ShaderType::Geometry,
-            ShaderStageInfo::TessellationControl(_) => {
-                ShaderType::TessellationControl
+            ShaderStageInfo::TessellationInit(_) => {
+                ShaderType::TessellationInit
             }
             ShaderStageInfo::Tessellation => ShaderType::Tessellation,
             _ => panic!("Invalid ShaderStageInfo {:?}", value),
@@ -212,7 +212,7 @@ impl ShaderProgramHeader {
             10..14,
             match shader_type {
                 ShaderType::Vertex => 1_u8,
-                ShaderType::TessellationControl => 2_u8,
+                ShaderType::TessellationInit => 2_u8,
                 ShaderType::Tessellation => 3_u8,
                 ShaderType::Geometry => 4_u8,
                 ShaderType::Fragment => 5_u8,
@@ -275,7 +275,7 @@ impl ShaderProgramHeader {
         &mut self,
         per_patch_attribute_count: u8,
     ) {
-        assert!(self.shader_type == ShaderType::TessellationControl);
+        assert!(self.shader_type == ShaderType::TessellationInit);
 
         // Maxwell changed that encoding.
         if self.sm > 35 {
@@ -468,7 +468,7 @@ pub fn encode_header(
             sph.set_output_topology(stage.output_topology);
             sph.set_max_output_vertex_count(stage.max_output_vertex_count);
         }
-        ShaderStageInfo::TessellationControl(stage) => {
+        ShaderStageInfo::TessellationInit(stage) => {
             sph.set_per_patch_attribute_count(stage.per_patch_attribute_count);
             sph.set_threads_per_input_primitive(stage.threads_per_patch);
         }

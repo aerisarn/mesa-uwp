@@ -4708,7 +4708,7 @@ impl Default for GeometryShaderInfo {
 }
 
 #[derive(Debug, Default)]
-pub struct TessellationControlShaderInfo {
+pub struct TessellationInitShaderInfo {
     pub per_patch_attribute_count: u8,
     pub threads_per_patch: u8,
 }
@@ -4719,7 +4719,7 @@ pub enum ShaderStageInfo {
     Vertex,
     Fragment,
     Geometry(GeometryShaderInfo),
-    TessellationControl(TessellationControlShaderInfo),
+    TessellationInit(TessellationInitShaderInfo),
     Tessellation,
 }
 
