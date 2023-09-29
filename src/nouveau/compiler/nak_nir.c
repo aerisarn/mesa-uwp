@@ -579,6 +579,7 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_load_subgroup_invocation:
    case nir_intrinsic_load_patch_vertices_in:
    case nir_intrinsic_load_helper_invocation:
+   case nir_intrinsic_load_invocation_id:
    case nir_intrinsic_load_local_invocation_index:
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_workgroup_id:
@@ -715,10 +716,18 @@ nak_postprocess_nir(nir_shader *nir,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   OPT(nir, nir_lower_indirect_derefs, 0, UINT32_MAX);
+
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
       OPT(nir, nak_nir_lower_vs_inputs);
       OPT(nir, nak_nir_lower_varyings, nir_var_shader_out);
+      break;
+
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_GEOMETRY:
+      OPT(nir, nak_nir_lower_varyings, nir_var_shader_in | nir_var_shader_out);
       break;
 
    case MESA_SHADER_FRAGMENT:
