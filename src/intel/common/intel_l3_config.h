@@ -92,6 +92,11 @@ unsigned
 intel_get_l3_config_urb_size(const struct intel_device_info *devinfo,
                              const struct intel_l3_config *cfg);
 
+unsigned
+intel_get_l3_partition_size(const struct intel_device_info *devinfo,
+                            const struct intel_l3_config *cfg,
+                            enum intel_l3_partition i);
+
 void intel_dump_l3_config(const struct intel_l3_config *cfg, FILE *fp);
 
 enum intel_urb_deref_block_size {

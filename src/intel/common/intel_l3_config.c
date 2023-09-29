@@ -368,8 +368,19 @@ intel_get_l3_config_urb_size(const struct intel_device_info *devinfo,
     * only 1008KB of this will be used."
     */
    const unsigned max = (devinfo->ver == 9 ? 1008 : ~0);
-   return MIN2(max, cfg->n[INTEL_L3P_URB] * get_l3_way_size(devinfo)) /
+   return MIN2(max, intel_get_l3_partition_size(devinfo, cfg, INTEL_L3P_URB)) /
           get_urb_size_scale(devinfo);
+}
+
+/**
+ * Return the size of the specified L3 partition in KB.
+ */
+unsigned
+intel_get_l3_partition_size(const struct intel_device_info *devinfo,
+                            const struct intel_l3_config *cfg,
+                            enum intel_l3_partition i)
+{
+   return cfg->n[i] * get_l3_way_size(devinfo);
 }
 
 /**
