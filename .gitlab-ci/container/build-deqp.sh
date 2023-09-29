@@ -14,7 +14,7 @@ git config --global user.email "mesa@example.com"
 git config --global user.name "Mesa CI"
 git clone \
     https://github.com/KhronosGroup/VK-GL-CTS.git \
-    -b vulkan-cts-1.3.6.3 \
+    -b vulkan-cts-1.3.7.0 \
     --depth 1 \
     /VK-GL-CTS
 pushd /VK-GL-CTS
@@ -26,27 +26,6 @@ pushd /VK-GL-CTS
 # patches.
 
 cts_commits_to_backport=(
-        # GL/GLES vertex_attrib_binding.advanced-largeStrideAndOffsetsNewAndLegacyAPI fix
-        bdb456dcf85e34fced872ebdaf06f6b73451f99c
-
-        # GL arrays_of_arrays perf fix
-        b481dada59734e8e34050fe884ba6d627d9e5c54
-
-        # Test alpha-less 10bit formats correctly in wide_color tests
-        # Fixes dEQP-EGL.functional.wide_color.*_888_colorspace_*
-        dacf752adf388ce4399733ee9b4a3c8a4f317990
-
-        # KHR-GLES3.packed_pixels.*snorm
-        46158c2a1f570aab0dcefba461ddc879323367d5
-
-        # Fix problems when buffer_storage not supported
-        148a65182d88ee6c1c959a3b3cf75df22a3eae82
-
-        # surfaceless: Fix shared contexts and implement makeCurrent
-        3b9859deb22712b8b927dce1fac0b40008202877
-
-        # Don't attempt to test linear-filtered depth border clamping on ES.
-        3b3c101a06f1e4fc6acd3d6b40c813cd1bdc25ef
 )
 
 for commit in "${cts_commits_to_backport[@]}"

@@ -524,3 +524,12 @@ spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv21,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_vyuy,Fail
+
+# New CTS failures in 1.3.7.0
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles1.other,Fail
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles1_gles2_gles3.other,Fail
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles3.other,Fail
+wayland-dEQP-EGL.functional.color_clears.multi_thread.gles2.other,Fail
+wayland-dEQP-EGL.functional.render.multi_context.gles3.other,Fail
+wayland-dEQP-EGL.functional.render.single_context.gles2.other,Fail
+wayland-dEQP-EGL.functional.render.single_context.gles3.other,Fail
