@@ -837,6 +837,32 @@ impl SrcRef {
     }
 }
 
+impl From<bool> for SrcRef {
+    fn from(b: bool) -> SrcRef {
+        if b {
+            SrcRef::True
+        } else {
+            SrcRef::False
+        }
+    }
+}
+
+impl From<u32> for SrcRef {
+    fn from(u: u32) -> SrcRef {
+        if u == 0 {
+            SrcRef::Zero
+        } else {
+            SrcRef::Imm32(u)
+        }
+    }
+}
+
+impl From<f32> for SrcRef {
+    fn from(f: f32) -> SrcRef {
+        f.to_bits().into()
+    }
+}
+
 impl From<CBufRef> for SrcRef {
     fn from(cb: CBufRef) -> SrcRef {
         SrcRef::CBuf(cb)
@@ -966,11 +992,11 @@ impl Src {
     }
 
     pub fn new_imm_u32(u: u32) -> Src {
-        SrcRef::Imm32(u).into()
+        u.into()
     }
 
     pub fn new_imm_bool(b: bool) -> Src {
-        Src::from(if b { SrcRef::True } else { SrcRef::False })
+        b.into()
     }
 
     pub fn fabs(&self) -> Src {
