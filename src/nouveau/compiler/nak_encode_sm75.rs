@@ -1680,6 +1680,12 @@ impl SM75Instr {
         self.set_field(72..80, op.idx);
     }
 
+    fn encode_isberd(&mut self, op: &OpIsberd) {
+        self.set_opcode(0x923);
+        self.set_dst(op.dst);
+        self.set_reg_src(24..32, op.idx);
+    }
+
     fn encode_kill(&mut self, op: &OpKill) {
         self.set_opcode(0x95b);
         self.set_pred_src(87..90, 90, SrcRef::True.into());
@@ -1780,6 +1786,7 @@ impl SM75Instr {
             Op::WarpSync(op) => si.encode_warpsync(&op),
             Op::Bar(op) => si.encode_bar(&op),
             Op::CS2R(op) => si.encode_cs2r(&op),
+            Op::Isberd(op) => si.encode_isberd(&op),
             Op::Kill(op) => si.encode_kill(&op),
             Op::Nop(op) => si.encode_nop(&op),
             Op::PixLd(op) => si.encode_pixld(&op),

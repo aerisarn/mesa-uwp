@@ -3577,6 +3577,21 @@ impl fmt::Display for OpCS2R {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIsberd {
+    pub dst: Dst,
+
+    #[src_type(SSA)]
+    pub idx: Src,
+}
+
+impl fmt::Display for OpIsberd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ISBERD {} [{}]", self.dst, self.idx)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpKill {}
 
 impl fmt::Display for OpKill {
@@ -4015,6 +4030,7 @@ pub enum Op {
     WarpSync(OpWarpSync),
     Bar(OpBar),
     CS2R(OpCS2R),
+    Isberd(OpIsberd),
     Kill(OpKill),
     Nop(OpNop),
     PixLd(OpPixLd),
@@ -4442,6 +4458,7 @@ impl Instr {
             // Miscellaneous ops
             Op::Bar(_)
             | Op::CS2R(_)
+            | Op::Isberd(_)
             | Op::Kill(_)
             | Op::PixLd(_)
             | Op::S2R(_) => false,

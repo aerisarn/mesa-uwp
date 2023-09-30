@@ -1328,6 +1328,14 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 self.set_dst(&intrin.def, dst);
             }
+            nir_intrinsic_isberd_nv => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpIsberd {
+                    dst: dst.into(),
+                    idx: self.get_src(&srcs[0]),
+                });
+                self.set_dst(&intrin.def, dst);
+            }
             nir_intrinsic_load_barycentric_at_offset_nv => (),
             nir_intrinsic_load_barycentric_centroid => (),
             nir_intrinsic_load_barycentric_pixel => (),
