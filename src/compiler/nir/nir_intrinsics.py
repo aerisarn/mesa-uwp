@@ -1958,6 +1958,19 @@ system_value("ray_query_global_intel", 1, bit_sizes=[64])
 # NVIDIA-specific intrinsics
 intrinsic("load_sysval_nv", dest_comp=1, src_comp=[], bit_sizes=[32, 64],
           indices=[ACCESS, BASE], flags=[CAN_ELIMINATE])
+intrinsic("isberd_nv", dest_comp=1, src_comp=[1], bit_sizes=[32],
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+intrinsic("al2p_nv", dest_comp=1, src_comp=[1], bit_sizes=[32],
+          indices=[BASE, FLAGS], flags=[CAN_ELIMINATE, CAN_REORDER])
+# src[] = { vtx, offset }.
+# FLAGS is struct nak_nir_attr_io_flags
+intrinsic("ald_nv", dest_comp=0, src_comp=[1, 1], bit_sizes=[32],
+          indices=[BASE, RANGE_BASE, RANGE, FLAGS, ACCESS],
+          flags=[CAN_ELIMINATE])
+# src[] = { data, vtx, offset }.
+# FLAGS is struct nak_nir_attr_io_flags
+intrinsic("ast_nv", src_comp=[0, 1, 1],
+          indices=[BASE, RANGE_BASE, RANGE, FLAGS], flags=[])
 
 # In order to deal with flipped render targets, gl_PointCoord may be flipped
 # in the shader requiring a shader key or extra instructions or it may be
