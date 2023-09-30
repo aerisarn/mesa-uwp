@@ -79,7 +79,7 @@ def monitor_pipeline(
     target_job: str,
     dependencies,
     force_manual: bool,
-    stress: bool,
+    stress: int,
 ) -> tuple[Optional[int], Optional[int]]:
     """Monitors pipeline and delegate canceling jobs"""
     statuses: dict[str, str] = defaultdict(str)
@@ -97,8 +97,12 @@ def monitor_pipeline(
                 target_id = job.id
 
                 if stress and job.status in ["success", "failed"]:
-                    stress_status_counter[job.name][job.status] += 1
-                    enable_job(project, job, "retry", force_manual)
+                    if (
+                        stress < 0
+                        or sum(stress_status_counter[job.name].values()) < stress
+                    ):
+                        enable_job(project, job, "retry", force_manual)
+                        stress_status_counter[job.name][job.status] += 1
                 else:
                     enable_job(project, job, "target", force_manual)
 
@@ -120,15 +124,20 @@ def monitor_pipeline(
         cancel_jobs(project, to_cancel)
 
         if stress:
+            enough = True
             for job_name, status in stress_status_counter.items():
                 print(
                     f"{job_name}\tsucc: {status['success']}; "
                     f"fail: {status['failed']}; "
-                    f"total: {sum(status.values())}",
+                    f"total: {sum(status.values())} of {stress}",
                     flush=False,
                 )
-            pretty_wait(REFRESH_WAIT_JOBS)
-            continue
+                if stress < 0 or sum(status.values()) < stress:
+                    enough = False
+
+            if not enough:
+                pretty_wait(REFRESH_WAIT_JOBS)
+                continue
 
         print("---------------------------------", flush=False)
 
@@ -239,7 +248,12 @@ def parse_args() -> None:
     parser.add_argument(
         "--force-manual", action="store_true", help="Force jobs marked as manual"
     )
-    parser.add_argument("--stress", action="store_true", help="Stresstest job(s)")
+    parser.add_argument(
+        "--stress",
+        default=0,
+        type=int,
+        help="Stresstest job(s). Number or repetitions or -1 for infinite.",
+    )
     parser.add_argument(
         "--project",
         default="mesa",
