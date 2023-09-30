@@ -277,15 +277,15 @@ impl ShaderProgramHeader {
     ) {
         assert!(self.shader_type == ShaderType::TessellationInit);
 
+        self.common_word1()
+            .set_field(24..32, per_patch_attribute_count);
+
         // Maxwell changed that encoding.
         if self.sm > 35 {
             self.common_word3()
                 .set_field(28..32, per_patch_attribute_count & 0xf);
             self.common_word4()
                 .set_field(20..24, per_patch_attribute_count >> 4);
-        } else {
-            self.common_word1()
-                .set_field(24..32, per_patch_attribute_count);
         }
     }
 
