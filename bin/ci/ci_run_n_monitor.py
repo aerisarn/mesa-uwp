@@ -240,7 +240,11 @@ def parse_args() -> None:
         "--force-manual", action="store_true", help="Force jobs marked as manual"
     )
     parser.add_argument("--stress", action="store_true", help="Stresstest job(s)")
-    parser.add_argument("--project", default="mesa", help="GitLab project name")
+    parser.add_argument(
+        "--project",
+        default="mesa",
+        help="GitLab project in the format <user>/<project> or just <project>",
+    )
 
     mutex_group1 = parser.add_mutually_exclusive_group()
     mutex_group1.add_argument(
