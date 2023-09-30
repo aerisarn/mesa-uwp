@@ -1919,7 +1919,7 @@ pub struct AttrAccess {
     pub addr: u16,
     pub comps: u8,
     pub patch: bool,
-    pub out_load: bool,
+    pub output: bool,
     pub flags: u8,
 }
 
@@ -3328,7 +3328,14 @@ pub struct OpALd {
 
 impl fmt::Display for OpALd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ALD {} a", self.dst)?;
+        write!(f, "ALD")?;
+        if self.access.output {
+            write!(f, ".O")?;
+        }
+        if self.access.patch {
+            write!(f, ".P")?;
+        }
+        write!(f, " {} a", self.dst)?;
         if !self.vtx.is_zero() {
             write!(f, "[{}]", self.vtx)?;
         }
@@ -3357,7 +3364,11 @@ pub struct OpASt {
 
 impl fmt::Display for OpASt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AST a")?;
+        write!(f, "AST")?;
+        if self.access.patch {
+            write!(f, ".P")?;
+        }
+        write!(f, " a")?;
         if !self.vtx.is_zero() {
             write!(f, "[{}]", self.vtx)?;
         }

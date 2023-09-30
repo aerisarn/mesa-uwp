@@ -1421,7 +1421,7 @@ impl<'a> ShaderFromNir<'a> {
                             addr: addr,
                             comps: comps,
                             patch: false,
-                            out_load: false,
+                            output: false,
                             flags: 0,
                         };
 
@@ -1758,7 +1758,7 @@ impl<'a> ShaderFromNir<'a> {
                             addr: addr,
                             comps: comps,
                             patch: false,
-                            out_load: false,
+                            output: true,
                             flags: 0,
                         };
 

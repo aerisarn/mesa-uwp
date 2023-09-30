@@ -1489,7 +1489,7 @@ impl SM75Instr {
         self.set_field(74..76, op.access.comps - 1);
         self.set_field(76..77, op.access.patch);
         self.set_field(77..78, op.access.flags);
-        self.set_field(79..80, op.access.out_load);
+        self.set_field(79..80, op.access.output);
     }
 
     fn encode_ast(&mut self, op: &OpASt) {
@@ -1503,7 +1503,7 @@ impl SM75Instr {
         self.set_field(74..76, op.access.comps - 1);
         self.set_field(76..77, op.access.patch);
         self.set_field(77..78, op.access.flags);
-        assert!(!op.access.out_load);
+        assert!(op.access.output);
     }
 
     fn encode_ipa(&mut self, op: &OpIpa) {
