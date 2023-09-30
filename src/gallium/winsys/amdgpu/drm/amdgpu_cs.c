@@ -1686,7 +1686,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
       num_chunks++;
    }
 
-   if (ws->info.has_fw_based_shadowing) {
+   if (ws->info.has_fw_based_shadowing && acs->mcbp_fw_shadow_chunk.shadow_va) {
       chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_CP_GFX_SHADOW;
       chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_cs_chunk_cp_gfx_shadow) / 4;
       chunks[num_chunks].chunk_data = (uintptr_t)&acs->mcbp_fw_shadow_chunk;
