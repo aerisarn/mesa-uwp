@@ -5925,7 +5925,7 @@ pvr_ppp_state_update_required(const struct pvr_cmd_buffer *cmd_buffer)
           header->pres_wclamp || header->pres_outselects ||
           header->pres_varying_word0 || header->pres_varying_word1 ||
           header->pres_varying_word2 || header->pres_stream_out_program ||
-          state->dirty.fragment_descriptors ||
+          state->dirty.fragment_descriptors || state->dirty.vis_test ||
           state->dirty.gfx_pipeline_binding || state->dirty.isp_userpass ||
           state->push_constants.dirty_stages & VK_SHADER_STAGE_FRAGMENT_BIT ||
           BITSET_TEST(dynamic_dirty, MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK) ||
