@@ -752,9 +752,6 @@ get_location_str(unsigned location, gl_shader_stage stage,
       break;
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
-      if (location >= VARYING_SLOT_MAX)
-         break;
-      FALLTHROUGH;
    case MESA_SHADER_TASK:
    case MESA_SHADER_MESH:
    case MESA_SHADER_GEOMETRY:
