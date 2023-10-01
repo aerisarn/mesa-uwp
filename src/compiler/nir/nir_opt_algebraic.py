@@ -1750,6 +1750,10 @@ optimizations.extend([
    (('extract_u8', ('pack_32_4x8_split', a, b, c, d), 1), ('u2u', b)),
    (('extract_u8', ('pack_32_4x8_split', a, b, c, d), 2), ('u2u', c)),
    (('extract_u8', ('pack_32_4x8_split', a, b, c, d), 3), ('u2u', d)),
+
+   # Reduce intermediate precision with int64.
+   (('u2u32', ('iadd(is_used_once)', 'a@64', b)),
+    ('iadd', ('u2u32', a), ('u2u32', b))),
 ])
 
 # After the ('extract_u8', a, 0) pattern, above, triggers, there will be
