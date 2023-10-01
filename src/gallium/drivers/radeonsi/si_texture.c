@@ -700,7 +700,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
    bool flush = false;
 
    ctx = threaded_context_unwrap_sync(ctx);
-   sctx = ctx ? (struct si_context *)ctx : si_get_aux_context(sscreen);
+   sctx = ctx ? (struct si_context *)ctx : si_get_aux_context(&sscreen->aux_context.general);
 
    if (resource->target != PIPE_BUFFER) {
       unsigned plane = whandle->plane;
@@ -719,7 +719,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
        */
       if (resource->nr_samples > 1 || tex->is_depth) {
          if (!ctx)
-            si_put_aux_context_flush(sscreen);
+            si_put_aux_context_flush(&sscreen->aux_context.general);
          return false;
       }
 
@@ -727,7 +727,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
 
       if (plane) {
          if (!ctx)
-            si_put_aux_context_flush(sscreen);
+            si_put_aux_context_flush(&sscreen->aux_context.general);
          whandle->offset = ac_surface_get_plane_offset(sscreen->info.gfx_level,
                                                        &tex->surface, plane, 0);
          whandle->stride = ac_surface_get_plane_stride(sscreen->info.gfx_level,
@@ -809,7 +809,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
          struct pipe_resource *newb = screen->resource_create(screen, &templ);
          if (!newb) {
             if (!ctx)
-               si_put_aux_context_flush(sscreen);
+               si_put_aux_context_flush(&sscreen->aux_context.general);
             return false;
          }
 
@@ -847,7 +847,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
    if (flush && ctx)
       sctx->b.flush(&sctx->b, NULL, 0);
    if (!ctx)
-      si_put_aux_context_flush(sscreen);
+      si_put_aux_context_flush(&sscreen->aux_context.general);
 
    whandle->stride = stride;
    whandle->offset = offset + slice_size * whandle->layer;
@@ -1191,8 +1191,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
 
    /* Execute the clears. */
    if (num_clears) {
-      si_execute_clears(si_get_aux_context(sscreen), clears, num_clears, 0);
-      si_put_aux_context_flush(sscreen);
+      si_execute_clears(si_get_aux_context(&sscreen->aux_context.general), clears, num_clears, 0);
+      si_put_aux_context_flush(&sscreen->aux_context.general);
    }
 
    /* Initialize the CMASK base register value. */
