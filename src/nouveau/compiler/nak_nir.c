@@ -519,8 +519,7 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
          break;
       case FRAG_RESULT_COLOR:
          assert(var->data.index == 0);
-         var->data.driver_location =
-            NAK_FS_OUT_COLOR0 + var->data.location_frac * 4;
+         var->data.driver_location = NAK_FS_OUT_COLOR0;
          break;
       case FRAG_RESULT_SAMPLE_MASK:
          assert(var->data.index == 0);
@@ -532,8 +531,7 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
          assert(var->data.index < 2);
          const unsigned out =
             (var->data.location - FRAG_RESULT_DATA0) + var->data.index;
-         var->data.driver_location =
-            NAK_FS_OUT_COLOR(out) + var->data.location_frac * 4;
+         var->data.driver_location = NAK_FS_OUT_COLOR(out);
          break;
       }
       }

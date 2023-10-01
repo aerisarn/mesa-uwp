@@ -1728,10 +1728,12 @@ impl<'a> ShaderFromNir<'a> {
                          */
                         let data = *self.get_src(&srcs[0]).as_ssa().unwrap();
                         assert!(offset_as_u32 == Some(0));
-                        let base: usize = intrin.base().try_into().unwrap();
+                        let base: u8 = intrin.base().try_into().unwrap();
+                        let comp: u8 = intrin.component().try_into().unwrap();
                         assert!(base % 4 == 0);
+                        let out_idx = usize::from((base / 4) + comp);
                         for c in 0..usize::from(comps) {
-                            self.fs_out_regs[(base / 4) + c] = data[c];
+                            self.fs_out_regs[out_idx + c] = data[c];
                         }
                     }
                     ShaderIoInfo::Vtg(io) => {
