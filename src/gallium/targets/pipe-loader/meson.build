@@ -37,13 +37,6 @@ if (with_gallium_va or with_gallium_vdpau or with_gallium_omx != 'disabled')
   pipe_loader_link_with += libgalliumvlwinsys
 endif
 
-if with_ld_version_script
-  pipe_loader_link_args += [
-    '-Wl,--version-script', join_paths(meson.current_source_dir(), 'pipe.sym')
-  ]
-  pipe_loader_link_deps += files('pipe.sym')
-endif
-
 pipe_loader_install_dir = join_paths(get_option('libdir'), 'gallium-pipe')
 
 _kmsro_targets = [
@@ -70,6 +63,30 @@ pipe_loaders = [
 ]
 
 foreach x : pipe_loaders
+  pipe_sym_config = configuration_data()
+
+  foreach d : [[x[1] in ['r300', 'r600', 'radeonsi'], 'radeon_drm_winsys_create'],
+               [x[1] in ['vmwgfx', 'r600', 'r300', 'nouveau', 'msm', 'kmsro', 'iris', 'crocus', 'radeonsi'],
+                'driver_descriptor'],
+               [x[1] == 'radeonsi', 'amdgpu_winsys_create'],
+               [x[1] == 'radeonsi' and with_llvm, 'ac_init_shared_llvm_once'],
+               [x[1] == 'swrast', 'swrast_driver_descriptor']]
+    if d[0]
+      pipe_sym_config.set(d[1], d[1] + ';')
+    else
+      pipe_sym_config.set(d[1], '')
+    endif
+  endforeach
+
+  pipe_sym = configure_file(input : 'pipe.sym.in', output : 'pipe_@0@.sym'.format(x[1]), configuration : pipe_sym_config)
+
+  if with_ld_version_script
+    pipe_loader_link_args += [
+      '-Wl,--version-script', join_paths(meson.current_build_dir(), 'pipe_@0@.sym'.format(x[1]))
+    ]
+    pipe_loader_link_deps += pipe_sym
+  endif
+
   if x[0]
     shared_library(
       'pipe_@0@'.format(x[1]),

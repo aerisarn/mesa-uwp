@@ -28,9 +28,11 @@ gallium_dri_ld_args = []
 gallium_dri_link_depends = []
 gallium_dri_drivers = []
 
+dri_sym = configure_file(input : 'dri.sym.in', output : 'dri.sym', configuration : sym_config)
+
 if with_ld_version_script
-  gallium_dri_ld_args += ['-Wl,--version-script', join_paths(meson.current_source_dir(), 'dri.sym')]
-  gallium_dri_link_depends += files('dri.sym')
+  gallium_dri_ld_args += ['-Wl,--version-script', join_paths(meson.current_build_dir(), 'dri.sym')]
+  gallium_dri_link_depends += dri_sym
 endif
 if with_ld_dynamic_list
   gallium_dri_ld_args += ['-Wl,--dynamic-list', join_paths(meson.current_source_dir(), '../dri.dyn')]
