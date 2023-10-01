@@ -90,6 +90,13 @@ for start in range(32):
          ('extr_agx', a, b, start, 0)),
     ])
 
+fuse_ubfe = []
+for bits in range(1, 32):
+    fuse_ubfe.extend([
+        (('iand', ('ushr', 'a@32', b), (1 << bits) - 1),
+         ('ubitfield_extract', a, b, bits))
+    ])
+
 # (x * y) + s = (x * y) + (s << 0)
 def imad(x, y, z):
     return ('imadshl_agx', x, y, z, 0)
@@ -165,7 +172,7 @@ def run():
     print(nir_algebraic.AlgebraicPass("agx_nir_lower_algebraic_late",
                                       lower_sm5_shift + lower_pack).render())
     print(nir_algebraic.AlgebraicPass("agx_nir_fuse_algebraic_late",
-                                      fuse_extr + fuse_imad).render())
+                                      fuse_extr + fuse_ubfe + fuse_imad).render())
     print(nir_algebraic.AlgebraicPass("agx_nir_opt_ixor_bcsel",
                                       ixor_bcsel).render())
 
