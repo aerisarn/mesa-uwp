@@ -666,10 +666,8 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
          cfg.height = DIV_ROUND_UP(size_el, cfg.width);
          cfg.first_level = cfg.last_level = 0;
 
-         /* Stash the actual size in an unused part of the texture descriptor,
-          * which we'll read later to implement txs.
-          */
-         cfg.acceleration_buffer = (size_el << 4);
+         /* Stash the actual size in the software-defined section for txs */
+         cfg.software_defined = size_el;
       } else {
          cfg.width = rsrc->base.width0;
          cfg.height = rsrc->base.height0;
