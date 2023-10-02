@@ -221,7 +221,7 @@ static uint16_t
 nak_attribute_attr_addr(gl_vert_attrib attrib)
 {
    assert(attrib >= VERT_ATTRIB_GENERIC0);
-   return 0x80 + (attrib - VERT_ATTRIB_GENERIC0) * 0x10;
+   return NAK_ATTR_GENERIC_START + (attrib - VERT_ATTRIB_GENERIC0) * 0x10;
 }
 
 static int
@@ -250,20 +250,20 @@ static uint16_t
 nak_varying_attr_addr(gl_varying_slot slot)
 {
    if (slot >= VARYING_SLOT_PATCH0) {
-      return 0x020 + (slot - VARYING_SLOT_PATCH0) * 0x10;
+      return NAK_ATTR_PATCH_START + (slot - VARYING_SLOT_PATCH0) * 0x10;
    } else if (slot >= VARYING_SLOT_VAR0) {
-      return 0x080 + (slot - VARYING_SLOT_VAR0) * 0x10;
+      return NAK_ATTR_GENERIC_START + (slot - VARYING_SLOT_VAR0) * 0x10;
    } else {
       switch (slot) {
-      case VARYING_SLOT_TESS_LEVEL_OUTER: return 0x000;
-      case VARYING_SLOT_TESS_LEVEL_INNER: return 0x010;
-      case VARYING_SLOT_PRIMITIVE_ID:     return 0x060;
-      case VARYING_SLOT_LAYER:            return 0x064;
-      case VARYING_SLOT_VIEWPORT:         return 0x068;
-      case VARYING_SLOT_PSIZ:             return 0x06c;
-      case VARYING_SLOT_POS:              return 0x070;
-      case VARYING_SLOT_CLIP_DIST0:       return 0x2c0;
-      case VARYING_SLOT_CLIP_DIST1:       return 0x2d0;
+      case VARYING_SLOT_TESS_LEVEL_OUTER: return NAK_ATTR_TESS_LOD;
+      case VARYING_SLOT_TESS_LEVEL_INNER: return NAK_ATTR_TESS_INTERRIOR;
+      case VARYING_SLOT_PRIMITIVE_ID:     return NAK_ATTR_PRIMITIVE_ID;
+      case VARYING_SLOT_LAYER:            return NAK_ATTR_RT_ARRAY_INDEX;
+      case VARYING_SLOT_VIEWPORT:         return NAK_ATTR_VIEWPORT_INDEX;
+      case VARYING_SLOT_PSIZ:             return NAK_ATTR_POINT_SIZE;
+      case VARYING_SLOT_POS:              return NAK_ATTR_POSITION;
+      case VARYING_SLOT_CLIP_DIST0:       return NAK_ATTR_CLIP_CULL_DIST_0;
+      case VARYING_SLOT_CLIP_DIST1:       return NAK_ATTR_CLIP_CULL_DIST_4;
       default: unreachable("Invalid varying slot");
       }
    }
@@ -273,12 +273,12 @@ static uint16_t
 nak_sysval_attr_addr(gl_system_value sysval)
 {
    switch (sysval) {
-   case SYSTEM_VALUE_FRAG_COORD:    return 0x070;
-   case SYSTEM_VALUE_POINT_COORD:   return 0x2e0;
-   case SYSTEM_VALUE_TESS_COORD:    return 0x2f0;
-   case SYSTEM_VALUE_INSTANCE_ID:   return 0x2f8;
-   case SYSTEM_VALUE_VERTEX_ID:     return 0x2fc;
-   case SYSTEM_VALUE_FRONT_FACE:    return 0x3fc;
+   case SYSTEM_VALUE_FRAG_COORD:    return NAK_ATTR_POSITION;
+   case SYSTEM_VALUE_POINT_COORD:   return NAK_ATTR_POINT_SPRITE;
+   case SYSTEM_VALUE_TESS_COORD:    return NAK_ATTR_TESS_COORD;
+   case SYSTEM_VALUE_INSTANCE_ID:   return NAK_ATTR_INSTANCE_ID;
+   case SYSTEM_VALUE_VERTEX_ID:     return NAK_ATTR_VERTEX_ID;
+   case SYSTEM_VALUE_FRONT_FACE:    return NAK_ATTR_FRONT_FACE;
    default: unreachable("Invalid system value");
    }
 }
@@ -287,18 +287,18 @@ static uint8_t
 nak_sysval_sysval_idx(gl_system_value sysval)
 {
    switch (sysval) {
-   case SYSTEM_VALUE_SUBGROUP_INVOCATION:    return 0x00;
-   case SYSTEM_VALUE_VERTICES_IN:            return 0x10;
-   case SYSTEM_VALUE_INVOCATION_ID:          return 0x11;
-   case SYSTEM_VALUE_HELPER_INVOCATION:      return 0x13;
-   case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX: return 0x20;
-   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:    return 0x21;
-   case SYSTEM_VALUE_WORKGROUP_ID:           return 0x25;
-   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:       return 0x38;
-   case SYSTEM_VALUE_SUBGROUP_LT_MASK:       return 0x39;
-   case SYSTEM_VALUE_SUBGROUP_LE_MASK:       return 0x3a;
-   case SYSTEM_VALUE_SUBGROUP_GT_MASK:       return 0x3b;
-   case SYSTEM_VALUE_SUBGROUP_GE_MASK:       return 0x3c;
+   case SYSTEM_VALUE_SUBGROUP_INVOCATION:    return NAK_SV_LANE_ID;
+   case SYSTEM_VALUE_VERTICES_IN:            return NAK_SV_VERTEX_COUNT;
+   case SYSTEM_VALUE_INVOCATION_ID:          return NAK_SV_INVOCATION_ID;
+   case SYSTEM_VALUE_HELPER_INVOCATION:      return NAK_SV_THREAD_KILL;
+   case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX: return NAK_SV_COMBINED_TID;
+   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:    return NAK_SV_TID;
+   case SYSTEM_VALUE_WORKGROUP_ID:           return NAK_SV_CTAID;
+   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:       return NAK_SV_LANEMASK_EQ;
+   case SYSTEM_VALUE_SUBGROUP_LT_MASK:       return NAK_SV_LANEMASK_LT;
+   case SYSTEM_VALUE_SUBGROUP_LE_MASK:       return NAK_SV_LANEMASK_LE;
+   case SYSTEM_VALUE_SUBGROUP_GT_MASK:       return NAK_SV_LANEMASK_GT;
+   case SYSTEM_VALUE_SUBGROUP_GE_MASK:       return NAK_SV_LANEMASK_GE;
    default: unreachable("Invalid system value");
    }
 }
@@ -604,15 +604,13 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
    }
 
    case nir_intrinsic_is_helper_invocation: {
-      const uint32_t idx =
-         nak_sysval_sysval_idx(SYSTEM_VALUE_HELPER_INVOCATION);
       /* Unlike load_helper_invocation, this one isn't re-orderable */
-      val = nir_load_sysval_nv(b, 32, .base = idx);
+      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_THREAD_KILL);
       break;
    }
 
    case nir_intrinsic_shader_clock:
-      val = nir_load_sysval_nv(b, 64, .base = 0x50);
+      val = nir_load_sysval_nv(b, 64, .base = NAK_SV_CLOCK);
       val = nir_unpack_64_2x32(b, val);
       break;
 
