@@ -164,6 +164,7 @@ v3d-rpi4-traces:arm64:
   tags:
     - igalia-rpi4
 
+
 v3dv-rpi4-vk:arm64:
   extends:
     - .broadcom-test:arm64
@@ -180,3 +181,16 @@ v3dv-rpi4-vk:arm64:
     VK_DRIVER: broadcom
   tags:
     - igalia-rpi4
+
+v3dv-rpi4-vk-full:arm64:
+  extends:
+    - v3dv-rpi4-vk:arm64
+    - .v3dv-manual-rules
+  tags:
+    - igalia-rpi4
+    - igalia-fullrun
+  parallel: 6
+  timeout: 1h 30m
+  variables:
+    TEST_PHASE_TIMEOUT: 80
+    DEQP_FRACTION: 1
