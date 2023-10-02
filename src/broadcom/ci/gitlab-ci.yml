@@ -24,12 +24,21 @@
     - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - !reference [.broadcom-common-rules, rules]
-    - changes:
+    - changes: &vc4_file_list
         - src/gallium/drivers/vc4/**/*
         - src/gallium/winsys/vc4/**/*
         - src/gallium/auxiliary/renderonly/**/*
         - src/gallium/winsys/kmsro/**/*
       when: on_success
+
+.vc4-manual-rules:
+  stage: broadcom
+  rules:
+    - !reference [.igalia-farm-manual-rules, rules]
+    - !reference [.gl-manual-rules, rules]
+    - !reference [.broadcom-common-manual-rules, rules]
+    - changes: *vc4_file_list
+      when: manual
 
 .v3d-rules:
   stage: broadcom
