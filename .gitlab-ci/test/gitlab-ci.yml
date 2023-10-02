@@ -154,6 +154,7 @@ clang-format:
 
 .deqp-test:
   script:
+    - rm -rf results # Clear out old results if the docker container was cached
     - ./install/deqp-runner.sh
   artifacts:
     exclude:
