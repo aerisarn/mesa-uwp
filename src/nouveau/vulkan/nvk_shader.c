@@ -1267,6 +1267,14 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
       shader->vs.clip_enable = bin->info.clip_enable;
       shader->vs.cull_enable = bin->info.cull_enable;
 
+      if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+         shader->tp.domain_type = bin->info.ts.domain;
+         shader->tp.spacing = bin->info.ts.spacing;
+         shader->tp.output_prims = bin->info.ts.prims;
+      } else {
+         shader->tp.domain_type = ~0;
+      }
+
       bool has_xfb = false;
       for (unsigned b = 0; b < 4; b++) {
          if (bin->info.xfb.attr_count[b] > 0) {

@@ -309,6 +309,42 @@ pub extern "C" fn nak_compile_shader(
                     },
                 }
             }
+            ShaderStageInfo::Tessellation => {
+                let nir_ts_info = unsafe { &nir.info.__bindgen_anon_1.tess };
+                nak_shader_info__bindgen_ty_1 {
+                    ts: nak_shader_info__bindgen_ty_1__bindgen_ty_3 {
+                        domain: match nir_ts_info._primitive_mode {
+                            TESS_PRIMITIVE_TRIANGLES => NAK_TS_DOMAIN_TRIANGLE,
+                            TESS_PRIMITIVE_QUADS => NAK_TS_DOMAIN_QUAD,
+                            TESS_PRIMITIVE_ISOLINES => NAK_TS_DOMAIN_ISOLINE,
+                            _ => panic!("Invalid tess_primitive_mode"),
+                        },
+
+                        spacing: match nir_ts_info.spacing() {
+                            TESS_SPACING_EQUAL => NAK_TS_SPACING_INTEGER,
+                            TESS_SPACING_FRACTIONAL_ODD => {
+                                NAK_TS_SPACING_FRACT_ODD
+                            }
+                            TESS_SPACING_FRACTIONAL_EVEN => {
+                                NAK_TS_SPACING_FRACT_EVEN
+                            }
+                            _ => panic!("Invalid gl_tess_spacing"),
+                        },
+
+                        prims: if nir_ts_info.point_mode() {
+                            NAK_TS_PRIMS_POINTS
+                        } else if nir_ts_info._primitive_mode
+                            == TESS_PRIMITIVE_ISOLINES
+                        {
+                            NAK_TS_PRIMS_LINES
+                        } else if nir_ts_info.ccw() {
+                            NAK_TS_PRIMS_TRIANGLES_CCW
+                        } else {
+                            NAK_TS_PRIMS_TRIANGLES_CW
+                        },
+                    },
+                }
+            }
             _ => nak_shader_info__bindgen_ty_1 { dummy: 0 },
         },
         clip_enable: match &s.info.stage {

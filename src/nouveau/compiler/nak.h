@@ -44,6 +44,25 @@ struct nak_fs_key {
 void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak,
                          const struct nak_fs_key *fs_key);
 
+enum PACKED nak_ts_domain {
+   NAK_TS_DOMAIN_ISOLINE = 0,
+   NAK_TS_DOMAIN_TRIANGLE = 1,
+   NAK_TS_DOMAIN_QUAD = 2,
+};
+
+enum PACKED nak_ts_spacing {
+   NAK_TS_SPACING_INTEGER = 0,
+   NAK_TS_SPACING_FRACT_ODD = 1,
+   NAK_TS_SPACING_FRACT_EVEN = 2,
+};
+
+enum PACKED nak_ts_prims {
+   NAK_TS_PRIMS_POINTS = 0,
+   NAK_TS_PRIMS_LINES = 1,
+   NAK_TS_PRIMS_TRIANGLES_CW = 2,
+   NAK_TS_PRIMS_TRIANGLES_CCW = 3,
+};
+
 struct nvk_xfb_info {
    uint32_t stride[4];
    uint8_t stream[4];
@@ -79,6 +98,12 @@ struct nak_shader_info {
          bool uses_sample_shading;
          bool early_fragment_tests;
       } fs;
+
+      struct {
+         enum nak_ts_domain domain;
+         enum nak_ts_spacing spacing;
+         enum nak_ts_prims prims;
+      } ts;
 
       /* Used to initialize the union for other stages */
       uint32_t dummy;
