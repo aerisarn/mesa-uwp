@@ -198,7 +198,8 @@ lower_shuffle_to_swizzle(nir_builder *b, nir_intrinsic_instr *intrin)
       return NULL;
 
    return nir_masked_swizzle_amd(b, intrin->src[0].ssa,
-                                 .swizzle_mask = (mask << 10) | 0x1f);
+                                 .swizzle_mask = (mask << 10) | 0x1f,
+                                 .fetch_inactive = true);
 }
 
 /* Lowers "specialized" shuffles to a generic nir_intrinsic_shuffle. */

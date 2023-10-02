@@ -224,6 +224,9 @@ index("nir_alu_type", "dest_type")
 # The swizzle mask for quad_swizzle_amd & masked_swizzle_amd
 index("unsigned", "swizzle_mask")
 
+# Allow FI=1 for quad_swizzle_amd & masked_swizzle_amd
+index("bool", "fetch_inactive")
+
 # Offsets for load_shared2_amd/store_shared2_amd
 index("uint8_t", "offset0")
 index("uint8_t", "offset1")
@@ -509,9 +512,9 @@ intrinsic("exclusive_scan", src_comp=[0], dest_comp=0, bit_sizes=src0,
 
 # AMD shader ballot operations
 intrinsic("quad_swizzle_amd", src_comp=[0], dest_comp=0, bit_sizes=src0,
-          indices=[SWIZZLE_MASK], flags=[CAN_ELIMINATE])
+          indices=[SWIZZLE_MASK, FETCH_INACTIVE], flags=[CAN_ELIMINATE])
 intrinsic("masked_swizzle_amd", src_comp=[0], dest_comp=0, bit_sizes=src0,
-          indices=[SWIZZLE_MASK], flags=[CAN_ELIMINATE])
+          indices=[SWIZZLE_MASK, FETCH_INACTIVE], flags=[CAN_ELIMINATE])
 intrinsic("write_invocation_amd", src_comp=[0, 0, 1], dest_comp=0, bit_sizes=src0,
           flags=[CAN_ELIMINATE])
 # src = [ mask, addition ]
