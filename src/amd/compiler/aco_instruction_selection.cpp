@@ -242,7 +242,7 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
 }
 
 static Temp
-emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
+emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask, bool allow_fi)
 {
    if (ctx->options->gfx_level >= GFX8) {
       unsigned and_mask = mask & 0x1f;
@@ -278,7 +278,7 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
          uint32_t lane_sel = 0;
          for (unsigned i = 0; i < 8; i++)
             lane_sel |= ((i & and_mask) ^ xor_mask) << (i * 3);
-         return bld.vop1_dpp8(aco_opcode::v_mov_b32, bld.def(v1), src, lane_sel);
+         return bld.vop1_dpp8(aco_opcode::v_mov_b32, bld.def(v1), src, lane_sel, allow_fi);
       } else if (ctx->options->gfx_level >= GFX10 && (and_mask & 0x10) == 0x10) {
          uint64_t lane_mask = 0;
          for (unsigned i = 0; i < 16; i++)
@@ -288,12 +288,14 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
          Temp op1 = bld.copy(bld.def(s1), Operand::c32(lane_mask & 0xffffffff));
          Temp op2 = bld.copy(bld.def(s1), Operand::c32(lane_mask >> 32));
          Builder::Result ret = bld.vop3(opcode, bld.def(v1), src, op1, op2);
-         ret->valu().opsel = 0x3; /* set BOUND_CTRL/FETCH_INACTIVE */
+         ret->valu().opsel[0] = allow_fi; /* set FETCH_INACTIVE */
+         ret->valu().opsel[1] = true;     /* set BOUND_CTRL */
          return ret;
       }
 
       if (dpp_ctrl != 0xffff)
-         return bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
+         return bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl, 0xf, 0xf, true,
+                             allow_fi);
    }
 
    return bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, mask, 0, false);
@@ -8536,11 +8538,15 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       uint16_t dpp_ctrl = 0;
 
+      bool allow_fi = true;
       switch (instr->intrinsic) {
       case nir_intrinsic_quad_swap_horizontal: dpp_ctrl = dpp_quad_perm(1, 0, 3, 2); break;
       case nir_intrinsic_quad_swap_vertical: dpp_ctrl = dpp_quad_perm(2, 3, 0, 1); break;
       case nir_intrinsic_quad_swap_diagonal: dpp_ctrl = dpp_quad_perm(3, 2, 1, 0); break;
-      case nir_intrinsic_quad_swizzle_amd: dpp_ctrl = nir_intrinsic_swizzle_mask(instr); break;
+      case nir_intrinsic_quad_swizzle_amd:
+         dpp_ctrl = nir_intrinsic_swizzle_mask(instr);
+         allow_fi &= nir_intrinsic_fetch_inactive(instr);
+         break;
       case nir_intrinsic_quad_broadcast:
          lane = nir_src_as_const_value(instr->src[1])->u32;
          dpp_ctrl = dpp_quad_perm(lane, lane, lane, lane);
@@ -8577,7 +8583,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          Definition def = (excess_bytes || bool_use_valu) ? bld.def(v1) : Definition(dst);
 
          if (ctx->program->gfx_level >= GFX8)
-            bld.vop1_dpp(aco_opcode::v_mov_b32, def, src, dpp_ctrl);
+            bld.vop1_dpp(aco_opcode::v_mov_b32, def, src, dpp_ctrl, 0xf, 0xf, true, allow_fi);
          else
             bld.ds(aco_opcode::ds_swizzle_b32, def, src, (1 << 15) | dpp_ctrl);
 
@@ -8591,8 +8597,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
 
          if (ctx->program->gfx_level >= GFX8) {
-            lo = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), lo, dpp_ctrl);
-            hi = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), hi, dpp_ctrl);
+            lo = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), lo, dpp_ctrl, 0xf, 0xf, true,
+                              allow_fi);
+            hi = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), hi, dpp_ctrl, 0xf, 0xf, true,
+                              allow_fi);
          } else {
             lo = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), lo, (1 << 15) | dpp_ctrl);
             hi = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), hi, (1 << 15) | dpp_ctrl);
@@ -8616,6 +8624,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       }
       Temp dst = get_ssa_temp(ctx, &instr->def);
       uint32_t mask = nir_intrinsic_swizzle_mask(instr);
+      bool allow_fi = nir_intrinsic_fetch_inactive(instr);
 
       if (instr->def.bit_size != 1)
          src = as_vgpr(ctx, src);
@@ -8624,21 +8633,21 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          assert(src.regClass() == bld.lm);
          src = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand::zero(),
                             Operand::c32(-1), src);
-         src = emit_masked_swizzle(ctx, bld, src, mask);
+         src = emit_masked_swizzle(ctx, bld, src, mask, allow_fi);
          bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), src);
       } else if (dst.regClass() == v1b) {
-         Temp tmp = emit_masked_swizzle(ctx, bld, src, mask);
+         Temp tmp = emit_masked_swizzle(ctx, bld, src, mask, allow_fi);
          emit_extract_vector(ctx, tmp, 0, dst);
       } else if (dst.regClass() == v2b) {
-         Temp tmp = emit_masked_swizzle(ctx, bld, src, mask);
+         Temp tmp = emit_masked_swizzle(ctx, bld, src, mask, allow_fi);
          emit_extract_vector(ctx, tmp, 0, dst);
       } else if (dst.regClass() == v1) {
-         bld.copy(Definition(dst), emit_masked_swizzle(ctx, bld, src, mask));
+         bld.copy(Definition(dst), emit_masked_swizzle(ctx, bld, src, mask, allow_fi));
       } else if (dst.regClass() == v2) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-         lo = emit_masked_swizzle(ctx, bld, lo, mask);
-         hi = emit_masked_swizzle(ctx, bld, hi, mask);
+         lo = emit_masked_swizzle(ctx, bld, lo, mask, allow_fi);
+         hi = emit_masked_swizzle(ctx, bld, hi, mask, allow_fi);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
          emit_split_vector(ctx, dst, 2);
       } else {
