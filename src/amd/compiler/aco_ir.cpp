@@ -455,8 +455,7 @@ convert_to_DPP(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr, bool dpp8)
 
    if (dpp8) {
       DPP8_instruction* dpp = &instr->dpp8();
-      for (unsigned i = 0; i < 8; i++)
-         dpp->lane_sel[i] = i;
+      dpp->lane_sel = 0xfac688; /* [0,1,2,3,4,5,6,7] */
    } else {
       DPP16_instruction* dpp = &instr->dpp16();
       dpp->dpp_ctrl = dpp_quad_perm(0, 1, 2, 3);

@@ -4865,8 +4865,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          if (dpp8) {
             DPP8_instruction* dpp = &instr->dpp8();
-            for (unsigned j = 0; j < 8; ++j)
-               dpp->lane_sel[j] = info.instr->dpp8().lane_sel[j];
+            dpp->lane_sel = info.instr->dpp8().lane_sel;
             if (mov_uses_mods)
                instr->format = asVOP3(instr->format);
          } else {

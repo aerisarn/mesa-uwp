@@ -275,11 +275,10 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
       } else if (ctx->options->gfx_level >= GFX11 && and_mask == 0x1f && xor_mask < 0x10) {
          dpp_ctrl = dpp_row_xmask(xor_mask);
       } else if (ctx->options->gfx_level >= GFX10 && (and_mask & 0x18) == 0x18 && xor_mask < 8) {
-         Builder::Result ret = bld.vop1_dpp8(aco_opcode::v_mov_b32, bld.def(v1), src);
-         for (unsigned i = 0; i < 8; i++) {
-            ret->dpp8().lane_sel[i] = ((i & and_mask) ^ xor_mask);
-         }
-         return ret;
+         uint32_t lane_sel = 0;
+         for (unsigned i = 0; i < 8; i++)
+            lane_sel |= ((i & and_mask) ^ xor_mask) << (i * 3);
+         return bld.vop1_dpp8(aco_opcode::v_mov_b32, bld.def(v1), src, lane_sel);
       } else if (ctx->options->gfx_level >= GFX10 && (and_mask & 0x10) == 0x10) {
          uint64_t lane_mask = 0;
          for (unsigned i = 0; i < 16; i++)

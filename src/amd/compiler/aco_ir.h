@@ -1461,9 +1461,10 @@ struct DPP16_instruction : public VALU_instruction {
 static_assert(sizeof(DPP16_instruction) == sizeof(VALU_instruction) + 4, "Unexpected padding");
 
 struct DPP8_instruction : public VALU_instruction {
-   uint8_t lane_sel[8];
+   uint32_t lane_sel : 24;
+   uint32_t padding : 8;
 };
-static_assert(sizeof(DPP8_instruction) == sizeof(VALU_instruction) + 8, "Unexpected padding");
+static_assert(sizeof(DPP8_instruction) == sizeof(VALU_instruction) + 4, "Unexpected padding");
 
 struct SubdwordSel {
    enum sdwa_sel : uint8_t {

@@ -814,8 +814,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          emit_instruction(ctx, out, instr);
          uint32_t encoding = reg(ctx, dpp_op, 8);
          encoding |= dpp.opsel[0] && !instr->isVOP3() ? 128 : 0;
-         for (unsigned i = 0; i < 8; ++i)
-            encoding |= dpp.lane_sel[i] << (8 + i * 3);
+         encoding |= dpp.lane_sel << 8;
          out.push_back(encoding);
          return;
       } else if (instr->isVOP3()) {

@@ -2831,12 +2831,12 @@ lower_to_hw_instr(Program* program)
                   Operand src0 = instr->operands[i];
                   Operand src1 = instr->operands[i + 4];
 
+                  uint32_t lane_sel_xor1 = 0;
+                  for (unsigned j = 0; j < 8; j++)
+                     lane_sel_xor1 |= (j ^ 1) << (j * 3);
+
                   /* Swap odd, even lanes of mrt0. */
-                  Builder::Result ret =
-                     bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1), src0);
-                  for (unsigned j = 0; j < 8; j++) {
-                     ret->dpp8().lane_sel[j] = j ^ 1;
-                  }
+                  bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1), src0, lane_sel_xor1);
 
                   /* Swap even lanes between mrt0 and mrt1. */
                   bld.vop2(aco_opcode::v_cndmask_b32, tmp, Operand(dst0, v1), src1,
@@ -2845,11 +2845,8 @@ lower_to_hw_instr(Program* program)
                            Operand(clobber_vcc.physReg(), bld.lm));
 
                   /* Swap odd, even lanes of mrt0 again. */
-                  ret = bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1),
-                                      Operand(tmp.physReg(), v1));
-                  for (unsigned j = 0; j < 8; j++) {
-                     ret->dpp8().lane_sel[j] = j ^ 1;
-                  }
+                  bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1),
+                                Operand(tmp.physReg(), v1), lane_sel_xor1);
 
                   mrt0[i] = Operand(dst0, v1);
                   mrt1[i] = Operand(dst1, v1);

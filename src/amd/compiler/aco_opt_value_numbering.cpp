@@ -186,8 +186,7 @@ struct InstrPred {
       if (a->isDPP8()) {
          DPP8_instruction& aDPP = a->dpp8();
          DPP8_instruction& bDPP = b->dpp8();
-         return aDPP.pass_flags == bDPP.pass_flags &&
-                !memcmp(aDPP.lane_sel, bDPP.lane_sel, sizeof(aDPP.lane_sel));
+         return aDPP.pass_flags == bDPP.pass_flags && aDPP.lane_sel == bDPP.lane_sel;
       }
       if (a->isSDWA()) {
          SDWA_instruction& aSDWA = a->sdwa();

@@ -547,7 +547,7 @@ try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       if (dpp8) {
          DPP8_instruction* dpp = &instr->dpp8();
-         memcpy(dpp->lane_sel, mov->dpp8().lane_sel, sizeof(dpp->lane_sel));
+         dpp->lane_sel = mov->dpp8().lane_sel;
          if (mov_uses_mods)
             instr->format = asVOP3(instr->format);
       } else {

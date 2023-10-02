@@ -161,6 +161,8 @@ class Format(Enum):
                  ('uint8_t', 'row_mask', '0xF'),
                  ('uint8_t', 'bank_mask', '0xF'),
                  ('bool', 'bound_ctrl', 'true')]
+      elif self == Format.DPP8:
+         return [('uint32_t', 'lane_sel', 0)]
       elif self == Format.VOP3P:
          return [('uint8_t', 'opsel_lo', None),
                  ('uint8_t', 'opsel_hi', None)]
