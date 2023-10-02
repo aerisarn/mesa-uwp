@@ -2860,7 +2860,13 @@ brw_send_indirect_split_message(struct brw_codegen *p,
    }
 
    if (ex_bso) {
-      brw_inst_set_send_ex_bso(devinfo, send, true);
+      /* The send instruction ExBSO field does not exist with UGM on Gfx20+,
+       * it is assumed.
+       *
+       * BSpec 56890
+       */
+      if (devinfo->ver < 20 || sfid != GFX12_SFID_UGM)
+         brw_inst_set_send_ex_bso(devinfo, send, true);
       brw_inst_set_send_src1_len(devinfo, send, GET_BITS(ex_desc_imm, 10, 6));
    }
    brw_inst_set_sfid(devinfo, send, sfid);
