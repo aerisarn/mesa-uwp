@@ -8,10 +8,12 @@ dEQP-GLES2.functional.fbo.render.color.blend_npot_tex2d_rgba_depth_component16
 dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgb565_depth_component16
 dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgba4
 dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgba4_depth_component16
+dEQP-GLES2.functional.fbo.render.color.blend_tex2d_rgb_depth_component16
 dEQP-GLES2.functional.fbo.render.color.blend_tex2d_rgba_depth_component16
 dEQP-GLES2.functional.fbo.render.color.mix_npot_tex2d_rgba_depth_component16
 dEQP-GLES2.functional.fbo.render.depth.npot_rbo_rgb565_depth_component16
 dEQP-GLES2.functional.fbo.render.depth.npot_tex2d_rgba_depth_component16
+dEQP-GLES2.functional.fbo.render.depth.rbo_rgba4_depth_component16
 dEQP-GLES2.functional.fbo.render.texsubimage.after_render_tex2d_rgb
 dEQP-GLES2.functional.shaders.random.all_features.fragment.*
 dEQP-GLES2.functional.shaders.random.texture.fragment.*
@@ -84,6 +86,7 @@ spec@oes_compressed_etc1_rgb8_texture@miptree
 spec@oes_point_sprite@arb_point_sprite-checkerboard_gles1
 
 spec@!opengl 1.0@gl-1.0-readpixsanity
+spec@!opengl 1.1@draw-pixel-with-texture
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_quads
 spec@!opengl 1.1@copytexsubimage
 spec@!opengl 1.1@depthstencil-default_fb-copypixels
@@ -176,6 +179,7 @@ spec@ext_direct_state_access@multi-texture@CopyMultiTexImage1DEXT
 spec@ext_direct_state_access@multi-texture@CopyMultiTexImage2DEXT
 spec@ext_direct_state_access@textures
 spec@ext_direct_state_access@textures@CopyTextureImage2DEXT
+spec@ext_texture_array@copyteximage 2d_array
 spec@ext_texture_array@glsl-fs-shadow1darray
 spec@ext_texture_array@render-2darray
 spec@glsl-1.10@execution@loops@glsl-fs-loop-break
