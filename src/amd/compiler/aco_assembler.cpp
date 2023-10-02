@@ -795,8 +795,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding |= dpp.neg[1] << 22;
          encoding |= dpp.abs[0] << 21;
          encoding |= dpp.neg[0] << 20;
-         if (ctx.gfx_level >= GFX10)
-            encoding |= 1 << 18; /* set Fetch Inactive */
+         encoding |= dpp.fetch_inactive << 18;
          encoding |= dpp.bound_ctrl << 19;
          encoding |= dpp.dpp_ctrl << 8;
          encoding |= reg(ctx, dpp_op, 8);
@@ -809,7 +808,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
 
          /* first emit the instruction without the DPP operand */
          Operand dpp_op = instr->operands[0];
-         instr->operands[0] = Operand(PhysReg{234}, v1);
+         instr->operands[0] = Operand(PhysReg{233u + dpp.fetch_inactive}, v1);
          instr->format = (Format)((uint16_t)instr->format & ~(uint16_t)Format::DPP8);
          emit_instruction(ctx, out, instr);
          uint32_t encoding = reg(ctx, dpp_op, 8);

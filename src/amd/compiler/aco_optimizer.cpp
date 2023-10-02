@@ -4866,12 +4866,14 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (dpp8) {
             DPP8_instruction* dpp = &instr->dpp8();
             dpp->lane_sel = info.instr->dpp8().lane_sel;
+            dpp->fetch_inactive = info.instr->dpp8().fetch_inactive;
             if (mov_uses_mods)
                instr->format = asVOP3(instr->format);
          } else {
             DPP16_instruction* dpp = &instr->dpp16();
             dpp->dpp_ctrl = info.instr->dpp16().dpp_ctrl;
             dpp->bound_ctrl = info.instr->dpp16().bound_ctrl;
+            dpp->fetch_inactive = info.instr->dpp16().fetch_inactive;
          }
 
          instr->valu().neg[0] ^= info.instr->valu().neg[0] && !instr->valu().abs[0];

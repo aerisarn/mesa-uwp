@@ -1456,13 +1456,15 @@ struct DPP16_instruction : public VALU_instruction {
    uint8_t row_mask : 4;
    uint8_t bank_mask : 4;
    bool bound_ctrl : 1;
-   uint8_t padding3 : 7;
+   uint8_t fetch_inactive : 1;
+   uint8_t padding3 : 6;
 };
 static_assert(sizeof(DPP16_instruction) == sizeof(VALU_instruction) + 4, "Unexpected padding");
 
 struct DPP8_instruction : public VALU_instruction {
    uint32_t lane_sel : 24;
-   uint32_t padding : 8;
+   uint32_t fetch_inactive : 1;
+   uint32_t padding : 7;
 };
 static_assert(sizeof(DPP8_instruction) == sizeof(VALU_instruction) + 4, "Unexpected padding");
 
