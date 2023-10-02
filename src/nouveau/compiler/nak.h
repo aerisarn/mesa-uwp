@@ -84,6 +84,9 @@ struct nak_shader_info {
       uint32_t dummy;
    };
 
+   uint8_t clip_enable;
+   uint8_t cull_enable;
+
    struct nvk_xfb_info xfb;
 
    /** Shader header for 3D stages */
