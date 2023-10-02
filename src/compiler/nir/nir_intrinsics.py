@@ -491,10 +491,10 @@ intrinsic("shuffle_up", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN
 intrinsic("shuffle_down", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
 
 # Quad operations from SPIR-V.
-intrinsic("quad_broadcast", src_comp=[0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("quad_swap_horizontal", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("quad_swap_vertical", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("quad_swap_diagonal", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINATE])
+intrinsic("quad_broadcast", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
+intrinsic("quad_swap_horizontal", src_comp=[0], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
+intrinsic("quad_swap_vertical", src_comp=[0], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
+intrinsic("quad_swap_diagonal", src_comp=[0], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
 
 # Rotate operation from SPIR-V: SpvOpGroupNonUniformRotateKHR.
 intrinsic("rotate", src_comp=[0, 1], dest_comp=0, bit_sizes=src0,
