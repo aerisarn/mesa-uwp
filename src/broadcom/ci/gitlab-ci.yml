@@ -1,15 +1,15 @@
 .broadcom-common-rules:
   rules:
     - changes: &broadcom_file_list
-      - src/broadcom/meson.build
-      - src/broadcom/ci/**/*
-      - src/broadcom/cle/**/*
-      - src/broadcom/clif/**/*
-      - src/broadcom/common/**/*
-      - src/broadcom/compiler/**/*
-      - src/broadcom/drm-shim/**/*
-      - src/broadcom/qpu/**/*
-      - src/broadcom/simulator/**/*
+        - src/broadcom/meson.build
+        - src/broadcom/ci/**/*
+        - src/broadcom/cle/**/*
+        - src/broadcom/clif/**/*
+        - src/broadcom/common/**/*
+        - src/broadcom/compiler/**/*
+        - src/broadcom/drm-shim/**/*
+        - src/broadcom/qpu/**/*
+        - src/broadcom/simulator/**/*
       when: on_success
 
 .vc4-rules:
@@ -20,10 +20,10 @@
     - !reference [.gl-rules, rules]
     - !reference [.broadcom-common-rules, rules]
     - changes:
-      - src/gallium/drivers/vc4/**/*
-      - src/gallium/winsys/vc4/**/*
-      - src/gallium/auxiliary/renderonly/**/*
-      - src/gallium/winsys/kmsro/**/*
+        - src/gallium/drivers/vc4/**/*
+        - src/gallium/winsys/vc4/**/*
+        - src/gallium/auxiliary/renderonly/**/*
+        - src/gallium/winsys/kmsro/**/*
       when: on_success
 
 .v3d-rules:
@@ -34,10 +34,10 @@
     - !reference [.gl-rules, rules]
     - !reference [.broadcom-common-rules, rules]
     - changes: &v3d_file_list
-      - src/gallium/drivers/v3d/**/*
-      - src/gallium/winsys/v3d/**/*
-      - src/gallium/auxiliary/renderonly/**/*
-      - src/gallium/winsys/kmsro/**/*
+        - src/gallium/drivers/v3d/**/*
+        - src/gallium/winsys/v3d/**/*
+        - src/gallium/auxiliary/renderonly/**/*
+        - src/gallium/winsys/kmsro/**/*
       when: on_success
 
 .v3d-manual-rules:
@@ -61,7 +61,7 @@
     - !reference [.igalia-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
-      - src/broadcom/**/*
+        - src/broadcom/**/*
       when: on_success
 
 
