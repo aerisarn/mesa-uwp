@@ -20,3 +20,6 @@ spec@glsl-1.20@execution@tex-miplevel-.*
 # GPU hangs that maybe destabilize other tests.
 tex-miplevel-selection.*ProjGradARB
 variable-indexing@vs-varying
+
+# times out in the ASan run
+dEQP-GLES2.functional.dither.enabled.gradient_green
