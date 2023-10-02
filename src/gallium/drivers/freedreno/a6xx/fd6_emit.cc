@@ -976,6 +976,9 @@ fd6_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
    struct fd_bo *dst_bo = fd_resource(dst)->bo;
    unsigned i;
 
+   fd_ringbuffer_attach_bo(ring, dst_bo);
+   fd_ringbuffer_attach_bo(ring, src_bo);
+
    for (i = 0; i < sizedwords; i++) {
       OUT_PKT7(ring, CP_MEM_TO_MEM, 5);
       OUT_RING(ring, 0x00000000);
@@ -985,8 +988,6 @@ fd6_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
       dst_off += 4;
       src_off += 4;
    }
-   fd_ringbuffer_attach_bo(ring, dst_bo);
-   fd_ringbuffer_attach_bo(ring, src_bo);
 }
 
 void
