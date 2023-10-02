@@ -120,6 +120,7 @@ vc4-rpi3-gl:arm32:
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
 
+
 v3d-rpi4-gl:arm64:
   extends:
     - .broadcom-test:arm64
@@ -133,6 +134,20 @@ v3d-rpi4-gl:arm64:
     HWCI_START_WESTON: 1
     DEQP_SUITE: broadcom-rpi4
     DEQP_FRACTION: 2
+
+v3d-rpi4-gl-full:arm64:
+  extends:
+    - v3d-rpi4-gl:arm64
+    - .v3d-manual-rules
+  tags:
+    - igalia-rpi4
+    - igalia-fullrun
+  parallel: 6
+  timeout: 45m
+  variables:
+    TEST_PHASE_TIMEOUT: 40
+    DEQP_FRACTION: 1
+
 
 v3d-rpi4-traces:arm64:
   extends:
