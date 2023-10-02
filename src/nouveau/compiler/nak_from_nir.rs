@@ -1774,7 +1774,9 @@ impl<'a> ShaderFromNir<'a> {
                     SCOPE_NONE => (),
                     SCOPE_WORKGROUP => {
                         b.push_op(OpWarpSync { mask: u32::MAX });
-                        b.push_op(OpBar {}).deps.yld = true;
+                        if self.nir.info.stage() == MESA_SHADER_COMPUTE {
+                            b.push_op(OpBar {}).deps.yld = true;
+                        }
                     }
                     _ => panic!("Unhandled execution scope"),
                 }
