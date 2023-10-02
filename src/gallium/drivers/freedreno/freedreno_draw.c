@@ -221,6 +221,9 @@ needs_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
    if (indirect) {
       if (indirect->buffer && !batch_references_resource(batch, indirect->buffer))
          return true;
+      if (indirect->indirect_draw_count &&
+          !batch_references_resource(batch, indirect->indirect_draw_count))
+         return true;
       if (indirect->count_from_stream_output)
          return true;
    }
@@ -252,8 +255,8 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 
    /* Mark indirect draw buffer as being read */
    if (indirect) {
-      if (indirect->buffer)
-         resource_read(batch, indirect->buffer);
+      resource_read(batch, indirect->buffer);
+      resource_read(batch, indirect->indirect_draw_count);
       if (indirect->count_from_stream_output)
          resource_read(
             batch, fd_stream_output_target(indirect->count_from_stream_output)
