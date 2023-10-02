@@ -1319,47 +1319,59 @@ pvr_setup_emit_state(const struct pvr_device_info *dev_info,
       return;
    }
 
+   static_assert(USC_MRT_RESOURCE_TYPE_OUTPUT_REG + 1 ==
+                    USC_MRT_RESOURCE_TYPE_MEMORY,
+                 "The loop below needs adjusting.");
+
    emit_state->emit_count = 0;
-   for (uint32_t i = 0; i < hw_render->eot_surface_count; i++) {
-      const struct pvr_framebuffer *framebuffer = render_pass_info->framebuffer;
-      const struct pvr_renderpass_hwsetup_eot_surface *surface =
-         &hw_render->eot_surfaces[i];
-      const struct pvr_image_view *iview =
-         render_pass_info->attachments[surface->attachment_idx];
-      const struct usc_mrt_resource *mrt_resource =
-         &hw_render->eot_setup.mrt_resources[surface->mrt_idx];
-      uint32_t samples = 1;
+   for (uint32_t resource_type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
+        resource_type <= USC_MRT_RESOURCE_TYPE_MEMORY;
+        resource_type++) {
+      for (uint32_t i = 0; i < hw_render->eot_surface_count; i++) {
+         const struct pvr_framebuffer *framebuffer =
+            render_pass_info->framebuffer;
+         const struct pvr_renderpass_hwsetup_eot_surface *surface =
+            &hw_render->eot_surfaces[i];
+         const struct pvr_image_view *iview =
+            render_pass_info->attachments[surface->attachment_idx];
+         const struct usc_mrt_resource *mrt_resource =
+            &hw_render->eot_setup.mrt_resources[surface->mrt_idx];
+         uint32_t samples = 1;
 
-      if (surface->need_resolve) {
-         const struct pvr_image_view *resolve_src =
-            render_pass_info->attachments[surface->src_attachment_idx];
-
-         /* Attachments that are the destination of resolve operations must
-          * be loaded before their next use.
-          */
-         render_pass_info->enable_bg_tag = true;
-         render_pass_info->process_empty_tiles = true;
-
-         if (surface->resolve_type != PVR_RESOLVE_TYPE_PBE)
+         if (mrt_resource->type != resource_type)
             continue;
 
-         samples = (uint32_t)resolve_src->vk.image->samples;
+         if (surface->need_resolve) {
+            const struct pvr_image_view *resolve_src =
+               render_pass_info->attachments[surface->src_attachment_idx];
+
+            /* Attachments that are the destination of resolve operations must
+             * be loaded before their next use.
+             */
+            render_pass_info->enable_bg_tag = true;
+            render_pass_info->process_empty_tiles = true;
+
+            if (surface->resolve_type != PVR_RESOLVE_TYPE_PBE)
+               continue;
+
+            samples = (uint32_t)resolve_src->vk.image->samples;
+         }
+
+         assert(emit_state->emit_count < ARRAY_SIZE(emit_state->pbe_cs_words));
+         assert(emit_state->emit_count < ARRAY_SIZE(emit_state->pbe_reg_words));
+
+         pvr_setup_pbe_state(dev_info,
+                             framebuffer,
+                             emit_state->emit_count,
+                             mrt_resource,
+                             iview,
+                             &render_pass_info->render_area,
+                             surface->need_resolve,
+                             samples,
+                             emit_state->pbe_cs_words[emit_state->emit_count],
+                             emit_state->pbe_reg_words[emit_state->emit_count]);
+         emit_state->emit_count += 1;
       }
-
-      assert(emit_state->emit_count < ARRAY_SIZE(emit_state->pbe_cs_words));
-      assert(emit_state->emit_count < ARRAY_SIZE(emit_state->pbe_reg_words));
-
-      pvr_setup_pbe_state(dev_info,
-                          framebuffer,
-                          emit_state->emit_count,
-                          mrt_resource,
-                          iview,
-                          &render_pass_info->render_area,
-                          surface->need_resolve,
-                          samples,
-                          emit_state->pbe_cs_words[emit_state->emit_count],
-                          emit_state->pbe_reg_words[emit_state->emit_count]);
-      emit_state->emit_count += 1;
    }
 
    assert(emit_state->emit_count == hw_render->pbe_emits);
