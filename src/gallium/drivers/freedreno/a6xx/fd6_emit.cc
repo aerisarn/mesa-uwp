@@ -952,15 +952,12 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
    struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
    struct fd_bo *bcolor_mem = fd6_ctx->bcolor_mem;
+
    OUT_PKT4(ring, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR, 2);
    OUT_RELOC(ring, bcolor_mem, 0, 0, 0);
 
    OUT_PKT4(ring, REG_A6XX_SP_PS_TP_BORDER_COLOR_BASE_ADDR, 2);
    OUT_RELOC(ring, bcolor_mem, 0, 0, 0);
-
-   fd_ringbuffer_attach_bo(ring, bcolor_mem);
-
-   fd_ringbuffer_attach_bo(ring, fd6_ctx->control_mem);
 
    if (!batch->nondraw) {
       trace_end_state_restore(&batch->trace, ring);

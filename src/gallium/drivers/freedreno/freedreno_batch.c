@@ -119,6 +119,10 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
       }
    }
 
+   /* Pre-attach private BOs: */
+   for (unsigned i = 0; i < ctx->num_private_bos; i++)
+      fd_ringbuffer_attach_bo(batch->gmem, ctx->private_bos[i]);
+
    batch->subpass = subpass_create(batch);
 
    batch->in_fence_fd = -1;
