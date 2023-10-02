@@ -1623,6 +1623,48 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 self.set_dst(&intrin.def, dst);
             }
+            nir_intrinsic_load_tess_coord_xy => {
+                // Loading gl_TessCoord in tessellation evaluation shaders is
+                // weird.  It's treated as a per-vertex output which is indexed
+                // by LANEID.
+                match &self.info.stage {
+                    ShaderStageInfo::Tessellation => (),
+                    _ => panic!(
+                        "load_tess_coord is only available in tessellation \
+                         shaders"
+                    ),
+                };
+
+                assert!(intrin.def.bit_size() == 32);
+                assert!(intrin.def.num_components() == 2);
+
+                let vtx = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpS2R {
+                    dst: vtx.into(),
+                    idx: 0,
+                });
+
+                let access = AttrAccess {
+                    addr: NAK_ATTR_TESS_COORD,
+                    comps: 2,
+                    patch: false,
+                    output: true,
+                    flags: 0,
+                };
+
+                // This is recorded as a patch output in parse_shader() because
+                // the hardware requires it be in the SPH, whether we use it or
+                // not.
+
+                let dst = b.alloc_ssa(RegFile::GPR, access.comps);
+                b.push_op(OpALd {
+                    dst: dst.into(),
+                    vtx: vtx.into(),
+                    offset: 0.into(),
+                    access: access,
+                });
+                self.set_dst(&intrin.def, dst);
+            }
             nir_intrinsic_load_scratch => {
                 let size_B =
                     (intrin.def.bit_size() / 8) * intrin.def.num_components();
@@ -2178,6 +2220,20 @@ impl<'a> ShaderFromNir<'a> {
                 functions.push(f);
             }
         }
+
+        // Tessellation evaluation shaders MUST claim to read gl_TessCoord or
+        // the hardware will throw an SPH error.
+        match &self.info.stage {
+            ShaderStageInfo::Tessellation => match &mut self.info.io {
+                ShaderIoInfo::Vtg(io) => {
+                    let tc = NAK_ATTR_TESS_COORD;
+                    io.mark_attrs_written(tc..(tc + 8));
+                }
+                _ => panic!("Tessellation must have ShaderIoInfo::Vtg"),
+            }
+            _ => ()
+        }
+
         Shader {
             info: self.info,
             functions: functions,

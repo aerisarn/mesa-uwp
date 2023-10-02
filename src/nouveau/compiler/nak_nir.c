@@ -612,7 +612,6 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
    }
 
    case nir_intrinsic_load_front_face:
-   case nir_intrinsic_load_tess_coord:
    case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_vertex_id: {
       const gl_system_value sysval =
@@ -789,6 +788,11 @@ nak_postprocess_nir(nir_shader *nir,
 
    default:
       unreachable("Unsupported shader stage");
+   }
+
+   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      OPT(nir, nir_lower_tess_coord_z,
+          nir->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES);
    }
 
    OPT(nir, nak_nir_lower_system_values);
