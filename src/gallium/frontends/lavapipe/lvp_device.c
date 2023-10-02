@@ -186,6 +186,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_multisampled_render_to_single_sampled = true,
    .EXT_multi_draw                        = true,
    .EXT_mutable_descriptor_type           = true,
+   .EXT_nested_command_buffer             = true,
    .EXT_non_seamless_cube_map             = true,
 #if DETECT_OS_LINUX
    .EXT_pageable_device_local_memory      = true,
@@ -577,6 +578,11 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
 
       /* VK_EXT_pageable_device_local_memory */
       .pageableDeviceLocalMemory = true,
+
+      /* VK_EXT_nested_command_buffer */
+      .nestedCommandBuffer = true,
+      .nestedCommandBufferRendering = true,
+      .nestedCommandBufferSimultaneousUse = true,
 
       /* VK_EXT_mesh_shader */
       .taskShader = true,
@@ -1041,6 +1047,9 @@ lvp_get_properties(const struct lvp_physical_device *device, struct vk_propertie
             " (LLVM " MESA_LLVM_VERSION_STRING ")"
 #endif
            );
+
+   /* VK_EXT_nested_command_buffer */
+   p->maxCommandBufferNestingLevel = UINT32_MAX;
 
    /* VK_EXT_host_image_copy */
    lvp_device_get_cache_uuid(p->optimalTilingLayoutUUID);

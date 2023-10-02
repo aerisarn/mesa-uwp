@@ -584,6 +584,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_mesh_shader                                    DONE (anv/gfx12.5+, lvp, radv)
   VK_EXT_multi_draw                                     DONE (anv, hasvk, lvp, radv, tu, vn)
   VK_EXT_multisampled_render_to_single_sampled          DONE (lvp)
+  VK_EXT_nested_command_buffer                          DONE (lvp)
   VK_EXT_non_seamless_cube_map                          DONE (anv, hasvk, lvp, nvk, radv, tu, vn)
   VK_EXT_pageable_device_local_memory                   DONE (lvp)
   VK_EXT_pci_bus_info                                   DONE (anv, hasvk, nvk, radv, vn)
