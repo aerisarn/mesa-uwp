@@ -147,6 +147,13 @@ struct tu_instance
     * suffer a performance loss with conservative LRZ.
     */
    bool conservative_lrz;
+
+   /* If to internally reserve a descriptor set for descriptor set
+    * dynamic offsets, a descriptor set can be freed at the cost of
+    * being unable to use the feature. As it is a part of the Vulkan
+    * core, this is enabled by default.
+    */
+   bool reserve_descriptor_set;
 };
 VK_DEFINE_HANDLE_CASTS(tu_instance, vk.base, VkInstance,
                        VK_OBJECT_TYPE_INSTANCE)

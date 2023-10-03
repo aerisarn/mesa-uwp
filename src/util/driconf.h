@@ -575,6 +575,14 @@
                   "Disable conservative LRZ")
 
 /**
+ * \brief Turnip specific configuration options
+ */
+
+#define DRI_CONF_TU_DONT_RESERVE_DESCRIPTOR_SET(def) \
+   DRI_CONF_OPT_B(tu_dont_reserve_descriptor_set, def, \
+                  "Don't internally reserve one of the HW descriptor sets for descriptor set dynamic offset support, this frees up an extra descriptor set at the cost of that feature")
+
+/**
  * \brief venus specific configuration options
  */
 #define DRI_CONF_VENUS_IMPLICIT_FENCING(def) \
