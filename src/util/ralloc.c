@@ -1032,14 +1032,28 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
       if (unlikely(!ptr))
          return NULL;
 
-      ctx->offset = 0;
-      ctx->size = node_size;
-      ctx->latest = ptr + canary_size;
 #ifndef NDEBUG
-      linear_node_canary *canary = get_node_canary(ctx->latest);
+      linear_node_canary *canary = (void *) ptr;
       canary->magic = LMAGIC_NODE;
       canary->offset = 0;
 #endif
+
+      /* If the new buffer is going to be full, don't update `latest`
+       * pointer.  Either the current one is also full, so doesn't
+       * matter, or the current one is not full, so there's still chance
+       * to use that space.
+       */
+      if (unlikely(size == node_size)) {
+#ifndef NDEBUG
+         canary->offset = size;
+#endif
+         assert((uintptr_t)(ptr + canary_size) % SUBALLOC_ALIGNMENT == 0);
+         return ptr + canary_size;
+      }
+
+      ctx->offset = 0;
+      ctx->size = node_size;
+      ctx->latest = ptr + canary_size;
    }
 
    void *ptr = (char *)ctx->latest + ctx->offset;

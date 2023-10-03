@@ -53,3 +53,20 @@ TEST(LinearAlloc, RewriteTail)
 
    ralloc_free(ctx);
 }
+
+TEST(LinearAlloc, AvoidWasteAfterLargeAlloc)
+{
+   void *ctx = ralloc_context(NULL);
+   linear_ctx *lin_ctx = linear_context(ctx);
+
+   char *first = (char *) linear_alloc_child(lin_ctx, 32);
+
+   /* Large allocation that would force a larger buffer. */
+   linear_alloc_child(lin_ctx, 1024 * 16);
+
+   char *second = (char *) linear_alloc_child(lin_ctx, 32);
+
+   EXPECT_EQ(second - first, 32);
+
+   ralloc_free(ctx);
+}
