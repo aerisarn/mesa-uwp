@@ -222,6 +222,11 @@ i915_optimize_nir(struct nir_shader *s)
 
    NIR_PASS(progress, s, nir_remove_dead_variables, nir_var_function_temp,
             NULL);
+
+   /* Group texture loads together to try to avoid hitting the
+    * texture indirection phase limit.
+    */
+   NIR_PASS_V(s, nir_group_loads, nir_group_all, ~0);
 }
 
 static char *
