@@ -2327,6 +2327,11 @@ export_vertex_params_gfx11(nir_builder *b, nir_def *export_tid, nir_def *num_exp
    nir_pop_if(b, NULL);
 }
 
+static bool must_wait_attr_ring(enum amd_gfx_level gfx_level, bool has_param_exports)
+{
+   return gfx_level == GFX11 && has_param_exports;
+}
+
 static void
 export_pos0_wait_attr_ring(nir_builder *b, nir_if *if_es_thread, nir_def *outputs[VARYING_SLOT_MAX][4], const ac_nir_lower_ngg_options *options)
 {
@@ -2601,7 +2606,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
    if (options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
 
-   const bool wait_attr_ring = options->gfx_level == GFX11 && options->has_param_exports;
+   const bool wait_attr_ring = must_wait_attr_ring(options->gfx_level, options->has_param_exports);
    if (wait_attr_ring)
       export_outputs &= ~VARYING_BIT_POS;
 
@@ -3112,7 +3117,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_def *max_num_out_vtx, nir_def *tid_in
    if (s->options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
 
-   const bool wait_attr_ring = s->options->gfx_level == GFX11 && s->options->has_param_exports;
+   const bool wait_attr_ring = must_wait_attr_ring(s->options->gfx_level, s->options->has_param_exports);
    if (wait_attr_ring)
       export_outputs &= ~VARYING_BIT_POS;
 
@@ -4511,7 +4516,7 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
       (per_vertex_outputs & MS_VERT_ARG_EXP_MASK) ||
       (per_primitive_outputs & MS_PRIM_ARG_EXP_MASK);
 
-   const bool wait_attr_ring = s->gfx_level == GFX11 && has_special_param_exports;
+   const bool wait_attr_ring = must_wait_attr_ring(s->gfx_level, has_special_param_exports);
 
    /* Export vertices. */
    if ((per_vertex_outputs & ~VARYING_BIT_POS) || !wait_attr_ring) {
