@@ -458,6 +458,7 @@ debian-arm64:
       -D valgrind=disabled
       -D imagination-srv=true
       -D perfetto=true
+      -D freedreno-kmds=msm,virtio
     S3_ARTIFACT_NAME: mesa-arm64-default-${BUILDTYPE}
   script:
     - .gitlab-ci/meson/build.sh
