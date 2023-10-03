@@ -269,7 +269,9 @@
    radeon_set_reg_seq(reg, num, 0, CIK_UCONFIG, PKT3_SET_UCONFIG_REG, 0)
 
 #define radeon_set_uconfig_perfctr_reg_seq(reg, num) \
-   radeon_set_reg_seq(reg, num, 0, CIK_UCONFIG, PKT3_SET_UCONFIG_REG, sctx->gfx_level >= GFX10)
+   radeon_set_reg_seq(reg, num, 0, CIK_UCONFIG, PKT3_SET_UCONFIG_REG, \
+                      sctx->gfx_level >= GFX10 && \
+                      sctx->ws->cs_get_ip_type(__cs) == AMD_IP_GFX)
 
 #define radeon_set_uconfig_reg(reg, value) \
    radeon_set_reg(reg, 0, value, CIK_UCONFIG, PKT3_SET_UCONFIG_REG)
