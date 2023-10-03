@@ -1212,7 +1212,7 @@ wait_imm::wait_imm(uint16_t vm_, uint16_t exp_, uint16_t lgkm_, uint16_t vs_)
 
 wait_imm::wait_imm(enum amd_gfx_level gfx_level, uint16_t packed) : vs(unset_counter)
 {
-   if (gfx_level == GFX11) {
+   if (gfx_level >= GFX11) {
       vm = (packed >> 10) & 0x3f;
       lgkm = (packed >> 4) & 0x3f;
       exp = packed & 0x7;
@@ -1241,28 +1241,22 @@ wait_imm::pack(enum amd_gfx_level gfx_level) const
 {
    uint16_t imm = 0;
    assert(exp == unset_counter || exp <= 0x7);
-   switch (gfx_level) {
-   case GFX11:
+   if (gfx_level >= GFX11) {
       assert(lgkm == unset_counter || lgkm <= 0x3f);
       assert(vm == unset_counter || vm <= 0x3f);
       imm = ((vm & 0x3f) << 10) | ((lgkm & 0x3f) << 4) | (exp & 0x7);
-      break;
-   case GFX10:
-   case GFX10_3:
+   } else if (gfx_level >= GFX10) {
       assert(lgkm == unset_counter || lgkm <= 0x3f);
       assert(vm == unset_counter || vm <= 0x3f);
       imm = ((vm & 0x30) << 10) | ((lgkm & 0x3f) << 8) | ((exp & 0x7) << 4) | (vm & 0xf);
-      break;
-   case GFX9:
+   } else if (gfx_level >= GFX9) {
       assert(lgkm == unset_counter || lgkm <= 0xf);
       assert(vm == unset_counter || vm <= 0x3f);
       imm = ((vm & 0x30) << 10) | ((lgkm & 0xf) << 8) | ((exp & 0x7) << 4) | (vm & 0xf);
-      break;
-   default:
+   } else {
       assert(lgkm == unset_counter || lgkm <= 0xf);
       assert(vm == unset_counter || vm <= 0xf);
       imm = ((lgkm & 0xf) << 8) | ((exp & 0x7) << 4) | (vm & 0xf);
-      break;
    }
    if (gfx_level < GFX9 && vm == wait_imm::unset_counter)
       imm |= 0xc000; /* should have no effect on pre-GFX9 and now we won't have to worry about the
