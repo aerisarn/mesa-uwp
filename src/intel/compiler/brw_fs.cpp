@@ -911,7 +911,7 @@ fs_inst::size_read(int arg) const
       break;
 
    default:
-      if (is_tex() && arg == 0 && src[0].file == VGRF)
+      if (arg == 0 && src[0].file == VGRF && is_tex())
          return mlen * REG_SIZE;
       break;
    }
