@@ -133,6 +133,15 @@ struct nak_nir_tex_flags {
 
 bool nak_nir_lower_tex(nir_shader *nir, const struct nak_compiler *nak);
 
+struct nak_nir_attr_io_flags {
+   bool output : 1;
+   bool patch : 1;
+   bool phys : 1;
+   uint32_t pad:29;
+};
+
+bool nak_nir_lower_vtg_io(nir_shader *nir, const struct nak_compiler *nak);
+
 enum nak_fs_out {
    NAK_FS_OUT_COLOR0 = 0x00,
    NAK_FS_OUT_COLOR1 = 0x10,
