@@ -131,12 +131,14 @@ modifier_is_supported(const struct intel_device_info *devinfo,
       return false;
    }
 
+   bool no_ccs = INTEL_DEBUG(DEBUG_NO_CCS) || (bind & PIPE_BIND_CONST_BW);
+
    /* Check remaining requirements. */
    switch (modifier) {
    case I915_FORMAT_MOD_4_TILED_MTL_MC_CCS:
    case I915_FORMAT_MOD_4_TILED_DG2_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
-      if (INTEL_DEBUG(DEBUG_NO_CCS))
+      if (no_ccs)
          return false;
 
       if (pfmt != PIPE_FORMAT_BGRA8888_UNORM &&
@@ -159,7 +161,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS: {
-      if (INTEL_DEBUG(DEBUG_NO_CCS))
+      if (no_ccs)
          return false;
 
       enum isl_format rt_format =
@@ -738,6 +740,8 @@ iris_resource_configure_main(const struct iris_screen *screen,
    isl_surf_usage_flags_t usage = 0;
 
    if (res->mod_info && !isl_drm_modifier_has_aux(modifier))
+      usage |= ISL_SURF_USAGE_DISABLE_AUX_BIT;
+   else if (templ->bind & PIPE_BIND_CONST_BW)
       usage |= ISL_SURF_USAGE_DISABLE_AUX_BIT;
 
    if (templ->usage == PIPE_USAGE_STAGING)
