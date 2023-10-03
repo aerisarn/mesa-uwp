@@ -623,8 +623,14 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    }
 
+   case nir_intrinsic_load_patch_vertices_in: {
+      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_VERTEX_COUNT,
+                               .access = ACCESS_CAN_REORDER);
+      val = nir_extract_u8(b, val, nir_imm_int(b, 1));
+      break;
+   }
+
    case nir_intrinsic_load_subgroup_invocation:
-   case nir_intrinsic_load_patch_vertices_in:
    case nir_intrinsic_load_helper_invocation:
    case nir_intrinsic_load_invocation_id:
    case nir_intrinsic_load_local_invocation_index:
