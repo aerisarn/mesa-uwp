@@ -288,8 +288,7 @@ iris_fence_flush(struct pipe_context *ctx,
       unsigned b = batch->name;
 
       if (deferred && iris_batch_bytes_used(batch) > 0) {
-         struct iris_fine_fence *fine =
-            iris_fine_fence_new(batch, IRIS_FENCE_BOTTOM_OF_PIPE);
+         struct iris_fine_fence *fine = iris_fine_fence_new(batch);
          iris_fine_fence_reference(screen, &fence->fine[b], fine);
          iris_fine_fence_reference(screen, &fine, NULL);
       } else {
@@ -566,7 +565,6 @@ iris_fence_create_fd(struct pipe_context *ctx,
    fine->seqno = UINT32_MAX;
    fine->map = &zero;
    fine->syncobj = syncobj;
-   fine->flags = IRIS_FENCE_END;
    pipe_reference_init(&fine->reference, 1);
 
    struct pipe_fence_handle *fence = calloc(1, sizeof(*fence));
