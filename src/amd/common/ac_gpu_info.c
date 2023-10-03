@@ -681,6 +681,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->ip[ip_type].ib_base_alignment = ip_info.ib_start_alignment;
       info->ip[ip_type].ib_size_alignment = ip_info.ib_size_alignment;
 
+      /* Override ib_base/size_alignment for VCN_DEC and JPEG, after the kernel fixed,
+       * here will be adding kernel version check for the old kernel.
+       */
+      if (ip_type == AMD_IP_VCN_DEC || ip_type == AMD_IP_VCN_JPEG) {
+         info->ip[ip_type].ib_base_alignment = 64;
+         info->ip[ip_type].ib_size_alignment = 64;
+      }
+
       /* I guess we must align IBs due to caching on GFX9. This fixes a hang. */
       if ((ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE) &&
           info->ip[ip_type].ver_major == 9) {
