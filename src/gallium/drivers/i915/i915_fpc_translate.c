@@ -33,6 +33,7 @@
 #include "i915_fpc.h"
 #include "i915_reg.h"
 
+#include "nir/nir.h"
 #include "pipe/p_shader_tokens.h"
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_info.h"
@@ -1086,8 +1087,10 @@ i915_translate_fragment_program(struct i915_context *i915,
    struct i915_fp_compile *p;
    const struct tgsi_token *tokens = fs->state.tokens;
    struct i915_token_list *i_tokens;
+   bool debug =
+      I915_DBG_ON(DBG_FS) && (!fs->internal || NIR_DEBUG(PRINT_INTERNAL));
 
-   if (I915_DBG_ON(DBG_FS)) {
+   if (debug) {
       mesa_logi("TGSI fragment shader:");
       tgsi_dump(tokens, 0);
    }
@@ -1101,7 +1104,7 @@ i915_translate_fragment_program(struct i915_context *i915,
    i915_fini_compile(i915, p);
    i915_optimize_free(i_tokens);
 
-   if (I915_DBG_ON(DBG_FS)) {
+   if (debug) {
       mesa_logi("i915 fragment shader with %d constants%s", fs->num_constants,
                 fs->num_constants ? ":" : "");
 

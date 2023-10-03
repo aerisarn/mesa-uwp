@@ -547,6 +547,7 @@ i915_create_fs_state(struct pipe_context *pipe,
 
    if (templ->type == PIPE_SHADER_IR_NIR) {
       nir_shader *s = templ->ir.nir;
+      ifs->internal = s->info.internal;
 
       static const struct nir_to_tgsi_options ntt_options = {
          .lower_fabs = true,
@@ -556,6 +557,7 @@ i915_create_fs_state(struct pipe_context *pipe,
       assert(templ->type == PIPE_SHADER_IR_TGSI);
       /* we need to keep a local copy of the tokens */
       ifs->state.tokens = tgsi_dup_tokens(templ->tokens);
+      ifs->internal = i915->no_log_program_errors;
    }
 
    ifs->state.type = PIPE_SHADER_IR_TGSI;
