@@ -183,8 +183,8 @@ vlVaHandleVAEncMiscParameterTypeQualityLevel(struct pipe_enc_quality_modes *p, v
          p->pre_encode_mode = PREENCODING_MODE_DEFAULT;
          p->vbaq_mode = VBAQ_AUTO;
       } else {
-         p->preset_mode = in->preset_mode > PRESET_MODE_QUALITY
-            ? PRESET_MODE_QUALITY : in->preset_mode;
+         p->preset_mode = in->preset_mode > PRESET_MODE_HIGH_QUALITY
+            ? PRESET_MODE_HIGH_QUALITY : in->preset_mode;
          p->pre_encode_mode = in->pre_encode_mode;
          p->vbaq_mode = in->vbaq_mode;
       }
