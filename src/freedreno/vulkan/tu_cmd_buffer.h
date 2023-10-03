@@ -52,7 +52,7 @@ struct tu_descriptor_state
    struct tu_descriptor_set *sets[MAX_SETS];
    struct tu_descriptor_set push_set;
    uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS_SIZE];
-   uint64_t set_iova[MAX_SETS + 1];
+   uint64_t set_iova[MAX_SETS];
    uint32_t max_sets_bound;
    bool dynamic_bound;
 };

@@ -825,8 +825,8 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
          .cs_ibo = true,
          .gfx_ibo = true,
          .gfx_shared_const = true,
-         .cs_bindless = 0x1f,
-         .gfx_bindless = 0x1f,));
+         .cs_bindless = CHIP == A6XX ? 0x1f : 0xff,
+         .gfx_bindless = CHIP == A6XX ? 0x1f : 0xff,));
 
    tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_VERTEX, vs);
    tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_TESS_CTRL, NULL);

@@ -110,7 +110,8 @@ tu6_load_state_size(struct tu_pipeline *pipeline,
 }
 
 static void
-tu6_emit_load_state(struct tu_pipeline *pipeline,
+tu6_emit_load_state(struct tu_device *device,
+                    struct tu_pipeline *pipeline,
                     struct tu_pipeline_layout *layout)
 {
    unsigned size = tu6_load_state_size(pipeline, layout);
@@ -165,7 +166,8 @@ tu6_emit_load_state(struct tu_pipeline *pipeline,
             continue;
          switch (binding->type) {
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            base = MAX_SETS;
+            assert(device->physical_device->reserved_set_idx >= 0);
+            base = device->physical_device->reserved_set_idx;
             offset = (layout->set[i].dynamic_offset_start +
                       binding->dynamic_offset_offset) / 4;
             FALLTHROUGH;
@@ -201,7 +203,8 @@ tu6_emit_load_state(struct tu_pipeline *pipeline,
             break;
          }
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            base = MAX_SETS;
+            assert(device->physical_device->reserved_set_idx >= 0);
+            base = device->physical_device->reserved_set_idx;
             offset = (layout->set[i].dynamic_offset_start +
                       binding->dynamic_offset_offset) / 4;
             FALLTHROUGH;
@@ -404,19 +407,20 @@ tu6_emit_dynamic_offset(struct tu_cs *cs,
                         const struct tu_shader *shader,
                         struct tu_pipeline_builder *builder)
 {
+   const struct tu_physical_device *phys_dev = cs->device->physical_device;
    if (!xs || shader->const_state.dynamic_offset_loc == UINT32_MAX)
       return;
 
-   tu_cs_emit_pkt7(cs, tu6_stage2opcode(xs->type), 3 + MAX_SETS);
+   tu_cs_emit_pkt7(cs, tu6_stage2opcode(xs->type), 3 + phys_dev->usable_sets);
    tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(shader->const_state.dynamic_offset_loc / 4) |
               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
               CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
               CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(xs->type)) |
-              CP_LOAD_STATE6_0_NUM_UNIT(DIV_ROUND_UP(MAX_SETS, 4)));
+              CP_LOAD_STATE6_0_NUM_UNIT(DIV_ROUND_UP(phys_dev->usable_sets, 4)));
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
-   for (unsigned i = 0; i < MAX_SETS; i++) {
+   for (unsigned i = 0; i < phys_dev->usable_sets; i++) {
       unsigned dynamic_offset_start =
          builder->layout.set[i].dynamic_offset_start / (A6XX_TEX_CONST_DWORDS * 4);
       tu_cs_emit(cs, i < builder->layout.num_sets ? dynamic_offset_start : 0);
@@ -2235,9 +2239,9 @@ tu_pipeline_builder_parse_layout(struct tu_pipeline_builder *builder,
          struct tu_graphics_lib_pipeline *library = builder->libraries[i];
          builder->layout.num_sets = MAX2(builder->layout.num_sets,
                                          library->num_sets);
+         assert(builder->layout.num_sets <= builder->device->physical_device->usable_sets);
          for (unsigned j = 0; j < library->num_sets; j++) {
-            if (library->layouts[i])
-               builder->layout.set[i].layout = library->layouts[i];
+            builder->layout.set[i].layout = library->layouts[i];
          }
 
          builder->layout.push_constant_size = library->push_constant_size;
@@ -3920,7 +3924,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
          /* Blob doesn't preload state on A7XX, likely preloading either
           * doesn't work or doesn't provide benefits.
           */
-         tu6_emit_load_state(*pipeline, &builder->layout);
+         tu6_emit_load_state(builder->device, *pipeline, &builder->layout);
       }
    }
 
@@ -4370,7 +4374,7 @@ tu_compute_pipeline_create(VkDevice device,
       pipeline->local_size[i] = v->local_size[i];
 
    if (CHIP == A6XX) {
-      tu6_emit_load_state(&pipeline->base, layout);
+      tu6_emit_load_state(dev, &pipeline->base, layout);
    }
 
    tu_append_executable(&pipeline->base, v, nir_initial_disasm);

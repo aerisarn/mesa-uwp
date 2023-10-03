@@ -628,6 +628,8 @@ tu_physical_device_init(struct tu_physical_device *device,
 
       device->ccu_offset_bypass = depth_cache_size;
       device->ccu_offset_gmem = device->gmem_size - color_cache_size;
+
+      device->usable_sets = device->reserved_set_idx = device->info->a6xx.max_sets - 1;
       break;
    }
    default:
@@ -1065,7 +1067,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxSamplerAllocationCount = 64 * 1024,
       .bufferImageGranularity = 64,          /* A cache line */
       .sparseAddressSpaceSize = 0,
-      .maxBoundDescriptorSets = MAX_SETS,
+      .maxBoundDescriptorSets = pdevice->usable_sets,
       .maxPerStageDescriptorSamplers = max_descriptor_set_size,
       .maxPerStageDescriptorUniformBuffers = max_descriptor_set_size,
       .maxPerStageDescriptorStorageBuffers = max_descriptor_set_size,
@@ -1327,10 +1329,10 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->bufferlessPushDescriptors = true;
          properties->allowSamplerImageViewPostSubmitCreation = true;
          properties->descriptorBufferOffsetAlignment = A6XX_TEX_CONST_DWORDS * 4;
-         properties->maxDescriptorBufferBindings = MAX_SETS;
-         properties->maxResourceDescriptorBufferBindings = MAX_SETS;
-         properties->maxSamplerDescriptorBufferBindings = MAX_SETS;
-         properties->maxEmbeddedImmutableSamplerBindings = MAX_SETS;
+         properties->maxDescriptorBufferBindings = pdevice->usable_sets;
+         properties->maxResourceDescriptorBufferBindings = pdevice->usable_sets;
+         properties->maxSamplerDescriptorBufferBindings = pdevice->usable_sets;
+         properties->maxEmbeddedImmutableSamplerBindings = pdevice->usable_sets;
          properties->maxEmbeddedImmutableSamplers = max_descriptor_set_size;
          properties->bufferCaptureReplayDescriptorDataSize = 0;
          properties->imageCaptureReplayDescriptorDataSize = 0;

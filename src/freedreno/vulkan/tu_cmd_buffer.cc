@@ -183,8 +183,8 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
       tu_emit_event_write<CHIP>(cmd_buffer, cs, FD_CACHE_INVALIDATE);
    if (flushes & TU_CMD_FLAG_BINDLESS_DESCRIPTOR_INVALIDATE) {
       tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
-            .cs_bindless = 0x1f,
-            .gfx_bindless = 0x1f,
+            .cs_bindless = CHIP == A6XX ? 0x1f : 0xff,
+            .gfx_bindless = CHIP == A6XX ? 0x1f : 0xff,
       ));
    }
    if (flushes & TU_CMD_FLAG_WAIT_MEM_WRITES)
@@ -1146,8 +1146,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          .gfx_ibo = true,
          .cs_shared_const = true,
          .gfx_shared_const = true,
-         .cs_bindless = 0x1f,
-         .gfx_bindless = 0x1f,));
+         .cs_bindless = CHIP == A6XX ? 0x1f : 0xff,
+         .gfx_bindless = CHIP == A6XX ? 0x1f : 0xff,));
 
    tu_cs_emit_wfi(cs);
 
@@ -2395,19 +2395,22 @@ tu6_emit_descriptor_sets(struct tu_cmd_buffer *cmd,
       tu_cs_emit_array(cs, (const uint32_t*)descriptors_state->set_iova, 2 * descriptors_state->max_sets_bound);
    }
 
-   /* Dynamic descriptors get the last descriptor set. */
+   /* Dynamic descriptors get the reserved descriptor set. */
    if (descriptors_state->dynamic_bound) {
-      tu_cs_emit_pkt4(cs, sp_bindless_base_reg + 4 * 2, 2);
-      tu_cs_emit_qw(cs, descriptors_state->set_iova[MAX_SETS]);
+      int reserved_set_idx = cmd->device->physical_device->reserved_set_idx;
+      assert(reserved_set_idx >= 0); /* reserved set must be bound */
+
+      tu_cs_emit_pkt4(cs, sp_bindless_base_reg + reserved_set_idx * 2, 2);
+      tu_cs_emit_qw(cs, descriptors_state->set_iova[reserved_set_idx]);
       if (CHIP == A6XX) {
-         tu_cs_emit_pkt4(cs, hlsq_bindless_base_reg + 4 * 2, 2);
-         tu_cs_emit_qw(cs, descriptors_state->set_iova[MAX_SETS]);
+         tu_cs_emit_pkt4(cs, hlsq_bindless_base_reg + reserved_set_idx * 2, 2);
+         tu_cs_emit_qw(cs, descriptors_state->set_iova[reserved_set_idx]);
       }
    }
 
    tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
-      .cs_bindless = bind_point == VK_PIPELINE_BIND_POINT_COMPUTE ? 0x1f : 0,
-      .gfx_bindless = bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS ? 0x1f : 0,
+      .cs_bindless = bind_point == VK_PIPELINE_BIND_POINT_COMPUTE ? CHIP == A6XX ? 0x1f : 0xff : 0,
+      .gfx_bindless = bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS ? CHIP == A6XX ? 0x1f : 0xff : 0,
    ));
 
    if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
@@ -2539,6 +2542,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    if (layout->dynamic_offset_size) {
       /* allocate and fill out dynamic descriptor set */
       struct tu_cs_memory dynamic_desc_set;
+      int reserved_set_idx = cmd->device->physical_device->reserved_set_idx;
       VkResult result = tu_cs_alloc(&cmd->sub_cs,
                                     layout->dynamic_offset_size / (4 * A6XX_TEX_CONST_DWORDS),
                                     A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
@@ -2549,7 +2553,8 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       memcpy(dynamic_desc_set.map, descriptors_state->dynamic_descriptors,
              layout->dynamic_offset_size);
-      descriptors_state->set_iova[MAX_SETS] = dynamic_desc_set.iova | BINDLESS_DESCRIPTOR_64B;
+      assert(reserved_set_idx >= 0); /* reserved set must be bound */
+      descriptors_state->set_iova[reserved_set_idx] = dynamic_desc_set.iova | BINDLESS_DESCRIPTOR_64B;
       descriptors_state->dynamic_bound = true;
    }
 

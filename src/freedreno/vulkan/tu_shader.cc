@@ -167,7 +167,8 @@ lower_load_push_constant(struct tu_device *dev,
 }
 
 static void
-lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
+lower_vulkan_resource_index(struct tu_device *dev, nir_builder *b,
+                            nir_intrinsic_instr *instr,
                             struct tu_shader *shader,
                             const struct tu_pipeline_layout *layout)
 {
@@ -203,7 +204,8 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
          base = nir_imm_int(b, (layout->set[set].dynamic_offset_start +
             binding_layout->dynamic_offset_offset) / (4 * A6XX_TEX_CONST_DWORDS));
       }
-      set = MAX_SETS;
+      assert(dev->physical_device->reserved_set_idx >= 0);
+      set = dev->physical_device->reserved_set_idx;
       break;
    default:
       base = nir_imm_int(b, binding_layout->offset / (4 * A6XX_TEX_CONST_DWORDS));
@@ -288,7 +290,7 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
       descriptor_idx = nir_iadd_imm(b, descriptor_idx, 1);
    }
 
-   nir_def *results[MAX_SETS + 1] = { NULL };
+   nir_def *results[MAX_SETS] = { NULL };
 
    if (nir_scalar_is_const(scalar_idx)) {
       nir_def *bindless =
@@ -298,7 +300,7 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
    }
 
    nir_def *base_idx = nir_channel(b, scalar_idx.def, scalar_idx.comp);
-   for (unsigned i = 0; i < MAX_SETS + 1; i++) {
+   for (unsigned i = 0; i < dev->physical_device->info->a6xx.max_sets; i++) {
       /* if (base_idx == i) { ... */
       nir_if *nif = nir_push_if(b, nir_ieq_imm(b, base_idx, i));
 
@@ -336,7 +338,7 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
 
    nir_def *result =
       nir_undef(b, intrin->def.num_components, intrin->def.bit_size);
-   for (int i = MAX_SETS; i >= 0; i--) {
+   for (int i = dev->physical_device->info->a6xx.max_sets - 1; i >= 0; i--) {
       nir_pop_if(b, NULL);
       if (info->has_dest)
          result = nir_if_phi(b, results[i], result);
@@ -433,7 +435,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
       return true;
 
    case nir_intrinsic_vulkan_resource_index:
-      lower_vulkan_resource_index(b, instr, shader, layout);
+      lower_vulkan_resource_index(dev, b, instr, shader, layout);
       return true;
    case nir_intrinsic_vulkan_resource_reindex:
       lower_vulkan_resource_reindex(b, instr);
@@ -715,7 +717,8 @@ tu_lower_io(nir_shader *shader, struct tu_device *dev,
 
    if (layout->independent_sets) {
       const_state->dynamic_offset_loc = reserved_consts_vec4 * 4;
-      reserved_consts_vec4 += DIV_ROUND_UP(MAX_SETS, 4);
+      assert(dev->physical_device->reserved_set_idx >= 0);
+      reserved_consts_vec4 += DIV_ROUND_UP(dev->physical_device->reserved_set_idx, 4);
    } else {
       const_state->dynamic_offset_loc = UINT32_MAX;
    }

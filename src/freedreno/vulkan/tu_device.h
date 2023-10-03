@@ -89,6 +89,11 @@ struct tu_physical_device
    uint32_t ccu_offset_gmem;
    uint32_t ccu_offset_bypass;
 
+   /* Amount of usable descriptor sets, this excludes any reserved set */
+   uint32_t usable_sets;
+   /* Index of the reserved descriptor set, may be -1 if unset */
+   int32_t reserved_set_idx;
+
    bool has_set_iova;
    uint64_t va_start;
    uint64_t va_size;
