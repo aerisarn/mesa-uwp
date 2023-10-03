@@ -579,6 +579,10 @@ typedef struct linear_ctx linear_ctx;
  */
 void *linear_alloc_child(linear_ctx *ctx, unsigned size);
 
+typedef struct {
+   unsigned min_buffer_size;
+} linear_opts;
+
 /**
  * Allocate a linear context that will internally hold linear buffers.
  * Use it for all child node allocations.
@@ -586,6 +590,8 @@ void *linear_alloc_child(linear_ctx *ctx, unsigned size);
  * \param ralloc_ctx  ralloc context, must not be NULL
  */
 linear_ctx *linear_context(void *ralloc_ctx);
+
+linear_ctx *linear_context_with_opts(void *ralloc_ctx, const linear_opts *opts);
 
 /**
  * Same as linear_alloc_child, but also clears memory.

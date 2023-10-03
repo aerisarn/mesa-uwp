@@ -964,7 +964,6 @@ gc_sweep_end(gc_ctx *ctx)
  * other buffers.
  */
 
-#define MIN_LINEAR_BUFSIZE 2048
 #define SUBALLOC_ALIGNMENT 8
 #define LMAGIC_CONTEXT 0x87b9c7d3
 #define LMAGIC_NODE    0x87b910d3
@@ -976,6 +975,8 @@ struct linear_ctx {
 #ifndef NDEBUG
    unsigned magic;   /* for debugging */
 #endif
+   unsigned min_buffer_size;
+
    unsigned offset;  /* points to the first unused byte in the latest buffer */
    unsigned size;    /* size of the latest buffer */
    void *latest;     /* the only buffer that has free space */
@@ -1021,9 +1022,9 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
    if (unlikely(ctx->offset + size > ctx->size)) {
       /* allocate a new node */
       unsigned node_size = size;
-      if (likely(node_size < MIN_LINEAR_BUFSIZE))
-         node_size = MIN_LINEAR_BUFSIZE;
-      
+      if (likely(node_size < ctx->min_buffer_size))
+         node_size = ctx->min_buffer_size;
+
       const unsigned canary_size = get_node_canary_size();
       const unsigned full_size = canary_size + node_size;
 
@@ -1071,19 +1072,33 @@ linear_alloc_child(linear_ctx *ctx, unsigned size)
 linear_ctx *
 linear_context(void *ralloc_ctx)
 {
+   const linear_opts opts = {0};
+   return linear_context_with_opts(ralloc_ctx, &opts);
+}
+
+linear_ctx *
+linear_context_with_opts(void *ralloc_ctx, const linear_opts *opts)
+{
    linear_ctx *ctx;
 
    if (unlikely(!ralloc_ctx))
       return NULL;
 
-   const unsigned size = MIN_LINEAR_BUFSIZE;
+   const unsigned default_min_buffer_size = 2048;
+   const unsigned min_buffer_size =
+      MAX2(ALIGN_POT(opts->min_buffer_size, default_min_buffer_size),
+           default_min_buffer_size);
+
+   const unsigned size = min_buffer_size;
    const unsigned canary_size = get_node_canary_size();
    const unsigned full_size =
-      sizeof(linear_ctx) + canary_size + size;                 
+      sizeof(linear_ctx) + canary_size + size;
 
    ctx = ralloc_size(ralloc_ctx, full_size);
    if (unlikely(!ctx))
       return NULL;
+
+   ctx->min_buffer_size = min_buffer_size;
 
    ctx->offset = 0;
    ctx->size = size;
@@ -1125,7 +1140,7 @@ ralloc_steal_linear_context(void *new_ralloc_ctx, linear_ctx *ctx)
 {
    if (unlikely(!ctx))
       return;
- 
+
    assert(ctx->magic == LMAGIC_CONTEXT);
 
    /* Linear context is also the ralloc parent of extra nodes. */
