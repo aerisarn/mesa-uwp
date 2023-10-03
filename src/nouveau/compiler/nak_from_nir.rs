@@ -1200,6 +1200,105 @@ impl<'a> ShaderFromNir<'a> {
     ) {
         let srcs = intrin.srcs_as_slice();
         match intrin.intrinsic {
+            nir_intrinsic_al2p_nv => {
+                let offset = self.get_src(&srcs[0]);
+                let addr = u16::try_from(intrin.base()).unwrap();
+
+                let flags = intrin.flags();
+                let flags: nak_nir_attr_io_flags =
+                    unsafe { std::mem::transmute_copy(&flags) };
+
+                let access = AttrAccess {
+                    addr: addr,
+                    comps: 1,
+                    patch: flags.patch(),
+                    output: flags.output(),
+                    flags: 0,
+                };
+
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpAL2P {
+                    dst: dst.into(),
+                    offset: offset,
+                    access: access,
+                });
+                self.set_dst(&intrin.def, dst);
+            }
+            nir_intrinsic_ald_nv | nir_intrinsic_ast_nv => {
+                let addr = u16::try_from(intrin.base()).unwrap();
+                let base = u16::try_from(intrin.range_base()).unwrap();
+                let range = u16::try_from(intrin.range()).unwrap();
+                let range = base..(base + range);
+
+                let flags = intrin.flags();
+                let flags: nak_nir_attr_io_flags =
+                    unsafe { std::mem::transmute_copy(&flags) };
+                assert!(!flags.patch() || !flags.phys());
+
+                if let ShaderIoInfo::Vtg(io) = &mut self.info.io {
+                    if flags.patch() {
+                        match &mut self.info.stage {
+                            ShaderStageInfo::TessellationInit(stage) => {
+                                assert!(flags.output());
+                                stage.per_patch_attribute_count = max(
+                                    stage.per_patch_attribute_count,
+                                    (range.end / 4).try_into().unwrap(),
+                                );
+                            }
+                            ShaderStageInfo::Tessellation => (),
+                            _ => panic!("Patch I/O not supported"),
+                        }
+                    } else {
+                        if flags.output() {
+                            if intrin.intrinsic == nir_intrinsic_ast_nv {
+                                io.mark_store_req(range.clone());
+                            }
+                            io.mark_attrs_written(range);
+                        } else {
+                            io.mark_attrs_read(range);
+                        }
+                    }
+                } else {
+                    panic!("Must be a VTG stage");
+                }
+
+                let access = AttrAccess {
+                    addr: addr,
+                    comps: intrin.num_components,
+                    patch: flags.patch(),
+                    output: flags.output(),
+                    flags: flags.phys().into(),
+                };
+
+                if intrin.intrinsic == nir_intrinsic_ald_nv {
+                    let vtx = self.get_src(&srcs[0]);
+                    let offset = self.get_src(&srcs[1]);
+
+                    assert!(intrin.def.bit_size() == 32);
+                    let dst = b.alloc_ssa(RegFile::GPR, access.comps);
+                    b.push_op(OpALd {
+                        dst: dst.into(),
+                        vtx: vtx,
+                        offset: offset,
+                        access: access,
+                    });
+                    self.set_dst(&intrin.def, dst);
+                } else if intrin.intrinsic == nir_intrinsic_ast_nv {
+                    assert!(srcs[0].bit_size() == 32);
+                    let data = self.get_src(&srcs[0]);
+                    let vtx = self.get_src(&srcs[1]);
+                    let offset = self.get_src(&srcs[2]);
+
+                    b.push_op(OpASt {
+                        data: data,
+                        vtx: vtx,
+                        offset: offset,
+                        access: access,
+                    });
+                } else {
+                    panic!("Invalid VTG I/O intrinsic");
+                }
+            }
             nir_intrinsic_bindless_image_atomic => {
                 let handle = self.get_src(&srcs[0]);
                 let dim = self.get_image_dim(intrin);
@@ -1366,173 +1465,33 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 self.set_dst(&intrin.def, dst);
             }
-            nir_intrinsic_load_input
-            | nir_intrinsic_load_output
-            | nir_intrinsic_load_per_vertex_input
-            | nir_intrinsic_load_per_vertex_output
-            | nir_intrinsic_store_output
-            | nir_intrinsic_store_per_vertex_output => {
-                let comps = intrin.num_components;
-
-                let store_data = match intrin.intrinsic {
-                    nir_intrinsic_load_input
-                    | nir_intrinsic_load_output
-                    | nir_intrinsic_load_per_vertex_input
-                    | nir_intrinsic_load_per_vertex_output => {
-                        assert!(intrin.def.bit_size() == 32);
-                        assert!(intrin.def.num_components() == comps);
-                        None
-                    }
-                    nir_intrinsic_store_output
-                    | nir_intrinsic_store_per_vertex_output => {
-                        assert!(srcs[0].bit_size() == 32);
-                        assert!(srcs[0].num_components() == comps);
-                        Some(self.get_src(&srcs[0]))
-                    }
-                    _ => panic!("Unhandled intrinsic"),
+            nir_intrinsic_load_input => {
+                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
+                    panic!("load_input is only used for fragment shaders");
                 };
 
-                let (vtx, offset, offset_as_u32) = match intrin.intrinsic {
-                    nir_intrinsic_load_input | nir_intrinsic_load_output => (
-                        Src::new_zero(),
-                        self.get_src(&srcs[0]),
-                        srcs[0].as_uint(),
-                    ),
-                    nir_intrinsic_load_per_vertex_input
-                    | nir_intrinsic_load_per_vertex_output => (
-                        self.get_src(&srcs[0]),
-                        self.get_src(&srcs[1]),
-                        srcs[1].as_uint(),
-                    ),
-                    nir_intrinsic_store_output => (
-                        Src::new_zero(),
-                        self.get_src(&srcs[1]),
-                        srcs[1].as_uint(),
-                    ),
-                    nir_intrinsic_store_per_vertex_output => (
-                        self.get_src(&srcs[1]),
-                        self.get_src(&srcs[2]),
-                        srcs[2].as_uint(),
-                    ),
-                    _ => panic!("Unhandled intrinsic"),
-                };
+                assert!(intrin.def.bit_size() == 32);
+                let comps = intrin.def.num_components;
 
-                let base = u16::try_from(intrin.base()).unwrap();
-                let range = u16::try_from(intrin.range()).unwrap();
-                let comp = u16::try_from(intrin.component()).unwrap();
+                let addr = u16::try_from(intrin.base()).unwrap()
+                    + u16::try_from(srcs[0].as_uint().unwrap()).unwrap()
+                    + 4 * u16::try_from(intrin.component()).unwrap();
 
-                let (range, addr, offset) = match offset_as_u32 {
-                    Some(imm) => {
-                        let imm = u16::try_from(imm).unwrap();
-                        let addr = base + imm + 4 * comp;
-                        let range = addr..(addr + 4 * u16::from(comps));
-                        (range, addr, Src::new_zero())
-                    }
-                    None => {
-                        let range = base..(base + range);
-                        (range, base + 4 * comp, offset)
-                    }
-                };
+                let dst = b.alloc_ssa(RegFile::GPR, comps);
+                for c in 0..comps {
+                    let c_addr = addr + 4 * u16::from(c);
 
-                let stage = self.nir.info.stage();
-                let (output, patch) = match intrin.intrinsic {
-                    nir_intrinsic_load_input => {
-                        (false, stage == MESA_SHADER_TESS_EVAL)
-                    }
-                    nir_intrinsic_load_output | nir_intrinsic_store_output => {
-                        (true, stage == MESA_SHADER_TESS_CTRL)
-                    }
-                    nir_intrinsic_load_per_vertex_input => (false, false),
-                    nir_intrinsic_load_per_vertex_output
-                    | nir_intrinsic_store_per_vertex_output => (true, false),
-                    _ => panic!("Unhandled intrinsic"),
-                };
+                    io.mark_attr_read(c_addr, PixelImap::Constant);
 
-                match &mut self.info.io {
-                    ShaderIoInfo::None => {
-                        panic!("Stage does not support load_input")
-                    }
-                    ShaderIoInfo::Fragment(io) => {
-                        if let Some(data) = store_data {
-                            // We assume these only ever happen in the
-                            // last block.  This is ensured by
-                            // nir_lower_io_to_temporaries()
-                            assert!(offset_as_u32 == Some(0));
-                            assert!(addr % 4 == 0);
-                            let data = data.as_ssa().unwrap();
-                            for c in 0..usize::from(comps) {
-                                let idx =
-                                    usize::from(addr / 4) + usize::from(c);
-                                self.fs_out_regs[idx] = data[c];
-                            }
-                        } else {
-                            let dst = b.alloc_ssa(RegFile::GPR, comps);
-                            for c in 0..comps {
-                                let c_addr = addr + 4 * u16::from(c);
-
-                                io.mark_attr_read(c_addr, PixelImap::Constant);
-
-                                b.push_op(OpIpa {
-                                    dst: dst[usize::from(c)].into(),
-                                    addr: c_addr,
-                                    freq: InterpFreq::Constant,
-                                    loc: InterpLoc::Default,
-                                    offset: SrcRef::Zero.into(),
-                                });
-                            }
-                            self.set_dst(&intrin.def, dst);
-                        }
-                    }
-                    ShaderIoInfo::Vtg(io) => {
-                        if patch {
-                            match &mut self.info.stage {
-                                ShaderStageInfo::TessellationInit(stage) => {
-                                    stage.per_patch_attribute_count = max(
-                                        stage.per_patch_attribute_count,
-                                        (range.end / 4).try_into().unwrap(),
-                                    );
-                                }
-                                ShaderStageInfo::Tessellation => (),
-                                _ => panic!("Patch I/O not supported"),
-                            }
-                        } else {
-                            if output {
-                                if store_data.is_none() {
-                                    io.mark_store_req(range.clone());
-                                }
-                                io.mark_attrs_written(range);
-                            } else {
-                                io.mark_attrs_read(range);
-                            }
-                        }
-
-                        let access = AttrAccess {
-                            addr: addr,
-                            comps: comps,
-                            patch: patch,
-                            output: output,
-                            flags: 0,
-                        };
-
-                        if let Some(data) = store_data {
-                            b.push_op(OpASt {
-                                vtx: vtx,
-                                offset: offset,
-                                data: data,
-                                access: access,
-                            });
-                        } else {
-                            let dst = b.alloc_ssa(RegFile::GPR, comps);
-                            b.push_op(OpALd {
-                                dst: dst.into(),
-                                vtx: vtx,
-                                offset: offset,
-                                access: access,
-                            });
-                            self.set_dst(&intrin.def, dst);
-                        }
-                    }
+                    b.push_op(OpIpa {
+                        dst: dst[usize::from(c)].into(),
+                        addr: c_addr,
+                        freq: InterpFreq::Constant,
+                        loc: InterpLoc::Default,
+                        offset: SrcRef::Zero.into(),
+                    });
                 }
+                self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_interpolated_input => {
                 let bary =
@@ -1850,6 +1809,22 @@ impl<'a> ShaderFromNir<'a> {
                     offset: offset,
                     access: access,
                 });
+            }
+            nir_intrinsic_store_output => {
+                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
+                    panic!("load_input is only used for fragment shaders");
+                };
+                let data = self.get_src(&srcs[0]);
+
+                let addr = u16::try_from(intrin.base()).unwrap()
+                    + u16::try_from(srcs[1].as_uint().unwrap()).unwrap()
+                    + 4 * u16::try_from(intrin.component()).unwrap();
+                assert!(addr % 4 == 0);
+
+                for c in 0..usize::from(intrin.num_components) {
+                    let idx = usize::from(addr / 4) + usize::from(c);
+                    self.fs_out_regs[idx] = data.as_ssa().unwrap()[c];
+                }
             }
             nir_intrinsic_store_scratch => {
                 let data = self.get_src(&srcs[0]);

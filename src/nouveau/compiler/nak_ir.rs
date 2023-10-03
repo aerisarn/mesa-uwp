@@ -3315,6 +3315,34 @@ impl fmt::Display for OpAtomCas {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpAL2P {
+    pub dst: Dst,
+
+    #[src_type(GPR)]
+    pub offset: Src,
+
+    pub access: AttrAccess,
+}
+
+impl fmt::Display for OpAL2P {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "AL2P")?;
+        if self.access.output {
+            write!(f, ".O")?;
+        }
+        if self.access.patch {
+            write!(f, ".P")?;
+        }
+        write!(f, " {} a[{:#x}", self.dst, self.access.addr)?;
+        if !self.offset.is_zero() {
+            write!(f, "+{}", self.offset)?;
+        }
+        write!(f, "]")
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpALd {
     pub dst: Dst,
 
@@ -4019,6 +4047,7 @@ pub enum Op {
     St(OpSt),
     Atom(OpAtom),
     AtomCas(OpAtomCas),
+    AL2P(OpAL2P),
     ALd(OpALd),
     ASt(OpASt),
     Ipa(OpIpa),
@@ -4446,6 +4475,7 @@ impl Instr {
             | Op::St(_)
             | Op::Atom(_)
             | Op::AtomCas(_)
+            | Op::AL2P(_)
             | Op::ALd(_)
             | Op::ASt(_)
             | Op::Ipa(_)

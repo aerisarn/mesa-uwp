@@ -304,18 +304,6 @@ nak_sysval_sysval_idx(gl_system_value sysval)
    }
 }
 
-static nir_def *
-nak_nir_isberd(nir_builder *b, nir_def *vertex)
-{
-   nir_def *info = nir_load_sysval_nv(b, 32, .base = NAK_SV_INVOCATION_INFO,
-                                      .access = ACCESS_CAN_REORDER);
-   nir_def *lo = nir_extract_u8_imm(b, info, 0);
-   nir_def *hi = nir_extract_u8_imm(b, info, 2);
-   nir_def *idx = nir_iadd(b, nir_imul(b, lo, hi), vertex);
-
-   return nir_isberd_nv(b, idx);
-}
-
 static bool
 nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -338,8 +326,8 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_load_primitive_id: {
       assert(b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
              b->shader->info.stage == MESA_SHADER_TESS_EVAL);
-      nir_def *idx = nak_nir_isberd(b, nir_imm_int(b, 0));
-      val = nir_load_per_vertex_input(b, 1, 32, idx, nir_imm_int(b, 0),
+      val = nir_load_per_vertex_input(b, 1, 32, nir_imm_int(b, 0),
+                                      nir_imm_int(b, 0),
                                       .base = NAK_ATTR_PRIMITIVE_ID,
                                       .dest_type = nir_type_int32);
       break;
@@ -424,23 +412,6 @@ nak_nir_lower_system_values(nir_shader *nir)
 }
 
 static bool
-lower_per_vertex_io_intrin(nir_builder *b,
-                           nir_intrinsic_instr *intrin,
-                           void *data)
-{
-   if (intrin->intrinsic != nir_intrinsic_load_per_vertex_input)
-      return false;
-
-   b->cursor = nir_before_instr(&intrin->instr);
-
-   nir_src *vertex = &intrin->src[0];
-   nir_def *idx = nak_nir_isberd(b, vertex->ssa);
-   nir_src_rewrite(vertex, idx);
-
-   return true;
-}
-
-static bool
 nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
 {
    bool progress = false;
@@ -451,16 +422,6 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
       var->data.driver_location = nak_varying_attr_addr(var->data.location);
 
    OPT(nir, nir_lower_io, modes, type_size_vec4_bytes, 0);
-
-   switch (nir->info.stage) {
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-      OPT(nir, nir_shader_intrinsics_pass, lower_per_vertex_io_intrin,
-          nir_metadata_block_index | nir_metadata_dominance, NULL);
-   default:
-      break;
-   }
 
    return progress;
 }
@@ -782,12 +743,16 @@ nak_postprocess_nir(nir_shader *nir,
    case MESA_SHADER_VERTEX:
       OPT(nir, nak_nir_lower_vs_inputs);
       OPT(nir, nak_nir_lower_varyings, nir_var_shader_out);
+      OPT(nir, nir_opt_constant_folding);
+      OPT(nir, nak_nir_lower_vtg_io, nak);
       break;
 
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:
       OPT(nir, nak_nir_lower_varyings, nir_var_shader_in | nir_var_shader_out);
+      OPT(nir, nir_opt_constant_folding);
+      OPT(nir, nak_nir_lower_vtg_io, nak);
       break;
 
    case MESA_SHADER_FRAGMENT:

@@ -1478,6 +1478,18 @@ impl SM75Instr {
         }
     }
 
+    fn encode_al2p(&mut self, op: &OpAL2P) {
+        self.set_opcode(0x920);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(24..32, op.offset);
+
+        self.set_field(40..50, op.access.addr);
+        self.set_field(74..76, 0_u8); // comps
+        assert!(!op.access.patch);
+        self.set_bit(79, op.access.output);
+    }
+
     fn encode_ald(&mut self, op: &OpALd) {
         self.set_opcode(0x321);
 
@@ -1774,6 +1786,7 @@ impl SM75Instr {
             Op::St(op) => si.encode_st(&op),
             Op::Atom(op) => si.encode_atom(&op),
             Op::AtomCas(op) => si.encode_atom_cas(&op),
+            Op::AL2P(op) => si.encode_al2p(&op),
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
