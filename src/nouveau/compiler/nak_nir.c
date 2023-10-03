@@ -225,9 +225,9 @@ nak_attribute_attr_addr(gl_vert_attrib attrib)
 }
 
 static int
-count_location_bytes(const struct glsl_type *type, bool bindless)
+type_size_vec4_bytes(const struct glsl_type *type, bool bindless)
 {
-   return glsl_count_attribute_slots(type, false) * 16;
+   return glsl_count_vec4_slots(type, false, bindless) * 16;
 }
 
 static bool
@@ -240,7 +240,7 @@ nak_nir_lower_vs_inputs(nir_shader *nir)
          nak_attribute_attr_addr(var->data.location);
    }
 
-   progress |= OPT(nir, nir_lower_io, nir_var_shader_in, count_location_bytes,
+   progress |= OPT(nir, nir_lower_io, nir_var_shader_in, type_size_vec4_bytes,
                         nir_lower_io_lower_64bit_to_32);
 
    return progress;
@@ -343,7 +343,7 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
    nir_foreach_variable_with_modes(var, nir, modes)
       var->data.driver_location = nak_varying_attr_addr(var->data.location);
 
-   OPT(nir, nir_lower_io, modes, count_location_bytes, 0);
+   OPT(nir, nir_lower_io, modes, type_size_vec4_bytes, 0);
 
    switch (nir->info.stage) {
    case MESA_SHADER_TESS_CTRL:
