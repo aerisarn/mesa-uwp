@@ -989,17 +989,25 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
    unsigned long program_size = (unsigned long)(p->csr - p->program);
    unsigned long decl_size = (unsigned long)(p->decl - p->declarations);
 
-   if (p->nr_tex_indirect > I915_MAX_TEX_INDIRECT)
-      debug_printf("Exceeded max nr indirect texture lookups\n");
+   if (p->nr_tex_indirect > I915_MAX_TEX_INDIRECT) {
+      debug_printf("Exceeded max nr indirect texture lookups (%d/%d)\n",
+                   p->nr_tex_indirect, I915_MAX_TEX_INDIRECT);
+   }
 
-   if (p->nr_tex_insn > I915_MAX_TEX_INSN)
-      i915_program_error(p, "Exceeded max TEX instructions");
+   if (p->nr_tex_insn > I915_MAX_TEX_INSN) {
+      i915_program_error(p, "Exceeded max TEX instructions (%d/%d)",
+                         p->nr_tex_insn, I915_MAX_TEX_INSN);
+   }
 
-   if (p->nr_alu_insn > I915_MAX_ALU_INSN)
-      i915_program_error(p, "Exceeded max ALU instructions");
+   if (p->nr_alu_insn > I915_MAX_ALU_INSN) {
+      i915_program_error(p, "Exceeded max ALU instructions (%d/%d)",
+                         p->nr_alu_insn, I915_MAX_ALU_INSN);
+   }
 
-   if (p->nr_decl_insn > I915_MAX_DECL_INSN)
-      i915_program_error(p, "Exceeded max DECL instructions");
+   if (p->nr_decl_insn > I915_MAX_DECL_INSN) {
+      i915_program_error(p, "Exceeded max DECL instructions (%d/%d)",
+                         p->nr_decl_insn, I915_MAX_DECL_INSN);
+   }
 
    /* hw doesn't seem to like empty frag programs (num_instructions == 1 is just
     * TGSI_END), even when the depth write fixup gets emitted below - maybe that
