@@ -148,9 +148,7 @@ to_clrx_device_name(amd_gfx_level gfx_level, radeon_family family)
       case CHIP_NAVI12: return "gfx1011";
       default: return nullptr;
       }
-   case GFX10_3:
-   case GFX11: return nullptr;
-   default: unreachable("Invalid chip class!"); return nullptr;
+   default: return nullptr;
    }
 }
 
