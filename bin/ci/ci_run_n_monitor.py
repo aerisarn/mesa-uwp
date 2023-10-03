@@ -25,7 +25,12 @@ from typing import Literal, Optional
 
 import gitlab
 from colorama import Fore, Style
-from gitlab_common import get_gitlab_project, read_token, wait_for_pipeline
+from gitlab_common import (
+    get_gitlab_project,
+    read_token,
+    wait_for_pipeline,
+    pretty_duration,
+)
 from gitlab_gql import GitlabGQL, create_job_needs_dag, filter_dag, print_dag
 
 GITLAB_URL = "https://gitlab.freedesktop.org"
@@ -55,6 +60,11 @@ def print_job_status(job, new_status=False) -> None:
     if job.status == "canceled":
         return
 
+    if job.duration:
+        duration = job.duration
+    elif job.started_at:
+        duration = time.perf_counter() - time.mktime(job.started_at.timetuple())
+
     print(
         STATUS_COLORS[job.status]
         + "🞋 job "
@@ -62,6 +72,7 @@ def print_job_status(job, new_status=False) -> None:
         + f"{job.web_url}\a{job.name}"
         + URL_END
         + (f" has new status: {job.status}" if new_status else f" :: {job.status}")
+        + (f" ({pretty_duration(duration)})" if job.started_at else "")
         + Style.RESET_ALL
     )
 
