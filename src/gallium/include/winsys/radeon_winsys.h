@@ -677,6 +677,11 @@ struct radeon_winsys {
    void (*cs_add_syncobj_signal)(struct radeon_cmdbuf *cs, struct pipe_fence_handle *fence);
 
    /**
+    * Returns the amd_ip_type type of a CS.
+    */
+   enum amd_ip_type (*cs_get_ip_type)(struct radeon_cmdbuf *cs);
+
+   /**
     * Wait for the fence and return true if the fence has been signalled.
     * The timeout of 0 will only return the status.
     * The timeout of OS_TIMEOUT_INFINITE will always wait until the fence

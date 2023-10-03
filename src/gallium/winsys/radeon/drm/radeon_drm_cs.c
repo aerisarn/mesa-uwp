@@ -167,6 +167,13 @@ static void radeon_destroy_cs_context(struct radeon_cs_context *csc)
 }
 
 
+static enum amd_ip_type radeon_drm_cs_get_ip_type(struct radeon_cmdbuf *rcs)
+{
+   struct radeon_drm_cs *cs = radeon_drm_cs(rcs);
+   return cs->ip_type;
+}
+
+
 static bool
 radeon_drm_cs_create(struct radeon_cmdbuf *rcs,
                      struct radeon_winsys_ctx *ctx,

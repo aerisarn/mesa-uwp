@@ -940,6 +940,13 @@ static void amdgpu_destroy_cs_context(struct amdgpu_winsys *ws, struct amdgpu_cs
 }
 
 
+static enum amd_ip_type amdgpu_cs_get_ip_type(struct radeon_cmdbuf *rcs)
+{
+   struct amdgpu_cs *cs = amdgpu_cs(rcs);
+   return cs->ip_type;
+}
+
+
 static bool
 amdgpu_cs_create(struct radeon_cmdbuf *rcs,
                  struct radeon_winsys_ctx *rwctx,
@@ -1815,6 +1822,7 @@ void amdgpu_cs_init_functions(struct amdgpu_screen_winsys *ws)
    ws->base.cs_sync_flush = amdgpu_cs_sync_flush;
    ws->base.cs_add_fence_dependency = amdgpu_cs_add_fence_dependency;
    ws->base.cs_add_syncobj_signal = amdgpu_cs_add_syncobj_signal;
+   ws->base.cs_get_ip_type = amdgpu_cs_get_ip_type;
    ws->base.fence_wait = amdgpu_fence_wait_rel_timeout;
    ws->base.fence_reference = amdgpu_fence_reference;
    ws->base.fence_import_syncobj = amdgpu_fence_import_syncobj;
