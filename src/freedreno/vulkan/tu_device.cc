@@ -1663,6 +1663,7 @@ tu_trace_destroy_ts_buffer(struct u_trace_context *utctx, void *timestamps)
    tu_bo_finish(device, bo);
 }
 
+template <chip CHIP>
 static void
 tu_trace_record_ts(struct u_trace *ut, void *cs, void *timestamps,
                    unsigned idx, bool end_of_pipe)
@@ -1671,10 +1672,22 @@ tu_trace_record_ts(struct u_trace *ut, void *cs, void *timestamps,
    struct tu_cs *ts_cs = (struct tu_cs *) cs;
 
    unsigned ts_offset = idx * sizeof(uint64_t);
-   tu_cs_emit_pkt7(ts_cs, CP_EVENT_WRITE, 4);
-   tu_cs_emit(ts_cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) | CP_EVENT_WRITE_0_TIMESTAMP);
-   tu_cs_emit_qw(ts_cs, bo->iova + ts_offset);
-   tu_cs_emit(ts_cs, 0x00000000);
+
+   if (CHIP == A6XX) {
+      tu_cs_emit_pkt7(ts_cs, CP_EVENT_WRITE, 4);
+      tu_cs_emit(ts_cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) |
+                           CP_EVENT_WRITE_0_TIMESTAMP);
+      tu_cs_emit_qw(ts_cs, bo->iova + ts_offset);
+      tu_cs_emit(ts_cs, 0x00000000);
+   } else {
+      tu_cs_emit_pkt7(ts_cs, CP_EVENT_WRITE7, 3);
+      tu_cs_emit(ts_cs, CP_EVENT_WRITE7_0(.event = RB_DONE_TS,
+                                          .write_src = EV_WRITE_ALWAYSON,
+                                          .write_dst = EV_DST_RAM,
+                                          .write_enabled = true)
+                           .value);
+      tu_cs_emit_qw(ts_cs, bo->iova + ts_offset);
+   }
 }
 
 static uint64_t
@@ -2340,7 +2353,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    u_trace_context_init(&device->trace_context, device,
                      tu_trace_create_ts_buffer,
                      tu_trace_destroy_ts_buffer,
-                     tu_trace_record_ts,
+                     TU_CALLX(device, tu_trace_record_ts),
                      tu_trace_read_ts,
                      tu_trace_delete_flush_data);
 
