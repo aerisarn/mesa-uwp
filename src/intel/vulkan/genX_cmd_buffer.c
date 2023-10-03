@@ -3657,8 +3657,6 @@ genX(CmdExecuteCommands)(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, container, commandBuffer);
 
-   assert(container->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
    if (anv_batch_has_error(&container->batch))
       return;
 

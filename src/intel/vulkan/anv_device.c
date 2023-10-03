@@ -347,6 +347,7 @@ get_device_extensions(const struct anv_physical_device *device,
                                                device->sys.available,
       .EXT_mesh_shader                       = device->info.has_mesh_shading,
       .EXT_mutable_descriptor_type           = true,
+      .EXT_nested_command_buffer             = true,
       .EXT_non_seamless_cube_map             = true,
       .EXT_pci_bus_info                      = true,
       .EXT_physical_device_drm               = true,
@@ -846,6 +847,11 @@ get_features(const struct anv_physical_device *pdevice,
 
       /* VK_KHR_maintenance5 */
       .maintenance5 = true,
+
+      /* VK_EXT_nested_command_buffer */
+      .nestedCommandBuffer = true,
+      .nestedCommandBufferRendering = true,
+      .nestedCommandBufferSimultaneousUse = false,
    };
 
    /* The new DOOM and Wolfenstein games require depthBounds without
@@ -2451,6 +2457,13 @@ void anv_GetPhysicalDeviceProperties2(
          properties->pciBus = pdevice->info.pci_bus;
          properties->pciDevice = pdevice->info.pci_dev;
          properties->pciFunction = pdevice->info.pci_func;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT: {
+         VkPhysicalDeviceNestedCommandBufferPropertiesEXT *properties =
+            (VkPhysicalDeviceNestedCommandBufferPropertiesEXT *)ext;
+         properties->maxCommandBufferNestingLevel = UINT32_MAX;
          break;
       }
 
