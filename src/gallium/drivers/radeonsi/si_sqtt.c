@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "amd_family.h"
 #include "si_build_pm4.h"
 #include "si_pipe.h"
 
@@ -49,7 +50,7 @@ static bool si_sqtt_init_bo(struct si_context *sctx)
 
 static void si_emit_sqtt_start(struct si_context *sctx,
                                struct radeon_cmdbuf *cs,
-                               uint32_t queue_family_index)
+                               enum amd_ip_type ip_type)
 {
    struct si_screen *sscreen = sctx->screen;
    uint32_t shifted_size = sctx->sqtt->buffer_size >> SQTT_BUFFER_ALIGN_SHIFT;
@@ -216,7 +217,7 @@ static void si_emit_sqtt_start(struct si_context *sctx,
                           S_030800_INSTANCE_BROADCAST_WRITES(1));
 
    /* Start the thread trace with a different event based on the queue. */
-   if (queue_family_index == AMD_IP_COMPUTE) {
+   if (ip_type == AMD_IP_COMPUTE) {
       radeon_set_sh_reg(R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(1));
    } else {
@@ -310,13 +311,13 @@ static void si_copy_sqtt_info_regs(struct si_context *sctx,
 }
 
 static void si_emit_sqtt_stop(struct si_context *sctx, struct radeon_cmdbuf *cs,
-                              uint32_t queue_family_index)
+                              enum amd_ip_type ip_type)
 {
    unsigned max_se = sctx->screen->info.max_se;
    radeon_begin(cs);
 
    /* Stop the thread trace with a different event based on the queue. */
-   if (queue_family_index == AMD_IP_COMPUTE) {
+   if (ip_type == AMD_IP_COMPUTE) {
       radeon_set_sh_reg(R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(0));
    } else {
@@ -411,14 +412,14 @@ static void si_emit_sqtt_stop(struct si_context *sctx, struct radeon_cmdbuf *cs,
    radeon_end();
 }
 
-static void si_sqtt_start(struct si_context *sctx, int family,
-                          struct radeon_cmdbuf *cs)
+static void si_sqtt_start(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
    struct radeon_winsys *ws = sctx->ws;
+   enum amd_ip_type ip_type = sctx->ws->cs_get_ip_type(cs);
 
    radeon_begin(cs);
 
-   switch (family) {
+   switch (ip_type) {
       case AMD_IP_GFX:
          radeon_emit(PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
          radeon_emit(CC0_UPDATE_LOAD_ENABLES(1));
@@ -428,6 +429,9 @@ static void si_sqtt_start(struct si_context *sctx, int family,
          radeon_emit(PKT3(PKT3_NOP, 0, 0));
          radeon_emit(0);
          break;
+      default:
+        /* Unsupported. */
+        assert(false);
    }
    radeon_end();
 
@@ -457,20 +461,20 @@ static void si_sqtt_start(struct si_context *sctx, int family,
       si_emit_spm_setup(sctx, cs);
    }
 
-   si_emit_sqtt_start(sctx, cs, family);
+   si_emit_sqtt_start(sctx, cs, ip_type);
 
    if (sctx->spm.bo)
       si_pc_emit_spm_start(cs);
 }
 
-static void si_sqtt_stop(struct si_context *sctx, int family,
-                         struct radeon_cmdbuf *cs)
+static void si_sqtt_stop(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
    struct radeon_winsys *ws = sctx->ws;
+   enum amd_ip_type ip_type = sctx->ws->cs_get_ip_type(cs);
 
    radeon_begin(cs);
 
-   switch (family) {
+   switch (ip_type) {
       case AMD_IP_GFX:
          radeon_emit(PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
          radeon_emit(CC0_UPDATE_LOAD_ENABLES(1));
@@ -480,6 +484,9 @@ static void si_sqtt_stop(struct si_context *sctx, int family,
          radeon_emit(PKT3(PKT3_NOP, 0, 0));
          radeon_emit(0);
          break;
+      default:
+        /* Unsupported. */
+        assert(false);
    }
    radeon_end();
 
@@ -503,7 +510,7 @@ static void si_sqtt_stop(struct si_context *sctx, int family,
                   SI_CONTEXT_PFP_SYNC_ME;
    sctx->emit_cache_flush(sctx, cs);
 
-   si_emit_sqtt_stop(sctx, cs, family);
+   si_emit_sqtt_stop(sctx, cs, ip_type);
 
    if (sctx->spm.bo)
       si_pc_emit_spm_reset(cs);
@@ -518,40 +525,40 @@ static void si_sqtt_init_cs(struct si_context *sctx)
 {
    struct radeon_winsys *ws = sctx->ws;
 
-   /* Thread trace start CS (only handles AMD_IP_GFX). */
-   sctx->sqtt->start_cs[AMD_IP_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
-   if (!ws->cs_create(sctx->sqtt->start_cs[AMD_IP_GFX], sctx->ctx, AMD_IP_GFX,
-                      NULL, NULL)) {
-      free(sctx->sqtt->start_cs[AMD_IP_GFX]);
-      sctx->sqtt->start_cs[AMD_IP_GFX] = NULL;
-      return;
+   for (unsigned i = 0; i < ARRAY_SIZE(sctx->sqtt->start_cs); i++) {
+      sctx->sqtt->start_cs[i] = CALLOC_STRUCT(radeon_cmdbuf);
+      if (!ws->cs_create(sctx->sqtt->start_cs[i], sctx->ctx, (enum amd_ip_type)i,
+                         NULL, NULL)) {
+         free(sctx->sqtt->start_cs[i]);
+         sctx->sqtt->start_cs[i] = NULL;
+         return;
+      }
+      si_sqtt_start(sctx, sctx->sqtt->start_cs[i]);
+
+      sctx->sqtt->stop_cs[i] = CALLOC_STRUCT(radeon_cmdbuf);
+      if (!ws->cs_create(sctx->sqtt->stop_cs[i], sctx->ctx, (enum amd_ip_type)i,
+                         NULL, NULL)) {
+         ws->cs_destroy(sctx->sqtt->start_cs[i]);
+         free(sctx->sqtt->start_cs[i]);
+         sctx->sqtt->start_cs[i] = NULL;
+         free(sctx->sqtt->stop_cs[i]);
+         sctx->sqtt->stop_cs[i] = NULL;
+         return;
+      }
+
+      si_sqtt_stop(sctx, sctx->sqtt->stop_cs[i]);
    }
-
-   si_sqtt_start(sctx, AMD_IP_GFX, sctx->sqtt->start_cs[AMD_IP_GFX]);
-
-   /* Thread trace stop CS. */
-   sctx->sqtt->stop_cs[AMD_IP_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
-   if (!ws->cs_create(sctx->sqtt->stop_cs[AMD_IP_GFX], sctx->ctx, AMD_IP_GFX,
-                      NULL, NULL)) {
-      free(sctx->sqtt->start_cs[AMD_IP_GFX]);
-      sctx->sqtt->start_cs[AMD_IP_GFX] = NULL;
-      free(sctx->sqtt->stop_cs[AMD_IP_GFX]);
-      sctx->sqtt->stop_cs[AMD_IP_GFX] = NULL;
-      return;
-   }
-
-   si_sqtt_stop(sctx, AMD_IP_GFX, sctx->sqtt->stop_cs[AMD_IP_GFX]);
 }
 
 static void si_begin_sqtt(struct si_context *sctx, struct radeon_cmdbuf *rcs)
 {
-   struct radeon_cmdbuf *cs = sctx->sqtt->start_cs[AMD_IP_GFX];
+   struct radeon_cmdbuf *cs = sctx->sqtt->start_cs[sctx->ws->cs_get_ip_type(rcs)];
    sctx->ws->cs_flush(cs, 0, NULL);
 }
 
 static void si_end_sqtt(struct si_context *sctx, struct radeon_cmdbuf *rcs)
 {
-   struct radeon_cmdbuf *cs = sctx->sqtt->stop_cs[AMD_IP_GFX];
+   struct radeon_cmdbuf *cs = sctx->sqtt->stop_cs[sctx->ws->cs_get_ip_type(rcs)];
    sctx->ws->cs_flush(cs, 0, &sctx->last_sqtt_fence);
 }
 
@@ -668,8 +675,10 @@ void si_destroy_sqtt(struct si_context *sctx)
    if (sctx->sqtt->trigger_file)
       free(sctx->sqtt->trigger_file);
 
-   sscreen->ws->cs_destroy(sctx->sqtt->start_cs[AMD_IP_GFX]);
-   sscreen->ws->cs_destroy(sctx->sqtt->stop_cs[AMD_IP_GFX]);
+   for (int i = 0; i < ARRAY_SIZE(sctx->sqtt->start_cs); i++) {
+      sscreen->ws->cs_destroy(sctx->sqtt->start_cs[i]);
+      sscreen->ws->cs_destroy(sctx->sqtt->stop_cs[i]);
+   }
 
    struct rgp_pso_correlation *pso_correlation =
       &sctx->sqtt->rgp_pso_correlation;
