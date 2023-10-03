@@ -117,10 +117,6 @@ load_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
  *
  * Note that this lower happens after driver bindings are lowered, so the
  * bindless handle is in the AGX-specific format.
- *
- * Assumes that texture states are mapped to a bindless table is in u0_u1 and
- * texture/PBE descriptors are alternated for each render target. This is
- * ABI. If we need to make this more flexible for Vulkan later, we can.
  */
 static nir_def *
 handle_for_rt(nir_builder *b, unsigned base, unsigned rt, bool pbe,
@@ -129,13 +125,10 @@ handle_for_rt(nir_builder *b, unsigned base, unsigned rt, bool pbe,
    unsigned index = base + (2 * rt) + (pbe ? 1 : 0);
    *bindless = (*bindless) || (index >= AGX_NUM_TEXTURE_STATE_REGS);
 
-   if (*bindless) {
-      unsigned table = 0 * 2;
-      unsigned offset_B = index * AGX_TEXTURE_LENGTH;
-      return nir_imm_ivec2(b, table, offset_B);
-   } else {
+   if (*bindless)
+      return nir_load_texture_handle_agx(b, nir_imm_int(b, index));
+   else
       return nir_imm_intN_t(b, index, 16);
-   }
 }
 
 static enum glsl_sampler_dim

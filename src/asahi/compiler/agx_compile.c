@@ -15,6 +15,7 @@
 #include "agx_debug.h"
 #include "agx_internal_formats.h"
 #include "agx_nir.h"
+#include "nir.h"
 #include "nir_intrinsics.h"
 
 /* Alignment for shader programs. I'm not sure what the optimal value is. */
@@ -2630,6 +2631,27 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *_)
 }
 
 static bool
+lower_load_from_texture_handle(nir_builder *b, nir_intrinsic_instr *intr,
+                               void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_from_texture_handle_agx)
+      return false;
+
+   /* Bindless handles are a vec2, where the first source is the (constant)
+    * uniform register number and the second source is the byte offset.
+    */
+   nir_scalar uniform = nir_scalar_resolved(intr->src[0].ssa, 0);
+   unsigned uniform_idx = nir_scalar_as_uint(uniform);
+
+   b->cursor = nir_instr_remove(&intr->instr);
+   nir_def *base = nir_load_preamble(b, 1, 64, uniform_idx);
+   nir_def *offset = nir_u2u64(b, nir_channel(b, intr->src[0].ssa, 1));
+
+   nir_def_rewrite_uses(&intr->def, nir_iadd(b, base, offset));
+   return true;
+}
+
+static bool
 agx_should_dump(nir_shader *nir, unsigned agx_dbg_bit)
 {
    return (agx_compiler_debug & agx_dbg_bit) &&
@@ -2955,6 +2977,10 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
       NIR_PASS_V(nir, agx_nir_lower_layer);
    }
+
+   NIR_PASS_V(nir, nir_opt_constant_folding);
+   NIR_PASS_V(nir, nir_shader_intrinsics_pass, lower_load_from_texture_handle,
+              nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    out->push_count = key->reserved_preamble;
    agx_optimize_nir(nir, &out->push_count);

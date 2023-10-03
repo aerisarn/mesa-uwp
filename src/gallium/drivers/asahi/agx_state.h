@@ -203,11 +203,8 @@ struct agx_uncompiled_shader {
    struct hash_table *variants;
    bool has_xfb_info;
 
-   /* If set, we need to pass the address of the texture/image table as uniform
-    * u0_u1 due to binding tables that were lowered to be internally bindless
-    * with that base address.
-    */
-   bool internal_bindless;
+   /* Whether the shader accesses indexed samplers via the bindless heap */
+   bool uses_bindless_samplers;
 
    /* Set on VS, passed to FS for linkage */
    unsigned base_varying;
@@ -736,11 +733,11 @@ uint64_t agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
 
 bool agx_nir_lower_sysvals(nir_shader *shader);
 
-bool agx_nir_layout_uniforms(nir_shader *shader, bool internal_bindless,
+bool agx_nir_layout_uniforms(nir_shader *shader,
                              struct agx_compiled_shader *compiled,
                              unsigned *push_size);
 
-bool agx_nir_lower_bindings(nir_shader *shader, bool *internal_bindless);
+bool agx_nir_lower_bindings(nir_shader *shader, bool *uses_bindless_samplers);
 
 bool agx_batch_is_active(struct agx_batch *batch);
 bool agx_batch_is_submitted(struct agx_batch *batch);

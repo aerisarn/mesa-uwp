@@ -1655,9 +1655,6 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib, colormasks, &rt_spill,
                  &force_translucent, false);
 
-      /* If anything spilled, we have bindless texture */
-      so->internal_bindless |= (rt_spill != rt_spill_base);
-
       NIR_PASS_V(nir, agx_nir_lower_sample_intrinsics);
       NIR_PASS_V(nir, agx_nir_lower_monolithic_msaa,
                  &(struct agx_msaa_state){
@@ -1690,7 +1687,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    }
 
    NIR_PASS_V(nir, agx_nir_lower_sysvals);
-   NIR_PASS_V(nir, agx_nir_layout_uniforms, so->internal_bindless, compiled,
+   NIR_PASS_V(nir, agx_nir_layout_uniforms, compiled,
               &base_key.reserved_preamble);
 
    agx_compile_shader_nir(nir, &base_key, debug, &binary, &compiled->info);
@@ -1781,7 +1778,7 @@ agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
    /* We need to lower binding tables before calling agx_preprocess_nir, since
     * that does texture lowering that needs to know the binding model.
     */
-   NIR_PASS_V(nir, agx_nir_lower_bindings, &so->internal_bindless);
+   NIR_PASS_V(nir, agx_nir_lower_bindings, &so->uses_bindless_samplers);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       /* Lower to maximum colour buffers, the excess stores will get cleaned up

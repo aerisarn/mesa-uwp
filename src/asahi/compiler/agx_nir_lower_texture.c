@@ -18,26 +18,11 @@
 #include "nir_intrinsics_indices.h"
 
 static nir_def *
-texture_descriptor_ptr_for_handle(nir_builder *b, nir_def *handle)
-{
-   /* Bindless handles are a vec2, where the first source is the (constant)
-    * uniform register number and the second source is the byte offset.
-    */
-   nir_scalar uniform = nir_scalar_resolved(handle, 0);
-   unsigned uniform_idx = nir_scalar_as_uint(uniform);
-
-   nir_def *base = nir_load_preamble(b, 1, 64, uniform_idx);
-   nir_def *offset = nir_u2u64(b, nir_channel(b, handle, 1));
-
-   return nir_iadd(b, base, offset);
-}
-
-static nir_def *
 texture_descriptor_ptr(nir_builder *b, nir_tex_instr *tex)
 {
    int handle_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
    assert(handle_idx >= 0 && "must be bindless");
-   return texture_descriptor_ptr_for_handle(b, tex->src[handle_idx].src.ssa);
+   return nir_load_from_texture_handle_agx(b, tex->src[handle_idx].src.ssa);
 }
 
 static bool
@@ -430,7 +415,7 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
 {
    /* First, calculate the address of the PBE descriptor */
    nir_def *desc_address =
-      texture_descriptor_ptr_for_handle(b, intr->src[0].ssa);
+      nir_load_from_texture_handle_agx(b, intr->src[0].ssa);
 
    nir_def *coord = intr->src[1].ssa;
    enum pipe_format format = nir_intrinsic_format(intr);

@@ -9,23 +9,6 @@
 #include "agx_state.h"
 #include "nir_intrinsics_indices.h"
 
-#define AGX_TEXTURE_DESC_STRIDE 24
-
-/*
- * Construct a bindless handle corresponding to an index into the binding
- * tables. Our driver ABI maps everything to a table addressed by u0_u1, with
- * indices mapped 1:1 with the binding table. So we want the bindless handle
- * (u0_u1, index) which is encoded in NIR as (0, index).
- */
-static nir_def *
-index_to_handle(nir_builder *b, nir_def *index)
-{
-   nir_def *table = nir_imm_int(b, 0);
-   nir_def *offset = nir_imul_imm(b, index, AGX_TEXTURE_DESC_STRIDE);
-
-   return nir_vec2(b, table, offset);
-}
-
 /*
  * Lower binding table textures and images to texture state registers and (if
  * necessary) bindless access into an internal table mapped like additional
@@ -37,7 +20,6 @@ index_to_handle(nir_builder *b, nir_def *index)
 static bool
 lower(nir_builder *b, nir_instr *instr, void *data)
 {
-   bool *internal_bindless = data;
    bool force_bindless = agx_nir_needs_texture_crawl(instr);
    b->cursor = nir_before_instr(instr);
 
@@ -96,10 +78,8 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       if (nir_intrinsic_has_atomic_op(intr))
          nir_intrinsic_set_atomic_op(intr, op);
 
-      *internal_bindless = true;
-
       index = nir_iadd_imm(b, nir_imul_imm(b, index, 2), offset);
-      nir_src_rewrite(&intr->src[0], index_to_handle(b, index));
+      nir_src_rewrite(&intr->src[0], nir_load_texture_handle_agx(b, index));
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
 
@@ -120,16 +100,15 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       if (!index)
          index = nir_imm_int(b, tex->texture_index);
 
-      *internal_bindless = true;
       nir_tex_instr_add_src(tex, nir_tex_src_texture_handle,
-                            index_to_handle(b, index));
+                            nir_load_texture_handle_agx(b, index));
    }
 
    return false;
 }
 
 bool
-agx_nir_lower_bindings(nir_shader *shader, bool *internal_bindless)
+agx_nir_lower_bindings(nir_shader *shader, bool *uses_bindless_samplers)
 {
    /* First lower index to offset so we can lower more naturally */
    bool progress = nir_lower_tex(
@@ -142,6 +121,6 @@ agx_nir_lower_bindings(nir_shader *shader, bool *internal_bindless)
 
    progress |= nir_shader_instructions_pass(
       shader, lower, nir_metadata_block_index | nir_metadata_dominance,
-      internal_bindless);
+      uses_bindless_samplers);
    return progress;
 }

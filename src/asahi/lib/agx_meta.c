@@ -7,7 +7,23 @@
 #include "agx_compile.h"
 #include "agx_device.h" /* for AGX_MEMORY_TYPE_SHADER */
 #include "agx_tilebuffer.h"
+#include "nir.h"
 #include "nir_builder.h"
+#include "nir_intrinsics.h"
+
+static bool
+lower_tex_handle_to_u0(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_texture_handle_agx)
+      return false;
+
+   b->cursor = nir_instr_remove(&intr->instr);
+   nir_def_rewrite_uses(
+      &intr->def,
+      nir_vec2(b, nir_imm_int(b, 0), nir_imul_imm(b, intr->src[0].ssa, 24)));
+
+   return true;
+}
 
 static struct agx_meta_shader *
 agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
@@ -23,6 +39,10 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
       agx_nir_lower_tilebuffer(shader, tib, NULL, &bindless_base, NULL, true);
       agx_nir_lower_monolithic_msaa(
          shader, &(struct agx_msaa_state){.nr_samples = tib->nr_samples});
+
+      nir_shader_intrinsics_pass(
+         shader, lower_tex_handle_to_u0,
+         nir_metadata_dominance | nir_metadata_block_index, NULL);
    }
 
    key->libagx = cache->dev->libagx;
