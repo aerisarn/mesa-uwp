@@ -9,6 +9,7 @@ options_for_u_gralloc = []
 
 files_u_gralloc = files(
   'u_gralloc.c',
+  'u_gralloc_internal.c',
   'u_gralloc_fallback.c',
   'u_gralloc_cros_api.c',
 )

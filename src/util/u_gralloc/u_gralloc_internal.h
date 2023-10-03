@@ -37,6 +37,16 @@ extern struct u_gralloc *u_gralloc_imapper_api_create(void);
 #endif
 extern struct u_gralloc *u_gralloc_fallback_create(void);
 
+/* Helpers for legacy grallocs */
+struct android_ycbcr;
+
+bool is_hal_format_yuv(int native);
+int get_hal_format_bpp(int native);
+int get_fourcc_from_hal_format(int native);
+int bufferinfo_from_ycbcr(const struct android_ycbcr *ycbcr,
+                          struct u_gralloc_buffer_handle *hnd,
+                          struct u_gralloc_buffer_basic_info *out);
+
 #ifdef __cplusplus
 }
 #endif
