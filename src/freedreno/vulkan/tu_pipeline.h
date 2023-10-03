@@ -187,8 +187,6 @@ struct tu_graphics_lib_pipeline {
       struct tu_shader_key key;
    } shaders[MESA_SHADER_FRAGMENT + 1];
 
-   struct ir3_shader_key ir3_key;
-
    /* Used to stitch together an overall layout for the final pipeline. */
    struct tu_descriptor_set_layout *layouts[MAX_SETS];
    unsigned num_sets;
