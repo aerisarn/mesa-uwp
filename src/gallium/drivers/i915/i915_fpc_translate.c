@@ -202,19 +202,11 @@ src_vector(struct i915_fp_compile *p,
    case TGSI_FILE_IMMEDIATE: {
       assert(index < p->num_immediates);
 
-      uint8_t swiz[4] = {
-         source->Register.SwizzleX,
-         source->Register.SwizzleY,
-         source->Register.SwizzleZ,
-         source->Register.SwizzleW
-      };
+      uint8_t swiz[4] = {source->Register.SwizzleX, source->Register.SwizzleY,
+                         source->Register.SwizzleZ, source->Register.SwizzleW};
 
-      uint8_t neg[4] = {
-         source->Register.Negate,
-         source->Register.Negate,
-         source->Register.Negate,
-         source->Register.Negate
-      };
+      uint8_t neg[4] = {source->Register.Negate, source->Register.Negate,
+                        source->Register.Negate, source->Register.Negate};
 
       unsigned i;
 
@@ -234,9 +226,9 @@ src_vector(struct i915_fp_compile *p,
       }
 
       if (i == 4) {
-         return negate(swizzle(UREG(REG_TYPE_R, 0),
-                               swiz[0], swiz[1], swiz[2], swiz[3]),
-                       neg[0], neg[1], neg[2], neg[3]);
+         return negate(
+            swizzle(UREG(REG_TYPE_R, 0), swiz[0], swiz[1], swiz[2], swiz[3]),
+            neg[0], neg[1], neg[2], neg[3]);
       }
 
       index = p->immediates_map[index];
@@ -564,12 +556,12 @@ i915_translate_instruction(struct i915_fp_compile *p,
       src0 = src_vector(p, &inst->Src[0], fs);
       tmp = i915_get_utemp(p);
 
-      i915_emit_texld(p, tmp,              /* dest reg: a dummy reg */
-                      A0_DEST_CHANNEL_ALL, /* dest writemask */
-                      0,                   /* sampler */
-                      src0,                /* coord*/
-                      T0_TEXKILL,          /* opcode */
-                      TGSI_WRITEMASK_XYZW);/* coord_mask */
+      i915_emit_texld(p, tmp,               /* dest reg: a dummy reg */
+                      A0_DEST_CHANNEL_ALL,  /* dest writemask */
+                      0,                    /* sampler */
+                      src0,                 /* coord*/
+                      T0_TEXKILL,           /* opcode */
+                      TGSI_WRITEMASK_XYZW); /* coord_mask */
       break;
 
    case TGSI_OPCODE_KILL:
@@ -706,8 +698,8 @@ i915_translate_instruction(struct i915_fp_compile *p,
       break;
 
    case TGSI_OPCODE_SEQ: {
-      const uint32_t zero = swizzle(UREG(REG_TYPE_R, 0),
-                                    SRC_ZERO, SRC_ZERO, SRC_ZERO, SRC_ZERO);
+      const uint32_t zero =
+         swizzle(UREG(REG_TYPE_R, 0), SRC_ZERO, SRC_ZERO, SRC_ZERO, SRC_ZERO);
 
       /* if we're both >= and <= then we're == */
       src0 = src_vector(p, &inst->Src[0], fs);
@@ -724,8 +716,8 @@ i915_translate_instruction(struct i915_fp_compile *p,
          i915_emit_arith(p, A0_MAX, tmp, A0_DEST_CHANNEL_ALL, 0, src0,
                          negate(src0, 1, 1, 1, 1), 0);
          i915_emit_arith(p, A0_SGE, get_result_vector(p, &inst->Dst[0]),
-                         get_result_flags(inst), 0,
-                         negate(tmp, 1, 1, 1, 1), zero, 0);
+                         get_result_flags(inst), 0, negate(tmp, 1, 1, 1, 1),
+                         zero, 0);
       } else {
          i915_emit_arith(p, A0_SGE, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
 
@@ -759,8 +751,8 @@ i915_translate_instruction(struct i915_fp_compile *p,
       break;
 
    case TGSI_OPCODE_SNE: {
-      const uint32_t zero = swizzle(UREG(REG_TYPE_R, 0),
-                                    SRC_ZERO, SRC_ZERO, SRC_ZERO, SRC_ZERO);
+      const uint32_t zero =
+         swizzle(UREG(REG_TYPE_R, 0), SRC_ZERO, SRC_ZERO, SRC_ZERO, SRC_ZERO);
 
       /* if we're < or > then we're != */
       src0 = src_vector(p, &inst->Src[0], fs);
@@ -777,8 +769,8 @@ i915_translate_instruction(struct i915_fp_compile *p,
          i915_emit_arith(p, A0_MAX, tmp, A0_DEST_CHANNEL_ALL, 0, src0,
                          negate(src0, 1, 1, 1, 1), 0);
          i915_emit_arith(p, A0_SLT, get_result_vector(p, &inst->Dst[0]),
-                         get_result_flags(inst), 0,
-                         negate(tmp, 1, 1, 1, 1), zero, 0);
+                         get_result_flags(inst), 0, negate(tmp, 1, 1, 1, 1),
+                         zero, 0);
       } else {
          i915_emit_arith(p, A0_SLT, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
 
@@ -1048,8 +1040,7 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
          "%s shader: %d inst, %d tex, %d tex_indirect, %d temps, %d const",
          _mesa_shader_stage_to_abbrev(MESA_SHADER_FRAGMENT), (int)program_size,
          p->nr_tex_insn, p->nr_tex_indirect,
-         p->shader->info.file_max[TGSI_FILE_TEMPORARY] + 1,
-         ifs->num_constants);
+         p->shader->info.file_max[TGSI_FILE_TEMPORARY] + 1, ifs->num_constants);
    }
 
    /* Release the compilation struct:

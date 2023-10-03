@@ -203,7 +203,9 @@ i915_optimize_nir(struct nir_shader *s)
       NIR_PASS(progress, s, nir_opt_dead_cf);
       NIR_PASS(progress, s, nir_opt_cse);
       NIR_PASS(progress, s, nir_opt_find_array_copies);
-      NIR_PASS(progress, s, nir_opt_if, nir_opt_if_aggressive_last_continue | nir_opt_if_optimize_phi_true_false);
+      NIR_PASS(progress, s, nir_opt_if,
+               nir_opt_if_aggressive_last_continue |
+                  nir_opt_if_optimize_phi_true_false);
       NIR_PASS(progress, s, nir_opt_peephole_select, ~0 /* flatten all IFs. */,
                true, true);
       NIR_PASS(progress, s, nir_opt_algebraic);
@@ -220,7 +222,8 @@ i915_optimize_nir(struct nir_shader *s)
             NULL);
 }
 
-static char *i915_check_control_flow(nir_shader *s)
+static char *
+i915_check_control_flow(nir_shader *s)
 {
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
       nir_function_impl *impl = nir_shader_get_entrypoint(s);
@@ -230,9 +233,11 @@ static char *i915_check_control_flow(nir_shader *s)
       if (next) {
          switch (next->type) {
          case nir_cf_node_if:
-            return "if/then statements not supported by i915 fragment shaders, should have been flattened by peephole_select.";
+            return "if/then statements not supported by i915 fragment shaders, "
+                   "should have been flattened by peephole_select.";
          case nir_cf_node_loop:
-            return "looping not supported i915 fragment shaders, all loops must be statically unrollable.";
+            return "looping not supported i915 fragment shaders, all loops "
+                   "must be statically unrollable.";
          default:
             return "Unknown control flow type";
          }
@@ -256,8 +261,7 @@ i915_finalize_nir(struct pipe_screen *pscreen, void *nir)
     * because they're needed for YUV variant lowering.
     */
    nir_remove_dead_derefs(s);
-   nir_foreach_uniform_variable_safe(var, s)
-   {
+   nir_foreach_uniform_variable_safe (var, s) {
       if (var->data.mode == nir_var_uniform &&
           (glsl_type_get_image_count(var->type) ||
            glsl_type_get_sampler_count(var->type)))
@@ -672,8 +676,8 @@ i915_screen_create(struct i915_winsys *iws)
       break;
 
    default:
-      debug_printf("%s: unknown pci id 0x%x, cannot create screen\n",
-                   __func__, iws->pci_id);
+      debug_printf("%s: unknown pci id 0x%x, cannot create screen\n", __func__,
+                   iws->pci_id);
       FREE(is);
       return NULL;
    }

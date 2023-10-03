@@ -609,7 +609,7 @@ i915_create_vs_state(struct pipe_context *pipe,
 {
    struct i915_context *i915 = i915_context(pipe);
 
-   struct pipe_shader_state from_nir = { PIPE_SHADER_IR_TGSI };
+   struct pipe_shader_state from_nir = {PIPE_SHADER_IR_TGSI};
    if (templ->type == PIPE_SHADER_IR_NIR) {
       nir_shader *s = templ->ir.nir;
 
@@ -717,8 +717,7 @@ i915_set_constant_buffer(struct pipe_context *pipe,
 static void
 i915_set_sampler_views(struct pipe_context *pipe, enum pipe_shader_type shader,
                        unsigned start, unsigned num,
-                       unsigned unbind_num_trailing_slots,
-                       bool take_ownership,
+                       unsigned unbind_num_trailing_slots, bool take_ownership,
                        struct pipe_sampler_view **views)
 {
    if (shader != PIPE_SHADER_FRAGMENT) {
@@ -752,7 +751,8 @@ i915_set_sampler_views(struct pipe_context *pipe, enum pipe_shader_type shader,
          pipe_sampler_view_reference(&i915->fragment_sampler_views[i], NULL);
          i915->fragment_sampler_views[i] = views[i];
       } else {
-         pipe_sampler_view_reference(&i915->fragment_sampler_views[i], views[i]);
+         pipe_sampler_view_reference(&i915->fragment_sampler_views[i],
+                                     views[i]);
       }
    }
 
@@ -824,7 +824,7 @@ i915_set_framebuffer_state(struct pipe_context *pipe,
                 sizeof(surf->color_swizzle));
          i915->dirty |= I915_NEW_COLOR_SWIZZLE;
       }
-   } 
+   }
    if (fb->zsbuf)
       draw_set_zs_format(i915->draw, fb->zsbuf->format);
 
@@ -956,21 +956,19 @@ i915_delete_rasterizer_state(struct pipe_context *pipe, void *raster)
 }
 
 static void
-i915_set_vertex_buffers(struct pipe_context *pipe,
-                        unsigned count, unsigned unbind_num_trailing_slots,
-                        bool take_ownership,
+i915_set_vertex_buffers(struct pipe_context *pipe, unsigned count,
+                        unsigned unbind_num_trailing_slots, bool take_ownership,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct i915_context *i915 = i915_context(pipe);
    struct draw_context *draw = i915->draw;
 
    util_set_vertex_buffers_count(i915->vertex_buffers, &i915->nr_vertex_buffers,
-                                 buffers, count,
-                                 unbind_num_trailing_slots, take_ownership);
+                                 buffers, count, unbind_num_trailing_slots,
+                                 take_ownership);
 
    /* pass-through to draw module */
-   draw_set_vertex_buffers(draw, count, unbind_num_trailing_slots,
-                           buffers);
+   draw_set_vertex_buffers(draw, count, unbind_num_trailing_slots, buffers);
 }
 
 static void *

@@ -285,6 +285,7 @@ extern struct i915_token_list *i915_optimize(const struct tgsi_token *tokens);
 
 extern void i915_optimize_free(struct i915_token_list *tokens);
 
-extern uint32_t i915_coord_mask(enum tgsi_opcode opcode, enum tgsi_texture_type tex);
+extern uint32_t i915_coord_mask(enum tgsi_opcode opcode,
+                                enum tgsi_texture_type tex);
 
 #endif
