@@ -136,6 +136,8 @@ struct i915_fragment_shader {
    /* Set if the shader is an internal (blit, etc.) shader that shouldn't debug
     * log by default. */
    bool internal;
+
+   char *error; /* Any error message from compiling this shader (or NULL) */
 };
 
 struct i915_cache_context;

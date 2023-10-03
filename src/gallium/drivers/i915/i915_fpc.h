@@ -74,7 +74,7 @@ struct i915_fp_compile {
    uint32_t nr_decl_insn;
 
    bool log_program_errors;
-   bool error; /**< Set if i915_program_error() is called */
+   char *error;
    uint32_t NumNativeInstructions;
    uint32_t NumNativeAluInstructions;
    uint32_t NumNativeTexInstructions;

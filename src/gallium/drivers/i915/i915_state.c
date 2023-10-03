@@ -595,6 +595,7 @@ i915_delete_fs_state(struct pipe_context *pipe, void *shader)
 {
    struct i915_fragment_shader *ifs = (struct i915_fragment_shader *)shader;
 
+   ralloc_free(ifs->error);
    FREE(ifs->program);
    ifs->program = NULL;
    FREE((struct tgsi_token *)ifs->state.tokens);

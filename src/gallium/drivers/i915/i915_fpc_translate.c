@@ -39,6 +39,7 @@
 #include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_parse.h"
 #include "util/log.h"
+#include "util/ralloc.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_string.h"
@@ -96,15 +97,10 @@ i915_use_passthrough_shader(struct i915_fragment_shader *fs)
 void
 i915_program_error(struct i915_fp_compile *p, const char *msg, ...)
 {
-   if (p->log_program_errors) {
-      va_list args;
-
-      va_start(args, msg);
-      mesa_loge_v(msg, args);
-      va_end(args);
-   }
-
-   p->error = 1;
+   va_list args;
+   va_start(args, msg);
+   ralloc_vasprintf_append(&p->error, msg, args);
+   va_end(args);
 }
 
 static uint32_t
@@ -931,18 +927,19 @@ i915_translate_instructions(struct i915_fp_compile *p,
                             struct i915_fragment_shader *fs)
 {
    int i;
-   for (i = 0; i < tokens->NumTokens && !p->error; i++) {
+   for (i = 0; i < tokens->NumTokens && !p->error[0]; i++) {
       i915_translate_token(p, &tokens->Tokens[i], fs);
    }
 }
 
 static struct i915_fp_compile *
-i915_init_compile(struct i915_context *i915, struct i915_fragment_shader *ifs)
+i915_init_compile(struct i915_fragment_shader *ifs)
 {
    struct i915_fp_compile *p = CALLOC_STRUCT(i915_fp_compile);
    int i;
 
    p->shader = ifs;
+   p->error = ralloc_strdup(NULL, "");
 
    /* Put new constants at end of const buffer, growing downward.
     * The problem is we don't know how many user-defined constants might
@@ -957,8 +954,6 @@ i915_init_compile(struct i915_context *i915, struct i915_fragment_shader *ifs)
 
    for (i = 0; i < I915_TEX_UNITS; i++)
       ifs->texcoords[i].semantic = -1;
-
-   p->log_program_errors = !i915->no_log_program_errors;
 
    p->first_instruction = true;
 
@@ -1017,7 +1012,7 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
    if (ifs->info.num_instructions == 1)
       i915_program_error(p, "Empty fragment shader");
 
-   if (p->error) {
+   if (strlen(p->error) != 0) {
       p->NumNativeInstructions = 0;
       p->NumNativeAluInstructions = 0;
       p->NumNativeTexInstructions = 0;
@@ -1051,6 +1046,11 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
          p->nr_tex_insn, p->nr_tex_indirect,
          p->shader->info.file_max[TGSI_FILE_TEMPORARY] + 1, ifs->num_constants);
    }
+
+   if (strlen(p->error) != 0)
+      ifs->error = p->error;
+   else
+      ralloc_free(p->error);
 
    /* Release the compilation struct:
     */
@@ -1095,7 +1095,7 @@ i915_translate_fragment_program(struct i915_context *i915,
       tgsi_dump(tokens, 0);
    }
 
-   p = i915_init_compile(i915, fs);
+   p = i915_init_compile(fs);
 
    i_tokens = i915_optimize(tokens);
    i915_translate_instructions(p, i_tokens, fs);
@@ -1105,6 +1105,9 @@ i915_translate_fragment_program(struct i915_context *i915,
    i915_optimize_free(i_tokens);
 
    if (debug) {
+      if (fs->error)
+         mesa_loge("%s", fs->error);
+
       mesa_logi("i915 fragment shader with %d constants%s", fs->num_constants,
                 fs->num_constants ? ":" : "");
 
