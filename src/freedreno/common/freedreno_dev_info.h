@@ -188,6 +188,9 @@ struct fd_dev_info {
             uint32_t reg;
             uint32_t value;
       } magic_raw[32];
+
+      /* maximum number of descriptor sets */
+      uint32_t max_sets;
    } a6xx;
 
    struct {

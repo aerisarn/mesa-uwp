@@ -143,7 +143,7 @@ class A6xxGPUInfo(GPUInfo):
     def __init__(self, chip, template, num_ccu,
                  tile_align_w, tile_align_h, num_vsc_pipes,
                  cs_shared_mem_size, wave_granularity, fibers_per_sp,
-                 magic_regs, raw_magic_regs = None):
+                 magic_regs, raw_magic_regs = None, max_sets = 5):
         super().__init__(chip, gmem_align_w = 16, gmem_align_h = 4,
                          tile_align_w = tile_align_w,
                          tile_align_h = tile_align_h,
@@ -184,6 +184,8 @@ class A6xxGPUInfo(GPUInfo):
         self.a6xx.prim_alloc_threshold = 0x7
 
         self.a6xx.vs_max_inputs_count = 32
+
+        self.a6xx.max_sets = max_sets
 
         templates = template if type(template) is list else [template]
         for template in templates:
@@ -761,6 +763,7 @@ add_gpus([
             [A6XXRegs.REG_A7XX_GRAS_UNKNOWN_8120, 0x09510840],
             [A6XXRegs.REG_A7XX_GRAS_UNKNOWN_8121, 0x00000a62],
         ],
+        max_sets = 8,
     ))
 
 add_gpus([
@@ -824,6 +827,7 @@ add_gpus([
             [A6XXRegs.REG_A7XX_GRAS_UNKNOWN_800B, 0x00000000],
             [A6XXRegs.REG_A7XX_GRAS_UNKNOWN_800C, 0x00000000],
         ],
+        max_sets = 8,
     ))
 
 template = """\
