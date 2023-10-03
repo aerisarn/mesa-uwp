@@ -986,8 +986,9 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
    unsigned long decl_size = (unsigned long)(p->decl - p->declarations);
 
    if (p->nr_tex_indirect > I915_MAX_TEX_INDIRECT) {
-      debug_printf("Exceeded max nr indirect texture lookups (%d/%d)\n",
-                   p->nr_tex_indirect, I915_MAX_TEX_INDIRECT);
+      i915_program_error(p,
+                         "Exceeded max nr indirect texture lookups (%d/%d)\n",
+                         p->nr_tex_indirect, I915_MAX_TEX_INDIRECT);
    }
 
    if (p->nr_tex_insn > I915_MAX_TEX_INSN) {
