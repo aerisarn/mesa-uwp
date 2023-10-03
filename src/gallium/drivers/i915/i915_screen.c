@@ -27,6 +27,7 @@
 
 #include "compiler/nir/nir.h"
 #include "draw/draw_context.h"
+#include "nir/nir_to_tgsi.h"
 #include "util/format/u_format.h"
 #include "util/format/u_format_s3tc.h"
 #include "util/os_misc.h"
@@ -37,6 +38,7 @@
 
 #include "i915_context.h"
 #include "i915_debug.h"
+#include "i915_fpc.h"
 #include "i915_public.h"
 #include "i915_reg.h"
 #include "i915_resource.h"
@@ -277,7 +279,10 @@ i915_finalize_nir(struct pipe_screen *pscreen, void *nir)
    if (msg)
       return strdup(msg);
 
-   return NULL;
+   if (s->info.stage == MESA_SHADER_FRAGMENT)
+      return i915_test_fragment_shader_compile(pscreen, s);
+   else
+      return NULL;
 }
 
 static int

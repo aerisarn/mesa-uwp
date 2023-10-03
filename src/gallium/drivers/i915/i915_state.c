@@ -534,6 +534,10 @@ i915_set_polygon_stipple(struct pipe_context *pipe,
 {
 }
 
+static const struct nir_to_tgsi_options ntt_options = {
+   .lower_fabs = true,
+};
+
 static void *
 i915_create_fs_state(struct pipe_context *pipe,
                      const struct pipe_shader_state *templ)
@@ -549,9 +553,6 @@ i915_create_fs_state(struct pipe_context *pipe,
       nir_shader *s = templ->ir.nir;
       ifs->internal = s->info.internal;
 
-      static const struct nir_to_tgsi_options ntt_options = {
-         .lower_fabs = true,
-      };
       ifs->state.tokens = nir_to_tgsi_options(s, pipe->screen, &ntt_options);
    } else {
       assert(templ->type == PIPE_SHADER_IR_TGSI);
@@ -604,6 +605,37 @@ i915_delete_fs_state(struct pipe_context *pipe, void *shader)
    ifs->program_len = 0;
 
    FREE(ifs);
+}
+
+/* Does a test compile at link time to see if we'll be able to run this shader
+ * at runtime.  Return a string to the GLSL compiler for anything we should
+ * report as link failure.
+ */
+char *
+i915_test_fragment_shader_compile(struct pipe_screen *screen, nir_shader *s)
+{
+   struct i915_fragment_shader *ifs = CALLOC_STRUCT(i915_fragment_shader);
+   if (!ifs)
+      return NULL;
+
+   /* NTT takes ownership of the shader, give it a clone. */
+   s = nir_shader_clone(NULL, s);
+
+   ifs->internal = s->info.internal;
+   ifs->state.tokens = nir_to_tgsi_options(s, screen, &ntt_options);
+   ifs->state.type = PIPE_SHADER_IR_TGSI;
+
+   tgsi_scan_shader(ifs->state.tokens, &ifs->info);
+
+   i915_translate_fragment_program(NULL, ifs);
+
+   char *msg = NULL;
+   if (ifs->error)
+      msg = strdup(ifs->error);
+
+   i915_delete_fs_state(NULL, ifs);
+
+   return msg;
 }
 
 static void *

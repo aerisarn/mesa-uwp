@@ -281,6 +281,9 @@ struct i915_token_list {
    unsigned NumTokens;
 };
 
+char *i915_test_fragment_shader_compile(struct pipe_screen *screen,
+                                        struct nir_shader *s);
+
 extern struct i915_token_list *i915_optimize(const struct tgsi_token *tokens);
 
 extern void i915_optimize_free(struct i915_token_list *tokens);
