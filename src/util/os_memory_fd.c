@@ -30,6 +30,10 @@
 
 #include "detect_os.h"
 
+#if DETECT_OS_ANDROID
+#include <linux/fcntl.h>
+#endif
+
 #if DETECT_OS_UNIX
 
 #include <string.h>
