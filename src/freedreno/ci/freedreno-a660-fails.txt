@@ -12,8 +12,6 @@ dEQP-GLES31.functional.synchronization.inter_invocation.image_atomic_read_write,
 # Fails when TU_DEBUG=forcebin is set
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
 
-dEQP-VK.api.driver_properties.conformance_version,Fail
-
 dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
 gmem-dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
 

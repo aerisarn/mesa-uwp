@@ -363,9 +363,6 @@ spec@arb_vertex_attrib_64bit@execution@unused-sub-dvec4-02,Crash
 
 dynamic-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d32_sfloat_s8_uint_separate_layouts.compatibility_depth_zero_stencil_zero_testing_stencil,Fail
 
-# since Debian 12 (bookworm) uprev
-dEQP-VK.api.driver_properties.conformance_version,Fail
-
 dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
 gmem-dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
 
