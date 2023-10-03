@@ -261,6 +261,10 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
           ptex->format == PIPE_FORMAT_R9G9B9E5_FLOAT)
          flags |= RADEON_SURF_DISABLE_DCC;
 
+      /* If constant (non-data-dependent) format is requested, disable DCC: */
+      if (ptex->bind & PIPE_BIND_CONST_BW)
+         flags |= RADEON_SURF_DISABLE_DCC;
+
       switch (sscreen->info.gfx_level) {
       case GFX8:
          /* Stoney: 128bpp MSAA textures randomly fail piglit tests with DCC. */
