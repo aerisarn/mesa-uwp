@@ -5834,7 +5834,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
       fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 4);
       fs_inst *inst = ubld.emit(SHADER_OPCODE_IMAGE_SIZE_LOGICAL,
                                 tmp, srcs, ARRAY_SIZE(srcs));
-      inst->size_written = 4 * REG_SIZE;
+      inst->size_written = 4 * REG_SIZE * reg_unit(devinfo);
 
       for (unsigned c = 0; c < instr->def.num_components; ++c) {
          bld.MOV(offset(retype(dest, tmp.type), bld, c),
