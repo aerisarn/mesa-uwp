@@ -1460,7 +1460,14 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
    p->state.layers = fb->layers;
    p->state.nr_cbufs = nr_cbufs;
 
-
+   for (unsigned i = 0; i < nr_cbufs; i++) {
+      p->state.cbufs[i] = NULL;
+      pipe_surface_reference(&p->state.cbufs[i], fb->cbufs[i]);
+      /* full tracking requires storing the fb attachment resources */
+      tc->fb_resources[i] = fb->cbufs[i] ? fb->cbufs[i]->texture : NULL;
+   }
+   memset(&tc->fb_resources[nr_cbufs], 0,
+            sizeof(void*) * (PIPE_MAX_COLOR_BUFS - nr_cbufs));
    if (tc->options.parse_renderpass_info) {
       /* ensure this is treated as the first fb set if no fb activity has occurred */
       if (!tc->renderpass_info_recording->has_draw &&
@@ -1476,17 +1483,6 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
       bool zsbuf_changed = tc->fb_resources[PIPE_MAX_COLOR_BUFS] !=
                            (fb->zsbuf ? fb->zsbuf->texture : NULL);
 
-      for (unsigned i = 0; i < nr_cbufs; i++) {
-         p->state.cbufs[i] = NULL;
-         pipe_surface_reference(&p->state.cbufs[i], fb->cbufs[i]);
-         /* full tracking requires storing the fb attachment resources */
-         tc->fb_resources[i] = fb->cbufs[i] ? fb->cbufs[i]->texture : NULL;
-      }
-      memset(&tc->fb_resources[nr_cbufs], 0,
-             sizeof(void*) * (PIPE_MAX_COLOR_BUFS - nr_cbufs));
-
-      tc->fb_resources[PIPE_MAX_COLOR_BUFS] = fb->zsbuf ? fb->zsbuf->texture : NULL;
-      tc->fb_resolve = fb->resolve;
       if (tc->seen_fb_state) {
          /* this is the end of a renderpass, so increment the renderpass info */
          tc_batch_increment_renderpass_info(tc, tc->next, false);
@@ -1503,12 +1499,9 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
       }
       /* future fb state changes will increment the index */
       tc->seen_fb_state = true;
-   } else {
-      for (unsigned i = 0; i < nr_cbufs; i++) {
-         p->state.cbufs[i] = NULL;
-         pipe_surface_reference(&p->state.cbufs[i], fb->cbufs[i]);
-      }
    }
+   tc->fb_resources[PIPE_MAX_COLOR_BUFS] = fb->zsbuf ? fb->zsbuf->texture : NULL;
+   tc->fb_resolve = fb->resolve;
    tc->in_renderpass = false;
    p->state.zsbuf = NULL;
    pipe_surface_reference(&p->state.zsbuf, fb->zsbuf);
