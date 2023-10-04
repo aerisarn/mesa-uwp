@@ -61,10 +61,10 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, nv50, nvc0, r600, radeonsi, llvmpipe,
   glGetStringi command                                  DONE
   glTexParameterI, glGetTexParameterI commands          DONE
   glVertexAttribI commands                              DONE
-  Depth format cube textures                            DONE ()
+  Depth format cube textures                            DONE (v3d)
   GLX_ARB_create_context (GLX 1.4 is required)          DONE (v3d, vc4)
-  Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*)))
-  8 draw buffers                                        DONE (panfrost/t760+)
+  Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*)), v3d)
+  8 draw buffers                                        DONE (panfrost/t760+, v3d/vc7+)
 
 (*) freedreno (a2xx-a4xx), llvmpipe, and softpipe have fake Multisample anti-aliasing support
 
@@ -75,7 +75,7 @@ GL 3.1, GLSL 1.40 --- all DONE: freedreno, nv50, nvc0, r600, radeonsi, llvmpipe,
   GL_ARB_draw_instanced (Instanced drawing)             DONE (etnaviv/HALTI2, v3d, crocus)
   GL_ARB_copy_buffer (Buffer copying)                   DONE (v3d, vc4, lima, crocus)
   GL_NV_primitive_restart (Primitive restart)           DONE (v3d, crocus)
-  16 vertex texture image units                         DONE ()
+  16 vertex texture image units                         DONE (v3d)
   GL_ARB_texture_buffer_object (Texture buffer objs)    DONE (v3d)
   GL_ARB_texture_rectangle (Rectangular textures)       DONE (v3d, vc4, lima, crocus, etnaviv)
   GL_ARB_uniform_buffer_object (Uniform buffer objs)    DONE (v3d, crocus)
