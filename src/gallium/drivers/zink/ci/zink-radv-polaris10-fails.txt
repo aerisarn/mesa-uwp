@@ -483,15 +483,10 @@ dEQP-GLES31.functional.texture.specification.texstorage3d.format.depth24_stencil
 dEQP-GLES31.functional.texture.specification.texstorage3d.format.depth32f_stencil8_cube_array,Fail
 dEQP-GLES31.functional.texture.specification.texsubimage3d_depth.depth24_stencil8_cube_array,Fail
 
-object namespace pollution@buffer with glgetteximage,Crash
 object namespace pollution@buffer with gltexsubimage2d,Crash
-object namespace pollution@framebuffer with glgetteximage,Crash
 object namespace pollution@framebuffer with gltexsubimage2d,Crash
-object namespace pollution@program with glgetteximage,Crash
 object namespace pollution@program with gltexsubimage2d,Crash
-object namespace pollution@renderbuffer with glgetteximage,Crash
 object namespace pollution@renderbuffer with gltexsubimage2d,Crash
-object namespace pollution@texture with glgetteximage,Crash
 object namespace pollution@texture with gltexsubimage2d,Crash
 object namespace pollution@vertex-array with glgetteximage,Crash
 object namespace pollution@vertex-array with gltexsubimage2d,Crash
@@ -504,9 +499,6 @@ spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT16,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT24,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT32,Fail
-spec@!opengl 1.1@getteximage-luminance,Crash
-spec@!opengl 1.1@getteximage-targets 1d,Crash
-spec@!opengl 1.1@getteximage-targets 2d,Crash
 spec@!opengl 1.1@texwrap formats bordercolor,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_ALPHA12- swizzled- border color only,Fail
@@ -530,7 +522,6 @@ spec@!opengl 1.1@texwrap formats bordercolor@GL_ALPHA12- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_ALPHA16- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_ALPHA4- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_ALPHA8- border color only,Fail
-spec@!opengl 1.2@getteximage-targets 3d,Crash
 spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-last,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-last,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-last,Fail
@@ -538,7 +529,6 @@ spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-last,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims pv-last,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats@GL_DEPTH32F_STENCIL8,Fail
-spec@arb_direct_state_access@gettextureimage-targets,Crash
 spec@arb_direct_state_access@texture-buffer,Crash
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled@GL_RGB565- swizzled- border color only,Fail
@@ -549,7 +539,6 @@ spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-query@glSciss
 spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-query@glViewport,Fail
 spec@arb_pixel_buffer_object@cubemap npot pbo,Crash
 spec@arb_pixel_buffer_object@cubemap pbo,Crash
-spec@arb_pixel_buffer_object@pbo-getteximage,Crash
 spec@arb_pixel_buffer_object@pbo-teximage,Crash
 spec@arb_pixel_buffer_object@pbo-teximage-tiling,Crash
 spec@arb_pixel_buffer_object@pbo-teximage-tiling-2,Crash
@@ -778,8 +767,6 @@ spec@arb_sample_locations@test@MSAA: 8- X: 3- Y: 5- Grid: false,Fail
 spec@arb_sample_locations@test@MSAA: 8- X: 3- Y: 5- Grid: true,Fail
 spec@arb_sample_locations@test@MSAA: 8- X: 3- Y: 6- Grid: false,Fail
 spec@arb_sample_locations@test@MSAA: 8- X: 3- Y: 6- Grid: true,Fail
-spec@arb_shader_image_load_store@host-mem-barrier,Crash
-spec@arb_shader_image_load_store@state,Crash
 spec@arb_texture_buffer_object@bufferstorage,Crash
 spec@arb_texture_buffer_object@data-sync,Crash
 spec@arb_texture_buffer_object@fetch-outside-bounds,Crash
@@ -802,9 +789,6 @@ spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRE
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT- swizzled- border color only,Fail
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT- swizzled- border color only,Fail
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM- swizzled- border color only,Fail
-spec@arb_texture_cube_map@cubemap-getteximage-pbo,Crash
-spec@arb_texture_cube_map@getteximage-targets cube,Crash
-spec@arb_texture_cube_map_array@getteximage-targets cube_array,Crash
 spec@arb_texture_float@texwrap formats bordercolor,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled@GL_ALPHA16F_ARB- swizzled- border color only,Fail
@@ -815,7 +799,6 @@ spec@arb_texture_float@texwrap formats bordercolor-swizzled@GL_RGBA16F- swizzled
 spec@arb_texture_float@texwrap formats bordercolor-swizzled@GL_RGBA32F- swizzled- border color only,Fail
 spec@arb_texture_float@texwrap formats bordercolor@GL_ALPHA16F_ARB- border color only,Fail
 spec@arb_texture_float@texwrap formats bordercolor@GL_ALPHA32F_ARB- border color only,Fail
-spec@arb_texture_rectangle@getteximage-targets rect,Crash
 spec@arb_texture_rg@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_rg@texwrap formats bordercolor-swizzled@GL_R16- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats bordercolor-swizzled@GL_R8- swizzled- border color only,Fail
@@ -855,8 +838,6 @@ spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled@GL_R11F_G11F_B10F- swizzled- border color only,Fail
 spec@ext_texture_array@compressed teximage pbo,Crash
 spec@ext_texture_array@compressed texsubimage pbo,Crash
-spec@ext_texture_array@getteximage-targets 1d_array,Crash
-spec@ext_texture_array@getteximage-targets 2d_array,Crash
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RED_RGTC1- swizzled- border color only,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RG_RGTC2- swizzled- border color only,Fail
