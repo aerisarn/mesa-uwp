@@ -717,7 +717,6 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
                            uint32_t out_sync)
 {
    struct pipe_screen *pscreen = batch->ctx->base.screen;
-   struct panfrost_screen *screen = pan_screen(pscreen);
    struct panfrost_device *dev = pan_device(pscreen);
    bool has_draws = batch->scoreboard.first_job;
    bool has_tiler = batch->scoreboard.first_tiler;
@@ -740,7 +739,6 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
    }
 
    if (has_frag) {
-      screen->vtbl.emit_fragment_job(batch, fb);
       ret = panfrost_batch_submit_ioctl(batch, batch->frag_job,
                                         PANFROST_JD_REQ_FS, 0, out_sync);
       if (ret)
@@ -818,8 +816,10 @@ panfrost_batch_submit(struct panfrost_context *ctx,
    screen->vtbl.emit_tls(batch);
    panfrost_emit_tile_map(batch, &fb);
 
-   if (has_frag)
+   if (has_frag) {
       screen->vtbl.emit_fbd(batch, &fb);
+      screen->vtbl.emit_fragment_job(batch, &fb);
+   }
 
    ret = panfrost_batch_submit_jobs(batch, &fb, 0, ctx->syncobj);
 
