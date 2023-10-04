@@ -1375,11 +1375,6 @@ emit_vec2_f2f16(isel_context* ctx, nir_alu_instr* instr, Temp dst)
    Temp src0 = emit_extract_vector(ctx, src, instr->src[0].swizzle[0], rc);
    Temp src1 = emit_extract_vector(ctx, src, instr->src[0].swizzle[1], rc);
 
-   if (instr->src[0].src.ssa->bit_size == 64) {
-      src0 = bld.vop1(aco_opcode::v_cvt_f32_f64, bld.def(v1), src0);
-      src1 = bld.vop1(aco_opcode::v_cvt_f32_f64, bld.def(v1), src1);
-   }
-
    src1 = as_vgpr(ctx, src1);
    if (ctx->program->gfx_level == GFX8 || ctx->program->gfx_level == GFX9)
       bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32_e64, Definition(dst), src0, src1);
@@ -2914,6 +2909,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    }
    case nir_op_f2f16:
    case nir_op_f2f16_rtne: {
+      assert(instr->src[0].src.ssa->bit_size == 32);
       if (instr->def.num_components == 2) {
          /* Vectorizing f2f16 is only possible with rtz. */
          assert(instr->op != nir_op_f2f16_rtne);
@@ -2923,8 +2919,6 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          break;
       }
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->src[0].src.ssa->bit_size == 64)
-         src = bld.vop1(aco_opcode::v_cvt_f32_f64, bld.def(v1), src);
       if (instr->op == nir_op_f2f16_rtne && ctx->block->fp_mode.round16_64 != fp_round_ne)
          /* We emit s_round_mode/s_setreg_imm32 in lower_to_hw_instr to
           * keep value numbering and the scheduler simpler.
@@ -2935,13 +2929,12 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_f2f16_rtz: {
+      assert(instr->src[0].src.ssa->bit_size == 32);
       if (instr->def.num_components == 2) {
          emit_vec2_f2f16(ctx, instr, dst);
          break;
       }
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->src[0].src.ssa->bit_size == 64)
-         src = bld.vop1(aco_opcode::v_cvt_f32_f64, bld.def(v1), src);
       if (ctx->block->fp_mode.round16_64 == fp_round_tz)
          bld.vop1(aco_opcode::v_cvt_f16_f32, Definition(dst), src);
       else if (ctx->program->gfx_level == GFX8 || ctx->program->gfx_level == GFX9)
@@ -2961,9 +2954,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_f2f64: {
+      assert(instr->src[0].src.ssa->bit_size == 32);
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->src[0].src.ssa->bit_size == 16)
-         src = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), src);
       bld.vop1(aco_opcode::v_cvt_f64_f32, Definition(dst), src);
       break;
    }
