@@ -245,7 +245,7 @@ vkcts-navi31-valve:
     - .navi31-test-valve
     - .radv-valve-manual-rules
   variables:
-    GPU_VERSION: radv-gfx1100-aco
+    GPU_VERSION: radv-navi31-aco
 
 ############### Fossilize
 radv-fossils:
