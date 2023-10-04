@@ -233,6 +233,11 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          fs_key = &fs_key_tmp;
       }
 
+      unsigned char sha1[SHA1_DIGEST_LENGTH];
+      nvk_hash_shader(sha1, sinfo, &robustness[stage],
+                      state.rp->view_mask != 0,
+                      pipeline_layout, fs_key);
+
       result = nvk_compile_nir(pdev, nir[stage], pipeline_flags,
                                &robustness[stage], fs_key,
                                &pipeline->base.shaders[stage]);

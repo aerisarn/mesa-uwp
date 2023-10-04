@@ -188,6 +188,10 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
 
    nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout, shader);
 
+   unsigned char sha1[SHA1_DIGEST_LENGTH];
+   nvk_hash_shader(sha1, &pCreateInfo->stage, &robustness, false,
+                   pipeline_layout, NULL);
+
    result = nvk_compile_nir(pdev, nir, pipeline_flags, &robustness, NULL,
                             shader);
    ralloc_free(nir);

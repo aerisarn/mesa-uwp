@@ -514,3 +514,39 @@ nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
    if (shader->nak)
       nak_shader_bin_destroy(shader->nak);
 }
+
+void
+nvk_hash_shader(unsigned char *hash,
+                const VkPipelineShaderStageCreateInfo *sinfo,
+                const struct vk_pipeline_robustness_state *rs,
+                bool is_multiview,
+                const struct vk_pipeline_layout *layout,
+                const struct nak_fs_key *fs_key)
+{
+   struct mesa_sha1 ctx;
+
+   _mesa_sha1_init(&ctx);
+
+   unsigned char stage_sha1[SHA1_DIGEST_LENGTH];
+   vk_pipeline_hash_shader_stage(sinfo, rs, stage_sha1);
+
+   _mesa_sha1_update(&ctx, stage_sha1, sizeof(stage_sha1));
+
+   _mesa_sha1_update(&ctx, &is_multiview, sizeof(is_multiview));
+
+   if (layout) {
+      _mesa_sha1_update(&ctx, &layout->create_flags,
+                        sizeof(layout->create_flags));
+      _mesa_sha1_update(&ctx, &layout->set_count, sizeof(layout->set_count));
+      for (int i = 0; i < layout->set_count; i++) {
+         struct nvk_descriptor_set_layout *set =
+            vk_to_nvk_descriptor_set_layout(layout->set_layouts[i]);
+         _mesa_sha1_update(&ctx, &set->sha1, sizeof(set->sha1));
+      }
+   }
+
+   if(fs_key)
+      _mesa_sha1_update(&ctx, fs_key, sizeof(*fs_key));
+
+   _mesa_sha1_final(&ctx, hash);
+}

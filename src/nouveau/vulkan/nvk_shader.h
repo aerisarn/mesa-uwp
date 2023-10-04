@@ -130,6 +130,14 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);
 void
 nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader);
 
+void
+nvk_hash_shader(unsigned char *hash,
+                const VkPipelineShaderStageCreateInfo *sinfo,
+                const struct vk_pipeline_robustness_state *rstate,
+                bool is_multiview,
+                const struct vk_pipeline_layout *layout,
+                const struct nak_fs_key *fs_key);
+
 /* Codegen wrappers.
  *
  * TODO: Delete these once NAK supports everything.
