@@ -2797,13 +2797,13 @@ lower_to_hw_instr(Program* program)
             case aco_opcode::p_dual_src_export_gfx11: {
                PhysReg dst0 = instr->definitions[0].physReg();
                PhysReg dst1 = instr->definitions[1].physReg();
-               Definition tmp = instr->definitions[2];
-               Definition exec_tmp = instr->definitions[3];
+               Definition exec_tmp = instr->definitions[2];
+               Definition not_vcc_tmp = instr->definitions[3];
                Definition clobber_vcc = instr->definitions[4];
                Definition clobber_scc = instr->definitions[5];
 
-               assert(tmp.regClass() == v1);
                assert(exec_tmp.regClass() == bld.lm);
+               assert(not_vcc_tmp.regClass() == bld.lm);
                assert(clobber_vcc.regClass() == bld.lm && clobber_vcc.physReg() == vcc);
                assert(clobber_scc.isFixed() && clobber_scc.physReg() == scc);
 
@@ -2821,6 +2821,12 @@ lower_to_hw_instr(Program* program)
                   bld.sop1(aco_opcode::s_mov_b32, Definition(clobber_vcc.physReg().advance(4), s1),
                            Operand::c32(0x55555555));
 
+               Operand src_even = Operand(clobber_vcc.physReg(), bld.lm);
+
+               bld.sop1(Builder::s_not, not_vcc_tmp, clobber_scc, src_even);
+
+               Operand src_odd = Operand(not_vcc_tmp.physReg(), bld.lm);
+
                for (unsigned i = 0; i < 4; i++) {
                   if (instr->operands[i].isUndefined() && instr->operands[i + 4].isUndefined()) {
                      mrt0[i] = instr->operands[i];
@@ -2831,22 +2837,14 @@ lower_to_hw_instr(Program* program)
                   Operand src0 = instr->operands[i];
                   Operand src1 = instr->operands[i + 4];
 
-                  uint32_t lane_sel_xor1 = 0;
-                  for (unsigned j = 0; j < 8; j++)
-                     lane_sel_xor1 |= (j ^ 1) << (j * 3);
-
-                  /* Swap odd, even lanes of mrt0. */
-                  bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1), src0, lane_sel_xor1);
-
-                  /* Swap even lanes between mrt0 and mrt1. */
-                  bld.vop2(aco_opcode::v_cndmask_b32, tmp, Operand(dst0, v1), src1,
-                           Operand(clobber_vcc.physReg(), bld.lm));
-                  bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst1, v1), src1, Operand(dst0, v1),
-                           Operand(clobber_vcc.physReg(), bld.lm));
-
-                  /* Swap odd, even lanes of mrt0 again. */
-                  bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1),
-                                Operand(tmp.physReg(), v1), lane_sel_xor1);
+                  /*      | even lanes | odd lanes
+                   * mrt0 | src0 even  | src1 even
+                   * mrt1 | src0 odd   | src1 odd
+                   */
+                  bld.vop2_dpp(aco_opcode::v_cndmask_b32, Definition(dst0, v1), src1, src0,
+                               src_even, dpp_row_xmask(1));
+                  bld.vop2_e64_dpp(aco_opcode::v_cndmask_b32, Definition(dst1, v1), src0, src1,
+                                   src_odd, dpp_row_xmask(1));
 
                   mrt0[i] = Operand(dst0, v1);
                   mrt1[i] = Operand(dst1, v1);

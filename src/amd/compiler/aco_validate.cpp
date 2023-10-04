@@ -565,9 +565,9 @@ validate_ir(Program* program)
             } else if (instr->opcode == aco_opcode::p_dual_src_export_gfx11) {
                check(instr->definitions.size() == 6,
                      "p_dual_src_export_gfx11 must have 6 definitions", instr.get());
-               check(instr->definitions[2].regClass().type() == RegType::vgpr &&
-                        instr->definitions[2].regClass().size() == 1,
-                     "Third definition of p_dual_src_export_gfx11 must be a v1", instr.get());
+               check(instr->definitions[2].regClass() == program->lane_mask,
+                     "Third definition of p_dual_src_export_gfx11 must be a lane mask",
+                     instr.get());
                check(instr->definitions[3].regClass() == program->lane_mask,
                      "Fourth definition of p_dual_src_export_gfx11 must be a lane mask",
                      instr.get());

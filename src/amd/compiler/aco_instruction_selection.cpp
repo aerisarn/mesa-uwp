@@ -8057,7 +8057,7 @@ create_fs_dual_src_export_gfx11(isel_context* ctx, const struct aco_export_mrt* 
    RegClass type = RegClass(RegType::vgpr, util_bitcount(mrt0->enabled_channels));
    exp->definitions[0] = bld.def(type); /* mrt0 */
    exp->definitions[1] = bld.def(type); /* mrt1 */
-   exp->definitions[2] = bld.def(v1);
+   exp->definitions[2] = bld.def(bld.lm);
    exp->definitions[3] = bld.def(bld.lm);
    exp->definitions[4] = bld.def(bld.lm, vcc);
    exp->definitions[5] = bld.def(s1, scc);
