@@ -55,6 +55,10 @@ static const std::array<aco_compiler_statistic_info, aco_num_statistics> statist
       aco_compiler_statistic_info{"Pre-Sched SGPRs", "SGPR usage before scheduling"};
    ret[aco_statistic_vgpr_presched] =
       aco_compiler_statistic_info{"Pre-Sched VGPRs", "VGPR usage before scheduling"};
+   ret[aco_statistic_valu] = aco_compiler_statistic_info{"VALU", "Number of VALU instructions"};
+   ret[aco_statistic_salu] = aco_compiler_statistic_info{"SALU", "Number of SALU instructions"};
+   ret[aco_statistic_vmem] = aco_compiler_statistic_info{"VMEM", "Number of VMEM instructions"};
+   ret[aco_statistic_smem] = aco_compiler_statistic_info{"SMEM", "Number of SMEM instructions"};
    return ret;
 }();
 
