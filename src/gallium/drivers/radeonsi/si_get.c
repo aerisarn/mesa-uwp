@@ -751,6 +751,15 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
       case PIPE_VIDEO_CAP_EFC_SUPPORTED:
          return ((sscreen->info.family >= CHIP_RENOIR) &&
                  !(sscreen->debug_flags & DBG(NO_EFC)));
+
+      case PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME:
+         if (sscreen->info.vcn_ip_version >= VCN_3_0_0) {
+            int refPicList0 = 1;
+            int refPicList1 = codec == PIPE_VIDEO_FORMAT_MPEG4_AVC ? 1 : 0;
+            return refPicList0 | (refPicList1 << 16);
+         } else
+            return 1;
+
       default:
          return 0;
       }
