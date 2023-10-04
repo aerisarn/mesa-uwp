@@ -650,7 +650,7 @@ nvk_image_plane_add_req(struct nvk_image_plane *plane,
    assert(util_is_power_of_two_or_zero64(plane->nil.align_B));
 
    *align_B = MAX2(*align_B, plane->nil.align_B);
-   *size_B = ALIGN_POT(*size_B, plane->nil.align_B);
+   *size_B = align64(*size_B, plane->nil.align_B);
    *size_B += plane->nil.size_B;
 }
 
@@ -816,7 +816,7 @@ nvk_image_plane_bind(struct nvk_device *dev,
                      struct nvk_device_memory *mem,
                      uint64_t *offset_B)
 {
-   *offset_B = ALIGN_POT(*offset_B, plane->nil.align_B);
+   *offset_B = align64(*offset_B, (uint64_t)plane->nil.align_B);
 
    if (plane->vma_size_B) {
       nouveau_ws_bo_bind_vma(dev->ws_dev,

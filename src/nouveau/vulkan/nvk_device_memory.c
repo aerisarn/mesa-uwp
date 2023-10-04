@@ -185,7 +185,7 @@ nvk_AllocateMemory(VkDevice device,
       alignment = (1ULL << 16);
 
    const uint64_t aligned_size =
-      ALIGN_POT(pAllocateInfo->allocationSize, alignment);
+      align64(pAllocateInfo->allocationSize, alignment);
 
    mem = vk_device_memory_create(&dev->vk, pAllocateInfo,
                                  pAllocator, sizeof(*mem));

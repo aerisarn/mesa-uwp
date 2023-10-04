@@ -48,12 +48,12 @@ nvk_CreateBuffer(VkDevice device,
 
    if (buffer->vk.size > 0 &&
        (buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
-      const uint64_t alignment =
+      const uint32_t alignment =
          nvk_get_buffer_alignment(&nvk_device_physical(dev)->info,
                                   buffer->vk.usage,
                                   buffer->vk.create_flags);
       assert(alignment >= 4096);
-      buffer->vma_size_B = ALIGN_POT(buffer->vk.size, alignment);
+      buffer->vma_size_B = align64(buffer->vk.size, alignment);
 
       const bool sparse_residency =
          buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
@@ -104,7 +104,7 @@ nvk_GetDeviceBufferMemoryRequirements(
                                pInfo->pCreateInfo->flags);
 
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
-      .size = ALIGN_POT(pInfo->pCreateInfo->size, alignment),
+      .size = align64(pInfo->pCreateInfo->size, alignment),
       .alignment = alignment,
       .memoryTypeBits = BITFIELD_MASK(dev->pdev->mem_type_cnt),
    };

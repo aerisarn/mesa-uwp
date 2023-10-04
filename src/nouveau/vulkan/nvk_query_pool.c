@@ -49,8 +49,8 @@ nvk_CreateQueryPool(VkDevice device,
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* We place the availability first and then data */
-   pool->query_start = ALIGN_POT(pool->vk.query_count * sizeof(uint32_t),
-                                 sizeof(struct nvk_query_report));
+   pool->query_start = align(pool->vk.query_count * sizeof(uint32_t),
+                             sizeof(struct nvk_query_report));
 
    uint32_t reports_per_query;
    switch (pCreateInfo->queryType) {

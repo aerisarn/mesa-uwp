@@ -124,8 +124,7 @@ push_add_image_plane_opaque_bind(struct push_builder *pb,
                                  const VkSparseMemoryBind *bind,
                                  uint64_t *image_plane_offset_B)
 {
-   *image_plane_offset_B = ALIGN_POT(*image_plane_offset_B,
-                                     plane->nil.align_B);
+   *image_plane_offset_B = align64(*image_plane_offset_B, plane->nil.align_B);
 
    /* The offset of the bind range within the image */
    uint64_t image_bind_offset_B = bind->resourceOffset;
