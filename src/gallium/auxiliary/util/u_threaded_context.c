@@ -305,6 +305,25 @@ to_call_check(void *ptr, unsigned num_slots)
    sizeof(struct type) + sizeof(((struct type*)NULL)->slot[0]) * (num_slots))
 #define get_next_call(ptr, type) ((struct type*)((uint64_t*)ptr + call_size(type)))
 
+ALWAYS_INLINE static void
+tc_set_resource_batch_usage(struct threaded_context *tc, struct pipe_resource *pres)
+{
+   /* ignore batch usage when persistent */
+   if (threaded_resource(pres)->last_batch_usage != INT8_MAX)
+      threaded_resource(pres)->last_batch_usage = tc->next;
+   threaded_resource(pres)->batch_generation = tc->batch_generation;
+}
+
+ALWAYS_INLINE static void
+tc_set_resource_batch_usage_persistent(struct threaded_context *tc, struct pipe_resource *pres, bool enable)
+{
+   if (!pres)
+      return;
+   /* mark with special value to block any unsynchronized access */
+   threaded_resource(pres)->last_batch_usage = enable ? INT8_MAX : tc->next;
+   threaded_resource(pres)->batch_generation = tc->batch_generation;
+}
+
 /* Assign src to dst while dst is uninitialized. */
 static inline void
 tc_set_resource_reference(struct pipe_resource **dst, struct pipe_resource *src)
@@ -525,6 +544,8 @@ tc_batch_flush(struct threaded_context *tc, bool full_copy)
                       NULL, 0);
    tc->last = tc->next;
    tc->next = next_id;
+   if (next_id == 0)
+      tc->batch_generation++;
    tc_begin_next_buffer_list(tc);
 
 }
@@ -1018,6 +1039,7 @@ threaded_resource_init(struct pipe_resource *res, bool allow_cpu_storage)
    tres->is_user_ptr = false;
    tres->buffer_id_unique = 0;
    tres->pending_staging_uploads = 0;
+   tres->last_batch_usage = -1;
    util_range_init(&tres->pending_staging_uploads_range);
 
    if (allow_cpu_storage &&
@@ -1460,12 +1482,20 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
    p->state.layers = fb->layers;
    p->state.nr_cbufs = nr_cbufs;
 
+   /* when unbinding, mark attachments as used for the current batch */
+   for (unsigned i = 0; i < tc->nr_cbufs; i++)
+      tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[i], false);
+   tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[PIPE_MAX_COLOR_BUFS], false);
+   tc_set_resource_batch_usage_persistent(tc, tc->fb_resolve, false);
+
    for (unsigned i = 0; i < nr_cbufs; i++) {
       p->state.cbufs[i] = NULL;
       pipe_surface_reference(&p->state.cbufs[i], fb->cbufs[i]);
       /* full tracking requires storing the fb attachment resources */
       tc->fb_resources[i] = fb->cbufs[i] ? fb->cbufs[i]->texture : NULL;
+      tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[i], true);
    }
+   tc->nr_cbufs = nr_cbufs;
    memset(&tc->fb_resources[nr_cbufs], 0,
             sizeof(void*) * (PIPE_MAX_COLOR_BUFS - nr_cbufs));
    if (tc->options.parse_renderpass_info) {
@@ -1502,6 +1532,8 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
    }
    tc->fb_resources[PIPE_MAX_COLOR_BUFS] = fb->zsbuf ? fb->zsbuf->texture : NULL;
    tc->fb_resolve = fb->resolve;
+   tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[PIPE_MAX_COLOR_BUFS], true);
+   tc_set_resource_batch_usage_persistent(tc, tc->fb_resolve, true);
    tc->in_renderpass = false;
    p->state.zsbuf = NULL;
    pipe_surface_reference(&p->state.zsbuf, fb->zsbuf);
@@ -1833,9 +1865,12 @@ tc_set_sampler_views(struct pipe_context *_pipe,
          memcpy(p->slot, views, sizeof(*views) * count);
 
          for (unsigned i = 0; i < count; i++) {
-            if (views[i] && views[i]->target == PIPE_BUFFER) {
-               tc_bind_buffer(tc, &tc->sampler_buffers[shader][start + i], next,
-                              views[i]->texture);
+            if (views[i]) {
+               if (views[i]->target == PIPE_BUFFER)
+                  tc_bind_buffer(tc, &tc->sampler_buffers[shader][start + i], next,
+                                 views[i]->texture);
+               else
+                  tc_set_resource_batch_usage(tc, views[i]->texture);
             } else {
                tc_unbind_buffer(&tc->sampler_buffers[shader][start + i]);
             }
@@ -1845,9 +1880,12 @@ tc_set_sampler_views(struct pipe_context *_pipe,
             p->slot[i] = NULL;
             pipe_sampler_view_reference(&p->slot[i], views[i]);
 
-            if (views[i] && views[i]->target == PIPE_BUFFER) {
-               tc_bind_buffer(tc, &tc->sampler_buffers[shader][start + i], next,
-                              views[i]->texture);
+            if (views[i]) {
+               if (views[i]->target == PIPE_BUFFER)
+                  tc_bind_buffer(tc, &tc->sampler_buffers[shader][start + i], next,
+                                 views[i]->texture);
+               else
+                  tc_set_resource_batch_usage(tc, views[i]->texture);
             } else {
                tc_unbind_buffer(&tc->sampler_buffers[shader][start + i]);
             }
@@ -1924,17 +1962,21 @@ tc_set_shader_images(struct pipe_context *_pipe,
 
          tc_set_resource_reference(&p->slot[i].resource, resource);
 
-         if (resource && resource->target == PIPE_BUFFER) {
-            tc_bind_buffer(tc, &tc->image_buffers[shader][start + i], next, resource);
+         if (resource) {
+            if (resource->target == PIPE_BUFFER) {
+               tc_bind_buffer(tc, &tc->image_buffers[shader][start + i], next, resource);
 
-            if (images[i].access & PIPE_IMAGE_ACCESS_WRITE) {
-               struct threaded_resource *tres = threaded_resource(resource);
+               if (images[i].access & PIPE_IMAGE_ACCESS_WRITE) {
+                  struct threaded_resource *tres = threaded_resource(resource);
 
-               tc_buffer_disable_cpu_storage(resource);
-               util_range_add(&tres->b, &tres->valid_buffer_range,
-                              images[i].u.buf.offset,
-                              images[i].u.buf.offset + images[i].u.buf.size);
-               writable_buffers |= BITFIELD_BIT(start + i);
+                  tc_buffer_disable_cpu_storage(resource);
+                  util_range_add(&tres->b, &tres->valid_buffer_range,
+                                 images[i].u.buf.offset,
+                                 images[i].u.buf.offset + images[i].u.buf.size);
+                  writable_buffers |= BITFIELD_BIT(start + i);
+               }
+            } else {
+               tc_set_resource_batch_usage(tc, resource);
             }
          } else {
             tc_unbind_buffer(&tc->image_buffers[shader][start + i]);
@@ -2705,6 +2747,8 @@ tc_texture_map(struct pipe_context *_pipe,
 
    tc_sync_msg(tc, "texture");
    tc_set_driver_thread(tc);
+   /* block all unsync texture subdata during map */
+   tc_set_resource_batch_usage_persistent(tc, resource, true);
 
    tc->bytes_mapped_estimate += box->width;
 
@@ -2953,6 +2997,9 @@ tc_texture_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
    struct threaded_context *tc = threaded_context(_pipe);
    struct threaded_transfer *ttrans = threaded_transfer(transfer);
 
+   /* enable subdata again once resource is no longer mapped */
+   tc_set_resource_batch_usage_persistent(tc, transfer->resource, false);
+
    tc_add_call(tc, TC_CALL_texture_unmap, tc_texture_unmap)->transfer = transfer;
 
    /* tc_texture_map directly maps the textures, but tc_texture_unmap
@@ -3135,6 +3182,7 @@ tc_texture_subdata(struct pipe_context *_pipe,
       struct tc_texture_subdata *p =
          tc_add_slot_based_call(tc, TC_CALL_texture_subdata, tc_texture_subdata, size);
 
+      tc_set_resource_batch_usage(tc, resource);
       tc_set_resource_reference(&p->resource, resource);
       p->level = level;
       p->usage = usage;
@@ -4252,11 +4300,13 @@ tc_resource_copy_region(struct pipe_context *_pipe,
    if (dst->target == PIPE_BUFFER)
       tc_buffer_disable_cpu_storage(dst);
 
+   tc_set_resource_batch_usage(tc, dst);
    tc_set_resource_reference(&p->dst, dst);
    p->dst_level = dst_level;
    p->dstx = dstx;
    p->dsty = dsty;
    p->dstz = dstz;
+   tc_set_resource_batch_usage(tc, src);
    tc_set_resource_reference(&p->src, src);
    p->src_level = src_level;
    p->src_box = *src_box;
@@ -4294,7 +4344,9 @@ tc_blit(struct pipe_context *_pipe, const struct pipe_blit_info *info)
    struct threaded_context *tc = threaded_context(_pipe);
    struct tc_blit_call *blit = tc_add_call(tc, TC_CALL_blit, tc_blit_call);
 
+   tc_set_resource_batch_usage(tc, info->dst.resource);
    tc_set_resource_reference(&blit->info.dst.resource, info->dst.resource);
+   tc_set_resource_batch_usage(tc, info->src.resource);
    tc_set_resource_reference(&blit->info.src.resource, info->src.resource);
    memcpy(&blit->info, info, sizeof(*info));
    if (tc->options.parse_renderpass_info) {
@@ -4355,6 +4407,7 @@ tc_generate_mipmap(struct pipe_context *_pipe,
    struct tc_generate_mipmap *p =
       tc_add_call(tc, TC_CALL_generate_mipmap, tc_generate_mipmap);
 
+   tc_set_resource_batch_usage(tc, res);
    tc_set_resource_reference(&p->res, res);
    p->format = format;
    p->base_level = base_level;
@@ -4386,6 +4439,7 @@ tc_flush_resource(struct pipe_context *_pipe, struct pipe_resource *resource)
    struct tc_resource_call *call = tc_add_call(tc, TC_CALL_flush_resource,
                                                tc_resource_call);
 
+   tc_set_resource_batch_usage(tc, resource);
    tc_set_resource_reference(&call->resource, resource);
 }
 
@@ -4412,6 +4466,7 @@ tc_invalidate_resource(struct pipe_context *_pipe,
 
    struct tc_resource_call *call = tc_add_call(tc, TC_CALL_invalidate_resource,
                                                tc_resource_call);
+   tc_set_resource_batch_usage(tc, resource);
    tc_set_resource_reference(&call->resource, resource);
 
    struct tc_renderpass_info *info = tc_get_renderpass_info(tc);
@@ -4641,6 +4696,7 @@ tc_clear_texture(struct pipe_context *_pipe, struct pipe_resource *res,
    struct tc_clear_texture *p =
       tc_add_call(tc, TC_CALL_clear_texture, tc_clear_texture);
 
+   tc_set_resource_batch_usage(tc, res);
    tc_set_resource_reference(&p->res, res);
    p->level = level;
    p->box = *box;
@@ -4675,6 +4731,7 @@ tc_resource_commit(struct pipe_context *_pipe, struct pipe_resource *res,
       tc_add_call(tc, TC_CALL_resource_commit, tc_resource_commit);
 
    tc_set_resource_reference(&p->res, res);
+   tc_set_resource_batch_usage(tc, res);
    p->level = level;
    p->box = *box;
    p->commit = commit;
