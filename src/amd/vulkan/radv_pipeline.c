@@ -735,6 +735,8 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    radv_optimize_nir_algebraic(
       stage->nir, io_to_mem || lowered_ngg || stage->stage == MESA_SHADER_COMPUTE || stage->stage == MESA_SHADER_TASK);
 
+   NIR_PASS(_, stage->nir, nir_lower_fp16_casts, nir_lower_fp16_split_fp64);
+
    if (stage->nir->info.bit_sizes_int & (8 | 16)) {
       if (gfx_level >= GFX8) {
          NIR_PASS(_, stage->nir, nir_convert_to_lcssa, true, true);
