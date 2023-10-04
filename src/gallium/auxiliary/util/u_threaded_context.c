@@ -474,6 +474,7 @@ tc_batch_execute(void *job, UNUSED void *gdata, int thread_index)
    batch->last_mergeable_call = NULL;
    batch->first_set_fb = false;
    batch->max_renderpass_info_idx = 0;
+   batch->tc->last_completed = batch->batch_idx;
 }
 
 static void
@@ -4991,11 +4992,13 @@ threaded_context_create(struct pipe_context *pipe,
    if (!util_queue_init(&tc->queue, "gdrv", TC_MAX_BATCHES - 2, 1, 0, NULL))
       goto fail;
 
+   tc->last_completed = -1;
    for (unsigned i = 0; i < TC_MAX_BATCHES; i++) {
 #if !defined(NDEBUG) && TC_DEBUG >= 1
       tc->batch_slots[i].sentinel = TC_SENTINEL;
 #endif
       tc->batch_slots[i].tc = tc;
+      tc->batch_slots[i].batch_idx = i;
       util_queue_fence_init(&tc->batch_slots[i].fence);
       tc->batch_slots[i].renderpass_info_idx = -1;
       if (tc->options.parse_renderpass_info) {

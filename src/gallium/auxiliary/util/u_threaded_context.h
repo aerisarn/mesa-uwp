@@ -504,6 +504,7 @@ struct tc_batch {
    struct util_queue_fence fence;
    /* whether the first set_framebuffer_state call has been seen by this batch */
    bool first_set_fb;
+   uint8_t batch_idx;
    struct tc_unflushed_batch_token *token;
    uint64_t slots[TC_SLOTS_PER_BATCH];
    struct util_dynarray renderpass_infos;
@@ -599,6 +600,8 @@ struct threaded_context {
    bool seen_shader_buffers[PIPE_SHADER_TYPES];
    bool seen_image_buffers[PIPE_SHADER_TYPES];
    bool seen_sampler_buffers[PIPE_SHADER_TYPES];
+
+   int8_t last_completed;
 
    unsigned max_vertex_buffers;
    unsigned max_const_buffers;
