@@ -324,6 +324,54 @@ tc_set_resource_batch_usage_persistent(struct threaded_context *tc, struct pipe_
    threaded_resource(pres)->batch_generation = tc->batch_generation;
 }
 
+/* this can ONLY be used to check against the currently recording batch */
+ALWAYS_INLINE static bool
+tc_resource_batch_usage_test_busy(const struct threaded_context *tc, const struct pipe_resource *pres)
+{
+   const struct threaded_resource *tbuf = (const struct threaded_resource*)pres;
+
+   if (!tc->options.unsynchronized_texture_subdata)
+      return true;
+
+   /* resource has persistent access: assume always busy */
+   if (tbuf->last_batch_usage == INT8_MAX)
+      return true;
+
+   /* resource has never been seen */
+   if (tbuf->last_batch_usage == -1)
+      return false;
+
+   /* resource has been seen but no batches have executed */
+   if (tc->last_completed == -1)
+      return true;
+
+   /* begin comparisons checking number of times batches have cycled */
+   unsigned diff = tc->batch_generation - tbuf->batch_generation;
+   /* resource has been seen, batches have fully cycled at least once */
+   if (diff > 1)
+      return false;
+
+   /* resource has been seen in current batch cycle: return whether batch has definitely completed */
+   if (diff == 0)
+      return tc->last_completed >= tbuf->last_batch_usage;
+
+   /* resource has been seen within one batch cycle: check for batch wrapping */
+   if (tc->last_completed >= tbuf->last_batch_usage)
+      /* this or a subsequent pre-wrap batch was the last to definitely complete: resource is idle */
+      return false;
+
+   /* batch execution has not definitely wrapped: resource is definitely not idle */
+   if (tc->last_completed > tc->next)
+      return true;
+
+   /* resource was seen pre-wrap, batch execution has definitely wrapped: idle */
+   if (tbuf->last_batch_usage > tc->last_completed)
+      return false;
+
+   /* tc->last_completed is not an exact measurement, so anything else is considered busy */
+   return true;
+}
+
 /* Assign src to dst while dst is uninitialized. */
 static inline void
 tc_set_resource_reference(struct pipe_resource **dst, struct pipe_resource *src)
@@ -3194,8 +3242,13 @@ tc_texture_subdata(struct pipe_context *_pipe,
       memcpy(p->slot, data, size);
    } else {
       struct pipe_context *pipe = tc->pipe;
+      struct threaded_resource *tres = threaded_resource(resource);
+      unsigned unsync_usage = TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_WRITE;
+      bool can_unsync = !tc_resource_batch_usage_test_busy(tc, resource) &&
+                        tc->options.is_resource_busy &&
+                        !tc->options.is_resource_busy(tc->pipe->screen, tres->latest, usage | unsync_usage);
 
-      if (resource->usage != PIPE_USAGE_STAGING &&
+      if (!can_unsync && resource->usage != PIPE_USAGE_STAGING &&
           tc->options.parse_renderpass_info && tc->in_renderpass) {
          enum pipe_format format = resource->format;
          if (usage & PIPE_MAP_DEPTH_ONLY)
@@ -3208,7 +3261,7 @@ tc_texture_subdata(struct pipe_context *_pipe,
          assert(fmt_layer_stride * box->depth <= UINT32_MAX);
 
          struct pipe_resource *pres = pipe_buffer_create(pipe->screen, 0, PIPE_USAGE_STREAM, layer_stride * box->depth);
-         pipe->buffer_subdata(pipe, pres, PIPE_MAP_WRITE | TC_TRANSFER_MAP_THREADED_UNSYNC, 0, layer_stride * box->depth, data);
+         pipe->buffer_subdata(pipe, pres, unsync_usage, 0, layer_stride * box->depth, data);
          struct pipe_box src_box = *box;
          src_box.x = src_box.y = src_box.z = 0;
 
@@ -3253,11 +3306,16 @@ tc_texture_subdata(struct pipe_context *_pipe,
 
          pipe_resource_reference(&pres, NULL);
       } else {
-         tc_sync(tc);
-         tc_set_driver_thread(tc);
+         if (can_unsync) {
+            usage |= unsync_usage;
+         } else {
+            tc_sync(tc);
+            tc_set_driver_thread(tc);
+         }
          pipe->texture_subdata(pipe, resource, level, usage, box, data,
                               stride, layer_stride);
-         tc_clear_driver_thread(tc);
+         if (!can_unsync)
+            tc_clear_driver_thread(tc);
       }
    }
 }
