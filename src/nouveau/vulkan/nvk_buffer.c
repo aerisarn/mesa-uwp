@@ -46,8 +46,9 @@ nvk_CreateBuffer(VkDevice device,
    if (!buffer)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   if (buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) {
-      const uint32_t alignment =
+   if (buffer->vk.size > 0 &&
+       (buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
+      const uint64_t alignment =
          nvk_get_buffer_alignment(&nvk_device_physical(dev)->info,
                                   buffer->vk.usage,
                                   buffer->vk.create_flags);
