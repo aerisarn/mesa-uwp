@@ -2275,39 +2275,40 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
 
 template <chip CHIP>
 static void
-tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
-                                        struct tu_pipeline *pipeline)
+tu_emit_program_state(struct tu_cs *sub_cs,
+                      struct tu_program_state *prog,
+                      struct tu_shader **shaders)
 {
+   struct tu_device *dev = sub_cs->device;
    struct tu_cs prog_cs;
 
-   const struct ir3_shader_variant *variants[ARRAY_SIZE(pipeline->shaders)];
-   struct tu_draw_state draw_states[ARRAY_SIZE(pipeline->shaders)];
+   const struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
+   struct tu_draw_state draw_states[MESA_SHADER_STAGES];
    
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < ARRAY_SIZE(variants); stage = (gl_shader_stage) (stage+1)) {
-      variants[stage] = pipeline->shaders[stage] ?
-         pipeline->shaders[stage]->variant : NULL;
+      variants[stage] = shaders[stage] ? shaders[stage]->variant : NULL;
    }
 
    uint32_t safe_variants =
-      ir3_trim_constlen(variants, builder->device->compiler);
+      ir3_trim_constlen(variants, dev->compiler);
 
    unsigned dynamic_descriptor_sizes[MAX_SETS] = { };
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < ARRAY_SIZE(variants); stage = (gl_shader_stage) (stage+1)) {
-      if (pipeline->shaders[stage]) {
+      if (shaders[stage]) {
          if (safe_variants & (1u << stage)) {
-            variants[stage] = pipeline->shaders[stage]->safe_const_variant;
-            draw_states[stage] = pipeline->shaders[stage]->safe_const_state;
+            variants[stage] = shaders[stage]->safe_const_variant;
+            draw_states[stage] = shaders[stage]->safe_const_state;
          } else {
-            draw_states[stage] = pipeline->shaders[stage]->state;
+            draw_states[stage] = shaders[stage]->state;
          }
 
          for (unsigned i = 0; i < MAX_SETS; i++) {
-            if (pipeline->shaders[stage]->dynamic_descriptor_sizes[i] >= 0) {
+            if (shaders[stage]->dynamic_descriptor_sizes[i] >= 0) {
                dynamic_descriptor_sizes[i] =
-                  pipeline->shaders[stage]->dynamic_descriptor_sizes[i];
+                  shaders[stage]->dynamic_descriptor_sizes[i];
             }
          }
       }
@@ -2317,22 +2318,21 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       if (!variants[i])
          continue;
 
-      tu_pipeline_set_linkage(&pipeline->program.link[i],
-                              &pipeline->shaders[i]->const_state,
+      tu_pipeline_set_linkage(&prog->link[i],
+                              &shaders[i]->const_state,
                               variants[i]);
 
       struct tu_push_constant_range *push_consts =
-         &pipeline->shaders[i]->const_state.push_consts;
+         &shaders[i]->const_state.push_consts;
       if (push_consts->type == IR3_PUSH_CONSTS_SHARED ||
           push_consts->type == IR3_PUSH_CONSTS_SHARED_PREAMBLE) {
-         pipeline->program.shared_consts = *push_consts;
+         prog->shared_consts = *push_consts;
       }
    }
 
    unsigned dynamic_descriptor_offset = 0;
    for (unsigned i = 0; i < MAX_SETS; i++) {
-      pipeline->program.dynamic_descriptor_offsets[i] =
-         dynamic_descriptor_offset;
+      prog->dynamic_descriptor_offsets[i] = dynamic_descriptor_offset;
       dynamic_descriptor_offset += dynamic_descriptor_sizes[i];
    }
 
@@ -2347,29 +2347,28 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
     * consts are emitted in state groups that are shared between the binning
     * and draw passes.
     */
-   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_program_config<CHIP>(&prog_cs, &pipeline->program,
-                                 pipeline->shaders, variants);
-   pipeline->program.config_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
+   tu_cs_begin_sub_stream(sub_cs, 512, &prog_cs);
+   tu6_emit_program_config<CHIP>(&prog_cs, prog, shaders, variants);
+   prog->config_state = tu_cs_end_draw_state(sub_cs, &prog_cs);
 
-   pipeline->program.vs_state = draw_states[MESA_SHADER_VERTEX];
+   prog->vs_state = draw_states[MESA_SHADER_VERTEX];
 
   /* Don't use the binning pass variant when GS is present because we don't
    * support compiling correct binning pass variants with GS.
    */
    if (variants[MESA_SHADER_GEOMETRY]) {
-      pipeline->program.vs_binning_state = pipeline->program.vs_state;
+      prog->vs_binning_state = prog->vs_state;
    } else {
-      pipeline->program.vs_binning_state =
-         pipeline->shaders[MESA_SHADER_VERTEX]->binning_state;
+      prog->vs_binning_state =
+         shaders[MESA_SHADER_VERTEX]->binning_state;
    }
 
-   pipeline->program.hs_state = draw_states[MESA_SHADER_TESS_CTRL];
-   pipeline->program.ds_state = draw_states[MESA_SHADER_TESS_EVAL];
-   pipeline->program.gs_state = draw_states[MESA_SHADER_GEOMETRY];
-   pipeline->program.gs_binning_state =
-      pipeline->shaders[MESA_SHADER_GEOMETRY]->binning_state;
-   pipeline->program.fs_state = draw_states[MESA_SHADER_FRAGMENT];
+   prog->hs_state = draw_states[MESA_SHADER_TESS_CTRL];
+   prog->ds_state = draw_states[MESA_SHADER_TESS_EVAL];
+   prog->gs_state = draw_states[MESA_SHADER_GEOMETRY];
+   prog->gs_binning_state =
+      shaders[MESA_SHADER_GEOMETRY]->binning_state;
+   prog->fs_state = draw_states[MESA_SHADER_FRAGMENT];
 
    const struct ir3_shader_variant *vs = variants[MESA_SHADER_VERTEX];
    const struct ir3_shader_variant *hs = variants[MESA_SHADER_TESS_CTRL];
@@ -2377,18 +2376,17 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    const struct ir3_shader_variant *gs = variants[MESA_SHADER_GEOMETRY];
    const struct ir3_shader_variant *fs = variants[MESA_SHADER_FRAGMENT];
 
-   tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
+   tu_cs_begin_sub_stream(sub_cs, 512, &prog_cs);
    tu6_emit_vpc<CHIP>(&prog_cs, vs, hs, ds, gs, fs);
-   pipeline->program.vpc_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
+   prog->vpc_state = tu_cs_end_draw_state(sub_cs, &prog_cs);
    
    if (hs) {
       const struct ir3_const_state *hs_const =
-         &pipeline->program.link[MESA_SHADER_TESS_CTRL].const_state;
+         &prog->link[MESA_SHADER_TESS_CTRL].const_state;
       unsigned hs_constlen =
-         pipeline->program.link[MESA_SHADER_TESS_CTRL].constlen;
+         prog->link[MESA_SHADER_TESS_CTRL].constlen;
       uint32_t hs_base = hs_const->offsets.primitive_param;
-      pipeline->program.hs_param_dwords =
-         MIN2((hs_constlen - hs_base) * 4, 8);
+      prog->hs_param_dwords = MIN2((hs_constlen - hs_base) * 4, 8);
    }
 
    const struct ir3_shader_variant *last_shader;
@@ -2399,10 +2397,10 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    else
       last_shader = vs;
 
-   pipeline->program.per_view_viewport =
+   prog->per_view_viewport =
       !last_shader->writes_viewport &&
-      builder->fragment_density_map &&
-      builder->device->physical_device->info->a6xx.has_per_view_viewport;
+      shaders[MESA_SHADER_FRAGMENT]->fs.has_fdm &&
+      dev->physical_device->info->a6xx.has_per_view_viewport;
 }
 
 static const enum mesa_vk_dynamic_graphics_state tu_vertex_input_state[] = {
@@ -3933,7 +3931,8 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
          return result;
       }
 
-      tu_pipeline_builder_parse_shader_stages<CHIP>(builder, *pipeline);
+      tu_emit_program_state<CHIP>(&(*pipeline)->cs, &(*pipeline)->program,
+                                  (*pipeline)->shaders);
 
       if (CHIP == A6XX) {
          /* Blob doesn't preload state on A7XX, likely preloading either
