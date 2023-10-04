@@ -9,15 +9,6 @@ set -e
 set -o xtrace
 
 EPHEMERAL=(
-    autoconf
-    automake
-    bzip2
-    libtool
-    libepoxy-dev
-    libtbb-dev
-    make
-    openssl-dev
-    unzip
 )
 
 
