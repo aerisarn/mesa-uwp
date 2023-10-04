@@ -653,16 +653,21 @@ agx_emit_block_image_store(agx_builder *b, nir_intrinsic_instr *instr)
    bool array = nir_intrinsic_image_array(instr);
    enum agx_dim dim = agx_tex_dim(nir_intrinsic_image_dim(instr), array);
 
+   /* 32-bit source physically, 16-bit in NIR, top half ignored but needed
+    * logically to ensure alignment.
+    */
+   offset = agx_vec2(b, offset, agx_undef(AGX_SIZE_16));
+   offset.size = AGX_SIZE_32;
+
    /* Modified coordinate descriptor */
    agx_index coords;
    if (array) {
       coords = agx_temp(b->shader, AGX_SIZE_32);
-      agx_emit_collect_to(
-         b, coords, 2,
-         (agx_index[]){
-            ms ? agx_mov_imm(b, 16, 0) : layer,
-            ms ? layer : agx_mov_imm(b, 16, 0xFFFF) /* TODO: Why can't zero? */,
-         });
+      agx_emit_collect_to(b, coords, 2,
+                          (agx_index[]){
+                             ms ? agx_mov_imm(b, 16, 0) : layer,
+                             ms ? layer : agx_undef(AGX_SIZE_16),
+                          });
    } else {
       coords = agx_null();
    }

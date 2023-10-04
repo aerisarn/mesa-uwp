@@ -895,8 +895,8 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       unsigned C = I->src[2].value;
 
       agx_index offset = I->src[1];
-      assert(offset.type == AGX_INDEX_REGISTER);
-      assert(offset.size == AGX_SIZE_16);
+      assert(offset.size == AGX_SIZE_32);
+      assert_register_is_aligned(offset);
       unsigned R = offset.value;
 
       bool unk1 = true;
