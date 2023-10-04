@@ -114,6 +114,10 @@ pub struct NirPrintfInfo {
     printf_info: *mut u_printf_info,
 }
 
+// SAFETY: `u_printf_info` is considered immutable
+unsafe impl Send for NirPrintfInfo {}
+unsafe impl Sync for NirPrintfInfo {}
+
 impl NirPrintfInfo {
     pub fn u_printf(&self, buf: &[u8]) {
         unsafe {
@@ -139,6 +143,12 @@ impl Drop for NirPrintfInfo {
 pub struct NirShader {
     nir: NonNull<nir_shader>,
 }
+
+// SAFETY: It's safe to share a nir_shader between threads.
+unsafe impl Send for NirShader {}
+
+// SAFETY: We do not allow interior mutability with &NirShader
+unsafe impl Sync for NirShader {}
 
 impl NirShader {
     pub fn new(nir: *mut nir_shader) -> Option<Self> {
