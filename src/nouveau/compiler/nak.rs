@@ -28,7 +28,6 @@ mod util;
 
 use crate::nak_ir::ShaderStageInfo;
 
-use bitview::*;
 use nak_bindings::*;
 use nak_from_nir::*;
 use nak_ir::ShaderIoInfo;
@@ -164,7 +163,7 @@ pub extern "C" fn nak_compiler_destroy(nak: *mut nak_compiler) {
 }
 
 #[no_mangle]
-pub extern "C" fn nak_debug_flags(nak: *const nak_compiler) -> u64 {
+pub extern "C" fn nak_debug_flags(_nak: *const nak_compiler) -> u64 {
     DEBUG.debug_flags().into()
 }
 

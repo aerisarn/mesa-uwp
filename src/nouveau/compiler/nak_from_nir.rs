@@ -6,8 +6,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(unstable_name_collisions)]
 
-use crate::bitset::BitSet;
-use crate::bitview::{BitMutView, BitView, SetField};
 use crate::nak_cfg::CFGBuilder;
 use crate::nak_ir::*;
 use crate::nak_sph::{OutputTopology, PixelImap};
@@ -1825,7 +1823,7 @@ impl<'a> ShaderFromNir<'a> {
                 });
             }
             nir_intrinsic_store_output => {
-                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
+                let ShaderIoInfo::Fragment(_) = &mut self.info.io else {
                     panic!("load_input is only used for fragment shaders");
                 };
                 let data = self.get_src(&srcs[0]);
@@ -2188,7 +2186,7 @@ impl<'a> ShaderFromNir<'a> {
 
         self.parse_cf_list(&mut ssa_alloc, &mut phi_map, nfi.iter_body());
 
-        let mut cfg = std::mem::take(&mut self.cfg).as_cfg();
+        let cfg = std::mem::take(&mut self.cfg).as_cfg();
         assert!(cfg.len() > 0);
         for i in 0..cfg.len() {
             if cfg[i].falls_through() {

@@ -1708,12 +1708,12 @@ impl SM75Instr {
         self.set_reg_src(24..32, op.idx);
     }
 
-    fn encode_kill(&mut self, op: &OpKill) {
+    fn encode_kill(&mut self, _op: &OpKill) {
         self.set_opcode(0x95b);
         self.set_pred_src(87..90, 90, SrcRef::True.into());
     }
 
-    fn encode_nop(&mut self, op: &OpNop) {
+    fn encode_nop(&mut self, _op: &OpNop) {
         self.set_opcode(0x918);
     }
 

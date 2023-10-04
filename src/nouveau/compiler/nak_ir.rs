@@ -5,7 +5,7 @@
 
 extern crate nak_ir_proc;
 
-use crate::bitview::{BitMutView, SetField};
+use crate::bitview::{BitMutView};
 pub use crate::nak_builder::{
     Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
 };

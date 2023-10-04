@@ -129,10 +129,6 @@ impl BarAlloc {
         self.wr_bars & (1 << bar) != 0
     }
 
-    pub fn is_rd_bar(&self, bar: u8) -> bool {
-        !self.is_wr_bar(bar)
-    }
-
     pub fn get_bar(&self, dep: usize) -> Option<u8> {
         let bar = self.dep_bar[dep];
         if bar == u8::MAX {
