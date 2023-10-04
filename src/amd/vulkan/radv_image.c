@@ -2325,6 +2325,12 @@ bool
 radv_layout_is_htile_compressed(const struct radv_device *device, const struct radv_image *image, VkImageLayout layout,
                                 unsigned queue_mask)
 {
+   /* Don't compress exclusive images used on transfer queues when SDMA doesn't support HTILE.
+    * Note that HTILE is already disabled on concurrent images when not supported.
+    */
+   if (queue_mask == BITFIELD_BIT(RADV_QUEUE_TRANSFER) && !device->physical_device->rad_info.sdma_supports_compression)
+      return false;
+
    switch (layout) {
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
