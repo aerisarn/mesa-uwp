@@ -317,6 +317,113 @@ nak_nir_isberd(nir_builder *b, nir_def *vertex)
 }
 
 static bool
+nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   nir_def *val;
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_layer_id: {
+      const uint32_t addr = nak_varying_attr_addr(VARYING_SLOT_LAYER);
+      val = nir_load_input(b, intrin->def.num_components, 32,
+                           nir_imm_int(b, 0), .base = addr,
+                           .dest_type = nir_type_int32);
+      break;
+   }
+
+   case nir_intrinsic_load_primitive_id: {
+      assert(b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
+             b->shader->info.stage == MESA_SHADER_TESS_EVAL);
+      nir_def *idx = nak_nir_isberd(b, nir_imm_int(b, 0));
+      val = nir_load_per_vertex_input(b, 1, 32, idx, nir_imm_int(b, 0),
+                                      .base = NAK_ATTR_PRIMITIVE_ID,
+                                      .dest_type = nir_type_int32);
+      break;
+   }
+
+   case nir_intrinsic_load_front_face:
+   case nir_intrinsic_load_instance_id:
+   case nir_intrinsic_load_vertex_id: {
+      const gl_system_value sysval =
+         nir_system_value_from_intrinsic(intrin->intrinsic);
+      const uint32_t addr = nak_sysval_attr_addr(sysval);
+      val = nir_load_input(b, intrin->def.num_components, 32,
+                           nir_imm_int(b, 0), .base = addr,
+                           .dest_type = nir_type_int32);
+      break;
+   }
+
+   case nir_intrinsic_load_patch_vertices_in: {
+      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_VERTEX_COUNT,
+                               .access = ACCESS_CAN_REORDER);
+      val = nir_extract_u8(b, val, nir_imm_int(b, 1));
+      break;
+   }
+
+   case nir_intrinsic_load_subgroup_invocation:
+   case nir_intrinsic_load_helper_invocation:
+   case nir_intrinsic_load_invocation_id:
+   case nir_intrinsic_load_local_invocation_index:
+   case nir_intrinsic_load_local_invocation_id:
+   case nir_intrinsic_load_workgroup_id:
+   case nir_intrinsic_load_workgroup_id_zero_base:
+   case nir_intrinsic_load_subgroup_eq_mask:
+   case nir_intrinsic_load_subgroup_lt_mask:
+   case nir_intrinsic_load_subgroup_le_mask:
+   case nir_intrinsic_load_subgroup_gt_mask:
+   case nir_intrinsic_load_subgroup_ge_mask: {
+      const gl_system_value sysval =
+         intrin->intrinsic == nir_intrinsic_load_workgroup_id_zero_base ?
+         SYSTEM_VALUE_WORKGROUP_ID :
+         nir_system_value_from_intrinsic(intrin->intrinsic);
+      const uint32_t idx = nak_sysval_sysval_idx(sysval);
+      nir_def *comps[3];
+      assert(intrin->def.num_components <= 3);
+      for (unsigned c = 0; c < intrin->def.num_components; c++) {
+         comps[c] = nir_load_sysval_nv(b, 32, .base = idx + c,
+                                       .access = ACCESS_CAN_REORDER);
+      }
+      val = nir_vec(b, comps, intrin->def.num_components);
+      break;
+   }
+
+   case nir_intrinsic_is_helper_invocation: {
+      /* Unlike load_helper_invocation, this one isn't re-orderable */
+      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_THREAD_KILL);
+      break;
+   }
+
+   case nir_intrinsic_shader_clock:
+      val = nir_load_sysval_nv(b, 64, .base = NAK_SV_CLOCK);
+      val = nir_unpack_64_2x32(b, val);
+      break;
+
+   default:
+      return false;
+   }
+
+   if (intrin->def.bit_size == 1)
+      val = nir_i2b(b, val);
+
+   nir_def_rewrite_uses(&intrin->def, val);
+
+   return true;
+}
+
+static bool
+nak_nir_lower_system_values(nir_shader *nir)
+{
+   return nir_shader_instructions_pass(nir, nak_nir_lower_system_value_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       NULL);
+}
+
+static bool
 lower_per_vertex_io_intrin(nir_builder *b,
                            nir_intrinsic_instr *intrin,
                            void *data)
@@ -582,113 +689,6 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
    return true;
 }
 
-static bool
-nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   b->cursor = nir_before_instr(instr);
-
-   nir_def *val;
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   switch (intrin->intrinsic) {
-   case nir_intrinsic_load_layer_id: {
-      const uint32_t addr = nak_varying_attr_addr(VARYING_SLOT_LAYER);
-      val = nir_load_input(b, intrin->def.num_components, 32,
-                           nir_imm_int(b, 0), .base = addr,
-                           .dest_type = nir_type_int32);
-      break;
-   }
-
-   case nir_intrinsic_load_primitive_id: {
-      assert(b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
-             b->shader->info.stage == MESA_SHADER_TESS_EVAL);
-      nir_def *idx = nak_nir_isberd(b, nir_imm_int(b, 0));
-      val = nir_load_per_vertex_input(b, 1, 32, idx, nir_imm_int(b, 0),
-                                      .base = NAK_ATTR_PRIMITIVE_ID,
-                                      .dest_type = nir_type_int32);
-      break;
-   }
-
-   case nir_intrinsic_load_front_face:
-   case nir_intrinsic_load_instance_id:
-   case nir_intrinsic_load_vertex_id: {
-      const gl_system_value sysval =
-         nir_system_value_from_intrinsic(intrin->intrinsic);
-      const uint32_t addr = nak_sysval_attr_addr(sysval);
-      val = nir_load_input(b, intrin->def.num_components, 32,
-                           nir_imm_int(b, 0), .base = addr,
-                           .dest_type = nir_type_int32);
-      break;
-   }
-
-   case nir_intrinsic_load_patch_vertices_in: {
-      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_VERTEX_COUNT,
-                               .access = ACCESS_CAN_REORDER);
-      val = nir_extract_u8(b, val, nir_imm_int(b, 1));
-      break;
-   }
-
-   case nir_intrinsic_load_subgroup_invocation:
-   case nir_intrinsic_load_helper_invocation:
-   case nir_intrinsic_load_invocation_id:
-   case nir_intrinsic_load_local_invocation_index:
-   case nir_intrinsic_load_local_invocation_id:
-   case nir_intrinsic_load_workgroup_id:
-   case nir_intrinsic_load_workgroup_id_zero_base:
-   case nir_intrinsic_load_subgroup_eq_mask:
-   case nir_intrinsic_load_subgroup_lt_mask:
-   case nir_intrinsic_load_subgroup_le_mask:
-   case nir_intrinsic_load_subgroup_gt_mask:
-   case nir_intrinsic_load_subgroup_ge_mask: {
-      const gl_system_value sysval =
-         intrin->intrinsic == nir_intrinsic_load_workgroup_id_zero_base ?
-         SYSTEM_VALUE_WORKGROUP_ID :
-         nir_system_value_from_intrinsic(intrin->intrinsic);
-      const uint32_t idx = nak_sysval_sysval_idx(sysval);
-      nir_def *comps[3];
-      assert(intrin->def.num_components <= 3);
-      for (unsigned c = 0; c < intrin->def.num_components; c++) {
-         comps[c] = nir_load_sysval_nv(b, 32, .base = idx + c,
-                                       .access = ACCESS_CAN_REORDER);
-      }
-      val = nir_vec(b, comps, intrin->def.num_components);
-      break;
-   }
-
-   case nir_intrinsic_is_helper_invocation: {
-      /* Unlike load_helper_invocation, this one isn't re-orderable */
-      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_THREAD_KILL);
-      break;
-   }
-
-   case nir_intrinsic_shader_clock:
-      val = nir_load_sysval_nv(b, 64, .base = NAK_SV_CLOCK);
-      val = nir_unpack_64_2x32(b, val);
-      break;
-
-   default:
-      return false;
-   }
-
-   if (intrin->def.bit_size == 1)
-      val = nir_i2b(b, val);
-
-   nir_def_rewrite_uses(&intrin->def, val);
-
-   return true;
-}
-
-static bool
-nak_nir_lower_system_values(nir_shader *nir)
-{
-   return nir_shader_instructions_pass(nir, nak_nir_lower_system_value_instr,
-                                       nir_metadata_block_index |
-                                       nir_metadata_dominance,
-                                       NULL);
-}
-
 static nir_mem_access_size_align
 nak_mem_access_size_align(nir_intrinsic_op intrin,
                           uint8_t bytes, uint8_t bit_size,
@@ -771,6 +771,13 @@ nak_postprocess_nir(nir_shader *nir,
 
    OPT(nir, nir_lower_indirect_derefs, 0, UINT32_MAX);
 
+   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      OPT(nir, nir_lower_tess_coord_z,
+          nir->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES);
+   }
+
+   OPT(nir, nak_nir_lower_system_values);
+
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
       OPT(nir, nak_nir_lower_vs_inputs);
@@ -795,13 +802,6 @@ nak_postprocess_nir(nir_shader *nir,
    default:
       unreachable("Unsupported shader stage");
    }
-
-   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      OPT(nir, nir_lower_tess_coord_z,
-          nir->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES);
-   }
-
-   OPT(nir, nak_nir_lower_system_values);
 
    nak_optimize_nir(nir, nak);
 
