@@ -264,4 +264,10 @@ void panfrost_batch_union_scissor(struct panfrost_batch *batch, unsigned minx,
 
 bool panfrost_batch_skip_rasterization(struct panfrost_batch *batch);
 
+static inline bool
+panfrost_has_fragment_job(struct panfrost_batch *batch)
+{
+   return batch->scoreboard.first_tiler || batch->clear;
+}
+
 #endif
