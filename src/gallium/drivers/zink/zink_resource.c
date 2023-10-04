@@ -2302,13 +2302,16 @@ zink_image_map(struct pipe_context *pctx,
       zink_kopper_acquire(ctx, res, 0);
 
    void *ptr;
-   if (usage & PIPE_MAP_WRITE && !(usage & PIPE_MAP_READ))
-      /* this is like a blit, so we can potentially dump some clears or maybe we have to  */
-      zink_fb_clears_apply_or_discard(ctx, pres, zink_rect_from_box(box), false);
-   else if (usage & PIPE_MAP_READ)
-      /* if the map region intersects with any clears then we have to apply them */
-      zink_fb_clears_apply_region(ctx, pres, zink_rect_from_box(box));
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+      if (usage & PIPE_MAP_WRITE && !(usage & PIPE_MAP_READ))
+         /* this is like a blit, so we can potentially dump some clears or maybe we have to  */
+         zink_fb_clears_apply_or_discard(ctx, pres, zink_rect_from_box(box), false);
+      else if (usage & PIPE_MAP_READ)
+         /* if the map region intersects with any clears then we have to apply them */
+         zink_fb_clears_apply_region(ctx, pres, zink_rect_from_box(box));
+   }
    if (!res->linear || !res->obj->host_visible) {
+      assert(!(usage & PIPE_MAP_UNSYNCHRONIZED));
       enum pipe_format format = pres->format;
       if (usage & PIPE_MAP_DEPTH_ONLY)
          format = util_format_get_depth_only(pres->format);
@@ -2353,6 +2356,7 @@ zink_image_map(struct pipe_context *pctx,
       if (!ptr)
          goto fail;
       if (zink_resource_has_usage(res)) {
+         assert(!(usage & PIPE_MAP_UNSYNCHRONIZED));
          if (usage & PIPE_MAP_WRITE)
             zink_fence_wait(pctx);
          else
@@ -2389,8 +2393,10 @@ zink_image_map(struct pipe_context *pctx,
    if (!ptr)
       goto fail;
    if (usage & PIPE_MAP_WRITE) {
-      if (!res->valid && res->fb_bind_count)
+      if (!res->valid && res->fb_bind_count) {
+         assert(!(usage & PIPE_MAP_UNSYNCHRONIZED));
          ctx->rp_loadop_changed = true;
+      }
       res->valid = true;
    }
 
@@ -2420,7 +2426,8 @@ zink_image_subdata(struct pipe_context *pctx,
    struct zink_resource *res = zink_resource(pres);
 
    /* flush clears to avoid subdata conflict */
-   if (res->obj->vkusage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT)
+   if (!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC) &&
+       (res->obj->vkusage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT))
       zink_fb_clears_apply_or_discard(ctx, pres, zink_rect_from_box(box), false);
    /* only use HIC if supported on image and no pending usage */
    while (res->obj->vkusage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT &&
