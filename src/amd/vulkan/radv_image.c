@@ -2411,6 +2411,12 @@ radv_layout_dcc_compressed(const struct radv_device *device, const struct radv_i
        (queue_mask & (1u << RADV_QUEUE_COMPUTE)) && !radv_image_use_dcc_image_stores(device, image))
       return false;
 
+   /* Don't compress exclusive images used on transfer queues when SDMA doesn't support DCC.
+    * Note that DCC is already disabled on concurrent images when not supported.
+    */
+   if (queue_mask == BITFIELD_BIT(RADV_QUEUE_TRANSFER) && !device->physical_device->rad_info.sdma_supports_compression)
+      return false;
+
    if (layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
       /* Do not compress DCC with feedback loops because we can't read&write it without introducing
        * corruption.
