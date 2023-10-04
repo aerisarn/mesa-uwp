@@ -1077,6 +1077,10 @@ v3d_compute_vpm_config(struct v3d_device_info *devinfo,
                        struct v3d_gs_prog_data *gs,
                        struct vpm_config *vpm_cfg_bin,
                        struct vpm_config *vpm_cfg);
+void
+v3d_pack_unnormalized_coordinates(struct v3d_device_info *devinfo,
+                                  uint32_t *p1_packed,
+                                  bool unnormalized_coordinates);
 
 static inline bool
 vir_has_uniform(struct qinst *inst)
