@@ -183,12 +183,20 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
                                             NULL, 0, &all, NULL, 0, NULL);
    assert(result == VK_SUCCESS);
 
+   const VkPipelineShaderStageCreateInfo *infos[MESA_SHADER_STAGES] = {};
    nir_shader *nir[MESA_SHADER_STAGES] = {};
    struct vk_pipeline_robustness_state robustness[MESA_SHADER_STAGES];
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
+      infos[stage] = sinfo;
+   }
+
+   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      const VkPipelineShaderStageCreateInfo *sinfo = infos[stage];
+      if (sinfo == NULL)
+         continue;
 
       vk_pipeline_robustness_state_fill(&dev->vk, &robustness[stage],
                                         pCreateInfo->pNext, sinfo->pNext);
@@ -204,16 +212,19 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
       merge_tess_info(&nir[MESA_SHADER_TESS_EVAL]->info, &nir[MESA_SHADER_TESS_CTRL]->info);
    }
 
-   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
-      gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
+   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      const VkPipelineShaderStageCreateInfo *sinfo = infos[stage];
+      if (sinfo == NULL)
+         continue;
+
       nvk_lower_nir(dev, nir[stage], &robustness[stage],
                     state.rp->view_mask != 0, pipeline_layout,
                     &pipeline->base.shaders[stage]);
    }
 
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      if (nir[stage] == NULL)
+      const VkPipelineShaderStageCreateInfo *sinfo = infos[stage];
+      if (sinfo == NULL)
          continue;
 
       struct nak_fs_key fs_key_tmp, *fs_key = NULL;
