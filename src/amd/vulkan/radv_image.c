@@ -651,6 +651,11 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
       flags |= RADEON_SURF_PRT | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_DISABLE_DCC;
    }
 
+   if (image->queue_family_mask & BITFIELD_BIT(RADV_QUEUE_TRANSFER)) {
+      if (!device->physical_device->rad_info.sdma_supports_compression)
+         flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_HTILE;
+   }
+
    /* Disable DCC for VRS rate images because the hw can't handle compression. */
    if (pCreateInfo->usage & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR)
       flags |= RADEON_SURF_VRS_RATE | RADEON_SURF_DISABLE_DCC;
