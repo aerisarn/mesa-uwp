@@ -2997,7 +2997,7 @@ bool ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
    bool require_equal_pitch = surf->surf_size != surf->total_size ||
                               num_layers != 1 ||
                               num_mipmap_levels != 1 ||
-                              !surf->is_linear ||
+                              (info->gfx_level >= GFX9 && !surf->is_linear) ||
                               info->gfx_level == GFX10;
 
    if (info->gfx_level >= GFX9) {
