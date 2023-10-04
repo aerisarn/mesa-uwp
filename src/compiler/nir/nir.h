@@ -6144,6 +6144,7 @@ typedef enum {
    nir_lower_fp16_ru = (1 << 2),
    nir_lower_fp16_rd = (1 << 3),
    nir_lower_fp16_all = 0xf,
+   nir_lower_fp16_split_fp64 = (1 << 4),
 } nir_lower_fp16_cast_options;
 bool nir_lower_fp16_casts(nir_shader *shader, nir_lower_fp16_cast_options options);
 bool nir_normalize_cubemap_coords(nir_shader *shader);
