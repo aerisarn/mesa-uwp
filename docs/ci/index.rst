@@ -59,7 +59,8 @@ Farm management
 ---------------
 
 .. note::
-   Never mix farm maintenance with any other change in the same merge request!
+   Never mix disabling/re-enabling a farm with any change that can affect a job
+   that runs in another farm!
 
 When the farm starts failing for any reason (power, network, out-of-space), it needs to be disabled by pushing separate MR with
 
