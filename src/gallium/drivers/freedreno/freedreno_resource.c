@@ -1629,10 +1629,6 @@ static const struct u_transfer_vtbl transfer_vtbl = {
    .get_stencil = fd_resource_get_stencil,
 };
 
-static const uint64_t supported_modifiers[] = {
-   DRM_FORMAT_MOD_LINEAR,
-};
-
 static int
 fd_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
 {
@@ -1746,10 +1742,6 @@ fd_resource_screen_init(struct pipe_screen *pscreen)
 
    if (!screen->layout_resource_for_modifier)
       screen->layout_resource_for_modifier = fd_layout_resource_for_modifier;
-   if (!screen->supported_modifiers) {
-      screen->supported_modifiers = supported_modifiers;
-      screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
-   }
 
    /* GL_EXT_memory_object */
    pscreen->memobj_create_from_handle = fd_memobj_create_from_handle;
