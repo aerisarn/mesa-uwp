@@ -270,7 +270,7 @@ radv_queue_submit_empty(struct radv_queue *queue, struct vk_queue_submit *submis
 }
 
 static void
-radv_fill_shader_rings(struct radv_device *device, uint32_t *map, bool add_sample_positions, uint32_t esgs_ring_size,
+radv_fill_shader_rings(struct radv_device *device, uint32_t *map, uint32_t esgs_ring_size,
                        struct radeon_winsys_bo *esgs_ring_bo, uint32_t gsvs_ring_size,
                        struct radeon_winsys_bo *gsvs_ring_bo, struct radeon_winsys_bo *tess_rings_bo,
                        struct radeon_winsys_bo *task_rings_bo, struct radeon_winsys_bo *mesh_scratch_ring_bo,
@@ -495,16 +495,14 @@ radv_fill_shader_rings(struct radv_device *device, uint32_t *map, bool add_sampl
 
    desc += 4;
 
-   if (add_sample_positions) {
-      /* add sample positions after all rings */
-      memcpy(desc, device->sample_locations_1x, 8);
-      desc += 2;
-      memcpy(desc, device->sample_locations_2x, 16);
-      desc += 4;
-      memcpy(desc, device->sample_locations_4x, 32);
-      desc += 8;
-      memcpy(desc, device->sample_locations_8x, 64);
-   }
+   /* add sample positions after all rings */
+   memcpy(desc, device->sample_locations_1x, 8);
+   desc += 2;
+   memcpy(desc, device->sample_locations_2x, 16);
+   desc += 4;
+   memcpy(desc, device->sample_locations_4x, 32);
+   desc += 8;
+   memcpy(desc, device->sample_locations_8x, 64);
 }
 
 static void
@@ -965,15 +963,7 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
        tess_rings_bo != queue->tess_rings_bo || task_rings_bo != queue->task_rings_bo ||
        mesh_scratch_ring_bo != queue->mesh_scratch_ring_bo || attr_ring_bo != queue->attr_ring_bo ||
        add_sample_positions) {
-      uint32_t size = 0;
-      if (gsvs_ring_bo || esgs_ring_bo || tess_rings_bo || task_rings_bo || mesh_scratch_ring_bo || attr_ring_bo ||
-          add_sample_positions) {
-         size = 176; /* 2 dword + 2 padding + 4 dword * 10 */
-         if (add_sample_positions)
-            size += 128; /* 64+32+16+8 = 120 bytes */
-      } else if (scratch_bo) {
-         size = 8; /* 2 dword */
-      }
+      const uint32_t size = 304;
 
       result = ws->buffer_create(ws, size, 4096, RADEON_DOMAIN_VRAM,
                                  RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY,
@@ -1000,11 +990,8 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
          map[1] = rsrc1;
       }
 
-      if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo || task_rings_bo || mesh_scratch_ring_bo || attr_ring_bo ||
-          add_sample_positions)
-         radv_fill_shader_rings(device, map, add_sample_positions, needs->esgs_ring_size, esgs_ring_bo,
-                                needs->gsvs_ring_size, gsvs_ring_bo, tess_rings_bo, task_rings_bo, mesh_scratch_ring_bo,
-                                needs->attr_ring_size, attr_ring_bo);
+      radv_fill_shader_rings(device, map, needs->esgs_ring_size, esgs_ring_bo, needs->gsvs_ring_size, gsvs_ring_bo,
+                             tess_rings_bo, task_rings_bo, mesh_scratch_ring_bo, needs->attr_ring_size, attr_ring_bo);
 
       ws->buffer_unmap(descriptor_bo);
    }
