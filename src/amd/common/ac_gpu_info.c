@@ -677,13 +677,19 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
             info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
       }
       info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
+
+      /* According to the kernel, only SDMA and VPE require 256B alignment, but use it
+       * for all queues because the kernel reports wrong limits for some of the queues.
+       * This is only space allocation alignment, so it's OK to keep it like this even
+       * when it's greater than what the queues require.
+       */
       info->ip[ip_type].ib_alignment = MAX3(ip_info.ib_start_alignment,
-                                            ip_info.ib_size_alignment, 1024);
+                                            ip_info.ib_size_alignment, 256);
    }
 
-   /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
-   info->ip[AMD_IP_GFX].ib_pad_dw_mask = 0xff;
-   info->ip[AMD_IP_COMPUTE].ib_pad_dw_mask = 0xff;
+   /* Set dword padding minus 1. */
+   info->ip[AMD_IP_GFX].ib_pad_dw_mask = 0x3f;
+   info->ip[AMD_IP_COMPUTE].ib_pad_dw_mask = 0x3f;
    info->ip[AMD_IP_SDMA].ib_pad_dw_mask = 0xf;
    info->ip[AMD_IP_UVD].ib_pad_dw_mask = 0xf;
    info->ip[AMD_IP_VCE].ib_pad_dw_mask = 0x3f;
