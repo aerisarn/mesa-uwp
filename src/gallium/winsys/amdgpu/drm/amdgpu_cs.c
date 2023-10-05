@@ -328,7 +328,7 @@ static void amdgpu_ctx_destroy(struct radeon_winsys_ctx *rwctx)
    amdgpu_ctx_unref((struct amdgpu_ctx*)rwctx);
 }
 
-static int amdgpu_submit_gfx_nop(amdgpu_device_handle dev)
+static int amdgpu_submit_gfx_nop(struct amdgpu_ctx *ctx)
 {
    struct amdgpu_bo_alloc_request request = {0};
    struct drm_amdgpu_bo_list_in bo_list_in;
@@ -346,24 +346,24 @@ static int amdgpu_submit_gfx_nop(amdgpu_device_handle dev)
     * that the reset is not complete.
     */
    amdgpu_context_handle temp_ctx;
-   r = amdgpu_cs_ctx_create2(dev, AMDGPU_CTX_PRIORITY_NORMAL, &temp_ctx);
+   r = amdgpu_cs_ctx_create2(ctx->ws->dev, AMDGPU_CTX_PRIORITY_NORMAL, &temp_ctx);
    if (r)
       return r;
 
    request.preferred_heap = AMDGPU_GEM_DOMAIN_VRAM;
    request.alloc_size = 4096;
    request.phys_alignment = 4096;
-   r = amdgpu_bo_alloc(dev, &request, &buf_handle);
+   r = amdgpu_bo_alloc(ctx->ws->dev, &request, &buf_handle);
    if (r)
       goto destroy_ctx;
 
-   r = amdgpu_va_range_alloc(dev, amdgpu_gpu_va_range_general,
+   r = amdgpu_va_range_alloc(ctx->ws->dev, amdgpu_gpu_va_range_general,
                  request.alloc_size, request.phys_alignment,
                  0, &va, &va_handle,
                  AMDGPU_VA_RANGE_32_BIT | AMDGPU_VA_RANGE_HIGH);
    if (r)
       goto destroy_bo;
-   r = amdgpu_bo_va_op_raw(dev, buf_handle, 0, request.alloc_size, va,
+   r = amdgpu_bo_va_op_raw(ctx->ws->dev, buf_handle, 0, request.alloc_size, va,
                            AMDGPU_VM_PAGE_READABLE | AMDGPU_VM_PAGE_WRITEABLE | AMDGPU_VM_PAGE_EXECUTABLE,
                            AMDGPU_VA_OP_MAP);
    if (r)
@@ -373,8 +373,8 @@ static int amdgpu_submit_gfx_nop(amdgpu_device_handle dev)
    if (r)
       goto destroy_bo;
 
-   /* Use a single NOP. */
-   ((uint32_t*)cpu)[0] = PKT3_NOP_PAD;
+   unsigned noop_dw_size = ctx->ws->info.ip[AMD_IP_GFX].ib_pad_dw_mask + 1;
+   ((uint32_t*)cpu)[0] = PKT3(PKT3_NOP, noop_dw_size - 2, 0);
 
    amdgpu_bo_cpu_unmap(buf_handle);
 
@@ -388,7 +388,7 @@ static int amdgpu_submit_gfx_nop(amdgpu_device_handle dev)
    bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)&list;
 
    ib_in.ip_type = AMD_IP_GFX;
-   ib_in.ib_bytes = 4;
+   ib_in.ib_bytes = noop_dw_size * 4;
    ib_in.va_start = va;
 
    chunks[0].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
@@ -399,7 +399,7 @@ static int amdgpu_submit_gfx_nop(amdgpu_device_handle dev)
    chunks[1].length_dw = sizeof(struct drm_amdgpu_cs_chunk_ib) / 4;
    chunks[1].chunk_data = (uintptr_t)&ib_in;
 
-   r = amdgpu_cs_submit_raw2(dev, temp_ctx, 0, 2, chunks, &seq_no);
+   r = amdgpu_cs_submit_raw2(ctx->ws->dev, temp_ctx, 0, 2, chunks, &seq_no);
 
 destroy_bo:
    if (va_handle)
@@ -484,7 +484,7 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
                *reset_completed = true;
 
             if (ctx->ws->info.drm_minor < 54 && ctx->ws->info.has_graphics)
-               *reset_completed = amdgpu_submit_gfx_nop(ctx->ws->dev) == 0;
+               *reset_completed = amdgpu_submit_gfx_nop(ctx) == 0;
          }
 
          if (needs_reset)
