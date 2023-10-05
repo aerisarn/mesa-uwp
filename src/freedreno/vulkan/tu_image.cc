@@ -316,11 +316,8 @@ ubwc_possible(struct tu_device *device,
       return false;
 
    if (!info->a6xx.has_8bpp_ubwc &&
-       (format == VK_FORMAT_R8_UNORM ||
-        format == VK_FORMAT_R8_SNORM ||
-        format == VK_FORMAT_R8_UINT ||
-        format == VK_FORMAT_R8_SINT ||
-        format == VK_FORMAT_R8_SRGB))
+       vk_format_get_blocksizebits(format) == 8 &&
+       tu6_plane_count(format) == 1)
       return false;
 
    if (type == VK_IMAGE_TYPE_3D) {
