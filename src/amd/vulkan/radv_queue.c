@@ -270,13 +270,26 @@ radv_queue_submit_empty(struct radv_queue *queue, struct vk_queue_submit *submis
 }
 
 static void
-radv_fill_shader_rings(struct radv_device *device, uint32_t *map, uint32_t esgs_ring_size,
-                       struct radeon_winsys_bo *esgs_ring_bo, uint32_t gsvs_ring_size,
+radv_fill_shader_rings(struct radv_device *device, uint32_t *desc, struct radeon_winsys_bo *scratch_bo,
+                       uint32_t esgs_ring_size, struct radeon_winsys_bo *esgs_ring_bo, uint32_t gsvs_ring_size,
                        struct radeon_winsys_bo *gsvs_ring_bo, struct radeon_winsys_bo *tess_rings_bo,
                        struct radeon_winsys_bo *task_rings_bo, struct radeon_winsys_bo *mesh_scratch_ring_bo,
                        uint32_t attr_ring_size, struct radeon_winsys_bo *attr_ring_bo)
 {
-   uint32_t *desc = &map[4];
+   if (scratch_bo) {
+      uint64_t scratch_va = radv_buffer_get_va(scratch_bo);
+      uint32_t rsrc1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
+
+      if (device->physical_device->rad_info.gfx_level >= GFX11)
+         rsrc1 |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
+      else
+         rsrc1 |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
+
+      desc[0] = scratch_va;
+      desc[1] = rsrc1;
+   }
+
+   desc += 4;
 
    if (esgs_ring_bo) {
       uint64_t esgs_va = radv_buffer_get_va(esgs_ring_bo);
@@ -977,21 +990,9 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
       if (!map)
          goto fail;
 
-      if (scratch_bo) {
-         uint64_t scratch_va = radv_buffer_get_va(scratch_bo);
-         uint32_t rsrc1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
-
-         if (device->physical_device->rad_info.gfx_level >= GFX11)
-            rsrc1 |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
-         else
-            rsrc1 |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
-
-         map[0] = scratch_va;
-         map[1] = rsrc1;
-      }
-
-      radv_fill_shader_rings(device, map, needs->esgs_ring_size, esgs_ring_bo, needs->gsvs_ring_size, gsvs_ring_bo,
-                             tess_rings_bo, task_rings_bo, mesh_scratch_ring_bo, needs->attr_ring_size, attr_ring_bo);
+      radv_fill_shader_rings(device, map, scratch_bo, needs->esgs_ring_size, esgs_ring_bo, needs->gsvs_ring_size,
+                             gsvs_ring_bo, tess_rings_bo, task_rings_bo, mesh_scratch_ring_bo, needs->attr_ring_size,
+                             attr_ring_bo);
 
       ws->buffer_unmap(descriptor_bo);
    }
