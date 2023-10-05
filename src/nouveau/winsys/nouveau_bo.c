@@ -304,7 +304,7 @@ nouveau_ws_bo_map(struct nouveau_ws_bo *bo, enum nouveau_ws_bo_map_flags flags)
    if (flags & NOUVEAU_WS_BO_WR)
       prot |= PROT_WRITE;
 
-   void *res = mmap64(NULL, bo->size, prot, MAP_SHARED, bo->dev->fd, bo->map_handle);
+   void *res = mmap(NULL, bo->size, prot, MAP_SHARED, bo->dev->fd, bo->map_handle);
    if (res == MAP_FAILED)
       return NULL;
 
