@@ -248,7 +248,7 @@ radv_amdgpu_cs_bo_create(struct radv_amdgpu_cs *cs, uint32_t ib_size)
    const enum radeon_bo_flag flags =
       RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY | gtt_wc_flag;
 
-   return ws->buffer_create(ws, ib_size, cs->ws->info.ib_alignment, domain, flags, RADV_BO_PRIORITY_CS, 0,
+   return ws->buffer_create(ws, ib_size, cs->ws->info.ip[cs->hw_ip].ib_alignment, domain, flags, RADV_BO_PRIORITY_CS, 0,
                             &cs->ib_buffer);
 }
 
@@ -287,7 +287,7 @@ radv_amdgpu_cs_get_new_ib(struct radeon_cmdbuf *_cs, uint32_t ib_size)
 static unsigned
 radv_amdgpu_cs_get_initial_size(struct radv_amdgpu_winsys *ws, enum amd_ip_type ip_type)
 {
-   const uint32_t ib_alignment = ws->info.ib_alignment;
+   const uint32_t ib_alignment = ws->info.ip[ip_type].ib_alignment;
    assert(util_is_power_of_two_nonzero(ib_alignment));
    return align(20 * 1024 * 4, ib_alignment);
 }
@@ -377,7 +377,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
       return;
    }
 
-   const uint32_t ib_alignment = cs->ws->info.ib_alignment;
+   const uint32_t ib_alignment = cs->ws->info.ip[cs->hw_ip].ib_alignment;
 
    cs->ws->base.cs_finalize(_cs);
 
@@ -1669,7 +1669,7 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
       chunks[i].chunk_data = (uint64_t)(uintptr_t)&chunk_data[i];
 
       ib = &request->ibs[i];
-      assert(ib->ib_mc_address && ib->ib_mc_address % ctx->ws->info.ib_alignment == 0);
+      assert(ib->ib_mc_address && ib->ib_mc_address % ctx->ws->info.ip[ib->ip_type].ib_alignment == 0);
       assert(ib->size);
 
       chunk_data[i].ib_data._pad = 0;

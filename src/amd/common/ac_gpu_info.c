@@ -647,6 +647,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       return false;
    }
 
+   unsigned max_ib_alignment = 0;
+
    for (unsigned ip_type = 0; ip_type < AMD_NUM_IP_TYPES; ip_type++) {
       struct drm_amdgpu_info_hw_ip ip_info = {0};
 
@@ -677,9 +679,25 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
             info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
       }
       info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
-      info->ib_alignment = MAX3(info->ib_alignment, ip_info.ib_start_alignment,
-                                ip_info.ib_size_alignment);
+      info->ip[ip_type].ib_alignment = MAX2(ip_info.ib_start_alignment, ip_info.ib_size_alignment);
+      max_ib_alignment = MAX2(max_ib_alignment, info->ip[ip_type].ib_alignment);
    }
+
+   /* TODO: Remove this. This hack mimics the previous behavior of global ib_alignment. */
+   for (unsigned ip_type = 0; ip_type < AMD_NUM_IP_TYPES; ip_type++) {
+      info->ip[ip_type].ib_alignment = MAX2(max_ib_alignment, 1024);
+   }
+
+   /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
+   info->ib_pad_dw_mask[AMD_IP_GFX] = 0xff;
+   info->ib_pad_dw_mask[AMD_IP_COMPUTE] = 0xff;
+   info->ib_pad_dw_mask[AMD_IP_SDMA] = 0xf;
+   info->ib_pad_dw_mask[AMD_IP_UVD] = 0xf;
+   info->ib_pad_dw_mask[AMD_IP_VCE] = 0x3f;
+   info->ib_pad_dw_mask[AMD_IP_UVD_ENC] = 0x3f;
+   info->ib_pad_dw_mask[AMD_IP_VCN_DEC] = 0xf;
+   info->ib_pad_dw_mask[AMD_IP_VCN_ENC] = 0x3f;
+   info->ib_pad_dw_mask[AMD_IP_VCN_JPEG] = 0xf;
 
    /* Only require gfx or compute. */
    if (!info->ip[AMD_IP_GFX].num_queues && !info->ip[AMD_IP_COMPUTE].num_queues) {
@@ -689,12 +707,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    assert(util_is_power_of_two_or_zero(info->ip[AMD_IP_COMPUTE].num_queues));
    assert(util_is_power_of_two_or_zero(info->ip[AMD_IP_SDMA].num_queues));
-
-   /* The kernel pads gfx and compute IBs to 256 dwords since:
-    *   66f3b2d527154bd258a57c8815004b5964aa1cf5
-    * Do the same.
-    */
-   info->ib_alignment = MAX2(info->ib_alignment, 1024);
 
    r = amdgpu_query_firmware_version(dev, AMDGPU_INFO_FW_GFX_ME, 0, 0, &info->me_fw_version,
                                      &info->me_fw_feature);
@@ -1131,17 +1143,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    info->lds_encode_granularity = info->gfx_level >= GFX7 ? 128 * 4 : 64 * 4;
    info->lds_alloc_granularity = info->gfx_level >= GFX10_3 ? 256 * 4 : info->lds_encode_granularity;
-
-   /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
-   info->ib_pad_dw_mask[AMD_IP_GFX] = 0xff;
-   info->ib_pad_dw_mask[AMD_IP_COMPUTE] = 0xff;
-   info->ib_pad_dw_mask[AMD_IP_SDMA] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_UVD] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_VCE] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_UVD_ENC] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_VCN_DEC] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_VCN_ENC] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_VCN_JPEG] = 0xf;
 
    /* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
     * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
@@ -1681,8 +1682,9 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
 
    for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
       if (info->ip[i].num_queues) {
-         fprintf(f, "    IP %-7s %2u.%u \tqueues:%u\n", ip_string[i],
-                 info->ip[i].ver_major, info->ip[i].ver_minor, info->ip[i].num_queues);
+         fprintf(f, "    IP %-7s %2u.%u \tqueues:%u (align:%u, pad_dw:0x%x)\n", ip_string[i],
+                 info->ip[i].ver_major, info->ip[i].ver_minor, info->ip[i].num_queues,
+                 info->ip[i].ib_alignment, info->ib_pad_dw_mask[i]);
       }
    }
 
@@ -1756,7 +1758,6 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
 
    fprintf(f, "CP info:\n");
    fprintf(f, "    gfx_ib_pad_with_type2 = %i\n", info->gfx_ib_pad_with_type2);
-   fprintf(f, "    ib_alignment = %u\n", info->ib_alignment);
    fprintf(f, "    me_fw_version = %i\n", info->me_fw_version);
    fprintf(f, "    me_fw_feature = %i\n", info->me_fw_feature);
    fprintf(f, "    mec_fw_version = %i\n", info->mec_fw_version);
