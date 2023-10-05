@@ -742,13 +742,26 @@ cmd_build_acceleration_structures(
    private_mem_binnedsah_offset = private_mem_total;
    private_mem_total += align_private_size(private_mem_binnedsah_size);
 
-   /* Allocate required memory */
-   struct anv_cmd_alloc private_mem_alloc =
-      anv_cmd_buffer_alloc_space(cmd_buffer, private_mem_total, 64);
-   if (private_mem_total > 0 && anv_cmd_alloc_is_empty(private_mem_alloc)) {
-      anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      goto error;
+   /* Allocate required memory, unless we already have a suiteable buffer */
+   struct anv_cmd_alloc private_mem_alloc;
+   if (private_mem_total > cmd_buffer->state.rt.build_priv_mem_size) {
+      private_mem_alloc =
+         anv_cmd_buffer_alloc_space(cmd_buffer, private_mem_total, 64);
+      if (anv_cmd_alloc_is_empty(private_mem_alloc)) {
+         anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         goto error;
+      }
+
+      cmd_buffer->state.rt.build_priv_mem_addr = private_mem_alloc.address;
+      cmd_buffer->state.rt.build_priv_mem_size = private_mem_alloc.size;
+   } else {
+      private_mem_alloc = (struct anv_cmd_alloc) {
+         .address = cmd_buffer->state.rt.build_priv_mem_addr,
+         .map     = anv_address_map(cmd_buffer->state.rt.build_priv_mem_addr),
+         .size    = cmd_buffer->state.rt.build_priv_mem_size,
+      };
    }
+
    struct anv_cmd_alloc transient_mem_alloc =
       anv_cmd_buffer_alloc_space(cmd_buffer, transient_total, 64);
    if (transient_total > 0 && anv_cmd_alloc_is_empty(transient_mem_alloc)) {

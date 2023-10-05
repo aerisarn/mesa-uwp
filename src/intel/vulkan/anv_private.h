@@ -3367,6 +3367,9 @@ struct anv_cmd_ray_tracing_state {
       struct anv_bo *bo;
       struct brw_rt_scratch_layout layout;
    } scratch;
+
+   struct anv_address build_priv_mem_addr;
+   size_t             build_priv_mem_size;
 };
 
 /** State required while building cmd buffer */
