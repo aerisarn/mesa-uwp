@@ -1650,7 +1650,7 @@ void *si_create_blit_cs(struct si_context *sctx, const union si_compute_blit_sha
 /* si_shaderlib_tgsi.c */
 void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type,
                         unsigned num_layers);
-void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords_per_thread,
+void *si_create_dma_compute_shader(struct si_context *sctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy);
 void *si_create_clear_buffer_rmw_cs(struct si_context *sctx);
 void *si_clear_render_target_shader(struct si_context *sctx, enum pipe_texture_target type);

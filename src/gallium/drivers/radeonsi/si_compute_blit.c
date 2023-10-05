@@ -395,7 +395,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
 
       if (!sctx->cs_copy_buffer) {
          sctx->cs_copy_buffer = si_create_dma_compute_shader(
-            &sctx->b, SI_COMPUTE_COPY_DW_PER_THREAD, shader_dst_stream_policy, true);
+            sctx, SI_COMPUTE_COPY_DW_PER_THREAD, shader_dst_stream_policy, true);
       }
 
       si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_copy_buffer, flags, coher,
@@ -409,7 +409,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
 
       if (!sctx->cs_clear_buffer) {
          sctx->cs_clear_buffer = si_create_dma_compute_shader(
-            &sctx->b, SI_COMPUTE_CLEAR_DW_PER_THREAD, shader_dst_stream_policy, false);
+            sctx, SI_COMPUTE_CLEAR_DW_PER_THREAD, shader_dst_stream_policy, false);
       }
 
       si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_clear_buffer, flags, coher,
