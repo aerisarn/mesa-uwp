@@ -288,9 +288,9 @@ radv_amdgpu_cs_get_new_ib(struct radeon_cmdbuf *_cs, uint32_t ib_size)
 static unsigned
 radv_amdgpu_cs_get_initial_size(struct radv_amdgpu_winsys *ws, enum amd_ip_type ip_type)
 {
-   const uint32_t ib_size_alignment = ws->info.ip[ip_type].ib_size_alignment;
-   assert(util_is_power_of_two_nonzero(ib_size_alignment));
-   return align(20 * 1024 * 4, ib_size_alignment);
+   uint32_t ib_pad_dw_mask = MAX2(3, ws->info.ib_pad_dw_mask[ip_type]);
+   assert(util_is_power_of_two_nonzero(ib_pad_dw_mask + 1));
+   return align(20 * 1024 * 4, ib_pad_dw_mask + 1);
 }
 
 static struct radeon_cmdbuf *
@@ -379,14 +379,14 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    }
 
    enum amd_ip_type ip_type = cs->hw_ip;
-   const uint32_t ib_size_alignment = cs->ws->info.ip[ip_type].ib_size_alignment;
+   uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ip_type]);
 
    cs->ws->base.cs_finalize(_cs);
 
    uint64_t ib_size = MAX2(min_size * 4 + 16, cs->base.max_dw * 4 * 2);
 
    /* max that fits in the chain size field. */
-   ib_size = align(MIN2(ib_size, 0xfffff), ib_size_alignment);
+   ib_size = align(MIN2(ib_size, 0xfffff), ib_pad_dw_mask + 1);
 
    VkResult result = radv_amdgpu_cs_bo_create(cs, ib_size);
 
