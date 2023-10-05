@@ -163,7 +163,10 @@ anv_shader_stage_to_nir(struct anv_device *device,
           * read/write without format is per format, so just report true. It's
           * up to the application to check.
           */
-         .image_read_without_format = instance->vk.app_info.api_version >= VK_API_VERSION_1_3 || device->vk.enabled_extensions.KHR_format_feature_flags2,
+         .image_read_without_format =
+            pdevice->info.verx10 >= 125 ||
+            instance->vk.app_info.api_version >= VK_API_VERSION_1_3 ||
+            device->vk.enabled_extensions.KHR_format_feature_flags2,
          .image_write_without_format = true,
          .int8 = true,
          .int16 = true,
