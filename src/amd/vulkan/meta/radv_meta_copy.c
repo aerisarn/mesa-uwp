@@ -115,6 +115,15 @@ transfer_copy_buffer_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffe
    radv_cs_add_buffer(device->ws, cs, image->bindings[0].bo);
    radv_cs_add_buffer(device->ws, cs, buffer->bo);
 
+   if (radv_sdma_use_unaligned_buffer_image_copy(device, image, buffer, region)) {
+      if (!alloc_transfer_temp_bo(cmd_buffer))
+         return;
+
+      radv_sdma_copy_buffer_image_unaligned(device, cs, image, buffer, region, cmd_buffer->transfer.copy_temp,
+                                            to_image);
+      return;
+   }
+
    radv_sdma_copy_buffer_image(device, cs, image, buffer, region, to_image);
 }
 
