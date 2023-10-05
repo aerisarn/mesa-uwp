@@ -86,9 +86,27 @@ radv_image_is_renderable(const struct radv_device *device, const struct radv_ima
 }
 
 static void
+transfer_copy_buffer_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buffer, struct radv_image *image,
+                           const VkBufferImageCopy2 *region, bool to_image)
+{
+   const struct radv_device *device = cmd_buffer->device;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+   radv_cs_add_buffer(device->ws, cs, image->bindings[0].bo);
+   radv_cs_add_buffer(device->ws, cs, buffer->bo);
+
+   radv_sdma_copy_buffer_image(device, cs, image, buffer, region, to_image);
+}
+
+static void
 copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buffer, struct radv_image *image,
                      VkImageLayout layout, const VkBufferImageCopy2 *region)
 {
+   if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
+      transfer_copy_buffer_image(cmd_buffer, buffer, image, region, true);
+      return;
+   }
+
    struct radv_meta_saved_state saved_state;
    bool cs;
 
@@ -236,16 +254,7 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
 {
    struct radv_device *device = cmd_buffer->device;
    if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
-      struct radeon_cmdbuf *cs = cmd_buffer->cs;
-      /* RADV_QUEUE_TRANSFER should only be used for the prime blit */
-      assert(!region->imageOffset.x && !region->imageOffset.y && !region->imageOffset.z);
-      assert(image->vk.image_type == VK_IMAGE_TYPE_2D);
-      assert(image->vk.extent.width == region->imageExtent.width);
-      assert(image->vk.extent.height == region->imageExtent.height);
-      ASSERTED bool res = radv_sdma_copy_image(device, cs, image, buffer, region);
-      assert(res);
-      radv_cs_add_buffer(device->ws, cs, image->bindings[0].bo);
-      radv_cs_add_buffer(device->ws, cs, buffer->bo);
+      transfer_copy_buffer_image(cmd_buffer, buffer, image, region, false);
       return;
    }
 
