@@ -592,6 +592,10 @@ read_data_file(FILE *file)
                print_register(spec, reg_name, reg);
          }
 
+         matched = sscanf(line, "  GAM_DONE: 0x%08x\n", &reg);
+         if (matched == 1)
+            print_register(spec, "GAM_DONE", reg);
+
          matched = sscanf(line, "  SC_INSTDONE: 0x%08x\n", &reg);
          if (matched == 1)
             print_register(spec, "SC_INSTDONE", reg);
