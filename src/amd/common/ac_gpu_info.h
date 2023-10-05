@@ -27,6 +27,7 @@ struct amd_ip_info {
    uint8_t ver_rev;
    uint8_t num_queues;
    uint32_t ib_alignment;
+   uint32_t ib_pad_dw_mask;
 };
 
 struct radeon_info {
@@ -80,7 +81,6 @@ struct radeon_info {
    bool family_overridden; /* AMD_FORCE_FAMILY was used, skip command submission */
    bool is_pro_graphics;
    bool has_graphics; /* false if the chip is compute-only */
-   uint32_t ib_pad_dw_mask[AMD_NUM_IP_TYPES];
    bool has_clear_state;
    bool has_distributed_tess;
    bool has_dcc_constant_encode;

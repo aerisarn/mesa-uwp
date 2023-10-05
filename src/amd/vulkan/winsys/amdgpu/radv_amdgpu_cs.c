@@ -429,7 +429,7 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
 
    assert(cs->base.cdw <= cs->base.reserved_dw);
 
-   uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ip_type]);
+   uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ip[ip_type].ib_pad_dw_mask);
    uint32_t nop_packet = get_nop_packet(cs);
 
    if (cs->use_ib) {

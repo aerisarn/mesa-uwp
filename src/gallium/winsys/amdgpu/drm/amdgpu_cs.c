@@ -1169,7 +1169,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    memcpy(map, preamble_ib, preamble_num_dw * 4);
 
    /* Pad the IB. */
-   uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ip_type];
+   uint32_t ib_pad_dw_mask = ws->info.ip[cs->ip_type].ib_pad_dw_mask;
    while (preamble_num_dw & ib_pad_dw_mask)
       map[preamble_num_dw++] = PKT3_NOP_PAD;
    amdgpu_bo_unmap(&ws->dummy_ws.base, preamble_bo);
@@ -1245,7 +1245,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    rcs->current.max_dw += cs_epilog_dw;
 
    /* Pad with NOPs but leave 4 dwords for INDIRECT_BUFFER. */
-   uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[cs->ip_type];
+   uint32_t ib_pad_dw_mask = cs->ws->info.ip[cs->ip_type].ib_pad_dw_mask;
    while ((rcs->current.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
       radeon_emit(rcs, PKT3_NOP_PAD);
 
@@ -1803,7 +1803,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
    struct amdgpu_winsys *ws = cs->ws;
    int error_code = 0;
-   uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ip_type];
+   uint32_t ib_pad_dw_mask = ws->info.ip[cs->ip_type].ib_pad_dw_mask;
 
    rcs->current.max_dw += amdgpu_cs_epilog_dws(cs);
 

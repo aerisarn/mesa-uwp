@@ -689,15 +689,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
-   info->ib_pad_dw_mask[AMD_IP_GFX] = 0xff;
-   info->ib_pad_dw_mask[AMD_IP_COMPUTE] = 0xff;
-   info->ib_pad_dw_mask[AMD_IP_SDMA] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_UVD] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_VCE] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_UVD_ENC] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_VCN_DEC] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_VCN_ENC] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_VCN_JPEG] = 0xf;
+   info->ip[AMD_IP_GFX].ib_pad_dw_mask = 0xff;
+   info->ip[AMD_IP_COMPUTE].ib_pad_dw_mask = 0xff;
+   info->ip[AMD_IP_SDMA].ib_pad_dw_mask = 0xf;
+   info->ip[AMD_IP_UVD].ib_pad_dw_mask = 0xf;
+   info->ip[AMD_IP_VCE].ib_pad_dw_mask = 0x3f;
+   info->ip[AMD_IP_UVD_ENC].ib_pad_dw_mask = 0x3f;
+   info->ip[AMD_IP_VCN_DEC].ib_pad_dw_mask = 0xf;
+   info->ip[AMD_IP_VCN_ENC].ib_pad_dw_mask = 0x3f;
+   info->ip[AMD_IP_VCN_JPEG].ib_pad_dw_mask = 0xf;
 
    /* Only require gfx or compute. */
    if (!info->ip[AMD_IP_GFX].num_queues && !info->ip[AMD_IP_COMPUTE].num_queues) {
@@ -1682,9 +1682,9 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
 
    for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
       if (info->ip[i].num_queues) {
-         fprintf(f, "    IP %-7s %2u.%u \tqueues:%u (align:%u, pad_dw:0x%x)\n", ip_string[i],
+         fprintf(f, "    IP %-7s %2u.%u \tqueues:%u \talign:%u \tpad_dw:0x%x\n", ip_string[i],
                  info->ip[i].ver_major, info->ip[i].ver_minor, info->ip[i].num_queues,
-                 info->ip[i].ib_alignment, info->ib_pad_dw_mask[i]);
+                 info->ip[i].ib_alignment, info->ip[i].ib_pad_dw_mask);
       }
    }
 
