@@ -1157,8 +1157,8 @@ tu6_emit_program_config(struct tu_cs *cs,
 {
    STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
 
-   bool shared_consts_enable = tu6_shared_constants_enable(&builder->layout,
-         builder->device->compiler);
+   bool shared_consts_enable =
+      pipeline->program.shared_consts.type == IR3_PUSH_CONSTS_SHARED;
    tu6_emit_shared_consts_enable<CHIP>(cs, shared_consts_enable);
 
    tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
@@ -2306,6 +2306,22 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       }
    }
 
+   for (unsigned i = 0; i < ARRAY_SIZE(variants); i++) {
+      if (!variants[i])
+         continue;
+
+      tu_pipeline_set_linkage(&pipeline->program.link[i],
+                              &pipeline->shaders[i]->const_state,
+                              variants[i]);
+
+      struct tu_push_constant_range *push_consts =
+         &pipeline->shaders[i]->const_state.push_consts;
+      if (push_consts->type == IR3_PUSH_CONSTS_SHARED ||
+          push_consts->type == IR3_PUSH_CONSTS_SHARED_PREAMBLE) {
+         pipeline->program.shared_consts = *push_consts;
+      }
+   }
+
    /* Emit HLSQ_xS_CNTL/HLSQ_SP_xS_CONFIG *first*, before emitting anything
     * else that could depend on that state (like push constants)
     *
@@ -2339,22 +2355,6 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    pipeline->program.gs_binning_state =
       pipeline->shaders[MESA_SHADER_GEOMETRY]->binning_state;
    pipeline->program.fs_state = draw_states[MESA_SHADER_FRAGMENT];
-
-   for (unsigned i = 0; i < ARRAY_SIZE(variants); i++) {
-      if (!variants[i])
-         continue;
-
-      tu_pipeline_set_linkage(&pipeline->program.link[i],
-                              &pipeline->shaders[i]->const_state,
-                              variants[i]);
-
-      struct tu_push_constant_range *push_consts =
-         &pipeline->shaders[i]->const_state.push_consts;
-      if (push_consts->type == IR3_PUSH_CONSTS_SHARED ||
-          push_consts->type == IR3_PUSH_CONSTS_SHARED_PREAMBLE) {
-         pipeline->program.shared_consts = *push_consts;
-      }
-   }
 
    const struct ir3_shader_variant *vs = variants[MESA_SHADER_VERTEX];
    const struct ir3_shader_variant *hs = variants[MESA_SHADER_TESS_CTRL];
