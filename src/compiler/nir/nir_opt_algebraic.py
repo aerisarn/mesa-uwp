@@ -1508,6 +1508,9 @@ optimizations.extend([
    (('umax', ('b2i', 'a@1'), ('b2i', 'b@1')), ('b2i', ('ior',  a, b))),
    (('umin', ('b2i', 'a@1'), ('b2i', 'b@1')), ('b2i', ('iand', a, b))),
 
+   # Clean up LLVM booleans. b2i output is 0/1 so iand is a no-op.
+   (('iand', ('b2i', a), 1), ('b2i', a)),
+
    (('ine', ('umin', ('ineg', ('b2i', 'a@1')), b), 0), ('iand', a, ('ine', b, 0))),
    (('ine', ('umax', ('ineg', ('b2i', 'a@1')), b), 0), ('ior' , a, ('ine', b, 0))),
 
