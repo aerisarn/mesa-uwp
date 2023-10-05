@@ -486,7 +486,7 @@ vlVaHandleVAEncPackedHeaderDataBufferTypeH264(vlVaContext *context, vlVaBuffer *
       unsigned nal_unit_type = vl_vlc_get_uimsbf(&vlc, 5);
 
       struct vl_rbsp rbsp;
-      vl_rbsp_init(&rbsp, &vlc, ~0);
+      vl_rbsp_init(&rbsp, &vlc, ~0, true);
 
       switch(nal_unit_type) {
       case H264_NAL_SPS:

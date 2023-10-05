@@ -723,7 +723,7 @@ vk_video_parse_h265_slice_header(const struct VkVideoDecodeInfoKHR *frame_info,
    vl_vlc_get_uimsbf(&vlc, 3); /* nuh_temporal_id_plus1 */
 
    struct vl_rbsp rbsp;
-   vl_rbsp_init(&rbsp, &vlc, 128);
+   vl_rbsp_init(&rbsp, &vlc, 128, /* emulation_bytes */ true);
 
    memset(params, 0, sizeof(*params));
 
