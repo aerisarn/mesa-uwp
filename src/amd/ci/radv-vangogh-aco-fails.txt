@@ -1,6 +1,3 @@
-# New CTS failures in 1.3.5.0
-dEQP-VK.binding_model.ics_miss_buffers8_sets1,Crash
-
 dEQP-VK.draw.dynamic_rendering.primary_cmd_buff.linear_interpolation.no_offset_2_samples,Fail
 
 # New CTS failures in 1.3.6.3
