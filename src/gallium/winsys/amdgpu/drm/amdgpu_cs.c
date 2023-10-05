@@ -1708,10 +1708,11 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
    if (noop && acs->ip_type == AMD_IP_GFX) {
       /* Reduce the IB size and fill it with NOP to make it like an empty IB. */
-      unsigned noop_size = MIN2(cs->ib[IB_MAIN].ib_bytes, ws->info.ip[AMD_IP_GFX].ib_alignment);
+      unsigned noop_dw_size = ws->info.ip[AMD_IP_GFX].ib_pad_dw_mask + 1;
+      assert(cs->ib[IB_MAIN].ib_bytes / 4 >= noop_dw_size);
 
-      cs->ib_main_addr[0] = PKT3(PKT3_NOP, noop_size / 4 - 2, 0);
-      cs->ib[IB_MAIN].ib_bytes = noop_size;
+      cs->ib_main_addr[0] = PKT3(PKT3_NOP, noop_dw_size - 2, 0);
+      cs->ib[IB_MAIN].ib_bytes = noop_dw_size * 4;
       noop = false;
    }
 
