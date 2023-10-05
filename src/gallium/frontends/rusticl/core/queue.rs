@@ -28,7 +28,7 @@ pub struct Queue {
     pub props: cl_command_queue_properties,
     pub props_v2: Option<Properties<cl_queue_properties>>,
     state: Mutex<QueueState>,
-    _thrd: Option<JoinHandle<()>>,
+    _thrd: JoinHandle<()>,
     chan_in: mpsc::Sender<Vec<Arc<Event>>>,
 }
 
@@ -62,61 +62,59 @@ impl Queue {
                 pending: Vec::new(),
                 last: None,
             }),
-            _thrd: Some(
-                thread::Builder::new()
-                    .name("rusticl queue thread".into())
-                    .spawn(move || loop {
-                        let r = rx_t.recv();
-                        if r.is_err() {
-                            break;
+            _thrd: thread::Builder::new()
+                .name("rusticl queue thread".into())
+                .spawn(move || loop {
+                    let r = rx_t.recv();
+                    if r.is_err() {
+                        break;
+                    }
+
+                    let new_events = r.unwrap();
+                    let mut flushed = Vec::new();
+
+                    for e in new_events {
+                        // If we hit any deps from another queue, flush so we don't risk a dead
+                        // lock.
+                        if e.deps.iter().any(|ev| ev.queue != e.queue) {
+                            flush_events(&mut flushed, &pipe);
                         }
 
-                        let new_events = r.unwrap();
-                        let mut flushed = Vec::new();
+                        // We have to wait on user events or events from other queues.
+                        let err = e
+                            .deps
+                            .iter()
+                            .filter(|ev| ev.is_user() || ev.queue != e.queue)
+                            .map(|e| e.wait())
+                            .find(|s| *s < 0);
 
-                        for e in new_events {
-                            // If we hit any deps from another queue, flush so we don't risk a dead
-                            // lock.
-                            if e.deps.iter().any(|ev| ev.queue != e.queue) {
-                                flush_events(&mut flushed, &pipe);
-                            }
-
-                            // We have to wait on user events or events from other queues.
-                            let err = e
-                                .deps
-                                .iter()
-                                .filter(|ev| ev.is_user() || ev.queue != e.queue)
-                                .map(|e| e.wait())
-                                .find(|s| *s < 0);
-
-                            if let Some(err) = err {
-                                // If a dependency failed, fail this event as well.
-                                e.set_user_status(err);
-                                continue;
-                            }
-
-                            e.call(&pipe);
-
-                            if e.is_user() {
-                                // On each user event we flush our events as application might
-                                // wait on them before signaling user events.
-                                flush_events(&mut flushed, &pipe);
-
-                                // Wait on user events as they are synchronization points in the
-                                // application's control.
-                                e.wait();
-                            } else if Platform::dbg().sync_every_event {
-                                flushed.push(e);
-                                flush_events(&mut flushed, &pipe);
-                            } else {
-                                flushed.push(e);
-                            }
+                        if let Some(err) = err {
+                            // If a dependency failed, fail this event as well.
+                            e.set_user_status(err);
+                            continue;
                         }
 
-                        flush_events(&mut flushed, &pipe);
-                    })
-                    .unwrap(),
-            ),
+                        e.call(&pipe);
+
+                        if e.is_user() {
+                            // On each user event we flush our events as application might
+                            // wait on them before signaling user events.
+                            flush_events(&mut flushed, &pipe);
+
+                            // Wait on user events as they are synchronization points in the
+                            // application's control.
+                            e.wait();
+                        } else if Platform::dbg().sync_every_event {
+                            flushed.push(e);
+                            flush_events(&mut flushed, &pipe);
+                        } else {
+                            flushed.push(e);
+                        }
+                    }
+
+                    flush_events(&mut flushed, &pipe);
+                })
+                .unwrap(),
             chan_in: tx_q,
         }))
     }
