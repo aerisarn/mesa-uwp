@@ -688,8 +688,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    /* Set dword padding minus 1. */
-   info->ip[AMD_IP_GFX].ib_pad_dw_mask = 0x3f;
-   info->ip[AMD_IP_COMPUTE].ib_pad_dw_mask = 0x3f;
+   info->ip[AMD_IP_GFX].ib_pad_dw_mask = 0x7;
+   info->ip[AMD_IP_COMPUTE].ib_pad_dw_mask = 0x7;
    info->ip[AMD_IP_SDMA].ib_pad_dw_mask = 0xf;
    info->ip[AMD_IP_UVD].ib_pad_dw_mask = 0xf;
    info->ip[AMD_IP_VCE].ib_pad_dw_mask = 0x3f;
