@@ -2897,6 +2897,17 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       .callback = mem_access_size_align_cb,
    };
    NIR_PASS_V(nir, nir_lower_mem_access_bit_sizes, &lower_mem_access_options);
+
+   /* Cleanup 8-bit math before lowering */
+   bool progress;
+   do {
+      progress = false;
+
+      NIR_PASS(progress, nir, nir_opt_algebraic);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+      NIR_PASS(progress, nir, nir_opt_dce);
+   } while (progress);
+
    NIR_PASS_V(nir, nir_lower_bit_size, lower_bit_size_callback, NULL);
 
    /* Late blend lowering creates vectors */
