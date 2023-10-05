@@ -2894,7 +2894,10 @@ panfrost_update_shader_state(struct panfrost_batch *batch,
       batch->rsd[st] = panfrost_emit_frag_shader_meta(batch);
    }
 
-   if (frag && (dirty & PAN_DIRTY_STAGE_IMAGE)) {
+   /* Vertex shaders need to mix vertex data and image descriptors in the
+    * attribute array. This is taken care of in panfrost_update_state_3d().
+    */
+   if (st != PIPE_SHADER_VERTEX && (dirty & PAN_DIRTY_STAGE_IMAGE)) {
       batch->attribs[st] =
          panfrost_emit_image_attribs(batch, &batch->attrib_bufs[st], st);
    }
@@ -3824,8 +3827,8 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
 
    pan_section_pack(t.cpu, COMPUTE_JOB, DRAW, cfg) {
       cfg.state = batch->rsd[PIPE_SHADER_COMPUTE];
-      cfg.attributes = panfrost_emit_image_attribs(
-         batch, &cfg.attribute_buffers, PIPE_SHADER_COMPUTE);
+      cfg.attributes = batch->attribs[PIPE_SHADER_COMPUTE];
+      cfg.attribute_buffers = batch->attrib_bufs[PIPE_SHADER_COMPUTE];
       cfg.thread_storage = panfrost_emit_shared_memory(batch, info);
       cfg.uniform_buffers = batch->uniform_buffers[PIPE_SHADER_COMPUTE];
       cfg.push_uniforms = batch->push_uniforms[PIPE_SHADER_COMPUTE];
