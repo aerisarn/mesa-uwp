@@ -21,11 +21,6 @@ dEQP-VK.pipeline.fast_linked_library.multisample_interpolation.sample_interpolat
 
 dEQP-VK.mesh_shader.ext.query.all_stats_query.triangles.host_reset.copy.wait.indirect_draw.32bit.with_availability.single_block.task_mesh.inside_rp.single_view.only_primary
 
-dEQP-VK.query_pool.statistics_query.host_query_reset.geometry_shader_invocations.secondary.32bits_dstoffset_cmdcopyquerypoolresults_line_list
-dEQP-VK.query_pool.statistics_query.host_query_reset.geometry_shader_primitives.secondary.32bits_dstoffset_cmdcopyquerypoolresults_line_list_with_adjacency
-dEQP-VK.query_pool.statistics_query.host_query_reset.geometry_shader_invocations.secondary.32bits_triangle_list
-dEQP-VK.query_pool.statistics_query.host_query_reset.geometry_shader_primitives.secondary.64bits_dstoffset_cmdcopyquerypoolresults_line_list_with_adjacency_clear_color
-
 # Too many of these tests to follow, so let's cast a broad net
 dEQP-VK.pipeline.*line_stipple_enable
 dEQP-VK.pipeline.*line_stipple_params
