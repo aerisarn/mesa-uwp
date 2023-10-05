@@ -447,6 +447,17 @@ void
 nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                               const VkCommandBufferBeginInfo *pBeginInfo)
 {
+   if (cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 3);
+      P_MTHD(p, NV9097, INVALIDATE_SAMPLER_CACHE_NO_WFI);
+      P_NV9097_INVALIDATE_SAMPLER_CACHE_NO_WFI(p, {
+         .lines = LINES_ALL,
+      });
+      P_NV9097_INVALIDATE_TEXTURE_HEADER_CACHE_NO_WFI(p, {
+         .lines = LINES_ALL,
+      });
+   }
+
    if (cmd->vk.level != VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
        (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
       char gcbiar_data[VK_GCBIARR_DATA_SIZE(NVK_MAX_RTS)];

@@ -48,7 +48,17 @@ nvk_cmd_buffer_compute_cls(struct nvk_cmd_buffer *cmd)
 void
 nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
                              const VkCommandBufferBeginInfo *pBeginInfo)
-{ }
+{
+   if (cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+      P_IMMD(p, NVA0C0, INVALIDATE_SAMPLER_CACHE_NO_WFI, {
+         .lines = LINES_ALL,
+      });
+      P_IMMD(p, NVA0C0, INVALIDATE_TEXTURE_HEADER_CACHE_NO_WFI, {
+         .lines = LINES_ALL,
+      });
+   }
+}
 
 static void
 nva0c0_qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
