@@ -10489,7 +10489,17 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfo *dep_inf
    }
 
    radv_gang_barrier(cmd_buffer, 0, dst_stage_mask);
-   radv_cp_dma_wait_for_stages(cmd_buffer, src_stage_mask);
+
+   if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
+      /* SDMA NOP packet waits for all pending SDMA operations to complete.
+       * Note that GFX9+ is supposed to have RAW dependency tracking, but it's buggy
+       * so we can't rely on it fow now.
+       */
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 1);
+      radeon_emit(cmd_buffer->cs, SDMA_PACKET(SDMA_OPCODE_NOP, 0, 0));
+   } else {
+      radv_cp_dma_wait_for_stages(cmd_buffer, src_stage_mask);
+   }
 
    cmd_buffer->state.flush_bits |= dst_flush_bits;
 
