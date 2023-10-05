@@ -953,11 +953,9 @@ static void amdgpu_set_ib_size(struct radeon_cmdbuf *rcs, struct amdgpu_ib *ib)
 static void amdgpu_ib_finalize(struct amdgpu_winsys *ws, struct radeon_cmdbuf *rcs,
                                struct amdgpu_ib *ib)
 {
-   struct amdgpu_cs *cs = (struct amdgpu_cs*)ib;
-
    amdgpu_set_ib_size(rcs, ib);
    ib->used_ib_space += rcs->current.cdw * 4;
-   ib->used_ib_space = align(ib->used_ib_space, ws->info.ip[cs->ip_type].ib_base_alignment);
+   ib->used_ib_space = align(ib->used_ib_space, ws->info.ib_alignment);
    ib->max_ib_size = MAX2(ib->max_ib_size, rcs->prev_dw + rcs->current.cdw);
 }
 
@@ -1147,12 +1145,12 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
    struct amdgpu_winsys *ws = cs->ws;
    struct amdgpu_cs_context *csc[2] = {&cs->csc1, &cs->csc2};
-   unsigned size = align(preamble_num_dw * 4, ws->info.ip[cs->ip_type].ib_size_alignment);
+   unsigned size = align(preamble_num_dw * 4, ws->info.ib_alignment);
    struct pb_buffer *preamble_bo;
    uint32_t *map;
 
    /* Create the preamble IB buffer. */
-   preamble_bo = amdgpu_bo_create(ws, size, ws->info.ip[cs->ip_type].ib_base_alignment,
+   preamble_bo = amdgpu_bo_create(ws, size, ws->info.ib_alignment,
                                   RADEON_DOMAIN_VRAM,
                                   RADEON_FLAG_NO_INTERPROCESS_SHARING |
                                   RADEON_FLAG_GTT_WC |
@@ -1710,7 +1708,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
    if (noop && acs->ip_type == AMD_IP_GFX) {
       /* Reduce the IB size and fill it with NOP to make it like an empty IB. */
-      unsigned noop_size = MIN2(cs->ib[IB_MAIN].ib_bytes, ws->info.ip[AMD_IP_GFX].ib_size_alignment);
+      unsigned noop_size = MIN2(cs->ib[IB_MAIN].ib_bytes, ws->info.ib_alignment);
 
       cs->ib_main_addr[0] = PKT3(PKT3_NOP, noop_size / 4 - 2, 0);
       cs->ib[IB_MAIN].ib_bytes = noop_size;

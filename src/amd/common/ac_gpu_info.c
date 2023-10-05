@@ -677,8 +677,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
             info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
       }
       info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
-      info->ip[ip_type].ib_base_alignment = ip_info.ib_start_alignment;
-      info->ip[ip_type].ib_size_alignment = ip_info.ib_size_alignment;
+      info->ib_alignment = MAX3(info->ib_alignment, ip_info.ib_start_alignment,
+                                ip_info.ib_size_alignment);
    }
 
    /* Only require gfx or compute. */
@@ -689,6 +689,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    assert(util_is_power_of_two_or_zero(info->ip[AMD_IP_COMPUTE].num_queues));
    assert(util_is_power_of_two_or_zero(info->ip[AMD_IP_SDMA].num_queues));
+
+   /* The kernel pads gfx and compute IBs to 256 dwords since:
+    *   66f3b2d527154bd258a57c8815004b5964aa1cf5
+    * Do the same.
+    */
+   info->ib_alignment = MAX2(info->ib_alignment, 1024);
 
    r = amdgpu_query_firmware_version(dev, AMDGPU_INFO_FW_GFX_ME, 0, 0, &info->me_fw_version,
                                      &info->me_fw_feature);
@@ -1675,11 +1681,8 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
 
    for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
       if (info->ip[i].num_queues) {
-         fprintf(f, "    IP %-7s %2u.%u   queues:%u   "
-                    "align(base:%u, size:%u)\n",
-                 ip_string[i], info->ip[i].ver_major, info->ip[i].ver_minor,
-                 info->ip[i].num_queues, info->ip[i].ib_base_alignment,
-                 info->ip[i].ib_size_alignment);
+         fprintf(f, "    IP %-7s %2u.%u \tqueues:%u\n", ip_string[i],
+                 info->ip[i].ver_major, info->ip[i].ver_minor, info->ip[i].num_queues);
       }
    }
 
@@ -1753,6 +1756,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
 
    fprintf(f, "CP info:\n");
    fprintf(f, "    gfx_ib_pad_with_type2 = %i\n", info->gfx_ib_pad_with_type2);
+   fprintf(f, "    ib_alignment = %u\n", info->ib_alignment);
    fprintf(f, "    me_fw_version = %i\n", info->me_fw_version);
    fprintf(f, "    me_fw_feature = %i\n", info->me_fw_feature);
    fprintf(f, "    mec_fw_version = %i\n", info->mec_fw_version);

@@ -26,8 +26,6 @@ struct amd_ip_info {
    uint8_t ver_minor;
    uint8_t ver_rev;
    uint8_t num_queues;
-   uint16_t ib_base_alignment;
-   uint16_t ib_size_alignment;
 };
 
 struct radeon_info {
@@ -162,6 +160,7 @@ struct radeon_info {
 
    /* CP info. */
    bool gfx_ib_pad_with_type2;
+   unsigned ib_alignment; /* both start and size alignment */
    uint32_t me_fw_version;
    uint32_t me_fw_feature;
    uint32_t mec_fw_version;
