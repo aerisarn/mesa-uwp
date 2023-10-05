@@ -373,6 +373,7 @@ typedef struct {
    bool needs_begin_frame;
    void *blit_cs;
    int packed_header_type;
+   bool packed_header_emulation_bytes;
    struct set *surfaces;
 } vlVaContext;
 

@@ -742,6 +742,8 @@ handleVAEncPackedHeaderParameterBufferType(vlVaContext *context, vlVaBuffer *buf
    VAStatus status = VA_STATUS_SUCCESS;
    VAEncPackedHeaderParameterBuffer *param = buf->data;
 
+   context->packed_header_emulation_bytes = param->has_emulation_bytes;
+
    switch (u_reduce_video_profile(context->templat.profile)) {
    case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       if (param->type == VAEncPackedHeaderSequence)

@@ -486,7 +486,7 @@ vlVaHandleVAEncPackedHeaderDataBufferTypeH264(vlVaContext *context, vlVaBuffer *
       unsigned nal_unit_type = vl_vlc_get_uimsbf(&vlc, 5);
 
       struct vl_rbsp rbsp;
-      vl_rbsp_init(&rbsp, &vlc, ~0, true);
+      vl_rbsp_init(&rbsp, &vlc, ~0, context->packed_header_emulation_bytes);
 
       switch(nal_unit_type) {
       case H264_NAL_SPS:
@@ -496,6 +496,9 @@ vlVaHandleVAEncPackedHeaderDataBufferTypeH264(vlVaContext *context, vlVaBuffer *
       default:
          break;
       }
+
+      if (!context->packed_header_emulation_bytes)
+         break;
    }
 
    return VA_STATUS_SUCCESS;
