@@ -178,6 +178,9 @@ struct panfrost_batch {
    unsigned nr_push_uniforms[PIPE_SHADER_TYPES];
    unsigned nr_uniform_buffers[PIPE_SHADER_TYPES];
 
+   /* Index array */
+   mali_ptr indices;
+
    /* Valhall: struct mali_scissor_packed */
    unsigned scissor[2];
    float minimum_z, maximum_z;
