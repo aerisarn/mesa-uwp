@@ -746,7 +746,8 @@ cmd_build_acceleration_structures(
    struct anv_cmd_alloc private_mem_alloc;
    if (private_mem_total > cmd_buffer->state.rt.build_priv_mem_size) {
       private_mem_alloc =
-         anv_cmd_buffer_alloc_space(cmd_buffer, private_mem_total, 64);
+         anv_cmd_buffer_alloc_space(cmd_buffer, private_mem_total, 64,
+                                    false /* mapped */);
       if (anv_cmd_alloc_is_empty(private_mem_alloc)) {
          anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          goto error;
@@ -763,7 +764,8 @@ cmd_build_acceleration_structures(
    }
 
    struct anv_cmd_alloc transient_mem_alloc =
-      anv_cmd_buffer_alloc_space(cmd_buffer, transient_total, 64);
+      anv_cmd_buffer_alloc_space(cmd_buffer, transient_total, 64,
+                                 true /* mapped */);
    if (transient_total > 0 && anv_cmd_alloc_is_empty(transient_mem_alloc)) {
       anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       goto error;

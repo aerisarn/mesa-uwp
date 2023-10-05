@@ -213,7 +213,9 @@ destroy_cmd_buffer(struct anv_cmd_buffer *cmd_buffer)
 
    while (u_vector_length(&cmd_buffer->dynamic_bos) > 0) {
       struct anv_bo **bo = u_vector_remove(&cmd_buffer->dynamic_bos);
-      anv_device_release_bo(cmd_buffer->device, *bo);
+      anv_bo_pool_free((*bo)->map != NULL ?
+                       &cmd_buffer->device->batch_bo_pool :
+                       &cmd_buffer->device->bvh_bo_pool, *bo);
    }
    u_vector_finish(&cmd_buffer->dynamic_bos);
 
