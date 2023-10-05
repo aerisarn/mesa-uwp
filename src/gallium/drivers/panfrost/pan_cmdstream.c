@@ -2930,6 +2930,17 @@ panfrost_update_state_3d(struct panfrost_batch *batch)
       batch->attrib_bufs[PIPE_SHADER_VERTEX] =
          panfrost_emit_vertex_buffers(batch);
    }
+#else
+   unsigned vt_shader_dirty = ctx->dirty_shader[PIPE_SHADER_VERTEX];
+
+   /* Vertex data, vertex shader and images accessed by the vertex shader have
+    * an impact on the attributes array, we need to re-emit anytime one of these
+    * parameters changes. */
+   if ((dirty & PAN_DIRTY_VERTEX) ||
+       (vt_shader_dirty & (PAN_DIRTY_STAGE_IMAGE | PAN_DIRTY_STAGE_SHADER))) {
+      batch->attribs[PIPE_SHADER_VERTEX] = panfrost_emit_vertex_data(
+         batch, &batch->attrib_bufs[PIPE_SHADER_VERTEX]);
+   }
 #endif
 }
 
@@ -3606,15 +3617,15 @@ panfrost_direct_draw(struct panfrost_batch *batch,
    panfrost_emit_varying_descriptor(
       batch, ctx->padded_count * ctx->instance_count, &vs_vary, &fs_vary,
       &varyings, NULL, &pos, &psiz, info->mode == MESA_PRIM_POINTS);
-
-   mali_ptr attribs, attrib_bufs;
-   attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
 #endif
 
    panfrost_update_state_3d(batch);
    panfrost_update_shader_state(batch, PIPE_SHADER_VERTEX);
    panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
    panfrost_clean_state_3d(ctx);
+
+   UNUSED mali_ptr attrib_bufs = batch->attrib_bufs[PIPE_SHADER_VERTEX];
+   UNUSED mali_ptr attribs = batch->attribs[PIPE_SHADER_VERTEX];
 
    if (ctx->uncompiled[PIPE_SHADER_VERTEX]->xfb) {
 #if PAN_ARCH >= 9
