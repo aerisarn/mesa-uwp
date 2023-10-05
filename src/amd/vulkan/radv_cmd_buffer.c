@@ -312,6 +312,8 @@ radv_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
       cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
    if (cmd_buffer->gang.cs)
       cmd_buffer->device->ws->cs_destroy(cmd_buffer->gang.cs);
+   if (cmd_buffer->transfer.copy_temp)
+      cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, cmd_buffer->transfer.copy_temp);
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       struct radv_descriptor_set_header *set = &cmd_buffer->descriptors[i].push_set.set;

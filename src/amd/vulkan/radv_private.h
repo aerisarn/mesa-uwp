@@ -1869,6 +1869,11 @@ struct radv_cmd_buffer {
       struct rvcn_decode_buffer_s *decode_buffer;
    } video;
 
+   struct {
+      /* Temporary space for some transfer queue copy command workarounds. */
+      struct radeon_winsys_bo *copy_temp;
+   } transfer;
+
    uint64_t shader_upload_seq;
 
    uint32_t sqtt_cb_id;

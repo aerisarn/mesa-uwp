@@ -85,6 +85,26 @@ radv_image_is_renderable(const struct radv_device *device, const struct radv_ima
    return true;
 }
 
+static bool
+alloc_transfer_temp_bo(struct radv_cmd_buffer *cmd_buffer)
+{
+   if (cmd_buffer->transfer.copy_temp)
+      return true;
+
+   const struct radv_device *const device = cmd_buffer->device;
+   const VkResult r = device->ws->buffer_create(device->ws, RADV_SDMA_TRANSFER_TEMP_BYTES, 4096, RADEON_DOMAIN_VRAM,
+                                                RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
+                                                RADV_BO_PRIORITY_SCRATCH, 0, &cmd_buffer->transfer.copy_temp);
+
+   if (r != VK_SUCCESS) {
+      vk_command_buffer_set_error(&cmd_buffer->vk, r);
+      return false;
+   }
+
+   radv_cs_add_buffer(device->ws, cmd_buffer->cs, cmd_buffer->transfer.copy_temp);
+   return true;
+}
+
 static void
 transfer_copy_buffer_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buffer, struct radv_image *image,
                            const VkBufferImageCopy2 *region, bool to_image)

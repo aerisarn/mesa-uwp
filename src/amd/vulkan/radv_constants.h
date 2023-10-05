@@ -166,4 +166,9 @@
 /* Number of samples for line smooth lowering (hw requirement). */
 #define RADV_NUM_SMOOTH_AA_SAMPLES 4
 
+/* Size of the temporary buffer allocated for transfer queue copy command workarounds.
+ * The size is chosen so that it can fit two lines of (1 << 14) blocks at 16 bpp.
+ */
+#define RADV_SDMA_TRANSFER_TEMP_BYTES (2 * (1 << 14) * 16)
+
 #endif /* RADV_CONSTANTS_H */
