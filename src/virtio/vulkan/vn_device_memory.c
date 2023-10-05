@@ -335,16 +335,6 @@ vn_device_memory_alloc_guest_vram(
       return result;
    }
 
-   result =
-      vn_instance_submit_roundtrip(dev->instance, &mem->bo_roundtrip_seqno);
-   if (result != VK_SUCCESS) {
-      vn_renderer_bo_unref(dev->renderer, mem->base_bo);
-      vn_async_vkFreeMemory(dev->instance, dev_handle, mem_handle, NULL);
-      return result;
-   }
-
-   mem->bo_roundtrip_seqno_valid = true;
-
    return VK_SUCCESS;
 }
 
