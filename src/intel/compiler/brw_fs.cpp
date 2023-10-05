@@ -5154,6 +5154,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
    const struct intel_device_info *devinfo = compiler->devinfo;
 
    switch (inst->opcode) {
+   case BRW_OPCODE_DP4A:
    case BRW_OPCODE_MOV:
    case BRW_OPCODE_SEL:
    case BRW_OPCODE_NOT:
