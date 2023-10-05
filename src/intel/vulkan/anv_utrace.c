@@ -442,7 +442,8 @@ anv_utrace_read_ts(struct u_trace_context *utctx,
 void
 anv_device_utrace_init(struct anv_device *device)
 {
-   anv_bo_pool_init(&device->utrace_bo_pool, device, "utrace");
+   anv_bo_pool_init(&device->utrace_bo_pool, device, "utrace",
+                    ANV_BO_ALLOC_MAPPED | ANV_BO_ALLOC_SNOOPED);
    intel_ds_device_init(&device->ds, device->info, device->fd,
                         device->physical->local_minor,
                         INTEL_DS_API_VULKAN);

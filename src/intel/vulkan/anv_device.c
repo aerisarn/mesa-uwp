@@ -3228,7 +3228,10 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_queue_cond;
 
-   anv_bo_pool_init(&device->batch_bo_pool, device, "batch");
+   anv_bo_pool_init(&device->batch_bo_pool, device, "batch",
+                    ANV_BO_ALLOC_MAPPED |
+                    ANV_BO_ALLOC_SNOOPED |
+                    ANV_BO_ALLOC_CAPTURE);
 
    /* Because scratch is also relative to General State Base Address, we leave
     * the base address 0 and start the pool memory at an offset.  This way we

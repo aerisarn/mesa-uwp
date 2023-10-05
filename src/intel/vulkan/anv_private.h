@@ -787,7 +787,7 @@ struct anv_bo_pool {
 };
 
 void anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
-                      const char *name);
+                      const char *name, enum anv_bo_alloc_flags alloc_flags);
 void anv_bo_pool_finish(struct anv_bo_pool *pool);
 VkResult anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
                            struct anv_bo **bo_out);
