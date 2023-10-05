@@ -57,3 +57,6 @@ dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail.basic
 
 # Those cases seem to usually timeout.
 dEQP-VK.binding_model.descriptor_buffer.multiple.*buffers32_sets1
+
+# These cases are slow.
+dEQP-VK.texture.explicit_lod.2d.sizes.128x128_.*
