@@ -647,8 +647,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       return false;
    }
 
-   unsigned max_ib_alignment = 0;
-
    for (unsigned ip_type = 0; ip_type < AMD_NUM_IP_TYPES; ip_type++) {
       struct drm_amdgpu_info_hw_ip ip_info = {0};
 
@@ -679,13 +677,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
             info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
       }
       info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
-      info->ip[ip_type].ib_alignment = MAX2(ip_info.ib_start_alignment, ip_info.ib_size_alignment);
-      max_ib_alignment = MAX2(max_ib_alignment, info->ip[ip_type].ib_alignment);
-   }
-
-   /* TODO: Remove this. This hack mimics the previous behavior of global ib_alignment. */
-   for (unsigned ip_type = 0; ip_type < AMD_NUM_IP_TYPES; ip_type++) {
-      info->ip[ip_type].ib_alignment = MAX2(max_ib_alignment, 1024);
+      info->ip[ip_type].ib_alignment = MAX3(ip_info.ib_start_alignment,
+                                            ip_info.ib_size_alignment, 1024);
    }
 
    /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
