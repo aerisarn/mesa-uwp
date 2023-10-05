@@ -178,6 +178,16 @@ struct panfrost_batch {
    unsigned nr_push_uniforms[PIPE_SHADER_TYPES];
    unsigned nr_uniform_buffers[PIPE_SHADER_TYPES];
 
+   /* Varying related pointers */
+   struct {
+      mali_ptr bufs;
+      unsigned nr_bufs;
+      mali_ptr vs;
+      mali_ptr fs;
+      mali_ptr pos;
+      mali_ptr psiz;
+   } varyings;
+
    /* Index array */
    mali_ptr indices;
 
