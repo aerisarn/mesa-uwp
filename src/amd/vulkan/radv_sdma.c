@@ -143,7 +143,7 @@ radv_sdma_copy_image(struct radv_device *device, struct radeon_cmdbuf *cs, struc
 }
 
 void
-radv_sdma_copy_buffer(struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va, uint64_t dst_va,
+radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va, uint64_t dst_va,
                       uint64_t size)
 {
    if (size == 0)
