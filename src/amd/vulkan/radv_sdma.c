@@ -393,6 +393,39 @@ radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs
    }
 }
 
+void
+radv_sdma_fill_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, const uint64_t va,
+                      const uint64_t size, const uint32_t value)
+{
+   const uint32_t fill_size = 2; /* This means that the count is in dwords. */
+   const uint32_t constant_fill_header = SDMA_PACKET(SDMA_OPCODE_CONSTANT_FILL, 0, 0) | (fill_size & 0x3) << 30;
+
+   /* This packet is the same since SDMA v2.4, haven't bothered to check older versions. */
+   const enum sdma_version ver = device->physical_device->rad_info.sdma_ip_version;
+   assert(ver >= SDMA_2_4);
+
+   /* Maximum allowed fill size depends on the GPU.
+    * Emit as many packets as necessary to fill all the bytes we need.
+    */
+   const uint64_t max_fill_bytes = BITFIELD64_MASK(ver >= SDMA_6_0 ? 30 : 22) & ~0x3;
+   const unsigned num_packets = DIV_ROUND_UP(size, max_fill_bytes);
+   ASSERTED unsigned cdw_max = radeon_check_space(device->ws, cs, num_packets * 5);
+
+   for (unsigned i = 0; i < num_packets; ++i) {
+      const uint64_t offset = i * max_fill_bytes;
+      const uint64_t fill_bytes = MIN2(size - offset, max_fill_bytes);
+      const uint64_t fill_va = va + offset;
+
+      radeon_emit(cs, constant_fill_header);
+      radeon_emit(cs, fill_va);
+      radeon_emit(cs, fill_va >> 32);
+      radeon_emit(cs, value);
+      radeon_emit(cs, fill_bytes - 1); /* Must be programmed in bytes, even if the fill is done in dwords. */
+   }
+
+   assert(cs->cdw <= cdw_max);
+}
+
 static void
 radv_sdma_emit_copy_linear_sub_window(const struct radv_device *device, struct radeon_cmdbuf *cs,
                                       const struct radv_sdma_linear_info *const src,

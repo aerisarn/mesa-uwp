@@ -3143,6 +3143,8 @@ void radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, str
                                            bool to_image);
 void radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va, uint64_t dst_va,
                            uint64_t size);
+void radv_sdma_fill_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, const uint64_t va,
+                           const uint64_t size, const uint32_t value);
 
 void radv_memory_trace_init(struct radv_device *device);
 void radv_rmv_log_bo_allocate(struct radv_device *device, struct radeon_winsys_bo *bo, uint32_t size, bool is_internal);
