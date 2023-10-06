@@ -1084,19 +1084,15 @@ tu_setup_dynamic_render_pass(struct tu_cmd_buffer *cmd_buffer,
    struct tu_render_pass *pass = &cmd_buffer->dynamic_pass;
    struct tu_subpass *subpass = &cmd_buffer->dynamic_subpass;
 
+   *pass = {};
+   *subpass = {};
+
    pass->subpass_count = 1;
    pass->attachments = cmd_buffer->dynamic_rp_attachments;
 
    subpass->color_count = subpass->resolve_count = info->colorAttachmentCount;
-   subpass->resolve_depth_stencil = false;
    subpass->color_attachments = cmd_buffer->dynamic_color_attachments;
    subpass->resolve_attachments = cmd_buffer->dynamic_resolve_attachments;
-   subpass->feedback_invalidate = false;
-   subpass->feedback_loop_ds = subpass->feedback_loop_color = false;
-   subpass->input_count = 0;
-   subpass->samples = (VkSampleCountFlagBits) 0;
-   subpass->srgb_cntl = 0;
-   subpass->raster_order_attachment_access = false;
    subpass->multiview_mask = info->viewMask;
 
    uint32_t a = 0;
