@@ -120,6 +120,9 @@ agx_batch_init(struct agx_context *ctx,
    batch->any_draws = false;
    batch->initialized = false;
    batch->draws = 0;
+   agx_bo_unreference(batch->sampler_heap.bo);
+   batch->sampler_heap.bo = NULL;
+   batch->sampler_heap.count = 0;
 
    /* We need to emit prim state at the start. Max collides with all. */
    batch->reduced_prim = MESA_PRIM_COUNT;

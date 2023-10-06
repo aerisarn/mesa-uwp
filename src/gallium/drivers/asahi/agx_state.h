@@ -247,6 +247,20 @@ struct agx_stage {
 union agx_batch_result {
 };
 
+/* This is a firmware limit. It should be possible to raise to 2048 in the
+ * future... still not good enough for VK though :-(
+ */
+#define AGX_SAMPLER_HEAP_SIZE (1024)
+
+struct agx_sampler_heap {
+   struct agx_bo *bo;
+   uint16_t count;
+};
+
+uint16_t agx_sampler_heap_add(struct agx_device *dev,
+                              struct agx_sampler_heap *heap,
+                              struct agx_sampler_packed *sampler);
+
 struct agx_batch {
    struct agx_context *ctx;
    struct pipe_framebuffer_state key;
@@ -279,6 +293,8 @@ struct agx_batch {
 
    uint64_t samplers[PIPE_SHADER_TYPES];
    uint32_t sampler_count[PIPE_SHADER_TYPES];
+
+   struct agx_sampler_heap sampler_heap;
 
    /* Resource list requirements, represented as a bit set indexed by BO
     * handles (GEM handles on Linux, or IOGPU's equivalent on macOS)

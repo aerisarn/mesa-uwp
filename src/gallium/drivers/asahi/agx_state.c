@@ -2242,6 +2242,28 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
    batch->textures[stage] = T_tex.gpu;
 }
 
+uint16_t
+agx_sampler_heap_add(struct agx_device *dev, struct agx_sampler_heap *heap,
+                     struct agx_sampler_packed *sampler)
+{
+   /* Allocate (maximally sized) BO if we haven't already */
+   if (!heap->bo) {
+      heap->bo = agx_bo_create(dev, AGX_SAMPLER_HEAP_SIZE * AGX_SAMPLER_LENGTH,
+                               AGX_BO_WRITEBACK, "Sampler heap");
+
+      assert(heap->count == 0);
+   }
+
+   /* TODO search */
+
+   /* Precondition: there is room in the heap */
+   assert(heap->count < AGX_SAMPLER_HEAP_SIZE);
+   struct agx_sampler_packed *samplers = heap->bo->ptr.cpu;
+   memcpy(samplers + heap->count, sampler, sizeof(*sampler));
+
+   return heap->count++;
+}
+
 static void
 agx_upload_samplers(struct agx_batch *batch, struct agx_compiled_shader *cs,
                     enum pipe_shader_type stage)
@@ -3320,6 +3342,9 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    } else if (unlikely(batch->draws > 100000)) {
       /* Mostly so drawoverhead doesn't OOM */
       agx_flush_batch_for_reason(ctx, batch, "Absurd number of draws");
+   } else if (unlikely(batch->sampler_heap.count >
+                       (AGX_SAMPLER_HEAP_SIZE - (PIPE_MAX_SAMPLERS * 6)))) {
+      agx_flush_batch_for_reason(ctx, batch, "Sampler heap overflow");
    }
 }
 
