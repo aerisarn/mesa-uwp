@@ -730,6 +730,8 @@ static void format_ib_output(FILE *f, char *out)
  * \param ib_ptr       IB
  * \param num_dw       size of the IB
  * \param gfx_level   gfx level
+ * \param family	chip family
+ * \param ip_type IP type
  * \param trace_ids	the last trace IDs that are known to have been reached
  *			and executed by the CP, typically read from a buffer
  * \param trace_id_count The number of entries in the trace_ids array.
@@ -739,7 +741,7 @@ static void format_ib_output(FILE *f, char *out)
  */
 void ac_parse_ib_chunk(FILE *f, uint32_t *ib_ptr, int num_dw, const int *trace_ids,
                        unsigned trace_id_count, enum amd_gfx_level gfx_level,
-                       enum radeon_family family,
+                       enum radeon_family family, enum amd_ip_type ip_type,
                        ac_debug_addr_callback addr_callback, void *addr_callback_data)
 {
    struct ac_ib_parser ib = {0};
@@ -779,6 +781,8 @@ void ac_parse_ib_chunk(FILE *f, uint32_t *ib_ptr, int num_dw, const int *trace_i
  * \param ib		IB
  * \param num_dw	size of the IB
  * \param gfx_level	gfx level
+ * \param family	chip family
+ * \param ip_type IP type
  * \param trace_ids	the last trace IDs that are known to have been reached
  *			and executed by the CP, typically read from a buffer
  * \param trace_id_count The number of entries in the trace_ids array.
@@ -788,12 +792,12 @@ void ac_parse_ib_chunk(FILE *f, uint32_t *ib_ptr, int num_dw, const int *trace_i
  */
 void ac_parse_ib(FILE *f, uint32_t *ib, int num_dw, const int *trace_ids, unsigned trace_id_count,
                  const char *name, enum amd_gfx_level gfx_level, enum radeon_family family,
-                 ac_debug_addr_callback addr_callback, void *addr_callback_data)
+                 enum amd_ip_type ip_type, ac_debug_addr_callback addr_callback, void *addr_callback_data)
 {
    fprintf(f, "------------------ %s begin ------------------\n", name);
 
-   ac_parse_ib_chunk(f, ib, num_dw, trace_ids, trace_id_count, gfx_level, family, addr_callback,
-                     addr_callback_data);
+   ac_parse_ib_chunk(f, ib, num_dw, trace_ids, trace_id_count, gfx_level, family, ip_type,
+                     addr_callback, addr_callback_data);
 
    fprintf(f, "------------------- %s end -------------------\n\n", name);
 }

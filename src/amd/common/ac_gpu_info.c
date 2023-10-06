@@ -1592,7 +1592,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          }
 
          ac_parse_ib(stdout, ib, size / 4, NULL, 0, "IB", info->gfx_level, info->family,
-                     NULL, NULL);
+                     AMD_IP_GFX, NULL, NULL);
          free(ib);
          exit(0);
       }
