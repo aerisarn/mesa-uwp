@@ -663,6 +663,8 @@ lvp_CopyMemoryToImageEXT(VkDevice _device, const VkCopyMemoryToImageInfoEXT *pCo
    LVP_FROM_HANDLE(lvp_image, image, pCopyMemoryToImageInfo->dstImage);
    for (unsigned i = 0; i < pCopyMemoryToImageInfo->regionCount; i++) {
       const VkMemoryToImageCopyEXT *copy = &pCopyMemoryToImageInfo->pRegions[i];
+      const VkImageAspectFlagBits aspects = copy->imageSubresource.aspectMask;
+      uint8_t plane = lvp_image_aspects_to_plane(image, aspects);
       struct pipe_box box = {
          .x = copy->imageOffset.x,
          .y = copy->imageOffset.y,
@@ -670,7 +672,7 @@ lvp_CopyMemoryToImageEXT(VkDevice _device, const VkCopyMemoryToImageInfoEXT *pCo
          .height = copy->imageExtent.height,
          .depth = 1,
       };
-      switch (image->planes[0].bo->target) {
+      switch (image->planes[plane].bo->target) {
       case PIPE_TEXTURE_CUBE:
       case PIPE_TEXTURE_CUBE_ARRAY:
       case PIPE_TEXTURE_2D_ARRAY:
@@ -688,9 +690,9 @@ lvp_CopyMemoryToImageEXT(VkDevice _device, const VkCopyMemoryToImageInfoEXT *pCo
          break;
       }
 
-      unsigned stride = util_format_get_stride(image->planes[0].bo->format, copy->memoryRowLength ? copy->memoryRowLength : box.width);
-      unsigned layer_stride = util_format_get_2d_size(image->planes[0].bo->format, stride, copy->memoryImageHeight ? copy->memoryImageHeight : box.height);
-      device->queue.ctx->texture_subdata(device->queue.ctx, image->planes[0].bo, copy->imageSubresource.mipLevel, 0,
+      unsigned stride = util_format_get_stride(image->planes[plane].bo->format, copy->memoryRowLength ? copy->memoryRowLength : box.width);
+      unsigned layer_stride = util_format_get_2d_size(image->planes[plane].bo->format, stride, copy->memoryImageHeight ? copy->memoryImageHeight : box.height);
+      device->queue.ctx->texture_subdata(device->queue.ctx, image->planes[plane].bo, copy->imageSubresource.mipLevel, 0,
                                          &box, copy->pHostPointer, stride, layer_stride);
    }
    return VK_SUCCESS;
@@ -704,6 +706,10 @@ lvp_CopyImageToMemoryEXT(VkDevice _device, const VkCopyImageToMemoryInfoEXT *pCo
 
    for (unsigned i = 0; i < pCopyImageToMemoryInfo->regionCount; i++) {
       const VkImageToMemoryCopyEXT *copy = &pCopyImageToMemoryInfo->pRegions[i];
+
+      const VkImageAspectFlagBits aspects = copy->imageSubresource.aspectMask;
+      uint8_t plane = lvp_image_aspects_to_plane(image, aspects);
+
       struct pipe_box box = {
          .x = copy->imageOffset.x,
          .y = copy->imageOffset.y,
@@ -711,7 +717,7 @@ lvp_CopyImageToMemoryEXT(VkDevice _device, const VkCopyImageToMemoryInfoEXT *pCo
          .height = copy->imageExtent.height,
          .depth = 1,
       };
-      switch (image->planes[0].bo->target) {
+      switch (image->planes[plane].bo->target) {
       case PIPE_TEXTURE_CUBE:
       case PIPE_TEXTURE_CUBE_ARRAY:
       case PIPE_TEXTURE_2D_ARRAY:
@@ -729,14 +735,14 @@ lvp_CopyImageToMemoryEXT(VkDevice _device, const VkCopyImageToMemoryInfoEXT *pCo
          break;
       }
       struct pipe_transfer *xfer;
-      uint8_t *data = device->queue.ctx->texture_map(device->queue.ctx, image->planes[0].bo, copy->imageSubresource.mipLevel,
+      uint8_t *data = device->queue.ctx->texture_map(device->queue.ctx, image->planes[plane].bo, copy->imageSubresource.mipLevel,
                                                      PIPE_MAP_READ | PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_THREAD_SAFE, &box, &xfer);
       if (!data)
          return VK_ERROR_MEMORY_MAP_FAILED;
 
-      unsigned stride = util_format_get_stride(image->planes[0].bo->format, copy->memoryRowLength ? copy->memoryRowLength : box.width);
-      unsigned layer_stride = util_format_get_2d_size(image->planes[0].bo->format, stride, copy->memoryImageHeight ? copy->memoryImageHeight : box.height);
-      util_copy_box(copy->pHostPointer, image->planes[0].bo->format, stride, layer_stride,
+      unsigned stride = util_format_get_stride(image->planes[plane].bo->format, copy->memoryRowLength ? copy->memoryRowLength : box.width);
+      unsigned layer_stride = util_format_get_2d_size(image->planes[plane].bo->format, stride, copy->memoryImageHeight ? copy->memoryImageHeight : box.height);
+      util_copy_box(copy->pHostPointer, image->planes[plane].bo->format, stride, layer_stride,
                     /* offsets are all zero because texture_map handles the offset */
                     0, 0, 0, box.width, box.height, box.depth, data, xfer->stride, xfer->layer_stride, 0, 0, 0);
       pipe_texture_unmap(device->queue.ctx, xfer);
@@ -753,12 +759,18 @@ lvp_CopyImageToImageEXT(VkDevice _device, const VkCopyImageToImageInfoEXT *pCopy
 
    /* basically the same as handle_copy_image() */
    for (unsigned i = 0; i < pCopyImageToImageInfo->regionCount; i++) {
+
+      const VkImageAspectFlagBits src_aspects = pCopyImageToImageInfo->pRegions[i].srcSubresource.aspectMask;
+      uint8_t src_plane = lvp_image_aspects_to_plane(src_image, src_aspects);
+      const VkImageAspectFlagBits dst_aspects = pCopyImageToImageInfo->pRegions[i].dstSubresource.aspectMask;
+      uint8_t dst_plane = lvp_image_aspects_to_plane(dst_image, dst_aspects);
+
       struct pipe_box src_box;
       src_box.x = pCopyImageToImageInfo->pRegions[i].srcOffset.x;
       src_box.y = pCopyImageToImageInfo->pRegions[i].srcOffset.y;
       src_box.width = pCopyImageToImageInfo->pRegions[i].extent.width;
       src_box.height = pCopyImageToImageInfo->pRegions[i].extent.height;
-      if (src_image->planes[0].bo->target == PIPE_TEXTURE_3D) {
+      if (src_image->planes[src_plane].bo->target == PIPE_TEXTURE_3D) {
          src_box.depth = pCopyImageToImageInfo->pRegions[i].extent.depth;
          src_box.z = pCopyImageToImageInfo->pRegions[i].srcOffset.z;
       } else {
@@ -766,15 +778,15 @@ lvp_CopyImageToImageEXT(VkDevice _device, const VkCopyImageToImageInfoEXT *pCopy
          src_box.z = pCopyImageToImageInfo->pRegions[i].srcSubresource.baseArrayLayer;
       }
 
-      unsigned dstz = dst_image->planes[0].bo->target == PIPE_TEXTURE_3D ?
+      unsigned dstz = dst_image->planes[dst_plane].bo->target == PIPE_TEXTURE_3D ?
                       pCopyImageToImageInfo->pRegions[i].dstOffset.z :
                       pCopyImageToImageInfo->pRegions[i].dstSubresource.baseArrayLayer;
-      device->queue.ctx->resource_copy_region(device->queue.ctx, dst_image->planes[0].bo,
+      device->queue.ctx->resource_copy_region(device->queue.ctx, dst_image->planes[dst_plane].bo,
                                               pCopyImageToImageInfo->pRegions[i].dstSubresource.mipLevel,
                                               pCopyImageToImageInfo->pRegions[i].dstOffset.x,
                                               pCopyImageToImageInfo->pRegions[i].dstOffset.y,
                                               dstz,
-                                              src_image->planes[0].bo,
+                                              src_image->planes[src_plane].bo,
                                               pCopyImageToImageInfo->pRegions[i].srcSubresource.mipLevel,
                                               &src_box);
    }

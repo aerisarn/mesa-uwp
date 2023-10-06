@@ -2179,6 +2179,9 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
 
    for (uint32_t i = 0; i < copycmd->regionCount; i++) {
       const VkBufferImageCopy2 *region = &copycmd->pRegions[i];
+      const VkImageAspectFlagBits aspects = copycmd->pRegions[i].imageSubresource.aspectMask;
+      uint8_t plane = lvp_image_aspects_to_plane(src_image, aspects);
+
       box.x = region->imageOffset.x;
       box.y = region->imageOffset.y;
       box.z = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageOffset.z : region->imageSubresource.baseArrayLayer;
@@ -2187,7 +2190,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
       box.depth = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageExtent.depth : subresource_layercount(src_image, &region->imageSubresource);
 
       src_data = state->pctx->texture_map(state->pctx,
-                                           src_image->planes[0].bo,
+                                           src_image->planes[plane].bo,
                                            region->imageSubresource.mipLevel,
                                            PIPE_MAP_READ,
                                            &box,
@@ -2206,7 +2209,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                                            &dbox,
                                            &dst_t);
 
-      enum pipe_format src_format = src_image->planes[0].bo->format;
+      enum pipe_format src_format = src_image->planes[plane].bo->format;
       enum pipe_format dst_format = src_format;
       if (util_format_is_depth_or_stencil(src_format)) {
          if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -2253,6 +2256,8 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
       struct pipe_box box, sbox;
       struct pipe_transfer *src_t, *dst_t;
       void *src_data, *dst_data;
+      const VkImageAspectFlagBits aspects = copycmd->pRegions[i].imageSubresource.aspectMask;
+      uint8_t plane = lvp_image_aspects_to_plane(dst_image, aspects);
 
       sbox.x = region->bufferOffset;
       sbox.y = 0;
@@ -2276,17 +2281,17 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
       box.depth = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageExtent.depth : subresource_layercount(dst_image, &region->imageSubresource);
 
       dst_data = state->pctx->texture_map(state->pctx,
-                                           dst_image->planes[0].bo,
+                                           dst_image->planes[plane].bo,
                                            region->imageSubresource.mipLevel,
                                            PIPE_MAP_WRITE,
                                            &box,
                                            &dst_t);
 
-      enum pipe_format dst_format = dst_image->planes[0].bo->format;
+      enum pipe_format dst_format = dst_image->planes[plane].bo->format;
       enum pipe_format src_format = dst_format;
       if (util_format_is_depth_or_stencil(dst_format)) {
          if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
-            src_format = util_format_get_depth_only(dst_image->planes[0].bo->format);
+            src_format = util_format_get_depth_only(dst_image->planes[plane].bo->format);
          } else if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
             src_format = PIPE_FORMAT_S8_UINT;
          }
@@ -2331,12 +2336,18 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
 
    for (uint32_t i = 0; i < copycmd->regionCount; i++) {
       const VkImageCopy2 *region = &copycmd->pRegions[i];
+      const VkImageAspectFlagBits src_aspects =
+         copycmd->pRegions[i].srcSubresource.aspectMask;
+      uint8_t src_plane = lvp_image_aspects_to_plane(src_image, src_aspects);
+      const VkImageAspectFlagBits dst_aspects =
+         copycmd->pRegions[i].dstSubresource.aspectMask;
+      uint8_t dst_plane = lvp_image_aspects_to_plane(dst_image, dst_aspects);
       struct pipe_box src_box;
       src_box.x = region->srcOffset.x;
       src_box.y = region->srcOffset.y;
       src_box.width = region->extent.width;
       src_box.height = region->extent.height;
-      if (src_image->planes[0].bo->target == PIPE_TEXTURE_3D) {
+      if (src_image->planes[src_plane].bo->target == PIPE_TEXTURE_3D) {
          src_box.depth = region->extent.depth;
          src_box.z = region->srcOffset.z;
       } else {
@@ -2344,15 +2355,15 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
          src_box.z = region->srcSubresource.baseArrayLayer;
       }
 
-      unsigned dstz = dst_image->planes[0].bo->target == PIPE_TEXTURE_3D ?
+      unsigned dstz = dst_image->planes[dst_plane].bo->target == PIPE_TEXTURE_3D ?
                       region->dstOffset.z :
                       region->dstSubresource.baseArrayLayer;
-      state->pctx->resource_copy_region(state->pctx, dst_image->planes[0].bo,
+      state->pctx->resource_copy_region(state->pctx, dst_image->planes[dst_plane].bo,
                                         region->dstSubresource.mipLevel,
                                         region->dstOffset.x,
                                         region->dstOffset.y,
                                         dstz,
-                                        src_image->planes[0].bo,
+                                        src_image->planes[src_plane].bo,
                                         region->srcSubresource.mipLevel,
                                         &src_box);
    }
