@@ -226,7 +226,9 @@ get_buffer_resource(struct pipe_context *ctx, void *mem)
 }
 
 ALWAYS_INLINE static void
-assert_subresource_layers(const struct pipe_resource *pres, const VkImageSubresourceLayers *layers, const VkOffset3D *offsets)
+assert_subresource_layers(const struct pipe_resource *pres,
+                          const struct lvp_image *image,
+                          const VkImageSubresourceLayers *layers, const VkOffset3D *offsets)
 {
 #ifndef NDEBUG
    if (pres->target == PIPE_TEXTURE_3D) {
@@ -236,7 +238,7 @@ assert_subresource_layers(const struct pipe_resource *pres, const VkImageSubreso
       assert(offsets[1].z <= pres->depth0);
    } else {
       assert(layers->baseArrayLayer < pres->array_size);
-      assert(layers->baseArrayLayer + layers->layerCount <= pres->array_size);
+      assert(layers->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, layers) <= pres->array_size);
       assert(offsets[0].z == 0);
       assert(offsets[1].z == 1);
    }
@@ -2426,8 +2428,8 @@ static void handle_blit_image(struct vk_cmd_queue_entry *cmd,
          info.src.box.height = srcY0 - srcY1;
       }
 
-      assert_subresource_layers(info.src.resource, &blitcmd->pRegions[i].srcSubresource, blitcmd->pRegions[i].srcOffsets);
-      assert_subresource_layers(info.dst.resource, &blitcmd->pRegions[i].dstSubresource, blitcmd->pRegions[i].dstOffsets);
+      assert_subresource_layers(info.src.resource, src_image, &blitcmd->pRegions[i].srcSubresource, blitcmd->pRegions[i].srcOffsets);
+      assert_subresource_layers(info.dst.resource, dst_image, &blitcmd->pRegions[i].dstSubresource, blitcmd->pRegions[i].dstOffsets);
       if (src_image->bo->target == PIPE_TEXTURE_3D) {
          if (dstZ0 < dstZ1) {
             info.dst.box.z = dstZ0;
