@@ -142,10 +142,9 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout, struct
 static uint32_t
 radv_align_cmdbuf_size(const struct radv_device *device, uint32_t size)
 {
-   const uint32_t ib_pad_dw_mask = MAX2(device->physical_device->rad_info.ib_pad_dw_mask[AMD_IP_GFX],
-                                        device->physical_device->rad_info.ib_pad_dw_mask[AMD_IP_COMPUTE]);
+   const uint32_t ib_alignment = device->physical_device->rad_info.ib_alignment;
 
-   return align(size, ib_pad_dw_mask + 1);
+   return align(size, ib_alignment);
 }
 
 static unsigned
