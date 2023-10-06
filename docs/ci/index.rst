@@ -107,7 +107,7 @@ non-redistributable traces can request permission to Daniel Stone <daniels@colla
 
 gitlab.freedesktop.org accounts that are to be granted access to these traces will be
 added to the OPA policy for the MinIO repository as per
-https://gitlab.freedesktop.org/freedesktop/helm-gitlab-config/-/commit/a3cd632743019f68ac8a829267deb262d9670958 .
+https://gitlab.freedesktop.org/freedesktop/helm-gitlab-infra/-/commit/a3cd632743019f68ac8a829267deb262d9670958 .
 
 So the jobs are created in personal repositories, the name of the user's account needs
 to be added to the rules attribute of the GitLab CI job that accesses the restricted

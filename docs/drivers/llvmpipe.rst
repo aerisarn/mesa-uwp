@@ -223,7 +223,7 @@ Recommended Reading
 -  Rasterization
 
    -  `Triangle Scan Conversion using 2D Homogeneous
-      Coordinates <https://www.csee.umbc.edu/~olano/papers/2dh-tri/>`__
+      Coordinates <https://redirect.cs.umbc.edu/~olano/papers/2dh-tri/>`__
    -  `Rasterization on
       Larrabee <https://www.drdobbs.com/parallel/rasterization-on-larrabee/217200602>`__
    -  `Rasterization using half-space
