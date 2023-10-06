@@ -24,7 +24,7 @@ Hardware drivers include:
 -  ARM Mali Utgard. See :doc:`Lima <drivers/lima>`
 -  ARM Mali Midgard, Bifrost. See :doc:`Panfrost <drivers/panfrost>`
 -  Vivante GCxxx. See `Etnaviv
-   Wiki <https://github.com/laanwj/etna_viv/wiki>`__
+   Wiki <https://github.com/etnaviv/etna_viv>`__
 -  NVIDIA Tegra (K1 and later).
 
 Layered driver include:
