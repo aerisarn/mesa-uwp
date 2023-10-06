@@ -11115,7 +11115,16 @@ radv_CmdWriteBufferMarker2AMD(VkCommandBuffer commandBuffer, VkPipelineStageFlag
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_buffer, buffer, dstBuffer);
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   uint64_t va = radv_buffer_get_va(buffer->bo) + buffer->offset + dstOffset;
+   const uint64_t va = radv_buffer_get_va(buffer->bo) + buffer->offset + dstOffset;
+
+   if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4);
+      radeon_emit(cmd_buffer->cs, SDMA_PACKET(SDMA_OPCODE_FENCE, 0, SDMA_FENCE_MTYPE_UC));
+      radeon_emit(cs, va);
+      radeon_emit(cs, va >> 32);
+      radeon_emit(cs, marker);
+      return;
+   }
 
    si_emit_cache_flush(cmd_buffer);
 
