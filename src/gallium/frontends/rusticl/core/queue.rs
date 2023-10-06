@@ -19,6 +19,9 @@ use std::thread::JoinHandle;
 struct QueueState {
     pending: Vec<Arc<Event>>,
     last: Option<Arc<Event>>,
+    // `Sync` on `Sender` was stabilized in 1.72, until then, put it into our Mutex.
+    // see https://github.com/rust-lang/rust/commit/5f56956b3c7edb9801585850d1f41b0aeb1888ff
+    chan_in: mpsc::Sender<Vec<Arc<Event>>>,
 }
 
 pub struct Queue {
@@ -29,7 +32,6 @@ pub struct Queue {
     pub props_v2: Option<Properties<cl_queue_properties>>,
     state: Mutex<QueueState>,
     _thrd: JoinHandle<()>,
-    chan_in: mpsc::Sender<Vec<Arc<Event>>>,
 }
 
 impl_cl_type_trait!(cl_command_queue, Queue, CL_INVALID_COMMAND_QUEUE);
@@ -61,6 +63,7 @@ impl Queue {
             state: Mutex::new(QueueState {
                 pending: Vec::new(),
                 last: None,
+                chan_in: tx_q,
             }),
             _thrd: thread::Builder::new()
                 .name("rusticl queue thread".into())
@@ -115,7 +118,6 @@ impl Queue {
                     flush_events(&mut flushed, &pipe);
                 })
                 .unwrap(),
-            chan_in: tx_q,
         }))
     }
 
@@ -135,9 +137,11 @@ impl Queue {
             state.last = Some(last.clone());
         }
 
+        let events = state.pending.drain(0..).collect();
         // This should never ever error, but if it does return an error
-        self.chan_in
-            .send((state.pending).drain(0..).collect())
+        state
+            .chan_in
+            .send(events)
             .map_err(|_| CL_OUT_OF_HOST_MEMORY)?;
         if wait {
             // Waiting on the last event is good enough here as the queue will process it in order,
