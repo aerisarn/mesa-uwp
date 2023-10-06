@@ -20,6 +20,7 @@
 #include "clc5c0.h"
 #include "nvk_cl9097.h"
 #include "nvk_cla0c0.h"
+#include "nvk_clb1c0.h"
 #include "nvk_clc3c0.h"
 #include "nvk_clc597.h"
 #include "nvk_clc6c0.h"
@@ -50,7 +51,10 @@ nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
                              const VkCommandBufferBeginInfo *pBeginInfo)
 {
    if (cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+      if (nvk_cmd_buffer_compute_cls(cmd) >= MAXWELL_COMPUTE_B) {
+         P_IMMD(p, NVB1C0, INVALIDATE_SKED_CACHES, 0);
+      }
       P_IMMD(p, NVA0C0, INVALIDATE_SAMPLER_CACHE_NO_WFI, {
          .lines = LINES_ALL,
       });
