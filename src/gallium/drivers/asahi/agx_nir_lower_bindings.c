@@ -7,7 +7,10 @@
 #include "compiler/glsl_types.h"
 #include "compiler/nir/nir_builder.h"
 #include "agx_state.h"
+#include "nir.h"
+#include "nir_builder_opcodes.h"
 #include "nir_intrinsics_indices.h"
+#include "shader_enums.h"
 
 /*
  * Lower binding table textures and images to texture state registers and (if
@@ -17,10 +20,53 @@
  *    1. Textures
  *    2. Images (read/write interleaved)
  */
+
+/*
+ * We support the following merged shader stages:
+ *
+ *    VS/GS
+ *    VS/TCS
+ *    TES/GS
+ *
+ * TCS and GS are always merged. So, we lower TCS and GS samplers to bindless
+ * and let VS and TES have exclusive binding table access.
+ *
+ * This could be optimized but it should be good enough for now.
+ */
+static bool
+agx_stage_needs_bindless(enum pipe_shader_type stage)
+{
+   switch (stage) {
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_GEOMETRY:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+lower_sampler(nir_builder *b, nir_tex_instr *tex)
+{
+   if (!nir_tex_instr_need_sampler(tex))
+      return false;
+
+   nir_def *index = nir_steal_tex_src(tex, nir_tex_src_sampler_offset);
+   if (!index)
+      index = nir_imm_int(b, tex->sampler_index);
+
+   nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle,
+                         nir_load_sampler_handle_agx(b, index));
+   return true;
+}
+
 static bool
 lower(nir_builder *b, nir_instr *instr, void *data)
 {
-   bool force_bindless = agx_nir_needs_texture_crawl(instr);
+   bool *uses_bindless_samplers = data;
+   bool progress = false;
+   bool force_bindless = agx_nir_needs_texture_crawl(instr) ||
+                         agx_stage_needs_bindless(b->shader->info.stage);
    b->cursor = nir_before_instr(instr);
 
    if (instr->type == nir_instr_type_intrinsic) {
@@ -83,9 +129,16 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
 
+      if (agx_stage_needs_bindless(b->shader->info.stage) &&
+          lower_sampler(b, tex)) {
+
+         progress = true;
+         *uses_bindless_samplers = true;
+      }
+
       /* Nothing to do for "real" bindless */
       if (nir_tex_instr_src_index(tex, nir_tex_src_texture_handle) >= 0)
-         return false;
+         return progress;
 
       /* Textures are mapped 1:1, so if we can prove it fits in a texture state
        * register, use the texture state register.
@@ -93,7 +146,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       if (tex->texture_index < AGX_NUM_TEXTURE_STATE_REGS &&
           nir_tex_instr_src_index(tex, nir_tex_src_texture_offset) == -1 &&
           !force_bindless)
-         return false;
+         return progress;
 
       /* Otherwise, lower to bindless. Could be optimized. */
       nir_def *index = nir_steal_tex_src(tex, nir_tex_src_texture_offset);
@@ -104,7 +157,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
                             nir_load_texture_handle_agx(b, index));
    }
 
-   return false;
+   return true;
 }
 
 bool
