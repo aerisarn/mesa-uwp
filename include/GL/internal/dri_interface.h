@@ -679,14 +679,6 @@ struct __DRIuseInvalidateExtensionRec {
 };
 
 /**
- * The remaining extensions describe driver extensions, immediately
- * available interfaces provided by the driver.  To start using the
- * driver, dlsym() for the __DRI_DRIVER_EXTENSIONS symbol and look for
- * the extension you need in the array.
- */
-#define __DRI_DRIVER_EXTENSIONS "__driDriverExtensions"
-
-/**
  * This symbol replaces the __DRI_DRIVER_EXTENSIONS symbol, and will be
  * suffixed by "_drivername", allowing multiple drivers to be built into one
  * library, and also giving the driver the chance to return a variable driver

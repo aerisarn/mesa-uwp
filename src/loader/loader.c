@@ -836,8 +836,6 @@ loader_open_driver(const char *driver_name,
       free(get_extensions_name);
    }
 
-   if (!extensions)
-      extensions = dlsym(driver, __DRI_DRIVER_EXTENSIONS);
    if (extensions == NULL) {
       log_(_LOADER_WARNING,
            "MESA-LOADER: driver exports no extensions (%s)\n", dlerror());
