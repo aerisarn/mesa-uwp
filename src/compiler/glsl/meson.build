@@ -200,7 +200,6 @@ files_libglsl = files(
   'lower_instructions.cpp',
   'lower_jumps.cpp',
   'lower_mat_op_to_vec.cpp',
-  'lower_named_interface_blocks.cpp',
   'lower_packing_builtins.cpp',
   'lower_precision.cpp',
   'lower_subroutine.cpp',
