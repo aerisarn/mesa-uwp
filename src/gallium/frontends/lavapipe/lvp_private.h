@@ -298,6 +298,7 @@ struct lvp_descriptor_set_binding_layout {
    uint32_t descriptor_index;
    /* Number of array elements in this binding */
    VkDescriptorType type;
+   uint32_t stride; /* used for planar samplers */
    uint32_t array_size;
    bool valid;
 
