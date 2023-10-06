@@ -723,6 +723,171 @@ static void format_ib_output(FILE *f, char *out)
    }
 }
 
+static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
+{
+   while (ib->cur_dw < ib->num_dw) {
+      const uint32_t header = ac_ib_get(ib);
+      const uint32_t opcode = header & 0xff;
+      const uint32_t sub_op = (header >> 8) & 0xff;
+
+      switch (opcode) {
+      case CIK_SDMA_OPCODE_NOP: {
+         fprintf(f, "NOP\n");
+
+         const uint32_t count = header >> 16;
+         for (unsigned i = 0; i < count; ++i) {
+            ac_ib_get(ib);
+            fprintf(f, "\n");
+         }
+         break;
+      }
+      case CIK_SDMA_OPCODE_CONSTANT_FILL: {
+         fprintf(f, "CONSTANT_FILL\n");
+         ac_ib_get(ib);
+         fprintf(f, "\n");
+         ac_ib_get(ib);
+         fprintf(f, "\n");
+         uint32_t value = ac_ib_get(ib);
+         fprintf(f, "    fill value = %u\n", value);
+         uint32_t byte_count = ac_ib_get(ib) + 1;
+         fprintf(f, "    fill byte count = %u\n", byte_count);
+
+         unsigned dwords = byte_count / 4;
+         for (unsigned i = 0; i < dwords; ++i) {
+            ac_ib_get(ib);
+            fprintf(f, "\n");
+         }
+
+         break;
+      }
+      case CIK_SDMA_OPCODE_WRITE: {
+         fprintf(f, "WRITE\n");
+
+         /* VA */
+         ac_ib_get(ib);
+         fprintf(f, "\n");
+         ac_ib_get(ib);
+         fprintf(f, "\n");
+
+         uint32_t dwords = ac_ib_get(ib) + 1;
+         fprintf(f, "    written dword count = %u\n", dwords);
+
+         for (unsigned i = 0; i < dwords; ++i) {
+            ac_ib_get(ib);
+            fprintf(f, "\n");
+         }
+
+         break;
+      }
+      case CIK_SDMA_OPCODE_COPY: {
+         switch (sub_op) {
+         case CIK_SDMA_COPY_SUB_OPCODE_LINEAR: {
+            fprintf(f, "COPY LINEAR\n");
+
+            uint32_t copy_bytes = ac_ib_get(ib) + (ib->gfx_level >= GFX9 ? 1 : 0);
+            fprintf(f, "    copy bytes: %u\n", copy_bytes);
+            ac_ib_get(ib);
+            fprintf(f, "\n");
+            ac_ib_get(ib);
+            fprintf(f, "    src VA low\n");
+            ac_ib_get(ib);
+            fprintf(f, "    src VA high\n");
+            ac_ib_get(ib);
+            fprintf(f, "    dst VA low\n");
+            ac_ib_get(ib);
+            fprintf(f, "    dst VA high\n");
+
+            break;
+         }
+         case CIK_SDMA_COPY_SUB_OPCODE_LINEAR_SUB_WINDOW: {
+            fprintf(f, "COPY LINEAR_SUB_WINDOW\n");
+
+            for (unsigned i = 0; i < 12; ++i) {
+               ac_ib_get(ib);
+               fprintf(f, "\n");
+            }
+            break;
+         }
+         case CIK_SDMA_COPY_SUB_OPCODE_TILED_SUB_WINDOW: {
+            fprintf(f, "COPY TILED_SUB_WINDOW %s\n", header >> 31 ? "t2l" : "l2t");
+            uint32_t dcc = (header >> 19) & 1;
+
+            /* Tiled VA */
+            ac_ib_get(ib);
+            fprintf(f, "    tiled VA low\n");
+            ac_ib_get(ib);
+            fprintf(f, "    tiled VA high\n");
+
+            uint32_t dw3 = ac_ib_get(ib);
+            fprintf(f, "    tiled offset x = %u, y=%u\n", dw3 & 0xffff, dw3 >> 16);
+            uint32_t dw4 = ac_ib_get(ib);
+            fprintf(f, "    tiled offset z = %u, tiled width = %u\n", dw4 & 0xffff, (dw4 >> 16) + 1);
+            uint32_t dw5 = ac_ib_get(ib);
+            fprintf(f, "    tiled height = %u, tiled depth = %u\n", (dw5 & 0xffff) + 1, (dw5 >> 16) + 1);
+
+            /* Tiled image info */
+            ac_ib_get(ib);
+            fprintf(f, "    (tiled image info)\n");
+
+            /* Linear VA */
+            ac_ib_get(ib);
+            fprintf(f, "    linear VA low\n");
+            ac_ib_get(ib);
+            fprintf(f, "    linear VA high\n");
+
+            uint32_t dw9 = ac_ib_get(ib);
+            fprintf(f, "    linear offset x = %u, y=%u\n", dw9 & 0xffff, dw9 >> 16);
+            uint32_t dw10 = ac_ib_get(ib);
+            fprintf(f, "    linear offset z = %u, linear pitch = %u\n", dw10 & 0xffff, (dw10 >> 16) + 1);
+            uint32_t dw11 = ac_ib_get(ib);
+            fprintf(f, "    linear slice pitch = %u\n", dw11 + 1);
+            uint32_t dw12 = ac_ib_get(ib);
+            fprintf(f, "    copy width = %u, copy height = %u\n", (dw12 & 0xffff) + 1, (dw12 >> 16) + 1);
+            uint32_t dw13 = ac_ib_get(ib);
+            fprintf(f, "    copy depth = %u\n", dw13 + 1);
+
+            if (dcc) {
+               ac_ib_get(ib);
+               fprintf(f, "    metadata VA low\n");
+               ac_ib_get(ib);
+               fprintf(f, "    metadata VA high\n");
+               ac_ib_get(ib);
+               fprintf(f, "    (metadata config)\n");
+            }
+            break;
+         }
+         case CIK_SDMA_COPY_SUB_OPCODE_T2T_SUB_WINDOW: {
+            fprintf(f, "COPY T2T_SUB_WINDOW\n");
+            uint32_t dcc = (header >> 19) & 1;
+
+            for (unsigned i = 0; i < 14; ++i) {
+               ac_ib_get(ib);
+               fprintf(f, "\n");
+            }
+
+            if (dcc) {
+               ac_ib_get(ib);
+               fprintf(f, "    metadata VA low\n");
+               ac_ib_get(ib);
+               fprintf(f, "    metadata VA high\n");
+               ac_ib_get(ib);
+               fprintf(f, "    (metadata config)\n");
+            }
+            break;
+         }
+         default:
+            fprintf(f, "(unrecognized COPY sub op)\n");
+            break;
+         }
+         break;
+      }
+      default:
+         fprintf(f, " (unrecognized opcode)\n");
+         break;
+      }
+   }
+}
+
 /**
  * Parse and print an IB into a file.
  *
@@ -760,7 +925,14 @@ void ac_parse_ib_chunk(FILE *f, uint32_t *ib_ptr, int num_dw, const int *trace_i
    u_memstream_open(&mem, &out, &outsize);
    FILE *const memf = u_memstream_get(&mem);
    ib.f = memf;
-   parse_gfx_compute_ib(memf, &ib);
+
+   if (ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE)
+      parse_gfx_compute_ib(memf, &ib);
+   else if (ip_type == AMD_IP_SDMA)
+      parse_sdma_ib(memf, &ib);
+   else
+      unreachable("unsupported IP type");
+
    u_memstream_close(&mem);
 
    if (out) {
