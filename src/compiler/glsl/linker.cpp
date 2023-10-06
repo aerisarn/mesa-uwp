@@ -3116,11 +3116,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    if (!prog->data->LinkStatus)
       goto done;
 
-   for (unsigned int i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i] != NULL)
-         lower_named_interface_blocks(mem_ctx, prog->_LinkedShaders[i]);
-   }
-
    if (prog->IsES && prog->GLSL_Version == 100)
       if (!validate_invariant_builtins(prog,
             prog->_LinkedShaders[MESA_SHADER_VERTEX],

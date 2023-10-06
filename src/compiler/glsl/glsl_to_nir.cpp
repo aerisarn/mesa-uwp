@@ -303,19 +303,6 @@ glsl_to_nir(const struct gl_constants *consts,
       shader->info.fs.pixel_center_integer = sh->Program->info.fs.pixel_center_integer;
       shader->info.fs.origin_upper_left = sh->Program->info.fs.origin_upper_left;
       shader->info.fs.advanced_blend_modes = sh->Program->info.fs.advanced_blend_modes;
-
-      nir_foreach_variable_in_shader(var, shader) {
-         if (var->data.mode == nir_var_system_value &&
-             (var->data.location == SYSTEM_VALUE_SAMPLE_ID ||
-              var->data.location == SYSTEM_VALUE_SAMPLE_POS))
-            shader->info.fs.uses_sample_shading = true;
-
-         if (var->data.mode == nir_var_shader_in && var->data.sample)
-            shader->info.fs.uses_sample_shading = true;
-
-         if (var->data.mode == nir_var_shader_out && var->data.fb_fetch_output)
-            shader->info.fs.uses_sample_shading = true;
-      }
    }
 
    return shader;
@@ -585,34 +572,11 @@ nir_visitor::visit(ir_variable *ir)
          var->data.mode = nir_var_system_value;
       } else {
          var->data.mode = nir_var_shader_in;
-
-         if (shader->info.stage == MESA_SHADER_TESS_EVAL &&
-             (ir->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
-              ir->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)) {
-            var->data.compact = ir->type->without_array()->is_scalar();
-         }
-
-         if (shader->info.stage > MESA_SHADER_VERTEX &&
-             ir->data.location >= VARYING_SLOT_CLIP_DIST0 &&
-             ir->data.location <= VARYING_SLOT_CULL_DIST1) {
-            var->data.compact = ir->type->without_array()->is_scalar();
-         }
       }
       break;
 
    case ir_var_shader_out:
       var->data.mode = nir_var_shader_out;
-      if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
-          (ir->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
-           ir->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)) {
-         var->data.compact = ir->type->without_array()->is_scalar();
-      }
-
-      if (shader->info.stage <= MESA_SHADER_GEOMETRY &&
-          ir->data.location >= VARYING_SLOT_CLIP_DIST0 &&
-          ir->data.location <= VARYING_SLOT_CULL_DIST1) {
-         var->data.compact = ir->type->without_array()->is_scalar();
-      }
       break;
 
    case ir_var_uniform:

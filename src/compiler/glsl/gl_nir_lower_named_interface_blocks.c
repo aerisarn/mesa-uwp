@@ -309,10 +309,44 @@ lower_named_interface_blocks(struct gl_linked_shader *sh)
                               nir_metadata_dominance, &state);
 
    /* Third pass: Mark now lowered blks as ordinary globals to be dead code
-    * eliminated.
+    * eliminated. Also use this oppotunity to set the compact flag where
+    * needed now that the default interface block has been lowered away.
     */
    nir_foreach_variable_with_modes(var, sh->Program->nir,
                                    nir_var_shader_in | nir_var_shader_out) {
+
+      if (var->data.mode == nir_var_shader_in) {
+         if (sh->Program->nir->info.stage == MESA_SHADER_TESS_EVAL &&
+             (var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+              var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)) {
+            var->data.compact =
+               glsl_type_is_scalar(glsl_without_array(var->type));
+         }
+
+         if (sh->Program->nir->info.stage > MESA_SHADER_VERTEX &&
+             var->data.location >= VARYING_SLOT_CLIP_DIST0 &&
+             var->data.location <= VARYING_SLOT_CULL_DIST1) {
+            var->data.compact =
+               glsl_type_is_scalar(glsl_without_array(var->type));
+         }
+      } else {
+         assert(var->data.mode == nir_var_shader_out);
+
+         if (sh->Program->nir->info.stage == MESA_SHADER_TESS_CTRL &&
+             (var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+              var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)) {
+            var->data.compact =
+               glsl_type_is_scalar(glsl_without_array(var->type));
+         }
+
+         if (sh->Program->nir->info.stage <= MESA_SHADER_GEOMETRY &&
+             var->data.location >= VARYING_SLOT_CLIP_DIST0 &&
+             var->data.location <= VARYING_SLOT_CULL_DIST1) {
+            var->data.compact =
+               glsl_type_is_scalar(glsl_without_array(var->type));
+         }
+      }
+
       const struct glsl_type * iface_t = glsl_without_array(var->type);
       if (!(iface_t == var->interface_type))
          continue;

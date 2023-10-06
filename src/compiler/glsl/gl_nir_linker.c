@@ -1344,6 +1344,8 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       last = i;
    }
 
+   gl_nir_lower_named_interface_blocks(prog);
+
    /* Validate the inputs of each stage with the output of the preceding
     * stage.
     */
@@ -1454,8 +1456,27 @@ gl_nir_link_glsl(const struct gl_constants *consts,
                                    nir_var_mem_ubo | nir_var_mem_ssbo |
                                    nir_var_system_value,
                                    &opts);
+
+         if (shader->Program->info.stage == MESA_SHADER_FRAGMENT) {
+            nir_shader *nir = shader->Program->nir;
+            nir_foreach_variable_in_shader(var, nir) {
+               if (var->data.mode == nir_var_system_value &&
+                   (var->data.location == SYSTEM_VALUE_SAMPLE_ID ||
+                    var->data.location == SYSTEM_VALUE_SAMPLE_POS))
+                  nir->info.fs.uses_sample_shading = true;
+
+               if (var->data.mode == nir_var_shader_in && var->data.sample)
+                  nir->info.fs.uses_sample_shading = true;
+
+               if (var->data.mode == nir_var_shader_out &&
+                   var->data.fb_fetch_output)
+                  nir->info.fs.uses_sample_shading = true;
+            }
+         }
       }
    }
+
+
 
    if (!gl_nir_link_uniforms(consts, prog, true))
       return false;
