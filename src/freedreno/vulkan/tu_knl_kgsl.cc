@@ -1103,8 +1103,8 @@ kgsl_queue_submit(struct tu_queue *queue, struct vk_queue_submit *vk_submit)
       struct tu_suballoc_bo *bo = &u_trace_submission_data->kgsl_timestamp_bo;
 
       objs[obj_idx++] = (struct kgsl_command_object) {
-         .gpuaddr = bo->iova,
          .offset = bo->iova - bo->bo->iova,
+         .gpuaddr = bo->iova,
          .size = sizeof(struct kgsl_cmdbatch_profiling_buffer),
          .flags = KGSL_OBJLIST_MEMOBJ | KGSL_OBJLIST_PROFILE,
          .id = bo->bo->gem_handle,
