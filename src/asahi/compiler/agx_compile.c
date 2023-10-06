@@ -1716,6 +1716,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          texture = index;
          break;
       case nir_tex_src_sampler_offset:
+      case nir_tex_src_sampler_handle:
          sampler = index;
          break;
 
