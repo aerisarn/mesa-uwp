@@ -379,9 +379,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetImageSubresourceLayout(
    LVP_FROM_HANDLE(lvp_image, image, _image);
    uint64_t value;
 
+   const uint8_t p = lvp_image_aspects_to_plane(image, pSubresource->aspectMask);
+   const struct lvp_image_plane *plane = &image->planes[p];
+
    device->pscreen->resource_get_param(device->pscreen,
                                        NULL,
-                                       image->planes[0].bo,
+                                       plane->bo,
                                        0,
                                        pSubresource->arrayLayer,
                                        pSubresource->mipLevel,
@@ -392,7 +395,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetImageSubresourceLayout(
 
    device->pscreen->resource_get_param(device->pscreen,
                                        NULL,
-                                       image->planes[0].bo,
+                                       plane->bo,
                                        0,
                                        pSubresource->arrayLayer,
                                        pSubresource->mipLevel,
@@ -403,32 +406,22 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetImageSubresourceLayout(
 
    device->pscreen->resource_get_param(device->pscreen,
                                        NULL,
-                                       image->planes[0].bo,
+                                       plane->bo,
                                        0,
                                        pSubresource->arrayLayer,
                                        pSubresource->mipLevel,
                                        PIPE_RESOURCE_PARAM_LAYER_STRIDE,
                                        0, &value);
 
-   if (image->planes[0].bo->target == PIPE_TEXTURE_3D) {
+   if (plane->bo->target == PIPE_TEXTURE_3D) {
       pLayout->depthPitch = value;
       pLayout->arrayPitch = 0;
    } else {
       pLayout->depthPitch = 0;
       pLayout->arrayPitch = value;
    }
-   pLayout->size = image->size;
-
-   switch (pSubresource->aspectMask) {
-   case VK_IMAGE_ASPECT_COLOR_BIT:
-      break;
-   case VK_IMAGE_ASPECT_DEPTH_BIT:
-      break;
-   case VK_IMAGE_ASPECT_STENCIL_BIT:
-      break;
-   default:
-      assert(!"Invalid image aspect");
-   }
+   pLayout->offset += plane->plane_offset;
+   pLayout->size = plane->size;
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_GetImageSubresourceLayout2EXT(
