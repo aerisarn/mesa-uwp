@@ -1063,6 +1063,7 @@ static void
 tu_setup_dynamic_attachment(struct tu_render_pass_attachment *att,
                             struct tu_image_view *view)
 {
+   *att = {};
    att->format = view->vk.format;
    att->samples = (VkSampleCountFlagBits) view->image->layout->nr_samples;
 
