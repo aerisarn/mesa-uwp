@@ -287,7 +287,7 @@ For that, we use the well-known technique of multiplying by an approximation
 of the inverse. The driver must compute the magic multiplier and shift
 amount, and then the hardware does the multiplication and shift. The
 hardware and driver also use the "round-down" optimization as described in
-http://ridiculousfish.com/files/faster_unsigned_division_by_constants.pdf.
+https://ridiculousfish.com/files/faster_unsigned_division_by_constants.pdf.
 The hardware further assumes the multiplier is between :math:`2^{31}` and
 :math:`2^{32}`, so the high bit is implicitly set to 1 even though it is set
 to 0 by the driver -- presumably this simplifies the hardware multiplier a
