@@ -386,6 +386,9 @@ compile_sample_function(struct llvmpipe_context *ctx, struct lp_static_texture_s
             return NULL;
       }
 
+      if (util_format_get_num_planes(texture->format) > 1)
+         return NULL;
+
       uint32_t bind = op_type == LP_SAMPLER_OP_FETCH ? PIPE_BIND_CONSTANT_BUFFER : PIPE_BIND_SAMPLER_VIEW;
       if (!ctx->pipe.screen->is_format_supported(ctx->pipe.screen, texture->format, texture->target, 0, 0, bind))
          return NULL;
