@@ -109,16 +109,16 @@ html_copy_source = False
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
-
-html_extra_path = [
-  '_extra/',
+html_static_path = [
+  '_static/',
   'release-maintainers-keys.asc',
   'features.txt',
   'libGL.txt',
   'README.UVD',
   'README.VCE',
 ]
+
+html_extra_path = []
 
 html_redirects = [
   ('webmaster', 'https://www.mesa3d.org/website/'),
