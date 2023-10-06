@@ -101,7 +101,8 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
                       VK_FORMAT_FEATURE_2_BLIT_SRC_BIT |
                       VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
                       VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
-                      VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
+                      VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+                      VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT);
       }
       out_properties->linearTilingFeatures = features;
       out_properties->optimalTilingFeatures = features;
