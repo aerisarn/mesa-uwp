@@ -139,6 +139,20 @@ linkcheck_ignore = [
 ]
 linkcheck_exclude_documents = [r'relnotes/.*']
 
+linkcheck_allowed_redirects = {
+    # Pages that forward the front-page to a wiki or some explore-page
+    'https://www.freedesktop.org': 'https://www.freedesktop.org/wiki/',
+    'https://x.org': 'https://x.org/wiki/',
+    'https://perf.wiki.kernel.org/': 'https://perf.wiki.kernel.org/index.php/Main_Page',
+    'https://dri.freedesktop.org/': 'https://dri.freedesktop.org/wiki/',
+    'https://gitlab.freedesktop.org/': 'https://gitlab.freedesktop.org/explore/groups',
+    'https://www.sphinx-doc.org/': 'https://www.sphinx-doc.org/en/master/',
+
+    # Pages that requires authentication
+    'https://gitlab.freedesktop.org/admin/runners': 'https://gitlab.freedesktop.org/users/sign_in',
+    'https://gitlab.freedesktop.org/profile/personal_access_tokens': 'https://gitlab.freedesktop.org/users/sign_in',
+}
+
 
 # -- Options for HTMLHelp output ------------------------------------------
 
