@@ -251,13 +251,19 @@ vk_sync_as_lvp_pipe_sync(struct vk_sync *sync)
    return container_of(sync, struct lvp_pipe_sync, base);
 }
 
+struct lvp_image_plane {
+   struct pipe_resource *bo;
+   struct pipe_memory_allocation *pmem;
+   VkDeviceSize plane_offset;
+   VkDeviceSize memory_offset;
+   VkDeviceSize size;
+};
+
 struct lvp_image {
    struct vk_image vk;
    VkDeviceSize size;
    uint32_t alignment;
-   struct pipe_memory_allocation *pmem;
-   unsigned memory_offset;
-   struct pipe_resource *bo;
+   struct lvp_image_plane planes[1];
 };
 
 struct lvp_image_view {
@@ -266,14 +272,16 @@ struct lvp_image_view {
 
    enum pipe_format pformat;
 
-   struct pipe_sampler_view *sv;
-   struct pipe_image_view iv;
-
    struct pipe_surface *surface; /* have we created a pipe surface for this? */
    struct lvp_image_view *multisample; //VK_EXT_multisampled_render_to_single_sampled
 
-   struct lp_texture_handle *texture_handle;
-   struct lp_texture_handle *image_handle;
+   uint8_t plane_count;
+   struct {
+      struct pipe_sampler_view *sv;
+      struct pipe_image_view iv;
+      struct lp_texture_handle *texture_handle;
+      struct lp_texture_handle *image_handle;
+   } planes[1];
 };
 
 struct lvp_sampler {

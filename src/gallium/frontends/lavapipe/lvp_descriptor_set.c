@@ -464,8 +464,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
             LVP_FROM_HANDLE(lvp_image_view, iview,
                             write->pImageInfo[j].imageView);
             if (iview) {
-               lp_jit_texture_from_pipe(&desc[j].texture, iview->sv);
-               desc[j].functions = iview->texture_handle->functions;
+               lp_jit_texture_from_pipe(&desc[j].texture, iview->planes[0].sv);
+               desc[j].functions = iview->planes[0].texture_handle->functions;
 
                if (!bind_layout->immutable_samplers) {
                   LVP_FROM_HANDLE(lvp_sampler, sampler,
@@ -487,8 +487,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
                             write->pImageInfo[j].imageView);
 
             if (iview) {
-               lp_jit_texture_from_pipe(&desc[j].texture, iview->sv);
-               desc[j].functions = iview->texture_handle->functions;
+               lp_jit_texture_from_pipe(&desc[j].texture, iview->planes[0].sv);
+               desc[j].functions = iview->planes[0].texture_handle->functions;
             } else {
                desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
@@ -502,8 +502,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
                             write->pImageInfo[j].imageView);
 
             if (iview) {
-               lp_jit_image_from_pipe(&desc[j].image, &iview->iv);
-               desc[j].functions = iview->image_handle->functions;
+               lp_jit_image_from_pipe(&desc[j].image, &iview->planes[0].iv);
+               desc[j].functions = iview->planes[0].image_handle->functions;
             } else {
                desc[j].functions = device->null_image_handle->functions;
             }
@@ -822,8 +822,8 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
             LVP_FROM_HANDLE(lvp_image_view, iview, info->imageView);
 
             if (iview) {
-               lp_jit_texture_from_pipe(&desc[idx].texture, iview->sv);
-               desc[idx].functions = iview->texture_handle->functions;
+               lp_jit_texture_from_pipe(&desc[idx].texture, iview->planes[0].sv);
+               desc[idx].functions = iview->planes[0].texture_handle->functions;
 
                if (!bind_layout->immutable_samplers) {
                   LVP_FROM_HANDLE(lvp_sampler, sampler, info->sampler);
@@ -842,8 +842,8 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
             LVP_FROM_HANDLE(lvp_image_view, iview, info->imageView);
 
             if (iview) {
-               lp_jit_texture_from_pipe(&desc[idx].texture, iview->sv);
-               desc[idx].functions = iview->texture_handle->functions;
+               lp_jit_texture_from_pipe(&desc[idx].texture, iview->planes[0].sv);
+               desc[idx].functions = iview->planes[0].texture_handle->functions;
             } else {
                desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
@@ -856,8 +856,8 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
                             ((VkDescriptorImageInfo *)pSrc)->imageView);
 
             if (iview) {
-               lp_jit_image_from_pipe(&desc[idx].image, &iview->iv);
-               desc[idx].functions = iview->image_handle->functions;
+               lp_jit_image_from_pipe(&desc[idx].image, &iview->planes[0].iv);
+               desc[idx].functions = iview->planes[0].image_handle->functions;
             } else {
                desc[idx].functions = device->null_image_handle->functions;
             }
@@ -1018,8 +1018,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
       if (info && info->imageView) {
          LVP_FROM_HANDLE(lvp_image_view, iview, info->imageView);
 
-         lp_jit_texture_from_pipe(&desc->texture, iview->sv);
-         desc->functions = iview->texture_handle->functions;
+         lp_jit_texture_from_pipe(&desc->texture, iview->planes[0].sv);
+         desc->functions = iview->planes[0].texture_handle->functions;
 
          if (info->sampler) {
             LVP_FROM_HANDLE(lvp_sampler, sampler, info->sampler);
@@ -1040,8 +1040,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
       if (pCreateInfo->data.pSampledImage && pCreateInfo->data.pSampledImage->imageView) {
          LVP_FROM_HANDLE(lvp_image_view, iview, pCreateInfo->data.pSampledImage->imageView);
-         lp_jit_texture_from_pipe(&desc->texture, iview->sv);
-         desc->functions = iview->texture_handle->functions;
+         lp_jit_texture_from_pipe(&desc->texture, iview->planes[0].sv);
+         desc->functions = iview->planes[0].texture_handle->functions;
       } else {
          desc->functions = device->null_texture_handle->functions;
          desc->sampler_index = 0;
@@ -1054,8 +1054,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
       if (pCreateInfo->data.pStorageImage && pCreateInfo->data.pStorageImage->imageView) {
          LVP_FROM_HANDLE(lvp_image_view, iview, pCreateInfo->data.pStorageImage->imageView);
-         lp_jit_image_from_pipe(&desc->image, &iview->iv);
-         desc->functions = iview->image_handle->functions;
+         lp_jit_image_from_pipe(&desc->image, &iview->planes[0].iv);
+         desc->functions = iview->planes[0].image_handle->functions;
       } else {
          desc->functions = device->null_image_handle->functions;
       }

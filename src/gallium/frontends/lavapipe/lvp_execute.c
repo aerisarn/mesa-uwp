@@ -1285,7 +1285,7 @@ static struct pipe_surface *create_img_surface(struct rendering_state *state,
    VkImageSubresourceRange imgv_subres =
       vk_image_view_subresource_range(&imgv->vk);
 
-   return create_img_surface_bo(state, &imgv_subres, imgv->image->bo,
+   return create_img_surface_bo(state, &imgv_subres, imgv->image->planes[0].bo,
                                 lvp_vk_format_to_pipe_format(format),
                                 width, height, base_layer, layer_count, 0);
 }
@@ -1529,8 +1529,8 @@ resolve_ds(struct rendering_state *state, bool multi)
 
       struct pipe_blit_info info = {0};
 
-      info.src.resource = src_imgv->image->bo;
-      info.dst.resource = dst_imgv->image->bo;
+      info.src.resource = src_imgv->image->planes[0].bo;
+      info.dst.resource = dst_imgv->image->planes[0].bo;
       info.src.format = src_imgv->pformat;
       info.dst.format = dst_imgv->pformat;
       info.filter = PIPE_TEX_FILTER_NEAREST;
@@ -1577,8 +1577,8 @@ resolve_color(struct rendering_state *state, bool multi)
 
       struct pipe_blit_info info = { 0 };
 
-      info.src.resource = src_imgv->image->bo;
-      info.dst.resource = dst_imgv->image->bo;
+      info.src.resource = src_imgv->image->planes[0].bo;
+      info.dst.resource = dst_imgv->image->planes[0].bo;
       info.src.format = src_imgv->pformat;
       info.dst.format = dst_imgv->pformat;
       info.filter = PIPE_TEX_FILTER_NEAREST;
@@ -1628,12 +1628,12 @@ replicate_attachment(struct rendering_state *state,
       .x = 0,
       .y = 0,
       .z = 0,
-      .width = u_minify(dst->image->bo->width0, level),
-      .height = u_minify(dst->image->bo->height0, level),
-      .depth = u_minify(dst->image->bo->depth0, level),
+      .width = u_minify(dst->image->planes[0].bo->width0, level),
+      .height = u_minify(dst->image->planes[0].bo->height0, level),
+      .depth = u_minify(dst->image->planes[0].bo->depth0, level),
    };
-   state->pctx->resource_copy_region(state->pctx, dst->image->bo, level,
-                                     0, 0, 0, src->image->bo, level, &box);
+   state->pctx->resource_copy_region(state->pctx, dst->image->planes[0].bo, level,
+                                     0, 0, 0, src->image->planes[0].bo, level, &box);
 }
 
 static struct lvp_image_view *
@@ -1645,13 +1645,13 @@ create_multisample_surface(struct rendering_state *state, struct lvp_image_view 
    templ.nr_samples = samples;
    struct lvp_image *image = mem_dup(imgv->image, sizeof(struct lvp_image));
    image->vk.samples = samples;
-   image->pmem = NULL;
-   image->bo = state->pctx->screen->resource_create(state->pctx->screen, &templ);
+   image->planes[0].pmem = NULL;
+   image->planes[0].bo = state->pctx->screen->resource_create(state->pctx->screen, &templ);
 
    struct lvp_image_view *multi = mem_dup(imgv, sizeof(struct lvp_image_view));
    multi->image = image;
-   multi->surface = state->pctx->create_surface(state->pctx, image->bo, imgv->surface);
-   struct pipe_resource *ref = image->bo;
+   multi->surface = state->pctx->create_surface(state->pctx, image->planes[0].bo, imgv->surface);
+   struct pipe_resource *ref = image->planes[0].bo;
    pipe_resource_reference(&ref, NULL);
    imgv->multisample = multi;
    multi->multisample = imgv;
@@ -2187,7 +2187,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
       box.depth = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageExtent.depth : subresource_layercount(src_image, &region->imageSubresource);
 
       src_data = state->pctx->texture_map(state->pctx,
-                                           src_image->bo,
+                                           src_image->planes[0].bo,
                                            region->imageSubresource.mipLevel,
                                            PIPE_MAP_READ,
                                            &box,
@@ -2206,7 +2206,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                                            &dbox,
                                            &dst_t);
 
-      enum pipe_format src_format = src_image->bo->format;
+      enum pipe_format src_format = src_image->planes[0].bo->format;
       enum pipe_format dst_format = src_format;
       if (util_format_is_depth_or_stencil(src_format)) {
          if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -2276,17 +2276,17 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
       box.depth = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageExtent.depth : subresource_layercount(dst_image, &region->imageSubresource);
 
       dst_data = state->pctx->texture_map(state->pctx,
-                                           dst_image->bo,
+                                           dst_image->planes[0].bo,
                                            region->imageSubresource.mipLevel,
                                            PIPE_MAP_WRITE,
                                            &box,
                                            &dst_t);
 
-      enum pipe_format dst_format = dst_image->bo->format;
+      enum pipe_format dst_format = dst_image->planes[0].bo->format;
       enum pipe_format src_format = dst_format;
       if (util_format_is_depth_or_stencil(dst_format)) {
          if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
-            src_format = util_format_get_depth_only(dst_image->bo->format);
+            src_format = util_format_get_depth_only(dst_image->planes[0].bo->format);
          } else if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
             src_format = PIPE_FORMAT_S8_UINT;
          }
@@ -2336,7 +2336,7 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
       src_box.y = region->srcOffset.y;
       src_box.width = region->extent.width;
       src_box.height = region->extent.height;
-      if (src_image->bo->target == PIPE_TEXTURE_3D) {
+      if (src_image->planes[0].bo->target == PIPE_TEXTURE_3D) {
          src_box.depth = region->extent.depth;
          src_box.z = region->srcOffset.z;
       } else {
@@ -2344,15 +2344,15 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
          src_box.z = region->srcSubresource.baseArrayLayer;
       }
 
-      unsigned dstz = dst_image->bo->target == PIPE_TEXTURE_3D ?
+      unsigned dstz = dst_image->planes[0].bo->target == PIPE_TEXTURE_3D ?
                       region->dstOffset.z :
                       region->dstSubresource.baseArrayLayer;
-      state->pctx->resource_copy_region(state->pctx, dst_image->bo,
+      state->pctx->resource_copy_region(state->pctx, dst_image->planes[0].bo,
                                         region->dstSubresource.mipLevel,
                                         region->dstOffset.x,
                                         region->dstOffset.y,
                                         dstz,
-                                        src_image->bo,
+                                        src_image->planes[0].bo,
                                         region->srcSubresource.mipLevel,
                                         &src_box);
    }
@@ -2381,10 +2381,10 @@ static void handle_blit_image(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_image, dst_image, blitcmd->dstImage);
 
    struct pipe_blit_info info = {
-      .src.resource = src_image->bo,
-      .dst.resource = dst_image->bo,
-      .src.format = src_image->bo->format,
-      .dst.format = dst_image->bo->format,
+      .src.resource = src_image->planes[0].bo,
+      .dst.resource = dst_image->planes[0].bo,
+      .src.format = src_image->planes[0].bo->format,
+      .dst.format = dst_image->planes[0].bo->format,
       .mask = util_format_is_depth_or_stencil(info.src.format) ? PIPE_MASK_ZS : PIPE_MASK_RGBA,
       .filter = blitcmd->filter == VK_FILTER_NEAREST ? PIPE_TEX_FILTER_NEAREST : PIPE_TEX_FILTER_LINEAR,
    };
@@ -2433,7 +2433,7 @@ static void handle_blit_image(struct vk_cmd_queue_entry *cmd,
 
       assert_subresource_layers(info.src.resource, src_image, &blitcmd->pRegions[i].srcSubresource, blitcmd->pRegions[i].srcOffsets);
       assert_subresource_layers(info.dst.resource, dst_image, &blitcmd->pRegions[i].dstSubresource, blitcmd->pRegions[i].dstOffsets);
-      if (src_image->bo->target == PIPE_TEXTURE_3D) {
+      if (src_image->planes[0].bo->target == PIPE_TEXTURE_3D) {
          if (dstZ0 < dstZ1) {
             info.dst.box.z = dstZ0;
             info.src.box.z = srcZ0;
@@ -2929,7 +2929,7 @@ static void handle_clear_color_image(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_image, image, cmd->u.clear_color_image.image);
    union util_color uc;
    uint32_t *col_val = uc.ui;
-   util_pack_color_union(image->bo->format, &uc, (void*)cmd->u.clear_color_image.color);
+   util_pack_color_union(image->planes[0].bo->format, &uc, (void*)cmd->u.clear_color_image.color);
    for (unsigned i = 0; i < cmd->u.clear_color_image.range_count; i++) {
       VkImageSubresourceRange *range = &cmd->u.clear_color_image.ranges[i];
       struct pipe_box box;
@@ -2939,12 +2939,12 @@ static void handle_clear_color_image(struct vk_cmd_queue_entry *cmd,
 
       uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
       for (unsigned j = range->baseMipLevel; j < range->baseMipLevel + level_count; j++) {
-         box.width = u_minify(image->bo->width0, j);
-         box.height = u_minify(image->bo->height0, j);
+         box.width = u_minify(image->planes[0].bo->width0, j);
+         box.height = u_minify(image->planes[0].bo->height0, j);
          box.depth = 1;
-         if (image->bo->target == PIPE_TEXTURE_3D) {
-            box.depth = u_minify(image->bo->depth0, j);
-         } else if (image->bo->target == PIPE_TEXTURE_1D_ARRAY) {
+         if (image->planes[0].bo->target == PIPE_TEXTURE_3D) {
+            box.depth = u_minify(image->planes[0].bo->depth0, j);
+         } else if (image->planes[0].bo->target == PIPE_TEXTURE_1D_ARRAY) {
             box.y = range->baseArrayLayer;
             box.height = vk_image_subresource_layer_count(&image->vk, range);
             box.depth = 1;
@@ -2953,7 +2953,7 @@ static void handle_clear_color_image(struct vk_cmd_queue_entry *cmd,
             box.depth = vk_image_subresource_layer_count(&image->vk, range);
          }
 
-         state->pctx->clear_texture(state->pctx, image->bo,
+         state->pctx->clear_texture(state->pctx, image->planes[0].bo,
                                     j, &box, (void *)col_val);
       }
    }
@@ -2975,17 +2975,17 @@ static void handle_clear_ds_image(struct vk_cmd_queue_entry *cmd,
       for (unsigned j = 0; j < level_count; j++) {
          struct pipe_surface *surf;
          unsigned width, height, depth;
-         width = u_minify(image->bo->width0, range->baseMipLevel + j);
-         height = u_minify(image->bo->height0, range->baseMipLevel + j);
+         width = u_minify(image->planes[0].bo->width0, range->baseMipLevel + j);
+         height = u_minify(image->planes[0].bo->height0, range->baseMipLevel + j);
 
-         if (image->bo->target == PIPE_TEXTURE_3D) {
-            depth = u_minify(image->bo->depth0, range->baseMipLevel + j);
+         if (image->planes[0].bo->target == PIPE_TEXTURE_3D) {
+            depth = u_minify(image->planes[0].bo->depth0, range->baseMipLevel + j);
          } else {
             depth = vk_image_subresource_layer_count(&image->vk, range);
          }
 
          surf = create_img_surface_bo(state, range,
-                                      image->bo, image->bo->format,
+                                      image->planes[0].bo, image->planes[0].bo->format,
                                       width, height,
                                       0, depth, j);
 
@@ -3064,10 +3064,10 @@ static void handle_resolve_image(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_image, dst_image, resolvecmd->dstImage);
 
    struct pipe_blit_info info = {0};
-   info.src.resource = src_image->bo;
-   info.dst.resource = dst_image->bo;
-   info.src.format = src_image->bo->format;
-   info.dst.format = dst_image->bo->format;
+   info.src.resource = src_image->planes[0].bo;
+   info.dst.resource = dst_image->planes[0].bo;
+   info.src.format = src_image->planes[0].bo->format;
+   info.dst.format = dst_image->planes[0].bo->format;
    info.mask = util_format_is_depth_or_stencil(info.src.format) ? PIPE_MASK_ZS : PIPE_MASK_RGBA;
    info.filter = PIPE_TEX_FILTER_NEAREST;
 

@@ -2012,6 +2012,31 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindBufferMemory2(VkDevice _device,
    return VK_SUCCESS;
 }
 
+static VkResult
+lvp_image_plane_bind(struct lvp_device *device,
+                     struct lvp_image_plane *plane,
+                     struct lvp_device_memory *mem,
+                     VkDeviceSize memory_offset,
+                     VkDeviceSize *plane_offset)
+{
+   if (!device->pscreen->resource_bind_backing(device->pscreen,
+                                               plane->bo,
+                                               mem->pmem,
+                                               memory_offset + *plane_offset)) {
+      /* This is probably caused by the texture being too large, so let's
+       * report this as the *closest* allowed error-code. It's not ideal,
+       * but it's unlikely that anyone will care too much.
+       */
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
+   plane->pmem = mem->pmem;
+   plane->memory_offset = memory_offset;
+   plane->plane_offset = *plane_offset;
+   *plane_offset += plane->size;
+   return VK_SUCCESS;
+}
+
+
 VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
                               uint32_t bindInfoCount,
                               const VkBindImageMemoryInfo *pBindInfos)
@@ -2032,12 +2057,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
                lvp_swapchain_get_image(swapchain_info->swapchain,
                                        swapchain_info->imageIndex);
 
-            image->pmem = swapchain_image->pmem;
-            image->memory_offset = swapchain_image->memory_offset;
+            image->planes[0].pmem = swapchain_image->planes[0].pmem;
+            image->planes[0].memory_offset = swapchain_image->planes[0].memory_offset;
             device->pscreen->resource_bind_backing(device->pscreen,
-                                                   image->bo,
-                                                   image->pmem,
-                                                   image->memory_offset);
+                                                   image->planes[0].bo,
+                                                   image->planes[0].pmem,
+                                                   image->planes[0].memory_offset);
             did_bind = true;
             break;
          }
@@ -2047,18 +2072,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
       }
 
       if (!did_bind) {
-         if (!device->pscreen->resource_bind_backing(device->pscreen,
-                                                     image->bo,
-                                                     mem->pmem,
-                                                     bind_info->memoryOffset)) {
-            /* This is probably caused by the texture being too large, so let's
-             * report this as the *closest* allowed error-code. It's not ideal,
-             * but it's unlikely that anyone will care too much.
-             */
-            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-         }
-         image->pmem = mem->pmem;
-         image->memory_offset = bind_info->memoryOffset;
+         uint64_t offset_B = 0;
+         VkResult result;
+
+         result = lvp_image_plane_bind(device, &image->planes[0],
+                                       mem, bind_info->memoryOffset, &offset_B);
+         if (result != VK_SUCCESS)
+            return result;
       }
    }
    return VK_SUCCESS;
