@@ -33,7 +33,7 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
    struct util_dynarray binary;
    util_dynarray_init(&binary, NULL);
 
-   agx_preprocess_nir(shader, cache->dev->libagx, false, false, NULL);
+   agx_preprocess_nir(shader, cache->dev->libagx, false, NULL);
    if (tib) {
       unsigned bindless_base = 0;
       agx_nir_lower_tilebuffer(shader, tib, NULL, &bindless_base, NULL, true);

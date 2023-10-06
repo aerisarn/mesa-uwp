@@ -225,10 +225,10 @@ struct agx_shader_key {
 /* Texture backend flags */
 #define AGX_TEXTURE_FLAG_NO_CLAMP (1 << 0)
 
-bool agx_nir_lower_texture_early(nir_shader *s);
+bool agx_nir_lower_texture_early(nir_shader *s, bool support_lod_bias);
 
 void agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
-                        bool support_lod_bias, bool allow_mediump,
+                        bool allow_mediump,
                         struct agx_uncompiled_shader_info *out);
 
 bool agx_nir_lower_discard_zs_emit(nir_shader *s);

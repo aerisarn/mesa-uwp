@@ -1773,7 +1773,7 @@ agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
    NIR_PASS_V(nir, nir_lower_robust_access, &robustness);
 
    /* Similarly, we need to do early texture lowering before bindings */
-   NIR_PASS_V(nir, agx_nir_lower_texture_early);
+   NIR_PASS_V(nir, agx_nir_lower_texture_early, support_lod_bias);
 
    /* We need to lower binding tables before calling agx_preprocess_nir, since
     * that does texture lowering that needs to know the binding model.
@@ -1789,8 +1789,7 @@ agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
    }
 
    bool allow_mediump = !(dev->debug & AGX_DBG_NO16);
-   agx_preprocess_nir(nir, dev->libagx, support_lod_bias, allow_mediump,
-                      &so->info);
+   agx_preprocess_nir(nir, dev->libagx, allow_mediump, &so->info);
 
    blob_init(&so->serialized_nir);
    nir_serialize(&so->serialized_nir, nir, true);

@@ -2818,8 +2818,7 @@ link_libagx(nir_shader *nir, const nir_shader *libagx)
  */
 void
 agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
-                   bool support_lod_bias, bool allow_mediump,
-                   struct agx_uncompiled_shader_info *out)
+                   bool allow_mediump, struct agx_uncompiled_shader_info *out)
 {
    if (out)
       memset(out, 0, sizeof(*out));
@@ -2867,7 +2866,7 @@ agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
 
    /* Clean up deref gunk after lowering I/O */
    NIR_PASS_V(nir, nir_opt_dce);
-   NIR_PASS_V(nir, agx_nir_lower_texture, support_lod_bias);
+   NIR_PASS_V(nir, agx_nir_lower_texture);
 
    link_libagx(nir, libagx);
 

@@ -550,7 +550,7 @@ lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
  * agx_preprocess_nir (and hence the full agx_nir_lower_texture).
  */
 bool
-agx_nir_lower_texture_early(nir_shader *s)
+agx_nir_lower_texture_early(nir_shader *s, bool support_lod_bias)
 {
    bool progress = false;
 
@@ -568,11 +568,19 @@ agx_nir_lower_texture_early(nir_shader *s)
 
    NIR_PASS(progress, s, nir_lower_tex, &lower_tex_options);
 
+   /* Lower bias after nir_lower_tex (to get rid of txd) but before
+    * lower_regular_texture (which will shuffle around the sources)
+    */
+   if (support_lod_bias) {
+      NIR_PASS(progress, s, nir_shader_instructions_pass, lower_sampler_bias,
+               nir_metadata_block_index | nir_metadata_dominance, NULL);
+   }
+
    return progress;
 }
 
 bool
-agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
+agx_nir_lower_texture(nir_shader *s)
 {
    bool progress = false;
 
@@ -590,14 +598,6 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
    NIR_PASS(progress, s, agx_nir_fence_images);
 
    NIR_PASS(progress, s, nir_lower_image_atomics_to_global);
-
-   /* Lower bias after nir_lower_tex (to get rid of txd) but before
-    * lower_regular_texture (which will shuffle around the sources)
-    */
-   if (support_lod_bias) {
-      NIR_PASS(progress, s, nir_shader_instructions_pass, lower_sampler_bias,
-               nir_metadata_block_index | nir_metadata_dominance, NULL);
-   }
 
    NIR_PASS(progress, s, nir_shader_intrinsics_pass, legalize_image_lod,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
