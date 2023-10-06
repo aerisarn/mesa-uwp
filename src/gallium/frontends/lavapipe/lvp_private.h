@@ -263,7 +263,9 @@ struct lvp_image {
    struct vk_image vk;
    VkDeviceSize size;
    uint32_t alignment;
-   struct lvp_image_plane planes[1];
+   bool disjoint;
+   uint8_t plane_count;
+   struct lvp_image_plane planes[3];
 };
 
 struct lvp_image_view {
@@ -277,11 +279,12 @@ struct lvp_image_view {
 
    uint8_t plane_count;
    struct {
+      unsigned image_plane;
       struct pipe_sampler_view *sv;
       struct pipe_image_view iv;
       struct lp_texture_handle *texture_handle;
       struct lp_texture_handle *image_handle;
-   } planes[1];
+   } planes[3];
 };
 
 struct lvp_sampler {
@@ -688,6 +691,25 @@ lvp_vk_format_to_pipe_format(VkFormat format)
       return PIPE_FORMAT_NONE;
 
    return vk_format_to_pipe_format(format);
+}
+
+static inline uint8_t
+lvp_image_aspects_to_plane(ASSERTED const struct lvp_image *image,
+                           VkImageAspectFlags aspectMask)
+{
+   /* Verify that the aspects are actually in the image */
+   assert(!(aspectMask & ~image->vk.aspects));
+
+   /* Must only be one aspect unless it's depth/stencil */
+   assert(aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT |
+                         VK_IMAGE_ASPECT_STENCIL_BIT) ||
+          util_bitcount(aspectMask) == 1);
+
+   switch(aspectMask) {
+   case VK_IMAGE_ASPECT_PLANE_1_BIT: return 1;
+   case VK_IMAGE_ASPECT_PLANE_2_BIT: return 2;
+   default: return 0;
+   }
 }
 
 void

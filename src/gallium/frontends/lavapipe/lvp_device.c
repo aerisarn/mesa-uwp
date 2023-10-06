@@ -2074,11 +2074,22 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
       if (!did_bind) {
          uint64_t offset_B = 0;
          VkResult result;
-
-         result = lvp_image_plane_bind(device, &image->planes[0],
-                                       mem, bind_info->memoryOffset, &offset_B);
-         if (result != VK_SUCCESS)
-            return result;
+         if (image->disjoint) {
+            const VkBindImagePlaneMemoryInfo *plane_info =
+               vk_find_struct_const(pBindInfos[i].pNext, BIND_IMAGE_PLANE_MEMORY_INFO);
+            uint8_t plane = lvp_image_aspects_to_plane(image, plane_info->planeAspect);
+            result = lvp_image_plane_bind(device, &image->planes[plane],
+                                          mem, bind_info->memoryOffset, &offset_B);
+            if (result != VK_SUCCESS)
+               return result;
+         } else {
+            for (unsigned plane = 0; plane < image->plane_count; plane++) {
+               result = lvp_image_plane_bind(device, &image->planes[plane],
+                                             mem, bind_info->memoryOffset, &offset_B);
+               if (result != VK_SUCCESS)
+                  return result;
+            }
+         }
       }
    }
    return VK_SUCCESS;
