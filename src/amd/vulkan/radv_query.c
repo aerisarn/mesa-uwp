@@ -2443,11 +2443,27 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_query_pool, pool, queryPool);
+   const unsigned num_queries = MAX2(util_bitcount(cmd_buffer->state.render.view_mask), 1);
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   uint64_t va = radv_buffer_get_va(pool->bo);
+   const uint64_t va = radv_buffer_get_va(pool->bo);
    uint64_t query_va = va + pool->stride * query;
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cs, pool->bo);
+
+   if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
+      if (cmd_buffer->device->instance->flush_before_timestamp_write) {
+         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 1);
+         radeon_emit(cmd_buffer->cs, SDMA_PACKET(SDMA_OPCODE_NOP, 0, 0));
+      }
+
+      for (unsigned i = 0; i < num_queries; ++i, query_va += pool->stride) {
+         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 3);
+         radeon_emit(cmd_buffer->cs, SDMA_PACKET(SDMA_OPCODE_TIMESTAMP, SDMA_TS_SUB_OPCODE_GET_GLOBAL_TIMESTAMP, 0));
+         radeon_emit(cs, query_va);
+         radeon_emit(cs, query_va >> 32);
+      }
+      return;
+   }
 
    if (cmd_buffer->device->instance->flush_before_timestamp_write) {
       /* Make sure previously launched waves have finished */
@@ -2455,10 +2471,6 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
    }
 
    si_emit_cache_flush(cmd_buffer);
-
-   int num_queries = 1;
-   if (cmd_buffer->state.render.view_mask)
-      num_queries = util_bitcount(cmd_buffer->state.render.view_mask);
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 28 * num_queries);
 
