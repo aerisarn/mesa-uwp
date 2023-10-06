@@ -4228,8 +4228,13 @@ lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
          return false;
 
       nir_variable *var = tex->sampler_dim == GLSL_SAMPLER_DIM_BUF ? bindless->bindless[1] : bindless->bindless[0];
-      if (!var)
+      if (!var) {
          var = create_bindless_texture(b->shader, tex, bindless->bindless_set);
+         if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF)
+            bindless->bindless[1] = var;
+         else
+            bindless->bindless[0] = var;
+      }
       b->cursor = nir_before_instr(in);
       nir_deref_instr *deref = nir_build_deref_var(b, var);
       if (glsl_type_is_array(var->type))
