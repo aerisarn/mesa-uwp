@@ -198,6 +198,12 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
    }
 
    if (!cache_obj) {
+      if (pCreateInfo->flags &
+          VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+         result = VK_PIPELINE_COMPILE_REQUIRED;
+         goto fail;
+      }
+
       nir_shader *nir;
       result = nvk_shader_stage_to_nir(dev, &pCreateInfo->stage, &robustness,
                                        cache, NULL, &nir);
