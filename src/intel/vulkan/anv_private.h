@@ -3239,7 +3239,7 @@ struct anv_simple_shader {
  */
 struct anv_cmd_pipeline_state {
    struct anv_descriptor_set *descriptors[MAX_SETS];
-   struct anv_push_descriptor_set *push_descriptor;
+   struct anv_push_descriptor_set push_descriptor;
 
    struct anv_push_constants push_constants;
 

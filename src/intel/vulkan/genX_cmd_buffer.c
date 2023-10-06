@@ -2442,7 +2442,7 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                           struct anv_cmd_pipeline_state *state,
                           struct anv_pipeline *pipeline)
 {
-   struct anv_descriptor_set *set = &state->push_descriptor->set;
+   struct anv_descriptor_set *set = &state->push_descriptor.set;
    struct anv_descriptor_set_layout *layout = set->layout;
 
    if (pipeline->use_push_descriptor) {
