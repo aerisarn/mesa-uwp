@@ -2934,7 +2934,7 @@ fn create_from_gl(
     // CL_INVALID_CONTEXT if context [..] was not created from a GL context.
     if let Some(gl_ctx_manager) = gl_ctx_manager {
         let gl_export_manager =
-            gl_ctx_manager.export_object(target, flags as u32, miplevel, texture)?;
+            gl_ctx_manager.export_object(&c, target, flags as u32, miplevel, texture)?;
 
         Ok(cl_mem::from_arc(Mem::from_gl(
             c,

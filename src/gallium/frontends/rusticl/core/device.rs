@@ -93,6 +93,7 @@ pub trait HelperContextWrapper {
     fn unmap(&self, tx: PipeTransfer);
 
     fn is_create_fence_fd_supported(&self) -> bool;
+    fn import_fence(&self, fence_fd: &FenceFd) -> PipeFence;
 }
 
 pub struct HelperContext<'a> {
@@ -204,6 +205,10 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
 
     fn is_create_fence_fd_supported(&self) -> bool {
         self.lock.is_create_fence_fd_supported()
+    }
+
+    fn import_fence(&self, fd: &FenceFd) -> PipeFence {
+        self.lock.import_fence(fd)
     }
 }
 

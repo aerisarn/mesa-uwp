@@ -1,5 +1,6 @@
 use crate::api::icd::*;
 use crate::api::types::*;
+use crate::core::context::*;
 use crate::core::device::*;
 use crate::core::format::*;
 use crate::core::memory::*;
@@ -10,6 +11,7 @@ use libc_rust_gen::{close, dlsym};
 use rusticl_opencl_gen::*;
 
 use mesa_rust::pipe::context::*;
+use mesa_rust::pipe::fence::*;
 use mesa_rust::pipe::resource::*;
 use mesa_rust::pipe::screen::*;
 
@@ -183,6 +185,7 @@ impl GLCtxManager {
 
     pub fn export_object(
         &self,
+        cl_ctx: &Arc<Context>,
         target: cl_GLenum,
         flags: u32,
         miplevel: cl_GLint,
@@ -210,14 +213,72 @@ impl GLCtxManager {
                         .MesaGLInteropEGLExportObject()?
                         .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
 
-                    egl_export_object_func(disp.cast(), ctx.cast(), &mut export_in, &mut export_out)
+                    let egl_flush_objects_func = xplat_manager
+                        .MesaGLInteropEGLFlushObjects()?
+                        .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
+
+                    let mut fd = -1;
+                    let err_flush = egl_flush_objects_func(
+                        disp.cast(),
+                        ctx.cast(),
+                        1,
+                        &mut export_in,
+                        ptr::null_mut(),
+                        &mut fd,
+                    );
+                    // TODO: use fence_server_sync in ctx inside the queue thread
+                    let fence_fd = FenceFd { fd };
+                    cl_ctx.devs.iter().for_each(|dev| {
+                        let fence = dev.helper_ctx().import_fence(&fence_fd);
+                        fence.wait();
+                    });
+
+                    if err_flush != 0 {
+                        err_flush
+                    } else {
+                        egl_export_object_func(
+                            disp.cast(),
+                            ctx.cast(),
+                            &mut export_in,
+                            &mut export_out,
+                        )
+                    }
                 }
                 GLCtx::GLX(disp, ctx) => {
                     let glx_export_object_func = xplat_manager
                         .MesaGLInteropGLXExportObject()?
                         .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
 
-                    glx_export_object_func(disp.cast(), ctx.cast(), &mut export_in, &mut export_out)
+                    let glx_flush_objects_func = xplat_manager
+                        .MesaGLInteropGLXFlushObjects()?
+                        .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
+
+                    let mut fd = -1;
+                    let err_flush = glx_flush_objects_func(
+                        disp.cast(),
+                        ctx.cast(),
+                        1,
+                        &mut export_in,
+                        ptr::null_mut(),
+                        &mut fd,
+                    );
+                    // TODO: use fence_server_sync in ctx inside the queue thread
+                    let fence_fd = FenceFd { fd };
+                    cl_ctx.devs.iter().for_each(|dev| {
+                        let fence = dev.helper_ctx().import_fence(&fence_fd);
+                        fence.wait();
+                    });
+
+                    if err_flush != 0 {
+                        err_flush
+                    } else {
+                        glx_export_object_func(
+                            disp.cast(),
+                            ctx.cast(),
+                            &mut export_in,
+                            &mut export_out,
+                        )
+                    }
                 }
             }
         };
