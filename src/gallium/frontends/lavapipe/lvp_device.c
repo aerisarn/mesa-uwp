@@ -2183,21 +2183,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
    struct lvp_sampler *sampler;
-   const VkSamplerReductionModeCreateInfo *reduction_mode_create_info =
-      vk_find_struct_const(pCreateInfo->pNext,
-                           SAMPLER_REDUCTION_MODE_CREATE_INFO);
-   const struct VkSamplerYcbcrConversionInfo *ycbcr_conversion =
-      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
 
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
-
-   sampler = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*sampler), 8,
-                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   sampler = vk_sampler_create(&device->vk, pCreateInfo,
+                               pAllocator, sizeof(*sampler));
    if (!sampler)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &sampler->base,
-                       VK_OBJECT_TYPE_SAMPLER);
 
    struct pipe_sampler_state state = {0};
    VkClearColorValue border_color =
@@ -2224,10 +2214,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE == (unsigned)PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE);
    STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_MIN == (unsigned)PIPE_TEX_REDUCTION_MIN);
    STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_MAX == (unsigned)PIPE_TEX_REDUCTION_MAX);
-   if (reduction_mode_create_info)
-      state.reduction_mode = (enum pipe_tex_reduction_mode)reduction_mode_create_info->reductionMode;
-   else
-      state.reduction_mode = PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE;
+   state.reduction_mode = (enum pipe_tex_reduction_mode)sampler->vk.reduction_mode;
    memcpy(&state.border_color, &border_color, sizeof(border_color));
 
    simple_mtx_lock(&device->queue.lock);
@@ -2236,8 +2223,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
 
    lp_jit_sampler_from_pipe(&sampler->desc.sampler, &state);
    sampler->desc.sampler_index = sampler->texture_handle->sampler_index;
-
-   sampler->ycbcr_conversion = ycbcr_conversion ? vk_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
 
    *pSampler = lvp_sampler_to_handle(sampler);
 
@@ -2259,8 +2244,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySampler(
    device->queue.ctx->delete_texture_handle(device->queue.ctx, (uint64_t)(uintptr_t)sampler->texture_handle);
    simple_mtx_unlock(&device->queue.lock);
 
-   vk_object_base_finish(&sampler->base);
-   vk_free2(&device->vk.alloc, pAllocator, sampler);
+   vk_sampler_destroy(&device->vk, pAllocator, &sampler->vk);
 }
 
 /* vk_icd.h does not declare this function, so we declare it here to
