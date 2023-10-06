@@ -129,6 +129,7 @@ files_libglsl = files(
   'gl_nir_lower_images.c',
   'gl_nir_lower_blend_equation_advanced.c',
   'gl_nir_lower_buffers.c',
+  'gl_nir_lower_named_interface_blocks.c',
   'gl_nir_lower_packed_varyings.c',
   'gl_nir_lower_samplers.c',
   'gl_nir_lower_samplers_as_deref.c',
