@@ -12,7 +12,7 @@ EGL, OpenMAX, OpenCL, VDPAU and VA-API.
 Hardware drivers include:
 
 -  Intel GMA, HD Graphics, Iris. See `Intel's
-   Website <https://01.org/linuxgraphics>`__
+   Website <https://www.intel.com/content/www/us/en/developer/topic-technology/open/overview.html>`__
 -  AMD Radeon series. See
    `RadeonFeature <https://www.x.org/wiki/RadeonFeature>`__
 -  NVIDIA GPUs (GeForce 5 / FX and later). See `Nouveau
