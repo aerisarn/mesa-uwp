@@ -300,8 +300,8 @@ this, triggered by **assigning the MR** to the pseudo-user `@marge-bot
 <https://gitlab.freedesktop.org/marge-bot>`__.
 
 Authors who do not have ``Developer`` access (or above) should ask on the
-merge request for someone else to do it for them, or reach on `other channels
-<lists>`__ if the MR reviewers don't have access themselves.
+merge request for someone else to do it for them, or reach on
+:doc:`other channels <lists>` if the MR reviewers don't have access themselves.
 
 Do not merge someone else's MR unless you are sure they don't have a new
 version that they are testing locally for instance.
