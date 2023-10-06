@@ -505,12 +505,17 @@ agx_create_sampler_state(struct pipe_context *pctx,
       }
    }
 
+   memcpy(&so->desc_without_custom_border, &so->desc, sizeof(so->desc));
+
    if (so->uses_custom_border) {
       union pipe_color_union border = state->border_color;
       enum pipe_format format =
          fixup_border_zs(state->border_color_format, &border);
 
       agx_pack_border(&so->border, border.ui, format);
+
+      /* Neutralize the bindless-safe descriptor. XXX: This is a hack. */
+      so->desc_without_custom_border.opaque[1] &= ~(1u << 23);
    }
 
    return so;

@@ -591,7 +591,7 @@ struct agx_sampler_state {
    struct pipe_sampler_state base;
 
    /* Prepared descriptor */
-   struct agx_sampler_packed desc;
+   struct agx_sampler_packed desc, desc_without_custom_border;
 
    /* Whether a custom border colour is required */
    bool uses_custom_border;
