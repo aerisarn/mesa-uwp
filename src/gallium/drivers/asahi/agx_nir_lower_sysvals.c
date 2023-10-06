@@ -127,6 +127,9 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
       return load_ubo(b, intr, s->ubo_base);
    case nir_intrinsic_load_texture_handle_agx:
       return load_texture_handle(b, intr, &s->texture_base);
+   case nir_intrinsic_load_sampler_handle_agx:
+      return load_sysval_indirect(b, 1, 16, stage_table(b), &s->sampler_handle,
+                                  intr->src[0].ssa);
    case nir_intrinsic_load_vbo_base_agx:
       return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT, &u->vbo_base,
                                   intr->src[0].ssa);
