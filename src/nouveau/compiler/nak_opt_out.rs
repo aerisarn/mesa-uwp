@@ -5,60 +5,55 @@
 
 use crate::nak_ir::*;
 
-use std::collections::HashMap;
-use std::slice;
+fn try_combine_outs(emit: &mut Instr, cut: &Instr) -> bool {
+    let Op::Out(emit) = &mut emit.op else {
+        return false;
+    };
 
-struct OutPass;
+    let Op::Out(cut) = &cut.op else {
+        return false;
+    };
+
+    if emit.out_type != OutType::Emit || cut.out_type != OutType::Cut {
+        return false;
+    }
+
+    let Some(handle) = emit.dst.as_ssa() else {
+        return false;
+    };
+
+    if cut.handle.as_ssa() != Some(handle) {
+        return false;
+    }
+
+    if emit.stream != emit.stream {
+        return false;
+    }
+
+    emit.dst = cut.dst;
+    emit.out_type = OutType::EmitThenCut;
+
+    true
+}
 
 impl Shader {
     pub fn opt_out(&mut self) {
-        if let ShaderStageInfo::Geometry(_) = self.info.stage {
-            for f in &mut self.functions {
-                for b in &mut f.blocks {
-                    let mut instrs = Vec::new();
+        if !matches!(self.info.stage, ShaderStageInfo::Geometry(_)) {
+            return;
+        }
 
-                    {
-                        let mut drain = b.instrs.drain(..);
-
-                        while let Some(instr) = drain.next() {
-                            match instr.op {
-                                Op::Out(op) if op.out_type == OutType::Emit => {
-                                    let next_op_opt =
-                                        drain.next().map(|x| x.op);
-
-                                    match next_op_opt {
-                                        Some(Op::Out(next_op))
-                                            if next_op.out_type
-                                                == OutType::Cut
-                                                && op.stream
-                                                    == next_op.stream =>
-                                        {
-                                            instrs.push(Instr::new_boxed(
-                                                OpOut {
-                                                    dst: next_op.dst.clone(),
-                                                    handle: op.handle,
-                                                    stream: op.stream,
-                                                    out_type:
-                                                        OutType::EmitThenCut,
-                                                },
-                                            ));
-                                        }
-                                        Some(next_op) => {
-                                            instrs.push(Instr::new_boxed(op));
-                                            instrs.push(Instr::new_boxed(
-                                                next_op,
-                                            ));
-                                        }
-                                        None => {}
-                                    }
-                                }
-                                _ => instrs.push(instr),
-                            }
+        for f in &mut self.functions {
+            for b in &mut f.blocks {
+                let mut instrs: Vec<Box<Instr>> = Vec::new();
+                for instr in b.instrs.drain(..) {
+                    if let Some(prev) = instrs.last_mut() {
+                        if try_combine_outs(prev, &instr) {
+                            continue;
                         }
                     }
-
-                    b.instrs = instrs;
+                    instrs.push(instr);
                 }
+                b.instrs = instrs;
             }
         }
     }

@@ -254,7 +254,7 @@ pub extern "C" fn nak_compile_shader(
 
     s.opt_out();
     if DEBUG.print() {
-        eprintln!("NAK IR:\n{}", &s);
+        eprintln!("NAK IR after opt_out:\n{}", &s);
     }
 
     s.legalize();
