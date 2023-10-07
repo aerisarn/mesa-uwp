@@ -23,6 +23,7 @@
 #include "r600_formats.h"
 #include "r600_shader.h"
 #include "r600d.h"
+#include "r600d_common.h"
 
 #include "pipe/p_shader_tokens.h"
 #include "util/u_endian.h"
@@ -1721,7 +1722,7 @@ static void r600_emit_constant_buffers(struct r600_context *rctx,
 		offset = cb->buffer_offset;
 
 		if (!gs_ring_buffer) {
-			assert(buffer_index < R600_MAX_HW_CONST_BUFFERS);
+			assert(buffer_index < R600_MAX_ALU_CONST_BUFFERS);
 			radeon_set_context_reg(cs, reg_alu_constbuf_size + buffer_index * 4,
 					       DIV_ROUND_UP(cb->buffer_size, 256));
 			radeon_set_context_reg(cs, reg_alu_const_cache + buffer_index * 4, offset >> 8);

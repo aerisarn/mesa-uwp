@@ -24,6 +24,7 @@
 #define R600_SHADER_H
 
 #include "r600_asm.h"
+#include "r600_pipe.h"
 
 
 #ifdef __cplusplus

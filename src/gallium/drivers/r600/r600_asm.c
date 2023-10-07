@@ -20,17 +20,18 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include "r600_asm.h"
 #include "r600_sq.h"
 #include "r600_opcodes.h"
 #include "r600_formats.h"
-#include "r600_shader.h"
 #include "r600d.h"
+#include "r600d_common.h"
 
 #include <errno.h>
-#include "util/u_bitcast.h"
+#include <string.h>
+#include "compiler/shader_enums.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
-#include "pipe/p_shader_tokens.h"
 
 #define NUM_OF_CYCLES 3
 #define NUM_OF_COMPONENTS 4
@@ -1085,7 +1086,7 @@ static int r600_bytecode_alloc_inst_kcache_lines(struct r600_bytecode *bc,
 			continue;
 
 		bank = alu->src[i].kc_bank;
-		assert(bank < R600_MAX_HW_CONST_BUFFERS);
+		assert(bank < R600_MAX_ALU_CONST_BUFFERS);
 		line = (sel-512)>>4;
 		index_mode = alu->src[i].kc_rel;
 
@@ -2130,7 +2131,12 @@ static int print_src(struct r600_bytecode_alu *alu, unsigned idx)
 			need_chan = 1;
 			break;
 		case V_SQ_ALU_SRC_LITERAL:
-			o += fprintf(stderr, "[0x%08X %f]", src->value, u_bitcast_u2f(src->value));
+			{
+				const uint32_t value_uint32 = src->value;
+				float value_float;
+				memcpy(&value_float, &value_uint32, sizeof(float));
+				o += fprintf(stderr, "[0x%08X %f]", value_uint32, value_float);
+			}
 			break;
 		case V_SQ_ALU_SRC_0_5:
 			o += fprintf(stderr, "0.5");
