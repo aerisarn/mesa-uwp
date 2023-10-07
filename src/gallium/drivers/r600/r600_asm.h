@@ -26,9 +26,14 @@
 #include "r600_pipe.h"
 #include "r600_isa.h"
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define R600_ASM_ERR(fmt, args...) \
+	fprintf(stderr, "EE %s:%d %s - " fmt, __FILE__, __LINE__, __func__, ##args)
 
 struct r600_bytecode_alu_src {
 	unsigned			sel;

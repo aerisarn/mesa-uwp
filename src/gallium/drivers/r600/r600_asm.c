@@ -1116,7 +1116,7 @@ static int r600_bytecode_assign_kcache_banks(
 			switch (kcache[j].mode) {
 			case V_SQ_CF_KCACHE_NOP:
 			case V_SQ_CF_KCACHE_LOCK_LOOP_INDEX:
-				R600_ERR("unexpected kcache line mode\n");
+				R600_ASM_ERR("unexpected kcache line mode\n");
 				return -ENOMEM;
 			default:
 				if (kcache[j].bank == alu->src[i].kc_bank &&
@@ -1431,7 +1431,7 @@ static unsigned r600_bytecode_num_tex_and_vtx_instructions(const struct r600_byt
 		return 16;
 
 	default:
-		R600_ERR("Unknown gfx level %d.\n", bc->gfx_level);
+		R600_ASM_ERR("Unknown gfx level %d.\n", bc->gfx_level);
 		return 8;
 	}
 }
@@ -1484,7 +1484,7 @@ static int r600_bytecode_add_vtx_internal(struct r600_bytecode *bc, const struct
 			bc->cf_last->op = CF_OP_TEX;
 			break;
 		default:
-			R600_ERR("Unknown gfx level %d.\n", bc->gfx_level);
+			R600_ASM_ERR("Unknown gfx level %d.\n", bc->gfx_level);
 			free(nvtx);
 			return -EINVAL;
 		}
@@ -1900,7 +1900,7 @@ int r600_bytecode_build(struct r600_bytecode *bc)
 					r = eg_bytecode_alu_build(bc, alu, addr);
 					break;
 				default:
-					R600_ERR("unknown gfx level %d.\n", bc->gfx_level);
+					R600_ASM_ERR("unknown gfx level %d.\n", bc->gfx_level);
 					return -EINVAL;
 				}
 				if (r)
@@ -2802,7 +2802,7 @@ void r600_vertex_data_type(enum pipe_format pformat,
 	}
 	return;
 out_unknown:
-	R600_ERR("unsupported vertex format %s\n", util_format_name(pformat));
+	R600_ASM_ERR("unsupported vertex format %s\n", util_format_name(pformat));
 }
 
 void r600_bytecode_alu_read(struct r600_bytecode *bc,
