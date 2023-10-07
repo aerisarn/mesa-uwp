@@ -47,6 +47,7 @@
 #include "util/u_endian.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>
 
@@ -872,8 +873,10 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 	/* XXX factor out common code with r600_shader_from_tgsi ? */
 	for (i = 0; i < ocnt; ++i) {
 		struct r600_shader_io *out = &ctx.shader->output[i];
+		/* The actual parameter export indices will be calculated here, ignore the copied ones. */
+		out->export_param = -1;
 		bool instream0 = true;
-		if (out->name == TGSI_SEMANTIC_CLIPVERTEX)
+		if (out->varying_slot == VARYING_SLOT_CLIP_VERTEX)
 			continue;
 
 		for (j = 0; j < so->num_outputs; j++) {
@@ -896,13 +899,13 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 		output.burst_count = 1;
 		output.type = V_SQ_CF_ALLOC_EXPORT_WORD0_SQ_EXPORT_PARAM;
 		output.op = CF_OP_EXPORT;
-		switch (out->name) {
-		case TGSI_SEMANTIC_POSITION:
+		switch (out->varying_slot) {
+		case VARYING_SLOT_POS:
 			output.array_base = 60;
 			output.type = V_SQ_CF_ALLOC_EXPORT_WORD0_SQ_EXPORT_POS;
 			break;
 
-		case TGSI_SEMANTIC_PSIZE:
+		case VARYING_SLOT_PSIZ:
 			output.array_base = 61;
 			if (next_clip_pos == 61)
 				next_clip_pos = 62;
@@ -913,10 +916,11 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 			ctx.shader->vs_out_misc_write = 1;
 			ctx.shader->vs_out_point_size = 1;
 			break;
-		case TGSI_SEMANTIC_LAYER:
+		case VARYING_SLOT_LAYER:
 			if (out->spi_sid) {
 				/* duplicate it as PARAM to pass to the pixel shader */
 				output.array_base = next_param++;
+				out->export_param = output.array_base;
 				r600_bytecode_add_output(ctx.bc, &output);
 				last_exp_param = ctx.bc->cf_last;
 			}
@@ -931,10 +935,11 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 			ctx.shader->vs_out_misc_write = 1;
 			ctx.shader->vs_out_layer = 1;
 			break;
-		case TGSI_SEMANTIC_VIEWPORT_INDEX:
+		case VARYING_SLOT_VIEWPORT:
 			if (out->spi_sid) {
 				/* duplicate it as PARAM to pass to the pixel shader */
 				output.array_base = next_param++;
+				out->export_param = output.array_base;
 				r600_bytecode_add_output(ctx.bc, &output);
 				last_exp_param = ctx.bc->cf_last;
 			}
@@ -949,7 +954,8 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 			output.swizzle_z = 7;
 			output.swizzle_w = 0;
 			break;
-		case TGSI_SEMANTIC_CLIPDIST:
+		case VARYING_SLOT_CLIP_DIST0:
+		case VARYING_SLOT_CLIP_DIST1:
 			/* spi_sid is 0 for clipdistance outputs that were generated
 			 * for clipvertex - we don't need to pass them to PS */
 			ctx.shader->clip_dist_write = gs->shader.clip_dist_write;
@@ -958,20 +964,24 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 			if (out->spi_sid) {
 				/* duplicate it as PARAM to pass to the pixel shader */
 				output.array_base = next_param++;
+				out->export_param = output.array_base;
 				r600_bytecode_add_output(ctx.bc, &output);
 				last_exp_param = ctx.bc->cf_last;
 			}
 			output.array_base = next_clip_pos++;
 			output.type = V_SQ_CF_ALLOC_EXPORT_WORD0_SQ_EXPORT_POS;
 			break;
-		case TGSI_SEMANTIC_FOG:
+		case VARYING_SLOT_FOGC:
 			output.swizzle_y = 4; /* 0 */
 			output.swizzle_z = 4; /* 0 */
 			output.swizzle_w = 5; /* 1 */
 			break;
 		default:
-			output.array_base = next_param++;
 			break;
+		}
+		if (output.type == V_SQ_CF_ALLOC_EXPORT_WORD0_SQ_EXPORT_PARAM) {
+			output.array_base = next_param++;
+			out->export_param = output.array_base;
 		}
 		r600_bytecode_add_output(ctx.bc, &output);
 		if (output.type == V_SQ_CF_ALLOC_EXPORT_WORD0_SQ_EXPORT_PARAM)
@@ -1016,6 +1026,9 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 
 	last_exp_pos->op = CF_OP_EXPORT_DONE;
 	last_exp_param->op = CF_OP_EXPORT_DONE;
+
+	assert(next_param > 0);
+	cshader->shader.highest_export_param = next_param - 1;
 
 	r600_bytecode_add_cfinst(ctx.bc, CF_OP_POP);
 	cf_pop = ctx.bc->cf_last;

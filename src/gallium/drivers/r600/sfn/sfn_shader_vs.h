@@ -111,7 +111,6 @@ private:
    bool m_out_misc_write{false};
    bool m_vs_out_layer{false};
    bool m_vs_as_gs_a{false};
-   int m_vs_prim_id_out{0};
    bool m_out_edgeflag{false};
    bool m_out_viewport{false};
    bool m_out_point_size{false};

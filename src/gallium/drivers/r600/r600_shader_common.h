@@ -45,17 +45,17 @@ extern "C" {
  */
 
 struct r600_shader_io {
-	unsigned		name;
+	gl_varying_slot		varying_slot;
+	gl_system_value		system_value; /* Input only */
+	gl_frag_result		frag_result;
 	unsigned		gpr;
-	unsigned		done;
-	unsigned		sid;
 	int			spi_sid;
 	unsigned		interpolate;
 	unsigned		ij_index;
 	unsigned		interpolate_location; //  TGSI_INTERPOLATE_LOC_CENTER, CENTROID, SAMPLE
 	unsigned		lds_pos; /* for evergreen */
-	unsigned		back_color_input;
 	unsigned		write_mask;
+	int			export_param; /* Output only */
 	int			ring_offset;
 	unsigned		uses_interpolate_at_centroid;
 };
@@ -77,6 +77,7 @@ struct r600_shader {
 	unsigned                nhwatomic;
 	unsigned		nlds;
 	unsigned		nsys_inputs;
+	unsigned		highest_export_param;
 	struct r600_shader_io	input[R600_SHADER_MAX_INPUTS];
 	struct r600_shader_io	output[R600_SHADER_MAX_OUTPUTS];
 	struct r600_shader_atomic atomics[8];
@@ -118,7 +119,6 @@ struct r600_shader {
 	unsigned		vs_as_gs_a;
 	unsigned                tes_as_es;
 	unsigned                tcs_prim_mode;
-	unsigned                ps_prim_id_input;
 	unsigned                num_loops;
 
 	struct r600_shader_array * arrays;
@@ -145,7 +145,6 @@ union r600_shader_key {
 		unsigned        dual_source_blend:1;
 	} ps;
 	struct {
-		unsigned	prim_id_out:8;
 		unsigned        first_atomic_counter:4;
 		unsigned	as_es:1; /* export shader */
 		unsigned	as_ls:1; /* local shader */
