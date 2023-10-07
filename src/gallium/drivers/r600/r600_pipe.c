@@ -214,7 +214,7 @@ static struct pipe_context *r600_create_context(struct pipe_screen *screen,
                             0, PIPE_USAGE_DEFAULT, 0, false);
 
 	rctx->isa = calloc(1, sizeof(struct r600_isa));
-	if (!rctx->isa || r600_isa_init(rctx, rctx->isa))
+	if (!rctx->isa || r600_isa_init(rctx->b.gfx_level, rctx->isa))
 		goto fail;
 
 	if (rscreen->b.debug_flags & DBG_FORCE_DMA)
