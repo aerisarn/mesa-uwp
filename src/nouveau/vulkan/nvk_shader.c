@@ -73,7 +73,7 @@ get_prog_debug(void)
 static uint64_t
 get_prog_optimize(void)
 {
-   return debug_get_num_option("NV50_PROG_OPTIMIZE", 0);
+   return debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
 }
 
 uint64_t
