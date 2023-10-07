@@ -3757,16 +3757,11 @@ panfrost_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
  */
 
 static void
-panfrost_launch_grid(struct pipe_context *pipe,
-                     const struct pipe_grid_info *info)
+panfrost_launch_grid_on_batch(struct pipe_context *pipe,
+                              struct panfrost_batch *batch,
+                              const struct pipe_grid_info *info)
 {
    struct panfrost_context *ctx = pan_context(pipe);
-
-   /* XXX - shouldn't be necessary with working memory barriers. Affected
-    * test: KHR-GLES31.core.compute_shader.pipeline-post-xfb */
-   panfrost_flush_all_batches(ctx, "Launch grid pre-barrier");
-
-   struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
    if (info->indirect && !PAN_GPU_INDIRECTS) {
       struct pipe_transfer *transfer;
@@ -3782,7 +3777,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
       pipe_buffer_unmap(pipe, transfer);
 
       if (params[0] && params[1] && params[2])
-         panfrost_launch_grid(pipe, &direct);
+         panfrost_launch_grid_on_batch(pipe, batch, &direct);
 
       return;
    }
@@ -3878,6 +3873,21 @@ panfrost_launch_grid(struct pipe_context *pipe,
    panfrost_add_job(&batch->pool.base, &batch->scoreboard,
                     MALI_JOB_TYPE_COMPUTE, true, false, indirect_dep, 0, &t,
                     false);
+}
+
+static void
+panfrost_launch_grid(struct pipe_context *pipe,
+                     const struct pipe_grid_info *info)
+{
+   struct panfrost_context *ctx = pan_context(pipe);
+
+   /* XXX - shouldn't be necessary with working memory barriers. Affected
+    * test: KHR-GLES31.core.compute_shader.pipeline-post-xfb */
+   panfrost_flush_all_batches(ctx, "Launch grid pre-barrier");
+
+   struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+   panfrost_launch_grid_on_batch(pipe, batch, info);
+
    panfrost_flush_all_batches(ctx, "Launch grid post-barrier");
 }
 
