@@ -557,6 +557,21 @@ agx_bind_sampler_states(struct pipe_context *pctx, enum pipe_shader_type shader,
    }
 }
 
+/* See agx_stage_needs_bindless_sampler for explanation */
+static enum pipe_shader_type
+merged_stage(struct agx_context *ctx, enum pipe_shader_type stage)
+{
+   switch (stage) {
+   case MESA_SHADER_GEOMETRY:
+      return ctx->stage[PIPE_SHADER_TESS_EVAL].shader ? MESA_SHADER_TESS_EVAL
+                                                      : MESA_SHADER_VERTEX;
+   case MESA_SHADER_TESS_CTRL:
+      return MESA_SHADER_VERTEX;
+   default:
+      return stage;
+   }
+}
+
 static enum agx_texture_dimension
 agx_translate_tex_dim(enum pipe_texture_target dim, unsigned samples)
 {
@@ -2078,6 +2093,9 @@ translate_sampler_state_count(struct agx_context *ctx,
                               struct agx_compiled_shader *cs,
                               enum pipe_shader_type stage)
 {
+   /* Get samplers from merged stage but get txf status from cs */
+   stage = merged_stage(ctx, stage);
+
    return agx_translate_sampler_state_count(sampler_count(ctx, cs, stage),
                                             ctx->stage[stage].custom_borders);
 }
@@ -2158,6 +2176,7 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
 {
    struct agx_context *ctx = batch->ctx;
    unsigned nr_textures = cs->info.nr_bindful_textures;
+
    unsigned nr_active_textures = ctx->stage[stage].texture_count;
    unsigned nr_tex_descriptors = agx_nr_tex_descriptors(batch, stage, cs);
    unsigned nr_images = cs->info.nr_bindful_images;
@@ -2266,9 +2285,13 @@ agx_sampler_heap_add(struct agx_device *dev, struct agx_sampler_heap *heap,
 
 static void
 agx_upload_samplers(struct agx_batch *batch, struct agx_compiled_shader *cs,
-                    enum pipe_shader_type stage)
+                    enum pipe_shader_type orig_stage)
 {
    struct agx_context *ctx = batch->ctx;
+
+   /* Get samplers from merged stage but get txf status from cs */
+   enum pipe_shader_type stage = merged_stage(ctx, orig_stage);
+
    unsigned nr_samplers = sampler_count(ctx, cs, stage);
    bool custom_borders = ctx->stage[stage].custom_borders;
 
@@ -2310,8 +2333,8 @@ agx_upload_samplers(struct agx_batch *batch, struct agx_compiled_shader *cs,
       out_sampler += sampler_length;
    }
 
-   batch->sampler_count[stage] = nr_samplers;
-   batch->samplers[stage] = T.gpu;
+   batch->sampler_count[orig_stage] = nr_samplers;
+   batch->samplers[orig_stage] = T.gpu;
 }
 
 static void
@@ -2323,7 +2346,8 @@ agx_update_descriptors(struct agx_batch *batch, struct agx_compiled_shader *cs,
    if (ctx->stage[stage].dirty & AGX_STAGE_DIRTY_IMAGE)
       agx_upload_textures(batch, cs, stage);
 
-   if (ctx->stage[stage].dirty & AGX_STAGE_DIRTY_SAMPLER)
+   if ((ctx->stage[stage].dirty & AGX_STAGE_DIRTY_SAMPLER) ||
+       (ctx->stage[merged_stage(ctx, stage)].dirty & AGX_STAGE_DIRTY_SAMPLER))
       agx_upload_samplers(batch, cs, stage);
 
    if (ctx->stage[stage].dirty) {
@@ -2340,12 +2364,14 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    struct agx_usc_builder b =
       agx_alloc_usc_control(&batch->pipeline_pool, cs->push_range_count + 2);
 
-   if (batch->texture_count[stage]) {
+   enum pipe_shader_type merged = merged_stage(ctx, stage);
+
+   if (batch->texture_count[merged]) {
       agx_usc_pack(&b, TEXTURE, cfg) {
          cfg.start = 0;
          cfg.count =
-            MIN2(batch->texture_count[stage], AGX_NUM_TEXTURE_STATE_REGS);
-         cfg.buffer = batch->textures[stage];
+            MIN2(batch->texture_count[merged], AGX_NUM_TEXTURE_STATE_REGS);
+         cfg.buffer = batch->textures[merged];
       }
    }
 
