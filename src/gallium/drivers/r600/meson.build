@@ -47,6 +47,7 @@ files_r600 = files(
   'r600_public.h',
   'r600_shader.c',
   'r600_shader.h',
+  'r600_shader_common.h',
   'r600_sq.h',
   'r600_state.c',
   'r600_state_common.c',
