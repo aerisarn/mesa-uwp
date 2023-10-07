@@ -3891,6 +3891,48 @@ panfrost_launch_grid(struct pipe_context *pipe,
    panfrost_flush_all_batches(ctx, "Launch grid post-barrier");
 }
 
+#define AFBC_BLOCK_ALIGN 16
+
+static void
+panfrost_launch_afbc_shader(struct panfrost_batch *batch, void *cso,
+                            struct pipe_constant_buffer *cbuf,
+                            unsigned nr_blocks)
+{
+   struct pipe_context *pctx = &batch->ctx->base;
+   void *saved_cso = NULL;
+   struct pipe_constant_buffer saved_const = {};
+   struct pipe_grid_info grid = {
+      .block[0] = 1,
+      .block[1] = 1,
+      .block[2] = 1,
+      .grid[0] = nr_blocks,
+      .grid[1] = 1,
+      .grid[2] = 1,
+   };
+
+   struct panfrost_constant_buffer *pbuf =
+      &batch->ctx->constant_buffer[PIPE_SHADER_COMPUTE];
+   saved_cso = batch->ctx->uncompiled[PIPE_SHADER_COMPUTE];
+   util_copy_constant_buffer(&pbuf->cb[0], &saved_const, true);
+
+   pctx->bind_compute_state(pctx, cso);
+   pctx->set_constant_buffer(pctx, PIPE_SHADER_COMPUTE, 0, false, cbuf);
+
+   panfrost_launch_grid_on_batch(pctx, batch, &grid);
+
+   pctx->bind_compute_state(pctx, saved_cso);
+   pctx->set_constant_buffer(pctx, PIPE_SHADER_COMPUTE, 0, true, &saved_const);
+}
+
+#define LAUNCH_AFBC_SHADER(name, batch, rsrc, consts, nr_blocks)               \
+   struct pan_afbc_shader_data *shaders =                                      \
+      panfrost_afbc_get_shaders(batch->ctx, rsrc, AFBC_BLOCK_ALIGN);           \
+   struct pipe_constant_buffer constant_buffer = {                             \
+      .buffer_size = sizeof(consts),                                           \
+      .user_buffer = &consts};                                                 \
+   panfrost_launch_afbc_shader(batch, shaders->name##_cso, &constant_buffer,   \
+                               nr_blocks);
+
 static void *
 panfrost_create_rasterizer_state(struct pipe_context *pctx,
                                  const struct pipe_rasterizer_state *cso)

@@ -560,6 +560,7 @@ panfrost_destroy(struct pipe_context *pipe)
 
    panfrost_pool_cleanup(&panfrost->descs);
    panfrost_pool_cleanup(&panfrost->shaders);
+   panfrost_afbc_context_destroy(panfrost);
 
    drmSyncobjDestroy(dev->fd, panfrost->in_sync_obj);
    if (panfrost->in_sync_fd != -1)
@@ -943,6 +944,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
    panfrost_resource_context_init(gallium);
    panfrost_shader_context_init(gallium);
+   panfrost_afbc_context_init(ctx);
 
    gallium->stream_uploader = u_upload_create_default(gallium);
    gallium->const_uploader = gallium->stream_uploader;

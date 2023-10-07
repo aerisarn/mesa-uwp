@@ -41,6 +41,7 @@
 
 #include "pan_device.h"
 #include "pan_mempool.h"
+#include "pan_texture.h"
 
 #define PAN_QUERY_DRAW_CALLS (PIPE_QUERY_DRIVER_SPECIFIC + 0)
 
