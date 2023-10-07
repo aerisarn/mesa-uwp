@@ -1585,8 +1585,7 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
          ib.L3BypassDisable       = true;
 #endif
          ib.BufferStartingAddress = anv_address_add(buffer->address, offset);
-         ib.BufferSize            = vk_buffer_range(&buffer->vk, offset,
-                                                    VK_WHOLE_SIZE);
+         ib.BufferSize            = cmd_buffer->state.gfx.index_size;
       }
    }
 
