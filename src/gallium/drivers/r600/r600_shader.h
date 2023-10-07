@@ -187,6 +187,10 @@ struct r600_pipe_shader {
 	unsigned		scratch_space_needed; /* size of scratch space (if > 0) counted in vec4 */
 };
 
+void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
+				      unsigned count,
+				      const struct pipe_vertex_element *elements);
+
 /* return the table index 0-5 for TGSI_INTERPOLATE_LINEAR/PERSPECTIVE and
  TGSI_INTERPOLATE_LOC_CENTER/SAMPLE/COUNT. Other input values return -1. */
 int eg_get_interpolator_index(unsigned interpolate, unsigned location);

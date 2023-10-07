@@ -332,10 +332,6 @@ int r600_load_ar(struct r600_bytecode *bc, bool for_src);
 
 int cm_bytecode_add_cf_end(struct r600_bytecode *bc);
 
-void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
-				      unsigned count,
-				      const struct pipe_vertex_element *elements);
-
 /* r700_asm.c */
 void r700_bytecode_cf_vtx_build(uint32_t *bytecode,
 		const struct r600_bytecode_cf *cf);
