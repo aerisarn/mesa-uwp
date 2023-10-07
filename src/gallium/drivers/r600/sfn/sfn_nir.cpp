@@ -26,12 +26,13 @@
 
 #include "sfn_nir.h"
 
+#include "../r600_asm.h"
 #include "../r600_pipe.h"
 #include "../r600_shader.h"
+
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_intrinsics.h"
-#include "r600_asm.h"
 #include "sfn_assembler.h"
 #include "sfn_debug.h"
 #include "sfn_instr_tex.h"
