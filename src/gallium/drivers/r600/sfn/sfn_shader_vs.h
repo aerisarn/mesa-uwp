@@ -159,7 +159,7 @@ class VertexShader : public VertexStageShader {
 public:
    VertexShader(const pipe_stream_output_info *so_info,
                 r600_shader *gs_shader,
-                r600_shader_key& key);
+                const r600_shader_key& key);
 
    bool load_input(nir_intrinsic_instr *intr) override;
    bool store_output(nir_intrinsic_instr *intr) override;

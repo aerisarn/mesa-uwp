@@ -144,7 +144,7 @@ public:
    static Shader *translate_from_nir(nir_shader *nir,
                                      const pipe_stream_output_info *so_info,
                                      r600_shader *gs_shader,
-                                     r600_shader_key& key,
+                                     const r600_shader_key& key,
                                      r600_chip_class chip_class,
                                      radeon_family family);
 

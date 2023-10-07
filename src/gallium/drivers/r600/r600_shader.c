@@ -27,6 +27,7 @@
 #include "r600_sq.h"
 #include "r600_formats.h"
 #include "r600_opcodes.h"
+#include "r600_sfn.h"
 #include "r600_shader.h"
 #include "r600_dump.h"
 #include "r600d.h"

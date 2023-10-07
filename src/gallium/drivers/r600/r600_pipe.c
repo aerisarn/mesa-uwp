@@ -23,6 +23,7 @@
 #include "r600_pipe.h"
 #include "r600_public.h"
 #include "r600_isa.h"
+#include "r600_sfn.h"
 #include "evergreen_compute.h"
 #include "r600d.h"
 
@@ -662,9 +663,6 @@ static struct pipe_resource *r600_resource_create(struct pipe_screen *screen,
 
 	return r600_resource_create_common(screen, templ);
 }
-
-char *
-r600_finalize_nir(struct pipe_screen *screen, void *shader);
 
 struct pipe_screen *r600_screen_create(struct radeon_winsys *ws,
 				       const struct pipe_screen_config *config)
