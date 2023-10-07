@@ -178,7 +178,7 @@ void print_pipe_info(FILE *f, struct tgsi_shader_info *shader)
       PRINT_UINT_ARRAY_MEMBER(input_usage_mask, i);
    }
 
-   for (int i = 0; i < shader->num_inputs; ++i) {
+   for (int i = 0; i < shader->num_outputs; ++i) {
       PRINT_UINT_ARRAY_MEMBER(output_semantic_name, i);
       PRINT_UINT_ARRAY_MEMBER(output_semantic_index, i);
       PRINT_UINT_ARRAY_MEMBER(output_usagemask, i);
