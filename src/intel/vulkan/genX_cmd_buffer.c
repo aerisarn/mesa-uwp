@@ -6818,6 +6818,8 @@ void
 genX(emit_pipeline_select)(struct anv_batch *batch, uint32_t pipeline,
                            const struct anv_device *device)
 {
+   /* Bspec 55860: Xe2+ no longer requires PIPELINE_SELECT */
+#if GFX_VER < 20
    anv_batch_emit(batch, GENX(PIPELINE_SELECT), ps) {
       ps.MaskBits = GFX_VERx10 >= 125 ? 0x93 : GFX_VER >= 12 ? 0x13 : 0x3;
 #if GFX_VER == 12
@@ -6833,6 +6835,7 @@ genX(emit_pipeline_select)(struct anv_batch *batch, uint32_t pipeline,
          device->vk.enabled_features.cooperativeMatrix;
 #endif
    }
+#endif /* if GFX_VER < 20 */
 }
 
 static void
@@ -6843,6 +6846,14 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
 
    if (cmd_buffer->state.current_pipeline == pipeline)
       return;
+
+#if GFX_VER >= 20
+   /* Since we are not stalling/flushing caches explicitly while switching
+    * between the pipelines, we need to apply data dependency flushes recorded
+    * previously on the resource.
+    */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+#else
 
 #if GFX_VER == 9
    /* From the Broadwell PRM, Volume 2a: Instructions, PIPELINE_SELECT:
@@ -6999,7 +7010,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 #endif
-
+#endif /* else of if GFX_VER >= 20 */
    cmd_buffer->state.current_pipeline = pipeline;
 }
 
