@@ -125,7 +125,7 @@ if [ -n "$CI_NODE_INDEX" ]; then
 fi
 
 # shellcheck disable=SC2317
-replay_minio_upload_images() {
+replay_s3_upload_images() {
     find "$RESULTS/$__PREFIX" -type f -name "*.png" -printf "%P\n" \
         | while read -r line; do
 
@@ -206,7 +206,7 @@ __S3_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
 __S3_TRACES_PREFIX="traces"
 
 if [ "$PIGLIT_REPLAY_SUBCOMMAND" != "profile" ]; then
-    quiet replay_minio_upload_images
+    quiet replay_s3_upload_images
 fi
 
 
