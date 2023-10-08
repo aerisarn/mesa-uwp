@@ -133,7 +133,7 @@ replay_minio_upload_images() {
             fi
             __S3_PATH="$PIGLIT_REPLAY_REFERENCE_IMAGES_BASE"
             __DESTINATION_FILE_PATH="${line##*-}"
-            if curl -L -s -X HEAD "https://${__S3_PATH}/${__DESTINATION_FILE_PATH}" 2>/dev/null; then
+            if curl -L -s -I "https://${__S3_PATH}/${__DESTINATION_FILE_PATH}" | grep -q "content-type: application/octet-stream" 2>/dev/null; then
                 continue
             fi
         else
