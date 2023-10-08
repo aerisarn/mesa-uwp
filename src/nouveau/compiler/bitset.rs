@@ -107,6 +107,16 @@ impl BitSet {
         exists
     }
 
+    #[inline]
+    fn set_word(
+        &mut self,
+        w: usize,
+        mask: u32,
+        f: &mut impl FnMut(usize) -> u32,
+    ) {
+        self.words[w] = (self.words[w] & !mask) | (f(w) & mask);
+    }
+
     pub fn set_words(
         &mut self,
         bits: Range<usize>,
@@ -124,13 +134,13 @@ impl BitSet {
         self.reserve(last_word + 1);
 
         if first_word == last_word {
-            self.words[first_word] = f(first_word) & start_mask & end_mask;
+            self.set_word(first_word, start_mask & end_mask, &mut f);
         } else {
-            self.words[first_word] = f(first_word) & start_mask;
+            self.set_word(first_word, start_mask, &mut f);
             for w in (first_word + 1)..last_word {
-                self.words[w] = f(w);
+                self.set_word(w, !0, &mut f);
             }
-            self.words[last_word] = f(last_word) & end_mask;
+            self.set_word(last_word, end_mask, &mut f);
         }
     }
 
