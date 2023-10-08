@@ -8158,7 +8158,7 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
     * transfer queue.
     */
    if (batch->engine_class == INTEL_ENGINE_CLASS_COPY) {
-      assert(type != ANV_TIMESTAMP_CAPTURE_AT_CS_STALL ||
+      assert(type != ANV_TIMESTAMP_CAPTURE_AT_CS_STALL &&
              type != ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER);
    }
 
