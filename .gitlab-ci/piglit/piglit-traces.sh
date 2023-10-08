@@ -16,6 +16,9 @@ mkdir -p "$RESULTS"
 if [ "$PIGLIT_REPLAY_SUBCOMMAND" = "profile" ]; then
     yq -iY 'del(.traces[][] | select(.label[]? == "no-perf"))' \
       "$PIGLIT_REPLAY_DESCRIPTION_FILE"
+else
+    # keep the images for the later upload
+    PIGLIT_REPLAY_EXTRA_ARGS="--keep-image ${PIGLIT_REPLAY_EXTRA_ARGS}"
 fi
 
 # WINE

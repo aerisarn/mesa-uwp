@@ -179,7 +179,6 @@
   variables:
     PIGLIT_PLATFORM: mixed_glx_egl  # TODO, take wine/VK in account
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-amd.yml"
-    PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
 
 ############### Valve Infra
 .test-radv:

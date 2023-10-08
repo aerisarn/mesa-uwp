@@ -143,7 +143,7 @@ clang-format:
     exclude:
       - results/*.shader_cache
   variables:
-    PIGLIT_REPLAY_EXTRA_ARGS: --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-public --jwt-file=${CI_JOB_JWT_FILE}
+    PIGLIT_REPLAY_EXTRA_ARGS: --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-public --jwt-file=${CI_JOB_JWT_FILE}
     # until we overcome Infrastructure issues, give traces extra 5 min before timeout
     DEVICE_HANGING_TIMEOUT_SEC: 600
   script:
