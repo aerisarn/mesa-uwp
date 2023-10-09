@@ -434,7 +434,7 @@ gl_frag_result_name(gl_frag_result result)
 }
 
 unsigned
-num_mesh_vertices_per_primitive(enum mesa_prim prim)
+mesa_vertices_per_prim(enum mesa_prim prim)
 {
    switch(prim) {
    case MESA_PRIM_POINTS:

@@ -181,42 +181,6 @@ u_trim_pipe_prim(enum mesa_prim pipe_prim, unsigned *nr)
    }
 }
 
-static inline unsigned
-u_vertices_per_prim(enum mesa_prim primitive)
-{
-   switch(primitive) {
-   case MESA_PRIM_POINTS:
-      return 1;
-   case MESA_PRIM_LINES:
-   case MESA_PRIM_LINE_LOOP:
-   case MESA_PRIM_LINE_STRIP:
-      return 2;
-   case MESA_PRIM_TRIANGLES:
-   case MESA_PRIM_TRIANGLE_STRIP:
-   case MESA_PRIM_TRIANGLE_FAN:
-      return 3;
-   case MESA_PRIM_LINES_ADJACENCY:
-   case MESA_PRIM_LINE_STRIP_ADJACENCY:
-      return 4;
-   case MESA_PRIM_TRIANGLES_ADJACENCY:
-   case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:
-      return 6;
-
-   case MESA_PRIM_QUADS:
-   case MESA_PRIM_QUAD_STRIP:
-      /* these won't be seen from geometry shaders
-         but prim assembly might for prim id. */
-      return 4;
-
-   /* following primitives should never be used
-    * with geometry shaders abd their size is
-    * undefined */
-   case MESA_PRIM_POLYGON:
-   default:
-      debug_printf("Unrecognized geometry shader primitive");
-      return 3;
-   }
-}
 
 /**
  * Returns the number of decomposed primitives for the given

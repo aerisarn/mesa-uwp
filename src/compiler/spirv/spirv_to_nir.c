@@ -5996,7 +5996,7 @@ vtn_handle_write_packed_primitive_indices(struct vtn_builder *b, SpvOp opcode,
 
    if (!indices) {
       unsigned vertices_per_prim =
-         num_mesh_vertices_per_primitive(b->shader->info.mesh.primitive_type);
+         mesa_vertices_per_prim(b->shader->info.mesh.primitive_type);
       unsigned max_prim_indices =
          vertices_per_prim * b->shader->info.mesh.max_primitives_out;
       const struct glsl_type *t =

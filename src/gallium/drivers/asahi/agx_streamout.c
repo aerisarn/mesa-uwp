@@ -287,7 +287,7 @@ primitive_fits(nir_builder *b, struct agx_xfb_key *key)
    /* Get the number of vertices per primitive in the current mode, usually just
     * the base number but quads are tessellated.
     */
-   uint32_t verts_per_prim = u_vertices_per_prim(key->mode);
+   uint32_t verts_per_prim = mesa_vertices_per_prim(key->mode);
 
    if (u_decomposed_prim(key->mode) == MESA_PRIM_QUADS)
       verts_per_prim = 6;

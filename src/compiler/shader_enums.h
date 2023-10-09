@@ -1191,7 +1191,7 @@ enum ENUM_PACKED mesa_prim
 /**
  * Number of vertices per primitive as seen by a geometry or mesh shader.
  */
-unsigned num_mesh_vertices_per_primitive(enum mesa_prim prim);
+unsigned mesa_vertices_per_prim(enum mesa_prim prim);
 
 /**
  * A compare function enum for use in compiler lowering passes.  This is in

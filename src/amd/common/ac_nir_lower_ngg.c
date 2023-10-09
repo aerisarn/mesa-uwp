@@ -4912,7 +4912,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
                     bool fast_launch_2)
 {
    unsigned vertices_per_prim =
-      num_mesh_vertices_per_primitive(shader->info.mesh.primitive_type);
+      mesa_vertices_per_prim(shader->info.mesh.primitive_type);
 
    uint64_t per_vertex_outputs =
       shader->info.outputs_written & ~shader->info.per_primitive_outputs & ~SPECIAL_MS_OUT_MASK;

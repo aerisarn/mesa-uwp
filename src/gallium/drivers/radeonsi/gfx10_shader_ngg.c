@@ -7,14 +7,13 @@
 #include "si_pipe.h"
 #include "si_query.h"
 #include "si_shader_internal.h"
-#include "util/u_prim.h"
 
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader)
 {
    const struct si_shader_info *info = &shader->selector->info;
 
    if (shader->selector->stage == MESA_SHADER_GEOMETRY)
-      return u_vertices_per_prim(info->base.gs.output_primitive);
+      return mesa_vertices_per_prim(info->base.gs.output_primitive);
    else if (shader->selector->stage == MESA_SHADER_VERTEX) {
       if (info->base.vs.blit_sgprs_amd) {
          /* Blits always use axis-aligned rectangles with 3 vertices. */
@@ -86,7 +85,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    const unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    const bool use_adjacency =
       input_prim >= MESA_PRIM_LINES_ADJACENCY && input_prim <= MESA_PRIM_TRIANGLE_STRIP_ADJACENCY;
-   const unsigned max_verts_per_prim = u_vertices_per_prim(input_prim);
+   const unsigned max_verts_per_prim = mesa_vertices_per_prim(input_prim);
    const unsigned min_verts_per_prim = gs_stage == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
 
    /* All these are in dwords. The maximum is 16K dwords (64KB) of LDS per workgroup. */

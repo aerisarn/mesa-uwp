@@ -771,7 +771,7 @@ brw_compute_mue_map(const struct brw_compiler *compiler,
    memset(&map->len_dw[0], 0, sizeof(map->len_dw));
 
    unsigned vertices_per_primitive =
-      num_mesh_vertices_per_primitive(nir->info.mesh.primitive_type);
+      mesa_vertices_per_prim(nir->info.mesh.primitive_type);
 
    map->max_primitives = nir->info.mesh.max_primitives_out;
    map->max_vertices = nir->info.mesh.max_vertices_out;
@@ -1317,7 +1317,7 @@ brw_can_pack_primitive_indices(nir_shader *nir, struct index_packing_state *stat
       return false;
 
    state->vertices_per_primitive =
-         num_mesh_vertices_per_primitive(nir->info.mesh.primitive_type);
+         mesa_vertices_per_prim(nir->info.mesh.primitive_type);
    /* packing point indices doesn't help */
    if (state->vertices_per_primitive == 1)
       return false;
