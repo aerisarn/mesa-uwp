@@ -213,7 +213,7 @@ impl<'a> CoalesceGraph<'a> {
         for n in MergedIter::new(a.nodes.iter(), b.nodes.iter()) {
             loop {
                 if let Some(p) = dom.last() {
-                    if self.node_dominates(*p, *n, cfg) {
+                    if !self.node_dominates(*p, *n, cfg) {
                         dom.pop();
                     } else {
                         break;
