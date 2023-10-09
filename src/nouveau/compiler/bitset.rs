@@ -74,7 +74,7 @@ impl BitSet {
             if b < 32 {
                 return Some(w * 32 + usize::try_from(b).unwrap());
             }
-            mask = 0;
+            mask = u32::MAX;
             w += 1;
         }
         None
