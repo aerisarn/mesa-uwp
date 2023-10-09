@@ -1,6 +1,7 @@
 // Copyright © 2023 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
+use crate::bitset::BitSet;
 use crate::nak_ir::*;
 
 use std::cell::RefCell;
@@ -24,6 +25,7 @@ fn get_ssa_or_phi(
     ssa_alloc: &mut SSAValueAllocator,
     phi_alloc: &mut PhiAllocator,
     blocks: &[DefTrackerBlock],
+    needs_src: &mut BitSet,
     b_idx: usize,
     ssa: SSAValue,
 ) -> SSAValue {
@@ -41,8 +43,9 @@ fn get_ssa_or_phi(
             // it later if it's not needed
             all_same = false;
         } else {
-            let p_ssa =
-                get_ssa_or_phi(ssa_alloc, phi_alloc, blocks, *p_idx, ssa);
+            let p_ssa = get_ssa_or_phi(
+                ssa_alloc, phi_alloc, blocks, needs_src, *p_idx, ssa,
+            );
             if *pred_ssa.get_or_insert(p_ssa) != p_ssa {
                 all_same = false;
             }
@@ -64,6 +67,7 @@ fn get_ssa_or_phi(
         };
         for p_idx in &b.pred {
             if *p_idx >= b_idx {
+                needs_src.insert(*p_idx);
                 continue;
             }
             // The earlier recursive call ensured this exists
@@ -164,6 +168,7 @@ impl Function {
         let phi_alloc = &mut self.phi_alloc;
 
         let mut blocks = Vec::new();
+        let mut needs_src = BitSet::new();
         for b_idx in 0..cfg.len() {
             assert!(blocks.len() == b_idx);
             blocks.push(DefTrackerBlock {
@@ -177,7 +182,12 @@ impl Function {
                 instr.for_each_ssa_use_mut(|ssa| {
                     if num_defs.get(ssa).cloned().unwrap_or(0) > 1 {
                         *ssa = get_ssa_or_phi(
-                            ssa_alloc, phi_alloc, &blocks, b_idx, *ssa,
+                            ssa_alloc,
+                            phi_alloc,
+                            &blocks,
+                            &mut needs_src,
+                            b_idx,
+                            *ssa,
                         );
                     }
                 });
@@ -190,8 +200,15 @@ impl Function {
                     }
                 });
             }
+        }
 
-            // Populate phi sources for any back-edges
+        // Populate phi sources for any back-edges
+        loop {
+            let Some(b_idx) = needs_src.next_set(0) else {
+                break;
+            };
+            needs_src.remove(b_idx);
+
             for s_idx in &blocks[b_idx].succ {
                 if *s_idx <= b_idx {
                     let s = &blocks[*s_idx];
@@ -202,10 +219,16 @@ impl Function {
                     // set for s and so no new phis should need to be added.
                     // RefCell's dynamic borrow checks will assert this.
                     for phi in s.phis.borrow_mut().iter_mut() {
-                        let b_ssa = get_ssa_or_phi(
-                            ssa_alloc, phi_alloc, &blocks, b_idx, phi.orig,
-                        );
-                        phi.srcs.insert(b_idx, b_ssa);
+                        phi.srcs.entry(b_idx).or_insert_with(|| {
+                            get_ssa_or_phi(
+                                ssa_alloc,
+                                phi_alloc,
+                                &blocks,
+                                &mut needs_src,
+                                b_idx,
+                                phi.orig,
+                            )
+                        });
                     }
                 }
             }
