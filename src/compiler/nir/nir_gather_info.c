@@ -21,7 +21,6 @@
  * IN THE SOFTWARE.
  */
 
-#include "main/menums.h"
 #include "nir.h"
 #include "nir_deref.h"
 
