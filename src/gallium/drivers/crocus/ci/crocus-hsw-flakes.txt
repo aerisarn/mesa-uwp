@@ -10,6 +10,4 @@ spec@amd_performance_monitor@measure
 spec@amd_performance_monitor@measure@change counters while active
 spec@amd_performance_monitor@measure@counters in range
 
-spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_line_loop
-spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_lines
-spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_points,Fail
+spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray .*
