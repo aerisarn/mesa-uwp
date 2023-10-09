@@ -28,8 +28,20 @@ vn_device_memory_alloc_simple(struct vn_device *dev,
 {
    VkDevice dev_handle = vn_device_to_handle(dev);
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
-   return vn_call_vkAllocateMemory(dev->instance, dev_handle, alloc_info,
-                                   NULL, &mem_handle);
+   if (VN_PERF(NO_ASYNC_MEM_ALLOC)) {
+      return vn_call_vkAllocateMemory(dev->instance, dev_handle, alloc_info,
+                                      NULL, &mem_handle);
+   }
+
+   struct vn_instance_submit_command instance_submit;
+   vn_submit_vkAllocateMemory(dev->instance, 0, dev_handle, alloc_info, NULL,
+                              &mem_handle, &instance_submit);
+   if (!instance_submit.ring_seqno_valid)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   mem->bo_ring_seqno_valid = true;
+   mem->bo_ring_seqno = instance_submit.ring_seqno;
+   return VK_SUCCESS;
 }
 
 static inline void
@@ -39,6 +51,48 @@ vn_device_memory_free_simple(struct vn_device *dev,
    VkDevice dev_handle = vn_device_to_handle(dev);
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    vn_async_vkFreeMemory(dev->instance, dev_handle, mem_handle, NULL);
+}
+
+static VkResult
+vn_device_memory_wait_alloc(struct vn_device *dev,
+                            struct vn_device_memory *mem)
+{
+   if (!mem->bo_ring_seqno_valid)
+      return VK_SUCCESS;
+
+   /* fine to false it here since renderer submission failure is fatal */
+   mem->bo_ring_seqno_valid = false;
+
+   uint32_t local_data[8];
+   struct vn_cs_encoder local_enc =
+      VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
+   vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, dev->instance->ring.id,
+                                 mem->bo_ring_seqno);
+   return vn_renderer_submit_simple(dev->renderer, local_data,
+                                    vn_cs_encoder_get_len(&local_enc));
+}
+
+static inline VkResult
+vn_device_memory_bo_init(struct vn_device *dev,
+                         struct vn_device_memory *mem,
+                         VkExternalMemoryHandleTypeFlags external_handles)
+{
+   VkResult result = vn_device_memory_wait_alloc(dev, mem);
+   if (result != VK_SUCCESS)
+      return result;
+
+   return vn_renderer_bo_create_from_device_memory(
+      dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags,
+      external_handles, &mem->base_bo);
+}
+
+static inline void
+vn_device_memory_bo_fini(struct vn_device *dev, struct vn_device_memory *mem)
+{
+   if (mem->base_bo) {
+      vn_device_memory_wait_alloc(dev, mem);
+      vn_renderer_bo_unref(dev->renderer, mem->base_bo);
+   }
 }
 
 static VkResult
@@ -68,9 +122,7 @@ vn_device_memory_pool_grow_alloc(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto obj_fini;
 
-   result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags, 0,
-      &mem->base_bo);
+   result = vn_device_memory_bo_init(dev, mem, 0);
    if (result != VK_SUCCESS)
       goto mem_free;
 
@@ -342,9 +394,7 @@ vn_device_memory_alloc_export(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
-   result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags,
-      external_handles, &mem->base_bo);
+   result = vn_device_memory_bo_init(dev, mem, external_handles);
    if (result != VK_SUCCESS) {
       vn_device_memory_free_simple(dev, mem);
       return result;
@@ -587,8 +637,8 @@ vn_FreeMemory(VkDevice device,
    if (mem->base_memory) {
       vn_device_memory_pool_unref(dev, mem->base_memory);
    } else {
-      if (mem->base_bo)
-         vn_renderer_bo_unref(dev->renderer, mem->base_bo);
+      /* ensure renderer side import still sees the resource */
+      vn_device_memory_bo_fini(dev, mem);
 
       if (mem->bo_roundtrip_seqno_valid)
          vn_instance_wait_roundtrip(dev->instance, mem->bo_roundtrip_seqno);
@@ -646,9 +696,7 @@ vn_MapMemory(VkDevice device,
     * the extension.
     */
    if (need_bo) {
-      result = vn_renderer_bo_create_from_device_memory(
-         dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags, 0,
-         &mem->base_bo);
+      result = vn_device_memory_bo_init(dev, mem, 0);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
    }

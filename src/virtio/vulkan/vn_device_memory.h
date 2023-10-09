@@ -32,6 +32,21 @@ struct vn_device_memory {
    /* non-NULL when mappable or external */
    struct vn_renderer_bo *base_bo;
 
+   /* ensure renderer side resource create is called after vkAllocateMemory
+    *
+    * 1. driver submits vkAllocateMemory (alloc) via ring for a ring seqno
+    * 2. driver submits via vq to wait for above ring to reach the seqno
+    * 3. driver creates virtgpu bo from renderer VkDeviceMemory
+    *
+    * ensure renderer side resource destroy is called after vkAllocateMemory
+    *
+    * 1. driver submits vkAllocateMemory (import) via ring for a ring seqno
+    * 2. driver submits via vq to wait for above ring to reach the seqno
+    * 3. driver destroys virtgpu bo
+    */
+   bool bo_ring_seqno_valid;
+   uint32_t bo_ring_seqno;
+
    /* ensure renderer side vkFreeMemory is called after vkGetMemoryFdKHR
     *
     * 1. driver creates virtgpu bo from renderer VkDeviceMemory
