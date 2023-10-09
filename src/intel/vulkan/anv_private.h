@@ -2437,6 +2437,14 @@ anv_descriptor_set_layout_descriptor_buffer_size(const struct anv_descriptor_set
                                                  uint32_t var_desc_count);
 
 void
+anv_push_descriptor_set_init(struct anv_cmd_buffer *cmd_buffer,
+                             struct anv_push_descriptor_set *push_set,
+                             struct anv_descriptor_set_layout *layout);
+
+void
+anv_push_descriptor_set_finish(struct anv_push_descriptor_set *push_set);
+
+void
 anv_descriptor_set_write_image_view(struct anv_device *device,
                                     struct anv_descriptor_set *set,
                                     const VkDescriptorImageInfo * const info,

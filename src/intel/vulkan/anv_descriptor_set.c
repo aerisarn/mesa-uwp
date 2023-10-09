@@ -1526,6 +1526,79 @@ VkResult anv_FreeDescriptorSets(
    return VK_SUCCESS;
 }
 
+void
+anv_push_descriptor_set_init(struct anv_cmd_buffer *cmd_buffer,
+                             struct anv_push_descriptor_set *push_set,
+                             struct anv_descriptor_set_layout *layout)
+{
+   struct anv_descriptor_set *set = &push_set->set;
+
+   if (set->layout != layout) {
+      if (set->layout) {
+         anv_descriptor_set_layout_unref(cmd_buffer->device, set->layout);
+      } else {
+         /* one-time initialization */
+         vk_object_base_init(&cmd_buffer->device->vk, &set->base,
+                             VK_OBJECT_TYPE_DESCRIPTOR_SET);
+         set->is_push = true;
+         set->buffer_views = push_set->buffer_views;
+      }
+
+      anv_descriptor_set_layout_ref(layout);
+      set->layout = layout;
+      set->generate_surface_states = 0;
+   }
+
+   assert(set->is_push && set->buffer_views);
+   set->size = anv_descriptor_set_layout_size(layout, false /* host_only */, 0);
+   set->buffer_view_count = layout->buffer_view_count;
+   set->descriptor_count = layout->descriptor_count;
+
+   if (layout->descriptor_buffer_size &&
+       (push_set->set_used_on_gpu ||
+        set->desc_mem.alloc_size < layout->descriptor_buffer_size)) {
+      struct anv_physical_device *pdevice = cmd_buffer->device->physical;
+      struct anv_state_stream *push_stream =
+         pdevice->indirect_descriptors ?
+         &cmd_buffer->push_descriptor_stream :
+         &cmd_buffer->surface_state_stream;
+      uint64_t push_base_address = pdevice->indirect_descriptors ?
+         pdevice->va.push_descriptor_pool.addr :
+         pdevice->va.internal_surface_state_pool.addr;
+
+      /* The previous buffer is either actively used by some GPU command (so
+       * we can't modify it) or is too small.  Allocate a new one.
+       */
+      struct anv_state desc_mem =
+         anv_state_stream_alloc(push_stream,
+                                anv_descriptor_set_layout_descriptor_buffer_size(layout, 0),
+                                ANV_UBO_ALIGNMENT);
+      if (set->desc_mem.alloc_size) {
+         /* TODO: Do we really need to copy all the time? */
+         memcpy(desc_mem.map, set->desc_mem.map,
+                MIN2(desc_mem.alloc_size, set->desc_mem.alloc_size));
+      }
+      set->desc_mem = desc_mem;
+
+      set->desc_addr = anv_state_pool_state_address(
+         push_stream->state_pool,
+         set->desc_mem);
+      set->desc_offset = anv_address_physical(set->desc_addr) -
+                         push_base_address;
+   }
+}
+
+void
+anv_push_descriptor_set_finish(struct anv_push_descriptor_set *push_set)
+{
+   struct anv_descriptor_set *set = &push_set->set;
+   if (set->layout) {
+      struct anv_device *device =
+         container_of(set->base.device, struct anv_device, vk);
+      anv_descriptor_set_layout_unref(device, set->layout);
+   }
+}
+
 static uint32_t
 anv_surface_state_to_handle(struct anv_physical_device *device,
                             struct anv_state state)
