@@ -1062,6 +1062,13 @@ dri2_setup_extensions(_EGLDisplay *disp)
         dri2_dpy->present_minor_version >= 2)) &&
       (dri2_dpy->image && dri2_dpy->image->base.version >= 15);
 #endif
+   if (disp->Options.Zink && !disp->Options.ForceSoftware &&
+#ifdef HAVE_DRI3_MODIFIERS
+       dri2_dpy->dri3_major_version != -1 &&
+       !dri2_dpy->multibuffers_available &&
+#endif
+       !debug_get_bool_option("LIBGL_KOPPER_DRI2", false))
+      return EGL_FALSE;
 
    loader_bind_extensions(dri2_dpy, optional_core_extensions,
                           ARRAY_SIZE(optional_core_extensions), extensions);
