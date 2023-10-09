@@ -69,17 +69,6 @@ agx_upload_uniforms(struct agx_batch *batch)
    batch->uniforms.tables[AGX_SYSVAL_TABLE_ROOT] = root_ptr.gpu;
    batch->uniforms.sample_mask = ctx->sample_mask;
 
-   if (ctx->streamout.key.active) {
-      batch->uniforms.xfb = ctx->streamout.params;
-
-      for (unsigned i = 0; i < batch->ctx->streamout.num_targets; ++i) {
-         uint32_t size = 0;
-         batch->uniforms.xfb.base[i] =
-            agx_batch_get_so_address(batch, i, &size);
-         batch->uniforms.xfb.size[i] = size;
-      }
-   }
-
    memcpy(root_ptr.cpu, &batch->uniforms, sizeof(batch->uniforms));
 }
 

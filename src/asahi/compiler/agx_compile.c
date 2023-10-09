@@ -2931,7 +2931,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       out->tag_write_disable = !nir->info.writes_memory;
 
-   bool needs_libagx = false;
+   bool needs_libagx = nir->info.stage == MESA_SHADER_GEOMETRY;
 
    /* Late tilebuffer lowering creates multisampled image stores */
    NIR_PASS(needs_libagx, nir, agx_nir_lower_multisampled_image_store);

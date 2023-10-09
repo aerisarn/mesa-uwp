@@ -153,18 +153,14 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
                                   intr->src[0].ssa);
    case nir_intrinsic_load_num_workgroups:
       return load_sysval(b, 3, 32, AGX_SYSVAL_TABLE_GRID, 0);
+   case nir_intrinsic_load_first_vertex:
+      return load_sysval(b, 1, 32, AGX_SYSVAL_TABLE_PARAMS, 0);
+   case nir_intrinsic_load_base_instance:
+      return load_sysval(b, 1, 32, AGX_SYSVAL_TABLE_PARAMS, 4);
    case nir_intrinsic_load_layer_id_written_agx:
       return load_sysval_root(b, 1, 16, &u->layer_id_written);
-   case nir_intrinsic_load_xfb_address:
-      return load_sysval_root(b, 1, 64, &u->xfb.base[nir_intrinsic_base(intr)]);
-   case nir_intrinsic_load_xfb_size:
-      return load_sysval_root(b, 1, 32, &u->xfb.size[nir_intrinsic_base(intr)]);
-   case nir_intrinsic_load_xfb_index_buffer:
-      return load_sysval_root(b, 1, 64, &u->xfb.index_buffer);
-   case nir_intrinsic_load_base_vertex:
-      return load_sysval_root(b, 1, 32, &u->xfb.base_vertex);
-   case nir_intrinsic_load_num_vertices:
-      return load_sysval_root(b, 1, 32, &u->xfb.num_vertices);
+   case nir_intrinsic_load_geometry_param_buffer_agx:
+      return load_sysval_root(b, 1, 64, &u->geometry_params);
    default:
       return NULL;
    }

@@ -13,6 +13,7 @@ libasahi_lib_files = files(
   'agx_meta.c',
   'agx_tilebuffer.c',
   'agx_nir_lower_alpha.c',
+  'agx_nir_lower_gs.c',
   'agx_nir_lower_msaa.c',
   'agx_nir_lower_sample_intrinsics.c',
   'agx_nir_lower_tilebuffer.c',
@@ -28,6 +29,8 @@ libasahi_decode_files = files(
 
 libagx_shader_files = files(
   'shaders/libagx.h',
+  'shaders/geometry.cl',
+  'shaders/geometry.h',
   'shaders/texture.cl',
 )
 
@@ -75,6 +78,7 @@ libagx_shaders = custom_target(
     prepended_input_args, '-o', '@OUTPUT@', '--',
     '-cl-std=cl2.0', '-D__OPENCL_VERSION__=200',
     '-I' + join_paths(meson.current_source_dir(), '.'),
+    '-I' + join_paths(meson.current_source_dir(), '../../'),
     '-I' + join_paths(meson.current_source_dir(), 'shaders'),
     '-I' + join_paths(meson.current_build_dir(), '.'),
     ],
