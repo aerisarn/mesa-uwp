@@ -1099,7 +1099,7 @@ static void si_test_gds_memory_management(struct si_context *sctx, unsigned allo
 static void si_disk_cache_create(struct si_screen *sscreen)
 {
    /* Don't use the cache if shader dumping is enabled. */
-   if (sscreen->debug_flags & DBG_ALL_SHADERS)
+   if (sscreen->debug_flags & (DBG_ALL_SHADERS | DBG(USE_ACO)))
       return;
 
    struct mesa_sha1 ctx;
