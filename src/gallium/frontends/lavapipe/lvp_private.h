@@ -676,19 +676,7 @@ lvp_vk_format_to_pipe_format(VkFormat format)
        format == VK_FORMAT_R64G64B64_SFLOAT ||
        format == VK_FORMAT_A2R10G10B10_SINT_PACK32 ||
        format == VK_FORMAT_A2B10G10R10_SINT_PACK32 ||
-       format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM ||
-       format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
-       format == VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM ||
-       format == VK_FORMAT_G8_B8R8_2PLANE_422_UNORM ||
-       format == VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM ||
-       format == VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM ||
-       format == VK_FORMAT_G16_B16R16_2PLANE_420_UNORM ||
-       format == VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM ||
-       format == VK_FORMAT_G16_B16R16_2PLANE_422_UNORM ||
-       format == VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM ||
-       format == VK_FORMAT_D16_UNORM_S8_UINT ||
-       format == VK_FORMAT_R10X6G10X6_UNORM_2PACK16 ||
-       format == VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16)
+       format == VK_FORMAT_D16_UNORM_S8_UINT)
       return PIPE_FORMAT_NONE;
 
    return vk_format_to_pipe_format(format);

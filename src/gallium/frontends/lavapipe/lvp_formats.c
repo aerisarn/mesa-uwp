@@ -137,9 +137,20 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       if (lvp_is_filter_minmax_format_supported(format))
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
-      if (vk_format_get_ycbcr_info(format)) {
-         features |= VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT |
-                     VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
+      const struct vk_format_ycbcr_info *ycbcr_info =
+         vk_format_get_ycbcr_info(format);
+      if (ycbcr_info) {
+         if (ycbcr_info->n_planes > 1)
+            features |= VK_FORMAT_FEATURE_DISJOINT_BIT;
+         else
+            features |= VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
+
+         for (uint8_t plane = 0; plane < ycbcr_info->n_planes; plane++) {
+            const struct vk_format_ycbcr_plane *plane_info = &ycbcr_info->planes[plane];
+            if (plane_info->denominator_scales[0] > 1 ||
+                plane_info->denominator_scales[1] > 1)
+               features |= VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT;
+         }
 
          /* The subsampled formats have no support for linear filters. */
          const struct util_format_description *desc = util_format_description(pformat);
