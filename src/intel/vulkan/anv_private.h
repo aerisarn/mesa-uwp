@@ -2574,6 +2574,7 @@ struct anv_pipeline_sets_layout {
 
    uint32_t num_sets;
    uint32_t num_dynamic_buffers;
+   int push_descriptor_set_index;
 
    bool independent_sets;
 

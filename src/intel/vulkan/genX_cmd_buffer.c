@@ -2444,25 +2444,26 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                           struct anv_cmd_pipeline_state *state,
                           struct anv_pipeline *pipeline)
 {
-   struct anv_descriptor_set *set = &state->push_descriptor.set;
-   struct anv_descriptor_set_layout *layout = set->layout;
+   assert(pipeline->use_push_descriptor &&
+          pipeline->layout.push_descriptor_set_index != -1);
 
-   if (pipeline->use_push_descriptor) {
-      while (set->generate_surface_states) {
-         int desc_idx = u_bit_scan(&set->generate_surface_states);
-         struct anv_descriptor *desc = &set->descriptors[desc_idx];
-         struct anv_buffer_view *bview = desc->set_buffer_view;
+   struct anv_descriptor_set *set =
+      state->descriptors[pipeline->layout.push_descriptor_set_index];
+   while (set->generate_surface_states) {
+      int desc_idx = u_bit_scan(&set->generate_surface_states);
+      struct anv_descriptor *desc = &set->descriptors[desc_idx];
+      struct anv_buffer_view *bview = desc->set_buffer_view;
 
-         if (bview != NULL) {
-            bview->general.state =
-               anv_cmd_buffer_alloc_surface_state(cmd_buffer);
-            anv_descriptor_write_surface_state(cmd_buffer->device, desc,
-                                               bview->general.state);
-         }
+      if (bview != NULL) {
+         bview->general.state =
+            anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+         anv_descriptor_write_surface_state(cmd_buffer->device, desc,
+                                            bview->general.state);
       }
    }
 
    if (pipeline->use_push_descriptor_buffer) {
+      struct anv_descriptor_set_layout *layout = set->layout;
       enum isl_format format =
          anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);

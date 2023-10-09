@@ -845,6 +845,7 @@ anv_pipeline_sets_layout_init(struct anv_pipeline_sets_layout *layout,
    memset(layout, 0, sizeof(*layout));
 
    layout->device = device;
+   layout->push_descriptor_set_index = -1;
    layout->independent_sets = independent_sets;
 }
 
@@ -874,6 +875,12 @@ anv_pipeline_sets_layout_add(struct anv_pipeline_sets_layout *layout,
    layout->num_dynamic_buffers += set_layout->dynamic_offset_count;
 
    assert(layout->num_dynamic_buffers < MAX_DYNAMIC_BUFFERS);
+
+   if (set_layout->flags &
+       VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) {
+      assert(layout->push_descriptor_set_index == -1);
+      layout->push_descriptor_set_index = set_idx;
+   }
 }
 
 void
