@@ -3655,43 +3655,43 @@ genX(CmdExecuteCommands)(
     uint32_t                                    commandBufferCount,
     const VkCommandBuffer*                      pCmdBuffers)
 {
-   ANV_FROM_HANDLE(anv_cmd_buffer, primary, commandBuffer);
+   ANV_FROM_HANDLE(anv_cmd_buffer, container, commandBuffer);
 
-   assert(primary->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   assert(container->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-   if (anv_batch_has_error(&primary->batch))
+   if (anv_batch_has_error(&container->batch))
       return;
 
    /* The secondary command buffers will assume that the PMA fix is disabled
     * when they begin executing.  Make sure this is true.
     */
-   genX(cmd_buffer_enable_pma_fix)(primary, false);
+   genX(cmd_buffer_enable_pma_fix)(container, false);
 
    /* Turn on preemption in case it was toggled off. */
-   if (!primary->state.gfx.object_preemption)
-      genX(cmd_buffer_set_preemption)(primary, true);
+   if (!container->state.gfx.object_preemption)
+      genX(cmd_buffer_set_preemption)(container, true);
 
    /* Wa_14015814527
     *
     * Apply task URB workaround before secondary cmd buffers.
     */
-   genX(apply_task_urb_workaround)(primary);
+   genX(apply_task_urb_workaround)(container);
 
    /* Flush query clears using blorp so that secondary query writes do not
     * race with the clear.
     */
-   if (primary->state.queries.clear_bits) {
-      anv_add_pending_pipe_bits(primary,
-                                ANV_PIPE_QUERY_BITS(primary->state.queries.clear_bits),
+   if (container->state.queries.clear_bits) {
+      anv_add_pending_pipe_bits(container,
+                                ANV_PIPE_QUERY_BITS(container->state.queries.clear_bits),
                                 "query clear flush prior to secondary buffer");
    }
 
    /* The secondary command buffer doesn't know which textures etc. have been
     * flushed prior to their execution.  Apply those flushes now.
     */
-   genX(cmd_buffer_apply_pipe_flushes)(primary);
+   genX(cmd_buffer_apply_pipe_flushes)(container);
 
-   genX(cmd_buffer_flush_generated_draws)(primary);
+   genX(cmd_buffer_flush_generated_draws)(container);
 
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       ANV_FROM_HANDLE(anv_cmd_buffer, secondary, pCmdBuffers[i]);
@@ -3700,13 +3700,13 @@ genX(CmdExecuteCommands)(
       assert(!anv_batch_has_error(&secondary->batch));
 
       if (secondary->state.conditional_render_enabled) {
-         if (!primary->state.conditional_render_enabled) {
+         if (!container->state.conditional_render_enabled) {
             /* Secondary buffer is constructed as if it will be executed
              * with conditional rendering, we should satisfy this dependency
-             * regardless of conditional rendering being enabled in primary.
+             * regardless of conditional rendering being enabled in container.
              */
             struct mi_builder b;
-            mi_builder_init(&b, primary->device->info, &primary->batch);
+            mi_builder_init(&b, container->device->info, &container->batch);
             mi_store(&b, mi_reg64(ANV_PREDICATE_RESULT_REG),
                          mi_imm(UINT64_MAX));
          }
@@ -3714,48 +3714,48 @@ genX(CmdExecuteCommands)(
 
       if (secondary->usage_flags &
           VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
-         /* If we're continuing a render pass from the primary, we need to
+         /* If we're continuing a render pass from the container, we need to
           * copy the surface states for the current subpass into the storage
           * we allocated for them in BeginCommandBuffer.
           */
-         struct anv_state src_state = primary->state.gfx.att_states;
+         struct anv_state src_state = container->state.gfx.att_states;
          struct anv_state dst_state = secondary->state.gfx.att_states;
          assert(src_state.alloc_size == dst_state.alloc_size);
 
          genX(cmd_buffer_so_memcpy)(
-            primary,
-            anv_state_pool_state_address(&primary->device->internal_surface_state_pool,
+            container,
+            anv_state_pool_state_address(&container->device->internal_surface_state_pool,
                                          dst_state),
-            anv_state_pool_state_address(&primary->device->internal_surface_state_pool,
+            anv_state_pool_state_address(&container->device->internal_surface_state_pool,
                                          src_state),
             src_state.alloc_size);
       }
 
-      anv_cmd_buffer_add_secondary(primary, secondary);
+      anv_cmd_buffer_add_secondary(container, secondary);
 
-      /* Add secondary buffer's RCS command buffer to primary buffer's RCS
+      /* Add secondary buffer's RCS command buffer to container buffer's RCS
        * command buffer for execution if secondary RCS is valid.
        */
       if (secondary->companion_rcs_cmd_buffer != NULL) {
-         if (primary->companion_rcs_cmd_buffer == NULL) {
-            VkResult result = anv_create_companion_rcs_command_buffer(primary);
+         if (container->companion_rcs_cmd_buffer == NULL) {
+            VkResult result = anv_create_companion_rcs_command_buffer(container);
             if (result != VK_SUCCESS) {
-               anv_batch_set_error(&primary->batch, result);
+               anv_batch_set_error(&container->batch, result);
                return;
             }
          }
-         anv_cmd_buffer_add_secondary(primary->companion_rcs_cmd_buffer,
+         anv_cmd_buffer_add_secondary(container->companion_rcs_cmd_buffer,
                                       secondary->companion_rcs_cmd_buffer);
       }
 
-      assert(secondary->perf_query_pool == NULL || primary->perf_query_pool == NULL ||
-             secondary->perf_query_pool == primary->perf_query_pool);
+      assert(secondary->perf_query_pool == NULL || container->perf_query_pool == NULL ||
+             secondary->perf_query_pool == container->perf_query_pool);
       if (secondary->perf_query_pool)
-         primary->perf_query_pool = secondary->perf_query_pool;
+         container->perf_query_pool = secondary->perf_query_pool;
 
 #if INTEL_NEEDS_WA_1808121037
       if (secondary->state.depth_reg_mode != ANV_DEPTH_REG_MODE_UNKNOWN)
-         primary->state.depth_reg_mode = secondary->state.depth_reg_mode;
+         container->state.depth_reg_mode = secondary->state.depth_reg_mode;
 #endif
    }
 
@@ -3763,7 +3763,7 @@ genX(CmdExecuteCommands)(
     * invalidate the whole thing.
     */
    if (GFX_VER == 9) {
-      anv_add_pending_pipe_bits(primary,
+      anv_add_pending_pipe_bits(container,
                                 ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT,
                                 "Secondary cmd buffer not tracked in VF cache");
    }
@@ -3771,34 +3771,34 @@ genX(CmdExecuteCommands)(
    /* The secondary may have selected a different pipeline (3D or compute) and
     * may have changed the current L3$ configuration.  Reset our tracking
     * variables to invalid values to ensure that we re-emit these in the case
-    * where we do any draws or compute dispatches from the primary after the
+    * where we do any draws or compute dispatches from the container after the
     * secondary has returned.
     */
-   primary->state.current_pipeline = UINT32_MAX;
-   primary->state.current_l3_config = NULL;
-   primary->state.current_hash_scale = 0;
-   primary->state.gfx.push_constant_stages = 0;
-   primary->state.gfx.ds_write_state = false;
-   memcpy(primary->state.gfx.dyn_state.dirty,
-          primary->device->gfx_dirty_state,
-          sizeof(primary->state.gfx.dyn_state.dirty));
+   container->state.current_pipeline = UINT32_MAX;
+   container->state.current_l3_config = NULL;
+   container->state.current_hash_scale = 0;
+   container->state.gfx.push_constant_stages = 0;
+   container->state.gfx.ds_write_state = false;
+   memcpy(container->state.gfx.dyn_state.dirty,
+          container->device->gfx_dirty_state,
+          sizeof(container->state.gfx.dyn_state.dirty));
 
    /* Each of the secondary command buffers will use its own state base
-    * address.  We need to re-emit state base address for the primary after
+    * address.  We need to re-emit state base address for the container after
     * all of the secondaries are done.
     *
     * TODO: Maybe we want to make this a dirty bit to avoid extra state base
     * address calls?
     */
-   genX(cmd_buffer_emit_state_base_address)(primary);
+   genX(cmd_buffer_emit_state_base_address)(container);
 
-   /* Copy of utrace timestamp buffers from secondary into primary */
-   struct anv_device *device = primary->device;
+   /* Copy of utrace timestamp buffers from secondary into container */
+   struct anv_device *device = container->device;
    if (u_trace_enabled(&device->ds.trace_context)) {
-      trace_intel_begin_trace_copy(&primary->trace);
+      trace_intel_begin_trace_copy(&container->trace);
 
       struct anv_memcpy_state memcpy_state;
-      genX(emit_so_memcpy_init)(&memcpy_state, device, &primary->batch);
+      genX(emit_so_memcpy_init)(&memcpy_state, device, &container->batch);
       uint32_t num_traces = 0;
       for (uint32_t i = 0; i < commandBufferCount; i++) {
          ANV_FROM_HANDLE(anv_cmd_buffer, secondary, pCmdBuffers[i]);
@@ -3806,16 +3806,16 @@ genX(CmdExecuteCommands)(
          num_traces += secondary->trace.num_traces;
          u_trace_clone_append(u_trace_begin_iterator(&secondary->trace),
                               u_trace_end_iterator(&secondary->trace),
-                              &primary->trace,
+                              &container->trace,
                               &memcpy_state,
                               cmd_buffer_emit_copy_ts_buffer);
       }
       genX(emit_so_memcpy_fini)(&memcpy_state);
 
-      trace_intel_end_trace_copy(&primary->trace, num_traces);
+      trace_intel_end_trace_copy(&container->trace, num_traces);
 
       /* Memcpy is done using the 3D pipeline. */
-      primary->state.current_pipeline = _3D;
+      container->state.current_pipeline = _3D;
    }
 }
 
