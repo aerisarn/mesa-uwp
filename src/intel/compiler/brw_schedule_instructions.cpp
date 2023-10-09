@@ -65,9 +65,8 @@ class schedule_node : public exec_node
 public:
    schedule_node(backend_instruction *inst, instruction_scheduler *sched);
    void set_latency_gfx4();
-   void set_latency_gfx7(bool is_haswell);
+   void set_latency_gfx7(const struct brw_isa_info *isa);
 
-   const struct brw_isa_info *isa;
    backend_instruction *inst;
    schedule_node **children;
    int *child_latency;
@@ -155,8 +154,10 @@ schedule_node::set_latency_gfx4()
 }
 
 void
-schedule_node::set_latency_gfx7(bool is_haswell)
+schedule_node::set_latency_gfx7(const struct brw_isa_info *isa)
 {
+   const bool is_haswell = isa->devinfo->verx10 == 75;
+
    switch (inst->opcode) {
    case BRW_OPCODE_MAD:
       /* 2 cycles
@@ -979,8 +980,8 @@ schedule_node::schedule_node(backend_instruction *inst,
                              instruction_scheduler *sched)
 {
    const struct intel_device_info *devinfo = sched->bs->devinfo;
+   const struct brw_isa_info *isa = &sched->bs->compiler->isa;
 
-   this->isa = &sched->bs->compiler->isa;
    this->inst = inst;
    this->child_array_size = 0;
    this->children = NULL;
@@ -998,7 +999,7 @@ schedule_node::schedule_node(backend_instruction *inst,
    if (!sched->post_reg_alloc)
       this->latency = 1;
    else if (devinfo->ver >= 6)
-      set_latency_gfx7(devinfo->verx10 == 75);
+      set_latency_gfx7(isa);
    else
       set_latency_gfx4();
 }
