@@ -778,6 +778,13 @@ static const char* const xe2_lsc_cache_store[] = {
    [XE2_LSC_CACHE_STORE_L1WB_L3WB]       = "L1WB_L3WB",
 };
 
+static const char* const dpas_systolic_depth[4] = {
+   [0] = "16",
+   [1] = "2",
+   [2] = "4",
+   [3] = "8"
+};
+
 static int column;
 
 static int
@@ -1038,6 +1045,28 @@ dest_3src(FILE *file, const struct intel_device_info *devinfo,
       err |= control(file, "writemask", writemask,
                      brw_inst_3src_a16_dst_writemask(devinfo, inst), NULL);
    }
+   string(file, brw_reg_type_to_letters(type));
+
+   return 0;
+}
+
+static int
+dest_dpas_3src(FILE *file, const struct intel_device_info *devinfo,
+               const brw_inst *inst)
+{
+   uint32_t reg_file =
+      reg_file = brw_inst_dpas_3src_dst_reg_file(devinfo, inst);
+
+   if (reg(file, reg_file, brw_inst_dpas_3src_dst_reg_nr(devinfo, inst)) == -1)
+      return 0;
+
+   enum brw_reg_type type = brw_inst_dpas_3src_dst_type(devinfo, inst);
+   unsigned subreg_nr = brw_inst_dpas_3src_dst_subreg_nr(devinfo, inst);
+
+   if (subreg_nr)
+      format(file, ".%u", subreg_nr);
+   string(file, "<1>");
+
    string(file, brw_reg_type_to_letters(type));
 
    return 0;
@@ -1518,6 +1547,72 @@ src2_3src(FILE *file, const struct intel_device_info *devinfo,
 }
 
 static int
+src0_dpas_3src(FILE *file, const struct intel_device_info *devinfo,
+               const brw_inst *inst)
+{
+   uint32_t reg_file =
+      reg_file = brw_inst_dpas_3src_src0_reg_file(devinfo, inst);
+
+   if (reg(file, reg_file, brw_inst_dpas_3src_src0_reg_nr(devinfo, inst)) == -1)
+      return 0;
+
+   unsigned subreg_nr = brw_inst_dpas_3src_src0_subreg_nr(devinfo, inst);
+   enum brw_reg_type type = brw_inst_dpas_3src_src0_type(devinfo, inst);
+
+   if (subreg_nr)
+      format(file, ".%d", subreg_nr);
+   src_align1_region(file, 1, 1, 0);
+
+   string(file, brw_reg_type_to_letters(type));
+
+   return 0;
+}
+
+static int
+src1_dpas_3src(FILE *file, const struct intel_device_info *devinfo,
+               const brw_inst *inst)
+{
+   uint32_t reg_file =
+      reg_file = brw_inst_dpas_3src_src1_reg_file(devinfo, inst);
+
+   if (reg(file, reg_file, brw_inst_dpas_3src_src1_reg_nr(devinfo, inst)) == -1)
+      return 0;
+
+   unsigned subreg_nr = brw_inst_dpas_3src_src1_subreg_nr(devinfo, inst);
+   enum brw_reg_type type = brw_inst_dpas_3src_src1_type(devinfo, inst);
+
+   if (subreg_nr)
+      format(file, ".%d", subreg_nr);
+   src_align1_region(file, 1, 1, 0);
+
+   string(file, brw_reg_type_to_letters(type));
+
+   return 0;
+}
+
+static int
+src2_dpas_3src(FILE *file, const struct intel_device_info *devinfo,
+               const brw_inst *inst)
+{
+   uint32_t reg_file =
+      reg_file = brw_inst_dpas_3src_src2_reg_file(devinfo, inst);
+
+   if (reg(file, reg_file, brw_inst_dpas_3src_src2_reg_nr(devinfo, inst)) == -1)
+      return 0;
+
+   unsigned subreg_nr = brw_inst_dpas_3src_src2_subreg_nr(devinfo, inst);
+   enum brw_reg_type type = brw_inst_dpas_3src_src2_type(devinfo, inst);
+
+   if (subreg_nr)
+      format(file, ".%d", subreg_nr);
+   src_align1_region(file, 1, 1, 0);
+
+   string(file, brw_reg_type_to_letters(type));
+
+   return 0;
+}
+
+static int
 imm(FILE *file, const struct brw_isa_info *isa, enum brw_reg_type type,
     const brw_inst *inst)
 {
@@ -1850,7 +1945,7 @@ swsb(FILE *file, const struct brw_isa_info *isa, const brw_inst *inst)
    const uint32_t x = brw_inst_swsb(devinfo, inst);
    const bool is_unordered =
       opcode == BRW_OPCODE_SEND || opcode == BRW_OPCODE_SENDC ||
-      opcode == BRW_OPCODE_MATH ||
+      opcode == BRW_OPCODE_MATH || opcode == BRW_OPCODE_DPAS ||
       (devinfo->has_64bit_float_via_math_pipe &&
        inst_has_type(isa, inst, BRW_REGISTER_TYPE_DF));
    const struct tgl_swsb swsb = tgl_swsb_decode(devinfo, is_unordered, x);
@@ -1988,6 +2083,15 @@ brw_disassemble_inst(FILE *file, const struct brw_isa_info *isa,
       err |= control(file, "function", sync_function,
                      brw_inst_cond_modifier(devinfo, inst), NULL);
 
+   } else if (opcode == BRW_OPCODE_DPAS) {
+      string(file, ".");
+
+      err |= control(file, "systolic depth", dpas_systolic_depth,
+                     brw_inst_dpas_3src_sdepth(devinfo, inst), NULL);
+
+      const unsigned rcount = brw_inst_dpas_3src_rcount(devinfo, inst) + 1;
+
+      format(file, "x%d", rcount);
    } else if (!is_send(opcode) &&
               (devinfo->ver < 12 ||
                brw_inst_src0_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE ||
@@ -2059,6 +2163,19 @@ brw_disassemble_inst(FILE *file, const struct brw_isa_info *isa,
    } else if (opcode == BRW_OPCODE_JMPI) {
       pad(file, 16);
       err |= src1(file, isa, inst);
+   } else if (opcode == BRW_OPCODE_DPAS) {
+      pad(file, 16);
+      err |= dest_dpas_3src(file, devinfo, inst);
+
+      pad(file, 32);
+      err |= src0_dpas_3src(file, devinfo, inst);
+
+      pad(file, 48);
+      err |= src1_dpas_3src(file, devinfo, inst);
+
+      pad(file, 64);
+      err |= src2_dpas_3src(file, devinfo, inst);
+
    } else if (desc && desc->nsrc == 3) {
       pad(file, 16);
       err |= dest_3src(file, devinfo, inst);
