@@ -2400,14 +2400,21 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
    brw_compact_instructions(p, start_offset, disasm_info);
    int after_size = p->next_insn_offset - start_offset;
 
-   if (unlikely(debug_flag)) {
-      unsigned char sha1[21];
-      char sha1buf[41];
+   bool dump_shader_bin = brw_should_dump_shader_bin();
+   unsigned char sha1[21];
+   char sha1buf[41];
 
+   if (unlikely(debug_flag || dump_shader_bin)) {
       _mesa_sha1_compute(p->store + start_offset / sizeof(brw_inst),
                          after_size, sha1);
       _mesa_sha1_format(sha1buf, sha1);
+   }
 
+   if (unlikely(dump_shader_bin))
+      brw_dump_shader_bin(p->store, start_offset, p->next_insn_offset,
+                          sha1buf);
+
+   if (unlikely(debug_flag)) {
       fprintf(stderr, "Native code for %s (src_hash 0x%08x) (sha1 %s)\n"
               "SIMD%d shader: %d instructions. %d loops. %u cycles. "
               "%d:%d spills:fills, %u sends, "

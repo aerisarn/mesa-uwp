@@ -197,6 +197,10 @@ const struct brw_shader_reloc *brw_get_shader_relocs(struct brw_codegen *p,
                                                      unsigned *num_relocs);
 const unsigned *brw_get_program( struct brw_codegen *p, unsigned *sz );
 
+bool brw_should_dump_shader_bin(void);
+void brw_dump_shader_bin(void *assembly, int start_offset, int end_offset,
+                         const char *identifier);
+
 bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
                                const char *identifier);
 

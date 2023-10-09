@@ -753,6 +753,19 @@ Intel driver environment variables
    overrode shader with sha1 <SHA-1>" in stderr replacing the original
    assembly.
 
+.. envvar:: INTEL_SHADER_BIN_DUMP_PATH
+
+   if set, determines the directory to which the compiled shaders will be
+   dumped. They will be dumped as ``sha1_of_assembly.bin``, where the sha1
+   values will be the same as can be found in the :envvar:`INTEL_DEBUG`
+   output, and can be used for :envvar:`INTEL_SHADER_ASM_READ_PATH` input.
+
+   .. note::
+      Unlike the text form of shader dumping, :envvar:`INTEL_DEBUG`
+      does not affect on the list of shaders to dump. All generated shaders
+      are always dumped if :envvar:`INTEL_SHADER_BIN_DUMP_PATH` variable is
+      set.
+
 .. envvar:: INTEL_SIMD_DEBUG
 
    a comma-separated list of named flags, which control simd dispatch widths:

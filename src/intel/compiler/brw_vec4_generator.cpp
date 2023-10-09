@@ -2231,13 +2231,19 @@ generate_code(struct brw_codegen *p,
    brw_compact_instructions(p, 0, disasm_info);
    int after_size = p->next_insn_offset;
 
-   if (unlikely(debug_enabled)) {
-      unsigned char sha1[21];
-      char sha1buf[41];
+   bool dump_shader_bin = brw_should_dump_shader_bin();
+   unsigned char sha1[21];
+   char sha1buf[41];
 
+   if (unlikely(debug_enabled || dump_shader_bin)) {
       _mesa_sha1_compute(p->store, p->next_insn_offset, sha1);
       _mesa_sha1_format(sha1buf, sha1);
+   }
 
+   if (unlikely(dump_shader_bin))
+      brw_dump_shader_bin(p->store, 0, p->next_insn_offset, sha1buf);
+
+   if (unlikely(debug_enabled)) {
       fprintf(stderr, "Native code for %s %s shader %s (src_hash 0x%08x) (sha1 %s):\n",
             nir->info.label ? nir->info.label : "unnamed",
             _mesa_shader_stage_to_string(nir->info.stage), nir->info.name,
