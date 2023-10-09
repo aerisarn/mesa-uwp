@@ -243,9 +243,6 @@ fs_inst::is_send_from_grf() const
    case FS_OPCODE_FB_READ:
       return src[0].file == VGRF;
    default:
-      if (is_tex())
-         return src[0].file == VGRF;
-
       return false;
    }
 }
@@ -309,16 +306,29 @@ fs_inst::is_payload(unsigned arg) const
    case SHADER_OPCODE_INTERLOCK:
    case SHADER_OPCODE_MEMORY_FENCE:
    case SHADER_OPCODE_BARRIER:
+   case SHADER_OPCODE_TEX:
+   case FS_OPCODE_TXB:
+   case SHADER_OPCODE_TXD:
+   case SHADER_OPCODE_TXF:
+   case SHADER_OPCODE_TXF_LZ:
+   case SHADER_OPCODE_TXF_CMS:
+   case SHADER_OPCODE_TXF_CMS_W:
+   case SHADER_OPCODE_TXF_UMS:
+   case SHADER_OPCODE_TXF_MCS:
+   case SHADER_OPCODE_TXL:
+   case SHADER_OPCODE_TXL_LZ:
+   case SHADER_OPCODE_TXS:
+   case SHADER_OPCODE_LOD:
+   case SHADER_OPCODE_TG4:
+   case SHADER_OPCODE_TG4_OFFSET:
+   case SHADER_OPCODE_SAMPLEINFO:
       return arg == 0;
 
    case SHADER_OPCODE_SEND:
       return arg == 2 || arg == 3;
 
    default:
-      if (is_tex())
-         return arg == 0;
-      else
-         return false;
+      return false;
    }
 }
 
@@ -910,9 +920,27 @@ fs_inst::size_read(int arg) const
       }
       break;
 
-   default:
-      if (arg == 0 && src[0].file == VGRF && is_tex())
+   case SHADER_OPCODE_TEX:
+   case FS_OPCODE_TXB:
+   case SHADER_OPCODE_TXD:
+   case SHADER_OPCODE_TXF:
+   case SHADER_OPCODE_TXF_LZ:
+   case SHADER_OPCODE_TXF_CMS:
+   case SHADER_OPCODE_TXF_CMS_W:
+   case SHADER_OPCODE_TXF_UMS:
+   case SHADER_OPCODE_TXF_MCS:
+   case SHADER_OPCODE_TXL:
+   case SHADER_OPCODE_TXL_LZ:
+   case SHADER_OPCODE_TXS:
+   case SHADER_OPCODE_LOD:
+   case SHADER_OPCODE_TG4:
+   case SHADER_OPCODE_TG4_OFFSET:
+   case SHADER_OPCODE_SAMPLEINFO:
+      if (arg == 0 && src[0].file == VGRF)
          return mlen * REG_SIZE;
+      break;
+
+   default:
       break;
    }
 
