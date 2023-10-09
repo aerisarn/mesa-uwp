@@ -1,8 +1,11 @@
 // Copyright © 2023 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
+#![allow(unstable_name_collisions)]
+
 use std::ops::Range;
 
+use crate::util::NextMultipleOf;
 use nak_bindings::*;
 
 use crate::{
@@ -419,7 +422,9 @@ pub fn encode_header(
     sph.set_does_load_or_store(shader_info.uses_global_mem);
     sph.set_does_global_store(shader_info.writes_global_mem);
     sph.set_does_fp64(shader_info.uses_fp64);
-    sph.set_shader_local_memory_size(shader_info.tls_size.into());
+
+    let tls_size = shader_info.tls_size.next_multiple_of(16);
+    sph.set_shader_local_memory_size(tls_size.into());
 
     match &shader_info.io {
         ShaderIoInfo::Vtg(io) => {
