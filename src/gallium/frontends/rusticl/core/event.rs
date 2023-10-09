@@ -24,7 +24,7 @@ static_assert!(CL_RUNNING == 1);
 static_assert!(CL_SUBMITTED == 2);
 static_assert!(CL_QUEUED == 3);
 
-pub type EventSig = Box<dyn Fn(&Arc<Queue>, &PipeContext) -> CLResult<()>>;
+pub type EventSig = Box<dyn FnOnce(&Arc<Queue>, &PipeContext) -> CLResult<()>>;
 
 pub enum EventTimes {
     Queued = CL_PROFILING_COMMAND_QUEUED as isize,
@@ -205,10 +205,9 @@ impl Event {
                 // We already have the lock so can't call set_time on the event
                 lock.time_submit = queue.device.screen().get_timestamp();
             }
-            let work = lock.work.take();
             let mut query_start = None;
             let mut query_end = None;
-            let new = work.as_ref().map_or(
+            let new = lock.work.take().map_or(
                 // if there is no work
                 CL_SUBMITTED as cl_int,
                 |w| {
@@ -229,10 +228,7 @@ impl Event {
                     res
                 },
             );
-            // we have to make sure that the work object is dropped before we notify about the
-            // status change. It's probably fine to move the value above, but we have to be
-            // absolutely sure it happens before the status update.
-            drop(work);
+
             if profiling_enabled {
                 lock.time_start = query_start.unwrap().read_blocked();
                 lock.time_end = query_end.unwrap().read_blocked();
