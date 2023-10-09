@@ -10,62 +10,11 @@
 #include "tu_pass.h"
 
 #include "vk_util.h"
+#include "vk_render_pass.h"
 
 #include "tu_cmd_buffer.h"
 #include "tu_device.h"
 #include "tu_image.h"
-
-/* Return true if we have to fallback to sysmem rendering because the
- * dependency can't be satisfied with tiled rendering.
- */
-
-static bool
-dep_invalid_for_gmem(const VkSubpassDependency2 *dep,
-                     VkPipelineStageFlags2 src_stage_mask,
-                     VkPipelineStageFlags2 dst_stage_mask)
-{
-   /* External dependencies don't matter here. */
-   if (dep->srcSubpass == VK_SUBPASS_EXTERNAL ||
-       dep->dstSubpass == VK_SUBPASS_EXTERNAL)
-      return false;
-
-   /* We can conceptually break down the process of rewriting a sysmem
-    * renderpass into a gmem one into two parts:
-    *
-    * 1. Split each draw and multisample resolve into N copies, one for each
-    * bin. (If hardware binning, add one more copy where the FS is disabled
-    * for the binning pass). This is always allowed because the vertex stage
-    * is allowed to run an arbitrary number of times and there are no extra
-    * ordering constraints within a draw.
-    * 2. Take the last copy of the second-to-last draw and slide it down to
-    * before the last copy of the last draw. Repeat for each earlier draw
-    * until the draw pass for the last bin is complete, then repeat for each
-    * earlier bin until we finish with the first bin.
-    *
-    * During this rearranging process, we can't slide draws past each other in
-    * a way that breaks the subpass dependencies. For each draw, we must slide
-    * it past (copies of) the rest of the draws in the renderpass. We can
-    * slide a draw past another if there isn't a dependency between them, or
-    * if the dependenc(ies) are dependencies between framebuffer-space stages
-    * only with the BY_REGION bit set. Note that this includes
-    * self-dependencies, since these may result in pipeline barriers that also
-    * break the rearranging process.
-    */
-
-   /* This is straight from the Vulkan 1.2 spec, section 6.1.4 "Framebuffer
-    * Region Dependencies":
-    */
-   const VkPipelineStageFlags2 framebuffer_space_stages =
-      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-   return
-      (src_stage_mask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT)) ||
-      (dst_stage_mask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT)) ||
-      !(dep->dependencyFlags & VK_DEPENDENCY_BY_REGION_BIT);
-}
 
 static void
 tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
@@ -97,7 +46,30 @@ tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
    VkPipelineStageFlags2 dst_stage_mask = barrier ? barrier->dstStageMask : dep->dstStageMask;
    VkAccessFlags2 dst_access_mask = barrier ? barrier->dstAccessMask : dep->dstAccessMask;
 
-   if (dep_invalid_for_gmem(dep, src_stage_mask, dst_stage_mask)) {
+   /* We can conceptually break down the process of rewriting a sysmem
+    * renderpass into a gmem one into two parts:
+    *
+    * 1. Split each draw and multisample resolve into N copies, one for each
+    * bin. (If hardware binning, add one more copy where the FS is disabled
+    * for the binning pass). This is always allowed because the vertex stage
+    * is allowed to run an arbitrary number of times and there are no extra
+    * ordering constraints within a draw.
+    * 2. Take the last copy of the second-to-last draw and slide it down to
+    * before the last copy of the last draw. Repeat for each earlier draw
+    * until the draw pass for the last bin is complete, then repeat for each
+    * earlier bin until we finish with the first bin.
+    *
+    * During this rearranging process, we can't slide draws past each other in
+    * a way that breaks the subpass dependencies. For each draw, we must slide
+    * it past (copies of) the rest of the draws in the renderpass. We can
+    * slide a draw past another if there isn't a dependency between them, or
+    * if the dependenc(ies) are dependencies between framebuffer-space stages
+    * only with the BY_REGION bit set. Note that this includes
+    * self-dependencies, since these may result in pipeline barriers that also
+    * break the rearranging process.
+    */
+
+   if (!vk_subpass_dependency_is_fb_local(dep, src_stage_mask, dst_stage_mask)) {
       perf_debug((struct tu_device *)pass->base.device, "Disabling gmem rendering due to invalid subpass dependency");
       for (int i = 0; i < ARRAY_SIZE(pass->gmem_pixels); i++)
          pass->gmem_pixels[i] = 0;
