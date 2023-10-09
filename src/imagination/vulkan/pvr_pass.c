@@ -38,6 +38,7 @@
 #include "vk_alloc.h"
 #include "vk_format.h"
 #include "vk_log.h"
+#include "vk_render_pass.h"
 
 /*****************************************************************************
   PDS pre-baked program generation parameters and variables.
@@ -611,10 +612,16 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
           dep->dstSubpass != VK_SUBPASS_EXTERNAL &&
           dep->srcSubpass != dep->dstSubpass) {
          struct pvr_render_subpass *subpass = &pass->subpasses[dep->dstSubpass];
+         bool is_dep_fb_local =
+            vk_subpass_dependency_is_fb_local(dep,
+                                              dep->srcStageMask,
+                                              dep->dstStageMask);
 
          subpass->dep_list[subpass->dep_count] = dep->srcSubpass;
-         if (pvr_subpass_has_msaa_input_attachment(subpass, pCreateInfo))
+         if (pvr_subpass_has_msaa_input_attachment(subpass, pCreateInfo) ||
+             !is_dep_fb_local) {
             subpass->flush_on_dep[subpass->dep_count] = true;
+         }
 
          subpass->dep_count++;
       }
