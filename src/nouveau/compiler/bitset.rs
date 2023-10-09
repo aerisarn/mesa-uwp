@@ -47,6 +47,16 @@ impl BitSet {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn is_empty(&self) -> bool {
+        for w in self.words.iter() {
+            if *w != 0 {
+                return false;
+            }
+        }
+        true
+    }
+
     pub fn get_word(&self, word: usize) -> u32 {
         self.words.get(word).cloned().unwrap_or(0)
     }
