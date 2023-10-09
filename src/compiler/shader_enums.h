@@ -26,9 +26,15 @@
 #ifndef SHADER_ENUMS_H
 #define SHADER_ENUMS_H
 
-#include "util/macros.h"
-
+#ifndef __OPENCL_VERSION__
 #include <stdbool.h>
+#include "util/macros.h"
+#include "util/u_debug.h"
+#else
+#define ENUM_PACKED
+#define BITFIELD_BIT(b) (1u << (b))
+#define debug_printf(x, ...)
+#endif
 
 /* Project-wide (GL and Vulkan) maximum. */
 #define MAX_DRAW_BUFFERS 8
