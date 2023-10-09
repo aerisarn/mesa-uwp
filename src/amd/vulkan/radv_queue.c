@@ -1822,12 +1822,12 @@ radv_queue_state_finish(struct radv_queue_state *queue, struct radv_device *devi
       device->ws->buffer_destroy(device->ws, queue->attr_ring_bo);
    }
    if (queue->gds_bo) {
-      device->ws->buffer_destroy(device->ws, queue->gds_bo);
       device->ws->buffer_make_resident(device->ws, queue->gds_bo, false);
+      device->ws->buffer_destroy(device->ws, queue->gds_bo);
    }
    if (queue->gds_oa_bo) {
-      device->ws->buffer_destroy(device->ws, queue->gds_oa_bo);
       device->ws->buffer_make_resident(device->ws, queue->gds_oa_bo, false);
+      device->ws->buffer_destroy(device->ws, queue->gds_oa_bo);
    }
    if (queue->compute_scratch_bo) {
       radv_rmv_log_command_buffer_bo_destroy(device, queue->compute_scratch_bo);
