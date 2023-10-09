@@ -3092,21 +3092,14 @@ anv_can_fast_clear_color_view(struct anv_device *device,
    return true;
 }
 
-VkResult
-anv_CreateImageView(VkDevice _device,
-                    const VkImageViewCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *pAllocator,
-                    VkImageView *pView)
+static void
+anv_image_view_init(struct anv_device *device,
+                    struct anv_image_view *iview,
+                    const VkImageViewCreateInfo *pCreateInfo)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_image, image, pCreateInfo->image);
-   struct anv_image_view *iview;
 
-   iview = vk_image_view_create(&device->vk, false, pCreateInfo,
-                                pAllocator, sizeof(*iview));
-   if (iview == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
+   vk_image_view_init(&device->vk, &iview->vk, false, pCreateInfo);
    iview->image = image;
    iview->n_planes = anv_image_aspect_get_planes(iview->vk.aspects);
 
@@ -3210,21 +3203,13 @@ anv_CreateImageView(VkDevice _device,
                                       &iview->planes[vplane].storage);
       }
    }
-
-   *pView = anv_image_view_to_handle(iview);
-
-   return VK_SUCCESS;
 }
 
-void
-anv_DestroyImageView(VkDevice _device, VkImageView _iview,
-                     const VkAllocationCallbacks *pAllocator)
+static void
+anv_image_view_finish(struct anv_image_view *iview)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_image_view, iview, _iview);
-
-   if (!iview)
-      return;
+   struct anv_device *device =
+      container_of(iview->vk.base.device, struct anv_device, vk);
 
    for (uint32_t plane = 0; plane < iview->n_planes; plane++) {
       if (iview->planes[plane].optimal_sampler.state.alloc_size) {
@@ -3243,7 +3228,41 @@ anv_DestroyImageView(VkDevice _device, VkImageView _iview,
       }
    }
 
-   vk_image_view_destroy(&device->vk, pAllocator, &iview->vk);
+   vk_image_view_finish(&iview->vk);
+}
+
+VkResult
+anv_CreateImageView(VkDevice _device,
+                    const VkImageViewCreateInfo *pCreateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    VkImageView *pView)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   struct anv_image_view *iview;
+
+   iview = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*iview), 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (iview == NULL)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   anv_image_view_init(device, iview, pCreateInfo);
+
+   *pView = anv_image_view_to_handle(iview);
+
+   return VK_SUCCESS;
+}
+
+void
+anv_DestroyImageView(VkDevice _device, VkImageView _iview,
+                     const VkAllocationCallbacks *pAllocator)
+{
+   ANV_FROM_HANDLE(anv_image_view, iview, _iview);
+
+   if (!iview)
+      return;
+
+   anv_image_view_finish(iview);
+   vk_free2(&iview->vk.base.device->alloc, pAllocator, iview);
 }
 
 static void
