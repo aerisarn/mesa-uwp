@@ -5001,6 +5001,13 @@ struct anv_image_view {
    const struct anv_image *image; /**< VkImageViewCreateInfo::image */
 
    unsigned n_planes;
+
+   /**
+    * True if the surface states (if any) are owned by some anv_state_stream
+    * from internal_surface_state_pool.
+    */
+   bool use_surface_state_stream;
+
    struct {
       struct isl_view isl;
 
@@ -5069,6 +5076,13 @@ void anv_image_get_memory_requirements(struct anv_device *device,
                                        struct anv_image *image,
                                        VkImageAspectFlags aspects,
                                        VkMemoryRequirements2 *pMemoryRequirements);
+
+void anv_image_view_init(struct anv_device *device,
+                         struct anv_image_view *iview,
+                         const VkImageViewCreateInfo *pCreateInfo,
+                         struct anv_state_stream *state_stream);
+
+void anv_image_view_finish(struct anv_image_view *iview);
 
 enum isl_format
 anv_isl_format_for_descriptor_type(const struct anv_device *device,
