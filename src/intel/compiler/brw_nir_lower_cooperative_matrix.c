@@ -621,9 +621,39 @@ lower_cmat_instr(nir_builder *b, nir_instr *instr, void *_state)
                                 glsl_get_vector_elements(slice_type)), 32);
    }
 
-   case nir_intrinsic_cmat_muladd:
-      /* FINISHME. */
+   case nir_intrinsic_cmat_muladd: {
+      nir_deref_instr *dst_slice = nir_src_as_deref(intrin->src[0]);
+      nir_deref_instr *A_slice = nir_src_as_deref(intrin->src[1]);
+      nir_deref_instr *B_slice = nir_src_as_deref(intrin->src[2]);
+      nir_deref_instr *accum_slice = nir_src_as_deref(intrin->src[3]);
+
+      const struct glsl_type *dst_mat_type = get_coop_type_for_slice(state, dst_slice);
+      const struct glsl_cmat_description dst_desc = *glsl_get_cmat_description(dst_mat_type);
+
+      const struct glsl_type *src_mat_type = get_coop_type_for_slice(state, A_slice);
+      const struct glsl_cmat_description src_desc = *glsl_get_cmat_description(src_mat_type);
+
+      const unsigned packing_factor = get_packing_factor(dst_desc, dst_slice->type);
+      const unsigned num_components = glsl_get_vector_elements(dst_slice->type);
+
+      nir_def *result =
+         nir_dpas_intel(b,
+                        packing_factor * glsl_base_type_get_bit_size(dst_desc.element_type),
+                        nir_load_deref(b, A_slice),
+                        nir_load_deref(b, B_slice),
+                        nir_load_deref(b, accum_slice),
+                        .dest_type = nir_get_nir_type_for_glsl_base_type(dst_desc.element_type),
+                        .src_type = nir_get_nir_type_for_glsl_base_type(src_desc.element_type),
+                        .saturate = nir_intrinsic_saturate(intrin),
+                        .cmat_signed_mask = nir_intrinsic_cmat_signed_mask(intrin),
+                        .systolic_depth = 8,
+                        .repeat_count = 8);
+
+      nir_store_deref(b, dst_slice, result,
+                      nir_component_mask(num_components));
+
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+   }
 
    case nir_intrinsic_cmat_bitcast: {
       nir_deref_instr *dst_slice = nir_src_as_deref(intrin->src[0]);

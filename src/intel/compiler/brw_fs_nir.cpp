@@ -4587,6 +4587,65 @@ fs_nir_emit_cs_intrinsic(nir_to_brw_state &ntb,
       break;
    }
 
+   case nir_intrinsic_dpas_intel: {
+      const unsigned sdepth = nir_intrinsic_systolic_depth(instr);
+      const unsigned rcount = nir_intrinsic_repeat_count(instr);
+
+      const brw_reg_type dest_type =
+         brw_type_for_nir_type(devinfo, nir_intrinsic_dest_type(instr));
+      const brw_reg_type src_type =
+         brw_type_for_nir_type(devinfo, nir_intrinsic_src_type(instr));
+
+      dest = retype(dest, dest_type);
+      fs_reg src2 = retype(get_nir_src(ntb, instr->src[2]), dest_type);
+      const fs_reg dest_hf = dest;
+
+      fs_builder bld8 = bld.exec_all().group(8, 0);
+      fs_builder bld16 = bld.exec_all().group(16, 0);
+
+      /* DG2 cannot have the destination or source 0 of DPAS be float16. It is
+       * still advantageous to support these formats for memory and bandwidth
+       * savings.
+       *
+       * The float16 source must be expanded to float32.
+       */
+      if (devinfo->verx10 == 125 && dest_type == BRW_REGISTER_TYPE_HF &&
+          !s.compiler->lower_dpas) {
+         dest = bld8.vgrf(BRW_REGISTER_TYPE_F, rcount);
+
+         if (src2.file != ARF) {
+            const fs_reg src2_hf = src2;
+
+            src2 = bld8.vgrf(BRW_REGISTER_TYPE_F, rcount);
+
+            for (unsigned i = 0; i < 4; i++) {
+               bld16.MOV(byte_offset(src2, REG_SIZE * i * 2),
+                         byte_offset(src2_hf, REG_SIZE * i));
+            }
+         } else {
+            src2 = retype(src2, BRW_REGISTER_TYPE_F);
+         }
+      }
+
+      bld8.DPAS(dest,
+                src2,
+                retype(get_nir_src(ntb, instr->src[1]), src_type),
+                retype(get_nir_src(ntb, instr->src[0]), src_type),
+                sdepth,
+                rcount)
+         ->saturate = nir_intrinsic_saturate(instr);
+
+      /* Compact the destination to float16 (from float32). */
+      if (!dest.equals(dest_hf)) {
+         for (unsigned i = 0; i < 4; i++) {
+            bld16.MOV(byte_offset(dest_hf, REG_SIZE * i),
+                      byte_offset(dest, REG_SIZE * i * 2));
+         }
+      }
+
+      break;
+   }
+
    default:
       fs_nir_emit_intrinsic(ntb, bld, instr);
       break;
