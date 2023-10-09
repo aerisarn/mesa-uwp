@@ -619,7 +619,9 @@ fn spill_values<S: Spill>(
                         let mut spills = SpillChooser::new(bl, ip, count);
                         for (dst, _) in pcopy.dsts_srcs.iter() {
                             let dst_ssa = &dst.as_ssa().unwrap()[0];
-                            spills.add_candidate(*dst_ssa);
+                            if dst_ssa.file() == file {
+                                spills.add_candidate(*dst_ssa);
+                            }
                         }
 
                         let spills: HashSet<SSAValue> =
@@ -642,7 +644,7 @@ fn spill_values<S: Spill>(
                     for (dst, _) in pcopy.dsts_srcs.iter() {
                         let dst_ssa = &dst.as_ssa().unwrap()[0];
                         if dst_ssa.file() == file {
-                            b.s.insert(*dst_ssa);
+                            b.w.insert(*dst_ssa);
                         }
                     }
                 }
