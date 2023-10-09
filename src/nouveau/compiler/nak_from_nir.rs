@@ -21,7 +21,7 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
     ShaderInfo {
         sm: sm,
         num_gprs: 0,
-        num_barriers: (nir.info.shared_size > 0).into(),
+        num_barriers: 0,
         tls_size: nir.scratch_size,
         uses_global_mem: false,
         writes_global_mem: false,
@@ -1747,6 +1747,9 @@ impl<'a> ShaderFromNir<'a> {
                     SCOPE_WORKGROUP => {
                         b.push_op(OpWarpSync { mask: u32::MAX });
                         if self.nir.info.stage() == MESA_SHADER_COMPUTE {
+                            // Ensure we allocate one barrier.
+                            self.info.num_barriers = 1;
+
                             b.push_op(OpBar {}).deps.yld = true;
                         }
                     }
@@ -2030,6 +2033,8 @@ impl<'a> ShaderFromNir<'a> {
             // actually available and not in use by another thread?
             let label = self.label_alloc.alloc();
             let bar = BarRef::new(0);
+            self.info.num_barriers = 1;
+
             let bmov = b.push_op(OpBMov {
                 dst: Dst::None,
                 src: BMovSrc::Barrier(bar),
