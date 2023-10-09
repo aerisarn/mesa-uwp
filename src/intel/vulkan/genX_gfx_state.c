@@ -1143,6 +1143,12 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
       &cmd_buffer->vk.dynamic_graphics_state;
    struct anv_gfx_dynamic_state *hw_state = &gfx->dyn_state;
 
+   if (INTEL_DEBUG(DEBUG_REEMIT)) {
+      BITSET_OR(cmd_buffer->state.gfx.dyn_state.dirty,
+                cmd_buffer->state.gfx.dyn_state.dirty,
+                device->gfx_dirty_state);
+   }
+
    /* Since Wa_16011773973 will disable 3DSTATE_STREAMOUT, we need to reemit
     * it after.
     */
