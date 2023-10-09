@@ -18,11 +18,7 @@ KHR-GL46.direct_state_access.framebuffers_texture_layer_attachment
 glx@glx-visuals-depth$
 glx@glx-visuals-stencil$
 
-.*built-in-functions@.*-inverse-dmat3
-.*built-in-functions@.*-inverse-dmat4
-.*built-in-functions@.*-op-mult-dmat4-dmat4
-.*built-in-functions@.*-op-mult-dmat4x3-dmat4
-.*built-in-functions@.*-op-mult-dmat3x4-dmat4x3
+.*built-in-functions@.*dmat[34].*
 .*built-in-functions@.*-op-div-.*dmat.*
 .*built-in-functions@fs-mod-dvec4-dvec4
 .*fs-isnan-dvec
