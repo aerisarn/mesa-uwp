@@ -28,6 +28,7 @@
 
 #include "shader_enums.h"
 #include "util/macros.h"
+#include "util/u_debug.h"
 
 #define ENUM(x) [x] = #x
 #define NAME(val) ((((val) < ARRAY_SIZE(names)) && names[(val)]) ? names[(val)] : "UNKNOWN")
@@ -433,17 +434,40 @@ gl_frag_result_name(gl_frag_result result)
 }
 
 unsigned
-num_mesh_vertices_per_primitive(unsigned prim)
+num_mesh_vertices_per_primitive(enum mesa_prim prim)
 {
-   switch (prim) {
-      case MESA_PRIM_POINTS:
-         return 1;
-      case MESA_PRIM_LINES:
-         return 2;
-      case MESA_PRIM_TRIANGLES:
-         return 3;
-      default:
-         unreachable("invalid mesh shader primitive type");
+   switch(prim) {
+   case MESA_PRIM_POINTS:
+      return 1;
+   case MESA_PRIM_LINES:
+   case MESA_PRIM_LINE_LOOP:
+   case MESA_PRIM_LINE_STRIP:
+      return 2;
+   case MESA_PRIM_TRIANGLES:
+   case MESA_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_FAN:
+      return 3;
+   case MESA_PRIM_LINES_ADJACENCY:
+   case MESA_PRIM_LINE_STRIP_ADJACENCY:
+      return 4;
+   case MESA_PRIM_TRIANGLES_ADJACENCY:
+   case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:
+      return 6;
+
+   case MESA_PRIM_QUADS:
+   case MESA_PRIM_QUAD_STRIP:
+      /* These won't be seen from geometry shaders but prim assembly might for
+       * prim id.
+       */
+      return 4;
+
+   /* The following primitives should never be used with geometry or mesh
+    * shaders and their size is undefined.
+    */
+   case MESA_PRIM_POLYGON:
+   default:
+      debug_printf("Unrecognized geometry or mesh shader primitive");
+      return 3;
    }
 }
 
