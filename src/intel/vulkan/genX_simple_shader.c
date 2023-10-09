@@ -311,6 +311,7 @@ genX(emit_simpler_shader_init_fragment)(struct anv_simple_shader *state)
 #endif
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_CLIP);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_RASTER);
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_SAMPLE_MASK);
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_MULTISAMPLE);
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_DEPTH_BOUNDS);
