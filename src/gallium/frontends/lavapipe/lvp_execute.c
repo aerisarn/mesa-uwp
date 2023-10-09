@@ -2171,32 +2171,32 @@ subresource_layercount(const struct lvp_image *image, const VkImageSubresourceLa
 static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                                              struct rendering_state *state)
 {
-   struct VkCopyImageToBufferInfo2 *copycmd = cmd->u.copy_image_to_buffer2.copy_image_to_buffer_info;
+   const struct VkCopyImageToBufferInfo2 *copycmd = cmd->u.copy_image_to_buffer2.copy_image_to_buffer_info;
    LVP_FROM_HANDLE(lvp_image, src_image, copycmd->srcImage);
    struct pipe_box box, dbox;
    struct pipe_transfer *src_t, *dst_t;
    uint8_t *src_data, *dst_data;
 
    for (uint32_t i = 0; i < copycmd->regionCount; i++) {
-
-      box.x = copycmd->pRegions[i].imageOffset.x;
-      box.y = copycmd->pRegions[i].imageOffset.y;
-      box.z = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
-      box.width = copycmd->pRegions[i].imageExtent.width;
-      box.height = copycmd->pRegions[i].imageExtent.height;
-      box.depth = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : subresource_layercount(src_image, &copycmd->pRegions[i].imageSubresource);
+      const VkBufferImageCopy2 *region = &copycmd->pRegions[i];
+      box.x = region->imageOffset.x;
+      box.y = region->imageOffset.y;
+      box.z = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageOffset.z : region->imageSubresource.baseArrayLayer;
+      box.width = region->imageExtent.width;
+      box.height = region->imageExtent.height;
+      box.depth = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageExtent.depth : subresource_layercount(src_image, &region->imageSubresource);
 
       src_data = state->pctx->texture_map(state->pctx,
                                            src_image->bo,
-                                           copycmd->pRegions[i].imageSubresource.mipLevel,
+                                           region->imageSubresource.mipLevel,
                                            PIPE_MAP_READ,
                                            &box,
                                            &src_t);
 
-      dbox.x = copycmd->pRegions[i].bufferOffset;
+      dbox.x = region->bufferOffset;
       dbox.y = 0;
       dbox.z = 0;
-      dbox.width = lvp_buffer_from_handle(copycmd->dstBuffer)->bo->width0 - copycmd->pRegions[i].bufferOffset;
+      dbox.width = lvp_buffer_from_handle(copycmd->dstBuffer)->bo->width0 - region->bufferOffset;
       dbox.height = 1;
       dbox.depth = 1;
       dst_data = state->pctx->buffer_map(state->pctx,
@@ -2209,9 +2209,9 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
       enum pipe_format src_format = src_image->bo->format;
       enum pipe_format dst_format = src_format;
       if (util_format_is_depth_or_stencil(src_format)) {
-         if (copycmd->pRegions[i].imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
             dst_format = util_format_get_depth_only(src_format);
-         } else if (copycmd->pRegions[i].imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         } else if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
             dst_format = PIPE_FORMAT_S8_UINT;
          }
       }
@@ -2223,8 +2223,8 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                         buffer_layout.row_stride_B,
                         buffer_layout.image_stride_B,
                         0, 0, 0,
-                        copycmd->pRegions[i].imageExtent.width,
-                        copycmd->pRegions[i].imageExtent.height,
+                        region->imageExtent.width,
+                        region->imageExtent.height,
                         box.depth,
                         src_data, src_format, src_t->stride, src_t->layer_stride, 0, 0, 0);
       } else {
@@ -2232,8 +2232,8 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                        buffer_layout.row_stride_B,
                        buffer_layout.image_stride_B,
                        0, 0, 0,
-                       copycmd->pRegions[i].imageExtent.width,
-                       copycmd->pRegions[i].imageExtent.height,
+                       region->imageExtent.width,
+                       region->imageExtent.height,
                        box.depth,
                        src_data, src_t->stride, src_t->layer_stride, 0, 0, 0);
       }
@@ -2245,15 +2245,16 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
 static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
                                         struct rendering_state *state)
 {
-   struct VkCopyBufferToImageInfo2 *copycmd = cmd->u.copy_buffer_to_image2.copy_buffer_to_image_info;
+   const struct VkCopyBufferToImageInfo2 *copycmd = cmd->u.copy_buffer_to_image2.copy_buffer_to_image_info;
    LVP_FROM_HANDLE(lvp_image, dst_image, copycmd->dstImage);
 
    for (uint32_t i = 0; i < copycmd->regionCount; i++) {
+      const VkBufferImageCopy2 *region = &copycmd->pRegions[i];
       struct pipe_box box, sbox;
       struct pipe_transfer *src_t, *dst_t;
       void *src_data, *dst_data;
 
-      sbox.x = copycmd->pRegions[i].bufferOffset;
+      sbox.x = region->bufferOffset;
       sbox.y = 0;
       sbox.z = 0;
       sbox.width = lvp_buffer_from_handle(copycmd->srcBuffer)->bo->width0;
@@ -2267,16 +2268,16 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
                                            &src_t);
 
 
-      box.x = copycmd->pRegions[i].imageOffset.x;
-      box.y = copycmd->pRegions[i].imageOffset.y;
-      box.z = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
-      box.width = copycmd->pRegions[i].imageExtent.width;
-      box.height = copycmd->pRegions[i].imageExtent.height;
-      box.depth = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : subresource_layercount(dst_image, &copycmd->pRegions[i].imageSubresource);
+      box.x = region->imageOffset.x;
+      box.y = region->imageOffset.y;
+      box.z = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageOffset.z : region->imageSubresource.baseArrayLayer;
+      box.width = region->imageExtent.width;
+      box.height = region->imageExtent.height;
+      box.depth = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? region->imageExtent.depth : subresource_layercount(dst_image, &region->imageSubresource);
 
       dst_data = state->pctx->texture_map(state->pctx,
                                            dst_image->bo,
-                                           copycmd->pRegions[i].imageSubresource.mipLevel,
+                                           region->imageSubresource.mipLevel,
                                            PIPE_MAP_WRITE,
                                            &box,
                                            &dst_t);
@@ -2284,9 +2285,9 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
       enum pipe_format dst_format = dst_image->bo->format;
       enum pipe_format src_format = dst_format;
       if (util_format_is_depth_or_stencil(dst_format)) {
-         if (copycmd->pRegions[i].imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
             src_format = util_format_get_depth_only(dst_image->bo->format);
-         } else if (copycmd->pRegions[i].imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         } else if (region->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
             src_format = PIPE_FORMAT_S8_UINT;
          }
       }
@@ -2297,8 +2298,8 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
          copy_depth_box(dst_data, dst_format,
                         dst_t->stride, dst_t->layer_stride,
                         0, 0, 0,
-                        copycmd->pRegions[i].imageExtent.width,
-                        copycmd->pRegions[i].imageExtent.height,
+                        region->imageExtent.width,
+                        region->imageExtent.height,
                         box.depth,
                         src_data, src_format,
                         buffer_layout.row_stride_B,
@@ -2308,8 +2309,8 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
          util_copy_box(dst_data, dst_format,
                        dst_t->stride, dst_t->layer_stride,
                        0, 0, 0,
-                       copycmd->pRegions[i].imageExtent.width,
-                       copycmd->pRegions[i].imageExtent.height,
+                       region->imageExtent.width,
+                       region->imageExtent.height,
                        box.depth,
                        src_data,
                        buffer_layout.row_stride_B,
@@ -2324,34 +2325,35 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
 static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
                               struct rendering_state *state)
 {
-   struct VkCopyImageInfo2 *copycmd = cmd->u.copy_image2.copy_image_info;
+   const struct VkCopyImageInfo2 *copycmd = cmd->u.copy_image2.copy_image_info;
    LVP_FROM_HANDLE(lvp_image, src_image, copycmd->srcImage);
    LVP_FROM_HANDLE(lvp_image, dst_image, copycmd->dstImage);
 
    for (uint32_t i = 0; i < copycmd->regionCount; i++) {
+      const VkImageCopy2 *region = &copycmd->pRegions[i];
       struct pipe_box src_box;
-      src_box.x = copycmd->pRegions[i].srcOffset.x;
-      src_box.y = copycmd->pRegions[i].srcOffset.y;
-      src_box.width = copycmd->pRegions[i].extent.width;
-      src_box.height = copycmd->pRegions[i].extent.height;
+      src_box.x = region->srcOffset.x;
+      src_box.y = region->srcOffset.y;
+      src_box.width = region->extent.width;
+      src_box.height = region->extent.height;
       if (src_image->bo->target == PIPE_TEXTURE_3D) {
-         src_box.depth = copycmd->pRegions[i].extent.depth;
-         src_box.z = copycmd->pRegions[i].srcOffset.z;
+         src_box.depth = region->extent.depth;
+         src_box.z = region->srcOffset.z;
       } else {
-         src_box.depth = subresource_layercount(src_image, &copycmd->pRegions[i].srcSubresource);
-         src_box.z = copycmd->pRegions[i].srcSubresource.baseArrayLayer;
+         src_box.depth = subresource_layercount(src_image, &region->srcSubresource);
+         src_box.z = region->srcSubresource.baseArrayLayer;
       }
 
       unsigned dstz = dst_image->bo->target == PIPE_TEXTURE_3D ?
-                      copycmd->pRegions[i].dstOffset.z :
-                      copycmd->pRegions[i].dstSubresource.baseArrayLayer;
+                      region->dstOffset.z :
+                      region->dstSubresource.baseArrayLayer;
       state->pctx->resource_copy_region(state->pctx, dst_image->bo,
-                                        copycmd->pRegions[i].dstSubresource.mipLevel,
-                                        copycmd->pRegions[i].dstOffset.x,
-                                        copycmd->pRegions[i].dstOffset.y,
+                                        region->dstSubresource.mipLevel,
+                                        region->dstOffset.x,
+                                        region->dstOffset.y,
                                         dstz,
                                         src_image->bo,
-                                        copycmd->pRegions[i].srcSubresource.mipLevel,
+                                        region->srcSubresource.mipLevel,
                                         &src_box);
    }
 }
@@ -2359,13 +2361,14 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
 static void handle_copy_buffer(struct vk_cmd_queue_entry *cmd,
                                struct rendering_state *state)
 {
-   VkCopyBufferInfo2 *copycmd = cmd->u.copy_buffer2.copy_buffer_info;
+   const VkCopyBufferInfo2 *copycmd = cmd->u.copy_buffer2.copy_buffer_info;
 
    for (uint32_t i = 0; i < copycmd->regionCount; i++) {
+      const VkBufferCopy2 *region = &copycmd->pRegions[i];
       struct pipe_box box = { 0 };
-      u_box_1d(copycmd->pRegions[i].srcOffset, copycmd->pRegions[i].size, &box);
+      u_box_1d(region->srcOffset, region->size, &box);
       state->pctx->resource_copy_region(state->pctx, lvp_buffer_from_handle(copycmd->dstBuffer)->bo, 0,
-                                        copycmd->pRegions[i].dstOffset, 0, 0,
+                                        region->dstOffset, 0, 0,
                                         lvp_buffer_from_handle(copycmd->srcBuffer)->bo, 0, &box);
    }
 }
