@@ -1893,7 +1893,15 @@ ngg_build_streamout_buffer_info(nir_builder *b,
             continue;
 
          nir_def *buffer_size = nir_channel(b, so_buffer_ret[buffer], 2);
+
+         /* Only consider overflow for valid feedback buffers because
+          * otherwise the ordered operation above (GDS atomic return) might
+          * return non-zero offsets for invalid buffers.
+          */
+         nir_def *buffer_valid = nir_ine_imm(b, buffer_size, 0);
          nir_def *buffer_offset = nir_channel(b, buffer_offsets, buffer);
+         buffer_offset = nir_bcsel(b, buffer_valid, buffer_offset, nir_imm_int(b, 0));
+
          nir_def *remain_size = nir_isub(b, buffer_size, buffer_offset);
          nir_def *remain_prim = nir_idiv(b, remain_size, prim_stride_ret[buffer]);
          nir_def *overflow = nir_ilt(b, buffer_size, buffer_offset);
