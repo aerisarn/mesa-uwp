@@ -3783,7 +3783,7 @@ process_sequence(struct rendering_state *state,
       struct vk_cmd_queue_entry *cmd = (struct vk_cmd_queue_entry*)(pbuf + size);
       size_t cmd_size = vk_cmd_queue_type_sizes[lvp_nv_dgc_token_to_cmd_type(token)];
       uint8_t *cmdptr = (void*)(pbuf + size + cmd_size);
- 
+
       if (max_size < size + cmd_size)
          abort();
       cmd->type = lvp_nv_dgc_token_to_cmd_type(token);

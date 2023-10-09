@@ -274,7 +274,7 @@ get_texture_handle_bda(struct lvp_device *device, const VkDescriptorAddressInfoE
 
    ctx->sampler_view_destroy(ctx, view);
    pipe_resource_reference(&pres, NULL);
-   
+
    return *handle;
 }
 
@@ -297,7 +297,7 @@ get_image_handle_bda(struct lvp_device *device, const VkDescriptorAddressInfoEXT
    simple_mtx_unlock(&device->queue.lock);
 
    pipe_resource_reference(&pres, NULL);
-   
+
    return *handle;
 }
 
@@ -345,7 +345,7 @@ lvp_descriptor_set_create(struct lvp_device *device,
       const struct lvp_descriptor_set_binding_layout *bind_layout = &set->layout->binding[binding_index];
       if (!bind_layout->immutable_samplers)
          continue;
-   
+
       struct lp_descriptor *desc = set->map;
       desc += bind_layout->descriptor_index;
 

@@ -650,7 +650,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
 size_t
 lvp_get_rendering_state_size(void);
 struct lvp_image *lvp_swapchain_get_image(VkSwapchainKHR swapchain,
-					  uint32_t index);
+                                          uint32_t index);
 
 static inline enum pipe_format
 lvp_vk_format_to_pipe_format(VkFormat format)

@@ -563,9 +563,9 @@ lvp_CreateBufferView(VkDevice _device,
    struct lvp_buffer_view *view;
 
    view = vk_buffer_view_create(&device->vk,
-				pCreateInfo,
-				pAllocator,
-				sizeof(*view));
+                                pCreateInfo,
+                                pAllocator,
+                                sizeof(*view));
    if (!view)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
