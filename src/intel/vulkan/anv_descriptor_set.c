@@ -2047,18 +2047,17 @@ anv_descriptor_set_write_acceleration_structure(struct anv_device *device,
    memcpy(desc_map, &desc_data, sizeof(desc_data));
 }
 
-void anv_UpdateDescriptorSets(
-    VkDevice                                    _device,
-    uint32_t                                    descriptorWriteCount,
-    const VkWriteDescriptorSet*                 pDescriptorWrites,
-    uint32_t                                    descriptorCopyCount,
-    const VkCopyDescriptorSet*                  pDescriptorCopies)
+void
+anv_descriptor_set_write(struct anv_device *device,
+                         struct anv_descriptor_set *set_override,
+                         uint32_t write_count,
+                         const VkWriteDescriptorSet *writes)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
-
-   for (uint32_t i = 0; i < descriptorWriteCount; i++) {
-      const VkWriteDescriptorSet *write = &pDescriptorWrites[i];
-      ANV_FROM_HANDLE(anv_descriptor_set, set, write->dstSet);
+   for (uint32_t i = 0; i < write_count; i++) {
+      const VkWriteDescriptorSet *write = &writes[i];
+      struct anv_descriptor_set *set = unlikely(set_override) ?
+         set_override :
+         anv_descriptor_set_from_handle(write->dstSet);
 
       switch (write->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -2138,6 +2137,19 @@ void anv_UpdateDescriptorSets(
          break;
       }
    }
+}
+
+void anv_UpdateDescriptorSets(
+    VkDevice                                    _device,
+    uint32_t                                    descriptorWriteCount,
+    const VkWriteDescriptorSet*                 pDescriptorWrites,
+    uint32_t                                    descriptorCopyCount,
+    const VkCopyDescriptorSet*                  pDescriptorCopies)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+
+   anv_descriptor_set_write(device, NULL, descriptorWriteCount,
+                            pDescriptorWrites);
 
    for (uint32_t i = 0; i < descriptorCopyCount; i++) {
       const VkCopyDescriptorSet *copy = &pDescriptorCopies[i];

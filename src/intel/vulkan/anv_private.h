@@ -2491,6 +2491,12 @@ anv_descriptor_set_write_inline_uniform_data(struct anv_device *device,
                                              size_t size);
 
 void
+anv_descriptor_set_write(struct anv_device *device,
+                         struct anv_descriptor_set *set_override,
+                         uint32_t write_count,
+                         const VkWriteDescriptorSet *writes);
+
+void
 anv_descriptor_set_write_template(struct anv_device *device,
                                   struct anv_descriptor_set *set,
                                   const struct vk_descriptor_update_template *template,
