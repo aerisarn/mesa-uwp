@@ -6,12 +6,14 @@ use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::context::Context;
 use crate::core::device::*;
+use crate::core::event::EventSig;
 use crate::core::format::*;
 use crate::core::gl::*;
 use crate::core::memory::*;
 
 use mesa_rust_util::properties::Properties;
 use mesa_rust_util::ptr::*;
+use mesa_rust_util::static_assert;
 use rusticl_opencl_gen::*;
 use rusticl_proc_macros::cl_entrypoint;
 use rusticl_proc_macros::cl_info_entrypoint;
@@ -2575,13 +2577,8 @@ fn enqueue_svm_mem_fill_impl(
         return Err(CL_INVALID_VALUE);
     }
 
-    // CL_INVALID_VALUE if pattern is NULL or if pattern_size is 0 or if pattern_size is not one of
-    // {1, 2, 4, 8, 16, 32, 64, 128}.
-    if pattern.is_null()
-        || pattern_size == 0
-        || !pattern_size.is_power_of_two()
-        || pattern_size > 128
-    {
+    // CL_INVALID_VALUE if pattern is NULL [...]
+    if pattern.is_null() {
         return Err(CL_INVALID_VALUE);
     }
 
@@ -2590,28 +2587,119 @@ fn enqueue_svm_mem_fill_impl(
         return Err(CL_INVALID_VALUE);
     }
 
-    // The application is allowed to reuse or free the memory referenced by `pattern` after this
-    // function returns so we have to make a copy.
-    let pattern: Vec<u8> = unsafe { slice::from_raw_parts(pattern.cast(), pattern_size).to_vec() };
-    create_and_queue(
-        q,
-        cmd_type,
-        evs,
-        event,
-        false,
-        Box::new(move |_, _| {
-            let mut offset = 0;
-            while offset < size {
-                // SAFETY: pointer are either valid or undefined behavior
-                unsafe {
-                    ptr::copy(pattern.as_ptr().cast(), svm_ptr.add(offset), pattern_size);
-                }
-                offset += pattern_size;
-            }
+    // Not technically guaranteed by the OpenCL spec, but required by `from_raw_parts_mut` below.
+    if isize::try_from(size).is_err() || svm_ptr_addr.checked_add(size).is_none() {
+        return Err(CL_INVALID_VALUE);
+    }
 
-            Ok(())
-        }),
-    )
+    // The provided `$bytesize` must equal `pattern_size`.
+    macro_rules! generate_fill_closure {
+        ($bytesize:literal) => {{
+            // We need the value of `$bytesize`` at compile time, so we need to pass it in, but it
+            // should always match `pattern_size`.
+            assert!($bytesize == pattern_size);
+
+            // Three reasons we define our own bag-of-bytes type here:
+            //
+            // We'd otherwise have to pass a type to this macro. Verifying that the type we passed
+            // upholds all the properties we need or want is more trouble than defining our own.
+            //
+            // The primitive Rust types only go up to `u128` anyway and their alignments are
+            // platfrom defined. E.g. At the time of this writing `u128` only has an alignment of 8
+            // on x86-64, even though its size is 16. Defining our own type with an alignment of 16
+            // allows the compiler to generate better code.
+            //
+            // The alignment of OpenCL types is currently what we need on x86-64, but the spec
+            // explicitly states that's just a recommendation and ultimately it's up to the
+            // cl_platform.h header. The very descriptive names of the CL types don't make
+            // verifying the match calling this macro any easier on a glance.
+            // "Was `cl_uint` 4 byte or 8 byte? Eh, I'm sure nobody got it wrong by accident."
+            #[repr(C)]
+            #[repr(align($bytesize))]
+            #[derive(Copy, Clone)]
+            struct Pattern([u8; $bytesize]);
+
+            // Just to make sure the compiler didn't generate anything weird.
+            static_assert!($bytesize == mem::size_of::<Pattern>());
+            static_assert!($bytesize == mem::align_of::<Pattern>());
+
+            // CAST: We don't know exactly which type `pattern` points to, but we know it's an
+            // Application Scalar Data Type (cl_char, cl_ulong, etc.) or an Application Vector Data
+            // Type (cl_double4, etc.). All of them are `Copy`, do not contain padding bytes, and
+            // have no invalid bit patterns. AKA they are POD data types.
+            // Since we only copy it around, we can cast to any POD type as long as its size
+            // matches `pattern_size`.
+            let pattern_ptr = pattern.cast::<Pattern>();
+
+            // The application is allowed to reuse or free the memory referenced by `pattern_ptr`
+            // after this function returns, so we need to create a copy.
+            //
+            // There's no explicit alignment guarantee and we don't rely on `Pattern` matching the
+            // alignment of whichever Application Data Type we're actually presented with. Thus, do
+            // an unaligned read.
+            //
+            // SAFETY: We've checked that `pattern_ptr` is not NULL above. It is otherwise the
+            // calling application's responsibility to ensure that it is valid for reads of
+            // `pattern_size` bytes and properly initialized.
+            // Creating a bitwise copy can't create memory safety issues, since `Pattern` is `Copy`.
+            let pattern = unsafe { pattern_ptr.read_unaligned() };
+
+            // CAST: Same as with `pattern`, we don't know the exact type of `svm_ptr`, but we do
+            // know it's fine if we choose the same type here. The application might reasonably
+            // give us uninitialized memory though, so cast to a `MaybeUninit<Pattern>`, which has
+            // the same layout as `Pattern`.
+            let svm_ptr = svm_ptr.cast::<MaybeUninit<Pattern>>();
+
+            // SAFETY: We've checked that `svm_ptr` is not NULL above. It is otherwise the calling
+            // application's responsibility to ensure that it is valid for reads and writes up to
+            // `size` bytes.
+            // Since `pattern_size == mem::size_of::<Pattern>()` and `MaybeUninit<Pattern>` has the
+            // same layout as `Pattern`, we know that
+            // `size / pattern_size * mem::size_of<MaybeUninit<Pattern>>` equals `size`.
+            //
+            // We've also checked that `svm_ptr` has an alignment of `pattern_size` which fulfills
+            // `Pattern`'s requirement.
+            //
+            // Since we're creating a `&[MaybeUninit<Pattern>]` the initialization status does not
+            // matter.
+            //
+            // From here on out we only access the referenced memory though this slice. In
+            // particular, since we've made a copy of `pattern`, it doesn't matter if the memory
+            // region referenced by `pattern` aliases the one referenced by this slice. It is up to
+            // the application not to access it at all until this command has been completed.
+            //
+            // We've checked that `size` does not exceed `isize::MAX` and that `svm_ptr + size`
+            // does not overflow above.
+            let svm_slice = unsafe { slice::from_raw_parts_mut(svm_ptr, size / pattern_size) };
+
+            Box::new(move |_, _| {
+                for x in svm_slice {
+                    x.write(pattern);
+                }
+
+                Ok(())
+            })
+        }};
+    }
+
+    // Generate optimized code paths for each of the possible pattern sizes.
+    let work: EventSig = match pattern_size {
+        1 => generate_fill_closure!(1),
+        2 => generate_fill_closure!(2),
+        4 => generate_fill_closure!(4),
+        8 => generate_fill_closure!(8),
+        16 => generate_fill_closure!(16),
+        32 => generate_fill_closure!(32),
+        64 => generate_fill_closure!(64),
+        128 => generate_fill_closure!(128),
+        _ => {
+            // CL_INVALID_VALUE if [...] pattern_size is 0 or if pattern_size is not one of
+            // {1, 2, 4, 8, 16, 32, 64, 128}.
+            return Err(CL_INVALID_VALUE);
+        }
+    };
+
+    create_and_queue(q, cmd_type, evs, event, false, work)
 }
 
 #[cl_entrypoint]
