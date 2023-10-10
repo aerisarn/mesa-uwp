@@ -720,7 +720,7 @@ void vpe_color_get_color_space_and_tf(
     if (vcs->encoding == VPE_PIXEL_ENCODING_YCbCr) {
         switch (vcs->tf) {
         case VPE_TF_G22:
-            *tf = TRANSFER_FUNC_SRGB;
+            *tf = TRANSFER_FUNC_BT709;
             break;
         case VPE_TF_G24:
             *tf = TRANSFER_FUNC_BT1886;
