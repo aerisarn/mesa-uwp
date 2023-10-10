@@ -605,6 +605,22 @@ set_image_compressed_bit(struct anv_cmd_buffer *cmd_buffer,
          sdi.ImmediateData = compressed ? UINT32_MAX : 0;
       }
    }
+
+   /* FCV_CCS_E images are automatically fast cleared to default value at
+    * render time. In order to account for this, anv should set the the
+    * appropriate fast clear state for level0/layer0.
+    *
+    * At the moment, tracking the fast clear state for higher levels/layers is
+    * neither supported, nor do we enter a situation where it is a concern.
+    */
+   if (image->planes[plane].aux_usage == ISL_AUX_USAGE_FCV_CCS_E &&
+       base_layer == 0 && level == 0) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
+         sdi.Address = anv_image_get_fast_clear_type_addr(cmd_buffer->device,
+                                                          image, aspect);
+         sdi.ImmediateData = ANV_FAST_CLEAR_DEFAULT_VALUE;
+      }
+   }
 }
 
 static void
@@ -1268,8 +1284,26 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    /* If the initial layout supports more fast clear than the final layout
     * then we need at least a partial resolve.
     */
-   if (final_fast_clear < initial_fast_clear)
+   if (final_fast_clear < initial_fast_clear) {
+      /* Partial resolves will actually only occur on layer 0/level 0. This
+       * is generally okay because anv only allows explicit fast clears to
+       * the first subresource.
+       *
+       * The situation is a bit different with FCV_CCS_E. With that aux
+       * usage, implicit fast clears can occur on any layer and level.
+       * anv doesn't track fast clear states for more than the first
+       * subresource, so we need to assert that a layout transition doesn't
+       * attempt to partial resolve the other subresources.
+       *
+       * At the moment, we don't enter such a situation, and partial resolves
+       * for higher level/layer resources shouldn't be a concern.
+       */
+      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_FCV_CCS_E) {
+         assert(base_level == 0 && level_count == 1 &&
+                base_layer == 0 && layer_count == 1);
+      }
       resolve_op = ISL_AUX_OP_PARTIAL_RESOLVE;
+   }
 
    if (isl_aux_usage_has_ccs_e(initial_aux_usage) &&
        !isl_aux_usage_has_ccs_e(final_aux_usage))
