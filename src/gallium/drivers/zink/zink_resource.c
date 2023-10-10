@@ -1765,7 +1765,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
             assert(!zink_resource_usage_is_unflushed(res));
             if (!screen->info.have_EXT_image_drm_format_modifier) {
                static bool warned = false;
-               warn_missing_feature(warned, "zink: EXT_image_drm_format_modifier support required");
+               warn_missing_feature(warned, "EXT_image_drm_format_modifier");
                return false;
             }
             unsigned bind = ZINK_BIND_DMABUF;
