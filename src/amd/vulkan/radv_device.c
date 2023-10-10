@@ -598,6 +598,17 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
    add_entrypoints(&b, &vk_common_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
 }
 
+static void
+radv_report_gpuvm_fault(struct radv_device *device)
+{
+   struct radv_winsys_gpuvm_fault_info fault_info = {0};
+
+   if (!radv_vm_fault_occurred(device, &fault_info))
+      return;
+
+   fprintf(stderr, "radv: GPUVM fault detected at address 0x%08" PRIx64 ".\n", fault_info.addr);
+}
+
 static VkResult
 radv_check_status(struct vk_device *vk_device)
 {
@@ -612,15 +623,20 @@ radv_check_status(struct vk_device *vk_device)
       if (device->hw_ctx[i]) {
          status = device->ws->ctx_query_reset_status(device->hw_ctx[i]);
 
-         if (status == RADV_GUILTY_CONTEXT_RESET)
+         if (status == RADV_GUILTY_CONTEXT_RESET) {
+            radv_report_gpuvm_fault(device);
             return vk_device_set_lost(&device->vk, "GPU hung detected in this process");
-         else if (status == RADV_INNOCENT_CONTEXT_RESET)
+         } else if (status == RADV_INNOCENT_CONTEXT_RESET) {
             context_reset = true;
+         }
       }
    }
 
-   if (context_reset)
+   if (context_reset) {
+      radv_report_gpuvm_fault(device);
       return vk_device_set_lost(&device->vk, "GPU hung triggered by other process");
+   }
+
    return VK_SUCCESS;
 }
 
