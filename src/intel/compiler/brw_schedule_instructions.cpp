@@ -613,6 +613,7 @@ public:
       bs(s)
    {
       this->mem_ctx = ralloc_context(NULL);
+      this->lin_ctx = linear_context(this->mem_ctx);
       this->grf_count = grf_count;
       this->hw_reg_count = hw_reg_count;
       this->instructions.make_empty();
@@ -620,30 +621,30 @@ public:
       this->mode = mode;
       this->reg_pressure = 0;
       this->block_idx = 0;
-      this->last_grf_write = rzalloc_array(this->mem_ctx, schedule_node *, grf_count * grf_write_scale);
+      this->last_grf_write = linear_zalloc_array(lin_ctx, schedule_node *, grf_count * grf_write_scale);
       if (!post_reg_alloc) {
-         this->reg_pressure_in = rzalloc_array(mem_ctx, int, block_count);
+         this->reg_pressure_in = linear_zalloc_array(lin_ctx, int, block_count);
 
-         this->livein = ralloc_array(mem_ctx, BITSET_WORD *, block_count);
+         this->livein = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
          for (int i = 0; i < block_count; i++)
-            this->livein[i] = rzalloc_array(mem_ctx, BITSET_WORD,
+            this->livein[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
                                             BITSET_WORDS(grf_count));
 
-         this->liveout = ralloc_array(mem_ctx, BITSET_WORD *, block_count);
+         this->liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
          for (int i = 0; i < block_count; i++)
-            this->liveout[i] = rzalloc_array(mem_ctx, BITSET_WORD,
+            this->liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
                                              BITSET_WORDS(grf_count));
 
-         this->hw_liveout = ralloc_array(mem_ctx, BITSET_WORD *, block_count);
+         this->hw_liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
          for (int i = 0; i < block_count; i++)
-            this->hw_liveout[i] = rzalloc_array(mem_ctx, BITSET_WORD,
+            this->hw_liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
                                                 BITSET_WORDS(hw_reg_count));
 
-         this->written = rzalloc_array(mem_ctx, bool, grf_count);
+         this->written = linear_zalloc_array(lin_ctx, bool, grf_count);
 
-         this->reads_remaining = rzalloc_array(mem_ctx, int, grf_count);
+         this->reads_remaining = linear_zalloc_array(lin_ctx, int, grf_count);
 
-         this->hw_reads_remaining = rzalloc_array(mem_ctx, int, hw_reg_count);
+         this->hw_reads_remaining = linear_zalloc_array(lin_ctx, int, hw_reg_count);
       } else {
          this->reg_pressure_in = NULL;
          this->livein = NULL;
@@ -688,6 +689,7 @@ public:
    void schedule_instructions(bblock_t *block);
 
    void *mem_ctx;
+   linear_ctx *lin_ctx;
 
    bool post_reg_alloc;
    int grf_count;
