@@ -161,6 +161,8 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
       mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask) > 1 ?
 				    hashing32x32 : NormalMode);
       mode.CrossSliceHashingModeMask = -1;
+      mode.FastClearOptimizationEnable = true;
+      mode.FastClearOptimizationEnableMask = true;
    }
 #endif
 }

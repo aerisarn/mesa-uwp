@@ -769,10 +769,24 @@ add_aux_surface_if_supported(struct anv_device *device,
       if (anv_formats_ccs_e_compatible(device->info, image->vk.create_flags,
                                        image->vk.format, image->vk.tiling,
                                        image->vk.usage, fmt_list)) {
-         image->planes[plane].aux_usage =
-            intel_needs_workaround(device->info, 1607794140) ?
-               ISL_AUX_USAGE_FCV_CCS_E :
-               ISL_AUX_USAGE_CCS_E;
+         if (intel_needs_workaround(device->info, 1607794140)) {
+            /* FCV is permanently enabled on this HW. */
+            image->planes[plane].aux_usage = ISL_AUX_USAGE_FCV_CCS_E;
+         } else if (device->info->verx10 == 125) {
+            /* FCV is enabled via 3DSTATE_3D_MODE. We'd expect plain CCS_E to
+             * perform better because it allows for non-zero fast clear colors,
+             * but we've run into regressions in several benchmarks (F1 22 and
+             * RDR2) when trying to enable it. When non-zero clear colors are
+             * enabled, we've observed many partial resolves. We haven't yet
+             * root-caused what layout transitions are causing these resolves,
+             * so in the meantime, we choose to reduce our clear color support.
+             * With only zero clear colors being supported, we might as well
+             * turn on FCV.
+             */
+            image->planes[plane].aux_usage = ISL_AUX_USAGE_FCV_CCS_E;
+         } else {
+            image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_E;
+         }
       } else if (device->info->ver >= 12) {
          anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
                        "The CCS_D aux mode is not yet handled on "
