@@ -54,10 +54,16 @@ fn src_mod_is_bnot(src_mod: SrcMod) -> bool {
 }
 
 impl ALUSrc {
-    fn from_nonzero_src(src: &Src) -> ALUSrc {
+    fn from_src_file(src: &Src, file: RegFile) -> ALUSrc {
         match src.src_ref {
-            SrcRef::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                let reg = match src.src_ref {
+                    SrcRef::Zero => RegRef::zero(file, 1),
+                    SrcRef::Reg(reg) => reg,
+                    _ => panic!("Invalid source ref"),
+                };
                 assert!(reg.comps() == 1);
+                assert!(reg.file() == file);
                 let alu_ref = ALURegRef {
                     reg: reg,
                     abs: src_mod_has_abs(src.src_mod),
@@ -85,28 +91,13 @@ impl ALUSrc {
         }
     }
 
-    fn zero(file: RegFile) -> ALUSrc {
-        let src = Src {
-            src_ref: SrcRef::Reg(RegRef::zero(file, 1)),
-            /* Modifiers don't matter for zero */
-            src_mod: SrcMod::None,
-        };
-        ALUSrc::from_nonzero_src(&src)
-    }
-
     pub fn from_src(src: &Src) -> ALUSrc {
-        match src.src_ref {
-            SrcRef::Zero => ALUSrc::zero(RegFile::GPR),
-            _ => ALUSrc::from_nonzero_src(src),
-        }
+        ALUSrc::from_src_file(src, RegFile::GPR)
     }
 
     pub fn from_usrc(src: &Src) -> ALUSrc {
         assert!(src.is_uniform());
-        match src.src_ref {
-            SrcRef::Zero => ALUSrc::zero(RegFile::UGPR),
-            _ => ALUSrc::from_nonzero_src(src),
-        }
+        ALUSrc::from_src_file(src, RegFile::UGPR)
     }
 }
 
