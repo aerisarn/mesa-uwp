@@ -2101,7 +2101,8 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+      P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
       P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT));
       P_INLINE_DATA(p, begin);
@@ -2218,7 +2219,8 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+      P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
       P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT));
       P_INLINE_DATA(p, begin);
@@ -2315,7 +2317,8 @@ nvk_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+   P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT_COUNT));
    P_INLINE_DATA(p, begin);
@@ -2392,7 +2395,8 @@ nvk_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+   P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT_COUNT));
    P_INLINE_DATA(p, begin);
@@ -2508,9 +2512,10 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 14);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_STRIDE, vertexStride);
+      P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
       P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
 
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_DRAW_INDIRECT));
