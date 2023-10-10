@@ -601,6 +601,14 @@ void *si_clear_render_target_shader(struct si_context *sctx, enum pipe_texture_t
    nir_def *zero = nir_imm_int(&b, 0);
    nir_def *ubo = nir_load_ubo(&b, 4, 32, zero, zero, .range_base = 0, .range = 16);
 
+   /* TODO: No GL CTS tests for 1D arrays, relying on OpenCL CTS for now.
+    * As a sanity check, "OpenCL-CTS/test_conformance/images/clFillImage" tests should pass
+    */
+   if (type == PIPE_TEXTURE_1D_ARRAY) {
+      unsigned swizzle[4] = {0, 2, 0, 0};
+      ubo = nir_swizzle(&b, ubo, swizzle, 4);
+   }
+
    address = nir_iadd(&b, address, ubo);
    nir_def *coord = nir_pad_vector(&b, address, 4);
 
