@@ -162,9 +162,10 @@ zink_screen_debug_marker_end(struct zink_screen *screen, bool emitted);
 #define warn_missing_feature(warned, feat) \
    do { \
       if (!warned) { \
-         mesa_logw("WARNING: Incorrect rendering will happen " \
-                         "because the Vulkan device doesn't support " \
-                         "the '%s' feature\n", feat); \
+         if (!(zink_debug & ZINK_DEBUG_QUIET)) \
+            mesa_logw("WARNING: Incorrect rendering will happen " \
+                           "because the Vulkan device doesn't support " \
+                           "the '%s' feature\n", feat); \
          warned = true; \
       } \
    } while (0)
