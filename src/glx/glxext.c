@@ -556,19 +556,6 @@ __glXInitializeVisualConfigFromTags(struct glx_config * config, int count,
       case GLX_VISUAL_SELECT_GROUP_SGIX:
          config->visualSelectGroup = *bp++;
          break;
-      case GLX_SWAP_METHOD_OML:
-         if (*bp == GLX_SWAP_UNDEFINED_OML ||
-             *bp == GLX_SWAP_COPY_OML ||
-             *bp == GLX_SWAP_EXCHANGE_OML) {
-            config->swapMethod = *bp++;
-         } else {
-            /* X servers with old HW drivers may return any value here, so
-             * assume GLX_SWAP_METHOD_UNDEFINED.
-             */
-            config->swapMethod = GLX_SWAP_UNDEFINED_OML;
-            bp++;
-         }
-         break;
 #endif
       case GLX_SAMPLE_BUFFERS_SGIS:
          config->sampleBuffers = *bp++;

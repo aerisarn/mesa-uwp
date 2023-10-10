@@ -742,7 +742,7 @@ struct __DRIuseInvalidateExtensionRec {
 #define __DRI_ATTRIB_OPTIMAL_PBUFFER_WIDTH	37
 #define __DRI_ATTRIB_OPTIMAL_PBUFFER_HEIGHT	38
 #define __DRI_ATTRIB_VISUAL_SELECT_GROUP	39
-#define __DRI_ATTRIB_SWAP_METHOD		40
+#define __DRI_ATTRIB_SWAP_METHOD		40 // Parsed by the X server when our visuals return it as an attrib.
 #define __DRI_ATTRIB_MAX_SWAP_INTERVAL		41
 #define __DRI_ATTRIB_MIN_SWAP_INTERVAL		42
 #define __DRI_ATTRIB_BIND_TO_TEXTURE_RGB	43
@@ -782,8 +782,8 @@ struct __DRIuseInvalidateExtensionRec {
 /* Note that with the exception of __DRI_ATTRIB_SWAP_NONE, we need to define
  * the same tokens as GLX. This is because old and current X servers will
  * transmit the driconf value grabbed from the AIGLX driver untranslated as
- * the GLX fbconfig value. __DRI_ATTRIB_SWAP_NONE is only used by dri drivers
- * to signal to the dri core that the driconfig is single-buffer.
+ * the GLX fbconfig value. These defines are kept for X Server suorce compatibility,
+ * since Mesa no longer exposes GLX_OML_swap_method.
  */
 #define __DRI_ATTRIB_SWAP_NONE                  0x0000
 #define __DRI_ATTRIB_SWAP_EXCHANGE              0x8061
