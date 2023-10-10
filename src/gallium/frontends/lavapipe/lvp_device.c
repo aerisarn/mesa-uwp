@@ -591,6 +591,12 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       /* maintenance5 */
       .maintenance5 = true,
 
+      /* VK_EXT_ycbcr_2plane_444_formats */
+      .ycbcr2plane444Formats = true,
+
+      /* VK_EXT_ycbcr_image_arrays */
+      .ycbcrImageArrays = true,
+
       /* VK_AMDX_shader_enqueue */
 #ifdef VK_ENABLE_BETA_EXTENSIONS
       .shaderEnqueue = true,

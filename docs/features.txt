@@ -441,7 +441,7 @@ Vulkan 1.1 -- all DONE: anv, lvp, radv, tu, vn
   VK_KHR_maintenance3                                   DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_multiview                                      DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_relaxed_block_layout                           DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
-  VK_KHR_sampler_ycbcr_conversion                       DONE (anv, hasvk, nvk, radv, tu, v3dv, vn)
+  VK_KHR_sampler_ycbcr_conversion                       DONE (anv, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_shader_draw_parameters                         DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, vn)
   VK_KHR_storage_buffer_storage_class                   DONE (anv, dzn, hasvk, lvp, nvk, panvk, radv, tu, v3dv, vn)
   VK_KHR_variable_pointers                              DONE (anv, hasvk, lvp, nvk, panvk, radv, tu, v3dv, vn)
@@ -497,7 +497,7 @@ Vulkan 1.3 -- all DONE: anv, radv, tu, lvp, vn
   VK_EXT_texel_buffer_alignment                         DONE (anv, hasvk, lvp, radv, tu, v3dv, vn)
   VK_EXT_texture_compression_astc_hdr                   DONE (vn)
   VK_EXT_tooling_info                                   DONE (anv, hasvk, nvk, pvr, radv, tu, v3dv, vn)
-  VK_EXT_ycbcr_2plane_444_formats                       DONE (nvk, vn)
+  VK_EXT_ycbcr_2plane_444_formats                       DONE (lvp, nvk, vn)
 
 Khronos extensions that are not part of any Vulkan version:
 
@@ -609,7 +609,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_transform_feedback                             DONE (anv, hasvk, lvp, nvk, radv, tu, vn)
   VK_EXT_vertex_attribute_divisor                       DONE (anv, dzn, hasvk, lvp, nvk, panvk, radv, tu, v3dv, vn)
   VK_EXT_vertex_input_dynamic_state                     DONE (anv, lvp, nvk, radv, tu, vn)
-  VK_EXT_ycbcr_image_arrays                             DONE (anv, hasvk, nvk, radv)
+  VK_EXT_ycbcr_image_arrays                             DONE (anv, hasvk, lvp, nvk, radv)
   VK_ANDROID_external_memory_android_hardware_buffer    DONE (anv, radv, vn)
   VK_ANDROID_native_buffer                              DONE (anv, radv, tu, v3dv, vn)
   VK_GOOGLE_decorate_string                             DONE (anv, hasvk, lvp, radv)
