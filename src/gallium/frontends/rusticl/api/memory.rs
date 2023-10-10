@@ -2591,6 +2591,9 @@ fn enqueue_svm_mem_fill_impl(
         return Err(CL_INVALID_VALUE);
     }
 
+    // The application is allowed to reuse or free the memory referenced by `pattern` after this
+    // function returns so we have to make a copy.
+    let pattern: Vec<u8> = unsafe { slice::from_raw_parts(pattern.cast(), pattern_size).to_vec() };
     create_and_queue(
         q,
         cmd_type,
@@ -2602,7 +2605,7 @@ fn enqueue_svm_mem_fill_impl(
             while offset < size {
                 // SAFETY: pointer are either valid or undefined behavior
                 unsafe {
-                    ptr::copy(pattern, svm_ptr.add(offset), pattern_size);
+                    ptr::copy(pattern.as_ptr().cast(), svm_ptr.add(offset), pattern_size);
                 }
                 offset += pattern_size;
             }
