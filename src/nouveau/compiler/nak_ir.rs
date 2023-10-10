@@ -1088,7 +1088,23 @@ impl Src {
 
     pub fn is_zero(&self) -> bool {
         match self.src_ref {
-            SrcRef::Zero => true,
+            SrcRef::Zero | SrcRef::Imm32(0) => match self.src_mod {
+                SrcMod::None | SrcMod::FAbs | SrcMod::INeg => true,
+                SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::BNot => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn is_fneg_zero(&self, src_type: SrcType) -> bool {
+        match self.src_ref {
+            SrcRef::Zero | SrcRef::Imm32(0) => match self.src_mod {
+                SrcMod::FNeg | SrcMod::FNegAbs => true,
+                _ => false,
+            }
+            SrcRef::Imm32(0x80000000) => {
+                src_type == SrcType::F32 && self.src_mod.is_none()
+            }
             _ => false,
         }
     }

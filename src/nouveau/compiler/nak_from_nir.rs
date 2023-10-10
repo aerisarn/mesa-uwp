@@ -360,7 +360,7 @@ impl<'a> ShaderFromNir<'a> {
                 let (x, y) = match alu.op {
                     nir_op_fabs => (srcs[0].fabs(), Src::new_zero()),
                     nir_op_fadd => (srcs[0], srcs[1]),
-                    nir_op_fneg => (srcs[0].fneg(), Src::new_zero()),
+                    nir_op_fneg => (Src::new_zero().fneg(), srcs[0].fneg()),
                     _ => panic!("Unhandled case"),
                 };
                 assert!(alu.def.bit_size() == 32);

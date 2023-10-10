@@ -313,9 +313,9 @@ impl CopyPropPass {
                         let dst = dst[0];
 
                         if !add.saturate {
-                            if add.srcs[0].is_zero() {
+                            if add.srcs[0].is_fneg_zero(SrcType::F32) {
                                 self.add_copy(dst, SrcType::F32, add.srcs[1]);
-                            } else if add.srcs[1].is_zero() {
+                            } else if add.srcs[1].is_fneg_zero(SrcType::F32) {
                                 self.add_copy(dst, SrcType::F32, add.srcs[0]);
                             }
                         }
