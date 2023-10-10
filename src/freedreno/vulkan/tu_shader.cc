@@ -702,13 +702,47 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
 }
 
 static bool
+shader_uses_push_consts(nir_shader *shader)
+{
+   nir_foreach_function_impl (impl, shader) {
+      nir_foreach_block (block, impl) {
+         nir_foreach_instr_safe (instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            if (intrin->intrinsic == nir_intrinsic_load_push_constant)
+               return true;
+         }
+      }
+   }
+   return false;
+}
+
+static bool
 tu_lower_io(nir_shader *shader, struct tu_device *dev,
             struct tu_shader *tu_shader,
             const struct tu_pipeline_layout *layout,
             unsigned *reserved_consts_vec4_out)
 {
-   if (tu_shader->const_state.push_consts.type == IR3_PUSH_CONSTS_PER_STAGE)
+   tu_shader->const_state.push_consts = (struct tu_push_constant_range) {
+      .lo = 0,
+      .dwords = layout->push_constant_size / 4,
+      .type = tu_push_consts_type(layout, dev->compiler),
+   };
+
+   if (tu_shader->const_state.push_consts.type == IR3_PUSH_CONSTS_PER_STAGE) {
       gather_push_constants(shader, tu_shader);
+   } else if (tu_shader->const_state.push_consts.type ==
+            IR3_PUSH_CONSTS_SHARED_PREAMBLE) {
+      /* Disable pushing constants for this stage if none were loaded in the
+       * shader.  If all stages don't load their declared push constants, as
+       * is often the case under zink, then we could additionally skip
+       * emitting REG_A7XX_HLSQ_SHARED_CONSTS_IMM entirely.
+       */
+      if (!shader_uses_push_consts(shader))
+         tu_shader->const_state.push_consts = (struct tu_push_constant_range) {};
+   }
 
    struct tu_const_state *const_state = &tu_shader->const_state;
    unsigned reserved_consts_vec4 =
@@ -2270,12 +2304,6 @@ tu_shader_create(struct tu_device *dev,
          nir->info.stage == MESA_SHADER_TESS_EVAL ||
          nir->info.stage == MESA_SHADER_GEOMETRY)
       tu_gather_xfb_info(nir, &so_info);
-
-   shader->const_state.push_consts = (struct tu_push_constant_range) {
-      .lo = 0,
-      .dwords = layout->push_constant_size / 4,
-      .type = tu_push_consts_type(layout, dev->compiler),
-   };
 
    unsigned reserved_consts_vec4 = 0;
    NIR_PASS_V(nir, tu_lower_io, dev, shader, layout, &reserved_consts_vec4);
