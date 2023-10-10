@@ -2686,6 +2686,11 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       load->push_consts.dst_base = nir_src_as_uint(intr->src[0]);
       load->push_consts.src_base = nir_intrinsic_base(intr);
       load->push_consts.src_size = nir_intrinsic_range(intr);
+
+      ctx->so->constlen =
+         MAX2(ctx->so->constlen,
+              DIV_ROUND_UP(
+                 load->push_consts.dst_base + load->push_consts.src_size, 4));
       break;
    }
    default:
