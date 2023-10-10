@@ -146,6 +146,8 @@ aco_postprocess_shader(const struct aco_compiler_options* options,
 
       /* spilling and scheduling */
       live_vars = aco::live_var_analysis(program.get());
+      if (program->collect_statistics)
+         aco::collect_presched_stats(program.get());
       aco::spill(program.get(), live_vars);
    }
 
@@ -163,9 +165,6 @@ aco_postprocess_shader(const struct aco_compiler_options* options,
       llvm_ir = std::string(data, data + size);
       free(data);
    }
-
-   if (program->collect_statistics)
-      aco::collect_presched_stats(program.get());
 
    if ((aco::debug_flags & aco::DEBUG_LIVE_INFO) && options->dump_shader)
       aco_print_program(program.get(), stderr, live_vars, aco::print_live_vars | aco::print_kill);
