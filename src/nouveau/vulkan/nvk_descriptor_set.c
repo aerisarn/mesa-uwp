@@ -351,6 +351,9 @@ nvk_descriptor_set_destroy(struct nvk_device *dev,
             break;
          }
       }
+
+      if (pool->entry_count == 0)
+         pool->current_offset = 0;
    }
 
    vk_descriptor_set_layout_unref(&dev->vk, &set->layout->vk);
