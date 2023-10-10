@@ -1220,6 +1220,20 @@ dri2_display_destroy(_EGLDisplay *disp)
    disp->DriverData = NULL;
 }
 
+struct dri2_egl_display *
+dri2_display_create(void)
+{
+   struct dri2_egl_display *dri2_dpy = calloc(1, sizeof *dri2_dpy);
+   if (!dri2_dpy) {
+      _eglError(EGL_BAD_ALLOC, "eglInitialize");
+      return NULL;
+   }
+
+   dri2_dpy->fd_render_gpu = -1;
+   dri2_dpy->fd_display_gpu = -1;
+   return dri2_dpy;
+}
+
 __DRIbuffer *
 dri2_egl_surface_alloc_local_buffer(struct dri2_egl_surface *dri2_surf,
                                     unsigned int att, unsigned int format)
