@@ -113,6 +113,7 @@ zink-radv-polaris10-valve:
     - .zink-radv-manual-rules
   variables:
     GPU_VERSION: zink-radv-polaris10
+    ZINK_DEBUG: quiet
 
 zink-radv-navi10-valve:
   extends:
