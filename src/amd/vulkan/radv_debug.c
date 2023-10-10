@@ -694,10 +694,18 @@ radv_gpu_hang_occurred(struct radv_queue *queue, enum amd_ip_type ring)
    return false;
 }
 
+static bool
+radv_vm_fault_occurred(struct radv_device *device, struct radv_winsys_gpuvm_fault_info *fault_info)
+{
+   if (!device->physical_device->rad_info.has_gpuvm_fault_query)
+      return false;
+
+   return device->ws->query_gpuvm_fault(device->ws, fault_info);
+}
+
 void
 radv_check_gpu_hangs(struct radv_queue *queue, const struct radv_winsys_submit_info *submit_info)
 {
-   struct radv_device *device = queue->device;
    enum amd_ip_type ring;
 
    ring = radv_queue_ring(queue);
@@ -709,6 +717,12 @@ radv_check_gpu_hangs(struct radv_queue *queue, const struct radv_winsys_submit_i
    fprintf(stderr, "radv: GPU hang detected...\n");
 
 #ifndef _WIN32
+   struct radv_winsys_gpuvm_fault_info fault_info = {0};
+   struct radv_device *device = queue->device;
+
+   /* Query if a VM fault happened for this GPU hang. */
+   bool vm_fault_occurred = radv_vm_fault_occurred(queue->device, &fault_info);
+
    /* Create a directory into $HOME/radv_dumps_<pid>_<time> to save
     * various debugging info about that GPU hang.
     */
@@ -788,18 +802,16 @@ radv_check_gpu_hangs(struct radv_queue *queue, const struct radv_winsys_submit_i
       fclose(f);
    }
 
-#if 0
    /* Dump VM fault info. */
    if (vm_fault_occurred) {
       snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "vm_fault.log");
       f = fopen(dump_path, "w+");
       if (f) {
          fprintf(f, "VM fault report.\n\n");
-         fprintf(f, "Failing VM page: 0x%08" PRIx64 "\n\n", addr);
+         fprintf(f, "Failing VM page: 0x%08" PRIx64 "\n", fault_info.addr);
          fclose(f);
       }
    }
-#endif
 
    /* Dump app info. */
    snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "app_info.log");
