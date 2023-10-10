@@ -129,6 +129,14 @@ struct brw_compiler {
    bool use_bindless_sampler_offset;
 
    /**
+    * Should DPAS instructions be lowered?
+    *
+    * This will be set for all platforms before Gfx12.5. It may also be set
+    * platforms that support DPAS for testing purposes.
+    */
+   bool lower_dpas;
+
+   /**
     * Calling the ra_allocate function after each register spill can take
     * several minutes. This option speeds up shader compilation by spilling
     * more registers after the ra_allocate failure. Required for

@@ -626,6 +626,8 @@ void brw_emit_predicate_on_sample_mask(const brw::fs_builder &bld, fs_inst *inst
 int brw_get_subgroup_id_param_index(const intel_device_info *devinfo,
                                     const brw_stage_prog_data *prog_data);
 
+bool brw_lower_dpas(fs_visitor &v);
+
 void nir_to_brw(fs_visitor *s);
 
 #endif /* BRW_FS_H */

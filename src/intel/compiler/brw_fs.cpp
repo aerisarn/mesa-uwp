@@ -6134,6 +6134,9 @@ fs_visitor::optimize()
 
    validate();
 
+   if (compiler->lower_dpas)
+      OPT(brw_lower_dpas, *this);
+
    OPT(split_virtual_grfs);
 
    /* Before anything else, eliminate dead code.  The results of some NIR
