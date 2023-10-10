@@ -403,8 +403,8 @@
     <field name="Extended Parameter 1" start="256" end="287" type="uint" />
     <field name="Extended Parameter 2" start="288" end="319" type="uint" />
   </instruction>
-  <instruction name="3DSTATE_3D_MODE" bias="2" length="2" engine="render">
-    <field name="DWord Length" start="0" end="7" type="uint" default="0" />
+  <instruction name="3DSTATE_3D_MODE" bias="2" length="5" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="3" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="30" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
     <field name="Command SubType" start="27" end="28" type="uint" default="3" />
