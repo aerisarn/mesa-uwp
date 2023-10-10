@@ -776,6 +776,9 @@ get_location_str(unsigned location, gl_shader_stage stage,
       break;
    }
 
+   if (mode == nir_var_system_value)
+      return gl_system_value_name(location);
+
    if (location == ~0) {
       return "~0";
    } else {
@@ -859,6 +862,7 @@ print_var_decl(nir_variable *var, print_state *state)
    if (var->data.mode & (nir_var_shader_in |
                          nir_var_shader_out |
                          nir_var_uniform |
+                         nir_var_system_value |
                          nir_var_mem_ubo |
                          nir_var_mem_ssbo |
                          nir_var_image)) {
@@ -872,7 +876,7 @@ print_var_decl(nir_variable *var, print_state *state)
        */
       unsigned int num_components =
          glsl_get_components(glsl_without_array(var->type));
-      const char *components = NULL;
+      const char *components = "";
       char components_local[18] = { '.' /* the rest is 0-filled */ };
       switch (var->data.mode) {
       case nir_var_shader_in:
@@ -889,10 +893,14 @@ print_var_decl(nir_variable *var, print_state *state)
          break;
       }
 
-      fprintf(fp, " (%s%s, %u, %u)%s", loc,
-              components ? components : "",
-              var->data.driver_location, var->data.binding,
-              var->data.compact ? " compact" : "");
+      if (var->data.mode & nir_var_system_value) {
+         fprintf(fp, " (%s%s)", loc, components);
+      } else {
+         fprintf(fp, " (%s%s, %u, %u)%s", loc,
+               components,
+               var->data.driver_location, var->data.binding,
+               var->data.compact ? " compact" : "");
+      }
    }
 
    if (var->constant_initializer) {
