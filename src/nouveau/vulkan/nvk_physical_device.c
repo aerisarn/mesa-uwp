@@ -553,6 +553,9 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       /* Vulkan 1.3 properties */
       .maxInlineUniformBlockSize = 1 << 16,
       .maxPerStageDescriptorInlineUniformBlocks = 32,
+      .maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = 32,
+      .maxDescriptorSetInlineUniformBlocks = 6 * 32,
+      .maxDescriptorSetUpdateAfterBindInlineUniformBlocks = 6 * 32,
       .maxBufferSize = UINT32_MAX,
 
       /* VK_KHR_push_descriptor */
