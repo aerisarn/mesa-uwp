@@ -30,6 +30,7 @@ struct nil_format_info {
 
 /* Abbreviated usage masks:
  * T: texturing
+ * B: texture buffer, implies T
  * R: render target
  * A: render target, alpha-blendable
  * C: render target (color), blendable only on nvc0
@@ -41,6 +42,7 @@ struct nil_format_info {
 #define U_B   U_T | NIL_FORMAT_SUPPORTS_BUFFER_BIT
 #define U_I   U_B | NIL_FORMAT_SUPPORTS_STORAGE_BIT
 #define U_TR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_T
+#define U_BR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_B
 #define U_IR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_I
 #define U_TA  NIL_FORMAT_SUPPORTS_ALPHA_BLEND_BIT | U_TR
 #define U_IA  NIL_FORMAT_SUPPORTS_ALPHA_BLEND_BIT | U_IR
@@ -150,8 +152,8 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
    F3(A, B10G10R10X2_UNORM,   A2R10G10B10,      B, G, R, x, UNORM,   A2B10G10R10, T),
    C4(A, R10G10B10A2_SNORM,   NONE,             R, G, B, A, SNORM,   A2B10G10R10, T),
    C4(A, B10G10R10A2_SNORM,   NONE,             B, G, R, A, SNORM,   A2B10G10R10, T),
-   C4(A, R10G10B10A2_UINT,    AU2BU10GU10RU10,  R, G, B, A, UINT,    A2B10G10R10, TR),
-   C4(A, B10G10R10A2_UINT,    NONE,             B, G, R, A, UINT,    A2B10G10R10, T),
+   C4(A, R10G10B10A2_UINT,    AU2BU10GU10RU10,  R, G, B, A, UINT,    A2B10G10R10, BR),
+   C4(A, B10G10R10A2_UINT,    NONE,             B, G, R, A, UINT,    A2B10G10R10, B),
 
    F3(A, R11G11B10_FLOAT, BF10GF11RF11, R, G, B, x, FLOAT, BF10GF11RF11, IA),
 
