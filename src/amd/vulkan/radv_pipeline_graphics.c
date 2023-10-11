@@ -1627,6 +1627,12 @@ radv_pipeline_needs_noop_fs(struct radv_graphics_pipeline *pipeline, const struc
 static void
 radv_remove_varyings(nir_shader *nir)
 {
+   /* We can't demote mesh outputs to nir_var_shader_temp yet, because
+    * they don't support array derefs of vectors.
+    */
+   if (nir->info.stage == MESA_SHADER_MESH)
+      return;
+
    bool fixup_derefs = false;
 
    nir_foreach_shader_out_variable (var, nir) {
