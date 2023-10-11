@@ -18,7 +18,7 @@ if [ "$PIGLIT_REPLAY_SUBCOMMAND" = "profile" ]; then
       "$PIGLIT_REPLAY_DESCRIPTION_FILE"
 else
     # keep the images for the later upload
-    PIGLIT_REPLAY_EXTRA_ARGS="--keep-image ${PIGLIT_REPLAY_EXTRA_ARGS}"
+    export PIGLIT_REPLAY_EXTRA_ARGS="--keep-image ${PIGLIT_REPLAY_EXTRA_ARGS}"
 fi
 
 # WINE
