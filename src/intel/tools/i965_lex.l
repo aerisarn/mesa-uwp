@@ -26,6 +26,7 @@ extern char *input_filename;
 %x REG
 %x DOTSEL
 %x LABEL
+%x MSGDESC
 %%
 
  /* eat up single line comment */
@@ -119,8 +120,14 @@ ror 		{ yylval.integer = BRW_OPCODE_ROR; return ROR; }
 sad2 		{ yylval.integer = BRW_OPCODE_SAD2; return SAD2; }
 sada2 		{ yylval.integer = BRW_OPCODE_SADA2; return SADA2; }
 sel 		{ yylval.integer = BRW_OPCODE_SEL; return SEL; }
-send 		{ yylval.integer = BRW_OPCODE_SEND; return SEND; }
-sendc 		{ yylval.integer = BRW_OPCODE_SENDC; return SENDC; }
+send 		{
+			yylval.integer = BRW_OPCODE_SEND;
+			return p->devinfo->ver < 12 ? SEND_GFX4 : SEND_GFX12;
+		}
+sendc 		{
+			yylval.integer = BRW_OPCODE_SENDC;
+			return  p->devinfo->ver < 12 ? SENDC_GFX4 : SENDC_GFX12;
+		}
 sends 	        { yylval.integer = BRW_OPCODE_SENDS; return SENDS; }
 sendsc        	{ yylval.integer = BRW_OPCODE_SENDSC; return SENDSC; }
 shl 		{ yylval.integer = BRW_OPCODE_SHL; return SHL; }
@@ -182,6 +189,10 @@ write 			{ return WRITE; }
 vme 			{ return VME; }
 "pixel interp"		{ return PIXEL_INTERP; }
 "dp data 1" 		{ return DP_DATA_1; }
+"rt accel"		{ return RT_ACCEL; }
+slm			{ return SLM; }
+tgm			{ return TGM; }
+ugm			{ return UGM; }
 
 ";"    	{ return SEMICOLON; }
 ":"    	{ return COLON; }
@@ -382,7 +393,17 @@ sr[0-9]+ 	{ yylval.integer = atoi(yytext + 2); return STATEREG; }
 "Jump: "       	{ }
 "Pop: "		{ }
 [ \t]+ 		{ }
-"MsgDesc:"[^{]* 	{ }
+
+"MsgDesc: "		{ BEGIN(MSGDESC); return MSGDESC_BEGIN; }
+<MSGDESC>ex_bso		{ return EX_BSO; }
+<MSGDESC>src1_len	{ return SRC1_LEN; }
+<MSGDESC>"="		{ return ASSIGN; }
+<MSGDESC>[0-9][0-9]*	{
+			   yylval.integer = strtoul(yytext, NULL, 10);
+			   return INTEGER;
+		        }
+<MSGDESC>"{"    	{ yyless(0); BEGIN(INITIAL); return MSGDESC_END; }
+<MSGDESC>.      	{ }
 
 "0x"[0-9a-f][0-9a-f]* 	{
 			   yylval.llint = strtoull(yytext + 2, NULL, 16);

@@ -359,6 +359,7 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 	struct condition condition;
 	struct options options;
 	struct instoption instoption;
+	struct msgdesc msgdesc;
 	struct tgl_swsb depinfo;
 	brw_inst *instruction;
 }
@@ -373,6 +374,7 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 %token LSQUARE RSQUARE
 %token PLUS MINUS
 %token SEMICOLON
+%token ASSIGN
 
 /* datatypes */
 %token <integer> TYPE_B TYPE_UB
@@ -404,7 +406,8 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 %token <integer> OR
 %token <integer> PLN POP PUSH
 %token <integer> RET RNDD RNDE RNDU RNDZ ROL ROR
-%token <integer> SAD2 SADA2 SEL SEND SENDC SENDS SENDSC SHL SHR SMOV SUBB SYNC
+%token <integer> SAD2 SADA2 SEL SENDS SENDSC SHL SHR SMOV SUBB SYNC
+%token <integer> SEND_GFX4 SENDC_GFX4 SEND_GFX12 SENDC_GFX12
 %token <integer> WAIT WHILE
 %token <integer> XOR
 
@@ -419,7 +422,11 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 
 /* shared functions for send */
 %token CONST CRE DATA DP_DATA_1 GATEWAY MATH PIXEL_INTERP READ RENDER SAMPLER
-%token THREAD_SPAWNER URB VME WRITE DP_SAMPLER
+%token THREAD_SPAWNER URB VME WRITE DP_SAMPLER RT_ACCEL SLM TGM UGM
+
+/* message details for send */
+%token MSGDESC_BEGIN SRC1_LEN EX_BSO MSGDESC_END
+%type <msgdesc> msgdesc msgdesc_parts;
 
 /* Conditional modifiers */
 %token <integer> EQUAL GREATER GREATER_EQUAL LESS LESS_EQUAL NOT_EQUAL
@@ -525,6 +532,7 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 %type <reg> indirectgenreg indirectregion
 %type <reg> immreg src reg32 payload directgenreg_list addrparam region
 %type <reg> region_wh directgenreg directmsgreg indirectmsgreg
+%type <reg> desc ex_desc reg32a
 %type <integer> swizzle
 
 /* registers */
@@ -540,8 +548,8 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 
 /* instruction opcodes */
 %type <integer> unaryopcodes binaryopcodes binaryaccopcodes ternaryopcodes
-%type <integer> sendop
-%type <instruction> sendopcode
+%type <integer> sendop sendsop
+%type <instruction> sendopcode sendsopcode
 
 %type <integer> negate abs chansel math_function sharedfunction
 
@@ -972,9 +980,9 @@ waitinstruction:
 
 /* Send instruction */
 sendinstruction:
-	predicate sendopcode execsize dst payload exp2 sharedfunction instoptions
+	predicate sendopcode execsize dst payload exp2 sharedfunction msgdesc instoptions
 	{
-		i965_asm_set_instruction_options(p, $8);
+		i965_asm_set_instruction_options(p, $9);
 		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $3);
 		brw_set_dest(p, brw_last_inst, $4);
 		brw_set_src0(p, brw_last_inst, $5);
@@ -983,20 +991,22 @@ sendinstruction:
 				            BRW_IMMEDIATE_VALUE,
 					    BRW_REGISTER_TYPE_UD);
 		brw_inst_set_sfid(p->devinfo, brw_last_inst, $7);
-		brw_inst_set_eot(p->devinfo, brw_last_inst, $8.end_of_thread);
+		brw_inst_set_eot(p->devinfo, brw_last_inst, $9.end_of_thread);
 		// TODO: set instruction group instead of qtr and nib ctrl
 		brw_inst_set_qtr_control(p->devinfo, brw_last_inst,
-				         $8.qtr_ctrl);
+				         $9.qtr_ctrl);
 
 		if (p->devinfo->ver >= 7)
 			brw_inst_set_nib_control(p->devinfo, brw_last_inst,
-					         $8.nib_ctrl);
+					         $9.nib_ctrl);
 
 		brw_pop_insn_state(p);
 	}
-	| predicate sendopcode execsize exp dst payload exp2 sharedfunction instoptions
+	| predicate sendopcode execsize exp dst payload exp2 sharedfunction msgdesc instoptions
 	{
-		i965_asm_set_instruction_options(p, $9);
+		assert(p->devinfo->ver < 6);
+
+		i965_asm_set_instruction_options(p, $10);
 		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $3);
 		brw_inst_set_base_mrf(p->devinfo, brw_last_inst, $4);
 		brw_set_dest(p, brw_last_inst, $5);
@@ -1006,97 +1016,96 @@ sendinstruction:
 				            BRW_IMMEDIATE_VALUE,
 					    BRW_REGISTER_TYPE_UD);
 		brw_inst_set_sfid(p->devinfo, brw_last_inst, $8);
-		brw_inst_set_eot(p->devinfo, brw_last_inst, $9.end_of_thread);
+		brw_inst_set_eot(p->devinfo, brw_last_inst, $10.end_of_thread);
 		// TODO: set instruction group instead of qtr and nib ctrl
 		brw_inst_set_qtr_control(p->devinfo, brw_last_inst,
-				         $9.qtr_ctrl);
-
-		if (p->devinfo->ver >= 7)
-			brw_inst_set_nib_control(p->devinfo, brw_last_inst,
-					         $9.nib_ctrl);
+				         $10.qtr_ctrl);
 
 		brw_pop_insn_state(p);
 	}
-	| predicate sendopcode execsize dst payload payload exp2 sharedfunction instoptions
+	| predicate sendopcode execsize dst payload payload exp2 sharedfunction msgdesc instoptions
 	{
-		i965_asm_set_instruction_options(p, $9);
+		assert(p->devinfo->ver >= 6 && p->devinfo->ver < 12);
+
+		i965_asm_set_instruction_options(p, $10);
 		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $3);
 		brw_set_dest(p, brw_last_inst, $4);
 		brw_set_src0(p, brw_last_inst, $5);
 		brw_inst_set_bits(brw_last_inst, 127, 96, $7);
 		brw_inst_set_sfid(p->devinfo, brw_last_inst, $8);
-		brw_inst_set_eot(p->devinfo, brw_last_inst, $9.end_of_thread);
+		brw_inst_set_eot(p->devinfo, brw_last_inst, $10.end_of_thread);
 		// TODO: set instruction group instead of qtr and nib ctrl
 		brw_inst_set_qtr_control(p->devinfo, brw_last_inst,
-				         $9.qtr_ctrl);
+				         $10.qtr_ctrl);
 
 		if (p->devinfo->ver >= 7)
 			brw_inst_set_nib_control(p->devinfo, brw_last_inst,
-					         $9.nib_ctrl);
+					         $10.nib_ctrl);
 
 		brw_pop_insn_state(p);
 	}
-	| predicate SENDS execsize dst payload payload exp2 exp2 sharedfunction instoptions
+	| predicate sendsopcode execsize dst payload payload desc ex_desc sharedfunction msgdesc instoptions
 	{
-		brw_next_insn(p, $2);
-		i965_asm_set_instruction_options(p, $10);
+		assert(p->devinfo->ver >= 9);
+
+		i965_asm_set_instruction_options(p, $11);
 		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $3);
 		brw_set_dest(p, brw_last_inst, $4);
 		brw_set_src0(p, brw_last_inst, $5);
 		brw_set_src1(p, brw_last_inst, $6);
 
-		if (brw_inst_send_sel_reg32_ex_desc(p->devinfo, brw_last_inst)) {
-			brw_inst_set_send_ex_desc_ia_subreg_nr(p->devinfo, brw_last_inst, $5.subnr);
+		if ($7.file == BRW_IMMEDIATE_VALUE) {
+			brw_inst_set_send_sel_reg32_desc(p->devinfo, brw_last_inst, 0);
+			brw_inst_set_send_desc(p->devinfo, brw_last_inst, $7.ud);
 		} else {
-			brw_inst_set_sends_ex_desc(p->devinfo, brw_last_inst, $8);
+			brw_inst_set_send_sel_reg32_desc(p->devinfo, brw_last_inst, 1);
 		}
 
-		brw_inst_set_bits(brw_last_inst, 127, 96, $7);
-		brw_inst_set_sfid(p->devinfo, brw_last_inst, $9);
-		brw_inst_set_eot(p->devinfo, brw_last_inst, $10.end_of_thread);
-		// TODO: set instruction group instead of qtr and nib ctrl
-		brw_inst_set_qtr_control(p->devinfo, brw_last_inst,
-				         $10.qtr_ctrl);
-
-		if (p->devinfo->ver >= 7)
-			brw_inst_set_nib_control(p->devinfo, brw_last_inst,
-					         $10.nib_ctrl);
-
-		brw_pop_insn_state(p);
-	}
-	| predicate SENDS execsize dst payload payload src exp2 sharedfunction instoptions
-	{
-		brw_next_insn(p, $2);
-		i965_asm_set_instruction_options(p, $10);
-		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $3);
-		brw_set_dest(p, brw_last_inst, $4);
-		brw_set_src0(p, brw_last_inst, $5);
-		brw_set_src1(p, brw_last_inst, $6);
-
-		brw_inst_set_send_sel_reg32_desc(p->devinfo, brw_last_inst, 1);
-		brw_inst_set_sends_ex_desc(p->devinfo, brw_last_inst, $8);
+		if ($8.file == BRW_IMMEDIATE_VALUE) {
+			brw_inst_set_send_sel_reg32_ex_desc(p->devinfo, brw_last_inst, 0);
+			brw_inst_set_sends_ex_desc(p->devinfo, brw_last_inst, $8.ud);
+		} else {
+			brw_inst_set_send_sel_reg32_ex_desc(p->devinfo, brw_last_inst, 1);
+			brw_inst_set_send_ex_desc_ia_subreg_nr(p->devinfo, brw_last_inst, $8.subnr >> 2);
+		}
 
 		brw_inst_set_sfid(p->devinfo, brw_last_inst, $9);
-		brw_inst_set_eot(p->devinfo, brw_last_inst, $10.end_of_thread);
+		brw_inst_set_eot(p->devinfo, brw_last_inst, $11.end_of_thread);
 		// TODO: set instruction group instead of qtr and nib ctrl
 		brw_inst_set_qtr_control(p->devinfo, brw_last_inst,
-				         $10.qtr_ctrl);
+				         $11.qtr_ctrl);
 
-		if (p->devinfo->ver >= 7)
-			brw_inst_set_nib_control(p->devinfo, brw_last_inst,
-					         $10.nib_ctrl);
+		brw_inst_set_nib_control(p->devinfo, brw_last_inst,
+					 $11.nib_ctrl);
+
+		if (p->devinfo->verx10 >= 125 && $10.ex_bso) {
+			brw_inst_set_send_ex_bso(p->devinfo, brw_last_inst, 1);
+			brw_inst_set_send_src1_len(p->devinfo, brw_last_inst,
+						   $10.src1_len);
+		}
 
 		brw_pop_insn_state(p);
 	}
 	;
 
 sendop:
-	SEND
-	| SENDC
+	SEND_GFX4
+	| SENDC_GFX4
+	;
+
+sendsop:
+	SEND_GFX12
+	| SENDC_GFX12
+	| SENDS
+	| SENDSC
 	;
 
 sendopcode:
 	sendop   { $$ = brw_next_insn(p, $1); }
+	;
+
+sendsopcode:
+	sendsop  { $$ = brw_next_insn(p, $1); }
 	;
 
 sharedfunction:
@@ -1116,12 +1125,41 @@ sharedfunction:
 	| CRE 		        { $$ = HSW_SFID_CRE; }
 	| SAMPLER	        { $$ = BRW_SFID_SAMPLER; }
 	| DP_SAMPLER	        { $$ = GFX6_SFID_DATAPORT_SAMPLER_CACHE; }
+	| RT_ACCEL		{ $$ = GEN_RT_SFID_RAY_TRACE_ACCELERATOR; }
+	| SLM			{ $$ = GFX12_SFID_SLM; }
+	| TGM			{ $$ = GFX12_SFID_TGM; }
+	| UGM			{ $$ = GFX12_SFID_UGM; }
 	;
 
 exp2:
 	LONG 		{ $$ = $1; }
 	| MINUS LONG 	{ $$ = -$2; }
 	;
+
+desc:
+	reg32a
+	| exp2
+	{
+		$$ = brw_imm_ud($1);
+	}
+	;
+
+ex_desc:
+	reg32a
+	| exp2
+	{
+		$$ = brw_imm_ud($1);
+	}
+	;
+
+reg32a:
+	addrreg region reg_type
+	{
+		$$ = set_direct_src_operand(&$1, $3);
+		$$ = stride($$, $2.vstride, $2.width, $2.hstride);
+	}
+	;
+
 
 /* Jump instruction */
 jumpinstruction:
@@ -2343,6 +2381,30 @@ condModifiers:
 	| OVERFLOW
 	| ROUND_INCREMENT
 	| UNORDERED
+	;
+
+/* message details for send */
+msgdesc:
+	MSGDESC_BEGIN msgdesc_parts MSGDESC_END { $$ = $2; }
+	;
+
+msgdesc_parts:
+	SRC1_LEN ASSIGN INTEGER msgdesc_parts
+	{
+		$$ = $4;
+		$$.src1_len = $3;
+	}
+	| EX_BSO msgdesc_parts
+	{
+		$$ = $2;
+		$$.ex_bso = 1;
+	}
+	| INTEGER msgdesc_parts { $$ = $2; }
+	| ASSIGN msgdesc_parts { $$ = $2; }
+	| /* empty */
+	{
+		memset(&$$, 0, sizeof($$));
+	}
 	;
 
 saturate:

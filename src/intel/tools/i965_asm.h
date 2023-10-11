@@ -94,6 +94,11 @@ struct options {
    struct tgl_swsb depinfo;
 };
 
+struct msgdesc {
+   unsigned ex_bso:1;
+   unsigned src1_len:5;
+};
+
 enum instr_label_type {
    INSTR_LABEL_JIP,
    INSTR_LABEL_UIP,
