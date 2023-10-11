@@ -241,6 +241,8 @@ asm_testcases = [
   ['bdw', 'gfx8'],
   ['skl', 'gfx9'],
   ['icl', 'gfx11'],
+  ['tgl', 'gfx12'],
+  ['dg2', 'gfx12.5'],
 ]
 
 test_runner = find_program('tests/run-test.py')
