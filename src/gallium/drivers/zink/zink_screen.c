@@ -1485,10 +1485,12 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    VKSCR(DestroyPipelineLayout)(screen->dev, screen->gfx_push_constant_layout, NULL);
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
-   util_queue_finish(&screen->cache_get_thread);
-   util_queue_destroy(&screen->cache_get_thread);
+   if (util_queue_is_initialized(&screen->cache_get_thread)) {
+      util_queue_finish(&screen->cache_get_thread);
+      util_queue_destroy(&screen->cache_get_thread);
+   }
 #ifdef ENABLE_SHADER_CACHE
-   if (screen->disk_cache) {
+   if (screen->disk_cache && util_queue_is_initialized(&screen->cache_put_thread)) {
       util_queue_finish(&screen->cache_put_thread);
       disk_cache_wait_for_idle(screen->disk_cache);
       util_queue_destroy(&screen->cache_put_thread);
@@ -1512,7 +1514,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->fence)
       VKSCR(DestroyFence)(screen->dev, screen->fence, NULL);
 
-   if (screen->threaded_submit)
+   if (util_queue_is_initialized(&screen->flush_queue))
       util_queue_destroy(&screen->flush_queue);
 
    simple_mtx_destroy(&screen->semaphores_lock);
