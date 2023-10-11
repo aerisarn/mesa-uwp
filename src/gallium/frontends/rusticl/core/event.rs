@@ -11,7 +11,6 @@ use mesa_rust_util::static_assert;
 use rusticl_opencl_gen::*;
 
 use std::collections::HashSet;
-use std::os::raw::c_void;
 use std::slice;
 use std::sync::Arc;
 use std::sync::Condvar;
@@ -37,7 +36,7 @@ pub enum EventTimes {
 #[derive(Default)]
 struct EventMutState {
     status: cl_int,
-    cbs: [Vec<(FuncEventCB, *mut c_void)>; 3],
+    cbs: [Vec<EventCB>; 3],
     work: Option<EventSig>,
     time_queued: cl_ulong,
     time_submit: cl_ulong,
@@ -122,7 +121,7 @@ impl Event {
         if [CL_COMPLETE, CL_RUNNING, CL_SUBMITTED].contains(&(new as u32)) {
             if let Some(cbs) = lock.cbs.get(new as usize) {
                 cbs.iter()
-                    .for_each(|(cb, data)| unsafe { cb(cl_event::from_ptr(self), new, *data) });
+                    .for_each(|cb| unsafe { (cb.func)(cl_event::from_ptr(self), new, cb.data) });
             }
         }
     }
@@ -161,16 +160,16 @@ impl Event {
         }
     }
 
-    pub fn add_cb(&self, state: cl_int, cb: FuncEventCB, data: *mut c_void) {
+    pub fn add_cb(&self, state: cl_int, cb: EventCB) {
         let mut lock = self.state();
         let status = lock.status;
 
         // call cb if the status was already reached
         if state >= status {
             drop(lock);
-            unsafe { cb(cl_event::from_ptr(self), status, data) };
+            unsafe { (cb.func)(cl_event::from_ptr(self), status, cb.data) };
         } else {
-            lock.cbs.get_mut(state as usize).unwrap().push((cb, data));
+            lock.cbs.get_mut(state as usize).unwrap().push(cb);
         }
     }
 
