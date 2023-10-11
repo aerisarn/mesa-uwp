@@ -81,7 +81,7 @@ vn_device_memory_bo_init(struct vn_device *dev, struct vn_device_memory *mem)
 
    const struct vk_device_memory *mem_vk = &mem->base.base;
    return vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags,
+      dev->renderer, mem_vk->size, mem->base.id, mem->type.propertyFlags,
       mem_vk->export_handle_types, &mem->base_bo);
 }
 
@@ -112,7 +112,6 @@ vn_device_memory_pool_grow_alloc(struct vn_device *dev,
 
    vn_object_set_id(mem, (uintptr_t)mem, VK_OBJECT_TYPE_DEVICE_MEMORY);
 
-   mem->size = size;
    mem->type =
       dev->physical_device->memory_properties.memoryTypes[mem_type_index];
 
@@ -215,13 +214,14 @@ vn_device_memory_pool_suballocate(struct vn_device *dev,
    const bool is_renderer_mali = dev->physical_device->renderer_driver_id ==
                                  VK_DRIVER_ID_ARM_PROPRIETARY;
    const VkDeviceSize pool_align = is_renderer_mali ? 4096 : 64 * 1024;
+   const struct vk_device_memory *mem_vk = &mem->base.base;
    struct vn_device_memory_pool *pool = &dev->memory_pools[mem_type_index];
 
-   assert(mem->size <= pool_size);
+   assert(mem_vk->size <= pool_size);
 
    mtx_lock(&pool->mutex);
 
-   if (!pool->memory || pool->used + mem->size > pool_size) {
+   if (!pool->memory || pool->used + mem_vk->size > pool_size) {
       VkResult result =
          vn_device_memory_pool_grow_locked(dev, mem_type_index, pool_size);
       if (result != VK_SUCCESS) {
@@ -235,7 +235,7 @@ vn_device_memory_pool_suballocate(struct vn_device *dev,
    /* point mem->base_bo at pool base_bo and assign base_offset accordingly */
    mem->base_bo = pool->memory->base_bo;
    mem->base_offset = pool->used;
-   pool->used += align64(mem->size, pool_align);
+   pool->used += align64(mem_vk->size, pool_align);
 
    mtx_unlock(&pool->mutex);
 
@@ -348,7 +348,7 @@ vn_device_memory_alloc_guest_vram(struct vn_device *dev,
    const struct vk_device_memory *mem_vk = &mem->base.base;
 
    VkResult result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, 0, mem->type.propertyFlags,
+      dev->renderer, mem_vk->size, 0, mem->type.propertyFlags,
       mem_vk->export_handle_types, &mem->base_bo);
    if (result != VK_SUCCESS) {
       return result;
@@ -518,7 +518,7 @@ vn_device_memory_emit_report(struct vn_device *dev,
       (mem_vk->import_handle_type | mem_vk->export_handle_types)
          ? mem->base_bo->res_id
          : mem->base.id;
-   vn_device_emit_device_memory_report(dev, type, mem_obj_id, mem->size,
+   vn_device_emit_device_memory_report(dev, type, mem_obj_id, mem_vk->size,
                                        VK_OBJECT_TYPE_DEVICE_MEMORY,
                                        mem->base.id, mem->type.heapIndex);
 }
@@ -563,7 +563,6 @@ vn_AllocateMemory(VkDevice device,
 
    vn_object_set_id(mem, (uintptr_t)mem, VK_OBJECT_TYPE_DEVICE_MEMORY);
 
-   mem->size = pAllocateInfo->allocationSize;
    mem->type = dev->physical_device->memory_properties
                   .memoryTypes[pAllocateInfo->memoryTypeIndex];
 
@@ -645,6 +644,7 @@ vn_MapMemory(VkDevice device,
    VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_device_memory *mem = vn_device_memory_from_handle(memory);
+   const struct vk_device_memory *mem_vk = &mem->base.base;
    const bool need_bo = !mem->base_bo;
    void *ptr = NULL;
    VkResult result;
@@ -684,7 +684,7 @@ vn_MapMemory(VkDevice device,
       return vn_error(dev->instance, VK_ERROR_MEMORY_MAP_FAILED);
    }
 
-   mem->map_end = size == VK_WHOLE_SIZE ? mem->size : offset + size;
+   mem->map_end = size == VK_WHOLE_SIZE ? mem_vk->size : offset + size;
 
    *ppData = ptr + mem->base_offset + offset;
 

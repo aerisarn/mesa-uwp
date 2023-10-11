@@ -22,7 +22,6 @@ struct vn_device_memory_pool {
 struct vn_device_memory {
    struct vn_device_memory_base base;
 
-   VkDeviceSize size;
    VkMemoryType type;
 
    /* non-NULL when suballocated */
