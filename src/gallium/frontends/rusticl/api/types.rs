@@ -1,6 +1,9 @@
+use crate::api::icd::CLResult;
+
 use rusticl_opencl_gen::*;
 
 use std::borrow::Borrow;
+use std::ffi::c_void;
 use std::iter::Product;
 
 #[macro_export]
@@ -22,6 +25,53 @@ macro_rules! cl_callback {
         pub type $fn_alias = unsafe extern "C" fn(
             $($p: $ty,)*
         );
+
+        // INVARIANT:
+        // All safety requirements on `func` and `data` documented on `$cb::new` are invariants.
+        pub struct $cb {
+            pub func: $fn_alias,
+            pub data: *mut c_void,
+        }
+
+        #[allow(dead_code)]
+        impl $cb {
+            /// Creates a new `$cb`. Returns `Err(CL_INVALID_VALUE)` if `func` is `None`.
+            ///
+            /// # SAFETY:
+            ///
+            /// If `func` is `None`, there are no safety requirements. Otherwise:
+            ///
+            /// - `func` must be a thread-safe fn.
+            /// - Passing `data` as the last parameter to `func` must not cause unsoundness.
+            pub unsafe fn new(func: Option<$fn_alias>, data: *mut c_void) -> CLResult<Self> {
+                let Some(func) = func else {
+                    return Err(CL_INVALID_VALUE);
+                };
+                Ok(Self { func, data })
+            }
+
+            /// Creates a new Option(`$cb`). Returns:
+            /// - `Ok(Some($cb)) if `func` is `Some(_)`.
+            /// - `Ok(None)` if `func` is `None` and `data` is `null`.
+            /// - `Err(CL_INVALID_VALUE)` if `func` is `None` and `data` is not `null`.
+            ///
+            /// # SAFETY:
+            ///
+            /// The safety requirements are identical to those of [`new`].
+            pub unsafe fn try_new(func: Option<$fn_alias>, data: *mut c_void) -> CLResult<Option<Self>> {
+                let Some(func) = func else {
+                    return if data.is_null() {
+                        Ok(None)
+                    } else {
+                        Err(CL_INVALID_VALUE)
+                    };
+                };
+                Ok(Some(Self { func, data }))
+            }
+        }
+
+        unsafe impl Send for $cb {}
+        unsafe impl Sync for $cb {}
     }
 }
 
