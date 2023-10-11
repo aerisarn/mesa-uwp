@@ -279,6 +279,12 @@ i965_asm_ternary_instruction(int opcode,
 	case BRW_OPCODE_BFI2:
 		brw_BFI2(p, dest, src0, src1, src2);
 		break;
+	case BRW_OPCODE_DP4A:
+		brw_DP4A(p, dest, src0, src1, src2);
+		break;
+	case BRW_OPCODE_ADD3:
+		brw_ADD3(p, dest, src0, src1, src2);
+		break;
 	default:
 		fprintf(stderr, "Unsupported ternary opcode\n");
 	}
@@ -957,6 +963,8 @@ ternaryopcodes:
 	| BFI2
 	| LRP
 	| MAD
+	| DP4A
+	| ADD3
 	;
 
 /* Wait instruction */

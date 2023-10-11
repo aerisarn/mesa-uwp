@@ -52,6 +52,7 @@ null 		{ BEGIN(REG); return NULL_TOKEN; }
 
  /* Opcodes */
 add		{ yylval.integer = BRW_OPCODE_ADD; return ADD; }
+add3		{ yylval.integer = BRW_OPCODE_ADD3; return ADD3; }
 addc		{ yylval.integer = BRW_OPCODE_ADDC; return ADDC; }
 and		{ yylval.integer = BRW_OPCODE_AND; return AND; }
 asr		{ yylval.integer = BRW_OPCODE_ASR; return ASR; }
@@ -76,6 +77,7 @@ do 		{ yylval.integer = BRW_OPCODE_DO; return DO; }
 dp2 		{ yylval.integer = BRW_OPCODE_DP2; return DP2; }
 dp3 		{ yylval.integer = BRW_OPCODE_DP3; return DP3; }
 dp4 		{ yylval.integer = BRW_OPCODE_DP4; return DP4; }
+dp4a		{ yylval.integer = BRW_OPCODE_DP4A; return DP4A; }
 dph 		{ yylval.integer = BRW_OPCODE_DPH; return DPH; }
 else 		{ yylval.integer = BRW_OPCODE_ELSE; return ELSE; }
 endif 		{ yylval.integer = BRW_OPCODE_ENDIF; return ENDIF; }
