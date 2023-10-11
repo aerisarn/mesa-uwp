@@ -915,7 +915,7 @@ nopinstruction:
 
 /* Ternary operand instruction */
 ternaryinstruction:
-	predicate ternaryopcodes saturate cond_mod execsize dst src src src instoptions
+	predicate ternaryopcodes saturate cond_mod execsize dst srcimm src srcimm instoptions
 	{
 		brw_set_default_access_mode(p, $10.access_mode);
 		i965_asm_ternary_instruction($2, p, $6, $7, $8, $9);
