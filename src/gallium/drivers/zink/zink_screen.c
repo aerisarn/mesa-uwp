@@ -3508,12 +3508,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
    return screen;
 
 fail:
-   if (screen->loader_lib)
-      util_dl_close(screen->loader_lib);
-   if (screen->threaded_submit)
-      util_queue_destroy(&screen->flush_queue);
-
-   ralloc_free(screen);
+   zink_destroy_screen(&screen->base);
    return NULL;
 }
 
