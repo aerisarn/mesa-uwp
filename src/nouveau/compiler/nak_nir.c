@@ -610,6 +610,27 @@ load_interpolated_input(nir_builder *b, unsigned num_components, uint32_t addr,
    }
 }
 
+static nir_def *
+load_sample_pos_at(nir_builder *b, nir_def *sample_id,
+                   const struct nak_fs_key *fs_key)
+{
+   nir_def *loc = nir_load_ubo(b, 1, 64,
+                               nir_imm_int(b, fs_key->sample_locations_cb),
+                               nir_imm_int(b, fs_key->sample_locations_offset),
+                               .align_mul = 8,
+                               .align_offset = 0,
+                               .range = fs_key->sample_locations_offset + 8);
+
+   /* Yay little endian */
+   loc = nir_ushr(b, loc, nir_imul_imm(b, sample_id, 8));
+   nir_def *loc_x_u4 = nir_iand_imm(b, loc, 0xf);
+   nir_def *loc_y_u4 = nir_iand_imm(b, nir_ushr_imm(b, loc, 4), 0xf);
+   nir_def *loc_u4 = nir_vec2(b, loc_x_u4, loc_y_u4);
+   nir_def *result = nir_fmul_imm(b, nir_i2f32(b, loc_u4), 1.0 / 16.0);
+
+   return result;
+}
+
 struct lower_fs_input_ctx {
    const struct nak_compiler *nak;
    const struct nak_fs_key *fs_key;
@@ -630,8 +651,7 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
    }
 
    case nir_intrinsic_load_frag_coord:
-   case nir_intrinsic_load_point_coord:
-   case nir_intrinsic_load_sample_pos: {
+   case nir_intrinsic_load_point_coord: {
       b->cursor = nir_before_instr(&intrin->instr);
 
       const enum nak_interp_loc interp_loc =
@@ -654,9 +674,6 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
          coord = nir_vector_insert_imm(b, coord, w, 3);
          break;
       case nir_intrinsic_load_point_coord:
-         break;
-      case nir_intrinsic_load_sample_pos:
-         coord = nir_ffract(b, coord);
          break;
       default:
          unreachable("Unknown intrinsic");
@@ -715,10 +732,20 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       nir_def *offset = NULL;
       enum nak_interp_loc interp_loc;
       switch (bary->intrinsic) {
-      case nir_intrinsic_load_barycentric_at_offset: {
+      case nir_intrinsic_load_barycentric_at_offset:
+      case nir_intrinsic_load_barycentric_at_sample: {
          interp_loc = NAK_INTERP_LOC_OFFSET;
 
-         nir_def *offset_f = bary->src[0].ssa;
+         nir_def *offset_f;
+
+         if (bary->intrinsic == nir_intrinsic_load_barycentric_at_sample) {
+            nir_def *sample_id = bary->src[0].ssa;
+            nir_def *sample_pos = load_sample_pos_at(b, sample_id, ctx->fs_key);
+            offset_f = nir_fadd_imm(b, sample_pos, -0.5);
+         } else {
+            offset_f = bary->src[0].ssa;
+         }
+
          offset_f = nir_fclamp(b, offset_f, nir_imm_float(b, -0.5),
                                nir_imm_float(b, 0.437500));
          nir_def *offset_fixed =
@@ -769,6 +796,18 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       nir_def *mask = nir_ishl(b, nir_imm_int(b, 1), sample);
       mask = nir_iand(b, &intrin->def, mask);
       nir_def_rewrite_uses_after(&intrin->def, mask, mask->parent_instr);
+
+      return true;
+   }
+
+   case nir_intrinsic_load_sample_pos: {
+      b->cursor = nir_before_instr(&intrin->instr);
+
+      nir_def *sample_id = nir_load_sample_id(b);
+      nir_def *sample_pos = load_sample_pos_at(b, sample_id, ctx->fs_key);
+
+      nir_def_rewrite_uses(&intrin->def, sample_pos);
+      nir_instr_remove(&intrin->instr);
 
       return true;
    }

@@ -4,6 +4,7 @@
  */
 #include "nvk_pipeline.h"
 
+#include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
 #include "nvk_shader.h"
@@ -47,6 +48,9 @@ nvk_populate_fs_key(struct nak_fs_key *key,
                     const struct vk_graphics_pipeline_state *state)
 {
    memset(key, 0, sizeof(*key));
+
+   key->sample_locations_cb = 0;
+   key->sample_locations_offset = nvk_root_descriptor_offset(draw.sample_locations);
 
    if (state->pipeline_flags &
        VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
