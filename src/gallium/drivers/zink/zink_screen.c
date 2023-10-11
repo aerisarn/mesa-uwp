@@ -317,8 +317,6 @@ disk_cache_init(struct zink_screen *screen)
       disk_cache_destroy(screen->disk_cache);
       screen->disk_cache = NULL;
 
-      util_queue_destroy(&screen->cache_put_thread);
-
       return false;
    }
 #endif
