@@ -575,13 +575,9 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE);
 
-   /* If we don't have any attachments, emit a dummy color attachment */
-   if (render->color_att_count == 0 &&
-       render->depth_att.iview == NULL &&
-       render->stencil_att.iview == NULL)
-      render->color_att_count = 1;
-
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, render->color_att_count * 10 + 27);
+   /* Always emit at least one color attachment, even if it's just a dummy. */
+   uint32_t color_att_count = MAX2(1, render->color_att_count);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, color_att_count * 10 + 27);
 
    P_IMMD(p, NV9097, SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_VIEW_MASK),
           render->view_mask);
@@ -597,7 +593,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    });
 
    enum nil_sample_layout sample_layout = NIL_SAMPLE_LAYOUT_INVALID;
-   for (uint32_t i = 0; i < render->color_att_count; i++) {
+   for (uint32_t i = 0; i < color_att_count; i++) {
       if (render->color_att[i].iview) {
          const struct nvk_image_view *iview = render->color_att[i].iview;
          const struct nvk_image *image = (struct nvk_image *)iview->vk.image;
@@ -661,7 +657,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    }
 
    P_IMMD(p, NV9097, SET_CT_SELECT, {
-      .target_count = render->color_att_count,
+      .target_count = color_att_count,
       .target0 = 0,
       .target1 = 1,
       .target2 = 2,
