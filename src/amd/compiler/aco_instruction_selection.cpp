@@ -11772,9 +11772,9 @@ create_end_for_merged_shader(isel_context* ctx)
 }
 
 void
-select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, const bool need_barrier,
-              if_context* ic_merged_wave_info, const bool check_merged_wave_info,
-              const bool endif_merged_wave_info)
+select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, const bool need_endpgm,
+              const bool need_barrier, if_context* ic_merged_wave_info,
+              const bool check_merged_wave_info, const bool endif_merged_wave_info)
 {
    init_context(&ctx, nir);
    setup_fp_mode(&ctx, nir);
@@ -11859,6 +11859,20 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
    }
 
    cleanup_context(&ctx);
+
+   if (need_endpgm) {
+      program->config->float_mode = program->blocks[0].fp_mode.val;
+
+      append_logical_end(ctx.block);
+      ctx.block->kind |= block_kind_uniform;
+
+      if (!program->info.has_epilog ||
+          (nir->info.stage == MESA_SHADER_TESS_CTRL && program->gfx_level >= GFX9)) {
+         Builder(program, ctx.block).sopp(aco_opcode::s_endpgm);
+      }
+
+      finish_program(&ctx);
+   }
 }
 
 void
@@ -11872,6 +11886,9 @@ select_program_merged(isel_context& ctx, const unsigned shader_count, nir_shader
 
       /* We always need to insert p_startpgm at the beginning of the first shader.  */
       const bool need_startpgm = i == 0;
+
+      /* Need to handle program end for last shader stage. */
+      const bool need_endpgm = i == shader_count - 1;
 
       /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
       nir_function_impl* func = nir_shader_get_entrypoint(nir);
@@ -11894,7 +11911,7 @@ select_program_merged(isel_context& ctx, const unsigned shader_count, nir_shader
       /* A barrier is usually needed at the beginning of the second shader, with exceptions. */
       const bool need_barrier = i != 0 && !ngg_gs && !tcs_skip_barrier;
 
-      select_shader(ctx, nir, need_startpgm, need_barrier, &ic_merged_wave_info,
+      select_shader(ctx, nir, need_startpgm, need_endpgm, need_barrier, &ic_merged_wave_info,
                     check_merged_wave_info, endif_merged_wave_info);
 
       if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
@@ -12313,23 +12330,9 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
          }
       }
 
-      select_shader(ctx, shaders[0], true, need_barrier, &ic_merged_wave_info,
+      select_shader(ctx, shaders[0], true, true, need_barrier, &ic_merged_wave_info,
                     check_merged_wave_info, endif_merged_wave_info);
    }
-
-   program->config->float_mode = program->blocks[0].fp_mode.val;
-
-   append_logical_end(ctx.block);
-   ctx.block->kind |= block_kind_uniform;
-
-   if (!ctx.program->info.has_epilog ||
-       (shaders[shader_count - 1]->info.stage == MESA_SHADER_TESS_CTRL &&
-        options->gfx_level >= GFX9)) {
-      Builder bld(ctx.program, ctx.block);
-      bld.sopp(aco_opcode::s_endpgm);
-   }
-
-   finish_program(&ctx);
 }
 
 void
