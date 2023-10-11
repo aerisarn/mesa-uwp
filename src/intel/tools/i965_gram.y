@@ -1761,12 +1761,14 @@ srcimm:
 
 directsrcaccoperand:
 	directsrcoperand
-	| accreg region reg_type
+	| negate abs accreg region reg_type
 	{
-		$$ = set_direct_src_operand(&$1, $3);
-		$$.vstride = $2.vstride;
-		$$.width = $2.width;
-		$$.hstride = $2.hstride;
+		$$ = set_direct_src_operand(&$3, $5);
+		$$.negate = $1;
+		$$.abs = $2;
+		$$.vstride = $4.vstride;
+		$$.width = $4.width;
+		$$.hstride = $4.hstride;
 	}
 	;
 
