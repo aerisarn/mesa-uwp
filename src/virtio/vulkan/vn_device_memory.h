@@ -22,8 +22,6 @@ struct vn_device_memory_pool {
 struct vn_device_memory {
    struct vn_device_memory_base base;
 
-   VkMemoryType type;
-
    /* non-NULL when suballocated */
    struct vn_device_memory *base_memory;
    /* non-NULL when mappable or external */

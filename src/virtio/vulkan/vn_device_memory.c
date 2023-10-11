@@ -80,8 +80,10 @@ vn_device_memory_bo_init(struct vn_device *dev, struct vn_device_memory *mem)
       return result;
 
    const struct vk_device_memory *mem_vk = &mem->base.base;
+   const VkMemoryType *mem_type = &dev->physical_device->memory_properties
+                                      .memoryTypes[mem_vk->memory_type_index];
    return vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem_vk->size, mem->base.id, mem->type.propertyFlags,
+      dev->renderer, mem_vk->size, mem->base.id, mem_type->propertyFlags,
       mem_vk->export_handle_types, &mem->base_bo);
 }
 
@@ -111,9 +113,6 @@ vn_device_memory_pool_grow_alloc(struct vn_device *dev,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    vn_object_set_id(mem, (uintptr_t)mem, VK_OBJECT_TYPE_DEVICE_MEMORY);
-
-   mem->type =
-      dev->physical_device->memory_properties.memoryTypes[mem_type_index];
 
    VkResult result = vn_device_memory_alloc_simple(dev, mem, &alloc_info);
    if (result != VK_SUCCESS)
@@ -202,8 +201,7 @@ vn_device_memory_pool_grow_locked(struct vn_device *dev,
 
 static VkResult
 vn_device_memory_pool_suballocate(struct vn_device *dev,
-                                  struct vn_device_memory *mem,
-                                  uint32_t mem_type_index)
+                                  struct vn_device_memory *mem)
 {
    static const VkDeviceSize pool_size = 16 * 1024 * 1024;
    /* TODO fix https://gitlab.freedesktop.org/mesa/mesa/-/issues/9351
@@ -215,15 +213,16 @@ vn_device_memory_pool_suballocate(struct vn_device *dev,
                                  VK_DRIVER_ID_ARM_PROPRIETARY;
    const VkDeviceSize pool_align = is_renderer_mali ? 4096 : 64 * 1024;
    const struct vk_device_memory *mem_vk = &mem->base.base;
-   struct vn_device_memory_pool *pool = &dev->memory_pools[mem_type_index];
+   struct vn_device_memory_pool *pool =
+      &dev->memory_pools[mem_vk->memory_type_index];
 
    assert(mem_vk->size <= pool_size);
 
    mtx_lock(&pool->mutex);
 
    if (!pool->memory || pool->used + mem_vk->size > pool_size) {
-      VkResult result =
-         vn_device_memory_pool_grow_locked(dev, mem_type_index, pool_size);
+      VkResult result = vn_device_memory_pool_grow_locked(
+         dev, mem_vk->memory_type_index, pool_size);
       if (result != VK_SUCCESS) {
          mtx_unlock(&pool->mutex);
          return result;
@@ -244,16 +243,12 @@ vn_device_memory_pool_suballocate(struct vn_device *dev,
 
 static bool
 vn_device_memory_should_suballocate(const struct vn_device *dev,
-                                    const VkMemoryAllocateInfo *alloc_info,
-                                    const VkMemoryPropertyFlags flags)
+                                    const VkMemoryAllocateInfo *alloc_info)
 {
-   const struct vn_instance *instance = dev->physical_device->instance;
-   const struct vn_renderer_info *renderer = &instance->renderer->info;
-
    if (VN_PERF(NO_MEMORY_SUBALLOC))
       return false;
 
-   if (renderer->has_guest_vram)
+   if (dev->renderer->info.has_guest_vram)
       return false;
 
    /* We should not support suballocations because apps can do better.  But
@@ -263,7 +258,10 @@ vn_device_memory_should_suballocate(const struct vn_device *dev,
     */
 
    /* consider host-visible memory only */
-   if (!(flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+   const VkMemoryType *mem_type =
+      &dev->physical_device->memory_properties
+          .memoryTypes[alloc_info->memoryTypeIndex];
+   if (!(mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
       return false;
 
    /* reject larger allocations */
@@ -346,9 +344,11 @@ vn_device_memory_alloc_guest_vram(struct vn_device *dev,
                                   const VkMemoryAllocateInfo *alloc_info)
 {
    const struct vk_device_memory *mem_vk = &mem->base.base;
+   const VkMemoryType *mem_type = &dev->physical_device->memory_properties
+                                      .memoryTypes[mem_vk->memory_type_index];
 
    VkResult result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem_vk->size, 0, mem->type.propertyFlags,
+      dev->renderer, mem_vk->size, 0, mem_type->propertyFlags,
       mem_vk->export_handle_types, &mem->base_bo);
    if (result != VK_SUCCESS) {
       return result;
@@ -518,9 +518,11 @@ vn_device_memory_emit_report(struct vn_device *dev,
       (mem_vk->import_handle_type | mem_vk->export_handle_types)
          ? mem->base_bo->res_id
          : mem->base.id;
+   const VkMemoryType *mem_type = &dev->physical_device->memory_properties
+                                      .memoryTypes[mem_vk->memory_type_index];
    vn_device_emit_device_memory_report(dev, type, mem_obj_id, mem_vk->size,
                                        VK_OBJECT_TYPE_DEVICE_MEMORY,
-                                       mem->base.id, mem->type.heapIndex);
+                                       mem->base.id, mem_type->heapIndex);
 }
 
 VkResult
@@ -563,19 +565,14 @@ vn_AllocateMemory(VkDevice device,
 
    vn_object_set_id(mem, (uintptr_t)mem, VK_OBJECT_TYPE_DEVICE_MEMORY);
 
-   mem->type = dev->physical_device->memory_properties
-                  .memoryTypes[pAllocateInfo->memoryTypeIndex];
-
    VkResult result;
    if (mem->base.base.ahardware_buffer) {
       result = vn_android_device_import_ahb(dev, mem, dedicated_info);
    } else if (import_fd_info) {
       result = vn_device_memory_import_dma_buf(dev, mem, pAllocateInfo, false,
                                                import_fd_info->fd);
-   } else if (vn_device_memory_should_suballocate(dev, pAllocateInfo,
-                                                  mem->type.propertyFlags)) {
-      result = vn_device_memory_pool_suballocate(
-         dev, mem, pAllocateInfo->memoryTypeIndex);
+   } else if (vn_device_memory_should_suballocate(dev, pAllocateInfo)) {
+      result = vn_device_memory_pool_suballocate(dev, mem);
    } else {
       result = vn_device_memory_alloc(dev, mem, pAllocateInfo);
    }
@@ -648,8 +645,6 @@ vn_MapMemory(VkDevice device,
    const bool need_bo = !mem->base_bo;
    void *ptr = NULL;
    VkResult result;
-
-   assert(mem->type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
    /* We don't want to blindly create a bo for each HOST_VISIBLE memory as
     * that has a cost. By deferring bo creation until now, we can avoid the
