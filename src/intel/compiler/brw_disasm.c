@@ -523,6 +523,7 @@ static const char *const sync_function[16] = {
    [TGL_SYNC_NOP] = "nop",
    [TGL_SYNC_ALLRD] = "allrd",
    [TGL_SYNC_ALLWR] = "allwr",
+   [TGL_SYNC_FENCE] = "fence",
    [TGL_SYNC_BAR] = "bar",
    [TGL_SYNC_HOST] = "host",
 };

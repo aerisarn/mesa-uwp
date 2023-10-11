@@ -412,6 +412,11 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 %token <integer> COS EXP FDIV INV INVM INTDIV INTDIVMOD INTMOD LOG POW RSQ
 %token <integer> RSQRTM SIN SINCOS SQRT
 
+/* sync instruction */
+%token <integer> ALLRD ALLWR FENCE BAR HOST
+%type <integer> sync_function
+%type <reg> sync_arg
+
 /* shared functions for send */
 %token CONST CRE DATA DP_DATA_1 GATEWAY MATH PIXEL_INTERP READ RENDER SAMPLER
 %token THREAD_SPAWNER URB VME WRITE DP_SAMPLER
@@ -682,10 +687,11 @@ instruction:
 	| binaryaccinstruction
 	| mathinstruction
 	| nopinstruction
-	| syncinstruction
+	| waitinstruction
 	| ternaryinstruction
 	| sendinstruction
 	| illegalinstruction
+	| syncinstruction
 	;
 
 relocatableinstruction:
@@ -946,8 +952,8 @@ ternaryopcodes:
 	| MAD
 	;
 
-/* Sync instruction */
-syncinstruction:
+/* Wait instruction */
+waitinstruction:
 	WAIT execsize dst instoptions
 	{
 		brw_next_insn(p, $1);
@@ -1490,6 +1496,54 @@ loopinstruction:
 			brw_inst_set_qtr_control(p->devinfo, brw_last_inst, BRW_COMPRESSION_NONE);
 		}
 	}
+	;
+
+/* sync instruction */
+syncinstruction:
+	predicate SYNC sync_function execsize sync_arg instoptions
+	{
+		if (p->devinfo->ver < 12) {
+			error(&@2, "sync instruction is supported only on gfx12+\n");
+		}
+
+		if ($5.file == BRW_IMMEDIATE_VALUE &&
+		    $3 != TGL_SYNC_ALLRD &&
+		    $3 != TGL_SYNC_ALLWR) {
+			error(&@2, "Only allrd and allwr support immediate argument\n");
+		}
+
+		brw_set_default_access_mode(p, $6.access_mode);
+		brw_SYNC(p, $3);
+		i965_asm_set_instruction_options(p, $6);
+		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $4);
+		brw_set_src0(p, brw_last_inst, $5);
+		brw_inst_set_eot(p->devinfo, brw_last_inst, $6.end_of_thread);
+		brw_inst_set_qtr_control(p->devinfo, brw_last_inst, $6.qtr_ctrl);
+		brw_inst_set_nib_control(p->devinfo, brw_last_inst, $6.nib_ctrl);
+
+		brw_pop_insn_state(p);
+	}
+	;
+
+sync_function:
+	NOP		{ $$ = TGL_SYNC_NOP; }
+	| ALLRD
+	| ALLWR
+	| FENCE
+	| BAR
+	| HOST
+	;
+
+sync_arg:
+	nullreg region reg_type
+	{
+		$$ = $1;
+		$$.vstride = $2.vstride;
+		$$.width = $2.width;
+		$$.hstride = $2.hstride;
+		$$.type = $3;
+	}
+	| immreg
 	;
 
 /* Relative location */

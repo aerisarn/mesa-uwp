@@ -130,6 +130,7 @@ subb 		{ yylval.integer = BRW_OPCODE_SUBB; return SUBB; }
 wait 		{ yylval.integer = BRW_OPCODE_WAIT; return WAIT; }
 while 		{ yylval.integer = BRW_OPCODE_WHILE; return WHILE; }
 xor 		{ yylval.integer = BRW_OPCODE_XOR; return XOR; }
+sync		{ yylval.integer = BRW_OPCODE_SYNC; return SYNC; }
 
  /* extended math functions */
 cos 		{ yylval.integer = BRW_MATH_FUNCTION_COS; return COS; }
@@ -157,6 +158,13 @@ rsqrtm       	{ yylval.integer = GFX8_MATH_FUNCTION_RSQRTM; return RSQRTM; }
 sin 		{ yylval.integer = BRW_MATH_FUNCTION_SIN; return SIN; }
 sqrt 		{ yylval.integer = BRW_MATH_FUNCTION_SQRT; return SQRT; }
 sincos       	{ yylval.integer = BRW_MATH_FUNCTION_SINCOS; return SINCOS; }
+
+ /* sync instruction */
+allrd		{ yylval.integer = TGL_SYNC_ALLRD; return ALLRD; }
+allwr		{ yylval.integer = TGL_SYNC_ALLWR; return ALLWR; }
+fence		{ yylval.integer = TGL_SYNC_FENCE; return FENCE; }
+bar		{ yylval.integer = TGL_SYNC_BAR; return BAR; }
+host		{ yylval.integer = TGL_SYNC_HOST; return HOST; }
 
  /* shared functions for send instruction */
 sampler 		{ return SAMPLER; }

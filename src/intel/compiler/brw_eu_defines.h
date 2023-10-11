@@ -1396,6 +1396,7 @@ enum tgl_sync_function {
    TGL_SYNC_NOP = 0x0,
    TGL_SYNC_ALLRD = 0x2,
    TGL_SYNC_ALLWR = 0x3,
+   TGL_SYNC_FENCE = 0xd,
    TGL_SYNC_BAR = 0xe,
    TGL_SYNC_HOST = 0xf
 };
