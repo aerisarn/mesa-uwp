@@ -330,7 +330,7 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
 {
    struct anv_device *device = queue->device;
    UNUSED const struct intel_device_info *devinfo = queue->device->info;
-   uint32_t cmds[128];
+   uint32_t cmds[256];
    struct anv_batch batch = {
       .start = cmds,
       .next = cmds,
