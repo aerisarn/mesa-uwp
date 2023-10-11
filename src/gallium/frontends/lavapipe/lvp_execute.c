@@ -4405,7 +4405,6 @@ static void lvp_execute_cmd_buffer(struct list_head *cmds,
                                    struct rendering_state *state, bool print_cmds)
 {
    struct vk_cmd_queue_entry *cmd;
-   bool first = true;
    bool did_flush = false;
 
    LIST_FOR_EACH_ENTRY(cmd, cmds, cmd_link) {
@@ -4530,10 +4529,8 @@ static void lvp_execute_cmd_buffer(struct list_head *cmds,
          handle_resolve_image(cmd, state);
          break;
       case VK_CMD_PIPELINE_BARRIER2:
-         /* skip flushes since every cmdbuf does a flush
-            after iterating its cmds and so this is redundant
-          */
-         if (first || did_flush || cmd->cmd_link.next == cmds)
+         /* flushes are actually stalls, so multiple flushes are redundant */
+         if (did_flush)
             continue;
          handle_pipeline_barrier(cmd, state);
          did_flush = true;
@@ -4766,7 +4763,6 @@ static void lvp_execute_cmd_buffer(struct list_head *cmds,
          unreachable("Unsupported command");
          break;
       }
-      first = false;
       did_flush = false;
       if (!cmd->cmd_link.next)
          break;
