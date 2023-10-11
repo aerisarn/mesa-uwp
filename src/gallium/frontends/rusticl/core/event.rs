@@ -37,7 +37,7 @@ pub enum EventTimes {
 #[derive(Default)]
 struct EventMutState {
     status: cl_int,
-    cbs: [Vec<(EventCB, *mut c_void)>; 3],
+    cbs: [Vec<(FuncEventCB, *mut c_void)>; 3],
     work: Option<EventSig>,
     time_queued: cl_ulong,
     time_submit: cl_ulong,
@@ -161,7 +161,7 @@ impl Event {
         }
     }
 
-    pub fn add_cb(&self, state: cl_int, cb: EventCB, data: *mut c_void) {
+    pub fn add_cb(&self, state: cl_int, cb: FuncEventCB, data: *mut c_void) {
         let mut lock = self.state();
         let status = lock.status;
 

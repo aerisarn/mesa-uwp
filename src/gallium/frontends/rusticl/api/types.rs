@@ -15,18 +15,18 @@ macro_rules! cl_closure {
 }
 
 macro_rules! cl_callback {
-    ($cb:ident {
+    ($cb:ident($fn_alias:ident) {
         $($p:ident : $ty:ty,)*
     }) => {
         #[allow(dead_code)]
-        pub type $cb = unsafe extern "C" fn(
+        pub type $fn_alias = unsafe extern "C" fn(
             $($p: $ty,)*
         );
     }
 }
 
 cl_callback!(
-    CreateContextCB {
+    CreateContextCB(FuncCreateContextCB) {
         errinfo: *const ::std::os::raw::c_char,
         private_info: *const ::std::ffi::c_void,
         cb: usize,
@@ -35,14 +35,14 @@ cl_callback!(
 );
 
 cl_callback!(
-    DeleteContextCB {
+    DeleteContextCB(FuncDeleteContextCB) {
         context: cl_context,
         user_data: *mut ::std::os::raw::c_void,
     }
 );
 
 cl_callback!(
-    EventCB {
+    EventCB(FuncEventCB) {
         event: cl_event,
         event_command_status: cl_int,
         user_data: *mut ::std::os::raw::c_void,
@@ -50,21 +50,21 @@ cl_callback!(
 );
 
 cl_callback!(
-    MemCB {
+    MemCB(FuncMemCB) {
         memobj: cl_mem,
         user_data: *mut ::std::os::raw::c_void,
     }
 );
 
 cl_callback!(
-    ProgramCB {
+    ProgramCB(FuncProgramCB) {
         program: cl_program,
         user_data: *mut ::std::os::raw::c_void,
     }
 );
 
 cl_callback!(
-    SVMFreeCb {
+    SVMFreeCb(FuncSVMFreeCb) {
         queue: cl_command_queue,
         num_svm_pointers: cl_uint,
         svm_pointers: *mut *mut ::std::os::raw::c_void,

@@ -93,7 +93,7 @@ fn validate_devices<'a>(
 }
 
 fn call_cb(
-    pfn_notify: Option<ProgramCB>,
+    pfn_notify: Option<FuncProgramCB>,
     program: cl_program,
     user_data: *mut ::std::os::raw::c_void,
 ) {
@@ -276,7 +276,7 @@ fn build_program(
     num_devices: cl_uint,
     device_list: *const cl_device_id,
     options: *const c_char,
-    pfn_notify: Option<ProgramCB>,
+    pfn_notify: Option<FuncProgramCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<()> {
     let mut res = true;
@@ -324,7 +324,7 @@ fn compile_program(
     num_input_headers: cl_uint,
     input_headers: *const cl_program,
     header_include_names: *mut *const c_char,
-    pfn_notify: Option<ProgramCB>,
+    pfn_notify: Option<FuncProgramCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<()> {
     let mut res = true;
@@ -402,7 +402,7 @@ pub fn link_program(
     options: *const ::std::os::raw::c_char,
     num_input_programs: cl_uint,
     input_programs: *const cl_program,
-    pfn_notify: Option<ProgramCB>,
+    pfn_notify: Option<FuncProgramCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<(cl_program, cl_int)> {
     let c = context.get_arc()?;
@@ -494,7 +494,7 @@ fn set_program_specialization_constant(
 #[cl_entrypoint]
 fn set_program_release_callback(
     _program: cl_program,
-    _pfn_notify: ::std::option::Option<ProgramCB>,
+    _pfn_notify: ::std::option::Option<FuncProgramCB>,
     _user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<()> {
     Err(CL_INVALID_OPERATION)

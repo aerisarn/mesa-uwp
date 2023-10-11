@@ -350,7 +350,7 @@ fn create_sub_buffer(
 #[cl_entrypoint]
 fn set_mem_object_destructor_callback(
     memobj: cl_mem,
-    pfn_notify: Option<MemCB>,
+    pfn_notify: Option<FuncMemCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<()> {
     let m = memobj.get_ref()?;
@@ -2348,7 +2348,7 @@ fn enqueue_svm_free_impl(
     command_queue: cl_command_queue,
     num_svm_pointers: cl_uint,
     svm_pointers: *mut *mut c_void,
-    pfn_free_func: Option<SVMFreeCb>,
+    pfn_free_func: Option<FuncSVMFreeCb>,
     user_data: *mut c_void,
     num_events_in_wait_list: cl_uint,
     event_wait_list: *const cl_event,
@@ -2407,7 +2407,7 @@ fn enqueue_svm_free(
     command_queue: cl_command_queue,
     num_svm_pointers: cl_uint,
     svm_pointers: *mut *mut c_void,
-    pfn_free_func: Option<SVMFreeCb>,
+    pfn_free_func: Option<FuncSVMFreeCb>,
     user_data: *mut c_void,
     num_events_in_wait_list: cl_uint,
     event_wait_list: *const cl_event,
@@ -2431,7 +2431,7 @@ fn enqueue_svm_free_arm(
     command_queue: cl_command_queue,
     num_svm_pointers: cl_uint,
     svm_pointers: *mut *mut c_void,
-    pfn_free_func: Option<SVMFreeCb>,
+    pfn_free_func: Option<FuncSVMFreeCb>,
     user_data: *mut c_void,
     num_events_in_wait_list: cl_uint,
     event_wait_list: *const cl_event,

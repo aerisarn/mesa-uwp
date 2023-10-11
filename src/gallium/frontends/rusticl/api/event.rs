@@ -115,7 +115,7 @@ fn wait_for_events(num_events: cl_uint, event_list: *const cl_event) -> CLResult
 fn set_event_callback(
     event: cl_event,
     command_exec_callback_type: cl_int,
-    pfn_event_notify: Option<EventCB>,
+    pfn_event_notify: Option<FuncEventCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<()> {
     let e = event.get_ref()?;

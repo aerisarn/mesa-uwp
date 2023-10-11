@@ -41,7 +41,7 @@ fn create_context(
     properties: *const cl_context_properties,
     num_devices: cl_uint,
     devices: *const cl_device_id,
-    pfn_notify: Option<CreateContextCB>,
+    pfn_notify: Option<FuncCreateContextCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<cl_context> {
     check_cb(&pfn_notify, user_data)?;
@@ -84,7 +84,7 @@ fn create_context(
 fn create_context_from_type(
     properties: *const cl_context_properties,
     device_type: cl_device_type,
-    pfn_notify: Option<CreateContextCB>,
+    pfn_notify: Option<FuncCreateContextCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<cl_context> {
     // CL_INVALID_DEVICE_TYPE if device_type is not a valid value.
@@ -124,7 +124,7 @@ fn release_context(context: cl_context) -> CLResult<()> {
 #[cl_entrypoint]
 fn set_context_destructor_callback(
     context: cl_context,
-    pfn_notify: ::std::option::Option<DeleteContextCB>,
+    pfn_notify: ::std::option::Option<FuncDeleteContextCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<()> {
     let c = context.get_ref()?;
