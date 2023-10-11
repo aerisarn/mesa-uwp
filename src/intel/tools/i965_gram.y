@@ -1666,6 +1666,10 @@ immreg:
 			$$ = brw_imm_reg(BRW_REGISTER_TYPE_DF);
 			$$.d64 = $1;
 			break;
+		case BRW_REGISTER_TYPE_HF:
+			$$ = brw_imm_reg(BRW_REGISTER_TYPE_HF);
+			$$.ud = $1 | ($1 << 16);
+			break;
 		default:
 			error(&@2, "Unknown immediate type %s\n",
 			      brw_reg_type_to_letters($2));
