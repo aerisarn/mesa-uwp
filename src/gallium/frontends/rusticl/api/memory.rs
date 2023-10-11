@@ -2371,6 +2371,9 @@ fn enqueue_svm_free_impl(
     // SAFETY: num_svm_pointers specifies the amount of elements in svm_pointers
     let svm_pointers =
         unsafe { slice::from_raw_parts(svm_pointers, num_svm_pointers as usize) }.to_vec();
+    // SAFETY: The requirements on `SVMFreeCb::new` match the requirements
+    // imposed by the OpenCL specification. It is the caller's duty to uphold them.
+    let cb_opt = unsafe { SVMFreeCb::new(pfn_free_func, user_data) }.ok();
 
     create_and_queue(
         q,
@@ -2379,12 +2382,12 @@ fn enqueue_svm_free_impl(
         event,
         false,
         Box::new(move |q, _| {
-            if let Some(cb) = pfn_free_func {
+            if let Some(cb) = &cb_opt {
                 let mut svm_pointers = svm_pointers.clone();
                 let ptr = svm_pointers.as_mut_ptr();
                 // SAFETY: it's undefined behavior if the application screws up
                 unsafe {
-                    cb(command_queue, num_svm_pointers, ptr, user_data);
+                    (cb.func)(command_queue, num_svm_pointers, ptr, cb.data);
                 }
             } else {
                 for &ptr in &svm_pointers {
