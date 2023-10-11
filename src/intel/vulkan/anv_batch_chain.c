@@ -151,16 +151,23 @@ anv_reloc_list_append(struct anv_reloc_list *list,
  * Functions related to anv_batch
  *-----------------------------------------------------------------------*/
 
+static VkResult
+anv_extend_batch(struct anv_batch *batch, uint32_t size)
+{
+   assert(batch->extend_cb != NULL);
+   VkResult result = batch->extend_cb(batch, size, batch->user_data);
+   if (result != VK_SUCCESS)
+      return anv_batch_set_error(batch, result);
+   return result;
+}
+
 void *
 anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords)
 {
    uint32_t size = num_dwords * 4;
    if (batch->next + size > batch->end) {
-      VkResult result = batch->extend_cb(batch, size, batch->user_data);
-      if (result != VK_SUCCESS) {
-         anv_batch_set_error(batch, result);
+      if (anv_extend_batch(batch, size) != VK_SUCCESS)
          return NULL;
-      }
    }
 
    void *p = batch->next;
@@ -176,11 +183,9 @@ VkResult
 anv_batch_emit_ensure_space(struct anv_batch *batch, uint32_t size)
 {
    if (batch->next + size > batch->end) {
-      VkResult result = batch->extend_cb(batch, size, batch->user_data);
-      if (result != VK_SUCCESS) {
-         anv_batch_set_error(batch, result);
+      VkResult result = anv_extend_batch(batch, size);
+      if (result != VK_SUCCESS)
          return result;
-      }
    }
 
    assert(batch->next + size <= batch->end);
@@ -214,11 +219,8 @@ anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other)
    assert(size % 4 == 0);
 
    if (batch->next + size > batch->end) {
-      VkResult result = batch->extend_cb(batch, size, batch->user_data);
-      if (result != VK_SUCCESS) {
-         anv_batch_set_error(batch, result);
+      if (anv_extend_batch(batch, size) != VK_SUCCESS)
          return;
-      }
    }
 
    assert(batch->next + size <= batch->end);
