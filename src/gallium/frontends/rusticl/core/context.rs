@@ -203,12 +203,11 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        let cl = cl_context::from_ptr(self);
         self.dtors
             .lock()
             .unwrap()
-            .iter()
+            .drain(..)
             .rev()
-            .for_each(|cb| unsafe { (cb.func)(cl, cb.data) });
+            .for_each(|cb| cb.call(self));
     }
 }
