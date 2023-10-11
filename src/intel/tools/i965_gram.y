@@ -722,15 +722,14 @@ unaryinstruction:
 		brw_inst_set_cond_modifier(p->devinfo, brw_last_inst,
 					   $4.cond_modifier);
 
-		if (p->devinfo->ver >= 7) {
-			if ($2 != BRW_OPCODE_DIM) {
-				brw_inst_set_flag_reg_nr(p->devinfo,
-							 brw_last_inst,
-							 $4.flag_reg_nr);
-				brw_inst_set_flag_subreg_nr(p->devinfo,
-							    brw_last_inst,
-							    $4.flag_subreg_nr);
-			}
+		if (p->devinfo->ver >= 7 && $2 != BRW_OPCODE_DIM &&
+		    !brw_inst_flag_reg_nr(p->devinfo, brw_last_inst)) {
+			brw_inst_set_flag_reg_nr(p->devinfo,
+						 brw_last_inst,
+						 $4.flag_reg_nr);
+			brw_inst_set_flag_subreg_nr(p->devinfo,
+						    brw_last_inst,
+						    $4.flag_subreg_nr);
 		}
 
 		if ($7.file != BRW_IMMEDIATE_VALUE) {
@@ -778,7 +777,8 @@ binaryinstruction:
 		brw_inst_set_cond_modifier(p->devinfo, brw_last_inst,
 					   $4.cond_modifier);
 
-		if (p->devinfo->ver >= 7) {
+		if (p->devinfo->ver >= 7 &&
+		    !brw_inst_flag_reg_nr(p->devinfo, brw_last_inst)) {
 			brw_inst_set_flag_reg_nr(p->devinfo, brw_last_inst,
 					         $4.flag_reg_nr);
 			brw_inst_set_flag_subreg_nr(p->devinfo, brw_last_inst,
@@ -830,15 +830,14 @@ binaryaccinstruction:
 		brw_inst_set_cond_modifier(p->devinfo, brw_last_inst,
 					   $4.cond_modifier);
 
-		if (p->devinfo->ver >= 7) {
-			if (!brw_inst_flag_reg_nr(p->devinfo, brw_last_inst)) {
-				brw_inst_set_flag_reg_nr(p->devinfo,
-							 brw_last_inst,
-						         $4.flag_reg_nr);
-				brw_inst_set_flag_subreg_nr(p->devinfo,
-							    brw_last_inst,
-							    $4.flag_subreg_nr);
-			}
+		if (p->devinfo->ver >= 7 &&
+		    !brw_inst_flag_reg_nr(p->devinfo, brw_last_inst)) {
+			brw_inst_set_flag_reg_nr(p->devinfo,
+						 brw_last_inst,
+						 $4.flag_reg_nr);
+			brw_inst_set_flag_subreg_nr(p->devinfo,
+						    brw_last_inst,
+						    $4.flag_subreg_nr);
 		}
 
 		brw_inst_set_saturate(p->devinfo, brw_last_inst, $3);
@@ -925,7 +924,7 @@ ternaryinstruction:
 		brw_inst_set_cond_modifier(p->devinfo, brw_last_inst,
 					   $4.cond_modifier);
 
-		if (p->devinfo->ver >= 7) {
+		if (p->devinfo->ver >= 7 && p->devinfo->ver < 12) {
 			brw_inst_set_3src_a16_flag_reg_nr(p->devinfo, brw_last_inst,
 					         $4.flag_reg_nr);
 			brw_inst_set_3src_a16_flag_subreg_nr(p->devinfo, brw_last_inst,
