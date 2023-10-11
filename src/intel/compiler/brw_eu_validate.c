@@ -242,6 +242,19 @@ invalid_values(const struct brw_isa_info *isa, const brw_inst *inst)
       break;
    }
 
+   if (error_msg.str)
+      return error_msg;
+
+   if (devinfo->ver >= 12) {
+      unsigned group_size = 1 << brw_inst_exec_size(devinfo, inst);
+      unsigned qtr_ctrl = brw_inst_qtr_control(devinfo, inst);
+      unsigned nib_ctrl = brw_inst_nib_control(devinfo, inst);
+
+      unsigned chan_off = (qtr_ctrl * 2 + nib_ctrl) << 2;
+      ERROR_IF(chan_off % group_size != 0,
+               "The execution size must be a factor of the chosen offset");
+   }
+
    if (inst_is_send(isa, inst))
       return error_msg;
 
