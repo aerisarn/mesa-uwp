@@ -2457,6 +2457,7 @@ void brw_oword_block_read(struct brw_codegen *p,
 
    brw_push_insn_state(p);
    brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+   brw_set_default_flag_reg(p, 0, 0);
    brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
    brw_set_default_mask_control(p, BRW_MASK_DISABLE);
 
@@ -2766,6 +2767,7 @@ brw_send_indirect_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_flag_reg(p, 0, 0);
       brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Load the indirect descriptor to an address register using OR so the
@@ -2823,6 +2825,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_flag_reg(p, 0, 0);
       brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Load the indirect descriptor to an address register using OR so the
@@ -2857,6 +2860,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_flag_reg(p, 0, 0);
       brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Load the indirect extended descriptor to an address register using OR
@@ -2953,6 +2957,7 @@ brw_send_indirect_surface_message(struct brw_codegen *p,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_exec_size(p, BRW_EXECUTE_1);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_flag_reg(p, 0, 0);
       brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
 
       /* Mask out invalid bits from the surface index to avoid hangs e.g. when
@@ -3570,6 +3575,7 @@ brw_broadcast(struct brw_codegen *p,
          brw_push_insn_state(p);
          brw_set_default_mask_control(p, BRW_MASK_DISABLE);
          brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+         brw_set_default_flag_reg(p, 0, 0);
 
          /* Take into account the component size and horizontal stride. */
          assert(src.vstride == src.hstride + src.width);

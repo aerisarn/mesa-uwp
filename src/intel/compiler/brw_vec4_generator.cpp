@@ -93,6 +93,7 @@ generate_math2_gfx4(struct brw_codegen *p,
    brw_push_insn_state(p);
    brw_set_default_saturate(p, false);
    brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+   brw_set_default_flag_reg(p, 0, 0);
    brw_MOV(p, retype(brw_message_reg(inst->base_mrf + 1), op1.type), op1);
    brw_pop_insn_state(p);
 
@@ -1198,7 +1199,9 @@ generate_scratch_write(struct brw_codegen *p,
    /* If the instruction is predicated, we'll predicate the send, not
     * the header setup.
     */
+   brw_push_insn_state(p);
    brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+   brw_set_default_flag_reg(p, 0, 0);
 
    gfx6_resolve_implied_move(p, &header, inst->base_mrf);
 
@@ -1208,6 +1211,8 @@ generate_scratch_write(struct brw_codegen *p,
    brw_MOV(p,
 	   retype(brw_message_reg(inst->base_mrf + 2), BRW_REGISTER_TYPE_D),
 	   retype(src, BRW_REGISTER_TYPE_D));
+
+   brw_pop_insn_state(p);
 
    uint32_t msg_type;
 

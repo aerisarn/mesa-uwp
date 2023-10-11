@@ -369,6 +369,7 @@ fs_generator::fire_fb_write(fs_inst *inst,
       brw_set_default_exec_size(p, BRW_EXECUTE_8);
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_flag_reg(p, 0, 0);
       brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
       brw_MOV(p, offset(retype(payload, BRW_REGISTER_TYPE_UD), 1),
               offset(retype(implied_header, BRW_REGISTER_TYPE_UD), 1));
@@ -1681,6 +1682,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          brw_set_default_exec_size(p, BRW_EXECUTE_16);
          brw_set_default_mask_control(p, BRW_MASK_DISABLE);
          brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+         brw_set_default_flag_reg(p, 0, 0);
          brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
          brw_MOV(p, brw_acc_reg(8), brw_imm_f(0.0f));
          last_insn_offset = p->next_insn_offset;
@@ -1701,6 +1703,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
             brw_set_default_exec_size(p, BRW_EXECUTE_1);
             brw_set_default_mask_control(p, BRW_MASK_DISABLE);
             brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+            brw_set_default_flag_reg(p, 0, 0);
             brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
             brw_SYNC(p, TGL_SYNC_NOP);
             last_insn_offset = p->next_insn_offset;
