@@ -247,7 +247,8 @@ test_runner = find_program('tests/run-test.py')
 foreach testcase : asm_testcases
   _gen_name = testcase[0]
   _gen_num = testcase[1]
-  _gen_folder = join_paths(meson.current_source_dir(), 'tests', _gen_num)
+  _gen_folder = join_paths(meson.current_source_dir(), 'tests',
+                           _gen_num.replace('gfx', 'gen'))
   test(
     'i965_asm_' + _gen_num, test_runner,
     args : [
