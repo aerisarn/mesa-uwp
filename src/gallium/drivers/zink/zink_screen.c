@@ -1470,9 +1470,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    hash_table_foreach(&screen->dts, entry)
       zink_kopper_deinit_displaytarget(screen, entry->data);
-   simple_mtx_destroy(&screen->dt_lock);
 
-   simple_mtx_destroy(&screen->copy_context_lock);
    if (screen->copy_context)
       screen->copy_context->base.destroy(&screen->copy_context->base);
 
@@ -1500,8 +1498,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    for (unsigned i = 0; i < ARRAY_SIZE(screen->pipeline_libs); i++)
       _mesa_set_clear(&screen->pipeline_libs[i], NULL);
-   for (unsigned i = 0; i < ARRAY_SIZE(screen->pipeline_libs_lock); i++)
-      simple_mtx_destroy(&screen->pipeline_libs_lock[i]);
 
    zink_bo_deinit(screen);
    util_live_shader_cache_deinit(&screen->shaders);
@@ -1517,7 +1513,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (util_queue_is_initialized(&screen->flush_queue))
       util_queue_destroy(&screen->flush_queue);
 
-   simple_mtx_destroy(&screen->semaphores_lock);
    while (util_dynarray_contains(&screen->semaphores, VkSemaphore))
       VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&screen->semaphores, VkSemaphore), NULL);
    while (util_dynarray_contains(&screen->fd_semaphores, VkSemaphore))
@@ -1525,10 +1520,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->bindless_layout)
       VKSCR(DestroyDescriptorSetLayout)(screen->dev, screen->bindless_layout, NULL);
 
-   if (zink_debug & ZINK_DEBUG_MEM)
-      simple_mtx_destroy(&screen->debug_mem_lock);
-
-   simple_mtx_destroy(&screen->queue_lock);
    VKSCR(DestroyDevice)(screen->dev, NULL);
    VKSCR(DestroyInstance)(screen->instance, NULL);
    util_idalloc_mt_fini(&screen->buffer_ids);
