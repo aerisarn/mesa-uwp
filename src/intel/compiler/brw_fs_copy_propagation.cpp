@@ -1377,17 +1377,16 @@ opt_copy_propagation_local(const brw_compiler *compiler, void *copy_prop_ctx,
                  inst->src[i].is_contiguous())) {
                const brw_reg_type t = i < inst->header_size ?
                   BRW_REGISTER_TYPE_UD : inst->src[i].type;
-               acp_entry *entry = rzalloc(copy_prop_ctx, acp_entry);
-               entry->dst = byte_offset(retype(inst->dst, t), offset);
-               entry->src = retype(inst->src[i], t);
-               entry->size_written = size_written;
-               entry->size_read = inst->size_read(i);
-               entry->opcode = inst->opcode;
-               entry->force_writemask_all = inst->force_writemask_all;
-               if (!entry->dst.equals(inst->src[i])) {
+               fs_reg dst = byte_offset(retype(inst->dst, t), offset);
+               if (!dst.equals(inst->src[i])) {
+                  acp_entry *entry = rzalloc(copy_prop_ctx, acp_entry);
+                  entry->dst = dst;
+                  entry->src = retype(inst->src[i], t);
+                  entry->size_written = size_written;
+                  entry->size_read = inst->size_read(i);
+                  entry->opcode = inst->opcode;
+                  entry->force_writemask_all = inst->force_writemask_all;
                   acp.add(entry);
-               } else {
-                  ralloc_free(entry);
                }
             }
             offset += size_written;
