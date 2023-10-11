@@ -41,6 +41,9 @@ nvk_CreateBuffer(VkDevice device,
    VK_FROM_HANDLE(nvk_device, dev, device);
    struct nvk_buffer *buffer;
 
+   if (pCreateInfo->size > NVK_MAX_BUFFER_SIZE)
+      return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
    buffer = vk_buffer_create(&dev->vk, pCreateInfo, pAllocator,
                              sizeof(*buffer));
    if (!buffer)

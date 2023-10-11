@@ -26,6 +26,9 @@
 #define NVK_SSBO_BOUNDS_CHECK_ALIGNMENT 4
 #define NVK_MAX_MULTIVIEW_VIEW_COUNT 32
 
+#define NVK_SPARSE_ADDR_SPACE_SIZE (1ull << 39)
+#define NVK_MAX_BUFFER_SIZE (1ull << 31)
+
 struct nvk_addr_range {
    uint64_t addr;
    uint64_t range;
