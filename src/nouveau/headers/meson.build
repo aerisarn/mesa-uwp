@@ -19,6 +19,7 @@ nvk_classes = [
   'clc3c0',
   'clc597',
   'clc5c0',
+  'clc697',
   'clc6c0',
 ]
 
