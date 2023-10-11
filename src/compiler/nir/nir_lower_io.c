@@ -519,7 +519,7 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
                             BITFIELD_RANGE(src_comp, num_comps));
             nir_def *data32 = nir_bitcast_vector(b, data, 32);
 
-            nir_component_mask_t write_mask32 = 0;
+            uint32_t write_mask32 = 0;
             for (unsigned i = 0; i < num_comps; i++) {
                if (write_mask & BITFIELD_MASK(num_comps) & (1 << i))
                   write_mask32 |= 3 << (i * 2);
