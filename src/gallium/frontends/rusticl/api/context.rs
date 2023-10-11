@@ -1,7 +1,6 @@
 use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
-use crate::cl_closure;
 use crate::core::context::*;
 use crate::core::device::get_devs_for_type;
 use crate::core::platform::*;
@@ -132,14 +131,10 @@ fn set_context_destructor_callback(
 ) -> CLResult<()> {
     let c = context.get_ref()?;
 
-    // CL_INVALID_VALUE if pfn_notify is NULL.
-    if pfn_notify.is_none() {
-        return Err(CL_INVALID_VALUE);
-    }
+    // SAFETY: The requirements on `DeleteContextCB::new` match the requirements
+    // imposed by the OpenCL specification. It is the caller's duty to uphold them.
+    let cb = unsafe { DeleteContextCB::new(pfn_notify, user_data)? };
 
-    c.dtors
-        .lock()
-        .unwrap()
-        .push(cl_closure!(|c| pfn_notify(c, user_data)));
+    c.dtors.lock().unwrap().push(cb);
     Ok(())
 }

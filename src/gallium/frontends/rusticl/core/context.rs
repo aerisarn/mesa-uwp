@@ -1,4 +1,5 @@
 use crate::api::icd::*;
+use crate::api::types::DeleteContextCB;
 use crate::core::device::*;
 use crate::core::format::*;
 use crate::core::memory::*;
@@ -22,7 +23,7 @@ pub struct Context {
     pub base: CLObjectBase<CL_INVALID_CONTEXT>,
     pub devs: Vec<&'static Device>,
     pub properties: Properties<cl_context_properties>,
-    pub dtors: Mutex<Vec<Box<dyn Fn(cl_context)>>>,
+    pub dtors: Mutex<Vec<DeleteContextCB>>,
     pub svm_ptrs: Mutex<BTreeMap<*const c_void, Layout>>,
 }
 
@@ -208,6 +209,6 @@ impl Drop for Context {
             .unwrap()
             .iter()
             .rev()
-            .for_each(|cb| cb(cl));
+            .for_each(|cb| unsafe { (cb.func)(cl, cb.data) });
     }
 }

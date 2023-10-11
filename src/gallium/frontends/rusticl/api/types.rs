@@ -45,8 +45,11 @@ macro_rules! cl_callback {
             /// - Passing `data` as the last parameter to `func` must not cause unsoundness.
             /// - CreateContextCB: `func` must be soundly callable as documented on
             ///   [`clCreateContext`] in the OpenCL specification.
+            /// - DeleteContextCB: `func` must be soundly callable as documented on
+            ///   [`clSetContextDestructorCallback`] in the OpenCL specification.
             ///
             /// [`clCreateContext`]: https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html#clCreateContext
+            /// [`clSetContextDestructorCallback`]: https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html#clSetContextDestructorCallback
             pub unsafe fn new(func: Option<$fn_alias>, data: *mut c_void) -> CLResult<Self> {
                 let Some(func) = func else {
                     return Err(CL_INVALID_VALUE);
