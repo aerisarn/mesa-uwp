@@ -400,6 +400,17 @@ sr[0-9]+ 	{ yylval.integer = atoi(yytext + 2); return STATEREG; }
 	return JUMP_LABEL;
 }
 
+ /* SWSB */
+"@"[1-7]	{ yylval.integer = atoi(yytext + 1); return REG_DIST_CURRENT; }
+"F@"[1-7]	{ yylval.integer = atoi(yytext + 2); return REG_DIST_FLOAT; }
+"I@"[1-7]	{ yylval.integer = atoi(yytext + 2); return REG_DIST_INT; }
+"L@"[1-7]	{ yylval.integer = atoi(yytext + 2); return REG_DIST_LONG; }
+"A@"[1-7]	{ yylval.integer = atoi(yytext + 2); return REG_DIST_ALL; }
+
+"$"[0-9]*	{ yylval.integer = atoi(yytext + 1); return SBID_ALLOC; }
+"$"[0-9]*".src"	{ yylval.integer = atoi(yytext + 1); return SBID_WAIT_SRC; }
+"$"[0-9]*".dst"	{ yylval.integer = atoi(yytext + 1); return SBID_WAIT_DST; }
+
 \n 	{ yycolumn = 1; }
 
 . 	{

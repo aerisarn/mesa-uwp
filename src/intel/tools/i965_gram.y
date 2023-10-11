@@ -292,12 +292,17 @@ i965_asm_set_instruction_options(struct brw_codegen *p,
 			         options.access_mode);
 	brw_inst_set_mask_control(p->devinfo, brw_last_inst,
 				  options.mask_control);
-	brw_inst_set_thread_control(p->devinfo, brw_last_inst,
-				    options.thread_control);
-	brw_inst_set_no_dd_check(p->devinfo, brw_last_inst,
-			         options.no_dd_check);
-	brw_inst_set_no_dd_clear(p->devinfo, brw_last_inst,
-			         options.no_dd_clear);
+	if (p->devinfo->ver < 12) {
+		brw_inst_set_thread_control(p->devinfo, brw_last_inst,
+					    options.thread_control);
+		brw_inst_set_no_dd_check(p->devinfo, brw_last_inst,
+					 options.no_dd_check);
+		brw_inst_set_no_dd_clear(p->devinfo, brw_last_inst,
+					 options.no_dd_clear);
+	} else {
+		brw_inst_set_swsb(p->devinfo, brw_last_inst,
+		                  tgl_swsb_encode(p->devinfo, options.depinfo));
+	}
 	brw_inst_set_debug_control(p->devinfo, brw_last_inst,
 			           options.debug_control);
 	if (p->devinfo->ver >= 6)
@@ -353,6 +358,8 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 	struct predicate predicate;
 	struct condition condition;
 	struct options options;
+	struct instoption instoption;
+	struct tgl_swsb depinfo;
 	brw_inst *instruction;
 }
 
@@ -494,7 +501,7 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 
 /* instruction options  */
 %type <options> instoptions instoption_list
-%type <integer> instoption
+%type <instoption> instoption
 
 /* writemask */
 %type <integer> writemask_x writemask_y writemask_z writemask_w
@@ -536,12 +543,34 @@ add_label(struct brw_codegen *p, const char* label_name, enum instr_label_type t
 %type <string> jumplabeltarget
 %type <string> jumplabel
 
+/* SWSB */
+%token <integer> REG_DIST_CURRENT
+%token <integer> REG_DIST_FLOAT
+%token <integer> REG_DIST_INT
+%token <integer> REG_DIST_LONG
+%token <integer> REG_DIST_ALL
+%token <integer> SBID_ALLOC
+%token <integer> SBID_WAIT_SRC
+%token <integer> SBID_WAIT_DST
+
+%type <depinfo> depinfo
+
 %code {
 
 static void
-add_instruction_option(struct options *options, int option)
+add_instruction_option(struct options *options, struct instoption opt)
 {
-	switch (option) {
+	if (opt.type == INSTOPTION_DEP_INFO) {
+		if (opt.depinfo_value.regdist) {
+			options->depinfo.regdist = opt.depinfo_value.regdist;
+			options->depinfo.pipe = opt.depinfo_value.pipe;
+		} else {
+			options->depinfo.sbid = opt.depinfo_value.sbid;
+			options->depinfo.mode = opt.depinfo_value.mode;
+		}
+		return;
+	}
+	switch (opt.uint_value) {
 	case ALIGN1:
 		options->access_mode = BRW_ALIGN_1;
 		break;
@@ -2309,33 +2338,84 @@ instoption_list:
 	}
 	;
 
+depinfo:
+	REG_DIST_CURRENT
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.regdist = $1;
+		$$.pipe = TGL_PIPE_NONE;
+	}
+	| REG_DIST_FLOAT
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.regdist = $1;
+		$$.pipe = TGL_PIPE_FLOAT;
+	}
+	| REG_DIST_INT
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.regdist = $1;
+		$$.pipe = TGL_PIPE_INT;
+	}
+	| REG_DIST_LONG
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.regdist = $1;
+		$$.pipe = TGL_PIPE_LONG;
+	}
+	| REG_DIST_ALL
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.regdist = $1;
+		$$.pipe = TGL_PIPE_ALL;
+	}
+	| SBID_ALLOC
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.sbid = $1;
+		$$.mode = TGL_SBID_SET;
+	}
+	| SBID_WAIT_SRC
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.sbid = $1;
+		$$.mode = TGL_SBID_SRC;
+	}
+	| SBID_WAIT_DST
+	{
+		memset(&$$, 0, sizeof($$));
+		$$.sbid = $1;
+		$$.mode = TGL_SBID_DST;
+	}
+
 instoption:
-	ALIGN1 	        { $$ = ALIGN1;}
-	| ALIGN16 	{ $$ = ALIGN16; }
-	| ACCWREN 	{ $$ = ACCWREN; }
-	| SECHALF 	{ $$ = SECHALF; }
-	| COMPR 	{ $$ = COMPR; }
-	| COMPR4 	{ $$ = COMPR4; }
-	| BREAKPOINT 	{ $$ = BREAKPOINT; }
-	| NODDCLR 	{ $$ = NODDCLR; }
-	| NODDCHK 	{ $$ = NODDCHK; }
-	| MASK_DISABLE 	{ $$ = MASK_DISABLE; }
-	| EOT 	        { $$ = EOT; }
-	| SWITCH 	{ $$ = SWITCH; }
-	| ATOMIC 	{ $$ = ATOMIC; }
-	| CMPTCTRL 	{ $$ = CMPTCTRL; }
-	| WECTRL 	{ $$ = WECTRL; }
-	| QTR_2Q 	{ $$ = QTR_2Q; }
-	| QTR_3Q 	{ $$ = QTR_3Q; }
-	| QTR_4Q 	{ $$ = QTR_4Q; }
-	| QTR_2H 	{ $$ = QTR_2H; }
-	| QTR_2N 	{ $$ = QTR_2N; }
-	| QTR_3N 	{ $$ = QTR_3N; }
-	| QTR_4N 	{ $$ = QTR_4N; }
-	| QTR_5N 	{ $$ = QTR_5N; }
-	| QTR_6N 	{ $$ = QTR_6N; }
-	| QTR_7N 	{ $$ = QTR_7N; }
-	| QTR_8N 	{ $$ = QTR_8N; }
+	ALIGN1 	        { $$.type = INSTOPTION_FLAG; $$.uint_value = ALIGN1;}
+	| ALIGN16 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = ALIGN16; }
+	| ACCWREN 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = ACCWREN; }
+	| SECHALF 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = SECHALF; }
+	| COMPR 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = COMPR; }
+	| COMPR4 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = COMPR4; }
+	| BREAKPOINT 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = BREAKPOINT; }
+	| NODDCLR 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = NODDCLR; }
+	| NODDCHK 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = NODDCHK; }
+	| MASK_DISABLE 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = MASK_DISABLE; }
+	| EOT 	        { $$.type = INSTOPTION_FLAG; $$.uint_value = EOT; }
+	| SWITCH 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = SWITCH; }
+	| ATOMIC 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = ATOMIC; }
+	| CMPTCTRL 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = CMPTCTRL; }
+	| WECTRL 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = WECTRL; }
+	| QTR_2Q 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_2Q; }
+	| QTR_3Q 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_3Q; }
+	| QTR_4Q 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_4Q; }
+	| QTR_2H 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_2H; }
+	| QTR_2N 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_2N; }
+	| QTR_3N 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_3N; }
+	| QTR_4N 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_4N; }
+	| QTR_5N 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_5N; }
+	| QTR_6N 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_6N; }
+	| QTR_7N 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_7N; }
+	| QTR_8N 	{ $$.type = INSTOPTION_FLAG; $$.uint_value = QTR_8N; }
+	| depinfo	{ $$.type = INSTOPTION_DEP_INFO; $$.depinfo_value = $1; }
 	;
 
 %%
