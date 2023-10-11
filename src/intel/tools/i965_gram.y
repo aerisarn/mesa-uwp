@@ -1432,12 +1432,12 @@ breakinstruction:
 		brw_set_dest(p, brw_last_inst, retype(brw_null_reg(),
 			     BRW_REGISTER_TYPE_D));
 
-		if (p->devinfo->ver >= 8) {
-			brw_set_src0(p, brw_last_inst, brw_imm_d(0x0));
-		} else {
+		if (p->devinfo->ver < 8) {
 			brw_set_src0(p, brw_last_inst, retype(brw_null_reg(),
 				     BRW_REGISTER_TYPE_D));
 			brw_set_src1(p, brw_last_inst, brw_imm_d(0x0));
+		} else if (p->devinfo->ver < 12) {
+			brw_set_src0(p, brw_last_inst, brw_imm_d(0x0));
 		}
 
 		brw_pop_insn_state(p);
@@ -1492,7 +1492,8 @@ loopinstruction:
 			brw_set_dest(p, brw_last_inst,
 						retype(brw_null_reg(),
 						BRW_REGISTER_TYPE_D));
-			brw_set_src0(p, brw_last_inst, brw_imm_d(0x0));
+			if (p->devinfo->ver < 12)
+				brw_set_src0(p, brw_last_inst, brw_imm_d(0x0));
 		} else if (p->devinfo->ver == 7) {
 			brw_set_dest(p, brw_last_inst,
 						retype(brw_null_reg(),
