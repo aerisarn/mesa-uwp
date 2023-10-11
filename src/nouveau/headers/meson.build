@@ -53,3 +53,11 @@ idep_nvidia_headers = declare_dependency(
   sources : cl_generated,
   link_with : _libnvidia_headers,
 )
+
+executable(
+  'nv_push_dump',
+  'nv_push_dump.c',
+  dependencies : [ idep_mesautil, idep_nvidia_headers ],
+  build_by_default : with_tools.contains('nouveau'),
+  install : with_tools.contains('nouveau'),
+)
