@@ -116,7 +116,7 @@ pub struct Mem {
     pub image_desc: cl_image_desc,
     pub image_elem_size: u8,
     pub props: Vec<cl_mem_properties>,
-    pub cbs: Mutex<Vec<Box<dyn Fn(cl_mem)>>>,
+    pub cbs: Mutex<Vec<MemCB>>,
     res: Option<HashMap<&'static Device, Arc<PipeResource>>>,
     maps: Mutex<Mappings>,
 }
@@ -1240,7 +1240,7 @@ impl Drop for Mem {
             .unwrap()
             .iter()
             .rev()
-            .for_each(|cb| cb(cl));
+            .for_each(|cb| unsafe { (cb.func)(cl, cb.data) });
 
         for (d, tx) in self.maps.get_mut().unwrap().tx.drain() {
             d.helper_ctx().unmap(tx.tx);

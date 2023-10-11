@@ -8,7 +8,6 @@ use crate::core::context::Context;
 use crate::core::device::*;
 use crate::core::format::*;
 use crate::core::memory::*;
-use crate::*;
 
 use mesa_rust_util::properties::Properties;
 use mesa_rust_util::ptr::*;
@@ -355,15 +354,11 @@ fn set_mem_object_destructor_callback(
 ) -> CLResult<()> {
     let m = memobj.get_ref()?;
 
-    // CL_INVALID_VALUE if pfn_notify is NULL.
-    if pfn_notify.is_none() {
-        return Err(CL_INVALID_VALUE);
-    }
+    // SAFETY: The requirements on `MemCB::new` match the requirements
+    // imposed by the OpenCL specification. It is the caller's duty to uphold them.
+    let cb = unsafe { MemCB::new(pfn_notify, user_data)? };
 
-    m.cbs
-        .lock()
-        .unwrap()
-        .push(cl_closure!(|m| pfn_notify(m, user_data)));
+    m.cbs.lock().unwrap().push(cb);
     Ok(())
 }
 
