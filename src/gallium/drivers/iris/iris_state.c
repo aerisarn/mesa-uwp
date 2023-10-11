@@ -9042,6 +9042,17 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       flags |= PIPE_CONTROL_DEPTH_STALL;
    }
 
+   /* Wa_14014966230: For COMPUTE Workload - Any PIPE_CONTROL command with
+    * POST_SYNC Operation Enabled MUST be preceded by a PIPE_CONTROL
+    * with CS_STALL Bit set (with No POST_SYNC ENABLED)
+    */
+   if (intel_device_info_is_adln(devinfo) &&
+       IS_COMPUTE_PIPELINE(batch) &&
+       flags_to_post_sync_op(flags) != NoWrite) {
+      iris_emit_raw_pipe_control(batch, "Wa_14014966230",
+                                 PIPE_CONTROL_CS_STALL, NULL, 0, 0);
+   }
+
    /* Emit --------------------------------------------------------------- */
 
    if (INTEL_DEBUG(DEBUG_PIPE_CONTROL)) {
