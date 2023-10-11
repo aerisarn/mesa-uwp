@@ -2391,7 +2391,12 @@ radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
    const bool en = d->vk.ia.primitive_restart_enable;
 
    if (gfx_level >= GFX11) {
-      radeon_set_uconfig_reg(cs, R_03092C_GE_MULTI_PRIM_IB_RESET_EN, en);
+      radeon_set_uconfig_reg(cs, R_03092C_GE_MULTI_PRIM_IB_RESET_EN,
+                             S_03092C_RESET_EN(en) |
+                                /* This disables primitive restart for non-indexed draws.
+                                 * By keeping this set, we don't have to unset RESET_EN
+                                 * for non-indexed draws. */
+                                S_03092C_DISABLE_FOR_AUTO_INDEX(1));
    } else if (gfx_level >= GFX9) {
       radeon_set_uconfig_reg(cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, en);
    } else {
