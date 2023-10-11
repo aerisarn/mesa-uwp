@@ -1602,6 +1602,9 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
 
+   if (anv_batch_has_error(batch))
+      return batch->status;
+
    if (queue->device->info->no_hw)
       return VK_SUCCESS;
 
