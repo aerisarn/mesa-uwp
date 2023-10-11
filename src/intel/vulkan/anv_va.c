@@ -57,8 +57,9 @@ anv_device_print_vas(struct anv_physical_device *device)
    PRINT_HEAP(internal_surface_state_pool);
    PRINT_HEAP(scratch_surface_state_pool);
    PRINT_HEAP(bindless_surface_state_pool);
-   PRINT_HEAP(descriptor_pool);
-   PRINT_HEAP(push_descriptor_pool);
+   PRINT_HEAP(direct_descriptor_pool);
+   PRINT_HEAP(indirect_descriptor_pool);
+   PRINT_HEAP(indirect_push_descriptor_pool);
    PRINT_HEAP(instruction_state_pool);
    PRINT_HEAP(client_visible_heap);
    PRINT_HEAP(high_heap);
@@ -101,8 +102,10 @@ anv_physical_device_init_va_ranges(struct anv_physical_device *device)
                     _1Gb - address);
 
    address = va_add(&device->va.low_heap, address, _1Gb);
-   /* The STATE_BASE_ADDRESS can only express up to 4Gb - 4Kb */
-   address = va_add(&device->va.dynamic_state_pool, address, 4 * _1Gb - 4096);
+   /* PRMs & simulation disagrees on the actual size of this heap. Take the
+    * smallest (simulation) so that it works everywhere.
+    */
+   address = va_add(&device->va.dynamic_state_pool, address, _4Gb - 4096);
    address = align64(address, _1Gb);
 
    /* The following addresses have to be located in a 4Gb range so that the
@@ -126,16 +129,21 @@ anv_physical_device_init_va_ranges(struct anv_physical_device *device)
        * this pool.
        */
       address = va_add(&device->va.bindless_surface_state_pool, address, 2 * _1Gb);
-
-      /* Descriptor buffers can go anywhere */
-      address = align64(address, _4Gb);
-      address = va_add(&device->va.descriptor_pool, address, 3 * _1Gb);
-      address = va_add(&device->va.push_descriptor_pool, address, _1Gb);
    } else {
       /* With direct descriptor, descriptors set buffers are allocated
        * here.
        */
-      address = va_add(&device->va.descriptor_pool, address, 2 * _1Gb);
+      address = va_add(&device->va.direct_descriptor_pool, address, 2 * _1Gb);
+   }
+
+   if (device->indirect_descriptors) {
+      /* With indirect descriptors, descriptor buffers can go anywhere, they
+       * just need to be in a 4Gb aligned range, so all shader accesses can
+       * use a relocatable upper dword for the 64bit address.
+       */
+      address = align64(address, _4Gb);
+      address = va_add(&device->va.indirect_descriptor_pool, address, 3 * _1Gb);
+      address = va_add(&device->va.indirect_push_descriptor_pool, address, _1Gb);
    }
 
    /* We use a trick to compute constant data offsets in the shaders to avoid

@@ -1567,10 +1567,10 @@ anv_push_descriptor_set_init(struct anv_cmd_buffer *cmd_buffer,
       struct anv_physical_device *pdevice = cmd_buffer->device->physical;
       struct anv_state_stream *push_stream =
          pdevice->indirect_descriptors ?
-         &cmd_buffer->push_descriptor_stream :
+         &cmd_buffer->indirect_push_descriptor_stream :
          &cmd_buffer->surface_state_stream;
       uint64_t push_base_address = pdevice->indirect_descriptors ?
-         pdevice->va.push_descriptor_pool.addr :
+         pdevice->va.indirect_push_descriptor_pool.addr :
          pdevice->va.internal_surface_state_pool.addr;
 
       /* The previous buffer is either actively used by some GPU command (so

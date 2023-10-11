@@ -948,17 +948,57 @@ struct anv_physical_device {
     } memory;
 
     struct {
+       /**
+        * General state pool
+        */
        struct anv_va_range                      general_state_pool;
+       /**
+        * Low 32bit heap
+        */
        struct anv_va_range                      low_heap;
-       struct anv_va_range                      dynamic_state_pool;
+       /**
+        * Binding table pool
+        */
        struct anv_va_range                      binding_table_pool;
+       /**
+        * Internal surface states for blorp & push descriptors.
+        */
        struct anv_va_range                      internal_surface_state_pool;
+       /**
+        * Scratch surfaces (overlaps with internal_surface_state_pool).
+        */
        struct anv_va_range                      scratch_surface_state_pool;
+       /**
+        * Bindless surface states (used with indirect descriptors)
+        */
        struct anv_va_range                      bindless_surface_state_pool;
+       /**
+        * Bindless surface & sampler states (used with direct descriptors)
+        */
+       struct anv_va_range                      direct_descriptor_pool;
+       /**
+        * Dynamic state pool
+        */
+       struct anv_va_range                      dynamic_state_pool;
+       /**
+        * Indirect descriptor pool
+        */
+       struct anv_va_range                      indirect_descriptor_pool;
+       /**
+        * Indirect push descriptor pool
+        */
+       struct anv_va_range                      indirect_push_descriptor_pool;
+       /**
+        * Instruction state pool
+        */
        struct anv_va_range                      instruction_state_pool;
-       struct anv_va_range                      descriptor_pool;
-       struct anv_va_range                      push_descriptor_pool;
+       /**
+        * Client visible VMA allocation heap
+        */
        struct anv_va_range                      client_visible_heap;
+       /**
+        * Client heap
+        */
        struct anv_va_range                      high_heap;
     } va;
 
@@ -1527,7 +1567,7 @@ struct anv_device {
     struct anv_state_pool                       scratch_surface_state_pool;
     struct anv_state_pool                       internal_surface_state_pool;
     struct anv_state_pool                       bindless_surface_state_pool;
-    struct anv_state_pool                       push_descriptor_pool;
+    struct anv_state_pool                       indirect_push_descriptor_pool;
 
     struct anv_state_reserved_pool              custom_border_colors;
 
@@ -3545,7 +3585,7 @@ struct anv_cmd_buffer {
    struct anv_state_stream                      surface_state_stream;
    struct anv_state_stream                      dynamic_state_stream;
    struct anv_state_stream                      general_state_stream;
-   struct anv_state_stream                      push_descriptor_stream;
+   struct anv_state_stream                      indirect_push_descriptor_stream;
 
    VkCommandBufferUsageFlags                    usage_flags;
 

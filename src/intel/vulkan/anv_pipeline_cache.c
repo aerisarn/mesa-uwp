@@ -127,7 +127,7 @@ anv_shader_bin_create(struct anv_device *device,
    reloc_values[rv_count++] = (struct brw_shader_reloc_value) {
       .id = BRW_SHADER_RELOC_DESCRIPTORS_ADDR_HIGH,
       .value = device->physical->indirect_descriptors ?
-               (device->physical->va.descriptor_pool.addr >> 32) :
+               (device->physical->va.indirect_descriptor_pool.addr >> 32) :
                (device->physical->va.binding_table_pool.addr >> 32),
    };
    reloc_values[rv_count++] = (struct brw_shader_reloc_value) {
