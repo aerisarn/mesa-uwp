@@ -3105,6 +3105,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
       return NULL;
    }
 
+   glsl_type_singleton_init_or_ref();
    zink_debug = debug_get_option_zink_debug();
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_AUTO)
       zink_descriptor_mode = debug_get_option_zink_descriptor_mode();
@@ -3479,7 +3480,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
                                 zink_create_vertex_state, zink_vertex_state_destroy);
    screen->base.create_vertex_state = zink_cache_create_vertex_state;
    screen->base.vertex_state_destroy = zink_cache_vertex_state_destroy;
-   glsl_type_singleton_init_or_ref();
 
    zink_synchronization_init(screen);
 
