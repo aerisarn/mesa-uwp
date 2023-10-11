@@ -1680,6 +1680,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       if (inst->eot && is_accum_used &&
           intel_needs_workaround(devinfo, 14010017096)) {
          brw_set_default_exec_size(p, BRW_EXECUTE_16);
+         brw_set_default_group(p, 0);
          brw_set_default_mask_control(p, BRW_MASK_DISABLE);
          brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
          brw_set_default_flag_reg(p, 0, 0);
