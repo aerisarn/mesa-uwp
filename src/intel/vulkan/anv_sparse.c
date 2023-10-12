@@ -716,7 +716,8 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
              anv_bind.op == prev_bind->op &&
              anv_bind.bo == prev_bind->bo &&
              anv_bind.address == prev_bind->address + prev_bind->size &&
-             anv_bind.bo_offset == prev_bind->bo_offset + prev_bind->size) {
+             (anv_bind.bo_offset == prev_bind->bo_offset + prev_bind->size ||
+              anv_bind.bo == NULL)) {
             prev_bind->size += anv_bind.size;
          } else {
             binds[num_binds] = anv_bind;
