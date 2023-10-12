@@ -572,6 +572,67 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
                                   (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN) ||
                                   (profile == PIPE_VIDEO_PROFILE_AV1_MAIN);
 
+   /* Return the capability of Video Post Processor.
+    * Have to determine the HW version of VPE.
+    * Have to check the HW limitation and
+    */
+   if (entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      /* Check if the VPE exists and is valid */
+      if (!sscreen->info.ip[AMD_IP_VPE].num_queues) {
+          return false;
+      }
+
+      switch(param) {
+      case PIPE_VIDEO_CAP_SUPPORTED:
+         return true;
+      case PIPE_VIDEO_CAP_MAX_WIDTH:
+         return 10240;
+      case PIPE_VIDEO_CAP_MAX_HEIGHT:
+         return 10240;
+      case PIPE_VIDEO_CAP_VPP_MAX_INPUT_WIDTH:
+         return 10240;
+      case PIPE_VIDEO_CAP_VPP_MAX_INPUT_HEIGHT:
+         return 10240;
+      case PIPE_VIDEO_CAP_VPP_MIN_INPUT_WIDTH:
+         return 16;
+      case PIPE_VIDEO_CAP_VPP_MIN_INPUT_HEIGHT:
+         return 16;
+      case PIPE_VIDEO_CAP_VPP_MAX_OUTPUT_WIDTH:
+         return 10240;
+      case PIPE_VIDEO_CAP_VPP_MAX_OUTPUT_HEIGHT:
+         return 10240;
+      case PIPE_VIDEO_CAP_VPP_MIN_OUTPUT_WIDTH:
+         return 16;
+      case PIPE_VIDEO_CAP_VPP_MIN_OUTPUT_HEIGHT:
+         return 16;
+      case PIPE_VIDEO_CAP_VPP_ORIENTATION_MODES:
+         /* VPE 1st generation does not support orientation
+          * Have to determine the version and features of VPE in future.
+          */
+         return PIPE_VIDEO_VPP_ORIENTATION_DEFAULT;
+      case PIPE_VIDEO_CAP_VPP_BLEND_MODES:
+         /* VPE 1st generation does not support blending.
+          * Have to determine the version and features of VPE in future.
+          */
+         return PIPE_VIDEO_VPP_BLEND_MODE_NONE;
+      case PIPE_VIDEO_CAP_PREFERED_FORMAT:
+         return PIPE_FORMAT_NV12;
+      case PIPE_VIDEO_CAP_PREFERS_INTERLACED:
+         return false;
+      case PIPE_VIDEO_CAP_SUPPORTS_PROGRESSIVE:
+         return true;
+      case PIPE_VIDEO_CAP_REQUIRES_FLUSH_ON_END_FRAME:
+         /* true: VPP flush function will be called within vaEndPicture() */
+         /* false: VPP flush function will be skipped */
+         return false;
+      case PIPE_VIDEO_CAP_SUPPORTS_INTERLACED:
+         /* for VPE we prefer non-interlaced buffer */
+         return false;
+      default:
+         return 0;
+      }
+   }
+
    if (entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
       if (!(sscreen->info.ip[AMD_IP_VCE].num_queues ||
             sscreen->info.ip[AMD_IP_UVD_ENC].num_queues ||
@@ -879,6 +940,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
 
       if (format >= PIPE_VIDEO_FORMAT_HEVC)
          return false;
+
       return true;
    }
    case PIPE_VIDEO_CAP_SUPPORTS_PROGRESSIVE:
@@ -930,6 +992,23 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
                                        enum pipe_video_entrypoint entrypoint)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
+
+   if (entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      /* Todo:
+       * Unable to confirm whether it is asking for an input or output type
+       * Have to modify va frontend for solving this problem
+       */
+      /* VPE Supported input type */
+      if ((format == PIPE_FORMAT_NV12) || (format == PIPE_FORMAT_NV21) || (format == PIPE_FORMAT_P010))
+         return true;
+
+      /* VPE Supported output type */
+      if ((format == PIPE_FORMAT_A8R8G8B8_UNORM) || (format == PIPE_FORMAT_A8B8G8R8_UNORM) || (format == PIPE_FORMAT_R8G8B8A8_UNORM) ||
+          (format == PIPE_FORMAT_B8G8R8A8_UNORM) || (format == PIPE_FORMAT_X8R8G8B8_UNORM) || (format == PIPE_FORMAT_X8B8G8R8_UNORM) ||
+          (format == PIPE_FORMAT_R8G8B8X8_UNORM) || (format == PIPE_FORMAT_B8G8R8X8_UNORM) || (format == PIPE_FORMAT_A2R10G10B10_UNORM) ||
+          (format == PIPE_FORMAT_A2B10G10R10_UNORM) || (format == PIPE_FORMAT_B10G10R10A2_UNORM) || (format == PIPE_FORMAT_R10G10B10A2_UNORM))
+         return true;
+   }
 
    /* HEVC 10 bit decoding should use P010 instead of NV12 if possible */
    if (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
@@ -1267,7 +1346,8 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
        ((sscreen->info.vcn_ip_version >= VCN_4_0_0) ?
 	 sscreen->info.ip[AMD_IP_VCN_UNIFIED].num_queues : sscreen->info.ip[AMD_IP_VCN_DEC].num_queues) ||
        sscreen->info.ip[AMD_IP_VCN_JPEG].num_queues || sscreen->info.ip[AMD_IP_VCE].num_queues ||
-       sscreen->info.ip[AMD_IP_UVD_ENC].num_queues || sscreen->info.ip[AMD_IP_VCN_ENC].num_queues) {
+       sscreen->info.ip[AMD_IP_UVD_ENC].num_queues || sscreen->info.ip[AMD_IP_VCN_ENC].num_queues ||
+       sscreen->info.ip[AMD_IP_VPE].num_queues) {
       sscreen->b.get_video_param = si_get_video_param;
       sscreen->b.is_video_format_supported = si_vid_is_format_supported;
    } else {
