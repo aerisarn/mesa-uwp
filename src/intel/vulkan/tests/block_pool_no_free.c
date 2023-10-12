@@ -43,11 +43,14 @@ static void *alloc_blocks(void *_job)
    struct job *job = _job;
    uint32_t job_id = job - jobs;
    uint32_t block_size = 16 * ((job_id % 4) + 1);
-   int32_t block, *data;
+   int64_t block;
+   int32_t *data;
 
    for (unsigned i = 0; i < BLOCKS_PER_THREAD; i++) {
       UNUSED uint32_t padding;
-      block = anv_block_pool_alloc(job->pool, block_size, &padding);
+      VkResult result = anv_block_pool_alloc(job->pool, block_size,
+                                             &block, &padding);
+      ASSERT(result == VK_SUCCESS);
       data = anv_block_pool_map(job->pool, block, block_size);
       *data = block;
       ASSERT(block >= 0);

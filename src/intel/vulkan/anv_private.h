@@ -692,10 +692,12 @@ VkResult anv_block_pool_init(struct anv_block_pool *pool,
                              const char *name,
                              uint64_t start_address,
                              uint32_t initial_size,
-                             uint64_t max_size);
+                             uint32_t max_size);
 void anv_block_pool_finish(struct anv_block_pool *pool);
-int32_t anv_block_pool_alloc(struct anv_block_pool *pool,
-                             uint32_t block_size, uint32_t *padding);
+VkResult anv_block_pool_alloc(struct anv_block_pool *pool,
+                              uint32_t block_size,
+                              int64_t *offset,
+                              uint32_t *padding);
 void* anv_block_pool_map(struct anv_block_pool *pool, int32_t offset, uint32_t
 size);
 
@@ -704,7 +706,7 @@ struct anv_state_pool_params {
    uint64_t    base_address;
    int64_t     start_offset;
    uint32_t    block_size;
-   uint64_t    max_size;
+   uint32_t    max_size;
 };
 
 VkResult anv_state_pool_init(struct anv_state_pool *pool,

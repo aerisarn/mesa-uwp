@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Intel Corporation
+ * Copyright © 2023 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,47 +24,48 @@
 #include "anv_private.h"
 #include "test_common.h"
 
-void block_pool_grow_first_test(void);
+void block_pool_max_size(void);
 
-void block_pool_grow_first_test(void)
+void block_pool_max_size(void)
 {
    struct anv_physical_device physical_device = {};
    struct anv_device device = {};
    struct anv_block_pool pool;
 
-   /* Create a pool with initial size smaller than the block allocated, so
-    * that it must grow in the first allocation.
-    */
    const uint32_t block_size = 16 * 1024;
-   const uint32_t initial_size = block_size / 2;
-   const uint32_t _1Gb = 1024 * 1024 * 1024;
+   const uint32_t initial_size = block_size;
+   const uint32_t _1Mb = 1024 * 1024;
 
    test_device_info_init(&physical_device.info);
    anv_device_set_physical(&device, &physical_device);
    device.kmd_backend = anv_kmd_backend_get(INTEL_KMD_TYPE_STUB);
    pthread_mutex_init(&device.mutex, NULL);
    anv_bo_cache_init(&device.bo_cache, &device);
-   anv_block_pool_init(&pool, &device, "test", 4096, initial_size, _1Gb);
+   anv_block_pool_init(&pool, &device, "test", 4096, initial_size, _1Mb);
    ASSERT(pool.size == initial_size);
 
-   uint32_t padding;
-   int64_t offset;
-   VkResult result = anv_block_pool_alloc(&pool, block_size, &offset, &padding);
-   ASSERT(result == VK_SUCCESS);
+   for (uint32_t i = 0; i < _1Mb / block_size; i++) {
+      uint32_t padding;
+      int64_t offset;
 
-   /* Pool will have grown at least space to fit the new allocation. */
-   ASSERT(pool.size > initial_size);
-   ASSERT(pool.size >= initial_size + block_size);
+      VkResult result = anv_block_pool_alloc(&pool, block_size, &offset, &padding);
+      ASSERT(result == VK_SUCCESS);
 
-   /* The whole initial size is considered padding and the allocation should be
-    * right next to it.
-    */
-   ASSERT(padding == initial_size);
-   ASSERT(offset == initial_size);
+      /* Pool will have grown at least space to fit the new allocation. */
+      ASSERT(pool.size <= _1Mb);
 
-   /* Use the memory to ensure it is valid. */
-   void *map = anv_block_pool_map(&pool, offset, block_size);
-   memset(map, 22, block_size);
+      /* Use the memory to ensure it is valid. */
+      void *map = anv_block_pool_map(&pool, offset, block_size);
+      memset(map, 22, block_size);
+   }
+
+   {
+      uint32_t padding;
+      int64_t offset;
+
+      VkResult result = anv_block_pool_alloc(&pool, block_size, &offset, &padding);
+      ASSERT(result == VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
 
    anv_block_pool_finish(&pool);
    anv_bo_cache_finish(&device.bo_cache);
