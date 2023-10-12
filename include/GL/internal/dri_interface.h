@@ -679,6 +679,12 @@ struct __DRIuseInvalidateExtensionRec {
 };
 
 /**
+ * Dead, do not use; kept only to allow old Xserver to compile since
+ * this file is a public API.
+ */
+#define __DRI_DRIVER_EXTENSIONS "__driDriverExtensions"
+
+/**
  * This symbol replaces the __DRI_DRIVER_EXTENSIONS symbol, and will be
  * suffixed by "_drivername", allowing multiple drivers to be built into one
  * library, and also giving the driver the chance to return a variable driver
