@@ -575,6 +575,10 @@ struct anv_block_pool {
    struct anv_bo *bo;
    uint32_t nbos;
 
+   /* Maximum size of the pool */
+   uint64_t max_size;
+
+   /* Current size of the pool */
    uint64_t size;
 
    /* The canonical address where the start of the pool is pinned. The various bos that
@@ -687,19 +691,25 @@ VkResult anv_block_pool_init(struct anv_block_pool *pool,
                              struct anv_device *device,
                              const char *name,
                              uint64_t start_address,
-                             uint32_t initial_size);
+                             uint32_t initial_size,
+                             uint64_t max_size);
 void anv_block_pool_finish(struct anv_block_pool *pool);
 int32_t anv_block_pool_alloc(struct anv_block_pool *pool,
                              uint32_t block_size, uint32_t *padding);
 void* anv_block_pool_map(struct anv_block_pool *pool, int32_t offset, uint32_t
 size);
 
+struct anv_state_pool_params {
+   const char *name;
+   uint64_t    base_address;
+   int64_t     start_offset;
+   uint32_t    block_size;
+   uint64_t    max_size;
+};
+
 VkResult anv_state_pool_init(struct anv_state_pool *pool,
                              struct anv_device *device,
-                             const char *name,
-                             uint64_t base_address,
-                             int32_t start_offset,
-                             uint32_t block_size);
+                             const struct anv_state_pool_params *params);
 void anv_state_pool_finish(struct anv_state_pool *pool);
 struct anv_state anv_state_pool_alloc(struct anv_state_pool *pool,
                                       uint32_t state_size, uint32_t alignment);

@@ -351,7 +351,8 @@ anv_block_pool_init(struct anv_block_pool *pool,
                     struct anv_device *device,
                     const char *name,
                     uint64_t start_address,
-                    uint32_t initial_size)
+                    uint32_t initial_size,
+                    uint64_t max_size)
 {
    VkResult result;
 
@@ -364,6 +365,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->nbos = 0;
    pool->size = 0;
    pool->start_address = intel_canonical_address(start_address);
+   pool->max_size = max_size;
 
    pool->bo = NULL;
 
@@ -627,23 +629,20 @@ anv_block_pool_alloc(struct anv_block_pool *pool,
 VkResult
 anv_state_pool_init(struct anv_state_pool *pool,
                     struct anv_device *device,
-                    const char *name,
-                    uint64_t base_address,
-                    int32_t start_offset,
-                    uint32_t block_size)
+                    const struct anv_state_pool_params *params)
 {
-   /* We don't want to ever see signed overflow */
-   assert(start_offset < INT32_MAX - (int32_t)BLOCK_POOL_MEMFD_SIZE);
+   uint32_t initial_size = MAX2(params->block_size * 16,
+                                device->info->mem_alignment);
 
-   uint32_t initial_size = MAX2(block_size * 16, device->info->mem_alignment);
-
-   VkResult result = anv_block_pool_init(&pool->block_pool, device, name,
-                                         base_address + start_offset,
-                                         initial_size);
+   VkResult result = anv_block_pool_init(&pool->block_pool, device,
+                                         params->name,
+                                         params->base_address + params->start_offset,
+                                         initial_size,
+                                         params->max_size);
    if (result != VK_SUCCESS)
       return result;
 
-   pool->start_offset = start_offset;
+   pool->start_offset = params->start_offset;
 
    result = anv_state_table_init(&pool->table, device, 64);
    if (result != VK_SUCCESS) {
@@ -651,8 +650,8 @@ anv_state_pool_init(struct anv_state_pool *pool,
       return result;
    }
 
-   assert(util_is_power_of_two_or_zero(block_size));
-   pool->block_size = block_size;
+   assert(util_is_power_of_two_or_zero(params->block_size));
+   pool->block_size = params->block_size;
    for (unsigned i = 0; i < ANV_STATE_BUCKETS; i++) {
       pool->buckets[i].free_list = ANV_FREE_LIST_EMPTY;
       pool->buckets[i].block.next = 0;

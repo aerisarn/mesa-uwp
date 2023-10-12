@@ -103,13 +103,14 @@ static void run_test()
    struct anv_physical_device physical_device = {};
    struct anv_device device = {};
    struct anv_block_pool pool;
+   const uint32_t _1Gb = 1024 * 1024 * 1024;
 
    test_device_info_init(&physical_device.info);
    anv_device_set_physical(&device, &physical_device);
    device.kmd_backend = anv_kmd_backend_get(INTEL_KMD_TYPE_STUB);
    pthread_mutex_init(&device.mutex, NULL);
    anv_bo_cache_init(&device.bo_cache, &device);
-   anv_block_pool_init(&pool, &device, "test", 4096, 4096);
+   anv_block_pool_init(&pool, &device, "test", 4096, 4096, _1Gb);
 
    for (unsigned i = 0; i < NUM_THREADS; i++) {
       jobs[i].pool = &pool;

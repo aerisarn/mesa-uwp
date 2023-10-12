@@ -3280,14 +3280,23 @@ VkResult anv_CreateDevice(
     * get the correct offsets in the anv_states that get allocated from it.
     */
    result = anv_state_pool_init(&device->general_state_pool, device,
-                                "general pool",
-                                0, device->physical->va.general_state_pool.addr, 16384);
+                                &(struct anv_state_pool_params) {
+                                   .name         = "general pool",
+                                   .base_address = 0,
+                                   .start_offset = device->physical->va.general_state_pool.addr,
+                                   .block_size   = 16384,
+                                   .max_size     = device->physical->va.general_state_pool.size
+                                });
    if (result != VK_SUCCESS)
       goto fail_batch_bo_pool;
 
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
-                                "dynamic pool",
-                                device->physical->va.dynamic_state_pool.addr, 0, 16384);
+                                &(struct anv_state_pool_params) {
+                                   .name         = "dynamic pool",
+                                   .base_address = device->physical->va.dynamic_state_pool.addr,
+                                   .block_size   = 16384,
+                                   .max_size     = device->physical->va.dynamic_state_pool.size,
+                                });
    if (result != VK_SUCCESS)
       goto fail_general_state_pool;
 
@@ -3303,9 +3312,12 @@ VkResult anv_CreateDevice(
                                 sizeof(struct gfx8_border_color), 64);
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,
-                                "instruction pool",
-                                device->physical->va.instruction_state_pool.addr,
-                                0, 16384);
+                                &(struct anv_state_pool_params) {
+                                   .name         = "instruction pool",
+                                   .base_address = device->physical->va.instruction_state_pool.addr,
+                                   .block_size   = 16384,
+                                   .max_size     = device->physical->va.instruction_state_pool.size,
+                                });
    if (result != VK_SUCCESS)
       goto fail_dynamic_state_pool;
 
@@ -3314,31 +3326,43 @@ VkResult anv_CreateDevice(
        * surface state pool.
        */
       result = anv_state_pool_init(&device->scratch_surface_state_pool, device,
-                                   "scratch surface state pool",
-                                   device->physical->va.scratch_surface_state_pool.addr,
-                                   0, 4096);
+                                   &(struct anv_state_pool_params) {
+                                      .name         = "scratch surface state pool",
+                                      .base_address = device->physical->va.scratch_surface_state_pool.addr,
+                                      .block_size   = 4096,
+                                      .max_size     = device->physical->va.scratch_surface_state_pool.size,
+                                   });
       if (result != VK_SUCCESS)
          goto fail_instruction_state_pool;
 
       result = anv_state_pool_init(&device->internal_surface_state_pool, device,
-                                   "internal surface state pool",
-                                   device->physical->va.internal_surface_state_pool.addr,
-                                   device->physical->va.scratch_surface_state_pool.size,
-                                   4096);
+                                   &(struct anv_state_pool_params) {
+                                      .name         = "internal surface state pool",
+                                      .base_address = device->physical->va.internal_surface_state_pool.addr,
+                                      .start_offset = device->physical->va.scratch_surface_state_pool.size,
+                                      .block_size   = 4096,
+                                      .max_size     = device->physical->va.internal_surface_state_pool.size,
+                                   });
    } else {
       result = anv_state_pool_init(&device->internal_surface_state_pool, device,
-                                   "internal surface state pool",
-                                   device->physical->va.internal_surface_state_pool.addr,
-                                   0, 4096);
+                                   &(struct anv_state_pool_params) {
+                                      .name         = "internal surface state pool",
+                                      .base_address = device->physical->va.internal_surface_state_pool.addr,
+                                      .block_size   = 4096,
+                                      .max_size     = device->physical->va.internal_surface_state_pool.size,
+                                   });
    }
    if (result != VK_SUCCESS)
       goto fail_scratch_surface_state_pool;
 
    if (device->physical->indirect_descriptors) {
       result = anv_state_pool_init(&device->bindless_surface_state_pool, device,
-                                   "bindless surface state pool",
-                                   device->physical->va.bindless_surface_state_pool.addr,
-                                   0, 4096);
+                                   &(struct anv_state_pool_params) {
+                                      .name         = "bindless surface state pool",
+                                      .base_address = device->physical->va.bindless_surface_state_pool.addr,
+                                      .block_size   = 4096,
+                                      .max_size     = device->physical->va.bindless_surface_state_pool.size,
+                                   });
       if (result != VK_SUCCESS)
          goto fail_internal_surface_state_pool;
    }
@@ -3348,9 +3372,12 @@ VkResult anv_CreateDevice(
        * table its own base address separately from surface state base.
        */
       result = anv_state_pool_init(&device->binding_table_pool, device,
-                                   "binding table pool",
-                                   device->physical->va.binding_table_pool.addr, 0,
-                                   BINDING_TABLE_POOL_BLOCK_SIZE);
+                                   &(struct anv_state_pool_params) {
+                                      .name         = "binding table pool",
+                                      .base_address = device->physical->va.binding_table_pool.addr,
+                                      .block_size   = BINDING_TABLE_POOL_BLOCK_SIZE,
+                                      .max_size     = device->physical->va.binding_table_pool.size,
+                                   });
    } else {
       /* The binding table should be in front of the surface states in virtual
        * address space so that all surface states can be express as relative
@@ -3362,19 +3389,25 @@ VkResult anv_CreateDevice(
                                (int64_t)device->physical->va.internal_surface_state_pool.addr;
       assert(INT32_MIN < bt_pool_offset && bt_pool_offset < 0);
       result = anv_state_pool_init(&device->binding_table_pool, device,
-                                   "binding table pool",
-                                   device->physical->va.internal_surface_state_pool.addr,
-                                   bt_pool_offset,
-                                   BINDING_TABLE_POOL_BLOCK_SIZE);
+                                   &(struct anv_state_pool_params) {
+                                      .name         = "binding table pool",
+                                      .base_address = device->physical->va.internal_surface_state_pool.addr,
+                                      .start_offset = bt_pool_offset,
+                                      .block_size   = BINDING_TABLE_POOL_BLOCK_SIZE,
+                                      .max_size     = device->physical->va.internal_surface_state_pool.size,
+                                   });
    }
    if (result != VK_SUCCESS)
       goto fail_bindless_surface_state_pool;
 
    if (device->physical->indirect_descriptors) {
       result = anv_state_pool_init(&device->indirect_push_descriptor_pool, device,
-                                   "indirect push descriptor pool",
-                                   device->physical->va.indirect_push_descriptor_pool.addr,
-                                   0, 4096);
+                                   &(struct anv_state_pool_params) {
+                                      .name         = "indirect push descriptor pool",
+                                      .base_address = device->physical->va.indirect_push_descriptor_pool.addr,
+                                      .block_size   = 4096,
+                                      .max_size     = device->physical->va.indirect_push_descriptor_pool.size,
+                                   });
       if (result != VK_SUCCESS)
          goto fail_binding_table_pool;
    }
