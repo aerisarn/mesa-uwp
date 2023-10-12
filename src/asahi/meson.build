@@ -7,6 +7,7 @@ inc_asahi = include_directories([
 ])
 
 subdir('layout')
+subdir('clc')
 subdir('lib')
 subdir('compiler')
 
