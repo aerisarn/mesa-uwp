@@ -4150,7 +4150,12 @@ nir_shader_get_function_for_name(const nir_shader *shader, const char *name)
    return NULL;
 }
 
+/*
+ * After all functions are forcibly inlined, these passes remove redundant
+ * functions from a shader and library respectively.
+ */
 void nir_remove_non_entrypoints(nir_shader *shader);
+void nir_remove_non_exported(nir_shader *shader);
 
 nir_shader *nir_shader_create(void *mem_ctx,
                               gl_shader_stage stage,

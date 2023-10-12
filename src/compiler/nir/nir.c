@@ -3401,3 +3401,12 @@ nir_remove_non_entrypoints(nir_shader *nir)
    }
    assert(exec_list_length(&nir->functions) == 1);
 }
+
+void
+nir_remove_non_exported(nir_shader *nir)
+{
+   nir_foreach_function_safe(func, nir) {
+      if (!func->is_exported)
+         exec_node_remove(&func->node);
+   }
+}
