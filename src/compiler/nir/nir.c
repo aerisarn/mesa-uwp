@@ -503,6 +503,9 @@ nir_function_create(nir_shader *shader, const char *name)
    func->dont_inline = false;
    func->should_inline = false;
 
+   /* Only meaningful for shader libraries, so don't export by default. */
+   func->is_exported = false;
+
    return func;
 }
 

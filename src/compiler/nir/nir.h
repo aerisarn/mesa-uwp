@@ -3465,6 +3465,8 @@ typedef struct nir_function {
    nir_function_impl *impl;
 
    bool is_entrypoint;
+   /* from SPIR-V linkage, only for libraries */
+   bool is_exported;
    bool is_preamble;
    /* from SPIR-V function control */
    bool should_inline;

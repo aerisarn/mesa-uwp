@@ -2224,9 +2224,13 @@ print_function(nir_function *function, print_state *state)
 {
    FILE *fp = state->fp;
 
-   fprintf(fp, "decl_function %s (%d params) %s", function->name,
-           function->num_params, function->dont_inline ? "(noinline)" :
-           function->should_inline ? "(inline)" : "");
+   /* clang-format off */
+   fprintf(fp, "decl_function %s (%d params)%s%s", function->name,
+           function->num_params,
+           function->dont_inline ? " (noinline)" :
+           function->should_inline ? " (inline)" : "",
+           function->is_exported ? " (exported)" : "");
+   /* clang-format on */
 
    fprintf(fp, "\n");
 
