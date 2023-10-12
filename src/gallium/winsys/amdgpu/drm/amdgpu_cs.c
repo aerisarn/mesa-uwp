@@ -1017,6 +1017,10 @@ static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
       cs->ib[IB_MAIN].ip_type = AMDGPU_HW_IP_VCN_JPEG;
       break;
 
+   case AMD_IP_VPE:
+      cs->ib[IB_MAIN].ip_type = AMDGPU_HW_IP_VPE;
+      break;
+
    case AMD_IP_COMPUTE:
    case AMD_IP_GFX:
       cs->ib[IB_MAIN].ip_type = ip_type == AMD_IP_GFX ? AMDGPU_HW_IP_GFX :
