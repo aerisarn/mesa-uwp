@@ -395,10 +395,8 @@ decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level)
             printlvl(level, "{\n");
             printlvl(level + 1, "begin_ib();\n");
 
-            if (!has_dumped(ibaddr, 0x7)) {
-               uint32_t *ptr = hostptr(ibaddr);
-               decompile_commands(ptr, ibsize, level + 1);
-            }
+            uint32_t *ptr = hostptr(ibaddr);
+            decompile_commands(ptr, ibsize, level + 1);
 
             printlvl(level + 1, "end_ib();\n");
             printlvl(level, "}\n");
