@@ -2,6 +2,7 @@ use crate::api::icd::CLResult;
 use crate::api::icd::ReferenceCountedAPIPointer;
 use crate::core::context::Context;
 use crate::core::event::Event;
+use crate::core::memory::Mem;
 
 use rusticl_opencl_gen::*;
 
@@ -145,6 +146,15 @@ cl_callback!(
         user_data: *mut ::std::os::raw::c_void,
     }
 );
+
+impl MemCB {
+    pub fn call(self, mem: &Mem) {
+        let cl = cl_mem::from_ptr(mem);
+        // SAFETY: `cl` must have pointed to an OpenCL context, which is where we just got it from.
+        // All other requirements are covered by this callback's type invariants.
+        unsafe { (self.func)(cl, self.data) };
+    }
+}
 
 cl_callback!(
     ProgramCB(FuncProgramCB) {

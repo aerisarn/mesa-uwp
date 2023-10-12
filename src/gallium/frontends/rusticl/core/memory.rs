@@ -21,6 +21,7 @@ use std::cmp;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::mem;
 use std::mem::size_of;
 use std::ops::AddAssign;
 use std::os::raw::c_void;
@@ -1234,13 +1235,10 @@ impl Mem {
 
 impl Drop for Mem {
     fn drop(&mut self) {
-        let cl = cl_mem::from_ptr(self);
-        self.cbs
-            .get_mut()
-            .unwrap()
-            .iter()
-            .rev()
-            .for_each(|cb| unsafe { (cb.func)(cl, cb.data) });
+        let cbs = mem::take(self.cbs.get_mut().unwrap());
+        for cb in cbs.into_iter().rev() {
+            cb.call(self);
+        }
 
         for (d, tx) in self.maps.get_mut().unwrap().tx.drain() {
             d.helper_ctx().unmap(tx.tx);
