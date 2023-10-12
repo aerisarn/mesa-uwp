@@ -139,8 +139,7 @@ blorp_alloc_general_state(struct blorp_batch *batch,
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
 
    struct anv_state state =
-      anv_state_stream_alloc(&cmd_buffer->general_state_stream, size,
-                             alignment);
+      anv_cmd_buffer_alloc_general_state(cmd_buffer, size, alignment);
 
    *offset = state.offset;
    return state.map;
@@ -168,7 +167,9 @@ blorp_alloc_binding_table(struct blorp_batch *batch, unsigned num_entries,
 
    for (unsigned i = 0; i < num_entries; i++) {
       struct anv_state surface_state =
-         anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+         anv_cmd_buffer_alloc_surface_states(cmd_buffer, 1);
+      if (surface_state.map == NULL)
+         return false;
 
       bt_map[i] = surface_state.offset + state_offset;
       surface_offsets[i] = surface_state.offset;

@@ -1264,12 +1264,9 @@ anv_cmd_buffer_init_attachments(struct anv_cmd_buffer *cmd_buffer,
    const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
    const uint32_t ss_stride = align(isl_dev->ss.size, isl_dev->ss.align);
    gfx->att_states =
-      anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
-                             num_states * ss_stride, isl_dev->ss.align);
-   if (gfx->att_states.map == NULL) {
-      return anv_batch_set_error(&cmd_buffer->batch,
-                                 VK_ERROR_OUT_OF_DEVICE_MEMORY);
-   }
+      anv_cmd_buffer_alloc_surface_states(cmd_buffer, num_states);
+   if (gfx->att_states.map == NULL)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
    struct anv_state next_state = gfx->att_states;
    next_state.alloc_size = isl_dev->ss.size;
@@ -1874,7 +1871,11 @@ emit_dynamic_buffer_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
    struct anv_address address =
       anv_address_add(desc->buffer->address, offset);
 
-   struct anv_state surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+   struct anv_state surface_state =
+      anv_cmd_buffer_alloc_surface_states(cmd_buffer, 1);
+   if (surface_state.map == NULL)
+      return ANV_STATE_NULL;
+
    enum isl_format format =
       anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                          desc->type);
@@ -1987,7 +1988,6 @@ emit_indirect_descriptor_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
       unreachable("Invalid descriptor type");
    }
 
-   assert(surface_state.map);
    return surface_state.offset;
 }
 
@@ -2086,7 +2086,9 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          assert(shader->stage == MESA_SHADER_COMPUTE && s == 0);
 
          struct anv_state surface_state =
-            anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+            anv_cmd_buffer_alloc_surface_states(cmd_buffer, 1);
+         if (surface_state.map == NULL)
+            return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
          const enum isl_format format =
             anv_isl_format_for_descriptor_type(cmd_buffer->device,
@@ -2329,7 +2331,9 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
       if (bview != NULL) {
          bview->general.state =
-            anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+            anv_cmd_buffer_alloc_surface_states(cmd_buffer, 1);
+         if (bview->general.state.map == NULL)
+            return;
          anv_descriptor_write_surface_state(cmd_buffer->device, desc,
                                             bview->general.state);
       }
@@ -2341,7 +2345,10 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-      set->desc_surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+      set->desc_surface_state =
+         anv_cmd_buffer_alloc_surface_states(cmd_buffer, 1);
+      if (set->desc_surface_state.map == NULL)
+         return;
       anv_fill_buffer_surface_state(cmd_buffer->device,
                                     set->desc_surface_state.map,
                                     format, ISL_SWIZZLE_IDENTITY,
@@ -5926,8 +5933,8 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
    indirect_data_size += kernel->bin->bind_map.kernel_args_size;
    indirect_data_size = ALIGN(indirect_data_size, 64);
    struct anv_state indirect_data =
-      anv_state_stream_alloc(&cmd_buffer->general_state_stream,
-                             indirect_data_size, 64);
+      anv_cmd_buffer_alloc_general_state(cmd_buffer,
+                                         indirect_data_size, 64);
    memset(indirect_data.map, 0, indirect_data.alloc_size);
 
    struct brw_kernel_sysvals sysvals = {};

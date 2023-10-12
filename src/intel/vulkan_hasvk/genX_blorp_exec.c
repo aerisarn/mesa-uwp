@@ -165,7 +165,7 @@ blorp_alloc_general_state(struct blorp_batch *batch,
    return state.map;
 }
 
-static void
+static bool
 blorp_alloc_binding_table(struct blorp_batch *batch, unsigned num_entries,
                           unsigned state_size, unsigned state_alignment,
                           uint32_t *bt_offset,

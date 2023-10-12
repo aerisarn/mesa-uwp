@@ -61,6 +61,8 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
    struct anv_state push_data_state =
       genX(simple_shader_alloc_push)(simple_state,
                                      sizeof(struct anv_generated_indirect_params));
+   if (push_data_state.map == NULL)
+      return ANV_STATE_NULL;
 
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
@@ -323,6 +325,8 @@ genX(cmd_buffer_emit_indirect_generated_draws_inplace)(struct anv_cmd_buffer *cm
             indexed,
             0 /* ring_count */);
       struct anv_generated_indirect_params *params = params_state.map;
+      if (params == NULL)
+         return;
 
       anv_batch_advance(&cmd_buffer->batch, draw_cmd_size);
 

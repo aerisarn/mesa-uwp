@@ -1345,6 +1345,11 @@ anv_descriptor_set_create(struct anv_device *device,
 
       if (!pool->host_only) {
          set->desc_surface_state = anv_descriptor_pool_alloc_state(pool);
+         if (set->desc_surface_state.map == NULL) {
+            anv_descriptor_pool_free_set(pool, set);
+            return vk_error(pool, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+
          anv_fill_buffer_surface_state(device, set->desc_surface_state.map,
                                        format, ISL_SWIZZLE_IDENTITY,
                                        ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
@@ -1533,7 +1538,7 @@ VkResult anv_FreeDescriptorSets(
    return VK_SUCCESS;
 }
 
-void
+bool
 anv_push_descriptor_set_init(struct anv_cmd_buffer *cmd_buffer,
                              struct anv_push_descriptor_set *push_set,
                              struct anv_descriptor_set_layout *layout)
@@ -1580,6 +1585,9 @@ anv_push_descriptor_set_init(struct anv_cmd_buffer *cmd_buffer,
          anv_state_stream_alloc(push_stream,
                                 anv_descriptor_set_layout_descriptor_buffer_size(layout, 0),
                                 ANV_UBO_ALIGNMENT);
+      if (desc_mem.map == NULL)
+         return false;
+
       if (set->desc_mem.alloc_size) {
          /* TODO: Do we really need to copy all the time? */
          memcpy(desc_mem.map, set->desc_mem.map,
@@ -1593,6 +1601,8 @@ anv_push_descriptor_set_init(struct anv_cmd_buffer *cmd_buffer,
       set->desc_offset = anv_address_physical(set->desc_addr) -
                          push_base_address;
    }
+
+   return true;
 }
 
 void

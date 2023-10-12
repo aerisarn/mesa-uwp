@@ -1063,6 +1063,8 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
                                                  aligned_total_push_constants_size,
                                                  push_constant_alignment);
    }
+   if (state.map == NULL)
+      return state;
 
    void *dst = state.map;
    const void *src = (char *)data + (range->start * 32);
@@ -1164,7 +1166,8 @@ void anv_CmdPushDescriptorSetKHR(
    struct anv_push_descriptor_set *push_set =
       &anv_cmd_buffer_get_pipe_state(cmd_buffer,
                                      pipelineBindPoint)->push_descriptor;
-   anv_push_descriptor_set_init(cmd_buffer, push_set, set_layout);
+   if (!anv_push_descriptor_set_init(cmd_buffer, push_set, set_layout))
+      return;
 
    anv_descriptor_set_write(cmd_buffer->device, &push_set->set,
                             descriptorWriteCount, pDescriptorWrites);
@@ -1194,7 +1197,8 @@ void anv_CmdPushDescriptorSetWithTemplateKHR(
    struct anv_push_descriptor_set *push_set =
       &anv_cmd_buffer_get_pipe_state(cmd_buffer,
                                      template->bind_point)->push_descriptor;
-   anv_push_descriptor_set_init(cmd_buffer, push_set, set_layout);
+   if (!anv_push_descriptor_set_init(cmd_buffer, push_set, set_layout))
+      return;
 
    anv_descriptor_set_write_template(cmd_buffer->device, &push_set->set,
                                      template,

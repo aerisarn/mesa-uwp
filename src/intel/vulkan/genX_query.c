@@ -1731,6 +1731,9 @@ copy_query_results_with_shader(struct anv_cmd_buffer *cmd_buffer,
    struct anv_state push_data_state =
       genX(simple_shader_alloc_push)(&state,
                                      sizeof(struct anv_query_copy_params));
+   if (push_data_state.map == NULL)
+      return;
+
    struct anv_query_copy_params *params = push_data_state.map;
 
    uint32_t copy_flags =
