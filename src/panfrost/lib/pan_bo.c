@@ -431,6 +431,7 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
       return;
 
    /* Don't return to cache if there are still references */
+   assert(p_atomic_read(&bo->refcnt) > 0);
    if (p_atomic_dec_return(&bo->refcnt))
       return;
 
