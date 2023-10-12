@@ -1332,7 +1332,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    anv_add_pending_pipe_bits(cmd_buffer,
                              ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
                              ANV_PIPE_END_OF_PIPE_SYNC_BIT,
-                             "after transition RT");
+                             "before transition RT");
 
    for (uint32_t l = 0; l < level_count; l++) {
       uint32_t level = base_level + l;
