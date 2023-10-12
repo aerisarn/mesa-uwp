@@ -2369,7 +2369,7 @@ fn enqueue_svm_free_impl(
     // The application is allowed to reuse or free the memory referenced by `svm_pointers` after this
     // function returns so we have to make a copy.
     // SAFETY: num_svm_pointers specifies the amount of elements in svm_pointers
-    let svm_pointers =
+    let mut svm_pointers =
         unsafe { slice::from_raw_parts(svm_pointers, num_svm_pointers as usize) }.to_vec();
     // SAFETY: The requirements on `SVMFreeCb::new` match the requirements
     // imposed by the OpenCL specification. It is the caller's duty to uphold them.
@@ -2382,15 +2382,10 @@ fn enqueue_svm_free_impl(
         event,
         false,
         Box::new(move |q, _| {
-            if let Some(cb) = &cb_opt {
-                let mut svm_pointers = svm_pointers.clone();
-                let ptr = svm_pointers.as_mut_ptr();
-                // SAFETY: it's undefined behavior if the application screws up
-                unsafe {
-                    (cb.func)(command_queue, num_svm_pointers, ptr, cb.data);
-                }
+            if let Some(cb) = cb_opt {
+                cb.call(q, &mut svm_pointers);
             } else {
-                for &ptr in &svm_pointers {
+                for ptr in svm_pointers {
                     svm_free_impl(&q.context, ptr);
                 }
             }

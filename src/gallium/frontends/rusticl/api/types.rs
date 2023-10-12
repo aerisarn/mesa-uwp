@@ -3,6 +3,7 @@ use crate::api::icd::ReferenceCountedAPIPointer;
 use crate::core::context::Context;
 use crate::core::event::Event;
 use crate::core::memory::Mem;
+use crate::core::queue::Queue;
 
 use rusticl_opencl_gen::*;
 
@@ -171,6 +172,22 @@ cl_callback!(
         user_data: *mut ::std::os::raw::c_void,
     }
 );
+
+impl SVMFreeCb {
+    pub fn call(self, queue: &Queue, svm_pointers: &mut [*mut c_void]) {
+        let cl = cl_command_queue::from_ptr(queue);
+        // SAFETY: `cl` must be a valid pointer to an OpenCL queue, which is where we just got it from.
+        // All other requirements are covered by this callback's type invariants.
+        unsafe {
+            (self.func)(
+                cl,
+                svm_pointers.len() as u32,
+                svm_pointers.as_mut_ptr(),
+                self.data,
+            )
+        };
+    }
+}
 
 // a lot of APIs use 3 component vectors passed as C arrays
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
