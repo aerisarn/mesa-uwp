@@ -788,7 +788,7 @@ impl Kernel {
         let builds = prog_build
             .builds
             .iter()
-            .map(|(k, v)| (*k, v.kernels.get(&name).unwrap().clone()))
+            .filter_map(|(&dev, b)| b.kernels.get(&name).map(|k| (dev, k.clone())))
             .collect();
 
         // can't use vec!...
