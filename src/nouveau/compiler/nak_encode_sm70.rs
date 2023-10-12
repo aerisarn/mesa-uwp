@@ -1549,6 +1549,20 @@ impl SM70Instr {
         self.set_pred_dst(81..84, Dst::None);
     }
 
+    fn encode_ldtram(&mut self, op: &OpLdTram) {
+        self.set_opcode(0x3ad);
+        self.set_dst(op.dst);
+        self.set_ureg(24..32, RegRef::zero(RegFile::UGPR, 1));
+
+        assert!(op.addr % 4 == 0);
+        self.set_field(64..72, op.addr >> 2);
+
+        self.set_bit(72, op.use_c);
+
+        // Unknown but required
+        self.set_bit(91, true);
+    }
+
     fn encode_cctl(&mut self, op: &OpCCtl) {
         assert!(op.mem_space == MemSpace::Global);
         self.set_opcode(0x98f);
@@ -1866,6 +1880,7 @@ impl SM70Instr {
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
+            Op::LdTram(op) => si.encode_ldtram(&op),
             Op::CCtl(op) => si.encode_cctl(&op),
             Op::MemBar(op) => si.encode_membar(&op),
             Op::BMov(op) => si.encode_bmov(&op),

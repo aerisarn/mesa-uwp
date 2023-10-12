@@ -3432,6 +3432,27 @@ impl fmt::Display for OpIpa {
     }
 }
 
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpLdTram {
+    pub dst: Dst,
+    pub addr: u16,
+    pub use_c: bool,
+}
+
+impl fmt::Display for OpLdTram {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "LDTRAM")?;
+        if self.use_c {
+            write!(f, ".C")?;
+        } else {
+            write!(f, ".AB")?;
+        }
+        write!(f, " {} a[{:#x}]", self.dst, self.addr)?;
+        Ok(())
+    }
+}
+
 #[allow(dead_code)]
 pub enum CCtlOp {
     PF1,
@@ -4221,6 +4242,7 @@ pub enum Op {
     ALd(OpALd),
     ASt(OpASt),
     Ipa(OpIpa),
+    LdTram(OpLdTram),
     CCtl(OpCCtl),
     MemBar(OpMemBar),
     BMov(OpBMov),
@@ -4655,6 +4677,7 @@ impl Instr {
             | Op::ASt(_)
             | Op::Ipa(_)
             | Op::CCtl(_)
+            | Op::LdTram(_)
             | Op::MemBar(_) => false,
 
             // Control-flow ops

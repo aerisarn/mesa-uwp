@@ -64,6 +64,8 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_external_semaphore = true,
       .KHR_external_semaphore_fd = true,
       .KHR_format_feature_flags2 = true,
+      .KHR_fragment_shader_barycentric = info->cls_eng3d >= TURING_A &&
+         (nvk_nak_stages(info) & VK_SHADER_STAGE_FRAGMENT_BIT) != 0,
       .KHR_get_memory_requirements2 = true,
       .KHR_image_format_list = true,
       .KHR_imageless_framebuffer = true,
@@ -253,6 +255,10 @@ nvk_get_device_features(const struct nv_device_info *info,
       .synchronization2 = true,
       .dynamicRendering = true,
       .maintenance4 = true,
+
+      /* VK_KHR_fragment_shader_barycentric */
+      .fragmentShaderBarycentric = info->cls_eng3d >= TURING_A &&
+         (nvk_nak_stages(info) & VK_SHADER_STAGE_FRAGMENT_BIT) != 0,
 
       /* VK_KHR_pipeline_executable_properties */
       .pipelineExecutableInfo = true,
@@ -659,6 +665,9 @@ nvk_get_device_properties(const struct nvk_instance *instance,
 
       /* VK_EXT_vertex_attribute_divisor */
       .maxVertexAttribDivisor = UINT32_MAX,
+
+      /* VK_KHR_fragment_shader_barycentric */
+      .triStripVertexOrderIndependentOfProvokingVertex = false,
    };
 
    snprintf(properties->deviceName, sizeof(properties->deviceName),

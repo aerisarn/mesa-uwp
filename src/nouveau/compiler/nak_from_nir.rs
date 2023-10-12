@@ -1652,6 +1652,31 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 self.set_dst(&intrin.def, dst);
             }
+            nir_intrinsic_ldtram_nv => {
+                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
+                    panic!("ldtram_nv is only used for fragment shaders");
+                };
+
+                assert!(
+                    intrin.def.bit_size() == 32
+                        && intrin.def.num_components == 2
+                );
+
+                let flags = intrin.flags();
+                let use_c = flags != 0;
+
+                let addr = u16::try_from(intrin.base()).unwrap();
+
+                io.mark_barycentric_attr_in(addr);
+
+                let dst = b.alloc_ssa(RegFile::GPR, 2);
+                b.push_op(OpLdTram {
+                    dst: dst.into(),
+                    addr,
+                    use_c,
+                });
+                self.set_dst(&intrin.def, dst);
+            }
             nir_intrinsic_load_sample_id => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpPixLd {

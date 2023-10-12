@@ -632,6 +632,32 @@ load_sample_pos_at(nir_builder *b, nir_def *sample_id,
    return result;
 }
 
+static nir_def *
+load_barycentric_offset(nir_builder *b, nir_intrinsic_instr *bary,
+                        const struct nak_fs_key *fs_key)
+{
+   nir_def *offset_f;
+
+   if (bary->intrinsic == nir_intrinsic_load_barycentric_coord_at_sample ||
+       bary->intrinsic == nir_intrinsic_load_barycentric_at_sample) {
+      nir_def *sample_id = bary->src[0].ssa;
+      nir_def *sample_pos = load_sample_pos_at(b, sample_id, fs_key);
+      offset_f = nir_fadd_imm(b, sample_pos, -0.5);
+   } else {
+      offset_f = bary->src[0].ssa;
+   }
+
+   offset_f = nir_fclamp(b, offset_f, nir_imm_float(b, -0.5),
+                         nir_imm_float(b, 0.437500));
+   nir_def *offset_fixed =
+      nir_f2i32(b, nir_fmul_imm(b, offset_f, 4096.0));
+   nir_def *offset = nir_ior(b, nir_ishl_imm(b, nir_channel(b, offset_fixed, 1), 16),
+                             nir_iand_imm(b, nir_channel(b, offset_fixed, 0),
+                                          0xffff));
+
+   return offset;
+}
+
 struct lower_fs_input_ctx {
    const struct nak_compiler *nak;
    const struct nak_fs_key *fs_key;
@@ -714,6 +740,56 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       return true;
    }
 
+   case nir_intrinsic_load_barycentric_coord_pixel:
+   case nir_intrinsic_load_barycentric_coord_centroid:
+   case nir_intrinsic_load_barycentric_coord_sample:
+   case nir_intrinsic_load_barycentric_coord_at_sample:
+   case nir_intrinsic_load_barycentric_coord_at_offset: {
+      b->cursor = nir_before_instr(&intrin->instr);
+
+      uint32_t addr;
+      enum nak_interp_mode interp_mode;
+      if (nir_intrinsic_interp_mode(intrin) == INTERP_MODE_NOPERSPECTIVE) {
+         addr = NAK_ATTR_BARY_COORD_NO_PERSP;
+         interp_mode = NAK_INTERP_MODE_SCREEN_LINEAR;
+      } else {
+         addr = NAK_ATTR_BARY_COORD;
+         interp_mode = NAK_INTERP_MODE_PERSPECTIVE;
+      }
+
+      nir_def *offset = NULL;
+      enum nak_interp_loc interp_loc;
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_load_barycentric_coord_at_sample:
+      case nir_intrinsic_load_barycentric_coord_at_offset:
+         interp_loc = NAK_INTERP_LOC_OFFSET;
+         offset = load_barycentric_offset(b, intrin, ctx->fs_key);
+         break;
+      case nir_intrinsic_load_barycentric_coord_centroid:
+      case nir_intrinsic_load_barycentric_coord_sample:
+         interp_loc = NAK_INTERP_LOC_CENTROID;
+         break;
+      case nir_intrinsic_load_barycentric_coord_pixel:
+         interp_loc = NAK_INTERP_LOC_DEFAULT;
+         break;
+      default:
+         unreachable("Unknown intrinsic");
+      }
+
+      nir_def *inv_w = NULL;
+      if (interp_mode == NAK_INTERP_MODE_PERSPECTIVE)
+         inv_w = nir_frcp(b, load_frag_w(b, interp_loc, offset));
+
+      nir_def *res = load_interpolated_input(b, intrin->def.num_components,
+                                             addr, interp_mode, interp_loc,
+                                             inv_w, offset, ctx->nak);
+
+      nir_def_rewrite_uses(&intrin->def, res);
+      nir_instr_remove(&intrin->instr);
+
+      return true;
+   }
+
    case nir_intrinsic_load_interpolated_input: {
       b->cursor = nir_before_instr(&intrin->instr);
 
@@ -736,25 +812,7 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       case nir_intrinsic_load_barycentric_at_offset:
       case nir_intrinsic_load_barycentric_at_sample: {
          interp_loc = NAK_INTERP_LOC_OFFSET;
-
-         nir_def *offset_f;
-
-         if (bary->intrinsic == nir_intrinsic_load_barycentric_at_sample) {
-            nir_def *sample_id = bary->src[0].ssa;
-            nir_def *sample_pos = load_sample_pos_at(b, sample_id, ctx->fs_key);
-            offset_f = nir_fadd_imm(b, sample_pos, -0.5);
-         } else {
-            offset_f = bary->src[0].ssa;
-         }
-
-         offset_f = nir_fclamp(b, offset_f, nir_imm_float(b, -0.5),
-                               nir_imm_float(b, 0.437500));
-         nir_def *offset_fixed =
-            nir_f2i32(b, nir_fmul_imm(b, offset_f, 4096.0));
-         offset = nir_ior(b, nir_ishl_imm(b, nir_channel(b, offset_fixed, 1),
-                                             16),
-                             nir_iand_imm(b, nir_channel(b, offset_fixed, 0),
-                                             0xffff));
+         offset = load_barycentric_offset(b, bary, ctx->fs_key);
          break;
       }
 
@@ -808,6 +866,30 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
       nir_def *sample_pos = load_sample_pos_at(b, sample_id, ctx->fs_key);
 
       nir_def_rewrite_uses(&intrin->def, sample_pos);
+      nir_instr_remove(&intrin->instr);
+
+      return true;
+   }
+
+   case nir_intrinsic_load_input_vertex: {
+      b->cursor = nir_before_instr(&intrin->instr);
+
+      unsigned vertex_id = nir_src_as_uint(intrin->src[0]);
+      assert(vertex_id < 3);
+
+      const uint16_t addr = nir_intrinsic_base(intrin) +
+                            nir_src_as_uint(intrin->src[1]) +
+                            nir_intrinsic_component(intrin) * 4;
+
+      nir_def *comps[NIR_MAX_VEC_COMPONENTS];
+      for (unsigned c = 0; c < intrin->def.num_components; c++) {
+         nir_def *data = nir_ldtram_nv(b, .base = addr + c * 4,
+                                       .flags = vertex_id == 2);
+         comps[c] = nir_channel(b, data, vertex_id & 1);
+      }
+      nir_def *res = nir_vec(b, comps, intrin->num_components);
+
+      nir_def_rewrite_uses(&intrin->def, res);
       nir_instr_remove(&intrin->instr);
 
       return true;
