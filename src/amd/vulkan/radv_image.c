@@ -341,6 +341,9 @@ radv_use_htile_for_image(const struct radv_device *device, const struct radv_ima
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
 
+   if (device->instance->debug_flags & RADV_DEBUG_NO_HIZ)
+      return false;
+
    /* TODO:
     * - Investigate about mips+layers.
     * - Enable on other gens.
@@ -601,8 +604,7 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
          flags |= RADEON_SURF_NO_STENCIL_ADJUST;
       }
 
-      if (radv_use_htile_for_image(device, image) && !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ) &&
-          !(flags & RADEON_SURF_NO_RENDER_TARGET)) {
+      if (radv_use_htile_for_image(device, image) && !(flags & RADEON_SURF_NO_RENDER_TARGET)) {
          if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
             flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
       } else {
