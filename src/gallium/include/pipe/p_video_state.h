@@ -1539,6 +1539,14 @@ struct pipe_vpp_desc
 
    /* Fence to wait on for the src surface */
    struct pipe_fence_handle *src_surface_fence;
+
+   uint32_t background_color;
+   enum pipe_video_vpp_color_standard_type in_colors_standard;
+   enum pipe_video_vpp_color_range in_color_range;
+   enum pipe_video_vpp_chroma_siting in_chroma_siting;
+   enum pipe_video_vpp_color_standard_type out_colors_standard;
+   enum pipe_video_vpp_color_range out_color_range;
+   enum pipe_video_vpp_chroma_siting out_chroma_siting;
 };
 
 
