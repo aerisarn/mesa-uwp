@@ -1620,6 +1620,7 @@ radv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    struct VkAndroidHardwareBufferUsageANDROID *android_usage = NULL;
    VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
    VkTextureLODGatherFormatPropertiesAMD *texture_lod_props = NULL;
+   VkImageCompressionPropertiesEXT *image_compression_props = NULL;
    VkResult result;
    VkFormat format = radv_select_android_external_format(base_info->pNext, base_info->format);
 
@@ -1652,6 +1653,9 @@ radv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD:
          texture_lod_props = (void *)s;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_PROPERTIES_EXT:
+         image_compression_props = (void *)s;
          break;
       default:
          break;
@@ -1703,6 +1707,21 @@ radv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
          texture_lod_props->supportsTextureGatherLODBiasAMD = true;
       } else {
          texture_lod_props->supportsTextureGatherLODBiasAMD = !vk_format_is_int(format);
+      }
+   }
+
+   if (image_compression_props) {
+      image_compression_props->imageCompressionFixedRateFlags = VK_IMAGE_COMPRESSION_FIXED_RATE_NONE_EXT;
+
+      if (vk_format_is_depth_or_stencil(format)) {
+         image_compression_props->imageCompressionFlags = (physical_device->instance->debug_flags & RADV_DEBUG_NO_HIZ)
+                                                             ? VK_IMAGE_COMPRESSION_DISABLED_EXT
+                                                             : VK_IMAGE_COMPRESSION_DEFAULT_EXT;
+      } else {
+         image_compression_props->imageCompressionFlags =
+            ((physical_device->instance->debug_flags & RADV_DEBUG_NO_DCC) || physical_device->rad_info.gfx_level < GFX8)
+               ? VK_IMAGE_COMPRESSION_DISABLED_EXT
+               : VK_IMAGE_COMPRESSION_DEFAULT_EXT;
       }
    }
 

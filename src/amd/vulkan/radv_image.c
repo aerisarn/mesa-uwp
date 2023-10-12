@@ -230,8 +230,13 @@ radv_use_dcc_for_image_early(struct radv_device *device, struct radv_image *imag
    if (device->physical_device->rad_info.gfx_level < GFX8)
       return false;
 
-   if (device->instance->debug_flags & RADV_DEBUG_NO_DCC)
+   const VkImageCompressionControlEXT *compression =
+      vk_find_struct_const(pCreateInfo->pNext, IMAGE_COMPRESSION_CONTROL_EXT);
+
+   if (device->instance->debug_flags & RADV_DEBUG_NO_DCC ||
+       (compression && compression->flags == VK_IMAGE_COMPRESSION_DISABLED_EXT)) {
       return false;
+   }
 
    if (image->shareable && image->vk.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
       return false;
@@ -337,11 +342,16 @@ radv_use_fmask_for_image(const struct radv_device *device, const struct radv_ima
 }
 
 static inline bool
-radv_use_htile_for_image(const struct radv_device *device, const struct radv_image *image)
+radv_use_htile_for_image(const struct radv_device *device, const struct radv_image *image,
+                         const VkImageCreateInfo *pCreateInfo)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
 
-   if (device->instance->debug_flags & RADV_DEBUG_NO_HIZ)
+   const VkImageCompressionControlEXT *compression =
+      vk_find_struct_const(pCreateInfo->pNext, IMAGE_COMPRESSION_CONTROL_EXT);
+
+   if (device->instance->debug_flags & RADV_DEBUG_NO_HIZ ||
+       (compression && compression->flags == VK_IMAGE_COMPRESSION_DISABLED_EXT))
       return false;
 
    /* TODO:
@@ -604,7 +614,7 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
          flags |= RADEON_SURF_NO_STENCIL_ADJUST;
       }
 
-      if (radv_use_htile_for_image(device, image) && !(flags & RADEON_SURF_NO_RENDER_TARGET)) {
+      if (radv_use_htile_for_image(device, image, pCreateInfo) && !(flags & RADEON_SURF_NO_RENDER_TARGET)) {
          if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
             flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
       } else {
@@ -2543,6 +2553,20 @@ radv_GetImageSubresourceLayout2KHR(VkDevice _device, VkImage _image, const VkIma
       pLayout->subresourceLayout.size = (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4;
       if (image->vk.image_type == VK_IMAGE_TYPE_3D)
          pLayout->subresourceLayout.size *= u_minify(image->vk.extent.depth, level);
+   }
+
+   VkImageCompressionPropertiesEXT *image_compression_props =
+      vk_find_struct(pLayout->pNext, IMAGE_COMPRESSION_PROPERTIES_EXT);
+   if (image_compression_props) {
+      image_compression_props->imageCompressionFixedRateFlags = VK_IMAGE_COMPRESSION_FIXED_RATE_NONE_EXT;
+
+      if (image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         image_compression_props->imageCompressionFlags =
+            radv_image_has_htile(image) ? VK_IMAGE_COMPRESSION_DEFAULT_EXT : VK_IMAGE_COMPRESSION_DISABLED_EXT;
+      } else {
+         image_compression_props->imageCompressionFlags =
+            radv_image_has_dcc(image) ? VK_IMAGE_COMPRESSION_DEFAULT_EXT : VK_IMAGE_COMPRESSION_DISABLED_EXT;
+      }
    }
 }
 
