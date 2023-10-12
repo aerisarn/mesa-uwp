@@ -727,7 +727,6 @@ nak_postprocess_nir(nir_shader *nir,
 
    OPT(nir, nak_nir_lower_tex, nak);
    OPT(nir, nir_lower_idiv, NULL);
-   OPT(nir, nir_lower_int64);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
@@ -774,6 +773,8 @@ nak_postprocess_nir(nir_shader *nir,
    default:
       unreachable("Unsupported shader stage");
    }
+
+   OPT(nir, nir_lower_int64);
 
    nak_optimize_nir(nir, nak);
 
