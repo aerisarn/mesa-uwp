@@ -1,6 +1,7 @@
 use crate::api::icd::CLResult;
 use crate::api::icd::ReferenceCountedAPIPointer;
 use crate::core::context::Context;
+use crate::core::event::Event;
 
 use rusticl_opencl_gen::*;
 
@@ -128,6 +129,15 @@ cl_callback!(
         user_data: *mut ::std::os::raw::c_void,
     }
 );
+
+impl EventCB {
+    pub fn call(self, event: &Event, status: cl_int) {
+        let cl = cl_event::from_ptr(event);
+        // SAFETY: `cl` must be a valid pointer to an OpenCL event, which is where we just got it from.
+        // All other requirements are covered by this callback's type invariants.
+        unsafe { (self.func)(cl, status, self.data) };
+    }
+}
 
 cl_callback!(
     MemCB(FuncMemCB) {

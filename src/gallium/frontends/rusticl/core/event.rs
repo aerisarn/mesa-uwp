@@ -119,9 +119,8 @@ impl Event {
         }
 
         if [CL_COMPLETE, CL_RUNNING, CL_SUBMITTED].contains(&(new as u32)) {
-            if let Some(cbs) = lock.cbs.get(new as usize) {
-                cbs.iter()
-                    .for_each(|cb| unsafe { (cb.func)(cl_event::from_ptr(self), new, cb.data) });
+            if let Some(cbs) = lock.cbs.get_mut(new as usize) {
+                cbs.drain(..).for_each(|cb| cb.call(self, new));
             }
         }
     }
@@ -167,7 +166,7 @@ impl Event {
         // call cb if the status was already reached
         if state >= status {
             drop(lock);
-            unsafe { (cb.func)(cl_event::from_ptr(self), status, cb.data) };
+            cb.call(self, state);
         } else {
             lock.cbs.get_mut(state as usize).unwrap().push(cb);
         }
