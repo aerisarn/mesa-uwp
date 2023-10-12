@@ -6339,7 +6339,7 @@ iris_preemption_streamout_wa(struct iris_context *ice,
                              struct iris_batch *batch,
                              bool enable)
 {
-#if INTEL_NEEDS_WA_16013994831
+#if GFX_VERx10 >= 120
    if (!intel_needs_workaround(batch->screen->devinfo, 16013994831))
       return;
 

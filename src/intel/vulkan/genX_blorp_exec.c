@@ -297,7 +297,7 @@ blorp_exec_on_render(struct blorp_batch *batch,
    }
 #endif
 
-#if INTEL_NEEDS_WA_18019816803
+#if GFX_VERx10 >= 125
    /* Check if blorp ds state matches ours. */
    if (intel_needs_workaround(cmd_buffer->device->info, 18019816803)) {
       bool blorp_ds_state = params->depth.enabled || params->stencil.enabled;

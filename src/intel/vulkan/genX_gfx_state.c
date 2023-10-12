@@ -653,7 +653,7 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
       SET(PMA_FIX, pma_fix, pma);
 #endif
 
-#if INTEL_NEEDS_WA_18019816803
+#if GFX_VERx10 >= 125
       if (intel_needs_workaround(cmd_buffer->device->info, 18019816803)) {
          bool ds_write_state = opt_ds.depth.write_enable || opt_ds.stencil.write_enable;
          if (cmd_buffer->state.gfx.ds_write_state != ds_write_state) {
@@ -1689,7 +1689,7 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-#if INTEL_NEEDS_WA_18019816803
+#if GFX_VERx10 >= 125
    if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_WA_18019816803)) {
       genx_batch_emit_pipe_control(&cmd_buffer->batch, cmd_buffer->device->info,
                                    ANV_PIPE_PSS_STALL_SYNC_BIT);
