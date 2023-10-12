@@ -45,6 +45,7 @@
 #define AMDGPU_HW_IP_VCN_DEC 6
 #define AMDGPU_HW_IP_VCN_ENC 7
 #define AMDGPU_HW_IP_VCN_JPEG 8
+#define AMDGPU_HW_IP_VPE 9
 #define AMDGPU_IDS_FLAGS_FUSION 0x1
 #define AMDGPU_IDS_FLAGS_PREEMPTION 0x2
 #define AMDGPU_IDS_FLAGS_TMZ 0x4
@@ -611,6 +612,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    STATIC_ASSERT(AMDGPU_HW_IP_VCN_DEC == AMD_IP_VCN_DEC);
    STATIC_ASSERT(AMDGPU_HW_IP_VCN_ENC == AMD_IP_VCN_ENC);
    STATIC_ASSERT(AMDGPU_HW_IP_VCN_JPEG == AMD_IP_VCN_JPEG);
+   STATIC_ASSERT(AMDGPU_HW_IP_VPE == AMD_IP_VPE);
 
    handle_env_var_force_family(info);
 
@@ -698,6 +700,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->ip[AMD_IP_VCN_DEC].ib_pad_dw_mask = 0xf;
    info->ip[AMD_IP_VCN_ENC].ib_pad_dw_mask = 0x3f;
    info->ip[AMD_IP_VCN_JPEG].ib_pad_dw_mask = 0xf;
+   info->ip[AMD_IP_VPE].ib_pad_dw_mask = 0xf;
 
    /* Only require gfx or compute. */
    if (!info->ip[AMD_IP_GFX].num_queues && !info->ip[AMD_IP_COMPUTE].num_queues) {

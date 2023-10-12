@@ -157,6 +157,7 @@ enum amd_ip_type
    AMD_IP_VCN_ENC,
    AMD_IP_VCN_UNIFIED = AMD_IP_VCN_ENC,
    AMD_IP_VCN_JPEG,
+   AMD_IP_VPE,
    AMD_NUM_IP_TYPES,
 };
 
