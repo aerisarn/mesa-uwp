@@ -104,9 +104,9 @@ macro_rules! cl_callback {
 cl_callback!(
     CreateContextCB(FuncCreateContextCB) {
         errinfo: *const ::std::os::raw::c_char,
-        private_info: *const ::std::ffi::c_void,
+        private_info: *const c_void,
         cb: usize,
-        user_data: *mut ::std::ffi::c_void,
+        user_data: *mut c_void,
     }
 );
 
@@ -126,7 +126,7 @@ impl CreateContextCB {
 cl_callback!(
     DeleteContextCB(FuncDeleteContextCB) {
         context: cl_context,
-        user_data: *mut ::std::os::raw::c_void,
+        user_data: *mut c_void,
     }
 );
 
@@ -143,7 +143,7 @@ cl_callback!(
     EventCB(FuncEventCB) {
         event: cl_event,
         event_command_status: cl_int,
-        user_data: *mut ::std::os::raw::c_void,
+        user_data: *mut c_void,
     }
 );
 
@@ -159,7 +159,7 @@ impl EventCB {
 cl_callback!(
     MemCB(FuncMemCB) {
         memobj: cl_mem,
-        user_data: *mut ::std::os::raw::c_void,
+        user_data: *mut c_void,
     }
 );
 
@@ -175,7 +175,7 @@ impl MemCB {
 cl_callback!(
     ProgramCB(FuncProgramCB) {
         program: cl_program,
-        user_data: *mut ::std::os::raw::c_void,
+        user_data: *mut c_void,
     }
 );
 
@@ -192,8 +192,8 @@ cl_callback!(
     SVMFreeCb(FuncSVMFreeCb) {
         queue: cl_command_queue,
         num_svm_pointers: cl_uint,
-        svm_pointers: *mut *mut ::std::os::raw::c_void,
-        user_data: *mut ::std::os::raw::c_void,
+        svm_pointers: *mut *mut c_void,
+        user_data: *mut c_void,
     }
 );
 
