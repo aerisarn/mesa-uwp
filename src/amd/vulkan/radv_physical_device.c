@@ -498,6 +498,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_graphics_pipeline_library = !device->use_llvm && !(device->instance->debug_flags & RADV_DEBUG_NO_GPL),
       .EXT_host_query_reset = true,
       .EXT_image_2d_view_of_3d = true,
+      .EXT_image_compression_control = true,
       .EXT_image_drm_format_modifier = device->rad_info.gfx_level >= GFX9,
       .EXT_image_robustness = true,
       .EXT_image_sliced_view_of_3d = device->rad_info.gfx_level >= GFX10,
@@ -1043,6 +1044,9 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       /* VK_KHR_cooperative_matrix */
       .cooperativeMatrix = pdevice->rad_info.gfx_level >= GFX11 && !pdevice->use_llvm,
       .cooperativeMatrixRobustBufferAccess = pdevice->rad_info.gfx_level >= GFX11 && !pdevice->use_llvm,
+
+      /* VK_EXT_image_compression_control */
+      .imageCompressionControl = true,
    };
 }
 
