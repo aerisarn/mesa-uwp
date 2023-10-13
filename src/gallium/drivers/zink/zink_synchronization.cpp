@@ -288,7 +288,7 @@ zink_get_cmdbuf(struct zink_context *ctx, struct zink_resource *src, struct zink
    if (unordered_exec) {
       ctx->batch.state->has_barriers = true;
       ctx->batch.has_work = true;
-      return ctx->batch.state->barrier_cmdbuf;
+      return ctx->batch.state->reordered_cmdbuf;
    }
    return ctx->batch.state->cmdbuf;
 }
@@ -357,7 +357,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    } else {
       cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
       /* force subsequent barriers to be ordered to avoid layout desync */
-      if (cmdbuf != ctx->batch.state->barrier_cmdbuf) {
+      if (cmdbuf != ctx->batch.state->reordered_cmdbuf) {
          res->obj->unordered_write = false;
          res->obj->unordered_read = false;
       }

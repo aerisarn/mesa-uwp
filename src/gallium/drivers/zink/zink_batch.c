@@ -285,8 +285,8 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
 
    if (bs->cmdbuf)
       VKSCR(FreeCommandBuffers)(screen->dev, bs->cmdpool, 1, &bs->cmdbuf);
-   if (bs->barrier_cmdbuf)
-      VKSCR(FreeCommandBuffers)(screen->dev, bs->cmdpool, 1, &bs->barrier_cmdbuf);
+   if (bs->reordered_cmdbuf)
+      VKSCR(FreeCommandBuffers)(screen->dev, bs->cmdpool, 1, &bs->reordered_cmdbuf);
    if (bs->cmdpool)
       VKSCR(DestroyCommandPool)(screen->dev, bs->cmdpool, NULL);
    free(bs->real_objs.objs);
@@ -344,7 +344,7 @@ create_batch_state(struct zink_context *ctx)
       goto fail;
    }
    bs->cmdbuf = cmdbufs[0];
-   bs->barrier_cmdbuf = cmdbufs[1];
+   bs->reordered_cmdbuf = cmdbufs[1];
 
 #define SET_CREATE_OR_FAIL(ptr) \
    if (!_mesa_set_init(ptr, bs, _mesa_hash_pointer, _mesa_key_pointer_equal)) \
@@ -472,7 +472,7 @@ zink_batch_bind_db(struct zink_context *ctx)
       count++;
    }
    VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->cmdbuf, count, infos);
-   VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->barrier_cmdbuf, count, infos);
+   VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->reordered_cmdbuf, count, infos);
    batch->state->dd.db_bound = true;
 }
 
@@ -493,7 +493,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (result != VK_SUCCESS)
       mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
    
-   result = VKCTX(BeginCommandBuffer)(batch->state->barrier_cmdbuf, &cbbi);
+   result = VKCTX(BeginCommandBuffer)(batch->state->reordered_cmdbuf, &cbbi);
    if (result != VK_SUCCESS)
       mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
 
@@ -511,7 +511,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
       capture_label.pNext = NULL;
       capture_label.pLabelName = "vr-marker,frame_end,type,application";
       memset(capture_label.color, 0, sizeof(capture_label.color));
-      VKCTX(CmdInsertDebugUtilsLabelEXT)(batch->state->barrier_cmdbuf, &capture_label);
+      VKCTX(CmdInsertDebugUtilsLabelEXT)(batch->state->reordered_cmdbuf, &capture_label);
       VKCTX(CmdInsertDebugUtilsLabelEXT)(batch->state->cmdbuf, &capture_label);
    }
 
@@ -529,7 +529,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    /* zero init for unordered blits */
    if (screen->info.have_EXT_attachment_feedback_loop_dynamic_state) {
       VKCTX(CmdSetAttachmentFeedbackLoopEnableEXT)(ctx->batch.state->cmdbuf, 0);
-      VKCTX(CmdSetAttachmentFeedbackLoopEnableEXT)(ctx->batch.state->barrier_cmdbuf, 0);
+      VKCTX(CmdSetAttachmentFeedbackLoopEnableEXT)(ctx->batch.state->reordered_cmdbuf, 0);
    }
 }
 
@@ -614,7 +614,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    si[ZINK_SUBMIT_CMDBUF].pWaitDstStageMask = bs->wait_semaphore_stages.data;
    si[ZINK_SUBMIT_CMDBUF].commandBufferCount = bs->has_barriers ? 2 : 1;
    VkCommandBuffer cmdbufs[2] = {
-      bs->barrier_cmdbuf,
+      bs->reordered_cmdbuf,
       bs->cmdbuf,
    };
    si[ZINK_SUBMIT_CMDBUF].pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
@@ -654,11 +654,11 @@ submit_queue(void *data, void *gdata, int thread_index)
          mb.pNext = NULL;
          mb.srcAccessMask = bs->unordered_write_access;
          mb.dstAccessMask = 0;
-         VKSCR(CmdPipelineBarrier)(bs->barrier_cmdbuf,
+         VKSCR(CmdPipelineBarrier)(bs->reordered_cmdbuf,
                                    bs->unordered_write_stages, 0,
                                    0, 1, &mb, 0, NULL, 0, NULL);
       }
-      result = VKSCR(EndCommandBuffer)(bs->barrier_cmdbuf);
+      result = VKSCR(EndCommandBuffer)(bs->reordered_cmdbuf);
       if (result != VK_SUCCESS) {
          mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
          bs->is_device_lost = true;
