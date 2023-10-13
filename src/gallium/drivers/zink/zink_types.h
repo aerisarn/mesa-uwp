@@ -1233,6 +1233,7 @@ struct zink_resource_object {
    bool ordered_access_is_copied;
    bool unordered_read;
    bool unordered_write;
+   bool unsync_access;
    bool copies_valid;
    bool copies_need_reset; //for use with batch state resets
 

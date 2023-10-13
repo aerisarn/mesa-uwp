@@ -4535,6 +4535,7 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    zink_batch_reference_resource_rw(batch, buf, !buf2img);
    if (unsync) {
       ctx->batch.state->has_unsync = true;
+      img->obj->unsync_access = true;
    }
 
    /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
