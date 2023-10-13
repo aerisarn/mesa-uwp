@@ -612,12 +612,13 @@ submit_queue(void *data, void *gdata, int thread_index)
    si[ZINK_SUBMIT_CMDBUF].waitSemaphoreCount = util_dynarray_num_elements(&bs->wait_semaphores, VkSemaphore);
    si[ZINK_SUBMIT_CMDBUF].pWaitSemaphores = bs->wait_semaphores.data;
    si[ZINK_SUBMIT_CMDBUF].pWaitDstStageMask = bs->wait_semaphore_stages.data;
-   si[ZINK_SUBMIT_CMDBUF].commandBufferCount = bs->has_barriers ? 2 : 1;
-   VkCommandBuffer cmdbufs[2] = {
-      bs->reordered_cmdbuf,
-      bs->cmdbuf,
-   };
-   si[ZINK_SUBMIT_CMDBUF].pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
+   VkCommandBuffer cmdbufs[2];
+   unsigned c = 0;
+   if (bs->has_barriers)
+      cmdbufs[c++] = bs->reordered_cmdbuf;
+   cmdbufs[c++] = bs->cmdbuf;
+   si[ZINK_SUBMIT_CMDBUF].pCommandBuffers = cmdbufs;
+   si[ZINK_SUBMIT_CMDBUF].commandBufferCount = c;
    /* assorted signal submit from wsi/externals */
    si[ZINK_SUBMIT_CMDBUF].signalSemaphoreCount = util_dynarray_num_elements(&bs->signal_semaphores, VkSemaphore);
    si[ZINK_SUBMIT_CMDBUF].pSignalSemaphores = bs->signal_semaphores.data;
