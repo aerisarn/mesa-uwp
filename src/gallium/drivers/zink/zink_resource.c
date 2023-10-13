@@ -1995,13 +1995,9 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    if (buf2img)
       box.x = trans->offset;
 
-   if (dst->obj->transfer_dst)
-      zink_copy_image_buffer(ctx, dst, src, trans->base.b.level, buf2img ? x : 0,
-                              box.y, box.z, trans->base.b.level, &box, trans->base.b.usage);
-   else
-      util_blitter_copy_texture(ctx->blitter, &dst->base.b, trans->base.b.level,
-                                x, box.y, box.z, &src->base.b,
-                                0, &box);
+   assert(dst->obj->transfer_dst);
+   zink_copy_image_buffer(ctx, dst, src, trans->base.b.level, buf2img ? x : 0,
+                           box.y, box.z, trans->base.b.level, &box, trans->base.b.usage);
 }
 
 ALWAYS_INLINE static void
