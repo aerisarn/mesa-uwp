@@ -2024,6 +2024,9 @@ intrinsic("ast_nv", src_comp=[0, 1, 1],
 # src[] = { inv_w, offset }.
 intrinsic("ipa_nv", dest_comp=1, src_comp=[1, 1], bit_sizes=[32],
           indices=[BASE, FLAGS], flags=[CAN_ELIMINATE, CAN_REORDER])
+# FLAGS indicate if we load vertex_id == 2
+intrinsic("ldtram_nv", dest_comp=2, bit_sizes=[32],
+          indices=[BASE, FLAGS], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # NVIDIA-specific Geometry Shader intrinsics.
 # These contain an additional integer source and destination with the primitive handle input/output.
