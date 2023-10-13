@@ -117,7 +117,7 @@ def monitor_pipeline(
 
             # run dependencies and cancel the rest
             if job.name in dependencies:
-                enable_job(project, job, "dep", force_manual)
+                enable_job(project, job, "dep", True)
             else:
                 to_cancel.append(job)
 
