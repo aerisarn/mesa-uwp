@@ -1177,12 +1177,6 @@ static const char *datadir = DATADIR "/drirc.d";
 static const char *execname;
 
 void
-driInjectDataDir(const char *dir)
-{
-   datadir = dir;
-}
-
-void
 driInjectExecName(const char *exec)
 {
    execname = exec;
