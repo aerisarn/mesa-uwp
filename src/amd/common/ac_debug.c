@@ -60,7 +60,7 @@ struct ac_ib_parser {
    unsigned cur_dw;
 };
 
-static void ac_do_parse_ib(FILE *f, struct ac_ib_parser *ib);
+static void parse_gfx_compute_ib(FILE *f, struct ac_ib_parser *ib);
 
 static void print_spaces(FILE *f, unsigned num)
 {
@@ -561,7 +561,7 @@ static void ac_parse_packet3(FILE *f, uint32_t header, struct ac_ib_parser *ib,
       }
 
       fprintf(f, "\n\035>------------------ nested begin ------------------\n");
-      ac_do_parse_ib(f, &ib_recurse);
+      parse_gfx_compute_ib(f, &ib_recurse);
       fprintf(f, "\n\035<------------------- nested end -------------------\n");
       break;
    }
@@ -659,7 +659,7 @@ static void ac_parse_packet3(FILE *f, uint32_t header, struct ac_ib_parser *ib,
 /**
  * Parse and print an IB into a file.
  */
-static void ac_do_parse_ib(FILE *f, struct ac_ib_parser *ib)
+static void parse_gfx_compute_ib(FILE *f, struct ac_ib_parser *ib)
 {
    int current_trace_id = -1;
 
@@ -760,7 +760,7 @@ void ac_parse_ib_chunk(FILE *f, uint32_t *ib_ptr, int num_dw, const int *trace_i
    u_memstream_open(&mem, &out, &outsize);
    FILE *const memf = u_memstream_get(&mem);
    ib.f = memf;
-   ac_do_parse_ib(memf, &ib);
+   parse_gfx_compute_ib(memf, &ib);
    u_memstream_close(&mem);
 
    if (out) {
