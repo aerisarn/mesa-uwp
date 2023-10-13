@@ -72,6 +72,17 @@ radv_taskmesh_enabled(const struct radv_physical_device *pdevice)
 }
 
 static bool
+radv_transfer_queue_enabled(const struct radv_physical_device *pdevice)
+{
+   /* Check if the GPU has SDMA support and transfer queues are allowed. */
+   if (pdevice->rad_info.sdma_ip_version == SDMA_UNKNOWN || !pdevice->rad_info.ip[AMD_IP_SDMA].num_queues ||
+       !(pdevice->instance->perftest_flags & RADV_PERFTEST_TRANSFER_QUEUE))
+      return false;
+
+   return pdevice->rad_info.gfx_level >= GFX9;
+}
+
+static bool
 radv_vrs_attachment_enabled(const struct radv_physical_device *pdevice)
 {
    return pdevice->rad_info.gfx_level >= GFX11 || !(pdevice->instance->debug_flags & RADV_DEBUG_NO_HIZ);
@@ -197,6 +208,11 @@ radv_physical_device_init_queue_table(struct radv_physical_device *pdevice)
          pdevice->vk_queue_to_radv[idx] = RADV_QUEUE_VIDEO_DEC;
          idx++;
       }
+   }
+
+   if (radv_transfer_queue_enabled(pdevice)) {
+      pdevice->vk_queue_to_radv[idx] = RADV_QUEUE_TRANSFER;
+      idx++;
    }
 
    pdevice->vk_queue_to_radv[idx++] = RADV_QUEUE_SPARSE;
@@ -2119,6 +2135,10 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
          num_queue_families++;
    }
 
+   if (radv_transfer_queue_enabled(pdevice)) {
+      num_queue_families++;
+   }
+
    if (pQueueFamilyProperties == NULL) {
       *pCount = num_queue_families;
       return;
@@ -2171,6 +2191,18 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
       }
    }
 
+   if (radv_transfer_queue_enabled(pdevice)) {
+      if (*pCount > idx) {
+         *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
+            .queueFlags = VK_QUEUE_TRANSFER_BIT,
+            .queueCount = pdevice->rad_info.ip[AMD_IP_SDMA].num_queues,
+            .timestampValidBits = 64,
+            .minImageTransferGranularity = (VkExtent3D){16, 16, 8},
+         };
+         idx++;
+      }
+   }
+
    if (*pCount > idx) {
       *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
          .queueFlags = VK_QUEUE_SPARSE_BINDING_BIT,
@@ -2201,13 +2233,12 @@ radv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice, ui
       return;
    }
    VkQueueFamilyProperties *properties[] = {
-      &pQueueFamilyProperties[0].queueFamilyProperties,
-      &pQueueFamilyProperties[1].queueFamilyProperties,
-      &pQueueFamilyProperties[2].queueFamilyProperties,
-      &pQueueFamilyProperties[3].queueFamilyProperties,
+      &pQueueFamilyProperties[0].queueFamilyProperties, &pQueueFamilyProperties[1].queueFamilyProperties,
+      &pQueueFamilyProperties[2].queueFamilyProperties, &pQueueFamilyProperties[3].queueFamilyProperties,
+      &pQueueFamilyProperties[4].queueFamilyProperties,
    };
    radv_get_physical_device_queue_family_properties(pdevice, pCount, properties);
-   assert(*pCount <= 4);
+   assert(*pCount <= 5);
 
    for (uint32_t i = 0; i < *pCount; i++) {
       vk_foreach_struct (ext, pQueueFamilyProperties[i].pNext) {

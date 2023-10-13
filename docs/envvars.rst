@@ -995,7 +995,7 @@ Clover environment variables
    allows specifying additional linker options. Specified options are
    appended after the options set by the OpenCL program in
    ``clLinkProgram``.
-   
+
 .. _rusticl-env-var:
 
 .. envvar:: IRIS_ENABLE_CLOVER
@@ -1339,6 +1339,8 @@ RADV driver environment variables
       enable optimizations to move more driver internal objects to VRAM.
    ``rtwave64``
       enable wave64 for ray tracing shaders (GFX10+)
+   ``transfer_queue``
+      enable experimental transfer queue support (GFX9+, not yet spec compliant)
    ``video_decode``
       enable experimental video decoding support
    ``gsfastlaunch2``

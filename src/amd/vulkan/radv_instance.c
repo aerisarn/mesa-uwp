@@ -100,6 +100,7 @@ static const struct debug_control radv_perftest_options[] = {{"localbos", RADV_P
                                                              {"video_decode", RADV_PERFTEST_VIDEO_DECODE},
                                                              {"dmashaders", RADV_PERFTEST_DMA_SHADERS},
                                                              {"gsfastlaunch2", RADV_PERFTEST_GS_FAST_LAUNCH_2},
+                                                             {"transfer_queue", RADV_PERFTEST_TRANSFER_QUEUE},
                                                              {NULL, 0}};
 
 const char *
