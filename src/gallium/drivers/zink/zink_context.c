@@ -4918,14 +4918,9 @@ zink_context_is_resource_busy(struct pipe_screen *pscreen, struct pipe_resource 
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = zink_resource(pres);
-   if (!res->obj->is_buffer && usage & PIPE_MAP_UNSYNCHRONIZED) {
-      if (zink_is_swapchain(res))
-         return true;
-      if (!(res->obj->vkusage & VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT) &&
-          (!res->linear || !res->obj->host_visible))
-         return true;
-   }
    uint32_t check_usage = 0;
+   if (usage & PIPE_MAP_UNSYNCHRONIZED && (!res->obj->unsync_access || zink_is_swapchain(res)))
+      return true;
    if (usage & PIPE_MAP_READ)
       check_usage |= ZINK_RESOURCE_ACCESS_WRITE;
    if (usage & PIPE_MAP_WRITE)
