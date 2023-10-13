@@ -845,7 +845,9 @@ set_mode_system_value(struct vtn_builder *b, nir_variable_mode *mode)
 {
    vtn_assert(*mode == nir_var_system_value || *mode == nir_var_shader_in ||
               /* Hack for NV_mesh_shader due to lack of dedicated storage class. */
-              *mode == nir_var_mem_task_payload);
+              *mode == nir_var_mem_task_payload ||
+              /* Hack for DPCPP, see https://github.com/intel/llvm/issues/6703 */
+              *mode == nir_var_mem_global);
    *mode = nir_var_system_value;
 }
 
