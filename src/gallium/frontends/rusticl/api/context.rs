@@ -44,7 +44,10 @@ fn create_context(
     pfn_notify: Option<FuncCreateContextCB>,
     user_data: *mut ::std::os::raw::c_void,
 ) -> CLResult<cl_context> {
-    check_cb(&pfn_notify, user_data)?;
+    // TODO: Actually hook this callback up so it gets called when appropriate.
+    // SAFETY: The requirements on `CreateContextCB::try_new` match the requirements
+    // imposed by the OpenCL specification. It is the caller's duty to uphold them.
+    let _cb_opt = unsafe { CreateContextCB::try_new(pfn_notify, user_data)? };
 
     // CL_INVALID_VALUE if devices is NULL.
     if devices.is_null() {
