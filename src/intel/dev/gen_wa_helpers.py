@@ -306,6 +306,18 @@ def main():
     with open(args.wa_file, encoding='utf8') as wa_fh:
         wa_def = json.load(wa_fh)
 
+    # detect unknown platforms
+    unknown_platforms = set()
+    for wa in wa_def.values():
+        for p in wa['mesa_platforms']:
+            if p not in _PLATFORM_GFXVERS:
+                unknown_platforms.add(p)
+    if unknown_platforms:
+        abbrev = map(lambda s: s.replace('INTEL_PLATFORM_', ''),
+                     unknown_platforms)
+        raise Exception(f'warning: unknown platforms in {args.wa_file}: '
+                        f'{", ".join(abbrev)}')
+
     steppings = stepping_enums(wa_def)
     with open(args.header_file, 'w', encoding='utf8') as header:
         header.write(HEADER_TEMPLATE.render(wa_def=wa_def,
