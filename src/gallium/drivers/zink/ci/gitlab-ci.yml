@@ -126,6 +126,7 @@ zink-radv-navi10-valve:
     GPU_VERSION: zink-radv-navi10
 
 zink-radv-vangogh-valve:
+  timeout: 35m
   parallel: 3
   extends:
     - .radv-zink-test-valve
@@ -135,6 +136,8 @@ zink-radv-vangogh-valve:
     GPU_VERSION: zink-radv-vangogh
     B2C_SESSION_REBOOT_REGEX: 'BUG: kernel NULL pointer dereference, address'
     B2C_TIMEOUT_BOOT_RETRIES: 1
+    B2C_TIMEOUT_BOOT_MINUTES: 30
+    B2C_TIMEOUT_OVERALL_MINUTES: 30
   # Override the list of tags to drop `priority:low`
   tags:
     - amdgpu:codename:VANGOGH
