@@ -4471,7 +4471,7 @@ to upconvert to 32b float internally?
 		layer size at the point that it stops being reduced moving to
 		higher (smaller) mipmap levels
 		 -->
-		<bitfield name="ARRAY_PITCH" low="0" high="13" shr="12" type="uint"/>
+		<bitfield name="ARRAY_PITCH" low="0" high="22" shr="12" type="uint"/>
 		<bitfield name="MIN_LAYERSZ" low="23" high="26" shr="12"/>
 		<!--
 		by default levels with w < 16 are linear
