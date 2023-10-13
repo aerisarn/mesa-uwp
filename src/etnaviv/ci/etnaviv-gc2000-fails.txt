@@ -2017,5 +2017,3 @@ spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
-
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y410,Fail

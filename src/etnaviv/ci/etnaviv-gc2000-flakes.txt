@@ -215,3 +215,5 @@ spec@ext_texture_srgb@texwrap formats@GL_SRGB8_ALPHA8- swizzled
 spec@amd_shader_trinary_minmax@execution@built-in-functions@vs-min3-vec2-vec2-vec2
 spec@arb_fragment_program@texturing@txp-2d
 spec@arb_vertex_program@instructions@xpd
+
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y410
