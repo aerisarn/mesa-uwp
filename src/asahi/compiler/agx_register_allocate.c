@@ -1145,6 +1145,19 @@ agx_ra(agx_context *ctx)
    unsigned demand =
       ALIGN_POT(agx_calc_register_demand(ctx, ncomps), reg_file_alignment);
 
+   /* TODO: Spilling. Abort so we don't smash the stack in release builds. */
+   if (demand > AGX_NUM_REGS) {
+      fprintf(stderr, "\n");
+      fprintf(stderr, "------------------------------------------------\n");
+      fprintf(stderr, "Asahi Linux shader compiler limitation!\n");
+      fprintf(stderr, "We ran out of registers! Nyaaaa 😿\n");
+      fprintf(stderr, "Do not report this as a bug.\n");
+      fprintf(stderr, "We know -- we're working on it!\n");
+      fprintf(stderr, "------------------------------------------------\n");
+      fprintf(stderr, "\n");
+      abort();
+   }
+
    /* Round up the demand to the maximum number of registers we can use without
     * affecting occupancy. This reduces live range splitting.
     */
