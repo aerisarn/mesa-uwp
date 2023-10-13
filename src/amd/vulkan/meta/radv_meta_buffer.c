@@ -353,7 +353,7 @@ radv_CmdUpdateBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDevice
    if (!dataSize)
       return;
 
-   if (dataSize < RADV_BUFFER_UPDATE_THRESHOLD) {
+   if (dataSize < RADV_BUFFER_UPDATE_THRESHOLD && cmd_buffer->qf != RADV_QUEUE_TRANSFER) {
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, dst_buffer->bo);
       radv_update_buffer_cp(cmd_buffer, va, pData, dataSize);
    } else {
