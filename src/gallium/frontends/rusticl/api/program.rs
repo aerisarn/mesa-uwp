@@ -289,7 +289,7 @@ fn build_program(
     }
 
     if let Some(cb) = cb_opt {
-        unsafe { (cb.func)(program, cb.data) };
+        cb.call(p);
     }
 
     //• CL_INVALID_BINARY if program is created with clCreateProgramWithBinary and devices listed in device_list do not have a valid program binary loaded.
@@ -375,7 +375,7 @@ fn compile_program(
     }
 
     if let Some(cb) = cb_opt {
-        unsafe { (cb.func)(program, cb.data) };
+        cb.call(p);
     }
 
     // • CL_INVALID_COMPILER_OPTIONS if the compiler options specified by options are invalid.
@@ -447,13 +447,11 @@ pub fn link_program(
         CL_LINK_PROGRAM_FAILURE
     };
 
-    let res = cl_program::from_arc(res);
-
     if let Some(cb) = cb_opt {
-        unsafe { (cb.func)(res, cb.data) };
+        cb.call(&res);
     }
 
-    Ok((res, code))
+    Ok((cl_program::from_arc(res), code))
 
     //• CL_INVALID_LINKER_OPTIONS if the linker options specified by options are invalid.
     //• CL_INVALID_OPERATION if the rules for devices containing compiled binaries or libraries as described in input_programs argument above are not followed.
