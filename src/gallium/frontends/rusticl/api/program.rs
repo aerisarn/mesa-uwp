@@ -92,16 +92,6 @@ fn validate_devices<'a>(
     Ok(devs)
 }
 
-fn call_cb(
-    pfn_notify: Option<FuncProgramCB>,
-    program: cl_program,
-    user_data: *mut ::std::os::raw::c_void,
-) {
-    if let Some(cb) = pfn_notify {
-        unsafe { cb(program, user_data) };
-    }
-}
-
 #[cl_entrypoint]
 fn create_program_with_source(
     context: cl_context,
@@ -283,7 +273,9 @@ fn build_program(
     let p = program.get_ref()?;
     let devs = validate_devices(device_list, num_devices, &p.devs)?;
 
-    check_cb(&pfn_notify, user_data)?;
+    // SAFETY: The requirements on `ProgramCB::try_new` match the requirements
+    // imposed by the OpenCL specification. It is the caller's duty to uphold them.
+    let cb_opt = unsafe { ProgramCB::try_new(pfn_notify, user_data)? };
 
     // CL_INVALID_OPERATION if there are kernel objects attached to program.
     if p.active_kernels() {
@@ -296,7 +288,9 @@ fn build_program(
         res &= p.build(dev, c_string_to_string(options));
     }
 
-    call_cb(pfn_notify, program, user_data);
+    if let Some(cb) = cb_opt {
+        unsafe { (cb.func)(program, cb.data) };
+    }
 
     //• CL_INVALID_BINARY if program is created with clCreateProgramWithBinary and devices listed in device_list do not have a valid program binary loaded.
     //• CL_INVALID_BUILD_OPTIONS if the build options specified by options are invalid.
@@ -331,7 +325,9 @@ fn compile_program(
     let p = program.get_ref()?;
     let devs = validate_devices(device_list, num_devices, &p.devs)?;
 
-    check_cb(&pfn_notify, user_data)?;
+    // SAFETY: The requirements on `ProgramCB::try_new` match the requirements
+    // imposed by the OpenCL specification. It is the caller's duty to uphold them.
+    let cb_opt = unsafe { ProgramCB::try_new(pfn_notify, user_data)? };
 
     // CL_INVALID_VALUE if num_input_headers is zero and header_include_names or input_headers are
     // not NULL or if num_input_headers is not zero and header_include_names or input_headers are
@@ -378,7 +374,9 @@ fn compile_program(
         res &= p.compile(dev, c_string_to_string(options), &headers);
     }
 
-    call_cb(pfn_notify, program, user_data);
+    if let Some(cb) = cb_opt {
+        unsafe { (cb.func)(program, cb.data) };
+    }
 
     // • CL_INVALID_COMPILER_OPTIONS if the compiler options specified by options are invalid.
     // • CL_INVALID_OPERATION if the compilation or build of a program executable for any of the devices listed in device_list by a previous call to clCompileProgram or clBuildProgram for program has not completed.
@@ -409,7 +407,9 @@ pub fn link_program(
     let devs = validate_devices(device_list, num_devices, &c.devs)?;
     let progs = cl_program::get_arc_vec_from_arr(input_programs, num_input_programs)?;
 
-    check_cb(&pfn_notify, user_data)?;
+    // SAFETY: The requirements on `ProgramCB::try_new` match the requirements
+    // imposed by the OpenCL specification. It is the caller's duty to uphold them.
+    let cb_opt = unsafe { ProgramCB::try_new(pfn_notify, user_data)? };
 
     // CL_INVALID_VALUE if num_input_programs is zero and input_programs is NULL
     if progs.is_empty() {
@@ -449,7 +449,10 @@ pub fn link_program(
 
     let res = cl_program::from_arc(res);
 
-    call_cb(pfn_notify, res, user_data);
+    if let Some(cb) = cb_opt {
+        unsafe { (cb.func)(res, cb.data) };
+    }
+
     Ok((res, code))
 
     //• CL_INVALID_LINKER_OPTIONS if the linker options specified by options are invalid.

@@ -51,11 +51,14 @@ macro_rules! cl_callback {
             ///   [`clSetEventCallback`] in the OpenCL specification.
             /// - MemCB: `func` must be soundly callable as documented on
             ///   [`clSetMemObjectDestructorCallback`] in the OpenCL specification.
+            /// - ProgramCB: `func` must be soundly callable as documented on
+            ///   [`clBuildProgram`] in the OpenCL specification.
             ///
             /// [`clCreateContext`]: https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html#clCreateContext
             /// [`clSetContextDestructorCallback`]: https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html#clSetContextDestructorCallback
             /// [`clSetEventCallback`]: https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html#clSetEventCallback
             /// [`clSetMemObjectDestructorCallback`]: https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html#clSetMemObjectDestructorCallback
+            /// [`clBuildProgram`]: https://registry.khronos.org/OpenCL/specs/3.0-unified/html/OpenCL_API.html#clBuildProgram
             pub unsafe fn new(func: Option<$fn_alias>, data: *mut c_void) -> CLResult<Self> {
                 let Some(func) = func else {
                     return Err(CL_INVALID_VALUE);
