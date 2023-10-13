@@ -1173,7 +1173,6 @@ initOptionCache(driOptionCache *cache, const driOptionCache *info)
 #define DATADIR "/usr/share"
 #endif
 
-static const char *datadir = DATADIR "/drirc.d";
 static const char *execname;
 
 void
@@ -1216,7 +1215,7 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
    if ((configdir = getenv("DRIRC_CONFIGDIR")))
       parseConfigDir(&userData, configdir);
    else {
-      parseConfigDir(&userData, datadir);
+      parseConfigDir(&userData, DATADIR "/drirc.d");
       parseOneConfigFile(&userData, SYSCONFDIR "/drirc");
    }
 
