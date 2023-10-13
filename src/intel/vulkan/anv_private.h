@@ -1006,10 +1006,6 @@ struct anv_physical_device {
         */
        struct anv_va_range                      instruction_state_pool;
        /**
-        * Client visible VMA allocation heap
-        */
-       struct anv_va_range                      client_visible_heap;
-       /**
         * Client heap
         */
        struct anv_va_range                      high_heap;
@@ -1554,7 +1550,6 @@ struct anv_device {
 
     pthread_mutex_t                             vma_mutex;
     struct util_vma_heap                        vma_lo;
-    struct util_vma_heap                        vma_cva;
     struct util_vma_heap                        vma_hi;
     struct util_vma_heap                        vma_desc;
 

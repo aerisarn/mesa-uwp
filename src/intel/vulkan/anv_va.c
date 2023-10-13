@@ -61,7 +61,6 @@ anv_device_print_vas(struct anv_physical_device *device)
    PRINT_HEAP(indirect_descriptor_pool);
    PRINT_HEAP(indirect_push_descriptor_pool);
    PRINT_HEAP(instruction_state_pool);
-   PRINT_HEAP(client_visible_heap);
    PRINT_HEAP(high_heap);
 }
 
@@ -154,18 +153,12 @@ anv_physical_device_init_va_ranges(struct anv_physical_device *device)
    address = align64(address, _4Gb);
    address = va_add(&device->va.instruction_state_pool, address, 2 * _1Gb);
 
-   /* Whatever we have left we split in 2 for app allocations client-visible &
-    * non-client-visible.
-    *
-    * Leave the last 4GiB out of the high vma range, so that no state
+   /* Leave the last 4GiB out of the high vma range, so that no state
     * base address + size can overflow 48 bits. For more information see
     * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
     */
    uint64_t user_heaps_size = device->gtt_size - address - 4 * _1Gb;
-   uint64_t heaps_size_Gb = user_heaps_size / _1Gb / 2 ;
-
-   address = va_add(&device->va.client_visible_heap, address, heaps_size_Gb * _1Gb);
-   address = va_add(&device->va.high_heap, address, heaps_size_Gb * _1Gb);
+   address = va_add(&device->va.high_heap, address, user_heaps_size);
 
    if (INTEL_DEBUG(DEBUG_HEAPS))
       anv_device_print_vas(device);

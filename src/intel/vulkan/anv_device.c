@@ -3198,10 +3198,6 @@ VkResult anv_CreateDevice(
                       device->physical->va.low_heap.addr,
                       device->physical->va.low_heap.size);
 
-   util_vma_heap_init(&device->vma_cva,
-                      device->physical->va.client_visible_heap.addr,
-                      device->physical->va.client_visible_heap.size);
-
    util_vma_heap_init(&device->vma_hi,
                       device->physical->va.high_heap.addr,
                       device->physical->va.high_heap.size);
@@ -3672,7 +3668,6 @@ VkResult anv_CreateDevice(
  fail_vmas:
    util_vma_heap_finish(&device->vma_desc);
    util_vma_heap_finish(&device->vma_hi);
-   util_vma_heap_finish(&device->vma_cva);
    util_vma_heap_finish(&device->vma_lo);
    pthread_mutex_destroy(&device->vma_mutex);
  fail_queues:
@@ -3784,7 +3779,6 @@ void anv_DestroyDevice(
 
    util_vma_heap_finish(&device->vma_desc);
    util_vma_heap_finish(&device->vma_hi);
-   util_vma_heap_finish(&device->vma_cva);
    util_vma_heap_finish(&device->vma_lo);
    pthread_mutex_destroy(&device->vma_mutex);
 
@@ -3841,9 +3835,6 @@ static struct util_vma_heap *
 anv_vma_heap_for_flags(struct anv_device *device,
                        enum anv_bo_alloc_flags alloc_flags)
 {
-   if (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS)
-      return &device->vma_cva;
-
    if (alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS)
       return &device->vma_lo;
 
@@ -3866,13 +3857,17 @@ anv_vma_alloc(struct anv_device *device,
    *out_vma_heap = anv_vma_heap_for_flags(device, alloc_flags);
 
    if (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) {
+      assert(*out_vma_heap == &device->vma_hi);
+
       if (client_address) {
          if (util_vma_heap_alloc_addr(*out_vma_heap,
                                       client_address, size)) {
             addr = client_address;
          }
       } else {
+         (*out_vma_heap)->alloc_high = false;
          addr = util_vma_heap_alloc(*out_vma_heap, size, align);
+         (*out_vma_heap)->alloc_high = true;
       }
       /* We don't want to fall back to other heaps */
       goto done;
@@ -3895,7 +3890,6 @@ anv_vma_free(struct anv_device *device,
              uint64_t address, uint64_t size)
 {
    assert(vma_heap == &device->vma_lo ||
-          vma_heap == &device->vma_cva ||
           vma_heap == &device->vma_hi ||
           vma_heap == &device->vma_desc);
 
