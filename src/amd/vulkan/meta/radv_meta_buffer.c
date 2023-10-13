@@ -264,7 +264,9 @@ radv_copy_buffer(struct radv_cmd_buffer *cmd_buffer, struct radeon_winsys_bo *sr
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, src_bo);
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, dst_bo);
 
-   if (use_compute)
+   if (cmd_buffer->qf == RADV_QUEUE_TRANSFER)
+      radv_sdma_copy_buffer(cmd_buffer->device, cmd_buffer->cs, src_va, dst_va, size);
+   else if (use_compute)
       copy_buffer_shader(cmd_buffer, src_va, dst_va, size);
    else if (size)
       si_cp_dma_buffer_copy(cmd_buffer, src_va, dst_va, size);
