@@ -599,6 +599,8 @@ struct zink_batch_state {
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
    VkCommandBuffer reordered_cmdbuf;
+   VkCommandPool unsynchronized_cmdpool;
+   VkCommandBuffer unsynchronized_cmdbuf;
    VkSemaphore signal_semaphore; //external signal semaphore
    struct util_dynarray signal_semaphores; //external signal semaphores
    struct util_dynarray wait_semaphores; //external wait semaphores
@@ -619,6 +621,8 @@ struct zink_batch_state {
 
    VkAccessFlags unordered_write_access;
    VkPipelineStageFlags unordered_write_stages;
+
+   simple_mtx_t exportable_lock;
 
    struct util_queue_fence flush_completed;
 
@@ -654,6 +658,7 @@ struct zink_batch_state {
 
    bool is_device_lost;
    bool has_barriers;
+   bool has_unsync;
 };
 
 static inline struct zink_batch_state *
@@ -1502,6 +1507,7 @@ struct zink_screen {
 
    void (*buffer_barrier)(struct zink_context *ctx, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
    void (*image_barrier)(struct zink_context *ctx, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
+   void (*image_barrier_unsync)(struct zink_context *ctx, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
    bool compact_descriptors; /**< toggled if descriptor set ids are compacted */
    uint8_t desc_set_id[ZINK_MAX_DESCRIPTOR_SETS]; /**< converts enum zink_descriptor_type -> the actual set id */
@@ -1780,6 +1786,9 @@ struct zink_context {
    pipe_launch_grid_func launch_grid[2]; //batch changed
 
    struct pipe_device_reset_callback reset;
+
+   struct util_queue_fence unsync_fence; //unsigned during unsync recording (blocks flush ops)
+   struct util_queue_fence flush_fence; //unsigned during flush (blocks unsync ops)
 
    struct zink_fence *deferred_fence;
    struct zink_fence *last_fence; //the last command buffer submitted

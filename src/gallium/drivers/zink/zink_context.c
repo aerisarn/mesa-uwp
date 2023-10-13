@@ -3314,6 +3314,9 @@ flush_batch(struct zink_context *ctx, bool sync)
       /* start rp to do all the clears */
       zink_batch_rp(ctx);
    zink_batch_no_rp_safe(ctx);
+
+   util_queue_fence_wait(&ctx->unsync_fence);
+   util_queue_fence_reset(&ctx->flush_fence);
    zink_end_batch(ctx, batch);
    ctx->deferred_fence = NULL;
 
@@ -3351,6 +3354,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       tc_renderpass_info_reset(&ctx->dynamic_fb.tc_info);
       ctx->rp_tc_info_updated = true;
    }
+   util_queue_fence_signal(&ctx->flush_fence);
 }
 
 void
@@ -4456,6 +4460,11 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    bool needs_present_readback = false;
 
    bool buf2img = buf == src;
+   bool unsync = !!(map_flags & PIPE_MAP_UNSYNCHRONIZED);
+   if (unsync) {
+      util_queue_fence_wait(&ctx->flush_fence);
+      util_queue_fence_reset(&ctx->unsync_fence);
+   }
 
    if (buf2img) {
       if (zink_is_swapchain(img)) {
@@ -4466,9 +4475,11 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
       box.x = dstx;
       box.y = dsty;
       box.z = dstz;
-      zink_resource_image_transfer_dst_barrier(ctx, img, dst_level, &box);
-      zink_screen(ctx->base.screen)->buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      zink_resource_image_transfer_dst_barrier(ctx, img, dst_level, &box, unsync);
+      if (!unsync)
+         zink_screen(ctx->base.screen)->buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
+      assert(!(map_flags & PIPE_MAP_UNSYNCHRONIZED));
       if (zink_is_swapchain(img))
          needs_present_readback = zink_kopper_acquire_readback(ctx, img, &use_img);
       zink_screen(ctx->base.screen)->image_barrier(ctx, use_img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
@@ -4514,12 +4525,17 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    region.imageExtent.width = src_box->width;
    region.imageExtent.height = src_box->height;
 
-   /* never promote to unordered if swapchain was acquired */
-   VkCommandBuffer cmdbuf = needs_present_readback ?
+   VkCommandBuffer cmdbuf = unsync ?
+                            ctx->batch.state->unsynchronized_cmdbuf :
+                            /* never promote to unordered if swapchain was acquired */
+                            needs_present_readback ?
                             ctx->batch.state->cmdbuf :
                             buf2img ? zink_get_cmdbuf(ctx, buf, use_img) : zink_get_cmdbuf(ctx, use_img, buf);
    zink_batch_reference_resource_rw(batch, use_img, buf2img);
    zink_batch_reference_resource_rw(batch, buf, !buf2img);
+   if (unsync) {
+      ctx->batch.state->has_unsync = true;
+   }
 
    /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
     * to indicate whether to copy either the depth or stencil aspects
@@ -4578,7 +4594,10 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
       }
       zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
    }
+   if (unsync)
+      util_queue_fence_signal(&ctx->unsync_fence);
    if (needs_present_readback) {
+      assert(!unsync);
       if (buf2img) {
          img->obj->unordered_write = false;
          buf->obj->unordered_read = false;
@@ -5285,6 +5304,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    zink_context_surface_init(&ctx->base);
    zink_context_resource_init(&ctx->base);
    zink_context_query_init(&ctx->base);
+
+   util_queue_fence_init(&ctx->flush_fence);
+   util_queue_fence_init(&ctx->unsync_fence);
 
    list_inithead(&ctx->query_pools);
    _mesa_set_init(&ctx->update_barriers[0][0], ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);

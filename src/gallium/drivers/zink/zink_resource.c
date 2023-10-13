@@ -2307,7 +2307,6 @@ zink_image_map(struct pipe_context *pctx,
          zink_fb_clears_apply_region(ctx, pres, zink_rect_from_box(box));
    }
    if (!res->linear || !res->obj->host_visible) {
-      assert(!(usage & PIPE_MAP_UNSYNCHRONIZED));
       enum pipe_format format = pres->format;
       if (usage & PIPE_MAP_DEPTH_ONLY)
          format = util_format_get_depth_only(pres->format);
@@ -2337,6 +2336,7 @@ zink_image_map(struct pipe_context *pctx,
       struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
       if (usage & PIPE_MAP_READ) {
+         assert(!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC));
          /* force multi-context sync */
          if (zink_resource_usage_is_unflushed_write(res))
             zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
