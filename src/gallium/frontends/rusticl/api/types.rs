@@ -9,6 +9,7 @@ use rusticl_opencl_gen::*;
 
 use std::borrow::Borrow;
 use std::ffi::c_void;
+use std::ffi::CStr;
 use std::iter::Product;
 
 #[macro_export]
@@ -107,6 +108,19 @@ cl_callback!(
         user_data: *mut ::std::ffi::c_void,
     }
 );
+
+impl CreateContextCB {
+    pub fn _call(self, err_msg: &CStr, private_info: &[u8]) {
+        let err_msg_ptr = err_msg.as_ptr();
+        let private_info_ptr = private_info.as_ptr().cast::<c_void>();
+        // SAFETY: The first parameter must be a valid pointer to a NUL-terminated C string. We
+        // know this is satisfied since that is `CStr`'s type invariant.
+        // The second parameter must be a valid pointer to binary data with the length given in the
+        // thrid parameter. We know both of these are correct since we just got them from a byte slice.
+        // All other requirements are covered by this callback's type invariants.
+        unsafe { (self.func)(err_msg_ptr, private_info_ptr, private_info.len(), self.data) };
+    }
+}
 
 cl_callback!(
     DeleteContextCB(FuncDeleteContextCB) {
