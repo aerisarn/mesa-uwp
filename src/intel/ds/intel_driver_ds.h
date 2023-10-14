@@ -114,6 +114,9 @@ struct intel_ds_device {
     */
    uint64_t event_id;
 
+   /* Tracepoint name perfetto identifiers for each of the events. */
+   uint64_t tracepoint_iids[64];
+
    /* Protects submissions of u_trace data to trace_context */
    simple_mtx_t trace_context_mutex;
 

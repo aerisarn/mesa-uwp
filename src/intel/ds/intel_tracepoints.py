@@ -244,7 +244,8 @@ def generate_code(args):
                     ctx_param='struct intel_ds_device *dev',
                     trace_toggle_name='intel_gpu_tracepoint',
                     trace_toggle_defaults=intel_default_tps)
-    utrace_generate_perfetto_utils(hpath=args.perfetto_hdr)
+    utrace_generate_perfetto_utils(hpath=args.perfetto_hdr,
+                                   basename="intel_tracepoint")
 
 
 def main():
