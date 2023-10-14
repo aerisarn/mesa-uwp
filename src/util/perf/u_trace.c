@@ -602,7 +602,7 @@ process_chunk(void *job, void *gdata, int thread_index)
       if (evt->tp->perfetto &&
           (p_atomic_read_relaxed(&utctx->enabled_traces) &
            U_TRACE_TYPE_PERFETTO_ACTIVE)) {
-         evt->tp->perfetto(utctx->pctx, ns, chunk->flush_data, evt->payload);
+         evt->tp->perfetto(utctx->pctx, ns, evt->tp->tp_idx, chunk->flush_data, evt->payload);
       }
 #endif
 

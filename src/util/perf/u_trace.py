@@ -246,6 +246,7 @@ struct trace_${trace_name} {
 void ${trace.tp_perfetto}(
    ${ctx_param},
    uint64_t ts_ns,
+   uint16_t tp_idx,
    const void *flush_data,
    const struct trace_${trace_name} *payload);
 #endif
@@ -360,7 +361,7 @@ ${trace_toggle_name}_config_variable(void)
 }
 % endif
 
-% for trace_name, trace in TRACEPOINTS.items():
+% for index, (trace_name, trace) in enumerate(TRACEPOINTS.items()):
 /*
  * ${trace_name}
  */
@@ -446,11 +447,12 @@ static const struct u_tracepoint __tp_${trace_name} = {
     ALIGN_POT(sizeof(struct trace_${trace_name}), 8),   /* keep size 64b aligned */
     "${trace_name}",
     ${"true" if trace.end_of_pipe else "false"},
+    ${index},
     __print_${trace_name},
     __print_json_${trace_name},
  % if trace.tp_perfetto is not None:
 #ifdef HAVE_PERFETTO
-    (void (*)(void *pctx, uint64_t, const void *, const void *))${trace.tp_perfetto},
+    (void (*)(void *pctx, uint64_t, uint16_t, const void *, const void *))${trace.tp_perfetto},
 #endif
  % endif
 };

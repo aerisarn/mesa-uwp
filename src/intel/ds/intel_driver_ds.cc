@@ -242,6 +242,7 @@ static void
 end_event(struct intel_ds_queue *queue, uint64_t ts_ns,
           enum intel_ds_queue_stage stage_id,
           uint32_t submission_id,
+          uint16_t tracepoint_idx,
           const char *app_event,
           const void* payload = nullptr,
           trace_payload_as_extra_func payload_as_extra = nullptr)
@@ -362,6 +363,7 @@ extern "C" {
    void                                                                 \
    intel_ds_begin_##event_name(struct intel_ds_device *device,          \
                                uint64_t ts_ns,                          \
+                               uint16_t tp_idx,                         \
                                const void *flush_data,                  \
                                const struct trace_intel_begin_##event_name *payload) \
    {                                                                    \
@@ -373,6 +375,7 @@ extern "C" {
    void                                                                 \
    intel_ds_end_##event_name(struct intel_ds_device *device,            \
                              uint64_t ts_ns,                            \
+                             uint16_t tp_idx,                           \
                              const void *flush_data,                    \
                              const struct trace_intel_end_##event_name *payload) \
    {                                                                    \
@@ -416,6 +419,7 @@ CREATE_DUAL_EVENT_CALLBACK(as_build, INTEL_DS_QUEUE_STAGE_AS)
 void
 intel_ds_begin_cmd_buffer_annotation(struct intel_ds_device *device,
                                      uint64_t ts_ns,
+                                     uint16_t tp_idx,
                                      const void *flush_data,
                                      const struct trace_intel_begin_cmd_buffer_annotation *payload)
 {
@@ -427,6 +431,7 @@ intel_ds_begin_cmd_buffer_annotation(struct intel_ds_device *device,
 void
 intel_ds_end_cmd_buffer_annotation(struct intel_ds_device *device,
                                    uint64_t ts_ns,
+                                   uint16_t tp_idx,
                                    const void *flush_data,
                                    const struct trace_intel_end_cmd_buffer_annotation *payload)
 {
@@ -439,6 +444,7 @@ intel_ds_end_cmd_buffer_annotation(struct intel_ds_device *device,
 void
 intel_ds_begin_queue_annotation(struct intel_ds_device *device,
                                 uint64_t ts_ns,
+                                uint16_t tp_idx,
                                 const void *flush_data,
                                 const struct trace_intel_begin_queue_annotation *payload)
 {
@@ -450,6 +456,7 @@ intel_ds_begin_queue_annotation(struct intel_ds_device *device,
 void
 intel_ds_end_queue_annotation(struct intel_ds_device *device,
                               uint64_t ts_ns,
+                              uint16_t tp_idx,
                               const void *flush_data,
                               const struct trace_intel_end_queue_annotation *payload)
 {
@@ -462,6 +469,7 @@ intel_ds_end_queue_annotation(struct intel_ds_device *device,
 void
 intel_ds_begin_stall(struct intel_ds_device *device,
                      uint64_t ts_ns,
+                     uint16_t tp_idx,
                      const void *flush_data,
                      const struct trace_intel_begin_stall *payload)
 {
@@ -473,6 +481,7 @@ intel_ds_begin_stall(struct intel_ds_device *device,
 void
 intel_ds_end_stall(struct intel_ds_device *device,
                    uint64_t ts_ns,
+                   uint16_t tp_idx,
                    const void *flush_data,
                    const struct trace_intel_end_stall *payload)
 {

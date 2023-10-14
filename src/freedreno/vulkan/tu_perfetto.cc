@@ -442,8 +442,8 @@ tu_perfetto_submit(struct tu_device *dev,
 
 #define CREATE_EVENT_CALLBACK(event_name, stage_id)                                 \
    void tu_perfetto_start_##event_name(                                             \
-      struct tu_device *dev, uint64_t ts_ns, const void *flush_data,                \
-      const struct trace_start_##event_name *payload)                               \
+      struct tu_device *dev, uint64_t ts_ns, uint16_t tp_idx,                       \
+      const void *flush_data, const struct trace_start_##event_name *payload)       \
    {                                                                                \
       stage_start(                                                                  \
          dev, ts_ns, stage_id, NULL, payload, sizeof(*payload),                     \
@@ -451,8 +451,8 @@ tu_perfetto_submit(struct tu_device *dev,
    }                                                                                \
                                                                                     \
    void tu_perfetto_end_##event_name(                                               \
-      struct tu_device *dev, uint64_t ts_ns, const void *flush_data,                \
-      const struct trace_end_##event_name *payload)                                 \
+      struct tu_device *dev, uint64_t ts_ns, uint16_t tp_idx,                       \
+      const void *flush_data, const struct trace_end_##event_name *payload)         \
    {                                                                                \
       stage_end(                                                                    \
          dev, ts_ns, stage_id, flush_data, payload,                                 \
@@ -477,6 +477,7 @@ void
 tu_perfetto_start_cmd_buffer_annotation(
    struct tu_device *dev,
    uint64_t ts_ns,
+   uint16_t tp_idx,
    const void *flush_data,
    const struct trace_start_cmd_buffer_annotation *payload)
 {
@@ -489,6 +490,7 @@ void
 tu_perfetto_end_cmd_buffer_annotation(
    struct tu_device *dev,
    uint64_t ts_ns,
+   uint16_t tp_idx,
    const void *flush_data,
    const struct trace_end_cmd_buffer_annotation *payload)
 {
@@ -503,6 +505,7 @@ void
 tu_perfetto_start_cmd_buffer_annotation_rp(
    struct tu_device *dev,
    uint64_t ts_ns,
+   uint16_t tp_idx,
    const void *flush_data,
    const struct trace_start_cmd_buffer_annotation_rp *payload)
 {
@@ -515,6 +518,7 @@ void
 tu_perfetto_end_cmd_buffer_annotation_rp(
    struct tu_device *dev,
    uint64_t ts_ns,
+   uint16_t tp_idx,
    const void *flush_data,
    const struct trace_end_cmd_buffer_annotation_rp *payload)
 {
