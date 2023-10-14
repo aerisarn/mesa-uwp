@@ -819,15 +819,21 @@ nvk_image_plane_bind(struct nvk_device *dev,
    *offset_B = align64(*offset_B, (uint64_t)plane->nil.align_B);
 
    if (plane->vma_size_B) {
-      nouveau_ws_bo_bind_vma(dev->ws_dev,
-                             mem->bo,
-                             plane->addr,
-                             plane->vma_size_B,
-                             *offset_B,
-                             plane->nil.pte_kind);
+      if (mem != NULL) {
+         nouveau_ws_bo_bind_vma(dev->ws_dev,
+                                mem->bo,
+                                plane->addr,
+                                plane->vma_size_B,
+                                *offset_B,
+                                plane->nil.pte_kind);
+      } else {
+         nouveau_ws_bo_unbind_vma(dev->ws_dev,
+                                  plane->addr,
+                                  plane->vma_size_B);
+      }
    } else {
       assert(plane->nil.pte_kind == 0);
-      plane->addr = mem->bo->offset + *offset_B;
+      plane->addr = mem != NULL ? mem->bo->offset + *offset_B : 0;
    }
 
    *offset_B += plane->nil.size_B;
