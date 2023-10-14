@@ -1304,7 +1304,7 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
    STATIC_ASSERT(sizeof(shader->hdr) == sizeof(bin->info.hdr));
    memcpy(shader->hdr, bin->info.hdr, sizeof(bin->info.hdr));
 
-   /* TODO: Free the nak_shader_bin */
+   shader->nak = bin;
    shader->code_ptr = (void *)bin->code;
    shader->code_size = bin->code_size;
 
@@ -1472,5 +1472,9 @@ nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
                     shader->upload_addr,
                     shader->upload_size);
    }
+
+   if (shader->nak)
+      nak_shader_bin_destroy(shader->nak);
+
    free(shader->xfb);
 }

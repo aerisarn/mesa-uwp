@@ -11,6 +11,7 @@
 #include "nir.h"
 #include "nouveau_bo.h"
 
+struct nak_shader_bin;
 struct nvk_device;
 struct nvk_physical_device;
 struct nvk_pipeline_compilation_ctx;
@@ -39,6 +40,7 @@ struct nvk_transform_feedback_state {
 struct nvk_shader {
    gl_shader_stage stage;
 
+   struct nak_shader_bin *nak;
    uint8_t *code_ptr;
    uint32_t code_size;
 
