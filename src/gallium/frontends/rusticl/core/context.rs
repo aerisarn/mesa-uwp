@@ -15,6 +15,7 @@ use std::alloc::Layout;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::mem;
 use std::os::raw::c_void;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -203,11 +204,9 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        self.dtors
-            .lock()
-            .unwrap()
-            .drain(..)
-            .rev()
-            .for_each(|cb| cb.call(self));
+        let cbs = mem::take(self.dtors.get_mut().unwrap());
+        for cb in cbs.into_iter().rev() {
+            cb.call(self);
+        }
     }
 }
