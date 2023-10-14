@@ -17,7 +17,6 @@ macro_rules! cl_callback {
     ($cb:ident($fn_alias:ident) {
         $($p:ident : $ty:ty,)*
     }) => {
-        #[allow(dead_code)]
         pub type $fn_alias = unsafe extern "C" fn(
             $($p: $ty,)*
         );
