@@ -146,4 +146,7 @@ nvk_compile_nir(struct nvk_physical_device *dev, nir_shader *nir,
 
 VkResult
 nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);
+
+void
+nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader);
 #endif

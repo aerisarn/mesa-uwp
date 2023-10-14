@@ -1306,3 +1306,14 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
 
    return result;
 }
+
+void
+nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
+{
+   if (shader->upload_size > 0) {
+      nvk_heap_free(dev, &dev->shader_heap,
+                    shader->upload_addr,
+                    shader->upload_size);
+   }
+   free(shader->xfb);
+}
