@@ -24,9 +24,10 @@ macro_rules! cl_callback {
 
         // INVARIANT:
         // All safety requirements on `func` and `data` documented on `$cb::new` are invariants.
+        #[allow(dead_code)]
         pub struct $cb {
-            pub func: $fn_alias,
-            pub data: *mut c_void,
+            func: $fn_alias,
+            data: *mut c_void,
         }
 
         #[allow(dead_code)]
