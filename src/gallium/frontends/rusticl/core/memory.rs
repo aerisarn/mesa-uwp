@@ -1242,7 +1242,7 @@ impl Drop for Mem {
             .rev()
             .for_each(|cb| cb(cl));
 
-        for (d, tx) in self.maps.lock().unwrap().tx.drain() {
+        for (d, tx) in self.maps.get_mut().unwrap().tx.drain() {
             d.helper_ctx().unmap(tx.tx);
         }
     }
