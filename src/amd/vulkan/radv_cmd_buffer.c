@@ -6166,7 +6166,9 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    radv_emit_mip_change_flush_default(cmd_buffer);
 
-   if (cmd_buffer->qf == RADV_QUEUE_GENERAL || cmd_buffer->qf == RADV_QUEUE_COMPUTE) {
+   const bool is_gfx_or_ace = cmd_buffer->qf == RADV_QUEUE_GENERAL || cmd_buffer->qf == RADV_QUEUE_COMPUTE;
+
+   if (is_gfx_or_ace) {
       if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX6)
          cmd_buffer->state.flush_bits |=
             RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_WB_L2;
@@ -6189,14 +6191,16 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
        */
       if (cmd_buffer->gds_needed)
          cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH;
+   }
 
-      /* Finalize the internal compute command stream, if it exists. */
-      if (cmd_buffer->gang.cs) {
-         VkResult result = radv_gang_finalize(cmd_buffer);
-         if (result != VK_SUCCESS)
-            return vk_error(cmd_buffer, result);
-      }
+   /* Finalize the internal compute command stream, if it exists. */
+   if (cmd_buffer->gang.cs) {
+      VkResult result = radv_gang_finalize(cmd_buffer);
+      if (result != VK_SUCCESS)
+         return vk_error(cmd_buffer, result);
+   }
 
+   if (is_gfx_or_ace) {
       si_emit_cache_flush(cmd_buffer);
 
       /* Make sure CP DMA is idle at the end of IBs because the kernel

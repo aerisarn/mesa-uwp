@@ -53,12 +53,6 @@ radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *p
    }
 }
 
-static bool
-radv_cmd_buffer_has_follower(const struct radv_cmd_buffer *cmd_buffer)
-{
-   return cmd_buffer->gang.cs && cmd_buffer->task_rings_needed;
-}
-
 static VkResult
 radv_sparse_buffer_bind_memory(struct radv_device *device, const VkSparseBufferMemoryBindInfo *bind)
 {
@@ -1171,8 +1165,15 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
                       struct vk_command_buffer *const *cmd_buffers, uint32_t cmd_buffer_count, bool *use_perf_counters,
                       bool *has_follower)
 {
-   if (queue->qf != RADV_QUEUE_GENERAL && queue->qf != RADV_QUEUE_COMPUTE)
+   if (queue->qf != RADV_QUEUE_GENERAL && queue->qf != RADV_QUEUE_COMPUTE) {
+      for (uint32_t j = 0; j < cmd_buffer_count; j++) {
+         struct radv_cmd_buffer *cmd_buffer = container_of(cmd_buffers[j], struct radv_cmd_buffer, vk);
+
+         *has_follower |= !!cmd_buffer->gang.cs;
+      }
+
       return VK_SUCCESS;
+   }
 
    /* Figure out the needs of the current submission.
     * Start by copying the queue's current info.
@@ -1621,14 +1622,14 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
          const bool can_chain_next = !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
-         /* Follower needs to be first because the last CS must match the queue's IP type. */
-         if (radv_cmd_buffer_has_follower(cmd_buffer)) {
+         /* Follower needs to be before the gang leader because the last CS must match the queue's IP type. */
+         if (cmd_buffer->gang.cs) {
             queue->device->ws->cs_unchain(cmd_buffer->gang.cs);
             if (!chainable_ace || !queue->device->ws->cs_chain(chainable_ace, cmd_buffer->gang.cs, false)) {
                cs_array[num_submitted_cs++] = cmd_buffer->gang.cs;
-               /* Reset chaining for GFX when the cmdbuf has GFX+ACE because the follower CS (ACE)
-                * must always be before the leader CS (GFX). Otherwise, the GFX CS might be chained
-                * to previous one and ordering would be incorrect.
+
+               /* Prevent chaining the gang leader when the follower couldn't be chained.
+                * Otherwise, they would be in the wrong order.
                 */
                chainable = NULL;
             }
