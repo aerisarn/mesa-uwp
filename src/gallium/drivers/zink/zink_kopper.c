@@ -887,7 +887,10 @@ zink_kopper_present_readback(struct zink_context *ctx, struct zink_resource *res
       return false;
 
    zink_kopper_present_queue(screen, res);
+   simple_mtx_lock(&screen->queue_lock);
    error = VKSCR(QueueWaitIdle)(screen->queue);
+   simple_mtx_unlock(&screen->queue_lock);
+
    simple_mtx_lock(&screen->semaphores_lock);
    util_dynarray_append(&screen->semaphores, VkSemaphore, acquire);
    simple_mtx_unlock(&screen->semaphores_lock);
