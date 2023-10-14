@@ -568,6 +568,12 @@ perfetto_utils_hdr_template = """\
 #include "${header.hdr}"
 % endfor
 
+UNUSED static const char *${basename}_names[] = {
+% for trace_name, trace in TRACEPOINTS.items():
+   "${trace_name}",
+% endfor
+};
+
 % for trace_name, trace in TRACEPOINTS.items():
 static void UNUSED
 trace_payload_as_extra_${trace_name}(perfetto::protos::pbzero::GpuRenderStageEvent *event,
@@ -598,11 +604,12 @@ trace_payload_as_extra_${trace_name}(perfetto::protos::pbzero::GpuRenderStageEve
 #endif /* ${guard_name} */
 """
 
-def utrace_generate_perfetto_utils(hpath):
+def utrace_generate_perfetto_utils(hpath,basename="tracepoint"):
     if hpath is not None:
         hdr = os.path.basename(hpath)
         with open(hpath, 'wb') as f:
             f.write(Template(perfetto_utils_hdr_template, output_encoding='utf-8').render(
+                basename=basename,
                 hdrname=hdr.rstrip('.h').upper(),
                 HEADERS=[h for h in HEADERS if h.scope & HeaderScope.PERFETTO],
                 TRACEPOINTS=TRACEPOINTS))
