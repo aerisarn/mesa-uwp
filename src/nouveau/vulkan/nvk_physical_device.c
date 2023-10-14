@@ -665,6 +665,19 @@ nvk_physical_device_init_pipeline_cache(struct nvk_physical_device *pdev)
 #endif
 }
 
+static void
+nvk_physical_device_free_disk_cache(struct nvk_physical_device *pdev)
+{
+#ifdef ENABLE_SHADER_CACHE
+   if (pdev->vk.disk_cache) {
+      disk_cache_destroy(pdev->vk.disk_cache);
+      pdev->vk.disk_cache = NULL;
+   }
+#else
+   assert(pdev->vk.disk_cache == NULL);
+#endif
+}
+
 VkResult
 nvk_create_drm_physical_device(struct vk_instance *_instance,
                                drmDevicePtr drm_device,
@@ -851,6 +864,7 @@ nvk_physical_device_destroy(struct vk_physical_device *vk_pdev)
       container_of(vk_pdev, struct nvk_physical_device, vk);
 
    nvk_finish_wsi(pdev);
+   nvk_physical_device_free_disk_cache(pdev);
    vk_physical_device_finish(&pdev->vk);
    vk_free(&pdev->vk.instance->alloc, pdev);
 }
