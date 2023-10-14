@@ -1151,21 +1151,23 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
          .z_clip_range = nvk_cmd_buffer_3d_cls(cmd) >= VOLTA_A
                          ? ((z_clamp || z_clip)
                             ? Z_CLIP_RANGE_MIN_Z_MAX_Z
-                            :Z_CLIP_RANGE_MINUS_INF_PLUS_INF)
+                            : Z_CLIP_RANGE_MINUS_INF_PLUS_INF)
                          : Z_CLIP_RANGE_USE_FIELD_MIN_Z_ZERO_MAX_Z_ONE,
 
-         .pixel_min_z = z_clip ? PIXEL_MIN_Z_CLIP : PIXEL_MIN_Z_CLAMP,
-         .pixel_max_z = z_clip ? PIXEL_MAX_Z_CLIP : PIXEL_MAX_Z_CLAMP,
+         .pixel_min_z = PIXEL_MIN_Z_CLAMP,
+         .pixel_max_z = PIXEL_MAX_Z_CLAMP,
 
          .geometry_guardband = GEOMETRY_GUARDBAND_SCALE_256,
          .line_point_cull_guardband = LINE_POINT_CULL_GUARDBAND_SCALE_256,
          .geometry_clip = z_clip ? GEOMETRY_CLIP_FRUSTUM_XYZ_CLIP
                                  : GEOMETRY_CLIP_FRUSTUM_XY_CLIP,
 
-         /* TODO: I don't know why we need this.  It seems to be required for
-          * proper Z clipping but I don't know why.  Does the screen-space
-          * clip just not do Z?  Can it only do [0, 1] Z?  More investigation
-          * needed.
+         /* We clip depth with the geometry clipper to ensure that it gets
+          * clipped before depth bias is applied.  If we leave it up to the
+          * raserizer clipper (pixel_min/max_z = CLIP), it will clip according
+          * to the post-bias Z value which is wrong.  In order to always get
+          * the geometry clipper, we need to set a tignt guardband
+          * (geometry_guardband_z = SCALE_1).
           */
          .geometry_guardband_z = z_clip ? GEOMETRY_GUARDBAND_Z_SCALE_1
                                         : GEOMETRY_GUARDBAND_Z_SCALE_256,
