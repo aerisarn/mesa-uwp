@@ -21,8 +21,6 @@
 # [version, cle XML version]
 v3d_versions = [
   [21, 21],
-  [33, 33],
-  [41, 33],
   [42, 33],
   [71, 33]
 ]

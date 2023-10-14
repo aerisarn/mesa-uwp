@@ -28,7 +28,7 @@
 #define __gen_address_type uint32_t
 #define __gen_address_offset(reloc) (*reloc)
 #define __gen_emit_reloc(cl, reloc)
-#include "cle/v3d_packet_v41_pack.h"
+#include "cle/v3d_packet_v42_pack.h"
 
 static inline struct qinst *
 vir_TMU_WRITE(struct v3d_compile *c, enum v3d_qpu_waddr waddr, struct qreg val)
@@ -61,11 +61,11 @@ vir_WRTMUC(struct v3d_compile *c, enum quniform_contents contents, uint32_t data
         inst->uniform = vir_get_uniform_index(c, contents, data);
 }
 
-static const struct V3D41_TMU_CONFIG_PARAMETER_1 p1_unpacked_default = {
+static const struct V3D42_TMU_CONFIG_PARAMETER_1 p1_unpacked_default = {
         .per_pixel_mask_enable = true,
 };
 
-static const struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked_default = {
+static const struct V3D42_TMU_CONFIG_PARAMETER_2 p2_unpacked_default = {
         .op = V3D_TMU_OP_REGULAR,
 };
 
@@ -86,7 +86,7 @@ handle_tex_src(struct v3d_compile *c,
                nir_tex_instr *instr,
                unsigned src_idx,
                unsigned non_array_components,
-               struct V3D41_TMU_CONFIG_PARAMETER_2 *p2_unpacked,
+               struct V3D42_TMU_CONFIG_PARAMETER_2 *p2_unpacked,
                struct qreg *s_out,
                unsigned *tmu_writes)
 {
@@ -201,7 +201,7 @@ handle_tex_src(struct v3d_compile *c,
 static void
 vir_tex_handle_srcs(struct v3d_compile *c,
                     nir_tex_instr *instr,
-                    struct V3D41_TMU_CONFIG_PARAMETER_2 *p2_unpacked,
+                    struct V3D42_TMU_CONFIG_PARAMETER_2 *p2_unpacked,
                     struct qreg *s,
                     unsigned *tmu_writes)
 {
@@ -224,10 +224,8 @@ get_required_tex_tmu_writes(struct v3d_compile *c, nir_tex_instr *instr)
 }
 
 void
-v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
+v3d_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 {
-        assert(instr->op != nir_texop_lod || c->devinfo->ver >= 42);
-
         unsigned texture_idx = instr->texture_index;
 
         /* For instructions that don't have a sampler (i.e. txf) we bind
@@ -244,7 +242,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         bool output_type_32_bit =
                 c->key->sampler[sampler_idx].return_size == 32;
 
-        struct V3D41_TMU_CONFIG_PARAMETER_0 p0_unpacked = {
+        struct V3D42_TMU_CONFIG_PARAMETER_0 p0_unpacked = {
         };
 
         /* Limit the number of channels returned to both how many the NIR
@@ -275,7 +273,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         }
         assert(p0_unpacked.return_words_of_texture_data != 0);
 
-        struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked = {
+        struct V3D42_TMU_CONFIG_PARAMETER_2 p2_unpacked = {
                 .op = V3D_TMU_OP_REGULAR,
                 .gather_mode = instr->op == nir_texop_tg4,
                 .gather_component = instr->component,
@@ -304,12 +302,12 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         vir_tex_handle_srcs(c, instr, &p2_unpacked, &s, NULL);
 
         uint32_t p0_packed;
-        V3D41_TMU_CONFIG_PARAMETER_0_pack(NULL,
+        V3D42_TMU_CONFIG_PARAMETER_0_pack(NULL,
                                           (uint8_t *)&p0_packed,
                                           &p0_unpacked);
 
         uint32_t p2_packed;
-        V3D41_TMU_CONFIG_PARAMETER_2_pack(NULL,
+        V3D42_TMU_CONFIG_PARAMETER_2_pack(NULL,
                                           (uint8_t *)&p2_packed,
                                           &p2_unpacked);
 
@@ -339,7 +337,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 output_type_32_bit;
 
         if (non_default_p1_config) {
-                struct V3D41_TMU_CONFIG_PARAMETER_1 p1_unpacked = {
+                struct V3D42_TMU_CONFIG_PARAMETER_1 p1_unpacked = {
                         .output_type_32_bit = output_type_32_bit,
 
                         .unnormalized_coordinates = (instr->sampler_dim ==
@@ -356,7 +354,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                        p0_unpacked.return_words_of_texture_data < (1 << 2));
 
                 uint32_t p1_packed;
-                V3D41_TMU_CONFIG_PARAMETER_1_pack(NULL,
+                V3D42_TMU_CONFIG_PARAMETER_1_pack(NULL,
                                                   (uint8_t *)&p1_packed,
                                                   &p1_unpacked);
 
@@ -384,7 +382,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                  * address
                  */
                 uint32_t p1_packed_default;
-                V3D41_TMU_CONFIG_PARAMETER_1_pack(NULL,
+                V3D42_TMU_CONFIG_PARAMETER_1_pack(NULL,
                                                   (uint8_t *)&p1_packed_default,
                                                   &p1_unpacked_default);
                 vir_WRTMUC(c, QUNIFORM_CONSTANT, p1_packed_default);
@@ -412,7 +410,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 }
 
 static uint32_t
-v3d40_image_atomic_tmu_op(nir_intrinsic_instr *instr)
+v3d_image_atomic_tmu_op(nir_intrinsic_instr *instr)
 {
         nir_atomic_op atomic_op = nir_intrinsic_atomic_op(instr);
         switch (atomic_op) {
@@ -431,7 +429,7 @@ v3d40_image_atomic_tmu_op(nir_intrinsic_instr *instr)
 }
 
 static uint32_t
-v3d40_image_load_store_tmu_op(nir_intrinsic_instr *instr)
+v3d_image_load_store_tmu_op(nir_intrinsic_instr *instr)
 {
         switch (instr->intrinsic) {
         case nir_intrinsic_image_load:
@@ -440,7 +438,7 @@ v3d40_image_load_store_tmu_op(nir_intrinsic_instr *instr)
 
         case nir_intrinsic_image_atomic:
         case nir_intrinsic_image_atomic_swap:
-                return v3d40_image_atomic_tmu_op(instr);
+                return v3d_image_atomic_tmu_op(instr);
 
         default:
                 unreachable("unknown image intrinsic");
@@ -552,21 +550,21 @@ get_required_image_tmu_writes(struct v3d_compile *c,
 }
 
 void
-v3d40_vir_emit_image_load_store(struct v3d_compile *c,
-                                nir_intrinsic_instr *instr)
+v3d_vir_emit_image_load_store(struct v3d_compile *c,
+                              nir_intrinsic_instr *instr)
 {
         unsigned format = nir_intrinsic_format(instr);
         unsigned unit = nir_src_as_uint(instr->src[0]);
 
-        struct V3D41_TMU_CONFIG_PARAMETER_0 p0_unpacked = {
+        struct V3D42_TMU_CONFIG_PARAMETER_0 p0_unpacked = {
         };
 
-        struct V3D41_TMU_CONFIG_PARAMETER_1 p1_unpacked = {
+        struct V3D42_TMU_CONFIG_PARAMETER_1 p1_unpacked = {
                 .per_pixel_mask_enable = true,
                 .output_type_32_bit = v3d_gl_format_is_return_32(format),
         };
 
-        struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked = { 0 };
+        struct V3D42_TMU_CONFIG_PARAMETER_2 p2_unpacked = { 0 };
 
         /* Limit the number of channels returned to both how many the NIR
          * instruction writes and how many the instruction could produce.
@@ -578,7 +576,7 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
         p0_unpacked.return_words_of_texture_data =
                 (1 << instr_return_channels) - 1;
 
-        p2_unpacked.op = v3d40_image_load_store_tmu_op(instr);
+        p2_unpacked.op = v3d_image_load_store_tmu_op(instr);
 
         /* If we were able to replace atomic_add for an inc/dec, then we
          * need/can to do things slightly different, like not loading the
@@ -591,7 +589,7 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
                  p2_unpacked.op == V3D_TMU_OP_WRITE_OR_READ_DEC);
 
         uint32_t p0_packed;
-        V3D41_TMU_CONFIG_PARAMETER_0_pack(NULL,
+        V3D42_TMU_CONFIG_PARAMETER_0_pack(NULL,
                                           (uint8_t *)&p0_packed,
                                           &p0_unpacked);
 
@@ -602,12 +600,12 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
         p0_packed |= unit << 24;
 
         uint32_t p1_packed;
-        V3D41_TMU_CONFIG_PARAMETER_1_pack(NULL,
+        V3D42_TMU_CONFIG_PARAMETER_1_pack(NULL,
                                           (uint8_t *)&p1_packed,
                                           &p1_unpacked);
 
         uint32_t p2_packed;
-        V3D41_TMU_CONFIG_PARAMETER_2_pack(NULL,
+        V3D42_TMU_CONFIG_PARAMETER_2_pack(NULL,
                                           (uint8_t *)&p2_packed,
                                           &p2_unpacked);
 

@@ -29,7 +29,7 @@
 #include <xf86drm.h>
 #include "v3d_context.h"
 /* The OQ/semaphore packets are the same across V3D versions. */
-#define V3D_VERSION 33
+#define V3D_VERSION 42
 #include "broadcom/cle/v3dx_pack.h"
 #include "broadcom/common/v3d_macros.h"
 #include "util/hash_table.h"
@@ -547,7 +547,7 @@ v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job)
         /* On V3D 4.1, the tile alloc/state setup moved to register writes
          * instead of binner packets.
          */
-        if (devinfo->ver >= 41) {
+        if (devinfo->ver >= 42) {
                 v3d_job_add_bo(job, job->tile_alloc);
                 job->submit.qma = job->tile_alloc->offset;
                 job->submit.qms = job->tile_alloc->size;
