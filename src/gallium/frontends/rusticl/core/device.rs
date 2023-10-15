@@ -252,6 +252,16 @@ impl Device {
         for f in FORMATS {
             let mut fs = HashMap::new();
             for t in CL_IMAGE_TYPES {
+                // the CTS doesn't test them, so let's not advertize them by accident if they are
+                // broken
+                if t == CL_MEM_OBJECT_IMAGE1D_BUFFER
+                    && [CL_RGB, CL_RGBx].contains(&f.cl_image_format.image_channel_order)
+                    && ![CL_UNORM_SHORT_565, CL_UNORM_SHORT_555]
+                        .contains(&f.cl_image_format.image_channel_data_type)
+                {
+                    continue;
+                }
+
                 let mut flags: cl_uint = 0;
                 if self.screen.is_format_supported(
                     f.pipe,
