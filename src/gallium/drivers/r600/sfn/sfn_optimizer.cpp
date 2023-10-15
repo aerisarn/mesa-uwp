@@ -640,7 +640,8 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& value, Instr *instr)
 
          value.set_value(i, new_src[i]);
 
-         if (new_src[i]->pin() != pin_fully) {
+         if (new_src[i]->pin() != pin_fully &&
+             new_src[i]->pin() != pin_chgr) {
             if (new_src[i]->pin() == pin_chan)
                new_src[i]->set_pin(pin_chgr);
             else
