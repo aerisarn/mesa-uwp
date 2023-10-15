@@ -100,7 +100,7 @@ NineAdapter9_ctor( struct NineAdapter9 *This,
                               PIPE_SHADER_CAP_MAX_TEMPS) < 40 ||
         hal->get_shader_param(hal, PIPE_SHADER_FRAGMENT,
                               PIPE_SHADER_CAP_MAX_INPUTS) < 20) /* we don't pack inputs as much as we could */
-        ERR("Your card is at the limit of Gallium Nine requirements. Some games "
+        WARN_ONCE("Your card is at the limit of Gallium Nine requirements. Some games "
             "may run into issues because requirements are too tight\n");
     return D3D_OK;
 }
