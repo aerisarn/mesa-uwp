@@ -278,7 +278,8 @@ v3d_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 .gather_mode = instr->op == nir_texop_tg4,
                 .gather_component = instr->component,
                 .coefficient_mode = instr->op == nir_texop_txd,
-                .disable_autolod = instr->op == nir_texop_tg4
+                .disable_autolod = instr->op == nir_texop_tg4,
+                .lod_query = instr->op == nir_texop_lod,
         };
 
         const unsigned tmu_writes = get_required_tex_tmu_writes(c, instr);
@@ -310,13 +311,6 @@ v3d_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         V3D42_TMU_CONFIG_PARAMETER_2_pack(NULL,
                                           (uint8_t *)&p2_packed,
                                           &p2_unpacked);
-
-        /* We manually set the LOD Query bit (see
-         * V3D42_TMU_CONFIG_PARAMETER_2) as right now is the only V42 specific
-         * feature over V41 we are using
-         */
-        if (instr->op == nir_texop_lod)
-           p2_packed |= 1UL << 24;
 
         /* Load texture_idx number into the high bits of the texture address field,
          * which will be be used by the driver to decide which texture to put
