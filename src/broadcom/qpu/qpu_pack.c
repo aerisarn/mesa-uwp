@@ -1602,7 +1602,7 @@ v3d33_qpu_add_pack(const struct v3d_device_info *devinfo,
         if (!desc)
                 return false;
 
-        uint32_t opcode = opcode = desc->opcode_first;
+        uint32_t opcode = desc->opcode_first;
 
         /* If an operation doesn't use an arg, its mux values may be used to
          * identify the operation type.
@@ -1816,7 +1816,7 @@ v3d71_qpu_add_pack(const struct v3d_device_info *devinfo,
         if (!desc)
                 return false;
 
-        uint32_t opcode = opcode = desc->opcode_first;
+        uint32_t opcode = desc->opcode_first;
 
         /* If an operation doesn't use an arg, its raddr values may be used to
          * identify the operation type.
