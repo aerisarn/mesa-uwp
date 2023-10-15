@@ -4410,9 +4410,10 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    if (gl_shader_stage_is_compute(s->info.stage)) {
       if (s->info.cs.ptr_size == 32)
          model = SpvAddressingModelPhysical32;
-      else if (s->info.cs.ptr_size == 64)
+      else if (s->info.cs.ptr_size == 64) {
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityPhysicalStorageBufferAddresses);
          model = SpvAddressingModelPhysicalStorageBuffer64;
-      else
+      } else
          model = SpvAddressingModelLogical;
    }
 
