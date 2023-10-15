@@ -3235,6 +3235,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant:
       emit_load_global(ctx, intr);
       break;
 
