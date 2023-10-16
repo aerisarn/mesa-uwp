@@ -813,7 +813,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    if (!os_get_available_system_memory(&sysmem_size_B)) {
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                          "Failed to query available system memory");
-      goto fail_init;
+      goto fail_disk_cache;
    }
 
    if (pdev->info.vram_size_B) {
@@ -844,13 +844,14 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
    result = nvk_init_wsi(pdev);
    if (result != VK_SUCCESS)
-      goto fail_init;
+      goto fail_disk_cache;
 
    *pdev_out = &pdev->vk;
 
    return VK_SUCCESS;
 
-fail_init:
+fail_disk_cache:
+   nvk_physical_device_free_disk_cache(pdev);
    vk_physical_device_finish(&pdev->vk);
 fail_alloc:
    vk_free(&instance->vk.alloc, pdev);
