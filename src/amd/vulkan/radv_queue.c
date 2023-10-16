@@ -1285,7 +1285,7 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
     * in a multi-process environment, because task shader dispatches are not
     * meant to be executed on multiple compute engines at the same time.
     */
-   radv_cp_wait_mem(ace_pre_cs, WAIT_REG_MEM_GREATER_OR_EQUAL, ace_wait_va, 1, 0xffffffff);
+   radv_cp_wait_mem(ace_pre_cs, RADV_QUEUE_COMPUTE, WAIT_REG_MEM_GREATER_OR_EQUAL, ace_wait_va, 1, 0xffffffff);
    radeon_emit(ace_pre_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
    radeon_emit(ace_pre_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
    radeon_emit(ace_pre_cs, ace_wait_va);
@@ -1303,7 +1303,7 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
     * as soon as the gang leader is done, which may lead to bugs because the
     * same command buffers could be submitted again while still being executed.
     */
-   radv_cp_wait_mem(leader_post_cs, WAIT_REG_MEM_GREATER_OR_EQUAL, leader_wait_va, 1, 0xffffffff);
+   radv_cp_wait_mem(leader_post_cs, queue->state.qf, WAIT_REG_MEM_GREATER_OR_EQUAL, leader_wait_va, 1, 0xffffffff);
    radeon_emit(leader_post_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
    radeon_emit(leader_post_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
    radeon_emit(leader_post_cs, leader_wait_va);

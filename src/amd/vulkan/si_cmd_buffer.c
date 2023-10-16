@@ -1029,20 +1029,6 @@ si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_leve
    }
 }
 
-void
-radv_cp_wait_mem(struct radeon_cmdbuf *cs, uint32_t op, uint64_t va, uint32_t ref, uint32_t mask)
-{
-   assert(op == WAIT_REG_MEM_EQUAL || op == WAIT_REG_MEM_NOT_EQUAL || op == WAIT_REG_MEM_GREATER_OR_EQUAL);
-
-   radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, false));
-   radeon_emit(cs, op | WAIT_REG_MEM_MEM_SPACE(1));
-   radeon_emit(cs, va);
-   radeon_emit(cs, va >> 32);
-   radeon_emit(cs, ref);  /* reference value */
-   radeon_emit(cs, mask); /* mask */
-   radeon_emit(cs, 4);    /* poll interval */
-}
-
 static void
 si_emit_acquire_mem(struct radeon_cmdbuf *cs, bool is_mec, bool is_gfx9, unsigned cp_coher_cntl)
 {
@@ -1245,7 +1231,8 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level
                                        S_490_SEQ(gcr_seq),
                                     EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT, flush_va, *flush_cnt, gfx9_eop_bug_va);
 
-         radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, flush_va, *flush_cnt, 0xffffffff);
+         const enum radv_queue_family qf = is_mec ? RADV_QUEUE_COMPUTE : RADV_QUEUE_GENERAL;
+         radv_cp_wait_mem(cs, qf, WAIT_REG_MEM_EQUAL, flush_va, *flush_cnt, 0xffffffff);
       }
    }
 
@@ -1407,7 +1394,8 @@ si_cs_emit_cache_flush(struct radeon_winsys *ws, struct radeon_cmdbuf *cs, enum 
 
       si_cs_emit_write_event_eop(cs, gfx_level, false, cb_db_event, tc_flags, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT,
                                  flush_va, *flush_cnt, gfx9_eop_bug_va);
-      radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, flush_va, *flush_cnt, 0xffffffff);
+      const enum radv_queue_family qf = is_mec ? RADV_QUEUE_COMPUTE : RADV_QUEUE_GENERAL;
+      radv_cp_wait_mem(cs, qf, WAIT_REG_MEM_EQUAL, flush_va, *flush_cnt, 0xffffffff);
    }
 
    /* VGT state sync */

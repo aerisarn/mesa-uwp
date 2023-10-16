@@ -208,4 +208,20 @@ radeon_set_privileged_config_reg(struct radeon_cmdbuf *cs, unsigned reg, unsigne
    radeon_emit(cs, 0); /* unused */
 }
 
+ALWAYS_INLINE static void
+radv_cp_wait_mem(struct radeon_cmdbuf *cs, const enum radv_queue_family qf, const uint32_t op, const uint64_t va,
+                 const uint32_t ref, const uint32_t mask)
+{
+   assert(op == WAIT_REG_MEM_EQUAL || op == WAIT_REG_MEM_NOT_EQUAL || op == WAIT_REG_MEM_GREATER_OR_EQUAL);
+   assert(qf == RADV_QUEUE_GENERAL || qf == RADV_QUEUE_COMPUTE);
+
+   radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, false));
+   radeon_emit(cs, op | WAIT_REG_MEM_MEM_SPACE(1));
+   radeon_emit(cs, va);
+   radeon_emit(cs, va >> 32);
+   radeon_emit(cs, ref);  /* reference value */
+   radeon_emit(cs, mask); /* mask */
+   radeon_emit(cs, 4);    /* poll interval */
+}
+
 #endif /* RADV_CS_H */

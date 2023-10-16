@@ -656,8 +656,8 @@ radv_wait_gang_leader(struct radv_cmd_buffer *cmd_buffer)
    radeon_check_space(cmd_buffer->device->ws, ace_cs, 7);
 
    /* ACE waits for the semaphore which GFX wrote. */
-   radv_cp_wait_mem(ace_cs, WAIT_REG_MEM_GREATER_OR_EQUAL, cmd_buffer->gang.sem.va, cmd_buffer->gang.sem.leader_value,
-                    0xffffffff);
+   radv_cp_wait_mem(ace_cs, RADV_QUEUE_COMPUTE, WAIT_REG_MEM_GREATER_OR_EQUAL, cmd_buffer->gang.sem.va,
+                    cmd_buffer->gang.sem.leader_value, 0xffffffff);
 }
 
 static struct radeon_cmdbuf *
@@ -10688,7 +10688,7 @@ radv_CmdWaitEvents2(VkCommandBuffer commandBuffer, uint32_t eventCount, const Vk
 
       ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 7);
 
-      radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, va, 1, 0xffffffff);
+      radv_cp_wait_mem(cs, cmd_buffer->qf, WAIT_REG_MEM_EQUAL, va, 1, 0xffffffff);
       assert(cmd_buffer->cs->cdw <= cdw_max);
    }
 
