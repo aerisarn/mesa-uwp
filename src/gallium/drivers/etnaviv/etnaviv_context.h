@@ -201,6 +201,8 @@ struct etna_context {
 
    /* resources that must be flushed implicitly at the context flush time */
    struct set *flush_resources;
+   /* resources that need to be updated after a context flush */
+   struct set *updated_resources;
 
    bool is_noop;
 

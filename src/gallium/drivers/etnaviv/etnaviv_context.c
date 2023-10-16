@@ -109,6 +109,9 @@ etna_context_destroy(struct pipe_context *pctx)
    if (ctx->pending_resources)
       _mesa_hash_table_destroy(ctx->pending_resources, NULL);
 
+   if (ctx->updated_resources)
+      _mesa_set_destroy(ctx->updated_resources, NULL);
+
    if (ctx->flush_resources)
       _mesa_set_destroy(ctx->flush_resources, NULL);
 
@@ -534,6 +537,13 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
          pipe_resource_reference(&prsc, NULL);
       }
       _mesa_set_clear(ctx->flush_resources, NULL);
+
+      /* reset shared resources update tracking */
+      set_foreach(ctx->updated_resources, entry) {
+         struct pipe_resource *prsc = (struct pipe_resource *)entry->key;
+         pipe_resource_reference(&prsc, NULL);
+      }
+      _mesa_set_clear(ctx->updated_resources, NULL);
    }
 
    etna_cmd_stream_flush(ctx->stream, ctx->in_fence_fd,
@@ -623,6 +633,11 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->flush_resources = _mesa_set_create(NULL, _mesa_hash_pointer,
                                            _mesa_key_pointer_equal);
    if (!ctx->flush_resources)
+      goto fail;
+
+   ctx->updated_resources = _mesa_set_create(NULL, _mesa_hash_pointer,
+                                             _mesa_key_pointer_equal);
+   if (!ctx->updated_resources)
       goto fail;
 
    /* context ctxate setup */
