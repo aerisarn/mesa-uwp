@@ -995,8 +995,8 @@ v3dv_physical_device_init_disk_cache(struct v3dv_physical_device *device)
 
 static VkResult
 create_physical_device(struct v3dv_instance *instance,
-                       drmDevicePtr drm_render_device,
-                       drmDevicePtr drm_primary_device)
+                       drmDevicePtr gpu_device,
+                       drmDevicePtr display_device)
 {
    VkResult result = VK_SUCCESS;
    int32_t master_fd = -1;
@@ -1021,8 +1021,8 @@ create_physical_device(struct v3dv_instance *instance,
    if (result != VK_SUCCESS)
       goto fail;
 
-   assert(drm_render_device);
-   const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
+   assert(gpu_device);
+   const char *path = gpu_device->nodes[DRM_NODE_RENDER];
    render_fd = open(path, O_RDWR | O_CLOEXEC);
    if (render_fd < 0) {
       fprintf(stderr, "Opening %s failed: %s\n", path, strerror(errno));
@@ -1037,12 +1037,12 @@ create_physical_device(struct v3dv_instance *instance,
 
    const char *primary_path;
 #if !using_v3d_simulator
-   if (drm_primary_device)
-      primary_path = drm_primary_device->nodes[DRM_NODE_PRIMARY];
+   if (display_device)
+      primary_path = display_device->nodes[DRM_NODE_PRIMARY];
    else
       primary_path = NULL;
 #else
-   primary_path = drm_render_device->nodes[DRM_NODE_PRIMARY];
+   primary_path = gpu_device->nodes[DRM_NODE_PRIMARY];
 #endif
 
    struct stat primary_stat = {0}, render_stat = {0};
@@ -1069,14 +1069,14 @@ create_physical_device(struct v3dv_instance *instance,
    device->render_devid = render_stat.st_rdev;
 
 #if using_v3d_simulator
-   device->device_id = drm_render_device->deviceinfo.pci->device_id;
+   device->device_id = gpu_device->deviceinfo.pci->device_id;
 #endif
 
    if (instance->vk.enabled_extensions.KHR_display ||
        instance->vk.enabled_extensions.EXT_acquire_drm_display) {
 #if !using_v3d_simulator
       /* Open the primary node on the vc4 display device */
-      assert(drm_primary_device);
+      assert(display_device);
       master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
 #else
       /* There is only one device with primary and render nodes.
@@ -1240,14 +1240,13 @@ enumerate_devices(struct vk_instance *vk_instance)
             break;
       }
 #else
-      /* On actual hardware, we should have a render node (v3d)
-       * and a primary node (vc4). We will need to use the primary
-       * to allocate WSI buffers and share them with the render node
-       * via prime, but that is a privileged operation so we need the
-       * primary node to be authenticated, and for that we need the
-       * display server to provide the device fd (with DRI3), so we
-       * here we only check that the device is present but we don't
-       * try to open it.
+      /* On actual hardware, we should have a gpu device (v3d) and a display
+       * device (vc4). We will need to use the display device to allocate WSI
+       * buffers and share them with the render node via prime, but that is a
+       * privileged operation so we need t have an authenticated display fd
+       * and for that we need the display server to provide the it (with DRI3),
+       * so here we only check that the device is present but we don't try to
+       * open it.
        */
       if (devices[i]->bustype != DRM_BUS_PLATFORM)
          continue;
