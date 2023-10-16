@@ -268,6 +268,23 @@ vk_video_encode_h264_pps(StdVideoH264PictureParameterSet *pps,
 unsigned
 vk_video_get_h265_nal_unit(StdVideoH265PictureType pic_type, bool irap_pic_flag);
 
+void
+vk_video_encode_h265_vps(StdVideoH265VideoParameterSet *vps,
+                         size_t size_limit,
+                         size_t *data_size,
+                         void *data_ptr);
+void
+vk_video_encode_h265_sps(StdVideoH265SequenceParameterSet *sps,
+                         size_t size_limit,
+                         size_t* pDataSize,
+                         void* pData);
+
+void
+vk_video_encode_h265_pps(StdVideoH265PictureParameterSet *pps,
+                         size_t size_limit,
+                         size_t *data_size,
+                         void *data_ptr);
+
 #endif
 
 #ifdef __cplusplus
