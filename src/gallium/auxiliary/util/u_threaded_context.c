@@ -1483,8 +1483,10 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
    p->state.nr_cbufs = nr_cbufs;
 
    /* when unbinding, mark attachments as used for the current batch */
-   for (unsigned i = 0; i < tc->nr_cbufs; i++)
+   for (unsigned i = 0; i < tc->nr_cbufs; i++) {
       tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[i], false);
+      pipe_resource_reference(&tc->fb_resources[i], NULL);
+   }
    tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[PIPE_MAX_COLOR_BUFS], false);
    tc_set_resource_batch_usage_persistent(tc, tc->fb_resolve, false);
 
@@ -1492,12 +1494,11 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
       p->state.cbufs[i] = NULL;
       pipe_surface_reference(&p->state.cbufs[i], fb->cbufs[i]);
       /* full tracking requires storing the fb attachment resources */
-      tc->fb_resources[i] = fb->cbufs[i] ? fb->cbufs[i]->texture : NULL;
+      if (fb->cbufs[i])
+         pipe_resource_reference(&tc->fb_resources[i], fb->cbufs[i]->texture);
       tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[i], true);
    }
    tc->nr_cbufs = nr_cbufs;
-   memset(&tc->fb_resources[nr_cbufs], 0,
-            sizeof(void*) * (PIPE_MAX_COLOR_BUFS - nr_cbufs));
    if (tc->options.parse_renderpass_info) {
       /* ensure this is treated as the first fb set if no fb activity has occurred */
       if (!tc->renderpass_info_recording->has_draw &&
@@ -1530,8 +1531,9 @@ tc_set_framebuffer_state(struct pipe_context *_pipe,
       /* future fb state changes will increment the index */
       tc->seen_fb_state = true;
    }
-   tc->fb_resources[PIPE_MAX_COLOR_BUFS] = fb->zsbuf ? fb->zsbuf->texture : NULL;
-   tc->fb_resolve = fb->resolve;
+   pipe_resource_reference(&tc->fb_resources[PIPE_MAX_COLOR_BUFS],
+                           fb->zsbuf ? fb->zsbuf->texture : NULL);
+   pipe_resource_reference(&tc->fb_resolve, fb->resolve);
    tc_set_resource_batch_usage_persistent(tc, tc->fb_resources[PIPE_MAX_COLOR_BUFS], true);
    tc_set_resource_batch_usage_persistent(tc, tc->fb_resolve, true);
    tc->in_renderpass = false;
@@ -4943,6 +4945,10 @@ tc_destroy(struct pipe_context *_pipe)
          util_queue_fence_signal(&tc->buffer_lists[i].driver_flushed_fence);
       util_queue_fence_destroy(&tc->buffer_lists[i].driver_flushed_fence);
    }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(tc->fb_resources); i++)
+      pipe_resource_reference(&tc->fb_resources[i], NULL);
+   pipe_resource_reference(&tc->fb_resolve, NULL);
 
    FREE(tc);
 }
