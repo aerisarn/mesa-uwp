@@ -841,14 +841,12 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
 
          if (status != PIPE_NO_RESET) {
             /* We lost the aux_context, create a new one */
+            unsigned context_flags = saux->context_flags;
             struct u_log_context *aux_log = saux->log;
             saux->b.set_log_context(&saux->b, NULL);
             saux->b.destroy(&saux->b);
 
-            saux = (struct si_context *)si_create_context(
-               &sscreen->b, SI_CONTEXT_FLAG_AUX |
-                            (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
-                            (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
+            saux = (struct si_context *)si_create_context(&sscreen->b, context_flags);
             saux->b.set_log_context(&saux->b, aux_log);
 
             sscreen->aux_contexts[i].ctx = &saux->b;
@@ -1498,11 +1496,13 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    for (unsigned i = 0; i < ARRAY_SIZE(sscreen->aux_contexts); i++) {
       (void)mtx_init(&sscreen->aux_contexts[i].lock, mtx_plain | mtx_recursive);
 
+      bool compute = !sscreen->info.has_graphics ||
+                     &sscreen->aux_contexts[i] == &sscreen->aux_context.shader_upload;
       sscreen->aux_contexts[i].ctx =
          si_create_context(&sscreen->b,
                            SI_CONTEXT_FLAG_AUX | PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET |
                            (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
-                           (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
+                           (compute ? PIPE_CONTEXT_COMPUTE_ONLY : 0));
 
       if (sscreen->options.aux_debug) {
          struct u_log_context *log = CALLOC_STRUCT(u_log_context);
