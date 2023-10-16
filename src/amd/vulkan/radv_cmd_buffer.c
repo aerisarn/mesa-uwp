@@ -592,9 +592,12 @@ radv_gang_cache_flush(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->gang.flush_bits = 0;
 }
 
-static uint64_t
-radv_gang_sem_create(struct radv_cmd_buffer *cmd_buffer)
+static bool
+radv_gang_sem_init(struct radv_cmd_buffer *cmd_buffer)
 {
+   if (cmd_buffer->gang.sem.va)
+      return true;
+
    /* DWORD 0: GFX->ACE semaphore (GFX blocks ACE, ie. ACE waits for GFX)
     * DWORD 1: ACE->GFX semaphore
     */
@@ -602,10 +605,11 @@ radv_gang_sem_create(struct radv_cmd_buffer *cmd_buffer)
    uint32_t va_off = 0;
    if (!radv_cmd_buffer_upload_data(cmd_buffer, sizeof(uint64_t), &sem_init, &va_off)) {
       vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return 0;
+      return false;
    }
 
-   return radv_buffer_get_va(cmd_buffer->upload.upload_bo) + va_off;
+   cmd_buffer->gang.sem.va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + va_off;
+   return true;
 }
 
 static bool
@@ -617,14 +621,8 @@ radv_gang_leader_sem_dirty(const struct radv_cmd_buffer *cmd_buffer)
 ALWAYS_INLINE static bool
 radv_flush_gang_leader_semaphore(struct radv_cmd_buffer *cmd_buffer)
 {
-   if (!radv_gang_leader_sem_dirty(cmd_buffer))
+   if (!radv_gang_leader_sem_dirty(cmd_buffer) || !radv_gang_sem_init(cmd_buffer))
       return false;
-
-   if (!cmd_buffer->gang.sem.va) {
-      cmd_buffer->gang.sem.va = radv_gang_sem_create(cmd_buffer);
-      if (!cmd_buffer->gang.sem.va)
-         return false;
-   }
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 12);
 
@@ -651,18 +649,23 @@ radv_wait_gang_leader(struct radv_cmd_buffer *cmd_buffer)
                     cmd_buffer->gang.sem.leader_value, 0xffffffff);
 }
 
-static struct radeon_cmdbuf *
-radv_gang_create(struct radv_cmd_buffer *cmd_buffer)
+static bool
+radv_gang_init(struct radv_cmd_buffer *cmd_buffer)
 {
-   assert(!cmd_buffer->gang.cs);
+   if (cmd_buffer->gang.cs)
+      return true;
+
    struct radv_device *device = cmd_buffer->device;
    struct radeon_cmdbuf *ace_cs =
       device->ws->cs_create(device->ws, AMD_IP_COMPUTE, cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 
-   if (!ace_cs)
+   if (!ace_cs) {
       vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return false;
+   }
 
-   return ace_cs;
+   cmd_buffer->gang.cs = ace_cs;
+   return true;
 }
 
 static VkResult
@@ -6448,11 +6451,8 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 static void
 radv_bind_task_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *ts)
 {
-   if (!cmd_buffer->gang.cs) {
-      cmd_buffer->gang.cs = radv_gang_create(cmd_buffer);
-      if (!cmd_buffer->gang.cs)
-         return;
-   }
+   if (!radv_gang_init(cmd_buffer))
+      return;
 
    cmd_buffer->task_rings_needed = true;
 }
@@ -7481,11 +7481,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       }
 
       if (secondary->gang.cs) {
-         if (!primary->gang.cs) {
-            primary->gang.cs = radv_gang_create(primary);
-            if (!primary->gang.cs)
-               return;
-         }
+         if (!radv_gang_init(primary))
+            return;
 
          struct radeon_cmdbuf *ace_primary = primary->gang.cs;
          struct radeon_cmdbuf *ace_secondary = secondary->gang.cs;
