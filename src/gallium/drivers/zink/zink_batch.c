@@ -937,23 +937,29 @@ zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resourc
 {
    struct zink_batch_state *bs = batch->state;
 
+   simple_mtx_lock(&batch->ref_lock);
    /* swapchains are special */
    if (zink_is_swapchain(res)) {
       struct zink_resource_object **swapchains = bs->swapchain_obj.data;
       unsigned count = util_dynarray_num_elements(&bs->swapchain_obj, struct zink_resource_object*);
       for (unsigned i = 0; i < count; i++) {
-         if (swapchains[i] == res->obj)
+         if (swapchains[i] == res->obj) {
+            simple_mtx_unlock(&batch->ref_lock);
             return true;
+         }
       }
       util_dynarray_append(&bs->swapchain_obj, struct zink_resource_object*, res->obj);
+      simple_mtx_unlock(&batch->ref_lock);
       return false;
    }
    /* Fast exit for no-op calls.
     * This is very effective with suballocators and linear uploaders that
     * are outside of the winsys.
     */
-   if (res->obj == bs->last_added_obj)
+   if (res->obj == bs->last_added_obj) {
+      simple_mtx_unlock(&batch->ref_lock);
       return true;
+   }
 
    struct zink_bo *bo = res->obj->bo;
    struct zink_batch_obj_list *list;
@@ -967,8 +973,10 @@ zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resourc
       list = &bs->sparse_objs;
    }
    int idx = batch_find_resource(bs, res->obj, list);
-   if (idx >= 0)
+   if (idx >= 0) {
+      simple_mtx_unlock(&batch->ref_lock);
       return true;
+   }
 
    if (list->num_buffers >= list->max_buffers) {
       unsigned new_max = MAX2(list->max_buffers + 16, (unsigned)(list->max_buffers * 1.3));
@@ -993,6 +1001,7 @@ zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resourc
    }
    check_oom_flush(batch->state->ctx, batch);
    batch->has_work = true;
+   simple_mtx_unlock(&batch->ref_lock);
    return false;
 }
 
