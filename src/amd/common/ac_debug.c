@@ -774,6 +774,20 @@ void ac_parse_ib_chunk(FILE *f, uint32_t *ib_ptr, int num_dw, const int *trace_i
    }
 }
 
+static const char *ip_name(const enum amd_ip_type ip)
+{
+   switch (ip) {
+   case AMD_IP_GFX:
+      return "GFX";
+   case AMD_IP_COMPUTE:
+      return "COMPUTE";
+   case AMD_IP_SDMA:
+      return "SDMA";
+   default:
+      return "Unknown";
+   }
+}
+
 /**
  * Parse and print an IB into a file.
  *
@@ -794,12 +808,12 @@ void ac_parse_ib(FILE *f, uint32_t *ib, int num_dw, const int *trace_ids, unsign
                  const char *name, enum amd_gfx_level gfx_level, enum radeon_family family,
                  enum amd_ip_type ip_type, ac_debug_addr_callback addr_callback, void *addr_callback_data)
 {
-   fprintf(f, "------------------ %s begin ------------------\n", name);
+   fprintf(f, "------------------ %s begin - %s ------------------\n", name, ip_name(ip_type));
 
    ac_parse_ib_chunk(f, ib, num_dw, trace_ids, trace_id_count, gfx_level, family, ip_type,
                      addr_callback, addr_callback_data);
 
-   fprintf(f, "------------------- %s end -------------------\n\n", name);
+   fprintf(f, "------------------- %s end - %s -------------------\n\n", name, ip_name(ip_type));
 }
 
 /**
