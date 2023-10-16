@@ -882,11 +882,18 @@ zink_kopper_present_readback(struct zink_context *ctx, struct zink_resource *res
    si.waitSemaphoreCount = !!acquire;
    si.pWaitSemaphores = &acquire;
    si.pSignalSemaphores = &present;
+   simple_mtx_lock(&screen->queue_lock);
    VkResult error = VKSCR(QueueSubmit)(screen->queue, 1, &si, VK_NULL_HANDLE);
+   simple_mtx_unlock(&screen->queue_lock);
    if (!zink_screen_handle_vkresult(screen, error))
       return false;
 
    zink_kopper_present_queue(screen, res);
+   if (util_queue_is_initialized(&screen->flush_queue)) {
+      struct kopper_displaytarget *cdt = res->obj->dt;
+      util_queue_fence_wait(&cdt->swapchain->present_fence);
+   }
+
    simple_mtx_lock(&screen->queue_lock);
    error = VKSCR(QueueWaitIdle)(screen->queue);
    simple_mtx_unlock(&screen->queue_lock);
