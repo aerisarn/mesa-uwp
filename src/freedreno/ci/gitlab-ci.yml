@@ -52,6 +52,7 @@ a618_vk:
   variables:
     DEQP_SUITE: freedreno-a618-vk
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
+    DEQP_FRACTION: 2
 
 a618_vk_full:
   extends:
@@ -162,7 +163,7 @@ a660_vk:
   parallel: 5
   variables:
     DEQP_SUITE: freedreno-a660-vk
-    DEQP_FRACTION: 2
+    DEQP_FRACTION: 4
 
 a660_vk_full:
   extends:

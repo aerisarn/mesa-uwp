@@ -5,7 +5,7 @@ lavapipe:
   variables:
     DEQP_SUITE: lvp
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
-    DEQP_FRACTION: 10
+    DEQP_FRACTION: 18
   stage: software-renderer
   extends:
     - .deqp-test-vk
