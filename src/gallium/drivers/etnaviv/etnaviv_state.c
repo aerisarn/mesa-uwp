@@ -802,8 +802,9 @@ etna_record_flush_resources(struct etna_context *ctx)
 
    if (fb->nr_cbufs > 0) {
       struct etna_surface *surf = etna_surface(fb->cbufs[0]);
+      struct etna_resource *rsc = etna_resource(surf->prsc);
 
-      if (!etna_resource(surf->prsc)->explicit_flush)
+      if (rsc->shared && !rsc->explicit_flush)
          etna_context_add_flush_resource(ctx, surf->prsc);
    }
 
