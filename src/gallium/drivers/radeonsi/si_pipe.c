@@ -130,8 +130,12 @@ static const struct debug_named_value test_options[] = {
    DEBUG_NAMED_VALUE_END /* must be last */
 };
 
-bool si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler)
+struct ac_llvm_compiler *si_create_llvm_compiler(struct si_screen *sscreen)
 {
+   struct ac_llvm_compiler *compiler = CALLOC_STRUCT(ac_llvm_compiler);
+   if (!compiler)
+      return NULL;
+
    /* Only create the less-optimizing version of the compiler on APUs
     * predating Ryzen (Raven). */
    bool create_low_opt_compiler =
@@ -142,13 +146,13 @@ bool si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
       (create_low_opt_compiler ? AC_TM_CREATE_LOW_OPT : 0);
 
    if (!ac_init_llvm_compiler(compiler, sscreen->info.family, tm_options))
-      return false;
+      return NULL;
 
    compiler->passes = ac_create_llvm_passes(compiler->tm);
    if (compiler->low_opt_tm)
       compiler->low_opt_passes = ac_create_llvm_passes(compiler->low_opt_tm);
 
-   return true;
+   return compiler;
 }
 
 void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
@@ -166,9 +170,10 @@ void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
       ((struct si_context*)sscreen->async_compute_context)->cs_max_waves_per_sh = 2;
 }
 
-static void si_destroy_compiler(struct ac_llvm_compiler *compiler)
+static void si_destroy_llvm_compiler(struct ac_llvm_compiler *compiler)
 {
    ac_destroy_llvm_compiler(compiler);
+   FREE(compiler);
 }
 
 
@@ -341,10 +346,8 @@ static void si_destroy_context(struct pipe_context *context)
    si_resource_reference(&sctx->shadowing.registers, NULL);
    si_resource_reference(&sctx->shadowing.csa, NULL);
 
-   if (sctx->compiler) {
-      si_destroy_compiler(sctx->compiler);
-      FREE(sctx->compiler);
-   }
+   if (sctx->compiler)
+      si_destroy_llvm_compiler(sctx->compiler);
 
    si_saved_cs_reference(&sctx->current_saved_cs, NULL);
 
@@ -996,17 +999,13 @@ static void si_destroy_screen(struct pipe_screen *pscreen)
    glsl_type_singleton_decref();
 
    for (i = 0; i < ARRAY_SIZE(sscreen->compiler); i++) {
-      if (sscreen->compiler[i]) {
-         si_destroy_compiler(sscreen->compiler[i]);
-         FREE(sscreen->compiler[i]);
-      }
+      if (sscreen->compiler[i])
+         si_destroy_llvm_compiler(sscreen->compiler[i]);
    }
 
    for (i = 0; i < ARRAY_SIZE(sscreen->compiler_lowp); i++) {
-      if (sscreen->compiler_lowp[i]) {
-         si_destroy_compiler(sscreen->compiler_lowp[i]);
-         FREE(sscreen->compiler_lowp[i]);
-      }
+      if (sscreen->compiler_lowp[i])
+         si_destroy_llvm_compiler(sscreen->compiler_lowp[i]);
    }
 
    /* Free shader parts. */
@@ -1209,8 +1208,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    /* Initialize just one compiler instance to check for errors. The other compiler instances are
     * initialized on demand.
     */
-   sscreen->compiler[0] = CALLOC_STRUCT(ac_llvm_compiler);
-   if (!si_init_compiler(sscreen, sscreen->compiler[0])) {
+   sscreen->compiler[0] = si_create_llvm_compiler(sscreen);
+   if (!sscreen->compiler[0]) {
       /* The callee prints the error message. */
       FREE(sscreen->nir_options);
       FREE(sscreen);

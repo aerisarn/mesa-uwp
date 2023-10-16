@@ -2482,10 +2482,8 @@ static void si_build_shader_variant(struct si_shader *shader, int thread_index, 
       compiler = &shader->compiler_ctx_state.compiler;
    }
 
-   if (!*compiler) {
-      *compiler = CALLOC_STRUCT(ac_llvm_compiler);
-      si_init_compiler(sscreen, *compiler);
-   }
+   if (!*compiler)
+      *compiler = si_create_llvm_compiler(sscreen);
 
    if (unlikely(!si_create_shader_variant(sscreen, *compiler, shader, debug))) {
       PRINT_ERR("Failed to build shader variant (type=%u)\n", sel->stage);
@@ -2700,10 +2698,8 @@ current_not_ready:
 
    util_queue_fence_init(&shader->ready);
 
-   if (!sctx->compiler) {
-      sctx->compiler = CALLOC_STRUCT(ac_llvm_compiler);
-      si_init_compiler(sctx->screen, sctx->compiler);
-   }
+   if (!sctx->compiler)
+      sctx->compiler = si_create_llvm_compiler(sctx->screen);
 
    shader->selector = sel;
    *((SHADER_KEY_TYPE*)&shader->key) = *key;
@@ -2912,10 +2908,8 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
    assert(thread_index < (int)ARRAY_SIZE(sscreen->compiler));
    compiler = &sscreen->compiler[thread_index];
 
-   if (!*compiler) {
-      *compiler = CALLOC_STRUCT(ac_llvm_compiler);
-      si_init_compiler(sscreen, *compiler);
-   }
+   if (!*compiler)
+      *compiler = si_create_llvm_compiler(sscreen);
 
    /* Serialize NIR to save memory. Monolithic shader variants
     * have to deserialize NIR before compilation.

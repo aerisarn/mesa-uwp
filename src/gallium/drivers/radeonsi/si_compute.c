@@ -100,10 +100,8 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    assert(thread_index < ARRAY_SIZE(sscreen->compiler));
    compiler = &sscreen->compiler[thread_index];
 
-   if (!*compiler) {
-      *compiler = CALLOC_STRUCT(ac_llvm_compiler);
-      si_init_compiler(sscreen, *compiler);
-   }
+   if (!*compiler)
+      *compiler = si_create_llvm_compiler(sscreen);
 
    assert(program->ir_type == PIPE_SHADER_IR_NIR);
    si_nir_scan_shader(sscreen, sel->nir, &sel->info);
