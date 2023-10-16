@@ -103,7 +103,8 @@ loader_open_device(const char *device_name)
    return fd;
 }
 
-static char *loader_get_kernel_driver_name(int fd)
+char *
+loader_get_kernel_driver_name(int fd)
 {
    char *driver;
    drmVersionPtr version = drmGetVersion(fd);
