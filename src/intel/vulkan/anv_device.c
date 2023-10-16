@@ -240,6 +240,8 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_format_feature_flags2             = true,
       .KHR_fragment_shading_rate             = device->info.ver >= 11,
       .KHR_get_memory_requirements2          = true,
+      .KHR_global_priority                   = device->max_context_priority >=
+                                               VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
       .KHR_image_format_list                 = true,
       .KHR_imageless_framebuffer             = true,
 #ifdef ANV_USE_WSI_PLATFORM
