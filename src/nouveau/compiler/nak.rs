@@ -267,7 +267,7 @@ pub extern "C" fn nak_compile_shader(
         eprintln!("NAK IR after assign_regs:\n{}", &s);
     }
 
-    s.lower_vec_split();
+    s.lower_ineg();
     s.lower_par_copies();
     s.lower_copy_swap();
     s.calc_instr_deps();

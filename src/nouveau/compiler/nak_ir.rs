@@ -4993,7 +4993,7 @@ impl Shader {
         }
     }
 
-    pub fn lower_vec_split(&mut self) {
+    pub fn lower_ineg(&mut self) {
         self.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
                 Op::INeg(neg) => MappedInstrs::One(Instr::new_boxed(OpIAdd3 {
