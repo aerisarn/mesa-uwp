@@ -1151,6 +1151,11 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
                 device->gfx_dirty_state);
    }
 
+   /**
+    * Put potential workarounds here if you need to reemit an instruction
+    * because of another one is changing.
+    */
+
    /* Since Wa_16011773973 will disable 3DSTATE_STREAMOUT, we need to reemit
     * it after.
     */
@@ -1160,6 +1165,17 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
       BITSET_SET(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
    }
 
+   /* Gfx11 undocumented issue :
+    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/9781
+    */
+#if GFX_VER == 11
+   if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_WM))
+      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_MULTISAMPLE);
+#endif
+
+   /**
+    * State emission
+    */
    if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_URB))
       anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.urb);
 
