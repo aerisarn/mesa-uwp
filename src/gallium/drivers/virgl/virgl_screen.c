@@ -98,7 +98,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
       FALLTHROUGH;
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
       return vscreen->caps.caps.v1.bset.mirror_clamp &&
-             (vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_HOST_IS_GLES);
+             !(vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_HOST_IS_GLES);
    case PIPE_CAP_TEXTURE_SWIZZLE:
       return 1;
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
