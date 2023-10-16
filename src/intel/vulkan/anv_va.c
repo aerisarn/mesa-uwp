@@ -62,6 +62,7 @@ anv_device_print_vas(struct anv_physical_device *device)
    PRINT_HEAP(indirect_push_descriptor_pool);
    PRINT_HEAP(instruction_state_pool);
    PRINT_HEAP(high_heap);
+   PRINT_HEAP(trtt);
 }
 
 void
@@ -153,12 +154,36 @@ anv_physical_device_init_va_ranges(struct anv_physical_device *device)
    address = align64(address, _4Gb);
    address = va_add(&device->va.instruction_state_pool, address, 2 * _1Gb);
 
-   /* Leave the last 4GiB out of the high vma range, so that no state
-    * base address + size can overflow 48 bits. For more information see
+   /* What's left to do for us is to set va.high_heap and va.trtt without
+    * overlap, but there are a few things to be considered:
+    *
+    * The TR-TT address space is governed by the GFX_TRTT_VA_RANGE register,
+    * which carves out part of the address space for TR-TT and is independent
+    * of device->gtt_size. We use 47:44 for gen9+, the values we set here
+    * should be in sync with what we write to the register.
+    *
+    * If we ever gain the capability to use more than 48 bits of address space
+    * we'll have to adjust where we put the TR-TT space (and how we set
+    * GFX_TRTT_VA_RANGE).
+    *
+    * We have to leave the last 4GiB out of the high vma range, so that no
+    * state base address + size can overflow 48 bits. For more information see
     * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
+    *
+    * Despite the comment above, before we had TR-TT we were not only avoiding
+    * the last 4GiB of the 48bit address space, but also avoiding the last
+    * 4GiB from gtt_size, so let's be on the safe side and do the 4GiB
+    * avoiding for both the TR-TT space top and the gtt top.
     */
-   uint64_t user_heaps_size = device->gtt_size - address - 4 * _1Gb;
+   assert(device->gtt_size <= (1uLL << 48));
+   uint64_t trtt_start = 0xFuLL << 44;
+   uint64_t trtt_end = (1uLL << 48) - 4 * _1Gb;
+   uint64_t addressable_top = MIN2(device->gtt_size, trtt_start) - 4 * _1Gb;
+
+   uint64_t user_heaps_size = addressable_top - address;
    address = va_add(&device->va.high_heap, address, user_heaps_size);
+   assert(address <= trtt_start);
+   address = va_add(&device->va.trtt, trtt_start, trtt_end - trtt_start);
 
    if (INTEL_DEBUG(DEBUG_HEAPS))
       anv_device_print_vas(device);

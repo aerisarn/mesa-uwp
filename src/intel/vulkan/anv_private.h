@@ -400,6 +400,12 @@ enum anv_bo_alloc_flags {
 
    /** For descriptor pools */
    ANV_BO_ALLOC_DESCRIPTOR_POOL = (1 << 13),
+
+   /** For buffers that will be bound using TR-TT.
+    *
+    * Not for buffers used as the TR-TT page tables.
+    */
+   ANV_BO_ALLOC_TRTT = (1 << 14),
 };
 
 struct anv_bo {
@@ -1009,6 +1015,7 @@ struct anv_physical_device {
         * Client heap
         */
        struct anv_va_range                      high_heap;
+       struct anv_va_range                      trtt;
     } va;
 
     /* Either we have a single vram region and it's all mappable, or we have
@@ -1552,6 +1559,7 @@ struct anv_device {
     struct util_vma_heap                        vma_lo;
     struct util_vma_heap                        vma_hi;
     struct util_vma_heap                        vma_desc;
+    struct util_vma_heap                        vma_trtt;
 
     /** List of all anv_device_memory objects */
     struct list_head                            memory_objects;

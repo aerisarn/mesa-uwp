@@ -3212,6 +3212,10 @@ VkResult anv_CreateDevice(
                          device->physical->va.direct_descriptor_pool.size);
    }
 
+   util_vma_heap_init(&device->vma_trtt,
+                      device->physical->va.trtt.addr,
+                      device->physical->va.trtt.size);
+
    list_inithead(&device->memory_objects);
    list_inithead(&device->image_private_objects);
 
@@ -3666,6 +3670,7 @@ VkResult anv_CreateDevice(
  fail_mutex:
    pthread_mutex_destroy(&device->mutex);
  fail_vmas:
+   util_vma_heap_finish(&device->vma_trtt);
    util_vma_heap_finish(&device->vma_desc);
    util_vma_heap_finish(&device->vma_hi);
    util_vma_heap_finish(&device->vma_lo);
@@ -3777,6 +3782,7 @@ void anv_DestroyDevice(
 
    anv_bo_cache_finish(&device->bo_cache);
 
+   util_vma_heap_finish(&device->vma_trtt);
    util_vma_heap_finish(&device->vma_desc);
    util_vma_heap_finish(&device->vma_hi);
    util_vma_heap_finish(&device->vma_lo);
@@ -3835,6 +3841,9 @@ static struct util_vma_heap *
 anv_vma_heap_for_flags(struct anv_device *device,
                        enum anv_bo_alloc_flags alloc_flags)
 {
+   if (alloc_flags & ANV_BO_ALLOC_TRTT)
+      return &device->vma_trtt;
+
    if (alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS)
       return &device->vma_lo;
 
@@ -3857,7 +3866,8 @@ anv_vma_alloc(struct anv_device *device,
    *out_vma_heap = anv_vma_heap_for_flags(device, alloc_flags);
 
    if (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) {
-      assert(*out_vma_heap == &device->vma_hi);
+      assert(*out_vma_heap == &device->vma_hi ||
+             *out_vma_heap == &device->vma_trtt);
 
       if (client_address) {
          if (util_vma_heap_alloc_addr(*out_vma_heap,
@@ -3891,7 +3901,8 @@ anv_vma_free(struct anv_device *device,
 {
    assert(vma_heap == &device->vma_lo ||
           vma_heap == &device->vma_hi ||
-          vma_heap == &device->vma_desc);
+          vma_heap == &device->vma_desc ||
+          vma_heap == &device->vma_trtt);
 
    const uint64_t addr_48b = intel_48b_address(address);
 
