@@ -81,13 +81,6 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
       if (ctx->streamout.begin_emitted) {
          si_emit_streamout_end(ctx);
          ctx->streamout.suspended = true;
-
-         /* Since NGG streamout uses GDS, we need to make GDS
-          * idle when we leave the IB, otherwise another process
-          * might overwrite it while our shaders are busy.
-          */
-         if (ctx->gfx_level >= GFX11)
-            wait_flags |= SI_CONTEXT_VS_PARTIAL_FLUSH;
       }
    }
 
