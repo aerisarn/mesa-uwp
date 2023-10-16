@@ -59,6 +59,7 @@ using namespace brw;
 static bool debug = false;
 
 class instruction_scheduler;
+struct schedule_node_child;
 
 class schedule_node : public exec_node
 {
@@ -67,11 +68,10 @@ public:
    void set_latency_gfx7(const struct brw_isa_info *isa);
 
    backend_instruction *inst;
-   schedule_node **children;
-   int *child_latency;
-   int child_count;
+   schedule_node_child *children;
+   int children_count;
+   int children_cap;
    int parent_count;
-   int child_array_size;
    int unblocked_time;
    int latency;
 
@@ -103,6 +103,11 @@ public:
     * cycles to dispatch and SIMD16 (compressed) instructions take 4.
     */
    int issue_time;
+};
+
+struct schedule_node_child {
+   schedule_node *n;
+   int effective_latency;
 };
 
 /**
@@ -1017,12 +1022,12 @@ void
 instruction_scheduler::compute_delays()
 {
    for (schedule_node *n = current.end - 1; n >= current.start; n--) {
-      if (!n->child_count) {
+      if (!n->children_count) {
          n->delay = n->issue_time;
       } else {
-         for (int i = 0; i < n->child_count; i++) {
-            assert(n->children[i]->delay);
-            n->delay = MAX2(n->delay, n->latency + n->children[i]->delay);
+         for (int i = 0; i < n->children_count; i++) {
+            assert(n->children[i].n->delay);
+            n->delay = MAX2(n->delay, n->latency + n->children[i].n->delay);
          }
       }
    }
@@ -1036,10 +1041,11 @@ instruction_scheduler::compute_exits()
     * from the top instead of from the bottom of the block.
     */
    for (schedule_node *n = current.start; n < current.end; n++) {
-      for (int i = 0; i < n->child_count; i++) {
-         n->children[i]->unblocked_time =
-            MAX2(n->children[i]->unblocked_time,
-                 n->unblocked_time + n->issue_time + n->child_latency[i]);
+      for (int i = 0; i < n->children_count; i++) {
+         schedule_node_child *child = &n->children[i];
+         child->n->unblocked_time =
+            MAX2(child->n->unblocked_time,
+                 n->unblocked_time + n->issue_time + child->effective_latency);
       }
    }
 
@@ -1051,9 +1057,9 @@ instruction_scheduler::compute_exits()
    for (schedule_node *n = current.end - 1; n >= current.start; n--) {
       n->exit = (n->inst->opcode == BRW_OPCODE_HALT ? n : NULL);
 
-      for (int i = 0; i < n->child_count; i++) {
-         if (exit_unblocked_time(n->children[i]) < exit_unblocked_time(n))
-            n->exit = n->children[i]->exit;
+      for (int i = 0; i < n->children_count; i++) {
+         if (exit_unblocked_time(n->children[i].n) < exit_unblocked_time(n))
+            n->exit = n->children[i].n->exit;
       }
    }
 }
@@ -1073,29 +1079,29 @@ instruction_scheduler::add_dep(schedule_node *before, schedule_node *after,
 
    assert(before != after);
 
-   for (int i = 0; i < before->child_count; i++) {
-      if (before->children[i] == after) {
-         before->child_latency[i] = MAX2(before->child_latency[i], latency);
+   for (int i = 0; i < before->children_count; i++) {
+      schedule_node_child *child = &before->children[i];
+      if (child->n == after) {
+         child->effective_latency = MAX2(child->effective_latency, latency);
          return;
       }
    }
 
-   if (before->child_array_size <= before->child_count) {
-      if (before->child_array_size < 16)
-         before->child_array_size = 16;
+   if (before->children_cap <= before->children_count) {
+      if (before->children_cap < 16)
+         before->children_cap = 16;
       else
-         before->child_array_size *= 2;
+         before->children_cap *= 2;
 
       before->children = reralloc(mem_ctx, before->children,
-                                  schedule_node *,
-                                  before->child_array_size);
-      before->child_latency = reralloc(mem_ctx, before->child_latency,
-                                       int, before->child_array_size);
+                                  schedule_node_child,
+                                  before->children_cap);
    }
 
-   before->children[before->child_count] = after;
-   before->child_latency[before->child_count] = latency;
-   before->child_count++;
+   schedule_node_child *child = &before->children[before->children_count];
+   child->n = after;
+   child->effective_latency = latency;
+   before->children_count++;
    after->parent_count++;
 }
 
@@ -1859,24 +1865,24 @@ instruction_scheduler::update_children(schedule_node *chosen)
     * be scheduled.  Update the children's unblocked time for this
     * DAG edge as we do so.
     */
-   for (int i = chosen->child_count - 1; i >= 0; i--) {
-      schedule_node *child = chosen->children[i];
+   for (int i = chosen->children_count - 1; i >= 0; i--) {
+      schedule_node_child *child = &chosen->children[i];
 
-      child->unblocked_time = MAX2(child->unblocked_time,
-                                   current.time + chosen->child_latency[i]);
+      child->n->unblocked_time = MAX2(child->n->unblocked_time,
+                                      current.time + child->effective_latency);
 
       if (debug) {
-         fprintf(stderr, "\tchild %d, %d parents: ", i, child->parent_count);
-         bs->dump_instruction(child->inst);
+         fprintf(stderr, "\tchild %d, %d parents: ", i, child->n->parent_count);
+         bs->dump_instruction(child->n->inst);
       }
 
-      child->cand_generation = current.cand_generation;
-      child->parent_count--;
-      if (child->parent_count == 0) {
+      child->n->cand_generation = current.cand_generation;
+      child->n->parent_count--;
+      if (child->n->parent_count == 0) {
          if (debug) {
             fprintf(stderr, "\t\tnow available\n");
          }
-         current.available.push_head(child);
+         current.available.push_head(child->n);
       }
    }
    current.cand_generation++;
