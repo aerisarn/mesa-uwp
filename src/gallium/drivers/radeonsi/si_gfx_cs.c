@@ -204,28 +204,6 @@ static void si_begin_gfx_cs_debug(struct si_context *ctx)
 
 static void si_add_gds_to_buffer_list(struct si_context *sctx)
 {
-   if (sctx->screen->gds_oa)
-      sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->screen->gds_oa, RADEON_USAGE_READWRITE, 0);
-}
-
-void si_allocate_gds(struct si_context *sctx)
-{
-   struct radeon_winsys *ws = sctx->ws;
-
-   assert(sctx->gfx_level >= GFX11);
-
-   if (sctx->screen->gds_oa)
-      return;
-
-   /* Gfx11 only uses GDS OA, not GDS memory. */
-   simple_mtx_lock(&sctx->screen->gds_mutex);
-   if (!sctx->screen->gds_oa) {
-      sctx->screen->gds_oa = ws->buffer_create(ws, 1, 1, RADEON_DOMAIN_OA, RADEON_FLAG_DRIVER_INTERNAL);
-      assert(sctx->screen->gds_oa);
-   }
-   simple_mtx_unlock(&sctx->screen->gds_mutex);
-
-   si_add_gds_to_buffer_list(sctx);
 }
 
 void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
@@ -381,7 +359,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (ctx->is_debug)
       si_begin_gfx_cs_debug(ctx);
 
-   si_add_gds_to_buffer_list(ctx);
+   if (ctx->screen->gds_oa)
+      ctx->ws->cs_add_buffer(&ctx->gfx_cs, ctx->screen->gds_oa, RADEON_USAGE_READWRITE, 0);
 
    /* Always invalidate caches at the beginning of IBs, because external
     * users (e.g. BO evictions and SDMA/UVD/VCE IBs) can modify our

@@ -3251,8 +3251,21 @@ static void si_update_streamout_state(struct si_context *sctx)
    sctx->streamout.stride_in_dw = shader_with_so->info.base.xfb_stride;
 
    /* GDS must be allocated when any GDS instructions are used, otherwise it hangs. */
-   if (sctx->gfx_level >= GFX11 && shader_with_so->info.enabled_streamout_buffer_mask)
-      si_allocate_gds(sctx);
+   if (sctx->gfx_level >= GFX11 && shader_with_so->info.enabled_streamout_buffer_mask &&
+       !sctx->screen->gds_oa) {
+      /* Gfx11 only uses GDS OA, not GDS memory. */
+      simple_mtx_lock(&sctx->screen->gds_mutex);
+      if (!sctx->screen->gds_oa) {
+         sctx->screen->gds_oa = sctx->ws->buffer_create(sctx->ws, 1, 1, RADEON_DOMAIN_OA,
+                                                        RADEON_FLAG_DRIVER_INTERNAL);
+         assert(sctx->screen->gds_oa);
+      }
+      simple_mtx_unlock(&sctx->screen->gds_mutex);
+
+      if (sctx->screen->gds_oa)
+         sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->screen->gds_oa, RADEON_USAGE_READWRITE,
+                                 (enum radeon_bo_domain)0);
+   }
 }
 
 static void si_update_clip_regs(struct si_context *sctx, struct si_shader_selector *old_hw_vs,
