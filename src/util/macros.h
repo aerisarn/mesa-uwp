@@ -388,7 +388,7 @@ do {                       \
 #define BITFIELD_BIT(b)      (1u << (b))
 /** Set all bits up to excluding bit b */
 #define BITFIELD_MASK(b)      \
-   ((b) == 32 ? (~0u) : BITFIELD_BIT((b) % 32) - 1)
+   ((b) == 32 ? (~0u) : BITFIELD_BIT((b) & 31) - 1)
 /** Set count bits starting from bit b  */
 #define BITFIELD_RANGE(b, count) \
    (BITFIELD_MASK((b) + (count)) & ~BITFIELD_MASK(b))
@@ -397,7 +397,7 @@ do {                       \
 #define BITFIELD64_BIT(b)      (1ull << (b))
 /** Set all bits up to excluding bit b */
 #define BITFIELD64_MASK(b)      \
-   ((b) == 64 ? (~0ull) : BITFIELD64_BIT(b) - 1)
+   ((b) == 64 ? (~0ull) : BITFIELD64_BIT((b) & 63) - 1)
 /** Set count bits starting from bit b  */
 #define BITFIELD64_RANGE(b, count) \
    (BITFIELD64_MASK((b) + (count)) & ~BITFIELD64_MASK(b))
