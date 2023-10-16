@@ -3777,8 +3777,10 @@ zink_flush(struct pipe_context *pctx,
       p_atomic_inc(&screen->renderdoc_frame);
 #endif
       if (ctx->needs_present && ctx->needs_present->obj->image &&
-          zink_is_swapchain(ctx->needs_present))
+          zink_is_swapchain(ctx->needs_present)) {
+         zink_kopper_readback_update(ctx, ctx->needs_present);
          screen->image_barrier(ctx, ctx->needs_present, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+      }
       ctx->needs_present = NULL;
    }
 
@@ -4062,6 +4064,7 @@ zink_flush_resource(struct pipe_context *pctx,
    if (res->obj->dt) {
       if (zink_kopper_acquired(res->obj->dt, res->obj->dt_idx)) {
          zink_batch_no_rp_safe(ctx);
+         zink_kopper_readback_update(ctx, res);
          zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
          zink_batch_reference_resource_rw(&ctx->batch, res, true);
       } else {
@@ -4447,6 +4450,7 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
                        unsigned src_level, const struct pipe_box *src_box, enum pipe_map_flags map_flags)
 {
    struct zink_resource *img = dst->base.b.target == PIPE_BUFFER ? src : dst;
+   struct zink_resource *use_img = img;
    struct zink_resource *buf = dst->base.b.target == PIPE_BUFFER ? dst : src;
    struct zink_batch *batch = &ctx->batch;
    bool needs_present_readback = false;
@@ -4466,8 +4470,8 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
       zink_screen(ctx->base.screen)->buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
       if (zink_is_swapchain(img))
-         needs_present_readback = zink_kopper_acquire_readback(ctx, img);
-      zink_screen(ctx->base.screen)->image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
+         needs_present_readback = zink_kopper_acquire_readback(ctx, img, &use_img);
+      zink_screen(ctx->base.screen)->image_barrier(ctx, use_img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
       zink_resource_buffer_transfer_dst_barrier(ctx, buf, dstx, src_box->width);
    }
 
@@ -4513,8 +4517,8 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    /* never promote to unordered if swapchain was acquired */
    VkCommandBuffer cmdbuf = needs_present_readback ?
                             ctx->batch.state->cmdbuf :
-                            buf2img ? zink_get_cmdbuf(ctx, buf, img) : zink_get_cmdbuf(ctx, img, buf);
-   zink_batch_reference_resource_rw(batch, img, buf2img);
+                            buf2img ? zink_get_cmdbuf(ctx, buf, use_img) : zink_get_cmdbuf(ctx, use_img, buf);
+   zink_batch_reference_resource_rw(batch, use_img, buf2img);
    zink_batch_reference_resource_rw(batch, buf, !buf2img);
 
    /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
@@ -4563,14 +4567,14 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
                                                    region.imageExtent.width,
                                                    region.imageExtent.height,
                                                    MAX2(region.imageSubresource.layerCount, region.imageExtent.depth));
-         VKCTX(CmdCopyBufferToImage)(cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
+         VKCTX(CmdCopyBufferToImage)(cmdbuf, buf->obj->buffer, use_img->obj->image, use_img->layout, 1, &region);
       } else {
          marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "copy_image2buffer(%s, %dx%dx%d)",
                                                    util_format_short_name(src->base.b.format),
                                                    region.imageExtent.width,
                                                    region.imageExtent.height,
                                                    MAX2(region.imageSubresource.layerCount, region.imageExtent.depth));
-         VKCTX(CmdCopyImageToBuffer)(cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
+         VKCTX(CmdCopyImageToBuffer)(cmdbuf, use_img->obj->image, use_img->layout, buf->obj->buffer, 1, &region);
       }
       zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
    }
