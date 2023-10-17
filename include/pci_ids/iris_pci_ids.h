@@ -253,7 +253,7 @@ CHIPSET(0x56c0, atsm_g10, "ATS-M", "Intel(R) Data Center GPU Flex Series 170 Gra
 CHIPSET(0x56c1, atsm_g11, "ATS-M", "Intel(R) Data Center GPU Flex Series 140 Graphics")
 
 CHIPSET(0x7d40, mtl_u, "MTL", "Intel(R) Graphics")
-CHIPSET(0x7d45, mtl_p, "MTL", "Intel(R) Graphics")
-CHIPSET(0x7d55, mtl_p, "MTL", "Intel(R) Arc(tm) Graphics")
+CHIPSET(0x7d45, mtl_h, "MTL", "Intel(R) Graphics")
+CHIPSET(0x7d55, mtl_h, "MTL", "Intel(R) Arc(tm) Graphics")
 CHIPSET(0x7d60, mtl_u, "MTL", "Intel(R) Graphics")
-CHIPSET(0x7dd5, mtl_p, "MTL", "Intel(R) Graphics")
+CHIPSET(0x7dd5, mtl_h, "MTL", "Intel(R) Graphics")

@@ -1147,9 +1147,9 @@ static const struct intel_device_info intel_device_info_mtl_u = {
    .platform = INTEL_PLATFORM_MTL_U,
 };
 
-static const struct intel_device_info intel_device_info_mtl_p = {
+static const struct intel_device_info intel_device_info_mtl_h = {
    MTL_FEATURES,
-   .platform = INTEL_PLATFORM_MTL_P,
+   .platform = INTEL_PLATFORM_MTL_H,
 };
 
 void
