@@ -50,22 +50,17 @@ sparse_debug(const char *format, ...)
 
 static void
 dump_anv_vm_bind(struct anv_device *device,
-                 struct anv_sparse_binding_data *sparse,
                  const struct anv_vm_bind *bind)
 {
-   if (!INTEL_DEBUG(DEBUG_SPARSE))
-      return;
-
   sparse_debug("[%s] ", bind->op == ANV_VM_BIND ? " bind " : "unbind");
 
    if (bind->bo)
       sparse_debug("bo:%04u ", bind->bo->gem_handle);
    else
       sparse_debug("bo:---- ");
-   sparse_debug("res_offset:%08"PRIx64" size:%08"PRIx64" "
-                "mem_offset:%08"PRIx64" addr:%016"PRIx64"\n",
-                bind->address - sparse->address, bind->size,
-                bind->bo_offset, bind->address);
+   sparse_debug("address:%016"PRIx64" size:%08"PRIx64" "
+                "mem_offset:%08"PRIx64"\n",
+                bind->address, bind->size, bind->bo_offset);
 }
 
 static void
@@ -564,12 +559,11 @@ anv_sparse_bind_vm_bind(struct anv_device *device, int num_binds,
 
 static VkResult
 anv_sparse_bind(struct anv_device *device,
-                struct anv_sparse_binding_data *sparse,
                 int num_binds, struct anv_vm_bind *binds)
 {
    if (INTEL_DEBUG(DEBUG_SPARSE)) {
       for (int b = 0; b < num_binds; b++)
-         dump_anv_vm_bind(device, sparse, &binds[b]);
+         dump_anv_vm_bind(device, &binds[b]);
    }
 
    return device->physical->sparse_uses_trtt ?
@@ -607,7 +601,7 @@ anv_init_sparse_bindings(struct anv_device *device,
       .op = ANV_VM_BIND,
    };
 
-   VkResult res = anv_sparse_bind(device, sparse, 1, &bind);
+   VkResult res = anv_sparse_bind(device, 1, &bind);
    if (res != VK_SUCCESS) {
       anv_vma_free(device, sparse->vma_heap, sparse->address, sparse->size);
       return res;
@@ -633,7 +627,7 @@ anv_free_sparse_bindings(struct anv_device *device,
       .size = sparse->size,
       .op = ANV_VM_UNBIND,
    };
-   VkResult res = anv_sparse_bind(device, sparse, 1, &unbind);
+   VkResult res = anv_sparse_bind(device, 1, &unbind);
    if (res != VK_SUCCESS)
       return res;
 
@@ -878,7 +872,7 @@ anv_sparse_bind_resource_memory(struct anv_device *device,
 {
    struct anv_vm_bind bind = vk_bind_to_anv_vm_bind(sparse, vk_bind);
 
-   return anv_sparse_bind(device, sparse, 1, &bind);
+   return anv_sparse_bind(device, 1, &bind);
 }
 
 VkResult
@@ -1020,7 +1014,7 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
       }
    }
 
-   ret = anv_sparse_bind(device, sparse_data, num_binds, binds);
+   ret = anv_sparse_bind(device, num_binds, binds);
 
    STACK_ARRAY_FINISH(binds);
 
