@@ -90,7 +90,6 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    { "noefc", DBG(NO_EFC), "Disable hardware based encoder colour format conversion."},
 
    /* 3D engine options: */
-   {"nogfx", DBG(NO_GFX), "Disable graphics. Only multimedia compute paths can be used."},
    {"nongg", DBG(NO_NGG), "Disable NGG and use the legacy pipeline."},
    {"nggc", DBG(ALWAYS_NGG_CULLING_ALL), "Always use NGG culling even when it can hurt."},
    {"nonggc", DBG(NO_NGG_CULLING), "Disable NGG culling."},
@@ -1223,9 +1222,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       FREE(sscreen);
       return NULL;
    }
-
-   if (sscreen->debug_flags & DBG(NO_GFX))
-      sscreen->info.has_graphics = false;
 
    if ((sscreen->debug_flags & DBG(TMZ)) &&
        !sscreen->info.has_tmz_support) {

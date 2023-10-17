@@ -1482,8 +1482,6 @@ RadeonSI driver environment variables
       Check VM faults and dump debug info.
    ``reserve_vmid``
       Force VMID reservation per context.
-   ``nogfx``
-      Disable graphics. Only multimedia compute paths can be used.
    ``nongg``
       Disable NGG and use the legacy pipeline.
    ``nggc``

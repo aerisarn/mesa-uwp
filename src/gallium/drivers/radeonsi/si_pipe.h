@@ -229,7 +229,6 @@ enum
    DBG_NO_EFC,
 
    /* 3D engine options: */
-   DBG_NO_GFX,
    DBG_NO_NGG,
    DBG_ALWAYS_NGG_CULLING_ALL,
    DBG_NO_NGG_CULLING,
