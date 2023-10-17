@@ -96,6 +96,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
 #endif
       .KHR_uniform_buffer_standard_layout = true,
       .KHR_variable_pointers = true,
+      .KHR_workgroup_memory_explicit_layout = true,
       .EXT_4444_formats = true,
       .EXT_border_color_swizzle = true,
       .EXT_buffer_device_address = true,
@@ -251,6 +252,12 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* VK_KHR_shader_clock */
       .shaderSubgroupClock = true,
       .shaderDeviceClock = true,
+
+      /* VK_KHR_workgroup_memory_explicit_layout */
+      .workgroupMemoryExplicitLayout = true,
+      .workgroupMemoryExplicitLayoutScalarBlockLayout = true,
+      .workgroupMemoryExplicitLayout8BitAccess = false,
+      .workgroupMemoryExplicitLayout16BitAccess = false,
 
       /* VK_EXT_4444_formats */
       .formatA4R4G4B4 = true,
