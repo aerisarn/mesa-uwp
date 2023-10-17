@@ -1460,6 +1460,22 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
       }
    }
 
+   for (uint32_t i = 0; i < submit->image_bind_count; i++) {
+      VkSparseImageMemoryBindInfo *bind_info = &submit->image_binds[i];
+      ANV_FROM_HANDLE(anv_image, image, bind_info->image);
+
+      assert(anv_image_is_sparse(image));
+      assert(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
+
+      for (uint32_t j = 0; j < bind_info->bindCount; j++) {
+         result = anv_sparse_bind_image_memory(queue, image,
+                                               &bind_info->pBinds[j],
+                                               &sparse_submit);
+         if (result != VK_SUCCESS)
+            goto out_free_submit;
+      }
+   }
+
    for (uint32_t i = 0; i < submit->image_opaque_bind_count; i++) {
       VkSparseImageOpaqueMemoryBindInfo *bind_info =
          &submit->image_opaque_binds[i];
@@ -1474,22 +1490,6 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
          result = anv_sparse_bind_resource_memory(device, sparse_data,
                                                   &bind_info->pBinds[j],
                                                   &sparse_submit);
-         if (result != VK_SUCCESS)
-            goto out_free_submit;
-      }
-   }
-
-   for (uint32_t i = 0; i < submit->image_bind_count; i++) {
-      VkSparseImageMemoryBindInfo *bind_info = &submit->image_binds[i];
-      ANV_FROM_HANDLE(anv_image, image, bind_info->image);
-
-      assert(anv_image_is_sparse(image));
-      assert(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
-
-      for (uint32_t j = 0; j < bind_info->bindCount; j++) {
-         result = anv_sparse_bind_image_memory(queue, image,
-                                               &bind_info->pBinds[j],
-                                               &sparse_submit);
          if (result != VK_SUCCESS)
             goto out_free_submit;
       }
