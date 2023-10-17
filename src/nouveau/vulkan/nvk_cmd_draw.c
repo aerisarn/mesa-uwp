@@ -1137,7 +1137,7 @@ vk_to_nv9097_provoking_vertex(VkProvokingVertexModeEXT vk_mode)
 static void
 nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 36);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 38);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
@@ -1217,6 +1217,20 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
+      switch (dyn->rs.depth_bias.representation) {
+      case VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT:
+         P_IMMD(p, NV9097, SET_DEPTH_BIAS_CONTROL,
+                DEPTH_FORMAT_DEPENDENT_TRUE);
+         break;
+      case VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT:
+         P_IMMD(p, NV9097, SET_DEPTH_BIAS_CONTROL,
+                DEPTH_FORMAT_DEPENDENT_FALSE);
+         break;
+      case VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT:
+      default:
+         unreachable("Unsupported depth bias representation");
+      }
+      /* TODO: The blob multiplies by 2 for some reason. We don't. */
       P_IMMD(p, NV9097, SET_DEPTH_BIAS, fui(dyn->rs.depth_bias.constant));
       P_IMMD(p, NV9097, SET_SLOPE_SCALE_DEPTH_BIAS, fui(dyn->rs.depth_bias.slope));
       P_IMMD(p, NV9097, SET_DEPTH_BIAS_CLAMP, fui(dyn->rs.depth_bias.clamp));
