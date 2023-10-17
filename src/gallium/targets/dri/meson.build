@@ -49,7 +49,7 @@ libgallium_dri = shared_library(
   link_depends : gallium_dri_link_depends,
   link_with : [
     libdri, libmesa, libgalliumvl,
-    libgallium, libglapi, libpipe_loader_static, libws_null, libwsw, libswdri,
+    libgallium, libglapi, libloader, libpipe_loader_static, libws_null, libwsw, libswdri,
     libswkmsdri,
   ],
   dependencies : [
