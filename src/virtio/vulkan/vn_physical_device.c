@@ -925,10 +925,12 @@ vn_physical_device_get_native_extensions(
 {
    memset(exts, 0, sizeof(*exts));
 
-   if (physical_dev->renderer_sync_fd.fence_exportable)
+   if (physical_dev->instance->renderer->info.has_external_sync &&
+       physical_dev->renderer_sync_fd.fence_exportable)
       exts->KHR_external_fence_fd = true;
 
-   if (physical_dev->renderer_sync_fd.semaphore_importable &&
+   if (physical_dev->instance->renderer->info.has_external_sync &&
+       physical_dev->renderer_sync_fd.semaphore_importable &&
        physical_dev->renderer_sync_fd.semaphore_exportable)
       exts->KHR_external_semaphore_fd = true;
 
