@@ -5,7 +5,7 @@
 
 extern crate nak_ir_proc;
 
-use crate::bitview::{BitMutView};
+use crate::bitview::BitMutView;
 pub use crate::nak_builder::{
     Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
 };
@@ -1101,7 +1101,7 @@ impl Src {
             SrcRef::Zero | SrcRef::Imm32(0) => match self.src_mod {
                 SrcMod::FNeg | SrcMod::FNegAbs => true,
                 _ => false,
-            }
+            },
             SrcRef::Imm32(0x80000000) => {
                 src_type == SrcType::F32 && self.src_mod.is_none()
             }
