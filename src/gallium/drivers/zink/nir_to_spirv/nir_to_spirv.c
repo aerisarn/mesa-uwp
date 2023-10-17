@@ -699,6 +699,12 @@ create_shared_block(struct ntv_context *ctx, unsigned bit_size)
       assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
       ctx->entry_ifaces[ctx->num_entry_ifaces++] = ctx->shared_block_var[idx];
    }
+   /* Alias our shared memory blocks */
+   if (ctx->sinfo->have_workgroup_memory_explicit_layout) {
+      spirv_builder_emit_member_offset(&ctx->builder, block, 0, 0);
+      spirv_builder_emit_decoration(&ctx->builder, block, SpvDecorationBlock);
+      spirv_builder_emit_decoration(&ctx->builder, ctx->shared_block_var[idx], SpvDecorationAliased);
+   }
 }
 
 static SpvId
