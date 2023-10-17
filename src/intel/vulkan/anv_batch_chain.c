@@ -1433,6 +1433,12 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
               submit->wait_count, submit->signal_count);
    }
 
+   struct anv_sparse_submission sparse_submit = {
+      .binds = NULL,
+      .binds_len = 0,
+      .binds_capacity = 0,
+   };
+
    /* TODO: make both the syncs and signals be passed as part of the vm_bind
     * ioctl so they can be waited asynchronously. For now this doesn't matter
     * as we're doing synchronous vm_bind, but later when we make it async this
@@ -1443,7 +1449,6 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
    if (result != VK_SUCCESS)
       return vk_queue_set_lost(&queue->vk, "vk_sync_wait failed");
 
-   /* Do the binds */
    for (uint32_t i = 0; i < submit->buffer_bind_count; i++) {
       VkSparseBufferMemoryBindInfo *bind_info = &submit->buffer_binds[i];
       ANV_FROM_HANDLE(anv_buffer, buffer, bind_info->buffer);
@@ -1453,9 +1458,10 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
       for (uint32_t j = 0; j < bind_info->bindCount; j++) {
          result = anv_sparse_bind_resource_memory(device,
                                                   &buffer->sparse_data,
-                                                  &bind_info->pBinds[j]);
+                                                  &bind_info->pBinds[j],
+                                                  &sparse_submit);
          if (result != VK_SUCCESS)
-            return result;
+            goto out_free_submit;
       }
    }
 
@@ -1471,9 +1477,10 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
 
       for (uint32_t j = 0; j < bind_info->bindCount; j++) {
          result = anv_sparse_bind_resource_memory(device, sparse_data,
-                                                  &bind_info->pBinds[j]);
+                                                  &bind_info->pBinds[j],
+                                                  &sparse_submit);
          if (result != VK_SUCCESS)
-            return result;
+            goto out_free_submit;
       }
    }
 
@@ -1486,20 +1493,29 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
 
       for (uint32_t j = 0; j < bind_info->bindCount; j++) {
          result = anv_sparse_bind_image_memory(queue, image,
-                                               &bind_info->pBinds[j]);
+                                               &bind_info->pBinds[j],
+                                               &sparse_submit);
          if (result != VK_SUCCESS)
-            return result;
+            goto out_free_submit;
       }
    }
+
+   result = anv_sparse_bind(device, &sparse_submit);
+   if (result != VK_SUCCESS)
+      goto out_free_submit;
 
    for (uint32_t i = 0; i < submit->signal_count; i++) {
       struct vk_sync_signal *s = &submit->signals[i];
       result = vk_sync_signal(&device->vk, s->sync, s->signal_value);
-      if (result != VK_SUCCESS)
-         return vk_queue_set_lost(&queue->vk, "vk_sync_signal failed");
+      if (result != VK_SUCCESS) {
+         result = vk_queue_set_lost(&queue->vk, "vk_sync_signal failed");
+         goto out_free_submit;
+      }
    }
 
-   return VK_SUCCESS;
+out_free_submit:
+   vk_free(&device->vk.alloc, sparse_submit.binds);
+   return result;
 }
 
 static VkResult

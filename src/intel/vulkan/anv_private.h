@@ -711,6 +711,12 @@ struct anv_state_stream {
    struct util_dynarray all_blocks;
 };
 
+struct anv_sparse_submission {
+   struct anv_vm_bind *binds;
+   int binds_len;
+   int binds_capacity;
+};
+
 struct anv_trtt_bind {
    uint64_t pte_addr;
    uint64_t entry_addr;
@@ -2794,10 +2800,14 @@ VkResult anv_free_sparse_bindings(struct anv_device *device,
                                   struct anv_sparse_binding_data *sparse);
 VkResult anv_sparse_bind_resource_memory(struct anv_device *device,
                                          struct anv_sparse_binding_data *data,
-                                         const VkSparseMemoryBind *bind_);
+                                         const VkSparseMemoryBind *bind_,
+                                         struct anv_sparse_submission *submit);
 VkResult anv_sparse_bind_image_memory(struct anv_queue *queue,
                                       struct anv_image *image,
-                                      const VkSparseImageMemoryBind *bind);
+                                      const VkSparseImageMemoryBind *bind,
+                                      struct anv_sparse_submission *submit);
+VkResult anv_sparse_bind(struct anv_device *device,
+                         struct anv_sparse_submission *sparse_submit);
 
 VkSparseImageFormatProperties
 anv_sparse_calc_image_format_properties(struct anv_physical_device *pdevice,

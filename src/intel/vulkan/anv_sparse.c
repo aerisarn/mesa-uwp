@@ -271,6 +271,49 @@ anv_sparse_get_standard_image_block_shape(enum isl_format format,
    return vk_extent3d_el_to_px(block_shape, layout);
 }
 
+/* Adds "bind_op" to the list in "submit", while also trying to check if we
+ * can just extend the last operation instead.
+ */
+static VkResult
+anv_sparse_submission_add(struct anv_device *device,
+                          struct anv_sparse_submission *submit,
+                          struct anv_vm_bind *bind_op)
+{
+   struct anv_vm_bind *prev_bind = submit->binds_len == 0 ? NULL :
+                                    &submit->binds[submit->binds_len - 1];
+
+   if (prev_bind &&
+       bind_op->op == prev_bind->op &&
+       bind_op->bo == prev_bind->bo &&
+       bind_op->address == prev_bind->address + prev_bind->size &&
+       (bind_op->bo_offset == prev_bind->bo_offset + prev_bind->size ||
+        prev_bind->bo == NULL)) {
+      prev_bind->size += bind_op->size;
+      return VK_SUCCESS;
+   }
+
+   if (submit->binds_len < submit->binds_capacity) {
+      submit->binds[submit->binds_len++] = *bind_op;
+      return VK_SUCCESS;
+   }
+
+   int new_capacity = MAX2(32, submit->binds_capacity * 2);
+   struct anv_vm_bind *new_binds =
+      vk_realloc(&device->vk.alloc, submit->binds,
+                 new_capacity * sizeof(*new_binds), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!new_binds)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   new_binds[submit->binds_len] = *bind_op;
+
+   submit->binds = new_binds;
+   submit->binds_len++;
+   submit->binds_capacity = new_capacity;
+
+   return VK_SUCCESS;
+}
+
 /* We really want to try to have all the page tables on as few BOs as possible
  * to benefit from cache locality and to keep the i915.ko relocation lists
  * small. On the other hand, we don't want to waste memory on unused space.
@@ -472,8 +515,8 @@ anv_trtt_bind_add(struct anv_device *device,
 }
 
 static VkResult
-anv_sparse_bind_trtt(struct anv_device *device, int num_vm_binds,
-                     struct anv_vm_bind *vm_binds)
+anv_sparse_bind_trtt(struct anv_device *device,
+                     struct anv_sparse_submission *sparse_submit)
 {
    struct anv_trtt *trtt = &device->trtt;
    VkResult result;
@@ -487,15 +530,15 @@ anv_sparse_bind_trtt(struct anv_device *device, int num_vm_binds,
     */
    int l3l2_binds_capacity = 1;
    int l1_binds_capacity = 0;
-   for (int b = 0; b < num_vm_binds; b++) {
-      int pages = vm_binds[b].size / (64 * 1024);
+   for (int b = 0; b < sparse_submit->binds_len; b++) {
+      int pages = sparse_submit->binds[b].size / (64 * 1024);
       l1_binds_capacity += pages;
       l3l2_binds_capacity += (pages / 1024 + 1) * 2;
    }
 
    STACK_ARRAY(struct anv_trtt_bind, l3l2_binds, l3l2_binds_capacity);
    STACK_ARRAY(struct anv_trtt_bind, l1_binds, l1_binds_capacity);
-   struct anv_trtt_submission s = {
+   struct anv_trtt_submission trtt_submit = {
       .queue = trtt->queue,
       .l3l2_binds = l3l2_binds,
       .l1_binds = l1_binds,
@@ -506,32 +549,35 @@ anv_sparse_bind_trtt(struct anv_device *device, int num_vm_binds,
    pthread_mutex_lock(&trtt->mutex);
 
    if (!trtt->l3_addr)
-      anv_trtt_init_context_state(s.queue);
+      anv_trtt_init_context_state(trtt_submit.queue);
 
    assert(trtt->l3_addr);
 
-   for (int b = 0; b < num_vm_binds; b++) {
-      for (size_t i = 0; i < vm_binds[b].size; i += 64 * 1024) {
-         uint64_t trtt_addr = vm_binds[b].address + i;
+   for (int b = 0; b < sparse_submit->binds_len; b++) {
+      struct anv_vm_bind *vm_bind = &sparse_submit->binds[b];
+      for (size_t i = 0; i < vm_bind->size; i += 64 * 1024) {
+         uint64_t trtt_addr = vm_bind->address + i;
          uint64_t dest_addr =
-            (vm_binds[b].op == ANV_VM_BIND && vm_binds[b].bo) ?
-               vm_binds[b].bo->offset + vm_binds[b].bo_offset + i :
+            (vm_bind->op == ANV_VM_BIND && vm_bind->bo) ?
+               vm_bind->bo->offset + vm_bind->bo_offset + i :
                ANV_TRTT_L1_NULL_TILE_VAL;
 
-         result = anv_trtt_bind_add(device, trtt_addr, dest_addr, &s);
+         result = anv_trtt_bind_add(device, trtt_addr, dest_addr,
+                                    &trtt_submit);
          if (result != VK_SUCCESS)
             goto out;
       }
    }
 
-   assert(s.l3l2_binds_len <= l3l2_binds_capacity);
-   assert(s.l1_binds_len <= l1_binds_capacity);
+   assert(trtt_submit.l3l2_binds_len <= l3l2_binds_capacity);
+   assert(trtt_submit.l1_binds_len <= l1_binds_capacity);
 
    sparse_debug("trtt_binds: num_vm_binds:%02d l3l2:%04d l1:%04d\n",
-                num_vm_binds, s.l3l2_binds_len, s.l1_binds_len);
+                sparse_submit->binds_len, trtt_submit.l3l2_binds_len,
+                trtt_submit.l1_binds_len);
 
-   if (s.l3l2_binds_len || s.l1_binds_len)
-      result = anv_genX(device->info, write_trtt_entries)(&s);
+   if (trtt_submit.l3l2_binds_len || trtt_submit.l1_binds_len)
+      result = anv_genX(device->info, write_trtt_entries)(&trtt_submit);
 
 out:
    pthread_mutex_unlock(&trtt->mutex);
@@ -541,34 +587,34 @@ out:
 }
 
 static VkResult
-anv_sparse_bind_vm_bind(struct anv_device *device, int num_binds,
-                        struct anv_vm_bind *binds)
+anv_sparse_bind_vm_bind(struct anv_device *device,
+                        struct anv_sparse_submission *submit)
 {
    /* FIXME: here we were supposed to issue a single vm_bind ioctl by calling
     * vm_bind(device, num_binds, binds), but for an unknown reason some
     * shader-related tests fail when we do that, so work around it for now.
     * See: https://gitlab.freedesktop.org/drm/xe/kernel/-/issues/746
     */
-   for (int b = 0; b < num_binds; b++) {
-      int rc = device->kmd_backend->vm_bind(device, 1, &binds[b]);
+   for (int b = 0; b < submit->binds_len; b++) {
+      int rc = device->kmd_backend->vm_bind(device, 1, &submit->binds[b]);
       if (rc)
          return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
    return VK_SUCCESS;
 }
 
-static VkResult
+VkResult
 anv_sparse_bind(struct anv_device *device,
-                int num_binds, struct anv_vm_bind *binds)
+                struct anv_sparse_submission *submit)
 {
    if (INTEL_DEBUG(DEBUG_SPARSE)) {
-      for (int b = 0; b < num_binds; b++)
-         dump_anv_vm_bind(device, &binds[b]);
+      for (int b = 0; b < submit->binds_len; b++)
+         dump_anv_vm_bind(device, &submit->binds[b]);
    }
 
    return device->physical->sparse_uses_trtt ?
-            anv_sparse_bind_trtt(device, num_binds, binds) :
-            anv_sparse_bind_vm_bind(device, num_binds, binds);
+            anv_sparse_bind_trtt(device, submit) :
+            anv_sparse_bind_vm_bind(device, submit);
 }
 
 VkResult
@@ -600,8 +646,12 @@ anv_init_sparse_bindings(struct anv_device *device,
       .size = size,
       .op = ANV_VM_BIND,
    };
-
-   VkResult res = anv_sparse_bind(device, 1, &bind);
+   struct anv_sparse_submission submit = {
+      .binds = &bind,
+      .binds_len = 1,
+      .binds_capacity = 1,
+   };
+   VkResult res = anv_sparse_bind(device, &submit);
    if (res != VK_SUCCESS) {
       anv_vma_free(device, sparse->vma_heap, sparse->address, sparse->size);
       return res;
@@ -627,7 +677,12 @@ anv_free_sparse_bindings(struct anv_device *device,
       .size = sparse->size,
       .op = ANV_VM_UNBIND,
    };
-   VkResult res = anv_sparse_bind(device, 1, &unbind);
+   struct anv_sparse_submission submit = {
+      .binds = &unbind,
+      .binds_len = 1,
+      .binds_capacity = 1,
+   };
+   VkResult res = anv_sparse_bind(device, &submit);
    if (res != VK_SUCCESS)
       return res;
 
@@ -868,19 +923,20 @@ vk_bind_to_anv_vm_bind(struct anv_sparse_binding_data *sparse,
 VkResult
 anv_sparse_bind_resource_memory(struct anv_device *device,
                                 struct anv_sparse_binding_data *sparse,
-                                const VkSparseMemoryBind *vk_bind)
+                                const VkSparseMemoryBind *vk_bind,
+                                struct anv_sparse_submission *submit)
 {
    struct anv_vm_bind bind = vk_bind_to_anv_vm_bind(sparse, vk_bind);
 
-   return anv_sparse_bind(device, 1, &bind);
+   return anv_sparse_submission_add(device, submit, &bind);
 }
 
 VkResult
 anv_sparse_bind_image_memory(struct anv_queue *queue,
                              struct anv_image *image,
-                             const VkSparseImageMemoryBind *bind)
+                             const VkSparseImageMemoryBind *bind,
+                             struct anv_sparse_submission *submit)
 {
-   VkResult ret = VK_SUCCESS;
    struct anv_device *device = queue->device;
    VkImageAspectFlags aspect = bind->subresource.aspectMask;
    uint32_t mip_level = bind->subresource.mipLevel;
@@ -951,11 +1007,6 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
    assert(line_bind_size_in_blocks != 0);
    assert(line_bind_size != 0);
 
-   const int binds_array_len = (bind_extent_el.depth / block_shape_el.depth) *
-                               (bind_extent_el.height / block_shape_el.height);
-   STACK_ARRAY(struct anv_vm_bind, binds, binds_array_len);
-   int num_binds = 0;
-
    uint64_t memory_offset = bind->memoryOffset;
    for (uint32_t z = bind_offset_el.z;
         z < bind_offset_el.z + bind_extent_el.depth;
@@ -994,33 +1045,17 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
          assert(opaque_bind.resourceOffset % block_size_B == 0);
          assert(opaque_bind.size % block_size_B == 0);
 
-         assert(num_binds < binds_array_len);
-
          struct anv_vm_bind anv_bind = vk_bind_to_anv_vm_bind(sparse_data,
                                                               &opaque_bind);
-         struct anv_vm_bind *prev_bind = num_binds > 0 ?
-                                          &binds[num_binds - 1] : NULL;
-         if (prev_bind &&
-             anv_bind.op == prev_bind->op &&
-             anv_bind.bo == prev_bind->bo &&
-             anv_bind.address == prev_bind->address + prev_bind->size &&
-             (anv_bind.bo_offset == prev_bind->bo_offset + prev_bind->size ||
-              anv_bind.bo == NULL)) {
-            prev_bind->size += anv_bind.size;
-         } else {
-            binds[num_binds] = anv_bind;
-            num_binds++;
-         }
+         VkResult result = anv_sparse_submission_add(device, submit,
+                                                     &anv_bind);
+         if (result != VK_SUCCESS)
+            return result;
       }
    }
 
-   ret = anv_sparse_bind(device, num_binds, binds);
-
-   STACK_ARRAY_FINISH(binds);
-
-   sparse_debug("\n=== [%s:%d] [%s] END num_binds:%d\n",
-                __FILE__, __LINE__, __func__, num_binds);
-   return ret;
+   sparse_debug("\n=== [%s:%d] [%s] END\n", __FILE__, __LINE__, __func__);
+   return VK_SUCCESS;
 }
 
 VkResult
