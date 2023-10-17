@@ -21,12 +21,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <assert.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-
 #include "anv_private.h"
 
 #include "common/intel_aux_map.h"
