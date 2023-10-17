@@ -902,7 +902,7 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    /* Bind the shader. */
    void **shader = &sctx->cs_fmask_expand[log_samples - 1][is_array];
    if (!*shader)
-      *shader = si_create_fmask_expand_cs(ctx, tex->nr_samples, is_array);
+      *shader = si_create_fmask_expand_cs(sctx, tex->nr_samples, is_array);
 
    /* Dispatch compute. */
    struct pipe_grid_info info = {0};

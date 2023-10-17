@@ -727,3 +727,64 @@ void *si_create_dma_compute_shader(struct si_context *sctx, unsigned num_dwords_
 
    return create_shader_state(sctx, b.shader);
 }
+
+/* Load samples from the image, and copy them to the same image. This looks like
+ * a no-op, but it's not. Loads use FMASK, while stores don't, so samples are
+ * reordered to match expanded FMASK.
+ *
+ * After the shader finishes, FMASK should be cleared to identity.
+ */
+void *si_create_fmask_expand_cs(struct si_context *sctx, unsigned num_samples, bool is_array)
+{
+   const nir_shader_compiler_options *options =
+      sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
+
+   nir_builder b =
+      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "create_fmask_expand_cs");
+   b.shader->info.workgroup_size[0] = 8;
+   b.shader->info.workgroup_size[1] = 8;
+   b.shader->info.workgroup_size[2] = 1;
+
+   /* Return an empty compute shader */
+   if (num_samples == 0)
+      return create_shader_state(sctx, b.shader);
+
+   b.shader->info.num_images = 1;
+
+   const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_MS, is_array, GLSL_TYPE_FLOAT);
+   nir_variable *img = nir_variable_create(b.shader, nir_var_image, img_type, "image");
+   img->data.access = ACCESS_RESTRICT;
+
+   nir_def *z = nir_undef(&b, 1, 32);
+   if (is_array) {
+      z = nir_channel(&b, nir_load_workgroup_id(&b), 2);
+   }
+
+   nir_def *zero = nir_imm_int(&b, 0);
+   nir_def *address = get_global_ids(&b, 2);
+
+   nir_def *sample[8], *addresses[8];
+   assert(num_samples <= ARRAY_SIZE(sample));
+
+   nir_def *img_def = &nir_build_deref_var(&b, img)->def;
+
+   /* Load samples, resolving FMASK. */
+   for (unsigned i = 0; i < num_samples; i++) {
+      nir_def *it = nir_imm_int(&b, i);
+      sample[i] = nir_vec4(&b, nir_channel(&b, address, 0), nir_channel(&b, address, 1), z, it);
+      addresses[i] = nir_image_deref_load(&b, 4, 32, img_def, sample[i], it, zero,
+                                          .access = ACCESS_RESTRICT,
+                                          .image_dim = GLSL_SAMPLER_DIM_2D,
+                                          .image_array = is_array);
+   }
+
+   /* Store samples, ignoring FMASK. */
+   for (unsigned i = 0; i < num_samples; i++) {
+      nir_image_deref_store(&b, img_def, sample[i], nir_imm_int(&b, i), addresses[i], zero,
+                            .access = ACCESS_RESTRICT,
+                            .image_dim = GLSL_SAMPLER_DIM_2D,
+                            .image_array = is_array);
+   }
+
+   return create_shader_state(sctx, b.shader);
+}
