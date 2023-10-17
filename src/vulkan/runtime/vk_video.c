@@ -1239,6 +1239,14 @@ vk_video_get_profile_alignments(const VkVideoProfileListInfoKHR *profile_list,
    *height_align_out = height_align;
 }
 
+static const uint8_t vk_video_h264_levels[] = {10, 11, 12, 13, 20, 21, 22, 30, 31, 32, 40, 41, 42, 50, 51, 52, 60, 61, 62};
+uint8_t
+vk_video_get_h264_level(StdVideoH264LevelIdc level)
+{
+   assert(level <= STD_VIDEO_H264_LEVEL_IDC_6_2);
+   return vk_video_h264_levels[level];
+}
+
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 const StdVideoH264SequenceParameterSet *
 vk_video_find_h264_enc_std_sps(const struct vk_video_session_parameters *params,

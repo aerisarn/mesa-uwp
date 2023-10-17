@@ -231,6 +231,9 @@ void
 vk_video_get_profile_alignments(const VkVideoProfileListInfoKHR *profile_list,
                                 uint32_t *width_align_out, uint32_t *height_align_out);
 
+uint8_t
+vk_video_get_h264_level(StdVideoH264LevelIdc level);
+
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 const StdVideoH264SequenceParameterSet *
 vk_video_find_h264_enc_std_sps(const struct vk_video_session_parameters *params,
