@@ -94,6 +94,15 @@ public:
     * successors is an exit node.
     */
    schedule_node *exit;
+
+   /**
+    * How many cycles this instruction takes to issue.
+    *
+    * Instructions in gen hardware are handled one simd4 vector at a time,
+    * with 1 cycle per vector dispatched.  Thus SIMD8 pixel shaders take 2
+    * cycles to dispatch and SIMD16 (compressed) instructions take 4.
+    */
+   int issue_time;
 };
 
 /**
@@ -703,13 +712,6 @@ public:
    virtual void calculate_deps() = 0;
    virtual schedule_node *choose_instruction_to_schedule() = 0;
 
-   /**
-    * Returns how many cycles it takes the instruction to issue.
-    *
-    * Instructions in gen hardware are handled one simd4 vector at a time,
-    * with 1 cycle per vector dispatched.  Thus SIMD8 pixel shaders take 2
-    * cycles to dispatch and SIMD16 (compressed) instructions take 4.
-    */
    virtual int issue_time(backend_instruction *inst) = 0;
 
    virtual void count_reads_remaining(backend_instruction *inst) = 0;
@@ -1046,7 +1048,7 @@ instruction_scheduler::compute_delays()
 {
    for (schedule_node *n = current.end - 1; n >= current.start; n--) {
       if (!n->child_count) {
-         n->delay = issue_time(n->inst);
+         n->delay = n->issue_time;
       } else {
          for (int i = 0; i < n->child_count; i++) {
             assert(n->children[i]->delay);
@@ -1067,7 +1069,7 @@ instruction_scheduler::compute_exits()
       for (int i = 0; i < n->child_count; i++) {
          n->children[i]->unblocked_time =
             MAX2(n->children[i]->unblocked_time,
-                 n->unblocked_time + issue_time(n->inst) + n->child_latency[i]);
+                 n->unblocked_time + n->issue_time + n->child_latency[i]);
       }
    }
 
@@ -1878,7 +1880,7 @@ instruction_scheduler::schedule(schedule_node *chosen)
    /* Update the clock for how soon an instruction could start after the
     * chosen one.
     */
-   current.time += issue_time(chosen->inst);
+   current.time += chosen->issue_time;
 
    if (debug) {
       fprintf(stderr, "clock %4d, scheduled: ", current.time);
@@ -1985,6 +1987,9 @@ instruction_scheduler::run(cfg_t *cfg)
       }
 
       set_current_block(block);
+
+      for (schedule_node *n = current.start; n < current.end; n++)
+         n->issue_time = issue_time(n->inst);
 
       calculate_deps();
 
