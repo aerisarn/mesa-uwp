@@ -1029,20 +1029,6 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
    return true;
 }
 
-static void
-import_aux_info(struct iris_resource *res,
-                const struct iris_resource *aux_res)
-{
-   assert(aux_res->aux.surf.row_pitch_B && aux_res->aux.offset);
-   assert(res->bo == aux_res->aux.bo);
-   assert(res->aux.surf.row_pitch_B == aux_res->aux.surf.row_pitch_B);
-   assert(res->bo->size >= aux_res->aux.offset + res->aux.surf.size_B);
-
-   iris_bo_reference(aux_res->aux.bo);
-   res->aux.bo = aux_res->aux.bo;
-   res->aux.offset = aux_res->aux.offset;
-}
-
 static uint32_t
 iris_buffer_alignment(uint64_t size)
 {
@@ -1434,8 +1420,14 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
          } else if (plane > main_plane) {
             /* Fill out some aux surface fields. */
             assert(!devinfo->has_flat_ccs);
+            assert(plane_res->aux.bo->size >=
+                   plane_res->aux.offset + main_res->aux.surf.size_B);
+            assert(main_res->aux.surf.row_pitch_B ==
+                   plane_res->aux.surf.row_pitch_B);
 
-            import_aux_info(main_res, plane_res);
+            iris_bo_reference(plane_res->aux.bo);
+            main_res->aux.bo = plane_res->aux.bo;
+            main_res->aux.offset = plane_res->aux.offset;
             map_aux_addresses(screen, main_res, whandle->format, main_plane);
          } else {
             /* Fill out fields that are convenient to initialize now. */
