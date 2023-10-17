@@ -27,6 +27,7 @@
 #include "vk_alloc.h"
 #include "vk_device.h"
 #include "util/vl_rbsp.h"
+#include "util/vl_bitstream.h"
 
 VkResult
 vk_video_session_init(struct vk_device *device,
@@ -1364,6 +1365,202 @@ vk_video_get_h265_level(StdVideoH265LevelIdc level)
 {
    assert(level <= STD_VIDEO_H265_LEVEL_IDC_6_2);
    return vk_video_h265_levels[level];
+}
+
+static void
+emit_nalu_header(struct vl_bitstream_encoder *enc,
+                 int nal_ref, int nal_unit)
+{
+   enc->prevent_start_code = false;
+
+   vl_bitstream_put_bits(enc, 24, 0);
+   vl_bitstream_put_bits(enc, 8, 1);
+   vl_bitstream_put_bits(enc, 1, 0);
+   vl_bitstream_put_bits(enc, 2, nal_ref); /* SPS NAL REF */
+   vl_bitstream_put_bits(enc, 5, nal_unit); /* SPS NAL UNIT */
+   vl_bitstream_flush(enc);
+
+   enc->prevent_start_code = true;
+}
+
+static void
+encode_hrd_params(struct vl_bitstream_encoder *enc,
+                  const StdVideoH264HrdParameters *hrd)
+{
+   vl_bitstream_exp_golomb_ue(enc, hrd->cpb_cnt_minus1);
+   vl_bitstream_put_bits(enc, 4, hrd->bit_rate_scale);
+   vl_bitstream_put_bits(enc, 4, hrd->cpb_size_scale);
+   for (int sched_sel_idx = 0; sched_sel_idx <= hrd->cpb_cnt_minus1; sched_sel_idx++) {
+      vl_bitstream_exp_golomb_ue(enc, hrd->bit_rate_value_minus1[sched_sel_idx]);
+      vl_bitstream_exp_golomb_ue(enc, hrd->cpb_size_value_minus1[sched_sel_idx]);
+      vl_bitstream_put_bits(enc, 1, hrd->cbr_flag[sched_sel_idx]);
+   }
+   vl_bitstream_put_bits(enc, 5, hrd->initial_cpb_removal_delay_length_minus1);
+   vl_bitstream_put_bits(enc, 5, hrd->cpb_removal_delay_length_minus1);
+   vl_bitstream_put_bits(enc, 5, hrd->dpb_output_delay_length_minus1);
+   vl_bitstream_put_bits(enc, 5, hrd->time_offset_length);
+}
+
+void
+vk_video_encode_h264_sps(StdVideoH264SequenceParameterSet *sps,
+                         size_t size_limit,
+                         size_t *data_size_ptr,
+                         void *data_ptr)
+{
+   struct vl_bitstream_encoder enc;
+   uint32_t data_size = *data_size_ptr;
+
+   vl_bitstream_encoder_clear(&enc, data_ptr, data_size, size_limit);
+
+   emit_nalu_header(&enc, 3, H264_NAL_SPS);
+
+   vl_bitstream_put_bits(&enc, 8, sps->profile_idc);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.constraint_set0_flag);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.constraint_set1_flag);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.constraint_set2_flag);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.constraint_set3_flag);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.constraint_set4_flag);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.constraint_set5_flag);
+   vl_bitstream_put_bits(&enc, 2, 0);
+   vl_bitstream_put_bits(&enc, 8, vk_video_get_h264_level(sps->level_idc));
+   vl_bitstream_exp_golomb_ue(&enc, sps->seq_parameter_set_id);
+
+   if (sps->profile_idc == STD_VIDEO_H264_PROFILE_IDC_HIGH /* high10 as well */) {
+      vl_bitstream_exp_golomb_ue(&enc, sps->chroma_format_idc);
+      vl_bitstream_exp_golomb_ue(&enc, sps->bit_depth_luma_minus8);
+      vl_bitstream_exp_golomb_ue(&enc, sps->bit_depth_chroma_minus8);
+      vl_bitstream_put_bits(&enc, 1, sps->flags.qpprime_y_zero_transform_bypass_flag);
+      vl_bitstream_put_bits(&enc, 1, sps->flags.seq_scaling_matrix_present_flag);
+   }
+
+   vl_bitstream_exp_golomb_ue(&enc, sps->log2_max_frame_num_minus4);
+
+   vl_bitstream_exp_golomb_ue(&enc, sps->pic_order_cnt_type);
+   if (sps->pic_order_cnt_type == 0)
+      vl_bitstream_exp_golomb_ue(&enc, sps->log2_max_pic_order_cnt_lsb_minus4);
+
+   vl_bitstream_exp_golomb_ue(&enc, sps->max_num_ref_frames);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.gaps_in_frame_num_value_allowed_flag);
+   vl_bitstream_exp_golomb_ue(&enc, sps->pic_width_in_mbs_minus1);
+   vl_bitstream_exp_golomb_ue(&enc, sps->pic_height_in_map_units_minus1);
+
+   vl_bitstream_put_bits(&enc, 1, sps->flags.frame_mbs_only_flag);
+   vl_bitstream_put_bits(&enc, 1, sps->flags.direct_8x8_inference_flag);
+
+   vl_bitstream_put_bits(&enc, 1, sps->flags.frame_cropping_flag);
+   if (sps->flags.frame_cropping_flag) {
+      vl_bitstream_exp_golomb_ue(&enc, sps->frame_crop_left_offset);
+      vl_bitstream_exp_golomb_ue(&enc, sps->frame_crop_right_offset);
+      vl_bitstream_exp_golomb_ue(&enc, sps->frame_crop_top_offset);
+      vl_bitstream_exp_golomb_ue(&enc, sps->frame_crop_bottom_offset);
+   }
+
+   vl_bitstream_put_bits(&enc, 1, sps->flags.vui_parameters_present_flag); /* vui parameters preseent flag */
+   if (sps->flags.vui_parameters_present_flag) {
+      const StdVideoH264SequenceParameterSetVui *vui = sps->pSequenceParameterSetVui;
+      vl_bitstream_put_bits(&enc, 1, vui->flags.aspect_ratio_info_present_flag);
+      if (vui->flags.aspect_ratio_info_present_flag) {
+         vl_bitstream_put_bits(&enc, 8, vui->aspect_ratio_idc);
+         if (vui->aspect_ratio_idc == STD_VIDEO_H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
+            vl_bitstream_put_bits(&enc, 16, vui->sar_width);
+            vl_bitstream_put_bits(&enc, 16, vui->sar_height);
+         }
+         vl_bitstream_put_bits(&enc, 1, vui->flags.overscan_info_present_flag);
+         if (vui->flags.overscan_info_present_flag)
+            vl_bitstream_put_bits(&enc, 1, vui->flags.overscan_appropriate_flag);
+         vl_bitstream_put_bits(&enc, 1, vui->flags.video_signal_type_present_flag);
+         if (vui->flags.video_signal_type_present_flag) {
+            vl_bitstream_put_bits(&enc, 3, vui->video_format);
+            vl_bitstream_put_bits(&enc, 1, vui->flags.video_full_range_flag);
+            vl_bitstream_put_bits(&enc, 1, vui->flags.color_description_present_flag);
+            if (vui->flags.color_description_present_flag) {
+               vl_bitstream_put_bits(&enc, 8, vui->colour_primaries);
+               vl_bitstream_put_bits(&enc, 8, vui->transfer_characteristics);
+               vl_bitstream_put_bits(&enc, 8, vui->matrix_coefficients);
+            }
+         }
+
+         vl_bitstream_put_bits(&enc, 1, vui->flags.chroma_loc_info_present_flag);
+         if (vui->flags.chroma_loc_info_present_flag) {
+            vl_bitstream_exp_golomb_ue(&enc, vui->chroma_sample_loc_type_top_field);
+            vl_bitstream_exp_golomb_ue(&enc, vui->chroma_sample_loc_type_bottom_field);
+         }
+         vl_bitstream_put_bits(&enc, 1, vui->flags.timing_info_present_flag);
+         if (vui->flags.timing_info_present_flag) {
+            vl_bitstream_put_bits(&enc, 32, vui->num_units_in_tick);
+            vl_bitstream_put_bits(&enc, 32, vui->time_scale);
+            vl_bitstream_put_bits(&enc, 32, vui->flags.fixed_frame_rate_flag);
+         }
+         vl_bitstream_put_bits(&enc, 1, vui->flags.nal_hrd_parameters_present_flag);
+         if (vui->flags.nal_hrd_parameters_present_flag)
+            encode_hrd_params(&enc, vui->pHrdParameters);
+         vl_bitstream_put_bits(&enc, 1, vui->flags.vcl_hrd_parameters_present_flag);
+         if (vui->flags.vcl_hrd_parameters_present_flag)
+            encode_hrd_params(&enc, vui->pHrdParameters);
+         if (vui->flags.nal_hrd_parameters_present_flag || vui->flags.vcl_hrd_parameters_present_flag)
+            vl_bitstream_put_bits(&enc, 1, 0);
+         vl_bitstream_put_bits(&enc, 1, 0);
+         vl_bitstream_put_bits(&enc, 1, vui->flags.bitstream_restriction_flag);
+         if (vui->flags.bitstream_restriction_flag) {
+            vl_bitstream_put_bits(&enc, 1, 0);
+            vl_bitstream_exp_golomb_ue(&enc, 0);
+            vl_bitstream_exp_golomb_ue(&enc, 0);
+            vl_bitstream_exp_golomb_ue(&enc, 0);
+            vl_bitstream_exp_golomb_ue(&enc, 0);
+            vl_bitstream_exp_golomb_ue(&enc, vui->max_num_reorder_frames);
+            vl_bitstream_exp_golomb_ue(&enc, vui->max_dec_frame_buffering);
+         }
+      }
+   }
+   vl_bitstream_rbsp_trailing(&enc);
+
+   vl_bitstream_flush(&enc);
+   *data_size_ptr += vl_bitstream_get_byte_count(&enc);
+   vl_bitstream_encoder_free(&enc);
+}
+
+void
+vk_video_encode_h264_pps(StdVideoH264PictureParameterSet *pps,
+                         bool high_profile,
+                         size_t size_limit,
+                         size_t *data_size_ptr,
+                         void *data_ptr)
+{
+   struct vl_bitstream_encoder enc;
+   uint32_t data_size = *data_size_ptr;
+
+   vl_bitstream_encoder_clear(&enc, data_ptr, data_size, size_limit);
+
+   emit_nalu_header(&enc, 3, H264_NAL_SPS);
+
+   vl_bitstream_exp_golomb_ue(&enc, pps->pic_parameter_set_id);
+   vl_bitstream_exp_golomb_ue(&enc, pps->seq_parameter_set_id);
+   vl_bitstream_put_bits(&enc, 1, pps->flags.entropy_coding_mode_flag);
+   vl_bitstream_put_bits(&enc, 1, pps->flags.bottom_field_pic_order_in_frame_present_flag);
+   vl_bitstream_exp_golomb_ue(&enc, 0); /* num_slice_groups_minus1 */
+
+   vl_bitstream_exp_golomb_ue(&enc, pps->num_ref_idx_l0_default_active_minus1);
+   vl_bitstream_exp_golomb_ue(&enc, pps->num_ref_idx_l1_default_active_minus1);
+   vl_bitstream_put_bits(&enc, 1, pps->flags.weighted_pred_flag);
+   vl_bitstream_put_bits(&enc, 2, pps->weighted_bipred_idc);
+   vl_bitstream_exp_golomb_se(&enc, pps->pic_init_qp_minus26);
+   vl_bitstream_exp_golomb_se(&enc, pps->pic_init_qs_minus26);
+   vl_bitstream_exp_golomb_se(&enc, pps->chroma_qp_index_offset);
+   vl_bitstream_put_bits(&enc, 1, pps->flags.deblocking_filter_control_present_flag);
+   vl_bitstream_put_bits(&enc, 1, pps->flags.constrained_intra_pred_flag);
+   vl_bitstream_put_bits(&enc, 1, pps->flags.redundant_pic_cnt_present_flag);
+
+   /* high profile */
+   if (high_profile) {
+      vl_bitstream_put_bits(&enc, 1, pps->flags.transform_8x8_mode_flag);
+      vl_bitstream_put_bits(&enc, 1, pps->flags.pic_scaling_matrix_present_flag);
+      vl_bitstream_exp_golomb_se(&enc, pps->second_chroma_qp_index_offset);
+   }
+   vl_bitstream_rbsp_trailing(&enc);
+
+   vl_bitstream_flush(&enc);
+   *data_size_ptr += vl_bitstream_get_byte_count(&enc);
+   vl_bitstream_encoder_free(&enc);
 }
 
 #endif

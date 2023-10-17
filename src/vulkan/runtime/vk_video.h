@@ -252,6 +252,19 @@ const StdVideoH265PictureParameterSet *
 vk_video_find_h265_enc_std_pps(const struct vk_video_session_parameters *params,
                                uint32_t id);
 
+void
+vk_video_encode_h264_sps(StdVideoH264SequenceParameterSet *sps,
+                         size_t size_limit,
+                         size_t *data_size_ptr,
+                         void *data_ptr);
+
+void
+vk_video_encode_h264_pps(StdVideoH264PictureParameterSet *pps,
+                         bool high_profile,
+                         size_t size_limit,
+                         size_t *data_size_ptr,
+                         void *data_ptr);
+
 unsigned
 vk_video_get_h265_nal_unit(StdVideoH265PictureType pic_type, bool irap_pic_flag);
 
