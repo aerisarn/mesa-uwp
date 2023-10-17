@@ -165,7 +165,6 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
                              VkPipeline *pPipeline)
 {
    VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, pCreateInfo->layout);
-   struct nvk_physical_device *pdev = nvk_device_physical(dev);
    struct nvk_graphics_pipeline *pipeline;
    VkResult result = VK_SUCCESS;
 
@@ -217,9 +216,11 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
       if (sinfo == NULL)
          continue;
 
+      pipeline->base.shaders[stage] = nvk_shader_init(dev);
+
       nvk_lower_nir(dev, nir[stage], &robustness[stage],
                     state.rp->view_mask != 0, pipeline_layout,
-                    &pipeline->base.shaders[stage]);
+                    pipeline->base.shaders[stage]);
    }
 
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
@@ -238,14 +239,14 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
                       state.rp->view_mask != 0,
                       pipeline_layout, fs_key);
 
-      result = nvk_compile_nir(pdev, nir[stage], pipeline_flags,
+      result = nvk_compile_nir(dev, nir[stage], pipeline_flags,
                                &robustness[stage], fs_key,
-                               &pipeline->base.shaders[stage]);
+                               pipeline->base.shaders[stage]);
       ralloc_free(nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
 
-      result = nvk_shader_upload(dev, &pipeline->base.shaders[stage]);
+      result = nvk_shader_upload(dev, pipeline->base.shaders[stage]);
       if (result != VK_SUCCESS)
          goto fail;
    }
@@ -258,7 +259,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
 
    struct nvk_shader *last_geom = NULL;
    for (gl_shader_stage stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      struct nvk_shader *shader = &pipeline->base.shaders[stage];
+      struct nvk_shader *shader = pipeline->base.shaders[stage];
       uint32_t idx = mesa_to_nv9097_shader_type[stage];
 
       P_IMMD(p, NV9097, SET_PIPELINE_SHADER(idx), {

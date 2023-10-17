@@ -438,13 +438,28 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
    return VK_SUCCESS;
 }
 
+struct nvk_shader *
+nvk_shader_init(struct nvk_device *dev)
+{
+   VK_MULTIALLOC(ma);
+   VK_MULTIALLOC_DECL(&ma, struct nvk_shader, shader, 1);
+
+   if (!vk_multialloc_zalloc(&ma, &dev->vk.alloc,
+                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
+      return NULL;
+
+   return shader;
+}
+
 VkResult
-nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
+nvk_compile_nir(struct nvk_device *dev, nir_shader *nir,
                 VkPipelineCreateFlagBits2KHR pipeline_flags,
                 const struct vk_pipeline_robustness_state *rs,
                 const struct nak_fs_key *fs_key,
                 struct nvk_shader *shader)
 {
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+
    if (use_nak(pdev, nir->info.stage)) {
       return nvk_compile_nir_with_nak(pdev, nir, pipeline_flags, rs,
                                       fs_key, shader);
@@ -505,6 +520,9 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
 void
 nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
 {
+   if (shader == NULL)
+      return;
+
    if (shader->upload_size > 0) {
       nvk_heap_free(dev, &dev->shader_heap,
                     shader->upload_addr,
@@ -517,6 +535,8 @@ nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
       /* This came from codegen, just free it */
       free((void *)shader->code_ptr);
    }
+
+   vk_free(&dev->vk.alloc, shader);
 }
 
 void

@@ -148,7 +148,7 @@ nvk_compute_local_size(struct nvk_cmd_buffer *cmd)
 {
    const struct nvk_compute_pipeline *pipeline = cmd->state.cs.pipeline;
    const struct nvk_shader *shader =
-      &pipeline->base.shaders[MESA_SHADER_COMPUTE];
+      pipeline->base.shaders[MESA_SHADER_COMPUTE];
 
    return shader->info.cs.local_size[0] *
           shader->info.cs.local_size[1] *
@@ -211,7 +211,7 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
    }
 
    const struct nvk_shader *shader =
-      &pipeline->base.shaders[MESA_SHADER_COMPUTE];
+      pipeline->base.shaders[MESA_SHADER_COMPUTE];
    for (uint32_t c = 0; c < shader->cbuf_map.cbuf_count; c++) {
       const struct nvk_cbuf *cbuf = &shader->cbuf_map.cbufs[c];
 

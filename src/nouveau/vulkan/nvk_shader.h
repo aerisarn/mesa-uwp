@@ -67,7 +67,7 @@ nvk_shader_address(const struct nvk_shader *shader)
 static inline bool
 nvk_shader_is_enabled(const struct nvk_shader *shader)
 {
-   return shader->upload_size > 0;
+   return shader && shader->upload_size > 0;
 }
 
 VkShaderStageFlags nvk_nak_stages(const struct nv_device_info *info);
@@ -118,7 +118,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               struct nvk_shader *shader);
 
 VkResult
-nvk_compile_nir(struct nvk_physical_device *dev, nir_shader *nir,
+nvk_compile_nir(struct nvk_device *dev, nir_shader *nir,
                 VkPipelineCreateFlagBits2KHR pipeline_flags,
                 const struct vk_pipeline_robustness_state *rstate,
                 const struct nak_fs_key *fs_key,
@@ -126,6 +126,9 @@ nvk_compile_nir(struct nvk_physical_device *dev, nir_shader *nir,
 
 VkResult
 nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);
+
+struct nvk_shader *
+nvk_shader_init(struct nvk_device *dev);
 
 void
 nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader);

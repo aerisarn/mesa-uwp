@@ -934,7 +934,7 @@ nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
     * tessellation parameters at flush_ts_state, as the domain origin can be
     * dynamic.
     */
-   if (nvk_shader_is_enabled(&pipeline->base.shaders[MESA_SHADER_TESS_EVAL])) {
+   if (nvk_shader_is_enabled(pipeline->base.shaders[MESA_SHADER_TESS_EVAL])) {
       BITSET_SET(cmd->vk.dynamic_graphics_state.dirty,
                  MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
    }
@@ -1017,7 +1017,7 @@ nvk_flush_ts_state(struct nvk_cmd_buffer *cmd)
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
       const struct nvk_graphics_pipeline *pipeline= cmd->state.gfx.pipeline;
       const struct nvk_shader *shader =
-         &pipeline->base.shaders[MESA_SHADER_TESS_EVAL];
+         pipeline->base.shaders[MESA_SHADER_TESS_EVAL];
 
       if (nvk_shader_is_enabled(shader)) {
          enum nak_ts_prims prims = shader->info.ts.prims;
@@ -1883,8 +1883,8 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
 
    uint32_t root_cbuf_count = 0;
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      const struct nvk_shader *shader = &pipeline->base.shaders[stage];
-      if (shader->code_size == 0)
+      const struct nvk_shader *shader = pipeline->base.shaders[stage];
+      if (!shader || shader->code_size == 0)
          continue;
 
       uint32_t group = stage;
@@ -1953,8 +1953,8 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, root_desc_addr);
 
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      const struct nvk_shader *shader = &pipeline->base.shaders[stage];
-      if (shader->code_size == 0)
+      const struct nvk_shader *shader = pipeline->base.shaders[stage];
+      if (!shader || shader->code_size == 0)
          continue;
 
       uint32_t group = stage;

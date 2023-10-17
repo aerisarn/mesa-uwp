@@ -33,7 +33,7 @@ nvk_pipeline_free(struct nvk_device *dev,
                   const VkAllocationCallbacks *pAllocator)
 {
    for (uint32_t s = 0; s < ARRAY_SIZE(pipeline->shaders); s++)
-      nvk_shader_finish(dev, &pipeline->shaders[s]);
+      nvk_shader_finish(dev, pipeline->shaders[s]);
 
    vk_object_free(&dev->vk, pAllocator, pipeline);
 }
@@ -131,7 +131,8 @@ nvk_GetPipelineExecutablePropertiesKHR(
                           pProperties, pExecutableCount);
 
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      if (pipeline->shaders[stage].code_size == 0)
+      const struct nvk_shader *shader = pipeline->shaders[stage];
+      if (!shader || shader->code_size == 0)
          continue;
 
       vk_outarray_append_typed(VkPipelineExecutablePropertiesKHR, &out, props) {
@@ -150,11 +151,12 @@ static struct nvk_shader *
 shader_for_exe_idx(struct nvk_pipeline *pipeline, uint32_t idx)
 {
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      if (pipeline->shaders[stage].code_size == 0)
+      const struct nvk_shader *shader = pipeline->shaders[stage];
+      if (!shader || shader->code_size == 0)
          continue;
 
       if (idx == 0)
-         return &pipeline->shaders[stage];
+         return pipeline->shaders[stage];
 
       idx--;
    }

@@ -184,7 +184,8 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
    if (result != VK_SUCCESS)
       goto fail;
 
-   struct nvk_shader *shader = &pipeline->base.shaders[MESA_SHADER_COMPUTE];
+   struct nvk_shader *shader = nvk_shader_init(dev);
+   pipeline->base.shaders[MESA_SHADER_COMPUTE] = shader;
 
    nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout, shader);
 
@@ -192,7 +193,7 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
    nvk_hash_shader(sha1, &pCreateInfo->stage, &robustness, false,
                    pipeline_layout, NULL);
 
-   result = nvk_compile_nir(pdev, nir, pipeline_flags, &robustness, NULL,
+   result = nvk_compile_nir(dev, nir, pipeline_flags, &robustness, NULL,
                             shader);
    ralloc_free(nir);
    if (result != VK_SUCCESS)
