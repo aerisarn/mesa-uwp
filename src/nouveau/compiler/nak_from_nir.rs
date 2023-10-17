@@ -297,16 +297,14 @@ impl<'a> ShaderFromNir<'a> {
         let dst: SSARef = match alu.op {
             nir_op_b2b1 => {
                 assert!(alu.get_src(0).bit_size() == 32);
-                b.isetp(IntCmpType::I32, IntCmpOp::Ne, srcs[0], Src::new_zero())
+                b.isetp(IntCmpType::I32, IntCmpOp::Ne, srcs[0], 0.into())
             }
             nir_op_b2b32 | nir_op_b2i32 => {
-                b.sel(srcs[0].bnot(), Src::new_zero(), Src::new_imm_u32(1))
+                b.sel(srcs[0].bnot(), 0.into(), 1.into())
             }
-            nir_op_b2f32 => b.sel(
-                srcs[0].bnot(),
-                Src::new_zero(),
-                Src::new_imm_u32(0x3f800000),
-            ),
+            nir_op_b2f32 => {
+                b.sel(srcs[0].bnot(), 0.0_f32.into(), 1.0_f32.into())
+            }
             nir_op_bcsel => b.sel(srcs[0], srcs[1], srcs[2]),
             nir_op_bit_count => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -358,7 +356,7 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_fabs | nir_op_fadd | nir_op_fneg => {
                 let (x, y) = match alu.op {
-                    nir_op_fabs => (srcs[0].fabs(), Src::new_zero()),
+                    nir_op_fabs => (srcs[0].fabs(), 0.0_f32.into()),
                     nir_op_fadd => (srcs[0], srcs[1]),
                     nir_op_fneg => (Src::new_zero().fneg(), srcs[0].fneg()),
                     _ => panic!("Unhandled case"),
@@ -396,8 +394,7 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_fcos => {
                 let frac_1_2pi = 1.0 / (2.0 * std::f32::consts::PI);
-                let tmp =
-                    b.fmul(srcs[0], Src::new_imm_u32(frac_1_2pi.to_bits()));
+                let tmp = b.fmul(srcs[0], frac_1_2pi.into());
                 b.mufu(MuFuOp::Cos, tmp.into())
             }
             nir_op_feq => b.fsetp(FloatCmpOp::OrdEq, srcs[0], srcs[1]),
@@ -499,7 +496,7 @@ impl<'a> ShaderFromNir<'a> {
                     let dst = b.alloc_ssa(RegFile::GPR, 1);
                     b.push_op(OpFAdd {
                         dst: dst.into(),
-                        srcs: [srcs[0], Src::new_zero()],
+                        srcs: [srcs[0], 0.into()],
                         saturate: true,
                         rnd_mode: FRndMode::NearestEven,
                     });
@@ -508,14 +505,13 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_fsign => {
                 assert!(alu.def.bit_size() == 32);
-                let lz = b.fset(FloatCmpOp::OrdLt, srcs[0], Src::new_zero());
-                let gz = b.fset(FloatCmpOp::OrdGt, srcs[0], Src::new_zero());
+                let lz = b.fset(FloatCmpOp::OrdLt, srcs[0], 0.into());
+                let gz = b.fset(FloatCmpOp::OrdGt, srcs[0], 0.into());
                 b.fadd(gz.into(), Src::from(lz).fneg())
             }
             nir_op_fsin => {
                 let frac_1_2pi = 1.0 / (2.0 * std::f32::consts::PI);
-                let tmp =
-                    b.fmul(srcs[0], Src::new_imm_u32(frac_1_2pi.to_bits()));
+                let tmp = b.fmul(srcs[0], frac_1_2pi.into());
                 b.mufu(MuFuOp::Sin, tmp.into())
             }
             nir_op_fsqrt => b.mufu(MuFuOp::Sqrt, srcs[0]),
@@ -542,14 +538,14 @@ impl<'a> ShaderFromNir<'a> {
                         dst: sum[0].into(),
                         overflow: [carry.into(), Dst::None],
                         high: false,
-                        srcs: [x[0].into(), y[0].into(), Src::new_zero()],
+                        srcs: [x[0].into(), y[0].into(), 0.into()],
                         carry: [SrcRef::False.into(), SrcRef::False.into()],
                     });
                     b.push_op(OpIAdd3X {
                         dst: sum[1].into(),
                         overflow: [Dst::None, Dst::None],
                         high: true,
-                        srcs: [x[1].into(), y[1].into(), Src::new_zero()],
+                        srcs: [x[1].into(), y[1].into(), 0.into()],
                         carry: [carry.into(), SrcRef::False.into()],
                     });
                     sum
@@ -616,7 +612,7 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpIMad {
                     dst: dst.into(),
-                    srcs: [srcs[0], srcs[1], Src::new_zero()],
+                    srcs: [srcs[0], srcs[1], 0.into()],
                     signed: false,
                 });
                 dst
@@ -625,7 +621,7 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = b.alloc_ssa(RegFile::GPR, 2);
                 b.push_op(OpIMad64 {
                     dst: dst.into(),
-                    srcs: [srcs[0], srcs[1], Src::new_zero()],
+                    srcs: [srcs[0], srcs[1], 0.into()],
                     signed: alu.op == nir_op_imul_2x32_64,
                 });
                 dst
@@ -634,7 +630,7 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = b.alloc_ssa(RegFile::GPR, 2);
                 b.push_op(OpIMad64 {
                     dst: dst.into(),
-                    srcs: [srcs[0], srcs[1], Src::new_zero()],
+                    srcs: [srcs[0], srcs[1], 0.into()],
                     signed: alu.op == nir_op_imul_high,
                 });
                 dst[1].into()
@@ -643,10 +639,10 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_inot => {
                 let lop = LogicOp::new_lut(&|x, _, _| !x);
                 if alu.def.bit_size() == 1 {
-                    b.lop2(lop, srcs[0], Src::new_imm_bool(true))
+                    b.lop2(lop, srcs[0], true.into())
                 } else {
                     assert!(alu.def.bit_size() == 32);
-                    b.lop2(lop, srcs[0], Src::new_imm_u32(0))
+                    b.lop2(lop, srcs[0], 0.into())
                 }
             }
             nir_op_ior => {
@@ -658,7 +654,7 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpShf {
                     dst: dst.into(),
                     low: srcs[0],
-                    high: Src::new_zero(),
+                    high: 0.into(),
                     shift: srcs[1],
                     right: false,
                     wrap: true,
@@ -672,7 +668,7 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpShf {
                     dst: dst.into(),
-                    low: Src::new_zero(),
+                    low: 0.into(),
                     high: srcs[0],
                     shift: srcs[1],
                     right: true,
@@ -693,30 +689,30 @@ impl<'a> ShaderFromNir<'a> {
                     set_op: PredSetOp::And,
                     cmp_op: IntCmpOp::Gt,
                     cmp_type: IntCmpType::I32,
-                    srcs: [srcs[0], Src::new_zero()],
-                    accum: Src::new_imm_bool(true),
+                    srcs: [srcs[0], 0.into()],
+                    accum: true.into(),
                 });
 
                 let cond = Src::from(gt_pred).bnot();
                 b.push_op(OpSel {
                     dst: gt.into(),
                     cond,
-                    srcs: [Src::new_zero(), Src::new_imm_u32(u32::MAX)],
+                    srcs: [0.into(), u32::MAX.into()],
                 });
                 b.push_op(OpISetP {
                     dst: lt_pred.into(),
                     set_op: PredSetOp::And,
                     cmp_op: IntCmpOp::Lt,
                     cmp_type: IntCmpType::I32,
-                    srcs: [srcs[0], Src::new_zero()],
-                    accum: Src::new_imm_bool(true),
+                    srcs: [srcs[0], 0.into()],
+                    accum: true.into(),
                 });
 
                 let cond = Src::from(lt_pred).bnot();
                 b.push_op(OpSel {
                     dst: lt.into(),
                     cond,
-                    srcs: [Src::new_zero(), Src::new_imm_u32(u32::MAX)],
+                    srcs: [0.into(), u32::MAX.into()],
                 });
 
                 let dst_is_signed = alu.info().output_type & 2 != 0;
@@ -729,7 +725,7 @@ impl<'a> ShaderFromNir<'a> {
                         let gt_neg = b.ineg(gt.into());
                         b.push_op(OpIAdd3 {
                             dst: dst.into(),
-                            srcs: [lt.into(), gt_neg.into(), Src::new_zero()],
+                            srcs: [lt.into(), gt_neg.into(), 0.into()],
                         });
                     }
                     IntType::I64 => {
@@ -737,13 +733,13 @@ impl<'a> ShaderFromNir<'a> {
                         let gt_neg = b.ineg(gt.into());
                         b.push_op(OpIAdd3 {
                             dst: high.into(),
-                            srcs: [lt.into(), gt_neg.into(), Src::new_zero()],
+                            srcs: [lt.into(), gt_neg.into(), 0.into()],
                         });
                         b.push_op(OpShf {
                             dst: dst.into(),
-                            low: Src::new_zero(),
+                            low: 0.into(),
                             high: high.into(),
-                            shift: Src::new_imm_u32(31),
+                            shift: 31_u32.into(),
                             right: true,
                             wrap: true,
                             data_type: dst_type,
@@ -815,7 +811,7 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpPrmt {
                     dst: dst.into(),
                     srcs: [low.into(), high.into()],
-                    selection: Src::new_imm_u32(selection.inner()),
+                    selection: selection.inner().into(),
                 });
                 dst
             }
@@ -868,7 +864,7 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpShf {
                     dst: dst.into(),
                     low: srcs[0],
-                    high: Src::new_zero(),
+                    high: 0.into(),
                     shift: srcs[1],
                     right: true,
                     wrap: true,
@@ -887,8 +883,8 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpShfl {
                     dst: scratch[0].into(),
                     src: srcs[0],
-                    lane: Src::new_imm_u32(1),
-                    c: Src::new_imm_u32(0x3 | 0x1c << 8),
+                    lane: 1_u32.into(),
+                    c: (0x3_u32 | 0x1c_u32 << 8).into(),
                     op: ShflOp::Bfly,
                 });
 
@@ -918,8 +914,8 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpShfl {
                     dst: scratch[0].into(),
                     src: srcs[0],
-                    lane: Src::new_imm_u32(2),
-                    c: Src::new_imm_u32(0x3 | 0x1c << 8),
+                    lane: 2_u32.into(),
+                    c: (0x3_u32 | 0x1c_u32 << 8).into(),
                     op: ShflOp::Bfly,
                 });
 
@@ -1104,7 +1100,7 @@ impl<'a> ShaderFromNir<'a> {
         let mut nir_dst = Vec::new();
         for i in 0..tex.def.num_components() {
             if mask & (1 << i) == 0 {
-                nir_dst.push(b.copy(Src::new_zero())[0]);
+                nir_dst.push(b.copy(0.into())[0]);
             } else {
                 nir_dst.push(dsts[di / 2].as_ssa().unwrap()[di % 2].into());
                 di += 1;
@@ -1544,7 +1540,7 @@ impl<'a> ShaderFromNir<'a> {
                     }
                     nir_intrinsic_load_barycentric_centroid
                     | nir_intrinsic_load_barycentric_pixel
-                    | nir_intrinsic_load_barycentric_sample => Src::new_zero(),
+                    | nir_intrinsic_load_barycentric_sample => 0.into(),
                     _ => panic!("Unsupported interp mode"),
                 };
 
@@ -1927,26 +1923,18 @@ impl<'a> ShaderFromNir<'a> {
         b: &mut impl SSABuilder,
         load_const: &nir_load_const_instr,
     ) {
-        fn src_for_u32(u: u32) -> Src {
-            if u == 0 {
-                Src::new_zero()
-            } else {
-                Src::new_imm_u32(u)
-            }
-        }
-
         let mut dst_vec = Vec::new();
         for c in 0..load_const.def.num_components {
             if load_const.def.bit_size == 1 {
                 let imm_b1 = unsafe { load_const.values()[c as usize].b };
-                dst_vec.push(b.copy(Src::new_imm_bool(imm_b1))[0]);
+                dst_vec.push(b.copy(imm_b1.into())[0]);
             } else if load_const.def.bit_size == 32 {
                 let imm_u32 = unsafe { load_const.values()[c as usize].u32_ };
-                dst_vec.push(b.copy(src_for_u32(imm_u32))[0]);
+                dst_vec.push(b.copy(imm_u32.into())[0]);
             } else if load_const.def.bit_size == 64 {
                 let imm_u64 = unsafe { load_const.values()[c as usize].u64_ };
-                dst_vec.push(b.copy(src_for_u32(imm_u64 as u32))[0]);
-                dst_vec.push(b.copy(src_for_u32((imm_u64 >> 32) as u32))[0]);
+                dst_vec.push(b.copy((imm_u64 as u32).into())[0]);
+                dst_vec.push(b.copy(((imm_u64 >> 32) as u32).into())[0]);
             }
         }
 
@@ -1985,7 +1973,7 @@ impl<'a> ShaderFromNir<'a> {
         for i in 0..32 {
             if info.writes_color & (1 << i) != 0 {
                 if self.fs_out_regs[i].is_none() {
-                    srcs.push(Src::new_zero());
+                    srcs.push(0.into());
                 } else {
                     srcs.push(self.fs_out_regs[i].into());
                 }
@@ -1997,7 +1985,7 @@ impl<'a> ShaderFromNir<'a> {
             if info.writes_sample_mask {
                 srcs.push(self.fs_out_regs[mask_idx].into());
             } else {
-                srcs.push(Src::new_zero());
+                srcs.push(0.into());
             }
             if info.writes_depth {
                 // Saturate depth writes.
@@ -2008,7 +1996,7 @@ impl<'a> ShaderFromNir<'a> {
                 let sat_depth = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpFAdd {
                     dst: sat_depth.into(),
-                    srcs: [depth.into(), Src::new_zero()],
+                    srcs: [depth.into(), 0.into()],
                     saturate: true,
                     rnd_mode: FRndMode::NearestEven,
                 });
