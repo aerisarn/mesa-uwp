@@ -1043,97 +1043,6 @@ import_aux_info(struct iris_resource *res,
    res->aux.offset = aux_res->aux.offset;
 }
 
-static void
-iris_resource_finish_aux_import(struct pipe_screen *pscreen,
-                                struct iris_resource *res)
-{
-   struct iris_screen *screen = (struct iris_screen *)pscreen;
-
-   /* Create an array of resources. Combining main and aux planes is easier
-    * with indexing as opposed to scanning the linked list.
-    */
-   struct iris_resource *r[4] = { NULL, };
-   unsigned num_planes = 0;
-   unsigned num_main_planes = 0;
-   for (struct pipe_resource *p_res = &res->base.b; p_res; p_res = p_res->next) {
-      r[num_planes] = (struct iris_resource *)p_res;
-      num_main_planes += r[num_planes++]->bo != NULL;
-   }
-
-   /* Combine main and aux plane information. */
-   switch (res->mod_info->modifier) {
-   case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
-   case I915_FORMAT_MOD_Y_TILED_CCS:
-   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
-      assert(num_main_planes == 1 && num_planes == 2);
-      import_aux_info(r[0], r[1]);
-      map_aux_addresses(screen, r[0], res->external_format, 0);
-
-      /* Add on a clear color BO.
-       *
-       * Also add some padding to make sure the fast clear color state buffer
-       * starts at a 4K alignment to avoid some unknown issues.  See the
-       * matching comment in iris_resource_create_with_modifiers().
-       */
-      if (iris_get_aux_clear_color_state_size(screen, res) > 0) {
-         res->aux.clear_color_bo =
-            iris_bo_alloc(screen->bufmgr, "clear color_buffer",
-                          iris_get_aux_clear_color_state_size(screen, res),
-                          4096, IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
-      }
-      break;
-   case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS:
-      assert(num_main_planes == 1);
-      assert(num_planes == 1);
-      res->aux.clear_color_bo =
-         iris_bo_alloc(screen->bufmgr, "clear color_buffer",
-                       iris_get_aux_clear_color_state_size(screen, res),
-                       4096, IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
-      break;
-   case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS_CC:
-   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
-      assert(num_main_planes == 1 && num_planes == 3);
-      import_aux_info(r[0], r[1]);
-      map_aux_addresses(screen, r[0], res->external_format, 0);
-
-      /* Import the clear color BO. */
-      iris_bo_reference(r[2]->aux.clear_color_bo);
-      r[0]->aux.clear_color_bo = r[2]->aux.clear_color_bo;
-      r[0]->aux.clear_color_offset = r[2]->aux.clear_color_offset;
-      r[0]->aux.clear_color_unknown = true;
-      break;
-   case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC:
-      assert(num_main_planes == 1);
-      assert(num_planes == 2);
-
-      /* Import the clear color BO. */
-      iris_bo_reference(r[1]->aux.clear_color_bo);
-      r[0]->aux.clear_color_bo = r[1]->aux.clear_color_bo;
-      r[0]->aux.clear_color_offset = r[1]->aux.clear_color_offset;
-      r[0]->aux.clear_color_unknown = true;
-      break;
-   case I915_FORMAT_MOD_4_TILED_MTL_MC_CCS:
-   case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
-      if (num_main_planes == 1 && num_planes == 2) {
-         import_aux_info(r[0], r[1]);
-         map_aux_addresses(screen, r[0], res->external_format, 0);
-      } else {
-         assert(num_main_planes == 2 && num_planes == 4);
-         import_aux_info(r[0], r[2]);
-         import_aux_info(r[1], r[3]);
-         map_aux_addresses(screen, r[0], res->external_format, 0);
-         map_aux_addresses(screen, r[1], res->external_format, 1);
-      }
-      break;
-   case I915_FORMAT_MOD_4_TILED_DG2_MC_CCS:
-      assert(num_main_planes == num_planes);
-      break;
-   default:
-      assert(!isl_drm_modifier_has_aux(res->mod_info->modifier));
-      break;
-   }
-}
-
 static uint32_t
 iris_buffer_alignment(uint64_t size)
 {
@@ -1431,6 +1340,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
                           unsigned usage)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
+   const struct intel_device_info *devinfo = screen->devinfo;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
    if (!res)
@@ -1481,8 +1391,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
          goto fail;
 
       /* The gallium dri layer will create a separate plane resource for the
-       * aux image. iris_resource_finish_aux_import will merge the separate aux
-       * parameters back into a single iris_resource.
+       * aux image. We will merge the separate aux parameters back into a
+       * single iris_resource.
        */
    } else if (isl_drm_modifier_plane_is_clear_color(modifier,
                                                     whandle->plane)) {
@@ -1492,7 +1402,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    } else {
       /* Save modifier import information to reconstruct later. After import,
        * this will be available under a second image accessible from the main
-       * image with res->base.next. See iris_resource_finish_aux_import.
+       * image with res->base.next.
        */
       res->aux.surf.row_pitch_B = whandle->stride;
       res->aux.offset = whandle->offset;
@@ -1501,7 +1411,53 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    }
 
    if (whandle->plane == 0) {
-      iris_resource_finish_aux_import(pscreen, res);
+      /* All planes are present. Fill out the main plane resource(s). */
+      for (unsigned plane = 0; plane < util_resource_num(templ); plane++) {
+         const unsigned main_plane =
+            get_main_plane_for_plane(whandle->format, plane);
+         struct iris_resource *main_res = (struct iris_resource *)
+            util_resource_at_index(&res->base.b, main_plane);
+         const struct iris_resource *plane_res = (struct iris_resource *)
+            util_resource_at_index(&res->base.b, plane);
+
+         if (isl_drm_modifier_plane_is_clear_color(whandle->modifier,
+                                                   plane)) {
+            /* Fill out the clear color fields. */
+            assert(plane_res->aux.clear_color_bo->size >=
+                   plane_res->aux.clear_color_offset +
+                   screen->isl_dev.ss.clear_color_state_size);
+
+            iris_bo_reference(plane_res->aux.clear_color_bo);
+            main_res->aux.clear_color_bo = plane_res->aux.clear_color_bo;
+            main_res->aux.clear_color_offset = plane_res->aux.clear_color_offset;
+            main_res->aux.clear_color_unknown = true;
+         } else if (plane > main_plane) {
+            /* Fill out some aux surface fields. */
+            assert(!devinfo->has_flat_ccs);
+
+            import_aux_info(main_res, plane_res);
+            map_aux_addresses(screen, main_res, whandle->format, main_plane);
+         } else {
+            /* Fill out fields that are convenient to initialize now. */
+            assert(plane == main_plane);
+
+            /* Add on a clear color BO if needed.
+             *
+             * Also add some padding to make sure the fast clear color state
+             * buffer starts at a 4K alignment to avoid some unknown issues.
+             * See the matching comment in iris_resource_create_for_image().
+             */
+            if (!main_res->mod_info->supports_clear_color &&
+                iris_get_aux_clear_color_state_size(screen, main_res) > 0) {
+               main_res->aux.clear_color_bo =
+                  iris_bo_alloc(screen->bufmgr, "clear color buffer",
+                                screen->isl_dev.ss.clear_color_state_size,
+                                4096, IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
+               if (!main_res->aux.clear_color_bo)
+                  goto fail;
+            }
+         }
+      }
    }
 
    return &res->base.b;
