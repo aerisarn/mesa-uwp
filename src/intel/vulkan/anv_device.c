@@ -1362,6 +1362,10 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    if (!device->has_astc_ldr &&
        driQueryOptionb(&device->instance->dri_options, "vk_require_astc"))
       device->emu_astc_ldr = true;
+   if (devinfo.ver == 9 && !intel_device_info_is_9lp(&devinfo)) {
+      device->flush_astc_ldr_void_extent_denorms =
+         device->has_astc_ldr && !device->emu_astc_ldr;
+   }
 
    result = anv_physical_device_init_heaps(device, fd);
    if (result != VK_SUCCESS)

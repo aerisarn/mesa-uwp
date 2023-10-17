@@ -891,6 +891,8 @@ struct anv_physical_device {
 
     /** True if HW supports ASTC LDR */
     bool                                        has_astc_ldr;
+    /** True if denorms in void extents should be flushed to zero */
+    bool                                        flush_astc_ldr_void_extent_denorms;
     /** True if ASTC LDR is supported via emulation */
     bool                                        emu_astc_ldr;
 
@@ -1462,6 +1464,12 @@ enum anv_rt_bvh_build_method {
 
 struct anv_device_astc_emu {
     struct vk_texcompress_astc_state           *texcompress;
+
+    /* for flush_astc_ldr_void_extent_denorms */
+    simple_mtx_t mutex;
+    VkDescriptorSetLayout ds_layout;
+    VkPipelineLayout pipeline_layout;
+    VkPipeline pipeline;
 };
 
 struct anv_device {
@@ -4474,6 +4482,14 @@ vk_format_from_android(unsigned android_format, unsigned android_usage);
 static inline VkFormat
 anv_get_emulation_format(const struct anv_physical_device *pdevice, VkFormat format)
 {
+   if (pdevice->flush_astc_ldr_void_extent_denorms) {
+      const struct util_format_description *desc =
+         vk_format_description(format);
+      if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC &&
+          desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB)
+         return format;
+   }
+
    if (pdevice->emu_astc_ldr)
       return vk_texcompress_astc_emulation_format(format);
 
@@ -4598,7 +4614,7 @@ struct anv_image {
 
    /**
     * If not UNDEFINED, image has a hidden plane at planes[n_planes] for ASTC
-    * LDR emulation.
+    * LDR workaround or emulation.
     */
    VkFormat emu_plane_format;
 

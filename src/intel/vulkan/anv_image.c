@@ -2982,14 +2982,21 @@ anv_image_fill_surface_state(struct anv_device *device,
    uint32_t plane = anv_image_aspect_to_plane(image, aspect);
    if (image->emu_plane_format != VK_FORMAT_UNDEFINED) {
       const uint16_t view_bpb = isl_format_get_layout(view_in->format)->bpb;
-      enum isl_format format =
-         image->planes[plane].primary_surface.isl.format;
+      const uint16_t plane_bpb = isl_format_get_layout(
+            image->planes[plane].primary_surface.isl.format)->bpb;
 
-      /* redirect to the hidden plane if not size-compatible */
-      if (isl_format_get_layout(format)->bpb != view_bpb) {
+      /* We should redirect to the hidden plane when the original view format
+       * is compressed or when the view usage is storage.  But we don't always
+       * have visibility to the original view format so we also check for size
+       * compatibility.
+       */
+      if (isl_format_is_compressed(view_in->format) ||
+          (view_usage & ISL_SURF_USAGE_STORAGE_BIT) ||
+          view_bpb != plane_bpb) {
          plane = image->n_planes;
-         format = image->planes[plane].primary_surface.isl.format;
-         assert(isl_format_get_layout(format)->bpb == view_bpb);
+         assert(isl_format_get_layout(
+                  image->planes[plane].primary_surface.isl.format)->bpb ==
+                view_bpb);
       }
    }
 
