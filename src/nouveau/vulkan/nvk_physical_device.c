@@ -246,6 +246,10 @@ nvk_get_device_features(const struct nv_device_info *info,
       .dynamicRendering = true,
       .maintenance4 = true,
 
+      /* VK_KHR_shader_clock */
+      .shaderSubgroupClock = true,
+      .shaderDeviceClock = true,
+
       /* VK_EXT_4444_formats */
       .formatA4R4G4B4 = true,
       .formatA4B4G4R4 = true,
@@ -355,12 +359,8 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* VK_EXT_ycbcr_image_arrays */
       .ycbcrImageArrays = true,
 
-      /* VALVE_mutable_descriptor_type */
+      /* VK_VALVE_mutable_descriptor_type */
       .mutableDescriptorType = true,
-
-      /* VK_KHR_shader_clock */
-      .shaderSubgroupClock = true,
-      .shaderDeviceClock = true,
    };
 }
 
