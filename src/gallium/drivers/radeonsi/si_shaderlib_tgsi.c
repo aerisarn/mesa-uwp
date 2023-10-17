@@ -8,65 +8,6 @@
 #include "tgsi/tgsi_text.h"
 #include "tgsi/tgsi_ureg.h"
 
-void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type, unsigned num_layers)
-{
-   unsigned vs_blit_property;
-   void **vs;
-
-   switch (type) {
-   case UTIL_BLITTER_ATTRIB_NONE:
-      vs = num_layers > 1 ? &sctx->vs_blit_pos_layered : &sctx->vs_blit_pos;
-      vs_blit_property = SI_VS_BLIT_SGPRS_POS;
-      break;
-   case UTIL_BLITTER_ATTRIB_COLOR:
-      vs = num_layers > 1 ? &sctx->vs_blit_color_layered : &sctx->vs_blit_color;
-      vs_blit_property = SI_VS_BLIT_SGPRS_POS_COLOR;
-      break;
-   case UTIL_BLITTER_ATTRIB_TEXCOORD_XY:
-   case UTIL_BLITTER_ATTRIB_TEXCOORD_XYZW:
-      assert(num_layers == 1);
-      vs = &sctx->vs_blit_texcoord;
-      vs_blit_property = SI_VS_BLIT_SGPRS_POS_TEXCOORD;
-      break;
-   default:
-      assert(0);
-      return NULL;
-   }
-   if (*vs)
-      return *vs;
-
-   struct ureg_program *ureg = ureg_create(PIPE_SHADER_VERTEX);
-   if (!ureg)
-      return NULL;
-
-   /* Add 1 for the attribute ring address. */
-   if (sctx->gfx_level >= GFX11 && type != UTIL_BLITTER_ATTRIB_NONE)
-      vs_blit_property++;
-
-   /* Tell the shader to load VS inputs from SGPRs: */
-   ureg_property(ureg, TGSI_PROPERTY_VS_BLIT_SGPRS_AMD, vs_blit_property);
-   ureg_property(ureg, TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION, true);
-
-   /* This is just a pass-through shader with 1-3 MOV instructions. */
-   ureg_MOV(ureg, ureg_DECL_output(ureg, TGSI_SEMANTIC_POSITION, 0), ureg_DECL_vs_input(ureg, 0));
-
-   if (type != UTIL_BLITTER_ATTRIB_NONE) {
-      ureg_MOV(ureg, ureg_DECL_output(ureg, TGSI_SEMANTIC_GENERIC, 0), ureg_DECL_vs_input(ureg, 1));
-   }
-
-   if (num_layers > 1) {
-      struct ureg_src instance_id = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_INSTANCEID, 0);
-      struct ureg_dst layer = ureg_DECL_output(ureg, TGSI_SEMANTIC_LAYER, 0);
-
-      ureg_MOV(ureg, ureg_writemask(layer, TGSI_WRITEMASK_X),
-               ureg_scalar(instance_id, TGSI_SWIZZLE_X));
-   }
-   ureg_END(ureg);
-
-   *vs = ureg_create_shader_and_destroy(ureg, &sctx->b);
-   return *vs;
-}
-
 /* Create the compute shader that is used to collect the results.
  *
  * One compute grid with a single thread is launched for every query result

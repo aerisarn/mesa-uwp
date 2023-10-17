@@ -788,3 +788,77 @@ void *si_create_fmask_expand_cs(struct si_context *sctx, unsigned num_samples, b
 
    return create_shader_state(sctx, b.shader);
 }
+
+/* This is just a pass-through shader with 1-3 MOV instructions. */
+void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type, unsigned num_layers)
+{
+   unsigned vs_blit_property;
+   void **vs;
+
+   switch (type) {
+   case UTIL_BLITTER_ATTRIB_NONE:
+      vs = num_layers > 1 ? &sctx->vs_blit_pos_layered : &sctx->vs_blit_pos;
+      vs_blit_property = SI_VS_BLIT_SGPRS_POS;
+      break;
+   case UTIL_BLITTER_ATTRIB_COLOR:
+      vs = num_layers > 1 ? &sctx->vs_blit_color_layered : &sctx->vs_blit_color;
+      vs_blit_property = SI_VS_BLIT_SGPRS_POS_COLOR;
+      break;
+   case UTIL_BLITTER_ATTRIB_TEXCOORD_XY:
+   case UTIL_BLITTER_ATTRIB_TEXCOORD_XYZW:
+      assert(num_layers == 1);
+      vs = &sctx->vs_blit_texcoord;
+      vs_blit_property = SI_VS_BLIT_SGPRS_POS_TEXCOORD;
+      break;
+   default:
+      assert(0);
+      return NULL;
+   }
+
+   if (*vs)
+      return *vs;
+
+   /* Add 1 for the attribute ring address. */
+   if (sctx->gfx_level >= GFX11 && type != UTIL_BLITTER_ATTRIB_NONE)
+      vs_blit_property++;
+
+   const nir_shader_compiler_options *options =
+      sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_VERTEX);
+
+   nir_builder b =
+      nir_builder_init_simple_shader(MESA_SHADER_VERTEX, options, "get_blitter_vs");
+
+   /* Tell the shader to load VS inputs from SGPRs: */
+   b.shader->info.vs.blit_sgprs_amd = vs_blit_property;
+   b.shader->info.vs.window_space_position = true;
+
+   const struct glsl_type *vec4 = glsl_vec4_type();
+
+   nir_copy_var(&b,
+                nir_create_variable_with_location(b.shader, nir_var_shader_out,
+                                                  VARYING_SLOT_POS, vec4),
+                nir_create_variable_with_location(b.shader, nir_var_shader_in,
+                                                  VERT_ATTRIB_GENERIC0, vec4));
+
+   if (type != UTIL_BLITTER_ATTRIB_NONE) {
+      nir_copy_var(&b,
+                   nir_create_variable_with_location(b.shader, nir_var_shader_out,
+                                                     VARYING_SLOT_VAR0, vec4),
+                   nir_create_variable_with_location(b.shader, nir_var_shader_in,
+                                                     VERT_ATTRIB_GENERIC1, vec4));
+   }
+
+   if (num_layers > 1) {
+      nir_variable *out_layer =
+         nir_create_variable_with_location(b.shader, nir_var_shader_out,
+                                           VARYING_SLOT_LAYER, glsl_int_type());
+      out_layer->data.interpolation = INTERP_MODE_NONE;
+
+      nir_copy_var(&b, out_layer,
+                   nir_create_variable_with_location(b.shader, nir_var_system_value,
+                                                     SYSTEM_VALUE_INSTANCE_ID, glsl_int_type()));
+   }
+
+   *vs = create_shader_state(sctx, b.shader);
+   return *vs;
+}
