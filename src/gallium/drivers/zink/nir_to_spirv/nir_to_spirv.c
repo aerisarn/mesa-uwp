@@ -88,6 +88,7 @@ struct ntv_context {
    SpvId loop_break, loop_cont;
 
    SpvId shared_block_var[5]; //8, 16, 32, unused, 64
+   SpvId shared_block_arr_type[5]; //8, 16, 32, unused, 64
    SpvId scratch_block_var[5]; //8, 16, 32, unused, 64
 
    SpvId front_face_var, instance_id_var, vertex_id_var,
@@ -684,10 +685,15 @@ create_shared_block(struct ntv_context *ctx, unsigned bit_size)
       array = spirv_builder_type_array(&ctx->builder, type, emit_uint_const(ctx, 32, block_size));
    }
 
+   ctx->shared_block_arr_type[idx] = array;
    spirv_builder_emit_array_stride(&ctx->builder, array, bit_size / 8);
+
+   /* Create wrapper struct for Block, Offset and Aliased decorations. */
+   SpvId block = spirv_builder_type_struct(&ctx->builder, &array, 1);
+
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                SpvStorageClassWorkgroup,
-                                               array);
+                                               block);
    ctx->shared_block_var[idx] = spirv_builder_emit_var(&ctx->builder, ptr_type, SpvStorageClassWorkgroup);
    if (ctx->spirv_1_4_interfaces) {
       assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
@@ -709,7 +715,14 @@ get_shared_block(struct ntv_context *ctx, unsigned bit_size)
       if (ctx->shared_block_var[1])
          spirv_builder_emit_cap(&ctx->builder, SpvCapabilityWorkgroupMemoryExplicitLayout16BitAccessKHR);
    }
-   return ctx->shared_block_var[idx];
+
+   SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
+                                               SpvStorageClassWorkgroup,
+                                               ctx->shared_block_arr_type[idx]);
+   SpvId zero = emit_uint_const(ctx, 32, 0);
+
+   return spirv_builder_emit_access_chain(&ctx->builder, ptr_type,
+                                          ctx->shared_block_var[idx], &zero, 1);
 }
 
 #define HANDLE_EMIT_BUILTIN(SLOT, BUILTIN) \
