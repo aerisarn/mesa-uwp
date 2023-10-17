@@ -3982,7 +3982,13 @@ cmd_buffer_barrier_video(struct anv_cmd_buffer *cmd_buffer,
 #if GFX_VERx10 >= 125
          fd.FlushCCS = flush_ccs;
 #endif
+#if GFX_VER >= 12
+         /* Using this bit on Gfx9 triggers a GPU hang.
+          * This is undocumented behavior. Gfx12 seems fine.
+          * TODO: check Gfx11
+          */
          fd.FlushLLC = flush_llc;
+#endif
       }
    }
 }
