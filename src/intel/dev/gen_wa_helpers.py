@@ -201,7 +201,7 @@ _PLATFORM_GFXVERS = {"INTEL_PLATFORM_BDW" : 80,
                      "INTEL_PLATFORM_DG2_G10" : 125,
                      "INTEL_PLATFORM_DG2_G11" : 125,
                      "INTEL_PLATFORM_DG2_G12" : 125,
-                     "INTEL_PLATFORM_MTL_M" : 125,
+                     "INTEL_PLATFORM_MTL_U" : 125,
                      "INTEL_PLATFORM_MTL_P" : 125,
                      }
 

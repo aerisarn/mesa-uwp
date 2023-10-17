@@ -349,7 +349,7 @@ get_l3_way_size(const struct intel_device_info *devinfo)
     *  ways.  See BSpec 45319.
     */
    const unsigned way_size_per_bank =
-      devinfo->platform == INTEL_PLATFORM_MTL_M ? 8 :
+      devinfo->platform == INTEL_PLATFORM_MTL_U ? 8 :
       (devinfo->ver >= 9 && devinfo->l3_banks == 1) || devinfo->ver >= 11 ? 4 :
       2;
 

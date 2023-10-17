@@ -1142,9 +1142,9 @@ static const struct intel_device_info intel_device_info_atsm_g11 = {
       .writeback = 0,                                           \
    }
 
-static const struct intel_device_info intel_device_info_mtl_m = {
+static const struct intel_device_info intel_device_info_mtl_u = {
    MTL_FEATURES,
-   .platform = INTEL_PLATFORM_MTL_M,
+   .platform = INTEL_PLATFORM_MTL_U,
 };
 
 static const struct intel_device_info intel_device_info_mtl_p = {
