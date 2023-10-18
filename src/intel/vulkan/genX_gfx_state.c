@@ -907,7 +907,7 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
                     gfx->alpha_blend_zero ? 0.0f : dyn->cb.blend_constants[3]);
    }
 
-   if ((gfx->dirty & ANV_CMD_DIRTY_RENDER_TARGETS) ||
+   if ((gfx->dirty & ANV_CMD_DIRTY_RENDER_AREA) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE) ||
@@ -1054,7 +1054,7 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if ((gfx->dirty & ANV_CMD_DIRTY_RENDER_TARGETS) ||
+   if ((gfx->dirty & ANV_CMD_DIRTY_RENDER_AREA) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS)) {
       const VkRect2D *scissors = dyn->vp.scissors;

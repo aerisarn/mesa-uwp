@@ -3510,7 +3510,8 @@ genX(BeginCommandBuffer)(
 
          anv_cmd_graphic_state_update_has_uint_rt(gfx);
 
-         cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
+         cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_AREA |
+                                        ANV_CMD_DIRTY_RENDER_TARGETS;
       }
    }
 
@@ -7198,10 +7199,17 @@ void genX(CmdBeginRendering)(
    trace_intel_begin_render_pass(&cmd_buffer->trace);
 
    gfx->rendering_flags = pRenderingInfo->flags;
-   gfx->render_area = pRenderingInfo->renderArea;
    gfx->view_mask = pRenderingInfo->viewMask;
    gfx->layer_count = pRenderingInfo->layerCount;
    gfx->samples = 0;
+
+   if (gfx->render_area.offset.x != pRenderingInfo->renderArea.offset.x ||
+       gfx->render_area.offset.y != pRenderingInfo->renderArea.offset.y ||
+       gfx->render_area.extent.width != pRenderingInfo->renderArea.extent.width ||
+       gfx->render_area.extent.height != pRenderingInfo->renderArea.extent.height) {
+      gfx->render_area = pRenderingInfo->renderArea;
+      gfx->dirty |= ANV_CMD_DIRTY_RENDER_AREA;
+   }
 
    const bool is_multiview = gfx->view_mask != 0;
    const VkRect2D render_area = gfx->render_area;
