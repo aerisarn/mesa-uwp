@@ -613,10 +613,10 @@ anv_block_pool_size(struct anv_block_pool *pool)
 }
 
 struct anv_state {
-   int32_t offset;
+   int64_t offset;
    uint32_t alloc_size;
-   void *map;
    uint32_t idx;
+   void *map;
 };
 
 #define ANV_STATE_NULL ((struct anv_state) { .alloc_size = 0 })
@@ -652,7 +652,7 @@ struct anv_state_pool {
    /* Offset into the relevant state base address where the state pool starts
     * allocating memory.
     */
-   int32_t start_offset;
+   int64_t start_offset;
 
    struct anv_state_table table;
 
