@@ -1353,36 +1353,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    if (!res->bo)
       goto fail;
 
-   uint64_t modifier;
-   if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
-      /* We don't have a modifier; match whatever GEM_GET_TILING says */
-      uint32_t tiling;
-      iris_gem_get_tiling(res->bo, &tiling);
-      modifier = tiling_to_modifier(tiling);
-   } else {
-      modifier = whandle->modifier;
-   }
-
    res->offset = whandle->offset;
-   res->external_format = whandle->format;
    res->surf.row_pitch_B = whandle->stride;
-
-   if (templ->target == PIPE_BUFFER) {
-      res->surf.tiling = ISL_TILING_LINEAR;
-      return &res->base.b;
-   }
-
-   /* Create a surface for each plane specified by the external format. */
-   if (whandle->plane < util_format_get_num_planes(whandle->format)) {
-      const bool isl_surf_created_successfully =
-         iris_resource_configure_main(screen, res, templ, modifier,
-                                      whandle->stride);
-      if (!isl_surf_created_successfully)
-         goto fail;
-
-      if (!iris_resource_configure_aux(screen, res, true))
-         goto fail;
-   }
 
    if (whandle->plane == 0) {
       /* All planes are present. Fill out the main plane resource(s). */
@@ -1419,6 +1391,36 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
          } else {
             /* Fill out fields that are convenient to initialize now. */
             assert(plane == main_plane);
+
+            main_res->external_format = whandle->format;
+
+            if (templ->target == PIPE_BUFFER) {
+               main_res->surf.tiling = ISL_TILING_LINEAR;
+               return &main_res->base.b;
+            }
+
+            uint64_t modifier;
+            if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
+               /* We have no modifier; match whatever GEM_GET_TILING says */
+               uint32_t tiling;
+               iris_gem_get_tiling(main_res->bo, &tiling);
+               modifier = tiling_to_modifier(tiling);
+            } else {
+               modifier = whandle->modifier;
+            }
+
+            const bool isl_surf_created_successfully =
+               iris_resource_configure_main(screen, main_res,
+                                            &main_res->base.b, modifier,
+                                            main_res->surf.row_pitch_B);
+            if (!isl_surf_created_successfully)
+               goto fail;
+
+            assert(main_res->bo->size >= main_res->offset +
+                   main_res->surf.size_B);
+
+            if (!iris_resource_configure_aux(screen, main_res, true))
+               goto fail;
 
             /* Add on a clear color BO if needed.
              *
