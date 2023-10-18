@@ -194,6 +194,7 @@ PKG_DEP=(
 )
 [ "$DEBIAN_ARCH" = "amd64" ] && PKG_ARCH=(
   firmware-amd-graphics
+  firmware-misc-nonfree
   libgl1 libglu1-mesa
   inetutils-syslogd iptables libcap2
   libfontconfig1
@@ -319,6 +320,11 @@ fi
 ############### Delete rust, since the tests won't be compiling anything.
 rm -rf /root/.cargo
 rm -rf /root/.rustup
+
+############### Delete firmware files we don't need
+if [ "$DEBIAN_ARCH" = "amd64" ]; then
+   dpkg -L firmware-misc-nonfree | grep -v "i915" | xargs rm || true
+fi
 
 ############### Fill rootfs
 cp .gitlab-ci/container/setup-rootfs.sh $ROOTFS/.
