@@ -1777,11 +1777,11 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
          /* generated prim counter */
          gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
-         radv_emit_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
+         radv_cs_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
          /* written prim counter */
          gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 8);
-         radv_emit_write_data_imm(cs, V_370_ME, va + 12, 0x80000000);
+         radv_cs_write_data_imm(cs, V_370_ME, va + 12, 0x80000000);
 
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
@@ -1802,7 +1802,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
          /* On GFX11+, primitives generated query always use GDS. */
          gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
-         radv_emit_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
+         radv_cs_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
@@ -1938,11 +1938,11 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
          /* generated prim counter */
          gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
-         radv_emit_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
+         radv_cs_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
 
          /* written prim counter */
          gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 24);
-         radv_emit_write_data_imm(cs, V_370_ME, va + 28, 0x80000000);
+         radv_cs_write_data_imm(cs, V_370_ME, va + 28, 0x80000000);
 
          cmd_buffer->state.active_prims_xfb_gds_queries--;
 
@@ -1960,7 +1960,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
          /* On GFX11+, primitives generated query always use GDS. */
          gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
-         radv_emit_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
+         radv_cs_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
 
          cmd_buffer->state.active_prims_gen_gds_queries--;
 

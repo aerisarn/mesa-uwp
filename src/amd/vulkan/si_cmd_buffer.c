@@ -2010,7 +2010,7 @@ radv_device_init_msaa(struct radv_device *device)
 }
 
 void
-radv_emit_write_data_imm(struct radeon_cmdbuf *cs, unsigned engine_sel, uint64_t va, uint32_t imm)
+radv_cs_write_data_imm(struct radeon_cmdbuf *cs, unsigned engine_sel, uint64_t va, uint32_t imm)
 {
    radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
    radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(engine_sel));

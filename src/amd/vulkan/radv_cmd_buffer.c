@@ -277,18 +277,10 @@ radv_queue_family_to_ring(const struct radv_physical_device *physical_device, en
 }
 
 static void
-radv_emit_write_data_packet(struct radv_cmd_buffer *cmd_buffer, unsigned engine_sel, uint64_t va, unsigned count,
-                            const uint32_t *data)
+radv_write_data(struct radv_cmd_buffer *cmd_buffer, const unsigned engine_sel, const uint64_t va, const unsigned count,
+                const uint32_t *data, const bool predicating)
 {
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
-
-   radeon_check_space(cmd_buffer->device->ws, cs, 4 + count);
-
-   radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
-   radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(engine_sel));
-   radeon_emit(cs, va);
-   radeon_emit(cs, va >> 32);
-   radeon_emit_array(cs, data, count);
+   radv_cs_write_data(cmd_buffer->device, cmd_buffer->cs, cmd_buffer->qf, engine_sel, va, count, data, predicating);
 }
 
 static void
@@ -296,7 +288,7 @@ radv_emit_clear_data(struct radv_cmd_buffer *cmd_buffer, unsigned engine_sel, ui
 {
    uint32_t *zeroes = alloca(size);
    memset(zeroes, 0, size);
-   radv_emit_write_data_packet(cmd_buffer, engine_sel, va, size / 4, zeroes);
+   radv_write_data(cmd_buffer, engine_sel, va, size / 4, zeroes, false);
 }
 
 static void
@@ -554,7 +546,7 @@ radv_cmd_buffer_trace_emit(struct radv_cmd_buffer *cmd_buffer)
       va += 4;
 
    ++cmd_buffer->state.trace_id;
-   radv_emit_write_data_packet(cmd_buffer, V_370_ME, va, 1, &cmd_buffer->state.trace_id);
+   radv_write_data(cmd_buffer, V_370_ME, va, 1, &cmd_buffer->state.trace_id, false);
 
    radeon_check_space(cmd_buffer->device->ws, cs, 2);
 
@@ -769,7 +761,7 @@ radv_save_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pip
    data[0] = pipeline_address;
    data[1] = pipeline_address >> 32;
 
-   radv_emit_write_data_packet(cmd_buffer, V_370_ME, va, 2, data);
+   radv_write_data(cmd_buffer, V_370_ME, va, 2, data, false);
 }
 
 static void
@@ -785,7 +777,7 @@ radv_save_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, uint64_t vb_ptr
    data[0] = vb_ptr;
    data[1] = vb_ptr >> 32;
 
-   radv_emit_write_data_packet(cmd_buffer, V_370_ME, va, 2, data);
+   radv_write_data(cmd_buffer, V_370_ME, va, 2, data, false);
 }
 
 static void
@@ -802,7 +794,7 @@ radv_save_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader
    data[0] = prolog_address;
    data[1] = prolog_address >> 32;
 
-   radv_emit_write_data_packet(cmd_buffer, V_370_ME, va, 2, data);
+   radv_write_data(cmd_buffer, V_370_ME, va, 2, data, false);
 }
 
 void
@@ -832,7 +824,7 @@ radv_save_descriptors(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bi
       data[i * 2 + 1] = (uint64_t)(uintptr_t)set >> 32;
    }
 
-   radv_emit_write_data_packet(cmd_buffer, V_370_ME, va, MAX_SETS * 2, data);
+   radv_write_data(cmd_buffer, V_370_ME, va, MAX_SETS * 2, data, false);
 }
 
 const struct radv_userdata_info *
