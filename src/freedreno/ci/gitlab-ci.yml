@@ -91,7 +91,7 @@ a618_gl:
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a618-egl
 
-.a618_skqp:  # FIXME disabled due to device outage
+a618_skqp:
   extends:
     - .lava-test-deqp:arm64
     - .a618-test-limozeen-nots-r5
@@ -197,16 +197,6 @@ a630_gles_asan:
     DEQP_EXPECTED_RENDERER: FD630
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
     GPU_VERSION: freedreno-a630-asan
-
-a630_skqp:
-  extends:
-    - .baremetal-deqp-test
-    - .a630-test
-    # SKQP tests both the GL and VK drivers.
-    - .google-freedreno-turnip-rules
-  variables:
-    HWCI_START_WESTON: 1
-    DEQP_SUITE: freedreno-a630-skqp
 
 a630_vk:
   extends:
