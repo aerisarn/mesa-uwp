@@ -3358,18 +3358,21 @@ rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, struct z
       return NULL;
    nir_def *dest = &tex->def;
    if (rewrite_depth && zs) {
+      if (nir_def_components_read(dest) & ~1) {
+         /* this needs recompiles */
+         if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
+            flag_shadow_tex(var, zs);
+         else
+            mesa_loge("unhandled old-style shadow sampler in non-fragment stage!");
+         return NULL;
+      }
       /* If only .x is used in the NIR, then it's effectively not a legacy depth
        * sample anyway and we don't want to ask for shader recompiles.  This is
        * the typical path, since GL_DEPTH_TEXTURE_MODE defaults to either RED or
        * LUMINANCE, so apps just use the first channel.
        */
-      if (nir_def_components_read(dest) & ~1) {
-         if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
-            flag_shadow_tex(var, zs);
-         else
-            mesa_loge("unhandled old-style shadow sampler in non-fragment stage!");
-      }
-      return NULL;
+      tex->def.num_components = 1;
+      tex->is_new_style_shadow = true;
    }
    if (bit_size != dest_size) {
       tex->def.bit_size = bit_size;
