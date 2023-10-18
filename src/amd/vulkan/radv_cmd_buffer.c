@@ -9519,18 +9519,6 @@ radv_CmdDrawMeshTasksIndirectCountEXT(VkCommandBuffer commandBuffer, VkBuffer _b
 static void radv_dgc_before_dispatch(struct radv_cmd_buffer *cmd_buffer);
 static void radv_dgc_after_dispatch(struct radv_cmd_buffer *cmd_buffer);
 
-static bool
-radv_use_dgc_predication(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
-{
-   VK_FROM_HANDLE(radv_buffer, seq_count_buffer, pGeneratedCommandsInfo->sequencesCountBuffer);
-
-   /* Enable conditional rendering (if not enabled by user) to skip prepare/execute DGC calls when
-    * the indirect sequence count might be zero. This can only be enabled on GFX because on ACE it's
-    * not possible to skip the execute DGC call (ie. no INDIRECT_PACKET)
-    */
-   return cmd_buffer->qf == RADV_QUEUE_GENERAL && seq_count_buffer && !cmd_buffer->state.predicating;
-}
-
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPreprocessed,
                                    const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
@@ -9557,7 +9545,11 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       cmd_buffer->state.predicating = true;
    }
 
-   radv_prepare_dgc(cmd_buffer, pGeneratedCommandsInfo);
+   if (!layout->use_preprocess) {
+      radv_prepare_dgc(cmd_buffer, pGeneratedCommandsInfo);
+
+      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2;
+   }
 
    if (compute) {
       radv_dgc_before_dispatch(cmd_buffer);
