@@ -1979,8 +1979,8 @@ VkResult radv_init_shadowed_regs_buffer_state(const struct radv_device *device, 
 uint32_t si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw, bool indirect_draw,
                                    bool count_from_stream_output, uint32_t draw_vertex_count, unsigned topology,
                                    bool prim_restart_enable, unsigned patch_control_points, unsigned num_tess_patches);
-void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level, bool is_mec, unsigned event,
-                                unsigned event_flags, unsigned dst_sel, unsigned data_sel, uint64_t va,
+void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level, enum radv_queue_family qf,
+                                unsigned event, unsigned event_flags, unsigned dst_sel, unsigned data_sel, uint64_t va,
                                 uint32_t new_fence, uint64_t gfx9_eop_bug_va);
 
 struct radv_vgt_shader_key {
@@ -1997,8 +1997,9 @@ struct radv_vgt_shader_key {
 };
 
 void si_cs_emit_cache_flush(struct radeon_winsys *ws, struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level,
-                            uint32_t *flush_cnt, uint64_t flush_va, bool is_mec, enum radv_cmd_flush_bits flush_bits,
-                            enum rgp_flush_bits *sqtt_flush_bits, uint64_t gfx9_eop_bug_va);
+                            uint32_t *flush_cnt, uint64_t flush_va, enum radv_queue_family qf,
+                            enum radv_cmd_flush_bits flush_bits, enum rgp_flush_bits *sqtt_flush_bits,
+                            uint64_t gfx9_eop_bug_va);
 void si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer);
 void si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer, bool draw_visible, unsigned pred_op,
                                    uint64_t va);

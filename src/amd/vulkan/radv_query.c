@@ -1929,9 +1929,9 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
       }
 
-      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
-                                 radv_cmd_buffer_uses_mec(cmd_buffer), V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM,
-                                 EOP_DATA_SEL_VALUE_32BIT, avail_va, 1, cmd_buffer->gfx9_eop_bug_va);
+      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                                 V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT, avail_va, 1,
+                                 cmd_buffer->gfx9_eop_bug_va);
       break;
    }
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
@@ -2066,7 +2066,6 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_query_pool, pool, queryPool);
-   bool mec = radv_cmd_buffer_uses_mec(cmd_buffer);
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint64_t va = radv_buffer_get_va(pool->bo);
    uint64_t query_va = va + pool->stride * query;
@@ -2096,7 +2095,7 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
          radeon_emit(cs, query_va);
          radeon_emit(cs, query_va >> 32);
       } else {
-         si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, mec,
+         si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
                                     V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_TIMESTAMP, query_va, 0,
                                     cmd_buffer->gfx9_eop_bug_va);
       }

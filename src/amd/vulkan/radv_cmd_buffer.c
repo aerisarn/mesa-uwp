@@ -587,7 +587,7 @@ radv_gang_cache_flush(struct radv_cmd_buffer *cmd_buffer)
    enum rgp_flush_bits sqtt_flush_bits = 0;
 
    si_cs_emit_cache_flush(cmd_buffer->device->ws, ace_cs, cmd_buffer->device->physical_device->rad_info.gfx_level, NULL,
-                          0, true, flush_bits, &sqtt_flush_bits, 0);
+                          0, RADV_QUEUE_COMPUTE, flush_bits, &sqtt_flush_bits, 0);
 
    cmd_buffer->gang.flush_bits = 0;
 }
@@ -629,10 +629,9 @@ radv_flush_gang_leader_semaphore(struct radv_cmd_buffer *cmd_buffer)
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 12);
 
    /* GFX writes a value to the semaphore which ACE can wait for.*/
-   si_cs_emit_write_event_eop(cmd_buffer->cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
-                              radv_cmd_buffer_uses_mec(cmd_buffer), V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM,
-                              EOP_DATA_SEL_VALUE_32BIT, cmd_buffer->gang.sem.va, cmd_buffer->gang.sem.leader_value,
-                              cmd_buffer->gfx9_eop_bug_va);
+   si_cs_emit_write_event_eop(cmd_buffer->cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                              V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT,
+                              cmd_buffer->gang.sem.va, cmd_buffer->gang.sem.leader_value, cmd_buffer->gfx9_eop_bug_va);
 
    cmd_buffer->gang.sem.emitted_leader_value = cmd_buffer->gang.sem.leader_value;
 
@@ -711,14 +710,13 @@ radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer, enum radv_cmd_flu
 
       /* Force wait for graphics or compute engines to be idle. */
       si_cs_emit_cache_flush(device->ws, cmd_buffer->cs, device->physical_device->rad_info.gfx_level,
-                             &cmd_buffer->gfx9_fence_idx, cmd_buffer->gfx9_fence_va,
-                             radv_cmd_buffer_uses_mec(cmd_buffer), flags, &sqtt_flush_bits,
-                             cmd_buffer->gfx9_eop_bug_va);
+                             &cmd_buffer->gfx9_fence_idx, cmd_buffer->gfx9_fence_va, cmd_buffer->qf, flags,
+                             &sqtt_flush_bits, cmd_buffer->gfx9_eop_bug_va);
 
       if ((flags & RADV_CMD_FLAG_PS_PARTIAL_FLUSH) && radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_TASK)) {
          /* Force wait for compute engines to be idle on the internal cmdbuf. */
          si_cs_emit_cache_flush(device->ws, cmd_buffer->gang.cs, device->physical_device->rad_info.gfx_level, NULL, 0,
-                                true, RADV_CMD_FLAG_CS_PARTIAL_FLUSH, &sqtt_flush_bits, 0);
+                                RADV_QUEUE_COMPUTE, RADV_CMD_FLAG_CS_PARTIAL_FLUSH, &sqtt_flush_bits, 0);
       }
    }
 
@@ -10593,9 +10591,9 @@ write_event(struct radv_cmd_buffer *cmd_buffer, struct radv_event *event, VkPipe
          event_type = V_028A90_BOTTOM_OF_PIPE_TS;
       }
 
-      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
-                                 radv_cmd_buffer_uses_mec(cmd_buffer), event_type, 0, EOP_DST_SEL_MEM,
-                                 EOP_DATA_SEL_VALUE_32BIT, va, value, cmd_buffer->gfx9_eop_bug_va);
+      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                                 event_type, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT, va, value,
+                                 cmd_buffer->gfx9_eop_bug_va);
    }
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
@@ -11058,9 +11056,9 @@ radv_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCou
             }
          } else {
             if (append) {
-               si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
-                                          radv_cmd_buffer_uses_mec(cmd_buffer), V_028A90_PS_DONE, 0, EOP_DST_SEL_TC_L2,
-                                          EOP_DATA_SEL_GDS, va, EOP_DATA_GDS(i, 1), 0);
+               si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                                          V_028A90_PS_DONE, 0, EOP_DST_SEL_TC_L2, EOP_DATA_SEL_GDS, va,
+                                          EOP_DATA_GDS(i, 1), 0);
             }
          }
       } else {
@@ -11174,9 +11172,9 @@ radv_CmdWriteBufferMarker2AMD(VkCommandBuffer commandBuffer, VkPipelineStageFlag
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
    } else {
-      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
-                                 radv_cmd_buffer_uses_mec(cmd_buffer), V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM,
-                                 EOP_DATA_SEL_VALUE_32BIT, va, marker, cmd_buffer->gfx9_eop_bug_va);
+      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                                 V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT, va, marker,
+                                 cmd_buffer->gfx9_eop_bug_va);
    }
 
    assert(cmd_buffer->cs->cdw <= cdw_max);

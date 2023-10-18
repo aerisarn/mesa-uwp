@@ -1056,7 +1056,6 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
       if (i < 2) {
          /* The two initial preambles have a cache flush at the beginning. */
          const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-         const bool is_mec = queue->qf == RADV_QUEUE_COMPUTE && gfx_level >= GFX7;
          enum radv_cmd_flush_bits flush_bits = RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE |
                                                RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2 |
                                                RADV_CMD_FLAG_START_PIPELINE_STATS;
@@ -1068,7 +1067,7 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
                flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH;
          }
 
-         si_cs_emit_cache_flush(ws, cs, gfx_level, NULL, 0, is_mec, flush_bits, &sqtt_flush_bits, 0);
+         si_cs_emit_cache_flush(ws, cs, gfx_level, NULL, 0, queue->qf, flush_bits, &sqtt_flush_bits, 0);
       }
 
       result = ws->cs_finalize(cs);
