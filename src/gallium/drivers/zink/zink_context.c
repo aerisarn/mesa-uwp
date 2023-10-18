@@ -3776,7 +3776,7 @@ zink_flush(struct pipe_context *pctx,
 #ifdef HAVE_RENDERDOC_APP_H
       p_atomic_inc(&screen->renderdoc_frame);
 #endif
-      if (ctx->needs_present && ctx->needs_present->obj->image &&
+      if (ctx->needs_present && ctx->needs_present->obj->dt_idx != UINT32_MAX &&
           zink_is_swapchain(ctx->needs_present)) {
          zink_kopper_readback_update(ctx, ctx->needs_present);
          screen->image_barrier(ctx, ctx->needs_present, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
