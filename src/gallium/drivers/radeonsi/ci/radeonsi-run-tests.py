@@ -424,6 +424,10 @@ if args.glcts:
         "{}/build/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass_single/4.6.1.x/gl46-khr-single.txt".format(
             glcts_path
         ),
+        "--caselist",
+        "{}/build/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-gtf-master.txt".format(
+            glcts_path
+        ),
         "--output",
         out,
         "--skips",
