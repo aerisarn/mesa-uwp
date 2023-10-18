@@ -150,7 +150,7 @@ blorp_alloc_general_state(struct blorp_batch *blorp_batch,
    return blorp_alloc_dynamic_state(blorp_batch, size, alignment, offset);
 }
 
-static void
+static bool
 blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
                           unsigned num_entries,
                           unsigned state_size,
@@ -181,6 +181,8 @@ blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
    iris_use_pinned_bo(batch, binder->bo, false, IRIS_DOMAIN_NONE);
 
    batch->screen->vtbl.update_binder_address(batch, binder);
+
+   return true;
 }
 
 static uint32_t
