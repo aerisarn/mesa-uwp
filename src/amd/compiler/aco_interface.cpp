@@ -28,6 +28,7 @@
 
 #include "util/memstream.h"
 
+#include "ac_gpu_info.h"
 #include <array>
 #include <iostream>
 #include <vector>
@@ -424,4 +425,11 @@ aco_compile_ps_prolog(const struct aco_compiler_options* options,
 {
    aco_compile_shader_part(options, info, args, aco::select_ps_prolog, (void*)pinfo, build_prolog,
                            binary, true);
+}
+
+bool
+aco_is_gpu_supported(const struct radeon_info* info)
+{
+   /* Does not support compute only cards yet. */
+   return info->gfx_level >= GFX6 && info->has_graphics;
 }
