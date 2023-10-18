@@ -1597,7 +1597,7 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
       assert(!(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT));
 
       image->emu_plane_format =
-         vk_texcompress_astc_emulation_format(image->vk.format);
+         anv_get_emulation_format(device->physical, image->vk.format);
 
       /* for fetching the raw copmressed data and storing the decompressed
        * data
@@ -3275,7 +3275,8 @@ anv_image_view_init(struct anv_device *device,
       VkFormat view_format = iview->vk.view_format;
       if (anv_is_format_emulated(device->physical, view_format)) {
          assert(image->emu_plane_format != VK_FORMAT_UNDEFINED);
-         view_format = vk_texcompress_astc_emulation_format(view_format);
+         view_format =
+            anv_get_emulation_format(device->physical, view_format);
       }
       const struct anv_format_plane format = anv_get_format_plane(
             device->info, view_format, vplane, image->vk.tiling);

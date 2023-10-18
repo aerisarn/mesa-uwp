@@ -42,19 +42,18 @@ astc_emu_init_image_view(struct anv_cmd_buffer *cmd_buffer,
 static void
 astc_emu_init_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                                   struct anv_push_descriptor_set *push_set,
-                                  const struct vk_texcompress_astc_write_descriptor_set *writes)
+                                  VkDescriptorSetLayout _layout,
+                                  uint32_t write_count,
+                                  const VkWriteDescriptorSet *writes)
 {
    struct anv_device *device = cmd_buffer->device;
    struct anv_descriptor_set_layout *layout =
-      anv_descriptor_set_layout_from_handle(
-            device->texcompress_astc->ds_layout);
+      anv_descriptor_set_layout_from_handle(_layout);
 
    memset(push_set, 0, sizeof(*push_set));
    anv_push_descriptor_set_init(cmd_buffer, push_set, layout);
 
-   anv_descriptor_set_write(device, &push_set->set,
-                            ARRAY_SIZE(writes->descriptor_set),
-                            writes->descriptor_set);
+   anv_descriptor_set_write(device, &push_set->set, write_count, writes);
 }
 
 static void
@@ -66,11 +65,12 @@ astc_emu_decompress_slice(struct anv_cmd_buffer *cmd_buffer,
                           VkRect2D rect)
 {
    struct anv_device *device = cmd_buffer->device;
+   struct anv_device_astc_emu *astc_emu = &device->astc_emu;
    VkCommandBuffer cmd_buffer_ = anv_cmd_buffer_to_handle(cmd_buffer);
 
    VkPipeline pipeline =
       vk_texcompress_astc_get_decode_pipeline(&device->vk, &device->vk.alloc,
-                                              device->texcompress_astc,
+                                              astc_emu->texcompress,
                                               VK_NULL_HANDLE, astc_format);
    if (pipeline == VK_NULL_HANDLE) {
       anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_UNKNOWN);
@@ -80,16 +80,19 @@ astc_emu_decompress_slice(struct anv_cmd_buffer *cmd_buffer,
    anv_CmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 
    struct vk_texcompress_astc_write_descriptor_set writes;
-   vk_texcompress_astc_fill_write_descriptor_sets(device->texcompress_astc,
+   vk_texcompress_astc_fill_write_descriptor_sets(astc_emu->texcompress,
                                                   &writes, src_view, layout,
                                                   dst_view, astc_format);
 
    struct anv_push_descriptor_set push_set;
-   astc_emu_init_push_descriptor_set(cmd_buffer, &push_set, &writes);
+   astc_emu_init_push_descriptor_set(cmd_buffer, &push_set,
+                                     astc_emu->texcompress->ds_layout,
+                                     ARRAY_SIZE(writes.descriptor_set),
+                                     writes.descriptor_set);
 
    VkDescriptorSet set = anv_descriptor_set_to_handle(&push_set.set);
    anv_CmdBindDescriptorSets(cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE,
-                             device->texcompress_astc->p_layout, 0, 1, &set,
+                             astc_emu->texcompress->p_layout, 0, 1, &set,
                              0, NULL);
 
    const uint32_t push_const[] = {
@@ -101,7 +104,7 @@ astc_emu_decompress_slice(struct anv_cmd_buffer *cmd_buffer,
          vk_format_get_blockheight(astc_format),
       false, /* we don't use VK_IMAGE_VIEW_TYPE_3D */
    };
-   anv_CmdPushConstants(cmd_buffer_, device->texcompress_astc->p_layout,
+   anv_CmdPushConstants(cmd_buffer_, astc_emu->texcompress->p_layout,
                         VK_SHADER_STAGE_COMPUTE_BIT, 0,
                         sizeof(push_const), push_const);
 
@@ -118,12 +121,12 @@ astc_emu_decompress_slice(struct anv_cmd_buffer *cmd_buffer,
 }
 
 void
-anv_astc_emu_decompress(struct anv_cmd_buffer *cmd_buffer,
-                        struct anv_image *image,
-                        VkImageLayout layout,
-                        const VkImageSubresourceLayers *subresource,
-                        VkOffset3D block_offset,
-                        VkExtent3D block_extent)
+anv_astc_emu_process(struct anv_cmd_buffer *cmd_buffer,
+                     struct anv_image *image,
+                     VkImageLayout layout,
+                     const VkImageSubresourceLayers *subresource,
+                     VkOffset3D block_offset,
+                     VkExtent3D block_extent)
 {
    assert(image->emu_plane_format != VK_FORMAT_UNDEFINED);
 
@@ -138,7 +141,7 @@ anv_astc_emu_decompress(struct anv_cmd_buffer *cmd_buffer,
       },
    };
 
-   /* decompress one layer at a time because anv_image_fill_surface_state
+   /* process one layer at a time because anv_image_fill_surface_state
     * requires an uncompressed view of a compressed image to be single layer
     */
    const bool is_3d = image->vk.image_type == VK_IMAGE_TYPE_3D;
@@ -178,18 +181,25 @@ anv_astc_emu_decompress(struct anv_cmd_buffer *cmd_buffer,
 VkResult
 anv_device_init_astc_emu(struct anv_device *device)
 {
-   if (!device->physical->emu_astc_ldr)
-      return VK_SUCCESS;
+   struct anv_device_astc_emu *astc_emu = &device->astc_emu;
+   VkResult result = VK_SUCCESS;
 
-   return vk_texcompress_astc_init(&device->vk, &device->vk.alloc,
-                                   VK_NULL_HANDLE, &device->texcompress_astc);
+   if (device->physical->emu_astc_ldr) {
+      result = vk_texcompress_astc_init(&device->vk, &device->vk.alloc,
+                                        VK_NULL_HANDLE,
+                                        &astc_emu->texcompress);
+   }
+
+   return result;
 }
 
 void
 anv_device_finish_astc_emu(struct anv_device *device)
 {
-   if (device->texcompress_astc) {
+   struct anv_device_astc_emu *astc_emu = &device->astc_emu;
+
+   if (astc_emu->texcompress) {
       vk_texcompress_astc_finish(&device->vk, &device->vk.alloc,
-                                 device->texcompress_astc);
+                                 astc_emu->texcompress);
    }
 }

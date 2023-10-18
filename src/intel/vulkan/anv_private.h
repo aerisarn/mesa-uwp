@@ -1460,6 +1460,10 @@ enum anv_rt_bvh_build_method {
    ANV_BVH_BUILD_METHOD_NEW_SAH,
 };
 
+struct anv_device_astc_emu {
+    struct vk_texcompress_astc_state           *texcompress;
+};
+
 struct anv_device {
     struct vk_device                            vk;
 
@@ -1641,7 +1645,7 @@ struct anv_device {
      */
     bool                                         using_sparse;
 
-    struct vk_texcompress_astc_state           *texcompress_astc;
+    struct anv_device_astc_emu                   astc_emu;
 };
 
 static inline uint32_t
@@ -4467,13 +4471,19 @@ bool anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
 extern VkFormat
 vk_format_from_android(unsigned android_format, unsigned android_usage);
 
+static inline VkFormat
+anv_get_emulation_format(const struct anv_physical_device *pdevice, VkFormat format)
+{
+   if (pdevice->emu_astc_ldr)
+      return vk_texcompress_astc_emulation_format(format);
+
+   return VK_FORMAT_UNDEFINED;
+}
+
 static inline bool
 anv_is_format_emulated(const struct anv_physical_device *pdevice, VkFormat format)
 {
-   if (pdevice->emu_astc_ldr &&
-       vk_texcompress_astc_emulation_format(format) != VK_FORMAT_UNDEFINED)
-      return true;
-   return false;
+   return anv_get_emulation_format(pdevice, format) != VK_FORMAT_UNDEFINED;
 }
 
 static inline struct isl_swizzle
@@ -5384,12 +5394,12 @@ void anv_device_finish_internal_kernels(struct anv_device *device);
 
 VkResult anv_device_init_astc_emu(struct anv_device *device);
 void anv_device_finish_astc_emu(struct anv_device *device);
-void anv_astc_emu_decompress(struct anv_cmd_buffer *cmd_buffer,
-                             struct anv_image *image,
-                             VkImageLayout layout,
-                             const VkImageSubresourceLayers *subresource,
-                             VkOffset3D block_offset,
-                             VkExtent3D block_extent);
+void anv_astc_emu_process(struct anv_cmd_buffer *cmd_buffer,
+                          struct anv_image *image,
+                          VkImageLayout layout,
+                          const VkImageSubresourceLayers *subresource,
+                          VkOffset3D block_offset,
+                          VkExtent3D block_extent);
 
 /* This structure is used in 2 scenarios :
  *
