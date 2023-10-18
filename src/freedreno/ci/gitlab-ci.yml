@@ -175,6 +175,7 @@ a660_vk_full:
     DEQP_SUITE: freedreno-a660-vk-full
     JOB_TIMEOUT: 180
 
+# X11 takes over the screen, wayland is run headless.
 a630_gl:
   extends:
     - .baremetal-deqp-test
@@ -182,18 +183,8 @@ a630_gl:
   parallel: 4
   variables:
     DEQP_SUITE: freedreno-a630
-
-# Run dEQP EGL window system tests separately with the window systems available.
-# X11 takes over the screen, wayland is run headless.
-a630_egl:
-  extends:
-    - .baremetal-deqp-test
-    - .a630-test
-  variables:
-    DEQP_VER: egl
     HWCI_START_XORG: 1
     HWCI_START_WESTON: 1
-    DEQP_SUITE: freedreno-a630-egl
 
 a630_gles_asan:
   extends:
