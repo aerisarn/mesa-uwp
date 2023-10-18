@@ -3155,10 +3155,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       detect_recursion_linked(prog, prog->_LinkedShaders[i]->ir);
       if (!prog->data->LinkStatus)
          goto done;
-
-      if (consts->ShaderCompilerOptions[i].LowerCombinedClipCullDistance) {
-         lower_clip_cull_distance(prog, prog->_LinkedShaders[i]);
-      }
    }
 
    /* Check and validate stream emissions in geometry shaders */
