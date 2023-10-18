@@ -33,10 +33,6 @@
 struct gl_linked_shader;
 struct gl_shader_program;
 
-/* Operations for lower_64bit_integer_instructions() */
-#define DIV64                     (1U << 0)
-#define MOD64                     (1U << 1)
-
 bool do_common_optimization(exec_list *ir, bool linked,
                             const struct gl_shader_compiler_options *options,
                             bool native_integers);
@@ -77,9 +73,6 @@ bool lower_subroutine(exec_list *instructions, struct _mesa_glsl_parse_state *st
 bool propagate_invariance(exec_list *instructions);
 
 namespace ir_builder { class ir_factory; };
-
-bool lower_64bit_integer_instructions(exec_list *instructions,
-                                      unsigned what_to_lower);
 
 void lower_precision(const struct gl_shader_compiler_options *options,
                      exec_list *instructions);

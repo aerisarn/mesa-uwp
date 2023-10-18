@@ -255,7 +255,6 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
    case PIPE_CAP_DOUBLES:
    case PIPE_CAP_INT64:
-   case PIPE_CAP_INT64_DIVMOD:
    case PIPE_CAP_SAMPLER_VIEW_TARGET:
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:

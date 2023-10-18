@@ -408,11 +408,6 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 
 	case PIPE_CAP_TWO_SIDED_COLOR:
 		return 0;
-	case PIPE_CAP_INT64_DIVMOD:
-		/* it is actually not supported, but the nir lowering handles this correctly whereas
-		 * the glsl lowering path seems to not initialize the buildins correctly.
-		 */
-		return 1;
 	case PIPE_CAP_CULL_DISTANCE:
 		return 1;
 

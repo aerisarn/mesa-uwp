@@ -194,7 +194,6 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_NATIVE_FENCE_FD:
       return true;
    case PIPE_CAP_INT64:
-   case PIPE_CAP_INT64_DIVMOD:
    case PIPE_CAP_SHADER_BALLOT:
    case PIPE_CAP_PACKED_UNIFORMS:
       return devinfo->ver == 8;

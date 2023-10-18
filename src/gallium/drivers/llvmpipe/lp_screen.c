@@ -258,7 +258,6 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_SHADER_ARRAY_COMPONENTS:
    case PIPE_CAP_DOUBLES:
    case PIPE_CAP_INT64:
-   case PIPE_CAP_INT64_DIVMOD:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_TGSI_DIV:
       return 1;

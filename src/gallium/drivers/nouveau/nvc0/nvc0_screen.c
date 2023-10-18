@@ -330,7 +330,6 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_GL_SPIRV_VARIABLE_POINTERS:
-   case PIPE_CAP_INT64_DIVMOD:
       return 1;
 
    /* nir related caps */

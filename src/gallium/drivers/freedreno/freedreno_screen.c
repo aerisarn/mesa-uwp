@@ -382,7 +382,6 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 64;
 
    case PIPE_CAP_INT64:
-   case PIPE_CAP_INT64_DIVMOD:
    case PIPE_CAP_DOUBLES:
       return is_ir3(screen);
 

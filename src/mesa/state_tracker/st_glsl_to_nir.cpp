@@ -515,9 +515,6 @@ st_link_glsl_to_nir(struct gl_context *ctx,
          bool have_dround = pscreen->get_shader_param(pscreen, ptarget,
                                                       PIPE_SHADER_CAP_DROUND_SUPPORTED);
 
-         if (!pscreen->get_param(pscreen, PIPE_CAP_INT64_DIVMOD))
-            lower_64bit_integer_instructions(ir, DIV64 | MOD64);
-
          lower_packing_builtins(ir, ctx->Extensions.ARB_shading_language_packing,
                                 ctx->Extensions.ARB_gpu_shader5,
                                 ctx->st->has_half_float_packing);
