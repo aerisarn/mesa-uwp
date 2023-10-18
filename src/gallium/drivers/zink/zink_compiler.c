@@ -1233,7 +1233,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_usub_sat = true,
       .lower_vector_cmp = true,
       .lower_int64_options = 0,
-      .lower_doubles_options = 0,
+      .lower_doubles_options = nir_lower_dround_even,
       .lower_uniforms_to_ubo = true,
       .has_fsub = true,
       .has_isub = true,

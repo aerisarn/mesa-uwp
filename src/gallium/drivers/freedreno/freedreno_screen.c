@@ -737,7 +737,6 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
       /* a2xx compiler doesn't handle indirect: */
       return is_ir3(screen) ? 1 : 0;
    case PIPE_SHADER_CAP_SUBROUTINES:
-   case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:

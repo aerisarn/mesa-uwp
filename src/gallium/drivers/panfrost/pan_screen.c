@@ -459,7 +459,6 @@ panfrost_get_shader_param(struct pipe_screen *screen,
       return false;
 
    case PIPE_SHADER_CAP_INT64_ATOMICS:
-   case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       return 0;
 

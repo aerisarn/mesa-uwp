@@ -523,8 +523,6 @@ crocus_get_shader_param(struct pipe_screen *pscreen,
       return 0;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       return 1 << PIPE_SHADER_IR_NIR;
-   case PIPE_SHADER_CAP_DROUND_SUPPORTED:
-      return 1;
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
    case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:

@@ -615,8 +615,6 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 		ir |= 1 << PIPE_SHADER_IR_NIR;
 		return ir;
 	}
-	case PIPE_SHADER_CAP_DROUND_SUPPORTED:
-		return 0;
 	case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
 	case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
 		if (rscreen->b.family >= CHIP_CEDAR &&

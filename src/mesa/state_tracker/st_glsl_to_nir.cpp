@@ -488,7 +488,6 @@ st_link_glsl_to_nir(struct gl_context *ctx,
                     struct gl_shader_program *shader_program)
 {
    struct st_context *st = st_context(ctx);
-   struct pipe_screen *pscreen = st->screen;
    struct gl_linked_shader *linked_shader[MESA_SHADER_STAGES];
    unsigned num_shaders = 0;
 
@@ -509,19 +508,13 @@ st_link_glsl_to_nir(struct gl_context *ctx,
 
          struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
          exec_list *ir = shader->ir;
-         gl_shader_stage stage = shader->Stage;
-
-         enum pipe_shader_type ptarget = pipe_shader_type_from_mesa(stage);
-         bool have_dround = pscreen->get_shader_param(pscreen, ptarget,
-                                                      PIPE_SHADER_CAP_DROUND_SUPPORTED);
 
          lower_packing_builtins(ir, ctx->Extensions.ARB_shading_language_packing,
                                 ctx->Extensions.ARB_gpu_shader5,
                                 ctx->st->has_half_float_packing);
          do_mat_op_to_vec(ir);
 
-         lower_instructions(ir, have_dround,
-                            ctx->Extensions.ARB_gpu_shader5);
+         lower_instructions(ir, ctx->Extensions.ARB_gpu_shader5);
 
          do_vec_index_to_cond_assign(ir);
 
