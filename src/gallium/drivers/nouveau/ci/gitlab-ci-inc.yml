@@ -30,6 +30,7 @@
     # We package nouveau as a module so that we can load it after the firmware is
     # available on NFS.
     HWCI_KERNEL_MODULES: tegra-drm,nouveau
+  timeout: 20m
   script:
     - ./install/bare-metal/poe-powered.sh
 
