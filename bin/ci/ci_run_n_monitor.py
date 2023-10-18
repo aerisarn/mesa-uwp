@@ -27,16 +27,16 @@ import gitlab
 from colorama import Fore, Style
 from gitlab_common import (
     get_gitlab_project,
+    get_gitlab_pipeline_from_url,
     read_token,
     wait_for_pipeline,
     pretty_duration,
+    GITLAB_URL,
 )
 from gitlab_gql import GitlabGQL, create_job_needs_dag, filter_dag, print_dag
 
 if TYPE_CHECKING:
     from gitlab_gql import Dag
-
-GITLAB_URL = "https://gitlab.freedesktop.org"
 
 REFRESH_WAIT_LOG = 10
 REFRESH_WAIT_JOBS = 6
@@ -366,15 +366,7 @@ if __name__ == "__main__":
         REV: str = args.rev
 
         if args.pipeline_url:
-            assert args.pipeline_url.startswith(GITLAB_URL)
-            url_path = args.pipeline_url[len(GITLAB_URL):]
-            url_path_components = url_path.split("/")
-            project_name = "/".join(url_path_components[1:3])
-            assert url_path_components[3] == "-"
-            assert url_path_components[4] == "pipelines"
-            pipeline_id = int(url_path_components[5])
-            cur_project = gl.projects.get(project_name)
-            pipe = cur_project.pipelines.get(pipeline_id)
+            pipe, cur_project = get_gitlab_pipeline_from_url(gl, args.pipeline_url)
             REV = pipe.sha
         else:
             mesa_project = gl.projects.get("mesa/mesa")

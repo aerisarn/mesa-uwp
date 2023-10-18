@@ -12,6 +12,9 @@ import time
 from typing import Optional
 
 
+GITLAB_URL = "https://gitlab.freedesktop.org"
+
+
 def pretty_duration(seconds):
     """Pretty print duration"""
     hours, rem = divmod(seconds, 3600)
@@ -21,6 +24,19 @@ def pretty_duration(seconds):
     if minutes:
         return f"{minutes:0.0f}m{seconds:0.0f}s"
     return f"{seconds:0.0f}s"
+
+
+def get_gitlab_pipeline_from_url(gl, pipeline_url):
+    assert pipeline_url.startswith(GITLAB_URL)
+    url_path = pipeline_url[len(GITLAB_URL) :]
+    url_path_components = url_path.split("/")
+    project_name = "/".join(url_path_components[1:3])
+    assert url_path_components[3] == "-"
+    assert url_path_components[4] == "pipelines"
+    pipeline_id = int(url_path_components[5])
+    cur_project = gl.projects.get(project_name)
+    pipe = cur_project.pipelines.get(pipeline_id)
+    return pipe, cur_project
 
 
 def get_gitlab_project(glab, name: str):
