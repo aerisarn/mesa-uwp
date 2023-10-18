@@ -439,14 +439,20 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
 }
 
 struct nvk_shader *
-nvk_shader_init(struct nvk_device *dev)
+nvk_shader_init(struct nvk_device *dev, const void *key_data, size_t key_size)
 {
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct nvk_shader, shader, 1);
+   VK_MULTIALLOC_DECL_SIZE(&ma, char, obj_key_data, key_size);
 
    if (!vk_multialloc_zalloc(&ma, &dev->vk.alloc,
                              VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
       return NULL;
+
+   memcpy(obj_key_data, key_data, key_size);
+
+   vk_pipeline_cache_object_init(&dev->vk, &shader->base,
+                                 &nvk_shader_ops, obj_key_data, key_size);
 
    return shader;
 }
@@ -456,6 +462,7 @@ nvk_compile_nir(struct nvk_device *dev, nir_shader *nir,
                 VkPipelineCreateFlagBits2KHR pipeline_flags,
                 const struct vk_pipeline_robustness_state *rs,
                 const struct nak_fs_key *fs_key,
+                struct vk_pipeline_cache *cache,
                 struct nvk_shader *shader)
 {
    struct nvk_physical_device *pdev = nvk_device_physical(dev);
@@ -532,7 +539,7 @@ nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
    if (shader->nak) {
       nak_shader_bin_destroy(shader->nak);
    } else {
-      /* This came from codegen, just free it */
+      /* This came from codegen or deserialize, just free it */
       free((void *)shader->code_ptr);
    }
 
@@ -573,4 +580,80 @@ nvk_hash_shader(unsigned char *hash,
       _mesa_sha1_update(&ctx, fs_key, sizeof(*fs_key));
 
    _mesa_sha1_final(&ctx, hash);
+}
+
+static bool
+nvk_shader_serialize(struct vk_pipeline_cache_object *object,
+                     struct blob *blob);
+
+static struct vk_pipeline_cache_object *
+nvk_shader_deserialize(struct vk_pipeline_cache *cache,
+                       const void *key_data,
+                       size_t key_size,
+                       struct blob_reader *blob);
+
+void
+nvk_shader_destroy(struct vk_device *_dev,
+                   struct vk_pipeline_cache_object *object)
+{
+   struct nvk_device *dev =
+      container_of(_dev, struct nvk_device, vk);
+   struct nvk_shader *shader =
+      container_of(object, struct nvk_shader, base);
+
+   nvk_shader_finish(dev, shader);
+}
+
+const struct vk_pipeline_cache_object_ops nvk_shader_ops = {
+   .serialize = nvk_shader_serialize,
+   .deserialize = nvk_shader_deserialize,
+   .destroy = nvk_shader_destroy,
+};
+
+static bool
+nvk_shader_serialize(struct vk_pipeline_cache_object *object,
+                     struct blob *blob)
+{
+   struct nvk_shader *shader =
+      container_of(object, struct nvk_shader, base);
+
+   blob_write_bytes(blob, &shader->info, sizeof(shader->info));
+   blob_write_bytes(blob, &shader->cbuf_map, sizeof(shader->cbuf_map));
+   blob_write_uint32(blob, shader->code_size);
+   blob_write_bytes(blob, shader->code_ptr, shader->code_size);
+
+   return true;
+}
+
+static struct vk_pipeline_cache_object *
+nvk_shader_deserialize(struct vk_pipeline_cache *cache,
+                       const void *key_data,
+                       size_t key_size,
+                       struct blob_reader *blob)
+{
+   struct nvk_device *dev =
+      container_of(cache->base.device, struct nvk_device, vk);
+   struct nvk_shader *shader =
+      nvk_shader_init(dev, key_data, key_size);
+
+   if (!shader)
+      return NULL;
+
+   blob_copy_bytes(blob, &shader->info, sizeof(shader->info));
+   blob_copy_bytes(blob, &shader->cbuf_map, sizeof(shader->cbuf_map));
+
+   shader->code_size = blob_read_uint32(blob);
+   void *code_ptr = malloc(shader->code_size);
+   if (!code_ptr)
+      goto fail;
+
+   blob_copy_bytes(blob, code_ptr, shader->code_size);
+   shader->code_ptr = code_ptr;
+
+   return &shader->base;
+
+fail:
+   /* nvk_shader_destroy frees both shader and shader->xfb */
+   nvk_shader_destroy(cache->base.device, &shader->base);
+   return NULL;
 }

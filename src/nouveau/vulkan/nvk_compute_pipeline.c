@@ -173,31 +173,62 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
    VkPipelineCreateFlags2KHR pipeline_flags =
       vk_compute_pipeline_create_flags(pCreateInfo);
 
+   if (pipeline_flags &
+       VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR)
+      cache = NULL;
+
    struct vk_pipeline_robustness_state robustness;
    vk_pipeline_robustness_state_fill(&dev->vk, &robustness,
                                      pCreateInfo->pNext,
                                      pCreateInfo->stage.pNext);
 
-   nir_shader *nir;
-   result = nvk_shader_stage_to_nir(dev, &pCreateInfo->stage, &robustness,
-                                    cache, NULL, &nir);
-   if (result != VK_SUCCESS)
-      goto fail;
-
-   struct nvk_shader *shader = nvk_shader_init(dev);
-   pipeline->base.shaders[MESA_SHADER_COMPUTE] = shader;
-
-   nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout, shader);
-
    unsigned char sha1[SHA1_DIGEST_LENGTH];
    nvk_hash_shader(sha1, &pCreateInfo->stage, &robustness, false,
                    pipeline_layout, NULL);
 
-   result = nvk_compile_nir(dev, nir, pipeline_flags, &robustness, NULL,
-                            shader);
-   ralloc_free(nir);
+   bool cache_hit = false;
+   struct vk_pipeline_cache_object *cache_obj = NULL;
+
+   if (cache) {
+      cache_obj = vk_pipeline_cache_lookup_object(cache, &sha1, sizeof(sha1),
+                                                  &nvk_shader_ops, &cache_hit);
+      pipeline->base.shaders[MESA_SHADER_COMPUTE] =
+         container_of(cache_obj, struct nvk_shader, base);
+      result = VK_SUCCESS;
+   }
+
+   if (!cache_obj) {
+      nir_shader *nir;
+      result = nvk_shader_stage_to_nir(dev, &pCreateInfo->stage, &robustness,
+                                       cache, NULL, &nir);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      struct nvk_shader *shader = nvk_shader_init(dev, sha1, SHA1_DIGEST_LENGTH);
+      if(shader == NULL)
+         return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout, shader);
+
+      result = nvk_compile_nir(dev, nir, pipeline_flags, &robustness, NULL, cache, shader);
+
+      if (result == VK_SUCCESS) {
+         cache_obj = &shader->base;
+
+         if (cache)
+            cache_obj = vk_pipeline_cache_add_object(cache, cache_obj);
+
+         pipeline->base.shaders[MESA_SHADER_COMPUTE] =
+            container_of(cache_obj, struct nvk_shader, base);
+      }
+
+      ralloc_free(nir);
+   }
+
    if (result != VK_SUCCESS)
       goto fail;
+
+   struct nvk_shader *shader = container_of(cache_obj, struct nvk_shader, base);
 
    result = nvk_shader_upload(dev, shader);
    if (result != VK_SUCCESS)

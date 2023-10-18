@@ -8,6 +8,8 @@
 #include "nvk_private.h"
 #include "nvk_device_memory.h"
 
+#include "vk_pipeline_cache.h"
+
 #include "nak.h"
 #include "nir.h"
 #include "nouveau_bo.h"
@@ -46,6 +48,8 @@ struct nvk_cbuf_map {
 };
 
 struct nvk_shader {
+   struct vk_pipeline_cache_object base;
+
    struct nak_shader_info info;
    struct nvk_cbuf_map cbuf_map;
 
@@ -122,13 +126,16 @@ nvk_compile_nir(struct nvk_device *dev, nir_shader *nir,
                 VkPipelineCreateFlagBits2KHR pipeline_flags,
                 const struct vk_pipeline_robustness_state *rstate,
                 const struct nak_fs_key *fs_key,
+                struct vk_pipeline_cache *cache,
                 struct nvk_shader *shader);
 
 VkResult
 nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);
 
 struct nvk_shader *
-nvk_shader_init(struct nvk_device *dev);
+nvk_shader_init(struct nvk_device *dev, const void *key_data, size_t key_size);
+
+extern const struct vk_pipeline_cache_object_ops nvk_shader_ops;
 
 void
 nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader);
@@ -140,6 +147,10 @@ nvk_hash_shader(unsigned char *hash,
                 bool is_multiview,
                 const struct vk_pipeline_layout *layout,
                 const struct nak_fs_key *fs_key);
+
+void
+nvk_shader_destroy(struct vk_device *dev,
+                   struct vk_pipeline_cache_object *object);
 
 /* Codegen wrappers.
  *
