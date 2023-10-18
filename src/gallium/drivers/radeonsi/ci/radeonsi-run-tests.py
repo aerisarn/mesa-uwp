@@ -415,13 +415,13 @@ if args.glcts:
         "--tests-per-group",
         "100",
         "--deqp",
-        "{}/external/openglcts/modules/glcts".format(glcts_path),
+        "{}/build/external/openglcts/modules/glcts".format(glcts_path),
         "--caselist",
-        "{}/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-master.txt".format(
+        "{}/build/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-master.txt".format(
             glcts_path
         ),
         "--caselist",
-        "{}/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass_single/4.6.1.x/gl46-khr-single.txt".format(
+        "{}/build/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass_single/4.6.1.x/gl46-khr-single.txt".format(
             glcts_path
         ),
         "--output",
@@ -466,12 +466,12 @@ if args.deqp:
         suite.write("[[deqp]]\n")
         suite.write(
             'deqp = "{}"\n'.format(
-                "{}/modules/{subtest}/deqp-{subtest}".format(deqp_path, subtest=k)
+                "{}/build/modules/{subtest}/deqp-{subtest}".format(deqp_path, subtest=k)
             )
         )
         suite.write(
             'caselists = ["{}"]\n'.format(
-                "{}/android/cts/master/{}-master.txt".format(deqp_path, k)
+                "{}/android/cts/main/{}-master.txt".format(deqp_path, k)
             )
         )
         if os.path.exists(baseline):
