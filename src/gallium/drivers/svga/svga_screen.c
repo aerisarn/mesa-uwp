@@ -752,7 +752,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    .use_interpolated_input_intrinsics = true
 
 #define VGPU10_OPTIONS                                                        \
-   .lower_doubles_options = nir_lower_dfloor,                                 \
+   .lower_doubles_options = nir_lower_dfloor | nir_lower_dsign,               \
    .lower_fmod = true,                                                        \
    .lower_fpow = true
 

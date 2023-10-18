@@ -3471,7 +3471,8 @@ typedef enum {
    nir_lower_dmod = (1 << 8),
    nir_lower_dsub = (1 << 9),
    nir_lower_ddiv = (1 << 10),
-   nir_lower_fp64_full_software = (1 << 11),
+   nir_lower_dsign = (1 << 11),
+   nir_lower_fp64_full_software = (1 << 12),
 } nir_lower_doubles_options;
 
 typedef enum {
