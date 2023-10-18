@@ -5418,7 +5418,7 @@ radv_stage_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 src_s
 
    if (src_stage_mask &
        (VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT |
-        VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
+        VK_PIPELINE_STAGE_2_COMMAND_PREPROCESS_BIT_NV | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
         VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
         VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)) {
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
@@ -5492,6 +5492,9 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags2 src_fla
 
    u_foreach_bit64 (b, src_flags) {
       switch ((VkAccessFlags2)BITFIELD64_BIT(b)) {
+      case VK_ACCESS_2_COMMAND_PREPROCESS_WRITE_BIT_NV:
+         flush_bits |= RADV_CMD_FLAG_INV_L2;
+         break;
       case VK_ACCESS_2_SHADER_WRITE_BIT:
       case VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT:
          /* since the STORAGE bit isn't set we know that this is a meta operation.
@@ -5626,6 +5629,7 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags2 dst_fla
          if (!image_is_coherent)
             flush_bits |= RADV_CMD_FLAG_INV_L2;
          break;
+      case VK_ACCESS_2_COMMAND_PREPROCESS_READ_BIT_NV:
       case VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR:
          flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
          if (cmd_buffer->device->physical_device->rad_info.gfx_level < GFX9)
