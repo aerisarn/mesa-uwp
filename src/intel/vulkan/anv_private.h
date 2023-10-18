@@ -1018,6 +1018,8 @@ struct anv_instance {
     struct driOptionCache                       available_dri_options;
 
     int                                         mesh_conv_prim_attrs_to_vert_attrs;
+    bool                                        enable_tbimr;
+
     /**
      * Workarounds for game bugs.
      */

@@ -99,6 +99,7 @@ anv_device_init_blorp(struct anv_device *device)
    device->blorp.compiler = device->physical->compiler;
    device->blorp.lookup_shader = lookup_blorp_shader;
    device->blorp.upload_shader = upload_blorp_shader;
+   device->blorp.enable_tbimr = device->physical->instance->enable_tbimr;
    device->blorp.exec = anv_genX(device->info, blorp_exec);
 }
 
