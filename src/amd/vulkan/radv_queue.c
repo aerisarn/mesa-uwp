@@ -1278,6 +1278,8 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
 
    const uint64_t ace_wait_va = radv_buffer_get_va(gang_sem_bo);
    const uint64_t leader_wait_va = ace_wait_va + 4;
+   const uint32_t zero = 0;
+   const uint32_t one = 1;
 
    /* Preambles for gang submission.
     * Make gang members wait until the gang leader starts.
@@ -1286,16 +1288,8 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
     * meant to be executed on multiple compute engines at the same time.
     */
    radv_cp_wait_mem(ace_pre_cs, RADV_QUEUE_COMPUTE, WAIT_REG_MEM_GREATER_OR_EQUAL, ace_wait_va, 1, 0xffffffff);
-   radeon_emit(ace_pre_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-   radeon_emit(ace_pre_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
-   radeon_emit(ace_pre_cs, ace_wait_va);
-   radeon_emit(ace_pre_cs, ace_wait_va >> 32);
-   radeon_emit(ace_pre_cs, 0);
-   radeon_emit(leader_pre_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-   radeon_emit(leader_pre_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
-   radeon_emit(leader_pre_cs, ace_wait_va);
-   radeon_emit(leader_pre_cs, ace_wait_va >> 32);
-   radeon_emit(leader_pre_cs, 1);
+   radv_cs_write_data(device, ace_pre_cs, RADV_QUEUE_COMPUTE, V_370_ME, ace_wait_va, 1, &zero, false);
+   radv_cs_write_data(device, leader_pre_cs, queue->state.qf, V_370_ME, ace_wait_va, 1, &one, false);
 
    /* Create postambles for gang submission.
     * This ensures that the gang leader waits for the whole gang,
@@ -1304,16 +1298,8 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
     * same command buffers could be submitted again while still being executed.
     */
    radv_cp_wait_mem(leader_post_cs, queue->state.qf, WAIT_REG_MEM_GREATER_OR_EQUAL, leader_wait_va, 1, 0xffffffff);
-   radeon_emit(leader_post_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-   radeon_emit(leader_post_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
-   radeon_emit(leader_post_cs, leader_wait_va);
-   radeon_emit(leader_post_cs, leader_wait_va >> 32);
-   radeon_emit(leader_post_cs, 0);
-   radeon_emit(ace_post_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-   radeon_emit(ace_post_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
-   radeon_emit(ace_post_cs, leader_wait_va);
-   radeon_emit(ace_post_cs, leader_wait_va >> 32);
-   radeon_emit(ace_post_cs, 1);
+   radv_cs_write_data(device, leader_post_cs, queue->state.qf, V_370_ME, leader_wait_va, 1, &zero, false);
+   radv_cs_write_data(device, ace_post_cs, RADV_QUEUE_COMPUTE, V_370_ME, leader_wait_va, 1, &one, false);
 
    r = ws->cs_finalize(leader_pre_cs);
    if (r != VK_SUCCESS)

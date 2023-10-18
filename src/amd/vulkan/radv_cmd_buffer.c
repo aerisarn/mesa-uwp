@@ -680,23 +680,15 @@ radv_gang_finalize(struct radv_cmd_buffer *cmd_buffer)
     * This is necessary in case the same cmd buffer is submitted again in the future.
     */
    if (cmd_buffer->gang.sem.va) {
-      struct radeon_cmdbuf *cs = cmd_buffer->cs;
       uint64_t leader2follower_va = cmd_buffer->gang.sem.va;
       uint64_t follower2leader_va = cmd_buffer->gang.sem.va + 4;
+      const uint32_t zero = 0;
 
       /* Follower: write 0 to the leader->follower semaphore. */
-      radeon_emit(ace_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-      radeon_emit(ace_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
-      radeon_emit(ace_cs, leader2follower_va);
-      radeon_emit(ace_cs, leader2follower_va >> 32);
-      radeon_emit(ace_cs, 0);
+      radv_cs_write_data(device, ace_cs, RADV_QUEUE_COMPUTE, V_370_ME, leader2follower_va, 1, &zero, false);
 
       /* Leader: write 0 to the follower->leader semaphore. */
-      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-      radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
-      radeon_emit(cs, follower2leader_va);
-      radeon_emit(cs, follower2leader_va >> 32);
-      radeon_emit(cs, 0);
+      radv_write_data(cmd_buffer, V_370_ME, follower2leader_va, 1, &zero, false);
    }
 
    return device->ws->cs_finalize(ace_cs);
@@ -2985,15 +2977,15 @@ radv_set_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image
       uint64_t va = radv_get_ds_clear_value_va(image, range->baseMipLevel);
 
       /* Use the fastest way when both aspects are used. */
-      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + 2 * level_count, cmd_buffer->state.predicating));
-      radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
-      radeon_emit(cs, va);
-      radeon_emit(cs, va >> 32);
+      ASSERTED unsigned cdw_end = radv_cs_write_data_head(cmd_buffer->device, cmd_buffer->cs, cmd_buffer->qf, V_370_PFP,
+                                                          va, 2 * level_count, cmd_buffer->state.predicating);
 
       for (uint32_t l = 0; l < level_count; l++) {
          radeon_emit(cs, ds_clear_value.stencil);
          radeon_emit(cs, fui(ds_clear_value.depth));
       }
+
+      assert(cmd_buffer->cs->cdw == cdw_end);
    } else {
       /* Otherwise we need one WRITE_DATA packet per level. */
       for (uint32_t l = 0; l < level_count; l++) {
@@ -3008,11 +3000,7 @@ radv_set_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image
             value = ds_clear_value.stencil;
          }
 
-         radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, cmd_buffer->state.predicating));
-         radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
-         radeon_emit(cs, va);
-         radeon_emit(cs, va >> 32);
-         radeon_emit(cs, value);
+         radv_write_data(cmd_buffer, V_370_PFP, va, 1, &value, cmd_buffer->state.predicating);
       }
    }
 }
@@ -3032,13 +3020,13 @@ radv_set_tc_compat_zrange_metadata(struct radv_cmd_buffer *cmd_buffer, struct ra
    uint64_t va = radv_get_tc_compat_zrange_va(image, range->baseMipLevel);
    uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
 
-   radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + level_count, cmd_buffer->state.predicating));
-   radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
-   radeon_emit(cs, va);
-   radeon_emit(cs, va >> 32);
+   ASSERTED unsigned cdw_end = radv_cs_write_data_head(cmd_buffer->device, cmd_buffer->cs, cmd_buffer->qf, V_370_PFP,
+                                                       va, level_count, cmd_buffer->state.predicating);
 
    for (uint32_t l = 0; l < level_count; l++)
       radeon_emit(cs, value);
+
+   assert(cmd_buffer->cs->cdw == cdw_end);
 }
 
 static void
@@ -3149,21 +3137,16 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
    uint64_t pred_val = value;
    uint64_t va = radv_image_get_fce_pred_va(image, range->baseMipLevel);
    uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
-   uint32_t count = 2 * level_count;
 
-   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4 + count);
-
-   radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
-   radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
-   radeon_emit(cmd_buffer->cs, va);
-   radeon_emit(cmd_buffer->cs, va >> 32);
+   ASSERTED unsigned cdw_end = radv_cs_write_data_head(cmd_buffer->device, cmd_buffer->cs, cmd_buffer->qf, V_370_PFP,
+                                                       va, 2 * level_count, false);
 
    for (uint32_t l = 0; l < level_count; l++) {
       radeon_emit(cmd_buffer->cs, pred_val);
       radeon_emit(cmd_buffer->cs, pred_val >> 32);
    }
 
-   assert(cmd_buffer->cs->cdw <= cdw_max);
+   assert(cmd_buffer->cs->cdw == cdw_end);
 }
 
 /**
@@ -3179,23 +3162,18 @@ radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
    uint64_t pred_val = value;
    uint64_t va = radv_image_get_dcc_pred_va(image, range->baseMipLevel);
    uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
-   uint32_t count = 2 * level_count;
 
    assert(radv_dcc_enabled(image, range->baseMipLevel));
 
-   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4 + count);
-
-   radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
-   radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
-   radeon_emit(cmd_buffer->cs, va);
-   radeon_emit(cmd_buffer->cs, va >> 32);
+   ASSERTED unsigned cdw_end = radv_cs_write_data_head(cmd_buffer->device, cmd_buffer->cs, cmd_buffer->qf, V_370_PFP,
+                                                       va, 2 * level_count, false);
 
    for (uint32_t l = 0; l < level_count; l++) {
       radeon_emit(cmd_buffer->cs, pred_val);
       radeon_emit(cmd_buffer->cs, pred_val >> 32);
    }
 
-   assert(cmd_buffer->cs->cdw <= cdw_max);
+   assert(cmd_buffer->cs->cdw == cdw_end);
 }
 
 /**
@@ -3231,26 +3209,21 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_im
 {
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
-   uint32_t count = 2 * level_count;
 
    assert(radv_image_has_cmask(image) || radv_dcc_enabled(image, range->baseMipLevel));
 
    if (radv_image_has_clear_value(image)) {
       uint64_t va = radv_image_get_fast_clear_va(image, range->baseMipLevel);
 
-      ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4 + count);
-
-      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, cmd_buffer->state.predicating));
-      radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
-      radeon_emit(cs, va);
-      radeon_emit(cs, va >> 32);
+      ASSERTED unsigned cdw_end = radv_cs_write_data_head(cmd_buffer->device, cmd_buffer->cs, cmd_buffer->qf, V_370_PFP,
+                                                          va, 2 * level_count, cmd_buffer->state.predicating);
 
       for (uint32_t l = 0; l < level_count; l++) {
          radeon_emit(cs, color_values[0]);
          radeon_emit(cs, color_values[1]);
       }
 
-      assert(cmd_buffer->cs->cdw <= cdw_max);
+      assert(cmd_buffer->cs->cdw == cdw_end);
    } else {
       /* Some default value we can set in the update. */
       assert(color_values[0] == 0 && color_values[1] == 0);
@@ -10602,18 +10575,10 @@ write_event(struct radv_cmd_buffer *cmd_buffer, struct radv_event *event, VkPipe
 
    if (!(stageMask & ~top_of_pipe_flags)) {
       /* Just need to sync the PFP engine. */
-      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-      radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
-      radeon_emit(cs, va);
-      radeon_emit(cs, va >> 32);
-      radeon_emit(cs, value);
+      radv_write_data(cmd_buffer, V_370_PFP, va, 1, &value, false);
    } else if (!(stageMask & ~post_index_fetch_flags)) {
       /* Sync ME because PFP reads index and indirect buffers. */
-      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-      radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
-      radeon_emit(cs, va);
-      radeon_emit(cs, va >> 32);
-      radeon_emit(cs, value);
+      radv_write_data(cmd_buffer, V_370_ME, va, 1, &value, false);
    } else {
       unsigned event_type;
 
