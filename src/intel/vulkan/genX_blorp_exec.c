@@ -193,10 +193,13 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
    struct anv_state vb_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, size, 64);
+   struct anv_address vb_addr =
+      anv_state_pool_state_address(&cmd_buffer->device->dynamic_state_pool,
+                                   vb_state);
 
    *addr = (struct blorp_address) {
-      .buffer = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
-      .offset = vb_state.offset,
+      .buffer = vb_addr.bo,
+      .offset = vb_addr.offset,
       .mocs = isl_mocs(&cmd_buffer->device->isl_dev,
                        ISL_SURF_USAGE_VERTEX_BUFFER_BIT, false),
    };
