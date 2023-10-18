@@ -113,6 +113,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_host_query_reset = true,
       .EXT_image_2d_view_of_3d = true,
       .EXT_image_robustness = true,
+      .EXT_image_sliced_view_of_3d = true,
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_inline_uniform_block = true,
@@ -330,6 +331,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* VK_EXT_image_2d_view_of_3d */
       .image2DViewOf3D = true,
       .sampler2DViewOf3D = true,
+
+      /* VK_EXT_image_sliced_view_of_3d */
+      .imageSlicedViewOf3D = true,
 
       /* VK_EXT_image_view_min_lod */
       .minLod = true,
