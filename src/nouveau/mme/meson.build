@@ -81,3 +81,11 @@ if with_tests and not with_platform_android
     install : true,
   )
 endif
+
+executable(
+  'nv_mme_dump',
+  'nv_mme_dump.c',
+  dependencies : [ idep_mesautil, idep_nouveau_mme ],
+  build_by_default : with_tools.contains('nouveau'),
+  install : with_tools.contains('nouveau'),
+)
