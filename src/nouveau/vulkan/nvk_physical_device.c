@@ -123,6 +123,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_non_seamless_cube_map = true,
       .EXT_pci_bus_info = info->type == NV_DEVICE_TYPE_DIS,
       .EXT_physical_device_drm = true,
+      .EXT_primitive_topology_list_restart = true,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_robustness2 = true,
@@ -351,6 +352,10 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* VK_EXT_non_seamless_cube_map */
       .nonSeamlessCubeMap = true,
+
+      /* VK_EXT_primitive_topology_list_restart */
+      .primitiveTopologyListRestart = true,
+      .primitiveTopologyPatchListRestart = true,
 
       /* VK_EXT_provoking_vertex */
       .provokingVertexLast = true,
