@@ -198,6 +198,8 @@ typedef struct
 {
    enum amd_gfx_level gfx_level;
    bool fast_launch_2;
+   bool vert_multirow_export;
+   bool prim_multirow_export;
 
    ms_out_mem_layout layout;
    uint64_t per_vertex_outputs;
@@ -4502,12 +4504,48 @@ emit_ms_outputs(nir_builder *b, nir_def *invocation_index, nir_def *row_start,
                            uint64_t, lower_ngg_ms_state *),
                 lower_ngg_ms_state *s)
 {
-   nir_def *has_output = nir_ilt(b, invocation_index, count);
-   nir_if *if_has_output = nir_push_if(b, has_output);
-   {
-      cb(b, invocation_index, row_start, exports, parameters, mask, s);
+   if (cb == &emit_ms_primitive ? s->prim_multirow_export : s->vert_multirow_export) {
+      assert(s->hw_workgroup_size % s->wave_size == 0);
+      const unsigned num_waves = s->hw_workgroup_size / s->wave_size;
+
+      nir_loop *row_loop = nir_push_loop(b);
+      {
+         nir_block *preheader = nir_cf_node_as_block(nir_cf_node_prev(&row_loop->cf_node));
+
+         nir_phi_instr *index = nir_phi_instr_create(b->shader);
+         nir_phi_instr *row = nir_phi_instr_create(b->shader);
+         nir_def_init(&index->instr, &index->def, 1, 32);
+         nir_def_init(&row->instr, &row->def, 1, 32);
+
+         nir_phi_instr_add_src(index, preheader, invocation_index);
+         nir_phi_instr_add_src(row, preheader, row_start);
+
+         nir_if *if_break = nir_push_if(b, nir_uge(b, &index->def, count));
+         {
+            nir_jump(b, nir_jump_break);
+         }
+         nir_pop_if(b, if_break);
+
+         cb(b, &index->def, &row->def, exports, parameters, mask, s);
+
+         nir_block *body = nir_cursor_current_block(b->cursor);
+         nir_phi_instr_add_src(index, body,
+                               nir_iadd_imm(b, &index->def, s->hw_workgroup_size));
+         nir_phi_instr_add_src(row, body,
+                               nir_iadd_imm(b, &row->def, num_waves));
+
+         nir_instr_insert_before_cf_list(&row_loop->body, &row->instr);
+         nir_instr_insert_before_cf_list(&row_loop->body, &index->instr);
+      }
+      nir_pop_loop(b, row_loop);
+   } else {
+      nir_def *has_output = nir_ilt(b, invocation_index, count);
+      nir_if *if_has_output = nir_push_if(b, has_output);
+      {
+         cb(b, invocation_index, row_start, exports, parameters, mask, s);
+      }
+      nir_pop_if(b, if_has_output);
    }
-   nir_pop_if(b, if_has_output);
 }
 
 static void
@@ -4920,6 +4958,8 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
       .uses_cull_flags = uses_cull,
       .gfx_level = gfx_level,
       .fast_launch_2 = fast_launch_2,
+      .vert_multirow_export = fast_launch_2 && max_vertices > hw_workgroup_size,
+      .prim_multirow_export = fast_launch_2 && max_primitives > hw_workgroup_size,
       .clipdist_enable_mask = clipdist_enable_mask,
       .vs_output_param_offset = vs_output_param_offset,
       .has_param_exports = has_param_exports,
