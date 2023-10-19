@@ -16,7 +16,7 @@ use crate::{
     nak_ir::{ShaderInfo, ShaderIoInfo, ShaderStageInfo},
 };
 
-pub const FERMI_SHADER_HEADER_SIZE: usize = 20;
+pub const _FERMI_SHADER_HEADER_SIZE: usize = 20;
 pub const TURING_SHADER_HEADER_SIZE: usize = 32;
 pub const CURRENT_MAX_SHADER_HEADER_SIZE: usize = TURING_SHADER_HEADER_SIZE;
 
@@ -302,6 +302,7 @@ impl ShaderProgramHeader {
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn set_shader_local_memory_crs_size(
         &mut self,
         shader_local_memory_crs_size: u32,
