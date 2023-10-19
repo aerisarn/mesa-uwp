@@ -240,6 +240,8 @@ nvk_get_device_features(const struct nv_device_info *info,
       .bufferDeviceAddress = true,
       .bufferDeviceAddressCaptureReplay = false,
       .bufferDeviceAddressMultiDevice = false,
+      .shaderOutputViewportIndex = info->cls_eng3d >= MAXWELL_B,
+      .shaderOutputLayer = info->cls_eng3d >= MAXWELL_B,
 
       /* Vulkan 1.3 */
       .robustImageAccess = true,
