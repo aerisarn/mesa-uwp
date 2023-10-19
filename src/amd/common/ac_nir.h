@@ -196,6 +196,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
                     bool has_param_exports,
                     bool *out_needs_scratch_ring,
                     unsigned wave_size,
+                    unsigned workgroup_size,
                     bool multiview,
                     bool has_query,
                     bool fast_launch_2);

@@ -913,10 +913,13 @@ radv_lower_ngg(struct radv_device *device, struct radv_shader_stage *ngg_stage, 
 
       NIR_PASS_V(nir, ac_nir_lower_ngg_gs, &options);
    } else if (nir->info.stage == MESA_SHADER_MESH) {
+      /* ACO aligns the workgroup size to the wave size. */
+      unsigned hw_workgroup_size = ALIGN(info->workgroup_size, info->wave_size);
+
       bool scratch_ring = false;
       NIR_PASS_V(nir, ac_nir_lower_ngg_ms, options.gfx_level, options.clipdist_enable_mask,
                  options.vs_output_param_offset, options.has_param_exports, &scratch_ring, info->wave_size,
-                 pl_key->has_multiview_view_index, info->ms.has_query, device->mesh_fast_launch_2);
+                 hw_workgroup_size, pl_key->has_multiview_view_index, info->ms.has_query, device->mesh_fast_launch_2);
       ngg_stage->info.ms.needs_ms_scratch_ring = scratch_ring;
    } else {
       unreachable("invalid SW stage passed to radv_lower_ngg");

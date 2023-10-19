@@ -4868,6 +4868,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
                     bool has_param_exports,
                     bool *out_needs_scratch_ring,
                     unsigned wave_size,
+                    unsigned hw_workgroup_size,
                     bool multiview,
                     bool has_query,
                     bool fast_launch_2)
@@ -4906,9 +4907,6 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    unsigned api_workgroup_size = shader->info.workgroup_size[0] *
                                  shader->info.workgroup_size[1] *
                                  shader->info.workgroup_size[2];
-
-   unsigned hw_workgroup_size =
-      ALIGN(MAX3(api_workgroup_size, max_primitives, max_vertices), wave_size);
 
    lower_ngg_ms_state state = {
       .layout = layout,
