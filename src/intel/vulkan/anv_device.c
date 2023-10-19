@@ -3677,6 +3677,10 @@ void anv_DestroyDevice(
 
    struct anv_physical_device *pdevice = device->physical;
 
+   for (uint32_t i = 0; i < device->queue_count; i++)
+      anv_queue_finish(&device->queues[i]);
+   vk_free(&device->vk.alloc, device->queues);
+
    anv_device_utrace_finish(device);
 
    anv_device_finish_blorp(device);
@@ -3755,10 +3759,6 @@ void anv_DestroyDevice(
 
    pthread_cond_destroy(&device->queue_submit);
    pthread_mutex_destroy(&device->mutex);
-
-   for (uint32_t i = 0; i < device->queue_count; i++)
-      anv_queue_finish(&device->queues[i]);
-   vk_free(&device->vk.alloc, device->queues);
 
    ralloc_free(device->fp64_nir);
 
