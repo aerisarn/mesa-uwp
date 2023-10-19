@@ -155,6 +155,7 @@ radeonsi-raven-va-full:x86_64:
     B2C_TIMEOUT_OVERALL_MINUTES: 240
     B2C_TIMEOUT_BOOT_RETRIES: 0
   tags:
+    - farm:$RUNNER_FARM_LOCATION
     - amdgpu:codename:STONEY
 
 vkcts-polaris10-valve:

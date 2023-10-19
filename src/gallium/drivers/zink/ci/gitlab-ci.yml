@@ -140,4 +140,5 @@ zink-radv-vangogh-valve:
     FDO_CI_CONCURRENT: 6
   # Override the list of tags to drop `priority:low`
   tags:
+    - farm:$RUNNER_FARM_LOCATION
     - amdgpu:codename:VANGOGH
