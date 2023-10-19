@@ -327,13 +327,9 @@ if __name__ == "__main__":
         else:
             if not REV:
                 REV = check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
-            # Look for an MR pipeline first
-            cur_project = gl.projects.get("mesa/mesa")
-            pipe = wait_for_pipeline(cur_project, REV, timeout=10)
-            if not pipe:
-                # Fallback to a pipeline in the user's fork
-                cur_project = get_gitlab_project(gl, args.project)
-                pipe = wait_for_pipeline(cur_project, REV)
+            mesa_project = gl.projects.get("mesa/mesa")
+            user_project = get_gitlab_project(gl, args.project)
+            (pipe, cur_project) = wait_for_pipeline([mesa_project, user_project], REV)
 
         print(f"Revision: {REV}")
         print(f"Pipeline: {pipe.web_url}")
