@@ -234,6 +234,7 @@ impl RegFileSet {
         self.bits == 0
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> RegFileSet {
         self.clone()
     }
@@ -262,9 +263,9 @@ impl Iterator for RegFileSet {
         if self.is_empty() {
             None
         } else {
-            let bit = self.bits.trailing_zeros();
-            self.bits &= !(1 << bit);
-            Some(bit.try_into().unwrap())
+            let file = self.bits.trailing_zeros().try_into().unwrap();
+            self.remove(file);
+            Some(file)
         }
     }
 
