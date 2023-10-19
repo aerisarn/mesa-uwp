@@ -99,8 +99,11 @@ size_t u_printf_length(const char *fmt, va_list untouched_args)
    return size;
 }
 
-void u_printf(FILE *out, const char *buffer, size_t buffer_size,
-              const u_printf_info *info, unsigned info_size)
+static void
+u_printf_impl(FILE *out, const char *buffer, size_t buffer_size,
+              const u_printf_info *info,
+              const u_printf_info **info_ptr,
+              unsigned info_size)
 {
    for (size_t buf_pos = 0; buf_pos < buffer_size;) {
       uint32_t fmt_idx = *(uint32_t*)&buffer[buf_pos];
@@ -113,7 +116,8 @@ void u_printf(FILE *out, const char *buffer, size_t buffer_size,
       if (fmt_idx >= info_size)
          return;
 
-      const u_printf_info *fmt = &info[fmt_idx];
+      const u_printf_info *fmt = info != NULL ?
+         &info[fmt_idx] : info_ptr[fmt_idx];
       const char *format = fmt->strings;
       buf_pos += sizeof(fmt_idx);
 
@@ -231,4 +235,16 @@ void u_printf(FILE *out, const char *buffer, size_t buffer_size,
       /* print remaining */
       fprintf(out, "%s", format);
    }
+}
+
+void u_printf(FILE *out, const char *buffer, size_t buffer_size,
+              const u_printf_info *info, unsigned info_size)
+{
+   u_printf_impl(out, buffer, buffer_size, info, NULL, info_size);
+}
+
+void u_printf_ptr(FILE *out, const char *buffer, size_t buffer_size,
+                  const u_printf_info **info, unsigned info_size)
+{
+   u_printf_impl(out, buffer, buffer_size, NULL, info, info_size);
 }
