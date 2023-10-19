@@ -711,7 +711,11 @@ impl fmt::Display for Dst {
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum CBuf {
     Binding(u8),
+
+    #[allow(dead_code)]
     BindlessSSA(SSAValue),
+
+    #[allow(dead_code)]
     BindlessGPR(RegRef),
 }
 
@@ -3469,6 +3473,7 @@ impl fmt::Display for OpMemBar {
     }
 }
 
+#[allow(dead_code)]
 pub enum BMovSrc {
     Barrier(BarRef),
     TreadStateEnum0,
@@ -3661,6 +3666,7 @@ impl fmt::Display for OpNop {
     }
 }
 
+#[allow(dead_code)]
 pub enum PixVal {
     MsCount,
     CovMask,
@@ -4694,6 +4700,7 @@ impl BasicBlock {
         None
     }
 
+    #[allow(dead_code)]
     pub fn phi_dsts_mut(&mut self) -> Option<&mut OpPhiDsts> {
         for instr in self.instrs.iter_mut() {
             match &mut instr.op {
@@ -4744,6 +4751,7 @@ impl BasicBlock {
         }
     }
 
+    #[allow(dead_code)]
     pub fn branch_mut(&mut self) -> Option<&mut Instr> {
         if let Some(i) = self.instrs.last_mut() {
             if i.is_branch() {

@@ -95,6 +95,7 @@ impl ALUSrc {
         ALUSrc::from_src_file(src, RegFile::GPR)
     }
 
+    #[allow(dead_code)]
     pub fn from_usrc(src: &Src) -> ALUSrc {
         assert!(src.is_uniform());
         ALUSrc::from_src_file(src, RegFile::UGPR)
@@ -202,6 +203,7 @@ impl SM75Instr {
         }
     }
 
+    #[allow(dead_code)]
     fn set_src_cx(&mut self, range: Range<usize>, cb: &CBufRef) {
         let mut v = BitMutView::new_subset(self, range);
         if let CBuf::BindlessGPR(reg) = cb.buf {
