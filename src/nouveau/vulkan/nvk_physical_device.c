@@ -210,6 +210,7 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* Vulkan 1.2 */
       .samplerMirrorClampToEdge = true,
+      .descriptorIndexing = true,
       .drawIndirectCount = info->cls_eng3d >= TURING_A,
       .shaderInputAttachmentArrayDynamicIndexing = true,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
