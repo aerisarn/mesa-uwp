@@ -182,12 +182,8 @@ to just run 1/10th of the test list.
 If a HW CI farm goes offline (network dies and all CI pipelines end up
 stalled) or its runners are consistently spuriously failing (disk
 full?), and the maintainer is not immediately available to fix the
-issue, please push through an MR disabling that farm's jobs by adding
-'.' to the front of the jobs names until the maintainer can bring
-things back up.  If this happens, the farm maintainer should provide a
-report to mesa-dev@lists.freedesktop.org after the fact explaining
-what happened and what the mitigation plan is for that failure next
-time.
+issue, please push through an MR disabling that farm's jobs according
+to the `Farm Management <#farm-management>`__ instructions.
 
 Personal runners
 ----------------
