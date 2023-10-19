@@ -3633,7 +3633,8 @@ VkResult anv_CreateDevice(
  fail_general_state_pool:
    anv_state_pool_finish(&device->general_state_pool);
  fail_batch_bo_pool:
-   anv_bo_pool_finish(&device->bvh_bo_pool);
+   if (device->vk.enabled_extensions.KHR_acceleration_structure)
+      anv_bo_pool_finish(&device->bvh_bo_pool);
    anv_bo_pool_finish(&device->batch_bo_pool);
    anv_bo_cache_finish(&device->bo_cache);
  fail_queue_cond:
@@ -3741,7 +3742,8 @@ void anv_DestroyDevice(
    anv_state_pool_finish(&device->dynamic_state_pool);
    anv_state_pool_finish(&device->general_state_pool);
 
-   anv_bo_pool_finish(&device->bvh_bo_pool);
+   if (device->vk.enabled_extensions.KHR_acceleration_structure)
+      anv_bo_pool_finish(&device->bvh_bo_pool);
    anv_bo_pool_finish(&device->batch_bo_pool);
 
    anv_bo_cache_finish(&device->bo_cache);
