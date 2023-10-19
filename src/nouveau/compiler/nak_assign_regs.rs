@@ -1188,9 +1188,8 @@ impl Shader {
 
             f.spill_values(RegFile::GPR, gpr_limit);
 
-            // Re-calculate liveness after we spill
+            // Re-calculate liveness one last time
             live = SimpleLiveness::for_function(f);
-            max_live = live.calc_max_live(f);
         }
 
         self.info.num_gprs = total_gprs.try_into().unwrap();
