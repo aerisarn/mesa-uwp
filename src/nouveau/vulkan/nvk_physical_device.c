@@ -210,6 +210,7 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* Vulkan 1.2 */
       .samplerMirrorClampToEdge = true,
+      .drawIndirectCount = info->cls_eng3d >= TURING_A,
       .shaderInputAttachmentArrayDynamicIndexing = true,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
       .shaderStorageTexelBufferArrayDynamicIndexing = true,
@@ -230,6 +231,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .descriptorBindingPartiallyBound = true,
       .descriptorBindingVariableDescriptorCount = true,
       .runtimeDescriptorArray = true,
+      .samplerFilterMinmax = info->cls_eng3d >= MAXWELL_B,
       .imagelessFramebuffer = true,
       .uniformBufferStandardLayout = true,
       .separateDepthStencilLayouts = true,
@@ -238,10 +240,6 @@ nvk_get_device_features(const struct nv_device_info *info,
       .bufferDeviceAddress = true,
       .bufferDeviceAddressCaptureReplay = false,
       .bufferDeviceAddressMultiDevice = false,
-      .drawIndirectCount = info->cls_eng3d >= TURING_A,
-      .samplerFilterMinmax = info->cls_eng3d >= MAXWELL_B,
-      .conditionalRendering = true,
-      .inheritedConditionalRendering = true,
 
       /* Vulkan 1.3 */
       .robustImageAccess = true,
@@ -275,6 +273,10 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* VK_EXT_buffer_device_address */
       .bufferDeviceAddressCaptureReplayEXT = false,
+
+      /* VK_EXT_conditional_rendering */
+      .conditionalRendering = true,
+      .inheritedConditionalRendering = true,
 
       /* VK_EXT_custom_border_color */
       .customBorderColors = true,
