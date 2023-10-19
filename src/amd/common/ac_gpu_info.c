@@ -1556,17 +1556,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    if (info->gfx_level >= GFX11) {
-      switch (info->family) {
-      case CHIP_GFX1103_R1:
-         info->attribute_ring_size_per_se = 768 * 1024;
-         break;
-      case CHIP_GFX1103_R2:
-         /* TODO: Test if 192K or 384K is faster. */
-         info->attribute_ring_size_per_se = 256 * 1024;
-         break;
-      default:
+      if (info->l3_cache_size_mb) {
          info->attribute_ring_size_per_se = 1400 * 1024;
-         break;
+      } else {
+         assert(info->num_se == 1);
+
+         if (info->l2_cache_size >= 2 * 1024 * 1024)
+            info->attribute_ring_size_per_se = 768 * 1024;
+         else
+            info->attribute_ring_size_per_se = info->l2_cache_size / 2;
       }
 
       /* The size must be aligned to 64K per SE and must be at most 16M in total. */
