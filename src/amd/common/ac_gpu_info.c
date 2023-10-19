@@ -59,6 +59,7 @@
 #define AMDGPU_INFO_VIDEO_CAPS_DECODE 0
 #define AMDGPU_INFO_VIDEO_CAPS_ENCODE 1
 #define AMDGPU_INFO_FW_GFX_MEC 0x08
+#define AMDGPU_INFO_MAX_IBS 0x22
 
 #define AMDGPU_VRAM_TYPE_UNKNOWN 0
 #define AMDGPU_VRAM_TYPE_GDDR1 1
@@ -1536,18 +1537,22 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     * (ie. some initial setup needed for a submit) and the packet size.
     * It can be calculated according to the kernel source code as:
     * (ring->max_dw - emit_frame_size) / emit_ib_size
-    *
-    * The numbers we chose here is a rough estimate that should
-    * work well (as of kernel 6.3).
     */
-   memset(info->max_submitted_ibs, 50, AMD_NUM_IP_TYPES);
-   info->max_submitted_ibs[AMD_IP_GFX] = info->gfx_level >= GFX7 ? 192 : 144;
-   info->max_submitted_ibs[AMD_IP_COMPUTE] = 124;
-   info->max_submitted_ibs[AMD_IP_VCN_JPEG] = 16;
-   for (unsigned i = 0; i < AMD_NUM_IP_TYPES; ++i) {
-      /* Clear out max submitted IB count for IPs that have no queues. */
-      if (!info->ip[i].num_queues)
-         info->max_submitted_ibs[i] = 0;
+   r = amdgpu_query_info(dev, AMDGPU_INFO_MAX_IBS,
+                         sizeof(info->max_submitted_ibs), info->max_submitted_ibs);
+   if (r) {
+      /* When the number of IBs can't be queried from the kernel, we choose a
+       * rough estimate that should work well (as of kernel 6.3).
+       */
+      memset(info->max_submitted_ibs, 50, AMD_NUM_IP_TYPES);
+      info->max_submitted_ibs[AMD_IP_GFX] = info->gfx_level >= GFX7 ? 192 : 144;
+      info->max_submitted_ibs[AMD_IP_COMPUTE] = 124;
+      info->max_submitted_ibs[AMD_IP_VCN_JPEG] = 16;
+      for (unsigned i = 0; i < AMD_NUM_IP_TYPES; ++i) {
+         /* Clear out max submitted IB count for IPs that have no queues. */
+         if (!info->ip[i].num_queues)
+            info->max_submitted_ibs[i] = 0;
+      }
    }
 
    if (info->gfx_level >= GFX11) {
