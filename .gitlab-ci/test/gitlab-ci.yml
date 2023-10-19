@@ -374,6 +374,10 @@ clang-format:
 
       rm -rf ${JOB_FOLDER} || true
       mkdir -v ${JOB_FOLDER}
+
+      # Keep the results path the same as baremetal and LAVA
+      ln -s "$JOB_FOLDER"/results/ .
+
       # Create a script to regenerate the CI environment when this job
       # begins running on the remote DUT.
       set +x
@@ -405,9 +409,9 @@ clang-format:
     when: always
     name: "mesa_${CI_JOB_NAME}"
     paths:
-      - ${JOB_FOLDER}/results
+      - results
     reports:
-      junit: ${JOB_FOLDER}/results/**/junit.xml
+      junit: results/**/junit.xml
 
 .b2c-test-vk:
   extends:
