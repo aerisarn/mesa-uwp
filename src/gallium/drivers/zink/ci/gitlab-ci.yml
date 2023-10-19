@@ -13,7 +13,7 @@ zink-lvp:
     # Enable validation (except for on piglit, see deqp-zink-lvp.toml), logging
     # to stdout and aborting on unknown failures.
     ZINK_DEBUG: validation
-    XVFB_SCRIPT: "GALLIUM_DRIVER=zink VK_DRIVER=lvp install/deqp-runner.sh"
+    XVFB_SCRIPT: "VK_DRIVER=lvp install/deqp-runner.sh"
   script: |
     xvfb-run --server-args='-noreset' bash -c ". $SCRIPTS_DIR/setup-test-env.sh && ${XVFB_SCRIPT}"
 
