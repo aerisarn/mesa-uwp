@@ -1056,10 +1056,6 @@ impl Src {
         }
     }
 
-    pub fn get_reg(&self) -> Option<&RegRef> {
-        self.src_ref.get_reg()
-    }
-
     pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
         self.src_ref.iter_ssa()
     }
@@ -1110,24 +1106,6 @@ impl Src {
                 src_type == SrcType::F32 && self.src_mod.is_none()
             }
             _ => false,
-        }
-    }
-
-    pub fn is_false(&self) -> bool {
-        match self.src_ref {
-            SrcRef::True => self.src_mod.is_bnot(),
-            SrcRef::False => !self.src_mod.is_bnot(),
-            _ => false,
-        }
-    }
-
-    pub fn is_reg_or_zero(&self) -> bool {
-        match self.src_ref {
-            SrcRef::Zero | SrcRef::SSA(_) | SrcRef::Reg(_) => true,
-            SrcRef::True
-            | SrcRef::False
-            | SrcRef::Imm32(_)
-            | SrcRef::CBuf(_) => false,
         }
     }
 

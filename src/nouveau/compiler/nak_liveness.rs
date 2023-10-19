@@ -32,10 +32,6 @@ impl LiveSet {
         self.live[file]
     }
 
-    pub fn counts(&self) -> &PerRegFile<u32> {
-        &self.live
-    }
-
     pub fn insert(&mut self, ssa: SSAValue) -> bool {
         if self.set.insert(ssa) {
             self.live[ssa.file()] += 1;
