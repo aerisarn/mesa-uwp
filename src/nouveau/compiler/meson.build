@@ -1,3 +1,9 @@
+# Copyright © 2022 Collabora, Ltd.
+# SPDX-License-Identifier: MIT
+if meson.version().version_compare('< 1.2.99')
+  error('NVK requires meson 1.3.0 or newer')
+endif
+
 add_languages('rust', required: true)
 rust = import('unstable-rust')
 
@@ -33,16 +39,6 @@ libnak_deps = [
 nak_bindings_rs = rust.bindgen(
   input : ['nak_bindings.h'],
   output : 'nak_bindings.rs',
-  include_directories : [
-    include_directories('/usr/include/valgrind'),
-    include_directories('../nvidia-headers'),
-    inc_compiler,
-    inc_gallium,
-    inc_gallium_aux,
-    inc_include,
-    inc_nir,
-    inc_src,
-  ],
   c_args : [
     pre_args,
   ],
@@ -71,7 +67,7 @@ nak_bindings_rs = rust.bindgen(
     '--allowlist-function', 'glsl_.*',
     '--no-prepend-enum-name',
   ],
-#  dependencies : libnak_deps,
+  dependencies : libnak_deps,
 )
 
 libnak_bindings_gen = static_library(
@@ -81,12 +77,10 @@ libnak_bindings_gen = static_library(
   rust_crate_type : 'rlib',
 )
 
-libnak_ir_proc = shared_library(
+libnak_ir_proc = rust.proc_macro(
   'nak_ir_proc',
   files('nak_ir_proc.rs'),
-  rust_crate_type : 'proc-macro',
   dependencies : [dep_syn],
-  install : false,
 )
 
 _libnak_rs = static_library(
