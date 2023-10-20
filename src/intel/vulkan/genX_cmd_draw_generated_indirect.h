@@ -64,6 +64,7 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
 
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+   const bool use_tbimr = cmd_buffer->state.gfx.dyn_state.use_tbimr;
 
    struct anv_address draw_count_addr;
    if (anv_address_is_null(count_addr)) {
@@ -80,7 +81,8 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
          .draw_id_addr           = anv_address_physical(draw_id_addr),
          .indirect_data_addr     = anv_address_physical(indirect_data_addr),
          .indirect_data_stride   = indirect_data_stride,
-         .flags                  = (indexed ? ANV_GENERATED_FLAG_INDEXED : 0) |
+         .flags                  = (use_tbimr ? ANV_GENERATED_FLAG_TBIMR : 0) |
+                                   (indexed ? ANV_GENERATED_FLAG_INDEXED : 0) |
                                    (cmd_buffer->state.conditional_render_enabled ?
                                     ANV_GENERATED_FLAG_PREDICATED : 0) |
                                    ((vs_prog_data->uses_firstvertex ||
