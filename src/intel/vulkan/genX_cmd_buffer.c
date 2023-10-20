@@ -171,12 +171,20 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 
       sba.GeneralStateBufferSize       = 0xfffff;
       sba.IndirectObjectBufferSize     = 0xfffff;
-      sba.DynamicStateBufferSize       = device->physical->va.dynamic_state_pool.size / 4096;
+      sba.DynamicStateBufferSize       = (device->physical->va.dynamic_state_pool.size +
+                                          device->physical->va.sampler_state_pool.size) / 4096;
       sba.InstructionBufferSize        = device->physical->va.instruction_state_pool.size / 4096;
       sba.GeneralStateBufferSizeModifyEnable    = true;
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.InstructionBuffersizeModifyEnable     = true;
+
+#if GFX_VER >= 11
+      sba.BindlessSamplerStateBaseAddress = ANV_NULL_ADDRESS;
+      sba.BindlessSamplerStateBufferSize = 0;
+      sba.BindlessSamplerStateMOCS = mocs;
+      sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+#endif
 
       if (!device->physical->indirect_descriptors) {
 #if GFX_VERx10 >= 125
@@ -184,20 +192,13 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
           * same heap
           */
          sba.BindlessSurfaceStateBaseAddress =
-            sba.BindlessSamplerStateBaseAddress =
             (struct anv_address) { .offset =
             device->physical->va.binding_table_pool.addr, };
          sba.BindlessSurfaceStateSize =
-            (device->physical->va.binding_table_pool.size +
-             device->physical->va.internal_surface_state_pool.size +
-             device->physical->va.descriptor_pool.size) - 1;
-         sba.BindlessSamplerStateBufferSize =
-            (device->physical->va.binding_table_pool.size +
-             device->physical->va.internal_surface_state_pool.size +
-             device->physical->va.descriptor_pool.size) / 4096 - 1;
-         sba.BindlessSurfaceStateMOCS = sba.BindlessSamplerStateMOCS = mocs;
-         sba.BindlessSurfaceStateBaseAddressModifyEnable =
-            sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+            (device->physical->va.internal_surface_state_pool.size +
+             device->physical->va.bindless_surface_state_pool.size) - 1;
+         sba.BindlessSurfaceStateMOCS = mocs;
+         sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
 #else
          unreachable("Direct descriptor not supported");
 #endif
@@ -210,12 +211,6 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
             anv_physical_device_bindless_heap_size(device->physical) / ANV_SURFACE_STATE_SIZE - 1;
          sba.BindlessSurfaceStateMOCS = mocs;
          sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-#if GFX_VER >= 11
-         sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
-         sba.BindlessSamplerStateMOCS = mocs;
-         sba.BindlessSamplerStateBaseAddressModifyEnable = true;
-         sba.BindlessSamplerStateBufferSize = 0;
-#endif
       }
 
 #if GFX_VERx10 >= 125
@@ -2115,7 +2110,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          /* This is a descriptor set buffer so the set index is actually
           * given by binding->binding.  (Yes, that's confusing.)
           */
-         assert(set->desc_mem.alloc_size);
+         assert(set->desc_surface_mem.alloc_size);
          assert(set->desc_surface_state.alloc_size);
          bt_map[s] = set->desc_surface_state.offset + state_offset;
          add_surface_reloc(cmd_buffer, anv_descriptor_set_address(set));
@@ -2349,8 +2344,8 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                                     set->desc_surface_state.map,
                                     format, ISL_SWIZZLE_IDENTITY,
                                     ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
-                                    set->desc_addr,
-                                    layout->descriptor_buffer_size, 1);
+                                    set->desc_surface_addr,
+                                    layout->descriptor_buffer_surface_size, 1);
    }
 
    state->push_descriptor.set_used_on_gpu = true;
@@ -2480,9 +2475,10 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
    case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
       struct anv_descriptor_set *set =
          gfx_state->base.descriptors[range->index];
-      assert(range->start * 32 < set->desc_mem.alloc_size);
-      assert((range->start + range->length) * 32 <= set->desc_mem.alloc_size);
-      return set->desc_mem.alloc_size;
+      struct anv_state state = set->desc_surface_mem;
+      assert(range->start * 32 < state.alloc_size);
+      assert((range->start + range->length) * 32 <= state.alloc_size);
+      return state.alloc_size;
    }
 
    case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS:

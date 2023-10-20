@@ -102,29 +102,28 @@ anv_physical_device_init_va_ranges(struct anv_physical_device *device)
                     _1Gb - address);
 
    address = va_add(&device->va.low_heap, address, _1Gb);
-   /* PRMs & simulation disagrees on the actual size of this heap. Take the
-    * smallest (simulation) so that it works everywhere.
-    */
-   address = va_add(&device->va.dynamic_state_pool, address, _1Gb);
-   address = va_add(&device->va.sampler_state_pool, address, 2 * _1Gb);
 
-   /* The following addresses have to be located in a 4Gb range so that the
-    * binding tables can address internal surface states & bindless surface
-    * states.
+   /* The binding table pool has to be located directly in front of the
+    * surface states.
     */
-   address = align64(address, _4Gb);
+   address += _1Gb;
    address = va_add(&device->va.binding_table_pool, address, _1Gb);
    address = va_add(&device->va.internal_surface_state_pool, address, 1 * _1Gb);
+   assert(device->va.internal_surface_state_pool.addr ==
+          align64(device->va.internal_surface_state_pool.addr, 2 * _1Gb));
    /* Scratch surface state overlaps with the internal surface state */
    va_at(&device->va.scratch_surface_state_pool,
          device->va.internal_surface_state_pool.addr,
          8 * _1Mb);
-
-   /* The bindless surface state heap has be in the same 4Gb range from the
-    * binding table pool start so they can be addressed from binding table
-    * entries.
-    */
    address = va_add(&device->va.bindless_surface_state_pool, address, 2 * _1Gb);
+
+
+   /* PRMs & simulation disagrees on the actual size of this heap. Take the
+    * smallest (simulation) so that it works everywhere.
+    */
+   address = align64(address, _4Gb);
+   address = va_add(&device->va.dynamic_state_pool, address, _1Gb);
+   address = va_add(&device->va.sampler_state_pool, address, 2 * _1Gb);
 
    if (device->indirect_descriptors) {
       /* With indirect descriptors, descriptor buffers can go anywhere, they

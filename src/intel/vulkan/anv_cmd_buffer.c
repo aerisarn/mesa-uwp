@@ -673,10 +673,11 @@ void anv_CmdBindPipeline(
 
             assert(layout->set[s].dynamic_offset_start < MAX_DYNAMIC_BUFFERS);
             if (layout->set[s].layout->dynamic_offset_count > 0 &&
-                (push->desc_offsets[s] & ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK) != layout->set[s].dynamic_offset_start) {
-               push->desc_offsets[s] &= ~ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK;
-               push->desc_offsets[s] |= (layout->set[s].dynamic_offset_start &
-                                         ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK);
+                (push->desc_surface_offsets[s] & ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK) !=
+                layout->set[s].dynamic_offset_start) {
+               push->desc_surface_offsets[s] &= ~ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK;
+               push->desc_surface_offsets[s] |= (layout->set[s].dynamic_offset_start &
+                                                 ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK);
                modified = true;
             }
          }
@@ -788,16 +789,16 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
       /* When using indirect descriptors, stages that have access to the HW
        * binding tables, never need to access the
-       * anv_push_constants::desc_offsets fields, because any data they need
-       * from the descriptor buffer is accessible through a binding table
-       * entry. For stages that are "bindless" (Mesh/Task/RT), we need to
-       * provide anv_push_constants::desc_offsets matching the bound
+       * anv_push_constants::desc_surface_offsets fields, because any data
+       * they need from the descriptor buffer is accessible through a binding
+       * table entry. For stages that are "bindless" (Mesh/Task/RT), we need
+       * to provide anv_push_constants::desc_surface_offsets matching the bound
        * descriptor so that shaders can access the descriptor buffer through
        * A64 messages.
        *
        * With direct descriptors, the shaders can use the
-       * anv_push_constants::desc_offsets to build bindless offsets. So it's
-       * we always need to update the push constant data.
+       * anv_push_constants::desc_surface_offsets to build bindless offsets.
+       * So it's we always need to update the push constant data.
        */
       bool update_desc_sets =
          !cmd_buffer->device->physical->indirect_descriptors ||
@@ -813,18 +814,20 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       if (update_desc_sets) {
          struct anv_push_constants *push = &pipe_state->push_constants;
 
-         struct anv_address set_addr = anv_descriptor_set_address(set);
          uint64_t offset =
-            anv_address_physical(set_addr) -
-            cmd_buffer->device->physical->va.binding_table_pool.addr;
+            anv_address_physical(set->desc_surface_addr) -
+            cmd_buffer->device->physical->va.internal_surface_state_pool.addr;
          assert((offset & ~ANV_DESCRIPTOR_SET_OFFSET_MASK) == 0);
-         push->desc_offsets[set_index] &= ~ANV_DESCRIPTOR_SET_OFFSET_MASK;
-         push->desc_offsets[set_index] |= offset;
+         push->desc_surface_offsets[set_index] &= ~ANV_DESCRIPTOR_SET_OFFSET_MASK;
+         push->desc_surface_offsets[set_index] |= offset;
+         push->desc_sampler_offsets[set_index] |=
+            anv_address_physical(set->desc_sampler_addr) -
+            cmd_buffer->device->physical->va.dynamic_state_pool.addr;
 
-         if (set_addr.bo) {
-            anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                                  set_addr.bo);
-         }
+         anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
+                               set->desc_surface_addr.bo);
+         anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
+                               set->desc_sampler_addr.bo);
       }
 
       dirty_stages |= stages;

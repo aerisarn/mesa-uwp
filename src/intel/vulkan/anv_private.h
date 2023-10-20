@@ -432,6 +432,9 @@ enum anv_bo_alloc_flags {
     * set it will allocate a coherent BO.
     **/
    ANV_BO_ALLOC_HOST_CACHED =             (1 << 16),
+
+   /** For sampler pools */
+   ANV_BO_ALLOC_SAMPLER_POOL =            (1 << 17),
 };
 
 struct anv_bo {
@@ -1634,6 +1637,7 @@ struct anv_device {
     struct util_vma_heap                        vma_lo;
     struct util_vma_heap                        vma_hi;
     struct util_vma_heap                        vma_desc;
+    struct util_vma_heap                        vma_samplers;
     struct util_vma_heap                        vma_trtt;
 
     /** List of all anv_device_memory objects */
@@ -2370,18 +2374,30 @@ struct anv_descriptor_set_binding_layout {
     */
    int16_t dynamic_offset_index;
 
-   /* Computed size from data */
-   uint16_t descriptor_data_size;
+   /* Computed surface size from data (for one plane) */
+   uint16_t descriptor_data_surface_size;
+
+   /* Computed sampler size from data (for one plane) */
+   uint16_t descriptor_data_sampler_size;
 
    /* Index into the descriptor set buffer views */
    int32_t buffer_view_index;
 
-   /* Offset into the descriptor buffer where this descriptor lives */
-   uint32_t descriptor_offset;
+   /* Offset into the descriptor buffer where the surface descriptor lives */
+   uint32_t descriptor_surface_offset;
 
-   /* Pre computed stride (with multiplane descriptor, the descriptor includes
-    * all the planes) */
-   unsigned descriptor_stride;
+   /* Offset into the descriptor buffer where the sampler descriptor lives */
+   uint16_t descriptor_sampler_offset;
+
+   /* Pre computed surface stride (with multiplane descriptor, the descriptor
+    * includes all the planes)
+    */
+   uint16_t descriptor_surface_stride;
+
+   /* Pre computed sampler stride (with multiplane descriptor, the descriptor
+    * includes all the planes)
+    */
+   uint16_t descriptor_sampler_stride;
 
    /* Immutable samplers (or NULL if no immutable samplers) */
    struct anv_sampler **immutable_samplers;
@@ -2433,8 +2449,15 @@ struct anv_descriptor_set_layout {
     */
    VkShaderStageFlags dynamic_offset_stages[MAX_DYNAMIC_BUFFERS];
 
-   /* Size of the descriptor buffer for this descriptor set */
-   uint32_t descriptor_buffer_size;
+   /* Size of the descriptor buffer dedicated to surface states for this
+    * descriptor set
+    */
+   uint32_t descriptor_buffer_surface_size;
+
+   /* Size of the descriptor buffer dedicated to sampler states for this
+    * descriptor set
+    */
+   uint32_t descriptor_buffer_sampler_size;
 
    /* Bindings in this descriptor set */
    struct anv_descriptor_set_binding_layout binding[0];
@@ -2506,13 +2529,20 @@ struct anv_descriptor_set {
     */
    uint32_t generate_surface_states;
 
-   /* State relative to anv_descriptor_pool::bo */
-   struct anv_state desc_mem;
+   /* State relative to anv_descriptor_pool::surface_bo */
+   struct anv_state desc_surface_mem;
+   /* State relative to anv_descriptor_pool::sampler_bo */
+   struct anv_state desc_sampler_mem;
    /* Surface state for the descriptor buffer */
    struct anv_state desc_surface_state;
 
-   /* Descriptor set address. */
-   struct anv_address desc_addr;
+   /* Descriptor set address pointing to desc_surface_mem (we don't need one
+    * for sampler because they're never accessed other than by the HW through
+    * the shader sampler handle).
+    */
+   struct anv_address desc_surface_addr;
+
+   struct anv_address desc_sampler_addr;
 
    /* Descriptor offset from the
     * device->va.internal_surface_state_pool.addr
@@ -2592,15 +2622,28 @@ anv_descriptor_set_address(struct anv_descriptor_set *set)
       push_set->set_used_on_gpu = true;
    }
 
-   return set->desc_addr;
+   return set->desc_surface_addr;
 }
+
+struct anv_descriptor_pool_heap {
+   /* BO allocated to back the pool (unused for host pools) */
+   struct anv_bo        *bo;
+
+   /* Host memory allocated to back a host pool */
+   void                 *host_mem;
+
+   /* Heap tracking allocations in bo/host_mem */
+   struct util_vma_heap  heap;
+
+   /* Size of the heap */
+   uint32_t              size;
+};
 
 struct anv_descriptor_pool {
    struct vk_object_base base;
 
-   struct anv_bo *bo;
-   void *host_bo;
-   struct util_vma_heap bo_heap;
+   struct anv_descriptor_pool_heap surfaces;
+   struct anv_descriptor_pool_heap samplers;
 
    struct anv_state_stream surface_state_stream;
    void *surface_state_free_list;
@@ -2613,9 +2656,6 @@ struct anv_descriptor_pool {
 
    /** Allocated size of host_mem */
    uint32_t host_mem_size;
-
-   /** Allocated size of descriptor bo (should be equal to bo->size) */
-   uint32_t bo_mem_size;
 
    /**
     * VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT. If set, then
@@ -3265,15 +3305,6 @@ struct anv_push_constants {
    /** Push constant data provided by the client through vkPushConstants */
    uint8_t client_data[MAX_PUSH_CONSTANTS_SIZE];
 
-   /** Dynamic offsets for dynamic UBOs and SSBOs */
-   uint32_t dynamic_offsets[MAX_DYNAMIC_BUFFERS];
-
-   /* Robust access pushed registers. */
-   uint64_t push_reg_mask[MESA_SHADER_STAGES];
-
-   /** Ray query globals (RT_DISPATCH_GLOBALS) */
-   uint64_t ray_query_globals;
-
 #define ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK ((uint32_t)ANV_UBO_ALIGNMENT - 1)
 #define ANV_DESCRIPTOR_SET_OFFSET_MASK        (~(uint32_t)(ANV_UBO_ALIGNMENT - 1))
 
@@ -3285,7 +3316,15 @@ struct anv_push_constants {
     *
     * In bits [6:63] : descriptor set address
     */
-   uint32_t desc_offsets[MAX_SETS];
+   uint32_t desc_surface_offsets[MAX_SETS];
+
+   /**
+    * Base offsets for descriptor sets from
+    */
+   uint32_t desc_sampler_offsets[MAX_SETS];
+
+   /** Dynamic offsets for dynamic UBOs and SSBOs */
+   uint32_t dynamic_offsets[MAX_DYNAMIC_BUFFERS];
 
    union {
       struct {
@@ -3311,6 +3350,12 @@ struct anv_push_constants {
          uint32_t subgroup_id;
       } cs;
    };
+
+   /* Robust access pushed registers. */
+   uint64_t push_reg_mask[MESA_SHADER_STAGES];
+
+   /** Ray query globals (RT_DISPATCH_GLOBALS) */
+   uint64_t ray_query_globals;
 };
 
 struct anv_surface_state {

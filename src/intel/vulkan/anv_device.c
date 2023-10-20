@@ -1479,7 +1479,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->compiler->supports_shader_constants = true;
    device->compiler->indirect_ubos_use_sampler = device->info.ver < 12;
    device->compiler->extended_bindless_surface_offset = device->uses_ex_bso;
-   device->compiler->use_bindless_sampler_offset = !device->indirect_descriptors;
+   device->compiler->use_bindless_sampler_offset = false;
    device->compiler->spilling_rate =
       driQueryOptioni(&instance->dri_options, "shader_spilling_rate");
 
@@ -3324,6 +3324,9 @@ VkResult anv_CreateDevice(
                          device->physical->va.bindless_surface_state_pool.size);
    }
 
+   util_vma_heap_init(&device->vma_samplers,
+                      device->physical->va.sampler_state_pool.addr,
+                      device->physical->va.sampler_state_pool.size);
    util_vma_heap_init(&device->vma_trtt,
                       device->physical->va.trtt.addr,
                       device->physical->va.trtt.size);
@@ -3789,6 +3792,8 @@ VkResult anv_CreateDevice(
    pthread_mutex_destroy(&device->mutex);
  fail_vmas:
    util_vma_heap_finish(&device->vma_trtt);
+   if (!device->physical->indirect_descriptors)
+      util_vma_heap_finish(&device->vma_samplers);
    util_vma_heap_finish(&device->vma_desc);
    util_vma_heap_finish(&device->vma_hi);
    util_vma_heap_finish(&device->vma_lo);
@@ -3903,6 +3908,8 @@ void anv_DestroyDevice(
    anv_bo_cache_finish(&device->bo_cache);
 
    util_vma_heap_finish(&device->vma_trtt);
+   if (!device->physical->indirect_descriptors)
+      util_vma_heap_finish(&device->vma_samplers);
    util_vma_heap_finish(&device->vma_desc);
    util_vma_heap_finish(&device->vma_hi);
    util_vma_heap_finish(&device->vma_lo);
@@ -3970,6 +3977,9 @@ anv_vma_heap_for_flags(struct anv_device *device,
    if (alloc_flags & ANV_BO_ALLOC_DESCRIPTOR_POOL)
       return &device->vma_desc;
 
+   if (alloc_flags & ANV_BO_ALLOC_SAMPLER_POOL)
+      return &device->vma_samplers;
+
    return &device->vma_hi;
 }
 
@@ -4022,6 +4032,7 @@ anv_vma_free(struct anv_device *device,
    assert(vma_heap == &device->vma_lo ||
           vma_heap == &device->vma_hi ||
           vma_heap == &device->vma_desc ||
+          vma_heap == &device->vma_samplers ||
           vma_heap == &device->vma_trtt);
 
    const uint64_t addr_48b = intel_48b_address(address);

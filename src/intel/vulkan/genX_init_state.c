@@ -250,7 +250,8 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
          (struct anv_address) { .offset =
          device->physical->va.dynamic_state_pool.addr,
       };
-      sba.DynamicStateBufferSize = device->physical->va.dynamic_state_pool.size / 4096;
+      sba.DynamicStateBufferSize = (device->physical->va.dynamic_state_pool.size +
+                                    device->physical->va.sampler_state_pool.size) / 4096;
       sba.DynamicStateMOCS = mocs;
       sba.DynamicStateBaseAddressModifyEnable = true;
       sba.DynamicStateBufferSizeModifyEnable = true;
@@ -270,6 +271,13 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
       sba.InstructionBaseAddressModifyEnable = true;
       sba.InstructionBuffersizeModifyEnable = true;
 
+#if GFX_VER >= 11
+      sba.BindlessSamplerStateBaseAddress = ANV_NULL_ADDRESS;
+      sba.BindlessSamplerStateBufferSize = 0;
+      sba.BindlessSamplerStateMOCS = mocs;
+      sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+#endif
+
       if (device->physical->indirect_descriptors) {
          sba.BindlessSurfaceStateBaseAddress =
             (struct anv_address) { .offset =
@@ -279,29 +287,18 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
             anv_physical_device_bindless_heap_size(device->physical) / ANV_SURFACE_STATE_SIZE - 1;
          sba.BindlessSurfaceStateMOCS = mocs;
          sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-
-         sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
-         sba.BindlessSamplerStateMOCS = mocs;
-         sba.BindlessSamplerStateBaseAddressModifyEnable = true;
-         sba.BindlessSamplerStateBufferSize = 0;
       } else {
          /* Bindless Surface State & Bindless Sampler State are aligned to the
           * same heap
           */
-         sba.BindlessSurfaceStateBaseAddress =
-            sba.BindlessSamplerStateBaseAddress =
-            (struct anv_address) { .offset = device->physical->va.binding_table_pool.addr, };
+         sba.BindlessSurfaceStateBaseAddress = (struct anv_address) {
+            .offset = device->physical->va.internal_surface_state_pool.addr,
+         };
          sba.BindlessSurfaceStateSize =
-            (device->physical->va.binding_table_pool.size +
-             device->physical->va.internal_surface_state_pool.size +
+            (device->physical->va.internal_surface_state_pool.size +
              device->physical->va.bindless_surface_state_pool.size) - 1;
-         sba.BindlessSamplerStateBufferSize =
-            (device->physical->va.binding_table_pool.size +
-             device->physical->va.internal_surface_state_pool.size +
-             device->physical->va.bindless_surface_state_pool.size) / 4096 - 1;
-         sba.BindlessSurfaceStateMOCS = sba.BindlessSamplerStateMOCS = mocs;
-         sba.BindlessSurfaceStateBaseAddressModifyEnable =
-            sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+         sba.BindlessSurfaceStateMOCS = mocs;
+         sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
       }
 
 #if GFX_VERx10 >= 125
