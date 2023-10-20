@@ -183,6 +183,8 @@ struct brw_fs_bind_info {
    unsigned binding;
 };
 
+class fs_instruction_scheduler;
+
 /**
  * The fragment shader front-end.
  *
@@ -279,7 +281,11 @@ public:
    bool remove_duplicate_mrf_writes();
    bool remove_extra_rounding_modes();
 
-   void schedule_instructions(instruction_scheduler_mode mode);
+   fs_instruction_scheduler *prepare_scheduler(void *mem_ctx);
+   void schedule_instructions_pre_ra(fs_instruction_scheduler *sched,
+                                     instruction_scheduler_mode mode);
+   void schedule_instructions_post_ra();
+
    void insert_gfx4_send_dependency_workarounds();
    void insert_gfx4_pre_send_dependency_workarounds(bblock_t *block,
                                                     fs_inst *inst);

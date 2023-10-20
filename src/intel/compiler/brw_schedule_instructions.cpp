@@ -31,6 +31,7 @@
 #include "brw_vec4.h"
 #include "brw_cfg.h"
 #include "brw_shader.h"
+#include <new>
 
 using namespace brw;
 
@@ -736,8 +737,7 @@ class fs_instruction_scheduler : public instruction_scheduler
 {
 public:
    fs_instruction_scheduler(void *mem_ctx, const fs_visitor *v, int grf_count, int hw_reg_count,
-                            int block_count,
-                            instruction_scheduler_mode mode);
+                            int block_count, bool post_reg_alloc);
    void calculate_deps();
    bool is_compressed(const fs_inst *inst);
    schedule_node *choose_instruction_to_schedule();
@@ -750,7 +750,7 @@ public:
    void clear_last_grf_write();
 
    void schedule_instructions();
-   void run();
+   void run(instruction_scheduler_mode mode);
 
    const fs_visitor *v;
    unsigned hw_reg_count;
@@ -803,14 +803,13 @@ public:
 
 fs_instruction_scheduler::fs_instruction_scheduler(void *mem_ctx, const fs_visitor *v,
                                                    int grf_count, int hw_reg_count,
-                                                   int block_count,
-                                                   instruction_scheduler_mode mode)
+                                                   int block_count, bool post_reg_alloc)
    : instruction_scheduler(mem_ctx, v, grf_count, /* grf_write_scale */ 16,
-                           /* post_reg_alloc */ (mode == SCHEDULE_POST)),
+                           post_reg_alloc),
      v(v)
 {
    this->hw_reg_count = hw_reg_count;
-   this->mode = mode;
+   this->mode = SCHEDULE_NONE;
    this->reg_pressure = 0;
 
    if (!post_reg_alloc) {
@@ -1959,8 +1958,10 @@ fs_instruction_scheduler::schedule_instructions()
 }
 
 void
-fs_instruction_scheduler::run()
+fs_instruction_scheduler::run(instruction_scheduler_mode mode)
 {
+   this->mode = mode;
+
    if (debug && !post_reg_alloc) {
       fprintf(stderr, "\nInstructions before scheduling (reg_alloc %d)\n",
               post_reg_alloc);
@@ -2019,23 +2020,39 @@ vec4_instruction_scheduler::run()
    }
 }
 
+fs_instruction_scheduler *
+fs_visitor::prepare_scheduler(void *mem_ctx)
+{
+   const int grf_count = alloc.count;
+
+   fs_instruction_scheduler *empty = rzalloc(mem_ctx, fs_instruction_scheduler);
+   return new (empty) fs_instruction_scheduler(mem_ctx, this, grf_count, first_non_payload_grf,
+                                               cfg->num_blocks, /* post_reg_alloc */ false);
+}
+
 void
-fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
+fs_visitor::schedule_instructions_pre_ra(fs_instruction_scheduler *sched,
+                                         instruction_scheduler_mode mode)
 {
    if (mode == SCHEDULE_NONE)
       return;
 
-   int grf_count;
-   if (mode == SCHEDULE_POST)
-      grf_count = reg_unit(devinfo) * grf_used;
-   else
-      grf_count = alloc.count;
+   sched->run(mode);
+
+   invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
+}
+
+void
+fs_visitor::schedule_instructions_post_ra()
+{
+   const bool post_reg_alloc = true;
+   const int grf_count = reg_unit(devinfo) * grf_used;
 
    void *mem_ctx = ralloc_context(NULL);
 
    fs_instruction_scheduler sched(mem_ctx, this, grf_count, first_non_payload_grf,
-                                  cfg->num_blocks, mode);
-   sched.run();
+                                  cfg->num_blocks, post_reg_alloc);
+   sched.run(SCHEDULE_POST);
 
    ralloc_free(mem_ctx);
 

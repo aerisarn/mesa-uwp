@@ -6928,6 +6928,9 @@ fs_visitor::allocate_registers(bool allow_spilling)
    fs_inst **orig_order = save_instruction_order(cfg);
    fs_inst **best_pressure_order = NULL;
 
+   void *scheduler_ctx = ralloc_context(NULL);
+   fs_instruction_scheduler *sched = prepare_scheduler(scheduler_ctx);
+
    /* Try each scheduling heuristic to see if it can successfully register
     * allocate without spilling.  They should be ordered by decreasing
     * performance but increasing likelihood of allocating.
@@ -6935,7 +6938,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
    for (unsigned i = 0; i < ARRAY_SIZE(pre_modes); i++) {
       enum instruction_scheduler_mode sched_mode = pre_modes[i];
 
-      schedule_instructions(sched_mode);
+      schedule_instructions_pre_ra(sched, sched_mode);
       this->shader_stats.scheduler_mode = scheduler_mode_name[sched_mode];
 
       debug_optimizer(nir, shader_stats.scheduler_mode, 95, i);
@@ -6973,6 +6976,8 @@ fs_visitor::allocate_registers(bool allow_spilling)
       invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
    }
 
+   ralloc_free(scheduler_ctx);
+
    if (!allocated) {
       if (0) {
          fprintf(stderr, "Spilling - using lowest-pressure mode \"%s\"\n",
@@ -7009,7 +7014,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
 
    opt_bank_conflicts();
 
-   schedule_instructions(SCHEDULE_POST);
+   schedule_instructions_post_ra();
 
    if (last_scratch > 0) {
       ASSERTED unsigned max_scratch_size = 2 * 1024 * 1024;
