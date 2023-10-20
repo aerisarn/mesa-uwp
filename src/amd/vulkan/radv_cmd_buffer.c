@@ -618,6 +618,12 @@ radv_gang_leader_sem_dirty(const struct radv_cmd_buffer *cmd_buffer)
    return cmd_buffer->gang.sem.leader_value != cmd_buffer->gang.sem.emitted_leader_value;
 }
 
+static bool
+radv_gang_follower_sem_dirty(const struct radv_cmd_buffer *cmd_buffer)
+{
+   return cmd_buffer->gang.sem.follower_value != cmd_buffer->gang.sem.emitted_follower_value;
+}
+
 ALWAYS_INLINE static bool
 radv_flush_gang_semaphore(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs, const enum radv_queue_family qf,
                           const uint32_t va_off, const uint32_t value)
@@ -646,6 +652,18 @@ radv_flush_gang_leader_semaphore(struct radv_cmd_buffer *cmd_buffer)
    return radv_flush_gang_semaphore(cmd_buffer, cmd_buffer->cs, cmd_buffer->qf, 0, cmd_buffer->gang.sem.leader_value);
 }
 
+ALWAYS_INLINE static bool
+radv_flush_gang_follower_semaphore(struct radv_cmd_buffer *cmd_buffer)
+{
+   if (!radv_gang_follower_sem_dirty(cmd_buffer))
+      return false;
+
+   /* Follower writes a value to the semaphore which the gang leader can wait for. */
+   cmd_buffer->gang.sem.emitted_follower_value = cmd_buffer->gang.sem.follower_value;
+   return radv_flush_gang_semaphore(cmd_buffer, cmd_buffer->gang.cs, RADV_QUEUE_COMPUTE, 4,
+                                    cmd_buffer->gang.sem.follower_value);
+}
+
 ALWAYS_INLINE static void
 radv_wait_gang_semaphore(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs, const enum radv_queue_family qf,
                          const uint32_t va_off, const uint32_t value)
@@ -660,6 +678,13 @@ radv_wait_gang_leader(struct radv_cmd_buffer *cmd_buffer)
 {
    /* Follower waits for the semaphore which the gang leader wrote. */
    radv_wait_gang_semaphore(cmd_buffer, cmd_buffer->gang.cs, RADV_QUEUE_COMPUTE, 0, cmd_buffer->gang.sem.leader_value);
+}
+
+ALWAYS_INLINE static void
+radv_wait_gang_follower(struct radv_cmd_buffer *cmd_buffer)
+{
+   /* Gang leader waits for the semaphore which the follower wrote. */
+   radv_wait_gang_semaphore(cmd_buffer, cmd_buffer->cs, cmd_buffer->qf, 4, cmd_buffer->gang.sem.follower_value);
 }
 
 static bool
@@ -7507,9 +7532,11 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
          /* Emit pending flushes on primary prior to executing secondary. */
          radv_gang_cache_flush(primary);
 
-         /* Wait for primary GFX->ACE semaphore, if necessary. */
+         /* Wait for gang semaphores, if necessary. */
          if (radv_flush_gang_leader_semaphore(primary))
             radv_wait_gang_leader(primary);
+         if (radv_flush_gang_follower_semaphore(primary))
+            radv_wait_gang_follower(primary);
 
          /* Execute the secondary compute cmdbuf.
           * Don't use IB2 packets because they are not supported on compute queues.
@@ -7520,12 +7547,14 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       /* Update pending ACE internal flush bits from the secondary cmdbuf */
       primary->gang.flush_bits |= secondary->gang.flush_bits;
 
-      /* Increment primary semaphore if secondary was dirty.
+      /* Increment gang semaphores if secondary was dirty.
        * This happens when the secondary cmdbuf has a barrier which
        * isn't consumed by a draw call.
        */
       if (radv_gang_leader_sem_dirty(secondary))
          primary->gang.sem.leader_value++;
+      if (radv_gang_follower_sem_dirty(secondary))
+         primary->gang.sem.follower_value++;
 
       primary->device->ws->cs_execute_secondary(primary->cs, secondary->cs, allow_ib2);
 

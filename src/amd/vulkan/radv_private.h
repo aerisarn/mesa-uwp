@@ -1844,9 +1844,11 @@ struct radv_cmd_buffer {
        *          The follower writes the value, and the leader waits.
        */
       struct {
-         uint64_t va;                   /* Virtual address of the semaphore. */
-         uint32_t leader_value;         /* Current value of the leader. */
-         uint32_t emitted_leader_value; /* Emitted value emitted by the leader. */
+         uint64_t va;                     /* Virtual address of the semaphore. */
+         uint32_t leader_value;           /* Current value of the leader. */
+         uint32_t emitted_leader_value;   /* Last value emitted by the leader. */
+         uint32_t follower_value;         /* Current value of the follower. */
+         uint32_t emitted_follower_value; /* Last value emitted by the follower. */
       } sem;
    } gang;
 
