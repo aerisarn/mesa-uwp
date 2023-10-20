@@ -32,6 +32,10 @@ si_tracepoints = custom_target(
   depend_files: u_trace_py,
 )
 
+idep_si_tracepoints = declare_dependency(
+  sources: si_tracepoints,
+)
+
 files_libradeonsi = files(
   'driinfo_radeonsi.h',
   'gfx10_shader_ngg.c',
@@ -117,11 +121,9 @@ files_libradeonsi = files(
   'radeon_video.h',
 )
 
-files_libradeonsi += si_tracepoints
-
 radeonsi_include_dirs = [inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_amd_common,
                          inc_amd_common_llvm, inc_gallium_drivers, inc_compiler]
-radeonsi_deps = [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h, idep_mesautil, idep_aco, idep_u_tracepoints]
+radeonsi_deps = [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h, idep_mesautil, idep_aco, idep_u_tracepoints, idep_si_tracepoints]
 
 if with_perfetto
   radeonsi_deps += dep_perfetto
