@@ -510,6 +510,13 @@ VkResult anv_CreateDescriptorSetLayout(
    set_layout->binding_count = num_bindings;
    set_layout->flags = pCreateInfo->flags;
 
+   if (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)
+      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_BUFFER;
+   else if (device->physical->indirect_descriptors)
+      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_INDIRECT;
+   else
+      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_DIRECT;
+
    for (uint32_t b = 0; b < num_bindings; b++) {
       /* Initialize all binding_layout entries to -1 */
       memset(&set_layout->binding[b], -1, sizeof(set_layout->binding[b]));
@@ -669,13 +676,6 @@ VkResult anv_CreateDescriptorSetLayout(
    set_layout->buffer_view_count = buffer_view_count;
    set_layout->dynamic_offset_count = dynamic_offset_count;
    set_layout->descriptor_buffer_size = descriptor_buffer_size;
-
-   if (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)
-      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_BUFFER;
-   else if (device->physical->indirect_descriptors)
-      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_INDIRECT;
-   else
-      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_DIRECT;
 
    *pSetLayout = anv_descriptor_set_layout_to_handle(set_layout);
 
