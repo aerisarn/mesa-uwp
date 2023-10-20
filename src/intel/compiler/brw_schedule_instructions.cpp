@@ -705,23 +705,12 @@ public:
    void add_dep(schedule_node *before, schedule_node *after, int latency);
    void add_dep(schedule_node *before, schedule_node *after);
 
-   void run(cfg_t *cfg);
    void set_current_block(bblock_t *block);
    void compute_delays();
    void compute_exits();
-   virtual void calculate_deps() = 0;
-   virtual schedule_node *choose_instruction_to_schedule() = 0;
-
-   virtual int issue_time(backend_instruction *inst) = 0;
-
-   virtual void count_reads_remaining(backend_instruction *inst) = 0;
-   virtual void setup_liveness(cfg_t *cfg) = 0;
-   virtual void update_register_pressure(backend_instruction *inst) = 0;
-   virtual int get_register_pressure_benefit(backend_instruction *inst) = 0;
 
    void schedule(schedule_node *chosen);
    void update_children(schedule_node *chosen);
-   void schedule_instructions();
 
    void *mem_ctx;
    linear_ctx *lin_ctx;
@@ -813,7 +802,7 @@ public:
    void calculate_deps();
    bool is_compressed(const fs_inst *inst);
    schedule_node *choose_instruction_to_schedule();
-   int issue_time(backend_instruction *inst);
+   int calculate_issue_time(backend_instruction *inst);
    const fs_visitor *v;
 
    void count_reads_remaining(backend_instruction *inst);
@@ -821,6 +810,9 @@ public:
    void update_register_pressure(backend_instruction *inst);
    int get_register_pressure_benefit(backend_instruction *inst);
    void clear_last_grf_write();
+
+   void schedule_instructions();
+   void run();
 };
 
 fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
@@ -993,13 +985,9 @@ public:
    vec4_instruction_scheduler(const vec4_visitor *v, int grf_count);
    void calculate_deps();
    schedule_node *choose_instruction_to_schedule();
-   int issue_time(backend_instruction *inst);
    const vec4_visitor *v;
 
-   void count_reads_remaining(backend_instruction *inst);
-   void setup_liveness(cfg_t *cfg);
-   void update_register_pressure(backend_instruction *inst);
-   int get_register_pressure_benefit(backend_instruction *inst);
+   void run();
 };
 
 vec4_instruction_scheduler::vec4_instruction_scheduler(const vec4_visitor *v,
@@ -1007,27 +995,6 @@ vec4_instruction_scheduler::vec4_instruction_scheduler(const vec4_visitor *v,
    : instruction_scheduler(v, grf_count, 0, 0, SCHEDULE_POST, 1),
      v(v)
 {
-}
-
-void
-vec4_instruction_scheduler::count_reads_remaining(backend_instruction *)
-{
-}
-
-void
-vec4_instruction_scheduler::setup_liveness(cfg_t *)
-{
-}
-
-void
-vec4_instruction_scheduler::update_register_pressure(backend_instruction *)
-{
-}
-
-int
-vec4_instruction_scheduler::get_register_pressure_benefit(backend_instruction *)
-{
-   return 0;
 }
 
 void
@@ -1839,7 +1806,7 @@ vec4_instruction_scheduler::choose_instruction_to_schedule()
 }
 
 int
-fs_instruction_scheduler::issue_time(backend_instruction *inst0)
+fs_instruction_scheduler::calculate_issue_time(backend_instruction *inst0)
 {
    const struct brw_isa_info *isa = &v->compiler->isa;
    const fs_inst *inst = static_cast<fs_inst *>(inst0);
@@ -1849,13 +1816,6 @@ fs_instruction_scheduler::issue_time(backend_instruction *inst0)
       return 4 + overhead;
    else
       return 2 + overhead;
-}
-
-int
-vec4_instruction_scheduler::issue_time(backend_instruction *)
-{
-   /* We always execute as two vec4s in parallel. */
-   return 2;
 }
 
 void
@@ -1933,7 +1893,7 @@ instruction_scheduler::update_children(schedule_node *chosen)
 }
 
 void
-instruction_scheduler::schedule_instructions()
+fs_instruction_scheduler::schedule_instructions()
 {
    if (!post_reg_alloc)
       reg_pressure = reg_pressure_in[current.block->num];
@@ -1961,7 +1921,7 @@ instruction_scheduler::schedule_instructions()
 }
 
 void
-instruction_scheduler::run(cfg_t *cfg)
+fs_instruction_scheduler::run()
 {
    if (debug && !post_reg_alloc) {
       fprintf(stderr, "\nInstructions before scheduling (reg_alloc %d)\n",
@@ -1970,7 +1930,7 @@ instruction_scheduler::run(cfg_t *cfg)
    }
 
    if (!post_reg_alloc)
-      setup_liveness(cfg);
+      setup_liveness(v->cfg);
 
    if (reads_remaining) {
       memset(reads_remaining, 0,
@@ -1980,7 +1940,7 @@ instruction_scheduler::run(cfg_t *cfg)
       memset(written, 0, grf_count * sizeof(*written));
    }
 
-   foreach_block(block, cfg) {
+   foreach_block(block, v->cfg) {
       if (reads_remaining) {
          foreach_inst_in_block(fs_inst, inst, block)
             count_reads_remaining(inst);
@@ -1989,7 +1949,7 @@ instruction_scheduler::run(cfg_t *cfg)
       set_current_block(block);
 
       for (schedule_node *n = current.start; n < current.end; n++)
-         n->issue_time = issue_time(n->inst);
+         n->issue_time = calculate_issue_time(n->inst);
 
       calculate_deps();
 
@@ -2007,6 +1967,37 @@ instruction_scheduler::run(cfg_t *cfg)
 }
 
 void
+vec4_instruction_scheduler::run()
+{
+   foreach_block(block, v->cfg) {
+      set_current_block(block);
+
+      for (schedule_node *n = current.start; n < current.end; n++) {
+         /* We always execute as two vec4s in parallel. */
+         n->issue_time = 2;
+      }
+
+      calculate_deps();
+
+      compute_delays();
+      compute_exits();
+
+      /* Add DAG heads to the list of available instructions. */
+      assert(current.available.is_empty());
+      for (schedule_node *n = current.start; n < current.end; n++) {
+         if (n->parent_count == 0)
+            current.available.push_tail(n);
+      }
+
+      while (!current.available.is_empty()) {
+         schedule_node *chosen = choose_instruction_to_schedule();
+         schedule(chosen);
+         update_children(chosen);
+      }
+   }
+}
+
+void
 fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
 {
    if (mode == SCHEDULE_NONE)
@@ -2020,7 +2011,7 @@ fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
 
    fs_instruction_scheduler sched(this, grf_count, first_non_payload_grf,
                                   cfg->num_blocks, mode);
-   sched.run(cfg);
+   sched.run();
 
    invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }
@@ -2029,7 +2020,7 @@ void
 vec4_visitor::opt_schedule_instructions()
 {
    vec4_instruction_scheduler sched(this, prog_data->total_grf);
-   sched.run(cfg);
+   sched.run();
 
    invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }
