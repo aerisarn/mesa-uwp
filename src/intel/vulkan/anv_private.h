@@ -1048,17 +1048,18 @@ struct anv_physical_device {
         */
        struct anv_va_range                      scratch_surface_state_pool;
        /**
-        * Bindless surface states (used with indirect descriptors)
+        * Bindless surface states (indirectly referred to by indirect
+        * descriptors or for direct descriptors)
         */
        struct anv_va_range                      bindless_surface_state_pool;
-       /**
-        * Bindless surface & sampler states (used with direct descriptors)
-        */
-       struct anv_va_range                      direct_descriptor_pool;
        /**
         * Dynamic state pool
         */
        struct anv_va_range                      dynamic_state_pool;
+       /**
+        * Sampler state pool
+        */
+       struct anv_va_range                      sampler_state_pool;
        /**
         * Indirect descriptor pool
         */

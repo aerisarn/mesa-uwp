@@ -294,11 +294,11 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
          sba.BindlessSurfaceStateSize =
             (device->physical->va.binding_table_pool.size +
              device->physical->va.internal_surface_state_pool.size +
-             device->physical->va.direct_descriptor_pool.size) - 1;
+             device->physical->va.bindless_surface_state_pool.size) - 1;
          sba.BindlessSamplerStateBufferSize =
             (device->physical->va.binding_table_pool.size +
              device->physical->va.internal_surface_state_pool.size +
-             device->physical->va.direct_descriptor_pool.size) / 4096 - 1;
+             device->physical->va.bindless_surface_state_pool.size) / 4096 - 1;
          sba.BindlessSurfaceStateMOCS = sba.BindlessSamplerStateMOCS = mocs;
          sba.BindlessSurfaceStateBaseAddressModifyEnable =
             sba.BindlessSamplerStateBaseAddressModifyEnable = true;

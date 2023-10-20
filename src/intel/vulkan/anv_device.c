@@ -3320,8 +3320,8 @@ VkResult anv_CreateDevice(
                          device->physical->va.indirect_descriptor_pool.size);
    } else {
       util_vma_heap_init(&device->vma_desc,
-                         device->physical->va.direct_descriptor_pool.addr,
-                         device->physical->va.direct_descriptor_pool.size);
+                         device->physical->va.bindless_surface_state_pool.addr,
+                         device->physical->va.bindless_surface_state_pool.size);
    }
 
    util_vma_heap_init(&device->vma_trtt,
