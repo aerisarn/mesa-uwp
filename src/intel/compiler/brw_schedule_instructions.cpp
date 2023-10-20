@@ -63,7 +63,6 @@ class instruction_scheduler;
 class schedule_node : public exec_node
 {
 public:
-   schedule_node(backend_instruction *inst, instruction_scheduler *sched);
    void set_latency_gfx4();
    void set_latency_gfx7(const struct brw_isa_info *isa);
 
@@ -655,6 +654,30 @@ public:
          this->reads_remaining = NULL;
          this->hw_reads_remaining = NULL;
       }
+
+      this->nodes_len = s->cfg->last_block()->end_ip + 1;
+      this->nodes = linear_zalloc_array(lin_ctx, schedule_node, this->nodes_len);
+
+      const struct intel_device_info *devinfo = bs->devinfo;
+      const struct brw_isa_info *isa = &bs->compiler->isa;
+
+      schedule_node *n = nodes;
+      foreach_block_and_inst(block, backend_instruction, inst, s->cfg) {
+         n->inst = inst;
+
+         /* We can't measure Gfx6 timings directly but expect them to be much
+          * closer to Gfx7 than Gfx4.
+          */
+         if (!post_reg_alloc)
+            n->latency = 1;
+         else if (devinfo->ver >= 6)
+            n->set_latency_gfx7(isa);
+         else
+            n->set_latency_gfx4();
+
+         n++;
+      }
+      assert(n == nodes + nodes_len);
    }
 
    ~instruction_scheduler()
@@ -691,6 +714,9 @@ public:
 
    void *mem_ctx;
    linear_ctx *lin_ctx;
+
+   schedule_node *nodes;
+   int nodes_len;
 
    bool post_reg_alloc;
    int grf_count;
@@ -976,42 +1002,13 @@ vec4_instruction_scheduler::get_register_pressure_benefit(backend_instruction *)
    return 0;
 }
 
-schedule_node::schedule_node(backend_instruction *inst,
-                             instruction_scheduler *sched)
-{
-   const struct intel_device_info *devinfo = sched->bs->devinfo;
-   const struct brw_isa_info *isa = &sched->bs->compiler->isa;
-
-   this->inst = inst;
-   this->child_array_size = 0;
-   this->children = NULL;
-   this->child_latency = NULL;
-   this->child_count = 0;
-   this->parent_count = 0;
-   this->unblocked_time = 0;
-   this->cand_generation = 0;
-   this->delay = 0;
-   this->exit = NULL;
-
-   /* We can't measure Gfx6 timings directly but expect them to be much
-    * closer to Gfx7 than Gfx4.
-    */
-   if (!sched->post_reg_alloc)
-      this->latency = 1;
-   else if (devinfo->ver >= 6)
-      set_latency_gfx7(isa);
-   else
-      set_latency_gfx4();
-}
-
 void
 instruction_scheduler::add_insts_from_block(bblock_t *block)
 {
-   foreach_inst_in_block(backend_instruction, inst, block) {
-      schedule_node *n = new(mem_ctx) schedule_node(inst, this);
-
+   schedule_node *start = nodes + block->start_ip;
+   schedule_node *end = nodes + block->end_ip + 1;
+   for (schedule_node *n = start; n < end; n++)
       instructions.push_tail(n);
-   }
 }
 
 /** Computation of the delay member of each node. */
