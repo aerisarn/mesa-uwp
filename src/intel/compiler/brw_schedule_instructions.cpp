@@ -1861,7 +1861,6 @@ instruction_scheduler::schedule(schedule_node *chosen)
 
    assert(chosen);
    chosen->remove();
-   chosen->inst->exec_node::remove();
    current.block->instructions.push_tail(chosen->inst);
 
    /* If we expected a delay for scheduling, then bump the clock to reflect
@@ -1942,6 +1941,8 @@ fs_instruction_scheduler::schedule_instructions()
          current.available.push_tail(n);
    }
 
+   current.block->instructions.make_empty();
+
    while (!current.available.is_empty()) {
       schedule_node *chosen = choose_instruction_to_schedule();
       schedule(chosen);
@@ -2011,6 +2012,8 @@ vec4_instruction_scheduler::run()
          if (n->tmp.parent_count == 0)
             current.available.push_tail(n);
       }
+
+      current.block->instructions.make_empty();
 
       while (!current.available.is_empty()) {
          schedule_node *chosen = choose_instruction_to_schedule();
