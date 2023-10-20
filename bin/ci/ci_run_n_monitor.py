@@ -276,7 +276,7 @@ def parse_args() -> None:
 
     mutex_group1 = parser.add_mutually_exclusive_group()
     mutex_group1.add_argument(
-        "--rev", metavar="revision", help="repository git revision (default: HEAD)"
+        "--rev", default="HEAD", metavar="revision", help="repository git revision (default: HEAD)"
     )
     mutex_group1.add_argument(
         "--pipeline-url",
@@ -339,8 +339,8 @@ if __name__ == "__main__":
             pipe = cur_project.pipelines.get(pipeline_id)
             REV = pipe.sha
         else:
-            if not REV:
-                REV = check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+            REV = check_output(['git', 'rev-parse', REV]).decode('ascii').strip()
+
             mesa_project = gl.projects.get("mesa/mesa")
             user_project = get_gitlab_project(gl, args.project)
             (pipe, cur_project) = wait_for_pipeline([mesa_project, user_project], REV)
