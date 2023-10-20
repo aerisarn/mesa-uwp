@@ -815,11 +815,11 @@ fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
          this->hw_liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
                                              BITSET_WORDS(hw_reg_count));
 
-      this->written = linear_zalloc_array(lin_ctx, bool, grf_count);
+      this->written = linear_alloc_array(lin_ctx, bool, grf_count);
 
-      this->reads_remaining = linear_zalloc_array(lin_ctx, int, grf_count);
+      this->reads_remaining = linear_alloc_array(lin_ctx, int, grf_count);
 
-      this->hw_reads_remaining = linear_zalloc_array(lin_ctx, int, hw_reg_count);
+      this->hw_reads_remaining = linear_alloc_array(lin_ctx, int, hw_reg_count);
    } else {
       this->reg_pressure_in = NULL;
       this->livein = NULL;
@@ -844,10 +844,9 @@ is_src_duplicate(fs_inst *inst, int src)
 void
 fs_instruction_scheduler::count_reads_remaining(backend_instruction *be)
 {
-   fs_inst *inst = (fs_inst *)be;
+   assert(reads_remaining);
 
-   if (!reads_remaining)
-      return;
+   fs_inst *inst = (fs_inst *)be;
 
    for (int i = 0; i < inst->sources; i++) {
       if (is_src_duplicate(inst, i))
@@ -926,10 +925,9 @@ fs_instruction_scheduler::setup_liveness(cfg_t *cfg)
 void
 fs_instruction_scheduler::update_register_pressure(backend_instruction *be)
 {
-   fs_inst *inst = (fs_inst *)be;
+   assert(reads_remaining);
 
-   if (!reads_remaining)
-      return;
+   fs_inst *inst = (fs_inst *)be;
 
    if (inst->dst.file == VGRF) {
       written[inst->dst.nr] = true;
@@ -1938,27 +1936,22 @@ fs_instruction_scheduler::run()
          bs->dump_instructions();
    }
 
-   if (!post_reg_alloc)
+   if (!post_reg_alloc) {
       setup_liveness(v->cfg);
 
-   if (reads_remaining) {
-      memset(reads_remaining, 0,
-               grf_count * sizeof(*reads_remaining));
-      memset(hw_reads_remaining, 0,
-               hw_reg_count * sizeof(*hw_reads_remaining));
+      memset(reads_remaining, 0, grf_count * sizeof(*reads_remaining));
+      memset(hw_reads_remaining, 0, hw_reg_count * sizeof(*hw_reads_remaining));
       memset(written, 0, grf_count * sizeof(*written));
    }
 
    foreach_block(block, v->cfg) {
-      if (reads_remaining) {
-         foreach_inst_in_block(fs_inst, inst, block)
-            count_reads_remaining(inst);
-      }
-
       set_current_block(block);
 
-      for (schedule_node *n = current.start; n < current.end; n++)
+      for (schedule_node *n = current.start; n < current.end; n++) {
+         if (!post_reg_alloc)
+            count_reads_remaining(n->inst);
          n->issue_time = calculate_issue_time(n->inst);
+      }
 
       calculate_deps();
 
