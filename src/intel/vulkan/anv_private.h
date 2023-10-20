@@ -2624,14 +2624,6 @@ struct anv_descriptor_pool {
    char host_mem[0];
 };
 
-size_t
-anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout,
-                               bool host_only, uint32_t var_desc_count);
-
-uint32_t
-anv_descriptor_set_layout_descriptor_buffer_size(const struct anv_descriptor_set_layout *set_layout,
-                                                 uint32_t var_desc_count);
-
 bool
 anv_push_descriptor_set_init(struct anv_cmd_buffer *cmd_buffer,
                              struct anv_push_descriptor_set *push_set,

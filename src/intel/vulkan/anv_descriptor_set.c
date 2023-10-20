@@ -746,7 +746,7 @@ anv_descriptor_set_layout_empty(const struct anv_descriptor_set_layout *set_layo
    return set_layout->binding_count == 0;
 }
 
-uint32_t
+static uint32_t
 anv_descriptor_set_layout_descriptor_buffer_size(const struct anv_descriptor_set_layout *set_layout,
                                                  uint32_t var_desc_count)
 {
@@ -1279,7 +1279,7 @@ anv_descriptor_pool_free_state(struct anv_descriptor_pool *pool,
    pool->surface_state_free_list = entry;
 }
 
-size_t
+static size_t
 anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout,
                                bool host_only, uint32_t var_desc_count)
 {
