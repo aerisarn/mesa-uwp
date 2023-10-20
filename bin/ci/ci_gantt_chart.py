@@ -91,6 +91,21 @@ def generate_gantt_chart(pipeline):
     # Calculate the height dynamically
     fig.update_layout(height=len(tasks) * 10, yaxis_tickfont_size=14)
 
+    # Add a deadline line to the chart
+    created_at = datetime.fromisoformat(pipeline.created_at.replace("Z", "+00:00"))
+    timeout_at = created_at + timedelta(hours=1)
+    fig.add_vrect(
+        x0=timeout_at,
+        x1=timeout_at,
+        annotation_text="1h Timeout",
+        fillcolor="gray",
+        line_width=2,
+        line_color="gray",
+        line_dash="dash",
+        annotation_position="top left",
+        annotation_textangle=90,
+    )
+
     return fig
 
 
