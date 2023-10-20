@@ -620,7 +620,7 @@ public:
       this->post_reg_alloc = (mode == SCHEDULE_POST);
       this->mode = mode;
       this->reg_pressure = 0;
-      this->block_idx = 0;
+
       this->last_grf_write = linear_zalloc_array(lin_ctx, schedule_node *, grf_count * grf_write_scale);
       if (!post_reg_alloc) {
          this->reg_pressure_in = linear_zalloc_array(lin_ctx, int, block_count);
@@ -678,6 +678,12 @@ public:
          n++;
       }
       assert(n == nodes + nodes_len);
+
+      current.block = NULL;
+      current.start = NULL;
+      current.end = NULL;
+      current.len = 0;
+      current.time = 0;
    }
 
    ~instruction_scheduler()
@@ -690,7 +696,7 @@ public:
    void add_dep(schedule_node *before, schedule_node *after);
 
    void run(cfg_t *cfg);
-   void add_insts_from_block(bblock_t *block);
+   void set_current_block(bblock_t *block);
    void compute_delays();
    void compute_exits();
    virtual void calculate_deps() = 0;
@@ -710,7 +716,7 @@ public:
    virtual void update_register_pressure(backend_instruction *inst) = 0;
    virtual int get_register_pressure_benefit(backend_instruction *inst) = 0;
 
-   void schedule_instructions(bblock_t *block);
+   void schedule_instructions();
 
    void *mem_ctx;
    linear_ctx *lin_ctx;
@@ -718,11 +724,24 @@ public:
    schedule_node *nodes;
    int nodes_len;
 
+   /* Current block being processed. */
+   struct {
+      bblock_t *block;
+
+      /* Range of nodes in the block.  End will point to first node
+       * address after the block, i.e. the range is [start, end).
+       */
+      schedule_node *start;
+      schedule_node *end;
+      int len;
+
+      int time;
+   } current;
+
    bool post_reg_alloc;
    int grf_count;
    unsigned hw_reg_count;
    int reg_pressure;
-   int block_idx;
    exec_list instructions;
    const backend_shader *bs;
 
@@ -928,6 +947,7 @@ fs_instruction_scheduler::get_register_pressure_benefit(backend_instruction *be)
 {
    fs_inst *inst = (fs_inst *)be;
    int benefit = 0;
+   const int block_idx = current.block->num;
 
    if (inst->dst.file == VGRF) {
       if (!BITSET_TEST(livein[block_idx], inst->dst.nr) &&
@@ -1003,19 +1023,25 @@ vec4_instruction_scheduler::get_register_pressure_benefit(backend_instruction *)
 }
 
 void
-instruction_scheduler::add_insts_from_block(bblock_t *block)
+instruction_scheduler::set_current_block(bblock_t *block)
 {
-   schedule_node *start = nodes + block->start_ip;
-   schedule_node *end = nodes + block->end_ip + 1;
-   for (schedule_node *n = start; n < end; n++)
+   current.block = block;
+   current.start = nodes + block->start_ip;
+   current.len = block->end_ip - block->start_ip + 1;
+   current.end = current.start + current.len;
+   current.time = 0;
+
+   assert(instructions.is_empty());
+   for (schedule_node *n = current.start; n < current.end; n++) {
       instructions.push_tail(n);
+   }
 }
 
 /** Computation of the delay member of each node. */
 void
 instruction_scheduler::compute_delays()
 {
-   foreach_in_list_reverse(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.end - 1; n >= current.start; n--) {
       if (!n->child_count) {
          n->delay = issue_time(n->inst);
       } else {
@@ -1034,7 +1060,7 @@ instruction_scheduler::compute_exits()
     * graph.  This is analogous to the node's critical path but calculated
     * from the top instead of from the bottom of the block.
     */
-   foreach_in_list(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.start; n < current.end; n++) {
       for (int i = 0; i < n->child_count; i++) {
          n->children[i]->unblocked_time =
             MAX2(n->children[i]->unblocked_time,
@@ -1047,7 +1073,7 @@ instruction_scheduler::compute_exits()
     * nodes of its children which can be unblocked first according to the
     * optimistic unblocked time estimate calculated above.
     */
-   foreach_in_list_reverse(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.end - 1; n >= current.start; n--) {
       n->exit = (n->inst->opcode == BRW_OPCODE_HALT ? n : NULL);
 
       for (int i = 0; i < n->child_count; i++) {
@@ -1150,25 +1176,16 @@ has_cross_lane_access(const fs_inst *inst)
 void
 instruction_scheduler::add_barrier_deps(schedule_node *n)
 {
-   schedule_node *prev = (schedule_node *)n->prev;
-   schedule_node *next = (schedule_node *)n->next;
-
-   if (prev) {
-      while (!prev->is_head_sentinel()) {
-         add_dep(prev, n, 0);
-         if (is_scheduling_barrier(prev->inst))
-            break;
-         prev = (schedule_node *)prev->prev;
-      }
+   for (schedule_node *prev = n - 1; prev >= current.start; prev--) {
+      add_dep(prev, n, 0);
+      if (is_scheduling_barrier(prev->inst))
+         break;
    }
 
-   if (next) {
-      while (!next->is_tail_sentinel()) {
-         add_dep(n, next, 0);
-         if (is_scheduling_barrier(next->inst))
-            break;
-         next = (schedule_node *)next->next;
-      }
+   for (schedule_node *next = n + 1; next < current.end; next++) {
+      add_dep(n, next, 0);
+      if (is_scheduling_barrier(next->inst))
+         break;
    }
 }
 
@@ -1180,14 +1197,9 @@ instruction_scheduler::add_barrier_deps(schedule_node *n)
 void
 instruction_scheduler::add_cross_lane_deps(schedule_node *n)
 {
-   schedule_node *prev = (schedule_node *)n->prev;
-
-   if (prev) {
-      while (!prev->is_head_sentinel()) {
-         if (has_cross_lane_access((fs_inst *)prev->inst))
-            add_dep(prev, n, 0);
-         prev = (schedule_node *)prev->prev;
-      }
+   for (schedule_node *prev = n - 1; prev >= current.start; prev--) {
+      if (has_cross_lane_access((fs_inst*)prev->inst))
+         add_dep(prev, n, 0);
    }
 }
 
@@ -1215,7 +1227,7 @@ void
 fs_instruction_scheduler::clear_last_grf_write()
 {
    if (!post_reg_alloc) {
-      foreach_in_list(schedule_node, n, &instructions) {
+      for (schedule_node *n = current.start; n < current.end; n++) {
          fs_inst *inst = (fs_inst *)n->inst;
 
          if (inst->dst.file == VGRF) {
@@ -1248,7 +1260,7 @@ fs_instruction_scheduler::calculate_deps()
    memset(last_mrf_write, 0, sizeof(last_mrf_write));
 
    /* top-to-bottom dependencies: RAW and WAW. */
-   foreach_in_list(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.start; n < current.end; n++) {
       fs_inst *inst = (fs_inst *)n->inst;
 
       if (is_scheduling_barrier(inst))
@@ -1385,7 +1397,7 @@ fs_instruction_scheduler::calculate_deps()
    last_accumulator_write = NULL;
    last_fixed_grf_write = NULL;
 
-   foreach_in_list_reverse_safe(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.end - 1; n >= current.start; n--) {
       fs_inst *inst = (fs_inst *)n->inst;
 
       /* write-after-read deps. */
@@ -1516,7 +1528,7 @@ vec4_instruction_scheduler::calculate_deps()
    memset(last_mrf_write, 0, sizeof(last_mrf_write));
 
    /* top-to-bottom dependencies: RAW and WAW. */
-   foreach_in_list(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.start; n < current.end; n++) {
       vec4_instruction *inst = (vec4_instruction *)n->inst;
 
       if (is_scheduling_barrier(inst))
@@ -1605,7 +1617,7 @@ vec4_instruction_scheduler::calculate_deps()
    last_accumulator_write = NULL;
    last_fixed_grf_write = NULL;
 
-   foreach_in_list_reverse_safe(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.end - 1; n >= current.start; n--) {
       vec4_instruction *inst = (vec4_instruction *)n->inst;
 
       /* write-after-read deps. */
@@ -1842,18 +1854,17 @@ vec4_instruction_scheduler::issue_time(backend_instruction *)
 }
 
 void
-instruction_scheduler::schedule_instructions(bblock_t *block)
+instruction_scheduler::schedule_instructions()
 {
    const struct intel_device_info *devinfo = bs->devinfo;
-   int time = 0;
-   int instructions_to_schedule = block->end_ip - block->start_ip + 1;
 
    if (!post_reg_alloc)
-      reg_pressure = reg_pressure_in[block->num];
-   block_idx = block->num;
+      reg_pressure = reg_pressure_in[current.block->num];
+
+   int scheduled = 0;
 
    /* Remove non-DAG heads from the list. */
-   foreach_in_list_safe(schedule_node, n, &instructions) {
+   for (schedule_node *n = current.start; n < current.end; n++) {
       if (n->parent_count != 0)
          n->remove();
    }
@@ -1866,8 +1877,8 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
       assert(chosen);
       chosen->remove();
       chosen->inst->exec_node::remove();
-      block->instructions.push_tail(chosen->inst);
-      instructions_to_schedule--;
+      current.block->instructions.push_tail(chosen->inst);
+      scheduled++;
 
       if (!post_reg_alloc) {
          reg_pressure -= get_register_pressure_benefit(chosen->inst);
@@ -1880,15 +1891,15 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
        * we're unblocked.  After this, we have the time when the chosen
        * instruction will start executing.
        */
-      time = MAX2(time, chosen->unblocked_time);
+      current.time = MAX2(current.time, chosen->unblocked_time);
 
       /* Update the clock for how soon an instruction could start after the
        * chosen one.
        */
-      time += issue_time(chosen->inst);
+      current.time += issue_time(chosen->inst);
 
       if (debug) {
-         fprintf(stderr, "clock %4d, scheduled: ", time);
+         fprintf(stderr, "clock %4d, scheduled: ", current.time);
          bs->dump_instruction(chosen->inst);
          if (!post_reg_alloc)
             fprintf(stderr, "(register pressure %d)\n", reg_pressure);
@@ -1903,7 +1914,7 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
          schedule_node *child = chosen->children[i];
 
          child->unblocked_time = MAX2(child->unblocked_time,
-                                      time + chosen->child_latency[i]);
+                                      current.time + chosen->child_latency[i]);
 
          if (debug) {
             fprintf(stderr, "\tchild %d, %d parents: ", i, child->parent_count);
@@ -1930,12 +1941,12 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
          foreach_in_list(schedule_node, n, &instructions) {
             if (n->inst->is_math())
                n->unblocked_time = MAX2(n->unblocked_time,
-                                        time + chosen->latency);
+                                        current.time + chosen->latency);
          }
       }
    }
 
-   assert(instructions_to_schedule == 0);
+   assert(scheduled == current.len);
 }
 
 void
@@ -1964,14 +1975,14 @@ instruction_scheduler::run(cfg_t *cfg)
             count_reads_remaining(inst);
       }
 
-      add_insts_from_block(block);
+      set_current_block(block);
 
       calculate_deps();
 
       compute_delays();
       compute_exits();
 
-      schedule_instructions(block);
+      schedule_instructions();
    }
 
    if (debug && !post_reg_alloc) {
