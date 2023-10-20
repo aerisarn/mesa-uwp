@@ -815,6 +815,8 @@ fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
          this->hw_liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
                                              BITSET_WORDS(hw_reg_count));
 
+      setup_liveness(v->cfg);
+
       this->written = linear_alloc_array(lin_ctx, bool, grf_count);
 
       this->reads_remaining = linear_alloc_array(lin_ctx, int, grf_count);
@@ -828,6 +830,17 @@ fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
       this->written = NULL;
       this->reads_remaining = NULL;
       this->hw_reads_remaining = NULL;
+   }
+
+   foreach_block(block, v->cfg) {
+      set_current_block(block);
+
+      for (schedule_node *n = current.start; n < current.end; n++)
+         n->issue_time = calculate_issue_time(n->inst);
+
+      calculate_deps();
+      compute_delays();
+      compute_exits();
    }
 }
 
@@ -1937,8 +1950,6 @@ fs_instruction_scheduler::run()
    }
 
    if (!post_reg_alloc) {
-      setup_liveness(v->cfg);
-
       memset(reads_remaining, 0, grf_count * sizeof(*reads_remaining));
       memset(hw_reads_remaining, 0, hw_reg_count * sizeof(*hw_reads_remaining));
       memset(written, 0, grf_count * sizeof(*written));
@@ -1947,16 +1958,10 @@ fs_instruction_scheduler::run()
    foreach_block(block, v->cfg) {
       set_current_block(block);
 
-      for (schedule_node *n = current.start; n < current.end; n++) {
-         if (!post_reg_alloc)
+      if (!post_reg_alloc) {
+         for (schedule_node *n = current.start; n < current.end; n++)
             count_reads_remaining(n->inst);
-         n->issue_time = calculate_issue_time(n->inst);
       }
-
-      calculate_deps();
-
-      compute_delays();
-      compute_exits();
 
       schedule_instructions();
    }
@@ -1978,11 +1983,6 @@ vec4_instruction_scheduler::run()
          /* We always execute as two vec4s in parallel. */
          n->issue_time = 2;
       }
-
-      calculate_deps();
-
-      compute_delays();
-      compute_exits();
 
       /* Add DAG heads to the list of available instructions. */
       assert(current.available.is_empty());
