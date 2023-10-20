@@ -228,15 +228,25 @@ ALWAYS_INLINE static unsigned
 radv_cs_write_data_head(const struct radv_device *device, struct radeon_cmdbuf *cs, const enum radv_queue_family qf,
                         const unsigned engine_sel, const uint64_t va, const unsigned count, const bool predicating)
 {
-   assert(qf == RADV_QUEUE_GENERAL || qf == RADV_QUEUE_COMPUTE);
-
    /* Return the correct cdw at the end of the packet so the caller can assert it. */
    const unsigned cdw_end = radeon_check_space(device->ws, cs, 4 + count);
 
-   radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, predicating));
-   radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(engine_sel));
-   radeon_emit(cs, va);
-   radeon_emit(cs, va >> 32);
+   if (qf == RADV_QUEUE_GENERAL || qf == RADV_QUEUE_COMPUTE) {
+      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, predicating));
+      radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(engine_sel));
+      radeon_emit(cs, va);
+      radeon_emit(cs, va >> 32);
+   } else if (qf == RADV_QUEUE_TRANSFER) {
+      /* Vulkan transfer queues don't support conditional rendering, so we can ignore predication here.
+       * Furthermore, we can ignore the engine selection here, it is meaningless to the SDMA.
+       */
+      radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_WRITE, SDMA_WRITE_SUB_OPCODE_LINEAR, 0));
+      radeon_emit(cs, va);
+      radeon_emit(cs, va >> 32);
+      radeon_emit(cs, count - 1);
+   } else {
+      unreachable("unsupported queue family");
+   }
 
    return cdw_end;
 }
