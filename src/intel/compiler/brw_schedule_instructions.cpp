@@ -71,15 +71,9 @@ public:
    schedule_node_child *children;
    int children_count;
    int children_cap;
-   int parent_count;
-   int unblocked_time;
+   int initial_parent_count;
+   int initial_unblocked_time;
    int latency;
-
-   /**
-    * Which iteration of pushing groups of children onto the candidates list
-    * this node was a part of.
-    */
-   unsigned cand_generation;
 
    /**
     * This is the sum of the instruction's latency plus the maximum delay of
@@ -103,12 +97,32 @@ public:
     * cycles to dispatch and SIMD16 (compressed) instructions take 4.
     */
    int issue_time;
+
+   /* Temporary data used during the scheduling process. */
+   struct {
+      int parent_count;
+      int unblocked_time;
+
+      /**
+       * Which iteration of pushing groups of children onto the candidates list
+       * this node was a part of.
+       */
+      unsigned cand_generation;
+   } tmp;
 };
 
 struct schedule_node_child {
    schedule_node *n;
    int effective_latency;
 };
+
+static inline void
+reset_node_tmp(schedule_node *n)
+{
+   n->tmp.parent_count = n->initial_parent_count;
+   n->tmp.unblocked_time = n->initial_unblocked_time;
+   n->tmp.cand_generation = 0;
+}
 
 /**
  * Lower bound of the scheduling time after which one of the instructions
@@ -123,9 +137,15 @@ struct schedule_node_child {
  * can unblock an exit node and lead to program termination.
  */
 static inline int
-exit_unblocked_time(const schedule_node *n)
+exit_tmp_unblocked_time(const schedule_node *n)
 {
-   return n->exit ? n->exit->unblocked_time : INT_MAX;
+   return n->exit ? n->exit->tmp.unblocked_time : INT_MAX;
+}
+
+static inline int
+exit_initial_unblocked_time(const schedule_node *n)
+{
+   return n->exit ? n->exit->initial_unblocked_time : INT_MAX;
 }
 
 void
@@ -1054,9 +1074,9 @@ instruction_scheduler::compute_exits()
    for (schedule_node *n = current.start; n < current.end; n++) {
       for (int i = 0; i < n->children_count; i++) {
          schedule_node_child *child = &n->children[i];
-         child->n->unblocked_time =
-            MAX2(child->n->unblocked_time,
-                 n->unblocked_time + n->issue_time + child->effective_latency);
+         child->n->initial_unblocked_time =
+            MAX2(child->n->initial_unblocked_time,
+                 n->initial_unblocked_time + n->issue_time + child->effective_latency);
       }
    }
 
@@ -1069,7 +1089,7 @@ instruction_scheduler::compute_exits()
       n->exit = (n->inst->opcode == BRW_OPCODE_HALT ? n : NULL);
 
       for (int i = 0; i < n->children_count; i++) {
-         if (exit_unblocked_time(n->children[i].n) < exit_unblocked_time(n))
+         if (exit_initial_unblocked_time(n->children[i].n) < exit_initial_unblocked_time(n))
             n->exit = n->children[i].n->exit;
       }
    }
@@ -1113,7 +1133,7 @@ instruction_scheduler::add_dep(schedule_node *before, schedule_node *after,
    child->n = after;
    child->effective_latency = latency;
    before->children_count++;
-   after->parent_count++;
+   after->initial_parent_count++;
 }
 
 void
@@ -1690,11 +1710,11 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
        */
       foreach_in_list(schedule_node, n, &current.available) {
          if (!chosen ||
-             exit_unblocked_time(n) < exit_unblocked_time(chosen) ||
-             (exit_unblocked_time(n) == exit_unblocked_time(chosen) &&
-              n->unblocked_time < chosen_time)) {
+             exit_tmp_unblocked_time(n) < exit_tmp_unblocked_time(chosen) ||
+             (exit_tmp_unblocked_time(n) == exit_tmp_unblocked_time(chosen) &&
+              n->tmp.unblocked_time < chosen_time)) {
             chosen = n;
-            chosen_time = n->unblocked_time;
+            chosen_time = n->tmp.unblocked_time;
          }
       }
    } else {
@@ -1740,11 +1760,11 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
              * most of our pressure comes from texturing, where no single
              * instruction to schedule will make a vec4 value dead.
              */
-            if (n->cand_generation > chosen->cand_generation) {
+            if (n->tmp.cand_generation > chosen->tmp.cand_generation) {
                chosen = n;
                chosen_register_pressure_benefit = register_pressure_benefit;
                continue;
-            } else if (n->cand_generation < chosen->cand_generation) {
+            } else if (n->tmp.cand_generation < chosen->tmp.cand_generation) {
                continue;
             }
 
@@ -1789,11 +1809,11 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
 
          /* Prefer the node most likely to unblock an early program exit.
           */
-         if (exit_unblocked_time(n) < exit_unblocked_time(chosen)) {
+         if (exit_tmp_unblocked_time(n) < exit_tmp_unblocked_time(chosen)) {
             chosen = n;
             chosen_register_pressure_benefit = register_pressure_benefit;
             continue;
-         } else if (exit_unblocked_time(n) > exit_unblocked_time(chosen)) {
+         } else if (exit_tmp_unblocked_time(n) > exit_tmp_unblocked_time(chosen)) {
             continue;
          }
 
@@ -1816,9 +1836,9 @@ vec4_instruction_scheduler::choose_instruction_to_schedule()
     * choose the oldest one.
     */
    foreach_in_list(schedule_node, n, &current.available) {
-      if (!chosen || n->unblocked_time < chosen_time) {
+      if (!chosen || n->tmp.unblocked_time < chosen_time) {
          chosen = n;
-         chosen_time = n->unblocked_time;
+         chosen_time = n->tmp.unblocked_time;
       }
    }
 
@@ -1855,7 +1875,7 @@ instruction_scheduler::schedule(schedule_node *chosen)
     * we're unblocked.  After this, we have the time when the chosen
     * instruction will start executing.
     */
-   current.time = MAX2(current.time, chosen->unblocked_time);
+   current.time = MAX2(current.time, chosen->tmp.unblocked_time);
 
    /* Update the clock for how soon an instruction could start after the
     * chosen one.
@@ -1879,17 +1899,17 @@ instruction_scheduler::update_children(schedule_node *chosen)
    for (int i = chosen->children_count - 1; i >= 0; i--) {
       schedule_node_child *child = &chosen->children[i];
 
-      child->n->unblocked_time = MAX2(child->n->unblocked_time,
-                                      current.time + child->effective_latency);
+      child->n->tmp.unblocked_time = MAX2(child->n->tmp.unblocked_time,
+                                          current.time + child->effective_latency);
 
       if (debug) {
-         fprintf(stderr, "\tchild %d, %d parents: ", i, child->n->parent_count);
+         fprintf(stderr, "\tchild %d, %d parents: ", i, child->n->tmp.parent_count);
          bs->dump_instruction(child->n->inst);
       }
 
-      child->n->cand_generation = current.cand_generation;
-      child->n->parent_count--;
-      if (child->n->parent_count == 0) {
+      child->n->tmp.cand_generation = current.cand_generation;
+      child->n->tmp.parent_count--;
+      if (child->n->tmp.parent_count == 0) {
          if (debug) {
             fprintf(stderr, "\t\tnow available\n");
          }
@@ -1906,8 +1926,8 @@ instruction_scheduler::update_children(schedule_node *chosen)
    if (bs->devinfo->ver < 6 && chosen->inst->is_math()) {
       foreach_in_list(schedule_node, n, &current.available) {
          if (n->inst->is_math())
-            n->unblocked_time = MAX2(n->unblocked_time,
-                                     current.time + chosen->latency);
+            n->tmp.unblocked_time = MAX2(n->tmp.unblocked_time,
+                                         current.time + chosen->latency);
       }
    }
 }
@@ -1918,10 +1938,12 @@ fs_instruction_scheduler::schedule_instructions()
    if (!post_reg_alloc)
       reg_pressure = reg_pressure_in[current.block->num];
 
-   /* Add DAG heads to the list of available instructions. */
    assert(current.available.is_empty());
    for (schedule_node *n = current.start; n < current.end; n++) {
-      if (n->parent_count == 0)
+      reset_node_tmp(n);
+
+      /* Add DAG heads to the list of available instructions. */
+      if (n->tmp.parent_count == 0)
          current.available.push_tail(n);
    }
 
@@ -1984,10 +2006,12 @@ vec4_instruction_scheduler::run()
          n->issue_time = 2;
       }
 
-      /* Add DAG heads to the list of available instructions. */
       assert(current.available.is_empty());
       for (schedule_node *n = current.start; n < current.end; n++) {
-         if (n->parent_count == 0)
+         reset_node_tmp(n);
+
+         /* Add DAG heads to the list of available instructions. */
+         if (n->tmp.parent_count == 0)
             current.available.push_tail(n);
       }
 
