@@ -146,7 +146,10 @@ def monitor_pipeline(
         ):
             return target_id, None
 
-        if {"failed"}.intersection(target_statuses.values()):
+        if (
+            {"failed"}.intersection(target_statuses.values())
+            and not set(["running", "pending"]).intersection(target_statuses.values())
+        ):
             return None, 1
 
         if {"success", "manual"}.issuperset(target_statuses.values()):
