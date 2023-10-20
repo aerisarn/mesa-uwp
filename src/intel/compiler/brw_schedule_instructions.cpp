@@ -617,51 +617,15 @@ schedule_node::set_latency_gfx7(const struct brw_isa_info *isa)
 class instruction_scheduler {
 public:
    instruction_scheduler(const backend_shader *s, int grf_count,
-                         unsigned hw_reg_count, int block_count,
-                         instruction_scheduler_mode mode, int grf_write_scale):
+                         int grf_write_scale, bool post_reg_alloc):
       bs(s)
    {
       this->mem_ctx = ralloc_context(NULL);
       this->lin_ctx = linear_context(this->mem_ctx);
       this->grf_count = grf_count;
-      this->hw_reg_count = hw_reg_count;
-      this->post_reg_alloc = (mode == SCHEDULE_POST);
-      this->mode = mode;
-      this->reg_pressure = 0;
+      this->post_reg_alloc = post_reg_alloc;
 
       this->last_grf_write = linear_zalloc_array(lin_ctx, schedule_node *, grf_count * grf_write_scale);
-      if (!post_reg_alloc) {
-         this->reg_pressure_in = linear_zalloc_array(lin_ctx, int, block_count);
-
-         this->livein = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
-         for (int i = 0; i < block_count; i++)
-            this->livein[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
-                                            BITSET_WORDS(grf_count));
-
-         this->liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
-         for (int i = 0; i < block_count; i++)
-            this->liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
-                                             BITSET_WORDS(grf_count));
-
-         this->hw_liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
-         for (int i = 0; i < block_count; i++)
-            this->hw_liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
-                                                BITSET_WORDS(hw_reg_count));
-
-         this->written = linear_zalloc_array(lin_ctx, bool, grf_count);
-
-         this->reads_remaining = linear_zalloc_array(lin_ctx, int, grf_count);
-
-         this->hw_reads_remaining = linear_zalloc_array(lin_ctx, int, hw_reg_count);
-      } else {
-         this->reg_pressure_in = NULL;
-         this->livein = NULL;
-         this->liveout = NULL;
-         this->hw_liveout = NULL;
-         this->written = NULL;
-         this->reads_remaining = NULL;
-         this->hw_reads_remaining = NULL;
-      }
 
       this->nodes_len = s->cfg->last_block()->end_ip + 1;
       this->nodes = linear_zalloc_array(lin_ctx, schedule_node, this->nodes_len);
@@ -738,10 +702,38 @@ public:
 
    bool post_reg_alloc;
    int grf_count;
-   unsigned hw_reg_count;
-   int reg_pressure;
    const backend_shader *bs;
 
+   /**
+    * Last instruction to have written the grf (or a channel in the grf, for the
+    * scalar backend)
+    */
+   schedule_node **last_grf_write;
+};
+
+class fs_instruction_scheduler : public instruction_scheduler
+{
+public:
+   fs_instruction_scheduler(const fs_visitor *v, int grf_count, int hw_reg_count,
+                            int block_count,
+                            instruction_scheduler_mode mode);
+   void calculate_deps();
+   bool is_compressed(const fs_inst *inst);
+   schedule_node *choose_instruction_to_schedule();
+   int calculate_issue_time(backend_instruction *inst);
+
+   void count_reads_remaining(backend_instruction *inst);
+   void setup_liveness(cfg_t *cfg);
+   void update_register_pressure(backend_instruction *inst);
+   int get_register_pressure_benefit(backend_instruction *inst);
+   void clear_last_grf_write();
+
+   void schedule_instructions();
+   void run();
+
+   const fs_visitor *v;
+   unsigned hw_reg_count;
+   int reg_pressure;
    instruction_scheduler_mode mode;
 
    /*
@@ -786,42 +778,52 @@ public:
 
    int *hw_reads_remaining;
 
-   /**
-    * Last instruction to have written the grf (or a channel in the grf, for the
-    * scalar backend)
-    */
-   schedule_node **last_grf_write;
-};
-
-class fs_instruction_scheduler : public instruction_scheduler
-{
-public:
-   fs_instruction_scheduler(const fs_visitor *v, int grf_count, int hw_reg_count,
-                            int block_count,
-                            instruction_scheduler_mode mode);
-   void calculate_deps();
-   bool is_compressed(const fs_inst *inst);
-   schedule_node *choose_instruction_to_schedule();
-   int calculate_issue_time(backend_instruction *inst);
-   const fs_visitor *v;
-
-   void count_reads_remaining(backend_instruction *inst);
-   void setup_liveness(cfg_t *cfg);
-   void update_register_pressure(backend_instruction *inst);
-   int get_register_pressure_benefit(backend_instruction *inst);
-   void clear_last_grf_write();
-
-   void schedule_instructions();
-   void run();
 };
 
 fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
                                                    int grf_count, int hw_reg_count,
                                                    int block_count,
                                                    instruction_scheduler_mode mode)
-   : instruction_scheduler(v, grf_count, hw_reg_count, block_count, mode, 16),
+   : instruction_scheduler(v, grf_count, /* grf_write_scale */ 16,
+                           /* post_reg_alloc */ (mode == SCHEDULE_POST)),
      v(v)
 {
+   this->hw_reg_count = hw_reg_count;
+   this->mode = mode;
+   this->reg_pressure = 0;
+
+   if (!post_reg_alloc) {
+      this->reg_pressure_in = linear_zalloc_array(lin_ctx, int, block_count);
+
+      this->livein = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
+      for (int i = 0; i < block_count; i++)
+         this->livein[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
+                                         BITSET_WORDS(grf_count));
+
+      this->liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
+      for (int i = 0; i < block_count; i++)
+         this->liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
+                                          BITSET_WORDS(grf_count));
+
+      this->hw_liveout = linear_alloc_array(lin_ctx, BITSET_WORD *, block_count);
+      for (int i = 0; i < block_count; i++)
+         this->hw_liveout[i] = linear_zalloc_array(lin_ctx, BITSET_WORD,
+                                             BITSET_WORDS(hw_reg_count));
+
+      this->written = linear_zalloc_array(lin_ctx, bool, grf_count);
+
+      this->reads_remaining = linear_zalloc_array(lin_ctx, int, grf_count);
+
+      this->hw_reads_remaining = linear_zalloc_array(lin_ctx, int, hw_reg_count);
+   } else {
+      this->reg_pressure_in = NULL;
+      this->livein = NULL;
+      this->liveout = NULL;
+      this->hw_liveout = NULL;
+      this->written = NULL;
+      this->reads_remaining = NULL;
+      this->hw_reads_remaining = NULL;
+   }
 }
 
 static bool
@@ -992,7 +994,8 @@ public:
 
 vec4_instruction_scheduler::vec4_instruction_scheduler(const vec4_visitor *v,
                                                        int grf_count)
-   : instruction_scheduler(v, grf_count, 0, 0, SCHEDULE_POST, 1),
+   : instruction_scheduler(v, grf_count, /* grf_write_scale */ 1,
+                           /* post_reg_alloc */ true),
      v(v)
 {
 }
