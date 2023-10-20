@@ -683,6 +683,8 @@ public:
       current.end = NULL;
       current.len = 0;
       current.time = 0;
+      current.cand_generation = 0;
+      current.available.make_empty();
    }
 
    ~instruction_scheduler()
@@ -715,6 +717,8 @@ public:
    virtual void update_register_pressure(backend_instruction *inst) = 0;
    virtual int get_register_pressure_benefit(backend_instruction *inst) = 0;
 
+   void schedule(schedule_node *chosen);
+   void update_children(schedule_node *chosen);
    void schedule_instructions();
 
    void *mem_ctx;
@@ -734,6 +738,9 @@ public:
       schedule_node *end;
       int len;
 
+      int scheduled;
+
+      unsigned cand_generation;
       int time;
       exec_list available;
    } current;
@@ -1029,6 +1036,8 @@ instruction_scheduler::set_current_block(bblock_t *block)
    current.len = block->end_ip - block->start_ip + 1;
    current.end = current.start + current.len;
    current.time = 0;
+   current.scheduled = 0;
+   current.cand_generation = 1;
 }
 
 /** Computation of the delay member of each node. */
@@ -1848,100 +1857,105 @@ vec4_instruction_scheduler::issue_time(backend_instruction *)
 }
 
 void
+instruction_scheduler::schedule(schedule_node *chosen)
+{
+   assert(current.scheduled < current.len);
+   current.scheduled++;
+
+   assert(chosen);
+   chosen->remove();
+   chosen->inst->exec_node::remove();
+   current.block->instructions.push_tail(chosen->inst);
+
+   /* If we expected a delay for scheduling, then bump the clock to reflect
+    * that.  In reality, the hardware will switch to another hyperthread
+    * and may not return to dispatching our thread for a while even after
+    * we're unblocked.  After this, we have the time when the chosen
+    * instruction will start executing.
+    */
+   current.time = MAX2(current.time, chosen->unblocked_time);
+
+   /* Update the clock for how soon an instruction could start after the
+    * chosen one.
+    */
+   current.time += issue_time(chosen->inst);
+
+   if (debug) {
+      fprintf(stderr, "clock %4d, scheduled: ", current.time);
+      bs->dump_instruction(chosen->inst);
+   }
+}
+
+void
+instruction_scheduler::update_children(schedule_node *chosen)
+{
+   /* Now that we've scheduled a new instruction, some of its
+    * children can be promoted to the list of instructions ready to
+    * be scheduled.  Update the children's unblocked time for this
+    * DAG edge as we do so.
+    */
+   for (int i = chosen->child_count - 1; i >= 0; i--) {
+      schedule_node *child = chosen->children[i];
+
+      child->unblocked_time = MAX2(child->unblocked_time,
+                                   current.time + chosen->child_latency[i]);
+
+      if (debug) {
+         fprintf(stderr, "\tchild %d, %d parents: ", i, child->parent_count);
+         bs->dump_instruction(child->inst);
+      }
+
+      child->cand_generation = current.cand_generation;
+      child->parent_count--;
+      if (child->parent_count == 0) {
+         if (debug) {
+            fprintf(stderr, "\t\tnow available\n");
+         }
+         current.available.push_head(child);
+      }
+   }
+   current.cand_generation++;
+
+   /* Shared resource: the mathbox.  There's one mathbox per EU on Gfx6+
+    * but it's more limited pre-gfx6, so if we send something off to it then
+    * the next math instruction isn't going to make progress until the first
+    * is done.
+    */
+   if (bs->devinfo->ver < 6 && chosen->inst->is_math()) {
+      foreach_in_list(schedule_node, n, &current.available) {
+         if (n->inst->is_math())
+            n->unblocked_time = MAX2(n->unblocked_time,
+                                     current.time + chosen->latency);
+      }
+   }
+}
+
+void
 instruction_scheduler::schedule_instructions()
 {
-   const struct intel_device_info *devinfo = bs->devinfo;
-
    if (!post_reg_alloc)
       reg_pressure = reg_pressure_in[current.block->num];
 
-   int scheduled = 0;
-
    /* Add DAG heads to the list of available instructions. */
-   current.available.make_empty();
+   assert(current.available.is_empty());
    for (schedule_node *n = current.start; n < current.end; n++) {
       if (n->parent_count == 0)
          current.available.push_tail(n);
    }
 
-   unsigned cand_generation = 1;
    while (!current.available.is_empty()) {
       schedule_node *chosen = choose_instruction_to_schedule();
-
-      /* Schedule this instruction. */
-      assert(chosen);
-      chosen->remove();
-      chosen->inst->exec_node::remove();
-      current.block->instructions.push_tail(chosen->inst);
-      scheduled++;
+      schedule(chosen);
 
       if (!post_reg_alloc) {
          reg_pressure -= get_register_pressure_benefit(chosen->inst);
          update_register_pressure(chosen->inst);
-      }
-
-      /* If we expected a delay for scheduling, then bump the clock to reflect
-       * that.  In reality, the hardware will switch to another hyperthread
-       * and may not return to dispatching our thread for a while even after
-       * we're unblocked.  After this, we have the time when the chosen
-       * instruction will start executing.
-       */
-      current.time = MAX2(current.time, chosen->unblocked_time);
-
-      /* Update the clock for how soon an instruction could start after the
-       * chosen one.
-       */
-      current.time += issue_time(chosen->inst);
-
-      if (debug) {
-         fprintf(stderr, "clock %4d, scheduled: ", current.time);
-         bs->dump_instruction(chosen->inst);
-         if (!post_reg_alloc)
+         if (debug)
             fprintf(stderr, "(register pressure %d)\n", reg_pressure);
       }
 
-      /* Now that we've scheduled a new instruction, some of its
-       * children can be promoted to the list of instructions ready to
-       * be scheduled.  Update the children's unblocked time for this
-       * DAG edge as we do so.
-       */
-      for (int i = chosen->child_count - 1; i >= 0; i--) {
-         schedule_node *child = chosen->children[i];
-
-         child->unblocked_time = MAX2(child->unblocked_time,
-                                      current.time + chosen->child_latency[i]);
-
-         if (debug) {
-            fprintf(stderr, "\tchild %d, %d parents: ", i, child->parent_count);
-            bs->dump_instruction(child->inst);
-         }
-
-         child->cand_generation = cand_generation;
-         child->parent_count--;
-         if (child->parent_count == 0) {
-            if (debug) {
-               fprintf(stderr, "\t\tnow available\n");
-            }
-            current.available.push_head(child);
-         }
-      }
-      cand_generation++;
-
-      /* Shared resource: the mathbox.  There's one mathbox per EU on Gfx6+
-       * but it's more limited pre-gfx6, so if we send something off to it then
-       * the next math instruction isn't going to make progress until the first
-       * is done.
-       */
-      if (devinfo->ver < 6 && chosen->inst->is_math()) {
-         foreach_in_list(schedule_node, n, &current.available) {
-            if (n->inst->is_math())
-               n->unblocked_time = MAX2(n->unblocked_time,
-                                        current.time + chosen->latency);
-         }
-      }
+      update_children(chosen);
    }
-
-   assert(scheduled == current.len);
 }
 
 void
