@@ -1761,7 +1761,6 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
          whandle->handle = -1;
       } else {
          if (!res->obj->exportable) {
-            assert(!res->all_binds); //TODO handle if problematic
             assert(!zink_resource_usage_is_unflushed(res));
             if (!screen->info.have_EXT_image_drm_format_modifier) {
                static bool warned = false;
@@ -1776,7 +1775,8 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
                zink_screen_unlock_context(screen);
                return false;
             }
-            p_atomic_inc(&screen->image_rebind_counter);
+            if (res->all_binds)
+               p_atomic_inc(&screen->image_rebind_counter);
             screen->copy_context->base.flush(&screen->copy_context->base, NULL, 0);
             zink_screen_unlock_context(screen);
             obj = res->obj;
