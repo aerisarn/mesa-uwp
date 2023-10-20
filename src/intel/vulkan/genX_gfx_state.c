@@ -1266,12 +1266,20 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
           calculate_render_area(cmd_buffer, &fb_width, &fb_height) &&
           calculate_tile_dimensions(cmd_buffer, fb_width, fb_height,
                                     &tile_width, &tile_height)) {
+         /* Use a batch size of 128 polygons per slice as recommended
+          * by BSpec 68436 "TBIMR Programming".
+          */
+         const unsigned num_slices = cmd_buffer->device->info->num_slices;
+         const unsigned batch_size = DIV_ROUND_UP(num_slices, 2) * 256;
+
          SET(TBIMR_TILE_PASS_INFO, tbimr.TileRectangleHeight, tile_height);
          SET(TBIMR_TILE_PASS_INFO, tbimr.TileRectangleWidth, tile_width);
          SET(TBIMR_TILE_PASS_INFO, tbimr.VerticalTileCount,
              DIV_ROUND_UP(fb_height, tile_height));
          SET(TBIMR_TILE_PASS_INFO, tbimr.HorizontalTileCount,
              DIV_ROUND_UP(fb_width, tile_width));
+         SET(TBIMR_TILE_PASS_INFO, tbimr.TBIMRBatchSize,
+             util_logbase2(batch_size) - 5);
          SET(TBIMR_TILE_PASS_INFO, use_tbimr, true);
       } else {
          hw_state->use_tbimr = false;

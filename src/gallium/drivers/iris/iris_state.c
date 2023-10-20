@@ -1312,8 +1312,10 @@ iris_init_render_context(struct iris_batch *batch)
 
 #if GFX_VERx10 == 125
    iris_emit_reg(batch, GENX(CHICKEN_RASTER_2), reg) {
+      reg.TBIMRBatchSizeOverride = true;
       reg.TBIMROpenBatchEnable = true;
       reg.TBIMRFastClip = true;
+      reg.TBIMRBatchSizeOverrideMask = true;
       reg.TBIMROpenBatchEnableMask = true;
       reg.TBIMRFastClipMask = true;
    };
@@ -6754,11 +6756,18 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          calculate_tile_dimensions(ice, &tile_width, &tile_height);
 
       if (ice->state.use_tbimr) {
+         /* Use a batch size of 128 polygons per slice as recommended
+          * by BSpec 68436 "TBIMR Programming".
+          */
+         const unsigned num_slices = screen->devinfo->num_slices;
+         const unsigned batch_size = DIV_ROUND_UP(num_slices, 2) * 256;
+
          iris_emit_cmd(batch, GENX(3DSTATE_TBIMR_TILE_PASS_INFO), tbimr) {
             tbimr.TileRectangleHeight = tile_height;
             tbimr.TileRectangleWidth = tile_width;
             tbimr.VerticalTileCount = DIV_ROUND_UP(cso_fb->height, tile_height);
             tbimr.HorizontalTileCount = DIV_ROUND_UP(cso_fb->width, tile_width);
+            tbimr.TBIMRBatchSize = util_logbase2(batch_size) - 5;
          }
       }
    }

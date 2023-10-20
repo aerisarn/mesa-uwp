@@ -544,8 +544,10 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
 
 #if GFX_VERx10 == 125
    anv_batch_write_reg(&batch, GENX(CHICKEN_RASTER_2), reg) {
+      reg.TBIMRBatchSizeOverride = true;
       reg.TBIMROpenBatchEnable = true;
       reg.TBIMRFastClip = true;
+      reg.TBIMRBatchSizeOverrideMask = true;
       reg.TBIMROpenBatchEnableMask = true;
       reg.TBIMRFastClipMask = true;
    }
