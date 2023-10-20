@@ -641,11 +641,11 @@ schedule_node::set_latency_gfx7(const struct brw_isa_info *isa)
 
 class instruction_scheduler {
 public:
-   instruction_scheduler(const backend_shader *s, int grf_count,
+   instruction_scheduler(void *mem_ctx, const backend_shader *s, int grf_count,
                          int grf_write_scale, bool post_reg_alloc):
       bs(s)
    {
-      this->mem_ctx = ralloc_context(NULL);
+      this->mem_ctx = mem_ctx;
       this->lin_ctx = linear_context(this->mem_ctx);
       this->grf_count = grf_count;
       this->post_reg_alloc = post_reg_alloc;
@@ -685,10 +685,6 @@ public:
       current.available.make_empty();
    }
 
-   ~instruction_scheduler()
-   {
-      ralloc_free(this->mem_ctx);
-   }
    void add_barrier_deps(schedule_node *n);
    void add_cross_lane_deps(schedule_node *n);
    void add_dep(schedule_node *before, schedule_node *after, int latency);
@@ -739,7 +735,7 @@ public:
 class fs_instruction_scheduler : public instruction_scheduler
 {
 public:
-   fs_instruction_scheduler(const fs_visitor *v, int grf_count, int hw_reg_count,
+   fs_instruction_scheduler(void *mem_ctx, const fs_visitor *v, int grf_count, int hw_reg_count,
                             int block_count,
                             instruction_scheduler_mode mode);
    void calculate_deps();
@@ -805,11 +801,11 @@ public:
 
 };
 
-fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
+fs_instruction_scheduler::fs_instruction_scheduler(void *mem_ctx, const fs_visitor *v,
                                                    int grf_count, int hw_reg_count,
                                                    int block_count,
                                                    instruction_scheduler_mode mode)
-   : instruction_scheduler(v, grf_count, /* grf_write_scale */ 16,
+   : instruction_scheduler(mem_ctx, v, grf_count, /* grf_write_scale */ 16,
                            /* post_reg_alloc */ (mode == SCHEDULE_POST)),
      v(v)
 {
@@ -1020,7 +1016,7 @@ fs_instruction_scheduler::get_register_pressure_benefit(backend_instruction *be)
 class vec4_instruction_scheduler : public instruction_scheduler
 {
 public:
-   vec4_instruction_scheduler(const vec4_visitor *v, int grf_count);
+   vec4_instruction_scheduler(void *mem_ctx, const vec4_visitor *v, int grf_count);
    void calculate_deps();
    schedule_node *choose_instruction_to_schedule();
    const vec4_visitor *v;
@@ -1028,9 +1024,9 @@ public:
    void run();
 };
 
-vec4_instruction_scheduler::vec4_instruction_scheduler(const vec4_visitor *v,
+vec4_instruction_scheduler::vec4_instruction_scheduler(void *mem_ctx, const vec4_visitor *v,
                                                        int grf_count)
-   : instruction_scheduler(v, grf_count, /* grf_write_scale */ 1,
+   : instruction_scheduler(mem_ctx, v, grf_count, /* grf_write_scale */ 1,
                            /* post_reg_alloc */ true),
      v(v)
 {
@@ -2035,9 +2031,13 @@ fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
    else
       grf_count = alloc.count;
 
-   fs_instruction_scheduler sched(this, grf_count, first_non_payload_grf,
+   void *mem_ctx = ralloc_context(NULL);
+
+   fs_instruction_scheduler sched(mem_ctx, this, grf_count, first_non_payload_grf,
                                   cfg->num_blocks, mode);
    sched.run();
+
+   ralloc_free(mem_ctx);
 
    invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }
@@ -2045,8 +2045,12 @@ fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
 void
 vec4_visitor::opt_schedule_instructions()
 {
-   vec4_instruction_scheduler sched(this, prog_data->total_grf);
+   void *mem_ctx = ralloc_context(NULL);
+
+   vec4_instruction_scheduler sched(mem_ctx, this, prog_data->total_grf);
    sched.run();
+
+   ralloc_free(mem_ctx);
 
    invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }
