@@ -1346,8 +1346,20 @@ radv_CreateIndirectCommandsLayoutNV(VkDevice _device, const VkIndirectCommandsLa
     *
     * So we can always preprocess compute layouts.
     */
-   if (layout->pipeline_bind_point != VK_PIPELINE_BIND_POINT_COMPUTE)
-      layout->use_preprocess = false;
+   if (layout->pipeline_bind_point != VK_PIPELINE_BIND_POINT_COMPUTE) {
+      /* We embed the index buffer extent in indirect draw packets, but that isn't available at preprocess time. */
+      if (layout->indexed && !layout->binds_index_buffer)
+         layout->use_preprocess = false;
+
+      /* VBO binding (in particular partial VBO binding) uses some draw state which we don't generate at preprocess time
+       * yet. */
+      if (layout->bind_vbo_mask)
+         layout->use_preprocess = false;
+
+      /* In preprocess we use the non-overridden push constants from the draw state for now. */
+      if (layout->push_constant_mask)
+         layout->use_preprocess = false;
+   }
 
    *pIndirectCommandsLayout = radv_indirect_command_layout_to_handle(layout);
    return VK_SUCCESS;
