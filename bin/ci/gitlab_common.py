@@ -12,6 +12,17 @@ import time
 from typing import Optional
 
 
+def pretty_duration(seconds):
+    """Pretty print duration"""
+    hours, rem = divmod(seconds, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if hours:
+        return f"{hours:0.0f}h{minutes:0.0f}m{seconds:0.0f}s"
+    if minutes:
+        return f"{minutes:0.0f}m{seconds:0.0f}s"
+    return f"{seconds:0.0f}s"
+
+
 def get_gitlab_project(glab, name: str):
     """Finds a specified gitlab project for given user"""
     if "/" in name:
