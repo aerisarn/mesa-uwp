@@ -4841,7 +4841,7 @@ zink_rebind_all_images(struct zink_context *ctx)
     for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       for (unsigned j = 0; j < ctx->di.num_sampler_views[i]; j++) {
          struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
-         if (!sv || sv->image_view->base.texture->target == PIPE_BUFFER)
+         if (!sv || sv->image_view->base.texture->target == PIPE_BUFFER || !sv->image_view)
             continue;
          struct zink_resource *res = zink_resource(sv->image_view->base.texture);
          if (res->obj != sv->image_view->obj) {
