@@ -616,7 +616,6 @@ public:
       this->lin_ctx = linear_context(this->mem_ctx);
       this->grf_count = grf_count;
       this->hw_reg_count = hw_reg_count;
-      this->instructions.make_empty();
       this->post_reg_alloc = (mode == SCHEDULE_POST);
       this->mode = mode;
       this->reg_pressure = 0;
@@ -736,13 +735,13 @@ public:
       int len;
 
       int time;
+      exec_list available;
    } current;
 
    bool post_reg_alloc;
    int grf_count;
    unsigned hw_reg_count;
    int reg_pressure;
-   exec_list instructions;
    const backend_shader *bs;
 
    instruction_scheduler_mode mode;
@@ -1030,11 +1029,6 @@ instruction_scheduler::set_current_block(bblock_t *block)
    current.len = block->end_ip - block->start_ip + 1;
    current.end = current.start + current.len;
    current.time = 0;
-
-   assert(instructions.is_empty());
-   for (schedule_node *n = current.start; n < current.end; n++) {
-      instructions.push_tail(n);
-   }
 }
 
 /** Computation of the delay member of each node. */
@@ -1696,7 +1690,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
        * choose the one most likely to unblock an early program exit, or
        * otherwise the oldest one.
        */
-      foreach_in_list(schedule_node, n, &instructions) {
+      foreach_in_list(schedule_node, n, &current.available) {
          if (!chosen ||
              exit_unblocked_time(n) < exit_unblocked_time(chosen) ||
              (exit_unblocked_time(n) == exit_unblocked_time(chosen) &&
@@ -1714,7 +1708,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
        * shaders which naturally do a better job of hiding instruction
        * latency.
        */
-      foreach_in_list(schedule_node, n, &instructions) {
+      foreach_in_list(schedule_node, n, &current.available) {
          fs_inst *inst = (fs_inst *)n->inst;
 
          if (!chosen) {
@@ -1823,7 +1817,7 @@ vec4_instruction_scheduler::choose_instruction_to_schedule()
    /* Of the instructions ready to execute or the closest to being ready,
     * choose the oldest one.
     */
-   foreach_in_list(schedule_node, n, &instructions) {
+   foreach_in_list(schedule_node, n, &current.available) {
       if (!chosen || n->unblocked_time < chosen_time) {
          chosen = n;
          chosen_time = n->unblocked_time;
@@ -1863,14 +1857,15 @@ instruction_scheduler::schedule_instructions()
 
    int scheduled = 0;
 
-   /* Remove non-DAG heads from the list. */
+   /* Add DAG heads to the list of available instructions. */
+   current.available.make_empty();
    for (schedule_node *n = current.start; n < current.end; n++) {
-      if (n->parent_count != 0)
-         n->remove();
+      if (n->parent_count == 0)
+         current.available.push_tail(n);
    }
 
    unsigned cand_generation = 1;
-   while (!instructions.is_empty()) {
+   while (!current.available.is_empty()) {
       schedule_node *chosen = choose_instruction_to_schedule();
 
       /* Schedule this instruction. */
@@ -1927,7 +1922,7 @@ instruction_scheduler::schedule_instructions()
             if (debug) {
                fprintf(stderr, "\t\tnow available\n");
             }
-            instructions.push_head(child);
+            current.available.push_head(child);
          }
       }
       cand_generation++;
@@ -1938,7 +1933,7 @@ instruction_scheduler::schedule_instructions()
        * is done.
        */
       if (devinfo->ver < 6 && chosen->inst->is_math()) {
-         foreach_in_list(schedule_node, n, &instructions) {
+         foreach_in_list(schedule_node, n, &current.available) {
             if (n->inst->is_math())
                n->unblocked_time = MAX2(n->unblocked_time,
                                         current.time + chosen->latency);
