@@ -619,34 +619,47 @@ radv_gang_leader_sem_dirty(const struct radv_cmd_buffer *cmd_buffer)
 }
 
 ALWAYS_INLINE static bool
-radv_flush_gang_leader_semaphore(struct radv_cmd_buffer *cmd_buffer)
+radv_flush_gang_semaphore(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs, const enum radv_queue_family qf,
+                          const uint32_t va_off, const uint32_t value)
 {
-   if (!radv_gang_leader_sem_dirty(cmd_buffer) || !radv_gang_sem_init(cmd_buffer))
+   if (!radv_gang_sem_init(cmd_buffer))
       return false;
 
-   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 12);
+   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 12);
 
-   /* GFX writes a value to the semaphore which ACE can wait for.*/
-   si_cs_emit_write_event_eop(cmd_buffer->cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+   si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, qf,
                               V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT,
-                              cmd_buffer->gang.sem.va, cmd_buffer->gang.sem.leader_value, cmd_buffer->gfx9_eop_bug_va);
-
-   cmd_buffer->gang.sem.emitted_leader_value = cmd_buffer->gang.sem.leader_value;
+                              cmd_buffer->gang.sem.va + va_off, value, cmd_buffer->gfx9_eop_bug_va);
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
    return true;
 }
 
+ALWAYS_INLINE static bool
+radv_flush_gang_leader_semaphore(struct radv_cmd_buffer *cmd_buffer)
+{
+   if (!radv_gang_leader_sem_dirty(cmd_buffer))
+      return false;
+
+   /* Gang leader writes a value to the semaphore which the follower can wait for. */
+   cmd_buffer->gang.sem.emitted_leader_value = cmd_buffer->gang.sem.leader_value;
+   return radv_flush_gang_semaphore(cmd_buffer, cmd_buffer->cs, cmd_buffer->qf, 0, cmd_buffer->gang.sem.leader_value);
+}
+
+ALWAYS_INLINE static void
+radv_wait_gang_semaphore(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs, const enum radv_queue_family qf,
+                         const uint32_t va_off, const uint32_t value)
+{
+   assert(cmd_buffer->gang.sem.va);
+   radeon_check_space(cmd_buffer->device->ws, cs, 7);
+   radv_cp_wait_mem(cs, qf, WAIT_REG_MEM_GREATER_OR_EQUAL, cmd_buffer->gang.sem.va + va_off, value, 0xffffffff);
+}
+
 ALWAYS_INLINE static void
 radv_wait_gang_leader(struct radv_cmd_buffer *cmd_buffer)
 {
-   assert(cmd_buffer->gang.sem.va);
-   struct radeon_cmdbuf *ace_cs = cmd_buffer->gang.cs;
-   radeon_check_space(cmd_buffer->device->ws, ace_cs, 7);
-
-   /* ACE waits for the semaphore which GFX wrote. */
-   radv_cp_wait_mem(ace_cs, RADV_QUEUE_COMPUTE, WAIT_REG_MEM_GREATER_OR_EQUAL, cmd_buffer->gang.sem.va,
-                    cmd_buffer->gang.sem.leader_value, 0xffffffff);
+   /* Follower waits for the semaphore which the gang leader wrote. */
+   radv_wait_gang_semaphore(cmd_buffer, cmd_buffer->gang.cs, RADV_QUEUE_COMPUTE, 0, cmd_buffer->gang.sem.leader_value);
 }
 
 static bool
