@@ -343,6 +343,7 @@
 #define CIK_SDMA_OPCODE_TRAP                       0x6
 #define CIK_SDMA_OPCODE_SEMAPHORE                  0x7
 #define CIK_SDMA_OPCODE_POLL_REGMEM                0x8
+#define SDMA_POLL_MEM                              (1 << 31)
 #define SDMA_POLL_INTERVAL_160_CLK                 0xa
 #define SDMA_POLL_RETRY_INDEFINITELY               0xfff
 #define CIK_SDMA_OPCODE_CONSTANT_FILL              0xb

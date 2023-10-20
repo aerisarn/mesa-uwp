@@ -213,15 +213,25 @@ radv_cp_wait_mem(struct radeon_cmdbuf *cs, const enum radv_queue_family qf, cons
                  const uint32_t ref, const uint32_t mask)
 {
    assert(op == WAIT_REG_MEM_EQUAL || op == WAIT_REG_MEM_NOT_EQUAL || op == WAIT_REG_MEM_GREATER_OR_EQUAL);
-   assert(qf == RADV_QUEUE_GENERAL || qf == RADV_QUEUE_COMPUTE);
 
-   radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, false));
-   radeon_emit(cs, op | WAIT_REG_MEM_MEM_SPACE(1));
-   radeon_emit(cs, va);
-   radeon_emit(cs, va >> 32);
-   radeon_emit(cs, ref);  /* reference value */
-   radeon_emit(cs, mask); /* mask */
-   radeon_emit(cs, 4);    /* poll interval */
+   if (qf == RADV_QUEUE_GENERAL || qf == RADV_QUEUE_COMPUTE) {
+      radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, false));
+      radeon_emit(cs, op | WAIT_REG_MEM_MEM_SPACE(1));
+      radeon_emit(cs, va);
+      radeon_emit(cs, va >> 32);
+      radeon_emit(cs, ref);  /* reference value */
+      radeon_emit(cs, mask); /* mask */
+      radeon_emit(cs, 4);    /* poll interval */
+   } else if (qf == RADV_QUEUE_TRANSFER) {
+      radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_POLL_REGMEM, 0, 0) | op << 28 | SDMA_POLL_MEM);
+      radeon_emit(cs, va);
+      radeon_emit(cs, va >> 32);
+      radeon_emit(cs, ref);
+      radeon_emit(cs, mask);
+      radeon_emit(cs, SDMA_POLL_INTERVAL_160_CLK | SDMA_POLL_RETRY_INDEFINITELY << 16);
+   } else {
+      unreachable("unsupported queue family");
+   }
 }
 
 ALWAYS_INLINE static unsigned
