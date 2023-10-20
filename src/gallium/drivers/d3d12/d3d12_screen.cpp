@@ -1422,30 +1422,32 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 {
    assert(screen->base.destroy != nullptr);
 
+   // Device can be imported with d3d12_create_dxcore_screen_from_d3d12_device
+   if (!screen->dev) {
 #ifndef _GAMING_XBOX
-   ID3D12DeviceFactory *factory = try_create_device_factory(screen->d3d12_mod);
+      ID3D12DeviceFactory *factory = try_create_device_factory(screen->d3d12_mod);
 
 #ifndef DEBUG
-   if (d3d12_debug & D3D12_DEBUG_DEBUG_LAYER)
+      if (d3d12_debug & D3D12_DEBUG_DEBUG_LAYER)
 #endif
-      enable_d3d12_debug_layer(screen->d3d12_mod, factory);
+         enable_d3d12_debug_layer(screen->d3d12_mod, factory);
 
-   if (d3d12_debug & D3D12_DEBUG_GPU_VALIDATOR)
-      enable_gpu_validation(screen->d3d12_mod, factory);
+      if (d3d12_debug & D3D12_DEBUG_GPU_VALIDATOR)
+         enable_gpu_validation(screen->d3d12_mod, factory);
 
-   screen->dev = create_device(screen->d3d12_mod, adapter, factory);
+      screen->dev = create_device(screen->d3d12_mod, adapter, factory);
 
-   if (factory)
-      factory->Release();
+      if (factory)
+         factory->Release();
 #else
-   screen->dev = create_device(screen->d3d12_mod, adapter);
+      screen->dev = create_device(screen->d3d12_mod, adapter);
 #endif
 
-   if (!screen->dev) {
-      debug_printf("D3D12: failed to create device\n");
-      return false;
+      if (!screen->dev) {
+         debug_printf("D3D12: failed to create device\n");
+         return false;
+      }
    }
-
    screen->adapter_luid = GetAdapterLuid(screen->dev);
 
 #ifndef _GAMING_XBOX
