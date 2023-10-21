@@ -1765,35 +1765,24 @@ impl SM50Instr {
 
     fn encode_fsetp(&mut self, op: &OpFSetP) {
         assert!(op.srcs[0].is_reg_or_zero());
-        assert!(op.srcs[1].is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: Some(ALUModifierInfo {
-                abs_bit: Some(7),
-                neg_bit: Some(43),
-            }),
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: Some(44),
-                neg_bit: Some(6),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0xb0,
-            encoding_type: ALUEncodingType::Variant3,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
-
-        self.encode_alu(
-            encoding_info,
-            None,
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
+        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
+        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
+        match &alu_src_1 {
+            ALUSrc::None => panic!("Invalid source for FADD"),
+            ALUSrc::Imm32(imm32) => {
+                self.set_opcode(0x36b0);
+                self.set_src_imm_f20(20..40, 56, *imm32);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5bb0);
+                self.set_alu_reg_src(20..28, Some(44), Some(6), &alu_src_1);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4bb0);
+                self.set_alu_cb(20..39, Some(44), Some(6), cbuf);
+            }
+        }
 
         self.set_pred_dst(3..6, op.dst);
         self.set_pred_dst(0..3, Dst::None); /* dst1 */
@@ -1801,6 +1790,7 @@ impl SM50Instr {
         self.set_pred_set_op(45..47, op.set_op);
         self.set_bit(47, false); /* TODO: Denorm mode */
         self.set_float_cmp_op(48..52, op.cmp_op);
+        self.set_alu_reg_src(8..16, Some(7), Some(43), &alu_src_0);
     }
 
     fn encode_mufu(&mut self, op: &OpMuFu) {
