@@ -49,6 +49,7 @@ nak_bindings_rs = rust.bindgen(
     '--raw-line', '#![allow(non_upper_case_globals)]',
     '--allowlist-type', 'exec_list',
     '--allowlist-type', 'exec_node',
+    '--allowlist-type', 'gl_access_qualifier',
     '--allowlist-type', 'gl_frag_result',
     '--allowlist-type', 'gl_interp_mode',
     '--allowlist-type', 'gl_shader_stage',

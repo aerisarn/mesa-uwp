@@ -256,6 +256,7 @@ pub trait NirIntrinsicInstr {
     fn cluster_size(&self) -> u32;
     fn image_dim(&self) -> glsl_sampler_dim;
     fn image_array(&self) -> bool;
+    fn access(&self) -> gl_access_qualifier;
     fn align(&self) -> u32;
     fn align_mul(&self) -> u32;
     fn align_offset(&self) -> u32;
@@ -322,6 +323,10 @@ impl NirIntrinsicInstr for nir_intrinsic_instr {
 
     fn image_array(&self) -> bool {
         self.get_const_index(NIR_INTRINSIC_IMAGE_ARRAY) != 0
+    }
+
+    fn access(&self) -> gl_access_qualifier {
+        self.get_const_index(NIR_INTRINSIC_ACCESS) as gl_access_qualifier
     }
 
     fn align(&self) -> u32 {
