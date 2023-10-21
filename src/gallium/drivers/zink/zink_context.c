@@ -344,6 +344,18 @@ sampler_address_mode(enum pipe_tex_wrap filter)
    unreachable("unexpected wrap");
 }
 
+/* unnormalizedCoordinates only support CLAMP_TO_EDGE or CLAMP_TO_BORDER */
+static VkSamplerAddressMode
+sampler_address_mode_unnormalized(enum pipe_tex_wrap filter)
+{
+   switch (filter) {
+   case PIPE_TEX_WRAP_CLAMP_TO_EDGE: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+   case PIPE_TEX_WRAP_CLAMP_TO_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+   default: break;
+   }
+   unreachable("unexpected wrap");
+}
+
 static VkCompareOp
 compare_op(enum pipe_compare_func op)
 {
@@ -447,7 +459,9 @@ zink_create_sampler_state(struct pipe_context *pctx,
       sci.addressModeV = sampler_address_mode(state->wrap_t);
       sci.addressModeW = sampler_address_mode(state->wrap_r);
    } else {
-      sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      sci.addressModeU = sampler_address_mode_unnormalized(state->wrap_s);
+      sci.addressModeV = sampler_address_mode_unnormalized(state->wrap_t);
+      sci.addressModeW = sampler_address_mode_unnormalized(state->wrap_r);
    }
 
    sci.mipLodBias = CLAMP(state->lod_bias,
@@ -527,8 +541,6 @@ zink_create_sampler_state(struct pipe_context *pctx,
          assert(check <= screen->info.border_color_props.maxCustomBorderColorSamplers);
       } else
          sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO with custom shader if we're super interested?
-      if (sci.unnormalizedCoordinates)
-         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
    }
 
    if (state->max_anisotropy > 1) {
