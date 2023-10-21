@@ -1627,34 +1627,26 @@ impl SM50Instr {
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: Some(ALUModifierInfo {
-                abs_bit: Some(46),
-                neg_bit: Some(48),
-            }),
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: Some(49),
-                neg_bit: Some(45),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x60,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
+        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
+        match &alu_src_1 {
+            ALUSrc::None => panic!("Invalid source for FMNMX"),
+            ALUSrc::Imm32(imm32) => {
+                self.set_opcode(0x3860);
+                self.set_src_imm_f20(20..40, 56, *imm32);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5c60);
+                self.set_alu_reg_src(20..28, Some(49), Some(45), &alu_src_1);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4c60);
+                self.set_alu_cb(20..39, Some(49), Some(45), cbuf);
+            }
+        }
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
-
+        self.set_alu_reg_src(8..16, Some(46), Some(48), &alu_src_0);
+        self.set_dst(op.dst);
         self.set_pred_src(39..42, 42, op.min);
         self.set_bit(44, false); /* TODO: FMZ */
     }
