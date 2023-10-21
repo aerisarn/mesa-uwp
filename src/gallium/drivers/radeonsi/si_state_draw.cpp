@@ -31,6 +31,8 @@
 #define GFX(name) name##GFX10_3
 #elif (GFX_VER == 11)
 #define GFX(name) name##GFX11
+#elif (GFX_VER == 115)
+#define GFX(name) name##GFX11_5
 #else
 #error "Unknown gfx level"
 #endif
@@ -553,6 +555,9 @@ void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
       break;
    case GFX11:
       si_cp_dma_prefetch_inline<GFX11>(sctx, address, size);
+      break;
+   case GFX11_5:
+      si_cp_dma_prefetch_inline<GFX11_5>(sctx, address, size);
       break;
    default:
       break;
@@ -1681,6 +1686,9 @@ void si_set_vertex_buffer_descriptor(struct si_screen *sscreen, struct si_vertex
       break;
    case GFX11:
       si_set_vb_descriptor<GFX11>(velems, vb, element_index, out);
+      break;
+   case GFX11_5:
+      si_set_vb_descriptor<GFX11_5>(velems, vb, element_index, out);
       break;
    default:
       unreachable("unhandled gfx level");

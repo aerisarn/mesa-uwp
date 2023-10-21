@@ -693,6 +693,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       case GFX11:
          si_init_draw_functions_GFX11(sctx);
          break;
+      case GFX11_5:
+         si_init_draw_functions_GFX11_5(sctx);
+         break;
       default:
          unreachable("unhandled gfx level");
       }
