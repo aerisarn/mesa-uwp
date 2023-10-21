@@ -5196,7 +5196,45 @@ VkResult anv_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(
          prop->CType      = convert_component_type(cfg->c);
          prop->ResultType = convert_component_type(cfg->result);
 
+         prop->saturatingAccumulation = VK_FALSE;
          prop->scope = convert_scope(cfg->scope);
+      }
+
+      /* VUID-RuntimeSpirv-saturatingAccumulation-08983 says:
+       *
+       *    For OpCooperativeMatrixMulAddKHR, the SaturatingAccumulation
+       *    cooperative matrix operand must be present if and only if
+       *    VkCooperativeMatrixPropertiesKHR::saturatingAccumulation is
+       *    VK_TRUE.
+       *
+       * As a result, we have to advertise integer configs both with and
+       * without this flag set.
+       *
+       * The DPAS instruction does not support the .sat modifier, so only
+       * advertise the configurations when the DPAS would be lowered.
+       *
+       * FINISHME: It should be possible to do better than full lowering on
+       * platforms that support DPAS. Emit a DPAS with a NULL accumulator
+       * argument, then perform the correct sequence of saturating add
+       * instructions.
+       */
+      if (cfg->a != INTEL_CMAT_FLOAT16 &&
+          (devinfo->verx10 < 125 || debug_get_bool_option("INTEL_LOWER_DPAS", false))) {
+         vk_outarray_append_typed(VkCooperativeMatrixPropertiesKHR, &out, prop) {
+            prop->sType = VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR;
+
+            prop->MSize = cfg->m;
+            prop->NSize = cfg->n;
+            prop->KSize = cfg->k;
+
+            prop->AType      = convert_component_type(cfg->a);
+            prop->BType      = convert_component_type(cfg->b);
+            prop->CType      = convert_component_type(cfg->c);
+            prop->ResultType = convert_component_type(cfg->result);
+
+            prop->saturatingAccumulation = VK_TRUE;
+            prop->scope = convert_scope(cfg->scope);
+         }
       }
    }
 
