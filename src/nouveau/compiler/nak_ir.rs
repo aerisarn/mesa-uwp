@@ -1748,6 +1748,7 @@ impl fmt::Display for MemType {
 #[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemOrder {
+    Constant,
     Weak,
     Strong(MemScope),
 }
@@ -1755,6 +1756,7 @@ pub enum MemOrder {
 impl fmt::Display for MemOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            MemOrder::Constant => write!(f, "CONSTANT"),
             MemOrder::Weak => write!(f, "WEAK"),
             MemOrder::Strong(scope) => write!(f, "STRONG.{}", scope),
         }

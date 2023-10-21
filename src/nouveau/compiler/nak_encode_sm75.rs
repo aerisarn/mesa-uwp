@@ -1140,6 +1140,7 @@ impl SM75Instr {
     fn set_mem_order(&mut self, order: &MemOrder) {
         if self.sm < 80 {
             let scope = match order {
+                MemOrder::Constant => MemScope::System,
                 MemOrder::Weak => MemScope::CTA,
                 MemOrder::Strong(s) => *s,
             };
@@ -1155,7 +1156,7 @@ impl SM75Instr {
             self.set_field(
                 79..81,
                 match order {
-                    /* Constant => 0_u8, */
+                    MemOrder::Constant => 0_u8,
                     MemOrder::Weak => 1_u8,
                     MemOrder::Strong(_) => 2_u8,
                     /* MMIO => 3_u8, */
@@ -1165,6 +1166,7 @@ impl SM75Instr {
             self.set_field(
                 77..81,
                 match order {
+                    MemOrder::Constant => 0x4_u8,
                     MemOrder::Weak => 0x0_u8,
                     MemOrder::Strong(MemScope::CTA) => 0x5_u8,
                     MemOrder::Strong(MemScope::GPU) => 0x7_u8,
