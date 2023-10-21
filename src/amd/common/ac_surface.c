@@ -240,6 +240,7 @@ bool ac_is_modifier_supported(const struct radeon_info *info,
       allowed_swizzles = ac_modifier_has_dcc(modifier) ? 0x08000000 : 0x0E660660;
       break;
    case GFX11:
+   case GFX11_5:
       allowed_swizzles = ac_modifier_has_dcc(modifier) ? 0x88000000 : 0xCC440440;
       break;
    default:
@@ -2877,6 +2878,7 @@ bool ac_surface_apply_umd_metadata(const struct radeon_info *info, struct radeon
       case GFX10:
       case GFX10_3:
       case GFX11:
+      case GFX11_5:
          surf->meta_offset =
             ((uint64_t)G_00A018_META_DATA_ADDRESS_LO(desc[6]) << 8) | ((uint64_t)desc[7] << 16);
          surf->u.gfx9.color.dcc.pipe_aligned = G_00A018_META_PIPE_ALIGNED(desc[6]);
@@ -2920,6 +2922,7 @@ void ac_surface_compute_umd_metadata(const struct radeon_info *info, struct rade
    case GFX10:
    case GFX10_3:
    case GFX11:
+   case GFX11_5:
       desc[6] &= C_00A018_META_DATA_ADDRESS_LO;
       desc[6] |= S_00A018_META_DATA_ADDRESS_LO(surf->meta_offset >> 8);
       desc[7] = surf->meta_offset >> 16;
