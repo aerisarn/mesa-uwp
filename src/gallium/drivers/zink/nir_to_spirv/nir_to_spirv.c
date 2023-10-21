@@ -4550,6 +4550,42 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
          emit_image(&ctx, var, get_bare_image_type(&ctx, var, false));
    }
 
+   if (sinfo->float_controls.flush_denorms) {
+      unsigned execution_mode = s->info.float_controls_execution_mode;
+      bool flush_16_bit = nir_is_denorm_flush_to_zero(execution_mode, 16);
+      bool flush_32_bit = nir_is_denorm_flush_to_zero(execution_mode, 32);
+      bool flush_64_bit = nir_is_denorm_flush_to_zero(execution_mode, 64);
+      bool emit_cap = false;
+
+      if (!sinfo->float_controls.flush_denorms_all_independence) {
+         bool flush = flush_16_bit && flush_64_bit;
+         if (!sinfo->float_controls.flush_denorms_32_bit_independence) {
+            flush = flush && flush_32_bit;
+            flush_32_bit = flush;
+         }
+         flush_16_bit = flush;
+         flush_64_bit = flush;
+      }
+
+      if (flush_16_bit && sinfo->float_controls.flush_denorms & BITFIELD_BIT(0)) {
+         emit_cap = true;
+         spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
+                                              SpvExecutionModeDenormFlushToZero, 16);
+      }
+      if (flush_32_bit && sinfo->float_controls.flush_denorms & BITFIELD_BIT(1)) {
+         emit_cap = true;
+         spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
+                                              SpvExecutionModeDenormFlushToZero, 32);
+      }
+      if (flush_64_bit && sinfo->float_controls.flush_denorms & BITFIELD_BIT(2)) {
+         emit_cap = true;
+         spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
+                                              SpvExecutionModeDenormFlushToZero, 64);
+      }
+      if (emit_cap)
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityDenormFlushToZero);
+   }
+
    switch (s->info.stage) {
    case MESA_SHADER_FRAGMENT:
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
