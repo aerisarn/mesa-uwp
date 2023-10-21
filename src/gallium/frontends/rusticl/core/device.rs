@@ -634,9 +634,17 @@ impl Device {
 
     pub fn const_max_size(&self) -> cl_ulong {
         min(
-            self.max_mem_alloc(),
-            self.screen
-                .param(pipe_cap::PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT) as u64,
+            // Needed to fix the `api min_max_constant_buffer_size` CL CTS test as it can't really
+            // handle arbitrary values here. We might want to reconsider later and figure out how to
+            // advertize higher values without tripping of the test.
+            // should be at least 1 << 16 (native UBO size on NVidia)
+            // advertising more just in case it benefits other hardware
+            1 << 26,
+            min(
+                self.max_mem_alloc(),
+                self.screen
+                    .param(pipe_cap::PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT) as u64,
+            ),
         )
     }
 
