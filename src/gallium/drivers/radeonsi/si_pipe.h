@@ -1486,8 +1486,6 @@ void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *
                                  unsigned dst_offset, unsigned size,
                                  uint32_t clear_value, uint32_t writebitmask,
                                  unsigned flags, enum si_coherency coher);
-void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst, uint64_t offset,
-                            uint64_t size, unsigned value, unsigned flags);
 void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct pipe_resource *src,
                     uint64_t dst_offset, uint64_t src_offset, unsigned size, unsigned flags);
 bool si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, unsigned dst_level,
