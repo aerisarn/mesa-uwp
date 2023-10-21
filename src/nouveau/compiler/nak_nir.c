@@ -813,7 +813,7 @@ nak_postprocess_nir(nir_shader *nir,
    }
 
    nir_lower_mem_access_bit_sizes_options mem_bit_size_options = {
-      .modes = nir_var_mem_ubo | nir_var_mem_generic,
+      .modes = nir_var_mem_constant | nir_var_mem_ubo | nir_var_mem_generic,
       .callback = nak_mem_access_size_align,
    };
    OPT(nir, nir_lower_mem_access_bit_sizes, &mem_bit_size_options);

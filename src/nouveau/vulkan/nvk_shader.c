@@ -239,12 +239,11 @@ lower_load_global_constant_offset_instr(nir_builder *b,
    }
 
    nir_def *val =
-      nir_build_load_global(b, intrin->def.num_components,
-                            intrin->def.bit_size,
-                            nir_iadd(b, base_addr, nir_u2u64(b, offset)),
-                            .access = nir_intrinsic_access(intrin),
-                            .align_mul = nir_intrinsic_align_mul(intrin),
-                            .align_offset = nir_intrinsic_align_offset(intrin));
+      nir_build_load_global_constant(b, intrin->def.num_components,
+                                     intrin->def.bit_size,
+                                     nir_iadd(b, base_addr, nir_u2u64(b, offset)),
+                                     .align_mul = nir_intrinsic_align_mul(intrin),
+                                     .align_offset = nir_intrinsic_align_offset(intrin));
 
    if (intrin->intrinsic == nir_intrinsic_load_global_constant_bounded) {
       nir_pop_if(b, NULL);

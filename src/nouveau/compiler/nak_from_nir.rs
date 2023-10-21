@@ -1567,15 +1567,21 @@ impl<'a> ShaderFromNir<'a> {
             nir_intrinsic_load_barycentric_centroid => (),
             nir_intrinsic_load_barycentric_pixel => (),
             nir_intrinsic_load_barycentric_sample => (),
-            nir_intrinsic_load_global => {
+            nir_intrinsic_load_global | nir_intrinsic_load_global_constant => {
                 let size_B =
                     (intrin.def.bit_size() / 8) * intrin.def.num_components();
                 assert!(u32::from(size_B) <= intrin.align());
+                let order =
+                    if intrin.intrinsic == nir_intrinsic_load_global_constant {
+                        MemOrder::Constant
+                    } else {
+                        MemOrder::Strong(MemScope::System)
+                    };
                 let access = MemAccess {
                     addr_type: MemAddrType::A64,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Global,
-                    order: MemOrder::Strong(MemScope::System),
+                    order: order,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 32);
                 let dst = b.alloc_ssa(RegFile::GPR, size_B.div_ceil(4));

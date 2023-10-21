@@ -586,9 +586,9 @@ lower_load_ssbo_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_address_format_64bit_global:
       /* Mask off the binding stride */
       addr = nir_iand_imm(b, addr, BITFIELD64_MASK(56));
-      desc = nir_build_load_global(b, 1, 64, addr,
-                                   .access = ACCESS_NON_WRITEABLE,
-                                   .align_mul = 16, .align_offset = 0);
+      desc = nir_build_load_global_constant(b, 1, 64, addr,
+                                            .align_mul = 16,
+                                            .align_offset = 0);
       break;
 
    case nir_address_format_64bit_global_32bit_offset: {
