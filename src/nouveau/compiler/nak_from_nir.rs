@@ -1432,8 +1432,7 @@ impl<'a> ShaderFromNir<'a> {
                     atom_op: atom_op,
                     atom_type: atom_type,
                     image_dim: dim,
-                    mem_order: MemOrder::Strong,
-                    mem_scope: MemScope::System,
+                    mem_order: MemOrder::Strong(MemScope::System),
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1453,8 +1452,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst: dst.into(),
                     resident: Dst::None,
                     image_dim: dim,
-                    mem_order: MemOrder::Strong,
-                    mem_scope: MemScope::System,
+                    mem_order: MemOrder::Strong(MemScope::System),
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
@@ -1474,8 +1472,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 b.push_op(OpSuSt {
                     image_dim: dim,
-                    mem_order: MemOrder::Strong,
-                    mem_scope: MemScope::System,
+                    mem_order: MemOrder::Strong(MemScope::System),
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
@@ -1530,8 +1527,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A64,
                     addr_offset: offset,
                     mem_space: MemSpace::Global,
-                    mem_order: MemOrder::Strong,
-                    mem_scope: MemScope::System,
+                    mem_order: MemOrder::Strong(MemScope::System),
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1555,8 +1551,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A64,
                     addr_offset: offset,
                     mem_space: MemSpace::Global,
-                    mem_order: MemOrder::Strong,
-                    mem_scope: MemScope::System,
+                    mem_order: MemOrder::Strong(MemScope::System),
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1580,8 +1575,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A64,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Global,
-                    order: MemOrder::Strong,
-                    scope: MemScope::System,
+                    order: MemOrder::Strong(MemScope::System),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 32);
                 let dst = b.alloc_ssa(RegFile::GPR, size_B.div_ceil(4));
@@ -1761,8 +1755,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Local,
-                    order: MemOrder::Strong,
-                    scope: MemScope::CTA,
+                    order: MemOrder::Strong(MemScope::CTA),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
                 let dst = b.alloc_ssa(RegFile::GPR, size_B.div_ceil(4));
@@ -1783,8 +1776,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Shared,
-                    order: MemOrder::Strong,
-                    scope: MemScope::CTA,
+                    order: MemOrder::Strong(MemScope::CTA),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
                 let offset = offset + intrin.base();
@@ -1941,8 +1933,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A32,
                     addr_offset: offset,
                     mem_space: MemSpace::Shared,
-                    mem_order: MemOrder::Strong,
-                    mem_scope: MemScope::CTA,
+                    mem_order: MemOrder::Strong(MemScope::CTA),
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1966,8 +1957,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A32,
                     addr_offset: offset,
                     mem_space: MemSpace::Shared,
-                    mem_order: MemOrder::Strong,
-                    mem_scope: MemScope::CTA,
+                    mem_order: MemOrder::Strong(MemScope::CTA),
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1980,8 +1970,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A64,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Global,
-                    order: MemOrder::Strong,
-                    scope: MemScope::System,
+                    order: MemOrder::Strong(MemScope::System),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 32);
 
@@ -2017,8 +2006,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Local,
-                    order: MemOrder::Strong,
-                    scope: MemScope::CTA,
+                    order: MemOrder::Strong(MemScope::CTA),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 24);
 
@@ -2038,8 +2026,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Shared,
-                    order: MemOrder::Strong,
-                    scope: MemScope::CTA,
+                    order: MemOrder::Strong(MemScope::CTA),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 24);
                 let offset = offset + intrin.base();

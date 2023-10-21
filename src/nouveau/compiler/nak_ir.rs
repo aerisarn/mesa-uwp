@@ -1749,14 +1749,14 @@ impl fmt::Display for MemType {
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemOrder {
     Weak,
-    Strong,
+    Strong(MemScope),
 }
 
 impl fmt::Display for MemOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MemOrder::Weak => write!(f, "WEAK"),
-            MemOrder::Strong => write!(f, "STRONG"),
+            MemOrder::Strong(scope) => write!(f, "STRONG.{}", scope),
         }
     }
 }
@@ -1801,7 +1801,6 @@ pub struct MemAccess {
     pub mem_type: MemType,
     pub space: MemSpace,
     pub order: MemOrder,
-    pub scope: MemScope,
 }
 
 impl fmt::Display for MemAccess {
@@ -1809,7 +1808,7 @@ impl fmt::Display for MemAccess {
         write!(
             f,
             "{}.{}.{}.{}",
-            self.addr_type, self.mem_type, self.space, self.scope
+            self.addr_type, self.mem_type, self.space, self.order
         )
     }
 }
@@ -3044,7 +3043,6 @@ pub struct OpSuLd {
 
     pub image_dim: ImageDim,
     pub mem_order: MemOrder,
-    pub mem_scope: MemScope,
     pub mask: u8,
 
     #[src_type(GPR)]
@@ -3058,10 +3056,9 @@ impl fmt::Display for OpSuLd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SULD.P.{}.{}.{} {{ {} {} }} [{}] {}",
+            "SULD.P.{}.{} {{ {} {} }} [{}] {}",
             self.image_dim,
             self.mem_order,
-            self.mem_scope,
             self.dst,
             self.resident,
             self.coord,
@@ -3075,7 +3072,6 @@ impl fmt::Display for OpSuLd {
 pub struct OpSuSt {
     pub image_dim: ImageDim,
     pub mem_order: MemOrder,
-    pub mem_scope: MemScope,
     pub mask: u8,
 
     #[src_type(GPR)]
@@ -3092,13 +3088,8 @@ impl fmt::Display for OpSuSt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SUST.P.{}.{}.{} [{}] {} {}",
-            self.image_dim,
-            self.mem_order,
-            self.mem_scope,
-            self.coord,
-            self.data,
-            self.handle,
+            "SUST.P.{}.{} [{}] {} {}",
+            self.image_dim, self.mem_order, self.coord, self.data, self.handle,
         )
     }
 }
@@ -3115,7 +3106,6 @@ pub struct OpSuAtom {
     pub atom_type: AtomType,
 
     pub mem_order: MemOrder,
-    pub mem_scope: MemScope,
 
     #[src_type(GPR)]
     pub handle: Src,
@@ -3131,12 +3121,11 @@ impl fmt::Display for OpSuAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SUATOM.P.{}.{}.{}.{}.{} [{}] {} {}",
+            "SUATOM.P.{}.{}.{}.{} [{}] {} {}",
             self.image_dim,
             self.atom_op,
             self.atom_type,
             self.mem_order,
-            self.mem_scope,
             self.coord,
             self.data,
             self.handle,
@@ -3239,19 +3228,14 @@ pub struct OpAtom {
 
     pub mem_space: MemSpace,
     pub mem_order: MemOrder,
-    pub mem_scope: MemScope,
 }
 
 impl fmt::Display for OpAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ATOM.{}.{}.{}.{} {}",
-            self.atom_op,
-            self.atom_type,
-            self.mem_order,
-            self.mem_scope,
-            self.dst
+            "ATOM.{}.{}.{} {}",
+            self.atom_op, self.atom_type, self.mem_order, self.dst
         )?;
         write!(f, " [")?;
         if !self.addr.is_zero() {
@@ -3288,15 +3272,14 @@ pub struct OpAtomCas {
 
     pub mem_space: MemSpace,
     pub mem_order: MemOrder,
-    pub mem_scope: MemScope,
 }
 
 impl fmt::Display for OpAtomCas {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ATOM.CAS.{}.{}.{} {}",
-            self.atom_type, self.mem_order, self.mem_scope, self.dst
+            "ATOM.CAS.{}.{} {}",
+            self.atom_type, self.mem_order, self.dst
         )?;
         write!(f, " [")?;
         if !self.addr.is_zero() {

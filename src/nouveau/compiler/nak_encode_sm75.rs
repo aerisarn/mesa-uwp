@@ -1137,8 +1137,12 @@ impl SM75Instr {
         );
     }
 
-    fn set_mem_order_scope(&mut self, order: &MemOrder, scope: &MemScope) {
+    fn set_mem_order(&mut self, order: &MemOrder) {
         if self.sm < 80 {
+            let scope = match order {
+                MemOrder::Weak => MemScope::CTA,
+                MemOrder::Strong(s) => *s,
+            };
             self.set_field(
                 77..79,
                 match scope {
@@ -1153,18 +1157,18 @@ impl SM75Instr {
                 match order {
                     /* Constant => 0_u8, */
                     MemOrder::Weak => 1_u8,
-                    MemOrder::Strong => 2_u8,
+                    MemOrder::Strong(_) => 2_u8,
                     /* MMIO => 3_u8, */
                 },
             );
         } else {
             self.set_field(
                 77..81,
-                match (order, scope) {
-                    (MemOrder::Weak, _) => 0x0_u8,
-                    (MemOrder::Strong, MemScope::CTA) => 0x5_u8,
-                    (MemOrder::Strong, MemScope::GPU) => 0x7_u8,
-                    (MemOrder::Strong, MemScope::System) => 0xa_u8,
+                match order {
+                    MemOrder::Weak => 0x0_u8,
+                    MemOrder::Strong(MemScope::CTA) => 0x5_u8,
+                    MemOrder::Strong(MemScope::GPU) => 0x7_u8,
+                    MemOrder::Strong(MemScope::System) => 0xa_u8,
                 },
             );
         }
@@ -1179,7 +1183,7 @@ impl SM75Instr {
         self.set_pred_dst(81..84, op.resident);
 
         self.set_image_dim(61..64, op.image_dim);
-        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+        self.set_mem_order(&op.mem_order);
 
         assert!(op.mask == 0x1 || op.mask == 0x3 || op.mask == 0xf);
         self.set_field(72..76, op.mask);
@@ -1193,7 +1197,7 @@ impl SM75Instr {
         self.set_reg_src(64..72, op.handle);
 
         self.set_image_dim(61..64, op.image_dim);
-        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+        self.set_mem_order(&op.mem_order);
 
         assert!(op.mask == 0x1 || op.mask == 0x3 || op.mask == 0xf);
         self.set_field(72..76, op.mask);
@@ -1213,7 +1217,7 @@ impl SM75Instr {
         self.set_pred_dst(81..84, op.resident);
 
         self.set_image_dim(61..64, op.image_dim);
-        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+        self.set_mem_order(&op.mem_order);
 
         self.set_bit(72, false); /* .BA */
         self.set_atom_type(73..76, op.atom_type);
@@ -1245,7 +1249,7 @@ impl SM75Instr {
             },
         );
         self.set_mem_type(73..76, access.mem_type);
-        self.set_mem_order_scope(&access.order, &access.scope);
+        self.set_mem_order(&access.order);
     }
 
     fn encode_ldg(&mut self, op: &OpLd) {
@@ -1268,8 +1272,7 @@ impl SM75Instr {
 
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
-        assert!(op.access.order == MemOrder::Strong);
-        assert!(op.access.scope == MemScope::CTA);
+        assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
     }
 
     fn encode_lds(&mut self, op: &OpLd) {
@@ -1281,8 +1284,7 @@ impl SM75Instr {
 
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
-        assert!(op.access.order == MemOrder::Strong);
-        assert!(op.access.scope == MemScope::CTA);
+        assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
 
         self.set_bit(87, false); /* !.ZD - Returns a predicate? */
     }
@@ -1328,8 +1330,7 @@ impl SM75Instr {
 
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
-        assert!(op.access.order == MemOrder::Strong);
-        assert!(op.access.scope == MemScope::CTA);
+        assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
     }
 
     fn encode_sts(&mut self, op: &OpSt) {
@@ -1341,8 +1342,7 @@ impl SM75Instr {
 
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
-        assert!(op.access.order == MemOrder::Strong);
-        assert!(op.access.scope == MemScope::CTA);
+        assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
     }
 
     fn encode_st(&mut self, op: &OpSt) {
@@ -1406,7 +1406,7 @@ impl SM75Instr {
         );
 
         self.set_atom_type(73..76, op.atom_type);
-        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+        self.set_mem_order(&op.mem_order);
         self.set_atom_op(87..91, op.atom_op);
     }
 
@@ -1430,7 +1430,7 @@ impl SM75Instr {
         );
 
         self.set_atom_type(73..76, op.atom_type);
-        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+        self.set_mem_order(&op.mem_order);
     }
 
     fn encode_atoms(&mut self, op: &OpAtom) {
@@ -1443,8 +1443,7 @@ impl SM75Instr {
         self.set_field(40..64, op.addr_offset);
 
         assert!(op.addr_type == MemAddrType::A32);
-        assert!(op.mem_order == MemOrder::Strong);
-        assert!(op.mem_scope == MemScope::CTA);
+        assert!(op.mem_order == MemOrder::Strong(MemScope::CTA));
 
         self.set_atom_type(73..76, op.atom_type);
         self.set_atom_op(87..91, op.atom_op);
@@ -1461,8 +1460,7 @@ impl SM75Instr {
         self.set_reg_src(64..72, op.data);
 
         assert!(op.addr_type == MemAddrType::A32);
-        assert!(op.mem_order == MemOrder::Strong);
-        assert!(op.mem_scope == MemScope::CTA);
+        assert!(op.mem_order == MemOrder::Strong(MemScope::CTA));
 
         self.set_atom_type(73..76, op.atom_type);
     }

@@ -48,8 +48,7 @@ impl LowerCopySwap {
                             addr_type: MemAddrType::A32,
                             mem_type: MemType::B32,
                             space: MemSpace::Local,
-                            order: MemOrder::Strong,
-                            scope: MemScope::CTA,
+                            order: MemOrder::Strong(MemScope::CTA),
                         };
                         let addr = self.tls_start + src_reg.base_idx() * 4;
                         self.tls_size = max(self.tls_size, addr + 4);
@@ -104,8 +103,7 @@ impl LowerCopySwap {
                             addr_type: MemAddrType::A32,
                             mem_type: MemType::B32,
                             space: MemSpace::Local,
-                            order: MemOrder::Strong,
-                            scope: MemScope::CTA,
+                            order: MemOrder::Strong(MemScope::CTA),
                         };
                         let addr = self.tls_start + dst_reg.base_idx() * 4;
                         self.tls_size = max(self.tls_size, addr + 4);
