@@ -25,7 +25,6 @@ DEPS=(
     ccache
     cmake
     curl
-    debootstrap
     fastboot
     flex
     g++
