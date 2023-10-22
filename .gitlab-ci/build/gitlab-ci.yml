@@ -61,15 +61,6 @@
   script:
     - .gitlab-ci/meson/build.sh
 
-.meson-build_mingw:
-  extends:
-    - .build-linux
-    - .use-debian/x86_64_build_mingw
-    - .use-wine
-  stage: build-x86_64
-  script:
-    - .gitlab-ci/meson/build.sh
-
 debian-testing:
   extends:
     - .meson-build
@@ -648,40 +639,3 @@ debian-ppc64el:
     CROSS: ppc64el
     GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl,zink"
     VULKAN_DRIVERS: "amd,swrast"
-
-# Disabled as it hangs with winedbg on shared runners
-.debian-mingw32-x86_64:
-  extends: .meson-build_mingw
-  stage: build-misc
-  variables:
-    UNWIND: "disabled"
-    C_ARGS: >
-      -Wno-error=format
-      -Wno-error=unused-but-set-variable
-    CPP_ARGS: >
-      -Wno-error=format
-      -Wno-error=unused-function
-      -Wno-error=unused-variable
-      -Wno-error=sign-compare
-      -Wno-error=narrowing
-    GALLIUM_DRIVERS: "swrast,d3d12,zink"
-    VULKAN_DRIVERS: "swrast,amd,microsoft-experimental"
-    GALLIUM_ST: >
-      -D gallium-rusticl=false
-      -D opencl-spirv=true
-      -D microsoft-clc=enabled
-      -D static-libclc=all
-      -D opencl-external-clang-headers=disabled
-      -D llvm=enabled
-      -D gallium-va=enabled
-      -D video-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec
-    EXTRA_OPTION: >
-      -D min-windows-version=7
-      -D spirv-to-dxil=true
-      -D gles1=enabled
-      -D gles2=enabled
-      -D osmesa=true
-      -D cpp_rtti=true
-      -D shared-glapi=enabled
-      -D zlib=enabled
-      --cross-file=.gitlab-ci/x86_64-w64-mingw32

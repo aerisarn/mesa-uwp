@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2086 # we want word splitting
 
 set -e
@@ -83,8 +83,6 @@ pip3 install --break-system-packages git+http://gitlab.freedesktop.org/freedeskt
 pip3 install --break-system-packages meson==1.2.0
 
 . .gitlab-ci/container/build-rust.sh
-
-. .gitlab-ci/container/debian/x86_64_build-base-wine.sh
 
 ############### Uninstall ephemeral packages
 

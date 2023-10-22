@@ -15,8 +15,6 @@ STABLE_EPHEMERAL=" \
       ccache \
       cmake \
       g++ \
-      g++-mingw-w64-i686-posix \
-      g++-mingw-w64-x86-64-posix \
       glslang-tools \
       libexpat1-dev \
       gnupg2 \
@@ -36,9 +34,6 @@ STABLE_EPHEMERAL=" \
       libxrender-dev \
       libzstd-dev \
       meson \
-      mingw-w64-i686-dev \
-      mingw-w64-tools \
-      mingw-w64-x86-64-dev \
       p7zip \
       patch \
       pkgconf \
