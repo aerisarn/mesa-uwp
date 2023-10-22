@@ -1853,7 +1853,6 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    UNOP(nir_op_f2f64, SpvOpFConvert)
    UNOP(nir_op_bitfield_reverse, SpvOpBitReverse)
    UNOP(nir_op_bit_count, SpvOpBitCount)
-   UNOP(nir_op_fisnormal, SpvOpIsNormal)
 #undef UNOP
 
    case nir_op_f2f16_rtz:
