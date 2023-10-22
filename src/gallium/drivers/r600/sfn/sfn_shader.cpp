@@ -151,12 +151,15 @@ ShaderInput::set_uses_interpolate_at_centroid()
    m_uses_interpolate_at_centroid = true;
 }
 
+int64_t Shader::s_next_shader_id = 1;
+
 Shader::Shader(const char *type_id, unsigned atomic_base):
     m_current_block(nullptr),
     m_type_id(type_id),
     m_chip_class(ISA_CC_R600),
     m_next_block(0),
-    m_atomic_base(atomic_base)
+    m_atomic_base(atomic_base),
+    m_shader_id(s_next_shader_id++)
 {
    m_instr_factory = new InstrFactory();
    m_chain_instr.this_shader = this;
@@ -1615,6 +1618,7 @@ void
 Shader::print_header(std::ostream& os) const
 {
    assert(m_chip_class <= ISA_CC_CAYMAN);
+   os << "Shader: " << m_shader_id << "\n";
    os << m_type_id << "\n";
    os << "CHIPCLASS " << chip_class_names[m_chip_class] << "\n";
    print_properties(os);

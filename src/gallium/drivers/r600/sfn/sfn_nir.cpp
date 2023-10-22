@@ -45,6 +45,7 @@
 #include "sfn_scheduler.h"
 #include "sfn_shader.h"
 #include "sfn_split_address_loads.h"
+#include "util/u_debug.h"
 #include "util/u_prim.h"
 
 #include <vector>
@@ -746,6 +747,9 @@ r600_finalize_nir_common(nir_shader *nir, enum amd_gfx_level gfx_level)
       ;
 }
 
+DEBUG_GET_ONCE_NUM_OPTION(skip_opt_start, "R600_SFN_SKIP_OPT_START", -1);
+DEBUG_GET_ONCE_NUM_OPTION(skip_opt_end, "R600_SFN_SKIP_OPT_END", -1);
+
 void
 r600_lower_and_optimize_nir(nir_shader *sh,
                             const union r600_shader_key *key,
@@ -893,9 +897,17 @@ r600_finalize_and_optimize_shader(r600::Shader *shader)
       shader->print(std::cerr);
    }
 
-   if (!r600::sfn_log.has_debug_flag(r600::SfnLog::noopt)) {
-      optimize(*shader);
+   auto sfn_skip_opt_start = debug_get_option_skip_opt_start();
+   auto sfn_skip_opt_end = debug_get_option_skip_opt_end();
+   bool skip_shader_opt_per_id = sfn_skip_opt_start >= 0 &&
+                                 sfn_skip_opt_start <= shader->shader_id() &&
+                                 sfn_skip_opt_end >= shader->shader_id();
 
+   bool skip_shader_opt = r600::sfn_log.has_debug_flag(r600::SfnLog::noopt) ||
+                          skip_shader_opt_per_id;
+
+   if (!skip_shader_opt) {
+      optimize(*shader);
       if (r600::sfn_log.has_debug_flag(r600::SfnLog::steps)) {
          std::cerr << "Shader after optimization\n";
          shader->print(std::cerr);
@@ -909,9 +921,8 @@ r600_finalize_and_optimize_shader(r600::Shader *shader)
       shader->print(std::cerr);
    }
    
-   if (!r600::sfn_log.has_debug_flag(r600::SfnLog::noopt)) {
+   if (!skip_shader_opt) {
       optimize(*shader);
-
       if (r600::sfn_log.has_debug_flag(r600::SfnLog::steps)) {
          std::cerr << "Shader after optimization\n";
          shader->print(std::cerr);
