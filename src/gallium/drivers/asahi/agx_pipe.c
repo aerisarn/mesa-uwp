@@ -52,7 +52,6 @@
 /* clang-format off */
 static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
-   {"deqp",      AGX_DBG_DEQP,     "Hacks for dEQP"},
    {"no16",      AGX_DBG_NO16,     "Disable 16-bit support"},
    {"perf",      AGX_DBG_PERF,     "Print performance warnings"},
 #ifndef NDEBUG
@@ -2191,19 +2190,6 @@ agx_screen_create(int fd, struct renderonly *ro,
    if (!agx_open_device(agx_screen, &agx_screen->dev)) {
       ralloc_free(agx_screen);
       return NULL;
-   }
-
-   if (agx_screen->dev.debug & AGX_DBG_DEQP) {
-      /* You're on your own. */
-      static bool warned_about_hacks = false;
-
-      if (!warned_about_hacks) {
-         agx_msg("\n------------------\n"
-                 "Unsupported debug parameter set. Expect breakage.\n"
-                 "Do not report bugs.\n"
-                 "------------------\n\n");
-         warned_about_hacks = true;
-      }
    }
 
    screen->destroy = agx_destroy_screen;
