@@ -256,7 +256,13 @@ public:
                       unsigned *out_pull_index);
    bool lower_constant_loads();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
+
+#ifndef NDEBUG
    void validate();
+#else
+   void validate() {}
+#endif
+
    bool opt_algebraic();
    bool opt_redundant_halt();
    bool opt_cse();
