@@ -85,6 +85,7 @@ meson setup _build \
       -D libunwind=${UNWIND} \
       ${DRI_LOADERS} \
       ${GALLIUM_ST} \
+      -D gallium-opencl=disabled \
       -D gallium-drivers=${GALLIUM_DRIVERS:-[]} \
       -D vulkan-drivers=${VULKAN_DRIVERS:-[]} \
       -D video-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \

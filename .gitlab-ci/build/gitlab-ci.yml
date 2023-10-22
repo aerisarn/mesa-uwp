@@ -178,7 +178,6 @@ debian-build-testing:
       -D gallium-va=enabled
       -D gallium-xa=enabled
       -D gallium-nine=true
-      -D gallium-opencl=disabled
       -D gallium-rusticl=false
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,asahi,crocus"
     VULKAN_DRIVERS: swrast
@@ -222,7 +221,6 @@ debian-release:
       -D gallium-va=enabled
       -D gallium-xa=enabled
       -D gallium-nine=false
-      -D gallium-opencl=disabled
       -D gallium-rusticl=false
       -D llvm=enabled
     GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
@@ -315,7 +313,6 @@ fedora-release:
       -D gallium-va=enabled
       -D gallium-xa=enabled
       -D gallium-nine=false
-      -D gallium-opencl=icd
       -D gallium-rusticl=true
       -D gles1=disabled
       -D gles2=enabled
@@ -365,7 +362,6 @@ debian-android:
       -D gallium-va=disabled
       -D gallium-xa=disabled
       -D gallium-nine=false
-      -D gallium-opencl=disabled
       -D gallium-rusticl=false
     LLVM_VERSION: ""
     PKG_CONFIG_LIBDIR: "/disable/non/android/system/pc/files"
@@ -533,7 +529,6 @@ debian-clang:
       -D gallium-va=enabled
       -D gallium-xa=enabled
       -D gallium-nine=true
-      -D gallium-opencl=icd
       -D gles1=enabled
       -D gles2=enabled
       -D llvm=enabled
@@ -570,7 +565,6 @@ debian-clang-release:
       -D gallium-va=enabled
       -D gallium-xa=enabled
       -D gallium-nine=true
-      -D gallium-opencl=icd
       -D gles1=disabled
       -D gles2=disabled
       -D llvm=enabled
@@ -592,34 +586,6 @@ windows-vs2019:
       - _build/meson-logs/*.txt
       - _install/
 
-.debian-cl:
-  extends: .meson-build
-  variables:
-    LLVM_VERSION: 15
-    UNWIND: "enabled"
-    DRI_LOADERS: >
-      -D glx=disabled
-      -D egl=disabled
-      -D gbm=disabled
-    EXTRA_OPTION: >
-      -D valgrind=disabled
-
-debian-rusticl:
-  extends: .debian-cl
-  variables:
-    BUILDTYPE: debug
-    GALLIUM_DRIVERS: "iris,swrast"
-    GALLIUM_ST: >
-      -D dri3=disabled
-      -D gallium-vdpau=disabled
-      -D gallium-omx=disabled
-      -D gallium-va=disabled
-      -D gallium-xa=disabled
-      -D gallium-nine=false
-      -D gallium-opencl=disabled
-      -D gallium-rusticl=true
-    RUSTC: clippy-driver
-
 debian-vulkan:
   extends: .meson-build
   variables:
@@ -639,7 +605,6 @@ debian-vulkan:
       -D gallium-va=disabled
       -D gallium-xa=disabled
       -D gallium-nine=false
-      -D gallium-opencl=disabled
       -D gallium-rusticl=false
       -D b_sanitize=undefined
       -D c_args=-fno-sanitize-recover=all
@@ -707,7 +672,6 @@ debian-ppc64el:
     GALLIUM_DRIVERS: "swrast,d3d12,zink"
     VULKAN_DRIVERS: "swrast,amd,microsoft-experimental"
     GALLIUM_ST: >
-      -D gallium-opencl=icd
       -D gallium-rusticl=false
       -D opencl-spirv=true
       -D microsoft-clc=enabled
