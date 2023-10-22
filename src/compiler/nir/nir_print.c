@@ -2279,6 +2279,8 @@ primitive_name(unsigned primitive)
       PRIM(QUADS);
       PRIM(QUAD_STRIP);
       PRIM(POLYGON);
+      PRIM(LINES_ADJACENCY);
+      PRIM(TRIANGLES_ADJACENCY);
    default:
       return "UNKNOWN";
    }
