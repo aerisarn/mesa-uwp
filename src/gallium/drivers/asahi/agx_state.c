@@ -990,7 +990,8 @@ should_lower_clip_m1_1(struct agx_device *dev, bool clip_halfz)
 static void
 agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
                             uint8_t **out, const struct pipe_viewport_state *vp,
-                            const struct pipe_scissor_state *ss)
+                            const struct pipe_scissor_state *ss,
+                            bool clip_halfz)
 {
    unsigned minx, miny, maxx, maxy;
 
@@ -999,7 +1000,7 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
    assert(maxx > minx && maxy > miny);
 
    float minz, maxz;
-   util_viewport_zmin_zmax(vp, false, &minz, &maxz);
+   util_viewport_zmin_zmax(vp, clip_halfz, &minz, &maxz);
 
    /* Allocate a new scissor descriptor */
    unsigned index = batch->scissor.size / AGX_SCISSOR_LENGTH;
@@ -1046,7 +1047,7 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
       cfg.scale_y = vp->scale[1];
       cfg.scale_z = vp->scale[2];
 
-      if (should_lower_clip_m1_1(pool->dev, false /* clip_halfz */)) {
+      if (should_lower_clip_m1_1(pool->dev, clip_halfz)) {
          cfg.translate_z -= cfg.scale_z;
          cfg.scale_z *= 2;
       }
@@ -1683,7 +1684,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
 
       NIR_PASS_V(nir, agx_nir_lower_vbo, &key->vbuf);
 
-      if (should_lower_clip_m1_1(dev, false /* clip_halfz */)) {
+      if (should_lower_clip_m1_1(dev, key->clip_halfz)) {
          NIR_PASS_V(nir, nir_shader_intrinsics_pass, agx_nir_lower_clip_m1_1,
                     nir_metadata_block_index | nir_metadata_dominance, NULL);
       }
@@ -2125,14 +2126,16 @@ agx_update_vs(struct agx_context *ctx)
    /* Only proceed if the shader or anything the key depends on changes
     *
     * vb_mask, attributes, vertex_buffers: VERTEX
+    * clip_halfz: RS
     * outputs_{flat,linear}_shaded: FS_PROG
     */
    if (!(ctx->dirty & (AGX_DIRTY_VS_PROG | AGX_DIRTY_VERTEX | AGX_DIRTY_XFB |
-                       AGX_DIRTY_FS_PROG)))
+                       AGX_DIRTY_FS_PROG | AGX_DIRTY_RS)))
       return false;
 
    struct asahi_vs_shader_key key = {
       .vbuf.count = util_last_bit(ctx->vb_mask),
+      .clip_halfz = ctx->rast->base.clip_halfz,
       .outputs_flat_shaded =
          ctx->stage[PIPE_SHADER_FRAGMENT].shader->info.inputs_flat_shaded,
       .outputs_linear_shaded =
@@ -3033,10 +3036,13 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       ctx->dirty |= AGX_DIRTY_SCISSOR_ZBIAS;
    }
 
-   if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR_ZBIAS)) {
+   if (ctx->dirty &
+       (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR_ZBIAS | AGX_DIRTY_RS)) {
+
       agx_upload_viewport_scissor(
          pool, batch, &out, &ctx->viewport,
-         ctx->rast->base.scissor ? &ctx->scissor : NULL);
+         ctx->rast->base.scissor ? &ctx->scissor : NULL,
+         ctx->rast->base.clip_halfz);
    }
 
    bool varyings_dirty = false;

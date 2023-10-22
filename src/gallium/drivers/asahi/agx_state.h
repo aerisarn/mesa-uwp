@@ -353,6 +353,7 @@ struct agx_blend {
 
 struct asahi_vs_shader_key {
    struct agx_vbufs vbuf;
+   bool clip_halfz;
    uint64_t outputs_flat_shaded;
    uint64_t outputs_linear_shaded;
 };
