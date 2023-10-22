@@ -150,11 +150,9 @@ pip3 install --break-system-packages yq
 ############### Build dEQP runner
 . .gitlab-ci/container/build-deqp-runner.sh
 
-rm -rf /root/.cargo
-rm -rf /root/.rustup
-
-ccache --show-stats
 
 apt-get purge -y $STABLE_EPHEMERAL
 
-apt-get autoremove -y --purge
+rm -rf /root/.rustup
+
+. .gitlab-ci/container/container_post_build.sh
