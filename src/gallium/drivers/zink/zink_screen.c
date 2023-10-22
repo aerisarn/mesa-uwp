@@ -1478,7 +1478,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    util_vertex_state_cache_deinit(&screen->vertex_state_cache);
 
-   VKSCR(DestroyPipelineLayout)(screen->dev, screen->gfx_push_constant_layout, NULL);
+   if (screen->gfx_push_constant_layout)
+      VKSCR(DestroyPipelineLayout)(screen->dev, screen->gfx_push_constant_layout, NULL);
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
    if (util_queue_is_initialized(&screen->cache_get_thread)) {
@@ -1494,8 +1495,10 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 #endif
    disk_cache_destroy(screen->disk_cache);
 
+   /* we don't have an API to check if a set is already initialized */
    for (unsigned i = 0; i < ARRAY_SIZE(screen->pipeline_libs); i++)
-      _mesa_set_clear(&screen->pipeline_libs[i], NULL);
+      if (screen->pipeline_libs[i].table)
+         _mesa_set_clear(&screen->pipeline_libs[i], NULL);
 
    zink_bo_deinit(screen);
    util_live_shader_cache_deinit(&screen->shaders);
@@ -1518,7 +1521,9 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->bindless_layout)
       VKSCR(DestroyDescriptorSetLayout)(screen->dev, screen->bindless_layout, NULL);
 
-   VKSCR(DestroyDevice)(screen->dev, NULL);
+   if (screen->dev)
+      VKSCR(DestroyDevice)(screen->dev, NULL);
+
    VKSCR(DestroyInstance)(screen->instance, NULL);
    util_idalloc_mt_fini(&screen->buffer_ids);
 
