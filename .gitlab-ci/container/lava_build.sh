@@ -221,13 +221,6 @@ mmdebstrap \
 ############### Install mold
 . .gitlab-ci/container/build-mold.sh
 
-############### Setuping
-if [ "$DEBIAN_ARCH" = "amd64" ]; then
-  . .gitlab-ci/container/setup-wine.sh "/dxvk-wine64"
-  . .gitlab-ci/container/install-wine-dxvk.sh
-  mv /dxvk-wine64 $ROOTFS
-fi
-
 ############### Installing
 if [ "$DEBIAN_ARCH" = "amd64" ]; then
   . .gitlab-ci/container/install-wine-apitrace.sh
@@ -322,12 +315,24 @@ rm -rf /root/.rustup
 
 ############### Fill rootfs
 cp .gitlab-ci/container/setup-rootfs.sh $ROOTFS/.
+cp .gitlab-ci/container/setup-wine.sh $ROOTFS/.
+cp .gitlab-ci/container/install-wine-dxvk.sh $ROOTFS/.
 cp .gitlab-ci/container/strip-rootfs.sh $ROOTFS/.
 cp .gitlab-ci/container/debian/llvm-snapshot.gpg.key $ROOTFS/.
 cp .gitlab-ci/container/debian/winehq.gpg.key $ROOTFS/.
+
+mount -t proc none "$ROOTFS/proc"
+mount --rbind /sys "$ROOTFS/sys" && mount --make-rslave "$ROOTFS/sys"
+mount --rbind /dev "$ROOTFS/dev" && mount --make-rslave "$ROOTFS/dev"
 chroot $ROOTFS bash /setup-rootfs.sh
+umount -R "$ROOTFS/dev"
+umount -R "$ROOTFS/sys"
+umount "$ROOTFS/proc"
+
 rm $ROOTFS/{llvm-snapshot,winehq}.gpg.key
 rm "$ROOTFS/setup-rootfs.sh"
+rm "$ROOTFS/setup-wine.sh"
+rm "$ROOTFS/install-wine-dxvk.sh"
 rm "$ROOTFS/strip-rootfs.sh"
 cp /etc/wgetrc $ROOTFS/etc/.
 
