@@ -1837,35 +1837,26 @@ impl SM50Instr {
         let src_type = IntType::I32;
         let dst_type = IntType::I32;
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: Some(49),
-                neg_bit: Some(45),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0xe0,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
-
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::None,
-            src1,
-            ALUSrc::None,
-        );
-
+        match &src1 {
+            ALUSrc::None => panic!("Invalid source for IABS"),
+            ALUSrc::Imm32(imm32) => {
+                self.set_opcode(0x38e0);
+                self.set_src_imm_f20(20..40, 56, *imm32);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5ce0);
+                self.set_alu_reg_src(20..28, Some(45), Some(49), &src1);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4ce0);
+                self.set_alu_cb(20..39, Some(45), Some(49), cbuf);
+            }
+        }
         self.set_bit(12, dst_type.is_signed());
         self.set_bit(13, src_type.is_signed());
         self.set_field(8..10, (dst_type.bits() / 8).ilog2());
         self.set_field(10..12, (src_type.bits() / 8).ilog2());
+        self.set_dst(op.dst);
     }
 
     fn encode_iadd2(&mut self, op: &OpIAdd2) {
