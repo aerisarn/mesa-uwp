@@ -1744,7 +1744,7 @@ void anv_GetPhysicalDeviceProperties(
    uint64_t sparse_addr_space_size =
       !has_sparse_or_fake ? 0 :
       pdevice->sparse_uses_trtt ? pdevice->va.trtt.size :
-      1ULL << 48;
+      pdevice->va.high_heap.size;
 
    VkSampleCountFlags sample_counts =
       isl_device_get_sample_counts(&pdevice->isl_dev);
