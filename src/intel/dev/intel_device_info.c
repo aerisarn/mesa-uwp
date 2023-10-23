@@ -1383,10 +1383,10 @@ intel_device_info_apply_workarounds(struct intel_device_info *devinfo)
 
    /* Fixes issues with:
     * dEQP-GLES31.functional.geometry_shading.layered.render_with_default_layer_cubemap
-    * when running on ADL-N platform.
+    * when running on GFX12 platforms with small EU count.
     */
    const uint32_t eu_total = intel_device_info_eu_total(devinfo);
-   if (devinfo->platform == INTEL_PLATFORM_ADL && eu_total < 32)
+   if (devinfo->verx10 == 120 && eu_total <= 32)
       devinfo->urb.max_entries[MESA_SHADER_GEOMETRY] = 1024;
 }
 
