@@ -1730,37 +1730,31 @@ impl SM50Instr {
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: Some(ALUModifierInfo {
-                abs_bit: Some(54),
-                neg_bit: Some(43),
-            }),
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: Some(44),
-                neg_bit: Some(53),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x00,
-            encoding_type: ALUEncodingType::Variant1,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
+        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
+        match &alu_src_1 {
+            ALUSrc::None => panic!("Invalid source for FSET"),
+            ALUSrc::Imm32(imm32) => {
+                self.set_opcode(0x3000);
+                self.set_src_imm_f20(20..40, 56, *imm32);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5800);
+                self.set_alu_reg_src(20..28, Some(44), Some(53), &alu_src_1);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4800);
+                self.set_alu_cb(20..39, Some(44), Some(6), cbuf);
+            }
+        }
+
+        self.set_alu_reg_src(8..16, Some(54), Some(43), &alu_src_0);
         self.set_pred_src(39..42, 42, SrcRef::True.into());
         self.set_float_cmp_op(48..52, op.cmp_op);
         self.set_bit(52, true); /* bool float */
         self.set_bit(55, false); /* TODO: Denorm mode */
+        self.set_dst(op.dst);
     }
 
     fn encode_fsetp(&mut self, op: &OpFSetP) {
