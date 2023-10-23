@@ -1767,6 +1767,23 @@ impl SM75Instr {
         );
     }
 
+    fn encode_vote(&mut self, op: &OpVote) {
+        self.set_opcode(0x806);
+        self.set_dst(op.ballot);
+
+        self.set_field(
+            72..74,
+            match op.op {
+                VoteOp::All => 0_u8,
+                VoteOp::Any => 1_u8,
+                VoteOp::Eq => 2_u8,
+            },
+        );
+
+        self.set_pred_dst(81..84, op.vote);
+        self.set_pred_src(87..90, 90, op.pred);
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1845,6 +1862,7 @@ impl SM75Instr {
             Op::S2R(op) => si.encode_s2r(&op),
             Op::Out(op) => si.encode_out(&op),
             Op::OutFinal(op) => si.encode_out_final(&op),
+            Op::Vote(op) => si.encode_vote(&op),
             _ => panic!("Unhandled instruction"),
         }
 

@@ -3703,6 +3703,44 @@ impl fmt::Display for OpS2R {
     }
 }
 
+pub enum VoteOp {
+    Any,
+    All,
+    Eq,
+}
+
+impl fmt::Display for VoteOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VoteOp::Any => write!(f, "ANY"),
+            VoteOp::All => write!(f, "ALL"),
+            VoteOp::Eq => write!(f, "EQ"),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpVote {
+    pub op: VoteOp,
+
+    pub ballot: Dst,
+    pub vote: Dst,
+
+    #[src_type(Pred)]
+    pub pred: Src,
+}
+
+impl fmt::Display for OpVote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "VOTE.{} {{ {} {} }} {}",
+            self.op, self.ballot, self.vote, self.pred
+        )
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpUndef {
@@ -4136,6 +4174,7 @@ pub enum Op {
     Nop(OpNop),
     PixLd(OpPixLd),
     S2R(OpS2R),
+    Vote(OpVote),
     Undef(OpUndef),
     PhiSrcs(OpPhiSrcs),
     PhiDsts(OpPhiDsts),
@@ -4572,7 +4611,7 @@ impl Instr {
             | Op::Kill(_)
             | Op::PixLd(_)
             | Op::S2R(_) => false,
-            Op::Nop(_) => true,
+            Op::Nop(_) | Op::Vote(_) => true,
 
             // Virtual ops
             Op::Undef(_)

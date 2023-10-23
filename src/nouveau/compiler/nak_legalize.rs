@@ -261,6 +261,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
         }
         Op::Ldc(_) => (), // Nothing to do
         Op::BMov(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => (),
+        Op::Vote(_) => (), // Nothing to do
         Op::Copy(_) => (), // Nothing to do
         _ => {
             let src_types = instr.src_types();

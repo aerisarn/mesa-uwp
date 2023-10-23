@@ -1337,6 +1337,21 @@ impl<'a> ShaderFromNir<'a> {
                     panic!("Invalid VTG I/O intrinsic");
                 }
             }
+            nir_intrinsic_ballot => {
+                assert!(srcs[0].bit_size() == 1);
+                let src = self.get_src(&srcs[0]);
+
+                assert!(intrin.def.bit_size() == 32);
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpVote {
+                    op: VoteOp::Any,
+                    ballot: dst.into(),
+                    vote: Dst::None,
+                    pred: src,
+                });
+                self.set_dst(&intrin.def, dst);
+            }
             nir_intrinsic_bar_break_nv => {
                 let idx = &srcs[0].as_def().index;
                 let (bar, _) = self.bar_ref_label.get(idx).unwrap();
@@ -2007,6 +2022,28 @@ impl<'a> ShaderFromNir<'a> {
                 if self.info.sm >= 70 {
                     b.push_op(OpOutFinal { handle: handle });
                 }
+            }
+            nir_intrinsic_vote_all
+            | nir_intrinsic_vote_any
+            | nir_intrinsic_vote_ieq => {
+                assert!(srcs[0].bit_size() == 1);
+                let src = self.get_src(&srcs[0]);
+
+                assert!(intrin.def.bit_size() == 1);
+                let dst = b.alloc_ssa(RegFile::Pred, 1);
+
+                b.push_op(OpVote {
+                    op: match intrin.intrinsic {
+                        nir_intrinsic_vote_all => VoteOp::All,
+                        nir_intrinsic_vote_any => VoteOp::Any,
+                        nir_intrinsic_vote_ieq => VoteOp::Eq,
+                        _ => panic!("Unknown vote intrinsic"),
+                    },
+                    ballot: Dst::None,
+                    vote: dst.into(),
+                    pred: src,
+                });
+                self.set_dst(&intrin.def, dst);
             }
             _ => panic!(
                 "Unsupported intrinsic instruction: {}",
