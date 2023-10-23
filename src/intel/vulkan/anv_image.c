@@ -606,6 +606,7 @@ anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
 static VkResult MUST_CHECK
 add_aux_state_tracking_buffer(struct anv_device *device,
                               struct anv_image *image,
+                              uint64_t state_offset,
                               uint32_t plane)
 {
    assert(image && device);
@@ -647,7 +648,7 @@ add_aux_state_tracking_buffer(struct anv_device *device,
     * lack of testing.  And MI_LOAD/STORE operations require dword-alignment.
     */
    return image_binding_grow(device, image, binding,
-                             ANV_OFFSET_IMPLICIT, state_size, 4096,
+                             state_offset, state_size, 4096,
                              &image->planes[plane].fast_clear_memory_range);
 }
 
@@ -778,7 +779,9 @@ add_aux_surface_if_supported(struct anv_device *device,
       }
 
       if (image->planes[plane].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT)
-         return add_aux_state_tracking_buffer(device, image, plane);
+         return add_aux_state_tracking_buffer(device, image,
+                                              ANV_OFFSET_IMPLICIT,
+                                              plane);
    } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
       if (!isl_surf_supports_ccs(&device->isl_dev,
                                  &image->planes[plane].primary_surface.isl,
@@ -869,7 +872,9 @@ add_aux_surface_if_supported(struct anv_device *device,
       if (result != VK_SUCCESS)
          return result;
 
-      return add_aux_state_tracking_buffer(device, image, plane);
+      return add_aux_state_tracking_buffer(device, image,
+                                           ANV_OFFSET_IMPLICIT,
+                                           plane);
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->vk.samples > 1) {
       assert(!(image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT));
       ok = isl_surf_get_mcs_surf(&device->isl_dev,
@@ -885,7 +890,9 @@ add_aux_surface_if_supported(struct anv_device *device,
       if (result != VK_SUCCESS)
          return result;
 
-      return add_aux_state_tracking_buffer(device, image, plane);
+      return add_aux_state_tracking_buffer(device, image,
+                                           ANV_OFFSET_IMPLICIT,
+                                           plane);
    }
 
    return VK_SUCCESS;
