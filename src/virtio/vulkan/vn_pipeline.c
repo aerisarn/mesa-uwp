@@ -1333,14 +1333,15 @@ vn_CreateGraphicsPipelines(VkDevice device,
                createInfoCount);
    struct vn_graphics_pipeline_fix_tmp *fix_tmp = NULL;
 
-   VN_TRACE_BEGIN("fill_states");
-   for (uint32_t i = 0; i < createInfoCount; i++) {
-      struct vn_graphics_pipeline *pipeline =
-         vn_graphics_pipeline_from_handle(pPipelines[i]);
-      vn_graphics_pipeline_state_fill(&pCreateInfos[i], &pipeline->state,
-                                      &fix_descs[i]);
+   {
+      VN_TRACE_SCOPE("fill_states");
+      for (uint32_t i = 0; i < createInfoCount; i++) {
+         struct vn_graphics_pipeline *pipeline =
+            vn_graphics_pipeline_from_handle(pPipelines[i]);
+         vn_graphics_pipeline_state_fill(&pCreateInfos[i], &pipeline->state,
+                                         &fix_descs[i]);
+      }
    }
-   VN_TRACE_END();
 
    pCreateInfos = vn_fix_graphics_pipeline_create_infos(
       dev, createInfoCount, pCreateInfos, fix_descs, &fix_tmp, alloc);
