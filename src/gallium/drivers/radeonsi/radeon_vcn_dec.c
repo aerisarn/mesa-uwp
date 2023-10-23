@@ -3329,7 +3329,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       list_inithead(&dec->dpb_unref_list);
    }
 
-   dec->tmz_ctx = sctx->vcn_ip_ver <= VCN_2_2_0 && sctx->vcn_ip_ver != VCN_UNKNOWN;
+   dec->tmz_ctx = sctx->vcn_ip_ver < VCN_2_2_0 && sctx->vcn_ip_ver != VCN_UNKNOWN;
 
    return &dec->base;
 
