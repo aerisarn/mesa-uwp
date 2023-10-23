@@ -82,6 +82,8 @@ typedef void *drmDevicePtr;
 #include "ac_llvm_util.h"
 #endif
 
+#include "ac_debug.h"
+
 static bool
 radv_spm_trace_enabled(struct radv_instance *instance)
 {
@@ -607,6 +609,7 @@ radv_report_gpuvm_fault(struct radv_device *device)
       return;
 
    fprintf(stderr, "radv: GPUVM fault detected at address 0x%08" PRIx64 ".\n", fault_info.addr);
+   ac_print_gpuvm_fault_status(stderr, device->physical_device->rad_info.gfx_level, fault_info.status);
 }
 
 static VkResult

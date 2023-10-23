@@ -811,6 +811,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, const struct radv_winsys_submit_i
       if (f) {
          fprintf(f, "VM fault report.\n\n");
          fprintf(f, "Failing VM page: 0x%08" PRIx64 "\n", fault_info.addr);
+         ac_print_gpuvm_fault_status(f, device->physical_device->rad_info.gfx_level, fault_info.status);
          fclose(f);
       }
    }
