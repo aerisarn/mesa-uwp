@@ -557,6 +557,12 @@ lower_first_invocation_to_ballot(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static nir_def *
+lower_read_first_invocation(nir_builder *b, nir_intrinsic_instr *intrin)
+{
+   return nir_read_invocation(b, intrin->src[0].ssa, nir_first_invocation(b));
+}
+
+static nir_def *
 lower_read_invocation_to_cond(nir_builder *b, nir_intrinsic_instr *intrin)
 {
    return nir_read_invocation_cond_ir3(b, intrin->def.bit_size,
@@ -616,6 +622,9 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
    case nir_intrinsic_read_first_invocation:
       if (options->lower_to_scalar && intrin->num_components > 1)
          return lower_subgroup_op_to_scalar(b, intrin);
+
+      if (options->lower_read_first_invocation)
+         return lower_read_first_invocation(b, intrin);
       break;
 
    case nir_intrinsic_load_subgroup_eq_mask:
