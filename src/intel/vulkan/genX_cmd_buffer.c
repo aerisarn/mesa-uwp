@@ -8448,22 +8448,50 @@ genX(write_trtt_entries)(struct anv_trtt_submission *submit)
     * so it's not considering the bias.
     */
    uint32_t dword_write_len = 2;
+   uint32_t qword_write_len = 3;
    uint32_t max_dword_extra_writes = 0x3FE - dword_write_len;
+   uint32_t max_qword_extra_writes = (0x3FE - qword_write_len) / 2;
 
-   /* TODO: writes to contiguous addresses can be combined into a single big
-    * MI_STORE_DATA_IMM instruction.
+   /* What makes the code below quite complicated is the fact that we can
+    * write multiple values with MI_STORE_DATA_IMM as long as the writes go to
+    * contiguous addresses.
     */
 
    for (int i = 0; i < submit->l3l2_binds_len; i++) {
+      int extra_writes = 0;
+      for (int j = i + 1;
+           j < submit->l3l2_binds_len &&
+            extra_writes <= max_qword_extra_writes;
+           j++) {
+         if (submit->l3l2_binds[i].pte_addr + (j - i) * 8 ==
+             submit->l3l2_binds[j].pte_addr) {
+            extra_writes++;
+         } else {
+            break;
+         }
+      }
       bool is_last_write = submit->l1_binds_len == 0 &&
-                           i + 1 == submit->l3l2_binds_len;
+                           i + extra_writes + 1 == submit->l3l2_binds_len;
 
-      anv_batch_emitn(&batch, 5, GENX(MI_STORE_DATA_IMM),
+      uint32_t total_len = GENX(MI_STORE_DATA_IMM_length_bias) +
+                           qword_write_len + (extra_writes * 2);
+      uint32_t *dw;
+      dw = anv_batch_emitn(&batch, total_len, GENX(MI_STORE_DATA_IMM),
          .ForceWriteCompletionCheck = is_last_write,
          .StoreQword = true,
          .Address = anv_address_from_u64(submit->l3l2_binds[i].pte_addr),
-         .ImmediateData = submit->l3l2_binds[i].entry_addr,
       );
+      dw += 3;
+      for (int j = 0; j < extra_writes + 1; j++) {
+         uint64_t entry_addr_64b = submit->l3l2_binds[i + j].entry_addr;
+         *dw = entry_addr_64b & 0xFFFFFFFF;
+         dw++;
+         *dw = (entry_addr_64b >> 32) & 0xFFFFFFFF;
+         dw++;
+      }
+      assert(dw == batch.next);
+
+      i += extra_writes;
    }
 
    for (int i = 0; i < submit->l1_binds_len; i++) {
@@ -8481,10 +8509,10 @@ genX(write_trtt_entries)(struct anv_trtt_submission *submit)
 
       bool is_last_write = i + extra_writes + 1 == submit->l1_binds_len;
 
-      uint32_t dword_full_len = GENX(MI_STORE_DATA_IMM_length_bias) +
-                                dword_write_len + extra_writes;
+      uint32_t total_len = GENX(MI_STORE_DATA_IMM_length_bias) +
+                           dword_write_len + extra_writes;
       uint32_t *dw;
-      dw = anv_batch_emitn(&batch, dword_full_len, GENX(MI_STORE_DATA_IMM),
+      dw = anv_batch_emitn(&batch, total_len, GENX(MI_STORE_DATA_IMM),
          .ForceWriteCompletionCheck = is_last_write,
          .Address = anv_address_from_u64(submit->l1_binds[i].pte_addr),
       );
