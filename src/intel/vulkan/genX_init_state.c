@@ -155,8 +155,15 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
       mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask) > 1 ?
 				    hashing32x32 : NormalMode);
       mode.CrossSliceHashingModeMask = -1;
-      mode.FastClearOptimizationEnable = true;
-      mode.FastClearOptimizationEnableMask = true;
+      /* TODO: Figure out FCV support for other platforms
+       * Testing indicates that FCV is broken on MTL, but works fine on DG2.
+       * Let's disable FCV on MTL for now till we figure out what's wrong.
+       *
+       * Ref: https://gitlab.freedesktop.org/mesa/mesa/-/issues/9987
+       */
+      mode.FastClearOptimizationEnable = intel_device_info_is_dg2(device->info);
+      mode.FastClearOptimizationEnableMask =
+         intel_device_info_is_dg2(device->info);
    }
 #endif
 }
