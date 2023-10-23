@@ -126,7 +126,7 @@ nouveau_icd = custom_target(
   output : 'nouveau_icd.@0@.json'.format(host_machine.cpu()),
   command : [
     prog_python, '@INPUT0@',
-    '--api-version', '1.0', '--xml', '@INPUT1@',
+    '--api-version', '1.1', '--xml', '@INPUT1@',
     '--lib-path', join_paths(icd_lib_path, icd_file_name),
     '--out', '@OUTPUT@',
   ],
@@ -144,7 +144,7 @@ if meson.version().version_compare('>= 0.58')
     output : _dev_icdname,
     command : [
       prog_python, '@INPUT0@',
-      '--api-version', '1.0', '--xml', '@INPUT1@',
+      '--api-version', '1.1', '--xml', '@INPUT1@',
       '--lib-path', meson.current_build_dir() / icd_file_name,
       '--out', '@OUTPUT@',
     ],

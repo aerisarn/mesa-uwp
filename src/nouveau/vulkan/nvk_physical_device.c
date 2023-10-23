@@ -41,6 +41,35 @@
 #include "clc5c0.h"
 #include "clc997.h"
 
+static bool
+nvk_use_nak(const struct nv_device_info *info)
+{
+   const VkShaderStageFlags vk10_stages =
+      VK_SHADER_STAGE_VERTEX_BIT |
+      VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+      VK_SHADER_STAGE_GEOMETRY_BIT |
+      VK_SHADER_STAGE_FRAGMENT_BIT |
+      VK_SHADER_STAGE_COMPUTE_BIT;
+
+   return !(vk10_stages & ~nvk_nak_stages(info));
+}
+
+static uint32_t
+nvk_get_vk_version(const struct nv_device_info *info)
+{
+   /* Version override takes priority */
+   const uint32_t version_override = vk_get_version_override();
+   if (version_override)
+      return version_override;
+
+   /* If we're using codegen for anything, lock to version 1.0 */
+   if (!nvk_use_nak(info))
+      return VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION);
+
+   return VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION);
+}
+
 static void
 nvk_get_device_extensions(const struct nv_device_info *info,
                           struct vk_device_extension_table *ext)
@@ -421,15 +450,13 @@ nvk_get_device_properties(const struct nvk_instance *instance,
                           const struct nv_device_info *info,
                           struct vk_properties *properties)
 {
-   uint32_t version_override = vk_get_version_override();
    const VkSampleCountFlagBits sample_counts = VK_SAMPLE_COUNT_1_BIT |
                                                VK_SAMPLE_COUNT_2_BIT |
                                                VK_SAMPLE_COUNT_4_BIT |
                                                VK_SAMPLE_COUNT_8_BIT;
 
    *properties = (struct vk_properties) {
-      .apiVersion = version_override ? version_override :
-                    VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
+      .apiVersion = nvk_get_vk_version(info),
       .driverVersion = vk_get_driver_version(),
       .vendorID = NVIDIA_VENDOR_ID,
       .deviceID = info->device_id,

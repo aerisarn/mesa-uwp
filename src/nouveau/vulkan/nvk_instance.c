@@ -17,7 +17,7 @@ nvk_EnumerateInstanceVersion(uint32_t *pApiVersion)
 {
    uint32_t version_override = vk_get_version_override();
    *pApiVersion = version_override ? version_override :
-                  VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION);
+                  VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION);
 
    return VK_SUCCESS;
 }
