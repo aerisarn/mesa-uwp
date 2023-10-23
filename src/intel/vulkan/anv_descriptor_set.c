@@ -786,6 +786,20 @@ void anv_DestroyDescriptorSetLayout(
    anv_descriptor_set_layout_unref(device, set_layout);
 }
 
+void
+anv_descriptor_set_layout_print(const struct anv_descriptor_set_layout *layout)
+{
+   fprintf(stderr, "set layout:\n");
+   for (uint32_t b = 0; b < layout->binding_count; b++) {
+      fprintf(stderr, "  binding%03u: offset=0x%08x stride=%03u size=%03u count=%03u\n",
+              b,
+              layout->binding[b].descriptor_offset,
+              layout->binding[b].descriptor_data_size,
+              layout->binding[b].descriptor_stride,
+              layout->binding[b].array_size);
+   }
+}
+
 #define SHA1_UPDATE_VALUE(ctx, x) _mesa_sha1_update(ctx, &(x), sizeof(x));
 
 static void

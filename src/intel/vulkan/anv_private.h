@@ -2443,6 +2443,8 @@ struct anv_descriptor_set_layout {
 void anv_descriptor_set_layout_destroy(struct anv_device *device,
                                        struct anv_descriptor_set_layout *layout);
 
+void anv_descriptor_set_layout_print(const struct anv_descriptor_set_layout *layout);
+
 static inline struct anv_descriptor_set_layout *
 anv_descriptor_set_layout_ref(struct anv_descriptor_set_layout *layout)
 {
