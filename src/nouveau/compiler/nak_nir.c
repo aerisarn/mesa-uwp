@@ -215,6 +215,19 @@ nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    OPT(nir, nir_lower_var_copies);
    OPT(nir, nir_lower_system_values);
    OPT(nir, nir_lower_compute_system_values, NULL);
+
+   const nir_lower_subgroups_options subgroups_options = {
+      .subgroup_size = 32,
+      .ballot_bit_size = 32,
+      .ballot_components = 1,
+      .lower_to_scalar = true,
+      .lower_vote_eq = true,
+      .lower_first_invocation_to_ballot = true,
+      .lower_read_first_invocation = true,
+      .lower_elect = true,
+      .lower_inverse_ballot = true,
+   };
+   OPT(nir, nir_lower_subgroups, &subgroups_options);
 }
 
 static uint16_t
