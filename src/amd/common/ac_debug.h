@@ -59,6 +59,9 @@ bool ac_vm_fault_occurred(enum amd_gfx_level gfx_level, uint64_t *old_dmesg_time
 unsigned ac_get_wave_info(enum amd_gfx_level gfx_level,
                           struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP]);
 
+void ac_print_gpuvm_fault_status(FILE *output, enum amd_gfx_level gfx_level,
+                                 uint32_t status);
+
 #ifdef __cplusplus
 }
 #endif
