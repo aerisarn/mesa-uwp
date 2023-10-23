@@ -455,7 +455,7 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
       return libagx_buffer_texel_address(b, meta_ptr, coord, blocksize_B);
    } else {
       return libagx_image_texel_address(
-         b, meta_ptr, coord, intr->src[2].ssa, blocksize_B,
+         b, meta_ptr, coord, nir_u2u32(b, intr->src[2].ssa), blocksize_B,
          nir_imm_bool(b, dim == GLSL_SAMPLER_DIM_MS), nir_imm_bool(b, layered),
          nir_imm_bool(b, return_index));
    }
@@ -515,6 +515,9 @@ lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
    case nir_intrinsic_image_store:
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_store: {
+      /* Legalize MSAA index */
+      nir_src_rewrite(&intr->src[2], nir_u2u16(b, intr->src[2].ssa));
+
       switch (nir_intrinsic_image_dim(intr)) {
       case GLSL_SAMPLER_DIM_1D:
          lower_1d_image(b, intr);
@@ -525,15 +528,13 @@ lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
          return true;
 
       case GLSL_SAMPLER_DIM_CUBE:
-         if (nir_intrinsic_image_array(intr)) {
+         if (nir_intrinsic_image_array(intr))
             lower_cube_array_image(b, intr);
-            return true;
-         }
 
-         return false;
+         return true;
 
       default:
-         return false;
+         return true;
       }
    }
 
