@@ -694,6 +694,7 @@ add_aux_surface_if_supported(struct anv_device *device,
                              const VkImageFormatListCreateInfo *fmt_list,
                              uint64_t offset,
                              uint32_t stride,
+                             uint64_t aux_state_offset,
                              isl_surf_usage_flags_t isl_extra_usage_flags)
 {
    VkImageAspectFlags aspect = plane_format.aspect;
@@ -780,7 +781,7 @@ add_aux_surface_if_supported(struct anv_device *device,
 
       if (image->planes[plane].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT)
          return add_aux_state_tracking_buffer(device, image,
-                                              ANV_OFFSET_IMPLICIT,
+                                              aux_state_offset,
                                               plane);
    } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
       if (!isl_surf_supports_ccs(&device->isl_dev,
@@ -873,7 +874,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return result;
 
       return add_aux_state_tracking_buffer(device, image,
-                                           ANV_OFFSET_IMPLICIT,
+                                           aux_state_offset,
                                            plane);
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->vk.samples > 1) {
       assert(!(image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT));
@@ -891,7 +892,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return result;
 
       return add_aux_state_tracking_buffer(device, image,
-                                           ANV_OFFSET_IMPLICIT,
+                                           aux_state_offset,
                                            plane);
    }
 
@@ -1286,6 +1287,7 @@ add_all_surfaces_implicit_layout(
       result = add_aux_surface_if_supported(device, image, plane, plane_format,
                                             format_list_info,
                                             ANV_OFFSET_IMPLICIT, plane_stride,
+                                            ANV_OFFSET_IMPLICIT,
                                             isl_extra_usage_flags);
       if (result != VK_SUCCESS)
          return result;
@@ -1378,20 +1380,38 @@ add_all_surfaces_explicit_layout(
          return result;
 
       if (mod_has_aux) {
-         assert(!isl_drm_modifier_get_info(
-                  drm_info->drmFormatModifier)->supports_clear_color);
-
          const VkSubresourceLayout flat_ccs_layout = {
             .offset = ANV_OFFSET_IMPLICIT,
          };
-         const VkSubresourceLayout *aux_layout = devinfo->has_flat_ccs ?
-            &flat_ccs_layout : &drm_info->pPlaneLayouts[1];
+
+         const VkSubresourceLayout *aux_layout;
+
+         uint64_t aux_state_offset = ANV_OFFSET_IMPLICIT;
+
+         /* We already asserted on image->n_planes == 1 when mod_has_aux is
+          * true above, so the indexes of aux and clear color are just hard-
+          * coded without ambiguity.
+          */
+         if (devinfo->has_flat_ccs) {
+            aux_layout = &flat_ccs_layout;
+            if (isl_drm_modifier_get_info(
+                  drm_info->drmFormatModifier)->supports_clear_color) {
+               aux_state_offset = drm_info->pPlaneLayouts[1].offset;
+            }
+         } else {
+            aux_layout = &drm_info->pPlaneLayouts[1];
+            if (isl_drm_modifier_get_info(
+                  drm_info->drmFormatModifier)->supports_clear_color) {
+               aux_state_offset = drm_info->pPlaneLayouts[2].offset;
+            }
+         }
 
          result = add_aux_surface_if_supported(device, image, plane,
                                                format_plane,
                                                format_list_info,
                                                aux_layout->offset,
                                                aux_layout->rowPitch,
+                                               aux_state_offset,
                                                isl_extra_usage_flags);
          if (result != VK_SUCCESS)
             return result;
