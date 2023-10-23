@@ -2728,16 +2728,7 @@ radv_find_shader(struct radv_device *device, uint64_t pc)
          uint64_t start = radv_buffer_get_va(block->arena->bo) + block->offset;
          if (!block->freelist.prev && pc >= start && pc < start + block->size) {
             mtx_unlock(&device->shader_arena_mutex);
-
-            struct radv_pipeline *pipeline = (struct radv_pipeline *)block->freelist.next;
-            for (uint32_t i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
-               struct radv_shader *shader = pipeline->shaders[i];
-               if (!shader)
-                  continue;
-
-               if (pc >= shader->va && pc < shader->va + align(shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT))
-                  return shader;
-            }
+            return (struct radv_shader *)block->freelist.next;
          }
       }
    }
