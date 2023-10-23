@@ -210,6 +210,7 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
     *  both the cases set Render Target Cache Flush Enable".
     */
    genx_batch_emit_pipe_control(batch, device->info,
+                                0,
                                 ANV_PIPE_CS_STALL_BIT |
                                 ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT);
 #endif
@@ -573,7 +574,7 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
    anv_batch_emit(&batch, GENX(STATE_COMPUTE_MODE), zero);
    anv_batch_emit(&batch, GENX(3DSTATE_MESH_CONTROL), zero);
    anv_batch_emit(&batch, GENX(3DSTATE_TASK_CONTROL), zero);
-   genx_batch_emit_pipe_control_write(&batch, device->info, NoWrite,
+   genx_batch_emit_pipe_control_write(&batch, device->info, _3D, NoWrite,
                                       ANV_NULL_ADDRESS,
                                       0,
                                       ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS);
@@ -582,7 +583,7 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
       cfe.MaximumNumberofThreads =
          devinfo->max_cs_threads * devinfo->subslice_total;
    }
-   genx_batch_emit_pipe_control_write(&batch, device->info, NoWrite,
+   genx_batch_emit_pipe_control_write(&batch, device->info, _3D, NoWrite,
                                       ANV_NULL_ADDRESS,
                                       0,
                                       ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS);
@@ -633,7 +634,7 @@ init_compute_queue_state(struct anv_queue *queue)
     */
    if (intel_needs_workaround(devinfo, 14015782607) &&
        queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
-      genx_batch_emit_pipe_control(&batch, devinfo,
+      genx_batch_emit_pipe_control(&batch, devinfo, GPGPU,
                                    ANV_PIPE_CS_STALL_BIT |
                                    ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT |
                                    ANV_PIPE_HDC_PIPELINE_FLUSH_BIT);
@@ -646,7 +647,7 @@ init_compute_queue_state(struct anv_queue *queue)
    if (intel_device_info_is_atsm(devinfo) &&
        queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
       genx_batch_emit_pipe_control
-         (&batch, devinfo,
+         (&batch, devinfo, GPGPU,
           ANV_PIPE_CS_STALL_BIT |
           ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
           ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT |
@@ -1181,6 +1182,7 @@ genX(apply_task_urb_workaround)(struct anv_cmd_buffer *cmd_buffer)
    /* Issue 'nullprim' to commit the state. */
    genx_batch_emit_pipe_control_write
       (&cmd_buffer->batch, cmd_buffer->device->info,
+       cmd_buffer->state.current_pipeline,
        WriteImmediateData, cmd_buffer->device->workaround_address, 0, 0);
 #endif
 }
