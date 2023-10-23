@@ -1418,23 +1418,10 @@ get_num_planes(const struct pipe_resource *resource)
 
 static unsigned
 get_main_plane_for_plane(enum pipe_format format,
-                         const struct isl_drm_modifier_info *mod_info,
                          unsigned plane)
 {
    unsigned int n_planes = util_format_get_num_planes(format);
-
-   if (n_planes == 1)
-      return 0;
-
-   if (!mod_info)
-      return plane;
-
-   if (mod_info->supports_media_compression) {
-      return plane % n_planes;
-   } else {
-      assert(!mod_info->supports_render_compression);
-      return plane;
-   }
+   return plane % n_planes;
 }
 
 static struct pipe_resource *
@@ -1794,7 +1781,7 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct iris_resource *base_res = (struct iris_resource *)resource;
    unsigned main_plane = get_main_plane_for_plane(base_res->external_format,
-                                                  base_res->mod_info, plane);
+                                                  plane);
    struct iris_resource *res =
       (struct iris_resource *)util_resource_at_index(resource, main_plane);
    assert(res);
