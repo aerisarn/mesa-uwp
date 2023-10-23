@@ -4926,10 +4926,12 @@ anv_bo_allows_aux_map(const struct anv_device *device,
    if (device->aux_map_ctx == NULL)
       return false;
 
-   if (bo->has_implicit_ccs == false)
+   /* Technically, we really only care about what offset the image is bound
+    * into on the BO, but we don't have that information here. As a heuristic,
+    * rely on the BO offset instead.
+    */
+   if (bo->offset % intel_aux_map_get_alignment(device->aux_map_ctx) != 0)
       return false;
-
-   assert(bo->offset % intel_aux_map_get_alignment(device->aux_map_ctx) == 0);
 
    return true;
 }
