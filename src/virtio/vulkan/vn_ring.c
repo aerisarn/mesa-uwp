@@ -89,7 +89,13 @@ vn_ring_retire_submits(struct vn_ring *ring, uint32_t seqno)
    }
 }
 
-static uint32_t
+bool
+vn_ring_get_seqno_status(struct vn_ring *ring, uint32_t seqno)
+{
+   return vn_ring_ge_seqno(ring, vn_ring_load_head(ring), seqno);
+}
+
+void
 vn_ring_wait_seqno(struct vn_ring *ring, uint32_t seqno)
 {
    /* A renderer wait incurs several hops and the renderer might poll
@@ -97,10 +103,9 @@ vn_ring_wait_seqno(struct vn_ring *ring, uint32_t seqno)
     */
    struct vn_relax_state relax_state = vn_relax_init(ring, "ring seqno");
    do {
-      const uint32_t head = vn_ring_load_head(ring);
-      if (vn_ring_ge_seqno(ring, head, seqno)) {
+      if (vn_ring_get_seqno_status(ring, seqno)) {
          vn_relax_fini(&relax_state);
-         return head;
+         return;
       }
       vn_relax(&relax_state);
    } while (true);
@@ -268,13 +273,4 @@ vn_ring_submit(struct vn_ring *ring,
 
    /* notify renderer to wake up ring if idle */
    return status & VK_RING_STATUS_IDLE_BIT_MESA;
-}
-
-/**
- * This is thread-safe.
- */
-void
-vn_ring_wait(struct vn_ring *ring, uint32_t seqno)
-{
-   vn_ring_wait_seqno(ring, seqno);
 }

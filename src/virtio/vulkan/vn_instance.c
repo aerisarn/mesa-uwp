@@ -541,7 +541,7 @@ vn_instance_submit_command(struct vn_instance *instance,
          VN_CS_DECODER_INITIALIZER(reply_ptr, submit->reply_size);
 
       if (submit->ring_seqno_valid)
-         vn_ring_wait(&instance->ring.ring, submit->ring_seqno);
+         vn_ring_wait_seqno(&instance->ring.ring, submit->ring_seqno);
    }
 
    return;

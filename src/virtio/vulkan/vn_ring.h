@@ -117,7 +117,10 @@ vn_ring_submit(struct vn_ring *ring,
                const struct vn_cs_encoder *cs,
                uint32_t *seqno);
 
+bool
+vn_ring_get_seqno_status(struct vn_ring *ring, uint32_t seqno);
+
 void
-vn_ring_wait(struct vn_ring *ring, uint32_t seqno);
+vn_ring_wait_seqno(struct vn_ring *ring, uint32_t seqno);
 
 #endif /* VN_RING_H */
