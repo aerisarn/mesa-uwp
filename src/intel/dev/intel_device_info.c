@@ -1151,6 +1151,12 @@ static const struct intel_device_info intel_device_info_mtl_p = {
    .platform = INTEL_PLATFORM_MTL_P,
 };
 
+bool
+intel_device_info_is_adln(const struct intel_device_info *devinfo)
+{
+   return devinfo == &intel_device_info_adl_n;
+}
+
 void
 intel_device_info_topology_reset_masks(struct intel_device_info *devinfo)
 {
