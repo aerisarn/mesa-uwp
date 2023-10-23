@@ -79,8 +79,8 @@ get_prog_optimize(void)
    return debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
 }
 
-static uint32_t
-get_nak_stages(void)
+VkShaderStageFlags
+nvk_nak_stages(void)
 {
    const struct debug_control flags[] = {
       { "vs", BITFIELD64_BIT(MESA_SHADER_VERTEX) },
@@ -99,7 +99,7 @@ get_nak_stages(void)
 static bool
 use_nak(gl_shader_stage stage)
 {
-   return get_nak_stages() & BITFIELD64_BIT(stage);
+   return nvk_nak_stages() & BITFIELD64_BIT(stage);
 }
 
 uint64_t
@@ -107,7 +107,7 @@ nvk_physical_device_compiler_flags(const struct nvk_physical_device *pdev)
 {
    uint64_t prog_debug = get_prog_debug();
    uint64_t prog_optimize = get_prog_optimize();
-   uint64_t nak_stages = get_nak_stages();
+   uint64_t nak_stages = nvk_nak_stages();
    uint64_t nak_flags = nak_debug_flags(pdev->nak);
 
    assert(prog_debug <= UINT8_MAX);
@@ -153,6 +153,9 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdev,
          .runtime_descriptor_array = true,
          .shader_clock = true,
          .shader_viewport_index_layer = true,
+         .subgroup_ballot = true,
+         .subgroup_basic = true,
+         .subgroup_vote = true,
          .tessellation = true,
          .transform_feedback = true,
          .variable_pointers = true,
