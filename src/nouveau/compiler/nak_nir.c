@@ -318,15 +318,12 @@ nak_sysval_sysval_idx(gl_system_value sysval)
 }
 
 static bool
-nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
+nak_nir_lower_system_value_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
+                                  void *data)
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   b->cursor = nir_before_instr(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *val;
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_layer_id: {
       const uint32_t addr = nak_varying_attr_addr(VARYING_SLOT_LAYER);
@@ -419,10 +416,10 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
 static bool
 nak_nir_lower_system_values(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir, nak_nir_lower_system_value_instr,
-                                       nir_metadata_block_index |
-                                       nir_metadata_dominance,
-                                       NULL);
+   return nir_shader_intrinsics_pass(nir, nak_nir_lower_system_value_intrin,
+                                     nir_metadata_block_index |
+                                     nir_metadata_dominance,
+                                     NULL);
 }
 
 static bool
