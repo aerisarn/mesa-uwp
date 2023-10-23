@@ -233,7 +233,7 @@ radv_cs_write_data_head(const struct radv_device *device, struct radeon_cmdbuf *
    /* Return the correct cdw at the end of the packet so the caller can assert it. */
    const unsigned cdw_end = radeon_check_space(device->ws, cs, 4 + count);
 
-   radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, false));
+   radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, predicating));
    radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(engine_sel));
    radeon_emit(cs, va);
    radeon_emit(cs, va >> 32);
