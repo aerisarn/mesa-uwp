@@ -1864,6 +1864,37 @@ impl<'a> ShaderFromNir<'a> {
                     _ => panic!("Unhandled execution scope"),
                 }
             }
+            nir_intrinsic_read_invocation
+            | nir_intrinsic_shuffle
+            | nir_intrinsic_shuffle_down
+            | nir_intrinsic_shuffle_up
+            | nir_intrinsic_shuffle_xor => {
+                assert!(srcs[0].bit_size() == 32);
+                assert!(srcs[0].num_components() == 1);
+                let data = self.get_src(&srcs[0]);
+
+                assert!(srcs[1].bit_size() == 32);
+                let idx = self.get_src(&srcs[1]);
+
+                assert!(intrin.def.bit_size() == 32);
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpShfl {
+                    dst: dst.into(),
+                    src: data,
+                    lane: idx,
+                    c: 0x1f.into(),
+                    op: match intrin.intrinsic {
+                        nir_intrinsic_read_invocation
+                        | nir_intrinsic_shuffle => ShflOp::Idx,
+                        nir_intrinsic_shuffle_down => ShflOp::Down,
+                        nir_intrinsic_shuffle_up => ShflOp::Up,
+                        nir_intrinsic_shuffle_xor => ShflOp::Bfly,
+                        _ => panic!("Unknown vote intrinsic"),
+                    },
+                });
+                self.set_dst(&intrin.def, dst);
+            }
             nir_intrinsic_shared_atomic => {
                 let bit_size = intrin.def.bit_size();
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
