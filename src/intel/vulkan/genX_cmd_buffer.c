@@ -8441,6 +8441,15 @@ genX(write_trtt_entries)(struct anv_trtt_submission *submit)
       .end = (void *)cmds + batch_size,
    };
 
+   /* BSpec says:
+    *   "DWord Length programmed must not exceed 0x3FE."
+    * For a single dword write the programmed length is 2, and for a single
+    * qword it's 3. This is the value we actually write to the register field,
+    * so it's not considering the bias.
+    */
+   uint32_t dword_write_len = 2;
+   uint32_t max_dword_extra_writes = 0x3FE - dword_write_len;
+
    /* TODO: writes to contiguous addresses can be combined into a single big
     * MI_STORE_DATA_IMM instruction.
     */
@@ -8458,14 +8467,35 @@ genX(write_trtt_entries)(struct anv_trtt_submission *submit)
    }
 
    for (int i = 0; i < submit->l1_binds_len; i++) {
-      bool is_last_write = i + 1 == submit->l1_binds_len;
-
-      anv_batch_emit(&batch, GENX(MI_STORE_DATA_IMM), sdi) {
-         sdi.ForceWriteCompletionCheck = is_last_write;
-         sdi.Address = anv_address_from_u64(submit->l1_binds[i].pte_addr);
-         sdi.ImmediateData =
-            (submit->l1_binds[i].entry_addr >> 16) & 0xFFFFFFFF;
+      int extra_writes = 0;
+      for (int j = i + 1;
+           j < submit->l1_binds_len && extra_writes <= max_dword_extra_writes;
+           j++) {
+         if (submit->l1_binds[i].pte_addr + (j - i) * 4 ==
+             submit->l1_binds[j].pte_addr) {
+            extra_writes++;
+         } else {
+            break;
+         }
       }
+
+      bool is_last_write = i + extra_writes + 1 == submit->l1_binds_len;
+
+      uint32_t dword_full_len = GENX(MI_STORE_DATA_IMM_length_bias) +
+                                dword_write_len + extra_writes;
+      uint32_t *dw;
+      dw = anv_batch_emitn(&batch, dword_full_len, GENX(MI_STORE_DATA_IMM),
+         .ForceWriteCompletionCheck = is_last_write,
+         .Address = anv_address_from_u64(submit->l1_binds[i].pte_addr),
+      );
+      dw += 3;
+      for (int j = 0; j < extra_writes + 1; j++) {
+         *dw = (submit->l1_binds[i + j].entry_addr >> 16) & 0xFFFFFFFF;
+         dw++;
+      }
+      assert(dw == batch.next);
+
+      i += extra_writes;
    }
 
    anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
