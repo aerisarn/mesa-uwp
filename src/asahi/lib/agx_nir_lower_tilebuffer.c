@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <stdint.h>
 #include "compiler/agx_internal_formats.h"
 #include "compiler/glsl_types.h"
+#include "util/format/u_format.h"
 #include "util/macros.h"
 #include "agx_nir_format_helpers.h"
 #include "agx_pack.h"
@@ -55,6 +57,24 @@ store_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
          value = nir_u2u32(b, value);
       else
          value = nir_f2f32(b, value);
+   }
+
+   /* 8-bit formats must be clamped in software, so do so on store. Piglit
+    * gl-3.0-render-integer checks this.
+    */
+   const struct util_format_description *desc = util_format_description(format);
+   unsigned c = util_format_get_first_non_void_channel(format);
+
+   if (desc->channel[c].size == 8 && util_format_is_pure_integer(format)) {
+      assert(desc->is_array);
+
+      value = nir_u2u16(b, value);
+      if (util_format_is_pure_sint(logical_format)) {
+         value = nir_iclamp(b, value, nir_imm_intN_t(b, INT8_MIN, 16),
+                            nir_imm_intN_t(b, INT8_MAX, 16));
+      } else {
+         value = nir_umin(b, value, nir_imm_intN_t(b, UINT8_MAX, 16));
+      }
    }
 
    uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
