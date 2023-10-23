@@ -248,30 +248,30 @@ static void si_emit_one_scissor(struct si_context *ctx, struct radeon_cmdbuf *cs
 
 #define MAX_PA_SU_HARDWARE_SCREEN_OFFSET 8176
 
-static void si_emit_guardband(struct si_context *ctx, unsigned index)
+static void si_emit_guardband(struct si_context *sctx, unsigned index)
 {
-   const struct si_state_rasterizer *rs = ctx->queued.named.rasterizer;
+   const struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    struct si_signed_scissor vp_as_scissor;
    struct pipe_viewport_state vp;
    float left, top, right, bottom, max_range, guardband_x, guardband_y;
    float discard_x, discard_y;
 
-   if (ctx->vs_writes_viewport_index) {
+   if (sctx->vs_writes_viewport_index) {
       /* Shaders can draw to any viewport. Make a union of all
        * viewports. */
-      vp_as_scissor = ctx->viewports.as_scissor[0];
+      vp_as_scissor = sctx->viewports.as_scissor[0];
       for (unsigned i = 1; i < SI_MAX_VIEWPORTS; i++) {
-         si_scissor_make_union(&vp_as_scissor, &ctx->viewports.as_scissor[i]);
+         si_scissor_make_union(&vp_as_scissor, &sctx->viewports.as_scissor[i]);
       }
    } else {
-      vp_as_scissor = ctx->viewports.as_scissor[0];
+      vp_as_scissor = sctx->viewports.as_scissor[0];
    }
 
    /* Blits don't set the viewport state. The vertex shader determines
     * the viewport size by scaling the coordinates, so we don't know
     * how large the viewport is. Assume the worst case.
     */
-   if (ctx->vs_disables_clipping_viewport)
+   if (sctx->vs_disables_clipping_viewport)
       vp_as_scissor.quant_mode = SI_QUANT_MODE_16_8_FIXED_POINT_1_256TH;
 
    /* Determine the optimal hardware screen offset to center the viewport
@@ -282,8 +282,8 @@ static void si_emit_guardband(struct si_context *ctx, unsigned index)
 
    /* GFX6-GFX7 need to align the offset to an ubertile consisting of all SEs. */
    const unsigned hw_screen_offset_alignment =
-      ctx->gfx_level >= GFX11 ? 32 :
-      ctx->gfx_level >= GFX8 ? 16 : MAX2(ctx->screen->se_tile_repeat, 16);
+      sctx->gfx_level >= GFX11 ? 32 :
+      sctx->gfx_level >= GFX8 ? 16 : MAX2(sctx->screen->se_tile_repeat, 16);
 
    /* Indexed by quantization modes */
    static int max_viewport_size[] = {65535, 16383, 4095};
@@ -346,12 +346,12 @@ static void si_emit_guardband(struct si_context *ctx, unsigned index)
    discard_x = 1.0;
    discard_y = 1.0;
 
-   if (unlikely(util_prim_is_points_or_lines(ctx->current_rast_prim))) {
+   if (unlikely(util_prim_is_points_or_lines(sctx->current_rast_prim))) {
       /* When rendering wide points or lines, we need to be more
        * conservative about when to discard them entirely. */
       float pixels;
 
-      if (ctx->current_rast_prim == MESA_PRIM_POINTS)
+      if (sctx->current_rast_prim == MESA_PRIM_POINTS)
          pixels = rs->max_point_size;
       else
          pixels = rs->line_width;
@@ -370,19 +370,19 @@ static void si_emit_guardband(struct si_context *ctx, unsigned index)
     * R_028BE8_PA_CL_GB_VERT_CLIP_ADJ, R_028BEC_PA_CL_GB_VERT_DISC_ADJ
     * R_028BF0_PA_CL_GB_HORZ_CLIP_ADJ, R_028BF4_PA_CL_GB_HORZ_DISC_ADJ
     */
-   radeon_begin(&ctx->gfx_cs);
-   radeon_opt_set_context_reg5(ctx, R_028BE4_PA_SU_VTX_CNTL, SI_TRACKED_PA_SU_VTX_CNTL,
+   radeon_begin(&sctx->gfx_cs);
+   radeon_opt_set_context_reg5(sctx, R_028BE4_PA_SU_VTX_CNTL, SI_TRACKED_PA_SU_VTX_CNTL,
                                S_028BE4_PIX_CENTER(rs->half_pixel_center) |
                                S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |
                                S_028BE4_QUANT_MODE(V_028BE4_X_16_8_FIXED_POINT_1_256TH +
                                                    vp_as_scissor.quant_mode),
                                fui(guardband_y), fui(discard_y),
                                fui(guardband_x), fui(discard_x));
-   radeon_opt_set_context_reg(ctx, R_028234_PA_SU_HARDWARE_SCREEN_OFFSET,
+   radeon_opt_set_context_reg(sctx, R_028234_PA_SU_HARDWARE_SCREEN_OFFSET,
                               SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET,
                               S_028234_HW_SCREEN_OFFSET_X(hw_screen_offset_x >> 4) |
                               S_028234_HW_SCREEN_OFFSET_Y(hw_screen_offset_y >> 4));
-   radeon_end_update_context_roll(ctx);
+   radeon_end_update_context_roll(sctx);
 }
 
 static void si_emit_scissors(struct si_context *ctx, unsigned index)
