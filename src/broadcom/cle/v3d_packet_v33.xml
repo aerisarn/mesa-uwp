@@ -1,4 +1,4 @@
-<vcxml gen="3.3" min_ver="33" max_ver="71">
+<vcxml gen="3.3" min_ver="42" max_ver="71">
 
   <enum name="Compare Function" prefix="V3D_COMPARE_FUNC">
     <value name="NEVER" value="0"/>
@@ -69,30 +69,7 @@
     <value name="TRIANGLE_FAN_TF" value="22"/>
   </enum>
 
-  <enum name="TMU Filter" prefix="V3D_TMU_FILTER" max_ver="33">
-    <!-- Names are mip filter, min filter, mag filter -->
-    <value name="MIN_LIN_MIP_NONE_MAG_LIN" value="0"/>
-    <value name="MIN_LIN_MIP_NONE_MAG_NEAR" value="1"/>
-    <value name="MIN_NEAR_MIP_NONE_MAG_LIN" value="2"/>
-    <value name="MIN_NEAR_MIP_NONE_MAG_NEAR" value="3"/>
-
-    <value name="MIN_NEAR_MIP_NEAR_MAG_LIN" value="4"/>
-    <value name="MIN_NEAR_MIP_NEAR_MAG_NEAR" value="5"/>
-    <value name="MIN_NEAR_MIP_LIN_MAG_LIN" value="6"/>
-    <value name="MIN_NEAR_MIP_LIN_MAG_NEAR" value="7"/>
-
-    <value name="MIN_LIN_MIP_NEAR_MAG_LIN" value="8"/>
-    <value name="MIN_LIN_MIP_NEAR_MAG_NEAR" value="9"/>
-    <value name="MIN_LIN_MIP_LIN_MAG_LIN" value="10"/>
-    <value name="MIN_LIN_MIP_LIN_MAG_NEAR" value="11"/>
-
-    <value name="ANISOTROPIC_2_1" value="12"/>
-    <value name="ANISOTROPIC_4_1" value="13"/>
-    <value name="ANISOTROPIC_8_1" value="14"/>
-    <value name="ANISOTROPIC_16_1" value="15"/>
-  </enum>
-
-  <enum name="Border Color Mode" prefix="V3D_BORDER_COLOR" min_ver="41">
+  <enum name="Border Color Mode" prefix="V3D_BORDER_COLOR">
     <value name="0000" value="0"/>
     <value name="0001" value="1"/>
     <value name="1111" value="2"/>
@@ -107,7 +84,7 @@
       <value name="MIRROR_ONCE" value="4"/>
   </enum>
 
-  <enum name="TMU Op" prefix="V3D_TMU_OP" min_ver="41">
+  <enum name="TMU Op" prefix="V3D_TMU_OP">
     <value name="Write ADD, Read Prefetch" value="0"/>
     <value name="Write SUB, Read Clear" value="1"/>
     <value name="Write XCHG, Read Flush" value="2"/>
@@ -167,11 +144,11 @@
     <value name="depth_16" value="2"/>
   </enum>
 
-  <enum name="Render Target Clamp" prefix="V3D_RENDER_TARGET_CLAMP" min_ver="41" max_ver="42">
+  <enum name="Render Target Clamp" prefix="V3D_RENDER_TARGET_CLAMP" max_ver="42">
     <value name="none" value="0"/> <!-- no clamping -->
     <value name="norm" value="1"/> <!-- [0,1] for f16 -->
     <value name="pos" value="2"/> <!-- [0, for f16 -->
-    <value name="int" value="3" min_ver="42"/> <!-- clamp to integer RT's range -->
+    <value name="int" value="3"/> <!-- clamp to integer RT's range -->
   </enum>
 
   <enum name="Render Target Type Clamp" prefix="V3D_RENDER_TARGET_TYPE_CLAMP" min_ver="71">
@@ -284,15 +261,13 @@
     <value name="rgba8ui"  value="34"/>
     <value name="rg8ui"    value="35"/>
     <value name="r8ui"     value="36"/>
-    <value name="srgbx8"   value="37" max_ver="33"/>
-    <value name="rgbx8"    value="38" max_ver="33"/>
-    <value name="bstc8"    value="39" min_ver="41"/>
-    <value name="d32f"     value="40" min_ver="41"/>
-    <value name="d24"      value="41" min_ver="41"/>
-    <value name="d16"      value="42" min_ver="41"/>
-    <value name="d24s8"    value="43" min_ver="41"/>
-    <value name="s8"       value="44" min_ver="41"/>
-    <value name="rgba5551" value="45" min_ver="41"/>
+    <value name="bstc8"    value="39"/>
+    <value name="d32f"     value="40"/>
+    <value name="d24"      value="41"/>
+    <value name="d16"      value="42"/>
+    <value name="d24s8"    value="43"/>
+    <value name="s8"       value="44"/>
+    <value name="rgba5551" value="45"/>
     <value name="bstc8_srgb"          value="46" min_ver="71"/>
     <value name="bstc10"              value="47" min_ver="71"/>
     <value name="bstc10_srgb"         value="48" min_ver="71"/>
@@ -307,13 +282,6 @@
     <value name="bstc10_hlg_bt1886"   value="61" min_ver="71"/>
     <value name="rgba10x6_hlg_bt1886" value="62" min_ver="71"/>
     <value name="rgb10_a2_hlg_bt1886" value="63" min_ver="71"/>
-  </enum>
-
-  <enum name="Z/S Output Image Format" prefix="V3D_OUTPUT_IMAGE_FORMAT_ZS" max_ver="33">
-    <value name="depth_component32f" value="0"/>
-    <value name="depth_component24" value="1"/> <!-- depth low, pad high -->
-    <value name="depth_component16" value="2"/>
-    <value name="depth24_stencil8" value="3"/> <!-- stencil low, depth high -->
   </enum>
 
   <enum name="Dither Mode" prefix="V3D_DITHER_MODE">
@@ -410,59 +378,18 @@
     <field name="column number in supertiles" size="8" start="0" type="uint"/>
   </packet>
 
-  <packet code="24" shortname="store_subsample" name="Store Multi-Sample Resolved Tile Color Buffer" cl="R" max_ver="33"/>
-
-  <packet code="25" shortname="store_subsample_ex" name="Store Multi-Sample Resolved Tile Color Buffer (extended)" cl="R" max_ver="33">
-    <field name="Disable Color Buffer write" size="8" start="8" type="uint"/>
-    <field name="Enable Z write" size="1" start="7" type="bool"/>
-    <field name="Enable Stencil write" size="1" start="6" type="bool"/>
-    <!-- bit 5 unused -->
-    <field name="Disable Color buffer(s) clear on write" size="1" start="4" type="bool"/>
-    <field name="Disable Stencil buffer clear on write" size="1" start="3" type="bool"/>
-    <field name="Disable Z buffer clear on write" size="1" start="2" type="bool"/>
-    <field name="Disable fast opportunistic write out in multisample mode" size="1" start="1" type="bool"/>
-    <field name="Last Tile of Frame" size="1" start="0" type="bool"/>
-  </packet>
-
-  <packet code="25" shortname="clear" name="Clear Tile Buffers" cl="R" min_ver="41" max_ver="42">
+  <packet code="25" shortname="clear" name="Clear Tile Buffers" cl="R" max_ver="42">
     <field name="Clear Z/Stencil Buffer" size="1" start="1" type="bool"/>
     <field name="Clear all Render Targets" size="1" start="0" type="bool"/>
   </packet>
 
   <packet code="25" shortname="clear_rt" name="Clear Render Targets" cl="R" min_ver="71"/>
 
-  <packet code="26" shortname="load" name="Reload Tile Color Buffer" cl="R" max_ver="33">
-    <field name="Disable Color Buffer load" size="8" start="8" type="uint"/>
-    <field name="Enable Z load" size="1" start="7" type="bool"/>
-    <field name="Enable Stencil load" size="1" start="6" type="bool"/>
-  </packet>
-
-  <packet code="26" shortname="end_loads" name="End of Loads" cl="R" min_ver="41"/>
+  <packet code="26" shortname="end_loads" name="End of Loads" cl="R"/>
 
   <packet code="27" shortname="end_tile" name="End of Tile Marker" cl="R"/>
 
-  <packet code="29" shortname="store_general" name="Store Tile Buffer General" cl="R" max_ver="33">
-    <field name="Address" size="24" start="24" type="address"/>
-    <field name="Padded height of output image in UIF blocks" size="13" start="11" type="uint"/>
-    <field name="XOR UIF" size="1" start="10" type="bool"/>
-    <field name="Last Tile of Frame" size="1" start="8" type="bool"/>
-    <field name="Disable Color buffer(s) clear on write" size="1" start="7" type="bool"/>
-    <field name="Disable Stencil buffer clear on write" size="1" start="6" type="bool"/>
-    <field name="Disable Z buffer clear on write" size="1" start="5" type="bool"/>
-    <field name="Raw Mode" size="1" start="4" type="bool"/>
-    <field name="Buffer to Store" size="4" start="0" type="uint">
-      <value name="Render target 0" value="0"/>
-      <value name="Render target 1" value="1"/>
-      <value name="Render target 2" value="2"/>
-      <value name="Render target 3" value="3"/>
-      <value name="None" value="8"/>
-      <value name="Z" value="9"/>
-      <value name="Stencil" value="10"/>
-      <value name="Z+Stencil" value="11"/>
-    </field>
-  </packet>
-
-  <packet code="29" shortname="store" name="Store Tile Buffer General" cl="R" min_ver="41">
+  <packet code="29" shortname="store" name="Store Tile Buffer General" cl="R">
     <field name="Address" size="32" start="64" type="address"/>
 
     <!-- used for y flip -->
@@ -499,24 +426,7 @@
     </field>
   </packet>
 
-  <packet code="30" shortname="load_general" name="Load Tile Buffer General" cl="R" max_ver="33">
-    <field name="Address" size="24" start="24" type="address"/>
-    <field name="Padded height of output image in UIF blocks" size="13" start="11" type="uint"/>
-    <field name="XOR UIF" size="1" start="10" type="bool"/>
-    <field name="Raw Mode" size="1" start="4" type="bool"/>
-    <field name="Buffer to Load" size="4" start="0" type="uint">
-      <value name="Render target 0" value="0"/>
-      <value name="Render target 1" value="1"/>
-      <value name="Render target 2" value="2"/>
-      <value name="Render target 3" value="3"/>
-      <value name="None" value="8"/>
-      <value name="Z" value="9"/>
-      <value name="Stencil" value="10"/>
-      <value name="Z+Stencil" value="11"/>
-    </field>
-  </packet>
-
-  <packet code="30" shortname="load" name="Load Tile Buffer General" cl="R" min_ver="41">
+  <packet code="30" shortname="load" name="Load Tile Buffer General" cl="R">
     <field name="Address" size="32" start="64" type="address"/>
 
     <!-- used for y flip -->
@@ -550,23 +460,7 @@
 
   <packet code="31" shortname="tf_draw_flush_and_count" name="Transform Feedback Flush and Count"/>
 
-  <packet code="32" name="Indexed Prim List" cl="B" max_ver="33">
-    <field name="Minimum index" size="32" start="104" type="uint"/>
-    <field name="Enable Primitive Restarts" size="1" start="103" type="bool"/>
-    <field name="Maximum index" size="31" start="72" type="uint"/>
-    <field name="Address of Indices List" size="32" start="40" type="address"/>
-    <field name="Length" size="32" start="8" type="uint"/>
-
-    <field name="Index type" size="2" start="6" type="uint">
-      <value name="Index type 8-bit" value="0"/>
-      <value name="Index type 16-bit" value="1"/>
-      <value name="Index type 32-bit" value="2"/>
-    </field>
-
-    <field name="mode" size="5" start="0" type="Primitive"/>
-  </packet>
-
-  <packet code="32" name="Indexed Prim List" cl="B" min_ver="41">
+  <packet code="32" name="Indexed Prim List" cl="B">
     <field name="Index Offset" size="32" start="40" type="uint"/>
 
     <field name="Enable Primitive Restarts" size="1" start="39" type="bool"/>
@@ -581,23 +475,7 @@
     <field name="mode" size="6" start="0" type="Primitive"/>
   </packet>
 
-  <packet code="33" name="Indirect Indexed Instanced Prim List" cl="B" max_ver="33">
-    <field name="Stride in Multiples of 4 Bytes" size="8" start="104" type="uint"/>
-    <field name="Address of Indices List" size="32" start="72" type="address"/>
-    <field name="Address" size="32" start="40" type="address"/>
-    <field name="Enable Primitive Restarts" size="1" start="39" type="bool"/>
-    <field name="Number of Draw Indirect Indexed Records" size="31" start="8" type="uint"/>
-
-    <field name="Index type" size="2" start="6" type="uint">
-      <value name="Index type 8-bit" value="0"/>
-      <value name="Index type 16-bit" value="1"/>
-      <value name="Index type 32-bit" value="2"/>
-    </field>
-
-    <field name="mode" size="6" start="0" type="Primitive"/>
-  </packet>
-
-  <packet code="33" name="Indirect Indexed Instanced Prim List" cl="B" min_ver="41">
+  <packet code="33" name="Indirect Indexed Instanced Prim List" cl="B">
     <field name="Stride in Multiples of 4 Bytes" size="8" start="72" type="uint"/>
     <field name="Address" size="32" start="40" type="address"/>
     <field name="Enable Primitive Restarts" size="1" start="39" type="bool"/>
@@ -612,23 +490,7 @@
     <field name="mode" size="6" start="0" type="Primitive"/>
   </packet>
 
-  <packet code="34" name="Indexed Instanced Prim List" cl="B" max_ver="33">
-    <field name="Enable Primitive Restarts" size="1" start="135" type="bool"/>
-    <field name="Maximum index" size="31" start="104" type="uint"/>
-    <field name="Address of Indices List" size="32" start="72" type="address"/>
-    <field name="Number of Instances" size="32" start="40" type="uint"/>
-    <field name="Instance Length" size="32" start="8" type="uint"/>
-
-    <field name="Index type" size="2" start="6" type="uint">
-      <value name="Index type 8-bit" value="0"/>
-      <value name="Index type 16-bit" value="1"/>
-      <value name="Index type 32-bit" value="2"/>
-    </field>
-
-    <field name="mode" size="5" start="0" type="Primitive"/>
-  </packet>
-
-  <packet code="34" name="Indexed Instanced Prim List" cl="B" min_ver="41">
+  <packet code="34" name="Indexed Instanced Prim List" cl="B">
     <field name="Index Offset" size="32" start="72" type="uint"/>
     <field name="Number of Instances" size="32" start="40" type="uint"/>
     <field name="Enable Primitive Restarts" size="1" start="39" type="bool"/>
@@ -680,16 +542,16 @@
     <field name="Base Vertex" size="32" start="0" type="uint"/>
   </packet>
 
-  <packet code="44" name="Index Buffer Setup" cl="B" min_ver="41">
+  <packet code="44" name="Index Buffer Setup" cl="B">
     <field name="Address" size="32" start="0" type="address"/>
     <field name="Size" size="32" start="32" type="uint"/>
   </packet>
 
-  <packet code="54" name="Set InstanceID" cl="B" min_ver="41">
+  <packet code="54" name="Set InstanceID" cl="B">
     <field name="Instance ID" size="32" start="0" type="uint"/>
   </packet>
 
-  <packet code="55" name="Set PrimitiveID" cl="B" min_ver="41">
+  <packet code="55" name="Set PrimitiveID" cl="B">
     <field name="Primitive ID" size="32" start="0" type="uint"/>
   </packet>
 
@@ -716,22 +578,22 @@
     <field name="number of attribute arrays" size="5" start="0" type="uint"/>
   </packet>
 
-  <packet code="65" shortname="gl_t_shader" name="GL Shader State including TS" min_ver="41">
+  <packet code="65" shortname="gl_t_shader" name="GL Shader State including TS">
     <field name="address" size="27" start="5" type="address"/>
     <field name="number of attribute arrays" size="5" start="0" type="uint"/>
   </packet>
 
-  <packet code="66" shortname="gl_g_shader" name="GL Shader State including GS" min_ver="41">
+  <packet code="66" shortname="gl_g_shader" name="GL Shader State including GS">
     <field name="address" size="27" start="5" type="address"/>
     <field name="number of attribute arrays" size="5" start="0" type="uint"/>
   </packet>
 
-  <packet code="67" shortname="gl_tg_shader" name="GL Shader State including TS/GS" min_ver="41">
+  <packet code="67" shortname="gl_tg_shader" name="GL Shader State including TS/GS">
     <field name="address" size="27" start="5" type="address"/>
     <field name="number of attribute arrays" size="5" start="0" type="uint"/>
   </packet>
 
-  <packet code="71" name="VCM Cache Size" min_ver="41">
+  <packet code="71" name="VCM Cache Size">
     <field name="Number of 16-vertex batches for rendering" size="4" start="4" type="uint"/>
     <field name="Number of 16-vertex batches for binning" size="4" start="0" type="uint"/>
   </packet>
@@ -760,23 +622,13 @@
     </field>
   </packet>
 
-  <packet code="73" name="VCM Cache Size" max_ver="33">
-    <field name="Number of 16-vertex batches for rendering" size="4" start="4" type="uint"/>
-    <field name="Number of 16-vertex batches for binning" size="4" start="0" type="uint"/>
-  </packet>
-
-  <packet code="73" name="Transform Feedback Buffer" min_ver="41">
+  <packet code="73" name="Transform Feedback Buffer">
     <field name="Buffer Address" size="32" start="32" type="address"/>
     <field name="Buffer Size in 32-bit words" size="30" start="2" type="uint"/>
     <field name="Buffer Number" size="2" start="0" type="uint"/>
   </packet>
 
-  <packet code="74" name="Transform Feedback Enable" max_ver="33">
-    <field name="number of 32-bit Output Buffer Address following" size="3" start="8" type="uint"/>
-    <field name="number of 16-bit Output Data Specs following" size="5" start="11" type="uint"/>
-  </packet>
-
-  <packet code="74" name="Transform Feedback Specs" min_ver="41">
+  <packet code="74" name="Transform Feedback Specs">
     <field name="Enable" size="1" start="7" type="bool"/>
     <field name="Number of 16-bit Output Data Specs following" size="5" start="0" type="uint"/>
   </packet>
@@ -796,13 +648,7 @@
     <field name="L2T Flush Start" size="32" start="0" type="address"/>
   </packet>
 
-  <struct name="Transform Feedback Output Data Spec" max_ver="33">
-    <field name="First Shaded Vertex Value to output" size="8" start="0" type="uint"/>
-    <field name="Number of consecutive Vertex Values to output as 32-bit values" size="4" start="8" type="uint" minus_one="true"/>
-    <field name="Output Buffer to write to" size="2" start="12" type="uint"/>
-  </struct>
-
-  <struct name="Transform Feedback Output Data Spec" min_ver="41">
+  <struct name="Transform Feedback Output Data Spec">
     <field name="First Shaded Vertex Value to output" size="8" start="0" type="uint"/>
     <field name="Number of consecutive Vertex Values to output as 32-bit values" size="4" start="8" type="uint" minus_one="true"/>
     <field name="Output Buffer to write to" size="2" start="12" type="uint"/>
@@ -825,20 +671,11 @@
     <field name="Stencil Ref Value" size="8" start="0" type="uint"/>
   </packet>
 
-  <packet code="83" name="Blend Enables" min_ver="41">
+  <packet code="83" name="Blend Enables">
     <field name="Mask" size="8" start="0" type="uint"/>
   </packet>
 
-  <packet code="84" name="Blend Cfg" max_ver="33">
-    <field name="Color blend dst factor" size="4" start="20" type="Blend Factor"/>
-    <field name="Color blend src factor" size="4" start="16" type="Blend Factor"/>
-    <field name="Color blend mode" size="4" start="12" type="Blend Mode"/>
-    <field name="Alpha blend dst factor" size="4" start="8" type="Blend Factor"/>
-    <field name="Alpha blend src factor" size="4" start="4" type="Blend Factor"/>
-    <field name="Alpha blend mode" size="4" start="0" type="Blend Mode"/>
-  </packet>
-
-  <packet code="84" name="Blend Cfg" min_ver="41" max_ver="42">
+  <packet code="84" name="Blend Cfg"  max_ver="42">
     <field name="Render Target Mask" size="4" start="24" type="uint"/>
     <field name="Color blend dst factor" size="4" start="20" type="Blend Factor"/>
     <field name="Color blend src factor" size="4" start="16" type="Blend Factor"/>
@@ -869,16 +706,16 @@
     <field name="Mask" size="32" start="0" type="uint"/>
   </packet>
 
-  <packet code="88" name="Zero All Centroid Flags" min_ver="41"/>
+  <packet code="88" name="Zero All Centroid Flags" />
 
-  <packet code="89" name="Centroid Flags" min_ver="41">
+  <packet code="89" name="Centroid Flags">
     <field name="Centroid Flags for varyings V0*24" size="24" start="8" type="uint"/>
     <field name="Action for Centroid Flags of higher numbered varyings" size="2" start="6" type="Varying Flags Action"/>
     <field name="Action for Centroid Flags of lower numbered varyings" size="2" start="4" type="Varying Flags Action"/>
     <field name="Varying offset V0" size="4" start="0" type="uint"/>
   </packet>
 
-  <packet code="91" name="Sample State" min_ver="41">
+  <packet code="91" name="Sample State">
     <field name="Coverage" size="16" start="16" type="f187"/>
     <field name="Mask" size="4" start="0" type="uint"/>
   </packet>
@@ -938,9 +775,9 @@
     <field name="Varying offset V0" size="4" start="0" type="uint"/>
   </packet>
 
-  <packet code="99" shortname="zero_all_noperspective_flags" name="Zero All Non-perspective Flags" min_ver="41"/>
+  <packet code="99" shortname="zero_all_noperspective_flags" name="Zero All Non-perspective Flags" />
 
-  <packet code="100" shortname="noperspective_flags" name="Non-perspective Flags" min_ver="41">
+  <packet code="100" shortname="noperspective_flags" name="Non-perspective Flags">
     <field name="Non-perspective Flags for varyings V0*24" size="24" start="8" type="uint"/>
     <field name="Action for Non-perspective Flags of higher numbered varyings" size="2" start="6" type="Varying Flags Action"/>
     <field name="Action for Non-perspective Flags of lower numbered varyings" size="2" start="4" type="Varying Flags Action"/>
@@ -955,12 +792,7 @@
     <field name="Line width" size="32" start="0" type="float"/>
   </packet>
 
-  <packet name="Depth Offset" code="106" max_ver="33">
-    <field name="Depth Offset Units" size="16" start="16" type="f187"/>
-    <field name="Depth Offset Factor" size="16" start="0" type="f187"/>
-  </packet>
-
-  <packet name="Depth Offset" code="106" min_ver="41">
+  <packet name="Depth Offset" code="106">
     <field name="Limit" size="32" start="32" type="float"/>
     <field name="Depth Offset Units" size="16" start="16" type="f187"/>
     <field name="Depth Offset Factor" size="16" start="0" type="f187"/>
@@ -973,12 +805,7 @@
     <field name="Clip Window Left Pixel Coordinate" size="16" start="0" type="uint"/>
   </packet>
 
-  <packet name="Viewport Offset" code="108" max_ver="33">
-    <field name="Viewport Centre Y-coordinate" size="32" start="32" type="s24.8"/>
-    <field name="Viewport Centre X-coordinate" size="32" start="0" type="s24.8"/>
-  </packet>
-
-  <packet name="Viewport Offset" code="108" min_ver="41">
+  <packet name="Viewport Offset" code="108">
     <field name="Coarse Y" size="10" start="54" type="int"/>
     <field name="Fine Y" size="22" start="32" type="u14.8"/>
     <field name="Coarse X" size="10" start="22" type="int"/>
@@ -1010,37 +837,11 @@
     <field name="Viewport Z Scale (Zc to Zs)" size="32" start="0" type="float"/>
   </packet>
 
-  <packet name="Number of Layers" code="119" min_ver="41">
+  <packet name="Number of Layers" code="119">
     <field name="Number of Layers" size="8" start="0" type="uint" minus_one="true"/>
   </packet>
 
-  <packet code="120" name="Tile Binning Mode Cfg (Part1)" max_ver="33">
-    <field name="Double-buffer in non-ms mode" size="1" start="63" type="bool"/>
-    <field name="Multisample Mode (4x)" size="1" start="62" type="bool"/>
-
-    <field name="Maximum BPP of all render targets" size="2" start="60" type="Internal BPP"/>
-
-    <field name="Number of Render Targets" size="4" start="56" type="uint"/>
-    <field name="Height (in tiles)" size="12" start="44" type="uint"/>
-    <field name="Width (in tiles)" size="12" start="32" type="uint"/>
-
-    <field name="Tile State Data Array Base Address" size="26" start="6" type="address"/>
-
-    <field name="tile allocation block size" size="2" start="4" type="uint">
-      <value name="tile allocation block size 64b" value="0"/>
-      <value name="tile allocation block size 128b" value="1"/>
-      <value name="tile allocation block size 256b" value="2"/>
-    </field>
-    <field name="tile allocation initial block size" size="2" start="2" type="uint">
-      <value name="tile allocation initial block size 64b" value="0"/>
-      <value name="tile allocation initial block size 128b" value="1"/>
-      <value name="tile allocation initial block size 256b" value="2"/>
-    </field>
-    <field name="auto-initialize tile state data array" size="1" start="1" type="bool" default="1"/>
-    <field name="sub-id" size="1" start="0" type="uint" default="0"/>
-  </packet>
-
-  <packet code="120" name="Tile Binning Mode Cfg" min_ver="41" max_ver="42">
+  <packet code="120" name="Tile Binning Mode Cfg"  max_ver="42">
 
     <field name="Height (in pixels)" size="16" start="48" type="uint" minus_one="true"/>
     <field name="Width (in pixels)" size="16" start="32" type="uint" minus_one="true"/>
@@ -1093,38 +894,7 @@
     </field>
   </packet>
 
-  <packet code="120" name="Tile Binning Mode Cfg (Part2)" cl="B" max_ver="33">
-    <field name="Tile Allocation Memory Address" size="32" start="32" type="address"/>
-    <field name="Tile Allocation Memory Size" size="32" start="0" type="uint"/>
-
-    <field name="sub-id" size="1" start="0" type="uint" default="1"/>
-  </packet>
-
-  <packet code="121" name="Tile Rendering Mode Cfg (Common)" cl="R" max_ver="33">
-    <field name="Disable Render Target Stores" size="8" start="56" type="uint"/>
-    <field name="Enable Z Store" size="1" start="55" type="bool"/>
-    <field name="Enable Stencil Store" size="1" start="54" type="bool"/>
-
-    <field name="Early-Z disable" size="1" start="46" type="bool"/>
-
-    <field name="Early-Z Test and Update Direction" size="1" start="45" type="uint">
-      <value name="Early-Z direction LT/LE" value="0"/>
-      <value name="Early-Z direction GT/GE" value="1"/>
-    </field>
-
-    <field name="Double-buffer in non-ms mode" size="1" start="43" type="bool"/>
-    <field name="Multisample Mode (4x)" size="1" start="42" type="bool"/>
-
-    <field name="Maximum BPP of all render targets" size="2" start="40" type="Internal BPP"/>
-
-    <field name="Image Height (pixels)" size="16" start="24" type="uint"/>
-    <field name="Image Width (pixels)" size="16" start="8" type="uint"/>
-    <field name="Number of Render Targets" size="4" start="4" type="uint" minus_one="true"/>
-
-    <field name="sub-id" size="4" start="0" type="uint" default="0"/>
-  </packet>
-
-  <packet code="121" name="Tile Rendering Mode Cfg (Common)" cl="R" min_ver="41" max_ver="42">
+  <packet code="121" name="Tile Rendering Mode Cfg (Common)" cl="R"  max_ver="42">
     <field name="Pad" size="12" start="52" type="uint"/>
 
     <field name="Early Depth/Stencil Clear" size="1" start="51" type="bool"/>
@@ -1190,29 +960,7 @@
     <field name="sub-id" size="3" start="0" type="uint" default="0"/>
   </packet>
 
-  <packet code="121" name="Tile Rendering Mode Cfg (Color)" cl="R" max_ver="33">
-    <field name="Address" size="32" start="32" type="address"/>
-
-    <field name="Pad" size="4" start="28" type="uint"/>
-
-    <field name="Flip Y" size="1" start="27" type="bool"/>
-
-    <field name="Memory Format" size="3" start="24" type="Memory Format"/>
-
-    <field name="Dither Mode" size="2" start="22" type="Dither Mode"/>
-
-    <field name="Output image format" size="6" start="16" type="Output Image Format"/>
-
-    <field name="Decimate mode" size="2" start="14" type="Decimate Mode"/>
-
-    <field name="Internal Type" size="4" start="10" type="Internal Type"/>
-    <field name="Internal BPP" size="2" start="8" type="Internal BPP"/>
-    <field name="Render Target Number" size="4" start="4" type="uint"/>
-    <field name="sub-id" size="4" start="0" type="uint" default="2"/>
-  </packet>
-
-  <!-- On 4.1 the real name would be "Tile Rendering Mode Cfg (Render Target Configs) -->
-  <packet code="121" name="Tile Rendering Mode Cfg (Color)" cl="R" min_ver="41" max_ver="42">
+  <packet code="121" name="Tile Rendering Mode Cfg (Color)" cl="R"  max_ver="42">
 
     <field name="Pad" size="28" start="36" type="uint"/>
 
@@ -1235,35 +983,7 @@
     <field name="sub-id" size="4" start="0" type="uint" default="1"/>
   </packet>
 
-  <packet code="121" name="Tile Rendering Mode Cfg (Z/Stencil)" cl="R" max_ver="33">
-    <field name="Address" size="26" start="38" type="address"/>
-
-    <field name="Padded height of output image in UIF blocks" size="13" start="25" type="uint"/>
-
-    <field name="Memory Format" size="3" start="22" type="Memory Format"/>
-
-    <field name="Output image format" size="6" start="16" type="Z/S Output Image Format"/>
-
-    <field name="Decimate mode" size="2" start="14" type="uint"/>
-
-    <field name="Internal Type" size="4" start="10" type="Internal Depth Type"/>
-
-    <field name="Internal BPP (ignored)" size="2" start="8" type="uint"/>
-    <!-- selects between Z/Stencil config packet and Separate Stencil packet. -->
-    <field name="Z/Stencil ID" size="4" start="4" type="uint" default="0"/>
-    <field name="sub-id" size="4" start="0" type="uint" default="1"/>
-  </packet>
-
-  <packet code="121" name="Tile Rendering Mode Cfg (ZS Clear Values)" cl="R" max_ver="33">
-    <field name="unused" size="16" start="48" type="uint"/>
-
-    <field name="Z Clear Value" size="32" start="16" type="float"/>
-
-    <field name="Stencil Clear Value" size="8" start="8" type="uint"/>
-    <field name="sub-id" size="4" start="0" type="uint" default="3"/>
-  </packet>
-
-  <packet code="121" name="Tile Rendering Mode Cfg (ZS Clear Values)" cl="R" min_ver="41" max_ver="42">
+  <packet code="121" name="Tile Rendering Mode Cfg (ZS Clear Values)" cl="R"  max_ver="42">
     <field name="unused" size="16" start="48" type="uint"/>
 
     <field name="Z Clear Value" size="32" start="16" type="float"/>
@@ -1281,16 +1001,7 @@
     <field name="sub-id" size="4" start="0" type="uint" default="1"/>
   </packet>
 
-  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part1)" cl="R" max_ver="33">
-    <!-- Express this as a 56-bit field? -->
-    <field name="Clear Color next 24 bits" size="24" start="40" type="uint"/>
-    <field name="Clear Color low 32 bits" size="32" start="8" type="uint"/>
-
-    <field name="Render Target number" size="4" start="4" type="uint"/>
-    <field name="sub-id" size="4" start="0" type="uint" default="4"/>
-  </packet>
-
-  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part1)" cl="R" min_ver="41" max_ver="42">
+  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part1)" cl="R"  max_ver="42">
     <!-- Express this as a 56-bit field? -->
     <field name="Clear Color next 24 bits" size="24" start="40" type="uint"/>
     <field name="Clear Color low 32 bits" size="32" start="8" type="uint"/>
@@ -1312,16 +1023,7 @@
     <field name="sub-id" size="3" start="0" type="uint" default="2"/>
   </packet>
 
-  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part2)" cl="R" max_ver="33">
-    <!-- Express this as a 56-bit field? -->
-    <field name="Clear Color mid-high 24 bits" size="24" start="40" type="uint"/>
-    <field name="Clear Color mid-low 32 bits" size="32" start="8" type="uint"/>
-
-    <field name="Render Target number" size="4" start="4" type="uint"/>
-    <field name="sub-id" size="4" start="0" type="uint" default="5"/>
-  </packet>
-
-  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part2)" cl="R" min_ver="41" max_ver="42">
+  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part2)" cl="R"  max_ver="42">
     <!-- Express this as a 56-bit field? -->
     <field name="Clear Color mid-high 24 bits" size="24" start="40" type="uint"/>
     <field name="Clear Color mid-low 32 bits" size="32" start="8" type="uint"/>
@@ -1337,18 +1039,7 @@
     <field name="sub-id" size="3" start="0" type="uint" default="3"/>
   </packet>
 
-  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part3)" cl="R" max_ver="33">
-    <field name="pad" size="11" start="53" type="uint"/>
-    <field name="UIF padded height in UIF blocks" size="13" start="40" type="uint"/>
-    <!-- image height is for Y flipping -->
-    <field name="Raster Row Stride or Image Height in Pixels" size="16" start="24" type="uint"/>
-    <field name="Clear Color high 16 bits" size="16" start="8" type="uint"/>
-
-    <field name="Render Target number" size="4" start="4" type="uint"/>
-    <field name="sub-id" size="4" start="0" type="uint" default="6"/>
-  </packet>
-
-  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part3)" cl="R" min_ver="41" max_ver="42">
+  <packet code="121" name="Tile Rendering Mode Cfg (Clear Colors Part3)" cl="R"  max_ver="42">
     <field name="pad" size="11" start="53" type="uint"/>
     <field name="UIF padded height in UIF blocks" size="13" start="40" type="uint"/>
     <!-- image height is for Y flipping -->
@@ -1404,43 +1095,7 @@
     </field>
   </packet>
 
-  <struct name="GL Shader State Record" max_ver="33">
-    <field name="Point size in shaded vertex data" size="1" start="0" type="bool"/>
-    <field name="Enable clipping" size="1" start="1" type="bool"/>
-    <field name="Vertex ID read by coordinate shader" size="1" start="2" type="bool"/>
-    <field name="Instance ID read by coordinate shader" size="1" start="3" type="bool"/>
-    <field name="Vertex ID read by vertex shader" size="1" start="4" type="bool"/>
-    <field name="Instance ID read by vertex shader" size="1" start="5" type="bool"/>
-    <field name="Fragment shader does Z writes" size="1" start="6" type="bool"/>
-    <field name="Turn off early-z test" size="1" start="7" type="bool"/>
-    <field name="Coordinate shader has separate input and output VPM blocks" size="1" start="8" type="bool"/>
-    <field name="Vertex shader has separate input and output VPM blocks" size="1" start="9" type="bool"/>
-    <field name="Fragment shader uses real pixel centre W in addition to centroid W2" size="1" start="10" type="bool"/>
-
-    <field name="Number of varyings in Fragment Shader" size="8" start="2b" type="uint"/>
-    <field name="Coordinate Shader output VPM segment size" size="8" start="4b" type="uint"/>
-    <field name="Coordinate Shader input VPM segment size" size="8" start="5b" type="uint"/>
-    <field name="Vertex Shader output VPM segment size" size="8" start="6b" type="uint"/>
-    <field name="Vertex Shader input VPM segment size" size="8" start="7b" type="uint"/>
-    <field name="Address of default attribute values" size="32" start="8b" type="address"/>
-    <field name="Fragment Shader Code Address" size="29" start="99" type="address"/>
-    <field name="Fragment Shader 2-way threadable" size="1" start="96" type="bool"/>
-    <field name="Fragment Shader 4-way threadable" size="1" start="97" type="bool"/>
-    <field name="Fragment Shader Propagate NaNs" size="1" start="98" type="bool"/>
-    <field name="Fragment Shader Uniforms Address" size="32" start="16b" type="address"/>
-    <field name="Vertex Shader Code Address" size="32" start="20b" type="address"/>
-    <field name="Vertex Shader 2-way threadable" size="1" start="160" type="bool"/>
-    <field name="Vertex Shader 4-way threadable" size="1" start="161" type="bool"/>
-    <field name="Vertex Shader Propagate NaNs" size="1" start="162" type="bool"/>
-    <field name="Vertex Shader Uniforms Address" size="32" start="24b" type="address"/>
-    <field name="Coordinate Shader Code Address" size="32" start="28b" type="address"/>
-    <field name="Coordinate Shader 2-way threadable" size="1" start="224" type="bool"/>
-    <field name="Coordinate Shader 4-way threadable" size="1" start="225" type="bool"/>
-    <field name="Coordinate Shader Propagate NaNs" size="1" start="226" type="bool"/>
-    <field name="Coordinate Shader Uniforms Address" size="32" start="32b" type="address"/>
-  </struct>
-
-  <struct name="GL Shader State Record" min_ver="41" max_ver="42">
+  <struct name="GL Shader State Record"  max_ver="42">
     <field name="Point size in shaded vertex data" size="1" start="0" type="bool"/>
     <field name="Enable clipping" size="1" start="1" type="bool"/>
 
@@ -1556,7 +1211,7 @@
     <field name="Coordinate Shader Uniforms Address" size="32" start="28b" type="address"/>
   </struct>
 
-  <struct name="Geometry Shader State Record" min_ver="41">
+  <struct name="Geometry Shader State Record">
     <field name="Geometry Bin Mode Shader Code Address" size="29" start="3" type="address"/>
     <field name="Geometry Bin Mode Shader 4-way threadable" size="1" start="0" type="bool"/>
     <field name="Geometry Bin Mode Shader Start in final thread section" size="1" start="1" type="bool"/>
@@ -1569,7 +1224,7 @@
     <field name="Geometry Render Mode Shader Uniforms Address" size="32" start="12b" type="address"/>
   </struct>
 
-  <struct name="Tessellation Shader State Record" min_ver="41">
+  <struct name="Tessellation Shader State Record">
     <field name="Tessellation Bin Mode Control Shader Code Address" size="29" start="3" type="address"/>
     <field name="Tessellation Bin Mode Control Shader 4-way threadable" size="1" start="0" type="bool"/>
     <field name="Tessellation Bin Mode Control Shader Start in final thread section" size="1" start="1" type="bool"/>
@@ -1593,7 +1248,7 @@
     <field name="Tessellation Render Mode Evaluation Shader Uniforms Address" size="32" start="28b" type="address"/>
   </struct>
 
-  <struct name="Tessellation/Geometry Common Params" min_ver="41">
+  <struct name="Tessellation/Geometry Common Params">
     <field name="Tessellation Type" size="2" start="1" type="uint">
       <value name="Tessellation Type Triangle" value="0"/>
       <value name="Tessellation Type Quads" value="1"/>
@@ -1653,31 +1308,7 @@
     <field name="GBG min GS output segments required in play" size="3" start="59" type="uint" minus_one="true"/>
   </struct>
 
-  <struct name="GL Shader State Attribute Record" max_ver="33">
-    <field name="Address" size="32" start="0" type="address"/>
-
-    <field name="Vec size" size="2" start="32" type="uint"/>
-    <field name="Type" size="3" start="34" type="uint">
-      <value name="Attribute half-float" value="1"/>
-      <value name="Attribute float" value="2"/>
-      <value name="Attribute fixed" value="3"/>
-      <value name="Attribute byte" value="4"/>
-      <value name="Attribute short" value="5"/>
-      <value name="Attribute int" value="6"/>
-      <value name="Attribute int2_10_10_10" value="7"/>
-    </field>
-    <field name="Signed int type" size="1" start="37" type="bool"/>
-    <field name="Normalized int type" size="1" start="38" type="bool"/>
-    <field name="Read as int/uint" size="1" start="39" type="bool"/>
-
-    <field name="Number of values read by Coordinate shader" size="4" start="40" type="uint"/>
-    <field name="Number of values read by Vertex shader" size="4" start="44" type="uint"/>
-
-    <field name="Instance Divisor" size="16" start="6b" type="uint"/>
-    <field name="Stride" size="32" start="8b" type="uint"/>
-  </struct>
-
-  <struct name="GL Shader State Attribute Record" min_ver="41">
+  <struct name="GL Shader State Attribute Record">
     <field name="Address" size="32" start="0" type="address"/>
 
     <field name="Vec size" size="2" start="32" type="uint"/>
@@ -1738,55 +1369,19 @@
     <field name="addr" size="13" start="0" type="uint"/>
   </struct>
 
-  <struct name="Texture Uniform Parameter 0 CFG_MODE=1" max_ver="33">
-    <field name="Per-pixel mask enable" size="1" start="31" type="bool"/>
-
-    <field name="Texel offset for r coordinate" size="4" start="27" type="int"/>
-    <field name="Texel offset for t coordinate" size="4" start="23" type="int"/>
-    <field name="Texel offset for s coordinate" size="4" start="19" type="int"/>
-
-    <field name="R Wrap Mode" size="3" start="16" type="Wrap Mode"/>
-    <field name="T Wrap Mode" size="3" start="13" type="Wrap Mode"/>
-    <field name="S Wrap Mode" size="3" start="10" type="Wrap Mode"/>
-
-    <field name="New configuration mode" size="1" start="9" type="bool" default="1"/>
-
-    <field name="Shadow" size="1" start="8" type="bool"/>
-    <field name="Coefficient lookup mode" size="1" start="7" type="bool"/>
-    <field name="Disable AutoLOD, use bias only" size="1" start="6" type="bool"/>
-    <field name="Bias supplied" size="1" start="5" type="bool"/>
-    <field name="Gather sample mode" size="1" start="4" type="bool"/>
-    <field name="Fetch sample mode" size="1" start="3" type="bool"/>
-
-    <field name="Lookup Type" size="3" start="0" type="uint">
-      <value name="Texture 2D" value="0"/>
-      <value name="Texture 2D array" value="1"/>
-      <value name="Texture 3D" value="2"/>
-      <value name="Texture Cube Map" value="3"/>
-      <value name="Texture 1D" value="4"/>
-      <value name="Texture 1D Array" value="5"/>
-      <value name="Texture Child Image" value="6"/>
-    </field>
-  </struct>
-
-  <struct name="Texture Uniform Parameter 1 CFG_MODE=1" max_ver="33">
-    <field name="Texture state record base address" size="28" start="4" type="address"/>
-    <field name="Return words of texture data" size="4" start="0" type="uint"/>
-  </struct>
-
-  <struct name="TMU Config Parameter 0" min_ver="41">
+  <struct name="TMU Config Parameter 0">
     <field name="Texture state address" size="32" start="0" type="address"/>
     <field name="Return words of texture data" size="4" start="0" type="uint"/>
   </struct>
 
-  <struct name="TMU Config Parameter 1" min_ver="41">
+  <struct name="TMU Config Parameter 1">
     <field name="Sampler state address" size="32" start="0" type="address"/>
     <field name="Per-pixel mask enable" size="1" start="2" type="bool"/>
     <field name="Unnormalized coordinates" size="1" start="1" type="bool"/>
     <field name="Output Type 32-bit" size="1" start="0" type="bool"/>
   </struct>
 
-  <struct name="TMU Config Parameter 2" min_ver="41" max_ver="41">
+  <struct name="TMU Config Parameter 2"  max_ver="41">
     <field name="Pad" size="8" start="24" type="uint"/>
     <field name="Op" size="4" start="20" type="TMU Op"/>
     <field name="Offset R" size="4" start="16" type="int"/>
@@ -1832,60 +1427,7 @@
     <field name="Offset Format 8" size="1" start="0" type="bool"/>
   </struct>
 
-  <struct name="Texture Shader State" max_ver="33">
-    <field name="UIF XOR disable" size="1" start="255" type="bool"/>
-    <field name="Level 0 is strictly UIF" size="1" start="254" type="bool"/>
-    <field name="Level 0 XOR enable" size="1" start="252" type="bool"/>
-    <field name="Level 0 UB_PAD" size="4" start="248" type="uint"/>
-    <field name="Output 32-bit" size="1" start="246" type="bool"/>
-    <field name="Sample Number" size="2" start="244" type="uint"/>
-
-    <field name="Base Level" size="4" start="240" type="uint"/>
-    <field name="Fixed Bias" size="16" start="224" type="s8.8"/>
-    <field name="Max Level-of-Detail" size="16" start="208" type="s8.8"/>
-    <field name="Min Level-of-Detail" size="16" start="192" type="s8.8"/>
-
-    <field name="Border Color alpha" size="16" start="176" type="uint"/>
-    <field name="Border Color blue" size="16" start="160" type="uint"/>
-    <field name="Border Color green" size="16" start="144" type="uint"/>
-    <field name="Border Color red" size="16" start="128" type="uint"/>
-
-    <field name="Flip S and T on incoming request" size="1" start="127" type="bool"/>
-    <field name="Flip ETC Y" size="1" start="126" type="bool" default="1"/>
-    <field name="Flip texture Y Axis" size="1" start="125" type="bool"/>
-    <field name="Flip texture X Axis" size="1" start="124" type="bool"/>
-
-    <field name="Swizzle A" size="3" start="121" type="uint">
-      <value name="Swizzle Zero" value="0"/>
-      <value name="Swizzle One" value="1"/>
-      <value name="Swizzle Red" value="2"/>
-      <value name="Swizzle Green" value="3"/>
-      <value name="Swizzle Blue" value="4"/>
-      <value name="Swizzle Alpha" value="5"/>
-    </field>
-
-    <field name="Swizzle B" size="3" start="118" type="uint"/>
-    <field name="Swizzle G" size="3" start="115" type="uint"/>
-    <field name="Swizzle R" size="3" start="112" type="uint"/>
-
-    <field name="Depth Compare Function" size="3" start="109" type="Compare Function"/>
-
-    <field name="sRGB" size="1" start="107" type="bool"/>
-
-    <field name="Texture type" size="7" start="100" type="uint"/>
-
-    <field name="Image Depth" size="14" start="86" type="uint"/>
-    <field name="Image Height" size="14" start="72" type="uint"/>
-    <field name="Image Width" size="14" start="58" type="uint"/>
-
-    <field name="Array Stride (64-byte aligned)" size="26" start="32" type="uint"/>
-
-    <field name="Texture base pointer" size="30" start="2" type="address"/>
-
-    <field name="Filter" size="4" start="0" type="TMU Filter"/>
-  </struct>
-
-  <struct name="Texture Shader State" min_ver="41" max_ver="42">
+  <struct name="Texture Shader State"  max_ver="42">
     <field name="Pad" size="56" start="136" type="uint"/>
     <field name="UIF XOR disable" size="1" start="135" type="bool"/>
     <field name="Level 0 is strictly UIF" size="1" start="134" type="bool"/>
@@ -2002,7 +1544,7 @@
     <field name="Flip texture X Axis" size="1" start="0" type="bool"/>
   </struct>
 
-  <struct name="Sampler State" min_ver="41">
+  <struct name="Sampler State">
     <field name="Border color word 3" size="32" start="160" type="uint"/>
     <field name="Border color word 2" size="32" start="128" type="uint"/>
     <field name="Border color word 1" size="32" start="96" type="uint"/>
