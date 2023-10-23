@@ -550,6 +550,13 @@ lower_dynamic_quad_broadcast(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static nir_def *
+lower_first_invocation_to_ballot(nir_builder *b, nir_intrinsic_instr *intrin,
+                                 const nir_lower_subgroups_options *options)
+{
+   return nir_ballot_find_lsb(b, 32, nir_ballot(b, 4, 32, nir_imm_true(b)));
+}
+
+static nir_def *
 lower_read_invocation_to_cond(nir_builder *b, nir_intrinsic_instr *intrin)
 {
    return nir_read_invocation_cond_ir3(b, intrin->def.bit_size,
@@ -586,6 +593,15 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
    case nir_intrinsic_load_subgroup_size:
       if (options->subgroup_size)
          return nir_imm_int(b, options->subgroup_size);
+      break;
+
+   case nir_intrinsic_first_invocation:
+      if (options->subgroup_size == 1)
+         return nir_imm_int(b, 0);
+
+      if (options->lower_first_invocation_to_ballot)
+         return lower_first_invocation_to_ballot(b, intrin, options);
+
       break;
 
    case nir_intrinsic_read_invocation:
