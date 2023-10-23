@@ -186,6 +186,17 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
                                             NULL, 0, &all, NULL, 0, NULL);
    assert(result == VK_SUCCESS);
 
+   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
+   };
+   VkPipelineCreationFeedbackEXT stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
+
+   int64_t pipeline_start = os_time_get_nano();
+
+   const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+
    const VkPipelineShaderStageCreateInfo *infos[MESA_SHADER_STAGES] = {};
    nir_shader *nir[MESA_SHADER_STAGES] = {};
    struct vk_pipeline_robustness_state robustness[MESA_SHADER_STAGES];
@@ -225,10 +236,12 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          bool cache_hit = false;
          cache_objs[stage] = vk_pipeline_cache_lookup_object(cache, &sha1, sizeof(sha1),
                                                              &nvk_shader_ops, &cache_hit);
-         if (cache_objs[stage]) {
-            pipeline->base.shaders[stage] =
-               container_of(cache_objs[stage], struct nvk_shader, base);
-         }
+         pipeline->base.shaders[stage] =
+            container_of(cache_objs[stage], struct nvk_shader, base);
+
+         if (cache_hit && cache != dev->mem_cache)
+            pipeline_feedback.flags |=
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
       }
    }
 
@@ -254,6 +267,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          continue;
 
       if (!cache_objs[stage]) {
+         int64_t stage_start = os_time_get_nano();
+
          unsigned char sha1[SHA1_DIGEST_LENGTH];
          nvk_hash_shader(sha1, sinfo, &robustness[stage],
                          state.rp->view_mask != 0, pipeline_layout,
@@ -280,10 +295,12 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
                cache_objs[stage] = vk_pipeline_cache_add_object(cache,
                                                                 cache_objs[stage]);
 
+            stage_feedbacks[stage].flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
             pipeline->base.shaders[stage] =
                container_of(cache_objs[stage], struct nvk_shader, base);
          }
 
+         stage_feedbacks[stage].duration += os_time_get_nano() - stage_start;
          ralloc_free(nir[stage]);
       }
 
@@ -419,6 +436,22 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
    pipeline->dynamic.vi = &pipeline->_dynamic_vi;
    pipeline->dynamic.ms.sample_locations = &pipeline->_dynamic_sl;
    vk_dynamic_graphics_state_fill(&pipeline->dynamic, &state);
+
+   pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
+   if (creation_feedback) {
+      *creation_feedback->pPipelineCreationFeedback = pipeline_feedback;
+
+      int fb_count = creation_feedback->pipelineStageCreationFeedbackCount;
+      if (pCreateInfo->stageCount == fb_count) {
+         for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+            const VkPipelineShaderStageCreateInfo *sinfo =
+               &pCreateInfo->pStages[i];
+            gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
+            creation_feedback->pPipelineStageCreationFeedbacks[i] =
+               stage_feedbacks[stage];
+         }
+      }
+   }
 
    *pPipeline = nvk_pipeline_to_handle(&pipeline->base);
 
