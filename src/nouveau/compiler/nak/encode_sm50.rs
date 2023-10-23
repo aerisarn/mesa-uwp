@@ -1655,44 +1655,52 @@ impl SM50Instr {
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(48),
-            }),
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(48),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x68,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
+        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
+        if let Some(imm32) = op.srcs[1].as_imm_not_f20() {
+            self.set_opcode(0x1e00);
 
-        self.set_rnd_mode(39..41, op.rnd_mode);
-        self.set_field(41..44, 0x0_u8); /* TODO: PDIV */
-        self.set_bit(44, false); /* TODO: FTZ */
-        self.set_bit(45, false); /* TODO: DNZ */
-        self.set_bit(
-            48,
-            src_mod_has_neg(op.srcs[0].src_mod)
-                ^ src_mod_has_neg(op.srcs[1].src_mod),
-        );
-        self.set_bit(50, op.saturate);
+            self.set_bit(55, op.saturate);
+            self.set_field(53..55, false); /* TODO: FMZ */
+
+            self.set_src_imm32(20..52, imm32);
+            self.set_bit(
+                19,
+                src_mod_has_neg(op.srcs[0].src_mod)
+                    ^ src_mod_has_neg(op.srcs[1].src_mod),
+            );
+        } else {
+            match &alu_src_1 {
+                ALUSrc::None => panic!("Invalid source for FMUL"),
+                ALUSrc::Imm32(imm32) => {
+                    self.set_opcode(0x3868);
+                    self.set_src_imm_f20(20..40, 56, *imm32);
+                }
+                ALUSrc::Reg(_) => {
+                    self.set_opcode(0x5c68);
+                    self.set_alu_reg_src(20..28, None, None, &alu_src_1);
+                }
+                ALUSrc::CBuf(cbuf) => {
+                    self.set_opcode(0x4c68);
+                    self.set_alu_cb(20..39, None, None, cbuf);
+                }
+            }
+
+            self.set_rnd_mode(39..41, op.rnd_mode);
+            self.set_field(41..44, 0x0_u8); /* TODO: PDIV */
+            self.set_bit(44, false); /* TODO: FTZ */
+            self.set_bit(45, false); /* TODO: DNZ */
+            self.set_bit(
+                48,
+                src_mod_has_neg(op.srcs[0].src_mod)
+                    ^ src_mod_has_neg(op.srcs[1].src_mod),
+            );
+            self.set_bit(50, op.saturate);
+        }
+
+        self.set_alu_reg_src(8..16, Some(46), Some(48), &alu_src_0);
+        self.set_dst(op.dst);
     }
 
     fn set_float_cmp_op(&mut self, range: Range<usize>, op: FloatCmpOp) {
