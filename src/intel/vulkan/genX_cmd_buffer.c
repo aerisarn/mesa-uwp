@@ -2352,6 +2352,8 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                                     set->desc_addr,
                                     layout->descriptor_buffer_size, 1);
    }
+
+   state->push_descriptor.set_used_on_gpu = true;
 }
 
 static void
@@ -6457,6 +6459,16 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.rt.pipeline_dirty = false;
 
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   const VkShaderStageFlags push_descriptor_dirty =
+      cmd_buffer->state.push_descriptors_dirty &
+      pipeline->base.use_push_descriptor;
+   if (push_descriptor_dirty) {
+      flush_push_descriptor_set(cmd_buffer,
+                                &cmd_buffer->state.rt.base,
+                                &pipeline->base);
+      cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
+   }
 
    /* Add these to the reloc list as they're internal buffers that don't
     * actually have relocs to pick them up manually.
