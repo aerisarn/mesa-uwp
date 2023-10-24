@@ -2407,7 +2407,7 @@ static void si_init_draw_vbo(struct si_context *sctx)
    if (!NGG && GFX_VERSION >= GFX11)
       return;
 
-   if (GFX_VERSION >= GFX11 && sctx->screen->info.has_set_pairs_packets) {
+   if (GFX_VERSION >= GFX11 && sctx->screen->info.has_set_sh_pairs_packed) {
       sctx->draw_vbo[HAS_TESS][HAS_GS][NGG] =
          si_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG, HAS_PAIRS_ON>;
 

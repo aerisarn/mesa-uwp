@@ -1202,13 +1202,9 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       sscreen->info.use_display_dcc_with_retile_blit = false;
    }
 
-   if (sscreen->debug_flags & DBG(SHADOW_REGS)) {
+   /* Using the environment variable doesn't enable PAIRS packets for simplicity. */
+   if (sscreen->debug_flags & DBG(SHADOW_REGS))
       sscreen->info.register_shadowing_required = true;
-      /* Recompute has_set_pairs_packets. */
-      sscreen->info.has_set_pairs_packets = sscreen->info.gfx_level >= GFX11 &&
-                                            sscreen->info.register_shadowing_required &&
-                                            sscreen->info.has_dedicated_vram;
-   }
 
 #ifdef LLVM_AVAILABLE
    sscreen->use_aco = (sscreen->debug_flags & DBG(USE_ACO));

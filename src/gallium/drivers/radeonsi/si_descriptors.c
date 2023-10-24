@@ -2187,7 +2187,7 @@ void si_shader_change_notify(struct si_context *sctx)
    if (sh_reg_base) { \
       unsigned mask = shader_pointers_dirty & (pointer_mask); \
       \
-      if (sctx->screen->info.has_set_pairs_packets) { \
+      if (sctx->screen->info.has_set_sh_pairs_packed) { \
          u_foreach_bit(i, mask) { \
             struct si_descriptors *descs = &sctx->descriptors[i]; \
             unsigned sh_reg = sh_reg_base + descs->shader_userdata_offset; \
@@ -2214,7 +2214,7 @@ static void si_emit_global_shader_pointers(struct si_context *sctx, struct si_de
 {
    radeon_begin(&sctx->gfx_cs);
 
-   if (sctx->screen->info.has_set_pairs_packets) {
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
       radeon_push_gfx_sh_reg(R_00B030_SPI_SHADER_USER_DATA_PS_0 + descs->shader_userdata_offset,
                              descs->gpu_address);
       radeon_push_gfx_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 + descs->shader_userdata_offset,
@@ -2292,7 +2292,7 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx, unsigned index)
                                        sh_base[PIPE_SHADER_GEOMETRY], gfx);
 
    if (sctx->gs_attribute_ring_pointer_dirty) {
-      if (sctx->screen->info.has_set_pairs_packets) {
+      if (sctx->screen->info.has_set_sh_pairs_packed) {
          radeon_push_gfx_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 +
                                 GFX9_SGPR_ATTRIBUTE_RING_ADDR * 4,
                                 sctx->screen->attribute_ring->gpu_address);
@@ -2340,7 +2340,7 @@ void si_emit_compute_shader_pointers(struct si_context *sctx)
    sctx->shader_pointers_dirty &= ~SI_DESCS_SHADER_MASK(COMPUTE);
 
    if (sctx->compute_bindless_pointer_dirty) {
-      if (sctx->screen->info.has_set_pairs_packets) {
+      if (sctx->screen->info.has_set_sh_pairs_packed) {
          radeon_push_compute_sh_reg(base + sctx->bindless_descriptors.shader_userdata_offset,
                                     sctx->bindless_descriptors.gpu_address);
       } else {

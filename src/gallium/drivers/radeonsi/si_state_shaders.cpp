@@ -1195,7 +1195,7 @@ static void gfx10_emit_shader_ngg(struct si_context *sctx, unsigned index)
    radeon_begin_again(&sctx->gfx_cs);
    radeon_opt_set_uconfig_reg(sctx, R_030980_GE_PC_ALLOC, SI_TRACKED_GE_PC_ALLOC,
                               shader->ngg.ge_pc_alloc);
-   if (sctx->screen->info.has_set_pairs_packets) {
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
       assert(!sctx->screen->info.uses_kernel_cu_mask);
       radeon_opt_push_gfx_sh_reg(R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
                                  SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
@@ -4523,7 +4523,7 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx, unsigned index
    if (!sctx->shader.tes.cso || !sctx->shader.tcs.current)
       return;
 
-   if (sctx->screen->info.has_set_pairs_packets) {
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
       radeon_opt_push_gfx_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
                                  SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
 
@@ -4572,7 +4572,7 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx, unsigned index
     * tessellation is disabled. That's because those user SGPRs are only set in LS
     * for tessellation.
     */
-   if (sctx->screen->info.has_set_pairs_packets) {
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
       radeon_opt_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4,
                                  SI_TRACKED_SPI_SHADER_USER_DATA_ES__BASE_VERTEX,
                                  sctx->tcs_offchip_layout);

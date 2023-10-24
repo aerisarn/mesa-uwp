@@ -35,7 +35,7 @@ static unsigned pairs_packed_opcode_to_regular(unsigned opcode)
 
 static unsigned regular_opcode_to_pairs(struct si_pm4_state *state, unsigned opcode)
 {
-   if (state->screen->info.has_set_pairs_packets) {
+   if (state->screen->info.has_set_sh_pairs_packed) {
       switch (opcode) {
       case PKT3_SET_CONTEXT_REG:
          return PKT3_SET_CONTEXT_REG_PAIRS_PACKED;

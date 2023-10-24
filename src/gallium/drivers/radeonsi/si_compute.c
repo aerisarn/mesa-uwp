@@ -499,7 +499,7 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
    radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, shader->bo,
                              RADEON_USAGE_READ | RADEON_PRIO_SHADER_BINARY);
 
-   if (sctx->screen->info.has_set_pairs_packets) {
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
       radeon_push_compute_sh_reg(R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
       radeon_opt_push_compute_sh_reg(R_00B848_COMPUTE_PGM_RSRC1,
                                      SI_TRACKED_COMPUTE_PGM_RSRC1, config->rsrc1);
@@ -740,7 +740,7 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
          }
          radeon_begin_again(cs);
       } else {
-         if (sctx->screen->info.has_set_pairs_packets) {
+         if (sctx->screen->info.has_set_sh_pairs_packed) {
             radeon_push_compute_sh_reg(grid_size_reg, info->grid[0]);
             radeon_push_compute_sh_reg(grid_size_reg + 4, info->grid[1]);
             radeon_push_compute_sh_reg(grid_size_reg + 8, info->grid[2]);
@@ -756,7 +756,7 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
    if (sel->info.uses_variable_block_size) {
       uint32_t value = info->block[0] | (info->block[1] << 10) | (info->block[2] << 20);
 
-      if (sctx->screen->info.has_set_pairs_packets) {
+      if (sctx->screen->info.has_set_sh_pairs_packed) {
          radeon_push_compute_sh_reg(block_size_reg, value);
       } else {
          radeon_set_sh_reg(block_size_reg, value);
@@ -766,7 +766,7 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
    if (sel->info.base.cs.user_data_components_amd) {
       unsigned num = sel->info.base.cs.user_data_components_amd;
 
-      if (sctx->screen->info.has_set_pairs_packets) {
+      if (sctx->screen->info.has_set_sh_pairs_packed) {
          for (unsigned i = 0; i < num; i++)
             radeon_push_compute_sh_reg(cs_user_data_reg + i * 4, sctx->cs_user_data[i]);
       } else {
@@ -802,7 +802,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
                                      sctx->cs_max_waves_per_sh,
                                      threadgroups_per_cu);
 
-   if (sctx->screen->info.has_set_pairs_packets) {
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
       radeon_opt_push_compute_sh_reg(R_00B854_COMPUTE_RESOURCE_LIMITS,
                                      SI_TRACKED_COMPUTE_RESOURCE_LIMITS,
                                      compute_resource_limits);
@@ -844,7 +844,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
       dispatch_initiator |= S_00B800_PARTIAL_TG_EN(1);
    }
 
-   if (sctx->screen->info.has_set_pairs_packets) {
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
       radeon_opt_push_compute_sh_reg(R_00B81C_COMPUTE_NUM_THREAD_X,
                                      SI_TRACKED_COMPUTE_NUM_THREAD_X, num_threads[0]);
       radeon_opt_push_compute_sh_reg(R_00B820_COMPUTE_NUM_THREAD_Y,
