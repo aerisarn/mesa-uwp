@@ -7,13 +7,16 @@ query getPipelineDetails($projectPath: ID!, $iid: ID!) {
       complete
       stages {
         nodes {
-          name,
+          name
           groups {
             nodes {
               jobs {
                 nodes {
                   id
                   name
+                  stage {
+                    name
+                  }
                   needs {
                     nodes {
                       id
