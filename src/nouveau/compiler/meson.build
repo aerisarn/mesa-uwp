@@ -21,6 +21,7 @@ dep_syn = dependency('syn',
 libnak_c_files = files(
   'nak.h',
   'nak_nir.c',
+  'nak_nir_add_barriers.c',
   'nak_nir_lower_tex.c',
   'nak_nir_lower_vtg_io.c',
   'nak_nir_lower_gs_intrinsics.c',

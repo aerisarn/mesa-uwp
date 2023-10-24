@@ -156,6 +156,8 @@ enum nak_fs_out {
    NAK_FS_OUT_DEPTH = 0x84,
 };
 
+bool nak_nir_add_barriers(nir_shader *nir, const struct nak_compiler *nak);
+
 #define NAK_FS_OUT_COLOR(n) (NAK_FS_OUT_COLOR0 + (n) * 16)
 
 #ifdef __cplusplus
