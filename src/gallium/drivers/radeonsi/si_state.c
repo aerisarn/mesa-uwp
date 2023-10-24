@@ -82,9 +82,7 @@ static void si_emit_cb_render_state(struct si_context *sctx, unsigned index)
       radeon_end();
    }
 
-   radeon_begin(cs);
-   radeon_opt_set_context_reg(sctx, R_028238_CB_TARGET_MASK, SI_TRACKED_CB_TARGET_MASK,
-                              cb_target_mask);
+   uint32_t cb_dcc_control = 0;
 
    if (sctx->gfx_level >= GFX8) {
       /* DCC MSAA workaround.
@@ -95,28 +93,27 @@ static void si_emit_cb_render_state(struct si_context *sctx, unsigned index)
          blend->dcc_msaa_corruption_4bit & cb_target_mask && sctx->framebuffer.nr_samples >= 2;
 
       if (sctx->gfx_level >= GFX11) {
-         radeon_opt_set_context_reg(sctx, R_028424_CB_FDCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
-                                    S_028424_SAMPLE_MASK_TRACKER_DISABLE(oc_disable) |
-                                    S_028424_SAMPLE_MASK_TRACKER_WATERMARK(0));
+         cb_dcc_control = S_028424_SAMPLE_MASK_TRACKER_DISABLE(oc_disable) |
+                          S_028424_SAMPLE_MASK_TRACKER_WATERMARK(0);
       } else {
-         radeon_opt_set_context_reg(
-            sctx, R_028424_CB_DCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
+         cb_dcc_control =
             S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(sctx->gfx_level <= GFX9) |
-               S_028424_OVERWRITE_COMBINER_WATERMARK(sctx->gfx_level >= GFX10 ? 6 : 4) |
-               S_028424_OVERWRITE_COMBINER_DISABLE(oc_disable) |
-               S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->gfx_level < GFX11 &&
-                                                    sctx->screen->info.has_dcc_constant_encode));
+            S_028424_OVERWRITE_COMBINER_WATERMARK(sctx->gfx_level >= GFX10 ? 6 : 4) |
+            S_028424_OVERWRITE_COMBINER_DISABLE(oc_disable) |
+            S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->gfx_level < GFX11 &&
+                                                 sctx->screen->info.has_dcc_constant_encode);
       }
    }
+
+   uint32_t sx_ps_downconvert = 0;
+   uint32_t sx_blend_opt_epsilon = 0;
+   uint32_t sx_blend_opt_control = 0;
 
    /* RB+ register settings. */
    if (sctx->screen->info.rbplus_allowed) {
       unsigned spi_shader_col_format =
          sctx->shader.ps.cso ? sctx->shader.ps.current->key.ps.part.epilog.spi_shader_col_format
                              : 0;
-      unsigned sx_ps_downconvert = 0;
-      unsigned sx_blend_opt_epsilon = 0;
-      unsigned sx_blend_opt_control = 0;
       unsigned num_cbufs = util_last_bit(sctx->framebuffer.colorbuf_enabled_4bit &
                                          blend->cb_target_enabled_4bit) / 4;
 
@@ -250,8 +247,16 @@ static void si_emit_cb_render_state(struct si_context *sctx, unsigned index)
        */
       if (!sx_ps_downconvert)
          sx_ps_downconvert = V_028754_SX_RT_EXPORT_32_R;
+   }
 
-      /* SX_PS_DOWNCONVERT, SX_BLEND_OPT_EPSILON, SX_BLEND_OPT_CONTROL */
+   radeon_begin(cs);
+   radeon_opt_set_context_reg(sctx, R_028238_CB_TARGET_MASK, SI_TRACKED_CB_TARGET_MASK,
+                              cb_target_mask);
+   if (sctx->gfx_level >= GFX8) {
+      radeon_opt_set_context_reg(sctx, R_028424_CB_DCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
+                                 cb_dcc_control);
+   }
+   if (sctx->screen->info.rbplus_allowed) {
       radeon_opt_set_context_reg3(sctx, R_028754_SX_PS_DOWNCONVERT, SI_TRACKED_SX_PS_DOWNCONVERT,
                                   sx_ps_downconvert, sx_blend_opt_epsilon, sx_blend_opt_control);
    }
