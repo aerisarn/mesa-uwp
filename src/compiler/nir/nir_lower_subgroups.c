@@ -589,8 +589,13 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
       if (options->lower_vote_trivial)
          return nir_imm_true(b);
 
-      if (options->lower_vote_eq)
-         return lower_vote_eq(b, intrin);
+      if (nir_src_bit_size(intrin->src[0]) == 1) {
+         if (options->lower_vote_bool_eq)
+            return lower_vote_eq(b, intrin);
+      } else {
+         if (options->lower_vote_eq)
+            return lower_vote_eq(b, intrin);
+      }
 
       if (options->lower_to_scalar && intrin->num_components > 1)
          return lower_vote_eq_to_scalar(b, intrin);

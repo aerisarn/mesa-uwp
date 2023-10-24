@@ -644,6 +644,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
                .lower_relative_shuffle = 1,
                .lower_shuffle_to_32bit = 1,
                .lower_vote_eq = 1,
+               .lower_vote_bool_eq = 1,
                .lower_quad_broadcast_dynamic = 1,
                .lower_quad_broadcast_dynamic_to_const = gfx7minus,
                .lower_shuffle_to_swizzle_amd = 1,
