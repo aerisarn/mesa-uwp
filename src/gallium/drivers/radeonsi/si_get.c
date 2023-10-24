@@ -310,7 +310,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        */
       return 256;
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
-      return 4095;
+      return 1024;
    case PIPE_CAP_MAX_GS_INVOCATIONS:
       /* Even though the hw supports more, we officially wanna expose only 32. */
       return 32;
