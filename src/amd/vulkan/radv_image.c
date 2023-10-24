@@ -179,7 +179,8 @@ radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev, const v
    if (sign_reinterpret != NULL)
       *sign_reinterpret = false;
 
-   if (flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
+   /* All formats are compatible on GFX11. */
+   if ((flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) && pdev->rad_info.gfx_level < GFX11) {
       const struct VkImageFormatListCreateInfo *format_list =
          (const struct VkImageFormatListCreateInfo *)vk_find_struct_const(pNext, IMAGE_FORMAT_LIST_CREATE_INFO);
 
