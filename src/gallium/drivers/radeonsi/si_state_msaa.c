@@ -142,10 +142,10 @@ static void si_get_sample_position(struct pipe_context *ctx, unsigned sample_cou
    out_value[1] = (GET_SY(sample_locs, sample_index) + 8) / 16.0f;
 }
 
-static void si_emit_max_4_sample_locs(struct radeon_cmdbuf *cs, uint64_t centroid_priority,
+static void si_emit_max_4_sample_locs(struct si_context *sctx, uint64_t centroid_priority,
                                       uint32_t sample_locs)
 {
-   radeon_begin(cs);
+   radeon_begin(&sctx->gfx_cs);
    radeon_set_context_reg_seq(R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
    radeon_emit(centroid_priority);
    radeon_emit(centroid_priority >> 32);
@@ -156,10 +156,10 @@ static void si_emit_max_4_sample_locs(struct radeon_cmdbuf *cs, uint64_t centroi
    radeon_end();
 }
 
-static void si_emit_max_16_sample_locs(struct radeon_cmdbuf *cs, uint64_t centroid_priority,
+static void si_emit_max_16_sample_locs(struct si_context *sctx, uint64_t centroid_priority,
                                        const uint32_t *sample_locs, unsigned num_samples)
 {
-   radeon_begin(cs);
+   radeon_begin(&sctx->gfx_cs);
    radeon_set_context_reg_seq(R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
    radeon_emit(centroid_priority);
    radeon_emit(centroid_priority >> 32);
@@ -194,19 +194,19 @@ static void si_emit_sample_locations(struct si_context *sctx, unsigned index)
       switch (nr_samples) {
       default:
       case 1:
-         si_emit_max_4_sample_locs(cs, centroid_priority_1x, sample_locs_1x);
+         si_emit_max_4_sample_locs(sctx, centroid_priority_1x, sample_locs_1x);
          break;
       case 2:
-         si_emit_max_4_sample_locs(cs, centroid_priority_2x, sample_locs_2x);
+         si_emit_max_4_sample_locs(sctx, centroid_priority_2x, sample_locs_2x);
          break;
       case 4:
-         si_emit_max_4_sample_locs(cs, centroid_priority_4x, sample_locs_4x);
+         si_emit_max_4_sample_locs(sctx, centroid_priority_4x, sample_locs_4x);
          break;
       case 8:
-         si_emit_max_16_sample_locs(cs, centroid_priority_8x, sample_locs_8x, 8);
+         si_emit_max_16_sample_locs(sctx, centroid_priority_8x, sample_locs_8x, 8);
          break;
       case 16:
-         si_emit_max_16_sample_locs(cs, centroid_priority_16x, sample_locs_16x, 16);
+         si_emit_max_16_sample_locs(sctx, centroid_priority_16x, sample_locs_16x, 16);
          break;
       }
       sctx->sample_locs_num_samples = nr_samples;
