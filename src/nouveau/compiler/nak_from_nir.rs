@@ -138,12 +138,53 @@ impl<'a> PhiAllocMap<'a> {
     }
 }
 
+struct BarAlloc {
+    used: u16,
+    num_bars: u8,
+}
+
+impl BarAlloc {
+    pub fn new() -> BarAlloc {
+        BarAlloc {
+            used: 0,
+            num_bars: 0,
+        }
+    }
+
+    pub fn num_bars(&self) -> u8 {
+        self.num_bars
+    }
+
+    pub fn reserve(&mut self, idx: u8) {
+        self.num_bars = max(self.num_bars, idx + 1);
+        let bit = 1 << idx;
+        assert!(self.used & bit == 0);
+        self.used |= bit;
+    }
+
+    pub fn alloc(&mut self) -> BarRef {
+        let idx = self.used.trailing_ones();
+        assert!(idx < 16);
+        let idx = idx as u8;
+        self.reserve(idx);
+        BarRef::new(idx)
+    }
+
+    pub fn free(&mut self, bar: BarRef) {
+        let bit = 1 << bar.idx();
+        assert!(self.used & bit != 0);
+        self.used &= !bit;
+    }
+}
+
 struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
     info: ShaderInfo,
     cfg: CFGBuilder<u32, BasicBlock>,
     label_alloc: LabelAllocator,
     block_label: HashMap<u32, Label>,
+    bar_alloc: BarAlloc,
+    bar_ref_label: HashMap<u32, (BarRef, Label)>,
     fs_out_regs: [SSAValue; 34],
     end_block_id: u32,
     ssa_map: HashMap<u32, Vec<SSAValue>>,
@@ -158,6 +199,8 @@ impl<'a> ShaderFromNir<'a> {
             cfg: CFGBuilder::new(),
             label_alloc: LabelAllocator::new(),
             block_label: HashMap::new(),
+            bar_alloc: BarAlloc::new(),
+            bar_ref_label: HashMap::new(),
             fs_out_regs: [SSAValue::NONE; 34],
             end_block_id: 0,
             ssa_map: HashMap::new(),
@@ -1296,6 +1339,54 @@ impl<'a> ShaderFromNir<'a> {
                     panic!("Invalid VTG I/O intrinsic");
                 }
             }
+            nir_intrinsic_bar_break_nv => {
+                let idx = &srcs[0].as_def().index;
+                let (bar, _) = self.bar_ref_label.get(idx).unwrap();
+
+                let brk = b.push_op(OpBreak {
+                    bar: *bar,
+                    cond: SrcRef::True.into(),
+                });
+                brk.deps.yld = true;
+            }
+            nir_intrinsic_bar_set_nv => {
+                let label = self.label_alloc.alloc();
+                let bar = self.bar_alloc.alloc();
+
+                let bmov = b.push_op(OpBMov {
+                    dst: Dst::None,
+                    src: BMovSrc::Barrier(bar),
+                    clear: true,
+                });
+                bmov.deps.yld = true;
+
+                let bssy = b.push_op(OpBSSy {
+                    bar: bar,
+                    cond: SrcRef::True.into(),
+                    target: label,
+                });
+                bssy.deps.yld = true;
+
+                let old =
+                    self.bar_ref_label.insert(intrin.def.index, (bar, label));
+                assert!(old.is_none());
+            }
+            nir_intrinsic_bar_sync_nv => {
+                let idx = &srcs[0].as_def().index;
+                let (bar, label) = self.bar_ref_label.get(idx).unwrap();
+
+                let bsync = b.push_op(OpBSync {
+                    bar: *bar,
+                    cond: SrcRef::True.into(),
+                });
+                bsync.deps.yld = true;
+
+                self.bar_alloc.free(*bar);
+
+                b.push_op(OpNop {
+                    label: Some(*label),
+                });
+            }
             nir_intrinsic_bindless_image_atomic
             | nir_intrinsic_bindless_image_atomic_swap => {
                 let handle = self.get_src(&srcs[0]);
@@ -1755,9 +1846,6 @@ impl<'a> ShaderFromNir<'a> {
                     SCOPE_WORKGROUP => {
                         b.push_op(OpWarpSync { mask: u32::MAX });
                         if self.nir.info.stage() == MESA_SHADER_COMPUTE {
-                            // Ensure we allocate one barrier.
-                            self.info.num_barriers = 1;
-
                             b.push_op(OpBar {}).deps.yld = true;
                         }
                     }
@@ -2032,8 +2120,7 @@ impl<'a> ShaderFromNir<'a> {
             // memory.  Perhaps this is to ensure that our allocation is
             // actually available and not in use by another thread?
             let label = self.label_alloc.alloc();
-            let bar = BarRef::new(0);
-            self.info.num_barriers = 1;
+            let bar = self.bar_alloc.alloc();
 
             let bmov = b.push_op(OpBMov {
                 dst: Dst::None,
@@ -2054,6 +2141,8 @@ impl<'a> ShaderFromNir<'a> {
                 cond: SrcRef::True.into(),
             });
             bsync.deps.yld = true;
+
+            self.bar_alloc.free(bar);
 
             b.push_op(OpNop { label: Some(label) });
         }
@@ -2238,6 +2327,15 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     pub fn parse_shader(mut self) -> Shader {
+        if self.nir.info.stage() == MESA_SHADER_COMPUTE
+            && self.nir.info.uses_control_barrier()
+        {
+            // We know OpBar uses a barrier but we don't know which one.  Assume
+            // it implicitly uses B0 and reserve it so it doesn't stomp any
+            // other barriers
+            self.bar_alloc.reserve(0);
+        }
+
         let mut functions = Vec::new();
         for nf in self.nir.iter_functions() {
             if let Some(nfi) = nf.get_impl() {
@@ -2245,6 +2343,8 @@ impl<'a> ShaderFromNir<'a> {
                 functions.push(f);
             }
         }
+
+        self.info.num_barriers = self.bar_alloc.num_bars();
 
         // Tessellation evaluation shaders MUST claim to read gl_TessCoord or
         // the hardware will throw an SPH error.
