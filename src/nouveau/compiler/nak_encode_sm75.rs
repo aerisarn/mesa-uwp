@@ -883,8 +883,8 @@ impl SM75Instr {
         assert!(op.c.src_mod.is_none());
 
         match &op.lane.src_ref {
-            SrcRef::Reg(_) => match &op.c.src_ref {
-                SrcRef::Reg(_) => {
+            SrcRef::Zero | SrcRef::Reg(_) => match &op.c.src_ref {
+                SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x389);
                     self.set_reg_src(32..40, op.lane);
                     self.set_reg_src(64..72, op.c);
@@ -892,20 +892,20 @@ impl SM75Instr {
                 SrcRef::Imm32(imm_c) => {
                     self.set_opcode(0x589);
                     self.set_reg_src(32..40, op.lane);
-                    self.set_field(40..53, *imm_c);
+                    self.set_field(40..53, *imm_c & 0x1f1f);
                 }
                 _ => panic!("Invalid instruction form"),
             },
             SrcRef::Imm32(imm_lane) => match &op.c.src_ref {
-                SrcRef::Reg(_) => {
+                SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x989);
-                    self.set_field(53..58, *imm_lane);
+                    self.set_field(53..58, *imm_lane & 0x1f);
                     self.set_reg_src(64..72, op.c);
                 }
                 SrcRef::Imm32(imm_c) => {
                     self.set_opcode(0xf89);
-                    self.set_field(40..53, *imm_c);
-                    self.set_field(53..58, *imm_lane);
+                    self.set_field(40..53, *imm_c & 0x1f1f);
+                    self.set_field(53..58, *imm_lane & 0x1f);
                 }
                 _ => panic!("Invalid instruction form"),
             },
