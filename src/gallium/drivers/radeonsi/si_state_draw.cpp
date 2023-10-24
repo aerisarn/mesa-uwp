@@ -1128,7 +1128,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 
 static ALWAYS_INLINE void
 gfx11_emit_buffered_sh_regs_inline(struct si_context *sctx, unsigned *num_regs,
-                                   struct si_sh_reg_pair *reg_pairs)
+                                   struct gfx11_reg_pair *reg_pairs)
 {
    unsigned reg_count = *num_regs;
 
@@ -1171,10 +1171,10 @@ gfx11_emit_buffered_sh_regs_inline(struct si_context *sctx, unsigned *num_regs,
 
 #if GFX_VER == 6 /* declare this function only once because there is only one variant. */
 
-void gfx11_emit_buffered_compute_sh_regs(struct si_context *sctx)
+void si_emit_buffered_compute_sh_regs(struct si_context *sctx)
 {
    gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_compute_sh_regs,
-                                      sctx->buffered_compute_sh_regs);
+                                      sctx->gfx11.buffered_compute_sh_regs);
 }
 
 #endif
@@ -1342,7 +1342,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       if (HAS_PAIRS) {
          radeon_end();
          gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_gfx_sh_regs,
-                                            sctx->buffered_gfx_sh_regs);
+                                            sctx->gfx11.buffered_gfx_sh_regs);
          radeon_begin_again(cs);
       }
 
@@ -1451,7 +1451,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       if (HAS_PAIRS) {
          radeon_end();
          gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_gfx_sh_regs,
-                                            sctx->buffered_gfx_sh_regs);
+                                            sctx->gfx11.buffered_gfx_sh_regs);
          radeon_begin_again(cs);
       }
 

@@ -859,7 +859,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
 
    if (sctx->gfx_level >= GFX11) {
       radeon_end();
-      gfx11_emit_buffered_compute_sh_regs(sctx);
+      si_emit_buffered_compute_sh_regs(sctx);
       radeon_begin_again(cs);
    }
 

@@ -262,9 +262,9 @@
 /* GFX11 generic packet building helpers for buffered SH registers. Don't use these directly. */
 #define gfx11_push_sh_reg(reg, value, type) do { \
    unsigned __i = sctx->num_buffered_##type##_sh_regs++; \
-   assert(__i / 2 < ARRAY_SIZE(sctx->buffered_##type##_sh_regs)); \
-   sctx->buffered_##type##_sh_regs[__i / 2].reg_offset[__i % 2] = ((reg) - SI_SH_REG_OFFSET) >> 2; \
-   sctx->buffered_##type##_sh_regs[__i / 2].reg_value[__i % 2] = value; \
+   assert(__i / 2 < ARRAY_SIZE(sctx->gfx11.buffered_##type##_sh_regs)); \
+   sctx->gfx11.buffered_##type##_sh_regs[__i / 2].reg_offset[__i % 2] = ((reg) - SI_SH_REG_OFFSET) >> 2; \
+   sctx->gfx11.buffered_##type##_sh_regs[__i / 2].reg_value[__i % 2] = value; \
 } while (0)
 
 #define gfx11_opt_push_sh_reg(reg, reg_enum, value, type) do { \

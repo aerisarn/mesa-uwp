@@ -947,7 +947,7 @@ struct si_vertex_state {
 };
 
 /* The structure layout is identical to a pair of registers in SET_*_REG_PAIRS_PACKED. */
-struct si_sh_reg_pair {
+struct gfx11_reg_pair {
    union {
       /* A pair of register offsets. */
       struct {
@@ -1063,11 +1063,14 @@ struct si_context {
    uint64_t dirty_atoms; /* mask */
    union si_state queued;
    union si_state emitted;
-   /* Gfx11+: Buffered SH registers for SET_SH_REG_PAIRS_PACKED*. */
+
+   /* Gfx11+: Buffered SH registers for SET_SH_REG_PAIRS_*. */
    unsigned num_buffered_gfx_sh_regs;
-   struct si_sh_reg_pair buffered_gfx_sh_regs[32];
    unsigned num_buffered_compute_sh_regs;
-   struct si_sh_reg_pair buffered_compute_sh_regs[32];
+   struct {
+      struct gfx11_reg_pair buffered_gfx_sh_regs[32];
+      struct gfx11_reg_pair buffered_compute_sh_regs[32];
+   } gfx11;
 
    /* Atom declarations. */
    struct si_framebuffer framebuffer;
