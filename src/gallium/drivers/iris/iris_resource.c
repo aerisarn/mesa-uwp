@@ -1500,8 +1500,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       res->bo = NULL;
    }
 
-   if (get_num_planes(&res->base.b) ==
-       iris_get_dmabuf_modifier_planes(pscreen, modifier, whandle->format)) {
+   if (whandle->plane == 0) {
       iris_resource_finish_aux_import(pscreen, res);
    }
 
