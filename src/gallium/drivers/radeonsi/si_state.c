@@ -1095,18 +1095,18 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                      S_028230_ER_TRI(0xA) |
                      S_028230_ER_POINT(0x5) |
                      S_028230_ER_RECT(0x9) |
-                     S_028230_ER_LINE_LR(0x29) |
-                     S_028230_ER_LINE_RL(0x29) |
+                     S_028230_ER_LINE_LR(0x2A) |
+                     S_028230_ER_LINE_RL(0x2A) |
                      S_028230_ER_LINE_TB(0xA) |
                      S_028230_ER_LINE_BT(0xA));
    } else {
       /* OpenGL FBOs and Direct3D should set this. */
       si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
                      S_028230_ER_TRI(0xA) |
-                     S_028230_ER_POINT(0xA) |
+                     S_028230_ER_POINT(0x6) |
                      S_028230_ER_RECT(0xA) |
-                     S_028230_ER_LINE_LR(0x1A) |
-                     S_028230_ER_LINE_RL(0x26) |
+                     S_028230_ER_LINE_LR(0x19) |
+                     S_028230_ER_LINE_RL(0x25) |
                      S_028230_ER_LINE_TB(0xA) |
                      S_028230_ER_LINE_BT(0xA));
    }

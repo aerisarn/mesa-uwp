@@ -29,7 +29,7 @@ traces:
       checksum: 8d71757cb74f8d71bf87c8af7e7f725a
   pathfinder/demo-v2.trace:
     gl-radeonsi-stoney:
-      checksum: 86318ec31a55a1246cb4a136a15475fd
+      checksum: c81c85f9b247dd1b06c3dd5b669cc283
   pathfinder/canvas_moire-v2.trace:
     gl-radeonsi-stoney:
       checksum: 78dd2357ad6e5ffc049a75bfb11c5497
