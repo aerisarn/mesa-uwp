@@ -432,18 +432,34 @@ nak_nir_lower_system_value_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
       break;
    }
 
+   case nir_intrinsic_load_subgroup_eq_mask:
+   case nir_intrinsic_load_subgroup_lt_mask:
+   case nir_intrinsic_load_subgroup_le_mask:
+   case nir_intrinsic_load_subgroup_gt_mask:
+   case nir_intrinsic_load_subgroup_ge_mask: {
+      const gl_system_value sysval =
+         nir_system_value_from_intrinsic(intrin->intrinsic);
+      const uint32_t idx = nak_sysval_sysval_idx(sysval);
+      val = nir_load_sysval_nv(b, 32, .base = idx,
+                               .access = ACCESS_CAN_REORDER);
+
+      /* Pad with 0 because all invocations above 31 are off */
+      if (intrin->def.bit_size == 64) {
+         val = nir_u2u32(b, val);
+      } else {
+         assert(intrin->def.bit_size == 32);
+         val = nir_pad_vector_imm_int(b, val, 0, intrin->def.num_components);
+      }
+      break;
+   }
+
    case nir_intrinsic_load_subgroup_invocation:
    case nir_intrinsic_load_helper_invocation:
    case nir_intrinsic_load_invocation_id:
    case nir_intrinsic_load_local_invocation_index:
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_workgroup_id:
-   case nir_intrinsic_load_workgroup_id_zero_base:
-   case nir_intrinsic_load_subgroup_eq_mask:
-   case nir_intrinsic_load_subgroup_lt_mask:
-   case nir_intrinsic_load_subgroup_le_mask:
-   case nir_intrinsic_load_subgroup_gt_mask:
-   case nir_intrinsic_load_subgroup_ge_mask: {
+   case nir_intrinsic_load_workgroup_id_zero_base: {
       const gl_system_value sysval =
          intrin->intrinsic == nir_intrinsic_load_workgroup_id_zero_base ?
          SYSTEM_VALUE_WORKGROUP_ID :
