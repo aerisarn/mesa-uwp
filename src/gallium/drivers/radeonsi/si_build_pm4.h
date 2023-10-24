@@ -291,7 +291,7 @@
    gfx11_opt_push_sh_reg(reg, reg_enum, value, compute)
 
 #define radeon_set_or_push_gfx_sh_reg(reg, value) do { \
-   if (GFX_VERSION >= GFX11 && HAS_PAIRS) { \
+   if (GFX_VERSION >= GFX11 && HAS_SH_PAIRS_PACKED) { \
       radeon_push_gfx_sh_reg(reg, value); \
    } else { \
       radeon_set_sh_reg_seq(reg, 1); \
