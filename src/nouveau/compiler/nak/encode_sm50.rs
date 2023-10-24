@@ -1614,25 +1614,23 @@ impl SM50Instr {
         self.set_field(10..12, (src_type.bits() / 8).ilog2());
     }
 
-    fn encode_iadd3(&mut self, op: &OpIAdd3) {
+    fn encode_iadd2(&mut self, op: &OpIAdd2) {
+        /* TODO: support modifiers with imm32 (bit 56) */
         assert!(op.srcs[0].is_reg_or_zero());
 
         let src_modifier = Some(ALUSrcsModifier {
             src0_opt: Some(ALUModifierInfo {
                 abs_bit: None,
-                neg_bit: Some(51),
+                neg_bit: Some(49),
             }),
             src1_opt: Some(ALUModifierInfo {
                 abs_bit: None,
-                neg_bit: Some(50),
+                neg_bit: Some(48),
             }),
-            src2_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(49),
-            }),
+            src2_opt: None,
         });
         let encoding_info = ALUEncodingInfo {
-            opcode: 0xc0,
+            opcode: 0x10,
             encoding_type: ALUEncodingType::Variant4,
             reg_modifier: src_modifier,
             imm24_modifier: src_modifier,
@@ -1643,13 +1641,21 @@ impl SM50Instr {
             }),
         };
 
-        self.encode_alu(
+        let is_imm32 = self.encode_alu(
             encoding_info,
             Some(op.dst),
             ALUSrc::from_src(&op.srcs[0]),
             ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::from_src(&op.srcs[2]),
+            ALUSrc::None,
         );
+
+        if is_imm32 {
+            self.set_bit(53, op.carry_in);
+            self.set_bit(52, op.carry_out);
+        } else {
+            self.set_bit(43, op.carry_in);
+            self.set_bit(47, op.carry_out);
+        }
     }
 
     fn encode_prmt(&mut self, op: &OpPrmt) {
@@ -1698,7 +1704,7 @@ impl SM50Instr {
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::IAbs(op) => si.encode_iabs(&op),
-            Op::IAdd3(op) => si.encode_iadd3(&op),
+            Op::IAdd2(op) => si.encode_iadd2(&op),
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
             Op::PSetP(op) => si.encode_psetp(&op),

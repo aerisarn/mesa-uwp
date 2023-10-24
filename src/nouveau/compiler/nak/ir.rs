@@ -2447,6 +2447,33 @@ impl DisplayOp for OpINeg {
 }
 impl_display_for_op!(OpINeg);
 
+/// Only used on SM50
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIAdd2 {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub srcs: [Src; 2],
+
+    // TODO: We should probably track this as an SSA value somehow
+    pub carry_out: bool,
+    pub carry_in: bool,
+}
+
+impl DisplayOp for OpIAdd2 {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "iadd")?;
+        if self.carry_in {
+            write!(f, ".x")?;
+        }
+        if self.carry_out {
+            write!(f, ".cc")?;
+        }
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd3 {
@@ -4407,6 +4434,7 @@ pub enum Op {
     Flo(OpFlo),
     IAbs(OpIAbs),
     INeg(OpINeg),
+    IAdd2(OpIAdd2),
     IAdd3(OpIAdd3),
     IAdd3X(OpIAdd3X),
     IDp4(OpIDp4),
@@ -4842,6 +4870,7 @@ impl Instr {
             Op::Brev(_) | Op::Flo(_) | Op::PopC(_) => false,
             Op::IAbs(_)
             | Op::INeg(_)
+            | Op::IAdd2(_)
             | Op::IAdd3(_)
             | Op::IAdd3X(_)
             | Op::IDp4(_)
@@ -5414,13 +5443,26 @@ impl Shader {
     }
 
     pub fn lower_ineg(&mut self) {
-        self.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
+        let sm = self.info.sm;
+        self.map_instrs(|mut instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
-                Op::INeg(neg) => MappedInstrs::One(Instr::new_boxed(OpIAdd3 {
-                    dst: neg.dst,
-                    overflow: [Dst::None; 2],
-                    srcs: [Src::new_zero(), neg.src.ineg(), Src::new_zero()],
-                })),
+                Op::INeg(neg) => {
+                    if sm >= 75 {
+                        instr.op = Op::IAdd3(OpIAdd3 {
+                            dst: neg.dst,
+                            overflow: [Dst::None; 2],
+                            srcs: [0.into(), neg.src.ineg(), 0.into()],
+                        });
+                    } else {
+                        instr.op = Op::IAdd2(OpIAdd2 {
+                            dst: neg.dst,
+                            srcs: [0.into(), neg.src.ineg()],
+                            carry_in: false,
+                            carry_out: false,
+                        });
+                    }
+                    MappedInstrs::One(instr)
+                }
                 _ => MappedInstrs::One(instr),
             }
         })

@@ -186,11 +186,20 @@ pub trait SSABuilder: Builder {
 
     fn iadd(&mut self, x: Src, y: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
-        self.push_op(OpIAdd3 {
-            dst: dst.into(),
-            srcs: [Src::new_zero(), x, y],
-            overflow: [Dst::None; 2],
-        });
+        if self.sm() >= 70 {
+            self.push_op(OpIAdd3 {
+                dst: dst.into(),
+                srcs: [Src::new_zero(), x, y],
+                overflow: [Dst::None; 2],
+            });
+        } else {
+            self.push_op(OpIAdd2 {
+                dst: dst.into(),
+                srcs: [x, y],
+                carry_in: false,
+                carry_out: false,
+            });
+        }
         dst
     }
 

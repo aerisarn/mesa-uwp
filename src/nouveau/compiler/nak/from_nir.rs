@@ -757,17 +757,32 @@ impl<'a> ShaderFromNir<'a> {
                     let y = srcs[1].as_ssa().unwrap();
                     let sum = b.alloc_ssa(RegFile::GPR, 2);
                     let carry = b.alloc_ssa(RegFile::Pred, 1);
-                    b.push_op(OpIAdd3 {
-                        dst: sum[0].into(),
-                        overflow: [carry.into(), Dst::None],
-                        srcs: [x[0].into(), y[0].into(), 0.into()],
-                    });
-                    b.push_op(OpIAdd3X {
-                        dst: sum[1].into(),
-                        overflow: [Dst::None, Dst::None],
-                        srcs: [x[1].into(), y[1].into(), 0.into()],
-                        carry: [carry.into(), SrcRef::False.into()],
-                    });
+                    if self.info.sm >= 70 {
+                        b.push_op(OpIAdd3 {
+                            dst: sum[0].into(),
+                            overflow: [carry.into(), Dst::None],
+                            srcs: [x[0].into(), y[0].into(), 0.into()],
+                        });
+                        b.push_op(OpIAdd3X {
+                            dst: sum[1].into(),
+                            overflow: [Dst::None, Dst::None],
+                            srcs: [x[1].into(), y[1].into(), 0.into()],
+                            carry: [carry.into(), SrcRef::False.into()],
+                        });
+                    } else {
+                        b.push_op(OpIAdd2 {
+                            dst: sum[0].into(),
+                            srcs: [x[0].into(), y[0].into()],
+                            carry_out: true,
+                            carry_in: false,
+                        });
+                        b.push_op(OpIAdd2 {
+                            dst: sum[1].into(),
+                            srcs: [x[1].into(), y[1].into()],
+                            carry_out: false,
+                            carry_in: true,
+                        });
+                    }
                     sum
                 } else {
                     assert!(alu.def.bit_size() == 32);
