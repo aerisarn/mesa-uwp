@@ -235,13 +235,11 @@ static void si_emit_one_scissor(struct si_context *ctx, struct radeon_cmdbuf *cs
    if (ctx->gfx_level == GFX6 && (final.maxx == 0 || final.maxy == 0)) {
       radeon_emit(S_028250_TL_X(1) | S_028250_TL_Y(1) | S_028250_WINDOW_OFFSET_DISABLE(1));
       radeon_emit(S_028254_BR_X(1) | S_028254_BR_Y(1));
-      radeon_end();
-      return;
-   }
-
-   radeon_emit(S_028250_TL_X(final.minx) | S_028250_TL_Y(final.miny) |
+   } else {
+      radeon_emit(S_028250_TL_X(final.minx) | S_028250_TL_Y(final.miny) |
                   S_028250_WINDOW_OFFSET_DISABLE(1));
-   radeon_emit(S_028254_BR_X(final.maxx) | S_028254_BR_Y(final.maxy));
+      radeon_emit(S_028254_BR_X(final.maxx) | S_028254_BR_Y(final.maxy));
+   }
    radeon_end();
 }
 
@@ -364,22 +362,25 @@ static void si_emit_guardband(struct si_context *sctx, unsigned index)
       discard_y = MIN2(discard_y, guardband_y);
    }
 
+   unsigned pa_su_vtx_cntl = S_028BE4_PIX_CENTER(rs->half_pixel_center) |
+                             S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |
+                             S_028BE4_QUANT_MODE(V_028BE4_X_16_8_FIXED_POINT_1_256TH +
+                                                 vp_as_scissor.quant_mode);
+   unsigned pa_su_hardware_screen_offset = S_028234_HW_SCREEN_OFFSET_X(hw_screen_offset_x >> 4) |
+                                           S_028234_HW_SCREEN_OFFSET_Y(hw_screen_offset_y >> 4);
+
    /* If any of the GB registers is updated, all of them must be updated.
     * R_028BE8_PA_CL_GB_VERT_CLIP_ADJ, R_028BEC_PA_CL_GB_VERT_DISC_ADJ
     * R_028BF0_PA_CL_GB_HORZ_CLIP_ADJ, R_028BF4_PA_CL_GB_HORZ_DISC_ADJ
     */
    radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg5(sctx, R_028BE4_PA_SU_VTX_CNTL, SI_TRACKED_PA_SU_VTX_CNTL,
-                               S_028BE4_PIX_CENTER(rs->half_pixel_center) |
-                               S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |
-                               S_028BE4_QUANT_MODE(V_028BE4_X_16_8_FIXED_POINT_1_256TH +
-                                                   vp_as_scissor.quant_mode),
+                               pa_su_vtx_cntl,
                                fui(guardband_y), fui(discard_y),
                                fui(guardband_x), fui(discard_x));
    radeon_opt_set_context_reg(sctx, R_028234_PA_SU_HARDWARE_SCREEN_OFFSET,
                               SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET,
-                              S_028234_HW_SCREEN_OFFSET_X(hw_screen_offset_x >> 4) |
-                              S_028234_HW_SCREEN_OFFSET_Y(hw_screen_offset_y >> 4));
+                              pa_su_hardware_screen_offset);
    radeon_end_update_context_roll(sctx);
 }
 
