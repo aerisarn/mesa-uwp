@@ -2539,6 +2539,7 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_load_global(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
+   bool coherent = ctx->sinfo->have_vulkan_memory_model && nir_intrinsic_access(intr) & ACCESS_COHERENT;
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilityPhysicalStorageBufferAddresses);
    SpvId dest_type = get_def_type(ctx, &intr->def, nir_type_uint);
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
@@ -2546,13 +2547,14 @@ emit_load_global(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                    dest_type);
    nir_alu_type atype;
    SpvId ptr = emit_bitcast(ctx, pointer_type, get_src(ctx, &intr->src[0], &atype));
-   SpvId result = spirv_builder_emit_load_aligned(&ctx->builder, dest_type, ptr, intr->def.bit_size / 8);
+   SpvId result = spirv_builder_emit_load_aligned(&ctx->builder, dest_type, ptr, intr->def.bit_size / 8, coherent);
    store_def(ctx, &intr->def, result, nir_type_uint);
 }
 
 static void
 emit_store_global(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
+   bool coherent = ctx->sinfo->have_vulkan_memory_model && nir_intrinsic_access(intr) & ACCESS_COHERENT;
    spirv_builder_emit_cap(&ctx->builder, SpvCapabilityPhysicalStorageBufferAddresses);
    unsigned bit_size = nir_src_bit_size(intr->src[0]);
    SpvId dest_type = get_uvec_type(ctx, bit_size, 1);
@@ -2564,7 +2566,7 @@ emit_store_global(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    if (atype != nir_type_uint)
       param = emit_bitcast(ctx, dest_type, param);
    SpvId ptr = emit_bitcast(ctx, pointer_type, get_src(ctx, &intr->src[1], &atype));
-   spirv_builder_emit_store_aligned(&ctx->builder, ptr, param, bit_size / 8);
+   spirv_builder_emit_store_aligned(&ctx->builder, ptr, param, bit_size / 8, coherent);
 }
 
 static void
