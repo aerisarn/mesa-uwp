@@ -681,6 +681,23 @@ anv_i915_debug_submit(const struct anv_execbuf *execbuf)
    }
 }
 
+static void
+setup_execbuf_fence_params(struct anv_execbuf *execbuf)
+{
+   if (execbuf->syncobj_values) {
+      execbuf->timeline_fences.fence_count = execbuf->syncobj_count;
+      execbuf->timeline_fences.handles_ptr = (uintptr_t)execbuf->syncobjs;
+      execbuf->timeline_fences.values_ptr = (uintptr_t)execbuf->syncobj_values;
+      anv_execbuf_add_ext(execbuf,
+                          DRM_I915_GEM_EXECBUFFER_EXT_TIMELINE_FENCES,
+                          &execbuf->timeline_fences.base);
+   } else if (execbuf->syncobjs) {
+      execbuf->execbuf.flags |= I915_EXEC_FENCE_ARRAY;
+      execbuf->execbuf.num_cliprects = execbuf->syncobj_count;
+      execbuf->execbuf.cliprects_ptr = (uintptr_t)execbuf->syncobjs;
+   }
+}
+
 static VkResult
 i915_companion_rcs_queue_exec_locked(struct anv_queue *queue,
                                      uint32_t cmd_buffer_count,
@@ -731,18 +748,7 @@ i915_companion_rcs_queue_exec_locked(struct anv_queue *queue,
    anv_cmd_buffer_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers,
                                    NULL, 0, true /*is_companion_rcs_cmd_buffer */);
 
-   if (execbuf.syncobj_values) {
-      execbuf.timeline_fences.fence_count = execbuf.syncobj_count;
-      execbuf.timeline_fences.handles_ptr = (uintptr_t)execbuf.syncobjs;
-      execbuf.timeline_fences.values_ptr = (uintptr_t)execbuf.syncobj_values;
-      anv_execbuf_add_ext(&execbuf,
-                          DRM_I915_GEM_EXECBUFFER_EXT_TIMELINE_FENCES,
-                          &execbuf.timeline_fences.base);
-   } else if (execbuf.syncobjs) {
-      execbuf.execbuf.flags |= I915_EXEC_FENCE_ARRAY;
-      execbuf.execbuf.num_cliprects = execbuf.syncobj_count;
-      execbuf.execbuf.cliprects_ptr = (uintptr_t)execbuf.syncobjs;
-   }
+   setup_execbuf_fence_params(&execbuf);
 
    int ret = queue->device->info->no_hw ? 0 :
       anv_gem_execbuffer(queue->device, &execbuf.execbuf);
@@ -847,18 +853,7 @@ i915_queue_exec_locked(struct anv_queue *queue,
                                    perf_query_pool, perf_query_pass,
                                    false /* is_companion_rcs_cmd_buffer */);
 
-   if (execbuf.syncobj_values) {
-      execbuf.timeline_fences.fence_count = execbuf.syncobj_count;
-      execbuf.timeline_fences.handles_ptr = (uintptr_t)execbuf.syncobjs;
-      execbuf.timeline_fences.values_ptr = (uintptr_t)execbuf.syncobj_values;
-      anv_execbuf_add_ext(&execbuf,
-                          DRM_I915_GEM_EXECBUFFER_EXT_TIMELINE_FENCES,
-                          &execbuf.timeline_fences.base);
-   } else if (execbuf.syncobjs) {
-      execbuf.execbuf.flags |= I915_EXEC_FENCE_ARRAY;
-      execbuf.execbuf.num_cliprects = execbuf.syncobj_count;
-      execbuf.execbuf.cliprects_ptr = (uintptr_t)execbuf.syncobjs;
-   }
+   setup_execbuf_fence_params(&execbuf);
 
    if (has_perf_query) {
       assert(perf_query_pass < perf_query_pool->n_passes);
