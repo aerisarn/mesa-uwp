@@ -709,21 +709,33 @@ impl SM50Instr {
     }
 
     fn encode_ldg(&mut self, op: &OpLd) {
-        self.set_opcode(0x9c90);
+        self.set_opcode(0xeed0);
 
         self.set_dst(op.dst);
         self.set_reg_src(8..16, op.addr);
-        self.set_field(20..52, op.offset);
+        self.set_field(20..44, op.offset);
 
         self.set_mem_access(&op.access);
     }
 
     fn encode_ldl(&mut self, op: &OpLd) {
-        todo!()
+        self.set_opcode(0xef40);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.addr);
+        self.set_field(20..44, op.offset);
+
+        self.set_mem_access(&op.access);
     }
 
     fn encode_lds(&mut self, op: &OpLd) {
-        todo!()
+        self.set_opcode(0xef48);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.addr);
+        self.set_field(20..44, op.offset);
+
+        self.set_mem_access(&op.access);
     }
 
     fn encode_ld(&mut self, op: &OpLd) {
@@ -731,6 +743,41 @@ impl SM50Instr {
             MemSpace::Global(_) => self.encode_ldg(op),
             MemSpace::Local => self.encode_ldl(op),
             MemSpace::Shared => self.encode_lds(op),
+        }
+    }
+
+    fn encode_stg(&mut self, op: &OpSt) {
+        self.set_opcode(0xeed8);
+
+        self.set_reg_src(0..8, op.data);
+        self.set_reg_src(8..16, op.addr);
+        self.set_field(20..44, op.offset);
+        self.set_mem_access(&op.access);
+    }
+
+    fn encode_stl(&mut self, op: &OpSt) {
+        self.set_opcode(0xef50);
+
+        self.set_reg_src(0..8, op.data);
+        self.set_reg_src(8..16, op.addr);
+        self.set_field(20..44, op.offset);
+        self.set_mem_access(&op.access);
+    }
+
+    fn encode_sts(&mut self, op: &OpSt) {
+        self.set_opcode(0xef58);
+
+        self.set_reg_src(0..8, op.data);
+        self.set_reg_src(8..16, op.addr);
+        self.set_field(20..44, op.offset);
+        self.set_mem_access(&op.access);
+    }
+
+    fn encode_st(&mut self, op: &OpSt) {
+        match op.access.space {
+            MemSpace::Global(_) => self.encode_stg(op),
+            MemSpace::Local => self.encode_stl(op),
+            MemSpace::Shared => self.encode_sts(op),
         }
     }
 
@@ -1714,6 +1761,7 @@ impl SM50Instr {
             Op::Brev(op) => si.encode_brev(&op),
             Op::Prmt(op) => si.encode_prmt(&op),
             Op::Ld(op) => si.encode_ld(&op),
+            Op::St(op) => si.encode_st(&op),
             Op::Lop2(op) => si.encode_lop2(&op),
             Op::Shf(op) => si.encode_shf(&op),
             Op::F2F(op) => si.encode_f2f(&op),
