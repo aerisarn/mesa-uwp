@@ -715,6 +715,12 @@ struct anv_sparse_submission {
    struct anv_vm_bind *binds;
    int binds_len;
    int binds_capacity;
+
+   uint32_t wait_count;
+   uint32_t signal_count;
+
+   struct vk_sync_wait *waits;
+   struct vk_sync_signal *signals;
 };
 
 struct anv_trtt_bind {
@@ -723,6 +729,8 @@ struct anv_trtt_bind {
 };
 
 struct anv_trtt_submission {
+   struct anv_sparse_submission *sparse;
+
    struct anv_queue *queue;
 
    struct anv_trtt_bind *l3l2_binds;
@@ -1934,6 +1942,7 @@ VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
                                        struct anv_batch *batch,
                                        bool is_companion_rcs_batch);
 VkResult anv_queue_submit_trtt_batch(struct anv_queue *queue,
+                                     struct anv_sparse_submission *submit,
                                      struct anv_batch *batch);
 
 void anv_queue_trace(struct anv_queue *queue, const char *label,

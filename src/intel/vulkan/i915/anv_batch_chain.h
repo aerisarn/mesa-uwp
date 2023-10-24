@@ -35,6 +35,7 @@ struct anv_bo;
 struct anv_cmd_buffer;
 struct anv_query_pool;
 struct anv_utrace_submit;
+struct anv_sparse_submission;
 
 VkResult
 i915_queue_exec_trace(struct anv_queue *queue,
@@ -44,8 +45,9 @@ i915_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
                           uint32_t batch_bo_size, bool is_companion_rcs_batch);
 
 VkResult
-i915_execute_trtt_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
-                        uint32_t batch_size);
+i915_execute_trtt_batch(struct anv_queue *queue,
+                        struct anv_sparse_submission *submit,
+                        struct anv_bo *batch_bo, uint32_t batch_size);
 
 VkResult
 i915_queue_exec_locked(struct anv_queue *queue,

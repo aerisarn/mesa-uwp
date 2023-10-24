@@ -539,6 +539,7 @@ anv_sparse_bind_trtt(struct anv_device *device,
    STACK_ARRAY(struct anv_trtt_bind, l3l2_binds, l3l2_binds_capacity);
    STACK_ARRAY(struct anv_trtt_bind, l1_binds, l1_binds_capacity);
    struct anv_trtt_submission trtt_submit = {
+      .sparse = sparse_submit,
       .queue = trtt->queue,
       .l3l2_binds = l3l2_binds,
       .l1_binds = l1_binds,
@@ -596,7 +597,14 @@ anv_sparse_bind_vm_bind(struct anv_device *device,
     * See: https://gitlab.freedesktop.org/drm/xe/kernel/-/issues/746
     */
    for (int b = 0; b < submit->binds_len; b++) {
-      int rc = device->kmd_backend->vm_bind(device, 1, &submit->binds[b]);
+      struct anv_sparse_submission s = {
+         .binds = &submit->binds[b],
+         .binds_len = 1,
+         .binds_capacity = 1,
+         .wait_count = 0,
+         .signal_count = 0,
+      };
+      int rc = device->kmd_backend->vm_bind(device, &s);
       if (rc)
          return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
@@ -650,6 +658,8 @@ anv_init_sparse_bindings(struct anv_device *device,
       .binds = &bind,
       .binds_len = 1,
       .binds_capacity = 1,
+      .wait_count = 0,
+      .signal_count = 0,
    };
    VkResult res = anv_sparse_bind(device, &submit);
    if (res != VK_SUCCESS) {
@@ -681,6 +691,8 @@ anv_free_sparse_bindings(struct anv_device *device,
       .binds = &unbind,
       .binds_len = 1,
       .binds_capacity = 1,
+      .wait_count = 0,
+      .signal_count = 0,
    };
    VkResult res = anv_sparse_bind(device, &submit);
    if (res != VK_SUCCESS)

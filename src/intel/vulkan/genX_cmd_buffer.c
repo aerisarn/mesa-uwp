@@ -8530,7 +8530,8 @@ genX(write_trtt_entries)(struct anv_trtt_submission *submit)
 
    assert(batch.next <= batch.end);
 
-   VkResult result = anv_queue_submit_trtt_batch(queue, &batch);
+   VkResult result = anv_queue_submit_trtt_batch(queue, submit->sparse,
+                                                 &batch);
    STACK_ARRAY_FINISH(cmds);
 
    return result;

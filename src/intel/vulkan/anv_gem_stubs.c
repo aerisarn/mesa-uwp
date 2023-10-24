@@ -66,8 +66,9 @@ stub_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
 }
 
 static VkResult
-stub_execute_trtt_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
-                        uint32_t batch_size)
+stub_execute_trtt_batch(struct anv_queue *queue,
+                        struct anv_sparse_submission *submit,
+                        struct anv_bo *batch_bo, uint32_t batch_size)
 {
    return VK_ERROR_UNKNOWN;
 }
@@ -174,8 +175,7 @@ anv_gem_import_bo_alloc_flags_to_bo_flags(struct anv_device *device,
 }
 
 static int
-stub_vm_bind(struct anv_device *device, int num_binds,
-             struct anv_vm_bind *binds)
+stub_vm_bind(struct anv_device *device, struct anv_sparse_submission *submit)
 {
    return 0;
 }

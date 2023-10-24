@@ -1437,6 +1437,10 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
       .binds = NULL,
       .binds_len = 0,
       .binds_capacity = 0,
+      .wait_count = submit->wait_count,
+      .signal_count = submit->signal_count,
+      .waits = submit->waits,
+      .signals = submit->signals,
    };
 
    /* TODO: make both the syncs and signals be passed as part of the vm_bind
@@ -1715,6 +1719,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 
 VkResult
 anv_queue_submit_trtt_batch(struct anv_queue *queue,
+                            struct anv_sparse_submission *submit,
                             struct anv_batch *batch)
 {
    struct anv_device *device = queue->device;
@@ -1738,7 +1743,7 @@ anv_queue_submit_trtt_batch(struct anv_queue *queue,
                         batch_bo->offset, false);
    }
 
-   result = device->kmd_backend->execute_trtt_batch(queue, batch_bo,
+   result = device->kmd_backend->execute_trtt_batch(queue, submit, batch_bo,
                                                     batch_size);
 
    anv_bo_pool_free(&device->batch_bo_pool, batch_bo);

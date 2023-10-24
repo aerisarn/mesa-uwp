@@ -97,20 +97,21 @@ xe_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
 }
 
 static inline int
-xe_vm_bind_op(struct anv_device *device, int num_binds,
-              struct anv_vm_bind *binds)
+xe_vm_bind_op(struct anv_device *device,
+              struct anv_sparse_submission *submit)
 {
    int ret;
 
    struct drm_xe_vm_bind args = {
       .vm_id = device->vm_id,
-      .num_binds = num_binds,
+      .num_binds = submit->binds_len,
       .bind = {},
    };
 
-   STACK_ARRAY(struct drm_xe_vm_bind_op, xe_binds_stackarray, num_binds);
+   STACK_ARRAY(struct drm_xe_vm_bind_op, xe_binds_stackarray,
+               submit->binds_len);
    struct drm_xe_vm_bind_op *xe_binds;
-   if (num_binds > 1) {
+   if (submit->binds_len > 1) {
       if (!xe_binds_stackarray)
          return -ENOMEM;
 
@@ -120,8 +121,8 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
       xe_binds = &args.bind;
    }
 
-   for (int i = 0; i < num_binds; i++) {
-      struct anv_vm_bind *bind = &binds[i];
+   for (int i = 0; i < submit->binds_len; i++) {
+      struct anv_vm_bind *bind = &submit->binds[i];
       struct anv_bo *bo = bind->bo;
 
       struct drm_xe_vm_bind_op *xe_bind = &xe_binds[i];
@@ -161,10 +162,9 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
 }
 
 static int
-xe_vm_bind(struct anv_device *device, int num_binds,
-           struct anv_vm_bind *binds)
+xe_vm_bind(struct anv_device *device, struct anv_sparse_submission *submit)
 {
-   return xe_vm_bind_op(device, num_binds, binds);
+   return xe_vm_bind_op(device, submit);
 }
 
 static int xe_vm_bind_bo(struct anv_device *device, struct anv_bo *bo)
@@ -176,7 +176,14 @@ static int xe_vm_bind_bo(struct anv_device *device, struct anv_bo *bo)
       .size = bo->actual_size,
       .op = ANV_VM_BIND,
    };
-   return xe_vm_bind_op(device, 1, &bind);
+   struct anv_sparse_submission submit = {
+      .binds = &bind,
+      .binds_len = 1,
+      .binds_capacity = 1,
+      .wait_count = 0,
+      .signal_count = 0,
+   };
+   return xe_vm_bind_op(device, &submit);
 }
 
 static int xe_vm_unbind_bo(struct anv_device *device, struct anv_bo *bo)
@@ -188,7 +195,14 @@ static int xe_vm_unbind_bo(struct anv_device *device, struct anv_bo *bo)
       .size = bo->actual_size,
       .op = ANV_VM_UNBIND,
    };
-   return xe_vm_bind_op(device, 1, &bind);
+   struct anv_sparse_submission submit = {
+      .binds = &bind,
+      .binds_len = 1,
+      .binds_capacity = 1,
+      .wait_count = 0,
+      .signal_count = 0,
+   };
+   return xe_vm_bind_op(device, &submit);
 }
 
 static uint32_t

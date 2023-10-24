@@ -985,8 +985,9 @@ fail:
 }
 
 VkResult
-i915_execute_trtt_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
-                        uint32_t batch_size)
+i915_execute_trtt_batch(struct anv_queue *queue,
+                        struct anv_sparse_submission *submit,
+                        struct anv_bo *batch_bo, uint32_t batch_size)
 {
    struct anv_device *device = queue->device;
    struct anv_trtt *trtt = &device->trtt;

@@ -207,8 +207,7 @@ i915_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
 }
 
 static int
-i915_vm_bind(struct anv_device *device, int num_binds,
-             struct anv_vm_bind *binds)
+i915_vm_bind(struct anv_device *device, struct anv_sparse_submission *submit)
 {
    return 0;
 }
