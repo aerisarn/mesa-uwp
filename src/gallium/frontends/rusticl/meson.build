@@ -114,6 +114,10 @@ rusticl_bindgen_args = [
   '--anon-fields-prefix', 'anon_',
 ]
 
+if find_program('bindgen').version().version_compare('< 0.62')
+  error('rusticl requires bindgen 0.62 or newer. If your distribution does not ship a recent enough version, you can install the latest version for your user with `cargo install bindgen-cli`.')
+endif
+
 if find_program('bindgen').version().version_compare('< 0.65')
   rusticl_bindgen_args += [
     '--size_t-is-usize',
