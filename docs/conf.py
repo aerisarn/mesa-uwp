@@ -40,7 +40,6 @@ sys.path.append(os.path.abspath('_exts'))
 # ones.
 extensions = [
     'bootstrap',
-    'breathe',
     'formatting',
     'hawkmoth',
     'nir',
@@ -239,11 +238,3 @@ rst_prolog = '''
 .. |out| replace:: **[out]**
 .. |inout| replace:: **[inout]**
 '''
-
-# -- Options for breathe --------------------------------------------------
-breathe_projects = {
-    'mesa' : 'doxygen_xml',
-}
-breathe_default_project = 'mesa'
-breathe_show_define_initializer = True
-breathe_show_enumvalue_initializer = True
