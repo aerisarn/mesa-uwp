@@ -26,11 +26,8 @@
 
 #include "shaders/interface.h"
 
-struct anv_generated_indirect_params {
+struct PACKED anv_generated_indirect_params {
    struct anv_generated_indirect_draw_params draw;
-
-   /* Draw count value for non count variants of draw indirect commands */
-   uint32_t draw_count;
 
    /* Global address of binding 0 */
    uint64_t indirect_data_addr;
@@ -44,6 +41,9 @@ struct anv_generated_indirect_params {
    /* Global address of binding 3 (points to the draw_count field above) */
    uint64_t draw_count_addr;
 
+   /* Draw count value for non count variants of draw indirect commands */
+   uint32_t draw_count;
+
    /* CPU side pointer to the previous item when number of draws has to be
     * split into smaller chunks, see while loop in
     * genX(cmd_buffer_emit_indirect_generated_draws)
@@ -51,7 +51,7 @@ struct anv_generated_indirect_params {
    struct anv_generated_indirect_params *prev;
 };
 
-struct anv_query_copy_params {
+struct PACKED anv_query_copy_params {
    struct anv_query_copy_shader_params copy;
 
    uint64_t query_data_addr;
@@ -63,12 +63,12 @@ struct anv_query_copy_params {
  *
  *    layout(set = 0, binding = 2) uniform block
  */
-struct anv_memcpy_shader_params {
+struct PACKED anv_memcpy_shader_params {
    uint32_t num_dwords;
    uint32_t pad;
 };
 
-struct anv_memcpy_params {
+struct PACKED anv_memcpy_params {
    struct anv_memcpy_shader_params copy;
 
    uint64_t src_addr;

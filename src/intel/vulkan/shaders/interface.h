@@ -28,6 +28,7 @@
 #define BITFIELD_BIT(i) (1u << i)
 
 #define uint32_t uint
+#define PACKED
 #else
 #include "util/macros.h"
 
@@ -47,7 +48,7 @@
 /* Whether the generation shader writes to the ring buffer */
 #define ANV_GENERATED_FLAG_RING_MODE  BITFIELD_BIT(5)
 
-struct anv_generated_indirect_draw_params {
+struct PACKED anv_generated_indirect_draw_params {
    /* Draw ID buffer address (only used on Gfx9) */
    uint64_t draw_id_addr;
    /* Indirect data buffer address (only used on Gfx9) */
@@ -63,6 +64,10 @@ struct anv_generated_indirect_draw_params {
     * an indirect count)
     */
    uint32_t max_draw_count;
+   /* Number of draws to generate in the ring buffer (only useful in ring
+    * buffer mode)
+    */
+   uint32_t ring_count;
    /* Instance multiplier for multi view */
    uint32_t instance_multiplier;
    /* Address where to jump at to generate further draws (used with ring mode)
@@ -72,10 +77,6 @@ struct anv_generated_indirect_draw_params {
     * indirect draw count variants)
     */
    uint64_t end_addr;
-   /* Number of draws to generate in the ring buffer (only useful in ring
-    * buffer mode)
-    */
-   uint32_t ring_count;
 };
 
 #define ANV_COPY_QUERY_FLAG_RESULT64  BITFIELD_BIT(0)
@@ -87,7 +88,7 @@ struct anv_generated_indirect_draw_params {
  *
  *    layout(set = 0, binding = 2) uniform block
  */
-struct anv_query_copy_shader_params {
+struct PACKED anv_query_copy_shader_params {
    /* ANV_COPY_QUERY_FLAG_* flags */
    uint32_t flags;
 
