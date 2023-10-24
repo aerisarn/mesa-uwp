@@ -992,6 +992,22 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
    };
    VkResult result;
 
+   for (uint32_t i = 0; i < submit->wait_count; i++) {
+      result = anv_execbuf_add_sync(device, &execbuf, submit->waits[i].sync,
+                                    false /* is_signal */,
+                                    submit->waits[i].wait_value);
+      if (result != VK_SUCCESS)
+         goto out;
+   }
+
+   for (uint32_t i = 0; i < submit->signal_count; i++) {
+      result = anv_execbuf_add_sync(device, &execbuf, submit->signals[i].sync,
+                                    true /* is_signal */,
+                                    submit->signals[i].signal_value);
+      if (result != VK_SUCCESS)
+         goto out;
+   }
+
    result = anv_execbuf_add_bo(device, &execbuf, device->workaround_bo, NULL,
                                0);
    if (result != VK_SUCCESS)
@@ -1024,6 +1040,7 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
       .rsvd1 = context_id,
       .rsvd2 = 0,
    };
+   setup_execbuf_fence_params(&execbuf);
 
    int ret = queue->device->info->no_hw ? 0 :
       anv_gem_execbuffer(device, &execbuf.execbuf);

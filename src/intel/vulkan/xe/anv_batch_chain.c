@@ -195,16 +195,28 @@ xe_execute_trtt_batch(struct anv_sparse_submission *submit,
    if (drmSyncobjCreate(device->fd, 0, &syncobj_handle))
       return vk_errorf(device, VK_ERROR_UNKNOWN, "Unable to create sync obj");
 
-   struct drm_xe_sync sync = {
+   struct drm_xe_sync extra_sync = {
       .flags = DRM_XE_SYNC_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
       .handle = syncobj_handle,
    };
+
+   struct drm_xe_sync *xe_syncs = NULL;
+   uint32_t xe_syncs_count = 0;
+   result = xe_exec_process_syncs(queue, submit->wait_count, submit->waits,
+                                  submit->signal_count, submit->signals,
+                                  1, &extra_sync,
+                                  NULL, /* utrace_submit */
+                                  false, /* is_companion_rcs_queue */
+                                  &xe_syncs, &xe_syncs_count);
+   if (result != VK_SUCCESS)
+      goto exec_error;
+
    struct drm_xe_exec exec = {
       .exec_queue_id = queue->exec_queue_id,
-      .num_batch_buffer = 1,
+      .num_syncs = xe_syncs_count,
+      .syncs = (uintptr_t)xe_syncs,
       .address = batch_bo->offset,
-      .num_syncs = 1,
-      .syncs = (uintptr_t)&sync,
+      .num_batch_buffer = 1,
    };
 
    if (!device->info->no_hw) {

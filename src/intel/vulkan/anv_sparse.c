@@ -581,35 +581,8 @@ anv_sparse_bind_trtt(struct anv_device *device,
                 sparse_submit->binds_len, trtt_submit.l3l2_binds_len,
                 trtt_submit.l1_binds_len);
 
-   /* TODO: make both the syncs and signals be passed as part of the vm_bind
-    * ioctl so they can be waited asynchronously. For now this doesn't matter
-    * as we're doing synchronous vm_bind, but later when we make it async this
-    * will make a difference.
-    */
-   result = vk_sync_wait_many(&device->vk, sparse_submit->wait_count,
-                              sparse_submit->waits, VK_SYNC_WAIT_COMPLETE,
-                              INT64_MAX);
-   if (result != VK_SUCCESS) {
-      result = vk_queue_set_lost(&sparse_submit->queue->vk,
-                                 "vk_sync_wait failed");
-      goto out;
-   }
-
-   if (trtt_submit.l3l2_binds_len || trtt_submit.l1_binds_len) {
+   if (trtt_submit.l3l2_binds_len || trtt_submit.l1_binds_len)
       result = anv_genX(device->info, write_trtt_entries)(&trtt_submit);
-      if (result != VK_SUCCESS)
-         goto out;
-   }
-
-   for (uint32_t i = 0; i < sparse_submit->signal_count; i++) {
-      struct vk_sync_signal *s = &sparse_submit->signals[i];
-      result = vk_sync_signal(&device->vk, s->sync, s->signal_value);
-      if (result != VK_SUCCESS) {
-         result = vk_queue_set_lost(&sparse_submit->queue->vk,
-                                    "vk_sync_signal failed");
-         goto out;
-      }
-   }
 
 out:
    pthread_mutex_unlock(&trtt->mutex);
