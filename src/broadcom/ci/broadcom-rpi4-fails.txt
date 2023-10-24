@@ -533,3 +533,12 @@ wayland-dEQP-EGL.functional.color_clears.multi_thread.gles2.other,Fail
 wayland-dEQP-EGL.functional.render.multi_context.gles3.other,Fail
 wayland-dEQP-EGL.functional.render.single_context.gles2.other,Fail
 wayland-dEQP-EGL.functional.render.single_context.gles3.other,Fail
+
+wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1.other,Fail
+wayland-dEQP-EGL.functional.render.multi_thread.gles2_gles3.other,Fail
+
+# These tests should be skipped as we don't support the extension. CTS tests needs to be fixed
+dEQP-VK.pipeline.shader_object_linked_binary.framebuffer_attachment.unused_attachment,Crash
+dEQP-VK.pipeline.shader_object_linked_spirv.framebuffer_attachment.unused_attachment,Crash
+dEQP-VK.pipeline.shader_object_unlinked_binary.framebuffer_attachment.unused_attachment,Crash
+dEQP-VK.pipeline.shader_object_unlinked_spirv.framebuffer_attachment.unused_attachment,Crash
