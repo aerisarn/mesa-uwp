@@ -14,13 +14,13 @@ and show the job(s) logs.
 
 import argparse
 import re
-from subprocess import check_output
 import sys
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from itertools import chain
+from subprocess import check_output
 from typing import Literal, Optional
 
 import gitlab
@@ -295,10 +295,10 @@ def parse_args() -> None:
     return args
 
 
-def find_dependencies(target_job: str, project_path: str, sha: str) -> set[str]:
+def find_dependencies(target_job: str, project_path: str, iid: int) -> set[str]:
     gql_instance = GitlabGQL()
     dag, _ = create_job_needs_dag(
-        gql_instance, {"projectPath": project_path.path_with_namespace, "sha": sha}
+        gql_instance, {"projectPath": project_path.path_with_namespace, "iid": iid}
     )
 
     target_dep_dag = filter_dag(dag, target_job)
@@ -352,7 +352,7 @@ if __name__ == "__main__":
         if args.target:
             print("🞋 job: " + Fore.BLUE + args.target + Style.RESET_ALL)
             deps = find_dependencies(
-                target_job=args.target, sha=REV, project_path=cur_project
+                target_job=args.target, iid=pipe.iid, project_path=cur_project
             )
         target_job_id, ret = monitor_pipeline(
             cur_project, pipe, args.target, deps, args.force_manual, args.stress
