@@ -90,6 +90,47 @@ pop_bar_cf_node(nir_cf_node *node, struct add_barriers_state *state)
       (void)util_dynarray_pop(&state->barriers, struct barrier);
 }
 
+static void
+lower_control_barriers_block(nir_block *block,
+                             struct add_barriers_state *state)
+{
+   nir_foreach_instr_safe(instr, block) {
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *barrier = nir_instr_as_intrinsic(instr);
+      if (barrier->intrinsic != nir_intrinsic_barrier)
+         continue;
+
+      mesa_scope exec_scope = nir_intrinsic_execution_scope(barrier);
+      assert(exec_scope <= SCOPE_WORKGROUP &&
+             "Control barrier with scope > WORKGROUP");
+
+      if (exec_scope == SCOPE_WORKGROUP &&
+          nak_nir_has_one_subgroup(state->builder.shader))
+         exec_scope = SCOPE_SUBGROUP;
+
+      /* Because we're guaranteeing maximal convergence with this pass,
+       * subgroup barriers do nothing.
+       */
+      if (exec_scope <= SCOPE_SUBGROUP)
+         exec_scope = SCOPE_NONE;
+
+      if (exec_scope != nir_intrinsic_execution_scope(barrier)) {
+         nir_intrinsic_set_execution_scope(barrier, exec_scope);
+         state->progress = true;
+      }
+
+      const nir_variable_mode mem_modes = nir_intrinsic_memory_modes(barrier);
+      if (exec_scope == SCOPE_NONE && mem_modes == 0) {
+         nir_instr_remove(&barrier->instr);
+         state->progress = true;
+      } else {
+         state->builder.shader->info.uses_control_barrier = true;
+      }
+   }
+}
+
 /* Checks if this CF node's immediate successor has a sync.  There's no point
  * in adding a sync if the very next thing we do, besides dealing with phis,
  * is to sync.
@@ -160,9 +201,14 @@ add_barriers_cf_list(struct exec_list *cf_list,
 {
    foreach_list_typed(nir_cf_node, node, node, cf_list) {
       switch (node->type) {
-      case nir_cf_node_block:
-         break_loop_bars(nir_cf_node_as_block(node), state);
+      case nir_cf_node_block: {
+         nir_block *block = nir_cf_node_as_block(node);
+
+         lower_control_barriers_block(block, state);
+
+         break_loop_bars(block, state);
          break;
+      }
       case nir_cf_node_if: {
          nir_if *nif = nir_cf_node_as_if(node);
 
@@ -227,6 +273,8 @@ nak_nir_add_barriers(nir_shader *nir, const struct nak_compiler *nak)
    }
 
    bool progress = false;
+
+   nir->info.uses_control_barrier = false;
 
    nir_foreach_function_impl(impl, nir)
       progress |= nak_nir_add_barriers_impl(impl, nak);
