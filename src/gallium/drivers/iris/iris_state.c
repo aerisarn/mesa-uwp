@@ -6768,6 +6768,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             tbimr.VerticalTileCount = DIV_ROUND_UP(cso_fb->height, tile_height);
             tbimr.HorizontalTileCount = DIV_ROUND_UP(cso_fb->width, tile_width);
             tbimr.TBIMRBatchSize = util_logbase2(batch_size) - 5;
+            tbimr.TileBoxCheck = true;
          }
       }
    }

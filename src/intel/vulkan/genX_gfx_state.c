@@ -1280,6 +1280,7 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
              DIV_ROUND_UP(fb_width, tile_width));
          SET(TBIMR_TILE_PASS_INFO, tbimr.TBIMRBatchSize,
              util_logbase2(batch_size) - 5);
+         SET(TBIMR_TILE_PASS_INFO, tbimr.TileBoxCheck, true);
          SET(TBIMR_TILE_PASS_INFO, use_tbimr, true);
       } else {
          hw_state->use_tbimr = false;
@@ -1891,6 +1892,7 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
          SET(tbimr, tbimr, VerticalTileCount);
          SET(tbimr, tbimr, HorizontalTileCount);
          SET(tbimr, tbimr, TBIMRBatchSize);
+         SET(tbimr, tbimr, TileBoxCheck);
       }
    }
 #endif
