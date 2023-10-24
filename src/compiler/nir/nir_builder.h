@@ -1648,12 +1648,9 @@ nir_build_write_masked_store(nir_builder *b, nir_deref_instr *vec_deref,
    unsigned num_components = glsl_get_components(vec_deref->type);
    assert(num_components > 1 && num_components <= NIR_MAX_VEC_COMPONENTS);
 
-   nir_def *u = nir_undef(b, 1, value->bit_size);
-   nir_def *comps[NIR_MAX_VEC_COMPONENTS];
-   for (unsigned i = 0; i < num_components; i++)
-      comps[i] = (i == component) ? value : u;
-
-   nir_def *vec = nir_vec(b, comps, num_components);
+   nir_def *vec =
+      nir_vector_insert_imm(b, nir_undef(b, num_components, value->bit_size),
+                            value, component);
    nir_store_deref(b, vec_deref, vec, (1u << component));
 }
 
