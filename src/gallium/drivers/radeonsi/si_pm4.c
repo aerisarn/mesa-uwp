@@ -35,13 +35,13 @@ static unsigned pairs_packed_opcode_to_regular(unsigned opcode)
 
 static unsigned regular_opcode_to_pairs(struct si_pm4_state *state, unsigned opcode)
 {
-   if (state->screen->info.has_set_sh_pairs_packed) {
-      switch (opcode) {
-      case PKT3_SET_CONTEXT_REG:
-         return PKT3_SET_CONTEXT_REG_PAIRS_PACKED;
-      case PKT3_SET_SH_REG:
-         return PKT3_SET_SH_REG_PAIRS_PACKED;
-      }
+   const struct radeon_info *info = &state->screen->info;
+
+   switch (opcode) {
+   case PKT3_SET_CONTEXT_REG:
+      return info->has_set_context_pairs_packed ? PKT3_SET_CONTEXT_REG_PAIRS_PACKED : opcode;
+   case PKT3_SET_SH_REG:
+      return info->has_set_sh_pairs_packed ? PKT3_SET_SH_REG_PAIRS_PACKED : opcode;
    }
 
    return opcode;
