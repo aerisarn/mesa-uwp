@@ -727,54 +727,53 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
                              12 * sel->info.uses_grid_size;
    unsigned cs_user_data_reg = block_size_reg + 4 * program->sel.info.uses_variable_block_size;
 
-   radeon_begin(cs);
-
-   if (sel->info.uses_grid_size) {
-      if (info->indirect) {
-         radeon_end();
-
-         for (unsigned i = 0; i < 3; ++i) {
-            si_cp_copy_data(sctx, &sctx->gfx_cs, COPY_DATA_REG, NULL, (grid_size_reg >> 2) + i,
-                            COPY_DATA_SRC_MEM, si_resource(info->indirect),
-                            info->indirect_offset + 4 * i);
-         }
-         radeon_begin_again(cs);
-      } else {
-         if (sctx->screen->info.has_set_sh_pairs_packed) {
-            gfx11_push_compute_sh_reg(grid_size_reg, info->grid[0]);
-            gfx11_push_compute_sh_reg(grid_size_reg + 4, info->grid[1]);
-            gfx11_push_compute_sh_reg(grid_size_reg + 8, info->grid[2]);
-         } else {
-            radeon_set_sh_reg_seq(grid_size_reg, 3);
-            radeon_emit(info->grid[0]);
-            radeon_emit(info->grid[1]);
-            radeon_emit(info->grid[2]);
-         }
+   if (sel->info.uses_grid_size && info->indirect) {
+      for (unsigned i = 0; i < 3; ++i) {
+         si_cp_copy_data(sctx, &sctx->gfx_cs, COPY_DATA_REG, NULL, (grid_size_reg >> 2) + i,
+                         COPY_DATA_SRC_MEM, si_resource(info->indirect),
+                         info->indirect_offset + 4 * i);
       }
    }
 
-   if (sel->info.uses_variable_block_size) {
-      uint32_t value = info->block[0] | (info->block[1] << 10) | (info->block[2] << 20);
+   if (sctx->screen->info.has_set_sh_pairs_packed) {
+      if (sel->info.uses_grid_size && !info->indirect) {
+         gfx11_push_compute_sh_reg(grid_size_reg, info->grid[0]);
+         gfx11_push_compute_sh_reg(grid_size_reg + 4, info->grid[1]);
+         gfx11_push_compute_sh_reg(grid_size_reg + 8, info->grid[2]);
+      }
 
-      if (sctx->screen->info.has_set_sh_pairs_packed) {
+      if (sel->info.uses_variable_block_size) {
+         uint32_t value = info->block[0] | (info->block[1] << 10) | (info->block[2] << 20);
          gfx11_push_compute_sh_reg(block_size_reg, value);
-      } else {
-         radeon_set_sh_reg(block_size_reg, value);
       }
-   }
 
-   if (sel->info.base.cs.user_data_components_amd) {
-      unsigned num = sel->info.base.cs.user_data_components_amd;
-
-      if (sctx->screen->info.has_set_sh_pairs_packed) {
+      if (sel->info.base.cs.user_data_components_amd) {
+         unsigned num = sel->info.base.cs.user_data_components_amd;
          for (unsigned i = 0; i < num; i++)
             gfx11_push_compute_sh_reg(cs_user_data_reg + i * 4, sctx->cs_user_data[i]);
-      } else {
+      }
+   } else {
+      radeon_begin(cs);
+
+      if (sel->info.uses_grid_size && !info->indirect) {
+         radeon_set_sh_reg_seq(grid_size_reg, 3);
+         radeon_emit(info->grid[0]);
+         radeon_emit(info->grid[1]);
+         radeon_emit(info->grid[2]);
+      }
+
+      if (sel->info.uses_variable_block_size) {
+         uint32_t value = info->block[0] | (info->block[1] << 10) | (info->block[2] << 20);
+         radeon_set_sh_reg(block_size_reg, value);
+      }
+
+      if (sel->info.base.cs.user_data_components_amd) {
+         unsigned num = sel->info.base.cs.user_data_components_amd;
          radeon_set_sh_reg_seq(cs_user_data_reg, num);
          radeon_emit_array(sctx->cs_user_data, num);
       }
+      radeon_end();
    }
-   radeon_end();
 }
 
 static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_grid_info *info)
