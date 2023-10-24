@@ -3664,7 +3664,7 @@ dri2_interop_export_object(_EGLDisplay *disp, _EGLContext *ctx,
 static int
 dri2_interop_flush_objects(_EGLDisplay *disp, _EGLContext *ctx, unsigned count,
                            struct mesa_glinterop_export_in *objects,
-                           GLsync *sync)
+                           GLsync *sync, int *fence_fd)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_context *dri2_ctx = dri2_egl_context(ctx);
@@ -3673,7 +3673,7 @@ dri2_interop_flush_objects(_EGLDisplay *disp, _EGLContext *ctx, unsigned count,
       return MESA_GLINTEROP_UNSUPPORTED;
 
    return dri2_dpy->interop->flush_objects(dri2_ctx->dri_context, count,
-                                           objects, sync);
+                                           objects, sync, fence_fd);
 }
 
 const _EGLDriver _eglDriver = {

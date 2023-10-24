@@ -25,6 +25,7 @@
 
 #include "st_interop.h"
 #include "st_cb_texture.h"
+#include "st_cb_flush.h"
 #include "st_texture.h"
 
 #include "bufferobj.h"
@@ -371,7 +372,7 @@ flush_object(struct gl_context *ctx,
 int
 st_interop_flush_objects(struct st_context *st,
                          unsigned count, struct mesa_glinterop_export_in *objects,
-                         GLsync *sync)
+                         GLsync *sync, int *fence_fd)
 {
    struct gl_context *ctx = st->ctx;
 
@@ -393,6 +394,10 @@ st_interop_flush_objects(struct st_context *st,
 
    if (count > 0 && sync) {
       *sync = _mesa_fence_sync(ctx, GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+   } else if (count > 0 && fence_fd) {
+      struct pipe_fence_handle *fence = NULL;
+      ctx->pipe->flush(ctx->pipe, &fence, PIPE_FLUSH_FENCE_FD | PIPE_FLUSH_ASYNC);
+      *fence_fd = ctx->screen->fence_get_fd(ctx->screen, fence);
    }
 
    return MESA_GLINTEROP_SUCCESS;

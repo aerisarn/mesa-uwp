@@ -363,13 +363,14 @@ wglMesaGLInteropExportObject(HDC dpy, HGLRC context,
  * \param count      number of resources
  * \param resources  resources to flush
  * \param sync       optional GLsync to map to CL event
+ * \param fence_fd   optional fence_fd to use in CL
  *
  * \return MESA_GLINTEROP_SUCCESS or MESA_GLINTEROP_* != 0 on error
  */
 int
 MesaGLInteropGLXFlushObjects(struct _XDisplay *dpy, struct __GLXcontextRec *context,
                              unsigned count, struct mesa_glinterop_export_in *resources,
-                             GLsync *sync);
+                             GLsync *sync, int *fence_fd);
 
 /**
 * Same as MesaGLInteropGLXFlushObjects except that it accepts
@@ -378,11 +379,11 @@ MesaGLInteropGLXFlushObjects(struct _XDisplay *dpy, struct __GLXcontextRec *cont
 int
 MesaGLInteropEGLFlushObjects(EGLDisplay dpy, EGLContext context,
                              unsigned count, struct mesa_glinterop_export_in *resources,
-                             GLsync *sync);
+                             GLsync *sync, int *fence_fd);
 
 /**
 * Same as MesaGLInteropGLXFlushObjects except that it accepts
-* HDC and HGLRC.
+* HDC and HGLRC, and not a fence_fd.
 */
 int
 wglMesaGLInteropFlushObjects(HDC dpy, HGLRC context,
@@ -407,10 +408,10 @@ typedef int (*PFNWGLMESAGLINTEROPEXPORTOBJECTPROC)(HDC dpy, HGLRC context,
                                                    struct mesa_glinterop_export_out *out);
 typedef int (*PFNMESAGLINTEROPGLXFLUSHOBJECTSPROC)(struct _XDisplay *dpy, struct __GLXcontextRec *context,
                                                    unsigned count, struct mesa_glinterop_export_in *resources,
-                                                   GLsync *sync);
+                                                   GLsync *sync, int *fence_fd);
 typedef int (*PFNMESAGLINTEROPEGLFLUSHOBJECTSPROC)(EGLDisplay dpy, EGLContext context,
                                                    unsigned count, struct mesa_glinterop_export_in *resources,
-                                                   GLsync *sync);
+                                                   GLsync *sync, int *fence_fd);
 typedef int (*PFNWGLMESAGLINTEROPFLUSHOBJECTSPROC)(HDC dpy, HGLRC context,
                                                    unsigned count, struct mesa_glinterop_export_in *resources,
                                                    GLsync *sync);
