@@ -1444,16 +1444,6 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
       .signals = submit->signals,
    };
 
-   /* TODO: make both the syncs and signals be passed as part of the vm_bind
-    * ioctl so they can be waited asynchronously. For now this doesn't matter
-    * as we're doing synchronous vm_bind, but later when we make it async this
-    * will make a difference.
-    */
-   result = vk_sync_wait_many(&device->vk, submit->wait_count, submit->waits,
-                              VK_SYNC_WAIT_COMPLETE, INT64_MAX);
-   if (result != VK_SUCCESS)
-      return vk_queue_set_lost(&queue->vk, "vk_sync_wait failed");
-
    for (uint32_t i = 0; i < submit->buffer_bind_count; i++) {
       VkSparseBufferMemoryBindInfo *bind_info = &submit->buffer_binds[i];
       ANV_FROM_HANDLE(anv_buffer, buffer, bind_info->buffer);
@@ -1506,17 +1496,6 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
    }
 
    result = anv_sparse_bind(device, &sparse_submit);
-   if (result != VK_SUCCESS)
-      goto out_free_submit;
-
-   for (uint32_t i = 0; i < submit->signal_count; i++) {
-      struct vk_sync_signal *s = &submit->signals[i];
-      result = vk_sync_signal(&device->vk, s->sync, s->signal_value);
-      if (result != VK_SUCCESS) {
-         result = vk_queue_set_lost(&queue->vk, "vk_sync_signal failed");
-         goto out_free_submit;
-      }
-   }
 
 out_free_submit:
    vk_free(&device->vk.alloc, sparse_submit.binds);
