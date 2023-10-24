@@ -607,7 +607,6 @@ impl SM50Instr {
     }
 
     fn encode_sel(&mut self, op: &OpSel) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[1].is_reg_or_zero());
 
         let src_modifier = Some(ALUSrcsModifier {
@@ -793,8 +792,8 @@ impl SM50Instr {
     }
 
     fn encode_shf(&mut self, op: &OpShf) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.shift.is_reg_or_zero());
+        assert!(op.high.is_reg_or_zero());
 
         let src_modifier = Some(ALUSrcsModifier {
             src0_opt: None,
@@ -870,7 +869,6 @@ impl SM50Instr {
     }
 
     fn encode_f2f(&mut self, op: &OpF2F) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.src.is_reg_or_zero());
 
         let src_modifier = Some(ALUSrcsModifier {
@@ -920,7 +918,6 @@ impl SM50Instr {
     }
 
     fn encode_imad(&mut self, op: &OpIMad) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
         assert!(op.srcs[2].is_reg_or_zero());
@@ -966,7 +963,6 @@ impl SM50Instr {
     }
 
     fn encode_f2i(&mut self, op: &OpF2I) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.src.is_reg_or_zero());
 
         let src_modifier = Some(ALUSrcsModifier {
@@ -1015,7 +1011,6 @@ impl SM50Instr {
     }
 
     fn encode_imnmx(&mut self, op: &OpIMnMx) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
@@ -1119,7 +1114,6 @@ impl SM50Instr {
     }
 
     fn encode_ipa(&mut self, op: &OpIpa) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.offset.is_reg_or_zero());
 
         self.set_opcode(0xe000);
@@ -1256,7 +1250,6 @@ impl SM50Instr {
     }
 
     fn encode_popc(&mut self, op: &OpPopC) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.src.is_reg_or_zero());
 
         let src_modifier = Some(ALUSrcsModifier {
@@ -1286,7 +1279,6 @@ impl SM50Instr {
     }
 
     fn encode_brev(&mut self, op: &OpBrev) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.src.is_reg_or_zero());
 
         // BREV doesn't exist on SM50, but we have BFE.BREV.
@@ -1362,7 +1354,6 @@ impl SM50Instr {
     }
 
     fn encode_fmnmx(&mut self, op: &OpFMnMx) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
@@ -1399,7 +1390,6 @@ impl SM50Instr {
     }
 
     fn encode_fmul(&mut self, op: &OpFMul) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
@@ -1467,7 +1457,6 @@ impl SM50Instr {
     }
 
     fn encode_fset(&mut self, op: &OpFSet) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
@@ -1505,7 +1494,6 @@ impl SM50Instr {
     }
 
     fn encode_fsetp(&mut self, op: &OpFSetP) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
@@ -1546,7 +1534,6 @@ impl SM50Instr {
     }
 
     fn encode_mufu(&mut self, op: &OpMuFu) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.src.is_reg_or_zero());
 
         // TODO: This is following ALU encoding, figure out the correct form of this.
@@ -1580,7 +1567,6 @@ impl SM50Instr {
     }
 
     fn encode_iabs(&mut self, op: &OpIAbs) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.src.is_reg_or_zero());
 
         // IABS isn't a thing on SM50, we use I2I instead.
@@ -1629,7 +1615,6 @@ impl SM50Instr {
     }
 
     fn encode_iadd3(&mut self, op: &OpIAdd3) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
 
         let src_modifier = Some(ALUSrcsModifier {
@@ -1668,7 +1653,6 @@ impl SM50Instr {
     }
 
     fn encode_prmt(&mut self, op: &OpPrmt) {
-        /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.sel.is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
