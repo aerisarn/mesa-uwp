@@ -1209,12 +1209,12 @@ static void gfx10_emit_shader_ngg(struct si_context *sctx, unsigned index)
                               shader->ngg.ge_pc_alloc);
    if (sctx->screen->info.has_set_sh_pairs_packed) {
       assert(!sctx->screen->info.uses_kernel_cu_mask);
-      radeon_opt_push_gfx_sh_reg(R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-                                 SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
-                                 shader->gs.spi_shader_pgm_rsrc3_gs);
-      radeon_opt_push_gfx_sh_reg(R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-                                 SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
-                                 shader->gs.spi_shader_pgm_rsrc4_gs);
+      gfx11_opt_push_gfx_sh_reg(R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                                SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
+                                shader->gs.spi_shader_pgm_rsrc3_gs);
+      gfx11_opt_push_gfx_sh_reg(R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+                                SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
+                                shader->gs.spi_shader_pgm_rsrc4_gs);
    } else {
       if (sctx->screen->info.uses_kernel_cu_mask) {
          radeon_opt_set_sh_reg_idx(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
@@ -4539,24 +4539,24 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
 static void si_emit_tess_io_layout_state(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   radeon_begin(cs);
 
    if (!sctx->shader.tes.cso || !sctx->shader.tcs.current)
       return;
 
+   radeon_begin(cs);
    if (sctx->screen->info.has_set_sh_pairs_packed) {
-      radeon_opt_push_gfx_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
-                                 SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
+      gfx11_opt_push_gfx_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
+                                SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
 
       /* Set userdata SGPRs for merged LS-HS. */
-      radeon_opt_push_gfx_sh_reg(R_00B430_SPI_SHADER_USER_DATA_HS_0 +
-                                 GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4,
-                                 SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_LAYOUT,
-                                 sctx->tcs_offchip_layout);
-      radeon_opt_push_gfx_sh_reg(R_00B430_SPI_SHADER_USER_DATA_HS_0 +
-                                 GFX9_SGPR_TCS_OFFCHIP_ADDR * 4,
-                                 SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_ADDR,
-                                 sctx->tes_offchip_ring_va_sgpr);
+      gfx11_opt_push_gfx_sh_reg(R_00B430_SPI_SHADER_USER_DATA_HS_0 +
+                                GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4,
+                                SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_LAYOUT,
+                                sctx->tcs_offchip_layout);
+      gfx11_opt_push_gfx_sh_reg(R_00B430_SPI_SHADER_USER_DATA_HS_0 +
+                                GFX9_SGPR_TCS_OFFCHIP_ADDR * 4,
+                                SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_ADDR,
+                                sctx->tes_offchip_ring_va_sgpr);
    } else if (sctx->gfx_level >= GFX9) {
       radeon_opt_set_sh_reg(sctx, R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
                             SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
@@ -4590,16 +4590,16 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx, unsigned index
    assert(tes_sh_base);
 
    /* TES (as ES or VS) reuses the BaseVertex and DrawID user SGPRs that are used when
-    * tessellation is disabled. That's because those user SGPRs are only set in LS
-    * for tessellation.
+    * tessellation is disabled. We can do that because those user SGPRs are only set in LS
+    * for tessellation and are unused in TES.
     */
    if (sctx->screen->info.has_set_sh_pairs_packed) {
-      radeon_opt_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4,
-                                 SI_TRACKED_SPI_SHADER_USER_DATA_ES__BASE_VERTEX,
-                                 sctx->tcs_offchip_layout);
-      radeon_opt_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_ADDR * 4,
-                                 SI_TRACKED_SPI_SHADER_USER_DATA_ES__DRAWID,
-                                 sctx->tes_offchip_ring_va_sgpr);
+      gfx11_opt_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4,
+                                SI_TRACKED_SPI_SHADER_USER_DATA_ES__BASE_VERTEX,
+                                sctx->tcs_offchip_layout);
+      gfx11_opt_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_ADDR * 4,
+                                SI_TRACKED_SPI_SHADER_USER_DATA_ES__DRAWID,
+                                sctx->tes_offchip_ring_va_sgpr);
    } else {
       bool has_gs = sctx->ngg || sctx->shader.gs.cso;
 

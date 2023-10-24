@@ -1423,15 +1423,15 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       if (!is_blit) {
          /* Prefer SET_SH_REG_PAIRS_PACKED* on Gfx11+. */
          if (HAS_SH_PAIRS_PACKED) {
-            radeon_opt_push_gfx_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4,
-                                       tracked_base_vertex_reg, base_vertex);
+            gfx11_opt_push_gfx_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4,
+                                      tracked_base_vertex_reg, base_vertex);
             if (set_draw_id) {
-               radeon_opt_push_gfx_sh_reg(sh_base_reg + SI_SGPR_DRAWID * 4,
-                                          tracked_base_vertex_reg + 1, drawid_base);
+               gfx11_opt_push_gfx_sh_reg(sh_base_reg + SI_SGPR_DRAWID * 4,
+                                         tracked_base_vertex_reg + 1, drawid_base);
             }
             if (set_base_instance) {
-               radeon_opt_push_gfx_sh_reg(sh_base_reg + SI_SGPR_START_INSTANCE * 4,
-                                          tracked_base_vertex_reg + 2, info->start_instance);
+               gfx11_opt_push_gfx_sh_reg(sh_base_reg + SI_SGPR_START_INSTANCE * 4,
+                                         tracked_base_vertex_reg + 2, info->start_instance);
             }
          } else {
             if (set_base_instance) {

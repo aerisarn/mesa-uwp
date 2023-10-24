@@ -92,9 +92,9 @@ static void si_emit_cull_state(struct si_context *sctx, unsigned index)
                              RADEON_USAGE_READ | RADEON_PRIO_CONST_BUFFER);
 
    if (sctx->screen->info.has_set_sh_pairs_packed) {
-      radeon_push_gfx_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 +
-                             GFX9_SGPR_SMALL_PRIM_CULL_INFO * 4,
-                             sctx->small_prim_cull_info_address);
+      gfx11_push_gfx_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 +
+                            GFX9_SGPR_SMALL_PRIM_CULL_INFO * 4,
+                            sctx->small_prim_cull_info_address);
    } else {
       radeon_begin(&sctx->gfx_cs);
       radeon_set_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 + GFX9_SGPR_SMALL_PRIM_CULL_INFO * 4,
