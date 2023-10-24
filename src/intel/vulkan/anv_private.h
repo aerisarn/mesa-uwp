@@ -712,6 +712,8 @@ struct anv_state_stream {
 };
 
 struct anv_sparse_submission {
+   struct anv_queue *queue;
+
    struct anv_vm_bind *binds;
    int binds_len;
    int binds_capacity;
@@ -730,8 +732,6 @@ struct anv_trtt_bind {
 
 struct anv_trtt_submission {
    struct anv_sparse_submission *sparse;
-
-   struct anv_queue *queue;
 
    struct anv_trtt_bind *l3l2_binds;
    struct anv_trtt_bind *l1_binds;

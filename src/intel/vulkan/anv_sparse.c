@@ -521,6 +521,11 @@ anv_sparse_bind_trtt(struct anv_device *device,
    struct anv_trtt *trtt = &device->trtt;
    VkResult result;
 
+   /* TR-TT submission needs a queue even when the API entry point doesn't
+    * give one, such as resource creation. */
+   if (!sparse_submit->queue)
+      sparse_submit->queue = trtt->queue;
+
    /* These capacities are conservative estimations. For L1 binds the
     * number will match exactly unless we skip NULL binds due to L2 already
     * being NULL. For L3/L2 things are harder to estimate, but the resulting
@@ -540,7 +545,6 @@ anv_sparse_bind_trtt(struct anv_device *device,
    STACK_ARRAY(struct anv_trtt_bind, l1_binds, l1_binds_capacity);
    struct anv_trtt_submission trtt_submit = {
       .sparse = sparse_submit,
-      .queue = trtt->queue,
       .l3l2_binds = l3l2_binds,
       .l1_binds = l1_binds,
       .l3l2_binds_len = 0,
@@ -550,7 +554,7 @@ anv_sparse_bind_trtt(struct anv_device *device,
    pthread_mutex_lock(&trtt->mutex);
 
    if (!trtt->l3_addr)
-      anv_trtt_init_context_state(trtt_submit.queue);
+      anv_trtt_init_context_state(sparse_submit->queue);
 
    assert(trtt->l3_addr);
 
@@ -598,6 +602,7 @@ anv_sparse_bind_vm_bind(struct anv_device *device,
     */
    for (int b = 0; b < submit->binds_len; b++) {
       struct anv_sparse_submission s = {
+         .queue = submit->queue,
          .binds = &submit->binds[b],
          .binds_len = 1,
          .binds_capacity = 1,
@@ -655,6 +660,7 @@ anv_init_sparse_bindings(struct anv_device *device,
       .op = ANV_VM_BIND,
    };
    struct anv_sparse_submission submit = {
+      .queue = NULL,
       .binds = &bind,
       .binds_len = 1,
       .binds_capacity = 1,
@@ -688,6 +694,7 @@ anv_free_sparse_bindings(struct anv_device *device,
       .op = ANV_VM_UNBIND,
    };
    struct anv_sparse_submission submit = {
+      .queue = NULL,
       .binds = &unbind,
       .binds_len = 1,
       .binds_capacity = 1,

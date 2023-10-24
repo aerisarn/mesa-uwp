@@ -1434,6 +1434,7 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
    }
 
    struct anv_sparse_submission sparse_submit = {
+      .queue = queue,
       .binds = NULL,
       .binds_len = 0,
       .binds_capacity = 0,

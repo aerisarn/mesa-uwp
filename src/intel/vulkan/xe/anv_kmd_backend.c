@@ -177,6 +177,7 @@ static int xe_vm_bind_bo(struct anv_device *device, struct anv_bo *bo)
       .op = ANV_VM_BIND,
    };
    struct anv_sparse_submission submit = {
+      .queue = NULL,
       .binds = &bind,
       .binds_len = 1,
       .binds_capacity = 1,
@@ -196,6 +197,7 @@ static int xe_vm_unbind_bo(struct anv_device *device, struct anv_bo *bo)
       .op = ANV_VM_UNBIND,
    };
    struct anv_sparse_submission submit = {
+      .queue = NULL,
       .binds = &bind,
       .binds_len = 1,
       .binds_capacity = 1,
