@@ -861,7 +861,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
       if (info->ip[AMD_IP_GFX].ver_major == 11 && info->ip[AMD_IP_GFX].ver_minor == 5)
          info->gfx_level = GFX11_5;
-      else if (info->ip[AMD_IP_GFX].ver_major == 11)
+      else if (info->ip[AMD_IP_GFX].ver_major == 11 && info->ip[AMD_IP_GFX].ver_minor == 0)
          info->gfx_level = GFX11;
       else if (info->ip[AMD_IP_GFX].ver_major == 10 && info->ip[AMD_IP_GFX].ver_minor == 3)
          info->gfx_level = GFX10_3;
@@ -1023,9 +1023,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
    info->has_gang_submit = info->drm_minor >= 49;
    info->has_gpuvm_fault_query = info->drm_minor >= 55;
-   /* WARNING: Register shadowing decreases performance by up to 50% on GFX11 with current FW. */
-   info->register_shadowing_required = device_info.ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION &&
-                                       info->gfx_level < GFX11;
    info->has_tmz_support = has_tmz_support(dev, info, device_info.ids_flags);
    info->kernel_has_modifiers = has_modifiers(fd);
    info->uses_kernel_cu_mask = false; /* Not implemented in the kernel. */
@@ -1343,7 +1340,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
        * power savings, hence enable dcc with retile for gfx11 with num_cu >= 4.
        */
        info->use_display_dcc_with_retile_blit = info->num_cu >= 4;
-   } else if (info->gfx_level >= GFX10_3) {
+   } else if (info->gfx_level == GFX10_3) {
       /* Displayable DCC with retiling is known to increase power consumption on Raphael
        * and Mendocino, so disable it on the smallest APUs. We need a proof that
        * displayable DCC doesn't regress bigger chips in the same way.
@@ -1575,6 +1572,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->fw_based_mcbp.csa_size = device_info.csa_size;
       info->fw_based_mcbp.csa_alignment = device_info.csa_alignment;
    }
+
+   /* WARNING: Register shadowing decreases performance by up to 50% on GFX11 with current FW. */
+   info->register_shadowing_required = device_info.ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION &&
+                                       info->gfx_level < GFX11;
 
    if (info->gfx_level >= GFX11 && info->has_dedicated_vram) {
       info->has_set_context_pairs_packed = true;

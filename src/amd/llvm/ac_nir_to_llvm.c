@@ -3084,14 +3084,12 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_get_thread_id(&ctx->ac);
       break;
    case nir_intrinsic_load_workgroup_id: {
-      LLVMValueRef values[3];
+      LLVMValueRef values[3] = {ctx->ac.i32_0, ctx->ac.i32_0, ctx->ac.i32_0};
 
       for (int i = 0; i < 3; i++) {
-         values[i] = ctx->args->workgroup_ids[i].used
-                        ? ac_get_arg(&ctx->ac, ctx->args->workgroup_ids[i])
-                        : ctx->ac.i32_0;
+         if (ctx->args->workgroup_ids[i].used)
+            values[i] = ac_get_arg(&ctx->ac, ctx->args->workgroup_ids[i]);
       }
-
       result = ac_build_gather_values(&ctx->ac, values, 3);
       break;
    }

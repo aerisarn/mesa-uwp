@@ -259,8 +259,7 @@
 #define PKT3_EVENT_WRITE_ZPASS                     0xB1 /* GFX11+ & PFP version >= 1458 */
 #define   EVENT_WRITE_ZPASS_PFP_VERSION               1458
 /* Use these on GFX11 with a high PFP firmware version (only dGPUs should have that, not APUs)
- * because they are the fastest SET packets there. Sadly, we'll need 2 different packet codepaths,
- * one for GFX11 dGPUs and the other one for GFX11 APUs.
+ * because they are the fastest SET packets there.
  *    SET_CONTEXT_REG_PAIRS_PACKED:
  *    SET_SH_REG_PAIRS_PACKED:
  *    SET_SH_REG_PAIRS_PACKED_N:
