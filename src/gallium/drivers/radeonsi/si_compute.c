@@ -825,6 +825,10 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
    bool partial_block_en = last_block[0] || last_block[1] || last_block[2];
    uint32_t num_threads[3];
 
+   num_threads[0] = S_00B81C_NUM_THREAD_FULL(info->block[0]);
+   num_threads[1] = S_00B820_NUM_THREAD_FULL(info->block[1]);
+   num_threads[2] = S_00B824_NUM_THREAD_FULL(info->block[2]);
+
    if (partial_block_en) {
       unsigned partial[3];
 
@@ -833,18 +837,11 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
       partial[1] = last_block[1] ? last_block[1] : info->block[1];
       partial[2] = last_block[2] ? last_block[2] : info->block[2];
 
-      num_threads[0] = S_00B81C_NUM_THREAD_FULL(info->block[0]) |
-                       S_00B81C_NUM_THREAD_PARTIAL(partial[0]);
-      num_threads[1] = S_00B820_NUM_THREAD_FULL(info->block[1]) |
-                       S_00B820_NUM_THREAD_PARTIAL(partial[1]);
-      num_threads[2] = S_00B824_NUM_THREAD_FULL(info->block[2]) |
-                       S_00B824_NUM_THREAD_PARTIAL(partial[2]);
+      num_threads[0] |= S_00B81C_NUM_THREAD_PARTIAL(partial[0]);
+      num_threads[1] |= S_00B820_NUM_THREAD_PARTIAL(partial[1]);
+      num_threads[2] |= S_00B824_NUM_THREAD_PARTIAL(partial[2]);
 
       dispatch_initiator |= S_00B800_PARTIAL_TG_EN(1);
-   } else {
-      num_threads[0] = S_00B81C_NUM_THREAD_FULL(info->block[0]);
-      num_threads[1] = S_00B820_NUM_THREAD_FULL(info->block[1]);
-      num_threads[2] = S_00B824_NUM_THREAD_FULL(info->block[2]);
    }
 
    if (sctx->screen->info.has_set_pairs_packets) {
