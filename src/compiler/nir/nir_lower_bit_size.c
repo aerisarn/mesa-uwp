@@ -148,7 +148,9 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(old_bit_size < bit_size);
 
       nir_alu_type type = nir_type_uint;
-      if (nir_intrinsic_has_reduction_op(intrin))
+      if (old_bit_size == 1)
+         type = nir_type_bool;
+      else if (nir_intrinsic_has_reduction_op(intrin))
          type = nir_op_infos[nir_intrinsic_reduction_op(intrin)].input_types[0];
 
       b->cursor = nir_before_instr(&intrin->instr);
@@ -205,6 +207,8 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_alu_type type = nir_type_uint;
       if (intrin->intrinsic == nir_intrinsic_vote_feq)
          type = nir_type_float;
+      else if (intrin->src[0].ssa->bit_size == 1)
+         type = nir_type_bool;
 
       b->cursor = nir_before_instr(&intrin->instr);
       nir_def *new_src = nir_convert_to_bit_size(b, intrin->src[0].ssa,
