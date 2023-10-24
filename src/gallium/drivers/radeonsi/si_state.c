@@ -2869,21 +2869,23 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    si_update_fb_dirtiness_after_rendering(sctx);
 
    /* Disable DCC if the formats are incompatible. */
-   for (i = 0; i < state->nr_cbufs; i++) {
-      if (!state->cbufs[i])
-         continue;
+   if (sctx->gfx_level >= GFX8 && sctx->gfx_level < GFX11) {
+      for (i = 0; i < state->nr_cbufs; i++) {
+         if (!state->cbufs[i])
+            continue;
 
-      surf = (struct si_surface *)state->cbufs[i];
-      tex = (struct si_texture *)surf->base.texture;
+         surf = (struct si_surface *)state->cbufs[i];
+         tex = (struct si_texture *)surf->base.texture;
 
-      if (!surf->dcc_incompatible)
-         continue;
+         if (!surf->dcc_incompatible)
+            continue;
 
-      if (vi_dcc_enabled(tex, surf->base.u.tex.level))
-         if (!si_texture_disable_dcc(sctx, tex))
-            si_decompress_dcc(sctx, tex);
+         if (vi_dcc_enabled(tex, surf->base.u.tex.level))
+            if (!si_texture_disable_dcc(sctx, tex))
+               si_decompress_dcc(sctx, tex);
 
-      surf->dcc_incompatible = false;
+         surf->dcc_incompatible = false;
+      }
    }
 
    /* Only flush TC when changing the framebuffer state, because
