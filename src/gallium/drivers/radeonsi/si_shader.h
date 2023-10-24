@@ -931,7 +931,6 @@ struct si_shader {
          uint16_t hw_max_esverts;
          uint16_t max_gsprims;
          uint16_t max_out_verts;
-         uint16_t prim_amp_factor;
          bool max_vert_out_per_gs_instance;
          /* Register values. */
          unsigned ge_max_output_per_subgroup;

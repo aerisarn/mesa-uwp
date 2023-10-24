@@ -233,17 +233,9 @@ retry_select_mode:
               : max_esverts;
    assert(max_out_vertices <= 256);
 
-   unsigned prim_amp_factor = 1;
-   if (gs_stage == MESA_SHADER_GEOMETRY) {
-      /* Number of output primitives per GS input primitive after
-       * GS instancing. */
-      prim_amp_factor = gs_sel->info.base.gs.vertices_out;
-   }
-
    shader->ngg.hw_max_esverts = max_esverts;
    shader->ngg.max_gsprims = max_gsprims;
    shader->ngg.max_out_verts = max_out_vertices;
-   shader->ngg.prim_amp_factor = prim_amp_factor;
    shader->ngg.max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
 
    /* Don't count unusable vertices. */
