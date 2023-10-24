@@ -229,9 +229,8 @@ static void si_emit_one_scissor(struct si_context *ctx, struct radeon_cmdbuf *cs
       si_clip_scissor(&final, scissor);
 
    radeon_begin(cs);
-
-   /* Workaround for a hw bug on GFX6 that occurs when PA_SU_HARDWARE_-
-    * SCREEN_OFFSET != 0 and any_scissor.BR_X/Y <= 0.
+   /* Workaround for a hw bug on GFX6 that occurs when PA_SU_HARDWARE_SCREEN_OFFSET != 0 and
+    * any_scissor.BR_X/Y <= 0.
     */
    if (ctx->gfx_level == GFX6 && (final.maxx == 0 || final.maxy == 0)) {
       radeon_emit(S_028250_TL_X(1) | S_028250_TL_Y(1) | S_028250_WINDOW_OFFSET_DISABLE(1));
@@ -245,8 +244,6 @@ static void si_emit_one_scissor(struct si_context *ctx, struct radeon_cmdbuf *cs
    radeon_emit(S_028254_BR_X(final.maxx) | S_028254_BR_Y(final.maxy));
    radeon_end();
 }
-
-#define MAX_PA_SU_HARDWARE_SCREEN_OFFSET 8176
 
 static void si_emit_guardband(struct si_context *sctx, unsigned index)
 {
@@ -284,6 +281,7 @@ static void si_emit_guardband(struct si_context *sctx, unsigned index)
    const unsigned hw_screen_offset_alignment =
       sctx->gfx_level >= GFX11 ? 32 :
       sctx->gfx_level >= GFX8 ? 16 : MAX2(sctx->screen->se_tile_repeat, 16);
+   const unsigned max_hw_screen_offset = 8176;
 
    /* Indexed by quantization modes */
    static int max_viewport_size[] = {65535, 16383, 4095};
@@ -295,8 +293,8 @@ static void si_emit_guardband(struct si_context *sctx, unsigned index)
    assert(vp_as_scissor.maxx <= max_viewport_size[vp_as_scissor.quant_mode] &&
           vp_as_scissor.maxy <= max_viewport_size[vp_as_scissor.quant_mode]);
 
-   hw_screen_offset_x = CLAMP(hw_screen_offset_x, 0, MAX_PA_SU_HARDWARE_SCREEN_OFFSET);
-   hw_screen_offset_y = CLAMP(hw_screen_offset_y, 0, MAX_PA_SU_HARDWARE_SCREEN_OFFSET);
+   hw_screen_offset_x = CLAMP(hw_screen_offset_x, 0, max_hw_screen_offset);
+   hw_screen_offset_y = CLAMP(hw_screen_offset_y, 0, max_hw_screen_offset);
 
    /* Align the screen offset by dropping the low bits. */
    hw_screen_offset_x &= ~(hw_screen_offset_alignment - 1);

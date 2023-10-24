@@ -5090,7 +5090,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
 
       if (sscreen->info.gfx_level >= GFX10) {
          const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&sscreen->info)[elements[i].src_format];
-         unsigned last_vertex_format = sscreen->info.gfx_level >= GFX11 ? 64 : 128;
+         ASSERTED unsigned last_vertex_format = sscreen->info.gfx_level >= GFX11 ? 64 : 128;
          assert(fmt->img_format != 0 && fmt->img_format < last_vertex_format);
          v->rsrc_word3[i] |= S_008F0C_FORMAT(fmt->img_format) |
                              S_008F0C_RESOURCE_LEVEL(sscreen->info.gfx_level < GFX11);

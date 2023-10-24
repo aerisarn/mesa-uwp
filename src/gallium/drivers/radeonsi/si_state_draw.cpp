@@ -1074,7 +1074,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
    radeon_begin(cs);
 
    if (prim != sctx->last_prim) {
-      unsigned vgt_prim = si_conv_pipe_prim(prim);
+      unsigned vgt_prim = HAS_TESS ? V_008958_DI_PT_PATCH : si_conv_pipe_prim(prim);
 
       if (GFX_VERSION >= GFX10)
          radeon_set_uconfig_reg(R_030908_VGT_PRIMITIVE_TYPE, vgt_prim);

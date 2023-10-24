@@ -201,13 +201,11 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
                            bool is_flushed_depth, bool tc_compatible_htile)
 {
    const struct util_format_description *desc = util_format_description(ptex->format);
-   bool is_depth, is_stencil;
+   bool is_depth = util_format_has_depth(desc);
+   bool is_stencil = util_format_has_stencil(desc);
    int r;
    unsigned bpe;
    uint64_t flags = 0;
-
-   is_depth = util_format_has_depth(desc);
-   is_stencil = util_format_has_stencil(desc);
 
    if (!is_flushed_depth && ptex->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
       bpe = 4; /* stencil is allocated separately */

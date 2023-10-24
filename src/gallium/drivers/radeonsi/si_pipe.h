@@ -2134,7 +2134,7 @@ si_update_ngg_prim_state_sgpr(struct si_context *sctx, struct si_shader *hw_vs, 
 /* Set the primitive type seen by the rasterizer. GS and tessellation affect this.
  * It's expected that hw_vs and ngg are inline constants in draw_vbo after optimizations.
  */
-static inline void
+static ALWAYS_INLINE void
 si_set_rasterized_prim(struct si_context *sctx, enum mesa_prim rast_prim,
                        struct si_shader *hw_vs, bool ngg)
 {

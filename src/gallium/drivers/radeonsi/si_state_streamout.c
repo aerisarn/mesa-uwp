@@ -321,8 +321,6 @@ void si_emit_streamout_end(struct si_context *sctx)
       if (!t[i])
          continue;
 
-      uint64_t va = t[i]->buf_filled_size->gpu_address + t[i]->buf_filled_size_offset;
-
       if (sctx->gfx_level >= GFX11) {
          si_cp_copy_data(sctx, &sctx->gfx_cs, COPY_DATA_DST_MEM,
                          t[i]->buf_filled_size, t[i]->buf_filled_size_offset,
@@ -331,6 +329,8 @@ void si_emit_streamout_end(struct si_context *sctx)
          sctx->flags |= SI_CONTEXT_PFP_SYNC_ME;
          si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
       } else {
+         uint64_t va = t[i]->buf_filled_size->gpu_address + t[i]->buf_filled_size_offset;
+
          radeon_begin(cs);
          radeon_emit(PKT3(PKT3_STRMOUT_BUFFER_UPDATE, 4, 0));
          radeon_emit(STRMOUT_SELECT_BUFFER(i) | STRMOUT_OFFSET_SOURCE(STRMOUT_OFFSET_NONE) |

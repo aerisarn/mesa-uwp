@@ -1289,7 +1289,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                           gs_info->base.vs.window_space_position : 0;
    bool es_enable_prim_id = shader->key.ge.mono.u.vs_export_prim_id || es_info->uses_primid;
    unsigned gs_num_invocations = gs_sel->stage == MESA_SHADER_GEOMETRY ?
-                                    MAX2(gs_info->base.gs.invocations, 1) : 0;
+                                    CLAMP(gs_info->base.gs.invocations, 1, 32) : 0;
    unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    bool break_wave_at_eoi = false;
 
@@ -1321,6 +1321,9 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       if (es_enable_prim_id || gs_info->uses_primid)
          break_wave_at_eoi = true;
    }
+
+   /* Primitives with adjancency can only occur without tessellation. */
+   assert(gs_info->gs_input_verts_per_prim <= 3 || es_stage == MESA_SHADER_VERTEX);
 
    /* If offsets 4, 5 are used, GS_VGPR_COMP_CNT is ignored and
     * VGPR[0:4] are always loaded.
@@ -4650,9 +4653,10 @@ static void si_emit_spi_map(struct si_context *sctx, unsigned index)
       spi_ps_input_cntl[i] = ps_input_cntl;
    }
 
-   /* R_028644_SPI_PS_INPUT_CNTL_0 */
-   /* Dota 2: Only ~16% of SPI map updates set different values. */
-   /* Talos: Only ~9% of SPI map updates set different values. */
+   /* Performance notes:
+    *    Dota 2: Only ~16% of SPI map updates set different values.
+    *    Talos: Only ~9% of SPI map updates set different values.
+    */
    radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_regn(sctx, R_028644_SPI_PS_INPUT_CNTL_0, spi_ps_input_cntl,
                                sctx->tracked_regs.spi_ps_input_cntl, NUM_INTERP);
