@@ -1160,6 +1160,87 @@ impl SM50Instr {
         self.set_field(20..24, op.mask);
     }
 
+    fn set_atom_op(&mut self, range: Range<usize>, atom_op: AtomOp) {
+        assert!(range.len() == 4);
+        self.set_field(
+            range,
+            match atom_op {
+                AtomOp::Add => 0_u8,
+                AtomOp::Min => 1_u8,
+                AtomOp::Max => 2_u8,
+                AtomOp::Inc => 3_u8,
+                AtomOp::Dec => 4_u8,
+                AtomOp::And => 5_u8,
+                AtomOp::Or => 6_u8,
+                AtomOp::Xor => 7_u8,
+                AtomOp::Exch => 8_u8,
+                AtomOp::CmpExch => panic!("CmpXchg not yet supported"),
+            },
+        );
+    }
+
+    fn encode_atomg(&mut self, op: &OpAtom) {
+        self.set_opcode(0xed00);
+        self.set_mem_order(&op.mem_order);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.addr);
+        self.set_reg_src(20..28, op.data);
+        self.set_field(28..48, op.addr_offset);
+        self.set_field(
+            48..49,
+            match op.mem_space.addr_type() {
+                MemAddrType::A32 => 0_u8,
+                MemAddrType::A64 => 1_u8,
+            },
+        );
+        self.set_field(
+            49..52,
+            match op.atom_type {
+                AtomType::U32 => 0_u8,
+                AtomType::I32 => 1_u8,
+                AtomType::U64 => 2_u8,
+                AtomType::F32 => 3_u8,
+                /* NOTE: U128 => 4_u8, */
+                AtomType::I64 => 5_u8,
+                /* TODO: do something about ATOMG.F64 */
+                other => panic!("ATOMG.{other} not supported on SM50"),
+            },
+        );
+        self.set_atom_op(52..56, op.atom_op);
+    }
+
+    fn encode_atoms(&mut self, op: &OpAtom) {
+        self.set_opcode(0xec00);
+        self.set_mem_order(&op.mem_order);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.addr);
+        self.set_reg_src(20..28, op.data);
+        self.set_field(
+            28..30,
+            match op.atom_type {
+                AtomType::U32 => 0_u8,
+                AtomType::I32 => 1_u8,
+                AtomType::U64 => 2_u8,
+                AtomType::I64 => 3_u8,
+                /* TODO: do something about ATOMS.F{32,64} */
+                other => panic!("ATOMS.{other} not supported on SM50"),
+            },
+        );
+        assert_eq!(op.addr_offset % 4, 0);
+        self.set_field(30..52, op.addr_offset / 4);
+        self.set_atom_op(52..56, op.atom_op);
+    }
+
+    fn encode_atom(&mut self, op: &OpAtom) {
+        match op.mem_space {
+            MemSpace::Global(_) => self.encode_atomg(op),
+            MemSpace::Local => panic!("Atomics do not support local"),
+            MemSpace::Shared => self.encode_atoms(op),
+        }
+    }
+
     fn encode_ipa(&mut self, op: &OpIpa) {
         assert!(op.offset.is_reg_or_zero());
 
@@ -1773,6 +1854,7 @@ impl SM50Instr {
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
             Op::MemBar(op) => si.encode_membar(&op),
+            Op::Atom(op) => si.encode_atom(&op),
             Op::Bra(op) => si.encode_bra(&op, ip, labels),
             Op::Exit(op) => si.encode_exit(&op),
             Op::Bar(op) => si.encode_bar(&op),
