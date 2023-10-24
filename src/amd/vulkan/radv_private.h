@@ -1015,9 +1015,6 @@ struct radv_device {
    /* Whether to DMA shaders to invisible VRAM or to upload directly through BAR. */
    bool shader_use_invisible_vram;
 
-   /* For detecting VM faults reported by dmesg. */
-   uint64_t dmesg_timestamp;
-
    /* Whether the app has enabled the robustBufferAccess/robustBufferAccess2 features. */
    enum radv_buffer_robustness buffer_robustness;
 

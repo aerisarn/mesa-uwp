@@ -84,8 +84,6 @@ radv_init_trace(struct radv_device *device)
    if (!device->trace_id_ptr)
       return false;
 
-   ac_vm_fault_occurred(device->physical_device->rad_info.gfx_level, &device->dmesg_timestamp, NULL);
-
    return true;
 }
 
@@ -701,16 +699,11 @@ radv_check_gpu_hangs(struct radv_queue *queue, const struct radv_winsys_submit_i
 {
    struct radv_device *device = queue->device;
    enum amd_ip_type ring;
-   uint64_t addr;
 
    ring = radv_queue_ring(queue);
 
    bool hang_occurred = radv_gpu_hang_occurred(queue, ring);
-   bool vm_fault_occurred = false;
-   if (queue->device->instance->debug_flags & RADV_DEBUG_VM_FAULTS)
-      vm_fault_occurred =
-         ac_vm_fault_occurred(device->physical_device->rad_info.gfx_level, &device->dmesg_timestamp, &addr);
-   if (!hang_occurred && !vm_fault_occurred)
+   if (!hang_occurred)
       return;
 
    fprintf(stderr, "radv: GPU hang detected...\n");
@@ -795,6 +788,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, const struct radv_winsys_submit_i
       fclose(f);
    }
 
+#if 0
    /* Dump VM fault info. */
    if (vm_fault_occurred) {
       snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "vm_fault.log");
@@ -805,6 +799,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, const struct radv_winsys_submit_i
          fclose(f);
       }
    }
+#endif
 
    /* Dump app info. */
    snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "app_info.log");

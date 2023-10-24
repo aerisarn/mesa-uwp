@@ -1291,8 +1291,6 @@ RADV driver environment variables
       display info at startup
    ``syncshaders``
       synchronize shaders after all draws/dispatches
-   ``vmfaults``
-      check for VM memory faults via dmesg
    ``zerovram``
       initialize all memory allocated in VRAM as zero
 
