@@ -1445,9 +1445,11 @@ impl<'a> ShaderFromNir<'a> {
                 let coord = self.get_image_coord(intrin, dim);
                 /* let sample = self.get_src(&srcs[2]); */
 
+                let comps = u8::try_from(intrin.num_components).unwrap();
                 assert!(intrin.def.bit_size() == 32);
-                assert!(intrin.def.num_components() == 4);
-                let dst = b.alloc_ssa(RegFile::GPR, 4);
+                assert!(comps == 1 || comps == 4);
+
+                let dst = b.alloc_ssa(RegFile::GPR, comps);
 
                 b.push_op(OpSuLd {
                     dst: dst.into(),
@@ -1455,7 +1457,7 @@ impl<'a> ShaderFromNir<'a> {
                     image_dim: dim,
                     mem_order: MemOrder::Weak,
                     mem_scope: MemScope::CTA,
-                    mask: 0xf,
+                    mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
                 });
@@ -1468,11 +1470,15 @@ impl<'a> ShaderFromNir<'a> {
                 /* let sample = self.get_src(&srcs[2]); */
                 let data = self.get_src(&srcs[3]);
 
+                let comps = u8::try_from(intrin.num_components).unwrap();
+                assert!(srcs[3].bit_size() == 32);
+                assert!(comps == 1 || comps == 4);
+
                 b.push_op(OpSuSt {
                     image_dim: dim,
                     mem_order: MemOrder::Weak,
                     mem_scope: MemScope::CTA,
-                    mask: 0xf,
+                    mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
                     data: data,
