@@ -1017,7 +1017,7 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
       goto fail;
 
    /* Configure the CS request. */
-   const uint8_t *max_ib_per_ip = ws->info.max_submitted_ibs;
+   const uint32_t *max_ib_per_ip = ws->info.max_submitted_ibs;
    struct radv_amdgpu_cs_request request = {
       .ip_type = last_cs->hw_ip,
       .ip_instance = 0,

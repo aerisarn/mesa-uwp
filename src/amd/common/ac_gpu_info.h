@@ -192,7 +192,7 @@ struct radeon_info {
    uint32_t drm_major; /* version */
    uint32_t drm_minor;
    uint32_t drm_patchlevel;
-   uint8_t max_submitted_ibs[AMD_NUM_IP_TYPES];
+   uint32_t max_submitted_ibs[AMD_NUM_IP_TYPES];
    bool is_amdgpu;
    bool has_userptr;
    bool has_syncobj;

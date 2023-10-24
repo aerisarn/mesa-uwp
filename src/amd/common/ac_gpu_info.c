@@ -1544,7 +1544,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       /* When the number of IBs can't be queried from the kernel, we choose a
        * rough estimate that should work well (as of kernel 6.3).
        */
-      memset(info->max_submitted_ibs, 50, AMD_NUM_IP_TYPES);
+      for (unsigned i = 0; i < AMD_NUM_IP_TYPES; ++i)
+         info->max_submitted_ibs[i] = 50;
+
       info->max_submitted_ibs[AMD_IP_GFX] = info->gfx_level >= GFX7 ? 192 : 144;
       info->max_submitted_ibs[AMD_IP_COMPUTE] = 124;
       info->max_submitted_ibs[AMD_IP_VCN_JPEG] = 16;
