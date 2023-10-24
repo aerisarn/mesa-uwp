@@ -3517,6 +3517,21 @@ impl fmt::Display for OpBMov {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBreak {
+    pub bar: BarRef,
+
+    #[src_type(Pred)]
+    pub cond: Src,
+}
+
+impl fmt::Display for OpBreak {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BREAK {} {}", self.cond, self.bar)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBSSy {
     pub bar: BarRef,
 
@@ -4108,6 +4123,7 @@ pub enum Op {
     Ipa(OpIpa),
     MemBar(OpMemBar),
     BMov(OpBMov),
+    Break(OpBreak),
     BSSy(OpBSSy),
     BSync(OpBSync),
     Bra(OpBra),
@@ -4462,6 +4478,7 @@ impl Instr {
             | Op::AtomCas(_)
             | Op::MemBar(_)
             | Op::Kill(_)
+            | Op::Break(_)
             | Op::BSSy(_)
             | Op::BSync(_)
             | Op::Bra(_)
@@ -4541,7 +4558,7 @@ impl Instr {
             | Op::MemBar(_) => false,
 
             // Control-flow ops
-            Op::BMov(_) | Op::BSSy(_) | Op::BSync(_) => false,
+            Op::BMov(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => false,
             Op::Bra(_) | Op::Exit(_) => true,
             Op::WarpSync(_) => false,
 

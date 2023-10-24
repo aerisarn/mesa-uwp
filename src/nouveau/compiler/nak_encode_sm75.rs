@@ -1615,6 +1615,12 @@ impl SM75Instr {
         self.set_bit(84, op.clear);
     }
 
+    fn encode_break(&mut self, op: &OpBreak) {
+        self.set_opcode(0x942);
+        self.set_field(16..20, op.bar.idx());
+        self.set_pred_src(87..90, 90, op.cond);
+    }
+
     fn encode_bssy(
         &mut self,
         op: &OpBSSy,
@@ -1824,6 +1830,7 @@ impl SM75Instr {
             Op::Ipa(op) => si.encode_ipa(&op),
             Op::MemBar(op) => si.encode_membar(&op),
             Op::BMov(op) => si.encode_bmov(&op),
+            Op::Break(op) => si.encode_break(&op),
             Op::BSSy(op) => si.encode_bssy(&op, ip, labels),
             Op::BSync(op) => si.encode_bsync(&op),
             Op::Bra(op) => si.encode_bra(&op, ip, labels),
