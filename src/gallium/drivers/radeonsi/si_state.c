@@ -3711,14 +3711,6 @@ static void si_emit_msaa_config(struct si_context *sctx, unsigned index)
 
    if (coverage_samples > 1 && (rs->multisample_enable ||
                                 sctx->smoothing_enabled)) {
-      /* distance from the pixel center, indexed by log2(nr_samples) */
-      static unsigned max_dist[] = {
-         0, /* unused */
-         4, /* 2x MSAA */
-         6, /* 4x MSAA */
-         7, /* 8x MSAA */
-         7, /* 16x MSAA */
-      };
       unsigned log_samples = util_logbase2(coverage_samples);
 
       sc_line_cntl |= S_028BDC_EXPAND_LINE_WIDTH(1) |
@@ -3727,7 +3719,7 @@ static void si_emit_msaa_config(struct si_context *sctx, unsigned index)
                                                      (sctx->family == CHIP_VEGA20 ||
                                                       sctx->gfx_level >= GFX10));
       sc_aa_config = S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
-                     S_028BE0_MAX_SAMPLE_DIST(max_dist[log_samples]) |
+                     S_028BE0_MAX_SAMPLE_DIST(si_msaa_max_distance[log_samples]) |
                      S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
                      S_028BE0_COVERED_CENTROID_IS_CENTER(sctx->gfx_level >= GFX10_3);
    }

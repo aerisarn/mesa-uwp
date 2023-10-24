@@ -105,6 +105,15 @@ static const uint32_t sample_locs_16x[] = {
 };
 static const uint64_t centroid_priority_16x = 0xc97e64b231d0fa85ull;
 
+/* distance from the pixel center, indexed by log2(nr_samples) */
+unsigned si_msaa_max_distance[5] = {
+   0, /* no AA */
+   4, /* 2x MSAA */
+   6, /* 4x MSAA */
+   7, /* 8x MSAA */
+   7, /* 16x MSAA */
+};
+
 static void si_get_sample_position(struct pipe_context *ctx, unsigned sample_count,
                                    unsigned sample_index, float *out_value)
 {
