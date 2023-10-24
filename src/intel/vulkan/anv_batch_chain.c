@@ -1719,10 +1719,10 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 }
 
 VkResult
-anv_queue_submit_trtt_batch(struct anv_queue *queue,
-                            struct anv_sparse_submission *submit,
+anv_queue_submit_trtt_batch(struct anv_sparse_submission *submit,
                             struct anv_batch *batch)
 {
+   struct anv_queue *queue = submit->queue;
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
 
@@ -1744,7 +1744,7 @@ anv_queue_submit_trtt_batch(struct anv_queue *queue,
                         batch_bo->offset, false);
    }
 
-   result = device->kmd_backend->execute_trtt_batch(queue, submit, batch_bo,
+   result = device->kmd_backend->execute_trtt_batch(submit, batch_bo,
                                                     batch_size);
 
    anv_bo_pool_free(&device->batch_bo_pool, batch_bo);

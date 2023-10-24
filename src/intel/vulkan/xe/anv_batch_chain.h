@@ -40,8 +40,7 @@ VkResult
 xe_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
                         uint32_t batch_bo_size, bool is_companion_rcs_batch);
 VkResult
-xe_execute_trtt_batch(struct anv_queue *queue,
-                      struct anv_sparse_submission *submit,
+xe_execute_trtt_batch(struct anv_sparse_submission *submit,
                       struct anv_bo *batch_bo, uint32_t batch_size);
 
 VkResult

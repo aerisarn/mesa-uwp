@@ -179,10 +179,10 @@ xe_exec_print_debug(struct anv_queue *queue, uint32_t cmd_buffer_count,
 }
 
 VkResult
-xe_execute_trtt_batch(struct anv_queue *queue,
-                      struct anv_sparse_submission *submit,
+xe_execute_trtt_batch(struct anv_sparse_submission *submit,
                       struct anv_bo *batch_bo, uint32_t batch_size)
 {
+   struct anv_queue *queue = submit->queue;
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
 

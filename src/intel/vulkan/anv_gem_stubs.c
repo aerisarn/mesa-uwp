@@ -66,8 +66,7 @@ stub_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
 }
 
 static VkResult
-stub_execute_trtt_batch(struct anv_queue *queue,
-                        struct anv_sparse_submission *submit,
+stub_execute_trtt_batch(struct anv_sparse_submission *submit,
                         struct anv_bo *batch_bo, uint32_t batch_size)
 {
    return VK_ERROR_UNKNOWN;

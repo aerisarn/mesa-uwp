@@ -1941,8 +1941,7 @@ VkResult anv_queue_submit(struct vk_queue *queue,
 VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
                                        struct anv_batch *batch,
                                        bool is_companion_rcs_batch);
-VkResult anv_queue_submit_trtt_batch(struct anv_queue *queue,
-                                     struct anv_sparse_submission *submit,
+VkResult anv_queue_submit_trtt_batch(struct anv_sparse_submission *submit,
                                      struct anv_batch *batch);
 
 void anv_queue_trace(struct anv_queue *queue, const char *label,

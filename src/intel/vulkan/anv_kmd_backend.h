@@ -78,8 +78,7 @@ struct anv_kmd_backend {
                                     struct anv_bo *batch_bo,
                                     uint32_t batch_bo_size,
                                     bool is_companion_rcs_batch);
-   VkResult (*execute_trtt_batch)(struct anv_queue *queue,
-                                  struct anv_sparse_submission *submit,
+   VkResult (*execute_trtt_batch)(struct anv_sparse_submission *submit,
                                   struct anv_bo *batch_bo,
                                   uint32_t batch_size);
    VkResult (*queue_exec_locked)(struct anv_queue *queue,

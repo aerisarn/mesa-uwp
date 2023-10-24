@@ -8431,7 +8431,6 @@ VkResult
 genX(write_trtt_entries)(struct anv_trtt_submission *submit)
 {
 #if GFX_VER >= 12
-   struct anv_queue *queue = submit->sparse->queue;
    size_t batch_size = submit->l3l2_binds_len * 20 +
                        submit->l1_binds_len * 16 + 8;
    STACK_ARRAY(uint32_t, cmds, batch_size);
@@ -8530,8 +8529,7 @@ genX(write_trtt_entries)(struct anv_trtt_submission *submit)
 
    assert(batch.next <= batch.end);
 
-   VkResult result = anv_queue_submit_trtt_batch(queue, submit->sparse,
-                                                 &batch);
+   VkResult result = anv_queue_submit_trtt_batch(submit->sparse, &batch);
    STACK_ARRAY_FINISH(cmds);
 
    return result;
