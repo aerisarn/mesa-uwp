@@ -1641,6 +1641,40 @@ nir_store_deref(nir_builder *build, nir_deref_instr *deref,
 }
 
 static inline void
+nir_build_write_masked_store(nir_builder *b, nir_deref_instr *vec_deref,
+                             nir_def *value, unsigned component)
+{
+   assert(value->num_components == 1);
+   unsigned num_components = glsl_get_components(vec_deref->type);
+   assert(num_components > 1 && num_components <= NIR_MAX_VEC_COMPONENTS);
+
+   nir_def *u = nir_undef(b, 1, value->bit_size);
+   nir_def *comps[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned i = 0; i < num_components; i++)
+      comps[i] = (i == component) ? value : u;
+
+   nir_def *vec = nir_vec(b, comps, num_components);
+   nir_store_deref(b, vec_deref, vec, (1u << component));
+}
+
+static inline void
+nir_build_write_masked_stores(nir_builder *b, nir_deref_instr *vec_deref,
+                              nir_def *value, nir_def *index,
+                              unsigned start, unsigned end)
+{
+   if (start == end - 1) {
+      nir_build_write_masked_store(b, vec_deref, value, start);
+   } else {
+      unsigned mid = start + (end - start) / 2;
+      nir_push_if(b, nir_ilt_imm(b, index, mid));
+      nir_build_write_masked_stores(b, vec_deref, value, index, start, mid);
+      nir_push_else(b, NULL);
+      nir_build_write_masked_stores(b, vec_deref, value, index, mid, end);
+      nir_pop_if(b, NULL);
+   }
+}
+
+static inline void
 nir_copy_deref_with_access(nir_builder *build, nir_deref_instr *dest,
                            nir_deref_instr *src,
                            enum gl_access_qualifier dest_access,
