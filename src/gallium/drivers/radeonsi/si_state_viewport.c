@@ -282,7 +282,7 @@ static void si_emit_guardband(struct si_context *sctx, unsigned index)
    const unsigned max_hw_screen_offset = 8176;
 
    /* Indexed by quantization modes */
-   static int max_viewport_size[] = {65535, 16383, 4095};
+   static int max_viewport_size[] = {65536, 16384, 4096};
 
    /* Ensure that the whole viewport stays representable in
     * absolute coordinates.
