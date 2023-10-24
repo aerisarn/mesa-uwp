@@ -595,6 +595,13 @@ tu_physical_device_init(struct tu_physical_device *device,
    VkResult result = VK_SUCCESS;
 
    const char *fd_name = fd_dev_name(&device->dev_id);
+   if (!fd_name) {
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "device (chip_id = %" PRIX64
+                               ", gpu_id = %u) is unsupported",
+                               device->dev_id.chip_id, device->dev_id.gpu_id);
+   }
+
    if (strncmp(fd_name, "FD", 2) == 0) {
       device->name = vk_asprintf(&instance->vk.alloc,
                                  VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE,
