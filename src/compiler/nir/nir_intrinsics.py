@@ -2026,6 +2026,10 @@ intrinsic("end_primitive_nv", dest_comp=1, src_comp=[1], indices=[STREAM_ID])
 # Contains the final primitive handle and indicate the end of emission.
 intrinsic("final_primitive_nv", src_comp=[1])
 
+intrinsic("bar_set_nv", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
+intrinsic("bar_break_nv", src_comp=[1])
+intrinsic("bar_sync_nv", src_comp=[1])
+
 # In order to deal with flipped render targets, gl_PointCoord may be flipped
 # in the shader requiring a shader key or extra instructions or it may be
 # flipped in hardware based on a state bit.  This version of gl_PointCoord
