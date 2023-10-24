@@ -63,6 +63,9 @@ struct vn_graphics_pipeline_create_info_fields {
          /** VkPipelineViewportStateCreateInfo::pScissors */
          bool viewport_state_scissors : 1;
 
+         /** VkPipelineMultisampleStateCreateInfo::pSampleMask */
+         bool multisample_state_sample_mask : 1;
+
          /** VkPipelineRenderingCreateInfo, all format fields */
          bool rendering_info_formats : 1;
       };
@@ -119,6 +122,8 @@ struct vn_graphics_dynamic_state {
          bool viewport : 1;
          /** VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT */
          bool viewport_with_count : 1;
+         /** VK_DYNAMIC_STATE_SAMPLE_MASK_EXT */
+         bool sample_mask : 1;
          /** VK_DYNAMIC_STATE_SCISSOR */
          bool scissor : 1;
          /** VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT */
@@ -193,6 +198,7 @@ struct vn_graphics_pipeline_fix_desc {
  */
 struct vn_graphics_pipeline_fix_tmp {
    VkGraphicsPipelineCreateInfo *infos;
+   VkPipelineMultisampleStateCreateInfo *multisample_state_infos;
    VkPipelineViewportStateCreateInfo *viewport_state_infos;
 };
 
@@ -557,11 +563,14 @@ vn_graphics_pipeline_fix_tmp_alloc(const VkAllocationCallbacks *alloc,
 {
    struct vn_graphics_pipeline_fix_tmp *tmp;
    VkGraphicsPipelineCreateInfo *infos;
+   VkPipelineMultisampleStateCreateInfo *multisample_state_infos;
    VkPipelineViewportStateCreateInfo *viewport_state_infos;
 
    VK_MULTIALLOC(ma);
    vk_multialloc_add(&ma, &tmp, __typeof__(*tmp), 1);
    vk_multialloc_add(&ma, &infos, __typeof__(*infos), info_count);
+   vk_multialloc_add(&ma, &multisample_state_infos,
+                     __typeof__(*multisample_state_infos), info_count);
    vk_multialloc_add(&ma, &viewport_state_infos,
                      __typeof__(*viewport_state_infos), info_count);
 
@@ -569,6 +578,7 @@ vn_graphics_pipeline_fix_tmp_alloc(const VkAllocationCallbacks *alloc,
       return NULL;
 
    tmp->infos = infos;
+   tmp->multisample_state_infos = multisample_state_infos;
    tmp->viewport_state_infos = viewport_state_infos;
 
    return tmp;
@@ -646,6 +656,9 @@ vn_graphics_dynamic_state_update(
       case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
          raw.viewport_with_count = true;
          break;
+      case VK_DYNAMIC_STATE_SAMPLE_MASK_EXT:
+         raw.sample_mask = true;
+         break;
       case VK_DYNAMIC_STATE_SCISSOR:
          raw.scissor = true;
          break;
@@ -686,6 +699,12 @@ vn_graphics_dynamic_state_update(
       dynamic->scissor |= raw.scissor;
       dynamic->scissor_with_count |= raw.scissor_with_count;
       dynamic->rasterizer_discard_enable |= raw.rasterizer_discard_enable;
+   }
+   if (direct_gpl.fragment_shader) {
+      dynamic->sample_mask |= raw.sample_mask;
+   }
+   if (direct_gpl.fragment_output) {
+      dynamic->sample_mask |= raw.sample_mask;
    }
 }
 
@@ -983,17 +1002,16 @@ vn_graphics_pipeline_state_fill(
       valid.rasterization_state = true;
       valid.pipeline_layout = true;
 
-      state->rasterizer_discard_enable =
-         info->pRasterizationState->rasterizerDiscardEnable;
+      if (info->pRasterizationState) {
+         state->rasterizer_discard_enable =
+            info->pRasterizationState->rasterizerDiscardEnable;
+      }
 
       const bool is_raster_statically_disabled =
          !state->dynamic.rasterizer_discard_enable &&
          state->rasterizer_discard_enable;
 
       if (!is_raster_statically_disabled) {
-         /* TODO(VK_EXT_extended_dynamic_state3): pViewportState may be
-          * invalid.
-          */
          valid.viewport_state = true;
 
          valid.viewport_state_viewports =
@@ -1065,7 +1083,7 @@ vn_graphics_pipeline_state_fill(
           */
          valid.multisample_state = true;
 
-         /* TODO(VK_EXT_extended_dynamic_state3): pSampleMask may be invalid. */
+         valid.multisample_state_sample_mask = !state->dynamic.sample_mask;
 
          if ((state->render_pass.attachment_aspects &
               (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
@@ -1105,7 +1123,7 @@ vn_graphics_pipeline_state_fill(
           */
          valid.multisample_state = true;
 
-         /* TODO(VK_EXT_extended_dynamic_state3): pSampleMask may be invalid */
+         valid.multisample_state_sample_mask = !state->dynamic.sample_mask;
 
          valid.color_blend_state |=
             (bool)(state->render_pass.attachment_aspects &
@@ -1159,6 +1177,10 @@ vn_graphics_pipeline_state_fill(
          .multisample_state =
             !valid.multisample_state &&
             info->pMultisampleState,
+         .multisample_state_sample_mask =
+            !valid.multisample_state_sample_mask &&
+            info->pMultisampleState &&
+            info->pMultisampleState->pSampleMask,
          .depth_stencil_state =
             !valid.depth_stencil_state &&
             info->pDepthStencilState,
@@ -1245,6 +1267,15 @@ vn_fix_graphics_pipeline_create_infos(
          fix_tmp->infos[i].layout = VK_NULL_HANDLE;
       if (fix_descs[i].erase.base_pipeline_handle)
          fix_tmp->infos[i].basePipelineHandle = VK_NULL_HANDLE;
+
+      /* VkPipelineMultisampleStateCreateInfo */
+      if (fix_descs[i].erase.multisample_state_sample_mask) {
+         /* Swap original pMultisampleState with temporary state. */
+         fix_tmp->multisample_state_infos[i] = *infos[i].pMultisampleState;
+         fix_tmp->infos[i].pMultisampleState = &fix_tmp->multisample_state_infos[i];
+
+         fix_tmp->multisample_state_infos[i].pSampleMask = NULL;
+      }
 
       /* VkPipelineViewportStateCreateInfo */
       if (fix_descs[i].erase.viewport_state_viewports ||
