@@ -142,8 +142,13 @@ lower_bit_size_cb(const nir_instr *instr, void *_data)
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
-      case nir_intrinsic_vote_feq:
       case nir_intrinsic_vote_ieq:
+         if (intrin->src[0].ssa->bit_size != 1 &&
+             intrin->src[0].ssa->bit_size != 32)
+            return 32;
+         return 0;
+
+      case nir_intrinsic_vote_feq:
       case nir_intrinsic_read_invocation:
       case nir_intrinsic_read_first_invocation:
       case nir_intrinsic_shuffle:
