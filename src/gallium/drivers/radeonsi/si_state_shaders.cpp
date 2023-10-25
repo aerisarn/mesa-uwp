@@ -1199,10 +1199,9 @@ static void gfx10_emit_shader_ngg(struct si_context *sctx, unsigned index)
                               shader->ngg.vgt_gs_instance_cnt);
    radeon_opt_set_context_reg(sctx, R_0286C4_SPI_VS_OUT_CONFIG, SI_TRACKED_SPI_VS_OUT_CONFIG,
                               shader->ngg.spi_vs_out_config);
-   radeon_opt_set_context_reg2(sctx, R_028708_SPI_SHADER_IDX_FORMAT,
-                               SI_TRACKED_SPI_SHADER_IDX_FORMAT,
-                               shader->ngg.spi_shader_idx_format,
-                               shader->ngg.spi_shader_pos_format);
+   radeon_opt_set_context_reg(sctx, R_02870C_SPI_SHADER_POS_FORMAT,
+                              SI_TRACKED_SPI_SHADER_POS_FORMAT,
+                              shader->ngg.spi_shader_pos_format);
    radeon_opt_set_context_reg(sctx, R_028818_PA_CL_VTE_CNTL, SI_TRACKED_PA_CL_VTE_CNTL,
                               shader->ngg.pa_cl_vte_cntl);
    radeon_end_update_context_roll(sctx);
@@ -1372,7 +1371,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                   S_00B22C_LDS_SIZE(shader->config.lds_size));
 
    /* Set register values emitted conditionally in gfx10_emit_shader_ngg_*. */
-   shader->ngg.spi_shader_idx_format = S_028708_IDX0_EXPORT_FORMAT(V_028708_SPI_SHADER_1COMP);
    shader->ngg.spi_shader_pos_format =
       S_02870C_POS0_EXPORT_FORMAT(V_02870C_SPI_SHADER_4COMP) |
       S_02870C_POS1_EXPORT_FORMAT(shader->info.nr_pos_exports > 1 ? V_02870C_SPI_SHADER_4COMP

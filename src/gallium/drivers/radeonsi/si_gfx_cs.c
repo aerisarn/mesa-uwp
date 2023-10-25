@@ -215,7 +215,6 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_CL_GB_HORZ_CLIP_ADJ] = 0x3f800000;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_CL_GB_HORZ_DISC_ADJ] = 0x3f800000;
 
-   ctx->tracked_regs.context_reg_value[SI_TRACKED_SPI_SHADER_IDX_FORMAT] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_SPI_SHADER_POS_FORMAT] = 0;
 
    ctx->tracked_regs.context_reg_value[SI_TRACKED_SPI_SHADER_Z_FORMAT] = 0;

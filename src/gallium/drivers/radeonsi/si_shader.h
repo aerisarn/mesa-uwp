@@ -940,7 +940,6 @@ struct si_shader {
          unsigned vgt_gs_instance_cnt;
          unsigned esgs_vertex_stride;
          unsigned spi_vs_out_config;
-         unsigned spi_shader_idx_format;
          unsigned spi_shader_pos_format;
          unsigned pa_cl_vte_cntl;
          unsigned vgt_gs_max_vert_out; /* for API GS */

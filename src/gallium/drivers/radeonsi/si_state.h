@@ -250,8 +250,7 @@ enum si_tracked_context_reg
    SI_TRACKED_PA_CL_GB_HORZ_CLIP_ADJ,
    SI_TRACKED_PA_CL_GB_HORZ_DISC_ADJ,
 
-   /* 2 consecutive registers */
-   SI_TRACKED_SPI_SHADER_IDX_FORMAT,
+   /* Non-consecutive register */
    SI_TRACKED_SPI_SHADER_POS_FORMAT,
 
    /* 2 consecutive registers */
