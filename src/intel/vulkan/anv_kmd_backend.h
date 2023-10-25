@@ -39,6 +39,7 @@ struct anv_queue;
 struct anv_query_pool;
 struct anv_utrace_submit;
 struct anv_sparse_submission;
+struct anv_trtt_batch_bo;
 
 enum anv_vm_bind_op {
    ANV_VM_BIND,
@@ -79,8 +80,7 @@ struct anv_kmd_backend {
                                     uint32_t batch_bo_size,
                                     bool is_companion_rcs_batch);
    VkResult (*execute_trtt_batch)(struct anv_sparse_submission *submit,
-                                  struct anv_bo *batch_bo,
-                                  uint32_t batch_size);
+                                  struct anv_trtt_batch_bo *trtt_bbo);
    VkResult (*queue_exec_locked)(struct anv_queue *queue,
                                  uint32_t wait_count,
                                  const struct vk_sync_wait *waits,

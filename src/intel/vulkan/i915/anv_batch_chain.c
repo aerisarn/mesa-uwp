@@ -981,7 +981,7 @@ fail:
 
 VkResult
 i915_execute_trtt_batch(struct anv_sparse_submission *submit,
-                        struct anv_bo *batch_bo, uint32_t batch_size)
+                        struct anv_trtt_batch_bo *trtt_bbo)
 {
    struct anv_queue *queue = submit->queue;
    struct anv_device *device = queue->device;
@@ -1020,7 +1020,7 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
          goto out;
    }
 
-   result = anv_execbuf_add_bo(device, &execbuf, batch_bo, NULL, 0);
+   result = anv_execbuf_add_bo(device, &execbuf, trtt_bbo->bo, NULL, 0);
    if (result != VK_SUCCESS)
       goto out;
 
@@ -1035,7 +1035,7 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
       .buffers_ptr = (uintptr_t) execbuf.objects,
       .buffer_count = execbuf.bo_count,
       .batch_start_offset = 0,
-      .batch_len = batch_size,
+      .batch_len = trtt_bbo->size,
       .flags = I915_EXEC_HANDLE_LUT | I915_EXEC_NO_RELOC | exec_flags,
       .rsvd1 = context_id,
       .rsvd2 = 0,
@@ -1053,7 +1053,7 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
    /* TODO: we can get rid of this wait once we can properly handle the buffer
     * lifetimes.
     */
-   result = anv_device_wait(device, batch_bo, INT64_MAX);
+   result = anv_device_wait(device, trtt_bbo->bo, INT64_MAX);
    if (result != VK_SUCCESS) {
       result = vk_device_set_lost(&device->vk,
                                   "trtt anv_device_wait failed: %m");

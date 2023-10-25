@@ -1595,6 +1595,11 @@ struct anv_device_astc_emu {
     VkPipeline pipeline;
 };
 
+struct anv_trtt_batch_bo {
+   struct anv_bo *bo;
+   uint32_t size;
+};
+
 struct anv_device {
     struct vk_device                            vk;
 
