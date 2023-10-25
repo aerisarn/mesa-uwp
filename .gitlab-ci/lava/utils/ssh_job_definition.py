@@ -155,7 +155,7 @@ def generate_docker_test(args):
         "export SSH_PTY_ARGS=-tt",
         # Putting CI_JOB name as the testcase name, it may help LAVA farm
         # maintainers with monitoring
-        f"lava_ssh_test_case 'mesa-ci_{args.mesa_job_name}' "
+        f"lava_ssh_test_case '{args.project_name}_{args.mesa_job_name}' "
         # Changing directory to /, as the HWCI_SCRIPT expects that
         "'\"cd / && /init-stage2.sh\"'",
     ]

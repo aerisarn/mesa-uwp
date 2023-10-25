@@ -81,7 +81,7 @@ def to_yaml_block(steps_array: list[str], escape_vars=[]) -> LiteralScalarString
 def generate_metadata(args) -> dict[str, Any]:
     # General metadata and permissions
     values = {
-        "job_name": f"mesa: {args.pipeline_info}",
+        "job_name": f"{args.project_name}: {args.pipeline_info}",
         "device_type": args.device_type,
         "visibility": {"group": [args.visibility_group]},
         "priority": JOB_PRIORITY,

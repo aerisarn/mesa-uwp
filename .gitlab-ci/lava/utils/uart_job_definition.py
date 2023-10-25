@@ -150,7 +150,7 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
         "sleep 1",
         # Putting CI_JOB name as the testcase name, it may help LAVA farm
         # maintainers with monitoring
-        f"lava-test-case 'mesa-ci_{args.mesa_job_name}' --shell /init-stage2.sh",
+        f"lava-test-case '{args.project_name}_{args.mesa_job_name}' --shell /init-stage2.sh",
     ]
 
     if args.boot_method == "fastboot":
