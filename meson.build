@@ -213,6 +213,12 @@ if _vulkan_drivers.contains('auto')
     error('Unknown OS @0@. Please pass -Dvulkan-drivers to set driver options. Patches gladly accepted to fix this.'.format(
           host_machine.system()))
   endif
+elif _vulkan_drivers.contains('all')
+   # Build every vulkan driver regardless of architecture.
+   _vulkan_drivers = ['amd', 'intel', 'intel_hasvk', 'swrast',
+                      'freedreno', 'panfrost', 'virtio', 'broadcom',
+                      'imagination-experimental', 'microsoft-experimental',
+                      'nouveau-experimental']
 endif
 
 with_intel_vk = _vulkan_drivers.contains('intel')
