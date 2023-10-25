@@ -790,6 +790,8 @@ nak_postprocess_nir(nir_shader *nir,
 
    nir_divergence_analysis(nir);
 
+   OPT(nir, nak_nir_add_barriers, nak);
+
    /* Re-index blocks and compact SSA defs because we'll use them to index
     * arrays
     */

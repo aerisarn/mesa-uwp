@@ -922,7 +922,6 @@ impl<'a> ShaderFromNir<'a> {
                 assert!(alu.def.bit_size() == 32);
                 let scratch = b.alloc_ssa(RegFile::GPR, 1);
 
-                b.push_op(OpWarpSync { mask: u32::MAX });
                 b.push_op(OpShfl {
                     dst: scratch[0].into(),
                     src: srcs[0],
@@ -953,7 +952,6 @@ impl<'a> ShaderFromNir<'a> {
                 assert!(alu.def.bit_size() == 32);
                 let scratch = b.alloc_ssa(RegFile::GPR, 1);
 
-                b.push_op(OpWarpSync { mask: u32::MAX });
                 b.push_op(OpShfl {
                     dst: scratch[0].into(),
                     src: srcs[0],
@@ -1844,7 +1842,6 @@ impl<'a> ShaderFromNir<'a> {
                 match intrin.execution_scope() {
                     SCOPE_NONE => (),
                     SCOPE_WORKGROUP => {
-                        b.push_op(OpWarpSync { mask: u32::MAX });
                         if self.nir.info.stage() == MESA_SHADER_COMPUTE {
                             b.push_op(OpBar {}).deps.yld = true;
                         }
