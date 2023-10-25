@@ -3253,6 +3253,7 @@ struct radv_indirect_command_layout {
 
    bool indexed;
    bool binds_index_buffer;
+   bool draw_mesh_tasks;
    uint16_t draw_params_offset;
    uint16_t index_buffer_offset;
 
