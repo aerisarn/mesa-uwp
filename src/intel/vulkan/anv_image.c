@@ -639,8 +639,12 @@ add_aux_state_tracking_buffer(struct anv_device *device,
     * processes with access to the memory may not be aware of it or of
     * its current state. So put that auxiliary data into a separate
     * buffer (ANV_IMAGE_MEMORY_BINDING_PRIVATE).
+    *
+    * But when the image is created with a drm modifier that supports
+    * clear color, it will be exported along with main surface.
     */
-   if (anv_image_is_externally_shared(image)) {
+   if (anv_image_is_externally_shared(image)
+       && !isl_drm_modifier_get_info(image->vk.drm_format_mod)->supports_clear_color) {
       binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
    }
 
@@ -1117,8 +1121,12 @@ check_memory_bindings(const struct anv_device *device,
           * processes with access to the memory may not be aware of it or of
           * its current state. So put that auxiliary data into a separate
           * buffer (ANV_IMAGE_MEMORY_BINDING_PRIVATE).
+          *
+          * But when the image is created with a drm modifier that supports
+          * clear color, it will be exported along with main surface.
           */
-         if (anv_image_is_externally_shared(image)) {
+         if (anv_image_is_externally_shared(image)
+             && !isl_drm_modifier_get_info(image->vk.drm_format_mod)->supports_clear_color) {
             binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
          }
 
