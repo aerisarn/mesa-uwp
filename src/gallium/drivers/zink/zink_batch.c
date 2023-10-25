@@ -334,16 +334,22 @@ create_batch_state(struct zink_context *ctx)
    VkCommandPoolCreateInfo cpci = {0};
    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
    cpci.queueFamilyIndex = screen->gfx_queue;
-   VkResult result = VKSCR(CreateCommandPool)(screen->dev, &cpci, NULL, &bs->cmdpool);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateCommandPool failed (%s)", vk_Result_to_str(result));
-      goto fail;
-   }
-   result = VKSCR(CreateCommandPool)(screen->dev, &cpci, NULL, &bs->unsynchronized_cmdpool);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateCommandPool failed (%s)", vk_Result_to_str(result));
-      goto fail;
-   }
+   VkResult result;
+
+   VRAM_ALLOC_LOOP(result,
+      VKSCR(CreateCommandPool)(screen->dev, &cpci, NULL, &bs->cmdpool),
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateCommandPool failed (%s)", vk_Result_to_str(result));
+         goto fail;
+      }
+   );
+   VRAM_ALLOC_LOOP(result,
+      VKSCR(CreateCommandPool)(screen->dev, &cpci, NULL, &bs->unsynchronized_cmdpool),
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateCommandPool failed (%s)", vk_Result_to_str(result));
+         goto fail;
+      }
+   );
 
    VkCommandBuffer cmdbufs[2];
    VkCommandBufferAllocateInfo cbai = {0};
@@ -352,21 +358,26 @@ create_batch_state(struct zink_context *ctx)
    cbai.commandPool = bs->cmdpool;
    cbai.commandBufferCount = 2;
 
-   result = VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, cmdbufs);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkAllocateCommandBuffers failed (%s)", vk_Result_to_str(result));
-      goto fail;
-   }
+   VRAM_ALLOC_LOOP(result,
+      VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, cmdbufs),
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkAllocateCommandBuffers failed (%s)", vk_Result_to_str(result));
+         goto fail;
+      }
+   );
+
    bs->cmdbuf = cmdbufs[0];
    bs->reordered_cmdbuf = cmdbufs[1];
 
    cbai.commandPool = bs->unsynchronized_cmdpool;
    cbai.commandBufferCount = 1;
-   result = VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, &bs->unsynchronized_cmdbuf);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkAllocateCommandBuffers failed (%s)", vk_Result_to_str(result));
-      goto fail;
-   }
+   VRAM_ALLOC_LOOP(result,
+      VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, &bs->unsynchronized_cmdbuf);,
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkAllocateCommandBuffers failed (%s)", vk_Result_to_str(result));
+         goto fail;
+      }
+   );
 
 #define SET_CREATE_OR_FAIL(ptr) \
    if (!_mesa_set_init(ptr, bs, _mesa_hash_pointer, _mesa_key_pointer_equal)) \
@@ -512,17 +523,22 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-   VkResult result = VKCTX(BeginCommandBuffer)(batch->state->cmdbuf, &cbbi);
-   if (result != VK_SUCCESS)
-      mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
-   
-   result = VKCTX(BeginCommandBuffer)(batch->state->reordered_cmdbuf, &cbbi);
-   if (result != VK_SUCCESS)
-      mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
-
-   result = VKCTX(BeginCommandBuffer)(batch->state->unsynchronized_cmdbuf, &cbbi);
-   if (result != VK_SUCCESS)
-      mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
+   VkResult result;
+   VRAM_ALLOC_LOOP(result,
+      VKCTX(BeginCommandBuffer)(batch->state->cmdbuf, &cbbi),
+      if (result != VK_SUCCESS)
+         mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
+   );
+   VRAM_ALLOC_LOOP(result,
+      VKCTX(BeginCommandBuffer)(batch->state->reordered_cmdbuf, &cbbi),
+      if (result != VK_SUCCESS)
+         mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
+   );
+   VRAM_ALLOC_LOOP(result,
+      VKCTX(BeginCommandBuffer)(batch->state->unsynchronized_cmdbuf, &cbbi),
+      if (result != VK_SUCCESS)
+         mesa_loge("ZINK: vkBeginCommandBuffer failed (%s)", vk_Result_to_str(result));
+   );
 
    batch->state->fence.completed = false;
    if (ctx->last_fence) {
@@ -673,12 +689,15 @@ submit_queue(void *data, void *gdata, int thread_index)
    tsi.signalSemaphoreValueCount = si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount;
 
 
-   VkResult result = VKSCR(EndCommandBuffer)(bs->cmdbuf);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
-      bs->is_device_lost = true;
-      goto end;
-   }
+   VkResult result;
+   VRAM_ALLOC_LOOP(result,
+      VKSCR(EndCommandBuffer)(bs->cmdbuf),
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
+         bs->is_device_lost = true;
+         goto end;
+      }
+   );
    if (bs->has_barriers) {
       if (bs->unordered_write_access) {
          VkMemoryBarrier mb;
@@ -690,31 +709,37 @@ submit_queue(void *data, void *gdata, int thread_index)
                                    bs->unordered_write_stages, 0,
                                    0, 1, &mb, 0, NULL, 0, NULL);
       }
-      result = VKSCR(EndCommandBuffer)(bs->reordered_cmdbuf);
-      if (result != VK_SUCCESS) {
-         mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
-         bs->is_device_lost = true;
-         goto end;
-      }
+      VRAM_ALLOC_LOOP(result,
+         VKSCR(EndCommandBuffer)(bs->reordered_cmdbuf),
+         if (result != VK_SUCCESS) {
+            mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
+            bs->is_device_lost = true;
+            goto end;
+         }
+      );
    }
    if (bs->has_unsync) {
-      result = VKSCR(EndCommandBuffer)(bs->unsynchronized_cmdbuf);
-      if (result != VK_SUCCESS) {
-         mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
-         bs->is_device_lost = true;
-         goto end;
-      }
+      VRAM_ALLOC_LOOP(result,
+         VKSCR(EndCommandBuffer)(bs->unsynchronized_cmdbuf),
+         if (result != VK_SUCCESS) {
+            mesa_loge("ZINK: vkEndCommandBuffer failed (%s)", vk_Result_to_str(result));
+            bs->is_device_lost = true;
+            goto end;
+         }
+      );
    }
 
    if (!si[ZINK_SUBMIT_SIGNAL].signalSemaphoreCount)
       num_si--;
 
    simple_mtx_lock(&screen->queue_lock);
-   result = VKSCR(QueueSubmit)(screen->queue, num_si, submit, VK_NULL_HANDLE);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkQueueSubmit failed (%s)", vk_Result_to_str(result));
-      bs->is_device_lost = true;
-   }
+   VRAM_ALLOC_LOOP(result,
+      VKSCR(QueueSubmit)(screen->queue, num_si, submit, VK_NULL_HANDLE),
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkQueueSubmit failed (%s)", vk_Result_to_str(result));
+         bs->is_device_lost = true;
+      }
+   );
    simple_mtx_unlock(&screen->queue_lock);
 
    unsigned i = 0;
