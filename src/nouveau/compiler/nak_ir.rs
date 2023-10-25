@@ -611,7 +611,7 @@ impl fmt::Display for RegRef {
             RegFile::Mem => write!(f, "M")?,
         }
         write!(f, "{}", self.base_idx())?;
-        if self.comps() >= 1 {
+        if self.comps() > 1 {
             write!(f, "..{}", self.idx_range().end)?;
         }
         Ok(())
