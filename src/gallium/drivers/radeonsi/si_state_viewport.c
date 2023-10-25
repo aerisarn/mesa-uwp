@@ -373,15 +373,31 @@ static void si_emit_guardband(struct si_context *sctx, unsigned index)
     * R_028BE8_PA_CL_GB_VERT_CLIP_ADJ, R_028BEC_PA_CL_GB_VERT_DISC_ADJ
     * R_028BF0_PA_CL_GB_HORZ_CLIP_ADJ, R_028BF4_PA_CL_GB_HORZ_DISC_ADJ
     */
-   radeon_begin(&sctx->gfx_cs);
-   radeon_opt_set_context_reg5(sctx, R_028BE4_PA_SU_VTX_CNTL, SI_TRACKED_PA_SU_VTX_CNTL,
-                               pa_su_vtx_cntl,
-                               fui(guardband_y), fui(discard_y),
-                               fui(guardband_x), fui(discard_x));
-   radeon_opt_set_context_reg(sctx, R_028234_PA_SU_HARDWARE_SCREEN_OFFSET,
-                              SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET,
-                              pa_su_hardware_screen_offset);
-   radeon_end_update_context_roll(sctx);
+   if (sctx->screen->info.has_set_context_pairs_packed) {
+      radeon_begin(&sctx->gfx_cs);
+      gfx11_begin_packed_context_regs();
+      gfx11_opt_set_context_reg(R_028BE4_PA_SU_VTX_CNTL, SI_TRACKED_PA_SU_VTX_CNTL,
+                                pa_su_vtx_cntl);
+      gfx11_opt_set_context_reg4(R_028BE8_PA_CL_GB_VERT_CLIP_ADJ,
+                                 SI_TRACKED_PA_CL_GB_VERT_CLIP_ADJ,
+                                 fui(guardband_y), fui(discard_y),
+                                 fui(guardband_x), fui(discard_x));
+      gfx11_opt_set_context_reg(R_028234_PA_SU_HARDWARE_SCREEN_OFFSET,
+                                SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET,
+                                pa_su_hardware_screen_offset);
+      gfx11_end_packed_context_regs();
+      radeon_end(); /* don't track context rolls on GFX11 */
+   } else {
+      radeon_begin(&sctx->gfx_cs);
+      radeon_opt_set_context_reg5(sctx, R_028BE4_PA_SU_VTX_CNTL, SI_TRACKED_PA_SU_VTX_CNTL,
+                                  pa_su_vtx_cntl,
+                                  fui(guardband_y), fui(discard_y),
+                                  fui(guardband_x), fui(discard_x));
+      radeon_opt_set_context_reg(sctx, R_028234_PA_SU_HARDWARE_SCREEN_OFFSET,
+                                 SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET,
+                                 pa_su_hardware_screen_offset);
+      radeon_end_update_context_roll(sctx);
+   }
 }
 
 static void si_emit_scissors(struct si_context *ctx, unsigned index)

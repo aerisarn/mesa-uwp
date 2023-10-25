@@ -278,6 +278,28 @@
    } \
 } while (0)
 
+#define gfx11_opt_push_reg4(reg, reg_enum, v1, v2, v3, v4, prefix_name, category, buffer, reg_count) do { \
+   unsigned __v1 = (v1); \
+   unsigned __v2 = (v2); \
+   unsigned __v3 = (v3); \
+   unsigned __v4 = (v4); \
+   if (((sctx->tracked_regs.category##_reg_saved_mask >> (reg_enum)) & 0xf) != 0xf || \
+       sctx->tracked_regs.category##_reg_value[(reg_enum)] != __v1 || \
+       sctx->tracked_regs.category##_reg_value[(reg_enum) + 1] != __v2 || \
+       sctx->tracked_regs.category##_reg_value[(reg_enum) + 2] != __v3 || \
+       sctx->tracked_regs.category##_reg_value[(reg_enum) + 3] != __v4) { \
+      gfx11_push_reg((reg), __v1, prefix_name, buffer, reg_count); \
+      gfx11_push_reg((reg) + 4, __v2, prefix_name, buffer, reg_count); \
+      gfx11_push_reg((reg) + 8, __v3, prefix_name, buffer, reg_count); \
+      gfx11_push_reg((reg) + 12, __v4, prefix_name, buffer, reg_count); \
+      sctx->tracked_regs.category##_reg_saved_mask |= BITFIELD64_RANGE((reg_enum), 4); \
+      sctx->tracked_regs.category##_reg_value[(reg_enum)] = __v1; \
+      sctx->tracked_regs.category##_reg_value[(reg_enum) + 1] = __v2; \
+      sctx->tracked_regs.category##_reg_value[(reg_enum) + 2] = __v3; \
+      sctx->tracked_regs.category##_reg_value[(reg_enum) + 3] = __v4; \
+   } \
+} while (0)
+
 /* GFX11 packet building helpers for buffered SH registers. */
 #define gfx11_push_gfx_sh_reg(reg, value) \
    gfx11_push_reg(reg, value, SI_SH, sctx->gfx11.buffered_gfx_sh_regs, \
@@ -294,6 +316,43 @@
 #define gfx11_opt_push_compute_sh_reg(reg, reg_enum, value) \
    gfx11_opt_push_reg(reg, reg_enum, value, SI_SH, other, sctx->gfx11.buffered_compute_sh_regs, \
                       sctx->num_buffered_compute_sh_regs)
+
+/* GFX11 packet building helpers for SET_CONTEXT_REG_PAIRS_PACKED.
+ * Registers are buffered on the stack and then copied to the command buffer at the end.
+ */
+#define gfx11_begin_packed_context_regs() \
+   struct gfx11_reg_pair __cs_context_regs[50]; \
+   unsigned __cs_context_reg_count = 0;
+
+#define gfx11_set_context_reg(reg, value) \
+   gfx11_push_reg(reg, value, SI_CONTEXT, __cs_context_regs, __cs_context_reg_count)
+
+#define gfx11_opt_set_context_reg(reg, reg_enum, value) \
+   gfx11_opt_push_reg(reg, reg_enum, value, SI_CONTEXT, context, __cs_context_regs, \
+                      __cs_context_reg_count)
+
+#define gfx11_opt_set_context_reg4(reg, reg_enum, v1, v2, v3, v4) \
+   gfx11_opt_push_reg4(reg, reg_enum, v1, v2, v3, v4, SI_CONTEXT, context, __cs_context_regs, \
+                       __cs_context_reg_count)
+
+#define gfx11_end_packed_context_regs() do { \
+   if (__cs_context_reg_count >= 2) { \
+      /* Align the count to 2 by duplicating the first register. */ \
+      if (__cs_context_reg_count % 2 == 1) { \
+         gfx11_set_context_reg(__cs_context_regs[0].reg_offset[0] + SI_CONTEXT_REG_OFFSET, \
+                               __cs_context_regs[0].reg_value[0]); \
+      } \
+      assert(__cs_context_reg_count % 2 == 0); \
+      unsigned __num_dw = (__cs_context_reg_count / 2) * 3; \
+      radeon_emit(PKT3(PKT3_SET_CONTEXT_REG_PAIRS_PACKED, __num_dw, 0) | PKT3_RESET_FILTER_CAM_S(1)); \
+      radeon_emit(__cs_context_reg_count); \
+      radeon_emit_array(__cs_context_regs, __num_dw); \
+   } else if (__cs_context_reg_count == 1) { \
+      radeon_emit(PKT3(PKT3_SET_CONTEXT_REG, 1, 0)); \
+      radeon_emit(__cs_context_regs[0].reg_offset[0]); \
+      radeon_emit(__cs_context_regs[0].reg_value[0]); \
+   } \
+} while (0)
 
 #define radeon_set_or_push_gfx_sh_reg(reg, value) do { \
    if (GFX_VERSION >= GFX11 && HAS_SH_PAIRS_PACKED) { \
