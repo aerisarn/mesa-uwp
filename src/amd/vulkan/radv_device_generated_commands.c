@@ -1575,24 +1575,17 @@ radv_prepare_dgc_graphics(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedC
    if (cmd_buffer->state.graphics_pipeline->uses_baseinstance)
       vtx_base_sgpr |= DGC_USES_BASEINSTANCE;
 
-   const struct radv_shader *vertex_shader = radv_get_shader(graphics_pipeline->base.shaders, MESA_SHADER_VERTEX);
-   uint16_t vbo_sgpr =
-      ((radv_get_user_sgpr(vertex_shader, AC_UD_VS_VERTEX_BUFFERS)->sgpr_idx * 4 + vertex_shader->info.user_data_0) -
-       SI_SH_REG_OFFSET) >>
-      2;
-
    params->draw_indexed = layout->indexed;
    params->draw_params_offset = layout->draw_params_offset;
    params->binds_index_buffer = layout->binds_index_buffer;
    params->vtx_base_sgpr = vtx_base_sgpr;
    params->max_index_count = cmd_buffer->state.max_index_count;
    params->index_buffer_offset = layout->index_buffer_offset;
-   params->vbo_reg = vbo_sgpr;
    params->ibo_type_32 = layout->ibo_type_32;
    params->ibo_type_8 = layout->ibo_type_8;
 
    if (layout->bind_vbo_mask) {
-      uint32_t mask = vertex_shader->info.vs.vb_desc_usage_mask;
+      uint32_t mask = vs->info.vs.vb_desc_usage_mask;
       unsigned vb_desc_alloc_size = util_bitcount(mask) * 16;
 
       radv_write_vertex_descriptors(cmd_buffer, graphics_pipeline, true, *upload_data);
@@ -1602,17 +1595,18 @@ radv_prepare_dgc_graphics(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedC
       unsigned idx = 0;
       while (mask) {
          unsigned i = u_bit_scan(&mask);
-         unsigned binding =
-            vertex_shader->info.vs.use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i;
+         unsigned binding = vs->info.vs.use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i;
          uint32_t attrib_end = graphics_pipeline->attrib_ends[i];
 
          params->vbo_bind_mask |= ((layout->bind_vbo_mask >> binding) & 1u) << idx;
-         vbo_info[2 * idx] =
-            ((vertex_shader->info.vs.use_per_attribute_vb_descs ? 1u : 0u) << 31) | layout->vbo_offsets[binding];
+         vbo_info[2 * idx] = ((vs->info.vs.use_per_attribute_vb_descs ? 1u : 0u) << 31) | layout->vbo_offsets[binding];
          vbo_info[2 * idx + 1] = graphics_pipeline->attrib_index_offset[i] | (attrib_end << 16);
          ++idx;
       }
       params->vbo_cnt = idx;
+      params->vbo_reg =
+         ((radv_get_user_sgpr(vs, AC_UD_VS_VERTEX_BUFFERS)->sgpr_idx * 4 + vs->info.user_data_0) - SI_SH_REG_OFFSET) >>
+         2;
       *upload_data = (char *)*upload_data + vb_size;
    }
 }
