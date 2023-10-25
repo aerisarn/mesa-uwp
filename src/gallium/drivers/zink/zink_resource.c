@@ -1871,6 +1871,14 @@ zink_resource_from_user_memory(struct pipe_screen *pscreen,
                  const struct pipe_resource *templ,
                  void *user_memory)
 {
+   struct zink_screen *screen = zink_screen(pscreen);
+   VkDeviceSize alignMask = screen->info.ext_host_mem_props.minImportedHostPointerAlignment - 1;
+
+   /* Validate the user_memory pointer and fail early.
+    * minImportedHostPointerAlignment is required to be POT */
+   if (((uintptr_t)user_memory) & alignMask)
+      return NULL;
+
    return resource_create(pscreen, templ, NULL, 0, NULL, 0, NULL, user_memory);
 }
 
