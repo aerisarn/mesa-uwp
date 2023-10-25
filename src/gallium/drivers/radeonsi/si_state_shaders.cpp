@@ -1296,7 +1296,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    const struct si_shader_info *es_info = &es_sel->info;
    const gl_shader_stage es_stage = es_sel->stage;
    unsigned num_user_sgprs;
-   unsigned num_params, es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
+   unsigned es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
    uint64_t va;
    bool window_space = gs_sel->stage == MESA_SHADER_VERTEX ?
                           gs_info->base.vs.window_space_position : 0;
@@ -1401,8 +1401,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    if (es_stage == MESA_SHADER_TESS_EVAL)
       si_set_tesseval_regs(sscreen, es_sel, shader);
 
-   num_params = MAX2(shader->info.nr_param_exports, 1);
-
    shader->ngg.vgt_primitiveid_en =
       S_028A84_NGG_DISABLE_PROVOK_REUSE(shader->key.ge.mono.u.vs_export_prim_id ||
                                         gs_sel->info.writes_primid);
@@ -1434,8 +1432,9 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                      S_00B21C_WAVE_LIMIT(0x3F),
                      C_00B21C_CU_EN, 0, &sscreen->info);
    shader->ngg.spi_shader_pgm_rsrc4_gs = S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64);
-   shader->ngg.spi_vs_out_config = S_0286C4_VS_EXPORT_COUNT(num_params - 1) |
-                                   S_0286C4_NO_PC_EXPORT(shader->info.nr_param_exports == 0);
+   shader->ngg.spi_vs_out_config =
+      S_0286C4_VS_EXPORT_COUNT(MAX2(shader->info.nr_param_exports, 1) - 1) |
+      S_0286C4_NO_PC_EXPORT(shader->info.nr_param_exports == 0);
 
    if (sscreen->info.gfx_level >= GFX11) {
       shader->ngg.spi_shader_pgm_rsrc4_gs |=
