@@ -712,6 +712,43 @@ impl SM50Instr {
         self.set_dst(op.dst);
     }
 
+    fn encode_imul(&mut self, op: &OpIMul) {
+        assert!(op.srcs[0].src_mod.is_none());
+        assert!(op.srcs[1].src_mod.is_none());
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.srcs[0]);
+
+        if let Some(i) = op.srcs[1].as_imm_not_i20() {
+            self.set_opcode(0x1fc0);
+            self.set_src_imm32(20..52, i);
+
+            self.set_bit(53, op.high);
+            self.set_bit(54, op.signed[0]);
+            self.set_bit(55, op.signed[1]);
+        } else {
+            match op.srcs[1].src_ref {
+                SrcRef::Zero | SrcRef::Reg(_) => {
+                    self.set_opcode(0x5c38);
+                    self.set_reg_src(20..28, op.srcs[1]);
+                }
+                SrcRef::Imm32(i) => {
+                    self.set_opcode(0x3838);
+                    self.set_src_imm_i20(20..39, 56, i);
+                }
+                SrcRef::CBuf(cb) => {
+                    self.set_opcode(0x4c38);
+                    self.set_src_cb(20..39, &cb);
+                }
+                src1 => panic!("unsupported src1 type for IMUL: {src1}"),
+            };
+
+            self.set_bit(39, op.high);
+            self.set_bit(40, op.signed[0]);
+            self.set_bit(41, op.signed[1]);
+        }
+    }
+
     fn encode_f2i(&mut self, op: &OpF2I) {
         match &op.src.src_ref {
             SrcRef::Zero | SrcRef::Reg(_) => {
@@ -1656,6 +1693,7 @@ impl SM50Instr {
             Op::I2F(op) => si.encode_i2f(&op),
             Op::FRnd(op) => si.encode_frnd(&op),
             Op::IMad(op) => si.encode_imad(&op),
+            Op::IMul(op) => si.encode_imul(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Tex(op) => si.encode_tex(&op),

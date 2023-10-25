@@ -154,6 +154,13 @@ fn legalize_sm50_instr(
             copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
             copy_src_if_not_reg(b, &mut op.srcs[2], RegFile::GPR);
         }
+        Op::IMul(op) => {
+            let [ref mut src0, ref mut src1] = op.srcs;
+            if swap_srcs_if_not_reg(src0, src1) {
+                op.signed.swap(0, 1);
+            }
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+        }
         Op::F2I(op) => {
             copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
         }

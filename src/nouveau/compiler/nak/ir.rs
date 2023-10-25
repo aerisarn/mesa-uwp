@@ -2630,6 +2630,36 @@ impl DisplayOp for OpIMad {
 }
 impl_display_for_op!(OpIMad);
 
+/// Only used on SM50
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIMul {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub srcs: [Src; 2],
+
+    pub signed: [bool; 2],
+    pub high: bool,
+}
+
+impl DisplayOp for OpIMul {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "imul")?;
+        if self.high {
+            write!(f, ".hi")?;
+        }
+        let src_type = |signed| if signed { ".s32" } else { ".u32" };
+        write!(
+            f,
+            "{}{}",
+            src_type(self.signed[0]),
+            src_type(self.signed[1])
+        )?;
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMad64 {
@@ -4559,6 +4589,7 @@ pub enum Op {
     IDp4(OpIDp4),
     IMad(OpIMad),
     IMad64(OpIMad64),
+    IMul(OpIMul),
     IMnMx(OpIMnMx),
     ISetP(OpISetP),
     Lop2(OpLop2),
@@ -4997,6 +5028,7 @@ impl Instr {
             | Op::IDp4(_)
             | Op::IMad(_)
             | Op::IMad64(_)
+            | Op::IMul(_)
             | Op::IMnMx(_)
             | Op::ISetP(_)
             | Op::Lop2(_)

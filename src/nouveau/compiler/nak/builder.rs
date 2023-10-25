@@ -300,11 +300,45 @@ pub trait SSABuilder: Builder {
 
     fn imul(&mut self, x: Src, y: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
-        self.push_op(OpIMad {
-            dst: dst.into(),
-            srcs: [x, y, 0.into()],
-            signed: false,
-        });
+        if self.sm() > 70 {
+            self.push_op(OpIMad {
+                dst: dst.into(),
+                srcs: [x, y, 0.into()],
+                signed: false,
+            });
+        } else {
+            self.push_op(OpIMul {
+                dst: dst[0].into(),
+                srcs: [x, y],
+                signed: [false; 2],
+                high: false,
+            });
+        }
+        dst
+    }
+
+    fn imul_2x32_64(&mut self, x: Src, y: Src, signed: bool) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::GPR, 2);
+        if self.sm() > 70 {
+            self.push_op(OpIMad64 {
+                dst: dst.into(),
+                srcs: [x, y, 0.into()],
+                signed,
+            });
+        } else {
+            self.push_op(OpIMul {
+                dst: dst[0].into(),
+                srcs: [x, y],
+                signed: [signed; 2],
+                high: false,
+            });
+            self.push_op(OpIMul {
+                dst: dst[1].into(),
+                srcs: [x, y],
+                signed: [signed; 2],
+                high: true,
+            });
+        }
         dst
     }
 
