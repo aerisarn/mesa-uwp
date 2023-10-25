@@ -2360,6 +2360,38 @@ VkResult anv_BindImageMemory2(
    return VK_SUCCESS;
 }
 
+static inline void
+get_image_fast_clear_layout(const struct anv_image *image,
+                            VkSubresourceLayout *out_layout)
+{
+   /* If the memory binding differs between primary and fast clear
+    * region, then the returned offset will be incorrect.
+    */
+   assert(image->planes[0].fast_clear_memory_range.binding ==
+          image->planes[0].primary_surface.memory_range.binding);
+   out_layout->offset = image->planes[0].fast_clear_memory_range.offset;
+   out_layout->size = image->planes[0].fast_clear_memory_range.size;
+   /* Refer to the comment above add_aux_state_tracking_buffer() for the
+    * design of fast clear region. It is not a typical isl surface, so we
+    * just push some values in these pitches when no other requirements
+    * to meet. We have some freedom to do so according to the spec of
+    * VkSubresourceLayout:
+    *
+    * If the image is non-linear, then rowPitch, arrayPitch, and depthPitch
+    * have an implementation-dependent meaning.
+    *
+    * Fast clear is neither supported on linear tiling formats nor linear
+    * modifiers, which don't have the fast clear plane. We should be safe
+    * with these values.
+    */
+   out_layout->arrayPitch = 1;
+   out_layout->depthPitch = 1;
+   /* On TGL and DG2, 64-byte alignment on clear color is required.
+    * This pitch is ignored on MTL. (drm_fourcc.h)
+    */
+   out_layout->rowPitch = 64;
+}
+
 static void
 anv_get_image_subresource_layout(const struct anv_image *image,
                                  const VkImageSubresource2KHR *subresource,
@@ -2404,8 +2436,13 @@ anv_get_image_subresource_layout(const struct anv_image *image,
       default:
          unreachable("bad VkImageAspectFlags");
       }
+      if (isl_drm_modifier_plane_is_clear_color(image->vk.drm_format_mod,
+                                                mem_plane)) {
+         get_image_fast_clear_layout(image, &layout->subresourceLayout);
 
-      if (mem_plane == 1 && isl_drm_modifier_has_aux(image->vk.drm_format_mod)) {
+         return;
+      } else if (mem_plane == 1 &&
+                 isl_drm_modifier_has_aux(image->vk.drm_format_mod)) {
          assert(image->n_planes == 1);
          /* If the memory binding differs between primary and aux, then the
           * returned offset will be incorrect.
