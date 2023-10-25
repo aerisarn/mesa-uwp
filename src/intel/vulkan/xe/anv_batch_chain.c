@@ -105,12 +105,14 @@ static VkResult
 xe_exec_process_syncs(struct anv_queue *queue,
                       uint32_t wait_count, const struct vk_sync_wait *waits,
                       uint32_t signal_count, const struct vk_sync_signal *signals,
+                      uint32_t extra_sync_count, const struct drm_xe_sync *extra_syncs,
                       struct anv_utrace_submit *utrace_submit,
                       bool is_companion_rcs_queue,
                       struct drm_xe_sync **ret, uint32_t *ret_count)
 {
    struct anv_device *device = queue->device;
-   uint32_t num_syncs = wait_count + signal_count + (utrace_submit ? 1 : 0) +
+   uint32_t num_syncs = wait_count + signal_count + extra_sync_count +
+                        (utrace_submit ? 1 : 0) +
                         ((queue->sync && !is_companion_rcs_queue) ? 1 : 0);
    if (!num_syncs)
       return VK_SUCCESS;
@@ -149,6 +151,9 @@ xe_exec_process_syncs(struct anv_queue *queue,
       xe_exec_fill_sync(xe_sync, vk_signal->sync, vk_signal->signal_value,
                         TYPE_SIGNAL);
    }
+
+   for (uint32_t i = 0; i < extra_sync_count; i++)
+      xe_syncs[count++] = extra_syncs[i];
 
    if (queue->sync && !is_companion_rcs_queue) {
       struct drm_xe_sync *xe_sync = &xe_syncs[count++];
@@ -275,6 +280,7 @@ xe_companion_rcs_queue_exec_locked(struct anv_queue *queue,
    result = xe_exec_process_syncs(queue,
                                   wait_count, waits,
                                   1, &companion_sync,
+                                  0, NULL, /* extra_syncs */
                                   NULL /* utrace_submit */,
                                   true /* is_companion_rcs_queue */,
                                   &xe_syncs,
@@ -327,6 +333,7 @@ xe_queue_exec_locked(struct anv_queue *queue,
    uint32_t xe_syncs_count = 0;
    result = xe_exec_process_syncs(queue, wait_count, waits,
                                   signal_count, signals,
+                                  0, NULL, /* extra_syncs */
                                   utrace_submit,
                                   false, /* is_companion_rcs_queue */
                                   &xe_syncs, &xe_syncs_count);
