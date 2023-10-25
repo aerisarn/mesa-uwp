@@ -1867,6 +1867,7 @@ impl<'a> ShaderFromNir<'a> {
                     SCOPE_WORKGROUP => {
                         if self.nir.info.stage() == MESA_SHADER_COMPUTE {
                             b.push_op(OpBar {}).deps.yld = true;
+                            b.push_op(OpNop { label: None });
                         }
                     }
                     _ => panic!("Unhandled execution scope"),

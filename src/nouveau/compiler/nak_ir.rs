@@ -4590,6 +4590,7 @@ impl Instr {
             | Op::CCtl(_)
             | Op::MemBar(_)
             | Op::Kill(_)
+            | Op::Nop(_)
             | Op::Break(_)
             | Op::BSSy(_)
             | Op::BSync(_)
@@ -4601,7 +4602,6 @@ impl Instr {
             | Op::Out(_)
             | Op::OutFinal(_) => false,
             Op::BMov(op) => !op.clear,
-            Op::Nop(op) => op.label.is_none(),
             _ => true,
         }
     }
