@@ -1169,7 +1169,7 @@ bool gfx10_is_ngg_passthrough(struct si_shader *shader)
    return sel->stage != MESA_SHADER_GEOMETRY && !shader->key.ge.opt.ngg_culling;
 }
 
-/* Common tail code for NGG primitive shaders. */
+template <enum si_has_tess HAS_TESS>
 static void gfx10_emit_shader_ngg(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.gs;
@@ -1178,6 +1178,10 @@ static void gfx10_emit_shader_ngg(struct si_context *sctx, unsigned index)
              shader->ngg.esgs_vertex_stride);
 
    radeon_begin(&sctx->gfx_cs);
+   if (HAS_TESS) {
+      radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
+                                 shader->vgt_tf_param);
+   }
    radeon_opt_set_context_reg(sctx, R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP,
                               SI_TRACKED_GE_MAX_OUTPUT_PER_SUBGROUP,
                               shader->ngg.ge_max_output_per_subgroup);
@@ -1233,18 +1237,6 @@ static void gfx10_emit_shader_ngg(struct si_context *sctx, unsigned index)
       }
    }
    radeon_end();
-}
-
-static void gfx10_emit_shader_ngg_tess(struct si_context *sctx, unsigned index)
-{
-   struct si_shader *shader = sctx->queued.named.gs;
-
-   radeon_begin(&sctx->gfx_cs);
-   radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
-                              shader->vgt_tf_param);
-   radeon_end_update_context_roll(sctx);
-
-   gfx10_emit_shader_ngg(sctx, index);
 }
 
 unsigned si_get_input_prim(const struct si_shader_selector *gs, const union si_shader_key *key)
@@ -1319,9 +1311,9 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       return;
 
    if (es_stage == MESA_SHADER_TESS_EVAL)
-      pm4->atom.emit = gfx10_emit_shader_ngg_tess;
+      pm4->atom.emit = gfx10_emit_shader_ngg<TESS_ON>;
    else
-      pm4->atom.emit = gfx10_emit_shader_ngg;
+      pm4->atom.emit = gfx10_emit_shader_ngg<TESS_OFF>;
 
    va = shader->bo->gpu_address;
 
