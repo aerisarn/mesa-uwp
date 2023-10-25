@@ -47,7 +47,6 @@
 #include "gl_nir_linker.h"
 #include "linker_util.h"
 #include "nir_builder.h"
-#include "nir_gl_types.h"
 #include "nir_types.h"
 
 #include "compiler/glsl_types.h"
