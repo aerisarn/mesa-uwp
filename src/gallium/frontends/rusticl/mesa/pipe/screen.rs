@@ -216,7 +216,7 @@ impl PipeScreen {
         tmpl.height0 = height;
         tmpl.depth0 = depth;
         tmpl.array_size = array_size;
-        tmpl.bind = PIPE_BIND_SAMPLER_VIEW;
+        tmpl.bind = PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_LINEAR;
 
         if support_image {
             tmpl.bind |= PIPE_BIND_SHADER_IMAGE;
