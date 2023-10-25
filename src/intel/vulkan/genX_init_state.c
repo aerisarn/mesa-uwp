@@ -599,12 +599,13 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
 static VkResult
 init_compute_queue_state(struct anv_queue *queue)
 {
-   struct anv_batch batch;
    UNUSED const struct intel_device_info *devinfo = queue->device->info;
-
    uint32_t cmds[64];
-   batch.start = batch.next = cmds;
-   batch.end = (void *) cmds + sizeof(cmds);
+   struct anv_batch batch = {
+      .start = cmds,
+      .next = cmds,
+      .end = (void *) cmds + sizeof(cmds),
+   };
 
    genX(emit_pipeline_select)(&batch, GPGPU);
 
