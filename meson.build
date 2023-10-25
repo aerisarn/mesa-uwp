@@ -1459,7 +1459,6 @@ elif with_intel_vk or with_intel_hasvk
   error('Intel "Anvil" Vulkan driver requires the dl_iterate_phdr function')
 endif
 
-# only used in Iris and ANV
 if with_any_intel and ['x86', 'x86_64'].contains(host_machine.cpu_family())
   pre_args += '-DSUPPORT_INTEL_INTEGRATED_GPUS'
 endif
@@ -1468,9 +1467,6 @@ if get_option('intel-xe-kmd').enabled()
   pre_args += '-DINTEL_XE_KMD_SUPPORTED'
 endif
 
-if with_intel_hasvk and host_machine.cpu_family().startswith('x86') == false
-  error('Intel "hasvk" Vulkan driver requires x86 or x86_64 CPU family')
-endif
 
 if with_gallium_crocus and host_machine.cpu_family().startswith('x86') == false
   error('Intel "crocus" Gallium driver requires x86 or x86_64 CPU family')
