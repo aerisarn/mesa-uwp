@@ -1598,6 +1598,14 @@ struct anv_device_astc_emu {
 struct anv_trtt_batch_bo {
    struct anv_bo *bo;
    uint32_t size;
+
+   /* Once device->trtt.timeline_handle signals timeline_val as complete we
+    * can free this struct and its members.
+    */
+   uint64_t timeline_val;
+
+   /* Part of device->trtt.in_flight_batches. */
+   struct list_head link;
 };
 
 struct anv_device {
@@ -1807,6 +1815,15 @@ struct anv_device {
         */
        struct anv_bo *cur_page_table_bo;
        uint64_t next_page_table_bo_offset;
+
+       /* Timeline syncobj used to track completion of the TR-TT batch BOs. */
+       uint32_t timeline_handle;
+       uint64_t timeline_val;
+
+       /* List of struct anv_trtt_batch_bo batches that are in flight and can
+        * be freed once their timeline gets signaled.
+        */
+       struct list_head in_flight_batches;
     } trtt;
 
     /* This is true if the user ever bound a sparse resource to memory. This
@@ -1948,6 +1965,15 @@ VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
                                        bool is_companion_rcs_batch);
 VkResult anv_queue_submit_trtt_batch(struct anv_sparse_submission *submit,
                                      struct anv_batch *batch);
+
+static inline void
+anv_trtt_batch_bo_free(struct anv_device *device,
+                       struct anv_trtt_batch_bo *trtt_bbo)
+{
+   anv_bo_pool_free(&device->batch_bo_pool, trtt_bbo->bo);
+   list_del(&trtt_bbo->link);
+   vk_free(&device->vk.alloc, trtt_bbo);
+}
 
 void anv_queue_trace(struct anv_queue *queue, const char *label,
                      bool frame, bool begin);
@@ -2840,6 +2866,8 @@ VkResult anv_sparse_image_check_support(struct anv_physical_device *pdevice,
                                         VkSampleCountFlagBits samples,
                                         VkImageType type,
                                         VkFormat format);
+VkResult anv_trtt_batch_bo_new(struct anv_device *device, uint32_t batch_size,
+                               struct anv_trtt_batch_bo **out_trtt_bbo);
 
 struct anv_buffer {
    struct vk_buffer vk;

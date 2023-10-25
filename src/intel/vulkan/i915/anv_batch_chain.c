@@ -1008,6 +1008,13 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
          goto out;
    }
 
+   result = anv_execbuf_add_syncobj(device, &execbuf, trtt->timeline_handle,
+                                    I915_EXEC_FENCE_SIGNAL,
+                                    trtt_bbo->timeline_val);
+   if (result != VK_SUCCESS)
+      goto out;
+
+
    result = anv_execbuf_add_bo(device, &execbuf, device->workaround_bo, NULL,
                                0);
    if (result != VK_SUCCESS)
@@ -1065,15 +1072,6 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
          result = vk_queue_set_lost(&queue->vk, "trtt sync wait failed");
          goto out;
       }
-   }
-
-   /* TODO: we can get rid of this wait once we can properly handle the buffer
-    * lifetimes.
-    */
-   result = anv_device_wait(device, trtt_bbo->bo, INT64_MAX);
-   if (result != VK_SUCCESS) {
-      result = vk_device_set_lost(&device->vk,
-                                  "trtt anv_device_wait failed: %m");
    }
 
 out:

@@ -391,6 +391,15 @@ anv_trtt_init_context_state(struct anv_queue *queue)
    struct anv_device *device = queue->device;
    struct anv_trtt *trtt = &device->trtt;
 
+   struct drm_syncobj_create create = {
+      .handle = 0,
+      .flags = 0,
+   };
+   if (intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create))
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   assert(create.handle != 0);
+   trtt->timeline_handle = create.handle;
+
    struct anv_bo *l3_bo;
    VkResult result = trtt_get_page_table_bo(device, &l3_bo, &trtt->l3_addr);
    if (result != VK_SUCCESS)
@@ -1202,4 +1211,66 @@ anv_sparse_image_check_support(struct anv_physical_device *pdevice,
    }
 
    return VK_SUCCESS;
+}
+
+static VkResult
+anv_trtt_garbage_collect_batches(struct anv_device *device)
+{
+   struct anv_trtt *trtt = &device->trtt;
+
+   if (trtt->timeline_val % 8 != 7)
+      return VK_SUCCESS;
+
+   uint64_t cur_timeline_val = 0;
+   struct drm_syncobj_timeline_array array = {
+      .handles = (uintptr_t)&trtt->timeline_handle,
+      .points = (uintptr_t)&cur_timeline_val,
+      .count_handles = 1,
+      .flags = 0,
+   };
+   if (intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_QUERY, &array))
+      return vk_error(device, VK_ERROR_UNKNOWN);
+
+   list_for_each_entry_safe(struct anv_trtt_batch_bo, trtt_bbo,
+                            &trtt->in_flight_batches, link) {
+      if (trtt_bbo->timeline_val > cur_timeline_val)
+         return VK_SUCCESS;
+
+      anv_trtt_batch_bo_free(device, trtt_bbo);
+   }
+
+   return VK_SUCCESS;
+}
+
+VkResult
+anv_trtt_batch_bo_new(struct anv_device *device, uint32_t batch_size,
+                      struct anv_trtt_batch_bo **out_trtt_bbo)
+{
+   struct anv_trtt *trtt = &device->trtt;
+   VkResult result;
+
+   anv_trtt_garbage_collect_batches(device);
+
+   struct anv_trtt_batch_bo *trtt_bbo =
+      vk_alloc(&device->vk.alloc, sizeof(*trtt_bbo), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!trtt_bbo)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   result = anv_bo_pool_alloc(&device->batch_bo_pool, batch_size,
+                              &trtt_bbo->bo);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   trtt_bbo->size = batch_size;
+   trtt_bbo->timeline_val = ++trtt->timeline_val;
+
+   list_addtail(&trtt_bbo->link, &trtt->in_flight_batches);
+
+   *out_trtt_bbo = trtt_bbo;
+
+   return VK_SUCCESS;
+out:
+   vk_free(&device->vk.alloc, trtt_bbo);
+   return result;
 }

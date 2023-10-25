@@ -1452,6 +1452,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    } else {
       device->has_sparse =
          device->info.ver >= 12 &&
+         device->has_exec_timeline &&
          debug_get_bool_option("ANV_SPARSE", false);
       device->sparse_uses_trtt = true;
    }
@@ -3105,6 +3106,8 @@ anv_device_init_trtt(struct anv_device *device)
    if (pthread_mutex_init(&trtt->mutex, NULL) != 0)
       return vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
 
+   list_inithead(&trtt->in_flight_batches);
+
    return VK_SUCCESS;
 }
 
@@ -3112,6 +3115,32 @@ static void
 anv_device_finish_trtt(struct anv_device *device)
 {
    struct anv_trtt *trtt = &device->trtt;
+
+   if (trtt->timeline_val > 0) {
+      struct drm_syncobj_timeline_wait wait = {
+         .handles = (uintptr_t)&trtt->timeline_handle,
+         .points = (uintptr_t)&trtt->timeline_val,
+         .timeout_nsec = INT64_MAX,
+         .count_handles = 1,
+         .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL,
+         .first_signaled = false,
+      };
+      if (intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_TIMELINE_WAIT, &wait))
+         fprintf(stderr, "TR-TT syncobj wait failed!\n");
+
+      list_for_each_entry_safe(struct anv_trtt_batch_bo, trtt_bbo,
+                               &trtt->in_flight_batches, link)
+         anv_trtt_batch_bo_free(device, trtt_bbo);
+
+   }
+
+   if (trtt->timeline_handle > 0) {
+      struct drm_syncobj_destroy destroy = {
+         .handle = trtt->timeline_handle,
+      };
+      if (intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY, &destroy))
+         fprintf(stderr, "TR-TT syncobj destroy failed!\n");
+   }
 
    pthread_mutex_destroy(&trtt->mutex);
 

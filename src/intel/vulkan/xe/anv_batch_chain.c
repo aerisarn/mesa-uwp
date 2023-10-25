@@ -189,15 +189,13 @@ xe_execute_trtt_batch(struct anv_sparse_submission *submit,
 {
    struct anv_queue *queue = submit->queue;
    struct anv_device *device = queue->device;
-   VkResult result = VK_SUCCESS;
-
-   uint32_t syncobj_handle;
-   if (drmSyncobjCreate(device->fd, 0, &syncobj_handle))
-      return vk_errorf(device, VK_ERROR_UNKNOWN, "Unable to create sync obj");
+   struct anv_trtt *trtt = &device->trtt;
+   VkResult result;
 
    struct drm_xe_sync extra_sync = {
-      .flags = DRM_XE_SYNC_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
-      .handle = syncobj_handle,
+      .flags = DRM_XE_SYNC_TIMELINE_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
+      .handle = trtt->timeline_handle,
+      .timeline_value = trtt_bbo->timeline_val,
    };
 
    struct drm_xe_sync *xe_syncs = NULL;
@@ -209,7 +207,7 @@ xe_execute_trtt_batch(struct anv_sparse_submission *submit,
                                   false, /* is_companion_rcs_queue */
                                   &xe_syncs, &xe_syncs_count);
    if (result != VK_SUCCESS)
-      goto exec_error;
+      return result;
 
    struct drm_xe_exec exec = {
       .exec_queue_id = queue->exec_queue_id,
@@ -220,34 +218,18 @@ xe_execute_trtt_batch(struct anv_sparse_submission *submit,
    };
 
    if (!device->info->no_hw) {
-      if (intel_ioctl(device->fd, DRM_IOCTL_XE_EXEC, &exec)) {
-         result = vk_device_set_lost(&device->vk, "XE_EXEC failed: %m");
-         goto exec_error;
-      }
+      if (intel_ioctl(device->fd, DRM_IOCTL_XE_EXEC, &exec))
+         return vk_device_set_lost(&device->vk, "XE_EXEC failed: %m");
    }
 
    if (queue->sync) {
       result = vk_sync_wait(&device->vk, queue->sync, 0,
                             VK_SYNC_WAIT_COMPLETE, UINT64_MAX);
-      if (result != VK_SUCCESS) {
-         result = vk_queue_set_lost(&queue->vk, "trtt sync wait failed");
-         goto exec_error;
-      }
+      if (result != VK_SUCCESS)
+         return vk_queue_set_lost(&queue->vk, "trtt sync wait failed");
    }
 
-   /* FIXME: we shouldn't need this wait, figure out a way to remove it. */
-   struct drm_syncobj_wait wait = {
-      .handles = (uintptr_t)&syncobj_handle,
-      .timeout_nsec = INT64_MAX,
-      .count_handles = 1,
-   };
-   if (intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait))
-      result = vk_device_set_lost(&device->vk, "DRM_IOCTL_SYNCOBJ_WAIT failed: %m");
-
-exec_error:
-   drmSyncobjDestroy(device->fd, syncobj_handle);
-
-   return result;
+   return VK_SUCCESS;
 }
 
 VkResult

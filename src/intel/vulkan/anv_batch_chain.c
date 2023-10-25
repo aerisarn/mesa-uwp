@@ -1705,28 +1705,24 @@ anv_queue_submit_trtt_batch(struct anv_sparse_submission *submit,
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
 
-   struct anv_trtt_batch_bo trtt_bbo;
-   trtt_bbo.size = align(batch->next - batch->start, 8);
-
-   result = anv_bo_pool_alloc(&device->batch_bo_pool, trtt_bbo.size,
-                              &trtt_bbo.bo);
+   uint32_t batch_size = align(batch->next - batch->start, 8);
+   struct anv_trtt_batch_bo *trtt_bbo;
+   result = anv_trtt_batch_bo_new(device, batch_size, &trtt_bbo);
    if (result != VK_SUCCESS)
       return result;
 
-   memcpy(trtt_bbo.bo->map, batch->start, trtt_bbo.size);
+   memcpy(trtt_bbo->bo->map, batch->start, trtt_bbo->size);
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
    if (device->physical->memory.need_flush)
-      intel_flush_range(trtt_bbo.bo->map, trtt_bbo.size);
+      intel_flush_range(trtt_bbo->bo->map, trtt_bbo->size);
 #endif
 
    if (INTEL_DEBUG(DEBUG_BATCH)) {
-      intel_print_batch(queue->decoder, trtt_bbo.bo->map, trtt_bbo.bo->size,
-                        trtt_bbo.bo->offset, false);
+      intel_print_batch(queue->decoder, trtt_bbo->bo->map, trtt_bbo->bo->size,
+                        trtt_bbo->bo->offset, false);
    }
 
-   result = device->kmd_backend->execute_trtt_batch(submit, &trtt_bbo);
-
-   anv_bo_pool_free(&device->batch_bo_pool, trtt_bbo.bo);
+   result = device->kmd_backend->execute_trtt_batch(submit, trtt_bbo);
 
    return result;
 }
