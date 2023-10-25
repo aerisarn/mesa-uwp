@@ -1,11 +1,11 @@
+import re
 from io import StringIO
+from os import getenv
 from typing import TYPE_CHECKING, Any
 
-import re
 from lava.utils.lava_farm import LavaFarm, get_lava_farm
-from ruamel.yaml.scalarstring import LiteralScalarString
 from ruamel.yaml import YAML
-from os import getenv
+from ruamel.yaml.scalarstring import LiteralScalarString
 
 if TYPE_CHECKING:
     from lava.lava_job_submitter import LAVAJobSubmitter
@@ -44,12 +44,10 @@ def generate_lava_yaml_payload(job_submitter: "LAVAJobSubmitter") -> dict[str, A
     the job output, escaping from dumping data to the UART, which proves to be
     error prone in some devices.
     """
-    from lava.utils.ssh_job_definition import (
-        generate_lava_yaml_payload as ssh_lava_yaml,
-    )
-    from lava.utils.uart_job_definition import (
-        generate_lava_yaml_payload as uart_lava_yaml,
-    )
+    from lava.utils.ssh_job_definition import \
+        generate_lava_yaml_payload as ssh_lava_yaml
+    from lava.utils.uart_job_definition import \
+        generate_lava_yaml_payload as uart_lava_yaml
 
     if has_ssh_support(job_submitter):
         return ssh_lava_yaml(job_submitter)

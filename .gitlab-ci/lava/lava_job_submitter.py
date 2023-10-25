@@ -22,15 +22,16 @@ from os import environ, getenv, path
 from typing import Any, Optional
 
 import fire
+from lavacli.utils import flow_yaml as lava_yaml
+
 from lava.exceptions import (
     MesaCIException,
     MesaCIParseException,
     MesaCIRetryError,
     MesaCITimeoutError,
 )
-from lava.utils import CONSOLE_LOG
-from lava.utils import DEFAULT_GITLAB_SECTION_TIMEOUTS as GL_SECTION_TIMEOUTS
 from lava.utils import (
+    CONSOLE_LOG,
     GitlabSection,
     LAVAJob,
     LogFollower,
@@ -42,7 +43,7 @@ from lava.utils import (
     print_log,
     setup_lava_proxy,
 )
-from lavacli.utils import flow_yaml as lava_yaml
+from lava.utils import DEFAULT_GITLAB_SECTION_TIMEOUTS as GL_SECTION_TIMEOUTS
 
 # Initialize structural logging with a defaultdict, it can be changed for more
 # sophisticated dict-like data abstractions.
