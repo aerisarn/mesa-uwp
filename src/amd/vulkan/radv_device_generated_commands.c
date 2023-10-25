@@ -1569,7 +1569,11 @@ radv_prepare_dgc_graphics(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedC
       return;
    }
 
-   uint16_t vtx_base_sgpr = (cmd_buffer->state.graphics_pipeline->vtx_base_sgpr - SI_SH_REG_OFFSET) >> 2;
+   uint16_t vtx_base_sgpr = 0;
+
+   if (cmd_buffer->state.graphics_pipeline->vtx_base_sgpr)
+      vtx_base_sgpr = (cmd_buffer->state.graphics_pipeline->vtx_base_sgpr - SI_SH_REG_OFFSET) >> 2;
+
    if (cmd_buffer->state.graphics_pipeline->uses_drawid)
       vtx_base_sgpr |= DGC_USES_DRAWID;
    if (cmd_buffer->state.graphics_pipeline->uses_baseinstance)
