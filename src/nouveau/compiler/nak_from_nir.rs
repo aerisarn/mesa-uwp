@@ -1455,8 +1455,8 @@ impl<'a> ShaderFromNir<'a> {
                     dst: dst.into(),
                     resident: Dst::None,
                     image_dim: dim,
-                    mem_order: MemOrder::Weak,
-                    mem_scope: MemScope::CTA,
+                    mem_order: MemOrder::Strong,
+                    mem_scope: MemScope::System,
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
@@ -1476,8 +1476,8 @@ impl<'a> ShaderFromNir<'a> {
 
                 b.push_op(OpSuSt {
                     image_dim: dim,
-                    mem_order: MemOrder::Weak,
-                    mem_scope: MemScope::CTA,
+                    mem_order: MemOrder::Strong,
+                    mem_scope: MemScope::System,
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
