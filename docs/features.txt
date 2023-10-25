@@ -796,7 +796,6 @@ Clover extensions that are not part of any OpenCL version:
   cl_khr_terminate_context                              not started
   cl_khr_throttle_hints                                 not started
   cl_khr_work_group_uniform_arithmetic                  not started
-
   cl_arm_non_uniform_work_group_size                    not started
   cl_arm_shared_virtual_memory                          DONE (nvc0)
   cl_intel_unified_shared_memory                        not started
@@ -951,7 +950,6 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_terminate_context                              not started
   cl_khr_throttle_hints                                 not started
   cl_khr_work_group_uniform_arithmetic                  not started
-
   cl_arm_non_uniform_work_group_size                    not started
   cl_arm_shared_virtual_memory                          in progress (nvc0)
   cl_intel_unified_shared_memory                        not started
