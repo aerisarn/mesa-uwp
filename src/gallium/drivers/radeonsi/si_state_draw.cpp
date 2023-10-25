@@ -896,7 +896,6 @@ template<amd_gfx_level GFX_VERSION, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INL
 static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
    radeon_begin(cs);
 
@@ -908,11 +907,12 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       bool reset_per_prim = rast_prim == MESA_PRIM_LINES ||
                             rast_prim == MESA_PRIM_LINES_ADJACENCY;
       /* 0 = no reset, 1 = reset per prim, 2 = reset per packet */
-      unsigned value =
-         rs->pa_sc_line_stipple | S_028A0C_AUTO_RESET_CNTL(reset_per_prim ? 1 : 2);
+      struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
-      radeon_opt_set_context_reg(sctx, R_028A0C_PA_SC_LINE_STIPPLE, SI_TRACKED_PA_SC_LINE_STIPPLE,
-                                 value);
+      radeon_opt_set_context_reg(sctx, R_028A0C_PA_SC_LINE_STIPPLE,
+                                 SI_TRACKED_PA_SC_LINE_STIPPLE,
+                                 rs->pa_sc_line_stipple |
+                                 S_028A0C_AUTO_RESET_CNTL(reset_per_prim ? 1 : 2));
    }
 
    if (NGG || HAS_GS) {
