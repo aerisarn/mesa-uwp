@@ -1357,4 +1357,13 @@ vk_video_get_h265_nal_unit(StdVideoH265PictureType pic_type, bool irap_pic_flag)
    return 0;
 }
 
+static const uint8_t vk_video_h265_levels[] = {10, 20, 21, 30, 31, 40, 41, 50, 51, 52, 60, 61, 62};
+
+static uint8_t
+vk_video_get_h265_level(StdVideoH265LevelIdc level)
+{
+   assert(level <= STD_VIDEO_H265_LEVEL_IDC_6_2);
+   return vk_video_h265_levels[level];
+}
+
 #endif
