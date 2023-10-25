@@ -1695,27 +1695,29 @@ impl SM75Instr {
     }
 
     fn encode_bar(&mut self, _op: &OpBar) {
-        self.set_opcode(0x31d);
+        self.set_opcode(0xb1d);
 
-        /* src0 == src1 */
-        self.set_reg_src(32..40, SrcRef::Zero.into());
+        // self.set_opcode(0x31d);
 
-        /*
-         * 00: RED.POPC
-         * 01: RED.AND
-         * 02: RED.OR
-         */
-        self.set_field(74..76, 0_u8);
+        // /* src0 == src1 */
+        // self.set_reg_src(32..40, SrcRef::Zero.into());
 
-        /*
-         * 00: SYNC
-         * 01: ARV
-         * 02: RED
-         * 03: SCAN
-         */
-        self.set_field(77..79, 0_u8);
+        // /*
+        //  * 00: RED.POPC
+        //  * 01: RED.AND
+        //  * 02: RED.OR
+        //  */
+        // self.set_field(74..76, 0_u8);
 
-        self.set_pred_src(87..90, 90, SrcRef::True.into());
+        // /*
+        //  * 00: SYNC
+        //  * 01: ARV
+        //  * 02: RED
+        //  * 03: SCAN
+        //  */
+        // self.set_field(77..79, 0_u8);
+
+        // self.set_pred_src(87..90, 90, SrcRef::True.into());
     }
 
     fn encode_cs2r(&mut self, op: &OpCS2R) {
