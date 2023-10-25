@@ -7,7 +7,7 @@
 
 #include "agx_compile.h"
 #include "compiler/nir/nir_builder.h"
-#include "compiler/nir_types.h"
+#include "glsl_types.h"
 #include "util/glheader.h"
 #include "util/macros.h"
 #include "util/u_debug.h"
