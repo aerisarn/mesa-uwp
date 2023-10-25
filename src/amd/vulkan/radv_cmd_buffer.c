@@ -9504,9 +9504,6 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       if (layout->bind_vbo_mask)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
 
-      if (layout->binds_state)
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
-
       cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
 
       if (!layout->indexed && cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
