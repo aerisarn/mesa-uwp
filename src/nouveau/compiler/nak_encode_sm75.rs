@@ -1283,6 +1283,8 @@ impl SM75Instr {
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong);
         assert!(op.access.scope == MemScope::CTA);
+
+        self.set_bit(87, false); /* !.ZD - Returns a predicate? */
     }
 
     fn encode_ld(&mut self, op: &OpLd) {
