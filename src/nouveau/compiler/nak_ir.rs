@@ -3440,6 +3440,77 @@ impl fmt::Display for OpIpa {
     }
 }
 
+#[allow(dead_code)]
+pub enum CCtlOp {
+    PF1,
+    PF2,
+    WB,
+    IV,
+    IVAll,
+    RS,
+    IVAllP,
+    WBAll,
+    WBAllP,
+}
+
+impl CCtlOp {
+    pub fn is_all(&self) -> bool {
+        match self {
+            CCtlOp::PF1
+            | CCtlOp::PF2
+            | CCtlOp::WB
+            | CCtlOp::IV
+            | CCtlOp::RS => false,
+            CCtlOp::IVAll | CCtlOp::IVAllP | CCtlOp::WBAll | CCtlOp::WBAllP => {
+                true
+            }
+        }
+    }
+}
+
+impl fmt::Display for CCtlOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CCtlOp::PF1 => write!(f, "PF1"),
+            CCtlOp::PF2 => write!(f, "PF2"),
+            CCtlOp::WB => write!(f, "WB"),
+            CCtlOp::IV => write!(f, "IV"),
+            CCtlOp::IVAll => write!(f, "IVALL"),
+            CCtlOp::RS => write!(f, "RS"),
+            CCtlOp::IVAllP => write!(f, "IVALLP"),
+            CCtlOp::WBAll => write!(f, "WBALL"),
+            CCtlOp::WBAllP => write!(f, "WBALLP"),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpCCtl {
+    pub op: CCtlOp,
+
+    pub mem_space: MemSpace,
+
+    #[src_type(GPR)]
+    pub addr: Src,
+
+    pub addr_offset: i32,
+}
+
+impl fmt::Display for OpCCtl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CCTL.{}", self.mem_space)?;
+        if !self.op.is_all() {
+            write!(f, " [{}", self.addr)?;
+            if self.addr_offset > 0 {
+                write!(f, "+{:#x}", self.addr_offset)?;
+            }
+            write!(f, "]")?;
+        }
+        Ok(())
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpMemBar {
@@ -4159,6 +4230,7 @@ pub enum Op {
     ALd(OpALd),
     ASt(OpASt),
     Ipa(OpIpa),
+    CCtl(OpCCtl),
     MemBar(OpMemBar),
     BMov(OpBMov),
     Break(OpBreak),
@@ -4515,6 +4587,7 @@ impl Instr {
             | Op::St(_)
             | Op::Atom(_)
             | Op::AtomCas(_)
+            | Op::CCtl(_)
             | Op::MemBar(_)
             | Op::Kill(_)
             | Op::Break(_)
@@ -4594,6 +4667,7 @@ impl Instr {
             | Op::ALd(_)
             | Op::ASt(_)
             | Op::Ipa(_)
+            | Op::CCtl(_)
             | Op::MemBar(_) => false,
 
             // Control-flow ops

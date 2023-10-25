@@ -1552,6 +1552,29 @@ impl SM75Instr {
         self.set_pred_dst(81..84, Dst::None);
     }
 
+    fn encode_cctl(&mut self, op: &OpCCtl) {
+        assert!(op.mem_space == MemSpace::Global);
+        self.set_opcode(0x98f);
+
+        self.set_reg_src(24..32, op.addr);
+        self.set_field(32..64, op.addr_offset);
+
+        self.set_field(
+            87..91,
+            match op.op {
+                CCtlOp::PF1 => 0_u8,
+                CCtlOp::PF2 => 1_u8,
+                CCtlOp::WB => 2_u8,
+                CCtlOp::IV => 3_u8,
+                CCtlOp::IVAll => 4_u8,
+                CCtlOp::RS => 5_u8,
+                CCtlOp::IVAllP => 6_u8,
+                CCtlOp::WBAll => 7_u8,
+                CCtlOp::WBAllP => 8_u8,
+            },
+        );
+    }
+
     fn encode_membar(&mut self, op: &OpMemBar) {
         self.set_opcode(0x992);
 
@@ -1845,6 +1868,7 @@ impl SM75Instr {
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
+            Op::CCtl(op) => si.encode_cctl(&op),
             Op::MemBar(op) => si.encode_membar(&op),
             Op::BMov(op) => si.encode_bmov(&op),
             Op::Break(op) => si.encode_break(&op),

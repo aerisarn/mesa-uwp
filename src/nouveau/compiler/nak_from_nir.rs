@@ -1850,6 +1850,18 @@ impl<'a> ShaderFromNir<'a> {
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_barrier => {
+                let modes = intrin.memory_modes();
+                let semantics = intrin.memory_semantics();
+                if (modes & nir_var_mem_global) != 0
+                    && (semantics & NIR_MEMORY_RELEASE) != 0
+                {
+                    b.push_op(OpCCtl {
+                        op: CCtlOp::WBAll,
+                        mem_space: MemSpace::Global,
+                        addr: 0.into(),
+                        addr_offset: 0,
+                    });
+                }
                 if intrin.memory_scope() != SCOPE_NONE {
                     let mem_scope = match intrin.memory_scope() {
                         SCOPE_INVOCATION | SCOPE_SUBGROUP => MemScope::CTA,
@@ -1868,6 +1880,16 @@ impl<'a> ShaderFromNir<'a> {
                         }
                     }
                     _ => panic!("Unhandled execution scope"),
+                }
+                if (modes & nir_var_mem_global) != 0
+                    && (semantics & NIR_MEMORY_ACQUIRE) != 0
+                {
+                    b.push_op(OpCCtl {
+                        op: CCtlOp::IVAll,
+                        mem_space: MemSpace::Global,
+                        addr: 0.into(),
+                        addr_offset: 0,
+                    });
                 }
             }
             nir_intrinsic_read_invocation
