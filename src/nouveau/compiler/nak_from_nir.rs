@@ -1862,6 +1862,15 @@ impl<'a> ShaderFromNir<'a> {
                         addr_offset: 0,
                     });
                 }
+                match intrin.execution_scope() {
+                    SCOPE_NONE => (),
+                    SCOPE_WORKGROUP => {
+                        if self.nir.info.stage() == MESA_SHADER_COMPUTE {
+                            b.push_op(OpBar {}).deps.yld = true;
+                        }
+                    }
+                    _ => panic!("Unhandled execution scope"),
+                }
                 if intrin.memory_scope() != SCOPE_NONE {
                     let mem_scope = match intrin.memory_scope() {
                         SCOPE_INVOCATION | SCOPE_SUBGROUP => MemScope::CTA,
@@ -1871,15 +1880,6 @@ impl<'a> ShaderFromNir<'a> {
                         _ => panic!("Unhandled memory scope"),
                     };
                     b.push_op(OpMemBar { scope: mem_scope });
-                }
-                match intrin.execution_scope() {
-                    SCOPE_NONE => (),
-                    SCOPE_WORKGROUP => {
-                        if self.nir.info.stage() == MESA_SHADER_COMPUTE {
-                            b.push_op(OpBar {}).deps.yld = true;
-                        }
-                    }
-                    _ => panic!("Unhandled execution scope"),
                 }
                 if (modes & nir_var_mem_global) != 0
                     && (semantics & NIR_MEMORY_ACQUIRE) != 0
