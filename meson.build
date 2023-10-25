@@ -1468,10 +1468,6 @@ if get_option('intel-xe-kmd').enabled()
 endif
 
 
-if with_gallium_crocus and host_machine.cpu_family().startswith('x86') == false
-  error('Intel "crocus" Gallium driver requires x86 or x86_64 CPU family')
-endif
-
 if with_gallium_i915 and host_machine.cpu_family().startswith('x86') == false
   error('Intel "i915" Gallium driver requires x86 or x86_64 CPU family')
 endif
