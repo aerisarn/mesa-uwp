@@ -1433,13 +1433,13 @@ radv_surface_max_layer_count(struct radv_image_view *iview)
                                                        : (iview->vk.base_array_layer + iview->vk.layer_count);
 }
 
-static unsigned
-get_dcc_max_uncompressed_block_size(const struct radv_device *device, const struct radv_image_view *iview)
+unsigned
+radv_get_dcc_max_uncompressed_block_size(const struct radv_device *device, const struct radv_image *image)
 {
-   if (device->physical_device->rad_info.gfx_level < GFX10 && iview->image->vk.samples > 1) {
-      if (iview->image->planes[0].surface.bpe == 1)
+   if (device->physical_device->rad_info.gfx_level < GFX10 && image->vk.samples > 1) {
+      if (image->planes[0].surface.bpe == 1)
          return V_028C78_MAX_BLOCK_SIZE_64B;
-      else if (iview->image->planes[0].surface.bpe == 2)
+      else if (image->planes[0].surface.bpe == 2)
          return V_028C78_MAX_BLOCK_SIZE_128B;
    }
 
@@ -1464,7 +1464,7 @@ get_dcc_min_compressed_block_size(const struct radv_device *device)
 static uint32_t
 radv_init_dcc_control_reg(struct radv_device *device, struct radv_image_view *iview)
 {
-   unsigned max_uncompressed_block_size = get_dcc_max_uncompressed_block_size(device, iview);
+   unsigned max_uncompressed_block_size = radv_get_dcc_max_uncompressed_block_size(device, iview->image);
    unsigned min_compressed_block_size = get_dcc_min_compressed_block_size(device);
    unsigned max_compressed_block_size;
    unsigned independent_128b_blocks;

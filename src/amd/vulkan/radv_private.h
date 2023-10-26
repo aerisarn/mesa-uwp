@@ -2932,6 +2932,8 @@ bool radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev, co
 
 bool vi_alpha_is_on_msb(const struct radv_device *device, const VkFormat format);
 
+unsigned radv_get_dcc_max_uncompressed_block_size(const struct radv_device *device, const struct radv_image *image);
+
 VkResult radv_image_from_gralloc(VkDevice device_h, const VkImageCreateInfo *base_info,
                                  const VkNativeBufferANDROID *gralloc_info, const VkAllocationCallbacks *alloc,
                                  VkImage *out_image_h);
