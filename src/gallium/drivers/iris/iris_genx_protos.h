@@ -44,6 +44,7 @@ void genX(update_pma_fix)(struct iris_context *ice,
 void genX(invalidate_aux_map_state)(struct iris_batch *batch);
 
 void genX(emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw);
+void genX(emit_3dprimitive_was)(struct iris_batch *batch);
 
 static inline void
 genX(maybe_emit_breakpoint)(struct iris_batch *batch,

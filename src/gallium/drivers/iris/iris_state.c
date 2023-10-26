@@ -7869,6 +7869,24 @@ genX(emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw)
    }
 }
 
+void
+genX(emit_3dprimitive_was)(struct iris_batch *batch)
+{
+   UNUSED const struct intel_device_info *devinfo = batch->screen->devinfo;
+#if INTEL_NEEDS_WA_16014538804
+   if (!intel_needs_workaround(devinfo, 16014538804))
+      return;
+
+   batch->num_3d_primitives_emitted++;
+
+   /* Wa_16014538804 - Send empty/dummy pipe control after 3 3DPRIMITIVE. */
+   if (batch->num_3d_primitives_emitted == 3) {
+      iris_emit_pipe_control_flush(batch, "Wa_16014538804", 0);
+      batch->num_3d_primitives_emitted = 0;
+   }
+#endif
+}
+
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -8114,6 +8132,7 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
+   genX(emit_3dprimitive_was)(batch);
    genX(maybe_emit_breakpoint)(batch, false);
 
 #if GFX_VERx10 == 125
