@@ -3096,7 +3096,7 @@ load_payload_sources_read_for_size(fs_inst *lp, unsigned size_read)
 
 /**
  * Optimize sample messages that have constant zero values for the trailing
- * texture coordinates. We can just reduce the message length for these
+ * parameters. We can just reduce the message length for these
  * instructions instead of reserving a register for it. Trailing parameters
  * that aren't sent default to zero anyway. This will cause the dead code
  * eliminator to remove the MOV instruction that would otherwise be emitted to
@@ -3105,25 +3105,35 @@ load_payload_sources_read_for_size(fs_inst *lp, unsigned size_read)
 bool
 fs_visitor::opt_zero_samples()
 {
-   /* Gfx4 infers the texturing opcode based on the message length so we can't
-    * change it.  Gfx12.5 has restrictions on the number of coordinate
+   /* Implementation supports only SENDs, so applicable to Gfx7+ only. */
+   assert(devinfo->ver >= 7);
+
+   /* Gfx12.5 has restrictions on the number of coordinate
     * parameters that have to be provided for some texture types
     * (Wa_14012688258).
     */
-   if (devinfo->ver < 5 || intel_needs_workaround(devinfo, 14012688258))
+   if (intel_needs_workaround(devinfo, 14012688258))
       return false;
 
    bool progress = false;
 
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
-      if (!inst->is_tex())
+   foreach_block_and_inst(block, fs_inst, send, cfg) {
+      if (send->opcode != SHADER_OPCODE_SEND ||
+          send->sfid != BRW_SFID_SAMPLER)
          continue;
 
-      fs_inst *load_payload = (fs_inst *) inst->prev;
-
-      if (load_payload->is_head_sentinel() ||
-          load_payload->opcode != SHADER_OPCODE_LOAD_PAYLOAD)
+      /* This pass works on SENDs before splitting. */
+      if (send->ex_mlen > 0)
          continue;
+
+      fs_inst *lp = (fs_inst *) send->prev;
+
+      if (lp->is_head_sentinel() || lp->opcode != SHADER_OPCODE_LOAD_PAYLOAD)
+         continue;
+
+      /* How much of the payload are actually read by this SEND. */
+      const unsigned params =
+         load_payload_sources_read_for_size(lp, send->mlen * REG_SIZE);
 
       /* We don't want to remove the message header or the first parameter.
        * Removing the first parameter is not allowed, see the Haswell PRM
@@ -3132,11 +3142,17 @@ fs_visitor::opt_zero_samples()
        *     "Parameter 0 is required except for the sampleinfo message, which
        *      has no parameter 0"
        */
-      while (inst->mlen > inst->header_size + inst->exec_size / 8 &&
-             load_payload->src[(inst->mlen - inst->header_size) /
-                               (inst->exec_size / 8) +
-                               inst->header_size - 1].is_zero()) {
-         inst->mlen -= inst->exec_size / 8;
+      const unsigned first_param_idx = lp->header_size;
+      unsigned zero_size = 0;
+      for (unsigned i = params - 1; i > first_param_idx; i--) {
+         if (lp->src[i].file != BAD_FILE && !lp->src[i].is_zero())
+            break;
+         zero_size += lp->exec_size * type_sz(lp->src[i].type) * lp->dst.stride;
+      }
+
+      const unsigned zero_len = zero_size / (reg_unit(devinfo) * REG_SIZE);
+      if (zero_len > 0) {
+         send->mlen -= zero_len;
          progress = true;
       }
    }
@@ -6382,18 +6398,23 @@ fs_visitor::optimize()
    OPT(lower_logical_sends);
 
    /* After logical SEND lowering. */
-   OPT(opt_copy_propagation);
+
+   if (OPT(opt_copy_propagation))
+      OPT(opt_algebraic);
+
+   /* Identify trailing zeros LOAD_PAYLOAD of sampler messages.
+    * Do this before splitting SENDs.
+    */
+   if (devinfo->ver >= 7) {
+      if (OPT(opt_zero_samples) && OPT(opt_copy_propagation))
+         OPT(opt_algebraic);
+   }
+
    OPT(opt_split_sends);
    OPT(fixup_nomask_control_flow);
 
    if (progress) {
       if (OPT(opt_copy_propagation))
-         OPT(opt_algebraic);
-
-      /* Only run after logical send lowering because it's easier to implement
-       * in terms of physical sends.
-       */
-      if (OPT(opt_zero_samples) && OPT(opt_copy_propagation))
          OPT(opt_algebraic);
 
       /* Run after logical send lowering to give it a chance to CSE the
