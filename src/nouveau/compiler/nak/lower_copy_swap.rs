@@ -174,17 +174,18 @@ impl LowerCopySwap {
     }
 
     fn run(&mut self, s: &mut Shader) {
+        let sm = s.info.sm;
         s.map_instrs(|instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
                 Op::Copy(copy) => {
                     debug_assert!(instr.pred.is_true());
-                    let mut b = InstrBuilder::new();
+                    let mut b = InstrBuilder::new(sm);
                     self.lower_copy(&mut b, copy);
                     b.as_mapped_instrs()
                 }
                 Op::Swap(swap) => {
                     debug_assert!(instr.pred.is_true());
-                    let mut b = InstrBuilder::new();
+                    let mut b = InstrBuilder::new(sm);
                     self.lower_swap(&mut b, swap);
                     b.as_mapped_instrs()
                 }

@@ -8,6 +8,8 @@ use crate::ir::*;
 pub trait Builder {
     fn push_instr(&mut self, instr: Box<Instr>) -> &mut Instr;
 
+    fn sm(&self) -> u8;
+
     fn push_op(&mut self, op: impl Into<Op>) -> &mut Instr {
         self.push_instr(Instr::new_boxed(op))
     }
@@ -381,12 +383,14 @@ pub trait SSABuilder: Builder {
 
 pub struct InstrBuilder {
     instrs: MappedInstrs,
+    sm: u8,
 }
 
 impl InstrBuilder {
-    pub fn new() -> Self {
+    pub fn new(sm: u8) -> Self {
         Self {
             instrs: MappedInstrs::None,
+            sm,
         }
     }
 
@@ -408,6 +412,10 @@ impl Builder for InstrBuilder {
         self.instrs.push(instr);
         self.instrs.last_mut().unwrap().as_mut()
     }
+
+    fn sm(&self) -> u8 {
+        self.sm
+    }
 }
 
 pub struct SSAInstrBuilder<'a> {
@@ -416,9 +424,9 @@ pub struct SSAInstrBuilder<'a> {
 }
 
 impl<'a> SSAInstrBuilder<'a> {
-    pub fn new(alloc: &'a mut SSAValueAllocator) -> Self {
+    pub fn new(sm: u8, alloc: &'a mut SSAValueAllocator) -> Self {
         Self {
-            b: InstrBuilder::new(),
+            b: InstrBuilder::new(sm),
             alloc: alloc,
         }
     }
@@ -436,6 +444,10 @@ impl<'a> SSAInstrBuilder<'a> {
 impl<'a> Builder for SSAInstrBuilder<'a> {
     fn push_instr(&mut self, instr: Box<Instr>) -> &mut Instr {
         self.b.push_instr(instr)
+    }
+
+    fn sm(&self) -> u8 {
+        self.b.sm()
     }
 }
 
@@ -456,6 +468,10 @@ impl<'a, T: Builder> Builder for PredicatedBuilder<'a, T> {
         assert!(instr.pred.is_true());
         instr.pred = self.pred;
         self.b.push_instr(instr)
+    }
+
+    fn sm(&self) -> u8 {
+        self.b.sm()
     }
 }
 

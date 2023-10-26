@@ -2579,7 +2579,7 @@ impl<'a> ShaderFromNir<'a> {
         phi_map: &mut PhiAllocMap<'b>,
         nb: &nir_block,
     ) {
-        let mut b = SSAInstrBuilder::new(ssa_alloc);
+        let mut b = SSAInstrBuilder::new(self.info.sm, ssa_alloc);
 
         if nb.index == 0 && self.nir.info.shared_size > 0 {
             // The blob seems to always do a BSYNC before accessing shared

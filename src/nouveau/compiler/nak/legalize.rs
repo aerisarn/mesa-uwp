@@ -374,18 +374,17 @@ fn legalize_sm70_instr(
 }
 
 fn legalize_instr(
-    sm: u8,
     b: &mut impl SSABuilder,
     bl: &impl BlockLiveness,
     ip: usize,
     instr: &mut Instr,
 ) {
-    if sm >= 70 {
+    if b.sm() >= 70 {
         legalize_sm70_instr(b, bl, ip, instr);
-    } else if sm >= 50 {
+    } else if b.sm() >= 50 {
         legalize_sm50_instr(b, bl, ip, instr);
     } else {
-        panic!("Unknown shader model SM{sm}");
+        panic!("Unknown shader model SM{}", b.sm());
     }
 
     let src_types = instr.src_types();
@@ -460,6 +459,7 @@ fn legalize_instr(
 
 impl Shader {
     pub fn legalize(&mut self) {
+        let sm = self.info.sm;
         for f in &mut self.functions {
             let live = SimpleLiveness::for_function(f);
 
@@ -468,8 +468,8 @@ impl Shader {
 
                 let mut instrs = Vec::new();
                 for (ip, mut instr) in b.instrs.drain(..).enumerate() {
-                    let mut b = SSAInstrBuilder::new(&mut f.ssa_alloc);
-                    legalize_instr(self.info.sm, &mut b, bl, ip, &mut instr);
+                    let mut b = SSAInstrBuilder::new(sm, &mut f.ssa_alloc);
+                    legalize_instr(&mut b, bl, ip, &mut instr);
                     b.push_instr(instr);
                     instrs.append(&mut b.as_vec());
                 }
