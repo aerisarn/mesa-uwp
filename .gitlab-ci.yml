@@ -146,6 +146,8 @@ include:
   - &is-pre-merge '$CI_PIPELINE_SOURCE == "merge_request_event"'
   # Pre-merge pipeline for Marge Bot
   - &is-pre-merge-for-marge '$GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+  # Pre-merge pipeline *not* for Marge Bot
+  - &is-pre-merge-not-for-marge '$GITLAB_USER_LOGIN != "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"'
 
 
 .container+build-rules:
@@ -233,7 +235,7 @@ sanity:
     - .fdo.ci-fairy
   stage: sanity
   rules:
-    - if: *is-pre-merge
+    - if: *is-pre-merge-not-for-marge
       when: on_success
     # Other cases default to never
   variables:
