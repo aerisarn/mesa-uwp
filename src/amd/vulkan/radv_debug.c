@@ -469,6 +469,8 @@ radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
 
    pipeline = radv_get_saved_pipeline(queue->device, ring);
    if (pipeline) {
+      fprintf(f, "Pipeline hash: %" PRIx64 "\n", pipeline->pipeline_hash);
+
       if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
          struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
 
