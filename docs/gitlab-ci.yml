@@ -47,7 +47,8 @@ test-docs-mr:
   extends:
     - test-docs
   needs:
-    - sanity
+    - job: sanity
+      optional: true
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes: *docs-or-ci
