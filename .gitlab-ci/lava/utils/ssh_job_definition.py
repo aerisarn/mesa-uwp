@@ -181,7 +181,6 @@ def wrap_final_deploy_action(final_deploy_action: dict):
         "namespace": "dut",
         "failure_retry": NUMBER_OF_ATTEMPTS_LAVA_BOOT,
         "timeout": {"minutes": 10},
-        "timeouts": {"http-download": {"minutes": 2}},
     }
 
     final_deploy_action.update(wrap)
