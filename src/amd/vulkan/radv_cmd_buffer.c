@@ -10960,17 +10960,8 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
    assert(firstCounterBuffer + counterBufferCount <= MAX_SO_BUFFERS);
-   if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-      /* Sync because the next streamout operation will overwrite GDS and we
-       * have to make sure it's idle.
-       * TODO: Improve by tracking if there is a streamout operation in
-       * flight.
-       */
-      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VS_PARTIAL_FLUSH;
-      si_emit_cache_flush(cmd_buffer);
-   } else {
+   if (!cmd_buffer->device->physical_device->use_ngg_streamout)
       radv_flush_vgt_streamout(cmd_buffer);
-   }
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SO_BUFFERS * 10);
 
