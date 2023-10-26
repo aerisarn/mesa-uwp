@@ -4554,35 +4554,66 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
       bool flush_16_bit = nir_is_denorm_flush_to_zero(execution_mode, 16);
       bool flush_32_bit = nir_is_denorm_flush_to_zero(execution_mode, 32);
       bool flush_64_bit = nir_is_denorm_flush_to_zero(execution_mode, 64);
-      bool emit_cap = false;
+      bool preserve_16_bit = nir_is_denorm_preserve(execution_mode, 16);
+      bool preserve_32_bit = nir_is_denorm_preserve(execution_mode, 32);
+      bool preserve_64_bit = nir_is_denorm_preserve(execution_mode, 64);
+      bool emit_cap_flush = false;
+      bool emit_cap_preserve = false;
 
-      if (!sinfo->float_controls.flush_denorms_all_independence) {
+      if (!sinfo->float_controls.denorms_all_independence) {
          bool flush = flush_16_bit && flush_64_bit;
-         if (!sinfo->float_controls.flush_denorms_32_bit_independence) {
+         bool preserve = preserve_16_bit && preserve_64_bit;
+
+         if (!sinfo->float_controls.denorms_32_bit_independence) {
             flush = flush && flush_32_bit;
+            preserve = preserve && preserve_32_bit;
+
             flush_32_bit = flush;
+            preserve_32_bit = preserve;
          }
+
          flush_16_bit = flush;
          flush_64_bit = flush;
+         preserve_16_bit = preserve;
+         preserve_64_bit = preserve;
       }
 
       if (flush_16_bit && sinfo->float_controls.flush_denorms & BITFIELD_BIT(0)) {
-         emit_cap = true;
+         emit_cap_flush = true;
          spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
                                               SpvExecutionModeDenormFlushToZero, 16);
       }
       if (flush_32_bit && sinfo->float_controls.flush_denorms & BITFIELD_BIT(1)) {
-         emit_cap = true;
+         emit_cap_flush = true;
          spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
                                               SpvExecutionModeDenormFlushToZero, 32);
       }
       if (flush_64_bit && sinfo->float_controls.flush_denorms & BITFIELD_BIT(2)) {
-         emit_cap = true;
+         emit_cap_flush = true;
          spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
                                               SpvExecutionModeDenormFlushToZero, 64);
       }
-      if (emit_cap)
+
+      if (preserve_16_bit && sinfo->float_controls.preserve_denorms & BITFIELD_BIT(0)) {
+         emit_cap_preserve = true;
+         spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
+                                              SpvExecutionModeDenormPreserve, 16);
+      }
+      if (preserve_32_bit && sinfo->float_controls.preserve_denorms & BITFIELD_BIT(1)) {
+         emit_cap_preserve = true;
+         spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
+                                              SpvExecutionModeDenormPreserve, 32);
+      }
+      if (preserve_64_bit && sinfo->float_controls.preserve_denorms & BITFIELD_BIT(2)) {
+         emit_cap_preserve = true;
+         spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
+                                              SpvExecutionModeDenormPreserve, 64);
+      }
+
+      if (emit_cap_flush)
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilityDenormFlushToZero);
+      if (emit_cap_preserve)
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityDenormPreserve);
    }
 
    switch (s->info.stage) {

@@ -776,8 +776,9 @@ struct zink_shader_info {
    bool have_workgroup_memory_explicit_layout;
    struct {
       uint8_t flush_denorms:3; // 16, 32, 64
-      bool flush_denorms_32_bit_independence:1;
-      bool flush_denorms_all_independence:1;
+      uint8_t preserve_denorms:3; // 16, 32, 64
+      bool denorms_32_bit_independence:1;
+      bool denorms_all_independence:1;
    } float_controls;
    unsigned bindless_set_idx;
 };
