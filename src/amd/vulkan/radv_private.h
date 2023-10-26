@@ -3216,6 +3216,7 @@ void radv_sqtt_emit_relocated_shaders(struct radv_cmd_buffer *cmd_buffer, struct
 struct radv_indirect_command_layout {
    struct vk_object_base base;
 
+   VkIndirectCommandsLayoutUsageFlagsNV flags;
    VkPipelineBindPoint pipeline_bind_point;
 
    uint32_t input_stride;
@@ -3240,8 +3241,6 @@ struct radv_indirect_command_layout {
    uint32_t ibo_type_32;
    uint32_t ibo_type_8;
 
-   bool use_preprocess;
-
    VkIndirectCommandsLayoutTokenNV tokens[0];
 };
 
@@ -3250,6 +3249,8 @@ uint32_t radv_get_indirect_cmdbuf_size(const VkGeneratedCommandsInfoNV *cmd_info
 bool radv_use_dgc_predication(struct radv_cmd_buffer *cmd_buffer,
                               const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo);
 void radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo);
+
+bool radv_dgc_can_preprocess(const struct radv_indirect_command_layout *layout);
 
 static inline uint32_t
 si_conv_prim_to_gs_out(uint32_t topology, bool is_ngg)

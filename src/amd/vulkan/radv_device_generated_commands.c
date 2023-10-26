@@ -1286,6 +1286,7 @@ radv_CreateIndirectCommandsLayoutNV(VkDevice _device, const VkIndirectCommandsLa
 
    vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV);
 
+   layout->flags = pCreateInfo->flags;
    layout->pipeline_bind_point = pCreateInfo->pipelineBindPoint;
    layout->input_stride = pCreateInfo->pStreamStrides[0];
    layout->token_count = pCreateInfo->tokenCount;
@@ -1336,30 +1337,6 @@ radv_CreateIndirectCommandsLayoutNV(VkDevice _device, const VkIndirectCommandsLa
    }
    if (!layout->indexed)
       layout->binds_index_buffer = false;
-
-   layout->use_preprocess = pCreateInfo->flags & VK_INDIRECT_COMMANDS_LAYOUT_USAGE_EXPLICIT_PREPROCESS_BIT_NV;
-
-   /* From the Vulkan spec (1.3.269, chapter 32):
-    * "The bound descriptor sets and push constants that will be used with indirect command generation for the compute
-    * piplines must already be specified at the time of preprocessing commands with vkCmdPreprocessGeneratedCommandsNV.
-    * They must not change until the execution of indirect commands is submitted with vkCmdExecuteGeneratedCommandsNV."
-    *
-    * So we can always preprocess compute layouts.
-    */
-   if (layout->pipeline_bind_point != VK_PIPELINE_BIND_POINT_COMPUTE) {
-      /* We embed the index buffer extent in indirect draw packets, but that isn't available at preprocess time. */
-      if (layout->indexed && !layout->binds_index_buffer)
-         layout->use_preprocess = false;
-
-      /* VBO binding (in particular partial VBO binding) uses some draw state which we don't generate at preprocess time
-       * yet. */
-      if (layout->bind_vbo_mask)
-         layout->use_preprocess = false;
-
-      /* In preprocess we use the non-overridden push constants from the draw state for now. */
-      if (layout->push_constant_mask)
-         layout->use_preprocess = false;
-   }
 
    *pIndirectCommandsLayout = radv_indirect_command_layout_to_handle(layout);
    return VK_SUCCESS;
@@ -1415,6 +1392,37 @@ radv_use_dgc_predication(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCo
    return cmd_buffer->qf == RADV_QUEUE_GENERAL && seq_count_buffer && !cmd_buffer->state.predicating;
 }
 
+bool
+radv_dgc_can_preprocess(const struct radv_indirect_command_layout *layout)
+{
+   if (!(layout->flags & VK_INDIRECT_COMMANDS_LAYOUT_USAGE_EXPLICIT_PREPROCESS_BIT_NV))
+      return false;
+
+   /* From the Vulkan spec (1.3.269, chapter 32):
+    * "The bound descriptor sets and push constants that will be used with indirect command generation for the compute
+    * piplines must already be specified at the time of preprocessing commands with vkCmdPreprocessGeneratedCommandsNV.
+    * They must not change until the execution of indirect commands is submitted with vkCmdExecuteGeneratedCommandsNV."
+    *
+    * So we can always preprocess compute layouts.
+    */
+   if (layout->pipeline_bind_point != VK_PIPELINE_BIND_POINT_COMPUTE) {
+      /* We embed the index buffer extent in indirect draw packets, but that isn't available at preprocess time. */
+      if (layout->indexed && !layout->binds_index_buffer)
+         return false;
+
+      /* VBO binding (in particular partial VBO binding) uses some draw state which we don't generate at preprocess time
+       * yet. */
+      if (layout->bind_vbo_mask)
+         return false;
+
+      /* In preprocess we use the non-overridden push constants from the draw state for now. */
+      if (layout->push_constant_mask)
+         return false;
+   }
+
+   return true;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdPreprocessGeneratedCommandsNV(VkCommandBuffer commandBuffer,
                                       const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
@@ -1422,7 +1430,7 @@ radv_CmdPreprocessGeneratedCommandsNV(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
 
-   if (!layout->use_preprocess)
+   if (!radv_dgc_can_preprocess(layout))
       return;
 
    const bool use_predication = radv_use_dgc_predication(cmd_buffer, pGeneratedCommandsInfo);
