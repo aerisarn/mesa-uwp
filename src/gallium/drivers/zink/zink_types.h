@@ -1160,6 +1160,8 @@ struct zink_compute_program {
    struct zink_shader *shader;
    struct hash_table pipelines;
 
+   simple_mtx_t cache_lock; //extra lock because threads are insane and sand was not meant to think
+
    VkPipeline base_pipeline;
 };
 
