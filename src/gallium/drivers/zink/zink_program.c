@@ -1864,11 +1864,17 @@ zink_bind_fs_state(struct pipe_context *pctx,
       zink_set_null_fs(ctx);
       return;
    }
+   bool writes_cbuf0 = ctx->gfx_stages[MESA_SHADER_FRAGMENT] ? (ctx->gfx_stages[MESA_SHADER_FRAGMENT]->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_DATA0)) > 0 : true;
    unsigned shadow_mask = ctx->gfx_stages[MESA_SHADER_FRAGMENT] ? ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask : 0;
    bind_gfx_stage(ctx, MESA_SHADER_FRAGMENT, cso);
    ctx->fbfetch_outputs = 0;
    if (cso) {
       shader_info *info = &ctx->gfx_stages[MESA_SHADER_FRAGMENT]->info;
+      bool new_writes_cbuf0 = (info->outputs_written & BITFIELD_BIT(FRAG_RESULT_DATA0)) > 0;
+      if (ctx->gfx_pipeline_state.blend_state && ctx->gfx_pipeline_state.blend_state->alpha_to_coverage && writes_cbuf0 != new_writes_cbuf0) {
+         ctx->blend_state_changed = true;
+         ctx->ds3_states |= BITFIELD_BIT(ZINK_DS3_BLEND_A2C);
+      }
       if (info->fs.uses_fbfetch_output) {
          if (info->outputs_read & (BITFIELD_BIT(FRAG_RESULT_DEPTH) | BITFIELD_BIT(FRAG_RESULT_STENCIL)))
             ctx->fbfetch_outputs |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
