@@ -195,6 +195,27 @@ cf_node_imm_succ_is_sync(nir_cf_node *node)
    }
 }
 
+static bool
+block_is_merge(const nir_block *block)
+{
+   /* If it's unreachable, there is no merge */
+   if (block->imm_dom == NULL)
+      return false;
+
+   unsigned num_preds = 0;
+   set_foreach(block->predecessors, entry) {
+      const nir_block *pred = entry->key;
+
+      /* We don't care about unreachable blocks */
+      if (pred->imm_dom == NULL)
+         continue;
+
+      num_preds++;
+   }
+
+   return num_preds > 1;
+}
+
 static void
 add_barriers_cf_list(struct exec_list *cf_list,
                      struct add_barriers_state *state)
@@ -213,6 +234,7 @@ add_barriers_cf_list(struct exec_list *cf_list,
          nir_if *nif = nir_cf_node_as_if(node);
 
          if (nif->condition.ssa->divergent &&
+             block_is_merge(nir_cf_node_as_block(nir_cf_node_next(node))) &&
              !cf_node_imm_succ_is_sync(&nif->cf_node))
             add_bar_cf_node(&nif->cf_node, state);
 
@@ -243,6 +265,8 @@ static bool
 nak_nir_add_barriers_impl(nir_function_impl *impl,
                           const struct nak_compiler *nak)
 {
+   nir_metadata_require(impl, nir_metadata_dominance);
+
    struct add_barriers_state state = {
       .nak = nak,
       .builder = nir_builder_create(impl),
