@@ -2174,9 +2174,8 @@ struct radv_event {
 #define RADV_HASH_SHADER_SPLIT_FMA       (1 << 17)
 #define RADV_HASH_SHADER_RT_WAVE64       (1 << 18)
 #define RADV_HASH_SHADER_NO_FMASK        (1 << 19)
-#define RADV_HASH_SHADER_NGG_STREAMOUT   (1 << 20)
-#define RADV_HASH_SHADER_NO_RT           (1 << 21)
-#define RADV_HASH_SHADER_DUAL_BLEND_MRT1 (1 << 22)
+#define RADV_HASH_SHADER_NO_RT           (1 << 20)
+#define RADV_HASH_SHADER_DUAL_BLEND_MRT1 (1 << 21)
 
 struct radv_pipeline_key;
 struct radv_ray_tracing_group;

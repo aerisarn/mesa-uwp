@@ -1882,8 +1882,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       (device->rad_info.gfx_level == GFX10_3 || (device->instance->perftest_flags & RADV_PERFTEST_NGGC)) &&
       !(device->instance->debug_flags & RADV_DEBUG_NO_NGGC);
 
-   device->use_ngg_streamout = device->use_ngg && (device->rad_info.gfx_level >= GFX11 ||
-                                                   (device->instance->perftest_flags & RADV_PERFTEST_NGG_STREAMOUT));
+   device->use_ngg_streamout = device->rad_info.gfx_level >= GFX11;
 
    device->emulate_ngg_gs_query_pipeline_stat = device->use_ngg && device->rad_info.gfx_level < GFX11;
 
