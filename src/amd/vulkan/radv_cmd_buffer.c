@@ -355,7 +355,7 @@ radv_create_cmd_buffer(struct vk_command_pool *pool, struct vk_command_buffer **
    cmd_buffer->cs = device->ws->cs_create(device->ws, ring, cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
    if (!cmd_buffer->cs) {
       radv_destroy_cmd_buffer(&cmd_buffer->vk);
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
    vk_object_base_init(&device->vk, &cmd_buffer->meta_push_descriptors.base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
@@ -698,7 +698,7 @@ radv_gang_init(struct radv_cmd_buffer *cmd_buffer)
       device->ws->cs_create(device->ws, AMD_IP_COMPUTE, cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 
    if (!ace_cs) {
-      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       return false;
    }
 
