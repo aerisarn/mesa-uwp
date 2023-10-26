@@ -41,10 +41,7 @@ class LAVAJobDefinition:
         # which is required to follow the job in a SSH section
         current_farm = get_lava_farm()
 
-        # SSH job definition still needs to add support for fastboot.
-        job_uses_fastboot: bool = self.job_submitter.boot_method == "fastboot"
-
-        return current_farm == LavaFarm.COLLABORA and not job_uses_fastboot
+        return current_farm == LavaFarm.COLLABORA
 
     def generate_lava_yaml_payload(self) -> dict[str, Any]:
         """
