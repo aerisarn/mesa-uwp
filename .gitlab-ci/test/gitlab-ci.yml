@@ -375,9 +375,6 @@ clang-format:
       rm -rf ${JOB_FOLDER} || true
       mkdir -v ${JOB_FOLDER}
 
-      # Keep the results path the same as baremetal and LAVA
-      ln -s "$JOB_FOLDER"/results/ .
-
       # Create a script to regenerate the CI environment when this job
       # begins running on the remote DUT.
       set +x
@@ -405,6 +402,13 @@ clang-format:
       # Gitlab coordinator for status presentation. results/junit.xml
       # will be parsed by the UI for more detailed explanations of
       # test execution.
+
+  after_script:
+      # Keep the results path the same as baremetal and LAVA
+      - mkdir -p "${JOB_FOLDER}"/results
+      - mv "${JOB_FOLDER}"/results results/
+      - !reference [default, after_script]
+
   artifacts:
     when: always
     name: "mesa_${CI_JOB_NAME}"
