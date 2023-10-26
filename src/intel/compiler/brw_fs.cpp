@@ -3078,6 +3078,22 @@ fs_visitor::opt_algebraic()
    return progress;
 }
 
+static unsigned
+load_payload_sources_read_for_size(fs_inst *lp, unsigned size_read)
+{
+   assert(lp->opcode == SHADER_OPCODE_LOAD_PAYLOAD);
+   assert(size_read >= lp->header_size * REG_SIZE);
+
+   unsigned i;
+   unsigned size = lp->header_size * REG_SIZE;
+   for (i = lp->header_size; size < size_read && i < lp->sources; i++)
+      size += lp->exec_size * type_sz(lp->src[i].type);
+
+   /* Size read must cover exactly a subset of sources. */
+   assert(size == size_read);
+   return i;
+}
+
 /**
  * Optimize sample messages that have constant zero values for the trailing
  * texture coordinates. We can just reduce the message length for these
@@ -3155,23 +3171,14 @@ fs_visitor::opt_split_sends()
 
    bool progress = false;
 
-   const fs_live_variables &live = live_analysis.require();
-
-   int next_ip = 0;
-
-   foreach_block_and_inst_safe(block, fs_inst, send, cfg) {
-      int ip = next_ip;
-      next_ip++;
-
+   foreach_block_and_inst(block, fs_inst, send, cfg) {
       if (send->opcode != SHADER_OPCODE_SEND ||
           send->mlen <= reg_unit(devinfo) || send->ex_mlen > 0)
          continue;
 
-      /* Don't split payloads which are also read later. */
       assert(send->src[2].file == VGRF);
-      if (live.vgrf_end[send->src[2].nr] > ip)
-         continue;
 
+      /* Currently don't split sends that reuse a previously used payload. */
       fs_inst *lp = (fs_inst *) send->prev;
 
       if (lp->is_head_sentinel() || lp->opcode != SHADER_OPCODE_LOAD_PAYLOAD)
@@ -3183,37 +3190,46 @@ fs_visitor::opt_split_sends()
       /* Split either after the header (if present), or when consecutive
        * sources switch from one VGRF to a different one.
        */
-      unsigned i = lp->header_size;
-      if (lp->header_size == 0) {
-         for (i = 1; i < lp->sources; i++) {
-            if (lp->src[i].file == BAD_FILE)
+      unsigned mid = lp->header_size;
+      if (mid == 0) {
+         for (mid = 1; mid < lp->sources; mid++) {
+            if (lp->src[mid].file == BAD_FILE)
                continue;
 
-            if (lp->src[0].file != lp->src[i].file ||
-                lp->src[0].nr != lp->src[i].nr)
+            if (lp->src[0].file != lp->src[mid].file ||
+                lp->src[0].nr != lp->src[mid].nr)
                break;
          }
       }
 
-      if (i != lp->sources) {
-         const fs_builder ibld(this, block, lp);
-         fs_inst *lp2 =
-            ibld.LOAD_PAYLOAD(lp->dst, &lp->src[i], lp->sources - i, 0);
+      /* SEND mlen might be smaller than what LOAD_PAYLOAD provides, so
+       * find out how many sources from the payload does it really need.
+       */
+      const unsigned end =
+         load_payload_sources_read_for_size(lp, send->mlen * REG_SIZE);
 
-         lp->resize_sources(i);
-         lp->size_written -= lp2->size_written;
+      /* Nothing to split. */
+      if (end <= mid)
+         continue;
 
-         lp->dst = fs_reg(VGRF, alloc.allocate(lp->size_written / REG_SIZE), lp->dst.type);
-         lp2->dst = fs_reg(VGRF, alloc.allocate(lp2->size_written / REG_SIZE), lp2->dst.type);
+      const fs_builder ibld(this, block, lp);
+      fs_inst *lp1 = ibld.LOAD_PAYLOAD(lp->dst, &lp->src[0], mid, lp->header_size);
+      fs_inst *lp2 = ibld.LOAD_PAYLOAD(lp->dst, &lp->src[mid], end - mid, 0);
 
-         send->resize_sources(4);
-         send->src[2] = lp->dst;
-         send->src[3] = lp2->dst;
-         send->ex_mlen = lp2->size_written / REG_SIZE;
-         send->mlen -= send->ex_mlen;
+      assert(lp1->size_written % REG_SIZE == 0);
+      assert(lp2->size_written % REG_SIZE == 0);
+      assert((lp1->size_written + lp2->size_written) / REG_SIZE == send->mlen);
 
-         progress = true;
-      }
+      lp1->dst = fs_reg(VGRF, alloc.allocate(lp1->size_written / REG_SIZE), lp1->dst.type);
+      lp2->dst = fs_reg(VGRF, alloc.allocate(lp2->size_written / REG_SIZE), lp2->dst.type);
+
+      send->resize_sources(4);
+      send->src[2] = lp1->dst;
+      send->src[3] = lp2->dst;
+      send->ex_mlen = lp2->size_written / REG_SIZE;
+      send->mlen -= send->ex_mlen;
+
+      progress = true;
    }
 
    if (progress)
