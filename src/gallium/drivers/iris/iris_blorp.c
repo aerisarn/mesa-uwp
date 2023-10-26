@@ -515,6 +515,9 @@ static void
 blorp_emit_post_draw(struct blorp_batch *blorp_batch, const struct blorp_params *params)
 {
    struct iris_batch *batch = blorp_batch->driver_batch;
+
+   // A _3DPRIM_RECTLIST is a MESA_PRIM_QUAD_STRIP with a implied vertex
+   genX(emit_3dprimitive_was)(batch, NULL, MESA_PRIM_QUAD_STRIP, 3);
    genX(maybe_emit_breakpoint)(batch, false);
    blorp_measure_end(blorp_batch, params);
 }

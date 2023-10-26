@@ -469,6 +469,12 @@ static void
 blorp_emit_post_draw(struct blorp_batch *batch, const struct blorp_params *params)
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
+
+   genX(batch_emit_post_3dprimitive_was)(&cmd_buffer->batch,
+                                         cmd_buffer->device,
+                                         _3DPRIM_RECTLIST,
+                                         3);
+
    genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
    blorp_measure_end(batch, params);
 }
