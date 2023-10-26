@@ -633,6 +633,11 @@ void anv_CmdBindPipeline(
          cmd_buffer->state.gfx.pipeline;
       struct anv_graphics_pipeline *new_pipeline =
          anv_pipeline_to_graphics(pipeline);
+
+      /* Apply the non dynamic state from the pipeline */
+      vk_cmd_set_dynamic_graphics_state(&cmd_buffer->vk,
+                                        &new_pipeline->dynamic_state);
+
       if (old_pipeline == new_pipeline)
          return;
 
@@ -644,10 +649,6 @@ void anv_CmdBindPipeline(
          set_dirty_for_bind_map(cmd_buffer, stage,
                                 &new_pipeline->base.shaders[stage]->bind_map);
       }
-
-      /* Apply the non dynamic state from the pipeline */
-      vk_cmd_set_dynamic_graphics_state(&cmd_buffer->vk,
-                                        &new_pipeline->dynamic_state);
 
       state = &cmd_buffer->state.gfx.base;
       stages = new_pipeline->base.base.active_stages;
