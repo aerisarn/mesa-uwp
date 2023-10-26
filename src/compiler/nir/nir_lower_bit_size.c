@@ -177,12 +177,12 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
           */
          switch (nir_intrinsic_reduction_op(intrin)) {
          case nir_op_imin: {
-            int64_t int_max = (1ull << (old_bit_size - 1)) - 1;
+            int64_t int_max = u_intN_max(old_bit_size);
             res = nir_imin(b, res, nir_imm_intN_t(b, int_max, bit_size));
             break;
          }
          case nir_op_imax: {
-            int64_t int_min = -(int64_t)(1ull << (old_bit_size - 1));
+            int64_t int_min = u_intN_min(old_bit_size);
             res = nir_imax(b, res, nir_imm_intN_t(b, int_min, bit_size));
             break;
          }
