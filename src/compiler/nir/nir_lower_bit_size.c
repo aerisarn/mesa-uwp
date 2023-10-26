@@ -133,8 +133,6 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
    switch (intrin->intrinsic) {
    case nir_intrinsic_read_invocation:
    case nir_intrinsic_read_first_invocation:
-   case nir_intrinsic_vote_feq:
-   case nir_intrinsic_vote_ieq:
    case nir_intrinsic_shuffle:
    case nir_intrinsic_shuffle_xor:
    case nir_intrinsic_shuffle_up:
@@ -152,8 +150,6 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_alu_type type = nir_type_uint;
       if (nir_intrinsic_has_reduction_op(intrin))
          type = nir_op_infos[nir_intrinsic_reduction_op(intrin)].input_types[0];
-      else if (intrin->intrinsic == nir_intrinsic_vote_feq)
-         type = nir_type_float;
 
       b->cursor = nir_before_instr(&intrin->instr);
       nir_intrinsic_instr *new_intrin =
@@ -163,17 +159,11 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
                                                  type, bit_size);
       new_intrin->src[0] = nir_src_for_ssa(new_src);
 
-      if (intrin->intrinsic == nir_intrinsic_vote_feq ||
-          intrin->intrinsic == nir_intrinsic_vote_ieq) {
-         /* These return a Boolean; it's always 1-bit */
-         assert(new_intrin->def.bit_size == 1);
-      } else {
-         /* These return the same bit size as the source; we need to adjust
-          * the size and then we'll have to emit a down-cast.
-          */
-         assert(intrin->src[0].ssa->bit_size == intrin->def.bit_size);
-         new_intrin->def.bit_size = bit_size;
-      }
+      /* These return the same bit size as the source; we need to adjust
+       * the size and then we'll have to emit a down-cast.
+       */
+      assert(intrin->src[0].ssa->bit_size == intrin->def.bit_size);
+      new_intrin->def.bit_size = bit_size;
 
       nir_builder_instr_insert(b, &new_intrin->instr);
 
@@ -201,11 +191,25 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
          }
       }
 
-      if (intrin->intrinsic != nir_intrinsic_vote_feq &&
-          intrin->intrinsic != nir_intrinsic_vote_ieq)
-         res = nir_convert_to_bit_size(b, res, type, old_bit_size);
+      res = nir_convert_to_bit_size(b, res, type, old_bit_size);
 
       nir_def_rewrite_uses(&intrin->def, res);
+      break;
+   }
+
+   case nir_intrinsic_vote_feq:
+   case nir_intrinsic_vote_ieq: {
+      /* These return a Boolean; it's always 1-bit */
+      assert(intrin->def.bit_size == 1);
+
+      nir_alu_type type = nir_type_uint;
+      if (intrin->intrinsic == nir_intrinsic_vote_feq)
+         type = nir_type_float;
+
+      b->cursor = nir_before_instr(&intrin->instr);
+      nir_def *new_src = nir_convert_to_bit_size(b, intrin->src[0].ssa,
+                                                 type, bit_size);
+      nir_src_rewrite(&intrin->src[0], new_src);
       break;
    }
 
