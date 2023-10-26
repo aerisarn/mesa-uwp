@@ -86,7 +86,7 @@ NineAdapter9_ctor( struct NineAdapter9 *This,
                               PIPE_SHADER_CAP_MAX_INPUTS) < 10 ||
         hal->get_shader_param(hal, PIPE_SHADER_FRAGMENT,
                               PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS) < 16) {
-        ERR("Your card is not supported by Gallium Nine. Minimum requirement "
+        ERR("Your device is not supported by Gallium Nine. Minimum requirement "
             "is >= r500, >= nv50, >= i965\n");
         return D3DERR_DRIVERINTERNALERROR;
     }
@@ -99,7 +99,7 @@ NineAdapter9_ctor( struct NineAdapter9 *This,
                               PIPE_SHADER_CAP_MAX_TEMPS) < 40 ||
         hal->get_shader_param(hal, PIPE_SHADER_FRAGMENT,
                               PIPE_SHADER_CAP_MAX_INPUTS) < 20) /* we don't pack inputs as much as we could */
-        WARN_ONCE("Your card is at the limit of Gallium Nine requirements. Some games "
+        WARN_ONCE("Your device is at the limit of Gallium Nine requirements. Some games "
             "may run into issues because requirements are too tight\n");
     return D3D_OK;
 }
