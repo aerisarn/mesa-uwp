@@ -776,6 +776,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       return NULL;
    simple_mtx_init(&obj->view_lock, mtx_plain);
    util_dynarray_init(&obj->views, NULL);
+   u_rwlock_init(&obj->copy_lock);
    obj->unordered_read = true;
    obj->unordered_write = true;
    obj->last_dt_idx = obj->dt_idx = UINT32_MAX; //TODO: unionize
@@ -2560,6 +2561,7 @@ zink_resource_copy_box_intersects(struct zink_resource *res, unsigned level, con
    /* untracked huge miplevel */
    if (level >= ARRAY_SIZE(res->obj->copies))
       return true;
+   u_rwlock_rdlock(&res->obj->copy_lock);
    struct pipe_box *b = res->obj->copies[level].data;
    unsigned num_boxes = util_dynarray_num_elements(&res->obj->copies[level], struct pipe_box);
    bool (*intersect)(const struct pipe_box *, const struct pipe_box *);
@@ -2580,18 +2582,23 @@ zink_resource_copy_box_intersects(struct zink_resource *res, unsigned level, con
       break;
    }
    /* if any of the tracked boxes intersect with this one, a barrier is needed */
+   bool ret = false;
    for (unsigned i = 0; i < num_boxes; i++) {
-      if (intersect(box, b + i))
-         return true;
+      if (intersect(box, b + i)) {
+         ret = true;
+         break;
+      }
    }
+   u_rwlock_rdunlock(&res->obj->copy_lock);
    /* no intersection = no barrier */
-   return false;
+   return ret;
 }
 
 /* track a new region for TRANSFER_DST barrier emission */
 void
 zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box)
 {
+   u_rwlock_wrlock(&res->obj->copy_lock);
    if (res->obj->copies_valid) {
       struct pipe_box *b = res->obj->copies[level].data;
       unsigned num_boxes = util_dynarray_num_elements(&res->obj->copies[level], struct pipe_box);
@@ -2601,23 +2608,23 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
          case PIPE_TEXTURE_1D:
             /* no-op included region */
             if (b[i].x <= box->x && b[i].x + b[i].width >= box->x + box->width)
-               return;
+               goto out;
 
             /* try to merge adjacent regions */
             if (b[i].x == box->x + box->width) {
                b[i].x -= box->width;
                b[i].width += box->width;
-               return;
+               goto out;
             }
             if (b[i].x + b[i].width == box->x) {
                b[i].width += box->width;
-               return;
+               goto out;
             }
 
             /* try to merge into region */
             if (box->x <= b[i].x && box->x + box->width >= b[i].x + b[i].width) {
                *b = *box;
-               return;
+               goto out;
             }
             break;
 
@@ -2626,28 +2633,28 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
             /* no-op included region */
             if (b[i].x <= box->x && b[i].x + b[i].width >= box->x + box->width &&
                 b[i].y <= box->y && b[i].y + b[i].height >= box->y + box->height)
-               return;
+               goto out;
 
             /* try to merge adjacent regions */
             if (b[i].y == box->y && b[i].height == box->height) {
                if (b[i].x == box->x + box->width) {
                   b[i].x -= box->width;
                   b[i].width += box->width;
-                  return;
+                  goto out;
                }
                if (b[i].x + b[i].width == box->x) {
                   b[i].width += box->width;
-                  return;
+                  goto out;
                }
             } else if (b[i].x == box->x && b[i].width == box->width) {
                if (b[i].y == box->y + box->height) {
                   b[i].y -= box->height;
                   b[i].height += box->height;
-                  return;
+                  goto out;
                }
                if (b[i].y + b[i].height == box->y) {
                   b[i].height += box->height;
-                  return;
+                  goto out;
                }
             }
 
@@ -2655,7 +2662,7 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
             if (box->x <= b[i].x && box->x + box->width >= b[i].x + b[i].width &&
                 box->y <= b[i].y && box->y + box->height >= b[i].y + b[i].height) {
                *b = *box;
-               return;
+               goto out;
             }
             break;
 
@@ -2664,7 +2671,7 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
             if (b[i].x <= box->x && b[i].x + b[i].width >= box->x + box->width &&
                 b[i].y <= box->y && b[i].y + b[i].height >= box->y + box->height &&
                 b[i].z <= box->z && b[i].z + b[i].depth >= box->z + box->depth)
-               return;
+               goto out;
 
                /* try to merge adjacent regions */
             if (b[i].z == box->z && b[i].depth == box->depth) {
@@ -2672,21 +2679,21 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
                   if (b[i].x == box->x + box->width) {
                      b[i].x -= box->width;
                      b[i].width += box->width;
-                     return;
+                     goto out;
                   }
                   if (b[i].x + b[i].width == box->x) {
                      b[i].width += box->width;
-                     return;
+                     goto out;
                   }
                } else if (b[i].x == box->x && b[i].width == box->width) {
                   if (b[i].y == box->y + box->height) {
                      b[i].y -= box->height;
                      b[i].height += box->height;
-                     return;
+                     goto out;
                   }
                   if (b[i].y + b[i].height == box->y) {
                      b[i].height += box->height;
-                     return;
+                     goto out;
                   }
                }
             } else if (b[i].x == box->x && b[i].width == box->width) {
@@ -2694,21 +2701,21 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
                   if (b[i].z == box->z + box->depth) {
                      b[i].z -= box->depth;
                      b[i].depth += box->depth;
-                     return;
+                     goto out;
                   }
                   if (b[i].z + b[i].depth == box->z) {
                      b[i].depth += box->depth;
-                     return;
+                     goto out;
                   }
                } else if (b[i].z == box->z && b[i].depth == box->depth) {
                   if (b[i].y == box->y + box->height) {
                      b[i].y -= box->height;
                      b[i].height += box->height;
-                     return;
+                     goto out;
                   }
                   if (b[i].y + b[i].height == box->y) {
                      b[i].height += box->height;
-                     return;
+                     goto out;
                   }
                }
             } else if (b[i].y == box->y && b[i].height == box->height) {
@@ -2716,21 +2723,21 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
                   if (b[i].x == box->x + box->width) {
                      b[i].x -= box->width;
                      b[i].width += box->width;
-                     return;
+                     goto out;
                   }
                   if (b[i].x + b[i].width == box->x) {
                      b[i].width += box->width;
-                     return;
+                     goto out;
                   }
                } else if (b[i].x == box->x && b[i].width == box->width) {
                   if (b[i].z == box->z + box->depth) {
                      b[i].z -= box->depth;
                      b[i].depth += box->depth;
-                     return;
+                     goto out;
                   }
                   if (b[i].z + b[i].depth == box->z) {
                      b[i].depth += box->depth;
-                     return;
+                     goto out;
                   }
                }
             }
@@ -2739,7 +2746,7 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
             if (box->x <= b[i].x && box->x + box->width >= b[i].x + b[i].width &&
                 box->y <= b[i].y && box->y + box->height >= b[i].y + b[i].height &&
                 box->z <= b[i].z && box->z + box->depth >= b[i].z + b[i].depth)
-               return;
+               goto out;
 
             break;
          }
@@ -2752,6 +2759,8 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
       res->copies_warned = true;
    }
    res->obj->copies_valid = true;
+out:
+   u_rwlock_wrunlock(&res->obj->copy_lock);
 }
 
 void
@@ -2759,6 +2768,7 @@ zink_resource_copies_reset(struct zink_resource *res)
 {
    if (!res->obj->copies_valid)
       return;
+   u_rwlock_wrlock(&res->obj->copy_lock);
    unsigned max_level = res->base.b.target == PIPE_BUFFER ? 1 : (res->base.b.last_level + 1);
    if (res->base.b.target == PIPE_BUFFER) {
       /* flush transfer regions back to valid range on reset */
@@ -2771,6 +2781,7 @@ zink_resource_copies_reset(struct zink_resource *res)
       util_dynarray_clear(&res->obj->copies[i]);
    res->obj->copies_valid = false;
    res->obj->copies_need_reset = false;
+   u_rwlock_wrunlock(&res->obj->copy_lock);
 }
 
 static void
