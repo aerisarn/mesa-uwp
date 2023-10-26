@@ -96,9 +96,9 @@ vc4-rpi3-gl:arm32:
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
 
-v3d-rpi4-gl:arm32:
+v3d-rpi4-gl:arm64:
   extends:
-    - .broadcom-test:arm32
+    - .broadcom-test:arm64
     - .v3d-rules
   tags:
     - igalia-rpi4
