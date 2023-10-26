@@ -156,8 +156,7 @@ impl LowerCopySwap {
 
         if x == y {
             // Nothing to do
-        } else if x.is_predicate() {
-            // TODO: Transform this in PLOP2 for SM5x-SM6x
+        } else if x.is_predicate() && b.sm() >= 70 {
             b.push_op(OpPLop3 {
                 dsts: [x.into(), y.into()],
                 srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
