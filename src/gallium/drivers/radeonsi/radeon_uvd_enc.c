@@ -257,7 +257,7 @@ static void radeon_uvd_enc_destroy(struct pipe_video_codec *encoder)
 }
 
 static void radeon_uvd_enc_get_feedback(struct pipe_video_codec *encoder, void *feedback,
-                                        unsigned *size)
+                                        unsigned *size, struct pipe_enc_feedback_metadata* metadata)
 {
    struct radeon_uvd_encoder *enc = (struct radeon_uvd_encoder *)encoder;
    struct rvid_buffer *fb = feedback;

@@ -118,7 +118,10 @@ struct pipe_video_codec
    /**
     * get encoder feedback
     */
-   void (*get_feedback)(struct pipe_video_codec *codec, void *feedback, unsigned *size);
+   void (*get_feedback)(struct pipe_video_codec *codec,
+                        void *feedback,
+                        unsigned *size,
+                        struct pipe_enc_feedback_metadata* metadata /* opt NULL */);
 
    /**
     * Get decoder fence.

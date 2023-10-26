@@ -2102,7 +2102,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
 }
 
 void
-d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback, unsigned *size)
+d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback, unsigned *size, struct pipe_enc_feedback_metadata* metadata)
 {
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
    assert(pD3D12Enc);

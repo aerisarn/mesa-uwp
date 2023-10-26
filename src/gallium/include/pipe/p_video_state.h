@@ -599,6 +599,9 @@ struct pipe_h264_enc_picture_desc
 
    unsigned num_slice_descriptors;
    struct h264_slice_descriptor slices_descriptors[128];
+
+   bool insert_aud_nalu;
+   enum pipe_video_feedback_metadata_type requested_metadata;
 };
 
 struct pipe_h265_enc_seq_param
@@ -727,6 +730,7 @@ struct pipe_h265_enc_picture_desc
 
    unsigned num_slice_descriptors;
    struct h265_slice_descriptor slices_descriptors[128];
+   enum pipe_video_feedback_metadata_type requested_metadata;
 };
 
 struct pipe_av1_enc_rate_control
@@ -936,6 +940,7 @@ struct pipe_av1_enc_picture_desc
       uint8_t temporal_id;
       uint8_t spatial_id;
    } tg_obu_header;
+   enum pipe_video_feedback_metadata_type requested_metadata;
 };
 
 struct pipe_h265_sps
@@ -1782,6 +1787,35 @@ union pipe_av1_enc_cap_features_ext2 {
         uint32_t reserved                      : 12;
     } bits;
     uint32_t value;
+};
+
+struct codec_unit_location_t
+{
+   uint64_t offset;
+   uint64_t size;
+   enum codec_unit_location_flags flags;
+};
+
+struct pipe_enc_feedback_metadata
+{
+   /*
+   * Driver writes the metadata types present in this struct
+   */
+   enum pipe_video_feedback_metadata_type present_metadata;
+
+   /*
+    * Driver writes the result of encoding the associated frame.
+    * Requires PIPE_VIDEO_FEEDBACK_METADATA_TYPE_ENCODE_RESULT
+    */
+   enum pipe_video_feedback_encode_result_flags encode_result;
+
+   /*
+    * Driver fills in with coded headers information
+    * and a number codec_unit_metadata_count of valid entries
+    * Requires PIPE_VIDEO_FEEDBACK_METADATA_TYPE_CODEC_UNIT_LOCATION
+    */
+   struct codec_unit_location_t codec_unit_metadata[256];
+   unsigned codec_unit_metadata_count;
 };
 
 #ifdef __cplusplus

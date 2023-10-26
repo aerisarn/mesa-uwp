@@ -71,7 +71,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
  * get encoder feedback
  */
 void
-d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback, unsigned *size);
+d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback, unsigned *size, struct pipe_enc_feedback_metadata* metadata);
 
 /**
  * end encoding of the current frame

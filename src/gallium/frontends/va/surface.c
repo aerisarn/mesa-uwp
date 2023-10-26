@@ -188,7 +188,7 @@ vlVaSyncSurface(VADriverContextP ctx, VASurfaceID render_target)
             }
          }
       }
-      context->decoder->get_feedback(context->decoder, surf->feedback, &(surf->coded_buf->coded_size));
+      context->decoder->get_feedback(context->decoder, surf->feedback, &(surf->coded_buf->coded_size), &(surf->coded_buf->extended_metadata));
       surf->feedback = NULL;
       surf->coded_buf->feedback = NULL;
       surf->coded_buf->associated_encode_input_surf = VA_INVALID_ID;
