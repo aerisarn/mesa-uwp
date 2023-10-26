@@ -3,9 +3,10 @@ from io import StringIO
 from os import getenv
 from typing import TYPE_CHECKING, Any
 
-from lava.utils.lava_farm import LavaFarm, get_lava_farm
 from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import LiteralScalarString
+
+from lava.utils.lava_farm import LavaFarm, get_lava_farm
 
 if TYPE_CHECKING:
     from lava.lava_job_submitter import LAVAJobSubmitter
@@ -17,50 +18,6 @@ NUMBER_OF_ATTEMPTS_LAVA_BOOT = int(getenv("LAVA_NUMBER_OF_ATTEMPTS_LAVA_BOOT", 3
 # The scheduler considers the job priority when ordering the queue
 # to consider which job should run next.
 JOB_PRIORITY = int(getenv("JOB_PRIORITY", 75))
-
-
-def has_ssh_support(job_submitter: "LAVAJobSubmitter") -> bool:
-    force_uart = bool(getenv("LAVA_FORCE_UART", False))
-
-    if force_uart:
-        return False
-
-    # Only Collabora's farm supports to run docker container as a LAVA actions,
-    # which is required to follow the job in a SSH section
-    current_farm = get_lava_farm()
-
-    # SSH job definition still needs to add support for fastboot.
-    job_uses_fastboot: bool = job_submitter.boot_method == "fastboot"
-
-    return current_farm == LavaFarm.COLLABORA and not job_uses_fastboot
-
-
-def generate_lava_yaml_payload(job_submitter: "LAVAJobSubmitter") -> dict[str, Any]:
-    """
-    Bridge function to use the supported job definition depending on some Mesa
-    CI job characteristics.
-
-    The strategy here, is to use LAVA with a containerized SSH session to follow
-    the job output, escaping from dumping data to the UART, which proves to be
-    error prone in some devices.
-    """
-    from lava.utils.ssh_job_definition import \
-        generate_lava_yaml_payload as ssh_lava_yaml
-    from lava.utils.uart_job_definition import \
-        generate_lava_yaml_payload as uart_lava_yaml
-
-    if has_ssh_support(job_submitter):
-        return ssh_lava_yaml(job_submitter)
-
-    return uart_lava_yaml(job_submitter)
-
-
-def generate_lava_job_definition(job_submitter: "LAVAJobSubmitter") -> str:
-    job_stream = StringIO()
-    yaml = YAML()
-    yaml.width = 4096
-    yaml.dump(generate_lava_yaml_payload(job_submitter), job_stream)
-    return job_stream.getvalue()
 
 
 def to_yaml_block(steps_array: list[str], escape_vars=[]) -> LiteralScalarString:
@@ -76,73 +33,127 @@ def to_yaml_block(steps_array: list[str], escape_vars=[]) -> LiteralScalarString
     return LiteralScalarString(final_str)
 
 
-def generate_metadata(args) -> dict[str, Any]:
-    # General metadata and permissions
-    values = {
-        "job_name": f"{args.project_name}: {args.pipeline_info}",
-        "device_type": args.device_type,
-        "visibility": {"group": [args.visibility_group]},
-        "priority": JOB_PRIORITY,
-        "context": {
-            "extra_nfsroot_args": " init=/init rootwait usbcore.quirks=0bda:8153:k"
-        },
-        "timeouts": {
-            "job": {"minutes": args.job_timeout_min},
-            "actions": {
-                "depthcharge-retry": {
-                    # Could take between 1 and 1.5 min in slower boots
-                    "minutes": 4
-                },
-                "depthcharge-start": {
-                    # Should take less than 1 min.
-                    "minutes": 1,
-                },
-                "depthcharge-action": {
-                    # This timeout englobes the entire depthcharge timing,
-                    # including retries
-                    "minutes": 5
-                    * NUMBER_OF_ATTEMPTS_LAVA_BOOT,
+class LAVAJobDefinition:
+    """
+    This class is responsible for generating the YAML payload to submit a LAVA
+    job.
+    """
+
+    def __init__(self, job_submitter: "LAVAJobSubmitter") -> None:
+        self.job_submitter: "LAVAJobSubmitter" = job_submitter
+
+    def has_ssh_support(self) -> bool:
+        force_uart = bool(getenv("LAVA_FORCE_UART", False))
+
+        if force_uart:
+            return False
+
+        # Only Collabora's farm supports to run docker container as a LAVA actions,
+        # which is required to follow the job in a SSH section
+        current_farm = get_lava_farm()
+
+        # SSH job definition still needs to add support for fastboot.
+        job_uses_fastboot: bool = self.job_submitter.boot_method == "fastboot"
+
+        return current_farm == LavaFarm.COLLABORA and not job_uses_fastboot
+
+    def generate_lava_yaml_payload(self) -> dict[str, Any]:
+        """
+        Bridge function to use the supported job definition depending on some Mesa
+        CI job characteristics.
+
+        The strategy here, is to use LAVA with a containerized SSH session to follow
+        the job output, escaping from dumping data to the UART, which proves to be
+        error prone in some devices.
+        """
+        from lava.utils.ssh_job_definition import generate_lava_yaml_payload as ssh_lava_yaml
+        from lava.utils.uart_job_definition import generate_lava_yaml_payload as uart_lava_yaml
+
+        if self.has_ssh_support():
+            return ssh_lava_yaml(self)
+
+        return uart_lava_yaml(self)
+
+    def generate_lava_job_definition(self) -> str:
+        job_stream = StringIO()
+        yaml = YAML()
+        yaml.width = 4096
+        yaml.dump(self.generate_lava_yaml_payload(), job_stream)
+        return job_stream.getvalue()
+
+    def generate_metadata(self) -> dict[str, Any]:
+        # General metadata and permissions
+        values = {
+            "job_name": f"{self.job_submitter.project_name}: {self.job_submitter.pipeline_info}",
+            "device_type": self.job_submitter.device_type,
+            "visibility": {"group": [self.job_submitter.visibility_group]},
+            "priority": JOB_PRIORITY,
+            "context": {"extra_nfsroot_args": " init=/init rootwait usbcore.quirks=0bda:8153:k"},
+            "timeouts": {
+                "job": {"minutes": self.job_submitter.job_timeout_min},
+                "actions": {
+                    "depthcharge-retry": {
+                        # Could take between 1 and 1.5 min in slower boots
+                        "minutes": 4
+                    },
+                    "depthcharge-start": {
+                        # Should take less than 1 min.
+                        "minutes": 1,
+                    },
+                    "depthcharge-action": {
+                        # This timeout englobes the entire depthcharge timing,
+                        # including retries
+                        "minutes": 5
+                        * NUMBER_OF_ATTEMPTS_LAVA_BOOT,
+                    },
                 },
             },
-        },
-    }
+        }
 
-    if args.lava_tags:
-        values["tags"] = args.lava_tags.split(",")
+        if self.job_submitter.lava_tags:
+            values["tags"] = self.job_submitter.lava_tags.split(",")
 
-    return values
+        return values
 
+    def attach_kernel_and_dtb(self, deploy_field):
+        if self.job_submitter.kernel_image_type:
+            deploy_field["kernel"]["type"] = self.job_submitter.kernel_image_type
+        if self.job_submitter.dtb_filename:
+            deploy_field["dtb"] = {
+                "url": f"{self.job_submitter.kernel_url_prefix}/"
+                f"{self.job_submitter.dtb_filename}.dtb"
+            }
 
-def artifact_download_steps(args):
-    """
-    This function is responsible for setting up the SSH server in the DUT and to
-    export the first boot environment to a file.
-    """
-    # Putting JWT pre-processing and mesa download, within init-stage1.sh file,
-    # as we do with non-SSH version.
-    download_steps = [
-        "set -ex",
-        "curl -L --retry 4 -f --retry-all-errors --retry-delay 60 "
-        f"{args.job_rootfs_overlay_url} | tar -xz -C /",
-        f"mkdir -p {args.ci_project_dir}",
-        f"curl -L --retry 4 -f --retry-all-errors --retry-delay 60 {args.build_url} | "
-        f"tar --zstd -x -C {args.ci_project_dir}",
-    ]
-
-    # If the JWT file is provided, we will use it to authenticate with the cloud
-    # storage provider and will hide it from the job output in Gitlab.
-    if args.jwt_file:
-        with open(args.jwt_file) as jwt_file:
-            download_steps += [
-                "set +x  # HIDE_START",
-                f'echo -n "{jwt_file.read()}" > "{args.jwt_file}"',
-                "set -x  # HIDE_END",
-                f'echo "export CI_JOB_JWT_FILE={args.jwt_file}" >> /set-job-env-vars.sh',
-            ]
-    else:
-        download_steps += [
-            "echo Could not find jwt file, disabling S3 requests...",
-            "sed -i '/S3_RESULTS_UPLOAD/d' /set-job-env-vars.sh",
+    def artifact_download_steps(self):
+        """
+        This function is responsible for setting up the SSH server in the DUT and to
+        export the first boot environment to a file.
+        """
+        # Putting JWT pre-processing and mesa download, within init-stage1.sh file,
+        # as we do with non-SSH version.
+        download_steps = [
+            "set -ex",
+            "curl -L --retry 4 -f --retry-all-errors --retry-delay 60 "
+            f"{self.job_submitter.job_rootfs_overlay_url} | tar -xz -C /",
+            f"mkdir -p {self.job_submitter.ci_project_dir}",
+            f"curl -L --retry 4 -f --retry-all-errors --retry-delay 60 {self.job_submitter.build_url} | "
+            f"tar --zstd -x -C {self.job_submitter.ci_project_dir}",
         ]
 
-    return download_steps
+        # If the JWT file is provided, we will use it to authenticate with the cloud
+        # storage provider and will hide it from the job output in Gitlab.
+        if self.job_submitter.jwt_file:
+            with open(self.job_submitter.jwt_file) as jwt_file:
+                download_steps += [
+                    "set +x  # HIDE_START",
+                    f'echo -n "{jwt_file.read()}" > "{self.job_submitter.jwt_file}"',
+                    "set -x  # HIDE_END",
+                    f'echo "export CI_JOB_JWT_FILE={self.job_submitter.jwt_file}" >> /set-job-env-vars.sh',
+                ]
+        else:
+            download_steps += [
+                "echo Could not find jwt file, disabling S3 requests...",
+                "sed -i '/S3_RESULTS_UPLOAD/d' /set-job-env-vars.sh",
+            ]
+
+        return download_steps

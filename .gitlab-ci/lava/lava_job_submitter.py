@@ -17,7 +17,6 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
-from io import StringIO
 from os import environ, getenv, path
 from typing import Any, Optional
 
@@ -34,11 +33,11 @@ from lava.utils import (
     CONSOLE_LOG,
     GitlabSection,
     LAVAJob,
+    LAVAJobDefinition,
     LogFollower,
     LogSectionType,
     call_proxy,
     fatal_err,
-    generate_lava_job_definition,
     hide_sensitive_data,
     print_log,
     setup_lava_proxy,
@@ -404,7 +403,7 @@ class LAVAJobSubmitter(PathResolver):
             minutes=self.job_timeout_min
         )
 
-        job_definition = generate_lava_job_definition(self)
+        job_definition = LAVAJobDefinition(self).generate_lava_job_definition()
 
         if self.dump_yaml:
             self.dump_job_definition(job_definition)
