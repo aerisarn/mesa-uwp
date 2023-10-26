@@ -2776,8 +2776,11 @@ zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_sh
          optimize_nir(producer, NULL, true);
       }
    }
-   if (consumer->info.stage != MESA_SHADER_FRAGMENT)
+   if (consumer->info.stage != MESA_SHADER_FRAGMENT) {
       producer->info.has_transform_feedback_varyings = false;
+      nir_foreach_shader_out_variable(var, producer)
+         var->data.explicit_xfb_buffer = false;
+   }
    if (producer->info.stage == MESA_SHADER_TESS_CTRL) {
       /* never assign from tcs -> tes, always invert */
       nir_foreach_variable_with_modes(var, consumer, nir_var_shader_in)
