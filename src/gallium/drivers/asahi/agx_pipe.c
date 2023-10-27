@@ -1625,6 +1625,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_COMPUTE:
    case PIPE_CAP_INT64:
    case PIPE_CAP_SAMPLE_SHADING:
+   case PIPE_CAP_START_INSTANCE:
       return 1;
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
       /* TODO: MSRTT */

@@ -8,3 +8,4 @@ GL_ARB_texture_cube_map_array on Asahi
 GL_ARB_clip_control on Asahi
 GL_ARB_timer_query on Asahi
 GL_EXT_disjoint_timer_query on Asahi
+GL_ARB_base_instance on Asahi
