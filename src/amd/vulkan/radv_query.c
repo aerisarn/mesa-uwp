@@ -1869,20 +1869,24 @@ emit_sample_streamout(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint32_t 
 }
 
 static void
-gfx10_copy_gds_query(struct radv_cmd_buffer *cmd_buffer, uint32_t gds_offset, uint64_t va)
+gfx10_copy_gds_query(struct radeon_cmdbuf *cs, uint32_t gds_offset, uint64_t va)
 {
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
-
-   /* Make sure GDS is idle before copying the value. */
-   cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2;
-   si_emit_cache_flush(cmd_buffer);
-
    radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
    radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_GDS) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) | COPY_DATA_WR_CONFIRM);
    radeon_emit(cs, gds_offset);
    radeon_emit(cs, 0);
    radeon_emit(cs, va);
    radeon_emit(cs, va >> 32);
+}
+
+static void
+gfx10_copy_gds_query_gfx(struct radv_cmd_buffer *cmd_buffer, uint32_t gds_offset, uint64_t va)
+{
+   /* Make sure GDS is idle before copying the value. */
+   cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2;
+   si_emit_cache_flush(cmd_buffer);
+
+   gfx10_copy_gds_query(cmd_buffer->cs, gds_offset, va);
 }
 
 static void
@@ -1967,21 +1971,21 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
             uint32_t gs_prim_offset =
                radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT);
 
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_PRIM_EMIT_OFFSET, va + gs_prim_offset);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_GS_PRIM_EMIT_OFFSET, va + gs_prim_offset);
          }
 
          if (pool->vk.pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT) {
             uint32_t gs_invoc_offset =
                radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT);
 
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_INVOCATION_OFFSET, va + gs_invoc_offset);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_GS_INVOCATION_OFFSET, va + gs_invoc_offset);
          }
 
          if (pool->vk.pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) {
             uint32_t mesh_invoc_offset =
                radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT);
 
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_MS_INVOCATION_OFFSET, va + mesh_invoc_offset);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_MS_INVOCATION_OFFSET, va + mesh_invoc_offset);
          }
 
          /* Record that the command buffer needs GDS. */
@@ -1997,11 +2001,11 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
          /* generated prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
+         gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
          radv_cs_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
          /* written prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 8);
+         gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 8);
          radv_cs_write_data_imm(cs, V_370_ME, va + 12, 0x80000000);
 
          /* Record that the command buffer needs GDS. */
@@ -2022,7 +2026,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
          /* On GFX11+, primitives generated query always use GDS. */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
+         gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
          radv_cs_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
          /* Record that the command buffer needs GDS. */
@@ -2049,7 +2053,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
 
          if (pool->uses_gds) {
             /* generated prim counter */
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 32);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 32);
             radv_cs_write_data_imm(cs, V_370_ME, va + 36, 0x80000000);
 
             /* Record that the command buffer needs GDS. */
@@ -2070,7 +2074,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       break;
    }
    case VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT: {
-      gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_MS_PRIM_GEN_OFFSET, va);
+      gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_MS_PRIM_GEN_OFFSET, va);
       radv_cs_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
       /* Record that the command buffer needs GDS. */
@@ -2148,21 +2152,21 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
             uint32_t gs_prim_offset =
                radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT);
 
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_PRIM_EMIT_OFFSET, va + gs_prim_offset);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_GS_PRIM_EMIT_OFFSET, va + gs_prim_offset);
          }
 
          if (pool->vk.pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT) {
             uint32_t gs_invoc_offset =
                radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT);
 
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_INVOCATION_OFFSET, va + gs_invoc_offset);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_GS_INVOCATION_OFFSET, va + gs_invoc_offset);
          }
 
          if (pool->vk.pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) {
             uint32_t mesh_invoc_offset =
                radv_get_pipelinestat_query_offset(VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT);
 
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_MS_INVOCATION_OFFSET, va + mesh_invoc_offset);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_MS_INVOCATION_OFFSET, va + mesh_invoc_offset);
          }
 
          cmd_buffer->state.active_pipeline_gds_queries--;
@@ -2179,11 +2183,11 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
          /* generated prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
+         gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
          radv_cs_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
 
          /* written prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 24);
+         gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 24);
          radv_cs_write_data_imm(cs, V_370_ME, va + 28, 0x80000000);
 
          cmd_buffer->state.active_prims_xfb_gds_queries--;
@@ -2201,7 +2205,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
          /* On GFX11+, primitives generated query always use GDS. */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
+         gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
          radv_cs_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
 
          cmd_buffer->state.active_prims_gen_gds_queries--;
@@ -2225,7 +2229,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
 
          if (pool->uses_gds) {
             /* generated prim counter */
-            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 40);
+            gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 40);
             radv_cs_write_data_imm(cs, V_370_ME, va + 44, 0x80000000);
 
             cmd_buffer->state.active_prims_gen_gds_queries--;
@@ -2243,7 +2247,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       break;
    }
    case VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT: {
-      gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_MS_PRIM_GEN_OFFSET, va + 8);
+      gfx10_copy_gds_query_gfx(cmd_buffer, RADV_SHADER_QUERY_MS_PRIM_GEN_OFFSET, va + 8);
       radv_cs_write_data_imm(cs, V_370_ME, va + 12, 0x80000000);
 
       cmd_buffer->state.active_prims_gen_gds_queries--;
