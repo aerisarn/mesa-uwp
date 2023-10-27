@@ -244,7 +244,7 @@ replay_context_init(struct replay_context *ctx, struct fd_dev_id *dev_id,
 
    struct ir3_compiler_options options{};
    ctx->compiler =
-      ir3_compiler_create(NULL, dev_id, fd_dev_info(dev_id), &options);
+      ir3_compiler_create(NULL, dev_id, fd_dev_info_raw(dev_id), &options);
    ctx->compiled_shaders = _mesa_hash_table_u64_create(ctx->mem_ctx);
 }
 

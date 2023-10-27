@@ -589,13 +589,13 @@ handle_file(const char *filename, uint32_t submit_to_decompile)
       }
       case RD_GPU_ID: {
          dev_id.gpu_id = parse_gpu_id(ps.buf);
-         if (fd_dev_info(&dev_id))
+         if (fd_dev_info_raw(&dev_id))
             emit_header();
          break;
       }
       case RD_CHIP_ID: {
          dev_id.chip_id = parse_chip_id(ps.buf);
-         if (fd_dev_info(&dev_id))
+         if (fd_dev_info_raw(&dev_id))
             emit_header();
          break;
       }

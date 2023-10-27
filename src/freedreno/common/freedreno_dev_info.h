@@ -233,12 +233,16 @@ fd_dev_gpu_id(const struct fd_dev_id *id)
    return id->gpu_id;
 }
 
-const struct fd_dev_info * fd_dev_info(const struct fd_dev_id *id);
+/* Unmodified dev info as defined in freedreno_devices.py */
+const struct fd_dev_info *fd_dev_info_raw(const struct fd_dev_id *id);
+
+/* Final dev info with dbg options and everything else applied.  */
+const struct fd_dev_info fd_dev_info(const struct fd_dev_id *id);
 
 static uint8_t
 fd_dev_gen(const struct fd_dev_id *id)
 {
-   return fd_dev_info(id)->chip;
+   return fd_dev_info_raw(id)->chip;
 }
 
 static inline bool
@@ -259,6 +263,9 @@ fd_dev_64b(const struct fd_dev_id *id)
 #define A6XX_CCU_GMEM_COLOR_SIZE (16 * 1024)
 
 const char * fd_dev_name(const struct fd_dev_id *id);
+
+void
+fd_dev_info_apply_dbg_options(struct fd_dev_info *info);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

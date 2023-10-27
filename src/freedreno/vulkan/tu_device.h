@@ -109,6 +109,7 @@ struct tu_physical_device
    } memory;
 
    struct fd_dev_id dev_id;
+   struct fd_dev_info dev_info;
    const struct fd_dev_info *info;
 
    int msm_major_version;

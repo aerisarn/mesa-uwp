@@ -1184,13 +1184,14 @@ fd_screen_create(int fd,
    DBG(" Chip-id:         0x%016"PRIx64, screen->chip_id);
    DBG(" GMEM size:       0x%08x", screen->gmemsize_bytes);
 
-   const struct fd_dev_info *info = fd_dev_info(screen->dev_id);
-   if (!info) {
+   const struct fd_dev_info info = fd_dev_info(screen->dev_id);
+   if (!info.chip) {
       mesa_loge("unsupported GPU: a%03d", screen->gpu_id);
       goto fail;
    }
 
-   screen->info = info;
+   screen->dev_info = info;
+   screen->info = &screen->dev_info;
 
    /* explicitly checking for GPU revisions that are known to work.  This
     * may be overly conservative for a3xx, where spoofing the gpu_id with

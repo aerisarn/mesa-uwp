@@ -283,18 +283,25 @@ add_gpus([
 
 
 class A6XXProps(dict):
-    def apply_props(self, gpu_info):
+    unique_props = dict()
+    def apply_gen_props(self, gen, gpu_info):
         for name, val in self.items():
-            if name == "magic":
-                continue
-            setattr(gpu_info.a6xx, name, val)
+            setattr(getattr(gpu_info, gen), name, val)
+            A6XXProps.unique_props[(name, gen)] = val
 
-
-class A7XXProps(dict):
     def apply_props(self, gpu_info):
-        for name, val in self.items():
-            setattr(gpu_info.a7xx, name, val)
+        self.apply_gen_props("a6xx", gpu_info)
 
+
+class A7XXProps(A6XXProps):
+    def apply_props(self, gpu_info):
+        self.apply_gen_props("a7xx", gpu_info)
+
+
+# Props could be modified with env var:
+#  FD_DEV_FEATURES=%feature_name%=%value%:%feature_name%=%value%:...
+# e.g.
+#  FD_DEV_FEATURES=has_fs_tex_prefetch=0:max_sets=4
 
 a6xx_base = A6XXProps(
         has_cp_reg_write = True,
@@ -907,6 +914,10 @@ template = """\
  */
 
 #include "freedreno_dev_info.h"
+#include "util/u_debug.h"
+#include "util/log.h"
+
+#include <stdlib.h>
 
 /* Map python to C: */
 #define True true
@@ -921,7 +932,50 @@ static const struct fd_dev_rec fd_dev_recs[] = {
    { {${id.gpu_id}, ${hex(id.chip_id)}}, "${id.name}", &__info${s.info_index(info)} },
 %endfor
 };
+
+void
+fd_dev_info_apply_dbg_options(struct fd_dev_info *info)
+{
+    const char *env = debug_get_option("FD_DEV_FEATURES", NULL);
+    if (!env || !*env)
+        return;
+
+    char *features = strdup(env);
+    char *feature, *feature_end;
+    feature = strtok_r(features, ":", &feature_end);
+    while (feature != NULL) {
+        char *name, *name_end;
+        name = strtok_r(feature, "=", &name_end);
+
+        if (!name) {
+            mesa_loge("Invalid feature \\"%s\\" in FD_DEV_FEATURES", feature);
+            exit(1);
+        }
+
+        char *value = strtok_r(NULL, "=", &name_end);
+
+        feature = strtok_r(NULL, ":", &feature_end);
+
+%for (prop, gen), val in unique_props.items():
+  <%
+    if isinstance(val, bool):
+        parse_value = "debug_parse_bool_option"
+    else:
+        parse_value = "debug_parse_num_option"
+  %>
+        if (strcmp(name, "${prop}") == 0) {
+            info->${gen}.${prop} = ${parse_value}(value, info->${gen}.${prop});
+            continue;
+        }
+%endfor
+
+        mesa_loge("Invalid feature \\"%s\\" in FD_DEV_FEATURES", name);
+        exit(1);
+    }
+
+    free(features);
+}
 """
 
-print(Template(template).render(s=s))
+print(Template(template).render(s=s, unique_props=A6XXProps.unique_props))
 
