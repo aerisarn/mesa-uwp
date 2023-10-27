@@ -1676,6 +1676,7 @@ struct radv_cmd_state {
    bool perfect_occlusion_queries_enabled;
    unsigned active_pipeline_queries;
    unsigned active_pipeline_gds_queries;
+   unsigned active_pipeline_ace_queries; /* Task shader invocations query */
    unsigned active_prims_gen_queries;
    unsigned active_prims_xfb_queries;
    unsigned active_prims_gen_gds_queries;
@@ -2999,6 +3000,7 @@ struct radv_query_pool {
    uint64_t size;
    char *ptr;
    bool uses_gds; /* For NGG GS on GFX10+ */
+   bool uses_ace; /* For task shader invocations on GFX10.3+ */
 };
 
 struct radv_perfcounter_impl;

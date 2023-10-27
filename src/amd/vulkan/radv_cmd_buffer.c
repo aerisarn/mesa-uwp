@@ -4994,14 +4994,12 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_flush_shader_query_state(struct radv_cmd_buffer *cmd_buffer)
+radv_flush_shader_query_state_gfx(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const struct radv_userdata_info *loc = radv_get_user_sgpr(last_vgt_shader, AC_UD_SHADER_QUERY_STATE);
    enum radv_shader_query_state shader_query_state = radv_shader_query_none;
    uint32_t base_reg;
-
-   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_SHADER_QUERY;
 
    if (loc->sgpr_idx == -1)
       return;
@@ -5029,6 +5027,41 @@ radv_flush_shader_query_state(struct radv_cmd_buffer *cmd_buffer)
    assert(loc->sgpr_idx != -1);
 
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, shader_query_state);
+}
+
+static void
+radv_flush_shader_query_state_ace(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *task_shader)
+{
+   const struct radv_userdata_info *loc = radv_get_user_sgpr(task_shader, AC_UD_SHADER_QUERY_STATE);
+   enum radv_shader_query_state shader_query_state = radv_shader_query_none;
+   uint32_t base_reg;
+
+   if (loc->sgpr_idx == -1)
+      return;
+
+   /* By default shader queries are disabled but they are enabled if the command buffer has active ACE
+    * queries or if it's a secondary command buffer that inherits the number of task shader
+    * invocations query.
+    */
+   if (cmd_buffer->state.active_pipeline_ace_queries ||
+       (cmd_buffer->state.inherited_pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT))
+      shader_query_state |= radv_shader_query_pipeline_stat;
+
+   base_reg = task_shader->info.user_data_0;
+   assert(loc->sgpr_idx != -1);
+
+   radeon_set_sh_reg(cmd_buffer->gang.cs, base_reg + loc->sgpr_idx * 4, shader_query_state);
+}
+
+static void
+radv_flush_shader_query_state(struct radv_cmd_buffer *cmd_buffer)
+{
+   radv_flush_shader_query_state_gfx(cmd_buffer);
+
+   if (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_TASK))
+      radv_flush_shader_query_state_ace(cmd_buffer, cmd_buffer->state.shaders[MESA_SHADER_TASK]);
+
+   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_SHADER_QUERY;
 }
 
 static void
