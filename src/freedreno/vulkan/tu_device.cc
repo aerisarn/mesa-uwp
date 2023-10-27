@@ -2285,8 +2285,8 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
          .storage_16bit = physical_device->info->a6xx.storage_16bit,
          .shared_push_consts = !TU_DEBUG(PUSH_CONSTS_PER_STAGE),
       };
-      device->compiler =
-         ir3_compiler_create(NULL, &physical_device->dev_id, &ir3_options);
+      device->compiler = ir3_compiler_create(
+         NULL, &physical_device->dev_id, physical_device->info, &ir3_options);
    }
    if (!device->compiler) {
       result = vk_startup_errorf(physical_device->instance,

@@ -535,8 +535,10 @@ main(int argc, char **argv)
       if (!compilers[dev_info->chip]) {
          dev_ids[dev_info->chip].gpu_id = test->gpu_id;
          dev_ids[dev_info->chip].chip_id = test->chip_id;
-         compilers[dev_info->chip] = ir3_compiler_create(
-            NULL, &dev_ids[dev_info->chip], &(struct ir3_compiler_options){});
+         compilers[dev_info->chip] =
+            ir3_compiler_create(NULL, &dev_ids[dev_info->chip],
+                                fd_dev_info(&dev_ids[dev_info->chip]),
+                                &(struct ir3_compiler_options){});
       }
 
       FILE *fasm =
