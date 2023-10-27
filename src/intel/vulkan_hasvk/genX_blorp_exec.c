@@ -373,13 +373,13 @@ genX(blorp_exec)(struct blorp_batch *batch,
 }
 
 static void
-blorp_emit_breakpoint_pre_draw(struct blorp_batch *batch)
+blorp_emit_pre_draw(struct blorp_batch *batch, const struct blorp_params *params)
 {
    /* "Not implemented" */
 }
 
 static void
-blorp_emit_breakpoint_post_draw(struct blorp_batch *batch)
+blorp_emit_post_draw(struct blorp_batch *batch, const struct blorp_params *params)
 {
    /* "Not implemented" */
 }
