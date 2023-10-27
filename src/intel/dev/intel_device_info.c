@@ -1009,6 +1009,7 @@ static const struct intel_device_info intel_device_info_adl_n = {
    GFX12_GT_FEATURES(1),
    .platform = INTEL_PLATFORM_ADL,
    .display_ver = 13,
+   .is_adl_n = true,
 };
 
 static const struct intel_device_info intel_device_info_adl_gt2 = {
@@ -1150,12 +1151,6 @@ static const struct intel_device_info intel_device_info_mtl_p = {
    MTL_FEATURES,
    .platform = INTEL_PLATFORM_MTL_P,
 };
-
-bool
-intel_device_info_is_adln(const struct intel_device_info *devinfo)
-{
-   return devinfo == &intel_device_info_adl_n;
-}
 
 void
 intel_device_info_topology_reset_masks(struct intel_device_info *devinfo)
