@@ -1228,6 +1228,19 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
                                  agx_src_index(&instr->src[1]));
    }
 
+   case nir_intrinsic_doorbell_agx: {
+      return agx_doorbell(b, nir_src_as_uint(instr->src[0]));
+   }
+
+   case nir_intrinsic_stack_map_agx: {
+      return agx_stack_map(b, agx_src_index(&instr->src[1]),
+                           nir_src_as_uint(instr->src[0]));
+   }
+
+   case nir_intrinsic_stack_unmap_agx: {
+      return agx_stack_unmap_to(b, dst, nir_src_as_uint(instr->src[0]));
+   }
+
    case nir_intrinsic_load_barycentric_sample:
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_pos:
