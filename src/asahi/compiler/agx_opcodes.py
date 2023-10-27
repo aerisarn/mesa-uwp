@@ -421,6 +421,12 @@ memory_barrier("image_barrier_4", 3, 1, 10)
 
 memory_barrier("flush_memory_to_texture", 0, 0, 4)
 
+op("doorbell", (0x60020 | 0x28 << 32, (1 << 48) - 1, 6, _), dests = 0,
+      can_eliminate = False, can_reorder = False, imms = [IMM])
+
+op("stack_unmap", (0x00075, (1 << 24) - 1, 8, _), dests = 1, srcs = 0, can_eliminate = False, can_reorder = False, imms = [IMM])
+op("stack_map",   (0x10075, (1 << 24) - 1, 8, _), dests = 0, srcs = 1, can_eliminate = False, can_reorder = False, imms = [IMM])
+
 # Convenient aliases.
 op("mov", _, srcs = 1)
 op("not", _, srcs = 1)

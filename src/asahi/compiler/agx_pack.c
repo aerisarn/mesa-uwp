@@ -967,6 +967,42 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       break;
    }
 
+   case AGX_OPCODE_DOORBELL: {
+      assert(I->imm < BITFIELD_MASK(8));
+      struct agx_opcode_info info = agx_opcodes_info[I->op];
+      uint64_t raw = info.encoding.exact | (I->imm << 40);
+      memcpy(util_dynarray_grow_bytes(emission, 1, 6), &raw, 6);
+      break;
+   }
+
+   case AGX_OPCODE_STACK_UNMAP:
+   case AGX_OPCODE_STACK_MAP: {
+      agx_index value = I->op == AGX_OPCODE_STACK_MAP ? I->src[0] : I->dest[0];
+
+      assert(value.type == AGX_INDEX_REGISTER);
+      assert(value.size == AGX_SIZE_32);
+      assert(I->imm < BITFIELD_MASK(16));
+
+      unsigned q1 = 0;  // XXX
+      unsigned q2 = 0;  // XXX
+      unsigned q3 = 0;  // XXX
+      unsigned q4 = 16; // XXX
+      unsigned q5 = 16; // XXX
+
+      struct agx_opcode_info info = agx_opcodes_info[I->op];
+      uint64_t raw =
+         info.encoding.exact | (q1 << 8) | ((value.value & 0x1F) << 11) |
+         ((I->imm & 0xF) << 20) | (1UL << 24) | // XXX
+         (1UL << 26) |                          // XXX
+         (q2 << 30) | ((uint64_t)((I->imm >> 4) & 0xF) << 32) |
+         ((uint64_t)q3 << 37) | ((uint64_t)(value.value >> 5) << 40) |
+         ((uint64_t)q4 << 42) | (1UL << 47) | // XXX
+         ((uint64_t)q5 << 48) | ((uint64_t)(I->imm >> 8) << 56);
+
+      memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
+      break;
+   }
+
    default:
       agx_pack_alu(emission, I);
       return;
