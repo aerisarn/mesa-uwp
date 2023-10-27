@@ -615,7 +615,7 @@ radv_gang_barrier(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 src_
       cmd_buffer->gang.sem.leader_value++;
 }
 
-static void
+void
 radv_gang_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radeon_cmdbuf *ace_cs = cmd_buffer->gang.cs;
@@ -723,7 +723,7 @@ radv_wait_gang_follower(struct radv_cmd_buffer *cmd_buffer)
    radv_wait_gang_semaphore(cmd_buffer, cmd_buffer->cs, cmd_buffer->qf, 4, cmd_buffer->gang.sem.follower_value);
 }
 
-static bool
+bool
 radv_gang_init(struct radv_cmd_buffer *cmd_buffer)
 {
    if (cmd_buffer->gang.cs)
