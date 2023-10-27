@@ -280,6 +280,9 @@ struct iris_bo {
     */
    bool idle;
 
+   /** Was this buffer zeroed at allocation time? */
+   bool zeroed;
+
    union {
       struct {
          uint64_t kflags;

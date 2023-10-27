@@ -812,6 +812,7 @@ iris_slab_alloc(void *priv,
       bo->index = -1;
       bo->refcount = 0;
       bo->idle = true;
+      bo->zeroed = slab->bo->zeroed;
 
       bo->slab.entry.slab = &slab->base;
       bo->slab.entry.group_index = group_index;
@@ -876,6 +877,9 @@ zero_bo(struct iris_bufmgr *bufmgr,
 {
    assert(flags & BO_ALLOC_ZEROED);
 
+   if (bo->zeroed)
+      return true;
+
    if (bufmgr->devinfo.has_flat_ccs && (flags & BO_ALLOC_LMEM)) {
       /* With flat CCS, all allocations in LMEM have memory ranges with
        * corresponding CCS elements. These elements are only accessible
@@ -889,6 +893,7 @@ zero_bo(struct iris_bufmgr *bufmgr,
       return false;
 
    memset(map, 0, bo->size);
+   bo->zeroed = true;
    return true;
 }
 
@@ -1060,6 +1065,7 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    /* Zero the contents if necessary.  If this fails, fall back to
     * allocating a fresh BO, which will always be zeroed by the kernel.
     */
+   assert(bo->zeroed == false);
    if ((flags & BO_ALLOC_ZEROED) && !zero_bo(bufmgr, flags, bo)) {
       bo_free(bo);
       return NULL;
@@ -1121,6 +1127,7 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
    bo->bufmgr = bufmgr;
    bo->size = bo_size;
    bo->idle = true;
+   bo->zeroed = true;
 
    return bo;
 }
@@ -1596,6 +1603,7 @@ iris_bo_unreference(struct iris_bo *bo)
 
       clock_gettime(CLOCK_MONOTONIC, &time);
 
+      bo->zeroed = false;
       if (bo->gem_handle == 0) {
          pb_slab_free(get_slabs(bufmgr, bo->size), &bo->slab.entry);
       } else {
