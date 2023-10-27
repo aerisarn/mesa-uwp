@@ -118,7 +118,7 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout, struct
          }
          if (locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx >= 0)
             /* One PKT3_SET_SH_REG writing all inline push constants. */
-            *cmd_size += (3 * locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].num_sgprs) * 4;
+            *cmd_size += (3 * util_bitcount64(layout->push_constant_mask)) * 4;
       }
       if (need_copy)
          *upload_size += align(pipeline->push_constant_size + 16 * pipeline->dynamic_offset_count, 16);
@@ -829,20 +829,13 @@ dgc_emit_push_constant(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_bu
                   nir_load_ssbo(b, 1, 32, param_buf, nir_iadd(b, param_offset_offset, nir_ishl_imm(b, cur_idx, 2)));
                nir_def *new_data = nir_load_ssbo(b, 1, 32, stream_buf, nir_iadd(b, stream_base, stream_offset));
                nir_store_var(b, data, new_data, 0x1);
-            }
-            nir_push_else(b, NULL);
-            {
-               nir_store_var(
-                  b, data,
-                  nir_load_ssbo(b, 1, 32, param_buf, nir_iadd(b, param_const_offset, nir_ishl_imm(b, cur_idx, 2))),
-                  0x1);
+
+               nir_def *pkt[3] = {nir_pkt3(b, PKT3_SET_SH_REG, nir_imm_int(b, 1)),
+                                  nir_iadd(b, inline_sgpr, nir_load_var(b, pc_idx)), nir_load_var(b, data)};
+
+               dgc_emit(b, cs, nir_vec(b, pkt, 3));
             }
             nir_pop_if(b, NULL);
-
-            nir_def *pkt[3] = {nir_pkt3(b, PKT3_SET_SH_REG, nir_imm_int(b, 1)),
-                               nir_iadd(b, inline_sgpr, nir_load_var(b, pc_idx)), nir_load_var(b, data)};
-
-            dgc_emit(b, cs, nir_vec(b, pkt, 3));
 
             nir_store_var(b, idx, nir_iadd_imm(b, cur_idx, 1), 0x1);
             nir_store_var(b, pc_idx, nir_iadd_imm(b, nir_load_var(b, pc_idx), 1), 0x1);
