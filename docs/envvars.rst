@@ -1428,6 +1428,8 @@ RadeonSI driver environment variables
       Disable DCC for MSAA
    ``nodpbb``
       Disable DPBB. Overrules the dpbb enable option.
+   ``noefc``
+      Disable hardware based encoder colour format conversion
    ``notiling``
       Disable tiling
    ``nofmask``
@@ -1482,6 +1484,8 @@ RadeonSI driver environment variables
       Use old-style monolithic shaders compiled on demand
    ``nooptvariant``
       Disable compiling optimized shader variants.
+   ``useaco``
+      Use ACO as shader compiler when possible
    ``nowc``
       Disable GTT write combining
    ``check_vm``
