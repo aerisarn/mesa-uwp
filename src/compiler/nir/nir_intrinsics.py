@@ -1857,6 +1857,17 @@ system_value("geometry_param_buffer_agx", 1, bit_sizes=[64])
 # primitive, as occurs in the geometry shader lowering.
 system_value("vertex_id_in_primitive_agx", 1, bit_sizes=[32])
 
+# Helper shader intrinsics
+# src[] = { value }.
+intrinsic("doorbell_agx", src_comp=[1])
+
+# src[] = { index, stack_address }.
+intrinsic("stack_map_agx", src_comp=[1, 1])
+
+# src[] = { index }.
+# dst[] = { stack_address }.
+intrinsic("stack_unmap_agx", src_comp=[1], dest_comp=1, bit_sizes=[32])
+
 # Intel-specific query for loading from the brw_image_param struct passed
 # into the shader as a uniform.  The variable is a deref to the image
 # variable. The const index specifies which of the six parameters to load.
