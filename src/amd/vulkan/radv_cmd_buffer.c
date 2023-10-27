@@ -10594,7 +10594,9 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfo *dep_inf
       radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 1);
       radeon_emit(cmd_buffer->cs, SDMA_PACKET(SDMA_OPCODE_NOP, 0, 0));
    } else {
-      radv_cp_dma_wait_for_stages(cmd_buffer, src_stage_mask);
+      const bool is_gfx_or_ace = cmd_buffer->qf == RADV_QUEUE_GENERAL || cmd_buffer->qf == RADV_QUEUE_COMPUTE;
+      if (is_gfx_or_ace)
+         radv_cp_dma_wait_for_stages(cmd_buffer, src_stage_mask);
    }
 
    cmd_buffer->state.flush_bits |= dst_flush_bits;
