@@ -68,7 +68,7 @@ pub trait HelperContextWrapper {
         offset: i32,
         size: i32,
         rw: RWFlags,
-    ) -> PipeTransfer;
+    ) -> Option<PipeTransfer>;
 
     fn texture_map_directly(
         &self,
@@ -77,7 +77,12 @@ pub trait HelperContextWrapper {
         rw: RWFlags,
     ) -> Option<PipeTransfer>;
 
-    fn texture_map_coherent(&self, res: &PipeResource, bx: &pipe_box, rw: RWFlags) -> PipeTransfer;
+    fn texture_map_coherent(
+        &self,
+        res: &PipeResource,
+        bx: &pipe_box,
+        rw: RWFlags,
+    ) -> Option<PipeTransfer>;
 
     fn create_compute_state(&self, nir: &NirShader, static_local_mem: u32) -> *mut c_void;
     fn delete_compute_state(&self, cso: *mut c_void);
@@ -140,7 +145,7 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
         offset: i32,
         size: i32,
         rw: RWFlags,
-    ) -> PipeTransfer {
+    ) -> Option<PipeTransfer> {
         self.lock
             .buffer_map(res, offset, size, rw, ResourceMapType::Coherent)
     }
@@ -154,7 +159,12 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
         self.lock.texture_map_directly(res, bx, rw)
     }
 
-    fn texture_map_coherent(&self, res: &PipeResource, bx: &pipe_box, rw: RWFlags) -> PipeTransfer {
+    fn texture_map_coherent(
+        &self,
+        res: &PipeResource,
+        bx: &pipe_box,
+        rw: RWFlags,
+    ) -> Option<PipeTransfer> {
         self.lock
             .texture_map(res, bx, rw, ResourceMapType::Coherent)
     }

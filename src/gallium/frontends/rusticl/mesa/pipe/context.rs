@@ -248,10 +248,10 @@ impl PipeContext {
         size: i32,
         rw: RWFlags,
         map_type: ResourceMapType,
-    ) -> PipeTransfer {
+    ) -> Option<PipeTransfer> {
         let mut flags: pipe_map_flags = map_type.into();
         flags |= rw.into();
-        self._buffer_map(res, offset, size, flags).unwrap()
+        self._buffer_map(res, offset, size, flags)
     }
 
     pub fn buffer_map_directly(
@@ -285,10 +285,10 @@ impl PipeContext {
         bx: &pipe_box,
         rw: RWFlags,
         map_type: ResourceMapType,
-    ) -> PipeTransfer {
+    ) -> Option<PipeTransfer> {
         let mut flags: pipe_map_flags = map_type.into();
         flags |= rw.into();
-        self._texture_map(res, bx, flags).unwrap()
+        self._texture_map(res, bx, flags)
     }
 
     pub fn texture_map_directly(

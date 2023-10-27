@@ -1103,6 +1103,7 @@ impl Kernel {
                         RWFlags::RD,
                         ResourceMapType::Normal,
                     )
+                    .ok_or(CL_OUT_OF_RESOURCES)?
                     .with_ctx(ctx);
                 let mut buf: &[u8] =
                     unsafe { slice::from_raw_parts(tx.ptr().cast(), printf_size as usize) };
