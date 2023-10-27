@@ -3250,7 +3250,7 @@ bool radv_use_dgc_predication(struct radv_cmd_buffer *cmd_buffer,
                               const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo);
 void radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo);
 
-bool radv_dgc_can_preprocess(const struct radv_indirect_command_layout *layout);
+bool radv_dgc_can_preprocess(const struct radv_indirect_command_layout *layout, struct radv_pipeline *pipeline);
 
 static inline uint32_t
 si_conv_prim_to_gs_out(uint32_t topology, bool is_ngg)

@@ -9550,7 +9550,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       cmd_buffer->state.predicating = true;
    }
 
-   if (!radv_dgc_can_preprocess(layout)) {
+   if (!radv_dgc_can_preprocess(layout, pipeline)) {
       radv_prepare_dgc(cmd_buffer, pGeneratedCommandsInfo);
 
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2;

@@ -1387,8 +1387,25 @@ radv_use_dgc_predication(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCo
    return cmd_buffer->qf == RADV_QUEUE_GENERAL && seq_count_buffer && !cmd_buffer->state.predicating;
 }
 
+static bool
+radv_dgc_need_push_constants_copy(const struct radv_pipeline *pipeline)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(pipeline->shaders); ++i) {
+      const struct radv_shader *shader = pipeline->shaders[i];
+
+      if (!shader)
+         continue;
+
+      const struct radv_userdata_locations *locs = &shader->info.user_sgprs_locs;
+      if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0)
+         return true;
+   }
+
+   return false;
+}
+
 bool
-radv_dgc_can_preprocess(const struct radv_indirect_command_layout *layout)
+radv_dgc_can_preprocess(const struct radv_indirect_command_layout *layout, struct radv_pipeline *pipeline)
 {
    if (!(layout->flags & VK_INDIRECT_COMMANDS_LAYOUT_USAGE_EXPLICIT_PREPROCESS_BIT_NV))
       return false;
@@ -1410,8 +1427,10 @@ radv_dgc_can_preprocess(const struct radv_indirect_command_layout *layout)
       if (layout->bind_vbo_mask)
          return false;
 
-      /* In preprocess we use the non-overridden push constants from the draw state for now. */
-      if (layout->push_constant_mask)
+      /* Do not preprocess when all push constants can't be inlined because they need to be copied
+       * to the upload BO.
+       */
+      if (layout->push_constant_mask && radv_dgc_need_push_constants_copy(pipeline))
          return false;
    }
 
@@ -1424,8 +1443,9 @@ radv_CmdPreprocessGeneratedCommandsNV(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
 
-   if (!radv_dgc_can_preprocess(layout))
+   if (!radv_dgc_can_preprocess(layout, pipeline))
       return;
 
    const bool use_predication = radv_use_dgc_predication(cmd_buffer, pGeneratedCommandsInfo);
