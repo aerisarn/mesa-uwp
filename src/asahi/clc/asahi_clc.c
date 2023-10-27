@@ -79,6 +79,19 @@ lower_builtins(nir_builder *b, nir_instr *instr, void *data)
          nir_interleave_agx(b, call->params[1].ssa, call->params[2].ssa), 1);
 
       return true;
+   } else if (strcmp(func->name, "nir_doorbell_agx") == 0) {
+      b->cursor = nir_instr_remove(&call->instr);
+      nir_doorbell_agx(b, call->params[0].ssa);
+      return true;
+   } else if (strcmp(func->name, "nir_stack_map_agx") == 0) {
+      b->cursor = nir_instr_remove(&call->instr);
+      nir_stack_map_agx(b, call->params[0].ssa, call->params[1].ssa);
+      return true;
+   } else if (strcmp(func->name, "nir_stack_unmap_agx") == 0) {
+      b->cursor = nir_instr_remove(&call->instr);
+      nir_store_deref(b, nir_src_as_deref(call->params[0]),
+                      nir_stack_unmap_agx(b, call->params[1].ssa), 1);
+      return true;
    }
 
    return false;

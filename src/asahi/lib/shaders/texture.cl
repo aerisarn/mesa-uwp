@@ -6,8 +6,6 @@
 #include "libagx.h"
 #include <agx_pack.h>
 
-uint32_t nir_interleave_agx(uint16_t x, uint16_t y);
-
 uint3
 libagx_txs(constant struct agx_texture_packed *ptr, uint16_t lod,
            unsigned nr_comps, bool is_buffer, bool is_1d, bool is_2d,

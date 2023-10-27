@@ -19,6 +19,13 @@ typedef long int64_t;
 typedef int int32_t;
 typedef short int16_t;
 typedef int int8_t;
+
+/* Define NIR intrinsics for CL */
+uint32_t nir_interleave_agx(uint16_t x, uint16_t y);
+void nir_doorbell_agx(uint8_t value);
+void nir_stack_map_agx(uint16_t index, uint32_t address);
+uint32_t nir_stack_unmap_agx(uint16_t index);
+
 #endif
 
 #endif
