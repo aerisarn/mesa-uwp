@@ -30,6 +30,8 @@ template = """\
 
 #include <stdint.h>
 
+namespace aco {
+
 <% opcode_names = sorted(opcodes.keys()) %>
 
 enum class aco_opcode : uint16_t {
@@ -40,6 +42,7 @@ enum class aco_opcode : uint16_t {
    num_opcodes = last_opcode + 1
 };
 
+}
 #endif /* _ACO_OPCODES_ */"""
 
 from aco_opcodes import opcodes
