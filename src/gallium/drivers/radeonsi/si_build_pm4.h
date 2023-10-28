@@ -260,35 +260,40 @@
 } while (0)
 
 /* GFX11 generic packet building helpers for buffered SH registers. Don't use these directly. */
-#define gfx11_push_sh_reg(reg, value, type) do { \
-   unsigned __i = sctx->num_buffered_##type##_sh_regs++; \
-   assert(__i / 2 < ARRAY_SIZE(sctx->gfx11.buffered_##type##_sh_regs)); \
-   sctx->gfx11.buffered_##type##_sh_regs[__i / 2].reg_offset[__i % 2] = ((reg) - SI_SH_REG_OFFSET) >> 2; \
-   sctx->gfx11.buffered_##type##_sh_regs[__i / 2].reg_value[__i % 2] = value; \
+#define gfx11_push_reg(reg, value, prefix_name, buffer, reg_count) do { \
+   unsigned __i = (reg_count)++; \
+   assert((reg) >= prefix_name##_REG_OFFSET && (reg) < prefix_name##_REG_END); \
+   assert(__i / 2 < ARRAY_SIZE(buffer)); \
+   buffer[__i / 2].reg_offset[__i % 2] = ((reg) - prefix_name##_REG_OFFSET) >> 2; \
+   buffer[__i / 2].reg_value[__i % 2] = value; \
 } while (0)
 
-#define gfx11_opt_push_sh_reg(reg, reg_enum, value, type) do { \
+#define gfx11_opt_push_reg(reg, reg_enum, value, prefix_name, category, buffer, reg_count) do { \
    unsigned __value = value; \
-   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg_enum)) & 0x1) != 0x1 || \
-       sctx->tracked_regs.other_reg_value[reg_enum] != __value) { \
-      gfx11_push_sh_reg(reg, __value, type); \
-      sctx->tracked_regs.other_reg_saved_mask |= BITFIELD_BIT(reg_enum); \
-      sctx->tracked_regs.other_reg_value[reg_enum] = __value; \
+   if (((sctx->tracked_regs.category##_reg_saved_mask >> (reg_enum)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.category##_reg_value[reg_enum] != __value) { \
+      gfx11_push_reg(reg, __value, prefix_name, buffer, reg_count); \
+      sctx->tracked_regs.category##_reg_saved_mask |= BITFIELD64_BIT(reg_enum); \
+      sctx->tracked_regs.category##_reg_value[reg_enum] = __value; \
    } \
 } while (0)
 
 /* GFX11 packet building helpers for buffered SH registers. */
 #define gfx11_push_gfx_sh_reg(reg, value) \
-   gfx11_push_sh_reg(reg, value, gfx)
+   gfx11_push_reg(reg, value, SI_SH, sctx->gfx11.buffered_gfx_sh_regs, \
+                  sctx->num_buffered_gfx_sh_regs)
 
 #define gfx11_push_compute_sh_reg(reg, value) \
-   gfx11_push_sh_reg(reg, value, compute)
+   gfx11_push_reg(reg, value, SI_SH, sctx->gfx11.buffered_compute_sh_regs, \
+                  sctx->num_buffered_compute_sh_regs)
 
 #define gfx11_opt_push_gfx_sh_reg(reg, reg_enum, value) \
-   gfx11_opt_push_sh_reg(reg, reg_enum, value, gfx)
+   gfx11_opt_push_reg(reg, reg_enum, value, SI_SH, other, sctx->gfx11.buffered_gfx_sh_regs, \
+                      sctx->num_buffered_gfx_sh_regs)
 
 #define gfx11_opt_push_compute_sh_reg(reg, reg_enum, value) \
-   gfx11_opt_push_sh_reg(reg, reg_enum, value, compute)
+   gfx11_opt_push_reg(reg, reg_enum, value, SI_SH, other, sctx->gfx11.buffered_compute_sh_regs, \
+                      sctx->num_buffered_compute_sh_regs)
 
 #define radeon_set_or_push_gfx_sh_reg(reg, value) do { \
    if (GFX_VERSION >= GFX11 && HAS_SH_PAIRS_PACKED) { \
