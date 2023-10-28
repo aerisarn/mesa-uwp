@@ -437,14 +437,18 @@ agx_sync_writer(struct agx_context *ctx, struct agx_resource *rsrc,
 void
 agx_batch_reads(struct agx_batch *batch, struct agx_resource *rsrc)
 {
-   /* Hazard: read-after-write */
-   agx_flush_writer_except(batch->ctx, rsrc, batch, "Read from another batch",
-                           false);
-
    agx_batch_add_bo(batch, rsrc->bo);
 
    if (rsrc->separate_stencil)
       agx_batch_add_bo(batch, rsrc->separate_stencil->bo);
+
+   /* Don't hazard track fake resources internally created for meta */
+   if (!rsrc->base.screen)
+      return;
+
+   /* Hazard: read-after-write */
+   agx_flush_writer_except(batch->ctx, rsrc, batch, "Read from another batch",
+                           false);
 }
 
 void
