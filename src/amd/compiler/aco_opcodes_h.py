@@ -32,6 +32,13 @@ template = """\
 
 namespace aco {
 
+enum class instr_class : uint8_t {
+% for name in InstrClass:
+   ${name.value},
+% endfor
+   count,
+};
+
 <% opcode_names = sorted(opcodes.keys()) %>
 
 enum class aco_opcode : uint16_t {
@@ -45,7 +52,7 @@ enum class aco_opcode : uint16_t {
 }
 #endif /* _ACO_OPCODES_ */"""
 
-from aco_opcodes import opcodes
+from aco_opcodes import opcodes, InstrClass
 from mako.template import Template
 
-print(Template(template).render(opcodes=opcodes))
+print(Template(template).render(opcodes=opcodes, InstrClass=InstrClass))

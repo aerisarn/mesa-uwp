@@ -28,27 +28,27 @@ import sys
 from enum import Enum
 
 class InstrClass(Enum):
-   Valu32 = 0
-   ValuConvert32 = 1
-   Valu64 = 2
-   ValuQuarterRate32 = 3
-   ValuFma = 4
-   ValuTranscendental32 = 5
-   ValuDouble = 6
-   ValuDoubleAdd = 7
-   ValuDoubleConvert = 8
-   ValuDoubleTranscendental = 9
-   Salu = 10
-   SMem = 11
-   Barrier = 12
-   Branch = 13
-   Sendmsg = 14
-   DS = 15
-   Export = 16
-   VMem = 17
-   Waitcnt = 18
-   Other = 19
-   WMMA = 20
+   Valu32 = "valu32"
+   ValuConvert32 = "valu_convert32"
+   Valu64 = "valu64"
+   ValuQuarterRate32 = "valu_quarter_rate32"
+   ValuFma = "valu_fma"
+   ValuTranscendental32 = "valu_transcendental32"
+   ValuDouble = "valu_double"
+   ValuDoubleAdd = "valu_double_add"
+   ValuDoubleConvert = "valu_double_convert"
+   ValuDoubleTranscendental = "valu_double_transcendental"
+   WMMA = "wmma"
+   Salu = "salu"
+   SMem = "smem"
+   Barrier = "barrier"
+   Branch = "branch"
+   Sendmsg = "sendmsg"
+   DS = "ds"
+   Export = "exp"
+   VMem = "vmem"
+   Waitcnt = "waitcnt"
+   Other = "other"
 
 class Format(Enum):
    PSEUDO = 0
