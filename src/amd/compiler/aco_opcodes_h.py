@@ -28,11 +28,11 @@ template = """\
 #ifndef _ACO_OPCODES_
 #define _ACO_OPCODES_
 
-#include <cstdint>
+#include <stdint.h>
 
 <% opcode_names = sorted(opcodes.keys()) %>
 
-enum class aco_opcode : std::uint16_t {
+enum class aco_opcode : uint16_t {
 % for name in opcode_names:
    ${name},
 % endfor

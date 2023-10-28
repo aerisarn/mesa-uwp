@@ -68,7 +68,7 @@ enum {
  *
  * (*) The same is applicable for VOP1 and VOPC instructions.
  */
-enum class Format : std::uint16_t {
+enum class Format : uint16_t {
    /* Pseudo Instruction Format */
    PSEUDO = 0,
    /* Scalar ALU & Control Formats */
