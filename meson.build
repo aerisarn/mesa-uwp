@@ -338,7 +338,7 @@ if with_vulkan_beta
 endif
 
 _codecs = get_option('video-codecs')
-foreach c : ['vc1dec', 'h264dec', 'h264enc', 'h265dec', 'h265enc']
+foreach c : ['vc1dec', 'h264dec', 'h264enc', 'h265dec', 'h265enc', 'av1dec', 'av1enc', 'vp9dec']
    pre_args += '-DVIDEO_CODEC_@0@=@1@'.format(c.to_upper(), _codecs.contains(c).to_int())
 endforeach
 

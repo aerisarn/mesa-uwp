@@ -87,7 +87,7 @@ meson setup _build \
       -D gallium-opencl=disabled \
       -D gallium-drivers=${GALLIUM_DRIVERS:-[]} \
       -D vulkan-drivers=${VULKAN_DRIVERS:-[]} \
-      -D video-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
+      -D video-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec,av1dec,av1enc,vp9dec \
       -D werror=true \
       ${EXTRA_OPTION}
 cd _build
