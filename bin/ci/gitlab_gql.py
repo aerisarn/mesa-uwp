@@ -460,6 +460,12 @@ def get_job_final_definition(job_name, merged_yaml, project_path, sha):
         print(image)
 
 
+def from_sha_to_pipeline_iid(gl_gql: GitlabGQL, params) -> str:
+    result = gl_gql.query("pipeline_utils.gql", params)
+
+    return result["project"]["pipelines"]["nodes"][0]["iid"]
+
+
 def parse_args() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
@@ -499,10 +505,11 @@ def parse_args() -> Namespace:
 def main():
     args = parse_args()
     gl_gql = GitlabGQL(token=args.gitlab_token)
+    args.iid = from_sha_to_pipeline_iid(gl_gql, {"projectPath": args.project_path, "sha": args.sha})
 
     if args.print_dag:
-        dag, jobs = create_job_needs_dag(
-            gl_gql, {"projectPath": args.project_path, "sha": args.sha}
+        dag = create_job_needs_dag(
+            gl_gql, {"projectPath": args.project_path, "iid": args.iid}, disable_cache=True
         )
 
         if args.regex:
