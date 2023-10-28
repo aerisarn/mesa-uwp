@@ -32,6 +32,12 @@ template = """\
 
 namespace aco {
 
+enum class Format : uint16_t {
+% for e in Format:
+   ${e.name} = ${hex(e.value)},
+% endfor
+};
+
 enum class instr_class : uint8_t {
 % for name in InstrClass:
    ${name.value},
@@ -52,7 +58,7 @@ enum class aco_opcode : uint16_t {
 }
 #endif /* _ACO_OPCODES_ */"""
 
-from aco_opcodes import opcodes, InstrClass
+from aco_opcodes import opcodes, InstrClass, Format
 from mako.template import Template
 
-print(Template(template).render(opcodes=opcodes, InstrClass=InstrClass))
+print(Template(template).render(opcodes=opcodes, InstrClass=InstrClass, Format=Format))

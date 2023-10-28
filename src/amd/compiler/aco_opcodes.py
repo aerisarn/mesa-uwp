@@ -25,7 +25,7 @@
 # NOTE: this must be kept in sync with aco_op_info
 
 import sys
-from enum import Enum
+from enum import Enum, IntEnum, auto
 
 class InstrClass(Enum):
    Valu32 = "valu32"
@@ -50,36 +50,53 @@ class InstrClass(Enum):
    Waitcnt = "waitcnt"
    Other = "other"
 
-class Format(Enum):
+# Representation of the instruction's microcode encoding format
+# Note: Some Vector ALU Formats can be combined, such that:
+# - VOP2* | VOP3 represents a VOP2 instruction in VOP3 encoding
+# - VOP2* | DPP represents a VOP2 instruction with data parallel primitive.
+# - VOP2* | SDWA represents a VOP2 instruction with sub-dword addressing.
+#
+# (*) The same is applicable for VOP1 and VOPC instructions.
+class Format(IntEnum):
+   # Pseudo Instruction Formats
    PSEUDO = 0
-   SOP1 = 1
-   SOP2 = 2
-   SOPK = 3
-   SOPP = 4
-   SOPC = 5
-   SMEM = 6
-   DS = 8
-   LDSDIR = 9
-   MTBUF = 10
-   MUBUF = 11
-   MIMG = 12
-   EXP = 13
-   FLAT = 14
-   GLOBAL = 15
-   SCRATCH = 16
-   PSEUDO_BRANCH = 17
-   PSEUDO_BARRIER = 18
-   PSEUDO_REDUCTION = 19
-   VINTERP_INREG = 21
-   VOP3P = 1 << 7
-   VOP1 = 1 << 8
-   VOP2 = 1 << 9
-   VOPC = 1 << 10
-   VOP3 = 1 << 11
-   VINTRP = 1 << 12
+   PSEUDO_BRANCH = auto()
+   PSEUDO_BARRIER = auto()
+   PSEUDO_REDUCTION = auto()
+   # Scalar ALU & Control Formats
+   SOP1 = auto()
+   SOP2 = auto()
+   SOPK = auto()
+   SOPP = auto()
+   SOPC = auto()
+   # Scalar Memory Format
+   SMEM = auto()
+   # LDS/GDS Format
+   DS = auto()
+   LDSDIR = auto()
+   # Vector Memory Buffer Formats
+   MTBUF = auto()
+   MUBUF = auto()
+   # Vector Memory Image Format
+   MIMG = auto()
+   # Export Format
+   EXP = auto()
+   # Flat Formats
+   FLAT = auto()
+   GLOBAL = auto()
+   SCRATCH = auto()
+   # Vector Parameter Interpolation Formats
+   VINTRP = auto()
+   # Vector ALU Formats
+   VINTERP_INREG = auto()
+   VOP1 = 1 << 7
+   VOP2 = 1 << 8
+   VOPC = 1 << 9
+   VOP3 = 1 << 10
+   VOP3P = 1 << 11
+   SDWA = 1 << 12
    DPP16 = 1 << 13
-   SDWA = 1 << 14
-   DPP8 = 1 << 15
+   DPP8 = 1 << 14
 
    def get_builder_fields(self):
       if self == Format.SOPK:
