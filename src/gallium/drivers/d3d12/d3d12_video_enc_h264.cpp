@@ -994,37 +994,6 @@ d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_h264(enum pipe_video_pr
    }
 }
 
-D3D12_VIDEO_ENCODER_CODEC
-d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(enum pipe_video_profile profile)
-{
-   switch (u_reduce_video_profile(profile)) {
-      case PIPE_VIDEO_FORMAT_MPEG4_AVC:
-      {
-         return D3D12_VIDEO_ENCODER_CODEC_H264;
-      } break;
-      case PIPE_VIDEO_FORMAT_HEVC:
-      {
-         return D3D12_VIDEO_ENCODER_CODEC_HEVC;
-      } break;
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
-      case PIPE_VIDEO_FORMAT_AV1:
-      {
-         return D3D12_VIDEO_ENCODER_CODEC_AV1;
-      } break;
-#endif
-      case PIPE_VIDEO_FORMAT_MPEG12:
-      case PIPE_VIDEO_FORMAT_MPEG4:
-      case PIPE_VIDEO_FORMAT_VC1:
-      case PIPE_VIDEO_FORMAT_JPEG:
-      case PIPE_VIDEO_FORMAT_VP9:
-      case PIPE_VIDEO_FORMAT_UNKNOWN:
-      default:
-      {
-         unreachable("Unsupported pipe_video_profile");
-      } break;
-   }
-}
-
 bool
 d3d12_video_encoder_compare_slice_config_h264_hevc(
    D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE targetMode,

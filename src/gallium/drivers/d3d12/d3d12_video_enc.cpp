@@ -30,10 +30,16 @@
 #include "d3d12_screen.h"
 #include "d3d12_surface.h"
 #include "d3d12_video_enc.h"
+#if VIDEO_CODEC_H264ENC
 #include "d3d12_video_enc_h264.h"
+#endif
+#if VIDEO_CODEC_H265ENC
 #include "d3d12_video_enc_hevc.h"
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 #include "d3d12_video_enc_av1.h"
+#endif
 #endif
 #include "d3d12_video_buffer.h"
 #include "d3d12_video_texture_array_dpb_manager.h"
@@ -52,6 +58,37 @@
 #include "util/u_video.h"
 
 #include <cmath>
+
+D3D12_VIDEO_ENCODER_CODEC
+d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(enum pipe_video_profile profile)
+{
+   switch (u_reduce_video_profile(profile)) {
+      case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      {
+         return D3D12_VIDEO_ENCODER_CODEC_H264;
+      } break;
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         return D3D12_VIDEO_ENCODER_CODEC_HEVC;
+      } break;
+#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
+      case PIPE_VIDEO_FORMAT_AV1:
+      {
+         return D3D12_VIDEO_ENCODER_CODEC_AV1;
+      } break;
+#endif
+      case PIPE_VIDEO_FORMAT_MPEG12:
+      case PIPE_VIDEO_FORMAT_MPEG4:
+      case PIPE_VIDEO_FORMAT_VC1:
+      case PIPE_VIDEO_FORMAT_JPEG:
+      case PIPE_VIDEO_FORMAT_VP9:
+      case PIPE_VIDEO_FORMAT_UNKNOWN:
+      default:
+      {
+         unreachable("Unsupported pipe_video_profile");
+      } break;
+   }
+}
 
 uint64_t
 d3d12_video_encoder_pool_current_index(struct d3d12_video_encoder *pD3D12Enc)
@@ -262,20 +299,25 @@ d3d12_video_encoder_update_picparams_tracking(struct d3d12_video_encoder *pD3D12
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    bool bUsedAsReference = false;
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          d3d12_video_encoder_update_current_frame_pic_params_info_h264(pD3D12Enc, srcTexture, picture, currentPicParams, bUsedAsReference);
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          d3d12_video_encoder_update_current_frame_pic_params_info_hevc(pD3D12Enc, srcTexture, picture, currentPicParams, bUsedAsReference);
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          d3d12_video_encoder_update_current_frame_pic_params_info_av1(pD3D12Enc, srcTexture, picture, currentPicParams, bUsedAsReference);
       } break;
+#endif
 #endif
       default:
       {
@@ -496,6 +538,7 @@ d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder 
    pD3D12Enc->m_upBitstreamBuilder.reset();
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          bool gopHasPFrames =
@@ -513,7 +556,8 @@ d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder 
 
          pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_h264>();
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          bool gopHasPFrames =
@@ -531,6 +575,8 @@ d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder 
 
          pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_hevc>();
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -549,6 +595,7 @@ d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder 
          pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_av1>();
       } break;
 #endif
+#endif
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -561,6 +608,7 @@ d3d12_video_encoder_get_current_slice_param_settings(struct d3d12_video_encoder 
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA subregionData = {};
@@ -572,7 +620,8 @@ d3d12_video_encoder_get_current_slice_param_settings(struct d3d12_video_encoder 
          }
          return subregionData;
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA subregionData = {};
@@ -584,6 +633,8 @@ d3d12_video_encoder_get_current_slice_param_settings(struct d3d12_video_encoder 
          }
          return subregionData;
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -597,6 +648,7 @@ d3d12_video_encoder_get_current_slice_param_settings(struct d3d12_video_encoder 
          return subregionData;
       } break;
 #endif
+#endif
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -609,6 +661,7 @@ d3d12_video_encoder_get_current_picture_param_settings(struct d3d12_video_encode
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA curPicParamsData = {};
@@ -616,7 +669,8 @@ d3d12_video_encoder_get_current_picture_param_settings(struct d3d12_video_encode
          curPicParamsData.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_H264PicData);
          return curPicParamsData;
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA curPicParamsData = {};
@@ -624,6 +678,8 @@ d3d12_video_encoder_get_current_picture_param_settings(struct d3d12_video_encode
          curPicParamsData.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_HEVCPicData);
          return curPicParamsData;
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -632,6 +688,7 @@ d3d12_video_encoder_get_current_picture_param_settings(struct d3d12_video_encode
          curPicParamsData.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_AV1PicData);
          return curPicParamsData;
       } break;
+#endif
 #endif
       default:
       {
@@ -743,6 +800,7 @@ d3d12_video_encoder_get_current_level_desc(struct d3d12_video_encoder *pD3D12Enc
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          D3D12_VIDEO_ENCODER_LEVEL_SETTING curLevelDesc = {};
@@ -750,7 +808,8 @@ d3d12_video_encoder_get_current_level_desc(struct d3d12_video_encoder *pD3D12Enc
          curLevelDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderLevelDesc.m_H264LevelSetting);
          return curLevelDesc;
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          D3D12_VIDEO_ENCODER_LEVEL_SETTING curLevelDesc = {};
@@ -758,6 +817,8 @@ d3d12_video_encoder_get_current_level_desc(struct d3d12_video_encoder *pD3D12Enc
          curLevelDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderLevelDesc.m_HEVCLevelSetting);
          return curLevelDesc;
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -766,6 +827,7 @@ d3d12_video_encoder_get_current_level_desc(struct d3d12_video_encoder *pD3D12Enc
          curLevelDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderLevelDesc.m_AV1LevelSetting);
          return curLevelDesc;
       } break;
+#endif
 #endif
       default:
       {
@@ -781,25 +843,28 @@ d3d12_video_encoder_build_pre_encode_codec_headers(struct d3d12_video_encoder *p
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          postEncodeHeadersNeeded = false;
          preEncodeGeneratedHeadersByteSize = d3d12_video_encoder_build_codec_headers_h264(pD3D12Enc);
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          postEncodeHeadersNeeded = false;
          preEncodeGeneratedHeadersByteSize = d3d12_video_encoder_build_codec_headers_hevc(pD3D12Enc);
       } break;
-
+#endif
+#if VIDEO_CODEC_AV1ENC
       case PIPE_VIDEO_FORMAT_AV1:
       { 
          pD3D12Enc->m_BitstreamHeadersBuffer.resize(0);
          postEncodeHeadersNeeded = true;
          preEncodeGeneratedHeadersByteSize = 0;
       } break;
-
+#endif
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -812,6 +877,7 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc)
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE curGOPDesc = {};
@@ -820,7 +886,8 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc)
          curGOPDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_H264GroupOfPictures);
          return curGOPDesc;
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE curGOPDesc = {};
@@ -829,7 +896,8 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc)
          curGOPDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures);
          return curGOPDesc;
       } break;
-
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -839,6 +907,7 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc)
          curGOPDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_AV1SequenceStructure);
          return curGOPDesc;
       } break;
+#endif
 #endif
       default:
       {
@@ -852,6 +921,7 @@ d3d12_video_encoder_get_current_codec_config_desc(struct d3d12_video_encoder *pD
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfigDesc = {};
@@ -860,7 +930,8 @@ d3d12_video_encoder_get_current_codec_config_desc(struct d3d12_video_encoder *pD
             sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificConfigDesc.m_H264Config);
          return codecConfigDesc;
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfigDesc = {};
@@ -869,7 +940,8 @@ d3d12_video_encoder_get_current_codec_config_desc(struct d3d12_video_encoder *pD
             sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificConfigDesc.m_HEVCConfig);
          return codecConfigDesc;
       } break;
-
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -879,6 +951,7 @@ d3d12_video_encoder_get_current_codec_config_desc(struct d3d12_video_encoder *pD
             sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificConfigDesc.m_AV1Config);
          return codecConfigDesc;
       } break;
+#endif
 #endif
       default:
       {
@@ -892,19 +965,25 @@ d3d12_video_encoder_get_current_codec(struct d3d12_video_encoder *pD3D12Enc)
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          return D3D12_VIDEO_ENCODER_CODEC_H264;
       } break;
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          return D3D12_VIDEO_ENCODER_CODEC_HEVC;
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          return D3D12_VIDEO_ENCODER_CODEC_AV1;
       } break;
+#endif
 #endif
       default:
       {
@@ -1203,6 +1282,7 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
 
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          capEncoderSupportData1.SuggestedProfile.pH264Profile =
@@ -1214,7 +1294,8 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
          capEncoderSupportData1.SuggestedLevel.DataSize =
             sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderLevelSuggestedDesc.m_H264LevelSetting);
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          capEncoderSupportData1.SuggestedProfile.pHEVCProfile =
@@ -1226,7 +1307,8 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
          capEncoderSupportData1.SuggestedLevel.DataSize =
             sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderLevelSuggestedDesc.m_HEVCLevelSetting);
       } break;
-
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -1239,6 +1321,7 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
          capEncoderSupportData1.SuggestedLevel.DataSize =
             sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderLevelSuggestedDesc.m_AV1LevelSetting);
       } break;
+#endif
 #endif
       default:
       {
@@ -1299,6 +1382,7 @@ d3d12_video_encoder_get_current_profile_desc(struct d3d12_video_encoder *pD3D12E
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          D3D12_VIDEO_ENCODER_PROFILE_DESC curProfDesc = {};
@@ -1306,7 +1390,8 @@ d3d12_video_encoder_get_current_profile_desc(struct d3d12_video_encoder *pD3D12E
          curProfDesc.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderProfileDesc.m_H264Profile);
          return curProfDesc;
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          D3D12_VIDEO_ENCODER_PROFILE_DESC curProfDesc = {};
@@ -1314,6 +1399,8 @@ d3d12_video_encoder_get_current_profile_desc(struct d3d12_video_encoder *pD3D12E
          curProfDesc.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderProfileDesc.m_HEVCProfile);
          return curProfDesc;
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -1322,6 +1409,7 @@ d3d12_video_encoder_get_current_profile_desc(struct d3d12_video_encoder *pD3D12E
          curProfDesc.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderProfileDesc.m_AV1Profile);
          return curProfDesc;
       } break;
+#endif
 #endif
       default:
       {
@@ -1343,20 +1431,25 @@ d3d12_video_encoder_update_current_encoder_config_state(struct d3d12_video_encod
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          return d3d12_video_encoder_update_current_encoder_config_state_h264(pD3D12Enc, srcTexture, picture);
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          return d3d12_video_encoder_update_current_encoder_config_state_hevc(pD3D12Enc, srcTexture, picture);
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          return d3d12_video_encoder_update_current_encoder_config_state_av1(pD3D12Enc, srcTexture, picture);
       } break;
+#endif
 #endif
       default:
       {
@@ -1648,15 +1741,22 @@ d3d12_video_encoder_calculate_metadata_resolved_buffer_size(enum pipe_video_form
                 (maxSliceNumber * sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA));
                 
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+         break;
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
          break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          size_t extra_av1_size = d3d12_video_encoder_calculate_metadata_resolved_buffer_size_av1(maxSliceNumber);
          bufferSize += extra_av1_size;
       } break;
+#endif
 #endif
       default:
       {
@@ -2191,11 +2291,19 @@ d3d12_video_encoder_build_post_encode_codec_bitstream(struct d3d12_video_encoder
 {
    enum pipe_video_format codec_format = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec_format) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      {
+         return 0;
+      } break;
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          return 0;
       } break; // Do not need post encode values in headers
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -2208,6 +2316,7 @@ d3d12_video_encoder_build_post_encode_codec_bitstream(struct d3d12_video_encoder
             associatedMetadata
          );
       } break;
+#endif
 #endif
       default:
          unreachable("Unsupported pipe_video_format");
@@ -2316,20 +2425,25 @@ d3d12_video_encoder_store_current_picture_references(d3d12_video_encoder *pD3D12
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          // Not needed (not post encode headers)
       } break;
-
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          // Not needed (not post encode headers)
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          d3d12_video_encoder_store_current_picture_references_av1(pD3D12Enc, current_metadata_slot);
       } break;
+#endif
 #endif
       default:
       {

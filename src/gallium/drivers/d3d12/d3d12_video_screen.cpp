@@ -149,20 +149,37 @@ d3d12_has_video_decode_support(struct pipe_screen *pscreen, enum pipe_video_prof
    // Supported profiles below
    bool supportsProfile = false;
    switch (profile) {
+#if VIDEO_CODEC_H264DEC
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_EXTENDED:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_CONSTRAINED_BASELINE:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_MAIN:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH10:
+      {
+         supportsProfile = true;
+      } break;
+#endif
+#if VIDEO_CODEC_H265DEC
       case PIPE_VIDEO_PROFILE_HEVC_MAIN:
       case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
+      {
+         supportsProfile = true;
+      } break;
+#endif
+#if VIDEO_CODEC_AV1DEC
       case PIPE_VIDEO_PROFILE_AV1_MAIN:
+      {
+         supportsProfile = true;
+      } break;
+#endif
+#if VIDEO_CODEC_VP9DEC
       case PIPE_VIDEO_PROFILE_VP9_PROFILE0:
       case PIPE_VIDEO_PROFILE_VP9_PROFILE2:
       {
          supportsProfile = true;
       } break;
+#endif
       default:
          supportsProfile = false;
    }
@@ -804,6 +821,7 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
    D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT d3d12_codec_support = { };
    bool supportsProfile = false;
    switch (profile) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_CONSTRAINED_BASELINE:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_MAIN:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH:
@@ -877,6 +895,8 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                                                             codecSupport);
          }
       } break;
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_PROFILE_HEVC_MAIN:
       case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
       {
@@ -1043,6 +1063,8 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
             }
          }
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_PROFILE_AV1_MAIN:
       {
@@ -1300,7 +1322,8 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
             }
          }
       } break;
-#endif
+#endif // #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
+#endif // #if VIDEO_CODEC_AV1ENC
       default:
          supportsProfile = false;
    }
@@ -1767,28 +1790,39 @@ is_d3d12_video_encode_format_supported(struct pipe_screen *screen,
                                            pipe_format format,
                                            enum pipe_video_profile profile)
 {
+#if VIDEO_CODEC_H264ENC
    D3D12_VIDEO_ENCODER_PROFILE_H264 profH264 = {};
+#endif
+#if VIDEO_CODEC_H265ENC
    D3D12_VIDEO_ENCODER_PROFILE_HEVC profHEVC = {};
+#endif
+#if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
    D3D12_VIDEO_ENCODER_AV1_PROFILE profAV1 = {};
+#endif
 #endif
    D3D12_FEATURE_DATA_VIDEO_ENCODER_INPUT_FORMAT capDataFmt = {};
    capDataFmt.NodeIndex = 0;
    capDataFmt.Codec = d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(profile);
    capDataFmt.Format = d3d12_get_format(format);
    switch (u_reduce_video_profile(profile)) {
+#if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          profH264 = d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_h264(profile);
          capDataFmt.Profile.DataSize = sizeof(profH264);
          capDataFmt.Profile.pH264Profile = &profH264;
       } break;
+#endif
+#if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
          profHEVC = d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_hevc(profile);
          capDataFmt.Profile.DataSize = sizeof(profHEVC);
          capDataFmt.Profile.pHEVCProfile = &profHEVC;
       } break;
+#endif
+#if VIDEO_CODEC_AV1ENC
    #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
@@ -1797,6 +1831,7 @@ is_d3d12_video_encode_format_supported(struct pipe_screen *screen,
          capDataFmt.Profile.pAV1Profile = &profAV1;
       } break;
    #endif
+#endif
       default:
       {
          unreachable("Unsupported pipe_video_format");
