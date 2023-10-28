@@ -9,6 +9,8 @@
 
 #include "tu_device.h"
 
+#include "drm-uapi/drm_fourcc.h"
+#include "fdl/freedreno_layout.h"
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/sysinfo.h>
@@ -2812,6 +2814,14 @@ tu_AllocateMemory(VkDevice _device,
       mtx_unlock(&device->bo_mutex);
    }
 
+   const VkMemoryDedicatedAllocateInfo *dedicate_info =
+      vk_find_struct_const(pAllocateInfo->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
+   if (dedicate_info) {
+      mem->image = tu_image_from_handle(dedicate_info->image);
+   } else {
+      mem->image = NULL;
+   }
+
    *pMem = tu_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
@@ -3343,6 +3353,26 @@ tu_GetMemoryFdKHR(VkDevice _device,
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    *pFd = prime_fd;
+
+   if (memory->image) {
+      struct fdl_layout *l = &memory->image->layout[0];
+      uint64_t modifier;
+      if (l->ubwc) {
+         modifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
+      } else if (l->tile_mode == 2) {
+         modifier = DRM_FORMAT_MOD_QCOM_TILED2;
+      } else if (l->tile_mode == 3) {
+         modifier = DRM_FORMAT_MOD_QCOM_TILED3;
+      } else {
+         assert(!l->tile_mode);
+         modifier = DRM_FORMAT_MOD_LINEAR;
+      }
+      struct fdl_metadata metadata = {
+         .modifier = modifier,
+      };
+      tu_bo_set_metadata(device, memory->bo, &metadata, sizeof(metadata));
+   }
+
    return VK_SUCCESS;
 }
 

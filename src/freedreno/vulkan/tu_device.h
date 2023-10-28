@@ -405,6 +405,9 @@ struct tu_device_memory
    struct vk_object_base base;
 
    struct tu_bo *bo;
+
+   /* for dedicated allocations */
+   struct tu_image *image;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
