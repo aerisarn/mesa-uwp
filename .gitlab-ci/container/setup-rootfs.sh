@@ -27,11 +27,5 @@ chmod +x  /init
 # Copy timezone file and remove tzdata package
 rm -rf /etc/localtime
 cp /usr/share/zoneinfo/Etc/UTC /etc/localtime
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
-
-if [ "$DEBIAN_ARCH" = "amd64" ]; then
-  . setup-wine.sh "/dxvk-wine64"
-  . install-wine-dxvk.sh
-fi
 
 . strip-rootfs.sh
