@@ -295,7 +295,7 @@ def parse_args() -> None:
 
 def find_dependencies(target_jobs_regex: re.Pattern, project_path: str, iid: int) -> set[str]:
     gql_instance = GitlabGQL()
-    dag, _ = create_job_needs_dag(
+    dag = create_job_needs_dag(
         gql_instance, {"projectPath": project_path.path_with_namespace, "iid": iid}
     )
 
@@ -308,7 +308,10 @@ def find_dependencies(target_jobs_regex: re.Pattern, project_path: str, iid: int
     print()
     print_dag(target_dep_dag)
     print(Fore.RESET)
-    return set(chain.from_iterable(target_dep_dag.values()))
+
+    dependency_jobs = set(chain.from_iterable(d["needs"] for d in target_dep_dag.values()))
+    target_jobs = set(target_dep_dag.keys())
+    return target_jobs.union(dependency_jobs)
 
 
 if __name__ == "__main__":

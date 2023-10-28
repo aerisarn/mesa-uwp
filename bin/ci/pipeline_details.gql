@@ -1,4 +1,4 @@
-query getPipelineDetails($projectPath: ID!, $iid: ID!) {
+query jobs($projectPath: ID!, $iid: ID!, $cursor: String) {
   project(fullPath: $projectPath) {
     id
     pipeline(iid: $iid) {
@@ -8,24 +8,25 @@ query getPipelineDetails($projectPath: ID!, $iid: ID!) {
       stages {
         nodes {
           name
-          groups {
-            nodes {
-              jobs {
-                nodes {
-                  id
-                  name
-                  stage {
-                    name
-                  }
-                  needs {
-                    nodes {
-                      id
-                      name
-                    }
-                  }
-                }
+        }
+      }
+      jobs(after: $cursor) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        count
+        nodes {
+          name
+          needs {
+            edges {
+              node {
+                name
               }
             }
+          }
+          stage {
+            name
           }
         }
       }
