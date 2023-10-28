@@ -14,7 +14,7 @@ from typing import Any, Iterable, Optional, Pattern, Union
 import yaml
 from filecache import DAY, filecache
 from gql import Client, gql
-from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.requests import RequestsHTTPTransport
 from graphql import DocumentNode
 
 Dag = dict[str, set[str]]
@@ -56,13 +56,10 @@ class GitlabGQL:
         headers = {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        self._transport = AIOHTTPTransport(
-            url=self.url, headers=headers, client_session_args = { "trust_env": True })
+        self._transport = RequestsHTTPTransport(url=self.url, headers=headers)
 
         # Create a GraphQL client using the defined transport
-        self.client = Client(
-            transport=self._transport, fetch_schema_from_transport=True
-        )
+        self.client = Client(transport=self._transport, fetch_schema_from_transport=True)
 
     @filecache(DAY)
     def query(
