@@ -83,7 +83,7 @@ else
     DEVICE_TREES=""
     KERNEL_IMAGE_NAME="bzImage"
     CONTAINER_ARCH_PACKAGES=(
-      libasound2-dev libcap-dev libfdt-dev libva-dev wayland-protocols p7zip
+      libasound2-dev libcap-dev libfdt-dev libva-dev wayland-protocols p7zip wine
     )
 fi
 
