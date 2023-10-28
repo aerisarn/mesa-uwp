@@ -455,6 +455,9 @@ struct fd_bo_funcs {
     * Optional, if upload is supported, should upload be preferred?
     */
    bool (*prefer_upload)(struct fd_bo *bo, unsigned len);
+
+   void (*set_metadata)(struct fd_bo *bo, void *metadata, uint32_t metadata_size);
+   int (*get_metadata)(struct fd_bo *bo, void *metadata, uint32_t metadata_size);
 };
 
 void fd_bo_add_fence(struct fd_bo *bo, struct fd_fence *fence);

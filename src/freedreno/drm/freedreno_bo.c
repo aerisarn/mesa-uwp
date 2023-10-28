@@ -602,6 +602,22 @@ fd_bo_is_cached(struct fd_bo *bo)
    return !!(bo->alloc_flags & FD_BO_CACHED_COHERENT);
 }
 
+void
+fd_bo_set_metadata(struct fd_bo *bo, void *metadata, uint32_t metadata_size)
+{
+   if (!bo->funcs->set_metadata)
+      return;
+   bo->funcs->set_metadata(bo, metadata, metadata_size);
+}
+
+int
+fd_bo_get_metadata(struct fd_bo *bo, void *metadata, uint32_t metadata_size)
+{
+   if (!bo->funcs->get_metadata)
+      return -ENOSYS;
+   return bo->funcs->get_metadata(bo, metadata, metadata_size);
+}
+
 void *
 fd_bo_map_os_mmap(struct fd_bo *bo)
 {
