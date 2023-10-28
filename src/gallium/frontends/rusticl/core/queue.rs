@@ -45,6 +45,12 @@ impl Deref for QueueContext {
     }
 }
 
+impl Drop for QueueContext {
+    fn drop(&mut self) {
+        self.ctx.set_constant_buffer(0, &[])
+    }
+}
+
 struct QueueState {
     pending: Vec<Arc<Event>>,
     last: Weak<Event>,
