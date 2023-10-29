@@ -90,6 +90,8 @@ pub trait HelperContextWrapper {
     fn compute_state_subgroup_size(&self, state: *mut c_void, block: &[u32; 3]) -> u32;
 
     fn unmap(&self, tx: PipeTransfer);
+
+    fn is_create_fence_fd_supported(&self) -> bool;
 }
 
 pub struct HelperContext<'a> {
@@ -187,6 +189,10 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
 
     fn unmap(&self, tx: PipeTransfer) {
         tx.with_ctx(&self.lock);
+    }
+
+    fn is_create_fence_fd_supported(&self) -> bool {
+        self.lock.is_create_fence_fd_supported()
     }
 }
 
@@ -705,6 +711,7 @@ impl Device {
             && !self.is_device_software()
             && self.screen.is_res_handle_supported()
             && self.screen.device_uuid().is_some()
+            && self.helper_ctx().is_create_fence_fd_supported()
     }
 
     pub fn is_device_software(&self) -> bool {
