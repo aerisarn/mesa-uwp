@@ -112,9 +112,10 @@ impl NirKernelBuild {
         let len = buf.len() as u32;
 
         if len > 0 {
+            // TODO bind as constant buffer
             let res = dev
                 .screen()
-                .resource_create_buffer(len, ResourceType::Normal)
+                .resource_create_buffer(len, ResourceType::Normal, PIPE_BIND_GLOBAL)
                 .unwrap();
 
             dev.helper_ctx()
