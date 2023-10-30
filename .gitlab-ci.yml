@@ -140,6 +140,8 @@ include:
 .rules-anchors:
   # Post-merge pipeline
   - &is-post-merge '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_BRANCH'
+  # Post-merge pipeline after Marge has merged an MR
+  - &is-post-merge-for-marge '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_BRANCH && $GITLAB_USER_LOGIN != "marge-bot"'
   # Post-merge pipeline, not for Marge Bot
   - &is-post-merge-not-for-marge '$CI_PROJECT_NAMESPACE == "mesa" && $GITLAB_USER_LOGIN != "marge-bot" && $CI_COMMIT_BRANCH'
   # Pre-merge pipeline
@@ -148,6 +150,12 @@ include:
   - &is-pre-merge-for-marge '$GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"'
   # Pre-merge pipeline *not* for Marge Bot
   - &is-pre-merge-not-for-marge '$GITLAB_USER_LOGIN != "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+
+
+.never-post-merge-rules:
+  rules:
+    - if: *is-post-merge-for-marge
+      when: never
 
 
 .container+build-rules:
