@@ -1308,6 +1308,9 @@ should_form_clause(const Instruction* a, const Instruction* b)
    if (a->format != b->format)
       return false;
 
+   if (a->operands.empty() || b->operands.empty())
+      return false;
+
    /* Assume loads which don't use descriptors might load from similar addresses. */
    if (a->isFlatLike())
       return true;
