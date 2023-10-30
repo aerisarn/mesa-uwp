@@ -1562,15 +1562,10 @@ radv_register_rt_pipeline(struct radv_device *device, struct radv_ray_tracing_pi
 
    for (unsigned i = 0; i < pipeline->stage_count; i++) {
       struct radv_ray_tracing_stage *stage = &pipeline->stages[i];
-      if (!radv_ray_tracing_stage_is_compiled(stage)) {
-         if (stage->stage == MESA_SHADER_ANY_HIT)
-            max_any_hit_stack_size = MAX2(max_any_hit_stack_size, stage->stack_size);
-         else if (stage->stage == MESA_SHADER_INTERSECTION)
-            max_intersection_stack_size = MAX2(max_intersection_stack_size, stage->stack_size);
-         else
-            unreachable("invalid non-compiled stage");
-         continue;
-      }
+      if (stage->stage == MESA_SHADER_ANY_HIT)
+         max_any_hit_stack_size = MAX2(max_any_hit_stack_size, stage->stack_size);
+      else if (stage->stage == MESA_SHADER_INTERSECTION)
+         max_intersection_stack_size = MAX2(max_intersection_stack_size, stage->stack_size);
 
       if (!pipeline->stages[i].shader)
          continue;
