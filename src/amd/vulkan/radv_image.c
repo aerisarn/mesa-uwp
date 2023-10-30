@@ -1395,30 +1395,36 @@ radv_make_texture_descriptor(struct radv_device *device, struct radv_image *imag
 }
 
 static void
-radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image, struct radeon_bo_metadata *md)
+radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image, unsigned plane_id,
+                           struct radeon_bo_metadata *md)
 {
    static const VkComponentMapping fixedmapping;
+   const VkFormat plane_format = radv_image_get_plane_format(device->physical_device, image, plane_id);
+   const unsigned plane_width = vk_format_get_plane_width(image->vk.format, plane_id, image->vk.extent.width);
+   const unsigned plane_height = vk_format_get_plane_height(image->vk.format, plane_id, image->vk.extent.height);
+   struct radeon_surf *surface = &image->planes[plane_id].surface;
+   const struct legacy_surf_level *base_level_info =
+      device->physical_device->rad_info.gfx_level <= GFX8 ? &surface->u.legacy.level[0] : NULL;
    uint32_t desc[8];
 
-   assert(image->plane_count == 1);
+   radv_make_texture_descriptor(device, image, false, (VkImageViewType)image->vk.image_type, plane_format,
+                                &fixedmapping, 0, image->vk.mip_levels - 1, 0, image->vk.array_layers - 1, plane_width,
+                                plane_height, image->vk.extent.depth, 0.0f, desc, NULL, 0, NULL, NULL);
 
-   radv_make_texture_descriptor(device, image, false, (VkImageViewType)image->vk.image_type, image->vk.format,
-                                &fixedmapping, 0, image->vk.mip_levels - 1, 0, image->vk.array_layers - 1,
-                                image->vk.extent.width, image->vk.extent.height, image->vk.extent.depth, 0.0f, desc,
-                                NULL, 0, NULL, NULL);
+   si_set_mutable_tex_desc_fields(device, image, base_level_info, plane_id, 0, 0, surface->blk_w, false, false, false,
+                                  false, desc, NULL);
 
-   si_set_mutable_tex_desc_fields(device, image, &image->planes[0].surface.u.legacy.level[0], 0, 0, 0,
-                                  image->planes[0].surface.blk_w, false, false, false, false, desc, NULL);
-
-   ac_surface_compute_umd_metadata(&device->physical_device->rad_info, &image->planes[0].surface, image->vk.mip_levels,
-                                   desc, &md->size_metadata, md->metadata,
+   ac_surface_compute_umd_metadata(&device->physical_device->rad_info, surface, image->vk.mip_levels, desc,
+                                   &md->size_metadata, md->metadata,
                                    device->instance->debug_flags & RADV_DEBUG_EXTRA_MD);
 }
 
 void
 radv_init_metadata(struct radv_device *device, struct radv_image *image, struct radeon_bo_metadata *metadata)
 {
-   struct radeon_surf *surface = &image->planes[0].surface;
+   /* use plane 0, even when there are multiple planes, to follow radeonsi */
+   const unsigned plane_id = 0;
+   struct radeon_surf *surface = &image->planes[plane_id].surface;
 
    memset(metadata, 0, sizeof(*metadata));
 
@@ -1446,7 +1452,7 @@ radv_init_metadata(struct radv_device *device, struct radv_image *image, struct 
       metadata->u.legacy.stride = surface->u.legacy.level[0].nblk_x * surface->bpe;
       metadata->u.legacy.scanout = (surface->flags & RADEON_SURF_SCANOUT) != 0;
    }
-   radv_query_opaque_metadata(device, image, metadata);
+   radv_query_opaque_metadata(device, image, plane_id, metadata);
 }
 
 void
