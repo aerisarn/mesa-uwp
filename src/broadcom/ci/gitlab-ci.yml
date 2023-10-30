@@ -15,6 +15,7 @@
 .vc4-rules:
   stage: broadcom
   rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - !reference [.broadcom-common-rules, rules]
@@ -28,6 +29,7 @@
 .v3d-rules:
   stage: broadcom
   rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - !reference [.broadcom-common-rules, rules]
@@ -42,6 +44,7 @@
   stage: broadcom
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.igalia-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -54,6 +57,7 @@
 .v3dv-rules:
   stage: broadcom
   rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.igalia-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
