@@ -2515,14 +2515,15 @@ radv_GetImageSubresourceLayout2KHR(VkDevice _device, VkImage _image, const VkIma
    int level = pSubresource->imageSubresource.mipLevel;
    int layer = pSubresource->imageSubresource.arrayLayer;
 
+   const unsigned plane_count = vk_format_get_plane_count(image->vk.format);
    unsigned plane_id = 0;
-   if (vk_format_get_plane_count(image->vk.format) > 1)
+   if (plane_count > 1)
       plane_id = radv_plane_from_aspect(pSubresource->imageSubresource.aspectMask);
 
    struct radv_image_plane *plane = &image->planes[plane_id];
    struct radeon_surf *surface = &plane->surface;
 
-   if (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+   if (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT && plane_count == 1) {
       unsigned mem_plane_id = radv_plane_from_aspect(pSubresource->imageSubresource.aspectMask);
 
       assert(level == 0);
