@@ -1091,6 +1091,10 @@ radv_get_modifier_flags(struct radv_physical_device *dev, VkFormat format, uint6
    features &= ~VK_FORMAT_FEATURE_2_DISJOINT_BIT;
 
    if (ac_modifier_has_dcc(modifier)) {
+      /* We don't enable DCC for multi-planar formats */
+      if (vk_format_get_plane_count(format) > 1)
+         return 0;
+
       /* Only disable support for STORAGE_IMAGE on modifiers that
        * do not support DCC image stores.
        */
@@ -1136,16 +1140,11 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
 
    for (unsigned i = 0; i < mod_count; ++i) {
       VkFormatFeatureFlags2 features = radv_get_modifier_flags(dev, format, mods[i], format_props);
-      unsigned planes = vk_format_get_plane_count(format);
-      if (planes == 1) {
-         if (ac_modifier_has_dcc_retile(mods[i]))
-            planes = 3;
-         else if (ac_modifier_has_dcc(mods[i]))
-            planes = 2;
-      }
-
       if (!features)
          continue;
+
+      unsigned planes =
+         vk_format_get_plane_count(format) + ac_modifier_has_dcc(mods[i]) + ac_modifier_has_dcc_retile(mods[i]);
 
       vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT, &out, out_props)
       {
@@ -1192,16 +1191,11 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
 
    for (unsigned i = 0; i < mod_count; ++i) {
       VkFormatFeatureFlags2 features = radv_get_modifier_flags(dev, format, mods[i], format_props);
-      unsigned planes = vk_format_get_plane_count(format);
-      if (planes == 1) {
-         if (ac_modifier_has_dcc_retile(mods[i]))
-            planes = 3;
-         else if (ac_modifier_has_dcc(mods[i]))
-            planes = 2;
-      }
-
       if (!features)
          continue;
+
+      unsigned planes =
+         vk_format_get_plane_count(format) + ac_modifier_has_dcc(mods[i]) + ac_modifier_has_dcc_retile(mods[i]);
 
       vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT, &out, out_props)
       {
