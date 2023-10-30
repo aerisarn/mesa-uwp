@@ -479,6 +479,12 @@ radv_rt_can_inline_shader(nir_shader *nir)
    return true;
 }
 
+static inline bool
+radv_ray_tracing_stage_is_always_inlined(struct radv_ray_tracing_stage *stage)
+{
+   return stage->stage == MESA_SHADER_ANY_HIT || stage->stage == MESA_SHADER_INTERSECTION;
+}
+
 static VkResult
 radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *cache,
                         const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
@@ -544,9 +550,9 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
        *    - non-recursive:    Non-recursive shaders are inlined into the traversal shader.
        *    - monolithic:       Callable shaders (chit/miss) are inlined into the raygen shader.
        */
-      bool compiled = radv_ray_tracing_stage_is_compiled(&rt_stages[idx]);
+      bool always_inlined = radv_ray_tracing_stage_is_always_inlined(&rt_stages[idx]);
       bool nir_needed =
-         (library && !has_callable) || !compiled || (monolithic && rt_stages[idx].stage != MESA_SHADER_RAYGEN);
+         (library && !has_callable) || always_inlined || (monolithic && rt_stages[idx].stage != MESA_SHADER_RAYGEN);
       nir_needed &= !rt_stages[idx].nir;
       if (nir_needed) {
          rt_stages[idx].stack_size = stage->nir->scratch_size;
@@ -566,7 +572,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
        *                        shaders since pipeline library shaders use separate compilation.
        *    - separate:   Compile any recursive stage if wasn't compiled yet.
        */
-      bool shader_needed = radv_ray_tracing_stage_is_compiled(&rt_stages[idx]) && !rt_stages[idx].shader;
+      bool shader_needed = !radv_ray_tracing_stage_is_always_inlined(&rt_stages[idx]) && !rt_stages[idx].shader;
       if (rt_stages[idx].stage == MESA_SHADER_CLOSEST_HIT || rt_stages[idx].stage == MESA_SHADER_MISS)
          shader_needed &= !monolithic || raygen_imported;
 

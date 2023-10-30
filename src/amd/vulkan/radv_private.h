@@ -2141,13 +2141,6 @@ struct radv_ray_tracing_stage {
    uint8_t sha1[SHA1_DIGEST_LENGTH];
 };
 
-static inline bool
-radv_ray_tracing_stage_is_compiled(struct radv_ray_tracing_stage *stage)
-{
-   return stage->stage == MESA_SHADER_RAYGEN || stage->stage == MESA_SHADER_CALLABLE ||
-          stage->stage == MESA_SHADER_CLOSEST_HIT || stage->stage == MESA_SHADER_MISS;
-}
-
 struct radv_ray_tracing_pipeline {
    struct radv_compute_pipeline base;
 
