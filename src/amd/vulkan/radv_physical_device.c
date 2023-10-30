@@ -370,8 +370,16 @@ radv_find_memory_index(const struct radv_physical_device *pdevice, VkMemoryPrope
 static void
 radv_get_binning_settings(const struct radv_physical_device *pdevice, struct radv_binning_settings *settings)
 {
-   settings->context_states_per_bin = 1;
-   settings->persistent_states_per_bin = 1;
+   if ((pdevice->rad_info.has_dedicated_vram && pdevice->rad_info.max_render_backends > 4) ||
+       pdevice->rad_info.gfx_level >= GFX10) {
+      /* Using higher settings on GFX10+ can cause random GPU hangs. */
+      settings->context_states_per_bin = 1;
+      settings->persistent_states_per_bin = 1;
+   } else {
+      settings->context_states_per_bin = pdevice->rad_info.has_gfx9_scissor_bug ? 1 : 3;
+      settings->persistent_states_per_bin = 1;
+   }
+
    settings->fpovs_per_batch = 63;
 }
 
