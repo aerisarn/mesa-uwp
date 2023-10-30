@@ -805,7 +805,6 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
    bool supportsProfile = false;
    switch (profile) {
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_CONSTRAINED_BASELINE:
-      case PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_MAIN:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH10:
