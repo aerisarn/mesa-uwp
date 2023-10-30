@@ -218,9 +218,6 @@ get_device_extensions(const struct anv_physical_device *device,
 
    const bool rt_enabled = ANV_SUPPORT_RT && device->info.has_ray_tracing;
 
-   const bool cooperative_matrix_enabled =
-      anv_has_cooperative_matrix(&device->info);
-
    *ext = (struct vk_device_extension_table) {
       .KHR_8bit_storage                      = true,
       .KHR_16bit_storage                     = !device->instance->no_16bit,
@@ -229,7 +226,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_buffer_device_address             = true,
       .KHR_calibrated_timestamps             = device->has_reg_timestamp,
       .KHR_copy_commands2                    = true,
-      .KHR_cooperative_matrix                = cooperative_matrix_enabled,
+      .KHR_cooperative_matrix                = anv_has_cooperative_matrix(device),
       .KHR_create_renderpass2                = true,
       .KHR_dedicated_allocation              = true,
       .KHR_deferred_host_operations          = true,
@@ -868,7 +865,7 @@ get_features(const struct anv_physical_device *pdevice,
       .nestedCommandBufferSimultaneousUse = false,
 
       /* VK_KHR_cooperative_matrix */
-      .cooperativeMatrix = anv_has_cooperative_matrix(&pdevice->info),
+      .cooperativeMatrix = anv_has_cooperative_matrix(pdevice),
    };
 
    /* The new DOOM and Wolfenstein games require depthBounds without
@@ -2249,6 +2246,9 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->generated_indirect_draws =
       debug_get_bool_option("ANV_ENABLE_GENERATED_INDIRECT_DRAWS",
                             true);
+
+   device->has_cooperative_matrix =
+      device->info.cooperative_matrix_configurations[0].scope != SCOPE_NONE;
 
    unsigned st_idx = 0;
 
@@ -5173,7 +5173,7 @@ VkResult anv_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(
    ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
    const struct intel_device_info *devinfo = &pdevice->info;
 
-   assert(anv_has_cooperative_matrix(devinfo));
+   assert(anv_has_cooperative_matrix(pdevice));
 
    VK_OUTARRAY_MAKE_TYPED(VkCooperativeMatrixPropertiesKHR, out, pProperties, pPropertyCount);
 
