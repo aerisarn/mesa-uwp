@@ -829,6 +829,9 @@ struct iris_context {
       bool color_blend_zero;
       bool alpha_blend_zero;
 
+      /** State tracking for Wa_18020335297. */
+      bool viewport_ptr_set;
+
       /** Do we have integer RT in current framebuffer state? */
       bool has_integer_rt;
 

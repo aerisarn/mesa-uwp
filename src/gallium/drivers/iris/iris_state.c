@@ -6493,6 +6493,87 @@ shader_program_needs_wa_14015055625(struct iris_context *ice,
 }
 
 static void
+emit_wa_18020335297_dummy_draw(struct iris_batch *batch)
+{
+#if GFX_VERx10 >= 125
+   iris_emit_cmd(batch, GENX(3DSTATE_VFG), vfg) {
+      vfg.DistributionMode = RR_STRICT;
+   }
+   iris_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
+      vf.GeometryDistributionEnable = true;
+   }
+#endif
+
+#if GFX_VER >= 12
+   iris_emit_cmd(batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr) {
+      pr.ReplicaMask = 1;
+   }
+#endif
+
+   iris_emit_cmd(batch, GENX(3DSTATE_RASTER), rr) {
+      rr.CullMode = CULLMODE_NONE;
+      rr.FrontFaceFillMode = FILL_MODE_SOLID;
+      rr.BackFaceFillMode = FILL_MODE_SOLID;
+   }
+
+   iris_emit_cmd(batch, GENX(3DSTATE_VF_STATISTICS), vf) { }
+   iris_emit_cmd(batch, GENX(3DSTATE_VF_SGVS), sgvs) { }
+
+#if GFX_VER >= 11
+   iris_emit_cmd(batch, GENX(3DSTATE_VF_SGVS_2), sgvs2) { }
+#endif
+
+   iris_emit_cmd(batch, GENX(3DSTATE_CLIP), clip) {
+      clip.ClipEnable = true;
+      clip.ClipMode = CLIPMODE_REJECT_ALL;
+   }
+
+   iris_emit_cmd(batch, GENX(3DSTATE_VS), vs) { }
+   iris_emit_cmd(batch, GENX(3DSTATE_GS), gs) { }
+   iris_emit_cmd(batch, GENX(3DSTATE_HS), hs) { }
+   iris_emit_cmd(batch, GENX(3DSTATE_TE), te) { }
+   iris_emit_cmd(batch, GENX(3DSTATE_DS), ds) { }
+   iris_emit_cmd(batch, GENX(3DSTATE_STREAMOUT), so) { }
+
+   uint32_t vertex_elements[1 + 2 * GENX(VERTEX_ELEMENT_STATE_length)];
+   uint32_t *ve_pack_dest = &vertex_elements[1];
+
+   iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS), vertex_elements, ve) {
+      ve.DWordLength = 1 + GENX(VERTEX_ELEMENT_STATE_length) * 2 -
+                       GENX(3DSTATE_VERTEX_ELEMENTS_length_bias);
+   }
+
+   for (int i = 0; i < 2; i++) {
+      iris_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
+         ve.Valid = true;
+         ve.SourceElementFormat = ISL_FORMAT_R32G32B32A32_FLOAT;
+         ve.Component0Control = VFCOMP_STORE_0;
+         ve.Component1Control = VFCOMP_STORE_0;
+         ve.Component2Control = i == 0 ? VFCOMP_STORE_0 : VFCOMP_STORE_1_FP;
+         ve.Component3Control = i == 0 ? VFCOMP_STORE_0 : VFCOMP_STORE_1_FP;
+      }
+      ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
+   }
+
+   iris_batch_emit(batch, vertex_elements, sizeof(uint32_t) *
+                   (1 + 2 * GENX(VERTEX_ELEMENT_STATE_length)));
+
+   iris_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
+      topo.PrimitiveTopologyType = _3DPRIM_TRILIST;
+   }
+
+   /* Emit dummy draw per slice. */
+   for (unsigned i = 0; i < batch->screen->devinfo->num_slices; i++) {
+      iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
+         prim.VertexCountPerInstance = 3;
+         prim.PrimitiveTopologyType = _3DPRIM_TRILIST;
+         prim.InstanceCount = 1;
+         prim.VertexAccessType = SEQUENTIAL;
+      }
+   }
+}
+
+static void
 iris_upload_dirty_render_state(struct iris_context *ice,
                                struct iris_batch *batch,
                                const struct pipe_draw_info *draw)
@@ -6510,8 +6591,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
        ice->shaders.prog[MESA_SHADER_TESS_EVAL])
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_TES;
 
-   const uint64_t dirty = ice->state.dirty;
-   const uint64_t stage_dirty = ice->state.stage_dirty;
+   uint64_t dirty = ice->state.dirty;
+   uint64_t stage_dirty = ice->state.stage_dirty;
 
    if (!(dirty & IRIS_ALL_DIRTY_FOR_RENDER) &&
        !(stage_dirty & IRIS_ALL_STAGE_DIRTY_FOR_RENDER))
@@ -6533,6 +6614,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_CC_VIEWPORT) {
       const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
       uint32_t cc_vp_address;
+      bool wa_18020335297_applied = false;
+
+      /* Wa_18020335297 - Apply the WA when viewport ptr is reprogrammed. */
+      if (intel_needs_workaround(screen->devinfo, 18020335297) &&
+          batch->name == IRIS_BATCH_RENDER &&
+          ice->state.viewport_ptr_set) {
+         emit_wa_18020335297_dummy_draw(batch);
+         wa_18020335297_applied = true;
+      }
 
       /* XXX: could avoid streaming for depth_clip [0,1] case. */
       uint32_t *cc_vp_map =
@@ -6561,6 +6651,30 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), ptr) {
          ptr.CCViewportPointer = cc_vp_address;
       }
+
+      if (wa_18020335297_applied) {
+#if GFX_VER >= 12
+         iris_emit_cmd(batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr) { }
+#endif
+         /* Dirty all emitted WA state to make sure that current real
+          * state is restored.
+          */
+         dirty |= IRIS_DIRTY_VFG |
+                  IRIS_DIRTY_VF |
+                  IRIS_DIRTY_RASTER |
+                  IRIS_DIRTY_VF_STATISTICS |
+                  IRIS_DIRTY_VF_SGVS |
+                  IRIS_DIRTY_CLIP |
+                  IRIS_DIRTY_STREAMOUT |
+                  IRIS_DIRTY_VERTEX_ELEMENTS |
+                  IRIS_DIRTY_VF_TOPOLOGY;
+
+         for (int stage = 0; stage < MESA_SHADER_FRAGMENT; stage++) {
+            if (ice->shaders.prog[stage])
+               stage_dirty |= (IRIS_STAGE_DIRTY_VS << stage);
+         }
+      }
+      ice->state.viewport_ptr_set = true;
    }
 
    if (dirty & IRIS_DIRTY_SF_CL_VIEWPORT) {
