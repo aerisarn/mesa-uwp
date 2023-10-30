@@ -6618,6 +6618,11 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
    case VK_PIPELINE_BIND_POINT_GRAPHICS: {
       struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
 
+      /* Bind the non-dynamic graphics state from the pipeline unconditionally because some PSO
+       * might have been overwritten between two binds of the same pipeline.
+       */
+      radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
+
       if (cmd_buffer->state.graphics_pipeline == graphics_pipeline)
          return;
       radv_mark_descriptor_sets_dirty(cmd_buffer, pipelineBindPoint);
@@ -6685,8 +6690,6 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.col_format_non_compacted = graphics_pipeline->col_format_non_compacted;
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
       }
-
-      radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
 
       radv_bind_vs_input_state(cmd_buffer, graphics_pipeline);
 
