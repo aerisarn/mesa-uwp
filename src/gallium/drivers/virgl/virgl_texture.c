@@ -99,6 +99,7 @@ static void virgl_init_temp_resource_from_box(struct pipe_resource *res,
       res->bind = PIPE_BIND_RENDER_TARGET;
 
    switch (res->target) {
+   case PIPE_TEXTURE_CUBE:
    case PIPE_TEXTURE_1D_ARRAY:
    case PIPE_TEXTURE_2D_ARRAY:
    case PIPE_TEXTURE_CUBE_ARRAY:
