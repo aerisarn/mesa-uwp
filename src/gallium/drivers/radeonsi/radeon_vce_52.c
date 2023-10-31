@@ -28,17 +28,7 @@ static void get_rate_control_param(struct rvce_encoder *enc, struct pipe_h264_en
    enc->enc_pic.rc.frame_rate_num = pic->rate_ctrl[0].frame_rate_num;
    enc->enc_pic.rc.frame_rate_den = pic->rate_ctrl[0].frame_rate_den;
    enc->enc_pic.rc.max_qp = 51;
-
-   /* For CBR mode, to guarantee bitrate of generated stream complies with
-    * target bitrate (e.g. no over +/-10%), vbv_buffer_size should be same
-    * as target bitrate.
-    */
-   if (enc->enc_pic.rc.rc_method == PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT) {
-           enc->enc_pic.rc.vbv_buffer_size = pic->rate_ctrl[0].target_bitrate;
-   } else {
-           enc->enc_pic.rc.vbv_buffer_size = pic->rate_ctrl[0].vbv_buffer_size;
-   }
-
+   enc->enc_pic.rc.vbv_buffer_size = pic->rate_ctrl[0].vbv_buffer_size;
    enc->enc_pic.rc.vbv_buf_lv = pic->rate_ctrl[0].vbv_buf_lv;
    enc->enc_pic.rc.fill_data_enable = pic->rate_ctrl[0].fill_data_enable;
    enc->enc_pic.rc.enforce_hrd = pic->rate_ctrl[0].enforce_hrd;
