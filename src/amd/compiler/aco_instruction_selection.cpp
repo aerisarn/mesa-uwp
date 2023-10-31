@@ -3941,6 +3941,44 @@ visit_load_const(isel_context* ctx, nir_load_const_instr* instr)
    }
 }
 
+Temp
+emit_readfirstlane(isel_context* ctx, Temp src, Temp dst)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   if (src.regClass().type() == RegType::sgpr) {
+      bld.copy(Definition(dst), src);
+   } else if (src.size() == 1) {
+      bld.vop1(aco_opcode::v_readfirstlane_b32, Definition(dst), src);
+   } else {
+      aco_ptr<Pseudo_instruction> split{create_instruction<Pseudo_instruction>(
+         aco_opcode::p_split_vector, Format::PSEUDO, 1, src.size())};
+      split->operands[0] = Operand(src);
+
+      for (unsigned i = 0; i < src.size(); i++) {
+         split->definitions[i] =
+            bld.def(RegClass::get(RegType::vgpr, MIN2(src.bytes() - i * 4, 4)));
+      }
+
+      Instruction* split_raw = split.get();
+      ctx->block->instructions.emplace_back(std::move(split));
+
+      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
+         aco_opcode::p_create_vector, Format::PSEUDO, src.size(), 1)};
+      vec->definitions[0] = Definition(dst);
+      for (unsigned i = 0; i < src.size(); i++) {
+         vec->operands[i] = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1),
+                                     split_raw->definitions[i].getTemp());
+      }
+
+      ctx->block->instructions.emplace_back(std::move(vec));
+      if (src.bytes() % 4 == 0)
+         emit_split_vector(ctx, dst, src.size());
+   }
+
+   return dst;
+}
+
 bool
 can_use_byte_align_for_global_load(unsigned num_components, unsigned component_size,
                                    unsigned align_, bool support_12_byte)
@@ -3974,6 +4012,7 @@ struct LoadEmitInfo {
    bool glc = false;
    bool slc = false;
    bool split_by_component_stride = true;
+   bool readfirstlane_for_uniform = false;
    unsigned swizzle_component_size = 0;
    memory_sync_info sync;
    Temp soffset = Temp(0, s1);
@@ -4220,8 +4259,14 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
       /* try to p_as_uniform early so we can create more optimizable code and
        * also update allocated_vec */
       for (unsigned j = start; j < components_split; j++) {
-         if (allocated_vec[j].bytes() % 4 == 0 && info.dst.type() == RegType::sgpr)
-            allocated_vec[j] = bld.as_uniform(allocated_vec[j]);
+         if (allocated_vec[j].bytes() % 4 == 0 && info.dst.type() == RegType::sgpr) {
+            if (info.readfirstlane_for_uniform) {
+               allocated_vec[j] = emit_readfirstlane(
+                  ctx, allocated_vec[j], bld.tmp(RegClass(RegType::sgpr, allocated_vec[j].size())));
+            } else {
+               allocated_vec[j] = bld.as_uniform(allocated_vec[j]);
+            }
+         }
          has_vgprs |= allocated_vec[j].type() == RegType::vgpr;
       }
    }
@@ -4243,7 +4288,10 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
       Temp tmp = bld.tmp(RegType::vgpr, info.dst.size());
       vec->definitions[0] = Definition(tmp);
       bld.insert(std::move(vec));
-      bld.pseudo(aco_opcode::p_as_uniform, Definition(info.dst), tmp);
+      if (info.readfirstlane_for_uniform)
+         emit_readfirstlane(ctx, tmp, info.dst);
+      else
+         bld.pseudo(aco_opcode::p_as_uniform, Definition(info.dst), tmp);
    } else {
       vec->definitions[0] = Definition(info.dst);
       bld.insert(std::move(vec));
@@ -4771,6 +4819,13 @@ load_lds(isel_context* ctx, unsigned elem_size_bytes, unsigned num_components, T
    info.align_offset = 0;
    info.sync = memory_sync_info(storage_shared);
    info.const_offset = base_offset;
+   /* The 2 separate loads for gfx10+ wave64 can see different values, even for uniform addresses,
+    * if another wave writes LDS in between. Use v_readfirstlane instead of p_as_uniform in order
+    * to avoid copy-propagation.
+    */
+   info.readfirstlane_for_uniform = ctx->options->gfx_level >= GFX10 &&
+                                    ctx->program->wave_size == 64 &&
+                                    ctx->program->workgroup_size > 64;
    emit_load(ctx, bld, info, lds_load_params);
 
    return dst;
@@ -8496,22 +8551,13 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_read_first_invocation: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->def);
-      if (src.regClass() == v1b || src.regClass() == v2b || src.regClass() == v1) {
-         bld.vop1(aco_opcode::v_readfirstlane_b32, Definition(dst), src);
-      } else if (src.regClass() == v2) {
-         Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
-         bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-         lo = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), lo);
-         hi = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), hi);
-         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
-         emit_split_vector(ctx, dst, 2);
-      } else if (instr->def.bit_size == 1) {
+      if (instr->def.bit_size == 1) {
          assert(src.regClass() == bld.lm);
          Temp tmp = bld.sopc(Builder::s_bitcmp1, bld.def(s1, scc), src,
                              bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm)));
          bool_to_vector_condition(ctx, tmp, dst);
       } else {
-         bld.copy(Definition(dst), src);
+         emit_readfirstlane(ctx, src, dst);
       }
       set_wqm(ctx);
       break;
