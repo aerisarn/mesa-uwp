@@ -610,6 +610,11 @@ d3d12_is_format_supported(struct pipe_screen *pscreen,
       unreachable("Unknown target");
    }
 
+   if (bind & PIPE_BIND_DISPLAY_TARGET) {
+      if (!screen->winsys->is_displaytarget_format_supported(screen->winsys, bind, format))
+         return false;
+   }
+
    D3D12_FEATURE_DATA_FORMAT_SUPPORT fmt_info;
    fmt_info.Format = d3d12_get_resource_rt_format(format);
    if (FAILED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT,
