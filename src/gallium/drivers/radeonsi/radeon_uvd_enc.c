@@ -31,6 +31,37 @@
 #define UVD_HEVC_LEVEL_6_1 183
 #define UVD_HEVC_LEVEL_6_2 186
 
+static void radeon_uvd_enc_get_vui_param(struct radeon_uvd_encoder *enc,
+                                         struct pipe_h265_enc_picture_desc *pic)
+{
+   enc->enc_pic.vui_info.vui_parameters_present_flag =
+      pic->seq.vui_parameters_present_flag;
+   enc->enc_pic.vui_info.flags.aspect_ratio_info_present_flag =
+      pic->seq.vui_flags.aspect_ratio_info_present_flag;
+   enc->enc_pic.vui_info.flags.timing_info_present_flag =
+      pic->seq.vui_flags.timing_info_present_flag;
+   enc->enc_pic.vui_info.flags.video_signal_type_present_flag =
+      pic->seq.vui_flags.video_signal_type_present_flag;
+   enc->enc_pic.vui_info.flags.colour_description_present_flag =
+      pic->seq.vui_flags.colour_description_present_flag;
+   enc->enc_pic.vui_info.flags.chroma_loc_info_present_flag =
+      pic->seq.vui_flags.chroma_loc_info_present_flag;
+   enc->enc_pic.vui_info.aspect_ratio_idc = pic->seq.aspect_ratio_idc;
+   enc->enc_pic.vui_info.sar_width = pic->seq.sar_width;
+   enc->enc_pic.vui_info.sar_height = pic->seq.sar_height;
+   enc->enc_pic.vui_info.num_units_in_tick = pic->seq.num_units_in_tick;
+   enc->enc_pic.vui_info.time_scale = pic->seq.time_scale;
+   enc->enc_pic.vui_info.video_format = pic->seq.video_format;
+   enc->enc_pic.vui_info.video_full_range_flag = pic->seq.video_full_range_flag;
+   enc->enc_pic.vui_info.colour_primaries = pic->seq.colour_primaries;
+   enc->enc_pic.vui_info.transfer_characteristics = pic->seq.transfer_characteristics;
+   enc->enc_pic.vui_info.matrix_coefficients = pic->seq.matrix_coefficients;
+   enc->enc_pic.vui_info.chroma_sample_loc_type_top_field =
+      pic->seq.chroma_sample_loc_type_top_field;
+   enc->enc_pic.vui_info.chroma_sample_loc_type_bottom_field =
+      pic->seq.chroma_sample_loc_type_bottom_field;
+}
+
 static void radeon_uvd_enc_get_param(struct radeon_uvd_encoder *enc,
                                      struct pipe_h265_enc_picture_desc *pic)
 {
@@ -80,6 +111,7 @@ static void radeon_uvd_enc_get_param(struct radeon_uvd_encoder *enc,
    enc->enc_pic.sample_adaptive_offset_enabled_flag = pic->seq.sample_adaptive_offset_enabled_flag;
    enc->enc_pic.pcm_enabled_flag = 0; /*HW not support PCM */
    enc->enc_pic.sps_temporal_mvp_enabled_flag = pic->seq.sps_temporal_mvp_enabled_flag;
+   radeon_uvd_enc_get_vui_param(enc, pic);
 }
 
 static void flush(struct radeon_uvd_encoder *enc)
