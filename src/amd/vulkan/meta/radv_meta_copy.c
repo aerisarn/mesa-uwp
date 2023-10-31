@@ -606,14 +606,21 @@ radv_CmdCopyImage2(VkCommandBuffer commandBuffer, const VkCopyImageInfo2 *pCopyI
 
       const enum util_format_layout format_layout = vk_format_description(dst_image->vk.format)->layout;
       for (unsigned r = 0; r < pCopyImageInfo->regionCount; r++) {
+         VkExtent3D dst_extent = pCopyImageInfo->pRegions[r].extent;
+         if (src_image->vk.format != dst_image->vk.format) {
+            dst_extent.width = dst_extent.width / vk_format_get_blockwidth(src_image->vk.format) *
+                               vk_format_get_blockwidth(dst_image->vk.format);
+            dst_extent.height = dst_extent.height / vk_format_get_blockheight(src_image->vk.format) *
+                                vk_format_get_blockheight(dst_image->vk.format);
+         }
          if (format_layout == UTIL_FORMAT_LAYOUT_ASTC) {
             radv_meta_decode_astc(cmd_buffer, dst_image, pCopyImageInfo->dstImageLayout,
                                   &pCopyImageInfo->pRegions[r].dstSubresource, pCopyImageInfo->pRegions[r].dstOffset,
-                                  pCopyImageInfo->pRegions[r].extent);
+                                  dst_extent);
          } else {
             radv_meta_decode_etc(cmd_buffer, dst_image, pCopyImageInfo->dstImageLayout,
                                  &pCopyImageInfo->pRegions[r].dstSubresource, pCopyImageInfo->pRegions[r].dstOffset,
-                                 pCopyImageInfo->pRegions[r].extent);
+                                 dst_extent);
          }
       }
    }
