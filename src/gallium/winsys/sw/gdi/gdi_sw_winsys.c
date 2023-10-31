@@ -167,6 +167,16 @@ gdi_sw_displaytarget_create(struct sw_winsys *winsys,
       gdt->bmi.bV5RedMask = 0xF800;
       gdt->bmi.bV5GreenMask = 0x07E0;
       gdt->bmi.bV5BlueMask = 0x001F;
+   } else if (format == PIPE_FORMAT_B4G4R4A4_UNORM) {
+      gdt->bmi.bV5Compression = BI_BITFIELDS;
+      gdt->bmi.bV5RedMask = 0x0F00;
+      gdt->bmi.bV5GreenMask = 0x00F0;
+      gdt->bmi.bV5BlueMask = 0x000F;
+   } else if (format == PIPE_FORMAT_R10G10B10A2_UNORM) {
+      gdt->bmi.bV5Compression = BI_BITFIELDS;
+      gdt->bmi.bV5RedMask = 0x000003FF;
+      gdt->bmi.bV5GreenMask = 0x000FFC00;
+      gdt->bmi.bV5BlueMask = 0x3FF00000;
    }
 
    *stride = gdt->stride;
