@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "util/blend.h"
 #include "util/macros.h"
 #include "common/v3d_debug.h"
 #include "common/v3d_device_info.h"
@@ -435,7 +436,7 @@ struct v3d_fs_key {
                 uint8_t swizzle[4];
         } color_fmt[V3D_MAX_DRAW_BUFFERS];
 
-        uint8_t logicop_func;
+        enum pipe_logicop logicop_func;
         uint32_t point_sprite_mask;
 
         struct pipe_rt_blend_state blend;
