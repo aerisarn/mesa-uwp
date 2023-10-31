@@ -1406,27 +1406,6 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
    return &res->base.b;
 }
 
-static bool
-mod_plane_is_clear_color(uint64_t modifier, uint32_t plane)
-{
-   ASSERTED const struct isl_drm_modifier_info *mod_info =
-      isl_drm_modifier_get_info(modifier);
-   assert(mod_info);
-
-   switch (modifier) {
-   case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS_CC:
-   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
-      assert(mod_info->supports_clear_color);
-      return plane == 2;
-   case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC:
-      assert(mod_info->supports_clear_color);
-      return plane == 1;
-   default:
-      assert(!mod_info->supports_clear_color);
-      return false;
-   }
-}
-
 static unsigned
 get_num_planes(const struct pipe_resource *resource)
 {
@@ -1518,7 +1497,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
        * aux image. iris_resource_finish_aux_import will merge the separate aux
        * parameters back into a single iris_resource.
        */
-   } else if (mod_plane_is_clear_color(modifier, whandle->plane)) {
+   } else if (isl_drm_modifier_plane_is_clear_color(modifier,
+                                                    whandle->plane)) {
       res->aux.clear_color_offset = whandle->offset;
       res->aux.clear_color_bo = res->bo;
       res->bo = NULL;
@@ -1823,7 +1803,7 @@ iris_resource_get_param(struct pipe_screen *pscreen,
       res->mod_info && isl_drm_modifier_has_aux(res->mod_info->modifier);
    bool wants_aux = mod_with_aux && plane != main_plane;
    bool wants_cc = mod_with_aux &&
-      mod_plane_is_clear_color(res->mod_info->modifier, plane);
+      isl_drm_modifier_plane_is_clear_color(res->mod_info->modifier, plane);
    bool result;
    unsigned handle;
 
@@ -1924,7 +1904,8 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 
    struct iris_bo *bo;
    if (res->mod_info &&
-       mod_plane_is_clear_color(res->mod_info->modifier, whandle->plane)) {
+       isl_drm_modifier_plane_is_clear_color(res->mod_info->modifier,
+                                             whandle->plane)) {
       bo = res->aux.clear_color_bo;
       whandle->offset = res->aux.clear_color_offset;
    } else if (mod_with_aux && whandle->plane > 0) {
