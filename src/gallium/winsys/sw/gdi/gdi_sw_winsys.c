@@ -78,6 +78,10 @@ gdi_sw_is_displaytarget_format_supported( struct sw_winsys *ws,
    switch(format) {
    case PIPE_FORMAT_B8G8R8X8_UNORM:
    case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_B5G6R5_UNORM:
+   case PIPE_FORMAT_B5G5R5A1_UNORM:
+   case PIPE_FORMAT_B4G4R4A4_UNORM:
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
       return true;
 
    /* TODO: Support other formats possible with BMPs, as described in 
