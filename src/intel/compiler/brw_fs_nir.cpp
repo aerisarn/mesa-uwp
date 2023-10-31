@@ -194,7 +194,9 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
 
       case nir_intrinsic_load_workgroup_id:
       case nir_intrinsic_load_workgroup_id_zero_base:
-         assert(gl_shader_stage_uses_workgroup(v->stage));
+         if (gl_shader_stage_is_mesh(v->stage))
+            unreachable("should be lowered by nir_lower_compute_system_values().");
+         assert(gl_shader_stage_is_compute(v->stage));
          reg = &v->nir_system_values[SYSTEM_VALUE_WORKGROUP_ID];
          if (reg->file == BAD_FILE)
             *reg = v->emit_work_group_id_setup();

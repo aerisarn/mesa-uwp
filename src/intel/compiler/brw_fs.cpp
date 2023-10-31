@@ -8059,21 +8059,17 @@ brw_compile_fs(const struct brw_compiler *compiler,
 fs_reg
 fs_visitor::emit_work_group_id_setup()
 {
-   assert(gl_shader_stage_uses_workgroup(stage));
+   assert(gl_shader_stage_is_compute(stage));
 
    fs_reg id = bld.vgrf(BRW_REGISTER_TYPE_UD, 3);
 
    struct brw_reg r0_1(retype(brw_vec1_grf(0, 1), BRW_REGISTER_TYPE_UD));
    bld.MOV(id, r0_1);
 
-   if (gl_shader_stage_is_compute(stage)) {
-      struct brw_reg r0_6(retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD));
-      struct brw_reg r0_7(retype(brw_vec1_grf(0, 7), BRW_REGISTER_TYPE_UD));
-      bld.MOV(offset(id, bld, 1), r0_6);
-      bld.MOV(offset(id, bld, 2), r0_7);
-   } else {
-      unreachable("workgroup id should not be used in non-compute stage");
-   }
+   struct brw_reg r0_6(retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD));
+   struct brw_reg r0_7(retype(brw_vec1_grf(0, 7), BRW_REGISTER_TYPE_UD));
+   bld.MOV(offset(id, bld, 1), r0_6);
+   bld.MOV(offset(id, bld, 2), r0_7);
 
    return id;
 }
