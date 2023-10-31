@@ -36,9 +36,9 @@ TOKEN_DIR = Path(getenv("XDG_CONFIG_HOME") or Path.home() / ".config")
 
 
 def get_token_from_default_dir() -> str:
+    token_file = TOKEN_DIR / "gitlab-token"
     try:
-        token_file = TOKEN_DIR / "gitlab-token"
-        return token_file.resolve()
+        return str(token_file.resolve())
     except FileNotFoundError as ex:
         print(
             f"Could not find {token_file}, please provide a token file as an argument"
@@ -61,10 +61,10 @@ class GitlabGQL:
     url: str = "https://gitlab.freedesktop.org/api/graphql"
     token: Optional[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._setup_gitlab_gql_client()
 
-    def _setup_gitlab_gql_client(self) -> Client:
+    def _setup_gitlab_gql_client(self) -> None:
         # Select your transport with a defined url endpoint
         headers = {}
         if self.token:
@@ -117,8 +117,8 @@ class GitlabGQL:
         operation_name: Optional[str] = None,
     ) -> dict[str, Any]:
         # Provide a GraphQL query
-        source_path = Path(__file__).parent
-        pipeline_query_file = source_path / gql_file
+        source_path: Path = Path(__file__).parent
+        pipeline_query_file: Path = source_path / gql_file
 
         query: DocumentNode
         with open(pipeline_query_file, "r") as f:
@@ -347,7 +347,7 @@ def print_dag(dag: Dag) -> None:
         print()
 
 
-def fetch_merged_yaml(gl_gql: GitlabGQL, params) -> dict[Any]:
+def fetch_merged_yaml(gl_gql: GitlabGQL, params) -> dict[str, Any]:
     gitlab_yml_file = get_project_root_dir() / ".gitlab-ci.yml"
     content = Path(gitlab_yml_file).read_text().strip()
     params["content"] = content
@@ -371,7 +371,7 @@ def recursive_fill(job, relationship_field, target_data, acc_data: dict, merged_
 
         for relative in relatives:
             parent_job = merged_yaml[relative]
-            acc_data = recursive_fill(parent_job, acc_data, merged_yaml)
+            acc_data = recursive_fill(parent_job, acc_data, merged_yaml)  # type: ignore
 
     acc_data |= job.get(target_data, {})
 
