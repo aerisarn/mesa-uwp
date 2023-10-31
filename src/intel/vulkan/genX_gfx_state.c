@@ -1300,10 +1300,10 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
 }
 
 /**
- * This function emits the dirty instructions in the batch buffer.
+ * This function handles dirty state emission to the batch buffer.
  */
-void
-genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
+static void
+cmd_buffer_gfx_state_emission(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_device *device = cmd_buffer->device;
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
@@ -1313,36 +1313,6 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
       &cmd_buffer->vk.dynamic_graphics_state;
    struct anv_gfx_dynamic_state *hw_state = &gfx->dyn_state;
 
-   if (INTEL_DEBUG(DEBUG_REEMIT)) {
-      BITSET_OR(gfx->dyn_state.dirty, gfx->dyn_state.dirty,
-                device->gfx_dirty_state);
-   }
-
-   /**
-    * Put potential workarounds here if you need to reemit an instruction
-    * because of another one is changing.
-    */
-
-   /* Since Wa_16011773973 will disable 3DSTATE_STREAMOUT, we need to reemit
-    * it after.
-    */
-   if (intel_needs_workaround(device->info, 16011773973) &&
-       pipeline->uses_xfb &&
-       BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_SO_DECL_LIST)) {
-      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
-   }
-
-   /* Gfx11 undocumented issue :
-    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/9781
-    */
-#if GFX_VER == 11
-   if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_WM))
-      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_MULTISAMPLE);
-#endif
-
-   /**
-    * State emission
-    */
    if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_URB))
       anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.urb);
 
@@ -1906,6 +1876,49 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 #undef SET
 
    BITSET_ZERO(hw_state->dirty);
+}
+
+/**
+ * This function handles possible state workarounds and emits the dirty
+ * instructions to the batch buffer.
+ */
+void
+genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_device *device = cmd_buffer->device;
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   struct anv_graphics_pipeline *pipeline =
+      anv_pipeline_to_graphics(cmd_buffer->state.gfx.base.pipeline);
+   struct anv_gfx_dynamic_state *hw_state = &gfx->dyn_state;
+
+   if (INTEL_DEBUG(DEBUG_REEMIT)) {
+      BITSET_OR(gfx->dyn_state.dirty, gfx->dyn_state.dirty,
+                device->gfx_dirty_state);
+   }
+
+   /**
+    * Put potential workarounds here if you need to reemit an instruction
+    * because of another one is changing.
+    */
+
+   /* Since Wa_16011773973 will disable 3DSTATE_STREAMOUT, we need to reemit
+    * it after.
+    */
+   if (intel_needs_workaround(device->info, 16011773973) &&
+       pipeline->uses_xfb &&
+       BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_SO_DECL_LIST)) {
+      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
+   }
+
+   /* Gfx11 undocumented issue :
+    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/9781
+    */
+#if GFX_VER == 11
+   if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_WM))
+      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_MULTISAMPLE);
+#endif
+
+   cmd_buffer_gfx_state_emission(cmd_buffer);
 }
 
 void
