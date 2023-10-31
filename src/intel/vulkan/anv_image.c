@@ -614,9 +614,34 @@ add_aux_state_tracking_buffer(struct anv_device *device,
           image->vk.aspects & (VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV |
                                VK_IMAGE_ASPECT_DEPTH_BIT));
 
-   const unsigned clear_color_state_size = device->info->ver >= 10 ?
-      device->isl_dev.ss.clear_color_state_size :
-      device->isl_dev.ss.clear_value_size;
+   unsigned clear_color_state_size;
+   if (device->info->ver >= 11) {
+      /* When importing an image from another source with a drm modifier that
+       * supports clear color, the clear color values are in a 32-byte struct
+       * defined in drm_fourcc.h. The fast clear type and compression state
+       * are not defined in these drm_fourcc.h, so there won't be memory
+       * allocated for these extra meta data by the source.
+       *
+       * We use the last 2 dwords of the clear color struct's memory to store
+       * the fast clear type and the first compression state, so the driver
+       * doesn't assume the extra size or need another allocation later.
+       *
+       * So far, the 2 stolen dwords are either not used in the clear color
+       * struct or for features not enabled. There should be no side effect to
+       * the hardware and destinations of images exported by this driver.
+       *
+       * Images with multiple levels or layers are not supported by drm
+       * modifiers, so we don't have to apply the above approach or face a
+       * bigger shortage from multiple compression states. We just apply the
+       * approach to all cases to keep the design unified.
+       *
+       * As a result, the state starts 8 bytes lower than where it should be.
+       */
+      assert(device->isl_dev.ss.clear_color_state_size >= 32);
+      clear_color_state_size = device->isl_dev.ss.clear_color_state_size - 8;
+   } else {
+      clear_color_state_size = device->isl_dev.ss.clear_value_size;
+   }
 
    /* Clear color and fast clear type */
    unsigned state_size = clear_color_state_size + 4;
