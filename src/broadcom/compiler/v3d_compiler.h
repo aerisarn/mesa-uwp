@@ -439,8 +439,6 @@ struct v3d_fs_key {
         enum pipe_logicop logicop_func;
         uint32_t point_sprite_mask;
 
-        struct pipe_rt_blend_state blend;
-
         /* If the fragment shader reads gl_PrimitiveID then we have 2 scenarios:
          *
          * - If there is a geometry shader, then gl_PrimitiveID must be written
