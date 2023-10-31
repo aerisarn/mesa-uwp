@@ -248,6 +248,7 @@ vkcts-navi31-valve:
     - .radv-valve-manual-rules
   variables:
     GPU_VERSION: radv-navi31-aco
+    RADV_DEBUG: nomeshshader # Disable mesh shaders until task shaders stop hanging
 
 ############### Fossilize
 radv-fossils:
