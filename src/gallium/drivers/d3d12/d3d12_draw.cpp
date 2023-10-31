@@ -364,6 +364,7 @@ fill_graphics_state_vars(struct d3d12_context *ctx,
                          const struct pipe_draw_start_count_bias *draw,
                          struct d3d12_shader *shader,
                          uint32_t *values,
+                         unsigned cur_root_param_idx,
                          struct d3d12_cmd_signature_key *cmd_sig_key)
 {
    unsigned size = 0;
@@ -388,9 +389,11 @@ fill_graphics_state_vars(struct d3d12_context *ctx,
          ptr[1] = dinfo->start_instance;
          ptr[2] = drawid;
          ptr[3] = dinfo->index_size ? -1 : 0;
+         assert(!cmd_sig_key->draw_or_dispatch_params); // Should only be set once
          cmd_sig_key->draw_or_dispatch_params = 1;
          cmd_sig_key->root_sig = ctx->gfx_pipeline_state.root_signature;
          cmd_sig_key->params_root_const_offset = size;
+         cmd_sig_key->params_root_const_param = cur_root_param_idx;
          size += 4;
          break;
       case D3D12_STATE_VAR_DEPTH_TRANSFORM:
@@ -571,9 +574,7 @@ update_graphics_root_parameters(struct d3d12_context *ctx,
       /* TODO Don't always update state vars */
       if (shader_sel->current->num_state_vars > 0) {
          uint32_t constants[D3D12_MAX_GRAPHICS_STATE_VARS * 4];
-         unsigned size = fill_graphics_state_vars(ctx, dinfo, drawid, draw, shader_sel->current, constants, cmd_sig_key);
-         if (cmd_sig_key->draw_or_dispatch_params)
-            cmd_sig_key->params_root_const_param = num_params;
+         unsigned size = fill_graphics_state_vars(ctx, dinfo, drawid, draw, shader_sel->current, constants, num_params, cmd_sig_key);
          ctx->cmdlist->SetGraphicsRoot32BitConstants(num_params, size, constants, 0);
          num_params++;
       }
