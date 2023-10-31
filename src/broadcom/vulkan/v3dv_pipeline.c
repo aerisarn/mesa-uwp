@@ -34,7 +34,6 @@
 
 #include "util/u_atomic.h"
 #include "util/os_time.h"
-#include "util/u_helpers.h"
 
 #include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"

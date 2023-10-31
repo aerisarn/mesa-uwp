@@ -23,7 +23,6 @@
 
 #include "broadcom/common/v3d_device_info.h"
 #include "v3d_compiler.h"
-#include "util/u_prim.h"
 #include "compiler/nir/nir_schedule.h"
 #include "compiler/nir/nir_builder.h"
 
