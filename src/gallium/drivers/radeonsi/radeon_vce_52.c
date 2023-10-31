@@ -40,13 +40,13 @@ static void get_rate_control_param(struct rvce_encoder *enc, struct pipe_h264_en
 static void get_motion_estimation_param(struct rvce_encoder *enc,
                                         struct pipe_h264_enc_picture_desc *pic)
 {
-   enc->enc_pic.me.motion_est_quarter_pixel = 0;
+   enc->enc_pic.me.motion_est_quarter_pixel = 1;
    enc->enc_pic.me.enc_disable_sub_mode = 254;
-   enc->enc_pic.me.lsmvert = 0;
+   enc->enc_pic.me.lsmvert = 2;
    enc->enc_pic.me.enc_en_ime_overw_dis_subm = 0;
    enc->enc_pic.me.enc_ime_overw_dis_subm_no = 0;
-   enc->enc_pic.me.enc_ime2_search_range_x = 1;
-   enc->enc_pic.me.enc_ime2_search_range_y = 1;
+   enc->enc_pic.me.enc_ime2_search_range_x = 4;
+   enc->enc_pic.me.enc_ime2_search_range_y = 4;
    enc->enc_pic.me.enc_ime_decimation_search = 0x00000001;
    enc->enc_pic.me.motion_est_half_pixel = 0x00000001;
    enc->enc_pic.me.enc_search_range_x = 0x00000010;
