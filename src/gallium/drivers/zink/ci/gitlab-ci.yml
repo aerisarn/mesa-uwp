@@ -72,23 +72,12 @@ zink-tu-a618:
   parallel: 2
   variables:
     DEQP_SUITE: zink-freedreno-a618
-    DEQP_FRACTION: 3
     HWCI_START_WESTON: 1
     GPU_VERSION: zink-freedreno-a618
     VK_DRIVER: freedreno
     DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
     DTB: sc7180-trogdor-lazor-limozeen-nots-r5
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
-
-zink-tu-a618-full:
-  extends:
-    - zink-tu-a618
-    - .zink-turnip-manual-rules
-  parallel: null
-  timeout: 150m
-  variables:
-    DEQP_FRACTION: null
-    JOB_TIMEOUT: 140
 
 zink-tu-a618-traces:
   extends:
