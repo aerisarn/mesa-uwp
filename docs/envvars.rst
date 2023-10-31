@@ -1259,6 +1259,8 @@ RADV driver environment variables
       disable directly recording command buffers in GPU-visible memory
    ``nomemorycache``
       disable memory shaders cache
+   ``nomeshshader``
+      disable mesh shader support on GFX10.3+
    ``nongg``
       disable NGG for GFX10 and GFX10.3
    ``nonggc``

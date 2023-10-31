@@ -64,6 +64,9 @@ radv_perf_query_supported(const struct radv_physical_device *pdev)
 static bool
 radv_taskmesh_enabled(const struct radv_physical_device *pdevice)
 {
+   if (pdevice->instance->debug_flags & RADV_DEBUG_NO_MESH_SHADER)
+      return false;
+
    return pdevice->use_ngg && !pdevice->use_llvm && pdevice->rad_info.gfx_level >= GFX10_3 &&
           !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE) && pdevice->rad_info.has_gang_submit;
 }
