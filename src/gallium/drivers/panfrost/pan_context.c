@@ -172,7 +172,7 @@ panfrost_get_blend(struct panfrost_batch *batch, unsigned rti,
 
    /* Use fixed-function if the equation permits, the format is blendable,
     * and no more than one unique constant is accessed */
-   if (info.fixed_function && panfrost_blendable_formats_v7[fmt].internal &&
+   if (info.fixed_function && dev->blendable_formats[fmt].internal &&
        pan_blend_is_homogenous_constant(info.constant_mask,
                                         ctx->blend_color.color)) {
       return 0;
