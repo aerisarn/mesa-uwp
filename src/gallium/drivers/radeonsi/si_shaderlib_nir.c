@@ -27,12 +27,14 @@ static nir_def *get_global_ids(nir_builder *b, unsigned num_components)
    return nir_iadd(b, nir_imul(b, block_ids, block_size), local_ids);
 }
 
+/* unpack_2x16(src, x, y): x = src & 0xffff; y = src >> 16; */
 static void unpack_2x16(nir_builder *b, nir_def *src, nir_def **x, nir_def **y)
 {
    *x = nir_iand_imm(b, src, 0xffff);
    *y = nir_ushr_imm(b, src, 16);
 }
 
+/* unpack_2x16_signed(src, x, y): x = (int32_t)((uint16_t)src); y = src >> 16; */
 static void unpack_2x16_signed(nir_builder *b, nir_def *src, nir_def **x, nir_def **y)
 {
    *x = nir_i2i32(b, nir_u2u16(b, src));
