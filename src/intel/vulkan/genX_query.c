@@ -697,7 +697,7 @@ emit_query_pc_availability(struct anv_cmd_buffer *cmd_buffer,
    genx_batch_emit_pipe_control_write
       (&cmd_buffer->batch, cmd_buffer->device->info,
        cmd_buffer->state.current_pipeline, WriteImmediateData, addr,
-       available, ANV_PIPE_CS_STALL_BIT);
+       available, 0);
 }
 
 /**
