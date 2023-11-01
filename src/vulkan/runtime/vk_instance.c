@@ -302,6 +302,19 @@ vk_instance_get_proc_addr(const struct vk_instance *instance,
 
 #undef LOOKUP_VK_ENTRYPOINT
 
+   /* Beginning with ICD interface v7, the following functions can also be
+    * retrieved via vk_icdGetInstanceProcAddr.
+    */
+
+   if (strcmp(name, "vk_icdNegotiateLoaderICDInterfaceVersion") == 0)
+      return (PFN_vkVoidFunction)vk_icdNegotiateLoaderICDInterfaceVersion;
+   if (strcmp(name, "vk_icdGetPhysicalDeviceProcAddr") == 0)
+      return (PFN_vkVoidFunction)vk_icdGetPhysicalDeviceProcAddr;
+#ifdef _WIN32
+   if (strcmp(name, "vk_icdEnumerateAdapterPhysicalDevices") == 0)
+      return (PFN_vkVoidFunction)vk_icdEnumerateAdapterPhysicalDevices;
+#endif
+
    if (instance == NULL)
       return NULL;
 
@@ -466,6 +479,39 @@ vk_common_EnumeratePhysicalDevices(VkInstance _instance, uint32_t *pPhysicalDevi
    return vk_outarray_status(&out);
 }
 
+#ifdef _WIN32
+/* Note: This entrypoint is not exported from ICD DLLs, and is only exposed via
+ * vk_icdGetInstanceProcAddr for loaders with interface v7. This is to avoid
+ * a design flaw in the original loader implementation, which prevented enumeration
+ * of physical devices that didn't have a LUID. This flaw was fixed prior to the
+ * implementation of v7, so v7 loaders are unaffected, and it's safe to support this.
+ */
+VKAPI_ATTR VkResult VKAPI_CALL
+vk_icdEnumerateAdapterPhysicalDevices(VkInstance _instance, LUID adapterLUID,
+                                      uint32_t *pPhysicalDeviceCount,
+                                      VkPhysicalDevice *pPhysicalDevices)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices, pPhysicalDeviceCount);
+
+   VkResult result = enumerate_physical_devices(instance);
+   if (result != VK_SUCCESS)
+      return result;
+
+   list_for_each_entry(struct vk_physical_device, pdevice,
+                       &instance->physical_devices.list, link) {
+      if (pdevice->properties.deviceLUIDValid &&
+          memcmp(pdevice->properties.deviceLUID, &adapterLUID, sizeof(adapterLUID)) == 0) {
+         vk_outarray_append_typed(VkPhysicalDevice, &out, element) {
+            *element = vk_physical_device_to_handle(pdevice);
+         }
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+#endif
+
 VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_EnumeratePhysicalDeviceGroups(VkInstance _instance, uint32_t *pGroupCount,
                                         VkPhysicalDeviceGroupProperties *pGroupProperties)
@@ -512,7 +558,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
    return vk_instance_get_physical_device_proc_addr(instance, pName);
 }
 
-static uint32_t vk_icd_version = 5;
+static uint32_t vk_icd_version = 7;
 
 uint32_t
 vk_get_negotiated_icd_version(void)
@@ -562,6 +608,28 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
     *          VK_ERROR_INCOMPATIBLE_DRIVER from vkCreateInstance() unless a
     *          Vulkan Loader with interface v4 or smaller is being used and the
     *          application provides an API version that is greater than 1.0.
+    *
+    *    - Loader interface v6 differs from v5 in:
+    *        - Windows ICDs may export vk_icdEnumerateAdapterPhysicalDevices,
+    *          to tie a physical device to a WDDM adapter LUID. This allows the
+    *          loader to sort physical devices according to the same policy as other
+    *          graphics APIs.
+    *        - Note: A design flaw in the loader implementation of v6 means we do
+    *          not actually support returning this function to v6 loaders. See the
+    *          comments around the implementation above. It's still fine to report
+    *          version number 6 without this method being implemented, however.
+    *
+    *    - Loader interface v7 differs from v6 in:
+    *        - If implemented, the ICD must return the following functions via
+    *          vk_icdGetInstanceProcAddr:
+    *            - vk_icdNegotiateLoaderICDInterfaceVersion
+    *            - vk_icdGetPhysicalDeviceProcAddr
+    *            - vk_icdEnumerateAdapterPhysicalDevices
+    *          Exporting these functions from the ICD is optional. If
+    *          vk_icdNegotiateLoaderICDInterfaceVersion is not exported from the
+    *          module, or if VK_LUNARG_direct_driver_loading is being used, then
+    *          vk_icdGetInstanceProcAddr will be the first method called, to query
+    *          for vk_icdNegotiateLoaderICDInterfaceVersion.
     */
    vk_icd_version = MIN2(vk_icd_version, *pSupportedVersion);
    *pSupportedVersion = vk_icd_version;
