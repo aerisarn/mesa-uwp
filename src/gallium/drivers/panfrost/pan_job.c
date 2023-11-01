@@ -948,7 +948,8 @@ panfrost_batch_clear(struct panfrost_batch *batch, unsigned buffers,
             continue;
 
          enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
-         pan_pack_color(batch->clear_color[i], color, format, false);
+         pan_pack_color(panfrost_blendable_formats_v7, batch->clear_color[i],
+                        color, format, false);
       }
    }
 
