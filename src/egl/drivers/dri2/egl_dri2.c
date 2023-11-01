@@ -893,6 +893,11 @@ dri2_setup_screen(_EGLDisplay *disp)
    disp->Extensions.EXT_create_context_robustness =
       get_screen_param(disp, PIPE_CAP_DEVICE_RESET_STATUS_QUERY);
 
+   /* EXT_query_reset_notification_strategy complements and requires
+    * EXT_create_context_robustness. */
+   disp->Extensions.EXT_query_reset_notification_strategy =
+      disp->Extensions.EXT_create_context_robustness;
+
    if (dri2_dpy->fence) {
       disp->Extensions.KHR_fence_sync = EGL_TRUE;
       disp->Extensions.KHR_wait_sync = EGL_TRUE;
