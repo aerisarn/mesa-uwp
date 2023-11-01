@@ -156,6 +156,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .EXT_shader_subgroup_vote              = true,
       .EXT_subgroup_size_control             = true,
       .EXT_vertex_attribute_divisor          = true,
+      .MSFT_layered_driver                   = true,
    };
 }
 
@@ -1960,6 +1961,12 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       }
 #endif
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT: {
+         VkPhysicalDeviceLayeredDriverPropertiesMSFT *layered_props =
+            (VkPhysicalDeviceLayeredDriverPropertiesMSFT *)ext;
+         layered_props->underlyingAPI = VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT;
+         break;
+      }
       default:
          dzn_debug_ignored_stype(ext->sType);
          break;
