@@ -40,13 +40,6 @@
 #include "clc5c0.h"
 #include "clc997.h"
 
-PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
-{
-   VK_FROM_HANDLE(nvk_instance, instance, _instance);
-   return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
-}
-
 static void
 nvk_get_device_extensions(const struct nv_device_info *info,
                           struct vk_device_extension_table *ext)

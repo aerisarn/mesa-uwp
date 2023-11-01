@@ -243,6 +243,9 @@ void
 vk_instance_add_driver_trace_modes(struct vk_instance *instance,
                                    const struct debug_control *modes);
 
+uint32_t
+vk_get_negotiated_icd_version(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -125,14 +125,6 @@ instance-level ``vkGet*ProcAddr()`` entrypoints is trivial:
       return drv_GetInstanceProcAddr(instance, pName);
    }
 
-   PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-   vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
-                                   const char* pName)
-   {
-      VK_FROM_HANDLE(vk_instance, instance, _instance);
-      return vk_instance_get_physical_device_proc_addr(instance, pName);
-   }
-
 .. c:autofunction:: vk_instance_get_proc_addr
 
 .. c:autofunction:: vk_instance_get_proc_addr_unchecked
