@@ -81,8 +81,8 @@ apt-get install -y --no-remove "${DEPS[@]}" "${EPHEMERAL[@]}" \
 # Needed for ci-fairy, this revision is able to upload files to S3
 pip3 install --break-system-packages git+http://gitlab.freedesktop.org/freedesktop/ci-templates@ffe4d1b10aab7534489f0c4bbc4c5899df17d3f2
 
-# We need at least 1.2 for Rust's `debug_assertions`
-pip3 install --break-system-packages meson==1.2.0
+# We need at least 1.3 for stable Rust support
+pip3 install --break-system-packages 'meson @ git+https://github.com/mesonbuild/meson.git@cddf2e9d872ebbc673d2595bc176a0572d258222'
 
 . .gitlab-ci/container/build-rust.sh
 

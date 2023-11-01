@@ -7,7 +7,7 @@
 
 variables:
    DEBIAN_X86_64_BUILD_BASE_IMAGE: "debian/x86_64_build-base"
-   DEBIAN_BASE_TAG: "2023-10-31-virglrenderer"
+   DEBIAN_BASE_TAG: "2023-11-13-nak-v2"
 
    DEBIAN_X86_64_BUILD_IMAGE_PATH: "debian/x86_64_build"
    DEBIAN_BUILD_TAG: "2023-10-30-ci-improv"
