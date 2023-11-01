@@ -3108,18 +3108,19 @@ fs_visitor::opt_zero_samples()
    /* Implementation supports only SENDs, so applicable to Gfx7+ only. */
    assert(devinfo->ver >= 7);
 
-   /* Gfx12.5 has restrictions on the number of coordinate
-    * parameters that have to be provided for some texture types
-    * (Wa_14012688258).
-    */
-   if (intel_needs_workaround(devinfo, 14012688258))
-      return false;
-
    bool progress = false;
 
    foreach_block_and_inst(block, fs_inst, send, cfg) {
       if (send->opcode != SHADER_OPCODE_SEND ||
           send->sfid != BRW_SFID_SAMPLER)
+         continue;
+
+      /* Wa_14012688258:
+       *
+       * Don't trim zeros at the end of payload for sample operations
+       * in cube and cube arrays.
+       */
+      if (send->keep_payload_trailing_zeros)
          continue;
 
       /* This pass works on SENDs before splitting. */

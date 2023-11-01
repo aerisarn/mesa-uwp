@@ -6474,14 +6474,6 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
             srcs[TEX_LOGICAL_SRC_COORDINATE] = retype(src, BRW_REGISTER_TYPE_F);
             break;
          }
-
-         /* Wa_14012688258:
-          *
-          * Compiler should send U,V,R parameters even if V,R are 0.
-          */
-         if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE &&
-             intel_needs_workaround(devinfo, 14012688258))
-            assert(instr->coord_components >= 3u);
          break;
       case nir_tex_src_ddx:
          srcs[TEX_LOGICAL_SRC_LOD] = retype(src, BRW_REGISTER_TYPE_F);
@@ -6722,6 +6714,22 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 
    if (srcs[TEX_LOGICAL_SRC_SHADOW_C].file != BAD_FILE)
       inst->shadow_compare = true;
+
+   /* Wa_14012688258:
+    *
+    * Don't trim zeros at the end of payload for sample operations
+    * in cube and cube arrays.
+    */
+   if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE &&
+       intel_needs_workaround(devinfo, 14012688258)) {
+
+      /* Compiler should send U,V,R parameters even if V,R are 0. */
+      if (srcs[TEX_LOGICAL_SRC_COORDINATE].file != BAD_FILE)
+         assert(instr->coord_components >= 3u);
+
+      /* See opt_zero_samples(). */
+      inst->keep_payload_trailing_zeros = true;
+   }
 
    fs_reg nir_dest[5];
    for (unsigned i = 0; i < dest_size; i++)
