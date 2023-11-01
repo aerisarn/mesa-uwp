@@ -290,7 +290,7 @@ nir_def *brw_nir_load_global_const(nir_builder *b,
 const struct glsl_type *brw_nir_get_var_type(const struct nir_shader *nir,
                                              nir_variable *var);
 
-void brw_nir_adjust_payload(nir_shader *shader, const struct brw_compiler *compiler);
+void brw_nir_adjust_payload(nir_shader *shader);
 
 #ifdef __cplusplus
 }

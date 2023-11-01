@@ -1763,7 +1763,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
     */
    if (nir->info.stage == MESA_SHADER_MESH ||
        nir->info.stage == MESA_SHADER_TASK)
-      brw_nir_adjust_payload(nir, compiler);
+      brw_nir_adjust_payload(nir);
 
    nir_trivialize_registers(nir);
    nir_sweep(nir);

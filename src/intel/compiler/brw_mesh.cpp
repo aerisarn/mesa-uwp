@@ -222,7 +222,7 @@ brw_nir_adjust_task_payload_offsets(nir_shader *nir)
 }
 
 void
-brw_nir_adjust_payload(nir_shader *shader, const struct brw_compiler *compiler)
+brw_nir_adjust_payload(nir_shader *shader)
 {
    /* Adjustment of task payload offsets must be performed *after* last pass
     * which interprets them as bytes, because it changes their unit.
