@@ -7888,7 +7888,7 @@ emit_uniform_reduce(isel_context* ctx, nir_intrinsic_instr* instr)
 
       Temp thread_count =
          bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), Operand(exec, bld.lm));
-      set_wqm(ctx, nir_intrinsic_include_helpers(instr));
+      set_wqm(ctx);
 
       emit_addition_uniform_reduce(ctx, op, dst, instr->src[0], thread_count);
    } else {
@@ -8606,8 +8606,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          instr->intrinsic == nir_intrinsic_reduce ? nir_intrinsic_cluster_size(instr) : 0;
       cluster_size = util_next_power_of_two(
          MIN2(cluster_size ? cluster_size : ctx->program->wave_size, ctx->program->wave_size));
-      bool create_helpers =
-         instr->intrinsic == nir_intrinsic_reduce && nir_intrinsic_include_helpers(instr);
 
       if (!nir_src_is_divergent(instr->src[0]) && cluster_size == ctx->program->wave_size &&
           instr->def.bit_size != 1) {
@@ -8667,7 +8665,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          else
             emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size, Definition(dst), src);
       }
-      set_wqm(ctx, create_helpers);
+      set_wqm(ctx);
       break;
    }
    case nir_intrinsic_quad_broadcast:

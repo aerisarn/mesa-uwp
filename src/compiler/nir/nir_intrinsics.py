@@ -172,9 +172,6 @@ index("unsigned", "reduction_op")
 # Cluster size for reduction operations
 index("unsigned", "cluster_size")
 
-# Requires that the operation creates and includes helper invocations
-index("bool", "include_helpers")
-
 # Parameter index for a load_param intrinsic
 index("unsigned", "param_idx")
 
@@ -510,7 +507,7 @@ intrinsic("rotate", src_comp=[0, 1], dest_comp=0, bit_sizes=src0,
           indices=[EXECUTION_SCOPE, CLUSTER_SIZE], flags=[CAN_ELIMINATE]);
 
 intrinsic("reduce", src_comp=[0], dest_comp=0, bit_sizes=src0,
-          indices=[REDUCTION_OP, CLUSTER_SIZE, INCLUDE_HELPERS], flags=[CAN_ELIMINATE])
+          indices=[REDUCTION_OP, CLUSTER_SIZE], flags=[CAN_ELIMINATE])
 intrinsic("inclusive_scan", src_comp=[0], dest_comp=0, bit_sizes=src0,
           indices=[REDUCTION_OP], flags=[CAN_ELIMINATE])
 intrinsic("exclusive_scan", src_comp=[0], dest_comp=0, bit_sizes=src0,
