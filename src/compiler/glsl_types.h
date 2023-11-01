@@ -58,7 +58,7 @@ void encode_type_to_blob(struct blob *blob, const struct glsl_type *type);
 const struct glsl_type *decode_type_from_blob(struct blob_reader *blob);
 
 typedef void (*glsl_type_size_align_func)(const struct glsl_type *type,
-                                          unsigned *size, unsigned *align);
+                                          unsigned *size, unsigned *alignment);
 
 enum glsl_base_type {
    /* Note: GLSL_TYPE_UINT, GLSL_TYPE_INT, and GLSL_TYPE_FLOAT must be 0, 1,
@@ -483,7 +483,7 @@ struct glsl_type {
    const glsl_type *get_explicit_std430_type(bool row_major) const;
    const glsl_type *get_explicit_interface_type(bool supports_std430) const;
    const glsl_type *get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
-                                                     unsigned *size, unsigned *align) const;
+                                                     unsigned *size, unsigned *alignment) const;
    const glsl_type *without_array() const;
    const glsl_type *row_type() const;
    const glsl_type *column_type() const;

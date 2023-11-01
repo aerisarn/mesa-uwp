@@ -321,10 +321,10 @@ ac_rgp_file_write_elf_text(FILE *output, uint32_t *elf_size_calc,
    }
 
    symbol_offset += rgp_shader_data->code_size;
-   uint32_t align = ALIGN(symbol_offset, 256) - symbol_offset;
-   fseek(output, align, SEEK_CUR);
-   *elf_size_calc += align;
-   *text_size = symbol_offset + align;
+   uint32_t aligned = ALIGN(symbol_offset, 256) - symbol_offset;
+   fseek(output, aligned, SEEK_CUR);
+   *elf_size_calc += aligned;
+   *text_size = symbol_offset + aligned;
 }
 
 /*

@@ -643,11 +643,11 @@ brw_inst_set_state(const struct brw_isa_info *isa,
 }
 
 static brw_inst *
-brw_append_insns(struct brw_codegen *p, unsigned nr_insn, unsigned align)
+brw_append_insns(struct brw_codegen *p, unsigned nr_insn, unsigned alignment)
 {
    assert(util_is_power_of_two_or_zero(sizeof(brw_inst)));
-   assert(util_is_power_of_two_or_zero(align));
-   const unsigned align_insn = MAX2(align / sizeof(brw_inst), 1);
+   assert(util_is_power_of_two_or_zero(alignment));
+   const unsigned align_insn = MAX2(alignment / sizeof(brw_inst), 1);
    const unsigned start_insn = ALIGN(p->nr_insn, align_insn);
    const unsigned new_nr_insn = start_insn + nr_insn;
 
@@ -672,17 +672,17 @@ brw_append_insns(struct brw_codegen *p, unsigned nr_insn, unsigned align)
 }
 
 void
-brw_realign(struct brw_codegen *p, unsigned align)
+brw_realign(struct brw_codegen *p, unsigned alignment)
 {
-   brw_append_insns(p, 0, align);
+   brw_append_insns(p, 0, alignment);
 }
 
 int
 brw_append_data(struct brw_codegen *p, void *data,
-                unsigned size, unsigned align)
+                unsigned size, unsigned alignment)
 {
    unsigned nr_insn = DIV_ROUND_UP(size, sizeof(brw_inst));
-   void *dst = brw_append_insns(p, nr_insn, align);
+   void *dst = brw_append_insns(p, nr_insn, alignment);
    memcpy(dst, data, size);
 
    /* If it's not a whole number of instructions, memset the end */
