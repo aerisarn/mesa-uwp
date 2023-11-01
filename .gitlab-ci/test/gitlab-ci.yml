@@ -16,6 +16,8 @@
     name: "mesa_${CI_JOB_NAME}"
     paths:
       - results/
+  rules:
+    - !reference [.never-post-merge-rules, rules]
 
 .formatting-check:
   # Cancel job if a newer commit is pushed to the same branch

@@ -1,6 +1,7 @@
 .radeonsi-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &amd_common_file_list
@@ -27,6 +28,7 @@
 .radv-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
         *amd_common_file_list
@@ -40,12 +42,14 @@
 .radv-collabora-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.radv-rules, rules]
 
 .radv-valve-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.valve-farm-rules, rules]
     - !reference [.radv-rules, rules]
 
@@ -53,6 +57,7 @@
   stage: amd
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.valve-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes:
@@ -65,12 +70,14 @@
 .radeonsi+radv-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.radeonsi-rules, rules]
     - !reference [.radv-rules, rules]
 
 .radeonsi-vaapi-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.radeonsi-rules, rules]
     - changes: &radeon_vcn_file_list
         - src/gallium/frontends/va/**/*
@@ -80,6 +87,7 @@
 .radeonsi-vaapi-manual-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -89,12 +97,14 @@
 .radeonsi-valve-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.valve-farm-rules, rules]
     - !reference [.radeonsi-rules, rules]
 
 .radeonsi-valve-manual-rules:
   stage: amd
   rules:
+    - !reference [.test, rules]
     - !reference [.valve-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:

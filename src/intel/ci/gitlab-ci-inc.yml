@@ -1,6 +1,7 @@
 .i915g-rules:
   stage: intel
   rules:
+    - !reference [.test, rules]
     - !reference [.gl-rules, rules]
     - changes: &i915g_file_list
       - src/gallium/drivers/i915/**/*
@@ -12,6 +13,7 @@
   stage: intel
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
         *i915g_file_list
@@ -20,6 +22,7 @@
 .crocus-rules:
   stage: intel
   rules:
+    - !reference [.test, rules]
     - !reference [.anholt-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &crocus_file_list
@@ -32,6 +35,7 @@
   stage: intel
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.anholt-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -41,6 +45,7 @@
 .iris-rules:
   stage: intel
   rules:
+    - !reference [.test, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
@@ -54,6 +59,7 @@
   stage: intel
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -67,6 +73,7 @@
   stage: intel
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.performance-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -84,6 +91,7 @@
 .anv-rules:
   stage: intel
   rules:
+    - !reference [.test, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
@@ -95,6 +103,7 @@
   stage: intel
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes:
@@ -104,6 +113,7 @@
 .hasvk-rules:
   stage: intel
   rules:
+    - !reference [.test, rules]
     - !reference [.anholt-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
@@ -114,6 +124,7 @@
   stage: intel
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.anholt-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes:
@@ -124,12 +135,14 @@
 .intel-rules:
   stage: intel
   rules:
+    - !reference [.test, rules]
     - !reference [.iris-rules, rules]
     - !reference [.anv-rules, rules]
 
 .intel-manual-rules:
   stage: intel
   rules:
+    - !reference [.test, rules]
     - !reference [.iris-manual-rules, rules]
     - !reference [.anv-manual-rules, rules]
 

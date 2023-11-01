@@ -22,7 +22,7 @@
   rules:
     - if: $FORCE_KERNEL_TAG != null
       when: never
-    - !reference [.never-post-merge-rules, rules]
+    - !reference [.test, rules]
     - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - !reference [.broadcom-common-rules, rules]
@@ -36,6 +36,7 @@
 .vc4-manual-rules:
   stage: broadcom
   rules:
+    - !reference [.test, rules]
     - !reference [.igalia-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - !reference [.broadcom-common-manual-rules, rules]
@@ -47,7 +48,7 @@
   rules:
     - if: $FORCE_KERNEL_TAG != null
       when: never
-    - !reference [.never-post-merge-rules, rules]
+    - !reference [.test, rules]
     - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - !reference [.broadcom-common-rules, rules]
@@ -62,6 +63,7 @@
   stage: broadcom
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.igalia-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - !reference [.broadcom-common-manual-rules, rules]
@@ -74,7 +76,7 @@
   rules:
     - if: $FORCE_KERNEL_TAG != null
       when: never
-    - !reference [.never-post-merge-rules, rules]
+    - !reference [.test, rules]
     - !reference [.igalia-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes: &v3dv_file_list
@@ -84,6 +86,7 @@
 .v3dv-manual-rules:
   stage: broadcom
   rules:
+    - !reference [.test, rules]
     - !reference [.igalia-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes: *v3dv_file_list

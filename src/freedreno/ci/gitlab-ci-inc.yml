@@ -1,6 +1,7 @@
 # Rules for changes that impact either freedreno or turnip.
 .freedreno-common-rules:
   rules:
+    - !reference [.test, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - changes: &freedreno_core_file_list
       - src/freedreno/ci/**/*
@@ -15,6 +16,7 @@
 .freedreno-common-manual-rules:
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.core-manual-rules, rules]
     - changes:
         *freedreno_core_file_list
@@ -25,6 +27,7 @@
 .google-freedreno-rules:
   stage: freedreno
   rules:
+    - !reference [.test, rules]
     - !reference [.freedreno-farm-rules, rules]
     - !reference [.freedreno-common-rules, rules]
     - !reference [.gl-rules, rules]
@@ -37,6 +40,7 @@
 .collabora-freedreno-rules:
   stage: freedreno
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.freedreno-common-rules, rules]
     - !reference [.gl-rules, rules]
@@ -48,6 +52,7 @@
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.freedreno-farm-manual-rules, rules]
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -59,6 +64,7 @@
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -70,6 +76,7 @@
 .google-turnip-rules:
   stage: freedreno
   rules:
+    - !reference [.test, rules]
     - !reference [.freedreno-farm-rules, rules]
     - !reference [.freedreno-common-rules, rules]
     - !reference [.vulkan-rules, rules]
@@ -80,6 +87,7 @@
 .collabora-turnip-rules:
   stage: freedreno
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.freedreno-common-rules, rules]
     - !reference [.vulkan-rules, rules]
@@ -90,6 +98,7 @@
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.freedreno-farm-manual-rules, rules]
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
@@ -101,6 +110,7 @@
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
@@ -111,23 +121,27 @@
 # For piglit and skqp test jobs that run both GL and VK tests.
 .google-freedreno-turnip-rules:
   rules:
+    - !reference [.test, rules]
     - !reference [.google-freedreno-rules, rules]
     - !reference [.google-turnip-rules, rules]
 
 .collabora-freedreno-turnip-rules:
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-freedreno-rules, rules]
     - !reference [.collabora-turnip-rules, rules]
 
 .google-freedreno-rules-restricted:
   stage: freedreno
   rules:
+    - !reference [.test, rules]
     - !reference [.restricted-rules, rules]
     - !reference [.google-freedreno-rules, rules]
 
 .collabora-freedreno-rules-restricted:
   stage: freedreno
   rules:
+    - !reference [.test, rules]
     - !reference [.restricted-rules, rules]
     - !reference [.collabora-freedreno-rules, rules]
 
@@ -135,6 +149,7 @@
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.performance-rules, rules]
     - !reference [.google-freedreno-manual-rules, rules]
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
@@ -150,6 +165,7 @@
   stage: freedreno
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.performance-rules, rules]
     - !reference [.collabora-freedreno-manual-rules, rules]
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.

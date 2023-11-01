@@ -200,6 +200,7 @@
 # Rules for unusual architectures that only build a subset of drivers
 .ppc64el-rules:
    rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.zink-common-rules, rules]
     - !reference [.softpipe-rules, rules]
@@ -212,6 +213,7 @@
 
 .s390x-rules:
    rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.zink-common-rules, rules]
     - !reference [.softpipe-rules, rules]
@@ -221,6 +223,7 @@
 # Rules for linters
 .lint-rustfmt-rules:
    rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.core-rules, rules]
     - changes:
       - src/**/*.rs
@@ -228,6 +231,7 @@
 
 .lint-clang-format-rules:
    rules:
+    - !reference [.never-post-merge-rules, rules]
     - !reference [.core-rules, rules]
     - changes:
       - .clang-format

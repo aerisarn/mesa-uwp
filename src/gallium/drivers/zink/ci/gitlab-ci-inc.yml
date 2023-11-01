@@ -1,5 +1,6 @@
 .zink-common-rules:
   rules:
+    - !reference [.test, rules]
     - !reference [.gl-rules, rules]
     - changes:
       - src/gallium/drivers/zink/**/*
@@ -8,6 +9,7 @@
 .zink-common-manual-rules:
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
       - src/gallium/drivers/zink/**/*
@@ -16,12 +18,14 @@
 .zink-lvp-rules:
   stage: layered-backends
   rules:
+    - !reference [.test, rules]
     - !reference [.lavapipe-rules, rules]
     - !reference [.zink-common-rules, rules]
 
 .zink-anv-rules:
   stage: layered-backends
   rules:
+    - !reference [.test, rules]
     - !reference [.anv-rules, rules]
     - !reference [.zink-common-rules, rules]
 
@@ -29,12 +33,14 @@
   stage: layered-backends
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.anv-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
 
 .zink-anv-rules-restricted:
   stage: layered-backends
   rules:
+    - !reference [.test, rules]
     - !reference [.restricted-rules, rules]
     - !reference [.anv-rules, rules]
     - !reference [.zink-common-rules, rules]
@@ -42,6 +48,7 @@
 .zink-turnip-rules:
   stage: layered-backends
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-turnip-rules, rules]
     - !reference [.zink-common-rules, rules]
   variables:
@@ -51,12 +58,14 @@
   stage: layered-backends
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-turnip-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
 
 .zink-radv-rules:
   stage: layered-backends
   rules:
+    - !reference [.test, rules]
     - !reference [.radv-valve-rules, rules]
     - !reference [.zink-common-rules, rules]
 
@@ -64,6 +73,7 @@
   stage: layered-backends
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.radv-valve-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
     - changes:

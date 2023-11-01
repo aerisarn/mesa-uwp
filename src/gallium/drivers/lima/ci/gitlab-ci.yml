@@ -1,6 +1,7 @@
 .lima-rules:
   stage: arm
   rules:
+    - !reference [.test, rules]
     - !reference [.lima-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes:

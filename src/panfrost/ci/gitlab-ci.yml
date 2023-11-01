@@ -1,6 +1,7 @@
 .panfrost-midgard-rules:
   stage: arm
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &panfrost_gallium_file_list
@@ -22,6 +23,7 @@
   stage: arm
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes: *panfrost_gallium_file_list
@@ -35,6 +37,7 @@
 .panfrost-bifrost-rules:
   stage: arm
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - !reference [.gl-rules, rules]
@@ -55,6 +58,7 @@
   stage: arm
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
+    - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
