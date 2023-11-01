@@ -5545,6 +5545,9 @@ bool nir_lower_variable_initializers(nir_shader *shader,
 bool nir_zero_initialize_shared_memory(nir_shader *shader,
                                        const unsigned shared_size,
                                        const unsigned chunk_size);
+bool nir_clear_shared_memory(nir_shader *shader,
+                             const unsigned shared_size,
+                             const unsigned chunk_size);
 
 bool nir_move_vec_src_uses_to_dest(nir_shader *shader, bool skip_const_srcs);
 bool nir_lower_vec_to_regs(nir_shader *shader, nir_instr_writemask_filter_cb cb,
