@@ -427,6 +427,18 @@ op("doorbell", (0x60020 | 0x28 << 32, (1 << 48) - 1, 6, _), dests = 0,
 op("stack_unmap", (0x00075, (1 << 24) - 1, 8, _), dests = 1, srcs = 0, can_eliminate = False, can_reorder = False, imms = [IMM])
 op("stack_map",   (0x10075, (1 << 24) - 1, 8, _), dests = 0, srcs = 1, can_eliminate = False, can_reorder = False, imms = [IMM])
 
+# source is offset
+op("stack_load",
+      encoding_32 = (0x35, (1 << 20) - 1, 6, 8),
+      srcs = 1, imms = [FORMAT, MASK], can_reorder = False,
+      schedule_class = "load")
+
+# sources are value and offset
+op("stack_store",
+      encoding_32 = (0xb5, (1 << 20) - 1, 6, 8),
+      dests = 0, srcs = 2, imms = [FORMAT, MASK],
+      can_eliminate=False, schedule_class = "store")
+
 # Convenient aliases.
 op("mov", _, srcs = 1)
 op("not", _, srcs = 1)

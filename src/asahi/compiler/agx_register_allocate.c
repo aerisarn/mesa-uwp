@@ -57,6 +57,7 @@ agx_write_registers(const agx_instr *I, unsigned d)
 
    case AGX_OPCODE_DEVICE_LOAD:
    case AGX_OPCODE_LOCAL_LOAD:
+   case AGX_OPCODE_STACK_LOAD:
    case AGX_OPCODE_LD_TILE:
       /* Can write 16-bit or 32-bit. Anything logically 64-bit is already
        * expanded to 32-bit in the mask.
@@ -225,6 +226,7 @@ agx_read_registers(const agx_instr *I, unsigned s)
 
    case AGX_OPCODE_DEVICE_STORE:
    case AGX_OPCODE_LOCAL_STORE:
+   case AGX_OPCODE_STACK_STORE:
    case AGX_OPCODE_ST_TILE:
       /* See agx_write_registers */
       if (s == 0)

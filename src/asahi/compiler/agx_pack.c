@@ -1003,6 +1003,43 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       break;
    }
 
+   case AGX_OPCODE_STACK_LOAD:
+   case AGX_OPCODE_STACK_STORE: {
+      enum agx_format format = I->format;
+      unsigned mask = I->mask;
+
+      bool is_load = I->op == AGX_OPCODE_STACK_LOAD;
+      bool L = true; /* TODO: when would you want short? */
+
+      assert(mask != 0);
+      assert(format <= 0x10);
+
+      bool Rt, Ot;
+      unsigned R = agx_pack_memory_reg(is_load ? I->dest[0] : I->src[0], &Rt);
+      unsigned O = agx_pack_memory_index(is_load ? I->src[0] : I->src[1], &Ot);
+
+      unsigned i1 = 1; // XXX
+      unsigned i2 = 0; // XXX
+      unsigned i5 = 4; // XXX
+      unsigned i6 = 0; // XXX: scoreboard index?
+
+      uint64_t raw =
+         agx_opcodes_info[I->op].encoding.exact |
+         ((format & BITFIELD_MASK(2)) << 8) | ((R & BITFIELD_MASK(6)) << 10) |
+         ((O & BITFIELD_MASK(4)) << 20) | (Ot ? (1 << 24) : 0) |
+         ((uint64_t)i1 << 26) | ((uint64_t)i6 << 30) |
+         (((uint64_t)((O >> 4) & BITFIELD_MASK(4))) << 32) |
+         ((uint64_t)i2 << 36) |
+         (((uint64_t)((R >> 6) & BITFIELD_MASK(2))) << 40) |
+         ((uint64_t)i5 << 44) | (L ? (1UL << 47) : 0) |
+         (((uint64_t)(format >> 2)) << 50) | (((uint64_t)Rt) << 49) |
+         (((uint64_t)mask) << 52) | (((uint64_t)(O >> 8)) << 56);
+
+      unsigned size = L ? 8 : 6;
+      memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
+      break;
+   }
+
    default:
       agx_pack_alu(emission, I);
       return;
