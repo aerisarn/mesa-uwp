@@ -6369,6 +6369,9 @@ calculate_tile_dimensions(struct iris_context *ice,
 
    struct pipe_framebuffer_state *cso = &ice->state.framebuffer;
 
+   if (cso->width == 0 || cso->height == 0)
+      return false;
+
    for (unsigned i = 0; i < cso->nr_cbufs; i++) {
       const struct iris_surface *surf = (void *)cso->cbufs[i];
 
