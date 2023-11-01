@@ -821,8 +821,10 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
          nir_intrinsic_set_cluster_size(intrin, 0);
          ret = NIR_LOWER_INSTR_PROGRESS;
       }
+      if (nir_intrinsic_cluster_size(intrin) == 1)
+         return intrin->src[0].ssa;
       if (options->lower_to_scalar && intrin->num_components > 1)
-         ret = lower_subgroup_op_to_scalar(b, intrin);
+         return lower_subgroup_op_to_scalar(b, intrin);
       return ret;
    }
    case nir_intrinsic_inclusive_scan:
