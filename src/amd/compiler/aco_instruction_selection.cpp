@@ -7633,143 +7633,6 @@ visit_store_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 }
 
-void
-emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp src, Temp dst)
-{
-   Builder bld(ctx->program, ctx->block);
-   assert(dst.regClass() == bld.lm);
-
-   if (cluster_size == 1) {
-      bld.copy(Definition(dst), src);
-   }
-   if (op == nir_op_iand && cluster_size == 4) {
-      /* subgroupClusteredAnd(val, 4) -> ~wqm(~val & exec) */
-      Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
-      tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm));
-      bld.sop1(Builder::s_not, Definition(dst), bld.def(s1, scc),
-               bld.sop1(Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc), tmp));
-   } else if (op == nir_op_ior && cluster_size == 4) {
-      /* subgroupClusteredOr(val, 4) -> wqm(val & exec) */
-      bld.sop1(
-         Builder::s_wqm, Definition(dst), bld.def(s1, scc),
-         bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm)));
-   } else if (op == nir_op_iand && cluster_size == ctx->program->wave_size) {
-      /* subgroupAnd(val) -> (~val & exec) == 0 */
-      Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
-      tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm))
-               .def(1)
-               .getTemp();
-      Temp cond = bool_to_vector_condition(ctx, tmp);
-      bld.sop1(Builder::s_not, Definition(dst), bld.def(s1, scc), cond);
-   } else if (op == nir_op_ior && cluster_size == ctx->program->wave_size) {
-      /* subgroupOr(val) -> (val & exec) != 0 */
-      Temp tmp =
-         bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm))
-            .def(1)
-            .getTemp();
-      bool_to_vector_condition(ctx, tmp, dst);
-   } else if (op == nir_op_ixor && cluster_size == ctx->program->wave_size) {
-      /* subgroupXor(val) -> s_bcnt1_i32_b64(val & exec) & 1 */
-      Temp tmp =
-         bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
-      tmp = bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), tmp);
-      tmp = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), tmp, Operand::c32(1u))
-               .def(1)
-               .getTemp();
-      bool_to_vector_condition(ctx, tmp, dst);
-   } else {
-      /* subgroupClustered{And,Or,Xor}(val, n):
-       *   lane_id = v_mbcnt_hi_u32_b32(-1, v_mbcnt_lo_u32_b32(-1, 0)) (just v_mbcnt_lo on wave32)
-       *   cluster_offset = ~(n - 1) & lane_id cluster_mask = ((1 << n) - 1)
-       * subgroupClusteredAnd():
-       *   return ((val | ~exec) >> cluster_offset) & cluster_mask == cluster_mask
-       * subgroupClusteredOr():
-       *   return ((val & exec) >> cluster_offset) & cluster_mask != 0
-       * subgroupClusteredXor():
-       *   return v_bnt_u32_b32(((val & exec) >> cluster_offset) & cluster_mask, 0) & 1 != 0
-       */
-      Temp lane_id = emit_mbcnt(ctx, bld.tmp(v1));
-      Temp cluster_offset = bld.vop2(aco_opcode::v_and_b32, bld.def(v1),
-                                     Operand::c32(~uint32_t(cluster_size - 1)), lane_id);
-
-      Temp tmp;
-      if (op == nir_op_iand)
-         tmp = bld.sop2(Builder::s_orn2, bld.def(bld.lm), bld.def(s1, scc), src,
-                        Operand(exec, bld.lm));
-      else
-         tmp =
-            bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
-
-      uint32_t cluster_mask = cluster_size == 32 ? -1 : (1u << cluster_size) - 1u;
-
-      if (ctx->program->gfx_level <= GFX7)
-         tmp = bld.vop3(aco_opcode::v_lshr_b64, bld.def(v2), tmp, cluster_offset);
-      else if (ctx->program->wave_size == 64)
-         tmp = bld.vop3(aco_opcode::v_lshrrev_b64, bld.def(v2), cluster_offset, tmp);
-      else
-         tmp = bld.vop2_e64(aco_opcode::v_lshrrev_b32, bld.def(v1), cluster_offset, tmp);
-      tmp = emit_extract_vector(ctx, tmp, 0, v1);
-      if (cluster_mask != 0xffffffff)
-         tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(cluster_mask), tmp);
-
-      if (op == nir_op_iand) {
-         bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(dst), Operand::c32(cluster_mask), tmp);
-      } else if (op == nir_op_ior) {
-         bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), tmp);
-      } else if (op == nir_op_ixor) {
-         tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(1u),
-                        bld.vop3(aco_opcode::v_bcnt_u32_b32, bld.def(v1), tmp, Operand::zero()));
-         bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), tmp);
-      }
-   }
-}
-
-void
-emit_boolean_exclusive_scan(isel_context* ctx, nir_op op, Temp src, Temp dst)
-{
-   Builder bld(ctx->program, ctx->block);
-   assert(src.regClass() == bld.lm);
-
-   /* subgroupExclusiveAnd(val) -> mbcnt(~val & exec) == 0
-    * subgroupExclusiveOr(val) -> mbcnt(val & exec) != 0
-    * subgroupExclusiveXor(val) -> mbcnt(val & exec) & 1 != 0
-    */
-   if (op == nir_op_iand)
-      src = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
-
-   Temp tmp =
-      bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
-
-   Temp mbcnt = emit_mbcnt(ctx, bld.tmp(v1), Operand(tmp));
-
-   if (op == nir_op_iand)
-      bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(dst), Operand::zero(), mbcnt);
-   else if (op == nir_op_ior)
-      bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), mbcnt);
-   else if (op == nir_op_ixor)
-      bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(),
-               bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(1u), mbcnt));
-}
-
-void
-emit_boolean_inclusive_scan(isel_context* ctx, nir_op op, Temp src, Temp dst)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   /* subgroupInclusiveAnd(val) -> subgroupExclusiveAnd(val) && val
-    * subgroupInclusiveOr(val) -> subgroupExclusiveOr(val) || val
-    * subgroupInclusiveXor(val) -> subgroupExclusiveXor(val) ^^ val
-    */
-   Temp tmp = bld.tmp(bld.lm);
-   emit_boolean_exclusive_scan(ctx, op, src, tmp);
-   if (op == nir_op_iand)
-      bld.sop2(Builder::s_and, Definition(dst), bld.def(s1, scc), tmp, src);
-   else if (op == nir_op_ior)
-      bld.sop2(Builder::s_or, Definition(dst), bld.def(s1, scc), tmp, src);
-   else if (op == nir_op_ixor)
-      bld.sop2(Builder::s_xor, Definition(dst), bld.def(s1, scc), tmp, src);
-}
-
 ReduceOp
 get_reduce_op(nir_op op, unsigned bit_size)
 {
@@ -8606,9 +8469,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          instr->intrinsic == nir_intrinsic_reduce ? nir_intrinsic_cluster_size(instr) : 0;
       cluster_size = util_next_power_of_two(
          MIN2(cluster_size ? cluster_size : ctx->program->wave_size, ctx->program->wave_size));
+      const unsigned bit_size = instr->src[0].ssa->bit_size;
+      assert(bit_size != 1);
 
-      if (!nir_src_is_divergent(instr->src[0]) && cluster_size == ctx->program->wave_size &&
-          instr->def.bit_size != 1) {
+      if (!nir_src_is_divergent(instr->src[0]) && cluster_size == ctx->program->wave_size) {
          /* We use divergence analysis to assign the regclass, so check if it's
           * working as expected */
          ASSERTED bool expected_divergent = instr->intrinsic == nir_intrinsic_exclusive_scan;
@@ -8624,47 +8488,26 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          }
       }
 
-      if (instr->def.bit_size == 1) {
-         if (op == nir_op_imul || op == nir_op_umin || op == nir_op_imin)
-            op = nir_op_iand;
-         else if (op == nir_op_iadd)
-            op = nir_op_ixor;
-         else if (op == nir_op_umax || op == nir_op_imax)
-            op = nir_op_ior;
-         assert(op == nir_op_iand || op == nir_op_ior || op == nir_op_ixor);
+      src = emit_extract_vector(ctx, src, 0, RegClass::get(RegType::vgpr, bit_size / 8));
+      ReduceOp reduce_op = get_reduce_op(op, bit_size);
 
-         switch (instr->intrinsic) {
-         case nir_intrinsic_reduce: emit_boolean_reduce(ctx, op, cluster_size, src, dst); break;
-         case nir_intrinsic_exclusive_scan: emit_boolean_exclusive_scan(ctx, op, src, dst); break;
-         case nir_intrinsic_inclusive_scan: emit_boolean_inclusive_scan(ctx, op, src, dst); break;
-         default: assert(false);
-         }
-      } else if (cluster_size == 1) {
-         bld.copy(Definition(dst), src);
-      } else {
-         unsigned bit_size = instr->src[0].ssa->bit_size;
-
-         src = emit_extract_vector(ctx, src, 0, RegClass::get(RegType::vgpr, bit_size / 8));
-
-         ReduceOp reduce_op = get_reduce_op(op, bit_size);
-
-         aco_opcode aco_op;
-         switch (instr->intrinsic) {
-         case nir_intrinsic_reduce: aco_op = aco_opcode::p_reduce; break;
-         case nir_intrinsic_inclusive_scan: aco_op = aco_opcode::p_inclusive_scan; break;
-         case nir_intrinsic_exclusive_scan: aco_op = aco_opcode::p_exclusive_scan; break;
-         default: unreachable("unknown reduce intrinsic");
-         }
-
-         /* Avoid whole wave shift. */
-         const bool use_inclusive_for_exclusive = aco_op == aco_opcode::p_exclusive_scan &&
-                                                  (op == nir_op_iadd || op == nir_op_ixor) &&
-                                                  dst.type() == RegType::vgpr;
-         if (use_inclusive_for_exclusive)
-            inclusive_scan_to_exclusive(ctx, reduce_op, Definition(dst), src);
-         else
-            emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size, Definition(dst), src);
+      aco_opcode aco_op;
+      switch (instr->intrinsic) {
+      case nir_intrinsic_reduce: aco_op = aco_opcode::p_reduce; break;
+      case nir_intrinsic_inclusive_scan: aco_op = aco_opcode::p_inclusive_scan; break;
+      case nir_intrinsic_exclusive_scan: aco_op = aco_opcode::p_exclusive_scan; break;
+      default: unreachable("unknown reduce intrinsic");
       }
+
+      /* Avoid whole wave shift. */
+      const bool use_inclusive_for_exclusive = aco_op == aco_opcode::p_exclusive_scan &&
+                                               (op == nir_op_iadd || op == nir_op_ixor) &&
+                                               dst.type() == RegType::vgpr;
+      if (use_inclusive_for_exclusive)
+         inclusive_scan_to_exclusive(ctx, reduce_op, Definition(dst), src);
+      else
+         emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size, Definition(dst), src);
+
       set_wqm(ctx);
       break;
    }
