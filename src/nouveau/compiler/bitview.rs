@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#![allow(unstable_name_collisions)]
-
-use crate::util::DivCeil;
-
 use std::ops::Range;
 
 pub trait BitViewable {

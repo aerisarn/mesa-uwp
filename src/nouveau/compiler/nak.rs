@@ -25,7 +25,6 @@ mod nak_sph;
 mod nak_spill_values;
 mod nak_to_cssa;
 mod nir;
-mod util;
 
 use crate::nak_ir::ShaderStageInfo;
 

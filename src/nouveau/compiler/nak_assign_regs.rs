@@ -3,12 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#![allow(unstable_name_collisions)]
-
 use crate::bitset::BitSet;
 use crate::nak_ir::*;
 use crate::nak_liveness::{BlockLiveness, Liveness, SimpleLiveness};
-use crate::util::NextMultipleOf;
 
 use std::cmp::{max, Ordering};
 use std::collections::{HashMap, HashSet};

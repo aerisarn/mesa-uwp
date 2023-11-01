@@ -4,7 +4,6 @@
  */
 
 mod bitview;
-mod util;
 
 use crate::bitview::*;
 

@@ -2,9 +2,6 @@
  * Copyright © 2022 Collabora, Ltd.
  * SPDX-License-Identifier: MIT
  */
-#![allow(unstable_name_collisions)]
-
-use crate::util::DivCeil;
 
 use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Range,

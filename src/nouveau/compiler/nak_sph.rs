@@ -1,11 +1,8 @@
 // Copyright © 2023 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
-#![allow(unstable_name_collisions)]
-
 use std::ops::Range;
 
-use crate::util::NextMultipleOf;
 use nak_bindings::*;
 
 use crate::{

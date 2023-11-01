@@ -4,13 +4,11 @@
  */
 
 #![allow(non_upper_case_globals)]
-#![allow(unstable_name_collisions)]
 
 use crate::nak_cfg::CFGBuilder;
 use crate::nak_ir::*;
 use crate::nak_sph::{OutputTopology, PixelImap};
 use crate::nir::*;
-use crate::util::DivCeil;
 
 use nak_bindings::*;
 
