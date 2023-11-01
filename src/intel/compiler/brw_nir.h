@@ -267,8 +267,8 @@ bool brw_nir_lower_patch_vertices_in(nir_shader *shader, unsigned input_vertices
 bool brw_nir_blockify_uniform_loads(nir_shader *shader,
                                     const struct intel_device_info *devinfo);
 
-void brw_nir_optimize(nir_shader *nir,
-                      const struct brw_compiler *compiler);
+void brw_nir_optimize(nir_shader *nir, bool is_scalar,
+                      const struct intel_device_info *devinfo);
 
 nir_shader *brw_nir_create_passthrough_tcs(void *mem_ctx,
                                            const struct brw_compiler *compiler,
