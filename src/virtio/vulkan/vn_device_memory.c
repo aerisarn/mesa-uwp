@@ -348,7 +348,7 @@ vn_device_memory_alloc_guest_vram(struct vn_device *dev,
                                       .memoryTypes[mem_vk->memory_type_index];
 
    VkResult result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem_vk->size, 0, mem_type->propertyFlags,
+      dev->renderer, mem_vk->size, mem->base.id, mem_type->propertyFlags,
       mem_vk->export_handle_types, &mem->base_bo);
    if (result != VK_SUCCESS) {
       return result;
