@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from itertools import chain
 from subprocess import check_output
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, Iterable, Literal, Optional
 
 import gitlab
 from colorama import Fore, Style
@@ -32,6 +32,9 @@ from gitlab_common import (
     pretty_duration,
 )
 from gitlab_gql import GitlabGQL, create_job_needs_dag, filter_dag, print_dag
+
+if TYPE_CHECKING:
+    from gitlab_gql import Dag
 
 GITLAB_URL = "https://gitlab.freedesktop.org"
 
@@ -293,6 +296,24 @@ def parse_args() -> None:
     return args
 
 
+def print_detected_jobs(
+    target_dep_dag: "Dag", dependency_jobs: Iterable[str], target_jobs: Iterable[str]
+) -> None:
+    def print_job_set(color: str, kind: str, job_set: Iterable[str]):
+        print(
+            color + f"Running {len(job_set)} {kind} jobs: ",
+            "\n",
+            ", ".join(sorted(job_set)),
+            Fore.RESET,
+            "\n",
+        )
+
+    print(Fore.YELLOW + "Detected target job and its dependencies:", "\n")
+    print_dag(target_dep_dag)
+    print_job_set(Fore.MAGENTA, "dependency", dependency_jobs)
+    print_job_set(Fore.BLUE, "target", target_jobs)
+
+
 def find_dependencies(target_jobs_regex: re.Pattern, project_path: str, iid: int) -> set[str]:
     gql_instance = GitlabGQL()
     dag = create_job_needs_dag(
@@ -303,14 +324,10 @@ def find_dependencies(target_jobs_regex: re.Pattern, project_path: str, iid: int
     if not target_dep_dag:
         print(Fore.RED + "The job(s) were not found in the pipeline." + Fore.RESET)
         sys.exit(1)
-    print(Fore.YELLOW)
-    print("Detected job dependencies:")
-    print()
-    print_dag(target_dep_dag)
-    print(Fore.RESET)
 
     dependency_jobs = set(chain.from_iterable(d["needs"] for d in target_dep_dag.values()))
     target_jobs = set(target_dep_dag.keys())
+    print_detected_jobs(target_dep_dag, dependency_jobs, target_jobs)
     return target_jobs.union(dependency_jobs)
 
 
