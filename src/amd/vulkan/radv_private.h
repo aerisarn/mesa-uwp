@@ -382,6 +382,7 @@ struct radv_instance {
    bool force_rt_wave64;
    bool dual_color_blend_by_location;
    bool legacy_sparse_binding;
+   bool clear_lds;
    char *app_layer;
    uint8_t override_graphics_shader_version;
    uint8_t override_compute_shader_version;
