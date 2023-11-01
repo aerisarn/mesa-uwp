@@ -1299,6 +1299,80 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
    vk_dynamic_graphics_state_clear_dirty(&cmd_buffer->vk.dynamic_graphics_state);
 }
 
+static void
+emit_wa_18020335297_dummy_draw(struct anv_cmd_buffer *cmd_buffer)
+{
+#if GFX_VERx10 >= 125
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VFG), vfg) {
+      vfg.DistributionMode = RR_STRICT;
+   }
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF), vf) {
+      vf.GeometryDistributionEnable = true;
+   }
+#endif
+
+#if GFX_VER >= 12
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr) {
+      pr.ReplicaMask = 1;
+   }
+#endif
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_RASTER), rr) {
+      rr.CullMode = CULLMODE_NONE;
+      rr.FrontFaceFillMode = FILL_MODE_SOLID;
+      rr.BackFaceFillMode = FILL_MODE_SOLID;
+   }
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_STATISTICS), zero);
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_SGVS), zero);
+
+#if GFX_VER >= 11
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_SGVS_2), zero);
+#endif
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CLIP), clip) {
+      clip.ClipEnable = true;
+      clip.ClipMode = CLIPMODE_REJECT_ALL;
+   }
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VS), zero);
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_GS), zero);
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_HS), zero);
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_TE), zero);
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_DS), zero);
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_STREAMOUT), zero);
+
+   uint32_t *vertex_elements = anv_batch_emitn(&cmd_buffer->batch, 1 + 2 * 2,
+                                               GENX(3DSTATE_VERTEX_ELEMENTS));
+   uint32_t *ve_pack_dest = &vertex_elements[1];
+
+   for (int i = 0; i < 2; i++) {
+      struct GENX(VERTEX_ELEMENT_STATE) element = {
+         .Valid = true,
+         .SourceElementFormat = ISL_FORMAT_R32G32B32A32_FLOAT,
+         .Component0Control = VFCOMP_STORE_0,
+         .Component1Control = VFCOMP_STORE_0,
+         .Component2Control = i == 0 ? VFCOMP_STORE_0 : VFCOMP_STORE_1_FP,
+         .Component3Control = i == 0 ? VFCOMP_STORE_0 : VFCOMP_STORE_1_FP,
+      };
+      GENX(VERTEX_ELEMENT_STATE_pack)(NULL, ve_pack_dest, &element);
+      ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
+   }
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
+      topo.PrimitiveTopologyType = _3DPRIM_TRILIST;
+   }
+
+   /* Emit dummy draw per slice. */
+   for (unsigned i = 0; i < cmd_buffer->device->info->num_slices; i++) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
+         prim.VertexCountPerInstance = 3;
+         prim.PrimitiveTopologyType = _3DPRIM_TRILIST;
+         prim.InstanceCount = 1;
+         prim.VertexAccessType = SEQUENTIAL;
+      }
+   }
+}
 /**
  * This function handles dirty state emission to the batch buffer.
  */
@@ -1499,6 +1573,7 @@ cmd_buffer_gfx_state_emission(struct anv_cmd_buffer *cmd_buffer)
                      GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), cc) {
          cc.CCViewportPointer = cc_state.offset;
       }
+      cmd_buffer->state.gfx.viewport_set = true;
    }
 
    if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_SCISSOR)) {
@@ -1917,6 +1992,63 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
    if (BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_WM))
       BITSET_SET(hw_state->dirty, ANV_GFX_STATE_MULTISAMPLE);
 #endif
+
+   /* Wa_18020335297 - Apply the WA when viewport ptr is reprogrammed. */
+   if (intel_needs_workaround(device->info, 18020335297) &&
+       BITSET_TEST(hw_state->dirty, ANV_GFX_STATE_VIEWPORT_CC) &&
+       cmd_buffer->state.gfx.viewport_set) {
+      /* For mesh, we implement the WA using CS stall. This is for
+       * simplicity and takes care of possible interaction with Wa_16014390852.
+       */
+      if (anv_pipeline_is_mesh(pipeline)) {
+         genx_batch_emit_pipe_control(&cmd_buffer->batch, device->info,
+                                      _3D, ANV_PIPE_CS_STALL_BIT);
+      } else {
+         /* Mask off all instructions that we program. */
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VFG);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VF);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_PRIMITIVE_REPLICATION);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_RASTER);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VF_STATISTICS);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VF_SGVS);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VF_SGVS_2);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_CLIP);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VERTEX_INPUT);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VF_TOPOLOGY);
+
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_VS);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_GS);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_HS);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_TE);
+         BITSET_CLEAR(hw_state->dirty, ANV_GFX_STATE_DS);
+
+         cmd_buffer_gfx_state_emission(cmd_buffer);
+
+         emit_wa_18020335297_dummy_draw(cmd_buffer);
+
+         /* Dirty all emitted WA state to make sure that current real
+          * state is restored.
+          */
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VFG);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_PRIMITIVE_REPLICATION);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_RASTER);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_STATISTICS);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_SGVS);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_SGVS_2);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_CLIP);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VERTEX_INPUT);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_TOPOLOGY);
+
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VS);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_GS);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_HS);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_TE);
+         BITSET_SET(hw_state->dirty, ANV_GFX_STATE_DS);
+      }
+   }
 
    cmd_buffer_gfx_state_emission(cmd_buffer);
 }

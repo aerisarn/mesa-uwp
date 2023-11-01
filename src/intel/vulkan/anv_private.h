@@ -3538,6 +3538,11 @@ struct anv_cmd_graphics_state {
     */
    bool ds_write_state;
 
+   /**
+    * State tracking for Wa_18020335297.
+    */
+   bool                                         viewport_set;
+
    uint32_t n_occlusion_queries;
 
    struct anv_gfx_dynamic_state dyn_state;

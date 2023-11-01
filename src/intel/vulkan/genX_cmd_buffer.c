@@ -3333,6 +3333,10 @@ genX(BeginCommandBuffer)(
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       cmd_buffer->usage_flags &= ~VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 
+   /* Assume the viewport has already been set in primary command buffers. */
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+      cmd_buffer->state.gfx.viewport_set = true;
+
    trace_intel_begin_cmd_buffer(&cmd_buffer->trace);
 
    if (anv_cmd_buffer_is_video_queue(cmd_buffer) ||
@@ -3730,6 +3734,8 @@ genX(CmdExecuteCommands)(
       if (secondary->state.depth_reg_mode != ANV_DEPTH_REG_MODE_UNKNOWN)
          container->state.depth_reg_mode = secondary->state.depth_reg_mode;
 #endif
+
+      container->state.gfx.viewport_set |= secondary->state.gfx.viewport_set;
    }
 
    /* The secondary isn't counted in our VF cache tracking so we need to
