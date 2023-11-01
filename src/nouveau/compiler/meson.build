@@ -1,11 +1,11 @@
 # Copyright © 2022 Collabora, Ltd.
 # SPDX-License-Identifier: MIT
-if meson.version().version_compare('< 1.2.99')
+if meson.version().version_compare('< 1.3.0')
   error('NVK requires meson 1.3.0 or newer')
 endif
 
 add_languages('rust', required: true)
-rust = import('unstable-rust')
+rust = import('rust')
 
 rc = meson.get_compiler('rust')
 if rc.version().version_compare('< 1.73.0')
@@ -75,7 +75,7 @@ libnak_bindings_gen = static_library(
   'nak_bindings',
   nak_bindings_rs,
   gnu_symbol_visibility : 'hidden',
-  rust_crate_type : 'rlib',
+  rust_abi : 'rust',
 )
 
 libnak_ir_proc = rust.proc_macro(
@@ -88,7 +88,7 @@ _libnak_rs = static_library(
   'nak_rs',
   [libnak_rs_files],
   gnu_symbol_visibility : 'hidden',
-  rust_crate_type : 'staticlib',
+  rust_abi : 'c',
   rust_args : [
     # we error on all clippy warnings unless they are disabled
     '-Dclippy::all',
