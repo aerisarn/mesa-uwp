@@ -253,7 +253,6 @@ bool brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
 
 void brw_nir_analyze_ubo_ranges(const struct brw_compiler *compiler,
                                 nir_shader *nir,
-                                const struct brw_vs_prog_key *vs_key,
                                 struct brw_ubo_range out_ranges[4]);
 
 bool brw_nir_opt_peephole_ffma(nir_shader *shader);
