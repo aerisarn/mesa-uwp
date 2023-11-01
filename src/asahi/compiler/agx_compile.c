@@ -804,6 +804,29 @@ agx_emit_local_store(agx_builder *b, nir_intrinsic_instr *instr)
    agx_local_store(b, value, base, index, format, mask);
 }
 
+static void
+agx_emit_load_scratch(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
+{
+   agx_index offset = agx_src_index(&instr->src[0]);
+   enum agx_format format = format_for_bitsize(instr->def.bit_size);
+   unsigned nr = instr->def.num_components;
+   unsigned mask = BITFIELD_MASK(nr);
+
+   agx_stack_load_to(b, dst, offset, format, mask);
+   agx_emit_cached_split(b, dst, nr);
+}
+
+static void
+agx_emit_store_scratch(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   agx_index value = agx_recollect_vector(b, instr->src[0]);
+   agx_index offset = agx_src_index(&instr->src[1]);
+   enum agx_format format = format_for_bitsize(nir_src_bit_size(instr->src[0]));
+   unsigned mask = BITFIELD_MASK(nir_src_num_components(instr->src[0]));
+
+   agx_stack_store(b, value, offset, format, mask);
+}
+
 /*
  * In the hardware, bindless texture sources are specified as a 64-bit uniform
  * base address summed with a 32-bit register index. In NIR, we model this as a
@@ -1240,6 +1263,14 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_stack_unmap_agx: {
       return agx_stack_unmap_to(b, dst, nir_src_as_uint(instr->src[0]));
    }
+
+   case nir_intrinsic_load_scratch:
+      agx_emit_load_scratch(b, dst, instr);
+      return NULL;
+
+   case nir_intrinsic_store_scratch:
+      agx_emit_store_scratch(b, instr);
+      return NULL;
 
    case nir_intrinsic_load_barycentric_sample:
    case nir_intrinsic_load_sample_id:
