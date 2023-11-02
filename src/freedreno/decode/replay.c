@@ -245,14 +245,12 @@ device_mark_buffers(struct device *dev)
 }
 
 static void
-device_free_unused_buffers(struct device *dev)
+device_free_buffers(struct device *dev)
 {
    rb_tree_foreach_safe (struct buffer, buf, &dev->buffers, node) {
-      if (!buf->used) {
-         buffer_mem_free(dev, buf);
-         rb_tree_remove(&dev->buffers, &buf->node);
-         free(buf);
-      }
+      buffer_mem_free(dev, buf);
+      rb_tree_remove(&dev->buffers, &buf->node);
+      free(buf);
    }
 }
 
@@ -451,11 +449,10 @@ device_create()
 static void
 device_submit_cmdstreams(struct device *dev)
 {
-   device_free_unused_buffers(dev);
-   device_mark_buffers(dev);
-
-   if (!u_vector_length(&dev->cmdstreams))
+   if (!u_vector_length(&dev->cmdstreams)) {
+      device_free_buffers(dev);
       return;
+   }
 
    struct drm_msm_gem_submit_cmd cmds[u_vector_length(&dev->cmdstreams)];
 
@@ -566,6 +563,8 @@ device_submit_cmdstreams(struct device *dev)
    device_print_cp_log(dev);
 
    device_dump_wrbuf(dev);
+
+   device_free_buffers(dev);
 }
 
 static void
@@ -709,11 +708,10 @@ device_create()
 static void
 device_submit_cmdstreams(struct device *dev)
 {
-   device_free_unused_buffers(dev);
-   device_mark_buffers(dev);
-
-   if (!u_vector_length(&dev->cmdstreams))
+   if (!u_vector_length(&dev->cmdstreams)) {
+      device_free_buffers(dev);
       return;
+   }
 
    struct kgsl_command_object cmds[u_vector_length(&dev->cmdstreams)];
 
@@ -761,6 +759,8 @@ device_submit_cmdstreams(struct device *dev)
    device_print_cp_log(dev);
 
    device_dump_wrbuf(dev);
+
+   device_free_buffers(dev);
 }
 
 static void
@@ -988,9 +988,9 @@ handle_file(const char *filename, uint32_t first_submit, uint32_t last_submit,
                cs->iova = gpuaddr;
                cs->size = sizedwords * sizeof(uint32_t);
             }
-
-            need_submit = true;
          }
+
+         need_submit = true;
 
          submit++;
          break;
