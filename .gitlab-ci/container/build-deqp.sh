@@ -10,11 +10,13 @@
 
 set -ex -o pipefail
 
+DEQP_VERSION=vulkan-cts-1.3.7.0
+
 git config --global user.email "mesa@example.com"
 git config --global user.name "Mesa CI"
 git clone \
     https://github.com/KhronosGroup/VK-GL-CTS.git \
-    -b vulkan-cts-1.3.7.0 \
+    -b $DEQP_VERSION \
     --depth 1 \
     /VK-GL-CTS
 pushd /VK-GL-CTS
