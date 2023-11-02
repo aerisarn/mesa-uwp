@@ -8,7 +8,7 @@
 # DEBIAN_X86_64_TEST_VK_TAG
 # KERNEL_ROOTFS_TAG
 
-set -ex
+set -ex -o pipefail
 
 git config --global user.email "mesa@example.com"
 git config --global user.name "Mesa CI"
