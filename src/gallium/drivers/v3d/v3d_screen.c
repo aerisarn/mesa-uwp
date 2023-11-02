@@ -291,6 +291,9 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_IMAGE_STORE_FORMATTED:
                 return false;
 
+        case PIPE_CAP_NATIVE_FENCE_FD:
+                return true;
+
         default:
                 return u_pipe_screen_get_param_defaults(pscreen, param);
         }
@@ -926,7 +929,7 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
                 v3d_has_feature(screen, DRM_V3D_PARAM_SUPPORTS_CACHE_FLUSH);
         screen->has_perfmon = v3d_has_feature(screen, DRM_V3D_PARAM_SUPPORTS_PERFMON);
 
-        v3d_fence_init(screen);
+        v3d_fence_screen_init(screen);
 
         v3d_process_debug_variable();
 
