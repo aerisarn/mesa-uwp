@@ -174,6 +174,7 @@ set_wqm(isel_context* ctx, bool enable_helpers = false)
    if (ctx->program->stage == fragment_fs) {
       ctx->wqm_block_idx = ctx->block->index;
       ctx->wqm_instruction_idx = ctx->block->instructions.size();
+      enable_helpers |= ctx->shader->info.fs.require_full_quads;
       ctx->program->needs_wqm |= enable_helpers;
    }
 }
@@ -8447,7 +8448,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
       bld.sop1(Builder::s_wqm, Definition(get_ssa_temp(ctx, &instr->def)), bld.def(s1, scc), src);
-      set_wqm(ctx, true);
+      set_wqm(ctx);
       break;
    }
    case nir_intrinsic_quad_vote_all: {
@@ -8456,7 +8457,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
       src = bld.sop1(Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc), src);
       bld.sop1(Builder::s_not, Definition(get_ssa_temp(ctx, &instr->def)), bld.def(s1, scc), src);
-      set_wqm(ctx, true);
+      set_wqm(ctx);
       break;
    }
    case nir_intrinsic_reduce:
@@ -8604,8 +8605,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          isel_err(&instr->instr, "Unimplemented NIR quad group instruction bit size.");
       }
 
-      /* Vulkan spec 9.25: Helper invocations must be active for quad group instructions. */
-      set_wqm(ctx, true);
+      set_wqm(ctx);
       break;
    }
    case nir_intrinsic_masked_swizzle_amd: {
