@@ -498,8 +498,8 @@ gc_ctx *gc_context(const void *parent);
 #define gc_zalloc_zla(ctx, type, type2, count) \
    gc_zalloc_size(ctx, sizeof(type) + sizeof(type2) * (count), MAX2(alignof(type), alignof(type2)))
 
-void *gc_alloc_size(gc_ctx *ctx, size_t size, size_t align) MALLOCLIKE;
-void *gc_zalloc_size(gc_ctx *ctx, size_t size, size_t align) MALLOCLIKE;
+void *gc_alloc_size(gc_ctx *ctx, size_t size, size_t alignment) MALLOCLIKE;
+void *gc_zalloc_size(gc_ctx *ctx, size_t size, size_t alignment) MALLOCLIKE;
 void gc_free(void *ptr);
 gc_ctx *gc_get_context(void *ptr);
 

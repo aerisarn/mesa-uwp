@@ -803,23 +803,23 @@ create_slab(gc_ctx *ctx, unsigned bucket)
 }
 
 void *
-gc_alloc_size(gc_ctx *ctx, size_t size, size_t align)
+gc_alloc_size(gc_ctx *ctx, size_t size, size_t alignment)
 {
    assert(ctx);
-   assert(util_is_power_of_two_nonzero(align));
+   assert(util_is_power_of_two_nonzero(alignment));
 
-   align = MAX2(align, alignof(gc_block_header));
+   alignment = MAX2(alignment, alignof(gc_block_header));
 
    /* Alignment will add at most align-alignof(gc_block_header) bytes of padding to the header, and
     * the IS_PADDING byte can only encode up to 127.
     */
-   assert((align - alignof(gc_block_header)) <= 127);
+   assert((alignment - alignof(gc_block_header)) <= 127);
 
    /* We can only align as high as the slab is. */
-   assert(align <= HEADER_ALIGN);
+   assert(alignment <= HEADER_ALIGN);
 
-   size_t header_size = align64(sizeof(gc_block_header), align);
-   size = align64(size, align);
+   size_t header_size = align64(sizeof(gc_block_header), alignment);
+   size = align64(size, alignment);
    size += header_size;
 
    gc_block_header *header = NULL;
@@ -846,14 +846,14 @@ gc_alloc_size(gc_ctx *ctx, size_t size, size_t align)
    if ((header_size - 1) != offsetof(gc_block_header, flags))
       ptr[-1] = IS_PADDING | (header_size - sizeof(gc_block_header));
 
-   assert(((uintptr_t)ptr & (align - 1)) == 0);
+   assert(((uintptr_t)ptr & (alignment - 1)) == 0);
    return ptr;
 }
 
 void *
-gc_zalloc_size(gc_ctx *ctx, size_t size, size_t align)
+gc_zalloc_size(gc_ctx *ctx, size_t size, size_t alignment)
 {
-   void *ptr = gc_alloc_size(ctx, size, align);
+   void *ptr = gc_alloc_size(ctx, size, alignment);
 
    if (likely(ptr))
       memset(ptr, 0, size);
