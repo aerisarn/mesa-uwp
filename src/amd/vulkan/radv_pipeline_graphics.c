@@ -296,16 +296,11 @@ static bool
 radv_pipeline_uses_vrs_attachment(const struct radv_graphics_pipeline *pipeline,
                                   const struct vk_graphics_pipeline_state *state)
 {
-   VK_FROM_HANDLE(vk_render_pass, render_pass, state->rp->render_pass);
+   VkPipelineCreateFlags2KHR create_flags = pipeline->base.create_flags;
+   if (state->rp)
+      create_flags |= state->rp->pipeline_flags;
 
-   if (render_pass) {
-      uint32_t subpass_idx = state->rp->subpass;
-      struct vk_subpass *subpass = &render_pass->subpasses[subpass_idx];
-
-      return !!subpass->fragment_shading_rate_attachment;
-   }
-
-   return (pipeline->base.create_flags & VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) != 0;
+   return (create_flags & VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) != 0;
 }
 
 static void
@@ -824,21 +819,11 @@ static bool
 radv_pipeline_uses_ds_feedback_loop(const struct radv_graphics_pipeline *pipeline,
                                     const struct vk_graphics_pipeline_state *state)
 {
-   VK_FROM_HANDLE(vk_render_pass, render_pass, state->rp->render_pass);
+   VkPipelineCreateFlags2KHR create_flags = pipeline->base.create_flags;
+   if (state->rp)
+      create_flags |= state->rp->pipeline_flags;
 
-   if (render_pass) {
-      uint32_t subpass_idx = state->rp->subpass;
-      struct vk_subpass *subpass = &render_pass->subpasses[subpass_idx];
-      struct vk_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
-
-      for (uint32_t i = 0; i < subpass->input_count; i++) {
-         if (ds_att && ds_att->attachment == subpass->input_attachments[i].attachment) {
-            return true;
-         }
-      }
-   }
-
-   return (pipeline->base.create_flags & VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) != 0;
+   return (create_flags & VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) != 0;
 }
 
 static void
