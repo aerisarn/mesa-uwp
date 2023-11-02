@@ -1274,4 +1274,28 @@ vk_video_find_h265_enc_std_pps(const struct vk_video_session_parameters *params,
 {
    return find_h265_enc_std_pps(params, id);
 }
+
+enum H264NALUType
+{
+   H264_NAL_UNSPECIFIED           = 0,
+   H264_NAL_SLICE                 = 1,
+   H264_NAL_SLICEDATA_A           = 2,
+   H264_NAL_SLICEDATA_B           = 3,
+   H264_NAL_SLICEDATA_C           = 4,
+   H264_NAL_IDR                   = 5,
+   H264_NAL_SEI                   = 6,
+   H264_NAL_SPS                   = 7,
+   H264_NAL_PPS                   = 8,
+   H264_NAL_ACCESS_UNIT_DEMILITER = 9,
+   H264_NAL_END_OF_SEQUENCE       = 10,
+   H264_NAL_END_OF_STREAM         = 11,
+   H264_NAL_FILLER_DATA           = 12,
+   H264_NAL_SPS_EXTENSION         = 13,
+   H264_NAL_PREFIX                = 14,
+   /* 15...18 RESERVED */
+   H264_NAL_AUXILIARY_SLICE = 19,
+   /* 20...23 RESERVED */
+   /* 24...31 UNSPECIFIED */
+};
+
 #endif
