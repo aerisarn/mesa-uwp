@@ -5509,7 +5509,7 @@ struct anv_utrace_submit {
     */
    struct anv_reloc_list relocs;
    struct anv_batch batch;
-   struct anv_bo *batch_bo;
+   struct util_dynarray batch_bos;
 
    /* Stream for temporary allocations */
    struct anv_state_stream dynamic_state_stream;
