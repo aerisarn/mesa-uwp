@@ -21,6 +21,8 @@ git clone \
     /VK-GL-CTS
 pushd /VK-GL-CTS
 
+mkdir -p /deqp
+
 # Patches to VulkanCTS may come from commits in their repo (listed in
 # cts_commits_to_backport) or patch files stored in our repo (in the patch
 # directory `$OLDPWD/.gitlab-ci/container/patches/` listed in cts_patch_files).
@@ -54,8 +56,6 @@ done
 # libpng (sigh).  The archives get their checksums checked anyway, and git
 # always goes through ssh or https.
 python3 external/fetch_sources.py --insecure
-
-mkdir -p /deqp
 
 # Save the testlog stylesheets:
 cp doc/testlog-stylesheet/testlog.{css,xsl} /deqp
