@@ -1678,11 +1678,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                          inst->dst.is_accumulator();
       }
 
-      /* Wa_14013745556:
+      /* Wa_14013672992:
        *
        * Always use @1 SWSB for EOT.
        */
-      if (inst->eot && devinfo->ver >= 12) {
+      if (inst->eot && intel_needs_workaround(devinfo, 14013672992)) {
          if (tgl_swsb_src_dep(swsb).mode) {
             brw_set_default_exec_size(p, BRW_EXECUTE_1);
             brw_set_default_mask_control(p, BRW_MASK_DISABLE);
