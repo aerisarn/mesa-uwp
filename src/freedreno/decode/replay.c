@@ -634,6 +634,19 @@ buffer_mem_free(struct device *dev, struct buffer *buf)
    if (dev->has_set_iova) {
       munmap(buf->map, buf->size);
 
+      struct drm_msm_gem_info req_iova = {
+         .handle = buf->gem_handle,
+         .info = MSM_INFO_SET_IOVA,
+         .value = 0,
+      };
+
+      int ret = drmCommandWriteRead(dev->fd, DRM_MSM_GEM_INFO, &req_iova,
+                                    sizeof(req_iova));
+      if (ret < 0) {
+         err(1, "MSM_INFO_SET_IOVA(0) failed! %d", ret);
+         return;
+      }
+
       struct drm_gem_close req = {
          .handle = buf->gem_handle,
       };
