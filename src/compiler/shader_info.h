@@ -415,10 +415,15 @@ typedef struct shader_info {
          bool color_is_dual_source:1;
 
          /**
+          * True if this fragment shader requires full quad invocations.
+          */
+         bool require_full_quads:1;
+
+         /**
           * True if this fragment shader requires helper invocations.  This
           * can be caused by the use of ALU derivative ops, texture
-          * instructions which do implicit derivatives, and the use of quad
-          * subgroup operations.
+          * instructions which do implicit derivatives, the use of quad
+          * subgroup operations or if the shader requires full quads.
           */
          bool needs_quad_helper_invocations:1;
 

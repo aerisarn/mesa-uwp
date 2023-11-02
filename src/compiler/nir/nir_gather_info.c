@@ -762,6 +762,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_mbcnt_amd:
    case nir_intrinsic_write_invocation_amd:
       shader->info.uses_wide_subgroup_intrinsics = true;
+
+      if (shader->info.stage == MESA_SHADER_FRAGMENT &&
+          shader->info.fs.require_full_quads)
+         shader->info.fs.needs_quad_helper_invocations = true;
       break;
 
    case nir_intrinsic_end_primitive:
