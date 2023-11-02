@@ -672,12 +672,6 @@ struct vk_render_pass_state {
     */
    VkImageAspectFlags attachment_aspects;
 
-   /** VkGraphicsPipelineCreateInfo::renderPass */
-   VkRenderPass render_pass;
-
-   /** VkGraphicsPipelineCreateInfo::subpass */
-   uint32_t subpass;
-
    /** VkPipelineRenderingCreateInfo::viewMask */
    uint32_t view_mask;
 

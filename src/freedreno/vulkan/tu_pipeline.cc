@@ -4092,10 +4092,7 @@ tu_pipeline_builder_init_graphics(
       builder->create_info->pRasterizationState->rasterizerDiscardEnable &&
       !rasterizer_discard_dynamic;
 
-   struct vk_render_pass_state rp_state = {
-      .render_pass = builder->create_info->renderPass,
-      .subpass = builder->create_info->subpass,
-   };
+   struct vk_render_pass_state rp_state = {};
    const struct vk_render_pass_state *driver_rp = NULL;
 
    builder->unscaled_input_fragcoord = 0;
@@ -4114,11 +4111,6 @@ tu_pipeline_builder_init_graphics(
          tu_render_pass_from_handle(create_info->renderPass);
       const struct tu_subpass *subpass =
          &pass->subpasses[create_info->subpass];
-
-      rp_state = (struct vk_render_pass_state) {
-         .render_pass = builder->create_info->renderPass,
-         .subpass = builder->create_info->subpass,
-      };
 
       tu_fill_render_pass_state(&rp_state, pass, subpass);
 

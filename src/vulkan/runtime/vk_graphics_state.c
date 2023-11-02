@@ -1064,16 +1064,12 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
    }
 
    *rp = (struct vk_render_pass_state) {
-      .render_pass = info->renderPass,
-      .subpass = info->subpass,
       .pipeline_flags = pipeline_flags,
       .depth_attachment_format = VK_FORMAT_UNDEFINED,
       .stencil_attachment_format = VK_FORMAT_UNDEFINED,
    };
 
    if (info->renderPass != VK_NULL_HANDLE && driver_rp != NULL) {
-      assert(driver_rp->render_pass == info->renderPass);
-      assert(driver_rp->subpass == info->subpass);
       *rp = *driver_rp;
       return;
    }
