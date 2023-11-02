@@ -3091,7 +3091,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
          nir->info.outputs_written & (VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT);
 
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      out->disable_tri_merging = nir->info.fs.needs_all_helper_invocations ||
+      out->disable_tri_merging = nir->info.uses_wide_subgroup_intrinsics ||
                                  nir->info.fs.needs_quad_helper_invocations ||
                                  nir->info.writes_memory;
 

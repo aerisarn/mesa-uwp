@@ -758,9 +758,6 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_shuffle_up:
    case nir_intrinsic_shuffle_down:
    case nir_intrinsic_write_invocation_amd:
-      if (shader->info.stage == MESA_SHADER_FRAGMENT)
-         shader->info.fs.needs_all_helper_invocations = true;
-
       shader->info.uses_wide_subgroup_intrinsics = true;
       break;
 
@@ -974,7 +971,6 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
       shader->info.fs.color_is_dual_source = false;
       shader->info.fs.uses_fbfetch_output = false;
       shader->info.fs.needs_quad_helper_invocations = false;
-      shader->info.fs.needs_all_helper_invocations = false;
    }
    if (shader->info.stage == MESA_SHADER_TESS_CTRL) {
       shader->info.tess.tcs_cross_invocation_inputs_read = 0;

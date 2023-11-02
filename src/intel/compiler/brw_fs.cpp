@@ -7867,7 +7867,7 @@ brw_nir_populate_wm_prog_data(nir_shader *shader,
     */
    prog_data->uses_vmask = devinfo->verx10 < 125 ||
                            shader->info.fs.needs_quad_helper_invocations ||
-                           shader->info.fs.needs_all_helper_invocations ||
+                           shader->info.uses_wide_subgroup_intrinsics ||
                            prog_data->coarse_pixel_dispatch != BRW_NEVER;
 
    prog_data->uses_src_w =

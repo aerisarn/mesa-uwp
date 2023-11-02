@@ -2536,7 +2536,6 @@ print_shader_info(const struct shader_info *info, FILE *fp)
       print_nz_bool(fp, "color_is_dual_source", info->fs.color_is_dual_source);
 
       print_nz_bool(fp, "needs_quad_helper_invocations", info->fs.needs_quad_helper_invocations);
-      print_nz_bool(fp, "needs_all_helper_invocations", info->fs.needs_all_helper_invocations);
       print_nz_bool(fp, "uses_sample_qualifier", info->fs.uses_sample_qualifier);
       print_nz_bool(fp, "uses_sample_shading", info->fs.uses_sample_shading);
       print_nz_bool(fp, "early_fragment_tests", info->fs.early_fragment_tests);
