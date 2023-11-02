@@ -2056,7 +2056,7 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
                                 img_create_flags, nbc_view, sliced_3d);
 
    const struct legacy_surf_level *base_level_info = NULL;
-   if (device->physical_device->rad_info.gfx_level <= GFX9) {
+   if (device->physical_device->rad_info.gfx_level <= GFX8) {
       if (is_stencil)
          base_level_info = &plane->surface.u.legacy.zs.stencil_level[iview->vk.base_mip_level];
       else
