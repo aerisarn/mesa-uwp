@@ -747,6 +747,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_ballot_find_lsb:
    case nir_intrinsic_ballot_find_msb:
    case nir_intrinsic_first_invocation:
+   case nir_intrinsic_last_invocation:
    case nir_intrinsic_read_invocation:
    case nir_intrinsic_read_first_invocation:
    case nir_intrinsic_elect:
@@ -757,6 +758,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_shuffle_xor:
    case nir_intrinsic_shuffle_up:
    case nir_intrinsic_shuffle_down:
+   case nir_intrinsic_masked_swizzle_amd:
+   case nir_intrinsic_mbcnt_amd:
    case nir_intrinsic_write_invocation_amd:
       shader->info.uses_wide_subgroup_intrinsics = true;
       break;
