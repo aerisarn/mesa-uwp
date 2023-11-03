@@ -24,6 +24,8 @@ deqp_args = [
     "--deqp-visibility=hidden",
 ]
 
+# We are getting frequent GPU hangs with piglit, but still haven't identified
+# the cause. So let's disable it for now.
 # [[piglit]]
 # piglit_folder = "/piglit"
 # profile = "quick_gl"
