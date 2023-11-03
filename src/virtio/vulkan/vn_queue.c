@@ -270,12 +270,15 @@ vn_queue_submission_count_batch_feedback(struct vn_queue_submission *submit,
    }
 
    bool batch_has_feedback_query = false;
-   uint32_t cmd_count = vn_get_cmd_buffer_count(submit, batch_index);
-   for (uint32_t i = 0; i < cmd_count; i++) {
-      struct vn_command_buffer *cmd = vn_command_buffer_from_handle(
-         vn_get_cmd_handle(submit, batch_index, i));
-      if (!list_is_empty(&cmd->builder.query_batches))
-         batch_has_feedback_query = true;
+
+   if (submit->batch_type != VK_STRUCTURE_TYPE_BIND_SPARSE_INFO) {
+      uint32_t cmd_count = vn_get_cmd_buffer_count(submit, batch_index);
+      for (uint32_t i = 0; i < cmd_count; i++) {
+         struct vn_command_buffer *cmd = vn_command_buffer_from_handle(
+            vn_get_cmd_handle(submit, batch_index, i));
+         if (!list_is_empty(&cmd->builder.query_batches))
+            batch_has_feedback_query = true;
+      }
    }
 
    if (batch_has_feedback_query)
