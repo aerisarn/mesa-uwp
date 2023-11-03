@@ -7870,19 +7870,32 @@ genX(emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw)
 }
 
 void
-genX(emit_3dprimitive_was)(struct iris_batch *batch)
+genX(emit_3dprimitive_was)(struct iris_batch *batch,
+                           const struct pipe_draw_indirect_info *indirect,
+                           uint32_t primitive_type,
+                           uint32_t vertex_count)
 {
    UNUSED const struct intel_device_info *devinfo = batch->screen->devinfo;
-#if INTEL_NEEDS_WA_16014538804
-   if (!intel_needs_workaround(devinfo, 16014538804))
-      return;
+   UNUSED const struct iris_context *ice = batch->ice;
 
-   batch->num_3d_primitives_emitted++;
-
-   /* Wa_16014538804 - Send empty/dummy pipe control after 3 3DPRIMITIVE. */
-   if (batch->num_3d_primitives_emitted == 3) {
-      iris_emit_pipe_control_flush(batch, "Wa_16014538804", 0);
+#if INTEL_NEEDS_WA_22014412737 || INTEL_NEEDS_WA_16014538804
+   if (intel_needs_workaround(devinfo, 22014412737) &&
+       (point_or_line_list(primitive_type) || indirect ||
+        (vertex_count == 1 || vertex_count == 2))) {
+         iris_emit_pipe_control_write(batch, "Wa_22014412737",
+                                      PIPE_CONTROL_WRITE_IMMEDIATE,
+                                      batch->screen->workaround_bo,
+                                      batch->screen->workaround_address.offset,
+                                      0ull);
       batch->num_3d_primitives_emitted = 0;
+   } else if (intel_needs_workaround(devinfo, 16014538804)) {
+      batch->num_3d_primitives_emitted++;
+
+      /* Wa_16014538804 - Send empty/dummy pipe control after 3 3DPRIMITIVE. */
+      if (batch->num_3d_primitives_emitted == 3) {
+         iris_emit_pipe_control_flush(batch, "Wa_16014538804", 0);
+         batch->num_3d_primitives_emitted = 0;
+      }
    }
 #endif
 }
@@ -8132,20 +8145,8 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   genX(emit_3dprimitive_was)(batch);
+   genX(emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
    genX(maybe_emit_breakpoint)(batch, false);
-
-#if GFX_VERx10 == 125
-   if (intel_needs_workaround(devinfo, 22014412737) &&
-       (point_or_line_list(ice->state.prim_mode) || indirect ||
-        (sc->count == 1 || sc->count == 2))) {
-         iris_emit_pipe_control_write(batch, "Wa_22014412737",
-                                      PIPE_CONTROL_WRITE_IMMEDIATE,
-                                      batch->screen->workaround_bo,
-                                      batch->screen->workaround_address.offset,
-                                      0ull);
-   }
-#endif
 
    iris_batch_sync_region_end(batch);
 
