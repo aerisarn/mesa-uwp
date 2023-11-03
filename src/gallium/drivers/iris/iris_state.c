@@ -5999,6 +5999,26 @@ iris_viewport_zmin_zmax(const struct pipe_viewport_state *vp, bool halfz,
    util_viewport_zmin_zmax(vp, halfz, zmin, zmax);
 }
 
+/* Wa_16018063123 */
+static inline void
+batch_emit_fast_color_dummy_blit(struct iris_batch *batch)
+{
+#if GFX_VERx10 >= 125
+   iris_emit_cmd(batch, GENX(XY_FAST_COLOR_BLT), blt) {
+      blt.DestinationBaseAddress = batch->screen->workaround_address;
+      blt.DestinationMOCS = batch->screen->isl_dev.mocs.blitter_dst;
+      blt.DestinationPitch = 63;
+      blt.DestinationX2 = 1;
+      blt.DestinationY2 = 4;
+      blt.DestinationSurfaceWidth = 1;
+      blt.DestinationSurfaceHeight = 4;
+      blt.DestinationSurfaceType = XY_SURFTYPE_2D;
+      blt.DestinationSurfaceQPitch = 4;
+      blt.DestinationTiling = XY_TILE_LINEAR;
+   }
+#endif
+}
+
 #if GFX_VER >= 12
 static void
 invalidate_aux_map_state_per_engine(struct iris_batch *batch)
@@ -6081,6 +6101,10 @@ invalidate_aux_map_state_per_engine(struct iris_batch *batch)
    }
    case IRIS_BATCH_BLITTER: {
 #if GFX_VERx10 >= 125
+      /* Wa_16018063123 - emit fast color dummy blit before MI_FLUSH_DW. */
+      if (intel_needs_workaround(batch->screen->devinfo, 16018063123))
+         batch_emit_fast_color_dummy_blit(batch);
+
       /*
        * Notice we don't set the L3 Fabric Flush here, because we have
        * PIPE_CONTROL_CS_STALL. The PIPE_CONTROL::L3 Fabric Flush
@@ -8968,6 +8992,10 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       iris_batch_sync_region_start(batch);
 
       assert(!(flags & PIPE_CONTROL_WRITE_DEPTH_COUNT));
+
+      /* Wa_16018063123 - emit fast color dummy blit before MI_FLUSH_DW. */
+      if (intel_needs_workaround(batch->screen->devinfo, 16018063123))
+         batch_emit_fast_color_dummy_blit(batch);
 
       /* The blitter doesn't actually use PIPE_CONTROL; rather it uses the
        * MI_FLUSH_DW command.  However, all of our code is set up to flush
