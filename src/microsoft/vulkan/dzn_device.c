@@ -69,7 +69,7 @@
 
 #define DZN_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
 
-#define MAX_TIER2_MEMORY_TYPES 3
+#define MAX_TIER2_MEMORY_TYPES 4
 
 const VkExternalMemoryHandleTypeFlags opaque_external_flag =
 #ifdef _WIN32
@@ -496,41 +496,61 @@ dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
 {
    VkPhysicalDeviceMemoryProperties *mem = &pdev->memory;
 
-   mem->memoryHeapCount = 1;
-   mem->memoryHeaps[0] = (VkMemoryHeap) {
+   /* For each pair of elements X and Y returned in memoryTypes, X must be placed at a lower index position than Y if:
+    * - the set of bit flags returned in the propertyFlags member of X is a strict subset of the set of bit flags
+    *   returned in the propertyFlags member of Y; or
+    * - the propertyFlags members of X and Y are equal, and X belongs to a memory heap with greater performance
+    *   (as determined in an implementation-specific manner) ; or
+    * - the propertyFlags members of Y includes VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD or
+    *   VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD and X does not
+    * See: https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceMemoryProperties.html
+   */
+
+   mem->memoryHeapCount = 0;
+   mem->memoryTypeCount = 0;
+
+   VkMemoryPropertyFlags ram_device_local_property = 0;
+   VkMemoryHeapFlags ram_device_local_heap_flag = 0;
+
+   if (pdev->architecture.UMA) {
+      /* All memory is considered device-local for UMA even though it's just RAM */
+      ram_device_local_property = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+      ram_device_local_heap_flag = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+   }
+
+   mem->memoryHeaps[mem->memoryHeapCount++] = (VkMemoryHeap) {
       .size = pdev->desc.shared_system_memory,
-      .flags = 0,
+      .flags = ram_device_local_heap_flag,
    };
 
-   mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType) {
-      .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+   /* Three non-device-local memory types: host non-visible, host write-combined, and host cached */
+   mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType){
+      .propertyFlags = ram_device_local_property,
+      .heapIndex = mem->memoryHeapCount - 1,
+   };
+   mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType){
+      .propertyFlags = ram_device_local_property |
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      .heapIndex = 0,
+      .heapIndex = mem->memoryHeapCount - 1,
    };
    mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType) {
-      .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      .propertyFlags = ram_device_local_property |
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                        VK_MEMORY_PROPERTY_HOST_CACHED_BIT |
                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-     .heapIndex = 0,
+     .heapIndex = mem->memoryHeapCount - 1,
    };
 
    if (!pdev->architecture.UMA) {
-      mem->memoryHeaps[mem->memoryHeapCount++] = (VkMemoryHeap) {
+      /* Add a device-local memory heap/type */
+      mem->memoryHeaps[mem->memoryHeapCount++] = (VkMemoryHeap){
          .size = pdev->desc.dedicated_video_memory,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
       };
-      mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-         .heapIndex = mem->memoryHeapCount - 1,
-      };
-   } else {
-      mem->memoryHeaps[0].flags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-      mem->memoryTypes[0].propertyFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-      mem->memoryTypes[1].propertyFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-      /* Get one non-CPU-accessible memory type for shared resources to use */
       mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType){
          .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-         .heapIndex = 0,
+         .heapIndex = mem->memoryHeapCount - 1,
       };
    }
 
