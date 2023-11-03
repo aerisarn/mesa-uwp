@@ -107,6 +107,7 @@
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
 
+
 vc4-rpi3-gl:arm32:
   extends:
     - .broadcom-test:arm32
@@ -119,6 +120,16 @@ vc4-rpi3-gl:arm32:
     HWCI_KERNEL_MODULES: vc4
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
+
+vc4-rpi3-gl-piglit-full:arm32:
+  extends:
+    - vc4-rpi3-gl:arm32
+    - .vc4-manual-rules
+  tags:
+    - igalia-rpi3
+    - igalia-fullrun
+  variables:
+    DEQP_SUITE: broadcom-rpi3-piglit-full
 
 
 v3d-rpi4-gl:arm64:
