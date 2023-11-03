@@ -9,3 +9,4 @@ KHR-Single-GL46.arrays_of_arrays_gl.SizedDeclarationsPrimitive
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch@Texture type: GL_RGB9_E5
+spec@glsl-1.50@execution@interface-blocks-api-access-members
