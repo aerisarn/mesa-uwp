@@ -1520,10 +1520,14 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->dev)
       VKSCR(DestroyDevice)(screen->dev, NULL);
 
-   VKSCR(DestroyInstance)(screen->instance, NULL);
+   if (screen->instance)
+      VKSCR(DestroyInstance)(screen->instance, NULL);
+
    util_idalloc_mt_fini(&screen->buffer_ids);
 
-   util_dl_close(screen->loader_lib);
+   if (screen->loader_lib)
+      util_dl_close(screen->loader_lib);
+
    if (screen->drm_fd != -1)
       close(screen->drm_fd);
 
