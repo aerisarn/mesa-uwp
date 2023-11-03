@@ -177,6 +177,10 @@ include:
         - meson*
         - build-support/**/*
         - subprojects/**/*
+        # clang format
+        - .clang-format
+        - .clang-format-include
+        - .clang-format-ignore
         # Source code
         - include/**/*
         - src/**/*
