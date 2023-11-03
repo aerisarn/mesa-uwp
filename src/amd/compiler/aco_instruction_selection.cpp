@@ -12799,12 +12799,11 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
             }
          }
 
-         bool needs_instance_index = false;
-         bool needs_start_instance = false;
-         u_foreach_bit (i, pinfo->state.instance_rate_inputs & attrib_mask) {
-            needs_instance_index |= pinfo->state.divisors[i] == 1;
-            needs_start_instance |= pinfo->state.divisors[i] == 0;
-         }
+         bool needs_instance_index =
+            pinfo->state.instance_rate_inputs & attrib_mask &
+            ~(pinfo->state.zero_divisors | pinfo->state.nontrivial_divisors); /* divisor is 1 */
+         bool needs_start_instance =
+            pinfo->state.instance_rate_inputs & attrib_mask & pinfo->state.zero_divisors;
          bool needs_vertex_index = ~pinfo->state.instance_rate_inputs & attrib_mask;
          if (needs_vertex_index)
             bld.vadd32(Definition(vertex_index, v1), get_arg_fixed(args, args->base_vertex),
@@ -12824,8 +12823,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
          /* calculate index */
          Operand fetch_index = Operand(vertex_index, v1);
          if (pinfo->state.instance_rate_inputs & (1u << loc)) {
-            uint32_t divisor = pinfo->state.divisors[loc];
-            if (divisor) {
+            if (!(pinfo->state.zero_divisors & (1u << loc))) {
                fetch_index = instance_id;
                if (pinfo->state.nontrivial_divisors & (1u << loc)) {
                   unsigned index =

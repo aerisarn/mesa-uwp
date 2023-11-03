@@ -80,10 +80,10 @@ radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_info *aco_info, const struct
 {
    ASSIGN_VS_STATE_FIELD(instance_rate_inputs);
    ASSIGN_VS_STATE_FIELD(nontrivial_divisors);
+   ASSIGN_VS_STATE_FIELD(zero_divisors);
    ASSIGN_VS_STATE_FIELD(post_shuffle);
    ASSIGN_VS_STATE_FIELD(alpha_adjust_lo);
    ASSIGN_VS_STATE_FIELD(alpha_adjust_hi);
-   ASSIGN_VS_STATE_FIELD_CP(divisors);
    ASSIGN_VS_STATE_FIELD_CP(formats);
    ASSIGN_FIELD(num_attributes);
    ASSIGN_FIELD(misaligned_mask);
