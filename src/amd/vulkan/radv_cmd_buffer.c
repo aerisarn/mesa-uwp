@@ -3871,10 +3871,6 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
 
    uint32_t hash = radv_hash_vs_prolog(key_words);
 
-   if (cmd_buffer->state.emitted_vs_prolog && cmd_buffer->state.emitted_vs_prolog_key_hash == hash &&
-       radv_cmp_vs_prolog(key_words, cmd_buffer->state.emitted_vs_prolog_key))
-      return cmd_buffer->state.emitted_vs_prolog;
-
    u_rwlock_rdlock(&device->vs_prologs_lock);
    struct hash_entry *prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, key_words);
    u_rwlock_rdunlock(&device->vs_prologs_lock);
