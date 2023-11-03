@@ -890,14 +890,15 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
    unsigned array_size = state->u.tex.last_layer - state->u.tex.first_layer + 1;
    switch (desc.ViewDimension) {
    case D3D12_SRV_DIMENSION_TEXTURE1D:
-      if (state->u.tex.first_layer > 0)
-         debug_printf("D3D12: can't create 1D SRV from layer %d\n",
-                      state->u.tex.first_layer);
-
-      desc.Texture1D.MostDetailedMip = state->u.tex.first_level;
-      desc.Texture1D.MipLevels = sampler_view->mip_levels;
-      desc.Texture1D.ResourceMinLODClamp = 0.0f;
-      break;
+      if (state->u.tex.first_layer == 0) {
+         desc.Texture1D.MostDetailedMip = state->u.tex.first_level;
+         desc.Texture1D.MipLevels = sampler_view->mip_levels;
+         desc.Texture1D.ResourceMinLODClamp = 0.0f;
+         break;
+      } else {
+         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+         FALLTHROUGH;
+      }
    case D3D12_SRV_DIMENSION_TEXTURE1DARRAY:
       desc.Texture1DArray.MostDetailedMip = state->u.tex.first_level;
       desc.Texture1DArray.MipLevels = sampler_view->mip_levels;
@@ -906,20 +907,16 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
       desc.Texture1DArray.ArraySize = array_size;
       break;
    case D3D12_SRV_DIMENSION_TEXTURE2D:
-      if (state->u.tex.first_layer > 0)
-         debug_printf("D3D12: can't create 2D SRV from layer %d\n",
-                      state->u.tex.first_layer);
-
-      desc.Texture2D.MostDetailedMip = state->u.tex.first_level;
-      desc.Texture2D.MipLevels = sampler_view->mip_levels;
-      desc.Texture2D.PlaneSlice = format_info.plane_slice;
-      desc.Texture2D.ResourceMinLODClamp = 0.0f;
-      break;
-   case D3D12_SRV_DIMENSION_TEXTURE2DMS:
-      if (state->u.tex.first_layer > 0)
-         debug_printf("D3D12: can't create 2DMS SRV from layer %d\n",
-                      state->u.tex.first_layer);
-      break;
+      if (state->u.tex.first_layer == 0) {
+         desc.Texture2D.MostDetailedMip = state->u.tex.first_level;
+         desc.Texture2D.MipLevels = sampler_view->mip_levels;
+         desc.Texture2D.PlaneSlice = format_info.plane_slice;
+         desc.Texture2D.ResourceMinLODClamp = 0.0f;
+         break;
+      } else {
+         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+         FALLTHROUGH;
+      }
    case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
       desc.Texture2DArray.MostDetailedMip = state->u.tex.first_level;
       desc.Texture2DArray.MipLevels = sampler_view->mip_levels;
@@ -928,6 +925,13 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
       desc.Texture2DArray.PlaneSlice = format_info.plane_slice;
       desc.Texture2DArray.ArraySize = array_size;
       break;
+   case D3D12_SRV_DIMENSION_TEXTURE2DMS:
+      if (state->u.tex.first_layer == 0) {
+         break;
+      } else {
+         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+         FALLTHROUGH;
+      }
    case D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY:
       desc.Texture2DMSArray.FirstArraySlice = state->u.tex.first_layer;
       desc.Texture2DMSArray.ArraySize = array_size;
@@ -942,14 +946,15 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
       desc.Texture3D.ResourceMinLODClamp = 0.0f;
       break;
    case D3D12_SRV_DIMENSION_TEXTURECUBE:
-      if (state->u.tex.first_layer > 0)
-         debug_printf("D3D12: can't create CUBE SRV from layer %d\n",
-                      state->u.tex.first_layer);
-
-      desc.TextureCube.MostDetailedMip = state->u.tex.first_level;
-      desc.TextureCube.MipLevels = sampler_view->mip_levels;
-      desc.TextureCube.ResourceMinLODClamp = 0.0f;
-      break;
+      if (state->u.tex.first_layer == 0) {
+         desc.TextureCube.MostDetailedMip = state->u.tex.first_level;
+         desc.TextureCube.MipLevels = sampler_view->mip_levels;
+         desc.TextureCube.ResourceMinLODClamp = 0.0f;
+         break;
+      } else {
+         desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+         FALLTHROUGH;
+      }
    case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
       assert(array_size % 6 == 0);
       desc.TextureCubeArray.MostDetailedMip = state->u.tex.first_level;

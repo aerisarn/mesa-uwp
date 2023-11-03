@@ -187,6 +187,10 @@ direct_copy_supported(struct d3d12_screen *screen,
    if (!formats_are_copy_compatible(info->src.format, info->dst.format))
       return false;
 
+   if (info->src.format != info->src.resource->format ||
+       info->dst.format != info->dst.resource->format)
+      return false;
+
    if (util_format_is_depth_or_stencil(info->src.format) && !(info->mask & PIPE_MASK_ZS)) {
       return false;
    }

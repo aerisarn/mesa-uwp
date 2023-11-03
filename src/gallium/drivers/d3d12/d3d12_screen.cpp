@@ -346,6 +346,9 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        * if an app just creates, initializes, and destroys resources without explicitly flushing. */
       return 64 * 1024 * 1024;
 
+   case PIPE_CAP_SAMPLER_VIEW_TARGET:
+      return screen->opts12.RelaxedFormatCastingSupported;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
@@ -735,6 +738,10 @@ d3d12_deinit_screen(struct d3d12_screen *screen)
    if (screen->cmdqueue) {
       screen->cmdqueue->Release();
       screen->cmdqueue = nullptr;
+   }
+   if (screen->dev10) {
+      screen->dev10->Release();
+      screen->dev10 = nullptr;
    }
    if (screen->dev) {
       screen->dev->Release();
@@ -1476,6 +1483,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
       debug_printf("D3D12: failed to get device options\n");
       return false;
    }
+   screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &screen->opts12, sizeof(screen->opts12));
    screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS14, &screen->opts14, sizeof(screen->opts14));
 #ifndef _GAMING_XBOX
    screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS19, &screen->opts19, sizeof(screen->opts19));
@@ -1619,6 +1627,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
       dev8->Release();
       screen->support_create_not_resident = true;
    }
+   screen->dev->QueryInterface(&screen->dev10);
 #endif
 
    static constexpr uint64_t known_good_warp_version = 10ull << 48 | 22000ull << 16;
