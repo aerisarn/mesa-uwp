@@ -485,7 +485,21 @@ struct radv_vs_input_state {
 };
 
 struct radv_vs_prolog_key {
-   const struct radv_vs_input_state *state;
+   /* All the fields are pre-masked with BITFIELD_MASK(num_attributes).
+    * Some of the fields are pre-masked by other conditions. See lookup_vs_prolog.
+    */
+   struct {
+      uint32_t instance_rate_inputs;
+      uint32_t nontrivial_divisors;
+      uint32_t zero_divisors;
+      uint32_t post_shuffle;
+      /* Having two separate fields instead of a single uint64_t makes it easier to remove attributes
+       * using bitwise arithmetic.
+       */
+      uint32_t alpha_adjust_lo;
+      uint32_t alpha_adjust_hi;
+      uint8_t formats[MAX_VERTEX_ATTRIBS];
+   } state;
    unsigned num_attributes;
    uint32_t misaligned_mask;
    bool as_ls;

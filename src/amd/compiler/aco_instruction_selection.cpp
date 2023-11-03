@@ -12739,7 +12739,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
    bld.sopp(aco_opcode::s_setprio, -1u, 0x3u);
 
    uint32_t attrib_mask = BITFIELD_MASK(pinfo->num_attributes);
-   bool has_nontrivial_divisors = pinfo->state.nontrivial_divisors & attrib_mask;
+   bool has_nontrivial_divisors = pinfo->state.nontrivial_divisors;
 
    wait_imm lgkm_imm;
    lgkm_imm.lgkm = 0;
@@ -12800,10 +12800,9 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
          }
 
          bool needs_instance_index =
-            pinfo->state.instance_rate_inputs & attrib_mask &
+            pinfo->state.instance_rate_inputs &
             ~(pinfo->state.zero_divisors | pinfo->state.nontrivial_divisors); /* divisor is 1 */
-         bool needs_start_instance =
-            pinfo->state.instance_rate_inputs & attrib_mask & pinfo->state.zero_divisors;
+         bool needs_start_instance = pinfo->state.instance_rate_inputs & pinfo->state.zero_divisors;
          bool needs_vertex_index = ~pinfo->state.instance_rate_inputs & attrib_mask;
          if (needs_vertex_index)
             bld.vadd32(Definition(vertex_index, v1), get_arg_fixed(args, args->base_vertex),

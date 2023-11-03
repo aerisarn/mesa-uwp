@@ -2581,7 +2581,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    if (!prolog)
       goto fail;
 
-   prolog->nontrivial_divisors = key->state->nontrivial_divisors;
+   prolog->nontrivial_divisors = key->state.nontrivial_divisors;
 
    if (options.dump_shader) {
       fprintf(stderr, "Vertex prolog");

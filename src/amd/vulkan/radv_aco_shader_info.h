@@ -72,8 +72,8 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info, const struct radv
    aco_info->next_stage_pc = radv_args->next_stage_pc;
 }
 
-#define ASSIGN_VS_STATE_FIELD(x)    aco_info->state.x = radv->state->x
-#define ASSIGN_VS_STATE_FIELD_CP(x) memcpy(&aco_info->state.x, &radv->state->x, sizeof(radv->state->x))
+#define ASSIGN_VS_STATE_FIELD(x)    aco_info->state.x = radv->state.x
+#define ASSIGN_VS_STATE_FIELD_CP(x) memcpy(&aco_info->state.x, &radv->state.x, sizeof(radv->state.x))
 static inline void
 radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_info *aco_info, const struct radv_vs_prolog_key *radv,
                                const struct radv_shader_args *radv_args)

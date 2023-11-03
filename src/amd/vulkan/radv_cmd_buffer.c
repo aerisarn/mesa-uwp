@@ -3691,53 +3691,25 @@ radv_instance_rate_prolog_index(unsigned num_attributes, uint32_t instance_rate_
    return start_index + offset_from_start_index + first;
 }
 
-union vs_prolog_key_header {
-   struct {
-      uint32_t key_size : 8;
-      uint32_t num_attributes : 6;
-      uint32_t as_ls : 1;
-      uint32_t is_ngg : 1;
-      uint32_t wave32 : 1;
-      uint32_t next_stage : 3;
-      uint32_t instance_rate_inputs : 1;
-      uint32_t alpha_adjust_lo : 1;
-      uint32_t alpha_adjust_hi : 1;
-      uint32_t misaligned_mask : 1;
-      uint32_t post_shuffle : 1;
-      uint32_t nontrivial_divisors : 1;
-      uint32_t zero_divisors : 1;
-      /* We need this to ensure the padding is zero. It's useful even if it's unused. */
-      uint32_t padding0 : 5;
-   };
-   uint32_t v;
-};
-
 uint32_t
 radv_hash_vs_prolog(const void *key_)
 {
-   const uint32_t *key = key_;
-   union vs_prolog_key_header header;
-   header.v = key[0];
-   return _mesa_hash_data(key, header.key_size);
+   const struct radv_vs_prolog_key *key = key_;
+   return _mesa_hash_data(key, sizeof(*key));
 }
 
 bool
 radv_cmp_vs_prolog(const void *a_, const void *b_)
 {
-   const uint32_t *a = a_;
-   const uint32_t *b = b_;
-   if (a[0] != b[0])
-      return false;
+   const struct radv_vs_prolog_key *a = a_;
+   const struct radv_vs_prolog_key *b = b_;
 
-   union vs_prolog_key_header header;
-   header.v = a[0];
-   return memcmp(a, b, header.key_size) == 0;
+   return memcmp(a, b, sizeof(*a)) == 0;
 }
 
 static struct radv_shader_part *
 lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *vs_shader, uint32_t *nontrivial_divisors)
 {
-   STATIC_ASSERT(sizeof(union vs_prolog_key_header) == 4);
    assert(vs_shader->info.vs.dynamic_inputs);
 
    const struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
@@ -3800,12 +3772,17 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
    if (prolog)
       return prolog;
 
-   /* if we couldn't use a pre-compiled prolog, find one in the cache or create one */
-   uint32_t key_words[17];
-   unsigned key_size = 1;
-
    struct radv_vs_prolog_key key;
-   key.state = state;
+   memset(&key, 0, sizeof(key));
+   key.state.instance_rate_inputs = instance_rate_inputs;
+   key.state.nontrivial_divisors = *nontrivial_divisors;
+   key.state.zero_divisors = zero_divisors;
+   /* If the attribute is aligned, post shuffle is implemented using DST_SEL instead. */
+   key.state.post_shuffle = state->post_shuffle & attribute_mask & misaligned_mask;
+   key.state.alpha_adjust_hi = state->alpha_adjust_hi & attribute_mask;
+   key.state.alpha_adjust_lo = state->alpha_adjust_lo & attribute_mask;
+   u_foreach_bit (index, misaligned_mask)
+      key.state.formats[index] = state->formats[index];
    key.num_attributes = num_attributes;
    key.misaligned_mask = misaligned_mask;
    /* The instance ID input VGPR is placed differently when as_ls=true. */
@@ -3820,78 +3797,29 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
       key.next_stage = vs_shader->info.stage;
    }
 
-   union vs_prolog_key_header header;
-   header.v = 0;
-   header.num_attributes = num_attributes;
-   header.as_ls = key.as_ls;
-   header.is_ngg = key.is_ngg;
-   header.wave32 = key.wave32;
-   header.next_stage = key.next_stage;
-
-   if (instance_rate_inputs & ~*nontrivial_divisors) {
-      header.instance_rate_inputs = true;
-      key_words[key_size++] = instance_rate_inputs;
-   }
-   if (*nontrivial_divisors) {
-      header.nontrivial_divisors = true;
-      key_words[key_size++] = *nontrivial_divisors;
-   }
-   if (zero_divisors) {
-      header.zero_divisors = true;
-      key_words[key_size++] = zero_divisors;
-   }
-   if (misaligned_mask) {
-      header.misaligned_mask = true;
-      key_words[key_size++] = misaligned_mask;
-
-      uint8_t *formats = (uint8_t *)&key_words[key_size];
-      unsigned num_formats = 0;
-      u_foreach_bit (index, misaligned_mask)
-         formats[num_formats++] = state->formats[index];
-      while (num_formats & 0x3)
-         formats[num_formats++] = 0;
-      key_size += num_formats / 4u;
-
-      if (state->post_shuffle & attribute_mask) {
-         header.post_shuffle = true;
-         key_words[key_size++] = state->post_shuffle & attribute_mask;
-      }
-   }
-   if (state->alpha_adjust_lo & attribute_mask) {
-      header.alpha_adjust_lo = true;
-      key_words[key_size++] = state->alpha_adjust_lo & attribute_mask;
-   }
-   if (state->alpha_adjust_hi & attribute_mask) {
-      header.alpha_adjust_hi = true;
-      key_words[key_size++] = state->alpha_adjust_hi & attribute_mask;
-   }
-
-   header.key_size = key_size * sizeof(key_words[0]);
-   key_words[0] = header.v;
-
-   uint32_t hash = radv_hash_vs_prolog(key_words);
+   uint32_t hash = radv_hash_vs_prolog(&key);
 
    u_rwlock_rdlock(&device->vs_prologs_lock);
-   struct hash_entry *prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, key_words);
+   struct hash_entry *prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, &key);
    u_rwlock_rdunlock(&device->vs_prologs_lock);
 
    if (!prolog_entry) {
       u_rwlock_wrlock(&device->vs_prologs_lock);
-      prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, key_words);
+      prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, &key);
       if (prolog_entry) {
          u_rwlock_wrunlock(&device->vs_prologs_lock);
          return prolog_entry->data;
       }
 
       prolog = radv_create_vs_prolog(device, &key);
-      uint32_t *key2 = malloc(key_size * 4);
+      struct radv_vs_prolog_key *key2 = malloc(sizeof(key));
       if (!prolog || !key2) {
          radv_shader_part_unref(device, prolog);
          free(key2);
          u_rwlock_wrunlock(&device->vs_prologs_lock);
          return NULL;
       }
-      memcpy(key2, key_words, key_size * 4);
+      memcpy(key2, &key, sizeof(key));
       _mesa_hash_table_insert_pre_hashed(device->vs_prologs, hash, key2, prolog);
 
       u_rwlock_wrunlock(&device->vs_prologs_lock);
