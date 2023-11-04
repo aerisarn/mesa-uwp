@@ -90,7 +90,7 @@ struct bblock_t {
                         enum bblock_link_kind kind) const;
    bool can_combine_with(const bblock_t *that) const;
    void combine_with(bblock_t *that);
-   void dump() const;
+   void dump(FILE *file = stderr) const;
 
    backend_instruction *start();
    const backend_instruction *start() const;
@@ -339,7 +339,7 @@ struct cfg_t {
    void set_next_block(bblock_t **cur, bblock_t *block, int ip);
    void make_block_array();
 
-   void dump();
+   void dump(FILE *file = stderr);
    void dump_cfg();
 
 #ifdef NDEBUG

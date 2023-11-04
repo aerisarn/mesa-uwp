@@ -154,14 +154,14 @@ bblock_t::combine_with(bblock_t *that)
 }
 
 void
-bblock_t::dump() const
+bblock_t::dump(FILE *file) const
 {
    const backend_shader *s = this->cfg->s;
 
    int ip = this->start_ip;
    foreach_inst_in_block(backend_instruction, inst, this) {
-      fprintf(stderr, "%5d: ", ip);
-      s->dump_instruction(inst);
+      fprintf(file, "%5d: ", ip);
+      s->dump_instruction(inst, file);
       ip++;
    }
 }
@@ -578,32 +578,32 @@ cfg_t::make_block_array()
 }
 
 void
-cfg_t::dump()
+cfg_t::dump(FILE *file)
 {
    const idom_tree *idom = (s ? &s->idom_analysis.require() : NULL);
 
    foreach_block (block, this) {
       if (idom && idom->parent(block))
-         fprintf(stderr, "START B%d IDOM(B%d)", block->num,
+         fprintf(file, "START B%d IDOM(B%d)", block->num,
                  idom->parent(block)->num);
       else
-         fprintf(stderr, "START B%d IDOM(none)", block->num);
+         fprintf(file, "START B%d IDOM(none)", block->num);
 
       foreach_list_typed(bblock_link, link, link, &block->parents) {
-         fprintf(stderr, " <%cB%d",
+         fprintf(file, " <%cB%d",
                  link->kind == bblock_link_logical ? '-' : '~',
                  link->block->num);
       }
-      fprintf(stderr, "\n");
+      fprintf(file, "\n");
       if (s != NULL)
-         block->dump();
-      fprintf(stderr, "END B%d", block->num);
+         block->dump(file);
+      fprintf(file, "END B%d", block->num);
       foreach_list_typed(bblock_link, link, link, &block->children) {
-         fprintf(stderr, " %c>B%d",
+         fprintf(file, " %c>B%d",
                  link->kind == bblock_link_logical ? '-' : '~',
                  link->block->num);
       }
-      fprintf(stderr, "\n");
+      fprintf(file, "\n");
    }
 }
 
