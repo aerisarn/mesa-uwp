@@ -26,11 +26,6 @@ pushd /VK-GL-CTS
 # patches.
 
 cts_commits_to_backport=(
-    # Take multiview into account for task shader inv. stats
-    db6a4697c28f46da967bcc982c018d09aef2c742
-
-    # Remove illegal mesh shader query tests
-    8fc585d85cd13fae9c2ff3eb407ee7e56281a016
 )
 
 for commit in "${cts_commits_to_backport[@]}"
