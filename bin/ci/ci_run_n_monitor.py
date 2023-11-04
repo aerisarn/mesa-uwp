@@ -87,7 +87,7 @@ def pretty_wait(sec: int) -> None:
 def monitor_pipeline(
     project,
     pipeline,
-    target_job: str,
+    target_jobs_regex: re.Pattern,
     dependencies,
     force_manual: bool,
     stress: int,
@@ -97,8 +97,6 @@ def monitor_pipeline(
     target_statuses: dict[str, str] = defaultdict(str)
     stress_status_counter = defaultdict(lambda: defaultdict(int))
     target_id = None
-
-    target_jobs_regex = re.compile(target_job.strip())
 
     while True:
         to_cancel = []
@@ -295,13 +293,13 @@ def parse_args() -> None:
     return args
 
 
-def find_dependencies(target_job: str, project_path: str, iid: int) -> set[str]:
+def find_dependencies(target_jobs_regex: re.Pattern, project_path: str, iid: int) -> set[str]:
     gql_instance = GitlabGQL()
     dag, _ = create_job_needs_dag(
         gql_instance, {"projectPath": project_path.path_with_namespace, "iid": iid}
     )
 
-    target_dep_dag = filter_dag(dag, target_job)
+    target_dep_dag = filter_dag(dag, target_jobs_regex)
     if not target_dep_dag:
         print(Fore.RED + "The job(s) were not found in the pipeline." + Fore.RESET)
         sys.exit(1)
@@ -348,14 +346,16 @@ if __name__ == "__main__":
         print(f"Revision: {REV}")
         print(f"Pipeline: {pipe.web_url}")
 
+        target_jobs_regex = re.compile(args.target.strip())
+
         deps = set()
         if args.target:
             print("🞋 job: " + Fore.BLUE + args.target + Style.RESET_ALL)
             deps = find_dependencies(
-                target_job=args.target, iid=pipe.iid, project_path=cur_project
+                target_job=target_jobs_regex, iid=pipe.iid, project_path=cur_project
             )
         target_job_id, ret = monitor_pipeline(
-            cur_project, pipe, args.target, deps, args.force_manual, args.stress
+            cur_project, pipe, target_jobs_regex, deps, args.force_manual, args.stress
         )
 
         if target_job_id:
