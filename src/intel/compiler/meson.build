@@ -194,6 +194,7 @@ if with_tests
     executable(
       'intel_compiler_tests',
       files(
+        'test_predicated_break.cpp',
         'test_eu_compact.cpp',
         'test_eu_validate.cpp',
         'test_fs_cmod_propagation.cpp',
