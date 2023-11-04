@@ -290,6 +290,7 @@ typedef struct {
       uint32_t bfi_mask;
       uint16_t pixel_offset;
       uint16_t zs;
+      int16_t stack_size;
       enum agx_sr sr;
       enum agx_round round;
       enum agx_atomic_opc atomic_opc;

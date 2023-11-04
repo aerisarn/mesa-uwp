@@ -1039,6 +1039,25 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
       break;
    }
+   case AGX_OPCODE_STACK_ADJUST: {
+      struct agx_opcode_info info = agx_opcodes_info[I->op];
+
+      unsigned i0 = 0; // XXX
+      unsigned i1 = 1; // XXX
+      unsigned i2 = 2; // XXX
+      unsigned i3 = 0; // XXX
+      unsigned i4 = 0; // XXX
+
+      uint64_t raw =
+         info.encoding.exact | ((uint64_t)i0 << 8) | ((uint64_t)i1 << 26) |
+         ((uint64_t)i2 << 36) | ((uint64_t)i3 << 44) | ((uint64_t)i4 << 50) |
+         ((I->stack_size & 0xF) << 20) |
+         ((uint64_t)((I->stack_size >> 4) & 0xF) << 32) | (1UL << 47) | // XXX
+         ((uint64_t)(I->stack_size >> 8) << 56);
+
+      memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
+      break;
+   }
 
    default:
       agx_pack_alu(emission, I);

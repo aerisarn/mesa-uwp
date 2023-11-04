@@ -80,6 +80,7 @@ MASK = immediate("mask")
 BFI_MASK = immediate("bfi_mask")
 LOD_MODE = immediate("lod_mode", "enum agx_lod_mode")
 PIXEL_OFFSET = immediate("pixel_offset")
+STACK_SIZE = immediate("stack_size", 'int16_t')
 
 DIM = enum("dim", {
     0: '1d',
@@ -426,6 +427,11 @@ op("doorbell", (0x60020 | 0x28 << 32, (1 << 48) - 1, 6, _), dests = 0,
 
 op("stack_unmap", (0x00075, (1 << 24) - 1, 8, _), dests = 1, srcs = 0, can_eliminate = False, can_reorder = False, imms = [IMM])
 op("stack_map",   (0x10075, (1 << 24) - 1, 8, _), dests = 0, srcs = 1, can_eliminate = False, can_reorder = False, imms = [IMM])
+
+op("stack_adjust",
+      encoding_32 = (0x10100b5, (1 << 26) - 1, 8, _),
+      dests = 0, srcs = 0, can_eliminate = False, can_reorder = False,
+      imms = [STACK_SIZE], schedule_class = "store")
 
 # source is offset
 op("stack_load",
