@@ -861,7 +861,10 @@ iris_resource_configure_aux(struct iris_screen *screen,
    if (has_mcs) {
       assert(!res->mod_info);
       assert(!has_hiz);
-      if (has_ccs) {
+      /* We are seeing failures with CCS compression on top of MSAA
+       * compression, so just enable MSAA compression for now on DG2.
+       */
+      if (!intel_device_info_is_dg2(devinfo) && has_ccs) {
          res->aux.usage = ISL_AUX_USAGE_MCS_CCS;
       } else {
          res->aux.usage = ISL_AUX_USAGE_MCS;
