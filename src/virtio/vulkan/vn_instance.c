@@ -130,8 +130,7 @@ vn_instance_init_ring(struct vn_instance *instance)
    mtx_init(&instance->ring.mutex, mtx_plain);
 
    struct vn_ring *ring = &instance->ring.ring;
-   vn_ring_init(ring, instance->renderer, &layout,
-                instance->ring.shmem->mmap_ptr);
+   vn_ring_init(instance, ring, &layout, instance->ring.shmem->mmap_ptr);
 
    instance->ring.id = (uintptr_t)ring;
 
@@ -334,6 +333,7 @@ vn_instance_submission_get_ring_submit(struct vn_ring *ring,
                                        struct vn_renderer_shmem *extra_shmem,
                                        bool direct)
 {
+   struct vn_renderer *renderer = ring->instance->renderer;
    const uint32_t shmem_count =
       (direct ? 0 : cs->buffer_count) + (extra_shmem ? 1 : 0);
    struct vn_ring_submit *submit = vn_ring_get_submit(ring, shmem_count);
@@ -344,12 +344,12 @@ vn_instance_submission_get_ring_submit(struct vn_ring *ring,
    if (!direct) {
       for (uint32_t i = 0; i < cs->buffer_count; i++) {
          submit->shmems[i] =
-            vn_renderer_shmem_ref(ring->renderer, cs->buffers[i].shmem);
+            vn_renderer_shmem_ref(renderer, cs->buffers[i].shmem);
       }
    }
    if (extra_shmem) {
       submit->shmems[shmem_count - 1] =
-         vn_renderer_shmem_ref(ring->renderer, extra_shmem);
+         vn_renderer_shmem_ref(renderer, extra_shmem);
    }
 
    return submit;

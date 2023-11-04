@@ -60,7 +60,7 @@ struct vn_ring_submit {
 };
 
 struct vn_ring {
-   struct vn_renderer *renderer;
+   struct vn_instance *instance;
 
    uint32_t buffer_size;
    uint32_t buffer_mask;
@@ -94,8 +94,8 @@ vn_ring_get_layout(size_t buf_size,
                    struct vn_ring_layout *layout);
 
 void
-vn_ring_init(struct vn_ring *ring,
-             struct vn_renderer *renderer,
+vn_ring_init(struct vn_instance *instance,
+             struct vn_ring *ring,
              const struct vn_ring_layout *layout,
              void *shared);
 

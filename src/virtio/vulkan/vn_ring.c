@@ -6,6 +6,7 @@
 #include "vn_ring.h"
 
 #include "vn_cs.h"
+#include "vn_instance.h"
 #include "vn_renderer.h"
 
 static uint32_t
@@ -76,16 +77,16 @@ vn_ring_ge_seqno(const struct vn_ring *ring, uint32_t a, uint32_t b)
 static void
 vn_ring_retire_submits(struct vn_ring *ring, uint32_t seqno)
 {
+   struct vn_renderer *renderer = ring->instance->renderer;
    list_for_each_entry_safe(struct vn_ring_submit, submit, &ring->submits,
                             head) {
       if (!vn_ring_ge_seqno(ring, seqno, submit->seqno))
          break;
 
       for (uint32_t i = 0; i < submit->shmem_count; i++)
-         vn_renderer_shmem_unref(ring->renderer, submit->shmems[i]);
+         vn_renderer_shmem_unref(renderer, submit->shmems[i]);
 
-      list_del(&submit->head);
-      list_add(&submit->head, &ring->free_submits);
+      list_move_to(&submit->head, &ring->free_submits);
    }
 }
 
@@ -179,15 +180,15 @@ vn_ring_get_layout(size_t buf_size,
 }
 
 void
-vn_ring_init(struct vn_ring *ring,
-             struct vn_renderer *renderer,
+vn_ring_init(struct vn_instance *instance,
+             struct vn_ring *ring,
              const struct vn_ring_layout *layout,
              void *shared)
 {
    memset(ring, 0, sizeof(*ring));
    memset(shared, 0, layout->shmem_size);
 
-   ring->renderer = renderer;
+   ring->instance = instance;
 
    assert(layout->buffer_size &&
           util_is_power_of_two_or_zero(layout->buffer_size));
@@ -207,12 +208,14 @@ vn_ring_init(struct vn_ring *ring,
 void
 vn_ring_fini(struct vn_ring *ring)
 {
+   const VkAllocationCallbacks *alloc = &ring->instance->base.base.alloc;
+
    vn_ring_retire_submits(ring, ring->cur);
    assert(list_is_empty(&ring->submits));
 
    list_for_each_entry_safe(struct vn_ring_submit, submit,
                             &ring->free_submits, head)
-      free(submit);
+      vk_free(alloc, submit);
 
    if (ring->monitor.report_period_us)
       mtx_destroy(&ring->monitor.mutex);
@@ -221,6 +224,7 @@ vn_ring_fini(struct vn_ring *ring)
 struct vn_ring_submit *
 vn_ring_get_submit(struct vn_ring *ring, uint32_t shmem_count)
 {
+   const VkAllocationCallbacks *alloc = &ring->instance->base.base.alloc;
    const uint32_t min_shmem_count = 2;
    struct vn_ring_submit *submit;
 
@@ -231,9 +235,10 @@ vn_ring_get_submit(struct vn_ring *ring, uint32_t shmem_count)
          list_first_entry(&ring->free_submits, struct vn_ring_submit, head);
       list_del(&submit->head);
    } else {
-      shmem_count = MAX2(shmem_count, min_shmem_count);
-      submit =
-         malloc(sizeof(*submit) + sizeof(submit->shmems[0]) * shmem_count);
+      const size_t submit_size = offsetof(
+         struct vn_ring_submit, shmems[MAX2(shmem_count, min_shmem_count)]);
+      submit = vk_alloc(alloc, submit_size, VN_DEFAULT_ALIGN,
+                        VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    }
 
    return submit;
