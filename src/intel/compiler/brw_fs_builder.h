@@ -833,6 +833,13 @@ namespace brw {
 
       backend_shader *shader;
 
+      fs_inst *BREAK()    { return emit(BRW_OPCODE_BREAK); }
+      fs_inst *DO()       { return emit(BRW_OPCODE_DO); }
+      fs_inst *ENDIF()    { return emit(BRW_OPCODE_ENDIF); }
+      fs_inst *NOP()      { return emit(BRW_OPCODE_NOP); }
+      fs_inst *WHILE()    { return emit(BRW_OPCODE_WHILE); }
+      fs_inst *CONTINUE() { return emit(BRW_OPCODE_CONTINUE); }
+
    private:
       /**
        * Workaround for negation of UD registers.  See comment in
