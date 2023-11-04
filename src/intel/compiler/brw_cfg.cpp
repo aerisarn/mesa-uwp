@@ -26,6 +26,7 @@
  */
 
 #include "brw_cfg.h"
+#include "util/u_dynarray.h"
 #include "brw_shader.h"
 
 /** @file brw_cfg.cpp
@@ -577,10 +578,52 @@ cfg_t::make_block_array()
    assert(i == num_blocks);
 }
 
+namespace {
+
+struct link_desc {
+   char kind;
+   int num;
+};
+
+int
+compare_link_desc(const void *a, const void *b)
+{
+   const link_desc *la = (const link_desc *)a;
+   const link_desc *lb = (const link_desc *)b;
+
+   return la->num < lb->num ? -1 :
+          la->num > lb->num ? +1 :
+          la->kind < lb->kind ? -1 :
+          la->kind > lb->kind ? +1 :
+          0;
+}
+
+void
+sort_links(util_dynarray *scratch, exec_list *list)
+{
+   util_dynarray_clear(scratch);
+   foreach_list_typed(bblock_link, link, link, list) {
+      link_desc l;
+      l.kind = link->kind == bblock_link_logical ? '-' : '~';
+      l.num = link->block->num;
+      util_dynarray_append(scratch, link_desc, l);
+   }
+   qsort(scratch->data, util_dynarray_num_elements(scratch, link_desc),
+         sizeof(link_desc), compare_link_desc);
+}
+
+} /* namespace */
+
 void
 cfg_t::dump(FILE *file)
 {
    const idom_tree *idom = (s ? &s->idom_analysis.require() : NULL);
+
+   /* Temporary storage to sort the lists of blocks.  This normalizes the
+    * output, making it possible to use it for certain tests.
+    */
+   util_dynarray scratch;
+   util_dynarray_init(&scratch, NULL);
 
    foreach_block (block, this) {
       if (idom && idom->parent(block))
@@ -589,22 +632,22 @@ cfg_t::dump(FILE *file)
       else
          fprintf(file, "START B%d IDOM(none)", block->num);
 
-      foreach_list_typed(bblock_link, link, link, &block->parents) {
-         fprintf(file, " <%cB%d",
-                 link->kind == bblock_link_logical ? '-' : '~',
-                 link->block->num);
-      }
+      sort_links(&scratch, &block->parents);
+      util_dynarray_foreach(&scratch, link_desc, l)
+         fprintf(file, " <%cB%d", l->kind, l->num);
       fprintf(file, "\n");
+
       if (s != NULL)
          block->dump(file);
       fprintf(file, "END B%d", block->num);
-      foreach_list_typed(bblock_link, link, link, &block->children) {
-         fprintf(file, " %c>B%d",
-                 link->kind == bblock_link_logical ? '-' : '~',
-                 link->block->num);
-      }
+
+      sort_links(&scratch, &block->children);
+      util_dynarray_foreach(&scratch, link_desc, l)
+         fprintf(file, " %c>B%d", l->kind, l->num);
       fprintf(file, "\n");
    }
+
+   util_dynarray_fini(&scratch);
 }
 
 /* Calculates the immediate dominator of each block, according to "A Simple,
