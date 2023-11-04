@@ -175,7 +175,7 @@ def create_job_needs_dag(gl_gql: GitlabGQL, params) -> tuple[Dag, dict[str, dict
 
 
 def filter_dag(dag: Dag, regex: Pattern) -> Dag:
-    return {job: needs for job, needs in dag.items() if re.match(regex, job)}
+    return {job: needs for job, needs in dag.items() if regex.match(job)}
 
 
 def print_dag(dag: Dag) -> None:
