@@ -1045,11 +1045,3 @@ pub fn get_dev_for_uuid(uuid: [c_char; UUID_SIZE]) -> Option<&'static Device> {
         })
         .map(Arc::as_ref)
 }
-
-pub fn get_devs_with_gl_interop() -> Vec<&'static Device> {
-    devs()
-        .iter()
-        .filter(|d| d.is_gl_sharing_supported())
-        .map(Arc::as_ref)
-        .collect()
-}

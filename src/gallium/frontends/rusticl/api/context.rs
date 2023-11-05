@@ -2,18 +2,21 @@ use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::context::*;
-use crate::core::device::{get_dev_for_uuid, get_devs_for_type, get_devs_with_gl_interop};
+use crate::core::device::*;
 use crate::core::gl::*;
 use crate::core::platform::*;
 
+use mesa_rust::pipe::screen::UUID_SIZE;
 use mesa_rust_util::properties::Properties;
 use rusticl_opencl_gen::*;
 use rusticl_proc_macros::cl_entrypoint;
 use rusticl_proc_macros::cl_info_entrypoint;
 
 use std::collections::HashSet;
+use std::ffi::c_char;
 use std::ffi::c_void;
 use std::iter::FromIterator;
+use std::mem::transmute;
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::slice;
@@ -51,7 +54,8 @@ impl CLInfo<cl_gl_context_info> for GLCtxManager {
                 cl_prop::<cl_device_id>(cl_device_id::from_ptr(ptr))
             }
             CL_DEVICES_FOR_GL_CONTEXT_KHR => {
-                let devs = get_devs_with_gl_interop()
+                // TODO: support multiple devices
+                let devs = get_dev_for_uuid(info.device_uuid)
                     .iter()
                     .map(|&d| cl_device_id::from_ptr(d))
                     .collect();
@@ -159,15 +163,39 @@ fn create_context(
         }
     }
 
-    let gl_ctx_manager = GLCtxManager::new(gl_context, glx_display, egl_display)?;
-
     // Duplicate devices specified in devices are ignored.
     let set: HashSet<_> =
         HashSet::from_iter(unsafe { slice::from_raw_parts(devices, num_devices as usize) }.iter());
     let devs: Result<_, _> = set.into_iter().map(cl_device_id::get_ref).collect();
+    let devs: Vec<&Device> = devs?;
+
+    let gl_ctx_manager = GLCtxManager::new(gl_context, glx_display, egl_display)?;
+    if let Some(gl_ctx_manager) = &gl_ctx_manager {
+        // errcode_ret returns CL_INVALID_OPERATION if a context was specified as described above
+        // and any of the following conditions hold:
+        // ...
+        // Any of the devices specified in the devices argument cannot support OpenCL objects which
+        // share the data store of an OpenGL object.
+
+        let [dev] = devs.as_slice() else {
+            return Err(CL_INVALID_OPERATION);
+        };
+
+        if !dev.is_gl_sharing_supported() {
+            return Err(CL_INVALID_OPERATION);
+        }
+
+        // gl sharing is only supported on devices with an UUID, so we can simply unwrap it
+        let dev_uuid: [c_char; UUID_SIZE] =
+            unsafe { transmute(dev.screen().device_uuid().unwrap_or_default()) };
+        if gl_ctx_manager.interop_dev_info.device_uuid != dev_uuid {
+            // we only support gl_sharing on the same device
+            return Err(CL_INVALID_OPERATION);
+        }
+    }
 
     Ok(cl_context::from_arc(Context::new(
-        devs?,
+        devs,
         props,
         gl_ctx_manager,
     )))
