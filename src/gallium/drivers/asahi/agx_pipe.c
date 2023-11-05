@@ -27,6 +27,8 @@
 #include "pipe/p_state.h"
 #include "util/format/u_format.h"
 #include "util/half_float.h"
+#include "util/macros.h"
+#include "util/timespec.h"
 #include "util/u_drm.h"
 #include "util/u_gen_mipmap.h"
 #include "util/u_inlines.h"
@@ -1555,6 +1557,8 @@ agx_get_name(struct pipe_screen *pscreen)
 static int
 agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
+   struct agx_device *dev = agx_device(pscreen);
+
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
    case PIPE_CAP_SHADER_STENCIL_EXPORT:
@@ -1580,12 +1584,18 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_OCCLUSION_QUERY:
+   case PIPE_CAP_QUERY_TIMESTAMP:
+   case PIPE_CAP_QUERY_TIME_ELAPSED:
    case PIPE_CAP_GENERATE_MIPMAP:
    case PIPE_CAP_PRIMITIVE_RESTART:
    case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
    case PIPE_CAP_ANISOTROPIC_FILTER:
    case PIPE_CAP_NATIVE_FENCE_FD:
       return true;
+
+   case PIPE_CAP_TIMER_RESOLUTION:
+      /* Timer resolution is the length of a single tick in nanos */
+      return agx_gpu_time_to_ns(dev, 1);
 
    case PIPE_CAP_SAMPLER_VIEW_TARGET:
    case PIPE_CAP_TEXTURE_SWIZZLE:
@@ -2146,6 +2156,13 @@ agx_screen_get_fd(struct pipe_screen *pscreen)
    return agx_device(pscreen)->fd;
 }
 
+static uint64_t
+agx_get_timestamp(struct pipe_screen *pscreen)
+{
+   struct agx_device *dev = agx_device(pscreen);
+   return agx_gpu_time_to_ns(dev, agx_get_gpu_timestamp(dev));
+}
+
 struct pipe_screen *
 agx_screen_create(int fd, struct renderonly *ro,
                   const struct pipe_screen_config *config)
@@ -2197,7 +2214,7 @@ agx_screen_create(int fd, struct renderonly *ro,
    screen->resource_get_handle = agx_resource_get_handle;
    screen->resource_get_param = agx_resource_get_param;
    screen->resource_create_with_modifiers = agx_resource_create_with_modifiers;
-   screen->get_timestamp = u_default_get_timestamp;
+   screen->get_timestamp = agx_get_timestamp;
    screen->fence_reference = agx_fence_reference;
    screen->fence_finish = agx_fence_finish;
    screen->fence_get_fd = agx_fence_get_fd;

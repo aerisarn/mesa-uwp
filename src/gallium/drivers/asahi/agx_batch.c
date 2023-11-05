@@ -6,6 +6,7 @@
 
 #include <xf86drm.h>
 #include "asahi/lib/decode.h"
+#include "util/u_dynarray.h"
 #include "agx_state.h"
 
 #define foreach_active(ctx, idx)                                               \
@@ -125,6 +126,7 @@ agx_batch_init(struct agx_context *ctx,
    util_dynarray_init(&batch->depth_bias, ctx);
    util_dynarray_init(&batch->occlusion_queries, ctx);
    util_dynarray_init(&batch->nonocclusion_queries, ctx);
+   util_dynarray_init(&batch->timestamp_queries, ctx);
 
    batch->clear = 0;
    batch->draw = 0;
@@ -167,7 +169,9 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
 
    assert(ctx->batch != batch);
 
-   agx_finish_batch_queries(batch);
+   uint64_t begin_ts = ~0, end_ts = 0;
+   /* TODO: UAPI pending */
+   agx_finish_batch_queries(batch, begin_ts, end_ts);
    batch->occlusion_buffer.cpu = NULL;
    batch->occlusion_buffer.gpu = 0;
 
@@ -205,6 +209,7 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
    util_dynarray_fini(&batch->depth_bias);
    util_dynarray_fini(&batch->occlusion_queries);
    util_dynarray_fini(&batch->nonocclusion_queries);
+   util_dynarray_fini(&batch->timestamp_queries);
 
    if (!(dev->debug & (AGX_DBG_TRACE | AGX_DBG_SYNC))) {
       agx_batch_print_stats(dev, batch);
@@ -741,4 +746,26 @@ agx_batch_reset(struct agx_context *ctx, struct agx_batch *batch)
       ctx->batch = NULL;
 
    agx_batch_cleanup(ctx, batch, true);
+}
+
+void
+agx_batch_add_timestamp_query(struct agx_batch *batch, struct agx_query *q)
+{
+   if (q)
+      util_dynarray_append(&batch->timestamp_queries, struct agx_query *, q);
+}
+
+/*
+ * Timestamp queries record the time after all current work is finished,
+ * which we handle as the time after all current batches finish (since we're a
+ * tiler and would rather not split the batch). So add a query to all active
+ * batches.
+ */
+void
+agx_add_timestamp_end_query(struct agx_context *ctx, struct agx_query *q)
+{
+   unsigned idx;
+   foreach_active(ctx, idx) {
+      agx_batch_add_timestamp_query(&ctx->batches.slots[idx], q);
+   }
 }

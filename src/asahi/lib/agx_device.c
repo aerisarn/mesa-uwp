@@ -6,6 +6,7 @@
 
 #include "agx_device.h"
 #include <inttypes.h>
+#include "util/timespec.h"
 #include "agx_bo.h"
 #include "agx_compile.h"
 #include "decode.h"
@@ -19,6 +20,7 @@
 #include "util/log.h"
 #include "util/os_file.h"
 #include "util/os_mman.h"
+#include "util/os_time.h"
 #include "util/simple_mtx.h"
 #include "git_sha1.h"
 #include "nir_serialize.h"
@@ -455,4 +457,21 @@ agx_debug_fault(struct agx_device *dev, uint64_t addr)
    }
 
    pthread_mutex_unlock(&dev->bo_map_lock);
+}
+
+uint64_t
+agx_get_gpu_timestamp(struct agx_device *dev)
+{
+#if DETECT_ARCH_ARCH64
+   uint64_t ret;
+   __asm__ volatile("mrs \t%0, cntvct_el0" : "=r"(ret));
+   return ret;
+#elif DETECT_ARCH_X86 || DETECT_ARCH_X86_64
+   /* Maps to the above when run under FEX without thunking */
+   uint32_t high, low;
+   __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
+   return (uint64_t)low | ((uint64_t)high << 32);
+#else
+   unreachable("Kernel support for fetching timestamps pending");
+#endif
 }

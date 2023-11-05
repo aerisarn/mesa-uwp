@@ -322,6 +322,7 @@ struct agx_batch {
 
    /* Non-occlusion queries */
    struct util_dynarray nonocclusion_queries;
+   struct util_dynarray timestamp_queries;
 
    /* Result buffer where the kernel places command execution information */
    union agx_batch_result *result;
@@ -482,6 +483,7 @@ struct agx_context {
    struct agx_query *occlusion_query;
    struct agx_query *prims_generated;
    struct agx_query *tf_prims_generated;
+   struct agx_query *time_elapsed;
    bool active_queries;
 
    struct util_debug_callback debug;
@@ -625,7 +627,15 @@ struct agx_query {
    struct agx_ptr ptr;
 
    /* Accumulator flushed to the CPU */
-   uint64_t value;
+   union {
+      uint64_t value;
+      uint64_t timestamp_end;
+   };
+
+   /* For time elapsed queries, end is in the above union for consistent
+    * handling witn timestamp queries.
+    */
+   uint64_t timestamp_begin;
 };
 
 struct agx_sampler_state {
@@ -889,6 +899,10 @@ struct agx_batch *agx_get_compute_batch(struct agx_context *ctx);
 void agx_batch_reset(struct agx_context *ctx, struct agx_batch *batch);
 int agx_cleanup_batches(struct agx_context *ctx);
 
+void agx_batch_add_timestamp_query(struct agx_batch *batch,
+                                   struct agx_query *q);
+void agx_add_timestamp_end_query(struct agx_context *ctx, struct agx_query *q);
+
 /* Blit shaders */
 void agx_blitter_save(struct agx_context *ctx, struct blitter_context *blitter,
                       bool render_cond);
@@ -910,7 +924,8 @@ uint16_t agx_get_oq_index(struct agx_batch *batch, struct agx_query *query);
 uint64_t agx_get_query_address(struct agx_batch *batch,
                                struct agx_query *query);
 
-void agx_finish_batch_queries(struct agx_batch *batch);
+void agx_finish_batch_queries(struct agx_batch *batch, uint64_t begin_ts,
+                              uint64_t end_ts);
 
 bool agx_render_condition_check_inner(struct agx_context *ctx);
 

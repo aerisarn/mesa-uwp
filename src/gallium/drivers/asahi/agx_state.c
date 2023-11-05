@@ -3743,6 +3743,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    struct agx_batch *batch = agx_get_batch(ctx);
+   agx_batch_add_timestamp_query(batch, ctx->time_elapsed);
+
    unsigned idx_size = info->index_size;
    uint64_t ib = 0;
    size_t ib_extent = 0;
@@ -4127,6 +4129,7 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 {
    struct agx_context *ctx = agx_context(pipe);
    struct agx_batch *batch = agx_get_compute_batch(ctx);
+   agx_batch_add_timestamp_query(batch, ctx->time_elapsed);
 
    agx_batch_init_state(batch);
 
