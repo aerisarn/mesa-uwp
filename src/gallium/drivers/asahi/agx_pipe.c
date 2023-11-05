@@ -69,6 +69,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"smalltile", AGX_DBG_SMALLTILE,"Force 16x16 tiles"},
    {"nomsaa",    AGX_DBG_NOMSAA,   "Force disable MSAA"},
    {"noshadow",  AGX_DBG_NOSHADOW, "Force disable resource shadowing"},
+   {"noclipctrl",AGX_DBG_NOCLIPCTRL,"Disable ARB_clip_control"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */

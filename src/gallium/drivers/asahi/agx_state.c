@@ -47,6 +47,9 @@
 #include "agx_disk_cache.h"
 #include "agx_nir_lower_gs.h"
 #include "agx_tilebuffer.h"
+#include "nir_builder.h"
+#include "nir_intrinsics.h"
+#include "nir_intrinsics_indices.h"
 #include "pool.h"
 
 void
@@ -974,6 +977,16 @@ agx_get_scissor_extents(const struct pipe_viewport_state *vp,
    }
 }
 
+static bool
+should_lower_clip_m1_1(struct agx_device *dev, bool clip_halfz)
+{
+   /* If ARB_clip_control is enabled, we use [0, 1] clipping in the hardware
+    * and lower [-1, 1] clipping in the vertex shader.
+    */
+   bool clip_ctrl = !(dev->debug & AGX_DBG_NOCLIPCTRL);
+   return clip_ctrl && !clip_halfz;
+}
+
 static void
 agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
                             uint8_t **out, const struct pipe_viewport_state *vp,
@@ -1032,6 +1045,11 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
       cfg.scale_x = vp->scale[0];
       cfg.scale_y = vp->scale[1];
       cfg.scale_z = vp->scale[2];
+
+      if (should_lower_clip_m1_1(pool->dev, false /* clip_halfz */)) {
+         cfg.translate_z -= cfg.scale_z;
+         cfg.scale_z *= 2;
+      }
    }
 
    agx_ppp_fini(out, &ppp);
@@ -1577,6 +1595,28 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
    return ptr.gpu;
 }
 
+/* nir_lower_clip_halfz analogue for lowered I/O */
+static bool
+agx_nir_lower_clip_m1_1(nir_builder *b, nir_intrinsic_instr *intr,
+                        UNUSED void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+   if (nir_intrinsic_io_semantics(intr).location != VARYING_SLOT_POS)
+      return false;
+
+   assert(nir_intrinsic_component(intr) == 0 && "not yet scalarized");
+   b->cursor = nir_before_instr(&intr->instr);
+
+   nir_def *pos = intr->src[0].ssa;
+   nir_def *z = nir_channel(b, pos, 2);
+   nir_def *w = nir_channel(b, pos, 3);
+
+   nir_def *new_z = nir_fmul_imm(b, nir_fadd(b, z, w), 0.5f);
+   nir_src_rewrite(&intr->src[0], nir_vector_insert_imm(b, pos, new_z, 2));
+   return true;
+}
+
 /*
  * Compile a NIR shader. The only lowering left at this point is sysvals. The
  * shader key should have already been applied. agx_compile_variant may call
@@ -1642,6 +1682,11 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
       struct asahi_vs_shader_key *key = &key_->vs;
 
       NIR_PASS_V(nir, agx_nir_lower_vbo, &key->vbuf);
+
+      if (should_lower_clip_m1_1(dev, false /* clip_halfz */)) {
+         NIR_PASS_V(nir, nir_shader_intrinsics_pass, agx_nir_lower_clip_m1_1,
+                    nir_metadata_block_index | nir_metadata_dominance, NULL);
+      }
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       struct asahi_gs_shader_key *key = &key_->gs;
 
