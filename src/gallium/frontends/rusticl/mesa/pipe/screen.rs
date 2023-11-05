@@ -89,12 +89,12 @@ impl ResourceType {
 }
 
 impl PipeScreen {
-    pub(super) fn new(ldev: PipeLoaderDevice, screen: *mut pipe_screen) -> Option<Arc<Self>> {
+    pub(super) fn new(ldev: PipeLoaderDevice, screen: *mut pipe_screen) -> Option<Self> {
         if screen.is_null() || !has_required_cbs(screen) {
             return None;
         }
 
-        Some(Arc::new(Self { ldev, screen }))
+        Some(Self { ldev, screen })
     }
 
     pub fn create_context(self: &Arc<Self>) -> Option<PipeContext> {

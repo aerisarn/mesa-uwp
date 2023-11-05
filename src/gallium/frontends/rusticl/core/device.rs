@@ -215,11 +215,12 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
 impl_cl_type_trait!(cl_device_id, Device, CL_INVALID_DEVICE);
 
 impl Device {
-    fn new(screen: Arc<PipeScreen>) -> Option<Arc<Device>> {
+    fn new(screen: PipeScreen) -> Option<Arc<Device>> {
         if !Self::check_valid(&screen) {
             return None;
         }
 
+        let screen = Arc::new(screen);
         // Create before loading libclc as llvmpipe only creates the shader cache with the first
         // context being created.
         let helper_ctx = screen.create_context()?;

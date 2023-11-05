@@ -4,7 +4,6 @@ use mesa_rust_gen::*;
 use mesa_rust_util::string::c_string_to_string;
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::{env, ptr};
 
 #[derive(PartialEq)]
@@ -20,7 +19,7 @@ impl PipeLoaderDevice {
         Some(Self { ldev })
     }
 
-    fn load_screen(self) -> Option<Arc<PipeScreen>> {
+    fn load_screen(self) -> Option<PipeScreen> {
         let s = unsafe { pipe_loader_create_screen(self.ldev) };
         PipeScreen::new(self, s)
     }
@@ -91,7 +90,7 @@ fn get_enabled_devs() -> HashMap<String, u32> {
     res
 }
 
-pub fn load_screens() -> Vec<Arc<PipeScreen>> {
+pub fn load_screens() -> Vec<PipeScreen> {
     let devs = load_devs();
     let mut enabled_devs = get_enabled_devs();
 
