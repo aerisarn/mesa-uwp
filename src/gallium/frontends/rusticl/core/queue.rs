@@ -10,6 +10,7 @@ use mesa_rust_util::properties::*;
 use rusticl_opencl_gen::*;
 
 use std::collections::HashSet;
+use std::mem;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -131,19 +132,20 @@ impl Queue {
 
     pub fn flush(&self, wait: bool) -> CLResult<()> {
         let mut state = self.state.lock().unwrap();
+        let events = mem::take(&mut state.pending);
 
         // Update last if and only if we get new events, this prevents breaking application code
         // doing things like `clFlush(q); clFinish(q);`
-        if let Some(last) = state.pending.last() {
+        if let Some(last) = events.last() {
             state.last = Arc::downgrade(last);
+
+            // This should never ever error, but if it does return an error
+            state
+                .chan_in
+                .send(events)
+                .map_err(|_| CL_OUT_OF_HOST_MEMORY)?;
         }
 
-        let events = state.pending.drain(0..).collect();
-        // This should never ever error, but if it does return an error
-        state
-            .chan_in
-            .send(events)
-            .map_err(|_| CL_OUT_OF_HOST_MEMORY)?;
         if wait {
             // Waiting on the last event is good enough here as the queue will process it in order
             // It's not a problem if the weak ref is invalid as that means the work is already done
