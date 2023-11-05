@@ -261,6 +261,12 @@ uint16_t agx_sampler_heap_add(struct agx_device *dev,
                               struct agx_sampler_heap *heap,
                               struct agx_sampler_packed *sampler);
 
+struct agx_encoder {
+   struct agx_bo *bo;
+   uint8_t *current;
+   uint8_t *end;
+};
+
 struct agx_batch {
    struct agx_context *ctx;
    struct pipe_framebuffer_state key;
@@ -305,9 +311,12 @@ struct agx_batch {
    } bo_list;
 
    struct agx_pool pool, pipeline_pool;
-   struct agx_bo *encoder;
-   uint8_t *encoder_current;
-   uint8_t *encoder_end;
+
+   /* We may enqueue both CDM and VDM work, possibly to the same batch for
+    * geometry/tessellation.
+    */
+   struct agx_encoder vdm;
+   struct agx_encoder cdm;
 
    /* Scissor and depth-bias descriptors, uploaded at GPU time */
    struct util_dynarray scissor, depth_bias;

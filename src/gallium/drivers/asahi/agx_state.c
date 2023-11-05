@@ -2633,7 +2633,7 @@ agx_batch_init_state(struct agx_batch *batch)
    }
 
    /* Emit state on the batch that we don't change and so don't dirty track */
-   uint8_t *out = batch->encoder_current;
+   uint8_t *out = batch->vdm.current;
    struct agx_ppp_update ppp =
       agx_new_ppp_update(&batch->pool, (struct AGX_PPP_HEADER){
                                           .w_clamp = true,
@@ -2652,7 +2652,7 @@ agx_batch_init_state(struct agx_batch *batch)
    /* clang-format on */
 
    agx_ppp_fini(&out, &ppp);
-   batch->encoder_current = out;
+   batch->vdm.current = out;
 
    /* Mark it as initialized now, since agx_batch_writes() will check this. */
    batch->initialized = true;
@@ -3074,11 +3074,10 @@ agx_scissor_culls_everything(struct agx_context *ctx)
 }
 
 static void
-agx_ensure_cmdbuf_has_space(struct agx_batch *batch, size_t space)
+agx_ensure_vdm_cmdbuf_has_space(struct agx_batch *batch, size_t space)
 {
    /* Assert that we have space for a link tag */
-   assert((batch->encoder_current + AGX_VDM_STREAM_LINK_LENGTH) <=
-             batch->encoder_end &&
+   assert((batch->vdm.current + AGX_VDM_STREAM_LINK_LENGTH) <= batch->vdm.end &&
           "Encoder overflowed");
 
    /* Always leave room for a link tag, in case we run out of space later,
@@ -3089,7 +3088,7 @@ agx_ensure_cmdbuf_has_space(struct agx_batch *batch, size_t space)
    space += AGX_VDM_STREAM_LINK_LENGTH + 0x800;
 
    /* If there is room in the command buffer, we're done */
-   if (likely((batch->encoder_end - batch->encoder_current) >= space))
+   if (likely((batch->vdm.end - batch->vdm.current) >= space))
       return;
 
    /* Otherwise, we need to allocate a new command buffer. We use memory owned
@@ -3099,14 +3098,14 @@ agx_ensure_cmdbuf_has_space(struct agx_batch *batch, size_t space)
    struct agx_ptr T = agx_pool_alloc_aligned(&batch->pool, size, 256);
 
    /* Jump from the old command buffer to the new command buffer */
-   agx_pack(batch->encoder_current, VDM_STREAM_LINK, cfg) {
+   agx_pack(batch->vdm.current, VDM_STREAM_LINK, cfg) {
       cfg.target_lo = T.gpu & BITFIELD_MASK(32);
       cfg.target_hi = T.gpu >> 32;
    }
 
    /* Swap out the command buffer */
-   batch->encoder_current = T.cpu;
-   batch->encoder_end = batch->encoder_current + size;
+   batch->vdm.current = T.cpu;
+   batch->vdm.end = batch->vdm.current + size;
 }
 
 static void
@@ -3227,7 +3226,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
     * We only need to do this once per draw as long as we conservatively
     * estimate the maximum bytes of VDM commands that this draw will emit.
     */
-   agx_ensure_cmdbuf_has_space(
+   agx_ensure_vdm_cmdbuf_has_space(
       batch,
       (AGX_VDM_STATE_LENGTH * 2) + (AGX_PPP_STATE_LENGTH * MAX_PPP_UPDATES) +
          AGX_VDM_STATE_RESTART_INDEX_LENGTH +
@@ -3240,7 +3239,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
          AGX_INDEX_LIST_COUNT_LENGTH + AGX_INDEX_LIST_INSTANCES_LENGTH +
          AGX_INDEX_LIST_START_LENGTH + AGX_INDEX_LIST_BUFFER_SIZE_LENGTH);
 
-   uint8_t *out = agx_encode_state(batch, batch->encoder_current,
+   uint8_t *out = agx_encode_state(batch, batch->vdm.current,
                                    reduced_prim == MESA_PRIM_LINES,
                                    reduced_prim == MESA_PRIM_POINTS);
 
@@ -3349,9 +3348,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       out += AGX_VDM_BARRIER_LENGTH;
    }
 
-   batch->encoder_current = out;
-   assert((batch->encoder_current + AGX_VDM_STREAM_LINK_LENGTH) <=
-             batch->encoder_end &&
+   batch->vdm.current = out;
+   assert((batch->vdm.current + AGX_VDM_STREAM_LINK_LENGTH) <= batch->vdm.end &&
           "Failed to reserve sufficient space in encoder");
    agx_dirty_reset_graphics(ctx);
 
@@ -3439,7 +3437,7 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    agx_upload_uniforms(batch);
 
    /* TODO: Ensure space if we allow multiple kernels in a batch */
-   uint8_t *out = batch->encoder_current;
+   uint8_t *out = batch->cdm.current;
 
    agx_pack(out, CDM_HEADER, cfg) {
       if (info->indirect)
@@ -3492,8 +3490,8 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
       ;
    out += AGX_CDM_LAUNCH_LENGTH;
 
-   batch->encoder_current = out;
-   assert(batch->encoder_current <= batch->encoder_end &&
+   batch->cdm.current = out;
+   assert(batch->cdm.current <= batch->cdm.end &&
           "Failed to reserve sufficient space in encoder");
    /* TODO: Dirty tracking? */
 

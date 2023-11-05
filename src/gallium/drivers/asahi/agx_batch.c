@@ -76,6 +76,18 @@ agx_batch_mark_complete(struct agx_batch *batch)
    BITSET_CLEAR(batch->ctx->batches.submitted, batch_idx);
 }
 
+static struct agx_encoder
+agx_encoder_allocate(struct agx_batch *batch, struct agx_device *dev)
+{
+   struct agx_bo *bo = agx_bo_create(dev, 0x80000, 0, "Encoder");
+
+   return (struct agx_encoder){
+      .bo = bo,
+      .current = bo->ptr.cpu,
+      .end = (uint8_t *)bo->ptr.cpu + bo->size,
+   };
+}
+
 static void
 agx_batch_init(struct agx_context *ctx,
                const struct pipe_framebuffer_state *key,
@@ -101,9 +113,13 @@ agx_batch_init(struct agx_context *ctx,
              batch->bo_list.word_count * sizeof(BITSET_WORD));
    }
 
-   batch->encoder = agx_bo_create(dev, 0x80000, 0, "Encoder");
-   batch->encoder_current = batch->encoder->ptr.cpu;
-   batch->encoder_end = batch->encoder_current + batch->encoder->size;
+   if (batch->key.width == AGX_COMPUTE_BATCH_WIDTH) {
+      batch->cdm = agx_encoder_allocate(batch, dev);
+      memset(&batch->vdm, 0, sizeof(batch->vdm));
+   } else {
+      batch->vdm = agx_encoder_allocate(batch, dev);
+      memset(&batch->cdm, 0, sizeof(batch->cdm));
+   }
 
    util_dynarray_init(&batch->scissor, ctx);
    util_dynarray_init(&batch->depth_bias, ctx);
@@ -179,7 +195,8 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
       }
    }
 
-   agx_bo_unreference(batch->encoder);
+   agx_bo_unreference(batch->vdm.bo);
+   agx_bo_unreference(batch->cdm.bo);
    agx_pool_cleanup(&batch->pool);
    agx_pool_cleanup(&batch->pipeline_pool);
 

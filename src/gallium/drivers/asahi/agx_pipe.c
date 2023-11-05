@@ -1293,7 +1293,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
 
    /* Finalize the encoder */
    uint8_t stop[5 + 64] = {0x00, 0x00, 0x00, 0xc0, 0x00};
-   memcpy(batch->encoder_current, stop, sizeof(stop));
+   memcpy(batch->vdm.current, stop, sizeof(stop));
 
    uint64_t pipeline_background = agx_build_meta(batch, false, false);
    uint64_t pipeline_background_partial = agx_build_meta(batch, false, true);
@@ -1340,7 +1340,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
     *  - BO for internal shaders
     *  - BOs added to the batch explicitly
     */
-   agx_batch_add_bo(batch, batch->encoder);
+   agx_batch_add_bo(batch, batch->vdm.bo);
 
    /* Occlusion queries are allocated as a contiguous pool */
    unsigned oq_count =
