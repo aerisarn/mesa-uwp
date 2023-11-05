@@ -1703,6 +1703,24 @@ store("tlb_sample_color_v3d", [1], [BASE, COMPONENT, SRC_TYPE], [])
 # the target framebuffer
 intrinsic("load_fb_layers_v3d", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Load a bindless sampler handle mapping a binding table sampler.
+intrinsic("load_sampler_handle_agx", [1], 1, [],
+          flags=[CAN_ELIMINATE, CAN_REORDER],
+          bit_sizes=[16])
+
+# Load a bindless texture handle mapping a binding table texture.
+intrinsic("load_texture_handle_agx", [1], 2, [],
+          flags=[CAN_ELIMINATE, CAN_REORDER],
+          bit_sizes=[32])
+
+# Given a vec2 bindless texture handle, load the address of the texture
+# descriptor described by that vec2. This allows inspecting the descriptor from
+# the shader. This does not actually load the content of the descriptor, only
+# the content of the handle (which is the address of the descriptor).
+intrinsic("load_from_texture_handle_agx", [2], 1, [],
+          flags=[CAN_ELIMINATE, CAN_REORDER],
+          bit_sizes=[64])
+
 # Load the coefficient register corresponding to a given fragment shader input.
 # Coefficient registers are vec3s that are dotted with <x, y, 1> to interpolate
 # the input, where x and y are relative to the 32x32 supertile.
@@ -1794,7 +1812,11 @@ intrinsic("load_vbo_base_agx", src_comp=[1], dest_comp=1, bit_sizes=[64],
 # Load a driver-internal system value from a given system value set at a given
 # binding within the set. This is used for correctness when lowering things like
 # UBOs with merged shaders.
-load("sysval_agx", [], [DESC_SET, BINDING], [CAN_REORDER, CAN_ELIMINATE])
+#
+# The FLAGS are used internally for loading the index of the uniform itself,
+# rather than the contents, used for lowering bindless handles (which encode
+# uniform indices as immediates in the NIR for technical reasons).
+load("sysval_agx", [], [DESC_SET, BINDING, FLAGS], [CAN_REORDER, CAN_ELIMINATE])
 
 # Write out a sample mask for a targeted subset of samples, specified in the two
 # masks. Maps to the corresponding AGX instruction, the actual workings are
