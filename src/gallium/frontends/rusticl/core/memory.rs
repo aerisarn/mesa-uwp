@@ -557,18 +557,18 @@ impl Mem {
 
     fn tx_raw_async(
         &self,
-        q: &Arc<Queue>,
+        dev: &Device,
         rw: RWFlags,
     ) -> CLResult<(PipeTransfer, Option<PipeResource>)> {
         let mut offset = 0;
         let b = self.to_parent(&mut offset);
-        let r = b.get_res()?.get(&q.device).unwrap();
+        let r = b.get_res()?.get(dev).unwrap();
         let size = self.size.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?;
-        let ctx = q.device.helper_ctx();
+        let ctx = dev.helper_ctx();
 
         assert!(self.is_buffer());
 
-        let tx = if can_map_directly(q.device, r) {
+        let tx = if can_map_directly(dev, r) {
             ctx.buffer_map_directly(
                 r,
                 offset.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
@@ -582,8 +582,7 @@ impl Mem {
         if let Some(tx) = tx {
             Ok((tx, None))
         } else {
-            let shadow = q
-                .device
+            let shadow = dev
                 .screen()
                 .resource_create_buffer(size as u32, ResourceType::Staging)
                 .ok_or(CL_OUT_OF_RESOURCES)?;
@@ -621,16 +620,16 @@ impl Mem {
 
     fn tx_image_raw_async(
         &self,
-        q: &Arc<Queue>,
+        dev: &Device,
         bx: &pipe_box,
         rw: RWFlags,
     ) -> CLResult<(PipeTransfer, Option<PipeResource>)> {
         assert!(!self.is_buffer());
 
-        let r = self.get_res()?.get(q.device).unwrap();
-        let ctx = q.device.helper_ctx();
+        let r = self.get_res()?.get(dev).unwrap();
+        let ctx = dev.helper_ctx();
 
-        let tx = if can_map_directly(q.device, r) {
+        let tx = if can_map_directly(dev, r) {
             ctx.texture_map_directly(r, bx, rw)
         } else {
             None
@@ -639,8 +638,7 @@ impl Mem {
         if let Some(tx) = tx {
             Ok((tx, None))
         } else {
-            let shadow = q
-                .device
+            let shadow = dev
                 .screen()
                 .resource_create_texture(
                     r.width(),
@@ -1193,34 +1191,39 @@ impl Mem {
     /// the content behind the returned pointer is valid until unmapped.
     fn map<'a>(
         &self,
-        q: &Arc<Queue>,
+        dev: &'static Device,
         lock: &'a mut MutexGuard<Mappings>,
         rw: RWFlags,
     ) -> CLResult<&'a PipeTransfer> {
-        if let Entry::Vacant(e) = lock.tx.entry(q.device) {
+        if let Entry::Vacant(e) = lock.tx.entry(&dev) {
             let (tx, res) = if self.is_buffer() {
-                self.tx_raw_async(q, rw)?
+                self.tx_raw_async(dev, rw)?
             } else {
                 let bx = self.image_desc.bx()?;
-                self.tx_image_raw_async(q, &bx, rw)?
+                self.tx_image_raw_async(dev, &bx, rw)?
             };
 
             e.insert(MappingTransfer::new(tx, res));
         } else {
-            lock.mark_pending(q.device);
+            lock.mark_pending(dev);
         }
 
-        Ok(&lock.tx.get_mut(&q.device).unwrap().tx)
+        Ok(&lock.tx.get_mut(dev).unwrap().tx)
     }
 
-    pub fn map_buffer(&self, q: &Arc<Queue>, offset: usize, _size: usize) -> CLResult<*mut c_void> {
+    pub fn map_buffer(
+        &self,
+        dev: &'static Device,
+        offset: usize,
+        _size: usize,
+    ) -> CLResult<*mut c_void> {
         assert!(self.is_buffer());
 
         let mut lock = self.maps.lock().unwrap();
-        let ptr = if self.has_user_shadow_buffer(q.device)? {
+        let ptr = if self.has_user_shadow_buffer(dev)? {
             self.host_ptr
         } else {
-            let tx = self.map(q, &mut lock, RWFlags::RW)?;
+            let tx = self.map(dev, &mut lock, RWFlags::RW)?;
             tx.ptr()
         };
 
@@ -1230,7 +1233,7 @@ impl Mem {
 
     pub fn map_image(
         &self,
-        q: &Arc<Queue>,
+        dev: &'static Device,
         origin: &CLVec<usize>,
         _region: &CLVec<usize>,
         row_pitch: &mut usize,
@@ -1241,18 +1244,18 @@ impl Mem {
         let mut lock = self.maps.lock().unwrap();
 
         // we might have a host_ptr shadow buffer or image created from buffer
-        let ptr = if self.has_user_shadow_buffer(q.device)? || self.is_parent_buffer() {
+        let ptr = if self.has_user_shadow_buffer(dev)? || self.is_parent_buffer() {
             *row_pitch = self.image_desc.image_row_pitch;
             *slice_pitch = self.image_desc.image_slice_pitch;
 
             if let Some(src) = &self.parent {
-                let tx = src.map(q, &mut lock, RWFlags::RW)?;
+                let tx = src.map(dev, &mut lock, RWFlags::RW)?;
                 tx.ptr()
             } else {
                 self.host_ptr
             }
         } else {
-            let tx = self.map(q, &mut lock, RWFlags::RW)?;
+            let tx = self.map(dev, &mut lock, RWFlags::RW)?;
 
             if self.image_desc.dims() > 1 {
                 *row_pitch = tx.row_pitch() as usize;
