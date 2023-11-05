@@ -660,8 +660,8 @@ impl Device {
             .shader_param(pipe_shader_type::PIPE_SHADER_COMPUTE, cap)
     }
 
-    pub fn all() -> Vec<Arc<Device>> {
-        load_screens().into_iter().filter_map(Device::new).collect()
+    pub fn all() -> impl Iterator<Item = Arc<Device>> {
+        load_screens().filter_map(Device::new)
     }
 
     pub fn address_bits(&self) -> cl_uint {
