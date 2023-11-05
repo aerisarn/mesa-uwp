@@ -2212,6 +2212,9 @@ wsi_wl_swapchain_chain_free(struct wsi_wl_swapchain *chain,
       pthread_mutex_destroy(&chain->present_ids.lock);
    }
 
+   if (chain->present_ids.queue)
+      wl_event_queue_destroy(chain->present_ids.queue);
+
    vk_free(pAllocator, (void *)chain->drm_modifiers);
 
    wsi_swapchain_finish(&chain->base);
