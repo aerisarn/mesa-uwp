@@ -330,7 +330,7 @@ def parse_args() -> Namespace:
     )
 
     args = parser.parse_args()
-    args.gitlab_token = Path(args.gitlab_token_file).read_text()
+    args.gitlab_token = Path(args.gitlab_token_file).read_text().strip()
     return args
 
 
