@@ -208,12 +208,15 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 {
    nir_alu_src *src = &instr->src[index];
 
+   unsigned num_instr_channels = nir_ssa_alu_instr_src_components(instr, index);
    unsigned num_components = nir_src_num_components(src->src);
-   for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
-      validate_assert(state, src->swizzle[i] < NIR_MAX_VEC_COMPONENTS);
 
-      if (nir_alu_instr_channel_used(instr, index, i))
-         validate_assert(state, src->swizzle[i] < num_components);
+   for (unsigned i = 0; i < num_instr_channels; i++) {
+      validate_assert(state, src->swizzle[i] < num_components);
+   }
+
+   for (unsigned i = num_instr_channels; i < NIR_MAX_VEC_COMPONENTS; i++) {
+      validate_assert(state, src->swizzle[i] < NIR_MAX_VEC_COMPONENTS);
    }
 
    validate_src(&src->src, state, 0, 0);
