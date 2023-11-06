@@ -120,9 +120,6 @@ validate_assert_impl(validate_state *state, bool cond, const char *str,
 #define validate_assert(state, cond) \
    validate_assert_impl(state, (cond), #cond, __FILE__, __LINE__)
 
-static void validate_src(nir_src *src, validate_state *state,
-                         unsigned bit_sizes, unsigned num_components);
-
 static void
 validate_num_components(validate_state *state, unsigned num_components)
 {
@@ -175,8 +172,7 @@ validate_src_tag(nir_src *src, validate_state *state)
 }
 
 static void
-validate_src(nir_src *src, validate_state *state,
-             unsigned bit_sizes, unsigned num_components)
+validate_src(nir_src *src, validate_state *state)
 {
    /* Validate the tag first, so that nir_src_parent_instr is valid */
    validate_src_tag(src, state);
@@ -187,6 +183,13 @@ validate_src(nir_src *src, validate_state *state,
       validate_assert(state, nir_src_parent_if(src) == state->if_stmt);
 
    validate_assert(state, src->ssa != NULL);
+}
+
+static void
+validate_sized_src(nir_src *src, validate_state *state,
+                   unsigned bit_sizes, unsigned num_components)
+{
+   validate_src(src, state);
 
    if (bit_sizes)
       validate_assert(state, src->ssa->bit_size & bit_sizes);
@@ -206,7 +209,7 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
       validate_assert(state, src->swizzle[i] < num_components);
    }
 
-   validate_src(&src->src, state, 0, 0);
+   validate_src(&src->src, state);
 }
 
 static void
@@ -310,7 +313,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
       /* For cast, we simply have to trust the instruction.  It's up to
        * lowering passes and front/back-ends to make them sane.
        */
-      validate_src(&instr->parent, state, 0, 0);
+      validate_src(&instr->parent, state);
 
       /* Most variable modes in NIR can only exist by themselves. */
       if (instr->modes & ~nir_var_mem_generic)
@@ -339,8 +342,8 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
       /* The parent pointer value must have the same number of components
        * as the destination.
        */
-      validate_src(&instr->parent, state, instr->def.bit_size,
-                   instr->def.num_components);
+      validate_sized_src(&instr->parent, state, instr->def.bit_size,
+                         instr->def.num_components);
 
       nir_instr *parent_instr = instr->parent.ssa->parent_instr;
 
@@ -379,8 +382,8 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
                          instr->type == glsl_get_array_element(parent->type));
 
          if (instr->deref_type == nir_deref_type_array) {
-            validate_src(&instr->arr.index, state,
-                         instr->def.bit_size, 1);
+            validate_sized_src(&instr->arr.index, state,
+                               instr->def.bit_size, 1);
          }
          break;
 
@@ -393,8 +396,8 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
                          parent->deref_type == nir_deref_type_array ||
                             parent->deref_type == nir_deref_type_ptr_as_array ||
                             parent->deref_type == nir_deref_type_cast);
-         validate_src(&instr->arr.index, state,
-                      instr->def.bit_size, 1);
+         validate_sized_src(&instr->arr.index, state,
+                            instr->def.bit_size, 1);
          break;
 
       default:
@@ -699,7 +702,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 
       validate_num_components(state, components_read);
 
-      validate_src(&instr->src[i], state, src_bit_sizes[i], components_read);
+      validate_sized_src(&instr->src[i], state, src_bit_sizes[i], components_read);
    }
 
    if (nir_intrinsic_infos[instr->intrinsic].has_dest) {
@@ -765,8 +768,8 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       validate_assert(state, !src_type_seen[instr->src[i].src_type]);
       src_type_seen[instr->src[i].src_type] = true;
-      validate_src(&instr->src[i].src, state,
-                   0, nir_tex_instr_src_size(instr, i));
+      validate_sized_src(&instr->src[i].src, state,
+                         0, nir_tex_instr_src_size(instr, i));
 
       switch (instr->src[i].src_type) {
 
@@ -890,9 +893,9 @@ validate_call_instr(nir_call_instr *instr, validate_state *state)
    validate_assert(state, instr->num_params == instr->callee->num_params);
 
    for (unsigned i = 0; i < instr->num_params; i++) {
-      validate_src(&instr->params[i], state,
-                   instr->callee->params[i].bit_size,
-                   instr->callee->params[i].num_components);
+      validate_sized_src(&instr->params[i], state,
+                         instr->callee->params[i].bit_size,
+                         instr->callee->params[i].num_components);
    }
 }
 
@@ -1013,7 +1016,7 @@ validate_jump_instr(nir_jump_instr *instr, validate_state *state)
       validate_assert(state, !state->impl->structured);
       validate_assert(state, instr->target == block->successors[1]);
       validate_assert(state, instr->else_target == block->successors[0]);
-      validate_src(&instr->condition, state, 0, 1);
+      validate_sized_src(&instr->condition, state, 0, 1);
       validate_assert(state, instr->target != NULL);
       validate_assert(state, instr->else_target != NULL);
       break;
@@ -1084,8 +1087,8 @@ validate_phi_src(nir_phi_instr *instr, nir_block *pred, validate_state *state)
    exec_list_validate(&instr->srcs);
    nir_foreach_phi_src(src, instr) {
       if (src->pred == pred) {
-         validate_src(&src->src, state, instr->def.bit_size,
-                      instr->def.num_components);
+         validate_sized_src(&src->src, state, instr->def.bit_size,
+                            instr->def.num_components);
          state->instr = NULL;
          return;
       }
@@ -1287,7 +1290,7 @@ validate_if(nir_if *if_stmt, validate_state *state)
    validate_assert(state, next_node->type == nir_cf_node_block);
 
    validate_assert(state, nir_src_is_if(&if_stmt->condition));
-   validate_src(&if_stmt->condition, state, 0, 1);
+   validate_sized_src(&if_stmt->condition, state, 0, 1);
 
    validate_assert(state, !exec_list_is_empty(&if_stmt->then_list));
    validate_assert(state, !exec_list_is_empty(&if_stmt->else_list));
