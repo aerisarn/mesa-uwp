@@ -172,15 +172,22 @@ validate_src_tag(nir_src *src, validate_state *state)
 }
 
 static void
+validate_if_src(nir_src *src, validate_state *state)
+{
+   validate_src_tag(src, state);
+   validate_assert(state, nir_src_parent_if(src) == state->if_stmt);
+   validate_assert(state, src->ssa != NULL);
+   validate_assert(state, src->ssa->num_components == 1);
+}
+
+static void
 validate_src(nir_src *src, validate_state *state)
 {
    /* Validate the tag first, so that nir_src_parent_instr is valid */
    validate_src_tag(src, state);
 
-   if (state->instr)
-      validate_assert(state, nir_src_parent_instr(src) == state->instr);
-   else
-      validate_assert(state, nir_src_parent_if(src) == state->if_stmt);
+   /* Source assumed to be instruction, use validate_if_src for if */
+   validate_assert(state, nir_src_parent_instr(src) == state->instr);
 
    validate_assert(state, src->ssa != NULL);
 }
@@ -1290,7 +1297,7 @@ validate_if(nir_if *if_stmt, validate_state *state)
    validate_assert(state, next_node->type == nir_cf_node_block);
 
    validate_assert(state, nir_src_is_if(&if_stmt->condition));
-   validate_sized_src(&if_stmt->condition, state, 0, 1);
+   validate_if_src(&if_stmt->condition, state);
 
    validate_assert(state, !exec_list_is_empty(&if_stmt->then_list));
    validate_assert(state, !exec_list_is_empty(&if_stmt->else_list));
