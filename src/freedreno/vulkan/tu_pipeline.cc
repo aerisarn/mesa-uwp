@@ -3692,9 +3692,9 @@ tu_pipeline_builder_parse_depth_stencil(
        (builder->graphics_state.rp->attachment_aspects &
         VK_IMAGE_ASPECT_DEPTH_BIT)) {
       pipeline->ds.raster_order_attachment_access =
-         ds_info->flags &
+         ds_info && (ds_info->flags &
          (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM |
-          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM);
+          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM));
    }
 }
 
@@ -3731,8 +3731,8 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
 
    if (builder->graphics_state.rp->attachment_aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       pipeline->output.raster_order_attachment_access =
-         blend_info->flags &
-         VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_ARM;
+         blend_info && (blend_info->flags &
+            VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_ARM);
    }
 }
 
