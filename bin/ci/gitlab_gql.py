@@ -438,7 +438,7 @@ def recurse_among_variables_space(var_graph) -> bool:
     return updated
 
 
-def get_job_final_definition(job_name, merged_yaml, project_path, sha):
+def print_job_final_definition(job_name, merged_yaml, project_path, sha):
     job = merged_yaml[job_name]
     variables = get_variables(job, merged_yaml, project_path, sha)
 
@@ -535,7 +535,7 @@ def main():
         merged_yaml = fetch_merged_yaml(
             gl_gql, {"projectPath": args.project_path, "sha": sha}
         )
-        get_job_final_definition(
+        print_job_final_definition(
             args.print_job_manifest, merged_yaml, args.project_path, sha
         )
 
