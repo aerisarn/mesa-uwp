@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from itertools import accumulate
 from os import getenv
 from pathlib import Path
+from subprocess import check_output
 from typing import Any, Iterable, Optional, Pattern, TypedDict, Union
 
 import yaml
@@ -471,7 +472,7 @@ def parse_args() -> Namespace:
         formatter_class=ArgumentDefaultsHelpFormatter,
         description="CLI and library with utility functions to debug jobs via Gitlab GraphQL",
         epilog=f"""Example:
-        {Path(__file__).name} --rev $(git rev-parse HEAD) --print-job-dag""",
+        {Path(__file__).name} --rev HEAD --print-job-dag""",
     )
     parser.add_argument("-pp", "--project-path", type=str, default="mesa/mesa")
     parser.add_argument("--sha", "--rev", type=str, required=True)
@@ -505,7 +506,10 @@ def parse_args() -> Namespace:
 def main():
     args = parse_args()
     gl_gql = GitlabGQL(token=args.gitlab_token)
-    args.iid = from_sha_to_pipeline_iid(gl_gql, {"projectPath": args.project_path, "sha": args.sha})
+
+    sha = check_output(['git', 'rev-parse', args.sha]).decode('ascii').strip()
+
+    args.iid = from_sha_to_pipeline_iid(gl_gql, {"projectPath": args.project_path, "sha": sha})
 
     if args.print_dag:
         dag = create_job_needs_dag(
@@ -519,16 +523,16 @@ def main():
     if args.print_merged_yaml:
         print(
             fetch_merged_yaml(
-                gl_gql, {"projectPath": args.project_path, "sha": args.sha}
+                gl_gql, {"projectPath": args.project_path, "sha": sha}
             )
         )
 
     if args.print_job_manifest:
         merged_yaml = fetch_merged_yaml(
-            gl_gql, {"projectPath": args.project_path, "sha": args.sha}
+            gl_gql, {"projectPath": args.project_path, "sha": sha}
         )
         get_job_final_definition(
-            args.print_job_manifest, merged_yaml, args.project_path, args.sha
+            args.print_job_manifest, merged_yaml, args.project_path, sha
         )
 
 
