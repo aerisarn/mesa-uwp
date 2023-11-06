@@ -472,10 +472,10 @@ def parse_args() -> Namespace:
         formatter_class=ArgumentDefaultsHelpFormatter,
         description="CLI and library with utility functions to debug jobs via Gitlab GraphQL",
         epilog=f"""Example:
-        {Path(__file__).name} --rev HEAD --print-job-dag""",
+        {Path(__file__).name} --print-job-dag""",
     )
     parser.add_argument("-pp", "--project-path", type=str, default="mesa/mesa")
-    parser.add_argument("--sha", "--rev", type=str, required=True)
+    parser.add_argument("--sha", "--rev", type=str, default='HEAD')
     parser.add_argument(
         "--regex",
         type=str,
