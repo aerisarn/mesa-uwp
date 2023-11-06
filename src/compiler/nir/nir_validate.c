@@ -215,10 +215,6 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
       validate_assert(state, src->swizzle[i] < num_components);
    }
 
-   for (unsigned i = num_instr_channels; i < NIR_MAX_VEC_COMPONENTS; i++) {
-      validate_assert(state, src->swizzle[i] < NIR_MAX_VEC_COMPONENTS);
-   }
-
    validate_src(&src->src, state, 0, 0);
 }
 
