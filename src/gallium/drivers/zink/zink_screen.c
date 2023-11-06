@@ -2879,6 +2879,7 @@ init_driver_workarounds(struct zink_screen *screen)
    /* these drivers can successfully do INVALID <-> LINEAR dri3 modifier swap */
    switch (screen->info.driver_props.driverID) {
    case VK_DRIVER_ID_MESA_TURNIP:
+   case VK_DRIVER_ID_MESA_VENUS:
       screen->driver_workarounds.can_do_invalid_linear_modifier = true;
       break;
    default:
