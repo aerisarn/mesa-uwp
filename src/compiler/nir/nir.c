@@ -2848,16 +2848,6 @@ nir_op_is_vec(nir_op op)
    }
 }
 
-bool
-nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
-                           unsigned channel)
-{
-   if (nir_op_infos[instr->op].input_sizes[src] > 0)
-      return channel < nir_op_infos[instr->op].input_sizes[src];
-
-   return channel < instr->def.num_components;
-}
-
 nir_component_mask_t
 nir_alu_instr_src_read_mask(const nir_alu_instr *instr, unsigned src)
 {

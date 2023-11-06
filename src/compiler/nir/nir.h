@@ -1575,10 +1575,6 @@ typedef struct nir_alu_instr {
 
 void nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src);
 
-/* is this source channel used? */
-bool
-nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
-                           unsigned channel);
 nir_component_mask_t
 nir_alu_instr_src_read_mask(const nir_alu_instr *instr, unsigned src);
 /**
@@ -1586,6 +1582,14 @@ nir_alu_instr_src_read_mask(const nir_alu_instr *instr, unsigned src);
  */
 unsigned
 nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src);
+
+/* is this source channel used? */
+static inline bool
+nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
+                           unsigned channel)
+{
+   return channel < nir_ssa_alu_instr_src_components(instr, src);
+}
 
 bool
 nir_alu_instr_is_comparison(const nir_alu_instr *instr);
