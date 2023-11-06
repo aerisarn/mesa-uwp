@@ -1,1 +1,2 @@
 dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.12,Crash
+dEQP-VK.api.copy_and_blit.copy_commands2.image_to_image.all_formats.color.2d_to_2d.r5g6b5_unorm_pack16.r16_sfloat.general_optimal,Fail

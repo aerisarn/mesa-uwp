@@ -32,6 +32,11 @@ echo "dEQP base version $DEQP_VERSION" > /deqp/version-log
 # patches.
 
 cts_commits_to_backport=(
+    # Take multiview into account for task shader inv. stats
+    22aa3f4c59f6e1d4daebd5a8c9c05bce6cd3b63b
+
+    # Remove illegal mesh shader query tests
+    2a87f7b25dc27188be0f0a003b2d7aef69d9002e
 )
 
 for commit in "${cts_commits_to_backport[@]}"
