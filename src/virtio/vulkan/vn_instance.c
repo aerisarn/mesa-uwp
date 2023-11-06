@@ -111,6 +111,27 @@ vn_instance_init_renderer_versions(struct vn_instance *instance)
    return VK_SUCCESS;
 }
 
+static void
+vn_instance_fini_ring(struct vn_instance *instance)
+{
+   mtx_destroy(&instance->ring.roundtrip_mutex);
+
+   vn_cs_encoder_fini(&instance->ring.upload);
+
+   uint32_t destroy_ring_data[4];
+   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
+      destroy_ring_data, sizeof(destroy_ring_data));
+   vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.id);
+   vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
+                             vn_cs_encoder_get_len(&local_enc));
+
+   vn_ring_fini(&instance->ring.ring);
+
+   mtx_destroy(&instance->ring.mutex);
+
+   vn_renderer_shmem_unref(instance->renderer, instance->ring.shmem);
+}
+
 static VkResult
 vn_instance_init_ring(struct vn_instance *instance)
 {
@@ -708,20 +729,8 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 fail:
    vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
 
-   if (instance->ring.shmem) {
-      uint32_t destroy_ring_data[4];
-      struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
-         destroy_ring_data, sizeof(destroy_ring_data));
-      vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.id);
-      vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
-                                vn_cs_encoder_get_len(&local_enc));
-
-      mtx_destroy(&instance->ring.roundtrip_mutex);
-      vn_cs_encoder_fini(&instance->ring.upload);
-      vn_renderer_shmem_unref(instance->renderer, instance->ring.shmem);
-      vn_ring_fini(&instance->ring.ring);
-      mtx_destroy(&instance->ring.mutex);
-   }
+   if (instance->ring.shmem)
+      vn_instance_fini_ring(instance);
 
    vn_renderer_shmem_pool_fini(instance->renderer,
                                &instance->reply_shmem_pool);
@@ -765,18 +774,7 @@ vn_DestroyInstance(VkInstance _instance,
    vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
    mtx_destroy(&instance->cs_shmem.mutex);
 
-   uint32_t destroy_ring_data[4];
-   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
-      destroy_ring_data, sizeof(destroy_ring_data));
-   vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.id);
-   vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
-                             vn_cs_encoder_get_len(&local_enc));
-
-   mtx_destroy(&instance->ring.roundtrip_mutex);
-   vn_cs_encoder_fini(&instance->ring.upload);
-   vn_ring_fini(&instance->ring.ring);
-   mtx_destroy(&instance->ring.mutex);
-   vn_renderer_shmem_unref(instance->renderer, instance->ring.shmem);
+   vn_instance_fini_ring(instance);
 
    vn_renderer_shmem_pool_fini(instance->renderer,
                                &instance->reply_shmem_pool);
