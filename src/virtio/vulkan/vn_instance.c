@@ -649,33 +649,33 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (!vn_icd_supports_api_version(
           instance->base.base.app_info.api_version)) {
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
-      goto fail;
+      goto out_mtx_destroy;
    }
 
    if (pCreateInfo->enabledLayerCount) {
       result = VK_ERROR_LAYER_NOT_PRESENT;
-      goto fail;
+      goto out_mtx_destroy;
    }
 
    result = vn_instance_init_renderer(instance);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto out_mtx_destroy;
 
    vn_cs_renderer_protocol_info_init(instance);
+
+   vn_renderer_shmem_pool_init(instance->renderer, &instance->cs_shmem.pool,
+                               8u << 20);
 
    vn_renderer_shmem_pool_init(instance->renderer,
                                &instance->reply_shmem_pool, 1u << 20);
 
    result = vn_instance_init_ring(instance);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto out_shmem_pool_fini;
 
    result = vn_instance_init_renderer_versions(instance);
    if (result != VK_SUCCESS)
-      goto fail;
-
-   vn_renderer_shmem_pool_init(instance->renderer, &instance->cs_shmem.pool,
-                               8u << 20);
+      goto out_ring_fini;
 
    VkInstanceCreateInfo local_create_info = *pCreateInfo;
    local_create_info.ppEnabledExtensionNames = NULL;
@@ -701,7 +701,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    result =
       vn_call_vkCreateInstance(instance, pCreateInfo, NULL, &instance_handle);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto out_ring_fini;
 
    driParseOptionInfo(&instance->available_dri_options, vn_dri_options,
                       ARRAY_SIZE(vn_dri_options));
@@ -726,18 +726,16 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    return VK_SUCCESS;
 
-fail:
-   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
+out_ring_fini:
+   vn_instance_fini_ring(instance);
 
-   if (instance->ring.shmem)
-      vn_instance_fini_ring(instance);
-
+out_shmem_pool_fini:
    vn_renderer_shmem_pool_fini(instance->renderer,
                                &instance->reply_shmem_pool);
+   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
+   vn_renderer_destroy(instance->renderer, alloc);
 
-   if (instance->renderer)
-      vn_renderer_destroy(instance->renderer, alloc);
-
+out_mtx_destroy:
    mtx_destroy(&instance->physical_device.mutex);
    mtx_destroy(&instance->ring_idx_mutex);
    mtx_destroy(&instance->cs_shmem.mutex);
@@ -771,13 +769,13 @@ vn_DestroyInstance(VkInstance _instance,
 
    vn_call_vkDestroyInstance(instance, _instance, NULL);
 
-   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
-   mtx_destroy(&instance->cs_shmem.mutex);
-
    vn_instance_fini_ring(instance);
 
    vn_renderer_shmem_pool_fini(instance->renderer,
                                &instance->reply_shmem_pool);
+
+   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
+   mtx_destroy(&instance->cs_shmem.mutex);
 
    vn_renderer_destroy(instance->renderer, alloc);
 

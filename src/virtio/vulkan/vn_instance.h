@@ -40,6 +40,12 @@ struct vn_instance {
 
    struct vn_renderer *renderer;
 
+   /* for VN_CS_ENCODER_STORAGE_SHMEM_POOL */
+   struct {
+      mtx_t mutex;
+      struct vn_renderer_shmem_pool pool;
+   } cs_shmem;
+
    struct vn_renderer_shmem_pool reply_shmem_pool;
 
    mtx_t ring_idx_mutex;
@@ -69,12 +75,6 @@ struct vn_instance {
     */
    uint32_t renderer_api_version;
    uint32_t renderer_version;
-
-   /* for VN_CS_ENCODER_STORAGE_SHMEM_POOL */
-   struct {
-      mtx_t mutex;
-      struct vn_renderer_shmem_pool pool;
-   } cs_shmem;
 
    struct {
       mtx_t mutex;
