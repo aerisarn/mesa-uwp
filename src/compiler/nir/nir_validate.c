@@ -219,14 +219,8 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 }
 
 static void
-validate_def(nir_def *def, validate_state *state,
-             unsigned bit_sizes, unsigned num_components)
+validate_def(nir_def *def, validate_state *state)
 {
-   if (bit_sizes)
-      validate_assert(state, def->bit_size & bit_sizes);
-   if (num_components)
-      validate_assert(state, def->num_components == num_components);
-
    validate_assert(state, def->index < state->impl->ssa_alloc);
    validate_assert(state, !BITSET_TEST(state->ssa_defs_found, def->index));
    BITSET_SET(state->ssa_defs_found, def->index);
@@ -301,7 +295,7 @@ validate_alu_instr(nir_alu_instr *instr, validate_state *state)
                                 dest_bit_size == 64);
    }
 
-   validate_def(&instr->def, state, 0, 0);
+   validate_def(&instr->def, state);
 }
 
 static void
@@ -421,7 +415,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
     * want to let other compiler components such as SPIR-V decide how big
     * pointers should be.
     */
-   validate_def(&instr->def, state, 0, 0);
+   validate_def(&instr->def, state);
 
    /* Certain modes cannot be used as sources for phi instructions because
     * way too many passes assume that they can always chase deref chains.
@@ -729,7 +723,11 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       else
          dest_bit_size = dest_bit_size ? dest_bit_size : bit_sizes;
 
-      validate_def(&instr->def, state, dest_bit_size, components_written);
+      validate_def(&instr->def, state);
+      validate_assert(state, instr->def.num_components == components_written);
+
+      if (dest_bit_size)
+         validate_assert(state, instr->def.bit_size & dest_bit_size);
    }
 
    if (!vectorized_intrinsic(instr))
@@ -885,7 +883,9 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
    if (instr->is_gather_implicit_lod)
       validate_assert(state, instr->op == nir_texop_tg4);
 
-   validate_def(&instr->def, state, 0, nir_tex_instr_dest_size(instr));
+   validate_def(&instr->def, state);
+   validate_assert(state, instr->def.num_components ==
+                             nir_tex_instr_dest_size(instr));
 
    unsigned bit_size = nir_alu_type_get_type_size(instr->dest_type);
    validate_assert(state,
@@ -942,7 +942,7 @@ validate_const_value(nir_const_value *val, unsigned bit_size,
 static void
 validate_load_const_instr(nir_load_const_instr *instr, validate_state *state)
 {
-   validate_def(&instr->def, state, 0, 0);
+   validate_def(&instr->def, state);
 
    for (unsigned i = 0; i < instr->def.num_components; i++)
       validate_const_value(&instr->value[i], instr->def.bit_size, false, state);
@@ -951,7 +951,7 @@ validate_load_const_instr(nir_load_const_instr *instr, validate_state *state)
 static void
 validate_ssa_undef_instr(nir_undef_instr *instr, validate_state *state)
 {
-   validate_def(&instr->def, state, 0, 0);
+   validate_def(&instr->def, state);
 }
 
 static void
@@ -962,7 +962,7 @@ validate_phi_instr(nir_phi_instr *instr, validate_state *state)
     * basic blocks, to avoid validating an SSA use before its definition.
     */
 
-   validate_def(&instr->def, state, 0, 0);
+   validate_def(&instr->def, state);
 
    exec_list_validate(&instr->srcs);
    validate_assert(state, exec_list_length(&instr->srcs) ==
