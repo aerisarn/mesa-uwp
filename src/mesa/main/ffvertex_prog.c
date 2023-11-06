@@ -1065,8 +1065,7 @@ static void build_fog( struct tnl_program *p )
       fog = load_input(p, VERT_ATTRIB_FOG, glsl_float_type());
       break;
    default:
-      assert(!"Bad fog mode in build_fog()");
-      break;
+      unreachable("Bad fog mode in build_fog()");
    }
 
    store_output_float(p, VARYING_SLOT_FOGC, fog);
