@@ -175,18 +175,6 @@ validate_src_tag(nir_src *src, validate_state *state)
 }
 
 static void
-validate_ssa_src(nir_src *src, validate_state *state,
-                 unsigned bit_sizes, unsigned num_components)
-{
-   validate_assert(state, src->ssa != NULL);
-
-   if (bit_sizes)
-      validate_assert(state, src->ssa->bit_size & bit_sizes);
-   if (num_components)
-      validate_assert(state, src->ssa->num_components == num_components);
-}
-
-static void
 validate_src(nir_src *src, validate_state *state,
              unsigned bit_sizes, unsigned num_components)
 {
@@ -198,7 +186,12 @@ validate_src(nir_src *src, validate_state *state,
    else
       validate_assert(state, nir_src_parent_if(src) == state->if_stmt);
 
-   validate_ssa_src(src, state, bit_sizes, num_components);
+   validate_assert(state, src->ssa != NULL);
+
+   if (bit_sizes)
+      validate_assert(state, src->ssa->bit_size & bit_sizes);
+   if (num_components)
+      validate_assert(state, src->ssa->num_components == num_components);
 }
 
 static void
