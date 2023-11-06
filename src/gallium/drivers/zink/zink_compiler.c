@@ -484,21 +484,6 @@ lower_pv_mode_gs_instr(nir_builder *b, nir_instr *instr, void *data)
    }
 }
 
-static unsigned int
-lower_pv_mode_vertices_for_prim(enum mesa_prim prim)
-{
-   switch (prim) {
-   case MESA_PRIM_POINTS:
-      return 1;
-   case MESA_PRIM_LINE_STRIP:
-      return 2;
-   case MESA_PRIM_TRIANGLE_STRIP:
-      return 3;
-   default:
-      unreachable("unsupported primitive for gs output");
-   }
-}
-
 static bool
 lower_pv_mode_gs(nir_shader *shader, unsigned prim)
 {
@@ -510,7 +495,7 @@ lower_pv_mode_gs(nir_shader *shader, unsigned prim)
    b = nir_builder_at(nir_before_impl(entry));
 
    state.primitive_vert_count =
-      lower_pv_mode_vertices_for_prim(shader->info.gs.output_primitive);
+      mesa_vertices_per_prim(shader->info.gs.output_primitive);
    state.ring_size = shader->info.gs.vertices_out;
 
    nir_foreach_variable_with_modes(var, shader, nir_var_shader_out) {
