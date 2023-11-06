@@ -337,7 +337,7 @@ def create_job_needs_dag(gl_gql: GitlabGQL, params, disable_cache: bool = True) 
 
 
 def filter_dag(dag: Dag, regex: Pattern) -> Dag:
-    jobs_with_regex: set[str] = {job for job in dag if regex.match(job)}
+    jobs_with_regex: set[str] = {job for job in dag if regex.fullmatch(job)}
     return Dag({job: data for job, data in dag.items() if job in sorted(jobs_with_regex)})
 
 

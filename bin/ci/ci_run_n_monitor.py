@@ -105,7 +105,7 @@ def monitor_pipeline(
         to_cancel = []
         for job in pipeline.jobs.list(all=True, sort="desc"):
             # target jobs
-            if target_jobs_regex.match(job.name):
+            if target_jobs_regex.fullmatch(job.name):
                 target_id = job.id
 
                 if stress and job.status in ["success", "failed"]:
