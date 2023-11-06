@@ -64,8 +64,7 @@ vn_device_memory_wait_alloc(struct vn_device *dev,
     * - mem alloc is done upon bo map or export
     * - mem import is done upon bo destroy
     */
-   if (vn_ring_get_seqno_status(&dev->instance->ring.ring,
-                                mem->bo_ring_seqno))
+   if (vn_ring_get_seqno_status(dev->instance->ring.ring, mem->bo_ring_seqno))
       return VK_SUCCESS;
 
    /* fine to false it here since renderer submission failure is fatal */

@@ -181,13 +181,29 @@ vn_ring_get_layout(size_t buf_size,
    layout->shmem_size = layout->extra_offset + layout->extra_size;
 }
 
-void
-vn_ring_init(struct vn_instance *instance,
-             struct vn_ring *ring,
-             const struct vn_ring_layout *layout,
-             void *shared)
+struct vn_ring *
+vn_ring_create(struct vn_instance *instance,
+               const struct vn_ring_layout *layout)
 {
-   memset(ring, 0, sizeof(*ring));
+   VN_TRACE_FUNC();
+
+   const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
+
+   struct vn_ring *ring = vk_zalloc(alloc, sizeof(*ring), VN_DEFAULT_ALIGN,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!ring)
+      return NULL;
+
+   ring->shmem =
+      vn_renderer_shmem_create(instance->renderer, layout->shmem_size);
+   if (!ring->shmem) {
+      if (VN_DEBUG(INIT))
+         vn_log(instance, "failed to allocate/map ring shmem");
+      vk_free(alloc, ring);
+      return NULL;
+   }
+
+   void *shared = ring->shmem->mmap_ptr;
    memset(shared, 0, layout->shmem_size);
 
    ring->instance = instance;
@@ -205,11 +221,15 @@ vn_ring_init(struct vn_instance *instance,
 
    list_inithead(&ring->submits);
    list_inithead(&ring->free_submits);
+
+   return ring;
 }
 
 void
-vn_ring_fini(struct vn_ring *ring)
+vn_ring_destroy(struct vn_ring *ring)
 {
+   VN_TRACE_FUNC();
+
    const VkAllocationCallbacks *alloc = &ring->instance->base.base.alloc;
 
    vn_ring_retire_submits(ring, ring->cur);
@@ -218,6 +238,8 @@ vn_ring_fini(struct vn_ring *ring)
    list_for_each_entry_safe(struct vn_ring_submit, submit,
                             &ring->free_submits, head)
       vk_free(alloc, submit);
+
+   vk_free(alloc, ring);
 }
 
 struct vn_ring_submit *

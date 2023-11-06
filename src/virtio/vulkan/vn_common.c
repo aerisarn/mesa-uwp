@@ -171,7 +171,7 @@ vn_relax_fini(struct vn_relax_state *state)
 struct vn_relax_state
 vn_relax_init(struct vn_instance *instance, const char *reason)
 {
-   struct vn_ring *ring = &instance->ring.ring;
+   struct vn_ring *ring = instance->ring.ring;
    struct vn_watchdog *watchdog = &instance->ring.watchdog;
    if (vn_watchdog_acquire(watchdog, true))
       vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
@@ -212,7 +212,7 @@ vn_relax(struct vn_relax_state *state)
       struct vn_instance *instance = state->instance;
       vn_log(instance, "stuck in %s wait with iter at %d", reason, *iter);
 
-      struct vn_ring *ring = &instance->ring.ring;
+      struct vn_ring *ring = instance->ring.ring;
       const uint32_t status = vn_ring_load_status(ring);
       if (status & VK_RING_STATUS_FATAL_BIT_MESA) {
          vn_log(instance, "aborting on ring fatal error at iter %d", *iter);

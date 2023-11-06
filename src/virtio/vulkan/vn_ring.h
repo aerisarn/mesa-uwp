@@ -61,6 +61,7 @@ struct vn_ring_submit {
 
 struct vn_ring {
    struct vn_instance *instance;
+   struct vn_renderer_shmem *shmem;
 
    uint32_t buffer_size;
    uint32_t buffer_mask;
@@ -77,14 +78,12 @@ vn_ring_get_layout(size_t buf_size,
                    size_t extra_size,
                    struct vn_ring_layout *layout);
 
-void
-vn_ring_init(struct vn_instance *instance,
-             struct vn_ring *ring,
-             const struct vn_ring_layout *layout,
-             void *shared);
+struct vn_ring *
+vn_ring_create(struct vn_instance *instance,
+               const struct vn_ring_layout *layout);
 
 void
-vn_ring_fini(struct vn_ring *ring);
+vn_ring_destroy(struct vn_ring *ring);
 
 struct vn_ring_submit *
 vn_ring_get_submit(struct vn_ring *ring, uint32_t shmem_count);

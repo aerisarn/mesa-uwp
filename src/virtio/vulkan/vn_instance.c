@@ -127,11 +127,9 @@ vn_instance_fini_ring(struct vn_instance *instance)
 
    vn_watchdog_fini(&instance->ring.watchdog);
 
-   vn_ring_fini(&instance->ring.ring);
-
    mtx_destroy(&instance->ring.mutex);
 
-   vn_renderer_shmem_unref(instance->renderer, instance->ring.shmem);
+   vn_ring_destroy(instance->ring.ring);
 }
 
 static VkResult
@@ -142,20 +140,13 @@ vn_instance_init_ring(struct vn_instance *instance)
    struct vn_ring_layout layout;
    vn_ring_get_layout(VN_INSTANCE_RING_SIZE, extra_size, &layout);
 
-   instance->ring.shmem =
-      vn_renderer_shmem_create(instance->renderer, layout.shmem_size);
-   if (!instance->ring.shmem) {
-      if (VN_DEBUG(INIT))
-         vn_log(instance, "failed to allocate/map ring shmem");
+   instance->ring.ring = vn_ring_create(instance, &layout);
+   if (!instance->ring.ring)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
+
+   instance->ring.id = (uintptr_t)instance->ring.ring;
 
    mtx_init(&instance->ring.mutex, mtx_plain);
-
-   struct vn_ring *ring = &instance->ring.ring;
-   vn_ring_init(instance, ring, &layout, instance->ring.shmem->mmap_ptr);
-
-   instance->ring.id = (uintptr_t)ring;
 
    vn_watchdog_init(&instance->ring.watchdog);
 
@@ -166,7 +157,7 @@ vn_instance_init_ring(struct vn_instance *instance)
    const struct VkRingCreateInfoMESA info = {
       .sType = VK_STRUCTURE_TYPE_RING_CREATE_INFO_MESA,
       .pNext = &monitor_info,
-      .resourceId = instance->ring.shmem->res_id,
+      .resourceId = instance->ring.ring->shmem->res_id,
       .size = layout.shmem_size,
       .idleTimeout = 5ull * 1000 * 1000,
       .headOffset = layout.head_offset,
@@ -399,7 +390,7 @@ vn_instance_submission_prepare(struct vn_instance *instance,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    submit->submit = vn_instance_submission_get_ring_submit(
-      &instance->ring.ring, cs, extra_shmem, direct);
+      instance->ring.ring, cs, extra_shmem, direct);
    if (!submit->submit) {
       vn_instance_submission_cleanup(instance, submit);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -444,7 +435,7 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
                                struct vn_renderer_shmem *extra_shmem,
                                uint32_t *ring_seqno)
 {
-   struct vn_ring *ring = &instance->ring.ring;
+   struct vn_ring *ring = instance->ring.ring;
 
    const bool direct = vn_instance_submission_can_direct(instance, cs);
    if (!direct && cs->storage_type == VN_CS_ENCODER_STORAGE_POINTER) {
@@ -543,7 +534,7 @@ vn_instance_submit_command(struct vn_instance *instance,
       submit->reply =
          VN_CS_DECODER_INITIALIZER(reply_ptr, submit->reply_size);
       if (submit->ring_seqno_valid)
-         vn_ring_wait_seqno(&instance->ring.ring, submit->ring_seqno);
+         vn_ring_wait_seqno(instance->ring.ring, submit->ring_seqno);
    }
 }
 

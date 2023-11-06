@@ -49,10 +49,9 @@ struct vn_instance {
    uint64_t ring_idx_used_mask;
 
    struct {
-      mtx_t mutex;
-      struct vn_renderer_shmem *shmem;
-      struct vn_ring ring;
+      struct vn_ring *ring;
       uint64_t id;
+      mtx_t mutex;
 
       struct vn_cs_encoder upload;
 
