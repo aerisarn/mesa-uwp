@@ -1309,20 +1309,11 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
       ctx->base.screen, &rsrc->base, modifier);
    struct panfrost_resource *tmp_rsrc = pan_resource(tmp_prsrc);
 
-   unsigned depth = rsrc->base.target == PIPE_TEXTURE_3D
-                       ? rsrc->base.depth0
-                       : rsrc->base.array_size;
-
-   struct pipe_box box = {0,    0, 0, rsrc->base.width0, rsrc->base.height0,
-                          depth};
-
    struct pipe_blit_info blit = {
       .dst.resource = &tmp_rsrc->base,
       .dst.format = tmp_rsrc->base.format,
-      .dst.box = box,
       .src.resource = &rsrc->base,
       .src.format = rsrc->base.format,
-      .src.box = box,
       .mask = util_format_get_mask(tmp_rsrc->base.format),
       .filter = PIPE_TEX_FILTER_NEAREST,
    };
@@ -1330,6 +1321,14 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
    for (int i = 0; i <= rsrc->base.last_level; i++) {
       if (BITSET_TEST(rsrc->valid.data, i)) {
          blit.dst.level = blit.src.level = i;
+
+         u_box_3d(0, 0, 0,
+                  u_minify(rsrc->base.width0, i),
+                  u_minify(rsrc->base.height0, i),
+                  util_num_layers(&rsrc->base, i),
+                  &blit.dst.box);
+         blit.src.box = blit.dst.box;
+
          panfrost_blit(&ctx->base, &blit);
       }
    }
