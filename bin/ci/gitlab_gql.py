@@ -522,22 +522,21 @@ def main():
 
         if args.regex:
             dag = filter_dag(dag, re.compile(args.regex))
+
         print_dag(dag)
 
-    if args.print_merged_yaml:
-        print(
-            fetch_merged_yaml(
-                gl_gql, {"projectPath": args.project_path, "sha": sha}
-            )
-        )
-
-    if args.print_job_manifest:
+    if args.print_merged_yaml or args.print_job_manifest:
         merged_yaml = fetch_merged_yaml(
             gl_gql, {"projectPath": args.project_path, "sha": sha}
         )
-        print_job_final_definition(
-            args.print_job_manifest, merged_yaml, args.project_path, sha
-        )
+
+        if args.print_merged_yaml:
+            print(merged_yaml)
+
+        if args.print_job_manifest:
+            print_job_final_definition(
+                args.print_job_manifest, merged_yaml, args.project_path, sha
+            )
 
 
 if __name__ == "__main__":
