@@ -184,8 +184,6 @@ validate_ssa_src(nir_src *src, validate_state *state,
       validate_assert(state, src->ssa->bit_size & bit_sizes);
    if (num_components)
       validate_assert(state, src->ssa->num_components == num_components);
-
-   /* TODO validate that the use is dominated by the definition */
 }
 
 static void
