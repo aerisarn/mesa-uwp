@@ -4731,7 +4731,7 @@ uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
 {
    ANV_FROM_HANDLE(anv_device_memory, memory, pInfo->memory);
 
-   assert(memory->bo->has_client_visible_address);
+   assert(memory->bo->alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS);
 
    return intel_48b_address(memory->bo->offset);
 }
@@ -4748,7 +4748,7 @@ anv_fill_buffer_surface_state(struct anv_device *device,
    isl_buffer_fill_state(&device->isl_dev, surface_state_ptr,
                          .address = anv_address_physical(address),
                          .mocs = isl_mocs(&device->isl_dev, usage,
-                                          address.bo && address.bo->is_external),
+                                          address.bo && anv_bo_is_external(address.bo)),
                          .size_B = range,
                          .format = format,
                          .swizzle = swizzle,

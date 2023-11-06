@@ -1360,7 +1360,7 @@ anv_bo_unmap_close(struct anv_device *device, struct anv_bo *bo)
 static void
 anv_bo_vma_free(struct anv_device *device, struct anv_bo *bo)
 {
-   if (bo->offset != 0 && !bo->has_fixed_address) {
+   if (bo->offset != 0 && !(bo->alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS)) {
       assert(bo->vma_heap != NULL);
       anv_vma_free(device, bo->vma_heap, bo->offset, bo->size);
    }
@@ -1408,7 +1408,6 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
       align = MAX2(2 * 1024 * 1024, align);
 
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
-      bo->has_fixed_address = true;
       bo->offset = intel_canonical_address(explicit_address);
    } else {
       bo->offset = anv_vma_alloc(device, bo->size, align, alloc_flags,
@@ -1514,9 +1513,6 @@ anv_device_alloc_bo(struct anv_device *device,
       .actual_size = actual_size,
       .flags = bo_flags,
       .alloc_flags = alloc_flags,
-      .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
-      .has_client_visible_address =
-         (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       .vram_only = nregions == 1 &&
                    regions[0] == device->physical->vram_non_mappable.region,
    };
@@ -1597,6 +1593,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
                            ANV_BO_ALLOC_SNOOPED |
                            ANV_BO_ALLOC_DEDICATED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
+   assert(alloc_flags & ANV_BO_ALLOC_EXTERNAL);
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
@@ -1632,8 +1629,8 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
                           "same host pointer imported two different ways");
       }
 
-      if (bo->has_client_visible_address !=
-          ((alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0)) {
+      if ((bo->alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) !=
+          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS)) {
          pthread_mutex_unlock(&cache->mutex);
          return vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported with and without buffer "
@@ -1661,10 +1658,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
          .map = host_ptr,
          .flags = bo_flags,
          .alloc_flags = alloc_flags,
-         .is_external = true,
          .from_host_ptr = true,
-         .has_client_visible_address =
-            (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
       VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
@@ -1725,8 +1719,8 @@ anv_device_import_bo(struct anv_device *device,
    }
 
    if (bo->refcount > 0) {
-      if (bo->has_client_visible_address !=
-          ((alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0)) {
+      if ((bo->alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) !=
+          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS)) {
          pthread_mutex_unlock(&cache->mutex);
          return vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported with and without buffer "
@@ -1749,10 +1743,7 @@ anv_device_import_bo(struct anv_device *device,
          .gem_handle = gem_handle,
          .refcount = 1,
          .offset = -1,
-         .is_external = true,
          .alloc_flags = alloc_flags,
-         .has_client_visible_address =
-            (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
       off_t size = lseek(fd, 0, SEEK_END);
@@ -1799,7 +1790,7 @@ anv_device_export_bo(struct anv_device *device,
     * to export it.  This is done based on external options passed into
     * anv_AllocateMemory.
     */
-   assert(bo->is_external);
+   assert(anv_bo_is_external(bo));
 
    int fd = anv_gem_handle_to_fd(device, bo->gem_handle);
    if (fd < 0)

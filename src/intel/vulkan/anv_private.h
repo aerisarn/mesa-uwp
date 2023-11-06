@@ -457,21 +457,18 @@ struct anv_bo {
 
    enum anv_bo_alloc_flags alloc_flags;
 
-   /** True if this BO may be shared with other processes */
-   bool is_external:1;
-
-   /** See also ANV_BO_ALLOC_FIXED_ADDRESS */
-   bool has_fixed_address:1;
-
    /** True if this BO wraps a host pointer */
    bool from_host_ptr:1;
-
-   /** See also ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS */
-   bool has_client_visible_address:1;
 
    /** True if this BO can only live in VRAM */
    bool vram_only:1;
 };
+
+static inline bool
+anv_bo_is_external(const struct anv_bo *bo)
+{
+   return bo->alloc_flags & ANV_BO_ALLOC_EXTERNAL;
+}
 
 static inline struct anv_bo *
 anv_bo_ref(struct anv_bo *bo)
@@ -1783,7 +1780,7 @@ anv_mocs(const struct anv_device *device,
          const struct anv_bo *bo,
          isl_surf_usage_flags_t usage)
 {
-   return isl_mocs(&device->isl_dev, usage, bo && bo->is_external);
+   return isl_mocs(&device->isl_dev, usage, bo && anv_bo_is_external(bo));
 }
 
 static inline uint32_t
