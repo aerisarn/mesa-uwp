@@ -494,7 +494,10 @@ def parse_args() -> Namespace:
         help="Print the resulting YAML for the specific SHA",
     )
     mutex_group_print.add_argument(
-        "--print-job-manifest", type=str, help="Print the resulting job data"
+        "--print-job-manifest",
+        metavar='JOB_NAME',
+        type=str,
+        help="Print the resulting job data"
     )
     parser.add_argument(
         "--gitlab-token-file",
