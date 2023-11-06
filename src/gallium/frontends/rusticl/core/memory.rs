@@ -1195,7 +1195,7 @@ impl Mem {
         lock: &'a mut MutexGuard<Mappings>,
         rw: RWFlags,
     ) -> CLResult<&'a PipeTransfer> {
-        if let Entry::Vacant(e) = lock.tx.entry(&dev) {
+        if let Entry::Vacant(e) = lock.tx.entry(dev) {
             let (tx, res) = if self.is_buffer() {
                 self.tx_raw_async(dev, rw)?
             } else {
