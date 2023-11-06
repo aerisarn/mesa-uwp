@@ -482,13 +482,18 @@ def parse_args() -> Namespace:
         required=False,
         help="Regex pattern for the job name to be considered",
     )
-    parser.add_argument("--print-dag", action="store_true", help="Print job needs DAG")
-    parser.add_argument(
+    mutex_group_print = parser.add_mutually_exclusive_group()
+    mutex_group_print.add_argument(
+        "--print-dag",
+        action="store_true",
+        help="Print job needs DAG",
+    )
+    mutex_group_print.add_argument(
         "--print-merged-yaml",
         action="store_true",
         help="Print the resulting YAML for the specific SHA",
     )
-    parser.add_argument(
+    mutex_group_print.add_argument(
         "--print-job-manifest", type=str, help="Print the resulting job data"
     )
     parser.add_argument(
