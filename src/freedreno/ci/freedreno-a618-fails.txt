@@ -1297,13 +1297,6 @@ dEQP-VK.api.maintenance3_check.support_count_uniform_buffer_dynamic_extra_bindin
 dEQP-VK.api.maintenance3_check.support_count_uniform_buffer_extra_bindings,Fail
 dEQP-VK.api.maintenance3_check.support_count_uniform_buffer_no_variable_size,Fail
 dEQP-VK.api.version_check.unavailable_entry_points,Fail
-dEQP-VK.pipeline.fast_linked_library.extended_dynamic_state.two_draws_dynamic.null_rasterization_state,Crash
-dEQP-VK.pipeline.monolithic.extended_dynamic_state.before_draw.null_rasterization_state,Crash
-dEQP-VK.pipeline.monolithic.extended_dynamic_state.two_draws_static.null_rasterization_state,Crash
-dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.before_good_static.null_rasterization_state,Crash
-dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.between_pipelines.null_rasterization_state,Crash
-dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.two_draws_dynamic.null_rasterization_state,Crash
-dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.two_draws_static.null_rasterization_state,Crash
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.32bit.line_list.indirect,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.32bit.line_list_with_adjacency.indirect,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.32bit.line_strip.draw,Fail
@@ -1447,8 +1440,6 @@ gmem-dEQP-VK.glsl.derivate.fwidthfine.dynamic_loop.vec2_highp,Crash
 gmem-dEQP-VK.glsl.derivate.fwidthfine.dynamic_switch.float_highp,Crash
 gmem-dEQP-VK.glsl.derivate.fwidthfine.dynamic_switch.vec2_highp,Crash
 gmem-dEQP-VK.glsl.derivate.fwidthfine.dynamic_switch.vec2_mediump,Crash
-gmem-dEQP-VK.pipeline.monolithic.extended_dynamic_state.two_draws_static.null_rasterization_state,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.before_good_static.null_rasterization_state,Crash
 gmem-dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_1.32bit.point_list.indirect,Fail
 gmem-dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_1.32bit.triangle_fan.draw,Fail
 gmem-dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_1.32bit.triangle_strip_with_adjacency.draw,Fail
@@ -1641,9 +1632,6 @@ dEQP-VK.api.maintenance3_check.support_count_uniform_buffer_extra_bindings_no_va
 dEQP-VK.api.maintenance3_check.support_count_uniform_texel_buffer_extra_bindings_no_variable_size,Fail
 dEQP-VK.api.maintenance3_check.support_count_uniform_texel_buffer_no_variable_size,Fail
 dEQP-VK.dynamic_rendering.primary_cmd_buff.basic.partial_binding_depth_stencil,Fail
-dEQP-VK.pipeline.fast_linked_library.extended_dynamic_state.before_good_static.null_rasterization_state,Crash
-dEQP-VK.pipeline.monolithic.extended_dynamic_state.two_draws_dynamic.null_rasterization_state,Crash
-dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.cmd_buffer_start.null_rasterization_state,Crash
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.64bit.line_list.draw,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.64bit.line_strip.draw,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.64bit.point_list.draw,Fail
@@ -1699,7 +1687,6 @@ gmem-dEQP-VK.glsl.derivate.dfdx.dynamic_if.vec4_mediump,Crash
 gmem-dEQP-VK.glsl.derivate.dfdxcoarse.dynamic_if.vec3_highp,Crash
 gmem-dEQP-VK.glsl.derivate.dfdxcoarse.dynamic_if.vec4_highp,Crash
 gmem-dEQP-VK.glsl.derivate.dfdyfine.dynamic_loop.vec2_highp,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.extended_dynamic_state.between_pipelines.null_rasterization_state,Crash
 gmem-dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_1.32bit.triangle_list.draw,Fail
 gmem-dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_1.64bit.triangle_fan.indirect,Fail
 gmem-dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_1.pgq_64bit_xfb_32bit.triangle_strip_with_adjacency.draw,Fail

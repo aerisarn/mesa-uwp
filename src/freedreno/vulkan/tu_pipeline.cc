@@ -4086,8 +4086,8 @@ tu_pipeline_builder_init_graphics(
 
    builder->rasterizer_discard =
       (builder->state & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) &&
-      builder->create_info->pRasterizationState->rasterizerDiscardEnable &&
-      !rasterizer_discard_dynamic;
+      !rasterizer_discard_dynamic &&
+      builder->create_info->pRasterizationState->rasterizerDiscardEnable;
 
    struct vk_render_pass_state rp_state = {};
    const struct vk_render_pass_state *driver_rp = NULL;
