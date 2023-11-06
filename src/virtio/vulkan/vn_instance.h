@@ -64,21 +64,7 @@ struct vn_instance {
       mtx_t roundtrip_mutex;
       uint64_t roundtrip_next;
 
-      /* Only one "waiting" thread may fulfill the "monitor" role at a time.
-       * Every "report_period_us" or longer, the waiting "monitor" thread
-       * tests the ring's ALIVE status, updates the "alive" atomic, and resets
-       * the ALIVE status for the next cycle. Waiting non-"monitor" threads,
-       * just check the "alive" atomic. The "monitor" role may be released and
-       * acquired by another waiting thread dynamically.
-       */
-      struct {
-         mtx_t mutex;
-         atomic_int threadid;
-         atomic_bool alive;
-
-         /* constant and non-zero after ring init, if monitoring is enabled */
-         uint32_t report_period_us;
-      } monitor;
+      struct vn_watchdog watchdog;
    } ring;
 
    /* Between the driver and the app, VN_MAX_API_VERSION is what we advertise

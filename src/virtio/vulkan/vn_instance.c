@@ -125,7 +125,7 @@ vn_instance_fini_ring(struct vn_instance *instance)
    vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
                              vn_cs_encoder_get_len(&local_enc));
 
-   mtx_destroy(&instance->ring.monitor.mutex);
+   vn_watchdog_fini(&instance->ring.watchdog);
 
    vn_ring_fini(&instance->ring.ring);
 
@@ -138,7 +138,7 @@ static VkResult
 vn_instance_init_ring(struct vn_instance *instance)
 {
    /* 32-bit seqno for renderer roundtrips */
-   const size_t extra_size = sizeof(uint32_t);
+   static const size_t extra_size = sizeof(uint32_t);
    struct vn_ring_layout layout;
    vn_ring_get_layout(VN_INSTANCE_RING_SIZE, extra_size, &layout);
 
@@ -157,16 +157,11 @@ vn_instance_init_ring(struct vn_instance *instance)
 
    instance->ring.id = (uintptr_t)ring;
 
-   instance->ring.monitor.report_period_us = 3000000;
-   mtx_init(&instance->ring.monitor.mutex, mtx_plain);
-
-   /* ring monitor should be alive at all time */
-   instance->ring.monitor.alive = true;
+   vn_watchdog_init(&instance->ring.watchdog);
 
    const struct VkRingMonitorInfoMESA monitor_info = {
       .sType = VK_STRUCTURE_TYPE_RING_MONITOR_INFO_MESA,
-      .maxReportingPeriodMicroseconds =
-         instance->ring.monitor.report_period_us,
+      .maxReportingPeriodMicroseconds = VN_WATCHDOG_REPORT_PERIOD_US,
    };
    const struct VkRingCreateInfoMESA info = {
       .sType = VK_STRUCTURE_TYPE_RING_CREATE_INFO_MESA,

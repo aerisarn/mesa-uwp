@@ -130,53 +130,54 @@ vn_extension_get_spec_version(const char *name)
    return index >= 0 ? vn_info_extension_get(index)->spec_version : 0;
 }
 
+static inline bool
+vn_watchdog_timeout(const struct vn_watchdog *watchdog)
+{
+   return !watchdog->alive;
+}
+
+static inline void
+vn_watchdog_release(struct vn_watchdog *watchdog)
+{
+   if (syscall(SYS_gettid) == watchdog->tid) {
+      watchdog->tid = 0;
+      mtx_unlock(&watchdog->mutex);
+   }
+}
+
 static bool
-vn_ring_monitor_acquire(struct vn_ring *ring)
+vn_watchdog_acquire(struct vn_watchdog *watchdog, bool alive)
 {
    pid_t tid = syscall(SYS_gettid);
-   if (!ring->instance->ring.monitor.threadid &&
-       tid != ring->instance->ring.monitor.threadid &&
-       mtx_trylock(&ring->instance->ring.monitor.mutex) == thrd_success) {
+   if (!watchdog->tid && tid != watchdog->tid &&
+       mtx_trylock(&watchdog->mutex) == thrd_success) {
       /* register as the only waiting thread that monitors the ring. */
-      ring->instance->ring.monitor.threadid = tid;
+      watchdog->tid = tid;
    }
-   return tid == ring->instance->ring.monitor.threadid;
+
+   if (tid != watchdog->tid)
+      return false;
+
+   watchdog->alive = alive;
+   return true;
 }
 
 void
-vn_ring_monitor_release(struct vn_ring *ring)
+vn_relax_fini(struct vn_relax_state *state)
 {
-   if (syscall(SYS_gettid) != ring->instance->ring.monitor.threadid)
-      return;
-
-   ring->instance->ring.monitor.threadid = 0;
-   mtx_unlock(&ring->instance->ring.monitor.mutex);
+   vn_watchdog_release(state->watchdog);
 }
 
 struct vn_relax_state
 vn_relax_init(struct vn_ring *ring, const char *reason)
 {
-   if (ring->instance->ring.monitor.report_period_us) {
-#ifndef NDEBUG
-      /* ensure minimum check period is greater than maximum renderer
-       * reporting period (with margin of safety to ensure no false
-       * positives).
-       *
-       * first_warn_time is pre-calculated based on parameters in vn_relax
-       * and must update together.
-       */
-      const uint32_t first_warn_time = 3481600;
-      const uint32_t safety_margin = 250000;
-      assert(first_warn_time - safety_margin >=
-             ring->instance->ring.monitor.report_period_us);
-#endif
-
-      if (vn_ring_monitor_acquire(ring))
-         vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
-   }
+   struct vn_watchdog *watchdog = &ring->instance->ring.watchdog;
+   if (vn_watchdog_acquire(watchdog, true))
+      vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
 
    return (struct vn_relax_state){
       .ring = ring,
+      .watchdog = watchdog,
       .iter = 0,
       .reason = reason,
    };
@@ -209,30 +210,28 @@ vn_relax(struct vn_relax_state *state)
     * another 2047 shorter sleeps)
     */
    if (unlikely(*iter % (1 << warn_order) == 0)) {
-      vn_log(NULL, "stuck in %s wait with iter at %d", reason, *iter);
+      struct vn_instance *instance = ring->instance;
+      vn_log(instance, "stuck in %s wait with iter at %d", reason, *iter);
 
+      struct vn_watchdog *watchdog = state->watchdog;
       const uint32_t status = vn_ring_load_status(ring);
       if (status & VK_RING_STATUS_FATAL_BIT_MESA) {
-         vn_log(NULL, "aborting on ring fatal error at iter %d", *iter);
+         vn_log(instance, "aborting on ring fatal error at iter %d", *iter);
          abort();
       }
 
-      if (ring->instance->ring.monitor.report_period_us) {
-         if (vn_ring_monitor_acquire(ring)) {
-            ring->instance->ring.monitor.alive =
-               status & VK_RING_STATUS_ALIVE_BIT_MESA;
-            vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
-         }
+      const bool alive = status & VK_RING_STATUS_ALIVE_BIT_MESA;
+      if (vn_watchdog_acquire(watchdog, alive))
+         vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
 
-         if (!ring->instance->ring.monitor.alive && !VN_DEBUG(NO_ABORT)) {
-            vn_log(NULL, "aborting on expired ring alive status at iter %d",
-                   *iter);
-            abort();
-         }
+      if (vn_watchdog_timeout(watchdog) && !VN_DEBUG(NO_ABORT)) {
+         vn_log(instance, "aborting on expired ring alive status at iter %d",
+                *iter);
+         abort();
       }
 
       if (*iter >= (1 << abort_order) && !VN_DEBUG(NO_ABORT)) {
-         vn_log(NULL, "aborting");
+         vn_log(instance, "aborting");
          abort();
       }
    }

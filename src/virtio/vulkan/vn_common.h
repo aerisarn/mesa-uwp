@@ -49,6 +49,7 @@
 #include "vn_entrypoints.h"
 
 #define VN_DEFAULT_ALIGN 8
+#define VN_WATCHDOG_REPORT_PERIOD_US 3000000
 
 #define VN_DEBUG(category) (unlikely(vn_env.debug & VN_DEBUG_##category))
 #define VN_PERF(category) (unlikely(vn_env.perf & VN_PERF_##category))
@@ -181,8 +182,28 @@ struct vn_env {
 };
 extern struct vn_env vn_env;
 
+/* Only one "waiting" thread may fulfill the "watchdog" role at a time. Every
+ * VN_WATCHDOG_REPORT_PERIOD_US or longer, the watchdog tests the ring's ALIVE
+ * status, updates the "alive" atomic, and resets the ALIVE status for the
+ * next cycle. Other waiting threads just check the "alive" atomic. The
+ * watchdog role may be released and acquired by another waiting thread
+ * dynamically.
+ *
+ * Examples of "waiting" are to wait for:
+ * - ring to reach a seqno
+ * - ring space to be released
+ * - sync primitives to signal
+ * - query result being available
+ */
+struct vn_watchdog {
+   mtx_t mutex;
+   atomic_int tid;
+   atomic_bool alive;
+};
+
 struct vn_relax_state {
    struct vn_ring *ring;
+   struct vn_watchdog *watchdog;
    uint32_t iter;
    const char *reason;
 };
@@ -254,8 +275,35 @@ vn_refcount_dec(struct vn_refcount *ref)
 uint32_t
 vn_extension_get_spec_version(const char *name);
 
-void
-vn_ring_monitor_release(struct vn_ring *ring);
+static inline void
+vn_watchdog_init(struct vn_watchdog *watchdog)
+{
+#ifndef NDEBUG
+   /* ensure minimum check period is greater than maximum renderer
+    * reporting period (with margin of safety to ensure no false
+    * positives).
+    *
+    * first_warn_time is pre-calculated based on parameters in vn_relax
+    * and must update together.
+    */
+   static const uint32_t first_warn_time = 3481600;
+   static const uint32_t safety_margin = 250000;
+   assert(first_warn_time - safety_margin >= VN_WATCHDOG_REPORT_PERIOD_US);
+#endif
+
+   mtx_init(&watchdog->mutex, mtx_plain);
+
+   watchdog->tid = 0;
+
+   /* initialized to be alive to avoid vn_watchdog_timout false alarm */
+   watchdog->alive = true;
+}
+
+static inline void
+vn_watchdog_fini(struct vn_watchdog *watchdog)
+{
+   mtx_destroy(&watchdog->mutex);
+}
 
 struct vn_relax_state
 vn_relax_init(struct vn_ring *ring, const char *reason);
@@ -263,11 +311,8 @@ vn_relax_init(struct vn_ring *ring, const char *reason);
 void
 vn_relax(struct vn_relax_state *state);
 
-static inline void
-vn_relax_fini(struct vn_relax_state *state)
-{
-   vn_ring_monitor_release(state->ring);
-}
+void
+vn_relax_fini(struct vn_relax_state *state);
 
 static_assert(sizeof(vn_object_id) >= sizeof(uintptr_t), "");
 
