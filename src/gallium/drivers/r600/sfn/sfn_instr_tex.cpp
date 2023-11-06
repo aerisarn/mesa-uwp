@@ -895,8 +895,6 @@ bool
 TexInstr::emit_tex_lod(nir_tex_instr *tex, Inputs& src, Shader& shader)
 {
    auto& vf = shader.value_factory();
-   auto sampler = get_sampler_id(tex->sampler_index, src.sampler_deref);
-   assert(!sampler.indirect && "Indirect sampler selection not yet supported");
 
    auto dst = shader.value_factory().dest_vec4(tex->def, pin_group);
 
