@@ -63,6 +63,7 @@ d3d12_video_bitstream_builder_h264::build_sps(const D3D12_VIDEO_ENCODER_PROFILE_
                                               size_t &                                    writtenBytes)
 {
    H264_SPEC_PROFILES profile_idc          = Convert12ToSpecH264Profiles(profile);
+   uint32_t           constraint_set1_flag = (profile_idc == H264_PROFILE_MAIN) ? 1 : 0;
    uint32_t           constraint_set3_flag = 0;
    uint32_t           level_idc            = 0;
    d3d12_video_encoder_convert_from_d3d12_level_h264(
@@ -105,6 +106,7 @@ d3d12_video_bitstream_builder_h264::build_sps(const D3D12_VIDEO_ENCODER_PROFILE_
    }
 
    H264_SPS spsStructure = { static_cast<uint32_t>(profile_idc),
+                             constraint_set1_flag,
                              constraint_set3_flag,
                              level_idc,
                              seq_parameter_set_id,
@@ -230,12 +232,13 @@ d3d12_video_bitstream_builder_h264::print_sps(const H264_SPS &sps)
 
    static_assert(sizeof(H264_SPS) ==
                  (sizeof(uint32_t) *
-                  19), "Update the number of uint32_t in struct in assert and add case below if structure changes");
+                  20), "Update the number of uint32_t in struct in assert and add case below if structure changes");
 
    // Declared fields from definition in d3d12_video_encoder_bitstream_builder_h264.h
 
    debug_printf("[D3D12 d3d12_video_bitstream_builder_h264] H264_SPS values below:\n");
    debug_printf("profile_idc: %d\n", sps.profile_idc);
+   debug_printf("constraint_set1_flag: %d\n", sps.constraint_set1_flag);
    debug_printf("constraint_set3_flag: %d\n", sps.constraint_set3_flag);
    debug_printf("level_idc: %d\n", sps.level_idc);
    debug_printf("seq_parameter_set_id: %d\n", sps.seq_parameter_set_id);

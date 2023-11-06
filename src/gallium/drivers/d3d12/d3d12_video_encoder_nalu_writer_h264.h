@@ -58,6 +58,7 @@ enum H264_NALU_TYPE
 struct H264_SPS
 {
    uint32_t profile_idc;
+   uint32_t constraint_set1_flag;
    uint32_t constraint_set3_flag;
    uint32_t level_idc;
    uint32_t seq_parameter_set_id;

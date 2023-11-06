@@ -49,7 +49,7 @@ d3d12_video_nalu_writer_h264::write_sps_bytes(d3d12_video_encoder_bitstream *pBi
 
    pBitstream->put_bits(8, pSPS->profile_idc);
    pBitstream->put_bits(1, 0);   // constraint_set0_flag
-   pBitstream->put_bits(1, 0);   // constraint_set1_flag
+   pBitstream->put_bits(1, pSPS->constraint_set1_flag);
    pBitstream->put_bits(1, 0);   // constraint_set2_flag
    pBitstream->put_bits(1, pSPS->constraint_set3_flag);
    pBitstream->put_bits(1, 0);   // constraint_set4_flag
