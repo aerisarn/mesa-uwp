@@ -112,7 +112,7 @@ static bool
 validate_assert_impl(validate_state *state, bool cond, const char *str,
                      const char *file, unsigned line)
 {
-   if (!cond)
+   if (unlikely(!cond))
       log_error(state, str, file, line);
    return cond;
 }
