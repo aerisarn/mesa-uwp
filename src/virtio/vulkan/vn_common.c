@@ -19,6 +19,7 @@
 #include "venus-protocol/vn_protocol_driver_info.h"
 #include "vk_enum_to_str.h"
 
+#include "vn_instance.h"
 #include "vn_ring.h"
 
 #define VN_RELAX_MIN_BASE_SLEEP_US (160)
@@ -133,28 +134,29 @@ static bool
 vn_ring_monitor_acquire(struct vn_ring *ring)
 {
    pid_t tid = syscall(SYS_gettid);
-   if (!ring->monitor.threadid && tid != ring->monitor.threadid &&
-       mtx_trylock(&ring->monitor.mutex) == thrd_success) {
+   if (!ring->instance->ring.monitor.threadid &&
+       tid != ring->instance->ring.monitor.threadid &&
+       mtx_trylock(&ring->instance->ring.monitor.mutex) == thrd_success) {
       /* register as the only waiting thread that monitors the ring. */
-      ring->monitor.threadid = tid;
+      ring->instance->ring.monitor.threadid = tid;
    }
-   return tid == ring->monitor.threadid;
+   return tid == ring->instance->ring.monitor.threadid;
 }
 
 void
 vn_ring_monitor_release(struct vn_ring *ring)
 {
-   if (syscall(SYS_gettid) != ring->monitor.threadid)
+   if (syscall(SYS_gettid) != ring->instance->ring.monitor.threadid)
       return;
 
-   ring->monitor.threadid = 0;
-   mtx_unlock(&ring->monitor.mutex);
+   ring->instance->ring.monitor.threadid = 0;
+   mtx_unlock(&ring->instance->ring.monitor.mutex);
 }
 
 struct vn_relax_state
 vn_relax_init(struct vn_ring *ring, const char *reason)
 {
-   if (ring->monitor.report_period_us) {
+   if (ring->instance->ring.monitor.report_period_us) {
 #ifndef NDEBUG
       /* ensure minimum check period is greater than maximum renderer
        * reporting period (with margin of safety to ensure no false
@@ -166,7 +168,7 @@ vn_relax_init(struct vn_ring *ring, const char *reason)
       const uint32_t first_warn_time = 3481600;
       const uint32_t safety_margin = 250000;
       assert(first_warn_time - safety_margin >=
-             ring->monitor.report_period_us);
+             ring->instance->ring.monitor.report_period_us);
 #endif
 
       if (vn_ring_monitor_acquire(ring))
@@ -215,13 +217,14 @@ vn_relax(struct vn_relax_state *state)
          abort();
       }
 
-      if (ring->monitor.report_period_us) {
+      if (ring->instance->ring.monitor.report_period_us) {
          if (vn_ring_monitor_acquire(ring)) {
-            ring->monitor.alive = status & VK_RING_STATUS_ALIVE_BIT_MESA;
+            ring->instance->ring.monitor.alive =
+               status & VK_RING_STATUS_ALIVE_BIT_MESA;
             vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
          }
 
-         if (!ring->monitor.alive && !VN_DEBUG(NO_ABORT)) {
+         if (!ring->instance->ring.monitor.alive && !VN_DEBUG(NO_ABORT)) {
             vn_log(NULL, "aborting on expired ring alive status at iter %d",
                    *iter);
             abort();

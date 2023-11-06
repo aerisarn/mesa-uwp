@@ -216,9 +216,6 @@ vn_ring_fini(struct vn_ring *ring)
    list_for_each_entry_safe(struct vn_ring_submit, submit,
                             &ring->free_submits, head)
       vk_free(alloc, submit);
-
-   if (ring->monitor.report_period_us)
-      mtx_destroy(&ring->monitor.mutex);
 }
 
 struct vn_ring_submit *
