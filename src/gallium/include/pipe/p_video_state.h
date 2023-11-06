@@ -41,6 +41,7 @@ extern "C" {
 #endif
 
 #define PIPE_H265_MAX_REFERENCES      15
+#define PIPE_H265_MAX_SLICES          128
 #define PIPE_AV1_MAX_REFERENCES       8
 #define PIPE_DEFAULT_FRAME_RATE_DEN   1
 #define PIPE_DEFAULT_FRAME_RATE_NUM   30
@@ -1167,9 +1168,9 @@ struct pipe_h265_picture_desc
    {
       bool slice_info_present;
       uint32_t slice_count;
-      uint32_t slice_data_size[128];
-      uint32_t slice_data_offset[128];
-      enum pipe_slice_buffer_placement_type slice_data_flag[128];
+      uint32_t slice_data_size[PIPE_H265_MAX_SLICES];
+      uint32_t slice_data_offset[PIPE_H265_MAX_SLICES];
+      enum pipe_slice_buffer_placement_type slice_data_flag[PIPE_H265_MAX_SLICES];
    } slice_parameter;
 };
 
