@@ -1056,3 +1056,41 @@ radv_check_trap_handler(struct radv_queue *queue)
 
    abort();
 }
+
+/* VK_EXT_device_fault */
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetDeviceFaultInfoEXT(VkDevice _device, VkDeviceFaultCountsEXT *pFaultCounts, VkDeviceFaultInfoEXT *pFaultInfo)
+{
+   VK_OUTARRAY_MAKE_TYPED(VkDeviceFaultAddressInfoEXT, out, pFaultInfo ? pFaultInfo->pAddressInfos : NULL,
+                          &pFaultCounts->addressInfoCount);
+   struct radv_winsys_gpuvm_fault_info fault_info = {0};
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   bool vm_fault_occurred = false;
+
+   /* Query if a GPUVM fault happened. */
+   vm_fault_occurred = radv_vm_fault_occurred(device, &fault_info);
+
+   /* No vendor-specific crash dumps yet. */
+   pFaultCounts->vendorInfoCount = 0;
+   pFaultCounts->vendorBinarySize = 0;
+
+   if (vm_fault_occurred) {
+      VkDeviceFaultAddressInfoEXT addr_fault_info = {
+         .reportedAddress = fault_info.addr,
+         .addressPrecision = 4096, /* 4K page granularity */
+      };
+
+      strncpy(pFaultInfo->description, "A GPUVM fault has been detected", sizeof(pFaultInfo->description));
+
+      if (device->physical_device->rad_info.gfx_level >= GFX10) {
+         addr_fault_info.addressType = G_00A130_RW(fault_info.status) ? VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_EXT
+                                                                      : VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_EXT;
+      } else {
+         /* Not sure how to get the access status on GFX6-9. */
+         addr_fault_info.addressType = VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_EXT;
+      }
+      vk_outarray_append_typed(VkDeviceFaultAddressInfoEXT, &out, elem) *elem = addr_fault_info;
+   }
+
+   return vk_outarray_status(&out);
+}
