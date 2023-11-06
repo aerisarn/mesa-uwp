@@ -12,6 +12,7 @@ from itertools import accumulate
 from os import getenv
 from pathlib import Path
 from subprocess import check_output
+from textwrap import dedent
 from typing import Any, Iterable, Optional, Pattern, TypedDict, Union
 
 import yaml
@@ -349,9 +350,10 @@ def print_dag(dag: Dag) -> None:
 
 
 def fetch_merged_yaml(gl_gql: GitlabGQL, params) -> dict[str, Any]:
-    gitlab_yml_file = get_project_root_dir() / ".gitlab-ci.yml"
-    content = Path(gitlab_yml_file).read_text().strip()
-    params["content"] = content
+    params["content"] = dedent("""\
+    include:
+      - local: .gitlab-ci.yml
+    """)
     raw_response = gl_gql.query("job_details.gql", params)
     if merged_yaml := raw_response["ciConfig"]["mergedYaml"]:
         return yaml.safe_load(merged_yaml)
