@@ -733,7 +733,7 @@ static struct ruvd_h265 get_h265_msg(struct ruvd_decoder *dec, struct pipe_video
 
    for (i = 0; i < 2; i++) {
       for (j = 0; j < 15; j++)
-         result.direct_reflist[i][j] = pic->RefPicList[i][j];
+         result.direct_reflist[i][j] = pic->RefPicList[0][i][j];
    }
 
    if (pic->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10) {
