@@ -202,8 +202,7 @@ struct vn_watchdog {
 };
 
 struct vn_relax_state {
-   struct vn_ring *ring;
-   struct vn_watchdog *watchdog;
+   struct vn_instance *instance;
    uint32_t iter;
    const char *reason;
 };
@@ -306,7 +305,7 @@ vn_watchdog_fini(struct vn_watchdog *watchdog)
 }
 
 struct vn_relax_state
-vn_relax_init(struct vn_ring *ring, const char *reason);
+vn_relax_init(struct vn_instance *instance, const char *reason);
 
 void
 vn_relax(struct vn_relax_state *state);

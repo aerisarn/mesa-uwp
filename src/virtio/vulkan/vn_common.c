@@ -165,19 +165,19 @@ vn_watchdog_acquire(struct vn_watchdog *watchdog, bool alive)
 void
 vn_relax_fini(struct vn_relax_state *state)
 {
-   vn_watchdog_release(state->watchdog);
+   vn_watchdog_release(&state->instance->ring.watchdog);
 }
 
 struct vn_relax_state
-vn_relax_init(struct vn_ring *ring, const char *reason)
+vn_relax_init(struct vn_instance *instance, const char *reason)
 {
-   struct vn_watchdog *watchdog = &ring->instance->ring.watchdog;
+   struct vn_ring *ring = &instance->ring.ring;
+   struct vn_watchdog *watchdog = &instance->ring.watchdog;
    if (vn_watchdog_acquire(watchdog, true))
       vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
 
    return (struct vn_relax_state){
-      .ring = ring,
-      .watchdog = watchdog,
+      .instance = instance,
       .iter = 0,
       .reason = reason,
    };
@@ -186,7 +186,6 @@ vn_relax_init(struct vn_ring *ring, const char *reason)
 void
 vn_relax(struct vn_relax_state *state)
 {
-   struct vn_ring *ring = state->ring;
    uint32_t *iter = &state->iter;
    const char *reason = state->reason;
 
@@ -210,16 +209,17 @@ vn_relax(struct vn_relax_state *state)
     * another 2047 shorter sleeps)
     */
    if (unlikely(*iter % (1 << warn_order) == 0)) {
-      struct vn_instance *instance = ring->instance;
+      struct vn_instance *instance = state->instance;
       vn_log(instance, "stuck in %s wait with iter at %d", reason, *iter);
 
-      struct vn_watchdog *watchdog = state->watchdog;
+      struct vn_ring *ring = &instance->ring.ring;
       const uint32_t status = vn_ring_load_status(ring);
       if (status & VK_RING_STATUS_FATAL_BIT_MESA) {
          vn_log(instance, "aborting on ring fatal error at iter %d", *iter);
          abort();
       }
 
+      struct vn_watchdog *watchdog = &instance->ring.watchdog;
       const bool alive = status & VK_RING_STATUS_ALIVE_BIT_MESA;
       if (vn_watchdog_acquire(watchdog, alive))
          vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);

@@ -102,7 +102,8 @@ vn_ring_wait_seqno(struct vn_ring *ring, uint32_t seqno)
    /* A renderer wait incurs several hops and the renderer might poll
     * repeatedly anyway.  Let's just poll here.
     */
-   struct vn_relax_state relax_state = vn_relax_init(ring, "ring seqno");
+   struct vn_relax_state relax_state =
+      vn_relax_init(ring->instance, "ring seqno");
    do {
       if (vn_ring_get_seqno_status(ring, seqno)) {
          vn_relax_fini(&relax_state);
@@ -139,7 +140,8 @@ vn_ring_wait_space(struct vn_ring *ring, uint32_t size)
       VN_TRACE_FUNC();
 
       /* see the reasoning in vn_ring_wait_seqno */
-      struct vn_relax_state relax_state = vn_relax_init(ring, "ring space");
+      struct vn_relax_state relax_state =
+         vn_relax_init(ring->instance, "ring space");
       do {
          vn_relax(&relax_state);
          if (vn_ring_has_space(ring, size, &head)) {
