@@ -14,6 +14,7 @@ deqp_args = [
     "--deqp-visibility=hidden"
 ]
 timeout = 180.0
+renderer_check = "zink.*RADV"
 
 [[piglit]]
 piglit_folder = "/piglit"
