@@ -76,16 +76,16 @@ static const struct vpe_debug_options debug_defaults = {
 };
 
 enum vpe_ip_level vpe_resource_parse_ip_version(
-    uint8_t mj, uint8_t mn, uint8_t rv)
+    uint8_t major, uint8_t minor, uint8_t rev_id)
 {
     enum vpe_ip_level ip_level = VPE_IP_LEVEL_UNKNOWN;
-    switch (VPE_VERSION(mj, mn, rv)) {
+    switch (VPE_VERSION(major, minor, rev_id)) {
 #if VPE_BUILD_1_X
 #if VPE_BUILD_1_0
     case VPE_VERSION(6, 1, 0):
         ip_level = VPE_IP_LEVEL_1_0;
-#endif
         break;
+#endif
 #endif
     default:
         ip_level = VPE_IP_LEVEL_UNKNOWN;
