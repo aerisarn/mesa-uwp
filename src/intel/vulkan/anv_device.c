@@ -1150,17 +1150,26 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          intel_engines_count(pdevice->engine_info, INTEL_ENGINE_CLASS_VIDEO);
       int g_count = 0;
       int c_count = 0;
-      if (debug_get_bool_option("INTEL_COMPUTE_CLASS", false))
-         c_count = intel_engines_count(pdevice->engine_info,
-                                       INTEL_ENGINE_CLASS_COMPUTE);
+      const bool can_use_non_render_engines =
+         pdevice->info.kmd_type == INTEL_KMD_TYPE_XE || pdevice->has_vm_control;
+      if (debug_get_bool_option("INTEL_COMPUTE_CLASS", false)) {
+         if (!can_use_non_render_engines)
+            mesa_logw("cannot initialize compute engine, no vm control.");
+         else
+            c_count = intel_engines_count(pdevice->engine_info,
+                                          INTEL_ENGINE_CLASS_COMPUTE);
+      }
       enum intel_engine_class compute_class =
          c_count < 1 ? INTEL_ENGINE_CLASS_RENDER : INTEL_ENGINE_CLASS_COMPUTE;
 
       int blit_count = 0;
       if (debug_get_bool_option("INTEL_COPY_CLASS", false) &&
           pdevice->info.verx10 >= 125) {
-         blit_count = intel_engines_count(pdevice->engine_info,
-                                          INTEL_ENGINE_CLASS_COPY);
+         if (!can_use_non_render_engines)
+            mesa_logw("cannot initialize blitter engine, no vm control.");
+         else
+            blit_count = intel_engines_count(pdevice->engine_info,
+                                             INTEL_ENGINE_CLASS_COPY);
       }
 
       anv_override_engine_counts(&gc_count, &g_count, &c_count, &v_count);
