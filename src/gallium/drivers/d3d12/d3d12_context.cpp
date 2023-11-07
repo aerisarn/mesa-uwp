@@ -2044,29 +2044,69 @@ d3d12_clear_render_target(struct pipe_context *pctx,
                                    D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_apply_resource_states(ctx, false);
 
-   enum pipe_format format = psurf->texture->format;
+   enum pipe_format format = psurf->format;
    float clear_color[4];
+   bool clear_fallback = false;
 
    if (util_format_is_pure_uint(format)) {
-      for (int c = 0; c < 4; ++c)
+      for (int c = 0; c < 4 && !clear_fallback; ++c) {
          clear_color[c] = color->ui[c];
+         clear_fallback = (uint32_t)clear_color[c] != color->ui[c];
+      }
    } else if (util_format_is_pure_sint(format)) {
-      for (int c = 0; c < 4; ++c)
+      for (int c = 0; c < 4 && !clear_fallback; ++c) {
          clear_color[c] = color->i[c];
+         clear_fallback = (int32_t)clear_color[c] != color->i[c];
+      }
    } else {
       for (int c = 0; c < 4; ++c)
          clear_color[c] = color->f[c];
    }
 
-   if (!(util_format_colormask(util_format_description(psurf->texture->format)) &
-       PIPE_MASK_A))
-      clear_color[3] = 1.0f;
+   if (clear_fallback) {
+      util_blitter_save_blend(ctx->blitter, ctx->gfx_pipeline_state.blend);
+      util_blitter_save_depth_stencil_alpha(ctx->blitter, ctx->gfx_pipeline_state.zsa);
+      util_blitter_save_vertex_elements(ctx->blitter, ctx->gfx_pipeline_state.ves);
+      util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
+      util_blitter_save_rasterizer(ctx->blitter, ctx->gfx_pipeline_state.rast);
+      util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
+      util_blitter_save_geometry_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_GEOMETRY]);
+      util_blitter_save_tessctrl_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_TESS_CTRL]);
+      util_blitter_save_tesseval_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]);
 
-   D3D12_RECT rect = { (int)dstx, (int)dsty,
-                       (int)dstx + (int)width,
-                       (int)dsty + (int)height };
-   ctx->cmdlist->ClearRenderTargetView(surf->desc_handle.cpu_handle,
-                                       clear_color, 1, &rect);
+      util_blitter_save_framebuffer(ctx->blitter, &ctx->fb);
+      util_blitter_save_viewport(ctx->blitter, ctx->viewport_states);
+      util_blitter_save_scissor(ctx->blitter, ctx->scissor_states);
+      util_blitter_save_fragment_sampler_states(ctx->blitter,
+                                                ctx->num_samplers[PIPE_SHADER_FRAGMENT],
+                                                (void **)ctx->samplers[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_fragment_sampler_views(ctx->blitter,
+                                               ctx->num_sampler_views[PIPE_SHADER_FRAGMENT],
+                                               ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_fragment_constant_buffer_slot(ctx->blitter, ctx->cbufs[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vbs);
+      util_blitter_save_sample_mask(ctx->blitter, ctx->gfx_pipeline_state.sample_mask, 0);
+      util_blitter_save_so_targets(ctx->blitter, ctx->gfx_pipeline_state.num_so_targets, ctx->so_targets);
+
+      union pipe_color_union local_color;
+      memcpy(&local_color, color, sizeof(local_color));
+      if (!(util_format_colormask(util_format_description(psurf->format)) & PIPE_MASK_A)) {
+         assert(!util_format_is_float(psurf->format));
+         local_color.ui[3] = 1;
+      }
+      util_blitter_clear_render_target(ctx->blitter, psurf, &local_color, dstx, dsty, width, height);
+   } else {
+      if (!(util_format_colormask(util_format_description(psurf->format)) &
+            PIPE_MASK_A))
+         clear_color[3] = 1.0f;
+
+      D3D12_RECT rect = { (int)dstx, (int)dsty,
+                          (int)dstx + (int)width,
+                          (int)dsty + (int)height };
+      ctx->cmdlist->ClearRenderTargetView(surf->desc_handle.cpu_handle,
+                                          clear_color, 1, &rect);
+   }
 
    d3d12_batch_reference_surface_texture(d3d12_current_batch(ctx), surf);
 
