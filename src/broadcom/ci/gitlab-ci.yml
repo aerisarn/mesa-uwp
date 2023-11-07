@@ -62,7 +62,6 @@
   stage: broadcom
   retry: !reference [.scheduled_pipeline-rules, retry]
   rules:
-    - !reference [.never-post-merge-rules, rules]
     - !reference [.igalia-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - !reference [.broadcom-common-manual-rules, rules]
