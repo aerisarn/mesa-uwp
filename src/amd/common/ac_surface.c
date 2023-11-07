@@ -3093,8 +3093,9 @@ bool ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
             surf->total_size = surf->surf_size = surf->u.gfx9.surf_slice_size * slices;
          }
       }
+
       surf->u.gfx9.surf_offset = offset;
-      if (surf->u.gfx9.zs.stencil_offset)
+      if (surf->has_stencil)
          surf->u.gfx9.zs.stencil_offset += offset;
    } else {
       if (pitch) {
