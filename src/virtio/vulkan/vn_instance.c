@@ -291,14 +291,7 @@ vn_instance_submission_get_cs(struct vn_instance_submission *submit,
    if (direct)
       return cs;
 
-   VkCommandStreamDescriptionMESA local_descs[8];
-   VkCommandStreamDescriptionMESA *descs = local_descs;
-   if (cs->buffer_count > ARRAY_SIZE(local_descs)) {
-      descs =
-         malloc(sizeof(VkCommandStreamDescriptionMESA) * cs->buffer_count);
-      if (!descs)
-         return NULL;
-   }
+   STACK_ARRAY(VkCommandStreamDescriptionMESA, descs, cs->buffer_count);
 
    uint32_t desc_count = 0;
    for (uint32_t i = 0; i < cs->buffer_count; i++) {
@@ -318,8 +311,7 @@ vn_instance_submission_get_cs(struct vn_instance_submission *submit,
    if (exec_size > sizeof(submit->indirect.data)) {
       exec_data = malloc(exec_size);
       if (!exec_data) {
-         if (descs != local_descs)
-            free(descs);
+         STACK_ARRAY_FINISH(descs);
          return NULL;
       }
    }
@@ -331,8 +323,7 @@ vn_instance_submission_get_cs(struct vn_instance_submission *submit,
                                          descs, NULL, 0, NULL, 0);
    vn_cs_encoder_commit(&submit->indirect.cs);
 
-   if (descs != local_descs)
-      free(descs);
+   STACK_ARRAY_FINISH(descs);
 
    return &submit->indirect.cs;
 }
