@@ -280,7 +280,7 @@ etna_submit_rs_state(struct etna_context *ctx,
 }
 
 /* Generate clear command for a surface (non-fast clear case) */
-void
+static void
 etna_rs_gen_clear_surface(struct etna_context *ctx, struct etna_surface *surf,
                           uint64_t clear_value)
 {
