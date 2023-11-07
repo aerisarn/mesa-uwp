@@ -1694,6 +1694,8 @@ d3d12_set_shader_buffers(struct pipe_context *pctx,
          pipe_resource_reference(&slot->buffer, buffers[i].buffer);
          slot->buffer_offset = buffers[i].buffer_offset;
          slot->buffer_size = buffers[i].buffer_size;
+         util_range_add(buffers[i].buffer, &d3d12_resource(buffers[i].buffer)->valid_buffer_range,
+                        buffers[i].buffer_offset, buffers[i].buffer_size);
          d3d12_increment_ssbo_bind_count(ctx, shader, d3d12_resource(buffers[i].buffer));
       } else
          memset(slot, 0, sizeof(*slot));
@@ -1797,6 +1799,10 @@ d3d12_set_shader_images(struct pipe_context *pctx,
             /* Can't use D3D casting, have to use shader lowering instead */
             ctx->image_view_emulation_formats[shader][i] =
                get_shader_image_emulation_format(images[i].resource->format);
+         }
+         if (images[i].resource->target == PIPE_BUFFER) {
+            util_range_add(images[i].resource, &d3d12_resource(images[i].resource)->valid_buffer_range,
+                           images[i].u.buf.offset, images[i].u.buf.size);
          }
       } else
          memset(slot, 0, sizeof(*slot));
