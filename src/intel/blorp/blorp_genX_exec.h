@@ -2380,6 +2380,7 @@ xy_aux_mode(const struct brw_blorp_surface_info *info)
    switch (info->aux_usage) {
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_FCV_CCS_E:
+   case ISL_AUX_USAGE_STC_CCS:
       return XY_CCS_E;
    case ISL_AUX_USAGE_NONE:
       return XY_NONE;
@@ -2476,7 +2477,9 @@ blorp_xy_block_copy_blt(struct blorp_batch *batch,
       blt.DestinationMipTailStartLOD = dst_surf->miptail_start_level;
       blt.DestinationHorizontalAlign = isl_encode_halign(dst_align.width);
       blt.DestinationVerticalAlign = isl_encode_valign(dst_align.height);
-      blt.DestinationDepthStencilResource = false;
+      /* XY_BLOCK_COPY_BLT only supports AUX_CCS. */
+      blt.DestinationDepthStencilResource =
+         params->dst.aux_usage == ISL_AUX_USAGE_STC_CCS;
       blt.DestinationTargetMemory =
          params->dst.addr.local_hint ? XY_MEM_LOCAL : XY_MEM_SYSTEM;
 
@@ -2511,7 +2514,9 @@ blorp_xy_block_copy_blt(struct blorp_batch *batch,
       blt.SourceMipTailStartLOD = src_surf->miptail_start_level;
       blt.SourceHorizontalAlign = isl_encode_halign(src_align.width);
       blt.SourceVerticalAlign = isl_encode_valign(src_align.height);
-      blt.SourceDepthStencilResource = false;
+      /* XY_BLOCK_COPY_BLT only supports AUX_CCS. */
+      blt.SourceDepthStencilResource =
+         params->src.aux_usage == ISL_AUX_USAGE_STC_CCS;
       blt.SourceTargetMemory =
          params->src.addr.local_hint ? XY_MEM_LOCAL : XY_MEM_SYSTEM;
 
@@ -2594,7 +2599,9 @@ blorp_xy_fast_color_blit(struct blorp_batch *batch,
       blt.DestinationMipTailStartLOD = dst_surf->miptail_start_level;
       blt.DestinationHorizontalAlign = isl_encode_halign(dst_align.width);
       blt.DestinationVerticalAlign = isl_encode_valign(dst_align.height);
-      blt.DestinationDepthStencilResource = false;
+      /* XY_FAST_COLOR_BLT only supports AUX_CCS. */
+      blt.DestinationDepthStencilResource =
+         params->dst.aux_usage == ISL_AUX_USAGE_STC_CCS;
       blt.DestinationTargetMemory =
          params->dst.addr.local_hint ? XY_MEM_LOCAL : XY_MEM_SYSTEM;
 
