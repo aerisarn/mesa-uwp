@@ -1,6 +1,7 @@
 #include <string.h>
 #include <math.h>
 #include "color_bg.h"
+#include "vpe_priv.h"
 
 struct csc_vector {
     float x;
@@ -134,6 +135,35 @@ static bool bg_csc(struct vpe_color *bg_color, enum color_space cs)
     return output_is_clipped;
 }
 
+static inline bool is_global_bg_blend_applied(struct stream_ctx *stream_ctx) {
+
+    return (stream_ctx->stream.blend_info.blending)  &&
+        (stream_ctx->stream.blend_info.global_alpha) &&
+        (stream_ctx->stream.blend_info.global_alpha_value != 1.0);
+}
+
+/*
+    In order to support background color fill correctly, we need to do studio -> full range conversion
+    before the blend block. However, there is also a requirement for HDR output to be blended in linear space.
+    Hence, if we have PQ out and studio range, we need to make sure no blenidng will occur. Othewise the job
+    is invalid.
+
+*/
+static enum vpe_status is_valid_blend(const struct vpe_priv *vpe_priv, struct vpe_color *bg_color) {
+
+    enum vpe_status status = VPE_STATUS_OK;
+    const struct vpe_color_space *vcs = &vpe_priv->output_ctx.surface.cs;
+    struct stream_ctx *stream_ctx = vpe_priv->stream_ctx;  //Only need to check the first stream.
+
+    if ((vcs->range == VPE_COLOR_RANGE_STUDIO) &&
+        (vcs->tf == VPE_TF_PQ) &&
+        ((stream_ctx->stream.surface_info.cs.encoding == VPE_PIXEL_ENCODING_RGB) ||
+            is_global_bg_blend_applied(stream_ctx)))
+        status = VPE_STATUS_BG_COLOR_OUT_OF_RANGE;
+
+    return status;
+}
+
 struct gamma_coefs {
     float a0;
     float a1;
@@ -257,6 +287,8 @@ static bool is_rgb_limited(enum color_space cs)
     return (cs == COLOR_SPACE_SRGB_LIMITED || cs == COLOR_SPACE_2020_RGB_LIMITEDRANGE);
 }
 
+// To understand the logic for background color conversion,
+// please refer to vpe_update_output_gamma_sequence in color.c
 void vpe_bg_color_convert(
     enum color_space output_cs, struct transfer_func *output_tf, struct vpe_color *bg_color)
 {
@@ -305,7 +337,7 @@ void vpe_bg_color_convert(
 
     // input is [0-0xffff]
     // convert bg color to RGB full range for use inside pipe
-    if (bg_color->is_ycbcr || is_rgb_limited(bgcolor_cs))
+    if (bg_color->is_ycbcr)
         bg_csc(bg_color, bgcolor_cs);
 
     if (output_tf->type == TF_TYPE_DISTRIBUTED_POINTS) {
@@ -315,16 +347,7 @@ void vpe_bg_color_convert(
 
         // de-gam
         switch (output_tf->tf) {
-        case TRANSFER_FUNC_SRGB:
-        case TRANSFER_FUNC_BT709:
-        case TRANSFER_FUNC_BT1886:
-            compute_degam(output_tf->tf, (double)bg_color->rgba.r, &degam_r, true);
-            compute_degam(output_tf->tf, (double)bg_color->rgba.g, &degam_g, true);
-            compute_degam(output_tf->tf, (double)bg_color->rgba.b, &degam_b, true);
-            bg_color->rgba.r = (float)degam_r;
-            bg_color->rgba.g = (float)degam_g;
-            bg_color->rgba.b = (float)degam_b;
-            break;
+      
         case TRANSFER_FUNC_PQ2084:
             compute_depq((double)bg_color->rgba.r, &degam_r, true);
             compute_depq((double)bg_color->rgba.g, &degam_g, true);
@@ -333,7 +356,11 @@ void vpe_bg_color_convert(
             bg_color->rgba.g = (float)degam_g;
             bg_color->rgba.b = (float)degam_b;
             break;
+        case TRANSFER_FUNC_SRGB:
+        case TRANSFER_FUNC_BT709:
+        case TRANSFER_FUNC_BT1886:
         case TRANSFER_FUNC_LINEAR_0_125:
+        case TRANSFER_FUNC_LINEAR_0_1:
             break;
         default:
             VPE_ASSERT(0);
@@ -343,15 +370,18 @@ void vpe_bg_color_convert(
 
     // for TF_TYPE_BYPASS, bg color should be programmed to mpc as linear
 }
+
 enum vpe_status vpe_bg_color_outside_cs_gamut(
-    const struct vpe_color_space *vcs, struct vpe_color *bg_color)
+    const struct vpe_priv *vpe_priv, struct vpe_color *bg_color)
 {
     enum color_space         cs;
     enum color_transfer_func tf;
     struct vpe_color         bg_color_copy = *bg_color;
+    const struct vpe_color_space *vcs      = &vpe_priv->output_ctx.surface.cs;
+
     vpe_color_get_color_space_and_tf(vcs, &cs, &tf);
 
-    if (is_rgb_limited(cs) || (bg_color->is_ycbcr)) {
+    if ((bg_color->is_ycbcr)) {
         // using the bg_color_copy instead as bg_csc will modify it
         // we should not do modification in checking stage
         // otherwise validate_cached_param() will fail
@@ -360,4 +390,17 @@ enum vpe_status vpe_bg_color_outside_cs_gamut(
         }
     }
     return VPE_STATUS_OK;
+}
+
+// These two checks are only neccessary for VPE1.0 and contain alot of quirks to work around VPE 1.0 limitations.
+enum vpe_status vpe_is_valid_bg_color(const struct vpe_priv *vpe_priv, struct vpe_color *bg_color) {
+
+    enum vpe_status status = VPE_STATUS_OK;
+
+    status = is_valid_blend(vpe_priv, bg_color);
+
+    if (status == VPE_STATUS_OK)
+        status = vpe_bg_color_outside_cs_gamut(vpe_priv, bg_color);
+
+    return status;
 }

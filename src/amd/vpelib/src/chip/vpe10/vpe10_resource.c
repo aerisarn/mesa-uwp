@@ -830,7 +830,6 @@ int32_t vpe10_program_backend(
         cdc->funcs->program_global_sync(cdc, VPE10_CDC_VUPDATE_OFFSET_DEFAULT,
             VPE10_CDC_VUPDATE_WIDTH_DEFAULT, VPE10_CDC_VREADY_OFFSET_DEFAULT);
 
-        mpc->funcs->program_output_csc(mpc, surface_info->format, output_ctx->cs, NULL);
         mpc->funcs->set_output_transfer_func(mpc, output_ctx);
         // program shaper, 3dlut and 1dlut in MPC for after blend
         // Note: cannot program both before and after blend CM

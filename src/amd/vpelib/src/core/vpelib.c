@@ -343,7 +343,7 @@ enum vpe_status vpe_check_support(
         vpe_cache_tone_map_params(&vpe_priv->stream_ctx[i], param);
     }
 
-    if (status == VPE_STATUS_OK) {
+    if (status == VPE_STATUS_OK) {  
         // output checking - check per asic support
         status = vpe_check_output_support(vpe, param);
         if (status != VPE_STATUS_OK) {
@@ -430,7 +430,7 @@ enum vpe_status vpe_check_support(
         // if the bg_color support is false, there is a flag to verify if the bg_color falls in the
         // output gamut
         if (!vpe_priv->pub.caps->bg_color_check_support) {
-            status = vpe_bg_color_outside_cs_gamut(&output_ctx->surface.cs, &output_ctx->bg_color);
+            status = vpe_is_valid_bg_color(vpe_priv, &output_ctx->bg_color);
             if (status != VPE_STATUS_OK) {
                 vpe_log(
                     "failed in checking the background color versus the output color space %d\n",
@@ -500,28 +500,6 @@ static bool validate_cached_param(struct vpe_priv *vpe_priv, const struct vpe_bu
 
     if (memcmp(&output_ctx->surface, &param->dst_surface, sizeof(struct vpe_surface_info)))
         return false;
-
-    return true;
-}
-
-static bool validate_color_pipeline(struct vpe_priv *vpe_priv, const struct vpe_build_param *param)
-{
-    uint32_t           stream_idx;
-    struct stream_ctx *stream_ctx;
-    struct output_ctx *output_ctx;
-
-    output_ctx = &vpe_priv->output_ctx;
-
-    /* For BG color, we need to make sure degamm / regamm is not bypass,
-     * as we want to have input in the range of 0-1 in mpc,
-     * since mpc only allows 0-1 range for BG color
-     */
-    for (stream_idx = 0; stream_idx < param->num_streams; stream_idx++) {
-        stream_ctx = &vpe_priv->stream_ctx[stream_idx];
-        if (output_ctx->output_tf->type == TF_TYPE_BYPASS &&
-            stream_ctx->input_tf->type == TF_TYPE_BYPASS)
-            return false;
-    }
 
     return true;
 }
@@ -622,9 +600,7 @@ enum vpe_status vpe_build_commands(
             vpe_log("failed updating whitepoint gain %d\n", (int)status);
         }
     }
-    if (status == VPE_STATUS_OK) {
-        VPE_ASSERT(validate_color_pipeline(vpe_priv, param));
-    }
+
     if (status == VPE_STATUS_OK) {
         vpe_bg_color_convert(vpe_priv->output_ctx.cs, vpe_priv->output_ctx.output_tf,
             &vpe_priv->output_ctx.bg_color);
