@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # For the dependencies, see the requirements.txt
 
+import logging
 import re
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from collections import OrderedDict, defaultdict
@@ -61,9 +62,26 @@ class GitlabGQL:
         # Create a GraphQL client using the defined transport
         self.client = Client(transport=self._transport, fetch_schema_from_transport=True)
 
-    @filecache(DAY)
     def query(
-        self, gql_file: Union[Path, str], params: dict[str, Any]
+        self,
+        gql_file: Union[Path, str],
+        params: dict[str, Any] = {},
+        operation_name: Optional[str] = None,
+        disable_cache: bool = False,
+    ) -> dict[str, Any]:
+        def run_uncached() -> dict[str, Any]:
+            return self._query(gql_file, params, operation_name)
+
+        if disable_cache:
+            return run_uncached()
+
+        return self._query_cached(gql_file, params, operation_name)
+
+    def _query(
+        self,
+        gql_file: Union[Path, str],
+        params: dict[str, Any] = {},
+        operation_name: Optional[str] = None,
     ) -> dict[str, Any]:
         # Provide a GraphQL query
         source_path = Path(__file__).parent
@@ -75,10 +93,20 @@ class GitlabGQL:
             query = gql(pipeline_query)
 
         # Execute the query on the transport
-        return self.client.execute(query, variable_values=params)
+        return self.client.execute_sync(
+            query, variable_values=params, operation_name=operation_name
+        )
 
-    def invalidate_query_cache(self):
-        self.query._db.clear()
+    @filecache(DAY)
+    def _query_cached(self, *args, **kwargs):
+        return self._query(*args, **kwargs)
+
+    def invalidate_query_cache(self) -> None:
+        logging.warning("Invalidating query cache")
+        try:
+            self._query._db.clear()
+        except AttributeError as ex:
+            logging.warning(f"Could not invalidate cache, maybe it was not used in {ex.args}?")
 
 
 def insert_early_stage_jobs(dag: Dag, stage_sequence: StageSeq, jobs_metadata: dict) -> Dag:
