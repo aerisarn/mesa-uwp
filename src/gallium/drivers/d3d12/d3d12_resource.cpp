@@ -417,7 +417,7 @@ convert_planar_resource(struct d3d12_resource *res)
 #if DEBUG
       struct d3d12_screen *screen = d3d12_screen(res->base.b.screen);
       D3D12_RESOURCE_DESC desc = GetDesc(res->bo->res);
-      desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+      desc.Flags &= ~D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
       D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint = {};
       D3D12_SUBRESOURCE_FOOTPRINT *footprint = &placed_footprint.Footprint;
       unsigned subresource = plane * desc.MipLevels * desc.DepthOrArraySize;
@@ -598,7 +598,7 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    if (templ && handle->format != templ->format) {
       unsigned subresource = handle->plane * incoming_res_desc.MipLevels * incoming_res_desc.DepthOrArraySize;
       auto temp_desc = incoming_res_desc;
-      temp_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+      temp_desc.Flags &= ~D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
       screen->dev->GetCopyableFootprints(&temp_desc, subresource, 1, 0, &placed_footprint, nullptr, nullptr, nullptr);
    } else {
       footprint->Format = incoming_res_desc.Format;
@@ -1099,7 +1099,7 @@ fill_buffer_location(struct d3d12_context *ctx,
    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
    uint64_t offset = 0;
    auto descr = GetDesc(d3d12_resource_underlying(res, &offset));
-   descr.Flags = D3D12_RESOURCE_FLAG_NONE;
+   descr.Flags &= ~D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
    struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
    ID3D12Device* dev = screen->dev;
 

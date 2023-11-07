@@ -193,9 +193,9 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      return 420;
+      return 430;
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 420;
+      return 430;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
       return 310;
 
@@ -332,6 +332,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TIMELINE_SEMAPHORE_IMPORT:
    case PIPE_CAP_CLIP_HALFZ:
    case PIPE_CAP_VS_LAYER_VIEWPORT:
+   case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
       return 1;
 
    case PIPE_CAP_MAX_VERTEX_STREAMS:
@@ -447,7 +448,9 @@ d3d12_get_shader_param(struct pipe_screen *pscreen,
       return 65536;
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
-      return 13; /* 15 - 2 for lowered uniforms and state vars*/
+      if (screen->opts.ResourceBindingTier < D3D12_RESOURCE_BINDING_TIER_3)
+         return 13; /* 15 - 2 for lowered uniforms and state vars*/
+      return 15;
 
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return INT_MAX;
