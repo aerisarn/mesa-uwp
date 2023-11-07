@@ -3,6 +3,7 @@
 
 import logging
 import re
+import traceback
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
@@ -75,7 +76,17 @@ class GitlabGQL:
         if disable_cache:
             return run_uncached()
 
-        return self._query_cached(gql_file, params, operation_name)
+        try:
+            return self._query_cached(gql_file, params, operation_name)
+        except Exception as ex:
+            logging.error(f"Cached query failed with {ex}")
+            # print exception traceback
+            traceback_str = "".join(traceback.format_exception(ex))
+            logging.error(traceback_str)
+            self.invalidate_query_cache()
+            logging.error("Cache invalidated, retrying without cache")
+        finally:
+            return run_uncached()
 
     def _query(
         self,
