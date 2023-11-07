@@ -1756,9 +1756,9 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
           */
          if (0 /* agx_tilebuffer_supports_mask(&tib, i) */) {
             colormasks[i] = key->blend.rt[i].colormask;
-            opts.rt[i].colormask = BITFIELD_MASK(4);
+            opts.rt[i].colormask = (uint8_t)BITFIELD_MASK(4);
          } else {
-            colormasks[i] = BITFIELD_MASK(4);
+            colormasks[i] = (uint8_t)BITFIELD_MASK(4);
          }
 
          /* If not all bound RTs are fully written to, we need to force
