@@ -419,6 +419,9 @@ struct radv_instance {
    bool force_rt_wave64;
    bool dual_color_blend_by_location;
    char *app_layer;
+   uint8_t override_graphics_shader_version;
+   uint8_t override_compute_shader_version;
+   uint8_t override_ray_tracing_shader_version;
 };
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);

@@ -109,7 +109,12 @@ static struct radv_pipeline_key
 radv_generate_compute_pipeline_key(const struct radv_device *device, const struct radv_compute_pipeline *pipeline,
                                    const VkComputePipelineCreateInfo *pCreateInfo)
 {
-   return radv_generate_pipeline_key(device, &pCreateInfo->stage, 1, pipeline->base.create_flags, pCreateInfo->pNext);
+   struct radv_pipeline_key key =
+      radv_generate_pipeline_key(device, &pCreateInfo->stage, 1, pipeline->base.create_flags, pCreateInfo->pNext);
+
+   key.shader_version = device->instance->override_compute_shader_version;
+
+   return key;
 }
 
 void

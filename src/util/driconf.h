@@ -678,6 +678,23 @@
    DRI_CONF_OPT_B(radv_rt_wave64, def, \
                   "Force wave64 in RT shaders")
 
+/**
+ * Overrides for forcing re-compilation of pipelines when RADV_BUILD_ID_OVERRIDE is enabled.
+ * These need to be bumped every time a compiler bugfix is backported (up to 8 shader
+ * versions are supported).
+ */
+#define DRI_CONF_RADV_OVERRIDE_GRAPHICS_SHADER_VERSION(def) \
+   DRI_CONF_OPT_I(radv_override_graphics_shader_version, def, 0, 7, \
+                  "Override the shader version of graphics pipelines to force re-compilation. (0 = default)")
+
+#define DRI_CONF_RADV_OVERRIDE_COMPUTE_SHADER_VERSION(def) \
+   DRI_CONF_OPT_I(radv_override_compute_shader_version, def, 0, 7, \
+                  "Override the shader version of compute pipelines to force re-compilation. (0 = default)")
+
+#define DRI_CONF_RADV_OVERRIDE_RAY_TRACING_SHADER_VERSION(def) \
+   DRI_CONF_OPT_I(radv_override_ray_tracing_shader_version, def, 0, 7, \
+                  "Override the shader version of ray tracing pipelines to force re-compilation. (0 = default)")
+
 #define DRI_CONF_RADV_APP_LAYER() DRI_CONF_OPT_S_NODEF(radv_app_layer, "Select an application layer.")
 
 /**

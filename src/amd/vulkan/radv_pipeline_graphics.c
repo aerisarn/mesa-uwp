@@ -1815,6 +1815,8 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    struct radv_pipeline_key key = radv_generate_pipeline_key(device, pCreateInfo->pStages, pCreateInfo->stageCount,
                                                              pipeline->base.create_flags, pCreateInfo->pNext);
 
+   key.shader_version = device->instance->override_graphics_shader_version;
+
    key.lib_flags = lib_flags;
    key.has_multiview_view_index = state->rp ? !!state->rp->view_mask : 0;
 

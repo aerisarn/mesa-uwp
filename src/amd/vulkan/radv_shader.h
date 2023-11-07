@@ -101,6 +101,9 @@ struct radv_pipeline_key {
    uint32_t vertex_robustness1 : 1;
    uint32_t mesh_fast_launch_2 : 1;
 
+   /* Pipeline shader version (up to 8) to force re-compilation when RADV_BUILD_ID_OVERRIDE is enabled. */
+   uint32_t shader_version : 3;
+
    struct radv_shader_stage_key stage_info[MESA_VULKAN_SHADER_STAGES];
 
    struct {
