@@ -12799,6 +12799,27 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
             }
          }
 
+         /* If there are no HS threads, SPI mistakenly loads the LS VGPRs starting at VGPR 0. */
+         if (info->hw_stage == AC_HW_HULL_SHADER && options->has_ls_vgpr_init_bug) {
+            /* We don't want load_vb_descs() to write vcc. */
+            assert(program->dev.sgpr_limit <= vcc.reg());
+
+            bld.sop2(aco_opcode::s_bfe_u32, Definition(vcc, s1), Definition(scc, s1),
+                     get_arg_fixed(args, args->merged_wave_info), Operand::c32((8u << 16) | 8u));
+            bld.sop2(Builder::s_cselect, Definition(vcc, bld.lm), Operand::c32(-1), Operand::zero(),
+                     Operand(scc, s1));
+
+            /* These copies are ordered so that vertex_id=tcs_patch_id doesn't overwrite vertex_id
+             * before instance_id=vertex_id. */
+            ac_arg src_args[] = {args->vertex_id, args->tcs_rel_ids, args->tcs_patch_id};
+            ac_arg dst_args[] = {args->instance_id, args->vs_rel_patch_id, args->vertex_id};
+            for (unsigned i = 0; i < 3; i++) {
+               bld.vop2(aco_opcode::v_cndmask_b32, Definition(get_arg_reg(args, dst_args[i]), v1),
+                        get_arg_fixed(args, src_args[i]), get_arg_fixed(args, dst_args[i]),
+                        Operand(vcc, bld.lm));
+            }
+         }
+
          bool needs_instance_index =
             pinfo->instance_rate_inputs &
             ~(pinfo->zero_divisors | pinfo->nontrivial_divisors); /* divisor is 1 */
