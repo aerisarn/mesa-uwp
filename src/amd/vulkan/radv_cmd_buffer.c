@@ -3757,10 +3757,15 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
       cmd_buffer->state.shaders[MESA_SHADER_VERTEX]->info.is_ngg == device->physical_device->use_ngg &&
       cmd_buffer->state.shaders[MESA_SHADER_VERTEX]->info.wave_size == device->physical_device->ge_wave_size;
 
+   /* The instance ID input VGPR is placed differently when as_ls=true. as_ls is also needed to
+    * workaround the LS VGPR initialization bug.
+    */
+   bool as_ls =
+      vs_shader->info.vs.as_ls && (instance_rate_inputs || device->physical_device->rad_info.has_ls_vgpr_init_bug);
+
    /* try to use a pre-compiled prolog first */
    struct radv_shader_part *prolog = NULL;
-   if (can_use_simple_input && (!vs_shader->info.vs.as_ls || !instance_rate_inputs) && !misaligned_mask &&
-       !state->alpha_adjust_lo && !state->alpha_adjust_hi) {
+   if (can_use_simple_input && !as_ls && !misaligned_mask && !state->alpha_adjust_lo && !state->alpha_adjust_hi) {
       if (!instance_rate_inputs) {
          prolog = device->simple_vs_prologs[num_attributes - 1];
       } else if (num_attributes <= 16 && !*nontrivial_divisors && !zero_divisors &&
@@ -3786,8 +3791,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
       key.formats[index] = state->formats[index];
    key.num_attributes = num_attributes;
    key.misaligned_mask = misaligned_mask;
-   /* The instance ID input VGPR is placed differently when as_ls=true. */
-   key.as_ls = vs_shader->info.vs.as_ls && instance_rate_inputs;
+   key.as_ls = as_ls;
    key.is_ngg = vs_shader->info.is_ngg;
    key.wave32 = vs_shader->info.wave_size == 32;
 
