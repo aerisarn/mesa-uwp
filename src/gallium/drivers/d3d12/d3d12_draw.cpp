@@ -326,23 +326,23 @@ fill_image_descriptors(struct d3d12_context *ctx,
             unreachable("Unexpected image view dimension");
          }
          
-         if (!batch->pending_memory_barrier) {
-            if (res->base.b.target == PIPE_BUFFER) {
-               d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_TRANSITION_FLAG_ACCUMULATE_STATE);
-            } else {
-               unsigned transition_first_layer = view->u.tex.first_layer;
-               unsigned transition_array_size = array_size;
-               if (res->base.b.target == PIPE_TEXTURE_3D) {
-                  transition_first_layer = 0;
-                  transition_array_size = 0;
-               }
-               d3d12_transition_subresources_state(ctx, res,
-                                                   view->u.tex.level, 1,
-                                                   transition_first_layer, transition_array_size,
-                                                   0, 1,
-                                                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                                   D3D12_TRANSITION_FLAG_ACCUMULATE_STATE);
+         d3d12_transition_flags transition_flags = (d3d12_transition_flags)(D3D12_TRANSITION_FLAG_ACCUMULATE_STATE |
+            (batch->pending_memory_barrier ? D3D12_TRANSITION_FLAG_PENDING_MEMORY_BARRIER : 0));
+         if (res->base.b.target == PIPE_BUFFER) {
+            d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, transition_flags);
+         } else {
+            unsigned transition_first_layer = view->u.tex.first_layer;
+            unsigned transition_array_size = array_size;
+            if (res->base.b.target == PIPE_TEXTURE_3D) {
+               transition_first_layer = 0;
+               transition_array_size = 0;
             }
+            d3d12_transition_subresources_state(ctx, res,
+                                                view->u.tex.level, 1,
+                                                transition_first_layer, transition_array_size,
+                                                0, 1,
+                                                D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                                transition_flags);
          }
          d3d12_batch_reference_resource(batch, res, true);
 
