@@ -1798,6 +1798,7 @@ d3d12_set_shader_images(struct pipe_context *pctx,
          d3d12_increment_image_bind_count(ctx, shader, d3d12_resource(images[i].resource));
 
          if (images[i].resource->target != PIPE_BUFFER &&
+             !d3d12_screen(pctx->screen)->opts12.RelaxedFormatCastingSupported &&
              !is_valid_uav_cast(images[i].resource->format, images[i].format) &&
              d3d12_get_typeless_format(images[i].format) !=
              d3d12_get_typeless_format(images[i].resource->format)) {
