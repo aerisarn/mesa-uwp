@@ -91,7 +91,9 @@ endif
 if with_gallium_etnaviv
   subdir('etnaviv')
 endif
-subdir('virtio')
+if system_has_kms_drm
+  subdir('virtio')
+endif
 if with_gallium_freedreno or with_freedreno_vk or with_tools.contains('freedreno')
   subdir('freedreno')
 endif
