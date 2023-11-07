@@ -721,6 +721,7 @@
     <value name="VDM State Update" value="2"/>
     <value name="Index List" value="3"/>
     <value name="Stream Link" value="4"/>
+    <value name="Tessellate" value="5"/>
     <value name="Stream terminate" value="6"/>
   </enum>
 
@@ -756,7 +757,9 @@
     <field name="Vertex shader word 0 present" size="1" start="1" type="bool"/>
     <field name="Vertex shader word 1 present" size="1" start="2" type="bool"/>
     <field name="Vertex outputs present" size="1" start="3" type="bool"/>
+    <field name="Tessellation present" size="1" start="4" type="bool"/>
     <field name="Vertex unknown present" size="1" start="5" type="bool"/>
+    <field name="Tessellation scale present" size="1" start="7" type="bool"/>
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="VDM State Update"/>
   </struct>
 
@@ -786,6 +789,52 @@
     <value name="0" value="0"/>
     <value name="2" value="2"/>
   </enum>
+
+  <enum name="Partition mode">
+    <value name="Pow 2" value="0"/>
+    <value name="Integer" value="1"/>
+    <value name="Fractional odd" value="2"/>
+    <value name="Fractional even" value="3"/>
+  </enum>
+
+  <enum name="Step function">
+    <value name="Constant" value="0"/>
+    <value name="Per patch" value="1"/>
+    <value name="Per instance" value="2"/>
+    <value name="Per patch and per instance" value="3"/>
+  </enum>
+
+  <enum name="Patch type">
+    <value name="Triangles" value="0"/>
+    <value name="Quads" value="1"/>
+  </enum>
+
+  <enum name="Factor type">
+    <value name="FP16" value="0"/>
+    <value name="FP32" value="1"/>
+  </enum>
+
+  <struct name="VDM State Tessellation" size="4">
+    <field name="Unknown" size="17" start="0" type="hex"/> <!-- 0 -->
+    <field name="Step function" size="2" start="17" type="Step function"/>
+    <!-- Not yet hardware tested, firm guess from stuffing values -->
+    <field name="Factor type" size="1" start="19" type="Factor type"/>
+    <!-- XXX: Possibly unknown 3 is part of the patch type, with points &
+    isolines also supported? would be a natural encoding. Needs testing to see
+    if implemeneted in hw. -->
+    <field name="Patch type" size="1" start="20" type="Patch type"/>
+    <field name="Unknown 3" size="2" start="21" type="hex"/> <!-- 1 -->
+
+    <!-- Subtract 1 for fractional odd -->
+    <field name="Max tess factor" size="6" start="23" type="uint" modifier="minus(1)"/>
+    <field name="Counterclockwise winding" size="1" start="29" type="bool"/>
+    <field name="Partition mode" size="2" start="30" type="Partition mode"/>
+  </struct>
+
+  <struct name="VDM State Tessellation Scale" size="4">
+    <!-- Always applied. Set to 1.0 to "disable" -->
+    <field name="Scale" size="16" start="0" type="half"/>
+  </struct>
 
   <struct name="VDM State Vertex Unknown" size="4">
     <field name="Flat shading control" start="0" size="2" type="VDM Vertex"/>
@@ -855,7 +904,75 @@
     <field name="Target lo" size="32" start="32" type="hex"/>
   </struct>
 
-  <struct name="VDM Stream Terminate" size="8">
+  <struct name="VDM Tessellate" size="4">
+    <field name="Factor buffer hi" size="8" start="0" type="hex"/>
+    <field name="Unknown 0" size="12" start="8" type="hex"/> <!-- 0xc -->
+
+    <!-- Set for both indirect and direct -->
+    <field name="Unknown 2" size="1" start="20" type="bool"/>
+
+    <!-- Present for both indirect and direct -->
+    <!-- XXX: Order is an (educated) guess -->
+    <field name="Factor buffer present" size="1" start="21" type="bool"/>
+
+    <!-- XXX: out of bits???? not set for indirect??? -->
+    <field name="Patch count present" size="1" start="22" type="bool"/>
+
+    <!-- These four are omitted for indirect draws -->
+    <!-- XXX: Order is an (educated) guess -->
+    <field name="Instance count present" size="1" start="22" type="bool"/>
+    <field name="Base patch present" size="1" start="23" type="bool"/>
+    <field name="Base instance present" size="1" start="25" type="bool"/>
+    <!-- XXX: Out of bits!!! -->
+    <field name="Instance stride present" size="1" start="25" type="bool"/>
+
+    <field name="Indirect present" size="1" start="26" type="bool"/>
+    <!-- Present for both indirect and direct -->
+    <field name="Unknown present" size="1" start="28" type="bool"/>
+
+    <field name="Unknown 1" size="1" start="28" type="hex"/> <!-- 1 -->
+    <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Tessellate"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Factor buffer" size="4">
+    <field name="Factor buffer lo" size="32" start="0" type="hex"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Patch count" size="4">
+    <field name="Patch count" size="32" start="0" type="uint"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Instance count" size="4">
+    <field name="Instance count" size="32" start="0" type="uint"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Base patch" size="4">
+    <field name="Base patch" size="32" start="0" type="uint"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Base instance" size="4">
+    <field name="Base instance" size="32" start="0" type="uint"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Instance stride" size="4">
+    <!-- Divided by 4 for QUADS -->
+    <field name="Instance stride" size="32" start="0" type="uint"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Indirect" size="12">
+    <!-- Address of the indirect buffer, format presumably matches Metal -->
+    <field name="Address hi" size="8" start="0:0" type="hex"/>
+    <field name="Address lo" size="32" start="1:0" type="hex"/>
+
+    <!-- # of bytes in the buffer, presumably for hw bounds checking -->
+    <field name="Size" size="32" start="2:0" type="uint"/>
+  </struct>
+
+  <struct name="VDM Tessellate: Unknown" size="4">
+    <field name="Unknown 7" size="32" start="0" type="hex"/> <!-- 3F -->
+  </struct>
+
+  <struct name="VDM Stream Terminate" size="32">
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Stream Terminate"/>
   </struct>
 

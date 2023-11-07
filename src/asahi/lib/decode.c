@@ -705,10 +705,12 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
       VDM_PRINT(vertex_shader_word_1, VERTEX_SHADER_WORD_1,
                 "Vertex shader word 1");
       VDM_PRINT(vertex_outputs, VERTEX_OUTPUTS, "Vertex outputs");
+      VDM_PRINT(tessellation, TESSELLATION, "Tessellation");
       VDM_PRINT(vertex_unknown, VERTEX_UNKNOWN, "Vertex unknown");
+      VDM_PRINT(tessellation_scale, TESSELLATION_SCALE, "Tessellation scale");
 
 #undef VDM_PRINT
-      return ALIGN_POT(length, 8);
+      return hdr.tessellation_scale_present ? length : ALIGN_POT(length, 8);
    }
 
    case AGX_VDM_BLOCK_TYPE_INDEX_LIST: {
@@ -745,6 +747,32 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
    case AGX_VDM_BLOCK_TYPE_STREAM_TERMINATE: {
       DUMP_CL(VDM_STREAM_TERMINATE, map, "Stream Terminate");
       return STATE_DONE;
+   }
+
+   case AGX_VDM_BLOCK_TYPE_TESSELLATE: {
+      size_t length = AGX_VDM_TESSELLATE_LENGTH;
+      agx_unpack(agxdecode_dump_stream, map, VDM_TESSELLATE, hdr);
+      DUMP_UNPACKED(VDM_TESSELLATE, hdr, "Tessellate List\n");
+      map += AGX_VDM_TESSELLATE_LENGTH;
+
+#define TESS_PRINT(header_name, STRUCT_NAME, human)                            \
+   if (hdr.header_name##_present) {                                            \
+      DUMP_CL(VDM_TESSELLATE_##STRUCT_NAME, map, human);                       \
+      map += AGX_VDM_TESSELLATE_##STRUCT_NAME##_LENGTH;                        \
+      length += AGX_VDM_TESSELLATE_##STRUCT_NAME##_LENGTH;                     \
+   }
+
+      TESS_PRINT(factor_buffer, FACTOR_BUFFER, "Factor buffer");
+      TESS_PRINT(patch_count, PATCH_COUNT, "Patch");
+      TESS_PRINT(instance_count, INSTANCE_COUNT, "Instance count");
+      TESS_PRINT(base_patch, BASE_PATCH, "Base patch");
+      TESS_PRINT(base_instance, BASE_INSTANCE, "Base instance");
+      TESS_PRINT(instance_stride, INSTANCE_STRIDE, "Instance stride");
+      TESS_PRINT(indirect, INDIRECT, "Indirect");
+      TESS_PRINT(unknown, UNKNOWN, "Unknown");
+
+#undef TESS_PRINT
+      return length;
    }
 
    default:
