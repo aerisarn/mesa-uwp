@@ -11847,7 +11847,8 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
       Pseudo_instruction* startpgm = add_startpgm(&ctx);
       append_logical_start(ctx.block);
 
-      if (unlikely(ctx.options->has_ls_vgpr_init_bug && ctx.stage == vertex_tess_control_hs))
+      if (ctx.options->has_ls_vgpr_init_bug && ctx.stage == vertex_tess_control_hs &&
+          !program->info.vs.has_prolog)
          fix_ls_vgpr_init_bug(&ctx);
 
       split_arguments(&ctx, startpgm);
