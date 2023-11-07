@@ -910,7 +910,7 @@ BEGIN_TEST(assembler.gfx11.vop12c_v128)
    fprintf(output, "llvm_version: %u\n", LLVM_VERSION_MAJOR);
 
    //>> BB0:
-   //; if llvm_ver >= 16:
+   //; if llvm_ver == 16:
    //;    insert_pattern('v_mul_f16_e32 v0, v1, v2 ; Error: VGPR_32_Lo128: unknown register 128 ; 6a000501')
    //; else:
    //;    insert_pattern('v_mul_f16_e32 v0, v1, v2                                    ; 6a000501')
