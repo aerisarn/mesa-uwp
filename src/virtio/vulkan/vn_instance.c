@@ -496,8 +496,8 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
                                    void **out_ptr)
 {
    VN_TRACE_FUNC();
+
    struct vn_renderer_shmem_pool *pool = &instance->reply_shmem_pool;
-   const struct vn_renderer_shmem *saved_pool_shmem = pool->shmem;
 
    size_t offset;
    struct vn_renderer_shmem *shmem =
@@ -505,30 +505,19 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
    if (!shmem)
       return NULL;
 
-   assert(shmem == pool->shmem);
-   *out_ptr = shmem->mmap_ptr + offset;
-
-   if (shmem != saved_pool_shmem) {
-      uint32_t set_reply_command_stream_data[16];
-      struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
-         set_reply_command_stream_data,
-         sizeof(set_reply_command_stream_data));
-      const struct VkCommandStreamDescriptionMESA stream = {
-         .resourceId = shmem->res_id,
-         .size = pool->size,
-      };
-      vn_encode_vkSetReplyCommandStreamMESA(&local_enc, 0, &stream);
-      vn_cs_encoder_commit(&local_enc);
-      vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
-   }
-
-   /* TODO avoid this seek command and go lock-free? */
-   uint32_t seek_reply_command_stream_data[8];
+   uint32_t set_reply_command_stream_data[16];
    struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
-      seek_reply_command_stream_data, sizeof(seek_reply_command_stream_data));
-   vn_encode_vkSeekReplyCommandStreamMESA(&local_enc, 0, offset);
+      set_reply_command_stream_data, sizeof(set_reply_command_stream_data));
+   const struct VkCommandStreamDescriptionMESA stream = {
+      .resourceId = shmem->res_id,
+      .offset = offset,
+      .size = size,
+   };
+   vn_encode_vkSetReplyCommandStreamMESA(&local_enc, 0, &stream);
    vn_cs_encoder_commit(&local_enc);
    vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
+
+   *out_ptr = shmem->mmap_ptr + offset;
 
    return shmem;
 }
