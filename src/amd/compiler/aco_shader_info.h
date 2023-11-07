@@ -41,7 +41,9 @@ extern "C" {
 #define ACO_MAX_VERTEX_ATTRIBS 32
 #define ACO_MAX_VBS            32
 
-struct aco_vs_input_state {
+struct aco_vs_prolog_info {
+   struct ac_arg inputs;
+
    uint32_t instance_rate_inputs;
    uint32_t nontrivial_divisors;
    uint32_t zero_divisors;
@@ -53,11 +55,7 @@ struct aco_vs_input_state {
    uint32_t alpha_adjust_hi;
 
    uint8_t formats[ACO_MAX_VERTEX_ATTRIBS];
-};
 
-struct aco_vs_prolog_info {
-   struct ac_arg inputs;
-   struct aco_vs_input_state state;
    unsigned num_attributes;
    uint32_t misaligned_mask;
    bool is_ngg;

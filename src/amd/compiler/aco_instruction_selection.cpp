@@ -12739,7 +12739,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
    bld.sopp(aco_opcode::s_setprio, -1u, 0x3u);
 
    uint32_t attrib_mask = BITFIELD_MASK(pinfo->num_attributes);
-   bool has_nontrivial_divisors = pinfo->state.nontrivial_divisors;
+   bool has_nontrivial_divisors = pinfo->nontrivial_divisors;
 
    wait_imm lgkm_imm;
    lgkm_imm.lgkm = 0;
@@ -12800,10 +12800,10 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
          }
 
          bool needs_instance_index =
-            pinfo->state.instance_rate_inputs &
-            ~(pinfo->state.zero_divisors | pinfo->state.nontrivial_divisors); /* divisor is 1 */
-         bool needs_start_instance = pinfo->state.instance_rate_inputs & pinfo->state.zero_divisors;
-         bool needs_vertex_index = ~pinfo->state.instance_rate_inputs & attrib_mask;
+            pinfo->instance_rate_inputs &
+            ~(pinfo->zero_divisors | pinfo->nontrivial_divisors); /* divisor is 1 */
+         bool needs_start_instance = pinfo->instance_rate_inputs & pinfo->zero_divisors;
+         bool needs_vertex_index = ~pinfo->instance_rate_inputs & attrib_mask;
          if (needs_vertex_index)
             bld.vadd32(Definition(vertex_index, v1), get_arg_fixed(args, args->base_vertex),
                        get_arg_fixed(args, args->vertex_id), false, Operand(s2), true);
@@ -12821,12 +12821,11 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
 
          /* calculate index */
          Operand fetch_index = Operand(vertex_index, v1);
-         if (pinfo->state.instance_rate_inputs & (1u << loc)) {
-            if (!(pinfo->state.zero_divisors & (1u << loc))) {
+         if (pinfo->instance_rate_inputs & (1u << loc)) {
+            if (!(pinfo->zero_divisors & (1u << loc))) {
                fetch_index = instance_id;
-               if (pinfo->state.nontrivial_divisors & (1u << loc)) {
-                  unsigned index =
-                     util_bitcount(pinfo->state.nontrivial_divisors & BITFIELD_MASK(loc));
+               if (pinfo->nontrivial_divisors & (1u << loc)) {
+                  unsigned index = util_bitcount(pinfo->nontrivial_divisors & BITFIELD_MASK(loc));
                   fetch_index = calc_nontrivial_instance_id(
                      bld, args, pinfo, index, instance_id, start_instance, prolog_input,
                      nontrivial_tmp_vgpr0, nontrivial_tmp_vgpr1);
@@ -12841,14 +12840,14 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
          /* perform load */
          PhysReg cur_desc = desc.advance(i * 16);
          if ((pinfo->misaligned_mask & (1u << loc))) {
-            const struct ac_vtx_format_info* vtx_info = &vtx_info_table[pinfo->state.formats[loc]];
+            const struct ac_vtx_format_info* vtx_info = &vtx_info_table[pinfo->formats[loc]];
 
             assert(vtx_info->has_hw_format & 0x1);
             unsigned dfmt = vtx_info->hw_format[0] & 0xf;
             unsigned nfmt = vtx_info->hw_format[0] >> 4;
 
             for (unsigned j = 0; j < vtx_info->num_channels; j++) {
-               bool post_shuffle = pinfo->state.post_shuffle & (1u << loc);
+               bool post_shuffle = pinfo->post_shuffle & (1u << loc);
                unsigned offset = vtx_info->chan_byte_size * (post_shuffle && j < 3 ? 2 - j : j);
 
                /* Use MUBUF to workaround hangs for byte-aligned dword loads. The Vulkan spec
@@ -12894,7 +12893,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
       }
    }
 
-   if (pinfo->state.alpha_adjust_lo | pinfo->state.alpha_adjust_hi) {
+   if (pinfo->alpha_adjust_lo | pinfo->alpha_adjust_hi) {
       wait_imm vm_imm;
       vm_imm.vm = 0;
       bld.sopp(aco_opcode::s_waitcnt, -1, vm_imm.pack(program->gfx_level));
@@ -12902,11 +12901,11 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
 
    /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
     * so we may need to fix it up. */
-   u_foreach_bit (loc, (pinfo->state.alpha_adjust_lo | pinfo->state.alpha_adjust_hi)) {
+   u_foreach_bit (loc, (pinfo->alpha_adjust_lo | pinfo->alpha_adjust_hi)) {
       PhysReg alpha(attributes_start.reg() + loc * 4u + 3);
 
-      unsigned alpha_adjust = (pinfo->state.alpha_adjust_lo >> loc) & 0x1;
-      alpha_adjust |= ((pinfo->state.alpha_adjust_hi >> loc) & 0x1) << 1;
+      unsigned alpha_adjust = (pinfo->alpha_adjust_lo >> loc) & 0x1;
+      alpha_adjust |= ((pinfo->alpha_adjust_hi >> loc) & 0x1) << 1;
 
       if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED)
          bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(alpha, v1), Operand(alpha, v1));

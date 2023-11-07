@@ -72,19 +72,17 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info, const struct radv
    aco_info->next_stage_pc = radv_args->next_stage_pc;
 }
 
-#define ASSIGN_VS_STATE_FIELD(x)    aco_info->state.x = radv->state.x
-#define ASSIGN_VS_STATE_FIELD_CP(x) memcpy(&aco_info->state.x, &radv->state.x, sizeof(radv->state.x))
 static inline void
 radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_info *aco_info, const struct radv_vs_prolog_key *radv,
                                const struct radv_shader_args *radv_args)
 {
-   ASSIGN_VS_STATE_FIELD(instance_rate_inputs);
-   ASSIGN_VS_STATE_FIELD(nontrivial_divisors);
-   ASSIGN_VS_STATE_FIELD(zero_divisors);
-   ASSIGN_VS_STATE_FIELD(post_shuffle);
-   ASSIGN_VS_STATE_FIELD(alpha_adjust_lo);
-   ASSIGN_VS_STATE_FIELD(alpha_adjust_hi);
-   ASSIGN_VS_STATE_FIELD_CP(formats);
+   ASSIGN_FIELD(instance_rate_inputs);
+   ASSIGN_FIELD(nontrivial_divisors);
+   ASSIGN_FIELD(zero_divisors);
+   ASSIGN_FIELD(post_shuffle);
+   ASSIGN_FIELD(alpha_adjust_lo);
+   ASSIGN_FIELD(alpha_adjust_hi);
+   ASSIGN_FIELD_CP(formats);
    ASSIGN_FIELD(num_attributes);
    ASSIGN_FIELD(misaligned_mask);
    ASSIGN_FIELD(is_ngg);

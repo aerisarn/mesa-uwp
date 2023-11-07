@@ -3774,15 +3774,15 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
 
    struct radv_vs_prolog_key key;
    memset(&key, 0, sizeof(key));
-   key.state.instance_rate_inputs = instance_rate_inputs;
-   key.state.nontrivial_divisors = *nontrivial_divisors;
-   key.state.zero_divisors = zero_divisors;
+   key.instance_rate_inputs = instance_rate_inputs;
+   key.nontrivial_divisors = *nontrivial_divisors;
+   key.zero_divisors = zero_divisors;
    /* If the attribute is aligned, post shuffle is implemented using DST_SEL instead. */
-   key.state.post_shuffle = state->post_shuffle & attribute_mask & misaligned_mask;
-   key.state.alpha_adjust_hi = state->alpha_adjust_hi & attribute_mask;
-   key.state.alpha_adjust_lo = state->alpha_adjust_lo & attribute_mask;
+   key.post_shuffle = state->post_shuffle & attribute_mask & misaligned_mask;
+   key.alpha_adjust_hi = state->alpha_adjust_hi & attribute_mask;
+   key.alpha_adjust_lo = state->alpha_adjust_lo & attribute_mask;
    u_foreach_bit (index, misaligned_mask)
-      key.state.formats[index] = state->formats[index];
+      key.formats[index] = state->formats[index];
    key.num_attributes = num_attributes;
    key.misaligned_mask = misaligned_mask;
    /* The instance ID input VGPR is placed differently when as_ls=true. */

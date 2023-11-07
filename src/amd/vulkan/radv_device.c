@@ -176,7 +176,7 @@ radv_device_init_vs_prologs(struct radv_device *device)
    key.wave32 = device->physical_device->ge_wave_size == 32;
 
    for (unsigned i = 1; i <= MAX_VERTEX_ATTRIBS; i++) {
-      key.state.instance_rate_inputs = 0;
+      key.instance_rate_inputs = 0;
       key.num_attributes = i;
 
       device->simple_vs_prologs[i - 1] = radv_create_vs_prolog(device, &key);
@@ -188,14 +188,14 @@ radv_device_init_vs_prologs(struct radv_device *device)
    for (unsigned num_attributes = 1; num_attributes <= 16; num_attributes++) {
       for (unsigned count = 1; count <= num_attributes; count++) {
          for (unsigned start = 0; start <= (num_attributes - count); start++) {
-            key.state.instance_rate_inputs = u_bit_consecutive(start, count);
+            key.instance_rate_inputs = u_bit_consecutive(start, count);
             key.num_attributes = num_attributes;
 
             struct radv_shader_part *prolog = radv_create_vs_prolog(device, &key);
             if (!prolog)
                return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-            assert(idx == radv_instance_rate_prolog_index(num_attributes, key.state.instance_rate_inputs));
+            assert(idx == radv_instance_rate_prolog_index(num_attributes, key.instance_rate_inputs));
             device->instance_rate_vs_prologs[idx++] = prolog;
          }
       }
