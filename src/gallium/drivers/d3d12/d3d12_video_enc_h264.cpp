@@ -748,7 +748,8 @@ d3d12_video_encoder_convert_h264_codec_configuration(struct d3d12_video_encoder 
    D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264 config = {
       D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_FLAG_NONE,
       D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_DIRECT_MODES_DISABLED,
-      D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_SLICES_DEBLOCKING_MODE_0_ALL_LUMA_CHROMA_SLICE_BLOCK_EDGES_ALWAYS_FILTERED,
+      // Definition of D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_SLICES_DEBLOCKING_MODES matches disable_deblocking_filter_idc syntax
+      static_cast<D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_SLICES_DEBLOCKING_MODES>(picture->dbk.disable_deblocking_filter_idc),
    };
 
    if (picture->pic_ctrl.enc_cabac_enable) {
@@ -772,6 +773,13 @@ d3d12_video_encoder_convert_h264_codec_configuration(struct d3d12_video_encoder 
 
    if(FAILED(pD3D12Enc->m_spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData))
       || !capCodecConfigData.IsSupported))
+   {
+         debug_printf("D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT call failed.");
+         is_supported = false;
+         return config;
+   }
+
+   if(((1 << config.DisableDeblockingFilterConfig) & capCodecConfigData.CodecSupportLimits.pH264Support->DisableDeblockingFilterSupportedModes) == 0)
    {
          debug_printf("D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION arguments not supported - DisableDeblockingFilterConfig (value %d) "
                   "not allowed by DisableDeblockingFilterSupportedModes 0x%x cap reporting.",
