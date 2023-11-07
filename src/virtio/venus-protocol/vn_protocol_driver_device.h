@@ -7665,6 +7665,287 @@ vn_encode_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_partial(struct vn_cs_
     vn_encode_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self_partial(enc, val);
 }
 
+/* struct VkPhysicalDeviceExtendedDynamicState3FeaturesEXT chain */
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext(const void *val)
+{
+    /* no known/supported struct */
+    return vn_sizeof_simple_pointer(NULL);
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    size_t size = 0;
+    /* skip val->{sType,pNext} */
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3TessellationDomainOrigin);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3DepthClampEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3PolygonMode);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3RasterizationSamples);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3SampleMask);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3AlphaToCoverageEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3AlphaToOneEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3LogicOpEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ColorBlendEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ColorBlendEquation);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ColorWriteMask);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3RasterizationStream);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ConservativeRasterizationMode);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ExtraPrimitiveOverestimationSize);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3DepthClipEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3SampleLocationsEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ColorBlendAdvanced);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ProvokingVertexMode);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3LineRasterizationMode);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3LineStippleEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3DepthClipNegativeOneToOne);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ViewportWScalingEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ViewportSwizzle);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3CoverageToColorEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3CoverageToColorLocation);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3CoverageModulationMode);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3CoverageModulationTableEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3CoverageModulationTable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3CoverageReductionMode);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3RepresentativeFragmentTestEnable);
+    size += vn_sizeof_VkBool32(&val->extendedDynamicState3ShadingRateImageEnable);
+    return size;
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT(const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    size_t size = 0;
+
+    size += vn_sizeof_VkStructureType(&val->sType);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext(val->pNext);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(val);
+
+    return size;
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext(struct vn_cs_encoder *enc, const void *val)
+{
+    /* no known/supported struct */
+    vn_encode_simple_pointer(enc, NULL);
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(struct vn_cs_encoder *enc, const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    /* skip val->{sType,pNext} */
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3TessellationDomainOrigin);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3DepthClampEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3PolygonMode);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3RasterizationSamples);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3SampleMask);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3AlphaToCoverageEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3AlphaToOneEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3LogicOpEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ColorBlendEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ColorBlendEquation);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ColorWriteMask);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3RasterizationStream);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ConservativeRasterizationMode);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ExtraPrimitiveOverestimationSize);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3DepthClipEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3SampleLocationsEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ColorBlendAdvanced);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ProvokingVertexMode);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3LineRasterizationMode);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3LineStippleEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3DepthClipNegativeOneToOne);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ViewportWScalingEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ViewportSwizzle);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3CoverageToColorEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3CoverageToColorLocation);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3CoverageModulationMode);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3CoverageModulationTableEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3CoverageModulationTable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3CoverageReductionMode);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3RepresentativeFragmentTestEnable);
+    vn_encode_VkBool32(enc, &val->extendedDynamicState3ShadingRateImageEnable);
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT(struct vn_cs_encoder *enc, const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    assert(val->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT);
+    vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT });
+    vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext(enc, val->pNext);
+    vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(enc, val);
+}
+
+static inline void
+vn_decode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext(struct vn_cs_decoder *dec, const void *val)
+{
+    /* no known/supported struct */
+    if (vn_decode_simple_pointer(dec))
+        assert(false);
+}
+
+static inline void
+vn_decode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(struct vn_cs_decoder *dec, VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    /* skip val->{sType,pNext} */
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3TessellationDomainOrigin);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3DepthClampEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3PolygonMode);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3RasterizationSamples);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3SampleMask);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3AlphaToCoverageEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3AlphaToOneEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3LogicOpEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ColorBlendEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ColorBlendEquation);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ColorWriteMask);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3RasterizationStream);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ConservativeRasterizationMode);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ExtraPrimitiveOverestimationSize);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3DepthClipEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3SampleLocationsEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ColorBlendAdvanced);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ProvokingVertexMode);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3LineRasterizationMode);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3LineStippleEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3DepthClipNegativeOneToOne);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ViewportWScalingEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ViewportSwizzle);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3CoverageToColorEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3CoverageToColorLocation);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3CoverageModulationMode);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3CoverageModulationTableEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3CoverageModulationTable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3CoverageReductionMode);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3RepresentativeFragmentTestEnable);
+    vn_decode_VkBool32(dec, &val->extendedDynamicState3ShadingRateImageEnable);
+}
+
+static inline void
+vn_decode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT(struct vn_cs_decoder *dec, VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    VkStructureType stype;
+    vn_decode_VkStructureType(dec, &stype);
+    assert(stype == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT);
+
+    assert(val->sType == stype);
+    vn_decode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext(dec, val->pNext);
+    vn_decode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(dec, val);
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext_partial(const void *val)
+{
+    /* no known/supported struct */
+    return vn_sizeof_simple_pointer(NULL);
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self_partial(const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    size_t size = 0;
+    /* skip val->{sType,pNext} */
+    /* skip val->extendedDynamicState3TessellationDomainOrigin */
+    /* skip val->extendedDynamicState3DepthClampEnable */
+    /* skip val->extendedDynamicState3PolygonMode */
+    /* skip val->extendedDynamicState3RasterizationSamples */
+    /* skip val->extendedDynamicState3SampleMask */
+    /* skip val->extendedDynamicState3AlphaToCoverageEnable */
+    /* skip val->extendedDynamicState3AlphaToOneEnable */
+    /* skip val->extendedDynamicState3LogicOpEnable */
+    /* skip val->extendedDynamicState3ColorBlendEnable */
+    /* skip val->extendedDynamicState3ColorBlendEquation */
+    /* skip val->extendedDynamicState3ColorWriteMask */
+    /* skip val->extendedDynamicState3RasterizationStream */
+    /* skip val->extendedDynamicState3ConservativeRasterizationMode */
+    /* skip val->extendedDynamicState3ExtraPrimitiveOverestimationSize */
+    /* skip val->extendedDynamicState3DepthClipEnable */
+    /* skip val->extendedDynamicState3SampleLocationsEnable */
+    /* skip val->extendedDynamicState3ColorBlendAdvanced */
+    /* skip val->extendedDynamicState3ProvokingVertexMode */
+    /* skip val->extendedDynamicState3LineRasterizationMode */
+    /* skip val->extendedDynamicState3LineStippleEnable */
+    /* skip val->extendedDynamicState3DepthClipNegativeOneToOne */
+    /* skip val->extendedDynamicState3ViewportWScalingEnable */
+    /* skip val->extendedDynamicState3ViewportSwizzle */
+    /* skip val->extendedDynamicState3CoverageToColorEnable */
+    /* skip val->extendedDynamicState3CoverageToColorLocation */
+    /* skip val->extendedDynamicState3CoverageModulationMode */
+    /* skip val->extendedDynamicState3CoverageModulationTableEnable */
+    /* skip val->extendedDynamicState3CoverageModulationTable */
+    /* skip val->extendedDynamicState3CoverageReductionMode */
+    /* skip val->extendedDynamicState3RepresentativeFragmentTestEnable */
+    /* skip val->extendedDynamicState3ShadingRateImageEnable */
+    return size;
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_partial(const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    size_t size = 0;
+
+    size += vn_sizeof_VkStructureType(&val->sType);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext_partial(val->pNext);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self_partial(val);
+
+    return size;
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext_partial(struct vn_cs_encoder *enc, const void *val)
+{
+    /* no known/supported struct */
+    vn_encode_simple_pointer(enc, NULL);
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self_partial(struct vn_cs_encoder *enc, const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    /* skip val->{sType,pNext} */
+    /* skip val->extendedDynamicState3TessellationDomainOrigin */
+    /* skip val->extendedDynamicState3DepthClampEnable */
+    /* skip val->extendedDynamicState3PolygonMode */
+    /* skip val->extendedDynamicState3RasterizationSamples */
+    /* skip val->extendedDynamicState3SampleMask */
+    /* skip val->extendedDynamicState3AlphaToCoverageEnable */
+    /* skip val->extendedDynamicState3AlphaToOneEnable */
+    /* skip val->extendedDynamicState3LogicOpEnable */
+    /* skip val->extendedDynamicState3ColorBlendEnable */
+    /* skip val->extendedDynamicState3ColorBlendEquation */
+    /* skip val->extendedDynamicState3ColorWriteMask */
+    /* skip val->extendedDynamicState3RasterizationStream */
+    /* skip val->extendedDynamicState3ConservativeRasterizationMode */
+    /* skip val->extendedDynamicState3ExtraPrimitiveOverestimationSize */
+    /* skip val->extendedDynamicState3DepthClipEnable */
+    /* skip val->extendedDynamicState3SampleLocationsEnable */
+    /* skip val->extendedDynamicState3ColorBlendAdvanced */
+    /* skip val->extendedDynamicState3ProvokingVertexMode */
+    /* skip val->extendedDynamicState3LineRasterizationMode */
+    /* skip val->extendedDynamicState3LineStippleEnable */
+    /* skip val->extendedDynamicState3DepthClipNegativeOneToOne */
+    /* skip val->extendedDynamicState3ViewportWScalingEnable */
+    /* skip val->extendedDynamicState3ViewportSwizzle */
+    /* skip val->extendedDynamicState3CoverageToColorEnable */
+    /* skip val->extendedDynamicState3CoverageToColorLocation */
+    /* skip val->extendedDynamicState3CoverageModulationMode */
+    /* skip val->extendedDynamicState3CoverageModulationTableEnable */
+    /* skip val->extendedDynamicState3CoverageModulationTable */
+    /* skip val->extendedDynamicState3CoverageReductionMode */
+    /* skip val->extendedDynamicState3RepresentativeFragmentTestEnable */
+    /* skip val->extendedDynamicState3ShadingRateImageEnable */
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_partial(struct vn_cs_encoder *enc, const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *val)
+{
+    assert(val->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT);
+    vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT });
+    vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_pnext_partial(enc, val->pNext);
+    vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self_partial(enc, val);
+}
+
 /* struct VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures chain */
 
 static inline size_t
@@ -10781,6 +11062,14 @@ vn_sizeof_VkPhysicalDeviceFeatures2_pnext(const void *val)
             size += vn_sizeof_VkPhysicalDeviceFeatures2_pnext(pnext->pNext);
             size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self((const VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)pnext);
             return size;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            size += vn_sizeof_simple_pointer(pnext);
+            size += vn_sizeof_VkStructureType(&pnext->sType);
+            size += vn_sizeof_VkPhysicalDeviceFeatures2_pnext(pnext->pNext);
+            size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self((const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)pnext);
+            return size;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
             if (!vn_cs_renderer_protocol_has_extension(326 /* VK_KHR_zero_initialize_workgroup_memory */))
                 break;
@@ -11297,6 +11586,14 @@ vn_encode_VkPhysicalDeviceFeatures2_pnext(struct vn_cs_encoder *enc, const void 
             vn_encode_VkPhysicalDeviceFeatures2_pnext(enc, pnext->pNext);
             vn_encode_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self(enc, (const VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)pnext);
             return;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            vn_encode_simple_pointer(enc, pnext);
+            vn_encode_VkStructureType(enc, &pnext->sType);
+            vn_encode_VkPhysicalDeviceFeatures2_pnext(enc, pnext->pNext);
+            vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(enc, (const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)pnext);
+            return;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
             if (!vn_cs_renderer_protocol_has_extension(326 /* VK_KHR_zero_initialize_workgroup_memory */))
                 break;
@@ -11685,6 +11982,10 @@ vn_decode_VkPhysicalDeviceFeatures2_pnext(struct vn_cs_decoder *dec, const void 
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT:
         vn_decode_VkPhysicalDeviceFeatures2_pnext(dec, pnext->pNext);
         vn_decode_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self(dec, (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)pnext);
+        break;
+    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+        vn_decode_VkPhysicalDeviceFeatures2_pnext(dec, pnext->pNext);
+        vn_decode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(dec, (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)pnext);
         break;
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
         vn_decode_VkPhysicalDeviceFeatures2_pnext(dec, pnext->pNext);
@@ -12112,6 +12413,14 @@ vn_sizeof_VkPhysicalDeviceFeatures2_pnext_partial(const void *val)
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPhysicalDeviceFeatures2_pnext_partial(pnext->pNext);
             size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self_partial((const VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)pnext);
+            return size;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            size += vn_sizeof_simple_pointer(pnext);
+            size += vn_sizeof_VkStructureType(&pnext->sType);
+            size += vn_sizeof_VkPhysicalDeviceFeatures2_pnext_partial(pnext->pNext);
+            size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self_partial((const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
             if (!vn_cs_renderer_protocol_has_extension(326 /* VK_KHR_zero_initialize_workgroup_memory */))
@@ -12628,6 +12937,14 @@ vn_encode_VkPhysicalDeviceFeatures2_pnext_partial(struct vn_cs_encoder *enc, con
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPhysicalDeviceFeatures2_pnext_partial(enc, pnext->pNext);
             vn_encode_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self_partial(enc, (const VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)pnext);
+            return;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            vn_encode_simple_pointer(enc, pnext);
+            vn_encode_VkStructureType(enc, &pnext->sType);
+            vn_encode_VkPhysicalDeviceFeatures2_pnext_partial(enc, pnext->pNext);
+            vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self_partial(enc, (const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
             if (!vn_cs_renderer_protocol_has_extension(326 /* VK_KHR_zero_initialize_workgroup_memory */))
@@ -13230,6 +13547,14 @@ vn_sizeof_VkDeviceCreateInfo_pnext(const void *val)
             size += vn_sizeof_VkDeviceCreateInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self((const VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)pnext);
             return size;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            size += vn_sizeof_simple_pointer(pnext);
+            size += vn_sizeof_VkStructureType(&pnext->sType);
+            size += vn_sizeof_VkDeviceCreateInfo_pnext(pnext->pNext);
+            size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self((const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)pnext);
+            return size;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
             if (!vn_cs_renderer_protocol_has_extension(326 /* VK_KHR_zero_initialize_workgroup_memory */))
                 break;
@@ -13798,6 +14123,14 @@ vn_encode_VkDeviceCreateInfo_pnext(struct vn_cs_encoder *enc, const void *val)
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkDeviceCreateInfo_pnext(enc, pnext->pNext);
             vn_encode_VkPhysicalDeviceExtendedDynamicState2FeaturesEXT_self(enc, (const VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)pnext);
+            return;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            vn_encode_simple_pointer(enc, pnext);
+            vn_encode_VkStructureType(enc, &pnext->sType);
+            vn_encode_VkDeviceCreateInfo_pnext(enc, pnext->pNext);
+            vn_encode_VkPhysicalDeviceExtendedDynamicState3FeaturesEXT_self(enc, (const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
             if (!vn_cs_renderer_protocol_has_extension(326 /* VK_KHR_zero_initialize_workgroup_memory */))
@@ -17795,6 +18128,114 @@ vn_encode_VkPhysicalDeviceCustomBorderColorPropertiesEXT_partial(struct vn_cs_en
     vn_encode_VkPhysicalDeviceCustomBorderColorPropertiesEXT_self_partial(enc, val);
 }
 
+/* struct VkPhysicalDeviceExtendedDynamicState3PropertiesEXT chain */
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext(const void *val)
+{
+    /* no known/supported struct */
+    return vn_sizeof_simple_pointer(NULL);
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self(const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    size_t size = 0;
+    /* skip val->{sType,pNext} */
+    size += vn_sizeof_VkBool32(&val->dynamicPrimitiveTopologyUnrestricted);
+    return size;
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT(const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    size_t size = 0;
+
+    size += vn_sizeof_VkStructureType(&val->sType);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext(val->pNext);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self(val);
+
+    return size;
+}
+
+static inline void
+vn_decode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext(struct vn_cs_decoder *dec, const void *val)
+{
+    /* no known/supported struct */
+    if (vn_decode_simple_pointer(dec))
+        assert(false);
+}
+
+static inline void
+vn_decode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self(struct vn_cs_decoder *dec, VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    /* skip val->{sType,pNext} */
+    vn_decode_VkBool32(dec, &val->dynamicPrimitiveTopologyUnrestricted);
+}
+
+static inline void
+vn_decode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT(struct vn_cs_decoder *dec, VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    VkStructureType stype;
+    vn_decode_VkStructureType(dec, &stype);
+    assert(stype == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT);
+
+    assert(val->sType == stype);
+    vn_decode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext(dec, val->pNext);
+    vn_decode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self(dec, val);
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext_partial(const void *val)
+{
+    /* no known/supported struct */
+    return vn_sizeof_simple_pointer(NULL);
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self_partial(const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    size_t size = 0;
+    /* skip val->{sType,pNext} */
+    /* skip val->dynamicPrimitiveTopologyUnrestricted */
+    return size;
+}
+
+static inline size_t
+vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_partial(const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    size_t size = 0;
+
+    size += vn_sizeof_VkStructureType(&val->sType);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext_partial(val->pNext);
+    size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self_partial(val);
+
+    return size;
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext_partial(struct vn_cs_encoder *enc, const void *val)
+{
+    /* no known/supported struct */
+    vn_encode_simple_pointer(enc, NULL);
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self_partial(struct vn_cs_encoder *enc, const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    /* skip val->{sType,pNext} */
+    /* skip val->dynamicPrimitiveTopologyUnrestricted */
+}
+
+static inline void
+vn_encode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_partial(struct vn_cs_encoder *enc, const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *val)
+{
+    assert(val->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT);
+    vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT });
+    vn_encode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_pnext_partial(enc, val->pNext);
+    vn_encode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self_partial(enc, val);
+}
+
 /* struct VkPhysicalDeviceRobustness2PropertiesEXT chain */
 
 static inline size_t
@@ -18553,6 +18994,14 @@ vn_sizeof_VkPhysicalDeviceProperties2_pnext(const void *val)
             size += vn_sizeof_VkPhysicalDeviceProperties2_pnext(pnext->pNext);
             size += vn_sizeof_VkPhysicalDeviceCustomBorderColorPropertiesEXT_self((const VkPhysicalDeviceCustomBorderColorPropertiesEXT *)pnext);
             return size;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            size += vn_sizeof_simple_pointer(pnext);
+            size += vn_sizeof_VkStructureType(&pnext->sType);
+            size += vn_sizeof_VkPhysicalDeviceProperties2_pnext(pnext->pNext);
+            size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self((const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)pnext);
+            return size;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
             if (!vn_cs_renderer_protocol_has_extension(287 /* VK_EXT_robustness2 */))
                 break;
@@ -18742,6 +19191,10 @@ vn_decode_VkPhysicalDeviceProperties2_pnext(struct vn_cs_decoder *dec, const voi
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
         vn_decode_VkPhysicalDeviceProperties2_pnext(dec, pnext->pNext);
         vn_decode_VkPhysicalDeviceCustomBorderColorPropertiesEXT_self(dec, (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)pnext);
+        break;
+    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT:
+        vn_decode_VkPhysicalDeviceProperties2_pnext(dec, pnext->pNext);
+        vn_decode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self(dec, (VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)pnext);
         break;
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
         vn_decode_VkPhysicalDeviceProperties2_pnext(dec, pnext->pNext);
@@ -18979,6 +19432,14 @@ vn_sizeof_VkPhysicalDeviceProperties2_pnext_partial(const void *val)
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPhysicalDeviceProperties2_pnext_partial(pnext->pNext);
             size += vn_sizeof_VkPhysicalDeviceCustomBorderColorPropertiesEXT_self_partial((const VkPhysicalDeviceCustomBorderColorPropertiesEXT *)pnext);
+            return size;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            size += vn_sizeof_simple_pointer(pnext);
+            size += vn_sizeof_VkStructureType(&pnext->sType);
+            size += vn_sizeof_VkPhysicalDeviceProperties2_pnext_partial(pnext->pNext);
+            size += vn_sizeof_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self_partial((const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
             if (!vn_cs_renderer_protocol_has_extension(287 /* VK_EXT_robustness2 */))
@@ -19237,6 +19698,14 @@ vn_encode_VkPhysicalDeviceProperties2_pnext_partial(struct vn_cs_encoder *enc, c
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPhysicalDeviceProperties2_pnext_partial(enc, pnext->pNext);
             vn_encode_VkPhysicalDeviceCustomBorderColorPropertiesEXT_self_partial(enc, (const VkPhysicalDeviceCustomBorderColorPropertiesEXT *)pnext);
+            return;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(456 /* VK_EXT_extended_dynamic_state3 */))
+                break;
+            vn_encode_simple_pointer(enc, pnext);
+            vn_encode_VkStructureType(enc, &pnext->sType);
+            vn_encode_VkPhysicalDeviceProperties2_pnext_partial(enc, pnext->pNext);
+            vn_encode_VkPhysicalDeviceExtendedDynamicState3PropertiesEXT_self_partial(enc, (const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
             if (!vn_cs_renderer_protocol_has_extension(287 /* VK_EXT_robustness2 */))
