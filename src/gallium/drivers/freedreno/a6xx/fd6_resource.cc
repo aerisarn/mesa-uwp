@@ -323,13 +323,17 @@ fd6_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
       }
       return 0;
    case DRM_FORMAT_MOD_QCOM_TILED3:
+      rsc->layout.tile_mode = fd6_tile_mode(&rsc->b.b);
+      FALLTHROUGH;
    case DRM_FORMAT_MOD_INVALID:
+      /* For now, without buffer metadata, we must assume that buffers
+       * imported with INVALID modifier are linear
+       */
       if (can_do_ubwc(&rsc->b.b)) {
          perf_debug("%" PRSC_FMT
                     ": not UBWC: imported with DRM_FORMAT_MOD_INVALID!",
                     PRSC_ARGS(&rsc->b.b));
       }
-      rsc->layout.tile_mode = fd6_tile_mode(&rsc->b.b);
       return 0;
    default:
       return -1;
