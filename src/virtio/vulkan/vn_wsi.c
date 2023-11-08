@@ -122,15 +122,14 @@ vn_wsi_create_image(struct vn_device *dev,
       .drmFormatModifierCount = 1,
       .pDrmFormatModifiers = &modifier,
    };
-   VkImageCreateInfo local_create_info;
+   VkImageCreateInfo local_create_info = *create_info;
+   create_info = &local_create_info;
    if (wsi_info->scanout) {
       assert(!vk_find_struct_const(
          create_info->pNext, IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT));
 
-      local_create_info = *create_info;
       local_create_info.pNext = &mod_list_info;
       local_create_info.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
-      create_info = &local_create_info;
 
       if (VN_DEBUG(WSI)) {
          vn_log(
@@ -138,6 +137,12 @@ vn_wsi_create_image(struct vn_device *dev,
             "forcing scanout image linear (no explicit modifier support)");
       }
    } else {
+      if (dev->physical_device->renderer_driver_id ==
+          VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA) {
+         /* See explanation in vn_GetPhysicalDeviceImageFormatProperties2() */
+         local_create_info.flags &= ~VK_IMAGE_CREATE_ALIAS_BIT;
+      }
+
       if (VN_PERF(NO_TILED_WSI_IMAGE)) {
          const VkImageDrmFormatModifierListCreateInfoEXT *modifier_info =
             vk_find_struct_const(

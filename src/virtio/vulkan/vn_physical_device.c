@@ -2023,12 +2023,13 @@ vn_GetPhysicalDeviceImageFormatProperties2(
    const VkExternalMemoryHandleTypeFlags supported_handle_types =
       physical_dev->external_memory.supported_handle_types;
 
+   const struct wsi_image_create_info *wsi_info = vk_find_struct_const(
+      pImageFormatInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
+
    /* force common wsi into choosing DRM_FORMAT_MOD_LINEAR or else fall back
     * to the legacy path, for which Venus also forces LINEAR for wsi images.
     */
    if (VN_PERF(NO_TILED_WSI_IMAGE)) {
-      const struct wsi_image_create_info *wsi_info = vk_find_struct_const(
-         pImageFormatInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
       const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *modifier_info =
          vk_find_struct_const(
             pImageFormatInfo->pNext,
@@ -2086,6 +2087,20 @@ vn_GetPhysicalDeviceImageFormatProperties2(
                             VK_ERROR_FORMAT_NOT_SUPPORTED);
          }
       }
+   }
+
+   /* Since venus-protocol doesn't pass the wsi_image_create_info struct, we
+    * must remove the ALIAS_BIT here and in vn_wsi_create_image().
+    * ANV rejects the bit for external+nonlinear images that don't have WSI
+    * info chained.
+    */
+   if (wsi_info && physical_dev->renderer_driver_id ==
+                      VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA) {
+      if (pImageFormatInfo != &local_info.format) {
+         local_info.format = *pImageFormatInfo;
+         pImageFormatInfo = &local_info.format;
+      }
+      local_info.format.flags &= ~VK_IMAGE_CREATE_ALIAS_BIT;
    }
 
    VkResult result;
