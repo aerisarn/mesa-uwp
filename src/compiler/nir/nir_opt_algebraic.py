@@ -656,6 +656,10 @@ optimizations.extend([
    (('fneu', ('b2f', 'a@1'), 0.0), a),
    (('ieq', ('b2i', 'a@1'), 0),   ('inot', a)),
    (('ine', ('b2i', 'a@1'), 0),   a),
+   (('ieq', 'a@1', False), ('inot', a)),
+   (('ieq', 'a@1', True), a),
+   (('ine', 'a@1', False), a),
+   (('ine', 'a@1', True), ('inot', a)),
 
    (('fneu', ('u2f', a), 0.0), ('ine', a, 0)),
    (('feq', ('u2f', a), 0.0), ('ieq', a, 0)),
