@@ -1259,18 +1259,6 @@ blorp_emit_depth_stencil_state(struct blorp_batch *batch,
       return 0;
 
    GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, dw, &ds);
-
-#if GFX_VERx10 >= 125
-   /* Check if need PSS Stall sync. */
-   if (intel_needs_workaround(batch->blorp->compiler->devinfo, 18019816803) &&
-       batch->flags & BLORP_BATCH_NEED_PSS_STALL_SYNC) {
-      blorp_emit(batch, GENX(PIPE_CONTROL), pc) {
-            pc.PSSStallSyncEnable = true;
-      }
-      batch->flags &= ~BLORP_BATCH_NEED_PSS_STALL_SYNC;
-   }
-#endif
-
 #else
    uint32_t offset;
    void *state = blorp_alloc_dynamic_state(batch,
