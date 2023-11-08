@@ -1921,7 +1921,7 @@ pub struct AttrAccess {
     pub comps: u8,
     pub patch: bool,
     pub output: bool,
-    pub flags: u8,
+    pub phys: bool,
 }
 
 #[repr(C)]
@@ -3307,6 +3307,9 @@ impl fmt::Display for OpALd {
         if self.access.patch {
             write!(f, ".P")?;
         }
+        if self.access.phys {
+            write!(f, ".PHYS")?;
+        }
         write!(f, " {} a", self.dst)?;
         if !self.vtx.is_zero() {
             write!(f, "[{}]", self.vtx)?;
@@ -3339,6 +3342,9 @@ impl fmt::Display for OpASt {
         write!(f, "AST")?;
         if self.access.patch {
             write!(f, ".P")?;
+        }
+        if self.access.phys {
+            write!(f, ".PHYS")?;
         }
         write!(f, " a")?;
         if !self.vtx.is_zero() {

@@ -1249,7 +1249,7 @@ impl<'a> ShaderFromNir<'a> {
                     comps: 1,
                     patch: flags.patch(),
                     output: flags.output(),
-                    flags: 0,
+                    phys: false,
                 };
 
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -1303,7 +1303,7 @@ impl<'a> ShaderFromNir<'a> {
                     comps: intrin.num_components,
                     patch: flags.patch(),
                     output: flags.output(),
-                    flags: flags.phys().into(),
+                    phys: flags.phys(),
                 };
 
                 if intrin.intrinsic == nir_intrinsic_ald_nv {
@@ -1739,7 +1739,7 @@ impl<'a> ShaderFromNir<'a> {
                     comps: 2,
                     patch: false,
                     output: true,
-                    flags: 0,
+                    phys: false,
                 };
 
                 // This is recorded as a patch output in parse_shader() because

@@ -1475,7 +1475,7 @@ impl SM75Instr {
         self.set_field(40..50, op.access.addr);
         self.set_field(74..76, op.access.comps - 1);
         self.set_field(76..77, op.access.patch);
-        self.set_field(77..78, op.access.flags);
+        self.set_field(77..78, op.access.phys);
         self.set_field(79..80, op.access.output);
     }
 
@@ -1489,7 +1489,7 @@ impl SM75Instr {
         self.set_field(40..50, op.access.addr);
         self.set_field(74..76, op.access.comps - 1);
         self.set_field(76..77, op.access.patch);
-        self.set_field(77..78, op.access.flags);
+        self.set_field(77..78, op.access.phys);
         assert!(op.access.output);
     }
 
