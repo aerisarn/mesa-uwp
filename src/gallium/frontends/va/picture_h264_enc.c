@@ -215,6 +215,8 @@ vlVaHandleVAEncSequenceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *con
       context->gop_coeff = VL_VA_ENC_GOP_COEFF;
    context->desc.h264enc.gop_size = context->desc.h264enc.intra_idr_period * context->gop_coeff;
    context->desc.h264enc.seq.pic_order_cnt_type = h264->seq_fields.bits.pic_order_cnt_type;
+   context->desc.h264enc.seq.log2_max_frame_num_minus4 = h264->seq_fields.bits.log2_max_frame_num_minus4;
+   context->desc.h264enc.seq.log2_max_pic_order_cnt_lsb_minus4 = h264->seq_fields.bits.log2_max_pic_order_cnt_lsb_minus4;
    context->desc.h264enc.seq.vui_parameters_present_flag = h264->vui_parameters_present_flag;
    if (h264->vui_parameters_present_flag) {
       context->desc.h264enc.seq.vui_flags.aspect_ratio_info_present_flag =
@@ -376,11 +378,11 @@ static void parseEncSpsParamsH264(vlVaContext *context, struct vl_rbsp *rbsp)
          return; /* TODO */
    }
 
-   vl_rbsp_ue(rbsp); /* log2_max_frame_num_minus4 */
-   vl_rbsp_ue(rbsp); /* pic_order_cnt_type */
+   context->desc.h264enc.seq.log2_max_frame_num_minus4 = vl_rbsp_ue(rbsp); /* log2_max_frame_num_minus4 */
+   context->desc.h264enc.seq.pic_order_cnt_type = vl_rbsp_ue(rbsp); /* pic_order_cnt_type */
 
    if (context->desc.h264enc.seq.pic_order_cnt_type == 0)
-      vl_rbsp_ue(rbsp); /* log2_max_pic_order_cnt_lsb_minus4 */
+      context->desc.h264enc.seq.log2_max_pic_order_cnt_lsb_minus4 = vl_rbsp_ue(rbsp); /* log2_max_pic_order_cnt_lsb_minus4 */
    else if (context->desc.h264enc.seq.pic_order_cnt_type == 1) {
       vl_rbsp_u(rbsp, 1); /* delta_pic_order_always_zero_flag */
       vl_rbsp_se(rbsp); /* offset_for_non_ref_pic */

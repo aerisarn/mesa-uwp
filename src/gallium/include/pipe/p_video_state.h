@@ -546,6 +546,8 @@ struct pipe_h264_enc_seq_param
    unsigned enc_frame_crop_top_offset;
    unsigned enc_frame_crop_bottom_offset;
    unsigned pic_order_cnt_type;
+   unsigned log2_max_frame_num_minus4;
+   unsigned log2_max_pic_order_cnt_lsb_minus4;
    unsigned num_temporal_layers;
    uint32_t vui_parameters_present_flag;
    struct {
