@@ -37,6 +37,10 @@ struct d3d12_encode_codec_support {
    enum pipe_video_profile profile;
    union {
       struct {
+         enum pipe_video_h264_enc_dbk_filter_mode_flags disable_dbk_filter_mode_flags;
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264 d3d12_caps;
+      } h264_support;
+      struct {
          enum pipe_h265_enc_pred_direction prediction_direction;
          union pipe_h265_enc_cap_features hevc_features;
          union pipe_h265_enc_cap_block_sizes hevc_block_sizes;
@@ -716,6 +720,28 @@ static d3d12_video_encode_get_av1_codec_support ( const D3D12_VIDEO_ENCODER_CODE
 #endif
 
 bool
+static d3d12_video_encode_get_h264_codec_support(const D3D12_VIDEO_ENCODER_PROFILE_DESC &argTargetProfile,
+                                                 ID3D12VideoDevice3 *pD3D12VideoDevice,
+                                                 D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264 &supportedCaps)
+{
+   D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT capCodecConfigData = { };
+   capCodecConfigData.NodeIndex = 0;
+   capCodecConfigData.Codec = D3D12_VIDEO_ENCODER_CODEC_H264;
+   capCodecConfigData.Profile = argTargetProfile;
+   capCodecConfigData.CodecSupportLimits.pH264Support = &supportedCaps;
+   capCodecConfigData.CodecSupportLimits.DataSize = sizeof(supportedCaps);
+
+   if(FAILED(pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData))
+      || !capCodecConfigData.IsSupported))
+   {
+         debug_printf("D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT call failed.");
+         return false;
+   }
+
+   return true;
+}
+
+bool
 static d3d12_video_encode_get_hevc_codec_support ( const D3D12_VIDEO_ENCODER_CODEC &argCodec,
                                                    const D3D12_VIDEO_ENCODER_PROFILE_DESC &argTargetProfile,
                                                    ID3D12VideoDevice3 *pD3D12VideoDevice,
@@ -895,6 +921,10 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                                                             profile,
                                                                             spD3D12VideoDevice.Get(),
                                                                             codecSupport);
+
+            supportsProfile = d3d12_video_encode_get_h264_codec_support(profDesc,
+                                                                        spD3D12VideoDevice.Get(),
+                                                                        codecSupport.h264_support.d3d12_caps);
          }
       } break;
 #endif
@@ -1657,6 +1687,7 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
       case PIPE_VIDEO_CAP_ENC_MAX_TILE_ROWS:
       case PIPE_VIDEO_CAP_ENC_MAX_TILE_COLS:
       case PIPE_VIDEO_CAP_ENC_INTRA_REFRESH_MAX_DURATION:
+      case PIPE_VIDEO_CAP_ENC_H264_DISABLE_DBK_FILTER_MODES_SUPPORTED:
       {
          if (d3d12_has_video_encode_support(pscreen,
                                             profile,
@@ -1697,6 +1728,8 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                   return max_tile_rows;
                } else if (param == PIPE_VIDEO_CAP_ENC_MAX_TILE_COLS) {
                   return max_tile_cols;
+               } else if(param == PIPE_VIDEO_CAP_ENC_H264_DISABLE_DBK_FILTER_MODES_SUPPORTED) {
+                  return codec_specific_support.h264_support.disable_dbk_filter_mode_flags;
                } else if (param == PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME) {
                   return maxReferencesPerFrame;
                } else if (param == PIPE_VIDEO_CAP_ENC_INTRA_REFRESH_MAX_DURATION) {
