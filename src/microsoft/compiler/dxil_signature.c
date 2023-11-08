@@ -425,7 +425,7 @@ append_semantic_index_to_table(struct dxil_psv_sem_index_table *table, uint32_t 
          i += j - 1;
    }
    uint32_t retval = table->size;
-   assert(table->size + num_rows <= 80);
+   assert(table->size + num_rows <= ARRAY_SIZE(table->data));
    for (unsigned i = 0; i < num_rows; ++i)
       table->data[table->size++] = index + i;
    return retval;
@@ -591,7 +591,7 @@ get_input_signature_group(struct dxil_module *mod,
                                  semantic.start_row + semantic.rows);
 
       ++num_inputs;
-      assert(num_inputs < VARYING_SLOT_MAX);
+      assert(num_inputs < VARYING_SLOT_MAX * 4);
    }
    return num_inputs;
 }
@@ -849,7 +849,7 @@ get_signature_metadata(struct dxil_module *mod,
    if (num_elements == 0)
       return NULL;
 
-   const struct dxil_mdnode *nodes[VARYING_SLOT_MAX];
+   const struct dxil_mdnode *nodes[VARYING_SLOT_MAX * 4];
    for (unsigned i = 0; i < num_elements; ++i) {
       nodes[i] = fill_SV_param_nodes(mod, i, &recs[i], &psvs[i], is_input);
    }
