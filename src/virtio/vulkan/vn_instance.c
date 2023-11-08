@@ -630,7 +630,6 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    instance->ring_idx_used_mask = 0x1;
 
    mtx_init(&instance->physical_device.mutex, mtx_plain);
-   mtx_init(&instance->cs_shmem.mutex, mtx_plain);
    mtx_init(&instance->ring_idx_mutex, mtx_plain);
 
    if (!vn_icd_supports_api_version(
@@ -650,7 +649,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    vn_cs_renderer_protocol_info_init(instance);
 
-   vn_renderer_shmem_pool_init(instance->renderer, &instance->cs_shmem.pool,
+   vn_renderer_shmem_pool_init(instance->renderer, &instance->cs_shmem_pool,
                                8u << 20);
 
    vn_renderer_shmem_pool_init(instance->renderer,
@@ -719,13 +718,12 @@ out_ring_fini:
 out_shmem_pool_fini:
    vn_renderer_shmem_pool_fini(instance->renderer,
                                &instance->reply_shmem_pool);
-   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
+   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem_pool);
    vn_renderer_destroy(instance->renderer, alloc);
 
 out_mtx_destroy:
    mtx_destroy(&instance->physical_device.mutex);
    mtx_destroy(&instance->ring_idx_mutex);
-   mtx_destroy(&instance->cs_shmem.mutex);
 
    vn_instance_base_fini(&instance->base);
    vk_free(alloc, instance);
@@ -761,8 +759,7 @@ vn_DestroyInstance(VkInstance _instance,
    vn_renderer_shmem_pool_fini(instance->renderer,
                                &instance->reply_shmem_pool);
 
-   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
-   mtx_destroy(&instance->cs_shmem.mutex);
+   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem_pool);
 
    vn_renderer_destroy(instance->renderer, alloc);
 

@@ -41,10 +41,7 @@ struct vn_instance {
    struct vn_renderer *renderer;
 
    /* for VN_CS_ENCODER_STORAGE_SHMEM_POOL */
-   struct {
-      mtx_t mutex;
-      struct vn_renderer_shmem_pool pool;
-   } cs_shmem;
+   struct vn_renderer_shmem_pool cs_shmem_pool;
 
    struct vn_renderer_shmem_pool reply_shmem_pool;
 
@@ -169,14 +166,8 @@ vn_instance_cs_shmem_alloc(struct vn_instance *instance,
                            size_t size,
                            size_t *out_offset)
 {
-   struct vn_renderer_shmem *shmem;
-
-   mtx_lock(&instance->cs_shmem.mutex);
-   shmem = vn_renderer_shmem_pool_alloc(
-      instance->renderer, &instance->cs_shmem.pool, size, out_offset);
-   mtx_unlock(&instance->cs_shmem.mutex);
-
-   return shmem;
+   return vn_renderer_shmem_pool_alloc(
+      instance->renderer, &instance->cs_shmem_pool, size, out_offset);
 }
 
 static inline int
