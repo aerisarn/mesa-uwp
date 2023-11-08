@@ -97,6 +97,7 @@ foreach d : [[with_gallium_kmsro, [
                'st7735r_dri.so',
                'stm_dri.so',
                'sun4i-drm_dri.so',
+               'udl_dri.so',
              ]],
              [with_gallium_radeonsi, 'radeonsi_dri.so'],
              [with_gallium_nouveau, 'nouveau_dri.so'],
