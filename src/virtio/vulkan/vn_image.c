@@ -14,6 +14,7 @@
 #include "venus-protocol/vn_protocol_driver_image_view.h"
 #include "venus-protocol/vn_protocol_driver_sampler.h"
 #include "venus-protocol/vn_protocol_driver_sampler_ycbcr_conversion.h"
+#include "vk_format.h"
 
 #include "vn_android.h"
 #include "vn_device.h"
@@ -23,46 +24,22 @@
 
 /* image commands */
 
+static inline uint32_t
+vn_image_get_plane_count(const VkImageCreateInfo *create_info)
+{
+   if (!(create_info->flags & VK_IMAGE_CREATE_DISJOINT_BIT))
+      return 1;
+
+   /* TODO VkDrmFormatModifierPropertiesEXT::drmFormatModifierPlaneCount */
+   assert(create_info->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
+   return vk_format_get_plane_count(create_info->format);
+}
+
 static void
 vn_image_init_memory_requirements(struct vn_image *img,
                                   struct vn_device *dev,
-                                  const VkImageCreateInfo *create_info)
+                                  uint32_t plane_count)
 {
-   uint32_t plane_count = 1;
-   if (create_info->flags & VK_IMAGE_CREATE_DISJOINT_BIT) {
-      /* TODO VkDrmFormatModifierPropertiesEXT::drmFormatModifierPlaneCount */
-      assert(create_info->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
-
-      switch (create_info->format) {
-      case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
-      case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
-      case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
-      case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
-         plane_count = 2;
-         break;
-      case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
-      case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
-      case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
-      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
-      case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
-      case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
-      case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
-         plane_count = 3;
-         break;
-      default:
-         plane_count = 1;
-         break;
-      }
-   }
    assert(plane_count <= ARRAY_SIZE(img->requirements));
 
    /* TODO add a per-device cache for the requirements */
@@ -215,7 +192,8 @@ vn_image_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
-   vn_image_init_memory_requirements(img, dev, create_info);
+   const uint32_t plane_count = vn_image_get_plane_count(create_info);
+   vn_image_init_memory_requirements(img, dev, plane_count);
 
    return VK_SUCCESS;
 }
