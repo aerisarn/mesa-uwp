@@ -597,6 +597,10 @@
    DRI_CONF_OPT_B(venus_implicit_fencing, def, \
                   "Assume the virtio-gpu kernel driver supports implicit fencing")
 
+#define DRI_CONF_VENUS_WSI_MULTI_PLANE_MODIFIERS(def) \
+   DRI_CONF_OPT_B(venus_wsi_multi_plane_modifiers, def, \
+                  "Enable support of multi-plane format modifiers for wsi images")
+
 /**
  * \brief RADV specific configuration options
  */

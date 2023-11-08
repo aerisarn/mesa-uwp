@@ -36,6 +36,7 @@ struct vn_instance {
 
    struct driOptionCache dri_options;
    struct driOptionCache available_dri_options;
+   bool enable_wsi_multi_plane_modifiers;
 
    struct vn_renderer *renderer;
 

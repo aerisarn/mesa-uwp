@@ -60,6 +60,7 @@ static const driOptionDescription vn_dri_options[] = {
       DRI_CONF_VK_X11_STRICT_IMAGE_COUNT(false)
       DRI_CONF_VK_XWAYLAND_WAIT_READY(true)
       DRI_CONF_VENUS_IMPLICIT_FENCING(false)
+      DRI_CONF_VENUS_WSI_MULTI_PLANE_MODIFIERS(false)
    DRI_CONF_SECTION_END
    DRI_CONF_SECTION_DEBUG
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
@@ -693,6 +694,13 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    instance->renderer->info.has_implicit_fencing =
       driQueryOptionb(&instance->dri_options, "venus_implicit_fencing");
+   instance->enable_wsi_multi_plane_modifiers = driQueryOptionb(
+      &instance->dri_options, "venus_wsi_multi_plane_modifiers");
+
+   if (VN_DEBUG(INIT)) {
+      vn_log(instance, "supports multi-plane wsi format modifiers: %s",
+             instance->enable_wsi_multi_plane_modifiers ? "yes" : "no");
+   }
 
    *pInstance = instance_handle;
 

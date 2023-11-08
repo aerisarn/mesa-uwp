@@ -2104,6 +2104,7 @@ vn_GetPhysicalDeviceImageFormatProperties2(
     * both plane counts to 1 while virgl may be involved.
     */
    if (wsi_info && modifier_info &&
+       !physical_dev->instance->enable_wsi_multi_plane_modifiers &&
        modifier_info->drmFormatModifier != DRM_FORMAT_MOD_LINEAR) {
       const uint32_t plane_count =
          vn_modifier_plane_count(physical_dev, pImageFormatInfo->format,
