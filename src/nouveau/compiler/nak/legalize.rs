@@ -72,7 +72,44 @@ fn swap_srcs_if_not_reg(x: &mut Src, y: &mut Src) -> bool {
     }
 }
 
-fn legalize_instr(
+fn legalize_sm50_instr(
+    b: &mut impl SSABuilder,
+    _bl: &impl BlockLiveness,
+    _ip: usize,
+    instr: &mut Instr,
+) {
+    match &mut instr.op {
+        Op::Copy(_) => (), // Nothing to do
+        _ => {
+            let src_types = instr.src_types();
+            for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
+                match src_types[i] {
+                    SrcType::SSA => {
+                        if src.as_ssa().is_none() {
+                            copy_src(b, src, RegFile::GPR);
+                        }
+                    }
+                    SrcType::GPR => {
+                        copy_src_if_not_reg(b, src, RegFile::GPR);
+                    }
+                    SrcType::ALU
+                    | SrcType::F32
+                    | SrcType::F64
+                    | SrcType::I32
+                    | SrcType::B32 => {
+                        panic!("ALU srcs must be legalized explicitly");
+                    }
+                    SrcType::Pred => {
+                        panic!("Predicates must be legalized explicitly");
+                    }
+                    SrcType::Bar => panic!("Barrier regs are Volta+"),
+                }
+            }
+        }
+    }
+}
+
+fn legalize_sm70_instr(
     b: &mut impl SSABuilder,
     bl: &impl BlockLiveness,
     ip: usize,
@@ -334,6 +371,22 @@ fn legalize_instr(
             }
         }
     }
+}
+
+fn legalize_instr(
+    sm: u8,
+    b: &mut impl SSABuilder,
+    bl: &impl BlockLiveness,
+    ip: usize,
+    instr: &mut Instr,
+) {
+    if sm >= 70 {
+        legalize_sm70_instr(b, bl, ip, instr);
+    } else if sm >= 50 {
+        legalize_sm50_instr(b, bl, ip, instr);
+    } else {
+        panic!("Unknown shader model SM{sm}");
+    }
 
     let src_types = instr.src_types();
     for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
@@ -416,7 +469,7 @@ impl Shader {
                 let mut instrs = Vec::new();
                 for (ip, mut instr) in b.instrs.drain(..).enumerate() {
                     let mut b = SSAInstrBuilder::new(&mut f.ssa_alloc);
-                    legalize_instr(&mut b, bl, ip, &mut instr);
+                    legalize_instr(self.info.sm, &mut b, bl, ip, &mut instr);
                     b.push_instr(instr);
                     instrs.append(&mut b.as_vec());
                 }
