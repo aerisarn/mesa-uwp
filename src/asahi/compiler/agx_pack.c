@@ -996,11 +996,11 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
 
       struct agx_opcode_info info = agx_opcodes_info[I->op];
       uint64_t raw =
-         info.encoding.exact | (q1 << 8) | ((value.value & 0x1F) << 11) |
+         info.encoding.exact | (q1 << 8) | ((value.value & 0x3F) << 10) |
          ((I->imm & 0xF) << 20) | (1UL << 24) | // XXX
          (1UL << 26) |                          // XXX
          (q2 << 30) | ((uint64_t)((I->imm >> 4) & 0xF) << 32) |
-         ((uint64_t)q3 << 37) | ((uint64_t)(value.value >> 5) << 40) |
+         ((uint64_t)q3 << 37) | ((uint64_t)(value.value >> 6) << 40) |
          ((uint64_t)q4 << 42) | (1UL << 47) | // XXX
          ((uint64_t)q5 << 48) | ((uint64_t)(I->imm >> 8) << 56);
 
