@@ -2023,6 +2023,29 @@ vn_GetPhysicalDeviceImageFormatProperties2(
    const VkExternalMemoryHandleTypeFlags supported_handle_types =
       physical_dev->external_memory.supported_handle_types;
 
+   /* force common wsi into choosing DRM_FORMAT_MOD_LINEAR or else fall back
+    * to the legacy path, for which Venus also forces LINEAR for wsi images.
+    */
+   if (VN_PERF(NO_TILED_WSI_IMAGE)) {
+      const struct wsi_image_create_info *wsi_info = vk_find_struct_const(
+         pImageFormatInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
+      const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *modifier_info =
+         vk_find_struct_const(
+            pImageFormatInfo->pNext,
+            PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
+
+      if (wsi_info && modifier_info &&
+          modifier_info->drmFormatModifier != DRM_FORMAT_MOD_LINEAR) {
+         if (VN_DEBUG(WSI)) {
+            vn_log(physical_dev->instance,
+                   "rejecting non-linear wsi image format modifier %" PRIu64,
+                   modifier_info->drmFormatModifier);
+         }
+         return vn_error(physical_dev->instance,
+                         VK_ERROR_FORMAT_NOT_SUPPORTED);
+      }
+   }
+
    const VkPhysicalDeviceExternalImageFormatInfo *external_info =
       vk_find_struct_const(pImageFormatInfo->pNext,
                            PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO);

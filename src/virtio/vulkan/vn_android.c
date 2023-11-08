@@ -16,7 +16,6 @@
 #include <vndk/hardware_buffer.h>
 #include <vulkan/vk_icd.h>
 
-#include "drm-uapi/drm_fourcc.h"
 #include "util/os_file.h"
 #include "vk_android.h"
 

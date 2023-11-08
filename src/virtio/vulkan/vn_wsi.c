@@ -10,7 +10,6 @@
 
 #include "vn_wsi.h"
 
-#include "drm-uapi/drm_fourcc.h"
 #include "vk_enum_to_str.h"
 #include "wsi_common_entrypoints.h"
 
@@ -133,8 +132,26 @@ vn_wsi_create_image(struct vn_device *dev,
       local_create_info.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
       create_info = &local_create_info;
 
-      if (VN_DEBUG(WSI))
-         vn_log(dev->instance, "forcing scanout image linear");
+      if (VN_DEBUG(WSI)) {
+         vn_log(
+            dev->instance,
+            "forcing scanout image linear (no explicit modifier support)");
+      }
+   } else {
+      if (VN_PERF(NO_TILED_WSI_IMAGE)) {
+         const VkImageDrmFormatModifierListCreateInfoEXT *modifier_info =
+            vk_find_struct_const(
+               create_info->pNext,
+               IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
+         assert(modifier_info);
+         assert(modifier_info->drmFormatModifierCount == 1 &&
+                modifier_info->pDrmFormatModifiers[0] ==
+                   DRM_FORMAT_MOD_LINEAR);
+         if (VN_DEBUG(WSI)) {
+            vn_log(dev->instance,
+                   "forcing scanout image linear (given no_tiled_wsi_image)");
+         }
+      }
    }
 
    struct vn_image *img;
