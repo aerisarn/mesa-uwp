@@ -1381,6 +1381,15 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
          nir_lower_imul64 | nir_lower_imul_high64 | nir_lower_imul_2x32_64 |
          nir_lower_divmod64 | nir_lower_minmax64 | nir_lower_iabs64 |
          nir_lower_iadd_sat64 | nir_lower_conv64,
+
+      /* For OpenGL, rounding mode is undefined. We want fast packing with v_cvt_pkrtz_f16,
+       * but if we use it, all f32->f16 conversions have to round towards zero,
+       * because both scalar and vec2 down-conversions have to round equally.
+       *
+       * For OpenCL, rounding mode is explicit. This will only lower f2f16 to f2f16_rtz
+       * when execution mode is rtz instead of rtne.
+       */
+      .force_f2f16_rtz = true,
    };
    *sscreen->nir_options = nir_options;
 }
