@@ -4016,6 +4016,9 @@ typedef struct nir_shader_compiler_options {
 
    /** lowers fquantize2f16 to alu ops. */
    bool lower_fquantize2f16;
+
+   /** Lower f2f16 to f2f16_rtz when execution mode is not rtne. */
+   bool force_f2f16_rtz;
 } nir_shader_compiler_options;
 
 typedef struct nir_shader {
