@@ -76,7 +76,8 @@ agx_bo_bind(struct agx_device *dev, struct agx_bo *bo, uint64_t addr,
 }
 
 struct agx_bo *
-agx_bo_alloc(struct agx_device *dev, size_t size, enum agx_bo_flags flags)
+agx_bo_alloc(struct agx_device *dev, size_t size, size_t align,
+             enum agx_bo_flags flags)
 {
    struct agx_bo *bo;
    unsigned handle = 0;
@@ -98,6 +99,7 @@ agx_bo_alloc(struct agx_device *dev, size_t size, enum agx_bo_flags flags)
 
    bo->type = AGX_ALLOC_REGULAR;
    bo->size = size; /* TODO: gem_create.size */
+   bo->align = MAX2(dev->params.vm_page_size, align);
    bo->flags = flags;
    bo->dev = dev;
    bo->handle = handle;
@@ -112,8 +114,7 @@ agx_bo_alloc(struct agx_device *dev, size_t size, enum agx_bo_flags flags)
       heap = &dev->main_heap;
 
    simple_mtx_lock(&dev->vma_lock);
-   bo->ptr.gpu = util_vma_heap_alloc(heap, size + dev->guard_size,
-                                     dev->params.vm_page_size);
+   bo->ptr.gpu = util_vma_heap_alloc(heap, size + dev->guard_size, bo->align);
    simple_mtx_unlock(&dev->vma_lock);
    if (!bo->ptr.gpu) {
       fprintf(stderr, "Failed to allocate BO VMA\n");
