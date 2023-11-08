@@ -1279,6 +1279,35 @@ impl SM50Instr {
         );
     }
 
+    fn encode_ald(&mut self, op: &OpALd) {
+        self.set_opcode(0xefd8);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.offset);
+        self.set_reg_src(39..47, op.vtx);
+
+        assert!(!op.access.phys);
+        self.set_field(20..30, op.access.addr);
+        self.set_bit(31, op.access.patch);
+        self.set_bit(32, op.access.output);
+        self.set_field(47..49, op.access.comps - 1);
+    }
+
+    fn encode_ast(&mut self, op: &OpASt) {
+        self.set_opcode(0xeff0);
+
+        self.set_reg_src(0..8, op.data);
+        self.set_reg_src(8..16, op.offset);
+        self.set_reg_src(39..47, op.vtx);
+
+        assert!(!op.access.phys);
+        assert!(op.access.output);
+        self.set_field(20..30, op.access.addr);
+        self.set_bit(31, op.access.patch);
+        self.set_bit(32, op.access.output);
+        self.set_field(47..49, op.access.comps - 1);
+    }
+
     fn encode_membar(&mut self, op: &OpMemBar) {
         self.set_opcode(0xef98);
 
@@ -1853,6 +1882,8 @@ impl SM50Instr {
             Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
+            Op::ALd(op) => si.encode_ald(&op),
+            Op::ASt(op) => si.encode_ast(&op),
             Op::MemBar(op) => si.encode_membar(&op),
             Op::Atom(op) => si.encode_atom(&op),
             Op::Bra(op) => si.encode_bra(&op, ip, labels),
