@@ -347,7 +347,7 @@ radv_sdma_emit_nop(const struct radv_device *device, struct radeon_cmdbuf *cs)
 {
    /* SDMA NOP acts as a fence command and causes the SDMA engine to wait for pending copy operations. */
    radeon_check_space(device->ws, cs, 1);
-   radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_NOP, 0, 0));
+   radeon_emit(cs, SDMA_PACKET(SDMA_OPCODE_NOP, 0, 0));
 }
 
 void
@@ -380,7 +380,7 @@ radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs
 
    for (unsigned i = 0; i < ncopy; i++) {
       unsigned csize = size >= 4 ? MIN2(size & align, max_size_per_packet) : size;
-      radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_LINEAR, 0));
+      radeon_emit(cs, SDMA_PACKET(SDMA_OPCODE_COPY, SDMA_COPY_SUB_OPCODE_LINEAR, 0));
       radeon_emit(cs, gfx_level >= GFX9 ? csize - 1 : csize);
       radeon_emit(cs, 0); /* src/dst endian swap */
       radeon_emit(cs, src_va);
@@ -424,8 +424,8 @@ radv_sdma_emit_copy_linear_sub_window(const struct radv_device *device, struct r
 
    ASSERTED unsigned cdw_end = radeon_check_space(device->ws, cs, 13);
 
-   radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_LINEAR_SUB_WINDOW, 0) |
-                      util_logbase2(src->bpp) << 29);
+   radeon_emit(cs, SDMA_PACKET(SDMA_OPCODE_COPY, SDMA_COPY_SUB_OPCODE_LINEAR_SUB_WINDOW, 0) | util_logbase2(src->bpp)
+                                                                                                 << 29);
    radeon_emit(cs, src->va);
    radeon_emit(cs, src->va >> 32);
    radeon_emit(cs, src_off.x | src_off.y << 16);
@@ -468,8 +468,8 @@ radv_sdma_emit_copy_tiled_sub_window(const struct radv_device *device, struct ra
 
    ASSERTED unsigned cdw_end = radeon_check_space(device->ws, cs, 14 + (dcc ? 3 : 0));
 
-   radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_TILED_SUB_WINDOW, 0) | dcc << 19 |
-                      detile << 31 | tiled->header_dword);
+   radeon_emit(cs, SDMA_PACKET(SDMA_OPCODE_COPY, SDMA_COPY_SUB_OPCODE_TILED_SUB_WINDOW, 0) | dcc << 19 | detile << 31 |
+                      tiled->header_dword);
    radeon_emit(cs, tiled->va);
    radeon_emit(cs, tiled->va >> 32);
    radeon_emit(cs, tiled_off.x | tiled_off.y << 16);

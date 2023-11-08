@@ -735,7 +735,7 @@ static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
       const uint32_t sub_op = (header >> 8) & 0xff;
 
       switch (opcode) {
-      case CIK_SDMA_OPCODE_NOP: {
+      case SDMA_OPCODE_NOP: {
          fprintf(f, "NOP\n");
 
          const uint32_t count = header >> 16;
@@ -745,7 +745,7 @@ static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
          }
          break;
       }
-      case CIK_SDMA_OPCODE_CONSTANT_FILL: {
+      case SDMA_OPCODE_CONSTANT_FILL: {
          fprintf(f, "CONSTANT_FILL\n");
          ac_ib_get(ib);
          fprintf(f, "\n");
@@ -764,7 +764,7 @@ static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
 
          break;
       }
-      case CIK_SDMA_OPCODE_WRITE: {
+      case SDMA_OPCODE_WRITE: {
          fprintf(f, "WRITE\n");
 
          /* VA */
@@ -783,9 +783,9 @@ static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
 
          break;
       }
-      case CIK_SDMA_OPCODE_COPY: {
+      case SDMA_OPCODE_COPY: {
          switch (sub_op) {
-         case CIK_SDMA_COPY_SUB_OPCODE_LINEAR: {
+         case SDMA_COPY_SUB_OPCODE_LINEAR: {
             fprintf(f, "COPY LINEAR\n");
 
             uint32_t copy_bytes = ac_ib_get(ib) + (ib->gfx_level >= GFX9 ? 1 : 0);
@@ -803,7 +803,7 @@ static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
 
             break;
          }
-         case CIK_SDMA_COPY_SUB_OPCODE_LINEAR_SUB_WINDOW: {
+         case SDMA_COPY_SUB_OPCODE_LINEAR_SUB_WINDOW: {
             fprintf(f, "COPY LINEAR_SUB_WINDOW\n");
 
             for (unsigned i = 0; i < 12; ++i) {
@@ -812,7 +812,7 @@ static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
             }
             break;
          }
-         case CIK_SDMA_COPY_SUB_OPCODE_TILED_SUB_WINDOW: {
+         case SDMA_COPY_SUB_OPCODE_TILED_SUB_WINDOW: {
             fprintf(f, "COPY TILED_SUB_WINDOW %s\n", header >> 31 ? "t2l" : "l2t");
             uint32_t dcc = (header >> 19) & 1;
 
@@ -860,7 +860,7 @@ static void parse_sdma_ib(FILE *f, struct ac_ib_parser *ib)
             }
             break;
          }
-         case CIK_SDMA_COPY_SUB_OPCODE_T2T_SUB_WINDOW: {
+         case SDMA_COPY_SUB_OPCODE_T2T_SUB_WINDOW: {
             fprintf(f, "COPY T2T_SUB_WINDOW\n");
             uint32_t dcc = (header >> 19) & 1;
 
