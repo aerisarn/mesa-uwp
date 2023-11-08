@@ -655,7 +655,7 @@ traces:
     freedreno-a630:
       label: [skip]
     zink-a618:
-      label: [no-perf]
+      label: [skip, flakes, no-perf]
       checksum: fd1b9033e68c394a5564d8c4819a3012
       text: >
         Zink assertion error:
@@ -664,7 +664,7 @@ traces:
           apitrace: warning: caught signal 6
           28177: error: caught an unhandled exception
     zink-a630:
-      label: [skip, flakes]
+      label: [skip, flakes, no-perf]
       checksum: fd1b9033e68c394a5564d8c4819a3012
       text: crashes time to time
 
