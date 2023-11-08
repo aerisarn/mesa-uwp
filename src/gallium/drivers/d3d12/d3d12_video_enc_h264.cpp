@@ -712,12 +712,16 @@ d3d12_video_encoder_update_h264_gop_configuration(struct d3d12_video_encoder *pD
          return false;
       }
 
-      const uint32_t max_pic_order_cnt_lsb = 2 * GOPLength;
-      const uint32_t max_max_frame_num = GOPLength;
-      double log2_max_frame_num_minus4 = std::max(0.0, std::ceil(std::log2(max_max_frame_num)) - 4);
-      double log2_max_pic_order_cnt_lsb_minus4 = std::max(0.0, std::ceil(std::log2(max_pic_order_cnt_lsb)) - 4);
-      assert(log2_max_frame_num_minus4 < UCHAR_MAX);
-      assert(log2_max_pic_order_cnt_lsb_minus4 < UCHAR_MAX);
+      // Workaround: D3D12 needs to use the POC in the DPB to track reference frames
+      // even when there's no frame reordering (picture->seq.pic_order_cnt_type == 2)
+      // So in that case, derive an artificial log2_max_pic_order_cnt_lsb_minus4
+      // to avoid unexpected wrapping
+      if (picture->seq.pic_order_cnt_type == 2u) {
+         const uint32_t max_pic_order_cnt_lsb = 2 * GOPLength;
+         picture->seq.log2_max_pic_order_cnt_lsb_minus4 = std::max(0.0, std::ceil(std::log2(max_pic_order_cnt_lsb)) - 4);
+         assert(picture->seq.log2_max_pic_order_cnt_lsb_minus4 < UCHAR_MAX);
+      }
+
       assert(picture->seq.pic_order_cnt_type < UCHAR_MAX);
 
       // Set dirty flag if m_H264GroupOfPictures changed
@@ -726,8 +730,8 @@ d3d12_video_encoder_update_h264_gop_configuration(struct d3d12_video_encoder *pD
          GOPLength,
          PPicturePeriod,
          static_cast<uint8_t>(picture->seq.pic_order_cnt_type),
-         static_cast<uint8_t>(log2_max_frame_num_minus4),
-         static_cast<uint8_t>(log2_max_pic_order_cnt_lsb_minus4)
+         static_cast<uint8_t>(picture->seq.log2_max_frame_num_minus4),
+         static_cast<uint8_t>(picture->seq.log2_max_pic_order_cnt_lsb_minus4)
       };
 
       if (memcmp(&previousGOPConfig,
