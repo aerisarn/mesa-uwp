@@ -16,6 +16,35 @@ impl Src {
             _ => false,
         }
     }
+
+    fn as_imm_not_i20(&self) -> Option<u32> {
+        match self.src_ref {
+            SrcRef::Imm32(i) => {
+                assert!(self.src_mod.is_none());
+                let top = i & 0xfff80000;
+                if top == 0 || top == 0xfff80000 {
+                    None
+                } else {
+                    Some(i)
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn as_imm_not_f20(&self) -> Option<u32> {
+        match self.src_ref {
+            SrcRef::Imm32(i) => {
+                assert!(self.src_mod.is_none());
+                if (i & 0xfff) == 0 {
+                    None
+                } else {
+                    Some(i)
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -323,23 +352,35 @@ impl SM50Instr {
         self.set_reg(0..8, *dst.as_reg().unwrap());
     }
 
-    fn set_src_imm32(&mut self, range: Range<usize>, u: &u32) {
+    fn set_src_imm32(&mut self, range: Range<usize>, u: u32) {
         assert!(range.len() == 32);
-        self.set_field(range, *u);
+        self.set_field(range, u);
     }
 
-    fn set_src_imm24_signed(&mut self, range: Range<usize>, u: &i32) {
-        assert!(range.len() == 24);
-        assert!(*u <= 0x1ffffff);
-        self.set_field(range, *u);
+    fn set_src_imm_i20(
+        &mut self,
+        range: Range<usize>,
+        sign_bit: usize,
+        i: u32,
+    ) {
+        assert!(range.len() == 19);
+        assert!((i & 0xfff80000) == 0 || (i & 0xfff80000) == 0xfff80000);
+
+        self.set_field(range, i & 0x7ffff);
+        self.set_field(sign_bit..sign_bit + 1, (i & 0x80000) >> 19);
     }
 
-    fn set_src_imm20(&mut self, range: Range<usize>, sign_bit: usize, u: &u32) {
-        assert!(range.len() == 20);
-        assert!(*u <= 0xfffff);
+    fn set_src_imm_f20(
+        &mut self,
+        range: Range<usize>,
+        sign_bit: usize,
+        f: u32,
+    ) {
+        assert!(range.len() == 19);
+        assert!((f & 0xfffff000) == 0);
 
-        self.set_field(range, *u & 0x7ffff);
-        self.set_field(sign_bit..sign_bit + 1, (*u & 0x80000) >> 19);
+        self.set_field(range, (f >> 12) & 0x7ffff);
+        self.set_field(sign_bit..sign_bit + 1, f >> 31);
     }
 
     fn set_src_cb(&mut self, range: Range<usize>, cb: &CBufRef) {
@@ -486,13 +527,13 @@ impl SM50Instr {
                 if let Some(imm32_behavior) = encoding_info.imm32_behavior_opt {
                     if imm32_behavior.prefer_imm32 || *imm > 0xfffff {
                         self.set_opcode(imm32_behavior.opcode);
-                        self.set_src_imm32(20..52, &imm);
+                        self.set_src_imm32(20..52, *imm);
 
                         return true;
                     }
                 }
 
-                self.set_src_imm20(20..40, 56, &imm);
+                self.set_src_imm_i20(20..39, 56, *imm);
 
                 match encoding_info.encoding_type {
                     ALUEncodingType::Variant1 => 0x30,
