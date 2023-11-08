@@ -710,6 +710,8 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 
 fail:
+   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
+
    if (instance->ring.shmem) {
       uint32_t destroy_ring_data[4];
       struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
