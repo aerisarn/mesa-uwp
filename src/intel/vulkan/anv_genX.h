@@ -186,7 +186,7 @@ genX(batch_emit_post_3dprimitive_was)(struct anv_batch *batch,
                                       uint32_t vertex_count);
 
 VkPolygonMode
-genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
+genX(raster_polygon_mode)(const struct anv_graphics_pipeline *pipeline,
                           VkPolygonMode polygon_mode,
                           VkPrimitiveTopology primitive_topology);
 

@@ -613,14 +613,14 @@ void anv_CmdBindPipeline(
 
    switch (pipelineBindPoint) {
    case VK_PIPELINE_BIND_POINT_COMPUTE: {
-      struct anv_compute_pipeline *compute_pipeline =
-         anv_pipeline_to_compute(pipeline);
-      if (cmd_buffer->state.compute.pipeline == compute_pipeline)
+      if (cmd_buffer->state.compute.base.pipeline == pipeline)
          return;
 
       cmd_buffer->state.compute.base.pipeline = pipeline;
-      cmd_buffer->state.compute.pipeline = compute_pipeline;
       cmd_buffer->state.compute.pipeline_dirty = true;
+
+      struct anv_compute_pipeline *compute_pipeline =
+         anv_pipeline_to_compute(pipeline);
       set_dirty_for_bind_map(cmd_buffer, MESA_SHADER_COMPUTE,
                              &compute_pipeline->cs->bind_map);
 
@@ -630,8 +630,6 @@ void anv_CmdBindPipeline(
    }
 
    case VK_PIPELINE_BIND_POINT_GRAPHICS: {
-      struct anv_graphics_pipeline *old_pipeline =
-         cmd_buffer->state.gfx.pipeline;
       struct anv_graphics_pipeline *new_pipeline =
          anv_pipeline_to_graphics(pipeline);
 
@@ -639,11 +637,14 @@ void anv_CmdBindPipeline(
       vk_cmd_set_dynamic_graphics_state(&cmd_buffer->vk,
                                         &new_pipeline->dynamic_state);
 
-      if (old_pipeline == new_pipeline)
+      if (cmd_buffer->state.gfx.base.pipeline == pipeline)
          return;
 
+      struct anv_graphics_pipeline *old_pipeline =
+         cmd_buffer->state.gfx.base.pipeline == NULL ? NULL :
+         anv_pipeline_to_graphics(cmd_buffer->state.gfx.base.pipeline);
+
       cmd_buffer->state.gfx.base.pipeline = pipeline;
-      cmd_buffer->state.gfx.pipeline = new_pipeline;
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
 
       anv_foreach_stage(stage, new_pipeline->base.base.active_stages) {
@@ -696,15 +697,14 @@ void anv_CmdBindPipeline(
    }
 
    case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: {
-      struct anv_ray_tracing_pipeline *rt_pipeline =
-         anv_pipeline_to_ray_tracing(pipeline);
-      if (cmd_buffer->state.rt.pipeline == rt_pipeline)
+      if (cmd_buffer->state.rt.base.pipeline == pipeline)
          return;
 
       cmd_buffer->state.rt.base.pipeline = pipeline;
-      cmd_buffer->state.rt.pipeline = rt_pipeline;
       cmd_buffer->state.rt.pipeline_dirty = true;
 
+      struct anv_ray_tracing_pipeline *rt_pipeline =
+         anv_pipeline_to_ray_tracing(pipeline);
       if (rt_pipeline->stack_size > 0) {
          anv_CmdSetRayTracingPipelineStackSizeKHR(commandBuffer,
                                                   rt_pipeline->stack_size);
@@ -1039,7 +1039,8 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
    const struct intel_device_info *devinfo = cmd_buffer->device->info;
    struct anv_cmd_pipeline_state *pipe_state = &cmd_buffer->state.compute.base;
    struct anv_push_constants *data = &pipe_state->push_constants;
-   struct anv_compute_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
+   struct anv_compute_pipeline *pipeline =
+      anv_pipeline_to_compute(cmd_buffer->state.compute.base.pipeline);
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
    const struct anv_push_range *range = &pipeline->cs->bind_map.push_ranges[0];
 
@@ -1293,15 +1294,13 @@ anv_cmd_buffer_restore_state(struct anv_cmd_buffer *cmd_buffer,
    assert(state->flags & ANV_CMD_SAVED_STATE_COMPUTE_PIPELINE);
    const VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
    const VkShaderStageFlags stage_flags = VK_SHADER_STAGE_COMPUTE_BIT;
-   struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
-   struct anv_cmd_pipeline_state *pipe_state = &comp_state->base;
+   struct anv_cmd_pipeline_state *pipe_state = &cmd_buffer->state.compute.base;
 
    if (state->flags & ANV_CMD_SAVED_STATE_COMPUTE_PIPELINE) {
        if (state->pipeline) {
           anv_CmdBindPipeline(cmd_buffer_, bind_point,
                               anv_pipeline_to_handle(state->pipeline));
        } else {
-          comp_state->pipeline = NULL;
           pipe_state->pipeline = NULL;
        }
    }

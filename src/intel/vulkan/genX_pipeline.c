@@ -676,7 +676,7 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
  * different shader stages which might generate their own type of primitives.
  */
 VkPolygonMode
-genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
+genX(raster_polygon_mode)(const struct anv_graphics_pipeline *pipeline,
                           VkPolygonMode polygon_mode,
                           VkPrimitiveTopology primitive_topology)
 {

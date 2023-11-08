@@ -79,7 +79,9 @@ genX(streamout_prologue)(struct anv_cmd_buffer *cmd_buffer)
    if (!intel_needs_workaround(cmd_buffer->device->info, 16013994831))
       return;
 
-   if (cmd_buffer->state.gfx.pipeline->uses_xfb) {
+   struct anv_graphics_pipeline *pipeline =
+      anv_pipeline_to_graphics(cmd_buffer->state.gfx.base.pipeline);
+   if (pipeline->uses_xfb) {
       genX(cmd_buffer_set_preemption)(cmd_buffer, false);
       return;
    }
@@ -194,7 +196,8 @@ want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer,
    assert(d_iview && d_iview->image->planes[0].aux_usage == ISL_AUX_USAGE_HIZ);
 
    /* 3DSTATE_PS_EXTRA::PixelShaderValid */
-   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   struct anv_graphics_pipeline *pipeline =
+      anv_pipeline_to_graphics(cmd_buffer->state.gfx.base.pipeline);
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT))
       return false;
 
@@ -438,7 +441,8 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    UNUSED struct anv_device *device = cmd_buffer->device;
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
-   const struct anv_graphics_pipeline *pipeline = gfx->pipeline;
+   const struct anv_graphics_pipeline *pipeline =
+      anv_pipeline_to_graphics(gfx->base.pipeline);
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
    struct anv_gfx_dynamic_state *hw_state = &gfx->dyn_state;
@@ -664,7 +668,7 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
                                      pipeline->rasterization_samples);
 
       const VkPolygonMode dynamic_raster_mode =
-         genX(raster_polygon_mode)(gfx->pipeline,
+         genX(raster_polygon_mode)(pipeline,
                                    dyn->rs.polygon_mode,
                                    dyn->ia.primitive_topology);
 
@@ -1303,7 +1307,8 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_device *device = cmd_buffer->device;
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
-   struct anv_graphics_pipeline *pipeline = gfx->pipeline;
+   struct anv_graphics_pipeline *pipeline =
+      anv_pipeline_to_graphics(gfx->base.pipeline);
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
    struct anv_gfx_dynamic_state *hw_state = &gfx->dyn_state;
