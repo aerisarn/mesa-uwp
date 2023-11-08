@@ -16,6 +16,7 @@
 #include "vn_buffer.h"
 #include "vn_device_memory.h"
 #include "vn_feedback.h"
+#include "vn_image.h"
 
 struct vn_device_memory_report {
    PFN_vkDeviceMemoryReportCallbackEXT callback;
@@ -55,6 +56,7 @@ struct vn_device {
    uint32_t queue_count;
 
    struct vn_buffer_reqs_cache buffer_reqs_cache;
+   struct vn_image_reqs_cache image_reqs_cache;
 };
 VK_DEFINE_HANDLE_CASTS(vn_device,
                        base.base.base,

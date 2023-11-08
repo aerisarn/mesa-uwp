@@ -125,6 +125,7 @@ enum vn_perf {
    VN_PERF_NO_ASYNC_MEM_ALLOC = 1ull << 9,
    VN_PERF_NO_TILED_WSI_IMAGE = 1ull << 10,
    VN_PERF_NO_MULTI_RING = 1ull << 11,
+   VN_PERF_NO_ASYNC_IMAGE_CREATE = 1ull << 12,
 };
 
 typedef uint64_t vn_object_id;
