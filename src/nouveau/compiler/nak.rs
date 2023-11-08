@@ -375,7 +375,7 @@ pub extern "C" fn nak_compile_shader(
     };
 
     let code = if nak.sm >= 75 {
-        nak_encode_sm75::encode_shader(&s)
+        s.encode_sm75()
     } else {
         panic!("Unsupported shader model");
     };
