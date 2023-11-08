@@ -2727,7 +2727,10 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    emit_cf_list(ctx, &impl->body);
    agx_emit_phis_deferred(ctx);
 
-   if (impl->function->is_entrypoint && nir->scratch_size > 0) {
+   /* TODO: reenable when we have the helper program, and have fixed
+    * scratch_size on shaders that use libagx.
+    */
+   if (impl->function->is_entrypoint && nir->scratch_size > 0 && false) {
       /* Apple always allocate 40 more bytes in the entrypoint and align to 4. */
       uint64_t stack_size = ALIGN(DIV_ROUND_UP(nir->scratch_size, 4) + 10, 4);
 
