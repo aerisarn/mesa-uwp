@@ -358,7 +358,7 @@ radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs
       return;
 
    enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-   unsigned max_size_per_packet = gfx_level >= GFX10_3 ? GFX103_SDMA_COPY_MAX_SIZE : CIK_SDMA_COPY_MAX_SIZE;
+   unsigned max_size_per_packet = gfx_level >= GFX10_3 ? SDMA_V5_2_COPY_MAX_BYTES : SDMA_V2_0_COPY_MAX_BYTES;
    unsigned align = ~0u;
    unsigned ncopy = DIV_ROUND_UP(size, max_size_per_packet);
 
