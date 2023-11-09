@@ -490,20 +490,12 @@ vn_instance_ring_submit(struct vn_instance *instance,
    return result;
 }
 
-static struct vn_renderer_shmem *
-vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
-                                   size_t size,
-                                   void **out_ptr)
+static inline void
+vn_instance_set_reply_shmem_locked(struct vn_instance *instance,
+                                   struct vn_renderer_shmem *shmem,
+                                   size_t offset,
+                                   size_t size)
 {
-   VN_TRACE_FUNC();
-
-   struct vn_renderer_shmem_pool *pool = &instance->reply_shmem_pool;
-
-   size_t offset;
-   struct vn_renderer_shmem *shmem =
-      vn_renderer_shmem_pool_alloc(instance->renderer, pool, size, &offset);
-   if (!shmem)
-      return NULL;
 
    uint32_t set_reply_command_stream_data[16];
    struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
@@ -516,10 +508,6 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
    vn_encode_vkSetReplyCommandStreamMESA(&local_enc, 0, &stream);
    vn_cs_encoder_commit(&local_enc);
    vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
-
-   *out_ptr = shmem->mmap_ptr + offset;
-
-   return shmem;
 }
 
 void
@@ -528,33 +516,32 @@ vn_instance_submit_command(struct vn_instance *instance,
 {
    assert(!vn_cs_encoder_is_empty(&submit->command));
 
-   void *reply_ptr = NULL;
-   submit->reply_shmem = NULL;
-
-   mtx_lock(&instance->ring.mutex);
-
    vn_cs_encoder_commit(&submit->command);
 
+   size_t reply_offset = 0;
+   submit->reply_shmem = NULL;
    if (submit->reply_size) {
-      submit->reply_shmem = vn_instance_get_reply_shmem_locked(
-         instance, submit->reply_size, &reply_ptr);
-      if (!submit->reply_shmem) {
-         mtx_unlock(&instance->ring.mutex);
+      submit->reply_shmem = vn_instance_reply_shmem_alloc(
+         instance, submit->reply_size, &reply_offset);
+      if (!submit->reply_shmem)
          return;
-      }
    }
 
+   mtx_lock(&instance->ring.mutex);
+   if (submit->reply_size) {
+      vn_instance_set_reply_shmem_locked(instance, submit->reply_shmem,
+                                         reply_offset, submit->reply_size);
+   }
    submit->ring_seqno_valid =
       VK_SUCCESS == vn_instance_ring_submit_locked(instance, &submit->command,
                                                    submit->reply_shmem,
                                                    &submit->ring_seqno);
-
    mtx_unlock(&instance->ring.mutex);
 
    if (submit->reply_size) {
+      void *reply_ptr = submit->reply_shmem->mmap_ptr + reply_offset;
       submit->reply =
          VN_CS_DECODER_INITIALIZER(reply_ptr, submit->reply_size);
-
       if (submit->ring_seqno_valid)
          vn_ring_wait_seqno(&instance->ring.ring, submit->ring_seqno);
    }

@@ -169,6 +169,15 @@ vn_instance_cs_shmem_alloc(struct vn_instance *instance,
       instance->renderer, &instance->cs_shmem_pool, size, out_offset);
 }
 
+static inline struct vn_renderer_shmem *
+vn_instance_reply_shmem_alloc(struct vn_instance *instance,
+                              size_t size,
+                              size_t *out_offset)
+{
+   return vn_renderer_shmem_pool_alloc(
+      instance->renderer, &instance->reply_shmem_pool, size, out_offset);
+}
+
 static inline int
 vn_instance_acquire_ring_idx(struct vn_instance *instance)
 {
