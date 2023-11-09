@@ -55,7 +55,6 @@ struct vn_instance {
       uint64_t id;
 
       struct vn_cs_encoder upload;
-      uint32_t command_dropped;
 
       /* to synchronize renderer/ring */
       mtx_t roundtrip_mutex;

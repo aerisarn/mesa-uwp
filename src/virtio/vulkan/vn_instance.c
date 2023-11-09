@@ -526,20 +526,22 @@ void
 vn_instance_submit_command(struct vn_instance *instance,
                            struct vn_instance_submit_command *submit)
 {
+   assert(!vn_cs_encoder_is_empty(&submit->command));
+
    void *reply_ptr = NULL;
    submit->reply_shmem = NULL;
 
    mtx_lock(&instance->ring.mutex);
 
-   if (vn_cs_encoder_is_empty(&submit->command))
-      goto fail;
    vn_cs_encoder_commit(&submit->command);
 
    if (submit->reply_size) {
       submit->reply_shmem = vn_instance_get_reply_shmem_locked(
          instance, submit->reply_size, &reply_ptr);
-      if (!submit->reply_shmem)
-         goto fail;
+      if (!submit->reply_shmem) {
+         mtx_unlock(&instance->ring.mutex);
+         return;
+      }
    }
 
    submit->ring_seqno_valid =
@@ -556,12 +558,6 @@ vn_instance_submit_command(struct vn_instance *instance,
       if (submit->ring_seqno_valid)
          vn_ring_wait_seqno(&instance->ring.ring, submit->ring_seqno);
    }
-
-   return;
-
-fail:
-   instance->ring.command_dropped++;
-   mtx_unlock(&instance->ring.mutex);
 }
 
 /* instance commands */
