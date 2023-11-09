@@ -575,6 +575,9 @@ get_input_signature_group(struct dxil_module *mod,
          /* Note: Specifically search for a variable that has space for these additional components */
          nir_foreach_variable_with_modes(test_var, s, modes) {
             if (var->data.location == test_var->data.location) {
+               /* Variables should be sorted such that we're only looking for an already-emitted variable */
+               if (test_var == var)
+                  break;
                base_var = test_var;
                if (test_var->data.location_frac == 0 &&
                    glsl_get_component_slots(

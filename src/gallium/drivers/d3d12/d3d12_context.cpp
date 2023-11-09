@@ -139,7 +139,6 @@ d3d12_create_vertex_elements_state(struct pipe_context *pctx,
    unsigned max_vb = 0;
    for (unsigned i = 0; i < num_elements; ++i) {
       cso->elements[i].SemanticName = "TEXCOORD";
-      cso->elements[i].SemanticIndex = i;
 
       enum pipe_format format_helper =
          d3d12_emulated_vtx_format((enum pipe_format)elements[i].src_format);
