@@ -1001,39 +1001,32 @@ impl SM50Instr {
     }
 
     fn encode_f2i(&mut self, op: &OpF2I) {
-        assert!(op.src.is_reg_or_zero());
+        match &op.src.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5cb0);
+                self.set_reg_src_ref(20..28, op.src.src_ref);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x38b0);
+                self.set_src_imm_f20(20..39, 56, *i);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4cb0);
+                self.set_src_cb(20..39, cb);
+            }
+            src => panic!("Unsupported src type for F2I: {src}"),
+        }
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: Some(49),
-                neg_bit: Some(45),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0xb0,
-            encoding_type: ALUEncodingType::Variant3,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
-
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src.into()),
-            ALUSrc::None,
-        );
+        self.set_dst(op.dst);
 
         self.set_field(8..10, (op.dst_type.bits() / 8).ilog2());
         self.set_field(10..12, (op.src_type.bits() / 8).ilog2());
         self.set_bit(12, op.dst_type.is_signed());
         self.set_rnd_mode(39..41, op.rnd_mode);
-        self.set_field(41..43, 0_u8); /* TODO: subop */
         self.set_bit(44, false); /* FTZ */
+        self.set_bit(45, op.src.src_mod.has_fneg());
+        self.set_bit(47, false); // .CC
+        self.set_bit(49, op.src.src_mod.has_fabs());
     }
 
     fn set_pred_set_op(&mut self, range: Range<usize>, op: PredSetOp) {
