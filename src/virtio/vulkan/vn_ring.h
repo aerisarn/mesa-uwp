@@ -51,16 +51,6 @@ struct vn_ring_shared {
    void *extra;
 };
 
-struct vn_ring_submit {
-   uint32_t seqno;
-
-   struct list_head head;
-
-   /* BOs to keep alive (TODO make sure shmems are pinned) */
-   uint32_t shmem_count;
-   struct vn_renderer_shmem *shmems[];
-};
-
 struct vn_ring {
    uint64_t id;
    struct vn_instance *instance;
@@ -97,9 +87,6 @@ vn_ring_create(struct vn_instance *instance,
 void
 vn_ring_destroy(struct vn_ring *ring);
 
-struct vn_ring_submit *
-vn_ring_get_submit(struct vn_ring *ring, uint32_t shmem_count);
-
 uint32_t
 vn_ring_load_status(const struct vn_ring *ring);
 
@@ -107,15 +94,17 @@ void
 vn_ring_unset_status_bits(struct vn_ring *ring, uint32_t mask);
 
 bool
-vn_ring_submit(struct vn_ring *ring,
-               struct vn_ring_submit *submit,
-               const struct vn_cs_encoder *cs,
-               uint32_t *seqno);
-
-bool
 vn_ring_get_seqno_status(struct vn_ring *ring, uint32_t seqno);
 
+/* forward declaration before updating protocol to submit via ring */
+struct vn_instance_submit_command;
+
 void
-vn_ring_wait_seqno(struct vn_ring *ring, uint32_t seqno);
+vn_ring_submit_command(struct vn_ring *ring,
+                       struct vn_instance_submit_command *submit);
+
+VkResult
+vn_ring_submit_command_simple(struct vn_ring *ring,
+                              const struct vn_cs_encoder *cs);
 
 #endif /* VN_RING_H */

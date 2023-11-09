@@ -100,9 +100,12 @@ vn_instance_roundtrip(struct vn_instance *instance)
       vn_instance_wait_roundtrip(instance, roundtrip_seqno);
 }
 
-VkResult
+static inline VkResult
 vn_instance_ring_submit(struct vn_instance *instance,
-                        const struct vn_cs_encoder *cs);
+                        const struct vn_cs_encoder *cs)
+{
+   return vn_ring_submit_command_simple(instance->ring.ring, cs);
+}
 
 struct vn_instance_submit_command {
    /* empty command implies errors */
@@ -136,9 +139,12 @@ vn_instance_submit_command_init(struct vn_instance *instance,
    return &submit->command;
 }
 
-void
+static inline void
 vn_instance_submit_command(struct vn_instance *instance,
-                           struct vn_instance_submit_command *submit);
+                           struct vn_instance_submit_command *submit)
+{
+   vn_ring_submit_command(instance->ring.ring, submit);
+}
 
 static inline struct vn_cs_decoder *
 vn_instance_get_command_reply(struct vn_instance *instance,
