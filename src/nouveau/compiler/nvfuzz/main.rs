@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const TMP_FILE: &str = "/tmp/nvfuzz";
-const SM: &str = "SM75";
+const SM: &str = "SM50";
 
 fn find_cuda() -> std::io::Result<PathBuf> {
     let paths = fs::read_dir("/usr/local")?;
@@ -61,11 +61,15 @@ fn main() {
         end: range[1].parse().unwrap(),
     };
 
-    let mut instr: [u32; 4] = [
+    let mut instr: [u32; 8] = [
         u32::from_str_radix(&args[2], 16).unwrap(),
         u32::from_str_radix(&args[3], 16).unwrap(),
         u32::from_str_radix(&args[4], 16).unwrap(),
         u32::from_str_radix(&args[5], 16).unwrap(),
+        u32::from_str_radix(&args[6], 16).unwrap(),
+        u32::from_str_radix(&args[7], 16).unwrap(),
+        u32::from_str_radix(&args[8], 16).unwrap(),
+        u32::from_str_radix(&args[9], 16).unwrap(),
     ];
 
     let cuda_path = find_cuda().expect("Failed to find CUDA");
