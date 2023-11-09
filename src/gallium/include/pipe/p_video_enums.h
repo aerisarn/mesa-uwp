@@ -141,6 +141,7 @@ enum pipe_video_cap
    PIPE_VIDEO_CAP_ENC_SUPPORTS_TILE = 40,
    PIPE_VIDEO_CAP_ENC_MAX_TILE_ROWS = 41,
    PIPE_VIDEO_CAP_ENC_MAX_TILE_COLS = 42,
+   PIPE_VIDEO_CAP_ENC_INTRA_REFRESH = 43,
 };
 
 enum pipe_video_av1_enc_filter_mode

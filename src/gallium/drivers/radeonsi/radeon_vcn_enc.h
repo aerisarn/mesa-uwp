@@ -102,6 +102,7 @@ struct radeon_enc_pic {
    bool is_ltr;
    unsigned ltr_idx;
    bool is_idr;
+   bool need_sequence_header;
    bool is_even_frame;
    bool sample_adaptive_offset_enabled_flag;
    bool pcm_enabled_flag;
@@ -166,7 +167,7 @@ struct radeon_enc_pic {
    rvcn_enc_encode_context_buffer_t ctx_buf;
    rvcn_enc_video_bitstream_buffer_t bit_buf;
    rvcn_enc_feedback_buffer_t fb_buf;
-   rvcn_enc_intra_refresh_t intra_ref;
+   rvcn_enc_intra_refresh_t intra_refresh;
    rvcn_enc_encode_params_t enc_params;
    rvcn_enc_stats_t enc_statistics;
    rvcn_enc_input_format_t enc_input_format;
