@@ -31,7 +31,7 @@ class d3d12_video_bitstream_builder_h264 : public d3d12_video_bitstream_builder_
 {
 
  public:
-   d3d12_video_bitstream_builder_h264() {};
+   d3d12_video_bitstream_builder_h264(bool insert_aud_nalu = false);
    ~d3d12_video_bitstream_builder_h264() {};
 
    void build_sps(const struct pipe_h264_enc_seq_param &                 seqData,
@@ -64,6 +64,10 @@ class d3d12_video_bitstream_builder_h264 : public d3d12_video_bitstream_builder_
                                    std::vector<uint8_t>::iterator placingPositionStart,
                                    size_t &                       writtenBytes);
 
+   void write_aud(std::vector<uint8_t> &         headerBitstream,
+                  std::vector<uint8_t>::iterator placingPositionStart,
+                  size_t &                       writtenBytes);
+
    void print_pps(const H264_PPS &pps);
    void print_sps(const H264_SPS &sps);
 
@@ -92,11 +96,14 @@ class d3d12_video_bitstream_builder_h264 : public d3d12_video_bitstream_builder_
       debug_printf("[d3d12_video_bitstream_builder_h264] Setting new active PPS ID: %d ", m_activePPSIndex);
    };
 
+   bool insert_aud_nalu_requested() { return m_insert_aud_nalu; }
+
  private:
    d3d12_video_nalu_writer_h264 m_h264Encoder;
    std::vector<uint8_t> m_activePPS;
    uint32_t m_activeSPSIndex = 0;
    uint32_t m_activePPSIndex = 0;
+   bool m_insert_aud_nalu = false;
 };
 
 #endif

@@ -25,6 +25,10 @@
 
 #include <cmath>
 
+d3d12_video_bitstream_builder_h264::d3d12_video_bitstream_builder_h264(bool insert_aud_nalu)
+   : m_insert_aud_nalu(insert_aud_nalu)
+{ }
+
 inline H264_SPEC_PROFILES
 Convert12ToSpecH264Profiles(D3D12_VIDEO_ENCODER_PROFILE_H264 profile12)
 {
@@ -190,6 +194,14 @@ d3d12_video_bitstream_builder_h264::write_end_of_sequence_nalu(std::vector<uint8
                                                                size_t &                       writtenBytes)
 {
    m_h264Encoder.write_end_of_sequence_nalu(headerBitstream, placingPositionStart, writtenBytes);
+}
+
+void
+d3d12_video_bitstream_builder_h264::write_aud(std::vector<uint8_t> &         headerBitstream,
+                                              std::vector<uint8_t>::iterator placingPositionStart,
+                                              size_t &                       writtenBytes)
+{
+   m_h264Encoder.write_access_unit_delimiter_nalu(headerBitstream, placingPositionStart, writtenBytes);
 }
 
 void

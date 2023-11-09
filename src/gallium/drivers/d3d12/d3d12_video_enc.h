@@ -71,7 +71,10 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
  * get encoder feedback
  */
 void
-d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback, unsigned *size, struct pipe_enc_feedback_metadata* metadata);
+d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
+                                 void *feedback,
+                                 unsigned *size,
+                                 struct pipe_enc_feedback_metadata* pMetadata);
 
 /**
  * end encoding of the current frame
@@ -172,6 +175,7 @@ struct D3D12EncodeRateControlState
 {
    D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE  m_Mode = {};
    D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAGS m_Flags = {};
+   uint64_t max_frame_size = 0;
    DXGI_RATIONAL                          m_FrameRate = {};
    union
    {
@@ -300,6 +304,7 @@ struct EncodedBitstreamResolvedMetadata
    * encoded in the GPU
    */
    uint64_t preEncodeGeneratedHeadersByteSize = 0;
+   std::vector<uint64_t> pWrittenCodecUnitsSizes;
 
    /* 
    * Indicates if the encoded frame needs header generation after GPU execution
@@ -345,6 +350,16 @@ struct EncodedBitstreamResolvedMetadata
    * in between the GPU spStagingBitstream contents
    */
    std::vector<uint8_t> m_StagingBitstreamConstruction;
+
+   /* Stores encode result for get_feedback readback in the D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT slots */
+   enum pipe_video_feedback_encode_result_flags encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_OK;
+
+   /* Expected max frame, slice sizes */
+   uint64_t expected_max_frame_size = 0;
+   uint64_t expected_max_slice_size = 0;
+
+   /* Pending fence data for this frame */
+   struct d3d12_fence m_FenceData;
 };
 
 struct d3d12_video_encoder
@@ -396,6 +411,9 @@ struct d3d12_video_encoder
       ComPtr<ID3D12CommandAllocator> m_spCommandAllocator;
 
       struct d3d12_fence* m_InputSurfaceFence = NULL;
+
+      /* Stores encode result for submission error control in the D3D12_VIDEO_ENC_ASYNC_DEPTH slots */
+      enum pipe_video_feedback_encode_result_flags encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_OK;
    };
 
    std::vector<InFlightEncodeResources> m_inflightResourcesPool;
@@ -432,7 +450,7 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc);
 uint32_t
 d3d12_video_encoder_get_current_max_dpb_capacity(struct d3d12_video_encoder *pD3D12Enc);
 void
-d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder *pD3D12Enc);
+d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder *pD3D12Enc, struct pipe_picture_desc *  picture);
 void
 d3d12_video_encoder_update_picparams_tracking(struct d3d12_video_encoder *pD3D12Enc,
                                               struct pipe_video_buffer *  srcTexture,
@@ -453,7 +471,8 @@ d3d12_video_encoder_prepare_output_buffers(struct d3d12_video_encoder *pD3D12Enc
 void
 d3d12_video_encoder_build_pre_encode_codec_headers(struct d3d12_video_encoder *pD3D12Enc,
                                                    bool &postEncodeHeadersNeeded,
-                                                   uint64_t &preEncodeGeneratedHeadersByteSize);
+                                                   uint64_t &preEncodeGeneratedHeadersByteSize,
+                                                   std::vector<uint64_t> &pWrittenCodecUnitsSizes);
 void
 d3d12_video_encoder_extract_encode_metadata(
    struct d3d12_video_encoder *                               pD3D12Dec,

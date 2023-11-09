@@ -67,7 +67,8 @@ upload_tile_group_obu(struct d3d12_video_encoder *pD3D12Enc,
                       size_t TileSizeBytes,   // Pass already +1'd from TileSizeBytesMinus1
                       const D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES &TilesPartition,
                       const av1_tile_group_t &tileGroup,
-                      size_t &written_bytes_to_staging_bitstream_buffer);
+                      size_t &written_bytes_to_staging_bitstream_buffer,
+                      std::vector<uint64_t> &pWrittenCodecUnitsSizes);
 
 
 void

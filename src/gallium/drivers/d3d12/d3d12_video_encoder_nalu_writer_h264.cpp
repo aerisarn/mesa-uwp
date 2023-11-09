@@ -483,3 +483,45 @@ d3d12_video_nalu_writer_h264::write_end_of_sequence_nalu(std::vector<uint8_t> & 
 
    writtenBytes = naluByteSize;
 }
+
+void
+d3d12_video_nalu_writer_h264::write_access_unit_delimiter_nalu(std::vector<uint8_t> &         headerBitstream,
+                                                               std::vector<uint8_t>::iterator placingPositionStart,
+                                                               size_t &                       writtenBytes)
+{
+   d3d12_video_encoder_bitstream rbsp, nalu;
+   if (!rbsp.create_bitstream(8)) {
+      debug_printf("rbsp.create_bitstream(8) failed.\n");
+      assert(false);
+   }
+
+   if (!nalu.create_bitstream(2 * MAX_COMPRESSED_PPS)) {
+      debug_printf("nalu.create_bitstream(2 * MAX_COMPRESSED_PPS) failed.\n");
+      assert(false);
+   }
+
+   rbsp.set_start_code_prevention(true);
+   rbsp.put_bits(3, 2/*primary_pic_type*/);
+   rbsp_trailing(&rbsp);
+   rbsp.flush();
+   if (wrap_rbsp_into_nalu(&nalu, &rbsp, NAL_REFIDC_NONREF, NAL_TYPE_ACCESS_UNIT_DELIMITER) <= 0u) {
+
+      debug_printf(
+         "wrap_rbsp_into_nalu(&nalu, &rbsp, NAL_REFIDC_NONREF, NAL_TYPE_ACCESS_UNIT_DELIMITER) didn't write any bytes.\n");
+      assert(false);
+   }
+
+   // Deep copy nalu into headerBitstream, nalu gets out of scope here and its destructor frees the nalu object buffer
+   // memory.
+   uint8_t *naluBytes    = nalu.get_bitstream_buffer();
+   size_t   naluByteSize = nalu.get_byte_count();
+
+   auto startDstIndex = std::distance(headerBitstream.begin(), placingPositionStart);
+   if (headerBitstream.size() < (startDstIndex + naluByteSize)) {
+      headerBitstream.resize(startDstIndex + naluByteSize);
+   }
+
+   std::copy_n(&naluBytes[0], naluByteSize, &headerBitstream.data()[startDstIndex]);
+
+   writtenBytes = naluByteSize;
+}

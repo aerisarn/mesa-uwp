@@ -67,14 +67,6 @@ GetDesc(ID3D12VideoDecoderHeap *heap)
 */
 const bool D3D12_VIDEO_ENC_CBR_FORCE_VBV_EQUAL_BITRATE = debug_get_bool_option("D3D12_VIDEO_ENC_CBR_FORCE_VBV_EQUAL_BITRATE", false);
 
-// Allow encoder to continue the encoding session when aa slice mode
-// is requested but not supported.
-//
-// If setting this OS Env variable to true, the encoder will try to adjust to the closest slice
-// setting available and encode using that configuration anyway
-//
-const bool D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG = debug_get_bool_option("D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG", false);
-
 const bool D3D12_VIDEO_ENC_ASYNC = debug_get_bool_option("D3D12_VIDEO_ENC_ASYNC", true);
 
 /**
@@ -179,5 +171,8 @@ d3d12_video_encoder_convert_12tusize_to_pixel_size_hevc(const D3D12_VIDEO_ENCODE
 
 DEFINE_ENUM_FLAG_OPERATORS(pipe_enc_feature);
 DEFINE_ENUM_FLAG_OPERATORS(pipe_h265_enc_pred_direction);
+DEFINE_ENUM_FLAG_OPERATORS(codec_unit_location_flags);
+DEFINE_ENUM_FLAG_OPERATORS(pipe_video_feedback_encode_result_flags);
+DEFINE_ENUM_FLAG_OPERATORS(pipe_video_feedback_metadata_type);
 
 #endif

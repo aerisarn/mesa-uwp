@@ -43,7 +43,7 @@ enum H264_NALU_TYPE
    NAL_TYPE_SEI                   = 6,
    NAL_TYPE_SPS                   = 7,
    NAL_TYPE_PPS                   = 8,
-   NAL_TYPE_ACCESS_UNIT_DEMILITER = 9,
+   NAL_TYPE_ACCESS_UNIT_DELIMITER = 9,
    NAL_TYPE_END_OF_SEQUENCE       = 10,
    NAL_TYPE_END_OF_STREAM         = 11,
    NAL_TYPE_FILLER_DATA           = 12,
@@ -184,6 +184,10 @@ class d3d12_video_nalu_writer_h264
    void write_end_of_sequence_nalu(std::vector<uint8_t> &         headerBitstream,
                                    std::vector<uint8_t>::iterator placingPositionStart,
                                    size_t &                       writtenBytes);
+
+   void write_access_unit_delimiter_nalu(std::vector<uint8_t> &         headerBitstream,
+                                         std::vector<uint8_t>::iterator placingPositionStart,
+                                         size_t &                       writtenBytes);
 
  private:
    // Writes from structure into bitstream with RBSP trailing but WITHOUT NAL unit wrap (eg. nal_idc_type, etc)

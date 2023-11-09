@@ -515,10 +515,27 @@ d3d12_video_encode_supported_slice_structures(const D3D12_VIDEO_ENCODER_CODEC &c
       supportedSliceStructuresBitMask |= PIPE_VIDEO_CAP_SLICE_STRUCTURE_POWER_OF_TWO_ROWS;
    }
 
-   /* Needs more work in VA frontend to support VAEncMiscParameterMaxSliceSize 
-         and the driver potentially reporting back status in VACodedBufferSegment */
+   capDataSubregionLayout.SubregionMode =
+      D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_SQUARE_UNITS_PER_SUBREGION_ROW_UNALIGNED;
+   hr = pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE,
+                                                         &capDataSubregionLayout,
+                                                         sizeof(capDataSubregionLayout));
+   if (FAILED(hr)) {
+      debug_printf("CheckFeatureSupport failed with HR %x\n", hr);
+   } else if (capDataSubregionLayout.IsSupported) {
+      /* This would be setting K rows per subregions in this D3D12 mode */
+      supportedSliceStructuresBitMask |= PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_MULTI_ROWS;
+      /* Assuming height/blocksize >= max_supported_slices, which is reported
+      in PIPE_VIDEO_CAP_ENC_MAX_SLICES_PER_FRAME and should be checked by the client*/
+      /* This would be setting 1 row per subregion in this D3D12 mode */
+      supportedSliceStructuresBitMask |= PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_ROWS;
+      /* This is ok, would be setting K rows per subregions in this D3D12 mode (and rounding the last one) */
+      supportedSliceStructuresBitMask |= PIPE_VIDEO_CAP_SLICE_STRUCTURE_POWER_OF_TWO_ROWS;
+      /* This is ok, would be setting K MBs per subregions in this D3D12 mode*/
+      supportedSliceStructuresBitMask |= PIPE_VIDEO_CAP_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS;
+   }
 
-   /*capDataSubregionLayout.SubregionMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_BYTES_PER_SUBREGION;
+   capDataSubregionLayout.SubregionMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_BYTES_PER_SUBREGION;
    hr = pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE,
                                                          &capDataSubregionLayout,
                                                          sizeof(capDataSubregionLayout));
@@ -526,7 +543,7 @@ d3d12_video_encode_supported_slice_structures(const D3D12_VIDEO_ENCODER_CODEC &c
       debug_printf("CheckFeatureSupport failed with HR %x\n", hr);
    } else if (capDataSubregionLayout.IsSupported) {
       supportedSliceStructuresBitMask |= PIPE_VIDEO_CAP_SLICE_STRUCTURE_MAX_SLICE_SIZE;
-   }*/  
+   }
 
    return supportedSliceStructuresBitMask;
 }
@@ -1666,6 +1683,11 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
          return 1;
       case PIPE_VIDEO_CAP_NPOT_TEXTURES:
          return 1;
+      case PIPE_VIDEO_CAP_ENC_SUPPORTS_FEEDBACK_METADATA:
+         return (PIPE_VIDEO_FEEDBACK_METADATA_TYPE_BITSTREAM_SIZE |
+                 PIPE_VIDEO_FEEDBACK_METADATA_TYPE_ENCODE_RESULT |
+                 PIPE_VIDEO_FEEDBACK_METADATA_TYPE_CODEC_UNIT_LOCATION |
+                 PIPE_VIDEO_FEEDBACK_METADATA_TYPE_MAX_FRAME_SIZE_OVERFLOW);
       case PIPE_VIDEO_CAP_MAX_WIDTH:
       case PIPE_VIDEO_CAP_MAX_HEIGHT:
       case PIPE_VIDEO_CAP_MIN_WIDTH:

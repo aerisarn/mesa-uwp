@@ -28,6 +28,8 @@
 #include "d3d12_format.h"
 
 #include <cmath>
+#include <algorithm>
+#include <numeric>
 
 void
 d3d12_video_encoder_update_current_rate_control_h264(struct d3d12_video_encoder *pD3D12Enc,
@@ -72,6 +74,7 @@ d3d12_video_encoder_update_current_rate_control_h264(struct d3d12_video_encoder 
                picture->rate_ctrl[0].vbv_buf_initial_size;
          }
 
+         pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.max_frame_size = picture->rate_ctrl[0].max_au_size;
          if (picture->rate_ctrl[0].max_au_size > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
                D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_MAX_FRAME_SIZE;
@@ -153,6 +156,7 @@ d3d12_video_encoder_update_current_rate_control_h264(struct d3d12_video_encoder 
                picture->rate_ctrl[0].vbv_buf_initial_size;
          }
 #endif
+      pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.max_frame_size = picture->rate_ctrl[0].max_au_size;
       if (picture->rate_ctrl[0].max_au_size > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
                D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_MAX_FRAME_SIZE;
@@ -228,6 +232,7 @@ d3d12_video_encoder_update_current_rate_control_h264(struct d3d12_video_encoder 
                picture->rate_ctrl[0].vbv_buf_initial_size;
          }
 
+         pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.max_frame_size = picture->rate_ctrl[0].max_au_size;
          if (picture->rate_ctrl[0].max_au_size > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
                D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_MAX_FRAME_SIZE;
@@ -406,46 +411,20 @@ d3d12_video_encoder_negotiate_current_h264_slices_configuration(struct d3d12_vid
    ///
    /// Try to see if can accomodate for multi-slice request by user
    ///
-   if (picture->num_slice_descriptors > 1) {
-      /* Last slice can be less for rounding frame size and leave some error for mb rounding */
-      bool bUniformSizeSlices = true;
-      const double rounding_delta = 1.0;
-      for (uint32_t sliceIdx = 1; (sliceIdx < picture->num_slice_descriptors - 1) && bUniformSizeSlices; sliceIdx++) {
-         int64_t curSlice = picture->slices_descriptors[sliceIdx].num_macroblocks;
-         int64_t prevSlice = picture->slices_descriptors[sliceIdx - 1].num_macroblocks;
-         bUniformSizeSlices = bUniformSizeSlices && (std::abs(curSlice - prevSlice) <= rounding_delta);
-      }
+   if ((picture->slice_mode == PIPE_VIDEO_SLICE_MODE_BLOCKS) && (picture->num_slice_descriptors > 1)) {
+      /* Some apps send all same size slices minus 1 slice in any position in the descriptors */
+      /* Lets validate that there are at most 2 different slice sizes in all the descriptors */
+      std::vector<int> slice_sizes(picture->num_slice_descriptors);
+      for (uint32_t i = 0; i < picture->num_slice_descriptors; i++)
+         slice_sizes[i] = picture->slices_descriptors[i].num_macroblocks;
+      std::sort(slice_sizes.begin(), slice_sizes.end());
+      bool bUniformSizeSlices = (std::unique(slice_sizes.begin(), slice_sizes.end()) - slice_sizes.begin()) <= 2;
 
       uint32_t mbPerScanline =
          pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Width / D3D12_VIDEO_H264_MB_IN_PIXELS;
       bool bSliceAligned = ((picture->slices_descriptors[0].num_macroblocks % mbPerScanline) == 0);
 
-      if (!bUniformSizeSlices &&
-          d3d12_video_encoder_check_subregion_mode_support(
-             pD3D12Enc,
-             D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME)) {
-
-         if (D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG) {   // Check if fallback mode is enabled, or we should just fail
-                                                        // without support
-            // Not supported to have custom slice sizes in D3D12 Video Encode fallback to uniform multi-slice
-            debug_printf(
-               "[d3d12_video_encoder_h264] WARNING: Requested slice control mode is not supported: All slices must "
-               "have the same number of macroblocks. Falling back to encoding uniform %d slices per frame.\n",
-               picture->num_slice_descriptors);
-            requestedSlicesMode =
-               D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME;
-            requestedSlicesConfig.NumberOfSlicesPerFrame = picture->num_slice_descriptors;
-            debug_printf("[d3d12_video_encoder_h264] Using multi slice encoding mode: "
-                           "D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME "
-                           "with %d slices per frame.\n",
-                           requestedSlicesConfig.NumberOfSlicesPerFrame);
-         } else {
-            debug_printf("[d3d12_video_encoder_h264] Requested slice control mode is not supported: All slices must "
-                            "have the same number of macroblocks. To continue with uniform slices as a fallback, must "
-                            "enable the OS environment variable D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG");
-            return false;
-         }
-      } else if (bUniformSizeSlices && bSliceAligned &&
+      if (bUniformSizeSlices && bSliceAligned &&
                  d3d12_video_encoder_check_subregion_mode_support(
                     pD3D12Enc,
                     D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_ROWS_PER_SUBREGION)) {
@@ -469,23 +448,43 @@ d3d12_video_encoder_negotiate_current_h264_slices_configuration(struct d3d12_vid
                            "D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME "
                            "with %d slices per frame.\n",
                            requestedSlicesConfig.NumberOfSlicesPerFrame);
-      } else if (D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG) {   // Check if fallback mode is enabled, or we should just fail
-                                                            // without support
-         // Fallback to single slice encoding (assigned by default when initializing variables requestedSlicesMode,
-         // requestedSlicesConfig)
-         debug_printf(
-            "[d3d12_video_encoder_h264] WARNING: Slice mode for %d slices with bUniformSizeSlices: %d - bSliceAligned "
-            "%d not supported by the D3D12 driver, falling back to encoding a single slice per frame.\n",
-            picture->num_slice_descriptors,
-            bUniformSizeSlices,
-            bSliceAligned);
+      } else if (bUniformSizeSlices &&
+                 d3d12_video_encoder_check_subregion_mode_support(
+                    pD3D12Enc,
+                    D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_SQUARE_UNITS_PER_SUBREGION_ROW_UNALIGNED)) {
+            requestedSlicesMode =
+               D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_SQUARE_UNITS_PER_SUBREGION_ROW_UNALIGNED;
+            requestedSlicesConfig.NumberOfCodingUnitsPerSlice = picture->slices_descriptors[0].num_macroblocks;
+            debug_printf("[d3d12_video_encoder_h264] Using multi slice encoding mode: "
+                           "D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_SQUARE_UNITS_PER_SUBREGION_ROW_UNALIGNED "
+                           "with %d NumberOfCodingUnitsPerSlice per frame.\n",
+                           requestedSlicesConfig.NumberOfCodingUnitsPerSlice);
+
       } else {
          debug_printf("[d3d12_video_encoder_h264] Requested slice control mode is not supported: All slices must "
-                         "have the same number of macroblocks. To continue with uniform slices as a fallback, must "
-                         "enable the OS environment variable D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG");
+                         "have the same number of macroblocks.\n");
+         return false;
+      }
+   } else if(picture->slice_mode == PIPE_VIDEO_SLICE_MODE_MAX_SLICE_SICE) {
+      if ((picture->max_slice_bytes > 0) &&
+                 d3d12_video_encoder_check_subregion_mode_support(
+                    pD3D12Enc,
+                    D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_BYTES_PER_SUBREGION )) {
+            requestedSlicesMode =
+               D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_BYTES_PER_SUBREGION;
+            requestedSlicesConfig.MaxBytesPerSlice = picture->max_slice_bytes;
+            debug_printf("[d3d12_video_encoder_h264] Using multi slice encoding mode: "
+                           "D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_BYTES_PER_SUBREGION  "
+                           "with %d MaxBytesPerSlice per frame.\n",
+                           requestedSlicesConfig.MaxBytesPerSlice);
+      } else {
+         debug_printf("[d3d12_video_encoder_h264] Requested slice control mode is not supported: All slices must "
+                         "have the same number of macroblocks.\n");
          return false;
       }
    } else {
+      requestedSlicesMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
+      requestedSlicesConfig.NumberOfSlicesPerFrame = 1;
       debug_printf("[d3d12_video_encoder_h264] Requested slice control mode is full frame. m_SlicesPartition_H264.NumberOfSlicesPerFrame = %d - m_encoderSliceConfigMode = %d \n",
       requestedSlicesConfig.NumberOfSlicesPerFrame, requestedSlicesMode);
    }
@@ -1016,8 +1015,12 @@ d3d12_video_encoder_update_current_encoder_config_state_h264(struct d3d12_video_
 
    if (pD3D12Enc->m_currentEncodeCapabilities.m_MaxSlicesInOutput >
        pD3D12Enc->m_currentEncodeCapabilities.m_currentResolutionSupportCaps.MaxSubregionsNumber) {
-      debug_printf("[d3d12_video_encoder_h264] Desired number of subregions is not supported (higher than max "
-                      "reported slice number in query caps)\n.");
+      debug_printf("[d3d12_video_encoder_h264] Desired number of subregions %d is not supported (higher than max "
+                      "reported slice number %d in query caps) for current resolution (%d, %d)\n.",
+                      pD3D12Enc->m_currentEncodeCapabilities.m_MaxSlicesInOutput,
+                      pD3D12Enc->m_currentEncodeCapabilities.m_currentResolutionSupportCaps.MaxSubregionsNumber,
+                      pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Width,
+                      pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Height);
       return false;
    }
    return true;
@@ -1062,7 +1065,8 @@ d3d12_video_encoder_compare_slice_config_h264_hevc(
 }
 
 uint32_t
-d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12Enc)
+d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12Enc,
+                                             std::vector<uint64_t> &pWrittenCodecUnitsSizes)
 {
    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA currentPicParams =
       d3d12_video_encoder_get_current_picture_param_settings(pD3D12Enc);
@@ -1072,7 +1076,20 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
    auto codecConfigDesc = d3d12_video_encoder_get_current_codec_config_desc(pD3D12Enc);
    auto MaxDPBCapacity = d3d12_video_encoder_get_current_max_dpb_capacity(pD3D12Enc);
 
-   size_t writtenSPSBytesCount = 0;
+   d3d12_video_bitstream_builder_h264 *pH264BitstreamBuilder =
+      static_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
+   assert(pH264BitstreamBuilder);
+
+   uint64_t writtenAUDBytesCount = 0;
+   pWrittenCodecUnitsSizes.clear();
+   if (pH264BitstreamBuilder->insert_aud_nalu_requested())
+   {
+      pH264BitstreamBuilder->write_aud(pD3D12Enc->m_BitstreamHeadersBuffer,
+                                       pD3D12Enc->m_BitstreamHeadersBuffer.begin(),
+                                       writtenAUDBytesCount);
+      pWrittenCodecUnitsSizes.push_back(writtenAUDBytesCount);
+   }
+
    bool isFirstFrame = (pD3D12Enc->m_fenceValue == 1);
    bool writeNewSPS = isFirstFrame                                         // on first frame
                       || ((pD3D12Enc->m_currentEncodeConfig.m_seqFlags &   // also on resolution change
@@ -1080,12 +1097,9 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
                       // Also on input format dirty flag for new SPS, VUI etc
                       || (pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags & d3d12_video_encoder_config_dirty_flag_sequence_info);
 
-   d3d12_video_bitstream_builder_h264 *pH264BitstreamBuilder =
-      static_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
-   assert(pH264BitstreamBuilder);
-
    uint32_t active_seq_parameter_set_id = pH264BitstreamBuilder->get_active_sps_id();
 
+   uint64_t writtenSPSBytesCount = 0;
    if (writeNewSPS) {
       // For every new SPS for reconfiguration, increase the active_sps_id
       if (!isFirstFrame) {
@@ -1103,11 +1117,12 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
                                        pD3D12Enc->m_currentEncodeConfig.m_currentResolution,
                                        pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig,
                                        pD3D12Enc->m_BitstreamHeadersBuffer,
-                                       pD3D12Enc->m_BitstreamHeadersBuffer.begin(),
+                                       pD3D12Enc->m_BitstreamHeadersBuffer.begin() + writtenAUDBytesCount,
                                        writtenSPSBytesCount);
+      pWrittenCodecUnitsSizes.push_back(writtenSPSBytesCount);
    }
 
-   size_t writtenPPSBytesCount = 0;
+   uint64_t writtenPPSBytesCount = 0;
    pH264BitstreamBuilder->build_pps(*profDesc.pH264Profile,
                                     *codecConfigDesc.pH264Config,
                                     *currentPicParams.pH264PicData,
@@ -1121,17 +1136,20 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
    if ( (writtenPPSBytesCount != active_pps.size()) ||
          memcmp(pD3D12Enc->m_StagingHeadersBuffer.data(), active_pps.data(), writtenPPSBytesCount)) {
       active_pps = pD3D12Enc->m_StagingHeadersBuffer;
-      pD3D12Enc->m_BitstreamHeadersBuffer.resize(writtenSPSBytesCount + writtenPPSBytesCount);
-      memcpy(&pD3D12Enc->m_BitstreamHeadersBuffer.data()[writtenSPSBytesCount], pD3D12Enc->m_StagingHeadersBuffer.data(), writtenPPSBytesCount);
+      pD3D12Enc->m_BitstreamHeadersBuffer.resize(writtenAUDBytesCount + writtenSPSBytesCount + writtenPPSBytesCount);
+      memcpy(&pD3D12Enc->m_BitstreamHeadersBuffer.data()[writtenAUDBytesCount + writtenSPSBytesCount], pD3D12Enc->m_StagingHeadersBuffer.data(), writtenPPSBytesCount);
+      pWrittenCodecUnitsSizes.push_back(writtenPPSBytesCount);
    } else {
       writtenPPSBytesCount = 0;
       debug_printf("Skipping PPS (same as active PPS) for fenceValue: %" PRIu64 "\n", pD3D12Enc->m_fenceValue);
    }
 
    // Shrink buffer to fit the headers
-   if (pD3D12Enc->m_BitstreamHeadersBuffer.size() > (writtenPPSBytesCount + writtenSPSBytesCount)) {
-      pD3D12Enc->m_BitstreamHeadersBuffer.resize(writtenPPSBytesCount + writtenSPSBytesCount);
+   if (pD3D12Enc->m_BitstreamHeadersBuffer.size() > (writtenAUDBytesCount + writtenSPSBytesCount + writtenPPSBytesCount)) {
+      pD3D12Enc->m_BitstreamHeadersBuffer.resize(writtenAUDBytesCount + writtenSPSBytesCount + writtenPPSBytesCount);
    }
 
+   assert(std::accumulate(pWrittenCodecUnitsSizes.begin(), pWrittenCodecUnitsSizes.end(), 0u) ==
+      static_cast<uint64_t>(pD3D12Enc->m_BitstreamHeadersBuffer.size()));
    return pD3D12Enc->m_BitstreamHeadersBuffer.size();
 }
