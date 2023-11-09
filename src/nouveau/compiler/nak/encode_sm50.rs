@@ -1249,55 +1249,43 @@ impl SM50Instr {
     }
 
     fn encode_fadd(&mut self, op: &OpFAdd) {
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: Some(ALUModifierInfo {
-                abs_bit: Some(46),
-                neg_bit: Some(48),
-            }),
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: Some(49),
-                neg_bit: Some(45),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x58,
-            encoding_type: ALUEncodingType::Variant4,
-            imm24_modifier: src_modifier,
-            reg_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: Some(ALUImm32Behavior {
-                opcode: 0x0800,
-                prefer_imm32: op.rnd_mode == FRndMode::NearestEven,
-            }),
-        };
-
-        let is_imm32_encoding = self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
-
-        // Rounding isn't supported on FADD32I
-        assert!(
-            !is_imm32_encoding
-                || (op.rnd_mode == FRndMode::NearestEven && !op.saturate)
-        );
-
         let ftz = false; /* TODO: FTZ */
         let dnz = false; /* TODO: DNZ */
-
-        if !is_imm32_encoding {
-            self.set_bit(44, ftz);
-            // TODO: missing?
-            //self.set_bit(45, dnz);
-            self.set_bit(50, op.saturate);
-            self.set_rnd_mode(39..41, op.rnd_mode);
-        } else {
+        if let Some(imm32) = op.srcs[1].as_imm_not_f20() {
+            self.set_opcode(0x0800);
+            self.set_dst(op.dst);
+            self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+            self.set_src_imm32(20..52, imm32);
+            self.set_bit(54, op.srcs[0].src_mod.has_fabs());
             self.set_bit(55, ftz);
-            self.set_bit(56, dnz);
+            self.set_bit(56, op.srcs[0].src_mod.has_fneg());
+        } else {
+            match &op.srcs[1].src_ref {
+                SrcRef::Zero | SrcRef::Reg(_) => {
+                    self.set_opcode(0x5c58);
+                    self.set_reg_src_ref(20..28, op.srcs[1].src_ref);
+                }
+                SrcRef::Imm32(imm) => {
+                    self.set_opcode(0x3858);
+                    self.set_src_imm_f20(20..40, 56, *imm);
+                    assert!(op.srcs[1].src_mod.is_none());
+                }
+                SrcRef::CBuf(cb) => {
+                    self.set_opcode(0x4c58);
+                    self.set_src_cb(20..39, cb);
+                }
+                _ => panic!("Unsupported src type"),
+            }
+
+            self.set_dst(op.dst);
+            self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+
+            self.set_rnd_mode(39..41, op.rnd_mode);
+            self.set_bit(45, op.srcs[1].src_mod.has_fneg());
+            self.set_bit(46, op.srcs[0].src_mod.has_fabs());
+            self.set_bit(48, op.srcs[0].src_mod.has_fneg());
+            self.set_bit(49, op.srcs[1].src_mod.has_fabs());
+            self.set_bit(50, op.saturate);
         }
     }
 

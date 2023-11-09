@@ -929,6 +929,22 @@ impl SrcMod {
         }
     }
 
+    pub fn has_fabs(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::FNeg => false,
+            SrcMod::FAbs | SrcMod::FNegAbs => true,
+            _ => panic!("Not a float modifier"),
+        }
+    }
+
+    pub fn has_fneg(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::FAbs => false,
+            SrcMod::FNeg | SrcMod::FNegAbs => true,
+            _ => panic!("Not a float modifier"),
+        }
+    }
+
     pub fn is_bnot(&self) -> bool {
         match self {
             SrcMod::None => false,
