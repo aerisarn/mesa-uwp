@@ -516,6 +516,17 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
                value = max_tile_cols;
          } break;
 #endif
+         case VAConfigAttribEncIntraRefresh:
+         {
+            int ir_support = pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                             PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                             PIPE_VIDEO_CAP_ENC_INTRA_REFRESH);
+            if (ir_support <= 0)
+               value = VA_ATTRIB_NOT_SUPPORTED;
+            else
+               value = ir_support;
+         } break;
+
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
             break;

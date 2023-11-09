@@ -644,6 +644,59 @@ handleVAEncMiscParameterTypeHRD(vlVaContext *context, VAEncMiscParameterBuffer *
 }
 
 static VAStatus
+handleVAEncMiscParameterTypeRIR(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAStatus status = VA_STATUS_SUCCESS;
+   struct pipe_enc_intra_refresh *p_intra_refresh = NULL;
+
+   switch (u_reduce_video_profile(context->templat.profile)) {
+      case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+         p_intra_refresh = &context->desc.h264enc.intra_refresh;
+         break;
+      case PIPE_VIDEO_FORMAT_HEVC:
+         p_intra_refresh = &context->desc.h265enc.intra_refresh;
+         break;
+#if VA_CHECK_VERSION(1, 16, 0)
+      case PIPE_VIDEO_FORMAT_AV1:
+         p_intra_refresh = &context->desc.av1enc.intra_refresh;
+         break;
+#endif
+      default:
+         p_intra_refresh = NULL;
+         break;
+   };
+
+   if (p_intra_refresh) {
+      VAEncMiscParameterRIR *ir = (VAEncMiscParameterRIR *)misc->data;
+
+      if (ir->rir_flags.value == VA_ENC_INTRA_REFRESH_ROLLING_ROW)
+         p_intra_refresh->mode = INTRA_REFRESH_MODE_UNIT_ROWS;
+      else if (ir->rir_flags.value == VA_ENC_INTRA_REFRESH_ROLLING_COLUMN)
+         p_intra_refresh->mode = INTRA_REFRESH_MODE_UNIT_COLUMNS;
+      else if (ir->rir_flags.value) /* if any other values to use the default one*/
+         p_intra_refresh->mode = INTRA_REFRESH_MODE_UNIT_COLUMNS;
+      else /* if no mode specified then no intra-refresh */
+         p_intra_refresh->mode = INTRA_REFRESH_MODE_NONE;
+
+      /* intra refresh should be started with sequence level headers */
+      p_intra_refresh->need_sequence_header = 0;
+      if (p_intra_refresh->mode) {
+         p_intra_refresh->region_size = ir->intra_insert_size;
+         p_intra_refresh->offset = ir->intra_insertion_location;
+         if (p_intra_refresh->offset == 0)
+            p_intra_refresh->need_sequence_header = 1;
+      }
+   } else {
+      p_intra_refresh->mode = INTRA_REFRESH_MODE_NONE;
+      p_intra_refresh->region_size = 0;
+      p_intra_refresh->offset = 0;
+      p_intra_refresh->need_sequence_header = 0;
+   }
+
+   return status;
+}
+
+static VAStatus
 handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 {
    VAStatus vaStatus = VA_STATUS_SUCCESS;
@@ -673,6 +726,10 @@ handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 
    case VAEncMiscParameterTypeHRD:
       vaStatus = handleVAEncMiscParameterTypeHRD(context, misc);
+      break;
+
+   case VAEncMiscParameterTypeRIR:
+      vaStatus = handleVAEncMiscParameterTypeRIR(context, misc);
       break;
 
    default:

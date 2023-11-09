@@ -173,6 +173,10 @@ vlVaHandleVAEncSequenceParameterBufferTypeHEVC(vlVaDriver *drv, vlVaContext *con
       context->desc.h265enc.rc.enforce_hrd = 1;
       context->desc.h265enc.rc.max_qp = 51;
       context->desc.h265enc.rc.min_qp = 0;
+      context->desc.h265enc.intra_refresh.mode = INTRA_REFRESH_MODE_NONE;
+      context->desc.h265enc.intra_refresh.offset = 0;
+      context->desc.h265enc.intra_refresh.region_size = 0;
+      context->desc.h265enc.intra_refresh.need_sequence_header = 0;
    }
 
    context->desc.h265enc.seq.general_profile_idc = h265->general_profile_idc;

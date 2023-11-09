@@ -201,6 +201,10 @@ vlVaHandleVAEncSequenceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *con
       context->desc.h264enc.rate_ctrl[0].max_qp = 51;
       context->desc.h264enc.rate_ctrl[0].min_qp = 0;
       context->desc.h264enc.enable_vui = false;
+      context->desc.h264enc.intra_refresh.mode = INTRA_REFRESH_MODE_NONE;
+      context->desc.h264enc.intra_refresh.offset = 0;
+      context->desc.h264enc.intra_refresh.region_size = 0;
+      context->desc.h264enc.intra_refresh.need_sequence_header = 0;
    }
 
    context->desc.h264enc.intra_idr_period =
