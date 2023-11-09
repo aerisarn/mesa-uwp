@@ -356,6 +356,8 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       si_late_optimize_16bit_samplers(sscreen, nir);
 
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+
+   NIR_PASS_V(nir, nir_lower_fp16_casts, nir_lower_fp16_split_fp64);
 }
 
 static bool si_mark_divergent_texture_non_uniform(struct nir_shader *nir)
