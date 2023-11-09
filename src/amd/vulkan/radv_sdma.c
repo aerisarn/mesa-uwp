@@ -80,7 +80,7 @@ radv_sdma_check_pitches(const unsigned pitch, const unsigned slice_pitch, const 
 ALWAYS_INLINE static enum gfx9_resource_type
 radv_sdma_surface_resource_type(const struct radv_device *const device, const struct radeon_surf *const surf)
 {
-   if (device->physical_device->rad_info.gfx_level >= GFX10) {
+   if (device->physical_device->rad_info.sdma_ip_version >= SDMA_5_0) {
       /* Use the 2D resource type for rotated or Z swizzles. */
       if ((surf->u.gfx9.resource_type == RADEON_RESOURCE_1D || surf->u.gfx9.resource_type == RADEON_RESOURCE_3D) &&
           (surf->micro_tile_mode == RADEON_MICRO_MODE_RENDER || surf->micro_tile_mode == RADEON_MICRO_MODE_DEPTH))
@@ -282,16 +282,17 @@ radv_sdma_get_tiled_info_dword(const struct radv_device *const device, const str
    const uint32_t swizzle_mode = surf->has_stencil ? surf->u.gfx9.zs.stencil_swizzle_mode : surf->u.gfx9.swizzle_mode;
    const enum gfx9_resource_type dimension = radv_sdma_surface_resource_type(device, surf);
    const uint32_t info = element_size | swizzle_mode << 3 | dimension << 9;
+   const enum sdma_version ver = device->physical_device->rad_info.sdma_ip_version;
 
-   if (device->physical_device->rad_info.gfx_level >= GFX10) {
+   if (ver >= SDMA_5_0) {
       const uint32_t mip_max = MAX2(image->vk.mip_levels, 1);
       const uint32_t mip_id = subresource.mipLevel;
 
       return info | (mip_max - 1) << 16 | mip_id << 20;
-   } else if (device->physical_device->rad_info.gfx_level == GFX9) {
+   } else if (ver >= SDMA_4_0) {
       return info | surf->u.gfx9.epitch << 16;
    } else {
-      unreachable("unsupported gfx_level");
+      unreachable("unsupported SDMA version");
    }
 }
 
@@ -299,16 +300,16 @@ static uint32_t
 radv_sdma_get_tiled_header_dword(const struct radv_device *const device, const struct radv_image *const image,
                                  const VkImageSubresourceLayers subresource)
 {
-   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+   const enum sdma_version ver = device->physical_device->rad_info.sdma_ip_version;
 
-   if (gfx_level >= GFX10) {
+   if (ver >= SDMA_5_0) {
       return 0;
-   } else if (gfx_level == GFX9) {
+   } else if (ver >= SDMA_4_0) {
       const uint32_t mip_max = MAX2(image->vk.mip_levels, 1);
       const uint32_t mip_id = subresource.mipLevel;
       return (mip_max - 1) << 20 | mip_id << 24;
    } else {
-      unreachable("unsupported gfx_level");
+      unreachable("unsupported SDMA version");
    }
 }
 
@@ -355,12 +356,13 @@ radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs
    if (size == 0)
       return;
 
-   enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-   unsigned max_size_per_packet = gfx_level >= GFX10_3 ? SDMA_V5_2_COPY_MAX_BYTES : SDMA_V2_0_COPY_MAX_BYTES;
+   const enum sdma_version ver = device->physical_device->rad_info.sdma_ip_version;
+   const unsigned max_size_per_packet = ver >= SDMA_5_2 ? SDMA_V5_2_COPY_MAX_BYTES : SDMA_V2_0_COPY_MAX_BYTES;
+
    unsigned align = ~0u;
    unsigned ncopy = DIV_ROUND_UP(size, max_size_per_packet);
 
-   assert(gfx_level >= GFX7);
+   assert(ver >= SDMA_2_0);
 
    /* SDMA FW automatically enables a faster dword copy mode when
     * source, destination and size are all dword-aligned.
@@ -379,7 +381,7 @@ radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs
    for (unsigned i = 0; i < ncopy; i++) {
       unsigned csize = size >= 4 ? MIN2(size & align, max_size_per_packet) : size;
       radeon_emit(cs, SDMA_PACKET(SDMA_OPCODE_COPY, SDMA_COPY_SUB_OPCODE_LINEAR, 0));
-      radeon_emit(cs, gfx_level >= GFX9 ? csize - 1 : csize);
+      radeon_emit(cs, ver >= SDMA_4_0 ? csize - 1 : csize);
       radeon_emit(cs, 0); /* src/dst endian swap */
       radeon_emit(cs, src_va);
       radeon_emit(cs, src_va >> 32);
@@ -518,8 +520,8 @@ radv_sdma_use_unaligned_buffer_image_copy(const struct radv_device *device, cons
                                           const struct radv_buffer *buffer, const VkBufferImageCopy2 *region)
 {
    const struct radeon_surf *const surf = &image->planes[0].surface;
-   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-   const unsigned pitch_alignment = gfx_level >= GFX10 ? MAX2(1, 4 / surf->bpe) : 4;
+   const enum sdma_version ver = device->physical_device->rad_info.sdma_ip_version;
+   const unsigned pitch_alignment = ver >= SDMA_5_0 ? MAX2(1, 4 / surf->bpe) : 4;
    const unsigned pitch = (region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width);
    const unsigned pitch_blocks = radv_sdma_pixels_to_blocks(pitch, surf->blk_w);
 
