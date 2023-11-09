@@ -77,7 +77,7 @@ d3d12_varying_cache_destroy(struct d3d12_screen *ctx);
 struct d3d12_varying_info {
    struct {
       const struct glsl_type *types[4];
-      uint8_t location_frac_mask:2;
+      uint8_t location_frac_mask:4;
       uint8_t patch:1;
       struct {
          unsigned interpolation:3;   // INTERP_MODE_COUNT = 5
