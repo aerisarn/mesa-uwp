@@ -9,7 +9,12 @@
       - src/gallium/winsys/amdgpu/**/*
       - src/amd/*
       - src/amd/addrlib/**/*
-      - src/amd/ci/*
+      - src/amd/ci/gitlab-ci.yml
+      - src/amd/ci/gitlab-ci-inc.yml
+      - src/amd/ci/deqp-$DEQP_SUITE.toml
+      - src/amd/ci/$GPU_VERSION-fails.txt
+      - src/amd/ci/$GPU_VERSION-flakes.txt
+      - src/amd/ci/$GPU_VERSION-skips.txt
       - src/amd/common/**/*
       - src/amd/llvm/**/*
       - src/amd/registers/**/*

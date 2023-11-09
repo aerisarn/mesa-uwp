@@ -183,6 +183,10 @@ if [ -z "$DEQP_SUITE" ]; then
         -- \
         $DEQP_OPTIONS
 else
+    # If you change the format of the suite toml filenames or the
+    # $GPU_VERSION-{fails,flakes,skips}.txt filenames, look through the rest
+    # of the tree for other places that need to be kept in sync (e.g.
+    # src/amd/ci/gitlab-ci-inc.yml)
     deqp-runner \
         suite \
         --suite $INSTALL/deqp-$DEQP_SUITE.toml \
