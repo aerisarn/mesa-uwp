@@ -394,8 +394,7 @@ blorp_exec_on_render(struct blorp_batch *batch,
       BITSET_SET(hw_state->dirty, ANV_GFX_STATE_PS_BLEND);
    }
 
-   anv_cmd_dirty_mask_t dirty = ~(ANV_CMD_DIRTY_PIPELINE |
-                                  ANV_CMD_DIRTY_INDEX_BUFFER |
+   anv_cmd_dirty_mask_t dirty = ~(ANV_CMD_DIRTY_INDEX_BUFFER |
                                   ANV_CMD_DIRTY_XFB_ENABLE);
 
    cmd_buffer->state.gfx.vb_dirty = ~0;
