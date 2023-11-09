@@ -61,7 +61,8 @@ get_interpolation(nir_variable *var)
    if (var->data.patch)
       return DXIL_INTERP_UNDEFINED;
 
-   if (glsl_type_is_integer(glsl_without_array_or_matrix(var->type)))
+   if (glsl_type_is_integer(glsl_without_array_or_matrix(var->type)) ||
+       glsl_type_is_64bit(glsl_without_array_or_matrix(var->type)))
       return DXIL_INTERP_CONSTANT;
 
    if (var->data.sample) {
