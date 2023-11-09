@@ -1067,29 +1067,32 @@ impl SM50Instr {
     }
 
     fn encode_isetp(&mut self, op: &OpISetP) {
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: None,
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x60,
-            encoding_type: ALUEncodingType::Variant3,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        assert!(op.srcs[0].src_mod.is_none());
+        assert!(op.srcs[1].src_mod.is_none());
 
-        self.encode_alu(
-            encoding_info,
-            None,
-            ALUSrc::from_src(&op.srcs[0].into()),
-            ALUSrc::from_src(&op.srcs[1].into()),
-            ALUSrc::None,
-        );
+        match &op.srcs[1].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5b60);
+                self.set_reg_src(20..28, op.srcs[1]);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x3660);
+                self.set_src_imm_i20(20..39, 56, *i);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4b60);
+                self.set_src_cb(20..39, cb);
+            }
+            _ => panic!("Unsupported src type"),
+        }
 
-        self.set_pred_src(16..19, 19, SrcRef::True.into());
+        self.set_pred_dst(0..3, Dst::None); /* dst1 */
+        self.set_pred_dst(3..6, op.dst);
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_pred_src(39..42, 42, op.accum);
+
+        self.set_bit(43, false); /* .X */
+        self.set_pred_set_op(45..47, op.set_op);
 
         self.set_field(
             48..49,
@@ -1098,13 +1101,7 @@ impl SM50Instr {
                 IntCmpType::I32 => 1_u32,
             },
         );
-        self.set_pred_set_op(45..47, op.set_op);
         self.set_int_cmp_op(49..52, op.cmp_op);
-
-        self.set_pred_dst(3..6, op.dst);
-        self.set_pred_dst(0..3, Dst::None); /* dst1 */
-
-        self.set_pred_src(39..42, 42, op.accum);
     }
 
     fn encode_sust(&mut self, op: &OpSuSt) {
