@@ -251,10 +251,8 @@ static uint32_t
 radv_sdma_get_metadata_config(const struct radv_device *const device, const struct radv_image *const image,
                               const VkImageSubresourceLayers subresource)
 {
-   /* Only SDMA 5 supports metadata. */
-   const bool is_v5 = device->physical_device->rad_info.gfx_level >= GFX10;
-
-   if (!is_v5 || !(radv_dcc_enabled(image, subresource.mipLevel) || radv_image_has_htile(image))) {
+   if (!device->physical_device->rad_info.sdma_supports_compression ||
+       !(radv_dcc_enabled(image, subresource.mipLevel) || radv_image_has_htile(image))) {
       return 0;
    }
 
@@ -449,8 +447,7 @@ radv_sdma_emit_copy_tiled_sub_window(const struct radv_device *device, struct ra
                                      const VkOffset3D tiled_pix_offset, const VkOffset3D linear_pix_offset,
                                      const VkExtent3D pix_extent, const bool detile)
 {
-   if (device->physical_device->rad_info.gfx_level == GFX9) {
-      /* SDMA v4 doesn't support any image metadata. */
+   if (!device->physical_device->rad_info.sdma_supports_compression) {
       assert(!tiled->meta_va);
    }
 
