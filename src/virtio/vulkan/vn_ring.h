@@ -63,12 +63,52 @@ vn_ring_unset_status_bits(struct vn_ring *ring, uint32_t mask);
 bool
 vn_ring_get_seqno_status(struct vn_ring *ring, uint32_t seqno);
 
-/* forward declaration before updating protocol to submit via ring */
-struct vn_instance_submit_command;
+struct vn_ring_submit_command {
+   /* empty command implies errors */
+   struct vn_cs_encoder command;
+   struct vn_cs_encoder_buffer buffer;
+   /* non-zero implies waiting */
+   size_t reply_size;
+
+   /* when reply_size is non-zero, NULL can be returned on errors */
+   struct vn_renderer_shmem *reply_shmem;
+   struct vn_cs_decoder reply;
+
+   /* valid when instance ring submission succeeds */
+   bool ring_seqno_valid;
+   uint32_t ring_seqno;
+};
+
+static inline struct vn_cs_encoder *
+vn_ring_submit_command_init(struct vn_ring *ring,
+                            struct vn_ring_submit_command *submit,
+                            void *cmd_data,
+                            size_t cmd_size,
+                            size_t reply_size)
+{
+   submit->buffer = VN_CS_ENCODER_BUFFER_INITIALIZER(cmd_data);
+   submit->command = VN_CS_ENCODER_INITIALIZER(&submit->buffer, cmd_size);
+
+   submit->reply_size = reply_size;
+   submit->reply_shmem = NULL;
+
+   return &submit->command;
+}
+
+static inline struct vn_cs_decoder *
+vn_ring_get_command_reply(struct vn_ring *ring,
+                          struct vn_ring_submit_command *submit)
+{
+   return submit->reply_shmem ? &submit->reply : NULL;
+}
+
+void
+vn_ring_free_command_reply(struct vn_ring *ring,
+                           struct vn_ring_submit_command *submit);
 
 void
 vn_ring_submit_command(struct vn_ring *ring,
-                       struct vn_instance_submit_command *submit);
+                       struct vn_ring_submit_command *submit);
 
 VkResult
 vn_ring_submit_command_simple(struct vn_ring *ring,

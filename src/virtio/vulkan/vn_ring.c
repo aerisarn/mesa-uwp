@@ -617,7 +617,7 @@ vn_ring_set_reply_shmem_locked(struct vn_ring *ring,
 
 void
 vn_ring_submit_command(struct vn_ring *ring,
-                       struct vn_instance_submit_command *submit)
+                       struct vn_ring_submit_command *submit)
 {
    assert(!vn_cs_encoder_is_empty(&submit->command));
 
@@ -650,4 +650,12 @@ vn_ring_submit_command(struct vn_ring *ring,
       if (submit->ring_seqno_valid)
          vn_ring_wait_seqno(ring, submit->ring_seqno);
    }
+}
+
+void
+vn_ring_free_command_reply(struct vn_ring *ring,
+                           struct vn_ring_submit_command *submit)
+{
+   assert(submit->reply_shmem);
+   vn_renderer_shmem_unref(ring->instance->renderer, submit->reply_shmem);
 }

@@ -143,7 +143,8 @@ static inline void
 vn_instance_submit_command(struct vn_instance *instance,
                            struct vn_instance_submit_command *submit)
 {
-   vn_ring_submit_command(instance->ring.ring, submit);
+   vn_ring_submit_command(instance->ring.ring,
+                          (struct vn_ring_submit_command *)submit);
 }
 
 static inline struct vn_cs_decoder *
