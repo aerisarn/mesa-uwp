@@ -622,6 +622,9 @@ genX(cmd_buffer_emit_indirect_generated_draws)(struct anv_cmd_buffer *cmd_buffer
 static void
 genX(cmd_buffer_flush_generated_draws)(struct anv_cmd_buffer *cmd_buffer)
 {
+   if (!anv_cmd_buffer_is_render_queue(cmd_buffer))
+      return;
+
    /* No return address setup means we don't have to do anything */
    if (anv_address_is_null(cmd_buffer->generation.return_addr))
       return;

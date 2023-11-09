@@ -90,6 +90,10 @@ convert_pc_to_bits(struct GENX(PIPE_CONTROL) *pc) {
 void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
+   if (anv_cmd_buffer_is_blitter_queue(cmd_buffer) ||
+       anv_cmd_buffer_is_video_queue(cmd_buffer))
+      return;
+
    struct anv_device *device = cmd_buffer->device;
    uint32_t mocs = isl_mocs(&device->isl_dev, 0, false);
 
@@ -2849,6 +2853,10 @@ genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
                                     enum anv_pipe_bits bits,
                                     const char *reason)
 {
+   if ((batch->engine_class == INTEL_ENGINE_CLASS_COPY) ||
+       (batch->engine_class == INTEL_ENGINE_CLASS_VIDEO))
+      unreachable("Trying to emit unsupported PIPE_CONTROL command.");
+
    /* XXX - insert all workarounds and GFX specific things below. */
 
    /* Wa_14014966230: For COMPUTE Workload - Any PIPE_CONTROL command with
@@ -3698,7 +3706,8 @@ genX(CmdExecuteCommands)(
    }
 
 #if INTEL_NEEDS_WA_16014538804
-   if (intel_needs_workaround(device->info, 16014538804))
+   if (anv_cmd_buffer_is_render_queue(container) &&
+       intel_needs_workaround(device->info, 16014538804))
       anv_batch_emit(&container->batch, GENX(PIPE_CONTROL), pc);
 #endif
 

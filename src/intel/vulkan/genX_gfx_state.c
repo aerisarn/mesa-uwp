@@ -1906,6 +1906,9 @@ genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 void
 genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
 {
+   if (!anv_cmd_buffer_is_render_queue(cmd_buffer))
+      return;
+
    if (cmd_buffer->state.pma_fix_enabled == enable)
       return;
 

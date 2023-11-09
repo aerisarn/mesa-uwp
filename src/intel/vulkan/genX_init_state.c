@@ -1166,6 +1166,9 @@ VkResult genX(CreateSampler)(
 void
 genX(apply_task_urb_workaround)(struct anv_cmd_buffer *cmd_buffer)
 {
+   if (!anv_cmd_buffer_is_render_queue(cmd_buffer))
+      return;
+
 #if GFX_VERx10 >= 125
    const struct intel_device_info *devinfo = &cmd_buffer->device->physical->info;
 
