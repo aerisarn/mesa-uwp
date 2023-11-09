@@ -213,14 +213,14 @@ VkResult
 vn_instance_submit_roundtrip(struct vn_instance *instance,
                              uint64_t *roundtrip_seqno)
 {
+   const uint64_t ring_id = vn_ring_get_id(instance->ring.ring);
    uint32_t local_data[8];
    struct vn_cs_encoder local_enc =
       VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
 
    mtx_lock(&instance->ring.roundtrip_mutex);
    const uint64_t seqno = instance->ring.roundtrip_next++;
-   vn_encode_vkSubmitVirtqueueSeqnoMESA(&local_enc, 0,
-                                        instance->ring.ring->id, seqno);
+   vn_encode_vkSubmitVirtqueueSeqnoMESA(&local_enc, 0, ring_id, seqno);
    VkResult result = vn_renderer_submit_simple(
       instance->renderer, local_data, vn_cs_encoder_get_len(&local_enc));
    mtx_unlock(&instance->ring.roundtrip_mutex);

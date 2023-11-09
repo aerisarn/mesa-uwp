@@ -11,6 +11,42 @@
 #include "vn_instance.h"
 #include "vn_renderer.h"
 
+static_assert(ATOMIC_INT_LOCK_FREE == 2 && sizeof(atomic_uint) == 4,
+              "vn_ring_shared requires lock-free 32-bit atomic_uint");
+
+/* pointers to a ring in a BO */
+struct vn_ring_shared {
+   const volatile atomic_uint *head;
+   volatile atomic_uint *tail;
+   volatile atomic_uint *status;
+   void *buffer;
+   void *extra;
+};
+
+struct vn_ring {
+   uint64_t id;
+   struct vn_instance *instance;
+   struct vn_renderer_shmem *shmem;
+
+   uint32_t buffer_size;
+   uint32_t buffer_mask;
+
+   struct vn_ring_shared shared;
+   uint32_t cur;
+
+   /* This mutex ensures below:
+    * - atomic of ring submission
+    * - reply shmem resource set and ring submission are paired
+    */
+   mtx_t mutex;
+
+   /* used for indirect submission of large command (non-VkCommandBuffer) */
+   struct vn_cs_encoder upload;
+
+   struct list_head submits;
+   struct list_head free_submits;
+};
+
 struct vn_ring_submit {
    uint32_t seqno;
 
@@ -305,6 +341,12 @@ vn_ring_destroy(struct vn_ring *ring)
    mtx_destroy(&ring->mutex);
 
    vk_free(alloc, ring);
+}
+
+uint64_t
+vn_ring_get_id(struct vn_ring *ring)
+{
+   return ring->id;
 }
 
 static struct vn_ring_submit *
