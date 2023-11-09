@@ -346,9 +346,18 @@ vn_device_memory_alloc_guest_vram(struct vn_device *dev,
    const struct vk_device_memory *mem_vk = &mem->base.base;
    const VkMemoryType *mem_type = &dev->physical_device->memory_properties
                                       .memoryTypes[mem_vk->memory_type_index];
+   VkMemoryPropertyFlags flags = mem_type->propertyFlags;
+
+   /* For external allocation handles, it's possible scenario when requested
+    * non-mappable memory. To make sure that virtio-gpu driver will send to
+    * the host the address of allocated blob using RESOURCE_MAP_BLOB command
+    * a flag VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT must be set.
+    */
+   if (mem_vk->export_handle_types)
+      flags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
    VkResult result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem_vk->size, mem->base.id, mem_type->propertyFlags,
+      dev->renderer, mem_vk->size, mem->base.id, flags,
       mem_vk->export_handle_types, &mem->base_bo);
    if (result != VK_SUCCESS) {
       return result;
