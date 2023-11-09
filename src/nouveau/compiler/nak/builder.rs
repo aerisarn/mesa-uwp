@@ -24,10 +24,7 @@ pub trait Builder {
         }
     }
 
-    fn lop2_to(&mut self, dst: Dst, op: LogicOp3, x: Src, y: Src) {
-        /* Only uses x and y */
-        assert!(!op.src_used(2));
-
+    fn lop2_to(&mut self, dst: Dst, op: LogicOp2, mut x: Src, mut y: Src) {
         let is_predicate = match dst {
             Dst::None => panic!("No LOP destination"),
             Dst::SSA(ssa) => ssa.is_predicate(),
@@ -36,18 +33,54 @@ pub trait Builder {
         assert!(x.is_predicate() == is_predicate);
         assert!(y.is_predicate() == is_predicate);
 
-        if is_predicate {
-            self.push_op(OpPLop3 {
-                dsts: [dst.into(), Dst::None],
-                srcs: [x, y, Src::new_imm_bool(true)],
-                ops: [op, LogicOp3::new_const(false)],
-            });
+        if self.sm() >= 70 {
+            let mut op = op.to_lut();
+            if x.src_mod.is_bnot() {
+                op = LogicOp3::new_lut(&|x, y, _| op.eval(!x, y, 0));
+                x.src_mod = SrcMod::None;
+            }
+            if y.src_mod.is_bnot() {
+                op = LogicOp3::new_lut(&|x, y, _| op.eval(x, !y, 0));
+                y.src_mod = SrcMod::None;
+            }
+            if is_predicate {
+                self.push_op(OpPLop3 {
+                    dsts: [dst.into(), Dst::None],
+                    srcs: [x, y, true.into()],
+                    ops: [op, LogicOp3::new_const(false)],
+                });
+            } else {
+                self.push_op(OpLop3 {
+                    dst: dst.into(),
+                    srcs: [x, y, 0.into()],
+                    op: op,
+                });
+            }
         } else {
-            self.push_op(OpLop3 {
-                dst: dst.into(),
-                srcs: [x, y, Src::new_zero()],
-                op: op,
-            });
+            if is_predicate {
+                let mut x = x;
+                let cmp_op = match op {
+                    LogicOp2::And => PredSetOp::And,
+                    LogicOp2::Or => PredSetOp::Or,
+                    LogicOp2::Xor => PredSetOp::Xor,
+                    LogicOp2::PassB => {
+                        // Pass through B by AND with PT
+                        x = true.into();
+                        PredSetOp::And
+                    }
+                };
+                self.push_op(OpPSetP {
+                    dsts: [dst.into(), Dst::None],
+                    ops: [cmp_op, PredSetOp::And],
+                    srcs: [x, y, true.into()],
+                });
+            } else {
+                self.push_op(OpLop2 {
+                    dst: dst.into(),
+                    srcs: [x, y],
+                    op: op,
+                });
+            }
         }
     }
 
@@ -259,7 +292,7 @@ pub trait SSABuilder: Builder {
         dst
     }
 
-    fn lop2(&mut self, op: LogicOp3, x: Src, y: Src) -> SSARef {
+    fn lop2(&mut self, op: LogicOp2, x: Src, y: Src) -> SSARef {
         let dst = if x.is_predicate() {
             self.alloc_ssa(RegFile::Pred, 1)
         } else {

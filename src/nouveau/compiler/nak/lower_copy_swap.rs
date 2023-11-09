@@ -77,7 +77,7 @@ impl LowerCopySwap {
                 SrcRef::True => {
                     b.lop2_to(
                         copy.dst,
-                        LogicOp3::new_const(true),
+                        LogicOp2::PassB,
                         Src::new_imm_bool(true),
                         Src::new_imm_bool(true),
                     );
@@ -85,18 +85,18 @@ impl LowerCopySwap {
                 SrcRef::False => {
                     b.lop2_to(
                         copy.dst,
-                        LogicOp3::new_const(false),
+                        LogicOp2::PassB,
                         Src::new_imm_bool(true),
-                        Src::new_imm_bool(true),
+                        Src::new_imm_bool(false),
                     );
                 }
                 SrcRef::Reg(src_reg) => match src_reg.file() {
                     RegFile::Pred => {
                         b.lop2_to(
                             copy.dst,
-                            LogicOp3::new_lut(&|x, _, _| x),
-                            copy.src,
+                            LogicOp2::PassB,
                             Src::new_imm_bool(true),
+                            copy.src,
                         );
                     }
                     _ => panic!("Cannot copy to Pred"),
@@ -157,6 +157,7 @@ impl LowerCopySwap {
         if x == y {
             /* Nothing to do */
         } else if x.is_predicate() {
+            // TODO: Transform this in PLOP2 for SM5x-SM6x
             b.push_op(OpPLop3 {
                 dsts: [x.into(), y.into()],
                 srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
@@ -166,10 +167,9 @@ impl LowerCopySwap {
                 ],
             });
         } else {
-            let xor = LogicOp3::new_lut(&|x, y, _| x ^ y);
-            b.lop2_to(x.into(), xor, x.into(), y.into());
-            b.lop2_to(y.into(), xor, x.into(), y.into());
-            b.lop2_to(x.into(), xor, x.into(), y.into());
+            b.lop2_to(x.into(), LogicOp2::Xor, x.into(), y.into());
+            b.lop2_to(y.into(), LogicOp2::Xor, x.into(), y.into());
+            b.lop2_to(x.into(), LogicOp2::Xor, x.into(), y.into());
         }
     }
 

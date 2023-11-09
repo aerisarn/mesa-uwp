@@ -1453,6 +1453,36 @@ impl fmt::Display for IntCmpType {
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum LogicOp2 {
+    And,
+    Or,
+    Xor,
+    PassB,
+}
+
+impl fmt::Display for LogicOp2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LogicOp2::And => write!(f, "and"),
+            LogicOp2::Or => write!(f, "or"),
+            LogicOp2::Xor => write!(f, "xor"),
+            LogicOp2::PassB => write!(f, "pass_b"),
+        }
+    }
+}
+
+impl LogicOp2 {
+    pub fn to_lut(self) -> LogicOp3 {
+        match self {
+            LogicOp2::And => LogicOp3::new_lut(&|x, y, _| x & y),
+            LogicOp2::Or => LogicOp3::new_lut(&|x, y, _| x | y),
+            LogicOp2::Xor => LogicOp3::new_lut(&|x, y, _| x ^ y),
+            LogicOp2::PassB => LogicOp3::new_lut(&|_, b, _| b),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct LogicOp3 {
     pub lut: u8,
 }
@@ -2599,6 +2629,23 @@ impl_display_for_op!(OpISetP);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpLop2 {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub srcs: [Src; 2],
+
+    pub op: LogicOp2,
+}
+
+impl DisplayOp for OpLop2 {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "lop2.{} {} {}", self.op, self.srcs[0], self.srcs[1],)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLop3 {
     pub dst: Dst,
 
@@ -2996,6 +3043,27 @@ impl DisplayOp for OpPLop3 {
     }
 }
 impl_display_for_op!(OpPLop3);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpPSetP {
+    pub dsts: [Dst; 2],
+
+    pub ops: [PredSetOp; 2],
+
+    #[src_type(Pred)]
+    pub srcs: [Src; 3],
+}
+
+impl DisplayOp for OpPSetP {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "psetp{}{} {} {} {}",
+            self.ops[0], self.ops[1], self.srcs[0], self.srcs[1], self.srcs[2],
+        )
+    }
+}
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
@@ -4346,6 +4414,7 @@ pub enum Op {
     IMad64(OpIMad64),
     IMnMx(OpIMnMx),
     ISetP(OpISetP),
+    Lop2(OpLop2),
     Lop3(OpLop3),
     PopC(OpPopC),
     Shf(OpShf),
@@ -4358,6 +4427,7 @@ pub enum Op {
     Sel(OpSel),
     Shfl(OpShfl),
     PLop3(OpPLop3),
+    PSetP(OpPSetP),
     Tex(OpTex),
     Tld(OpTld),
     Tld4(OpTld4),
@@ -4779,6 +4849,7 @@ impl Instr {
             | Op::IMad64(_)
             | Op::IMnMx(_)
             | Op::ISetP(_)
+            | Op::Lop2(_)
             | Op::Lop3(_)
             | Op::Shf(_) => true,
 
@@ -4790,7 +4861,7 @@ impl Instr {
             Op::Shfl(_) => false,
 
             // Predicate ops
-            Op::PLop3(_) => true,
+            Op::PLop3(_) | Op::PSetP(_) => true,
 
             // Texture ops
             Op::Tex(_)

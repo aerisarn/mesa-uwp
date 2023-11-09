@@ -315,13 +315,17 @@ impl SM50Instr {
         self.set_field(range, reg.base_idx());
     }
 
-    fn set_reg_src(&mut self, range: Range<usize>, src: Src) {
-        assert!(src.src_mod.is_none());
-        match src.src_ref {
+    fn set_reg_src_ref(&mut self, range: Range<usize>, src_ref: SrcRef) {
+        match src_ref {
             SrcRef::Zero => self.set_reg(range, RegRef::zero(RegFile::GPR, 1)),
             SrcRef::Reg(reg) => self.set_reg(range, reg),
             _ => panic!("Not a register"),
         }
+    }
+
+    fn set_reg_src(&mut self, range: Range<usize>, src: Src) {
+        assert!(src.src_mod.is_none());
+        self.set_reg_src_ref(range, src.src_ref);
     }
 
     fn set_pred_dst(&mut self, range: Range<usize>, dst: Dst) {
@@ -631,6 +635,20 @@ impl SM50Instr {
         self.set_pred_src(39..42, 42, op.cond);
     }
 
+    fn encode_psetp(&mut self, op: &OpPSetP) {
+        self.set_opcode(0x5090);
+
+        self.set_pred_dst(3..6, op.dsts[0]);
+        self.set_pred_dst(0..3, op.dsts[1]); /* dst1 */
+
+        self.set_pred_src(12..15, 15, op.srcs[0]);
+        self.set_pred_src(29..32, 32, op.srcs[1]);
+        self.set_pred_src(39..42, 42, op.srcs[2]);
+
+        self.set_pred_set_op(24..26, op.ops[0]);
+        self.set_pred_set_op(45..47, op.ops[1]);
+    }
+
     fn set_mem_type(&mut self, range: Range<usize>, mem_type: MemType) {
         assert!(range.len() == 3);
         self.set_field(
@@ -714,6 +732,63 @@ impl SM50Instr {
             MemSpace::Global(_) => self.encode_ldg(op),
             MemSpace::Local => self.encode_ldl(op),
             MemSpace::Shared => self.encode_lds(op),
+        }
+    }
+
+    fn encode_lop2(&mut self, op: &OpLop2) {
+        if let Some(imm32) = op.srcs[1].as_imm_not_i20() {
+            self.set_opcode(0x0400);
+
+            self.set_dst(op.dst);
+            self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+            self.set_bit(55, op.srcs[0].src_mod.is_bnot());
+            self.set_src_imm32(20..52, imm32);
+
+            self.set_field(
+                53..55,
+                match op.op {
+                    LogicOp2::And => 0_u8,
+                    LogicOp2::Or => 1_u8,
+                    LogicOp2::Xor => 2_u8,
+                    LogicOp2::PassB => {
+                        panic!("PASS_B is not supported for LOP32I");
+                    }
+                },
+            );
+        } else {
+            match &op.srcs[1].src_ref {
+                SrcRef::Zero | SrcRef::Reg(_) => {
+                    self.set_opcode(0x5c40);
+                    self.set_reg_src_ref(20..28, op.srcs[1].src_ref);
+                }
+                SrcRef::Imm32(i) => {
+                    self.set_opcode(0x3840);
+                    self.set_src_imm_i20(20..39, 56, *i);
+                }
+                SrcRef::CBuf(cb) => {
+                    self.set_opcode(0x4c40);
+                    self.set_src_cb(20..39, cb);
+                }
+                src1 => panic!("unsupported src1 type for IMUL: {src1}"),
+            }
+
+            self.set_dst(op.dst);
+            self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+
+            self.set_bit(39, op.srcs[0].src_mod.is_bnot());
+            self.set_bit(40, op.srcs[1].src_mod.is_bnot());
+
+            self.set_field(
+                41..43,
+                match op.op {
+                    LogicOp2::And => 0_u8,
+                    LogicOp2::Or => 1_u8,
+                    LogicOp2::Xor => 2_u8,
+                    LogicOp2::PassB => 3_u8,
+                },
+            );
+
+            self.set_pred_dst(48..51, Dst::None);
         }
     }
 
@@ -1645,12 +1720,14 @@ impl SM50Instr {
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
+            Op::PSetP(op) => si.encode_psetp(&op),
             Op::SuSt(op) => si.encode_sust(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             Op::PopC(op) => si.encode_popc(&op),
             Op::Brev(op) => si.encode_brev(&op),
             Op::Prmt(op) => si.encode_prmt(&op),
             Op::Ld(op) => si.encode_ld(&op),
+            Op::Lop2(op) => si.encode_lop2(&op),
             Op::Shf(op) => si.encode_shf(&op),
             Op::F2F(op) => si.encode_f2f(&op),
             Op::F2I(op) => si.encode_f2i(&op),

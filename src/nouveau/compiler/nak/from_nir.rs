@@ -774,13 +774,10 @@ impl<'a> ShaderFromNir<'a> {
                     b.iadd(srcs[0], srcs[1])
                 }
             }
-            nir_op_iand => {
-                b.lop2(LogicOp3::new_lut(&|x, y, _| x & y), srcs[0], srcs[1])
-            }
+            nir_op_iand => b.lop2(LogicOp2::And, srcs[0], srcs[1]),
             nir_op_ieq => {
                 if alu.get_src(0).bit_size() == 1 {
-                    let lop = LogicOp3::new_lut(&|x, y, _| !(x ^ y));
-                    b.lop2(lop, srcs[0], srcs[1])
+                    b.lop2(LogicOp2::Xor, srcs[0], srcs[1].bnot())
                 } else if alu.get_src(0).bit_size() == 64 {
                     b.isetp64(IntCmpType::I32, IntCmpOp::Eq, srcs[0], srcs[1])
                 } else {
@@ -850,8 +847,7 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_ine => {
                 if alu.get_src(0).bit_size() == 1 {
-                    let lop = LogicOp3::new_lut(&|x, y, _| x ^ y);
-                    b.lop2(lop, srcs[0], srcs[1])
+                    b.lop2(LogicOp2::Xor, srcs[0], srcs[1])
                 } else if alu.get_src(0).bit_size() == 64 {
                     b.isetp64(IntCmpType::I32, IntCmpOp::Ne, srcs[0], srcs[1])
                 } else {
@@ -882,28 +878,21 @@ impl<'a> ShaderFromNir<'a> {
                 }
             }
             nir_op_inot => {
-                let lop = LogicOp3::new_lut(&|x, _, _| !x);
                 if alu.def.bit_size() == 1 {
-                    b.lop2(lop, srcs[0], true.into())
+                    b.lop2(LogicOp2::PassB, true.into(), srcs[0].bnot())
                 } else {
                     assert!(alu.def.bit_size() == 32);
-                    b.lop2(lop, srcs[0], 0.into())
+                    b.lop2(LogicOp2::PassB, 0.into(), srcs[0].bnot())
                 }
             }
-            nir_op_ior => {
-                b.lop2(LogicOp3::new_lut(&|x, y, _| x | y), srcs[0], srcs[1])
-            }
+            nir_op_ior => b.lop2(LogicOp2::Or, srcs[0], srcs[1]),
             nir_op_ishl => {
                 let x = *srcs[0].as_ssa().unwrap();
                 let shift = srcs[1];
                 if alu.def.bit_size() == 64 {
                     // For 64-bit shifts, we have to use clamp mode so we need
                     // to mask the shift in order satisfy NIR semantics.
-                    let shift = b.lop2(
-                        LogicOp3::new_lut(&|x, y, _| x & y),
-                        shift,
-                        0x3f.into(),
-                    );
+                    let shift = b.lop2(LogicOp2::And, shift, 0x3f.into());
                     let dst = b.alloc_ssa(RegFile::GPR, 2);
                     b.push_op(OpShf {
                         dst: dst[0].into(),
@@ -948,11 +937,7 @@ impl<'a> ShaderFromNir<'a> {
                 if alu.def.bit_size() == 64 {
                     // For 64-bit shifts, we have to use clamp mode so we need
                     // to mask the shift in order satisfy NIR semantics.
-                    let shift = b.lop2(
-                        LogicOp3::new_lut(&|x, y, _| x & y),
-                        shift,
-                        0x3f.into(),
-                    );
+                    let shift = b.lop2(LogicOp2::And, shift, 0x3f.into());
                     let dst = b.alloc_ssa(RegFile::GPR, 2);
                     b.push_op(OpShf {
                         dst: dst[0].into(),
@@ -991,9 +976,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst
                 }
             }
-            nir_op_ixor => {
-                b.lop2(LogicOp3::new_lut(&|x, y, _| x ^ y), srcs[0], srcs[1])
-            }
+            nir_op_ixor => b.lop2(LogicOp2::Xor, srcs[0], srcs[1]),
             nir_op_pack_half_2x16_split => {
                 assert!(alu.get_src(0).bit_size() == 32);
                 let low = b.alloc_ssa(RegFile::GPR, 1);
@@ -1163,11 +1146,7 @@ impl<'a> ShaderFromNir<'a> {
                 if alu.def.bit_size() == 64 {
                     // For 64-bit shifts, we have to use clamp mode so we need
                     // to mask the shift in order satisfy NIR semantics.
-                    let shift = b.lop2(
-                        LogicOp3::new_lut(&|x, y, _| x & y),
-                        shift,
-                        0x3f.into(),
-                    );
+                    let shift = b.lop2(LogicOp2::And, shift, 0x3f.into());
                     let dst = b.alloc_ssa(RegFile::GPR, 2);
                     b.push_op(OpShf {
                         dst: dst[0].into(),
