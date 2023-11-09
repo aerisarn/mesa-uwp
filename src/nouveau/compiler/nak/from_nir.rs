@@ -12,7 +12,7 @@ use crate::sph::{OutputTopology, PixelImap};
 
 use nak_bindings::*;
 
-use std::cmp::{max, min};
+use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 
 fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
@@ -1323,10 +1323,15 @@ impl<'a> ShaderFromNir<'a> {
         let mask = u8::try_from(mask).unwrap();
 
         let dst_comps = u8::try_from(mask.count_ones()).unwrap();
+        let dst = b.alloc_ssa(RegFile::GPR, dst_comps);
+
+        // On Volta and later, the destination is split in two
         let mut dsts = [Dst::None; 2];
-        dsts[0] = b.alloc_ssa(RegFile::GPR, min(dst_comps, 2)).into();
-        if dst_comps > 2 {
-            dsts[1] = b.alloc_ssa(RegFile::GPR, dst_comps - 2).into();
+        if dst_comps > 2 && b.sm() >= 70 {
+            dsts[0] = SSARef::try_from(&dst[0..2]).unwrap().into();
+            dsts[1] = SSARef::try_from(&dst[2..]).unwrap().into();
+        } else {
+            dsts[0] = dst.into();
         }
 
         if tex.op == nir_texop_hdr_dim_nv {
@@ -1429,7 +1434,7 @@ impl<'a> ShaderFromNir<'a> {
             if mask & (1 << i) == 0 {
                 nir_dst.push(b.copy(0.into())[0]);
             } else {
-                nir_dst.push(dsts[di / 2].as_ssa().unwrap()[di % 2].into());
+                nir_dst.push(dst[di].into());
                 di += 1;
             }
         }

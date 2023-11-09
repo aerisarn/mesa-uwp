@@ -1241,6 +1241,42 @@ impl SM50Instr {
         }
     }
 
+    fn set_tex_dim(&mut self, range: Range<usize>, dim: TexDim) {
+        assert!(range.len() == 3);
+        self.set_field(
+            range,
+            match dim {
+                TexDim::_1D => 0_u8,
+                TexDim::Array1D => 1_u8,
+                TexDim::_2D => 2_u8,
+                TexDim::Array2D => 3_u8,
+                TexDim::_3D => 4_u8,
+                TexDim::Cube => 6_u8,
+                TexDim::ArrayCube => 7_u8,
+            },
+        );
+    }
+
+    fn encode_tld(&mut self, op: &OpTld) {
+        self.set_opcode(0xdd38);
+
+        self.set_dst(op.dsts[0]);
+        assert!(op.dsts[1].is_none());
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_reg_src(20..28, op.srcs[1]);
+
+        self.set_tex_dim(28..31, op.dim);
+        self.set_field(31..35, op.mask);
+        self.set_bit(35, op.offset);
+        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(50, op.is_ms);
+
+        assert!(
+            op.lod_mode == TexLodMode::Zero || op.lod_mode == TexLodMode::Lod
+        );
+        self.set_bit(55, op.lod_mode == TexLodMode::Zero);
+    }
+
     fn encode_ipa(&mut self, op: &OpIpa) {
         assert!(op.offset.is_reg_or_zero());
 
