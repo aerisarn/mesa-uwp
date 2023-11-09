@@ -1248,11 +1248,44 @@ impl SM50Instr {
         );
     }
 
+    fn set_tex_lod_mode(&mut self, range: Range<usize>, lod_mode: TexLodMode) {
+        assert!(range.len() == 2);
+        self.set_field(
+            range,
+            match lod_mode {
+                TexLodMode::Auto => 0_u8,
+                TexLodMode::Zero => 1_u8,
+                TexLodMode::Bias => 2_u8,
+                TexLodMode::Lod => 3_u8,
+                _ => panic!("Unknown LOD mode"),
+            },
+        );
+    }
+
+    fn encode_tex(&mut self, op: &OpTex) {
+        self.set_opcode(0xdeb8);
+
+        self.set_dst(op.dsts[0]);
+        assert!(op.dsts[1].is_none());
+        assert!(op.resident.is_none());
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_reg_src(20..28, op.srcs[1]);
+
+        self.set_tex_dim(28..31, op.dim);
+        self.set_field(31..35, op.mask);
+        self.set_bit(35, false); /* ToDo: NDV */
+        self.set_tex_lod_mode(37..39, op.lod_mode);
+        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(50, op.z_cmpr);
+        self.set_bit(54, op.offset);
+    }
+
     fn encode_tld(&mut self, op: &OpTld) {
         self.set_opcode(0xdd38);
 
         self.set_dst(op.dsts[0]);
         assert!(op.dsts[1].is_none());
+        assert!(op.resident.is_none());
         self.set_reg_src(8..16, op.srcs[0]);
         self.set_reg_src(20..28, op.srcs[1]);
 
@@ -1266,6 +1299,83 @@ impl SM50Instr {
             op.lod_mode == TexLodMode::Zero || op.lod_mode == TexLodMode::Lod
         );
         self.set_bit(55, op.lod_mode == TexLodMode::Zero);
+    }
+
+    fn encode_tld4(&mut self, op: &OpTld4) {
+        self.set_opcode(0xdef8);
+
+        self.set_dst(op.dsts[0]);
+        assert!(op.dsts[1].is_none());
+        assert!(op.resident.is_none());
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_reg_src(20..28, op.srcs[1]);
+
+        self.set_tex_dim(28..31, op.dim);
+        self.set_field(31..35, op.mask);
+        self.set_bit(35, false); /* ToDo: NDV */
+        self.set_field(
+            36..38,
+            match op.offset_mode {
+                Tld4OffsetMode::None => 0_u8,
+                Tld4OffsetMode::AddOffI => 1_u8,
+                Tld4OffsetMode::PerPx => 2_u8,
+            },
+        );
+        self.set_field(38..40, op.comp);
+        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(50, op.z_cmpr);
+    }
+
+    fn encode_tmml(&mut self, op: &OpTmml) {
+        self.set_opcode(0xdf60);
+
+        self.set_dst(op.dsts[0]);
+        assert!(op.dsts[1].is_none());
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_reg_src(20..28, op.srcs[1]);
+
+        self.set_tex_dim(28..31, op.dim);
+        self.set_field(31..35, op.mask);
+        self.set_bit(35, false); /* ToDo: NDV */
+        self.set_bit(49, false); /* TODO: .NODEP */
+    }
+
+    fn encode_txd(&mut self, op: &OpTxd) {
+        self.set_opcode(0xde78);
+
+        self.set_dst(op.dsts[0]);
+        assert!(op.dsts[1].is_none());
+        assert!(op.resident.is_none());
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_reg_src(20..28, op.srcs[1]);
+
+        self.set_tex_dim(28..31, op.dim);
+        self.set_field(31..35, op.mask);
+        self.set_bit(35, op.offset);
+        self.set_bit(49, false); /* TODO: .NODEP */
+    }
+
+    fn encode_txq(&mut self, op: &OpTxq) {
+        self.set_opcode(0xdf50);
+
+        self.set_dst(op.dsts[0]);
+        assert!(op.dsts[1].is_none());
+        self.set_reg_src(8..16, op.src);
+
+        self.set_field(
+            22..28,
+            match op.query {
+                TexQuery::Dimension => 1_u8,
+                TexQuery::TextureType => 2_u8,
+                TexQuery::SamplerPos => 5_u8,
+                // TexQuery::Filter => 0x10_u8,
+                // TexQuery::Lod => 0x12_u8,
+                // TexQuery::Wrap => 0x14_u8,
+                // TexQuery::BorderColour => 0x16,
+            },
+        );
+        self.set_field(31..35, op.mask);
+        self.set_bit(49, false); /* TODO: .NODEP */
     }
 
     fn encode_ipa(&mut self, op: &OpIpa) {
@@ -1908,6 +2018,12 @@ impl SM50Instr {
             Op::IMad(op) => si.encode_imad(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
+            Op::Tex(op) => si.encode_tex(&op),
+            Op::Tld(op) => si.encode_tld(&op),
+            Op::Tld4(op) => si.encode_tld4(&op),
+            Op::Tmml(op) => si.encode_tmml(&op),
+            Op::Txd(op) => si.encode_txd(&op),
+            Op::Txq(op) => si.encode_txq(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
