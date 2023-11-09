@@ -283,7 +283,8 @@ struct vn_instance_submission {
 };
 
 static const struct vn_cs_encoder *
-vn_instance_submission_get_cs(struct vn_instance_submission *submit,
+vn_instance_submission_get_cs(struct vn_instance *instance,
+                              struct vn_instance_submission *submit,
                               const struct vn_cs_encoder *cs,
                               bool direct)
 {
@@ -308,7 +309,9 @@ vn_instance_submission_get_cs(struct vn_instance_submission *submit,
       desc_count, descs, NULL, 0, NULL, 0);
    void *exec_data = submit->indirect.data;
    if (exec_size > sizeof(submit->indirect.data)) {
-      exec_data = malloc(exec_size);
+      const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
+      exec_data = vk_alloc(alloc, exec_size, VN_DEFAULT_ALIGN,
+                           VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
       if (!exec_data) {
          STACK_ARRAY_FINISH(descs);
          return NULL;
@@ -355,29 +358,31 @@ vn_instance_submission_get_ring_submit(struct vn_ring *ring,
    return submit;
 }
 
-static void
-vn_instance_submission_cleanup(struct vn_instance_submission *submit)
+static inline void
+vn_instance_submission_cleanup(struct vn_instance *instance,
+                               struct vn_instance_submission *submit)
 {
+   const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
    if (submit->cs == &submit->indirect.cs &&
        submit->indirect.buffer.base != submit->indirect.data)
-      free(submit->indirect.buffer.base);
+      vk_free(alloc, submit->indirect.buffer.base);
 }
 
 static VkResult
-vn_instance_submission_prepare(struct vn_instance_submission *submit,
+vn_instance_submission_prepare(struct vn_instance *instance,
+                               struct vn_instance_submission *submit,
                                const struct vn_cs_encoder *cs,
-                               struct vn_ring *ring,
                                struct vn_renderer_shmem *extra_shmem,
                                bool direct)
 {
-   submit->cs = vn_instance_submission_get_cs(submit, cs, direct);
+   submit->cs = vn_instance_submission_get_cs(instance, submit, cs, direct);
    if (!submit->cs)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   submit->submit =
-      vn_instance_submission_get_ring_submit(ring, cs, extra_shmem, direct);
+   submit->submit = vn_instance_submission_get_ring_submit(
+      &instance->ring.ring, cs, extra_shmem, direct);
    if (!submit->submit) {
-      vn_instance_submission_cleanup(submit);
+      vn_instance_submission_cleanup(instance, submit);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
@@ -431,8 +436,8 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
    }
 
    struct vn_instance_submission submit;
-   VkResult result =
-      vn_instance_submission_prepare(&submit, cs, ring, extra_shmem, direct);
+   VkResult result = vn_instance_submission_prepare(instance, &submit, cs,
+                                                    extra_shmem, direct);
    if (result != VK_SUCCESS)
       return result;
 
@@ -447,7 +452,7 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
                                 vn_cs_encoder_get_len(&local_enc));
    }
 
-   vn_instance_submission_cleanup(&submit);
+   vn_instance_submission_cleanup(instance, &submit);
 
    if (ring_seqno)
       *ring_seqno = seqno;
