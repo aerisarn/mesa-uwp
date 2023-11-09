@@ -110,17 +110,10 @@ vn_instance_init_renderer_versions(struct vn_instance *instance)
    return VK_SUCCESS;
 }
 
-static void
+static inline void
 vn_instance_fini_ring(struct vn_instance *instance)
 {
    mtx_destroy(&instance->ring.roundtrip_mutex);
-
-   uint32_t destroy_ring_data[4];
-   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
-      destroy_ring_data, sizeof(destroy_ring_data));
-   vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.ring->id);
-   vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
-                             vn_cs_encoder_get_len(&local_enc));
 
    vn_watchdog_fini(&instance->ring.watchdog);
 
@@ -140,32 +133,6 @@ vn_instance_init_ring(struct vn_instance *instance)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    vn_watchdog_init(&instance->ring.watchdog);
-
-   const struct VkRingMonitorInfoMESA monitor_info = {
-      .sType = VK_STRUCTURE_TYPE_RING_MONITOR_INFO_MESA,
-      .maxReportingPeriodMicroseconds = VN_WATCHDOG_REPORT_PERIOD_US,
-   };
-   const struct VkRingCreateInfoMESA info = {
-      .sType = VK_STRUCTURE_TYPE_RING_CREATE_INFO_MESA,
-      .pNext = &monitor_info,
-      .resourceId = instance->ring.ring->shmem->res_id,
-      .size = layout.shmem_size,
-      .idleTimeout = 5ull * 1000 * 1000,
-      .headOffset = layout.head_offset,
-      .tailOffset = layout.tail_offset,
-      .statusOffset = layout.status_offset,
-      .bufferOffset = layout.buffer_offset,
-      .bufferSize = layout.buffer_size,
-      .extraOffset = layout.extra_offset,
-      .extraSize = layout.extra_size,
-   };
-
-   uint32_t create_ring_data[64];
-   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
-      create_ring_data, sizeof(create_ring_data));
-   vn_encode_vkCreateRingMESA(&local_enc, 0, instance->ring.ring->id, &info);
-   vn_renderer_submit_simple(instance->renderer, create_ring_data,
-                             vn_cs_encoder_get_len(&local_enc));
 
    mtx_init(&instance->ring.roundtrip_mutex, mtx_plain);
    instance->ring.roundtrip_next = 1;

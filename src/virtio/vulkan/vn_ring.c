@@ -250,6 +250,32 @@ vn_ring_create(struct vn_instance *instance,
    list_inithead(&ring->submits);
    list_inithead(&ring->free_submits);
 
+   const struct VkRingMonitorInfoMESA monitor_info = {
+      .sType = VK_STRUCTURE_TYPE_RING_MONITOR_INFO_MESA,
+      .maxReportingPeriodMicroseconds = VN_WATCHDOG_REPORT_PERIOD_US,
+   };
+   const struct VkRingCreateInfoMESA info = {
+      .sType = VK_STRUCTURE_TYPE_RING_CREATE_INFO_MESA,
+      .pNext = &monitor_info,
+      .resourceId = ring->shmem->res_id,
+      .size = layout->shmem_size,
+      .idleTimeout = 5ull * 1000 * 1000,
+      .headOffset = layout->head_offset,
+      .tailOffset = layout->tail_offset,
+      .statusOffset = layout->status_offset,
+      .bufferOffset = layout->buffer_offset,
+      .bufferSize = layout->buffer_size,
+      .extraOffset = layout->extra_offset,
+      .extraSize = layout->extra_size,
+   };
+
+   uint32_t create_ring_data[64];
+   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
+      create_ring_data, sizeof(create_ring_data));
+   vn_encode_vkCreateRingMESA(&local_enc, 0, ring->id, &info);
+   vn_renderer_submit_simple(instance->renderer, create_ring_data,
+                             vn_cs_encoder_get_len(&local_enc));
+
    return ring;
 }
 
@@ -259,6 +285,13 @@ vn_ring_destroy(struct vn_ring *ring)
    VN_TRACE_FUNC();
 
    const VkAllocationCallbacks *alloc = &ring->instance->base.base.alloc;
+
+   uint32_t destroy_ring_data[4];
+   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
+      destroy_ring_data, sizeof(destroy_ring_data));
+   vn_encode_vkDestroyRingMESA(&local_enc, 0, ring->id);
+   vn_renderer_submit_simple(ring->instance->renderer, destroy_ring_data,
+                             vn_cs_encoder_get_len(&local_enc));
 
    vn_ring_retire_submits(ring, ring->cur);
    assert(list_is_empty(&ring->submits));
