@@ -1503,7 +1503,10 @@ dxil_sort_ps_outputs(nir_shader* s)
 
    unsigned driver_loc = 0;
    nir_foreach_variable_with_modes(var, s, nir_var_shader_out) {
-      var->data.driver_location = driver_loc++;
+      /* Fractional vars should use the same driver_location as the base. These will
+       * get fully merged during signature processing.
+       */
+      var->data.driver_location = var->data.location_frac ? driver_loc - 1 : driver_loc++;
    }
 }
 

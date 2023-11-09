@@ -147,7 +147,7 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
    info->rows = 1;
    if (info->kind == DXIL_SEM_TARGET) {
       info->start_row = info->index;
-      info->cols = (uint8_t)glsl_get_components(type);
+      info->cols = 4;
    } else if (is_depth ||
               (info->kind == DXIL_SEM_PRIMITIVE_ID && is_gs_input) ||
               info->kind == DXIL_SEM_COVERAGE ||
@@ -654,8 +654,15 @@ process_output_signature(struct dxil_module *mod, nir_shader *s)
          mod->outputs[num_outputs].sysvalue = out_sysvalue_name(var);
       }
       nir_variable *base_var = var;
-      if (var->data.location_frac)
+      if (var->data.location_frac) {
+         if (s->info.stage == MESA_SHADER_FRAGMENT) {
+            /* Fragment shader outputs are all either scalars, or must be declared as a single 4-component vector.
+             * Any attempt to declare partial vectors split across multiple variables is ignored.
+             */
+            continue;
+         }
          base_var = nir_find_variable_with_location(s, nir_var_shader_out, var->data.location);
+      }
       if (base_var != var &&
           base_var->data.stream == var->data.stream)
          /* Combine fractional vars into any already existing row */
