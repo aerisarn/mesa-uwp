@@ -355,7 +355,7 @@ impl CopyPropPass {
                             );
                         } else {
                             for s in 0..3 {
-                                if op.lut == LogicOp::SRC_MASKS[s] {
+                                if op.lut == LogicOp3::SRC_MASKS[s] {
                                     self.add_copy(
                                         dst,
                                         SrcType::ALU,
@@ -390,13 +390,14 @@ impl CopyPropPass {
                                 );
                             } else {
                                 for s in 0..3 {
-                                    if op.lut == LogicOp::SRC_MASKS[s] {
+                                    if op.lut == LogicOp3::SRC_MASKS[s] {
                                         self.add_copy(
                                             dst,
                                             SrcType::Pred,
                                             lop.srcs[s],
                                         );
-                                    } else if op.lut == !LogicOp::SRC_MASKS[s] {
+                                    } else if op.lut == !LogicOp3::SRC_MASKS[s]
+                                    {
                                         self.add_copy(
                                             dst,
                                             SrcType::Pred,

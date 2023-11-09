@@ -1453,39 +1453,39 @@ impl fmt::Display for IntCmpType {
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
-pub struct LogicOp {
+pub struct LogicOp3 {
     pub lut: u8,
 }
 
-impl LogicOp {
+impl LogicOp3 {
     pub const SRC_MASKS: [u8; 3] = [0xf0, 0xcc, 0xaa];
 
     #[inline]
-    pub fn new_lut<F: Fn(u8, u8, u8) -> u8>(f: &F) -> LogicOp {
-        LogicOp {
+    pub fn new_lut<F: Fn(u8, u8, u8) -> u8>(f: &F) -> LogicOp3 {
+        LogicOp3 {
             lut: f(
-                LogicOp::SRC_MASKS[0],
-                LogicOp::SRC_MASKS[1],
-                LogicOp::SRC_MASKS[2],
+                LogicOp3::SRC_MASKS[0],
+                LogicOp3::SRC_MASKS[1],
+                LogicOp3::SRC_MASKS[2],
             ),
         }
     }
 
-    pub fn new_const(val: bool) -> LogicOp {
-        LogicOp {
+    pub fn new_const(val: bool) -> LogicOp3 {
+        LogicOp3 {
             lut: if val { !0 } else { 0 },
         }
     }
 
     pub fn src_used(&self, src_idx: usize) -> bool {
-        let mask = LogicOp::SRC_MASKS[src_idx];
-        let shift = LogicOp::SRC_MASKS[src_idx].trailing_zeros();
+        let mask = LogicOp3::SRC_MASKS[src_idx];
+        let shift = LogicOp3::SRC_MASKS[src_idx].trailing_zeros();
         self.lut & !mask != (self.lut >> shift) & !mask
     }
 
     pub fn fix_src(&mut self, src_idx: usize, val: bool) {
-        let mask = LogicOp::SRC_MASKS[src_idx];
-        let shift = LogicOp::SRC_MASKS[src_idx].trailing_zeros();
+        let mask = LogicOp3::SRC_MASKS[src_idx];
+        let shift = LogicOp3::SRC_MASKS[src_idx].trailing_zeros();
         if val {
             let t_bits = self.lut & mask;
             self.lut = t_bits | (t_bits >> shift)
@@ -1496,8 +1496,8 @@ impl LogicOp {
     }
 
     pub fn invert_src(&mut self, src_idx: usize) {
-        let mask = LogicOp::SRC_MASKS[src_idx];
-        let shift = LogicOp::SRC_MASKS[src_idx].trailing_zeros();
+        let mask = LogicOp3::SRC_MASKS[src_idx];
+        let shift = LogicOp3::SRC_MASKS[src_idx].trailing_zeros();
         let t_bits = self.lut & mask;
         let f_bits = self.lut & !mask;
         self.lut = (f_bits << shift) | (t_bits >> shift);
@@ -1540,7 +1540,7 @@ impl LogicOp {
     }
 }
 
-impl fmt::Display for LogicOp {
+impl fmt::Display for LogicOp3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "LUT[{:#x}]", self.lut)
     }
@@ -2605,7 +2605,7 @@ pub struct OpLop3 {
     #[src_type(ALU)]
     pub srcs: [Src; 3],
 
-    pub op: LogicOp,
+    pub op: LogicOp3,
 }
 
 impl DisplayOp for OpLop3 {
@@ -2979,7 +2979,7 @@ pub struct OpPLop3 {
     #[src_type(Pred)]
     pub srcs: [Src; 3],
 
-    pub ops: [LogicOp; 2],
+    pub ops: [LogicOp3; 2],
 }
 
 impl DisplayOp for OpPLop3 {

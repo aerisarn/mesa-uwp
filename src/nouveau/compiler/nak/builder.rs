@@ -24,7 +24,7 @@ pub trait Builder {
         }
     }
 
-    fn lop2_to(&mut self, dst: Dst, op: LogicOp, x: Src, y: Src) {
+    fn lop2_to(&mut self, dst: Dst, op: LogicOp3, x: Src, y: Src) {
         /* Only uses x and y */
         assert!(!op.src_used(2));
 
@@ -40,7 +40,7 @@ pub trait Builder {
             self.push_op(OpPLop3 {
                 dsts: [dst.into(), Dst::None],
                 srcs: [x, y, Src::new_imm_bool(true)],
-                ops: [op, LogicOp::new_const(false)],
+                ops: [op, LogicOp3::new_const(false)],
             });
         } else {
             self.push_op(OpLop3 {
@@ -259,7 +259,7 @@ pub trait SSABuilder: Builder {
         dst
     }
 
-    fn lop2(&mut self, op: LogicOp, x: Src, y: Src) -> SSARef {
+    fn lop2(&mut self, op: LogicOp3, x: Src, y: Src) -> SSARef {
         let dst = if x.is_predicate() {
             self.alloc_ssa(RegFile::Pred, 1)
         } else {
@@ -332,8 +332,8 @@ pub trait SSABuilder: Builder {
                 dsts: [dst.into(), Dst::None],
                 srcs: [cond, x, y],
                 ops: [
-                    LogicOp::new_lut(&|c, x, y| (c & x) | (!c & y)),
-                    LogicOp::new_const(false),
+                    LogicOp3::new_lut(&|c, x, y| (c & x) | (!c & y)),
+                    LogicOp3::new_const(false),
                 ],
             });
             dst

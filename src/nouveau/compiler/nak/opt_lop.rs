@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::slice;
 
 struct LopEntry {
-    op: LogicOp,
+    op: LogicOp3,
     srcs_used: u8,
     srcs: [Src; 3],
 }
@@ -55,7 +55,7 @@ impl LopPass {
         }
     }
 
-    fn add_lop(&mut self, ssa: SSAValue, op: LogicOp, srcs: [Src; 3]) {
+    fn add_lop(&mut self, ssa: SSAValue, op: LogicOp3, srcs: [Src; 3]) {
         let mut srcs_used = 0;
         for i in 0..3 {
             if op.src_used(i) {
@@ -71,11 +71,11 @@ impl LopPass {
         self.ssa_lop.insert(ssa, entry);
     }
 
-    fn dedup_srcs(&self, op: &mut LogicOp, srcs: &[Src; 3]) {
+    fn dedup_srcs(&self, op: &mut LogicOp3, srcs: &[Src; 3]) {
         for i in 0..2 {
             for j in (i + 1)..3 {
                 if srcs[i].src_ref == srcs[j].src_ref {
-                    *op = LogicOp::new_lut(&|x, y, z| {
+                    *op = LogicOp3::new_lut(&|x, y, z| {
                         let dup = [x, y, z][i];
                         let si = match srcs[i].src_mod {
                             SrcMod::None => dup,
@@ -101,7 +101,7 @@ impl LopPass {
 
     fn try_prop_to_src(
         &self,
-        ops: &mut [LogicOp],
+        ops: &mut [LogicOp3],
         srcs: &mut [Src; 3],
         src_idx: usize,
     ) {
@@ -179,7 +179,7 @@ impl LopPass {
                 }
             }
             for op in ops.iter_mut() {
-                *op = LogicOp::new_lut(&|x, y, z| {
+                *op = LogicOp3::new_lut(&|x, y, z| {
                     let mut s = [x, y, z];
                     let mut es = [0; 3];
                     for i in 0..3 {

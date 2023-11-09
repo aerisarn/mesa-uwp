@@ -77,7 +77,7 @@ impl LowerCopySwap {
                 SrcRef::True => {
                     b.lop2_to(
                         copy.dst,
-                        LogicOp::new_const(true),
+                        LogicOp3::new_const(true),
                         Src::new_imm_bool(true),
                         Src::new_imm_bool(true),
                     );
@@ -85,7 +85,7 @@ impl LowerCopySwap {
                 SrcRef::False => {
                     b.lop2_to(
                         copy.dst,
-                        LogicOp::new_const(false),
+                        LogicOp3::new_const(false),
                         Src::new_imm_bool(true),
                         Src::new_imm_bool(true),
                     );
@@ -94,7 +94,7 @@ impl LowerCopySwap {
                     RegFile::Pred => {
                         b.lop2_to(
                             copy.dst,
-                            LogicOp::new_lut(&|x, _, _| x),
+                            LogicOp3::new_lut(&|x, _, _| x),
                             copy.src,
                             Src::new_imm_bool(true),
                         );
@@ -161,12 +161,12 @@ impl LowerCopySwap {
                 dsts: [x.into(), y.into()],
                 srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
                 ops: [
-                    LogicOp::new_lut(&|_, y, _| y),
-                    LogicOp::new_lut(&|x, _, _| x),
+                    LogicOp3::new_lut(&|_, y, _| y),
+                    LogicOp3::new_lut(&|x, _, _| x),
                 ],
             });
         } else {
-            let xor = LogicOp::new_lut(&|x, y, _| x ^ y);
+            let xor = LogicOp3::new_lut(&|x, y, _| x ^ y);
             b.lop2_to(x.into(), xor, x.into(), y.into());
             b.lop2_to(y.into(), xor, x.into(), y.into());
             b.lop2_to(x.into(), xor, x.into(), y.into());

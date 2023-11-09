@@ -229,7 +229,7 @@ fn legalize_sm70_instr(
         }
         Op::Lop3(op) => {
             /* Fold constants and modifiers if we can */
-            op.op = LogicOp::new_lut(&|mut x, mut y, mut z| {
+            op.op = LogicOp3::new_lut(&|mut x, mut y, mut z| {
                 fold_lop_src(&op.srcs[0], &mut x);
                 fold_lop_src(&op.srcs[1], &mut y);
                 fold_lop_src(&op.srcs[2], &mut z);
@@ -245,11 +245,11 @@ fn legalize_sm70_instr(
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             if !src_is_reg(src0) && src_is_reg(src1) {
                 std::mem::swap(src0, src1);
-                op.op = LogicOp::new_lut(&|x, y, z| op.op.eval(y, x, z))
+                op.op = LogicOp3::new_lut(&|x, y, z| op.op.eval(y, x, z))
             }
             if !src_is_reg(src2) && src_is_reg(src1) {
                 std::mem::swap(src2, src1);
-                op.op = LogicOp::new_lut(&|x, y, z| op.op.eval(x, z, y))
+                op.op = LogicOp3::new_lut(&|x, y, z| op.op.eval(x, z, y))
             }
 
             copy_src_if_not_reg(b, src0, RegFile::GPR);
@@ -276,7 +276,7 @@ fn legalize_sm70_instr(
         Op::PLop3(op) => {
             /* Fold constants and modifiers if we can */
             for lop in &mut op.ops {
-                *lop = LogicOp::new_lut(&|mut x, mut y, mut z| {
+                *lop = LogicOp3::new_lut(&|mut x, mut y, mut z| {
                     fold_lop_src(&op.srcs[0], &mut x);
                     fold_lop_src(&op.srcs[1], &mut y);
                     fold_lop_src(&op.srcs[2], &mut z);
@@ -294,13 +294,13 @@ fn legalize_sm70_instr(
             if !src_is_reg(src0) && src_is_reg(src1) {
                 std::mem::swap(src0, src1);
                 for lop in &mut op.ops {
-                    *lop = LogicOp::new_lut(&|x, y, z| lop.eval(y, x, z));
+                    *lop = LogicOp3::new_lut(&|x, y, z| lop.eval(y, x, z));
                 }
             }
             if !src_is_reg(src2) && src_is_reg(src1) {
                 std::mem::swap(src2, src1);
                 for lop in &mut op.ops {
-                    *lop = LogicOp::new_lut(&|x, y, z| lop.eval(x, z, y));
+                    *lop = LogicOp3::new_lut(&|x, y, z| lop.eval(x, z, y));
                 }
             }
 
