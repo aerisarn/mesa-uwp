@@ -148,8 +148,8 @@ struct emit_primitives_context
    nir_builder b;
 
    unsigned num_vars;
-   nir_variable *in[VARYING_SLOT_MAX];
-   nir_variable *out[VARYING_SLOT_MAX];
+   nir_variable *in[VARYING_SLOT_MAX * 4];
+   nir_variable *out[VARYING_SLOT_MAX * 4];
    nir_variable *front_facing_var;
 
    nir_loop *loop;
