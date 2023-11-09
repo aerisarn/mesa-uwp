@@ -1443,6 +1443,7 @@ static int
 variable_location_cmp(const nir_variable* a, const nir_variable* b)
 {
    // Sort by stream, driver_location, location, location_frac, then index
+   // If all else is equal, sort full vectors before partial ones
    unsigned a_location = a->data.location;
    if (a_location >= VARYING_SLOT_PATCH0)
       a_location -= VARYING_SLOT_PATCH0;
@@ -1459,7 +1460,9 @@ variable_location_cmp(const nir_variable* a, const nir_variable* b)
                   a_location - b_location :
                   a->data.location_frac != b->data.location_frac ?
                      a->data.location_frac - b->data.location_frac :
-                     a->data.index - b->data.index;
+                     a->data.index != b->data.index ?
+                        a->data.index - b->data.index :
+                        glsl_get_component_slots(b->type) - glsl_get_component_slots(a->type);
 }
 
 /* Order varyings according to driver location */

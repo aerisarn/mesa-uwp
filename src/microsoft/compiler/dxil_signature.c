@@ -571,8 +571,19 @@ get_input_signature_group(struct dxil_module *mod,
       get_semantics(var, &semantic, s->info.stage);
       mod->inputs[num_inputs].sysvalue = semantic.sysvalue_name;
       nir_variable *base_var = var;
-      if (var->data.location_frac)
-         base_var = nir_find_variable_with_location(s, modes, var->data.location);
+      if (var->data.location_frac) {
+         /* Note: Specifically search for a variable that has space for these additional components */
+         nir_foreach_variable_with_modes(test_var, s, modes) {
+            if (var->data.location == test_var->data.location) {
+               base_var = test_var;
+               if (test_var->data.location_frac == 0 &&
+                   glsl_get_component_slots(
+                      nir_is_arrayed_io(test_var, s->info.stage) ?
+                      glsl_get_array_element(test_var->type) : test_var->type) <= var->data.location_frac)
+                  break;
+            }
+         }
+      }
       if (base_var != var)
          /* Combine fractional vars into any already existing row */
          get_additional_semantic_info(s, var, &semantic,
