@@ -1552,7 +1552,7 @@ d3d12_create_shader(struct d3d12_context *ctx,
    d3d12_shader_selector *next = get_next_shader(ctx, sel->stage);
 
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
-   NIR_PASS_V(nir, d3d12_split_multistream_varyings);
+   NIR_PASS_V(nir, d3d12_split_needed_varyings);
 
    if (nir->info.stage != MESA_SHADER_VERTEX)
       nir->info.inputs_read =
