@@ -213,6 +213,26 @@ enum pipe_video_cap_slice_structure
    PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_MULTI_ROWS = 0x00000020,
 };
 
+enum pipe_video_enc_intra_refresh_mode
+{
+   /* no intra-refresh is supported */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_NONE      = 0x00000,
+   /* intra-refresh is column based */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_COLUMN    = 0x00001,
+   /* intra-refresh is row based */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_ROW       = 0x00002,
+   /* intra-refresh could be adaptive, and decided by application */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_ADAPTIVE  = 0x00010,
+   /* intra-refresh could be cyclic, decided by application */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_CYCLIC    = 0x00020,
+   /* intra-refresh can be on P frame */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_P_FRAME   = 0x10000,
+   /* intra-refresh can be on B frame */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_B_FRAME   = 0x20000,
+   /* intra-refresh support multiple reference encoder */
+   PIPE_VIDEO_ENC_INTRA_REFRESH_MULTI_REF = 0x40000,
+};
+
 enum pipe_video_entrypoint
 {
    PIPE_VIDEO_ENTRYPOINT_UNKNOWN,

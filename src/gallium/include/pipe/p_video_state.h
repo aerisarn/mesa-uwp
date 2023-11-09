@@ -422,6 +422,31 @@ struct pipe_enc_quality_modes
    unsigned int vbaq_mode;
 };
 
+/*
+ * intra refresh supports row or column only, it doens't support
+ * row and column mixed, if mixed it will pick up column mode.
+ * Also the assumption is the first row/column since the offset
+ * is zero, and it marks the start of intra-refresh, it will need
+ * to have headers at this point.
+ */
+struct pipe_enc_intra_refresh
+{
+   unsigned int mode;
+   unsigned int region_size;
+   unsigned int offset;
+   unsigned int need_sequence_header;
+};
+
+/*
+ * In AVC, unit is MB, HEVC (CTB) and AV1(SB)
+ */
+enum
+{
+   INTRA_REFRESH_MODE_NONE,
+   INTRA_REFRESH_MODE_UNIT_ROWS,
+   INTRA_REFRESH_MODE_UNIT_COLUMNS,
+};
+
 struct pipe_h264_enc_rate_control
 {
    enum pipe_h2645_enc_rate_control_method rate_ctrl_method;
@@ -564,6 +589,7 @@ struct pipe_h264_enc_picture_desc
    bool l1_is_long_term[32];
    unsigned gop_size;
    struct pipe_enc_quality_modes quality_modes;
+   struct pipe_enc_intra_refresh intra_refresh;
 
    bool not_referenced;
    bool is_ltr;
@@ -691,6 +717,7 @@ struct pipe_h265_enc_picture_desc
    unsigned pic_order_cnt;
    unsigned pic_order_cnt_type;
    struct pipe_enc_quality_modes quality_modes;
+   struct pipe_enc_intra_refresh intra_refresh;
    unsigned num_ref_idx_l0_active_minus1;
    unsigned num_ref_idx_l1_active_minus1;
    unsigned ref_idx_l0_list[PIPE_H265_MAX_REFERENCES];
@@ -827,6 +854,7 @@ struct pipe_av1_enc_picture_desc
       uint32_t skip_mode_present:1;
    };
    struct pipe_enc_quality_modes quality_modes;
+   struct pipe_enc_intra_refresh intra_refresh;
    uint32_t num_tiles_in_pic; /* [1, 32], */
    uint32_t tile_rows;
    uint32_t tile_cols;
