@@ -1042,32 +1042,26 @@ impl SM50Instr {
     }
 
     fn encode_imnmx(&mut self, op: &OpIMnMx) {
-        assert!(op.srcs[0].is_reg_or_zero());
-        assert!(op.srcs[1].is_reg_or_zero());
+        match &op.srcs[1].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c20);
+                self.set_reg_src(20..28, op.srcs[1]);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x3820);
+                self.set_src_imm_f20(20..39, 56, *i);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4c20);
+                self.set_src_cb(20..39, cb);
+            }
+            src1 => panic!("unsupported src1 type for IMNMX: {src1}"),
+        }
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: None,
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x20,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
-
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
-
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.srcs[0]);
         self.set_pred_src(39..42, 42, op.min);
+        self.set_bit(47, false); // .CC
         self.set_bit(
             48,
             match op.cmp_type {
