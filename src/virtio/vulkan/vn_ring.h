@@ -8,6 +8,8 @@
 
 #include "vn_common.h"
 
+#include "vn_cs.h"
+
 /**
  * A ring is a single-producer and single-consumer circular buffer.  The data
  * in the buffer are produced and consumed in order.  An externally-defined
@@ -60,6 +62,7 @@ struct vn_ring_submit {
 };
 
 struct vn_ring {
+   uint64_t id;
    struct vn_instance *instance;
    struct vn_renderer_shmem *shmem;
 
@@ -68,6 +71,15 @@ struct vn_ring {
 
    struct vn_ring_shared shared;
    uint32_t cur;
+
+   /* This mutex ensures below:
+    * - atomic of ring submission
+    * - reply shmem resource set and ring submission are paired
+    */
+   mtx_t mutex;
+
+   /* used for indirect submission of large command (non-VkCommandBuffer) */
+   struct vn_cs_encoder upload;
 
    struct list_head submits;
    struct list_head free_submits;

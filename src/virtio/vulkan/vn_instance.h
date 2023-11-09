@@ -50,10 +50,6 @@ struct vn_instance {
 
    struct {
       struct vn_ring *ring;
-      uint64_t id;
-      mtx_t mutex;
-
-      struct vn_cs_encoder upload;
 
       /* to synchronize renderer/ring */
       mtx_t roundtrip_mutex;

@@ -116,18 +116,14 @@ vn_instance_fini_ring(struct vn_instance *instance)
 {
    mtx_destroy(&instance->ring.roundtrip_mutex);
 
-   vn_cs_encoder_fini(&instance->ring.upload);
-
    uint32_t destroy_ring_data[4];
    struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
       destroy_ring_data, sizeof(destroy_ring_data));
-   vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.id);
+   vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.ring->id);
    vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
                              vn_cs_encoder_get_len(&local_enc));
 
    vn_watchdog_fini(&instance->ring.watchdog);
-
-   mtx_destroy(&instance->ring.mutex);
 
    vn_ring_destroy(instance->ring.ring);
 }
@@ -143,10 +139,6 @@ vn_instance_init_ring(struct vn_instance *instance)
    instance->ring.ring = vn_ring_create(instance, &layout);
    if (!instance->ring.ring)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   instance->ring.id = (uintptr_t)instance->ring.ring;
-
-   mtx_init(&instance->ring.mutex, mtx_plain);
 
    vn_watchdog_init(&instance->ring.watchdog);
 
@@ -172,12 +164,9 @@ vn_instance_init_ring(struct vn_instance *instance)
    uint32_t create_ring_data[64];
    struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
       create_ring_data, sizeof(create_ring_data));
-   vn_encode_vkCreateRingMESA(&local_enc, 0, instance->ring.id, &info);
+   vn_encode_vkCreateRingMESA(&local_enc, 0, instance->ring.ring->id, &info);
    vn_renderer_submit_simple(instance->renderer, create_ring_data,
                              vn_cs_encoder_get_len(&local_enc));
-
-   vn_cs_encoder_init(&instance->ring.upload, instance,
-                      VN_CS_ENCODER_STORAGE_SHMEM_ARRAY, 1 * 1024 * 1024);
 
    mtx_init(&instance->ring.roundtrip_mutex, mtx_plain);
    instance->ring.roundtrip_next = 1;
@@ -264,8 +253,8 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
 
    mtx_lock(&instance->ring.roundtrip_mutex);
    const uint64_t seqno = instance->ring.roundtrip_next++;
-   vn_encode_vkSubmitVirtqueueSeqnoMESA(&local_enc, 0, instance->ring.id,
-                                        seqno);
+   vn_encode_vkSubmitVirtqueueSeqnoMESA(&local_enc, 0,
+                                        instance->ring.ring->id, seqno);
    VkResult result = vn_renderer_submit_simple(
       instance->renderer, local_data, vn_cs_encoder_get_len(&local_enc));
    mtx_unlock(&instance->ring.roundtrip_mutex);
@@ -417,7 +406,7 @@ vn_instance_ring_cs_upload_locked(struct vn_instance *instance,
    const size_t cs_size = cs->total_committed_size;
    assert(cs_size == vn_cs_encoder_get_len(cs));
 
-   struct vn_cs_encoder *upload = &instance->ring.upload;
+   struct vn_cs_encoder *upload = &instance->ring.ring->upload;
    vn_cs_encoder_reset(upload);
 
    if (!vn_cs_encoder_reserve(upload, cs_size))
@@ -457,7 +446,8 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
       uint32_t notify_ring_data[8];
       struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
          notify_ring_data, sizeof(notify_ring_data));
-      vn_encode_vkNotifyRingMESA(&local_enc, 0, instance->ring.id, seqno, 0);
+      vn_encode_vkNotifyRingMESA(&local_enc, 0, instance->ring.ring->id,
+                                 seqno, 0);
       vn_renderer_submit_simple(instance->renderer, notify_ring_data,
                                 vn_cs_encoder_get_len(&local_enc));
    }
@@ -474,9 +464,9 @@ VkResult
 vn_instance_ring_submit(struct vn_instance *instance,
                         const struct vn_cs_encoder *cs)
 {
-   mtx_lock(&instance->ring.mutex);
+   mtx_lock(&instance->ring.ring->mutex);
    VkResult result = vn_instance_ring_submit_locked(instance, cs, NULL, NULL);
-   mtx_unlock(&instance->ring.mutex);
+   mtx_unlock(&instance->ring.ring->mutex);
 
    return result;
 }
@@ -518,7 +508,7 @@ vn_instance_submit_command(struct vn_instance *instance,
          return;
    }
 
-   mtx_lock(&instance->ring.mutex);
+   mtx_lock(&instance->ring.ring->mutex);
    if (submit->reply_size) {
       vn_instance_set_reply_shmem_locked(instance, submit->reply_shmem,
                                          reply_offset, submit->reply_size);
@@ -527,7 +517,7 @@ vn_instance_submit_command(struct vn_instance *instance,
       VK_SUCCESS == vn_instance_ring_submit_locked(instance, &submit->command,
                                                    submit->reply_shmem,
                                                    &submit->ring_seqno);
-   mtx_unlock(&instance->ring.mutex);
+   mtx_unlock(&instance->ring.ring->mutex);
 
    if (submit->reply_size) {
       void *reply_ptr = submit->reply_shmem->mmap_ptr + reply_offset;

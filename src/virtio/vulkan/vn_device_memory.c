@@ -73,7 +73,7 @@ vn_device_memory_wait_alloc(struct vn_device *dev,
    uint32_t local_data[8];
    struct vn_cs_encoder local_enc =
       VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
-   vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, dev->instance->ring.id,
+   vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, dev->instance->ring.ring->id,
                                  mem->bo_ring_seqno);
    return vn_renderer_submit_simple(dev->renderer, local_data,
                                     vn_cs_encoder_get_len(&local_enc));

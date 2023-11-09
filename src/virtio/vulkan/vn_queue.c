@@ -1044,7 +1044,7 @@ vn_queue_wsi_present(struct vn_queue_submission *submit)
       struct vn_cs_encoder local_enc =
          VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
       if (submit->external_payload.ring_seqno_valid) {
-         vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, instance->ring.id,
+         vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, instance->ring.ring->id,
                                        submit->external_payload.ring_seqno);
          batch.cs_data = local_data;
          batch.cs_size = vn_cs_encoder_get_len(&local_enc);
@@ -1832,7 +1832,8 @@ vn_create_sync_file(struct vn_device *dev,
    struct vn_cs_encoder local_enc =
       VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
    if (external_payload->ring_seqno_valid) {
-      vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, dev->instance->ring.id,
+      vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0,
+                                    dev->instance->ring.ring->id,
                                     external_payload->ring_seqno);
       batch.cs_data = local_data;
       batch.cs_size = vn_cs_encoder_get_len(&local_enc);

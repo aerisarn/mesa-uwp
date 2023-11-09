@@ -194,6 +194,8 @@ vn_ring_create(struct vn_instance *instance,
    if (!ring)
       return NULL;
 
+   ring->id = (uintptr_t)ring;
+   ring->instance = instance;
    ring->shmem =
       vn_renderer_shmem_create(instance->renderer, layout->shmem_size);
    if (!ring->shmem) {
@@ -206,8 +208,6 @@ vn_ring_create(struct vn_instance *instance,
    void *shared = ring->shmem->mmap_ptr;
    memset(shared, 0, layout->shmem_size);
 
-   ring->instance = instance;
-
    assert(layout->buffer_size &&
           util_is_power_of_two_or_zero(layout->buffer_size));
    ring->buffer_size = layout->buffer_size;
@@ -218,6 +218,11 @@ vn_ring_create(struct vn_instance *instance,
    ring->shared.status = shared + layout->status_offset;
    ring->shared.buffer = shared + layout->buffer_offset;
    ring->shared.extra = shared + layout->extra_offset;
+
+   mtx_init(&ring->mutex, mtx_plain);
+
+   vn_cs_encoder_init(&ring->upload, instance,
+                      VN_CS_ENCODER_STORAGE_SHMEM_ARRAY, 1 * 1024 * 1024);
 
    list_inithead(&ring->submits);
    list_inithead(&ring->free_submits);
@@ -238,6 +243,10 @@ vn_ring_destroy(struct vn_ring *ring)
    list_for_each_entry_safe(struct vn_ring_submit, submit,
                             &ring->free_submits, head)
       vk_free(alloc, submit);
+
+   vn_cs_encoder_fini(&ring->upload);
+
+   mtx_destroy(&ring->mutex);
 
    vk_free(alloc, ring);
 }
