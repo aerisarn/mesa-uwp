@@ -55,6 +55,58 @@ enum H264_NALU_TYPE
    /* 24...31 UNSPECIFIED */
 };
 
+typedef struct H264_HRD_PARAMS
+{
+   uint32_t cpb_cnt_minus1;
+   uint32_t bit_rate_scale;
+   uint32_t cpb_size_scale;
+   uint32_t bit_rate_value_minus1[32];
+   uint32_t cpb_size_value_minus1[32];
+   uint32_t cbr_flag[32];
+   uint32_t initial_cpb_removal_delay_length_minus1;
+   uint32_t cpb_removal_delay_length_minus1;
+   uint32_t dpb_output_delay_length_minus1;
+   uint32_t time_offset_length;
+} H264_HRD_PARAMS;
+
+struct H264_VUI_PARAMS
+{
+   uint32_t aspect_ratio_info_present_flag;
+   uint32_t aspect_ratio_idc;
+   uint32_t sar_width;
+   uint32_t sar_height;
+   uint32_t overscan_info_present_flag;
+   uint32_t overscan_appropriate_flag;
+   uint32_t video_signal_type_present_flag;
+   uint32_t video_format;
+   uint32_t video_full_range_flag;
+   uint32_t colour_description_present_flag;
+   uint32_t colour_primaries;
+   uint32_t transfer_characteristics;
+   uint32_t matrix_coefficients;
+   uint32_t chroma_loc_info_present_flag;
+   uint32_t chroma_sample_loc_type_top_field;
+   uint32_t chroma_sample_loc_type_bottom_field;
+   uint32_t timing_info_present_flag;
+   uint32_t time_scale;
+   uint32_t num_units_in_tick;
+   uint32_t fixed_frame_rate_flag;
+   uint32_t nal_hrd_parameters_present_flag;
+   H264_HRD_PARAMS nal_hrd_parameters;
+   uint32_t vcl_hrd_parameters_present_flag;
+   H264_HRD_PARAMS vcl_hrd_parameters;
+   uint32_t low_delay_hrd_flag;
+   uint32_t pic_struct_present_flag;
+   uint32_t bitstream_restriction_flag;
+   uint32_t motion_vectors_over_pic_boundaries_flag;
+   uint32_t max_bytes_per_pic_denom;
+   uint32_t max_bits_per_mb_denom;
+   uint32_t log2_max_mv_length_vertical;
+   uint32_t log2_max_mv_length_horizontal;
+   uint32_t num_reorder_frames;
+   uint32_t max_dec_frame_buffering;
+};
+
 struct H264_SPS
 {
    uint32_t profile_idc;
@@ -77,6 +129,8 @@ struct H264_SPS
    uint32_t frame_cropping_rect_right_offset;
    uint32_t frame_cropping_rect_top_offset;
    uint32_t frame_cropping_rect_bottom_offset;
+   uint32_t vui_parameters_present_flag;
+   H264_VUI_PARAMS vui;
 };
 
 struct H264_PPS
@@ -141,6 +195,7 @@ class d3d12_video_nalu_writer_h264
    uint32_t wrap_pps_nalu(d3d12_video_encoder_bitstream *pNALU, d3d12_video_encoder_bitstream *pRBSP);
 
    // Helpers
+   void     write_hrd(d3d12_video_encoder_bitstream *pBitstream, H264_HRD_PARAMS *pHrd);
    void     write_nalu_end(d3d12_video_encoder_bitstream *pNALU);
    void     rbsp_trailing(d3d12_video_encoder_bitstream *pBitstream);
    uint32_t wrap_rbsp_into_nalu(d3d12_video_encoder_bitstream *pNALU,

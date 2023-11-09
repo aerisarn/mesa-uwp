@@ -823,6 +823,14 @@ d3d12_video_encoder_update_current_encoder_config_state_h264(struct d3d12_video_
    }
    pD3D12Enc->m_currentEncodeConfig.m_encoderCodecDesc = D3D12_VIDEO_ENCODER_CODEC_H264;
 
+   // Set Sequence information
+   if (memcmp(&pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificSequenceStateDescH264,
+              &h264Pic->seq,
+              sizeof(h264Pic->seq)) != 0) {
+      pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags |= d3d12_video_encoder_config_dirty_flag_sequence_info;
+   }
+   pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificSequenceStateDescH264 = h264Pic->seq;
+
    // Set input format
    DXGI_FORMAT targetFmt = d3d12_convert_pipe_video_profile_to_dxgi_format(pD3D12Enc->base.profile);
    if (pD3D12Enc->m_currentEncodeConfig.m_encodeFormatInfo.Format != targetFmt) {
@@ -1022,7 +1030,9 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
    bool isFirstFrame = (pD3D12Enc->m_fenceValue == 1);
    bool writeNewSPS = isFirstFrame                                         // on first frame
                       || ((pD3D12Enc->m_currentEncodeConfig.m_seqFlags &   // also on resolution change
-                           D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_RESOLUTION_CHANGE) != 0);
+                           D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_RESOLUTION_CHANGE) != 0)
+                      // Also on input format dirty flag for new SPS, VUI etc
+                      || (pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags & d3d12_video_encoder_config_dirty_flag_sequence_info);
 
    d3d12_video_bitstream_builder_h264 *pH264BitstreamBuilder =
       static_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
@@ -1036,7 +1046,8 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
          active_seq_parameter_set_id++;
          pH264BitstreamBuilder->set_active_sps_id(active_seq_parameter_set_id);
       }
-      pH264BitstreamBuilder->build_sps(*profDesc.pH264Profile,
+      pH264BitstreamBuilder->build_sps(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificSequenceStateDescH264,
+                                       *profDesc.pH264Profile,
                                        *levelDesc.pH264LevelSetting,
                                        pD3D12Enc->m_currentEncodeConfig.m_encodeFormatInfo.Format,
                                        *codecConfigDesc.pH264Config,

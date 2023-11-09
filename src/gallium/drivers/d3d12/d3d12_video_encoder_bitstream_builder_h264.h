@@ -34,7 +34,8 @@ class d3d12_video_bitstream_builder_h264 : public d3d12_video_bitstream_builder_
    d3d12_video_bitstream_builder_h264() {};
    ~d3d12_video_bitstream_builder_h264() {};
 
-   void build_sps(const D3D12_VIDEO_ENCODER_PROFILE_H264 &               profile,
+   void build_sps(const struct pipe_h264_enc_seq_param &                 seqData,
+                  const D3D12_VIDEO_ENCODER_PROFILE_H264 &               profile,
                   const D3D12_VIDEO_ENCODER_LEVELS_H264 &                level,
                   const DXGI_FORMAT &                                    inputFmt,
                   const D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264 &   codecConfig,
