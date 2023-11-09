@@ -33,6 +33,8 @@
   timeout: 10m
   script:
     - git diff --color=always --exit-code  # Fails if there are diffs
+  tags:
+    - placeholder-job
 
 rustfmt:
   extends:
