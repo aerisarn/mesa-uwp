@@ -1888,6 +1888,10 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       options.has_gen_prim_query = options.has_xfb_prim_query =
          sel->screen->info.gfx_level >= GFX11;
 
+      /* For monolithic ES/GS to add vscnt wait when GS export pos0. */
+      if (key->ge.part.gs.es)
+         nir->info.writes_memory |= key->ge.part.gs.es->info.base.writes_memory;
+
       NIR_PASS_V(nir, ac_nir_lower_ngg_gs, &options);
    }
 
