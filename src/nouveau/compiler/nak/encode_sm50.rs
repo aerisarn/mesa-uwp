@@ -839,47 +839,38 @@ impl SM50Instr {
     }
 
     fn encode_shf(&mut self, op: &OpShf) {
-        assert!(op.shift.is_reg_or_zero());
-        assert!(op.high.is_reg_or_zero());
-
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: None,
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0xf8,
-            encoding_type: if op.right {
-                ALUEncodingType::Variant4
-            } else {
-                ALUEncodingType::Variant3
-            },
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
-
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.low),
-            ALUSrc::from_src(&op.shift),
-            ALUSrc::from_src(&op.high),
-        );
+        match &op.shift.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5cf8);
+                self.set_reg_src(20..28, op.shift);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x38f8);
+                assert!(op.shift.src_mod.is_none());
+                self.set_src_imm_i20(20..39, 56, *i);
+            }
+            src1 => panic!("unsupported src1 type for SHF: {src1}"),
+        }
 
         self.set_field(
             37..39,
             match op.data_type {
-                // TODO: I32 isn't supported by SHF on SM50, what should we do?
-                IntType::U32 | IntType::I32 => 0_u8,
+                IntType::I32 => 0_u8,
+                IntType::U32 => 0_u8,
                 IntType::U64 => 2_u8,
                 IntType::I64 => 3_u8,
                 _ => panic!("Invalid shift data type"),
             },
         );
-        self.set_bit(50, op.wrap);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.low);
+        self.set_reg_src(39..47, op.high);
+
+        self.set_bit(47, false); // .CC
         self.set_bit(48, op.dst_high);
+        self.set_bit(49, false); // .X
+        self.set_bit(50, op.wrap);
     }
 
     fn encode_i2f(&mut self, op: &OpI2F) {
