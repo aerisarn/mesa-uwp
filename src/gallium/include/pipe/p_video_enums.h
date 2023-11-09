@@ -285,6 +285,18 @@ enum pipe_video_enc_intra_refresh_mode
    PIPE_VIDEO_ENC_INTRA_REFRESH_MULTI_REF = 0x40000,
 };
 
+enum pipe_video_slice_mode
+{
+   /*
+    * Partitions the frame using block offsets and block numbers
+   */
+   PIPE_VIDEO_SLICE_MODE_BLOCKS = 0,
+   /*
+    * Partitions the frame using max slice size per coded slice
+   */
+   PIPE_VIDEO_SLICE_MODE_MAX_SLICE_SICE = 1,
+};
+
 enum pipe_video_entrypoint
 {
    PIPE_VIDEO_ENTRYPOINT_UNKNOWN,

@@ -627,8 +627,14 @@ struct pipe_h264_enc_picture_desc
    bool enable_vui;
    struct hash_table *frame_idx;
 
+   enum pipe_video_slice_mode slice_mode;
+
+   /* Use with PIPE_VIDEO_SLICE_MODE_BLOCKS */
    unsigned num_slice_descriptors;
    struct h264_slice_descriptor slices_descriptors[128];
+
+   /* Use with PIPE_VIDEO_SLICE_MODE_MAX_SLICE_SICE */
+   unsigned max_slice_bytes;
 
    bool insert_aud_nalu;
    enum pipe_video_feedback_metadata_type requested_metadata;
@@ -814,8 +820,14 @@ struct pipe_h265_enc_picture_desc
    bool not_referenced;
    struct hash_table *frame_idx;
 
+   enum pipe_video_slice_mode slice_mode;
+
+   /* Use with PIPE_VIDEO_SLICE_MODE_BLOCKS */
    unsigned num_slice_descriptors;
    struct h265_slice_descriptor slices_descriptors[128];
+
+   /* Use with PIPE_VIDEO_SLICE_MODE_MAX_SLICE_SICE */
+   unsigned max_slice_bytes;
    enum pipe_video_feedback_metadata_type requested_metadata;
 };
 
