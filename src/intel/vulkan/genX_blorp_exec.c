@@ -365,6 +365,7 @@ blorp_exec_on_render(struct blorp_batch *batch,
 #if GFX_VER >= 12
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_PRIMITIVE_REPLICATION);
 #endif
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VIEWPORT_CC);
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_RASTER);
    BITSET_SET(hw_state->dirty, ANV_GFX_STATE_CLIP);
