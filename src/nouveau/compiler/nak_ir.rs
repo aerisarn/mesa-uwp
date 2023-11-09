@@ -3220,6 +3220,9 @@ pub struct OpAtom {
     pub addr: Src,
 
     #[src_type(SSA)]
+    pub cmpr: Src,
+
+    #[src_type(SSA)]
     pub data: Src,
 
     pub atom_op: AtomOp,
@@ -3250,50 +3253,6 @@ impl fmt::Display for OpAtom {
             write!(f, "{:#x}", self.addr_offset)?;
         }
         write!(f, "] {}", self.data)
-    }
-}
-
-#[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpAtomCas {
-    pub dst: Dst,
-
-    #[src_type(GPR)]
-    pub addr: Src,
-
-    #[src_type(SSA)]
-    pub cmpr: Src,
-
-    #[src_type(SSA)]
-    pub data: Src,
-
-    pub atom_type: AtomType,
-
-    pub addr_type: MemAddrType,
-    pub addr_offset: i32,
-
-    pub mem_space: MemSpace,
-    pub mem_order: MemOrder,
-}
-
-impl fmt::Display for OpAtomCas {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "ATOM.CAS.{}.{} {}",
-            self.atom_type, self.mem_order, self.dst
-        )?;
-        write!(f, " [")?;
-        if !self.addr.is_zero() {
-            write!(f, "{}", self.addr)?;
-        }
-        if self.addr_offset > 0 {
-            if !self.addr.is_zero() {
-                write!(f, "+")?;
-            }
-            write!(f, "+{:#x}", self.addr_offset)?;
-        }
-        write!(f, "] {} {}", self.cmpr, self.data)
     }
 }
 
@@ -4210,7 +4169,6 @@ pub enum Op {
     Ldc(OpLdc),
     St(OpSt),
     Atom(OpAtom),
-    AtomCas(OpAtomCas),
     AL2P(OpAL2P),
     ALd(OpALd),
     ASt(OpASt),
@@ -4546,7 +4504,6 @@ impl Instr {
     pub fn uses_global_mem(&self) -> bool {
         match &self.op {
             Op::Atom(op) => op.mem_space != MemSpace::Local,
-            Op::AtomCas(op) => op.mem_space != MemSpace::Local,
             Op::Ld(op) => op.access.space != MemSpace::Local,
             Op::St(op) => op.access.space != MemSpace::Local,
             Op::SuAtom(_) | Op::SuLd(_) | Op::SuSt(_) => true,
@@ -4557,7 +4514,6 @@ impl Instr {
     pub fn writes_global_mem(&self) -> bool {
         match &self.op {
             Op::Atom(op) => op.mem_space == MemSpace::Global,
-            Op::AtomCas(op) => op.mem_space == MemSpace::Global,
             Op::St(op) => op.access.space == MemSpace::Global,
             Op::SuAtom(_) | Op::SuSt(_) => true,
             _ => false,
@@ -4571,7 +4527,6 @@ impl Instr {
             | Op::SuAtom(_)
             | Op::St(_)
             | Op::Atom(_)
-            | Op::AtomCas(_)
             | Op::CCtl(_)
             | Op::MemBar(_)
             | Op::Kill(_)
@@ -4647,7 +4602,6 @@ impl Instr {
             | Op::Ldc(_)
             | Op::St(_)
             | Op::Atom(_)
-            | Op::AtomCas(_)
             | Op::AL2P(_)
             | Op::ALd(_)
             | Op::ASt(_)

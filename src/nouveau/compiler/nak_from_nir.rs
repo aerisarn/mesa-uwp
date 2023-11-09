@@ -1521,6 +1521,7 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpAtom {
                     dst: dst.into(),
                     addr: addr,
+                    cmpr: 0.into(),
                     data: data,
                     atom_op: atom_op,
                     atom_type: atom_type,
@@ -1542,11 +1543,12 @@ impl<'a> ShaderFromNir<'a> {
                 assert!(intrin.def.num_components() == 1);
                 let dst = b.alloc_ssa(RegFile::GPR, bit_size.div_ceil(32));
 
-                b.push_op(OpAtomCas {
+                b.push_op(OpAtom {
                     dst: dst.into(),
                     addr: addr,
                     cmpr: cmpr,
                     data: data,
+                    atom_op: AtomOp::CmpExch,
                     atom_type: atom_type,
                     addr_type: MemAddrType::A64,
                     addr_offset: offset,
@@ -1933,6 +1935,7 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpAtom {
                     dst: dst.into(),
                     addr: addr,
+                    cmpr: 0.into(),
                     data: data,
                     atom_op: atom_op,
                     atom_type: atom_type,
@@ -1954,11 +1957,12 @@ impl<'a> ShaderFromNir<'a> {
                 assert!(intrin.def.num_components() == 1);
                 let dst = b.alloc_ssa(RegFile::GPR, bit_size.div_ceil(32));
 
-                b.push_op(OpAtomCas {
+                b.push_op(OpAtom {
                     dst: dst.into(),
                     addr: addr,
                     cmpr: cmpr,
                     data: data,
+                    atom_op: AtomOp::CmpExch,
                     atom_type: atom_type,
                     addr_type: MemAddrType::A32,
                     addr_offset: offset,

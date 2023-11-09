@@ -1390,38 +1390,24 @@ impl SM75Instr {
     }
 
     fn encode_atomg(&mut self, op: &OpAtom) {
-        self.set_opcode(0x38a);
+        if op.atom_op == AtomOp::CmpExch {
+            self.set_opcode(0x38b);
+
+            self.set_reg_src(32..40, op.cmpr);
+            self.set_reg_src(64..72, op.data);
+        } else {
+            self.set_opcode(0x38a);
+
+            self.set_reg_src(32..40, op.data);
+
+            self.set_atom_op(87..91, op.atom_op);
+        }
 
         self.set_dst(op.dst);
         self.set_pred_dst(81..84, Dst::None);
 
         self.set_reg_src(24..32, op.addr);
-        self.set_reg_src(32..40, op.data);
         self.set_field(40..64, op.addr_offset);
-
-        self.set_field(
-            72..73,
-            match op.addr_type {
-                MemAddrType::A32 => 0_u8,
-                MemAddrType::A64 => 1_u8,
-            },
-        );
-
-        self.set_atom_type(73..76, op.atom_type);
-        self.set_mem_order(&op.mem_order);
-        self.set_atom_op(87..91, op.atom_op);
-    }
-
-    fn encode_atomg_cas(&mut self, op: &OpAtomCas) {
-        self.set_opcode(0x38b);
-
-        self.set_dst(op.dst);
-        self.set_pred_dst(81..84, Dst::None);
-
-        self.set_reg_src(24..32, op.addr);
-        self.set_reg_src(32..40, op.cmpr);
-        self.set_field(40..64, op.addr_offset);
-        self.set_reg_src(64..72, op.data);
 
         self.set_field(
             72..73,
@@ -1436,30 +1422,22 @@ impl SM75Instr {
     }
 
     fn encode_atoms(&mut self, op: &OpAtom) {
-        self.set_opcode(0x38c);
+        if op.atom_op == AtomOp::CmpExch {
+            self.set_opcode(0x38d);
+
+            self.set_reg_src(32..40, op.cmpr);
+            self.set_reg_src(64..72, op.data);
+        } else {
+            self.set_opcode(0x38c);
+
+            self.set_reg_src(32..40, op.data);
+
+            self.set_atom_op(87..91, op.atom_op);
+        }
 
         self.set_dst(op.dst);
-
         self.set_reg_src(24..32, op.addr);
-        self.set_reg_src(32..40, op.data);
         self.set_field(40..64, op.addr_offset);
-
-        assert!(op.addr_type == MemAddrType::A32);
-        assert!(op.mem_order == MemOrder::Strong(MemScope::CTA));
-
-        self.set_atom_type(73..76, op.atom_type);
-        self.set_atom_op(87..91, op.atom_op);
-    }
-
-    fn encode_atoms_cas(&mut self, op: &OpAtomCas) {
-        self.set_opcode(0x38d);
-
-        self.set_dst(op.dst);
-
-        self.set_reg_src(24..32, op.addr);
-        self.set_reg_src(32..40, op.cmpr);
-        self.set_field(40..64, op.addr_offset);
-        self.set_reg_src(64..72, op.data);
 
         assert!(op.addr_type == MemAddrType::A32);
         assert!(op.mem_order == MemOrder::Strong(MemScope::CTA));
@@ -1472,14 +1450,6 @@ impl SM75Instr {
             MemSpace::Global => self.encode_atomg(op),
             MemSpace::Local => panic!("Atomics do not support local"),
             MemSpace::Shared => self.encode_atoms(op),
-        }
-    }
-
-    fn encode_atom_cas(&mut self, op: &OpAtomCas) {
-        match op.mem_space {
-            MemSpace::Global => self.encode_atomg_cas(op),
-            MemSpace::Local => panic!("Atomics do not support local"),
-            MemSpace::Shared => self.encode_atoms_cas(op),
         }
     }
 
@@ -1867,7 +1837,6 @@ impl SM75Instr {
             Op::Ldc(op) => si.encode_ldc(&op),
             Op::St(op) => si.encode_st(&op),
             Op::Atom(op) => si.encode_atom(&op),
-            Op::AtomCas(op) => si.encode_atom_cas(&op),
             Op::AL2P(op) => si.encode_al2p(&op),
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
