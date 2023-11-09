@@ -63,6 +63,64 @@ static uint32_t radeon_vcn_per_frame_frac(uint32_t bitrate, uint32_t den, uint32
    return (uint32_t)((remainder << 32) / num);
 }
 
+static void radeon_vcn_enc_get_intra_refresh_param(struct radeon_encoder *enc,
+                                                   bool need_filter_overlap,
+                                                   struct pipe_enc_intra_refresh *intra_refresh)
+{
+   bool is_h264;
+   uint32_t block_length, width_in_block, height_in_block;
+
+   enc->enc_pic.intra_refresh.intra_refresh_mode = RENCODE_INTRA_REFRESH_MODE_NONE;
+   /* some exceptions where intra-refresh is disabled:
+    * 1. if B frame is enabled
+    * 2. if SVC (number of temproal layers is larger than 1) is enabled
+    */
+   if (enc->enc_pic.spec_misc.b_picture_enabled || enc->enc_pic.num_temporal_layers > 1) {
+      enc->enc_pic.intra_refresh.region_size = 0;
+      enc->enc_pic.intra_refresh.offset = 0;
+      enc->enc_pic.need_sequence_header = 0;
+      return;
+   }
+
+   is_h264 = u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC;
+   /* hevc and av1 are sharing the same alignment size 64 */
+   block_length = is_h264 ? PIPE_H264_MB_SIZE : PIPE_H265_ENC_CTB_SIZE;
+   width_in_block  = PIPE_ALIGN_IN_BLOCK_SIZE(enc->base.width,  block_length);
+   height_in_block = PIPE_ALIGN_IN_BLOCK_SIZE(enc->base.height, block_length);
+
+   switch(intra_refresh->mode) {
+      case INTRA_REFRESH_MODE_UNIT_ROWS:
+         if (intra_refresh->offset < height_in_block)
+            enc->enc_pic.intra_refresh.intra_refresh_mode
+                                             = RENCODE_INTRA_REFRESH_MODE_CTB_MB_ROWS;
+         break;
+      case INTRA_REFRESH_MODE_UNIT_COLUMNS:
+         if (intra_refresh->offset < width_in_block)
+            enc->enc_pic.intra_refresh.intra_refresh_mode
+                                             = RENCODE_INTRA_REFRESH_MODE_CTB_MB_COLUMNS;
+         break;
+      case INTRA_REFRESH_MODE_NONE:
+      default:
+         break;
+   };
+
+   /* with loop filters (avc/hevc/av1) enabled the region_size has to increase 1 to
+    * get overlapped (av1 is enabling it all the time). The region_size and offset
+    * require to be in unit of MB or CTB or SB according to different codecs.
+    */
+   if (enc->enc_pic.intra_refresh.intra_refresh_mode != RENCODE_INTRA_REFRESH_MODE_NONE) {
+      enc->enc_pic.intra_refresh.region_size = (need_filter_overlap) ?
+                                               intra_refresh->region_size + 1 :
+                                               intra_refresh->region_size;
+      enc->enc_pic.intra_refresh.offset = intra_refresh->offset;
+      enc->enc_pic.need_sequence_header = !!(intra_refresh->need_sequence_header);
+   } else {
+      enc->enc_pic.intra_refresh.region_size = 0;
+      enc->enc_pic.intra_refresh.offset = 0;
+      enc->enc_pic.need_sequence_header = 0;
+   }
+}
+
 static void radeon_vcn_enc_h264_get_cropping_param(struct radeon_encoder *enc,
                                                    struct pipe_h264_enc_picture_desc *pic)
 {
@@ -282,6 +340,8 @@ static void radeon_vcn_enc_get_input_format_param(struct radeon_encoder *enc,
 static void radeon_vcn_enc_h264_get_param(struct radeon_encoder *enc,
                                           struct pipe_h264_enc_picture_desc *pic)
 {
+   bool use_filter;
+
    enc->enc_pic.picture_type = pic->picture_type;
    enc->enc_pic.bit_depth_luma_minus8 = 0;
    enc->enc_pic.bit_depth_chroma_minus8 = 0;
@@ -305,6 +365,9 @@ static void radeon_vcn_enc_h264_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_h264_get_slice_ctrl_param(enc, pic);
    radeon_vcn_enc_get_input_format_param(enc, &pic->base);
    radeon_vcn_enc_get_output_format_param(enc, pic->seq.video_full_range_flag);
+
+   use_filter = enc->enc_pic.h264_deblock.disable_deblocking_filter_idc != 1;
+   radeon_vcn_enc_get_intra_refresh_param(enc, use_filter, &pic->intra_refresh);
 }
 
 static void radeon_vcn_enc_hevc_get_cropping_param(struct radeon_encoder *enc,
@@ -516,6 +579,9 @@ static void radeon_vcn_enc_hevc_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_hevc_get_slice_ctrl_param(enc, pic);
    radeon_vcn_enc_get_input_format_param(enc, &pic->base);
    radeon_vcn_enc_get_output_format_param(enc, pic->seq.video_full_range_flag);
+   radeon_vcn_enc_get_intra_refresh_param(enc,
+                                        !(enc->enc_pic.hevc_deblock.deblocking_filter_disabled),
+                                         &pic->intra_refresh);
 }
 
 static void radeon_vcn_enc_av1_get_spec_misc_param(struct radeon_encoder *enc,
@@ -659,6 +725,10 @@ static void radeon_vcn_enc_av1_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_av1_get_rc_param(enc, pic);
    radeon_vcn_enc_get_input_format_param(enc, &pic->base);
    radeon_vcn_enc_get_output_format_param(enc, pic->seq.color_config.color_range);
+   /* loop filter enabled all the time */
+   radeon_vcn_enc_get_intra_refresh_param(enc,
+                                         true,
+                                         &pic->intra_refresh);
 }
 
 static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_picture_desc *picture)

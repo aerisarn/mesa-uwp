@@ -759,6 +759,16 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          } else
             return 1;
 
+      case PIPE_VIDEO_CAP_ENC_INTRA_REFRESH:
+         if (sscreen->info.vcn_ip_version >= VCN_1_0_0) {
+            int value = PIPE_VIDEO_ENC_INTRA_REFRESH_ROW |
+                        PIPE_VIDEO_ENC_INTRA_REFRESH_COLUMN |
+                        PIPE_VIDEO_ENC_INTRA_REFRESH_P_FRAME;
+            return value;
+         }
+         else
+            return 0;
+
       default:
          return 0;
       }
