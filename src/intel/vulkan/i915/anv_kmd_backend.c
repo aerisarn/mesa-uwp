@@ -111,7 +111,7 @@ i915_gem_create(struct anv_device *device,
 
    *actual_size = gem_create.size;
 
-   if (alloc_flags & ANV_BO_ALLOC_SNOOPED) {
+   if (alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT) {
       /* We don't want to change these defaults if it's going to be shared
        * with another process.
        */

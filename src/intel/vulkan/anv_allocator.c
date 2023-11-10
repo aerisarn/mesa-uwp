@@ -377,7 +377,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->bo_alloc_flags =
       ANV_BO_ALLOC_FIXED_ADDRESS |
       ANV_BO_ALLOC_MAPPED |
-      ANV_BO_ALLOC_SNOOPED |
+      ANV_BO_ALLOC_HOST_CACHED_COHERENT |
       ANV_BO_ALLOC_CAPTURE;
 
    result = anv_block_pool_expand_range(pool, initial_size);
@@ -1439,11 +1439,11 @@ anv_bo_get_mmap_mode(struct anv_device *device, struct anv_bo *bo)
 
    /* gfx9 atom */
    if (!device->info->has_llc) {
-      /* ANV_BO_ALLOC_SNOOPED means that user wants a cached and coherent memory
-       * but to achieve it without LLC in older platforms
-       * DRM_IOCTL_I915_GEM_SET_CACHING needs to be supported and set.
+      /* user wants a cached and coherent memory but to achieve it without
+       * LLC in older platforms DRM_IOCTL_I915_GEM_SET_CACHING needs to be
+       * supported and set.
        */
-      if (alloc_flags & ANV_BO_ALLOC_SNOOPED)
+      if (alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT)
          return INTEL_DEVICE_INFO_MMAP_MODE_WB;
 
       return INTEL_DEVICE_INFO_MMAP_MODE_WC;
@@ -1590,7 +1590,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
                                    struct anv_bo **bo_out)
 {
    assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
-                           ANV_BO_ALLOC_SNOOPED |
+                           ANV_BO_ALLOC_HOST_CACHED_COHERENT |
                            ANV_BO_ALLOC_DEDICATED |
                            ANV_BO_ALLOC_PROTECTED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
@@ -1648,7 +1648,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
       /* Makes sure that userptr gets WB mmap caching and right VM PAT index */
-      alloc_flags |= (ANV_BO_ALLOC_SNOOPED | ANV_BO_ALLOC_NO_LOCAL_MEM);
+      alloc_flags |= (ANV_BO_ALLOC_HOST_CACHED_COHERENT | ANV_BO_ALLOC_NO_LOCAL_MEM);
       struct anv_bo new_bo = {
          .name = "host-ptr",
          .gem_handle = gem_handle,
@@ -1694,7 +1694,7 @@ anv_device_import_bo(struct anv_device *device,
                      struct anv_bo **bo_out)
 {
    assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
-                           ANV_BO_ALLOC_SNOOPED |
+                           ANV_BO_ALLOC_HOST_CACHED_COHERENT |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
    assert(alloc_flags & ANV_BO_ALLOC_EXTERNAL);
 
@@ -1738,7 +1738,7 @@ anv_device_import_bo(struct anv_device *device,
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
       /* so imported bos get WB and correct PAT index */
-      alloc_flags |= (ANV_BO_ALLOC_SNOOPED | ANV_BO_ALLOC_NO_LOCAL_MEM);
+      alloc_flags |= (ANV_BO_ALLOC_HOST_CACHED_COHERENT | ANV_BO_ALLOC_NO_LOCAL_MEM);
       struct anv_bo new_bo = {
          .name = "imported",
          .gem_handle = gem_handle,

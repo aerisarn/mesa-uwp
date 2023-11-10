@@ -367,64 +367,64 @@ enum anv_bo_alloc_flags {
     *
     * This is the opposite of EXEC_OBJECT_SUPPORTS_48B_ADDRESS.
     */
-   ANV_BO_ALLOC_32BIT_ADDRESS =  (1 << 0),
+   ANV_BO_ALLOC_32BIT_ADDRESS =           (1 << 0),
 
    /** Specifies that the BO may be shared externally */
-   ANV_BO_ALLOC_EXTERNAL =       (1 << 1),
+   ANV_BO_ALLOC_EXTERNAL =                (1 << 1),
 
    /** Specifies that the BO should be mapped */
-   ANV_BO_ALLOC_MAPPED =         (1 << 2),
+   ANV_BO_ALLOC_MAPPED =                  (1 << 2),
 
-   /** Specifies that the BO should be snooped so we get coherency */
-   ANV_BO_ALLOC_SNOOPED =        (1 << 3),
+   /** Specifies that the BO should be cached and coherent */
+   ANV_BO_ALLOC_HOST_CACHED_COHERENT =    (1 << 3),
 
    /** Specifies that the BO should be captured in error states */
-   ANV_BO_ALLOC_CAPTURE =        (1 << 4),
+   ANV_BO_ALLOC_CAPTURE =                 (1 << 4),
 
    /** Specifies that the BO will have an address assigned by the caller
     *
     * Such BOs do not exist in any VMA heap.
     */
-   ANV_BO_ALLOC_FIXED_ADDRESS = (1 << 5),
+   ANV_BO_ALLOC_FIXED_ADDRESS =           (1 << 5),
 
    /** Enables implicit synchronization on the BO
     *
     * This is the opposite of EXEC_OBJECT_ASYNC.
     */
-   ANV_BO_ALLOC_IMPLICIT_SYNC =  (1 << 6),
+   ANV_BO_ALLOC_IMPLICIT_SYNC =           (1 << 6),
 
    /** Enables implicit synchronization on the BO
     *
     * This is equivalent to EXEC_OBJECT_WRITE.
     */
-   ANV_BO_ALLOC_IMPLICIT_WRITE = (1 << 7),
+   ANV_BO_ALLOC_IMPLICIT_WRITE =          (1 << 7),
 
    /** Has an address which is visible to the client */
-   ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS = (1 << 8),
+   ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS =  (1 << 8),
 
    /** This BO will be dedicated to a buffer or an image */
-   ANV_BO_ALLOC_DEDICATED = (1 << 9),
+   ANV_BO_ALLOC_DEDICATED =               (1 << 9),
 
    /** This buffer is allocated from local memory and should be cpu visible */
-   ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE = (1 << 10),
+   ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE =   (1 << 10),
 
    /** For non device local allocations */
-   ANV_BO_ALLOC_NO_LOCAL_MEM = (1 << 11),
+   ANV_BO_ALLOC_NO_LOCAL_MEM =            (1 << 11),
 
    /** This buffer will be scanout to display */
-   ANV_BO_ALLOC_SCANOUT = (1 << 12),
+   ANV_BO_ALLOC_SCANOUT =                 (1 << 12),
 
    /** For descriptor pools */
-   ANV_BO_ALLOC_DESCRIPTOR_POOL = (1 << 13),
+   ANV_BO_ALLOC_DESCRIPTOR_POOL =         (1 << 13),
 
    /** For buffers that will be bound using TR-TT.
     *
     * Not for buffers used as the TR-TT page tables.
     */
-   ANV_BO_ALLOC_TRTT = (1 << 14),
+   ANV_BO_ALLOC_TRTT =                    (1 << 14),
 
    /** Protected buffer */
-   ANV_BO_ALLOC_PROTECTED = (1 << 15),
+   ANV_BO_ALLOC_PROTECTED =               (1 << 15),
 };
 
 struct anv_bo {

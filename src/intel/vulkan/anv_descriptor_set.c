@@ -1121,7 +1121,7 @@ VkResult anv_CreateDescriptorPool(
                                                descriptor_bo_size,
                                                ANV_BO_ALLOC_CAPTURE |
                                                ANV_BO_ALLOC_MAPPED |
-                                               ANV_BO_ALLOC_SNOOPED |
+                                               ANV_BO_ALLOC_HOST_CACHED_COHERENT |
                                                ANV_BO_ALLOC_DESCRIPTOR_POOL,
                                                0 /* explicit_address */,
                                                &pool->bo);
