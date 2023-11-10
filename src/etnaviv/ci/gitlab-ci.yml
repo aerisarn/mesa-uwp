@@ -6,7 +6,11 @@
     - !reference [.gl-rules, rules]
     - changes: &etnaviv_file_list
         - src/etnaviv/*
-        - src/etnaviv/ci/**/*
+        - src/etnaviv/ci/gitlab-ci.yml
+        - src/etnaviv/ci/deqp-$DEQP_SUITE.toml
+        - src/etnaviv/ci/$GPU_VERSION-fails.txt
+        - src/etnaviv/ci/$GPU_VERSION-flakes.txt
+        - src/etnaviv/ci/$GPU_VERSION-skips.txt
         - src/etnaviv/drm/**/*
         - src/etnaviv/drm-shim/**/*
         - src/gallium/drivers/etnaviv/**/*
