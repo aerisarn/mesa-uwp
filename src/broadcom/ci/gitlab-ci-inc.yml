@@ -2,7 +2,13 @@
   rules:
     - changes: &broadcom_file_list
         - src/broadcom/meson.build
-        - src/broadcom/ci/**/*
+        - src/broadcom/ci/gitlab-ci.yml
+        - src/broadcom/ci/gitlab-ci-inc.yml
+        - src/broadcom/ci/deqp-$DEQP_SUITE.toml
+        - src/broadcom/ci/$GPU_VERSION-fails.txt
+        - src/broadcom/ci/$GPU_VERSION-flakes.txt
+        - src/broadcom/ci/$GPU_VERSION-skips.txt
+        - src/broadcom/ci/$PIGLIT_TRACES_FILE
         - src/broadcom/cle/**/*
         - src/broadcom/clif/**/*
         - src/broadcom/common/**/*
