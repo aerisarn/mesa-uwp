@@ -28,6 +28,7 @@ struct vn_device {
    struct vn_instance *instance;
    struct vn_physical_device *physical_device;
    struct vn_renderer *renderer;
+   struct vn_ring *primary_ring;
 
    struct vn_device_memory_report *memory_reports;
    uint32_t memory_report_count;

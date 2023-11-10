@@ -452,6 +452,7 @@ vn_device_init(struct vn_device *dev,
    dev->instance = instance;
    dev->physical_device = physical_dev;
    dev->renderer = instance->renderer;
+   dev->primary_ring = instance->ring.ring;
 
    create_info =
       vn_device_fix_create_info(dev, create_info, alloc, &local_create_info);

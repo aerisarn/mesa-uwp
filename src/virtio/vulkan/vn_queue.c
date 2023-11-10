@@ -1030,12 +1030,11 @@ vn_queue_wsi_present(struct vn_queue_submission *submit)
 {
    struct vk_queue *queue_vk = vk_queue_from_handle(submit->queue_handle);
    struct vn_device *dev = (void *)queue_vk->base.device;
-   struct vn_instance *instance = dev->instance;
 
    if (!submit->wsi_mem)
       return;
 
-   if (instance->renderer->info.has_implicit_fencing) {
+   if (dev->renderer->info.has_implicit_fencing) {
       struct vn_renderer_submit_batch batch = {
          .ring_idx = submit->external_payload.ring_idx,
       };
@@ -1044,7 +1043,7 @@ vn_queue_wsi_present(struct vn_queue_submission *submit)
       struct vn_cs_encoder local_enc =
          VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
       if (submit->external_payload.ring_seqno_valid) {
-         const uint64_t ring_id = vn_ring_get_id(instance->ring.ring);
+         const uint64_t ring_id = vn_ring_get_id(dev->primary_ring);
          vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, ring_id,
                                        submit->external_payload.ring_seqno);
          batch.cs_data = local_data;
@@ -1063,7 +1062,8 @@ vn_queue_wsi_present(struct vn_queue_submission *submit)
          static uint32_t num_rate_limit_warning = 0;
 
          if (num_rate_limit_warning++ < 10)
-            vn_log(instance, "forcing vkQueueWaitIdle before presenting");
+            vn_log(dev->instance,
+                   "forcing vkQueueWaitIdle before presenting");
       }
 
       vn_QueueWaitIdle(submit->queue_handle);
@@ -1833,7 +1833,7 @@ vn_create_sync_file(struct vn_device *dev,
    struct vn_cs_encoder local_enc =
       VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
    if (external_payload->ring_seqno_valid) {
-      const uint64_t ring_id = vn_ring_get_id(dev->instance->ring.ring);
+      const uint64_t ring_id = vn_ring_get_id(dev->primary_ring);
       vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, ring_id,
                                     external_payload->ring_seqno);
       batch.cs_data = local_data;
