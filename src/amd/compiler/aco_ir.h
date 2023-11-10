@@ -2298,6 +2298,8 @@ typedef struct {
    /* sizes used for input/output modifiers and constants */
    const unsigned operand_size[static_cast<int>(aco_opcode::num_opcodes)];
    const instr_class classes[static_cast<int>(aco_opcode::num_opcodes)];
+   const uint32_t definitions[static_cast<int>(aco_opcode::num_opcodes)];
+   const uint32_t operands[static_cast<int>(aco_opcode::num_opcodes)];
 } Info;
 
 extern const Info instr_info;
