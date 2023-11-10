@@ -18,6 +18,7 @@
 #include "vn_icd.h"
 #include "vn_physical_device.h"
 #include "vn_renderer.h"
+#include "vn_ring.h"
 
 #define VN_INSTANCE_RING_SIZE (128 * 1024)
 
@@ -72,8 +73,8 @@ static VkResult
 vn_instance_init_renderer_versions(struct vn_instance *instance)
 {
    uint32_t instance_version = 0;
-   VkResult result =
-      vn_call_vkEnumerateInstanceVersion(instance, &instance_version);
+   VkResult result = vn_call_vkEnumerateInstanceVersion(instance->ring.ring,
+                                                        &instance_version);
    if (result != VK_SUCCESS) {
       if (VN_DEBUG(INIT))
          vn_log(instance, "failed to enumerate renderer instance version");
@@ -233,7 +234,7 @@ void
 vn_instance_wait_roundtrip(struct vn_instance *instance,
                            uint64_t roundtrip_seqno)
 {
-   vn_async_vkWaitVirtqueueSeqnoMESA(instance, roundtrip_seqno);
+   vn_async_vkWaitVirtqueueSeqnoMESA(instance->ring.ring, roundtrip_seqno);
 }
 
 /* instance commands */
@@ -356,8 +357,8 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    }
 
    VkInstance instance_handle = vn_instance_to_handle(instance);
-   result =
-      vn_call_vkCreateInstance(instance, pCreateInfo, NULL, &instance_handle);
+   result = vn_call_vkCreateInstance(instance->ring.ring, pCreateInfo, NULL,
+                                     &instance_handle);
    if (result != VK_SUCCESS)
       goto out_ring_fini;
 
@@ -424,7 +425,7 @@ vn_DestroyInstance(VkInstance _instance,
    mtx_destroy(&instance->physical_device.mutex);
    mtx_destroy(&instance->ring_idx_mutex);
 
-   vn_call_vkDestroyInstance(instance, _instance, NULL);
+   vn_call_vkDestroyInstance(instance->ring.ring, _instance, NULL);
 
    vn_instance_fini_ring(instance);
 

@@ -684,7 +684,7 @@ vn_CreateCommandPool(VkDevice device,
    list_inithead(&pool->free_query_feedback_cmds);
 
    VkCommandPool pool_handle = vn_command_pool_to_handle(pool);
-   vn_async_vkCreateCommandPool(dev->instance, device, pCreateInfo, NULL,
+   vn_async_vkCreateCommandPool(dev->primary_ring, device, pCreateInfo, NULL,
                                 &pool_handle);
 
    *pCommandPool = pool_handle;
@@ -722,7 +722,8 @@ vn_DestroyCommandPool(VkDevice device,
     * object ids while they still refer to the command buffers in the
     * renderer.
     */
-   vn_async_vkDestroyCommandPool(dev->instance, device, commandPool, NULL);
+   vn_async_vkDestroyCommandPool(dev->primary_ring, device, commandPool,
+                                 NULL);
 
    list_for_each_entry_safe(struct vn_command_buffer, cmd,
                             &pool->command_buffers, head) {
@@ -789,7 +790,7 @@ vn_ResetCommandPool(VkDevice device,
                             &pool->command_buffers, head)
       vn_cmd_reset(cmd);
 
-   vn_async_vkResetCommandPool(dev->instance, device, commandPool, flags);
+   vn_async_vkResetCommandPool(dev->primary_ring, device, commandPool, flags);
 
    return VK_SUCCESS;
 }
@@ -802,7 +803,7 @@ vn_TrimCommandPool(VkDevice device,
    VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
 
-   vn_async_vkTrimCommandPool(dev->instance, device, commandPool, flags);
+   vn_async_vkTrimCommandPool(dev->primary_ring, device, commandPool, flags);
 }
 
 /* command buffer commands */
@@ -851,7 +852,7 @@ vn_AllocateCommandBuffers(VkDevice device,
       pCommandBuffers[i] = cmd_handle;
    }
 
-   vn_async_vkAllocateCommandBuffers(dev->instance, device, pAllocateInfo,
+   vn_async_vkAllocateCommandBuffers(dev->primary_ring, device, pAllocateInfo,
                                      pCommandBuffers);
 
    return VK_SUCCESS;
@@ -868,7 +869,7 @@ vn_FreeCommandBuffers(VkDevice device,
    struct vn_command_pool *pool = vn_command_pool_from_handle(commandPool);
    const VkAllocationCallbacks *alloc = &pool->allocator;
 
-   vn_async_vkFreeCommandBuffers(dev->instance, device, commandPool,
+   vn_async_vkFreeCommandBuffers(dev->primary_ring, device, commandPool,
                                  commandBufferCount, pCommandBuffers);
 
    for (uint32_t i = 0; i < commandBufferCount; i++) {
@@ -903,11 +904,11 @@ vn_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    VN_TRACE_FUNC();
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
-   struct vn_instance *instance = cmd->pool->device->instance;
+   struct vn_ring *ring = cmd->pool->device->primary_ring;
 
    vn_cmd_reset(cmd);
 
-   vn_async_vkResetCommandBuffer(instance, commandBuffer, flags);
+   vn_async_vkResetCommandBuffer(ring, commandBuffer, flags);
 
    return VK_SUCCESS;
 }
@@ -1069,7 +1070,7 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 static void
 vn_cmd_submit(struct vn_command_buffer *cmd)
 {
-   struct vn_instance *instance = cmd->pool->device->instance;
+   struct vn_ring *ring = cmd->pool->device->primary_ring;
 
    if (cmd->state != VN_COMMAND_BUFFER_STATE_RECORDING)
       return;
@@ -1081,7 +1082,7 @@ vn_cmd_submit(struct vn_command_buffer *cmd)
       return;
    }
 
-   if (vn_instance_ring_submit(instance, &cmd->cs) != VK_SUCCESS) {
+   if (vn_ring_submit_command_simple(ring, &cmd->cs) != VK_SUCCESS) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
       return;
    }

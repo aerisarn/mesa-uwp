@@ -69,9 +69,9 @@ static void
 vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 {
    const uint32_t renderer_version = physical_dev->renderer_version;
-   struct vn_instance *instance = physical_dev->instance;
    const struct vk_device_extension_table *exts =
       &physical_dev->renderer_extensions;
+   struct vn_ring *ring = physical_dev->instance->ring.ring;
    VkPhysicalDeviceFeatures2 feats2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
    };
@@ -275,7 +275,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    /* clang-format on */
 
    vn_call_vkGetPhysicalDeviceFeatures2(
-      instance, vn_physical_device_to_handle(physical_dev), &feats2);
+      ring, vn_physical_device_to_handle(physical_dev), &feats2);
 
    struct vk_features *feats = &physical_dev->base.base.supported_features;
    vk_set_physical_device_features(feats, &feats2);
@@ -380,8 +380,8 @@ static void
 vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
 {
    const uint32_t renderer_version = physical_dev->renderer_version;
-   struct vn_physical_device_properties *props = &physical_dev->properties;
    struct vn_instance *instance = physical_dev->instance;
+   struct vn_physical_device_properties *props = &physical_dev->properties;
    const struct vk_device_extension_table *exts =
       &physical_dev->renderer_extensions;
    VkPhysicalDeviceProperties2 props2 = {
@@ -471,7 +471,8 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    /* clang-format on */
 
    vn_call_vkGetPhysicalDeviceProperties2(
-      instance, vn_physical_device_to_handle(physical_dev), &props2);
+      instance->ring.ring, vn_physical_device_to_handle(physical_dev),
+      &props2);
 
    VkPhysicalDeviceProperties *vk10_props = &props->vulkan_1_0;
    VkPhysicalDeviceVulkan11Properties *vk11_props = &props->vulkan_1_1;
@@ -697,11 +698,12 @@ vn_physical_device_init_queue_family_properties(
    struct vn_physical_device *physical_dev)
 {
    struct vn_instance *instance = physical_dev->instance;
+   struct vn_ring *ring = instance->ring.ring;
    const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
    uint32_t count;
 
    vn_call_vkGetPhysicalDeviceQueueFamilyProperties2(
-      instance, vn_physical_device_to_handle(physical_dev), &count, NULL);
+      ring, vn_physical_device_to_handle(physical_dev), &count, NULL);
 
    VkQueueFamilyProperties2 *props =
       vk_alloc(alloc, sizeof(*props) * count, VN_DEFAULT_ALIGN,
@@ -714,7 +716,7 @@ vn_physical_device_init_queue_family_properties(
       props[i].pNext = NULL;
    }
    vn_call_vkGetPhysicalDeviceQueueFamilyProperties2(
-      instance, vn_physical_device_to_handle(physical_dev), &count, props);
+      ring, vn_physical_device_to_handle(physical_dev), &count, props);
 
    /* Filter out queue families that exclusively support sparse binding as
     * we need additional support for submitting feedback commands
@@ -748,11 +750,12 @@ vn_physical_device_init_memory_properties(
    struct vn_physical_device *physical_dev)
 {
    struct vn_instance *instance = physical_dev->instance;
+   struct vn_ring *ring = instance->ring.ring;
    VkPhysicalDeviceMemoryProperties2 props2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2,
    };
    vn_call_vkGetPhysicalDeviceMemoryProperties2(
-      instance, vn_physical_device_to_handle(physical_dev), &props2);
+      ring, vn_physical_device_to_handle(physical_dev), &props2);
 
    physical_dev->memory_properties = props2.memoryProperties;
 
@@ -862,6 +865,7 @@ vn_physical_device_init_external_fence_handles(
     * and idle waiting.
     */
    if (physical_dev->renderer_extensions.KHR_external_fence_fd) {
+      struct vn_ring *ring = physical_dev->instance->ring.ring;
       const VkPhysicalDeviceExternalFenceInfo info = {
          .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO,
          .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
@@ -870,8 +874,7 @@ vn_physical_device_init_external_fence_handles(
          .sType = VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES,
       };
       vn_call_vkGetPhysicalDeviceExternalFenceProperties(
-         physical_dev->instance, vn_physical_device_to_handle(physical_dev),
-         &info, &props);
+         ring, vn_physical_device_to_handle(physical_dev), &info, &props);
 
       physical_dev->renderer_sync_fd.fence_exportable =
          props.externalFenceFeatures &
@@ -909,6 +912,7 @@ vn_physical_device_init_external_semaphore_handles(
     * host side rather than the guest side.
     */
    if (physical_dev->renderer_extensions.KHR_external_semaphore_fd) {
+      struct vn_ring *ring = physical_dev->instance->ring.ring;
       const VkPhysicalDeviceExternalSemaphoreInfo info = {
          .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO,
          .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
@@ -917,8 +921,7 @@ vn_physical_device_init_external_semaphore_handles(
          .sType = VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES,
       };
       vn_call_vkGetPhysicalDeviceExternalSemaphoreProperties(
-         physical_dev->instance, vn_physical_device_to_handle(physical_dev),
-         &info, &props);
+         ring, vn_physical_device_to_handle(physical_dev), &info, &props);
 
       physical_dev->renderer_sync_fd.semaphore_exportable =
          props.externalSemaphoreFeatures &
@@ -1221,13 +1224,13 @@ vn_physical_device_init_renderer_extensions(
    struct vn_physical_device *physical_dev)
 {
    struct vn_instance *instance = physical_dev->instance;
+   struct vn_ring *ring = instance->ring.ring;
    const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
 
    /* get renderer extensions */
    uint32_t count;
    VkResult result = vn_call_vkEnumerateDeviceExtensionProperties(
-      instance, vn_physical_device_to_handle(physical_dev), NULL, &count,
-      NULL);
+      ring, vn_physical_device_to_handle(physical_dev), NULL, &count, NULL);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1239,7 +1242,7 @@ vn_physical_device_init_renderer_extensions(
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       result = vn_call_vkEnumerateDeviceExtensionProperties(
-         instance, vn_physical_device_to_handle(physical_dev), NULL, &count,
+         ring, vn_physical_device_to_handle(physical_dev), NULL, &count,
          exts);
       if (result < VK_SUCCESS) {
          vk_free(alloc, exts);
@@ -1287,6 +1290,7 @@ vn_physical_device_init_renderer_version(
    struct vn_physical_device *physical_dev)
 {
    struct vn_instance *instance = physical_dev->instance;
+   struct vn_ring *ring = instance->ring.ring;
 
    /*
     * We either check and enable VK_KHR_get_physical_device_properties2, or we
@@ -1294,7 +1298,7 @@ vn_physical_device_init_renderer_version(
     */
    VkPhysicalDeviceProperties props;
    vn_call_vkGetPhysicalDeviceProperties(
-      instance, vn_physical_device_to_handle(physical_dev), &props);
+      ring, vn_physical_device_to_handle(physical_dev), &props);
    if (props.apiVersion < VN_MIN_RENDERER_VERSION) {
       if (VN_DEBUG(INIT)) {
          vn_log(instance, "%s has unsupported renderer device version %d.%d",
@@ -1390,11 +1394,12 @@ vn_instance_enumerate_physical_device_groups_locked(
    uint32_t physical_dev_count)
 {
    VkInstance instance_handle = vn_instance_to_handle(instance);
+   struct vn_ring *ring = instance->ring.ring;
    const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
    VkResult result;
 
    uint32_t count;
-   result = vn_call_vkEnumeratePhysicalDeviceGroups(instance, instance_handle,
+   result = vn_call_vkEnumeratePhysicalDeviceGroups(ring, instance_handle,
                                                     &count, NULL);
    if (result != VK_SUCCESS)
       return result;
@@ -1430,7 +1435,7 @@ vn_instance_enumerate_physical_device_groups_locked(
       }
    }
 
-   result = vn_call_vkEnumeratePhysicalDeviceGroups(instance, instance_handle,
+   result = vn_call_vkEnumeratePhysicalDeviceGroups(ring, instance_handle,
                                                     &count, groups);
    if (result != VK_SUCCESS) {
       vk_free(alloc, groups);
@@ -1484,13 +1489,14 @@ enumerate_physical_devices(struct vn_instance *instance,
                            uint32_t *out_count)
 {
    const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
+   struct vn_ring *ring = instance->ring.ring;
    struct vn_physical_device *physical_devs = NULL;
    VkPhysicalDevice *handles = NULL;
    VkResult result;
 
    uint32_t count = 0;
    result = vn_call_vkEnumeratePhysicalDevices(
-      instance, vn_instance_to_handle(instance), &count, NULL);
+      ring, vn_instance_to_handle(instance), &count, NULL);
    if (result != VK_SUCCESS || !count)
       return result;
 
@@ -1528,7 +1534,7 @@ enumerate_physical_devices(struct vn_instance *instance,
    }
 
    result = vn_call_vkEnumeratePhysicalDevices(
-      instance, vn_instance_to_handle(instance), &count, handles);
+      ring, vn_instance_to_handle(instance), &count, handles);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -1857,7 +1863,7 @@ vn_GetPhysicalDeviceMemoryProperties2(
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
-   struct vn_instance *instance = physical_dev->instance;
+   struct vn_ring *ring = physical_dev->instance->ring.ring;
    VkPhysicalDeviceMemoryBudgetPropertiesEXT *memory_budget = NULL;
 
    /* Don't waste time searching for unsupported structs. */
@@ -1871,7 +1877,7 @@ vn_GetPhysicalDeviceMemoryProperties2(
     * copy. For dynamic properties, we must query the server.
     */
    if (memory_budget) {
-      vn_call_vkGetPhysicalDeviceMemoryProperties2(instance, physicalDevice,
+      vn_call_vkGetPhysicalDeviceMemoryProperties2(ring, physicalDevice,
                                                    pMemoryProperties);
    }
 
@@ -1890,6 +1896,7 @@ vn_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
+   struct vn_ring *ring = physical_dev->instance->ring.ring;
 
    struct vn_format_properties_entry *entry = NULL;
    if (!pFormatProperties->pNext) {
@@ -1900,8 +1907,8 @@ vn_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
       }
    }
 
-   vn_call_vkGetPhysicalDeviceFormatProperties2(
-      physical_dev->instance, physicalDevice, format, pFormatProperties);
+   vn_call_vkGetPhysicalDeviceFormatProperties2(ring, physicalDevice, format,
+                                                pFormatProperties);
 
    if (entry) {
       vn_physical_device_add_format_properties(
@@ -2060,6 +2067,7 @@ vn_GetPhysicalDeviceImageFormatProperties2(
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
+   struct vn_ring *ring = physical_dev->instance->ring.ring;
    const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
       physical_dev->external_memory.renderer_handle_type;
    const VkExternalMemoryHandleTypeFlags supported_handle_types =
@@ -2181,8 +2189,7 @@ vn_GetPhysicalDeviceImageFormatProperties2(
    VkResult result;
    /* TODO per-device cache */
    result = vn_call_vkGetPhysicalDeviceImageFormatProperties2(
-      physical_dev->instance, physicalDevice, pImageFormatInfo,
-      pImageFormatProperties);
+      ring, physicalDevice, pImageFormatInfo, pImageFormatProperties);
    if (result != VK_SUCCESS || !external_info)
       return vn_result(physical_dev->instance, result);
 
@@ -2252,6 +2259,7 @@ vn_GetPhysicalDeviceSparseImageFormatProperties2(
 
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
+   struct vn_ring *ring = physical_dev->instance->ring.ring;
    /* If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given
     * arguments, pPropertyCount will be set to zero upon return, and no data
     * will be written to pProperties.
@@ -2263,8 +2271,7 @@ vn_GetPhysicalDeviceSparseImageFormatProperties2(
 
    /* TODO per-device cache */
    vn_call_vkGetPhysicalDeviceSparseImageFormatProperties2(
-      physical_dev->instance, physicalDevice, pFormatInfo, pPropertyCount,
-      pProperties);
+      ring, physicalDevice, pFormatInfo, pPropertyCount, pProperties);
 }
 
 void
@@ -2275,6 +2282,7 @@ vn_GetPhysicalDeviceExternalBufferProperties(
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
+   struct vn_ring *ring = physical_dev->instance->ring.ring;
    const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
       physical_dev->external_memory.renderer_handle_type;
    const VkExternalMemoryHandleTypeFlags supported_handle_types =
@@ -2301,8 +2309,7 @@ vn_GetPhysicalDeviceExternalBufferProperties(
 
    /* TODO per-device cache */
    vn_call_vkGetPhysicalDeviceExternalBufferProperties(
-      physical_dev->instance, physicalDevice, pExternalBufferInfo,
-      pExternalBufferProperties);
+      ring, physicalDevice, pExternalBufferInfo, pExternalBufferProperties);
 
    if (renderer_handle_type ==
           VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT &&
@@ -2403,7 +2410,8 @@ vn_GetPhysicalDeviceCalibrateableTimeDomainsEXT(
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
+   struct vn_ring *ring = physical_dev->instance->ring.ring;
 
    return vn_call_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(
-      physical_dev->instance, physicalDevice, pTimeDomainCount, pTimeDomains);
+      ring, physicalDevice, pTimeDomainCount, pTimeDomains);
 }

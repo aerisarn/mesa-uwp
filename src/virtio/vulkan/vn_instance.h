@@ -18,7 +18,6 @@
 #include "vn_cs.h"
 #include "vn_renderer.h"
 #include "vn_renderer_util.h"
-#include "vn_ring.h"
 
 /* require and request at least Vulkan 1.1 at both instance and device levels
  */
@@ -98,68 +97,6 @@ vn_instance_roundtrip(struct vn_instance *instance)
    uint64_t roundtrip_seqno;
    if (vn_instance_submit_roundtrip(instance, &roundtrip_seqno) == VK_SUCCESS)
       vn_instance_wait_roundtrip(instance, roundtrip_seqno);
-}
-
-static inline VkResult
-vn_instance_ring_submit(struct vn_instance *instance,
-                        const struct vn_cs_encoder *cs)
-{
-   return vn_ring_submit_command_simple(instance->ring.ring, cs);
-}
-
-struct vn_instance_submit_command {
-   /* empty command implies errors */
-   struct vn_cs_encoder command;
-   struct vn_cs_encoder_buffer buffer;
-   /* non-zero implies waiting */
-   size_t reply_size;
-
-   /* when reply_size is non-zero, NULL can be returned on errors */
-   struct vn_renderer_shmem *reply_shmem;
-   struct vn_cs_decoder reply;
-
-   /* valid when instance ring submission succeeds */
-   bool ring_seqno_valid;
-   uint32_t ring_seqno;
-};
-
-static inline struct vn_cs_encoder *
-vn_instance_submit_command_init(struct vn_instance *instance,
-                                struct vn_instance_submit_command *submit,
-                                void *cmd_data,
-                                size_t cmd_size,
-                                size_t reply_size)
-{
-   submit->buffer = VN_CS_ENCODER_BUFFER_INITIALIZER(cmd_data);
-   submit->command = VN_CS_ENCODER_INITIALIZER(&submit->buffer, cmd_size);
-
-   submit->reply_size = reply_size;
-   submit->reply_shmem = NULL;
-
-   return &submit->command;
-}
-
-static inline void
-vn_instance_submit_command(struct vn_instance *instance,
-                           struct vn_instance_submit_command *submit)
-{
-   vn_ring_submit_command(instance->ring.ring,
-                          (struct vn_ring_submit_command *)submit);
-}
-
-static inline struct vn_cs_decoder *
-vn_instance_get_command_reply(struct vn_instance *instance,
-                              struct vn_instance_submit_command *submit)
-{
-   return submit->reply_shmem ? &submit->reply : NULL;
-}
-
-static inline void
-vn_instance_free_command_reply(struct vn_instance *instance,
-                               struct vn_instance_submit_command *submit)
-{
-   assert(submit->reply_shmem);
-   vn_renderer_shmem_unref(instance->renderer, submit->reply_shmem);
 }
 
 static inline struct vn_renderer_shmem *

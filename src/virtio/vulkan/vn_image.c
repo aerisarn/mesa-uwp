@@ -79,7 +79,7 @@ vn_image_init_memory_requirements(struct vn_image *img,
    VkImage img_handle = vn_image_to_handle(img);
    if (plane_count == 1) {
       vn_call_vkGetImageMemoryRequirements2(
-         dev->instance, dev_handle,
+         dev->primary_ring, dev_handle,
          &(VkImageMemoryRequirementsInfo2){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
             .image = img_handle,
@@ -94,7 +94,7 @@ vn_image_init_memory_requirements(struct vn_image *img,
    } else {
       for (uint32_t i = 0; i < plane_count; i++) {
          vn_call_vkGetImageMemoryRequirements2(
-            dev->instance, dev_handle,
+            dev->primary_ring, dev_handle,
             &(VkImageMemoryRequirementsInfo2){
                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
                .pNext =
@@ -210,8 +210,8 @@ vn_image_init(struct vn_device *dev,
    img->sharing_mode = create_info->sharingMode;
 
    /* TODO async */
-   result =
-      vn_call_vkCreateImage(dev->instance, device, create_info, NULL, &image);
+   result = vn_call_vkCreateImage(dev->primary_ring, device, create_info,
+                                  NULL, &image);
    if (result != VK_SUCCESS)
       return result;
 
@@ -447,7 +447,7 @@ vn_DestroyImage(VkDevice device,
 
    /* must not ask renderer to destroy uninitialized deferred image */
    if (!img->deferred_info || img->deferred_info->initialized)
-      vn_async_vkDestroyImage(dev->instance, device, image, NULL);
+      vn_async_vkDestroyImage(dev->primary_ring, device, image, NULL);
 
    vn_image_deferred_info_fini(img, alloc);
 
@@ -519,7 +519,7 @@ vn_GetImageSparseMemoryRequirements2(
    }
 
    /* TODO local or per-device cache */
-   vn_call_vkGetImageSparseMemoryRequirements2(dev->instance, device, pInfo,
+   vn_call_vkGetImageSparseMemoryRequirements2(dev->primary_ring, device, pInfo,
                                                pSparseMemoryRequirementCount,
                                                pSparseMemoryRequirements);
 }
@@ -596,7 +596,7 @@ vn_BindImageMemory2(VkDevice device,
    if (local_infos)
       pBindInfos = local_infos;
 
-   vn_async_vkBindImageMemory2(dev->instance, device, bindInfoCount,
+   vn_async_vkBindImageMemory2(dev->primary_ring, device, bindInfoCount,
                                pBindInfos);
 
    vk_free(alloc, local_infos);
@@ -614,7 +614,7 @@ vn_GetImageDrmFormatModifierPropertiesEXT(
 
    /* TODO local cache */
    return vn_call_vkGetImageDrmFormatModifierPropertiesEXT(
-      dev->instance, device, image, pProperties);
+      dev->primary_ring, device, image, pProperties);
 }
 
 void
@@ -658,7 +658,7 @@ vn_GetImageSubresourceLayout(VkDevice device,
    }
 
    /* TODO local cache */
-   vn_call_vkGetImageSubresourceLayout(dev->instance, device, image,
+   vn_call_vkGetImageSubresourceLayout(dev->primary_ring, device, image,
                                        pSubresource, pLayout);
 }
 
@@ -696,7 +696,7 @@ vn_CreateImageView(VkDevice device,
    view->image = img;
 
    VkImageView view_handle = vn_image_view_to_handle(view);
-   vn_async_vkCreateImageView(dev->instance, device, pCreateInfo, NULL,
+   vn_async_vkCreateImageView(dev->primary_ring, device, pCreateInfo, NULL,
                               &view_handle);
 
    *pView = view_handle;
@@ -717,7 +717,7 @@ vn_DestroyImageView(VkDevice device,
    if (!view)
       return;
 
-   vn_async_vkDestroyImageView(dev->instance, device, imageView, NULL);
+   vn_async_vkDestroyImageView(dev->primary_ring, device, imageView, NULL);
 
    vn_object_base_fini(&view->base);
    vk_free(alloc, view);
@@ -744,7 +744,7 @@ vn_CreateSampler(VkDevice device,
    vn_object_base_init(&sampler->base, VK_OBJECT_TYPE_SAMPLER, &dev->base);
 
    VkSampler sampler_handle = vn_sampler_to_handle(sampler);
-   vn_async_vkCreateSampler(dev->instance, device, pCreateInfo, NULL,
+   vn_async_vkCreateSampler(dev->primary_ring, device, pCreateInfo, NULL,
                             &sampler_handle);
 
    *pSampler = sampler_handle;
@@ -765,7 +765,7 @@ vn_DestroySampler(VkDevice device,
    if (!sampler)
       return;
 
-   vn_async_vkDestroySampler(dev->instance, device, _sampler, NULL);
+   vn_async_vkDestroySampler(dev->primary_ring, device, _sampler, NULL);
 
    vn_object_base_fini(&sampler->base);
    vk_free(alloc, sampler);
@@ -813,8 +813,8 @@ vn_CreateSamplerYcbcrConversion(
 
    VkSamplerYcbcrConversion conv_handle =
       vn_sampler_ycbcr_conversion_to_handle(conv);
-   vn_async_vkCreateSamplerYcbcrConversion(dev->instance, device, pCreateInfo,
-                                           NULL, &conv_handle);
+   vn_async_vkCreateSamplerYcbcrConversion(dev->primary_ring, device,
+                                           pCreateInfo, NULL, &conv_handle);
 
    *pYcbcrConversion = conv_handle;
 
@@ -835,7 +835,7 @@ vn_DestroySamplerYcbcrConversion(VkDevice device,
    if (!conv)
       return;
 
-   vn_async_vkDestroySamplerYcbcrConversion(dev->instance, device,
+   vn_async_vkDestroySamplerYcbcrConversion(dev->primary_ring, device,
                                             ycbcrConversion, NULL);
 
    vn_object_base_fini(&conv->base);
@@ -851,8 +851,8 @@ vn_GetDeviceImageMemoryRequirements(
    struct vn_device *dev = vn_device_from_handle(device);
 
    /* TODO per-device cache */
-   vn_call_vkGetDeviceImageMemoryRequirements(dev->instance, device, pInfo,
-                                              pMemoryRequirements);
+   vn_call_vkGetDeviceImageMemoryRequirements(dev->primary_ring, device,
+                                              pInfo, pMemoryRequirements);
 }
 
 void
@@ -872,6 +872,6 @@ vn_GetDeviceImageSparseMemoryRequirements(
 
    /* TODO per-device cache */
    vn_call_vkGetDeviceImageSparseMemoryRequirements(
-      dev->instance, device, pInfo, pSparseMemoryRequirementCount,
+      dev->primary_ring, device, pInfo, pSparseMemoryRequirementCount,
       pSparseMemoryRequirements);
 }

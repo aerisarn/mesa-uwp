@@ -246,7 +246,7 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
          .semaphore = sem_handle,
          .resourceId = 0,
       };
-      vn_async_vkImportSemaphoreResourceMESA(dev->instance, dev_handle,
+      vn_async_vkImportSemaphoreResourceMESA(dev->primary_ring, dev_handle,
                                              &res_info);
    }
 
@@ -1100,11 +1100,11 @@ vn_queue_submit(struct vn_queue_submission *submit)
    if (VN_PERF(NO_ASYNC_QUEUE_SUBMIT)) {
       if (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2) {
          result = vn_call_vkQueueSubmit2(
-            instance, submit->queue_handle, submit->batch_count,
+            dev->primary_ring, submit->queue_handle, submit->batch_count,
             submit->submit_batches2, submit->fence_handle);
       } else {
          result = vn_call_vkQueueSubmit(
-            instance, submit->queue_handle, submit->batch_count,
+            dev->primary_ring, submit->queue_handle, submit->batch_count,
             submit->submit_batches, submit->fence_handle);
       }
 
@@ -1113,13 +1113,13 @@ vn_queue_submit(struct vn_queue_submission *submit)
          return vn_error(instance, result);
       }
    } else {
-      struct vn_instance_submit_command instance_submit;
+      struct vn_ring_submit_command instance_submit;
       if (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2) {
          vn_submit_vkQueueSubmit2(
-            instance, 0, submit->queue_handle, submit->batch_count,
+            dev->primary_ring, 0, submit->queue_handle, submit->batch_count,
             submit->submit_batches2, submit->fence_handle, &instance_submit);
       } else {
-         vn_submit_vkQueueSubmit(instance, 0, submit->queue_handle,
+         vn_submit_vkQueueSubmit(dev->primary_ring, 0, submit->queue_handle,
                                  submit->batch_count, submit->submit_batches,
                                  submit->fence_handle, &instance_submit);
       }
@@ -1211,13 +1211,13 @@ vn_queue_bind_sparse_submit(struct vn_queue_submission *submit)
 
    if (VN_PERF(NO_ASYNC_QUEUE_SUBMIT)) {
       result = vn_call_vkQueueBindSparse(
-         instance, submit->queue_handle, submit->batch_count,
+         dev->primary_ring, submit->queue_handle, submit->batch_count,
          submit->sparse_batches, submit->fence_handle);
       if (result != VK_SUCCESS)
          return vn_error(instance, result);
    } else {
-      struct vn_instance_submit_command instance_submit;
-      vn_submit_vkQueueBindSparse(instance, 0, submit->queue_handle,
+      struct vn_ring_submit_command instance_submit;
+      vn_submit_vkQueueBindSparse(dev->primary_ring, 0, submit->queue_handle,
                                   submit->batch_count, submit->sparse_batches,
                                   submit->fence_handle, &instance_submit);
 
@@ -1503,7 +1503,7 @@ vn_fence_feedback_init(struct vn_device *dev,
    /* Fence feedback implementation relies on vkWaitForFences to cover the gap
     * between feedback slot signaling and the actual fence signal operation.
     */
-   if (unlikely(!dev->instance->renderer->info.allow_vk_wait_syncs))
+   if (unlikely(!dev->renderer->info.allow_vk_wait_syncs))
       return VK_SUCCESS;
 
    if (VN_PERF(NO_FENCE_FEEDBACK))
@@ -1600,7 +1600,8 @@ vn_CreateFence(VkDevice device,
       goto out_payloads_fini;
 
    *pFence = vn_fence_to_handle(fence);
-   vn_async_vkCreateFence(dev->instance, device, pCreateInfo, NULL, pFence);
+   vn_async_vkCreateFence(dev->primary_ring, device, pCreateInfo, NULL,
+                          pFence);
 
    return VK_SUCCESS;
 
@@ -1628,7 +1629,7 @@ vn_DestroyFence(VkDevice device,
    if (!fence)
       return;
 
-   vn_async_vkDestroyFence(dev->instance, device, _fence, NULL);
+   vn_async_vkDestroyFence(dev->primary_ring, device, _fence, NULL);
 
    vn_fence_feedback_fini(dev, fence, alloc);
 
@@ -1647,9 +1648,9 @@ vn_ResetFences(VkDevice device, uint32_t fenceCount, const VkFence *pFences)
 
    /* TODO if the fence is shared-by-ref, this needs to be synchronous */
    if (false)
-      vn_call_vkResetFences(dev->instance, device, fenceCount, pFences);
+      vn_call_vkResetFences(dev->primary_ring, device, fenceCount, pFences);
    else
-      vn_async_vkResetFences(dev->instance, device, fenceCount, pFences);
+      vn_async_vkResetFences(dev->primary_ring, device, fenceCount, pFences);
 
    for (uint32_t i = 0; i < fenceCount; i++) {
       struct vn_fence *fence = vn_fence_from_handle(pFences[i]);
@@ -1688,11 +1689,11 @@ vn_GetFenceStatus(VkDevice device, VkFence _fence)
              * longer sees any fence status checks and falsely believes the
              * caller does not sync.
              */
-            vn_async_vkWaitForFences(dev->instance, device, 1, &_fence,
+            vn_async_vkWaitForFences(dev->primary_ring, device, 1, &_fence,
                                      VK_TRUE, UINT64_MAX);
          }
       } else {
-         result = vn_call_vkGetFenceStatus(dev->instance, device, _fence);
+         result = vn_call_vkGetFenceStatus(dev->primary_ring, device, _fence);
       }
       break;
    case VN_SYNC_TYPE_IMPORTED_SYNC_FD:
@@ -1912,7 +1913,7 @@ vn_GetFenceFdKHR(VkDevice device,
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
 
-      vn_async_vkResetFenceResourceMESA(dev->instance, device,
+      vn_async_vkResetFenceResourceMESA(dev->primary_ring, device,
                                         pGetFdInfo->fence);
 
       vn_sync_payload_release(dev, &fence->temporary);
@@ -2108,7 +2109,7 @@ vn_CreateSemaphore(VkDevice device,
    }
 
    VkSemaphore sem_handle = vn_semaphore_to_handle(sem);
-   vn_async_vkCreateSemaphore(dev->instance, device, pCreateInfo, NULL,
+   vn_async_vkCreateSemaphore(dev->primary_ring, device, pCreateInfo, NULL,
                               &sem_handle);
 
    *pSemaphore = sem_handle;
@@ -2139,7 +2140,7 @@ vn_DestroySemaphore(VkDevice device,
    if (!sem)
       return;
 
-   vn_async_vkDestroySemaphore(dev->instance, device, semaphore, NULL);
+   vn_async_vkDestroySemaphore(dev->primary_ring, device, semaphore, NULL);
 
    if (sem->type == VK_SEMAPHORE_TYPE_TIMELINE)
       vn_timeline_semaphore_feedback_fini(dev, sem);
@@ -2192,7 +2193,7 @@ vn_GetSemaphoreCounterValue(VkDevice device,
             .pValues = pValue,
          };
 
-         vn_async_vkWaitSemaphores(dev->instance, device, &wait_info,
+         vn_async_vkWaitSemaphores(dev->primary_ring, device, &wait_info,
                                    UINT64_MAX);
          sem->feedback.signaled_counter = *pValue;
       }
@@ -2200,7 +2201,7 @@ vn_GetSemaphoreCounterValue(VkDevice device,
 
       return VK_SUCCESS;
    } else {
-      return vn_call_vkGetSemaphoreCounterValue(dev->instance, device,
+      return vn_call_vkGetSemaphoreCounterValue(dev->primary_ring, device,
                                                 semaphore, pValue);
    }
 }
@@ -2215,9 +2216,9 @@ vn_SignalSemaphore(VkDevice device, const VkSemaphoreSignalInfo *pSignalInfo)
 
    /* TODO if the semaphore is shared-by-ref, this needs to be synchronous */
    if (false)
-      vn_call_vkSignalSemaphore(dev->instance, device, pSignalInfo);
+      vn_call_vkSignalSemaphore(dev->primary_ring, device, pSignalInfo);
    else
-      vn_async_vkSignalSemaphore(dev->instance, device, pSignalInfo);
+      vn_async_vkSignalSemaphore(dev->primary_ring, device, pSignalInfo);
 
    if (sem->feedback.slot) {
       simple_mtx_lock(&sem->feedback.async_wait_mtx);
@@ -2404,12 +2405,12 @@ vn_GetSemaphoreFdKHR(VkDevice device,
          .semaphore = pGetFdInfo->semaphore,
          .resourceId = 0,
       };
-      vn_async_vkImportSemaphoreResourceMESA(dev->instance, device,
+      vn_async_vkImportSemaphoreResourceMESA(dev->primary_ring, device,
                                              &res_info);
    }
 
    /* perform wait operation on the host semaphore */
-   vn_async_vkWaitSemaphoreResourceMESA(dev->instance, device,
+   vn_async_vkWaitSemaphoreResourceMESA(dev->primary_ring, device,
                                         pGetFdInfo->semaphore);
 
    vn_sync_payload_release(dev, &sem->temporary);
@@ -2474,7 +2475,7 @@ vn_CreateEvent(VkDevice device,
    }
 
    VkEvent ev_handle = vn_event_to_handle(ev);
-   vn_async_vkCreateEvent(dev->instance, device, pCreateInfo, NULL,
+   vn_async_vkCreateEvent(dev->primary_ring, device, pCreateInfo, NULL,
                           &ev_handle);
 
    *pEvent = ev_handle;
@@ -2496,7 +2497,7 @@ vn_DestroyEvent(VkDevice device,
    if (!ev)
       return;
 
-   vn_async_vkDestroyEvent(dev->instance, device, event, NULL);
+   vn_async_vkDestroyEvent(dev->primary_ring, device, event, NULL);
 
    vn_event_feedback_fini(dev, ev);
 
@@ -2515,7 +2516,7 @@ vn_GetEventStatus(VkDevice device, VkEvent event)
    if (ev->feedback_slot)
       result = vn_feedback_get_status(ev->feedback_slot);
    else
-      result = vn_call_vkGetEventStatus(dev->instance, device, event);
+      result = vn_call_vkGetEventStatus(dev->primary_ring, device, event);
 
    return vn_result(dev->instance, result);
 }
@@ -2529,9 +2530,9 @@ vn_SetEvent(VkDevice device, VkEvent event)
 
    if (ev->feedback_slot) {
       vn_feedback_set_status(ev->feedback_slot, VK_EVENT_SET);
-      vn_async_vkSetEvent(dev->instance, device, event);
+      vn_async_vkSetEvent(dev->primary_ring, device, event);
    } else {
-      VkResult result = vn_call_vkSetEvent(dev->instance, device, event);
+      VkResult result = vn_call_vkSetEvent(dev->primary_ring, device, event);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
    }
@@ -2548,9 +2549,10 @@ vn_ResetEvent(VkDevice device, VkEvent event)
 
    if (ev->feedback_slot) {
       vn_feedback_reset_status(ev->feedback_slot);
-      vn_async_vkResetEvent(dev->instance, device, event);
+      vn_async_vkResetEvent(dev->primary_ring, device, event);
    } else {
-      VkResult result = vn_call_vkResetEvent(dev->instance, device, event);
+      VkResult result =
+         vn_call_vkResetEvent(dev->primary_ring, device, event);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
    }
