@@ -193,9 +193,9 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      return 430;
+      return 440;
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 430;
+      return 440;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
       return 310;
 
@@ -335,7 +335,11 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
    case PIPE_CAP_SHADER_ARRAY_COMPONENTS:
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
+   case PIPE_CAP_QUERY_TIME_ELAPSED:
       return 1;
+
+   case PIPE_CAP_QUERY_BUFFER_OBJECT:
+      return (screen->opts3.WriteBufferImmediateSupportFlags & D3D12_COMMAND_LIST_SUPPORT_FLAG_DIRECT) != 0;
 
    case PIPE_CAP_MAX_VERTEX_STREAMS:
       return D3D12_SO_BUFFER_SLOT_COUNT;

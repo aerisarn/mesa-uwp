@@ -192,12 +192,12 @@ GL 4.3, GLSL 4.30 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, v
   GL_ARB_vertex_attrib_binding                          DONE (all drivers)
 
 
-GL 4.4, GLSL 4.40 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, virgl, zink, iris, crocus/gen7.5+
+GL 4.4, GLSL 4.40 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, virgl, zink, iris, crocus/gen7.5+, d3d12
 
   GL_MAX_VERTEX_ATTRIB_STRIDE                           DONE (all drivers)
-  GL_ARB_buffer_storage                                 DONE (freedreno, nv50, v3d, vc4, lima, panfrost, asahi, d3d12, softpipe, etnaviv, crocus)
+  GL_ARB_buffer_storage                                 DONE (freedreno, nv50, v3d, vc4, lima, panfrost, asahi, softpipe, etnaviv, crocus)
   GL_ARB_clear_texture                                  DONE (all drivers)
-  GL_ARB_enhanced_layouts                               DONE (freedreno/a3xx+, nv50, softpipe, crocus, d3d12)
+  GL_ARB_enhanced_layouts                               DONE (freedreno/a3xx+, nv50, softpipe, crocus)
   - compile-time constant expressions                   DONE
   - explicit byte offsets for blocks                    DONE
   - forced alignment within blocks                      DONE
@@ -206,9 +206,9 @@ GL 4.4, GLSL 4.40 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, v
   - input/output block locations                        DONE
   GL_ARB_multi_bind                                     DONE (all drivers)
   GL_ARB_query_buffer_object                            DONE (freedreno/a6xx)
-  GL_ARB_texture_mirror_clamp_to_edge                   DONE (freedreno, nv50, softpipe, v3d, panfrost, asahi, crocus, d3d12)
-  GL_ARB_texture_stencil8                               DONE (freedreno, nv50, softpipe, v3d, panfrost, d3d12, asahi)
-  GL_ARB_vertex_type_10f_11f_11f_rev                    DONE (freedreno, nv50, softpipe, panfrost, d3d12, asahi, crocus)
+  GL_ARB_texture_mirror_clamp_to_edge                   DONE (freedreno, nv50, softpipe, v3d, panfrost, asahi, crocus)
+  GL_ARB_texture_stencil8                               DONE (freedreno, nv50, softpipe, v3d, panfrost, asahi)
+  GL_ARB_vertex_type_10f_11f_11f_rev                    DONE (freedreno, nv50, softpipe, panfrost, asahi, crocus)
 
 GL 4.5, GLSL 4.50 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, virgl, zink, iris, crocus/gen7.5+
 

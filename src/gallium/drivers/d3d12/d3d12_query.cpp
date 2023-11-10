@@ -23,6 +23,7 @@
 
 #include "d3d12_query.h"
 #include "d3d12_compiler.h"
+#include "d3d12_compute_transforms.h"
 #include "d3d12_context.h"
 #include "d3d12_resource.h"
 #include "d3d12_screen.h"
@@ -184,9 +185,9 @@ d3d12_release_query(struct pipe_context *pctx,
 }
 
 static bool
-accumulate_subresult(struct d3d12_context *ctx, struct d3d12_query *q_parent,
-                     unsigned sub_query,
-                     union pipe_query_result *result, bool write)
+accumulate_subresult_cpu(struct d3d12_context *ctx, struct d3d12_query *q_parent,
+                         unsigned sub_query,
+                         union pipe_query_result *result)
 {
    struct pipe_transfer *transfer = NULL;
    struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
@@ -194,8 +195,6 @@ accumulate_subresult(struct d3d12_context *ctx, struct d3d12_query *q_parent,
    unsigned access = PIPE_MAP_READ;
    void *results;
 
-   if (write)
-      access |= PIPE_MAP_WRITE;
    access |= PIPE_MAP_UNSYNCHRONIZED;
 
    results = pipe_buffer_map_range(&ctx->base, q->buffer, q->buffer_offset,
@@ -256,32 +255,6 @@ accumulate_subresult(struct d3d12_context *ctx, struct d3d12_query *q_parent,
       }
    }
 
-   if (write) {
-      if (q->d3d12qtype == D3D12_QUERY_TYPE_PIPELINE_STATISTICS) {
-         results_stats[0].IAVertices = result->pipeline_statistics.ia_vertices;
-         results_stats[0].IAPrimitives = result->pipeline_statistics.ia_primitives;
-         results_stats[0].VSInvocations = result->pipeline_statistics.vs_invocations;
-         results_stats[0].GSInvocations = result->pipeline_statistics.gs_invocations;
-         results_stats[0].GSPrimitives = result->pipeline_statistics.gs_primitives;
-         results_stats[0].CInvocations = result->pipeline_statistics.c_invocations;
-         results_stats[0].CPrimitives = result->pipeline_statistics.c_primitives;
-         results_stats[0].PSInvocations = result->pipeline_statistics.ps_invocations;
-         results_stats[0].HSInvocations = result->pipeline_statistics.hs_invocations;
-         results_stats[0].DSInvocations = result->pipeline_statistics.ds_invocations;
-         results_stats[0].CSInvocations = result->pipeline_statistics.cs_invocations;
-      } else if (d3d12_query_heap_type(q_parent->type, sub_query) == D3D12_QUERY_HEAP_TYPE_SO_STATISTICS) {
-         results_so[0].NumPrimitivesWritten = result->so_statistics.num_primitives_written;
-         results_so[0].PrimitivesStorageNeeded = result->so_statistics.primitives_storage_needed;
-      } else {
-         if (unlikely(q->d3d12qtype == D3D12_QUERY_TYPE_TIMESTAMP)) {
-            results_u64[0] = 0;
-            results_u64[1] = result->u64;
-         } else {
-            results_u64[0] = result->u64;
-         }
-      }
-   }
-
    pipe_buffer_unmap(&ctx->base, transfer);
 
    if (q->d3d12qtype == D3D12_QUERY_TYPE_TIMESTAMP)
@@ -291,33 +264,33 @@ accumulate_subresult(struct d3d12_context *ctx, struct d3d12_query *q_parent,
 }
 
 static bool
-accumulate_result(struct d3d12_context *ctx, struct d3d12_query *q,
-                  union pipe_query_result *result, bool write)
+accumulate_result_cpu(struct d3d12_context *ctx, struct d3d12_query *q,
+                      union pipe_query_result *result)
 {
    union pipe_query_result local_result;
 
    switch (q->type) {
    case PIPE_QUERY_PRIMITIVES_GENERATED:
-      if (!accumulate_subresult(ctx, q, 0, &local_result, write))
+      if (!accumulate_subresult_cpu(ctx, q, 0, &local_result))
          return false;
       result->u64 = local_result.so_statistics.primitives_storage_needed;
 
-      if (!accumulate_subresult(ctx, q, 1, &local_result, write))
+      if (!accumulate_subresult_cpu(ctx, q, 1, &local_result))
          return false;
       result->u64 += local_result.pipeline_statistics.gs_primitives;
 
-      if (!accumulate_subresult(ctx, q, 2, &local_result, write))
+      if (!accumulate_subresult_cpu(ctx, q, 2, &local_result))
          return false;
       result->u64 += local_result.pipeline_statistics.ia_primitives;
       return true;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
-      if (!accumulate_subresult(ctx, q, 0, &local_result, write))
+      if (!accumulate_subresult_cpu(ctx, q, 0, &local_result))
          return false;
       result->u64 = local_result.so_statistics.num_primitives_written;
       return true;
    default:
       assert(num_sub_queries(q->type) == 1);
-      return accumulate_subresult(ctx, q, 0, result, write);
+      return accumulate_subresult_cpu(ctx, q, 0, result);
    }
 }
 
@@ -363,20 +336,98 @@ query_ensure_ready(struct d3d12_screen* screen, struct d3d12_context* ctx, struc
 }
 
 static void
+accumulate_subresult_gpu(struct d3d12_context *ctx, struct d3d12_query *q_parent,
+                         unsigned sub_query)
+{
+   d3d12_compute_transform_save_restore save;
+   d3d12_save_compute_transform_state(ctx, &save);
+
+   d3d12_compute_transform_key key;
+   memset(&key, 0, sizeof(key));
+   key.type = d3d12_compute_transform_type::query_resolve;
+   key.query_resolve.is_64bit = true;
+   key.query_resolve.is_resolve_in_place = true;
+   key.query_resolve.num_subqueries = 1;
+   key.query_resolve.pipe_query_type = q_parent->type;
+   key.query_resolve.single_subquery_index = sub_query;
+   key.query_resolve.is_signed = false;
+   key.query_resolve.timestamp_multiplier = 1.0;
+   ctx->base.bind_compute_state(&ctx->base, d3d12_get_compute_transform(ctx, &key));
+
+   ctx->transform_state_vars[0] = q_parent->subqueries[sub_query].curr_query;
+   ctx->transform_state_vars[1] = 0;
+   ctx->transform_state_vars[2] = 0;
+   ctx->transform_state_vars[3] = 0;
+
+   pipe_shader_buffer new_cs_ssbos[1];
+   new_cs_ssbos[0].buffer = q_parent->subqueries[sub_query].buffer;
+   new_cs_ssbos[0].buffer_offset = q_parent->subqueries[sub_query].buffer_offset;
+   new_cs_ssbos[0].buffer_size = q_parent->subqueries[sub_query].query_size * q_parent->subqueries[sub_query].num_queries;
+   ctx->base.set_shader_buffers(&ctx->base, PIPE_SHADER_COMPUTE, 0, 1, new_cs_ssbos, 1);
+
+   pipe_grid_info grid = {};
+   grid.block[0] = grid.block[1] = grid.block[2] = 1;
+   grid.grid[0] = grid.grid[1] = grid.grid[2] = 1;
+   ctx->base.launch_grid(&ctx->base, &grid);
+
+   d3d12_restore_compute_transform_state(ctx, &save);
+}
+
+static void
+accumulate_result_gpu(struct d3d12_context *ctx, struct d3d12_query *q,
+                      struct pipe_resource *dst, uint32_t dst_offset,
+                      int index, enum pipe_query_value_type result_type)
+{
+   d3d12_compute_transform_save_restore save;
+   d3d12_save_compute_transform_state(ctx, &save);
+
+   d3d12_compute_transform_key key;
+   memset(&key, 0, sizeof(key));
+   key.type = d3d12_compute_transform_type::query_resolve;
+   key.query_resolve.is_64bit = result_type == PIPE_QUERY_TYPE_I64 || result_type == PIPE_QUERY_TYPE_U64;
+   key.query_resolve.is_resolve_in_place = false;
+   key.query_resolve.num_subqueries = num_sub_queries(q->type);
+   key.query_resolve.pipe_query_type = q->type;
+   key.query_resolve.single_result_field_offset = index;
+   key.query_resolve.is_signed = result_type == PIPE_QUERY_TYPE_I32 || result_type == PIPE_QUERY_TYPE_I64;
+   key.query_resolve.timestamp_multiplier = d3d12_screen(ctx->base.screen)->timestamp_multiplier;
+   ctx->base.bind_compute_state(&ctx->base, d3d12_get_compute_transform(ctx, &key));
+
+   pipe_shader_buffer new_cs_ssbos[4];
+   uint32_t num_ssbos = 0;
+   for (uint32_t i = 0; i < key.query_resolve.num_subqueries; ++i) {
+      ctx->transform_state_vars[i] = q->subqueries[i].curr_query;
+      new_cs_ssbos[num_ssbos].buffer = q->subqueries[i].buffer;
+      new_cs_ssbos[num_ssbos].buffer_offset = q->subqueries[i].buffer_offset;
+      new_cs_ssbos[num_ssbos].buffer_size = q->subqueries[i].query_size * q->subqueries[i].num_queries;
+      num_ssbos++;
+   }
+
+   assert(dst_offset % (key.query_resolve.is_64bit ? 8 : 4) == 0);
+   ctx->transform_state_vars[3] = dst_offset / (key.query_resolve.is_64bit ? 8 : 4);
+
+   new_cs_ssbos[num_ssbos].buffer = dst;
+   new_cs_ssbos[num_ssbos].buffer_offset = 0;
+   new_cs_ssbos[num_ssbos].buffer_size = dst->width0;
+   num_ssbos++;
+   
+   ctx->base.set_shader_buffers(&ctx->base, PIPE_SHADER_COMPUTE, 0, num_ssbos, new_cs_ssbos, 1 << (num_ssbos - 1));
+
+   pipe_grid_info grid = {};
+   grid.block[0] = grid.block[1] = grid.block[2] = 1;
+   grid.grid[0] = grid.grid[1] = grid.grid[2] = 1;
+   ctx->base.launch_grid(&ctx->base, &grid);
+
+   d3d12_restore_compute_transform_state(ctx, &save);
+}
+
+static void
 begin_subquery(struct d3d12_context *ctx, struct d3d12_query *q_parent, unsigned sub_query)
 {
    struct d3d12_query_impl *q = &q_parent->subqueries[sub_query];
    if (q->curr_query == q->num_queries) {
-      union pipe_query_result result;
-
-      query_ensure_ready(d3d12_screen(ctx->base.screen), ctx, q_parent, false);
-      d3d12_foreach_submitted_batch(ctx, old_batch) {
-         if (old_batch->fence && old_batch->fence->value <= q_parent->fence_value)
-            d3d12_reset_batch(ctx, old_batch, OS_TIMEOUT_INFINITE);
-      }
-
       /* Accumulate current results and store in first slot */
-      accumulate_subresult(ctx, q_parent, sub_query, &result, true);
+      accumulate_subresult_gpu(ctx, q_parent, sub_query);
       q->curr_query = 1;
    }
 
@@ -412,18 +463,9 @@ begin_timer_query(struct d3d12_context *ctx, struct d3d12_query *q_parent, bool 
       q->curr_query = 0;
       query_index = 0;
    } else if (query_index == q->num_queries) {
-      union pipe_query_result result;
-
       /* Accumulate current results and store in first slot */
-
-      query_ensure_ready(d3d12_screen(ctx->base.screen), ctx, q_parent, false);
-      d3d12_foreach_submitted_batch(ctx, old_batch) {
-         if (old_batch->fence && old_batch->fence->value <= q_parent->fence_value)
-            d3d12_reset_batch(ctx, old_batch, OS_TIMEOUT_INFINITE);
-      }
-
-      accumulate_subresult(ctx, q_parent, 0, &result, true);
-      q->curr_query = 2;
+      accumulate_subresult_gpu(ctx, q_parent, 0);
+      q->curr_query = 1;
    }
 
    ctx->cmdlist->EndQuery(q->query_heap, q->d3d12qtype, query_index);
@@ -530,7 +572,39 @@ d3d12_get_query_result(struct pipe_context *pctx,
    if (!query_ensure_ready(screen, ctx, query, wait))
       return false;
 
-   return accumulate_result(ctx, query, result, false);
+   return accumulate_result_cpu(ctx, query, result);
+}
+
+static void
+d3d12_get_query_result_resource(struct pipe_context *pctx,
+                                struct pipe_query *q,
+                                enum pipe_query_flags flags,
+                                enum pipe_query_value_type result_type,
+                                int index,
+                                struct pipe_resource *resource,
+                                unsigned offset)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+
+   if (index == -1) {
+      /* Write the "available" bit, which is always true */
+      struct d3d12_resource *res = d3d12_resource(resource);
+      d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_TRANSITION_FLAG_NONE);
+      d3d12_apply_resource_states(ctx, false);
+
+      D3D12_GPU_VIRTUAL_ADDRESS gpuva_base = d3d12_resource_gpu_virtual_address(res) + offset;
+      D3D12_WRITEBUFFERIMMEDIATE_PARAMETER params[2] = {
+         { gpuva_base, 1 },
+         { gpuva_base + sizeof(uint32_t), 0 },
+      };
+      D3D12_WRITEBUFFERIMMEDIATE_MODE modes[2] = { D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT, D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT };
+      ctx->cmdlist8->WriteBufferImmediate(result_type == PIPE_QUERY_TYPE_I64 || result_type == PIPE_QUERY_TYPE_U64 ? 2 : 1,
+                                          params, modes);
+      return;
+   }
+
+   struct d3d12_query *query = (struct d3d12_query *)q;
+   accumulate_result_gpu(ctx, query, resource, offset, index, result_type);
 }
 
 void
@@ -598,28 +672,7 @@ d3d12_render_condition(struct pipe_context *pctx,
       query->predicate = d3d12_resource(pipe_buffer_create(pctx->screen, 0,
                                                            PIPE_USAGE_DEFAULT, sizeof(uint64_t)));
 
-   if (mode == PIPE_RENDER_COND_WAIT) {
-
-      query_ensure_ready(d3d12_screen(ctx->base.screen), ctx, query, false);
-      d3d12_foreach_submitted_batch(ctx, old_batch) {
-         if (old_batch->fence && old_batch->fence->value <= query->fence_value)
-            d3d12_reset_batch(ctx, old_batch, OS_TIMEOUT_INFINITE);
-      }
-
-      union pipe_query_result result;
-      accumulate_result(ctx, (d3d12_query *)pquery, &result, true);
-   }
-
-   struct d3d12_resource *res = (struct d3d12_resource *)query->subqueries[0].buffer;
-   uint64_t source_offset = 0;
-   ID3D12Resource *source = d3d12_resource_underlying(res, &source_offset);
-   source_offset += query->subqueries[0].buffer_offset;
-   d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
-   d3d12_transition_resource_state(ctx, query->predicate, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_TRANSITION_FLAG_NONE);
-   d3d12_apply_resource_states(ctx, false);
-   ctx->cmdlist->CopyBufferRegion(d3d12_resource_resource(query->predicate), 0,
-                                  source, source_offset,
-                                  sizeof(uint64_t));
+   accumulate_result_gpu(ctx, query, &query->predicate->base.b, 0, 0, PIPE_QUERY_TYPE_U64);
 
    d3d12_transition_resource_state(ctx, query->predicate, D3D12_RESOURCE_STATE_PREDICATION, D3D12_TRANSITION_FLAG_NONE);
    d3d12_apply_resource_states(ctx, false);
@@ -656,6 +709,7 @@ d3d12_context_query_init(struct pipe_context *pctx)
    pctx->begin_query = d3d12_begin_query;
    pctx->end_query = d3d12_end_query;
    pctx->get_query_result = d3d12_get_query_result;
+   pctx->get_query_result_resource = d3d12_get_query_result_resource;
    pctx->set_active_query_state = d3d12_set_active_query_state;
    pctx->render_condition = d3d12_render_condition;
 }
