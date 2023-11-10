@@ -509,11 +509,10 @@ def main():
 
     sha = check_output(['git', 'rev-parse', args.sha]).decode('ascii').strip()
 
-    args.iid = from_sha_to_pipeline_iid(gl_gql, {"projectPath": args.project_path, "sha": sha})
-
     if args.print_dag:
+        iid = from_sha_to_pipeline_iid(gl_gql, {"projectPath": args.project_path, "sha": sha})
         dag = create_job_needs_dag(
-            gl_gql, {"projectPath": args.project_path, "iid": args.iid}, disable_cache=True
+            gl_gql, {"projectPath": args.project_path, "iid": iid}, disable_cache=True
         )
 
         if args.regex:
