@@ -2016,6 +2016,112 @@ tu_init_dbg_reg_stomper(struct tu_device *device)
    device->dbg_renderpass_stomp_cs = rp_cs;
 }
 
+/* It is unknown what this workaround is for and what it fixes. */
+static VkResult
+tu_init_cmdbuf_start_a725_quirk(struct tu_device *device)
+{
+   struct tu_cs *cs;
+
+   if (!(device->cmdbuf_start_a725_quirk_cs =
+            (struct tu_cs *) calloc(1, sizeof(struct tu_cs)))) {
+      return vk_startup_errorf(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY,
+                               "OOM");
+   }
+
+   if (!(device->cmdbuf_start_a725_quirk_entry =
+            (struct tu_cs_entry *) calloc(1, sizeof(struct tu_cs_entry)))) {
+      free(device->cmdbuf_start_a725_quirk_cs);
+      return vk_startup_errorf(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY,
+                               "OOM");
+   }
+
+   cs = device->cmdbuf_start_a725_quirk_cs;
+   tu_cs_init(cs, device, TU_CS_MODE_SUB_STREAM, 57, "a725 workaround cs");
+
+   struct tu_cs shader_cs;
+   tu_cs_begin_sub_stream(cs, 10, &shader_cs);
+
+   uint32_t raw_shader[] = {
+      0x00040000, 0x40600000, // mul.f hr0.x, hr0.x, hr1.x
+      0x00050001, 0x40600001, // mul.f hr0.y, hr0.y, hr1.y
+      0x00060002, 0x40600002, // mul.f hr0.z, hr0.z, hr1.z
+      0x00070003, 0x40600003, // mul.f hr0.w, hr0.w, hr1.w
+      0x00000000, 0x03000000, // end
+   };
+
+   tu_cs_emit_array(&shader_cs, raw_shader, ARRAY_SIZE(raw_shader));
+   struct tu_cs_entry shader_entry = tu_cs_end_sub_stream(cs, &shader_cs);
+   uint64_t shader_iova = shader_entry.bo->iova + shader_entry.offset;
+
+   struct tu_cs sub_cs;
+   tu_cs_begin_sub_stream(cs, 47, &sub_cs);
+
+   tu_cs_emit_regs(&sub_cs, HLSQ_INVALIDATE_CMD(A7XX,
+            .vs_state = true, .hs_state = true, .ds_state = true,
+            .gs_state = true, .fs_state = true, .gfx_ibo = true,
+            .cs_bindless = 0xff, .gfx_bindless = 0xff));
+   tu_cs_emit_regs(&sub_cs, HLSQ_CS_CNTL(A7XX,
+            .constlen = 4,
+            .enabled = true));
+   tu_cs_emit_regs(&sub_cs, A6XX_SP_CS_CONFIG(.enabled = true));
+   tu_cs_emit_regs(&sub_cs, A6XX_SP_CS_CTRL_REG0(
+            .threadmode = MULTI,
+            .threadsize = THREAD128,
+            .mergedregs = true));
+   tu_cs_emit_regs(&sub_cs, A6XX_SP_CS_UNKNOWN_A9B1(.shared_size = 1));
+   tu_cs_emit_regs(&sub_cs, HLSQ_CS_KERNEL_GROUP_X(A7XX, 1),
+                     HLSQ_CS_KERNEL_GROUP_Y(A7XX, 1),
+                     HLSQ_CS_KERNEL_GROUP_Z(A7XX, 1));
+   tu_cs_emit_regs(&sub_cs, A6XX_SP_CS_INSTRLEN(.sp_cs_instrlen = 1));
+   tu_cs_emit_regs(&sub_cs, A6XX_SP_CS_TEX_COUNT(0));
+   tu_cs_emit_regs(&sub_cs, A6XX_SP_CS_IBO_COUNT(0));
+   tu_cs_emit_regs(&sub_cs, A7XX_HLSQ_CS_CNTL_1(
+            .linearlocalidregid = regid(63, 0),
+            .threadsize = THREAD128,
+            .unk11 = true,
+            .unk22 = true,
+            .yalign = CS_YALIGN_1));
+   tu_cs_emit_regs(&sub_cs, A6XX_SP_CS_CNTL_0(
+            .wgidconstid = regid(51, 3),
+            .wgsizeconstid = regid(48, 0),
+            .wgoffsetconstid = regid(63, 0),
+            .localidregid = regid(63, 0)));
+   tu_cs_emit_regs(&sub_cs, SP_CS_CNTL_1(A7XX,
+            .linearlocalidregid = regid(63, 0),
+            .threadsize = THREAD128,
+            .unk15 = true));
+   tu_cs_emit_regs(&sub_cs, A7XX_SP_CS_UNKNOWN_A9BE(0));
+
+   tu_cs_emit_regs(&sub_cs,
+                  HLSQ_CS_NDRANGE_0(A7XX, .kerneldim = 3,
+                                          .localsizex = 255,
+                                          .localsizey = 1,
+                                          .localsizez = 1),
+                  HLSQ_CS_NDRANGE_1(A7XX, .globalsize_x = 3072),
+                  HLSQ_CS_NDRANGE_2(A7XX, .globaloff_x = 0),
+                  HLSQ_CS_NDRANGE_3(A7XX, .globalsize_y = 1),
+                  HLSQ_CS_NDRANGE_4(A7XX, .globaloff_y = 0),
+                  HLSQ_CS_NDRANGE_5(A7XX, .globalsize_z = 1),
+                  HLSQ_CS_NDRANGE_6(A7XX, .globaloff_z = 0));
+   tu_cs_emit_regs(&sub_cs, A7XX_HLSQ_CS_LOCAL_SIZE(
+            .localsizex = 255,
+            .localsizey = 0,
+            .localsizez = 0));
+   tu_cs_emit_pkt4(&sub_cs, REG_A6XX_SP_CS_OBJ_FIRST_EXEC_OFFSET, 3);
+   tu_cs_emit(&sub_cs, 0);
+   tu_cs_emit_qw(&sub_cs, shader_iova);
+
+   tu_cs_emit_pkt7(&sub_cs, CP_EXEC_CS, 4);
+   tu_cs_emit(&sub_cs, 0x00000000);
+   tu_cs_emit(&sub_cs, CP_EXEC_CS_1_NGROUPS_X(12));
+   tu_cs_emit(&sub_cs, CP_EXEC_CS_2_NGROUPS_Y(1));
+   tu_cs_emit(&sub_cs, CP_EXEC_CS_3_NGROUPS_Z(1));
+
+   *device->cmdbuf_start_a725_quirk_entry = tu_cs_end_sub_stream(cs, &sub_cs);
+
+   return VK_SUCCESS;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateDevice(VkPhysicalDevice physicalDevice,
                 const VkDeviceCreateInfo *pCreateInfo,
@@ -2315,6 +2421,12 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       }
    }
 
+   if (physical_device->info->a7xx.cmdbuf_start_a725_quirk) {
+         result = tu_init_cmdbuf_start_a725_quirk(device);
+         if (result != VK_SUCCESS)
+            goto fail_a725_workaround;
+   }
+
    tu_init_dbg_reg_stomper(device);
 
    /* Initialize a condition variable for timeline semaphore */
@@ -2376,6 +2488,12 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 
 fail_timeline_cond:
+   if (device->cmdbuf_start_a725_quirk_entry) {
+      free(device->cmdbuf_start_a725_quirk_entry);
+      tu_cs_finish(device->cmdbuf_start_a725_quirk_cs);
+      free(device->cmdbuf_start_a725_quirk_cs);
+   }
+fail_a725_workaround:
 fail_prepare_perfcntrs_pass_cs:
    free(device->perfcntrs_pass_cs_entries);
    tu_cs_finish(device->perfcntrs_pass_cs);
@@ -2460,6 +2578,12 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (device->dbg_renderpass_stomp_cs) {
       tu_cs_finish(device->dbg_renderpass_stomp_cs);
       free(device->dbg_renderpass_stomp_cs);
+   }
+
+   if (device->cmdbuf_start_a725_quirk_entry) {
+      free(device->cmdbuf_start_a725_quirk_entry);
+      tu_cs_finish(device->cmdbuf_start_a725_quirk_cs);
+      free(device->cmdbuf_start_a725_quirk_cs);
    }
 
    tu_autotune_fini(&device->autotune, device);

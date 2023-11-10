@@ -355,6 +355,9 @@ struct tu_device
    struct tu_cs *perfcntrs_pass_cs;
    struct tu_cs_entry *perfcntrs_pass_cs_entries;
 
+   struct tu_cs *cmdbuf_start_a725_quirk_cs;
+   struct tu_cs_entry *cmdbuf_start_a725_quirk_entry;
+
    struct util_dynarray dynamic_rendering_pending;
    VkCommandPool dynamic_rendering_pool;
    uint32_t dynamic_rendering_fence;

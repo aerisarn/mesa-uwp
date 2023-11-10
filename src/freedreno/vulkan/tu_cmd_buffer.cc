@@ -1274,6 +1274,15 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                       A6XX_TPL1_BICUBIC_WEIGHTS_TABLE_4(0x3f0243f0), );
    }
 
+   if (phys_dev->info->a7xx.cmdbuf_start_a725_quirk) {
+      tu_cs_reserve(cs, 3 + 4);
+      tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
+      tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(THREAD_MODE) |
+                     CP_COND_REG_EXEC_0_BR | CP_COND_REG_EXEC_0_LPAC);
+      tu_cs_emit(cs, RENDER_MODE_CP_COND_REG_EXEC_1_DWORDS(4));
+      tu_cs_emit_ib(cs, dev->cmdbuf_start_a725_quirk_entry);
+   }
+
    tu_cs_sanity_check(cs);
 }
 

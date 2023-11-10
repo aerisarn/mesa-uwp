@@ -201,6 +201,11 @@ struct fd_dev_info {
 
       /* Whether there is CP_EVENT_WRITE7::WRITE_SAMPLE_COUNT */
       bool has_event_write_sample_count;
+
+      /* Blob executes a special compute dispatch at the start of each
+       * command buffers. We copy this dispatch as is.
+       */
+      bool cmdbuf_start_a725_quirk;
    } a7xx;
 };
 

@@ -704,7 +704,9 @@ add_gpus([
         )
     ))
 
-a7xx_725 = A7XXProps()
+a7xx_725 = A7XXProps(
+        cmdbuf_start_a725_quirk = True,
+)
 
 a7xx_730 = A7XXProps()
 
