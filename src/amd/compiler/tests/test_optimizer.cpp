@@ -680,12 +680,12 @@ BEGIN_TEST(optimize.const_comparison_ordering)
    src0 = bld.vopc(aco_opcode::v_cmp_neq_f32, bld.def(bld.lm), inputs[0], inputs[0]);
    writeout(13, bld.sop2(aco_opcode::s_or_b64, bld.def(bld.lm), bld.def(s1, scc), src0, src1));
 
-   //! s2: %tmp14_0 = v_cmp_lt_f64 -1, %a
-   //! s2: %tmp14_1 = v_cmp_neq_f64 %a, %a
+   //! s2: %tmp14_0 = v_cmp_lt_f64 -1, %c
+   //! s2: %tmp14_1 = v_cmp_neq_f64 %c, %c
    //! s2: %res14, s1: %_:scc = s_or_b64 %tmp14_1, %tmp14_0
    //! p_unit_test 14, %res14
-   src1 = bld.vopc(aco_opcode::v_cmp_lt_f64, bld.def(bld.lm), Operand::c64(nan64), inputs[0]);
-   src0 = bld.vopc(aco_opcode::v_cmp_neq_f64, bld.def(bld.lm), inputs[0], inputs[0]);
+   src1 = bld.vopc(aco_opcode::v_cmp_lt_f64, bld.def(bld.lm), Operand::c64(nan64), inputs[2]);
+   src0 = bld.vopc(aco_opcode::v_cmp_neq_f64, bld.def(bld.lm), inputs[2], inputs[2]);
    writeout(14, bld.sop2(aco_opcode::s_or_b64, bld.def(bld.lm), bld.def(s1, scc), src0, src1));
 
    finish_opt_test();
