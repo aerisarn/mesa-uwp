@@ -567,14 +567,19 @@ load_frag_w(nir_builder *b, nir_def *bary)
                                       .dest_type = nir_type_float32);
 }
 
+struct lower_fs_input_ctx {
+   const struct nak_compiler *nak;
+   const struct nak_fs_key *fs_key;
+};
+
 static bool
 lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 {
-   const struct nak_fs_key *fs_key = data;
+   const struct lower_fs_input_ctx *ctx = data;
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_barycentric_pixel: {
-      if (!(fs_key && fs_key->force_sample_shading))
+      if (!(ctx->fs_key && ctx->fs_key->force_sample_shading))
          return false;
 
       intrin->intrinsic = nir_intrinsic_load_barycentric_sample;
@@ -663,7 +668,7 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 
    case nir_intrinsic_load_sample_mask_in: {
       if (!b->shader->info.fs.uses_sample_shading &&
-          !(fs_key && fs_key->force_sample_shading))
+          !(ctx->fs_key && ctx->fs_key->force_sample_shading))
          return false;
 
       b->cursor = nir_after_instr(&intrin->instr);
@@ -684,12 +689,18 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 
 static bool
 nak_nir_lower_fs_inputs(nir_shader *nir,
+                        const struct nak_compiler *nak,
                         const struct nak_fs_key *fs_key)
 {
    NIR_PASS_V(nir, nak_nir_lower_varyings, nir_var_shader_in);
+
+   const struct lower_fs_input_ctx fs_in_ctx = {
+      .nak = nak,
+      .fs_key = fs_key,
+   };
    NIR_PASS_V(nir, nir_shader_intrinsics_pass, lower_fs_input_intrin,
               nir_metadata_block_index | nir_metadata_dominance,
-              (void *)fs_key);
+              (void *)&fs_in_ctx);
 
    return true;
 }
@@ -850,7 +861,7 @@ nak_postprocess_nir(nir_shader *nir,
       break;
 
    case MESA_SHADER_FRAGMENT:
-      OPT(nir, nak_nir_lower_fs_inputs, fs_key);
+      OPT(nir, nak_nir_lower_fs_inputs, nak, fs_key);
       OPT(nir, nak_nir_lower_fs_outputs);
       break;
 
