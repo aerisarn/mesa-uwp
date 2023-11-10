@@ -2004,6 +2004,16 @@ blorp_update_clear_color(UNUSED struct blorp_batch *batch,
 #endif
 }
 
+static bool
+blorp_uses_bti_rt_writes(const struct blorp_batch *batch, const struct blorp_params *params)
+{
+   if (batch->flags & (BLORP_BATCH_USE_BLITTER | BLORP_BATCH_USE_COMPUTE))
+      return false;
+
+   /* HIZ clears use WM_HZ ops rather than a clear shader using RT writes. */
+   return params->hiz_op == ISL_AUX_OP_NONE;
+}
+
 static void
 blorp_exec_3d(struct blorp_batch *batch, const struct blorp_params *params)
 {
