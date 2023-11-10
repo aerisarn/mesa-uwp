@@ -896,13 +896,6 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
       goto fail;
    }
 
-   /* Wait Source Surface fence */
-   if (process_properties->src_surface_fence) {
-      struct pipe_fence_handle *input_fence = (struct pipe_fence_handle *)process_properties->src_surface_fence;
-      while (!vpeproc->ws->fence_wait(vpeproc->ws, input_fence, VPE_FENCE_TIMEOUT_NS))
-         SIVPE_INFO(vpeproc->log_level, "Wait source surface fence fail\n");
-   }
-
    /* Have to tell Command Submission context the command length wrote by libvpe */
    vpeproc->cs.current.cdw += (vpeproc->vpe_build_bufs->cmd_buf.size / 4);
 
@@ -963,8 +956,10 @@ static int si_vpe_processor_get_processor_fence(struct pipe_video_codec *codec,
    assert(codec);
 
    SIVPE_INFO(vpeproc->log_level, "Wait processor fence\n");
-   while (!vpeproc->ws->fence_wait(vpeproc->ws, fence, timeout))
+   if (!vpeproc->ws->fence_wait(vpeproc->ws, fence, timeout)) {
       SIVPE_DBG(vpeproc->log_level, "Wait processor fence fail\n");
+      return 0;
+   }
    SIVPE_INFO(vpeproc->log_level, "Wait processor fence success\n");
    return 1;
 }
