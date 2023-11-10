@@ -2018,6 +2018,9 @@ intrinsic("ald_nv", dest_comp=0, src_comp=[1, 1], bit_sizes=[32],
 # FLAGS is struct nak_nir_attr_io_flags
 intrinsic("ast_nv", src_comp=[0, 1, 1],
           indices=[BASE, RANGE_BASE, RANGE, FLAGS], flags=[])
+# src[] = { inv_w, offset }.
+intrinsic("ipa_nv", dest_comp=1, src_comp=[1, 1], bit_sizes=[32],
+          indices=[BASE, FLAGS], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # NVIDIA-specific Geometry Shader intrinsics.
 # These contain an additional integer source and destination with the primitive handle input/output.

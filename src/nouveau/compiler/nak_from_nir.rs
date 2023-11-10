@@ -1557,6 +1557,56 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 self.set_dst(&intrin.def, dst);
             }
+            nir_intrinsic_ipa_nv => {
+                let addr = u16::try_from(intrin.base()).unwrap();
+
+                let flags = intrin.flags();
+                let flags: nak_nir_ipa_flags =
+                    unsafe { std::mem::transmute_copy(&flags) };
+
+                let mode = match flags.interp_mode() {
+                    NAK_INTERP_MODE_PERSPECTIVE => PixelImap::Perspective,
+                    NAK_INTERP_MODE_SCREEN_LINEAR => PixelImap::ScreenLinear,
+                    NAK_INTERP_MODE_CONSTANT => PixelImap::Constant,
+                    _ => panic!("Unsupported interp mode"),
+                };
+
+                let freq = match flags.interp_freq() {
+                    NAK_INTERP_FREQ_PASS => InterpFreq::Pass,
+                    NAK_INTERP_FREQ_CONSTANT => InterpFreq::Constant,
+                    NAK_INTERP_FREQ_STATE => InterpFreq::State,
+                    _ => panic!("Invalid interp freq"),
+                };
+
+                let loc = match flags.interp_loc() {
+                    NAK_INTERP_LOC_DEFAULT => InterpLoc::Default,
+                    NAK_INTERP_LOC_CENTROID => InterpLoc::Centroid,
+                    NAK_INTERP_LOC_OFFSET => InterpLoc::Offset,
+                    _ => panic!("Invalid interp loc"),
+                };
+
+                let offset = if loc == InterpLoc::Offset {
+                    self.get_src(&srcs[1])
+                } else {
+                    0.into()
+                };
+
+                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
+                    panic!("OpIpa is only used for fragment shaders");
+                };
+
+                io.mark_attr_read(addr, mode);
+
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpIpa {
+                    dst: dst.into(),
+                    addr: addr,
+                    freq: freq,
+                    loc: loc,
+                    offset: offset,
+                });
+                self.set_dst(&intrin.def, dst);
+            }
             nir_intrinsic_isberd_nv => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpIsberd {
@@ -1594,99 +1644,6 @@ impl<'a> ShaderFromNir<'a> {
                     offset: offset,
                     access: access,
                 });
-                self.set_dst(&intrin.def, dst);
-            }
-            nir_intrinsic_load_input => {
-                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
-                    panic!("load_input is only used for fragment shaders");
-                };
-
-                assert!(intrin.def.bit_size() == 32);
-                let comps = intrin.def.num_components;
-
-                let addr = u16::try_from(intrin.base()).unwrap()
-                    + u16::try_from(srcs[0].as_uint().unwrap()).unwrap()
-                    + 4 * u16::try_from(intrin.component()).unwrap();
-
-                let dst = b.alloc_ssa(RegFile::GPR, comps);
-                for c in 0..comps {
-                    let c_addr = addr + 4 * u16::from(c);
-
-                    io.mark_attr_read(c_addr, PixelImap::Constant);
-
-                    b.push_op(OpIpa {
-                        dst: dst[usize::from(c)].into(),
-                        addr: c_addr,
-                        freq: InterpFreq::Constant,
-                        loc: InterpLoc::Default,
-                        offset: SrcRef::Zero.into(),
-                    });
-                }
-                self.set_dst(&intrin.def, dst);
-            }
-            nir_intrinsic_load_interpolated_input => {
-                let bary =
-                    srcs[0].as_def().parent_instr().as_intrinsic().unwrap();
-                let addr = u16::try_from(intrin.base()).unwrap()
-                    + u16::try_from(srcs[1].as_uint().unwrap()).unwrap()
-                    + u16::try_from(intrin.component()).unwrap() * 4;
-                let (freq, loc) = match bary.intrinsic {
-                    nir_intrinsic_load_barycentric_at_offset_nv => {
-                        (InterpFreq::Pass, InterpLoc::Offset)
-                    }
-                    nir_intrinsic_load_barycentric_centroid => {
-                        (InterpFreq::Pass, InterpLoc::Centroid)
-                    }
-                    nir_intrinsic_load_barycentric_pixel => {
-                        (InterpFreq::Pass, InterpLoc::Default)
-                    }
-                    nir_intrinsic_load_barycentric_sample => {
-                        (InterpFreq::Pass, InterpLoc::Centroid)
-                    }
-                    _ => panic!("Unsupported barycentric"),
-                };
-
-                let interp_mode = match bary.interp_mode() {
-                    INTERP_MODE_NONE | INTERP_MODE_SMOOTH => {
-                        PixelImap::Perspective
-                    }
-                    INTERP_MODE_FLAT => PixelImap::Constant,
-                    INTERP_MODE_NOPERSPECTIVE => PixelImap::ScreenLinear,
-                    INTERP_MODE_EXPLICIT => PixelImap::Unused,
-                    _ => panic!("Unsupported interp mode"),
-                };
-
-                let offset = match bary.intrinsic {
-                    nir_intrinsic_load_barycentric_at_offset_nv => {
-                        self.get_src(&bary.get_src(0))
-                    }
-                    nir_intrinsic_load_barycentric_centroid
-                    | nir_intrinsic_load_barycentric_pixel
-                    | nir_intrinsic_load_barycentric_sample => 0.into(),
-                    _ => panic!("Unsupported interp mode"),
-                };
-
-                assert!(intrin.def.bit_size() == 32);
-                let comps = intrin.def.num_components();
-                let dst = b.alloc_ssa(RegFile::GPR, comps);
-
-                let ShaderIoInfo::Fragment(io) = &mut self.info.io else {
-                    panic!("input interpolation is only allowed in fragment shaders");
-                };
-
-                for c in 0..comps {
-                    let c_addr = addr + 4 * u16::from(c);
-
-                    io.mark_attr_read(c_addr, interp_mode);
-
-                    b.push_op(OpIpa {
-                        dst: dst[usize::from(c)].into(),
-                        addr: c_addr,
-                        freq: freq,
-                        loc: loc,
-                        offset: offset,
-                    });
-                }
                 self.set_dst(&intrin.def, dst);
             }
             nir_intrinsic_load_sample_id => {

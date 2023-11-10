@@ -156,6 +156,31 @@ struct nak_nir_attr_io_flags {
 
 bool nak_nir_lower_vtg_io(nir_shader *nir, const struct nak_compiler *nak);
 
+enum nak_interp_mode {
+   NAK_INTERP_MODE_PERSPECTIVE,
+   NAK_INTERP_MODE_SCREEN_LINEAR,
+   NAK_INTERP_MODE_CONSTANT,
+};
+
+enum nak_interp_freq {
+    NAK_INTERP_FREQ_PASS,
+    NAK_INTERP_FREQ_CONSTANT,
+    NAK_INTERP_FREQ_STATE,
+};
+
+enum nak_interp_loc {
+   NAK_INTERP_LOC_DEFAULT,
+   NAK_INTERP_LOC_CENTROID,
+   NAK_INTERP_LOC_OFFSET,
+};
+
+struct nak_nir_ipa_flags {
+   enum nak_interp_mode interp_mode:2;
+   enum nak_interp_freq interp_freq:2;
+   enum nak_interp_loc interp_loc:2;
+   uint32_t pad:26;
+};
+
 enum nak_fs_out {
    NAK_FS_OUT_COLOR0 = 0x00,
    NAK_FS_OUT_COLOR1 = 0x10,
