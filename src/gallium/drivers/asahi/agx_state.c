@@ -4104,6 +4104,15 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
       cfg.unk_5 = true;
       cfg.unk_6 = true;
       cfg.unk_8 = true;
+      // cfg.unk_11 = true;
+      // cfg.unk_20 = true;
+      if (dev->params.num_clusters_total > 1) {
+         // cfg.unk_24 = true;
+         if (dev->params.gpu_generation == 13) {
+            cfg.unk_4 = true;
+            // cfg.unk_26 = true;
+         }
+      }
    }
    out += AGX_CDM_BARRIER_LENGTH;
 
