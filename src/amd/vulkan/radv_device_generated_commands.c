@@ -1123,11 +1123,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
             }
             nir_pop_if(&b, NULL);
 
-            nir_def *index_size = nir_load_var(&b, index_size_var);
             nir_def *max_index_count = nir_load_var(&b, max_index_count_var);
-
-            index_size = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, index_size_var), index_size);
-            max_index_count = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, max_index_count_var), max_index_count);
 
             dgc_emit_draw_indexed(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset),
                                   sequence_id, max_index_count, dev);
