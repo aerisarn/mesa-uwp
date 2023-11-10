@@ -63,7 +63,7 @@ radv_hash_shaders(unsigned char *hash, const struct radv_shader_stage *stages, u
 
       _mesa_sha1_update(&ctx, stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
    }
-   _mesa_sha1_update(&ctx, &flags, 4);
+   _mesa_sha1_update(&ctx, &flags, sizeof(flags));
    _mesa_sha1_final(&ctx, hash);
 }
 
@@ -120,7 +120,7 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
        VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR | VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR);
    _mesa_sha1_update(&ctx, &pipeline_flags, sizeof(pipeline_flags));
 
-   _mesa_sha1_update(&ctx, &flags, 4);
+   _mesa_sha1_update(&ctx, &flags, sizeof(flags));
    _mesa_sha1_final(&ctx, hash);
 }
 
