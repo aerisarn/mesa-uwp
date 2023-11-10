@@ -389,13 +389,13 @@ impl CopyPropPass {
                                         self.add_copy(
                                             dst,
                                             SrcType::Pred,
-                                            lop.srcs[i],
+                                            lop.srcs[s],
                                         );
                                     } else if op.lut == !LogicOp::SRC_MASKS[s] {
                                         self.add_copy(
                                             dst,
                                             SrcType::Pred,
-                                            lop.srcs[i].bnot(),
+                                            lop.srcs[s].bnot(),
                                         );
                                     }
                                 }
