@@ -2876,6 +2876,16 @@ agx_batch_init_state(struct agx_batch *batch)
 
    /* Emit state on the batch that we don't change and so don't dirty track */
    uint8_t *out = batch->vdm.current;
+
+   /* Barrier to enforce GPU-CPU coherency, in case this batch is back to back
+    * with another that caused stale data to be cached and the CPU wrote to it
+    * in the meantime.
+    */
+   agx_pack(out, VDM_BARRIER, cfg) {
+      cfg.usc_cache_inval = true;
+   }
+   out += AGX_VDM_BARRIER_LENGTH;
+
    struct agx_ppp_update ppp =
       agx_new_ppp_update(&batch->pool, (struct AGX_PPP_HEADER){
                                           .w_clamp = true,
@@ -3873,6 +3883,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       batch->resolve |= ctx->zs->store;
    }
 
+   batch->any_draws = true;
+
    /* When we approach the end of a command buffer, cycle it out for a new one.
     * We only need to do this once per draw as long as we conservatively
     * estimate the maximum bytes of VDM commands that this draw will emit.
@@ -3885,7 +3897,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
          AGX_VDM_STATE_VERTEX_SHADER_WORD_1_LENGTH +
          AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH +
          AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH + 4 /* padding */ +
-         ((!batch->any_draws) ? AGX_VDM_BARRIER_LENGTH : 0) +
          AGX_INDEX_LIST_LENGTH + AGX_INDEX_LIST_BUFFER_LO_LENGTH +
          AGX_INDEX_LIST_COUNT_LENGTH + AGX_INDEX_LIST_INSTANCES_LENGTH +
          AGX_INDEX_LIST_START_LENGTH + AGX_INDEX_LIST_BUFFER_SIZE_LENGTH);
@@ -3905,15 +3916,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       }
       out += AGX_VDM_STATE_RESTART_INDEX_LENGTH;
    }
-
-   if (!batch->any_draws) {
-      agx_pack(out, VDM_BARRIER, cfg) {
-         cfg.usc_cache_inval = true;
-      }
-      out += AGX_VDM_BARRIER_LENGTH;
-   }
-
-   batch->any_draws = true;
 
    agx_pack(out, INDEX_LIST, cfg) {
       cfg.primitive = prim;
