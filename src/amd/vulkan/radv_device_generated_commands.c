@@ -1537,7 +1537,6 @@ radv_prepare_dgc_compute(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCo
 {
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
    VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
-   VK_FROM_HANDLE(radv_buffer, stream_buffer, pGeneratedCommandsInfo->pStreams[0].buffer);
    struct radv_compute_pipeline *compute_pipeline = radv_pipeline_to_compute(pipeline);
    struct radv_shader *cs = radv_get_shader(compute_pipeline->base.shaders, MESA_SHADER_COMPUTE);
 
@@ -1555,13 +1554,9 @@ radv_prepare_dgc_compute(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCo
       dispatch_initiator |= S_00B800_CS_W32_EN(1);
    }
 
-   uint64_t stream_addr =
-      radv_buffer_get_va(stream_buffer->bo) + stream_buffer->offset + pGeneratedCommandsInfo->pStreams[0].offset;
-
    params->dispatch_params_offset = layout->dispatch_params_offset;
    params->dispatch_initiator = dispatch_initiator;
    params->is_dispatch = 1;
-   params->stream_addr = stream_addr;
 
    const struct radv_userdata_info *loc = radv_get_user_sgpr(cs, AC_UD_CS_GRID_SIZE);
    if (loc->sgpr_idx != -1) {
@@ -1575,6 +1570,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
    VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
    VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
+   VK_FROM_HANDLE(radv_buffer, stream_buffer, pGeneratedCommandsInfo->pStreams[0].buffer);
    struct radv_meta_saved_state saved_state;
    unsigned upload_offset, upload_size;
    struct radv_buffer token_buffer;
@@ -1589,13 +1585,19 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
    uint64_t upload_addr =
       radv_buffer_get_va(prep_buffer->bo) + prep_buffer->offset + pGeneratedCommandsInfo->preprocessOffset;
 
-   struct radv_dgc_params params = {.cmd_buf_stride = cmd_stride,
-                                    .cmd_buf_size = cmd_buf_size,
-                                    .upload_addr = (uint32_t)upload_addr,
-                                    .upload_stride = upload_stride,
-                                    .sequence_count = pGeneratedCommandsInfo->sequencesCount,
-                                    .stream_stride = layout->input_stride,
-                                    .use_preamble = radv_dgc_use_preamble(pGeneratedCommandsInfo)};
+   uint64_t stream_addr =
+      radv_buffer_get_va(stream_buffer->bo) + stream_buffer->offset + pGeneratedCommandsInfo->pStreams[0].offset;
+
+   struct radv_dgc_params params = {
+      .cmd_buf_stride = cmd_stride,
+      .cmd_buf_size = cmd_buf_size,
+      .upload_addr = (uint32_t)upload_addr,
+      .upload_stride = upload_stride,
+      .sequence_count = pGeneratedCommandsInfo->sequencesCount,
+      .stream_stride = layout->input_stride,
+      .use_preamble = radv_dgc_use_preamble(pGeneratedCommandsInfo),
+      .stream_addr = stream_addr,
+   };
 
    upload_size = pipeline->push_constant_size + 16 * pipeline->dynamic_offset_count +
                  sizeof(layout->push_constant_offsets) + ARRAY_SIZE(pipeline->shaders) * 12;
