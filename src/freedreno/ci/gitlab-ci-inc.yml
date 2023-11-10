@@ -4,7 +4,13 @@
     - !reference [.test, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - changes: &freedreno_core_file_list
-        - src/freedreno/ci/**/*
+        - src/freedreno/ci/gitlab-ci.yml
+        - src/freedreno/ci/gitlab-ci-inc.yml
+        - src/freedreno/ci/deqp-$DEQP_SUITE.toml
+        - src/freedreno/ci/$GPU_VERSION-fails.txt
+        - src/freedreno/ci/$GPU_VERSION-flakes.txt
+        - src/freedreno/ci/$GPU_VERSION-skips.txt
+        - src/freedreno/ci/$PIGLIT_TRACES_FILE
         - src/freedreno/common/**/*
         - src/freedreno/drm/**/*
         - src/freedreno/fdl/**/*
