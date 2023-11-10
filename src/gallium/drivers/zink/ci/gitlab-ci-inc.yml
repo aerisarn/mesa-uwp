@@ -5,7 +5,14 @@
     - changes: &zink_files_list
         - src/gallium/drivers/zink/*
         - src/gallium/drivers/zink/nir_to_spirv/*
-        - src/gallium/drivers/zink/ci/*
+        - src/gallium/drivers/zink/ci/gitlab-ci.yml
+        - src/gallium/drivers/zink/ci/gitlab-ci-inc.yml
+        - src/gallium/drivers/zink/ci/deqp-$DEQP_SUITE.toml
+        - src/gallium/drivers/zink/ci/$GPU_VERSION-fails.txt
+        - src/gallium/drivers/zink/ci/$GPU_VERSION-flakes.txt
+        - src/gallium/drivers/zink/ci/$GPU_VERSION-skips.txt
+        - src/gallium/drivers/zink/ci/$GPU_VERSION-validation-settings.txt
+        - src/gallium/drivers/zink/ci/$PIGLIT_TRACES_FILE
       when: on_success
 
 .zink-common-manual-rules:

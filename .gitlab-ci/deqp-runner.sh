@@ -132,6 +132,9 @@ if [ -n "$VK_DRIVER" ] && [ -z "$DEQP_SUITE" ]; then
 fi
 
 # Set the path to VK validation layer settings (in case it ends up getting loaded)
+# Note: If you change the format of this filename, look through the rest of the
+# tree for other places that need to be kept in sync (e.g.
+# src/gallium/drivers/zink/ci/gitlab-ci-inc.yml)
 export VK_LAYER_SETTINGS_PATH=$INSTALL/$GPU_VERSION-validation-settings.txt
 
 report_load() {
@@ -186,7 +189,7 @@ else
     # If you change the format of the suite toml filenames or the
     # $GPU_VERSION-{fails,flakes,skips}.txt filenames, look through the rest
     # of the tree for other places that need to be kept in sync (e.g.
-    # src/amd/ci/gitlab-ci-inc.yml)
+    # src/**/ci/gitlab-ci*.yml)
     deqp-runner \
         suite \
         --suite $INSTALL/deqp-$DEQP_SUITE.toml \
