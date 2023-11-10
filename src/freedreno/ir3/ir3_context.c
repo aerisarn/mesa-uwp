@@ -91,6 +91,21 @@ ir3_context_init(struct ir3_compiler *compiler, struct ir3_shader *shader,
    bool needs_late_alg = false;
    NIR_PASS(progress, ctx->s, nir_lower_locals_to_regs, 1);
 
+   if (progress) {
+      bool regs_progress = false;
+
+      /* Split 64b registers into two 32b ones. */
+      NIR_PASS(regs_progress, ctx->s, ir3_nir_lower_64b_regs);
+
+      if (regs_progress) {
+         /* After splitting registers, we might still have some 64b vecs. Run
+          * some passes to get rid of them.
+          */
+         NIR_PASS_V(ctx->s, nir_lower_alu_to_scalar, NULL, NULL);
+         NIR_PASS_V(ctx->s, nir_copy_prop);
+      }
+   }
+
    /* we could need cleanup after lower_locals_to_regs */
    while (progress) {
       progress = false;

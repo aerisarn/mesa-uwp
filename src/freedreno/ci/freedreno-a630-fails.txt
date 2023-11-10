@@ -109,15 +109,9 @@ spec@arb_shader_image_load_store@qualifiers@r8/strict layout qualifiers/permissi
 # ir3_nir_lower_tess.c:251: lower_block_to_explicit_output: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed.
 spec@arb_tessellation_shader@execution@tcs-input-read-mat,Crash
 
-# Some 64b not getting lowered to 32b:
-spec@arb_tessellation_shader@execution@variable-indexing@vs-output-array-dvec4-index-wr-before-tcs,Crash
-
 spec@arb_texture_rectangle@1-1-linear-texture,Fail
 
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
-
-# fails unrelated to GL_ARB_enhanced_layouts
-spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Crash
 
 # fails on gen1 (a618/a630) with both fd and zink, but passes on gen4..
 # maybe gen1 sqe doesn't handle the count==0 case?
