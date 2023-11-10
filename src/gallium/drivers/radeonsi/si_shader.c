@@ -909,7 +909,8 @@ static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shade
       return false;
 
    unsigned rx_size = ac_align_shader_binary_for_prefetch(&sscreen->info, binary.rx_size);
-   bool dma_upload = !(sscreen->debug_flags & DBG(NO_DMA_SHADERS));
+   bool dma_upload = !(sscreen->debug_flags & DBG(NO_DMA_SHADERS)) &&
+                     sscreen->info.has_dedicated_vram;
 
    si_resource_reference(&shader->bo, NULL);
    shader->bo = si_aligned_buffer_create(
