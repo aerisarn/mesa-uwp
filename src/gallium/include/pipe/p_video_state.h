@@ -634,6 +634,39 @@ struct pipe_h264_enc_picture_desc
    enum pipe_video_feedback_metadata_type requested_metadata;
 };
 
+struct pipe_h265_enc_sublayer_hrd_params
+{
+    uint32_t bit_rate_value_minus1[32];
+    uint32_t cpb_size_value_minus1[32];
+    uint32_t cpb_size_du_value_minus1[32];
+    uint32_t bit_rate_du_value_minus1[32];
+    uint32_t cbr_flag[32];
+};
+
+struct pipe_h265_enc_hrd_params
+{
+   uint32_t nal_hrd_parameters_present_flag;
+   uint32_t vcl_hrd_parameters_present_flag;
+   uint32_t sub_pic_hrd_params_present_flag;
+   uint32_t tick_divisor_minus2;
+   uint32_t du_cpb_removal_delay_increment_length_minus1;
+   uint32_t sub_pic_cpb_params_in_pic_timing_sei_flag;
+   uint32_t dpb_output_delay_du_length_minus1;
+   uint32_t bit_rate_scale;
+   uint32_t cpb_rate_scale;
+   uint32_t cpb_size_du_scale;
+   uint32_t initial_cpb_removal_delay_length_minus1;
+   uint32_t au_cpb_removal_delay_length_minus1;
+   uint32_t dpb_output_delay_length_minus1;
+   uint32_t fixed_pic_rate_general_flag[7];
+   uint32_t fixed_pic_rate_within_cvs_flag[7];
+   uint32_t elemental_duration_in_tc_minus1[7];
+   uint32_t low_delay_hrd_flag[7];
+   uint32_t cpb_cnt_minus1[7];
+   struct pipe_h265_enc_sublayer_hrd_params nal_hrd_parameters[7];
+   struct pipe_h265_enc_sublayer_hrd_params vlc_hrd_parameters[7];
+};
+
 struct pipe_h265_enc_seq_param
 {
    uint8_t  general_profile_idc;
@@ -669,6 +702,18 @@ struct pipe_h265_enc_seq_param
       uint32_t video_signal_type_present_flag: 1;
       uint32_t colour_description_present_flag: 1;
       uint32_t chroma_loc_info_present_flag: 1;
+      uint32_t overscan_info_present_flag: 1;
+      uint32_t overscan_appropriate_flag: 1;
+      uint32_t neutral_chroma_indication_flag: 1;
+      uint32_t field_seq_flag: 1;
+      uint32_t frame_field_info_present_flag: 1;
+      uint32_t default_display_window_flag: 1;
+      uint32_t poc_proportional_to_timing_flag: 1;
+      uint32_t hrd_parameters_present_flag: 1;
+      uint32_t bitstream_restriction_flag: 1;
+      uint32_t tiles_fixed_structure_flag: 1;
+      uint32_t motion_vectors_over_pic_boundaries_flag: 1;
+      uint32_t restricted_ref_pic_lists_flag: 1;
    } vui_flags;
    uint32_t aspect_ratio_idc;
    uint32_t sar_width;
@@ -682,6 +727,17 @@ struct pipe_h265_enc_seq_param
    uint32_t matrix_coefficients;
    uint32_t chroma_sample_loc_type_top_field;
    uint32_t chroma_sample_loc_type_bottom_field;
+   uint32_t def_disp_win_left_offset;
+   uint32_t def_disp_win_right_offset;
+   uint32_t def_disp_win_top_offset;
+   uint32_t def_disp_win_bottom_offset;
+   uint32_t num_ticks_poc_diff_one_minus1;
+   uint32_t min_spatial_segmentation_idc;
+   uint32_t max_bytes_per_pic_denom;
+   uint32_t max_bits_per_min_cu_denom;
+   uint32_t log2_max_mv_length_horizontal;
+   uint32_t log2_max_mv_length_vertical;
+   struct pipe_h265_enc_hrd_params hrd_parameters;
 };
 
 struct pipe_h265_enc_pic_param
