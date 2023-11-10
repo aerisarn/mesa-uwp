@@ -81,8 +81,13 @@ radv_get_sequence_size_graphics(const struct radv_indirect_command_layout *layou
    }
 
    if (layout->indexed) {
-      /* userdata writes + instance count + indexed draw */
-      *cmd_size += (5 + 2 + 5) * 4;
+      if (layout->binds_index_buffer) {
+         /* userdata writes + instance count + indexed draw */
+         *cmd_size += (5 + 2 + 5) * 4;
+      } else {
+         /* PKT3_SET_BASE + PKT3_DRAW_{INDEX}_INDIRECT_MULTI */
+         *cmd_size += (4 + (pipeline->uses_drawid ? 10 : 5)) * 4;
+      }
    } else {
       /* userdata writes + instance count + non-indexed draw */
       *cmd_size += (5 + 2 + 3) * 4;
@@ -188,7 +193,7 @@ struct radv_dgc_params {
    /* draw info */
    uint16_t draw_indexed;
    uint16_t draw_params_offset;
-   uint16_t base_index_size;
+   uint16_t binds_index_buffer;
    uint16_t vtx_base_sgpr;
    uint32_t max_index_count;
 
@@ -197,7 +202,7 @@ struct radv_dgc_params {
    uint16_t dispatch_params_offset;
    uint16_t grid_base_sgpr;
 
-   /* bind index buffer info. Valid if base_index_size == 0 && draw_indexed */
+   /* bind index buffer info. Valid if binds_index_buffer == true && draw_indexed */
    uint16_t index_buffer_offset;
 
    uint8_t vbo_cnt;
@@ -467,6 +472,88 @@ dgc_emit_grid_size_pointer(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *grid_
    dgc_emit(b, cs, nir_vec(b, values, 4));
 }
 
+static void
+dgc_emit_pkt3_set_base(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *va)
+{
+   nir_def *va_lo = nir_unpack_64_2x32_split_x(b, va);
+   nir_def *va_hi = nir_unpack_64_2x32_split_y(b, va);
+
+   nir_def *values[4] = {nir_imm_int(b, PKT3(PKT3_SET_BASE, 2, false)), nir_imm_int(b, 1), va_lo, va_hi};
+
+   dgc_emit(b, cs, nir_vec(b, values, 4));
+}
+
+static void
+dgc_emit_pkt3_draw_indirect(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *vtx_base_sgpr, bool indexed)
+{
+   const unsigned di_src_sel = indexed ? V_0287F0_DI_SRC_SEL_DMA : V_0287F0_DI_SRC_SEL_AUTO_INDEX;
+
+   vtx_base_sgpr = nir_iand_imm(b, nir_u2u32(b, vtx_base_sgpr), 0x3FFF);
+
+   nir_def *has_drawid = nir_test_mask(b, vtx_base_sgpr, DGC_USES_DRAWID);
+   nir_def *has_baseinstance = nir_test_mask(b, vtx_base_sgpr, DGC_USES_BASEINSTANCE);
+
+   /* vertex_offset_reg = (base_reg - SI_SH_REG_OFFSET) >> 2 */
+   nir_def *vertex_offset_reg = vtx_base_sgpr;
+
+   /* start_instance_reg = (base_reg + (draw_id_enable ? 8 : 4) - SI_SH_REG_OFFSET) >> 2 */
+   nir_def *start_instance_offset = nir_bcsel(b, has_drawid, nir_imm_int(b, 2), nir_imm_int(b, 1));
+   nir_def *start_instance_reg = nir_iadd(b, vtx_base_sgpr, start_instance_offset);
+
+   /* draw_id_reg = (base_reg + 4 - SI_SH_REG_OFFSET) >> 2 */
+   nir_def *draw_id_reg = nir_iadd(b, vtx_base_sgpr, nir_imm_int(b, 1));
+
+   nir_if *if_drawid = nir_push_if(b, has_drawid);
+   {
+      const unsigned pkt3_op = indexed ? PKT3_DRAW_INDEX_INDIRECT_MULTI : PKT3_DRAW_INDIRECT_MULTI;
+
+      nir_def *values[8];
+      values[0] = nir_imm_int(b, PKT3(pkt3_op, 8, false));
+      values[1] = nir_imm_int(b, 0);
+      values[2] = vertex_offset_reg;
+      values[3] = nir_bcsel(b, has_baseinstance, start_instance_reg, nir_imm_int(b, 0));
+      values[4] = nir_ior(b, draw_id_reg, nir_imm_int(b, S_2C3_DRAW_INDEX_ENABLE(1)));
+      values[5] = nir_imm_int(b, 1); /* draw count */
+      values[6] = nir_imm_int(b, 0); /* count va low */
+      values[7] = nir_imm_int(b, 0); /* count va high */
+
+      dgc_emit(b, cs, nir_vec(b, values, 8));
+
+      values[0] = nir_imm_int(b, 0); /* stride */
+      values[1] = nir_imm_int(b, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
+
+      dgc_emit(b, cs, nir_vec(b, values, 2));
+   }
+   nir_push_else(b, if_drawid);
+   {
+      const unsigned pkt3_op = indexed ? PKT3_DRAW_INDEX_INDIRECT : PKT3_DRAW_INDIRECT;
+
+      nir_def *values[5];
+      values[0] = nir_imm_int(b, PKT3(pkt3_op, 3, false));
+      values[1] = nir_imm_int(b, 0);
+      values[2] = vertex_offset_reg;
+      values[3] = nir_bcsel(b, has_baseinstance, start_instance_reg, nir_imm_int(b, 0));
+      values[4] = nir_imm_int(b, di_src_sel);
+
+      dgc_emit(b, cs, nir_vec(b, values, 5));
+   }
+   nir_pop_if(b, if_drawid);
+}
+
+static void
+dgc_emit_draw_indirect(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_base, nir_def *draw_params_offset,
+                       bool indexed)
+{
+   nir_def *vtx_base_sgpr = load_param16(b, vtx_base_sgpr);
+   nir_def *stream_offset = nir_iadd(b, draw_params_offset, stream_base);
+
+   nir_def *stream_addr = load_param64(b, stream_addr);
+   nir_def *va = nir_iadd(b, stream_addr, nir_u2u64(b, stream_offset));
+
+   dgc_emit_pkt3_set_base(b, cs, va);
+   dgc_emit_pkt3_draw_indirect(b, cs, vtx_base_sgpr, indexed);
+}
+
 static nir_def *
 dgc_cmd_buf_size(nir_builder *b, nir_def *sequence_count, const struct radv_device *device)
 {
@@ -663,7 +750,7 @@ dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf
 static void
 dgc_emit_index_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf, nir_def *stream_base,
                       nir_def *index_buffer_offset, nir_def *ibo_type_32, nir_def *ibo_type_8,
-                      nir_variable *index_size_var, nir_variable *max_index_count_var, const struct radv_device *device)
+                      nir_variable *max_index_count_var, const struct radv_device *device)
 {
    nir_def *index_stream_offset = nir_iadd(b, index_buffer_offset, stream_base);
    nir_def *data = nir_load_ssbo(b, 4, 32, stream_buf, index_stream_offset);
@@ -674,7 +761,6 @@ dgc_emit_index_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf
    index_type = nir_bcsel(b, nir_ieq(b, vk_index_type, ibo_type_8), nir_imm_int(b, V_028A7C_VGT_INDEX_8), index_type);
 
    nir_def *index_size = nir_iand_imm(b, nir_ushr(b, nir_imm_int(b, 0x142), nir_imul_imm(b, index_type, 4)), 0xf);
-   nir_store_var(b, index_size_var, index_size, 0x1);
 
    nir_def *max_index_count = nir_udiv(b, nir_channel(b, data, 2), index_size);
    nir_store_var(b, max_index_count_var, max_index_count, 0x1);
@@ -1107,26 +1193,31 @@ build_dgc_prepare_shader(struct radv_device *dev)
          }
          nir_push_else(&b, NULL);
          {
-            nir_variable *index_size_var =
-               nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "index_size");
-            nir_store_var(&b, index_size_var, load_param16(&b, base_index_size), 0x1);
-            nir_variable *max_index_count_var =
-               nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "max_index_count");
-            nir_store_var(&b, max_index_count_var, load_param32(&b, max_index_count), 0x1);
-
-            nir_def *bind_index_buffer = nir_ieq_imm(&b, nir_load_var(&b, index_size_var), 0);
-            nir_push_if(&b, bind_index_buffer);
+            /* Emit direct draws when index buffers are also updated by DGC. Otherwise, emit
+             * indirect draws to remove the dependency on the cmdbuf state in order to enable
+             * preprocessing.
+             */
+            nir_def *binds_index_buffer = nir_ine_imm(&b, load_param16(&b, binds_index_buffer), 0);
+            nir_push_if(&b, binds_index_buffer);
             {
+               nir_variable *max_index_count_var =
+                  nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "max_index_count");
+
                dgc_emit_index_buffer(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, index_buffer_offset),
-                                     load_param32(&b, ibo_type_32), load_param32(&b, ibo_type_8), index_size_var,
-                                     max_index_count_var, dev);
+                                     load_param32(&b, ibo_type_32), load_param32(&b, ibo_type_8), max_index_count_var,
+                                     dev);
+
+               nir_def *max_index_count = nir_load_var(&b, max_index_count_var);
+
+               dgc_emit_draw_indexed(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset),
+                                     sequence_id, max_index_count, dev);
             }
+            nir_push_else(&b, NULL);
+            {
+               dgc_emit_draw_indirect(&b, &cmd_buf, stream_base, load_param16(&b, draw_params_offset), true);
+            }
+
             nir_pop_if(&b, NULL);
-
-            nir_def *max_index_count = nir_load_var(&b, max_index_count_var);
-
-            dgc_emit_draw_indexed(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset),
-                                  sequence_id, max_index_count, dev);
          }
          nir_pop_if(&b, NULL);
       }
@@ -1496,7 +1587,7 @@ radv_prepare_dgc_graphics(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedC
 
    params->draw_indexed = layout->indexed;
    params->draw_params_offset = layout->draw_params_offset;
-   params->base_index_size = layout->binds_index_buffer ? 0 : radv_get_vgt_index_size(cmd_buffer->state.index_type);
+   params->binds_index_buffer = layout->binds_index_buffer;
    params->vtx_base_sgpr = vtx_base_sgpr;
    params->max_index_count = cmd_buffer->state.max_index_count;
    params->index_buffer_offset = layout->index_buffer_offset;
