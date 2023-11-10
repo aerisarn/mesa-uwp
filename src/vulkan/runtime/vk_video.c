@@ -1531,7 +1531,7 @@ vk_video_encode_h264_pps(StdVideoH264PictureParameterSet *pps,
 
    vl_bitstream_encoder_clear(&enc, data_ptr, data_size, size_limit);
 
-   emit_nalu_header(&enc, 3, H264_NAL_SPS);
+   emit_nalu_header(&enc, 3, H264_NAL_PPS);
 
    vl_bitstream_exp_golomb_ue(&enc, pps->pic_parameter_set_id);
    vl_bitstream_exp_golomb_ue(&enc, pps->seq_parameter_set_id);
