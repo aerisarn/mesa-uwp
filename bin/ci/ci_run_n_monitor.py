@@ -102,6 +102,7 @@ def monitor_pipeline(
     target_id = None
 
     while True:
+        deps_failed = []
         to_cancel = []
         for job in pipeline.jobs.list(all=True, sort="desc"):
             # target jobs
@@ -130,6 +131,8 @@ def monitor_pipeline(
             # run dependencies and cancel the rest
             if job.name in dependencies:
                 enable_job(project, job, "dep", True)
+                if job.status == "failed":
+                    deps_failed.append(job.name)
             else:
                 to_cancel.append(job)
 
@@ -162,6 +165,18 @@ def monitor_pipeline(
             {"failed"}.intersection(target_statuses.values())
             and not set(["running", "pending"]).intersection(target_statuses.values())
         ):
+            return None, 1
+
+        if (
+            {"skipped"}.intersection(target_statuses.values())
+            and not {"running", "pending"}.intersection(target_statuses.values())
+        ):
+            print(
+                Fore.RED,
+                "Target in skipped state, aborting. Failed dependencies:",
+                deps_failed,
+                Fore.RESET,
+            )
             return None, 1
 
         if {"success", "manual"}.issuperset(target_statuses.values()):
