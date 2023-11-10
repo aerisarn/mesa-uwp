@@ -175,6 +175,7 @@ enum nak_interp_mode {
 
 enum nak_interp_freq {
     NAK_INTERP_FREQ_PASS,
+    NAK_INTERP_FREQ_PASS_MUL_W,
     NAK_INTERP_FREQ_CONSTANT,
     NAK_INTERP_FREQ_STATE,
 };

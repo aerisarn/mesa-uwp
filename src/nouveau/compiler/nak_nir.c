@@ -610,8 +610,30 @@ load_interpolated_input(nir_builder *b, unsigned num_components, uint32_t addr,
             comps[c] = nir_fmul(b, comps[c], inv_w);
       }
       return nir_vec(b, comps, num_components);
+   } else if (nak->sm >= 50) {
+      struct nak_nir_ipa_flags flags = {
+         .interp_mode = interp_mode,
+         .interp_freq = NAK_INTERP_FREQ_PASS,
+         .interp_loc = interp_loc,
+      };
+
+      if (interp_mode == NAK_INTERP_MODE_PERSPECTIVE)
+         flags.interp_freq = NAK_INTERP_FREQ_PASS_MUL_W;
+      else
+         inv_w = nir_imm_float(b, 0);
+
+      uint32_t flags_u32;
+      memcpy(&flags_u32, &flags, sizeof(flags_u32));
+
+      nir_def *comps[NIR_MAX_VEC_COMPONENTS];
+      for (unsigned c = 0; c < num_components; c++) {
+         comps[c] = nir_ipa_nv(b, inv_w, offset,
+                               .base = addr + c * 4,
+                               .flags = flags_u32);
+      }
+      return nir_vec(b, comps, num_components);
    } else {
-      unreachable("Figure out input interpolation on Maxwell");
+      unreachable("Figure out input interpolation on Kepler");
    }
 }
 

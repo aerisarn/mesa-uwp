@@ -1366,39 +1366,33 @@ impl SM50Instr {
     }
 
     fn encode_ipa(&mut self, op: &OpIpa) {
-        assert!(op.offset.is_reg_or_zero());
-
         self.set_opcode(0xe000);
 
         self.set_dst(op.dst);
+        self.set_reg_src(8..16, 0.into()); // addr
+        self.set_reg_src(20..28, op.inv_w);
+        self.set_reg_src(39..47, op.offset);
 
         assert!(op.addr % 4 == 0);
-
-        self.set_reg_src(20..28, op.offset);
-
-        let addr_reg = Src::new_zero();
-
-        self.set_reg_src(8..16, addr_reg);
         self.set_field(28..38, op.addr);
-        self.set_bit(38, !addr_reg.is_zero()); /* IDX */
-
-        /* TODO: What is this for? */
-        self.set_pred_dst(47..50, Dst::None);
-
-        self.set_field(
-            54..56,
-            match op.freq {
-                InterpFreq::Pass => 0_u8,
-                InterpFreq::State => 1_u8,
-                InterpFreq::Constant => 2_u8,
-            },
-        );
+        self.set_bit(38, false); // .IDX
+        self.set_pred_dst(47..50, Dst::None); // TODO: What is this for?
+        self.set_bit(51, false); // .SAT
         self.set_field(
             52..54,
             match op.loc {
                 InterpLoc::Default => 0_u8,
                 InterpLoc::Centroid => 1_u8,
                 InterpLoc::Offset => 2_u8,
+            },
+        );
+        self.set_field(
+            54..56,
+            match op.freq {
+                InterpFreq::Pass => 0_u8,
+                InterpFreq::PassMulW => 1_u8,
+                InterpFreq::Constant => 2_u8,
+                InterpFreq::State => 3_u8,
             },
         );
     }

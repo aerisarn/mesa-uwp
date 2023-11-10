@@ -1633,9 +1633,13 @@ impl SM70Instr {
                 InterpFreq::Pass => 0_u8,
                 InterpFreq::Constant => 1_u8,
                 InterpFreq::State => 2_u8,
+                InterpFreq::PassMulW => {
+                    panic!("InterpFreq::PassMulW is invalid on SM70+");
+                }
             },
         );
 
+        assert!(op.inv_w.is_zero());
         self.set_reg_src(32..40, op.offset);
 
         /* TODO: What is this for? */

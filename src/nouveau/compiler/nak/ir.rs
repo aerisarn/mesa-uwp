@@ -2084,6 +2084,7 @@ impl fmt::Display for AtomOp {
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum InterpFreq {
     Pass,
+    PassMulW,
     Constant,
     State,
 }
@@ -3618,6 +3619,7 @@ pub struct OpIpa {
     pub addr: u16,
     pub freq: InterpFreq,
     pub loc: InterpLoc,
+    pub inv_w: Src,
     pub offset: Src,
 }
 
@@ -3625,7 +3627,8 @@ impl DisplayOp for OpIpa {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ipa")?;
         match self.freq {
-            InterpFreq::Pass => (),
+            InterpFreq::Pass => write!(f, ".pass")?,
+            InterpFreq::PassMulW => write!(f, ".pass_mul_w")?,
             InterpFreq::Constant => write!(f, ".constant")?,
             InterpFreq::State => write!(f, ".state")?,
         }
@@ -3635,7 +3638,7 @@ impl DisplayOp for OpIpa {
             InterpLoc::Offset => write!(f, ".offset")?,
         }
 
-        write!(f, " {} a[{:#x}]", self.dst, self.addr)?;
+        write!(f, " {} a[{:#x}] {}", self.dst, self.addr, self.inv_w)?;
         if self.loc == InterpLoc::Offset {
             write!(f, " {}", self.offset)?;
         }

@@ -1896,6 +1896,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 let freq = match flags.interp_freq() {
                     NAK_INTERP_FREQ_PASS => InterpFreq::Pass,
+                    NAK_INTERP_FREQ_PASS_MUL_W => InterpFreq::PassMulW,
                     NAK_INTERP_FREQ_CONSTANT => InterpFreq::Constant,
                     NAK_INTERP_FREQ_STATE => InterpFreq::State,
                     _ => panic!("Invalid interp freq"),
@@ -1906,6 +1907,12 @@ impl<'a> ShaderFromNir<'a> {
                     NAK_INTERP_LOC_CENTROID => InterpLoc::Centroid,
                     NAK_INTERP_LOC_OFFSET => InterpLoc::Offset,
                     _ => panic!("Invalid interp loc"),
+                };
+
+                let inv_w = if freq == InterpFreq::PassMulW {
+                    self.get_src(&srcs[0])
+                } else {
+                    0.into()
                 };
 
                 let offset = if loc == InterpLoc::Offset {
@@ -1926,6 +1933,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr: addr,
                     freq: freq,
                     loc: loc,
+                    inv_w: inv_w,
                     offset: offset,
                 });
                 self.set_dst(&intrin.def, dst);
