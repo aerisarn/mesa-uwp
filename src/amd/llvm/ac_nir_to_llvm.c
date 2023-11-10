@@ -906,7 +906,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    case nir_op_f2i8:
    case nir_op_f2i16:
-   case nir_op_f2imp:
    case nir_op_f2i32:
    case nir_op_f2i64:
       src[0] = ac_to_float(&ctx->ac, src[0]);
@@ -914,27 +913,23 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    case nir_op_f2u8:
    case nir_op_f2u16:
-   case nir_op_f2ump:
    case nir_op_f2u32:
    case nir_op_f2u64:
       src[0] = ac_to_float(&ctx->ac, src[0]);
       result = LLVMBuildFPToUI(ctx->ac.builder, src[0], def_type, "");
       break;
    case nir_op_i2f16:
-   case nir_op_i2fmp:
    case nir_op_i2f32:
    case nir_op_i2f64:
       result = LLVMBuildSIToFP(ctx->ac.builder, src[0], ac_to_float_type(&ctx->ac, def_type), "");
       break;
    case nir_op_u2f16:
-   case nir_op_u2fmp:
    case nir_op_u2f32:
    case nir_op_u2f64:
       result = LLVMBuildUIToFP(ctx->ac.builder, src[0], ac_to_float_type(&ctx->ac, def_type), "");
       break;
    case nir_op_f2f16_rtz:
    case nir_op_f2f16:
-   case nir_op_f2fmp:
       src[0] = ac_to_float(&ctx->ac, src[0]);
 
       /* For OpenGL, we want fast packing with v_cvt_pkrtz_f16, but if we use it,
@@ -993,7 +988,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    case nir_op_i2i8:
    case nir_op_i2i16:
-   case nir_op_i2imp:
    case nir_op_i2i32:
    case nir_op_i2i64:
       if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])) < ac_get_elem_bits(&ctx->ac, def_type))
