@@ -58,6 +58,7 @@ struct d3d12_query_impl {
 
 struct d3d12_query {
    struct threaded_query base;
+   struct pipe_reference reference;
    enum pipe_query_type type;
 
    struct d3d12_query_impl subqueries[MAX_SUBQUERIES];
@@ -74,5 +75,8 @@ struct d3d12_query {
    */
    uint64_t fence_value;
 };
+
+void
+d3d12_destroy_query(d3d12_query *query);
 
 #endif

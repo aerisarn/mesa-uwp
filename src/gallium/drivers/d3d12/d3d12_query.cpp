@@ -114,6 +114,7 @@ d3d12_create_query(struct pipe_context *pctx,
    if (!query)
       return NULL;
 
+   pipe_reference_init(&query->reference, 1);
    query->type = (pipe_query_type)query_type;
    for (unsigned i = 0; i < num_sub_queries(query_type); ++i) {
       assert(i < MAX_SUBQUERIES);
@@ -160,11 +161,9 @@ d3d12_create_query(struct pipe_context *pctx,
    return (struct pipe_query *)query;
 }
 
-static void
-d3d12_destroy_query(struct pipe_context *pctx,
-                    struct pipe_query *q)
+void
+d3d12_destroy_query(struct d3d12_query *query)
 {
-   struct d3d12_query *query = (struct d3d12_query *)q;
    pipe_resource *predicate = &query->predicate->base.b;
    pipe_resource_reference(&predicate, NULL);
    for (unsigned i = 0; i < num_sub_queries(query->type); ++i) {
@@ -172,6 +171,16 @@ d3d12_destroy_query(struct pipe_context *pctx,
       pipe_resource_reference(&query->subqueries[i].buffer, NULL);
    }
    FREE(query);
+}
+
+static void
+d3d12_release_query(struct pipe_context *pctx,
+                    struct pipe_query *q)
+{
+   struct d3d12_query *query = (struct d3d12_query *)q;
+   if (pipe_reference(&query->reference, nullptr)) {
+      d3d12_destroy_query(query);
+   }
 }
 
 static bool
@@ -498,7 +507,7 @@ d3d12_end_query(struct pipe_context *pctx,
 
    // Assign the sentinel and track now that the query is ended
    query->fence_value = UINT64_MAX;
-   util_dynarray_append(&ctx->ended_queries, d3d12_query*, query);
+   d3d12_batch_reference_query(d3d12_current_batch(ctx), query);
 
    end_query(ctx, query);
 
@@ -638,13 +647,12 @@ d3d12_context_query_init(struct pipe_context *pctx)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
    list_inithead(&ctx->active_queries);
-   util_dynarray_init(&ctx->ended_queries, NULL);
 
    u_suballocator_init(&ctx->query_allocator, &ctx->base, 4096, 0, PIPE_USAGE_STAGING,
                          0, true);
 
    pctx->create_query = d3d12_create_query;
-   pctx->destroy_query = d3d12_destroy_query;
+   pctx->destroy_query = d3d12_release_query;
    pctx->begin_query = d3d12_begin_query;
    pctx->end_query = d3d12_end_query;
    pctx->get_query_result = d3d12_get_query_result;
