@@ -2481,6 +2481,33 @@ fn enqueue_svm_memcpy_impl(
         return Err(CL_MEM_COPY_OVERLAP);
     }
 
+    // Not technically guaranteed by the OpenCL spec, but required by `from_raw_parts` below.
+    if isize::try_from(size).is_err()
+        || src_ptr_addr.checked_add(size).is_none()
+        || dst_ptr_addr.checked_add(size).is_none()
+    {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CAST: We have no idea about the type or initialization status of these bytes.
+    // MaybeUninit<u8> is the safe bet.
+    let src_ptr = src_ptr.cast::<MaybeUninit<u8>>();
+
+    // CAST: We have no idea about the type or initialization status of these bytes.
+    // MaybeUninit<u8> is the safe bet.
+    let dst_ptr = dst_ptr.cast::<MaybeUninit<u8>>();
+
+    // SAFETY: We've checked above that the pointer is not NULL, that the size isn't excessive, and
+    // that addr + size doesn't overflow. It is up to the application to ensure the memory is valid
+    // to read for `size` bytes and that it doesn't modify it until the command has completed.
+    let src = unsafe { slice::from_raw_parts(src_ptr, size) };
+
+    // SAFETY: We've checked above that the pointer is not NULL, that the size isn't excessive, and
+    // that addr + size doesn't overflow. We've also ensured there's no aliasing between src and
+    // dst. It is up to the application to ensure the memory is valid to read and write for `size`
+    // bytes and that it doesn't modify or read from it until the command has completed.
+    let dst = unsafe { slice::from_raw_parts_mut(dst_ptr, size) };
+
     create_and_queue(
         q,
         cmd_type,
@@ -2488,12 +2515,7 @@ fn enqueue_svm_memcpy_impl(
         event,
         block,
         Box::new(move |_, _| {
-            // SAFETY: We check for overlapping copies already and alignment doesn't matter for void
-            // pointers. And we also trust applications to provide properly allocated memory regions
-            // and if not it's all undefined anyway.
-            unsafe {
-                ptr::copy_nonoverlapping(src_ptr, dst_ptr, size);
-            }
+            dst.copy_from_slice(src);
             Ok(())
         }),
     )
