@@ -674,12 +674,6 @@ tu_physical_device_init(struct tu_physical_device *device,
    fd_get_driver_uuid(device->driver_uuid);
    fd_get_device_uuid(device->device_uuid, &device->dev_id);
 
-   struct vk_device_extension_table supported_extensions;
-   get_device_extensions(device, &supported_extensions);
-
-   struct vk_features supported_features;
-   tu_get_features(device, &supported_features);
-
    struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &tu_physical_device_entrypoints, true);
@@ -687,12 +681,13 @@ tu_physical_device_init(struct tu_physical_device *device,
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
    result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    &supported_extensions,
-                                    &supported_features,
-                                    NULL,
+                                    NULL, NULL, NULL, /* We set up extensions later */
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto fail_free_name;
+
+   get_device_extensions(device, &device->vk.supported_extensions);
+   tu_get_features(device, &device->vk.supported_features);
 
    device->vk.supported_sync_types = device->sync_types;
 
