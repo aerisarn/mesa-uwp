@@ -567,43 +567,26 @@ impl SM50Instr {
     }
 
     fn encode_mov(&mut self, op: &OpMov) {
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x98,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: Some(ALUSrcsModifier {
-                src0_opt: None,
-                src1_opt: None,
-                src2_opt: None,
-            }),
-            imm24_modifier: Some(ALUSrcsModifier {
-                src0_opt: None,
-                src1_opt: None,
-                src2_opt: None,
-            }),
-            cbuf_modifier: Some(ALUSrcsModifier {
-                src0_opt: None,
-                src1_opt: None,
-                src2_opt: None,
-            }),
-            imm32_behavior_opt: Some(ALUImm32Behavior {
-                opcode: 0x0100,
-                prefer_imm32: true,
-            }),
-        };
-
-        let is_imm32 = self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src.into()),
-            ALUSrc::None,
-        );
-
-        if is_imm32 {
-            self.set_field(12..16, op.quad_lanes);
-        } else {
-            self.set_field(39..43, op.quad_lanes);
+        match &op.src.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c98);
+                self.set_reg_src(20..28, op.src);
+                self.set_field(39..43, op.quad_lanes);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x0100);
+                self.set_src_imm32(20..52, *i);
+                self.set_field(12..16, op.quad_lanes);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4c98);
+                self.set_src_cb(20..39, cb);
+                self.set_field(39..43, op.quad_lanes);
+            }
+            src => panic!("Unsupported src type for MOV: {src}"),
         }
+
+        self.set_dst(op.dst);
     }
 
     fn encode_sel(&mut self, op: &OpSel) {
