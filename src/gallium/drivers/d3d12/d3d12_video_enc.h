@@ -276,6 +276,7 @@ struct D3D12EncodeConfiguration
    } m_encoderCodecSpecificStateDescAV1;
 
    struct pipe_h264_enc_seq_param m_encoderCodecSpecificSequenceStateDescH264;
+   struct pipe_h265_enc_seq_param m_encoderCodecSpecificSequenceStateDescH265;
 };
 
 struct EncodedBitstreamResolvedMetadata
