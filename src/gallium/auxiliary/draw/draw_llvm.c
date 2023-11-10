@@ -596,6 +596,7 @@ generate_vs(struct draw_llvm_variant *variant,
       lp_jit_resources_constants(variant->gallivm, variant->resources_type, resources_ptr);
    LLVMValueRef ssbos_ptr =
       lp_jit_resources_ssbos(variant->gallivm, variant->resources_type, resources_ptr);
+   struct draw_llvm_variant_key *key = &variant->key;
 
    struct lp_build_tgsi_params params;
    memset(&params, 0, sizeof(params));
@@ -605,6 +606,7 @@ generate_vs(struct draw_llvm_variant *variant,
    params.consts_ptr = consts_ptr;
    params.system_values = system_values;
    params.inputs = inputs;
+   params.num_inputs = key->nr_vertex_elements;
    params.context_type = variant->context_type;
    params.context_ptr = context_ptr;
    params.resources_type = variant->resources_type;
@@ -2453,6 +2455,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    params.aniso_filter_table = lp_jit_resources_aniso_filter_table(gallivm,
                                                                    variant->resources_type,
                                                                    resources_ptr);
+
 
    if (llvm->draw->gs.geometry_shader->state.type == PIPE_SHADER_IR_TGSI)
       lp_build_tgsi_soa(variant->gallivm,
