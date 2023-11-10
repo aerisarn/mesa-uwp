@@ -1067,7 +1067,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->num_sqc_per_wgp = device_info.num_sqc_per_wgp;
    }
 
-   if (info->gfx_level >= GFX11 && info->drm_minor >= 52) {
+   /* Firmware wrongly reports 0 bytes of MALL being present on Navi33.
+    * Work around this by manually computing cache sizes. */
+   if (info->gfx_level >= GFX11 && info->drm_minor >= 52 && info->family != CHIP_NAVI33) {
       info->tcp_cache_size = device_info.tcp_cache_size * 1024;
       info->l1_cache_size = device_info.gl1c_cache_size * 1024;
       info->l2_cache_size = device_info.gl2c_cache_size * 1024;
