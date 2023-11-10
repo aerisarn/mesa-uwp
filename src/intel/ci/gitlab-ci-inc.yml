@@ -13,7 +13,13 @@
         - src/intel/nullhw-layer/**/*
         - src/intel/perf/**/*
         - src/intel/tools/**/*
-        - src/intel/ci/*
+        - src/intel/ci/gitlab-ci.yml
+        - src/intel/ci/gitlab-ci-inc.yml
+        - src/intel/ci/deqp-$DEQP_SUITE.toml
+        - src/intel/ci/$GPU_VERSION-fails.txt
+        - src/intel/ci/$GPU_VERSION-flakes.txt
+        - src/intel/ci/$GPU_VERSION-skips.txt
+        - src/intel/ci/$PIGLIT_TRACES_FILE
       when: on_success
 
 .intel-common-manual-rules:
