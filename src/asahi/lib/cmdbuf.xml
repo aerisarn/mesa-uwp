@@ -863,10 +863,10 @@
 
   <!-- CDM commands start -->
   <enum name="CDM Block Type">
-    <value name="Header" value="0"/>
+    <value name="Launch" value="0"/>
     <value name="Stream Link" value="1"/>
     <value name="Stream Terminate" value="2"/>
-    <value name="Launch" value="3"/>
+    <value name="Barrier" value="3"/>
   </enum>
 
   <enum name="CDM Mode">
@@ -884,13 +884,13 @@
     <value name="Indirect local" value="2"/>
   </enum>
 
-  <struct name="CDM Header" size="8">
+  <struct name="CDM Launch" size="8">
     <field name="Uniform register count" size="3" start="1" type="uint" modifier="groups(64)"/>
     <field name="Texture state register count" size="5" start="4" type="uint" modifier="groups(8)"/>
     <field name="Sampler state register count" size="3" start="9" type="Sampler states"/>
     <field name="Preshader register count" size="4" start="12" type="uint" modifier="groups(16)"/>
     <field name="Mode" size="2" start="27" type="CDM Mode"/>
-    <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Header"/>
+    <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Launch"/>
     <field name="Pipeline" size="26" start="1:6" type="address" modifier="shr(6)"/>
   </struct>
 
@@ -915,9 +915,29 @@
     <field name="Z" size="32" start="2:0" type="uint"/>
   </struct>
 
-  <struct name="CDM Launch" size="4">
-    <field name="Unknown" size="12" start="0" type="hex" default="0x160"/>
-    <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Launch"/>
+  <struct name="CDM Barrier" size="4">
+    <field name="USC cache inval" size="1" start="3" type="bool" default="false"/>
+    <field name="Unk 4" size="1" start="4" type="bool" default="false"/>
+    <field name="Unk 5" size="1" start="5" type="bool" default="false"/>
+    <field name="Unk 6" size="1" start="6" type="bool" default="false"/>
+    <field name="Unk 7" size="1" start="7" type="bool" default="false"/>
+    <field name="Unk 8" size="1" start="8" type="bool" default="false"/>
+    <field name="Unk 9" size="1" start="9" type="bool" default="false"/>
+    <field name="Unk 10" size="1" start="10" type="bool" default="false"/>
+    <field name="Unk 11" size="1" start="11" type="bool" default="false"/>
+    <field name="Unk 12" size="1" start="12" type="bool" default="false"/>
+    <field name="Unk 13" size="1" start="13" type="bool" default="false"/>
+    <field name="Unk 14" size="1" start="14" type="bool" default="false"/>
+    <field name="Unk 15" size="1" start="15" type="bool" default="false"/>
+    <field name="Unk 16" size="1" start="16" type="bool" default="false"/>
+    <field name="Unk 17" size="1" start="17" type="bool" default="false"/>
+    <field name="Unk 18" size="1" start="18" type="bool" default="false"/>
+    <field name="Unk 19" size="1" start="19" type="bool" default="false"/>
+    <field name="Unk 20" size="1" start="20" type="bool" default="false"/>
+    <field name="Unk 24" size="1" start="24" type="bool" default="false"/>
+    <field name="Unk 26" size="1" start="26" type="bool" default="false"/>
+    <field name="Returns" size="1" start="27" type="bool" default="false"/>
+    <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Barrier"/>
   </struct>
 
   <struct name="CDM Stream Link" size="8">

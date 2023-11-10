@@ -4053,7 +4053,7 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
    /* TODO: Ensure space if we allow multiple kernels in a batch */
    uint8_t *out = batch->cdm.current;
 
-   agx_pack(out, CDM_HEADER, cfg) {
+   agx_pack(out, CDM_LAUNCH, cfg) {
       if (info->indirect)
          cfg.mode = AGX_CDM_MODE_INDIRECT_GLOBAL;
       else
@@ -4068,7 +4068,7 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
       cfg.pipeline =
          agx_build_pipeline(batch, cs, stage, info->variable_shared_mem);
    }
-   out += AGX_CDM_HEADER_LENGTH;
+   out += AGX_CDM_LAUNCH_LENGTH;
 
    /* Added in G14X */
    if (dev->params.gpu_generation >= 14 && dev->params.num_clusters_total > 1) {
@@ -4100,9 +4100,12 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
    }
    out += AGX_CDM_LOCAL_SIZE_LENGTH;
 
-   agx_pack(out, CDM_LAUNCH, cfg)
-      ;
-   out += AGX_CDM_LAUNCH_LENGTH;
+   agx_pack(out, CDM_BARRIER, cfg) {
+      cfg.unk_5 = true;
+      cfg.unk_6 = true;
+      cfg.unk_8 = true;
+   }
+   out += AGX_CDM_BARRIER_LENGTH;
 
    batch->cdm.current = out;
    assert(batch->cdm.current <= batch->cdm.end &&
