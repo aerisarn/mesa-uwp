@@ -13,6 +13,7 @@ struct RegTracker<T> {
     ureg: [T; 63],
     pred: [T; 7],
     upred: [T; 7],
+    carry: [T; 1],
 }
 
 impl<T: Copy> RegTracker<T> {
@@ -22,6 +23,7 @@ impl<T: Copy> RegTracker<T> {
             ureg: [v; 63],
             pred: [v; 7],
             upred: [v; 7],
+            carry: [v; 1],
         }
     }
 
@@ -74,6 +76,7 @@ impl<T> Index<RegRef> for RegTracker<T> {
             RegFile::UGPR => &self.ureg[range],
             RegFile::Pred => &self.pred[range],
             RegFile::UPred => &self.upred[range],
+            RegFile::Carry => &self.carry[range],
             RegFile::Bar => &[], // Barriers have a HW scoreboard
             RegFile::Mem => panic!("Not a register"),
         }
@@ -93,6 +96,7 @@ impl<T> IndexMut<RegRef> for RegTracker<T> {
             RegFile::UGPR => &mut self.ureg[range],
             RegFile::Pred => &mut self.pred[range],
             RegFile::UPred => &mut self.upred[range],
+            RegFile::Carry => &mut self.carry[range],
             RegFile::Bar => &mut [], // Barriers have a HW scoreboard
             RegFile::Mem => panic!("Not a register"),
         }

@@ -170,7 +170,9 @@ impl LopPass {
             srcs[src_idx] = match ssa.file() {
                 RegFile::GPR | RegFile::UGPR => SrcRef::Zero.into(),
                 RegFile::Pred | RegFile::UPred => SrcRef::True.into(),
-                RegFile::Bar | RegFile::Mem => panic!("Not a normal register"),
+                RegFile::Carry | RegFile::Bar | RegFile::Mem => {
+                    panic!("Not a normal register");
+                }
             };
 
             for i in 0..3 {

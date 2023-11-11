@@ -72,25 +72,37 @@ pub enum RegFile {
     /// Uniform predicate registers are 1 bit and uniform across a wave.
     UPred = 3,
 
+    /// The carry flag register file
+    ///
+    /// Only one carry flag register exists in hardware, but representing it as
+    /// a reg file simplifies dependency tracking.
+    ///
+    /// This is used only on SM50.
+    Carry = 4,
+
     /// The barrier register file
     ///
     /// This is a lane mask used for wave re-convergence instructions.
-    Bar = 4,
+    Bar = 5,
 
     /// The memory register file
     ///
     /// This is a virtual register file for things which will get spilled to
     /// local memory.  Each memory location is 32 bits per SIMT channel.
-    Mem = 5,
+    Mem = 6,
 }
 
-const NUM_REG_FILES: usize = 6;
+const NUM_REG_FILES: usize = 7;
 
 impl RegFile {
     /// Returns true if the register file is uniform across a wave
     pub fn is_uniform(&self) -> bool {
         match self {
-            RegFile::GPR | RegFile::Pred | RegFile::Bar | RegFile::Mem => false,
+            RegFile::GPR
+            | RegFile::Pred
+            | RegFile::Carry
+            | RegFile::Bar
+            | RegFile::Mem => false,
             RegFile::UGPR | RegFile::UPred => true,
         }
     }
@@ -99,16 +111,22 @@ impl RegFile {
     pub fn is_gpr(&self) -> bool {
         match self {
             RegFile::GPR | RegFile::UGPR => true,
-            RegFile::Pred | RegFile::UPred | RegFile::Bar | RegFile::Mem => {
-                false
-            }
+            RegFile::Pred
+            | RegFile::UPred
+            | RegFile::Carry
+            | RegFile::Bar
+            | RegFile::Mem => false,
         }
     }
 
     /// Returns true if the register file is a predicate register file
     pub fn is_predicate(&self) -> bool {
         match self {
-            RegFile::GPR | RegFile::UGPR | RegFile::Bar | RegFile::Mem => false,
+            RegFile::GPR
+            | RegFile::UGPR
+            | RegFile::Carry
+            | RegFile::Bar
+            | RegFile::Mem => false,
             RegFile::Pred | RegFile::UPred => true,
         }
     }
@@ -143,6 +161,13 @@ impl RegFile {
                     0
                 }
             }
+            RegFile::Carry => {
+                if sm >= 70 {
+                    0
+                } else {
+                    1
+                }
+            }
             RegFile::Bar => {
                 if sm >= 70 {
                     16
@@ -160,6 +185,7 @@ impl RegFile {
             RegFile::UGPR => "ur",
             RegFile::Pred => "p",
             RegFile::UPred => "up",
+            RegFile::Carry => "c",
             RegFile::Bar => "b",
             RegFile::Mem => "m",
         }
@@ -173,6 +199,7 @@ impl fmt::Display for RegFile {
             RegFile::UGPR => write!(f, "UGPR"),
             RegFile::Pred => write!(f, "Pred"),
             RegFile::UPred => write!(f, "UPred"),
+            RegFile::Carry => write!(f, "Carry"),
             RegFile::Bar => write!(f, "Bar"),
             RegFile::Mem => write!(f, "Mem"),
         }
@@ -194,8 +221,9 @@ impl TryFrom<u32> for RegFile {
             1 => Ok(RegFile::UGPR),
             2 => Ok(RegFile::Pred),
             3 => Ok(RegFile::UPred),
-            4 => Ok(RegFile::Bar),
-            5 => Ok(RegFile::Mem),
+            4 => Ok(RegFile::Carry),
+            5 => Ok(RegFile::Bar),
+            6 => Ok(RegFile::Mem),
             _ => Err("Invalid register file number"),
         }
     }
@@ -316,6 +344,7 @@ impl<T> PerRegFile<T> {
                 f(RegFile::UGPR),
                 f(RegFile::Pred),
                 f(RegFile::UPred),
+                f(RegFile::Carry),
                 f(RegFile::Bar),
                 f(RegFile::Mem),
             ],
@@ -587,6 +616,7 @@ impl RegRef {
             RegFile::UGPR => 63,
             RegFile::Pred => 7,
             RegFile::UPred => 7,
+            RegFile::Carry => panic!("Carry has no zero index"),
             RegFile::Bar => panic!("Bar has no zero index"),
             RegFile::Mem => panic!("Mem has no zero index"),
         }
