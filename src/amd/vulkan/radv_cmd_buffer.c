@@ -3749,6 +3749,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
       cmd_buffer->state.vbo_misaligned_mask_invalid &= ~attribute_mask;
    }
    misaligned_mask |= state->nontrivial_formats;
+   misaligned_mask &= attribute_mask;
 
    const bool can_use_simple_input =
       cmd_buffer->state.shaders[MESA_SHADER_VERTEX] &&
@@ -3778,7 +3779,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
    key.nontrivial_divisors = *nontrivial_divisors;
    key.zero_divisors = zero_divisors;
    /* If the attribute is aligned, post shuffle is implemented using DST_SEL instead. */
-   key.post_shuffle = state->post_shuffle & attribute_mask & misaligned_mask;
+   key.post_shuffle = state->post_shuffle & misaligned_mask;
    key.alpha_adjust_hi = state->alpha_adjust_hi & attribute_mask;
    key.alpha_adjust_lo = state->alpha_adjust_lo & attribute_mask;
    u_foreach_bit (index, misaligned_mask)
