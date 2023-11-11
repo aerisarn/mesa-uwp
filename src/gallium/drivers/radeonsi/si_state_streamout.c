@@ -359,6 +359,9 @@ static void si_emit_streamout_enable(struct si_context *sctx, unsigned index)
 
 static void si_set_streamout_enable(struct si_context *sctx, bool enable)
 {
+   if (sctx->gfx_level >= GFX11)
+      return;
+
    bool old_strmout_en = si_get_strmout_en(sctx);
    unsigned old_hw_enabled_mask = sctx->streamout.hw_enabled_mask;
 
@@ -368,9 +371,8 @@ static void si_set_streamout_enable(struct si_context *sctx, bool enable)
       sctx->streamout.enabled_mask | (sctx->streamout.enabled_mask << 4) |
       (sctx->streamout.enabled_mask << 8) | (sctx->streamout.enabled_mask << 12);
 
-   if (sctx->gfx_level < GFX11 &&
-       ((old_strmout_en != si_get_strmout_en(sctx)) ||
-        (old_hw_enabled_mask != sctx->streamout.hw_enabled_mask)))
+   if ((old_strmout_en != si_get_strmout_en(sctx)) ||
+       (old_hw_enabled_mask != sctx->streamout.hw_enabled_mask))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.streamout_enable);
 }
 
