@@ -392,12 +392,6 @@ static void si_log_chunk_type_cs_print(void *data, FILE *f)
       last_trace_id = map[0];
 
    if (chunk->gfx_end != chunk->gfx_begin) {
-      if (chunk->gfx_begin == 0) {
-         if (ctx->cs_preamble_state)
-            ac_parse_ib(f, ctx->cs_preamble_state->pm4, ctx->cs_preamble_state->ndw, NULL, 0,
-                        "IB2: Init config", ctx->gfx_level, ctx->family, AMD_IP_GFX, NULL, NULL);
-      }
-
       if (scs->flushed) {
          ac_parse_ib(f, scs->gfx.ib + chunk->gfx_begin, chunk->gfx_end - chunk->gfx_begin,
                      &last_trace_id, map ? 1 : 0, "IB", ctx->gfx_level, ctx->family, AMD_IP_GFX, NULL, NULL);
