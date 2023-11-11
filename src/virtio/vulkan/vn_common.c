@@ -11,7 +11,6 @@
 #include "vn_common.h"
 
 #include <stdarg.h>
-#include <sys/syscall.h>
 
 #include "util/log.h"
 #include "util/os_misc.h"
@@ -139,7 +138,7 @@ vn_watchdog_timeout(const struct vn_watchdog *watchdog)
 static inline void
 vn_watchdog_release(struct vn_watchdog *watchdog)
 {
-   if (syscall(SYS_gettid) == watchdog->tid) {
+   if (vn_gettid() == watchdog->tid) {
       watchdog->tid = 0;
       mtx_unlock(&watchdog->mutex);
    }
@@ -148,7 +147,7 @@ vn_watchdog_release(struct vn_watchdog *watchdog)
 static bool
 vn_watchdog_acquire(struct vn_watchdog *watchdog, bool alive)
 {
-   pid_t tid = syscall(SYS_gettid);
+   pid_t tid = vn_gettid();
    if (!watchdog->tid && tid != watchdog->tid &&
        mtx_trylock(&watchdog->mutex) == thrd_success) {
       /* register as the only waiting thread that monitors the ring. */

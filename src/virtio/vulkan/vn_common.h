@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/syscall.h>
 #include <vulkan/vulkan.h>
 
 #include "c11/threads.h"
@@ -456,6 +457,16 @@ vn_object_get_id(const void *obj, VkObjectType type)
    default:
       return ((struct vn_object_base *)obj)->id;
    }
+}
+
+static inline pid_t
+vn_gettid(void)
+{
+#ifdef ANDROID
+   return gettid();
+#else
+   return syscall(SYS_gettid);
+#endif
 }
 
 #endif /* VN_COMMON_H */
