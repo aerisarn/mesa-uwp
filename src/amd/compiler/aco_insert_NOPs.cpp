@@ -1026,20 +1026,18 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
          bld.sop1(aco_opcode::s_mov_b32, Definition(sgpr_null, s1), Operand::zero());
       }
    } else if (instr->isSALU()) {
-      if (instr->format != Format::SOPP) {
+      /* Reducing lgkmcnt count to 0 always mitigates the hazard. */
+      if (instr->opcode == aco_opcode::s_waitcnt_lgkmcnt) {
+         const SOPK_instruction& sopk = instr->sopk();
+         if (sopk.imm == 0 && sopk.operands[0].physReg() == sgpr_null)
+            ctx.sgprs_read_by_SMEM.reset();
+      } else if (instr->opcode == aco_opcode::s_waitcnt) {
+         wait_imm imm(state.program->gfx_level, instr->sopp().imm);
+         if (imm.lgkm == 0)
+            ctx.sgprs_read_by_SMEM.reset();
+      } else if (instr->format != Format::SOPP && instr->definitions.size()) {
          /* SALU can mitigate the hazard */
          ctx.sgprs_read_by_SMEM.reset();
-      } else {
-         /* Reducing lgkmcnt count to 0 always mitigates the hazard. */
-         const SOPP_instruction& sopp = instr->sopp();
-         if (sopp.opcode == aco_opcode::s_waitcnt_lgkmcnt) {
-            if (sopp.imm == 0 && sopp.operands[0].physReg() == sgpr_null)
-               ctx.sgprs_read_by_SMEM.reset();
-         } else if (sopp.opcode == aco_opcode::s_waitcnt) {
-            wait_imm imm(state.program->gfx_level, instr->sopp().imm);
-            if (imm.lgkm == 0)
-               ctx.sgprs_read_by_SMEM.reset();
-         }
       }
    }
 
