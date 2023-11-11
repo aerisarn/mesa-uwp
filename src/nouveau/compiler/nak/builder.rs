@@ -203,6 +203,40 @@ pub trait SSABuilder: Builder {
         dst
     }
 
+    fn iadd64(&mut self, x: Src, y: Src) -> SSARef {
+        let x = x.as_ssa().unwrap();
+        let y = y.as_ssa().unwrap();
+        let dst = self.alloc_ssa(RegFile::GPR, 2);
+        if self.sm() >= 70 {
+            let carry = self.alloc_ssa(RegFile::Pred, 1);
+            self.push_op(OpIAdd3 {
+                dst: dst[0].into(),
+                overflow: [carry.into(), Dst::None],
+                srcs: [x[0].into(), y[0].into(), 0.into()],
+            });
+            self.push_op(OpIAdd3X {
+                dst: dst[1].into(),
+                overflow: [Dst::None, Dst::None],
+                srcs: [x[1].into(), y[1].into(), 0.into()],
+                carry: [carry.into(), false.into()],
+            });
+        } else {
+            self.push_op(OpIAdd2 {
+                dst: dst[0].into(),
+                srcs: [x[0].into(), y[0].into()],
+                carry_out: true,
+                carry_in: false,
+            });
+            self.push_op(OpIAdd2 {
+                dst: dst[1].into(),
+                srcs: [x[1].into(), y[1].into()],
+                carry_out: false,
+                carry_in: true,
+            });
+        }
+        dst
+    }
+
     fn imnmx(&mut self, tp: IntCmpType, x: Src, y: Src, min: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.push_op(OpIMnMx {
