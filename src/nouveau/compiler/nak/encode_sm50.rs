@@ -1885,6 +1885,17 @@ impl SM50Instr {
     }
 
     fn encode_iadd2(&mut self, op: &OpIAdd2) {
+        let carry_in = match op.carry_in.src_ref {
+            SrcRef::Reg(reg) if reg.file() == RegFile::Carry => true,
+            SrcRef::Zero => false,
+            other => panic!("invalid carry_in src for IADD2 {other}"),
+        };
+        let carry_out = match op.carry_out {
+            Dst::Reg(reg) if reg.file() == RegFile::Carry => true,
+            Dst::None => false,
+            other => panic!("invalid carry_out dst for IADD2 {other}"),
+        };
+
         if let Some(imm32) = op.srcs[1].as_imm_not_i20() {
             self.set_opcode(0x1c00);
 
@@ -1892,8 +1903,8 @@ impl SM50Instr {
             self.set_reg_ineg_src(8..16, 56, op.srcs[0]);
             self.set_src_imm32(20..56, imm32);
 
-            self.set_bit(53, op.carry_in);
-            self.set_bit(52, op.carry_out);
+            self.set_bit(53, carry_in);
+            self.set_bit(52, carry_out);
         } else {
             match &op.srcs[1].src_ref {
                 SrcRef::Zero | SrcRef::Reg(_) => {
@@ -1914,8 +1925,8 @@ impl SM50Instr {
             self.set_dst(op.dst);
             self.set_reg_ineg_src(8..16, 49, op.srcs[0]);
 
-            self.set_bit(43, op.carry_in);
-            self.set_bit(47, op.carry_out);
+            self.set_bit(43, carry_in);
+            self.set_bit(47, carry_out);
         }
     }
 

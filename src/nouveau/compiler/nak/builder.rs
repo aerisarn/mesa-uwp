@@ -196,8 +196,8 @@ pub trait SSABuilder: Builder {
             self.push_op(OpIAdd2 {
                 dst: dst.into(),
                 srcs: [x, y],
-                carry_in: false,
-                carry_out: false,
+                carry_in: 0.into(),
+                carry_out: Dst::None,
             });
         }
         dst
@@ -221,17 +221,18 @@ pub trait SSABuilder: Builder {
                 carry: [carry.into(), false.into()],
             });
         } else {
+            let carry = self.alloc_ssa(RegFile::Carry, 1);
             self.push_op(OpIAdd2 {
                 dst: dst[0].into(),
                 srcs: [x[0].into(), y[0].into()],
-                carry_out: true,
-                carry_in: false,
+                carry_out: carry.into(),
+                carry_in: 0.into(),
             });
             self.push_op(OpIAdd2 {
                 dst: dst[1].into(),
                 srcs: [x[1].into(), y[1].into()],
-                carry_out: false,
-                carry_in: true,
+                carry_out: Dst::None,
+                carry_in: carry.into(),
             });
         }
         dst

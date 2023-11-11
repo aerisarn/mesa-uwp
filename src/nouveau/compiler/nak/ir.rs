@@ -2491,25 +2491,20 @@ impl_display_for_op!(OpINeg);
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd2 {
     pub dst: Dst,
+    pub carry_out: Dst,
 
     #[src_type(ALU)]
     pub srcs: [Src; 2],
-
-    // TODO: We should probably track this as an SSA value somehow
-    pub carry_out: bool,
-    pub carry_in: bool,
+    pub carry_in: Src,
 }
 
 impl DisplayOp for OpIAdd2 {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "iadd")?;
-        if self.carry_in {
-            write!(f, ".x")?;
+        write!(f, "iadd2 {} {}", self.srcs[0], self.srcs[1])?;
+        if !self.carry_in.is_zero() {
+            write!(f, " {}", self.carry_in)?;
         }
-        if self.carry_out {
-            write!(f, ".cc")?;
-        }
-        write!(f, " {} {}", self.srcs[0], self.srcs[1])
+        Ok(())
     }
 }
 
@@ -5498,8 +5493,8 @@ impl Shader {
                         instr.op = Op::IAdd2(OpIAdd2 {
                             dst: neg.dst,
                             srcs: [0.into(), neg.src.ineg()],
-                            carry_in: false,
-                            carry_out: false,
+                            carry_in: 0.into(),
+                            carry_out: Dst::None,
                         });
                     }
                     MappedInstrs::One(instr)
