@@ -990,36 +990,36 @@ impl SM50Instr {
         assert!(op.srcs[1].is_reg_or_zero());
         assert!(op.srcs[2].is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(51),
-            }),
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(51),
-            }),
-            src2_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(52),
-            }),
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x00,
-            encoding_type: ALUEncodingType::Variant2,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
+        let alu_src_2 = ALUSrc::from_src(&op.srcs[2]);
+        let neg_0_bit = Some(51);
+        let neg_1_bit = Some(51);
+        let neg_2_bit = Some(52);
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::from_src(&op.srcs[2]),
-        );
+        match &alu_src_2 {
+            ALUSrc::None => panic!("Invalid source for IMAD"),
+            ALUSrc::Imm32(imm) => panic!("Invalid source for IMAD"),
+            ALUSrc::Reg(reg) => match &alu_src_1 {
+                ALUSrc::None => panic!("Invalid source for IMAD"),
+                ALUSrc::Imm32(imm) => {
+                    self.set_opcode(0x3400);
+                    self.set_src_imm_i20(20..40, 56, *imm);
+                }
+                ALUSrc::Reg(reg) => {
+                    self.set_opcode(0x5a00);
+                    self.set_alu_reg_src(20..28, None, neg_1_bit, &alu_src_1);
+                }
+                ALUSrc::CBuf(cbuf) => {
+                    self.set_opcode(0x4a00);
+                    self.set_alu_cb(20..39, None, neg_1_bit, cbuf);
+                }
+            },
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x5200);
+                self.set_alu_reg_src(39..47, None, neg_1_bit, &alu_src_1);
+                self.set_alu_cb(20..39, None, neg_2_bit, cbuf);
+            }
+        }
 
         self.set_bit(48, op.signed); /* src0 signed */
         self.set_bit(
@@ -1028,6 +1028,9 @@ impl SM50Instr {
                 ^ src_mod_has_neg(op.srcs[1].src_mod),
         );
         self.set_bit(53, op.signed); /* src1 signed */
+
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_dst(op.dst);
     }
 
     fn encode_f2i(&mut self, op: &OpF2I) {
