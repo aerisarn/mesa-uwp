@@ -1903,27 +1903,31 @@ impl SM50Instr {
         assert!(op.sel.is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: None,
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0xc0,
-            encoding_type: ALUEncodingType::Variant3,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        /* TODO: is src[1] in codegen op.srcs[1] or op.selection? */
+        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
+        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
+        let sel = ALUSrc::from_src(&op.sel);
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.sel),
-            ALUSrc::from_src(&op.srcs[1]),
-        );
+        match &alu_src_1 {
+            ALUSrc::None => panic!("Invalid source for IADD2"),
+            ALUSrc::Imm32(imm) => {
+                self.set_opcode(0x36c0);
+                self.set_src_imm_i20(20..40, 56, *imm);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5bc0);
+                self.set_alu_reg_src(20..28, None, None, &alu_src_1);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4bc0);
+                self.set_alu_cb(20..39, None, None, cbuf);
+            }
+        }
+
+        self.set_alu_reg_src(8..16, None, None, &alu_src_0);
+        self.set_alu_reg_src(39..47, None, None, &sel);
+        self.set_dst(op.dst);
+        /* TODO: subop? */
     }
 
     pub fn encode(
