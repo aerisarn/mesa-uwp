@@ -1100,8 +1100,11 @@ emit_bpermute_readlane(Program* program, aco_ptr<Instruction>& instr, Builder& b
     */
    for (unsigned n = 0; n < program->wave_size; ++n) {
       /* Activate the lane which has N for its source index */
-      bld.vopc(aco_opcode::v_cmpx_eq_u32, Definition(exec, bld.lm), clobber_vcc, Operand::c32(n),
-               index);
+      if (program->gfx_level >= GFX10)
+         bld.vopc(aco_opcode::v_cmpx_eq_u32, Definition(exec, bld.lm), Operand::c32(n), index);
+      else
+         bld.vopc(aco_opcode::v_cmpx_eq_u32, clobber_vcc, Definition(exec, bld.lm), Operand::c32(n),
+                  index);
       /* Read the data from lane N */
       bld.readlane(Definition(vcc, s1), input, Operand::c32(n));
       /* On the active lane, move the data we read from lane N to the destination VGPR */
