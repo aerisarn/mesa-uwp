@@ -1558,30 +1558,27 @@ impl SM50Instr {
     fn encode_popc(&mut self, op: &OpPopC) {
         assert!(op.src.is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: None,
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x08,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        let alu_src = ALUSrc::from_src(&op.src);
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src),
-            ALUSrc::None,
-        );
+        match &alu_src {
+            ALUSrc::None => panic!("Invalid source for POPC"),
+            ALUSrc::Imm32(imm) => {
+                self.set_opcode(0x3808);
+                self.set_src_imm_i20(20..40, 56, *imm);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5c08);
+                self.set_alu_reg_src(20..28, None, None, &alu_src);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4c08);
+                self.set_alu_cb(20..39, None, None, cbuf);
+            }
+        }
 
         let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
-        self.set_field(40..41, not_mod)
+        self.set_bit(40, not_mod);
+        self.set_dst(op.dst);
     }
 
     fn encode_fadd(&mut self, op: &OpFAdd) {
