@@ -606,15 +606,9 @@ fd_bo_map_os_mmap(struct fd_bo *bo)
                   bo->dev->fd, offset);
 }
 
-void *
-fd_bo_map(struct fd_bo *bo)
+static void *
+__fd_bo_map(struct fd_bo *bo)
 {
-   /* don't allow mmap'ing something allocated with FD_BO_NOMAP
-    * for sanity
-    */
-   if (bo->alloc_flags & FD_BO_NOMAP)
-      return NULL;
-
    if (!bo->map) {
       bo->map = bo->funcs->map(bo);
       if (bo->map == MAP_FAILED) {
@@ -626,6 +620,18 @@ fd_bo_map(struct fd_bo *bo)
    return bo->map;
 }
 
+void *
+fd_bo_map(struct fd_bo *bo)
+{
+   /* don't allow mmap'ing something allocated with FD_BO_NOMAP
+    * for sanity
+    */
+   if (bo->alloc_flags & FD_BO_NOMAP)
+      return NULL;
+
+   return __fd_bo_map(bo);
+}
+
 void
 fd_bo_upload(struct fd_bo *bo, void *src, unsigned off, unsigned len)
 {
@@ -634,7 +640,7 @@ fd_bo_upload(struct fd_bo *bo, void *src, unsigned off, unsigned len)
       return;
    }
 
-   memcpy((uint8_t *)bo->funcs->map(bo) + off, src, len);
+   memcpy((uint8_t *)__fd_bo_map(bo) + off, src, len);
 }
 
 bool
