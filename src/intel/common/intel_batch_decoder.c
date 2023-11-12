@@ -1611,6 +1611,7 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
          }
 
          if (!strcmp(inst->name, "3DPRIMITIVE") ||
+             !strcmp(inst->name, "3DPRIMITIVE_EXTENDED") ||
              !strcmp(inst->name, "GPGPU_WALKER") ||
              !strcmp(inst->name, "3DSTATE_WM_HZ_OP") ||
              !strcmp(inst->name, "COMPUTE_WALKER")) {
