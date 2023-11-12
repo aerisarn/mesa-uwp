@@ -909,36 +909,33 @@ impl SM50Instr {
     }
 
     fn encode_i2f(&mut self, op: &OpI2F) {
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: Some(49),
-                neg_bit: Some(45),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0xb8,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        let alu_src = ALUSrc::from_src(&op.src);
+        let abs_bit = Some(49);
+        let neg_bit = Some(45);
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src.into()),
-            ALUSrc::None,
-        );
+        match &alu_src {
+            ALUSrc::None => panic!("Invalid source for I2F"),
+            ALUSrc::Imm32(imm) => {
+                self.set_opcode(0x38b8);
+                self.set_src_imm_i20(20..40, 56, *imm);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5cb8);
+                self.set_alu_reg_src(20..28, abs_bit, neg_bit, &alu_src);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4cb8);
+                self.set_alu_cb(20..39, abs_bit, neg_bit, cbuf);
+            }
+        }
 
         self.set_field(41..43, 0_u8); /* TODO: subop */
         self.set_bit(13, op.src_type.is_signed());
         self.set_field(8..10, (op.dst_type.bits() / 8).ilog2());
         self.set_rnd_mode(39..41, op.rnd_mode);
         self.set_field(10..12, (op.src_type.bits() / 8).ilog2());
+
+        self.set_dst(op.dst);
     }
 
     fn encode_f2f(&mut self, op: &OpF2F) {
