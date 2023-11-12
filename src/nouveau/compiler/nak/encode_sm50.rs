@@ -646,28 +646,26 @@ impl SM50Instr {
     fn encode_sel(&mut self, op: &OpSel) {
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: None,
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0xa0,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
+        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
 
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0].into()),
-            ALUSrc::from_src(&op.srcs[1].into()),
-            ALUSrc::None,
-        );
+        match &alu_src_1 {
+            ALUSrc::None => panic!("Invalid source for SEL"),
+            ALUSrc::Imm32(imm) => {
+                self.set_opcode(0x38a0);
+                self.set_src_imm_i20(20..40, 56, *imm);
+            }
+            ALUSrc::Reg(reg) => {
+                self.set_opcode(0x5ca0);
+                self.set_alu_reg_src(20..28, None, None, &alu_src_1);
+            }
+            ALUSrc::CBuf(cbuf) => {
+                self.set_opcode(0x4ca0);
+                self.set_alu_cb(20..39, None, None, cbuf);
+            }
+        }
 
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.srcs[0]);
         self.set_pred_src(39..42, 42, op.cond);
     }
 
