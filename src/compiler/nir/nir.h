@@ -6575,10 +6575,22 @@ nir_is_store_reg(nir_intrinsic_instr *intr)
    nir_foreach_use(load, &reg->def)             \
       if (nir_is_load_reg(nir_instr_as_intrinsic(nir_src_parent_instr(load))))
 
+#define nir_foreach_reg_load_safe(load, reg)         \
+   assert(reg->intrinsic == nir_intrinsic_decl_reg); \
+                                                     \
+   nir_foreach_use_safe(load, &reg->def)             \
+      if (nir_is_load_reg(nir_instr_as_intrinsic(nir_src_parent_instr(load))))
+
 #define nir_foreach_reg_store(store, reg)            \
    assert(reg->intrinsic == nir_intrinsic_decl_reg); \
                                                      \
    nir_foreach_use(store, &reg->def)            \
+      if (nir_is_store_reg(nir_instr_as_intrinsic(nir_src_parent_instr(store))))
+
+#define nir_foreach_reg_store_safe(store, reg)       \
+   assert(reg->intrinsic == nir_intrinsic_decl_reg); \
+                                                     \
+   nir_foreach_use_safe(store, &reg->def)            \
       if (nir_is_store_reg(nir_instr_as_intrinsic(nir_src_parent_instr(store))))
 
 static inline nir_intrinsic_instr *
