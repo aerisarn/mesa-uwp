@@ -1841,45 +1841,46 @@ impl SM50Instr {
     fn encode_iadd2(&mut self, op: &OpIAdd2) {
         /* TODO: support modifiers with imm32 (bit 56) */
         assert!(op.srcs[0].is_reg_or_zero());
+        let neg_0_bit;
 
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(49),
-            }),
-            src1_opt: Some(ALUModifierInfo {
-                abs_bit: None,
-                neg_bit: Some(48),
-            }),
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x10,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: Some(ALUImm32Behavior {
-                opcode: 0x1c00,
-                prefer_imm32: true,
-            }),
-        };
+        if let Some(imm32) = op.srcs[1].as_imm_not_i20() {
+            self.set_opcode(0x1c00);
+            self.set_src_imm32(20..56, imm32);
+            neg_0_bit = Some(56);
 
-        let is_imm32 = self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
-
-        if is_imm32 {
             self.set_bit(53, op.carry_in);
             self.set_bit(52, op.carry_out);
         } else {
+            let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
+            neg_0_bit = Some(49);
+
+            match &alu_src_1 {
+                ALUSrc::None => panic!("Invalid source for IADD2"),
+                ALUSrc::Reg(reg) => {
+                    self.set_opcode(0x5c10);
+                    self.set_alu_reg_src(20..28, None, Some(48), &alu_src_1);
+                }
+                ALUSrc::Imm32(imm) => {
+                    self.set_opcode(0x3810);
+                    self.set_src_imm_i20(20..40, 56, *imm);
+                }
+                ALUSrc::CBuf(cbuf) => {
+                    self.set_opcode(0x4c10);
+                    self.set_alu_cb(20..39, None, Some(48), cbuf);
+                }
+            }
+
             self.set_bit(43, op.carry_in);
             self.set_bit(47, op.carry_out);
         }
+
+        self.set_alu_reg_src(
+            8..16,
+            None,
+            neg_0_bit,
+            &ALUSrc::from_src(&op.srcs[0]),
+        );
+        self.set_dst(op.dst);
     }
 
     fn encode_prmt(&mut self, op: &OpPrmt) {
