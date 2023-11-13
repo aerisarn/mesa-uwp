@@ -69,12 +69,6 @@ write_image_view_desc(struct nvk_descriptor_set *set,
          assert(view->planes[plane].storage_desc_index > 0);
          assert(view->planes[plane].storage_desc_index < (1 << 20));
 
-         /* The nv50 compiler currently does some whacky stuff with images.
-          * For now, just assert that we never do storage on 3D images and
-          * that our descriptor index is at most 11 bits.
-          */
-         assert(view->planes[plane].storage_desc_index < (1 << 11));
-
          desc[plane].image_index = view->planes[plane].storage_desc_index;
       } else {
          for (uint8_t plane = 0; plane < plane_count; plane++) {
