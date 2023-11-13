@@ -77,25 +77,6 @@ mali_sampling_mode(const struct pan_image_view *view)
    return MALI_MSAA_SINGLE;
 }
 
-#if PAN_ARCH >= 5
-static inline enum mali_sample_pattern
-pan_sample_pattern(unsigned samples)
-{
-   switch (samples) {
-   case 1:
-      return MALI_SAMPLE_PATTERN_SINGLE_SAMPLED;
-   case 4:
-      return MALI_SAMPLE_PATTERN_ROTATED_4X_GRID;
-   case 8:
-      return MALI_SAMPLE_PATTERN_D3D_8X_GRID;
-   case 16:
-      return MALI_SAMPLE_PATTERN_D3D_16X_GRID;
-   default:
-      unreachable("Unsupported sample count");
-   }
-}
-#endif
-
 int
 GENX(pan_select_crc_rt)(const struct pan_fb_info *fb, unsigned tile_size)
 {
@@ -960,38 +941,6 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
    pan_section_pack(fbd, FRAMEBUFFER, PADDING_2, padding)
       ;
    return 0;
-}
-#endif
-
-#if PAN_ARCH >= 6
-void
-GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev, unsigned fb_width,
-                         unsigned fb_height, unsigned nr_samples,
-                         bool first_provoking_vertex, mali_ptr heap, void *out)
-{
-   unsigned max_levels = dev->tiler_features.max_levels;
-   assert(max_levels >= 2);
-
-   pan_pack(out, TILER_CONTEXT, tiler) {
-      /* TODO: Select hierarchy mask more effectively */
-      tiler.hierarchy_mask = (max_levels >= 8) ? 0xFF : 0x28;
-
-      /* For large framebuffers, disable the smallest bin size to
-       * avoid pathological tiler memory usage. Required to avoid OOM
-       * on dEQP-GLES31.functional.fbo.no_attachments.maximums.all on
-       * Mali-G57.
-       */
-      if (MAX2(fb_width, fb_height) >= 4096)
-         tiler.hierarchy_mask &= ~1;
-
-      tiler.fb_width = fb_width;
-      tiler.fb_height = fb_height;
-      tiler.heap = heap;
-      tiler.sample_pattern = pan_sample_pattern(nr_samples);
-#if PAN_ARCH >= 9
-      tiler.first_provoking_vertex = first_provoking_vertex;
-#endif
-   }
 }
 #endif
 

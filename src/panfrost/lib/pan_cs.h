@@ -152,6 +152,26 @@ pan_wls_mem_size(const struct panfrost_device *dev,
 }
 
 #ifdef PAN_ARCH
+
+#if PAN_ARCH >= 5
+static inline enum mali_sample_pattern
+pan_sample_pattern(unsigned samples)
+{
+   switch (samples) {
+   case 1:
+      return MALI_SAMPLE_PATTERN_SINGLE_SAMPLED;
+   case 4:
+      return MALI_SAMPLE_PATTERN_ROTATED_4X_GRID;
+   case 8:
+      return MALI_SAMPLE_PATTERN_D3D_8X_GRID;
+   case 16:
+      return MALI_SAMPLE_PATTERN_D3D_16X_GRID;
+   default:
+      unreachable("Unsupported sample count");
+   }
+}
+#endif
+
 void GENX(pan_emit_tls)(const struct pan_tls_info *info, void *out);
 
 int GENX(pan_select_crc_rt)(const struct pan_fb_info *fb, unsigned tile_size);
@@ -161,13 +181,6 @@ unsigned GENX(pan_emit_fbd)(const struct panfrost_device *dev,
                             const struct pan_tls_info *tls,
                             const struct pan_tiler_context *tiler_ctx,
                             void *out);
-
-#if PAN_ARCH >= 6
-void GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev,
-                              unsigned fb_width, unsigned fb_height,
-                              unsigned nr_samples, bool first_provoking_vertex,
-                              mali_ptr heap, void *out);
-#endif
 
 void GENX(pan_emit_fragment_job)(const struct pan_fb_info *fb, mali_ptr fbd,
                                  void *out);

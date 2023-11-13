@@ -2970,12 +2970,32 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch,
    }
 
    mali_ptr heap = t.gpu;
+   unsigned max_levels = dev->tiler_features.max_levels;
+   assert(max_levels >= 2);
 
    t = pan_pool_alloc_desc(&batch->pool.base, TILER_CONTEXT);
-   GENX(pan_emit_tiler_ctx)
-   (dev, batch->key.width, batch->key.height,
-    util_framebuffer_get_num_samples(&batch->key),
-    pan_tristate_get(batch->first_provoking_vertex), heap, t.cpu);
+   pan_pack(t.cpu, TILER_CONTEXT, tiler) {
+      /* TODO: Select hierarchy mask more effectively */
+      tiler.hierarchy_mask = (max_levels >= 8) ? 0xFF : 0x28;
+
+      /* For large framebuffers, disable the smallest bin size to
+       * avoid pathological tiler memory usage. Required to avoid OOM
+       * on dEQP-GLES31.functional.fbo.no_attachments.maximums.all on
+       * Mali-G57.
+       */
+      if (MAX2(batch->key.width, batch->key.height) >= 4096)
+         tiler.hierarchy_mask &= ~1;
+
+      tiler.fb_width = batch->key.width;
+      tiler.fb_height = batch->key.height;
+      tiler.heap = heap;
+      tiler.sample_pattern =
+         pan_sample_pattern(util_framebuffer_get_num_samples(&batch->key));
+#if PAN_ARCH >= 9
+      tiler.first_provoking_vertex =
+         pan_tristate_get(batch->first_provoking_vertex);
+#endif
+   }
 
    batch->tiler_ctx.bifrost = t.gpu;
    return batch->tiler_ctx.bifrost;
