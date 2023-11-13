@@ -3562,7 +3562,11 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
    agx_launch(batch, &grid, gs, PIPE_SHADER_GEOMETRY);
    batch->any_draws = true;
 
-   /* Run a GS-less draw consuming those results */
+   /* If we're not rasterizing, the pipeline ends here */
+   if (ctx->rast->base.rasterizer_discard)
+      return;
+
+   /* Otherwise, rasterize with a GS-less draw consuming those results */
    void *vs_cso = ctx->stage[PIPE_SHADER_VERTEX].shader;
    void *gs_cso = ctx->stage[PIPE_SHADER_GEOMETRY].shader;
    struct agx_query *prim_queries[ARRAY_SIZE(ctx->prims_generated)];
