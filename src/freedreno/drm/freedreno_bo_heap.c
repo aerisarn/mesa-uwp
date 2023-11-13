@@ -211,10 +211,6 @@ fd_bo_heap_alloc(struct fd_bo_heap *heap, uint32_t size)
 {
    heap_clean(heap, true);
 
-   struct sa_bo *s = calloc(1, sizeof(*s));
-
-   s->heap = heap;
-
    /* util_vma does not like zero byte allocations, which we get, for
     * ex, with the initial query buffer allocation on pre-a5xx:
     */
@@ -229,7 +225,17 @@ fd_bo_heap_alloc(struct fd_bo_heap *heap, uint32_t size)
     * (The 8k threshold is just a random guess, but seems to work ok)
     */
    heap->heap.alloc_high = (size <= 8 * 1024);
-   s->offset = util_vma_heap_alloc(&heap->heap, size, SUBALLOC_ALIGNMENT);
+   uint64_t offset = util_vma_heap_alloc(&heap->heap, size, SUBALLOC_ALIGNMENT);
+   if (!offset) {
+      simple_mtx_unlock(&heap->lock);
+      return NULL;
+   }
+
+   struct sa_bo *s = calloc(1, sizeof(*s));
+
+   s->heap = heap;
+   s->offset = offset;
+
    assert((s->offset / FD_BO_HEAP_BLOCK_SIZE) == (s->offset + size - 1) / FD_BO_HEAP_BLOCK_SIZE);
    unsigned idx = block_idx(s);
    if (HEAP_DEBUG)

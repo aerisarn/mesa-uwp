@@ -141,9 +141,11 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
 
    if (size < FD_BO_HEAP_BLOCK_SIZE) {
       if ((flags == 0) && dev->default_heap)
-         return fd_bo_heap_alloc(dev->default_heap, size);
-      if ((flags == RING_FLAGS) && dev->ring_heap)
-         return fd_bo_heap_alloc(dev->ring_heap, size);
+         bo = fd_bo_heap_alloc(dev->default_heap, size);
+      else if ((flags == RING_FLAGS) && dev->ring_heap)
+         bo = fd_bo_heap_alloc(dev->ring_heap, size);
+      if (bo)
+         return bo;
    }
 
    /* demote cached-coherent to WC if not supported: */
