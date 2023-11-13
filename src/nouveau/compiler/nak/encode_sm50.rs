@@ -1536,40 +1536,6 @@ impl SM50Instr {
         self.set_field(40..41, not_mod)
     }
 
-    fn encode_brev(&mut self, op: &OpBrev) {
-        assert!(op.src.is_reg_or_zero());
-
-        // BREV doesn't exist on SM50, but we have BFE.BREV.
-        let src_modifier = Some(ALUSrcsModifier {
-            src0_opt: None,
-            src1_opt: None,
-            src2_opt: None,
-        });
-        let encoding_info = ALUEncodingInfo {
-            opcode: 0x00,
-            encoding_type: ALUEncodingType::Variant4,
-            reg_modifier: src_modifier,
-            imm24_modifier: src_modifier,
-            cbuf_modifier: src_modifier,
-            imm32_behavior_opt: None,
-        };
-
-        self.encode_alu(
-            encoding_info,
-            Some(op.dst),
-            ALUSrc::from_src(&op.src),
-            ALUSrc::Imm32(0x2000),
-            ALUSrc::None,
-        );
-
-        /*
-         * 0: U32
-         * 1: S32
-         */
-        self.set_bit(48, false);
-        self.set_bit(40, true); /* BREV */
-    }
-
     fn encode_fadd(&mut self, op: &OpFAdd) {
         let ftz = false; /* TODO: FTZ */
         let dnz = false; /* TODO: DNZ */
@@ -1969,7 +1935,6 @@ impl SM50Instr {
             Op::SuSt(op) => si.encode_sust(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             Op::PopC(op) => si.encode_popc(&op),
-            Op::Brev(op) => si.encode_brev(&op),
             Op::Prmt(op) => si.encode_prmt(&op),
             Op::Ld(op) => si.encode_ld(&op),
             Op::St(op) => si.encode_st(&op),
