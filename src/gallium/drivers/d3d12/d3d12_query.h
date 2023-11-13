@@ -60,6 +60,7 @@ struct d3d12_query {
    struct threaded_query base;
    struct pipe_reference reference;
    enum pipe_query_type type;
+   unsigned index;
 
    struct d3d12_query_impl subqueries[MAX_SUBQUERIES];
 
