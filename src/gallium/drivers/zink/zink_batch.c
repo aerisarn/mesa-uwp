@@ -128,13 +128,6 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       VKSCR(DestroyIndirectCommandsLayoutNV)(screen->dev, *iclayout, NULL);
    util_dynarray_clear(&bs->dgc.layouts);
 
-   /* framebuffers are appended to the batch state in which they are destroyed
-    * to ensure deferred deletion without destroying in-use objects
-    */
-   util_dynarray_foreach(&bs->dead_framebuffers, struct zink_framebuffer*, fb) {
-      zink_framebuffer_reference(screen, fb, NULL);
-   }
-   util_dynarray_clear(&bs->dead_framebuffers);
    /* samplers are appended to the batch state in which they are destroyed
     * to ensure deferred deletion without destroying in-use objects
     */
@@ -312,7 +305,6 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    util_dynarray_fini(&bs->dgc.layouts);
    util_dynarray_fini(&bs->swapchain_obj);
    util_dynarray_fini(&bs->zombie_samplers);
-   util_dynarray_fini(&bs->dead_framebuffers);
    util_dynarray_fini(&bs->unref_resources);
    util_dynarray_fini(&bs->bindless_releases[0]);
    util_dynarray_fini(&bs->bindless_releases[1]);
@@ -404,7 +396,6 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->wait_semaphore_stages, NULL);
    util_dynarray_init(&bs->fd_wait_semaphore_stages, NULL);
    util_dynarray_init(&bs->zombie_samplers, NULL);
-   util_dynarray_init(&bs->dead_framebuffers, NULL);
    util_dynarray_init(&bs->freed_sparse_backing_bos, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
    util_dynarray_init(&bs->acquires, NULL);
