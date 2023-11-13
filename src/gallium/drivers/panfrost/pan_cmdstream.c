@@ -2962,7 +2962,12 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch,
 
    struct panfrost_ptr t = pan_pool_alloc_desc(&batch->pool.base, TILER_HEAP);
 
-   GENX(pan_emit_tiler_heap)(dev, t.cpu);
+   pan_pack(t.cpu, TILER_HEAP, heap) {
+      heap.size = dev->tiler_heap->size;
+      heap.base = dev->tiler_heap->ptr.gpu;
+      heap.bottom = dev->tiler_heap->ptr.gpu;
+      heap.top = dev->tiler_heap->ptr.gpu + dev->tiler_heap->size;
+   }
 
    mali_ptr heap = t.gpu;
 

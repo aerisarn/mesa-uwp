@@ -965,17 +965,6 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
 
 #if PAN_ARCH >= 6
 void
-GENX(pan_emit_tiler_heap)(const struct panfrost_device *dev, void *out)
-{
-   pan_pack(out, TILER_HEAP, heap) {
-      heap.size = dev->tiler_heap->size;
-      heap.base = dev->tiler_heap->ptr.gpu;
-      heap.bottom = dev->tiler_heap->ptr.gpu;
-      heap.top = dev->tiler_heap->ptr.gpu + dev->tiler_heap->size;
-   }
-}
-
-void
 GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev, unsigned fb_width,
                          unsigned fb_height, unsigned nr_samples,
                          bool first_provoking_vertex, mali_ptr heap, void *out)
