@@ -4774,14 +4774,13 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_resource *res = zink_resource(pres);
-   struct zink_screen *screen = zink_screen(pctx->screen);
 
    /* if any current usage exists, flush the queue */
    if (zink_resource_has_unflushed_usage(res))
       zink_flush_queue(ctx);
 
    VkSemaphore sem = VK_NULL_HANDLE;
-   bool ret = zink_bo_commit(screen, res, level, box, commit, &sem);
+   bool ret = zink_bo_commit(ctx, res, level, box, commit, &sem);
    if (ret) {
       if (sem)
          zink_batch_add_wait_semaphore(&ctx->batch, sem);

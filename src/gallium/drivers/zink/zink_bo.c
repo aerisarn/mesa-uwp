@@ -740,6 +740,14 @@ zink_bo_unmap(struct zink_screen *screen, struct zink_bo *bo)
    }
 }
 
+/* see comment in zink_batch_reference_resource_move for how references on sparse backing buffers are organized */
+static void
+track_freed_sparse_bo(struct zink_context *ctx, struct zink_sparse_backing *backing)
+{
+   pipe_reference(NULL, &backing->bo->base.reference);
+   util_dynarray_append(&ctx->batch.state->freed_sparse_backing_bos, struct zink_bo*, backing->bo);
+}
+
 static VkSemaphore
 buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, struct zink_bo *bo, uint32_t bo_offset, uint32_t offset, uint32_t size, bool commit, VkSemaphore wait)
 {
@@ -776,9 +784,10 @@ buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, stru
 }
 
 static bool
-buffer_bo_commit(struct zink_screen *screen, struct zink_resource *res, uint32_t offset, uint32_t size, bool commit, VkSemaphore *sem)
+buffer_bo_commit(struct zink_context *ctx, struct zink_resource *res, uint32_t offset, uint32_t size, bool commit, VkSemaphore *sem)
 {
    bool ok = true;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_bo *bo = res->obj->bo;
    assert(offset % ZINK_SPARSE_BUFFER_PAGE_SIZE == 0);
    assert(offset <= bo->base.size);
@@ -877,6 +886,7 @@ buffer_bo_commit(struct zink_screen *screen, struct zink_resource *res, uint32_t
             span_pages++;
          }
 
+         track_freed_sparse_bo(ctx, backing);
          if (!sparse_backing_free(screen, bo, backing, backing_start, span_pages)) {
             /* Couldn't allocate tracking data structures, so we have to leak */
             fprintf(stderr, "zink: leaking sparse backing memory\n");
@@ -947,9 +957,10 @@ texture_commit_miptail(struct zink_screen *screen, struct zink_resource *res, st
 }
 
 bool
-zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned level, struct pipe_box *box, bool commit, VkSemaphore *sem)
+zink_bo_commit(struct zink_context *ctx, struct zink_resource *res, unsigned level, struct pipe_box *box, bool commit, VkSemaphore *sem)
 {
    bool ok = true;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_bo *bo = res->obj->bo;
    VkSemaphore cur_sem = VK_NULL_HANDLE;
 
@@ -959,7 +970,7 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
    simple_mtx_lock(&screen->queue_lock);
    simple_mtx_lock(&bo->lock);
    if (res->base.b.target == PIPE_BUFFER) {
-      ok = buffer_bo_commit(screen, res, box->x, box->width, commit, &cur_sem);
+      ok = buffer_bo_commit(ctx, res, box->x, box->width, commit, &cur_sem);
       goto out;
    }
 

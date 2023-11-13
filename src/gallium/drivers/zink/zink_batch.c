@@ -145,6 +145,11 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    zink_batch_descriptor_reset(screen, bs);
 
+   util_dynarray_foreach(&bs->freed_sparse_backing_bos, struct zink_bo, bo) {
+      zink_bo_unref(screen, bo);
+   }
+   util_dynarray_clear(&bs->freed_sparse_backing_bos);
+
    /* programs are refcounted and batch-tracked */
    set_foreach_remove(&bs->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
@@ -301,6 +306,7 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    free(bs->real_objs.objs);
    free(bs->slab_objs.objs);
    free(bs->sparse_objs.objs);
+   util_dynarray_fini(&bs->freed_sparse_backing_bos);
    util_dynarray_fini(&bs->dead_querypools);
    util_dynarray_fini(&bs->dgc.pipelines);
    util_dynarray_fini(&bs->dgc.layouts);
@@ -399,6 +405,7 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->fd_wait_semaphore_stages, NULL);
    util_dynarray_init(&bs->zombie_samplers, NULL);
    util_dynarray_init(&bs->dead_framebuffers, NULL);
+   util_dynarray_init(&bs->freed_sparse_backing_bos, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
    util_dynarray_init(&bs->acquires, NULL);
    util_dynarray_init(&bs->acquire_flags, NULL);
@@ -1022,7 +1029,15 @@ zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resourc
    if (!(res->base.b.flags & PIPE_RESOURCE_FLAG_SPARSE)) {
       bs->resource_size += res->obj->size;
    } else {
-      // TODO: check backing pages
+      /* Sparse backing pages are not directly referenced by the batch as
+       * there can be a lot of them.
+       * Instead, they are kept referenced in one of two ways:
+       * - While they are committed, they are directly referenced from the
+       *   resource's state.
+       * - Upon de-commit, they are added to the freed_sparse_backing_bos
+       *   list, which will defer destroying the resource until the batch
+       *   performing unbind finishes.
+       */
    }
    check_oom_flush(batch->state->ctx, batch);
    batch->has_work = true;
