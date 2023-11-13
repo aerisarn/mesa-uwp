@@ -366,7 +366,6 @@ pub fn check_copy_overlap(
     true
 }
 
-#[allow(dead_code)]
 pub mod cl_slice {
     use crate::api::util::CLResult;
     use mesa_rust_util::ptr::addr;
