@@ -534,7 +534,7 @@ nvk_get_device_properties(const struct nvk_instance *instance,
 
       /* Vulkan 1.1 properties */
       .subgroupSize = 32,
-      .subgroupSupportedStages = nvk_nak_stages(),
+      .subgroupSupportedStages = nvk_nak_stages(info),
       .subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BALLOT_BIT |
                                      VK_SUBGROUP_FEATURE_BASIC_BIT |
                                      VK_SUBGROUP_FEATURE_VOTE_BIT,
