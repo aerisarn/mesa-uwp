@@ -1350,6 +1350,47 @@ impl SM50Instr {
         self.set_dst(op.dst);
     }
 
+    fn encode_ffma(&mut self, op: &OpFFma) {
+        /* TODO: FFMA in the 32 bits immediate form use the dest as source 2 */
+        assert!(op.srcs[1].as_imm_not_i20().is_none());
+
+        // FFMA doesn't have any abs flags.
+        assert!(!op.srcs[0].src_mod.has_fabs());
+        assert!(!op.srcs[1].src_mod.has_fabs());
+        assert!(!op.srcs[2].src_mod.has_fabs());
+
+        match &op.srcs[1].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5980);
+                self.set_reg_src_ref(20..28, op.srcs[1].src_ref);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x3280);
+                self.set_src_imm_i20(20..39, 56, *i);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4980);
+                self.set_src_cb(20..39, cb);
+            }
+            src1 => panic!("unsupported src1 type for IMUL: {src1}"),
+        }
+
+        self.set_dst(op.dst);
+        self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+        self.set_reg_src_ref(39..47, op.srcs[2].src_ref);
+
+        self.set_bit(
+            48,
+            op.srcs[0].src_mod.has_fneg() ^ op.srcs[1].src_mod.has_fneg(),
+        );
+        self.set_bit(49, op.srcs[2].src_mod.has_fneg());
+        self.set_bit(50, op.saturate);
+        self.set_rnd_mode(51..53, op.rnd_mode);
+
+        self.set_bit(53, false); /* TODO: FTZ */
+        self.set_bit(54, false); /* TODO: DNZ */
+    }
+
     fn set_float_cmp_op(&mut self, range: Range<usize>, op: FloatCmpOp) {
         assert!(range.len() == 4);
         self.set_field(
@@ -1575,6 +1616,7 @@ impl SM50Instr {
             Op::FAdd(op) => si.encode_fadd(&op),
             Op::FMnMx(op) => si.encode_fmnmx(&op),
             Op::FMul(op) => si.encode_fmul(&op),
+            Op::FFma(op) => si.encode_ffma(&op),
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
