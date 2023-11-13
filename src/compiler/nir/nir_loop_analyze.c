@@ -1171,11 +1171,13 @@ calculate_iterations(nir_scalar basis, nir_scalar limit_basis,
     */
    for (int bias = -1; bias <= 1; bias++) {
       const int iter_bias = iter_int + bias;
+      if (iter_bias < 1)
+         continue;
 
       if (test_iterations(iter_bias, step, limit, alu_op, bit_size,
                           induction_base_type, initial,
                           limit_rhs, invert_cond, execution_mode)) {
-         return iter_bias > 0 ? iter_bias - trip_offset : iter_bias;
+         return iter_bias - trip_offset;
       }
    }
 

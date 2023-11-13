@@ -285,6 +285,7 @@ COMPARE_REVERSE(ishl)
 
 INOT_COMPARE(ilt_rev)
 INOT_COMPARE(ine)
+INOT_COMPARE(uge_rev)
 
 #define CMP_MIN(cmp, min)                                               \
    static nir_def *nir_##cmp##_##min(nir_builder *b, nir_def *counter, nir_def *limit) \
@@ -634,6 +635,16 @@ KNOWN_COUNT_TEST(0x0000000a, 0x00000005, 0xffffffff, inot_ilt_rev, iadd, 5)
  *    }
  */
 UNKNOWN_COUNT_TEST(0x0000000a, 0x00000005, 0xffffffff, inot_ilt_imin_rev, iadd)
+
+/*    uint i = 0;
+ *    while (true) {
+ *       if (!(0 >= i))
+ *          break;
+ *
+ *       i += 1;
+ *    }
+ */
+KNOWN_COUNT_TEST(0x00000000, 0x00000000, 0x00000001, inot_uge_rev, iadd, 1)
 
 /*    uint i = 0;
  *    while (true) {
