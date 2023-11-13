@@ -73,6 +73,12 @@ get_semantic_name(int location, int driver_location, unsigned *index)
    case VARYING_SLOT_CLIP_DIST0:
       return "SV_ClipDistance";
 
+   case VARYING_SLOT_CULL_DIST1:
+      *index = 1;
+      FALLTHROUGH;
+   case VARYING_SLOT_CULL_DIST0:
+      return "SV_CullDistance";
+
    case VARYING_SLOT_PRIMITIVE_ID:
       return "SV_PrimitiveID";
 
@@ -143,8 +149,13 @@ fill_so_declaration(const struct pipe_stream_output_info *info,
       nir_variable *var = find_so_variable(last_vertex_stage,
          output->register_index, output->start_component, output->num_components);
       assert((var->data.stream & ~NIR_STREAM_PACKED) == output->stream);
-      entries[*num_entries].SemanticName = get_semantic_name(var->data.location,
-         var->data.driver_location, &index);
+      unsigned location = var->data.location;
+      if (location == VARYING_SLOT_CLIP_DIST0 || location == VARYING_SLOT_CLIP_DIST1) {
+         unsigned component = (location - VARYING_SLOT_CLIP_DIST0) * 4 + var->data.location_frac;
+         if (component >= last_vertex_stage->info.clip_distance_array_size)
+            location = VARYING_SLOT_CULL_DIST0 + (component - last_vertex_stage->info.clip_distance_array_size) / 4;
+      }
+      entries[*num_entries].SemanticName = get_semantic_name(location, var->data.driver_location, &index);
       entries[*num_entries].SemanticIndex = index;
       entries[*num_entries].StartComponent = output->start_component - var->data.location_frac;
       entries[*num_entries].ComponentCount = output->num_components;
