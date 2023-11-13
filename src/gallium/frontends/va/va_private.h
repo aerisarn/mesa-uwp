@@ -386,7 +386,7 @@ typedef struct {
 } vlVaConfig;
 
 typedef struct {
-   struct pipe_video_buffer templat, *buffer, *deint_buffer;
+   struct pipe_video_buffer templat, *buffer;
    struct util_dynarray subpics; /* vlVaSubpicture */
    vlVaContext *ctx;
    vlVaBuffer *coded_buf;
