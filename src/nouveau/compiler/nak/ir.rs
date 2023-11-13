@@ -945,6 +945,14 @@ impl SrcMod {
         }
     }
 
+    pub fn is_ineg(&self) -> bool {
+        match self {
+            SrcMod::None => false,
+            SrcMod::INeg => true,
+            _ => panic!("Not an integer modifier"),
+        }
+    }
+
     pub fn is_bnot(&self) -> bool {
         match self {
             SrcMod::None => false,

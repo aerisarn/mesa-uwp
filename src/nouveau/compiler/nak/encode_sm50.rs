@@ -328,6 +328,28 @@ impl SM50Instr {
         self.set_reg_src_ref(range, src.src_ref);
     }
 
+    fn set_reg_fmod_src(
+        &mut self,
+        range: Range<usize>,
+        abs_bit: usize,
+        neg_bit: usize,
+        src: Src,
+    ) {
+        self.set_reg_src_ref(range, src.src_ref);
+        self.set_bit(abs_bit, src.src_mod.has_fabs());
+        self.set_bit(neg_bit, src.src_mod.has_fneg());
+    }
+
+    fn set_reg_ineg_src(
+        &mut self,
+        range: Range<usize>,
+        neg_bit: usize,
+        src: Src,
+    ) {
+        self.set_reg_src_ref(range, src.src_ref);
+        self.set_bit(neg_bit, src.src_mod.is_ineg());
+    }
+
     fn set_pred_dst(&mut self, range: Range<usize>, dst: Dst) {
         match dst {
             Dst::None => {
@@ -398,6 +420,38 @@ impl SM50Instr {
         } else {
             panic!("Must be a bound constant buffer");
         }
+    }
+
+    fn set_cb_fmod_src(
+        &mut self,
+        range: Range<usize>,
+        abs_bit: usize,
+        neg_bit: usize,
+        src: Src,
+    ) {
+        if let SrcRef::CBuf(cb) = &src.src_ref {
+            self.set_src_cb(range, cb);
+        } else {
+            panic!("Not a CBuf source");
+        }
+
+        self.set_bit(abs_bit, src.src_mod.has_fabs());
+        self.set_bit(neg_bit, src.src_mod.has_fneg());
+    }
+
+    fn set_cb_ineg_src(
+        &mut self,
+        range: Range<usize>,
+        neg_bit: usize,
+        src: Src,
+    ) {
+        if let SrcRef::CBuf(cb) = &src.src_ref {
+            self.set_src_cb(range, cb);
+        } else {
+            panic!("Not a CBuf source");
+        }
+
+        self.set_bit(neg_bit, src.src_mod.is_ineg());
     }
 
     fn set_alu_reg(
@@ -987,15 +1041,15 @@ impl SM50Instr {
         match &op.src.src_ref {
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5cb0);
-                self.set_reg_src_ref(20..28, op.src.src_ref);
+                self.set_reg_fmod_src(20..28, 49, 45, op.src);
             }
             SrcRef::Imm32(i) => {
                 self.set_opcode(0x38b0);
                 self.set_src_imm_f20(20..39, 56, *i);
             }
-            SrcRef::CBuf(cb) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x4cb0);
-                self.set_src_cb(20..39, cb);
+                self.set_cb_fmod_src(20..39, 49, 45, op.src);
             }
             src => panic!("Unsupported src type for F2I: {src}"),
         }
@@ -1007,9 +1061,7 @@ impl SM50Instr {
         self.set_bit(12, op.dst_type.is_signed());
         self.set_rnd_mode(39..41, op.rnd_mode);
         self.set_bit(44, false); /* FTZ */
-        self.set_bit(45, op.src.src_mod.has_fneg());
         self.set_bit(47, false); // .CC
-        self.set_bit(49, op.src.src_mod.has_fabs());
     }
 
     fn set_pred_set_op(&mut self, range: Range<usize>, op: PredSetOp) {
@@ -1542,16 +1594,14 @@ impl SM50Instr {
         if let Some(imm32) = op.srcs[1].as_imm_not_f20() {
             self.set_opcode(0x0800);
             self.set_dst(op.dst);
-            self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+            self.set_reg_fmod_src(8..16, 54, 56, op.srcs[0]);
             self.set_src_imm32(20..52, imm32);
-            self.set_bit(54, op.srcs[0].src_mod.has_fabs());
             self.set_bit(55, ftz);
-            self.set_bit(56, op.srcs[0].src_mod.has_fneg());
         } else {
             match &op.srcs[1].src_ref {
                 SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x5c58);
-                    self.set_reg_src_ref(20..28, op.srcs[1].src_ref);
+                    self.set_reg_fmod_src(20..28, 49, 45, op.srcs[1]);
                 }
                 SrcRef::Imm32(imm) => {
                     self.set_opcode(0x3858);
@@ -1560,19 +1610,15 @@ impl SM50Instr {
                 }
                 SrcRef::CBuf(cb) => {
                     self.set_opcode(0x4c58);
-                    self.set_src_cb(20..39, cb);
+                    self.set_cb_fmod_src(20..39, 49, 45, op.srcs[1]);
                 }
                 _ => panic!("Unsupported src type"),
             }
 
             self.set_dst(op.dst);
-            self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+            self.set_reg_fmod_src(8..16, 46, 48, op.srcs[0]);
 
             self.set_rnd_mode(39..41, op.rnd_mode);
-            self.set_bit(45, op.srcs[1].src_mod.has_fneg());
-            self.set_bit(46, op.srcs[0].src_mod.has_fabs());
-            self.set_bit(48, op.srcs[0].src_mod.has_fneg());
-            self.set_bit(49, op.srcs[1].src_mod.has_fabs());
             self.set_bit(50, op.saturate);
         }
     }
