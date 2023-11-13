@@ -919,7 +919,8 @@ struct anv_physical_device {
     bool                                        flush_astc_ldr_void_extent_denorms;
     /** True if ASTC LDR is supported via emulation */
     bool                                        emu_astc_ldr;
-
+    /* true if FCV optimization should be disabled. */
+    bool                                        disable_fcv;
     /**/
     bool                                        uses_ex_bso;
 
@@ -1095,6 +1096,7 @@ struct anv_instance {
     unsigned                                    query_copy_with_shader_threshold;
     unsigned                                    force_vk_vendor;
     bool                                        has_fake_sparse;
+    bool                                        disable_fcv;
 
     /* HW workarounds */
     bool                                        no_16bit;

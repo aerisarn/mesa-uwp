@@ -742,6 +742,10 @@
    DRI_CONF_OPT_B(force_indirect_descriptors, def, \
                   "Use an indirection to access buffer/image/texture/sampler handles")
 
+#define DRI_CONF_ANV_DISABLE_FCV(def) \
+   DRI_CONF_OPT_B(anv_disable_fcv, def, \
+                  "Disable FCV optimization")
+
 /**
  * \brief DZN specific configuration options
  */
