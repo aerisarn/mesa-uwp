@@ -150,7 +150,7 @@ vn_instance_init_ring(struct vn_instance *instance)
       .pNext = &monitor_info,
       .resourceId = instance->ring.shmem->res_id,
       .size = layout.shmem_size,
-      .idleTimeout = 50ull * 1000 * 1000,
+      .idleTimeout = 5ull * 1000 * 1000,
       .headOffset = layout.head_offset,
       .tailOffset = layout.tail_offset,
       .statusOffset = layout.status_offset,
