@@ -536,7 +536,7 @@ def main():
         )
 
         if args.print_merged_yaml:
-            print(merged_yaml)
+            print(yaml.dump(merged_yaml, indent=2))
 
         if args.print_job_manifest:
             print_job_final_definition(
