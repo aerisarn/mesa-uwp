@@ -432,7 +432,8 @@ vlVaApplyDeint(vlVaDriver *drv, vlVaContext *context,
       return current;
 
    if (context->deint && (context->deint->video_width != current->width ||
-       context->deint->video_height != current->height)) {
+       context->deint->video_height != current->height ||
+       context->deint->interleaved != !current->interlaced)) {
       vl_deint_filter_cleanup(context->deint);
       FREE(context->deint);
       context->deint = NULL;
@@ -441,7 +442,7 @@ vlVaApplyDeint(vlVaDriver *drv, vlVaContext *context,
    if (!context->deint) {
       context->deint = MALLOC(sizeof(struct vl_deint_filter));
       if (!vl_deint_filter_init(context->deint, drv->pipe, current->width,
-                                current->height, false, false)) {
+                                current->height, false, false, !current->interlaced)) {
          FREE(context->deint);
          context->deint = NULL;
          return current;
