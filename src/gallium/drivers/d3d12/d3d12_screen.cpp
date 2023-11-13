@@ -193,9 +193,9 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      return 440;
+      return 450;
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 440;
+      return 450;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
       return 310;
 
@@ -336,6 +336,10 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SHADER_ARRAY_COMPONENTS:
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
    case PIPE_CAP_QUERY_TIME_ELAPSED:
+   case PIPE_CAP_FS_FINE_DERIVATIVE:
+   case PIPE_CAP_CULL_DISTANCE:
+   case PIPE_CAP_TEXTURE_QUERY_SAMPLES:
+   case PIPE_CAP_TEXTURE_BARRIER:
       return 1;
 
    case PIPE_CAP_QUERY_BUFFER_OBJECT:

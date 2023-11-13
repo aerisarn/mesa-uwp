@@ -2378,6 +2378,21 @@ d3d12_memory_barrier(struct pipe_context *pctx, unsigned flags)
 }
 
 static void
+d3d12_texture_barrier(struct pipe_context *pctx, unsigned flags)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+
+   /* D3D doesn't really have an equivalent in the legacy barrier model. When using enhanced barriers,
+    * this could be a more specific global barrier. But for now, just flush the world with an aliasing barrier. */
+   D3D12_RESOURCE_BARRIER aliasingBarrier;
+   aliasingBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+   aliasingBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+   aliasingBarrier.Aliasing.pResourceBefore = nullptr;
+   aliasingBarrier.Aliasing.pResourceAfter = nullptr;
+   ctx->cmdlist->ResourceBarrier(1, &aliasingBarrier);
+}
+
+static void
 d3d12_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
@@ -2534,6 +2549,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.fence_server_sync = d3d12_wait;
 
    ctx->base.memory_barrier = d3d12_memory_barrier;
+   ctx->base.texture_barrier = d3d12_texture_barrier;
 
    ctx->base.get_sample_position = u_default_get_sample_position;
 

@@ -210,11 +210,11 @@ GL 4.4, GLSL 4.40 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, v
   GL_ARB_texture_stencil8                               DONE (freedreno, nv50, softpipe, v3d, panfrost, asahi)
   GL_ARB_vertex_type_10f_11f_11f_rev                    DONE (freedreno, nv50, softpipe, panfrost, asahi, crocus)
 
-GL 4.5, GLSL 4.50 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, virgl, zink, iris, crocus/gen7.5+
+GL 4.5, GLSL 4.50 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, virgl, zink, iris, crocus/gen7.5+, d3d12
 
   GL_ARB_ES3_1_compatibility                            DONE (freedreno/a6xx, softpipe)
-  GL_ARB_clip_control                                   DONE (freedreno, nv50, softpipe, lima, d3d12, crocus, asahi)
-  GL_ARB_conditional_render_inverted                    DONE (freedreno, nv50, softpipe, panfrost, d3d12, asahi, crocus/gen6+)
+  GL_ARB_clip_control                                   DONE (freedreno, nv50, softpipe, lima, crocus, asahi)
+  GL_ARB_conditional_render_inverted                    DONE (freedreno, nv50, softpipe, panfrost, asahi, crocus/gen6+)
   GL_ARB_cull_distance                                  DONE (freedreno/a6xx, nv50, softpipe, crocus/gen6+)
   GL_ARB_derivative_control                             DONE (freedreno/a3xx+, nv50, softpipe, asahi, crocus/gen7+)
   GL_ARB_direct_state_access                            DONE (all drivers)

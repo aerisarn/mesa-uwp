@@ -49,3 +49,7 @@ spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Crash
 # TODO: Need to investigate and debug
 spec@arb_enhanced_layouts@execution@component-layout@vs-gs-fs-double,Fail
 spec@arb_tessellation_shader@execution@dvec3-vs-tcs-tes,Fail
+
+# WARP bug: Due to SIMT, the FS loop runs 4 times, and all 4 threads end up with
+# the final value from the SSBO instead of remembering their own value they computed.
+spec@glsl-4.50@execution@ssbo-atomiccompswap-int,Fail
