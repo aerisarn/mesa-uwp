@@ -440,6 +440,7 @@ pb_slab_manager_destroy(struct pb_manager *_mgr)
    struct pb_slab_manager *mgr = pb_slab_manager(_mgr);
 
    /* TODO: cleanup all allocated buffers */
+   mtx_destroy(&mgr->mutex);
    FREE(mgr);
 }
 
