@@ -11,7 +11,6 @@ spec@arb_tessellation_shader@execution@tcs-output-unmatched,Crash
 spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-read,Crash
 spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 spec@arb_tessellation_shader@execution@tcs-tes-max-in-out-patch-components,Crash
-spec@arb_tessellation_shader@execution@tes-tes-levels-out-of-bounds-read,Crash
 spec@arb_tessellation_shader@execution@tes-primitiveid,Fail
 spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-dvec4-index-rd,Crash
 spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-dvec4-index-wr,Crash
