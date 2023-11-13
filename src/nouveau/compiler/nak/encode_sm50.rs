@@ -1885,48 +1885,38 @@ impl SM50Instr {
     }
 
     fn encode_iadd2(&mut self, op: &OpIAdd2) {
-        /* TODO: support modifiers with imm32 (bit 56) */
-        assert!(op.srcs[0].is_reg_or_zero());
-        let neg_0_bit;
-
         if let Some(imm32) = op.srcs[1].as_imm_not_i20() {
             self.set_opcode(0x1c00);
+
+            self.set_dst(op.dst);
+            self.set_reg_ineg_src(8..16, 56, op.srcs[0]);
             self.set_src_imm32(20..56, imm32);
-            neg_0_bit = Some(56);
 
             self.set_bit(53, op.carry_in);
             self.set_bit(52, op.carry_out);
         } else {
-            let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-            neg_0_bit = Some(49);
-
-            match &alu_src_1 {
-                ALUSrc::None => panic!("Invalid source for IADD2"),
-                ALUSrc::Reg(reg) => {
+            match &op.srcs[1].src_ref {
+                SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x5c10);
-                    self.set_alu_reg_src(20..28, None, Some(48), &alu_src_1);
+                    self.set_reg_ineg_src(20..28, 48, op.srcs[1]);
                 }
-                ALUSrc::Imm32(imm) => {
+                SrcRef::Imm32(imm) => {
                     self.set_opcode(0x3810);
                     self.set_src_imm_i20(20..40, 56, *imm);
                 }
-                ALUSrc::CBuf(cbuf) => {
+                SrcRef::CBuf(_) => {
                     self.set_opcode(0x4c10);
-                    self.set_alu_cb(20..39, None, Some(48), cbuf);
+                    self.set_cb_ineg_src(20..39, 48, op.srcs[1]);
                 }
+                src => panic!("Unsupported src type for IADD: {src}"),
             }
+
+            self.set_dst(op.dst);
+            self.set_reg_ineg_src(8..16, 49, op.srcs[0]);
 
             self.set_bit(43, op.carry_in);
             self.set_bit(47, op.carry_out);
         }
-
-        self.set_alu_reg_src(
-            8..16,
-            None,
-            neg_0_bit,
-            &ALUSrc::from_src(&op.srcs[0]),
-        );
-        self.set_dst(op.dst);
     }
 
     fn encode_prmt(&mut self, op: &OpPrmt) {
