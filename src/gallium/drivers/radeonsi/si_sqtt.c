@@ -1027,7 +1027,7 @@ si_sqtt_add_code_object(struct si_context* sctx,
    struct rgp_code_object *code_object = &sctx->sqtt->rgp_code_object;
    struct rgp_code_object_record *record;
 
-   record = malloc(sizeof(struct rgp_code_object_record));
+   record = calloc(1, sizeof(struct rgp_code_object_record));
    if (!record)
       return false;
 
