@@ -806,6 +806,7 @@ panfrost_batch_submit(struct panfrost_context *ctx,
    struct pan_image_view rts[8], zs, s;
 
    panfrost_batch_to_fb_info(batch, &fb, rts, &zs, &s, false);
+   panfrost_emit_tile_map(batch, &fb);
 
    screen->vtbl.preload(batch, &fb);
    screen->vtbl.init_polygon_list(batch);
@@ -814,7 +815,6 @@ panfrost_batch_submit(struct panfrost_context *ctx,
     * FBD for the batch (if there is one). */
 
    screen->vtbl.emit_tls(batch);
-   panfrost_emit_tile_map(batch, &fb);
 
    if (has_frag) {
       screen->vtbl.emit_fbd(batch, &fb);
