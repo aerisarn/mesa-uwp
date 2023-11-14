@@ -522,13 +522,13 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
    return progress;
 }
 
-struct nvk_xfb_info
+struct nak_xfb_info
 nak_xfb_from_nir(const struct nir_xfb_info *nir_xfb)
 {
    if (nir_xfb == NULL)
-      return (struct nvk_xfb_info) { };
+      return (struct nak_xfb_info) { };
 
-   struct nvk_xfb_info nak_xfb = { };
+   struct nak_xfb_info nak_xfb = { };
 
    u_foreach_bit(b, nir_xfb->buffers_written) {
       nak_xfb.stride[b] = nir_xfb->buffers[b].stride;

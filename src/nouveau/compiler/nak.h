@@ -63,7 +63,7 @@ enum PACKED nak_ts_prims {
    NAK_TS_PRIMS_TRIANGLES_CCW = 3,
 };
 
-struct nvk_xfb_info {
+struct nak_xfb_info {
    uint32_t stride[4];
    uint8_t stream[4];
    uint8_t attr_count[4];
@@ -112,7 +112,7 @@ struct nak_shader_info {
    uint8_t clip_enable;
    uint8_t cull_enable;
 
-   struct nvk_xfb_info xfb;
+   struct nak_xfb_info xfb;
 
    /** Shader header for 3D stages */
    uint32_t hdr[32];

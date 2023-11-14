@@ -111,7 +111,7 @@ nak_nir_has_one_subgroup(const nir_shader *nir)
    return wg_sz <= 32;
 }
 
-struct nvk_xfb_info
+struct nak_xfb_info
 nak_xfb_from_nir(const struct nir_xfb_info *nir_xfb);
 
 struct nak_io_addr_offset {
