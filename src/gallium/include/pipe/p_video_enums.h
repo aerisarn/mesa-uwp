@@ -148,6 +148,10 @@ enum pipe_video_cap
     * supported modes to set in disable_deblocking_filter_idc
    */
    PIPE_VIDEO_CAP_ENC_H264_DISABLE_DBK_FILTER_MODES_SUPPORTED = 45,
+   /* max number of intra refresh cycles before the beginning of a new
+    * intra-refresh wave (e.g pipe_enc_intra_refresh.offset is 0 again)
+   */
+   PIPE_VIDEO_CAP_ENC_INTRA_REFRESH_MAX_DURATION = 46,
 };
 
 enum pipe_video_h264_enc_dbk_filter_mode_flags
