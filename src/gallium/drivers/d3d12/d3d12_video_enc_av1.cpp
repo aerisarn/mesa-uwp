@@ -983,6 +983,48 @@ d3d12_video_encoder_convert_av1_codec_configuration(struct d3d12_video_encoder *
    return config;
 }
 
+static bool
+d3d12_video_encoder_update_intra_refresh_av1(struct d3d12_video_encoder *pD3D12Enc,
+                                                        struct pipe_video_buffer *  srcTexture,
+                                                        struct pipe_av1_enc_picture_desc *  picture)
+{
+   if (picture->intra_refresh.mode != INTRA_REFRESH_MODE_NONE)
+   {
+      // D3D12 only supports row intra-refresh
+      if (picture->intra_refresh.mode != INTRA_REFRESH_MODE_UNIT_ROWS)
+      {
+         debug_printf("[d3d12_video_encoder_update_intra_refresh_av1] Unsupported INTRA_REFRESH_MODE %d\n", picture->intra_refresh.mode);
+         return false;
+      }
+
+      uint32_t sbSize = ((pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificConfigDesc.m_AV1Config.FeatureFlags &
+        D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_128x128_SUPERBLOCK) != 0) ? 128u : 64u;
+      uint32_t total_frame_blocks = static_cast<uint32_t>(std::ceil(srcTexture->height / sbSize)) *
+                              static_cast<uint32_t>(std::ceil(srcTexture->width / sbSize));
+      D3D12_VIDEO_ENCODER_INTRA_REFRESH targetIntraRefresh = {
+         D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_ROW_BASED,
+         total_frame_blocks / picture->intra_refresh.region_size,
+      };
+      double ir_wave_progress = (picture->intra_refresh.offset == 0) ? 0 :
+         picture->intra_refresh.offset / (double) total_frame_blocks;
+      pD3D12Enc->m_currentEncodeConfig.m_IntraRefreshCurrentFrameIndex =
+         static_cast<uint32_t>(std::ceil(ir_wave_progress * targetIntraRefresh.IntraRefreshDuration));
+
+      // Set intra refresh state
+      pD3D12Enc->m_currentEncodeConfig.m_IntraRefresh = targetIntraRefresh;
+      // Need to send the sequence flag during all the IR duration
+      pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags |= d3d12_video_encoder_config_dirty_flag_intra_refresh;
+   } else {
+      pD3D12Enc->m_currentEncodeConfig.m_IntraRefreshCurrentFrameIndex = 0;
+      pD3D12Enc->m_currentEncodeConfig.m_IntraRefresh = {
+         D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_NONE,
+         0,
+      };
+   }
+
+   return true;
+}
+
 bool
 d3d12_video_encoder_update_current_encoder_config_state_av1(struct d3d12_video_encoder *pD3D12Enc,
                                                             struct pipe_video_buffer *srcTexture,
@@ -1100,6 +1142,12 @@ d3d12_video_encoder_update_current_encoder_config_state_av1(struct d3d12_video_e
    // Set GOP config
    if (!d3d12_video_encoder_update_av1_gop_configuration(pD3D12Enc, av1Pic)) {
       debug_printf("d3d12_video_encoder_update_av1_gop_configuration failed!\n");
+      return false;
+   }
+
+   // Set intra-refresh config
+   if(!d3d12_video_encoder_update_intra_refresh_av1(pD3D12Enc, srcTexture, av1Pic)) {
+      debug_printf("d3d12_video_encoder_update_intra_refresh_av1 failed!\n");
       return false;
    }
 

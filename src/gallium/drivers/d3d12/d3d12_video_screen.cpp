@@ -803,7 +803,8 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                uint32_t &isRCMaxFrameSizeSupported,
                                uint32_t &maxQualityLevels,
                                uint32_t &max_tile_rows,
-                               uint32_t &max_tile_cols)
+                               uint32_t &max_tile_cols,
+                               uint32_t &maxIRDuration)
 {
    ComPtr<ID3D12VideoDevice3> spD3D12VideoDevice;
    struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) pscreen;
@@ -887,6 +888,7 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
             else
                maxSlices = resolutionDepCaps.MaxSubregionsNumber;
 
+            maxIRDuration = resolutionDepCaps.MaxIntraRefreshFrameDuration;
             isRCMaxFrameSizeSupported = ((capEncoderSupportData1.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_RATE_CONTROL_MAX_FRAME_SIZE_AVAILABLE) != 0) ? 1 : 0;
             maxReferencesPerFrame =
                d3d12_video_encode_supported_references_per_frame_structures(codecDesc,
@@ -1059,6 +1061,8 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                   maxSlices = 0;
                else
                   maxSlices = resolutionDepCaps.MaxSubregionsNumber;
+
+               maxIRDuration = resolutionDepCaps.MaxIntraRefreshFrameDuration;
                isRCMaxFrameSizeSupported = ((capEncoderSupportData1.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_RATE_CONTROL_MAX_FRAME_SIZE_AVAILABLE) != 0) ? 1 : 0;
             }
          }
@@ -1316,6 +1320,7 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                else
                   maxSlices = resolutionDepCaps.MaxSubregionsNumber;
 
+               maxIRDuration = resolutionDepCaps.MaxIntraRefreshFrameDuration;
                codecSupport.av1_support.features_ext2.bits.max_tile_num_minus1 = maxSlices - 1;
 
                isRCMaxFrameSizeSupported = ((capEncoderSupportData1.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_RATE_CONTROL_MAX_FRAME_SIZE_AVAILABLE) != 0) ? 1 : 0;
@@ -1621,6 +1626,7 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
    uint32_t maxQualityLevels = 0u;
    uint32_t max_tile_rows = 0u;
    uint32_t max_tile_cols = 0u;
+   uint32_t maxIRDuration = 0u;
    struct d3d12_encode_codec_support codec_specific_support;
    memset(&codec_specific_support, 0, sizeof(codec_specific_support));
    switch (param) {
@@ -1650,6 +1656,7 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
       case PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL:
       case PIPE_VIDEO_CAP_ENC_MAX_TILE_ROWS:
       case PIPE_VIDEO_CAP_ENC_MAX_TILE_COLS:
+      case PIPE_VIDEO_CAP_ENC_INTRA_REFRESH_MAX_DURATION:
       {
          if (d3d12_has_video_encode_support(pscreen,
                                             profile,
@@ -1663,7 +1670,8 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                                             isRCMaxFrameSizeSupported,
                                             maxQualityLevels,
                                             max_tile_rows,
-                                            max_tile_cols)) {
+                                            max_tile_cols,
+                                            maxIRDuration)) {
 
             DXGI_FORMAT format = d3d12_convert_pipe_video_profile_to_dxgi_format(profile);
             auto pipeFmt = d3d12_get_pipe_format(format);
@@ -1691,6 +1699,8 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                   return max_tile_cols;
                } else if (param == PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME) {
                   return maxReferencesPerFrame;
+               } else if (param == PIPE_VIDEO_CAP_ENC_INTRA_REFRESH_MAX_DURATION) {
+                  return maxIRDuration;
                } else if (param == PIPE_VIDEO_CAP_ENC_SUPPORTS_MAX_FRAME_SIZE) {
                   return isRCMaxFrameSizeSupported;
                } else if (param == PIPE_VIDEO_CAP_ENC_HEVC_FEATURE_FLAGS) {

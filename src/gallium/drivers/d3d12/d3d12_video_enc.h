@@ -113,6 +113,7 @@ enum d3d12_video_encoder_config_dirty_flags
    d3d12_video_encoder_config_dirty_flag_gop                    = 0x100,
    d3d12_video_encoder_config_dirty_flag_motion_precision_limit = 0x200,
    d3d12_video_encoder_config_dirty_flag_sequence_info          = 0x400,
+   d3d12_video_encoder_config_dirty_flag_intra_refresh          = 0x800,
 };
 DEFINE_ENUM_FLAG_OPERATORS(d3d12_video_encoder_config_dirty_flags);
 
