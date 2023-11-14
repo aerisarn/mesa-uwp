@@ -671,15 +671,49 @@ guess_loop_limit(loop_info_state *state, nir_const_value *limit_val,
    return false;
 }
 
+static nir_op invert_comparison_if_needed(nir_op alu_op, bool invert);
+
+/* Returns whether "limit_op(a, b) alu_op c" is equivalent to "(a alu_op c) || (b alu_op c)". */
 static bool
-try_find_limit_of_alu(nir_scalar limit, nir_const_value *limit_val,
-                      nir_loop_terminator *terminator, loop_info_state *state)
+is_min_compatible(nir_op limit_op, nir_op alu_op, bool limit_rhs, bool invert_cond)
+{
+   switch (limit_op) {
+   case nir_op_imin:
+   case nir_op_fmin:
+      break;
+   default:
+      return false;
+   }
+
+   if (nir_op_infos[limit_op].input_types[0] != nir_op_infos[alu_op].input_types[0])
+      return false;
+
+   /* Comparisons we can split are:
+    * - min(a, b) < c
+    * - c >= min(a, b)
+    */
+   switch (invert_comparison_if_needed(alu_op, invert_cond)) {
+   case nir_op_ilt:
+   case nir_op_flt:
+      return !limit_rhs;
+   case nir_op_ige:
+   case nir_op_fge:
+      return limit_rhs;
+   default:
+      return false;
+   }
+}
+
+static bool
+try_find_limit_of_alu(nir_scalar limit, nir_const_value *limit_val, nir_op alu_op,
+                      bool invert_cond, nir_loop_terminator *terminator,
+                      loop_info_state *state)
 {
    if (!nir_scalar_is_alu(limit))
       return false;
 
    nir_op limit_op = nir_scalar_alu_op(limit);
-   if (limit_op == nir_op_imin || limit_op == nir_op_fmin) {
+   if (is_min_compatible(limit_op, alu_op, !terminator->induction_rhs, invert_cond)) {
       for (unsigned i = 0; i < 2; i++) {
          nir_scalar src = nir_scalar_chase_alu_src(limit, i);
          if (nir_scalar_is_const(src)) {
@@ -1308,7 +1342,7 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
       } else {
          trip_count_known = false;
 
-         if (!try_find_limit_of_alu(limit, &limit_val, terminator, state)) {
+         if (!try_find_limit_of_alu(limit, &limit_val, alu_op, invert_cond, terminator, state)) {
             /* Guess loop limit based on array access */
             if (!guess_loop_limit(state, &limit_val, basic_ind)) {
                terminator->exact_trip_count_unknown = true;
