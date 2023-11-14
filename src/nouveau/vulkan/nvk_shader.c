@@ -428,8 +428,8 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
    case MESA_SHADER_VERTEX:
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY: {
-      shader->vs.clip_enable = bin->info.clip_enable;
-      shader->vs.cull_enable = bin->info.cull_enable;
+      shader->vs.clip_enable = bin->info.vtg.clip_enable;
+      shader->vs.cull_enable = bin->info.vtg.cull_enable;
 
       if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
          shader->tp.domain_type = bin->info.ts.domain;
@@ -441,7 +441,7 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
 
       bool has_xfb = false;
       for (unsigned b = 0; b < 4; b++) {
-         if (bin->info.xfb.attr_count[b] > 0) {
+         if (bin->info.vtg.xfb.attr_count[b] > 0) {
             has_xfb = true;
             break;
          }
@@ -449,8 +449,8 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
 
       if (has_xfb) {
          shader->xfb = malloc(sizeof(*shader->xfb));
-         STATIC_ASSERT(sizeof(*shader->xfb) == sizeof(bin->info.xfb));
-         memcpy(shader->xfb, &bin->info.xfb, sizeof(*shader->xfb));
+         STATIC_ASSERT(sizeof(*shader->xfb) == sizeof(bin->info.vtg.xfb));
+         memcpy(shader->xfb, &bin->info.vtg.xfb, sizeof(*shader->xfb));
       }
       break;
    }

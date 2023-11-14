@@ -109,10 +109,12 @@ struct nak_shader_info {
       uint32_t dummy;
    };
 
-   uint8_t clip_enable;
-   uint8_t cull_enable;
+   struct {
+      uint8_t clip_enable;
+      uint8_t cull_enable;
 
-   struct nak_xfb_info xfb;
+      struct nak_xfb_info xfb;
+   } vtg;
 
    /** Shader header for 3D stages */
    uint32_t hdr[32];

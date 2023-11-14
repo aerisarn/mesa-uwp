@@ -351,26 +351,22 @@ pub extern "C" fn nak_compile_shader(
             }
             _ => nak_shader_info__bindgen_ty_1 { dummy: 0 },
         },
-        clip_enable: match &s.info.stage {
-            ShaderStageInfo::Geometry(_)
-            | ShaderStageInfo::Tessellation
-            | ShaderStageInfo::Vertex => {
-                let num_clip = nir.info.clip_distance_array_size();
-                ((1_u32 << num_clip) - 1).try_into().unwrap()
-            }
-            _ => 0,
-        },
-        cull_enable: match &s.info.stage {
+        vtg: match &s.info.stage {
             ShaderStageInfo::Geometry(_)
             | ShaderStageInfo::Tessellation
             | ShaderStageInfo::Vertex => {
                 let num_clip = nir.info.clip_distance_array_size();
                 let num_cull = nir.info.cull_distance_array_size();
-                (((1_u32 << num_cull) - 1) << num_clip).try_into().unwrap()
+                let clip_enable = (1_u32 << num_clip) - 1;
+                let cull_enable = ((1_u32 << num_cull) - 1) << num_clip;
+                nak_shader_info__bindgen_ty_2 {
+                    clip_enable: clip_enable.try_into().unwrap(),
+                    cull_enable: cull_enable.try_into().unwrap(),
+                    xfb: unsafe { nak_xfb_from_nir(nir.xfb_info) },
+                }
             }
-            _ => 0,
+            _ => unsafe { std::mem::zeroed() },
         },
-        xfb: unsafe { nak_xfb_from_nir(nir.xfb_info) },
         hdr: nak_sph::encode_header(&s.info, fs_key),
     };
 
