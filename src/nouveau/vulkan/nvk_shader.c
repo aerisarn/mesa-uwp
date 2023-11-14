@@ -481,6 +481,9 @@ nvk_shader_stage_to_nir(struct nvk_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
+   NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+              nir_shader_get_entrypoint(nir), true, false);
+
    if (use_nak(dev->pdev, nir->info.stage))
       nak_preprocess_nir(nir, NULL);
 
@@ -541,19 +544,6 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
 
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
-
-   if (nir->info.stage == MESA_SHADER_VERTEX ||
-       nir->info.stage == MESA_SHADER_GEOMETRY ||
-       nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
-   } else if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, false);
-   }
-   NIR_PASS(_, nir, nir_split_var_copies);
-
-   NIR_PASS(_, nir, nir_lower_global_vars_to_local);
-   NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-
 
    nvk_optimize_nir(nir);
 
