@@ -42,7 +42,7 @@ emit_pipeline_rs_state(struct nv_push *p,
 }
 
 static void
-nvk_populate_fs_key(struct nvk_fs_key *key,
+nvk_populate_fs_key(struct nak_fs_key *key,
                     const struct vk_multisample_state *ms,
                     const struct vk_graphics_pipeline_state *state)
 {
@@ -55,10 +55,9 @@ nvk_populate_fs_key(struct nvk_fs_key *key,
    if (ms == NULL || ms->rasterization_samples <= 1)
       return;
 
-   key->msaa = ms->rasterization_samples;
    if (ms->sample_shading_enable &&
        (ms->rasterization_samples * ms->min_sample_shading) > 1.0)
-      key->force_per_sample = true;
+      key->force_sample_shading = true;
 }
 
 static void
@@ -356,7 +355,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
       if (nir[stage] == NULL)
          continue;
 
-      struct nvk_fs_key fs_key_tmp, *fs_key = NULL;
+      struct nak_fs_key fs_key_tmp, *fs_key = NULL;
       if (stage == MESA_SHADER_FRAGMENT) {
          nvk_populate_fs_key(&fs_key_tmp, state.ms, &state);
          fs_key = &fs_key_tmp;

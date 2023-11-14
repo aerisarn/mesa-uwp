@@ -8,6 +8,7 @@
 #include "nvk_private.h"
 #include "nvk_device_memory.h"
 
+#include "nak.h"
 #include "nir.h"
 #include "nouveau_bo.h"
 
@@ -23,12 +24,6 @@ struct vk_shader_module;
 #define GF100_SHADER_HEADER_SIZE (20 * 4)
 #define TU102_SHADER_HEADER_SIZE (32 * 4)
 #define NVC0_MAX_SHADER_HEADER_SIZE TU102_SHADER_HEADER_SIZE
-
-struct nvk_fs_key {
-   bool msaa;
-   bool force_per_sample;
-   bool zs_self_dep;
-};
 
 struct nvk_transform_feedback_state {
    uint32_t stride[4];
@@ -145,7 +140,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
 
 VkResult
 nvk_compile_nir(struct nvk_physical_device *dev, nir_shader *nir,
-                const struct nvk_fs_key *fs_key,
+                const struct nak_fs_key *fs_key,
                 struct nvk_shader *shader);
 
 VkResult
@@ -169,7 +164,7 @@ void nvk_cg_preprocess_nir(nir_shader *nir);
 void nvk_cg_optimize_nir(nir_shader *nir);
 
 VkResult nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
-                            const struct nvk_fs_key *fs_key,
+                            const struct nak_fs_key *fs_key,
                             struct nvk_shader *shader);
 
 #endif

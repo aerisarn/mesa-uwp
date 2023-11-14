@@ -700,7 +700,7 @@ nvk_hdr_interp_mode(const struct nv50_ir_varying *var)
 
 
 static int
-nvk_fs_gen_header(struct nvk_shader *fs, const struct nvk_fs_key *key,
+nvk_fs_gen_header(struct nvk_shader *fs, const struct nak_fs_key *key,
                   struct nv50_ir_prog_info_out *info)
 {
    unsigned i, c, a, m;
@@ -843,7 +843,7 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
 
 VkResult
 nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
-                   const struct nvk_fs_key *fs_key,
+                   const struct nak_fs_key *fs_key,
                    struct nvk_shader *shader)
 {
    struct nv50_ir_prog_info *info;
@@ -880,9 +880,9 @@ nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
 
    if (info_out.bin.fixupData) {
       nv50_ir_apply_fixups(info_out.bin.fixupData, info_out.bin.code,
-                           fs_key && fs_key->force_per_sample,
+                           fs_key && fs_key->force_sample_shading,
                            false /* flatshade */, false /* alphatest */,
-                           fs_key && fs_key->msaa);
+                           fs_key && fs_key->force_sample_shading);
    }
 
    shader->stage = nir->info.stage;
