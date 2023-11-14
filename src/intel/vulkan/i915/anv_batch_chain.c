@@ -1020,6 +1020,14 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
          goto out;
    }
 
+   if (queue->sync) {
+      result = anv_execbuf_add_sync(device, &execbuf, queue->sync,
+                                    true /* is_signal */,
+                                    0 /* signal_value */);
+      if (result != VK_SUCCESS)
+         goto out;
+   }
+
    result = anv_execbuf_add_bo(device, &execbuf, trtt_bbo->bo, NULL, 0);
    if (result != VK_SUCCESS)
       goto out;
@@ -1048,6 +1056,15 @@ i915_execute_trtt_batch(struct anv_sparse_submission *submit,
       result = vk_device_set_lost(&device->vk,
                                   "trtt anv_gem_execbuffer failed: %m");
       goto out;
+   }
+
+   if (queue->sync) {
+      result = vk_sync_wait(&device->vk, queue->sync, 0,
+                            VK_SYNC_WAIT_COMPLETE, UINT64_MAX);
+      if (result != VK_SUCCESS) {
+         result = vk_queue_set_lost(&queue->vk, "trtt sync wait failed");
+         goto out;
+      }
    }
 
    /* TODO: we can get rid of this wait once we can properly handle the buffer
