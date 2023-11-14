@@ -277,7 +277,7 @@ sanity:
   rules:
     - if: *is-pre-merge
       when: on_success
-    # Other cases default to never
+    - when: never
   variables:
     GIT_STRATEGY: none
   script:
