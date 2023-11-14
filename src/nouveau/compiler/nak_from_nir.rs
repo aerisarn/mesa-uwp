@@ -1187,6 +1187,17 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
+    fn get_eviction_priority(
+        &mut self,
+        access: gl_access_qualifier,
+    ) -> MemEvictionPriority {
+        if self.info.sm >= 70 && access & ACCESS_NON_TEMPORAL != 0 {
+            MemEvictionPriority::First
+        } else {
+            MemEvictionPriority::Normal
+        }
+    }
+
     fn get_image_dim(&mut self, intrin: &nir_intrinsic_instr) -> ImageDim {
         let is_array = intrin.image_array();
         let image_dim = intrin.image_dim();
@@ -1433,7 +1444,8 @@ impl<'a> ShaderFromNir<'a> {
                     atom_type: atom_type,
                     image_dim: dim,
                     mem_order: MemOrder::Strong(MemScope::System),
-                    mem_eviction_priority: MemEvictionPriority::Normal,
+                    mem_eviction_priority: self
+                        .get_eviction_priority(intrin.access()),
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1454,7 +1466,8 @@ impl<'a> ShaderFromNir<'a> {
                     resident: Dst::None,
                     image_dim: dim,
                     mem_order: MemOrder::Strong(MemScope::System),
-                    mem_eviction_priority: MemEvictionPriority::Normal,
+                    mem_eviction_priority: self
+                        .get_eviction_priority(intrin.access()),
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
@@ -1475,7 +1488,8 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpSuSt {
                     image_dim: dim,
                     mem_order: MemOrder::Strong(MemScope::System),
-                    mem_eviction_priority: MemEvictionPriority::Normal,
+                    mem_eviction_priority: self
+                        .get_eviction_priority(intrin.access()),
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
@@ -1532,7 +1546,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_offset: offset,
                     mem_space: MemSpace::Global,
                     mem_order: MemOrder::Strong(MemScope::System),
-                    mem_eviction_priority: MemEvictionPriority::Normal,
+                    mem_eviction_priority: MemEvictionPriority::Normal, // Note: no intrinic access
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1558,7 +1572,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_offset: offset,
                     mem_space: MemSpace::Global,
                     mem_order: MemOrder::Strong(MemScope::System),
-                    mem_eviction_priority: MemEvictionPriority::Normal,
+                    mem_eviction_priority: MemEvictionPriority::Normal, // Note: no intrinic access
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1639,7 +1653,8 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Global,
                     order: order,
-                    eviction_priority: MemEvictionPriority::Normal,
+                    eviction_priority: self
+                        .get_eviction_priority(intrin.access()),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 32);
                 let dst = b.alloc_ssa(RegFile::GPR, size_B.div_ceil(4));
@@ -1948,7 +1963,8 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Global,
                     order: MemOrder::Strong(MemScope::System),
-                    eviction_priority: MemEvictionPriority::Normal,
+                    eviction_priority: self
+                        .get_eviction_priority(intrin.access()),
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 32);
 
