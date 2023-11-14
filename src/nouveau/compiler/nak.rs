@@ -355,11 +355,14 @@ pub extern "C" fn nak_compile_shader(
             ShaderStageInfo::Geometry(_)
             | ShaderStageInfo::Tessellation
             | ShaderStageInfo::Vertex => {
+                let writes_layer =
+                    nir.info.outputs_written & (1 << VARYING_SLOT_LAYER) != 0;
                 let num_clip = nir.info.clip_distance_array_size();
                 let num_cull = nir.info.cull_distance_array_size();
                 let clip_enable = (1_u32 << num_clip) - 1;
                 let cull_enable = ((1_u32 << num_cull) - 1) << num_clip;
                 nak_shader_info__bindgen_ty_2 {
+                    writes_layer: writes_layer,
                     clip_enable: clip_enable.try_into().unwrap(),
                     cull_enable: cull_enable.try_into().unwrap(),
                     xfb: unsafe { nak_xfb_from_nir(nir.xfb_info) },

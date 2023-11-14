@@ -110,6 +110,7 @@ struct nak_shader_info {
    };
 
    struct {
+      bool writes_layer;
       uint8_t clip_enable;
       uint8_t cull_enable;
 
