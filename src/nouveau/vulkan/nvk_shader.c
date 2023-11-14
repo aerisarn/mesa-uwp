@@ -323,26 +323,6 @@ lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
    return true;
 }
 
-static bool
-lower_system_value_first_vertex(nir_builder *b, nir_instr *instr, UNUSED void *_data)
-{
-   assert(b->shader->info.stage == MESA_SHADER_VERTEX);
-
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
-   if (intrin->intrinsic != nir_intrinsic_load_first_vertex)
-      return false;
-
-   b->cursor = nir_before_instr(&intrin->instr);
-   nir_def *base_vertex = nir_load_base_vertex(b);
-   nir_def_rewrite_uses(&intrin->def, base_vertex);
-
-   return true;
-}
-
 static int
 count_location_slots(const struct glsl_type *type, bool bindless)
 {
@@ -538,13 +518,6 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
    NIR_PASS(_, nir, nir_lower_system_values);
-   if (nir->info.stage == MESA_SHADER_VERTEX) {
-      // codegen does not support SYSTEM_VALUE_FIRST_VERTEX
-      NIR_PASS(_, nir, nir_shader_instructions_pass,
-              lower_system_value_first_vertex,
-              nir_metadata_block_index | nir_metadata_dominance, NULL);
-   }
-
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       if (!use_nak(pdev, nir->info.stage)) {
          NIR_PASS(_, nir, nir_shader_instructions_pass, lower_fragcoord_instr,

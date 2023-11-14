@@ -336,6 +336,7 @@ try_lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
       return lower_load_push_constant(b, intrin, ctx);
 
    case nir_intrinsic_load_base_vertex:
+   case nir_intrinsic_load_first_vertex:
       return lower_sysval_to_root_table(b, intrin, draw.base_vertex, ctx);
 
    case nir_intrinsic_load_base_instance:
