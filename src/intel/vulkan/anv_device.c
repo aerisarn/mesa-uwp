@@ -1151,11 +1151,17 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          intel_engines_count(pdevice->engine_info, INTEL_ENGINE_CLASS_VIDEO);
       int g_count = 0;
       int c_count = 0;
-      const bool can_use_non_render_engines =
+      const bool kernel_supports_non_render_engines =
          pdevice->info.kmd_type == INTEL_KMD_TYPE_XE || pdevice->has_vm_control;
+      const bool sparse_supports_non_render_engines =
+         !pdevice->has_sparse || !pdevice->sparse_uses_trtt;
+      const bool can_use_non_render_engines =
+         kernel_supports_non_render_engines &&
+         sparse_supports_non_render_engines;
+
       if (debug_get_bool_option("INTEL_COMPUTE_CLASS", false)) {
          if (!can_use_non_render_engines)
-            mesa_logw("cannot initialize compute engine, no vm control.");
+            mesa_logw("cannot initialize compute engine");
          else
             c_count = intel_engines_count(pdevice->engine_info,
                                           INTEL_ENGINE_CLASS_COMPUTE);
@@ -1167,7 +1173,7 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
       if (debug_get_bool_option("INTEL_COPY_CLASS", false) &&
           pdevice->info.verx10 >= 125) {
          if (!can_use_non_render_engines)
-            mesa_logw("cannot initialize blitter engine, no vm control.");
+            mesa_logw("cannot initialize blitter engine");
          else
             blit_count = intel_engines_count(pdevice->engine_info,
                                              INTEL_ENGINE_CLASS_COPY);
@@ -1453,7 +1459,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       device->has_sparse =
          device->info.ver >= 12 &&
          device->has_exec_timeline &&
-         debug_get_bool_option("ANV_SPARSE", false);
+         debug_get_bool_option("ANV_SPARSE", true);
       device->sparse_uses_trtt = true;
    }
 
