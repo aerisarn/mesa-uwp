@@ -3505,6 +3505,7 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
 #endif
    panfrost_add_job(&batch->pool.base, &batch->scoreboard, job_type, true,
                     false, 0, 0, &t, false);
+   batch->compute_count++;
 
    ctx->uncompiled[PIPE_SHADER_VERTEX] = vs_uncompiled;
    ctx->prog[PIPE_SHADER_VERTEX] = vs;
@@ -3917,6 +3918,7 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
    panfrost_add_job(&batch->pool.base, &batch->scoreboard,
                     MALI_JOB_TYPE_COMPUTE, true, false, indirect_dep, 0, &t,
                     false);
+   batch->compute_count++;
 }
 
 static void

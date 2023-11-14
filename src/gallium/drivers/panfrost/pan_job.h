@@ -195,6 +195,9 @@ struct panfrost_batch {
     * <vertex,tiler> jobs present in the batch.
     */
    uint32_t draw_count;
+
+   /* Number of compute jobs in the batch. */
+   uint32_t compute_count;
 };
 
 /* Functions for managing the above */
