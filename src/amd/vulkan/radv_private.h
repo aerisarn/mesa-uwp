@@ -1099,22 +1099,16 @@ struct radv_device {
       struct radv_device_memory *mem;
    } vrs;
 
-   struct u_rwlock vs_prologs_lock;
-   struct hash_table *vs_prologs;
-
    /* Prime blit sdma queue */
    struct radv_queue *private_sdma_queue;
 
+   struct radv_shader_part_cache vs_prologs;
    struct radv_shader_part *simple_vs_prologs[MAX_VERTEX_ATTRIBS];
    struct radv_shader_part *instance_rate_vs_prologs[816];
 
-   /* PS epilogs */
-   struct u_rwlock ps_epilogs_lock;
-   struct hash_table *ps_epilogs;
+   struct radv_shader_part_cache ps_epilogs;
 
-   /* TCS epilogs */
-   struct u_rwlock tcs_epilogs_lock;
-   struct hash_table *tcs_epilogs;
+   struct radv_shader_part_cache tcs_epilogs;
 
    simple_mtx_t trace_mtx;
 
@@ -1838,6 +1832,10 @@ struct radv_cmd_buffer {
    uint64_t mec_inv_pred_va;  /* For inverted predication when using MEC. */
    bool mec_inv_pred_emitted; /* To ensure we don't have to repeat inverting the VA. */
 
+   struct set vs_prologs;
+   struct set ps_epilogs;
+   struct set tcs_epilogs;
+
    /**
     * Gang state.
     * Used when the command buffer needs work done on a different queue
@@ -2004,11 +2002,6 @@ void si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer);
 uint32_t radv_get_vgt_index_size(uint32_t type);
 
 unsigned radv_instance_rate_prolog_index(unsigned num_attributes, uint32_t instance_rate_inputs);
-uint32_t radv_hash_vs_prolog(const void *key_);
-bool radv_cmp_vs_prolog(const void *a_, const void *b_);
-
-uint32_t radv_hash_ps_epilog(const void *key_);
-bool radv_cmp_ps_epilog(const void *a_, const void *b_);
 
 struct radv_ps_epilog_state {
    uint8_t color_attachment_count;
@@ -2024,9 +2017,6 @@ struct radv_ps_epilog_state {
 struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_device *device,
                                                       const struct radv_ps_epilog_state *state,
                                                       bool disable_mrt_compaction);
-
-uint32_t radv_hash_tcs_epilog(const void *key_);
-bool radv_cmp_tcs_epilog(const void *a_, const void *b_);
 
 bool radv_needs_null_export_workaround(const struct radv_device *device, const struct radv_shader *ps,
                                        unsigned custom_blend_mode);

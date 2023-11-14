@@ -292,6 +292,33 @@ radv_emit_clear_data(struct radv_cmd_buffer *cmd_buffer, unsigned engine_sel, ui
 }
 
 static void
+radv_cmd_buffer_finish_shader_part_cache(struct radv_cmd_buffer *cmd_buffer)
+{
+   ralloc_free(cmd_buffer->vs_prologs.table);
+   ralloc_free(cmd_buffer->ps_epilogs.table);
+   ralloc_free(cmd_buffer->tcs_epilogs.table);
+}
+
+static bool
+radv_cmd_buffer_init_shader_part_cache(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer)
+{
+   if (device->vs_prologs.ops) {
+      if (!_mesa_set_init(&cmd_buffer->vs_prologs, NULL, device->vs_prologs.ops->hash, device->vs_prologs.ops->equals))
+         return false;
+   }
+   if (device->tcs_epilogs.ops) {
+      if (!_mesa_set_init(&cmd_buffer->tcs_epilogs, NULL, device->tcs_epilogs.ops->hash,
+                          device->tcs_epilogs.ops->equals))
+         return false;
+   }
+   if (device->ps_epilogs.ops) {
+      if (!_mesa_set_init(&cmd_buffer->ps_epilogs, NULL, device->ps_epilogs.ops->hash, device->ps_epilogs.ops->equals))
+         return false;
+   }
+   return true;
+}
+
+static void
 radv_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
 {
    struct radv_cmd_buffer *cmd_buffer = container_of(vk_cmd_buffer, struct radv_cmd_buffer, vk);
@@ -314,6 +341,8 @@ radv_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
       cmd_buffer->device->ws->cs_destroy(cmd_buffer->gang.cs);
    if (cmd_buffer->transfer.copy_temp)
       cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, cmd_buffer->transfer.copy_temp);
+
+   radv_cmd_buffer_finish_shader_part_cache(cmd_buffer);
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       struct radv_descriptor_set_header *set = &cmd_buffer->descriptors[i].push_set.set;
@@ -344,6 +373,11 @@ radv_create_cmd_buffer(struct vk_command_pool *pool, struct vk_command_buffer **
    if (result != VK_SUCCESS) {
       vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
       return result;
+   }
+
+   if (!radv_cmd_buffer_init_shader_part_cache(device, cmd_buffer)) {
+      radv_destroy_cmd_buffer(&cmd_buffer->vk);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    list_inithead(&cmd_buffer->upload.list);
@@ -3708,22 +3742,6 @@ radv_instance_rate_prolog_index(unsigned num_attributes, uint32_t instance_rate_
    return start_index + offset_from_start_index + first;
 }
 
-uint32_t
-radv_hash_vs_prolog(const void *key_)
-{
-   const struct radv_vs_prolog_key *key = key_;
-   return _mesa_hash_data(key, sizeof(*key));
-}
-
-bool
-radv_cmp_vs_prolog(const void *a_, const void *b_)
-{
-   const struct radv_vs_prolog_key *a = a_;
-   const struct radv_vs_prolog_key *b = b_;
-
-   return memcmp(a, b, sizeof(*a)) == 0;
-}
-
 static struct radv_shader_part *
 lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *vs_shader, uint32_t *nontrivial_divisors)
 {
@@ -3819,36 +3837,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
       key.next_stage = vs_shader->info.stage;
    }
 
-   uint32_t hash = radv_hash_vs_prolog(&key);
-
-   u_rwlock_rdlock(&device->vs_prologs_lock);
-   struct hash_entry *prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, &key);
-   u_rwlock_rdunlock(&device->vs_prologs_lock);
-
-   if (!prolog_entry) {
-      u_rwlock_wrlock(&device->vs_prologs_lock);
-      prolog_entry = _mesa_hash_table_search_pre_hashed(device->vs_prologs, hash, &key);
-      if (prolog_entry) {
-         u_rwlock_wrunlock(&device->vs_prologs_lock);
-         return prolog_entry->data;
-      }
-
-      prolog = radv_create_vs_prolog(device, &key);
-      struct radv_vs_prolog_key *key2 = malloc(sizeof(key));
-      if (!prolog || !key2) {
-         radv_shader_part_unref(device, prolog);
-         free(key2);
-         u_rwlock_wrunlock(&device->vs_prologs_lock);
-         return NULL;
-      }
-      memcpy(key2, &key, sizeof(key));
-      _mesa_hash_table_insert_pre_hashed(device->vs_prologs, hash, key2, prolog);
-
-      u_rwlock_wrunlock(&device->vs_prologs_lock);
-      return prolog;
-   }
-
-   return prolog_entry->data;
+   return radv_shader_part_cache_get(device, &device->vs_prologs, &cmd_buffer->vs_prologs, &key);
 }
 
 static void
@@ -4179,28 +4168,12 @@ radv_emit_color_blend(struct radv_cmd_buffer *cmd_buffer)
    }
 }
 
-uint32_t
-radv_hash_ps_epilog(const void *key_)
-{
-   const struct radv_ps_epilog_key *key = key_;
-   return _mesa_hash_data(key, sizeof(*key));
-}
-
-bool
-radv_cmp_ps_epilog(const void *a_, const void *b_)
-{
-   const struct radv_ps_epilog_key *a = a_;
-   const struct radv_ps_epilog_key *b = b_;
-   return memcmp(a, b, sizeof(*a)) == 0;
-}
-
 static struct radv_shader_part *
 lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_device *device = cmd_buffer->device;
-   struct radv_shader_part *epilog = NULL;
    struct radv_ps_epilog_state state = {0};
 
    state.color_attachment_count = render->color_att_count;
@@ -4232,51 +4205,7 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
    }
 
    struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, &state, true);
-   uint32_t hash = radv_hash_ps_epilog(&key);
-
-   u_rwlock_rdlock(&device->ps_epilogs_lock);
-   struct hash_entry *epilog_entry = _mesa_hash_table_search_pre_hashed(device->ps_epilogs, hash, &key);
-   u_rwlock_rdunlock(&device->ps_epilogs_lock);
-
-   if (!epilog_entry) {
-      u_rwlock_wrlock(&device->ps_epilogs_lock);
-      epilog_entry = _mesa_hash_table_search_pre_hashed(device->ps_epilogs, hash, &key);
-      if (epilog_entry) {
-         u_rwlock_wrunlock(&device->ps_epilogs_lock);
-         return epilog_entry->data;
-      }
-
-      epilog = radv_create_ps_epilog(device, &key, NULL);
-      struct radv_ps_epilog_key *key2 = malloc(sizeof(*key2));
-      if (!epilog || !key2) {
-         radv_shader_part_unref(device, epilog);
-         free(key2);
-         u_rwlock_wrunlock(&device->ps_epilogs_lock);
-         return NULL;
-      }
-      memcpy(key2, &key, sizeof(*key2));
-      _mesa_hash_table_insert_pre_hashed(device->ps_epilogs, hash, key2, epilog);
-
-      u_rwlock_wrunlock(&device->ps_epilogs_lock);
-      return epilog;
-   }
-
-   return epilog_entry->data;
-}
-
-uint32_t
-radv_hash_tcs_epilog(const void *key_)
-{
-   const struct radv_tcs_epilog_key *key = key_;
-   return _mesa_hash_data(key, sizeof(*key));
-}
-
-bool
-radv_cmp_tcs_epilog(const void *a_, const void *b_)
-{
-   const struct radv_tcs_epilog_key *a = a_;
-   const struct radv_tcs_epilog_key *b = b_;
-   return memcmp(a, b, sizeof(*a)) == 0;
+   return radv_shader_part_cache_get(device, &device->ps_epilogs, &cmd_buffer->ps_epilogs, &key);
 }
 
 static struct radv_shader_part *
@@ -4285,7 +4214,6 @@ lookup_tcs_epilog(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_shader *tcs = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
    const struct radv_shader *tes = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_TESS_EVAL);
    struct radv_device *device = cmd_buffer->device;
-   struct radv_shader_part *epilog = NULL;
 
    struct radv_tcs_epilog_key key = {
       .primitive_mode = tes->info.tes._primitive_mode,
@@ -4293,36 +4221,7 @@ lookup_tcs_epilog(struct radv_cmd_buffer *cmd_buffer)
       .tcs_out_patch_fits_subgroup = tcs->info.wave_size % tcs->info.tcs.tcs_vertices_out == 0,
    };
 
-   uint32_t hash = radv_hash_tcs_epilog(&key);
-
-   u_rwlock_rdlock(&device->tcs_epilogs_lock);
-   struct hash_entry *epilog_entry = _mesa_hash_table_search_pre_hashed(device->tcs_epilogs, hash, &key);
-   u_rwlock_rdunlock(&device->tcs_epilogs_lock);
-
-   if (!epilog_entry) {
-      u_rwlock_wrlock(&device->tcs_epilogs_lock);
-      epilog_entry = _mesa_hash_table_search_pre_hashed(device->tcs_epilogs, hash, &key);
-      if (epilog_entry) {
-         u_rwlock_wrunlock(&device->tcs_epilogs_lock);
-         return epilog_entry->data;
-      }
-
-      epilog = radv_create_tcs_epilog(device, &key);
-      struct radv_tcs_epilog_key *key2 = malloc(sizeof(*key2));
-      if (!epilog || !key2) {
-         radv_shader_part_unref(device, epilog);
-         free(key2);
-         u_rwlock_wrunlock(&device->tcs_epilogs_lock);
-         return NULL;
-      }
-      memcpy(key2, &key, sizeof(*key2));
-      _mesa_hash_table_insert_pre_hashed(device->tcs_epilogs, hash, key2, epilog);
-
-      u_rwlock_wrunlock(&device->tcs_epilogs_lock);
-      return epilog;
-   }
-
-   return epilog_entry->data;
+   return radv_shader_part_cache_get(device, &device->tcs_epilogs, &cmd_buffer->tcs_epilogs, &key);
 }
 
 static void

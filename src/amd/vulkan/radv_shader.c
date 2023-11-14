@@ -2650,6 +2650,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    if (!prolog)
       goto fail;
 
+   prolog->key.vs = *key;
    prolog->nontrivial_divisors = key->nontrivial_divisors;
 
    if (options.dump_shader) {
@@ -2704,6 +2705,8 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
    if (!epilog)
       goto fail;
 
+   epilog->key.ps = *key;
+
    if (options.dump_shader) {
       fprintf(stderr, "Fragment epilog");
       fprintf(stderr, "\ndisasm:\n%s\n", epilog->disasm_string);
@@ -2756,6 +2759,8 @@ radv_create_tcs_epilog(struct radv_device *device, const struct radv_tcs_epilog_
    epilog = radv_shader_part_create(device, binary, info.wave_size);
    if (!epilog)
       goto fail;
+
+   epilog->key.tcs = *key;
 
    if (options.dump_shader) {
       fprintf(stderr, "TCS epilog");
