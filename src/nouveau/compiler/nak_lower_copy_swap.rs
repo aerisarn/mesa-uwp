@@ -49,6 +49,7 @@ impl LowerCopySwap {
                             mem_type: MemType::B32,
                             space: MemSpace::Local,
                             order: MemOrder::Strong(MemScope::CTA),
+                            eviction_priority: MemEvictionPriority::Normal,
                         };
                         let addr = self.slm_start + src_reg.base_idx() * 4;
                         self.slm_size = max(self.slm_size, addr + 4);
@@ -104,6 +105,7 @@ impl LowerCopySwap {
                             mem_type: MemType::B32,
                             space: MemSpace::Local,
                             order: MemOrder::Strong(MemScope::CTA),
+                            eviction_priority: MemEvictionPriority::Normal,
                         };
                         let addr = self.slm_start + dst_reg.base_idx() * 4;
                         self.slm_size = max(self.slm_size, addr + 4);

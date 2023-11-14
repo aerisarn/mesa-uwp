@@ -1433,6 +1433,7 @@ impl<'a> ShaderFromNir<'a> {
                     atom_type: atom_type,
                     image_dim: dim,
                     mem_order: MemOrder::Strong(MemScope::System),
+                    mem_eviction_priority: MemEvictionPriority::Normal,
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1453,6 +1454,7 @@ impl<'a> ShaderFromNir<'a> {
                     resident: Dst::None,
                     image_dim: dim,
                     mem_order: MemOrder::Strong(MemScope::System),
+                    mem_eviction_priority: MemEvictionPriority::Normal,
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
@@ -1473,6 +1475,7 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(OpSuSt {
                     image_dim: dim,
                     mem_order: MemOrder::Strong(MemScope::System),
+                    mem_eviction_priority: MemEvictionPriority::Normal,
                     mask: (1 << comps) - 1,
                     handle: handle,
                     coord: coord,
@@ -1529,6 +1532,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_offset: offset,
                     mem_space: MemSpace::Global,
                     mem_order: MemOrder::Strong(MemScope::System),
+                    mem_eviction_priority: MemEvictionPriority::Normal,
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1554,6 +1558,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_offset: offset,
                     mem_space: MemSpace::Global,
                     mem_order: MemOrder::Strong(MemScope::System),
+                    mem_eviction_priority: MemEvictionPriority::Normal,
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1634,6 +1639,7 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Global,
                     order: order,
+                    eviction_priority: MemEvictionPriority::Normal,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 32);
                 let dst = b.alloc_ssa(RegFile::GPR, size_B.div_ceil(4));
@@ -1721,6 +1727,7 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Local,
                     order: MemOrder::Strong(MemScope::CTA),
+                    eviction_priority: MemEvictionPriority::Normal,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
                 let dst = b.alloc_ssa(RegFile::GPR, size_B.div_ceil(4));
@@ -1742,6 +1749,7 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Shared,
                     order: MemOrder::Strong(MemScope::CTA),
+                    eviction_priority: MemEvictionPriority::Normal,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
                 let offset = offset + intrin.base();
@@ -1900,6 +1908,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_offset: offset,
                     mem_space: MemSpace::Shared,
                     mem_order: MemOrder::Strong(MemScope::CTA),
+                    mem_eviction_priority: MemEvictionPriority::Normal,
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1925,6 +1934,7 @@ impl<'a> ShaderFromNir<'a> {
                     addr_offset: offset,
                     mem_space: MemSpace::Shared,
                     mem_order: MemOrder::Strong(MemScope::CTA),
+                    mem_eviction_priority: MemEvictionPriority::Normal,
                 });
                 self.set_dst(&intrin.def, dst);
             }
@@ -1938,6 +1948,7 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Global,
                     order: MemOrder::Strong(MemScope::System),
+                    eviction_priority: MemEvictionPriority::Normal,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 32);
 
@@ -1974,6 +1985,7 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Local,
                     order: MemOrder::Strong(MemScope::CTA),
+                    eviction_priority: MemEvictionPriority::Normal,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 24);
 
@@ -1994,6 +2006,7 @@ impl<'a> ShaderFromNir<'a> {
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Shared,
                     order: MemOrder::Strong(MemScope::CTA),
+                    eviction_priority: MemEvictionPriority::Normal,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 24);
                 let offset = offset + intrin.base();

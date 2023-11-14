@@ -1798,19 +1798,45 @@ impl fmt::Display for MemSpace {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum MemEvictionPriority {
+    First,
+    Normal,
+    Last,
+    Unchanged,
+}
+
+impl fmt::Display for MemEvictionPriority {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemEvictionPriority::First => write!(f, ".EF"),
+            MemEvictionPriority::Normal => Ok(()),
+            MemEvictionPriority::Last => write!(f, ".EL"),
+            MemEvictionPriority::Unchanged => write!(f, ".LU"),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct MemAccess {
     pub addr_type: MemAddrType,
     pub mem_type: MemType,
     pub space: MemSpace,
     pub order: MemOrder,
+    pub eviction_priority: MemEvictionPriority,
 }
 
 impl fmt::Display for MemAccess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}.{}.{}.{}",
-            self.addr_type, self.mem_type, self.space, self.order
+            "{}.{}.{}.{}{}",
+            self.addr_type,
+            self.mem_type,
+            self.space,
+            self.order,
+            self.eviction_priority
         )
     }
 }
@@ -3045,6 +3071,7 @@ pub struct OpSuLd {
 
     pub image_dim: ImageDim,
     pub mem_order: MemOrder,
+    pub mem_eviction_priority: MemEvictionPriority,
     pub mask: u8,
 
     #[src_type(GPR)]
@@ -3058,9 +3085,10 @@ impl fmt::Display for OpSuLd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SULD.P.{}.{} {{ {} {} }} [{}] {}",
+            "SULD.P.{}.{}{} {{ {} {} }} [{}] {}",
             self.image_dim,
             self.mem_order,
+            self.mem_eviction_priority,
             self.dst,
             self.resident,
             self.coord,
@@ -3074,6 +3102,7 @@ impl fmt::Display for OpSuLd {
 pub struct OpSuSt {
     pub image_dim: ImageDim,
     pub mem_order: MemOrder,
+    pub mem_eviction_priority: MemEvictionPriority,
     pub mask: u8,
 
     #[src_type(GPR)]
@@ -3090,8 +3119,13 @@ impl fmt::Display for OpSuSt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SUST.P.{}.{} [{}] {} {}",
-            self.image_dim, self.mem_order, self.coord, self.data, self.handle,
+            "SUST.P.{}.{}{} [{}] {} {}",
+            self.image_dim,
+            self.mem_order,
+            self.mem_eviction_priority,
+            self.coord,
+            self.data,
+            self.handle,
         )
     }
 }
@@ -3108,6 +3142,7 @@ pub struct OpSuAtom {
     pub atom_type: AtomType,
 
     pub mem_order: MemOrder,
+    pub mem_eviction_priority: MemEvictionPriority,
 
     #[src_type(GPR)]
     pub handle: Src,
@@ -3123,11 +3158,12 @@ impl fmt::Display for OpSuAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SUATOM.P.{}.{}.{}.{} [{}] {} {}",
+            "SUATOM.P.{}.{}.{}.{}{} [{}] {} {}",
             self.image_dim,
             self.atom_op,
             self.atom_type,
             self.mem_order,
+            self.mem_eviction_priority,
             self.coord,
             self.data,
             self.handle,
@@ -3233,14 +3269,19 @@ pub struct OpAtom {
 
     pub mem_space: MemSpace,
     pub mem_order: MemOrder,
+    pub mem_eviction_priority: MemEvictionPriority,
 }
 
 impl fmt::Display for OpAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ATOM.{}.{}.{} {}",
-            self.atom_op, self.atom_type, self.mem_order, self.dst
+            "ATOM.{}.{}.{}{} {}",
+            self.atom_op,
+            self.atom_type,
+            self.mem_order,
+            self.mem_eviction_priority,
+            self.dst
         )?;
         write!(f, " [")?;
         if !self.addr.is_zero() {

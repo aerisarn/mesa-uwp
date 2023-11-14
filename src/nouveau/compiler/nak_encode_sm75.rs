@@ -1176,6 +1176,18 @@ impl SM75Instr {
         }
     }
 
+    fn set_eviction_priority(&mut self, pri: &MemEvictionPriority) {
+        self.set_field(
+            84..86,
+            match pri {
+                MemEvictionPriority::First => 0_u8,
+                MemEvictionPriority::Normal => 1_u8,
+                MemEvictionPriority::Last => 2_u8,
+                MemEvictionPriority::Unchanged => 3_u8,
+            },
+        );
+    }
+
     fn encode_suld(&mut self, op: &OpSuLd) {
         self.set_opcode(0x998);
 
@@ -1186,6 +1198,7 @@ impl SM75Instr {
 
         self.set_image_dim(61..64, op.image_dim);
         self.set_mem_order(&op.mem_order);
+        self.set_eviction_priority(&op.mem_eviction_priority);
 
         assert!(op.mask == 0x1 || op.mask == 0x3 || op.mask == 0xf);
         self.set_field(72..76, op.mask);
@@ -1200,6 +1213,7 @@ impl SM75Instr {
 
         self.set_image_dim(61..64, op.image_dim);
         self.set_mem_order(&op.mem_order);
+        self.set_eviction_priority(&op.mem_eviction_priority);
 
         assert!(op.mask == 0x1 || op.mask == 0x3 || op.mask == 0xf);
         self.set_field(72..76, op.mask);
@@ -1220,6 +1234,7 @@ impl SM75Instr {
 
         self.set_image_dim(61..64, op.image_dim);
         self.set_mem_order(&op.mem_order);
+        self.set_eviction_priority(&op.mem_eviction_priority);
 
         self.set_bit(72, false); /* .BA */
         self.set_atom_type(73..76, op.atom_type);
@@ -1252,6 +1267,7 @@ impl SM75Instr {
         );
         self.set_mem_type(73..76, access.mem_type);
         self.set_mem_order(&access.order);
+        self.set_eviction_priority(&access.eviction_priority);
     }
 
     fn encode_ldg(&mut self, op: &OpLd) {
@@ -1275,6 +1291,7 @@ impl SM75Instr {
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
+        assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
     }
 
     fn encode_lds(&mut self, op: &OpLd) {
@@ -1287,6 +1304,7 @@ impl SM75Instr {
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
+        assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
 
         self.set_bit(87, false); /* !.ZD - Returns a predicate? */
     }
@@ -1333,6 +1351,7 @@ impl SM75Instr {
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
+        assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
     }
 
     fn encode_sts(&mut self, op: &OpSt) {
@@ -1345,6 +1364,7 @@ impl SM75Instr {
         assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
+        assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
     }
 
     fn encode_st(&mut self, op: &OpSt) {
@@ -1419,6 +1439,7 @@ impl SM75Instr {
 
         self.set_atom_type(73..76, op.atom_type);
         self.set_mem_order(&op.mem_order);
+        self.set_eviction_priority(&op.mem_eviction_priority);
     }
 
     fn encode_atoms(&mut self, op: &OpAtom) {
@@ -1441,6 +1462,7 @@ impl SM75Instr {
 
         assert!(op.addr_type == MemAddrType::A32);
         assert!(op.mem_order == MemOrder::Strong(MemScope::CTA));
+        assert!(op.mem_eviction_priority == MemEvictionPriority::Normal);
 
         self.set_atom_type(73..76, op.atom_type);
     }
