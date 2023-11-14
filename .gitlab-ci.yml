@@ -6,6 +6,10 @@
 # | post-merge pipeline  | mesa/mesa | pipeline immediately after merging                          |
 # | fork pipeline        | fork      | pipeline running in a user fork                             |
 # | scheduled pipeline   | mesa/mesa | nightly pipelines, running every morning at 4am UTC         |
+# | direct-push pipeline | mesa/mesa | when commits are pushed directly to mesa/mesa, bypassing Marge and its gating pipeline |
+#
+# Note that the release branches maintained by the release manager fall under
+# the "direct push" category.
 #
 # "context" indicates the permissions that the jobs get; notably, any
 # container created in mesa/mesa gets pushed immediately for everyone to use
@@ -19,6 +23,7 @@
 # Scheduled pipelines only contain the container+build jobs, and some extra
 # test jobs (typically "full" variants of pre-merge jobs that only run 1/X
 # test cases), but not a repeat of the merge pipeline jobs.
+# Direct-push pipelines contain the same jobs as merge pipelines.
 
 workflow:
   rules:
@@ -33,6 +38,12 @@ workflow:
         VALVE_INFRA_VANGOGH_JOB_PRIORITY: ""  # Empty tags are ignored by gitlab
     # post-merge pipeline
     - if: &is-post-merge $GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "push"
+    # pipeline for direct pushes that bypassed the CI
+    - if: &is-direct-push $CI_PROJECT_NAMESPACE == "mesa" && $CI_PIPELINE_SOURCE == "push" && $GITLAB_USER_LOGIN != "marge-bot"
+      variables:
+        KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${KERNEL_TAG}
+        JOB_PRIORITY: 40
+        VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
     # any other pipeline
     - if: $GITLAB_USER_LOGIN != "marge-bot" && $FORCE_KERNEL_TAG != null
       variables:
@@ -207,6 +218,9 @@ include:
     # build - the same rules as above, but without the file-change rules
     - if: *is-merge-attempt
       when: never
+    # Build everything after someone bypassed the CI
+    - if: *is-direct-push
+      when: on_success
     # Always allow user branches etc to trigger jobs manually
     - when: manual
 
