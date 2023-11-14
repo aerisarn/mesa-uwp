@@ -593,7 +593,7 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
 static int
 panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                             mali_ptr first_job_desc, uint32_t reqs,
-                            uint32_t in_sync, uint32_t out_sync)
+                            uint32_t out_sync)
 {
    struct panfrost_context *ctx = batch->ctx;
    struct pipe_context *gallium = (struct pipe_context *)ctx;
@@ -601,7 +601,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
    struct drm_panfrost_submit submit = {
       0,
    };
-   uint32_t in_syncs[2];
+   uint32_t in_syncs[1];
    uint32_t *bo_handles;
    int ret;
 
@@ -616,9 +616,6 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
    submit.out_sync = out_sync;
    submit.jc = first_job_desc;
    submit.requirements = reqs;
-
-   if (in_sync)
-      in_syncs[submit.in_sync_count++] = in_sync;
 
    if (ctx->in_sync_fd >= 0) {
       ret =
@@ -713,8 +710,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
 static int
 panfrost_batch_submit_jobs(struct panfrost_batch *batch,
-                           const struct pan_fb_info *fb, uint32_t in_sync,
-                           uint32_t out_sync)
+                           const struct pan_fb_info *fb, uint32_t out_sync)
 {
    struct pipe_screen *pscreen = batch->ctx->base.screen;
    struct panfrost_device *dev = pan_device(pscreen);
@@ -732,7 +728,7 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
 
    if (has_draws) {
       ret = panfrost_batch_submit_ioctl(batch, batch->scoreboard.first_job, 0,
-                                        in_sync, has_frag ? 0 : out_sync);
+                                        has_frag ? 0 : out_sync);
 
       if (ret)
          goto done;
@@ -740,7 +736,7 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
 
    if (has_frag) {
       ret = panfrost_batch_submit_ioctl(batch, batch->frag_job,
-                                        PANFROST_JD_REQ_FS, 0, out_sync);
+                                        PANFROST_JD_REQ_FS, out_sync);
       if (ret)
          goto done;
    }
@@ -821,7 +817,7 @@ panfrost_batch_submit(struct panfrost_context *ctx,
       screen->vtbl.emit_fragment_job(batch, &fb);
    }
 
-   ret = panfrost_batch_submit_jobs(batch, &fb, 0, ctx->syncobj);
+   ret = panfrost_batch_submit_jobs(batch, &fb, ctx->syncobj);
 
    if (ret)
       fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
