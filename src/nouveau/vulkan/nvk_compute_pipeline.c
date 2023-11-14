@@ -54,21 +54,21 @@ gv100_sm_config_smem_size(uint32_t size)
 #define base_compute_setup_launch_desc_template(qmd, shader, class_id, version_major, version_minor)   \
 do {                                                                                                   \
    QMD_DEF_SET(qmd, class_id, version_major, version_minor, API_VISIBLE_CALL_LIMIT, NO_CHECK);         \
-   QMD_VAL_SET(qmd, class_id, version_major, version_minor, BARRIER_COUNT, shader->num_barriers);      \
+   QMD_VAL_SET(qmd, class_id, version_major, version_minor, BARRIER_COUNT, shader->info.num_barriers);      \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, CTA_THREAD_DIMENSION0,                     \
-                                                            shader->cp.block_size[0]);                 \
+                                                            shader->info.cs.local_size[0]);                 \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, CTA_THREAD_DIMENSION1,                     \
-                                                            shader->cp.block_size[1]);                 \
+                                                            shader->info.cs.local_size[1]);                 \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, CTA_THREAD_DIMENSION2,                     \
-                                                            shader->cp.block_size[2]);                 \
+                                                            shader->info.cs.local_size[2]);                 \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, QMD_MAJOR_VERSION, version_major);         \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, QMD_VERSION, version_minor);               \
    QMD_DEF_SET(qmd, class_id, version_major, version_minor, SAMPLER_INDEX, INDEPENDENTLY);             \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, SHADER_LOCAL_MEMORY_HIGH_SIZE, 0);         \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, SHADER_LOCAL_MEMORY_LOW_SIZE,              \
-                                                            align(shader->slm_size, 0x10));            \
+                                                            align(shader->info.slm_size, 0x10));            \
    QMD_VAL_SET(qmd, class_id, version_major, version_minor, SHARED_MEMORY_SIZE,                        \
-                                                            align(shader->cp.smem_size, 0x100));       \
+                                                            align(shader->info.cs.smem_size, 0x100));       \
 } while (0)
 
 static void
@@ -83,11 +83,11 @@ nva0c0_compute_setup_launch_desc_template(uint32_t *qmd,
    NVA0C0_QMDV00_06_DEF_SET(qmd, INVALIDATE_SHADER_CONSTANT_CACHE, TRUE);
    NVA0C0_QMDV00_06_DEF_SET(qmd, INVALIDATE_SHADER_DATA_CACHE, TRUE);
 
-   if (shader->cp.smem_size <= (16 << 10))
+   if (shader->info.cs.smem_size <= (16 << 10))
       NVA0C0_QMDV00_06_DEF_SET(qmd, L1_CONFIGURATION, DIRECTLY_ADDRESSABLE_MEMORY_SIZE_16KB);
-   else if (shader->cp.smem_size <= (32 << 10))
+   else if (shader->info.cs.smem_size <= (32 << 10))
       NVA0C0_QMDV00_06_DEF_SET(qmd, L1_CONFIGURATION, DIRECTLY_ADDRESSABLE_MEMORY_SIZE_32KB);
-   else if (shader->cp.smem_size <= (48 << 10))
+   else if (shader->info.cs.smem_size <= (48 << 10))
       NVA0C0_QMDV00_06_DEF_SET(qmd, L1_CONFIGURATION, DIRECTLY_ADDRESSABLE_MEMORY_SIZE_48KB);
    else
       unreachable("Invalid shared memory size");
@@ -95,7 +95,7 @@ nva0c0_compute_setup_launch_desc_template(uint32_t *qmd,
    uint64_t addr = nvk_shader_address(shader);
    assert(addr < 0xffffffff);
    NVA0C0_QMDV00_06_VAL_SET(qmd, PROGRAM_OFFSET, addr);
-   NVA0C0_QMDV00_06_VAL_SET(qmd, REGISTER_COUNT, shader->num_gprs);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, REGISTER_COUNT, shader->info.num_gprs);
    NVA0C0_QMDV00_06_VAL_SET(qmd, SASS_VERSION, 0x30);
 }
 
@@ -110,7 +110,7 @@ nvc0c0_compute_setup_launch_desc_template(uint32_t *qmd,
 
    NVC0C0_QMDV02_01_VAL_SET(qmd, SM_GLOBAL_CACHING_ENABLE, 1);
    NVC0C0_QMDV02_01_VAL_SET(qmd, PROGRAM_OFFSET, addr);
-   NVC0C0_QMDV02_01_VAL_SET(qmd, REGISTER_COUNT, shader->num_gprs);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, REGISTER_COUNT, shader->info.num_gprs);
 }
 
 static void
@@ -126,9 +126,9 @@ nvc3c0_compute_setup_launch_desc_template(uint32_t *qmd,
    NVC3C0_QMDV02_02_VAL_SET(qmd, MAX_SM_CONFIG_SHARED_MEM_SIZE,
                             gv100_sm_config_smem_size(96 * 1024));
    NVC3C0_QMDV02_02_VAL_SET(qmd, TARGET_SM_CONFIG_SHARED_MEM_SIZE,
-                            gv100_sm_config_smem_size(shader->cp.smem_size));
+                            gv100_sm_config_smem_size(shader->info.cs.smem_size));
 
-   NVC3C0_QMDV02_02_VAL_SET(qmd, REGISTER_COUNT_V, shader->num_gprs);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, REGISTER_COUNT_V, shader->info.num_gprs);
 
    uint64_t addr = nvk_shader_address(shader);
    NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_LOWER, addr & 0xffffffff);
@@ -148,9 +148,9 @@ nvc6c0_compute_setup_launch_desc_template(uint32_t *qmd,
    NVC6C0_QMDV03_00_VAL_SET(qmd, MAX_SM_CONFIG_SHARED_MEM_SIZE,
                             gv100_sm_config_smem_size(96 * 1024));
    NVC6C0_QMDV03_00_VAL_SET(qmd, TARGET_SM_CONFIG_SHARED_MEM_SIZE,
-                            gv100_sm_config_smem_size(shader->cp.smem_size));
+                            gv100_sm_config_smem_size(shader->info.cs.smem_size));
 
-   NVC6C0_QMDV03_00_VAL_SET(qmd, REGISTER_COUNT_V, shader->num_gprs);
+   NVC6C0_QMDV03_00_VAL_SET(qmd, REGISTER_COUNT_V, shader->info.num_gprs);
 
    uint64_t addr = nvk_shader_address(shader);
    NVC6C0_QMDV03_00_VAL_SET(qmd, PROGRAM_ADDRESS_LOWER, addr & 0xffffffff);

@@ -202,22 +202,20 @@ emit_pipeline_ct_write_state(struct nv_push *p,
 }
 
 static void
-emit_pipeline_xfb_state(struct nv_push *p,
-                        const struct nvk_transform_feedback_state *xfb)
+emit_pipeline_xfb_state(struct nv_push *p, const struct nak_xfb_info *xfb)
 {
-   const uint8_t max_buffers = 4;
-   for (uint8_t b = 0; b < max_buffers; ++b) {
-      const uint32_t var_count = xfb->varying_count[b];
+   for (uint8_t b = 0; b < ARRAY_SIZE(xfb->attr_count); b++) {
+      const uint8_t attr_count = xfb->attr_count[b];
       P_MTHD(p, NV9097, SET_STREAM_OUT_CONTROL_STREAM(b));
       P_NV9097_SET_STREAM_OUT_CONTROL_STREAM(p, b, xfb->stream[b]);
-      P_NV9097_SET_STREAM_OUT_CONTROL_COMPONENT_COUNT(p, b, var_count);
+      P_NV9097_SET_STREAM_OUT_CONTROL_COMPONENT_COUNT(p, b, attr_count);
       P_NV9097_SET_STREAM_OUT_CONTROL_STRIDE(p, b, xfb->stride[b]);
 
       /* upload packed varying indices in multiples of 4 bytes */
-      const uint32_t n = (var_count + 3) / 4;
+      const uint32_t n = DIV_ROUND_UP(attr_count, 4);
       if (n > 0) {
          P_MTHD(p, NV9097, SET_STREAM_OUT_LAYOUT_SELECT(b, 0));
-         P_INLINE_ARRAY(p, (const uint32_t*)xfb->varying_index[b], n);
+         P_INLINE_ARRAY(p, (const uint32_t*)xfb->attr_index[b], n);
       }
    }
 }
@@ -235,22 +233,19 @@ emit_tessellation_paramaters(struct nv_push *p,
                              const struct nvk_shader *shader,
                              const struct vk_tessellation_state *state)
 {
-   const uint32_t cw = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_TRIANGLES_CW;
-   const uint32_t ccw = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_TRIANGLES_CCW;
-   uint32_t output_prims = shader->tp.output_prims;
+   enum nak_ts_prims prims = shader->info.ts.prims;
    /* When the origin is lower-left, we have to flip the winding order */
    if (state->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
-      if (output_prims == cw) {
-         output_prims = ccw;
-      } else if (output_prims == ccw) {
-         output_prims = cw;
-      }
+      if (prims == NAK_TS_PRIMS_TRIANGLES_CW)
+         prims = NAK_TS_PRIMS_TRIANGLES_CCW;
+      else if (prims == NAK_TS_PRIMS_TRIANGLES_CCW)
+         prims = NAK_TS_PRIMS_TRIANGLES_CW;
    }
    P_MTHD(p, NV9097, SET_TESSELLATION_PARAMETERS);
    P_NV9097_SET_TESSELLATION_PARAMETERS(p, {
-      shader->tp.domain_type,
-      shader->tp.spacing,
-      output_prims
+      shader->info.ts.domain,
+      shader->info.ts.spacing,
+      prims
    });
 }
 
@@ -404,7 +399,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          P_IMMD(p, NV9097, SET_PIPELINE_PROGRAM(idx), addr);
       }
 
-      P_IMMD(p, NV9097, SET_PIPELINE_REGISTER_COUNT(idx), shader->num_gprs);
+      P_IMMD(p, NV9097, SET_PIPELINE_REGISTER_COUNT(idx),
+             shader->info.num_gprs);
 
       switch (stage) {
       case MESA_SHADER_VERTEX:
@@ -420,32 +416,35 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          });
          P_NV9097_SET_SUBTILING_PERF_KNOB_B(p, 0x20);
 
-         P_IMMD(p, NV9097, SET_API_MANDATED_EARLY_Z, shader->fs.early_z);
+         P_IMMD(p, NV9097, SET_API_MANDATED_EARLY_Z,
+                shader->info.fs.early_fragment_tests);
 
          if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
             P_IMMD(p, NVB197, SET_POST_Z_PS_IMASK,
-                   shader->fs.post_depth_coverage);
+                   shader->info.fs.post_depth_coverage);
          } else {
-            assert(!shader->fs.post_depth_coverage);
+            assert(!shader->info.fs.post_depth_coverage);
          }
 
-         P_MTHD(p, NV9097, SET_ZCULL_BOUNDS);
-         P_INLINE_DATA(p, shader->flags[0]);
+         P_IMMD(p, NV9097, SET_ZCULL_BOUNDS, {
+            .z_min_unbounded_enable = shader->info.fs.writes_depth,
+            .z_max_unbounded_enable = shader->info.fs.writes_depth,
+         });
 
          /* If we're using the incoming sample mask and doing sample shading,
           * we have to do sample shading "to the max", otherwise there's no
           * way to tell which sets of samples are covered by the current
           * invocation.
           */
-         force_max_samples = shader->fs.sample_mask_in ||
-                             shader->fs.uses_sample_shading;
+         force_max_samples = shader->info.fs.reads_sample_mask ||
+                             shader->info.fs.uses_sample_shading;
          break;
 
       case MESA_SHADER_TESS_CTRL:
+         break;
+
       case MESA_SHADER_TESS_EVAL:
-         if (shader->tp.domain_type != ~0) {
-            emit_tessellation_paramaters(p, shader, state.ts);
-         }
+         emit_tessellation_paramaters(p, shader, state.ts);
          break;
 
       default:
@@ -453,8 +452,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
       }
    }
 
-   const uint8_t clip_cull = last_geom->vs.clip_enable |
-                             last_geom->vs.cull_enable;
+   const uint8_t clip_cull = last_geom->info.vtg.clip_enable |
+                             last_geom->info.vtg.cull_enable;
    if (clip_cull) {
       P_IMMD(p, NV9097, SET_USER_CLIP_ENABLE, {
          .plane0 = (clip_cull >> 0) & 1,
@@ -467,28 +466,26 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          .plane7 = (clip_cull >> 7) & 1,
       });
       P_IMMD(p, NV9097, SET_USER_CLIP_OP, {
-         .plane0 = (last_geom->vs.cull_enable >> 0) & 1,
-         .plane1 = (last_geom->vs.cull_enable >> 1) & 1,
-         .plane2 = (last_geom->vs.cull_enable >> 2) & 1,
-         .plane3 = (last_geom->vs.cull_enable >> 3) & 1,
-         .plane4 = (last_geom->vs.cull_enable >> 4) & 1,
-         .plane5 = (last_geom->vs.cull_enable >> 5) & 1,
-         .plane6 = (last_geom->vs.cull_enable >> 6) & 1,
-         .plane7 = (last_geom->vs.cull_enable >> 7) & 1,
+         .plane0 = (last_geom->info.vtg.cull_enable >> 0) & 1,
+         .plane1 = (last_geom->info.vtg.cull_enable >> 1) & 1,
+         .plane2 = (last_geom->info.vtg.cull_enable >> 2) & 1,
+         .plane3 = (last_geom->info.vtg.cull_enable >> 3) & 1,
+         .plane4 = (last_geom->info.vtg.cull_enable >> 4) & 1,
+         .plane5 = (last_geom->info.vtg.cull_enable >> 5) & 1,
+         .plane6 = (last_geom->info.vtg.cull_enable >> 6) & 1,
+         .plane7 = (last_geom->info.vtg.cull_enable >> 7) & 1,
       });
    }
 
    /* TODO: prog_selects_layer */
    P_IMMD(p, NV9097, SET_RT_LAYER, {
       .v       = 0,
-      .control = (last_geom->hdr[13] & (1 << 9)) ?
+      .control = last_geom->info.vtg.writes_layer ?
                  CONTROL_GEOMETRY_SHADER_SELECTS_LAYER :
                  CONTROL_V_SELECTS_LAYER,
    });
 
-   if (last_geom->xfb) {
-      emit_pipeline_xfb_state(&push, last_geom->xfb);
-   }
+   emit_pipeline_xfb_state(&push, &last_geom->info.vtg.xfb);
 
    if (state.ts) emit_pipeline_ts_state(&push, state.ts);
    if (state.vp) emit_pipeline_vp_state(&push, state.vp);

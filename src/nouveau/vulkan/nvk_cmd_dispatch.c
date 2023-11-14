@@ -151,9 +151,9 @@ nvk_compute_local_size(struct nvk_cmd_buffer *cmd)
    const struct nvk_shader *shader =
       &pipeline->base.shaders[MESA_SHADER_COMPUTE];
 
-   return shader->cp.block_size[0] *
-          shader->cp.block_size[1] *
-          shader->cp.block_size[2];
+   return shader->info.cs.local_size[0] *
+          shader->info.cs.local_size[1] *
+          shader->info.cs.local_size[2];
 }
 
 static uint64_t

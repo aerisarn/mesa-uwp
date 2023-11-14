@@ -375,18 +375,18 @@ nvk_shader_dump(struct nvk_shader *shader)
 {
    unsigned pos;
 
-   if (shader->stage != MESA_SHADER_COMPUTE) {
+   if (shader->info.stage != MESA_SHADER_COMPUTE) {
       _debug_printf("dumping HDR for %s shader\n",
-                    _mesa_shader_stage_to_string(shader->stage));
-      for (pos = 0; pos < ARRAY_SIZE(shader->hdr); ++pos)
+                    _mesa_shader_stage_to_string(shader->info.stage));
+      for (pos = 0; pos < ARRAY_SIZE(shader->info.hdr); ++pos)
          _debug_printf("HDR[%02"PRIxPTR"] = 0x%08x\n",
-                      pos * sizeof(shader->hdr[0]), shader->hdr[pos]);
+                      pos * sizeof(shader->info.hdr[0]), shader->info.hdr[pos]);
    }
    _debug_printf("shader binary code (0x%x bytes):", shader->code_size);
    for (pos = 0; pos < shader->code_size / 4; ++pos) {
       if ((pos % 8) == 0)
          _debug_printf("\n");
-      _debug_printf("%08x ", ((uint32_t *)shader->code_ptr)[pos]);
+      _debug_printf("%08x ", ((const uint32_t *)shader->code_ptr)[pos]);
    }
    _debug_printf("\n");
 }
@@ -398,70 +398,10 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
                          const struct nak_fs_key *fs_key,
                          struct nvk_shader *shader)
 {
-   struct nak_shader_bin *bin = nak_compile_shader(nir, pdev->nak, fs_key);
-
-   shader->stage = nir->info.stage;
-
-   shader->num_gprs = bin->info.num_gprs;
-   shader->num_barriers = bin->info.num_barriers;
-   shader->slm_size = bin->info.slm_size;
-
-   switch (nir->info.stage) {
-   case MESA_SHADER_COMPUTE:
-      for (unsigned i = 0; i < 3; i++)
-         shader->cp.block_size[i] = bin->info.cs.local_size[i];
-      shader->cp.smem_size = bin->info.cs.smem_size;
-      break;
-
-   case MESA_SHADER_FRAGMENT:
-      if (bin->info.fs.writes_depth)
-         shader->flags[0] = 0x11; /* deactivate ZCULL */
-      shader->fs.sample_mask_in = bin->info.fs.reads_sample_mask;
-      shader->fs.post_depth_coverage = bin->info.fs.post_depth_coverage;
-      shader->fs.uses_sample_shading = bin->info.fs.uses_sample_shading;
-      shader->fs.early_z = bin->info.fs.early_fragment_tests;
-      break;
-
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY: {
-      shader->vs.clip_enable = bin->info.vtg.clip_enable;
-      shader->vs.cull_enable = bin->info.vtg.cull_enable;
-
-      if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-         shader->tp.domain_type = bin->info.ts.domain;
-         shader->tp.spacing = bin->info.ts.spacing;
-         shader->tp.output_prims = bin->info.ts.prims;
-      } else {
-         shader->tp.domain_type = ~0;
-      }
-
-      bool has_xfb = false;
-      for (unsigned b = 0; b < 4; b++) {
-         if (bin->info.vtg.xfb.attr_count[b] > 0) {
-            has_xfb = true;
-            break;
-         }
-      }
-
-      if (has_xfb) {
-         shader->xfb = malloc(sizeof(*shader->xfb));
-         STATIC_ASSERT(sizeof(*shader->xfb) == sizeof(bin->info.vtg.xfb));
-         memcpy(shader->xfb, &bin->info.vtg.xfb, sizeof(*shader->xfb));
-      }
-      break;
-   }
-
-   default:
-      break;
-   }
-
-   STATIC_ASSERT(sizeof(shader->hdr) == sizeof(bin->info.hdr));
-   memcpy(shader->hdr, bin->info.hdr, sizeof(bin->info.hdr));
-
-   shader->nak = bin;
-   shader->code_ptr = (void *)bin->code;
-   shader->code_size = bin->code_size;
+   shader->nak = nak_compile_shader(nir, pdev->nak, fs_key);
+   shader->info = shader->nak->info;
+   shader->code_ptr = shader->nak->code;
+   shader->code_size = shader->nak->code_size;
 
    return VK_SUCCESS;
 }
@@ -481,7 +421,7 @@ VkResult
 nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
 {
    uint32_t hdr_size = 0;
-   if (shader->stage != MESA_SHADER_COMPUTE) {
+   if (shader->info.stage != MESA_SHADER_COMPUTE) {
       if (dev->pdev->info.cls_eng3d >= TURING_A)
          hdr_size = TU102_SHADER_HEADER_SIZE;
       else
@@ -506,7 +446,8 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
    if (data == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   memcpy(data + offset, shader->hdr, hdr_size);
+   assert(hdr_size <= sizeof(shader->info.hdr));
+   memcpy(data + offset, shader->info.hdr, hdr_size);
    memcpy(data + offset + hdr_size, shader->code_ptr, shader->code_size);
 
 #ifndef NDEBUG
@@ -536,6 +477,4 @@ nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
 
    if (shader->nak)
       nak_shader_bin_destroy(shader->nak);
-
-   free(shader->xfb);
 }

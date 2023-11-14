@@ -465,13 +465,13 @@ nvc0_program_assign_varying_slots(struct nv50_ir_prog_info_out *info)
 static inline void
 nvk_vtgs_hdr_update_oread(struct nvk_shader *vs, uint8_t slot)
 {
-   uint8_t min = (vs->hdr[4] >> 12) & 0xff;
-   uint8_t max = (vs->hdr[4] >> 24);
+   uint8_t min = (vs->info.hdr[4] >> 12) & 0xff;
+   uint8_t max = (vs->info.hdr[4] >> 24);
 
    min = MIN2(min, slot);
    max = MAX2(max, slot);
 
-   vs->hdr[4] = (max << 24) | (min << 12);
+   vs->info.hdr[4] = (max << 24) | (min << 12);
 }
 
 static int
@@ -485,7 +485,7 @@ nvk_vtgp_gen_header(struct nvk_shader *vs, struct nv50_ir_prog_info_out *info)
       for (c = 0; c < 4; ++c) {
          a = info->in[i].slot[c];
          if (info->in[i].mask & (1 << c))
-            vs->hdr[5 + a / 32] |= 1 << (a % 32);
+            vs->info.hdr[5 + a / 32] |= 1 << (a % 32);
       }
    }
 
@@ -497,7 +497,7 @@ nvk_vtgp_gen_header(struct nvk_shader *vs, struct nv50_ir_prog_info_out *info)
             continue;
          assert(info->out[i].slot[c] >= 0x40 / 4);
          a = info->out[i].slot[c] - 0x40 / 4;
-         vs->hdr[13 + a / 32] |= 1 << (a % 32);
+         vs->info.hdr[13 + a / 32] |= 1 << (a % 32);
          if (info->out[i].oread)
             nvk_vtgs_hdr_update_oread(vs, info->out[i].slot[c]);
       }
@@ -506,13 +506,13 @@ nvk_vtgp_gen_header(struct nvk_shader *vs, struct nv50_ir_prog_info_out *info)
    for (i = 0; i < info->numSysVals; ++i) {
       switch (info->sv[i].sn) {
       case SYSTEM_VALUE_PRIMITIVE_ID:
-         vs->hdr[5] |= 1 << 24;
+         vs->info.hdr[5] |= 1 << 24;
          break;
       case SYSTEM_VALUE_INSTANCE_ID:
-         vs->hdr[10] |= 1 << 30;
+         vs->info.hdr[10] |= 1 << 30;
          break;
       case SYSTEM_VALUE_VERTEX_ID:
-         vs->hdr[10] |= 1 << 31;
+         vs->info.hdr[10] |= 1 << 31;
          break;
       case SYSTEM_VALUE_TESS_COORD:
          /* We don't have the mask, nor the slots populated. While this could
@@ -527,13 +527,10 @@ nvk_vtgp_gen_header(struct nvk_shader *vs, struct nv50_ir_prog_info_out *info)
       }
    }
 
-   vs->vs.clip_enable = (1 << info->io.clipDistances) - 1;
-   vs->vs.cull_enable =
+   vs->info.vtg.writes_layer = (vs->info.hdr[13] & (1 << 9)) != 0;
+   vs->info.vtg.clip_enable = (1 << info->io.clipDistances) - 1;
+   vs->info.vtg.cull_enable =
       ((1 << info->io.cullDistances) - 1) << info->io.clipDistances;
-   for (i = 0; i < info->io.cullDistances; ++i)
-      vs->vs.clip_mode |= 1 << ((info->io.clipDistances + i) * 4);
-
-   vs->vs.layer_viewport_relative = info->io.layer_viewport_relative;
 
    return 0;
 }
@@ -541,8 +538,8 @@ nvk_vtgp_gen_header(struct nvk_shader *vs, struct nv50_ir_prog_info_out *info)
 static int
 nvk_vs_gen_header(struct nvk_shader *vs, struct nv50_ir_prog_info_out *info)
 {
-   vs->hdr[0] = 0x20061 | (1 << 10);
-   vs->hdr[4] = 0xff000;
+   vs->info.hdr[0] = 0x20061 | (1 << 10);
+   vs->info.hdr[4] = 0xff000;
 
    return nvk_vtgp_gen_header(vs, info);
 }
@@ -552,28 +549,28 @@ nvk_gs_gen_header(struct nvk_shader *gs,
                   const struct nir_shader *nir,
                   struct nv50_ir_prog_info_out *info)
 {
-   gs->hdr[0] = 0x20061 | (4 << 10);
+   gs->info.hdr[0] = 0x20061 | (4 << 10);
 
-   gs->hdr[2] = MIN2(info->prop.gp.instanceCount, 32) << 24;
+   gs->info.hdr[2] = MIN2(info->prop.gp.instanceCount, 32) << 24;
 
    switch (info->prop.gp.outputPrim) {
    case MESA_PRIM_POINTS:
-      gs->hdr[3] = 0x01000000;
+      gs->info.hdr[3] = 0x01000000;
       break;
    case MESA_PRIM_LINE_STRIP:
-      gs->hdr[3] = 0x06000000;
+      gs->info.hdr[3] = 0x06000000;
       break;
    case MESA_PRIM_TRIANGLE_STRIP:
-      gs->hdr[3] = 0x07000000;
+      gs->info.hdr[3] = 0x07000000;
       break;
    default:
       assert(0);
       break;
    }
 
-   gs->hdr[4] = CLAMP(info->prop.gp.maxVertices, 1, 1024);
+   gs->info.hdr[4] = CLAMP(info->prop.gp.maxVertices, 1, 1024);
 
-   gs->hdr[0] |= nir->info.gs.active_stream_mask << 28;
+   gs->info.hdr[0] |= nir->info.gs.active_stream_mask << 28;
 
    return nvk_vtgp_gen_header(gs, info);
 }
@@ -585,56 +582,46 @@ nvk_generate_tessellation_parameters(const struct nv50_ir_prog_info_out *info,
    // TODO: this is a little confusing because nouveau codegen uses
    // MESA_PRIM_POINTS for unspecified domain and
    // MESA_PRIM_POINTS = 0, the same as NV9097 ISOLINE enum
-   uint32_t domain_type;
    switch (info->prop.tp.domain) {
    case MESA_PRIM_LINES:
-      domain_type = NV9097_SET_TESSELLATION_PARAMETERS_DOMAIN_TYPE_ISOLINE;
+      shader->info.ts.domain = NAK_TS_DOMAIN_ISOLINE;
       break;
    case MESA_PRIM_TRIANGLES:
-      domain_type = NV9097_SET_TESSELLATION_PARAMETERS_DOMAIN_TYPE_TRIANGLE;
+      shader->info.ts.domain = NAK_TS_DOMAIN_TRIANGLE;
       break;
    case MESA_PRIM_QUADS:
-      domain_type = NV9097_SET_TESSELLATION_PARAMETERS_DOMAIN_TYPE_QUAD;
+      shader->info.ts.domain = NAK_TS_DOMAIN_QUAD;
       break;
    default:
-      domain_type = ~0;
-      break;
-   }
-   shader->tp.domain_type = domain_type;
-   if (domain_type == ~0) {
       return;
    }
 
-   uint32_t spacing;
    switch (info->prop.tp.partitioning) {
    case PIPE_TESS_SPACING_EQUAL:
-      spacing = NV9097_SET_TESSELLATION_PARAMETERS_SPACING_INTEGER;
+      shader->info.ts.spacing = NAK_TS_SPACING_INTEGER;
       break;
    case PIPE_TESS_SPACING_FRACTIONAL_ODD:
-      spacing = NV9097_SET_TESSELLATION_PARAMETERS_SPACING_FRACTIONAL_ODD;
+      shader->info.ts.spacing = NAK_TS_SPACING_FRACT_ODD;
       break;
    case PIPE_TESS_SPACING_FRACTIONAL_EVEN:
-      spacing = NV9097_SET_TESSELLATION_PARAMETERS_SPACING_FRACTIONAL_EVEN;
+      shader->info.ts.spacing = NAK_TS_SPACING_FRACT_EVEN;
       break;
    default:
       assert(!"invalid tessellator partitioning");
       break;
    }
-   shader->tp.spacing = spacing;
 
-   uint32_t output_prims;
    if (info->prop.tp.outputPrim == MESA_PRIM_POINTS) { // point_mode
-      output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_POINTS;
+      shader->info.ts.prims = NAK_TS_PRIMS_POINTS;
    } else if (info->prop.tp.domain == MESA_PRIM_LINES) { // isoline domain
-      output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_LINES;
+      shader->info.ts.prims = NAK_TS_PRIMS_LINES;
    } else {  // triangle/quad domain
       if (info->prop.tp.winding > 0) {
-         output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_TRIANGLES_CW;
+         shader->info.ts.prims = NAK_TS_PRIMS_TRIANGLES_CW;
       } else {
-         output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_TRIANGLES_CCW;
+         shader->info.ts.prims = NAK_TS_PRIMS_TRIANGLES_CCW;
       }
    }
-   shader->tp.output_prims = output_prims;
 }
 
 static int
@@ -645,12 +632,12 @@ nvk_tcs_gen_header(struct nvk_shader *tcs, struct nv50_ir_prog_info_out *info)
    if (info->numPatchConstants)
       opcs = 8 + info->numPatchConstants * 4;
 
-   tcs->hdr[0] = 0x20061 | (2 << 10);
+   tcs->info.hdr[0] = 0x20061 | (2 << 10);
 
-   tcs->hdr[1] = opcs << 24;
-   tcs->hdr[2] = info->prop.tp.outputPatchSize << 24;
+   tcs->info.hdr[1] = opcs << 24;
+   tcs->info.hdr[2] = info->prop.tp.outputPatchSize << 24;
 
-   tcs->hdr[4] = 0xff000; /* initial min/max parallel output read address */
+   tcs->info.hdr[4] = 0xff000; /* initial min/max parallel output read address */
 
    nvk_vtgp_gen_header(tcs, info);
 
@@ -659,8 +646,8 @@ nvk_tcs_gen_header(struct nvk_shader *tcs, struct nv50_ir_prog_info_out *info)
        * header, but it seems like blob still also uses the old position.
        * Also, the high 8-bits are located in between the min/max parallel
        * field and has to be set after updating the outputs. */
-      tcs->hdr[3] = (opcs & 0x0f) << 28;
-      tcs->hdr[4] |= (opcs & 0xf0) << 16;
+      tcs->info.hdr[3] = (opcs & 0x0f) << 28;
+      tcs->info.hdr[4] |= (opcs & 0xf0) << 16;
    }
 
    nvk_generate_tessellation_parameters(info, tcs);
@@ -671,14 +658,14 @@ nvk_tcs_gen_header(struct nvk_shader *tcs, struct nv50_ir_prog_info_out *info)
 static int
 nvk_tes_gen_header(struct nvk_shader *tes, struct nv50_ir_prog_info_out *info)
 {
-   tes->hdr[0] = 0x20061 | (3 << 10);
-   tes->hdr[4] = 0xff000;
+   tes->info.hdr[0] = 0x20061 | (3 << 10);
+   tes->info.hdr[4] = 0xff000;
 
    nvk_vtgp_gen_header(tes, info);
 
    nvk_generate_tessellation_parameters(info, tes);
 
-   tes->hdr[18] |= 0x3 << 12; /* ? */
+   tes->info.hdr[18] |= 0x3 << 12; /* ? */
 
    return 0;
 }
@@ -706,38 +693,33 @@ nvk_fs_gen_header(struct nvk_shader *fs, const struct nak_fs_key *key,
    unsigned i, c, a, m;
 
    /* just 00062 on Kepler */
-   fs->hdr[0] = 0x20062 | (5 << 10);
-   fs->hdr[5] = 0x80000000; /* getting a trap if FRAG_COORD_UMASK.w = 0 */
+   fs->info.hdr[0] = 0x20062 | (5 << 10);
+   fs->info.hdr[5] = 0x80000000; /* getting a trap if FRAG_COORD_UMASK.w = 0 */
 
    if (info->prop.fp.usesDiscard || key->zs_self_dep)
-      fs->hdr[0] |= 0x8000;
+      fs->info.hdr[0] |= 0x8000;
    if (!info->prop.fp.separateFragData)
-      fs->hdr[0] |= 0x4000;
+      fs->info.hdr[0] |= 0x4000;
    if (info->io.sampleMask < 80 /* PIPE_MAX_SHADER_OUTPUTS */)
-      fs->hdr[19] |= 0x1;
+      fs->info.hdr[19] |= 0x1;
    if (info->prop.fp.writesDepth) {
-      fs->hdr[19] |= 0x2;
-      fs->flags[0] = 0x11; /* deactivate ZCULL */
+      fs->info.hdr[19] |= 0x2;
+      fs->info.fs.writes_depth = true;
    }
 
    for (i = 0; i < info->numInputs; ++i) {
       m = nvk_hdr_interp_mode(&info->in[i]);
-      if (info->in[i].sn == TGSI_SEMANTIC_COLOR) {
-         fs->fs.colors |= 1 << info->in[i].si;
-         if (info->in[i].sc)
-            fs->fs.color_interp[info->in[i].si] = m | (info->in[i].mask << 4);
-      }
       for (c = 0; c < 4; ++c) {
          if (!(info->in[i].mask & (1 << c)))
             continue;
          a = info->in[i].slot[c];
          if (info->in[i].slot[0] >= (0x060 / 4) &&
              info->in[i].slot[0] <= (0x07c / 4)) {
-            fs->hdr[5] |= 1 << (24 + (a - 0x060 / 4));
+            fs->info.hdr[5] |= 1 << (24 + (a - 0x060 / 4));
          } else
          if (info->in[i].slot[0] >= (0x2c0 / 4) &&
              info->in[i].slot[0] <= (0x2fc / 4)) {
-            fs->hdr[14] |= (1 << (a - 0x280 / 4)) & 0x07ff0000;
+            fs->info.hdr[14] |= (1 << (a - 0x280 / 4)) & 0x07ff0000;
          } else {
             if (info->in[i].slot[c] < (0x040 / 4) ||
                 info->in[i].slot[c] > (0x380 / 4))
@@ -745,17 +727,17 @@ nvk_fs_gen_header(struct nvk_shader *fs, const struct nak_fs_key *key,
             a *= 2;
             if (info->in[i].slot[0] >= (0x300 / 4))
                a -= 32;
-            fs->hdr[4 + a / 32] |= m << (a % 32);
+            fs->info.hdr[4 + a / 32] |= m << (a % 32);
          }
       }
    }
    /* GM20x+ needs TGSI_SEMANTIC_POSITION to access sample locations */
    if (info->prop.fp.readsSampleLocations && info->target >= NVISA_GM200_CHIPSET)
-      fs->hdr[5] |= 0x30000000;
+      fs->info.hdr[5] |= 0x30000000;
 
    for (i = 0; i < info->numOutputs; ++i) {
       if (info->out[i].sn == TGSI_SEMANTIC_COLOR)
-         fs->hdr[18] |= 0xf << (4 * info->out[i].si);
+         fs->info.hdr[18] |= 0xf << (4 * info->out[i].si);
    }
 
    /* There are no "regular" attachments, but the shader still needs to be
@@ -765,16 +747,11 @@ nvk_fs_gen_header(struct nvk_shader *fs, const struct nak_fs_key *key,
    if (info->prop.fp.numColourResults == 0 &&
        !info->prop.fp.writesDepth &&
        info->io.sampleMask >= 80 /* PIPE_MAX_SHADER_OUTPUTS */)
-      fs->hdr[18] |= 0xf;
+      fs->info.hdr[18] |= 0xf;
 
-   fs->fs.early_z = info->prop.fp.earlyFragTests;
-   fs->fs.sample_mask_in = info->prop.fp.usesSampleMaskIn;
-   fs->fs.reads_framebuffer = info->prop.fp.readsFramebuffer;
-   fs->fs.post_depth_coverage = info->prop.fp.postDepthCoverage;
-
-   /* Mark position xy and layer as read */
-   if (fs->fs.reads_framebuffer)
-      fs->hdr[5] |= 0x32000000;
+   fs->info.fs.early_fragment_tests = info->prop.fp.earlyFragTests;
+   fs->info.fs.reads_sample_mask = info->prop.fp.usesSampleMaskIn;
+   fs->info.fs.post_depth_coverage = info->prop.fp.postDepthCoverage;
 
    return 0;
 }
@@ -794,8 +771,9 @@ static uint8_t find_register_index_for_xfb_output(const struct nir_shader *nir,
    return 0;
 }
 
-static struct nvk_transform_feedback_state *
-nvk_fill_transform_feedback_state(struct nir_shader *nir,
+static void
+nvk_fill_transform_feedback_state(struct nak_xfb_info *xfb,
+                                  struct nir_shader *nir,
                                   const struct nv50_ir_prog_info_out *info)
 {
    const uint8_t max_buffers = 4;
@@ -803,21 +781,17 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
    const struct nir_xfb_info *nx = nir->xfb_info;
    //nir_print_xfb_info(nx, stdout);
 
-   struct nvk_transform_feedback_state *xfb =
-      malloc(sizeof(struct nvk_transform_feedback_state));
-
-   if (!xfb)
-      return NULL;
+   memset(xfb, 0, sizeof(*xfb));
 
    for (uint8_t b = 0; b < max_buffers; ++b) {
       xfb->stride[b] = b < nx->buffers_written ? nx->buffers[b].stride : 0;
-      xfb->varying_count[b] = 0;
+      xfb->attr_count[b] = 0;
       xfb->stream[b] = nx->buffer_to_stream[b];
    }
-   memset(xfb->varying_index, 0xff, sizeof(xfb->varying_index)); /* = skip */
+   memset(xfb->attr_index, 0xff, sizeof(xfb->attr_index)); /* = skip */
 
    if (info->numOutputs == 0)
-      return xfb;
+      return;
 
    for (uint32_t i = 0; i < nx->output_count; ++i) {
       const nir_xfb_output_info output = nx->outputs[i];
@@ -825,20 +799,18 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
       const uint8_t r = find_register_index_for_xfb_output(nir, output);
       uint32_t p = output.offset / dw_bytes;
 
-      assert(r < info->numOutputs && p < ARRAY_SIZE(xfb->varying_index[b]));
+      assert(r < info->numOutputs && p < ARRAY_SIZE(xfb->attr_index[b]));
 
       u_foreach_bit(c, nx->outputs[i].component_mask)
-         xfb->varying_index[b][p++] = info->out[r].slot[c];
+         xfb->attr_index[b][p++] = info->out[r].slot[c];
 
-      xfb->varying_count[b] = MAX2(xfb->varying_count[b], p);
+      xfb->attr_count[b] = MAX2(xfb->attr_count[b], p);
    }
 
    /* zero unused indices */
    for (uint8_t b = 0; b < 4; ++b)
-      for (uint32_t c = xfb->varying_count[b]; c & 3; ++c)
-         xfb->varying_index[b][c] = 0;
-
-   return xfb;
+      for (uint32_t c = xfb->attr_count[b]; c & 3; ++c)
+         xfb->attr_index[b][c] = 0;
 }
 
 VkResult
@@ -861,9 +833,8 @@ nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
    info->bin.nir = nir;
 
    for (unsigned i = 0; i < 3; i++)
-      shader->cp.block_size[i] = nir->info.workgroup_size[i];
+      shader->info.cs.local_size[i] = nir->info.workgroup_size[i];
 
-   info->bin.smemSize = shader->cp.smem_size;
    info->dbgFlags = nvk_cg_get_prog_debug();
    info->optLevel = nvk_cg_get_prog_optimize();
    info->io.auxCBSlot = 1;
@@ -885,16 +856,22 @@ nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
                            fs_key && fs_key->force_sample_shading);
    }
 
-   shader->stage = nir->info.stage;
+   shader->info.stage = nir->info.stage;
    shader->code_ptr = (uint8_t *)info_out.bin.code;
    shader->code_size = info_out.bin.codeSize;
 
    if (info_out.target >= NVISA_GV100_CHIPSET)
-      shader->num_gprs = MAX2(4, info_out.bin.maxGPR + 3);
+      shader->info.num_gprs = MAX2(4, info_out.bin.maxGPR + 3);
    else
-      shader->num_gprs = MAX2(4, info_out.bin.maxGPR + 1);
-   shader->cp.smem_size = info_out.bin.smemSize;
-   shader->num_barriers = info_out.numBarriers;
+      shader->info.num_gprs = MAX2(4, info_out.bin.maxGPR + 1);
+   shader->info.num_barriers = info_out.numBarriers;
+
+   if (info_out.bin.tlsSpace) {
+      assert(info_out.bin.tlsSpace < (1 << 24));
+      shader->info.hdr[0] |= 1 << 26;
+      shader->info.hdr[1] |= align(info_out.bin.tlsSpace, 0x10); /* l[] size */
+      shader->info.slm_size = info_out.bin.tlsSpace;
+   }
 
    switch (info->type) {
    case PIPE_SHADER_VERTEX:
@@ -902,7 +879,7 @@ nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
       break;
    case PIPE_SHADER_FRAGMENT:
       ret = nvk_fs_gen_header(shader, fs_key, &info_out);
-      shader->fs.uses_sample_shading = nir->info.fs.uses_sample_shading;
+      shader->info.fs.uses_sample_shading = nir->info.fs.uses_sample_shading;
       break;
    case PIPE_SHADER_GEOMETRY:
       ret = nvk_gs_gen_header(shader, nir, &info_out);
@@ -914,6 +891,7 @@ nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
       ret = nvk_tes_gen_header(shader, &info_out);
       break;
    case PIPE_SHADER_COMPUTE:
+      shader->info.cs.smem_size = info_out.bin.smemSize;
       break;
    default:
       unreachable("Invalid shader stage");
@@ -921,26 +899,15 @@ nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
    }
    assert(ret == 0);
 
-   if (info_out.bin.tlsSpace) {
-      assert(info_out.bin.tlsSpace < (1 << 24));
-      shader->hdr[0] |= 1 << 26;
-      shader->hdr[1] |= align(info_out.bin.tlsSpace, 0x10); /* l[] size */
-      shader->slm_size = info_out.bin.tlsSpace;
-   }
-
    if (info_out.io.globalAccess)
-      shader->hdr[0] |= 1 << 26;
+      shader->info.hdr[0] |= 1 << 26;
    if (info_out.io.globalAccess & 0x2)
-      shader->hdr[0] |= 1 << 16;
+      shader->info.hdr[0] |= 1 << 16;
    if (info_out.io.fp64)
-      shader->hdr[0] |= 1 << 27;
+      shader->info.hdr[0] |= 1 << 27;
 
-   if (nir->xfb_info) {
-      shader->xfb = nvk_fill_transform_feedback_state(nir, &info_out);
-      if (shader->xfb == NULL) {
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
-      }
-   }
+   if (nir->xfb_info)
+      nvk_fill_transform_feedback_state(&shader->info.vtg.xfb, nir, &info_out);
 
    return VK_SUCCESS;
 }
