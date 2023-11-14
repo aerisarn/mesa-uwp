@@ -134,4 +134,63 @@ nvk_cg_preprocess_nir(nir_shader *nir)
       NIR_PASS(_, nir, nir_shader_instructions_pass, lower_fragcoord_instr,
                nir_metadata_block_index | nir_metadata_dominance, NULL);
    }
+
+   nvk_cg_optimize_nir(nir);
+
+   NIR_PASS(_, nir, nir_lower_var_copies);
+}
+
+void
+nvk_cg_optimize_nir(nir_shader *nir)
+{
+   bool progress;
+
+   do {
+      progress = false;
+
+      NIR_PASS(progress, nir, nir_split_array_vars, nir_var_function_temp);
+      NIR_PASS(progress, nir, nir_shrink_vec_array_vars, nir_var_function_temp);
+
+      if (!nir->info.var_copies_lowered) {
+         /* Only run this pass if nir_lower_var_copies was not called
+          * yet. That would lower away any copy_deref instructions and we
+          * don't want to introduce any more.
+          */
+         NIR_PASS(progress, nir, nir_opt_find_array_copies);
+      }
+      NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+      NIR_PASS(progress, nir, nir_opt_dead_write_vars);
+      NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
+      NIR_PASS(progress, nir, nir_copy_prop);
+      NIR_PASS(progress, nir, nir_opt_remove_phis);
+      NIR_PASS(progress, nir, nir_opt_dce);
+      if (nir_opt_trivial_continues(nir)) {
+         progress = true;
+         NIR_PASS(progress, nir, nir_copy_prop);
+         NIR_PASS(progress, nir, nir_opt_remove_phis);
+         NIR_PASS(progress, nir, nir_opt_dce);
+      }
+      NIR_PASS(progress, nir, nir_opt_if,
+               nir_opt_if_aggressive_last_continue | nir_opt_if_optimize_phi_true_false);
+      NIR_PASS(progress, nir, nir_opt_dead_cf);
+      NIR_PASS(progress, nir, nir_opt_cse);
+      /*
+       * this should be fine, likely a backend problem,
+       * but a bunch of tessellation shaders blow up.
+       * we should revisit this when NAK is merged.
+       */
+      NIR_PASS(progress, nir, nir_opt_peephole_select, 2, true, true);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+      NIR_PASS(progress, nir, nir_opt_algebraic);
+
+      NIR_PASS(progress, nir, nir_opt_undef);
+
+      if (nir->options->max_unroll_iterations) {
+         NIR_PASS(progress, nir, nir_opt_loop_unroll);
+      }
+   } while (progress);
+
+   NIR_PASS(progress, nir, nir_opt_shrink_vectors);
+   NIR_PASS(progress, nir, nir_remove_dead_variables,
+            nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
 }

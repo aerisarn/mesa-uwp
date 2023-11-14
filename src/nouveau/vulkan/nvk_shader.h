@@ -166,5 +166,6 @@ nvk_cg_nir_options(const struct nvk_physical_device *pdev,
                    gl_shader_stage stage);
 
 void nvk_cg_preprocess_nir(nir_shader *nir);
+void nvk_cg_optimize_nir(nir_shader *nir);
 
 #endif
