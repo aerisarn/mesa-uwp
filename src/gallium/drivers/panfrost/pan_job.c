@@ -710,13 +710,14 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
 static int
 panfrost_batch_submit_jobs(struct panfrost_batch *batch,
-                           const struct pan_fb_info *fb, uint32_t out_sync)
+                           const struct pan_fb_info *fb)
 {
    struct pipe_screen *pscreen = batch->ctx->base.screen;
    struct panfrost_device *dev = pan_device(pscreen);
    bool has_draws = batch->scoreboard.first_job;
    bool has_tiler = batch->scoreboard.first_tiler;
    bool has_frag = panfrost_has_fragment_job(batch);
+   uint32_t out_sync = batch->ctx->syncobj;
    int ret = 0;
 
    /* Take the submit lock to make sure no tiler jobs from other context
@@ -817,7 +818,7 @@ panfrost_batch_submit(struct panfrost_context *ctx,
       screen->vtbl.emit_fragment_job(batch, &fb);
    }
 
-   ret = panfrost_batch_submit_jobs(batch, &fb, ctx->syncobj);
+   ret = panfrost_batch_submit_jobs(batch, &fb);
 
    if (ret)
       fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
