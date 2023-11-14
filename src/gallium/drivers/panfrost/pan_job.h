@@ -142,6 +142,9 @@ struct panfrost_batch {
    /* Job scoreboarding state */
    struct pan_scoreboard scoreboard;
 
+   /* Fragment job GPU address */
+   mali_ptr frag_job;
+
    /* Scratchpad BO bound to the batch, or NULL if none bound yet */
    struct panfrost_bo *scratchpad;
 

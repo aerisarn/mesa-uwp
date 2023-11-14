@@ -71,8 +71,8 @@ struct panfrost_vtable {
    void (*emit_fbd)(struct panfrost_batch *, const struct pan_fb_info *);
 
    /* Emits a fragment job */
-   mali_ptr (*emit_fragment_job)(struct panfrost_batch *,
-                                 const struct pan_fb_info *);
+   void (*emit_fragment_job)(struct panfrost_batch *,
+                             const struct pan_fb_info *);
 
    /* General destructor */
    void (*screen_destroy)(struct pipe_screen *);

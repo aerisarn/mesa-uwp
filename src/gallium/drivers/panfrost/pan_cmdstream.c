@@ -2637,7 +2637,7 @@ panfrost_initialize_surface(struct panfrost_batch *batch,
 /* Generate a fragment job. This should be called once per frame. (Usually,
  * this corresponds to eglSwapBuffers or one of glFlush, glFinish)
  */
-static mali_ptr
+static void
 emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
 {
    /* Mark the affected buffers as initialized, since we're writing to it.
@@ -2674,8 +2674,7 @@ emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
       pan_pool_alloc_desc(&batch->pool.base, FRAGMENT_JOB);
 
    GENX(pan_emit_fragment_job)(pfb, batch->framebuffer.gpu, transfer.cpu);
-
-   return transfer.gpu;
+   batch->frag_job = transfer.gpu;
 }
 
 #define DEFINE_CASE(c)                                                         \

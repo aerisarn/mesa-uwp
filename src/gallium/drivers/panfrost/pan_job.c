@@ -740,9 +740,9 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
    }
 
    if (has_frag) {
-      mali_ptr fragjob = screen->vtbl.emit_fragment_job(batch, fb);
-      ret = panfrost_batch_submit_ioctl(batch, fragjob, PANFROST_JD_REQ_FS, 0,
-                                        out_sync);
+      screen->vtbl.emit_fragment_job(batch, fb);
+      ret = panfrost_batch_submit_ioctl(batch, batch->frag_job,
+                                        PANFROST_JD_REQ_FS, 0, out_sync);
       if (ret)
          goto done;
    }
