@@ -267,7 +267,7 @@ bool panfrost_batch_skip_rasterization(struct panfrost_batch *batch);
 static inline bool
 panfrost_has_fragment_job(struct panfrost_batch *batch)
 {
-   return batch->scoreboard.first_tiler || batch->clear;
+   return batch->draw_count > 0 || batch->clear;
 }
 
 #endif

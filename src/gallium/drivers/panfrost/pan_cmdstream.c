@@ -4580,7 +4580,7 @@ batch_get_polygon_list(struct panfrost_batch *batch)
    struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
    if (!batch->tiler_ctx.midgard.polygon_list) {
-      bool has_draws = batch->scoreboard.first_tiler != NULL;
+      bool has_draws = batch->draw_count > 0;
       unsigned size = panfrost_tiler_get_polygon_list_size(
          dev, batch->key.width, batch->key.height,
          batch->tiler_ctx.vertex_count);

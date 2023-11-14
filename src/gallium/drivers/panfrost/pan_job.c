@@ -229,7 +229,7 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx,
    /* We only need to submit and get a fresh batch if there is no
     * draw/clear queued. Otherwise we may reuse the batch. */
 
-   if (batch->scoreboard.first_job) {
+   if (batch->draw_count + batch->compute_count > 0) {
       perf_debug_ctx(ctx, "Flushing the current FBO due to: %s", reason);
       panfrost_batch_submit(ctx, batch);
       batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
@@ -777,13 +777,12 @@ panfrost_batch_submit(struct panfrost_context *ctx,
 {
    struct pipe_screen *pscreen = ctx->base.screen;
    struct panfrost_screen *screen = pan_screen(pscreen);
+   bool has_frag = panfrost_has_fragment_job(batch);
    int ret;
 
    /* Nothing to do! */
-   if (!batch->scoreboard.first_job && !batch->clear)
+   if (!has_frag && batch->compute_count == 0)
       goto out;
-
-   bool has_frag = panfrost_has_fragment_job(batch);
 
    if (batch->key.zsbuf && has_frag) {
       struct pipe_surface *surf = batch->key.zsbuf;
