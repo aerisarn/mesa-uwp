@@ -15,6 +15,7 @@ nvk_files = files(
   'nvk_cmd_meta.c',
   'nvk_cmd_pool.c',
   'nvk_cmd_pool.h',
+  'nvk_codegen.c',
   'nvk_compute_pipeline.c',
   'nvk_descriptor_set.h',
   'nvk_descriptor_set.c',

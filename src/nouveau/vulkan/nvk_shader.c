@@ -67,18 +67,6 @@ pipe_shader_type_from_mesa(gl_shader_stage stage)
    }
 }
 
-static uint64_t
-get_prog_debug(void)
-{
-   return debug_get_num_option("NV50_PROG_DEBUG", 0);
-}
-
-static uint64_t
-get_prog_optimize(void)
-{
-   return debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
-}
-
 VkShaderStageFlags
 nvk_nak_stages(const struct nv_device_info *info)
 {
@@ -109,8 +97,8 @@ use_nak(const struct nvk_physical_device *pdev, gl_shader_stage stage)
 uint64_t
 nvk_physical_device_compiler_flags(const struct nvk_physical_device *pdev)
 {
-   uint64_t prog_debug = get_prog_debug();
-   uint64_t prog_optimize = get_prog_optimize();
+   uint64_t prog_debug = nvk_cg_get_prog_debug();
+   uint64_t prog_optimize = nvk_cg_get_prog_optimize();
    uint64_t nak_stages = nvk_nak_stages(&pdev->info);
    uint64_t nak_flags = nak_debug_flags(pdev->nak);
 
@@ -131,9 +119,8 @@ nvk_physical_device_nir_options(const struct nvk_physical_device *pdev,
 {
    if (use_nak(pdev, stage))
       return nak_nir_options(pdev->nak);
-
-   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(stage);
-   return nv50_ir_nir_shader_compiler_options(pdev->info.chipset, p_stage);
+   else
+      return nvk_cg_nir_options(pdev, stage);
 }
 
 struct spirv_to_nir_options
@@ -1298,8 +1285,8 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
       shader->cp.block_size[i] = nir->info.workgroup_size[i];
 
    info->bin.smemSize = shader->cp.smem_size;
-   info->dbgFlags = get_prog_debug();
-   info->optLevel = get_prog_optimize();
+   info->dbgFlags = nvk_cg_get_prog_debug();
+   info->optLevel = nvk_cg_get_prog_optimize();
    info->io.auxCBSlot = 1;
    info->io.uboInfoBase = 0;
    info->io.drawInfoBase = nvk_root_descriptor_offset(draw.base_vertex);

@@ -153,4 +153,16 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);
 
 void
 nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader);
+
+/* Codegen wrappers.
+ *
+ * TODO: Delete these once NAK supports everything.
+ */
+uint64_t nvk_cg_get_prog_debug(void);
+uint64_t nvk_cg_get_prog_optimize(void);
+
+const nir_shader_compiler_options *
+nvk_cg_nir_options(const struct nvk_physical_device *pdev,
+                   gl_shader_stage stage);
+
 #endif
