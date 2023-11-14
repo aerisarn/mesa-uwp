@@ -168,4 +168,8 @@ nvk_cg_nir_options(const struct nvk_physical_device *pdev,
 void nvk_cg_preprocess_nir(nir_shader *nir);
 void nvk_cg_optimize_nir(nir_shader *nir);
 
+VkResult nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
+                            const struct nvk_fs_key *fs_key,
+                            struct nvk_shader *shader);
+
 #endif
