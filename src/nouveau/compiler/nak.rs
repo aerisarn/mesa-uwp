@@ -31,6 +31,7 @@ use crate::nak_ir::ShaderStageInfo;
 use nak_bindings::*;
 use nak_from_nir::*;
 use nak_ir::ShaderIoInfo;
+use std::cmp::max;
 use std::env;
 use std::ffi::CStr;
 use std::os::raw::c_void;
@@ -279,7 +280,11 @@ pub extern "C" fn nak_compile_shader(
 
     let info = nak_shader_info {
         stage: nir.info.stage(),
-        num_gprs: s.info.num_gprs,
+        num_gprs: if s.info.sm >= 75 {
+            max(4, s.info.num_gprs + 2)
+        } else {
+            max(4, s.info.num_gprs)
+        },
         num_barriers: s.info.num_barriers,
         slm_size: s.info.slm_size,
         __bindgen_anon_1: match &s.info.stage {
