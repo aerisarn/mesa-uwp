@@ -351,6 +351,23 @@ impl SM50Instr {
         );
     }
 
+    fn encode_vote(&mut self, op: &OpVote) {
+        self.set_opcode(0x50d8);
+
+        self.set_dst(op.ballot);
+        self.set_pred_dst(45..48, op.vote);
+        self.set_pred_src(39..42, 42, op.pred);
+
+        self.set_field(
+            48..50,
+            match op.op {
+                VoteOp::All => 0u8,
+                VoteOp::Any => 1u8,
+                VoteOp::Eq => 2u8,
+            },
+        );
+    }
+
     fn encode_psetp(&mut self, op: &OpPSetP) {
         self.set_opcode(0x5090);
 
@@ -1724,6 +1741,7 @@ impl SM50Instr {
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
             Op::Shfl(op) => si.encode_shfl(&op),
+            Op::Vote(op) => si.encode_vote(&op),
             Op::PSetP(op) => si.encode_psetp(&op),
             Op::SuSt(op) => si.encode_sust(&op),
             Op::S2R(op) => si.encode_s2r(&op),
