@@ -310,6 +310,47 @@ impl SM50Instr {
         self.set_pred_src(39..42, 42, op.cond);
     }
 
+    fn encode_shfl(&mut self, op: &OpShfl) {
+        self.set_opcode(0xef10);
+
+        self.set_dst(op.dst);
+        self.set_pred_dst(48..51, op.in_bounds);
+        self.set_reg_src(8..16, op.src);
+
+        match op.lane.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_bit(28, false);
+                self.set_reg_src(20..28, op.lane);
+            }
+            SrcRef::Imm32(imm) => {
+                self.set_bit(28, true);
+                self.set_field(20..25, imm & 0x1f);
+            }
+            lane => panic!("unsupported lane src type for SHFL: {lane}"),
+        }
+        match op.c.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_bit(29, false);
+                self.set_reg_src(39..47, op.c);
+            }
+            SrcRef::Imm32(imm) => {
+                self.set_bit(29, true);
+                self.set_field(34..47, imm & 0x1f1f);
+            }
+            c => panic!("unsupported c src type for SHFL: {c}"),
+        }
+
+        self.set_field(
+            30..32,
+            match op.op {
+                ShflOp::Idx => 0u8,
+                ShflOp::Up => 1u8,
+                ShflOp::Down => 2u8,
+                ShflOp::Bfly => 3u8,
+            },
+        );
+    }
+
     fn encode_psetp(&mut self, op: &OpPSetP) {
         self.set_opcode(0x5090);
 
@@ -1682,6 +1723,7 @@ impl SM50Instr {
             Op::IAdd2(op) => si.encode_iadd2(&op),
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
+            Op::Shfl(op) => si.encode_shfl(&op),
             Op::PSetP(op) => si.encode_psetp(&op),
             Op::SuSt(op) => si.encode_sust(&op),
             Op::S2R(op) => si.encode_s2r(&op),

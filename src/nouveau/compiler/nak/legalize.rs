@@ -140,6 +140,11 @@ fn legalize_sm50_instr(
         Op::Sel(op) => {
             copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
         }
+        Op::Shfl(op) => {
+            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_src_if_cbuf(b, &mut op.lane, RegFile::GPR);
+            copy_src_if_cbuf(b, &mut op.c, RegFile::GPR);
+        }
         Op::IAdd2(op) => {
             copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
         }
