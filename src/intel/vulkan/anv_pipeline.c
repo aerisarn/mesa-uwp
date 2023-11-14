@@ -1854,6 +1854,7 @@ anv_graphics_pipeline_load_cached_shaders(struct anv_graphics_base_pipeline *pip
             continue;
 
          pipeline->shaders[s] = anv_shader_bin_ref(stages[s].imported.bin);
+         pipeline->source_hashes[s] = stages[s].source_hash;
          imported++;
       }
    }
