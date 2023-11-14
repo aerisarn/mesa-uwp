@@ -406,3 +406,8 @@ wgl@wgl-multi-context-single-window,Fail
 # remove this after https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/843
 # is merged and piglit is updated
 spec@arb_vertex_program@arb_vertex_program-property-bindings,Fail
+
+# Needs https://github.com/KhronosGroup/SPIRV-Tools/pull/5477,
+# https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/850,
+# and CI changes to glue them together
+spec@arb_gpu_shader5@arb_gpu_shader5-xfb-streams-without-invocations spirv,Fail
