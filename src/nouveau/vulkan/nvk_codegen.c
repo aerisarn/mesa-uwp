@@ -201,6 +201,100 @@ nvk_cg_optimize_nir(nir_shader *nir)
             nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
 }
 
+static bool
+lower_image_size_to_txs(nir_builder *b, nir_intrinsic_instr *intrin,
+                        UNUSED void *_data)
+{
+   if (intrin->intrinsic != nir_intrinsic_image_deref_size)
+      return false;
+
+   b->cursor = nir_instr_remove(&intrin->instr);
+
+   nir_deref_instr *img = nir_src_as_deref(intrin->src[0]);
+   nir_def *lod = nir_tex_type_has_lod(img->type) ?
+                      intrin->src[1].ssa : NULL;
+   nir_def *size = nir_txs_deref(b, img, lod);
+
+   if (glsl_get_sampler_dim(img->type) == GLSL_SAMPLER_DIM_CUBE) {
+      /* Cube image descriptors are set up as simple arrays but SPIR-V wants
+       * the number of cubes.
+       */
+      if (glsl_sampler_type_is_array(img->type)) {
+         size = nir_vec3(b, nir_channel(b, size, 0),
+                            nir_channel(b, size, 1),
+                            nir_udiv_imm(b, nir_channel(b, size, 2), 6));
+      } else {
+         size = nir_vec3(b, nir_channel(b, size, 0),
+                            nir_channel(b, size, 1),
+                            nir_imm_int(b, 1));
+      }
+   }
+
+   nir_def_rewrite_uses(&intrin->def, size);
+
+   return true;
+}
+
+static int
+count_location_slots(const struct glsl_type *type, bool bindless)
+{
+   return glsl_count_attribute_slots(type, false);
+}
+
+static void
+assign_io_locations(nir_shader *nir)
+{
+   if (nir->info.stage != MESA_SHADER_VERTEX) {
+      unsigned location = 0;
+      nir_foreach_variable_with_modes(var, nir, nir_var_shader_in) {
+         var->data.driver_location = location;
+         if (nir_is_arrayed_io(var, nir->info.stage)) {
+            location += glsl_count_attribute_slots(glsl_get_array_element(var->type), false);
+         } else {
+            location += glsl_count_attribute_slots(var->type, false);
+         }
+      }
+      nir->num_inputs = location;
+   } else {
+      nir_foreach_shader_in_variable(var, nir) {
+         assert(var->data.location >= VERT_ATTRIB_GENERIC0);
+         var->data.driver_location = var->data.location - VERT_ATTRIB_GENERIC0;
+      }
+   }
+
+   {
+      unsigned location = 0;
+      nir_foreach_variable_with_modes(var, nir, nir_var_shader_out) {
+         var->data.driver_location = location;
+         if (nir_is_arrayed_io(var, nir->info.stage)) {
+            location += glsl_count_attribute_slots(glsl_get_array_element(var->type), false);
+         } else {
+            location += glsl_count_attribute_slots(var->type, false);
+         }
+      }
+      nir->num_outputs = location;
+   }
+}
+
+static void
+nak_cg_postprocess_nir(nir_shader *nir)
+{
+   NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_image_size_to_txs,
+            nir_metadata_block_index | nir_metadata_dominance, NULL);
+
+   uint32_t indirect_mask = nir_var_function_temp;
+
+   NIR_PASS(_, nir, nir_lower_indirect_derefs, indirect_mask, 16);
+
+   nvk_cg_optimize_nir(nir);
+   if (nir->info.stage != MESA_SHADER_COMPUTE)
+      assign_io_locations(nir);
+
+   NIR_PASS(_, nir, nir_lower_int64);
+
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+}
+
 /* NOTE: Using a[0x270] in FP may cause an error even if we're using less than
  * 124 scalar varying values.
  */
@@ -747,7 +841,6 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
    return xfb;
 }
 
-
 VkResult
 nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
                    const struct nvk_fs_key *fs_key,
@@ -756,6 +849,8 @@ nvk_cg_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
    struct nv50_ir_prog_info *info;
    struct nv50_ir_prog_info_out info_out = {};
    int ret;
+
+   nak_cg_postprocess_nir(nir);
 
    info = CALLOC_STRUCT(nv50_ir_prog_info);
    if (!info)
