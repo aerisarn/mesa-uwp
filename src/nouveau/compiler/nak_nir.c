@@ -780,6 +780,7 @@ nak_nir_lower_fs_inputs(nir_shader *nir,
                         const struct nak_compiler *nak,
                         const struct nak_fs_key *fs_key)
 {
+   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in, UINT32_MAX);
    NIR_PASS_V(nir, nak_nir_lower_varyings, nir_var_shader_in);
    NIR_PASS_V(nir, nir_opt_constant_folding);
 
