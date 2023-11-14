@@ -35,9 +35,8 @@ panfrost_translate_swizzle_4(const unsigned char swizzle[4])
    unsigned out = 0;
 
    for (unsigned i = 0; i < 4; ++i) {
-      unsigned translated =
-         (swizzle[i] > PIPE_SWIZZLE_1) ? PIPE_SWIZZLE_0 : swizzle[i];
-      out |= (translated << (3 * i));
+      assert(swizzle[i] <= PIPE_SWIZZLE_1);
+      out |= (swizzle[i] << (3 * i));
    }
 
    return out;
