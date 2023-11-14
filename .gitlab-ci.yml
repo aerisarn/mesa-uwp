@@ -26,7 +26,7 @@ workflow:
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
       when: never
     # merge pipeline
-    - if: $GITLAB_USER_LOGIN == "marge-bot" && $CI_COMMIT_BRANCH == null
+    - if: &is-pre-merge-for-marge $GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"
       variables:
         KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${KERNEL_TAG}
         MESA_CI_PERFORMANCE_ENABLED: 1
@@ -176,8 +176,6 @@ include:
   - &is-post-merge-not-for-marge '$CI_PROJECT_NAMESPACE == "mesa" && $GITLAB_USER_LOGIN != "marge-bot" && $CI_COMMIT_BRANCH'
   # Pre-merge pipeline
   - &is-pre-merge '$CI_PIPELINE_SOURCE == "merge_request_event"'
-  # Pre-merge pipeline for Marge Bot
-  - &is-pre-merge-for-marge '$GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "merge_request_event"'
 
 
 .never-post-merge-rules:
