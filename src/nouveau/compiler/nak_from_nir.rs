@@ -20,7 +20,7 @@ fn init_info_from_nir(nir: &nir_shader, sm: u8) -> ShaderInfo {
         sm: sm,
         num_gprs: 0,
         num_barriers: 0,
-        tls_size: nir.scratch_size,
+        slm_size: nir.scratch_size,
         uses_global_mem: false,
         writes_global_mem: false,
         // TODO: handle this.

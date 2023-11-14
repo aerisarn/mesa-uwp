@@ -6,15 +6,15 @@ use crate::nak_ir::*;
 use std::cmp::max;
 
 struct LowerCopySwap {
-    tls_start: u32,
-    tls_size: u32,
+    slm_start: u32,
+    slm_size: u32,
 }
 
 impl LowerCopySwap {
-    fn new(tls_size: u32) -> Self {
+    fn new(slm_size: u32) -> Self {
         Self {
-            tls_start: tls_size,
-            tls_size: tls_size,
+            slm_start: slm_size,
+            slm_size: slm_size,
         }
     }
 
@@ -50,8 +50,8 @@ impl LowerCopySwap {
                             space: MemSpace::Local,
                             order: MemOrder::Strong(MemScope::CTA),
                         };
-                        let addr = self.tls_start + src_reg.base_idx() * 4;
-                        self.tls_size = max(self.tls_size, addr + 4);
+                        let addr = self.slm_start + src_reg.base_idx() * 4;
+                        self.slm_size = max(self.slm_size, addr + 4);
                         b.push_op(OpLd {
                             dst: copy.dst,
                             addr: Src::new_zero(),
@@ -105,8 +105,8 @@ impl LowerCopySwap {
                             space: MemSpace::Local,
                             order: MemOrder::Strong(MemScope::CTA),
                         };
-                        let addr = self.tls_start + dst_reg.base_idx() * 4;
-                        self.tls_size = max(self.tls_size, addr + 4);
+                        let addr = self.slm_start + dst_reg.base_idx() * 4;
+                        self.slm_size = max(self.slm_size, addr + 4);
                         b.push_op(OpSt {
                             addr: Src::new_zero(),
                             data: copy.src,
@@ -176,8 +176,8 @@ impl LowerCopySwap {
 
 impl Shader {
     pub fn lower_copy_swap(&mut self) {
-        let mut pass = LowerCopySwap::new(self.info.tls_size);
+        let mut pass = LowerCopySwap::new(self.info.slm_size);
         pass.run(self);
-        self.info.tls_size = pass.tls_size;
+        self.info.slm_size = pass.slm_size;
     }
 }

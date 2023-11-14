@@ -79,8 +79,8 @@ struct nak_shader_info {
    /** Number of barriers used */
    uint8_t num_barriers;
 
-   /** Size of thread-local storage */
-   uint32_t tls_size;
+   /** Size of shader local (scratch) memory */
+   uint32_t slm_size;
 
    union {
       struct {

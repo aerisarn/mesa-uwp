@@ -5022,7 +5022,7 @@ pub struct ShaderInfo {
     pub sm: u8,
     pub num_gprs: u8,
     pub num_barriers: u8,
-    pub tls_size: u32,
+    pub slm_size: u32,
     pub uses_global_mem: bool,
     pub writes_global_mem: bool,
     pub uses_fp64: bool,

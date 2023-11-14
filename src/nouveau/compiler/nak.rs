@@ -281,7 +281,7 @@ pub extern "C" fn nak_compile_shader(
         stage: nir.info.stage(),
         num_gprs: s.info.num_gprs,
         num_barriers: s.info.num_barriers,
-        tls_size: s.info.tls_size,
+        slm_size: s.info.slm_size,
         __bindgen_anon_1: match &s.info.stage {
             ShaderStageInfo::Compute(cs_info) => {
                 nak_shader_info__bindgen_ty_1 {
@@ -387,7 +387,7 @@ pub extern "C" fn nak_compile_shader(
         };
         eprintln!("Stage: {}", stage_name);
         eprintln!("Num GPRs: {}", info.num_gprs);
-        eprintln!("TLS size: {}", info.tls_size);
+        eprintln!("SLM size: {}", info.slm_size);
 
         if info.stage != MESA_SHADER_COMPUTE {
             eprint_hex("Header", &info.hdr);

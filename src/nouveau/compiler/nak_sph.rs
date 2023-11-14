@@ -421,8 +421,8 @@ pub fn encode_header(
     sph.set_does_global_store(shader_info.writes_global_mem);
     sph.set_does_fp64(shader_info.uses_fp64);
 
-    let tls_size = shader_info.tls_size.next_multiple_of(16);
-    sph.set_shader_local_memory_size(tls_size.into());
+    let slm_size = shader_info.slm_size.next_multiple_of(16);
+    sph.set_shader_local_memory_size(slm_size.into());
 
     match &shader_info.io {
         ShaderIoInfo::Vtg(io) => {
