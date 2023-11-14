@@ -1,3 +1,25 @@
+# Types of CI pipelines:
+# | pipeline name        | context   | description                                                 |
+# |----------------------|-----------|-------------------------------------------------------------|
+# | merge pipeline       | mesa/mesa | pipeline running for an MR; if it passes the MR gets merged |
+# | pre-merge pipeline   | mesa/mesa | same as above, except its status doesn't affect the MR      |
+# | post-merge pipeline  | mesa/mesa | pipeline immediately after merging                          |
+# | fork pipeline        | fork      | pipeline running in a user fork                             |
+# | scheduled pipeline   | mesa/mesa | nightly pipelines, running every morning at 4am UTC         |
+#
+# "context" indicates the permissions that the jobs get; notably, any
+# container created in mesa/mesa gets pushed immediately for everyone to use
+# as soon as the image tag change is merged.
+#
+# Merge pipelines contain all jobs that must pass before the MR can be merged.
+# Pre-merge pipelines contain the exact same jobs as merge pipelines.
+# Post-merge pipelines contain *only* the `pages` job that deploys the new
+# version of the website.
+# Fork pipelines contain everything.
+# Scheduled pipelines only contain the container+build jobs, and some extra
+# test jobs (typically "full" variants of pre-merge jobs that only run 1/X
+# test cases), but not a repeat of the merge pipeline jobs.
+
 workflow:
   rules:
     # do not duplicate pipelines on merge pipelines
