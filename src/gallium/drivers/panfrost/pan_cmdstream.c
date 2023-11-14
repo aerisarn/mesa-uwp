@@ -3700,6 +3700,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
       panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
    }
 #endif
+   batch->draw_count++;
 }
 
 static bool

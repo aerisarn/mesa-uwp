@@ -189,6 +189,12 @@ struct panfrost_batch {
     */
    struct pan_tristate sprite_coord_origin;
    struct pan_tristate first_provoking_vertex;
+
+   /* Number of effective draws in the batch. Draws with rasterization disabled
+    * don't count as effective draws. It's basically the number of IDVS or
+    * <vertex,tiler> jobs present in the batch.
+    */
+   uint32_t draw_count;
 };
 
 /* Functions for managing the above */
