@@ -644,6 +644,28 @@ handleVAEncMiscParameterTypeHRD(vlVaContext *context, VAEncMiscParameterBuffer *
 }
 
 static VAStatus
+handleVAEncMiscParameterTypeMaxSliceSize(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAStatus status = VA_STATUS_SUCCESS;
+   VAEncMiscParameterMaxSliceSize *max_slice_size_buffer = (VAEncMiscParameterMaxSliceSize *)misc->data;
+   switch (u_reduce_video_profile(context->templat.profile)) {
+      case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      {
+         context->desc.h264enc.slice_mode = PIPE_VIDEO_SLICE_MODE_MAX_SLICE_SICE;
+         context->desc.h264enc.max_slice_bytes = max_slice_size_buffer->max_slice_size;
+      } break;
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         context->desc.h265enc.slice_mode = PIPE_VIDEO_SLICE_MODE_MAX_SLICE_SICE;
+         context->desc.h265enc.max_slice_bytes = max_slice_size_buffer->max_slice_size;
+      } break;
+      default:
+         break;
+   }
+   return status;
+}
+
+static VAStatus
 handleVAEncMiscParameterTypeRIR(vlVaContext *context, VAEncMiscParameterBuffer *misc)
 {
    VAStatus status = VA_STATUS_SUCCESS;
@@ -730,6 +752,10 @@ handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 
    case VAEncMiscParameterTypeRIR:
       vaStatus = handleVAEncMiscParameterTypeRIR(context, misc);
+      break;
+
+   case VAEncMiscParameterTypeMaxSliceSize:
+      vaStatus = handleVAEncMiscParameterTypeMaxSliceSize(context, misc);
       break;
 
    default:
