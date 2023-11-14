@@ -34,7 +34,7 @@
 #include "si_vpe.h"
 
 #define SI_VPE_PRETAG              ""
-#define SI_VPE_LOG_LEVEL_DEFAULT     1
+#define SI_VPE_LOG_LEVEL_DEFAULT     0
 #define SI_VPE_LOG_LEVEL_INFO        1
 #define SI_VPE_LOG_LEVEL_WARNING     2
 #define SI_VPE_LOG_LEVEL_DEBUG       3
