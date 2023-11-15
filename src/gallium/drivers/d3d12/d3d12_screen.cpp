@@ -1572,7 +1572,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    UINT64 timestamp_freq;
    if (FAILED(screen->cmdqueue->GetTimestampFrequency(&timestamp_freq)))
        timestamp_freq = 10000000;
-   screen->timestamp_multiplier = 1000000000.0 / timestamp_freq;
+   screen->timestamp_multiplier = 1000000000.0f / timestamp_freq;
 
    d3d12_screen_fence_init(&screen->base);
    d3d12_screen_resource_init(&screen->base);

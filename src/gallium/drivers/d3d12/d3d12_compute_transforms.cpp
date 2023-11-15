@@ -339,8 +339,7 @@ get_query_resolve(const nir_shader_compiler_options *options, const d3d12_comput
    nir_def *output_base_index = nir_channel(&b, state_var_data, 3);
    for (uint32_t i = 0; i < num_result_values; ++i) {
       /* When resolving in-place, resolve each field, otherwise just write the one result */
-      uint32_t field_offset = key->query_resolve.is_resolve_in_place ?
-         i : key->query_resolve.single_result_field_offset;
+      uint32_t field_offset = key->query_resolve.is_resolve_in_place ? i : 0;
 
       /* When resolving time elapsed in-place, write [0, time], as the only special case */
       if (key->query_resolve.is_resolve_in_place &&
@@ -353,7 +352,7 @@ get_query_resolve(const nir_shader_compiler_options *options, const d3d12_comput
       if (!key->query_resolve.is_resolve_in_place &&
           (key->query_resolve.pipe_query_type == PIPE_QUERY_TIME_ELAPSED ||
            key->query_resolve.pipe_query_type == PIPE_QUERY_TIMESTAMP)) {
-         result_val = nir_f2u64(&b, nir_fmul_imm(&b, nir_u2f64(&b, result_val), key->query_resolve.timestamp_multiplier));
+         result_val = nir_f2u64(&b, nir_fmul_imm(&b, nir_u2f32(&b, result_val), key->query_resolve.timestamp_multiplier));
 
          if (!key->query_resolve.is_64bit) {
             nir_alu_type rounding_type = key->query_resolve.is_signed ? nir_type_int : nir_type_uint;

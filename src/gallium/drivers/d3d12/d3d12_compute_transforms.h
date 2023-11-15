@@ -84,7 +84,7 @@ struct d3d12_compute_transform_key
          uint8_t single_subquery_index : 2;
          uint8_t single_result_field_offset : 4;
          uint8_t is_signed : 1;
-         double timestamp_multiplier;
+         float timestamp_multiplier;
       } query_resolve;
    };
 };
