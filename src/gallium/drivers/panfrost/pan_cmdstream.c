@@ -3294,6 +3294,19 @@ panfrost_emit_draw(void *out, struct panfrost_batch *batch, bool fs_required,
 }
 
 #if PAN_ARCH >= 9
+static unsigned
+panfrost_vertex_attribute_stride(struct panfrost_compiled_shader *vs,
+                                 struct panfrost_compiled_shader *fs)
+{
+   unsigned v = vs->info.varyings.output_count;
+   unsigned f = fs->info.varyings.input_count;
+   unsigned slots = MAX2(v, f);
+   slots += util_bitcount(fs->key.fs.fixed_varying_mask);
+
+   /* Assumes 16 byte slots. We could do better. */
+   return slots * 16;
+}
+
 static void
 panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
                             const struct pipe_draw_info *info,
@@ -3321,15 +3334,10 @@ panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, ALLOCATION, cfg) {
       if (secondary_shader) {
-         unsigned v = vs->info.varyings.output_count;
-         unsigned f = fs->info.varyings.input_count;
-         unsigned slots = MAX2(v, f);
-         slots += util_bitcount(fs->key.fs.fixed_varying_mask);
-         unsigned size = slots * 16;
+         unsigned sz = panfrost_vertex_attribute_stride(vs, fs);
 
-         /* Assumes 16 byte slots. We could do better. */
-         cfg.vertex_packet_stride = size + 16;
-         cfg.vertex_attribute_stride = size;
+         cfg.vertex_packet_stride = sz + 16;
+         cfg.vertex_attribute_stride = sz;
       } else {
          /* Hardware requirement for "no varyings" */
          cfg.vertex_packet_stride = 16;
