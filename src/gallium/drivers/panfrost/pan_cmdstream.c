@@ -3014,10 +3014,10 @@ allow_rotating_primitives(const struct panfrost_compiled_shader *fs,
  * jobs and Valhall IDVS jobs
  */
 static void
-panfrost_emit_primitive(struct panfrost_batch *batch,
-                        const struct pipe_draw_info *info,
-                        const struct pipe_draw_start_count_bias *draw,
-                        bool secondary_shader, void *out)
+jm_emit_primitive(struct panfrost_batch *batch,
+                  const struct pipe_draw_info *info,
+                  const struct pipe_draw_start_count_bias *draw,
+                  bool secondary_shader, void *out)
 {
    struct panfrost_context *ctx = batch->ctx;
    UNUSED struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
@@ -3348,8 +3348,8 @@ jm_emit_malloc_vertex_job(struct panfrost_batch *batch,
     */
    secondary_shader &= fs_required;
 
-   panfrost_emit_primitive(batch, info, draw, secondary_shader,
-                           pan_section_ptr(job, MALLOC_VERTEX_JOB, PRIMITIVE));
+   jm_emit_primitive(batch, info, draw, secondary_shader,
+                     pan_section_ptr(job, MALLOC_VERTEX_JOB, PRIMITIVE));
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, INSTANCE_COUNT, cfg) {
       cfg.count = info->instance_count;
@@ -3418,8 +3418,8 @@ jm_emit_tiler_job(struct panfrost_batch *batch,
    void *section = pan_section_ptr(job, TILER_JOB, INVOCATION);
    memcpy(section, invocation_template, pan_size(INVOCATION));
 
-   panfrost_emit_primitive(batch, info, draw, secondary_shader,
-                           pan_section_ptr(job, TILER_JOB, PRIMITIVE));
+   jm_emit_primitive(batch, info, draw, secondary_shader,
+                     pan_section_ptr(job, TILER_JOB, PRIMITIVE));
 
    void *prim_size = pan_section_ptr(job, TILER_JOB, PRIMITIVE_SIZE);
    enum mesa_prim prim = u_reduced_prim(info->mode);
