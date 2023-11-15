@@ -4575,7 +4575,7 @@ jm_preload_fb(struct panfrost_batch *batch, struct pan_fb_info *fb)
 }
 
 static void
-init_batch(struct panfrost_batch *batch)
+jm_init_batch(struct panfrost_batch *batch)
 {
    /* Reserve the framebuffer and local storage descriptors */
    batch->framebuffer =
@@ -4877,7 +4877,7 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
    screen->vtbl.prepare_shader = prepare_shader;
    screen->vtbl.screen_destroy = screen_destroy;
    screen->vtbl.context_populate_vtbl = context_populate_vtbl;
-   screen->vtbl.init_batch = init_batch;
+   screen->vtbl.init_batch = jm_init_batch;
    screen->vtbl.submit_batch = submit_batch;
    screen->vtbl.get_blend_shader = GENX(pan_blend_get_shader_locked);
    screen->vtbl.get_compiler_options = GENX(pan_shader_get_compiler_options);
