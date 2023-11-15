@@ -182,8 +182,11 @@ unsigned GENX(pan_emit_fbd)(const struct panfrost_device *dev,
                             const struct pan_tiler_context *tiler_ctx,
                             void *out);
 
+#if PAN_ARCH <= 9
 void GENX(pan_emit_fragment_job)(const struct pan_fb_info *fb, mali_ptr fbd,
                                  void *out);
+#endif
+
 #endif /* ifdef PAN_ARCH */
 
 #endif

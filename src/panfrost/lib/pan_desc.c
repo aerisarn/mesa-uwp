@@ -910,6 +910,7 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
 }
 #endif
 
+#if PAN_ARCH <= 9
 void
 GENX(pan_emit_fragment_job)(const struct pan_fb_info *fb, mali_ptr fbd,
                             void *out)
@@ -935,3 +936,4 @@ GENX(pan_emit_fragment_job)(const struct pan_fb_info *fb, mali_ptr fbd,
 #endif
    }
 }
+#endif
