@@ -3576,6 +3576,54 @@ panfrost_update_point_sprite_shader(struct panfrost_context *ctx,
    }
 }
 
+static unsigned
+panfrost_draw_get_vertex_count(struct panfrost_batch *batch,
+                               const struct pipe_draw_info *info,
+                               const struct pipe_draw_start_count_bias *draw,
+                               bool idvs)
+{
+   struct panfrost_context *ctx = batch->ctx;
+   unsigned vertex_count = ctx->vertex_count;
+   unsigned min_index = 0, max_index = 0;
+
+   batch->indices = 0;
+   if (info->index_size && PAN_ARCH >= 9) {
+      batch->indices = panfrost_get_index_buffer(batch, info, draw);
+
+      /* Use index count to estimate vertex count */
+      panfrost_increase_vertex_count(batch, draw->count);
+   } else if (info->index_size) {
+      batch->indices = panfrost_get_index_buffer_bounded(
+         batch, info, draw, &min_index, &max_index);
+
+      /* Use the corresponding values */
+      vertex_count = max_index - min_index + 1;
+      ctx->offset_start = min_index + draw->index_bias;
+      panfrost_increase_vertex_count(batch, vertex_count);
+   } else {
+      ctx->offset_start = draw->start;
+      panfrost_increase_vertex_count(batch, vertex_count);
+   }
+
+   if (info->instance_count > 1) {
+      unsigned count = vertex_count;
+
+      /* Index-Driven Vertex Shading requires different instances to
+       * have different cache lines for position results. Each vertex
+       * position is 16 bytes and the Mali cache line is 64 bytes, so
+       * the instance count must be aligned to 4 vertices.
+       */
+      if (idvs)
+         count = ALIGN_POT(count, 4);
+
+      ctx->padded_count = panfrost_padded_vertex_count(count);
+   } else {
+      ctx->padded_count = vertex_count;
+   }
+
+   return vertex_count;
+}
+
 static void
 panfrost_direct_draw(struct panfrost_batch *batch,
                      const struct pipe_draw_info *info, unsigned drawid_offset,
@@ -3617,43 +3665,8 @@ panfrost_direct_draw(struct panfrost_batch *batch,
       tiler = pan_pool_alloc_desc(&batch->pool.base, TILER_JOB);
    }
 
-   unsigned vertex_count = ctx->vertex_count;
-
-   unsigned min_index = 0, max_index = 0;
-
-   batch->indices = 0;
-   if (info->index_size && PAN_ARCH >= 9) {
-      batch->indices = panfrost_get_index_buffer(batch, info, draw);
-
-      /* Use index count to estimate vertex count */
-      panfrost_increase_vertex_count(batch, draw->count);
-   } else if (info->index_size) {
-      batch->indices = panfrost_get_index_buffer_bounded(
-         batch, info, draw, &min_index, &max_index);
-
-      /* Use the corresponding values */
-      vertex_count = max_index - min_index + 1;
-      ctx->offset_start = min_index + draw->index_bias;
-      panfrost_increase_vertex_count(batch, vertex_count);
-   } else {
-      ctx->offset_start = draw->start;
-      panfrost_increase_vertex_count(batch, vertex_count);
-   }
-
-   if (info->instance_count > 1) {
-      unsigned count = vertex_count;
-
-      /* Index-Driven Vertex Shading requires different instances to
-       * have different cache lines for position results. Each vertex
-       * position is 16 bytes and the Mali cache line is 64 bytes, so
-       * the instance count must be aligned to 4 vertices.
-       */
-      if (idvs)
-         count = ALIGN_POT(count, 4);
-
-      ctx->padded_count = panfrost_padded_vertex_count(count);
-   } else
-      ctx->padded_count = vertex_count;
+   UNUSED unsigned vertex_count =
+      panfrost_draw_get_vertex_count(batch, info, draw, idvs);
 
    panfrost_statistics_record(ctx, info, draw);
 
