@@ -725,9 +725,7 @@ void radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline
 
 bool radv_shader_should_clear_lds(const struct radv_device *device, const nir_shader *shader);
 
-nir_shader *radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
-                                const struct radv_pipeline_key *key,
-                                const struct radv_pipeline_layout *pipeline_layout);
+void radv_nir_lower_rt_io(nir_shader *shader, bool monolithic);
 
 void radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                            const struct radv_shader_args *args, const struct radv_shader_info *info,

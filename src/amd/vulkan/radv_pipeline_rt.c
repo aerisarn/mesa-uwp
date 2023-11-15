@@ -24,6 +24,7 @@
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 
+#include "nir/radv_nir.h"
 #include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_shader.h"
@@ -365,6 +366,8 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
    bool keep_executable_info = radv_pipeline_capture_shaders(device, pipeline->base.base.create_flags);
    bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pipeline->base.base.create_flags);
 
+   radv_nir_lower_rt_io(stage->nir, monolithic);
+
    /* Gather shader info. */
    nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
    radv_nir_shader_info_init(stage->stage, MESA_SHADER_NONE, &stage->info);
@@ -517,7 +520,9 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       radv_pipeline_stage_init(&pCreateInfo->pStages[i], pipeline_layout, stage);
 
       /* precompile the shader */
-      stage->nir = radv_parse_rt_stage(device, &pCreateInfo->pStages[i], key, pipeline_layout);
+      stage->nir = radv_shader_spirv_to_nir(device, stage, key, false);
+
+      NIR_PASS(_, stage->nir, radv_nir_lower_hit_attrib_derefs);
 
       rt_stages[i].can_inline = radv_rt_can_inline_shader(stage->nir);
 
