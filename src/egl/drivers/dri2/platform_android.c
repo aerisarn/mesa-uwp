@@ -1504,13 +1504,13 @@ dri2_initialize_android(_EGLDisplay *disp)
 
    dri2_dpy->fd_display_gpu = dri2_dpy->fd_render_gpu;
 
-   if (!dri2_setup_device(disp, false)) {
-      err = "DRI2: failed to setup EGLDevice";
+   if (!dri2_setup_extensions(disp)) {
+      err = "DRI2: failed to setup extensions";
       goto cleanup;
    }
 
-   if (!dri2_setup_extensions(disp)) {
-      err = "DRI2: failed to setup extensions";
+   if (!dri2_setup_device(disp, false)) {
+      err = "DRI2: failed to setup EGLDevice";
       goto cleanup;
    }
 

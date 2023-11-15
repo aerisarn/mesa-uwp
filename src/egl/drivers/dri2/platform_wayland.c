@@ -2204,11 +2204,6 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    loader_get_user_preferred_fd(&dri2_dpy->fd_render_gpu,
                                 &dri2_dpy->fd_display_gpu);
 
-   if (!dri2_setup_device(disp, false)) {
-      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
-      goto cleanup;
-   }
-
    if (dri2_dpy->fd_render_gpu != dri2_dpy->fd_display_gpu) {
       free(dri2_dpy->device_name);
       dri2_dpy->device_name =
@@ -2244,6 +2239,11 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
 
    if (!dri2_setup_extensions(disp))
       goto cleanup;
+
+   if (!dri2_setup_device(disp, false)) {
+      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
+      goto cleanup;
+   }
 
    dri2_setup_screen(disp);
 
@@ -2771,11 +2771,6 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
    if (disp->Options.Zink)
       dri2_initialize_wayland_drm_extensions(dri2_dpy);
 
-   if (!dri2_setup_device(disp, true)) {
-      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
-      goto cleanup;
-   }
-
    dri2_dpy->driver_name = strdup(disp->Options.Zink ? "zink" : "swrast");
    if (!dri2_load_driver_swrast(disp))
       goto cleanup;
@@ -2787,6 +2782,11 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
 
    if (!dri2_setup_extensions(disp))
       goto cleanup;
+
+   if (!dri2_setup_device(disp, true)) {
+      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
+      goto cleanup;
+   }
 
    dri2_setup_screen(disp);
 

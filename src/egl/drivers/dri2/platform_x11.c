@@ -1512,11 +1512,6 @@ dri2_initialize_x11_swrast(_EGLDisplay *disp)
    if (!dri2_get_xcb_connection(disp, dri2_dpy))
       goto cleanup;
 
-   if (!dri2_setup_device(disp, true)) {
-      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
-      goto cleanup;
-   }
-
    /*
     * Every hardware driver_name is set using strdup. Doing the same in
     * here will allow is to simply free the memory at dri2_terminate().
@@ -1535,6 +1530,11 @@ dri2_initialize_x11_swrast(_EGLDisplay *disp)
 
    if (!dri2_setup_extensions(disp))
       goto cleanup;
+
+   if (!dri2_setup_device(disp, true)) {
+      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
+      goto cleanup;
+   }
 
    dri2_setup_screen(disp);
 
@@ -1602,11 +1602,6 @@ dri2_initialize_x11_dri3(_EGLDisplay *disp)
    if (!dri3_x11_connect(dri2_dpy))
       goto cleanup;
 
-   if (!dri2_setup_device(disp, false)) {
-      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
-      goto cleanup;
-   }
-
    if (!dri2_load_driver_dri3(disp))
       goto cleanup;
 
@@ -1620,6 +1615,11 @@ dri2_initialize_x11_dri3(_EGLDisplay *disp)
 
    if (!dri2_setup_extensions(disp))
       goto cleanup;
+
+   if (!dri2_setup_device(disp, false)) {
+      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
+      goto cleanup;
+   }
 
    dri2_setup_screen(disp);
 
@@ -1707,11 +1707,6 @@ dri2_initialize_x11_dri2(_EGLDisplay *disp)
    if (!dri2_x11_connect(dri2_dpy))
       goto cleanup;
 
-   if (!dri2_setup_device(disp, false)) {
-      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
-      goto cleanup;
-   }
-
    if (!dri2_load_driver(disp))
       goto cleanup;
 
@@ -1728,6 +1723,11 @@ dri2_initialize_x11_dri2(_EGLDisplay *disp)
 
    if (!dri2_setup_extensions(disp))
       goto cleanup;
+
+   if (!dri2_setup_device(disp, false)) {
+      _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
+      goto cleanup;
+   }
 
    dri2_setup_screen(disp);
 
