@@ -9589,8 +9589,9 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
           * radv_init_sampler().
           */
          unsigned bit_idx = ffs(S_008F30_FORCE_UNNORMALIZED(1)) - 1;
+         Temp dword0 = emit_extract_vector(ctx, sampler, 0, s1);
          Temp not_needed =
-            bld.sopc(aco_opcode::s_bitcmp0_b32, bld.def(s1, scc), sampler, Operand::c32(bit_idx));
+            bld.sopc(aco_opcode::s_bitcmp0_b32, bld.def(s1, scc), dword0, Operand::c32(bit_idx));
 
          not_needed = bool_to_vector_condition(ctx, not_needed);
          half_texel[0] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
