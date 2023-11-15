@@ -3134,11 +3134,10 @@ panfrost_emit_resources(struct panfrost_batch *batch,
 static void
 panfrost_emit_shader(struct panfrost_batch *batch,
                      struct MALI_SHADER_ENVIRONMENT *cfg,
-                     enum pipe_shader_type stage, mali_ptr shader_ptr,
-                     mali_ptr thread_storage)
+                     enum pipe_shader_type stage, mali_ptr shader_ptr)
 {
    cfg->resources = panfrost_emit_resources(batch, stage);
-   cfg->thread_storage = thread_storage;
+   cfg->thread_storage = batch->tls.gpu;
    cfg->shader = shader_ptr;
 
    /* Each entry of FAU is 64-bits */
@@ -3255,7 +3254,7 @@ jm_emit_tiler_draw(void *out, struct panfrost_batch *batch, bool fs_required,
          cfg.overdraw_alpha1 = panfrost_overdraw_alpha(ctx, 1);
 
          panfrost_emit_shader(batch, &cfg.shader, PIPE_SHADER_FRAGMENT,
-                              batch->rsd[PIPE_SHADER_FRAGMENT], batch->tls.gpu);
+                              batch->rsd[PIPE_SHADER_FRAGMENT]);
       } else {
          /* These operations need to be FORCE to benefit from the
           * depth-only pass optimizations.
@@ -3394,8 +3393,7 @@ jm_emit_malloc_vertex_job(struct panfrost_batch *batch,
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, POSITION, cfg) {
       panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX,
-                           panfrost_get_position_shader(batch, info),
-                           batch->tls.gpu);
+                           panfrost_get_position_shader(batch, info));
    }
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, VARYING, cfg) {
@@ -3407,7 +3405,7 @@ jm_emit_malloc_vertex_job(struct panfrost_batch *batch,
          continue;
 
       panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX,
-                           panfrost_get_varying_shader(batch), batch->tls.gpu);
+                           panfrost_get_varying_shader(batch));
    }
 }
 #endif
@@ -3500,7 +3498,7 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
       cfg.workgroup_count_z = 1;
 
       panfrost_emit_shader(batch, &cfg.compute, PIPE_SHADER_VERTEX,
-                           batch->rsd[PIPE_SHADER_VERTEX], batch->tls.gpu);
+                           batch->rsd[PIPE_SHADER_VERTEX]);
 
       /* TODO: Indexing. Also, this is a legacy feature... */
       cfg.compute.attribute_offset = batch->ctx->offset_start;
@@ -3894,6 +3892,13 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
 
    panfrost_update_shader_state(batch, PIPE_SHADER_COMPUTE);
 
+   /* We want our compute thread descriptor to be per job.
+    * Save the global one, and restore it when we're done emitting
+    * the job.
+    */
+   mali_ptr saved_tls = batch->tls.gpu;
+   batch->tls.gpu = panfrost_emit_shared_memory(batch, info);
+
 #if PAN_ARCH <= 7
    panfrost_pack_work_groups_compute(
       pan_section_ptr(t.cpu, COMPUTE_JOB, INVOCATION), num_wg[0], num_wg[1],
@@ -3910,7 +3915,7 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
       cfg.state = batch->rsd[PIPE_SHADER_COMPUTE];
       cfg.attributes = batch->attribs[PIPE_SHADER_COMPUTE];
       cfg.attribute_buffers = batch->attrib_bufs[PIPE_SHADER_COMPUTE];
-      cfg.thread_storage = panfrost_emit_shared_memory(batch, info);
+      cfg.thread_storage = batch->tls.gpu;
       cfg.uniform_buffers = batch->uniform_buffers[PIPE_SHADER_COMPUTE];
       cfg.push_uniforms = batch->push_uniforms[PIPE_SHADER_COMPUTE];
       cfg.textures = batch->textures[PIPE_SHADER_COMPUTE];
@@ -3929,8 +3934,7 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
       cfg.workgroup_count_z = num_wg[2];
 
       panfrost_emit_shader(batch, &cfg.compute, PIPE_SHADER_COMPUTE,
-                           batch->rsd[PIPE_SHADER_COMPUTE],
-                           panfrost_emit_shared_memory(batch, info));
+                           batch->rsd[PIPE_SHADER_COMPUTE]);
 
       /* Workgroups may be merged if the shader does not use barriers
        * or shared memory. This condition is checked against the
@@ -3970,6 +3974,7 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
                     MALI_JOB_TYPE_COMPUTE, true, false, indirect_dep, 0, &t,
                     false);
    batch->compute_count++;
+   batch->tls.gpu = saved_tls;
 }
 
 static void
