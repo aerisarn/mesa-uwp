@@ -121,7 +121,7 @@ agx_draw_vbo_from_xfb(struct pipe_context *pctx,
 {
    perf_debug_ctx(agx_context(pctx), "draw auto");
 
-   unsigned count;
+   unsigned count = 0;
    pipe_buffer_read(pctx,
                     agx_so_target(indirect->count_from_stream_output)->offset,
                     0, 4, &count);
