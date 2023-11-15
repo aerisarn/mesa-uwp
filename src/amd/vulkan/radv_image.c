@@ -75,6 +75,13 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device, const VkImageCrea
    if (device->physical_device->rad_info.gfx_level < GFX8)
       return false;
 
+   /* TC-compat HTILE looks broken on Tonga (and Iceland is the same design) and the documented bug
+    * workarounds don't help.
+    */
+   if (device->physical_device->rad_info.family == CHIP_TONGA ||
+       device->physical_device->rad_info.family == CHIP_ICELAND)
+      return false;
+
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
       return false;
 
