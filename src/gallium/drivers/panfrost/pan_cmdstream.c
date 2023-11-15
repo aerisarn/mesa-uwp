@@ -2638,6 +2638,17 @@ panfrost_initialize_surface(struct panfrost_batch *batch,
    }
 }
 
+static void
+jm_emit_fragment_job(struct panfrost_batch *batch,
+                     const struct pan_fb_info *pfb)
+{
+   struct panfrost_ptr transfer =
+      pan_pool_alloc_desc(&batch->pool.base, FRAGMENT_JOB);
+
+   GENX(pan_emit_fragment_job)(pfb, batch->framebuffer.gpu, transfer.cpu);
+   batch->jm.jobs.frag = transfer.gpu;
+}
+
 /* Generate a fragment job. This should be called once per frame. (Usually,
  * this corresponds to eglSwapBuffers or one of glFlush, glFinish)
  */
@@ -2674,11 +2685,7 @@ emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
    assert(batch->maxx > batch->minx);
    assert(batch->maxy > batch->miny);
 
-   struct panfrost_ptr transfer =
-      pan_pool_alloc_desc(&batch->pool.base, FRAGMENT_JOB);
-
-   GENX(pan_emit_fragment_job)(pfb, batch->framebuffer.gpu, transfer.cpu);
-   batch->jm.jobs.frag = transfer.gpu;
+   jm_emit_fragment_job(batch, pfb);
 }
 
 #define DEFINE_CASE(c)                                                         \
