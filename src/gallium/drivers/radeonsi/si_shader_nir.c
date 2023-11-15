@@ -283,6 +283,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
     * - ensure constant offsets for texture instructions are folded
     *   and copy-propagated
     */
+   NIR_PASS_V(nir, nir_lower_int64);
 
    const struct nir_lower_tex_options lower_tex_options = {
       .lower_txp = ~0u,
