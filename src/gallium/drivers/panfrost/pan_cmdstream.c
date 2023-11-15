@@ -2998,6 +2998,14 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch,
 }
 #endif
 
+static bool
+allow_rotating_primitives(const struct panfrost_compiled_shader *fs,
+                          const struct pipe_draw_info *info)
+{
+   return u_reduced_prim(info->mode) != MESA_PRIM_LINES &&
+          !fs->info.bifrost.uses_flat_shading;
+}
+
 /* Packs a primitive descriptor, mostly common between Midgard/Bifrost tiler
  * jobs and Valhall IDVS jobs
  */
@@ -3010,8 +3018,6 @@ panfrost_emit_primitive(struct panfrost_batch *batch,
    struct panfrost_context *ctx = batch->ctx;
    UNUSED struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
-   bool lines = u_reduced_prim(info->mode) == MESA_PRIM_LINES;
-
    pan_pack(out, PRIMITIVE, cfg) {
       cfg.draw_mode = pan_draw_mode(info->mode);
       if (panfrost_writes_point_size(ctx))
@@ -3022,7 +3028,7 @@ panfrost_emit_primitive(struct panfrost_batch *batch,
        * be set to true and the provoking vertex is selected with
        * DRAW.flat_shading_vertex.
        */
-      if (lines)
+      if (u_reduced_prim(info->mode) == MESA_PRIM_LINES)
          cfg.first_provoking_vertex = true;
       else
          cfg.first_provoking_vertex = rast->flatshade_first;
@@ -3038,8 +3044,7 @@ panfrost_emit_primitive(struct panfrost_batch *batch,
 #else
       struct panfrost_compiled_shader *fs = ctx->prog[PIPE_SHADER_FRAGMENT];
 
-      cfg.allow_rotating_primitives =
-         !(lines || fs->info.bifrost.uses_flat_shading);
+      cfg.allow_rotating_primitives = allow_rotating_primitives(fs, info);
       cfg.primitive_restart = info->primitive_restart;
 
       /* Non-fixed restart indices should have been lowered */
