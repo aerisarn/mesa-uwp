@@ -9,7 +9,7 @@ mod nak_assign_regs;
 mod nak_builder;
 mod nak_calc_instr_deps;
 mod nak_cfg;
-mod nak_encode_sm75;
+mod nak_encode_sm70;
 mod nak_from_nir;
 mod nak_ir;
 mod nak_legalize;
@@ -378,8 +378,8 @@ pub extern "C" fn nak_compile_shader(
         hdr: nak_sph::encode_header(&s.info, fs_key),
     };
 
-    let code = if nak.sm >= 75 {
-        s.encode_sm75()
+    let code = if nak.sm >= 70 {
+        s.encode_sm70()
     } else {
         panic!("Unsupported shader model");
     };

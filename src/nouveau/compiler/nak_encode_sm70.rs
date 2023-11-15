@@ -102,12 +102,12 @@ impl ALUSrc {
     }
 }
 
-struct SM75Instr {
+struct SM70Instr {
     inst: [u32; 4],
     sm: u8,
 }
 
-impl BitViewable for SM75Instr {
+impl BitViewable for SM70Instr {
     fn bits(&self) -> usize {
         BitView::new(&self.inst).bits()
     }
@@ -117,19 +117,19 @@ impl BitViewable for SM75Instr {
     }
 }
 
-impl BitMutViewable for SM75Instr {
+impl BitMutViewable for SM70Instr {
     fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64) {
         BitMutView::new(&mut self.inst).set_bit_range_u64(range, val);
     }
 }
 
-impl SetFieldU64 for SM75Instr {
+impl SetFieldU64 for SM70Instr {
     fn set_field_u64(&mut self, range: Range<usize>, val: u64) {
         BitMutView::new(&mut self.inst).set_field_u64(range, val);
     }
 }
 
-impl SM75Instr {
+impl SM70Instr {
     fn set_bit(&mut self, bit: usize, val: bool) {
         BitMutView::new(&mut self.inst).set_bit(bit, val);
     }
@@ -146,6 +146,7 @@ impl SM75Instr {
     }
 
     fn set_ureg(&mut self, range: Range<usize>, reg: RegRef) {
+        assert!(self.sm >= 75);
         assert!(range.len() == 8);
         assert!(reg.file() == RegFile::UGPR);
         assert!(reg.base_idx() <= 63);
@@ -205,6 +206,8 @@ impl SM75Instr {
 
     #[allow(dead_code)]
     fn set_src_cx(&mut self, range: Range<usize>, cb: &CBufRef) {
+        assert!(self.sm >= 75);
+
         let mut v = BitMutView::new_subset(self, range);
         if let CBuf::BindlessGPR(reg) = cb.buf {
             assert!(reg.base_idx() <= 63);
@@ -1811,7 +1814,7 @@ impl SM75Instr {
     ) -> [u32; 4] {
         assert!(sm >= 75);
 
-        let mut si = SM75Instr {
+        let mut si = SM70Instr {
             inst: [0; 4],
             sm: sm,
         };
@@ -1893,7 +1896,7 @@ impl SM75Instr {
 }
 
 impl Shader {
-    pub fn encode_sm75(&self) -> Vec<u32> {
+    pub fn encode_sm70(&self) -> Vec<u32> {
         assert!(self.functions.len() == 1);
         let func = &self.functions[0];
 
@@ -1917,7 +1920,7 @@ impl Shader {
         let mut encoded = Vec::new();
         for b in &func.blocks {
             for instr in &b.instrs {
-                let e = SM75Instr::encode(
+                let e = SM70Instr::encode(
                     instr,
                     self.info.sm,
                     encoded.len(),
