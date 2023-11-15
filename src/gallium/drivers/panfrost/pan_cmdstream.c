@@ -3625,64 +3625,17 @@ panfrost_draw_get_vertex_count(struct panfrost_batch *batch,
 }
 
 static void
-panfrost_direct_draw(struct panfrost_batch *batch,
-                     const struct pipe_draw_info *info, unsigned drawid_offset,
-                     const struct pipe_draw_start_count_bias *draw)
+jm_launch_draw(struct panfrost_batch *batch, const struct pipe_draw_info *info,
+               unsigned drawid_offset,
+               const struct pipe_draw_start_count_bias *draw,
+               unsigned vertex_count)
 {
-   if (!draw->count || !info->instance_count)
-      return;
-
    struct panfrost_context *ctx = batch->ctx;
-
-   panfrost_update_point_sprite_shader(ctx, info);
-
-   /* Take into account a negative bias */
-   ctx->vertex_count =
-      draw->count + (info->index_size ? abs(draw->index_bias) : 0);
-   ctx->instance_count = info->instance_count;
-   ctx->base_vertex = info->index_size ? draw->index_bias : 0;
-   ctx->base_instance = info->start_instance;
-   ctx->active_prim = info->mode;
-   ctx->drawid = drawid_offset;
-
    struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
-
+   bool secondary_shader = vs->info.vs.secondary_enable;
    bool idvs = vs->info.vs.idvs;
 
-   UNUSED unsigned vertex_count =
-      panfrost_draw_get_vertex_count(batch, info, draw, idvs);
-
-   panfrost_statistics_record(ctx, info, draw);
-
-   panfrost_update_state_3d(batch);
-   panfrost_update_shader_state(batch, PIPE_SHADER_VERTEX);
-   panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
-   panfrost_clean_state_3d(ctx);
-
-   UNUSED mali_ptr attrib_bufs = batch->attrib_bufs[PIPE_SHADER_VERTEX];
-   UNUSED mali_ptr attribs = batch->attribs[PIPE_SHADER_VERTEX];
-
-   if (ctx->uncompiled[PIPE_SHADER_VERTEX]->xfb) {
-      panfrost_launch_xfb(batch, info, draw->count);
-   }
-
-   /* Increment transform feedback offsets */
-   panfrost_update_streamout_offsets(ctx);
-
-   /* Any side effects must be handled by the XFB shader, so we only need
-    * to run vertex shaders if we need rasterization.
-    */
-   if (panfrost_batch_skip_rasterization(batch))
-      return;
-
-   bool secondary_shader = vs->info.vs.secondary_enable;
-
 #if PAN_ARCH <= 7
-   /* Emit all sort of descriptors. */
-   panfrost_emit_varying_descriptor(batch,
-                                    ctx->padded_count * ctx->instance_count,
-                                    info->mode == MESA_PRIM_POINTS);
-
    struct mali_invocation_packed invocation;
    if (info->instance_count > 1) {
       panfrost_pack_work_groups_compute(&invocation, 1, vertex_count,
@@ -3742,6 +3695,63 @@ panfrost_direct_draw(struct panfrost_batch *batch,
       jm_push_vertex_tiler_jobs(batch, &vertex, &tiler);
    }
 #endif
+}
+
+static void
+panfrost_direct_draw(struct panfrost_batch *batch,
+                     const struct pipe_draw_info *info, unsigned drawid_offset,
+                     const struct pipe_draw_start_count_bias *draw)
+{
+   if (!draw->count || !info->instance_count)
+      return;
+
+   struct panfrost_context *ctx = batch->ctx;
+
+   panfrost_update_point_sprite_shader(ctx, info);
+
+   /* Take into account a negative bias */
+   ctx->vertex_count =
+      draw->count + (info->index_size ? abs(draw->index_bias) : 0);
+   ctx->instance_count = info->instance_count;
+   ctx->base_vertex = info->index_size ? draw->index_bias : 0;
+   ctx->base_instance = info->start_instance;
+   ctx->active_prim = info->mode;
+   ctx->drawid = drawid_offset;
+
+   struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
+   bool idvs = vs->info.vs.idvs;
+
+   UNUSED unsigned vertex_count =
+      panfrost_draw_get_vertex_count(batch, info, draw, idvs);
+
+   panfrost_statistics_record(ctx, info, draw);
+
+   panfrost_update_state_3d(batch);
+   panfrost_update_shader_state(batch, PIPE_SHADER_VERTEX);
+   panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
+   panfrost_clean_state_3d(ctx);
+
+   if (ctx->uncompiled[PIPE_SHADER_VERTEX]->xfb) {
+      panfrost_launch_xfb(batch, info, draw->count);
+   }
+
+   /* Increment transform feedback offsets */
+   panfrost_update_streamout_offsets(ctx);
+
+   /* Any side effects must be handled by the XFB shader, so we only need
+    * to run vertex shaders if we need rasterization.
+    */
+   if (panfrost_batch_skip_rasterization(batch))
+      return;
+
+#if PAN_ARCH <= 7
+   /* Emit all sort of descriptors. */
+   panfrost_emit_varying_descriptor(batch,
+                                    ctx->padded_count * ctx->instance_count,
+                                    info->mode == MESA_PRIM_POINTS);
+#endif
+
+   jm_launch_draw(batch, info, drawid_offset, draw, vertex_count);
    batch->draw_count++;
 }
 
