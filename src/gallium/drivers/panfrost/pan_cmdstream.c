@@ -3294,6 +3294,26 @@ panfrost_emit_draw(void *out, struct panfrost_batch *batch, bool fs_required,
 }
 
 #if PAN_ARCH >= 9
+static mali_ptr
+panfrost_get_position_shader(struct panfrost_batch *batch,
+                             const struct pipe_draw_info *info)
+{
+   /* IDVS/points vertex shader */
+   mali_ptr vs_ptr = batch->rsd[PIPE_SHADER_VERTEX];
+
+   /* IDVS/triangle vertex shader */
+   if (vs_ptr && info->mode != MESA_PRIM_POINTS)
+      vs_ptr += pan_size(SHADER_PROGRAM);
+
+   return vs_ptr;
+}
+
+static mali_ptr
+panfrost_get_varying_shader(struct panfrost_batch *batch)
+{
+   return batch->rsd[PIPE_SHADER_VERTEX] + (2 * pan_size(SHADER_PROGRAM));
+}
+
 static unsigned
 panfrost_vertex_attribute_stride(struct panfrost_compiled_shader *vs,
                                  struct panfrost_compiled_shader *fs)
@@ -3365,14 +3385,8 @@ panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
                       fs_required, u_reduced_prim(info->mode));
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, POSITION, cfg) {
-      /* IDVS/points vertex shader */
-      mali_ptr vs_ptr = batch->rsd[PIPE_SHADER_VERTEX];
-
-      /* IDVS/triangle vertex shader */
-      if (vs_ptr && info->mode != MESA_PRIM_POINTS)
-         vs_ptr += pan_size(SHADER_PROGRAM);
-
-      panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX, vs_ptr,
+      panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX,
+                           panfrost_get_position_shader(batch, info),
                            batch->tls.gpu);
    }
 
@@ -3384,11 +3398,8 @@ panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
       if (!secondary_shader)
          continue;
 
-      mali_ptr ptr =
-         batch->rsd[PIPE_SHADER_VERTEX] + (2 * pan_size(SHADER_PROGRAM));
-
-      panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX, ptr,
-                           batch->tls.gpu);
+      panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX,
+                           panfrost_get_varying_shader(batch), batch->tls.gpu);
    }
 }
 #endif
