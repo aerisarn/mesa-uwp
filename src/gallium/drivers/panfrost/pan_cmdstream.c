@@ -3445,47 +3445,10 @@ jm_emit_tiler_job(struct panfrost_batch *batch,
 #endif
 
 static void
-panfrost_launch_xfb(struct panfrost_batch *batch,
-                    const struct pipe_draw_info *info, unsigned count)
+jm_launch_xfb(struct panfrost_batch *batch, const struct pipe_draw_info *info,
+              unsigned count)
 {
-   struct panfrost_context *ctx = batch->ctx;
-
    struct panfrost_ptr t = pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
-
-   /* Nothing to do */
-   if (batch->ctx->streamout.num_targets == 0)
-      return;
-
-   /* TODO: XFB with index buffers */
-   // assert(info->index_size == 0);
-   u_trim_pipe_prim(info->mode, &count);
-
-   if (count == 0)
-      return;
-
-   perf_debug_ctx(batch->ctx, "Emulating transform feedback");
-
-   struct panfrost_uncompiled_shader *vs_uncompiled =
-      ctx->uncompiled[PIPE_SHADER_VERTEX];
-   struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
-
-   vs_uncompiled->xfb->stream_output = vs->stream_output;
-
-   mali_ptr saved_rsd = batch->rsd[PIPE_SHADER_VERTEX];
-   mali_ptr saved_ubo = batch->uniform_buffers[PIPE_SHADER_VERTEX];
-   mali_ptr saved_push = batch->push_uniforms[PIPE_SHADER_VERTEX];
-   unsigned saved_nr_push_uniforms =
-      batch->nr_push_uniforms[PIPE_SHADER_VERTEX];
-
-   ctx->uncompiled[PIPE_SHADER_VERTEX] = NULL; /* should not be read */
-   ctx->prog[PIPE_SHADER_VERTEX] = vs_uncompiled->xfb;
-   batch->rsd[PIPE_SHADER_VERTEX] =
-      panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
-
-   batch->uniform_buffers[PIPE_SHADER_VERTEX] =
-      panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, NULL,
-                              &batch->push_uniforms[PIPE_SHADER_VERTEX],
-                              &batch->nr_push_uniforms[PIPE_SHADER_VERTEX]);
 
 #if PAN_ARCH >= 9
    pan_section_pack(t.cpu, COMPUTE_JOB, PAYLOAD, cfg) {
@@ -3530,6 +3493,50 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
 #endif
    panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc, job_type, true,
                     false, 0, 0, &t, false);
+}
+
+static void
+panfrost_launch_xfb(struct panfrost_batch *batch,
+                    const struct pipe_draw_info *info, unsigned count)
+{
+   struct panfrost_context *ctx = batch->ctx;
+
+   /* Nothing to do */
+   if (batch->ctx->streamout.num_targets == 0)
+      return;
+
+   /* TODO: XFB with index buffers */
+   // assert(info->index_size == 0);
+   u_trim_pipe_prim(info->mode, &count);
+
+   if (count == 0)
+      return;
+
+   perf_debug_ctx(batch->ctx, "Emulating transform feedback");
+
+   struct panfrost_uncompiled_shader *vs_uncompiled =
+      ctx->uncompiled[PIPE_SHADER_VERTEX];
+   struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
+
+   vs_uncompiled->xfb->stream_output = vs->stream_output;
+
+   mali_ptr saved_rsd = batch->rsd[PIPE_SHADER_VERTEX];
+   mali_ptr saved_ubo = batch->uniform_buffers[PIPE_SHADER_VERTEX];
+   mali_ptr saved_push = batch->push_uniforms[PIPE_SHADER_VERTEX];
+   unsigned saved_nr_push_uniforms =
+      batch->nr_push_uniforms[PIPE_SHADER_VERTEX];
+
+   ctx->uncompiled[PIPE_SHADER_VERTEX] = NULL; /* should not be read */
+   ctx->prog[PIPE_SHADER_VERTEX] = vs_uncompiled->xfb;
+   batch->rsd[PIPE_SHADER_VERTEX] =
+      panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
+
+   batch->uniform_buffers[PIPE_SHADER_VERTEX] =
+      panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, NULL,
+                              &batch->push_uniforms[PIPE_SHADER_VERTEX],
+                              &batch->nr_push_uniforms[PIPE_SHADER_VERTEX]);
+
+   jm_launch_xfb(batch, info, count);
    batch->compute_count++;
 
    ctx->uncompiled[PIPE_SHADER_VERTEX] = vs_uncompiled;
