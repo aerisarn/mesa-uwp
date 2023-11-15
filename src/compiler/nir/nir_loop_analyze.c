@@ -959,20 +959,23 @@ get_iteration(nir_op cond_op, nir_const_value initial, nir_const_value step,
 static int32_t
 get_iteration_empirical(nir_scalar cond, nir_alu_instr *incr_alu,
                         nir_scalar basis, nir_const_value initial,
+                        nir_scalar limit_basis, nir_const_value limit,
                         bool invert_cond, unsigned execution_mode,
                         unsigned max_unroll_iterations)
 {
    int iter_count = 0;
    nir_const_value result;
-   nir_const_value iter = initial;
 
    const nir_scalar incr = nir_get_scalar(&incr_alu->def, basis.comp);
+
+   const nir_scalar original[] = {basis, limit_basis};
+   nir_const_value replacement[] = {initial, limit};
 
    while (iter_count <= max_unroll_iterations) {
       bool success;
 
-      success = try_eval_const_alu(&result, cond, &basis, &iter,
-                                   1, execution_mode);
+      success = try_eval_const_alu(&result, cond, original, replacement,
+                                   2, execution_mode);
       if (!success)
          return -1;
 
@@ -982,11 +985,11 @@ get_iteration_empirical(nir_scalar cond, nir_alu_instr *incr_alu,
 
       iter_count++;
 
-      success = try_eval_const_alu(&result, incr, &basis, &iter,
-                                   1, execution_mode);
+      success = try_eval_const_alu(&result, incr, original, replacement,
+                                   2, execution_mode);
       assert(success);
 
-      iter = result;
+      replacement[0] = result;
    }
 
    return -1;
@@ -1141,8 +1144,8 @@ calculate_iterations(nir_scalar basis, nir_scalar limit_basis,
    case nir_op_ishr:
    case nir_op_ushr:
       return get_iteration_empirical(cond, alu, basis, initial,
-                                     invert_cond, execution_mode,
-                                     max_unroll_iterations);
+                                     limit_basis, limit, invert_cond,
+                                     execution_mode, max_unroll_iterations);
    default:
       unreachable("Invalid induction variable increment operation.");
    }
