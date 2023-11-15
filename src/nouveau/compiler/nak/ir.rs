@@ -1123,6 +1123,35 @@ impl Src {
         }
     }
 
+    pub fn as_imm_not_i20(&self) -> Option<u32> {
+        match self.src_ref {
+            SrcRef::Imm32(i) => {
+                assert!(self.src_mod.is_none());
+                let top = i & 0xfff80000;
+                if top == 0 || top == 0xfff80000 {
+                    None
+                } else {
+                    Some(i)
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_imm_not_f20(&self) -> Option<u32> {
+        match self.src_ref {
+            SrcRef::Imm32(i) => {
+                assert!(self.src_mod.is_none());
+                if (i & 0xfff) == 0 {
+                    None
+                } else {
+                    Some(i)
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
         self.src_ref.iter_ssa()
     }
