@@ -1582,6 +1582,40 @@ impl SM50Instr {
         self.set_reg_fmod_src(8..16, 7, 43, op.srcs[0]);
     }
 
+    fn encode_fswzadd(&mut self, op: &OpFSwzAdd) {
+        self.set_opcode(0x50f8);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_reg_src(20..28, op.srcs[1]);
+
+        self.set_field(
+            39..41,
+            match op.rnd_mode {
+                FRndMode::NearestEven => 0u8,
+                FRndMode::NegInf => 1u8,
+                FRndMode::PosInf => 2u8,
+                FRndMode::Zero => 3u8,
+            },
+        );
+
+        for (i, op) in op.ops.iter().enumerate() {
+            self.set_field(
+                28 + i * 2..28 + (i + 1) * 2,
+                match op {
+                    FSwzAddOp::Add => 0u8,
+                    FSwzAddOp::SubLeft => 1u8,
+                    FSwzAddOp::SubRight => 2u8,
+                    FSwzAddOp::MoveLeft => 3u8,
+                },
+            );
+        }
+
+        self.set_bit(38, false); /* .NDV */
+        self.set_bit(44, op.ftz);
+        self.set_bit(47, false); /* dst.CC */
+    }
+
     fn encode_mufu(&mut self, op: &OpMuFu) {
         assert!(op.src.is_reg_or_zero());
 
@@ -1877,6 +1911,7 @@ impl SM50Instr {
             Op::FFma(op) => si.encode_ffma(&op),
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
+            Op::FSwzAdd(op) => si.encode_fswzadd(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::DAdd(op) => si.encode_dadd(&op),
             Op::DFma(op) => si.encode_dfma(&op),

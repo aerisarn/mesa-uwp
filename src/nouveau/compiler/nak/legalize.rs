@@ -209,6 +209,10 @@ fn legalize_sm50_instr(
             copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::F32);
             copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::F32);
         }
+        Op::FSwzAdd(op) => {
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::GPR);
+        }
         Op::ISetP(op) => {
             copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::ALU);
             copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::ALU);
