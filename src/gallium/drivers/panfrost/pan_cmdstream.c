@@ -54,6 +54,14 @@
 #include "pan_texture.h"
 #include "pan_util.h"
 
+/* JOBX() is used to select the job backend helpers to call from generic
+ * functions. */
+#if PAN_ARCH <= 9
+#define JOBX(__suffix) GENX(jm_##__suffix)
+#else
+#error "Unsupported arch"
+#endif
+
 struct panfrost_sampler_state {
    struct pipe_sampler_state base;
    struct mali_sampler_packed hw;
@@ -2525,7 +2533,7 @@ emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
    assert(batch->maxx > batch->minx);
    assert(batch->maxy > batch->miny);
 
-   GENX(jm_emit_fragment_job)(batch, pfb);
+   JOBX(emit_fragment_job)(batch, pfb);
 }
 
 /* Count generated primitives (when there is no geom/tess shaders) for
@@ -2724,7 +2732,7 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
                               &batch->push_uniforms[PIPE_SHADER_VERTEX],
                               &batch->nr_push_uniforms[PIPE_SHADER_VERTEX]);
 
-   GENX(jm_launch_xfb)(batch, info, count);
+   JOBX(launch_xfb)(batch, info, count);
    batch->compute_count++;
 
    ctx->uncompiled[PIPE_SHADER_VERTEX] = vs_uncompiled;
@@ -2871,7 +2879,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
                                     info->mode == MESA_PRIM_POINTS);
 #endif
 
-   GENX(jm_launch_draw)(batch, info, drawid_offset, draw, vertex_count);
+   JOBX(launch_draw)(batch, info, drawid_offset, draw, vertex_count);
    batch->draw_count++;
 }
 
@@ -3012,7 +3020,7 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
    mali_ptr saved_tls = batch->tls.gpu;
    batch->tls.gpu = panfrost_emit_shared_memory(batch, info);
 
-   GENX(jm_launch_grid)(batch, info);
+   JOBX(launch_grid)(batch, info);
    batch->compute_count++;
    batch->tls.gpu = saved_tls;
 }
@@ -3686,7 +3694,7 @@ init_polygon_list(struct panfrost_batch *batch)
 static int
 submit_batch(struct panfrost_batch *batch, struct pan_fb_info *fb)
 {
-   GENX(jm_preload_fb)(batch, fb);
+   JOBX(preload_fb)(batch, fb);
    init_polygon_list(batch);
 
    /* Now that all draws are in, we can finally prepare the
@@ -3699,7 +3707,7 @@ submit_batch(struct panfrost_batch *batch, struct pan_fb_info *fb)
       emit_fragment_job(batch, fb);
    }
 
-   return GENX(jm_submit_batch)(batch);
+   return JOBX(submit_batch)(batch);
 }
 
 void
@@ -3710,7 +3718,7 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
    screen->vtbl.prepare_shader = prepare_shader;
    screen->vtbl.screen_destroy = screen_destroy;
    screen->vtbl.context_populate_vtbl = context_populate_vtbl;
-   screen->vtbl.init_batch = GENX(jm_init_batch);
+   screen->vtbl.init_batch = JOBX(init_batch);
    screen->vtbl.submit_batch = submit_batch;
    screen->vtbl.get_blend_shader = GENX(pan_blend_get_shader_locked);
    screen->vtbl.get_compiler_options = GENX(pan_shader_get_compiler_options);
