@@ -2953,7 +2953,7 @@ panfrost_update_state_3d(struct panfrost_batch *batch)
 
 #if PAN_ARCH >= 6
 static mali_ptr
-panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch)
+jm_emit_tiler_desc(struct panfrost_batch *batch)
 {
    struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
@@ -3426,7 +3426,7 @@ jm_emit_tiler_job(struct panfrost_batch *batch,
 
 #if PAN_ARCH >= 6
    pan_section_pack(job, TILER_JOB, TILER, cfg) {
-      cfg.address = panfrost_batch_get_bifrost_tiler(batch);
+      cfg.address = jm_emit_tiler_desc(batch);
    }
 
    pan_section_pack(job, TILER_JOB, PADDING, cfg)
