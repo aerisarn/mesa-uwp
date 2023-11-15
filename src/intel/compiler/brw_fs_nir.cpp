@@ -6702,14 +6702,14 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       if (instr->is_sparse) {
          inst->size_written = (util_last_bit(write_mask) - 1) *
                               inst->dst.component_size(inst->exec_size) +
-                              REG_SIZE;
+                              (reg_unit(devinfo) * REG_SIZE);
       } else {
          inst->size_written = util_last_bit(write_mask) *
                               inst->dst.component_size(inst->exec_size);
       }
    } else {
       inst->size_written = 4 * inst->dst.component_size(inst->exec_size) +
-                           (instr->is_sparse ? REG_SIZE : 0);
+                           (instr->is_sparse ? (reg_unit(devinfo) * REG_SIZE) : 0);
    }
 
    if (srcs[TEX_LOGICAL_SRC_SHADOW_C].file != BAD_FILE)

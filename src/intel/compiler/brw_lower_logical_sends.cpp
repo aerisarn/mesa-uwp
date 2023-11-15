@@ -995,7 +995,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
        * and we have an explicit header, we need to set up the sampler
        * writemask.  It's reversed from normal: 1 means "don't write".
        */
-      unsigned reg_count = regs_written(inst) - residency;
+      unsigned reg_count = regs_written(inst) - reg_unit(devinfo) * residency;
       if (!inst->eot && reg_count < 4 * reg_width) {
          assert(reg_count % reg_width == 0);
          unsigned mask = ~((1 << (reg_count / reg_width)) - 1) & 0xf;
