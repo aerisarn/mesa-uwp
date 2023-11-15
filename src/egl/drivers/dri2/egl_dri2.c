@@ -1075,6 +1075,20 @@ dri2_setup_extensions(_EGLDisplay *disp)
    return EGL_TRUE;
 }
 
+EGLBoolean
+dri2_setup_device(_EGLDisplay *disp, EGLBoolean software)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   _EGLDevice *dev;
+
+   dev = _eglFindDevice(dri2_dpy->fd_render_gpu, software);
+   if (!dev)
+      return EGL_FALSE;
+
+   disp->Device = dev;
+   return EGL_TRUE;
+}
+
 /**
  * Called via eglInitialize(), drv->Initialize().
  *
