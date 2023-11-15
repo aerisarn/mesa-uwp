@@ -4694,9 +4694,8 @@ init_polygon_list(struct panfrost_batch *batch)
 }
 
 static int
-panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
-                            mali_ptr first_job_desc, uint32_t reqs,
-                            uint32_t out_sync)
+jm_submit_jc(struct panfrost_batch *batch, mali_ptr first_job_desc,
+             uint32_t reqs, uint32_t out_sync)
 {
    struct panfrost_context *ctx = batch->ctx;
    struct pipe_context *gallium = (struct pipe_context *)ctx;
@@ -4812,7 +4811,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
  * implicit dep between them) */
 
 static int
-panfrost_batch_submit_jobs(struct panfrost_batch *batch)
+jm_submit_batch(struct panfrost_batch *batch)
 {
    struct pipe_screen *pscreen = batch->ctx->base.screen;
    struct panfrost_device *dev = pan_device(pscreen);
@@ -4830,16 +4829,16 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch)
       pthread_mutex_lock(&dev->submit_lock);
 
    if (has_draws) {
-      ret = panfrost_batch_submit_ioctl(batch, batch->jm.jobs.vtc_jc.first_job,
-                                        0, has_frag ? 0 : out_sync);
+      ret = jm_submit_jc(batch, batch->jm.jobs.vtc_jc.first_job, 0,
+                         has_frag ? 0 : out_sync);
 
       if (ret)
          goto done;
    }
 
    if (has_frag) {
-      ret = panfrost_batch_submit_ioctl(batch, batch->jm.jobs.frag,
-                                        PANFROST_JD_REQ_FS, out_sync);
+      ret =
+         jm_submit_jc(batch, batch->jm.jobs.frag, PANFROST_JD_REQ_FS, out_sync);
       if (ret)
          goto done;
    }
@@ -4867,7 +4866,7 @@ submit_batch(struct panfrost_batch *batch, struct pan_fb_info *fb)
       emit_fragment_job(batch, fb);
    }
 
-   return panfrost_batch_submit_jobs(batch);
+   return jm_submit_batch(batch);
 }
 
 void
