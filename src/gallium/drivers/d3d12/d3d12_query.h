@@ -41,7 +41,7 @@ d3d12_validate_queries(struct d3d12_context *ctx);
 void
 d3d12_enable_predication(struct d3d12_context *ctx);
 
-constexpr unsigned MAX_SUBQUERIES = 3;
+constexpr unsigned MAX_SUBQUERIES = 4;
 
 struct d3d12_query_impl {
    ID3D12QueryHeap* query_heap;

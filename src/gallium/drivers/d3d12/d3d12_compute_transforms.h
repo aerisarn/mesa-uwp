@@ -73,14 +73,14 @@ struct d3d12_compute_transform_key
       struct {
          /* true means the accumulation should be done as uint64, else uint32. */
          uint8_t is_64bit : 1;
+         /* Indicates how many subqueries to accumulate together into a final result. When
+          * set to 1, single_subquery_index determines where the data comes from. */
+         uint8_t num_subqueries : 3;
+         uint8_t pipe_query_type : 4;
          /* true means output is written where input[0] was, else output is a separate buffer.
           * true also means all fields are accumulated, else single_result_field_offset determines
           * which field is resolved. Implies num_subqueries == 1. */
          uint8_t is_resolve_in_place : 1;
-         /* Indicates how many subqueries to accumulate together into a final result. When
-          * set to 1, single_subquery_index determines where the data comes from. */
-         uint8_t num_subqueries : 2;
-         uint8_t pipe_query_type : 4;
          uint8_t single_subquery_index : 2;
          uint8_t single_result_field_offset : 4;
          uint8_t is_signed : 1;
@@ -102,7 +102,8 @@ struct d3d12_compute_transform_save_restore
 {
    struct d3d12_shader_selector *cs;
    struct pipe_constant_buffer cbuf0;
-   struct pipe_shader_buffer ssbos[4];
+   struct pipe_shader_buffer ssbos[5];
+   bool queries_disabled;
 };
 
 void

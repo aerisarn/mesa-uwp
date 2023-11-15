@@ -42,6 +42,8 @@ num_sub_queries(unsigned query_type, unsigned index)
    switch (query_type) {
    case PIPE_QUERY_PRIMITIVES_GENERATED:
       return index == 0 ? 3 : 1;
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      return 4;
    default:
       return 1;
    }
@@ -63,6 +65,8 @@ d3d12_query_heap_type(unsigned query_type, unsigned sub_query)
          D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_SO_STATISTICS:
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
       return D3D12_QUERY_HEAP_TYPE_SO_STATISTICS;
    case PIPE_QUERY_TIMESTAMP:
    case PIPE_QUERY_TIME_ELAPSED:
@@ -92,7 +96,10 @@ d3d12_query_type(unsigned query_type, unsigned sub_query, unsigned index)
       FALLTHROUGH;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_SO_STATISTICS:
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
       return (D3D12_QUERY_TYPE)(D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0 + index);
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      return (D3D12_QUERY_TYPE)(D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0 + sub_query);
    case PIPE_QUERY_TIMESTAMP:
    case PIPE_QUERY_TIME_ELAPSED:
       return D3D12_QUERY_TYPE_TIMESTAMP;
@@ -245,8 +252,13 @@ accumulate_subresult_cpu(struct d3d12_context *ctx, struct d3d12_query *q_parent
       case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1:
       case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM2:
       case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM3:
-         result->so_statistics.num_primitives_written += results_so[i].NumPrimitivesWritten;
-         result->so_statistics.primitives_storage_needed += results_so[i].PrimitivesStorageNeeded;
+         if (q_parent->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE ||
+             q_parent->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
+            result->b = results_so[i].NumPrimitivesWritten != results_so[i].PrimitivesStorageNeeded;
+         } else {
+            result->so_statistics.num_primitives_written += results_so[i].NumPrimitivesWritten;
+            result->so_statistics.primitives_storage_needed += results_so[i].PrimitivesStorageNeeded;
+         }
          break;
 
       default:
@@ -290,6 +302,14 @@ accumulate_result_cpu(struct d3d12_context *ctx, struct d3d12_query *q,
       if (!accumulate_subresult_cpu(ctx, q, 0, &local_result))
          return false;
       result->u64 = local_result.so_statistics.num_primitives_written;
+      return true;
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      result->b = false;
+      for (uint32_t i = 0; i < num_sub_queries(q->type, q->index); ++i) {
+         if (!accumulate_subresult_cpu(ctx, q, i, &local_result))
+            return false;
+         result->b |= local_result.b;
+      }
       return true;
    default:
       assert(num_sub_queries(q->type, q->index) == 1);
@@ -361,6 +381,7 @@ accumulate_subresult_gpu(struct d3d12_context *ctx, struct d3d12_query *q_parent
    ctx->transform_state_vars[1] = 0;
    ctx->transform_state_vars[2] = 0;
    ctx->transform_state_vars[3] = 0;
+   ctx->transform_state_vars[4] = 0;
 
    pipe_shader_buffer new_cs_ssbos[1];
    new_cs_ssbos[0].buffer = q_parent->subqueries[sub_query].buffer;
@@ -396,7 +417,7 @@ accumulate_result_gpu(struct d3d12_context *ctx, struct d3d12_query *q,
    key.query_resolve.timestamp_multiplier = d3d12_screen(ctx->base.screen)->timestamp_multiplier;
    ctx->base.bind_compute_state(&ctx->base, d3d12_get_compute_transform(ctx, &key));
 
-   pipe_shader_buffer new_cs_ssbos[4];
+   pipe_shader_buffer new_cs_ssbos[5];
    uint32_t num_ssbos = 0;
    for (uint32_t i = 0; i < key.query_resolve.num_subqueries; ++i) {
       ctx->transform_state_vars[i] = q->subqueries[i].curr_query;
@@ -407,7 +428,7 @@ accumulate_result_gpu(struct d3d12_context *ctx, struct d3d12_query *q,
    }
 
    assert(dst_offset % (key.query_resolve.is_64bit ? 8 : 4) == 0);
-   ctx->transform_state_vars[3] = dst_offset / (key.query_resolve.is_64bit ? 8 : 4);
+   ctx->transform_state_vars[4] = dst_offset / (key.query_resolve.is_64bit ? 8 : 4);
 
    new_cs_ssbos[num_ssbos].buffer = dst;
    new_cs_ssbos[num_ssbos].buffer_offset = 0;
@@ -670,7 +691,6 @@ d3d12_render_condition(struct pipe_context *pctx,
       return;
    }
 
-   assert(num_sub_queries(query->type, query->index) == 1);
    if (!query->predicate)
       query->predicate = d3d12_resource(pipe_buffer_create(pctx->screen, 0,
                                                            PIPE_USAGE_DEFAULT, sizeof(uint64_t)));

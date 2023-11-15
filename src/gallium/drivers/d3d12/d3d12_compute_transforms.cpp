@@ -223,10 +223,11 @@ get_query_resolve(const nir_shader_compiler_options *options, const d3d12_comput
    assert(!key->query_resolve.is_resolve_in_place ||
           (key->query_resolve.is_64bit && key->query_resolve.num_subqueries == 1));
    assert(key->query_resolve.num_subqueries == 1 ||
-          key->query_resolve.pipe_query_type == PIPE_QUERY_PRIMITIVES_GENERATED);
-   assert(key->query_resolve.num_subqueries <= 3); /* Fourth state var is an output offset */
+          key->query_resolve.pipe_query_type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+          key->query_resolve.pipe_query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE);
+   assert(key->query_resolve.num_subqueries <= 4);
 
-   nir_variable *inputs[3];
+   nir_variable *inputs[4];
    for (uint32_t i = 0; i < key->query_resolve.num_subqueries; ++i) {
       /* Inputs are always 64-bit */
       inputs[i] = nir_variable_create(b.shader, nir_var_mem_ssbo, glsl_array_type(glsl_uint64_t_type(), 0, 8), "input");
@@ -239,8 +240,9 @@ get_query_resolve(const nir_shader_compiler_options *options, const d3d12_comput
    }
 
    /* How many entries in each sub-query is passed via root constants */
-   nir_variable *state_var = nullptr;
+   nir_variable *state_var = nullptr, *state_var1 = nullptr;
    nir_def *state_var_data = d3d12_get_state_var(&b, D3D12_STATE_VAR_TRANSFORM_GENERIC0, "state_var", glsl_uvec4_type(), &state_var);
+   nir_def *state_var_data1 = d3d12_get_state_var(&b, D3D12_STATE_VAR_TRANSFORM_GENERIC1, "state_var1", glsl_uvec4_type(), &state_var1);
 
    /* For in-place resolves, we resolve each field of the query. Otherwise, resolve one field into the dest */
    nir_variable *results[sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS) / sizeof(UINT64)];
@@ -280,6 +282,8 @@ get_query_resolve(const nir_shader_compiler_options *options, const d3d12_comput
          break;
       case PIPE_QUERY_SO_STATISTICS:
       case PIPE_QUERY_PRIMITIVES_EMITTED:
+      case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+      case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
          stride = sizeof(D3D12_QUERY_DATA_SO_STATISTICS) / sizeof(UINT64);
          break;
       case PIPE_QUERY_PRIMITIVES_GENERATED:
@@ -324,11 +328,19 @@ get_query_resolve(const nir_shader_compiler_options *options, const d3d12_comput
             assert(j == 0 && i == 0);
             nir_def *start = nir_load_ssbo(&b, 1, 64, nir_imm_int(&b, i), nir_imul_imm(&b, array_index, 8));
             nir_def *end = nir_load_ssbo(&b, 1, 64, nir_imm_int(&b, i), nir_imul_imm(&b, nir_iadd_imm(&b, array_index, 1), 8));
-            new_value = nir_isub(&b, end, start);
+            new_value = nir_iadd(&b, nir_load_var(&b, results[j]), nir_isub(&b, end, start));
+         } else if (key->query_resolve.pipe_query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE ||
+                    key->query_resolve.pipe_query_type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
+            /* These predicates are true if the primitives emitted != primitives stored */
+            assert(j == 0);
+            nir_def *val_a = nir_load_ssbo(&b, 1, 64, nir_imm_int(&b, i), nir_imul_imm(&b, array_index, 8));
+            nir_def *val_b = nir_load_ssbo(&b, 1, 64, nir_imm_int(&b, i), nir_imul_imm(&b, nir_iadd_imm(&b, array_index, 1), 8));
+            new_value = nir_ior(&b, nir_load_var(&b, results[j]), nir_u2uN(&b, nir_ine(&b, val_a, val_b), var_bit_size));
          } else {
             new_value = nir_u2uN(&b, nir_load_ssbo(&b, 1, 64, nir_imm_int(&b, i), nir_imul_imm(&b, nir_iadd_imm(&b, array_index, j), 8)), var_bit_size);
+            new_value = nir_iadd(&b, nir_load_var(&b, results[j]), new_value);
          }
-         nir_store_var(&b, results[j], nir_iadd(&b, nir_load_var(&b, results[j]), new_value), 1);
+         nir_store_var(&b, results[j], new_value, 1);
       }
       
       nir_store_var(&b, loop_counter, nir_iadd_imm(&b, loop_counter_value, 1), 1);
@@ -336,7 +348,7 @@ get_query_resolve(const nir_shader_compiler_options *options, const d3d12_comput
    }
 
    /* Results are accumulated, now store the final values */
-   nir_def *output_base_index = nir_channel(&b, state_var_data, 3);
+   nir_def *output_base_index = nir_channel(&b, state_var_data1, 0);
    for (uint32_t i = 0; i < num_result_values; ++i) {
       /* When resolving in-place, resolve each field, otherwise just write the one result */
       uint32_t field_offset = key->query_resolve.is_resolve_in_place ? i : 0;
@@ -483,11 +495,16 @@ d3d12_save_compute_transform_state(struct d3d12_context *ctx, d3d12_compute_tran
       pipe_resource_reference(&save->ssbos[i].buffer, ctx->ssbo_views[PIPE_SHADER_COMPUTE][i].buffer);
       save->ssbos[i] = ctx->ssbo_views[PIPE_SHADER_COMPUTE][i];
    }
+
+   save->queries_disabled = ctx->queries_disabled;
+   ctx->base.set_active_query_state(&ctx->base, false);
 }
 
 void
 d3d12_restore_compute_transform_state(struct d3d12_context *ctx, d3d12_compute_transform_save_restore *save)
 {
+   ctx->base.set_active_query_state(&ctx->base, !save->queries_disabled);
+
    ctx->base.bind_compute_state(&ctx->base, save->cs);
 
    ctx->base.set_constant_buffer(&ctx->base, PIPE_SHADER_COMPUTE, 1, true, &save->cbuf0);

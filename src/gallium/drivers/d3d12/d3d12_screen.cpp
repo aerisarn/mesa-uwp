@@ -343,6 +343,8 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_POLYGON_OFFSET_CLAMP:
    case PIPE_CAP_SHADER_GROUP_VOTE:
+   case PIPE_CAP_QUERY_PIPELINE_STATISTICS:
+   case PIPE_CAP_QUERY_SO_OVERFLOW:
       return 1;
 
    case PIPE_CAP_QUERY_BUFFER_OBJECT:

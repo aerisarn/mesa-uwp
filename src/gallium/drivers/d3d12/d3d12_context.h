@@ -277,8 +277,9 @@ struct d3d12_context {
 
    struct d3d12_resource *current_predication;
    bool predication_condition;
+   bool queries_suspended;
 
-   uint32_t transform_state_vars[4];
+   uint32_t transform_state_vars[8];
 
 #ifdef __cplusplus
    ResourceStateManager *resource_state_manager;
