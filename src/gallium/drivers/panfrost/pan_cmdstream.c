@@ -3846,38 +3846,9 @@ panfrost_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    }
 }
 
-/* Launch grid is the compute equivalent of draw_vbo, so in this routine, we
- * construct the COMPUTE job and some of its payload.
- */
-
 static void
-panfrost_launch_grid_on_batch(struct pipe_context *pipe,
-                              struct panfrost_batch *batch,
-                              const struct pipe_grid_info *info)
+jm_launch_grid(struct panfrost_batch *batch, const struct pipe_grid_info *info)
 {
-   struct panfrost_context *ctx = pan_context(pipe);
-
-   if (info->indirect && !PAN_GPU_INDIRECTS) {
-      struct pipe_transfer *transfer;
-      uint32_t *params =
-         pipe_buffer_map_range(pipe, info->indirect, info->indirect_offset,
-                               3 * sizeof(uint32_t), PIPE_MAP_READ, &transfer);
-
-      struct pipe_grid_info direct = *info;
-      direct.indirect = NULL;
-      direct.grid[0] = params[0];
-      direct.grid[1] = params[1];
-      direct.grid[2] = params[2];
-      pipe_buffer_unmap(pipe, transfer);
-
-      if (params[0] && params[1] && params[2])
-         panfrost_launch_grid_on_batch(pipe, batch, &direct);
-
-      return;
-   }
-
-   ctx->compute_grid = info;
-
    struct panfrost_ptr t = pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
 
    /* Invoke according to the grid info */
@@ -3886,18 +3857,6 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
 
    if (info->indirect)
       num_wg[0] = num_wg[1] = num_wg[2] = 1;
-
-   /* Conservatively assume workgroup size changes every launch */
-   ctx->dirty |= PAN_DIRTY_PARAMS;
-
-   panfrost_update_shader_state(batch, PIPE_SHADER_COMPUTE);
-
-   /* We want our compute thread descriptor to be per job.
-    * Save the global one, and restore it when we're done emitting
-    * the job.
-    */
-   mali_ptr saved_tls = batch->tls.gpu;
-   batch->tls.gpu = panfrost_emit_shared_memory(batch, info);
 
 #if PAN_ARCH <= 7
    panfrost_pack_work_groups_compute(
@@ -3922,6 +3881,7 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
       cfg.samplers = batch->samplers[PIPE_SHADER_COMPUTE];
    }
 #else
+   struct panfrost_context *ctx = batch->ctx;
    struct panfrost_compiled_shader *cs = ctx->prog[PIPE_SHADER_COMPUTE];
 
    pan_section_pack(t.cpu, COMPUTE_JOB, PAYLOAD, cfg) {
@@ -3973,6 +3933,53 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
    panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
                     MALI_JOB_TYPE_COMPUTE, true, false, indirect_dep, 0, &t,
                     false);
+}
+
+/* Launch grid is the compute equivalent of draw_vbo, so in this routine, we
+ * construct the COMPUTE job and some of its payload.
+ */
+
+static void
+panfrost_launch_grid_on_batch(struct pipe_context *pipe,
+                              struct panfrost_batch *batch,
+                              const struct pipe_grid_info *info)
+{
+   struct panfrost_context *ctx = pan_context(pipe);
+
+   if (info->indirect && !PAN_GPU_INDIRECTS) {
+      struct pipe_transfer *transfer;
+      uint32_t *params =
+         pipe_buffer_map_range(pipe, info->indirect, info->indirect_offset,
+                               3 * sizeof(uint32_t), PIPE_MAP_READ, &transfer);
+
+      struct pipe_grid_info direct = *info;
+      direct.indirect = NULL;
+      direct.grid[0] = params[0];
+      direct.grid[1] = params[1];
+      direct.grid[2] = params[2];
+      pipe_buffer_unmap(pipe, transfer);
+
+      if (params[0] && params[1] && params[2])
+         panfrost_launch_grid_on_batch(pipe, batch, &direct);
+
+      return;
+   }
+
+   ctx->compute_grid = info;
+
+   /* Conservatively assume workgroup size changes every launch */
+   ctx->dirty |= PAN_DIRTY_PARAMS;
+
+   panfrost_update_shader_state(batch, PIPE_SHADER_COMPUTE);
+
+   /* We want our compute thread descriptor to be per job.
+    * Save the global one, and restore it when we're done emitting
+    * the job.
+    */
+   mali_ptr saved_tls = batch->tls.gpu;
+   batch->tls.gpu = panfrost_emit_shared_memory(batch, info);
+
+   jm_launch_grid(batch, info);
    batch->compute_count++;
    batch->tls.gpu = saved_tls;
 }
