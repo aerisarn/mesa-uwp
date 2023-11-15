@@ -230,10 +230,10 @@ lvp_create_samplerview(struct pipe_context *pctx, struct lvp_image_view *iv, VkF
    templ.u.tex.last_layer = iv->vk.base_array_layer + iv->vk.layer_count - 1;
    templ.u.tex.first_level = iv->vk.base_mip_level;
    templ.u.tex.last_level = iv->vk.base_mip_level + iv->vk.level_count - 1;
-   templ.swizzle_r = vk_conv_swizzle(iv->vk.swizzle.r);
-   templ.swizzle_g = vk_conv_swizzle(iv->vk.swizzle.g);
-   templ.swizzle_b = vk_conv_swizzle(iv->vk.swizzle.b);
-   templ.swizzle_a = vk_conv_swizzle(iv->vk.swizzle.a);
+   templ.swizzle_r = vk_conv_swizzle(iv->vk.swizzle.r, PIPE_SWIZZLE_X);
+   templ.swizzle_g = vk_conv_swizzle(iv->vk.swizzle.g, PIPE_SWIZZLE_Y);
+   templ.swizzle_b = vk_conv_swizzle(iv->vk.swizzle.b, PIPE_SWIZZLE_Z);
+   templ.swizzle_a = vk_conv_swizzle(iv->vk.swizzle.a, PIPE_SWIZZLE_W);
 
    /* depth stencil swizzles need special handling to pass VK CTS
     * but also for zink GL tests.
