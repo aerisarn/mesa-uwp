@@ -4016,6 +4016,11 @@ cmd_buffer_barrier_blitter(struct anv_cmd_buffer *cmd_buffer,
    }
 
    if (flush_ccs || flush_llc) {
+      /* Wa_16018063123 - emit fast color dummy blit before MI_FLUSH_DW. */
+      if (intel_needs_workaround(cmd_buffer->device->info, 16018063123)) {
+         genX(batch_emit_fast_color_dummy_blit)(&cmd_buffer->batch,
+                                                cmd_buffer->device);
+      }
       anv_batch_emit(&cmd_buffer->batch, GENX(MI_FLUSH_DW), fd) {
          fd.FlushCCS = flush_ccs;
          fd.FlushLLC = flush_llc;
@@ -8246,6 +8251,9 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
    case ANV_TIMESTAMP_CAPTURE_END_OF_PIPE: {
       if ((batch->engine_class == INTEL_ENGINE_CLASS_COPY) ||
           (batch->engine_class == INTEL_ENGINE_CLASS_VIDEO)) {
+         /* Wa_16018063123 - emit fast color dummy blit before MI_FLUSH_DW. */
+         if (intel_needs_workaround(device->info, 16018063123))
+            genX(batch_emit_fast_color_dummy_blit)(batch, device);
          anv_batch_emit(batch, GENX(MI_FLUSH_DW), fd) {
             fd.PostSyncOperation = WriteTimestamp;
             fd.Address = addr;
@@ -8325,6 +8333,27 @@ genX(batch_emit_post_3dprimitive_was)(struct anv_batch *batch,
 #endif
 }
 
+/* Wa_16018063123 */
+ALWAYS_INLINE void
+genX(batch_emit_fast_color_dummy_blit)(struct anv_batch *batch,
+                                      struct anv_device *device)
+{
+#if GFX_VERx10 >= 125
+   anv_batch_emit(batch, GENX(XY_FAST_COLOR_BLT), blt) {
+      blt.DestinationBaseAddress = device->workaround_address;
+      blt.DestinationMOCS = device->isl_dev.mocs.blitter_dst;
+      blt.DestinationPitch = 63;
+      blt.DestinationX2 = 1;
+      blt.DestinationY2 = 4;
+      blt.DestinationSurfaceWidth = 1;
+      blt.DestinationSurfaceHeight = 4;
+      blt.DestinationSurfaceType = XY_SURFTYPE_2D;
+      blt.DestinationSurfaceQPitch = 4;
+      blt.DestinationTiling = XY_TILE_LINEAR;
+   }
+#endif
+}
+
 struct anv_state
 genX(cmd_buffer_begin_companion_rcs_syncpoint)(
       struct anv_cmd_buffer   *cmd_buffer)
@@ -8357,6 +8386,11 @@ genX(cmd_buffer_begin_companion_rcs_syncpoint)(
                                 "post main cmd buffer invalidate");
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
    } else if (anv_cmd_buffer_is_blitter_queue(cmd_buffer)) {
+      /* Wa_16018063123 - emit fast color dummy blit before MI_FLUSH_DW. */
+      if (intel_needs_workaround(cmd_buffer->device->info, 16018063123)) {
+         genX(batch_emit_fast_color_dummy_blit)(&cmd_buffer->batch,
+                                                cmd_buffer->device);
+      }
       anv_batch_emit(&cmd_buffer->batch, GENX(MI_FLUSH_DW), fd) {
          fd.FlushCCS = true; /* Maybe handle Flush LLC */
       }

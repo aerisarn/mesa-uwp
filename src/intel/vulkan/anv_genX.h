@@ -185,6 +185,9 @@ genX(batch_emit_post_3dprimitive_was)(struct anv_batch *batch,
                                       uint32_t primitive_topology,
                                       uint32_t vertex_count);
 
+void genX(batch_emit_fast_color_dummy_blit)(struct anv_batch *batch,
+                                            struct anv_device *device);
+
 VkPolygonMode
 genX(raster_polygon_mode)(const struct anv_graphics_pipeline *pipeline,
                           VkPolygonMode polygon_mode,
