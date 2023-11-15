@@ -38,6 +38,12 @@ workflow:
         VALVE_INFRA_VANGOGH_JOB_PRIORITY: ""  # Empty tags are ignored by gitlab
     # post-merge pipeline
     - if: &is-post-merge $GITLAB_USER_LOGIN == "marge-bot" && $CI_PIPELINE_SOURCE == "push"
+    # nightly pipeline
+    - if: &is-scheduled-pipeline $CI_PIPELINE_SOURCE == "schedule"
+      variables:
+        KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${KERNEL_TAG}
+        JOB_PRIORITY: 50
+        VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
     # pipeline for direct pushes that bypassed the CI
     - if: &is-direct-push $CI_PROJECT_NAMESPACE == "mesa" && $CI_PIPELINE_SOURCE == "push" && $GITLAB_USER_LOGIN != "marge-bot"
       variables:
@@ -220,6 +226,9 @@ include:
       when: never
     # Build everything after someone bypassed the CI
     - if: *is-direct-push
+      when: on_success
+    # Build everything in scheduled pipelines
+    - if: *is-scheduled-pipeline
       when: on_success
     # Always allow user branches etc to trigger jobs manually
     - when: manual
