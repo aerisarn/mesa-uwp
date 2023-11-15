@@ -815,6 +815,14 @@ anv_sparse_calc_image_format_properties(struct anv_physical_device *pdevice,
                     granularity.height == std_shape.height &&
                     granularity.depth == std_shape.depth;
 
+      /* TODO: dEQP seems to care about the block shapes being standard even
+       * for the cases where is_known_nonstandard_format is true. Luckily as
+       * of today all of those cases are NotSupported but sooner or later we
+       * may end up getting a failure.
+       * Notice that in practice we report these cases as having the mip tail
+       * starting on mip level 0, so the reported block shapes are irrelevant
+       * since non-opaque binds are not supported. Still, dEQP seems to care.
+       */
       assert(is_standard || is_known_nonstandard_format);
    }
 
@@ -1209,6 +1217,18 @@ anv_sparse_image_check_support(struct anv_physical_device *pdevice,
           isl_layout->bpb != 128)
          return VK_ERROR_FORMAT_NOT_SUPPORTED;
    }
+
+   /* These YUV formats are considered by Vulkan to be compressed 2x1 blocks.
+    * We don't need to support them since they're compressed. On Gfx12 we
+    * can't even have Tile64 for them. Once we do support these formats we'll
+    * have to report the correct block shapes because dEQP cares about them,
+    * and we'll have to adjust for the fact that ISL treats these as 16bpp 1x1
+    * blocks instead of 32bpp 2x1 compressed blocks (as block shapes are
+    * reported in units of compressed blocks).
+    */
+   if (vk_format == VK_FORMAT_G8B8G8R8_422_UNORM ||
+       vk_format == VK_FORMAT_B8G8R8G8_422_UNORM)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    return VK_SUCCESS;
 }
