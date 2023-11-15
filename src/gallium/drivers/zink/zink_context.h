@@ -264,7 +264,6 @@ zink_component_mapping(enum pipe_swizzle swizzle)
    case PIPE_SWIZZLE_W: return VK_COMPONENT_SWIZZLE_A;
    case PIPE_SWIZZLE_0: return VK_COMPONENT_SWIZZLE_ZERO;
    case PIPE_SWIZZLE_1: return VK_COMPONENT_SWIZZLE_ONE;
-   case PIPE_SWIZZLE_NONE: return VK_COMPONENT_SWIZZLE_IDENTITY; // ???
    default:
       unreachable("unexpected swizzle");
    }
