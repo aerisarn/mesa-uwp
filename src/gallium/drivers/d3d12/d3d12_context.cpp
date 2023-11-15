@@ -839,7 +839,7 @@ view_dimension(enum pipe_texture_target target, unsigned samples)
 }
 
 static D3D12_SHADER_COMPONENT_MAPPING
-component_mapping(enum pipe_swizzle swizzle, D3D12_SHADER_COMPONENT_MAPPING id)
+component_mapping(enum pipe_swizzle swizzle)
 {
    switch (swizzle) {
    case PIPE_SWIZZLE_X: return D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0;
@@ -848,7 +848,6 @@ component_mapping(enum pipe_swizzle swizzle, D3D12_SHADER_COMPONENT_MAPPING id)
    case PIPE_SWIZZLE_W: return D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3;
    case PIPE_SWIZZLE_0: return D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_0;
    case PIPE_SWIZZLE_1: return D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1;
-   case PIPE_SWIZZLE_NONE: return id;
    default:
       unreachable("unexpected swizzle");
    }
@@ -877,10 +876,10 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
    }
 
    desc.Shader4ComponentMapping = D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(
-      component_mapping((pipe_swizzle)sampler_view->swizzle_override_r, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0),
-      component_mapping((pipe_swizzle)sampler_view->swizzle_override_g, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1),
-      component_mapping((pipe_swizzle)sampler_view->swizzle_override_b, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2),
-      component_mapping((pipe_swizzle)sampler_view->swizzle_override_a, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3)
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_r),
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_g),
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_b),
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_a)
    );
 
    uint64_t offset = 0;
