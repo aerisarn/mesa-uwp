@@ -3557,6 +3557,25 @@ panfrost_increase_vertex_count(struct panfrost_batch *batch, uint32_t increment)
       batch->tiler_ctx.vertex_count = UINT32_MAX;
 }
 
+/*
+ * If we change whether we're drawing points, or whether point sprites are
+ * enabled (specified in the rasterizer), we may need to rebind shaders
+ * accordingly. This implicitly covers the case of rebinding framebuffers,
+ * because all dirty flags are set there.
+ */
+static void
+panfrost_update_point_sprite_shader(struct panfrost_context *ctx,
+                                    const struct pipe_draw_info *info)
+{
+   if ((ctx->dirty & PAN_DIRTY_RASTERIZER) ||
+       ((ctx->active_prim == MESA_PRIM_POINTS) ^
+        (info->mode == MESA_PRIM_POINTS))) {
+
+      ctx->active_prim = info->mode;
+      panfrost_update_shader_variant(ctx, PIPE_SHADER_FRAGMENT);
+   }
+}
+
 static void
 panfrost_direct_draw(struct panfrost_batch *batch,
                      const struct pipe_draw_info *info, unsigned drawid_offset,
@@ -3567,18 +3586,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
    struct panfrost_context *ctx = batch->ctx;
 
-   /* If we change whether we're drawing points, or whether point sprites
-    * are enabled (specified in the rasterizer), we may need to rebind
-    * shaders accordingly. This implicitly covers the case of rebinding
-    * framebuffers, because all dirty flags are set there.
-    */
-   if ((ctx->dirty & PAN_DIRTY_RASTERIZER) ||
-       ((ctx->active_prim == MESA_PRIM_POINTS) ^
-        (info->mode == MESA_PRIM_POINTS))) {
-
-      ctx->active_prim = info->mode;
-      panfrost_update_shader_variant(ctx, PIPE_SHADER_FRAGMENT);
-   }
+   panfrost_update_point_sprite_shader(ctx, info);
 
    /* Take into account a negative bias */
    ctx->vertex_count =
