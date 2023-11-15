@@ -4399,7 +4399,12 @@ prepare_shader(struct panfrost_compiled_shader *state,
    /* Generic, or IDVS/points */
    pan_pack(ptr.cpu, SHADER_PROGRAM, cfg) {
       cfg.stage = pan_shader_stage(&state->info);
-      cfg.primary_shader = true;
+
+      if (cfg.stage == MALI_SHADER_STAGE_FRAGMENT)
+         cfg.fragment_coverage_bitmask_type = MALI_COVERAGE_BITMASK_TYPE_GL;
+      else if (vs)
+         cfg.vertex_warp_limit = MALI_WARP_LIMIT_HALF;
+
       cfg.register_allocation =
          pan_register_allocation(state->info.work_reg_count);
       cfg.binary = state->bin.gpu;
@@ -4416,7 +4421,7 @@ prepare_shader(struct panfrost_compiled_shader *state,
    /* IDVS/triangles */
    pan_pack(ptr.cpu + pan_size(SHADER_PROGRAM), SHADER_PROGRAM, cfg) {
       cfg.stage = pan_shader_stage(&state->info);
-      cfg.primary_shader = true;
+      cfg.vertex_warp_limit = MALI_WARP_LIMIT_HALF;
       cfg.register_allocation =
          pan_register_allocation(state->info.work_reg_count);
       cfg.binary = state->bin.gpu + state->info.vs.no_psiz_offset;
@@ -4431,7 +4436,7 @@ prepare_shader(struct panfrost_compiled_shader *state,
       unsigned work_count = state->info.vs.secondary_work_reg_count;
 
       cfg.stage = pan_shader_stage(&state->info);
-      cfg.primary_shader = false;
+      cfg.vertex_warp_limit = MALI_WARP_LIMIT_FULL;
       cfg.register_allocation = pan_register_allocation(work_count);
       cfg.binary = state->bin.gpu + state->info.vs.secondary_offset;
       cfg.preload.r48_r63 = (state->info.vs.secondary_preload >> 48);

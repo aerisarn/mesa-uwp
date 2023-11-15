@@ -1170,7 +1170,7 @@ pan_preload_emit_dcd(struct pan_pool *pool, struct pan_fb_info *fb, bool zs,
    struct panfrost_ptr spd = pan_pool_alloc_desc(pool, SHADER_PROGRAM);
    pan_pack(spd.cpu, SHADER_PROGRAM, cfg) {
       cfg.stage = MALI_SHADER_STAGE_FRAGMENT;
-      cfg.primary_shader = true;
+      cfg.fragment_coverage_bitmask_type = MALI_COVERAGE_BITMASK_TYPE_GL;
       cfg.register_allocation = MALI_SHADER_REGISTER_ALLOCATION_32_PER_THREAD;
       cfg.binary = blit_shader->address;
       cfg.preload.r48_r63 = blit_shader->info.preload >> 48;
