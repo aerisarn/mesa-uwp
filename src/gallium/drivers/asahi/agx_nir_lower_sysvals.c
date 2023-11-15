@@ -157,6 +157,15 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
       return load_sysval(b, 1, 32, AGX_SYSVAL_TABLE_PARAMS, 0);
    case nir_intrinsic_load_base_instance:
       return load_sysval(b, 1, 32, AGX_SYSVAL_TABLE_PARAMS, 4);
+   case nir_intrinsic_load_base_vertex:
+      /* first vertex if indexed, 0 otherwise. More efficient for our hw than
+       * the lowering in NIR.
+       */
+      return nir_bcsel(
+         b, nir_i2b(b, load_sysval_root(b, 1, 16, &u->is_indexed_draw)),
+         load_sysval(b, 1, 32, AGX_SYSVAL_TABLE_PARAMS, 0), nir_imm_int(b, 0));
+   case nir_intrinsic_load_draw_id:
+      return load_sysval_root(b, 1, 32, &u->draw_id);
    case nir_intrinsic_load_layer_id_written_agx:
       return load_sysval_root(b, 1, 16, &u->layer_id_written);
    case nir_intrinsic_load_geometry_param_buffer_agx:

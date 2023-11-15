@@ -3839,6 +3839,13 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    struct agx_compiled_shader *vs = ctx->vs;
    batch->uniforms.layer_id_written = vs->info.writes_layer_viewport ? ~0 : 0;
 
+   /* Set draw ID */
+   if (ctx->vs->info.uses_draw_id) {
+      batch->uniforms.draw_id = drawid_offset;
+
+      ctx->dirty |= AGX_DIRTY_VS;
+   }
+
    /* Dirty track the reduced prim: lines vs points vs triangles. Happens before
     * agx_update_fs, which specializes based on primitive.
     */
@@ -3861,35 +3868,41 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    /* If a GS is active, the mode and index buffer come from the GS output */
    enum mesa_prim mode = info->mode;
 
-   if (indirect) {
-      struct agx_resource *indirect_rsrc = agx_resource(indirect->buffer);
-      uint64_t address = indirect_rsrc->bo->ptr.gpu + indirect->offset;
-      agx_batch_reads(batch, indirect_rsrc);
+   if (ctx->vs->info.uses_base_param || ctx->gs) {
+      batch->uniforms.is_indexed_draw = (idx_size > 0);
 
-      /* To implement draw parameters, we use the last 2 words of the indirect
-       * draw descriptor. Offset by 3 words for indexed draw (5 total) and 2
-       * words for non-indexed (4 total).  See the layouts of indexed vs
-       * non-indexed draw descriptors.
-       *
-       * This gives us a consistent layout
-       *
-       *    uint32_t first_vertex;
-       *    uint32_t base_instance;
-       *
-       * and we can implement load_first_vertex & load_base_instance without
-       * checking for indexing.
-       */
-      uint32_t offset = idx_size ? 3 : 2;
-      batch->uniforms.tables[AGX_SYSVAL_TABLE_PARAMS] = address + offset * 4;
-   } else {
-      /* Upload just those two words. */
-      uint32_t params[2] = {
-         idx_size ? draws->index_bias : draws->start,
-         info->start_instance,
-      };
+      if (indirect) {
+         struct agx_resource *indirect_rsrc = agx_resource(indirect->buffer);
+         uint64_t address = indirect_rsrc->bo->ptr.gpu + indirect->offset;
+         agx_batch_reads(batch, indirect_rsrc);
 
-      batch->uniforms.tables[AGX_SYSVAL_TABLE_PARAMS] =
-         agx_pool_upload_aligned(&batch->pool, params, sizeof(params), 4);
+         /* To implement draw parameters, we use the last 2 words of the
+          * indirect draw descriptor. Offset by 3 words for indexed draw (5
+          * total) and 2 words for non-indexed (4 total).  See the layouts of
+          * indexed vs non-indexed draw descriptors.
+          *
+          * This gives us a consistent layout
+          *
+          *    uint32_t first_vertex;
+          *    uint32_t base_instance;
+          *
+          * and we can implement load_first_vertex & load_base_instance without
+          * checking for indexing.
+          */
+         uint32_t offset = idx_size ? 3 : 2;
+         batch->uniforms.tables[AGX_SYSVAL_TABLE_PARAMS] = address + offset * 4;
+      } else {
+         /* Upload just those two words. */
+         uint32_t params[2] = {
+            idx_size ? draws->index_bias : draws->start,
+            info->start_instance,
+         };
+
+         batch->uniforms.tables[AGX_SYSVAL_TABLE_PARAMS] =
+            agx_pool_upload_aligned(&batch->pool, params, sizeof(params), 4);
+      }
+
+      ctx->dirty |= AGX_DIRTY_VS;
    }
 
    agx_update_descriptors(batch, ctx->vs, PIPE_SHADER_VERTEX);

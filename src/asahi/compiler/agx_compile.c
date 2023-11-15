@@ -9,6 +9,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir_types.h"
 #include "util/glheader.h"
+#include "util/macros.h"
 #include "util/u_debug.h"
 #include "agx_builder.h"
 #include "agx_compiler.h"
@@ -18,6 +19,7 @@
 #include "nir.h"
 #include "nir_intrinsics.h"
 #include "nir_intrinsics_indices.h"
+#include "shader_enums.h"
 
 /* Alignment for shader programs. I'm not sure what the optimal value is. */
 #define AGX_CODE_ALIGN 0x100
@@ -3117,6 +3119,12 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       out->writes_layer_viewport =
          nir->info.outputs_written & (VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT);
 
+      out->uses_draw_id =
+         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
+
+      out->uses_base_param =
+         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX) ||
+         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BASE_INSTANCE);
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       out->disable_tri_merging = nir->info.uses_wide_subgroup_intrinsics ||
                                  nir->info.fs.needs_quad_helper_invocations ||

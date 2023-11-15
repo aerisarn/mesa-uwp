@@ -139,6 +139,12 @@ struct agx_shader_info {
    /* Shader is incompatible with triangle merging */
    bool disable_tri_merging;
 
+   /* Reads draw ID system value */
+   bool uses_draw_id;
+
+   /* Reads base vertex/instance */
+   bool uses_base_param;
+
    /* Shader uses txf, requiring a workaround sampler in the given location */
    bool uses_txf;
    unsigned txf_sampler;
