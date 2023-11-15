@@ -121,6 +121,55 @@ pub trait Builder {
 pub trait SSABuilder: Builder {
     fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> SSARef;
 
+    fn shl(&mut self, x: Src, shift: Src) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::GPR, 1);
+        if self.sm() >= 70 {
+            self.push_op(OpShf {
+                dst: dst.into(),
+                low: x,
+                high: 0.into(),
+                shift: shift,
+                right: false,
+                wrap: false,
+                data_type: IntType::I32,
+                dst_high: false,
+            });
+        } else {
+            self.push_op(OpShl {
+                dst: dst.into(),
+                src: x,
+                shift: shift,
+                wrap: false,
+            });
+        }
+        dst
+    }
+
+    fn shr(&mut self, x: Src, shift: Src, signed: bool) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::GPR, 1);
+        if self.sm() >= 70 {
+            self.push_op(OpShf {
+                dst: dst.into(),
+                low: 0.into(),
+                high: x,
+                shift: shift,
+                right: true,
+                wrap: false,
+                data_type: if signed { IntType::I32 } else { IntType::U32 },
+                dst_high: true,
+            });
+        } else {
+            self.push_op(OpShr {
+                dst: dst.into(),
+                src: x,
+                shift: shift,
+                wrap: false,
+                signed,
+            });
+        }
+        dst
+    }
+
     fn fadd(&mut self, x: Src, y: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.push_op(OpFAdd {

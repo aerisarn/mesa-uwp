@@ -899,18 +899,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst
                 } else {
                     assert!(alu.def.bit_size() == 32);
-                    let dst = b.alloc_ssa(RegFile::GPR, 1);
-                    b.push_op(OpShf {
-                        dst: dst.into(),
-                        low: x.into(),
-                        high: 0.into(),
-                        shift: shift,
-                        right: false,
-                        wrap: true,
-                        data_type: IntType::U32,
-                        dst_high: false,
-                    });
-                    dst
+                    b.shl(srcs[0], srcs[1])
                 }
             }
             nir_op_ishr => {
@@ -944,18 +933,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst
                 } else {
                     assert!(alu.def.bit_size() == 32);
-                    let dst = b.alloc_ssa(RegFile::GPR, 1);
-                    b.push_op(OpShf {
-                        dst: dst.into(),
-                        low: 0.into(),
-                        high: x.into(),
-                        shift: shift,
-                        right: true,
-                        wrap: true,
-                        data_type: IntType::I32,
-                        dst_high: true,
-                    });
-                    dst
+                    b.shr(srcs[0], srcs[1], true)
                 }
             }
             nir_op_ixor => b.lop2(LogicOp2::Xor, srcs[0], srcs[1]),
@@ -1153,18 +1131,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst
                 } else {
                     assert!(alu.def.bit_size() == 32);
-                    let dst = b.alloc_ssa(RegFile::GPR, 1);
-                    b.push_op(OpShf {
-                        dst: dst.into(),
-                        low: x.into(),
-                        high: 0.into(),
-                        shift: shift,
-                        right: true,
-                        wrap: true,
-                        data_type: IntType::U32,
-                        dst_high: false,
-                    });
-                    dst
+                    b.shr(srcs[0], srcs[1], false)
                 }
             }
             nir_op_fddx | nir_op_fddx_coarse | nir_op_fddx_fine => {

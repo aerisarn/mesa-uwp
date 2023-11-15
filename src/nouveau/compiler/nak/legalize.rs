@@ -72,6 +72,16 @@ fn swap_srcs_if_not_reg(x: &mut Src, y: &mut Src) -> bool {
     }
 }
 
+fn copy_src_if_i20_overflow(
+    b: &mut impl SSABuilder,
+    src: &mut Src,
+    file: RegFile,
+) {
+    if src.as_imm_not_i20().is_some() {
+        copy_src(b, src, file);
+    }
+}
+
 fn legalize_sm50_instr(
     b: &mut impl SSABuilder,
     _bl: &impl BlockLiveness,
@@ -82,6 +92,14 @@ fn legalize_sm50_instr(
         Op::Shf(op) => {
             copy_src_if_not_reg(b, &mut op.shift, RegFile::GPR);
             copy_src_if_not_reg(b, &mut op.high, RegFile::GPR);
+        }
+        Op::Shl(op) => {
+            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_src_if_i20_overflow(b, &mut op.shift, RegFile::GPR);
+        }
+        Op::Shr(op) => {
+            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_src_if_i20_overflow(b, &mut op.shift, RegFile::GPR);
         }
         Op::FAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;

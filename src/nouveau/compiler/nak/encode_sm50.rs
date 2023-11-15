@@ -544,6 +544,51 @@ impl SM50Instr {
         self.set_bit(50, op.wrap);
     }
 
+    fn encode_shl(&mut self, op: &OpShl) {
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.src);
+        match op.shift.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c48);
+                self.set_reg_src(20..28, op.shift);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x3848);
+                self.set_src_imm_i20(20..39, 56, i);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4c48);
+                self.set_src_cb(20..39, &cb);
+            }
+            src1 => panic!("unsupported src1 type for SHL: {src1}"),
+        }
+
+        self.set_bit(39, op.wrap);
+    }
+
+    fn encode_shr(&mut self, op: &OpShr) {
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.src);
+        match op.shift.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c28);
+                self.set_reg_src(20..28, op.shift);
+            }
+            SrcRef::Imm32(i) => {
+                self.set_opcode(0x3828);
+                self.set_src_imm_i20(20..39, 56, i);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4c28);
+                self.set_src_cb(20..39, &cb);
+            }
+            src1 => panic!("unsupported src1 type for SHL: {src1}"),
+        }
+
+        self.set_bit(39, op.wrap);
+        self.set_bit(48, op.signed);
+    }
+
     fn encode_i2f(&mut self, op: &OpI2F) {
         let abs_bit = 49;
         let neg_bit = 45;
@@ -1604,6 +1649,8 @@ impl SM50Instr {
             Op::St(op) => si.encode_st(&op),
             Op::Lop2(op) => si.encode_lop2(&op),
             Op::Shf(op) => si.encode_shf(&op),
+            Op::Shl(op) => si.encode_shl(&op),
+            Op::Shr(op) => si.encode_shr(&op),
             Op::F2F(op) => si.encode_f2f(&op),
             Op::F2I(op) => si.encode_f2i(&op),
             Op::I2F(op) => si.encode_i2f(&op),

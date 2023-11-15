@@ -2816,6 +2816,60 @@ impl DisplayOp for OpShf {
 }
 impl_display_for_op!(OpShf);
 
+/// Only used on SM50
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpShl {
+    pub dst: Dst,
+
+    #[src_type(GPR)]
+    pub src: Src,
+
+    #[src_type(ALU)]
+    pub shift: Src,
+
+    pub wrap: bool,
+}
+
+impl DisplayOp for OpShl {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "shl")?;
+        if self.wrap {
+            write!(f, ".w")?;
+        }
+        write!(f, " {} {}", self.src, self.shift)
+    }
+}
+
+/// Only used on SM50
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpShr {
+    pub dst: Dst,
+
+    #[src_type(GPR)]
+    pub src: Src,
+
+    #[src_type(ALU)]
+    pub shift: Src,
+
+    pub wrap: bool,
+    pub signed: bool,
+}
+
+impl DisplayOp for OpShr {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "shr")?;
+        if self.wrap {
+            write!(f, ".w")?;
+        }
+        if !self.signed {
+            write!(f, ".u32")?;
+        }
+        write!(f, " {} {}", self.src, self.shift)
+    }
+}
+
 #[repr(C)]
 #[derive(DstsAsSlice)]
 pub struct OpF2F {
@@ -4511,6 +4565,8 @@ pub enum Op {
     Lop3(OpLop3),
     PopC(OpPopC),
     Shf(OpShf),
+    Shl(OpShl),
+    Shr(OpShr),
     F2F(OpF2F),
     F2I(OpF2I),
     I2F(OpI2F),
@@ -4945,7 +5001,9 @@ impl Instr {
             | Op::ISetP(_)
             | Op::Lop2(_)
             | Op::Lop3(_)
-            | Op::Shf(_) => true,
+            | Op::Shf(_)
+            | Op::Shl(_)
+            | Op::Shr(_) => true,
 
             // Conversions are variable latency?!?
             Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::FRnd(_) => false,
