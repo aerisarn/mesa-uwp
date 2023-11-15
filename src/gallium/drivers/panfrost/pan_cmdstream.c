@@ -2569,12 +2569,13 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 const struct panfrost_ptr *vertex_job,
                                 const struct panfrost_ptr *tiler_job)
 {
-   unsigned vertex = panfrost_add_job(&batch->pool.base, &batch->scoreboard,
+   unsigned vertex = panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
                                       MALI_JOB_TYPE_VERTEX, false, false, 0, 0,
                                       vertex_job, false);
 
-   panfrost_add_job(&batch->pool.base, &batch->scoreboard, MALI_JOB_TYPE_TILER,
-                    false, false, vertex, 0, tiler_job, false);
+   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
+                    MALI_JOB_TYPE_TILER, false, false, vertex, 0, tiler_job,
+                    false);
 }
 #endif
 
@@ -2677,7 +2678,7 @@ emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
       pan_pool_alloc_desc(&batch->pool.base, FRAGMENT_JOB);
 
    GENX(pan_emit_fragment_job)(pfb, batch->framebuffer.gpu, transfer.cpu);
-   batch->frag_job = transfer.gpu;
+   batch->jm.jobs.frag = transfer.gpu;
 }
 
 #define DEFINE_CASE(c)                                                         \
@@ -3523,7 +3524,7 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
 #if PAN_ARCH <= 5
    job_type = MALI_JOB_TYPE_VERTEX;
 #endif
-   panfrost_add_job(&batch->pool.base, &batch->scoreboard, job_type, true,
+   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc, job_type, true,
                     false, 0, 0, &t, false);
    batch->compute_count++;
 
@@ -3692,7 +3693,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
    panfrost_emit_malloc_vertex(batch, info, draw, secondary_shader, tiler.cpu);
 
-   panfrost_add_job(&batch->pool.base, &batch->scoreboard,
+   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
                     MALI_JOB_TYPE_MALLOC_VERTEX, false, false, 0, 0, &tiler,
                     false);
 #else
@@ -3704,7 +3705,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
       panfrost_draw_emit_vertex_section(
          batch, pan_section_ptr(tiler.cpu, INDEXED_VERTEX_JOB, VERTEX_DRAW));
 
-      panfrost_add_job(&batch->pool.base, &batch->scoreboard,
+      panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
                        MALI_JOB_TYPE_INDEXED_VERTEX, false, false, 0, 0, &tiler,
                        false);
 #endif
@@ -3923,11 +3924,11 @@ panfrost_launch_grid_on_batch(struct pipe_context *pipe,
       };
 
       indirect_dep = GENX(pan_indirect_dispatch_emit)(
-         &batch->pool.base, &batch->scoreboard, &indirect);
+         &batch->pool.base, &batch->jm.jobs.vtc_jc, &indirect);
    }
 #endif
 
-   panfrost_add_job(&batch->pool.base, &batch->scoreboard,
+   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
                     MALI_JOB_TYPE_COMPUTE, true, false, indirect_dep, 0, &t,
                     false);
    batch->compute_count++;
@@ -4516,7 +4517,7 @@ static void
 preload(struct panfrost_batch *batch, struct pan_fb_info *fb)
 {
    GENX(pan_preload_fb)
-   (&batch->pool.base, &batch->scoreboard, fb, batch->tls.gpu,
+   (&batch->pool.base, &batch->jm.jobs.vtc_jc, fb, batch->tls.gpu,
     PAN_ARCH >= 6 ? batch->tiler_ctx.bifrost : 0, NULL);
 }
 
@@ -4634,8 +4635,8 @@ init_polygon_list(struct panfrost_batch *batch)
 {
 #if PAN_ARCH <= 5
    mali_ptr polygon_list = batch_get_polygon_list(batch);
-   panfrost_scoreboard_initialize_tiler(&batch->pool.base, &batch->scoreboard,
-                                        polygon_list);
+   panfrost_scoreboard_initialize_tiler(&batch->pool.base,
+                                        &batch->jm.jobs.vtc_jc, polygon_list);
 #endif
 }
 
@@ -4718,7 +4719,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
     * least one tiler job. Tiler heap is written by tiler jobs and read
     * by fragment jobs (the polygon list is coming from this heap).
     */
-   if (batch->scoreboard.first_tiler)
+   if (batch->jm.jobs.vtc_jc.first_tiler)
       bo_handles[submit.bo_handle_count++] = dev->tiler_heap->gem_handle;
 
    /* Always used on Bifrost, occassionally used on Midgard */
@@ -4762,8 +4763,8 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch)
 {
    struct pipe_screen *pscreen = batch->ctx->base.screen;
    struct panfrost_device *dev = pan_device(pscreen);
-   bool has_draws = batch->scoreboard.first_job;
-   bool has_tiler = batch->scoreboard.first_tiler;
+   bool has_draws = batch->jm.jobs.vtc_jc.first_job;
+   bool has_tiler = batch->jm.jobs.vtc_jc.first_tiler;
    bool has_frag = panfrost_has_fragment_job(batch);
    uint32_t out_sync = batch->ctx->syncobj;
    int ret = 0;
@@ -4776,15 +4777,15 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch)
       pthread_mutex_lock(&dev->submit_lock);
 
    if (has_draws) {
-      ret = panfrost_batch_submit_ioctl(batch, batch->scoreboard.first_job, 0,
-                                        has_frag ? 0 : out_sync);
+      ret = panfrost_batch_submit_ioctl(batch, batch->jm.jobs.vtc_jc.first_job,
+                                        0, has_frag ? 0 : out_sync);
 
       if (ret)
          goto done;
    }
 
    if (has_frag) {
-      ret = panfrost_batch_submit_ioctl(batch, batch->frag_job,
+      ret = panfrost_batch_submit_ioctl(batch, batch->jm.jobs.frag,
                                         PANFROST_JD_REQ_FS, out_sync);
       if (ret)
          goto done;

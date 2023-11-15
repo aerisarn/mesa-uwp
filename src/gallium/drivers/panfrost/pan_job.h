@@ -29,9 +29,9 @@
 #include "pipe/p_state.h"
 #include "util/u_dynarray.h"
 #include "pan_cs.h"
+#include "pan_jm.h"
 #include "pan_mempool.h"
 #include "pan_resource.h"
-#include "pan_scoreboard.h"
 
 /* Simple tri-state data structure. In the default "don't care" state, the value
  * may be set to true or false. However, once the value is set, it must not be
@@ -139,12 +139,6 @@ struct panfrost_batch {
     * varyings */
    struct panfrost_pool invisible_pool;
 
-   /* Job scoreboarding state */
-   struct pan_scoreboard scoreboard;
-
-   /* Fragment job GPU address */
-   mali_ptr frag_job;
-
    /* Scratchpad BO bound to the batch, or NULL if none bound yet */
    struct panfrost_bo *scratchpad;
 
@@ -214,6 +208,11 @@ struct panfrost_batch {
 
    /* Number of compute jobs in the batch. */
    uint32_t compute_count;
+
+   /* Job frontend specific fields. */
+   union {
+      struct panfrost_jm_batch jm;
+   };
 };
 
 /* Functions for managing the above */
