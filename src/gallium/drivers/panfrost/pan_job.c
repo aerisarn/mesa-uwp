@@ -709,8 +709,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
  * implicit dep between them) */
 
 static int
-panfrost_batch_submit_jobs(struct panfrost_batch *batch,
-                           const struct pan_fb_info *fb)
+panfrost_batch_submit_jobs(struct panfrost_batch *batch)
 {
    struct pipe_screen *pscreen = batch->ctx->base.screen;
    struct panfrost_device *dev = pan_device(pscreen);
@@ -818,7 +817,7 @@ panfrost_batch_submit(struct panfrost_context *ctx,
       screen->vtbl.emit_fragment_job(batch, &fb);
    }
 
-   ret = panfrost_batch_submit_jobs(batch, &fb);
+   ret = panfrost_batch_submit_jobs(batch);
 
    if (ret)
       fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
