@@ -2560,14 +2560,14 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 }
 
 /*
- * Emit jobs required for the rasterization pipeline. If there are side effects
+ * Push jobs required for the rasterization pipeline. If there are side effects
  * from the vertex shader, these are handled ahead-of-time with a compute
  * shader. This function should not be called if rasterization is skipped.
  */
 static void
-panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
-                                const struct panfrost_ptr *vertex_job,
-                                const struct panfrost_ptr *tiler_job)
+jm_push_vertex_tiler_jobs(struct panfrost_batch *batch,
+                          const struct panfrost_ptr *vertex_job,
+                          const struct panfrost_ptr *tiler_job)
 {
    unsigned vertex = panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
                                       MALI_JOB_TYPE_VERTEX, false, false, 0, 0,
@@ -3711,7 +3711,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 #endif
    } else {
       panfrost_draw_emit_vertex(batch, info, &invocation, vertex.cpu);
-      panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
+      jm_push_vertex_tiler_jobs(batch, &vertex, &tiler);
    }
 #endif
    batch->draw_count++;
