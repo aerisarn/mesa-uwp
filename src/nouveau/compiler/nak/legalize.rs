@@ -323,6 +323,9 @@ fn legalize_sm50_instr(
         Op::BRev(op) => {
             copy_alu_src_if_not_reg(b, &mut op.src, SrcType::ALU);
         }
+        Op::Flo(op) => {
+            copy_alu_src_if_i20_overflow(b, &mut op.src, SrcType::ALU);
+        }
         Op::FMnMx(op) => {
             copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::F32);
             copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::F32);

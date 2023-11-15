@@ -1644,6 +1644,30 @@ impl SM50Instr {
         );
     }
 
+    fn encode_flo(&mut self, op: &OpFlo) {
+        match op.src.src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c30);
+                self.set_reg_src_ref(20..28, op.src.src_ref);
+            }
+            SrcRef::Imm32(imm) => {
+                self.set_opcode(0x3830);
+                self.set_src_imm_i20(20..39, 56, imm);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4c30);
+                self.set_src_cb(20..39, &cb);
+            }
+            src => panic!("Unsupported src type for FLO: {src}"),
+        }
+
+        self.set_dst(op.dst);
+        self.set_bit(40, op.src.src_mod.is_bnot());
+        self.set_bit(48, op.signed);
+        self.set_bit(41, op.return_shift_amount);
+        self.set_bit(47, false); /* dst.CC */
+    }
+
     fn encode_dadd(&mut self, op: &OpDAdd) {
         match &op.srcs[1].src_ref {
             SrcRef::Zero | SrcRef::Reg(_) => {
@@ -1913,6 +1937,7 @@ impl SM50Instr {
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::FSwzAdd(op) => si.encode_fswzadd(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
+            Op::Flo(op) => si.encode_flo(&op),
             Op::DAdd(op) => si.encode_dadd(&op),
             Op::DFma(op) => si.encode_dfma(&op),
             Op::DMnMx(op) => si.encode_dmnmx(&op),
