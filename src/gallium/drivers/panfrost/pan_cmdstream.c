@@ -4567,7 +4567,7 @@ screen_destroy(struct pipe_screen *pscreen)
 }
 
 static void
-preload(struct panfrost_batch *batch, struct pan_fb_info *fb)
+jm_preload_fb(struct panfrost_batch *batch, struct pan_fb_info *fb)
 {
    GENX(pan_preload_fb)
    (&batch->pool.base, &batch->jm.jobs.vtc_jc, fb, batch->tls.gpu,
@@ -4853,7 +4853,7 @@ done:
 static int
 submit_batch(struct panfrost_batch *batch, struct pan_fb_info *fb)
 {
-   preload(batch, fb);
+   jm_preload_fb(batch, fb);
    init_polygon_list(batch);
 
    /* Now that all draws are in, we can finally prepare the
