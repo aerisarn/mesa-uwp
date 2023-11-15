@@ -179,7 +179,12 @@ impl SM50Instr {
     }
 
     fn set_dst(&mut self, dst: Dst) {
-        self.set_reg(0..8, *dst.as_reg().unwrap());
+        let reg = match dst {
+            Dst::None => RegRef::zero(RegFile::GPR, 1),
+            Dst::Reg(reg) => reg,
+            _ => panic!("invalid dst {dst}"),
+        };
+        self.set_reg(0..8, reg);
     }
 
     fn set_src_imm32(&mut self, range: Range<usize>, u: u32) {
