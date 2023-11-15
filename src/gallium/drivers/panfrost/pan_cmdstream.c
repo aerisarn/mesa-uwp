@@ -3648,51 +3648,11 @@ panfrost_direct_draw(struct panfrost_batch *batch,
    struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
 
    bool idvs = vs->info.vs.idvs;
-   bool secondary_shader = vs->info.vs.secondary_enable;
-
-   UNUSED struct panfrost_ptr tiler, vertex;
-
-   if (idvs) {
-#if PAN_ARCH >= 9
-      tiler = pan_pool_alloc_desc(&batch->pool.base, MALLOC_VERTEX_JOB);
-#elif PAN_ARCH >= 6
-      tiler = pan_pool_alloc_desc(&batch->pool.base, INDEXED_VERTEX_JOB);
-#else
-      unreachable("IDVS is unsupported on Midgard");
-#endif
-   } else {
-      vertex = pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
-      tiler = pan_pool_alloc_desc(&batch->pool.base, TILER_JOB);
-   }
 
    UNUSED unsigned vertex_count =
       panfrost_draw_get_vertex_count(batch, info, draw, idvs);
 
    panfrost_statistics_record(ctx, info, draw);
-
-#if PAN_ARCH <= 7
-   struct mali_invocation_packed invocation;
-   if (info->instance_count > 1) {
-      panfrost_pack_work_groups_compute(&invocation, 1, vertex_count,
-                                        info->instance_count, 1, 1, 1, true,
-                                        false);
-   } else {
-      pan_pack(&invocation, INVOCATION, cfg) {
-         cfg.invocations = vertex_count - 1;
-         cfg.size_y_shift = 0;
-         cfg.size_z_shift = 0;
-         cfg.workgroups_x_shift = 0;
-         cfg.workgroups_y_shift = 0;
-         cfg.workgroups_z_shift = 32;
-         cfg.thread_group_split = MALI_SPLIT_MIN_EFFICIENT;
-      }
-   }
-
-   /* Emit all sort of descriptors. */
-   panfrost_emit_varying_descriptor(batch,
-                                    ctx->padded_count * ctx->instance_count,
-                                    info->mode == MESA_PRIM_POINTS);
-#endif
 
    panfrost_update_state_3d(batch);
    panfrost_update_shader_state(batch, PIPE_SHADER_VERTEX);
@@ -3714,6 +3674,47 @@ panfrost_direct_draw(struct panfrost_batch *batch,
     */
    if (panfrost_batch_skip_rasterization(batch))
       return;
+
+   bool secondary_shader = vs->info.vs.secondary_enable;
+
+#if PAN_ARCH <= 7
+   /* Emit all sort of descriptors. */
+   panfrost_emit_varying_descriptor(batch,
+                                    ctx->padded_count * ctx->instance_count,
+                                    info->mode == MESA_PRIM_POINTS);
+
+   struct mali_invocation_packed invocation;
+   if (info->instance_count > 1) {
+      panfrost_pack_work_groups_compute(&invocation, 1, vertex_count,
+                                        info->instance_count, 1, 1, 1, true,
+                                        false);
+   } else {
+      pan_pack(&invocation, INVOCATION, cfg) {
+         cfg.invocations = vertex_count - 1;
+         cfg.size_y_shift = 0;
+         cfg.size_z_shift = 0;
+         cfg.workgroups_x_shift = 0;
+         cfg.workgroups_y_shift = 0;
+         cfg.workgroups_z_shift = 32;
+         cfg.thread_group_split = MALI_SPLIT_MIN_EFFICIENT;
+      }
+   }
+#endif
+
+   UNUSED struct panfrost_ptr tiler, vertex;
+
+   if (idvs) {
+#if PAN_ARCH >= 9
+      tiler = pan_pool_alloc_desc(&batch->pool.base, MALLOC_VERTEX_JOB);
+#elif PAN_ARCH >= 6
+      tiler = pan_pool_alloc_desc(&batch->pool.base, INDEXED_VERTEX_JOB);
+#else
+      unreachable("IDVS is unsupported on Midgard");
+#endif
+   } else {
+      vertex = pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
+      tiler = pan_pool_alloc_desc(&batch->pool.base, TILER_JOB);
+   }
 
 #if PAN_ARCH >= 9
    assert(idvs && "Memory allocated IDVS required on Valhall");
