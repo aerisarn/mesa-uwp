@@ -367,7 +367,7 @@ is_trivial_bcsel(const nir_instr *instr, bool allow_non_phi_src)
  *    }
  */
 static bool
-opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
+opt_split_alu_of_phi(nir_builder *b, nir_loop *loop, nir_opt_if_options options)
 {
    bool progress = false;
    nir_block *header_block = nir_loop_first_block(loop);
@@ -401,7 +401,9 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
        */
       if (nir_op_is_vec_or_mov(alu->op) ||
           nir_alu_instr_is_comparison(alu) ||
-          alu_instr_is_type_conversion(alu))
+          alu_instr_is_type_conversion(alu) ||
+          /* Avoid fighting with nir_lower_64bit_phis */
+          (alu->def.bit_size == 64 && (options & nir_opt_if_avoid_64bit_phis)))
          continue;
 
       bool has_phi_src_from_prev_block = false;
@@ -1608,7 +1610,7 @@ opt_if_regs_cf_list(struct exec_list *cf_list)
  * not do anything to cause the metadata to become invalid.
  */
 static bool
-opt_if_safe_cf_list(nir_builder *b, struct exec_list *cf_list)
+opt_if_safe_cf_list(nir_builder *b, struct exec_list *cf_list, nir_opt_if_options options)
 {
    bool progress = false;
    foreach_list_typed(nir_cf_node, cf_node, node, cf_list) {
@@ -1618,8 +1620,8 @@ opt_if_safe_cf_list(nir_builder *b, struct exec_list *cf_list)
 
       case nir_cf_node_if: {
          nir_if *nif = nir_cf_node_as_if(cf_node);
-         progress |= opt_if_safe_cf_list(b, &nif->then_list);
-         progress |= opt_if_safe_cf_list(b, &nif->else_list);
+         progress |= opt_if_safe_cf_list(b, &nif->then_list, options);
+         progress |= opt_if_safe_cf_list(b, &nif->else_list, options);
          progress |= opt_if_evaluate_condition_use(b, nif);
          nir_scalar cond = nir_scalar_resolved(nif->condition.ssa, 0);
          progress |= opt_if_rewrite_uniform_uses(b, nif, cond, true);
@@ -1629,8 +1631,8 @@ opt_if_safe_cf_list(nir_builder *b, struct exec_list *cf_list)
       case nir_cf_node_loop: {
          nir_loop *loop = nir_cf_node_as_loop(cf_node);
          assert(!nir_loop_has_continue_construct(loop));
-         progress |= opt_if_safe_cf_list(b, &loop->body);
-         progress |= opt_split_alu_of_phi(b, loop);
+         progress |= opt_if_safe_cf_list(b, &loop->body, options);
+         progress |= opt_split_alu_of_phi(b, loop, options);
          break;
       }
 
@@ -1652,7 +1654,7 @@ nir_opt_if(nir_shader *shader, nir_opt_if_options options)
 
       nir_metadata_require(impl, nir_metadata_block_index |
                                     nir_metadata_dominance);
-      progress = opt_if_safe_cf_list(&b, &impl->body);
+      progress = opt_if_safe_cf_list(&b, &impl->body, options);
       nir_metadata_preserve(impl, nir_metadata_block_index |
                                      nir_metadata_dominance);
 
