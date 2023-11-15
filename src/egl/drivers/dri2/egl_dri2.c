@@ -1080,8 +1080,31 @@ dri2_setup_device(_EGLDisplay *disp, EGLBoolean software)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    _EGLDevice *dev;
+   int render_fd;
 
-   dev = _eglFindDevice(dri2_dpy->fd_render_gpu, software);
+   /* Extensions must be loaded before calling this function */
+   assert(dri2_dpy->mesa);
+   /* If we're not software, we need a DRM node FD */
+   assert(software || dri2_dpy->fd_render_gpu >= 0);
+
+   /* fd_render_gpu is what we got from WSI, so might actually be a lie and
+    * not a render node... */
+   if (software) {
+      render_fd = -1;
+   } else if (loader_is_device_render_capable(dri2_dpy->fd_render_gpu)) {
+      render_fd = dri2_dpy->fd_render_gpu;
+   } else {
+      render_fd = dri2_dpy->mesa->queryCompatibleRenderOnlyDeviceFd(
+         dri2_dpy->fd_render_gpu);
+      if (render_fd < 0)
+         return EGL_FALSE;
+   }
+
+   dev = _eglFindDevice(render_fd, software);
+
+   if (render_fd >= 0 && render_fd != dri2_dpy->fd_render_gpu)
+      close(render_fd);
+
    if (!dev)
       return EGL_FALSE;
 
