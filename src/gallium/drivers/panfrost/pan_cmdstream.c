@@ -3128,9 +3128,9 @@ panfrost_emit_resources(struct panfrost_batch *batch,
 }
 
 static void
-panfrost_emit_shader(struct panfrost_batch *batch,
-                     struct MALI_SHADER_ENVIRONMENT *cfg,
-                     enum pipe_shader_type stage, mali_ptr shader_ptr)
+jm_emit_shader_env(struct panfrost_batch *batch,
+                   struct MALI_SHADER_ENVIRONMENT *cfg,
+                   enum pipe_shader_type stage, mali_ptr shader_ptr)
 {
    cfg->resources = panfrost_emit_resources(batch, stage);
    cfg->thread_storage = batch->tls.gpu;
@@ -3249,8 +3249,8 @@ jm_emit_tiler_draw(void *out, struct panfrost_batch *batch, bool fs_required,
          cfg.overdraw_alpha0 = panfrost_overdraw_alpha(ctx, 0);
          cfg.overdraw_alpha1 = panfrost_overdraw_alpha(ctx, 1);
 
-         panfrost_emit_shader(batch, &cfg.shader, PIPE_SHADER_FRAGMENT,
-                              batch->rsd[PIPE_SHADER_FRAGMENT]);
+         jm_emit_shader_env(batch, &cfg.shader, PIPE_SHADER_FRAGMENT,
+                            batch->rsd[PIPE_SHADER_FRAGMENT]);
       } else {
          /* These operations need to be FORCE to benefit from the
           * depth-only pass optimizations.
@@ -3388,8 +3388,8 @@ jm_emit_malloc_vertex_job(struct panfrost_batch *batch,
                       fs_required, u_reduced_prim(info->mode));
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, POSITION, cfg) {
-      panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX,
-                           panfrost_get_position_shader(batch, info));
+      jm_emit_shader_env(batch, &cfg, PIPE_SHADER_VERTEX,
+                         panfrost_get_position_shader(batch, info));
    }
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, VARYING, cfg) {
@@ -3400,8 +3400,8 @@ jm_emit_malloc_vertex_job(struct panfrost_batch *batch,
       if (!secondary_shader)
          continue;
 
-      panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX,
-                           panfrost_get_varying_shader(batch));
+      jm_emit_shader_env(batch, &cfg, PIPE_SHADER_VERTEX,
+                         panfrost_get_varying_shader(batch));
    }
 }
 #endif
@@ -3456,8 +3456,8 @@ jm_launch_xfb(struct panfrost_batch *batch, const struct pipe_draw_info *info,
       cfg.workgroup_count_y = info->instance_count;
       cfg.workgroup_count_z = 1;
 
-      panfrost_emit_shader(batch, &cfg.compute, PIPE_SHADER_VERTEX,
-                           batch->rsd[PIPE_SHADER_VERTEX]);
+      jm_emit_shader_env(batch, &cfg.compute, PIPE_SHADER_VERTEX,
+                         batch->rsd[PIPE_SHADER_VERTEX]);
 
       /* TODO: Indexing. Also, this is a legacy feature... */
       cfg.compute.attribute_offset = batch->ctx->offset_start;
@@ -3896,8 +3896,8 @@ jm_launch_grid(struct panfrost_batch *batch, const struct pipe_grid_info *info)
       cfg.workgroup_count_y = num_wg[1];
       cfg.workgroup_count_z = num_wg[2];
 
-      panfrost_emit_shader(batch, &cfg.compute, PIPE_SHADER_COMPUTE,
-                           batch->rsd[PIPE_SHADER_COMPUTE]);
+      jm_emit_shader_env(batch, &cfg.compute, PIPE_SHADER_COMPUTE,
+                         batch->rsd[PIPE_SHADER_COMPUTE]);
 
       /* Workgroups may be merged if the shader does not use barriers
        * or shared memory. This condition is checked against the
