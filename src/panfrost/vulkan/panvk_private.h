@@ -199,6 +199,7 @@ enum panvk_debug_flags {
    PANVK_DEBUG_AFBC = 1 << 4,
    PANVK_DEBUG_LINEAR = 1 << 5,
    PANVK_DEBUG_DUMP = 1 << 6,
+   PANVK_DEBUG_NO_KNOWN_WARN = 1 << 7,
 };
 
 struct panvk_instance {

@@ -112,10 +112,15 @@ panvk_get_device_uuid(void *uuid)
 }
 
 static const struct debug_control panvk_debug_options[] = {
-   {"startup", PANVK_DEBUG_STARTUP}, {"nir", PANVK_DEBUG_NIR},
-   {"trace", PANVK_DEBUG_TRACE},     {"sync", PANVK_DEBUG_SYNC},
-   {"afbc", PANVK_DEBUG_AFBC},       {"linear", PANVK_DEBUG_LINEAR},
-   {"dump", PANVK_DEBUG_DUMP},       {NULL, 0}};
+   {"startup", PANVK_DEBUG_STARTUP},
+   {"nir", PANVK_DEBUG_NIR},
+   {"trace", PANVK_DEBUG_TRACE},
+   {"sync", PANVK_DEBUG_SYNC},
+   {"afbc", PANVK_DEBUG_AFBC},
+   {"linear", PANVK_DEBUG_LINEAR},
+   {"dump", PANVK_DEBUG_DUMP},
+   {"no_known_warn", PANVK_DEBUG_NO_KNOWN_WARN},
+   {NULL, 0}};
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
 #define PANVK_USE_WSI_PLATFORM

@@ -210,6 +210,7 @@ panfrost-g52-vk:arm64:
     VK_DRIVER: panfrost
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
     PAN_I_WANT_A_BROKEN_VULKAN_DRIVER: 1
+    PANVK_DEBUG: no_known_warn
     DEQP_SUITE: panfrost-g52-vk
 
 panfrost-g52-piglit-gles2:arm64:

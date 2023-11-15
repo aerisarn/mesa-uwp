@@ -798,13 +798,18 @@ panvk_index_minmax_search(struct panvk_cmd_buffer *cmdbuf, uint32_t start,
    void *ptr = cmdbuf->state.ib.buffer->bo->ptr.cpu +
                cmdbuf->state.ib.buffer->bo_offset + cmdbuf->state.ib.offset;
 
-   fprintf(
-      stderr,
-      "WARNING: Crawling index buffers from the CPU isn't valid in Vulkan\n");
-
    assert(cmdbuf->state.ib.buffer);
    assert(cmdbuf->state.ib.buffer->bo);
    assert(cmdbuf->state.ib.buffer->bo->ptr.cpu);
+
+   uint32_t debug_flags =
+      cmdbuf->device->physical_device->instance->debug_flags;
+
+   if (!(debug_flags & PANVK_DEBUG_NO_KNOWN_WARN)) {
+      fprintf(
+         stderr,
+         "WARNING: Crawling index buffers from the CPU isn't valid in Vulkan\n");
+   }
 
    *max = 0;
 
