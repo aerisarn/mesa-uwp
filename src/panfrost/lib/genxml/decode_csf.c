@@ -707,7 +707,7 @@ interpret_ceu_instr(struct pandecode_context *ctx, struct queue_ctx *qctx)
    }
 
    case MALI_CEU_OPCODE_JUMP: {
-      pan_unpack(bytes, CEU_CALL, I);
+      pan_unpack(bytes, CEU_JUMP, I);
 
       if (qctx->call_stack_depth == 0) {
          fprintf(stderr, "Cannot jump from the entrypoint\n");
