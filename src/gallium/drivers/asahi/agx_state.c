@@ -3482,9 +3482,6 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
       unreachable("TODO: Primitive restart with GS");
    }
 
-   /* Update after we're done touching uniforms */
-   agx_upload_uniforms(batch);
-
    struct pipe_grid_info grid = {.block = {1, 1, 1}};
    struct agx_resource grid_indirect_rsrc = {.bo = batch->geom_params_bo};
 
