@@ -3597,7 +3597,8 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
 
 static bool
 agx_needs_passthrough_gs(struct agx_context *ctx,
-                         const struct pipe_draw_info *info)
+                         const struct pipe_draw_info *info,
+                         const struct pipe_draw_indirect_info *indirect)
 {
    /* If there is already a geometry shader in the pipeline, we do not need to
     * apply a passthrough GS of our own.
@@ -3631,6 +3632,12 @@ agx_needs_passthrough_gs(struct agx_context *ctx,
        ctx->stage[MESA_SHADER_FRAGMENT].shader->info.inputs_flat_shaded) {
 
       perf_debug_ctx(ctx, "Using passthrough GS due to tri fan bug");
+      return true;
+   }
+
+   /* TODO: this is sloppy, we should add a VDM kernel for this. */
+   if (indirect && ctx->active_queries && ctx->prims_generated[0]) {
+      perf_debug_ctx(ctx, "Using passthrough GS due to indirect prim query");
       return true;
    }
 
@@ -3745,21 +3752,13 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       return;
    }
 
-   if (agx_needs_passthrough_gs(ctx, info)) {
+   if (agx_needs_passthrough_gs(ctx, info, indirect)) {
       agx_apply_passthrough_gs(ctx, info, drawid_offset, indirect, draws,
                                num_draws);
       return;
    }
 
-   /* Only the rasterization stream counts */
-   bool uses_prims_generated = ctx->active_queries && ctx->prims_generated[0];
    bool uses_gs = ctx->stage[PIPE_SHADER_GEOMETRY].shader;
-
-   if (indirect && (uses_prims_generated)) {
-      perf_debug_ctx(ctx, "Emulating indirect draw due to query");
-      util_draw_indirect(pctx, info, indirect);
-      return;
-   }
 
    if (uses_gs && info->primitive_restart) {
       perf_debug_ctx(ctx, "Emulating primitive restart due to GS");
@@ -3768,7 +3767,11 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       return;
    }
 
-   if (uses_prims_generated && !ctx->stage[PIPE_SHADER_GEOMETRY].shader) {
+   /* Only the rasterization stream counts */
+   if (ctx->active_queries && ctx->prims_generated[0] &&
+       !ctx->stage[PIPE_SHADER_GEOMETRY].shader) {
+
+      assert(!indirect && "we force a passthrough GS for this");
       agx_primitives_update_direct(ctx, info, draws);
    }
 
