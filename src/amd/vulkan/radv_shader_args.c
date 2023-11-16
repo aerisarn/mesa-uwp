@@ -832,7 +832,7 @@ radv_declare_ps_epilog_args(const struct radv_device *device, const struct radv_
       if (col_format == V_028714_SPI_SHADER_ZERO)
          continue;
 
-      ac_add_arg(&args->ac, AC_ARG_VGPR, 4, AC_ARG_FLOAT, &args->ps_epilog_inputs[i]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 4, AC_ARG_FLOAT, &args->colors[i]);
    }
 }
 
