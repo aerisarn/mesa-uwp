@@ -45,7 +45,7 @@ xe_execute_simple_batch(struct anv_queue *queue,
       return vk_errorf(device, VK_ERROR_UNKNOWN, "Unable to create sync obj");
 
    struct drm_xe_sync sync = {
-      .flags = DRM_XE_SYNC_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
+      .flags = DRM_XE_SYNC_FLAG_SYNCOBJ | DRM_XE_SYNC_FLAG_SIGNAL,
       .handle = syncobj_handle,
    };
    struct drm_xe_exec exec = {
@@ -91,14 +91,14 @@ xe_exec_fill_sync(struct drm_xe_sync *xe_sync, struct vk_sync *vk_sync,
    xe_sync->handle = syncobj->syncobj;
 
    if (value) {
-      xe_sync->flags |= DRM_XE_SYNC_TIMELINE_SYNCOBJ;
+      xe_sync->flags |= DRM_XE_SYNC_FLAG_TIMELINE_SYNCOBJ;
       xe_sync->timeline_value = value;
    } else {
-      xe_sync->flags |= DRM_XE_SYNC_SYNCOBJ;
+      xe_sync->flags |= DRM_XE_SYNC_FLAG_SYNCOBJ;
    }
 
    if (signal)
-      xe_sync->flags |= DRM_XE_SYNC_SIGNAL;
+      xe_sync->flags |= DRM_XE_SYNC_FLAG_SIGNAL;
 }
 
 static VkResult
@@ -193,7 +193,7 @@ xe_execute_trtt_batch(struct anv_sparse_submission *submit,
    VkResult result;
 
    struct drm_xe_sync extra_sync = {
-      .flags = DRM_XE_SYNC_TIMELINE_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
+      .flags = DRM_XE_SYNC_FLAG_TIMELINE_SYNCOBJ | DRM_XE_SYNC_FLAG_SIGNAL,
       .handle = trtt->timeline_handle,
       .timeline_value = trtt_bbo->timeline_val,
    };

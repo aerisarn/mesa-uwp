@@ -45,11 +45,11 @@ xe_gem_create(struct anv_device *device,
 
    uint32_t flags = 0;
    if (alloc_flags & ANV_BO_ALLOC_SCANOUT)
-      flags |= XE_GEM_CREATE_FLAG_SCANOUT;
+      flags |= DRM_XE_GEM_CREATE_FLAG_SCANOUT;
    if ((alloc_flags & (ANV_BO_ALLOC_MAPPED | ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE)) &&
        !(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) &&
        device->physical->vram_non_mappable.size > 0)
-      flags |= XE_GEM_CREATE_FLAG_NEEDS_VISIBLE_VRAM;
+      flags |= DRM_XE_GEM_CREATE_FLAG_NEEDS_VISIBLE_VRAM;
 
    struct drm_xe_gem_create gem_create = {
      /* From xe_drm.h: If a VM is specified, this BO must:
@@ -132,20 +132,20 @@ xe_vm_bind_op(struct anv_device *device,
          .range = bind->size,
          .addr = intel_48b_address(bind->address),
          .tile_mask = 0,
-         .op = XE_VM_BIND_OP_UNMAP,
+         .op = DRM_XE_VM_BIND_OP_UNMAP,
          .flags = 0,
-         .region = 0,
+         .prefetch_mem_region_instance = 0,
       };
 
       if (bind->op == ANV_VM_BIND) {
          if (!bo) {
-            xe_bind->op = XE_VM_BIND_OP_MAP;
-            xe_bind->flags |= XE_VM_BIND_FLAG_NULL;
+            xe_bind->op = DRM_XE_VM_BIND_OP_MAP;
+            xe_bind->flags |= DRM_XE_VM_BIND_FLAG_NULL;
             assert(xe_bind->obj_offset == 0);
          } else if (bo->from_host_ptr) {
-            xe_bind->op = XE_VM_BIND_OP_MAP_USERPTR;
+            xe_bind->op = DRM_XE_VM_BIND_OP_MAP_USERPTR;
          } else {
-            xe_bind->op = XE_VM_BIND_OP_MAP;
+            xe_bind->op = DRM_XE_VM_BIND_OP_MAP;
             xe_bind->obj = bo->gem_handle;
          }
       }

@@ -31,7 +31,7 @@ bool
 iris_xe_init_global_vm(struct iris_bufmgr *bufmgr, uint32_t *vm_id)
 {
    struct drm_xe_vm_create create = {
-      .flags = DRM_XE_VM_CREATE_SCRATCH_PAGE,
+      .flags = DRM_XE_VM_CREATE_FLAG_SCRATCH_PAGE,
    };
    if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_VM_CREATE, &create))
       return false;

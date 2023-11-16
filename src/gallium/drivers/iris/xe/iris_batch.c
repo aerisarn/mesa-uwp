@@ -80,7 +80,7 @@ iris_xe_init_batch(struct iris_bufmgr *bufmgr,
          .num_placements = count,
    };
    struct drm_xe_exec_queue_set_property exec_queue_property = {
-      .property = XE_EXEC_QUEUE_SET_PROPERTY_PRIORITY,
+      .property = DRM_XE_EXEC_QUEUE_SET_PROPERTY_PRIORITY,
       .value = iris_context_priority_to_drm_sched_priority(priority),
    };
    int ret = intel_ioctl(iris_bufmgr_get_fd(bufmgr),
