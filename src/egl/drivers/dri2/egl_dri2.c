@@ -73,7 +73,7 @@
 #include "egl_dri2.h"
 #include "egldefines.h"
 
-#define NUM_ATTRIBS 12
+#define NUM_ATTRIBS 16
 
 static const struct dri2_pbuffer_visual {
    const char *format_name;
