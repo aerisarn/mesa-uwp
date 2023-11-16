@@ -320,6 +320,7 @@ typedef struct {
    /* Vulkan only */
    unsigned enable_mrt_output_nan_fixup;
    bool no_color_export;
+   bool no_depth_export;
 } ac_nir_lower_ps_options;
 
 void
