@@ -825,6 +825,14 @@ radv_declare_ps_epilog_args(const struct radv_device *device, const struct radv_
 {
    radv_init_shader_args(device, MESA_SHADER_FRAGMENT, args);
 
+   /* Declare VGPR arguments for depth/stencil/sample exports. */
+   if (key->export_depth)
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->depth);
+   if (key->export_stencil)
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->stencil);
+   if (key->export_sample_mask)
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->sample_mask);
+
    /* Declare VGPR arguments for color exports. */
    for (unsigned i = 0; i < MAX_RTS; i++) {
       unsigned col_format = (key->spi_shader_col_format >> (i * 4)) & 0xf;

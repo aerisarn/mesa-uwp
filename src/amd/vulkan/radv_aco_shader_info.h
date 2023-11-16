@@ -118,6 +118,9 @@ radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco_info, const struct
    ASSIGN_FIELD(alpha_to_coverage_via_mrtz);
 
    memcpy(aco_info->colors, radv_args->colors, sizeof(aco_info->colors));
+   aco_info->depth = radv_args->depth;
+   aco_info->stencil = radv_args->stencil;
+   aco_info->samplemask = radv_args->sample_mask;
 
    aco_info->alpha_func = COMPARE_FUNC_ALWAYS;
 }
