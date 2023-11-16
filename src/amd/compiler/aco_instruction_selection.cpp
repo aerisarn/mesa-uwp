@@ -10928,7 +10928,19 @@ create_fs_jump_to_epilog(isel_context* ctx)
 {
    Builder bld(ctx->program, ctx->block);
    std::vector<Operand> exports;
-   PhysReg exports_start(256); /* VGPR 0 */
+   unsigned vgpr = 256; /* VGPR 0 */
+
+   if (ctx->outputs.mask[FRAG_RESULT_DEPTH])
+      exports.emplace_back(Operand(ctx->outputs.temps[FRAG_RESULT_DEPTH * 4u], PhysReg{vgpr++}));
+
+   if (ctx->outputs.mask[FRAG_RESULT_STENCIL])
+      exports.emplace_back(Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL * 4u], PhysReg{vgpr++}));
+
+   if (ctx->outputs.mask[FRAG_RESULT_SAMPLE_MASK])
+      exports.emplace_back(
+         Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4u], PhysReg{vgpr++}));
+
+   PhysReg exports_start(vgpr);
 
    for (unsigned slot = FRAG_RESULT_DATA0; slot < FRAG_RESULT_DATA7 + 1; ++slot) {
       unsigned color_index = slot - FRAG_RESULT_DATA0;
