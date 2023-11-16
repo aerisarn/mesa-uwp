@@ -10890,7 +10890,7 @@ static void
 create_fs_jump_to_epilog(isel_context* ctx)
 {
    Builder bld(ctx->program, ctx->block);
-   std::vector<Operand> color_exports;
+   std::vector<Operand> exports;
    PhysReg exports_start(256); /* VGPR 0 */
 
    for (unsigned slot = FRAG_RESULT_DATA0; slot < FRAG_RESULT_DATA7 + 1; ++slot) {
@@ -10905,7 +10905,7 @@ create_fs_jump_to_epilog(isel_context* ctx)
 
       for (unsigned i = 0; i < 4; i++) {
          if (!(write_mask & BITFIELD_BIT(i))) {
-            color_exports.emplace_back(Operand(v1));
+            exports.emplace_back(Operand(v1));
             continue;
          }
 
@@ -10921,17 +10921,17 @@ create_fs_jump_to_epilog(isel_context* ctx)
          }
 
          chan.setFixed(chan_reg);
-         color_exports.emplace_back(chan);
+         exports.emplace_back(chan);
       }
    }
 
    Temp continue_pc = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->program->info.ps.epilog_pc));
 
    aco_ptr<Pseudo_instruction> jump{create_instruction<Pseudo_instruction>(
-      aco_opcode::p_jump_to_epilog, Format::PSEUDO, 1 + color_exports.size(), 0)};
+      aco_opcode::p_jump_to_epilog, Format::PSEUDO, 1 + exports.size(), 0)};
    jump->operands[0] = Operand(continue_pc);
-   for (unsigned i = 0; i < color_exports.size(); i++) {
-      jump->operands[i + 1] = color_exports[i];
+   for (unsigned i = 0; i < exports.size(); i++) {
+      jump->operands[i + 1] = exports[i];
    }
    ctx->block->instructions.emplace_back(std::move(jump));
 }
