@@ -125,14 +125,6 @@ nouveau_ws_bo_bind_vma(struct nouveau_ws_device *dev,
 }
 
 struct nouveau_ws_bo *
-nouveau_ws_bo_new(struct nouveau_ws_device *dev,
-                  uint64_t size, uint64_t align,
-                  enum nouveau_ws_bo_flags flags)
-{
-   return nouveau_ws_bo_new_tiled(dev, size, align, 0, 0, flags);
-}
-
-struct nouveau_ws_bo *
 nouveau_ws_bo_new_mapped(struct nouveau_ws_device *dev,
                          uint64_t size, uint64_t align,
                          enum nouveau_ws_bo_flags flags,
@@ -155,10 +147,9 @@ nouveau_ws_bo_new_mapped(struct nouveau_ws_device *dev,
 }
 
 struct nouveau_ws_bo *
-nouveau_ws_bo_new_tiled(struct nouveau_ws_device *dev,
-                        uint64_t size, uint64_t align,
-                        uint8_t pte_kind, uint16_t tile_mode,
-                        enum nouveau_ws_bo_flags flags)
+nouveau_ws_bo_new(struct nouveau_ws_device *dev,
+                  uint64_t size, uint64_t align,
+                  enum nouveau_ws_bo_flags flags)
 {
    struct nouveau_ws_bo *bo = CALLOC_STRUCT(nouveau_ws_bo);
    struct drm_nouveau_gem_new req = {};
@@ -210,7 +201,6 @@ nouveau_ws_bo_new_tiled(struct nouveau_ws_device *dev,
       bo->refcnt = 1;
 
       if (dev->has_vm_bind) {
-         assert(pte_kind == 0);
          bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
          nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
       }
