@@ -45,6 +45,7 @@ anv-tgl-full:
 hasvk-hsw-full:
   extends:
     - .anholt-hsw-test
+    - .test-vk
     - .deqp-test
     - .hasvk-manual-rules
   variables:

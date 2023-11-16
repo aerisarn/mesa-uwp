@@ -4,6 +4,7 @@ include:
 crocus-hsw:
   extends:
     - .anholt-hsw-test
+    - .test-gl
     - .deqp-test
     - .crocus-manual-rules
   variables:
@@ -14,6 +15,7 @@ crocus-hsw:
 crocus-hsw-traces:
   extends:
     - .anholt-hsw-test
+    - .test-gl
     - .piglit-traces-test
     - .crocus-manual-rules
   variables:
