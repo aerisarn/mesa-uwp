@@ -73,6 +73,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_maintenance4 = true,
       .KHR_map_memory2 = true,
       .KHR_multiview = true,
+      .KHR_pipeline_executable_properties = true,
       .KHR_push_descriptor = true,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
@@ -250,6 +251,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       .shaderTerminateInvocation = true,
       .dynamicRendering = true,
       .maintenance4 = true,
+
+      /* VK_KHR_pipeline_executable_properties */
+      .pipelineExecutableInfo = true,
 
       /* VK_KHR_shader_clock */
       .shaderSubgroupClock = true,

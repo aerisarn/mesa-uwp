@@ -314,6 +314,9 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
    if (pipeline == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   VkPipelineCreateFlags2KHR pipeline_flags =
+      vk_graphics_pipeline_create_flags(pCreateInfo);
+
    struct vk_graphics_pipeline_all_state all;
    struct vk_graphics_pipeline_state state = {};
    result = vk_graphics_pipeline_state_fill(&dev->vk, &state, pCreateInfo,
@@ -358,7 +361,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          fs_key = &fs_key_tmp;
       }
 
-      result = nvk_compile_nir(pdev, nir[stage], fs_key,
+      result = nvk_compile_nir(pdev, nir[stage], pipeline_flags, fs_key,
                                &pipeline->base.shaders[stage]);
       ralloc_free(nir[stage]);
       if (result != VK_SUCCESS)

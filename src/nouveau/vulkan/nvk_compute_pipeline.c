@@ -176,6 +176,9 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
 
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
+   VkPipelineCreateFlags2KHR pipeline_flags =
+      vk_compute_pipeline_create_flags(pCreateInfo);
+
    struct vk_pipeline_robustness_state robustness;
    vk_pipeline_robustness_state_fill(&dev->vk, &robustness,
                                      pCreateInfo->pNext,
@@ -189,7 +192,7 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
 
    nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout);
 
-   result = nvk_compile_nir(pdev, nir, NULL,
+   result = nvk_compile_nir(pdev, nir, pipeline_flags, NULL,
                             &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    ralloc_free(nir);
    if (result != VK_SUCCESS)
