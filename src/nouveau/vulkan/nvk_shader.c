@@ -398,7 +398,7 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
                          const struct nak_fs_key *fs_key,
                          struct nvk_shader *shader)
 {
-   shader->nak = nak_compile_shader(nir, pdev->nak, fs_key);
+   shader->nak = nak_compile_shader(nir, false, pdev->nak, fs_key);
    shader->info = shader->nak->info;
    shader->code_ptr = shader->nak->code;
    shader->code_size = shader->nak->code_size;

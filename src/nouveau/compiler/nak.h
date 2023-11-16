@@ -131,14 +131,17 @@ struct nak_shader_info {
 
 struct nak_shader_bin {
    struct nak_shader_info info;
+
    uint32_t code_size;
    const void *code;
+
+   const char *asm_str;
 };
 
 void nak_shader_bin_destroy(struct nak_shader_bin *bin);
 
 struct nak_shader_bin *
-nak_compile_shader(nir_shader *nir,
+nak_compile_shader(nir_shader *nir, bool dump_asm,
                    const struct nak_compiler *nak,
                    const struct nak_fs_key *fs_key);
 
