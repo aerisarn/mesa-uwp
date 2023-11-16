@@ -570,7 +570,7 @@ load_frag_w(nir_builder *b, enum nak_interp_loc interp_loc)
    uint32_t flags_u32;
    memcpy(&flags_u32, &flags, sizeof(flags_u32));
 
-   return nir_ipa_nv(b, nir_imm_float(b, 0), nir_undef(b, 1, 32),
+   return nir_ipa_nv(b, nir_imm_float(b, 0), nir_imm_int(b, 0),
                      .base = w_addr, .flags = flags_u32);
 }
 
@@ -582,7 +582,7 @@ load_interpolated_input(nir_builder *b, unsigned num_components, uint32_t addr,
                         const struct nak_compiler *nak)
 {
    if (offset == NULL)
-      offset = nir_undef(b, 1, 32);
+      offset = nir_imm_int(b, 0);
 
    if (nak->sm >= 70) {
       const struct nak_nir_ipa_flags flags = {
@@ -595,7 +595,7 @@ load_interpolated_input(nir_builder *b, unsigned num_components, uint32_t addr,
 
       nir_def *comps[NIR_MAX_VEC_COMPONENTS];
       for (unsigned c = 0; c < num_components; c++) {
-         comps[c] = nir_ipa_nv(b, nir_undef(b, 1, 32), offset,
+         comps[c] = nir_ipa_nv(b, nir_imm_float(b, 0), offset,
                                .base = addr + c * 4,
                                .flags = flags_u32);
          if (interp_mode == NAK_INTERP_MODE_PERSPECTIVE)
@@ -682,7 +682,7 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 
       nir_def *comps[NIR_MAX_VEC_COMPONENTS];
       for (unsigned c = 0; c < intrin->def.num_components; c++) {
-         comps[c] = nir_ipa_nv(b, nir_imm_float(b, 0), nir_undef(b, 1, 32),
+         comps[c] = nir_ipa_nv(b, nir_imm_float(b, 0), nir_imm_int(b, 0),
                                .base = addr + c * 4, .flags = flags_u32);
       }
       nir_def *res = nir_vec(b, comps, intrin->def.num_components);
