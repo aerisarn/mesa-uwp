@@ -146,12 +146,11 @@ nouveau_ws_bo_new_mapped(struct nouveau_ws_device *dev,
    return bo;
 }
 
-struct nouveau_ws_bo *
-nouveau_ws_bo_new(struct nouveau_ws_device *dev,
-                  uint64_t size, uint64_t align,
-                  enum nouveau_ws_bo_flags flags)
+static struct nouveau_ws_bo *
+nouveau_ws_bo_new_locked(struct nouveau_ws_device *dev,
+                         uint64_t size, uint64_t align,
+                         enum nouveau_ws_bo_flags flags)
 {
-   struct nouveau_ws_bo *bo = CALLOC_STRUCT(nouveau_ws_bo);
    struct drm_nouveau_gem_new req = {};
 
    /* if the caller doesn't care, use the GPU page size */
@@ -183,88 +182,113 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev,
    if (flags & NOUVEAU_WS_BO_NO_SHARE)
       req.info.domain |= NOUVEAU_GEM_DOMAIN_NO_SHARE;
 
-
    req.info.size = size;
    req.align = align;
 
-   simple_mtx_lock(&dev->bos_lock);
-
    int ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_NEW, &req, sizeof(req));
-   if (ret == 0) {
-      bo->size = size;
-      bo->align = align;
-      bo->offset = -1ULL;
-      bo->handle = req.info.handle;
-      bo->map_handle = req.info.map_handle;
-      bo->dev = dev;
-      bo->flags = flags;
-      bo->refcnt = 1;
+   if (ret != 0)
+      return NULL;
 
-      if (dev->has_vm_bind) {
-         bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
-         nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
-      }
+   struct nouveau_ws_bo *bo = CALLOC_STRUCT(nouveau_ws_bo);
+   bo->size = size;
+   bo->align = align;
+   bo->offset = -1ULL;
+   bo->handle = req.info.handle;
+   bo->map_handle = req.info.map_handle;
+   bo->dev = dev;
+   bo->flags = flags;
+   bo->refcnt = 1;
 
-      _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)bo->handle, bo);
-   } else {
-      FREE(bo);
-      bo = NULL;
+   if (dev->has_vm_bind) {
+      bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
+      nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
    }
 
-   simple_mtx_unlock(&dev->bos_lock);
+   _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)bo->handle, bo);
 
    return bo;
 }
 
 struct nouveau_ws_bo *
-nouveau_ws_bo_from_dma_buf(struct nouveau_ws_device *dev, int fd)
+nouveau_ws_bo_new(struct nouveau_ws_device *dev,
+                  uint64_t size, uint64_t align,
+                  enum nouveau_ws_bo_flags flags)
 {
-   struct nouveau_ws_bo *bo = NULL;
+   struct nouveau_ws_bo *bo;
 
    simple_mtx_lock(&dev->bos_lock);
+   bo = nouveau_ws_bo_new_locked(dev, size, align, flags);
+   simple_mtx_unlock(&dev->bos_lock);
 
+   return bo;
+}
+
+static struct nouveau_ws_bo *
+nouveau_ws_bo_from_dma_buf_locked(struct nouveau_ws_device *dev, int fd)
+{
    uint32_t handle;
    int ret = drmPrimeFDToHandle(dev->fd, fd, &handle);
-   if (ret == 0) {
-      struct hash_entry *entry =
-         _mesa_hash_table_search(dev->bos, (void *)(uintptr_t)handle);
-      if (entry != NULL) {
-         bo = entry->data;
-      } else {
-         struct drm_nouveau_gem_info info = {
-            .handle = handle
-         };
-         ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_INFO,
-                                   &info, sizeof(info));
-         if (ret == 0) {
-            enum nouveau_ws_bo_flags flags = 0;
-            if (info.domain & NOUVEAU_GEM_DOMAIN_GART)
-               flags |= NOUVEAU_WS_BO_GART;
-            if (info.map_handle)
-               flags |= NOUVEAU_WS_BO_MAP;
+   if (ret != 0)
+      return NULL;
 
-            bo = CALLOC_STRUCT(nouveau_ws_bo);
-            bo->size = info.size;
-            bo->offset = info.offset;
-            bo->handle = info.handle;
-            bo->map_handle = info.map_handle;
-            bo->dev = dev;
-            bo->flags = flags;
-            bo->refcnt = 1;
+   struct hash_entry *entry =
+      _mesa_hash_table_search(dev->bos, (void *)(uintptr_t)handle);
+   if (entry != NULL)
+      return entry->data;
 
-            uint64_t align = (1ULL << 12);
-            if (info.domain & NOUVEAU_GEM_DOMAIN_VRAM)
-               align = (1ULL << 16);
+   /*
+    * If we got here, no BO exists for the retrieved handle. If we error
+    * after this point, we need to close the handle.
+    */
 
-            assert(bo->size == ALIGN(bo->size, align));
+   struct drm_nouveau_gem_info info = {
+      .handle = handle
+   };
+   ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_INFO,
+                             &info, sizeof(info));
+   if (ret != 0)
+      goto fail_fd_to_handle;
 
-            bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
-            nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
-            _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)handle, bo);
-         }
-      }
-   }
+   enum nouveau_ws_bo_flags flags = 0;
+   if (info.domain & NOUVEAU_GEM_DOMAIN_GART)
+      flags |= NOUVEAU_WS_BO_GART;
+   if (info.map_handle)
+      flags |= NOUVEAU_WS_BO_MAP;
 
+   struct nouveau_ws_bo *bo = CALLOC_STRUCT(nouveau_ws_bo);
+   bo->size = info.size;
+   bo->offset = info.offset;
+   bo->handle = info.handle;
+   bo->map_handle = info.map_handle;
+   bo->dev = dev;
+   bo->flags = flags;
+   bo->refcnt = 1;
+
+   uint64_t align = (1ULL << 12);
+   if (info.domain & NOUVEAU_GEM_DOMAIN_VRAM)
+      align = (1ULL << 16);
+
+   assert(bo->size == ALIGN(bo->size, align));
+
+   bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
+   nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
+   _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)handle, bo);
+
+   return bo;
+
+fail_fd_to_handle:
+   drmCloseBufferHandle(dev->fd, handle);
+
+   return NULL;
+}
+
+struct nouveau_ws_bo *
+nouveau_ws_bo_from_dma_buf(struct nouveau_ws_device *dev, int fd)
+{
+   struct nouveau_ws_bo *bo;
+
+   simple_mtx_lock(&dev->bos_lock);
+   bo = nouveau_ws_bo_from_dma_buf_locked(dev, fd);
    simple_mtx_unlock(&dev->bos_lock);
 
    return bo;
