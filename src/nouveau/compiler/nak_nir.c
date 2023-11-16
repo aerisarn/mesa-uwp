@@ -557,8 +557,11 @@ nak_xfb_from_nir(const struct nir_xfb_info *nir_xfb)
 }
 
 static nir_def *
-load_frag_w(nir_builder *b, enum nak_interp_loc interp_loc)
+load_frag_w(nir_builder *b, enum nak_interp_loc interp_loc, nir_def *offset)
 {
+   if (offset == NULL)
+      offset = nir_imm_int(b, 0);
+
    const uint16_t w_addr =
       nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD) + 12;
 
@@ -570,7 +573,7 @@ load_frag_w(nir_builder *b, enum nak_interp_loc interp_loc)
    uint32_t flags_u32;
    memcpy(&flags_u32, &flags, sizeof(flags_u32));
 
-   return nir_ipa_nv(b, nir_imm_float(b, 0), nir_imm_int(b, 0),
+   return nir_ipa_nv(b, nir_imm_float(b, 0), offset,
                      .base = w_addr, .flags = flags_u32);
 }
 
@@ -639,7 +642,7 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
          nak_sysval_attr_addr(SYSTEM_VALUE_POINT_COORD) :
          nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD);
 
-      nir_def *w = load_frag_w(b, interp_loc);
+      nir_def *w = load_frag_w(b, interp_loc, NULL);
       nir_def *coord = load_interpolated_input(b, intrin->def.num_components,
                                                addr,
                                                NAK_INTERP_MODE_PERSPECTIVE,
@@ -742,7 +745,7 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
 
       nir_def *inv_w = NULL;
       if (interp_mode == NAK_INTERP_MODE_PERSPECTIVE)
-         inv_w = nir_frcp(b, load_frag_w(b, interp_loc));
+         inv_w = nir_frcp(b, load_frag_w(b, interp_loc, offset));
 
       nir_def *res = load_interpolated_input(b, intrin->def.num_components,
                                              addr, interp_mode, interp_loc,
