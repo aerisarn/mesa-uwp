@@ -6178,6 +6178,7 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
    if (global_size != NULL) {
       for (unsigned i = 0; i < 3; i++)
          sysvals.num_work_groups[i] = global_size[i];
+      memcpy(indirect_data.map, &sysvals, sizeof(sysvals));
    } else {
       struct anv_address sysvals_addr = {
          .bo = NULL, /* General state buffer is always 0. */
@@ -6186,8 +6187,6 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
 
       compute_store_indirect_params(cmd_buffer, sysvals_addr);
    }
-
-   memcpy(indirect_data.map, &sysvals, sizeof(sysvals));
 
    void *args_map = indirect_data.map + sizeof(sysvals);
    for (unsigned i = 0; i < kernel->bin->bind_map.kernel_arg_count; i++) {
