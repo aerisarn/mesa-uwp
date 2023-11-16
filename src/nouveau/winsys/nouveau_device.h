@@ -51,6 +51,7 @@ struct nouveau_ws_device {
 
    bool has_vm_bind;
    struct util_vma_heap vma_heap;
+   struct util_vma_heap bda_heap;
    simple_mtx_t vma_mutex;
 };
 

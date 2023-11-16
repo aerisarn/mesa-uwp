@@ -539,9 +539,9 @@ nvk_image_plane_alloc_vma(struct nvk_device *dev,
 
    if (sparse_bound || plane->nil.pte_kind) {
       plane->vma_size_B = plane->nil.size_B;
-      plane->addr = nouveau_ws_alloc_vma(dev->ws_dev, plane->vma_size_B,
+      plane->addr = nouveau_ws_alloc_vma(dev->ws_dev, 0, plane->vma_size_B,
                                          plane->nil.align_B,
-                                         sparse_resident);
+                                         false, sparse_resident);
       if (plane->addr == 0) {
          return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "Sparse VMA allocation failed");
@@ -564,7 +564,7 @@ nvk_image_plane_finish(struct nvk_device *dev,
 
       nouveau_ws_bo_unbind_vma(dev->ws_dev, plane->addr, plane->vma_size_B);
       nouveau_ws_free_vma(dev->ws_dev, plane->addr, plane->vma_size_B,
-                          sparse_resident);
+                          false, sparse_resident);
    }
 }
 

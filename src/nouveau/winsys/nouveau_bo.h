@@ -44,10 +44,12 @@ struct nouveau_ws_bo {
 };
 
 uint64_t nouveau_ws_alloc_vma(struct nouveau_ws_device *dev,
-                              uint64_t size, uint64_t align, bool sparse);
+                              uint64_t addr, uint64_t size, uint64_t align,
+                              bool bda, bool sparse);
 
 void nouveau_ws_free_vma(struct nouveau_ws_device *dev,
-                         uint64_t offset, uint64_t size, bool sparse);
+                         uint64_t offset, uint64_t size,
+                         bool bda, bool sparse);
 
 void nouveau_ws_bo_bind_vma(struct nouveau_ws_device *dev,
                             struct nouveau_ws_bo *bo,

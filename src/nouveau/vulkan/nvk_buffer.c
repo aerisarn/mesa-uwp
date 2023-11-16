@@ -61,8 +61,8 @@ nvk_CreateBuffer(VkDevice device,
       const bool sparse_residency =
          buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
 
-      buffer->addr = nouveau_ws_alloc_vma(dev->ws_dev, buffer->vma_size_B,
-                                          alignment, sparse_residency);
+      buffer->addr = nouveau_ws_alloc_vma(dev->ws_dev, 0, buffer->vma_size_B,
+                                          alignment, false, sparse_residency);
       if (buffer->addr == 0) {
          vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
          return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
@@ -92,7 +92,7 @@ nvk_DestroyBuffer(VkDevice device,
 
       nouveau_ws_bo_unbind_vma(dev->ws_dev, buffer->addr, buffer->vma_size_B);
       nouveau_ws_free_vma(dev->ws_dev, buffer->addr, buffer->vma_size_B,
-                          sparse_residency);
+                          false, sparse_residency);
    }
 
    vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);

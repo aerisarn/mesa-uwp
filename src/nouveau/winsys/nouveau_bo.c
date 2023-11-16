@@ -57,14 +57,24 @@ bo_unbind(struct nouveau_ws_device *dev,
 
 uint64_t
 nouveau_ws_alloc_vma(struct nouveau_ws_device *dev,
-                     uint64_t size, uint64_t align,
+                     uint64_t req_addr, uint64_t size, uint64_t align,
+                     bool bda_capture_replay,
                      bool sparse_resident)
 {
    assert(dev->has_vm_bind);
 
    uint64_t offset;
    simple_mtx_lock(&dev->vma_mutex);
-   offset = util_vma_heap_alloc(&dev->vma_heap, size, align);
+   if (bda_capture_replay) {
+      if (req_addr != 0) {
+         bool found = util_vma_heap_alloc_addr(&dev->bda_heap, req_addr, size);
+         offset = found ? req_addr : 0;
+      } else {
+         offset = util_vma_heap_alloc(&dev->bda_heap, size, align);
+      }
+   } else {
+      offset = util_vma_heap_alloc(&dev->vma_heap, size, align);
+   }
    simple_mtx_unlock(&dev->vma_mutex);
 
    if (offset == 0) {
@@ -88,6 +98,7 @@ nouveau_ws_alloc_vma(struct nouveau_ws_device *dev,
 void
 nouveau_ws_free_vma(struct nouveau_ws_device *dev,
                     uint64_t offset, uint64_t size,
+                    bool bda_capture_replay,
                     bool sparse_resident)
 {
    assert(dev->has_vm_bind);
@@ -100,7 +111,11 @@ nouveau_ws_free_vma(struct nouveau_ws_device *dev,
       bo_unbind(dev, offset, size, DRM_NOUVEAU_VM_BIND_SPARSE);
 
    simple_mtx_lock(&dev->vma_mutex);
-   util_vma_heap_free(&dev->vma_heap, offset, size);
+   if (bda_capture_replay) {
+      util_vma_heap_free(&dev->bda_heap, offset, size);
+   } else {
+      util_vma_heap_free(&dev->vma_heap, offset, size);
+   }
    simple_mtx_unlock(&dev->vma_mutex);
 }
 
@@ -208,7 +223,7 @@ nouveau_ws_bo_new_locked(struct nouveau_ws_device *dev,
    bo->refcnt = 1;
 
    if (dev->has_vm_bind) {
-      bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
+      bo->offset = nouveau_ws_alloc_vma(dev, 0, bo->size, align, false, false);
       if (bo->offset == 0)
          goto fail_gem_new;
 
@@ -287,7 +302,7 @@ nouveau_ws_bo_from_dma_buf_locked(struct nouveau_ws_device *dev, int fd)
 
    assert(bo->size == ALIGN(bo->size, align));
 
-   bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
+   bo->offset = nouveau_ws_alloc_vma(dev, 0, bo->size, align, false, false);
    if (bo->offset == 0)
       goto fail_calloc;
 
@@ -330,7 +345,7 @@ nouveau_ws_bo_destroy(struct nouveau_ws_bo *bo)
 
    if (dev->has_vm_bind) {
       nouveau_ws_bo_unbind_vma(bo->dev, bo->offset, bo->size);
-      nouveau_ws_free_vma(bo->dev, bo->offset, bo->size, false);
+      nouveau_ws_free_vma(bo->dev, bo->offset, bo->size, false, false);
    }
 
    drmCloseBufferHandle(bo->dev->fd, bo->handle);
