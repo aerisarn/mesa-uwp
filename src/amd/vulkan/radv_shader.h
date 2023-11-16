@@ -74,6 +74,10 @@ struct radv_ps_epilog_key {
    uint8_t enable_mrt_output_nan_fixup;
 
    bool mrt0_is_dual_src;
+   bool export_depth;
+   bool export_stencil;
+   bool export_sample_mask;
+   bool alpha_to_coverage_via_mrtz;
 };
 
 struct radv_pipeline_key {

@@ -73,11 +73,12 @@ struct aco_ps_epilog_info {
 
    bool mrt0_is_dual_src;
 
+   bool alpha_to_coverage_via_mrtz;
+
    /* OpenGL only */
    uint16_t color_types;
    bool clamp_color;
    bool alpha_to_one;
-   bool alpha_to_coverage_via_mrtz;
    bool skip_null_export;
    unsigned broadcast_last_cbuf;
    enum compare_func alpha_func;

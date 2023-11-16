@@ -2019,6 +2019,10 @@ struct radv_ps_epilog_state {
    uint32_t color_blend_enable;
 
    bool mrt0_is_dual_src;
+   bool export_depth;
+   bool export_stencil;
+   bool export_sample_mask;
+   bool alpha_to_coverage_via_mrtz;
    uint8_t need_src_alpha;
 };
 

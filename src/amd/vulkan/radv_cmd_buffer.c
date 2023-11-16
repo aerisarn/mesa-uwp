@@ -4174,6 +4174,7 @@ radv_emit_color_blend(struct radv_cmd_buffer *cmd_buffer)
 static struct radv_shader_part *
 lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_device *device = cmd_buffer->device;
@@ -4205,6 +4206,14 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
    if (d->vk.ms.alpha_to_coverage_enable) {
       /* Select a color export format with alpha when alpha to coverage is enabled. */
       state.need_src_alpha |= 0x1;
+   }
+
+   if (ps && ps->info.ps.exports_mrtz_via_epilog) {
+      assert(device->physical_device->rad_info.gfx_level >= GFX11);
+      state.export_depth = ps->info.ps.writes_z;
+      state.export_stencil = ps->info.ps.writes_stencil;
+      state.export_sample_mask = ps->info.ps.writes_sample_mask;
+      state.alpha_to_coverage_via_mrtz = d->vk.ms.alpha_to_coverage_enable;
    }
 
    struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, &state, true);
