@@ -314,8 +314,6 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
    if (pipeline == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   pipeline->base.type = NVK_PIPELINE_GRAPHICS;
-
    struct vk_graphics_pipeline_all_state all;
    struct vk_graphics_pipeline_state state = {};
    result = vk_graphics_pipeline_state_fill(&dev->vk, &state, pCreateInfo,
