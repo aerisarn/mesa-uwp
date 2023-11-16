@@ -67,6 +67,7 @@ struct radv_shader_stage_key {
 
 struct radv_ps_epilog_key {
    uint32_t spi_shader_col_format;
+   uint32_t spi_shader_z_format;
 
    /* Bitmasks, each bit represents one of the 8 MRTs. */
    uint8_t color_is_int8;
@@ -555,6 +556,7 @@ struct radv_shader_binary_rtld {
 struct radv_shader_part_binary {
    struct {
       uint32_t spi_shader_col_format;
+      uint32_t spi_shader_z_format;
    } info;
 
    uint8_t num_sgprs;
@@ -640,6 +642,7 @@ struct radv_shader_part {
    uint32_t rsrc1;
    bool nontrivial_divisors;
    uint32_t spi_shader_col_format;
+   uint32_t spi_shader_z_format;
    uint64_t upload_seq;
 
    /* debug only */

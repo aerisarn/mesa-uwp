@@ -1680,7 +1680,7 @@ struct radv_ps_epilog_key
 radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_ps_epilog_state *state,
                             bool disable_mrt_compaction)
 {
-   unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0;
+   unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0, z_format = 0;
    struct radv_ps_epilog_key key;
 
    memset(&key, 0, sizeof(key));
@@ -1733,6 +1733,10 @@ radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_
       col_format |= (col_format & 0xf) << 4;
    }
 
+   if (state->alpha_to_coverage_via_mrtz)
+      z_format = ac_get_spi_shader_z_format(state->export_depth, state->export_stencil, state->export_sample_mask,
+                                            state->alpha_to_coverage_via_mrtz);
+
    key.spi_shader_col_format = col_format;
    key.color_is_int8 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int8 : 0;
    key.color_is_int10 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int10 : 0;
@@ -1742,6 +1746,7 @@ radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_
    key.export_stencil = state->export_stencil;
    key.export_sample_mask = state->export_sample_mask;
    key.alpha_to_coverage_via_mrtz = state->alpha_to_coverage_via_mrtz;
+   key.spi_shader_z_format = z_format;
 
    return key;
 }
