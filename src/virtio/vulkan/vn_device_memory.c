@@ -468,9 +468,14 @@ vn_device_memory_alloc(struct vn_device *dev,
                        const VkMemoryAllocateInfo *alloc_info)
 {
    struct vk_device_memory *mem_vk = &mem->base.base;
+   const VkMemoryType *mem_type = &dev->physical_device->memory_properties
+                                    .memoryTypes[mem_vk->memory_type_index];
 
-   const bool has_guest_vram =
-      dev->physical_device->instance->renderer->info.has_guest_vram;
+   const bool has_guest_vram = dev->renderer->info.has_guest_vram;
+   const bool host_visible =
+      mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+   const bool export_alloc = mem_vk->export_handle_types;
+
    const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
       dev->physical_device->external_memory.renderer_handle_type;
    struct vn_device_memory_alloc_info local_info;
@@ -483,9 +488,9 @@ vn_device_memory_alloc(struct vn_device *dev,
       mem_vk->export_handle_types = renderer_handle_type;
    }
 
-   if (has_guest_vram) {
+   if (has_guest_vram && (host_visible || export_alloc)) {
       return vn_device_memory_alloc_guest_vram(dev, mem, alloc_info);
-   } else if (mem_vk->export_handle_types) {
+   } else if (export_alloc) {
       return vn_device_memory_alloc_export(dev, mem, alloc_info);
    } else {
       return vn_device_memory_alloc_simple(dev, mem, alloc_info);
