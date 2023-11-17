@@ -2678,6 +2678,14 @@ si_set_spi_ps_input_config(struct si_shader *shader)
    if (key->ps.mono.point_smoothing)
       shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
 
+   /* See fetch_framebuffer() for used args when fbfetch output. */
+   if (info->base.fs.uses_fbfetch_output) {
+      shader->config.spi_ps_input_ena |= S_0286CC_POS_FIXED_PT_ENA(1);
+
+      if (key->ps.mono.fbfetch_layered || key->ps.mono.fbfetch_msaa)
+         shader->config.spi_ps_input_ena |= S_0286CC_ANCILLARY_ENA(1);
+   }
+
    if (shader->is_monolithic) {
       si_fixup_spi_ps_input_config(shader);
       shader->config.spi_ps_input_addr = shader->config.spi_ps_input_ena;
