@@ -2622,6 +2622,25 @@ optimizations += [
    (vkd3d_proton_packed_f2f16_rtz_lo(('fneg', 'x'), ('fabs', 'x')), ('pack_half_2x16_rtz_split', ('fneg', 'x'), 0)),
 ]
 
+def vkd3d_proton_msad():
+   pattern = None
+   for i in range(4):
+      ref = ('extract_u8', 'a@32', i)
+      src = ('extract_u8', 'b@32', i)
+      sad = ('iabs', ('iadd', ref, ('ineg', src)))
+      msad = ('bcsel', ('ieq', ref, 0), 0, sad)
+      if pattern == None:
+         pattern = msad
+      else:
+         pattern = ('iadd', pattern, msad)
+   pattern = (pattern[0] + '(many-comm-expr)', *pattern[1:])
+   return pattern
+
+optimizations += [
+   (vkd3d_proton_msad(), ('msad_4x8', a, b, 0), 'options->has_msad'),
+   (('iadd', ('msad_4x8', a, b, 0), c), ('msad_4x8', a, b, c)),
+]
+
 
 # "all_equal(eq(a, b), vec(~0))" is the same as "all_equal(a, b)"
 # "any_nequal(neq(a, b), vec(0))" is the same as "any_nequal(a, b)"
