@@ -3,7 +3,7 @@
     - !reference [.test, rules]
     - !reference [.gl-rules, rules]
     - changes:
-      - src/gallium/drivers/zink/**/*
+        - src/gallium/drivers/zink/**/*
       when: on_success
 
 .zink-common-manual-rules:
@@ -12,7 +12,7 @@
     - !reference [.test, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
-      - src/gallium/drivers/zink/**/*
+        - src/gallium/drivers/zink/**/*
       when: manual
 
 .zink-lvp-rules:
@@ -77,7 +77,7 @@
     - !reference [.radv-valve-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
     - changes:
-      - .gitlab-ci/container/build-piglit.sh
+        - .gitlab-ci/container/build-piglit.sh
       when: manual
 
 .zink-test:
