@@ -89,10 +89,23 @@ lower_unpack_64_to_16(nir_builder *b, nir_def *src)
 static nir_def *
 lower_pack_32_from_8(nir_builder *b, nir_def *src)
 {
-   return nir_pack_32_4x8_split(b, nir_channel(b, src, 0),
-                                nir_channel(b, src, 1),
-                                nir_channel(b, src, 2),
-                                nir_channel(b, src, 3));
+   if (b->shader->options->has_pack_32_4x8) {
+      return nir_pack_32_4x8_split(b,
+                                   nir_channel(b, src, 0),
+                                   nir_channel(b, src, 1),
+                                   nir_channel(b, src, 2),
+                                   nir_channel(b, src, 3));
+   } else {
+      nir_def *src32 = nir_u2u32(b, src);
+
+      return nir_ior(b,
+                     nir_ior(b,
+                                             nir_channel(b, src32, 0)     ,
+                             nir_ishl_imm(b, nir_channel(b, src32, 1), 8)),
+                     nir_ior(b,
+                             nir_ishl_imm(b, nir_channel(b, src32, 2), 16),
+                             nir_ishl_imm(b, nir_channel(b, src32, 3), 24)));
+   }
 }
 
 static bool
