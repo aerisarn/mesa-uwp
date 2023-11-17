@@ -90,7 +90,7 @@ iris_xe_init_batch(struct iris_bufmgr *bufmgr,
       goto error_create_exec_queue;
 
    exec_queue_property.exec_queue_id = create.exec_queue_id;
-   intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_XE_EXEC_QUEUE_SET_PROPERTY,
+   intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_EXEC_QUEUE_SET_PROPERTY,
                &exec_queue_property);
 
    /* TODO: handle "protected" context/exec_queue */

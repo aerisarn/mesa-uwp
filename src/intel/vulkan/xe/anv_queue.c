@@ -121,7 +121,7 @@ create_engine(struct anv_device *device,
          .property = XE_EXEC_QUEUE_SET_PROPERTY_PRIORITY,
          .value = anv_vk_priority_to_drm_sched_priority(priority),
       };
-      ret = intel_ioctl(device->fd, DRM_XE_EXEC_QUEUE_SET_PROPERTY,
+      ret = intel_ioctl(device->fd, DRM_IOCTL_XE_EXEC_QUEUE_SET_PROPERTY,
                         &exec_queue_property);
       if (ret && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR)
          goto priority_error;
