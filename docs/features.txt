@@ -482,7 +482,7 @@ Vulkan 1.3 -- all DONE: anv, radv, tu, lvp, vn
   VK_KHR_shader_integer_dot_product                     DONE (anv, dzn, hasvk, lvp, radv, tu, v3dv, vn)
   VK_KHR_shader_non_semantic_info                       DONE (anv, hasvk, nvk, radv, tu, v3dv, vn)
   VK_KHR_shader_terminate_invocation                    DONE (anv, hasvk, lvp, radv, tu, vn)
-  VK_KHR_synchronization2                               DONE (anv, dzn, hasvk, lvp, panvk, radv, tu, v3dv, vn)
+  VK_KHR_synchronization2                               DONE (anv, dzn, hasvk, lvp, nvk, panvk, radv, tu, v3dv, vn)
   VK_KHR_zero_initialize_workgroup_memory               DONE (anv, hasvk, lvp, radv, tu, v3dv, vn)
   VK_EXT_4444_formats                                   DONE (anv, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_EXT_extended_dynamic_state                         DONE (anv, hasvk, lvp, nvk, radv, tu, vn)
