@@ -188,12 +188,7 @@ load_vs_vertex_id(nir_builder *b, struct agx_ia_key *key)
       load_primitive_id(b), nir_load_vertex_id_in_primitive_agx(b),
       nir_channel(b, nir_load_num_workgroups(b), 0));
 
-   /* Add the "start", either an index bias or a base vertex */
-   id = nir_iadd(b, id, nir_load_first_vertex(b));
-
-   /* If drawing with an index buffer, pull the vertex ID. Otherwise, the
-    * vertex ID is just the index as-is.
-    */
+   /* If drawing with an index buffer, pull the vertex ID. */
    if (key->index_size) {
       nir_def *index_buffer = load_geometry_param(b, input_index_buffer);
       nir_def *offset = nir_imul_imm(b, id, key->index_size);
@@ -201,10 +196,13 @@ load_vs_vertex_id(nir_builder *b, struct agx_ia_key *key)
       nir_def *index = nir_load_global_constant(b, address, key->index_size, 1,
                                                 key->index_size * 8);
 
-      return nir_u2uN(b, index, id->bit_size);
-   } else {
-      return id;
+      id = nir_u2uN(b, index, id->bit_size);
    }
+
+   /* Add the "start", either an index bias or a base vertex. This must happen
+    * after indexing for proper index bias behaviour.
+    */
+   return nir_iadd(b, id, nir_load_first_vertex(b));
 }
 
 static bool
