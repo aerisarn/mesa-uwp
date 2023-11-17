@@ -107,6 +107,11 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device, const VkImageCrea
          return false;
    }
 
+   /* GFX9 has issues when the sample count is 4 and the format is D16 */
+   if (device->physical_device->rad_info.gfx_level == GFX9 && pCreateInfo->samples == 4 &&
+       format == VK_FORMAT_D16_UNORM)
+      return false;
+
    return true;
 }
 
