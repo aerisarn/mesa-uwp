@@ -114,6 +114,7 @@ get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage s
       .has_pack_half_2x16_rtz = true,
       .has_bit_test = !device->use_llvm,
       .has_fmulz = true,
+      .has_msad = true,
       .max_unroll_iterations = 32,
       .max_unroll_iterations_aggressive = 128,
       .use_interpolated_input_intrinsics = true,
