@@ -2804,6 +2804,7 @@ impl fmt::Display for OpSel {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpShfl {
     pub dst: Dst,
+    pub in_bounds: Dst,
 
     #[src_type(SSA)]
     pub src: Src,
@@ -2821,8 +2822,8 @@ impl fmt::Display for OpShfl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SHFL.{} {} {{ {}, {}, {} }}",
-            self.op, self.dst, self.src, self.lane, self.c
+            "SHFL.{} {{ {}, {} }} {{ {}, {}, {} }}",
+            self.op, self.dst, self.in_bounds, self.src, self.lane, self.c
         )
     }
 }

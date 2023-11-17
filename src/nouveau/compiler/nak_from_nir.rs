@@ -922,6 +922,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 b.push_op(OpShfl {
                     dst: scratch[0].into(),
+                    in_bounds: Dst::None,
                     src: srcs[0],
                     lane: 1_u32.into(),
                     c: (0x3_u32 | 0x1c_u32 << 8).into(),
@@ -952,6 +953,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 b.push_op(OpShfl {
                     dst: scratch[0].into(),
+                    in_bounds: Dst::None,
                     src: srcs[0],
                     lane: 2_u32.into(),
                     c: (0x3_u32 | 0x1c_u32 << 8).into(),
@@ -1888,6 +1890,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 b.push_op(OpShfl {
                     dst: dst.into(),
+                    in_bounds: Dst::None,
                     src: data,
                     lane: idx,
                     c: 0x1f.into(),

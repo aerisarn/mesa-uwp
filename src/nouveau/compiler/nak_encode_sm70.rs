@@ -916,7 +916,7 @@ impl SM70Instr {
         };
 
         self.set_dst(op.dst);
-        self.set_pred_dst(81..84, Dst::None);
+        self.set_pred_dst(81..84, op.in_bounds);
         self.set_reg_src(24..32, op.src);
         self.set_field(
             58..60,

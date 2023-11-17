@@ -544,6 +544,7 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       .subgroupSupportedStages = nvk_nak_stages(info),
       .subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BALLOT_BIT |
                                      VK_SUBGROUP_FEATURE_BASIC_BIT |
+                                     VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
                                      VK_SUBGROUP_FEATURE_VOTE_BIT,
       .subgroupQuadOperationsInAllStages = false,
       .pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY,
