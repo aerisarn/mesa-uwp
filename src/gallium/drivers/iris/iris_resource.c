@@ -39,6 +39,7 @@
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
+#include "util/u_resource.h"
 #include "util/u_threaded_context.h"
 #include "util/u_transfer.h"
 #include "util/u_transfer_helper.h"
@@ -1440,19 +1441,6 @@ mod_plane_is_clear_color(uint64_t modifier, uint32_t plane)
    }
 }
 
-static struct iris_resource *
-get_resource_for_plane(struct pipe_resource *resource,
-                       unsigned plane)
-{
-   unsigned count = 0;
-   for (struct pipe_resource *cur = resource; cur; cur = cur->next) {
-      if (count++ == plane)
-         return (struct iris_resource *)cur;
-   }
-
-   return NULL;
-}
-
 static unsigned
 get_num_planes(const struct pipe_resource *resource)
 {
@@ -1841,7 +1829,8 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    struct iris_resource *base_res = (struct iris_resource *)resource;
    unsigned main_plane = get_main_plane_for_plane(base_res->external_format,
                                                   base_res->mod_info, plane);
-   struct iris_resource *res = get_resource_for_plane(resource, main_plane);
+   struct iris_resource *res =
+      (struct iris_resource *)util_resource_at_index(resource, main_plane);
    assert(res);
 
    bool mod_with_aux =
