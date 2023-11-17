@@ -1848,7 +1848,8 @@ impl<'a> ShaderFromNir<'a> {
                     });
                 }
             }
-            nir_intrinsic_read_invocation
+            nir_intrinsic_quad_broadcast
+            | nir_intrinsic_read_invocation
             | nir_intrinsic_shuffle
             | nir_intrinsic_shuffle_down
             | nir_intrinsic_shuffle_up
@@ -1868,19 +1869,41 @@ impl<'a> ShaderFromNir<'a> {
                     in_bounds: Dst::None,
                     src: data,
                     lane: idx,
-                    c: if intrin.intrinsic == nir_intrinsic_shuffle_up {
-                        0.into()
-                    } else {
-                        0x1f.into()
+                    c: match intrin.intrinsic {
+                        nir_intrinsic_quad_broadcast => 0x1c_03.into(),
+                        nir_intrinsic_shuffle_up => 0.into(),
+                        _ => 0x1f.into(),
                     },
                     op: match intrin.intrinsic {
-                        nir_intrinsic_read_invocation
-                        | nir_intrinsic_shuffle => ShflOp::Idx,
                         nir_intrinsic_shuffle_down => ShflOp::Down,
                         nir_intrinsic_shuffle_up => ShflOp::Up,
                         nir_intrinsic_shuffle_xor => ShflOp::Bfly,
-                        op => panic!("Unknown shuffle intrinsic {}", op),
+                        _ => ShflOp::Idx,
                     },
+                });
+                self.set_dst(&intrin.def, dst);
+            }
+            nir_intrinsic_quad_swap_horizontal
+            | nir_intrinsic_quad_swap_vertical
+            | nir_intrinsic_quad_swap_diagonal => {
+                assert!(srcs[0].bit_size() == 32);
+                assert!(srcs[0].num_components() == 1);
+                let data = self.get_src(&srcs[0]);
+
+                assert!(intrin.def.bit_size() == 32);
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpShfl {
+                    dst: dst.into(),
+                    in_bounds: Dst::None,
+                    src: data,
+                    lane: match intrin.intrinsic {
+                        nir_intrinsic_quad_swap_horizontal => 1_u32.into(),
+                        nir_intrinsic_quad_swap_vertical => 2_u32.into(),
+                        nir_intrinsic_quad_swap_diagonal => 3_u32.into(),
+                        op => panic!("Unknown quad intrinsic {}", op),
+                    },
+                    c: 0x1c_03.into(),
+                    op: ShflOp::Bfly,
                 });
                 self.set_dst(&intrin.def, dst);
             }
