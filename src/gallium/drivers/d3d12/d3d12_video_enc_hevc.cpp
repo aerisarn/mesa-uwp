@@ -1023,11 +1023,6 @@ d3d12_video_encoder_build_codec_headers_hevc(struct d3d12_video_encoder *pD3D12E
 
    pWrittenCodecUnitsSizes.clear();
    bool isFirstFrame = (pD3D12Enc->m_fenceValue == 1);
-   bool writeNewSPS = isFirstFrame                                         // on first frame
-                      || ((pD3D12Enc->m_currentEncodeConfig.m_seqFlags &   // also on resolution change
-                           D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_RESOLUTION_CHANGE) != 0)
-                      // Also on input format dirty flag for new SPS, VUI etc
-                      || (pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags & d3d12_video_encoder_config_dirty_flag_sequence_info);
 
    d3d12_video_bitstream_builder_hevc *pHEVCBitstreamBuilder =
       static_cast<d3d12_video_bitstream_builder_hevc *>(pD3D12Enc->m_upBitstreamBuilder.get());
@@ -1054,14 +1049,14 @@ d3d12_video_encoder_build_codec_headers_hevc(struct d3d12_video_encoder *pD3D12E
       pWrittenCodecUnitsSizes.push_back(writtenVPSBytesCount);
    }
 
+   bool writeNewSPS = writeNewVPS                                          // on new VPS written
+                      || ((pD3D12Enc->m_currentEncodeConfig.m_seqFlags &   // also on resolution change
+                           D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_RESOLUTION_CHANGE) != 0)
+                      // Also on input format dirty flag for new SPS, VUI etc
+                      || (pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags & d3d12_video_encoder_config_dirty_flag_sequence_info);
+
    size_t writtenSPSBytesCount = 0;
    if (writeNewSPS) {
-      // For every new SPS for reconfiguration, increase the active_sps_id
-      if (!isFirstFrame) {
-         active_seq_parameter_set_id++;
-         pHEVCBitstreamBuilder->set_active_sps_id(active_seq_parameter_set_id);
-      }
-
       pHEVCBitstreamBuilder->build_sps(
                            pHEVCBitstreamBuilder->get_latest_vps(),
                            pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificSequenceStateDescH265,
@@ -1089,8 +1084,9 @@ d3d12_video_encoder_build_codec_headers_hevc(struct d3d12_video_encoder *pD3D12E
                                     writtenPPSBytesCount);
 
    std::vector<uint8_t>& active_pps = pHEVCBitstreamBuilder->get_active_pps();
-   if ( (writtenPPSBytesCount != active_pps.size()) ||
-         memcmp(pD3D12Enc->m_StagingHeadersBuffer.data(), active_pps.data(), writtenPPSBytesCount)) {
+   if (writeNewSPS ||
+       (writtenPPSBytesCount != active_pps.size()) ||
+       memcmp(pD3D12Enc->m_StagingHeadersBuffer.data(), active_pps.data(), writtenPPSBytesCount)) {
       active_pps = pD3D12Enc->m_StagingHeadersBuffer;
       pD3D12Enc->m_BitstreamHeadersBuffer.resize(writtenSPSBytesCount + writtenVPSBytesCount + writtenPPSBytesCount);
       memcpy(&pD3D12Enc->m_BitstreamHeadersBuffer.data()[(writtenSPSBytesCount + writtenVPSBytesCount)], pD3D12Enc->m_StagingHeadersBuffer.data(), writtenPPSBytesCount);

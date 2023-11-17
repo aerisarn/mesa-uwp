@@ -1105,11 +1105,6 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
 
    size_t writtenSPSBytesCount = 0;
    if (writeNewSPS) {
-      // For every new SPS for reconfiguration, increase the active_sps_id
-      if (!isFirstFrame) {
-         active_seq_parameter_set_id++;
-         pH264BitstreamBuilder->set_active_sps_id(active_seq_parameter_set_id);
-      }
       pH264BitstreamBuilder->build_sps(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificSequenceStateDescH264,
                                        *profDesc.pH264Profile,
                                        *levelDesc.pH264LevelSetting,
@@ -1137,8 +1132,9 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
                                     writtenPPSBytesCount);
 
    std::vector<uint8_t>& active_pps = pH264BitstreamBuilder->get_active_pps();
-   if ( (writtenPPSBytesCount != active_pps.size()) ||
-         memcmp(pD3D12Enc->m_StagingHeadersBuffer.data(), active_pps.data(), writtenPPSBytesCount)) {
+   if (writeNewSPS ||
+      (writtenPPSBytesCount != active_pps.size()) ||
+       memcmp(pD3D12Enc->m_StagingHeadersBuffer.data(), active_pps.data(), writtenPPSBytesCount)) {
       active_pps = pD3D12Enc->m_StagingHeadersBuffer;
       pD3D12Enc->m_BitstreamHeadersBuffer.resize(writtenAUDBytesCount + writtenSPSBytesCount + writtenPPSBytesCount);
       memcpy(&pD3D12Enc->m_BitstreamHeadersBuffer.data()[writtenAUDBytesCount + writtenSPSBytesCount], pD3D12Enc->m_StagingHeadersBuffer.data(), writtenPPSBytesCount);
