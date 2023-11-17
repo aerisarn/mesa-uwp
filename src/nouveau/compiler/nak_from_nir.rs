@@ -1868,14 +1868,18 @@ impl<'a> ShaderFromNir<'a> {
                     in_bounds: Dst::None,
                     src: data,
                     lane: idx,
-                    c: 0x1f.into(),
+                    c: if intrin.intrinsic == nir_intrinsic_shuffle_up {
+                        0.into()
+                    } else {
+                        0x1f.into()
+                    },
                     op: match intrin.intrinsic {
                         nir_intrinsic_read_invocation
                         | nir_intrinsic_shuffle => ShflOp::Idx,
                         nir_intrinsic_shuffle_down => ShflOp::Down,
                         nir_intrinsic_shuffle_up => ShflOp::Up,
                         nir_intrinsic_shuffle_xor => ShflOp::Bfly,
-                        _ => panic!("Unknown vote intrinsic"),
+                        op => panic!("Unknown shuffle intrinsic {}", op),
                     },
                 });
                 self.set_dst(&intrin.def, dst);
