@@ -550,6 +550,10 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_HAS_CONST_BW:
       return 0;
 
+   case PIPE_CAP_PERFORMANCE_MONITOR:
+      return pscreen->get_driver_query_info && pscreen->get_driver_query_group_info &&
+             pscreen->get_driver_query_group_info(pscreen, 0, NULL) != 0;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }
