@@ -1716,13 +1716,16 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
 
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
 
+      /* Lower IA before VS sysvals to correctly handle indirect multidraws */
+      agx_nir_lower_ia(vs, &key->ia);
+
       /* Lower VS sysvals before it's merged in, so we access the correct shader
        * stage for UBOs etc.
        */
       NIR_PASS_V(vs, agx_nir_lower_sysvals);
 
       /* Link VS with GS */
-      NIR_PASS_V(nir, agx_nir_lower_gs, vs, dev->libagx, &key->ia,
+      NIR_PASS_V(nir, agx_nir_lower_gs, vs, dev->libagx,
                  key->rasterizer_discard, &gs_count, &gs_copy, &pre_gs,
                  &gs_out_prim, &gs_out_count_words);
       ralloc_free(vs);
@@ -3394,11 +3397,18 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
                           const struct pipe_draw_start_count_bias *draw,
                           const struct pipe_draw_indirect_info *indirect)
 {
+   /* XXX move me */
+   struct agx_ia_state ia = {
+      .index_buffer = input_index_buffer,
+      .index_size_B = info->index_size,
+   };
+
+   batch->uniforms.input_assembly =
+      agx_pool_upload_aligned(&batch->pool, &ia, sizeof(ia), 8);
+
    struct agx_geometry_params params = {
       .state = agx_batch_geometry_state(batch),
       .indirect_desc = batch->geom_indirect,
-      .input_index_buffer = input_index_buffer,
-      .index_size_B = info->index_size,
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(batch->ctx->streamout.targets); ++i) {

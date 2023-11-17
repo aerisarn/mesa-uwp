@@ -12,11 +12,13 @@ struct nir_shader;
 struct agx_ia_key;
 enum mesa_prim;
 
+void agx_nir_lower_ia(struct nir_shader *s, struct agx_ia_key *ia);
+
 void agx_nir_lower_gs(struct nir_shader *gs, struct nir_shader *vs,
-                      const struct nir_shader *libagx, struct agx_ia_key *ia,
-                      bool rasterizer_discard, struct nir_shader **gs_count,
-                      struct nir_shader **gs_copy, struct nir_shader **pre_gs,
-                      enum mesa_prim *out_mode, unsigned *out_count_words);
+                      const struct nir_shader *libagx, bool rasterizer_discard,
+                      struct nir_shader **gs_count, struct nir_shader **gs_copy,
+                      struct nir_shader **pre_gs, enum mesa_prim *out_mode,
+                      unsigned *out_count_words);
 
 struct nir_shader *agx_nir_prefix_sum_gs(const struct nir_shader *libagx,
                                          unsigned words);

@@ -99,6 +99,9 @@ struct PACKED agx_draw_uniforms {
    /* Vertex buffer object bases, if present */
    uint64_t vbo_base[PIPE_MAX_ATTRIBS];
 
+   /* Address of input assembly buffer if geom/tess is used, else 0 */
+   uint64_t input_assembly;
+
    /* Address of geometry param buffer if geometry shaders are used, else 0 */
    uint64_t geometry_params;
 

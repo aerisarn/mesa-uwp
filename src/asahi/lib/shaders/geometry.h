@@ -32,6 +32,14 @@ struct agx_ia_key {
    bool flatshade_first;
 };
 
+struct agx_ia_state {
+   /* Input: index buffer if present. */
+   GLOBAL(uchar) index_buffer;
+
+   /* The index size (1, 2, 4) or 0 if drawing without an index buffer. */
+   uint8_t index_size_B;
+} PACKED;
+
 /* Packed geometry state buffer */
 struct agx_geometry_state {
    /* Heap to allocate from, in either direction. By convention, the top is used
@@ -81,11 +89,6 @@ struct agx_geometry_params {
     */
    uint32_t xfb_prims[MAX_VERTEX_STREAMS];
 
-   /* Address of input index buffer for an indexed draw (this includes
-    * tessellation - it's the index buffer coming into the geometry stage).
-    */
-   GLOBAL(uchar) input_index_buffer;
-
    /* Address of input indirect buffer for indirect GS draw */
    GLOBAL(uint) input_indirect_desc;
 
@@ -104,12 +107,6 @@ struct agx_geometry_params {
     * allocating counts.
     */
    uint32_t count_buffer_stride;
-
-   /* Size of a single input index in bytes, or 0 if indexing is disabled.
-    *
-    *    index_size_B == 0 <==> input_index_buffer == NULL
-    */
-   uint32_t index_size_B;
 } PACKED;
 
 #endif

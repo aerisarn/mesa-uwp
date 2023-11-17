@@ -1855,6 +1855,9 @@ barrier("fence_mem_to_tex_agx")
 # act like render target writes, in conjunction with fragment interlock.
 barrier("fence_pbe_to_tex_pixel_agx")
 
+# Address of state for AGX input assembly lowering for geometry/tessellation
+system_value("input_assembly_buffer_agx", 1, bit_sizes=[64])
+
 # Address of the parameter buffer for AGX geometry shaders
 system_value("geometry_param_buffer_agx", 1, bit_sizes=[64])
 

@@ -194,55 +194,6 @@ load_instance_id(nir_builder *b)
    return nir_channel(b, nir_load_global_invocation_id(b, 32), 1);
 }
 
-static nir_def *
-load_vs_vertex_id(nir_builder *b, struct agx_ia_key *key)
-{
-   /* Tessellate by primitive mode */
-   nir_def *id = libagx_vertex_id_for_topology(
-      b, nir_imm_int(b, key->mode), nir_imm_bool(b, key->flatshade_first),
-      load_primitive_id(b), nir_load_vertex_id_in_primitive_agx(b),
-      nir_channel(b, nir_load_num_workgroups(b), 0));
-
-   /* If drawing with an index buffer, pull the vertex ID. */
-   if (key->index_size) {
-      nir_def *index_buffer = load_geometry_param(b, input_index_buffer);
-      nir_def *offset = nir_imul_imm(b, id, key->index_size);
-      nir_def *address = nir_iadd(b, index_buffer, nir_u2u64(b, offset));
-      nir_def *index = nir_load_global_constant(b, address, key->index_size, 1,
-                                                key->index_size * 8);
-
-      id = nir_u2uN(b, index, id->bit_size);
-   }
-
-   /* Add the "start", either an index bias or a base vertex. This must happen
-    * after indexing for proper index bias behaviour.
-    */
-   return nir_iadd(b, id, nir_load_first_vertex(b));
-}
-
-static bool
-lower_input_assembly(nir_builder *b, nir_instr *instr, void *data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   nir_def *id = NULL;
-   b->cursor = nir_before_instr(instr);
-
-   if (intr->intrinsic == nir_intrinsic_load_vertex_id)
-      id = load_vs_vertex_id(b, data);
-   else if (intr->intrinsic == nir_intrinsic_load_instance_id)
-      id = load_instance_id(b);
-   else
-      return false;
-
-   assert(intr->def.bit_size == 32);
-   nir_def_rewrite_uses(&intr->def, id);
-   nir_instr_remove(instr);
-   return true;
-}
-
 static bool
 lower_gs_inputs(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
@@ -363,9 +314,8 @@ agx_nir_link_vs_gs(nir_shader *vs, nir_shader *gs)
 static nir_def *
 calc_unrolled_id(nir_builder *b)
 {
-   nir_def *per_instance = nir_channel(b, nir_load_num_workgroups(b), 0);
-
-   return nir_iadd(b, nir_imul(b, load_instance_id(b), per_instance),
+   return nir_iadd(b,
+                   nir_imul(b, load_instance_id(b), nir_load_num_vertices(b)),
                    load_primitive_id(b));
 }
 
@@ -428,6 +378,26 @@ lower_gs_count_instr(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    }
 }
 
+static bool
+lower_id(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   b->cursor = nir_before_instr(&intr->instr);
+
+   nir_def *id;
+   if (intr->intrinsic == nir_intrinsic_load_primitive_id)
+      id = load_primitive_id(b);
+   else if (intr->intrinsic == nir_intrinsic_load_instance_id)
+      id = load_instance_id(b);
+   else if (intr->intrinsic == nir_intrinsic_load_num_vertices)
+      id = nir_channel(b, nir_load_num_workgroups(b), 0);
+   else
+      return false;
+
+   b->cursor = nir_instr_remove(&intr->instr);
+   nir_def_rewrite_uses(&intr->def, id);
+   return true;
+}
+
 /*
  * Create a "Geometry count" shader. This is a stripped down geometry shader
  * that just write its number of emitted vertices / primitives / transform
@@ -451,6 +421,9 @@ agx_nir_create_geometry_count_shader(nir_shader *gs, const nir_shader *libagx,
 
    NIR_PASS_V(shader, nir_shader_intrinsics_pass, lower_gs_count_instr,
               nir_metadata_block_index | nir_metadata_dominance, state);
+
+   NIR_PASS_V(shader, nir_shader_intrinsics_pass, lower_id,
+              nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    /* Preprocess it */
    UNUSED struct agx_uncompiled_shader_info info;
@@ -792,20 +765,6 @@ lower_gs_instr(nir_builder *b, nir_intrinsic_instr *intr, void *state)
    return true;
 }
 
-/*
- * Lower load_primitive_id to something compute-like.
- */
-static bool
-lower_primitive_id(nir_builder *b, nir_intrinsic_instr *intr, void *data)
-{
-   if (intr->intrinsic != nir_intrinsic_load_primitive_id)
-      return false;
-
-   b->cursor = nir_instr_remove(&intr->instr);
-   nir_def_rewrite_uses(&intr->def, load_primitive_id(b));
-   return true;
-}
-
 static bool
 collect_components(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
@@ -1013,15 +972,13 @@ link_libagx(nir_shader *nir, const nir_shader *libagx)
 
 void
 agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
-                 struct agx_ia_key *ia, bool rasterizer_discard,
-                 nir_shader **gs_count, nir_shader **gs_copy,
-                 nir_shader **pre_gs, enum mesa_prim *out_mode,
-                 unsigned *out_count_words)
+                 bool rasterizer_discard, nir_shader **gs_count,
+                 nir_shader **gs_copy, nir_shader **pre_gs,
+                 enum mesa_prim *out_mode, unsigned *out_count_words)
 {
-   /* Lower input assembly on the vertex shader */
-   NIR_PASS_V(vs, nir_shader_instructions_pass, lower_input_assembly,
-              nir_metadata_block_index | nir_metadata_dominance, ia);
    link_libagx(vs, libagx);
+   NIR_PASS_V(vs, nir_lower_idiv,
+              &(const nir_lower_idiv_options){.allow_fp16 = true});
 
    /* Collect output component counts so we can size the geometry output buffer
     * appropriately, instead of assuming everything is vec4.
@@ -1057,9 +1014,6 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
                  nir_lower_gs_intrinsics_overwrite_incomplete |
                  nir_lower_gs_intrinsics_always_end_primitive |
                  nir_lower_gs_intrinsics_count_decomposed_primitives);
-
-   NIR_PASS_V(gs, nir_shader_intrinsics_pass, lower_primitive_id,
-              nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    /* Clean up after all that lowering we did */
    bool progress = false;
@@ -1165,6 +1119,8 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
 
    NIR_PASS_V(gs, nir_opt_sink, ~0);
    NIR_PASS_V(gs, nir_opt_move, ~0);
+   NIR_PASS_V(gs, nir_shader_intrinsics_pass, lower_id,
+              nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    /* Create auxiliary programs */
    *gs_copy = agx_nir_create_gs_copy_shader(&gs_state, outputs_rasterized(gs),
@@ -1206,6 +1162,7 @@ agx_nir_gs_setup_indirect(const nir_shader *libagx, enum mesa_prim prim)
       MESA_SHADER_COMPUTE, &agx_nir_options, "GS indirect setup");
 
    libagx_gs_setup_indirect(&b, nir_load_geometry_param_buffer_agx(&b),
+                            nir_load_input_assembly_buffer_agx(&b),
                             nir_imm_int(&b, prim));
 
    UNUSED struct agx_uncompiled_shader_info info;

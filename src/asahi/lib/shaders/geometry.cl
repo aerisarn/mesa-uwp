@@ -103,6 +103,13 @@ libagx_vertex_id_for_topology(enum mesa_prim mode, bool flatshade_first,
    }
 }
 
+uintptr_t
+libagx_index_buffer(constant struct agx_ia_state *p, uint id,
+                    uint index_size)
+{
+   return (uintptr_t)&p->index_buffer[id * index_size];
+}
+
 uint
 libagx_setup_xfb_buffer(global struct agx_geometry_params *p, uint i)
 {
@@ -190,19 +197,30 @@ libagx_build_gs_draw(global struct agx_geometry_params *p, bool indexed,
    }
 }
 
-void
-libagx_gs_setup_indirect(global struct agx_geometry_params *p,
-                         enum mesa_prim mode)
+uint2
+process_draw(global uint *draw, enum mesa_prim mode)
 {
    /* Regardless of indexing being enabled, this holds */
-   uint vertex_count = p->input_indirect_desc[0];
-   uint instance_count = p->input_indirect_desc[1];
+   uint vertex_count = draw[0];
+   uint instance_count = draw[1];
 
    uint prim_per_instance = u_decomposed_prims_for_vertices(mode, vertex_count);
-   p->input_primitives = prim_per_instance * instance_count;
+   return (uint2)(prim_per_instance, instance_count);
+}
 
-   p->gs_grid[0] = prim_per_instance;
-   p->gs_grid[1] = instance_count;
+void
+libagx_gs_setup_indirect(global struct agx_geometry_params *p,
+                         global struct agx_ia_state *ia, enum mesa_prim mode)
+{
+   /* Determine the (primitives, instances) grid size. */
+   uint2 draw = process_draw(p->input_indirect_desc, mode);
+
+   /* There are primitives*instances primitives total */
+   p->input_primitives = draw.x * draw.y;
+
+   /* Invoke as (primitives, instances, 1) */
+   p->gs_grid[0] = draw.x;
+   p->gs_grid[1] = draw.y;
    p->gs_grid[2] = 1;
 
    /* If indexing is enabled, the third word is the offset into the index buffer
@@ -210,8 +228,8 @@ libagx_gs_setup_indirect(global struct agx_geometry_params *p,
     * indirect draw, the hardware would do this for us, but for software input
     * assembly we need to do it ourselves.
     */
-   if (p->input_index_buffer) {
-      p->input_index_buffer += p->input_indirect_desc[2] * p->index_size_B;
+   if (ia->index_buffer) {
+      ia->index_buffer += p->input_indirect_desc[2] * ia->index_size_B;
    }
 
    /* We may need to allocate a GS count buffer, do so now */
