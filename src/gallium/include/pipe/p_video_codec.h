@@ -152,6 +152,18 @@ struct pipe_video_codec
                               uint64_t timeout);
 
    /**
+    * Gets a weak reference to a feedback fence.
+    *
+    * Can be used to wait on the pipe_fence_handle directly instead
+    * of waiting on the get_feedback blocking call.
+    *
+    * Returns NULL if the feedback parameter does not have
+    * a valid in-flight submitted frame
+    */
+   struct pipe_fence_handle* (*get_feedback_fence)(struct pipe_video_codec *codec,
+                                                   void *feedback);
+
+   /**
     * Destroy fence.
     */
    void (*destroy_fence)(struct pipe_video_codec *codec,
