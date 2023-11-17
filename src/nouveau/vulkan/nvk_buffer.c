@@ -63,6 +63,11 @@ nvk_CreateBuffer(VkDevice device,
 
       buffer->addr = nouveau_ws_alloc_vma(dev->ws_dev, buffer->vma_size_B,
                                           alignment, sparse_residency);
+      if (buffer->addr == 0) {
+         vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
+         return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "Sparse VMA allocation failed");
+      }
    }
 
    *pBuffer = nvk_buffer_to_handle(buffer);

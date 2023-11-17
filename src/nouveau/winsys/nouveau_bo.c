@@ -67,6 +67,14 @@ nouveau_ws_alloc_vma(struct nouveau_ws_device *dev,
    offset = util_vma_heap_alloc(&dev->vma_heap, size, align);
    simple_mtx_unlock(&dev->vma_mutex);
 
+   if (offset == 0) {
+      if (dev->debug_flags & NVK_DEBUG_VM) {
+         fprintf(stderr, "alloc vma FAILED: %" PRIx64 " sparse: %d\n",
+                 size, sparse_resident);
+      }
+      return 0;
+   }
+
    if (dev->debug_flags & NVK_DEBUG_VM)
       fprintf(stderr, "alloc vma %" PRIx64 " %" PRIx64 " sparse: %d\n",
               offset, size, sparse_resident);
@@ -201,12 +209,21 @@ nouveau_ws_bo_new_locked(struct nouveau_ws_device *dev,
 
    if (dev->has_vm_bind) {
       bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
+      if (bo->offset == 0)
+         goto fail_gem_new;
+
       nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
    }
 
    _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)bo->handle, bo);
 
    return bo;
+
+fail_gem_new:
+   drmCloseBufferHandle(dev->fd, req.info.handle);
+   FREE(bo);
+
+   return NULL;
 }
 
 struct nouveau_ws_bo *
@@ -271,11 +288,16 @@ nouveau_ws_bo_from_dma_buf_locked(struct nouveau_ws_device *dev, int fd)
    assert(bo->size == ALIGN(bo->size, align));
 
    bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
+   if (bo->offset == 0)
+      goto fail_calloc;
+
    nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
    _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)handle, bo);
 
    return bo;
 
+fail_calloc:
+   FREE(bo);
 fail_fd_to_handle:
    drmCloseBufferHandle(dev->fd, handle);
 
