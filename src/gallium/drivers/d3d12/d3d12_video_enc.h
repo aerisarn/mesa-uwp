@@ -68,6 +68,15 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
                                      void **                   feedback);
 
 /**
+ * Get feedback fence.
+ *
+ * Can be used to wait on the pipe_fence_handle directly instead
+ * of waiting on the get_feedback blocking call
+ */
+struct pipe_fence_handle*
+d3d12_video_encoder_get_feedback_fence(struct pipe_video_codec *codec, void *feedback);
+
+/**
  * get encoder feedback
  */
 void

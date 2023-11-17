@@ -1576,6 +1576,7 @@ d3d12_video_encoder_create_encoder(struct pipe_context *context, const struct pi
    pD3D12Enc->base.encode_bitstream = d3d12_video_encoder_encode_bitstream;
    pD3D12Enc->base.end_frame        = d3d12_video_encoder_end_frame;
    pD3D12Enc->base.flush            = d3d12_video_encoder_flush;
+   pD3D12Enc->base.get_feedback_fence = d3d12_video_encoder_get_feedback_fence;
    pD3D12Enc->base.get_feedback     = d3d12_video_encoder_get_feedback;
 
    struct d3d12_context *pD3D12Ctx = (struct d3d12_context *) context;
@@ -2589,4 +2590,22 @@ d3d12_video_encoder_store_current_picture_references(d3d12_video_encoder *pD3D12
          unreachable("Unsupported pipe_video_format");
       } break;
    }
+}
+
+struct pipe_fence_handle*
+d3d12_video_encoder_get_feedback_fence(struct pipe_video_codec *codec, void *feedback)
+{
+   struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
+   struct d3d12_fence *feedback_fence = (struct d3d12_fence *) feedback;
+   uint64_t requested_metadata_fence = feedback_fence->value;
+   uint64_t current_metadata_slot = (requested_metadata_fence % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT);
+   if (pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].encode_result & PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_FAILED) {
+      debug_printf("Error: d3d12_video_encoder_get_feedback_fence failed for Encode GPU command for fence %" PRIu64 " failed on submission with encode_result: %x\n",
+                     requested_metadata_fence,
+                     pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].encode_result);
+      assert(false);
+      return NULL;
+   }
+
+   return (pipe_fence_handle*) feedback;
 }
