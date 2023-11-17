@@ -144,6 +144,7 @@ struct nak_nir_tex_flags {
    uint32_t pad:26;
 };
 
+bool nak_nir_lower_scan_reduce(nir_shader *shader);
 bool nak_nir_lower_tex(nir_shader *nir, const struct nak_compiler *nak);
 bool nak_nir_lower_gs_intrinsics(nir_shader *shader);
 

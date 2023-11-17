@@ -297,6 +297,7 @@ nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
       .lower_inverse_ballot = true,
    };
    OPT(nir, nir_lower_subgroups, &subgroups_options);
+   OPT(nir, nak_nir_lower_scan_reduce);
 }
 
 static uint16_t
