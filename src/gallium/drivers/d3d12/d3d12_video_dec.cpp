@@ -833,7 +833,7 @@ d3d12_video_decoder_create_command_objects(const struct d3d12_screen *pD3D12Scre
       return false;
    }
 
-   hr = pD3D12Screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pD3D12Dec->m_spFence));
+   hr = pD3D12Screen->dev->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&pD3D12Dec->m_spFence));
    if (FAILED(hr)) {
       debug_printf(
          "[d3d12_video_decoder] d3d12_video_decoder_create_command_objects - Call to CreateFence failed with HR %x\n",

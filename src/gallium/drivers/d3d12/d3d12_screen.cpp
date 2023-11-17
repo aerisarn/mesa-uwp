@@ -1268,6 +1268,26 @@ d3d12_screen_get_fd(struct pipe_screen *pscreen)
       return -1;
 }
 
+#ifdef _WIN32
+static void* d3d12_fence_get_win32_handle(struct pipe_screen *pscreen,
+                                          struct pipe_fence_handle *fence_handle,
+                                          uint64_t *fence_value)
+{
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   struct d3d12_fence* fence = (struct d3d12_fence*) fence_handle;
+   HANDLE shared_handle = nullptr;
+   screen->dev->CreateSharedHandle(fence->cmdqueue_fence,
+                                   NULL,
+                                   GENERIC_ALL,
+                                   NULL,
+                                   &shared_handle);
+   if(shared_handle)
+      *fence_value = fence->value;
+
+   return (void*) shared_handle;
+}
+#endif
+
 bool
 d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LUID *adapter_luid)
 {
@@ -1311,6 +1331,9 @@ d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LU
    screen->base.set_fence_timeline_value = d3d12_set_fence_timeline_value;
    screen->base.interop_query_device_info = d3d12_interop_query_device_info;
    screen->base.interop_export_object = d3d12_interop_export_object;
+#ifdef _WIN32
+   screen->base.fence_get_win32_handle = d3d12_fence_get_win32_handle;
+#endif
 
    screen->d3d12_mod = util_dl_open(
       UTIL_DL_PREFIX
@@ -1570,7 +1593,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
          return false;
    }
 
-   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&screen->fence))))
+   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&screen->fence))))
       return false;
 
    if (!d3d12_init_residency(screen))
