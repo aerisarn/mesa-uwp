@@ -458,7 +458,7 @@ Vulkan 1.2 -- all DONE: anv, tu, vn
   VK_KHR_imageless_framebuffer                          DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_separate_depth_stencil_layouts                 DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, v3dv, vn)
-  VK_KHR_shader_atomic_int64                            DONE (anv/gen9+, lvp, radv, vn)
+  VK_KHR_shader_atomic_int64                            DONE (anv/gen9+, lvp, nvk, radv, vn)
   VK_KHR_shader_float16_int8                            DONE (anv/gen8+, dzn, hasvk, lvp, radv, tu, vn)
   VK_KHR_shader_float_controls                          DONE (anv/gen8+, dzn, hasvk, lvp, radv, tu, v3dv, vn)
   VK_KHR_shader_subgroup_extended_types                 DONE (anv/gen8+, hasvk, lvp, radv, tu, vn)

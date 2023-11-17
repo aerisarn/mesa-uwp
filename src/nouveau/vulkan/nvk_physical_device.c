@@ -112,6 +112,8 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_sampler_ycbcr_conversion = true,
       .KHR_separate_depth_stencil_layouts = true,
+      .KHR_shader_atomic_int64 = info->cls_eng3d >= MAXWELL_A &&
+                                 nvk_use_nak(info),
       .KHR_shader_clock = true,
       .KHR_shader_draw_parameters = true,
       .KHR_shader_float16_int8 = true,
@@ -251,12 +253,15 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* Vulkan 1.2 */
       .samplerMirrorClampToEdge = true,
-      .descriptorIndexing = true,
       .drawIndirectCount = info->cls_eng3d >= TURING_A,
       .storageBuffer8BitAccess = true,
       .uniformAndStorageBuffer8BitAccess = true,
       .storagePushConstant8 = true,
+      .shaderBufferInt64Atomics = info->cls_eng3d >= MAXWELL_A &&
+                                  nvk_use_nak(info),
+      .shaderSharedInt64Atomics = false, /* TODO */
       .shaderInt8 = true,
+      .descriptorIndexing = true,
       .shaderInputAttachmentArrayDynamicIndexing = true,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
       .shaderStorageTexelBufferArrayDynamicIndexing = true,
