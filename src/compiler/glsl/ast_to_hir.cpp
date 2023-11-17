@@ -4509,8 +4509,8 @@ get_variable_being_redeclared(ir_variable **var_ptr, YYLTYPE loc,
                              "gl_FragDepth: depth layout is declared here "
                              "as '%s, but it was previously declared as "
                              "'%s'",
-                             depth_layout_string(var->data.depth_layout),
-                             depth_layout_string(earlier->data.depth_layout));
+                             depth_layout_string((ir_depth_layout)var->data.depth_layout),
+                             depth_layout_string((ir_depth_layout)earlier->data.depth_layout));
       }
 
       earlier->data.depth_layout = var->data.depth_layout;
