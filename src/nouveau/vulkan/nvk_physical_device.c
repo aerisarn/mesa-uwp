@@ -223,7 +223,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .shaderClipDistance = true,
       .shaderCullDistance = true,
       /* TODO: shaderFloat64 */
-      /* TODO: shaderInt64 */
+      .shaderInt64 = true,
       .shaderInt16 = true,
       /* TODO: shaderResourceResidency */
       .shaderResourceMinLod = true,
