@@ -422,6 +422,11 @@ memory_barrier("image_barrier_4", 3, 1, 10)
 
 memory_barrier("flush_memory_to_texture", 0, 0, 4)
 
+memory_barrier("memory_barrier_2", 2, 2, 9)
+memory_barrier("memory_barrier_3", 2, 1, 9)
+memory_barrier("unknown_barrier_1", 0, 3, 3)
+memory_barrier("unknown_barrier_2", 0, 3, 0)
+
 op("doorbell", (0x60020 | 0x28 << 32, (1 << 48) - 1, 6, _), dests = 0,
       can_eliminate = False, can_reorder = False, imms = [IMM])
 
