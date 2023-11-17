@@ -405,6 +405,55 @@ end_main_rcs_cmd_buffer_done(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static bool
+anv_blorp_blitter_execute_on_companion(struct anv_cmd_buffer *cmd_buffer,
+                                       struct anv_image *image,
+                                       const VkCopyBufferToImageInfo2* pCopyBufferToImageInfo,
+                                       const VkCopyImageToBufferInfo2* pCopyImageToBufferInfo)
+{
+   if (!anv_cmd_buffer_is_blitter_queue(cmd_buffer))
+      return false;
+
+   assert((pCopyBufferToImageInfo && !pCopyImageToBufferInfo) ||
+          (pCopyImageToBufferInfo && !pCopyBufferToImageInfo));
+
+   bool blorp_execute_on_companion = false;
+   VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_NONE;
+   const uint32_t region_count = pCopyBufferToImageInfo ?
+                                 pCopyBufferToImageInfo->regionCount :
+                                 pCopyImageToBufferInfo->regionCount;
+
+   for (unsigned r = 0; r < region_count &&
+                            !blorp_execute_on_companion; r++) {
+      if (pCopyBufferToImageInfo) {
+         aspect_mask =
+            pCopyBufferToImageInfo->pRegions[r].imageSubresource.aspectMask;
+      } else {
+         aspect_mask =
+            pCopyImageToBufferInfo->pRegions[r].imageSubresource.aspectMask;
+      }
+
+      enum isl_format linear_format =
+         anv_get_isl_format(cmd_buffer->device->info, image->vk.format,
+                            aspect_mask, VK_IMAGE_TILING_LINEAR);
+      const struct isl_format_layout *linear_fmtl =
+         isl_format_get_layout(linear_format);
+
+      switch (linear_fmtl->bpb) {
+      case 96:
+         /* We can only support linear mode for 96bpp on blitter engine. */
+         blorp_execute_on_companion |=
+            image->vk.tiling != VK_IMAGE_TILING_LINEAR;
+         break;
+      default:
+         blorp_execute_on_companion |= linear_fmtl->bpb % 3 == 0;
+         break;
+      }
+   }
+
+   return blorp_execute_on_companion;
+}
+
+static bool
 anv_blorp_execute_on_companion(struct anv_cmd_buffer *cmd_buffer,
                                struct anv_image *dst_image)
 {
@@ -613,7 +662,18 @@ void anv_CmdCopyBufferToImage2(
    struct anv_cmd_buffer *main_cmd_buffer = cmd_buffer;
    UNUSED struct anv_state rcs_done = ANV_STATE_NULL;
 
-   if (anv_blorp_execute_on_companion(cmd_buffer, dst_image)) {
+   bool blorp_execute_on_companion =
+      anv_blorp_execute_on_companion(cmd_buffer, dst_image);
+
+   /* Check if any one of the aspects is incompatible with the blitter engine,
+    * if true, use the companion RCS command buffer for blit operation since 3
+    * component formats are not supported natively except 96bpb on the blitter.
+    */
+   blorp_execute_on_companion |=
+      anv_blorp_blitter_execute_on_companion(cmd_buffer, dst_image,
+                                             pCopyBufferToImageInfo, NULL);
+
+   if (blorp_execute_on_companion) {
       rcs_done = record_main_rcs_cmd_buffer_done(cmd_buffer);
       cmd_buffer = cmd_buffer->companion_rcs_cmd_buffer;
    }
@@ -676,6 +736,25 @@ void anv_CmdCopyImageToBuffer2(
    ANV_FROM_HANDLE(anv_image, src_image, pCopyImageToBufferInfo->srcImage);
    ANV_FROM_HANDLE(anv_buffer, dst_buffer, pCopyImageToBufferInfo->dstBuffer);
 
+   UNUSED struct anv_cmd_buffer *main_cmd_buffer = cmd_buffer;
+   UNUSED struct anv_state rcs_done = ANV_STATE_NULL;
+
+   bool blorp_execute_on_companion =
+      anv_blorp_execute_on_companion(cmd_buffer, src_image);
+
+   /* Check if any one of the aspects is incompatible with the blitter engine,
+    * if true, use the companion RCS command buffer for blit operation since 3
+    * component formats are not supported natively except 96bpb on the blitter.
+    */
+   blorp_execute_on_companion |=
+      anv_blorp_blitter_execute_on_companion(cmd_buffer, src_image, NULL,
+                                             pCopyImageToBufferInfo);
+
+   if (blorp_execute_on_companion) {
+      rcs_done = record_main_rcs_cmd_buffer_done(cmd_buffer);
+      cmd_buffer = cmd_buffer->companion_rcs_cmd_buffer;
+   }
+
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
 
@@ -688,6 +767,9 @@ void anv_CmdCopyImageToBuffer2(
    anv_add_buffer_write_pending_bits(cmd_buffer, "after copy image to buffer");
 
    anv_blorp_batch_finish(&batch);
+
+   if (rcs_done.alloc_size)
+      end_main_rcs_cmd_buffer_done(main_cmd_buffer, rcs_done);
 }
 
 static bool
