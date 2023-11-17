@@ -5,18 +5,18 @@
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &panfrost_gallium_file_list
-      - src/gallium/drivers/panfrost/**/*
-      - src/gallium/winsys/panfrost/**/*
+        - src/gallium/drivers/panfrost/**/*
+        - src/gallium/winsys/panfrost/**/*
       when: on_success
     - changes: &panfrost_common_file_list
-      - src/panfrost/ci/*
-      - src/panfrost/include/*
-      - src/panfrost/lib/*
-      - src/panfrost/shared/*
-      - src/panfrost/util/*
+        - src/panfrost/ci/*
+        - src/panfrost/include/*
+        - src/panfrost/lib/*
+        - src/panfrost/shared/*
+        - src/panfrost/util/*
       when: on_success
     - changes:
-      - src/panfrost/midgard/**/*
+        - src/panfrost/midgard/**/*
       when: on_success
 
 .panfrost-midgard-manual-rules:
@@ -31,7 +31,7 @@
     - changes: *panfrost_common_file_list
       when: manual
     - changes:
-      - src/panfrost/midgard/**/*
+        - src/panfrost/midgard/**/*
       when: manual
 
 .panfrost-bifrost-rules:
@@ -48,10 +48,10 @@
         *panfrost_gallium_file_list
       when: on_success
     - changes: &panfrost_vulkan_file_list
-      - src/panfrost/vulkan/*
+        - src/panfrost/vulkan/*
       when: on_success
     - changes: &panfrost_bifrost_file_list
-      - src/panfrost/compiler/**/*
+        - src/panfrost/compiler/**/*
       when: on_success
 
 .panfrost-bifrost-manual-rules:
