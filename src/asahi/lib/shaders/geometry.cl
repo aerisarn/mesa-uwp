@@ -176,7 +176,7 @@ libagx_build_gs_draw(global struct agx_geometry_params *p, bool indexed,
       descriptor[3] = 0;        /* start instance */
    }
 
-   if (state->heap_bottom > 1024 * 1024) {
+   if (state->heap_bottom > 1024 * 1024 * 128) {
       global uint *foo = (global uint *)(uintptr_t)0xdeadbeef;
       *foo = 0x1234;
    }
