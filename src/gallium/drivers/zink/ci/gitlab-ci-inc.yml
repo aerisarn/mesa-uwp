@@ -3,7 +3,9 @@
     - !reference [.test, rules]
     - !reference [.gl-rules, rules]
     - changes: &zink_files_list
-        - src/gallium/drivers/zink/**/*
+        - src/gallium/drivers/zink/*
+        - src/gallium/drivers/zink/nir_to_spirv/*
+        - src/gallium/drivers/zink/ci/*
       when: on_success
 
 .zink-common-manual-rules:
