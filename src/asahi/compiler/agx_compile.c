@@ -1202,6 +1202,9 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_fence_mem_to_tex_agx: {
       /* Flush out the atomic to main memory */
       agx_memory_barrier(b);
+      /* Found experimentally... */
+      if (b->shader->key->needs_g13x_coherency)
+         agx_memory_barrier_2(b);
 
       /* TODO: Which ones do we actually need? */
       agx_image_barrier_1(b);
