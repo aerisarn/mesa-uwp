@@ -9754,6 +9754,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    tex->dim = dim;
    tex->dmask = dmask & 0xf;
    tex->da = da;
+   tex->unrm = instr->sampler_dim == GLSL_SAMPLER_DIM_RECT;
    tex->tfe = instr->is_sparse;
    tex->d16 = d16;
    tex->a16 = a16;
