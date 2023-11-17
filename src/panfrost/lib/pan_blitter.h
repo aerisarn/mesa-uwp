@@ -28,7 +28,7 @@
 #include "genxml/gen_macros.h"
 
 #include "util/format/u_format.h"
-#include "pan_cs.h"
+#include "pan_desc.h"
 #include "pan_pool.h"
 #include "pan_texture.h"
 #include "pan_util.h"

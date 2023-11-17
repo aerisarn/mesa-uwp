@@ -28,7 +28,7 @@
 
 #include "vk_util.h"
 
-#include "pan_cs.h"
+#include "pan_desc.h"
 #include "pan_earlyzs.h"
 #include "pan_encoder.h"
 #include "pan_pool.h"

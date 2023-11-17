@@ -32,7 +32,7 @@
 #include "panvk_private.h"
 
 #include "pan_blitter.h"
-#include "pan_cs.h"
+#include "pan_desc.h"
 #include "pan_encoder.h"
 
 #include "util/rounding.h"

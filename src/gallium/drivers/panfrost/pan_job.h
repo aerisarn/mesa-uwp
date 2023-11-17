@@ -28,7 +28,7 @@
 
 #include "pipe/p_state.h"
 #include "util/u_dynarray.h"
-#include "pan_cs.h"
+#include "pan_desc.h"
 #include "pan_jm.h"
 #include "pan_mempool.h"
 #include "pan_resource.h"

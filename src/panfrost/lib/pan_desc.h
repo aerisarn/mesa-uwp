@@ -25,8 +25,8 @@
  *   Boris Brezillon <boris.brezillon@collabora.com>
  */
 
-#ifndef __PAN_CS_H
-#define __PAN_CS_H
+#ifndef __PAN_DESC_H
+#define __PAN_DESC_H
 
 #include "genxml/gen_macros.h"
 

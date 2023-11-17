@@ -67,7 +67,7 @@
 #include "drm-uapi/panfrost_drm.h"
 
 #include "pan_blend.h"
-#include "pan_cs.h"
+#include "pan_desc.h"
 #include "pan_device.h"
 #include "pan_jc.h"
 #include "pan_texture.h"

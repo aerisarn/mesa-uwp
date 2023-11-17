@@ -45,7 +45,7 @@ foreach ver : ['4', '5', '6', '7', '9']
     [
       'pan_blend.c',
       'pan_blitter.c',
-      'pan_cs.c',
+      'pan_desc.c',
       'pan_shader.c',
       'pan_texture.c',
     ],

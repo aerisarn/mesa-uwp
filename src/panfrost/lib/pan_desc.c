@@ -29,7 +29,7 @@
 
 #include "genxml/gen_macros.h"
 
-#include "pan_cs.h"
+#include "pan_desc.h"
 #include "pan_encoder.h"
 #include "pan_texture.h"
 
