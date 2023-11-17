@@ -302,6 +302,36 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_SET_CORE_VALUE(feats, sparseResidency16Samples, false);
       VN_SET_CORE_VALUE(feats, sparseResidencyAliased, false);
    }
+
+   /* Disable unsupported ExtendedDynamicState3Features */
+   if (exts->EXT_extended_dynamic_state3) {
+      /* TODO: Add support for VK_EXT_sample_locations */
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3SampleLocationsEnable,
+                        false);
+      /* TODO: Add support for VK_EXT_blend_operation_advanced */
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3ColorBlendAdvanced,
+                        false);
+      /* VK_NV_* extensions required */
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3ViewportWScalingEnable,
+                        false);
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3ViewportSwizzle, false);
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3CoverageToColorEnable,
+                        false);
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3CoverageToColorLocation,
+                        false);
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3CoverageModulationMode,
+                        false);
+      VN_SET_CORE_VALUE(
+         feats, extendedDynamicState3CoverageModulationTableEnable, false);
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3CoverageModulationTable,
+                        false);
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3CoverageReductionMode,
+                        false);
+      VN_SET_CORE_VALUE(
+         feats, extendedDynamicState3RepresentativeFragmentTestEnable, false);
+      VN_SET_CORE_VALUE(feats, extendedDynamicState3ShadingRateImageEnable,
+                        false);
+   }
 }
 
 static void
