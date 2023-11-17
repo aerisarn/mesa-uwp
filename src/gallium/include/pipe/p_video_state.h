@@ -641,6 +641,7 @@ struct pipe_h264_enc_picture_desc
 
    bool insert_aud_nalu;
    enum pipe_video_feedback_metadata_type requested_metadata;
+   bool renew_headers_on_idr;
 };
 
 struct pipe_h265_enc_sublayer_hrd_params
@@ -832,6 +833,7 @@ struct pipe_h265_enc_picture_desc
    /* Use with PIPE_VIDEO_SLICE_MODE_MAX_SLICE_SICE */
    unsigned max_slice_bytes;
    enum pipe_video_feedback_metadata_type requested_metadata;
+   bool renew_headers_on_idr;
 };
 
 struct pipe_av1_enc_rate_control
