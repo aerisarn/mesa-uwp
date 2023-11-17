@@ -4,9 +4,9 @@
     - !reference [.test, rules]
     - !reference [.gl-rules, rules]
     - changes: &i915g_file_list
-      - src/gallium/drivers/i915/**/*
-      - src/gallium/winsys/i915/**/*
-      - src/intel/**/*
+        - src/gallium/drivers/i915/**/*
+        - src/gallium/winsys/i915/**/*
+        - src/intel/**/*
       when: on_success
 
 .i915g-manual-rules:
@@ -26,9 +26,9 @@
     - !reference [.anholt-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &crocus_file_list
-      - src/gallium/drivers/crocus/**/*
-      - src/gallium/winsys/crocus/**/*
-      - src/intel/**/*
+        - src/gallium/drivers/crocus/**/*
+        - src/gallium/winsys/crocus/**/*
+        - src/intel/**/*
       when: on_success
 
 .crocus-manual-rules:
@@ -50,9 +50,9 @@
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &iris_file_list
-      - src/gallium/drivers/iris/**/*
-      - src/gallium/winsys/iris/**/*
-      - src/intel/**/*
+        - src/gallium/drivers/iris/**/*
+        - src/gallium/winsys/iris/**/*
+        - src/intel/**/*
       when: on_success
 
 .iris-manual-rules:
@@ -96,7 +96,7 @@
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
-      - src/intel/**/*
+        - src/intel/**/*
       when: on_success
 
 .anv-manual-rules:
@@ -107,7 +107,7 @@
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes:
-      - src/intel/**/*
+        - src/intel/**/*
       when: manual
 
 .hasvk-rules:
@@ -117,7 +117,7 @@
     - !reference [.anholt-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
-      - src/intel/**/*
+        - src/intel/**/*
       when: on_success
 
 .hasvk-manual-rules:
@@ -128,7 +128,7 @@
     - !reference [.anholt-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes:
-      - src/intel/**/*
+        - src/intel/**/*
       when: manual
 
 # ruleset to trigger on changes affecting either anv or iris, for jobs using both (piglit, skqp)
