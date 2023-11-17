@@ -1075,7 +1075,6 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA currentPicParams =
       d3d12_video_encoder_get_current_picture_param_settings(pD3D12Enc);
 
-   auto profDesc = d3d12_video_encoder_get_current_profile_desc(pD3D12Enc);
    auto levelDesc = d3d12_video_encoder_get_current_level_desc(pD3D12Enc);
    auto codecConfigDesc = d3d12_video_encoder_get_current_codec_config_desc(pD3D12Enc);
    auto MaxDPBCapacity = d3d12_video_encoder_get_current_max_dpb_capacity(pD3D12Enc);
@@ -1106,7 +1105,7 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
    size_t writtenSPSBytesCount = 0;
    if (writeNewSPS) {
       pH264BitstreamBuilder->build_sps(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificSequenceStateDescH264,
-                                       *profDesc.pH264Profile,
+                                       pD3D12Enc->base.profile,
                                        *levelDesc.pH264LevelSetting,
                                        pD3D12Enc->m_currentEncodeConfig.m_encodeFormatInfo.Format,
                                        *codecConfigDesc.pH264Config,
@@ -1122,7 +1121,7 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
    }
 
    size_t writtenPPSBytesCount = 0;
-   pH264BitstreamBuilder->build_pps(*profDesc.pH264Profile,
+   pH264BitstreamBuilder->build_pps(pD3D12Enc->base.profile,
                                     *codecConfigDesc.pH264Config,
                                     *currentPicParams.pH264PicData,
                                     currentPicParams.pH264PicData->pic_parameter_set_id,

@@ -58,11 +58,13 @@ d3d12_video_nalu_writer_h264::write_sps_bytes(d3d12_video_encoder_bitstream *pBi
    pBitstream->put_bits(8, pSPS->level_idc);
    pBitstream->exp_Golomb_ue(pSPS->seq_parameter_set_id);
 
-   // Only support profiles defined in D3D12 Video Encode
    // If adding new profile support, check that the chroma_format_idc and bit depth are set correctly below
    // for the new additions
-   assert((pSPS->profile_idc == H264_PROFILE_MAIN) || (pSPS->profile_idc == H264_PROFILE_HIGH) ||
-          (pSPS->profile_idc == H264_PROFILE_HIGH10));
+   assert((pSPS->profile_idc == H264_PROFILE_MAIN) ||
+         (pSPS->profile_idc == H264_PROFILE_HIGH) ||
+         (pSPS->profile_idc == H264_PROFILE_HIGH10) ||
+         (pSPS->profile_idc == H264_PROFILE_BASELINE) ||
+         (pSPS->profile_idc == H264_PROFILE_CONSTRAINED_BASELINE));
 
    if ((pSPS->profile_idc == H264_PROFILE_HIGH) || (pSPS->profile_idc == H264_PROFILE_HIGH10)) {
       // chroma_format_idc always 4.2.0
