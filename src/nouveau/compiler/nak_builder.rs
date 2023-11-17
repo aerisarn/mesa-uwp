@@ -76,6 +76,16 @@ pub trait SSABuilder: Builder {
         dst
     }
 
+    fn fmnmx(&mut self, x: Src, y: Src, min: Src) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::GPR, 1);
+        self.push_op(OpFMnMx {
+            dst: dst.into(),
+            srcs: [x, y],
+            min: min,
+        });
+        dst
+    }
+
     fn fmul(&mut self, x: Src, y: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.push_op(OpFMul {
@@ -123,6 +133,27 @@ pub trait SSABuilder: Builder {
         self.push_op(OpIAdd3 {
             dst: dst.into(),
             srcs: [Src::new_zero(), x, y],
+        });
+        dst
+    }
+
+    fn imnmx(&mut self, tp: IntCmpType, x: Src, y: Src, min: Src) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::GPR, 1);
+        self.push_op(OpIMnMx {
+            dst: dst.into(),
+            cmp_type: tp,
+            srcs: [x, y],
+            min: min,
+        });
+        dst
+    }
+
+    fn imul(&mut self, x: Src, y: Src) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::GPR, 1);
+        self.push_op(OpIMad {
+            dst: dst.into(),
+            srcs: [x, y, 0.into()],
+            signed: false,
         });
         dst
     }

@@ -466,23 +466,11 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_fmax => {
                 assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpFMnMx {
-                    dst: dst.into(),
-                    srcs: [srcs[0], srcs[1]],
-                    min: SrcRef::False.into(),
-                });
-                dst
+                b.fmnmx(srcs[0], srcs[1], false.into())
             }
             nir_op_fmin => {
                 assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpFMnMx {
-                    dst: dst.into(),
-                    srcs: [srcs[0], srcs[1]],
-                    min: SrcRef::True.into(),
-                });
-                dst
+                b.fmnmx(srcs[0], srcs[1], true.into())
             }
             nir_op_fmul => {
                 assert!(alu.def.bit_size() == 32);
@@ -639,24 +627,11 @@ impl<'a> ShaderFromNir<'a> {
                     _ => panic!("Not an integer min/max"),
                 };
                 assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpIMnMx {
-                    dst: dst.into(),
-                    cmp_type: tp,
-                    srcs: [srcs[0], srcs[1]],
-                    min: min.into(),
-                });
-                dst
+                b.imnmx(tp, srcs[0], srcs[1], min.into())
             }
             nir_op_imul => {
                 assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpIMad {
-                    dst: dst.into(),
-                    srcs: [srcs[0], srcs[1], 0.into()],
-                    signed: false,
-                });
-                dst
+                b.imul(srcs[0], srcs[1])
             }
             nir_op_imul_2x32_64 | nir_op_umul_2x32_64 => {
                 let dst = b.alloc_ssa(RegFile::GPR, 2);
