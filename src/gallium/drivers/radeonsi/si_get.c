@@ -259,14 +259,12 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_PREFER_BACK_BUFFER_REUSE:
+   case PIPE_CAP_UMA:
+   case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
       return 0;
 
    case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
       return enable_sparse ? RADEON_SPARSE_PAGE_SIZE : 0;
-
-   case PIPE_CAP_UMA:
-   case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
-      return 0;
 
    case PIPE_CAP_CONTEXT_PRIORITY_MASK:
       if (!(sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 22))
@@ -293,6 +291,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 30;
 
    case PIPE_CAP_MAX_VARYINGS:
+   case PIPE_CAP_MAX_GS_INVOCATIONS:
       return 32;
 
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
@@ -311,9 +310,6 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 256;
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
       return 1024;
-   case PIPE_CAP_MAX_GS_INVOCATIONS:
-      /* Even though the hw supports more, we officially wanna expose only 32. */
-      return 32;
 
    case PIPE_CAP_MAX_VERTEX_ATTRIB_STRIDE:
       return 2048;
