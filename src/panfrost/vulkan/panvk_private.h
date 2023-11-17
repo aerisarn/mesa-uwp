@@ -69,7 +69,7 @@
 #include "pan_blend.h"
 #include "pan_cs.h"
 #include "pan_device.h"
-#include "pan_scoreboard.h"
+#include "pan_jc.h"
 #include "pan_texture.h"
 #include "panvk_mempool.h"
 #include "panvk_varyings.h"
@@ -263,7 +263,7 @@ struct panvk_batch {
    struct list_head node;
    struct util_dynarray jobs;
    struct util_dynarray event_ops;
-   struct pan_scoreboard scoreboard;
+   struct pan_jc jc;
    struct {
       const struct panvk_framebuffer *info;
       struct panfrost_ptr desc;

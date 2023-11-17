@@ -3686,8 +3686,8 @@ init_polygon_list(struct panfrost_batch *batch)
 {
 #if PAN_ARCH <= 5
    mali_ptr polygon_list = batch_get_polygon_list(batch);
-   panfrost_scoreboard_initialize_tiler(&batch->pool.base,
-                                        &batch->jm.jobs.vtc_jc, polygon_list);
+   pan_jc_initialize_tiler(&batch->pool.base, &batch->jm.jobs.vtc_jc,
+                           polygon_list);
 #endif
 }
 

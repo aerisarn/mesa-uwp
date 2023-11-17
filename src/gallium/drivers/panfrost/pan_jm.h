@@ -25,13 +25,13 @@
 #ifndef __PAN_JM_H__
 #define __PAN_JM_H__
 
-#include "pan_scoreboard.h"
+#include "pan_jc.h"
 
 struct panfrost_jm_batch {
    /* Job related fields. */
    struct {
       /* Vertex/tiler/compute job chain. */
-      struct pan_scoreboard vtc_jc;
+      struct pan_jc vtc_jc;
 
       /* Fragment job, only one per batch. */
       mali_ptr frag;

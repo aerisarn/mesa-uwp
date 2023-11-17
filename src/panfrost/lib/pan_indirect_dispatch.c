@@ -29,8 +29,8 @@
 #include "util/u_memory.h"
 #include "pan_bo.h"
 #include "pan_encoder.h"
+#include "pan_jc.h"
 #include "pan_pool.h"
-#include "pan_scoreboard.h"
 #include "pan_shader.h"
 #include "pan_util.h"
 
@@ -163,8 +163,7 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
 }
 
 unsigned
-GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool,
-                                 struct pan_scoreboard *scoreboard,
+GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool, struct pan_jc *jc,
                                  const struct pan_indirect_dispatch_info *inputs)
 {
    struct panfrost_device *dev = pool->dev;
@@ -189,8 +188,8 @@ GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool,
          pan_pool_upload_aligned(pool, inputs, sizeof(*inputs), 16);
    }
 
-   return panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_COMPUTE, false, true,
-                           0, 0, &job, false);
+   return pan_jc_add_job(pool, jc, MALI_JOB_TYPE_COMPUTE, false, true, 0, 0,
+                         &job, false);
 }
 
 void

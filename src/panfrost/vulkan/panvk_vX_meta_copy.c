@@ -110,8 +110,7 @@ panvk_meta_copy_emit_dcd(struct pan_pool *pool, mali_ptr src_coords,
 }
 
 static struct panfrost_ptr
-panvk_meta_copy_emit_tiler_job(struct pan_pool *desc_pool,
-                               struct pan_scoreboard *scoreboard,
+panvk_meta_copy_emit_tiler_job(struct pan_pool *desc_pool, struct pan_jc *jc,
                                mali_ptr src_coords, mali_ptr dst_coords,
                                mali_ptr texture, mali_ptr sampler,
                                mali_ptr push_constants, mali_ptr vpd,
@@ -142,14 +141,13 @@ panvk_meta_copy_emit_tiler_job(struct pan_pool *desc_pool,
       cfg.address = tiler;
    }
 
-   panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER, false, false, 0,
-                    0, &job, false);
+   pan_jc_add_job(desc_pool, jc, MALI_JOB_TYPE_TILER, false, false, 0, 0, &job,
+                  false);
    return job;
 }
 
 static struct panfrost_ptr
-panvk_meta_copy_emit_compute_job(struct pan_pool *desc_pool,
-                                 struct pan_scoreboard *scoreboard,
+panvk_meta_copy_emit_compute_job(struct pan_pool *desc_pool, struct pan_jc *jc,
                                  const struct pan_compute_dim *num_wg,
                                  const struct pan_compute_dim *wg_sz,
                                  mali_ptr texture, mali_ptr sampler,
@@ -171,8 +169,8 @@ panvk_meta_copy_emit_compute_job(struct pan_pool *desc_pool,
                             push_constants,
                             pan_section_ptr(job.cpu, COMPUTE_JOB, DRAW));
 
-   panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_COMPUTE, false, false,
-                    0, 0, &job, false);
+   pan_jc_add_job(desc_pool, jc, MALI_JOB_TYPE_COMPUTE, false, false, 0, 0,
+                  &job, false);
    return job;
 }
 
@@ -684,9 +682,9 @@ panvk_meta_copy_img2img(struct panvk_cmd_buffer *cmdbuf,
 
       struct panfrost_ptr job;
 
-      job = panvk_meta_copy_emit_tiler_job(
-         &cmdbuf->desc_pool.base, &batch->scoreboard, src_coords, dst_coords,
-         texture, sampler, 0, vpd, rsd, tsd, tiler);
+      job = panvk_meta_copy_emit_tiler_job(&cmdbuf->desc_pool.base, &batch->jc,
+                                           src_coords, dst_coords, texture,
+                                           sampler, 0, vpd, rsd, tsd, tiler);
 
       util_dynarray_append(&batch->jobs, void *, job.cpu);
       panvk_per_arch(cmd_close_batch)(cmdbuf);
@@ -1120,9 +1118,9 @@ panvk_meta_copy_buf2img(struct panvk_cmd_buffer *cmdbuf,
 
       struct panfrost_ptr job;
 
-      job = panvk_meta_copy_emit_tiler_job(
-         &cmdbuf->desc_pool.base, &batch->scoreboard, src_coords, dst_coords, 0,
-         0, pushconsts, vpd, rsd, tsd, tiler);
+      job = panvk_meta_copy_emit_tiler_job(&cmdbuf->desc_pool.base, &batch->jc,
+                                           src_coords, dst_coords, 0, 0,
+                                           pushconsts, vpd, rsd, tsd, tiler);
 
       util_dynarray_append(&batch->jobs, void *, job.cpu);
       panvk_per_arch(cmd_close_batch)(cmdbuf);
@@ -1550,8 +1548,8 @@ panvk_meta_copy_img2buf(struct panvk_cmd_buffer *cmdbuf,
    };
 
    struct panfrost_ptr job = panvk_meta_copy_emit_compute_job(
-      &cmdbuf->desc_pool.base, &batch->scoreboard, &num_wg, &wg_sz, texture,
-      sampler, pushconsts, rsd, tsd);
+      &cmdbuf->desc_pool.base, &batch->jc, &num_wg, &wg_sz, texture, sampler,
+      pushconsts, rsd, tsd);
 
    util_dynarray_append(&batch->jobs, void *, job.cpu);
 
@@ -1719,8 +1717,8 @@ panvk_meta_copy_buf2buf(struct panvk_cmd_buffer *cmdbuf,
    struct pan_compute_dim num_wg = {nblocks, 1, 1};
    struct pan_compute_dim wg_sz = {1, 1, 1};
    struct panfrost_ptr job = panvk_meta_copy_emit_compute_job(
-      &cmdbuf->desc_pool.base, &batch->scoreboard, &num_wg, &wg_sz, 0, 0,
-      pushconsts, rsd, tsd);
+      &cmdbuf->desc_pool.base, &batch->jc, &num_wg, &wg_sz, 0, 0, pushconsts,
+      rsd, tsd);
 
    util_dynarray_append(&batch->jobs, void *, job.cpu);
 
@@ -1865,8 +1863,8 @@ panvk_meta_fill_buf(struct panvk_cmd_buffer *cmdbuf,
    struct pan_compute_dim num_wg = {nwords, 1, 1};
    struct pan_compute_dim wg_sz = {1, 1, 1};
    struct panfrost_ptr job = panvk_meta_copy_emit_compute_job(
-      &cmdbuf->desc_pool.base, &batch->scoreboard, &num_wg, &wg_sz, 0, 0,
-      pushconsts, rsd, tsd);
+      &cmdbuf->desc_pool.base, &batch->jc, &num_wg, &wg_sz, 0, 0, pushconsts,
+      rsd, tsd);
 
    util_dynarray_append(&batch->jobs, void *, job.cpu);
 
@@ -1915,8 +1913,8 @@ panvk_meta_update_buf(struct panvk_cmd_buffer *cmdbuf,
    struct pan_compute_dim num_wg = {nblocks, 1, 1};
    struct pan_compute_dim wg_sz = {1, 1, 1};
    struct panfrost_ptr job = panvk_meta_copy_emit_compute_job(
-      &cmdbuf->desc_pool.base, &batch->scoreboard, &num_wg, &wg_sz, 0, 0,
-      pushconsts, rsd, tsd);
+      &cmdbuf->desc_pool.base, &batch->jc, &num_wg, &wg_sz, 0, 0, pushconsts,
+      rsd, tsd);
 
    util_dynarray_append(&batch->jobs, void *, job.cpu);
 

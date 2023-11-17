@@ -348,9 +348,9 @@ GENX(jm_launch_grid)(struct panfrost_batch *batch,
    }
 #endif
 
-   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
-                    MALI_JOB_TYPE_COMPUTE, true, false, indirect_dep, 0, &t,
-                    false);
+   pan_jc_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
+                  MALI_JOB_TYPE_COMPUTE, true, false, indirect_dep, 0, &t,
+                  false);
 }
 
 #if PAN_ARCH >= 6
@@ -837,8 +837,8 @@ GENX(jm_launch_xfb)(struct panfrost_batch *batch,
 #if PAN_ARCH <= 5
    job_type = MALI_JOB_TYPE_VERTEX;
 #endif
-   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc, job_type, true,
-                    false, 0, 0, &t, false);
+   pan_jc_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc, job_type, true,
+                  false, 0, 0, &t, false);
 }
 
 #if PAN_ARCH < 9
@@ -852,13 +852,13 @@ jm_push_vertex_tiler_jobs(struct panfrost_batch *batch,
                           const struct panfrost_ptr *vertex_job,
                           const struct panfrost_ptr *tiler_job)
 {
-   unsigned vertex = panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
-                                      MALI_JOB_TYPE_VERTEX, false, false, 0, 0,
-                                      vertex_job, false);
+   unsigned vertex = pan_jc_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
+                                    MALI_JOB_TYPE_VERTEX, false, false, 0, 0,
+                                    vertex_job, false);
 
-   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
-                    MALI_JOB_TYPE_TILER, false, false, vertex, 0, tiler_job,
-                    false);
+   pan_jc_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
+                  MALI_JOB_TYPE_TILER, false, false, vertex, 0, tiler_job,
+                  false);
 }
 #endif
 
@@ -914,9 +914,9 @@ GENX(jm_launch_draw)(struct panfrost_batch *batch,
 
    jm_emit_malloc_vertex_job(batch, info, draw, secondary_shader, tiler.cpu);
 
-   panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
-                    MALI_JOB_TYPE_MALLOC_VERTEX, false, false, 0, 0, &tiler,
-                    false);
+   pan_jc_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
+                  MALI_JOB_TYPE_MALLOC_VERTEX, false, false, 0, 0, &tiler,
+                  false);
 #else
    /* Fire off the draw itself */
    jm_emit_tiler_job(batch, info, draw, &invocation, secondary_shader,
@@ -926,9 +926,9 @@ GENX(jm_launch_draw)(struct panfrost_batch *batch,
       jm_emit_vertex_draw(
          batch, pan_section_ptr(tiler.cpu, INDEXED_VERTEX_JOB, VERTEX_DRAW));
 
-      panfrost_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
-                       MALI_JOB_TYPE_INDEXED_VERTEX, false, false, 0, 0, &tiler,
-                       false);
+      pan_jc_add_job(&batch->pool.base, &batch->jm.jobs.vtc_jc,
+                     MALI_JOB_TYPE_INDEXED_VERTEX, false, false, 0, 0, &tiler,
+                     false);
 #endif
    } else {
       jm_emit_vertex_job(batch, info, &invocation, vertex.cpu);

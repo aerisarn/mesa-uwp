@@ -57,14 +57,14 @@ panvk_queue_submit_batch(struct panvk_queue *queue, struct panvk_batch *batch,
       }
    }
 
-   if (batch->scoreboard.first_job) {
+   if (batch->jc.first_job) {
       struct drm_panfrost_submit submit = {
          .bo_handles = (uintptr_t)bos,
          .bo_handle_count = nr_bos,
          .in_syncs = (uintptr_t)in_fences,
          .in_sync_count = nr_in_fences,
          .out_sync = queue->sync,
-         .jc = batch->scoreboard.first_job,
+         .jc = batch->jc.first_job,
       };
 
       ret = drmIoctl(pdev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
@@ -77,8 +77,7 @@ panvk_queue_submit_batch(struct panvk_queue *queue, struct panvk_batch *batch,
       }
 
       if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(pdev->decode_ctx, batch->scoreboard.first_job,
-                      pdev->gpu_id);
+         pandecode_jc(pdev->decode_ctx, batch->jc.first_job, pdev->gpu_id);
 
       if (debug & PANVK_DEBUG_DUMP)
          pandecode_dump_mappings(pdev->decode_ctx);
@@ -93,7 +92,7 @@ panvk_queue_submit_batch(struct panvk_queue *queue, struct panvk_batch *batch,
          .requirements = PANFROST_JD_REQ_FS,
       };
 
-      if (batch->scoreboard.first_job) {
+      if (batch->jc.first_job) {
          submit.in_syncs = (uintptr_t)(&queue->sync);
          submit.in_sync_count = 1;
       } else {
@@ -229,7 +228,7 @@ panvk_per_arch(queue_submit)(struct vk_queue *vk_queue,
             panvk_pool_num_bos(&cmdbuf->tls_pool) +
             (batch->fb.info ? batch->fb.info->attachment_count : 0) +
             (batch->blit.src ? 1 : 0) + (batch->blit.dst ? 1 : 0) +
-            (batch->scoreboard.first_tiler ? 1 : 0) + 1;
+            (batch->jc.first_tiler ? 1 : 0) + 1;
          unsigned bo_idx = 0;
          uint32_t bos[nr_bos];
 
@@ -256,7 +255,7 @@ panvk_per_arch(queue_submit)(struct vk_queue *vk_queue,
          if (batch->blit.dst)
             bos[bo_idx++] = batch->blit.dst->gem_handle;
 
-         if (batch->scoreboard.first_tiler)
+         if (batch->jc.first_tiler)
             bos[bo_idx++] = pdev->tiler_heap->gem_handle;
 
          bos[bo_idx++] = pdev->sample_positions->gem_handle;
