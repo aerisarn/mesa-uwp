@@ -990,12 +990,19 @@ upload_pixel_hashing_tables(struct iris_batch *batch)
                                          0, size, PIPE_MAP_WRITE,
                                          &transfer);
 
-   uint32_t ppipe_mask = 0;
+   /* Calculate the set of present pixel pipes, and another set of
+    * present pixel pipes with 2 dual subslices enabled, the latter
+    * will appear on the hashing table with twice the frequency of
+    * pixel pipes with a single dual subslice present.
+    */
+   uint32_t ppipe_mask1 = 0, ppipe_mask2 = 0;
    for (unsigned p = 0; p < ARRAY_SIZE(devinfo->ppipe_subslices); p++) {
       if (devinfo->ppipe_subslices[p])
-         ppipe_mask |= (1u << p);
+         ppipe_mask1 |= (1u << p);
+      if (devinfo->ppipe_subslices[p] > 1)
+         ppipe_mask2 |= (1u << p);
    }
-   assert(ppipe_mask);
+   assert(ppipe_mask1);
 
    struct GENX(SLICE_HASH_TABLE) table;
 
@@ -1008,7 +1015,8 @@ upload_pixel_hashing_tables(struct iris_batch *batch)
     * initialized to the same value.
     */
    for (unsigned i = 0; i < 7; i++)
-     intel_compute_pixel_hash_table_nway(16, 16, ppipe_mask, table.Entry[i][0]);
+      intel_compute_pixel_hash_table_nway(16, 16, ppipe_mask1, ppipe_mask2,
+                                          table.Entry[i][0]);
 
    GENX(SLICE_HASH_TABLE_pack)(NULL, map, &table);
 
@@ -1026,7 +1034,7 @@ upload_pixel_hashing_tables(struct iris_batch *batch)
    iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), mode) {
       mode.SliceHashingTableEnable = true;
       mode.SliceHashingTableEnableMask = true;
-      mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask) > 1 ?
+      mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask1) > 1 ?
                                     hashing32x32 : NormalMode);
       mode.CrossSliceHashingModeMask = -1;
    }

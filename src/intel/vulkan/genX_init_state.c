@@ -116,12 +116,19 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
       p.SubsliceHashingTableEnableMask = true;
    }
 #elif GFX_VERx10 == 125
-   uint32_t ppipe_mask = 0;
+   /* Calculate the set of present pixel pipes, and another set of
+    * present pixel pipes with 2 dual subslices enabled, the latter
+    * will appear on the hashing table with twice the frequency of
+    * pixel pipes with a single dual subslice present.
+    */
+   uint32_t ppipe_mask1 = 0, ppipe_mask2 = 0;
    for (unsigned p = 0; p < ARRAY_SIZE(device->info->ppipe_subslices); p++) {
-      if (device->info->ppipe_subslices[p])
-         ppipe_mask |= (1u << p);
+      if (device->info->ppipe_subslices[p] > 0)
+         ppipe_mask1 |= (1u << p);
+      if (device->info->ppipe_subslices[p] > 1)
+         ppipe_mask2 |= (1u << p);
    }
-   assert(ppipe_mask);
+   assert(ppipe_mask1);
 
    if (!device->slice_hash.alloc_size) {
       unsigned size = GENX(SLICE_HASH_TABLE_length) * 4;
@@ -139,7 +146,8 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
        * need to be initialized to the same value.
        */
       for (unsigned i = 0; i < 7; i++)
-         intel_compute_pixel_hash_table_nway(16, 16, ppipe_mask, table.Entry[i][0]);
+         intel_compute_pixel_hash_table_nway(16, 16, ppipe_mask1, ppipe_mask2,
+                                             table.Entry[i][0]);
 
       GENX(SLICE_HASH_TABLE_pack)(NULL, device->slice_hash.map, &table);
    }
@@ -160,7 +168,7 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
    anv_batch_emit(batch, GENX(3DSTATE_3D_MODE), mode) {
       mode.SliceHashingTableEnable = true;
       mode.SliceHashingTableEnableMask = true;
-      mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask) > 1 ?
+      mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask1) > 1 ?
 				    hashing32x32 : NormalMode);
       mode.CrossSliceHashingModeMask = -1;
       mode.FastClearOptimizationEnable = !device->physical->disable_fcv;
