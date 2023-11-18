@@ -80,11 +80,13 @@ foreach x : pipe_loaders
 
   pipe_sym = configure_file(input : 'pipe.sym.in', output : 'pipe_@0@.sym'.format(x[1]), configuration : pipe_sym_config)
 
+  cur_pipe_loader_link_args = pipe_loader_link_args
+  cur_pipe_loader_link_deps = pipe_loader_link_deps
   if with_ld_version_script
-    pipe_loader_link_args += [
+    cur_pipe_loader_link_args += [
       '-Wl,--version-script', join_paths(meson.current_build_dir(), 'pipe_@0@.sym'.format(x[1]))
     ]
-    pipe_loader_link_deps += pipe_sym
+    cur_pipe_loader_link_deps += pipe_sym
   endif
 
   if x[0]
@@ -94,8 +96,8 @@ foreach x : pipe_loaders
       c_args : [pipe_loader_comp_args, '-DPIPE_LOADER_DYNAMIC=1'],
       cpp_args : [pipe_loader_comp_args],
       gnu_symbol_visibility : 'hidden',
-      link_args : pipe_loader_link_args,
-      link_depends : pipe_loader_link_deps,
+      link_args : cur_pipe_loader_link_args,
+      link_depends : cur_pipe_loader_link_deps,
       include_directories : pipe_loader_incs,
       link_with : [pipe_loader_link_with, x[3]],
       dependencies : [idep_mesautil, idep_nir, dep_thread, x[2]],
