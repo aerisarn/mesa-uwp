@@ -800,14 +800,6 @@ bool agx_nir_layout_uniforms(nir_shader *shader,
 
 bool agx_nir_lower_bindings(nir_shader *shader, bool *uses_bindless_samplers);
 
-void agx_nir_lower_gs(nir_shader *gs, nir_shader *input_shader,
-                      const nir_shader *libagx, struct agx_ia_key *ia,
-                      bool rasterizer_discard, nir_shader **gs_count,
-                      nir_shader **gs_copy, nir_shader **pre_gs,
-                      enum mesa_prim *out_mode, unsigned *out_count_words);
-
-nir_shader *agx_nir_prefix_sum_gs(const nir_shader *libagx, unsigned words);
-
 bool agx_batch_is_active(struct agx_batch *batch);
 bool agx_batch_is_submitted(struct agx_batch *batch);
 
