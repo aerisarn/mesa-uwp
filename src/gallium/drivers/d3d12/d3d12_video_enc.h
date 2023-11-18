@@ -67,6 +67,10 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
                                      struct pipe_resource *    destination,
                                      void **                   feedback);
 
+int d3d12_video_encoder_get_encode_headers(struct pipe_video_codec *codec,
+                                           struct pipe_picture_desc *picture,
+                                           void* bitstream_buf,
+                                           unsigned *bitstream_buf_size);
 /**
  * Get feedback fence.
  *

@@ -1576,6 +1576,7 @@ d3d12_video_encoder_create_encoder(struct pipe_context *context, const struct pi
    pD3D12Enc->base.encode_bitstream = d3d12_video_encoder_encode_bitstream;
    pD3D12Enc->base.end_frame        = d3d12_video_encoder_end_frame;
    pD3D12Enc->base.flush            = d3d12_video_encoder_flush;
+   pD3D12Enc->base.get_encode_headers = d3d12_video_encoder_get_encode_headers;
    pD3D12Enc->base.get_feedback_fence = d3d12_video_encoder_get_feedback_fence;
    pD3D12Enc->base.get_feedback     = d3d12_video_encoder_get_feedback;
 
@@ -2612,4 +2613,41 @@ d3d12_video_encoder_get_feedback_fence(struct pipe_video_codec *codec, void *fee
    }
 
    return (pipe_fence_handle*) feedback;
+}
+
+int d3d12_video_encoder_get_encode_headers(struct pipe_video_codec *codec,
+                                           struct pipe_picture_desc *picture,
+                                           void* bitstream_buf,
+                                           unsigned *bitstream_buf_size)
+{
+   struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
+   D3D12_VIDEO_SAMPLE srcTextureDesc = {};
+   srcTextureDesc.Width = pD3D12Enc->base.width;
+   srcTextureDesc.Height = pD3D12Enc->base.height;
+   srcTextureDesc.Format.Format = d3d12_get_format(picture->input_format);
+   if(!d3d12_video_encoder_update_current_encoder_config_state(pD3D12Enc, srcTextureDesc, picture))
+      return EINVAL;
+
+   if (!pD3D12Enc->m_upBitstreamBuilder) {
+      if (u_reduce_video_profile(pD3D12Enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
+         pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_h264>();
+      else if (u_reduce_video_profile(pD3D12Enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC)
+         pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_hevc>();
+   }
+   bool postEncodeHeadersNeeded = false;
+   uint64_t preEncodeGeneratedHeadersByteSize = 0;
+   std::vector<uint64_t> pWrittenCodecUnitsSizes;
+   pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags |= d3d12_video_encoder_config_dirty_flag_sequence_info;
+   d3d12_video_encoder_build_pre_encode_codec_headers(pD3D12Enc,
+                                                      postEncodeHeadersNeeded,
+                                                      preEncodeGeneratedHeadersByteSize,
+                                                      pWrittenCodecUnitsSizes);
+   if (preEncodeGeneratedHeadersByteSize > *bitstream_buf_size)
+      return ENOMEM;
+
+   *bitstream_buf_size = pD3D12Enc->m_BitstreamHeadersBuffer.size();
+   memcpy(bitstream_buf,
+          pD3D12Enc->m_BitstreamHeadersBuffer.data(),
+          *bitstream_buf_size);
+   return 0;
 }
