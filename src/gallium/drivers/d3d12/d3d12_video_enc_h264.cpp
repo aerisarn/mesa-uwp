@@ -806,7 +806,7 @@ d3d12_video_encoder_convert_h264_codec_configuration(struct d3d12_video_encoder 
 
 static bool
 d3d12_video_encoder_update_intra_refresh_h264(struct d3d12_video_encoder *pD3D12Enc,
-                                                        struct pipe_video_buffer *  srcTexture,
+                                                        D3D12_VIDEO_SAMPLE srcTextureDesc,
                                                         struct pipe_h264_enc_picture_desc *  picture)
 {
    if (picture->intra_refresh.mode != INTRA_REFRESH_MODE_NONE)
@@ -818,8 +818,8 @@ d3d12_video_encoder_update_intra_refresh_h264(struct d3d12_video_encoder *pD3D12
          return false;
       }
 
-      uint32_t total_frame_blocks = static_cast<uint32_t>(std::ceil(srcTexture->height / D3D12_VIDEO_H264_MB_IN_PIXELS)) *
-                              static_cast<uint32_t>(std::ceil(srcTexture->width / D3D12_VIDEO_H264_MB_IN_PIXELS));
+      uint32_t total_frame_blocks = static_cast<uint32_t>(std::ceil(srcTextureDesc.Height / D3D12_VIDEO_H264_MB_IN_PIXELS)) *
+                              static_cast<uint32_t>(std::ceil(srcTextureDesc.Width / D3D12_VIDEO_H264_MB_IN_PIXELS));
       D3D12_VIDEO_ENCODER_INTRA_REFRESH targetIntraRefresh = {
          D3D12_VIDEO_ENCODER_INTRA_REFRESH_MODE_ROW_BASED,
          total_frame_blocks / picture->intra_refresh.region_size,
@@ -846,7 +846,7 @@ d3d12_video_encoder_update_intra_refresh_h264(struct d3d12_video_encoder *pD3D12
 
 bool
 d3d12_video_encoder_update_current_encoder_config_state_h264(struct d3d12_video_encoder *pD3D12Enc,
-                                                             struct pipe_video_buffer *srcTexture,
+                                                             D3D12_VIDEO_SAMPLE srcTextureDesc,
                                                              struct pipe_picture_desc *picture)
 {
    struct pipe_h264_enc_picture_desc *h264Pic = (struct pipe_h264_enc_picture_desc *) picture;
@@ -891,18 +891,18 @@ d3d12_video_encoder_update_current_encoder_config_state_h264(struct d3d12_video_
    }
 
    // Set intra-refresh config
-   if(!d3d12_video_encoder_update_intra_refresh_h264(pD3D12Enc, srcTexture, h264Pic)) {
+   if(!d3d12_video_encoder_update_intra_refresh_h264(pD3D12Enc, srcTextureDesc, h264Pic)) {
       debug_printf("d3d12_video_encoder_update_intra_refresh_h264 failed!\n");
       return false;
    }
 
    // Set resolution
-   if ((pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Width != srcTexture->width) ||
-       (pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Height != srcTexture->height)) {
+   if ((pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Width != srcTextureDesc.Width) ||
+       (pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Height != srcTextureDesc.Height)) {
       pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags |= d3d12_video_encoder_config_dirty_flag_resolution;
    }
-   pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Width = srcTexture->width;
-   pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Height = srcTexture->height;
+   pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Width = srcTextureDesc.Width;
+   pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Height = srcTextureDesc.Height;
 
    // Set resolution codec dimensions (ie. cropping)
    if (h264Pic->seq.enc_frame_cropping_flag) {

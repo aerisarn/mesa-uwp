@@ -28,7 +28,7 @@
 
 bool
 d3d12_video_encoder_update_current_encoder_config_state_hevc(struct d3d12_video_encoder *pD3D12Enc,
-                                                             struct pipe_video_buffer *  srcTexture,
+                                                             D3D12_VIDEO_SAMPLE srcTextureDesc,
                                                              struct pipe_picture_desc *  picture);
 void
 d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder *pD3D12Enc,

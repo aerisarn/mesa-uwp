@@ -1458,7 +1458,7 @@ d3d12_video_encoder_get_current_max_dpb_capacity(struct d3d12_video_encoder *pD3
 
 bool
 d3d12_video_encoder_update_current_encoder_config_state(struct d3d12_video_encoder *pD3D12Enc,
-                                                        struct pipe_video_buffer *  srcTexture,
+                                                        D3D12_VIDEO_SAMPLE srcTextureDesc,
                                                         struct pipe_picture_desc *  picture)
 {
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
@@ -1466,20 +1466,20 @@ d3d12_video_encoder_update_current_encoder_config_state(struct d3d12_video_encod
 #if VIDEO_CODEC_H264ENC
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
-         return d3d12_video_encoder_update_current_encoder_config_state_h264(pD3D12Enc, srcTexture, picture);
+         return d3d12_video_encoder_update_current_encoder_config_state_h264(pD3D12Enc, srcTextureDesc, picture);
       } break;
 #endif
 #if VIDEO_CODEC_H265ENC
       case PIPE_VIDEO_FORMAT_HEVC:
       {
-         return d3d12_video_encoder_update_current_encoder_config_state_hevc(pD3D12Enc, srcTexture, picture);
+         return d3d12_video_encoder_update_current_encoder_config_state_hevc(pD3D12Enc, srcTextureDesc, picture);
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
 #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
-         return d3d12_video_encoder_update_current_encoder_config_state_av1(pD3D12Enc, srcTexture, picture);
+         return d3d12_video_encoder_update_current_encoder_config_state_av1(pD3D12Enc, srcTextureDesc, picture);
       } break;
 #endif
 #endif
@@ -1699,7 +1699,11 @@ d3d12_video_encoder_reconfigure_session(struct d3d12_video_encoder *pD3D12Enc,
                                         struct pipe_picture_desc *  picture)
 {
    assert(pD3D12Enc->m_spD3D12VideoDevice);
-   if(!d3d12_video_encoder_update_current_encoder_config_state(pD3D12Enc, srcTexture, picture)) {
+   D3D12_VIDEO_SAMPLE srcTextureDesc = {};
+   srcTextureDesc.Width = srcTexture->width;
+   srcTextureDesc.Height = srcTexture->height;
+   srcTextureDesc.Format.Format = d3d12_get_format(srcTexture->buffer_format);
+   if(!d3d12_video_encoder_update_current_encoder_config_state(pD3D12Enc, srcTextureDesc, picture)) {
       debug_printf("d3d12_video_encoder_update_current_encoder_config_state failed!\n");
       return false;
    }
