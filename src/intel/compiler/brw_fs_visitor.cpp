@@ -34,34 +34,6 @@
 
 using namespace brw;
 
-/* Sample from the MCS surface attached to this multisample texture. */
-fs_reg
-fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
-                           const fs_reg &texture,
-                           const fs_reg &texture_handle)
-{
-   const fs_reg dest = vgrf(glsl_type::uvec4_type);
-
-   fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
-   srcs[TEX_LOGICAL_SRC_COORDINATE] = coordinate;
-   srcs[TEX_LOGICAL_SRC_SURFACE] = texture;
-   srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_ud(0);
-   srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = texture_handle;
-   srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(components);
-   srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(0);
-   srcs[TEX_LOGICAL_SRC_RESIDENCY] = brw_imm_d(0);
-
-   fs_inst *inst = bld.emit(SHADER_OPCODE_TXF_MCS_LOGICAL, dest, srcs,
-                            ARRAY_SIZE(srcs));
-
-   /* We only care about one or two regs of response, but the sampler always
-    * writes 4/8.
-    */
-   inst->size_written = 4 * dest.component_size(inst->exec_size);
-
-   return dest;
-}
-
 /* Input data is organized with first the per-primitive values, followed
  * by per-vertex values.  The per-vertex will have interpolation information
  * associated, so use 4 components for each value.
@@ -1209,101 +1181,6 @@ fs_visitor::emit_cs_terminate()
    fs_inst *inst = bld.exec_all()
                       .emit(CS_OPCODE_CS_TERMINATE, reg_undef, payload);
    inst->eot = true;
-}
-
-static void
-setup_barrier_message_payload_gfx125(const fs_builder &bld,
-                                     const fs_reg &msg_payload)
-{
-   assert(bld.shader->devinfo->verx10 >= 125);
-
-   /* From BSpec: 54006, mov r0.2[31:24] into m0.2[31:24] and m0.2[23:16] */
-   fs_reg m0_10ub = component(retype(msg_payload, BRW_REGISTER_TYPE_UB), 10);
-   fs_reg r0_11ub =
-      stride(suboffset(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UB), 11),
-             0, 1, 0);
-   bld.exec_all().group(2, 0).MOV(m0_10ub, r0_11ub);
-}
-
-void
-fs_visitor::emit_barrier()
-{
-   /* We are getting the barrier ID from the compute shader header */
-   assert(gl_shader_stage_uses_workgroup(stage));
-
-   fs_reg payload = fs_reg(VGRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
-
-   /* Clear the message payload */
-   bld.exec_all().group(8, 0).MOV(payload, brw_imm_ud(0u));
-
-   if (devinfo->verx10 >= 125) {
-      setup_barrier_message_payload_gfx125(bld, payload);
-   } else {
-      assert(gl_shader_stage_is_compute(stage));
-
-      uint32_t barrier_id_mask;
-      switch (devinfo->ver) {
-      case 7:
-      case 8:
-         barrier_id_mask = 0x0f000000u; break;
-      case 9:
-         barrier_id_mask = 0x8f000000u; break;
-      case 11:
-      case 12:
-         barrier_id_mask = 0x7f000000u; break;
-      default:
-         unreachable("barrier is only available on gen >= 7");
-      }
-
-      /* Copy the barrier id from r0.2 to the message payload reg.2 */
-      fs_reg r0_2 = fs_reg(retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD));
-      bld.exec_all().group(1, 0).AND(component(payload, 2), r0_2,
-                                     brw_imm_ud(barrier_id_mask));
-   }
-
-   /* Emit a gateway "barrier" message using the payload we set up, followed
-    * by a wait instruction.
-    */
-   bld.exec_all().emit(SHADER_OPCODE_BARRIER, reg_undef, payload);
-}
-
-void
-fs_visitor::emit_tcs_barrier()
-{
-   assert(stage == MESA_SHADER_TESS_CTRL);
-   struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
-
-   fs_reg m0 = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-   fs_reg m0_2 = component(m0, 2);
-
-   const fs_builder chanbld = bld.exec_all().group(1, 0);
-
-   /* Zero the message header */
-   bld.exec_all().MOV(m0, brw_imm_ud(0u));
-
-   if (devinfo->verx10 >= 125) {
-      setup_barrier_message_payload_gfx125(bld, m0);
-   } else if (devinfo->ver >= 11) {
-      chanbld.AND(m0_2, retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
-                  brw_imm_ud(INTEL_MASK(30, 24)));
-
-      /* Set the Barrier Count and the enable bit */
-      chanbld.OR(m0_2, m0_2,
-                 brw_imm_ud(tcs_prog_data->instances << 8 | (1 << 15)));
-   } else {
-      /* Copy "Barrier ID" from r0.2, bits 16:13 */
-      chanbld.AND(m0_2, retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
-                  brw_imm_ud(INTEL_MASK(16, 13)));
-
-      /* Shift it up to bits 27:24. */
-      chanbld.SHL(m0_2, m0_2, brw_imm_ud(11));
-
-      /* Set the Barrier Count and the enable bit */
-      chanbld.OR(m0_2, m0_2,
-                 brw_imm_ud(tcs_prog_data->instances << 9 | (1 << 15)));
-   }
-
-   bld.emit(SHADER_OPCODE_BARRIER, bld.null_reg_ud(), m0);
 }
 
 fs_visitor::fs_visitor(const struct brw_compiler *compiler,
