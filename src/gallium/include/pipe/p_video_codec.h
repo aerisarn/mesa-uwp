@@ -182,6 +182,22 @@ struct pipe_video_codec
    void (*update_decoder_target)(struct pipe_video_codec *codec,
                                  struct pipe_video_buffer *old,
                                  struct pipe_video_buffer *updated);
+
+   /**
+    * Gets the bitstream headers for a given pipe_picture_desc
+    * of an encode operation
+    *
+    * User passes a buffer and its allocated size and
+    * driver writes the bitstream headers in the buffer,
+    * updating the size parameter as well.
+    *
+    * Returns 0 on success or an errno error code otherwise.
+    * such as ENOMEM if the buffer passed was not big enough
+    */
+   int (*get_encode_headers)(struct pipe_video_codec *codec,
+                              struct pipe_picture_desc *picture,
+                              void* bitstream_buf,
+                              unsigned *size);
 };
 
 /**
