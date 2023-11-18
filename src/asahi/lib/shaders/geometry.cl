@@ -111,6 +111,40 @@ libagx_index_buffer(constant struct agx_ia_state *p, uint id,
 }
 
 uint
+libagx_multidraw_draw_id(constant struct agx_ia_state *p, uint raw_id)
+{
+   global uint *sums = p->prefix_sums;
+
+   /* TODO: replace with binary search or interpolation search */
+   uint i = 0;
+   for (i = 0; raw_id >= sums[i]; ++i)
+      ;
+   return i;
+}
+
+uint
+libagx_multidraw_param(constant struct agx_ia_state *p, uint draw_id, uint word)
+{
+   global uint *draw = (global uint *)(p->draws + (draw_id * p->draw_stride));
+   return draw[word];
+}
+
+uint
+libagx_multidraw_primitive_id(constant struct agx_ia_state *p, uint draw_id,
+                              uint raw_id, enum mesa_prim mode)
+{
+   uint start = draw_id > 0 ? p->prefix_sums[draw_id - 1] : 0;
+   uint raw_offset = raw_id - start;
+
+   /* Note: if we wanted, we could precompute magic divisors in the setup kernel
+    * to avoid the non-constant division here.
+    */
+   uint vertex_count = libagx_multidraw_param(p, draw_id, 0);
+   uint primitive_count = u_decomposed_prims_for_vertices(mode, vertex_count);
+   return raw_offset % primitive_count;
+}
+
+uint
 libagx_setup_xfb_buffer(global struct agx_geometry_params *p, uint i)
 {
    global uint *off_ptr = p->xfb_offs_ptrs[i];
@@ -208,12 +242,61 @@ process_draw(global uint *draw, enum mesa_prim mode)
    return (uint2)(prim_per_instance, instance_count);
 }
 
+uint2
+process_multidraw(global struct agx_ia_state *s, uint local_id,
+                  enum mesa_prim mode)
+{
+   uintptr_t draw_ptr = s->draws;
+   uint draw_stride = s->draw_stride;
+
+   /* Prefix sum the vertex counts (multiplied by instance counts) across draws.
+    * The number of draws is expected to be small, so this serialization should
+    * be ok in practice. See libagx_prefix_sum for algorithm details.
+    */
+   uint i, count = 0;
+   uint len = *(s->count);
+   uint len_remainder = len % 32;
+   uint len_rounded_down = len - len_remainder;
+
+   for (i = local_id; i < len_rounded_down; i += 32) {
+      global uint *draw_ = (global uint *)(draw_ptr + (i * draw_stride));
+      uint2 draw = process_draw(draw_, mode);
+
+      /* Total primitives */
+      uint value = draw.x * draw.y;
+
+      /* TODO: use inclusive once that's wired up */
+      uint value_prefix_sum = sub_group_scan_exclusive_add(value) + value;
+      s->prefix_sums[i] = count + value_prefix_sum;
+      count += sub_group_broadcast(value_prefix_sum, 31);
+   }
+
+   if (local_id < len_remainder) {
+      global uint *draw_ = (global uint *)(draw_ptr + (i * draw_stride));
+      uint2 draw = process_draw(draw_, mode);
+      uint value = draw.x * draw.y;
+
+      /* TODO: use inclusive once that's wired up */
+      s->prefix_sums[i] = count + sub_group_scan_exclusive_add(value) + value;
+   }
+
+   return (uint2)(len > 0 ? s->prefix_sums[len - 1] : 0, 1);
+}
+
 void
 libagx_gs_setup_indirect(global struct agx_geometry_params *p,
-                         global struct agx_ia_state *ia, enum mesa_prim mode)
+                         global struct agx_ia_state *ia, enum mesa_prim mode,
+                         uint local_id, bool multidraw)
 {
-   /* Determine the (primitives, instances) grid size. */
-   uint2 draw = process_draw(p->input_indirect_desc, mode);
+   /* Determine the (primitives, instances) grid size. For multidraw, this will
+    * be a synthetic grid for the entire collection, but that's ok.
+    */
+   uint2 draw = multidraw ? process_multidraw(ia, local_id, mode)
+                          : process_draw((global uint *)ia->draws, mode);
+
+   /* Elect a single lane */
+   if (multidraw && local_id != 0)
+      return;
 
    /* There are primitives*instances primitives total */
    p->input_primitives = draw.x * draw.y;
@@ -227,9 +310,12 @@ libagx_gs_setup_indirect(global struct agx_geometry_params *p,
     * in elements. Apply that offset now that we have it. For a hardware
     * indirect draw, the hardware would do this for us, but for software input
     * assembly we need to do it ourselves.
+    *
+    * For multidraw, this happens per-draw in the input assembly instead. We
+    * could do that for non-multidraw too, but it'd be less efficient.
     */
-   if (ia->index_buffer) {
-      ia->index_buffer += p->input_indirect_desc[2] * ia->index_size_B;
+   if (ia->index_buffer && !multidraw) {
+      ia->index_buffer += ((constant uint *)ia->draws)[2] * ia->index_size_B;
    }
 
    /* We may need to allocate a GS count buffer, do so now */

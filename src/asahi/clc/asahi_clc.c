@@ -215,6 +215,7 @@ compile(void *memctx, const uint32_t *spirv, size_t spirv_size)
 
    NIR_PASS_V(nir, nir_lower_convert_alu_types, NULL);
    NIR_PASS_V(nir, nir_opt_if, nir_opt_if_aggressive_last_continue);
+   NIR_PASS_V(nir, nir_opt_idiv_const, 16);
 
    optimize(nir);
 

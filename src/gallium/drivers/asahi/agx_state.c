@@ -1645,7 +1645,7 @@ agx_compile_nir(struct agx_device *dev, nir_shader *nir,
                               dev->params.num_dies > 1;
    key.libagx = dev->libagx;
 
-   NIR_PASS_V(nir, agx_nir_lower_sysvals);
+   NIR_PASS_V(nir, agx_nir_lower_sysvals, true);
    NIR_PASS_V(nir, agx_nir_layout_uniforms, compiled, &key.reserved_preamble);
 
    agx_compile_shader_nir(nir, &key, debug, &binary, &compiled->info);
@@ -1712,20 +1712,18 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
 
       /* Apply the VS key to the VS before linking it in */
       NIR_PASS_V(vs, agx_nir_lower_vbo, &key->vbuf);
-      NIR_PASS_V(vs, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
+      NIR_PASS_V(vs, agx_nir_lower_ia, &key->ia);
 
+      NIR_PASS_V(vs, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
 
-      /* Lower IA before VS sysvals to correctly handle indirect multidraws */
-      agx_nir_lower_ia(vs, &key->ia);
-
       /* Lower VS sysvals before it's merged in, so we access the correct shader
-       * stage for UBOs etc.
+       * stage for UBOs etc. Skip draw parameters, those are lowered later.
        */
-      NIR_PASS_V(vs, agx_nir_lower_sysvals);
+      NIR_PASS_V(vs, agx_nir_lower_sysvals, false);
 
       /* Link VS with GS */
-      NIR_PASS_V(nir, agx_nir_lower_gs, vs, dev->libagx,
+      NIR_PASS_V(nir, agx_nir_lower_gs, vs, dev->libagx, &key->ia,
                  key->rasterizer_discard, &gs_count, &gs_copy, &pre_gs,
                  &gs_out_prim, &gs_out_count_words);
       ralloc_free(vs);
@@ -2178,7 +2176,8 @@ ia_needs_provoking(enum mesa_prim prim)
 }
 
 static bool
-agx_update_gs(struct agx_context *ctx, const struct pipe_draw_info *info)
+agx_update_gs(struct agx_context *ctx, const struct pipe_draw_info *info,
+              const struct pipe_draw_indirect_info *indirect)
 {
    /* Only proceed if there is a geometry shader. Due to input assembly
     * dependence, we don't bother to dirty track right now.
@@ -2196,6 +2195,8 @@ agx_update_gs(struct agx_context *ctx, const struct pipe_draw_info *info)
       .ia.mode = translate_ia_mode(info->mode),
       .ia.flatshade_first =
          ia_needs_provoking(info->mode) && ctx->rast->base.flatshade_first,
+      .ia.indirect_multidraw =
+         indirect && indirect->indirect_draw_count != NULL,
 
       .rasterizer_discard = ctx->rast->base.rasterizer_discard,
    };
@@ -3403,6 +3404,25 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
       .index_size_B = info->index_size,
    };
 
+   if (indirect) {
+      struct agx_resource *rsrc = agx_resource(indirect->buffer);
+      agx_batch_reads(batch, rsrc);
+
+      ia.draws = rsrc->bo->ptr.gpu + indirect->offset;
+   }
+
+   if (indirect && indirect->indirect_draw_count) {
+      struct agx_resource *rsrc = agx_resource(indirect->indirect_draw_count);
+      agx_batch_reads(batch, rsrc);
+
+      ia.count = rsrc->bo->ptr.gpu + indirect->indirect_draw_count_offset;
+      ia.draw_stride = indirect->stride;
+
+      size_t max_sum_size = sizeof(uint32_t) * indirect->draw_count;
+      ia.prefix_sums =
+         agx_pool_alloc_aligned(&batch->pool, max_sum_size, 4).gpu;
+   }
+
    batch->uniforms.input_assembly =
       agx_pool_upload_aligned(&batch->pool, &ia, sizeof(ia), 8);
 
@@ -3448,10 +3468,7 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
    unsigned count_buffer_stride = batch->ctx->gs->gs_count_words * 4;
 
    if (indirect) {
-      struct agx_resource *rsrc = agx_resource(indirect->buffer);
-      params.input_indirect_desc = rsrc->bo->ptr.gpu + indirect->offset;
       params.count_buffer_stride = count_buffer_stride;
-      agx_batch_reads(batch, rsrc);
    } else {
       unsigned prim_per_instance =
          u_decomposed_prims_for_vertices(info->mode, draw->count);
@@ -3498,20 +3515,23 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
    if (indirect) {
       assert(indirect->buffer && "drawauto already handled");
 
-      if (!ctx->gs_setup_indirect[info->mode]) {
+      bool multidraw = (indirect->indirect_draw_count != NULL);
+
+      if (!ctx->gs_setup_indirect[info->mode][multidraw]) {
          struct agx_shader_key base_key = {0};
 
-         ctx->gs_setup_indirect[info->mode] = agx_compile_nir(
-            dev, agx_nir_gs_setup_indirect(dev->libagx, info->mode), &base_key,
-            NULL);
+         ctx->gs_setup_indirect[info->mode][multidraw] = agx_compile_nir(
+            dev, agx_nir_gs_setup_indirect(dev->libagx, info->mode, multidraw),
+            &base_key, NULL);
       }
 
-      const struct pipe_grid_info grid_1x1 = {
-         .block = {1, 1, 1},
+      const struct pipe_grid_info grid_setup = {
+         .block = {multidraw ? 32 : 1, 1, 1},
          .grid = {1, 1, 1},
       };
 
-      agx_launch(batch, &grid_1x1, ctx->gs_setup_indirect[info->mode],
+      agx_launch(batch, &grid_setup,
+                 ctx->gs_setup_indirect[info->mode][multidraw],
                  PIPE_SHADER_COMPUTE);
 
       /* Wrap the pool allocation in a fake resource for meta-Gallium use */
@@ -3651,6 +3671,12 @@ agx_needs_passthrough_gs(struct agx_context *ctx,
       return true;
    }
 
+   /* TODO: also sloppy, we should generate VDM commands from a shader */
+   if (indirect && indirect->indirect_draw_count) {
+      perf_debug_ctx(ctx, "Using passthrough GS due to multidraw indirect");
+      return true;
+   }
+
    /* Transform feedback is layered on geometry shaders, so if transform
     * feedback is used, we need a GS.
     */
@@ -3742,6 +3768,38 @@ agx_apply_passthrough_gs(struct agx_context *ctx,
 }
 
 static void
+util_draw_multi_unroll_indirect(struct pipe_context *pctx,
+                                const struct pipe_draw_info *info,
+                                const struct pipe_draw_indirect_info *indirect,
+                                const struct pipe_draw_start_count_bias *draws)
+{
+   for (unsigned i = 0; i < indirect->draw_count; ++i) {
+      const struct pipe_draw_indirect_info subindirect = {
+         .buffer = indirect->buffer,
+         .count_from_stream_output = indirect->count_from_stream_output,
+         .offset = indirect->offset + (i * indirect->stride),
+         .draw_count = 1,
+      };
+
+      pctx->draw_vbo(pctx, info, i, &subindirect, draws, 1);
+   }
+}
+
+static void
+util_draw_multi_upload_indirect(struct pipe_context *pctx,
+                                const struct pipe_draw_info *info,
+                                const struct pipe_draw_indirect_info *indirect,
+                                const struct pipe_draw_start_count_bias *draws)
+{
+   struct pipe_draw_indirect_info indirect_ = *indirect;
+   u_upload_data(pctx->const_uploader, 0, 4, 4, &indirect->draw_count,
+                 &indirect_.indirect_draw_count_offset,
+                 &indirect_.indirect_draw_count);
+
+   pctx->draw_vbo(pctx, info, 0, &indirect_, draws, 1);
+}
+
+static void
 agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
              unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
@@ -3754,6 +3812,14 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    if (num_draws > 1) {
       util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
+      return;
+   }
+
+   if (indirect && indirect->draw_count > 1 && !indirect->indirect_draw_count) {
+      assert(drawid_offset == 0);
+      assert(num_draws == 1);
+
+      util_draw_multi_upload_indirect(pctx, info, indirect, draws);
       return;
    }
 
@@ -3824,7 +3890,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
               (ctx->dirty & AGX_DIRTY_VERTEX))
       ctx->dirty |= AGX_DIRTY_VS;
 
-   agx_update_gs(ctx, info);
+   agx_update_gs(ctx, info, indirect);
 
    if (ctx->gs) {
       batch->geom_indirect = agx_pool_alloc_aligned_with_bo(
@@ -3932,6 +3998,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       agx_launch_gs(batch, info, draws, indirect);
       return;
    }
+
+   assert((!indirect || !indirect->indirect_draw_count) && "multidraw handled");
 
    /* Update batch masks based on current state */
    if (ctx->dirty & AGX_DIRTY_BLEND) {

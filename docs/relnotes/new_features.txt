@@ -12,3 +12,4 @@ GL_ARB_base_instance on Asahi
 OpenGL 4.6 (up from 4.2) on d3d12
 VK_EXT_depth_clamp_zero_one on RADV
 GL_ARB_shader_texture_image_samples on Asahi
+GL_ARB_indirect_parameters on Asahi

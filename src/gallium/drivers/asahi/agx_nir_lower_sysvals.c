@@ -117,7 +117,8 @@ load_texture_handle(nir_builder *b, nir_intrinsic_instr *intr, void *base)
 }
 
 static nir_def *
-lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
+lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
+                bool lower_draw_params)
 {
    struct agx_draw_uniforms *u = NULL;
    struct agx_stage_uniforms *s = NULL;
@@ -151,6 +152,20 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
    case nir_intrinsic_get_ssbo_size:
       return load_sysval_indirect(b, 1, 32, stage_table(b), &s->ssbo_size,
                                   intr->src[0].ssa);
+   case nir_intrinsic_load_layer_id_written_agx:
+      return load_sysval_root(b, 1, 16, &u->layer_id_written);
+   case nir_intrinsic_load_input_assembly_buffer_agx:
+      return load_sysval_root(b, 1, 64, &u->input_assembly);
+   case nir_intrinsic_load_geometry_param_buffer_agx:
+      return load_sysval_root(b, 1, 64, &u->geometry_params);
+   default:
+      break;
+   }
+
+   if (!lower_draw_params)
+      return NULL;
+
+   switch (intr->intrinsic) {
    case nir_intrinsic_load_num_workgroups:
       return load_sysval(b, 3, 32, AGX_SYSVAL_TABLE_GRID, 0);
    case nir_intrinsic_load_first_vertex:
@@ -166,12 +181,6 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
          load_sysval(b, 1, 32, AGX_SYSVAL_TABLE_PARAMS, 0), nir_imm_int(b, 0));
    case nir_intrinsic_load_draw_id:
       return load_sysval_root(b, 1, 32, &u->draw_id);
-   case nir_intrinsic_load_layer_id_written_agx:
-      return load_sysval_root(b, 1, 16, &u->layer_id_written);
-   case nir_intrinsic_load_input_assembly_buffer_agx:
-      return load_sysval_root(b, 1, 64, &u->input_assembly);
-   case nir_intrinsic_load_geometry_param_buffer_agx:
-      return load_sysval_root(b, 1, 64, &u->geometry_params);
    default:
       return NULL;
    }
@@ -181,6 +190,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
 static bool
 lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
 {
+   bool *lower_draw_params = data;
    b->cursor = nir_before_instr(instr);
    nir_def *old;
    nir_def *replacement = NULL;
@@ -188,7 +198,7 @@ lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
       old = &intr->def;
-      replacement = lower_intrinsic(b, intr);
+      replacement = lower_intrinsic(b, intr, *lower_draw_params);
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
       old = &tex->def;
@@ -353,11 +363,11 @@ lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
 }
 
 bool
-agx_nir_lower_sysvals(nir_shader *shader)
+agx_nir_lower_sysvals(nir_shader *shader, bool lower_draw_params)
 {
    return nir_shader_instructions_pass(
       shader, lower_sysvals, nir_metadata_block_index | nir_metadata_dominance,
-      NULL);
+      &lower_draw_params);
 }
 
 bool

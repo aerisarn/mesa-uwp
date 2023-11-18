@@ -509,7 +509,7 @@ struct agx_context {
    struct util_dynarray global_buffers;
 
    struct agx_compiled_shader *gs_prefix_sums[16];
-   struct agx_compiled_shader *gs_setup_indirect[MESA_PRIM_MAX];
+   struct agx_compiled_shader *gs_setup_indirect[MESA_PRIM_MAX][2];
    struct agx_meta_cache meta;
 
    uint32_t syncobj;
@@ -795,7 +795,7 @@ void agx_upload_uniforms(struct agx_batch *batch);
 uint64_t agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
                                    enum pipe_shader_type stage);
 
-bool agx_nir_lower_sysvals(nir_shader *shader);
+bool agx_nir_lower_sysvals(nir_shader *shader, bool lower_draw_params);
 
 bool agx_nir_layout_uniforms(nir_shader *shader,
                              struct agx_compiled_shader *compiled,

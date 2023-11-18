@@ -10,9 +10,11 @@
 #ifndef __OPENCL_VERSION__
 #include "util/macros.h"
 #define GLOBAL(type_) uint64_t
+#define CONST(type_)  uint64_t
 #else
 #define PACKED
 #define GLOBAL(type_) global type_ *
+#define CONST(type_)  constant type_ *
 #endif
 
 #ifndef LIBAGX_GEOMETRY_H
@@ -30,11 +32,33 @@ struct agx_ia_key {
 
    /* Use first vertex as the provoking vertex for flat shading */
    bool flatshade_first;
+
+   /* Whether we are doing input assembly for an indirect multidraw that is
+    * implemented by a single superdraw with a prefix sum of vertex counts per
+    * draw. This requires lowering lots of sysvals to index into the draw
+    * descriptors according to the associated dynamic multidraw state.
+    */
+   bool indirect_multidraw;
 };
 
 struct agx_ia_state {
    /* Input: index buffer if present. */
-   GLOBAL(uchar) index_buffer;
+   CONST(uchar) index_buffer;
+
+   /* Input: draw count */
+   CONST(uint) count;
+
+   /* Input: indirect draw descriptor. Raw pointer since it's strided. */
+   uint64_t draws;
+
+   /* For the geom/tess path, this is the temporary prefix sum buffer.
+    * Caller-allocated. For regular MDI, this is ok since the CPU knows the
+    * worst-case draw count.
+    */
+   GLOBAL(uint) prefix_sums;
+
+   /* Stride for the draw descrptor array */
+   uint32_t draw_stride;
 
    /* The index size (1, 2, 4) or 0 if drawing without an index buffer. */
    uint8_t index_size_B;
@@ -88,9 +112,6 @@ struct agx_geometry_params {
     * the pre-GS program.
     */
    uint32_t xfb_prims[MAX_VERTEX_STREAMS];
-
-   /* Address of input indirect buffer for indirect GS draw */
-   GLOBAL(uint) input_indirect_desc;
 
    /* Within an indirect GS draw, the grid used to dispatch the GS written out
     * by the GS indirect setup kernel. Unused for direct GS draws.

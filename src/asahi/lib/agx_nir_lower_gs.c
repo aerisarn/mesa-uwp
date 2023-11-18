@@ -972,13 +972,12 @@ link_libagx(nir_shader *nir, const nir_shader *libagx)
 
 void
 agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
-                 bool rasterizer_discard, nir_shader **gs_count,
-                 nir_shader **gs_copy, nir_shader **pre_gs,
-                 enum mesa_prim *out_mode, unsigned *out_count_words)
+                 struct agx_ia_key *ia, bool rasterizer_discard,
+                 nir_shader **gs_count, nir_shader **gs_copy,
+                 nir_shader **pre_gs, enum mesa_prim *out_mode,
+                 unsigned *out_count_words)
 {
    link_libagx(vs, libagx);
-   NIR_PASS_V(vs, nir_lower_idiv,
-              &(const nir_lower_idiv_options){.allow_fp16 = true});
 
    /* Collect output component counts so we can size the geometry output buffer
     * appropriately, instead of assuming everything is vec4.
@@ -1036,6 +1035,17 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
        */
       NIR_PASS(progress, gs, nir_opt_loop_unroll);
    } while (progress);
+
+   if (ia->indirect_multidraw)
+      NIR_PASS_V(gs, agx_nir_lower_multidraw, ia);
+
+   NIR_PASS_V(gs, nir_shader_intrinsics_pass, lower_id,
+              nir_metadata_block_index | nir_metadata_dominance, NULL);
+
+   link_libagx(gs, libagx);
+
+   NIR_PASS_V(gs, nir_lower_idiv,
+              &(const nir_lower_idiv_options){.allow_fp16 = true});
 
    /* All those variables we created should've gone away by now */
    NIR_PASS_V(gs, nir_remove_dead_variables, nir_var_function_temp, NULL);
@@ -1156,14 +1166,22 @@ agx_nir_prefix_sum_gs(const nir_shader *libagx, unsigned words)
 }
 
 nir_shader *
-agx_nir_gs_setup_indirect(const nir_shader *libagx, enum mesa_prim prim)
+agx_nir_gs_setup_indirect(const nir_shader *libagx, enum mesa_prim prim,
+                          bool multidraw)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "GS indirect setup");
 
-   libagx_gs_setup_indirect(&b, nir_load_geometry_param_buffer_agx(&b),
-                            nir_load_input_assembly_buffer_agx(&b),
-                            nir_imm_int(&b, prim));
+   if (multidraw) {
+      uint32_t subgroup_size = 32;
+      b.shader->info.workgroup_size[0] = subgroup_size;
+   }
+
+   libagx_gs_setup_indirect(
+      &b, nir_load_geometry_param_buffer_agx(&b),
+      nir_load_input_assembly_buffer_agx(&b), nir_imm_int(&b, prim),
+      nir_channel(&b, nir_load_local_invocation_id(&b), 0),
+      nir_imm_bool(&b, multidraw));
 
    UNUSED struct agx_uncompiled_shader_info info;
    agx_preprocess_nir(b.shader, libagx, false, &info);
