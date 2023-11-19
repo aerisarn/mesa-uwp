@@ -2,7 +2,20 @@
   stage: intel
   rules:
     - changes: &intel_common_file_list
-        - src/intel/**/*
+        - src/intel/*
+        - src/intel/blorp/**/*
+        - src/intel/common/**/*
+        - src/intel/compiler/**/*
+        - src/intel/dev/**/*
+        - src/intel/ds/**/*
+        - src/intel/genxml/**/*
+        - src/intel/isl/**/*
+        - src/intel/nullhw-layer/**/*
+        - src/intel/perf/**/*
+        - src/intel/tools/**/*
+        - src/intel/vulkan/**/*
+        - src/intel/vulkan_hasvk/**/*
+        - src/intel/ci/*
       when: on_success
 
 .intel-common-manual-rules:
