@@ -2195,6 +2195,8 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_sample_pos_or_center;
    case SYSTEM_VALUE_SAMPLE_MASK_IN:
       return nir_intrinsic_load_sample_mask_in;
+   case SYSTEM_VALUE_LAYER_ID:
+      return nir_intrinsic_load_layer_id;
    case SYSTEM_VALUE_LOCAL_INVOCATION_ID:
       return nir_intrinsic_load_local_invocation_id;
    case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX:
@@ -2348,6 +2350,8 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_SAMPLE_POS_OR_CENTER;
    case nir_intrinsic_load_sample_mask_in:
       return SYSTEM_VALUE_SAMPLE_MASK_IN;
+   case nir_intrinsic_load_layer_id:
+      return SYSTEM_VALUE_LAYER_ID;
    case nir_intrinsic_load_local_invocation_id:
       return SYSTEM_VALUE_LOCAL_INVOCATION_ID;
    case nir_intrinsic_load_local_invocation_index:

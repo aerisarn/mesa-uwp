@@ -4019,6 +4019,9 @@ typedef struct nir_shader_compiler_options {
 
    /** Lower f2f16 to f2f16_rtz when execution mode is not rtne. */
    bool force_f2f16_rtz;
+
+   /** Lower VARYING_SLOT_LAYER in FS to SYSTEM_VALUE_LAYER_ID. */
+   bool lower_layer_fs_input_to_sysval;
 } nir_shader_compiler_options;
 
 typedef struct nir_shader {
