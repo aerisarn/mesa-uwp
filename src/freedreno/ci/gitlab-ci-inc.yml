@@ -4,13 +4,13 @@
     - !reference [.test, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     - changes: &freedreno_core_file_list
-      - src/freedreno/ci/**/*
-      - src/freedreno/common/**/*
-      - src/freedreno/drm/**/*
-      - src/freedreno/fdl/**/*
-      - src/freedreno/ir3/**/*
-      - src/freedreno/isa/**/*
-      - src/freedreno/registers/**/*
+        - src/freedreno/ci/**/*
+        - src/freedreno/common/**/*
+        - src/freedreno/drm/**/*
+        - src/freedreno/fdl/**/*
+        - src/freedreno/ir3/**/*
+        - src/freedreno/isa/**/*
+        - src/freedreno/registers/**/*
       when: on_success
 
 .freedreno-common-manual-rules:
@@ -32,9 +32,9 @@
     - !reference [.freedreno-common-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &freedreno_gl_file_list
-      - src/freedreno/ir2/**/*
-      - src/gallium/drivers/freedreno/**/*
-      - src/gallium/winsys/freedreno/**/*
+        - src/freedreno/ir2/**/*
+        - src/gallium/drivers/freedreno/**/*
+        - src/gallium/winsys/freedreno/**/*
       when: on_success
 
 .collabora-freedreno-rules:
@@ -81,7 +81,7 @@
     - !reference [.freedreno-common-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes: &freedreno_vulkan_file_list
-      - src/freedreno/vulkan/**/*
+        - src/freedreno/vulkan/**/*
       when: on_success
 
 .collabora-turnip-rules:
