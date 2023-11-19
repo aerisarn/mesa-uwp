@@ -185,6 +185,7 @@ ForEachMacros:
   - foreach_submitted
   - AGX_BATCH_FOREACH_BO_HANDLE
   - agx_pack
+  - agx_push
   - agx_usc_pack
   - agx_ppp_push
   - agx_foreach_block
