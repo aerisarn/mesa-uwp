@@ -504,6 +504,7 @@ struct si_shader_info {
    bool uses_indirect_descriptor;
    bool has_divergent_loop;
    bool uses_sampleid;
+   bool uses_layer_id;
    bool has_non_uniform_tex_access;
 
    bool uses_vmem_sampler_or_bvh;

@@ -593,6 +593,9 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = nir_ilt_imm(b, prim_mask, 0);
       break;
    }
+   case nir_intrinsic_load_layer_id:
+      replacement = ac_nir_unpack_arg(b, &args->ac, args->ac.ancillary, 16, 13);
+      break;
    case nir_intrinsic_load_color0:
    case nir_intrinsic_load_color1: {
       uint32_t colors_read = sel->info.colors_read;

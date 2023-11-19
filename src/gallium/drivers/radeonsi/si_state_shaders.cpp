@@ -3136,7 +3136,8 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
                 semantic != VARYING_SLOT_POS &&
                 semantic != VARYING_SLOT_PSIZ &&
                 semantic != VARYING_SLOT_CLIP_VERTEX &&
-                semantic != VARYING_SLOT_EDGE) {
+                semantic != VARYING_SLOT_EDGE &&
+                semantic != VARYING_SLOT_LAYER) {
                id = si_shader_io_get_unique_index(semantic);
                sel->info.outputs_written_before_ps &= ~(1ull << id);
             }

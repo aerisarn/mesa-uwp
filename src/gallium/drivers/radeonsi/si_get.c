@@ -1390,6 +1390,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
        * when execution mode is rtz instead of rtne.
        */
       .force_f2f16_rtz = true,
+      .lower_layer_fs_input_to_sysval = true,
    };
    *sscreen->nir_options = nir_options;
 }

@@ -1640,18 +1640,11 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
    assert(nir->info.stage <= MESA_SHADER_GEOMETRY);
-   uint64_t kill_outputs = key->ge.opt.kill_outputs;
 
-   /* Always remove the interpolated gl_Layer output for blit shaders on the first compile
-    * (it's always unused by PS), otherwise we hang because we don't pass the attribute ring
-    * pointer to position-only shaders that also write gl_Layer.
-    */
-   if (nir->info.stage == MESA_SHADER_VERTEX && nir->info.vs.blit_sgprs_amd)
-      kill_outputs |= BITFIELD64_BIT(SI_UNIQUE_SLOT_LAYER);
-
-   if (!kill_outputs &&
+   if (!key->ge.opt.kill_outputs &&
        !key->ge.opt.kill_pointsize &&
-       !key->ge.opt.kill_clip_distances) {
+       !key->ge.opt.kill_clip_distances &&
+       !(nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_LAYER))) {
       nir_metadata_preserve(impl, nir_metadata_all);
       return false;
    }
@@ -1675,7 +1668,7 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
          nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
 
          if (nir_slot_is_varying(sem.location) &&
-             kill_outputs &
+             key->ge.opt.kill_outputs &
              (1ull << si_shader_io_get_unique_index(sem.location)))
             progress |= nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
 
@@ -1704,6 +1697,11 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
                if (key->ge.opt.kill_clip_distances & BITFIELD_BIT(index))
                   progress |= nir_remove_sysval_output(intr);
             }
+            break;
+
+         case VARYING_SLOT_LAYER:
+            /* LAYER is never passed to FS. Instead, we load it there as a system value. */
+            progress |= nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
             break;
          }
       }
@@ -2650,7 +2648,7 @@ si_set_spi_ps_input_config(struct si_shader *shader)
       S_0286CC_LINEAR_SAMPLE_ENA(info->uses_linear_sample) |
       S_0286CC_FRONT_FACE_ENA(info->uses_frontface) |
       S_0286CC_SAMPLE_COVERAGE_ENA(info->reads_samplemask) |
-      S_0286CC_ANCILLARY_ENA(info->uses_sampleid);
+      S_0286CC_ANCILLARY_ENA(info->uses_sampleid || info->uses_layer_id);
 
    uint8_t mask = info->reads_frag_coord_mask | info->reads_sample_pos_mask;
    u_foreach_bit(i, mask) {
