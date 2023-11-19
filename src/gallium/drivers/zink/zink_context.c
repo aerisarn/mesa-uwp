@@ -40,6 +40,7 @@
 #include "zink_surface.h"
 
 
+#include "nir/pipe_nir.h"
 #include "util/u_blitter.h"
 #include "util/u_debug.h"
 #include "util/format_srgb.h"
@@ -3493,12 +3494,7 @@ zink_set_null_fs(struct zink_context *ctx)
    if (!ctx->null_fs) {
       nir_shader *nir = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, &screen->nir_options, "null_fs").shader;
       nir->info.separate_shader = true;
-      struct pipe_shader_state shstate = {
-         .type = PIPE_SHADER_IR_NIR,
-         .tokens = NULL,
-         .ir.nir = nir
-      };
-      ctx->null_fs = ctx->base.create_fs_state(&ctx->base, &shstate);
+      ctx->null_fs = pipe_shader_from_nir(&ctx->base, nir);
    }
    ctx->saved_fs = ctx->gfx_stages[MESA_SHADER_FRAGMENT];
    ctx->base.bind_fs_state(&ctx->base, ctx->null_fs);
