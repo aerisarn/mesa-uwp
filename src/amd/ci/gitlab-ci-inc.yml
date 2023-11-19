@@ -15,6 +15,7 @@
       - src/amd/ci/$GPU_VERSION-fails.txt
       - src/amd/ci/$GPU_VERSION-flakes.txt
       - src/amd/ci/$GPU_VERSION-skips.txt
+      - src/amd/ci/$PIGLIT_TRACES_FILE
       - src/amd/common/**/*
       - src/amd/llvm/**/*
       - src/amd/registers/**/*
