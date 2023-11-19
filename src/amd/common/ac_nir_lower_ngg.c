@@ -2611,6 +2611,8 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
    uint64_t export_outputs = shader->info.outputs_written | VARYING_BIT_POS;
    if (options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
+   if (options->kill_layer)
+      export_outputs &= ~VARYING_BIT_LAYER;
 
    const bool wait_attr_ring = must_wait_attr_ring(options->gfx_level, options->has_param_exports);
    if (wait_attr_ring)
@@ -3122,6 +3124,8 @@ ngg_gs_export_vertices(nir_builder *b, nir_def *max_num_out_vtx, nir_def *tid_in
    uint64_t export_outputs = b->shader->info.outputs_written | VARYING_BIT_POS;
    if (s->options->kill_pointsize)
       export_outputs &= ~VARYING_BIT_PSIZ;
+   if (s->options->kill_layer)
+      export_outputs &= ~VARYING_BIT_LAYER;
 
    const bool wait_attr_ring = must_wait_attr_ring(s->options->gfx_level, s->options->has_param_exports);
    if (wait_attr_ring)

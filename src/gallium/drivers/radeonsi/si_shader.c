@@ -2341,6 +2341,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                     shader->key.ge.mono.u.vs_export_prim_id,
                     !si_shader_uses_streamout(shader),
                     key->ge.opt.kill_pointsize,
+                    false,
                     sel->screen->options.vrs2x2);
       }
    } else if (is_legacy_gs) {
@@ -2494,6 +2495,7 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
                                    shader->info.nr_param_exports,
                                    !si_shader_uses_streamout(gs_shader),
                                    gskey->ge.opt.kill_pointsize,
+                                   false,
                                    sscreen->options.vrs2x2,
                                    output_info);
 

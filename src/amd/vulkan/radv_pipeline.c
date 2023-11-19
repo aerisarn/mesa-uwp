@@ -638,7 +638,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
          NIR_PASS_V(stage->nir, ac_nir_lower_legacy_vs, gfx_level,
                     stage->info.outinfo.clip_dist_mask | stage->info.outinfo.cull_dist_mask,
                     stage->info.outinfo.vs_output_param_offset, stage->info.outinfo.param_exports,
-                    stage->info.outinfo.export_prim_id, false, false, stage->info.force_vrs_per_vertex);
+                    stage->info.outinfo.export_prim_id, false, false, false, stage->info.force_vrs_per_vertex);
 
       } else {
          bool emulate_ngg_gs_query_pipeline_stat = device->physical_device->emulate_ngg_gs_query_pipeline_stat;
