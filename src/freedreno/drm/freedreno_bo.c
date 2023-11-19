@@ -105,7 +105,8 @@ fd_bo_init_common(struct fd_bo *bo, struct fd_device *dev)
    bo->max_fences = 1;
    bo->fences = &bo->_inline_fence;
 
-   VG_BO_ALLOC(bo);
+   if (!bo->map)
+      VG_BO_ALLOC(bo);
 }
 
 /* allocate a new buffer object, call w/ table_lock held */
