@@ -139,6 +139,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_border_color_swizzle = true,
       .EXT_buffer_device_address = true,
       .EXT_conditional_rendering = true,
+      .EXT_color_write_enable = true,
       .EXT_custom_border_color = true,
       .EXT_depth_bias_control = true,
       .EXT_depth_clip_control = true,
@@ -347,6 +348,9 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* VK_EXT_buffer_device_address */
       .bufferDeviceAddressCaptureReplayEXT = true,
+
+      /* VK_EXT_color_write_enable */
+      .colorWriteEnable = true,
 
       /* VK_EXT_conditional_rendering */
       .conditionalRendering = true,

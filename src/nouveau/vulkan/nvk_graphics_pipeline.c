@@ -6,6 +6,7 @@
 
 #include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
+#include "nvk_mme.h"
 #include "nvk_physical_device.h"
 #include "nvk_shader.h"
 
@@ -172,37 +173,31 @@ emit_pipeline_ct_write_state(struct nv_push *p,
                              const struct vk_color_blend_state *cb,
                              const struct vk_render_pass_state *rp)
 {
-   uint32_t att_write_masks[8] = {};
+   uint32_t write_mask = 0;
    uint32_t att_count = 0;
 
    if (rp != NULL) {
       att_count = rp->color_attachment_count;
       for (uint32_t a = 0; a < rp->color_attachment_count; a++) {
          VkFormat att_format = rp->color_attachment_formats[a];
-         att_write_masks[a] = att_format == VK_FORMAT_UNDEFINED ? 0 : 0xf;
+         if (att_format != VK_FORMAT_UNDEFINED)
+            write_mask |= 0xf << (4 * a);
       }
    }
 
    if (cb != NULL) {
       assert(cb->attachment_count == att_count);
+      uint32_t wm = 0;
       for (uint32_t a = 0; a < cb->attachment_count; a++)
-         att_write_masks[a] &= cb->attachments[a].write_mask;
+         wm |= cb->attachments[a].write_mask << (a * 4);
+      write_mask &= wm;
    }
 
-   bool indep_color_masks = true;
-   for (uint32_t a = 0; a < att_count; a++) {
-      P_IMMD(p, NV9097, SET_CT_WRITE(a), {
-         .r_enable = (att_write_masks[a] & BITFIELD_BIT(0)) != 0,
-         .g_enable = (att_write_masks[a] & BITFIELD_BIT(1)) != 0,
-         .b_enable = (att_write_masks[a] & BITFIELD_BIT(2)) != 0,
-         .a_enable = (att_write_masks[a] & BITFIELD_BIT(3)) != 0,
-      });
+   P_IMMD(p, NV9097, SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_WRITE_MASK_PIPELINE),
+          write_mask);
 
-      if (att_write_masks[a] != att_write_masks[0])
-         indep_color_masks = false;
-   }
-
-   P_IMMD(p, NV9097, SET_SINGLE_CT_WRITE_CONTROL, indep_color_masks);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_SET_WRITE_MASK));
+   P_INLINE_DATA(p, att_count);
 }
 
 static void

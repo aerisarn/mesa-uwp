@@ -1519,13 +1519,71 @@ vk_to_nv9097_logic_op(VkLogicOp vk_op)
    return nv9097_op;
 }
 
+void
+nvk_mme_set_write_mask(struct mme_builder *b)
+{
+   struct mme_value count = mme_load(b);
+   struct mme_value pipeline = nvk_mme_load_scratch(b, WRITE_MASK_PIPELINE);
+   struct mme_value dynamic = nvk_mme_load_scratch(b, WRITE_MASK_DYN);
+
+   /*
+      dynamic and pipeline are both bit fields
+
+      attachment index 88887777666655554444333322221111
+      component        abgrabgrabgrabgrabgrabgrabgrabgr
+   */
+
+   struct mme_value mask = mme_and(b, pipeline, dynamic);
+   mme_free_reg(b, pipeline);
+   mme_free_reg(b, dynamic);
+
+   struct mme_value common_mask = mme_mov(b, mme_imm(1));
+   struct mme_value first = mme_and(b, mask, mme_imm(BITFIELD_RANGE(0, 4)));
+   struct mme_value i = mme_mov(b, mme_zero());
+
+   mme_while(b, ine, i, count) {
+      /*
+         We call NV9097_SET_CT_WRITE per attachment. It needs a value as:
+         0x0000 0000 0000 0000 000a 000b 000g 000r
+
+         So for i=0 a mask of
+         0x0000 0000 0000 0000 0000 0000 0000 1111
+         becomes
+         0x0000 0000 0000 0000 0001 0001 0001 0001
+      */
+
+      struct mme_value val = mme_merge(b, mme_zero(), mask, 0, 1, 0);
+      mme_merge_to(b, val, val, mask, 4, 1, 1);
+      mme_merge_to(b, val, val, mask, 8, 1, 2);
+      mme_merge_to(b, val, val, mask, 12, 1, 3);
+
+      mme_mthd_arr(b, NV9097_SET_CT_WRITE(0), i);
+      mme_emit(b, val);
+      mme_free_reg(b, val);
+
+      /* Check if all masks are common */
+      struct mme_value temp = mme_add(b, mask, mme_imm(BITFIELD_RANGE(0, 4)));
+      mme_if(b, ine, first, temp) {
+         mme_mov_to(b, common_mask, mme_zero());
+      }
+      mme_free_reg(b, temp);
+
+      mme_srl_to(b, mask, mask, mme_imm(4));
+
+      mme_add_to(b, i, i, mme_imm(1));
+   }
+
+   mme_mthd(b, NV9097_SET_SINGLE_CT_WRITE_CONTROL);
+   mme_emit(b, common_mask);
+}
+
 static void
 nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 9);
-
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 9 + 4 * NVK_MAX_RTS);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
       P_IMMD(p, NV9097, SET_LOGIC_OP, dyn->cb.logic_op_enable);
@@ -1535,7 +1593,25 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
       P_IMMD(p, NV9097, SET_LOGIC_OP_FUNC, func);
    }
 
-   /* MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES */
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
+      /* We intentionally ignore cb.attachment_count here and just fill out
+       * whatever is in the mask.  This ensures that what we set to the MME
+       * scratch reg exactly matches the CPU side state.
+       *
+       * If attachment count is wrong (or changes), that will show up in the
+       * pipeline and the MME_SET_WRITE_MASK will be invoked again with the
+       * correct write mask.
+       */
+      uint32_t color_write_enables = 0x0;
+      u_foreach_bit(a, dyn->cb.color_write_enables)
+         color_write_enables |= 0xf << (4 * a);
+
+      P_IMMD(p, NV9097, SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_WRITE_MASK_DYN),
+             color_write_enables);
+
+      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_SET_WRITE_MASK));
+      P_INLINE_DATA(p, dyn->cb.attachment_count);
+   }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
       P_MTHD(p, NV9097, SET_BLEND_CONST_RED);
