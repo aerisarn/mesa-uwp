@@ -699,10 +699,12 @@ d3d12_video_encoder_update_h264_gop_configuration(struct d3d12_video_encoder *pD
                                                   pipe_h264_enc_picture_desc *picture)
 {
    // Only update GOP when it begins
-   if (picture->gop_cnt == 1) {
-      uint32_t GOPCoeff = picture->i_remain;
-      uint32_t GOPLength = picture->gop_size / GOPCoeff;
-      uint32_t PPicturePeriod = std::ceil(GOPLength / (double) (picture->p_remain / GOPCoeff)) - 1;
+   // Only update GOP when it begins
+   // This triggers DPB/encoder/heap re-creation, so only check on IDR when a GOP might change
+   if ((picture->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR)
+      || (picture->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_I)) {
+      uint32_t GOPLength = picture->intra_idr_period;
+      uint32_t PPicturePeriod = picture->ip_period;
 
       if (picture->seq.pic_order_cnt_type == 1u) {
          debug_printf("[d3d12_video_encoder_h264] Upper layer is requesting pic_order_cnt_type %d but D3D12 Video "
