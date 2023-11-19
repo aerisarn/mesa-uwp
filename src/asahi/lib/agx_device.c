@@ -462,7 +462,7 @@ agx_debug_fault(struct agx_device *dev, uint64_t addr)
 uint64_t
 agx_get_gpu_timestamp(struct agx_device *dev)
 {
-#if DETECT_ARCH_ARCH64
+#if DETECT_ARCH_AARCH64
    uint64_t ret;
    __asm__ volatile("mrs \t%0, cntvct_el0" : "=r"(ret));
    return ret;
