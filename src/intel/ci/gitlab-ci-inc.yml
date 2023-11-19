@@ -1,12 +1,26 @@
+.intel-common-rules:
+  stage: intel
+  rules:
+    - changes: &intel_common_file_list
+        - src/intel/**/*
+      when: on_success
+
+.intel-common-manual-rules:
+  stage: intel
+  rules:
+    - changes:
+        *intel_common_file_list
+      when: manual
+
 .i915g-rules:
   stage: intel
   rules:
     - !reference [.test, rules]
     - !reference [.gl-rules, rules]
+    - !reference [.intel-common-rules, rules]
     - changes: &i915g_file_list
         - src/gallium/drivers/i915/**/*
         - src/gallium/winsys/i915/**/*
-        - src/intel/**/*
       when: on_success
 
 .i915g-manual-rules:
@@ -25,10 +39,10 @@
     - !reference [.test, rules]
     - !reference [.anholt-farm-rules, rules]
     - !reference [.gl-rules, rules]
+    - !reference [.intel-common-rules, rules]
     - changes: &crocus_file_list
         - src/gallium/drivers/crocus/**/*
         - src/gallium/winsys/crocus/**/*
-        - src/intel/**/*
       when: on_success
 
 .crocus-manual-rules:
@@ -49,10 +63,10 @@
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
+    - !reference [.intel-common-rules, rules]
     - changes: &iris_file_list
         - src/gallium/drivers/iris/**/*
         - src/gallium/winsys/iris/**/*
-        - src/intel/**/*
       when: on_success
 
 .iris-manual-rules:
@@ -95,9 +109,7 @@
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
-    - changes:
-        - src/intel/**/*
-      when: on_success
+    - !reference [.intel-common-rules, rules]
 
 .anv-manual-rules:
   stage: intel
@@ -106,9 +118,7 @@
     - !reference [.test, rules]
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
-    - changes:
-        - src/intel/**/*
-      when: manual
+    - !reference [.intel-common-manual-rules, rules]
 
 .hasvk-rules:
   stage: intel
@@ -116,9 +126,7 @@
     - !reference [.test, rules]
     - !reference [.anholt-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
-    - changes:
-        - src/intel/**/*
-      when: on_success
+    - !reference [.intel-common-rules, rules]
 
 .hasvk-manual-rules:
   stage: intel
@@ -127,9 +135,7 @@
     - !reference [.test, rules]
     - !reference [.anholt-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
-    - changes:
-        - src/intel/**/*
-      when: manual
+    - !reference [.intel-common-manual-rules, rules]
 
 # ruleset to trigger on changes affecting either anv or iris, for jobs using both (piglit, skqp)
 .intel-rules:
