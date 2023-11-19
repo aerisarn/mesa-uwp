@@ -5,11 +5,11 @@
     - !reference [.austriancoder-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &etnaviv_file_list
-      - src/etnaviv/**/*
-      - src/gallium/drivers/etnaviv/**/*
-      - src/gallium/winsys/etnaviv/**/*
-      - src/gallium/auxiliary/renderonly/**/*
-      - src/gallium/winsys/kmsro/**/*
+        - src/etnaviv/**/*
+        - src/gallium/drivers/etnaviv/**/*
+        - src/gallium/winsys/etnaviv/**/*
+        - src/gallium/auxiliary/renderonly/**/*
+        - src/gallium/winsys/kmsro/**/*
       when: on_success
 
 .etnaviv-manual-rules:
