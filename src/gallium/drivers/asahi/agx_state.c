@@ -2898,10 +2898,9 @@ agx_batch_init_state(struct agx_batch *batch)
     * with another that caused stale data to be cached and the CPU wrote to it
     * in the meantime.
     */
-   agx_pack(out, VDM_BARRIER, cfg) {
+   agx_push(out, VDM_BARRIER, cfg) {
       cfg.usc_cache_inval = true;
    }
-   out += AGX_VDM_BARRIER_LENGTH;
 
    struct agx_ppp_update ppp =
       agx_new_ppp_update(&batch->pool, (struct AGX_PPP_HEADER){
@@ -3006,15 +3005,14 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    struct agx_compiled_shader *vs = ctx->vs, *fs = ctx->fs;
 
    if (IS_DIRTY(VS)) {
-      agx_pack(out, VDM_STATE, cfg) {
+      agx_push(out, VDM_STATE, cfg) {
          cfg.vertex_shader_word_0_present = true;
          cfg.vertex_shader_word_1_present = true;
          cfg.vertex_outputs_present = true;
          cfg.vertex_unknown_present = true;
       }
-      out += AGX_VDM_STATE_LENGTH;
 
-      agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
+      agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
          cfg.uniform_register_count = vs->info.push_count;
          cfg.preshader_register_count = vs->info.nr_preamble_gprs;
          cfg.texture_state_register_count =
@@ -3022,26 +3020,22 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.sampler_state_register_count =
             translate_sampler_state_count(ctx, vs, PIPE_SHADER_VERTEX);
       }
-      out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
 
-      agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
+      agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
          cfg.pipeline = agx_build_pipeline(batch, vs, PIPE_SHADER_VERTEX, 0);
       }
-      out += AGX_VDM_STATE_VERTEX_SHADER_WORD_1_LENGTH;
 
-      agx_pack(out, VDM_STATE_VERTEX_OUTPUTS, cfg) {
+      agx_push(out, VDM_STATE_VERTEX_OUTPUTS, cfg) {
          cfg.output_count_1 = vs->info.varyings.vs.nr_index;
          cfg.output_count_2 = cfg.output_count_1;
       }
-      out += AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH;
 
-      agx_pack(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
+      agx_push(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
          cfg.flat_shading_control = ctx->rast->base.flatshade_first
                                        ? AGX_VDM_VERTEX_0
                                        : AGX_VDM_VERTEX_2;
          cfg.unknown_4 = cfg.unknown_5 = ctx->rast->base.rasterizer_discard;
       }
-      out += AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH;
 
       /* Pad up to a multiple of 8 bytes */
       memset(out, 0, 4);
@@ -3966,17 +3960,14 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    enum agx_primitive prim = agx_primitive_for_pipe(mode);
    if (idx_size) {
-      agx_pack(out, VDM_STATE, cfg)
+      agx_push(out, VDM_STATE, cfg)
          cfg.restart_index_present = true;
-      out += AGX_VDM_STATE_LENGTH;
 
-      agx_pack(out, VDM_STATE_RESTART_INDEX, cfg) {
+      agx_push(out, VDM_STATE_RESTART_INDEX, cfg)
          cfg.value = info->restart_index;
-      }
-      out += AGX_VDM_STATE_RESTART_INDEX_LENGTH;
    }
 
-   agx_pack(out, INDEX_LIST, cfg) {
+   agx_push(out, INDEX_LIST, cfg) {
       cfg.primitive = prim;
       cfg.instance_count_present = true;
 
@@ -3995,46 +3986,39 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
          cfg.index_buffer_size_present = true;
       }
    }
-   out += AGX_INDEX_LIST_LENGTH;
 
    if (idx_size) {
-      agx_pack(out, INDEX_LIST_BUFFER_LO, cfg) {
+      agx_push(out, INDEX_LIST_BUFFER_LO, cfg) {
          cfg.buffer_lo = ib & BITFIELD_MASK(32);
       }
-      out += AGX_INDEX_LIST_BUFFER_LO_LENGTH;
    }
 
    if (!indirect) {
-      agx_pack(out, INDEX_LIST_COUNT, cfg)
+      agx_push(out, INDEX_LIST_COUNT, cfg)
          cfg.count = draws->count;
-      out += AGX_INDEX_LIST_COUNT_LENGTH;
    }
 
-   agx_pack(out, INDEX_LIST_INSTANCES, cfg)
+   agx_push(out, INDEX_LIST_INSTANCES, cfg)
       cfg.count = info->instance_count;
-   out += AGX_INDEX_LIST_INSTANCES_LENGTH;
 
    if (indirect) {
       struct agx_resource *indirect_rsrc = agx_resource(indirect->buffer);
       uint64_t address = indirect_rsrc->bo->ptr.gpu + indirect->offset;
 
-      agx_pack(out, INDEX_LIST_INDIRECT_BUFFER, cfg) {
+      agx_push(out, INDEX_LIST_INDIRECT_BUFFER, cfg) {
          cfg.address_hi = address >> 32;
          cfg.address_lo = address & BITFIELD_MASK(32);
       }
-      out += AGX_INDEX_LIST_INDIRECT_BUFFER_LENGTH;
    } else {
-      agx_pack(out, INDEX_LIST_START, cfg) {
+      agx_push(out, INDEX_LIST_START, cfg) {
          cfg.start = idx_size ? draws->index_bias : draws->start;
       }
-      out += AGX_INDEX_LIST_START_LENGTH;
    }
 
    if (idx_size) {
-      agx_pack(out, INDEX_LIST_BUFFER_SIZE, cfg) {
+      agx_push(out, INDEX_LIST_BUFFER_SIZE, cfg) {
          cfg.size = ib_extent;
       }
-      out += AGX_INDEX_LIST_BUFFER_SIZE_LENGTH;
    }
 
    batch->vdm.current = out;
@@ -4114,7 +4098,7 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
    /* TODO: Ensure space if we allow multiple kernels in a batch */
    uint8_t *out = batch->cdm.current;
 
-   agx_pack(out, CDM_LAUNCH, cfg) {
+   agx_push(out, CDM_LAUNCH, cfg) {
       if (info->indirect)
          cfg.mode = AGX_CDM_MODE_INDIRECT_GLOBAL;
       else
@@ -4129,39 +4113,34 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
       cfg.pipeline =
          agx_build_pipeline(batch, cs, stage, info->variable_shared_mem);
    }
-   out += AGX_CDM_LAUNCH_LENGTH;
 
    /* Added in G14X */
    if (dev->params.gpu_generation >= 14 && dev->params.num_clusters_total > 1) {
-      agx_pack(out, CDM_UNK_G14X, cfg)
+      agx_push(out, CDM_UNK_G14X, cfg)
          ;
-      out += AGX_CDM_UNK_G14X_LENGTH;
    }
 
    if (info->indirect) {
-      agx_pack(out, CDM_INDIRECT, cfg) {
+      agx_push(out, CDM_INDIRECT, cfg) {
          cfg.address_hi = batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] >> 32;
          cfg.address_lo =
             batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] & BITFIELD64_MASK(32);
       }
-      out += AGX_CDM_INDIRECT_LENGTH;
    } else {
-      agx_pack(out, CDM_GLOBAL_SIZE, cfg) {
+      agx_push(out, CDM_GLOBAL_SIZE, cfg) {
          cfg.x = info->grid[0] * info->block[0];
          cfg.y = info->grid[1] * info->block[1];
          cfg.z = info->grid[2] * info->block[2];
       }
-      out += AGX_CDM_GLOBAL_SIZE_LENGTH;
    }
 
-   agx_pack(out, CDM_LOCAL_SIZE, cfg) {
+   agx_push(out, CDM_LOCAL_SIZE, cfg) {
       cfg.x = info->block[0];
       cfg.y = info->block[1];
       cfg.z = info->block[2];
    }
-   out += AGX_CDM_LOCAL_SIZE_LENGTH;
 
-   agx_pack(out, CDM_BARRIER, cfg) {
+   agx_push(out, CDM_BARRIER, cfg) {
       cfg.unk_5 = true;
       cfg.unk_6 = true;
       cfg.unk_8 = true;
@@ -4175,7 +4154,6 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
          }
       }
    }
-   out += AGX_CDM_BARRIER_LENGTH;
 
    batch->cdm.current = out;
    assert(batch->cdm.current <= batch->cdm.end &&
