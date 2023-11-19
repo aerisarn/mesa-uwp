@@ -183,7 +183,7 @@
     - .lava-piglit-traces:x86_64
   variables:
     PIGLIT_PLATFORM: mixed_glx_egl  # TODO, take wine/VK in account
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-amd.yml"
+    PIGLIT_TRACES_FILE: traces-amd.yml
 
 ############### Valve Infra
 .test-radv:

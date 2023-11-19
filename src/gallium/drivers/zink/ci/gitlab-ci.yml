@@ -52,14 +52,14 @@ zink-anv-tgl-traces:
     # dependencies right.
     - .lava-traces-base
   variables:
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-zink.yml"
+    PIGLIT_TRACES_FILE: traces-zink.yml
 
 zink-anv-tgl-traces-restricted:
   extends:
     - zink-anv-tgl-traces
     - .zink-anv-rules-restricted
   variables:
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-zink-restricted.yml"
+    PIGLIT_TRACES_FILE: traces-zink-restricted.yml
     PIGLIT_REPLAY_EXTRA_ARGS: --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-private --jwt-file=${CI_JOB_JWT_FILE}
   allow_failure: true
 

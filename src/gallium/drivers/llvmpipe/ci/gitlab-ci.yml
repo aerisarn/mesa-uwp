@@ -21,7 +21,7 @@ llvmpipe-traces:
     - .llvmpipe-test
   variables:
     EGL_PLATFORM: "surfaceless"
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-llvmpipe.yml"
+    PIGLIT_TRACES_FILE: traces-llvmpipe.yml
     PIGLIT_REPLAY_DEVICE_NAME: "gl-vmware-llvmpipe"
     PIGLIT_RESULTS: "llvmpipe-replay"
 

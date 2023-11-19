@@ -131,7 +131,7 @@ a618-traces:
     # missing.
     MESA_GLSL_VERSION_OVERRIDE: "460"
     MESA_GL_VERSION_OVERRIDE: "4.6"
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-freedreno.yml"
+    PIGLIT_TRACES_FILE: traces-freedreno.yml
 
 a618-traces-performance:
   extends:
@@ -261,7 +261,7 @@ a630-traces-restricted:
     - a630-traces
     - .google-freedreno-rules-restricted
   variables:
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/restricted-traces-freedreno.yml"
+    PIGLIT_TRACES_FILE: restricted-traces-freedreno.yml
     PIGLIT_REPLAY_EXTRA_ARGS: "--download-caching-proxy-url=http://10.42.0.1:8888/cache/?uri= --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-private --jwt-file=${CI_JOB_JWT_FILE}"
   allow_failure: true
 

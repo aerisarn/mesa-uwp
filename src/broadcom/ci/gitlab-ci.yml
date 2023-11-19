@@ -174,7 +174,7 @@ v3d-rpi4-traces:arm64:
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
     HWCI_TEST_SCRIPT: "/install/piglit/piglit-traces.sh"
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-broadcom.yml"
+    PIGLIT_TRACES_FILE: traces-broadcom.yml
     PIGLIT_REPLAY_DEVICE_NAME: "broadcom-rpi4"
     PIGLIT_RESULTS: "broadcom-rpi4-replay"
   tags:

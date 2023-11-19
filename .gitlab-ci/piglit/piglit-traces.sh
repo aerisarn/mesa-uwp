@@ -13,6 +13,8 @@ S3_ARGS="--token-file ${CI_JOB_JWT_FILE}"
 RESULTS=$(realpath -s "$PWD"/results)
 mkdir -p "$RESULTS"
 
+export PIGLIT_REPLAY_DESCRIPTION_FILE="$INSTALL/$PIGLIT_TRACES_FILE"
+
 if [ "$PIGLIT_REPLAY_SUBCOMMAND" = "profile" ]; then
     yq -iY 'del(.traces[][] | select(.label[]? == "no-perf"))' \
       "$PIGLIT_REPLAY_DESCRIPTION_FILE"

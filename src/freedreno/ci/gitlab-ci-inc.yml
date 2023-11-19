@@ -190,7 +190,7 @@
   variables:
     HWCI_TEST_SCRIPT: "/install/piglit/piglit-traces.sh"
     HWCI_START_XORG: 1
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-freedreno.yml"
+    PIGLIT_TRACES_FILE: traces-freedreno.yml
   artifacts:
     reports:
       junit: results/junit.xml

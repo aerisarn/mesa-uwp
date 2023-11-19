@@ -32,5 +32,5 @@
     - .piglit-traces-test
   variables:
     EGL_PLATFORM: "surfaceless"
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-crocus.yml"
+    PIGLIT_TRACES_FILE: traces-crocus.yml
     PIGLIT_REPLAY_DEVICE_NAME: "crocus-g41"
