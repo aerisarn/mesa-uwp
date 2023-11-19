@@ -602,6 +602,7 @@ struct pipe_h264_enc_picture_desc
    struct pipe_h264_enc_dbk_param dbk;
 
    unsigned intra_idr_period;
+   unsigned ip_period;
 
    unsigned quant_i_frames;
    unsigned quant_p_frames;

@@ -207,6 +207,7 @@ vlVaHandleVAEncSequenceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *con
       context->desc.h264enc.intra_refresh.need_sequence_header = 0;
    }
 
+   context->desc.h264enc.ip_period = h264->ip_period;
    context->desc.h264enc.intra_idr_period =
       h264->intra_idr_period != 0 ? h264->intra_idr_period : PIPE_DEFAULT_INTRA_IDR_PERIOD;
    context->gop_coeff = ((1024 + context->desc.h264enc.intra_idr_period - 1) /
