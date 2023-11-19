@@ -3971,7 +3971,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       out += AGX_VDM_STATE_LENGTH;
 
       agx_pack(out, VDM_STATE_RESTART_INDEX, cfg) {
-         cfg.value = ctx->gs ? BITFIELD_MASK(32) : info->restart_index;
+         cfg.value = info->restart_index;
       }
       out += AGX_VDM_STATE_RESTART_INDEX_LENGTH;
    }
