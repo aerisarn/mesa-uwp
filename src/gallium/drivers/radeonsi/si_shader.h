@@ -436,8 +436,8 @@ struct si_shader_info {
    uint64_t inputs_read; /* "get_unique_index" bits */
    uint64_t tcs_vgpr_only_inputs; /* TCS inputs that are only in VGPRs, not LDS. */
 
+   uint64_t outputs_written_before_tes_gs; /* "get_unique_index" bits */
    uint64_t outputs_written_before_ps; /* "get_unique_index" bits */
-   uint64_t outputs_written;           /* "get_unique_index" bits */
    uint32_t patch_outputs_written;     /* "get_unique_index_patch" bits */
 
    uint8_t clipdist_mask;

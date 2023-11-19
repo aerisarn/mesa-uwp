@@ -745,14 +745,19 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
             info->patch_outputs_written |= 1ull << ac_shader_io_get_unique_index_patch(semantic);
          } else if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
                     semantic != VARYING_SLOT_EDGE) {
-            info->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic);
-
             /* Ignore outputs that are not passed from VS to PS. */
             if (semantic != VARYING_SLOT_POS &&
                 semantic != VARYING_SLOT_PSIZ &&
                 semantic != VARYING_SLOT_CLIP_VERTEX) {
                info->outputs_written_before_ps |= 1ull
                                                   << si_shader_io_get_unique_index(semantic);
+            }
+
+            /* LAYER and VIEWPORT have no effect if they don't feed the rasterizer. */
+            if (semantic != VARYING_SLOT_LAYER &&
+                semantic != VARYING_SLOT_VIEWPORT) {
+               info->outputs_written_before_tes_gs |=
+                  BITFIELD64_BIT(si_shader_io_get_unique_index(semantic));
             }
          }
       }
@@ -771,8 +776,8 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_CTRL ||
        nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      info->esgs_vertex_stride = util_last_bit64(info->outputs_written) * 16;
-      info->lshs_vertex_stride = info->esgs_vertex_stride;
+      info->esgs_vertex_stride = info->lshs_vertex_stride =
+         util_last_bit64(info->outputs_written_before_tes_gs) * 16;
 
       /* Add 1 dword to reduce LDS bank conflicts, so that each vertex
        * will start on a different bank. (except for the maximum 32*16).

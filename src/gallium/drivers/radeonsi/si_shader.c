@@ -474,7 +474,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
 
             /* VS outputs passed via VGPRs to TCS. */
             if (shader->key.ge.opt.same_patch_vertices && !sel->screen->use_aco) {
-               unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written);
+               unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written_before_tes_gs);
                for (i = 0; i < num_outputs * 4; i++)
                   ac_add_return(&args->ac, AC_ARG_VGPR);
             }
@@ -482,7 +482,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       } else {
          /* TCS inputs are passed via VGPRs from VS. */
          if (shader->key.ge.opt.same_patch_vertices && !sel->screen->use_aco) {
-            unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->info.outputs_written);
+            unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->info.outputs_written_before_tes_gs);
             for (i = 0; i < num_inputs * 4; i++)
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
          }
@@ -1270,7 +1270,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
                shader->key.ge.as_ngg)
          num_outputs = shader->info.nr_param_exports;
       else if (shader->selector->stage == MESA_SHADER_TESS_CTRL)
-         num_outputs = util_last_bit64(shader->selector->info.outputs_written);
+         num_outputs = util_last_bit64(shader->selector->info.outputs_written_before_tes_gs);
       else
          unreachable("invalid shader key");
    } else if (shader->selector->stage == MESA_SHADER_FRAGMENT) {
@@ -1794,7 +1794,7 @@ static bool si_lower_io_to_mem(struct si_shader *shader, nir_shader *nir,
                  /* Used by hs_emit_write_tess_factors() when monolithic shader. */
                  key->ge.part.tcs.epilog.tes_reads_tess_factors,
                  ~0ULL, ~0ULL, /* no TES inputs filter */
-                 util_last_bit64(sel->info.outputs_written),
+                 util_last_bit64(sel->info.outputs_written_before_tes_gs),
                  util_last_bit64(sel->info.patch_outputs_written),
                  shader->wave_size,
                  /* ALL TCS inputs are passed by register. */
@@ -3532,7 +3532,7 @@ nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
 unsigned si_get_tcs_out_patch_stride(const struct si_shader_info *info)
 {
    unsigned tcs_out_vertices = info->base.tess.tcs_vertices_out;
-   unsigned vertex_stride = util_last_bit64(info->outputs_written) * 4;
+   unsigned vertex_stride = util_last_bit64(info->outputs_written_before_tes_gs) * 4;
    unsigned num_patch_outputs = util_last_bit64(info->patch_outputs_written);
 
    return tcs_out_vertices * vertex_stride + num_patch_outputs * 4;
