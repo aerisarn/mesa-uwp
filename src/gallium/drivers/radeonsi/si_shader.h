@@ -743,6 +743,7 @@ struct si_shader_key_ge {
       uint64_t kill_outputs; /* "get_unique_index" bits */
       unsigned kill_clip_distances : 8;
       unsigned kill_pointsize : 1;
+      unsigned kill_layer : 1;
       unsigned remove_streamout : 1;
 
       /* For NGG VS and TES. */

@@ -1543,6 +1543,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
        !key->ge.as_es && !key->ge.as_ls) {
       fprintf(f, "  opt.kill_outputs = 0x%" PRIx64 "\n", key->ge.opt.kill_outputs);
       fprintf(f, "  opt.kill_pointsize = 0x%x\n", key->ge.opt.kill_pointsize);
+      fprintf(f, "  opt.kill_layer = 0x%x\n", key->ge.opt.kill_layer);
       fprintf(f, "  opt.kill_clip_distances = 0x%x\n", key->ge.opt.kill_clip_distances);
       fprintf(f, "  opt.ngg_culling = 0x%x\n", key->ge.opt.ngg_culling);
       fprintf(f, "  opt.remove_streamout = 0x%x\n", key->ge.opt.remove_streamout);
@@ -1643,6 +1644,7 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
 
    if (!key->ge.opt.kill_outputs &&
        !key->ge.opt.kill_pointsize &&
+       !key->ge.opt.kill_layer &&
        !key->ge.opt.kill_clip_distances &&
        !(nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_LAYER))) {
       nir_metadata_preserve(impl, nir_metadata_all);
@@ -1702,6 +1704,9 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
          case VARYING_SLOT_LAYER:
             /* LAYER is never passed to FS. Instead, we load it there as a system value. */
             progress |= nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
+
+            if (key->ge.opt.kill_layer)
+               progress |= nir_remove_sysval_output(intr);
             break;
          }
       }
@@ -1841,6 +1846,7 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       .has_param_exports = shader->info.nr_param_exports,
       .clipdist_enable_mask = clipdist_mask,
       .kill_pointsize = key->ge.opt.kill_pointsize,
+      .kill_layer = key->ge.opt.kill_layer,
       .force_vrs = sel->screen->options.vrs2x2,
    };
 
@@ -2006,8 +2012,8 @@ static unsigned si_get_nr_pos_exports(const struct si_shader_selector *sel,
 
    if ((info->writes_psize && !key->ge.opt.kill_pointsize) ||
        (info->writes_edgeflag && !key->ge.as_ngg) ||
-       info->writes_viewport_index || info->writes_layer ||
-       sel->screen->options.vrs2x2) {
+       (info->writes_layer && !key->ge.opt.kill_layer) ||
+       info->writes_viewport_index || sel->screen->options.vrs2x2) {
       nr_pos_exports++;
    }
 
@@ -2337,7 +2343,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                     shader->key.ge.mono.u.vs_export_prim_id,
                     !si_shader_uses_streamout(shader),
                     key->ge.opt.kill_pointsize,
-                    false,
+                    key->ge.opt.kill_layer,
                     sel->screen->options.vrs2x2);
       }
    } else if (is_legacy_gs) {
@@ -2491,7 +2497,7 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
                                    shader->info.nr_param_exports,
                                    !si_shader_uses_streamout(gs_shader),
                                    gskey->ge.opt.kill_pointsize,
-                                   false,
+                                   gskey->ge.opt.kill_layer,
                                    sscreen->options.vrs2x2,
                                    output_info);
 

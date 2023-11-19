@@ -1318,16 +1318,17 @@ static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
    unsigned clipcull_mask = (sel->info.clipdist_mask & ~shader->key.ge.opt.kill_clip_distances) |
                             sel->info.culldist_mask;
    bool writes_psize = sel->info.writes_psize && !shader->key.ge.opt.kill_pointsize;
+   bool writes_layer = sel->info.writes_layer && !shader->key.ge.opt.kill_layer;
    bool misc_vec_ena = writes_psize || (sel->info.writes_edgeflag && !ngg) ||
-                       sel->screen->options.vrs2x2 ||
-                       sel->info.writes_layer || sel->info.writes_viewport_index;
+                       writes_layer || sel->info.writes_viewport_index ||
+                       sel->screen->options.vrs2x2;
 
    return S_02881C_VS_OUT_CCDIST0_VEC_ENA((clipcull_mask & 0x0F) != 0) |
           S_02881C_VS_OUT_CCDIST1_VEC_ENA((clipcull_mask & 0xF0) != 0) |
           S_02881C_USE_VTX_POINT_SIZE(writes_psize) |
           S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag && !ngg) |
           S_02881C_USE_VTX_VRS_RATE(sel->screen->options.vrs2x2) |
-          S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
+          S_02881C_USE_VTX_RENDER_TARGET_INDX(writes_layer) |
           S_02881C_USE_VTX_VIEWPORT_INDX(sel->info.writes_viewport_index) |
           S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
           S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena ||
@@ -2244,6 +2245,8 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
    key->ge.opt.kill_pointsize = vs->info.writes_psize &&
                                 sctx->current_rast_prim != MESA_PRIM_POINTS &&
                                 !sctx->queued.named.rasterizer->polygon_mode_is_points;
+   key->ge.opt.kill_layer = vs->info.writes_layer &&
+                            sctx->framebuffer.state.layers <= 1;
    key->ge.opt.remove_streamout = vs->info.enabled_streamout_buffer_mask &&
                                   !sctx->streamout.enabled_mask;
 }
