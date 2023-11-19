@@ -31,6 +31,7 @@
 #include "util/timespec.h"
 #include "util/u_drm.h"
 #include "util/u_gen_mipmap.h"
+#include "util/u_helpers.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_resource.h"
@@ -1129,8 +1130,12 @@ agx_clear(struct pipe_context *pctx, unsigned buffers,
 
       static_assert(sizeof(color->f) == 16, "mismatched structure");
 
-      batch->uploaded_clear_color[rt] =
-         agx_pool_upload_aligned(&batch->pool, color->f, sizeof(color->f), 16);
+      /* Clear colour must be clamped to properly handle signed ints. */
+      union pipe_color_union clamped =
+         util_clamp_color(batch->key.cbufs[rt]->format, color);
+
+      batch->uploaded_clear_color[rt] = agx_pool_upload_aligned(
+         &batch->pool, clamped.f, sizeof(clamped.f), 16);
    }
 
    if (fastclear & PIPE_CLEAR_DEPTH)
