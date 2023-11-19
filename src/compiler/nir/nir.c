@@ -3371,7 +3371,7 @@ nir_remove_varying(nir_intrinsic_instr *intr, gl_shader_stage next_shader)
  * This marks the output store instruction as not feeding fixed-function
  * logic. If the instruction has no other use, it's removed.
  */
-void
+bool
 nir_remove_sysval_output(nir_intrinsic_instr *intr)
 {
    nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
@@ -3381,8 +3381,10 @@ nir_remove_sysval_output(nir_intrinsic_instr *intr)
       /* Demote the store instruction. */
       sem.no_sysval_output = true;
       nir_intrinsic_set_io_semantics(intr, sem);
+      return false;
    } else {
       nir_instr_remove(&intr->instr);
+      return true;
    }
 }
 
