@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "gallium/auxiliary/nir/pipe_nir.h"
 #define AC_SURFACE_INCLUDE_NIR
 #include "ac_surface.h"
 #include "si_pipe.h"
@@ -13,30 +14,7 @@
 static void *create_shader_state(struct si_context *sctx, nir_shader *nir)
 {
    sctx->b.screen->finalize_nir(sctx->b.screen, (void*)nir);
-
-   struct pipe_shader_state state = {0};
-   state.type = PIPE_SHADER_IR_NIR;
-   state.ir.nir = nir;
-
-   switch (nir->info.stage) {
-   case MESA_SHADER_VERTEX:
-      return sctx->b.create_vs_state(&sctx->b, &state);
-   case MESA_SHADER_TESS_CTRL:
-      return sctx->b.create_tcs_state(&sctx->b, &state);
-   case MESA_SHADER_TESS_EVAL:
-      return sctx->b.create_tes_state(&sctx->b, &state);
-   case MESA_SHADER_FRAGMENT:
-      return sctx->b.create_fs_state(&sctx->b, &state);
-   case MESA_SHADER_COMPUTE: {
-      struct pipe_compute_state cs_state = {0};
-      cs_state.ir_type = PIPE_SHADER_IR_NIR;
-      cs_state.prog = nir;
-      return sctx->b.create_compute_state(&sctx->b, &cs_state);
-   }
-   default:
-      unreachable("invalid shader stage");
-      return NULL;
-   }
+   return pipe_shader_from_nir(&sctx->b, nir);
 }
 
 static nir_def *get_global_ids(nir_builder *b, unsigned num_components)
