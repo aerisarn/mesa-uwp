@@ -66,10 +66,9 @@ foreach x : pipe_loaders
   pipe_sym_config = configuration_data()
 
   foreach d : [[x[1] in ['r300', 'r600', 'radeonsi'], 'radeon_drm_winsys_create'],
-               [x[1] in ['vmwgfx', 'r600', 'r300', 'nouveau', 'msm', 'kmsro', 'iris', 'crocus', 'radeonsi'],
-                'driver_descriptor'],
                [x[1] == 'radeonsi', 'amdgpu_winsys_create'],
                [x[1] == 'radeonsi' and with_llvm, 'ac_init_shared_llvm_once'],
+               [x[1] != 'swrast', 'driver_descriptor'],
                [x[1] == 'swrast', 'swrast_driver_descriptor']]
     if d[0]
       pipe_sym_config.set(d[1], d[1] + ';')
