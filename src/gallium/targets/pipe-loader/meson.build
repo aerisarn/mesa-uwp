@@ -63,6 +63,10 @@ pipe_loaders = [
 ]
 
 foreach x : pipe_loaders
+  if not x[0]
+    continue
+  endif
+
   pipe_sym_config = configuration_data()
 
   foreach d : [[x[1] in ['r300', 'r600', 'radeonsi'], 'radeon_drm_winsys_create'],
@@ -88,21 +92,19 @@ foreach x : pipe_loaders
     cur_pipe_loader_link_deps += pipe_sym
   endif
 
-  if x[0]
-    shared_library(
-      'pipe_@0@'.format(x[1]),
-      'pipe_@0@.c'.format(x[1]),
-      c_args : [pipe_loader_comp_args, '-DPIPE_LOADER_DYNAMIC=1'],
-      cpp_args : [pipe_loader_comp_args],
-      gnu_symbol_visibility : 'hidden',
-      link_args : cur_pipe_loader_link_args,
-      link_depends : cur_pipe_loader_link_deps,
-      include_directories : pipe_loader_incs,
-      link_with : [pipe_loader_link_with, x[3]],
-      dependencies : [idep_mesautil, idep_nir, dep_thread, x[2]],
-      name_prefix : '',
-      install : true,
-      install_dir : pipe_loader_install_dir,
-    )
-  endif
+  shared_library(
+    'pipe_@0@'.format(x[1]),
+    'pipe_@0@.c'.format(x[1]),
+    c_args : [pipe_loader_comp_args, '-DPIPE_LOADER_DYNAMIC=1'],
+    cpp_args : [pipe_loader_comp_args],
+    gnu_symbol_visibility : 'hidden',
+    link_args : cur_pipe_loader_link_args,
+    link_depends : cur_pipe_loader_link_deps,
+    include_directories : pipe_loader_incs,
+    link_with : [pipe_loader_link_with, x[3]],
+    dependencies : [idep_mesautil, idep_nir, dep_thread, x[2]],
+    name_prefix : '',
+    install : true,
+    install_dir : pipe_loader_install_dir,
+  )
 endforeach
