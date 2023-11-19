@@ -659,6 +659,16 @@ fd_bo_map(struct fd_bo *bo)
    return __fd_bo_map(bo);
 }
 
+static void *
+fd_bo_map_for_upload(struct fd_bo *bo)
+{
+   void *addr = __fd_bo_map(bo);
+   if (bo->alloc_flags & FD_BO_NOMAP)
+      VG_BO_MAPPED(bo);
+
+   return addr;
+}
+
 void
 fd_bo_upload(struct fd_bo *bo, void *src, unsigned off, unsigned len)
 {
@@ -667,7 +677,7 @@ fd_bo_upload(struct fd_bo *bo, void *src, unsigned off, unsigned len)
       return;
    }
 
-   memcpy((uint8_t *)__fd_bo_map(bo) + off, src, len);
+   memcpy((uint8_t *)fd_bo_map_for_upload(bo) + off, src, len);
 }
 
 bool
