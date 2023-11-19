@@ -18,6 +18,7 @@
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_serialize.h"
 #include "compiler/shader_enums.h"
+#include "gallium/auxiliary/nir/pipe_nir.h"
 #include "gallium/auxiliary/nir/tgsi_to_nir.h"
 #include "gallium/auxiliary/tgsi/tgsi_from_mesa.h"
 #include "gallium/auxiliary/util/u_blend.h"
@@ -1846,17 +1847,8 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
    if (pre_gs)
       compiled->pre_gs = agx_compile_nir(dev, pre_gs, &base_key, debug);
 
-   if (gs_copy) {
-      const struct pipe_shader_state templ = {
-         .type = PIPE_SHADER_IR_NIR,
-         .ir.nir = gs_copy,
-      };
-
-      void *cso = pctx->create_vs_state(pctx, &templ);
-      struct agx_uncompiled_shader *cs = cso;
-
-      compiled->gs_copy = cs;
-   }
+   if (gs_copy)
+      compiled->gs_copy = pipe_shader_from_nir(pctx, gs_copy);
 
    compiled->gs_output_mode = gs_out_prim;
    compiled->gs_count_words = gs_out_count_words;
@@ -3629,14 +3621,7 @@ agx_get_passthrough_gs(struct agx_context *ctx,
 
    ralloc_free(prev);
 
-   const struct pipe_shader_state templ = {
-      .type = PIPE_SHADER_IR_NIR,
-      .ir.nir = gs,
-   };
-
-   struct agx_uncompiled_shader *cso =
-      ctx->base.create_gs_state(&ctx->base, &templ);
-
+   struct agx_uncompiled_shader *cso = pipe_shader_from_nir(&ctx->base, gs);
    prev_cso->passthrough_progs[mode] = cso;
    return cso;
 }
