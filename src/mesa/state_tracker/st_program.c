@@ -525,11 +525,7 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
       struct pipe_compute_state cs = {0};
       cs.ir_type = state->type;
       cs.static_shared_mem = info.shared_size;
-
-      if (state->type == PIPE_SHADER_IR_NIR)
-         cs.prog = state->ir.nir;
-      else
-         cs.prog = state->tokens;
+      cs.prog = state->ir.nir;
 
       shader = pipe->create_compute_state(pipe, &cs);
       break;
