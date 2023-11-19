@@ -1639,7 +1639,8 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
-   uint64_t kill_outputs = nir->info.stage > MESA_SHADER_GEOMETRY ? 0 : key->ge.opt.kill_outputs;
+   assert(nir->info.stage <= MESA_SHADER_GEOMETRY);
+   uint64_t kill_outputs = key->ge.opt.kill_outputs;
 
    /* Always remove the interpolated gl_Layer output for blit shaders on the first compile
     * (it's always unused by PS), otherwise we hang because we don't pass the attribute ring
@@ -1648,11 +1649,9 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
    if (nir->info.stage == MESA_SHADER_VERTEX && nir->info.vs.blit_sgprs_amd)
       kill_outputs |= BITFIELD64_BIT(SI_UNIQUE_SLOT_LAYER);
 
-   if (nir->info.stage > MESA_SHADER_GEOMETRY ||
-       (!kill_outputs &&
-        !key->ge.opt.kill_pointsize &&
-        !key->ge.opt.kill_clip_distances &&
-        (nir->info.stage != MESA_SHADER_VERTEX || !nir->info.vs.blit_sgprs_amd))) {
+   if (!kill_outputs &&
+       !key->ge.opt.kill_pointsize &&
+       !key->ge.opt.kill_clip_distances) {
       nir_metadata_preserve(impl, nir_metadata_all);
       return false;
    }
@@ -1677,36 +1676,35 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
 
          if (nir_slot_is_varying(sem.location) &&
              kill_outputs &
-             (1ull << si_shader_io_get_unique_index(sem.location))) {
-            nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
-            progress = true;
-         }
+             (1ull << si_shader_io_get_unique_index(sem.location)))
+            progress |= nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
 
-         if (key->ge.opt.kill_pointsize && sem.location == VARYING_SLOT_PSIZ) {
-            nir_remove_sysval_output(intr);
-            progress = true;
-         }
+         switch (sem.location) {
+         case VARYING_SLOT_PSIZ:
+            if (key->ge.opt.kill_pointsize)
+               progress |= nir_remove_sysval_output(intr);
+            break;
 
-         /* TODO: We should only kill specific clip planes as required by kill_clip_distance,
-          * not whole gl_ClipVertex. Lower ClipVertex in NIR.
-          */
-         if ((key->ge.opt.kill_clip_distances & SI_USER_CLIP_PLANE_MASK) == SI_USER_CLIP_PLANE_MASK &&
-             sem.location == VARYING_SLOT_CLIP_VERTEX) {
-            nir_remove_sysval_output(intr);
-            progress = true;
-         }
+         case VARYING_SLOT_CLIP_VERTEX:
+            /* TODO: We should only kill specific clip planes as required by kill_clip_distance,
+             * not whole gl_ClipVertex. Lower ClipVertex in NIR.
+             */
+            if ((key->ge.opt.kill_clip_distances & SI_USER_CLIP_PLANE_MASK) ==
+                SI_USER_CLIP_PLANE_MASK)
+               progress |= nir_remove_sysval_output(intr);
+            break;
 
-         if (key->ge.opt.kill_clip_distances &&
-             (sem.location == VARYING_SLOT_CLIP_DIST0 ||
-              sem.location == VARYING_SLOT_CLIP_DIST1)) {
-            assert(nir_intrinsic_src_type(intr) == nir_type_float32);
-            unsigned index = (sem.location - VARYING_SLOT_CLIP_DIST0) * 4 +
-                             nir_intrinsic_component(intr);
+         case VARYING_SLOT_CLIP_DIST0:
+         case VARYING_SLOT_CLIP_DIST1:
+            if (key->ge.opt.kill_clip_distances) {
+               assert(nir_intrinsic_src_type(intr) == nir_type_float32);
+               unsigned index = (sem.location - VARYING_SLOT_CLIP_DIST0) * 4 +
+                                nir_intrinsic_component(intr);
 
-            if ((key->ge.opt.kill_clip_distances >> index) & 0x1) {
-               nir_remove_sysval_output(intr);
-               progress = true;
+               if (key->ge.opt.kill_clip_distances & BITFIELD_BIT(index))
+                  progress |= nir_remove_sysval_output(intr);
             }
+            break;
          }
       }
    }
