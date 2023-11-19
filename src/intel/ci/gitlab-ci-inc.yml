@@ -13,7 +13,6 @@
         - src/intel/nullhw-layer/**/*
         - src/intel/perf/**/*
         - src/intel/tools/**/*
-        - src/intel/vulkan/**/*
         - src/intel/vulkan_hasvk/**/*
         - src/intel/ci/*
       when: on_success
@@ -123,6 +122,9 @@
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - !reference [.intel-common-rules, rules]
+    - changes: &anv_file_list
+        - src/intel/vulkan/**/*
+      when: on_success
 
 .anv-manual-rules:
   stage: intel
@@ -132,6 +134,9 @@
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - !reference [.intel-common-manual-rules, rules]
+    - changes:
+        *anv_file_list
+      when: manual
 
 .hasvk-rules:
   stage: intel
