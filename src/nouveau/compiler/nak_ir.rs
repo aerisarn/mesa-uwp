@@ -1270,20 +1270,20 @@ impl FloatCmpOp {
 impl fmt::Display for FloatCmpOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FloatCmpOp::OrdEq => write!(f, "EQ"),
-            FloatCmpOp::OrdNe => write!(f, "NE"),
-            FloatCmpOp::OrdLt => write!(f, "LT"),
-            FloatCmpOp::OrdLe => write!(f, "LE"),
-            FloatCmpOp::OrdGt => write!(f, "GT"),
-            FloatCmpOp::OrdGe => write!(f, "GE"),
-            FloatCmpOp::UnordEq => write!(f, "EQU"),
-            FloatCmpOp::UnordNe => write!(f, "NEU"),
-            FloatCmpOp::UnordLt => write!(f, "LTU"),
-            FloatCmpOp::UnordLe => write!(f, "LEU"),
-            FloatCmpOp::UnordGt => write!(f, "GTU"),
-            FloatCmpOp::UnordGe => write!(f, "GEU"),
-            FloatCmpOp::IsNum => write!(f, "NUM"),
-            FloatCmpOp::IsNan => write!(f, "NAN"),
+            FloatCmpOp::OrdEq => write!(f, "eq"),
+            FloatCmpOp::OrdNe => write!(f, "ne"),
+            FloatCmpOp::OrdLt => write!(f, "lt"),
+            FloatCmpOp::OrdLe => write!(f, "le"),
+            FloatCmpOp::OrdGt => write!(f, "gt"),
+            FloatCmpOp::OrdGe => write!(f, "ge"),
+            FloatCmpOp::UnordEq => write!(f, "equ"),
+            FloatCmpOp::UnordNe => write!(f, "neu"),
+            FloatCmpOp::UnordLt => write!(f, "ltu"),
+            FloatCmpOp::UnordLe => write!(f, "leu"),
+            FloatCmpOp::UnordGt => write!(f, "gtu"),
+            FloatCmpOp::UnordGe => write!(f, "geu"),
+            FloatCmpOp::IsNum => write!(f, "num"),
+            FloatCmpOp::IsNan => write!(f, "nan"),
         }
     }
 }
@@ -1313,12 +1313,12 @@ impl IntCmpOp {
 impl fmt::Display for IntCmpOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IntCmpOp::Eq => write!(f, "EQ"),
-            IntCmpOp::Ne => write!(f, "NE"),
-            IntCmpOp::Lt => write!(f, "LT"),
-            IntCmpOp::Le => write!(f, "LE"),
-            IntCmpOp::Gt => write!(f, "GT"),
-            IntCmpOp::Ge => write!(f, "GE"),
+            IntCmpOp::Eq => write!(f, "eq"),
+            IntCmpOp::Ne => write!(f, "ne"),
+            IntCmpOp::Lt => write!(f, "lt"),
+            IntCmpOp::Le => write!(f, "le"),
+            IntCmpOp::Gt => write!(f, "gt"),
+            IntCmpOp::Ge => write!(f, "ge"),
         }
     }
 }
@@ -1331,8 +1331,8 @@ pub enum IntCmpType {
 impl fmt::Display for IntCmpType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IntCmpType::U32 => write!(f, "U32"),
-            IntCmpType::I32 => write!(f, "I32"),
+            IntCmpType::U32 => write!(f, "u32"),
+            IntCmpType::I32 => write!(f, "i32"),
         }
     }
 }
@@ -1460,9 +1460,9 @@ impl FloatType {
 impl fmt::Display for FloatType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FloatType::F16 => write!(f, "F16"),
-            FloatType::F32 => write!(f, "F32"),
-            FloatType::F64 => write!(f, "F64"),
+            FloatType::F16 => write!(f, "f16"),
+            FloatType::F32 => write!(f, "f32"),
+            FloatType::F64 => write!(f, "f64"),
         }
     }
 }
@@ -1479,10 +1479,10 @@ pub enum FRndMode {
 impl fmt::Display for FRndMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FRndMode::NearestEven => write!(f, "RE"),
-            FRndMode::NegInf => write!(f, "RM"),
-            FRndMode::PosInf => write!(f, "RP"),
-            FRndMode::Zero => write!(f, "RZ"),
+            FRndMode::NearestEven => write!(f, "re"),
+            FRndMode::NegInf => write!(f, "rm"),
+            FRndMode::PosInf => write!(f, "rp"),
+            FRndMode::Zero => write!(f, "rz"),
         }
     }
 }
@@ -1525,12 +1525,12 @@ pub enum TexLodMode {
 impl fmt::Display for TexLodMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TexLodMode::Auto => write!(f, "LA"),
-            TexLodMode::Zero => write!(f, "LZ"),
-            TexLodMode::Bias => write!(f, "LB"),
-            TexLodMode::Lod => write!(f, "LL"),
-            TexLodMode::Clamp => write!(f, "LC"),
-            TexLodMode::BiasClamp => write!(f, "LB.LC"),
+            TexLodMode::Auto => write!(f, "la"),
+            TexLodMode::Zero => write!(f, "lz"),
+            TexLodMode::Bias => write!(f, "lb"),
+            TexLodMode::Lod => write!(f, "ll"),
+            TexLodMode::Clamp => write!(f, "lc"),
+            TexLodMode::BiasClamp => write!(f, "lb.lc"),
         }
     }
 }
@@ -1545,9 +1545,9 @@ pub enum Tld4OffsetMode {
 impl fmt::Display for Tld4OffsetMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Tld4OffsetMode::None => write!(f, "NO_OFF"),
-            Tld4OffsetMode::AddOffI => write!(f, "AOFFI"),
-            Tld4OffsetMode::PerPx => write!(f, "PTP"),
+            Tld4OffsetMode::None => write!(f, "no_off"),
+            Tld4OffsetMode::AddOffI => write!(f, "aoffi"),
+            Tld4OffsetMode::PerPx => write!(f, "ptp"),
         }
     }
 }
@@ -1563,9 +1563,9 @@ pub enum TexQuery {
 impl fmt::Display for TexQuery {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TexQuery::Dimension => write!(f, "DIMENSION"),
-            TexQuery::TextureType => write!(f, "TEXTURE_TYPE"),
-            TexQuery::SamplerPos => write!(f, "SAMPLER_POS"),
+            TexQuery::Dimension => write!(f, "dimension"),
+            TexQuery::TextureType => write!(f, "texture_type"),
+            TexQuery::SamplerPos => write!(f, "sampler_pos"),
         }
     }
 }
@@ -1672,14 +1672,14 @@ impl IntType {
 impl fmt::Display for IntType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IntType::U8 => write!(f, "U8"),
-            IntType::I8 => write!(f, "I8"),
-            IntType::U16 => write!(f, "U16"),
-            IntType::I16 => write!(f, "I16"),
-            IntType::U32 => write!(f, "U32"),
-            IntType::I32 => write!(f, "I32"),
-            IntType::U64 => write!(f, "U64"),
-            IntType::I64 => write!(f, "I64"),
+            IntType::U8 => write!(f, "u8"),
+            IntType::I8 => write!(f, "i8"),
+            IntType::U16 => write!(f, "u16"),
+            IntType::I16 => write!(f, "i16"),
+            IntType::U32 => write!(f, "u32"),
+            IntType::I32 => write!(f, "i32"),
+            IntType::U64 => write!(f, "u64"),
+            IntType::I64 => write!(f, "i64"),
         }
     }
 }
@@ -1693,8 +1693,8 @@ pub enum MemAddrType {
 impl fmt::Display for MemAddrType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemAddrType::A32 => write!(f, "A32"),
-            MemAddrType::A64 => write!(f, "A64"),
+            MemAddrType::A32 => write!(f, "a32"),
+            MemAddrType::A64 => write!(f, "a64"),
         }
     }
 }
@@ -1738,13 +1738,13 @@ impl MemType {
 impl fmt::Display for MemType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemType::U8 => write!(f, "U8"),
-            MemType::I8 => write!(f, "I8"),
-            MemType::U16 => write!(f, "U16"),
-            MemType::I16 => write!(f, "I16"),
-            MemType::B32 => write!(f, "B32"),
-            MemType::B64 => write!(f, "B64"),
-            MemType::B128 => write!(f, "B128"),
+            MemType::U8 => write!(f, "u8"),
+            MemType::I8 => write!(f, "i8"),
+            MemType::U16 => write!(f, "u16"),
+            MemType::I16 => write!(f, "i16"),
+            MemType::B32 => write!(f, "b32"),
+            MemType::B64 => write!(f, "b64"),
+            MemType::B128 => write!(f, "b128"),
         }
     }
 }
@@ -1760,9 +1760,9 @@ pub enum MemOrder {
 impl fmt::Display for MemOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemOrder::Constant => write!(f, "CONSTANT"),
-            MemOrder::Weak => write!(f, "WEAK"),
-            MemOrder::Strong(scope) => write!(f, "STRONG.{}", scope),
+            MemOrder::Constant => write!(f, "constant"),
+            MemOrder::Weak => write!(f, "weak"),
+            MemOrder::Strong(scope) => write!(f, "strong.{}", scope),
         }
     }
 }
@@ -1778,9 +1778,9 @@ pub enum MemScope {
 impl fmt::Display for MemScope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemScope::CTA => write!(f, "CTA"),
-            MemScope::GPU => write!(f, "GPU"),
-            MemScope::System => write!(f, "SYS"),
+            MemScope::CTA => write!(f, "cta"),
+            MemScope::GPU => write!(f, "gpu"),
+            MemScope::System => write!(f, "sys"),
         }
     }
 }
@@ -1795,9 +1795,9 @@ pub enum MemSpace {
 impl fmt::Display for MemSpace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemSpace::Global => write!(f, "GLOBAL"),
-            MemSpace::Local => write!(f, "LOCAL"),
-            MemSpace::Shared => write!(f, "SHARED"),
+            MemSpace::Global => write!(f, "global"),
+            MemSpace::Local => write!(f, "local"),
+            MemSpace::Shared => write!(f, "shared"),
         }
     }
 }
@@ -1814,10 +1814,10 @@ pub enum MemEvictionPriority {
 impl fmt::Display for MemEvictionPriority {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemEvictionPriority::First => write!(f, ".EF"),
+            MemEvictionPriority::First => write!(f, ".ef"),
             MemEvictionPriority::Normal => Ok(()),
-            MemEvictionPriority::Last => write!(f, ".EL"),
-            MemEvictionPriority::Unchanged => write!(f, ".LU"),
+            MemEvictionPriority::Last => write!(f, ".el"),
+            MemEvictionPriority::Unchanged => write!(f, ".lu"),
         }
     }
 }
@@ -1887,13 +1887,13 @@ impl AtomType {
 impl fmt::Display for AtomType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AtomType::F16x2 => write!(f, "F16x2"),
-            AtomType::U32 => write!(f, "U32"),
-            AtomType::I32 => write!(f, "I32"),
-            AtomType::F32 => write!(f, "F32"),
-            AtomType::U64 => write!(f, "U64"),
-            AtomType::I64 => write!(f, "I64"),
-            AtomType::F64 => write!(f, "F64"),
+            AtomType::F16x2 => write!(f, "f16x2"),
+            AtomType::U32 => write!(f, "u32"),
+            AtomType::I32 => write!(f, "i32"),
+            AtomType::F32 => write!(f, "f32"),
+            AtomType::U64 => write!(f, "u64"),
+            AtomType::I64 => write!(f, "i64"),
+            AtomType::F64 => write!(f, "f64"),
         }
     }
 }
@@ -1916,16 +1916,16 @@ pub enum AtomOp {
 impl fmt::Display for AtomOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AtomOp::Add => write!(f, "ADD"),
-            AtomOp::Min => write!(f, "MIN"),
-            AtomOp::Max => write!(f, "MAX"),
-            AtomOp::Inc => write!(f, "INC"),
-            AtomOp::Dec => write!(f, "DEC"),
-            AtomOp::And => write!(f, "AND"),
-            AtomOp::Or => write!(f, "OR"),
-            AtomOp::Xor => write!(f, "XOR"),
-            AtomOp::Exch => write!(f, "EXCH"),
-            AtomOp::CmpExch => write!(f, "CMPEXCH"),
+            AtomOp::Add => write!(f, "add"),
+            AtomOp::Min => write!(f, "min"),
+            AtomOp::Max => write!(f, "max"),
+            AtomOp::Inc => write!(f, "inc"),
+            AtomOp::Dec => write!(f, "dec"),
+            AtomOp::And => write!(f, "and"),
+            AtomOp::Or => write!(f, "or"),
+            AtomOp::Xor => write!(f, "xor"),
+            AtomOp::Exch => write!(f, "exch"),
+            AtomOp::CmpExch => write!(f, "cmpexch"),
         }
     }
 }
@@ -1968,9 +1968,9 @@ pub struct OpFAdd {
 
 impl fmt::Display for OpFAdd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FADD")?;
+        write!(f, "fadd")?;
         if self.saturate {
-            write!(f, ".SAT")?;
+            write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, ".{}", self.rnd_mode)?;
@@ -1993,9 +1993,9 @@ pub struct OpFFma {
 
 impl fmt::Display for OpFFma {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FFMA")?;
+        write!(f, "ffma")?;
         if self.saturate {
-            write!(f, ".SAT")?;
+            write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, ".{}", self.rnd_mode)?;
@@ -2024,7 +2024,7 @@ impl fmt::Display for OpFMnMx {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "FMNMX {} {{ {}, {} }} {}",
+            "fmnmx {} {{ {}, {} }} {}",
             self.dst, self.srcs[0], self.srcs[1], self.min
         )
     }
@@ -2044,9 +2044,9 @@ pub struct OpFMul {
 
 impl fmt::Display for OpFMul {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FMUL")?;
+        write!(f, "fmul")?;
         if self.saturate {
-            write!(f, ".SAT")?;
+            write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, ".{}", self.rnd_mode)?;
@@ -2069,7 +2069,7 @@ impl fmt::Display for OpFSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "FSET.{} {} {{ {}, {} }}",
+            "fset.{} {} {{ {}, {} }}",
             self.cmp_op, self.dst, self.srcs[0], self.srcs[1],
         )
     }
@@ -2094,7 +2094,7 @@ impl fmt::Display for OpFSetP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "FSETP.{} {} {{ {}, {} }}",
+            "fsetp.{} {} {{ {}, {} }}",
             self.cmp_op, self.dst, self.srcs[0], self.srcs[1],
         )
     }
@@ -2112,10 +2112,10 @@ pub enum FSwzAddOp {
 impl fmt::Display for FSwzAddOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FSwzAddOp::Add => write!(f, "ADD"),
-            FSwzAddOp::SubRight => write!(f, "SUBR"),
-            FSwzAddOp::SubLeft => write!(f, "SUB"),
-            FSwzAddOp::MoveLeft => write!(f, "MOV2"),
+            FSwzAddOp::Add => write!(f, "add"),
+            FSwzAddOp::SubRight => write!(f, "subr"),
+            FSwzAddOp::SubLeft => write!(f, "sub"),
+            FSwzAddOp::MoveLeft => write!(f, "mov2"),
         }
     }
 }
@@ -2135,7 +2135,7 @@ pub struct OpFSwzAdd {
 
 impl fmt::Display for OpFSwzAdd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FSWZADD",)?;
+        write!(f, "fswzadd",)?;
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, ".{}", self.rnd_mode)?;
         }
@@ -2171,16 +2171,16 @@ pub enum MuFuOp {
 impl fmt::Display for MuFuOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MuFuOp::Cos => write!(f, "COS"),
-            MuFuOp::Sin => write!(f, "SIN"),
-            MuFuOp::Exp2 => write!(f, "EXP2"),
-            MuFuOp::Log2 => write!(f, "LOG2"),
-            MuFuOp::Rcp => write!(f, "RCP"),
-            MuFuOp::Rsq => write!(f, "RSQ"),
-            MuFuOp::Rcp64H => write!(f, "RCP64H"),
-            MuFuOp::Rsq64H => write!(f, "RSQ64H"),
-            MuFuOp::Sqrt => write!(f, "SQRT"),
-            MuFuOp::Tanh => write!(f, "TANH"),
+            MuFuOp::Cos => write!(f, "cos"),
+            MuFuOp::Sin => write!(f, "sin"),
+            MuFuOp::Exp2 => write!(f, "exp2"),
+            MuFuOp::Log2 => write!(f, "log2"),
+            MuFuOp::Rcp => write!(f, "rcp"),
+            MuFuOp::Rsq => write!(f, "rsq"),
+            MuFuOp::Rcp64H => write!(f, "rcp64h"),
+            MuFuOp::Rsq64H => write!(f, "rsq64h"),
+            MuFuOp::Sqrt => write!(f, "sqrt"),
+            MuFuOp::Tanh => write!(f, "tanh"),
         }
     }
 }
@@ -2197,7 +2197,7 @@ pub struct OpMuFu {
 
 impl fmt::Display for OpMuFu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "MUFU.{} {} {}", self.op, self.dst, self.src)
+        write!(f, "mufu.{} {} {}", self.op, self.dst, self.src)
     }
 }
 
@@ -2215,9 +2215,9 @@ pub struct OpDAdd {
 
 impl fmt::Display for OpDAdd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DADD")?;
+        write!(f, "dadd")?;
         if self.saturate {
-            write!(f, ".SAT")?;
+            write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, ".{}", self.rnd_mode)?;
@@ -2237,7 +2237,7 @@ pub struct OpBrev {
 
 impl fmt::Display for OpBrev {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BREV {} {}", self.dst, self.src,)
+        write!(f, "brev {} {}", self.dst, self.src,)
     }
 }
 
@@ -2255,9 +2255,9 @@ pub struct OpFlo {
 
 impl fmt::Display for OpFlo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FLO")?;
+        write!(f, "flo")?;
         if self.return_shift_amount {
-            write!(f, ".SAMT")?;
+            write!(f, ".samt")?;
         }
         write!(f, " {} {}", self.dst, self.src)
     }
@@ -2274,7 +2274,7 @@ pub struct OpIAbs {
 
 impl fmt::Display for OpIAbs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "IABS {} {}", self.dst, self.src,)
+        write!(f, "iabs {} {}", self.dst, self.src,)
     }
 }
 
@@ -2289,7 +2289,7 @@ pub struct OpINeg {
 
 impl fmt::Display for OpINeg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "INEG {} {}", self.dst, self.src,)
+        write!(f, "ineg {} {}", self.dst, self.src,)
     }
 }
 
@@ -2306,7 +2306,7 @@ impl fmt::Display for OpIAdd3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "IADD3 {} {{ {}, {}, {} }}",
+            "iadd3 {} {{ {}, {}, {} }}",
             self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
         )
     }
@@ -2329,11 +2329,11 @@ pub struct OpIAdd3X {
 
 impl fmt::Display for OpIAdd3X {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "IADD3")?;
+        write!(f, "iadd3")?;
         if self.high {
-            write!(f, ".HI ")?;
+            write!(f, ".hi ")?;
         } else {
-            write!(f, ".LO ")?;
+            write!(f, ".lo ")?;
         }
         if self.overflow[0].is_none() && self.overflow[1].is_none() {
             write!(f, "{} ", self.dst)?;
@@ -2367,7 +2367,7 @@ impl fmt::Display for OpIMad {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "IMAD {} {{ {}, {}, {} }}",
+            "imad {} {{ {}, {}, {} }}",
             self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
         )
     }
@@ -2388,7 +2388,7 @@ impl fmt::Display for OpIMad64 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "IMAD64 {} {{ {}, {}, {} }}",
+            "imad64 {} {{ {}, {}, {} }}",
             self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
         )
     }
@@ -2411,7 +2411,7 @@ impl fmt::Display for OpIMnMx {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "IMNMX.{} {} {{ {}, {} }} {}",
+            "imnmx.{} {} {{ {}, {} }} {}",
             self.cmp_type, self.dst, self.srcs[0], self.srcs[1], self.min
         )
     }
@@ -2437,7 +2437,7 @@ impl fmt::Display for OpISetP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ISETP.{}.{} {} {{ {}, {} }}",
+            "isetp.{}.{} {} {{ {}, {} }}",
             self.cmp_op, self.cmp_type, self.dst, self.srcs[0], self.srcs[1],
         )
     }
@@ -2458,7 +2458,7 @@ impl fmt::Display for OpLop3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "LOP3.{} {} {{ {}, {}, {} }}",
+            "lop3.{} {} {{ {}, {}, {} }}",
             self.op, self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
         )
     }
@@ -2476,10 +2476,10 @@ pub enum ShflOp {
 impl fmt::Display for ShflOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ShflOp::Idx => write!(f, "IDX"),
-            ShflOp::Up => write!(f, "UP"),
-            ShflOp::Down => write!(f, "DOWN"),
-            ShflOp::Bfly => write!(f, "BFLY"),
+            ShflOp::Idx => write!(f, "idx"),
+            ShflOp::Up => write!(f, "up"),
+            ShflOp::Down => write!(f, "down"),
+            ShflOp::Bfly => write!(f, "bfly"),
         }
     }
 }
@@ -2506,18 +2506,18 @@ pub struct OpShf {
 
 impl fmt::Display for OpShf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SHF")?;
+        write!(f, "shf")?;
         if self.right {
-            write!(f, ".R")?;
+            write!(f, ".r")?;
         } else {
-            write!(f, ".L")?;
+            write!(f, ".l")?;
         }
         if self.wrap {
-            write!(f, ".W")?;
+            write!(f, ".w")?;
         }
         write!(f, ".{}", self.data_type)?;
         if self.dst_high {
-            write!(f, ".HI")?;
+            write!(f, ".hi")?;
         }
         write!(
             f,
@@ -2545,9 +2545,9 @@ pub struct OpF2F {
 
 impl fmt::Display for OpF2F {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "F2F")?;
+        write!(f, "f2f")?;
         if self.ftz {
-            write!(f, ".FTZ")?;
+            write!(f, ".ftz")?;
         }
         write!(
             f,
@@ -2574,7 +2574,7 @@ impl fmt::Display for OpF2I {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "F2I.{}.{}.{} {} {}",
+            "f2i.{}.{}.{} {} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.dst, self.src,
         )
     }
@@ -2597,7 +2597,7 @@ impl fmt::Display for OpI2F {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "I2F.{}.{}.{} {} {}",
+            "i2f.{}.{}.{} {} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.dst, self.src,
         )
     }
@@ -2638,7 +2638,7 @@ impl fmt::Display for OpFRnd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "FRND.{}.{}.{} {} {}",
+            "frnd.{}.{}.{} {} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.dst, self.src,
         )
     }
@@ -2658,9 +2658,9 @@ pub struct OpMov {
 impl fmt::Display for OpMov {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.quad_lanes == 0xf {
-            write!(f, "MOV {} {}", self.dst, self.src)
+            write!(f, "mov {} {}", self.dst, self.src)
         } else {
-            write!(f, "MOV[{:#x}] {} {}", self.quad_lanes, self.dst, self.src)
+            write!(f, "mov[{:#x}] {} {}", self.quad_lanes, self.dst, self.src)
         }
     }
 }
@@ -2776,7 +2776,7 @@ impl fmt::Display for OpPrmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "PRMT {}, {} [{}], {}",
+            "prmt {}, {} [{}], {}",
             self.dst, self.srcs[0], self.selection, self.srcs[1],
         )
     }
@@ -2798,7 +2798,7 @@ impl fmt::Display for OpSel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SEL {} {{ {}, {}, {} }}",
+            "sel {} {{ {}, {}, {} }}",
             self.dst, self.cond, self.srcs[0], self.srcs[1],
         )
     }
@@ -2826,7 +2826,7 @@ impl fmt::Display for OpShfl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SHFL.{} {{ {}, {} }} {{ {}, {}, {} }}",
+            "shfl.{} {{ {}, {} }} {{ {}, {}, {} }}",
             self.op, self.dst, self.in_bounds, self.src, self.lane, self.c
         )
     }
@@ -2847,7 +2847,7 @@ impl fmt::Display for OpPLop3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "PLOP3 {{ {}, {} }} {{ {}, {}, {} }} {} {}",
+            "plop3 {{ {}, {} }} {{ {}, {}, {} }} {} {}",
             self.dsts[0],
             self.dsts[1],
             self.srcs[0],
@@ -2870,7 +2870,7 @@ pub struct OpPopC {
 
 impl fmt::Display for OpPopC {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "POPC {} {}", self.dst, self.src,)
+        write!(f, "popc {} {}", self.dst, self.src,)
     }
 }
 
@@ -2892,15 +2892,15 @@ pub struct OpTex {
 
 impl fmt::Display for OpTex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TEX.B")?;
+        write!(f, "tex.b")?;
         if self.lod_mode != TexLodMode::Auto {
             write!(f, ".{}", self.lod_mode)?;
         }
         if self.offset {
-            write!(f, ".AOFFI")?;
+            write!(f, ".aoffi")?;
         }
         if self.z_cmpr {
-            write!(f, ".DC")?;
+            write!(f, ".dc")?;
         }
         write!(
             f,
@@ -2933,15 +2933,15 @@ pub struct OpTld {
 
 impl fmt::Display for OpTld {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TLD.B")?;
+        write!(f, "tld.b")?;
         if self.lod_mode != TexLodMode::Auto {
             write!(f, ".{}", self.lod_mode)?;
         }
         if self.offset {
-            write!(f, ".AOFFI")?;
+            write!(f, ".aoffi")?;
         }
         if self.is_ms {
-            write!(f, ".MS")?;
+            write!(f, ".ms")?;
         }
         write!(
             f,
@@ -2974,7 +2974,7 @@ pub struct OpTld4 {
 
 impl fmt::Display for OpTld4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TLD4.G.B")?;
+        write!(f, "tld4.g.b")?;
         if self.offset_mode != Tld4OffsetMode::None {
             write!(f, ".{}", self.offset_mode)?;
         }
@@ -3007,7 +3007,7 @@ impl fmt::Display for OpTmml {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "TMML.B.LOD {{ {}, {} }} {{ {}, {} }} {}",
+            "tmml.b.lod {{ {}, {} }} {{ {}, {} }} {}",
             self.dsts[0], self.dsts[1], self.srcs[0], self.srcs[1], self.dim
         )
     }
@@ -3029,9 +3029,9 @@ pub struct OpTxd {
 
 impl fmt::Display for OpTxd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TXD.B")?;
+        write!(f, "txd.b")?;
         if self.offset {
-            write!(f, ".AOFFI")?;
+            write!(f, ".aoffi")?;
         }
         write!(
             f,
@@ -3062,7 +3062,7 @@ impl fmt::Display for OpTxq {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "TXQ.B {{ {}, {} }} {} {}",
+            "txq.b {{ {}, {} }} {} {}",
             self.dsts[0], self.dsts[1], self.src, self.query
         )
     }
@@ -3090,7 +3090,7 @@ impl fmt::Display for OpSuLd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SULD.P.{}.{}{} {{ {} {} }} [{}] {}",
+            "suld.p.{}.{}{} {{ {} {} }} [{}] {}",
             self.image_dim,
             self.mem_order,
             self.mem_eviction_priority,
@@ -3124,7 +3124,7 @@ impl fmt::Display for OpSuSt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SUST.P.{}.{}{} [{}] {} {}",
+            "sust.p.{}.{}{} [{}] {} {}",
             self.image_dim,
             self.mem_order,
             self.mem_eviction_priority,
@@ -3163,7 +3163,7 @@ impl fmt::Display for OpSuAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SUATOM.P.{}.{}.{}.{}{} [{}] {} {}",
+            "suatom.p.{}.{}.{}.{}{} [{}] {} {}",
             self.image_dim,
             self.atom_op,
             self.atom_type,
@@ -3190,7 +3190,7 @@ pub struct OpLd {
 
 impl fmt::Display for OpLd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LD.{} {} [{}", self.access, self.dst, self.addr)?;
+        write!(f, "ld.{} {} [{}", self.access, self.dst, self.addr)?;
         if self.offset > 0 {
             write!(f, "+{:#x}", self.offset)?;
         }
@@ -3217,7 +3217,7 @@ impl fmt::Display for OpLdc {
         let SrcRef::CBuf(cb) = self.cb.src_ref else {
             panic!("Not a cbuf");
         };
-        write!(f, "LDC.{} {} {}[", self.mem_type, self.dst, cb.buf)?;
+        write!(f, "ldc.{} {} {}[", self.mem_type, self.dst, cb.buf)?;
         if self.offset.is_zero() {
             write!(f, "+{:#x}", cb.offset)?;
         } else if cb.offset == 0 {
@@ -3244,7 +3244,7 @@ pub struct OpSt {
 
 impl fmt::Display for OpSt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ST.{} [{}", self.access, self.addr)?;
+        write!(f, "st.{} [{}", self.access, self.addr)?;
         if self.offset > 0 {
             write!(f, "+{:#x}", self.offset)?;
         }
@@ -3281,7 +3281,7 @@ impl fmt::Display for OpAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ATOM.{}.{}.{}{} {}",
+            "atom.{}.{}.{}{} {}",
             self.atom_op,
             self.atom_type,
             self.mem_order,
@@ -3315,12 +3315,12 @@ pub struct OpAL2P {
 
 impl fmt::Display for OpAL2P {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AL2P")?;
+        write!(f, "al2p")?;
         if self.access.output {
-            write!(f, ".O")?;
+            write!(f, ".o")?;
         }
         if self.access.patch {
-            write!(f, ".P")?;
+            write!(f, ".p")?;
         }
         write!(f, " {} a[{:#x}", self.dst, self.access.addr)?;
         if !self.offset.is_zero() {
@@ -3346,15 +3346,15 @@ pub struct OpALd {
 
 impl fmt::Display for OpALd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ALD")?;
+        write!(f, "ald")?;
         if self.access.output {
-            write!(f, ".O")?;
+            write!(f, ".o")?;
         }
         if self.access.patch {
-            write!(f, ".P")?;
+            write!(f, ".p")?;
         }
         if self.access.phys {
-            write!(f, ".PHYS")?;
+            write!(f, ".phys")?;
         }
         write!(f, " {} a", self.dst)?;
         if !self.vtx.is_zero() {
@@ -3385,12 +3385,12 @@ pub struct OpASt {
 
 impl fmt::Display for OpASt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AST")?;
+        write!(f, "ast")?;
         if self.access.patch {
-            write!(f, ".P")?;
+            write!(f, ".p")?;
         }
         if self.access.phys {
-            write!(f, ".PHYS")?;
+            write!(f, ".phys")?;
         }
         write!(f, " a")?;
         if !self.vtx.is_zero() {
@@ -3419,13 +3419,13 @@ impl fmt::Display for OpIpa {
         write!(f, "IPA")?;
         match self.freq {
             InterpFreq::Pass => (),
-            InterpFreq::Constant => write!(f, ".CONSTANT")?,
-            InterpFreq::State => write!(f, ".STATE")?,
+            InterpFreq::Constant => write!(f, ".constant")?,
+            InterpFreq::State => write!(f, ".state")?,
         }
         match self.loc {
             InterpLoc::Default => (),
-            InterpLoc::Centroid => write!(f, ".CENTROID")?,
-            InterpLoc::Offset => write!(f, ".OFFSET")?,
+            InterpLoc::Centroid => write!(f, ".centroid")?,
+            InterpLoc::Offset => write!(f, ".offset")?,
         }
 
         write!(f, " {} a[{:#x}]", self.dst, self.addr)?;
@@ -3446,11 +3446,11 @@ pub struct OpLdTram {
 
 impl fmt::Display for OpLdTram {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LDTRAM")?;
+        write!(f, "ldtram")?;
         if self.use_c {
-            write!(f, ".C")?;
+            write!(f, ".c")?;
         } else {
-            write!(f, ".AB")?;
+            write!(f, ".ab")?;
         }
         write!(f, " {} a[{:#x}]", self.dst, self.addr)?;
         Ok(())
@@ -3488,15 +3488,15 @@ impl CCtlOp {
 impl fmt::Display for CCtlOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CCtlOp::PF1 => write!(f, "PF1"),
-            CCtlOp::PF2 => write!(f, "PF2"),
-            CCtlOp::WB => write!(f, "WB"),
-            CCtlOp::IV => write!(f, "IV"),
-            CCtlOp::IVAll => write!(f, "IVALL"),
-            CCtlOp::RS => write!(f, "RS"),
-            CCtlOp::IVAllP => write!(f, "IVALLP"),
-            CCtlOp::WBAll => write!(f, "WBALL"),
-            CCtlOp::WBAllP => write!(f, "WBALLP"),
+            CCtlOp::PF1 => write!(f, "pf1"),
+            CCtlOp::PF2 => write!(f, "pf2"),
+            CCtlOp::WB => write!(f, "wb"),
+            CCtlOp::IV => write!(f, "iv"),
+            CCtlOp::IVAll => write!(f, "ivall"),
+            CCtlOp::RS => write!(f, "rs"),
+            CCtlOp::IVAllP => write!(f, "ivallp"),
+            CCtlOp::WBAll => write!(f, "wball"),
+            CCtlOp::WBAllP => write!(f, "wballp"),
         }
     }
 }
@@ -3516,7 +3516,7 @@ pub struct OpCCtl {
 
 impl fmt::Display for OpCCtl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CCTL.{}", self.mem_space)?;
+        write!(f, "cctl.{}", self.mem_space)?;
         if !self.op.is_all() {
             write!(f, " [{}", self.addr)?;
             if self.addr_offset > 0 {
@@ -3536,7 +3536,7 @@ pub struct OpMemBar {
 
 impl fmt::Display for OpMemBar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "MEMBAR.SC.{}", self.scope)
+        write!(f, "membar.sc.{}", self.scope)
     }
 }
 
@@ -3595,9 +3595,9 @@ pub struct OpBMov {
 
 impl fmt::Display for OpBMov {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BMOV.32")?;
+        write!(f, "bmov.32")?;
         if self.clear {
-            write!(f, ".CLEAR")?;
+            write!(f, ".clear")?;
         }
         write!(f, " {} {}", self.dst, self.src)
     }
@@ -3614,7 +3614,7 @@ pub struct OpBreak {
 
 impl fmt::Display for OpBreak {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BREAK {} {}", self.cond, self.bar)
+        write!(f, "break {} {}", self.cond, self.bar)
     }
 }
 
@@ -3631,7 +3631,7 @@ pub struct OpBSSy {
 
 impl fmt::Display for OpBSSy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BSSY {} {} {}", self.cond, self.bar, self.target)
+        write!(f, "bssy {} {} {}", self.cond, self.bar, self.target)
     }
 }
 
@@ -3646,7 +3646,7 @@ pub struct OpBSync {
 
 impl fmt::Display for OpBSync {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BSYNC {} {}", self.cond, self.bar)
+        write!(f, "bsync {} {}", self.cond, self.bar)
     }
 }
 
@@ -3658,7 +3658,7 @@ pub struct OpBra {
 
 impl fmt::Display for OpBra {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BRA {}", self.target)
+        write!(f, "bra {}", self.target)
     }
 }
 
@@ -3668,7 +3668,7 @@ pub struct OpExit {}
 
 impl fmt::Display for OpExit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "EXIT")
+        write!(f, "exit")
     }
 }
 
@@ -3680,7 +3680,7 @@ pub struct OpWarpSync {
 
 impl fmt::Display for OpWarpSync {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "WARPSYNC 0x{:x}", self.mask)
+        write!(f, "warpsync 0x{:x}", self.mask)
     }
 }
 
@@ -3690,7 +3690,7 @@ pub struct OpBar {}
 
 impl fmt::Display for OpBar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BAR.SYNC")
+        write!(f, "bar.sync")
     }
 }
 
@@ -3703,7 +3703,7 @@ pub struct OpCS2R {
 
 impl fmt::Display for OpCS2R {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CS2R {} sr[{:#x}]", self.dst, self.idx)
+        write!(f, "cs2r {} sr[{:#x}]", self.dst, self.idx)
     }
 }
 
@@ -3718,7 +3718,7 @@ pub struct OpIsberd {
 
 impl fmt::Display for OpIsberd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ISBERD {} [{}]", self.dst, self.idx)
+        write!(f, "isberd {} [{}]", self.dst, self.idx)
     }
 }
 
@@ -3728,7 +3728,7 @@ pub struct OpKill {}
 
 impl fmt::Display for OpKill {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "KILL")
+        write!(f, "kill")
     }
 }
 
@@ -3740,7 +3740,7 @@ pub struct OpNop {
 
 impl fmt::Display for OpNop {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "NOP")?;
+        write!(f, "nop")?;
         if let Some(label) = &self.label {
             write!(f, " {}", label)?;
         }
@@ -3766,13 +3766,13 @@ pub struct OpPixLd {
 
 impl fmt::Display for OpPixLd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PIXLD")?;
+        write!(f, "pixld")?;
         match self.val {
-            PixVal::MsCount => write!(f, ".MSCOUNT")?,
-            PixVal::CovMask => write!(f, ".COVMASK")?,
-            PixVal::CentroidOffset => write!(f, ".CENTROID_OFFSET")?,
-            PixVal::MyIndex => write!(f, ".MY_INDEX")?,
-            PixVal::InnerCoverage => write!(f, ".INNER_COVERAGE")?,
+            PixVal::MsCount => write!(f, ".mscount")?,
+            PixVal::CovMask => write!(f, ".covmask")?,
+            PixVal::CentroidOffset => write!(f, ".centroid_offset")?,
+            PixVal::MyIndex => write!(f, ".my_index")?,
+            PixVal::InnerCoverage => write!(f, ".inner_coverage")?,
         }
         write!(f, " {}", self.dst)
     }
@@ -3787,7 +3787,7 @@ pub struct OpS2R {
 
 impl fmt::Display for OpS2R {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "S2R {} sr[{:#x}]", self.dst, self.idx)
+        write!(f, "s2r {} sr[{:#x}]", self.dst, self.idx)
     }
 }
 
@@ -3800,9 +3800,9 @@ pub enum VoteOp {
 impl fmt::Display for VoteOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            VoteOp::Any => write!(f, "ANY"),
-            VoteOp::All => write!(f, "ALL"),
-            VoteOp::Eq => write!(f, "EQ"),
+            VoteOp::Any => write!(f, "any"),
+            VoteOp::All => write!(f, "all"),
+            VoteOp::Eq => write!(f, "eq"),
         }
     }
 }
@@ -3823,7 +3823,7 @@ impl fmt::Display for OpVote {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "VOTE.{} {{ {} {} }} {}",
+            "vote.{} {{ {} {} }} {}",
             self.op, self.ballot, self.vote, self.pred
         )
     }
@@ -3837,7 +3837,7 @@ pub struct OpUndef {
 
 impl fmt::Display for OpUndef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UNDEF {}", self.dst)
+        write!(f, "undef {}", self.dst)
     }
 }
 
@@ -3971,7 +3971,7 @@ impl SrcsAsSlice for OpPhiSrcs {
 
 impl fmt::Display for OpPhiSrcs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PHI_SRC {{")?;
+        write!(f, "phi_src {{")?;
         for (i, (id, src)) in self.srcs.iter().enumerate() {
             if i > 0 {
                 write!(f, ",")?;
@@ -4008,7 +4008,7 @@ impl DstsAsSlice for OpPhiDsts {
 
 impl fmt::Display for OpPhiDsts {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PHI_DST {{")?;
+        write!(f, "phi_dst {{")?;
         for (i, (id, dst)) in self.dsts.iter().enumerate() {
             if i > 0 {
                 write!(f, ",")?;
@@ -4028,7 +4028,7 @@ pub struct OpCopy {
 
 impl fmt::Display for OpCopy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "COPY {} {}", self.dst, self.src)
+        write!(f, "copy {} {}", self.dst, self.src)
     }
 }
 
@@ -4043,7 +4043,7 @@ impl fmt::Display for OpSwap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SWAP {{ {} {} }} {{ {} {} }}",
+            "swap {{ {} {} }} {{ {} {} }}",
             self.dsts[0], self.dsts[1], self.srcs[0], self.srcs[1]
         )
     }
@@ -4098,7 +4098,7 @@ impl DstsAsSlice for OpParCopy {
 
 impl fmt::Display for OpParCopy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PAR_COPY {{")?;
+        write!(f, "par_copy {{")?;
         for (i, (dst, src)) in self.dsts_srcs.iter().enumerate() {
             if i > 0 {
                 write!(f, ",")?;
@@ -4131,7 +4131,7 @@ impl SrcsAsSlice for OpFSOut {
 
 impl fmt::Display for OpFSOut {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FS_OUT {{")?;
+        write!(f, "fs_out {{")?;
         for (i, src) in self.srcs.iter().enumerate() {
             if i > 0 {
                 write!(f, ",")?;
@@ -4152,9 +4152,9 @@ pub enum OutType {
 impl fmt::Display for OutType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            OutType::Emit => write!(f, "EMIT"),
-            OutType::Cut => write!(f, "CUT"),
-            OutType::EmitThenCut => write!(f, "EMIT_THEN_CUT"),
+            OutType::Emit => write!(f, "emit"),
+            OutType::Cut => write!(f, "cut"),
+            OutType::EmitThenCut => write!(f, "emit_then_cut"),
         }
     }
 }
@@ -4177,7 +4177,7 @@ impl fmt::Display for OpOut {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "OUT.{} {} {{ {}, {} }}",
+            "out.{} {} {{ {}, {} }}",
             self.out_type, self.dst, self.handle, self.stream
         )
     }
@@ -4192,7 +4192,7 @@ pub struct OpOutFinal {
 
 impl fmt::Display for OpOutFinal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "OUT.FINAL {{ {} }}", self.handle)
+        write!(f, "out.final {{ {} }}", self.handle)
     }
 }
 
