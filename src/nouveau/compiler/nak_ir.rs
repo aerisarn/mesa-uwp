@@ -138,6 +138,16 @@ impl RegFile {
             RegFile::Mem => 1 << 24,
         }
     }
+
+    fn fmt_prefix(&self) -> &'static str {
+        match self {
+            RegFile::GPR => "r",
+            RegFile::UGPR => "ur",
+            RegFile::Pred => "p",
+            RegFile::UPred => "up",
+            RegFile::Mem => "m",
+        }
+    }
 }
 
 impl fmt::Display for RegFile {
@@ -367,6 +377,10 @@ impl SSAValue {
     pub fn is_none(&self) -> bool {
         self.packed == 0
     }
+
+    fn fmt_plain(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.file().fmt_prefix(), self.idx())
+    }
 }
 
 impl HasRegFile for SSAValue {
@@ -378,14 +392,8 @@ impl HasRegFile for SSAValue {
 
 impl fmt::Display for SSAValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.file() {
-            RegFile::GPR => write!(f, "S")?,
-            RegFile::UGPR => write!(f, "US")?,
-            RegFile::Pred => write!(f, "PS")?,
-            RegFile::UPred => write!(f, "UPS")?,
-            RegFile::Mem => write!(f, "MS")?,
-        }
-        write!(f, "{}", self.idx())
+        write!(f, "%")?;
+        self.fmt_plain(f)
     }
 }
 
@@ -509,10 +517,13 @@ impl fmt::Display for SSARef {
             write!(f, "{}", self[0])
         } else {
             write!(f, "{{")?;
-            for v in self.iter() {
-                write!(f, " {}", v)?;
+            for (i, v) in self.iter().enumerate() {
+                if i != 0 {
+                    write!(f, " ")?;
+                }
+                write!(f, "{}", v)?;
             }
-            write!(f, " }}")
+            write!(f, "}}")
         }
     }
 }
@@ -603,14 +614,7 @@ impl HasRegFile for RegRef {
 
 impl fmt::Display for RegRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.file() {
-            RegFile::GPR => write!(f, "R")?,
-            RegFile::UGPR => write!(f, "UR")?,
-            RegFile::Pred => write!(f, "P")?,
-            RegFile::UPred => write!(f, "UP")?,
-            RegFile::Mem => write!(f, "M")?,
-        }
-        write!(f, "{}", self.base_idx())?;
+        write!(f, "{}{}", self.file().fmt_prefix(), self.base_idx())?;
         if self.comps() > 1 {
             write!(f, "..{}", self.idx_range().end)?;
         }
@@ -701,7 +705,7 @@ impl<T: Into<SSARef>> From<T> for Dst {
 impl fmt::Display for Dst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Dst::None => write!(f, "NULL")?,
+            Dst::None => write!(f, "null")?,
             Dst::SSA(v) => v.fmt(f)?,
             Dst::Reg(r) => r.fmt(f)?,
         }
@@ -890,9 +894,9 @@ impl<T: Into<SSARef>> From<T> for SrcRef {
 impl fmt::Display for SrcRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SrcRef::Zero => write!(f, "ZERO"),
-            SrcRef::True => write!(f, "TRUE"),
-            SrcRef::False => write!(f, "FALSE"),
+            SrcRef::Zero => write!(f, "rZ"),
+            SrcRef::True => write!(f, "pT"),
+            SrcRef::False => write!(f, "pF"),
             SrcRef::Imm32(u) => write!(f, "{:#x}", u),
             SrcRef::CBuf(c) => c.fmt(f),
             SrcRef::SSA(v) => v.fmt(f),
@@ -4335,7 +4339,7 @@ impl fmt::Display for PredRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PredRef::None => write!(f, "PT"),
-            PredRef::SSA(ssa) => ssa.fmt(f),
+            PredRef::SSA(ssa) => ssa.fmt_plain(f),
             PredRef::Reg(reg) => reg.fmt(f),
         }
     }
