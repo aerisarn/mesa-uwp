@@ -1482,7 +1482,7 @@ asahi_cs_shader_key_equal(const void *a, const void *b)
 
 static unsigned
 agx_find_linked_slot(struct agx_varyings_vs *vs, struct agx_varyings_fs *fs,
-                     gl_varying_slot slot, unsigned offset)
+                     gl_varying_slot slot, unsigned offset, bool debug)
 {
    assert(offset < 4);
    assert(slot != VARYING_SLOT_PNTC && "point coords aren't linked");
@@ -1500,15 +1500,21 @@ agx_find_linked_slot(struct agx_varyings_vs *vs, struct agx_varyings_fs *fs,
 
    unsigned vs_index = vs->slots[slot];
 
-   /* If the layer is read but not written, its value will be ignored by the
-    * agx_nir_predicate_layer_id lowering, so read garbage.
-    */
-   if (vs_index >= vs->nr_index && slot == VARYING_SLOT_LAYER)
+   if (!(vs_index < vs->nr_index)) {
+      /* Varyings not written by vertex shader are undefined, be robust.
+       *
+       * If the layer is read but not written, its value will be ignored by the
+       * agx_nir_predicate_layer_id lowering, so read garbage.
+       *
+       * For other varyings, this is probably an app bug.
+       */
+      if (unlikely(debug && (slot != VARYING_SLOT_LAYER)))
+         unreachable("Fragment shader read varying not written by vertex!");
+
       return 0;
+   }
 
    assert(vs_index >= 4 && "gl_Position should have been the first 4 slots");
-   assert(vs_index < vs->nr_index &&
-          "varyings not written by vertex shader are undefined");
    assert((vs_index < vs->base_index_fp16) ==
              ((vs_index + offset) < vs->base_index_fp16) &&
           "a given varying must have a consistent type");
@@ -1571,10 +1577,12 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
             assert(fs->bindings[i].offset == 0);
             cfg.source = AGX_COEFFICIENT_SOURCE_POINT_COORD;
          } else {
-            cfg.base_slot = agx_find_linked_slot(vs, fs, fs->bindings[i].slot,
-                                                 fs->bindings[i].offset);
+            cfg.base_slot = agx_find_linked_slot(
+               vs, fs, fs->bindings[i].slot, fs->bindings[i].offset,
+               pool->dev->debug & AGX_DBG_VARYINGS);
 
-            assert(cfg.base_slot + cfg.components <= nr_slots &&
+            assert(cfg.base_slot + cfg.components <=
+                      MAX2(nr_slots, cfg.components) &&
                    "overflow slots");
          }
 

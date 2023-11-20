@@ -74,6 +74,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"nomsaa",    AGX_DBG_NOMSAA,   "Force disable MSAA"},
    {"noshadow",  AGX_DBG_NOSHADOW, "Force disable resource shadowing"},
    {"noclipctrl",AGX_DBG_NOCLIPCTRL,"Disable ARB_clip_control"},
+   {"varyings",  AGX_DBG_VARYINGS,  "Validate varying linkage"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
