@@ -703,7 +703,7 @@ struct si_screen {
     */
    struct ac_llvm_compiler *compiler[24]; /* used by the queue only */
 
-   struct util_queue shader_compiler_queue_low_priority;
+   struct util_queue shader_compiler_queue_opt_variants;
    /* Compiler instances for asynchronous shader compilation of optimized shader variants,
     * one for each thread of the low-priority shader compiler queue. */
    struct ac_llvm_compiler *compiler_lowp[10];

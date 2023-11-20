@@ -2912,7 +2912,7 @@ current_not_ready:
    /* If it's an optimized shader, compile it asynchronously. */
    if (shader->is_optimized) {
       /* Compile it asynchronously. */
-      util_queue_add_job(&sscreen->shader_compiler_queue_low_priority, shader, &shader->ready,
+      util_queue_add_job(&sscreen->shader_compiler_queue_opt_variants, shader, &shader->ready,
                          si_build_shader_variant_low_priority, NULL, 0);
 
       /* Add only after the ready fence was reset, to guard against a
@@ -3693,7 +3693,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
 static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
 {
    if (shader->is_optimized) {
-      util_queue_drop_job(&sctx->screen->shader_compiler_queue_low_priority, &shader->ready);
+      util_queue_drop_job(&sctx->screen->shader_compiler_queue_opt_variants, &shader->ready);
    }
 
    util_queue_fence_destroy(&shader->ready);
