@@ -33,6 +33,7 @@
 #include "util/u_gen_mipmap.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "util/u_resource.h"
 #include "util/u_screen.h"
 #include "util/u_upload_mgr.h"
 #include "util/xmlconfig.h"
@@ -329,8 +330,6 @@ agx_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
                        uint64_t *value)
 {
    struct agx_resource *rsrc = (struct agx_resource *)prsc;
-   struct pipe_resource *cur;
-   unsigned count;
 
    switch (param) {
    case PIPE_RESOURCE_PARAM_STRIDE:
@@ -346,9 +345,7 @@ agx_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
       /* We don't support multi-planar formats, but we should still handle
        * this case for GBM shared resources.
        */
-      for (count = 0, cur = prsc; cur; cur = cur->next)
-         count++;
-      *value = count;
+      *value = util_resource_num(prsc);
       return true;
    default:
       return false;
