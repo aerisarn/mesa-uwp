@@ -2740,7 +2740,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
 
    /* Begin building the pipeline */
    struct agx_usc_builder b =
-      agx_alloc_usc_control(&batch->pipeline_pool, 1 + PIPE_MAX_COLOR_BUFS);
+      agx_alloc_usc_control(&batch->pipeline_pool, 3 + PIPE_MAX_COLOR_BUFS);
 
    bool needs_sampler = false;
    unsigned uniforms = 0;
