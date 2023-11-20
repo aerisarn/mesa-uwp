@@ -124,6 +124,16 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       if (nir_intrinsic_has_atomic_op(intr))
          nir_intrinsic_set_atomic_op(intr, op);
 
+      /* The driver uploads enough null texture/PBE descriptors for robustness
+       * given the shader limit, but we still need to clamp since we're lowering
+       * to bindless so the hardware doesn't know the limit.
+       *
+       * The GL spec says out-of-bounds image indexing is undefined, but
+       * faulting is not acceptable for robustness.
+       */
+      index =
+         nir_umin(b, index, nir_imm_int(b, b->shader->info.num_images - 1));
+
       index = nir_iadd_imm(b, nir_imul_imm(b, index, 2), offset);
       nir_src_rewrite(&intr->src[0], nir_load_texture_handle_agx(b, index));
    } else if (instr->type == nir_instr_type_tex) {
@@ -152,6 +162,10 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       nir_def *index = nir_steal_tex_src(tex, nir_tex_src_texture_offset);
       if (!index)
          index = nir_imm_int(b, tex->texture_index);
+
+      /* As above */
+      index =
+         nir_umin(b, index, nir_imm_int(b, b->shader->info.num_textures - 1));
 
       nir_tex_instr_add_src(tex, nir_tex_src_texture_handle,
                             nir_load_texture_handle_agx(b, index));
