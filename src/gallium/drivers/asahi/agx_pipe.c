@@ -1846,10 +1846,12 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
       return 1024;
 
    case PIPE_SHADER_CAP_MAX_INPUTS:
-      return 16;
+      return shader == PIPE_SHADER_VERTEX ? 16 : 32;
 
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
-      return shader == PIPE_SHADER_FRAGMENT ? 8 : 16;
+      return shader == PIPE_SHADER_FRAGMENT ? 8
+             : shader == PIPE_SHADER_VERTEX ? 16
+                                            : 32;
 
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
