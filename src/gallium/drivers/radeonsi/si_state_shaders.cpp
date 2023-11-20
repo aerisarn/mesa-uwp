@@ -2214,8 +2214,10 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
                     (!ps_colormask && !ps_modifies_zs && !ps->info.base.writes_memory);
    }
 
+   uint64_t ps_inputs_read_or_disabled;
+
    if (ps_disabled) {
-      sctx->ps_inputs_read_or_disabled = 0;
+      ps_inputs_read_or_disabled = 0;
    } else {
       uint64_t inputs_read = ps->info.inputs_read;
 
@@ -2227,7 +2229,12 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
             inputs_read |= BITFIELD64_BIT(SI_UNIQUE_SLOT_BFC1);
       }
 
-      sctx->ps_inputs_read_or_disabled = inputs_read;
+      ps_inputs_read_or_disabled = inputs_read;
+   }
+
+   if (sctx->ps_inputs_read_or_disabled != ps_inputs_read_or_disabled) {
+      sctx->ps_inputs_read_or_disabled = ps_inputs_read_or_disabled;
+      sctx->do_update_shaders = true;
    }
 }
 
@@ -2302,6 +2309,9 @@ void si_ps_key_update_framebuffer(struct si_context *sctx)
 void si_ps_key_update_framebuffer_blend_rasterizer(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
+   if (!sel)
+      return;
+
    union si_shader_key *key = &sctx->shader.ps.key;
    struct si_state_blend *blend = sctx->queued.named.blend;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
@@ -2309,8 +2319,14 @@ void si_ps_key_update_framebuffer_blend_rasterizer(struct si_context *sctx)
                             sctx->framebuffer.nr_samples >= 2;
    unsigned need_src_alpha_4bit = blend->need_src_alpha_4bit;
 
-   if (!sel)
-      return;
+   /* Old key data for comparison. */
+   struct si_ps_epilog_bits old_epilog;
+   memcpy(&old_epilog, &key->ps.part.epilog, sizeof(old_epilog));
+   bool old_prefer_mono = key->ps.opt.prefer_mono;
+#ifndef NDEBUG
+   struct si_shader_key_ps old_key;
+   memcpy(&old_key, &key->ps, sizeof(old_key));
+#endif
 
    key->ps.part.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
    key->ps.part.epilog.alpha_to_coverage_via_mrtz =
@@ -2414,6 +2430,14 @@ void si_ps_key_update_framebuffer_blend_rasterizer(struct si_context *sctx)
       key->ps.opt.prefer_mono = 1;
    else
       key->ps.opt.prefer_mono = 0;
+
+   /* Update shaders only if the key changed. */
+   if (memcmp(&key->ps.part.epilog, &old_epilog, sizeof(old_epilog)) ||
+       key->ps.opt.prefer_mono != old_prefer_mono) {
+      sctx->do_update_shaders = true;
+   } else {
+      assert(memcmp(&key->ps, &old_key, sizeof(old_key)) == 0);
+   }
 }
 
 void si_ps_key_update_rasterizer(struct si_context *sctx)

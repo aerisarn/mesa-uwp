@@ -775,7 +775,6 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
        old_blend->need_src_alpha_4bit != blend->need_src_alpha_4bit) {
       si_ps_key_update_framebuffer_blend_rasterizer(sctx);
       si_update_ps_inputs_read_or_disabled(sctx);
-      sctx->do_update_shaders = true;
    }
 
    if (sctx->screen->dpbb_allowed &&
