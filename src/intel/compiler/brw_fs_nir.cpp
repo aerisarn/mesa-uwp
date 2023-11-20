@@ -47,6 +47,13 @@ static void fs_nir_emit_loop(fs_visitor *s, nir_loop *loop);
 static void fs_nir_emit_block(fs_visitor *s, nir_block *block);
 static void fs_nir_emit_instr(fs_visitor *s, nir_instr *instr);
 
+static void fs_nir_emit_surface_atomic(const fs_builder &bld,
+                                       nir_intrinsic_instr *instr,
+                                       fs_reg surface,
+                                       bool bindless);
+static void fs_nir_emit_global_atomic(const fs_builder &bld,
+                                      nir_intrinsic_instr *instr);
+
 static void
 fs_nir_setup_outputs(fs_visitor *s)
 {
@@ -4266,8 +4273,8 @@ fs_nir_emit_cs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_shared_atomic:
    case nir_intrinsic_shared_atomic_swap:
-      s->nir_emit_surface_atomic(bld, instr, brw_imm_ud(GFX7_BTI_SLM),
-                              false /* bindless */);
+      fs_nir_emit_surface_atomic(bld, instr, brw_imm_ud(GFX7_BTI_SLM),
+                                 false /* bindless */);
       break;
 
    case nir_intrinsic_load_shared: {
@@ -6380,7 +6387,7 @@ fs_nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_global_atomic:
    case nir_intrinsic_global_atomic_swap:
-      s->nir_emit_global_atomic(bld, instr);
+      fs_nir_emit_global_atomic(bld, instr);
       break;
 
    case nir_intrinsic_load_global_const_block_intel: {
@@ -6648,7 +6655,7 @@ fs_nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_ssbo_atomic:
    case nir_intrinsic_ssbo_atomic_swap:
-      s->nir_emit_surface_atomic(bld, instr,
+      fs_nir_emit_surface_atomic(bld, instr,
                                  s->get_nir_buffer_intrinsic_index(bld, instr),
                                  s->get_nir_src_bindless(instr->src[0]));
       break;
@@ -7556,12 +7563,15 @@ expand_to_32bit(const fs_builder &bld, const fs_reg &src)
    }
 }
 
-void
-fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
-                                    nir_intrinsic_instr *instr,
-                                    fs_reg surface,
-                                    bool bindless)
+static void
+fs_nir_emit_surface_atomic(const fs_builder &bld,
+                           nir_intrinsic_instr *instr,
+                           fs_reg surface,
+                           bool bindless)
 {
+   fs_visitor *s = (fs_visitor *)bld.shader;
+   const intel_device_info *devinfo = s->devinfo;
+
    enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
    int num_data = lsc_op_num_data_values(op);
 
@@ -7579,7 +7589,7 @@ fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
           (instr->def.bit_size == 16 &&
            (devinfo->has_lsc || lsc_opcode_is_atomic_float(op))));
 
-   fs_reg dest = get_nir_def(instr->def);
+   fs_reg dest = s->get_nir_def(instr->def);
 
    fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
    srcs[bindless ?
@@ -7596,25 +7606,25 @@ fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
             brw_imm_ud(nir_intrinsic_base(instr) +
                        nir_src_as_uint(instr->src[0]));
       } else {
-         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = vgrf(glsl_type::uint_type);
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = s->vgrf(glsl_type::uint_type);
          bld.ADD(srcs[SURFACE_LOGICAL_SRC_ADDRESS],
-                 retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_UD),
+                 retype(s->get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_UD),
                  brw_imm_ud(nir_intrinsic_base(instr)));
       }
    } else {
       /* SSBOs */
-      srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
+      srcs[SURFACE_LOGICAL_SRC_ADDRESS] = s->get_nir_src(instr->src[1]);
    }
 
    fs_reg data;
    if (num_data >= 1)
-      data = expand_to_32bit(bld, get_nir_src(instr->src[shared ? 1 : 2]));
+      data = expand_to_32bit(bld, s->get_nir_src(instr->src[shared ? 1 : 2]));
 
    if (num_data >= 2) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
-         expand_to_32bit(bld, get_nir_src(instr->src[shared ? 2 : 3]))
+         expand_to_32bit(bld, s->get_nir_src(instr->src[shared ? 2 : 3]))
       };
       bld.LOAD_PAYLOAD(tmp, sources, 2, 0);
       data = tmp;
@@ -7644,26 +7654,28 @@ fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
    }
 }
 
-void
-fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
-                                   nir_intrinsic_instr *instr)
+static void
+fs_nir_emit_global_atomic(const fs_builder &bld,
+                          nir_intrinsic_instr *instr)
 {
+   fs_visitor *s = (fs_visitor *)bld.shader;
+
    enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
    int num_data = lsc_op_num_data_values(op);
 
-   fs_reg dest = get_nir_def(instr->def);
+   fs_reg dest = s->get_nir_def(instr->def);
 
-   fs_reg addr = get_nir_src(instr->src[0]);
+   fs_reg addr = s->get_nir_src(instr->src[0]);
 
    fs_reg data;
    if (num_data >= 1)
-      data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
+      data = expand_to_32bit(bld, s->get_nir_src(instr->src[1]));
 
    if (num_data >= 2) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
-         expand_to_32bit(bld, get_nir_src(instr->src[2]))
+         expand_to_32bit(bld, s->get_nir_src(instr->src[2]))
       };
       bld.LOAD_PAYLOAD(tmp, sources, 2, 0);
       data = tmp;

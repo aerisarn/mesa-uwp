@@ -324,12 +324,6 @@ public:
                                         nir_intrinsic_instr *instr);
    fs_reg get_nir_buffer_intrinsic_index(const brw::fs_builder &bld,
                                          nir_intrinsic_instr *instr);
-   void nir_emit_surface_atomic(const brw::fs_builder &bld,
-                                nir_intrinsic_instr *instr,
-                                fs_reg surface,
-                                bool bindless_surface);
-   void nir_emit_global_atomic(const brw::fs_builder &bld,
-                               nir_intrinsic_instr *instr);
    bool get_nir_src_bindless(const nir_src &src);
    unsigned get_nir_src_block(const nir_src &src);
    fs_reg get_nir_src(const nir_src &src);
