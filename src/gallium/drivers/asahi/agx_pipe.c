@@ -1179,6 +1179,12 @@ transition_resource(struct pipe_context *pctx, struct agx_resource *rsrc,
    assert(new_res);
    assert(!(rsrc->base.bind & PIPE_BIND_SHARED) && "cannot swap BOs if shared");
 
+   /* Flush current writers out, so that rsrc->data_valid is correctly set (e.g.
+    * for render targets). The writers would have been flushed by the blits
+    * anyway, so this is not further harming performance.
+    */
+   agx_flush_writer(agx_context(pctx), rsrc, "Transition");
+
    int level;
    BITSET_FOREACH_SET(level, rsrc->data_valid, PIPE_MAX_TEXTURE_LEVELS) {
       /* Blit each valid level */
