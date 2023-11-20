@@ -191,6 +191,24 @@ panfrost_query_optimal_tib_size(const struct panfrost_device *dev)
    return dev->model->tilebuffer_size / 2;
 }
 
+static uint64_t
+panfrost_clamp_to_usable_va_range(const struct panfrost_device *dev,
+                                  uint64_t va)
+{
+   struct pan_kmod_va_range user_va_range =
+      pan_kmod_dev_query_user_va_range(dev->kmod.dev);
+
+   if (va < user_va_range.start)
+      return user_va_range.start;
+   else if (va > user_va_range.start + user_va_range.size)
+      return user_va_range.start + user_va_range.size;
+
+   return va;
+}
+
+/* Always reserve the lower 32MB. */
+#define PANFROST_VA_RESERVE_BOTTOM 0x2000000ull
+
 void
 panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
 {
@@ -211,6 +229,19 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
    if (!dev->model)
       goto err_free_kmod_dev;
 
+   /* 32bit address space, with the lower 32MB reserved. We clamp
+    * things so it matches kmod VA range limitations.
+    */
+   uint64_t user_va_start =
+      panfrost_clamp_to_usable_va_range(dev, PANFROST_VA_RESERVE_BOTTOM);
+   uint64_t user_va_end =
+      panfrost_clamp_to_usable_va_range(dev, 1ull << 32);
+
+   dev->kmod.vm =
+      pan_kmod_vm_create(dev->kmod.dev, PAN_KMOD_VM_FLAG_AUTO_VA, user_va_start,
+                         user_va_end - user_va_start);
+   if (!dev->kmod.vm)
+      goto err_free_kmod_dev;
 
    dev->core_count = panfrost_query_core_count(dev, &dev->core_id_range);
    dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(dev, dev->arch);
@@ -274,6 +305,9 @@ panfrost_close_device(struct panfrost_device *dev)
       pthread_mutex_destroy(&dev->bo_cache.lock);
       util_sparse_array_finish(&dev->bo_map);
    }
+
+   if (dev->kmod.vm)
+      pan_kmod_vm_destroy(dev->kmod.vm);
 
    if (dev->kmod.dev)
       pan_kmod_dev_destroy(dev->kmod.dev);

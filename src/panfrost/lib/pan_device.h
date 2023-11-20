@@ -137,6 +137,9 @@ struct panfrost_device {
 
       /* Cached pan_kmod_dev_props properties queried at device create time. */
       struct pan_kmod_dev_props props;
+
+      /* VM attached to this device. */
+      struct pan_kmod_vm *vm;
    } kmod;
 
    /* For pandecode */
