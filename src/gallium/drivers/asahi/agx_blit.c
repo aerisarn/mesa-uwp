@@ -65,6 +65,9 @@ agx_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
       unreachable("Unsupported blit");
    }
 
+   /* Handle self-blits */
+   agx_flush_writer(ctx, agx_resource(info->dst.resource), "Blit");
+
    /* Legalize compression /before/ calling into u_blitter to avoid recursion.
     * u_blitter bans recursive usage.
     */
