@@ -2238,6 +2238,47 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
    }
 }
 
+void si_vs_ps_key_update_rast_prim_smooth_stipple(struct si_context *sctx)
+{
+   struct si_shader_ctx_state *hw_vs = si_get_vs(sctx);
+   if (!hw_vs->cso)
+      return;
+
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+   union si_shader_key *vs_key = &hw_vs->key; /* could also be TES or GS before PS */
+   union si_shader_key *ps_key = &sctx->shader.ps.key;
+
+   bool old_kill_pointsize = vs_key->ge.opt.kill_pointsize;
+   bool old_poly_stipple = ps_key->ps.part.prolog.poly_stipple;
+   bool old_poly_line_smoothing = ps_key->ps.mono.poly_line_smoothing;
+   bool old_point_smoothing = ps_key->ps.mono.point_smoothing;
+
+   if (sctx->current_rast_prim == MESA_PRIM_POINTS) {
+      vs_key->ge.opt.kill_pointsize = 0;
+      ps_key->ps.part.prolog.poly_stipple = 0;
+      ps_key->ps.mono.poly_line_smoothing = 0;
+      ps_key->ps.mono.point_smoothing = rs->point_smooth;
+   } else if (util_prim_is_lines(sctx->current_rast_prim)) {
+      vs_key->ge.opt.kill_pointsize = hw_vs->cso->info.writes_psize;
+      ps_key->ps.part.prolog.poly_stipple = 0;
+      ps_key->ps.mono.poly_line_smoothing = rs->line_smooth && sctx->framebuffer.nr_samples <= 1;
+      ps_key->ps.mono.point_smoothing = 0;
+   } else {
+      /* Triangles. */
+      vs_key->ge.opt.kill_pointsize = hw_vs->cso->info.writes_psize &&
+                                      !rs->polygon_mode_is_points;
+      ps_key->ps.part.prolog.poly_stipple = rs->poly_stipple_enable;
+      ps_key->ps.mono.poly_line_smoothing = rs->poly_smooth && sctx->framebuffer.nr_samples <= 1;
+      ps_key->ps.mono.point_smoothing = 0;
+   }
+
+   if (vs_key->ge.opt.kill_pointsize != old_kill_pointsize ||
+       ps_key->ps.part.prolog.poly_stipple != old_poly_stipple ||
+       ps_key->ps.mono.poly_line_smoothing != old_poly_line_smoothing ||
+       ps_key->ps.mono.point_smoothing != old_point_smoothing)
+      sctx->do_update_shaders = true;
+}
+
 static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
                                   union si_shader_key *key)
 {
@@ -2247,15 +2288,12 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
    uint64_t outputs_written = vs->info.outputs_written_before_ps;
    uint64_t linked = outputs_written & sctx->ps_inputs_read_or_disabled;
 
+   key->ge.opt.kill_layer = vs->info.writes_layer &&
+                            sctx->framebuffer.state.layers <= 1;
    key->ge.opt.kill_outputs = ~linked & outputs_written;
    key->ge.opt.ngg_culling = sctx->ngg_culling;
    key->ge.mono.u.vs_export_prim_id = vs->stage != MESA_SHADER_GEOMETRY &&
                                       sctx->shader.ps.cso && sctx->shader.ps.cso->info.uses_primid;
-   key->ge.opt.kill_pointsize = vs->info.writes_psize &&
-                                sctx->current_rast_prim != MESA_PRIM_POINTS &&
-                                !sctx->queued.named.rasterizer->polygon_mode_is_points;
-   key->ge.opt.kill_layer = vs->info.writes_layer &&
-                            sctx->framebuffer.state.layers <= 1;
    key->ge.opt.remove_streamout = vs->info.enabled_streamout_buffer_mask &&
                                   !sctx->streamout.enabled_mask;
 }
@@ -2268,7 +2306,6 @@ static void si_clear_vs_key_outputs(struct si_context *sctx, struct si_shader_se
    key->ge.opt.remove_streamout = 0;
    key->ge.opt.ngg_culling = 0;
    key->ge.mono.u.vs_export_prim_id = 0;
-   key->ge.opt.kill_pointsize = 0;
 }
 
 void si_ps_key_update_framebuffer(struct si_context *sctx)
@@ -2470,27 +2507,6 @@ void si_ps_key_update_dsa(struct si_context *sctx)
    key->ps.part.epilog.alpha_func = sctx->queued.named.dsa->alpha_func;
 }
 
-static void si_ps_key_update_primtype_shader_rasterizer_framebuffer(struct si_context *sctx)
-{
-   union si_shader_key *key = &sctx->shader.ps.key;
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-
-   if (sctx->current_rast_prim == MESA_PRIM_POINTS) {
-      key->ps.part.prolog.poly_stipple = 0;
-      key->ps.mono.poly_line_smoothing = 0;
-      key->ps.mono.point_smoothing = rs->point_smooth;
-   } else if (util_prim_is_lines(sctx->current_rast_prim)) {
-      key->ps.part.prolog.poly_stipple = 0;
-      key->ps.mono.poly_line_smoothing = rs->line_smooth && sctx->framebuffer.nr_samples <= 1;
-      key->ps.mono.point_smoothing = 0;
-   } else {
-      /* Triangles. */
-      key->ps.part.prolog.poly_stipple = rs->poly_stipple_enable;
-      key->ps.mono.poly_line_smoothing = rs->poly_smooth && sctx->framebuffer.nr_samples <= 1;
-      key->ps.mono.point_smoothing = 0;
-   }
-}
-
 void si_ps_key_update_sample_shading(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
@@ -2616,7 +2632,6 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       }
       break;
    case MESA_SHADER_FRAGMENT:
-      si_ps_key_update_primtype_shader_rasterizer_framebuffer(sctx);
       break;
    default:
       assert(0);
@@ -3491,11 +3506,18 @@ static void si_update_last_vgt_stage_state(struct si_context *sctx,
                                            struct si_shader_selector *old_hw_vs,
                                            struct si_shader *old_hw_vs_variant)
 {
+   struct si_shader_ctx_state *hw_vs = si_get_vs(sctx);
+
    si_update_vs_viewport_state(sctx);
    si_update_streamout_state(sctx);
-   si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
-                       si_get_vs(sctx)->current);
+   si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, hw_vs->cso, hw_vs->current);
    si_update_rasterized_prim(sctx);
+
+   /* Clear kill_pointsize because we only want it to be set in the last shader before PS. */
+   sctx->shader.vs.key.ge.opt.kill_pointsize = 0;
+   sctx->shader.tes.key.ge.opt.kill_pointsize = 0;
+   sctx->shader.gs.key.ge.opt.kill_pointsize = 0;
+   si_vs_ps_key_update_rast_prim_smooth_stipple(sctx);
 }
 
 static void si_bind_vs_shader(struct pipe_context *ctx, void *state)

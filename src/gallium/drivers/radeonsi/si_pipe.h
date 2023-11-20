@@ -2159,10 +2159,10 @@ si_set_rasterized_prim(struct si_context *sctx, enum mesa_prim rast_prim,
          si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
 
       sctx->current_rast_prim = rast_prim;
+      si_vs_ps_key_update_rast_prim_smooth_stipple(sctx);
       sctx->gs_out_prim = is_triangles ? V_028A6C_TRISTRIP :
                           is_lines ? V_028A6C_LINESTRIP :
                           is_rect ? V_028A6C_RECTLIST : V_028A6C_POINTLIST;
-      sctx->do_update_shaders = true;
       si_update_ngg_prim_state_sgpr(sctx, hw_vs, ngg);
    }
 }
