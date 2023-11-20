@@ -5328,7 +5328,8 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
             (sscreen->info.gfx_level == GFX6 || sscreen->info.gfx_level >= GFX10);
       bool opencode = sscreen->options.vs_fetch_always_opencode;
 
-      if (check_alignment && ((elements[i].src_offset & ((1 << log_hw_load_size) - 1)) != 0 || elements[i].src_stride & 3))
+      if (check_alignment && ((elements[i].src_offset & ((1 << log_hw_load_size) - 1)) != 0 ||
+                              elements[i].src_stride & 3))
          opencode = true;
 
       if (always_fix || check_alignment || opencode)
@@ -5357,7 +5358,13 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
          ASSERTED unsigned last_vertex_format = sscreen->info.gfx_level >= GFX11 ? 64 : 128;
          assert(fmt->img_format != 0 && fmt->img_format < last_vertex_format);
          v->rsrc_word3[i] |= S_008F0C_FORMAT(fmt->img_format) |
-                             S_008F0C_RESOURCE_LEVEL(sscreen->info.gfx_level < GFX11);
+                             S_008F0C_RESOURCE_LEVEL(sscreen->info.gfx_level < GFX11) |
+                             /* OOB_SELECT chooses the out-of-bounds check:
+                              *  - 1: index >= NUM_RECORDS (Structured)
+                              *  - 3: offset >= NUM_RECORDS (Raw)
+                              */
+                             S_008F0C_OOB_SELECT(v->src_stride[i] ? V_008F0C_OOB_SELECT_STRUCTURED
+                                                                  : V_008F0C_OOB_SELECT_RAW);
       } else {
          unsigned data_format, num_format;
          data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);

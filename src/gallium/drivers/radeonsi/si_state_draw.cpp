@@ -1643,20 +1643,10 @@ static void ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
    }
    assert(num_records >= 0 && num_records <= UINT_MAX);
 
-   uint32_t rsrc_word3 = velems->rsrc_word3[index];
-
-   /* OOB_SELECT chooses the out-of-bounds check:
-    *  - 1: index >= NUM_RECORDS (Structured)
-    *  - 3: offset >= NUM_RECORDS (Raw)
-    */
-   if (GFX_VERSION >= GFX10)
-      rsrc_word3 |= S_008F0C_OOB_SELECT(stride ? V_008F0C_OOB_SELECT_STRUCTURED
-                                               : V_008F0C_OOB_SELECT_RAW);
-
    desc[0] = va;
    desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
    desc[2] = num_records;
-   desc[3] = rsrc_word3;
+   desc[3] = velems->rsrc_word3[index];
 }
 
 #if GFX_VER == 6 /* declare this function only once because it supports all chips. */
