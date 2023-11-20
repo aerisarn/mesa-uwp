@@ -2449,9 +2449,18 @@ void si_ps_key_update_rasterizer(struct si_context *sctx)
    if (!sel)
       return;
 
+   bool old_color_two_side = key->ps.part.prolog.color_two_side;
+   bool old_flatshade_colors = key->ps.part.prolog.flatshade_colors;
+   bool old_clamp_color = key->ps.part.epilog.clamp_color;
+
    key->ps.part.prolog.color_two_side = rs->two_side && sel->info.colors_read;
    key->ps.part.prolog.flatshade_colors = rs->flatshade && sel->info.uses_interp_color;
    key->ps.part.epilog.clamp_color = rs->clamp_fragment_color;
+
+   if (key->ps.part.prolog.color_two_side != old_color_two_side ||
+       key->ps.part.prolog.flatshade_colors != old_flatshade_colors ||
+       key->ps.part.epilog.clamp_color != old_clamp_color)
+      sctx->do_update_shaders = true;
 }
 
 void si_ps_key_update_dsa(struct si_context *sctx)
@@ -2501,6 +2510,11 @@ void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *s
    if (!sel)
       return;
 
+   /* Old key data for comparison. */
+   struct si_ps_prolog_bits old_prolog;
+   memcpy(&old_prolog, &key->ps.part.prolog, sizeof(old_prolog));
+   bool old_interpolate_at_sample_force_center = key->ps.mono.interpolate_at_sample_force_center;
+
    bool uses_persp_center = sel->info.uses_persp_center ||
                             (!rs->flatshade && sel->info.uses_persp_center_color);
    bool uses_persp_centroid = sel->info.uses_persp_centroid ||
@@ -2548,6 +2562,11 @@ void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *s
       key->ps.part.prolog.bc_optimize_for_linear = 0;
       key->ps.mono.interpolate_at_sample_force_center = sel->info.uses_interp_at_sample;
    }
+
+   /* Update shaders only if the key changed. */
+   if (memcmp(&key->ps.part.prolog, &old_prolog, sizeof(old_prolog)) ||
+       key->ps.mono.interpolate_at_sample_force_center != old_interpolate_at_sample_force_center)
+      sctx->do_update_shaders = true;
 }
 
 /* Compute the key for the hw shader variant */

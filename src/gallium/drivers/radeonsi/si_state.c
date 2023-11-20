@@ -1251,23 +1251,29 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
    if (sctx->screen->dpbb_allowed && (old_rs->bottom_edge_rule != rs->bottom_edge_rule))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
 
-   if (old_rs->clip_plane_enable != rs->clip_plane_enable ||
-       old_rs->rasterizer_discard != rs->rasterizer_discard ||
+   if (old_rs->rasterizer_discard != rs->rasterizer_discard ||
        old_rs->sprite_coord_enable != rs->sprite_coord_enable ||
        old_rs->flatshade != rs->flatshade || old_rs->two_side != rs->two_side ||
        old_rs->multisample_enable != rs->multisample_enable ||
        old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
-       old_rs->poly_smooth != rs->poly_smooth || old_rs->line_smooth != rs->line_smooth ||
        old_rs->point_smooth != rs->point_smooth ||
        old_rs->clamp_fragment_color != rs->clamp_fragment_color ||
-       old_rs->force_persample_interp != rs->force_persample_interp ||
-       old_rs->polygon_mode_is_points != rs->polygon_mode_is_points) {
+       old_rs->force_persample_interp != rs->force_persample_interp) {
       si_ps_key_update_framebuffer_blend_rasterizer(sctx);
       si_ps_key_update_rasterizer(sctx);
       si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
       si_update_ps_inputs_read_or_disabled(sctx);
-      sctx->do_update_shaders = true;
    }
+
+   if (/* Used by si_get_vs_key_outputs in si_update_shaders: */
+       old_rs->clip_plane_enable != rs->clip_plane_enable ||
+       old_rs->polygon_mode_is_points != rs->polygon_mode_is_points ||
+       /* Used by si_ps_key_update_primtype_shader_rasterizer_framebuffer in si_update_shaders: */
+       old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
+       old_rs->poly_smooth != rs->poly_smooth ||
+       old_rs->line_smooth != rs->line_smooth ||
+       old_rs->point_smooth != rs->point_smooth)
+      sctx->do_update_shaders = true;
 
    if (old_rs->line_smooth != rs->line_smooth ||
        old_rs->poly_smooth != rs->poly_smooth ||
