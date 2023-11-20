@@ -1314,23 +1314,11 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
        * 8 bytes as a sideband. We use it to provide metadata for image atomics.
        */
       if (!cfg.extended) {
-         bool compact =
-            (target == PIPE_BUFFER || target == PIPE_TEXTURE_1D ||
-             target == PIPE_TEXTURE_2D || target == PIPE_TEXTURE_RECT);
+         struct agx_ptr desc =
+            agx_pool_alloc_aligned(&batch->pool, AGX_ATOMIC_SOFTWARE_LENGTH, 8);
 
-         if (compact) {
-            struct agx_atomic_software_packed packed;
-            agx_pack_image_atomic_data(&packed, view);
-
-            STATIC_ASSERT(sizeof(cfg.software_defined) == 8);
-            memcpy(&cfg.software_defined, packed.opaque, 8);
-         } else {
-            struct agx_ptr desc = agx_pool_alloc_aligned(
-               &batch->pool, AGX_ATOMIC_SOFTWARE_LENGTH, 8);
-
-            agx_pack_image_atomic_data(desc.cpu, view);
-            cfg.software_defined = desc.gpu;
-         }
+         agx_pack_image_atomic_data(desc.cpu, view);
+         cfg.software_defined = desc.gpu;
       }
    };
 }
