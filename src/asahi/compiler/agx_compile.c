@@ -17,6 +17,7 @@
 #include "agx_nir.h"
 #include "nir.h"
 #include "nir_intrinsics.h"
+#include "nir_intrinsics_indices.h"
 
 /* Alignment for shader programs. I'm not sure what the optimal value is. */
 #define AGX_CODE_ALIGN 0x100
@@ -912,8 +913,20 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
       agx_extract_nir_src(b, intr->src[1], 3),
    };
 
+   /* Get the image dimension. Cubes are lowered to 2D, since they are logically
+    * equivalent for imageLoad, but out-of-bounds behaviour for cubes on G13
+    * is wrong according to Piglit's arb_shader_image_load_store-invalid.
+    *
+    * This requires a matching transform in the driver.
+    */
    enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
    bool is_array = nir_intrinsic_image_array(intr);
+
+   if (dim == GLSL_SAMPLER_DIM_CUBE) {
+      dim = GLSL_SAMPLER_DIM_2D;
+      is_array = true;
+   }
+
    bool is_ms = dim == GLSL_SAMPLER_DIM_MS;
    unsigned coord_comps = glsl_get_sampler_dim_coordinate_components(dim);
    if (is_array && is_ms) {
@@ -951,8 +964,16 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
 static agx_instr *
 agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
 {
+   /* See remarks in agx_emit_image_load */
    enum glsl_sampler_dim glsl_dim = nir_intrinsic_image_dim(instr);
-   enum agx_dim dim = agx_tex_dim(glsl_dim, nir_intrinsic_image_array(instr));
+   bool is_array = nir_intrinsic_image_array(instr);
+
+   if (glsl_dim == GLSL_SAMPLER_DIM_CUBE) {
+      glsl_dim = GLSL_SAMPLER_DIM_2D;
+      is_array = true;
+   }
+
+   enum agx_dim dim = agx_tex_dim(glsl_dim, is_array);
    assert(glsl_dim != GLSL_SAMPLER_DIM_MS && "needs to be lowered");
 
    agx_index base, index;
@@ -973,7 +994,7 @@ agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
    assert(lod.size == AGX_SIZE_16);
 
    int coord_components = glsl_get_sampler_dim_coordinate_components(glsl_dim);
-   if (nir_intrinsic_image_array(instr))
+   if (is_array)
       coord_components++;
 
    agx_index coord_comps[4] = {};

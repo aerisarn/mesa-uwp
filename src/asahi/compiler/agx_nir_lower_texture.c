@@ -12,6 +12,7 @@
 #include "agx_compiler.h"
 #include "agx_internal_formats.h"
 #include "agx_nir.h"
+#include "glsl_types.h"
 #include "libagx_shaders.h"
 #include "nir_builder_opcodes.h"
 #include "nir_intrinsics.h"
@@ -359,7 +360,15 @@ txs_for_image(nir_builder *b, nir_intrinsic_instr *intr,
 
    nir_def_init(&tex->instr, &tex->def, num_components, bit_size);
    nir_builder_instr_insert(b, &tex->instr);
-   return &tex->def;
+   nir_def *res = &tex->def;
+
+   /* Cube images are implemented as 2D arrays, so we need to divide here. */
+   if (tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE && res->num_components > 2) {
+      nir_def *divided = nir_udiv_imm(b, nir_channel(b, res, 2), 6);
+      res = nir_vector_insert_imm(b, res, divided, 2);
+   }
+
+   return res;
 }
 
 static nir_def *
@@ -431,25 +440,6 @@ lower_1d_image(nir_builder *b, nir_intrinsic_instr *intr)
    nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
 }
 
-/*
- * AGX needs the face and the layer specified separately. This matches how NIR
- * texture instructions work, but not how NIR image intrinsics work. Here we
- * lower by dividing the combined layer-face into separate components which the
- * compiler can consume.
- */
-static void
-lower_cube_array_image(nir_builder *b, nir_intrinsic_instr *intr)
-{
-   nir_def *x = nir_channel(b, intr->src[1].ssa, 0);
-   nir_def *y = nir_channel(b, intr->src[1].ssa, 1);
-   nir_def *z = nir_channel(b, intr->src[1].ssa, 2);
-
-   nir_def *face = nir_umod_imm(b, z, 6);
-   nir_def *layer = nir_udiv_imm(b, z, 6);
-
-   nir_src_rewrite(&intr->src[1], nir_vec4(b, x, y, face, layer));
-}
-
 static bool
 lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 {
@@ -470,12 +460,6 @@ lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 
       case GLSL_SAMPLER_DIM_BUF:
          lower_buffer_image(b, intr);
-         return true;
-
-      case GLSL_SAMPLER_DIM_CUBE:
-         if (nir_intrinsic_image_array(intr))
-            lower_cube_array_image(b, intr);
-
          return true;
 
       default:

@@ -639,6 +639,12 @@ agx_translate_sample_count(unsigned samples)
    }
 }
 
+static bool
+target_is_cube(enum pipe_texture_target target)
+{
+   return target == PIPE_TEXTURE_CUBE || target == PIPE_TEXTURE_CUBE_ARRAY;
+}
+
 static void
 agx_pack_texture(void *out, struct agx_resource *rsrc,
                  enum pipe_format format /* override */,
@@ -737,8 +743,7 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
          unsigned layers =
             state->u.tex.last_layer - state->u.tex.first_layer + 1;
 
-         if ((state->target == PIPE_TEXTURE_CUBE) ||
-             (state->target == PIPE_TEXTURE_CUBE_ARRAY))
+         if (target_is_cube(state->target))
             layers /= 6;
 
          if (rsrc->layout.tiling == AIL_TILING_LINEAR &&
@@ -1206,8 +1211,10 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
 
    /* To reduce shader variants, spilled layered render targets are accessed as
     * 2D Arrays regardless of the actual target, so force in that case.
+    *
+    * Likewise, cubes are accessed as arrays for consistency with NIR.
     */
-   if (arrays_as_2d && target_is_array(target))
+   if ((arrays_as_2d && target_is_array(target)) || target_is_cube(target))
       target = PIPE_TEXTURE_2D_ARRAY;
 
    unsigned level = is_buffer ? 0 : view->u.tex.level;
@@ -2502,6 +2509,13 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
       agx_batch_track_image(batch, view);
 
       struct pipe_sampler_view sampler_view = util_image_to_sampler_view(view);
+
+      /* For the texture descriptor, lower cubes to 2D arrays. This matches the
+       * transform done in the compiler.
+       */
+      if (target_is_cube(sampler_view.target))
+         sampler_view.target = PIPE_TEXTURE_2D_ARRAY;
+
       agx_pack_texture(texture, agx_resource(view->resource), view->format,
                        &sampler_view, true);
       agx_batch_upload_pbe(batch, pbe, view, false, false);
