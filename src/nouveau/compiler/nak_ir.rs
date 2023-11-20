@@ -1851,15 +1851,25 @@ impl fmt::Display for MemScope {
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemSpace {
-    Global,
+    Global(MemAddrType),
     Local,
     Shared,
+}
+
+impl MemSpace {
+    pub fn addr_type(&self) -> MemAddrType {
+        match self {
+            MemSpace::Global(t) => *t,
+            MemSpace::Local => MemAddrType::A32,
+            MemSpace::Shared => MemAddrType::A32,
+        }
+    }
 }
 
 impl fmt::Display for MemSpace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemSpace::Global => write!(f, ".global"),
+            MemSpace::Global(t) => write!(f, ".global{t}"),
             MemSpace::Local => write!(f, ".local"),
             MemSpace::Shared => write!(f, ".shared"),
         }
@@ -1888,7 +1898,6 @@ impl fmt::Display for MemEvictionPriority {
 
 #[derive(Clone)]
 pub struct MemAccess {
-    pub addr_type: MemAddrType,
     pub mem_type: MemType,
     pub space: MemSpace,
     pub order: MemOrder,
@@ -1899,8 +1908,7 @@ impl fmt::Display for MemAccess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}{}{}{}{}",
-            self.addr_type,
+            "{}{}{}{}",
             self.mem_type,
             self.space,
             self.order,
@@ -3290,7 +3298,6 @@ pub struct OpAtom {
     pub atom_op: AtomOp,
     pub atom_type: AtomType,
 
-    pub addr_type: MemAddrType,
     pub addr_offset: i32,
 
     pub mem_space: MemSpace,
@@ -3302,9 +3309,10 @@ impl DisplayOp for OpAtom {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "atom{}{}{}{}",
+            "atom{}{}{}{}{}",
             self.atom_op,
             self.atom_type,
+            self.mem_space,
             self.mem_order,
             self.mem_eviction_priority,
         )?;
@@ -4655,8 +4663,8 @@ impl Instr {
 
     pub fn writes_global_mem(&self) -> bool {
         match &self.op {
-            Op::Atom(op) => op.mem_space == MemSpace::Global,
-            Op::St(op) => op.access.space == MemSpace::Global,
+            Op::Atom(op) => matches!(op.mem_space, MemSpace::Global(_)),
+            Op::St(op) => matches!(op.access.space, MemSpace::Global(_)),
             Op::SuAtom(_) | Op::SuSt(_) => true,
             _ => false,
         }

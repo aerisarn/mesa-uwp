@@ -1527,9 +1527,8 @@ impl<'a> ShaderFromNir<'a> {
                     data: data,
                     atom_op: atom_op,
                     atom_type: atom_type,
-                    addr_type: MemAddrType::A64,
                     addr_offset: offset,
-                    mem_space: MemSpace::Global,
+                    mem_space: MemSpace::Global(MemAddrType::A64),
                     mem_order: MemOrder::Strong(MemScope::System),
                     mem_eviction_priority: MemEvictionPriority::Normal, // Note: no intrinic access
                 });
@@ -1553,9 +1552,8 @@ impl<'a> ShaderFromNir<'a> {
                     data: data,
                     atom_op: AtomOp::CmpExch,
                     atom_type: atom_type,
-                    addr_type: MemAddrType::A64,
                     addr_offset: offset,
-                    mem_space: MemSpace::Global,
+                    mem_space: MemSpace::Global(MemAddrType::A64),
                     mem_order: MemOrder::Strong(MemScope::System),
                     mem_eviction_priority: MemEvictionPriority::Normal, // Note: no intrinic access
                 });
@@ -1634,9 +1632,8 @@ impl<'a> ShaderFromNir<'a> {
                         MemOrder::Strong(MemScope::System)
                     };
                 let access = MemAccess {
-                    addr_type: MemAddrType::A64,
                     mem_type: MemType::from_size(size_B, false),
-                    space: MemSpace::Global,
+                    space: MemSpace::Global(MemAddrType::A64),
                     order: order,
                     eviction_priority: self
                         .get_eviction_priority(intrin.access()),
@@ -1748,7 +1745,6 @@ impl<'a> ShaderFromNir<'a> {
                     (intrin.def.bit_size() / 8) * intrin.def.num_components();
                 assert!(u32::from(size_B) <= intrin.align());
                 let access = MemAccess {
-                    addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Local,
                     order: MemOrder::Strong(MemScope::CTA),
@@ -1770,7 +1766,6 @@ impl<'a> ShaderFromNir<'a> {
                     (intrin.def.bit_size() / 8) * intrin.def.num_components();
                 assert!(u32::from(size_B) <= intrin.align());
                 let access = MemAccess {
-                    addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Shared,
                     order: MemOrder::Strong(MemScope::CTA),
@@ -1845,7 +1840,7 @@ impl<'a> ShaderFromNir<'a> {
                 {
                     b.push_op(OpCCtl {
                         op: CCtlOp::WBAll,
-                        mem_space: MemSpace::Global,
+                        mem_space: MemSpace::Global(MemAddrType::A64),
                         addr: 0.into(),
                         addr_offset: 0,
                     });
@@ -1875,7 +1870,7 @@ impl<'a> ShaderFromNir<'a> {
                 {
                     b.push_op(OpCCtl {
                         op: CCtlOp::IVAll,
-                        mem_space: MemSpace::Global,
+                        mem_space: MemSpace::Global(MemAddrType::A64),
                         addr: 0.into(),
                         addr_offset: 0,
                     });
@@ -1957,7 +1952,6 @@ impl<'a> ShaderFromNir<'a> {
                     data: data,
                     atom_op: atom_op,
                     atom_type: atom_type,
-                    addr_type: MemAddrType::A32,
                     addr_offset: offset,
                     mem_space: MemSpace::Shared,
                     mem_order: MemOrder::Strong(MemScope::CTA),
@@ -1983,7 +1977,6 @@ impl<'a> ShaderFromNir<'a> {
                     data: data,
                     atom_op: AtomOp::CmpExch,
                     atom_type: atom_type,
-                    addr_type: MemAddrType::A32,
                     addr_offset: offset,
                     mem_space: MemSpace::Shared,
                     mem_order: MemOrder::Strong(MemScope::CTA),
@@ -1997,9 +1990,8 @@ impl<'a> ShaderFromNir<'a> {
                     (srcs[0].bit_size() / 8) * srcs[0].num_components();
                 assert!(u32::from(size_B) <= intrin.align());
                 let access = MemAccess {
-                    addr_type: MemAddrType::A64,
                     mem_type: MemType::from_size(size_B, false),
-                    space: MemSpace::Global,
+                    space: MemSpace::Global(MemAddrType::A64),
                     order: MemOrder::Strong(MemScope::System),
                     eviction_priority: self
                         .get_eviction_priority(intrin.access()),
@@ -2035,7 +2027,6 @@ impl<'a> ShaderFromNir<'a> {
                     (srcs[0].bit_size() / 8) * srcs[0].num_components();
                 assert!(u32::from(size_B) <= intrin.align());
                 let access = MemAccess {
-                    addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Local,
                     order: MemOrder::Strong(MemScope::CTA),
@@ -2056,7 +2047,6 @@ impl<'a> ShaderFromNir<'a> {
                     (srcs[0].bit_size() / 8) * srcs[0].num_components();
                 assert!(u32::from(size_B) <= intrin.align());
                 let access = MemAccess {
-                    addr_type: MemAddrType::A32,
                     mem_type: MemType::from_size(size_B, false),
                     space: MemSpace::Shared,
                     order: MemOrder::Strong(MemScope::CTA),

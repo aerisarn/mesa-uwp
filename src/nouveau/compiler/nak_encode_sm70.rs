@@ -1263,7 +1263,7 @@ impl SM70Instr {
     fn set_mem_access(&mut self, access: &MemAccess) {
         self.set_field(
             72..73,
-            match access.addr_type {
+            match access.space.addr_type() {
                 MemAddrType::A32 => 0_u8,
                 MemAddrType::A64 => 1_u8,
             },
@@ -1291,7 +1291,6 @@ impl SM70Instr {
         self.set_reg_src(24..32, op.addr);
         self.set_field(40..64, op.offset);
 
-        assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
         assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
@@ -1304,7 +1303,6 @@ impl SM70Instr {
         self.set_reg_src(24..32, op.addr);
         self.set_field(40..64, op.offset);
 
-        assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
         assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
@@ -1314,7 +1312,7 @@ impl SM70Instr {
 
     fn encode_ld(&mut self, op: &OpLd) {
         match op.access.space {
-            MemSpace::Global => self.encode_ldg(op),
+            MemSpace::Global(_) => self.encode_ldg(op),
             MemSpace::Local => self.encode_ldl(op),
             MemSpace::Shared => self.encode_lds(op),
         }
@@ -1351,7 +1349,6 @@ impl SM70Instr {
         self.set_reg_src(32..40, op.data);
         self.set_field(40..64, op.offset);
 
-        assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
         assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
@@ -1364,7 +1361,6 @@ impl SM70Instr {
         self.set_reg_src(32..40, op.data);
         self.set_field(40..64, op.offset);
 
-        assert!(op.access.addr_type == MemAddrType::A32);
         self.set_mem_type(73..76, op.access.mem_type);
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
         assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
@@ -1372,7 +1368,7 @@ impl SM70Instr {
 
     fn encode_st(&mut self, op: &OpSt) {
         match op.access.space {
-            MemSpace::Global => self.encode_stg(op),
+            MemSpace::Global(_) => self.encode_stg(op),
             MemSpace::Local => self.encode_stl(op),
             MemSpace::Shared => self.encode_sts(op),
         }
@@ -1434,7 +1430,7 @@ impl SM70Instr {
 
         self.set_field(
             72..73,
-            match op.addr_type {
+            match op.mem_space.addr_type() {
                 MemAddrType::A32 => 0_u8,
                 MemAddrType::A64 => 1_u8,
             },
@@ -1463,7 +1459,6 @@ impl SM70Instr {
         self.set_reg_src(24..32, op.addr);
         self.set_field(40..64, op.addr_offset);
 
-        assert!(op.addr_type == MemAddrType::A32);
         assert!(op.mem_order == MemOrder::Strong(MemScope::CTA));
         assert!(op.mem_eviction_priority == MemEvictionPriority::Normal);
 
@@ -1472,7 +1467,7 @@ impl SM70Instr {
 
     fn encode_atom(&mut self, op: &OpAtom) {
         match op.mem_space {
-            MemSpace::Global => self.encode_atomg(op),
+            MemSpace::Global(_) => self.encode_atomg(op),
             MemSpace::Local => panic!("Atomics do not support local"),
             MemSpace::Shared => self.encode_atoms(op),
         }
@@ -1564,7 +1559,7 @@ impl SM70Instr {
     }
 
     fn encode_cctl(&mut self, op: &OpCCtl) {
-        assert!(op.mem_space == MemSpace::Global);
+        assert!(matches!(op.mem_space, MemSpace::Global(_)));
         self.set_opcode(0x98f);
 
         self.set_reg_src(24..32, op.addr);

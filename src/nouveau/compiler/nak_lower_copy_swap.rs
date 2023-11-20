@@ -45,7 +45,6 @@ impl LowerCopySwap {
                     }
                     RegFile::Mem => {
                         let access = MemAccess {
-                            addr_type: MemAddrType::A32,
                             mem_type: MemType::B32,
                             space: MemSpace::Local,
                             order: MemOrder::Strong(MemScope::CTA),
@@ -101,7 +100,6 @@ impl LowerCopySwap {
                 SrcRef::Reg(src_reg) => match src_reg.file() {
                     RegFile::GPR => {
                         let access = MemAccess {
-                            addr_type: MemAddrType::A32,
                             mem_type: MemType::B32,
                             space: MemSpace::Local,
                             order: MemOrder::Strong(MemScope::CTA),
