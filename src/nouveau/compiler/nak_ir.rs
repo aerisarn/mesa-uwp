@@ -4530,7 +4530,9 @@ impl InstrDeps {
 
 impl fmt::Display for InstrDeps {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "delay={}", self.delay)?;
+        if self.delay > 0 {
+            write!(f, " delay={}", self.delay)?;
+        }
         if self.wt_bar_mask != 0 {
             write!(f, " wt={:06b}", self.wt_bar_mask)?;
         }
@@ -4800,7 +4802,7 @@ impl fmt::Display for Instr {
         if !self.pred.is_true() {
             write!(f, "@{} ", self.pred)?;
         }
-        write!(f, "{} {}", self.op, self.deps)
+        write!(f, "{}{}", self.op, self.deps)
     }
 }
 
