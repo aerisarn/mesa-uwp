@@ -675,7 +675,7 @@ lower_emit_vertex(nir_builder *b, nir_intrinsic_instr *intr,
     *
     * TODO: This could be optimized many ways.
     */
-   if (!state->rasterizer_discard) {
+   if (!state->rasterizer_discard && stream == 0) {
       nir_if *nif = nir_push_if(b, nir_ult(b, total_vertices, our_num_verts));
       {
          /* The index into the geometry output buffer */
