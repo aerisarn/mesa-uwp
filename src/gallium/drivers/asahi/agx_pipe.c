@@ -567,6 +567,12 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
 
    ail_make_miptree(&nresource->layout);
 
+   /* Fail Piglit's obnoxious allocations */
+   if (nresource->layout.size_B >= (1ull << 32)) {
+      free(nresource);
+      return NULL;
+   }
+
    if (templ->target == PIPE_BUFFER) {
       assert(nresource->layout.tiling == AIL_TILING_LINEAR);
       util_range_init(&nresource->valid_buffer_range);
