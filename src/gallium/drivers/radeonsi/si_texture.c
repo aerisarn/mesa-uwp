@@ -1372,7 +1372,8 @@ si_texture_create_with_modifier(struct pipe_screen *screen,
          last_plane->buffer.b.b.next = &tex->buffer.b.b;
          last_plane = tex;
       }
-      if (i == 0 && !is_zs && sscreen->debug_flags & DBG(EXTRA_METADATA))
+      if (i == 0 && !is_zs && tex->surface.fmask_size == 0 &&
+          sscreen->debug_flags & DBG(EXTRA_METADATA))
          si_set_tex_bo_metadata(sscreen, tex);
    }
 
