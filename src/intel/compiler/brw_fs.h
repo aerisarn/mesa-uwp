@@ -349,24 +349,6 @@ public:
                               nir_alu_instr *instr);
    void nir_emit_load_const(const brw::fs_builder &bld,
                             nir_load_const_instr *instr);
-   void nir_emit_vs_intrinsic(const brw::fs_builder &bld,
-                              nir_intrinsic_instr *instr);
-   void nir_emit_tcs_intrinsic(const brw::fs_builder &bld,
-                               nir_intrinsic_instr *instr);
-   void nir_emit_gs_intrinsic(const brw::fs_builder &bld,
-                              nir_intrinsic_instr *instr);
-   void nir_emit_fs_intrinsic(const brw::fs_builder &bld,
-                              nir_intrinsic_instr *instr);
-   void nir_emit_cs_intrinsic(const brw::fs_builder &bld,
-                              nir_intrinsic_instr *instr);
-   void nir_emit_bs_intrinsic(const brw::fs_builder &bld,
-                              nir_intrinsic_instr *instr);
-   void nir_emit_task_intrinsic(const brw::fs_builder &bld,
-                                nir_intrinsic_instr *instr);
-   void nir_emit_mesh_intrinsic(const brw::fs_builder &bld,
-                                nir_intrinsic_instr *instr);
-   void nir_emit_task_mesh_intrinsic(const brw::fs_builder &bld,
-                                     nir_intrinsic_instr *instr);
    fs_reg get_nir_image_intrinsic_image(const brw::fs_builder &bld,
                                         nir_intrinsic_instr *instr);
    fs_reg get_nir_buffer_intrinsic_index(const brw::fs_builder &bld,
@@ -374,10 +356,6 @@ public:
    fs_reg swizzle_nir_scratch_addr(const brw::fs_builder &bld,
                                    const fs_reg &addr,
                                    bool in_dwords);
-   void nir_emit_intrinsic(const brw::fs_builder &bld,
-                           nir_intrinsic_instr *instr);
-   void nir_emit_tes_intrinsic(const brw::fs_builder &bld,
-                               nir_intrinsic_instr *instr);
    void nir_emit_surface_atomic(const brw::fs_builder &bld,
                                 nir_intrinsic_instr *instr,
                                 fs_reg surface,
@@ -565,7 +543,6 @@ public:
 
    brw::fs_builder bld;
 
-private:
    fs_reg prepare_alu_destination_and_sources(const brw::fs_builder &bld,
                                               nir_alu_instr *instr,
                                               fs_reg *op,
