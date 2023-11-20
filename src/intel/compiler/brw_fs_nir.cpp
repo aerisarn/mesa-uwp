@@ -306,21 +306,10 @@ fs_visitor::nir_emit_system_values()
 void
 fs_visitor::nir_emit_impl(nir_function_impl *impl)
 {
-   nir_ssa_values = reralloc(mem_ctx, nir_ssa_values, fs_reg,
-                             impl->ssa_alloc);
-
-   nir_resource_insts = reralloc(mem_ctx, nir_resource_insts, fs_inst *,
-                                 impl->ssa_alloc);
-   memset(nir_resource_insts, 0, sizeof(nir_resource_insts[0]) * impl->ssa_alloc);
-
-   nir_ssa_bind_infos = reralloc(mem_ctx, nir_ssa_bind_infos,
-                                 struct brw_fs_bind_info,
-                                 impl->ssa_alloc);
-   memset(nir_ssa_bind_infos, 0,
-          sizeof(nir_ssa_bind_infos[0]) * impl->ssa_alloc);
-
-   nir_resource_values = reralloc(mem_ctx, nir_resource_values, fs_reg,
-                                  impl->ssa_alloc);
+   nir_ssa_values = rzalloc_array(mem_ctx, fs_reg, impl->ssa_alloc);
+   nir_resource_insts = rzalloc_array(mem_ctx, fs_inst *, impl->ssa_alloc);
+   nir_ssa_bind_infos = rzalloc_array(mem_ctx, struct brw_fs_bind_info, impl->ssa_alloc);
+   nir_resource_values = rzalloc_array(mem_ctx, fs_reg, impl->ssa_alloc);
 
    nir_emit_cf_list(&impl->body);
 }
