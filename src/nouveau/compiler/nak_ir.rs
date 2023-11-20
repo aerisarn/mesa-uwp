@@ -4468,7 +4468,7 @@ pub struct InstrDeps {
 impl InstrDeps {
     pub fn new() -> InstrDeps {
         InstrDeps {
-            delay: MAX_INSTR_DELAY,
+            delay: 0,
             yld: false,
             wr_bar: -1,
             rd_bar: -1,
