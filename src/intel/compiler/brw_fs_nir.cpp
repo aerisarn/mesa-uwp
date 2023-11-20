@@ -884,10 +884,13 @@ is_const_zero(const nir_src &src)
    return nir_src_is_const(src) && nir_src_as_int(src) == 0;
 }
 
-void
-fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
-                         bool need_dest)
+static void
+fs_nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
+                bool need_dest)
 {
+   fs_visitor *s = (fs_visitor *)bld.shader;
+   const intel_device_info *devinfo = s->devinfo;
+
    fs_inst *inst;
    unsigned execution_mode =
       bld.shader->nir->info.float_controls_execution_mode;
@@ -956,7 +959,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          }
       }
 
-      nir_component_mask_t write_mask = get_nir_write_mask(instr->def);
+      nir_component_mask_t write_mask = s->get_nir_write_mask(instr->def);
       unsigned last_bit = util_last_bit(write_mask);
 
       for (unsigned i = 0; i < last_bit; i++) {
@@ -989,7 +992,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_i2f32:
    case nir_op_u2f32:
-      if (optimize_extract_to_float(this, instr, result))
+      if (optimize_extract_to_float(s, instr, result))
          return;
       inst = bld.MOV(result, op[0]);
       break;
@@ -1516,7 +1519,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_fceil: {
       op[0].negate = !op[0].negate;
-      fs_reg temp = vgrf(glsl_type::float_type);
+      fs_reg temp = s->vgrf(glsl_type::float_type);
       bld.RNDD(temp, op[0]);
       temp.negate = true;
       inst = bld.MOV(result, temp);
@@ -1813,7 +1816,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       break;
 
    case nir_op_b32csel:
-      if (optimize_frontfacing_ternary(this, instr, result))
+      if (optimize_frontfacing_ternary(s, instr, result))
          return;
 
       bld.CMP(bld.null_reg_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ);
@@ -1877,17 +1880,20 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    if (devinfo->ver <= 5 &&
        !result.is_null() &&
        (instr->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) == BRW_NIR_BOOLEAN_NEEDS_RESOLVE) {
-      fs_reg masked = vgrf(glsl_type::int_type);
+      fs_reg masked = s->vgrf(glsl_type::int_type);
       bld.AND(masked, result, brw_imm_d(1));
       masked.negate = true;
       bld.MOV(retype(result, BRW_REGISTER_TYPE_D), masked);
    }
 }
 
-void
-fs_visitor::nir_emit_load_const(const fs_builder &bld,
-                                nir_load_const_instr *instr)
+static void
+fs_nir_emit_load_const(const fs_builder &bld,
+                       nir_load_const_instr *instr)
 {
+   fs_visitor *s = (fs_visitor *)bld.shader;
+   const intel_device_info *devinfo = s->devinfo;
+
    const brw_reg_type reg_type =
       brw_reg_type_from_bit_size(instr->def.bit_size, BRW_REGISTER_TYPE_D);
    fs_reg reg = bld.vgrf(reg_type, instr->def.num_components);
@@ -1925,7 +1931,7 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
       unreachable("Invalid bit size");
    }
 
-   nir_ssa_values[instr->def.index] = reg;
+   s->nir_ssa_values[instr->def.index] = reg;
 }
 
 bool
@@ -3923,7 +3929,7 @@ fs_nir_emit_fs_intrinsic(const fs_builder &bld,
              * compare, and hope dead code elimination will clean up the
              * extra instructions generated.
              */
-            s->nir_emit_alu(bld, alu, false);
+            fs_nir_emit_alu(bld, alu, false);
 
             cmp = (fs_inst *) s->instructions.get_tail();
             if (cmp->conditional_mod == BRW_CONDITIONAL_NONE) {
@@ -7688,9 +7694,12 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
    }
 }
 
-void
-fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
+static void
+fs_nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 {
+   fs_visitor *s = (fs_visitor *)bld.shader;
+   const intel_device_info *devinfo = s->devinfo;
+
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
 
    /* SKL PRMs: Volume 7: 3D-Media-GPGPU:
@@ -7715,11 +7724,11 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    uint32_t header_bits = 0;
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       nir_src nir_src = instr->src[i].src;
-      fs_reg src = get_nir_src(nir_src);
+      fs_reg src = s->get_nir_src(nir_src);
       switch (instr->src[i].src_type) {
       case nir_tex_src_bias:
          srcs[TEX_LOGICAL_SRC_LOD] =
-            retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
+            retype(s->get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_comparator:
          srcs[TEX_LOGICAL_SRC_SHADOW_C] = retype(src, BRW_REGISTER_TYPE_F);
@@ -7748,21 +7757,21 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          switch (instr->op) {
          case nir_texop_txs:
             srcs[TEX_LOGICAL_SRC_LOD] =
-               retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_UD);
+               retype(s->get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_UD);
             break;
          case nir_texop_txf:
             srcs[TEX_LOGICAL_SRC_LOD] =
-               retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_D);
+               retype(s->get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_D);
             break;
          default:
             srcs[TEX_LOGICAL_SRC_LOD] =
-               retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
+               retype(s->get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
             break;
          }
          break;
       case nir_tex_src_min_lod:
          srcs[TEX_LOGICAL_SRC_MIN_LOD] =
-            retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
+            retype(s->get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_ms_index:
          srcs[TEX_LOGICAL_SRC_SAMPLE_INDEX] = retype(src, BRW_REGISTER_TYPE_UD);
@@ -7791,9 +7800,9 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          assert(srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE);
          /* Emit code to evaluate the actual indexing expression */
          if (instr->texture_index == 0 && is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SURFACE] = get_resource_nir_src(nir_src);
+            srcs[TEX_LOGICAL_SRC_SURFACE] = s->get_resource_nir_src(nir_src);
          if (srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE) {
-            fs_reg tmp = vgrf(glsl_type::uint_type);
+            fs_reg tmp = s->vgrf(glsl_type::uint_type);
             bld.ADD(tmp, src, brw_imm_ud(instr->texture_index));
             srcs[TEX_LOGICAL_SRC_SURFACE] = bld.emit_uniformize(tmp);
          }
@@ -7804,9 +7813,9 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       case nir_tex_src_sampler_offset: {
          /* Emit code to evaluate the actual indexing expression */
          if (instr->sampler_index == 0 && is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SAMPLER] = get_resource_nir_src(nir_src);
+            srcs[TEX_LOGICAL_SRC_SAMPLER] = s->get_resource_nir_src(nir_src);
          if (srcs[TEX_LOGICAL_SRC_SAMPLER].file == BAD_FILE) {
-            fs_reg tmp = vgrf(glsl_type::uint_type);
+            fs_reg tmp = s->vgrf(glsl_type::uint_type);
             bld.ADD(tmp, src, brw_imm_ud(instr->sampler_index));
             srcs[TEX_LOGICAL_SRC_SAMPLER] = bld.emit_uniformize(tmp);
          }
@@ -7817,7 +7826,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          assert(nir_tex_instr_src_index(instr, nir_tex_src_texture_offset) == -1);
          srcs[TEX_LOGICAL_SRC_SURFACE] = fs_reg();
          if (is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = get_resource_nir_src(nir_src);
+            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = s->get_resource_nir_src(nir_src);
          if (srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE].file == BAD_FILE)
             srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = bld.emit_uniformize(src);
          break;
@@ -7826,7 +7835,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          assert(nir_tex_instr_src_index(instr, nir_tex_src_sampler_offset) == -1);
          srcs[TEX_LOGICAL_SRC_SAMPLER] = fs_reg();
          if (is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = get_resource_nir_src(nir_src);
+            srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = s->get_resource_nir_src(nir_src);
          if (srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE].file == BAD_FILE)
             srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = bld.emit_uniformize(src);
          break;
@@ -7856,7 +7865,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
         instr->op == nir_texop_samples_identical)) {
       if (devinfo->ver >= 7) {
          srcs[TEX_LOGICAL_SRC_MCS] =
-            emit_mcs_fetch(this, srcs[TEX_LOGICAL_SRC_COORDINATE],
+            emit_mcs_fetch(s, srcs[TEX_LOGICAL_SRC_COORDINATE],
                            instr->coord_components,
                            srcs[TEX_LOGICAL_SRC_SURFACE],
                            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE]);
@@ -7918,7 +7927,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       opcode = SHADER_OPCODE_SAMPLEINFO_LOGICAL;
       break;
    case nir_texop_samples_identical: {
-      fs_reg dst = retype(get_nir_def(instr->def), BRW_REGISTER_TYPE_D);
+      fs_reg dst = retype(s->get_nir_def(instr->def), BRW_REGISTER_TYPE_D);
 
       /* If mcs is an immediate value, it means there is no MCS.  In that case
        * just return false.
@@ -7926,7 +7935,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       if (srcs[TEX_LOGICAL_SRC_MCS].file == BRW_IMMEDIATE_VALUE) {
          bld.MOV(dst, brw_imm_ud(0u));
       } else if (devinfo->ver >= 9) {
-         fs_reg tmp = vgrf(glsl_type::uint_type);
+         fs_reg tmp = s->vgrf(glsl_type::uint_type);
          bld.OR(tmp, srcs[TEX_LOGICAL_SRC_MCS],
                 offset(srcs[TEX_LOGICAL_SRC_MCS], bld, 1));
          bld.CMP(dst, tmp, brw_imm_ud(0u), BRW_CONDITIONAL_EQ);
@@ -7942,7 +7951,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 
    if (instr->op == nir_texop_tg4) {
       if (instr->component == 1 &&
-          key_tex->gather_channel_quirk_mask & (1 << instr->texture_index)) {
+          s->key_tex->gather_channel_quirk_mask & (1 << instr->texture_index)) {
          /* gather4 sampler is broken for green channel on RG32F --
           * we must ask for blue instead.
           */
@@ -8018,7 +8027,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
               dest_size >= 3 && devinfo->ver < 7) {
       /* Gfx4-6 return 0 instead of 1 for single layer surfaces. */
       fs_reg depth = offset(dst, bld, 2);
-      nir_dest[2] = vgrf(glsl_type::int_type);
+      nir_dest[2] = s->vgrf(glsl_type::int_type);
       bld.emit_minmax(nir_dest[2], depth, brw_imm_d(1), BRW_CONDITIONAL_GE);
    }
 
@@ -8026,11 +8035,11 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    if (instr->is_sparse)
       nir_dest[dest_size - 1] = component(offset(dst, bld, dest_size - 1), 0);
 
-   bld.LOAD_PAYLOAD(get_nir_def(instr->def), nir_dest, dest_size, 0);
+   bld.LOAD_PAYLOAD(s->get_nir_def(instr->def), nir_dest, dest_size, 0);
 }
 
-void
-fs_visitor::nir_emit_jump(const fs_builder &bld, nir_jump_instr *instr)
+static void
+fs_nir_emit_jump(const fs_builder &bld, nir_jump_instr *instr)
 {
    switch (instr->type) {
    case nir_jump_break:
@@ -8241,7 +8250,7 @@ fs_nir_emit_instr(fs_visitor *s, nir_instr *instr)
 
    switch (instr->type) {
    case nir_instr_type_alu:
-      s->nir_emit_alu(abld, nir_instr_as_alu(instr), true);
+      fs_nir_emit_alu(abld, nir_instr_as_alu(instr), true);
       break;
 
    case nir_instr_type_deref:
@@ -8289,11 +8298,11 @@ fs_nir_emit_instr(fs_visitor *s, nir_instr *instr)
       break;
 
    case nir_instr_type_tex:
-      s->nir_emit_texture(abld, nir_instr_as_tex(instr));
+      fs_nir_emit_texture(abld, nir_instr_as_tex(instr));
       break;
 
    case nir_instr_type_load_const:
-      s->nir_emit_load_const(abld, nir_instr_as_load_const(instr));
+      fs_nir_emit_load_const(abld, nir_instr_as_load_const(instr));
       break;
 
    case nir_instr_type_undef:
@@ -8304,7 +8313,7 @@ fs_nir_emit_instr(fs_visitor *s, nir_instr *instr)
       break;
 
    case nir_instr_type_jump:
-      s->nir_emit_jump(abld, nir_instr_as_jump(instr));
+      fs_nir_emit_jump(abld, nir_instr_as_jump(instr));
       break;
 
    default:

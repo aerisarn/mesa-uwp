@@ -320,10 +320,6 @@ public:
    void set_tcs_invocation_id();
 
    void emit_nir_code();
-   void nir_emit_alu(const brw::fs_builder &bld, nir_alu_instr *instr,
-                     bool need_dest);
-   void nir_emit_load_const(const brw::fs_builder &bld,
-                            nir_load_const_instr *instr);
    fs_reg get_nir_image_intrinsic_image(const brw::fs_builder &bld,
                                         nir_intrinsic_instr *instr);
    fs_reg get_nir_buffer_intrinsic_index(const brw::fs_builder &bld,
@@ -334,10 +330,6 @@ public:
                                 bool bindless_surface);
    void nir_emit_global_atomic(const brw::fs_builder &bld,
                                nir_intrinsic_instr *instr);
-   void nir_emit_texture(const brw::fs_builder &bld,
-                         nir_tex_instr *instr);
-   void nir_emit_jump(const brw::fs_builder &bld,
-                      nir_jump_instr *instr);
    bool get_nir_src_bindless(const nir_src &src);
    unsigned get_nir_src_block(const nir_src &src);
    fs_reg get_nir_src(const nir_src &src);
