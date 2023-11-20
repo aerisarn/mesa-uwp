@@ -2475,16 +2475,20 @@ static void si_ps_key_update_primtype_shader_rasterizer_framebuffer(struct si_co
    union si_shader_key *key = &sctx->shader.ps.key;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
-   bool is_poly = !util_prim_is_points_or_lines(sctx->current_rast_prim);
-   bool is_line = util_prim_is_lines(sctx->current_rast_prim);
-
-   key->ps.part.prolog.poly_stipple = rs->poly_stipple_enable && is_poly;
-   key->ps.mono.poly_line_smoothing =
-      ((is_poly && rs->poly_smooth) || (is_line && rs->line_smooth)) &&
-      sctx->framebuffer.nr_samples <= 1;
-
-   key->ps.mono.point_smoothing = rs->point_smooth &&
-                                  sctx->current_rast_prim == MESA_PRIM_POINTS;
+   if (sctx->current_rast_prim == MESA_PRIM_POINTS) {
+      key->ps.part.prolog.poly_stipple = 0;
+      key->ps.mono.poly_line_smoothing = 0;
+      key->ps.mono.point_smoothing = rs->point_smooth;
+   } else if (util_prim_is_lines(sctx->current_rast_prim)) {
+      key->ps.part.prolog.poly_stipple = 0;
+      key->ps.mono.poly_line_smoothing = rs->line_smooth && sctx->framebuffer.nr_samples <= 1;
+      key->ps.mono.point_smoothing = 0;
+   } else {
+      /* Triangles. */
+      key->ps.part.prolog.poly_stipple = rs->poly_stipple_enable;
+      key->ps.mono.poly_line_smoothing = rs->poly_smooth && sctx->framebuffer.nr_samples <= 1;
+      key->ps.mono.point_smoothing = 0;
+   }
 }
 
 void si_ps_key_update_sample_shading(struct si_context *sctx)
