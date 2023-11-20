@@ -49,6 +49,21 @@ struct lower_gs_state {
    bool rasterizer_discard;
 };
 
+static uint64_t
+outputs_rasterized(nir_shader *s)
+{
+   uint64_t outputs = s->info.outputs_written;
+
+   /* Optimize out pointless gl_PointSize outputs. Bizarrely, these occur. We
+    * need to preserve the transform feedback portion of the write, but we don't
+    * bother saving for rasterization.
+    */
+   if (s->info.gs.output_primitive != MESA_PRIM_POINTS)
+      outputs &= ~VARYING_BIT_PSIZ;
+
+   return outputs;
+}
+
 /* Helpers for loading from the geometry state buffer */
 static nir_def *
 load_geometry_param_offset(nir_builder *b, uint32_t offset, uint8_t bytes)
@@ -688,7 +703,7 @@ lower_emit_vertex(nir_builder *b, nir_intrinsic_instr *intr,
             nir_iadd(b, buffer, nir_u2u64(b, vertex_offset));
 
          /* Copy each output where it belongs */
-         u_foreach_bit64(slot, b->shader->info.outputs_written) {
+         u_foreach_bit64(slot, outputs_rasterized(b->shader)) {
             nir_def *addr = nir_iadd_imm(b, vertex_addr, state->offset_B[slot]);
             nir_def *value = nir_load_var(b, state->outputs[slot][0]);
             unsigned comps = glsl_get_components(state->outputs[slot][0]->type);
@@ -1029,10 +1044,6 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
                  nir_imm_int(&b, 0));
    }
 
-   /* Optimize out pointless gl_PointSize writes. Bizarrely, these occur. */
-   if (gs->info.gs.output_primitive != MESA_PRIM_POINTS)
-      gs->info.outputs_written &= ~VARYING_BIT_PSIZ;
-
    /* Link VS into the GS */
    agx_nir_link_vs_gs(vs, gs);
 
@@ -1156,7 +1167,7 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
    NIR_PASS_V(gs, nir_opt_move, ~0);
 
    /* Create auxiliary programs */
-   *gs_copy = agx_nir_create_gs_copy_shader(&gs_state, gs->info.outputs_written,
+   *gs_copy = agx_nir_create_gs_copy_shader(&gs_state, outputs_rasterized(gs),
                                             gs->info.gs.output_primitive);
 
    *pre_gs = agx_nir_create_pre_gs(
