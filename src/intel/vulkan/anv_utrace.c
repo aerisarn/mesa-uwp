@@ -403,17 +403,29 @@ anv_utrace_record_ts(struct u_trace *ut, void *cs,
 
    /* Is this a end of compute trace point? */
    const bool is_end_compute =
-      (cs == NULL && cmd_buffer->last_compute_walker != NULL && end_of_pipe);
+      cs == NULL &&
+      (cmd_buffer->last_compute_walker != NULL ||
+       cmd_buffer->last_indirect_dispatch != NULL) &&
+      end_of_pipe;
 
    enum anv_timestamp_capture_type capture_type = end_of_pipe ?
-      is_end_compute ? ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER :
-      ANV_TIMESTAMP_CAPTURE_END_OF_PIPE : ANV_TIMESTAMP_CAPTURE_TOP_OF_PIPE;
+      (is_end_compute ?
+       (cmd_buffer->last_indirect_dispatch != NULL ?
+        ANV_TIMESTAMP_REWRITE_INDIRECT_DISPATCH : ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER) :
+       ANV_TIMESTAMP_CAPTURE_END_OF_PIPE) : ANV_TIMESTAMP_CAPTURE_TOP_OF_PIPE;
+
+   void *addr = capture_type ==  ANV_TIMESTAMP_REWRITE_INDIRECT_DISPATCH ?
+                cmd_buffer->last_indirect_dispatch :
+                capture_type ==  ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER ?
+                cmd_buffer->last_compute_walker : NULL;
+
    device->physical->cmd_emit_timestamp(batch, device, ts_address,
                                         capture_type,
-                                        is_end_compute ?
-                                        cmd_buffer->last_compute_walker : NULL);
-   if (is_end_compute)
-         cmd_buffer->last_compute_walker = NULL;
+                                        addr);
+   if (is_end_compute) {
+      cmd_buffer->last_compute_walker = NULL;
+      cmd_buffer->last_indirect_dispatch = NULL;
+   }
 }
 
 static uint64_t

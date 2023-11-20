@@ -5894,14 +5894,18 @@ emit_indirect_compute_walker(struct anv_cmd_buffer *cmd_buffer,
                                        &dispatch),
    };
 
-   anv_batch_emit(&cmd_buffer->batch, GENX(EXECUTE_INDIRECT_DISPATCH), ind) {
-      ind.PredicateEnable            = predicate;
-      ind.MaxCount                   = 1;
-      ind.COMPUTE_WALKER_BODY        = body;
-      ind.ArgumentBufferStartAddress = indirect_addr;
-      ind.MOCS                       = anv_mocs(cmd_buffer->device,
-                                                indirect_addr.bo, 0);
-   }
+   cmd_buffer->last_indirect_dispatch =
+      anv_batch_emitn(
+         &cmd_buffer->batch,
+         GENX(EXECUTE_INDIRECT_DISPATCH_length),
+         GENX(EXECUTE_INDIRECT_DISPATCH),
+         .PredicateEnable            = predicate,
+         .MaxCount                   = 1,
+         .COMPUTE_WALKER_BODY        = body,
+         .ArgumentBufferStartAddress = indirect_addr,
+         .MOCS                       = anv_mocs(cmd_buffer->device,
+                                                indirect_addr.bo, 0),
+      );
 }
 
 static inline void
@@ -8408,6 +8412,26 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
                .MOCS = anv_mocs(device, NULL, 0),
             },
          });
+
+      for (uint32_t i = 0; i < ARRAY_SIZE(dwords); i++)
+         ((uint32_t *)data)[i] |= dwords[i];
+      break;
+   }
+
+   case ANV_TIMESTAMP_REWRITE_INDIRECT_DISPATCH: {
+      uint32_t dwords[GENX(EXECUTE_INDIRECT_DISPATCH_length)];
+
+      GENX(EXECUTE_INDIRECT_DISPATCH_pack)
+      (batch, dwords, &(struct GENX(EXECUTE_INDIRECT_DISPATCH)) {
+            .MOCS = anv_mocs(device, NULL, 0),
+            .COMPUTE_WALKER_BODY = {
+               .PostSync = (struct GENX(POSTSYNC_DATA)) {
+                  .Operation = WriteTimestamp,
+                  .DestinationAddress = addr,
+                  .MOCS = anv_mocs(device, NULL, 0),
+               },
+            }
+      });
 
       for (uint32_t i = 0; i < ARRAY_SIZE(dwords); i++)
          ((uint32_t *)data)[i] |= dwords[i];

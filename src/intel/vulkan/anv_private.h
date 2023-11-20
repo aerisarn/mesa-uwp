@@ -914,6 +914,7 @@ enum anv_timestamp_capture_type {
     ANV_TIMESTAMP_CAPTURE_END_OF_PIPE,
     ANV_TIMESTAMP_CAPTURE_AT_CS_STALL,
     ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER,
+    ANV_TIMESTAMP_REWRITE_INDIRECT_DISPATCH,
 };
 
 struct anv_physical_device {
@@ -3838,6 +3839,13 @@ struct anv_cmd_buffer {
     * Sync" field for utrace timestamp emission.
     */
    void                                        *last_compute_walker;
+
+   /** Pointer to the last emitted EXECUTE_INDIRECT_DISPATCH.
+    *
+    * This is used to edit the instruction post emission to replace the "Post
+    * Sync" field for utrace timestamp emission.
+    */
+   void                                        *last_indirect_dispatch;
 
    struct {
       struct anv_video_session *vid;
