@@ -4261,7 +4261,7 @@ impl DisplayOp for OpOutFinal {
 }
 impl_display_for_op!(OpOutFinal);
 
-#[derive(Display, DstsAsSlice, SrcsAsSlice, FromVariants)]
+#[derive(DisplayOp, DstsAsSlice, SrcsAsSlice, FromVariants)]
 pub enum Op {
     FAdd(OpFAdd),
     FFma(OpFFma),
@@ -4339,6 +4339,7 @@ pub enum Op {
     Out(OpOut),
     OutFinal(OpOutFinal),
 }
+impl_display_for_op!(Op);
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum PredRef {

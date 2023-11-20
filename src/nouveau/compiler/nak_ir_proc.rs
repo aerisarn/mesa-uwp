@@ -251,23 +251,33 @@ pub fn derive_dsts_as_slice(input: TokenStream) -> TokenStream {
     derive_as_slice(input, "DstsAsSlice", "dsts", "Dst")
 }
 
-#[proc_macro_derive(Display)]
-pub fn enum_derive_display(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(DisplayOp)]
+pub fn enum_derive_display_op(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
     if let Data::Enum(e) = data {
-        let mut cases = TokenStream2::new();
+        let mut fmt_dsts_cases = TokenStream2::new();
+        let mut fmt_op_cases = TokenStream2::new();
         for v in e.variants {
             let case = v.ident;
-            cases.extend(quote! {
-                #ident::#case(x) => x.fmt(f),
+            fmt_dsts_cases.extend(quote! {
+                #ident::#case(x) => x.fmt_dsts(f),
+            });
+            fmt_op_cases.extend(quote! {
+                #ident::#case(x) => x.fmt_op(f),
             });
         }
         quote! {
-            impl fmt::Display for #ident {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            impl DisplayOp for #ident {
+                fn fmt_dsts(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     match self {
-                        #cases
+                        #fmt_dsts_cases
+                    }
+                }
+
+                fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    match self {
+                        #fmt_op_cases
                     }
                 }
             }
