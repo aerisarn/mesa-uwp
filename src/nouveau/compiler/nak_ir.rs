@@ -1565,13 +1565,13 @@ pub enum TexDim {
 impl fmt::Display for TexDim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TexDim::_1D => write!(f, "1D"),
-            TexDim::Array1D => write!(f, "ARRAY_1D"),
-            TexDim::_2D => write!(f, "2D"),
-            TexDim::Array2D => write!(f, "ARRAY_2D"),
-            TexDim::_3D => write!(f, "3D"),
-            TexDim::Cube => write!(f, "CUBE"),
-            TexDim::ArrayCube => write!(f, "ARRAY_CUBE"),
+            TexDim::_1D => write!(f, ".1d"),
+            TexDim::Array1D => write!(f, ".a1d"),
+            TexDim::_2D => write!(f, ".2d"),
+            TexDim::Array2D => write!(f, ".a2d"),
+            TexDim::_3D => write!(f, ".3d"),
+            TexDim::Cube => write!(f, ".cube"),
+            TexDim::ArrayCube => write!(f, ".acube"),
         }
     }
 }
@@ -1660,12 +1660,12 @@ impl ImageDim {
 impl fmt::Display for ImageDim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ImageDim::_1D => write!(f, "1D"),
-            ImageDim::_1DBuffer => write!(f, "1D_BUFFER"),
-            ImageDim::_1DArray => write!(f, "1D_ARRAY"),
-            ImageDim::_2D => write!(f, "2D"),
-            ImageDim::_2DArray => write!(f, "2D_ARRAY"),
-            ImageDim::_3D => write!(f, "3D"),
+            ImageDim::_1D => write!(f, ".1d"),
+            ImageDim::_1DBuffer => write!(f, ".buf"),
+            ImageDim::_1DArray => write!(f, ".a1d"),
+            ImageDim::_2D => write!(f, ".2d"),
+            ImageDim::_2DArray => write!(f, ".a2d"),
+            ImageDim::_3D => write!(f, ".3d"),
         }
     }
 }
@@ -2951,7 +2951,7 @@ pub struct OpTex {
 
 impl DisplayOp for OpTex {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "tex.b")?;
+        write!(f, "tex.b{}", self.dim)?;
         if self.lod_mode != TexLodMode::Auto {
             write!(f, ".{}", self.lod_mode)?;
         }
@@ -2961,7 +2961,7 @@ impl DisplayOp for OpTex {
         if self.z_cmpr {
             write!(f, ".dc")?;
         }
-        write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.dim,)
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])
     }
 }
 impl_display_for_op!(OpTex);
@@ -2984,7 +2984,7 @@ pub struct OpTld {
 
 impl DisplayOp for OpTld {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "tld.b")?;
+        write!(f, "tld.b{}", self.dim)?;
         if self.lod_mode != TexLodMode::Auto {
             write!(f, ".{}", self.lod_mode)?;
         }
@@ -2994,7 +2994,7 @@ impl DisplayOp for OpTld {
         if self.is_ms {
             write!(f, ".ms")?;
         }
-        write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.dim,)
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])
     }
 }
 impl_display_for_op!(OpTld);
@@ -3017,11 +3017,11 @@ pub struct OpTld4 {
 
 impl DisplayOp for OpTld4 {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "tld4.g.b")?;
+        write!(f, "tld4.g.b{}", self.dim)?;
         if self.offset_mode != Tld4OffsetMode::None {
             write!(f, ".{}", self.offset_mode)?;
         }
-        write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.dim,)
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])
     }
 }
 impl_display_for_op!(OpTld4);
@@ -3042,8 +3042,8 @@ impl DisplayOp for OpTmml {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "tmml.b.lod {} {} {}",
-            self.srcs[0], self.srcs[1], self.dim
+            "tmml.b.lod{} {} {}",
+            self.dim, self.srcs[0], self.srcs[1]
         )
     }
 }
@@ -3065,11 +3065,11 @@ pub struct OpTxd {
 
 impl DisplayOp for OpTxd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "txd.b")?;
+        write!(f, "txd.b{}", self.dim)?;
         if self.offset {
             write!(f, ".aoffi")?;
         }
-        write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.dim,)
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])
     }
 }
 impl_display_for_op!(OpTxd);
@@ -3115,7 +3115,7 @@ impl DisplayOp for OpSuLd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "suld.p.{}{}{} [{}] {}",
+            "suld.p{}{}{} [{}] {}",
             self.image_dim,
             self.mem_order,
             self.mem_eviction_priority,
@@ -3148,7 +3148,7 @@ impl DisplayOp for OpSuSt {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "sust.p.{}{}{} [{}] {} {}",
+            "sust.p{}{}{} [{}] {} {}",
             self.image_dim,
             self.mem_order,
             self.mem_eviction_priority,
@@ -3188,7 +3188,7 @@ impl DisplayOp for OpSuAtom {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "suatom.p.{}{}{}{}{} [{}] {} {}",
+            "suatom.p{}{}{}{}{} [{}] {} {}",
             self.image_dim,
             self.atom_op,
             self.atom_type,
