@@ -1190,7 +1190,7 @@ transition_resource(struct pipe_context *pctx, struct agx_resource *rsrc,
       blit.src.box = blit.dst.box;
 
       blit.dst.resource = &new_res->base;
-      blit.dst.format = new_res->base.format;
+      blit.dst.format = rsrc->base.format;
       blit.dst.level = level;
       blit.src.resource = &rsrc->base;
       blit.src.format = rsrc->base.format;
