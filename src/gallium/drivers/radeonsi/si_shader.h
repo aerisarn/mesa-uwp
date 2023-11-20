@@ -797,6 +797,9 @@ struct si_shader_key_ps {
       unsigned prefer_mono : 1;
       unsigned inline_uniforms:1;
 
+      /* This eliminates the FRONT_FACE input VGPR as well as shader code using it. */
+      int force_front_face_input : 2; /* 0 = gl_FrontFacing, 1 = true, -1 = false */
+
       /* This must be kept last to limit the number of variants
        * depending only on the uniform values.
        */

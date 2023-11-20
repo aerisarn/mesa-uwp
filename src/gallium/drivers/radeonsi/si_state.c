@@ -1061,6 +1061,14 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
       }
    }
 
+   /* Force gl_FrontFacing to true or false if the other face is culled. */
+   if (util_bitcount(state->cull_face) == 1) {
+      if (state->cull_face & PIPE_FACE_FRONT)
+         rs->force_front_face_input = -1;
+      else
+         rs->force_front_face_input = 1;
+   }
+
    unsigned spi_interp_control_0 =
       S_0286D4_FLAT_SHADE_ENA(1) |
       S_0286D4_PNT_SPRITE_ENA(state->point_quad_rasterization) |
@@ -1256,8 +1264,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
    if (old_rs->multisample_enable != rs->multisample_enable)
       si_ps_key_update_framebuffer_blend_rasterizer(sctx);
 
-   if (old_rs->two_side != rs->two_side ||
-       old_rs->flatshade != rs->flatshade ||
+   if (old_rs->flatshade != rs->flatshade ||
        old_rs->clamp_fragment_color != rs->clamp_fragment_color)
       si_ps_key_update_rasterizer(sctx);
 
@@ -1276,7 +1283,9 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
        old_rs->line_smooth != rs->line_smooth ||
        old_rs->poly_smooth != rs->poly_smooth ||
        old_rs->polygon_mode_is_points != rs->polygon_mode_is_points ||
-       old_rs->poly_stipple_enable != rs->poly_stipple_enable)
+       old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
+       old_rs->two_side != rs->two_side ||
+       old_rs->force_front_face_input != rs->force_front_face_input)
       si_vs_ps_key_update_rast_prim_smooth_stipple(sctx);
 
    /* Used by si_get_vs_key_outputs in si_update_shaders: */

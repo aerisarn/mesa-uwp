@@ -1872,6 +1872,14 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    assert(!shader->key.ps.part.prolog.force_linear_sample_interp ||
           (!G_0286CC_LINEAR_CENTER_ENA(input_ena) && !G_0286CC_LINEAR_CENTROID_ENA(input_ena)));
 
+   /* color_two_side always enables FRONT_FACE. Since st/mesa disables two-side colors if the back
+    * face is culled, the only case when both color_two_side and force_front_face_input can be set
+    * is when the front face is culled (which means force_front_face_input == -1).
+    */
+   assert(!shader->key.ps.opt.force_front_face_input || !G_0286CC_FRONT_FACE_ENA(input_ena) ||
+          (shader->key.ps.part.prolog.color_two_side &&
+           shader->key.ps.opt.force_front_face_input == -1));
+
    /* Validate cases when the optimizations are off (read as implications). */
    assert(shader->key.ps.part.prolog.bc_optimize_for_persp ||
           !G_0286CC_PERSP_CENTER_ENA(input_ena) || !G_0286CC_PERSP_CENTROID_ENA(input_ena));
@@ -2241,7 +2249,9 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
 void si_vs_ps_key_update_rast_prim_smooth_stipple(struct si_context *sctx)
 {
    struct si_shader_ctx_state *hw_vs = si_get_vs(sctx);
-   if (!hw_vs->cso)
+   struct si_shader_selector *ps = sctx->shader.ps.cso;
+
+   if (!hw_vs->cso || !ps)
       return;
 
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
@@ -2249,33 +2259,44 @@ void si_vs_ps_key_update_rast_prim_smooth_stipple(struct si_context *sctx)
    union si_shader_key *ps_key = &sctx->shader.ps.key;
 
    bool old_kill_pointsize = vs_key->ge.opt.kill_pointsize;
+   bool old_color_two_side = ps_key->ps.part.prolog.color_two_side;
    bool old_poly_stipple = ps_key->ps.part.prolog.poly_stipple;
    bool old_poly_line_smoothing = ps_key->ps.mono.poly_line_smoothing;
    bool old_point_smoothing = ps_key->ps.mono.point_smoothing;
+   int old_force_front_face_input = ps_key->ps.opt.force_front_face_input;
 
    if (sctx->current_rast_prim == MESA_PRIM_POINTS) {
       vs_key->ge.opt.kill_pointsize = 0;
+      ps_key->ps.part.prolog.color_two_side = 0;
       ps_key->ps.part.prolog.poly_stipple = 0;
       ps_key->ps.mono.poly_line_smoothing = 0;
       ps_key->ps.mono.point_smoothing = rs->point_smooth;
+      ps_key->ps.opt.force_front_face_input = ps->info.uses_frontface;
    } else if (util_prim_is_lines(sctx->current_rast_prim)) {
       vs_key->ge.opt.kill_pointsize = hw_vs->cso->info.writes_psize;
+      ps_key->ps.part.prolog.color_two_side = 0;
       ps_key->ps.part.prolog.poly_stipple = 0;
       ps_key->ps.mono.poly_line_smoothing = rs->line_smooth && sctx->framebuffer.nr_samples <= 1;
       ps_key->ps.mono.point_smoothing = 0;
+      ps_key->ps.opt.force_front_face_input = ps->info.uses_frontface;
    } else {
       /* Triangles. */
       vs_key->ge.opt.kill_pointsize = hw_vs->cso->info.writes_psize &&
                                       !rs->polygon_mode_is_points;
+      ps_key->ps.part.prolog.color_two_side = rs->two_side && ps->info.colors_read;
       ps_key->ps.part.prolog.poly_stipple = rs->poly_stipple_enable;
       ps_key->ps.mono.poly_line_smoothing = rs->poly_smooth && sctx->framebuffer.nr_samples <= 1;
       ps_key->ps.mono.point_smoothing = 0;
+      ps_key->ps.opt.force_front_face_input = rs->force_front_face_input &&
+                                              ps->info.uses_frontface;
    }
 
    if (vs_key->ge.opt.kill_pointsize != old_kill_pointsize ||
+       ps_key->ps.part.prolog.color_two_side != old_color_two_side ||
        ps_key->ps.part.prolog.poly_stipple != old_poly_stipple ||
        ps_key->ps.mono.poly_line_smoothing != old_poly_line_smoothing ||
-       ps_key->ps.mono.point_smoothing != old_point_smoothing)
+       ps_key->ps.mono.point_smoothing != old_point_smoothing ||
+       ps_key->ps.opt.force_front_face_input != old_force_front_face_input)
       sctx->do_update_shaders = true;
 }
 
@@ -2486,16 +2507,13 @@ void si_ps_key_update_rasterizer(struct si_context *sctx)
    if (!sel)
       return;
 
-   bool old_color_two_side = key->ps.part.prolog.color_two_side;
    bool old_flatshade_colors = key->ps.part.prolog.flatshade_colors;
    bool old_clamp_color = key->ps.part.epilog.clamp_color;
 
-   key->ps.part.prolog.color_two_side = rs->two_side && sel->info.colors_read;
    key->ps.part.prolog.flatshade_colors = rs->flatshade && sel->info.uses_interp_color;
    key->ps.part.epilog.clamp_color = rs->clamp_fragment_color;
 
-   if (key->ps.part.prolog.color_two_side != old_color_two_side ||
-       key->ps.part.prolog.flatshade_colors != old_flatshade_colors ||
+   if (key->ps.part.prolog.flatshade_colors != old_flatshade_colors ||
        key->ps.part.epilog.clamp_color != old_clamp_color)
       sctx->do_update_shaders = true;
 }

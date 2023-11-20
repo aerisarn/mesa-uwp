@@ -2645,6 +2645,10 @@ si_set_spi_ps_input_config(struct si_shader *shader)
    const struct si_shader_info *info = &sel->info;
    const union si_shader_key *key = &shader->key;
 
+   /* TODO: This should be determined from the final NIR instead of the input NIR,
+    * otherwise LLVM will have a performance advantage here because it determines
+    * VGPR inputs for each shader variant after LLVM optimizations.
+    */
    shader->config.spi_ps_input_ena =
       S_0286CC_PERSP_CENTER_ENA(info->uses_persp_center) |
       S_0286CC_PERSP_CENTROID_ENA(info->uses_persp_centroid) |
@@ -2652,7 +2656,7 @@ si_set_spi_ps_input_config(struct si_shader *shader)
       S_0286CC_LINEAR_CENTER_ENA(info->uses_linear_center) |
       S_0286CC_LINEAR_CENTROID_ENA(info->uses_linear_centroid) |
       S_0286CC_LINEAR_SAMPLE_ENA(info->uses_linear_sample) |
-      S_0286CC_FRONT_FACE_ENA(info->uses_frontface) |
+      S_0286CC_FRONT_FACE_ENA(info->uses_frontface && !key->ps.opt.force_front_face_input) |
       S_0286CC_SAMPLE_COVERAGE_ENA(info->reads_samplemask) |
       S_0286CC_ANCILLARY_ENA(info->uses_sampleid || info->uses_layer_id);
 

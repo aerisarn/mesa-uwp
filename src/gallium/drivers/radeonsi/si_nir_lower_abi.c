@@ -587,6 +587,11 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
    case nir_intrinsic_load_alpha_reference_amd:
       replacement = ac_nir_load_arg(b, &args->ac, args->alpha_reference);
       break;
+   case nir_intrinsic_load_front_face:
+      if (!key->ps.opt.force_front_face_input)
+         return false;
+      replacement = nir_imm_bool(b, key->ps.opt.force_front_face_input == 1);
+      break;
    case nir_intrinsic_load_barycentric_optimize_amd: {
       nir_def *prim_mask = ac_nir_load_arg(b, &args->ac, args->ac.prim_mask);
       /* enabled when bit 31 is set */
