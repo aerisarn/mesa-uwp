@@ -320,18 +320,6 @@ public:
    void set_tcs_invocation_id();
 
    void emit_nir_code();
-   fs_reg get_nir_image_intrinsic_image(const brw::fs_builder &bld,
-                                        nir_intrinsic_instr *instr);
-   fs_reg get_nir_buffer_intrinsic_index(const brw::fs_builder &bld,
-                                         nir_intrinsic_instr *instr);
-   bool get_nir_src_bindless(const nir_src &src);
-   unsigned get_nir_src_block(const nir_src &src);
-   fs_reg get_nir_src(const nir_src &src);
-   fs_reg get_nir_src_imm(const nir_src &src);
-   fs_reg get_nir_def(const nir_def &def);
-   nir_component_mask_t get_nir_write_mask(const nir_def &def);
-   fs_reg get_resource_nir_src(const nir_src &src);
-   fs_reg get_indirect_offset(nir_intrinsic_instr *instr);
 
    void emit_alpha_test();
    fs_inst *emit_single_fb_write(const brw::fs_builder &bld,
