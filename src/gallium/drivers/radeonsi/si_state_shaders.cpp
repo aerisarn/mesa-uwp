@@ -2208,10 +2208,10 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
                             sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS ||
                             sctx->queued.named.rasterizer->poly_stipple_enable ||
                             sctx->queued.named.rasterizer->point_smooth;
-      unsigned ps_colormask = si_get_total_colormask(sctx);
 
       ps_disabled = sctx->queued.named.rasterizer->rasterizer_discard ||
-                    (!ps_colormask && !ps_modifies_zs && !ps->info.base.writes_memory);
+                    (!ps_modifies_zs && !ps->info.base.writes_memory &&
+                     !si_any_colorbuffer_written(sctx));
    }
 
    uint64_t ps_inputs_read_or_disabled;

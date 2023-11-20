@@ -1972,24 +1972,18 @@ static inline unsigned si_get_ps_iter_samples(struct si_context *sctx)
    return MIN2(sctx->ps_iter_samples, sctx->framebuffer.nr_color_samples);
 }
 
-static inline unsigned si_get_total_colormask(struct si_context *sctx)
+static inline bool si_any_colorbuffer_written(struct si_context *sctx)
 {
    if (sctx->queued.named.rasterizer->rasterizer_discard)
-      return 0;
+      return false;
 
    struct si_shader_selector *ps = sctx->shader.ps.cso;
-   if (!ps)
-      return 0;
+   if (!ps || !ps->info.colors_written_4bit)
+      return false;
 
-   unsigned colormask =
-      sctx->framebuffer.colorbuf_enabled_4bit & sctx->queued.named.blend->cb_target_mask;
-
-   if (!ps->info.color0_writes_all_cbufs)
-      colormask &= ps->info.colors_written_4bit;
-   else if (!ps->info.colors_written_4bit)
-      colormask = 0; /* color0 writes all cbufs, but it's not written */
-
-   return colormask;
+   return (sctx->framebuffer.colorbuf_enabled_4bit &
+           sctx->queued.named.blend->cb_target_enabled_4bit &
+           (ps->info.color0_writes_all_cbufs ? ~0 : ps->info.colors_written_4bit)) != 0;
 }
 
 #define UTIL_ALL_PRIM_LINE_MODES                                                                   \
