@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2086 # we want word splitting
 
+# When changing this file, you need to bump the following
+# .gitlab-ci/image-tags.yml tags:
+# DEBIAN_BUILD_TAG
+
 set -e
 set -o xtrace
 
@@ -82,7 +86,7 @@ apt-get install -y --no-remove "${DEPS[@]}" "${EPHEMERAL[@]}" \
 pip3 install --break-system-packages git+http://gitlab.freedesktop.org/freedesktop/ci-templates@ffe4d1b10aab7534489f0c4bbc4c5899df17d3f2
 
 # We need at least 1.3 for stable Rust support
-pip3 install --break-system-packages 'meson @ git+https://github.com/mesonbuild/meson.git@cddf2e9d872ebbc673d2595bc176a0572d258222'
+pip3 install --break-system-packages 'meson==1.3.0'
 
 . .gitlab-ci/container/build-rust.sh
 
