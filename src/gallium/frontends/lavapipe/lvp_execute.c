@@ -504,7 +504,7 @@ static void emit_state(struct rendering_state *state)
    }
 
    if (state->vb_dirty) {
-      cso_set_vertex_buffers(state->cso, state->num_vb, 0, false, state->vb);
+      cso_set_vertex_buffers(state->cso, state->num_vb, false, state->vb);
       state->vb_dirty = false;
    }
 

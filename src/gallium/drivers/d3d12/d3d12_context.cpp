@@ -1334,15 +1334,11 @@ d3d12_set_polygon_stipple(struct pipe_context *pctx,
 static void
 d3d12_set_vertex_buffers(struct pipe_context *pctx,
                          unsigned num_buffers,
-                         unsigned unbind_num_trailing_slots,
                          bool take_ownership,
                          const struct pipe_vertex_buffer *buffers)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
-   util_set_vertex_buffers_count(ctx->vbs, &ctx->num_vbs,
-                                 buffers, num_buffers,
-                                 unbind_num_trailing_slots,
-                                 take_ownership);
+   util_set_vertex_buffers_count(ctx->vbs, &ctx->num_vbs, buffers, num_buffers, take_ownership);
 
    for (unsigned i = 0; i < ctx->num_vbs; ++i) {
       const struct pipe_vertex_buffer* buf = ctx->vbs + i;
@@ -2097,7 +2093,7 @@ d3d12_clear_render_target(struct pipe_context *pctx,
                                                ctx->num_sampler_views[PIPE_SHADER_FRAGMENT],
                                                ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
       util_blitter_save_fragment_constant_buffer_slot(ctx->blitter, ctx->cbufs[PIPE_SHADER_FRAGMENT]);
-      util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vbs);
+      util_blitter_save_vertex_buffers(ctx->blitter, ctx->vbs, ctx->num_vbs);
       util_blitter_save_sample_mask(ctx->blitter, ctx->gfx_pipeline_state.sample_mask, 0);
       util_blitter_save_so_targets(ctx->blitter, ctx->gfx_pipeline_state.num_so_targets, ctx->so_targets);
 

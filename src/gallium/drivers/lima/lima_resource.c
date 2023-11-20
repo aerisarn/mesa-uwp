@@ -837,8 +837,8 @@ lima_util_blitter_save_states(struct lima_context *ctx)
    util_blitter_save_scissor(ctx->blitter, &ctx->scissor);
    util_blitter_save_vertex_elements(ctx->blitter,
                                      ctx->vertex_elements);
-   util_blitter_save_vertex_buffer_slot(ctx->blitter,
-                                        ctx->vertex_buffers.vb);
+   util_blitter_save_vertex_buffers(ctx->blitter,
+                                    ctx->vertex_buffers.vb, ctx->vertex_buffers.count);
 
    util_blitter_save_framebuffer(ctx->blitter, &ctx->framebuffer.base);
 

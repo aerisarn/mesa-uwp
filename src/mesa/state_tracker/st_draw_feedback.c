@@ -157,7 +157,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       }
    }
 
-   draw_set_vertex_buffers(draw, num_vbuffers, 0, vbuffers);
+   draw_set_vertex_buffers(draw, num_vbuffers, vbuffers);
    draw_set_vertex_elements(draw, vp->num_inputs, velements.velems);
 
    if (info->index_size) {
@@ -455,7 +455,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       if (!vbuffers[buf].is_user_buffer)
          pipe_resource_reference(&vbuffers[buf].buffer.resource, NULL);
    }
-   draw_set_vertex_buffers(draw, 0, num_vbuffers, NULL);
+   draw_set_vertex_buffers(draw, 0, NULL);
 
    draw_bind_vertex_shader(draw, NULL);
 }

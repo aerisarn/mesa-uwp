@@ -318,7 +318,8 @@ void
 agx_blitter_save(struct agx_context *ctx, struct blitter_context *blitter,
                  bool render_cond)
 {
-   util_blitter_save_vertex_buffer_slot(blitter, ctx->vertex_buffers);
+   util_blitter_save_vertex_buffers(blitter, ctx->vertex_buffers,
+                                    util_last_bit(ctx->vb_mask));
    util_blitter_save_vertex_elements(blitter, ctx->attributes);
    util_blitter_save_vertex_shader(blitter,
                                    ctx->stage[PIPE_SHADER_VERTEX].shader);

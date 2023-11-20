@@ -1419,14 +1419,13 @@ agx_delete_state(struct pipe_context *ctx, void *state)
 
 static void
 agx_set_vertex_buffers(struct pipe_context *pctx, unsigned count,
-                       unsigned unbind_num_trailing_slots, bool take_ownership,
+                       bool take_ownership,
                        const struct pipe_vertex_buffer *buffers)
 {
    struct agx_context *ctx = agx_context(pctx);
 
    util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->vb_mask, buffers,
-                                count, unbind_num_trailing_slots,
-                                take_ownership);
+                                count, take_ownership);
 
    ctx->dirty |= AGX_DIRTY_VERTEX;
 }

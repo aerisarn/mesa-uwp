@@ -1160,6 +1160,7 @@ struct si_context {
 
    /* Vertex buffers. */
    bool vertex_buffers_dirty;
+   uint8_t num_vertex_buffers;
    uint16_t vertex_buffer_unaligned; /* bitmask of not dword-aligned buffers */
    struct pipe_vertex_buffer vertex_buffer[SI_NUM_VERTEX_BUFFERS];
 

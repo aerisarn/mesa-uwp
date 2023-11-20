@@ -1339,7 +1339,6 @@ update_existing_vbo(struct zink_context *ctx, unsigned slot)
 static void
 zink_set_vertex_buffers(struct pipe_context *pctx,
                         unsigned num_buffers,
-                        unsigned unbind_num_trailing_slots,
                         bool take_ownership,
                         const struct pipe_vertex_buffer *buffers)
 {
@@ -1348,44 +1347,39 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
    const bool need_state_change = !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state &&
                                   !have_input_state;
    uint32_t enabled_buffers = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
-   enabled_buffers |= u_bit_consecutive(0, num_buffers);
-   enabled_buffers &= ~u_bit_consecutive(num_buffers, unbind_num_trailing_slots);
+   unsigned last_count = util_last_bit(enabled_buffers);
+   enabled_buffers = u_bit_consecutive(0, num_buffers);
 
-   if (buffers) {
-      for (unsigned i = 0; i < num_buffers; ++i) {
-         const struct pipe_vertex_buffer *vb = buffers + i;
-         struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[i];
-         update_existing_vbo(ctx, i);
-         if (!take_ownership)
-            pipe_resource_reference(&ctx_vb->buffer.resource, vb->buffer.resource);
-         else {
-            pipe_resource_reference(&ctx_vb->buffer.resource, NULL);
-            ctx_vb->buffer.resource = vb->buffer.resource;
-         }
-         if (vb->buffer.resource) {
-            struct zink_resource *res = zink_resource(vb->buffer.resource);
-            res->vbo_bind_mask |= BITFIELD_BIT(i);
-            res->vbo_bind_count++;
-            res->gfx_barrier |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-            res->barrier_access[0] |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-            update_res_bind_count(ctx, res, false, false);
-            ctx_vb->buffer_offset = vb->buffer_offset;
-            /* always barrier before possible rebind */
-            zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-                                         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-            zink_batch_resource_usage_set(&ctx->batch, res, false, true);
-            res->obj->unordered_read = false;
-         } else {
-            enabled_buffers &= ~BITFIELD_BIT(i);
-         }
+   assert(!num_buffers || buffers);
+
+   for (unsigned i = 0; i < num_buffers; ++i) {
+      const struct pipe_vertex_buffer *vb = buffers + i;
+      struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[i];
+      update_existing_vbo(ctx, i);
+      if (!take_ownership)
+         pipe_resource_reference(&ctx_vb->buffer.resource, vb->buffer.resource);
+      else {
+         pipe_resource_reference(&ctx_vb->buffer.resource, NULL);
+         ctx_vb->buffer.resource = vb->buffer.resource;
       }
-   } else {
-      for (unsigned i = 0; i < num_buffers; ++i) {
-         update_existing_vbo(ctx, i);
-         pipe_resource_reference(&ctx->vertex_buffers[i].buffer.resource, NULL);
+      if (vb->buffer.resource) {
+         struct zink_resource *res = zink_resource(vb->buffer.resource);
+         res->vbo_bind_mask |= BITFIELD_BIT(i);
+         res->vbo_bind_count++;
+         res->gfx_barrier |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+         res->barrier_access[0] |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+         update_res_bind_count(ctx, res, false, false);
+         ctx_vb->buffer_offset = vb->buffer_offset;
+         /* always barrier before possible rebind */
+         zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                      VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+         zink_batch_resource_usage_set(&ctx->batch, res, false, true);
+         res->obj->unordered_read = false;
+      } else {
+         enabled_buffers &= ~BITFIELD_BIT(i);
       }
    }
-   for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
+   for (unsigned i = num_buffers; i < last_count; i++) {
       update_existing_vbo(ctx, i);
       pipe_resource_reference(&ctx->vertex_buffers[i].buffer.resource, NULL);
    }

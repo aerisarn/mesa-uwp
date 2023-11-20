@@ -945,7 +945,7 @@ tc_add_all_gfx_bindings_to_buffer_list(struct threaded_context *tc)
 {
    BITSET_WORD *buffer_list = tc->buffer_lists[tc->next_buf_list].buffer_list;
 
-   tc_add_bindings_to_buffer_list(buffer_list, tc->vertex_buffers, tc->max_vertex_buffers);
+   tc_add_bindings_to_buffer_list(buffer_list, tc->vertex_buffers, tc->num_vertex_buffers);
    if (tc->seen_streamout_buffers)
       tc_add_bindings_to_buffer_list(buffer_list, tc->streamout_buffers, PIPE_MAX_SO_BUFFERS);
 
@@ -981,7 +981,7 @@ tc_rebind_buffer(struct threaded_context *tc, uint32_t old_id, uint32_t new_id, 
    unsigned vbo = 0, so = 0;
 
    vbo = tc_rebind_bindings(old_id, new_id, tc->vertex_buffers,
-                            tc->max_vertex_buffers);
+                            tc->num_vertex_buffers);
    if (vbo)
       *rebind_mask |= BITFIELD_BIT(TC_BINDING_VERTEX_BUFFER);
 
@@ -2153,7 +2153,6 @@ tc_set_shader_buffers(struct pipe_context *_pipe,
 struct tc_vertex_buffers {
    struct tc_call_base base;
    uint8_t count;
-   uint8_t unbind_num_trailing_slots;
    struct pipe_vertex_buffer slot[0]; /* more will be allocated if needed */
 };
 
@@ -2164,34 +2163,31 @@ tc_call_set_vertex_buffers(struct pipe_context *pipe, void *call)
    unsigned count = p->count;
 
    if (!count) {
-      pipe->set_vertex_buffers(pipe, 0, p->unbind_num_trailing_slots, false, NULL);
+      pipe->set_vertex_buffers(pipe, 0, false, NULL);
       return call_size(tc_vertex_buffers);
    }
 
    for (unsigned i = 0; i < count; i++)
       tc_assert(!p->slot[i].is_user_buffer);
 
-   pipe->set_vertex_buffers(pipe, count, p->unbind_num_trailing_slots, true, p->slot);
+   pipe->set_vertex_buffers(pipe, count, true, p->slot);
    return p->base.num_slots;
 }
 
 static void
 tc_set_vertex_buffers(struct pipe_context *_pipe,
                       unsigned count,
-                      unsigned unbind_num_trailing_slots,
                       bool take_ownership,
                       const struct pipe_vertex_buffer *buffers)
 {
    struct threaded_context *tc = threaded_context(_pipe);
 
-   if (!count && !unbind_num_trailing_slots)
-      return;
+   assert(!count || buffers);
 
-   if (count && buffers) {
+   if (count) {
       struct tc_vertex_buffers *p =
          tc_add_slot_based_call(tc, TC_CALL_set_vertex_buffers, tc_vertex_buffers, count);
       p->count = count;
-      p->unbind_num_trailing_slots = unbind_num_trailing_slots;
 
       struct tc_buffer_list *next = &tc->buffer_lists[tc->next_buf_list];
 
@@ -2225,18 +2221,16 @@ tc_set_vertex_buffers(struct pipe_context *_pipe,
             }
          }
       }
-
-      tc_unbind_buffers(&tc->vertex_buffers[count],
-                        unbind_num_trailing_slots);
    } else {
       struct tc_vertex_buffers *p =
          tc_add_slot_based_call(tc, TC_CALL_set_vertex_buffers, tc_vertex_buffers, 0);
       p->count = 0;
-      p->unbind_num_trailing_slots = count + unbind_num_trailing_slots;
-
-      tc_unbind_buffers(&tc->vertex_buffers[0],
-                        count + unbind_num_trailing_slots);
    }
+
+   /* We don't need to unbind trailing buffers because we never touch bindings
+    * after num_vertex_buffers.
+    */
+   tc->num_vertex_buffers = count;
 }
 
 struct tc_stream_outputs {
@@ -5285,8 +5279,6 @@ threaded_context_create(struct pipe_context *pipe,
 
    /* If you have different limits in each shader stage, set the maximum. */
    struct pipe_screen *screen = pipe->screen;;
-   tc->max_vertex_buffers =
-      screen->get_param(screen, PIPE_CAP_MAX_VERTEX_BUFFERS);
    tc->max_const_buffers =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
                                PIPE_SHADER_CAP_MAX_CONST_BUFFERS);

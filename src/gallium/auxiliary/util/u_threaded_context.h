@@ -616,7 +616,7 @@ struct threaded_context {
 
    int8_t last_completed;
 
-   unsigned max_vertex_buffers;
+   uint8_t num_vertex_buffers;
    unsigned max_const_buffers;
    unsigned max_shader_buffers;
    unsigned max_images;

@@ -4008,7 +4008,6 @@ iris_delete_state(struct pipe_context *ctx, void *state)
 static void
 iris_set_vertex_buffers(struct pipe_context *ctx,
                         unsigned count,
-                        unsigned unbind_num_trailing_slots,
                         bool take_ownership,
                         const struct pipe_vertex_buffer *buffers)
 {
@@ -4016,8 +4015,8 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct iris_genx_state *genx = ice->state.genx;
 
-   ice->state.bound_vertex_buffers &=
-      ~u_bit_consecutive64(0, count + unbind_num_trailing_slots);
+   unsigned last_count = util_last_bit64(ice->state.bound_vertex_buffers);
+   ice->state.bound_vertex_buffers = 0;
 
    for (unsigned i = 0; i < count; i++) {
       const struct pipe_vertex_buffer *buffer = buffers ? &buffers[i] : NULL;
@@ -4072,9 +4071,9 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       }
    }
 
-   for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
+   for (unsigned i = count; i < last_count; i++) {
       struct iris_vertex_buffer_state *state =
-         &genx->vertex_buffers[count + i];
+         &genx->vertex_buffers[i];
 
       pipe_resource_reference(&state->resource, NULL);
    }
