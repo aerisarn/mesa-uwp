@@ -1626,7 +1626,7 @@ static void ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
                                                uint32_t *desc) /* where to upload descriptors */
 {
    struct si_resource *buf = si_resource(vb->buffer.resource);
-   int64_t offset = (int64_t)((int)vb->buffer_offset) + velems->src_offset[index];
+   int64_t offset = (int64_t)((int)vb->buffer_offset) + velems->elem[index].src_offset;
 
    if (!buf || offset >= buf->b.b.width0) {
       memset(desc, 0, 16);
@@ -1634,19 +1634,19 @@ static void ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
    }
 
    uint64_t va = buf->gpu_address + offset;
-   unsigned stride = velems->src_stride[index];
+   unsigned stride = velems->elem[index].stride;
 
    int64_t num_records = (int64_t)buf->b.b.width0 - offset;
    if (GFX_VERSION != GFX8 && stride) {
       /* Round up by rounding down and adding 1 */
-      num_records = (num_records - velems->format_size[index]) / stride + 1;
+      num_records = (num_records - velems->elem[index].format_size) / stride + 1;
    }
    assert(num_records >= 0 && num_records <= UINT_MAX);
 
    desc[0] = va;
    desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
    desc[2] = num_records;
-   desc[3] = velems->rsrc_word3[index];
+   desc[3] = velems->elem[index].rsrc_word3;
 }
 
 #if GFX_VER == 6 /* declare this function only once because it supports all chips. */

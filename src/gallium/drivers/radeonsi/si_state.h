@@ -126,12 +126,6 @@ struct si_stencil_ref {
 
 struct si_vertex_elements {
    struct si_resource *instance_divisor_factor_buffer;
-   uint32_t rsrc_word3[SI_MAX_ATTRIBS];
-   uint16_t src_offset[SI_MAX_ATTRIBS];
-   uint16_t src_stride[SI_MAX_ATTRIBS];
-   uint8_t fix_fetch[SI_MAX_ATTRIBS];
-   uint8_t format_size[SI_MAX_ATTRIBS];
-   uint8_t vertex_buffer_index[SI_MAX_ATTRIBS];
 
    /* Bitmask of elements that always need a fixup to be applied. */
    uint16_t fix_fetch_always;
@@ -158,6 +152,16 @@ struct si_vertex_elements {
    uint16_t vb_desc_list_alloc_size;
    uint16_t instance_divisor_is_one;     /* bitmask of inputs */
    uint16_t instance_divisor_is_fetched; /* bitmask of inputs */
+
+   uint8_t fix_fetch[SI_MAX_ATTRIBS];
+   uint8_t vertex_buffer_index[SI_MAX_ATTRIBS];
+
+   struct {
+      uint32_t rsrc_word3;
+      uint16_t src_offset;
+      uint16_t stride;
+      uint8_t format_size;
+   } elem[SI_MAX_ATTRIBS];
 };
 
 union si_state {

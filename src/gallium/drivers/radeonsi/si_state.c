@@ -5221,10 +5221,10 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
       first_non_void = util_format_get_first_non_void_channel(elements[i].src_format);
       channel = first_non_void >= 0 ? &desc->channel[first_non_void] : NULL;
 
-      v->format_size[i] = desc->block.bits / 8;
-      v->src_offset[i] = elements[i].src_offset;
+      v->elem[i].format_size = desc->block.bits / 8;
+      v->elem[i].src_offset = elements[i].src_offset;
+      v->elem[i].stride = elements[i].src_stride;
       v->vertex_buffer_index[i] = vbo_index;
-      v->src_stride[i] = elements[i].src_stride;
 
       bool always_fix = false;
       union si_vs_fix_fetch fix_fetch;
@@ -5348,28 +5348,30 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
          v->vb_alignment_check_mask |= 1 << vbo_index;
       }
 
-      v->rsrc_word3[i] = S_008F0C_DST_SEL_X(si_map_swizzle(desc->swizzle[0])) |
-                         S_008F0C_DST_SEL_Y(si_map_swizzle(desc->swizzle[1])) |
-                         S_008F0C_DST_SEL_Z(si_map_swizzle(desc->swizzle[2])) |
-                         S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3]));
+      v->elem[i].rsrc_word3 = S_008F0C_DST_SEL_X(si_map_swizzle(desc->swizzle[0])) |
+                              S_008F0C_DST_SEL_Y(si_map_swizzle(desc->swizzle[1])) |
+                              S_008F0C_DST_SEL_Z(si_map_swizzle(desc->swizzle[2])) |
+                              S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3]));
 
       if (sscreen->info.gfx_level >= GFX10) {
          const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&sscreen->info)[elements[i].src_format];
          ASSERTED unsigned last_vertex_format = sscreen->info.gfx_level >= GFX11 ? 64 : 128;
          assert(fmt->img_format != 0 && fmt->img_format < last_vertex_format);
-         v->rsrc_word3[i] |= S_008F0C_FORMAT(fmt->img_format) |
-                             S_008F0C_RESOURCE_LEVEL(sscreen->info.gfx_level < GFX11) |
-                             /* OOB_SELECT chooses the out-of-bounds check:
-                              *  - 1: index >= NUM_RECORDS (Structured)
-                              *  - 3: offset >= NUM_RECORDS (Raw)
-                              */
-                             S_008F0C_OOB_SELECT(v->src_stride[i] ? V_008F0C_OOB_SELECT_STRUCTURED
-                                                                  : V_008F0C_OOB_SELECT_RAW);
+         v->elem[i].rsrc_word3 |=
+            S_008F0C_FORMAT(fmt->img_format) |
+            S_008F0C_RESOURCE_LEVEL(sscreen->info.gfx_level < GFX11) |
+            /* OOB_SELECT chooses the out-of-bounds check:
+             *  - 1: index >= NUM_RECORDS (Structured)
+             *  - 3: offset >= NUM_RECORDS (Raw)
+             */
+            S_008F0C_OOB_SELECT(v->elem[i].stride ? V_008F0C_OOB_SELECT_STRUCTURED
+                                                  : V_008F0C_OOB_SELECT_RAW);
       } else {
          unsigned data_format, num_format;
          data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);
          num_format = si_translate_buffer_numformat(ctx->screen, desc, first_non_void);
-         v->rsrc_word3[i] |= S_008F0C_NUM_FORMAT(num_format) | S_008F0C_DATA_FORMAT(data_format);
+         v->elem[i].rsrc_word3 |= S_008F0C_NUM_FORMAT(num_format) |
+                                  S_008F0C_DATA_FORMAT(data_format);
       }
    }
 
