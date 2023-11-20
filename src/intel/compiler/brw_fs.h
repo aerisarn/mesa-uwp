@@ -312,7 +312,6 @@ public:
    void emit_repclear_shader();
    void emit_interpolation_setup_gfx4();
    void emit_interpolation_setup_gfx6();
-   void emit_shader_float_controls_execution_mode();
    bool opt_peephole_sel();
    bool opt_saturate_propagation();
    bool opt_cmod_propagation();
@@ -321,9 +320,6 @@ public:
    void set_tcs_invocation_id();
 
    void emit_nir_code();
-   void nir_setup_outputs();
-   void nir_setup_uniforms();
-   void nir_emit_system_values();
    void nir_emit_alu(const brw::fs_builder &bld, nir_alu_instr *instr,
                      bool need_dest);
    void nir_emit_load_const(const brw::fs_builder &bld,

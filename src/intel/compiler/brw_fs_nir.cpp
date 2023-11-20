@@ -47,31 +47,13 @@ static void fs_nir_emit_loop(fs_visitor *s, nir_loop *loop);
 static void fs_nir_emit_block(fs_visitor *s, nir_block *block);
 static void fs_nir_emit_instr(fs_visitor *s, nir_instr *instr);
 
-void
-fs_visitor::emit_nir_code()
+static void
+fs_nir_setup_outputs(fs_visitor *s)
 {
-   emit_shader_float_controls_execution_mode();
-
-   /* emit the arrays used for inputs and outputs - load/store intrinsics will
-    * be converted to reads/writes of these arrays
-    */
-   nir_setup_outputs();
-   nir_setup_uniforms();
-   nir_emit_system_values();
-   last_scratch = ALIGN(nir->scratch_size, 4) * dispatch_width;
-
-   fs_nir_emit_impl(this, nir_shader_get_entrypoint((nir_shader *)nir));
-
-   bld.emit(SHADER_OPCODE_HALT_TARGET);
-}
-
-void
-fs_visitor::nir_setup_outputs()
-{
-   if (stage == MESA_SHADER_TESS_CTRL ||
-       stage == MESA_SHADER_TASK ||
-       stage == MESA_SHADER_MESH ||
-       stage == MESA_SHADER_FRAGMENT)
+   if (s->stage == MESA_SHADER_TESS_CTRL ||
+       s->stage == MESA_SHADER_TASK ||
+       s->stage == MESA_SHADER_MESH ||
+       s->stage == MESA_SHADER_FRAGMENT)
       return;
 
    unsigned vec4s[VARYING_SLOT_TESS_MAX] = { 0, };
@@ -80,7 +62,7 @@ fs_visitor::nir_setup_outputs()
     * allocating them.  With ARB_enhanced_layouts, multiple output variables
     * may occupy the same slot, but have different type sizes.
     */
-   nir_foreach_shader_out_variable(var, nir) {
+   nir_foreach_shader_out_variable(var, s->nir) {
       const int loc = var->data.driver_location;
       const unsigned var_vec4s = nir_variable_count_slots(var, var->type);
       vec4s[loc] = MAX2(vec4s[loc], var_vec4s);
@@ -102,36 +84,38 @@ fs_visitor::nir_setup_outputs()
          reg_size = MAX2(vec4s[i + loc] + i, reg_size);
       }
 
-      fs_reg reg = bld.vgrf(BRW_REGISTER_TYPE_F, 4 * reg_size);
+      fs_reg reg = s->bld.vgrf(BRW_REGISTER_TYPE_F, 4 * reg_size);
       for (unsigned i = 0; i < reg_size; i++) {
-         assert(loc + i < ARRAY_SIZE(outputs));
-         outputs[loc + i] = offset(reg, bld, 4 * i);
+         assert(loc + i < ARRAY_SIZE(s->outputs));
+         s->outputs[loc + i] = offset(reg, s->bld, 4 * i);
       }
 
       loc += reg_size;
    }
 }
 
-void
-fs_visitor::nir_setup_uniforms()
+static void
+fs_nir_setup_uniforms(fs_visitor *s)
 {
+   const intel_device_info *devinfo = s->devinfo;
+
    /* Only the first compile gets to set up uniforms. */
-   if (push_constant_loc)
+   if (s->push_constant_loc)
       return;
 
-   uniforms = nir->num_uniforms / 4;
+   s->uniforms = s->nir->num_uniforms / 4;
 
-   if (gl_shader_stage_is_compute(stage) && devinfo->verx10 < 125) {
+   if (gl_shader_stage_is_compute(s->stage) && devinfo->verx10 < 125) {
       /* Add uniforms for builtins after regular NIR uniforms. */
-      assert(uniforms == prog_data->nr_params);
+      assert(s->uniforms == s->prog_data->nr_params);
 
       /* Subgroup ID must be the last uniform on the list.  This will make
        * easier later to split between cross thread and per thread
        * uniforms.
        */
-      uint32_t *param = brw_stage_prog_data_add_params(prog_data, 1);
+      uint32_t *param = brw_stage_prog_data_add_params(s->prog_data, 1);
       *param = BRW_PARAM_BUILTIN_SUBGROUP_ID;
-      uniforms++;
+      s->uniforms++;
    }
 }
 
@@ -302,12 +286,14 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
    return true;
 }
 
-void
-fs_visitor::nir_emit_system_values()
+static void
+fs_nir_emit_system_values(fs_visitor *s)
 {
-   nir_system_values = ralloc_array(mem_ctx, fs_reg, SYSTEM_VALUE_MAX);
+   const fs_builder &bld = s->bld;
+
+   s->nir_system_values = ralloc_array(s->mem_ctx, fs_reg, SYSTEM_VALUE_MAX);
    for (unsigned i = 0; i < SYSTEM_VALUE_MAX; i++) {
-      nir_system_values[i] = fs_reg();
+      s->nir_system_values[i] = fs_reg();
    }
 
    /* Always emit SUBGROUP_INVOCATION.  Dead code will clean it up if we
@@ -315,23 +301,23 @@ fs_visitor::nir_emit_system_values()
     */
    {
       const fs_builder abld = bld.annotate("gl_SubgroupInvocation", NULL);
-      fs_reg &reg = nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+      fs_reg &reg = s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
       reg = abld.vgrf(BRW_REGISTER_TYPE_UW);
       abld.UNDEF(reg);
 
       const fs_builder allbld8 = abld.group(8, 0).exec_all();
       allbld8.MOV(reg, brw_imm_v(0x76543210));
-      if (dispatch_width > 8)
+      if (s->dispatch_width > 8)
          allbld8.ADD(byte_offset(reg, 16), reg, brw_imm_uw(8u));
-      if (dispatch_width > 16) {
+      if (s->dispatch_width > 16) {
          const fs_builder allbld16 = abld.group(16, 0).exec_all();
          allbld16.ADD(byte_offset(reg, 32), reg, brw_imm_uw(16u));
       }
    }
 
-   nir_function_impl *impl = nir_shader_get_entrypoint((nir_shader *)nir);
+   nir_function_impl *impl = nir_shader_get_entrypoint((nir_shader *)s->nir);
    nir_foreach_block(block, impl)
-      emit_system_values_block(block, this);
+      emit_system_values_block(block, s);
 }
 
 static void
@@ -8324,5 +8310,90 @@ fs_nir_emit_instr(fs_visitor *s, nir_instr *instr)
    default:
       unreachable("unknown instruction type");
    }
+}
+
+static unsigned
+brw_rnd_mode_from_nir(unsigned mode, unsigned *mask)
+{
+   unsigned brw_mode = 0;
+   *mask = 0;
+
+   if ((FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP16 |
+        FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP32 |
+        FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP64) &
+       mode) {
+      brw_mode |= BRW_RND_MODE_RTZ << BRW_CR0_RND_MODE_SHIFT;
+      *mask |= BRW_CR0_RND_MODE_MASK;
+   }
+   if ((FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP16 |
+        FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP32 |
+        FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP64) &
+       mode) {
+      brw_mode |= BRW_RND_MODE_RTNE << BRW_CR0_RND_MODE_SHIFT;
+      *mask |= BRW_CR0_RND_MODE_MASK;
+   }
+   if (mode & FLOAT_CONTROLS_DENORM_PRESERVE_FP16) {
+      brw_mode |= BRW_CR0_FP16_DENORM_PRESERVE;
+      *mask |= BRW_CR0_FP16_DENORM_PRESERVE;
+   }
+   if (mode & FLOAT_CONTROLS_DENORM_PRESERVE_FP32) {
+      brw_mode |= BRW_CR0_FP32_DENORM_PRESERVE;
+      *mask |= BRW_CR0_FP32_DENORM_PRESERVE;
+   }
+   if (mode & FLOAT_CONTROLS_DENORM_PRESERVE_FP64) {
+      brw_mode |= BRW_CR0_FP64_DENORM_PRESERVE;
+      *mask |= BRW_CR0_FP64_DENORM_PRESERVE;
+   }
+   if (mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP16)
+      *mask |= BRW_CR0_FP16_DENORM_PRESERVE;
+   if (mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32)
+      *mask |= BRW_CR0_FP32_DENORM_PRESERVE;
+   if (mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP64)
+      *mask |= BRW_CR0_FP64_DENORM_PRESERVE;
+   if (mode == FLOAT_CONTROLS_DEFAULT_FLOAT_CONTROL_MODE)
+      *mask |= BRW_CR0_FP_MODE_MASK;
+
+   if (*mask != 0)
+      assert((*mask & brw_mode) == brw_mode);
+
+   return brw_mode;
+}
+
+static void
+emit_shader_float_controls_execution_mode(fs_visitor *s)
+{
+   const fs_builder &bld = s->bld;
+
+   unsigned execution_mode = s->nir->info.float_controls_execution_mode;
+   if (execution_mode == FLOAT_CONTROLS_DEFAULT_FLOAT_CONTROL_MODE)
+      return;
+
+   fs_builder ubld = bld.exec_all().group(1, 0);
+   fs_builder abld = ubld.annotate("shader floats control execution mode");
+   unsigned mask, mode = brw_rnd_mode_from_nir(execution_mode, &mask);
+
+   if (mask == 0)
+      return;
+
+   abld.emit(SHADER_OPCODE_FLOAT_CONTROL_MODE, bld.null_reg_ud(),
+             brw_imm_d(mode), brw_imm_d(mask));
+}
+
+void
+fs_visitor::emit_nir_code()
+{
+   emit_shader_float_controls_execution_mode(this);
+
+   /* emit the arrays used for inputs and outputs - load/store intrinsics will
+    * be converted to reads/writes of these arrays
+    */
+   fs_nir_setup_outputs(this);
+   fs_nir_setup_uniforms(this);
+   fs_nir_emit_system_values(this);
+   last_scratch = ALIGN(nir->scratch_size, 4) * dispatch_width;
+
+   fs_nir_emit_impl(this, nir_shader_get_entrypoint((nir_shader *)nir));
+
+   bld.emit(SHADER_OPCODE_HALT_TARGET);
 }
 
