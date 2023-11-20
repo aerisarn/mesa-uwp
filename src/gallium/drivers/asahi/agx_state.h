@@ -481,8 +481,8 @@ struct agx_context {
    enum pipe_render_cond_flag cond_mode;
 
    struct agx_query *occlusion_query;
-   struct agx_query *prims_generated;
-   struct agx_query *tf_prims_generated;
+   struct agx_query *prims_generated[4];
+   struct agx_query *tf_prims_generated[4];
    struct agx_query *time_elapsed;
    bool active_queries;
 

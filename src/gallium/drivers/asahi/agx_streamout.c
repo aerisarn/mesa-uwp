@@ -160,11 +160,11 @@ agx_primitives_update_direct(struct agx_context *ctx,
                              const struct pipe_draw_info *info,
                              const struct pipe_draw_start_count_bias *draw)
 {
-   assert(ctx->active_queries && ctx->prims_generated && "precondition");
+   assert(ctx->active_queries && ctx->prims_generated[0] && "precondition");
    assert(!ctx->stage[PIPE_SHADER_GEOMETRY].shader &&
           "Geometry shaders use their own counting");
 
-   ctx->prims_generated->value +=
+   ctx->prims_generated[0]->value +=
       xfb_prims_for_vertices(info->mode, draw->count);
 }
 

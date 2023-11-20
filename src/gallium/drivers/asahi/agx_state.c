@@ -3423,16 +3423,18 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
       }
    }
 
-   /* TODO: Multiple streams! */
-   if (batch->ctx->prims_generated) {
-      params.prims_generated_counter[0] =
-         agx_get_query_address(batch, batch->ctx->prims_generated);
+   for (unsigned i = 0; i < ARRAY_SIZE(batch->ctx->prims_generated); ++i) {
+      if (batch->ctx->prims_generated[i]) {
+         params.prims_generated_counter[i] =
+            agx_get_query_address(batch, batch->ctx->prims_generated[i]);
+      }
    }
 
-   /* TODO: Multiple streams! */
-   if (batch->ctx->tf_prims_generated) {
-      params.xfb_prims_generated_counter[0] =
-         agx_get_query_address(batch, batch->ctx->tf_prims_generated);
+   for (unsigned i = 0; i < ARRAY_SIZE(batch->ctx->tf_prims_generated); ++i) {
+      if (batch->ctx->tf_prims_generated[i]) {
+         params.xfb_prims_generated_counter[i] =
+            agx_get_query_address(batch, batch->ctx->tf_prims_generated[i]);
+      }
    }
 
    /* Calculate input primitive count for direct draws, and allocate the count
@@ -3562,11 +3564,12 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
    /* Run a GS-less draw consuming those results */
    void *vs_cso = ctx->stage[PIPE_SHADER_VERTEX].shader;
    void *gs_cso = ctx->stage[PIPE_SHADER_GEOMETRY].shader;
-   struct agx_query *prim_query = ctx->prims_generated;
+   struct agx_query *prim_queries[ARRAY_SIZE(ctx->prims_generated)];
+   memcpy(prim_queries, ctx->prims_generated, sizeof(prim_queries));
 
    ctx->base.bind_vs_state(&ctx->base, gs->gs_copy);
    ctx->base.bind_gs_state(&ctx->base, NULL);
-   ctx->prims_generated = NULL;
+   memset(ctx->prims_generated, 0, sizeof(ctx->prims_generated));
 
    bool indexed = gs->gs_output_mode != MESA_PRIM_POINTS;
 
@@ -3593,7 +3596,7 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
    /* Restore state */
    ctx->base.bind_vs_state(&ctx->base, vs_cso);
    ctx->base.bind_gs_state(&ctx->base, gs_cso);
-   ctx->prims_generated = prim_query;
+   memcpy(ctx->prims_generated, prim_queries, sizeof(prim_queries));
 }
 
 static bool
@@ -3690,11 +3693,12 @@ agx_apply_passthrough_gs(struct agx_context *ctx,
    /* Draw without XFB */
    if (split_xfb) {
       unsigned saved_targets = ctx->streamout.num_targets;
-      struct agx_query *saved_prims_generated = ctx->prims_generated;
+      struct agx_query *prim_queries[ARRAY_SIZE(ctx->prims_generated)];
+      memcpy(prim_queries, ctx->prims_generated, sizeof(prim_queries));
 
       ctx->base.bind_rasterizer_state(&ctx->base, saved_rast);
       ctx->streamout.num_targets = 0;
-      ctx->prims_generated = NULL;
+      memset(ctx->prims_generated, 0, sizeof(ctx->prims_generated));
 
       if (!saved_rast->base.rasterizer_discard) {
          ctx->base.draw_vbo(&ctx->base, info, drawid_offset, indirect, draws,
@@ -3702,7 +3706,7 @@ agx_apply_passthrough_gs(struct agx_context *ctx,
       }
 
       ctx->streamout.num_targets = saved_targets;
-      ctx->prims_generated = saved_prims_generated;
+      memcpy(ctx->prims_generated, prim_queries, sizeof(prim_queries));
    }
 }
 
@@ -3733,7 +3737,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       return;
    }
 
-   bool uses_prims_generated = ctx->active_queries && ctx->prims_generated;
+   /* Only the rasterization stream counts */
+   bool uses_prims_generated = ctx->active_queries && ctx->prims_generated[0];
    bool uses_gs = ctx->stage[PIPE_SHADER_GEOMETRY].shader;
 
    if (indirect && (uses_prims_generated)) {

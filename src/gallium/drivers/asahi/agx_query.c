@@ -68,11 +68,11 @@ agx_begin_query(struct pipe_context *pctx, struct pipe_query *pquery)
       break;
 
    case PIPE_QUERY_PRIMITIVES_GENERATED:
-      ctx->prims_generated = query;
+      ctx->prims_generated[query->index] = query;
       break;
 
    case PIPE_QUERY_PRIMITIVES_EMITTED:
-      ctx->tf_prims_generated = query;
+      ctx->tf_prims_generated[query->index] = query;
       break;
 
    case PIPE_QUERY_TIME_ELAPSED:
@@ -119,10 +119,10 @@ agx_end_query(struct pipe_context *pctx, struct pipe_query *pquery)
       ctx->occlusion_query = NULL;
       return true;
    case PIPE_QUERY_PRIMITIVES_GENERATED:
-      ctx->prims_generated = NULL;
+      ctx->prims_generated[query->index] = NULL;
       return true;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
-      ctx->tf_prims_generated = NULL;
+      ctx->tf_prims_generated[query->index] = NULL;
       return true;
    case PIPE_QUERY_TIME_ELAPSED:
       ctx->time_elapsed = NULL;
