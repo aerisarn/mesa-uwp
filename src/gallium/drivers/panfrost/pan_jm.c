@@ -97,8 +97,8 @@ jm_submit_jc(struct panfrost_batch *batch, mali_ptr first_job_desc,
    submit.requirements = reqs;
 
    if (ctx->in_sync_fd >= 0) {
-      ret =
-         drmSyncobjImportSyncFile(dev->fd, ctx->in_sync_obj, ctx->in_sync_fd);
+      ret = drmSyncobjImportSyncFile(panfrost_device_fd(dev), ctx->in_sync_obj,
+                                     ctx->in_sync_fd);
       assert(!ret);
 
       in_syncs[submit.in_sync_count++] = ctx->in_sync_obj;
@@ -158,7 +158,7 @@ jm_submit_jc(struct panfrost_batch *batch, mali_ptr first_job_desc,
    if (ctx->is_noop)
       ret = 0;
    else
-      ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+      ret = drmIoctl(panfrost_device_fd(dev), DRM_IOCTL_PANFROST_SUBMIT, &submit);
    free(bo_handles);
 
    if (ret)
@@ -167,17 +167,17 @@ jm_submit_jc(struct panfrost_batch *batch, mali_ptr first_job_desc,
    /* Trace the job if we're doing that */
    if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
       /* Wait so we can get errors reported back */
-      drmSyncobjWait(dev->fd, &out_sync, 1, INT64_MAX, 0, NULL);
+      drmSyncobjWait(panfrost_device_fd(dev), &out_sync, 1, INT64_MAX, 0, NULL);
 
       if (dev->debug & PAN_DBG_TRACE)
-         pandecode_jc(dev->decode_ctx, submit.jc, dev->gpu_id);
+         pandecode_jc(dev->decode_ctx, submit.jc, panfrost_device_gpu_id(dev));
 
       if (dev->debug & PAN_DBG_DUMP)
          pandecode_dump_mappings(dev->decode_ctx);
 
       /* Jobs won't be complete if blackhole rendering, that's ok */
       if (!ctx->is_noop && dev->debug & PAN_DBG_SYNC)
-         pandecode_abort_on_fault(dev->decode_ctx, submit.jc, dev->gpu_id);
+         pandecode_abort_on_fault(dev->decode_ctx, submit.jc, panfrost_device_gpu_id(dev));
    }
 
    return 0;

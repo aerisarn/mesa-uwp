@@ -51,7 +51,7 @@ panvk_meta_clear_color_attachment_shader(struct panfrost_device *pdev,
    nir_store_var(&b, out, clear_values, 0xff);
 
    struct panfrost_compile_inputs inputs = {
-      .gpu_id = pdev->gpu_id,
+      .gpu_id = panfrost_device_gpu_id(pdev),
       .is_blit = true,
       .no_ubo_to_push = true,
    };

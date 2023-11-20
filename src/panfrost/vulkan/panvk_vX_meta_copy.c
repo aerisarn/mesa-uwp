@@ -416,7 +416,7 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
    nir_store_var(&b, out, texel, 0xff);
 
    struct panfrost_compile_inputs inputs = {
-      .gpu_id = pdev->gpu_id,
+      .gpu_id = panfrost_device_gpu_id(pdev),
       .is_blit = true,
       .no_ubo_to_push = true,
    };
@@ -958,7 +958,7 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
    nir_store_var(&b, out, texel, 0xff);
 
    struct panfrost_compile_inputs inputs = {
-      .gpu_id = pdev->gpu_id,
+      .gpu_id = panfrost_device_gpu_id(pdev),
       .is_blit = true,
       .no_ubo_to_push = true,
    };
@@ -1416,7 +1416,7 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
    nir_pop_if(&b, NULL);
 
    struct panfrost_compile_inputs inputs = {
-      .gpu_id = pdev->gpu_id,
+      .gpu_id = panfrost_device_gpu_id(pdev),
       .is_blit = true,
       .no_ubo_to_push = true,
    };
@@ -1648,7 +1648,7 @@ panvk_meta_copy_buf2buf_shader(struct panfrost_device *pdev,
                     (1 << ncomps) - 1);
 
    struct panfrost_compile_inputs inputs = {
-      .gpu_id = pdev->gpu_id,
+      .gpu_id = panfrost_device_gpu_id(pdev),
       .is_blit = true,
       .no_ubo_to_push = true,
    };
@@ -1774,7 +1774,7 @@ panvk_meta_fill_buf_shader(struct panfrost_device *pdev,
    nir_store_global(&b, ptr, sizeof(uint32_t), val, 1);
 
    struct panfrost_compile_inputs inputs = {
-      .gpu_id = pdev->gpu_id,
+      .gpu_id = panfrost_device_gpu_id(pdev),
       .is_blit = true,
       .no_ubo_to_push = true,
    };

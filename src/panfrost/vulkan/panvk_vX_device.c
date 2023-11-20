@@ -67,17 +67,20 @@ panvk_queue_submit_batch(struct panvk_queue *queue, struct panvk_batch *batch,
          .jc = batch->jc.first_job,
       };
 
-      ret = drmIoctl(pdev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+      ret =
+         drmIoctl(panfrost_device_fd(pdev), DRM_IOCTL_PANFROST_SUBMIT, &submit);
       assert(!ret);
 
       if (debug & (PANVK_DEBUG_TRACE | PANVK_DEBUG_SYNC)) {
-         ret =
-            drmSyncobjWait(pdev->fd, &submit.out_sync, 1, INT64_MAX, 0, NULL);
+         ret = drmSyncobjWait(panfrost_device_fd(pdev), &submit.out_sync, 1,
+                              INT64_MAX, 0, NULL);
          assert(!ret);
       }
 
-      if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(pdev->decode_ctx, batch->jc.first_job, pdev->gpu_id);
+      if (debug & PANVK_DEBUG_TRACE) {
+         pandecode_jc(pdev->decode_ctx, batch->jc.first_job,
+                      panfrost_device_gpu_id(pdev));
+      }
 
       if (debug & PANVK_DEBUG_DUMP)
          pandecode_dump_mappings(pdev->decode_ctx);
@@ -100,16 +103,18 @@ panvk_queue_submit_batch(struct panvk_queue *queue, struct panvk_batch *batch,
          submit.in_sync_count = nr_in_fences;
       }
 
-      ret = drmIoctl(pdev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+      ret =
+         drmIoctl(panfrost_device_fd(pdev), DRM_IOCTL_PANFROST_SUBMIT, &submit);
       assert(!ret);
       if (debug & (PANVK_DEBUG_TRACE | PANVK_DEBUG_SYNC)) {
-         ret =
-            drmSyncobjWait(pdev->fd, &submit.out_sync, 1, INT64_MAX, 0, NULL);
+         ret = drmSyncobjWait(panfrost_device_fd(pdev), &submit.out_sync, 1,
+                              INT64_MAX, 0, NULL);
          assert(!ret);
       }
 
       if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(pdev->decode_ctx, batch->fragment_job, pdev->gpu_id);
+         pandecode_jc(pdev->decode_ctx, batch->fragment_job,
+                      panfrost_device_gpu_id(pdev));
 
       if (debug & PANVK_DEBUG_DUMP)
          pandecode_dump_mappings(pdev->decode_ctx);
@@ -133,12 +138,14 @@ panvk_queue_transfer_sync(struct panvk_queue *queue, uint32_t syncobj)
       .fd = -1,
    };
 
-   ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
+   ret = drmIoctl(panfrost_device_fd(pdev), DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD,
+                  &handle);
    assert(!ret);
    assert(handle.fd >= 0);
 
    handle.handle = syncobj;
-   ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
+   ret = drmIoctl(panfrost_device_fd(pdev), DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE,
+                  &handle);
    assert(!ret);
 
    close(handle.fd);
@@ -184,7 +191,8 @@ panvk_signal_event_syncobjs(struct panvk_queue *queue,
             .handles = (uint64_t)(uintptr_t)&event->syncobj,
             .count_handles = 1};
 
-         int ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_RESET, &objs);
+         int ret =
+            drmIoctl(panfrost_device_fd(pdev), DRM_IOCTL_SYNCOBJ_RESET, &objs);
          assert(!ret);
          break;
       }

@@ -63,15 +63,16 @@ panfrost_bo_alloc(struct panfrost_device *dev, size_t size, uint32_t flags,
    struct panfrost_bo *bo;
    int ret;
 
-   if (dev->kernel_version->version_major > 1 ||
-       dev->kernel_version->version_minor >= 1) {
+   if (panfrost_device_kmod_version_major(dev) > 1 ||
+       panfrost_device_kmod_version_minor(dev) >= 1) {
       if (flags & PAN_BO_GROWABLE)
          create_bo.flags |= PANFROST_BO_HEAP;
       if (!(flags & PAN_BO_EXECUTE))
          create_bo.flags |= PANFROST_BO_NOEXEC;
    }
 
-   ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
+   ret = drmIoctl(panfrost_device_fd(dev), DRM_IOCTL_PANFROST_CREATE_BO,
+                  &create_bo);
    if (ret) {
       fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
       return NULL;
@@ -93,7 +94,7 @@ static void
 panfrost_bo_free(struct panfrost_bo *bo)
 {
    struct drm_gem_close gem_close = {.handle = bo->gem_handle};
-   int fd = bo->dev->fd;
+   int fd = panfrost_device_fd(bo->dev);
    int ret;
 
    /* BO will be freed with the sparse array, but zero to indicate free */
@@ -138,7 +139,8 @@ panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns, bool wait_readers)
    /* The ioctl returns >= 0 value when the BO we are waiting for is ready
     * -1 otherwise.
     */
-   ret = drmIoctl(bo->dev->fd, DRM_IOCTL_PANFROST_WAIT_BO, &req);
+   ret =
+      drmIoctl(panfrost_device_fd(bo->dev), DRM_IOCTL_PANFROST_WAIT_BO, &req);
    if (ret != -1) {
       /* Set gpu_access to 0 so that the next call to bo_wait()
        * doesn't have to call the WAIT_BO ioctl.
@@ -211,7 +213,8 @@ panfrost_bo_cache_fetch(struct panfrost_device *dev, size_t size,
       list_del(&entry->bucket_link);
       list_del(&entry->lru_link);
 
-      ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
+      ret =
+         drmIoctl(panfrost_device_fd(dev), DRM_IOCTL_PANFROST_MADVISE, &madv);
       if (!ret && !madv.retained) {
          panfrost_bo_free(entry);
          continue;
@@ -273,7 +276,7 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
    madv.madv = PANFROST_MADV_DONTNEED;
    madv.retained = 0;
 
-   drmIoctl(dev->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
+   drmIoctl(panfrost_device_fd(dev), DRM_IOCTL_PANFROST_MADVISE, &madv);
 
    /* Add us to the bucket */
    list_addtail(&bo->bucket_link, bucket);
@@ -327,19 +330,20 @@ panfrost_bo_mmap(struct panfrost_bo *bo)
    if (bo->ptr.cpu)
       return;
 
-   ret = drmIoctl(bo->dev->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
+   ret = drmIoctl(panfrost_device_fd(bo->dev), DRM_IOCTL_PANFROST_MMAP_BO,
+                  &mmap_bo);
    if (ret) {
       fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %m\n");
       assert(0);
    }
 
    bo->ptr.cpu = os_mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                         bo->dev->fd, mmap_bo.offset);
+                         panfrost_device_fd(bo->dev), mmap_bo.offset);
    if (bo->ptr.cpu == MAP_FAILED) {
       bo->ptr.cpu = NULL;
       fprintf(stderr,
               "mmap failed: result=%p size=0x%llx fd=%i offset=0x%llx %m\n",
-              bo->ptr.cpu, (long long)bo->size, bo->dev->fd,
+              bo->ptr.cpu, (long long)bo->size, panfrost_device_fd(bo->dev),
               (long long)mmap_bo.offset);
    }
 }
@@ -470,14 +474,15 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
 
    pthread_mutex_lock(&dev->bo_map_lock);
 
-   ret = drmPrimeFDToHandle(dev->fd, fd, &gem_handle);
+   ret = drmPrimeFDToHandle(panfrost_device_fd(dev), fd, &gem_handle);
    assert(!ret);
 
    bo = pan_lookup_bo(dev, gem_handle);
 
    if (!bo->dev) {
       get_bo_offset.handle = gem_handle;
-      ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_GET_BO_OFFSET, &get_bo_offset);
+      ret = drmIoctl(panfrost_device_fd(dev), DRM_IOCTL_PANFROST_GET_BO_OFFSET,
+                     &get_bo_offset);
       assert(!ret);
 
       bo->dev = dev;
@@ -523,7 +528,8 @@ panfrost_bo_export(struct panfrost_bo *bo)
       .flags = DRM_CLOEXEC,
    };
 
-   int ret = drmIoctl(bo->dev->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
+   int ret = drmIoctl(panfrost_device_fd(bo->dev), DRM_IOCTL_PRIME_HANDLE_TO_FD,
+                      &args);
    if (ret == -1)
       return -1;
 

@@ -132,8 +132,8 @@ unsigned
 panfrost_query_l2_slices(const struct panfrost_device *dev)
 {
    /* Query MEM_FEATURES register */
-   uint32_t mem_features =
-      panfrost_query_raw(dev->fd, DRM_PANFROST_PARAM_MEM_FEATURES, true, 0);
+   uint32_t mem_features = panfrost_query_raw(
+      panfrost_device_fd(dev), DRM_PANFROST_PARAM_MEM_FEATURES, true, 0);
 
    /* L2_SLICES is MEM_FEATURES[11:8] minus(1) */
    return ((mem_features >> 8) & 0xF) + 1;
@@ -251,10 +251,10 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
    dev->fd = fd;
    dev->memctx = memctx;
    dev->gpu_id = panfrost_query_gpu_version(fd);
-   dev->arch = pan_arch(dev->gpu_id);
+   dev->arch = pan_arch(panfrost_device_gpu_id(dev));
    dev->kernel_version = drmGetVersion(fd);
    dev->revision = panfrost_query_gpu_revision(fd);
-   dev->model = panfrost_get_model(dev->gpu_id);
+   dev->model = panfrost_get_model(panfrost_device_gpu_id(dev));
 
    if (!dev->kernel_version)
       return;

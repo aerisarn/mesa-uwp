@@ -215,6 +215,36 @@ struct panfrost_device {
    struct panfrost_bo *sample_positions;
 };
 
+static inline int
+panfrost_device_fd(const struct panfrost_device *dev)
+{
+   return dev->fd;
+}
+
+static inline uint32_t
+panfrost_device_gpu_id(const struct panfrost_device *dev)
+{
+   return dev->gpu_id;
+}
+
+static inline uint32_t
+panfrost_device_gpu_rev(const struct panfrost_device *dev)
+{
+   return dev->revision;
+}
+
+static inline int
+panfrost_device_kmod_version_major(const struct panfrost_device *dev)
+{
+   return dev->kernel_version->version_major;
+}
+
+static inline int
+panfrost_device_kmod_version_minor(const struct panfrost_device *dev)
+{
+   return dev->kernel_version->version_minor;
+}
+
 void panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev);
 
 void panfrost_close_device(struct panfrost_device *dev);

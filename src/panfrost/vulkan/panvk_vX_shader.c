@@ -254,7 +254,7 @@ panvk_per_arch(shader_create)(struct panvk_device *dev, gl_shader_stage stage,
               true, true);
 
    struct panfrost_compile_inputs inputs = {
-      .gpu_id = pdev->gpu_id,
+      .gpu_id = panfrost_device_gpu_id(pdev),
       .no_ubo_to_push = true,
       .no_idvs = true, /* TODO */
    };
