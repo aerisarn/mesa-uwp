@@ -310,21 +310,8 @@ public:
    bool opt_combine_constants();
 
    void emit_repclear_shader();
-   void emit_fragcoord_interpolation(fs_reg wpos);
-   void emit_is_helper_invocation(fs_reg result);
-   fs_reg emit_frontfacing_interpolation();
-   fs_reg emit_samplepos_setup();
-   fs_reg emit_sampleid_setup();
-   fs_reg emit_samplemaskin_setup();
-   fs_reg emit_shading_rate_setup();
    void emit_interpolation_setup_gfx4();
    void emit_interpolation_setup_gfx6();
-   fs_reg emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
-                         const fs_reg &texture,
-                         const fs_reg &texture_handle);
-   fs_reg resolve_source_modifiers(const brw::fs_builder &bld, const fs_reg &src);
-   void emit_fsign(const class brw::fs_builder &, const nir_alu_instr *instr,
-                   fs_reg result, fs_reg *op, unsigned fsign_src);
    void emit_shader_float_controls_execution_mode();
    bool opt_peephole_sel();
    bool opt_saturate_propagation();
@@ -345,17 +332,12 @@ public:
    void nir_emit_instr(nir_instr *instr);
    void nir_emit_alu(const brw::fs_builder &bld, nir_alu_instr *instr,
                      bool need_dest);
-   bool try_emit_b2fi_of_inot(const brw::fs_builder &bld, fs_reg result,
-                              nir_alu_instr *instr);
    void nir_emit_load_const(const brw::fs_builder &bld,
                             nir_load_const_instr *instr);
    fs_reg get_nir_image_intrinsic_image(const brw::fs_builder &bld,
                                         nir_intrinsic_instr *instr);
    fs_reg get_nir_buffer_intrinsic_index(const brw::fs_builder &bld,
                                          nir_intrinsic_instr *instr);
-   fs_reg swizzle_nir_scratch_addr(const brw::fs_builder &bld,
-                                   const fs_reg &addr,
-                                   bool in_dwords);
    void nir_emit_surface_atomic(const brw::fs_builder &bld,
                                 nir_intrinsic_instr *instr,
                                 fs_reg surface,
@@ -373,18 +355,7 @@ public:
    fs_reg get_nir_def(const nir_def &def);
    nir_component_mask_t get_nir_write_mask(const nir_def &def);
    fs_reg get_resource_nir_src(const nir_src &src);
-   fs_reg try_rebuild_resource(const brw::fs_builder &bld,
-                               nir_def *resource_def);
    fs_reg get_indirect_offset(nir_intrinsic_instr *instr);
-   fs_reg get_tcs_single_patch_icp_handle(const brw::fs_builder &bld,
-                                          nir_intrinsic_instr *instr);
-   fs_reg get_tcs_multi_patch_icp_handle(const brw::fs_builder &bld,
-                                         nir_intrinsic_instr *instr);
-
-   bool optimize_extract_to_float(nir_alu_instr *instr,
-                                  const fs_reg &result);
-   bool optimize_frontfacing_ternary(nir_alu_instr *instr,
-                                     const fs_reg &result);
 
    void emit_alpha_test();
    fs_inst *emit_single_fb_write(const brw::fs_builder &bld,
@@ -392,36 +363,13 @@ public:
                                  fs_reg src0_alpha, unsigned components);
    void do_emit_fb_writes(int nr_color_regions, bool replicate_alpha);
    void emit_fb_writes();
-   fs_inst *emit_non_coherent_fb_read(const brw::fs_builder &bld,
-                                      const fs_reg &dst, unsigned target);
    void emit_urb_writes(const fs_reg &gs_vertex_count = fs_reg());
-   void set_gs_stream_control_data_bits(const fs_reg &vertex_count,
-                                        unsigned stream_id);
    void emit_gs_control_data_bits(const fs_reg &vertex_count);
-   void emit_gs_end_primitive(const nir_src &vertex_count_nir_src);
-   void emit_gs_vertex(const nir_src &vertex_count_nir_src,
-                       unsigned stream_id);
    void emit_gs_thread_end();
-   void emit_gs_input_load(const fs_reg &dst, const nir_src &vertex_src,
-                           unsigned base_offset, const nir_src &offset_src,
-                           unsigned num_components, unsigned first_component);
    bool mark_last_urb_write_with_eot();
    void emit_tcs_thread_end();
    void emit_urb_fence();
    void emit_cs_terminate();
-   fs_reg emit_work_group_id_setup();
-
-   void emit_task_mesh_store(const brw::fs_builder &bld,
-                             nir_intrinsic_instr *instr,
-                             const fs_reg &urb_handle);
-   void emit_task_mesh_load(const brw::fs_builder &bld,
-                            nir_intrinsic_instr *instr,
-                            const fs_reg &urb_handle);
-
-   void emit_barrier();
-   void emit_tcs_barrier();
-
-   fs_reg get_timestamp(const brw::fs_builder &bld);
 
    fs_reg interp_reg(int location, int channel);
    fs_reg per_primitive_reg(int location, unsigned comp);
@@ -543,13 +491,6 @@ public:
 
    brw::fs_builder bld;
 
-   fs_reg prepare_alu_destination_and_sources(const brw::fs_builder &bld,
-                                              nir_alu_instr *instr,
-                                              fs_reg *op,
-                                              bool need_dest);
-
-   void resolve_inot_sources(const brw::fs_builder &bld, nir_alu_instr *instr,
-                             fs_reg *op);
    void lower_mul_dword_inst(fs_inst *inst, bblock_t *block);
    void lower_mul_qword_inst(fs_inst *inst, bblock_t *block);
    void lower_mulh_inst(fs_inst *inst, bblock_t *block);
