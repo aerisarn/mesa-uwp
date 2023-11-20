@@ -2474,6 +2474,8 @@ anv_get_image_subresource_layout(const struct anv_image *image,
     * so it _should_ correctly use VK_IMAGE_ASPECT_MEMORY_PLANE_* in that case.
     * But it incorrectly uses VK_IMAGE_ASPECT_PLANE_*, so we have a temporary
     * workaround.
+    *
+    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/10176
     */
    if (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
       /* TODO(chadv): Drop this workaround when WSI gets fixed. */
