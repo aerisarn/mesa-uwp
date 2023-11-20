@@ -2228,9 +2228,10 @@ agx_update_fs(struct agx_batch *batch)
     * rast: RS
     * blend: BLEND
     * sample_mask: SAMPLE_MASK
+    * reduced_prim: PRIM
     */
    if (!(ctx->dirty & (AGX_DIRTY_FS_PROG | AGX_DIRTY_RS | AGX_DIRTY_BLEND |
-                       AGX_DIRTY_SAMPLE_MASK)))
+                       AGX_DIRTY_SAMPLE_MASK | AGX_DIRTY_PRIM)))
       return false;
 
    unsigned nr_samples = util_framebuffer_get_num_samples(&batch->key);
@@ -3808,6 +3809,14 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    struct agx_compiled_shader *vs = ctx->vs;
    batch->uniforms.layer_id_written = vs->info.writes_layer_viewport ? ~0 : 0;
 
+   /* Dirty track the reduced prim: lines vs points vs triangles. Happens before
+    * agx_update_fs, which specializes based on primitive.
+    */
+   enum mesa_prim reduced_prim = u_reduced_prim(info->mode);
+   if (reduced_prim != batch->reduced_prim)
+      ctx->dirty |= AGX_DIRTY_PRIM;
+   batch->reduced_prim = reduced_prim;
+
    if (agx_update_fs(batch)) {
       ctx->dirty |= AGX_DIRTY_FS | AGX_DIRTY_FS_PROG;
       ctx->stage[PIPE_SHADER_FRAGMENT].dirty = ~0;
@@ -3876,12 +3885,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       agx_launch_gs(batch, info, draws, indirect);
       return;
    }
-
-   /* Dirty track the reduced prim: lines vs points vs triangles */
-   enum mesa_prim reduced_prim = u_reduced_prim(mode);
-   if (reduced_prim != batch->reduced_prim)
-      ctx->dirty |= AGX_DIRTY_PRIM;
-   batch->reduced_prim = reduced_prim;
 
    /* Update batch masks based on current state */
    if (ctx->dirty & AGX_DIRTY_BLEND) {
