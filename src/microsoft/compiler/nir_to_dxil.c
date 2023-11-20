@@ -6187,7 +6187,7 @@ lower_mem_access_bit_sizes_cb(nir_intrinsic_op intrin,
       /* Unaligned load/store, use the minimum bit size, up to 4 components */
       unsigned ideal_num_components = intrin == nir_intrinsic_load_ssbo ?
          DIV_ROUND_UP(bytes * 8, min_bit_size) :
-         (bytes * 8 / min_bit_size);
+         (32 / min_bit_size);
       return (nir_mem_access_size_align) {
          .align = min_bit_size / 8,
          .bit_size = min_bit_size,
@@ -6204,10 +6204,13 @@ lower_mem_access_bit_sizes_cb(nir_intrinsic_op intrin,
       bit_size *= 2;
 
    /* This is the best we can do */
+   unsigned num_components = intrin == nir_intrinsic_load_ssbo ?
+      DIV_ROUND_UP(bytes * 8, bit_size) :
+      MAX2(1, (bytes * 8 / bit_size));
    return (nir_mem_access_size_align) {
       .align = bit_size / 8,
       .bit_size = bit_size,
-      .num_components = MIN2(4, DIV_ROUND_UP(bytes * 8, bit_size)),
+      .num_components = MIN2(4, num_components),
    };
 }
 
