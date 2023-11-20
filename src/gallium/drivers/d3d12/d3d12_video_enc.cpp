@@ -2284,6 +2284,7 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
 
    struct pipe_enc_feedback_metadata opt_metadata;
    memset(&opt_metadata, 0, sizeof(opt_metadata));
+
    HRESULT hr = pD3D12Enc->m_pD3D12Screen->dev->GetDeviceRemovedReason();
    if (hr != S_OK) {
       opt_metadata.encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_FAILED;
@@ -2379,9 +2380,15 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
 
       *size = static_cast<unsigned int>(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize + encoderMetadata.EncodedBitstreamWrittenBytesCount);
 
+      size_t num_headers = pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size();
       // Prepare codec unit metadata post execution with pre-execution headers generation
-      for (unsigned i = 0; i < pSubregionsMetadata.size();i++)
+      for (unsigned i = 0; i < pSubregionsMetadata.size();i++) {
          pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.push_back(pSubregionsMetadata[i].bSize);
+         // Report PIPE_VIDEO_CODEC_UNIT_LOCATION_FLAG_MAX_SLICE_SIZE_OVERFLOW on each slice entry in codec_unit_metadata
+         if ((pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_slice_size > 0) &&
+             (pSubregionsMetadata[i].bSize > pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_slice_size))
+            opt_metadata.codec_unit_metadata[num_headers + i].flags |= PIPE_VIDEO_CODEC_UNIT_LOCATION_FLAG_MAX_SLICE_SIZE_OVERFLOW;
+      }
    }
 
    debug_printf("[d3d12_video_encoder_get_feedback] Requested metadata for encoded frame at fence %" PRIu64 " is %d (feedback was requested at current fence %" PRIu64 ")\n",
@@ -2389,13 +2396,13 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
          *size,
          pD3D12Enc->m_fenceValue);
 
-
-   if (*size > pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_frame_size)
+   // Report PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_MAX_FRAME_SIZE_OVERFLOW
+   if ((pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_frame_size > 0) &&
+      (*size > pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_frame_size))
       opt_metadata.encode_result |= PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_MAX_FRAME_SIZE_OVERFLOW;
 
    // Report codec unit metadata
    opt_metadata.codec_unit_metadata_count = 0u;
-   memset(opt_metadata.codec_unit_metadata, 0, sizeof(opt_metadata.codec_unit_metadata));
    uint64_t absolute_offset_acum = 0u;
    debug_printf("Written: %" PRIu64" codec units \n", static_cast<uint64_t>(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size()));
    for (uint32_t i = 0; i < pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size(); i++)
@@ -2414,7 +2421,8 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
    opt_metadata.present_metadata = (PIPE_VIDEO_FEEDBACK_METADATA_TYPE_BITSTREAM_SIZE |
                                     PIPE_VIDEO_FEEDBACK_METADATA_TYPE_ENCODE_RESULT |
                                     PIPE_VIDEO_FEEDBACK_METADATA_TYPE_CODEC_UNIT_LOCATION |
-                                    PIPE_VIDEO_FEEDBACK_METADATA_TYPE_MAX_FRAME_SIZE_OVERFLOW);
+                                    PIPE_VIDEO_FEEDBACK_METADATA_TYPE_MAX_FRAME_SIZE_OVERFLOW |
+                                    PIPE_VIDEO_FEEDBACK_METADATA_TYPE_MAX_SLICE_SIZE_OVERFLOW);
 
    if (pMetadata)
       *pMetadata = opt_metadata;
