@@ -324,12 +324,6 @@ public:
    void nir_setup_outputs();
    void nir_setup_uniforms();
    void nir_emit_system_values();
-   void nir_emit_impl(nir_function_impl *impl);
-   void nir_emit_cf_list(exec_list *list);
-   void nir_emit_if(nir_if *if_stmt);
-   void nir_emit_loop(nir_loop *loop);
-   void nir_emit_block(nir_block *block);
-   void nir_emit_instr(nir_instr *instr);
    void nir_emit_alu(const brw::fs_builder &bld, nir_alu_instr *instr,
                      bool need_dest);
    void nir_emit_load_const(const brw::fs_builder &bld,

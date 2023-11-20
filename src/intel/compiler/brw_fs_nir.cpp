@@ -40,6 +40,13 @@ static fs_reg emit_sampleid_setup(fs_visitor *s);
 static fs_reg emit_samplemaskin_setup(fs_visitor *s);
 static fs_reg emit_shading_rate_setup(fs_visitor *s);
 
+static void fs_nir_emit_impl(fs_visitor *s, nir_function_impl *impl);
+static void fs_nir_emit_cf_list(fs_visitor *s, exec_list *list);
+static void fs_nir_emit_if(fs_visitor *s, nir_if *if_stmt);
+static void fs_nir_emit_loop(fs_visitor *s, nir_loop *loop);
+static void fs_nir_emit_block(fs_visitor *s, nir_block *block);
+static void fs_nir_emit_instr(fs_visitor *s, nir_instr *instr);
+
 void
 fs_visitor::emit_nir_code()
 {
@@ -53,7 +60,7 @@ fs_visitor::emit_nir_code()
    nir_emit_system_values();
    last_scratch = ALIGN(nir->scratch_size, 4) * dispatch_width;
 
-   nir_emit_impl(nir_shader_get_entrypoint((nir_shader *)nir));
+   fs_nir_emit_impl(this, nir_shader_get_entrypoint((nir_shader *)nir));
 
    bld.emit(SHADER_OPCODE_HALT_TARGET);
 }
@@ -327,33 +334,33 @@ fs_visitor::nir_emit_system_values()
       emit_system_values_block(block, this);
 }
 
-void
-fs_visitor::nir_emit_impl(nir_function_impl *impl)
+static void
+fs_nir_emit_impl(fs_visitor *s, nir_function_impl *impl)
 {
-   nir_ssa_values = rzalloc_array(mem_ctx, fs_reg, impl->ssa_alloc);
-   nir_resource_insts = rzalloc_array(mem_ctx, fs_inst *, impl->ssa_alloc);
-   nir_ssa_bind_infos = rzalloc_array(mem_ctx, struct brw_fs_bind_info, impl->ssa_alloc);
-   nir_resource_values = rzalloc_array(mem_ctx, fs_reg, impl->ssa_alloc);
+   s->nir_ssa_values = rzalloc_array(s->mem_ctx, fs_reg, impl->ssa_alloc);
+   s->nir_resource_insts = rzalloc_array(s->mem_ctx, fs_inst *, impl->ssa_alloc);
+   s->nir_ssa_bind_infos = rzalloc_array(s->mem_ctx, struct brw_fs_bind_info, impl->ssa_alloc);
+   s->nir_resource_values = rzalloc_array(s->mem_ctx, fs_reg, impl->ssa_alloc);
 
-   nir_emit_cf_list(&impl->body);
+   fs_nir_emit_cf_list(s, &impl->body);
 }
 
-void
-fs_visitor::nir_emit_cf_list(exec_list *list)
+static void
+fs_nir_emit_cf_list(fs_visitor *s, exec_list *list)
 {
    exec_list_validate(list);
    foreach_list_typed(nir_cf_node, node, node, list) {
       switch (node->type) {
       case nir_cf_node_if:
-         nir_emit_if(nir_cf_node_as_if(node));
+         fs_nir_emit_if(s, nir_cf_node_as_if(node));
          break;
 
       case nir_cf_node_loop:
-         nir_emit_loop(nir_cf_node_as_loop(node));
+         fs_nir_emit_loop(s, nir_cf_node_as_loop(node));
          break;
 
       case nir_cf_node_block:
-         nir_emit_block(nir_cf_node_as_block(node));
+         fs_nir_emit_block(s, nir_cf_node_as_block(node));
          break;
 
       default:
@@ -362,9 +369,12 @@ fs_visitor::nir_emit_cf_list(exec_list *list)
    }
 }
 
-void
-fs_visitor::nir_emit_if(nir_if *if_stmt)
+static void
+fs_nir_emit_if(fs_visitor *s, nir_if *if_stmt)
 {
+   const intel_device_info *devinfo = s->devinfo;
+   const fs_builder &bld = s->bld;
+
    bool invert;
    fs_reg cond_reg;
 
@@ -374,11 +384,11 @@ fs_visitor::nir_emit_if(nir_if *if_stmt)
    nir_alu_instr *cond = nir_src_as_alu_instr(if_stmt->condition);
    if (cond != NULL && cond->op == nir_op_inot) {
       invert = true;
-      cond_reg = get_nir_src(cond->src[0].src);
+      cond_reg = s->get_nir_src(cond->src[0].src);
       cond_reg = offset(cond_reg, bld, cond->src[0].swizzle[0]);
    } else {
       invert = false;
-      cond_reg = get_nir_src(if_stmt->condition);
+      cond_reg = s->get_nir_src(if_stmt->condition);
    }
 
    /* first, put the condition into f0 */
@@ -388,40 +398,43 @@ fs_visitor::nir_emit_if(nir_if *if_stmt)
 
    bld.IF(BRW_PREDICATE_NORMAL)->predicate_inverse = invert;
 
-   nir_emit_cf_list(&if_stmt->then_list);
+   fs_nir_emit_cf_list(s, &if_stmt->then_list);
 
    if (!nir_cf_list_is_empty_block(&if_stmt->else_list)) {
       bld.emit(BRW_OPCODE_ELSE);
-      nir_emit_cf_list(&if_stmt->else_list);
+      fs_nir_emit_cf_list(s, &if_stmt->else_list);
    }
 
    bld.emit(BRW_OPCODE_ENDIF);
 
    if (devinfo->ver < 7)
-      limit_dispatch_width(16, "Non-uniform control flow unsupported "
-                           "in SIMD32 mode.");
+      s->limit_dispatch_width(16, "Non-uniform control flow unsupported "
+                              "in SIMD32 mode.");
 }
 
-void
-fs_visitor::nir_emit_loop(nir_loop *loop)
+static void
+fs_nir_emit_loop(fs_visitor *s, nir_loop *loop)
 {
+   const intel_device_info *devinfo = s->devinfo;
+   const fs_builder &bld = s->bld;
+
    assert(!nir_loop_has_continue_construct(loop));
    bld.emit(BRW_OPCODE_DO);
 
-   nir_emit_cf_list(&loop->body);
+   fs_nir_emit_cf_list(s, &loop->body);
 
    bld.emit(BRW_OPCODE_WHILE);
 
    if (devinfo->ver < 7)
-      limit_dispatch_width(16, "Non-uniform control flow unsupported "
-                           "in SIMD32 mode.");
+      s->limit_dispatch_width(16, "Non-uniform control flow unsupported "
+                              "in SIMD32 mode.");
 }
 
-void
-fs_visitor::nir_emit_block(nir_block *block)
+static void
+fs_nir_emit_block(fs_visitor *s, nir_block *block)
 {
    nir_foreach_instr(instr, block) {
-      nir_emit_instr(instr);
+      fs_nir_emit_instr(s, instr);
    }
 }
 
@@ -8235,14 +8248,14 @@ setup_imm_ub(const fs_builder &bld, uint8_t v)
    return tmp;
 }
 
-void
-fs_visitor::nir_emit_instr(nir_instr *instr)
+static void
+fs_nir_emit_instr(fs_visitor *s, nir_instr *instr)
 {
-   const fs_builder abld = bld.annotate(NULL, instr);
+   const fs_builder abld = s->bld.annotate(NULL, instr);
 
    switch (instr->type) {
    case nir_instr_type_alu:
-      nir_emit_alu(abld, nir_instr_as_alu(instr), true);
+      s->nir_emit_alu(abld, nir_instr_as_alu(instr), true);
       break;
 
    case nir_instr_type_deref:
@@ -8250,7 +8263,7 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
       break;
 
    case nir_instr_type_intrinsic:
-      switch (stage) {
+      switch (s->stage) {
       case MESA_SHADER_VERTEX:
          fs_nir_emit_vs_intrinsic(abld, nir_instr_as_intrinsic(instr));
          break;
@@ -8290,11 +8303,11 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
       break;
 
    case nir_instr_type_tex:
-      nir_emit_texture(abld, nir_instr_as_tex(instr));
+      s->nir_emit_texture(abld, nir_instr_as_tex(instr));
       break;
 
    case nir_instr_type_load_const:
-      nir_emit_load_const(abld, nir_instr_as_load_const(instr));
+      s->nir_emit_load_const(abld, nir_instr_as_load_const(instr));
       break;
 
    case nir_instr_type_undef:
@@ -8305,7 +8318,7 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
       break;
 
    case nir_instr_type_jump:
-      nir_emit_jump(abld, nir_instr_as_jump(instr));
+      s->nir_emit_jump(abld, nir_instr_as_jump(instr));
       break;
 
    default:
