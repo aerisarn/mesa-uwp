@@ -1757,8 +1757,8 @@ pub enum MemAddrType {
 impl fmt::Display for MemAddrType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemAddrType::A32 => write!(f, "a32"),
-            MemAddrType::A64 => write!(f, "a64"),
+            MemAddrType::A32 => write!(f, ".a32"),
+            MemAddrType::A64 => write!(f, ".a64"),
         }
     }
 }
@@ -1802,13 +1802,13 @@ impl MemType {
 impl fmt::Display for MemType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemType::U8 => write!(f, "u8"),
-            MemType::I8 => write!(f, "i8"),
-            MemType::U16 => write!(f, "u16"),
-            MemType::I16 => write!(f, "i16"),
-            MemType::B32 => write!(f, "b32"),
-            MemType::B64 => write!(f, "b64"),
-            MemType::B128 => write!(f, "b128"),
+            MemType::U8 => write!(f, ".u8"),
+            MemType::I8 => write!(f, ".i8"),
+            MemType::U16 => write!(f, ".u16"),
+            MemType::I16 => write!(f, ".i16"),
+            MemType::B32 => write!(f, ".b32"),
+            MemType::B64 => write!(f, ".b64"),
+            MemType::B128 => write!(f, ".b128"),
         }
     }
 }
@@ -1824,9 +1824,9 @@ pub enum MemOrder {
 impl fmt::Display for MemOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemOrder::Constant => write!(f, "constant"),
-            MemOrder::Weak => write!(f, "weak"),
-            MemOrder::Strong(scope) => write!(f, "strong.{}", scope),
+            MemOrder::Constant => write!(f, ".constant"),
+            MemOrder::Weak => write!(f, ".weak"),
+            MemOrder::Strong(scope) => write!(f, ".strong{}", scope),
         }
     }
 }
@@ -1842,9 +1842,9 @@ pub enum MemScope {
 impl fmt::Display for MemScope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemScope::CTA => write!(f, "cta"),
-            MemScope::GPU => write!(f, "gpu"),
-            MemScope::System => write!(f, "sys"),
+            MemScope::CTA => write!(f, ".cta"),
+            MemScope::GPU => write!(f, ".gpu"),
+            MemScope::System => write!(f, ".sys"),
         }
     }
 }
@@ -1859,9 +1859,9 @@ pub enum MemSpace {
 impl fmt::Display for MemSpace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemSpace::Global => write!(f, "global"),
-            MemSpace::Local => write!(f, "local"),
-            MemSpace::Shared => write!(f, "shared"),
+            MemSpace::Global => write!(f, ".global"),
+            MemSpace::Local => write!(f, ".local"),
+            MemSpace::Shared => write!(f, ".shared"),
         }
     }
 }
@@ -1899,7 +1899,7 @@ impl fmt::Display for MemAccess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}.{}.{}.{}{}",
+            "{}{}{}{}{}",
             self.addr_type,
             self.mem_type,
             self.space,
@@ -1951,13 +1951,13 @@ impl AtomType {
 impl fmt::Display for AtomType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AtomType::F16x2 => write!(f, "f16x2"),
-            AtomType::U32 => write!(f, "u32"),
-            AtomType::I32 => write!(f, "i32"),
-            AtomType::F32 => write!(f, "f32"),
-            AtomType::U64 => write!(f, "u64"),
-            AtomType::I64 => write!(f, "i64"),
-            AtomType::F64 => write!(f, "f64"),
+            AtomType::F16x2 => write!(f, ".f16x2"),
+            AtomType::U32 => write!(f, ".u32"),
+            AtomType::I32 => write!(f, ".i32"),
+            AtomType::F32 => write!(f, ".f32"),
+            AtomType::U64 => write!(f, ".u64"),
+            AtomType::I64 => write!(f, ".i64"),
+            AtomType::F64 => write!(f, ".f64"),
         }
     }
 }
@@ -1980,16 +1980,16 @@ pub enum AtomOp {
 impl fmt::Display for AtomOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AtomOp::Add => write!(f, "add"),
-            AtomOp::Min => write!(f, "min"),
-            AtomOp::Max => write!(f, "max"),
-            AtomOp::Inc => write!(f, "inc"),
-            AtomOp::Dec => write!(f, "dec"),
-            AtomOp::And => write!(f, "and"),
-            AtomOp::Or => write!(f, "or"),
-            AtomOp::Xor => write!(f, "xor"),
-            AtomOp::Exch => write!(f, "exch"),
-            AtomOp::CmpExch => write!(f, "cmpexch"),
+            AtomOp::Add => write!(f, ".add"),
+            AtomOp::Min => write!(f, ".min"),
+            AtomOp::Max => write!(f, ".max"),
+            AtomOp::Inc => write!(f, ".inc"),
+            AtomOp::Dec => write!(f, ".dec"),
+            AtomOp::And => write!(f, ".and"),
+            AtomOp::Or => write!(f, ".or"),
+            AtomOp::Xor => write!(f, ".xor"),
+            AtomOp::Exch => write!(f, ".exch"),
+            AtomOp::CmpExch => write!(f, ".cmpexch"),
         }
     }
 }
@@ -3107,7 +3107,7 @@ impl DisplayOp for OpSuLd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "suld.p.{}.{}{} [{}] {}",
+            "suld.p.{}{}{} [{}] {}",
             self.image_dim,
             self.mem_order,
             self.mem_eviction_priority,
@@ -3140,7 +3140,7 @@ impl DisplayOp for OpSuSt {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "sust.p.{}.{}{} [{}] {} {}",
+            "sust.p.{}{}{} [{}] {} {}",
             self.image_dim,
             self.mem_order,
             self.mem_eviction_priority,
@@ -3180,7 +3180,7 @@ impl DisplayOp for OpSuAtom {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "suatom.p.{}.{}.{}.{}{} [{}] {} {}",
+            "suatom.p.{}{}{}{}{} [{}] {} {}",
             self.image_dim,
             self.atom_op,
             self.atom_type,
@@ -3208,7 +3208,7 @@ pub struct OpLd {
 
 impl DisplayOp for OpLd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ld.{} [{}", self.access, self.addr)?;
+        write!(f, "ld{} [{}", self.access, self.addr)?;
         if self.offset > 0 {
             write!(f, "+{:#x}", self.offset)?;
         }
@@ -3236,7 +3236,7 @@ impl DisplayOp for OpLdc {
         let SrcRef::CBuf(cb) = self.cb.src_ref else {
             panic!("Not a cbuf");
         };
-        write!(f, "ldc.{} {}[", self.mem_type, cb.buf)?;
+        write!(f, "ldc{} {}[", self.mem_type, cb.buf)?;
         if self.offset.is_zero() {
             write!(f, "+{:#x}", cb.offset)?;
         } else if cb.offset == 0 {
@@ -3264,7 +3264,7 @@ pub struct OpSt {
 
 impl DisplayOp for OpSt {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "st.{} [{}", self.access, self.addr)?;
+        write!(f, "st{} [{}", self.access, self.addr)?;
         if self.offset > 0 {
             write!(f, "+{:#x}", self.offset)?;
         }
@@ -3302,7 +3302,7 @@ impl DisplayOp for OpAtom {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "atom.{}.{}.{}{}",
+            "atom{}{}{}{}",
             self.atom_op,
             self.atom_type,
             self.mem_order,
@@ -3542,7 +3542,7 @@ pub struct OpCCtl {
 
 impl DisplayOp for OpCCtl {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "cctl.{}", self.mem_space)?;
+        write!(f, "cctl{}", self.mem_space)?;
         if !self.op.is_all() {
             write!(f, " [{}", self.addr)?;
             if self.addr_offset > 0 {
