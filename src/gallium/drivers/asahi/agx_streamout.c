@@ -67,7 +67,7 @@ agx_set_stream_output_targets(struct pipe_context *pctx, unsigned num_targets,
        * Gallium contract and it will work out fine. Probably should be
        * redefined to be ~0 instead of -1 but it doesn't really matter.
        */
-      if (offsets[i] != -1) {
+      if (offsets[i] != -1 && targets[i] != NULL) {
          pipe_buffer_write(pctx, agx_so_target(targets[i])->offset, 0, 4,
                            &offsets[i]);
       }
