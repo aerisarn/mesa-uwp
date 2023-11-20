@@ -300,7 +300,7 @@ panfrost_batch_uses_resource(struct panfrost_batch *batch,
                              struct panfrost_resource *rsrc)
 {
    /* A resource is used iff its current BO is used */
-   uint32_t handle = rsrc->image.data.bo->gem_handle;
+   uint32_t handle = panfrost_bo_handle(rsrc->image.data.bo);
    unsigned size = util_dynarray_num_elements(&batch->bos, pan_bo_access);
 
    /* If out of bounds, certainly not used */
@@ -318,7 +318,8 @@ panfrost_batch_add_bo_old(struct panfrost_batch *batch, struct panfrost_bo *bo,
    if (!bo)
       return;
 
-   pan_bo_access *entry = panfrost_batch_get_bo_access(batch, bo->gem_handle);
+   pan_bo_access *entry =
+      panfrost_batch_get_bo_access(batch, panfrost_bo_handle(bo));
    pan_bo_access old_flags = *entry;
 
    if (!old_flags) {
@@ -417,7 +418,7 @@ panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
       size_per_thread, thread_tls_alloc, core_id_range);
 
    if (batch->scratchpad) {
-      assert(batch->scratchpad->size >= size);
+      assert(panfrost_bo_size(batch->scratchpad) >= size);
    } else {
       batch->scratchpad =
          panfrost_batch_create_bo(batch, size, PAN_BO_INVISIBLE,
@@ -434,7 +435,7 @@ panfrost_batch_get_shared_memory(struct panfrost_batch *batch, unsigned size,
                                  unsigned workgroup_count)
 {
    if (batch->shared_memory) {
-      assert(batch->shared_memory->size >= size);
+      assert(panfrost_bo_size(batch->shared_memory) >= size);
    } else {
       batch->shared_memory = panfrost_batch_create_bo(
          batch, size, PAN_BO_INVISIBLE, PIPE_SHADER_VERTEX,

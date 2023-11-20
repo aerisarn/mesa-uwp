@@ -589,7 +589,8 @@ pan_emit_midgard_tiler(const struct panfrost_device *dev,
          cfg.polygon_list_size = panfrost_tiler_full_size(
             fb->width, fb->height, cfg.hierarchy_mask, hierarchy);
          cfg.heap_start = dev->tiler_heap->ptr.gpu;
-         cfg.heap_end = dev->tiler_heap->ptr.gpu + dev->tiler_heap->size;
+         cfg.heap_end =
+            dev->tiler_heap->ptr.gpu + panfrost_bo_size(dev->tiler_heap);
       }
 
       cfg.polygon_list = tiler_ctx->midgard.polygon_list->ptr.gpu;

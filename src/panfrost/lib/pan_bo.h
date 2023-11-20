@@ -117,6 +117,18 @@ struct panfrost_bo {
    const char *label;
 };
 
+static inline size_t
+panfrost_bo_size(struct panfrost_bo *bo)
+{
+   return bo->size;
+}
+
+static inline size_t
+panfrost_bo_handle(struct panfrost_bo *bo)
+{
+   return bo->gem_handle;
+}
+
 bool panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
                       bool wait_readers);
 void panfrost_bo_reference(struct panfrost_bo *bo);

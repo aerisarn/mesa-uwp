@@ -149,10 +149,12 @@ jm_submit_jc(struct panfrost_batch *batch, mali_ptr first_job_desc,
     * by fragment jobs (the polygon list is coming from this heap).
     */
    if (batch->jm.jobs.vtc_jc.first_tiler)
-      bo_handles[submit.bo_handle_count++] = dev->tiler_heap->gem_handle;
+      bo_handles[submit.bo_handle_count++] =
+         panfrost_bo_handle(dev->tiler_heap);
 
    /* Always used on Bifrost, occassionally used on Midgard */
-   bo_handles[submit.bo_handle_count++] = dev->sample_positions->gem_handle;
+   bo_handles[submit.bo_handle_count++] =
+      panfrost_bo_handle(dev->sample_positions);
 
    submit.bo_handles = (u64)(uintptr_t)bo_handles;
    if (ctx->is_noop)
@@ -365,10 +367,10 @@ jm_emit_tiler_desc(struct panfrost_batch *batch)
    struct panfrost_ptr t = pan_pool_alloc_desc(&batch->pool.base, TILER_HEAP);
 
    pan_pack(t.cpu, TILER_HEAP, heap) {
-      heap.size = dev->tiler_heap->size;
+      heap.size = panfrost_bo_size(dev->tiler_heap);
       heap.base = dev->tiler_heap->ptr.gpu;
       heap.bottom = dev->tiler_heap->ptr.gpu;
-      heap.top = dev->tiler_heap->ptr.gpu + dev->tiler_heap->size;
+      heap.top = dev->tiler_heap->ptr.gpu + panfrost_bo_size(dev->tiler_heap);
    }
 
    mali_ptr heap = t.gpu;

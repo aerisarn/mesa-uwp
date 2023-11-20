@@ -253,20 +253,20 @@ panvk_per_arch(queue_submit)(struct vk_queue *vk_queue,
             for (unsigned i = 0; i < batch->fb.info->attachment_count; i++) {
                const struct pan_image *image = pan_image_view_get_plane(
                   &batch->fb.info->attachments[i].iview->pview, 0);
-               bos[bo_idx++] = image->data.bo->gem_handle;
+               bos[bo_idx++] = panfrost_bo_handle(image->data.bo);
             }
          }
 
          if (batch->blit.src)
-            bos[bo_idx++] = batch->blit.src->gem_handle;
+            bos[bo_idx++] = panfrost_bo_handle(batch->blit.src);
 
          if (batch->blit.dst)
-            bos[bo_idx++] = batch->blit.dst->gem_handle;
+            bos[bo_idx++] = panfrost_bo_handle(batch->blit.dst);
 
          if (batch->jc.first_tiler)
-            bos[bo_idx++] = pdev->tiler_heap->gem_handle;
+            bos[bo_idx++] = panfrost_bo_handle(pdev->tiler_heap);
 
-         bos[bo_idx++] = pdev->sample_positions->gem_handle;
+         bos[bo_idx++] = panfrost_bo_handle(pdev->sample_positions);
          assert(bo_idx == nr_bos);
 
          /* Merge identical BO entries. */
