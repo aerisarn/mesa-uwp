@@ -13,6 +13,13 @@ libagx_txs(constant struct agx_texture_packed *ptr, uint16_t lod,
 {
    agx_unpack(NULL, ptr, TEXTURE, d);
 
+   /* From the Vulkan spec:
+    *
+    *    OpImageQuery*...  return 0 if the bound descriptor is a null descriptor
+    */
+   if (d.null)
+      return 0;
+
    /* Buffer textures are lowered to 2D so the original size is irrecoverable.
     * Instead, we stash it in the software-defined section.
     */
