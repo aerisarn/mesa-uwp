@@ -4795,14 +4795,18 @@ impl Instr {
             6
         }
     }
+
+    fn fmt_pred(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.pred.is_true() {
+            write!(f, "@{} ", self.pred)?;
+        }
+        Ok(())
+    }
 }
 
 impl fmt::Display for Instr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if !self.pred.is_true() {
-            write!(f, "@{} ", self.pred)?;
-        }
-        write!(f, "{}{}", self.op, self.deps)
+        write!(f, "{} {}{}", Fmt(|f| self.fmt_pred(f)), self.op, self.deps)
     }
 }
 
@@ -4990,7 +4994,33 @@ impl Function {
 
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for i in 0..self.blocks.len() {
+        let mut pred_width = 0;
+        let mut dsts_width = 0;
+        let mut op_width = 0;
+
+        let mut blocks = Vec::new();
+        for b in &self.blocks {
+            let mut instrs = Vec::new();
+            for i in &b.instrs {
+                let mut pred = String::new();
+                write!(pred, "{}", Fmt(|f| i.fmt_pred(f)))?;
+                let mut dsts = String::new();
+                write!(dsts, "{}", Fmt(|f| i.op.fmt_dsts(f)))?;
+                let mut op = String::new();
+                write!(op, "{}", Fmt(|f| i.op.fmt_op(f)))?;
+                let mut deps = String::new();
+                write!(deps, "{}", i.deps)?;
+
+                pred_width = max(pred_width, pred.len());
+                dsts_width = max(dsts_width, dsts.len());
+                op_width = max(op_width, op.len());
+
+                instrs.push((pred, dsts, op, deps));
+            }
+            blocks.push(instrs);
+        }
+
+        for (i, mut b) in blocks.drain(..).enumerate() {
             write!(f, "block {} {} [", i, self.blocks[i].label)?;
             for (pi, p) in self.blocks.pred_indices(i).iter().enumerate() {
                 if pi > 0 {
@@ -5000,8 +5030,22 @@ impl fmt::Display for Function {
             }
             write!(f, "] -> {{\n")?;
 
-            for i in &self.blocks[i].instrs {
-                write!(f, "    {}\n", i)?;
+            for (pred, dsts, op, deps) in b.drain(..) {
+                let eq_sym = if dsts.is_empty() { " " } else { "=" };
+                if deps.is_empty() {
+                    write!(
+                        f,
+                        "{:<pred_width$} {:<dsts_width$} {} {}\n",
+                        pred, dsts, eq_sym, op,
+                    )?;
+                } else {
+                    write!(
+                        f,
+                        "{:<pred_width$} {:<dsts_width$} {} \
+                         {:<op_width$} //{}\n",
+                        pred, dsts, eq_sym, op, deps,
+                    )?;
+                }
             }
 
             write!(f, "}} -> [")?;
