@@ -3010,9 +3010,7 @@ panfrost_emit_primitive(struct panfrost_batch *batch,
    struct panfrost_context *ctx = batch->ctx;
    UNUSED struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
-   bool lines =
-      (info->mode == MESA_PRIM_LINES || info->mode == MESA_PRIM_LINE_LOOP ||
-       info->mode == MESA_PRIM_LINE_STRIP);
+   bool lines = u_reduced_prim(info->mode) == MESA_PRIM_LINES;
 
    pan_pack(out, PRIMITIVE, cfg) {
       cfg.draw_mode = pan_draw_mode(info->mode);
