@@ -2163,14 +2163,15 @@ translate_ia_mode(enum mesa_prim prim)
 }
 
 /*
- * Triangle strips are rotated based on the provoking vertex, but other
+ * Triangle strips and fans are rotated based on the provoking vertex, but other
  * primitive types are not and do not need to know the provoking vertex.
  */
 static bool
 ia_needs_provoking(enum mesa_prim prim)
 {
    return prim == MESA_PRIM_TRIANGLE_STRIP ||
-          prim == MESA_PRIM_TRIANGLE_STRIP_ADJACENCY;
+          prim == MESA_PRIM_TRIANGLE_STRIP_ADJACENCY ||
+          prim == MESA_PRIM_TRIANGLE_FAN;
 }
 
 static bool

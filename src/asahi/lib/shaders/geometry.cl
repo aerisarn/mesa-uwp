@@ -47,10 +47,18 @@ libagx_vertex_id_for_topology(enum mesa_prim mode, bool flatshade_first,
    }
 
    case MESA_PRIM_TRIANGLE_FAN: {
-      if (vert == 0)
-         return 0;
-      else
-         return prim + vert;
+      /* Vulkan spec section 20.1.7 gives (i + 1, i + 2, 0) for a provoking
+       * first. OpenGL instead wants (0, i + 1, i + 2) with a provoking last.
+       * Piglit clipflat expects us to switch between these orders depending on
+       * provoking vertex, to avoid trivializing the fan.
+       *
+       * Rotate accordingly.
+       */
+      if (flatshade_first)
+         vert = (vert + 1) % 3;
+
+      /* The simpler form assuming last is provoking. */
+      return (vert == 0) ? 0 : prim + vert;
    }
 
    case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY: {
