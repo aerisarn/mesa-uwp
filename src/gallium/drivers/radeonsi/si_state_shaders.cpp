@@ -2221,7 +2221,7 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
    } else {
       uint64_t inputs_read = ps->info.inputs_read;
 
-      if (sctx->shader.ps.key.ps.part.prolog.color_two_side) {
+      if (ps->info.colors_read && sctx->queued.named.rasterizer->two_side) {
          if (inputs_read & BITFIELD64_BIT(SI_UNIQUE_SLOT_COL0))
             inputs_read |= BITFIELD64_BIT(SI_UNIQUE_SLOT_BFC0);
 

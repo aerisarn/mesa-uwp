@@ -772,10 +772,12 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
        old_blend->alpha_to_one != blend->alpha_to_one ||
        old_blend->dual_src_blend != blend->dual_src_blend ||
        old_blend->blend_enable_4bit != blend->blend_enable_4bit ||
-       old_blend->need_src_alpha_4bit != blend->need_src_alpha_4bit) {
+       old_blend->need_src_alpha_4bit != blend->need_src_alpha_4bit)
       si_ps_key_update_framebuffer_blend_rasterizer(sctx);
+
+   if (old_blend->cb_target_enabled_4bit != blend->cb_target_enabled_4bit ||
+       old_blend->alpha_to_coverage != blend->alpha_to_coverage)
       si_update_ps_inputs_read_or_disabled(sctx);
-   }
 
    if (sctx->screen->dpbb_allowed &&
        (old_blend->alpha_to_coverage != blend->alpha_to_coverage ||
@@ -1251,19 +1253,24 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
    if (sctx->screen->dpbb_allowed && (old_rs->bottom_edge_rule != rs->bottom_edge_rule))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
 
-   if (old_rs->rasterizer_discard != rs->rasterizer_discard ||
-       old_rs->sprite_coord_enable != rs->sprite_coord_enable ||
-       old_rs->flatshade != rs->flatshade || old_rs->two_side != rs->two_side ||
-       old_rs->multisample_enable != rs->multisample_enable ||
-       old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
-       old_rs->point_smooth != rs->point_smooth ||
-       old_rs->clamp_fragment_color != rs->clamp_fragment_color ||
-       old_rs->force_persample_interp != rs->force_persample_interp) {
+   if (old_rs->multisample_enable != rs->multisample_enable)
       si_ps_key_update_framebuffer_blend_rasterizer(sctx);
+
+   if (old_rs->two_side != rs->two_side ||
+       old_rs->flatshade != rs->flatshade ||
+       old_rs->clamp_fragment_color != rs->clamp_fragment_color)
       si_ps_key_update_rasterizer(sctx);
+
+   if (old_rs->flatshade != rs->flatshade ||
+       old_rs->force_persample_interp != rs->force_persample_interp ||
+       old_rs->multisample_enable != rs->multisample_enable)
       si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
+
+   if (old_rs->rasterizer_discard != rs->rasterizer_discard ||
+       old_rs->two_side != rs->two_side ||
+       old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
+       old_rs->point_smooth != rs->point_smooth)
       si_update_ps_inputs_read_or_disabled(sctx);
-   }
 
    if (old_rs->point_smooth != rs->point_smooth ||
        old_rs->line_smooth != rs->line_smooth ||
