@@ -2376,6 +2376,24 @@ agx_set_null_texture(struct agx_texture_packed *tex, uint64_t valid_address)
    }
 }
 
+static void
+agx_set_null_pbe(struct agx_pbe_packed *pbe, uint64_t sink)
+{
+   agx_pack(pbe, PBE, cfg) {
+      cfg.width = 1;
+      cfg.height = 1;
+      cfg.levels = 1;
+      cfg.layout = AGX_LAYOUT_NULL;
+      cfg.channels = AGX_CHANNELS_R8;
+      cfg.type = AGX_TEXTURE_TYPE_UNORM /* don't care */;
+      cfg.swizzle_r = AGX_CHANNEL_R;
+      cfg.swizzle_g = AGX_CHANNEL_R;
+      cfg.swizzle_b = AGX_CHANNEL_R;
+      cfg.swizzle_a = AGX_CHANNEL_R;
+      cfg.buffer = sink;
+   }
+}
+
 static uint32_t
 agx_nr_tex_descriptors_without_spilled_rts(const struct agx_compiled_shader *cs)
 {
@@ -2479,20 +2497,21 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
       agx_set_null_texture(&textures[i], T_tex.gpu);
 
    for (unsigned i = 0; i < nr_images; ++i) {
-      if (!(ctx->stage[stage].image_mask & BITFIELD_BIT(i))) {
-         /* TODO: Null images */
-         continue;
-      }
-
-      struct pipe_image_view *view = &ctx->stage[stage].images[i];
-      agx_batch_track_image(batch, view);
-
       /* Image descriptors come in pairs after the textures */
       struct agx_texture_packed *texture =
          ((struct agx_texture_packed *)T_tex.cpu) +
          cs->info.nr_bindful_textures + (2 * i);
 
       struct agx_pbe_packed *pbe = (struct agx_pbe_packed *)(texture + 1);
+
+      if (!(ctx->stage[stage].image_mask & BITFIELD_BIT(i))) {
+         agx_set_null_texture(texture, T_tex.gpu);
+         agx_set_null_pbe(pbe, agx_pool_alloc_aligned(&batch->pool, 1, 64).gpu);
+         continue;
+      }
+
+      struct pipe_image_view *view = &ctx->stage[stage].images[i];
+      agx_batch_track_image(batch, view);
 
       struct pipe_sampler_view sampler_view = util_image_to_sampler_view(view);
       agx_pack_texture(texture, agx_resource(view->resource), view->format,
