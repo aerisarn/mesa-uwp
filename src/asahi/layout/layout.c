@@ -19,8 +19,8 @@ ail_initialize_linear(struct ail_layout *layout)
    assert((layout->linear_stride_B % 16) == 0 && "Strides must be aligned");
 
    /* Layer stride must be cache line aligned to pack linear 2D arrays */
-   layout->layer_stride_B =
-      ALIGN_POT(layout->linear_stride_B * layout->height_px, AIL_CACHELINE);
+   layout->layer_stride_B = align64(
+      (uint64_t)layout->linear_stride_B * layout->height_px, AIL_CACHELINE);
 
    layout->size_B = layout->layer_stride_B * layout->depth_px;
 }
@@ -177,7 +177,7 @@ ail_initialize_twiddled(struct ail_layout *layout)
    else
       layout->layer_stride_B = offset_B;
 
-   layout->size_B = layout->layer_stride_B * layout->depth_px;
+   layout->size_B = (uint64_t)layout->layer_stride_B * layout->depth_px;
 }
 
 static void
@@ -219,7 +219,8 @@ ail_initialize_compression(struct ail_layout *layout)
    }
 
    layout->compression_layer_stride_B = compbuf_B;
-   layout->size_B += layout->compression_layer_stride_B * layout->depth_px;
+   layout->size_B +=
+      (uint64_t)(layout->compression_layer_stride_B * layout->depth_px);
 }
 
 void

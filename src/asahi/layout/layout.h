@@ -85,7 +85,7 @@ struct ail_layout {
     *
     * If depth_px = 1, the value of this field is UNDEFINED.
     */
-   uint32_t layer_stride_B;
+   uint64_t layer_stride_B;
 
    /**
     * Whether the layer stride is aligned to the page size or not. The hardware
@@ -96,12 +96,12 @@ struct ail_layout {
    /**
     * Offsets of mip levels within a layer.
     */
-   uint32_t level_offsets_B[AIL_MAX_MIP_LEVELS];
+   uint64_t level_offsets_B[AIL_MAX_MIP_LEVELS];
 
    /**
     * For the compressed buffer, offsets of mip levels within a layer.
     */
-   uint32_t level_offsets_compressed_B[AIL_MAX_MIP_LEVELS];
+   uint64_t level_offsets_compressed_B[AIL_MAX_MIP_LEVELS];
 
    /**
     * If tiling is TWIDDLED, the tile size used for each mip level within a
@@ -114,10 +114,10 @@ struct ail_layout {
    uint32_t metadata_offset_B;
 
    /* Stride between subsequent layers in the compression metadata buffer */
-   uint32_t compression_layer_stride_B;
+   uint64_t compression_layer_stride_B;
 
    /* Size of entire texture */
-   uint32_t size_B;
+   uint64_t size_B;
 
    /* Must the layout support writeable images? If false, the layout MUST NOT be
     * used as a writeable image (either PBE or image atomics).
