@@ -41,6 +41,8 @@
 #include "pan_pool.h"
 #include "pan_util.h"
 
+#include "kmod/pan_kmod.h"
+
 #include <genxml/gen_macros.h>
 
 #if defined(__cplusplus)
@@ -128,15 +130,20 @@ struct panfrost_device {
    /* For ralloc */
    void *memctx;
 
-   int fd;
+   /* Kmod objects. */
+   struct {
+      /* The pan_kmod_dev object backing this device. */
+      struct pan_kmod_dev *dev;
+
+      /* Cached pan_kmod_dev_props properties queried at device create time. */
+      struct pan_kmod_dev_props props;
+   } kmod;
 
    /* For pandecode */
    struct pandecode_context *decode_ctx;
 
    /* Properties of the GPU in use */
    unsigned arch;
-   unsigned gpu_id;
-   unsigned revision;
 
    /* Number of shader cores */
    unsigned core_count;
@@ -163,8 +170,6 @@ struct panfrost_device {
 
    /* debug flags, see pan_util.h how to interpret */
    unsigned debug;
-
-   drmVersionPtr kernel_version;
 
    struct renderonly *ro;
 
@@ -218,31 +223,31 @@ struct panfrost_device {
 static inline int
 panfrost_device_fd(const struct panfrost_device *dev)
 {
-   return dev->fd;
+   return dev->kmod.dev->fd;
 }
 
 static inline uint32_t
 panfrost_device_gpu_id(const struct panfrost_device *dev)
 {
-   return dev->gpu_id;
+   return dev->kmod.props.gpu_prod_id;
 }
 
 static inline uint32_t
 panfrost_device_gpu_rev(const struct panfrost_device *dev)
 {
-   return dev->revision;
+   return dev->kmod.props.gpu_revision;
 }
 
 static inline int
 panfrost_device_kmod_version_major(const struct panfrost_device *dev)
 {
-   return dev->kernel_version->version_major;
+   return dev->kmod.dev->driver.version.major;
 }
 
 static inline int
 panfrost_device_kmod_version_minor(const struct panfrost_device *dev)
 {
-   return dev->kernel_version->version_minor;
+   return dev->kmod.dev->driver.version.minor;
 }
 
 void panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev);
