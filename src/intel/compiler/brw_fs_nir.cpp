@@ -21,10 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "compiler/glsl/ir.h"
 #include "brw_fs.h"
 #include "brw_nir.h"
-#include "brw_rt.h"
 #include "brw_eu.h"
 #include "nir.h"
 #include "nir_intrinsics.h"
