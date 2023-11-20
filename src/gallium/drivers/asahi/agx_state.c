@@ -648,7 +648,7 @@ target_is_cube(enum pipe_texture_target target)
 static void
 agx_pack_texture(void *out, struct agx_resource *rsrc,
                  enum pipe_format format /* override */,
-                 const struct pipe_sampler_view *state, bool include_bo)
+                 const struct pipe_sampler_view *state)
 {
    const struct util_format_description *desc = util_format_description(format);
 
@@ -722,17 +722,15 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
          cfg.extended = true;
       }
 
-      if (include_bo) {
-         cfg.address = agx_map_texture_gpu(rsrc, first_layer);
+      cfg.address = agx_map_texture_gpu(rsrc, first_layer);
 
-         if (state->target == PIPE_BUFFER)
-            cfg.address += state->u.buf.offset;
+      if (state->target == PIPE_BUFFER)
+         cfg.address += state->u.buf.offset;
 
-         if (ail_is_compressed(&rsrc->layout)) {
-            cfg.acceleration_buffer =
-               agx_map_texture_gpu(rsrc, 0) + rsrc->layout.metadata_offset_B +
-               (first_layer * rsrc->layout.compression_layer_stride_B);
-         }
+      if (ail_is_compressed(&rsrc->layout)) {
+         cfg.acceleration_buffer =
+            agx_map_texture_gpu(rsrc, 0) + rsrc->layout.metadata_offset_B +
+            (first_layer * rsrc->layout.compression_layer_stride_B);
       }
 
       if (state->target == PIPE_TEXTURE_3D) {
@@ -808,7 +806,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
 
    /* Save off the resource that we actually use, with the stencil fixed up */
    so->rsrc = rsrc;
-   agx_pack_texture(&so->desc, rsrc, format, state, false);
+   so->format = format;
 
    so->base = *state;
    so->base.texture = NULL;
@@ -2431,7 +2429,7 @@ agx_upload_spilled_rt_descriptors(struct agx_texture_packed *out,
       struct pipe_image_view view = image_view_for_surface(surf);
       struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
 
-      agx_pack_texture(texture, rsrc, surf->format, &sampler_view, true);
+      agx_pack_texture(texture, rsrc, surf->format, &sampler_view);
       agx_batch_upload_pbe(batch, pbe, &view, false, true);
    }
 }
@@ -2463,29 +2461,12 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
       struct agx_resource *rsrc = tex->rsrc;
       agx_batch_reads(batch, tex->rsrc);
 
-      unsigned first_layer =
-         (tex->base.target == PIPE_BUFFER) ? 0 : tex->base.u.tex.first_layer;
+      /* Re-emit state because the layout might have changed from under us.
+       * TODO: optimize this somehow?
+       */
+      agx_pack_texture(&tex->desc, rsrc, tex->format, &tex->base);
 
-      /* Without the address */
-      struct agx_texture_packed texture = tex->desc;
-
-      /* Just the address */
-      struct agx_texture_packed texture2;
-      agx_pack(&texture2, TEXTURE, cfg) {
-         cfg.address = agx_map_texture_gpu(rsrc, first_layer);
-
-         if (rsrc->base.target == PIPE_BUFFER)
-            cfg.address += tex->base.u.buf.offset;
-
-         if (ail_is_compressed(&rsrc->layout)) {
-            cfg.acceleration_buffer =
-               agx_map_texture_gpu(rsrc, 0) + rsrc->layout.metadata_offset_B +
-               (first_layer * rsrc->layout.compression_layer_stride_B);
-         }
-      }
-
-      agx_merge(texture, texture2, TEXTURE);
-      textures[i] = texture;
+      textures[i] = tex->desc;
    }
 
    for (unsigned i = nr_active_textures; i < nr_textures; ++i)
@@ -2517,7 +2498,7 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
          sampler_view.target = PIPE_TEXTURE_2D_ARRAY;
 
       agx_pack_texture(texture, agx_resource(view->resource), view->format,
-                       &sampler_view, true);
+                       &sampler_view);
       agx_batch_upload_pbe(batch, pbe, view, false, false);
    }
 
@@ -2775,7 +2756,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          struct agx_resource *rsrc = agx_resource(surf->texture);
          struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
 
-         agx_pack_texture(texture.cpu, rsrc, surf->format, &sampler_view, true);
+         agx_pack_texture(texture.cpu, rsrc, surf->format, &sampler_view);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
