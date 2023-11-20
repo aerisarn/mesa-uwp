@@ -115,8 +115,8 @@ GL 4.0, GLSL 4.00 --- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, 
 
   GL_ARB_draw_buffers_blend                             DONE (freedreno, nv50, softpipe, panfrost, v3d, asahi, crocus/gen6+)
   GL_ARB_draw_indirect                                  DONE (freedreno, softpipe, v3d, asahi)
-  GL_ARB_gpu_shader5                                    DONE (freedreno/a6xx)
-  - 'precise' qualifier                                 DONE (softpipe)
+  GL_ARB_gpu_shader5                                    DONE (freedreno/a6xx, asahi)
+  - 'precise' qualifier                                 DONE (softpipe, asahi)
   - Dynamically uniform sampler array indices           DONE (softpipe, asahi)
   - Dynamically uniform UBO array indices               DONE (freedreno, softpipe, asahi)
   - Implicit signed -> unsigned conversions             DONE (softpipe, asahi)
@@ -127,7 +127,7 @@ GL 4.0, GLSL 4.00 --- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, 
   - Geometry shader multiple streams                    DONE (softpipe, asahi)
   - Enhanced per-sample shading                         DONE (asahi)
   - Interpolation functions                             DONE (softpipe, asahi)
-  - New overload resolution rules                       DONE (softpipe)
+  - New overload resolution rules                       DONE (softpipe, asahi)
   GL_ARB_gpu_shader_fp64                                DONE (freedreno/a6xx, softpipe)
   GL_ARB_sample_shading                                 DONE (freedreno/a6xx, nv50, panfrost, crocus/gen6+, asahi)
   GL_ARB_shader_subroutine                              DONE (freedreno, nv50, softpipe, crocus/gen6+)
@@ -145,7 +145,7 @@ GL 4.1, GLSL 4.10 --- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, 
   GL_ARB_ES2_compatibility                              DONE (freedreno, nv50, softpipe, v3d, vc4, panfrost, lima, asahi, crocus)
   GL_ARB_get_program_binary                             DONE (freedreno, v3d, asahi, 0 or 1 binary formats)
   GL_ARB_separate_shader_objects                        DONE (all drivers)
-  GL_ARB_shader_precision                               DONE (freedreno/a6xx, all drivers that support GLSL 4.10)
+  GL_ARB_shader_precision                               DONE (freedreno/a6xx, all drivers that support GLSL 4.10, asahi)
   GL_ARB_vertex_attrib_64bit                            DONE (freedreno/a6xx, softpipe)
   GL_ARB_viewport_array                                 DONE (freedreno/a6xx, nv50, softpipe, crocus/gen6+)
 
@@ -197,7 +197,7 @@ GL 4.4, GLSL 4.40 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, v
   GL_MAX_VERTEX_ATTRIB_STRIDE                           DONE (all drivers)
   GL_ARB_buffer_storage                                 DONE (freedreno, nv50, v3d, vc4, lima, panfrost, asahi, softpipe, etnaviv, crocus)
   GL_ARB_clear_texture                                  DONE (all drivers)
-  GL_ARB_enhanced_layouts                               DONE (freedreno/a3xx+, nv50, softpipe, crocus)
+  GL_ARB_enhanced_layouts                               DONE (freedreno/a3xx+, nv50, softpipe, crocus, asahi)
   - compile-time constant expressions                   DONE
   - explicit byte offsets for blocks                    DONE
   - forced alignment within blocks                      DONE

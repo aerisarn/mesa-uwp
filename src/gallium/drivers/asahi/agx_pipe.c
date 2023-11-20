@@ -1662,7 +1662,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 330;
+      return 410;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
       return 320;
 
