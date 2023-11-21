@@ -8566,6 +8566,8 @@ genX(CmdWriteBufferMarker2AMD)(VkCommandBuffer commandBuffer,
 #endif
       ANV_PIPE_END_OF_PIPE_SYNC_BIT;
 
+   trace_intel_begin_write_buffer_marker(&cmd_buffer->trace);
+
    anv_add_pending_pipe_bits(cmd_buffer, bits, "write buffer marker");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
@@ -8581,4 +8583,6 @@ genX(CmdWriteBufferMarker2AMD)(VkCommandBuffer commandBuffer,
     */
    mi_store(&b, mi_mem32(anv_address_add(buffer->address, dstOffset)),
                 mi_imm(marker));
+
+   trace_intel_end_write_buffer_marker(&cmd_buffer->trace);
 }
