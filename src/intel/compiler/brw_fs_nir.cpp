@@ -22,6 +22,7 @@
  */
 
 #include "brw_fs.h"
+#include "brw_fs_builder.h"
 #include "brw_nir.h"
 #include "brw_eu.h"
 #include "nir.h"

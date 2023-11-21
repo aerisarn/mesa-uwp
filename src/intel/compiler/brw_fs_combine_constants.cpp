@@ -35,6 +35,7 @@
  */
 
 #include "brw_fs.h"
+#include "brw_fs_builder.h"
 #include "brw_cfg.h"
 #include "util/half_float.h"
 

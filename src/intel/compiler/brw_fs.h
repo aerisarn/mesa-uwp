@@ -30,7 +30,6 @@
 
 #include "brw_shader.h"
 #include "brw_ir_fs.h"
-#include "brw_fs_builder.h"
 #include "brw_fs_live_variables.h"
 #include "brw_ir_performance.h"
 #include "compiler/nir/nir.h"
