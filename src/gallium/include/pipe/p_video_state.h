@@ -40,6 +40,7 @@
 extern "C" {
 #endif
 
+#define PIPE_H264_MAX_REFERENCES      16
 #define PIPE_H265_MAX_REFERENCES      15
 #define PIPE_H265_MAX_SLICES          128
 #define PIPE_AV1_MAX_REFERENCES       8
