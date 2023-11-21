@@ -3448,7 +3448,7 @@ pub struct OpIpa {
 
 impl DisplayOp for OpIpa {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "IPA")?;
+        write!(f, "ipa")?;
         match self.freq {
             InterpFreq::Pass => (),
             InterpFreq::Constant => write!(f, ".constant")?,
@@ -4412,7 +4412,7 @@ impl From<SSAValue> for PredRef {
 impl fmt::Display for PredRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PredRef::None => write!(f, "PT"),
+            PredRef::None => write!(f, "pT"),
             PredRef::SSA(ssa) => ssa.fmt_plain(f),
             PredRef::Reg(reg) => reg.fmt(f),
         }
