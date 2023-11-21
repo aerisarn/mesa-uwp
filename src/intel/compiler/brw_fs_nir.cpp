@@ -47,6 +47,8 @@ struct nir_to_brw_state {
    const nir_shader *nir;
    const intel_device_info *devinfo;
 
+   fs_builder bld;
+
    fs_reg *ssa_values;
    fs_inst **resource_insts;
    struct brw_fs_bind_info *ssa_bind_infos;
@@ -59,10 +61,10 @@ static fs_reg get_nir_def(nir_to_brw_state *ntb, const nir_def &def);
 static nir_component_mask_t get_nir_write_mask(const nir_def &def);
 
 static void fs_nir_emit_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld, nir_intrinsic_instr *instr);
-static fs_reg emit_samplepos_setup(fs_visitor *s);
-static fs_reg emit_sampleid_setup(fs_visitor *s);
+static fs_reg emit_samplepos_setup(nir_to_brw_state *ntb);
+static fs_reg emit_sampleid_setup(nir_to_brw_state *ntb);
 static fs_reg emit_samplemaskin_setup(nir_to_brw_state *ntb);
-static fs_reg emit_shading_rate_setup(fs_visitor *s);
+static fs_reg emit_shading_rate_setup(nir_to_brw_state *ntb);
 
 static void fs_nir_emit_impl(nir_to_brw_state *ntb, nir_function_impl *impl);
 static void fs_nir_emit_cf_list(nir_to_brw_state *ntb, exec_list *list);
@@ -81,8 +83,10 @@ static void fs_nir_emit_global_atomic(nir_to_brw_state *ntb,
                                       nir_intrinsic_instr *instr);
 
 static void
-fs_nir_setup_outputs(fs_visitor *s)
+fs_nir_setup_outputs(nir_to_brw_state *ntb)
 {
+   fs_visitor *s = ntb->s;
+
    if (s->stage == MESA_SHADER_TESS_CTRL ||
        s->stage == MESA_SHADER_TASK ||
        s->stage == MESA_SHADER_MESH ||
@@ -117,10 +121,10 @@ fs_nir_setup_outputs(fs_visitor *s)
          reg_size = MAX2(vec4s[i + loc] + i, reg_size);
       }
 
-      fs_reg reg = s->bld.vgrf(BRW_REGISTER_TYPE_F, 4 * reg_size);
+      fs_reg reg = ntb->bld.vgrf(BRW_REGISTER_TYPE_F, 4 * reg_size);
       for (unsigned i = 0; i < reg_size; i++) {
          assert(loc + i < ARRAY_SIZE(s->outputs));
-         s->outputs[loc + i] = offset(reg, s->bld, 4 * i);
+         s->outputs[loc + i] = offset(reg, ntb->bld, 4 * i);
       }
 
       loc += reg_size;
@@ -153,9 +157,10 @@ fs_nir_setup_uniforms(fs_visitor *s)
 }
 
 static fs_reg
-emit_work_group_id_setup(fs_visitor *s)
+emit_work_group_id_setup(nir_to_brw_state *ntb)
 {
-   const fs_builder &bld = s->bld;
+   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb->bld;
 
    assert(gl_shader_stage_is_compute(s->stage));
 
@@ -210,7 +215,7 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
          assert(v->stage == MESA_SHADER_GEOMETRY);
          reg = &ntb->system_values[SYSTEM_VALUE_INVOCATION_ID];
          if (reg->file == BAD_FILE) {
-            const fs_builder abld = v->bld.annotate("gl_InvocationID", NULL);
+            const fs_builder abld = ntb->bld.annotate("gl_InvocationID", NULL);
             fs_reg g1(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
             fs_reg iid = abld.vgrf(BRW_REGISTER_TYPE_UD, 1);
             abld.SHR(iid, g1, brw_imm_ud(27u));
@@ -223,14 +228,14 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
          assert(v->stage == MESA_SHADER_FRAGMENT);
          reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_POS];
          if (reg->file == BAD_FILE)
-            *reg = emit_samplepos_setup(v);
+            *reg = emit_samplepos_setup(ntb);
          break;
 
       case nir_intrinsic_load_sample_id:
          assert(v->stage == MESA_SHADER_FRAGMENT);
          reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_ID];
          if (reg->file == BAD_FILE)
-            *reg = emit_sampleid_setup(v);
+            *reg = emit_sampleid_setup(ntb);
          break;
 
       case nir_intrinsic_load_sample_mask_in:
@@ -248,7 +253,7 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
          assert(gl_shader_stage_is_compute(v->stage));
          reg = &ntb->system_values[SYSTEM_VALUE_WORKGROUP_ID];
          if (reg->file == BAD_FILE)
-            *reg = emit_work_group_id_setup(v);
+            *reg = emit_work_group_id_setup(ntb);
          break;
 
       case nir_intrinsic_load_helper_invocation:
@@ -256,7 +261,7 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
          reg = &ntb->system_values[SYSTEM_VALUE_HELPER_INVOCATION];
          if (reg->file == BAD_FILE) {
             const fs_builder abld =
-               v->bld.annotate("gl_HelperInvocation", NULL);
+               ntb->bld.annotate("gl_HelperInvocation", NULL);
 
             /* On Gfx6+ (gl_HelperInvocation is only exposed on Gfx7+) the
              * pixel mask is in g1.7 of the thread payload.
@@ -309,7 +314,7 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
       case nir_intrinsic_load_frag_shading_rate:
          reg = &ntb->system_values[SYSTEM_VALUE_FRAG_SHADING_RATE];
          if (reg->file == BAD_FILE)
-            *reg = emit_shading_rate_setup(v);
+            *reg = emit_shading_rate_setup(ntb);
          break;
 
       default:
@@ -323,7 +328,7 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
 static void
 fs_nir_emit_system_values(nir_to_brw_state *ntb)
 {
-   const fs_builder &bld = ntb->s->bld;
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    ntb->system_values = ralloc_array(ntb, fs_reg, SYSTEM_VALUE_MAX);
@@ -394,7 +399,7 @@ static void
 fs_nir_emit_if(nir_to_brw_state *ntb, nir_if *if_stmt)
 {
    const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->s->bld;
+   const fs_builder &bld = ntb->bld;
 
    bool invert;
    fs_reg cond_reg;
@@ -437,7 +442,7 @@ static void
 fs_nir_emit_loop(nir_to_brw_state *ntb, nir_loop *loop)
 {
    const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->s->bld;
+   const fs_builder &bld = ntb->bld;
 
    assert(!nir_loop_has_continue_construct(loop));
    bld.emit(BRW_OPCODE_DO);
@@ -468,7 +473,7 @@ optimize_extract_to_float(nir_to_brw_state *ntb, nir_alu_instr *instr,
                           const fs_reg &result)
 {
    const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->s->bld;
+   const fs_builder &bld = ntb->bld;
 
    if (!instr->src[0].src.ssa->parent_instr)
       return false;
@@ -501,11 +506,12 @@ optimize_extract_to_float(nir_to_brw_state *ntb, nir_alu_instr *instr,
 }
 
 static bool
-optimize_frontfacing_ternary(fs_visitor *s,
+optimize_frontfacing_ternary(nir_to_brw_state *ntb,
                              nir_alu_instr *instr,
                              const fs_reg &result)
 {
-   const intel_device_info *devinfo = s->devinfo;
+   const intel_device_info *devinfo = ntb->devinfo;
+   fs_visitor *s = ntb->s;
 
    nir_intrinsic_instr *src0 = nir_src_as_intrinsic(instr->src[0].src);
    if (src0 == NULL || src0->intrinsic != nir_intrinsic_load_front_face)
@@ -539,8 +545,8 @@ optimize_frontfacing_ternary(fs_visitor *s,
       if (value1 == -1.0f)
          g1.negate = true;
 
-      s->bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
-             g1, brw_imm_uw(0x3f80));
+      ntb->bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
+                  g1, brw_imm_uw(0x3f80));
    } else if (devinfo->ver >= 6) {
       /* Bit 15 of g0.0 is 0 if the polygon is front facing. */
       fs_reg g0 = fs_reg(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_W));
@@ -560,8 +566,8 @@ optimize_frontfacing_ternary(fs_visitor *s,
          g0.negate = true;
       }
 
-      s->bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
-             g0, brw_imm_uw(0x3f80));
+      ntb->bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
+                  g0, brw_imm_uw(0x3f80));
    } else {
       /* Bit 31 of g1.6 is 0 if the polygon is front facing. */
       fs_reg g1_6 = fs_reg(retype(brw_vec1_grf(1, 6), BRW_REGISTER_TYPE_D));
@@ -581,9 +587,9 @@ optimize_frontfacing_ternary(fs_visitor *s,
          g1_6.negate = true;
       }
 
-      s->bld.OR(tmp, g1_6, brw_imm_d(0x3f800000));
+      ntb->bld.OR(tmp, g1_6, brw_imm_d(0x3f800000));
    }
-   s->bld.AND(retype(result, BRW_REGISTER_TYPE_D), tmp, brw_imm_d(0xbf800000));
+   ntb->bld.AND(retype(result, BRW_REGISTER_TYPE_D), tmp, brw_imm_d(0xbf800000));
 
    return true;
 }
@@ -1852,7 +1858,7 @@ fs_nir_emit_alu(nir_to_brw_state *ntb, const fs_builder &bld, nir_alu_instr *ins
       break;
 
    case nir_op_b32csel:
-      if (optimize_frontfacing_ternary(s, instr, result))
+      if (optimize_frontfacing_ternary(ntb, instr, result))
          return;
 
       bld.CMP(bld.null_reg_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ);
@@ -2004,7 +2010,7 @@ get_nir_src(nir_to_brw_state *ntb, const nir_src &src)
          const brw_reg_type reg_type =
             brw_reg_type_from_bit_size(src.ssa->bit_size,
                                        BRW_REGISTER_TYPE_D);
-         reg = ntb->s->bld.vgrf(reg_type, src.ssa->num_components);
+         reg = ntb->bld.vgrf(reg_type, src.ssa->num_components);
       } else {
          reg = ntb->ssa_values[src.ssa->index];
       }
@@ -2051,7 +2057,7 @@ get_nir_src_imm(nir_to_brw_state *ntb, const nir_src &src)
 static fs_reg
 get_nir_def(nir_to_brw_state *ntb, const nir_def &def)
 {
-   const fs_builder &bld = ntb->s->bld;
+   const fs_builder &bld = ntb->bld;
 
    nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&def);
    if (!store_reg) {
@@ -2182,10 +2188,10 @@ emit_gs_end_primitive(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src
     *   control_data_bits register to 0 when the first vertex is emitted.
     */
 
-   const fs_builder abld = s->bld.annotate("end primitive");
+   const fs_builder abld = ntb->bld.annotate("end primitive");
 
    /* control_data_bits |= 1 << ((vertex_count - 1) % 32) */
-   fs_reg prev_count = s->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg prev_count = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.ADD(prev_count, vertex_count, brw_imm_ud(0xffffffffu));
    fs_reg mask = intexp2(abld, prev_count);
    /* Note: we're relying on the fact that the GEN SHL instruction only pays
@@ -2300,9 +2306,11 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
 }
 
 static void
-set_gs_stream_control_data_bits(fs_visitor *s, const fs_reg &vertex_count,
+set_gs_stream_control_data_bits(nir_to_brw_state *ntb, const fs_reg &vertex_count,
                                 unsigned stream_id)
 {
+   fs_visitor *s = ntb->s;
+
    /* control_data_bits |= stream_id << ((2 * (vertex_count - 1)) % 32) */
 
    /* Note: we are calling this *before* increasing vertex_count, so
@@ -2321,14 +2329,14 @@ set_gs_stream_control_data_bits(fs_visitor *s, const fs_reg &vertex_count,
    if (stream_id == 0)
       return;
 
-   const fs_builder abld = s->bld.annotate("set stream control data bits", NULL);
+   const fs_builder abld = ntb->bld.annotate("set stream control data bits", NULL);
 
    /* reg::sid = stream_id */
-   fs_reg sid = s->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg sid = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.MOV(sid, brw_imm_ud(stream_id));
 
    /* reg:shift_count = 2 * (vertex_count - 1) */
-   fs_reg shift_count = s->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg shift_count = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.SHL(shift_count, vertex_count, brw_imm_ud(1u));
 
    /* Note: we're relying on the fact that the GEN SHL instruction only pays
@@ -2336,7 +2344,7 @@ set_gs_stream_control_data_bits(fs_visitor *s, const fs_reg &vertex_count,
     * architecture, stream_id << 2 * (vertex_count - 1) is equivalent to
     * stream_id << ((2 * (vertex_count - 1)) % 32).
     */
-   fs_reg mask = s->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg mask = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.SHL(mask, sid, shift_count);
    abld.OR(s->control_data_bits, s->control_data_bits, mask);
 }
@@ -2376,7 +2384,7 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
     */
    if (s->gs_compile->control_data_header_size_bits > 32) {
       const fs_builder abld =
-         s->bld.annotate("emit vertex: emit control data bits");
+         ntb->bld.annotate("emit vertex: emit control data bits");
 
       /* Only emit control data bits if we've finished accumulating a batch
        * of 32 bits.  This is the case when:
@@ -2400,7 +2408,7 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
        *       at compile time...
        */
       fs_inst *inst =
-         abld.AND(s->bld.null_reg_d(), vertex_count,
+         abld.AND(ntb->bld.null_reg_d(), vertex_count,
                   brw_imm_ud(32u / s->gs_compile->control_data_bits_per_vertex - 1u));
       inst->conditional_mod = BRW_CONDITIONAL_Z;
 
@@ -2408,7 +2416,7 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
       /* If vertex_count is 0, then no control data bits have been
        * accumulated yet, so we can skip emitting them.
        */
-      abld.CMP(s->bld.null_reg_d(), vertex_count, brw_imm_ud(0u),
+      abld.CMP(ntb->bld.null_reg_d(), vertex_count, brw_imm_ud(0u),
                BRW_CONDITIONAL_NEQ);
       abld.IF(BRW_PREDICATE_NORMAL);
       s->emit_gs_control_data_bits(vertex_count);
@@ -2435,7 +2443,7 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
    if (s->gs_compile->control_data_header_size_bits > 0 &&
        gs_prog_data->control_data_format ==
           GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_SID) {
-      set_gs_stream_control_data_bits(s, vertex_count, stream_id);
+      set_gs_stream_control_data_bits(ntb, vertex_count, stream_id);
    }
 }
 
@@ -2448,7 +2456,7 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
                    unsigned first_component)
 {
    const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->s->bld;
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    assert(type_sz(dst.type) == 4);
@@ -2462,8 +2470,8 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
       int imm_offset = (base_offset + nir_src_as_uint(offset_src)) * 4 +
                        nir_src_as_uint(vertex_src) * push_reg_count;
       for (unsigned i = 0; i < num_components; i++) {
-         s->bld.MOV(offset(dst, s->bld, i),
-                 fs_reg(ATTR, imm_offset + i + first_component, dst.type));
+         ntb->bld.MOV(offset(dst, ntb->bld, i),
+                      fs_reg(ATTR, imm_offset + i + first_component, dst.type));
       }
       return;
    }
@@ -2472,12 +2480,12 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
    assert(gs_prog_data->base.include_vue_handles);
 
    fs_reg start = s->gs_payload().icp_handle_start;
-   fs_reg icp_handle = s->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg icp_handle = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
 
    if (gs_prog_data->invocations == 1) {
       if (nir_src_is_const(vertex_src)) {
          /* The vertex index is constant; just select the proper URB handle. */
-         icp_handle = offset(start, s->bld, nir_src_as_uint(vertex_src));
+         icp_handle = offset(start, ntb->bld, nir_src_as_uint(vertex_src));
       } else {
          /* The vertex index is non-constant.  We need to use indirect
           * addressing to fetch the proper URB handle.
@@ -2770,10 +2778,11 @@ setup_barrier_message_payload_gfx125(const fs_builder &bld,
 }
 
 static void
-emit_barrier(fs_visitor *s)
+emit_barrier(nir_to_brw_state *ntb)
 {
-   const intel_device_info *devinfo = s->devinfo;
-   const fs_builder &bld = s->bld;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    /* We are getting the barrier ID from the compute shader header */
    assert(gl_shader_stage_uses_workgroup(s->stage));
@@ -2815,10 +2824,11 @@ emit_barrier(fs_visitor *s)
 }
 
 static void
-emit_tcs_barrier(fs_visitor *s)
+emit_tcs_barrier(nir_to_brw_state *ntb)
 {
-   const intel_device_info *devinfo = s->devinfo;
-   const fs_builder &bld = s->bld;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_TESS_CTRL);
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(s->prog_data);
@@ -2884,7 +2894,7 @@ fs_nir_emit_tcs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
          fs_nir_emit_intrinsic(ntb, bld, instr);
       if (nir_intrinsic_execution_scope(instr) == SCOPE_WORKGROUP) {
          if (tcs_prog_data->instances != 1)
-            emit_tcs_barrier(s);
+            emit_tcs_barrier(ntb);
       }
       break;
 
@@ -3283,13 +3293,13 @@ fetch_render_target_array_index(const fs_builder &bld)
 
 /* Sample from the MCS surface attached to this multisample texture. */
 static fs_reg
-emit_mcs_fetch(fs_visitor *s, const fs_reg &coordinate, unsigned components,
+emit_mcs_fetch(nir_to_brw_state *ntb, const fs_reg &coordinate, unsigned components,
                const fs_reg &texture,
                const fs_reg &texture_handle)
 {
-   const fs_builder &bld = s->bld;
+   const fs_builder &bld = ntb->bld;
 
-   const fs_reg dest = s->vgrf(glsl_type::uvec4_type);
+   const fs_reg dest = ntb->s->vgrf(glsl_type::uvec4_type);
 
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
    srcs[TEX_LOGICAL_SRC_COORDINATE] = coordinate;
@@ -3342,11 +3352,11 @@ emit_non_coherent_fb_read(nir_to_brw_state *ntb, const fs_builder &bld, const fs
           wm_key->multisample_fbo == BRW_NEVER);
    if (wm_key->multisample_fbo &&
        ntb->system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(s);
+      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(ntb);
 
    const fs_reg sample = ntb->system_values[SYSTEM_VALUE_SAMPLE_ID];
    const fs_reg mcs = wm_key->multisample_fbo ?
-      emit_mcs_fetch(s, coords, 3, brw_imm_ud(target), fs_reg()) : fs_reg();
+      emit_mcs_fetch(ntb, coords, 3, brw_imm_ud(target), fs_reg()) : fs_reg();
 
    /* Use either a normal or a CMS texel fetch message depending on whether
     * the framebuffer is single or multisample.  On SKL+ use the wide CMS
@@ -3421,8 +3431,10 @@ alloc_temporary(const fs_builder &bld, unsigned size, fs_reg *regs, unsigned n)
 }
 
 static fs_reg
-alloc_frag_output(fs_visitor *v, unsigned location)
+alloc_frag_output(nir_to_brw_state *ntb, unsigned location)
 {
+   fs_visitor *v = ntb->s;
+
    assert(v->stage == MESA_SHADER_FRAGMENT);
    const brw_wm_prog_key *const key =
       reinterpret_cast<const brw_wm_prog_key *>(v->key);
@@ -3430,24 +3442,24 @@ alloc_frag_output(fs_visitor *v, unsigned location)
    const unsigned i = GET_FIELD(location, BRW_NIR_FRAG_OUTPUT_INDEX);
 
    if (i > 0 || (key->force_dual_color_blend && l == FRAG_RESULT_DATA1))
-      return alloc_temporary(v->bld, 4, &v->dual_src_output, 1);
+      return alloc_temporary(ntb->bld, 4, &v->dual_src_output, 1);
 
    else if (l == FRAG_RESULT_COLOR)
-      return alloc_temporary(v->bld, 4, v->outputs,
+      return alloc_temporary(ntb->bld, 4, v->outputs,
                              MAX2(key->nr_color_regions, 1));
 
    else if (l == FRAG_RESULT_DEPTH)
-      return alloc_temporary(v->bld, 1, &v->frag_depth, 1);
+      return alloc_temporary(ntb->bld, 1, &v->frag_depth, 1);
 
    else if (l == FRAG_RESULT_STENCIL)
-      return alloc_temporary(v->bld, 1, &v->frag_stencil, 1);
+      return alloc_temporary(ntb->bld, 1, &v->frag_stencil, 1);
 
    else if (l == FRAG_RESULT_SAMPLE_MASK)
-      return alloc_temporary(v->bld, 1, &v->sample_mask, 1);
+      return alloc_temporary(ntb->bld, 1, &v->sample_mask, 1);
 
    else if (l >= FRAG_RESULT_DATA0 &&
             l < FRAG_RESULT_DATA0 + BRW_MAX_DRAW_BUFFERS)
-      return alloc_temporary(v->bld, 4,
+      return alloc_temporary(ntb->bld, 4,
                              &v->outputs[l - FRAG_RESULT_DATA0], 1);
 
    else
@@ -3455,9 +3467,9 @@ alloc_frag_output(fs_visitor *v, unsigned location)
 }
 
 static void
-emit_is_helper_invocation(fs_visitor *s, fs_reg result)
+emit_is_helper_invocation(nir_to_brw_state *ntb, fs_reg result)
 {
-   const fs_builder &bld = s->bld;
+   const fs_builder &bld = ntb->bld;
 
    /* Unlike the regular gl_HelperInvocation, that is defined at dispatch,
     * the helperInvocationEXT() (aka SpvOpIsHelperInvocationEXT) takes into
@@ -3484,10 +3496,11 @@ emit_is_helper_invocation(fs_visitor *s, fs_reg result)
 }
 
 static void
-emit_fragcoord_interpolation(fs_visitor *s, fs_reg wpos)
+emit_fragcoord_interpolation(nir_to_brw_state *ntb, fs_reg wpos)
 {
-   const intel_device_info *devinfo = s->devinfo;
-   const fs_builder &bld = s->bld;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
 
@@ -3514,10 +3527,10 @@ emit_fragcoord_interpolation(fs_visitor *s, fs_reg wpos)
 }
 
 static fs_reg
-emit_frontfacing_interpolation(fs_visitor *s)
+emit_frontfacing_interpolation(nir_to_brw_state *ntb)
 {
-   const intel_device_info *devinfo = s->devinfo;
-   const fs_builder &bld = s->bld;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
 
    fs_reg ff = bld.vgrf(BRW_REGISTER_TYPE_D);
 
@@ -3564,10 +3577,11 @@ emit_frontfacing_interpolation(fs_visitor *s)
 }
 
 static fs_reg
-emit_samplepos_setup(fs_visitor *s)
+emit_samplepos_setup(nir_to_brw_state *ntb)
 {
-   const intel_device_info *devinfo = s->devinfo;
-   const fs_builder &bld = s->bld;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(s->prog_data);
@@ -3625,10 +3639,11 @@ emit_samplepos_setup(fs_visitor *s)
 }
 
 static fs_reg
-emit_sampleid_setup(fs_visitor *s)
+emit_sampleid_setup(nir_to_brw_state *ntb)
 {
-   const intel_device_info *devinfo = s->devinfo;
-   const fs_builder &bld = s->bld;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
    ASSERTED brw_wm_prog_key *key = (brw_wm_prog_key*) s->key;
@@ -3742,8 +3757,8 @@ static fs_reg
 emit_samplemaskin_setup(nir_to_brw_state *ntb)
 {
    const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
-   const fs_builder &bld = s->bld;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(s->prog_data);
@@ -3771,7 +3786,7 @@ emit_samplemaskin_setup(nir_to_brw_state *ntb)
    const fs_builder abld = bld.annotate("compute gl_SampleMaskIn");
 
    if (ntb->system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(s);
+      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(ntb);
 
    fs_reg one = s->vgrf(glsl_type::int_type);
    fs_reg enabled_mask = s->vgrf(glsl_type::int_type);
@@ -3791,10 +3806,10 @@ emit_samplemaskin_setup(nir_to_brw_state *ntb)
 }
 
 static fs_reg
-emit_shading_rate_setup(fs_visitor *s)
+emit_shading_rate_setup(nir_to_brw_state *ntb)
 {
-   const intel_device_info *devinfo = s->devinfo;
-   const fs_builder &bld = s->bld;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
 
    assert(devinfo->ver >= 11);
 
@@ -3856,7 +3871,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
    switch (instr->intrinsic) {
    case nir_intrinsic_load_front_face:
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D),
-              emit_frontfacing_interpolation(s));
+              emit_frontfacing_interpolation(ntb));
       break;
 
    case nir_intrinsic_load_sample_pos:
@@ -3875,7 +3890,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
       break;
 
    case nir_intrinsic_is_helper_invocation:
-      emit_is_helper_invocation(s, dest);
+      emit_is_helper_invocation(ntb, dest);
       break;
 
    case nir_intrinsic_load_helper_invocation:
@@ -3895,7 +3910,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
       const unsigned store_offset = nir_src_as_uint(instr->src[1]);
       const unsigned location = nir_intrinsic_base(instr) +
          SET_FIELD(store_offset, BRW_NIR_FRAG_OUTPUT_LOCATION);
-      const fs_reg new_dest = retype(alloc_frag_output(s, location),
+      const fs_reg new_dest = retype(alloc_frag_output(ntb, location),
                                      src.type);
 
       for (unsigned j = 0; j < instr->num_components; j++)
@@ -4179,7 +4194,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
    }
 
    case nir_intrinsic_load_frag_coord:
-      emit_fragcoord_interpolation(s, dest);
+      emit_fragcoord_interpolation(ntb, dest);
       break;
 
    case nir_intrinsic_load_interpolated_input: {
@@ -4255,7 +4270,7 @@ fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
             break;
          }
 
-         emit_barrier(s);
+         emit_barrier(ntb);
          cs_prog_data->uses_barrier = true;
       }
       break;
@@ -7904,7 +7919,7 @@ fs_nir_emit_texture(nir_to_brw_state *ntb,
         instr->op == nir_texop_samples_identical)) {
       if (devinfo->ver >= 7) {
          srcs[TEX_LOGICAL_SRC_MCS] =
-            emit_mcs_fetch(s, srcs[TEX_LOGICAL_SRC_COORDINATE],
+            emit_mcs_fetch(ntb, srcs[TEX_LOGICAL_SRC_COORDINATE],
                            instr->coord_components,
                            srcs[TEX_LOGICAL_SRC_SURFACE],
                            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE]);
@@ -8285,7 +8300,7 @@ setup_imm_ub(const fs_builder &bld, uint8_t v)
 static void
 fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
 {
-   const fs_builder abld = ntb->s->bld.annotate(NULL, instr);
+   const fs_builder abld = ntb->bld.annotate(NULL, instr);
 
    switch (instr->type) {
    case nir_instr_type_alu:
@@ -8408,9 +8423,10 @@ brw_rnd_mode_from_nir(unsigned mode, unsigned *mask)
 }
 
 static void
-emit_shader_float_controls_execution_mode(fs_visitor *s)
+emit_shader_float_controls_execution_mode(nir_to_brw_state *ntb)
 {
-   const fs_builder &bld = s->bld;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    unsigned execution_mode = s->nir->info.float_controls_execution_mode;
    if (execution_mode == FLOAT_CONTROLS_DEFAULT_FLOAT_CONTROL_MODE)
@@ -8434,13 +8450,14 @@ fs_visitor::emit_nir_code()
    ntb->s = this;
    ntb->devinfo = devinfo;
    ntb->nir = nir;
+   ntb->bld = fs_builder(this, this->dispatch_width).at_end();
 
-   emit_shader_float_controls_execution_mode(this);
+   emit_shader_float_controls_execution_mode(ntb);
 
    /* emit the arrays used for inputs and outputs - load/store intrinsics will
     * be converted to reads/writes of these arrays
     */
-   fs_nir_setup_outputs(this);
+   fs_nir_setup_outputs(ntb);
    fs_nir_setup_uniforms(this);
    fs_nir_emit_system_values(ntb);
    last_scratch = ALIGN(nir->scratch_size, 4) * dispatch_width;
