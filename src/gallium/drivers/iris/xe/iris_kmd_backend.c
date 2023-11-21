@@ -65,6 +65,21 @@ xe_gem_create(struct iris_bufmgr *bufmgr,
    for (uint16_t i = 0; i < regions_count; i++)
       gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
 
+   const struct intel_device_info *devinfo = iris_bufmgr_get_device_info(bufmgr);
+   const struct intel_device_info_pat_entry *pat_entry;
+   pat_entry = iris_heap_to_pat_entry(devinfo, heap_flags);
+   switch (pat_entry->mmap) {
+   case INTEL_DEVICE_INFO_MMAP_MODE_WC:
+      gem_create.cpu_caching = DRM_XE_GEM_CPU_CACHING_WC;
+      break;
+   case INTEL_DEVICE_INFO_MMAP_MODE_WB:
+      gem_create.cpu_caching = DRM_XE_GEM_CPU_CACHING_WB;
+      break;
+   default:
+      unreachable("missing");
+      gem_create.cpu_caching = DRM_XE_GEM_CPU_CACHING_WC;
+   }
+
    if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_GEM_CREATE,
                    &gem_create))
       return 0;
@@ -89,6 +104,7 @@ xe_gem_mmap(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
 static inline int
 xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
 {
+   const struct intel_device_info *devinfo = iris_bufmgr_get_device_info(bo->bufmgr);
    uint32_t handle = op == DRM_XE_VM_BIND_OP_UNMAP ? 0 : bo->gem_handle;
    uint64_t range, obj_offset = 0;
    int ret;
@@ -96,8 +112,7 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
    if (iris_bo_is_imported(bo))
       range = bo->size;
    else
-      range = align64(bo->size,
-                      iris_bufmgr_get_device_info(bo->bufmgr)->mem_alignment);
+      range = align64(bo->size, devinfo->mem_alignment);
 
    if (bo->real.userptr) {
       handle = 0;
@@ -105,6 +120,10 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
       if (op == DRM_XE_VM_BIND_OP_MAP)
          op = DRM_XE_VM_BIND_OP_MAP_USERPTR;
    }
+
+   uint16_t pat_index = 0;
+   if (op != DRM_XE_VM_BIND_OP_UNMAP)
+      pat_index = iris_heap_to_pat_entry(devinfo, bo->real.heap)->index;
 
    struct drm_xe_vm_bind args = {
       .vm_id = iris_bufmgr_get_global_vm_id(bo->bufmgr),
@@ -114,6 +133,7 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
       .bind.range = range,
       .bind.addr = intel_48b_address(bo->address),
       .bind.op = op,
+      .bind.pat_index = pat_index,
    };
    ret = intel_ioctl(iris_bufmgr_get_fd(bo->bufmgr), DRM_IOCTL_XE_VM_BIND, &args);
    if (ret) {
