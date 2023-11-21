@@ -71,6 +71,8 @@ find_or_create_input(nir_builder *b, const struct glsl_type *type,
    in->data.location = location;
    if (glsl_type_is_integer(type))
       in->data.interpolation = INTERP_MODE_FLAT;
+   else
+      in->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
 
    return in;
 }
