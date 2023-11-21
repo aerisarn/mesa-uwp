@@ -548,7 +548,9 @@ radv_CmdResolveImage2(VkCommandBuffer commandBuffer, const VkResolveImageInfo2 *
 }
 
 static void
-radv_cmd_buffer_resolve_rendering_hw(struct radv_cmd_buffer *cmd_buffer)
+radv_cmd_buffer_resolve_rendering_hw(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_iview,
+                                     VkImageLayout src_layout, struct radv_image_view *dst_iview,
+                                     VkImageLayout dst_layout)
 {
    struct radv_meta_saved_state saved_state;
 
@@ -566,72 +568,60 @@ radv_cmd_buffer_resolve_rendering_hw(struct radv_cmd_buffer *cmd_buffer)
 
    radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, resolve_area);
 
-   for (uint32_t i = 0; i < saved_state.render.color_att_count; ++i) {
-      if (saved_state.render.color_att[i].resolve_iview == NULL)
-         continue;
+   struct radv_image *src_img = src_iview->image;
+   struct radv_image *dst_img = dst_iview->image;
+   uint32_t queue_mask = radv_image_queue_family_mask(dst_img, cmd_buffer->qf, cmd_buffer->qf);
 
-      struct radv_image_view *src_iview = saved_state.render.color_att[i].iview;
-      VkImageLayout src_layout = saved_state.render.color_att[i].layout;
-      struct radv_image *src_img = src_iview->image;
-
-      struct radv_image_view *dst_iview = saved_state.render.color_att[i].resolve_iview;
-      VkImageLayout dst_layout = saved_state.render.color_att[i].resolve_layout;
-      struct radv_image *dst_img = dst_iview->image;
-
-      uint32_t queue_mask = radv_image_queue_family_mask(dst_img, cmd_buffer->qf, cmd_buffer->qf);
-
-      if (radv_layout_dcc_compressed(cmd_buffer->device, dst_img, dst_iview->vk.base_mip_level, dst_layout,
-                                     queue_mask)) {
-         VkImageSubresourceRange range = {
-            .aspectMask = dst_iview->vk.aspects,
-            .baseMipLevel = dst_iview->vk.base_mip_level,
-            .levelCount = dst_iview->vk.level_count,
-            .baseArrayLayer = dst_iview->vk.base_array_layer,
-            .layerCount = dst_iview->vk.layer_count,
-         };
-
-         cmd_buffer->state.flush_bits |= radv_init_dcc(cmd_buffer, dst_img, &range, 0xffffffff);
-      }
-
-      const VkRenderingAttachmentInfo color_atts[2] = {
-         {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = radv_image_view_to_handle(src_iview),
-            .imageLayout = src_layout,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-         },
-         {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = radv_image_view_to_handle(dst_iview),
-            .imageLayout = dst_layout,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-         },
+   if (radv_layout_dcc_compressed(cmd_buffer->device, dst_img, dst_iview->vk.base_mip_level, dst_layout, queue_mask)) {
+      VkImageSubresourceRange range = {
+         .aspectMask = dst_iview->vk.aspects,
+         .baseMipLevel = dst_iview->vk.base_mip_level,
+         .levelCount = dst_iview->vk.level_count,
+         .baseArrayLayer = dst_iview->vk.base_array_layer,
+         .layerCount = dst_iview->vk.layer_count,
       };
 
-      const VkRenderingInfo rendering_info = {
-         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-         .renderArea = saved_state.render.area,
-         .layerCount = saved_state.render.layer_count,
-         .viewMask = saved_state.render.view_mask,
-         .colorAttachmentCount = 2,
-         .pColorAttachments = color_atts,
-      };
-
-      radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
-
-      VkResult ret =
-         build_resolve_pipeline(cmd_buffer->device, radv_format_meta_fs_key(cmd_buffer->device, dst_iview->vk.format));
-      if (ret != VK_SUCCESS) {
-         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
-         continue;
-      }
-
-      emit_resolve(cmd_buffer, src_img, dst_img, dst_iview->vk.format);
-
-      radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
+      cmd_buffer->state.flush_bits |= radv_init_dcc(cmd_buffer, dst_img, &range, 0xffffffff);
    }
+
+   const VkRenderingAttachmentInfo color_atts[2] = {
+      {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = radv_image_view_to_handle(src_iview),
+         .imageLayout = src_layout,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      },
+      {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = radv_image_view_to_handle(dst_iview),
+         .imageLayout = dst_layout,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      },
+   };
+
+   const VkRenderingInfo rendering_info = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+      .renderArea = saved_state.render.area,
+      .layerCount = saved_state.render.layer_count,
+      .viewMask = saved_state.render.view_mask,
+      .colorAttachmentCount = 2,
+      .pColorAttachments = color_atts,
+   };
+
+   radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
+
+   VkResult ret =
+      build_resolve_pipeline(cmd_buffer->device, radv_format_meta_fs_key(cmd_buffer->device, dst_iview->vk.format));
+   if (ret != VK_SUCCESS) {
+      vk_command_buffer_set_error(&cmd_buffer->vk, ret);
+      return;
+   }
+
+   emit_resolve(cmd_buffer, src_img, dst_img, dst_iview->vk.format);
+
+   radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
 
    radv_meta_restore(&saved_state, cmd_buffer);
 }
@@ -766,7 +756,7 @@ radv_cmd_buffer_resolve_rendering(struct radv_cmd_buffer *cmd_buffer)
 
          switch (resolve_method) {
          case RESOLVE_HW:
-            radv_cmd_buffer_resolve_rendering_hw(cmd_buffer);
+            radv_cmd_buffer_resolve_rendering_hw(cmd_buffer, src_iview, src_layout, dst_iview, dst_layout);
             break;
          case RESOLVE_COMPUTE:
             radv_decompress_resolve_src(cmd_buffer, src_iview->image, src_layout, &region);
