@@ -168,10 +168,8 @@ uncollapsed_section_switch deqp "deqp: deqp-runner"
 
 cat /deqp/version-log
 
-ARTIFACTS_URL_PREFIX="https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts"
-
+set +e
 if [ -z "$DEQP_SUITE" ]; then
-    set +e
     deqp-runner \
         run \
         --deqp $DEQP \
@@ -184,14 +182,11 @@ if [ -z "$DEQP_SUITE" ]; then
         $DEQP_RUNNER_OPTIONS \
         -- \
         $DEQP_OPTIONS
-    echo $? > /tmp/deqp-exit-code
-    set -e
 else
     # If you change the format of the suite toml filenames or the
     # $GPU_VERSION-{fails,flakes,skips}.txt filenames, look through the rest
     # of the tree for other places that need to be kept in sync (e.g.
     # src/amd/ci/gitlab-ci-inc.yml)
-    set +e
     deqp-runner \
         suite \
         --suite $INSTALL/deqp-$DEQP_SUITE.toml \
@@ -203,13 +198,10 @@ else
         --fraction $((CI_NODE_TOTAL * ${DEQP_FRACTION:-1})) \
         --jobs ${FDO_CI_CONCURRENT:-4} \
         $DEQP_RUNNER_OPTIONS
-    echo $? > /tmp/deqp-exit-code
-    set -e
-fi 2>&1 | sed \
-  -e "s,\"/builds/$CI_PROJECT_PATH/\(results/[^\"]\+.log\)\",$ARTIFACTS_URL_PREFIX/\1.txt,g" \
-  -e "s,\"/builds/$CI_PROJECT_PATH/\(results/[^\"]\*\)\",$ARTIFACTS_URL_PREFIX/\1,g"
+fi
 
-DEQP_EXITCODE=$(cat /tmp/deqp-exit-code)
+DEQP_EXITCODE=$?
+set -e
 
 set +x
 
@@ -235,7 +227,7 @@ deqp-runner junit \
    --results $RESULTS/failures.csv \
    --output $RESULTS/junit.xml \
    --limit 50 \
-   --template "See $ARTIFACTS_URL_PREFIX/results/{{testcase}}.xml"
+   --template "See https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/results/{{testcase}}.xml"
 
 # Report the flakes to the IRC channel for monitoring (if configured):
 if [ -n "$FLAKES_CHANNEL" ]; then
