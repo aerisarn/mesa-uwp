@@ -1140,8 +1140,7 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler,
      performance_analysis(this),
      needs_register_pressure(needs_register_pressure),
      dispatch_width(dispatch_width),
-     api_subgroup_size(brw_nir_api_subgroup_size(shader, dispatch_width)),
-     bld(fs_builder(this, dispatch_width).at_end())
+     api_subgroup_size(brw_nir_api_subgroup_size(shader, dispatch_width))
 {
    init();
    assert(api_subgroup_size == 0 ||
@@ -1165,8 +1164,7 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler,
      performance_analysis(this),
      needs_register_pressure(needs_register_pressure),
      dispatch_width(8),
-     api_subgroup_size(brw_nir_api_subgroup_size(shader, dispatch_width)),
-     bld(fs_builder(this, dispatch_width).at_end())
+     api_subgroup_size(brw_nir_api_subgroup_size(shader, dispatch_width))
 {
    init();
    assert(api_subgroup_size == 0 ||
