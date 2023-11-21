@@ -1172,7 +1172,7 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
          /* We will allocate a register on the fly */
       } else if (devinfo->ver >= 9) {
          this->scratch_header = alloc_scratch_header();
-         fs_builder ubld = fs->bld.exec_all().group(8, 0).at(
+         fs_builder ubld = fs_builder(fs, 8).exec_all().at(
             fs->cfg->first_block(), fs->cfg->first_block()->start());
 
          fs_inst *inst = ubld.emit(SHADER_OPCODE_SCRATCH_HEADER,
