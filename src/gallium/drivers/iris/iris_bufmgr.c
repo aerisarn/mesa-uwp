@@ -2560,6 +2560,7 @@ iris_heap_to_pat_entry(const struct intel_device_info *devinfo,
       return &devinfo->pat.writecombining;
    case IRIS_HEAP_DEVICE_LOCAL:
    case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
+      return &devinfo->pat.writecombining;
    default:
       unreachable("invalid heap for platforms using PAT entries");
    }
