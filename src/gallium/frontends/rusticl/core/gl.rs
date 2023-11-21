@@ -193,7 +193,7 @@ impl GLCtxManager {
     ) -> CLResult<GLExportManager> {
         let xplat_manager = &self.xplat_manager;
         let mut export_in = mesa_glinterop_export_in {
-            version: 1,
+            version: 2,
             target: target,
             obj: texture,
             miplevel: miplevel as u32,
@@ -203,6 +203,14 @@ impl GLCtxManager {
 
         let mut export_out = mesa_glinterop_export_out {
             version: 2,
+            ..Default::default()
+        };
+
+        let mut fd = -1;
+
+        let mut flush_out = mesa_glinterop_flush_out {
+            version: 1,
+            fence_fd: &mut fd,
             ..Default::default()
         };
 
@@ -217,14 +225,12 @@ impl GLCtxManager {
                         .MesaGLInteropEGLFlushObjects()?
                         .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
 
-                    let mut fd = -1;
                     let err_flush = egl_flush_objects_func(
                         disp.cast(),
                         ctx.cast(),
                         1,
                         &mut export_in,
-                        ptr::null_mut(),
-                        &mut fd,
+                        &mut flush_out,
                     );
                     // TODO: use fence_server_sync in ctx inside the queue thread
                     let fence_fd = FenceFd { fd };
@@ -253,14 +259,12 @@ impl GLCtxManager {
                         .MesaGLInteropGLXFlushObjects()?
                         .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
 
-                    let mut fd = -1;
                     let err_flush = glx_flush_objects_func(
                         disp.cast(),
                         ctx.cast(),
                         1,
                         &mut export_in,
-                        ptr::null_mut(),
-                        &mut fd,
+                        &mut flush_out,
                     );
                     // TODO: use fence_server_sync in ctx inside the queue thread
                     let fence_fd = FenceFd { fd };
