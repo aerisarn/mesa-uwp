@@ -2009,6 +2009,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
          if (FAILED(hr)) {
             debug_printf("CreateCommittedResource failed with HR %x\n", hr);
             pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_FAILED;
+            pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_FAILED;
             assert(false);
             return;
          }
@@ -2144,7 +2145,14 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
    // Update current frame pic params state after reconfiguring above.
    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA currentPicParams =
       d3d12_video_encoder_get_current_picture_param_settings(pD3D12Enc);
-   pD3D12Enc->m_upDPBManager->get_current_frame_picture_control_data(currentPicParams);
+
+   if (!pD3D12Enc->m_upDPBManager->get_current_frame_picture_control_data(currentPicParams)) {
+      debug_printf("[d3d12_video_encoder_encode_bitstream] get_current_frame_picture_control_data failed!\n");
+      pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_FAILED;
+      pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_FAILED;
+      assert(false);
+      return;
+   }
 
    // Stores D3D12_VIDEO_ENCODER_AV1_REFERENCE_PICTURE_DESCRIPTOR in the associated metadata
    // for header generation after execution (if applicable)
@@ -2292,6 +2300,8 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
                      requested_metadata_fence,
                      hr);
       assert(false);
+      if(pMetadata)
+         *pMetadata = opt_metadata;
       return;
    }
 
@@ -2302,6 +2312,8 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
                      requested_metadata_fence,
                      opt_metadata.encode_result);
       assert(false);
+      if(pMetadata)
+         *pMetadata = opt_metadata;
       return;
    }
 
@@ -2313,6 +2325,8 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
                      requested_metadata_fence,
                      opt_metadata.encode_result);
       assert(false);
+      if(pMetadata)
+         *pMetadata = opt_metadata;
       return;
    }
 
@@ -2332,6 +2346,8 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
          D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT);
       opt_metadata.encode_result = PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_FAILED;
       assert(false);
+      if(pMetadata)
+         *pMetadata = opt_metadata;
       return;
    }
 
@@ -2352,6 +2368,8 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
                      requested_metadata_fence,
                      encoderMetadata.EncodeErrorFlags);
       assert(false);
+      if(pMetadata)
+         *pMetadata = opt_metadata;
       return;
    }
    debug_printf("WrittenSubregionsCount: %" PRIu64" \n", encoderMetadata.WrittenSubregionsCount);
