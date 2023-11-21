@@ -1927,6 +1927,11 @@ struct pipe_enc_feedback_metadata
     */
    struct codec_unit_location_t codec_unit_metadata[256];
    unsigned codec_unit_metadata_count;
+
+   /*
+   * Driver writes the average QP used to encode this frame
+   */
+   unsigned int average_frame_qp;
 };
 
 #ifdef __cplusplus
