@@ -616,10 +616,10 @@ fs_visitor::emit_interpolation_setup_gfx6()
          }
 
          for (unsigned j = 0; j < dispatch_width / 8; j++) {
-            fs_inst *mov =
+            set_predicate(
+               BRW_PREDICATE_NORMAL,
                ubld.MOV(brw_vec8_grf(barys[j / 2] + (j % 2) * 2, 0),
-                        brw_vec8_grf(sample_barys[j / 2] + (j % 2) * 2, 0));
-            mov->predicate = BRW_PREDICATE_NORMAL;
+                        brw_vec8_grf(sample_barys[j / 2] + (j % 2) * 2, 0)));
          }
       }
    }
