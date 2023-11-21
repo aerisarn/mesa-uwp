@@ -47,6 +47,9 @@ struct nir_to_brw_state {
    const nir_shader *nir;
    const intel_device_info *devinfo;
 
+   /* Points to the end of the program.  Annotated with the current NIR
+    * instruction when applicable.
+    */
    fs_builder bld;
 
    fs_reg *ssa_values;
@@ -459,9 +462,13 @@ fs_nir_emit_loop(nir_to_brw_state *ntb, nir_loop *loop)
 static void
 fs_nir_emit_block(nir_to_brw_state *ntb, nir_block *block)
 {
+   fs_builder bld = ntb->bld;
+
    nir_foreach_instr(instr, block) {
       fs_nir_emit_instr(ntb, instr);
    }
+
+   ntb->bld = bld;
 }
 
 /**
@@ -927,11 +934,12 @@ is_const_zero(const nir_src &src)
 }
 
 static void
-fs_nir_emit_alu(nir_to_brw_state *ntb, const fs_builder &bld, nir_alu_instr *instr,
+fs_nir_emit_alu(nir_to_brw_state *ntb, nir_alu_instr *instr,
                 bool need_dest)
 {
-   fs_visitor *s = (fs_visitor *)bld.shader;
-   const intel_device_info *devinfo = s->devinfo;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    fs_inst *inst;
    unsigned execution_mode =
@@ -1930,11 +1938,11 @@ fs_nir_emit_alu(nir_to_brw_state *ntb, const fs_builder &bld, nir_alu_instr *ins
 }
 
 static void
-fs_nir_emit_load_const(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_load_const(nir_to_brw_state *ntb,
                        nir_load_const_instr *instr)
 {
-   fs_visitor *s = (fs_visitor *)bld.shader;
-   const intel_device_info *devinfo = s->devinfo;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
 
    const brw_reg_type reg_type =
       brw_reg_type_from_bit_size(instr->def.bit_size, BRW_REGISTER_TYPE_D);
@@ -2622,10 +2630,11 @@ get_indirect_offset(nir_to_brw_state *ntb, nir_intrinsic_instr *instr)
 }
 
 static void
-fs_nir_emit_vs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_vs_intrinsic(nir_to_brw_state *ntb,
                          nir_intrinsic_instr *instr)
 {
-   fs_visitor *s = (fs_visitor *) bld.shader;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
    assert(s->stage == MESA_SHADER_VERTEX);
 
    fs_reg dest;
@@ -2867,11 +2876,12 @@ emit_tcs_barrier(nir_to_brw_state *ntb)
 }
 
 static void
-fs_nir_emit_tcs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_tcs_intrinsic(nir_to_brw_state *ntb,
                           nir_intrinsic_instr *instr)
 {
-   fs_visitor *s = (fs_visitor *)bld.shader;
-   const intel_device_info *devinfo = s->devinfo;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_TESS_CTRL);
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(s->prog_data);
@@ -3098,11 +3108,12 @@ fs_nir_emit_tcs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static void
-fs_nir_emit_tes_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_tes_intrinsic(nir_to_brw_state *ntb,
                           nir_intrinsic_instr *instr)
 {
-   fs_visitor *s = (fs_visitor *)bld.shader;
-   const intel_device_info *devinfo = s->devinfo;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_TESS_EVAL);
    struct brw_tes_prog_data *tes_prog_data = brw_tes_prog_data(s->prog_data);
@@ -3207,9 +3218,10 @@ fs_nir_emit_tes_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static void
-fs_nir_emit_gs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_gs_intrinsic(nir_to_brw_state *ntb,
                          nir_intrinsic_instr *instr)
 {
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_GEOMETRY);
@@ -3856,10 +3868,11 @@ emit_shading_rate_setup(nir_to_brw_state *ntb)
 }
 
 static void
-fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb,
                          nir_intrinsic_instr *instr)
 {
    const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
@@ -3981,7 +3994,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
              * compare, and hope dead code elimination will clean up the
              * extra instructions generated.
              */
-            fs_nir_emit_alu(ntb, bld, alu, false);
+            fs_nir_emit_alu(ntb, alu, false);
 
             cmp = (fs_inst *) s->instructions.get_tail();
             if (cmp->conditional_mod == BRW_CONDITIONAL_NONE) {
@@ -4242,10 +4255,11 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static void
-fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb,
                          nir_intrinsic_instr *instr)
 {
    const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    assert(gl_shader_stage_uses_workgroup(s->stage));
@@ -4458,9 +4472,10 @@ emit_rt_lsc_fence(const fs_builder &bld,
 
 
 static void
-fs_nir_emit_bs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_bs_intrinsic(nir_to_brw_state *ntb,
                          nir_intrinsic_instr *instr)
 {
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    assert(brw_shader_stage_is_bindless(s->stage));
@@ -5584,15 +5599,16 @@ fs_nir_emit_task_mesh_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
       break;
 
    default:
-      fs_nir_emit_cs_intrinsic(ntb, bld, instr);
+      fs_nir_emit_cs_intrinsic(ntb, instr);
       break;
    }
 }
 
 static void
-fs_nir_emit_task_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_task_intrinsic(nir_to_brw_state *ntb,
                            nir_intrinsic_instr *instr)
 {
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_TASK);
@@ -5616,9 +5632,10 @@ fs_nir_emit_task_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static void
-fs_nir_emit_mesh_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_mesh_intrinsic(nir_to_brw_state *ntb,
                            nir_intrinsic_instr *instr)
 {
+   const fs_builder &bld = ntb->bld;
    fs_visitor *s = ntb->s;
 
    assert(s->stage == MESA_SHADER_MESH);
@@ -7749,10 +7766,11 @@ fs_nir_emit_global_atomic(nir_to_brw_state *ntb, const fs_builder &bld,
 
 static void
 fs_nir_emit_texture(nir_to_brw_state *ntb,
-                    const fs_builder &bld, nir_tex_instr *instr)
+                    nir_tex_instr *instr)
 {
-   fs_visitor *s = (fs_visitor *)bld.shader;
-   const intel_device_info *devinfo = s->devinfo;
+   const intel_device_info *devinfo = ntb->devinfo;
+   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb->s;
 
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
 
@@ -8093,17 +8111,17 @@ fs_nir_emit_texture(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_jump(const fs_builder &bld, nir_jump_instr *instr)
+fs_nir_emit_jump(nir_to_brw_state *ntb, nir_jump_instr *instr)
 {
    switch (instr->type) {
    case nir_jump_break:
-      bld.emit(BRW_OPCODE_BREAK);
+      ntb->bld.emit(BRW_OPCODE_BREAK);
       break;
    case nir_jump_continue:
-      bld.emit(BRW_OPCODE_CONTINUE);
+      ntb->bld.emit(BRW_OPCODE_CONTINUE);
       break;
    case nir_jump_halt:
-      bld.emit(BRW_OPCODE_HALT);
+      ntb->bld.emit(BRW_OPCODE_HALT);
       break;
    case nir_jump_return:
    default:
@@ -8300,11 +8318,11 @@ setup_imm_ub(const fs_builder &bld, uint8_t v)
 static void
 fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
 {
-   const fs_builder abld = ntb->bld.annotate(NULL, instr);
+   ntb->bld = ntb->bld.annotate(NULL, instr);
 
    switch (instr->type) {
    case nir_instr_type_alu:
-      fs_nir_emit_alu(ntb, abld, nir_instr_as_alu(instr), true);
+      fs_nir_emit_alu(ntb, nir_instr_as_alu(instr), true);
       break;
 
    case nir_instr_type_deref:
@@ -8314,23 +8332,23 @@ fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
    case nir_instr_type_intrinsic:
       switch (ntb->s->stage) {
       case MESA_SHADER_VERTEX:
-         fs_nir_emit_vs_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_vs_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_TESS_CTRL:
-         fs_nir_emit_tcs_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_tcs_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_TESS_EVAL:
-         fs_nir_emit_tes_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_tes_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_GEOMETRY:
-         fs_nir_emit_gs_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_gs_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_FRAGMENT:
-         fs_nir_emit_fs_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_fs_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_COMPUTE:
       case MESA_SHADER_KERNEL:
-         fs_nir_emit_cs_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_cs_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_RAYGEN:
       case MESA_SHADER_ANY_HIT:
@@ -8338,13 +8356,13 @@ fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
       case MESA_SHADER_MISS:
       case MESA_SHADER_INTERSECTION:
       case MESA_SHADER_CALLABLE:
-         fs_nir_emit_bs_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_bs_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_TASK:
-         fs_nir_emit_task_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_task_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_MESH:
-         fs_nir_emit_mesh_intrinsic(ntb, abld, nir_instr_as_intrinsic(instr));
+         fs_nir_emit_mesh_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
       default:
          unreachable("unsupported shader stage");
@@ -8352,11 +8370,11 @@ fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
       break;
 
    case nir_instr_type_tex:
-      fs_nir_emit_texture(ntb, abld, nir_instr_as_tex(instr));
+      fs_nir_emit_texture(ntb, nir_instr_as_tex(instr));
       break;
 
    case nir_instr_type_load_const:
-      fs_nir_emit_load_const(ntb, abld, nir_instr_as_load_const(instr));
+      fs_nir_emit_load_const(ntb, nir_instr_as_load_const(instr));
       break;
 
    case nir_instr_type_undef:
@@ -8367,7 +8385,7 @@ fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
       break;
 
    case nir_instr_type_jump:
-      fs_nir_emit_jump(abld, nir_instr_as_jump(instr));
+      fs_nir_emit_jump(ntb, nir_instr_as_jump(instr));
       break;
 
    default:
@@ -8464,7 +8482,7 @@ fs_visitor::emit_nir_code()
 
    fs_nir_emit_impl(ntb, nir_shader_get_entrypoint((nir_shader *)nir));
 
-   bld.emit(SHADER_OPCODE_HALT_TARGET);
+   ntb->bld.emit(SHADER_OPCODE_HALT_TARGET);
 
    ralloc_free(ntb);
 }
