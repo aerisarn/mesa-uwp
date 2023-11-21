@@ -2218,6 +2218,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
 
    struct brw_gs_prog_data *gs_prog_data = brw_gs_prog_data(prog_data);
 
+   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
    const fs_builder abld = bld.annotate("emit control data bits");
    const fs_builder fwa_bld = bld.exec_all();
 

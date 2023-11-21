@@ -3304,7 +3304,7 @@ fs_visitor::lower_uniform_pull_constant_loads()
          invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
       } else if (devinfo->ver >= 7) {
          const fs_builder ubld = fs_builder(this, block, inst).exec_all();
-         fs_reg header = bld.exec_all().group(8, 0).vgrf(BRW_REGISTER_TYPE_UD);
+         fs_reg header = fs_builder(this, 8).exec_all().vgrf(BRW_REGISTER_TYPE_UD);
 
          ubld.group(8, 0).MOV(header,
                               retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));

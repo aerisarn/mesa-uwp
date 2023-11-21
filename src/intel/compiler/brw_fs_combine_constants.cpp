@@ -1660,7 +1660,7 @@ fs_visitor::opt_combine_constants()
        * both HF slots within a DWord with the constant.
        */
       const uint32_t width = devinfo->ver == 8 && imm->is_half_float ? 2 : 1;
-      const fs_builder ibld = bld.at(insert_block, n).exec_all().group(width, 0);
+      const fs_builder ibld = fs_builder(this, width).at(insert_block, n).exec_all();
 
       fs_reg reg(VGRF, imm->nr);
       reg.offset = imm->subreg_offset;
