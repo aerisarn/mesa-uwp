@@ -567,7 +567,7 @@ load_frag_w(nir_builder *b, enum nak_interp_loc interp_loc, nir_def *offset)
       nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD) + 12;
 
    const struct nak_nir_ipa_flags flags = {
-      .interp_mode = NAK_INTERP_MODE_PERSPECTIVE,
+      .interp_mode = NAK_INTERP_MODE_SCREEN_LINEAR,
       .interp_freq = NAK_INTERP_FREQ_PASS,
       .interp_loc = interp_loc,
    };
@@ -689,22 +689,11 @@ lower_fs_input_intrin(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
          nak_sysval_attr_addr(SYSTEM_VALUE_POINT_COORD) :
          nak_sysval_attr_addr(SYSTEM_VALUE_FRAG_COORD);
 
-      nir_def *w = load_frag_w(b, interp_loc, NULL);
       nir_def *coord = load_interpolated_input(b, intrin->def.num_components,
                                                addr,
-                                               NAK_INTERP_MODE_PERSPECTIVE,
-                                               interp_loc, nir_frcp(b, w),
-                                               NULL, ctx->nak);
-
-      switch (intrin->intrinsic) {
-      case nir_intrinsic_load_frag_coord:
-         coord = nir_vector_insert_imm(b, coord, w, 3);
-         break;
-      case nir_intrinsic_load_point_coord:
-         break;
-      default:
-         unreachable("Unknown intrinsic");
-      }
+                                               NAK_INTERP_MODE_SCREEN_LINEAR,
+                                               interp_loc, NULL, NULL,
+                                               ctx->nak);
 
       nir_def_rewrite_uses(&intrin->def, coord);
       nir_instr_remove(&intrin->instr);
