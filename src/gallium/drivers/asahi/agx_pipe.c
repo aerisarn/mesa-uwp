@@ -1735,6 +1735,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
       return 7;
    case PIPE_CAP_DRAW_INDIRECT:
+   case PIPE_CAP_TEXTURE_QUERY_SAMPLES:
       return true;
 
    case PIPE_CAP_VIDEO_MEMORY: {

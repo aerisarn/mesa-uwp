@@ -9,6 +9,7 @@
 #include "agx_state.h"
 #include "nir.h"
 #include "nir_builder_opcodes.h"
+#include "nir_intrinsics.h"
 #include "nir_intrinsics_indices.h"
 #include "shader_enums.h"
 
@@ -82,6 +83,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
          CASE(image_load)
          CASE(image_store)
          CASE(image_size)
+         CASE(image_samples)
          CASE(image_atomic)
          CASE(image_atomic_swap)
       default:
@@ -95,11 +97,12 @@ lower(nir_builder *b, nir_instr *instr, void *data)
       /* Remap according to the driver layout */
       unsigned offset = BITSET_LAST_BIT(b->shader->info.textures_used);
 
-      /* For reads and image_size, we use the texture descriptor which is first.
+      /* For reads and queries, we use the texture descriptor which is first.
        * Writes and atomics use the PBE descriptor.
        */
       if (intr->intrinsic != nir_intrinsic_image_load &&
-          intr->intrinsic != nir_intrinsic_image_size)
+          intr->intrinsic != nir_intrinsic_image_size &&
+          intr->intrinsic != nir_intrinsic_image_samples)
          offset++;
 
       /* If we can determine statically that the image fits in texture state
