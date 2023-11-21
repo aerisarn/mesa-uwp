@@ -53,7 +53,7 @@ static uint32_t
 i915_gem_create(struct iris_bufmgr *bufmgr,
                 const struct intel_memory_class_instance **regions,
                 uint16_t regions_count, uint64_t size,
-                enum iris_heap heap_flags, unsigned alloc_flags)
+                enum iris_heap heap, unsigned alloc_flags)
 {
    const struct intel_device_info *devinfo =
       iris_bufmgr_get_device_info(bufmgr);
@@ -94,7 +94,7 @@ i915_gem_create(struct iris_bufmgr *bufmgr,
 
    if (iris_bufmgr_vram_size(bufmgr) > 0 &&
        !intel_vram_all_mappable(devinfo) &&
-       heap_flags == IRIS_HEAP_DEVICE_LOCAL_PREFERRED)
+       heap == IRIS_HEAP_DEVICE_LOCAL_PREFERRED)
       create.flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
 
    /* Protected param */
