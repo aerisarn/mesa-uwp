@@ -121,7 +121,7 @@ struct tes_thread_payload : public thread_payload {
 };
 
 struct gs_thread_payload : public thread_payload {
-   gs_thread_payload(const fs_visitor &v);
+   gs_thread_payload(fs_visitor &v);
 
    fs_reg urb_handles;
    fs_reg primitive_id;
@@ -154,7 +154,7 @@ protected:
 };
 
 struct task_mesh_thread_payload : public cs_thread_payload {
-   task_mesh_thread_payload(const fs_visitor &v);
+   task_mesh_thread_payload(fs_visitor &v);
 
    fs_reg extended_parameter_0;
    fs_reg local_index;
