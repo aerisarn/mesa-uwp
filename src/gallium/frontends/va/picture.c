@@ -1279,6 +1279,12 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
       }
    }
 
+   if (context->decoder->get_feedback_fence &&
+       !context->decoder->get_feedback_fence(context->decoder, feedback)) {
+         mtx_unlock(&drv->mutex);
+         return VA_STATUS_ERROR_OPERATION_FAILED;
+   }
+
    /* Update frame_num disregarding PIPE_VIDEO_CAP_REQUIRES_FLUSH_ON_END_FRAME check above */
    if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
       if ((u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
