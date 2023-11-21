@@ -401,10 +401,12 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
    uint64_t report_addr = nvk_query_report_addr(pool, query) +
                           end * sizeof(struct nvk_query_report);
 
+   uint32_t end_size = 7 * end;
+
    struct nv_push *p;
    switch (pool->vk.query_type) {
    case VK_QUERY_TYPE_OCCLUSION:
-      p = nvk_cmd_buffer_push(cmd, 2 + 5 * (1 + end));
+      p = nvk_cmd_buffer_push(cmd, 7 + end_size);
 
       P_IMMD(p, NV9097, SET_ZPASS_PIXEL_COUNT, !end);
 
@@ -417,12 +419,13 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
          .pipeline_location = PIPELINE_LOCATION_ALL,
          .report = REPORT_ZPASS_PIXEL_CNT64,
          .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+         .flush_disable = true,
       });
       break;
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
       uint32_t stat_count = util_bitcount(pool->vk.pipeline_statistics);
-      p = nvk_cmd_buffer_push(cmd, (stat_count + end) * 5);
+      p = nvk_cmd_buffer_push(cmd, stat_count * 5 + end_size);
 
       ASSERTED uint32_t stats_left = pool->vk.pipeline_statistics;
       for (uint32_t i = 0; i < ARRAY_SIZE(nvk_3d_stat_queries); i++) {
@@ -447,6 +450,7 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
                .pipeline_location = sq->loc,
                .report = sq->report,
                .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+               .flush_disable = true,
             });
          }
 
@@ -461,7 +465,7 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
          NV9097_SET_REPORT_SEMAPHORE_D_REPORT_STREAMING_PRIMITIVES_SUCCEEDED,
          NV9097_SET_REPORT_SEMAPHORE_D_REPORT_STREAMING_PRIMITIVES_NEEDED,
       };
-      p = nvk_cmd_buffer_push(cmd, 5*ARRAY_SIZE(xfb_reports) + 5*end);
+      p = nvk_cmd_buffer_push(cmd, 5 * ARRAY_SIZE(xfb_reports) + end_size);
       for (uint32_t i = 0; i < ARRAY_SIZE(xfb_reports); ++i) {
          P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
          P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
@@ -473,8 +477,9 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
                .report = xfb_reports[i],
                .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
                .sub_report = index,
+               .flush_disable = true,
                });
-         report_addr += 2*sizeof(struct nvk_query_report);
+         report_addr += 2 * sizeof(struct nvk_query_report);
       }
       break;
    }
@@ -483,6 +488,8 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
    }
 
    if (end) {
+      P_IMMD(p, NV9097, FLUSH_PENDING_WRITES, 0);
+
       uint64_t available_addr = nvk_query_available_addr(pool, query);
       P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
       P_NV9097_SET_REPORT_SEMAPHORE_A(p, available_addr >> 32);
