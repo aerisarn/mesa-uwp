@@ -338,7 +338,22 @@ if with_vulkan_beta
 endif
 
 _codecs = get_option('video-codecs')
-foreach c : ['vc1dec', 'h264dec', 'h264enc', 'h265dec', 'h265enc', 'av1dec', 'av1enc', 'vp9dec']
+patent_codecs = ['vc1dec', 'h264dec', 'h264enc', 'h265dec', 'h265enc']
+free_codecs = ['av1dec', 'av1enc', 'vp9dec']
+all_codecs = patent_codecs + free_codecs
+
+if _codecs.contains('all')
+  _codecs = all_codecs
+elif _codecs.contains('all_free')
+  selected_codecs = _codecs
+  _codecs = free_codecs
+  foreach c : patent_codecs
+    if selected_codecs.contains(c)
+      _codecs += c
+    endif
+  endforeach
+endif
+foreach c : all_codecs
    pre_args += '-DVIDEO_CODEC_@0@=@1@'.format(c.to_upper(), _codecs.contains(c).to_int())
 endforeach
 
