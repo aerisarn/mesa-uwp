@@ -1712,6 +1712,7 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
       case PIPE_VIDEO_CAP_ENC_MAX_TILE_COLS:
       case PIPE_VIDEO_CAP_ENC_INTRA_REFRESH_MAX_DURATION:
       case PIPE_VIDEO_CAP_ENC_H264_DISABLE_DBK_FILTER_MODES_SUPPORTED:
+      case PIPE_VIDEO_CAP_ENC_H264_SUPPORTS_CABAC_ENCODE:
       {
          if (d3d12_has_video_encode_support(pscreen,
                                             profile,
@@ -1772,6 +1773,9 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                      with value = 0
                   */
                   return codec_specific_support.hevc_support.hevc_block_sizes.value;
+               } else if (param == PIPE_VIDEO_CAP_ENC_H264_SUPPORTS_CABAC_ENCODE) {
+                  return (codec_specific_support.h264_support.d3d12_caps.SupportFlags &
+                     D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264_FLAG_CABAC_ENCODING_SUPPORT);
                } else if (param == PIPE_VIDEO_CAP_ENC_HEVC_PREDICTION_DIRECTION) {
                   if (PIPE_VIDEO_FORMAT_HEVC == u_reduce_video_profile(profile))
                      return codec_specific_support.hevc_support.prediction_direction;
