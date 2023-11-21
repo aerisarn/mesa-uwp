@@ -127,6 +127,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_physical_device_drm = true,
       .EXT_primitive_topology_list_restart = true,
       .EXT_private_data = true,
+      .EXT_primitives_generated_query = true,
       .EXT_provoking_vertex = true,
       .EXT_robustness2 = true,
       .EXT_sample_locations = info->cls_eng3d >= MAXWELL_B,
@@ -378,6 +379,11 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* VK_EXT_primitive_topology_list_restart */
       .primitiveTopologyListRestart = true,
       .primitiveTopologyPatchListRestart = true,
+
+      /* VK_EXT_primitives_generated_query */
+      .primitivesGeneratedQuery = true,
+      .primitivesGeneratedQueryWithNonZeroStreams = true,
+      .primitivesGeneratedQueryWithRasterizerDiscard = true,
 
       /* VK_EXT_provoking_vertex */
       .provokingVertexLast = true,

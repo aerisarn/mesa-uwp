@@ -55,6 +55,7 @@ nvk_CreateQueryPool(VkDevice device,
    uint32_t reports_per_query;
    switch (pCreateInfo->queryType) {
    case VK_QUERY_TYPE_OCCLUSION:
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
       reports_per_query = 2;
       break;
    case VK_QUERY_TYPE_TIMESTAMP:
@@ -174,7 +175,8 @@ emit_zero_queries(struct nvk_cmd_buffer *cmd, struct nvk_query_pool *pool,
    switch (pool->vk.query_type) {
    case VK_QUERY_TYPE_OCCLUSION:
    case VK_QUERY_TYPE_TIMESTAMP:
-   case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       for (uint32_t i = 0; i < num_queries; i++) {
          uint64_t addr = nvk_query_available_addr(pool, first_index + i);
 
@@ -483,6 +485,24 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
       }
       break;
    }
+
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      p = nvk_cmd_buffer_push(cmd, 5 + end_size);
+
+      P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+      P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
+      P_NV9097_SET_REPORT_SEMAPHORE_B(p, report_addr);
+      P_NV9097_SET_REPORT_SEMAPHORE_C(p, 1);
+      P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+         .operation = OPERATION_REPORT_ONLY,
+         .pipeline_location = PIPELINE_LOCATION_STREAMING_OUTPUT,
+         .report = REPORT_VTG_PRIMITIVES_OUT,
+         .sub_report = index,
+         .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+         .flush_disable = true,
+      });
+      break;
+
    default:
       unreachable("Unsupported query type");
    }
@@ -637,6 +657,7 @@ nvk_GetQueryPoolResults(VkDevice device,
       uint32_t available_dst_idx = 1;
       switch (pool->vk.query_type) {
       case VK_QUERY_TYPE_OCCLUSION:
+      case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
          if (write_results)
             cpu_get_query_delta(dst, src, 0, flags);
          break;
