@@ -932,4 +932,10 @@ namespace brw {
    };
 }
 
+static inline fs_reg
+offset(const fs_reg &reg, const brw::fs_builder &bld, unsigned delta)
+{
+   return offset(reg, bld.dispatch_width(), delta);
+}
+
 #endif

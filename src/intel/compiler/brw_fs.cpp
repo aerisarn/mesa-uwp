@@ -8205,3 +8205,65 @@ bool brw_should_print_shader(const nir_shader *shader, uint64_t debug_flag)
 {
    return INTEL_DEBUG(debug_flag) && (!shader->info.internal || NIR_DEBUG(PRINT_INTERNAL));
 }
+
+namespace brw {
+   fs_reg
+   fetch_payload_reg(const brw::fs_builder &bld, uint8_t regs[2],
+                     brw_reg_type type)
+   {
+      if (!regs[0])
+         return fs_reg();
+
+      if (bld.dispatch_width() > 16) {
+         const fs_reg tmp = bld.vgrf(type);
+         const brw::fs_builder hbld = bld.exec_all().group(16, 0);
+         const unsigned m = bld.dispatch_width() / hbld.dispatch_width();
+         fs_reg components[2];
+         assert(m <= 2);
+
+         for (unsigned g = 0; g < m; g++)
+               components[g] = retype(brw_vec8_grf(regs[g], 0), type);
+
+         hbld.LOAD_PAYLOAD(tmp, components, m, 0);
+
+         return tmp;
+
+      } else {
+         return fs_reg(retype(brw_vec8_grf(regs[0], 0), type));
+      }
+   }
+
+   fs_reg
+   fetch_barycentric_reg(const brw::fs_builder &bld, uint8_t regs[2])
+   {
+      if (!regs[0])
+         return fs_reg();
+
+      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
+      const brw::fs_builder hbld = bld.exec_all().group(8, 0);
+      const unsigned m = bld.dispatch_width() / hbld.dispatch_width();
+      fs_reg *const components = new fs_reg[2 * m];
+
+      for (unsigned c = 0; c < 2; c++) {
+         for (unsigned g = 0; g < m; g++)
+            components[c * m + g] = offset(brw_vec8_grf(regs[g / 2], 0),
+                                           hbld, c + 2 * (g % 2));
+      }
+
+      hbld.LOAD_PAYLOAD(tmp, components, 2 * m, 0);
+
+      delete[] components;
+      return tmp;
+   }
+
+   void
+   check_dynamic_msaa_flag(const fs_builder &bld,
+                           const struct brw_wm_prog_data *wm_prog_data,
+                           enum brw_wm_msaa_flags flag)
+   {
+      fs_inst *inst = bld.AND(bld.null_reg_ud(),
+                              dynamic_msaa_flags(wm_prog_data),
+                              brw_imm_ud(flag));
+      inst->conditional_mod = BRW_CONDITIONAL_NZ;
+   }
+}
