@@ -2083,12 +2083,18 @@ emit_pixel_interpolater_send(const fs_builder &bld,
                              const fs_reg &dst,
                              const fs_reg &src,
                              const fs_reg &desc,
+                             const fs_reg &flag_reg,
                              glsl_interp_mode interpolation)
 {
    struct brw_wm_prog_data *wm_prog_data =
       brw_wm_prog_data(bld.shader->stage_prog_data);
 
-   fs_inst *inst = bld.emit(opcode, dst, src, desc);
+   fs_reg srcs[INTERP_NUM_SRCS];
+   srcs[INTERP_SRC_OFFSET]       = src;
+   srcs[INTERP_SRC_MSG_DESC]     = desc;
+   srcs[INTERP_SRC_DYNAMIC_MODE] = flag_reg;
+
+   fs_inst *inst = bld.emit(opcode, dst, srcs, INTERP_NUM_SRCS);
    /* 2 floats per slot returned */
    inst->size_written = 2 * dst.component_size(inst->exec_size);
    if (interpolation == INTERP_MODE_NOPERSPECTIVE) {
@@ -3569,11 +3575,23 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          bld.exec_all().group(1, 0).SHL(msg_data, sample_id, brw_imm_ud(4u));
       }
 
+      fs_reg flag_reg;
+      struct brw_wm_prog_key *wm_prog_key = (struct brw_wm_prog_key *) key;
+      if (wm_prog_key->multisample_fbo == BRW_SOMETIMES) {
+         struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(prog_data);
+
+         check_dynamic_msaa_flag(bld.exec_all().group(8, 0),
+                                 wm_prog_data,
+                                 BRW_WM_MSAA_FLAG_MULTISAMPLE_FBO);
+         flag_reg = brw_flag_reg(0, 0);
+      }
+
       emit_pixel_interpolater_send(bld,
                                    FS_OPCODE_INTERPOLATE_AT_SAMPLE,
                                    dest,
                                    fs_reg(), /* src */
                                    msg_data,
+                                   flag_reg,
                                    interpolation);
       break;
    }
@@ -3594,6 +3612,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                                       dest,
                                       fs_reg(), /* src */
                                       brw_imm_ud(off_x | (off_y << 4)),
+                                      fs_reg(), /* flag_reg */
                                       interpolation);
       } else {
          fs_reg src = retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_D);
@@ -3603,6 +3622,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                                       dest,
                                       src,
                                       brw_imm_ud(0u),
+                                      fs_reg(), /* flag_reg */
                                       interpolation);
       }
       break;
