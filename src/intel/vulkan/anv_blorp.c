@@ -344,6 +344,9 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
          }
       }
    } else {
+      /* This case handles the ycbcr images, aspect mask are compatible but
+       * don't need to be the same.
+       */
       struct blorp_surf src_surf, dst_surf;
       get_blorp_surf_for_anv_image(cmd_buffer, src_image, src_mask,
                                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
