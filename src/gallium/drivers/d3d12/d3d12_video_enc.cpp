@@ -2418,11 +2418,14 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
       opt_metadata.codec_unit_metadata_count++;
    }
 
+   opt_metadata.average_frame_qp = static_cast<unsigned int>(encoderMetadata.EncodeStats.AverageQP);
+
    opt_metadata.present_metadata = (PIPE_VIDEO_FEEDBACK_METADATA_TYPE_BITSTREAM_SIZE |
                                     PIPE_VIDEO_FEEDBACK_METADATA_TYPE_ENCODE_RESULT |
                                     PIPE_VIDEO_FEEDBACK_METADATA_TYPE_CODEC_UNIT_LOCATION |
                                     PIPE_VIDEO_FEEDBACK_METADATA_TYPE_MAX_FRAME_SIZE_OVERFLOW |
-                                    PIPE_VIDEO_FEEDBACK_METADATA_TYPE_MAX_SLICE_SIZE_OVERFLOW);
+                                    PIPE_VIDEO_FEEDBACK_METADATA_TYPE_MAX_SLICE_SIZE_OVERFLOW |
+                                    PIPE_VIDEO_FEEDBACK_METADATA_TYPE_AVERAGE_FRAME_QP);
 
    if (pMetadata)
       *pMetadata = opt_metadata;
