@@ -1546,6 +1546,10 @@ radv_init_dcc_control_reg(struct radv_device *device, struct radv_image_view *iv
       result |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX11(independent_128b_blocks) |
                 S_028C78_DISABLE_CONSTANT_ENCODE_REG(1) |
                 S_028C78_FDCC_ENABLE(radv_dcc_enabled(iview->image, iview->vk.base_mip_level));
+
+      if (device->physical_device->rad_info.family >= CHIP_GFX1103_R2) {
+         result |= S_028C78_ENABLE_MAX_COMP_FRAG_OVERRIDE(1) | S_028C78_MAX_COMP_FRAGS(iview->image->vk.samples >= 4);
+      }
    } else {
       result |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(independent_128b_blocks);
    }
