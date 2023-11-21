@@ -8,6 +8,7 @@
 #define AC_SURFACE_INCLUDE_NIR
 #include "ac_surface.h"
 #include "si_pipe.h"
+#include "si_query.h"
 
 #include "nir_format_convert.h"
 
@@ -1250,6 +1251,257 @@ void *si_create_query_result_cs(struct si_context *sctx)
       nir_pop_if(&b, if_result_available);
    }
    nir_pop_if(&b, if_acc_chaining);
+
+   return create_shader_state(sctx, b.shader);
+}
+
+/* Create the compute shader that is used to collect the results of gfx10+
+ * shader queries.
+ *
+ * One compute grid with a single thread is launched for every query result
+ * buffer. The thread (optionally) reads a previous summary buffer, then
+ * accumulates data from the query result buffer, and writes the result either
+ * to a summary buffer to be consumed by the next grid invocation or to the
+ * user-supplied buffer.
+ *
+ * Data layout:
+ *
+ * CONST
+ *  0.x = config;
+ *          [0:2] the low 3 bits indicate the mode:
+ *             0: sum up counts
+ *             1: determine result availability and write it as a boolean
+ *             2: SO_OVERFLOW
+ *          3: SO_ANY_OVERFLOW
+ *        the remaining bits form a bitfield:
+ *          8: write result as a 64-bit value
+ *  0.y = offset in bytes to counts or stream for SO_OVERFLOW mode
+ *  0.z = chain bit field:
+ *          1: have previous summary buffer
+ *          2: write next summary buffer
+ *  0.w = result_count
+ */
+void *gfx11_create_sh_query_result_cs(struct si_context *sctx)
+{
+   const nir_shader_compiler_options *options =
+   sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
+
+   nir_builder b =
+      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "gfx11_create_sh_query_result_cs");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.num_ubos = 1;
+   b.shader->info.num_ssbos = 3;
+   b.shader->num_uniforms = 1;
+
+   nir_def *zero = nir_imm_int(&b, 0);
+   nir_def *one = nir_imm_int(&b, 1);
+   nir_def *two = nir_imm_int(&b, 2);
+   nir_def *four = nir_imm_int(&b, 4);
+   nir_def *minus_one = nir_imm_int(&b, 0xffffffff);
+
+   /* uint32_t acc_result = 0, acc_missing = 0; */
+   nir_function_impl *e = nir_shader_get_entrypoint(b.shader);
+   nir_variable *acc_result = nir_local_variable_create(e, glsl_uint_type(), "acc_result");
+   nir_store_var(&b, acc_result, zero, 0x1);
+   nir_variable *acc_missing = nir_local_variable_create(e, glsl_uint_type(), "acc_missing");
+   nir_store_var(&b, acc_missing, zero, 0x1);
+
+   /* uint32_t buff_0[4] = load_ubo(0, 0); */
+   nir_def *buff_0 = nir_load_ubo(&b, 4, 32, zero, zero, .range_base = 0, .range = 16);
+
+   /* if((chain & 1) {
+    *    uint32_t result[2] = load_ssbo(1, 0);
+    *    acc_result = result[0];
+    *    acc_missing = result[1];
+    * }
+    */
+   nir_def *is_prev_summary_buffer = nir_i2b(&b, nir_iand(&b, nir_channel(&b, buff_0, 2), one));
+   nir_if *if_prev_summary_buffer = nir_push_if(&b, is_prev_summary_buffer); {
+      nir_def *result = nir_load_ssbo(&b, 2, 32, one, zero);
+         nir_store_var(&b, acc_result, nir_channel(&b, result, 0), 0x1);
+         nir_store_var(&b, acc_missing, nir_channel(&b, result, 1), 0x1);
+   }
+   nir_pop_if(&b, if_prev_summary_buffer);
+
+   /* uint32_t mode = config & 0b111;
+    * bool is_overflow = mode >= 2;
+    */
+   nir_def *mode = nir_iand_imm(&b, nir_channel(&b, buff_0, 0), 0b111);
+   nir_def *is_overflow = nir_uge(&b, mode, two);
+
+   /* uint32_t result_remaining = (is_overflow && acc_result) ? 0 : result_count; */
+   nir_variable *result_remaining = nir_local_variable_create(e, glsl_uint_type(), "result_remaining");
+   nir_variable *base_offset = nir_local_variable_create(e, glsl_uint_type(), "base_offset");
+   nir_def *state = nir_iand(&b,
+                             nir_isub(&b, zero, nir_b2i32(&b, is_overflow)),
+                             nir_load_var(&b, acc_result));
+   nir_def *value = nir_bcsel(&b, nir_i2b(&b, state), zero, nir_channel(&b, buff_0, 3));
+   nir_store_var(&b, result_remaining, value, 0x1);
+
+   /* uint32_t base_offset = 0; */
+   nir_store_var(&b, base_offset, zero, 0x1);
+
+   /* Outer loop begin.
+    *   while (!result_remaining) {
+    *      ...
+    */
+   nir_loop *loop_outer = nir_push_loop(&b); {
+      nir_def *condition = nir_load_var(&b, result_remaining);
+      nir_if *if_not_condition = nir_push_if(&b, nir_ieq(&b, condition, zero)); {
+         nir_jump(&b, nir_jump_break);
+      }
+      nir_pop_if(&b, if_not_condition);
+
+      /* result_remaining--; */
+      condition = nir_iadd(&b, condition, minus_one);
+      nir_store_var(&b, result_remaining, condition, 0x1);
+
+      /* uint32_t fence = load_ssbo(0, base_offset + sizeof(gfx11_sh_query_buffer_mem.stream)); */
+      nir_def *b_offset = nir_load_var(&b, base_offset);
+      uint64_t buffer_mem_stream_size = sizeof(((struct gfx11_sh_query_buffer_mem*)0)->stream);
+      nir_def *fence = nir_load_ssbo(&b, 1, 32, zero,
+                                    nir_iadd_imm(&b, b_offset, buffer_mem_stream_size));
+
+      /* if (!fence) {
+       *    acc_missing = ~0u;
+       *    break;
+       * }
+       */
+      nir_def *is_zero = nir_ieq(&b, fence, zero);
+      nir_def *y_value = nir_isub(&b, zero, nir_b2i32(&b, is_zero));
+      nir_store_var(&b, acc_missing, y_value, 0x1);
+      nir_if *if_ssbo_zero = nir_push_if(&b, is_zero); {
+         nir_jump(&b, nir_jump_break);
+      }
+      nir_pop_if(&b, if_ssbo_zero);
+
+      /* stream_offset = base_offset + offset; */
+      nir_def *s_offset = nir_iadd(&b, b_offset, nir_channel(&b, buff_0, 1));
+
+      /* if (!(config & 7)) {
+       *    acc_result += buffer[0]@stream_offset;
+       * }
+       */
+      nir_if *if_sum_up_counts = nir_push_if(&b, nir_ieq(&b, mode, zero)); {
+         nir_def *x_value = nir_load_ssbo(&b, 1, 32, zero, s_offset);
+         x_value = nir_iadd(&b, nir_load_var(&b, acc_result), x_value);
+         nir_store_var(&b, acc_result, x_value, 0x1);
+      }
+      nir_pop_if(&b, if_sum_up_counts);
+
+      /* if (is_overflow) {
+       *    uint32_t count = (config & 1) ? 4 : 1;
+       *    ...
+       */
+      nir_if *if_overflow = nir_push_if(&b, is_overflow); {
+         nir_def *is_result_available = nir_i2b(&b, nir_iand(&b, mode, one));
+         nir_def *initial_count = nir_bcsel(&b, is_result_available, four, one);
+
+         nir_variable *count =
+            nir_local_variable_create(e, glsl_uint_type(), "count");
+         nir_store_var(&b, count, initial_count, 0x1);
+
+         nir_variable *stream_offset =
+            nir_local_variable_create(e, glsl_uint_type(), "stream_offset");
+         nir_store_var(&b, stream_offset, s_offset, 0x1);
+
+         /* Inner loop begin.
+          *    do {
+          *       ...
+          */
+         nir_loop *loop_inner = nir_push_loop(&b); {
+            /* uint32_t buffer[4] = load_ssbo(0, stream_offset + 2 * sizeof(uint64_t)); */
+            nir_def *stream_offset_value = nir_load_var(&b, stream_offset);
+            nir_def *buffer =
+               nir_load_ssbo(&b, 4, 32, zero,
+                             nir_iadd_imm(&b, stream_offset_value, 2 * sizeof(uint64_t)));
+
+            /* if (generated != emitted) {
+             *    acc_result = 1;
+             *    base_offset = 0;
+             *    break;
+             * }
+             */
+            nir_def *generated = nir_channel(&b, buffer, 0);
+            nir_def *emitted = nir_channel(&b, buffer, 2);
+            nir_if *if_not_equal = nir_push_if(&b, nir_ine(&b, generated, emitted)); {
+               nir_store_var(&b, acc_result, one, 0x1);
+               nir_store_var(&b, base_offset, zero, 0x1);
+               nir_jump(&b, nir_jump_break);
+            }
+            nir_pop_if(&b, if_not_equal);
+
+            /* stream_offset += sizeof(gfx11_sh_query_buffer_mem.stream[0]); */
+            uint64_t buffer_mem_stream0_size =
+               sizeof(((struct gfx11_sh_query_buffer_mem*)0)->stream[0]);
+            stream_offset_value = nir_iadd_imm(&b, stream_offset_value, buffer_mem_stream0_size);
+            nir_store_var(&b, stream_offset, stream_offset_value, 0x1);
+
+            /* } while(count--); */
+            nir_def *loop_count = nir_load_var(&b, count);
+            loop_count = nir_iadd(&b, loop_count, minus_one);
+            nir_store_var(&b, count, loop_count, 0x1);
+
+            nir_if *if_zero = nir_push_if(&b, nir_ieq(&b, loop_count, zero)); {
+               nir_jump(&b, nir_jump_break);
+            }
+            nir_pop_if(&b, if_zero);
+         }
+         nir_pop_loop(&b, loop_inner); /* Inner loop end */
+      }
+      nir_pop_if(&b, if_overflow);
+
+      /* base_offset += sizeof(gfx11_sh_query_buffer_mem); */
+      nir_def *buffer_mem_size = nir_imm_int(&b, sizeof(struct gfx11_sh_query_buffer_mem));
+      nir_store_var(&b, base_offset, nir_iadd(&b, nir_load_var(&b, base_offset), buffer_mem_size), 0x1);
+   }
+   nir_pop_loop(&b, loop_outer); /* Outer loop end */
+
+   nir_def *acc_result_value = nir_load_var(&b, acc_result);
+   nir_def *y_value = nir_load_var(&b, acc_missing);
+
+   /* if ((chain & 2)) {
+    *    store_ssbo(<acc_result, acc_missing>, 2, 0);
+    *    ...
+    */
+   nir_def *is_write_summary_buffer = nir_i2b(&b, nir_iand(&b, nir_channel(&b, buff_0, 2), two));
+   nir_if *if_write_summary_buffer = nir_push_if(&b, is_write_summary_buffer); {
+      nir_store_ssbo(&b, nir_vec2(&b, acc_result_value, y_value), two, zero);
+   } nir_push_else(&b, if_write_summary_buffer); {
+
+      /* } else {
+       *    if ((config & 7) == 1) {
+       *       acc_result = acc_missing ? 0 : 1;
+       *       acc_missing = 0;
+       *    }
+       *    ...
+       */
+      nir_def *is_result_available = nir_ieq(&b, mode, one);
+      nir_def *is_zero = nir_ieq(&b, y_value, zero);
+      acc_result_value = nir_bcsel(&b, is_result_available, nir_b2i32(&b, is_zero), acc_result_value);
+      nir_def *ny = nir_bcsel(&b, is_result_available, zero, y_value);
+
+      /* if (!acc_missing) {
+       *    store_ssbo(acc_result, 2, 0);
+       *    if (config & 8)) {
+       *       store_ssbo(0, 2, 4)
+       *    }
+       * }
+       */
+      nir_if *if_zero = nir_push_if(&b, nir_ieq(&b, ny, zero)); {
+         nir_store_ssbo(&b, acc_result_value, two, zero);
+
+         nir_def *is_so_any_overflow = nir_i2b(&b, nir_iand_imm(&b, nir_channel(&b, buff_0, 0), 8));
+         nir_if *if_so_any_overflow = nir_push_if(&b, is_so_any_overflow); {
+            nir_store_ssbo(&b, zero, two, four);
+         }
+         nir_pop_if(&b, if_so_any_overflow);
+      }
+      nir_pop_if(&b, if_zero);
+   }
+   nir_pop_if(&b, if_write_summary_buffer);
 
    return create_shader_state(sctx, b.shader);
 }

@@ -1674,8 +1674,6 @@ void *si_clear_render_target_shader(struct si_context *sctx, enum pipe_texture_t
 void *si_clear_12bytes_buffer_shader(struct si_context *sctx);
 void *si_create_fmask_expand_cs(struct si_context *sctx, unsigned num_samples, bool is_array);
 void *si_create_query_result_cs(struct si_context *sctx);
-
-/* si_shaderlib_tgsi.c */
 void *gfx11_create_sh_query_result_cs(struct si_context *sctx);
 
 /* gfx11_query.c */
