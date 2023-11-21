@@ -568,7 +568,7 @@ radv_cmd_buffer_resolve_rendering_hw(struct radv_cmd_buffer *cmd_buffer, struct 
       VkImageSubresourceRange range = {
          .aspectMask = dst_iview->vk.aspects,
          .baseMipLevel = dst_iview->vk.base_mip_level,
-         .levelCount = dst_iview->vk.level_count,
+         .levelCount = 1,
          .baseArrayLayer = 0,
          .layerCount = 1,
       };
