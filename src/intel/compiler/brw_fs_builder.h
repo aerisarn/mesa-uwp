@@ -54,7 +54,7 @@ namespace brw {
        * Construct an fs_builder that inserts instructions into \p shader.
        * \p dispatch_width gives the native execution width of the program.
        */
-      fs_builder(backend_shader *shader,
+      fs_builder(fs_visitor *shader,
                  unsigned dispatch_width) :
          shader(shader), block(NULL), cursor(NULL),
          _dispatch_width(dispatch_width),
@@ -64,13 +64,15 @@ namespace brw {
       {
       }
 
+      explicit fs_builder(fs_visitor *s) : fs_builder(s, s->dispatch_width) {}
+
       /**
        * Construct an fs_builder that inserts instructions into \p shader
        * before instruction \p inst in basic block \p block.  The default
        * execution controls and debug annotation are initialized from the
        * instruction passed as argument.
        */
-      fs_builder(backend_shader *shader, bblock_t *block, fs_inst *inst) :
+      fs_builder(fs_visitor *shader, bblock_t *block, fs_inst *inst) :
          shader(shader), block(block), cursor(inst),
          _dispatch_width(inst->exec_size),
          _group(inst->group),
@@ -832,7 +834,7 @@ namespace brw {
          return inst;
       }
 
-      backend_shader *shader;
+      fs_visitor *shader;
 
       fs_inst *BREAK()    { return emit(BRW_OPCODE_BREAK); }
       fs_inst *DO()       { return emit(BRW_OPCODE_DO); }

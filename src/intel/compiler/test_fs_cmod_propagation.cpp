@@ -83,7 +83,7 @@ cmod_propagation_test::cmod_propagation_test()
 
    v = new cmod_propagation_fs_visitor(compiler, &params, prog_data, shader);
 
-   bld = fs_builder(v, v->dispatch_width).at_end();
+   bld = fs_builder(v).at_end();
 
    devinfo->ver = 7;
    devinfo->verx10 = devinfo->ver * 10;

@@ -1232,7 +1232,7 @@ fs_visitor::emit_gs_thread_end()
       emit_gs_control_data_bits(this->final_gs_vertex_count);
    }
 
-   const fs_builder abld = fs_builder(this, dispatch_width).at_end().annotate("thread end");
+   const fs_builder abld = fs_builder(this).at_end().annotate("thread end");
    fs_inst *inst;
 
    if (gs_prog_data->static_vertex_count != -1) {
@@ -3308,7 +3308,7 @@ fs_visitor::emit_repclear_shader()
               BRW_VERTICAL_STRIDE_8, BRW_WIDTH_2, BRW_HORIZONTAL_STRIDE_4,
               BRW_SWIZZLE_XYZW, WRITEMASK_XYZW);
 
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
    bld.exec_all().group(4, 0).MOV(color_output, color_input);
 
    if (key->nr_color_regions > 1) {
@@ -5313,7 +5313,7 @@ fs_visitor::lower_simd_width()
           */
          const unsigned max_width = MAX2(inst->exec_size, lower_width);
 
-         const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+         const fs_builder bld = fs_builder(this).at_end();
          const fs_builder ibld = bld.at(block, inst)
                                     .exec_all(inst->force_writemask_all)
                                     .group(max_width, inst->group / max_width);
@@ -6691,7 +6691,7 @@ fs_visitor::set_tcs_invocation_id()
 {
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
 
    const unsigned instance_id_mask =
       (devinfo->verx10 >= 125) ? INTEL_MASK(7, 0) :
@@ -6743,7 +6743,7 @@ fs_visitor::emit_tcs_thread_end()
    if (devinfo->ver != 8 && mark_last_urb_write_with_eot())
       return;
 
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
 
    /* Emit a URB write to end the thread.  On Broadwell, we use this to write
     * zero to the "TR DS Cache Disable" bit (we haven't implemented a fancy
@@ -6766,7 +6766,7 @@ fs_visitor::run_tcs()
    assert(stage == MESA_SHADER_TESS_CTRL);
 
    struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(prog_data);
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
 
    assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH ||
           vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
@@ -6866,7 +6866,7 @@ fs_visitor::run_gs()
        * Otherwise, we need to initialize it to 0 here.
        */
       if (gs_compile->control_data_header_size_bits <= 32) {
-         const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+         const fs_builder bld = fs_builder(this).at_end();
          const fs_builder abld = bld.annotate("initialize control data bits");
          abld.MOV(this->control_data_bits, brw_imm_ud(0u));
       }
@@ -6929,7 +6929,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
 {
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(this->prog_data);
    brw_wm_prog_key *wm_key = (brw_wm_prog_key *) this->key;
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
 
    assert(stage == MESA_SHADER_FRAGMENT);
 
@@ -7005,7 +7005,7 @@ fs_visitor::run_cs(bool allow_spilling)
 {
    assert(gl_shader_stage_is_compute(stage));
    assert(devinfo->ver >= 7);
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
 
    payload_ = new cs_thread_payload(*this);
 

@@ -65,7 +65,7 @@ scoreboard_test::scoreboard_test()
    v = new fs_visitor(compiler, &params, NULL, &prog_data->base, shader, 8,
                       false, false);
 
-   bld = fs_builder(v, v->dispatch_width).at_end();
+   bld = fs_builder(v).at_end();
 }
 
 scoreboard_test::~scoreboard_test()

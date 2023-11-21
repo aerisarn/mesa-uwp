@@ -72,7 +72,7 @@ saturate_propagation_test::saturate_propagation_test()
 
    v = new saturate_propagation_fs_visitor(compiler, &params, prog_data, shader);
 
-   bld = fs_builder(v, v->dispatch_width).at_end();
+   bld = fs_builder(v).at_end();
 
    devinfo->ver = 6;
    devinfo->verx10 = devinfo->ver * 10;

@@ -104,7 +104,7 @@ gs_thread_payload::gs_thread_payload(fs_visitor &v)
 {
    struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(v.prog_data);
    struct brw_gs_prog_data *gs_prog_data = brw_gs_prog_data(v.prog_data);
-   const fs_builder bld = fs_builder(&v, v.dispatch_width).at_end();
+   const fs_builder bld = fs_builder(&v).at_end();
 
    /* R0: thread header. */
    unsigned r = reg_unit(v.devinfo);
@@ -439,7 +439,7 @@ task_mesh_thread_payload::task_mesh_thread_payload(fs_visitor &v)
     * the address to descriptors.
     */
 
-   const fs_builder bld = fs_builder(&v, v.dispatch_width).at_end();
+   const fs_builder bld = fs_builder(&v).at_end();
 
    unsigned r = 0;
    assert(subgroup_id_.file != BAD_FILE);

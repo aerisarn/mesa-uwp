@@ -95,7 +95,7 @@ fs_visitor::emit_interpolation_setup_gfx4()
 {
    struct brw_reg g1_uw = retype(brw_vec1_grf(1, 0), BRW_REGISTER_TYPE_UW);
 
-   fs_builder abld = fs_builder(this, dispatch_width).at_end().annotate("compute pixel centers");
+   fs_builder abld = fs_builder(this).at_end().annotate("compute pixel centers");
    this->pixel_x = vgrf(glsl_type::uint_type);
    this->pixel_y = vgrf(glsl_type::uint_type);
    this->pixel_x.type = BRW_REGISTER_TYPE_UW;
@@ -107,7 +107,7 @@ fs_visitor::emit_interpolation_setup_gfx4()
             fs_reg(stride(suboffset(g1_uw, 5), 2, 4, 0)),
             fs_reg(brw_imm_v(0x11001100)));
 
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
    abld = bld.annotate("compute pixel deltas from v0");
 
    this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL] =
@@ -153,7 +153,7 @@ fs_visitor::emit_interpolation_setup_gfx4()
 void
 fs_visitor::emit_interpolation_setup_gfx6()
 {
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
    fs_builder abld = bld.annotate("compute pixel centers");
 
    this->pixel_x = vgrf(glsl_type::float_type);
@@ -606,7 +606,7 @@ fs_visitor::emit_alpha_test()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
    const fs_builder abld = bld.annotate("Alpha test");
 
    fs_inst *cmp;
@@ -680,7 +680,7 @@ fs_visitor::emit_single_fb_write(const fs_builder &bld,
 void
 fs_visitor::do_emit_fb_writes(int nr_color_regions, bool replicate_alpha)
 {
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
    fs_inst *inst = NULL;
 
    for (int target = 0; target < nr_color_regions; target++) {
@@ -815,7 +815,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       unreachable("invalid stage");
    }
 
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
 
    fs_reg per_slot_offsets;
 
@@ -1091,7 +1091,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
 void
 fs_visitor::emit_urb_fence()
 {
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
    fs_reg dst = bld.vgrf(BRW_REGISTER_TYPE_UD);
    fs_inst *fence = bld.emit(SHADER_OPCODE_MEMORY_FENCE, dst,
                              brw_vec8_grf(0, 0),
@@ -1111,7 +1111,7 @@ void
 fs_visitor::emit_cs_terminate()
 {
    assert(devinfo->ver >= 7);
-   const fs_builder bld = fs_builder(this, dispatch_width).at_end();
+   const fs_builder bld = fs_builder(this).at_end();
 
    /* We can't directly send from g0, since sends with EOT have to use
     * g112-127. So, copy it to a virtual register, The register allocator will
