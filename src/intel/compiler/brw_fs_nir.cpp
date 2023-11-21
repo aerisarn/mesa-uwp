@@ -34,12 +34,24 @@
 
 using namespace brw;
 
+struct brw_fs_bind_info {
+   bool valid;
+   bool bindless;
+   unsigned block;
+   unsigned set;
+   unsigned binding;
+};
+
 struct nir_to_brw_state {
    fs_visitor *s;
    const nir_shader *nir;
    const intel_device_info *devinfo;
 
    fs_reg *ssa_values;
+   fs_inst **resource_insts;
+   struct brw_fs_bind_info *ssa_bind_infos;
+   fs_reg *resource_values;
+   fs_reg *system_values;
 };
 
 static fs_reg get_nir_src(nir_to_brw_state *ntb, const nir_src &src);
@@ -49,7 +61,7 @@ static nir_component_mask_t get_nir_write_mask(const nir_def &def);
 static void fs_nir_emit_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld, nir_intrinsic_instr *instr);
 static fs_reg emit_samplepos_setup(fs_visitor *s);
 static fs_reg emit_sampleid_setup(fs_visitor *s);
-static fs_reg emit_samplemaskin_setup(fs_visitor *s);
+static fs_reg emit_samplemaskin_setup(nir_to_brw_state *ntb);
 static fs_reg emit_shading_rate_setup(fs_visitor *s);
 
 static void fs_nir_emit_impl(nir_to_brw_state *ntb, nir_function_impl *impl);
@@ -161,8 +173,9 @@ emit_work_group_id_setup(fs_visitor *s)
 }
 
 static bool
-emit_system_values_block(nir_block *block, fs_visitor *v)
+emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
 {
+   fs_visitor *v = ntb->s;
    fs_reg *reg;
 
    nir_foreach_instr(instr, block) {
@@ -195,7 +208,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          if (v->stage == MESA_SHADER_TESS_CTRL)
             break;
          assert(v->stage == MESA_SHADER_GEOMETRY);
-         reg = &v->nir_system_values[SYSTEM_VALUE_INVOCATION_ID];
+         reg = &ntb->system_values[SYSTEM_VALUE_INVOCATION_ID];
          if (reg->file == BAD_FILE) {
             const fs_builder abld = v->bld.annotate("gl_InvocationID", NULL);
             fs_reg g1(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
@@ -208,14 +221,14 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
       case nir_intrinsic_load_sample_pos:
       case nir_intrinsic_load_sample_pos_or_center:
          assert(v->stage == MESA_SHADER_FRAGMENT);
-         reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_POS];
+         reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_POS];
          if (reg->file == BAD_FILE)
             *reg = emit_samplepos_setup(v);
          break;
 
       case nir_intrinsic_load_sample_id:
          assert(v->stage == MESA_SHADER_FRAGMENT);
-         reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_ID];
+         reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_ID];
          if (reg->file == BAD_FILE)
             *reg = emit_sampleid_setup(v);
          break;
@@ -223,9 +236,9 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
       case nir_intrinsic_load_sample_mask_in:
          assert(v->stage == MESA_SHADER_FRAGMENT);
          assert(v->devinfo->ver >= 7);
-         reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_MASK_IN];
+         reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_MASK_IN];
          if (reg->file == BAD_FILE)
-            *reg = emit_samplemaskin_setup(v);
+            *reg = emit_samplemaskin_setup(ntb);
          break;
 
       case nir_intrinsic_load_workgroup_id:
@@ -233,14 +246,14 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          if (gl_shader_stage_is_mesh(v->stage))
             unreachable("should be lowered by nir_lower_compute_system_values().");
          assert(gl_shader_stage_is_compute(v->stage));
-         reg = &v->nir_system_values[SYSTEM_VALUE_WORKGROUP_ID];
+         reg = &ntb->system_values[SYSTEM_VALUE_WORKGROUP_ID];
          if (reg->file == BAD_FILE)
             *reg = emit_work_group_id_setup(v);
          break;
 
       case nir_intrinsic_load_helper_invocation:
          assert(v->stage == MESA_SHADER_FRAGMENT);
-         reg = &v->nir_system_values[SYSTEM_VALUE_HELPER_INVOCATION];
+         reg = &ntb->system_values[SYSTEM_VALUE_HELPER_INVOCATION];
          if (reg->file == BAD_FILE) {
             const fs_builder abld =
                v->bld.annotate("gl_HelperInvocation", NULL);
@@ -294,7 +307,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          break;
 
       case nir_intrinsic_load_frag_shading_rate:
-         reg = &v->nir_system_values[SYSTEM_VALUE_FRAG_SHADING_RATE];
+         reg = &ntb->system_values[SYSTEM_VALUE_FRAG_SHADING_RATE];
          if (reg->file == BAD_FILE)
             *reg = emit_shading_rate_setup(v);
          break;
@@ -308,13 +321,14 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
 }
 
 static void
-fs_nir_emit_system_values(fs_visitor *s)
+fs_nir_emit_system_values(nir_to_brw_state *ntb)
 {
-   const fs_builder &bld = s->bld;
+   const fs_builder &bld = ntb->s->bld;
+   fs_visitor *s = ntb->s;
 
-   s->nir_system_values = ralloc_array(s->mem_ctx, fs_reg, SYSTEM_VALUE_MAX);
+   ntb->system_values = ralloc_array(ntb, fs_reg, SYSTEM_VALUE_MAX);
    for (unsigned i = 0; i < SYSTEM_VALUE_MAX; i++) {
-      s->nir_system_values[i] = fs_reg();
+      ntb->system_values[i] = fs_reg();
    }
 
    /* Always emit SUBGROUP_INVOCATION.  Dead code will clean it up if we
@@ -322,7 +336,7 @@ fs_nir_emit_system_values(fs_visitor *s)
     */
    {
       const fs_builder abld = bld.annotate("gl_SubgroupInvocation", NULL);
-      fs_reg &reg = s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+      fs_reg &reg = ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
       reg = abld.vgrf(BRW_REGISTER_TYPE_UW);
       abld.UNDEF(reg);
 
@@ -338,16 +352,16 @@ fs_nir_emit_system_values(fs_visitor *s)
 
    nir_function_impl *impl = nir_shader_get_entrypoint((nir_shader *)s->nir);
    nir_foreach_block(block, impl)
-      emit_system_values_block(block, s);
+      emit_system_values_block(ntb, block);
 }
 
 static void
 fs_nir_emit_impl(nir_to_brw_state *ntb, nir_function_impl *impl)
 {
    ntb->ssa_values = rzalloc_array(ntb, fs_reg, impl->ssa_alloc);
-   ntb->s->nir_resource_insts = rzalloc_array(ntb, fs_inst *, impl->ssa_alloc);
-   ntb->s->nir_ssa_bind_infos = rzalloc_array(ntb, struct brw_fs_bind_info, impl->ssa_alloc);
-   ntb->s->nir_resource_values = rzalloc_array(ntb, fs_reg, impl->ssa_alloc);
+   ntb->resource_insts = rzalloc_array(ntb, fs_inst *, impl->ssa_alloc);
+   ntb->ssa_bind_infos = rzalloc_array(ntb, struct brw_fs_bind_info, impl->ssa_alloc);
+   ntb->resource_values = rzalloc_array(ntb, fs_reg, impl->ssa_alloc);
 
    fs_nir_emit_cf_list(ntb, &impl->body);
 }
@@ -1957,9 +1971,9 @@ fs_nir_emit_load_const(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static bool
-get_nir_src_bindless(fs_visitor *s, const nir_src &src)
+get_nir_src_bindless(nir_to_brw_state *ntb, const nir_src &src)
 {
-   return s->nir_ssa_bind_infos[src.ssa->index].bindless;
+   return ntb->ssa_bind_infos[src.ssa->index].bindless;
 }
 
 static bool
@@ -1970,11 +1984,11 @@ is_resource_src(nir_src src)
 }
 
 static fs_reg
-get_resource_nir_src(fs_visitor *s, const nir_src &src)
+get_resource_nir_src(nir_to_brw_state *ntb, const nir_src &src)
 {
    if (!is_resource_src(src))
       return fs_reg();
-   return s->nir_resource_values[src.ssa->index];
+   return ntb->resource_values[src.ssa->index];
 }
 
 static fs_reg
@@ -2477,7 +2491,7 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
           * the final indirect byte offset.
           */
          fs_reg sequence =
-            s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+            ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
          fs_reg channel_offsets = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
          fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
          fs_reg icp_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
@@ -2715,7 +2729,7 @@ get_tcs_multi_patch_icp_handle(nir_to_brw_state *ntb, const fs_builder &bld,
     * the final indirect byte offset.
     */
    fs_reg icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-   fs_reg sequence = s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+   fs_reg sequence = ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
    fs_reg channel_offsets = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    fs_reg icp_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
@@ -3224,7 +3238,7 @@ fs_nir_emit_gs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
       break;
 
    case nir_intrinsic_load_invocation_id: {
-      fs_reg val = s->nir_system_values[SYSTEM_VALUE_INVOCATION_ID];
+      fs_reg val = ntb->system_values[SYSTEM_VALUE_INVOCATION_ID];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       bld.MOV(dest, val);
@@ -3302,7 +3316,7 @@ emit_mcs_fetch(fs_visitor *s, const fs_reg &coordinate, unsigned components,
  * framebuffer at the current fragment coordinates and sample index.
  */
 static fs_inst *
-emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
+emit_non_coherent_fb_read(nir_to_brw_state *ntb, const fs_builder &bld, const fs_reg &dst,
                           unsigned target)
 {
    fs_visitor *s = (fs_visitor *)bld.shader;
@@ -3327,10 +3341,10 @@ emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
    assert(wm_key->multisample_fbo == BRW_ALWAYS ||
           wm_key->multisample_fbo == BRW_NEVER);
    if (wm_key->multisample_fbo &&
-       s->nir_system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-      s->nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(s);
+       ntb->system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
+      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(s);
 
-   const fs_reg sample = s->nir_system_values[SYSTEM_VALUE_SAMPLE_ID];
+   const fs_reg sample = ntb->system_values[SYSTEM_VALUE_SAMPLE_ID];
    const fs_reg mcs = wm_key->multisample_fbo ?
       emit_mcs_fetch(s, coords, 3, brw_imm_ud(target), fs_reg()) : fs_reg();
 
@@ -3725,9 +3739,10 @@ emit_sampleid_setup(fs_visitor *s)
 }
 
 static fs_reg
-emit_samplemaskin_setup(fs_visitor *s)
+emit_samplemaskin_setup(nir_to_brw_state *ntb)
 {
-   const intel_device_info *devinfo = s->devinfo;
+   const intel_device_info *devinfo = ntb->devinfo;
+   fs_visitor *s = ntb->s;
    const fs_builder &bld = s->bld;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
@@ -3755,13 +3770,13 @@ emit_samplemaskin_setup(fs_visitor *s)
     */
    const fs_builder abld = bld.annotate("compute gl_SampleMaskIn");
 
-   if (s->nir_system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-      s->nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(s);
+   if (ntb->system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
+      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(s);
 
    fs_reg one = s->vgrf(glsl_type::int_type);
    fs_reg enabled_mask = s->vgrf(glsl_type::int_type);
    abld.MOV(one, brw_imm_d(1));
-   abld.SHL(enabled_mask, one, s->nir_system_values[SYSTEM_VALUE_SAMPLE_ID]);
+   abld.SHL(enabled_mask, one, ntb->system_values[SYSTEM_VALUE_SAMPLE_ID]);
    fs_reg mask = bld.vgrf(BRW_REGISTER_TYPE_D);
    abld.AND(mask, enabled_mask, coverage_mask);
 
@@ -3846,7 +3861,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
 
    case nir_intrinsic_load_sample_pos:
    case nir_intrinsic_load_sample_pos_or_center: {
-      fs_reg sample_pos = s->nir_system_values[SYSTEM_VALUE_SAMPLE_POS];
+      fs_reg sample_pos = ntb->system_values[SYSTEM_VALUE_SAMPLE_POS];
       assert(sample_pos.file != BAD_FILE);
       dest.type = sample_pos.type;
       bld.MOV(dest, sample_pos);
@@ -3868,7 +3883,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_frag_shading_rate: {
       gl_system_value sv = nir_system_value_from_intrinsic(instr->intrinsic);
-      fs_reg val = s->nir_system_values[sv];
+      fs_reg val = ntb->system_values[sv];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       bld.MOV(dest, val);
@@ -3901,7 +3916,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
       if (reinterpret_cast<const brw_wm_prog_key *>(s->key)->coherent_fb_fetch)
          emit_coherent_fb_read(bld, tmp, target);
       else
-         emit_non_coherent_fb_read(bld, tmp, target);
+         emit_non_coherent_fb_read(ntb, bld, tmp, target);
 
       for (unsigned j = 0; j < instr->num_components; j++) {
          bld.MOV(offset(dest, bld, j),
@@ -4250,7 +4265,7 @@ fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
       break;
 
    case nir_intrinsic_load_local_invocation_id: {
-      fs_reg val = s->nir_system_values[SYSTEM_VALUE_LOCAL_INVOCATION_ID];
+      fs_reg val = ntb->system_values[SYSTEM_VALUE_LOCAL_INVOCATION_ID];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       for (unsigned i = 0; i < 3; i++)
@@ -4260,7 +4275,7 @@ fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
 
    case nir_intrinsic_load_workgroup_id:
    case nir_intrinsic_load_workgroup_id_zero_base: {
-      fs_reg val = s->nir_system_values[SYSTEM_VALUE_WORKGROUP_ID];
+      fs_reg val = ntb->system_values[SYSTEM_VALUE_WORKGROUP_ID];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       for (unsigned i = 0; i < 3; i++)
@@ -4551,10 +4566,8 @@ add_rebuild_src(nir_src *src, void *state)
 }
 
 static fs_reg
-try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
+try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def *resource_def)
 {
-   fs_visitor *s = (fs_visitor *)bld.shader;
-
    /* Create a build at the location of the resource_intel intrinsic */
    fs_builder ubld8 = bld.exec_all().group(8, 0);
 
@@ -4595,7 +4608,7 @@ try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
          nir_load_const_instr *load_const =
             nir_instr_as_load_const(instr);
          fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-         s->nir_resource_insts[def->index] =
+         ntb->resource_insts[def->index] =
             ubld8.MOV(dst, brw_imm_ud(load_const->value[0].i32));
          break;
       }
@@ -4620,11 +4633,11 @@ try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
          switch (alu->op) {
          case nir_op_iadd: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = s->nir_resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = s->nir_resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            s->nir_resource_insts[def->index] =
+            ntb->resource_insts[def->index] =
                ubld8.ADD(dst,
                          src0.file != IMM ? src0 : src1,
                          src0.file != IMM ? src1 : src0);
@@ -4632,12 +4645,12 @@ try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
          }
          case nir_op_iadd3: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = s->nir_resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = s->nir_resource_insts[alu->src[1].src.ssa->index]->dst;
-            fs_reg src2 = s->nir_resource_insts[alu->src[2].src.ssa->index]->dst;
+            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src2 = ntb->resource_insts[alu->src[2].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE && src2.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            s->nir_resource_insts[def->index] =
+            ntb->resource_insts[def->index] =
                ubld8.ADD3(dst,
                           src1.file == IMM ? src1 : src0,
                           src1.file == IMM ? src0 : src1,
@@ -4646,20 +4659,20 @@ try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
          }
          case nir_op_ushr: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = s->nir_resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = s->nir_resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            s->nir_resource_insts[def->index] = ubld8.SHR(dst, src0, src1);
+            ntb->resource_insts[def->index] = ubld8.SHR(dst, src0, src1);
             break;
          }
          case nir_op_ishl: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = s->nir_resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = s->nir_resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            s->nir_resource_insts[def->index] = ubld8.SHL(dst, src0, src1);
+            ntb->resource_insts[def->index] = ubld8.SHL(dst, src0, src1);
             break;
          }
          case nir_op_mov: {
@@ -4675,8 +4688,8 @@ try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
          case nir_intrinsic_resource_intel:
-            s->nir_resource_insts[def->index] =
-               s->nir_resource_insts[intrin->src[1].ssa->index];
+            ntb->resource_insts[def->index] =
+               ntb->resource_insts[intrin->src[1].ssa->index];
             break;
 
          case nir_intrinsic_load_uniform: {
@@ -4688,7 +4701,7 @@ try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg src(UNIFORM, base_offset / 4, BRW_REGISTER_TYPE_UD);
             src.offset = load_offset + base_offset % 4;
-            s->nir_resource_insts[def->index] = ubld8.MOV(dst, src);
+            ntb->resource_insts[def->index] = ubld8.MOV(dst, src);
             break;
          }
 
@@ -4702,22 +4715,20 @@ try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
          break;
       }
 
-      if (s->nir_resource_insts[def->index] == NULL)
+      if (ntb->resource_insts[def->index] == NULL)
          return fs_reg();
    }
 
-   assert(s->nir_resource_insts[resource_def->index] != NULL);
-   return component(s->nir_resource_insts[resource_def->index]->dst, 0);
+   assert(ntb->resource_insts[resource_def->index] != NULL);
+   return component(ntb->resource_insts[resource_def->index]->dst, 0);
 }
 
 static fs_reg
 get_nir_image_intrinsic_image(nir_to_brw_state *ntb, const brw::fs_builder &bld,
                               nir_intrinsic_instr *instr)
 {
-   fs_visitor *s = ntb->s;
-
    if (is_resource_src(instr->src[0])) {
-      fs_reg surf_index = get_resource_nir_src(s, instr->src[0]);
+      fs_reg surf_index = get_resource_nir_src(ntb, instr->src[0]);
       if (surf_index.file != BAD_FILE)
          return surf_index;
    }
@@ -4732,8 +4743,6 @@ static fs_reg
 get_nir_buffer_intrinsic_index(nir_to_brw_state *ntb, const brw::fs_builder &bld,
                                nir_intrinsic_instr *instr)
 {
-   fs_visitor *s = ntb->s;
-
    /* SSBO stores are weird in that their index is in src[1] */
    const bool is_store =
       instr->intrinsic == nir_intrinsic_store_ssbo ||
@@ -4743,7 +4752,7 @@ get_nir_buffer_intrinsic_index(nir_to_brw_state *ntb, const brw::fs_builder &bld
    if (nir_src_is_const(src)) {
       return brw_imm_ud(nir_src_as_uint(src));
    } else if (is_resource_src(src)) {
-      fs_reg surf_index = get_resource_nir_src(s, src);
+      fs_reg surf_index = get_resource_nir_src(ntb, src);
       if (surf_index.file != BAD_FILE)
          return surf_index;
    }
@@ -4774,14 +4783,15 @@ get_nir_buffer_intrinsic_index(nir_to_brw_state *ntb, const brw::fs_builder &bld
  * continuous elements and we get good cache locality.
  */
 static fs_reg
-swizzle_nir_scratch_addr(const brw::fs_builder &bld,
+swizzle_nir_scratch_addr(nir_to_brw_state *ntb,
+                         const brw::fs_builder &bld,
                          const fs_reg &nir_addr,
                          bool in_dwords)
 {
-   fs_visitor *s = (fs_visitor *) bld.shader;
+   fs_visitor *s = ntb->s;
 
    const fs_reg &chan_index =
-      s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+      ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
    const unsigned chan_index_bits = ffs(s->dispatch_width) - 1;
 
    fs_reg addr = bld.vgrf(BRW_REGISTER_TYPE_UD);
@@ -5651,23 +5661,23 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_resource_intel:
-      s->nir_ssa_bind_infos[instr->def.index].valid = true;
-      s->nir_ssa_bind_infos[instr->def.index].bindless =
+      ntb->ssa_bind_infos[instr->def.index].valid = true;
+      ntb->ssa_bind_infos[instr->def.index].bindless =
          (nir_intrinsic_resource_access_intel(instr) &
           nir_resource_intel_bindless) != 0;
-      s->nir_ssa_bind_infos[instr->def.index].block =
+      ntb->ssa_bind_infos[instr->def.index].block =
          nir_intrinsic_resource_block_intel(instr);
-      s->nir_ssa_bind_infos[instr->def.index].set =
+      ntb->ssa_bind_infos[instr->def.index].set =
          nir_intrinsic_desc_set(instr);
-      s->nir_ssa_bind_infos[instr->def.index].binding =
+      ntb->ssa_bind_infos[instr->def.index].binding =
          nir_intrinsic_binding(instr);
 
       if (nir_intrinsic_resource_access_intel(instr) &
            nir_resource_intel_non_uniform) {
-         s->nir_resource_values[instr->def.index] = fs_reg();
+         ntb->resource_values[instr->def.index] = fs_reg();
       } else {
-         s->nir_resource_values[instr->def.index] =
-            try_rebuild_resource(bld, instr->src[1].ssa);
+         ntb->resource_values[instr->def.index] =
+            try_rebuild_resource(ntb, bld, instr->src[1].ssa);
       }
       ntb->ssa_values[instr->def.index] =
          ntb->ssa_values[instr->src[1].ssa->index];
@@ -6182,7 +6192,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
    case nir_intrinsic_load_ubo_uniform_block_intel: {
       fs_reg surface, surface_handle;
 
-      if (get_nir_src_bindless(s, instr->src[0]))
+      if (get_nir_src_bindless(ntb, instr->src[0]))
          surface_handle = get_nir_buffer_intrinsic_index(ntb, bld, instr);
       else
          surface = get_nir_buffer_intrinsic_index(ntb, bld, instr);
@@ -6516,7 +6526,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
 
       const unsigned bit_size = instr->def.bit_size;
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-      srcs[get_nir_src_bindless(s, instr->src[0]) ?
+      srcs[get_nir_src_bindless(ntb, instr->src[0]) ?
            SURFACE_LOGICAL_SRC_SURFACE_HANDLE :
            SURFACE_LOGICAL_SRC_SURFACE] =
          get_nir_buffer_intrinsic_index(ntb, bld, instr);
@@ -6555,7 +6565,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
 
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-      srcs[get_nir_src_bindless(s, instr->src[1]) ?
+      srcs[get_nir_src_bindless(ntb, instr->src[1]) ?
            SURFACE_LOGICAL_SRC_SURFACE_HANDLE :
            SURFACE_LOGICAL_SRC_SURFACE] =
          get_nir_buffer_intrinsic_index(ntb, bld, instr);
@@ -6597,7 +6607,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
       const bool is_ssbo =
          instr->intrinsic == nir_intrinsic_load_ssbo_uniform_block_intel;
       if (is_ssbo) {
-         srcs[get_nir_src_bindless(s, instr->src[0]) ?
+         srcs[get_nir_src_bindless(ntb, instr->src[0]) ?
               SURFACE_LOGICAL_SRC_SURFACE_HANDLE :
               SURFACE_LOGICAL_SRC_SURFACE] =
             get_nir_buffer_intrinsic_index(ntb, bld, instr);
@@ -6675,7 +6685,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
    case nir_intrinsic_ssbo_atomic_swap:
       fs_nir_emit_surface_atomic(ntb, bld, instr,
                                  get_nir_buffer_intrinsic_index(ntb, bld, instr),
-                                 get_nir_src_bindless(s, instr->src[0]));
+                                 get_nir_src_bindless(ntb, instr->src[0]));
       break;
 
    case nir_intrinsic_get_ssbo_size: {
@@ -6697,7 +6707,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
       ubld.MOV(src_payload, brw_imm_d(0));
 
       fs_reg srcs[GET_BUFFER_SIZE_SRCS];
-      srcs[get_nir_src_bindless(s, instr->src[0]) ?
+      srcs[get_nir_src_bindless(ntb, instr->src[0]) ?
            GET_BUFFER_SIZE_SRC_SURFACE_HANDLE :
            GET_BUFFER_SIZE_SRC_SURFACE] =
          get_nir_buffer_intrinsic_index(ntb, bld, instr);
@@ -6780,7 +6790,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
                    nir_intrinsic_align(instr) >= 4);
 
             srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-               swizzle_nir_scratch_addr(bld, nir_addr, false);
+               swizzle_nir_scratch_addr(ntb, bld, nir_addr, false);
             srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(1);
 
             bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL,
@@ -6788,14 +6798,14 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
          } else {
             /* The offset for a DWORD scattered message is in dwords. */
             srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-               swizzle_nir_scratch_addr(bld, nir_addr, true);
+               swizzle_nir_scratch_addr(ntb, bld, nir_addr, true);
 
             bld.emit(SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL,
                      dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
          }
       } else {
          srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-            swizzle_nir_scratch_addr(bld, nir_addr, false);
+            swizzle_nir_scratch_addr(ntb, bld, nir_addr, false);
 
          fs_reg read_result = bld.vgrf(BRW_REGISTER_TYPE_UD);
          bld.emit(SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL,
@@ -6853,7 +6863,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
             srcs[SURFACE_LOGICAL_SRC_DATA] = data;
 
             srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-               swizzle_nir_scratch_addr(bld, nir_addr, false);
+               swizzle_nir_scratch_addr(ntb, bld, nir_addr, false);
             srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(1);
 
             bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL,
@@ -6863,7 +6873,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
 
             /* The offset for a DWORD scattered message is in dwords. */
             srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-               swizzle_nir_scratch_addr(bld, nir_addr, true);
+               swizzle_nir_scratch_addr(ntb, bld, nir_addr, true);
 
             bld.emit(SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL,
                      fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
@@ -6873,7 +6883,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
          bld.MOV(srcs[SURFACE_LOGICAL_SRC_DATA], data);
 
          srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-            swizzle_nir_scratch_addr(bld, nir_addr, false);
+            swizzle_nir_scratch_addr(ntb, bld, nir_addr, false);
 
          bld.emit(SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL,
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
@@ -6892,7 +6902,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
 
    case nir_intrinsic_load_subgroup_invocation:
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D),
-              s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
+              ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
       break;
 
    case nir_intrinsic_load_subgroup_eq_mask:
@@ -7141,7 +7151,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
           * MOVs or else fall back to doing indirects.
           */
          fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_W);
-         bld.XOR(idx, s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
+         bld.XOR(idx, ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
                       brw_imm_w(0x2));
          bld.emit(SHADER_OPCODE_SHUFFLE, retype(dest, value.type), value, idx);
       }
@@ -7162,7 +7172,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
           * MOVs or else fall back to doing indirects.
           */
          fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_W);
-         bld.XOR(idx, s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
+         bld.XOR(idx, ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
                       brw_imm_w(0x3));
          bld.emit(SHADER_OPCODE_SHUFFLE, retype(dest, value.type), value, idx);
       }
@@ -7245,7 +7255,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
           */
          fs_reg shifted = bld.vgrf(src.type);
          fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_W);
-         allbld.ADD(idx, s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
+         allbld.ADD(idx, ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
                          brw_imm_w(-1));
          allbld.emit(SHADER_OPCODE_SHUFFLE, shifted, scan, idx);
          allbld.group(1, 0).MOV(component(shifted, 0), identity);
@@ -7476,7 +7486,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
          /* LaneID[0:3] << 0 (Use nir SYSTEM_VALUE_SUBGROUP_INVOCATION) */
          assert(bld.dispatch_width() <= 16); /* Limit to 4 bits */
          bld.ADD(dst, dst,
-                 s->nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
+                 ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
          break;
       }
       default:
@@ -7829,7 +7839,7 @@ fs_nir_emit_texture(nir_to_brw_state *ntb,
          assert(srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE);
          /* Emit code to evaluate the actual indexing expression */
          if (instr->texture_index == 0 && is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SURFACE] = get_resource_nir_src(s, nir_src);
+            srcs[TEX_LOGICAL_SRC_SURFACE] = get_resource_nir_src(ntb, nir_src);
          if (srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE) {
             fs_reg tmp = s->vgrf(glsl_type::uint_type);
             bld.ADD(tmp, src, brw_imm_ud(instr->texture_index));
@@ -7842,7 +7852,7 @@ fs_nir_emit_texture(nir_to_brw_state *ntb,
       case nir_tex_src_sampler_offset: {
          /* Emit code to evaluate the actual indexing expression */
          if (instr->sampler_index == 0 && is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SAMPLER] = get_resource_nir_src(s, nir_src);
+            srcs[TEX_LOGICAL_SRC_SAMPLER] = get_resource_nir_src(ntb, nir_src);
          if (srcs[TEX_LOGICAL_SRC_SAMPLER].file == BAD_FILE) {
             fs_reg tmp = s->vgrf(glsl_type::uint_type);
             bld.ADD(tmp, src, brw_imm_ud(instr->sampler_index));
@@ -7855,7 +7865,7 @@ fs_nir_emit_texture(nir_to_brw_state *ntb,
          assert(nir_tex_instr_src_index(instr, nir_tex_src_texture_offset) == -1);
          srcs[TEX_LOGICAL_SRC_SURFACE] = fs_reg();
          if (is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = get_resource_nir_src(s, nir_src);
+            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = get_resource_nir_src(ntb, nir_src);
          if (srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE].file == BAD_FILE)
             srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = bld.emit_uniformize(src);
          break;
@@ -7864,7 +7874,7 @@ fs_nir_emit_texture(nir_to_brw_state *ntb,
          assert(nir_tex_instr_src_index(instr, nir_tex_src_sampler_offset) == -1);
          srcs[TEX_LOGICAL_SRC_SAMPLER] = fs_reg();
          if (is_resource_src(nir_src))
-            srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = get_resource_nir_src(s, nir_src);
+            srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = get_resource_nir_src(ntb, nir_src);
          if (srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE].file == BAD_FILE)
             srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = bld.emit_uniformize(src);
          break;
@@ -8432,7 +8442,7 @@ fs_visitor::emit_nir_code()
     */
    fs_nir_setup_outputs(this);
    fs_nir_setup_uniforms(this);
-   fs_nir_emit_system_values(this);
+   fs_nir_emit_system_values(ntb);
    last_scratch = ALIGN(nir->scratch_size, 4) * dispatch_width;
 
    fs_nir_emit_impl(ntb, nir_shader_get_entrypoint((nir_shader *)nir));

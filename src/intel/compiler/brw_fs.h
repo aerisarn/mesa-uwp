@@ -175,14 +175,6 @@ struct bs_thread_payload : public thread_payload {
    void load_shader_type(const brw::fs_builder &bld, fs_reg &dest) const;
 };
 
-struct brw_fs_bind_info {
-   bool valid;
-   bool bindless;
-   unsigned block;
-   unsigned set;
-   unsigned binding;
-};
-
 class fs_instruction_scheduler;
 
 /**
@@ -372,11 +364,6 @@ public:
    int first_non_payload_grf;
    /** Either BRW_MAX_GRF or GFX7_MRF_HACK_START */
    unsigned max_grf;
-
-   fs_inst **nir_resource_insts;
-   struct brw_fs_bind_info *nir_ssa_bind_infos;
-   fs_reg *nir_resource_values;
-   fs_reg *nir_system_values;
 
    bool failed;
    char *fail_msg;

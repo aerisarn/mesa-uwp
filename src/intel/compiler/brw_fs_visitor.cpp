@@ -1181,11 +1181,6 @@ fs_visitor::init()
    this->failed = false;
    this->fail_msg = NULL;
 
-   this->nir_resource_insts = NULL;
-   this->nir_ssa_bind_infos = NULL;
-   this->nir_resource_values = NULL;
-   this->nir_system_values = NULL;
-
    this->payload_ = NULL;
    this->source_depth_to_render_target = false;
    this->runtime_check_aads_emit = false;
