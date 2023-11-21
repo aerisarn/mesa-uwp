@@ -203,8 +203,9 @@ VAStatus vlVaMapBuffer2(VADriverContextP ctx, VABufferID buf_id,
             return VA_STATUS_ERROR_OPERATION_FAILED;
          }
 
+         curr_buf_ptr->status = (buf->extended_metadata.average_frame_qp & VA_CODED_BUF_STATUS_PICTURE_AVE_QP_MASK);
          if (buf->extended_metadata.encode_result & PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_MAX_FRAME_SIZE_OVERFLOW)
-               curr_buf_ptr->status |= VA_CODED_BUF_STATUS_FRAME_SIZE_OVERFLOW;
+            curr_buf_ptr->status |= VA_CODED_BUF_STATUS_FRAME_SIZE_OVERFLOW;
 
          if ((buf->extended_metadata.present_metadata & PIPE_VIDEO_FEEDBACK_METADATA_TYPE_CODEC_UNIT_LOCATION) == 0) {
             curr_buf_ptr->buf = *pbuff;
@@ -224,7 +225,7 @@ VAStatus vlVaMapBuffer2(VADriverContextP ctx, VABufferID buf_id,
 
             curr_buf_ptr = buf->data;
             for (size_t i = 0; i < buf->extended_metadata.codec_unit_metadata_count; i++) {
-               curr_buf_ptr->status = VA_CODED_BUF_STATUS_SINGLE_NALU;
+               curr_buf_ptr->status |= VA_CODED_BUF_STATUS_SINGLE_NALU;
                curr_buf_ptr->size = buf->extended_metadata.codec_unit_metadata[i].size;
                curr_buf_ptr->buf = compressed_bitstream_data + buf->extended_metadata.codec_unit_metadata[i].offset;
                if (buf->extended_metadata.codec_unit_metadata[i].flags & PIPE_VIDEO_CODEC_UNIT_LOCATION_FLAG_MAX_SLICE_SIZE_OVERFLOW)
