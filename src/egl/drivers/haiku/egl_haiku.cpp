@@ -46,8 +46,8 @@
 #include "util/u_atomic.h"
 #include <mapi/glapi/glapi.h>
 
+#include "hgl/hgl_sw_winsys.h"
 #include "hgl_context.h"
-#include "hgl_sw_winsys.h"
 
 extern "C" {
 #include "target-helpers/inline_sw_helper.h"
