@@ -353,8 +353,6 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) ==
           vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource));
 
-   const uint32_t src_base_layer = radv_meta_get_iview_layer(src_image, &region->srcSubresource, &region->srcOffset);
-
    const uint32_t dst_base_layer = radv_meta_get_iview_layer(dst_image, &region->dstSubresource, &region->dstOffset);
 
    /**
@@ -418,14 +416,14 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                            &(VkImageViewCreateInfo){
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(src_image),
-                              .viewType = radv_meta_get_view_type(src_image),
+                              .viewType = VK_IMAGE_VIEW_TYPE_2D,
                               .format = src_image->vk.format,
                               .subresourceRange =
                                  {
                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                    .baseMipLevel = region->srcSubresource.mipLevel,
+                                    .baseMipLevel = 0,
                                     .levelCount = 1,
-                                    .baseArrayLayer = src_base_layer + layer,
+                                    .baseArrayLayer = region->srcSubresource.baseArrayLayer + layer,
                                     .layerCount = 1,
                                  },
                            },
@@ -828,8 +826,6 @@ void
 radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                             VkImageLayout src_image_layout, const VkImageResolve2 *region)
 {
-   const uint32_t src_base_layer = radv_meta_get_iview_layer(src_image, &region->srcSubresource, &region->srcOffset);
-
    VkImageMemoryBarrier2 barrier = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
       .srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
@@ -841,9 +837,9 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
       .image = radv_image_to_handle(src_image),
       .subresourceRange = (VkImageSubresourceRange){
          .aspectMask = region->srcSubresource.aspectMask,
-         .baseMipLevel = region->srcSubresource.mipLevel,
+         .baseMipLevel = 0,
          .levelCount = 1,
-         .baseArrayLayer = src_base_layer,
+         .baseArrayLayer = region->srcSubresource.baseArrayLayer,
          .layerCount = vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource),
       }};
 

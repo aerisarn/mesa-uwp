@@ -729,8 +729,6 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) ==
           vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource));
 
-   const uint32_t src_base_layer = radv_meta_get_iview_layer(src_image, &region->srcSubresource, &region->srcOffset);
-
    const uint32_t dst_base_layer = radv_meta_get_iview_layer(dst_image, &region->dstSubresource, &region->dstOffset);
 
    const struct VkExtent3D extent = vk_image_sanitize_extent(&src_image->vk, region->extent);
@@ -761,14 +759,14 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                            &(VkImageViewCreateInfo){
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(src_image),
-                              .viewType = radv_meta_get_view_type(src_image),
+                              .viewType = VK_IMAGE_VIEW_TYPE_2D,
                               .format = src_image->vk.format,
                               .subresourceRange =
                                  {
                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                    .baseMipLevel = region->srcSubresource.mipLevel,
+                                    .baseMipLevel = 0,
                                     .levelCount = 1,
-                                    .baseArrayLayer = src_base_layer + layer,
+                                    .baseArrayLayer = region->srcSubresource.baseArrayLayer + layer,
                                     .layerCount = 1,
                                  },
                            },
@@ -941,7 +939,7 @@ radv_depth_stencil_resolve_rendering_fs(struct radv_cmd_buffer *cmd_buffer, VkIm
                         &(VkImageViewCreateInfo){
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(src_image),
-                           .viewType = radv_meta_get_view_type(src_image),
+                           .viewType = VK_IMAGE_VIEW_TYPE_2D,
                            .format = src_iview->vk.format,
                            .subresourceRange =
                               {
