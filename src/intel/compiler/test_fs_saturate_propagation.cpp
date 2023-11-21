@@ -28,10 +28,10 @@
 using namespace brw;
 
 class saturate_propagation_test : public ::testing::Test {
-   virtual void SetUp();
-   virtual void TearDown();
+protected:
+   saturate_propagation_test();
+   ~saturate_propagation_test() override;
 
-public:
    struct brw_compiler *compiler;
    struct brw_compile_params params;
    struct intel_device_info *devinfo;
@@ -53,7 +53,7 @@ public:
 };
 
 
-void saturate_propagation_test::SetUp()
+saturate_propagation_test::saturate_propagation_test()
 {
    ctx = ralloc_context(NULL);
    compiler = rzalloc(ctx, struct brw_compiler);
@@ -73,7 +73,7 @@ void saturate_propagation_test::SetUp()
    devinfo->verx10 = devinfo->ver * 10;
 }
 
-void saturate_propagation_test::TearDown()
+saturate_propagation_test::~saturate_propagation_test()
 {
    delete v;
    v = NULL;

@@ -28,10 +28,10 @@
 using namespace brw;
 
 class scoreboard_test : public ::testing::Test {
-   virtual void SetUp();
-   virtual void TearDown();
+protected:
+   scoreboard_test();
+   ~scoreboard_test() override;
 
-public:
    struct brw_compiler *compiler;
    struct brw_compile_params params;
    struct intel_device_info *devinfo;
@@ -41,7 +41,7 @@ public:
    fs_visitor *v;
 };
 
-void scoreboard_test::SetUp()
+scoreboard_test::scoreboard_test()
 {
    ctx = ralloc_context(NULL);
    compiler = rzalloc(ctx, struct brw_compiler);
@@ -64,7 +64,7 @@ void scoreboard_test::SetUp()
 
 }
 
-void scoreboard_test::TearDown()
+scoreboard_test::~scoreboard_test()
 {
    delete v;
    v = NULL;

@@ -28,10 +28,10 @@
 using namespace brw;
 
 class cmod_propagation_test : public ::testing::Test {
-   virtual void SetUp();
-   virtual void TearDown();
+protected:
+   cmod_propagation_test();
+   ~cmod_propagation_test() override;
 
-public:
    struct brw_compiler *compiler;
    struct brw_compile_params params;
    struct intel_device_info *devinfo;
@@ -64,7 +64,7 @@ public:
 };
 
 
-void cmod_propagation_test::SetUp()
+cmod_propagation_test::cmod_propagation_test()
 {
    ctx = ralloc_context(NULL);
    compiler = rzalloc(ctx, struct brw_compiler);
@@ -84,7 +84,7 @@ void cmod_propagation_test::SetUp()
    devinfo->verx10 = devinfo->ver * 10;
 }
 
-void cmod_propagation_test::TearDown()
+cmod_propagation_test::~cmod_propagation_test()
 {
    delete v;
    v = NULL;
