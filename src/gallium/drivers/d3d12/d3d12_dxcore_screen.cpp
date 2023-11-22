@@ -260,7 +260,7 @@ d3d12_create_dxcore_screen_from_d3d12_device(struct sw_winsys *winsys, IUnknown*
       return nullptr;
    }
 
-   LUID adapter_luid = screen->base.dev->GetAdapterLuid();
+   LUID adapter_luid = GetAdapterLuid(screen->base.dev);
    if (!d3d12_init_screen_base(&screen->base, winsys, &adapter_luid)) {
       d3d12_destroy_screen(&screen->base);
       return nullptr;
