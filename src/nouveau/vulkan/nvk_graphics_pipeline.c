@@ -309,8 +309,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
    struct nvk_graphics_pipeline *pipeline;
    VkResult result = VK_SUCCESS;
 
-   pipeline = vk_object_zalloc(&dev->vk, pAllocator, sizeof(*pipeline),
-                               VK_OBJECT_TYPE_PIPELINE);
+   pipeline = (void *)nvk_pipeline_zalloc(dev, NVK_PIPELINE_GRAPHICS,
+                                          sizeof(*pipeline), pAllocator);
    if (pipeline == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
