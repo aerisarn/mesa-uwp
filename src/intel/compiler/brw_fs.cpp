@@ -2911,69 +2911,6 @@ fs_visitor::opt_split_sends()
    return progress;
 }
 
-
-bool
-fs_visitor::opt_register_renaming()
-{
-   bool progress = false;
-   int depth = 0;
-
-   unsigned remap[alloc.count];
-   memset(remap, ~0u, sizeof(unsigned) * alloc.count);
-
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
-      if (inst->opcode == BRW_OPCODE_IF || inst->opcode == BRW_OPCODE_DO) {
-         depth++;
-      } else if (inst->opcode == BRW_OPCODE_ENDIF ||
-                 inst->opcode == BRW_OPCODE_WHILE) {
-         depth--;
-      }
-
-      /* Rewrite instruction sources. */
-      for (int i = 0; i < inst->sources; i++) {
-         if (inst->src[i].file == VGRF &&
-             remap[inst->src[i].nr] != ~0u &&
-             remap[inst->src[i].nr] != inst->src[i].nr) {
-            inst->src[i].nr = remap[inst->src[i].nr];
-            progress = true;
-         }
-      }
-
-      const unsigned dst = inst->dst.nr;
-
-      if (depth == 0 &&
-          inst->dst.file == VGRF &&
-          alloc.sizes[inst->dst.nr] * REG_SIZE == inst->size_written &&
-          !inst->is_partial_write()) {
-         if (remap[dst] == ~0u) {
-            remap[dst] = dst;
-         } else {
-            remap[dst] = alloc.allocate(regs_written(inst));
-            inst->dst.nr = remap[dst];
-            progress = true;
-         }
-      } else if (inst->dst.file == VGRF &&
-                 remap[dst] != ~0u &&
-                 remap[dst] != dst) {
-         inst->dst.nr = remap[dst];
-         progress = true;
-      }
-   }
-
-   if (progress) {
-      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL |
-                          DEPENDENCY_VARIABLES);
-
-      for (unsigned i = 0; i < ARRAY_SIZE(delta_xy); i++) {
-         if (delta_xy[i].file == VGRF && remap[delta_xy[i].nr] != ~0u) {
-            delta_xy[i].nr = remap[delta_xy[i].nr];
-         }
-      }
-   }
-
-   return progress;
-}
-
 /**
  * Remove redundant or useless halts.
  *
@@ -5999,7 +5936,6 @@ fs_visitor::optimize()
       OPT(dead_code_eliminate);
       OPT(opt_peephole_sel);
       OPT(dead_control_flow_eliminate, this);
-      OPT(opt_register_renaming);
       OPT(opt_saturate_propagation);
       OPT(register_coalesce);
       OPT(compute_to_mrf);
