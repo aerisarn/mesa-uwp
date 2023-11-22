@@ -371,6 +371,42 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
+            nir_op_extract_u8
+            | nir_op_extract_i8
+            | nir_op_extract_u16
+            | nir_op_extract_i16 => {
+                let src1 = alu.get_src(1);
+                let elem = src1.src.comp_as_uint(src1.swizzle[0]).unwrap();
+                let elem = u8::try_from(elem).unwrap();
+
+                match alu.op {
+                    nir_op_extract_u8 => {
+                        assert!(elem < 4);
+                        let byte = elem;
+                        let zero = 4;
+                        b.prmt(srcs[0], 0.into(), [byte, zero, zero, zero])
+                    }
+                    nir_op_extract_i8 => {
+                        assert!(elem < 4);
+                        let byte = elem;
+                        let sign = byte | 0x8;
+                        b.prmt(srcs[0], 0.into(), [byte, sign, sign, sign])
+                    }
+                    nir_op_extract_u16 => {
+                        assert!(elem < 2);
+                        let byte = elem * 2;
+                        let zero = 4;
+                        b.prmt(srcs[0], 0.into(), [byte, byte + 1, zero, zero])
+                    }
+                    nir_op_extract_i16 => {
+                        assert!(elem < 2);
+                        let byte = elem * 2;
+                        let sign = (byte + 1) | 0x8;
+                        b.prmt(srcs[0], 0.into(), [byte, byte + 1, sign, sign])
+                    }
+                    _ => panic!("Unknown extract op: {}", alu.op),
+                }
+            }
             nir_op_find_lsb => {
                 let tmp = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpBrev {

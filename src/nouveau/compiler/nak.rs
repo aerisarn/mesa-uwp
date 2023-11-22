@@ -120,8 +120,6 @@ fn nir_options(_dev: &nv_device_info) -> nir_shader_compiler_options {
     op.lower_unpack_snorm_2x16 = true;
     op.lower_unpack_unorm_4x8 = true;
     op.lower_unpack_snorm_4x8 = true;
-    op.lower_extract_byte = true;
-    op.lower_extract_word = true;
     op.lower_insert_byte = true;
     op.lower_insert_word = true;
     op.lower_cs_local_index_to_id = true;
