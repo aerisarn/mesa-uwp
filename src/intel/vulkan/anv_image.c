@@ -1704,6 +1704,25 @@ anv_image_finish(struct anv_image *image)
    if (anv_image_is_sparse(image))
       anv_image_finish_sparse_bindings(image);
 
+   /* Unmap a CCS so that if the bound region of the image is rebound to
+    * another image, the AUX tables will be cleared to allow for a new
+    * mapping.
+    */
+   for (int p = 0; p < image->n_planes; ++p) {
+      if (!image->planes[p].aux_ccs_mapped)
+         continue;
+
+      const struct anv_address main_addr =
+         anv_image_address(image,
+                           &image->planes[p].primary_surface.memory_range);
+      const struct isl_surf *surf =
+         &image->planes[p].primary_surface.isl;
+
+      intel_aux_map_del_mapping(device->aux_map_ctx,
+                                anv_address_physical(main_addr),
+                                surf->size_B);
+   }
+
    if (image->from_gralloc) {
       assert(!image->disjoint);
       assert(image->n_planes == 1);
@@ -2321,12 +2340,12 @@ VkResult anv_BindImageMemory2(
                &image->planes[p].primary_surface.isl;
             const uint64_t format_bits =
                intel_aux_map_format_bits_for_isl_surf(surf);
-            const bool mapped =
+            image->planes[p].aux_ccs_mapped =
                intel_aux_map_add_mapping(device->aux_map_ctx,
                                          anv_address_physical(main_addr),
                                          anv_address_physical(aux_addr),
                                          surf->size_B, format_bits);
-            if (mapped)
+            if (image->planes[p].aux_ccs_mapped)
                continue;
          }
 

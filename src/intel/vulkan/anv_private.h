@@ -4895,6 +4895,8 @@ struct anv_image {
        * boolean will prevent the usage of CC_ONE.
        */
       bool can_non_zero_fast_clear;
+
+      bool aux_ccs_mapped;
    } planes[3];
 
    struct anv_image_memory_range vid_dmv_top_surface;
