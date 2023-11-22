@@ -286,8 +286,9 @@ d3d12_video_encode_supported_references_per_frame_structures(const D3D12_VIDEO_E
          * of reference frames for both the reference picture list 0 (bottom
          * 16 bits) and the reference picture list 1 (top 16 bits).
          */
+         uint32_t MaxL0ReferencesForB = capPictureControlData.PictureSupport.pH264Support->MaxL0ReferencesForB;
          uint32_t maxRefForL0 = std::min(capPictureControlData.PictureSupport.pH264Support->MaxL0ReferencesForP,
-                                       capPictureControlData.PictureSupport.pH264Support->MaxL0ReferencesForB);
+                                         MaxL0ReferencesForB ? MaxL0ReferencesForB : UINT_MAX);
          uint32_t maxRefForL1 = capPictureControlData.PictureSupport.pH264Support->MaxL1ReferencesForB;
          supportedMaxRefFrames = (maxRefForL0 & 0xffff) | ((maxRefForL1 & 0xffff) << 16);
       }
@@ -311,8 +312,9 @@ d3d12_video_encode_supported_references_per_frame_structures(const D3D12_VIDEO_E
          * of reference frames for both the reference picture list 0 (bottom
          * 16 bits) and the reference picture list 1 (top 16 bits).
          */
+         uint32_t MaxL0ReferencesForB = capPictureControlData.PictureSupport.pHEVCSupport->MaxL0ReferencesForB;
          uint32_t maxRefForL0 = std::min(capPictureControlData.PictureSupport.pHEVCSupport->MaxL0ReferencesForP,
-                                       capPictureControlData.PictureSupport.pHEVCSupport->MaxL0ReferencesForB);
+                                         MaxL0ReferencesForB ? MaxL0ReferencesForB : UINT_MAX);
          uint32_t maxRefForL1 = capPictureControlData.PictureSupport.pHEVCSupport->MaxL1ReferencesForB;
          supportedMaxRefFrames = (maxRefForL0 & 0xffff) | ((maxRefForL1 & 0xffff) << 16);
       }
