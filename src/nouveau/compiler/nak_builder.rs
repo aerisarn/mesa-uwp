@@ -233,6 +233,44 @@ pub trait SSABuilder: Builder {
         dst
     }
 
+    fn prmt4(&mut self, src: [Src;4], sel: [u8;4]) -> SSARef {
+        let max_sel = *sel.iter().max().unwrap();
+        if max_sel < 8 {
+            self.prmt(src[0], src[1], sel)
+        } else if max_sel < 12 {
+            let mut sel_a = [0_u8; 4];
+            let mut sel_b = [0_u8; 4];
+            for i in 0..4_u8 {
+                if sel[usize::from(i)] < 8 {
+                    sel_a[usize::from(i)] = sel[usize::from(i)];
+                    sel_b[usize::from(i)] = i;
+                } else {
+                    sel_b[usize::from(i)] = (sel[usize::from(i)] - 8) + 4;
+                }
+            }
+            let a = self.prmt(src[0], src[1], sel_a);
+            self.prmt(a.into(), src[2], sel_b)
+        } else if max_sel < 16 {
+            let mut sel_a = [0_u8; 4];
+            let mut sel_b = [0_u8; 4];
+            let mut sel_c = [0_u8; 4];
+            for i in 0..4_u8 {
+                if sel[usize::from(i)] < 8 {
+                    sel_a[usize::from(i)] = sel[usize::from(i)];
+                    sel_c[usize::from(i)] = i;
+                } else {
+                    sel_b[usize::from(i)] = sel[usize::from(i)] - 8;
+                    sel_c[usize::from(i)] = 4 + i;
+                }
+            }
+            let a = self.prmt(src[0], src[1], sel_a);
+            let b = self.prmt(src[2], src[3], sel_b);
+            self.prmt(a.into(), b.into(), sel_c)
+        } else {
+            panic!("Invalid permute value: {max_sel}");
+        }
+    }
+
     fn sel(&mut self, cond: Src, x: Src, y: Src) -> SSARef {
         assert!(cond.src_ref.is_predicate());
         assert!(x.is_predicate() == y.is_predicate());
