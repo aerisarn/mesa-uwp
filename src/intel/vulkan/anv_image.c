@@ -2311,10 +2311,9 @@ VkResult anv_BindImageMemory2(
             continue;
 
          /* Add the plane to the aux map when applicable. */
-         if (anv_bo_allows_aux_map(device, bo)) {
-            const struct anv_address main_addr =
-               anv_image_address(image,
-                 &image->planes[p].primary_surface.memory_range);
+         const struct anv_address main_addr = anv_image_address(
+            image, &image->planes[p].primary_surface.memory_range);
+         if (anv_address_allows_aux_map(device, main_addr)) {
             const struct anv_address aux_addr =
                anv_image_address(image,
                  &image->planes[p].compr_ctrl_memory_range);
