@@ -1922,11 +1922,6 @@ nir_visitor::visit(ir_expression *ir)
       return;
    }
 
-   case ir_binop_ubo_load:
-      /* UBO loads should only have been lowered in GLSL IR for non-nir drivers,
-       * NIR drivers make use of gl_nir_lower_buffers() instead.
-       */
-      unreachable("Invalid operation nir doesn't want lowered ubo loads");
    default:
       break;
    }

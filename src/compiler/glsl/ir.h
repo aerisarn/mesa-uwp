@@ -1538,7 +1538,6 @@ public:
              operation == ir_binop_dot ||
              operation == ir_binop_vector_extract ||
              operation == ir_triop_vector_insert ||
-             operation == ir_binop_ubo_load ||
              operation == ir_quadop_vector;
    }
 

@@ -712,12 +712,6 @@ ir_expression_operation = [
 
    operation("pow", 2, source_types=(float_type,), c_expression="powf({src0}, {src1})"),
 
-   # Load a value the size of a given GLSL type from a uniform block.
-   #
-   # operand0 is the ir_constant uniform block index in the linked shader.
-   # operand1 is a byte offset within the uniform block.
-   operation("ubo_load", 2),
-
    # Multiplies a number by two to a power, part of ARB_gpu_shader5.
    operation("ldexp", 2,
              all_signatures=((float_type, (float_type, int_type)),
