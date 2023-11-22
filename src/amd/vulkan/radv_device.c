@@ -2063,8 +2063,7 @@ radv_gfx11_set_db_render_control(const struct radv_device *device, unsigned num_
          max_allowed_tiles_in_wave = 15;
    }
 
-   *db_render_control |=
-      S_028000_OREO_MODE(V_028000_OMODE_O_THEN_B) | S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
+   *db_render_control |= S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
