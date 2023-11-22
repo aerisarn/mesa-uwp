@@ -864,9 +864,22 @@ impl SM70Instr {
             0x16,
             Some(op.dst),
             ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.selection),
+            ALUSrc::from_src(&op.sel),
             ALUSrc::from_src(&op.srcs[1]),
         );
+
+        self.set_field(
+            72..75,
+            match op.mode {
+                PrmtMode::Index => 0_u8,
+                PrmtMode::Forward4Extract => 1_u8,
+                PrmtMode::Backward4Extract => 2_u8,
+                PrmtMode::Replicate8 => 3_u8,
+                PrmtMode::EdgeClampLeft => 4_u8,
+                PrmtMode::EdgeClampRight => 5_u8,
+                PrmtMode::Replicate16 => 6_u8,
+            },
+        )
     }
 
     fn encode_sel(&mut self, op: &OpSel) {

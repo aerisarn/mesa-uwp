@@ -64,7 +64,8 @@ pub trait Builder {
             self.push_op(OpPrmt {
                 dst: dst,
                 srcs: [x, y],
-                selection: sel_u32.into(),
+                sel: sel_u32.into(),
+                mode: PrmtMode::Index,
             });
         }
     }

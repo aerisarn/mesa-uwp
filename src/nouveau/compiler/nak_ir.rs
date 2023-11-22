@@ -2726,6 +2726,32 @@ impl DisplayOp for OpMov {
 }
 impl_display_for_op!(OpMov);
 
+#[allow(dead_code)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum PrmtMode {
+    Index,
+    Forward4Extract,
+    Backward4Extract,
+    Replicate8,
+    EdgeClampLeft,
+    EdgeClampRight,
+    Replicate16,
+}
+
+impl fmt::Display for PrmtMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PrmtMode::Index => Ok(()),
+            PrmtMode::Forward4Extract => write!(f, ".f4e"),
+            PrmtMode::Backward4Extract => write!(f, ".b4e"),
+            PrmtMode::Replicate8 => write!(f, ".rc8"),
+            PrmtMode::EdgeClampLeft => write!(f, ".ecl"),
+            PrmtMode::EdgeClampRight => write!(f, ".ecl"),
+            PrmtMode::Replicate16 => write!(f, ".rc16"),
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 /// Permutes `srcs` into `dst` using `selection`.
@@ -2735,15 +2761,18 @@ pub struct OpPrmt {
     #[src_type(ALU)]
     pub srcs: [Src; 2],
 
-    pub selection: Src,
+    #[src_type(ALU)]
+    pub sel: Src,
+
+    pub mode: PrmtMode,
 }
 
 impl DisplayOp for OpPrmt {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "prmt {} [{}] {}",
-            self.srcs[0], self.selection, self.srcs[1],
+            "prmt{} {} [{}] {}",
+            self.mode, self.srcs[0], self.sel, self.srcs[1],
         )
     }
 }
