@@ -2988,6 +2988,7 @@ agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
    NIR_PASS_V(nir, nir_shader_intrinsics_pass, agx_lower_front_face,
               nir_metadata_block_index | nir_metadata_dominance, NULL);
    NIR_PASS_V(nir, nir_lower_frag_coord_to_pixel_coord);
+   NIR_PASS_V(nir, agx_nir_lower_subgroups);
 
    /* After lowering, run through the standard suite of NIR optimizations. We
     * will run through the loop later, once we have the shader key, but if we
