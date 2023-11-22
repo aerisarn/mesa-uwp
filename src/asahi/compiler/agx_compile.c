@@ -1281,6 +1281,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
                                  agx_src_index(&instr->src[1]));
    }
 
+   case nir_intrinsic_ballot: {
+      return agx_icmp_ballot_to(b, dst, agx_src_index(&instr->src[0]),
+                                agx_zero(), AGX_ICOND_UEQ, true /* invert */);
+   }
+
    case nir_intrinsic_doorbell_agx: {
       return agx_doorbell(b, nir_src_as_uint(instr->src[0]));
    }

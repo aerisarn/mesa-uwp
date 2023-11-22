@@ -259,6 +259,12 @@ op("simd_shuffle",
                    0xFF | L | (1 << 47) | (3 << 38) | (3 << 26), 6, _),
     srcs = 2)
 
+for T, T_bit, cond in [('f', 0, FCOND), ('i', 1, ICOND)]:
+    for window, w_bit in [('quad_', 0), ('', 1)]:
+        op(f"{T}cmp_{window}ballot",
+           encoding_32 = (0b0100010 | (T_bit << 4) | (w_bit << 48), 0, 8, _),
+           srcs = 2, imms = [cond, INVERT_COND])
+
 op("icmpsel",
       encoding_32 = (0x12, 0x7F, 8, 10),
       srcs = 4, imms = [ICOND])

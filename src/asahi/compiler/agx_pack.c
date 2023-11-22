@@ -4,6 +4,7 @@
  */
 
 #include "agx_compiler.h"
+#include "agx_opcodes.h"
 
 /* Binary patches needed for branch offsets */
 struct agx_branch_fixup {
@@ -409,6 +410,10 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
 
       raw |= (D & BITFIELD_MASK(8)) << 7;
       extend |= ((D >> 8) << extend_offset);
+
+      if (info.immediates & AGX_IMMEDIATE_INVERT_COND) {
+         raw |= (uint64_t)(I->invert_cond) << 47;
+      }
    } else if (info.immediates & AGX_IMMEDIATE_NEST) {
       raw |= (I->invert_cond << 8);
       raw |= (I->nest << 11);
