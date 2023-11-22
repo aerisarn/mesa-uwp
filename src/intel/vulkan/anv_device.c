@@ -5187,6 +5187,16 @@ const struct intel_device_info_pat_entry *
 anv_device_get_pat_entry(struct anv_device *device,
                          enum anv_bo_alloc_flags alloc_flags)
 {
+   /* PAT indexes has no actual effect in DG2 and DG1, smem caches will always
+    * be snopped by GPU and lmem will always be WC.
+    * This might change in future discrete platforms.
+    */
+   if (anv_physical_device_has_vram(device->physical)) {
+      if (alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)
+         return &device->info->pat.cached_coherent;
+      return &device->info->pat.writecombining;
+   }
+
    if (alloc_flags & (ANV_BO_ALLOC_HOST_CACHED_COHERENT))
       return &device->info->pat.cached_coherent;
    else if (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT))
