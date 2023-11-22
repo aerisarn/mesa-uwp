@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 #include "common/intel_gem.h"
+#include "common/xe/intel_device_query.h"
 
 #include "drm-uapi/xe_drm.h"
 
@@ -69,21 +70,14 @@ intel_engine_class_to_xe(enum intel_engine_class intel)
 struct intel_query_engine_info *
 xe_engine_get_info(int fd)
 {
-   struct drm_xe_device_query query = {
-      .query = DRM_XE_DEVICE_QUERY_ENGINES,
-   };
-   if (intel_ioctl(fd, DRM_IOCTL_XE_DEVICE_QUERY, &query))
-      return NULL;
+   struct drm_xe_engine_class_instance *xe_engines;
+   uint32_t len;
 
-   struct drm_xe_engine_class_instance *xe_engines = calloc(1, query.size);
+   xe_engines = xe_device_query_alloc_fetch(fd, DRM_XE_DEVICE_QUERY_ENGINES, &len);
    if (!xe_engines)
       return NULL;
 
-   query.data = (uintptr_t)xe_engines;
-   if (intel_ioctl(fd, DRM_IOCTL_XE_DEVICE_QUERY, &query))
-      goto error_free_xe_engines;
-
-   const uint32_t engines_count = query.size / sizeof(*xe_engines);
+   const uint32_t engines_count = len / sizeof(*xe_engines);
    struct intel_query_engine_info *intel_engines_info;
    intel_engines_info = calloc(1, sizeof(*intel_engines_info) +
                                sizeof(*intel_engines_info->engines) *

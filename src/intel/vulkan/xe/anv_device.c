@@ -26,6 +26,8 @@
 #include "drm-uapi/gpu_scheduler.h"
 #include "drm-uapi/xe_drm.h"
 
+#include "common/xe/intel_device_query.h"
+
 bool anv_xe_device_destroy_vm(struct anv_device *device)
 {
    struct drm_xe_vm_destroy destroy = {
@@ -63,34 +65,12 @@ drm_sched_priority_to_vk_priority(enum drm_sched_priority drm_sched_priority)
    }
 }
 
-static void *
-xe_query_alloc_fetch(struct anv_physical_device *device, uint32_t query_id)
-{
-   struct drm_xe_device_query query = {
-      .query = query_id,
-   };
-   if (intel_ioctl(device->local_fd, DRM_IOCTL_XE_DEVICE_QUERY, &query))
-      return NULL;
-
-   void *data = calloc(1, query.size);
-   if (!data)
-      return NULL;
-
-   query.data = (uintptr_t)data;
-   if (intel_ioctl(device->local_fd, DRM_IOCTL_XE_DEVICE_QUERY, &query)) {
-      free(data);
-      return NULL;
-   }
-
-   return data;
-}
-
 VkResult
 anv_xe_physical_device_get_parameters(struct anv_physical_device *device)
 {
    struct drm_xe_query_config *config;
 
-   config = xe_query_alloc_fetch(device, DRM_XE_DEVICE_QUERY_CONFIG);
+   config = xe_device_query_alloc_fetch(device->local_fd, DRM_XE_DEVICE_QUERY_CONFIG, NULL);
    if (!config)
       return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                        "unable to query device config");
