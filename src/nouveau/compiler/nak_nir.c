@@ -1014,13 +1014,13 @@ nak_mem_access_size_align(nir_intrinsic_op intrin,
       return (nir_mem_access_size_align) {
          .bit_size = chunk_bytes * 8,
          .num_components = 1,
-         .align = align,
+         .align = chunk_bytes,
       };
    } else {
       return (nir_mem_access_size_align) {
          .bit_size = 32,
          .num_components = chunk_bytes / 4,
-         .align = align,
+         .align = chunk_bytes,
       };
    }
 }
