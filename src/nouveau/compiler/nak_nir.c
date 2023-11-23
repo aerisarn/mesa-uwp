@@ -965,6 +965,27 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
    return true;
 }
 
+static bool
+nak_mem_vectorize_cb(unsigned align_mul, unsigned align_offset,
+                     unsigned bit_size, unsigned num_components,
+                     nir_intrinsic_instr *low, nir_intrinsic_instr *high,
+                     void *cb_data)
+{
+   /*
+    * Since we legalize these later with nir_lower_mem_access_bit_sizes,
+    * we can optimistically combine anything that might be profitable
+    */
+   assert(util_is_power_of_two_nonzero(align_mul));
+
+   unsigned max_bytes = 128u / 8u;
+   if (low->intrinsic == nir_intrinsic_load_ubo)
+      max_bytes = 64u / 8u;
+
+   align_mul = MIN2(align_mul, max_bytes);
+   align_offset = align_offset % align_mul;
+   return align_offset + num_components * (bit_size / 8) <= align_mul;
+}
+
 static nir_mem_access_size_align
 nak_mem_access_size_align(nir_intrinsic_op intrin,
                           uint8_t bytes, uint8_t bit_size,
@@ -1049,7 +1070,17 @@ nak_postprocess_nir(nir_shader *nir,
           glsl_get_natural_size_align_bytes);
       OPT(nir, nir_lower_explicit_io, nir_var_function_temp,
           nir_address_format_32bit_offset);
+      nak_optimize_nir(nir, nak);
    }
+
+   nir_load_store_vectorize_options vectorize_opts = {};
+   vectorize_opts.modes = nir_var_mem_global |
+                          nir_var_mem_ssbo |
+                          nir_var_mem_shared |
+                          nir_var_shader_temp;
+   vectorize_opts.callback = nak_mem_vectorize_cb;
+   vectorize_opts.robust_modes = robust2_modes;
+   OPT(nir, nir_opt_load_store_vectorize, &vectorize_opts);
 
    nir_lower_mem_access_bit_sizes_options mem_bit_size_options = {
       .modes = nir_var_mem_constant | nir_var_mem_ubo | nir_var_mem_generic,
