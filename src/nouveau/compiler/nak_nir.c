@@ -1089,6 +1089,8 @@ nak_postprocess_nir(nir_shader *nir,
    OPT(nir, nir_lower_mem_access_bit_sizes, &mem_bit_size_options);
    OPT(nir, nir_lower_bit_size, lower_bit_size_cb, (void *)nak);
 
+   OPT(nir, nir_opt_combine_barriers, NULL, NULL);
+
    nak_optimize_nir(nir, nak);
 
    OPT(nir, nak_nir_lower_tex, nak);
