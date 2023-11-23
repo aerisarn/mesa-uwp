@@ -519,6 +519,26 @@ impl<'a> ShaderFromNir<'a> {
                     _ => panic!("Unknown extract op: {}", alu.op),
                 }
             }
+            nir_op_f2f16 | nir_op_f2f16_rtne | nir_op_f2f16_rtz
+            | nir_op_f2f32 | nir_op_f2f64 => {
+                let src_bits = alu.get_src(0).src.bit_size();
+                let dst_bits = alu.def.bit_size();
+
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpF2F {
+                    dst: dst.into(),
+                    src: srcs[0],
+                    src_type: FloatType::from_bits(src_bits.into()),
+                    dst_type: FloatType::from_bits(dst_bits.into()),
+                    rnd_mode: match alu.op {
+                        nir_op_f2f16_rtz => FRndMode::Zero,
+                        _ => FRndMode::NearestEven,
+                    },
+                    ftz: true,
+                    high: false,
+                });
+                dst
+            }
             nir_op_find_lsb => {
                 let tmp = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpBrev {
@@ -534,7 +554,8 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
-            nir_op_f2i32 | nir_op_f2u32 => {
+            nir_op_f2i8 | nir_op_f2i16 | nir_op_f2i32 | nir_op_f2i64
+            | nir_op_f2u8 | nir_op_f2u16 | nir_op_f2u32 | nir_op_f2u64 => {
                 let src_bits = usize::from(alu.get_src(0).bit_size());
                 let dst_bits = alu.def.bit_size();
                 let dst = b.alloc_ssa(RegFile::GPR, dst_bits.div_ceil(32));
@@ -700,14 +721,15 @@ impl<'a> ShaderFromNir<'a> {
                 b.mufu(MuFuOp::Sin, tmp.into())
             }
             nir_op_fsqrt => b.mufu(MuFuOp::Sqrt, srcs[0]),
-            nir_op_i2f32 => {
-                assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
+            nir_op_i2f16 | nir_op_i2f32 | nir_op_i2f64 => {
+                let src_bits = alu.get_src(0).src.bit_size();
+                let dst_bits = alu.def.bit_size();
+                let dst = b.alloc_ssa(RegFile::GPR, dst_bits.div_ceil(32));
                 b.push_op(OpI2F {
                     dst: dst.into(),
                     src: srcs[0],
-                    dst_type: FloatType::F32,
-                    src_type: IntType::I32,
+                    dst_type: FloatType::from_bits(dst_bits.into()),
+                    src_type: IntType::from_bits(src_bits.into(), true),
                     rnd_mode: FRndMode::NearestEven,
                 });
                 dst
@@ -955,14 +977,15 @@ impl<'a> ShaderFromNir<'a> {
 
                 b.prmt(low.into(), high.into(), [0, 1, 4, 5])
             }
-            nir_op_u2f32 => {
-                assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
+            nir_op_u2f16 | nir_op_u2f32 | nir_op_u2f64 => {
+                let src_bits = alu.get_src(0).src.bit_size();
+                let dst_bits = alu.def.bit_size();
+                let dst = b.alloc_ssa(RegFile::GPR, dst_bits.div_ceil(32));
                 b.push_op(OpI2F {
                     dst: dst.into(),
                     src: srcs[0],
-                    dst_type: FloatType::F32,
-                    src_type: IntType::U32,
+                    dst_type: FloatType::from_bits(dst_bits.into()),
+                    src_type: IntType::from_bits(src_bits.into(), false),
                     rnd_mode: FRndMode::NearestEven,
                 });
                 dst
