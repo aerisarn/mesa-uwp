@@ -339,7 +339,7 @@
    if (__cs_context_reg_count >= 2) { \
       /* Align the count to 2 by duplicating the first register. */ \
       if (__cs_context_reg_count % 2 == 1) { \
-         gfx11_set_context_reg(__cs_context_regs[0].reg_offset[0] + SI_CONTEXT_REG_OFFSET, \
+         gfx11_set_context_reg(SI_CONTEXT_REG_OFFSET + __cs_context_regs[0].reg_offset[0] * 4, \
                                __cs_context_regs[0].reg_value[0]); \
       } \
       assert(__cs_context_reg_count % 2 == 0); \
