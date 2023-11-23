@@ -460,7 +460,7 @@ impl<'a> ShaderFromNir<'a> {
                 assert!(alu.get_src(0).bit_size() == 32);
                 b.isetp(IntCmpType::I32, IntCmpOp::Ne, srcs[0], 0.into())
             }
-            nir_op_b2b32 | nir_op_b2i32 => {
+            nir_op_b2b32 | nir_op_b2i8 | nir_op_b2i16 | nir_op_b2i32 => {
                 b.sel(srcs[0].bnot(), 0.into(), 1.into())
             }
             nir_op_b2f32 => {
@@ -733,6 +733,56 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: FRndMode::NearestEven,
                 });
                 dst
+            }
+            nir_op_i2i8 | nir_op_i2i16 | nir_op_i2i32 | nir_op_i2i64
+            | nir_op_u2u8 | nir_op_u2u16 | nir_op_u2u32 | nir_op_u2u64 => {
+                let src_bits = alu.get_src(0).src.bit_size();
+                let dst_bits = alu.def.bit_size();
+
+                let mut prmt = [0_u8; 8];
+                match alu.op {
+                    nir_op_i2i8 | nir_op_i2i16
+                    | nir_op_i2i32 | nir_op_i2i64 => {
+                        let sign = ((src_bits / 8) - 1) | 0x8;
+                        for i in 0..8 {
+                            if i < (src_bits / 8) {
+                                prmt[usize::from(i)] = i;
+                            } else {
+                                prmt[usize::from(i)] = sign;
+                            }
+                        }
+                    }
+                    nir_op_u2u8 | nir_op_u2u16
+                    | nir_op_u2u32 | nir_op_u2u64 => {
+                        for i in 0..8 {
+                            if i < (src_bits / 8) {
+                                prmt[usize::from(i)] = i;
+                            } else {
+                                prmt[usize::from(i)] = 4;
+                            }
+                        }
+                    }
+                    _ => panic!("Invalid integer conversion: {}", alu.op),
+                }
+                let prmt_lo: [u8; 4] = prmt[0..4].try_into().unwrap();
+                let prmt_hi: [u8; 4] = prmt[4..8].try_into().unwrap();
+
+                let src = srcs[0].as_ssa().unwrap();
+                if src_bits == 64 {
+                    if dst_bits == 64 {
+                        *src
+                    } else {
+                        b.prmt(src[0].into(), src[1].into(), prmt_lo)
+                    }
+                } else {
+                    if dst_bits == 64 {
+                        let lo = b.prmt(src[0].into(), 0.into(), prmt_lo);
+                        let hi = b.prmt(src[0].into(), 0.into(), prmt_hi);
+                        [lo[0], hi[0]].into()
+                    } else {
+                        b.prmt(src[0].into(), 0.into(), prmt_lo)
+                    }
+                }
             }
             nir_op_iabs => b.iabs(srcs[0]),
             nir_op_iadd => {
