@@ -3378,12 +3378,19 @@ agx_allocate_geometry_count_buffer(
 static uint64_t
 agx_batch_geometry_state(struct agx_batch *batch)
 {
+   struct agx_context *ctx = batch->ctx;
+
    if (!batch->geometry_state) {
+      if (!ctx->heap) {
+         ctx->heap = pipe_buffer_create(ctx->base.screen, PIPE_BIND_GLOBAL,
+                                        PIPE_USAGE_DEFAULT, 1024 * 1024 * 128);
+      }
+
       struct agx_geometry_state state = {
-         .heap = agx_resource(batch->ctx->heap)->bo->ptr.gpu,
+         .heap = agx_resource(ctx->heap)->bo->ptr.gpu,
       };
 
-      agx_batch_writes(batch, agx_resource(batch->ctx->heap));
+      agx_batch_writes(batch, agx_resource(ctx->heap));
 
       batch->geometry_state =
          agx_pool_upload_aligned(&batch->pool, &state, sizeof(state), 8);
@@ -3896,11 +3903,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       batch->geom_indirect = agx_pool_alloc_aligned_with_bo(
                                 &batch->pool, 64, 4, &batch->geom_indirect_bo)
                                 .gpu;
-
-      if (!ctx->heap) {
-         ctx->heap = pipe_buffer_create(ctx->base.screen, PIPE_BIND_GLOBAL,
-                                        PIPE_USAGE_DEFAULT, 1024 * 1024 * 128);
-      }
 
       batch->uniforms.geometry_params =
          agx_batch_geometry_params(batch, ib, info, draws, indirect);
