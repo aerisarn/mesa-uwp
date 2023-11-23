@@ -115,6 +115,9 @@ lower_bit_size_cb(const nir_instr *instr, void *_data)
    switch (instr->type) {
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
+      if (nir_op_infos[alu->op].is_conversion)
+         return 0;
+
       switch (alu->op) {
       case nir_op_bit_count:
       case nir_op_ufind_msb:
@@ -129,11 +132,14 @@ lower_bit_size_cb(const nir_instr *instr, void *_data)
          break;
       }
 
-      if (alu->def.bit_size >= 32)
+      const unsigned bit_size = nir_alu_instr_is_comparison(alu)
+                                ? alu->src[0].src.ssa->bit_size
+                                : alu->def.bit_size;
+      if (bit_size >= 32)
          return 0;
 
       /* TODO: Some hardware has native 16-bit support */
-      if (alu->def.bit_size & (8 | 16))
+      if (bit_size & (8 | 16))
          return 32;
 
       return 0;
@@ -252,8 +258,6 @@ nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    UNUSED bool progress = false;
 
    nir_validate_ssa_dominance(nir, "before nak_preprocess_nir");
-
-   OPT(nir, nir_lower_bit_size, lower_bit_size_cb, (void *)nak);
 
    const nir_lower_tex_options tex_options = {
       .lower_txd_3d = true,
@@ -1032,6 +1036,7 @@ nak_postprocess_nir(nir_shader *nir,
       .callback = nak_mem_access_size_align,
    };
    OPT(nir, nir_lower_mem_access_bit_sizes, &mem_bit_size_options);
+   OPT(nir, nir_lower_bit_size, lower_bit_size_cb, (void *)nak);
 
    nak_optimize_nir(nir, nak);
 
