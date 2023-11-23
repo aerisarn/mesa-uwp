@@ -6153,14 +6153,22 @@ static void
 init_aux_map_state(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
+   const struct intel_device_info *devinfo = screen->devinfo;
    void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
    if (!aux_map_ctx)
       return;
 
    uint64_t base_addr = intel_aux_map_get_base(aux_map_ctx);
    assert(base_addr != 0 && align64(base_addr, 32 * 1024) == base_addr);
-   iris_load_register_imm64(batch, GENX(GFX_AUX_TABLE_BASE_ADDR_num),
-                            base_addr);
+
+   bool use_compute_reg = batch->name == IRIS_BATCH_COMPUTE &&
+                          devinfo->has_compute_engine &&
+                          debug_get_bool_option("INTEL_COMPUTE_CLASS", false);
+
+   uint32_t reg = use_compute_reg ? GENX(COMPCS0_AUX_TABLE_BASE_ADDR_num) :
+                                    GENX(GFX_AUX_TABLE_BASE_ADDR_num);
+
+   iris_load_register_imm64(batch, reg, base_addr);
 }
 #endif
 
