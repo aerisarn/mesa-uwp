@@ -75,6 +75,8 @@ nvk_get_device_extensions(const struct nv_device_info *info,
                           struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
+      .KHR_8bit_storage = true,
+      .KHR_16bit_storage = true,
       .KHR_bind_memory2 = true,
       .KHR_buffer_device_address = true,
       .KHR_copy_commands2 = true,
@@ -112,6 +114,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_separate_depth_stencil_layouts = true,
       .KHR_shader_clock = true,
       .KHR_shader_draw_parameters = true,
+      .KHR_shader_float16_int8 = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_shader_terminate_invocation =
          (nvk_nak_stages(info) & VK_SHADER_STAGE_FRAGMENT_BIT) != 0,
@@ -220,7 +223,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .shaderCullDistance = true,
       /* TODO: shaderFloat64 */
       /* TODO: shaderInt64 */
-      /* TODO: shaderInt16 */
+      .shaderInt16 = true,
       /* TODO: shaderResourceResidency */
       .shaderResourceMinLod = true,
       .sparseBinding = true,
@@ -231,6 +234,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       .inheritedQueries = true,
 
       /* Vulkan 1.1 */
+      .storageBuffer16BitAccess = true,
+      .uniformAndStorageBuffer16BitAccess = true,
+      .storagePushConstant16 = true,
       .multiview = true,
       .multiviewGeometryShader = true,
       .multiviewTessellationShader = true,
@@ -243,6 +249,10 @@ nvk_get_device_features(const struct nv_device_info *info,
       .samplerMirrorClampToEdge = true,
       .descriptorIndexing = true,
       .drawIndirectCount = info->cls_eng3d >= TURING_A,
+      .storageBuffer8BitAccess = true,
+      .uniformAndStorageBuffer8BitAccess = true,
+      .storagePushConstant8 = true,
+      .shaderInt8 = true,
       .shaderInputAttachmentArrayDynamicIndexing = true,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
       .shaderStorageTexelBufferArrayDynamicIndexing = true,
