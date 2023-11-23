@@ -971,9 +971,7 @@ nak_mem_access_size_align(nir_intrinsic_op intrin,
                           uint32_t align_mul, uint32_t align_offset,
                           bool offset_is_const, const void *cb_data)
 {
-   assert(align_offset < align_mul);
-   const uint32_t align =
-      align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+   const uint32_t align = nir_combined_align(align_mul, align_offset);
    assert(util_is_power_of_two_nonzero(align));
 
    unsigned bytes_pow2;
