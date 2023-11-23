@@ -105,15 +105,17 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
          nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),
                          binding_layout->offset + offset_B);
 
-      unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
-      desc_align = MIN2(desc_align, 16);
+      unsigned desc_align_mul = (1 << (ffs(binding_layout->stride) - 1));
+      desc_align_mul = MIN2(desc_align_mul, 16);
+      unsigned desc_align_offset = binding_layout->offset + offset_B;
+      desc_align_offset %= desc_align_mul;
 
       nir_def *set_addr = load_descriptor_set_addr(b, set, ctx);
       nir_def *desc =
          nir_load_global_constant_offset(b, num_components, bit_size,
                                          set_addr, desc_ubo_offset,
-                                         .align_mul = desc_align,
-                                         .align_offset = 0);
+                                         .align_mul = desc_align_mul,
+                                         .align_offset = desc_align_offset);
       if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
           binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
          /* We know a priori that the the .w compnent (offset) is zero */
