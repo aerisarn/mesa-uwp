@@ -48,44 +48,24 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
         info->base.workgroup_size[2]) % 64 != 0)
       return 32;
 
-   /* Debug flags. */
-   unsigned dbg_wave_size = 0;
+   /* AMD_DEBUG wave flags override everything else. */
    if (sscreen->debug_flags &
        (stage == MESA_SHADER_COMPUTE ? DBG(W32_CS) :
-        stage == MESA_SHADER_FRAGMENT ? DBG(W32_PS) | DBG(W32_PS_DISCARD) : DBG(W32_GE)))
-      dbg_wave_size = 32;
+        stage == MESA_SHADER_FRAGMENT ? DBG(W32_PS) : DBG(W32_GE)))
+      return 32;
 
    if (sscreen->debug_flags &
        (stage == MESA_SHADER_COMPUTE ? DBG(W64_CS) :
-        stage == MESA_SHADER_FRAGMENT ? DBG(W64_PS) : DBG(W64_GE))) {
-      assert(!dbg_wave_size);
-      dbg_wave_size = 64;
-   }
+        stage == MESA_SHADER_FRAGMENT ? DBG(W64_PS) : DBG(W64_GE)))
+      return 64;
 
    /* Shader profiles. */
-   unsigned profile_wave_size = 0;
    if (info && info->options & SI_PROFILE_WAVE32)
-      profile_wave_size = 32;
+      return 32;
 
    if (info && info->options & SI_PROFILE_GFX10_WAVE64 &&
-       (sscreen->info.gfx_level == GFX10 || sscreen->info.gfx_level == GFX10_3)) {
-      assert(!profile_wave_size);
-      profile_wave_size = 64;
-   }
-
-   if (profile_wave_size) {
-      /* Only debug flags override shader profiles. */
-      if (dbg_wave_size)
-         return dbg_wave_size;
-
-      return profile_wave_size;
-   }
-
-   /* Debug flags except w32psdiscard don't override the discard bug workaround,
-    * but they override everything else.
-    */
-   if (dbg_wave_size)
-      return dbg_wave_size;
+       (sscreen->info.gfx_level == GFX10 || sscreen->info.gfx_level == GFX10_3))
+      return 64;
 
    /* Gfx10: Pixel shaders without interp instructions don't suffer from reduced interpolation
     * performance in Wave32, so use Wave32. This helps Piano and Voloplosion.
