@@ -73,6 +73,7 @@ amd_common_files = files(
   'ac_shader_args.h',
   'ac_shader_util.c',
   'ac_shader_util.h',
+  'ac_gather_context_rolls.c',
   'ac_gpu_info.c',
   'ac_gpu_info.h',
   'ac_surface.c',

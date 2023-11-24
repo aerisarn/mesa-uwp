@@ -591,6 +591,7 @@ struct si_screen {
    /* Whether shaders are monolithic (1-part) or separate (3-part). */
    bool use_monolithic_shaders;
    bool record_llvm_ir;
+   const char *context_roll_log_filename;
 
    struct slab_parent_pool pool_transfers;
 
@@ -1526,6 +1527,7 @@ void si_cp_copy_data(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned
 void si_init_cp_reg_shadowing(struct si_context *sctx);
 
 /* si_debug.c */
+void si_gather_context_rolls(struct si_context *sctx);
 void si_save_cs(struct radeon_winsys *ws, struct radeon_cmdbuf *cs, struct radeon_saved_cs *saved,
                 bool get_buffer_list);
 void si_clear_saved_cs(struct radeon_saved_cs *saved);

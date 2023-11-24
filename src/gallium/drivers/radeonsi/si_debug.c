@@ -1084,6 +1084,27 @@ void si_check_vm_faults(struct si_context *sctx, struct radeon_saved_cs *saved, 
    exit(0);
 }
 
+void si_gather_context_rolls(struct si_context *sctx)
+{
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   uint32_t **ibs = alloca(sizeof(ibs[0]) * (cs->num_prev + 1));
+   uint32_t *ib_dw_sizes = alloca(sizeof(ib_dw_sizes[0]) * (cs->num_prev + 1));
+
+   for (unsigned i = 0; i < cs->num_prev; i++) {
+      struct radeon_cmdbuf_chunk *chunk = &cs->prev[i];
+
+      ibs[i] = chunk->buf;
+      ib_dw_sizes[i] = chunk->cdw;
+   }
+
+   ibs[cs->num_prev] = cs->current.buf;
+   ib_dw_sizes[cs->num_prev] = cs->current.cdw;
+
+   FILE *f = fopen(sctx->screen->context_roll_log_filename, "a");
+   ac_gather_context_rolls(f, ibs, ib_dw_sizes, cs->num_prev + 1, &sctx->screen->info);
+   fclose(f);
+}
+
 void si_init_debug_functions(struct si_context *sctx)
 {
    sctx->b.dump_debug_state = si_dump_debug_state;

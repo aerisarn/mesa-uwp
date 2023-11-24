@@ -120,6 +120,9 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    if (sscreen->debug_flags & DBG(IB))
       si_print_current_ib(ctx, stderr);
 
+   if (sscreen->context_roll_log_filename)
+      si_gather_context_rolls(ctx);
+
    if (ctx->is_noop)
       flags |= RADEON_FLUSH_NOOP;
 
