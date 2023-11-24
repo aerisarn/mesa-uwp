@@ -63,7 +63,7 @@ xe_gem_create(struct anv_device *device,
      .flags = flags,
    };
    for (uint16_t i = 0; i < regions_count; i++)
-      gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
+      gem_create.placement |= BITFIELD_BIT(regions[i]->instance);
 
    const struct intel_device_info_pat_entry *pat_entry =
          anv_device_get_pat_entry(device, alloc_flags);
@@ -147,7 +147,6 @@ xe_vm_bind_op(struct anv_device *device,
          .obj_offset = bind->bo_offset,
          .range = bind->size,
          .addr = intel_48b_address(bind->address),
-         .tile_mask = 0,
          .op = DRM_XE_VM_BIND_OP_UNMAP,
          .flags = 0,
          .prefetch_mem_region_instance = 0,

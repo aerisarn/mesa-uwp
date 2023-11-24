@@ -63,7 +63,7 @@ xe_gem_create(struct iris_bufmgr *bufmgr,
      .flags = flags,
    };
    for (uint16_t i = 0; i < regions_count; i++)
-      gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
+      gem_create.placement |= BITFIELD_BIT(regions[i]->instance);
 
    const struct intel_device_info *devinfo = iris_bufmgr_get_device_info(bufmgr);
    const struct intel_device_info_pat_entry *pat_entry;
@@ -350,13 +350,12 @@ xe_batch_submit(struct iris_batch *batch)
 
       util_dynarray_foreach(&batch->exec_fences, struct iris_batch_fence,
                             fence) {
-         uint32_t flags = DRM_XE_SYNC_FLAG_SYNCOBJ;
 
          if (fence->flags & IRIS_BATCH_FENCE_SIGNAL)
-            flags |= DRM_XE_SYNC_FLAG_SIGNAL;
+            syncs[i].flags = DRM_XE_SYNC_FLAG_SIGNAL;
 
          syncs[i].handle = fence->handle;
-         syncs[i].flags = flags;
+         syncs[i].type = DRM_XE_SYNC_TYPE_SYNCOBJ;
          i++;
       }
    }

@@ -70,25 +70,23 @@ intel_engine_class_to_xe(enum intel_engine_class intel)
 struct intel_query_engine_info *
 xe_engine_get_info(int fd)
 {
-   struct drm_xe_engine_class_instance *xe_engines;
-   uint32_t len;
+   struct drm_xe_query_engines *xe_engines;
 
-   xe_engines = xe_device_query_alloc_fetch(fd, DRM_XE_DEVICE_QUERY_ENGINES, &len);
+   xe_engines = xe_device_query_alloc_fetch(fd, DRM_XE_DEVICE_QUERY_ENGINES, NULL);
    if (!xe_engines)
       return NULL;
 
-   const uint32_t engines_count = len / sizeof(*xe_engines);
    struct intel_query_engine_info *intel_engines_info;
    intel_engines_info = calloc(1, sizeof(*intel_engines_info) +
                                sizeof(*intel_engines_info->engines) *
-                               engines_count);
+                               xe_engines->num_engines);
    if (!intel_engines_info) {
       goto error_free_xe_engines;
       return NULL;
    }
 
-   for (uint32_t i = 0; i < engines_count; i++) {
-      struct drm_xe_engine_class_instance *xe_engine = &xe_engines[i];
+   for (uint32_t i = 0; i < xe_engines->num_engines; i++) {
+      struct drm_xe_engine_class_instance *xe_engine = &xe_engines->engines[i].instance;
       struct intel_engine_class_instance *intel_engine = &intel_engines_info->engines[i];
 
       intel_engine->engine_class = xe_engine_class_to_intel(xe_engine->engine_class);
@@ -96,7 +94,7 @@ xe_engine_get_info(int fd)
       intel_engine->gt_id = xe_engine->gt_id;
    }
 
-   intel_engines_info->num_engines = engines_count;
+   intel_engines_info->num_engines = xe_engines->num_engines;
    free(xe_engines);
    return intel_engines_info;
 

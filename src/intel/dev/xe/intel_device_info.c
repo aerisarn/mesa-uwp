@@ -85,8 +85,8 @@ intel_device_info_xe_query_regions(int fd, struct intel_device_info *devinfo,
    if (!regions)
       return false;
 
-   for (int i = 0; i < regions->num_regions; i++) {
-      struct drm_xe_query_mem_region *region = &regions->regions[i];
+   for (int i = 0; i < regions->num_mem_regions; i++) {
+      struct drm_xe_mem_region *region = &regions->mem_regions[i];
 
       switch (region->mem_class) {
       case DRM_XE_MEM_REGION_CLASS_SYSMEM: {
@@ -139,7 +139,7 @@ xe_query_gts(int fd, struct intel_device_info *devinfo)
 
    for (uint32_t i = 0; i < gt_list->num_gt; i++) {
       if (gt_list->gt_list[i].type == DRM_XE_QUERY_GT_TYPE_MAIN)
-         devinfo->timestamp_frequency = gt_list->gt_list[i].clock_freq;
+         devinfo->timestamp_frequency = gt_list->gt_list[i].reference_clock;
    }
 
    free(gt_list);
