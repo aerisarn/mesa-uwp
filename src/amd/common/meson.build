@@ -134,8 +134,8 @@ libamd_common = static_library(
 idep_amdgfxregs_h = declare_dependency(sources : [amdgfxregs_h])
 
 executable(
-  'ac_parse_ib',
-  ['ac_parse_ib.c'],
+  'ac_ib_parser',
+  ['ac_ib_parser.c'],
   link_with: [libamd_common],
   include_directories : [
     inc_amd, inc_include, inc_src,
