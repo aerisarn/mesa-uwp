@@ -1192,7 +1192,7 @@ transition_resource(struct pipe_context *pctx, struct agx_resource *rsrc,
 
       u_box_3d(0, 0, 0, u_minify(rsrc->layout.width_px, level),
                u_minify(rsrc->layout.height_px, level),
-               u_minify(rsrc->layout.depth_px, level), &blit.dst.box);
+               util_num_layers(&rsrc->base, level), &blit.dst.box);
       blit.src.box = blit.dst.box;
 
       blit.dst.resource = &new_res->base;
