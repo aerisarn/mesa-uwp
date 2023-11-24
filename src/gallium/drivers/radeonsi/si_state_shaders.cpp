@@ -67,7 +67,8 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
    if (info && info->options & SI_PROFILE_WAVE32)
       profile_wave_size = 32;
 
-   if (info && info->options & SI_PROFILE_WAVE64) {
+   if (info && info->options & SI_PROFILE_GFX10_WAVE64 &&
+       (sscreen->info.gfx_level == GFX10 || sscreen->info.gfx_level == GFX10_3)) {
       assert(!profile_wave_size);
       profile_wave_size = 64;
    }

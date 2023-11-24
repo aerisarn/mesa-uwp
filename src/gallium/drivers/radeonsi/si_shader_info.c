@@ -33,7 +33,7 @@ static struct si_shader_profile profiles[] =
        * probably due to interpolation performance.
        */
       {0x29f0f4a0, 0x0672258d, 0x47ccdcfd, 0x31e67dcc, 0xdcb1fda8},
-      SI_PROFILE_WAVE64,
+      SI_PROFILE_GFX10_WAVE64,
    },
    {
       /* Viewperf/Creo */

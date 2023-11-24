@@ -302,7 +302,7 @@ enum
 #define SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(x)  (((x) >> 5) & 0xff)
 
 #define SI_PROFILE_WAVE32                    (1 << 0)
-#define SI_PROFILE_WAVE64                    (1 << 1)
+#define SI_PROFILE_GFX10_WAVE64              (1 << 1)
 /* bit gap */
 #define SI_PROFILE_VS_NO_BINNING             (1 << 3)
 #define SI_PROFILE_PS_NO_BINNING             (1 << 4)
