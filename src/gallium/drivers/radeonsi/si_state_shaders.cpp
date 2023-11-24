@@ -3773,7 +3773,8 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
    si_update_vrs_flat_shading(sctx);
 
    if (sctx->screen->dpbb_allowed) {
-      bool force_off = sel && sel->info.options & SI_PROFILE_PS_NO_BINNING;
+      bool force_off = sel && sel->info.options & SI_PROFILE_GFX9_GFX10_PS_NO_BINNING &&
+                       (sctx->gfx_level >= GFX9 && sctx->gfx_level <= GFX10_3);
 
       if (force_off != sctx->dpbb_force_off_profile_ps) {
          sctx->dpbb_force_off_profile_ps = force_off;

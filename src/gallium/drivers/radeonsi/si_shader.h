@@ -305,7 +305,7 @@ enum
 #define SI_PROFILE_GFX10_WAVE64              (1 << 1)
 /* bit gap */
 #define SI_PROFILE_VS_NO_BINNING             (1 << 3)
-#define SI_PROFILE_PS_NO_BINNING             (1 << 4)
+#define SI_PROFILE_GFX9_GFX10_PS_NO_BINNING  (1 << 4)
 #define SI_PROFILE_CLAMP_DIV_BY_ZERO         (1 << 5)
 
 enum si_shader_dump_type {
