@@ -2010,9 +2010,24 @@ impl<'a> ShaderFromNir<'a> {
                         offset: off_imm.try_into().unwrap(),
                     };
                     if off.is_zero() {
-                        for (i, comp) in dst.iter().enumerate() {
-                            let i = u16::try_from(i).unwrap();
-                            b.copy_to((*comp).into(), cb.offset(i * 4).into());
+                        if off_imm % 4 == 0 {
+                            for (i, comp) in dst.iter().enumerate() {
+                                let i = i16::try_from(i).unwrap();
+                                b.copy_to(
+                                    (*comp).into(),
+                                    cb.offset(i * 4).into(),
+                                );
+                            }
+                        } else {
+                            let delta: u8 = (off_imm % 4).try_into().unwrap();
+                            let aligned_cb = cb.offset(-i16::from(delta));
+                            let tmp = b.copy(aligned_cb.into());
+                            let prmt = match size_B {
+                                1 => [delta, 4, 4, 4],
+                                2 => [delta, delta + 1, 4, 4],
+                                _ => panic!("Invalid load_ubo"),
+                            };
+                            b.prmt_to(dst.into(), tmp.into(), 0.into(), prmt);
                         }
                     } else {
                         b.push_op(OpLdc {

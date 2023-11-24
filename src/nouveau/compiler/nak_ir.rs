@@ -742,10 +742,11 @@ pub struct CBufRef {
 }
 
 impl CBufRef {
-    pub fn offset(self, offset: u16) -> CBufRef {
+    pub fn offset(self, offset: i16) -> CBufRef {
         CBufRef {
             buf: self.buf,
-            offset: self.offset + offset,
+            offset: (i32::from(self.offset) +
+            i32::from(offset)).try_into().unwrap(),
         }
     }
 }
