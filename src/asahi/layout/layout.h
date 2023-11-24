@@ -110,6 +110,14 @@ struct ail_layout {
     */
    struct ail_tile tilesize_el[AIL_MAX_MIP_LEVELS];
 
+   /**
+    * If tiling is TWIDDLED, the stride in elements used for each mip level
+    * within a layer. Calculating level strides is the sole responsibility of
+    * ail_initialized_twiddled. This is necessary because compressed pixel
+    * formats may add extra stride padding.
+    */
+   uint32_t stride_el[AIL_MAX_MIP_LEVELS];
+
    /* Offset of the start of the compression metadata buffer */
    uint32_t metadata_offset_B;
 

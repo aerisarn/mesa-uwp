@@ -70,7 +70,7 @@ ail_space_mask(unsigned x)
    {                                                                           \
       enum pipe_format format = tiled_layout->format;                          \
       unsigned linear_pitch_el = linear_pitch_B / blocksize_B;                 \
-      unsigned width_el = util_format_get_nblocksx(format, width_px);          \
+      unsigned stride_el = tiled_layout->stride_el[level];                     \
       unsigned sx_el = util_format_get_nblocksx(format, sx_px);                \
       unsigned sy_el = util_format_get_nblocksy(format, sy_px);                \
       unsigned swidth_el = util_format_get_nblocksx(format, swidth_px);        \
@@ -80,7 +80,7 @@ ail_space_mask(unsigned x)
                                                                                \
       struct ail_tile tile_size = tiled_layout->tilesize_el[level];            \
       unsigned tile_area_el = tile_size.width_el * tile_size.height_el;        \
-      unsigned tiles_per_row = DIV_ROUND_UP(width_el, tile_size.width_el);     \
+      unsigned tiles_per_row = DIV_ROUND_UP(stride_el, tile_size.width_el);    \
       unsigned y_offs_el = ail_space_bits(MOD_POT(sy_el, tile_size.height_el)) \
                            << 1;                                               \
       unsigned x_offs_start_el =                                               \

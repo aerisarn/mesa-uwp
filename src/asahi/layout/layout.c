@@ -122,6 +122,8 @@ ail_initialize_twiddled(struct ail_layout *layout)
       layout->level_offsets_B[l] = offset_B;
       offset_B = ALIGN_POT(offset_B + (blocksize_B * size_el), AIL_CACHELINE);
 
+      layout->stride_el[l] = util_format_get_nblocksx(
+         layout->format, u_minify(layout->width_px, l));
       layout->tilesize_el[l] = tilesize_el;
    }
 
@@ -154,6 +156,8 @@ ail_initialize_twiddled(struct ail_layout *layout)
       unsigned tilesize_el =
          util_next_power_of_two(u_minify(MIN2(w_el, h_el), l));
       layout->tilesize_el[l] = (struct ail_tile){tilesize_el, tilesize_el};
+      layout->stride_el[l] = util_format_get_nblocksx(
+         layout->format, u_minify(layout->width_px, l));
 
       potw_el = u_minify(potw_el, 1);
       poth_el = u_minify(poth_el, 1);
