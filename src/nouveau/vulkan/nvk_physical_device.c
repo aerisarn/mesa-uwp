@@ -421,13 +421,15 @@ nvk_get_device_properties(const struct nvk_instance *instance,
                           const struct nv_device_info *info,
                           struct vk_properties *properties)
 {
+   uint32_t version_override = vk_get_version_override();
    const VkSampleCountFlagBits sample_counts = VK_SAMPLE_COUNT_1_BIT |
                                                VK_SAMPLE_COUNT_2_BIT |
                                                VK_SAMPLE_COUNT_4_BIT |
                                                VK_SAMPLE_COUNT_8_BIT;
 
    *properties = (struct vk_properties) {
-      .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
+      .apiVersion = version_override ? version_override :
+                    VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
       .driverVersion = vk_get_driver_version(),
       .vendorID = NVIDIA_VENDOR_ID,
       .deviceID = info->device_id,
