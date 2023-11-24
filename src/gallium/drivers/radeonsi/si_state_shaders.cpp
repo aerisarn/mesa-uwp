@@ -958,9 +958,11 @@ static void si_emit_shader_gs(struct si_context *sctx, unsigned index)
       radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL, SI_TRACKED_VGT_GS_ONCHIP_CNTL,
                                  shader->gs.vgt_gs_onchip_cntl);
       /* R_028A94_VGT_GS_MAX_PRIMS_PER_SUBGROUP */
-      radeon_opt_set_context_reg(sctx, R_028A94_VGT_GS_MAX_PRIMS_PER_SUBGROUP,
-                                 SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP,
-                                 shader->gs.vgt_gs_max_prims_per_subgroup);
+      if (sctx->gfx_level == GFX9) {
+         radeon_opt_set_context_reg(sctx, R_028A94_VGT_GS_MAX_PRIMS_PER_SUBGROUP,
+                                    SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP,
+                                    shader->gs.vgt_gs_max_prims_per_subgroup);
+      }
 
       if (shader->key.ge.part.gs.es->stage == MESA_SHADER_TESS_EVAL)
          radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,

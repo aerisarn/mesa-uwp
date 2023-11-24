@@ -296,7 +296,7 @@ enum si_tracked_context_reg
    SI_TRACKED_VGT_REUSE_OFF,                 /* GFX6-8 (GFX9+ can reuse this slot) */
    SI_TRACKED_IA_MULTI_VGT_PARAM,            /* GFX6-8 (GFX9+ can reuse this slot) */
 
-   SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP, /* GFX9-10 - the slots above can be reused */
+   SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP, /* GFX9 - the slots above can be reused */
    SI_TRACKED_VGT_GS_ONCHIP_CNTL,            /* GFX9-10 - the slots above can be reused */
 
    SI_TRACKED_VGT_GSVS_RING_ITEMSIZE,        /* GFX6-10 (GFX11+ can reuse this slot) */
