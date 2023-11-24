@@ -1034,7 +1034,7 @@ d3d12_video_encoder_build_codec_headers_hevc(struct d3d12_video_encoder *pD3D12E
    
    bool writeNewVPS = isFirstFrame;
    
-   uint64_t writtenVPSBytesCount = 0;
+   size_t writtenVPSBytesCount = 0;
    if (writeNewVPS) {
       bool gopHasBFrames = (pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures.PPicturePeriod > 1);
       pHEVCBitstreamBuilder->build_vps(*profDesc.pHEVCProfile,
@@ -1050,7 +1050,7 @@ d3d12_video_encoder_build_codec_headers_hevc(struct d3d12_video_encoder *pD3D12E
       pWrittenCodecUnitsSizes.push_back(writtenVPSBytesCount);
    }
 
-   uint64_t writtenSPSBytesCount = 0;
+   size_t writtenSPSBytesCount = 0;
    if (writeNewSPS) {
       // For every new SPS for reconfiguration, increase the active_sps_id
       if (!isFirstFrame) {
