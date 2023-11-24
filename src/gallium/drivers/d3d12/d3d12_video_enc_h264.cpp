@@ -1080,7 +1080,7 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
       static_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
    assert(pH264BitstreamBuilder);
 
-   uint64_t writtenAUDBytesCount = 0;
+   size_t writtenAUDBytesCount = 0;
    pWrittenCodecUnitsSizes.clear();
    if (pH264BitstreamBuilder->insert_aud_nalu_requested())
    {
@@ -1099,7 +1099,7 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
 
    uint32_t active_seq_parameter_set_id = pH264BitstreamBuilder->get_active_sps_id();
 
-   uint64_t writtenSPSBytesCount = 0;
+   size_t writtenSPSBytesCount = 0;
    if (writeNewSPS) {
       // For every new SPS for reconfiguration, increase the active_sps_id
       if (!isFirstFrame) {
@@ -1122,7 +1122,7 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
       pWrittenCodecUnitsSizes.push_back(writtenSPSBytesCount);
    }
 
-   uint64_t writtenPPSBytesCount = 0;
+   size_t writtenPPSBytesCount = 0;
    pH264BitstreamBuilder->build_pps(*profDesc.pH264Profile,
                                     *codecConfigDesc.pH264Config,
                                     *currentPicParams.pH264PicData,
