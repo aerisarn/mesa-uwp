@@ -47,28 +47,6 @@ impl Src {
     }
 }
 
-#[derive(PartialEq, Eq)]
-struct ALURegRef {
-    pub reg: RegRef,
-    pub abs: bool,
-    pub neg: bool,
-}
-
-#[derive(PartialEq, Eq)]
-struct ALUCBufRef {
-    pub cb: CBufRef,
-    pub abs: bool,
-    pub neg: bool,
-}
-
-#[derive(PartialEq, Eq)]
-enum ALUSrc {
-    None,
-    Imm32(u32),
-    Reg(ALURegRef),
-    CBuf(ALUCBufRef),
-}
-
 fn src_mod_has_abs(src_mod: SrcMod) -> bool {
     match src_mod {
         SrcMod::None | SrcMod::FNeg | SrcMod::INeg | SrcMod::BNot => false,
@@ -90,81 +68,6 @@ fn src_mod_is_bnot(src_mod: SrcMod) -> bool {
         SrcMod::None => false,
         SrcMod::BNot => true,
         _ => panic!("Not an predicate source modifier"),
-    }
-}
-
-impl ALUSrc {
-    fn is_none(&self) -> bool {
-        match self {
-            ALUSrc::None => true,
-            _ => false,
-        }
-    }
-
-    fn is_none_or_reg_zero(&self) -> bool {
-        match self {
-            ALUSrc::None => true,
-            ALUSrc::Reg(ALURegRef {
-                reg,
-                abs: false,
-                neg: false,
-            }) if reg == &RegRef::zero(RegFile::GPR, 1) => true,
-            _ => false,
-        }
-    }
-
-    fn from_nonzero_src(src: &Src) -> ALUSrc {
-        match src.src_ref {
-            SrcRef::Reg(reg) => {
-                assert!(reg.comps() == 1);
-                let alu_ref = ALURegRef {
-                    reg: reg,
-                    abs: src_mod_has_abs(src.src_mod),
-                    neg: src_mod_has_neg(src.src_mod),
-                };
-                match reg.file() {
-                    RegFile::GPR => ALUSrc::Reg(alu_ref),
-                    _ => panic!("Invalid ALU register file"),
-                }
-            }
-            SrcRef::Imm32(i) => {
-                assert!(src.src_mod.is_none());
-                ALUSrc::Imm32(i)
-            }
-            SrcRef::CBuf(cb) => {
-                let alu_ref = ALUCBufRef {
-                    cb: cb,
-                    abs: src_mod_has_abs(src.src_mod),
-                    neg: src_mod_has_neg(src.src_mod),
-                };
-                ALUSrc::CBuf(alu_ref)
-            }
-            _ => panic!("Invalid ALU source"),
-        }
-    }
-
-    fn zero(file: RegFile) -> ALUSrc {
-        let src = Src {
-            src_ref: SrcRef::Reg(RegRef::zero(file, 1)),
-            /* Modifiers don't matter for zero */
-            src_mod: SrcMod::None,
-        };
-        ALUSrc::from_nonzero_src(&src)
-    }
-
-    pub fn from_src(src: &Src) -> ALUSrc {
-        match src.src_ref {
-            SrcRef::Zero => ALUSrc::zero(RegFile::GPR),
-            _ => ALUSrc::from_nonzero_src(src),
-        }
-    }
-
-    pub fn from_usrc(src: &Src) -> ALUSrc {
-        assert!(src.is_uniform());
-        match src.src_ref {
-            SrcRef::Zero => ALUSrc::zero(RegFile::UGPR),
-            _ => ALUSrc::from_nonzero_src(src),
-        }
     }
 }
 
@@ -408,59 +311,6 @@ impl SM50Instr {
         self.set_bit(neg_bit, src.src_mod.is_ineg());
     }
 
-    fn set_alu_reg(
-        &mut self,
-        range: Range<usize>,
-        abs_bit: Option<usize>,
-        neg_bit: Option<usize>,
-        reg: &ALURegRef,
-    ) {
-        assert!(abs_bit.is_some() || !reg.abs);
-        assert!(neg_bit.is_some() || !reg.neg);
-
-        self.set_reg(range, reg.reg);
-
-        if let Some(abs_bit) = abs_bit {
-            self.set_bit(abs_bit, reg.abs);
-        }
-
-        if let Some(neg_bit) = neg_bit {
-            self.set_bit(neg_bit, reg.neg);
-        }
-    }
-
-    fn set_alu_reg_src(
-        &mut self,
-        range: Range<usize>,
-        abs_bit: Option<usize>,
-        neg_bit: Option<usize>,
-        src: &ALUSrc,
-    ) {
-        match src {
-            ALUSrc::None => (),
-            ALUSrc::Reg(reg) => self.set_alu_reg(range, abs_bit, neg_bit, reg),
-            _ => panic!("Invalid ALU src0"),
-        }
-    }
-
-    fn set_alu_cb(
-        &mut self,
-        range: Range<usize>,
-        abs_bit: Option<usize>,
-        neg_bit: Option<usize>,
-        cb: &ALUCBufRef,
-    ) {
-        self.set_src_cb(range, &cb.cb);
-
-        if let Some(abs_bit) = abs_bit {
-            self.set_bit(abs_bit, cb.abs);
-        }
-
-        if let Some(neg_bit) = neg_bit {
-            self.set_bit(neg_bit, cb.neg);
-        }
-    }
-
     fn encode_mov(&mut self, op: &OpMov) {
         match &op.src.src_ref {
             SrcRef::Zero | SrcRef::Reg(_) => {
@@ -487,22 +337,20 @@ impl SM50Instr {
     fn encode_sel(&mut self, op: &OpSel) {
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-
-        match &alu_src_1 {
-            ALUSrc::None => panic!("Invalid source for SEL"),
-            ALUSrc::Imm32(imm) => {
+        match &op.srcs[1].src_ref {
+            SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x38a0);
-                self.set_src_imm_i20(20..40, 56, *imm);
+                self.set_src_imm_i20(20..40, 56, *imm32);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5ca0);
-                self.set_alu_reg_src(20..28, None, None, &alu_src_1);
+                self.set_reg_src_ref(20..28, op.srcs[1].src_ref);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(cbuf) => {
                 self.set_opcode(0x4ca0);
-                self.set_alu_cb(20..39, None, None, cbuf);
+                self.set_src_cb(20..39, &cbuf);
             }
+            src => panic!("Unsupported src type for SEL: {src}"),
         }
 
         self.set_dst(op.dst);
@@ -750,24 +598,23 @@ impl SM50Instr {
     }
 
     fn encode_i2f(&mut self, op: &OpI2F) {
-        let alu_src = ALUSrc::from_src(&op.src);
-        let abs_bit = Some(49);
-        let neg_bit = Some(45);
+        let abs_bit = 49;
+        let neg_bit = 45;
 
-        match &alu_src {
-            ALUSrc::None => panic!("Invalid source for I2F"),
-            ALUSrc::Imm32(imm) => {
+        match &op.src.src_ref {
+            SrcRef::Imm32(imm) => {
                 self.set_opcode(0x38b8);
                 self.set_src_imm_i20(20..40, 56, *imm);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5cb8);
-                self.set_alu_reg_src(20..28, abs_bit, neg_bit, &alu_src);
+                self.set_reg_fmod_src(20..28, abs_bit, neg_bit, op.src);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x4cb8);
-                self.set_alu_cb(20..39, abs_bit, neg_bit, cbuf);
+                self.set_cb_fmod_src(20..39, abs_bit, neg_bit, op.src);
             }
+            src => panic!("Unsupported src type for I2F: {src}"),
         }
 
         self.set_field(41..43, 0_u8); /* TODO: subop */
@@ -782,24 +629,23 @@ impl SM50Instr {
     fn encode_f2f(&mut self, op: &OpF2F) {
         assert!(op.src.is_reg_or_zero());
 
-        let alu_src = ALUSrc::from_src(&op.src);
-        let abs_bit = Some(49);
-        let neg_bit = Some(45);
+        let abs_bit = 49;
+        let neg_bit = 45;
 
-        match &alu_src {
-            ALUSrc::None => panic!("Invalid source for I2F"),
-            ALUSrc::Imm32(imm) => {
+        match &op.src.src_ref {
+            SrcRef::Imm32(imm) => {
                 self.set_opcode(0x38a8);
                 self.set_src_imm_i20(20..40, 56, *imm);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5ca8);
-                self.set_alu_reg_src(20..28, abs_bit, neg_bit, &alu_src);
+                self.set_reg_fmod_src(20..28, abs_bit, neg_bit, op.src);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x4ca8);
-                self.set_alu_cb(20..39, abs_bit, neg_bit, cbuf);
+                self.set_cb_fmod_src(20..39, abs_bit, neg_bit, op.src);
             }
+            src => panic!("Unsupported src type for F2F: {src}"),
         }
 
         /* no saturation in the IR, would be bit 50 */
@@ -831,35 +677,36 @@ impl SM50Instr {
         assert!(op.srcs[1].is_reg_or_zero());
         assert!(op.srcs[2].is_reg_or_zero());
 
-        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-        let alu_src_2 = ALUSrc::from_src(&op.srcs[2]);
-        let neg_0_bit = Some(51);
-        let neg_1_bit = Some(51);
-        let neg_2_bit = Some(52);
+        let neg_0_bit = 51;
+        let neg_1_bit = 51;
+        let neg_2_bit = 52;
 
-        match &alu_src_2 {
-            ALUSrc::None => panic!("Invalid source for IMAD"),
-            ALUSrc::Imm32(imm) => panic!("Invalid source for IMAD"),
-            ALUSrc::Reg(reg) => match &alu_src_1 {
-                ALUSrc::None => panic!("Invalid source for IMAD"),
-                ALUSrc::Imm32(imm) => {
+        match &op.srcs[2].src_ref {
+            SrcRef::Imm32(imm) => {
+                panic!("Invalid immediate src2 for IMAD {}", *imm)
+            }
+            SrcRef::Reg(reg) => match &op.srcs[1].src_ref {
+                SrcRef::Imm32(imm) => {
                     self.set_opcode(0x3400);
                     self.set_src_imm_i20(20..40, 56, *imm);
                 }
-                ALUSrc::Reg(reg) => {
+                SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x5a00);
-                    self.set_alu_reg_src(20..28, None, neg_1_bit, &alu_src_1);
+                    self.set_reg_ineg_src(20..28, neg_1_bit, op.srcs[1]);
                 }
-                ALUSrc::CBuf(cbuf) => {
+                SrcRef::CBuf(_) => {
                     self.set_opcode(0x4a00);
-                    self.set_alu_cb(20..39, None, neg_1_bit, cbuf);
+                    self.set_cb_ineg_src(20..39, neg_1_bit, op.srcs[1]);
                 }
+
+                src => panic!("Invalid src1 for IMAD {src}"),
             },
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x5200);
-                self.set_alu_reg_src(39..47, None, neg_1_bit, &alu_src_1);
-                self.set_alu_cb(20..39, None, neg_2_bit, cbuf);
+                self.set_reg_ineg_src(39..47, neg_1_bit, op.srcs[1]);
+                self.set_cb_ineg_src(20..39, neg_2_bit, op.srcs[2]);
             }
+            src => panic!("Unsupported src2 type for F2F: {src}"),
         }
 
         self.set_bit(48, op.signed); /* src0 signed */
@@ -1399,22 +1246,20 @@ impl SM50Instr {
     fn encode_popc(&mut self, op: &OpPopC) {
         assert!(op.src.is_reg_or_zero());
 
-        let alu_src = ALUSrc::from_src(&op.src);
-
-        match &alu_src {
-            ALUSrc::None => panic!("Invalid source for POPC"),
-            ALUSrc::Imm32(imm) => {
+        match &op.src.src_ref {
+            SrcRef::Imm32(imm) => {
                 self.set_opcode(0x3808);
                 self.set_src_imm_i20(20..40, 56, *imm);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Reg(_) => {
                 self.set_opcode(0x5c08);
-                self.set_alu_reg_src(20..28, None, None, &alu_src);
+                self.set_reg_src(20..28, op.src);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(cbuf) => {
                 self.set_opcode(0x4c08);
-                self.set_alu_cb(20..39, None, None, cbuf);
+                self.set_src_cb(20..39, cbuf);
             }
+            src => panic!("Invalid source for POPC: {src}"),
         }
 
         let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
@@ -1461,25 +1306,23 @@ impl SM50Instr {
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
-        match &alu_src_1 {
-            ALUSrc::None => panic!("Invalid source for FMNMX"),
-            ALUSrc::Imm32(imm32) => {
+        match &op.srcs[1].src_ref {
+            SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x3860);
                 self.set_src_imm_f20(20..40, 56, *imm32);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5c60);
-                self.set_alu_reg_src(20..28, Some(49), Some(45), &alu_src_1);
+                self.set_reg_fmod_src(20..28, 49, 45, op.srcs[1]);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x4c60);
-                self.set_alu_cb(20..39, Some(49), Some(45), cbuf);
+                self.set_cb_fmod_src(20..39, 49, 45, op.srcs[1]);
             }
+            src => panic!("Unsupported src type for FMNMX: {src}"),
         }
 
-        self.set_alu_reg_src(8..16, Some(46), Some(48), &alu_src_0);
+        self.set_reg_fmod_src(8..16, 46, 48, op.srcs[0]);
         self.set_dst(op.dst);
         self.set_pred_src(39..42, 42, op.min);
         self.set_bit(44, false); /* TODO: FMZ */
@@ -1488,9 +1331,6 @@ impl SM50Instr {
     fn encode_fmul(&mut self, op: &OpFMul) {
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
-
-        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
 
         if let Some(imm32) = op.srcs[1].as_imm_not_f20() {
             self.set_opcode(0x1e00);
@@ -1505,20 +1345,20 @@ impl SM50Instr {
                     ^ src_mod_has_neg(op.srcs[1].src_mod),
             );
         } else {
-            match &alu_src_1 {
-                ALUSrc::None => panic!("Invalid source for FMUL"),
-                ALUSrc::Imm32(imm32) => {
+            match &op.srcs[1].src_ref {
+                SrcRef::Imm32(imm32) => {
                     self.set_opcode(0x3868);
                     self.set_src_imm_f20(20..40, 56, *imm32);
                 }
-                ALUSrc::Reg(_) => {
+                SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x5c68);
-                    self.set_alu_reg_src(20..28, None, None, &alu_src_1);
+                    self.set_reg_src(20..28, op.srcs[1]);
                 }
-                ALUSrc::CBuf(cbuf) => {
+                SrcRef::CBuf(cbuf) => {
                     self.set_opcode(0x4c68);
-                    self.set_alu_cb(20..39, None, None, cbuf);
+                    self.set_src_cb(20..39, cbuf);
                 }
+                src => panic!("Unsupported src type for FMUL: {src}"),
             }
 
             self.set_rnd_mode(39..41, op.rnd_mode);
@@ -1533,7 +1373,7 @@ impl SM50Instr {
             self.set_bit(50, op.saturate);
         }
 
-        self.set_alu_reg_src(8..16, Some(46), Some(48), &alu_src_0);
+        self.set_reg_fmod_src(8..16, 46, 48, op.srcs[0]);
         self.set_dst(op.dst);
     }
 
@@ -1564,26 +1404,23 @@ impl SM50Instr {
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
-        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
-
-        match &alu_src_1 {
-            ALUSrc::None => panic!("Invalid source for FSET"),
-            ALUSrc::Imm32(imm32) => {
+        match &op.srcs[1].src_ref {
+            SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x3000);
                 self.set_src_imm_f20(20..40, 56, *imm32);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5800);
-                self.set_alu_reg_src(20..28, Some(44), Some(53), &alu_src_1);
+                self.set_reg_fmod_src(20..28, 44, 53, op.srcs[1]);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x4800);
-                self.set_alu_cb(20..39, Some(44), Some(6), cbuf);
+                self.set_cb_fmod_src(20..39, 44, 6, op.srcs[1]);
             }
+            src => panic!("Unsupported src type for FSET: {src}"),
         }
 
-        self.set_alu_reg_src(8..16, Some(54), Some(43), &alu_src_0);
+        self.set_reg_fmod_src(8..16, 54, 43, op.srcs[0]);
         self.set_pred_src(39..42, 42, SrcRef::True.into());
         self.set_float_cmp_op(48..52, op.cmp_op);
         self.set_bit(52, true); /* bool float */
@@ -1594,22 +1431,20 @@ impl SM50Instr {
     fn encode_fsetp(&mut self, op: &OpFSetP) {
         assert!(op.srcs[0].is_reg_or_zero());
 
-        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
-        match &alu_src_1 {
-            ALUSrc::None => panic!("Invalid source for FADD"),
-            ALUSrc::Imm32(imm32) => {
+        match &op.srcs[1].src_ref {
+            SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x36b0);
                 self.set_src_imm_f20(20..40, 56, *imm32);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5bb0);
-                self.set_alu_reg_src(20..28, Some(44), Some(6), &alu_src_1);
+                self.set_reg_fmod_src(20..28, 44, 6, op.srcs[1]);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x4bb0);
-                self.set_alu_cb(20..39, Some(44), Some(6), cbuf);
+                self.set_cb_fmod_src(20..39, 44, 6, op.srcs[1]);
             }
+            src => panic!("Unsupported src type for FSETP: {src}"),
         }
 
         self.set_pred_dst(3..6, op.dst);
@@ -1618,7 +1453,7 @@ impl SM50Instr {
         self.set_pred_set_op(45..47, op.set_op);
         self.set_bit(47, false); /* TODO: Denorm mode */
         self.set_float_cmp_op(48..52, op.cmp_op);
-        self.set_alu_reg_src(8..16, Some(7), Some(43), &alu_src_0);
+        self.set_reg_fmod_src(8..16, 7, 43, op.srcs[0]);
     }
 
     fn encode_mufu(&mut self, op: &OpMuFu) {
@@ -1628,12 +1463,7 @@ impl SM50Instr {
         self.set_opcode(0x5080);
 
         self.set_dst(op.dst);
-        self.set_alu_reg_src(
-            8..16,
-            Some(46),
-            Some(48),
-            &ALUSrc::from_src(&op.src),
-        );
+        self.set_reg_fmod_src(8..16, 46, 48, op.src);
 
         self.set_field(
             20..24,
@@ -1659,32 +1489,24 @@ impl SM50Instr {
 
         // IABS isn't a thing on SM50, we use I2I instead.
 
-        // Enforce ABS
-        let mut src1 = ALUSrc::from_src(&op.src);
-        match &mut src1 {
-            ALUSrc::Reg(reg) => reg.abs = true,
-            ALUSrc::CBuf(cbuf) => cbuf.abs = true,
-            _ => {}
-        }
-
         // We always assume 32bits signed for now
         let src_type = IntType::I32;
         let dst_type = IntType::I32;
 
-        match &src1 {
-            ALUSrc::None => panic!("Invalid source for IABS"),
-            ALUSrc::Imm32(imm32) => {
+        match &op.src.src_ref {
+            SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x38e0);
                 self.set_src_imm_f20(20..40, 56, *imm32);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5ce0);
-                self.set_alu_reg_src(20..28, Some(45), Some(49), &src1);
+                self.set_reg_fmod_src(20..28, 45, 49, op.src);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(_) => {
                 self.set_opcode(0x4ce0);
-                self.set_alu_cb(20..39, Some(45), Some(49), cbuf);
+                self.set_cb_fmod_src(20..39, 45, 49, op.src);
             }
+            src => panic!("Unsupported src type for IABS: {src}"),
         }
         self.set_bit(12, dst_type.is_signed());
         self.set_bit(13, src_type.is_signed());
@@ -1744,29 +1566,24 @@ impl SM50Instr {
         assert!(op.sel.is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
 
-        /* TODO: is src[1] in codegen op.srcs[1] or op.selection? */
-        let alu_src_1 = ALUSrc::from_src(&op.srcs[1]);
-        let alu_src_0 = ALUSrc::from_src(&op.srcs[0]);
-        let sel = ALUSrc::from_src(&op.sel);
-
-        match &alu_src_1 {
-            ALUSrc::None => panic!("Invalid source for IADD2"),
-            ALUSrc::Imm32(imm) => {
+        match &op.sel.src_ref {
+            SrcRef::Imm32(imm) => {
                 self.set_opcode(0x36c0);
                 self.set_src_imm_i20(20..40, 56, *imm);
             }
-            ALUSrc::Reg(reg) => {
+            SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5bc0);
-                self.set_alu_reg_src(20..28, None, None, &alu_src_1);
+                self.set_reg_src(20..28, op.sel);
             }
-            ALUSrc::CBuf(cbuf) => {
+            SrcRef::CBuf(cbuf) => {
                 self.set_opcode(0x4bc0);
-                self.set_alu_cb(20..39, None, None, cbuf);
+                self.set_src_cb(20..39, cbuf);
             }
+            src => panic!("Unsupported src type for PRMT: {src}"),
         }
 
-        self.set_alu_reg_src(8..16, None, None, &alu_src_0);
-        self.set_alu_reg_src(39..47, None, None, &sel);
+        self.set_reg_src(8..16, op.srcs[0]);
+        self.set_reg_src(39..47, op.srcs[1]);
         self.set_dst(op.dst);
         /* TODO: subop? */
     }
