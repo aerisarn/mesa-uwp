@@ -124,6 +124,11 @@ ail_initialize_twiddled(struct ail_layout *layout)
 
       layout->stride_el[l] = util_format_get_nblocksx(
          layout->format, u_minify(layout->width_px, l));
+
+      /* Compressed textures pad the stride in this case */
+      if (compressed && pad_left)
+         layout->stride_el[l]++;
+
       layout->tilesize_el[l] = tilesize_el;
    }
 
@@ -152,9 +157,12 @@ ail_initialize_twiddled(struct ail_layout *layout)
       offset_B = ALIGN_POT(offset_B + (blocksize_B * size_el), AIL_CACHELINE);
 
       /* The tilesize is based on the true mipmap level size, not the POT
-       * rounded size */
-      unsigned tilesize_el =
-         util_next_power_of_two(u_minify(MIN2(w_el, h_el), l));
+       * rounded size, except for compressed textures */
+      unsigned tilesize_el;
+      if (compressed)
+         tilesize_el = util_next_power_of_two(MIN2(potw_el, poth_el));
+      else
+         tilesize_el = util_next_power_of_two(u_minify(MIN2(w_el, h_el), l));
       layout->tilesize_el[l] = (struct ail_tile){tilesize_el, tilesize_el};
       layout->stride_el[l] = util_format_get_nblocksx(
          layout->format, u_minify(layout->width_px, l));
