@@ -49,6 +49,26 @@ pub trait Builder {
         }
     }
 
+    fn prmt_to(&mut self, dst: Dst, x: Src, y: Src, sel: [u8;4]) {
+        if sel == [0, 1, 2, 3] {
+            self.copy_to(dst, x);
+        } else if sel == [4, 5, 6, 7] {
+            self.copy_to(dst, y);
+        } else {
+            let mut sel_u32 = 0;
+            for i in 0..4 {
+                assert!(sel[i] < 16);
+                sel_u32 |= u32::from(sel[i]) << (i * 4);
+            }
+
+            self.push_op(OpPrmt {
+                dst: dst,
+                srcs: [x, y],
+                selection: sel_u32.into(),
+            });
+        }
+    }
+
     fn copy_to(&mut self, dst: Dst, src: Src) {
         self.push_op(OpCopy { dst: dst, src: src });
     }
@@ -203,6 +223,12 @@ pub trait SSABuilder: Builder {
             op: op,
             src: src,
         });
+        dst
+    }
+
+    fn prmt(&mut self, x: Src, y: Src, sel: [u8;4]) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::GPR, 1);
+        self.prmt_to(dst.into(), x, y, sel);
         dst
     }
 

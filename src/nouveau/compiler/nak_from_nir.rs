@@ -811,12 +811,7 @@ impl<'a> ShaderFromNir<'a> {
                     high: false,
                 });
 
-                b.push_op(OpPrmt {
-                    dst: dst.into(),
-                    srcs: [low.into(), high.into()],
-                    selection: 0x5410.into(),
-                });
-                dst
+                b.prmt(low.into(), high.into(), [0, 1, 4, 5])
             }
             nir_op_u2f32 => {
                 assert!(alu.def.bit_size() == 32);
