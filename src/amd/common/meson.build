@@ -104,6 +104,7 @@ amd_common_files = files(
   'ac_nir_lower_ngg.c',
   'ac_nir_lower_ps.c',
   'amd_family.c',
+  'ac_parse_ib.c',
   'ac_perfcounter.c',
   'ac_perfcounter.h',
   'ac_vcn_av1_default.h',
