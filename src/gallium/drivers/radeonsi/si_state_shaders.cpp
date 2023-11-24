@@ -86,10 +86,12 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
    if (dbg_wave_size)
       return dbg_wave_size;
 
-   /* Pixel shaders without interp instructions don't suffer from reduced interpolation
+   /* Gfx10: Pixel shaders without interp instructions don't suffer from reduced interpolation
     * performance in Wave32, so use Wave32. This helps Piano and Voloplosion.
+    *
+    * Gfx11: Prefer Wave64 to take advantage of doubled VALU performance.
     */
-   if (stage == MESA_SHADER_FRAGMENT && !info->num_inputs)
+   if (sscreen->info.gfx_level < GFX11 && stage == MESA_SHADER_FRAGMENT && !info->num_inputs)
       return 32;
 
    /* There are a few very rare cases where VS is better with Wave32, and there are no known
@@ -111,6 +113,8 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
    /* Divergent loops in Wave64 can end up having too many iterations in one half of the wave
     * while the other half is idling but occupying VGPRs, preventing other waves from launching.
     * Wave32 eliminates the idling half to allow the next wave to start.
+    *
+    * Gfx11: Wave32 continues to be faster with divergent loops despite worse VALU performance.
     */
    if (!merged_shader && info && info->has_divergent_loop)
       return 32;
