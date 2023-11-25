@@ -4801,7 +4801,6 @@ template<int NUM_INTERP>
 static void si_emit_spi_map(struct si_context *sctx, unsigned index)
 {
    struct si_shader *ps = sctx->shader.ps.current;
-   struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
    unsigned spi_ps_input_cntl[NUM_INTERP];
 
    STATIC_ASSERT(NUM_INTERP >= 0 && NUM_INTERP <= 32);
@@ -4813,7 +4812,7 @@ static void si_emit_spi_map(struct si_context *sctx, unsigned index)
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
    for (unsigned i = 0; i < NUM_INTERP; i++) {
-      union si_input_info input = psinfo->input[i];
+      union si_input_info input = ps->info.ps_inputs[i];
       unsigned ps_input_cntl = vs->info.vs_output_ps_input_cntl[input.semantic];
       bool non_default_val = G_028644_OFFSET(ps_input_cntl) != 0x20;
 

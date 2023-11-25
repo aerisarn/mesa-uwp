@@ -127,6 +127,7 @@ struct nir_shader;
 struct nir_instr;
 struct nir_lower_subgroups_options;
 
+#define SI_NUM_INTERP     32
 #define SI_MAX_ATTRIBS    16
 #define SI_MAX_VS_OUTPUTS 40
 #define SI_USER_CLIP_PLANE_MASK  0x3F
@@ -823,6 +824,9 @@ union si_shader_key {
 struct si_shader_binary_info {
    uint8_t vs_output_param_offset[NUM_TOTAL_VARYING_SLOTS];
    uint32_t vs_output_ps_input_cntl[NUM_TOTAL_VARYING_SLOTS];
+   union si_input_info ps_inputs[SI_NUM_INTERP];
+   uint8_t num_ps_inputs;
+   uint8_t ps_colors_read;
    uint8_t num_input_sgprs;
    uint8_t num_input_vgprs;
    bool uses_vmem_load_other; /* all other VMEM loads and atomics with return */

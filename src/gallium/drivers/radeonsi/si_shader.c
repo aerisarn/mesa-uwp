@@ -30,10 +30,9 @@ static void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *s
 /* Get the number of all interpolated inputs */
 unsigned si_get_ps_num_interp(struct si_shader *ps)
 {
-   struct si_shader_info *info = &ps->selector->info;
-   unsigned num_colors = !!(info->colors_read & 0x0f) + !!(info->colors_read & 0xf0);
+   unsigned num_colors = !!(ps->info.ps_colors_read & 0x0f) + !!(ps->info.ps_colors_read & 0xf0);
    unsigned num_interp =
-      ps->selector->info.num_inputs + (ps->key.ps.part.prolog.color_two_side ? num_colors : 0);
+      ps->info.num_ps_inputs + (ps->key.ps.part.prolog.color_two_side ? num_colors : 0);
 
    assert(num_interp <= 32);
    return MIN2(num_interp, 32);
@@ -1178,7 +1177,6 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 {
    struct si_screen *sscreen = shader->selector->screen;
    struct ac_shader_config *conf = &shader->config;
-   unsigned num_inputs = shader->selector->info.num_inputs;
    unsigned lds_increment = get_lds_granularity(sscreen, shader->selector->stage);
    unsigned lds_per_wave = 0;
    unsigned max_simd_waves;
@@ -1198,7 +1196,8 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
        * Other stages don't know the size at compile time or don't
        * allocate LDS per wave, but instead they do it per thread group.
        */
-      lds_per_wave = conf->lds_size * lds_increment + align(num_inputs * 48, lds_increment);
+      lds_per_wave = conf->lds_size * lds_increment +
+                     align(shader->info.num_ps_inputs * 48, lds_increment);
       break;
    case MESA_SHADER_COMPUTE: {
          unsigned max_workgroup_size = si_get_max_workgroup_size(shader);
@@ -2363,6 +2362,12 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       if (sel->info.colors_read)
          NIR_PASS(progress, nir, si_nir_lower_ps_color_input, &shader->key, &sel->info);
 
+      /* We need to set this early for lowering nir_intrinsic_load_point_coord_maybe_flipped,
+       * which can only occur with monolithic PS.
+       */
+      shader->info.num_ps_inputs = sel->info.num_inputs;
+      shader->info.ps_colors_read = sel->info.colors_read;
+
       ac_nir_lower_ps_options options = {
          .gfx_level = sel->screen->info.gfx_level,
          .family = sel->screen->info.family,
@@ -2449,6 +2454,17 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
 
    shader->info.uses_vmem_load_other |= info.uses_vmem_load_other;
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      shader->info.num_ps_inputs = shader->selector->info.num_inputs;
+      shader->info.ps_colors_read = shader->selector->info.colors_read;
+
+      unsigned num_colors = !!(shader->selector->info.colors_read & 0x0f) +
+                            !!(shader->selector->info.colors_read & 0xf0);
+      unsigned max_interp = MIN2(shader->info.num_ps_inputs + num_colors, SI_NUM_INTERP);
+      memcpy(shader->info.ps_inputs, shader->selector->info.input,
+             max_interp * sizeof(info.input[0]));
+   }
 }
 
 /* Generate code for the hardware VS shader stage to go with a geometry shader */
@@ -3085,7 +3101,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
    memset(key, 0, sizeof(*key));
    key->ps_prolog.states = shader->key.ps.part.prolog;
    key->ps_prolog.wave32 = shader->wave_size == 32;
-   key->ps_prolog.colors_read = info->colors_read;
+   key->ps_prolog.colors_read = shader->info.ps_colors_read;
    key->ps_prolog.num_input_sgprs = shader->info.num_input_sgprs;
    key->ps_prolog.wqm =
       info->base.fs.needs_quad_helper_invocations &&
@@ -3099,12 +3115,12 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
    if (shader->key.ps.part.prolog.poly_stipple)
       shader->info.uses_vmem_load_other = true;
 
-   if (info->colors_read) {
+   if (shader->info.ps_colors_read) {
       uint8_t *color = shader->selector->info.color_attr_index;
 
       if (shader->key.ps.part.prolog.color_two_side) {
          /* BCOLORs are stored after the last input. */
-         key->ps_prolog.num_interp_inputs = info->num_inputs;
+         key->ps_prolog.num_interp_inputs = shader->info.num_ps_inputs;
          shader->config.spi_ps_input_ena |= S_0286CC_FRONT_FACE_ENA(1);
       }
 
@@ -3112,7 +3128,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
          unsigned interp = info->color_interpolate[i];
          unsigned location = info->color_interpolate_loc[i];
 
-         if (!(info->colors_read & (0xf << i * 4)))
+         if (!(shader->info.ps_colors_read & (0xf << i * 4)))
             continue;
 
          key->ps_prolog.color_attr_index[i] = color[i];
