@@ -2050,8 +2050,9 @@ static bool lower_ps_load_color_intrinsic(nir_builder *b, nir_instr *instr, void
    return true;
 }
 
-static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shader)
+static bool si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shader)
 {
+   bool progress = false;
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
    nir_builder builder = nir_builder_at(nir_before_impl(impl));
@@ -2123,12 +2124,14 @@ static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
          nir_def *is_front_face = nir_load_front_face(b, 1);
          colors[i] = nir_bcsel(b, is_front_face, colors[i], back_color);
       }
+
+      progress = true;
    }
 
    /* lower nir_load_color0/1 to use the color value. */
-   nir_shader_instructions_pass(nir, lower_ps_load_color_intrinsic,
-                                nir_metadata_block_index | nir_metadata_dominance,
-                                colors);
+   return nir_shader_instructions_pass(nir, lower_ps_load_color_intrinsic,
+                                       nir_metadata_block_index | nir_metadata_dominance,
+                                       colors) || progress;
 }
 
 static void si_nir_emit_polygon_stipple(nir_shader *nir, struct si_shader_args *args)
@@ -2181,6 +2184,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    }
 
    bool progress = false;
+   bool late_opts = false;
 
    const char *original_name = NULL;
    if (unlikely(should_print_nir(nir))) {
@@ -2197,12 +2201,11 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    if (sel->stage <= MESA_SHADER_GEOMETRY)
       NIR_PASS(progress, nir, si_nir_kill_outputs, key);
 
-   NIR_PASS(
-      _, nir, ac_nir_lower_tex,
-      &(ac_nir_lower_tex_options){
-         .gfx_level = sel->screen->info.gfx_level,
-         .lower_array_layer_round_even = !sel->screen->info.conformant_trunc_coord,
-      });
+   NIR_PASS(progress, nir, ac_nir_lower_tex,
+            &(ac_nir_lower_tex_options){
+               .gfx_level = sel->screen->info.gfx_level,
+               .lower_array_layer_round_even = !sel->screen->info.conformant_trunc_coord,
+            });
 
    if (nir->info.uses_resource_info_query)
       NIR_PASS(progress, nir, ac_nir_lower_resinfo, sel->screen->info.gfx_level);
@@ -2253,10 +2256,8 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
        * TODO: The driver uses a linear search to find a shader variant. This
        * can be really slow if we get too many variants due to uniform inlining.
        */
-      NIR_PASS_V(nir, nir_inline_uniforms,
-                 nir->info.num_inlinable_uniforms,
-                 inlined_uniform_values,
-                 nir->info.inlinable_uniform_dw_offsets);
+      NIR_PASS_V(nir, nir_inline_uniforms, nir->info.num_inlinable_uniforms,
+                 inlined_uniform_values, nir->info.inlinable_uniform_dw_offsets);
       progress = true;
    }
 
@@ -2292,8 +2293,11 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    if (is_last_vgt_stage || is_legacy_gs)
       NIR_PASS(progress, nir, si_nir_clamp_vertex_color);
 
-   if (progress)
+   if (progress) {
       si_nir_opts(sel->screen, nir, true);
+      late_opts = true;
+      progress = false;
+   }
 
    /* Lower large variables that are always constant with load_constant intrinsics, which
     * get turned into PC-relative loads from a data section next to the shader.
@@ -2304,19 +2308,18 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
     * The pass crashes if there are dead temps of lowered IO interface types, so remove
     * them first.
     */
-   bool progress2 = false;
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-   NIR_PASS(progress2, nir, nir_opt_large_constants, glsl_get_natural_size_align_bytes, 16);
+   NIR_PASS(progress, nir, nir_opt_large_constants, glsl_get_natural_size_align_bytes, 16);
 
    /* Loop unrolling caused by uniform inlining can help eliminate indirect indexing, so
     * this should be done after that.
     */
-   progress2 |= ac_nir_lower_indirect_derefs(nir, sel->screen->info.gfx_level);
+   progress |= ac_nir_lower_indirect_derefs(nir, sel->screen->info.gfx_level);
 
    if (sel->stage == MESA_SHADER_VERTEX)
-      progress2 |= si_nir_lower_vs_inputs(nir, shader, args);
+      NIR_PASS(progress, nir, si_nir_lower_vs_inputs, shader, args);
 
-   bool opt_offsets = si_lower_io_to_mem(shader, nir, tcs_vgpr_only_inputs);
+   progress |= si_lower_io_to_mem(shader, nir, tcs_vgpr_only_inputs);
 
    if (is_last_vgt_stage) {
       /* Assign param export indices. */
@@ -2328,7 +2331,6 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       if (key->ge.as_ngg) {
          /* Lower last VGT NGG shader stage. */
          si_lower_ngg(shader, nir);
-         opt_offsets = true;
       } else if (sel->stage == MESA_SHADER_VERTEX || sel->stage == MESA_SHADER_TESS_EVAL) {
          /* Lower last VGT none-NGG VS/TES shader stage. */
          unsigned clip_cull_mask =
@@ -2346,12 +2348,14 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                     key->ge.opt.kill_layer,
                     sel->screen->options.vrs2x2);
       }
+      progress = true;
    } else if (is_legacy_gs) {
       NIR_PASS_V(nir, ac_nir_lower_legacy_gs, false, sel->screen->use_ngg, output_info);
+      progress = true;
    } else if (sel->stage == MESA_SHADER_FRAGMENT && shader->is_monolithic) {
       /* two-side color selection and interpolation */
       if (sel->info.colors_read)
-         NIR_PASS_V(nir, si_nir_lower_ps_color_input, shader);
+         NIR_PASS(progress, nir, si_nir_lower_ps_color_input, shader);
 
       ac_nir_lower_ps_options options = {
          .gfx_level = sel->screen->info.gfx_level,
@@ -2383,33 +2387,34 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       if (key->ps.part.prolog.poly_stipple)
          NIR_PASS_V(nir, si_nir_emit_polygon_stipple, args);
 
-      progress2 = true;
+      progress = true;
    }
 
-   NIR_PASS(progress2, nir, nir_opt_idiv_const, 8);
-   NIR_PASS(progress2, nir, nir_lower_idiv,
+   NIR_PASS(progress, nir, nir_opt_idiv_const, 8);
+   NIR_PASS(progress, nir, nir_lower_idiv,
             &(nir_lower_idiv_options){
                .allow_fp16 = sel->screen->info.gfx_level >= GFX9,
             });
 
-   NIR_PASS(progress2, nir, ac_nir_lower_intrinsics_to_args, sel->screen->info.gfx_level,
+   NIR_PASS(progress, nir, ac_nir_lower_intrinsics_to_args, sel->screen->info.gfx_level,
             si_select_hw_stage(nir->info.stage, key, sel->screen->info.gfx_level),
             &args->ac);
-   NIR_PASS(progress2, nir, si_nir_lower_abi, shader, args);
+   NIR_PASS(progress, nir, si_nir_lower_abi, shader, args);
 
-   if (progress2 || opt_offsets)
+   if (progress) {
       si_nir_opts(sel->screen, nir, false);
-
-   if (opt_offsets) {
-      static const nir_opt_offsets_options offset_options = {
-         .uniform_max = 0,
-         .buffer_max = ~0,
-         .shared_max = ~0,
-      };
-      NIR_PASS_V(nir, nir_opt_offsets, &offset_options);
+      progress = false;
+      late_opts = true;
    }
 
-   if (progress || progress2 || opt_offsets)
+   static const nir_opt_offsets_options offset_options = {
+      .uniform_max = 0,
+      .buffer_max = ~0,
+      .shared_max = ~0,
+   };
+   NIR_PASS_V(nir, nir_opt_offsets, &offset_options);
+
+   if (late_opts)
       si_nir_late_opts(nir);
 
    /* aco only accept scalar const, must be done after si_nir_late_opts()
