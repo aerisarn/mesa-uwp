@@ -2236,12 +2236,11 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
        *   The storage for eliminated outputs is also not allocated.
        * - VS/TCS/TES/GS/PS input loads are eliminated (VS relies on DCE in LLVM)
        * - TCS output stores are eliminated
+       * - Eliminated PS inputs are removed from PS.NUM_INTERP.
        *
        * TODO: These are things the driver ignores in the final shader code
        * and relies on the default shader info.
        * - Other system values are not eliminated
-       * - PS.NUM_INTERP = bitcount64(inputs_read), renumber inputs
-       *   to remove holes
        * - uses_discard - if it changed to false
        * - writes_memory - if it changed to false
        * - VS->TCS, VS->GS, TES->GS output stores for the former stage are not
@@ -2358,15 +2357,27 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       NIR_PASS_V(nir, ac_nir_lower_legacy_gs, false, sel->screen->use_ngg, output_info);
       progress = true;
    } else if (sel->stage == MESA_SHADER_FRAGMENT && shader->is_monolithic) {
-      /* two-side color selection and interpolation */
-      if (sel->info.colors_read)
-         NIR_PASS(progress, nir, si_nir_lower_ps_color_input, &shader->key, &sel->info);
+      /* Uniform inlining can eliminate PS inputs, and colormask can remove PS outputs,
+       * which can also cause the elimination of PS inputs. Remove holes after removed PS inputs
+       * by renumbering them. This can only happen with monolithic PS. Colors are unaffected
+       * because they are still represented by nir_intrinsic_load_color0/1.
+       */
+      NIR_PASS_V(nir, nir_recompute_io_bases, nir_var_shader_in);
+
+      /* Two-side color selection and interpolation: Get the latest shader info because
+       * uniform inlining and colormask can fully eliminate color inputs.
+       */
+      struct si_shader_info info;
+      si_nir_scan_shader(sel->screen, nir, &info);
+
+      if (info.colors_read)
+         NIR_PASS(progress, nir, si_nir_lower_ps_color_input, &shader->key, &info);
 
       /* We need to set this early for lowering nir_intrinsic_load_point_coord_maybe_flipped,
        * which can only occur with monolithic PS.
        */
-      shader->info.num_ps_inputs = sel->info.num_inputs;
-      shader->info.ps_colors_read = sel->info.colors_read;
+      shader->info.num_ps_inputs = info.num_inputs;
+      shader->info.ps_colors_read = info.colors_read;
 
       ac_nir_lower_ps_options options = {
          .gfx_level = sel->screen->info.gfx_level,
@@ -2456,14 +2467,13 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      shader->info.num_ps_inputs = shader->selector->info.num_inputs;
-      shader->info.ps_colors_read = shader->selector->info.colors_read;
+      /* Since uniform inlining can remove PS inputs, set the latest info about PS inputs here. */
+      shader->info.num_ps_inputs = info.num_inputs;
+      shader->info.ps_colors_read = info.colors_read;
 
-      unsigned num_colors = !!(shader->selector->info.colors_read & 0x0f) +
-                            !!(shader->selector->info.colors_read & 0xf0);
-      unsigned max_interp = MIN2(shader->info.num_ps_inputs + num_colors, SI_NUM_INTERP);
-      memcpy(shader->info.ps_inputs, shader->selector->info.input,
-             max_interp * sizeof(info.input[0]));
+      /* A non-monolithic PS doesn't know if back colors are enabled, so copy 2 more. */
+      unsigned max_interp = MIN2(info.num_inputs + 2, SI_NUM_INTERP);
+      memcpy(shader->info.ps_inputs, info.input, max_interp * sizeof(info.input[0]));
    }
 }
 
