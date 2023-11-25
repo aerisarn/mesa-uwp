@@ -75,12 +75,16 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
    if (sscreen->info.gfx_level < GFX11 && stage == MESA_SHADER_FRAGMENT && !info->num_inputs)
       return 32;
 
-   /* There are a few very rare cases where VS is better with Wave32, and there are no known
-    * cases where Wave64 is better.
+   /* Gfx10: There are a few very rare cases where VS is better with Wave32, and there are no
+    * known cases where Wave64 is better.
+    *
     * Wave32 is disabled for GFX10 when culling is active as a workaround for #6457. I don't
     * know why this helps.
+    *
+    * Gfx11: Prefer Wave64 because it's slightly better than Wave32.
     */
    if (stage <= MESA_SHADER_GEOMETRY &&
+       (sscreen->info.gfx_level == GFX10 || sscreen->info.gfx_level == GFX10_3) &&
        !(sscreen->info.gfx_level == GFX10 && shader && shader->key.ge.opt.ngg_culling))
       return 32;
 
