@@ -616,9 +616,15 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
 
       nir_def *color[4];
       for (int i = 0; i < 4; i++) {
-         color[i] = colors_read & BITFIELD_BIT(start + i) ?
-            ac_nir_load_arg_at_offset(b, &args->ac, args->color_start, offset++) :
-            nir_undef(b, 1, 32);
+         if (colors_read & BITFIELD_BIT(start + i)) {
+            color[i] = ac_nir_load_arg_at_offset(b, &args->ac, args->color_start, offset++);
+
+            nir_intrinsic_set_flags(nir_instr_as_intrinsic(color[i]->parent_instr),
+                                    SI_VECTOR_ARG_IS_COLOR |
+                                    SI_VECTOR_ARG_COLOR_COMPONENT(start + i));
+         } else {
+            color[i] = nir_undef(b, 1, 32);
+         }
       }
 
       replacement = nir_vec(b, color, 4);

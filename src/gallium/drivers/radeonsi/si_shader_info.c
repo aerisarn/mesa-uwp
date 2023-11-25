@@ -526,6 +526,14 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          }
          break;
       }
+      case nir_intrinsic_load_vector_arg_amd:
+         /* Non-monolithic lowered PS can have this. We need to record color usage. */
+         if (nir_intrinsic_flags(intr) & SI_VECTOR_ARG_IS_COLOR) {
+            /* The channel can be between 0 and 7. */
+            unsigned chan = SI_GET_VECTOR_ARG_COLOR_COMPONENT(nir_intrinsic_flags(intr));
+            info->colors_read |= BITFIELD_BIT(chan);
+         }
+         break;
       case nir_intrinsic_load_barycentric_at_offset:   /* uses center */
       case nir_intrinsic_load_barycentric_at_sample:   /* uses center */
          if (nir_intrinsic_interp_mode(intr) == INTERP_MODE_FLAT)

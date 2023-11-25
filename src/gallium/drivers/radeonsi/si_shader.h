@@ -137,6 +137,10 @@ struct nir_lower_subgroups_options;
 /* D3D9 behaviour for COLOR0 requires 0001. GL is undefined. */
 #define SI_PS_INPUT_CNTL_UNUSED_COLOR0 SI_PS_INPUT_CNTL_0001
 
+#define SI_VECTOR_ARG_IS_COLOR               BITFIELD_BIT(0)
+#define SI_VECTOR_ARG_COLOR_COMPONENT(x)     (((x) & 0x7) << 1)
+#define SI_GET_VECTOR_ARG_COLOR_COMPONENT(x) (((x) >> 1) & 0x7)
+
 /* SGPR user data indices */
 enum
 {
