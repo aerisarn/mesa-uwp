@@ -1283,8 +1283,8 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
          unsigned layers = view->u.tex.last_layer - layer + 1;
 
          if (tex->layout.tiling == AIL_TILING_LINEAR &&
-             (tex->base.target == PIPE_TEXTURE_1D_ARRAY ||
-              tex->base.target == PIPE_TEXTURE_2D_ARRAY)) {
+             (target == PIPE_TEXTURE_1D_ARRAY ||
+              target == PIPE_TEXTURE_2D_ARRAY)) {
 
             cfg.depth_linear = layers;
             cfg.layer_stride_linear = (tex->layout.layer_stride_B - 0x80);
