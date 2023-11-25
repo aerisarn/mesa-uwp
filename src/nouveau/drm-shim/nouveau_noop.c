@@ -267,6 +267,17 @@ nouveau_ioctl_nvif(int fd, unsigned long request, void *arg)
          sclass->sclass.oclass[idx].maxver = -1;
          idx++;
       }
+      /* 2d */
+      if (device_info.chip_id >= 0x50) {
+         if (device_info.chip_id <= 0xa0)
+            sclass->sclass.oclass[idx].oclass = NV50_2D_CLASS;
+         else
+            sclass->sclass.oclass[idx].oclass = NVC0_2D_CLASS;
+
+         sclass->sclass.oclass[idx].minver = -1;
+         sclass->sclass.oclass[idx].maxver = -1;
+         idx++;
+      }
       /* 3d */
       switch (device_info.chip_id & ~0xf) {
       case 0x170:
