@@ -2903,7 +2903,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    /* Calculate the number of fragment input VGPRs. */
    if (sel->stage == MESA_SHADER_FRAGMENT) {
       shader->info.num_input_vgprs = ac_get_fs_input_vgpr_cnt(
-         &shader->config, &shader->info.num_ps_pos_inputs);
+         &shader->config, &shader->info.num_fragcoord_components);
    }
 
    si_calculate_max_simd_waves(shader);
@@ -3088,7 +3088,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
        key->ps_prolog.states.force_persp_center_interp ||
        key->ps_prolog.states.force_linear_center_interp ||
        key->ps_prolog.states.bc_optimize_for_persp || key->ps_prolog.states.bc_optimize_for_linear);
-   key->ps_prolog.num_pos_inputs = shader->info.num_ps_pos_inputs;
+   key->ps_prolog.num_fragcoord_components = shader->info.num_fragcoord_components;
 
    if (shader->key.ps.part.prolog.poly_stipple)
       shader->info.uses_vmem_load_other = true;
@@ -3673,7 +3673,7 @@ void si_get_ps_prolog_args(struct si_shader_args *args,
    /* skip LINE_STIPPLE_TEX */
 
    /* POS_X|Y|Z|W_FLOAT */
-   for (unsigned i = 0; i < key->ps_prolog.num_pos_inputs; i++)
+   for (unsigned i = 0; i < key->ps_prolog.num_fragcoord_components; i++)
       ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
 
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.front_face);
