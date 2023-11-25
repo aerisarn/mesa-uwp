@@ -2050,7 +2050,8 @@ static bool lower_ps_load_color_intrinsic(nir_builder *b, nir_instr *instr, void
    return true;
 }
 
-static bool si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shader)
+static bool si_nir_lower_ps_color_input(nir_shader *nir, const union si_shader_key *key,
+                                        const struct si_shader_info *info)
 {
    bool progress = false;
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
@@ -2058,24 +2059,21 @@ static bool si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
    nir_builder builder = nir_builder_at(nir_before_impl(impl));
    nir_builder *b = &builder;
 
-   const struct si_shader_selector *sel = shader->selector;
-   const union si_shader_key *key = &shader->key;
-
    /* Build ready to be used colors at the beginning of the shader. */
    nir_def *colors[2] = {0};
    for (int i = 0; i < 2; i++) {
-      if (!(sel->info.colors_read & (0xf << (i * 4))))
+      if (!(info->colors_read & (0xf << (i * 4))))
          continue;
 
-      unsigned color_base = sel->info.color_attr_index[i];
+      unsigned color_base = info->color_attr_index[i];
       /* If BCOLOR0 is used, BCOLOR1 is at offset "num_inputs + 1",
        * otherwise it's at offset "num_inputs".
        */
-      unsigned back_color_base = sel->info.num_inputs;
-      if (i == 1 && (sel->info.colors_read & 0xf))
+      unsigned back_color_base = info->num_inputs;
+      if (i == 1 && (info->colors_read & 0xf))
          back_color_base += 1;
 
-      enum glsl_interp_mode interp_mode = sel->info.color_interpolate[i];
+      enum glsl_interp_mode interp_mode = info->color_interpolate[i];
       if (interp_mode == INTERP_MODE_COLOR) {
          interp_mode = key->ps.part.prolog.flatshade_colors ?
             INTERP_MODE_FLAT : INTERP_MODE_SMOOTH;
@@ -2092,7 +2090,7 @@ static bool si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
          }
       } else {
          nir_intrinsic_op op = 0;
-         switch (sel->info.color_interpolate_loc[i]) {
+         switch (info->color_interpolate_loc[i]) {
          case TGSI_INTERPOLATE_LOC_CENTER:
             op = nir_intrinsic_load_barycentric_pixel;
             break;
@@ -2355,7 +2353,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    } else if (sel->stage == MESA_SHADER_FRAGMENT && shader->is_monolithic) {
       /* two-side color selection and interpolation */
       if (sel->info.colors_read)
-         NIR_PASS(progress, nir, si_nir_lower_ps_color_input, shader);
+         NIR_PASS(progress, nir, si_nir_lower_ps_color_input, &shader->key, &sel->info);
 
       ac_nir_lower_ps_options options = {
          .gfx_level = sel->screen->info.gfx_level,
