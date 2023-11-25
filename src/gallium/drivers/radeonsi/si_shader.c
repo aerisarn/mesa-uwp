@@ -2232,22 +2232,22 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
        * - Register usage and code size decrease (obvious)
        * - Eliminated PS system values are disabled by LLVM
        *   (FragCoord, FrontFace, barycentrics)
-       * - VS/TES/GS outputs feeding PS are eliminated if outputs are undef.
-       *   The storage for eliminated outputs is also not allocated.
+       * - VS/TES/GS param exports are eliminated if they are undef.
+       *   The param space for eliminated outputs is also not allocated.
        * - VS/TCS/TES/GS/PS input loads are eliminated (VS relies on DCE in LLVM)
        * - TCS output stores are eliminated
        * - Eliminated PS inputs are removed from PS.NUM_INTERP.
        *
        * TODO: These are things the driver ignores in the final shader code
        * and relies on the default shader info.
-       * - Other system values are not eliminated
+       * - System values in VS, TCS, TES, GS are not eliminated
        * - uses_discard - if it changed to false
        * - writes_memory - if it changed to false
        * - VS->TCS, VS->GS, TES->GS output stores for the former stage are not
        *   eliminated
        * - Eliminated VS/TCS/TES outputs are still allocated. (except when feeding PS)
        *   GS outputs are eliminated except for the temporary LDS.
-       *   Clip distances, gl_PointSize, and PS outputs are eliminated based
+       *   Clip distances, gl_PointSize, gl_Layer and PS outputs are eliminated based
        *   on current states, so we don't care about the shader code.
        *
        * TODO: Merged shaders don't inline uniforms for the first stage.
