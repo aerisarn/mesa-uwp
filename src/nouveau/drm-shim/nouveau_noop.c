@@ -402,6 +402,10 @@ static ioctl_fn_t driver_ioctls[] = {
    [DRM_NOUVEAU_GEM_PUSHBUF] = nouveau_ioctl_gem_pushbuf,
    [DRM_NOUVEAU_GEM_CPU_PREP] = nouveau_ioctl_noop,
    [DRM_NOUVEAU_GEM_INFO] = nouveau_ioctl_gem_info,
+   [DRM_NOUVEAU_GEM_CPU_FINI] = nouveau_ioctl_gem_info,
+   [DRM_NOUVEAU_VM_INIT] = nouveau_ioctl_noop,
+   [DRM_NOUVEAU_VM_BIND] = nouveau_ioctl_noop,
+   [DRM_NOUVEAU_EXEC] = nouveau_ioctl_noop,
 };
 
 static void
