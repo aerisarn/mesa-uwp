@@ -4024,7 +4024,7 @@ impl DisplayOp for OpBSync {
 impl_display_for_op!(OpBSync);
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
+#[derive(Clone, SrcsAsSlice, DstsAsSlice)]
 pub struct OpBra {
     pub target: Label,
 }
@@ -4037,7 +4037,7 @@ impl DisplayOp for OpBra {
 impl_display_for_op!(OpBra);
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
+#[derive(Clone, SrcsAsSlice, DstsAsSlice)]
 pub struct OpExit {}
 
 impl DisplayOp for OpExit {

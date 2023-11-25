@@ -275,6 +275,7 @@ pub extern "C" fn nak_compile_shader(
     s.lower_ineg();
     s.lower_par_copies();
     s.lower_copy_swap();
+    s.opt_jump_thread();
     s.calc_instr_deps();
 
     if DEBUG.print() {

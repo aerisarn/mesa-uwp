@@ -19,6 +19,7 @@ mod nir;
 mod opt_bar_prop;
 mod opt_copy_prop;
 mod opt_dce;
+mod opt_jump_thread;
 mod opt_lop;
 mod opt_out;
 mod repair_ssa;

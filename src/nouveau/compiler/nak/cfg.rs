@@ -328,6 +328,11 @@ impl<N> CFG<N> {
     pub fn pred_indices(&self, idx: usize) -> &[usize] {
         &self.nodes[idx].pred[..]
     }
+
+    pub fn drain<'a>(&'a mut self) -> impl Iterator<Item = N> + 'a {
+        self.has_loop = false;
+        self.nodes.drain(..).map(|n| n.node)
+    }
 }
 
 impl<N> Index<usize> for CFG<N> {
