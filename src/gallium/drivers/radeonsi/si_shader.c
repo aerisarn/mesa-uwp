@@ -2082,11 +2082,15 @@ static bool si_nir_lower_ps_color_input(nir_shader *nir, const union si_shader_k
       nir_def *back_color = NULL;
       if (interp_mode == INTERP_MODE_FLAT) {
          colors[i] = nir_load_input(b, 4, 32, nir_imm_int(b, 0),
-                                   .base = color_base);
+                                   .base = color_base,
+                                   .io_semantics.location = VARYING_SLOT_COL0 + i,
+                                   .io_semantics.num_slots = 1);
 
          if (key->ps.part.prolog.color_two_side) {
             back_color = nir_load_input(b, 4, 32, nir_imm_int(b, 0),
-                                        .base = back_color_base);
+                                        .base = back_color_base,
+                                        .io_semantics.location = VARYING_SLOT_BFC0 + i,
+                                        .io_semantics.num_slots = 1);
          }
       } else {
          nir_intrinsic_op op = 0;
@@ -2109,12 +2113,16 @@ static bool si_nir_lower_ps_color_input(nir_shader *nir, const union si_shader_k
 
          colors[i] =
             nir_load_interpolated_input(b, 4, 32, barycentric, nir_imm_int(b, 0),
-                                        .base = color_base);
+                                        .base = color_base,
+                                        .io_semantics.location = VARYING_SLOT_COL0 + i,
+                                        .io_semantics.num_slots = 1);
 
          if (key->ps.part.prolog.color_two_side) {
             back_color =
                nir_load_interpolated_input(b, 4, 32, barycentric, nir_imm_int(b, 0),
-                                           .base = back_color_base);
+                                           .base = back_color_base,
+                                           .io_semantics.location = VARYING_SLOT_BFC0 + i,
+                                           .io_semantics.num_slots = 1);
          }
       }
 

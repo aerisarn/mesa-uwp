@@ -259,6 +259,18 @@ static void scan_io_usage(const nir_shader *nir, struct si_shader_info *info,
    if (nir->info.stage != MESA_SHADER_VERTEX || !is_input)
       semantic = nir_intrinsic_io_semantics(intr).location;
 
+   if (nir->info.stage == MESA_SHADER_FRAGMENT && is_input) {
+      /* Gather color PS inputs. We can only get here after lowering colors in monolithic
+       * shaders. This must match what we do for nir_intrinsic_load_color0/1.
+       */
+      if (semantic == VARYING_SLOT_COL0 || semantic == VARYING_SLOT_COL1 ||
+          semantic == VARYING_SLOT_BFC0 || semantic == VARYING_SLOT_BFC1) {
+         unsigned index = semantic == VARYING_SLOT_COL1 || semantic == VARYING_SLOT_BFC1;
+         info->colors_read |= mask << (index * 4);
+         return;
+      }
+   }
+
    if (nir->info.stage == MESA_SHADER_FRAGMENT && !is_input) {
       /* Never use FRAG_RESULT_COLOR directly. */
       if (semantic == FRAG_RESULT_COLOR)
