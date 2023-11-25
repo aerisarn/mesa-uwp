@@ -378,8 +378,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
             nvk_buffer_addr_format(rs->uniform_buffers));
    NIR_PASS(_, nir, nir_shader_intrinsics_pass,
-            lower_load_global_constant_offset_instr,
-            nir_metadata_block_index | nir_metadata_dominance, NULL);
+            lower_load_global_constant_offset_instr, nir_metadata_none, NULL);
 
    if (!nir->info.shared_memory_explicit_layout) {
       NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
