@@ -871,9 +871,13 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    /* Use cached GTT for command buffers. Writing to other heaps is very slow on the CPU.
     * The speed of writing to GTT WC is somewhere between no difference and very slow, while
     * VRAM being very slow a lot more often.
+    *
+    * Bypass GL2 because command buffers are read only once. Bypassing GL2 has better latency
+    * and doesn't have to wait for cached GL2 requests to be processed.
     */
    enum radeon_bo_domain domain = RADEON_DOMAIN_GTT;
-   unsigned flags = RADEON_FLAG_NO_INTERPROCESS_SHARING;
+   unsigned flags = RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                    RADEON_FLAG_GL2_BYPASS;
 
    if (cs->ip_type == AMD_IP_GFX ||
        cs->ip_type == AMD_IP_COMPUTE ||
