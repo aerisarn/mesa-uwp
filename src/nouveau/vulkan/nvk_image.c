@@ -22,9 +22,6 @@ nvk_get_image_plane_format_features(struct nvk_physical_device *pdev,
 {
    VkFormatFeatureFlags2 features = 0;
 
-   if (tiling != VK_IMAGE_TILING_OPTIMAL)
-      return 0;
-
    enum pipe_format p_format = vk_format_to_pipe_format(vk_format);
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
@@ -52,7 +49,8 @@ nvk_get_image_plane_format_features(struct nvk_physical_device *pdev,
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
    }
 
-   if (nil_format_supports_color_targets(&pdev->info, p_format)) {
+   if (nil_format_supports_color_targets(&pdev->info, p_format) && 
+       tiling != VK_IMAGE_TILING_LINEAR) {
       features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
       if (nil_format_supports_blending(&pdev->info, p_format))
          features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
@@ -60,7 +58,8 @@ nvk_get_image_plane_format_features(struct nvk_physical_device *pdev,
    }
 
    if (vk_format_is_depth_or_stencil(vk_format)) {
-      if (!nil_format_supports_depth_stencil(&pdev->info, p_format))
+      if (!nil_format_supports_depth_stencil(&pdev->info, p_format) ||
+          tiling == VK_IMAGE_TILING_LINEAR)
          return 0;
 
       features |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -217,6 +216,11 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    }
    if (features == 0)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   
+   if (pImageFormatInfo->tiling == VK_IMAGE_TILING_LINEAR && 
+       pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   
 
    if (vk_format_is_compressed(pImageFormatInfo->format) &&
        pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
@@ -245,10 +249,12 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    default:
       unreachable("Invalid image type");
    }
+   if (pImageFormatInfo->tiling == VK_IMAGE_TILING_LINEAR)
+      maxArraySize = 1;
 
    assert(util_is_power_of_two_nonzero(max_dim));
    uint32_t maxMipLevels = util_logbase2(max_dim) + 1;
-   if (ycbcr_info != NULL)
+   if (ycbcr_info != NULL || pImageFormatInfo->tiling == VK_IMAGE_TILING_LINEAR)
        maxMipLevels = 1;
 
    VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
