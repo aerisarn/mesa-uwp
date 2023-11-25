@@ -1073,7 +1073,7 @@ agx_upload_depth_bias(struct agx_batch *batch,
       util_dynarray_grow_bytes(&batch->depth_bias, 1, AGX_DEPTH_BIAS_LENGTH);
 
    agx_pack(ptr, DEPTH_BIAS, cfg) {
-      cfg.depth_bias = rast->offset_units;
+      cfg.depth_bias = rast->offset_units * 2.0f;
       cfg.slope_scale = rast->offset_scale;
       cfg.clamp = rast->offset_clamp;
    }
