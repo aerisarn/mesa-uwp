@@ -1721,6 +1721,80 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
    return progress;
 }
 
+/* Remove PS output components from NIR if they are disabled by spi_shader_col_format. */
+static bool kill_ps_outputs_cb(struct nir_builder *b, nir_instr *instr, void *_key)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+
+   /* No indirect indexing allowed. */
+   ASSERTED nir_src offset = *nir_get_io_offset_src(intr);
+   assert(nir_src_is_const(offset) && nir_src_as_uint(offset) == 0);
+
+   unsigned location = nir_intrinsic_io_semantics(intr).location;
+   const union si_shader_key *key = _key;
+
+   switch (location) {
+   case FRAG_RESULT_DEPTH:
+   case FRAG_RESULT_STENCIL:
+      return false;
+
+   case FRAG_RESULT_SAMPLE_MASK:
+      if (key->ps.part.epilog.kill_samplemask) {
+         nir_instr_remove(instr);
+         return true;
+      }
+      return false;
+   }
+
+   /* Color outputs. */
+   unsigned comp_mask = BITFIELD_MASK(intr->num_components);
+   assert(nir_intrinsic_component(intr) == 0);
+   unsigned cb_shader_mask = ac_get_cb_shader_mask(key->ps.part.epilog.spi_shader_col_format);
+
+   /* If COLOR is broadcasted to multiple color buffers, combine their masks. */
+   if (location == FRAG_RESULT_COLOR) {
+      for (unsigned i = 1; i <= key->ps.part.epilog.last_cbuf; i++)
+         cb_shader_mask |= (cb_shader_mask >> (i * 4)) & 0xf;
+   }
+
+   unsigned index = location == FRAG_RESULT_COLOR ? 0 : location - FRAG_RESULT_DATA0;
+   unsigned output_mask = (cb_shader_mask >> (index * 4)) & 0xf;
+
+   if ((output_mask & comp_mask) == comp_mask)
+      return false;
+
+   if (!(output_mask & comp_mask)) {
+      nir_instr_remove(instr);
+      return true;
+   }
+
+   /* Fill disabled components with undef. */
+   b->cursor = nir_before_instr(instr);
+   nir_def *new_value = intr->src[0].ssa;
+   nir_def *undef = nir_undef(b, 1, new_value->bit_size);
+
+   unsigned kill_mask = ~output_mask & comp_mask;
+   u_foreach_bit(i, kill_mask) {
+      new_value = nir_vector_insert_imm(b, new_value, undef, i);
+   }
+
+   nir_src_rewrite(&intr->src[0], new_value);
+   return true;
+}
+
+static bool si_nir_kill_ps_outputs(nir_shader *nir, const union si_shader_key *key)
+{
+   assert(nir->info.stage == MESA_SHADER_FRAGMENT);
+   return nir_shader_instructions_pass(nir, kill_ps_outputs_cb,
+                                       nir_metadata_dominance |
+                                       nir_metadata_block_index, (void*)key);
+}
+
 static bool clamp_vertex_color_instr(nir_builder *b,
                                      nir_intrinsic_instr *intrin, void *state)
 {
@@ -2265,11 +2339,17 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       progress = true;
    }
 
-   if (sel->stage == MESA_SHADER_FRAGMENT && key->ps.mono.poly_line_smoothing)
-      NIR_PASS(progress, nir, nir_lower_poly_line_smooth, SI_NUM_SMOOTH_AA_SAMPLES);
+   if (sel->stage == MESA_SHADER_FRAGMENT) {
+      /* This uses the epilog key, so only monolithic shaders can call this. */
+      if (shader->is_monolithic)
+         NIR_PASS(progress, nir, si_nir_kill_ps_outputs, key);
 
-   if (sel->stage == MESA_SHADER_FRAGMENT && key->ps.mono.point_smoothing)
-      NIR_PASS(progress, nir, nir_lower_point_smooth);
+      if (key->ps.mono.poly_line_smoothing)
+         NIR_PASS(progress, nir, nir_lower_poly_line_smooth, SI_NUM_SMOOTH_AA_SAMPLES);
+
+      if (key->ps.mono.point_smoothing)
+         NIR_PASS(progress, nir, nir_lower_point_smooth);
+   }
 
    /* This must be before si_nir_lower_resource. */
    if (!sel->screen->info.has_image_opcodes)
