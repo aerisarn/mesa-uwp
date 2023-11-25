@@ -260,6 +260,10 @@ static void scan_io_usage(const nir_shader *nir, struct si_shader_info *info,
       semantic = nir_intrinsic_io_semantics(intr).location;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT && is_input) {
+      /* The PARAM_GEN input shouldn't be scanned. */
+      if (nir_intrinsic_io_semantics(intr).no_varying)
+         return;
+
       /* Gather color PS inputs. We can only get here after lowering colors in monolithic
        * shaders. This must match what we do for nir_intrinsic_load_color0/1.
        */

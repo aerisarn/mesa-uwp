@@ -637,7 +637,9 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       /* Load point coordinates (x, y) which are written by the hw after the interpolated inputs */
       replacement = nir_load_interpolated_input(b, 2, 32, interp_param, nir_imm_int(b, 0),
                                                 .base = si_get_ps_num_interp(shader),
-                                                .component = 2);
+                                                .component = 2,
+                                                /* This tells si_nir_scan_shader that it's PARAM_GEN */
+                                                .io_semantics.no_varying = 1);
       break;
    }
    case nir_intrinsic_load_poly_line_smooth_enabled:
