@@ -2581,6 +2581,8 @@ agx_upload_samplers(struct agx_batch *batch, struct agx_compiled_shader *cs,
          *out = sampler->desc;
 
          if (custom_borders) {
+            STATIC_ASSERT(sizeof(sampler->border) == AGX_BORDER_LENGTH);
+
             memcpy(out_sampler + AGX_SAMPLER_LENGTH, &sampler->border,
                    AGX_BORDER_LENGTH);
          } else {
