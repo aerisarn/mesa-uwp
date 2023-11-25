@@ -774,9 +774,17 @@ nvk_get_image_subresource_layout(UNUSED struct nvk_device *dev,
    const uint8_t p = nvk_image_aspects_to_plane(image, isr->aspectMask);
    const struct nvk_image_plane *plane = &image->planes[p];
 
+   uint64_t offset_B = 0;
+   if (!image->disjoint) {
+      uint32_t align_B = 0;
+      for (unsigned plane = 0; plane < p; plane++)
+         nvk_image_plane_add_req(&image->planes[plane], &offset_B, &align_B);
+   }
+   offset_B += nil_image_level_layer_offset_B(&plane->nil, isr->mipLevel,
+                                              isr->arrayLayer);
+
    pLayout->subresourceLayout = (VkSubresourceLayout) {
-      .offset = nil_image_level_layer_offset_B(&plane->nil, isr->mipLevel,
-                                               isr->arrayLayer),
+      .offset = offset_B,
       .size = nil_image_level_size_B(&plane->nil, isr->mipLevel),
       .rowPitch = plane->nil.levels[isr->mipLevel].row_stride_B,
       .arrayPitch = plane->nil.array_stride_B,
