@@ -321,8 +321,15 @@ impl Function {
                 if !s_phis.is_empty() {
                     let phi_src = get_or_insert_phi_srcs(bb);
                     for phi in s_phis.iter() {
-                        let ssa = *phi.srcs.get(&b_idx).unwrap();
-                        phi_src.srcs.push(phi.idx, ssa.into());
+                        let mut ssa = phi.srcs.get(&b_idx).unwrap();
+                        loop {
+                            if let Some(new_ssa) = ssa_map.get(ssa) {
+                                ssa = new_ssa;
+                            } else {
+                                break;
+                            }
+                        }
+                        phi_src.srcs.push(phi.idx, (*ssa).into());
                     }
                 }
             }
