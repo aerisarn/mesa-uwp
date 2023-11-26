@@ -214,6 +214,21 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->tracked_regs.reg_value[SI_TRACKED_DB_DEPTH_BOUNDS_MIN] = 0;
    ctx->tracked_regs.reg_value[SI_TRACKED_DB_DEPTH_BOUNDS_MAX] = 0;
 
+   ctx->tracked_regs.reg_value[SI_TRACKED_SPI_INTERP_CONTROL_0] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POINT_SIZE] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POINT_MINMAX] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_LINE_CNTL] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_MODE_CNTL_0] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_SC_MODE_CNTL] = 0x4;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_EDGERULE] = 0xaa99aaaa;
+
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POLY_OFFSET_DB_FMT_CNTL] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POLY_OFFSET_CLAMP] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POLY_OFFSET_FRONT_SCALE] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POLY_OFFSET_FRONT_OFFSET] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POLY_OFFSET_BACK_SCALE] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_SU_POLY_OFFSET_BACK_OFFSET] = 0;
+
    ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_LINE_CNTL] = 0x1000;
    ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_AA_CONFIG] = 0;
 
@@ -252,6 +267,7 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_BINNER_CNTL_0] = 0x3;
    ctx->tracked_regs.reg_value[SI_TRACKED_GE_MAX_OUTPUT_PER_SUBGROUP] = 0;
    ctx->tracked_regs.reg_value[SI_TRACKED_GE_NGG_SUBGRP_CNTL] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_PA_CL_NGG_CNTL] = 0;
    ctx->tracked_regs.reg_value[SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL] = 0;
 
    ctx->tracked_regs.reg_value[SI_TRACKED_SX_PS_DOWNCONVERT] = 0;

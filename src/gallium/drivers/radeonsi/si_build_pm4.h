@@ -161,6 +161,34 @@
    } \
 } while (0)
 
+#define radeon_opt_set_reg6(reg, reg_enum, v1, v2, v3, v4, v5, v6, prefix_name, packet) do { \
+   unsigned __v1 = (v1), __v2 = (v2), __v3 = (v3), __v4 = (v4), __v5 = (v5), __v6 = (v6); \
+   if (!BITSET_TEST_RANGE_INSIDE_WORD(sctx->tracked_regs.reg_saved_mask, \
+                                      (reg_enum), (reg_enum) + 5, 0x3f) || \
+       sctx->tracked_regs.reg_value[(reg_enum)] != __v1 || \
+       sctx->tracked_regs.reg_value[(reg_enum) + 1] != __v2 || \
+       sctx->tracked_regs.reg_value[(reg_enum) + 2] != __v3 || \
+       sctx->tracked_regs.reg_value[(reg_enum) + 3] != __v4 || \
+       sctx->tracked_regs.reg_value[(reg_enum) + 4] != __v5 || \
+       sctx->tracked_regs.reg_value[(reg_enum) + 5] != __v6) { \
+      radeon_set_reg_seq(reg, 6, 0, prefix_name, packet, 0); \
+      radeon_emit(__v1); \
+      radeon_emit(__v2); \
+      radeon_emit(__v3); \
+      radeon_emit(__v4); \
+      radeon_emit(__v5); \
+      radeon_emit(__v6); \
+      BITSET_SET_RANGE_INSIDE_WORD(sctx->tracked_regs.reg_saved_mask, \
+                                   (reg_enum), (reg_enum) + 5); \
+      sctx->tracked_regs.reg_value[(reg_enum)] = __v1; \
+      sctx->tracked_regs.reg_value[(reg_enum) + 1] = __v2; \
+      sctx->tracked_regs.reg_value[(reg_enum) + 2] = __v3; \
+      sctx->tracked_regs.reg_value[(reg_enum) + 3] = __v4; \
+      sctx->tracked_regs.reg_value[(reg_enum) + 4] = __v5; \
+      sctx->tracked_regs.reg_value[(reg_enum) + 5] = __v6; \
+   } \
+} while (0)
+
 #define radeon_opt_set_regn(reg, values, saved_values, num, prefix_name, packet) do { \
    if (memcmp(values, saved_values, sizeof(uint32_t) * (num))) { \
       radeon_set_reg_seq(reg, num, 0, prefix_name, packet, 0); \
@@ -198,6 +226,9 @@
 
 #define radeon_opt_set_context_reg5(_unused, reg, reg_enum, v1, v2, v3, v4, v5) \
    radeon_opt_set_reg5(reg, reg_enum, v1, v2, v3, v4, v5, SI_CONTEXT, PKT3_SET_CONTEXT_REG)
+
+#define radeon_opt_set_context_reg6(reg, reg_enum, v1, v2, v3, v4, v5, v6) \
+   radeon_opt_set_reg6(reg, reg_enum, v1, v2, v3, v4, v5, v6, SI_CONTEXT, PKT3_SET_CONTEXT_REG)
 
 #define radeon_opt_set_context_regn(_unused, reg, values, saved_values, num) \
    radeon_opt_set_regn(reg, values, saved_values, num, SI_CONTEXT, PKT3_SET_CONTEXT_REG)

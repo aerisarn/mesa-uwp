@@ -457,6 +457,7 @@ struct si_surface {
    bool color_is_int8 : 1;
    bool color_is_int10 : 1;
    bool dcc_incompatible : 1;
+   uint8_t db_format_index : 3;
 
    /* Color registers. */
    unsigned cb_color_info;

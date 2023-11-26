@@ -54,8 +54,21 @@ struct si_state_blend {
 
 struct si_state_rasterizer {
    struct si_pm4_state pm4;
-   /* poly offset states for 16-bit, 24-bit, and 32-bit zbuffers */
-   struct si_pm4_state *pm4_poly_offset;
+
+   /* Register values. */
+   unsigned spi_interp_control_0;
+   unsigned pa_su_point_size;
+   unsigned pa_su_point_minmax;
+   unsigned pa_su_line_cntl;
+   unsigned pa_sc_mode_cntl_0;
+   unsigned pa_su_sc_mode_cntl;
+   unsigned pa_cl_ngg_cntl;
+   unsigned pa_sc_edgerule;
+   unsigned pa_su_poly_offset_db_fmt_cntl[3];
+   unsigned pa_su_poly_offset_clamp;
+   unsigned pa_su_poly_offset_frontback_scale;
+   unsigned pa_su_poly_offset_frontback_offset[3];
+
    unsigned pa_sc_line_stipple;
    unsigned pa_cl_clip_cntl;
    float line_width;
@@ -178,7 +191,6 @@ union si_state {
       struct si_state_blend *blend;
       struct si_state_rasterizer *rasterizer;
       struct si_state_dsa *dsa;
-      struct si_pm4_state *poly_offset;
       struct si_shader *ls;
       struct si_shader *hs;
       struct si_shader *es;
@@ -234,7 +246,7 @@ union si_state_atoms {
 
 static inline uint64_t si_atoms_that_always_roll_context(void)
 {
-   return SI_STATE_BIT(blend) | SI_STATE_BIT(rasterizer) | SI_STATE_BIT(poly_offset) |
+   return SI_STATE_BIT(blend) |
           SI_ATOM_BIT(streamout_begin) | SI_ATOM_BIT(streamout_enable) | SI_ATOM_BIT(framebuffer) |
           SI_ATOM_BIT(sample_locations) | SI_ATOM_BIT(sample_mask) | SI_ATOM_BIT(blend_color)|
           SI_ATOM_BIT(clip_state) | SI_ATOM_BIT(scissors) | SI_ATOM_BIT(viewports)|
@@ -258,6 +270,22 @@ enum si_tracked_reg
    /* 2 consecutive registers */
    SI_TRACKED_DB_DEPTH_BOUNDS_MIN,
    SI_TRACKED_DB_DEPTH_BOUNDS_MAX,
+
+   SI_TRACKED_SPI_INTERP_CONTROL_0,
+   SI_TRACKED_PA_SU_POINT_SIZE,
+   SI_TRACKED_PA_SU_POINT_MINMAX,
+   SI_TRACKED_PA_SU_LINE_CNTL,
+   SI_TRACKED_PA_SC_MODE_CNTL_0,
+   SI_TRACKED_PA_SU_SC_MODE_CNTL,
+   SI_TRACKED_PA_SC_EDGERULE,
+
+   /* 6 consecutive registers */
+   SI_TRACKED_PA_SU_POLY_OFFSET_DB_FMT_CNTL,
+   SI_TRACKED_PA_SU_POLY_OFFSET_CLAMP,
+   SI_TRACKED_PA_SU_POLY_OFFSET_FRONT_SCALE,
+   SI_TRACKED_PA_SU_POLY_OFFSET_FRONT_OFFSET,
+   SI_TRACKED_PA_SU_POLY_OFFSET_BACK_SCALE,
+   SI_TRACKED_PA_SU_POLY_OFFSET_BACK_OFFSET,
 
    /* 2 consecutive registers */
    SI_TRACKED_PA_SC_LINE_CNTL,
@@ -304,6 +332,7 @@ enum si_tracked_reg
    SI_TRACKED_PA_SC_BINNER_CNTL_0,           /* GFX9+ */
    SI_TRACKED_GE_MAX_OUTPUT_PER_SUBGROUP,    /* GFX10+ - the SMALL_PRIM_FILTER slot above can be reused */
    SI_TRACKED_GE_NGG_SUBGRP_CNTL,            /* GFX10+ */
+   SI_TRACKED_PA_CL_NGG_CNTL,                /* GFX10+ */
    SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,    /* GFX10.3+ */
 
    /* 3 consecutive registers */

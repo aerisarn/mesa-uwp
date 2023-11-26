@@ -925,35 +925,6 @@ static void si_emit_clip_regs(struct si_context *sctx, unsigned index)
 }
 
 /*
- * inferred state between framebuffer and rasterizer
- */
-static void si_update_poly_offset_state(struct si_context *sctx)
-{
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-
-   if (!rs->uses_poly_offset || !sctx->framebuffer.state.zsbuf) {
-      si_pm4_bind_state(sctx, poly_offset, NULL);
-      return;
-   }
-
-   /* Use the user format, not db_render_format, so that the polygon
-    * offset behaves as expected by applications.
-    */
-   switch (sctx->framebuffer.state.zsbuf->texture->format) {
-   case PIPE_FORMAT_Z16_UNORM:
-      si_pm4_bind_state(sctx, poly_offset, &rs->pm4_poly_offset[0]);
-      break;
-   default: /* 24-bit */
-      si_pm4_bind_state(sctx, poly_offset, &rs->pm4_poly_offset[1]);
-      break;
-   case PIPE_FORMAT_Z32_FLOAT:
-   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-      si_pm4_bind_state(sctx, poly_offset, &rs->pm4_poly_offset[2]);
-      break;
-   }
-}
-
-/*
  * Rasterizer
  */
 
@@ -976,15 +947,10 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
 {
    struct si_screen *sscreen = ((struct si_context *)ctx)->screen;
    struct si_state_rasterizer *rs = CALLOC_STRUCT(si_state_rasterizer);
-   struct si_pm4_state *pm4 = &rs->pm4;
-   unsigned tmp, i;
-   float psize_min, psize_max;
 
    if (!rs) {
       return NULL;
    }
-
-   si_pm4_clear_state(pm4, sscreen, false);
 
    rs->scissor_enable = state->scissor;
    rs->clip_halfz = state->clip_halfz;
@@ -1069,20 +1035,19 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
          rs->force_front_face_input = 1;
    }
 
-   unsigned spi_interp_control_0 =
-      S_0286D4_FLAT_SHADE_ENA(1) |
-      S_0286D4_PNT_SPRITE_ENA(state->point_quad_rasterization) |
-      S_0286D4_PNT_SPRITE_OVRD_X(V_0286D4_SPI_PNT_SPRITE_SEL_S) |
-      S_0286D4_PNT_SPRITE_OVRD_Y(V_0286D4_SPI_PNT_SPRITE_SEL_T) |
-      S_0286D4_PNT_SPRITE_OVRD_Z(V_0286D4_SPI_PNT_SPRITE_SEL_0) |
-      S_0286D4_PNT_SPRITE_OVRD_W(V_0286D4_SPI_PNT_SPRITE_SEL_1) |
-      S_0286D4_PNT_SPRITE_TOP_1(state->sprite_coord_mode != PIPE_SPRITE_COORD_UPPER_LEFT);
-
-   si_pm4_set_reg(pm4, R_0286D4_SPI_INTERP_CONTROL_0, spi_interp_control_0);
+   rs->spi_interp_control_0 = S_0286D4_FLAT_SHADE_ENA(1) |
+                              S_0286D4_PNT_SPRITE_ENA(state->point_quad_rasterization) |
+                              S_0286D4_PNT_SPRITE_OVRD_X(V_0286D4_SPI_PNT_SPRITE_SEL_S) |
+                              S_0286D4_PNT_SPRITE_OVRD_Y(V_0286D4_SPI_PNT_SPRITE_SEL_T) |
+                              S_0286D4_PNT_SPRITE_OVRD_Z(V_0286D4_SPI_PNT_SPRITE_SEL_0) |
+                              S_0286D4_PNT_SPRITE_OVRD_W(V_0286D4_SPI_PNT_SPRITE_SEL_1) |
+                              S_0286D4_PNT_SPRITE_TOP_1(state->sprite_coord_mode !=
+                                                        PIPE_SPRITE_COORD_UPPER_LEFT);
 
    /* point size 12.4 fixed point */
-   tmp = (unsigned)(state->point_size * 8.0);
-   si_pm4_set_reg(pm4, R_028A00_PA_SU_POINT_SIZE, S_028A00_HEIGHT(tmp) | S_028A00_WIDTH(tmp));
+   float psize_min, psize_max;
+   unsigned tmp = (unsigned)(state->point_size * 8.0);
+   rs->pa_su_point_size = S_028A00_HEIGHT(tmp) | S_028A00_WIDTH(tmp);
 
    if (state->point_size_per_vertex) {
       psize_min = util_get_min_point_size(state);
@@ -1095,115 +1060,176 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
    rs->max_point_size = psize_max;
 
    /* Divide by two, because 0.5 = 1 pixel. */
-   si_pm4_set_reg(pm4, R_028A04_PA_SU_POINT_MINMAX,
-                  S_028A04_MIN_SIZE(si_pack_float_12p4(psize_min / 2)) |
-                  S_028A04_MAX_SIZE(si_pack_float_12p4(psize_max / 2)));
-   si_pm4_set_reg(pm4, R_028A08_PA_SU_LINE_CNTL,
-                  S_028A08_WIDTH(si_pack_float_12p4(state->line_width / 2)));
+   rs->pa_su_point_minmax = S_028A04_MIN_SIZE(si_pack_float_12p4(psize_min / 2)) |
+                            S_028A04_MAX_SIZE(si_pack_float_12p4(psize_max / 2));
+   rs->pa_su_line_cntl = S_028A08_WIDTH(si_pack_float_12p4(state->line_width / 2));
 
-   si_pm4_set_reg(pm4, R_028A48_PA_SC_MODE_CNTL_0,
-                  S_028A48_LINE_STIPPLE_ENABLE(state->line_stipple_enable) |
-                  S_028A48_MSAA_ENABLE(state->multisample || state->poly_smooth ||
-                                       state->line_smooth) |
-                  S_028A48_VPORT_SCISSOR_ENABLE(1) |
-                  S_028A48_ALTERNATE_RBS_PER_TILE(sscreen->info.gfx_level >= GFX9));
+   rs->pa_sc_mode_cntl_0 = S_028A48_LINE_STIPPLE_ENABLE(state->line_stipple_enable) |
+                           S_028A48_MSAA_ENABLE(state->multisample || state->poly_smooth ||
+                                                state->line_smooth) |
+                           S_028A48_VPORT_SCISSOR_ENABLE(1) |
+                           S_028A48_ALTERNATE_RBS_PER_TILE(sscreen->info.gfx_level >= GFX9);
 
    bool polygon_mode_enabled =
       (state->fill_front != PIPE_POLYGON_MODE_FILL && !(state->cull_face & PIPE_FACE_FRONT)) ||
       (state->fill_back != PIPE_POLYGON_MODE_FILL && !(state->cull_face & PIPE_FACE_BACK));
 
-   si_pm4_set_reg(pm4, R_028814_PA_SU_SC_MODE_CNTL,
-                  S_028814_PROVOKING_VTX_LAST(!state->flatshade_first) |
-                  S_028814_CULL_FRONT((state->cull_face & PIPE_FACE_FRONT) ? 1 : 0) |
-                  S_028814_CULL_BACK((state->cull_face & PIPE_FACE_BACK) ? 1 : 0) |
-                  S_028814_FACE(!state->front_ccw) |
-                  S_028814_POLY_OFFSET_FRONT_ENABLE(util_get_offset(state, state->fill_front)) |
-                  S_028814_POLY_OFFSET_BACK_ENABLE(util_get_offset(state, state->fill_back)) |
-                  S_028814_POLY_OFFSET_PARA_ENABLE(state->offset_point || state->offset_line) |
-                  S_028814_POLY_MODE(polygon_mode_enabled) |
-                  S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
-                  S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)) |
-                  /* this must be set if POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set */
-                  S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.gfx_level >= GFX10 ?
-                                                   polygon_mode_enabled ||
-                                                   rs->perpendicular_end_caps : 0));
-
+   rs->pa_su_sc_mode_cntl = S_028814_PROVOKING_VTX_LAST(!state->flatshade_first) |
+                            S_028814_CULL_FRONT((state->cull_face & PIPE_FACE_FRONT) ? 1 : 0) |
+                            S_028814_CULL_BACK((state->cull_face & PIPE_FACE_BACK) ? 1 : 0) |
+                            S_028814_FACE(!state->front_ccw) |
+                            S_028814_POLY_OFFSET_FRONT_ENABLE(util_get_offset(state, state->fill_front)) |
+                            S_028814_POLY_OFFSET_BACK_ENABLE(util_get_offset(state, state->fill_back)) |
+                            S_028814_POLY_OFFSET_PARA_ENABLE(state->offset_point || state->offset_line) |
+                            S_028814_POLY_MODE(polygon_mode_enabled) |
+                            S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
+                            S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)) |
+                            /* this must be set if POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set */
+                            S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.gfx_level >= GFX10 ?
+                                                             polygon_mode_enabled ||
+                                                             rs->perpendicular_end_caps : 0);
    if (sscreen->info.gfx_level >= GFX10) {
-      si_pm4_set_reg(pm4, R_028838_PA_CL_NGG_CNTL,
-                     S_028838_INDEX_BUF_EDGE_FLAG_ENA(rs->polygon_mode_is_points ||
-                                                      rs->polygon_mode_is_lines) |
-                     S_028838_VERTEX_REUSE_DEPTH(sscreen->info.gfx_level >= GFX10_3 ? 30 : 0));
+      rs->pa_cl_ngg_cntl = S_028838_INDEX_BUF_EDGE_FLAG_ENA(rs->polygon_mode_is_points ||
+                                                            rs->polygon_mode_is_lines) |
+                           S_028838_VERTEX_REUSE_DEPTH(sscreen->info.gfx_level >= GFX10_3 ? 30 : 0);
    }
 
    if (state->bottom_edge_rule) {
       /* OpenGL windows should set this. */
-      si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
-                     S_028230_ER_TRI(0xA) |
-                     S_028230_ER_POINT(0x5) |
-                     S_028230_ER_RECT(0x9) |
-                     S_028230_ER_LINE_LR(0x2A) |
-                     S_028230_ER_LINE_RL(0x2A) |
-                     S_028230_ER_LINE_TB(0xA) |
-                     S_028230_ER_LINE_BT(0xA));
+      rs->pa_sc_edgerule = S_028230_ER_TRI(0xA) |
+                           S_028230_ER_POINT(0x5) |
+                           S_028230_ER_RECT(0x9) |
+                           S_028230_ER_LINE_LR(0x2A) |
+                           S_028230_ER_LINE_RL(0x2A) |
+                           S_028230_ER_LINE_TB(0xA) |
+                           S_028230_ER_LINE_BT(0xA);
    } else {
       /* OpenGL FBOs and Direct3D should set this. */
-      si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
-                     S_028230_ER_TRI(0xA) |
-                     S_028230_ER_POINT(0x6) |
-                     S_028230_ER_RECT(0xA) |
-                     S_028230_ER_LINE_LR(0x19) |
-                     S_028230_ER_LINE_RL(0x25) |
-                     S_028230_ER_LINE_TB(0xA) |
-                     S_028230_ER_LINE_BT(0xA));
-   }
-   si_pm4_finalize(pm4);
-
-   if (!rs->uses_poly_offset)
-      return rs;
-
-   rs->pm4_poly_offset = CALLOC(3, sizeof(struct si_pm4_state));
-   if (!rs->pm4_poly_offset) {
-      FREE(rs);
-      return NULL;
+      rs->pa_sc_edgerule = S_028230_ER_TRI(0xA) |
+                           S_028230_ER_POINT(0x6) |
+                           S_028230_ER_RECT(0xA) |
+                           S_028230_ER_LINE_LR(0x19) |
+                           S_028230_ER_LINE_RL(0x25) |
+                           S_028230_ER_LINE_TB(0xA) |
+                           S_028230_ER_LINE_BT(0xA);
    }
 
-   /* Precalculate polygon offset states for 16-bit, 24-bit, and 32-bit zbuffers. */
-   for (i = 0; i < 3; i++) {
-      struct si_pm4_state *pm4 = &rs->pm4_poly_offset[i];
-      float offset_units = state->offset_units;
-      float offset_scale = state->offset_scale * 16.0f;
-      uint32_t pa_su_poly_offset_db_fmt_cntl = 0;
-
-      si_pm4_clear_state(pm4, sscreen, false);
+   if (rs->uses_poly_offset) {
+      /* Calculate polygon offset states for 16-bit, 24-bit, and 32-bit zbuffers. */
+      rs->pa_su_poly_offset_clamp = fui(state->offset_clamp);
+      rs->pa_su_poly_offset_frontback_scale = fui(state->offset_scale * 16);
 
       if (!state->offset_units_unscaled) {
-         switch (i) {
-         case 0: /* 16-bit zbuffer */
-            offset_units *= 4.0f;
-            pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
-            break;
-         case 1: /* 24-bit zbuffer */
-            offset_units *= 2.0f;
-            pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
-            break;
-         case 2: /* 32-bit zbuffer */
-            offset_units *= 1.0f;
-            pa_su_poly_offset_db_fmt_cntl =
-               S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-23) | S_028B78_POLY_OFFSET_DB_IS_FLOAT_FMT(1);
-            break;
-         }
-      }
+         /* 16-bit zbuffer */
+         rs->pa_su_poly_offset_db_fmt_cntl[0] = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
+         rs->pa_su_poly_offset_frontback_offset[0] = fui(state->offset_units * 4);
 
-      si_pm4_set_reg(pm4, R_028B78_PA_SU_POLY_OFFSET_DB_FMT_CNTL, pa_su_poly_offset_db_fmt_cntl);
-      si_pm4_set_reg(pm4, R_028B7C_PA_SU_POLY_OFFSET_CLAMP, fui(state->offset_clamp));
-      si_pm4_set_reg(pm4, R_028B80_PA_SU_POLY_OFFSET_FRONT_SCALE, fui(offset_scale));
-      si_pm4_set_reg(pm4, R_028B84_PA_SU_POLY_OFFSET_FRONT_OFFSET, fui(offset_units));
-      si_pm4_set_reg(pm4, R_028B88_PA_SU_POLY_OFFSET_BACK_SCALE, fui(offset_scale));
-      si_pm4_set_reg(pm4, R_028B8C_PA_SU_POLY_OFFSET_BACK_OFFSET, fui(offset_units));
-      si_pm4_finalize(pm4);
+         /* 24-bit zbuffer */
+         rs->pa_su_poly_offset_db_fmt_cntl[1] = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
+         rs->pa_su_poly_offset_frontback_offset[1] = fui(state->offset_units * 2);
+
+         /* 32-bit zbuffer */
+         rs->pa_su_poly_offset_db_fmt_cntl[2] = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-23) |
+                                                S_028B78_POLY_OFFSET_DB_IS_FLOAT_FMT(1);
+         rs->pa_su_poly_offset_frontback_offset[2] = fui(state->offset_units);
+      } else {
+         rs->pa_su_poly_offset_frontback_offset[0] = fui(state->offset_units);
+         rs->pa_su_poly_offset_frontback_offset[1] = fui(state->offset_units);
+         rs->pa_su_poly_offset_frontback_offset[2] = fui(state->offset_units);
+      }
    }
 
    return rs;
+}
+
+static void si_pm4_emit_rasterizer(struct si_context *sctx, unsigned index)
+{
+   struct si_state_rasterizer *state = sctx->queued.named.rasterizer;
+
+   if (sctx->screen->info.has_set_context_pairs_packed) {
+      radeon_begin(&sctx->gfx_cs);
+      gfx11_begin_packed_context_regs();
+      gfx11_opt_set_context_reg(R_0286D4_SPI_INTERP_CONTROL_0, SI_TRACKED_SPI_INTERP_CONTROL_0,
+                                state->spi_interp_control_0);
+      gfx11_opt_set_context_reg(R_028A00_PA_SU_POINT_SIZE, SI_TRACKED_PA_SU_POINT_SIZE,
+                                state->pa_su_point_size);
+      gfx11_opt_set_context_reg(R_028A04_PA_SU_POINT_MINMAX, SI_TRACKED_PA_SU_POINT_MINMAX,
+                                state->pa_su_point_minmax);
+      gfx11_opt_set_context_reg(R_028A08_PA_SU_LINE_CNTL, SI_TRACKED_PA_SU_LINE_CNTL,
+                                state->pa_su_line_cntl);
+      gfx11_opt_set_context_reg(R_028A48_PA_SC_MODE_CNTL_0, SI_TRACKED_PA_SC_MODE_CNTL_0,
+                                state->pa_sc_mode_cntl_0);
+      gfx11_opt_set_context_reg(R_028814_PA_SU_SC_MODE_CNTL, SI_TRACKED_PA_SU_SC_MODE_CNTL,
+                                state->pa_su_sc_mode_cntl);
+      gfx11_opt_set_context_reg(R_028838_PA_CL_NGG_CNTL, SI_TRACKED_PA_CL_NGG_CNTL,
+                                state->pa_cl_ngg_cntl);
+      gfx11_opt_set_context_reg(R_028230_PA_SC_EDGERULE, SI_TRACKED_PA_SC_EDGERULE,
+                                state->pa_sc_edgerule);
+
+      if (state->uses_poly_offset && sctx->framebuffer.state.zsbuf) {
+         unsigned db_format_index =
+            ((struct si_surface *)sctx->framebuffer.state.zsbuf)->db_format_index;
+
+         gfx11_opt_set_context_reg(R_028B78_PA_SU_POLY_OFFSET_DB_FMT_CNTL,
+                                   SI_TRACKED_PA_SU_POLY_OFFSET_DB_FMT_CNTL,
+                                   state->pa_su_poly_offset_db_fmt_cntl[db_format_index]);
+         gfx11_opt_set_context_reg(R_028B7C_PA_SU_POLY_OFFSET_CLAMP,
+                                   SI_TRACKED_PA_SU_POLY_OFFSET_CLAMP,
+                                   state->pa_su_poly_offset_clamp);
+         gfx11_opt_set_context_reg(R_028B80_PA_SU_POLY_OFFSET_FRONT_SCALE,
+                                   SI_TRACKED_PA_SU_POLY_OFFSET_FRONT_SCALE,
+                                   state->pa_su_poly_offset_frontback_scale);
+         gfx11_opt_set_context_reg(R_028B84_PA_SU_POLY_OFFSET_FRONT_OFFSET,
+                                   SI_TRACKED_PA_SU_POLY_OFFSET_FRONT_OFFSET,
+                                   state->pa_su_poly_offset_frontback_offset[db_format_index]);
+         gfx11_opt_set_context_reg(R_028B88_PA_SU_POLY_OFFSET_BACK_SCALE,
+                                   SI_TRACKED_PA_SU_POLY_OFFSET_BACK_SCALE,
+                                   state->pa_su_poly_offset_frontback_scale);
+         gfx11_opt_set_context_reg(R_028B8C_PA_SU_POLY_OFFSET_BACK_OFFSET,
+                                   SI_TRACKED_PA_SU_POLY_OFFSET_BACK_OFFSET,
+                                   state->pa_su_poly_offset_frontback_offset[db_format_index]);
+      }
+      gfx11_end_packed_context_regs();
+      radeon_end(); /* don't track context rolls on GFX11 */
+   } else {
+      radeon_begin(&sctx->gfx_cs);
+      radeon_opt_set_context_reg(sctx, R_0286D4_SPI_INTERP_CONTROL_0,
+                                 SI_TRACKED_SPI_INTERP_CONTROL_0,
+                                 state->spi_interp_control_0);
+      radeon_opt_set_context_reg(sctx, R_028A00_PA_SU_POINT_SIZE, SI_TRACKED_PA_SU_POINT_SIZE,
+                                 state->pa_su_point_size);
+      radeon_opt_set_context_reg(sctx, R_028A04_PA_SU_POINT_MINMAX, SI_TRACKED_PA_SU_POINT_MINMAX,
+                                 state->pa_su_point_minmax);
+      radeon_opt_set_context_reg(sctx, R_028A08_PA_SU_LINE_CNTL, SI_TRACKED_PA_SU_LINE_CNTL,
+                                 state->pa_su_line_cntl);
+      radeon_opt_set_context_reg(sctx, R_028A48_PA_SC_MODE_CNTL_0, SI_TRACKED_PA_SC_MODE_CNTL_0,
+                                 state->pa_sc_mode_cntl_0);
+      radeon_opt_set_context_reg(sctx, R_028814_PA_SU_SC_MODE_CNTL,
+                                 SI_TRACKED_PA_SU_SC_MODE_CNTL, state->pa_su_sc_mode_cntl);
+      if (sctx->gfx_level >= GFX10) {
+         radeon_opt_set_context_reg(sctx, R_028838_PA_CL_NGG_CNTL, SI_TRACKED_PA_CL_NGG_CNTL,
+                                    state->pa_cl_ngg_cntl);
+      }
+      radeon_opt_set_context_reg(sctx, R_028230_PA_SC_EDGERULE, SI_TRACKED_PA_SC_EDGERULE,
+                                 state->pa_sc_edgerule);
+
+      if (state->uses_poly_offset && sctx->framebuffer.state.zsbuf) {
+         unsigned db_format_index =
+            ((struct si_surface *)sctx->framebuffer.state.zsbuf)->db_format_index;
+
+         radeon_opt_set_context_reg6(R_028B78_PA_SU_POLY_OFFSET_DB_FMT_CNTL,
+                                     SI_TRACKED_PA_SU_POLY_OFFSET_DB_FMT_CNTL,
+                                     state->pa_su_poly_offset_db_fmt_cntl[db_format_index],
+                                     state->pa_su_poly_offset_clamp,
+                                     state->pa_su_poly_offset_frontback_scale,
+                                     state->pa_su_poly_offset_frontback_offset[db_format_index],
+                                     state->pa_su_poly_offset_frontback_scale,
+                                     state->pa_su_poly_offset_frontback_offset[db_format_index]);
+      }
+      radeon_end_update_context_roll();
+   }
+
+   sctx->emitted.named.rasterizer = state;
 }
 
 static void si_bind_rs_state(struct pipe_context *ctx, void *state)
@@ -1238,7 +1264,6 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
    SET_FIELD(sctx->current_vs_state, VS_STATE_CLAMP_VERTEX_COLOR, rs->clamp_vertex_color);
 
    si_pm4_bind_state(sctx, rasterizer, rs);
-   si_update_poly_offset_state(sctx);
 
    if (old_rs->scissor_enable != rs->scissor_enable)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.scissors);
@@ -1311,7 +1336,6 @@ static void si_delete_rs_state(struct pipe_context *ctx, void *state)
    if (sctx->queued.named.rasterizer == state)
       si_bind_rs_state(ctx, sctx->discard_rasterizer_state);
 
-   FREE(rs->pm4_poly_offset);
    si_pm4_free_state(sctx, &rs->pm4, SI_STATE_IDX(rasterizer));
 }
 
@@ -2748,6 +2772,22 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
    if (format == V_028040_Z_INVALID)
       PRINT_ERR("Invalid DB format: %d, disabling DB.\n", tex->buffer.b.b.format);
 
+   /* Use the original Z format, not db_render_format, so that the polygon offset behaves as
+    * expected by applications.
+    */
+   switch (tex->buffer.b.b.format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      surf->db_format_index = 0;
+      break;
+   default: /* 24-bit */
+      surf->db_format_index = 1;
+      break;
+   case PIPE_FORMAT_Z32_FLOAT:
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      surf->db_format_index = 2;
+      break;
+   }
+
    if (sctx->gfx_level >= GFX9) {
       surf->db_htile_data_base = 0;
       surf->db_htile_surface = 0;
@@ -2973,6 +3013,9 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    bool old_has_stencil =
       old_has_zsbuf &&
       ((struct si_texture *)sctx->framebuffer.state.zsbuf->texture)->surface.has_stencil;
+   uint8_t old_db_format_index =
+      old_has_zsbuf ?
+      ((struct si_surface *)sctx->framebuffer.state.zsbuf)->db_format_index : -1;
    int i;
 
    /* Reject zero-sized framebuffers due to a hw bug on GFX6 that occurs
@@ -3162,10 +3205,14 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
       if (!sctx->framebuffer.min_bytes_per_pixel ||
           zstex->surface.bpe < sctx->framebuffer.min_bytes_per_pixel)
          sctx->framebuffer.min_bytes_per_pixel = zstex->surface.bpe;
+
+      /* Update polygon offset based on the Z format. */
+      if (sctx->queued.named.rasterizer->uses_poly_offset &&
+          surf->db_format_index != old_db_format_index)
+         (sctx)->dirty_atoms |= SI_STATE_BIT(rasterizer);
    }
 
    si_update_ps_colorbuf0_slot(sctx);
-   si_update_poly_offset_state(sctx);
    si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
    si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
 
@@ -5761,9 +5808,8 @@ void si_init_state_compute_functions(struct si_context *sctx)
 void si_init_state_functions(struct si_context *sctx)
 {
    sctx->atoms.s.pm4_states[SI_STATE_IDX(blend)].emit = si_pm4_emit_state;
-   sctx->atoms.s.pm4_states[SI_STATE_IDX(rasterizer)].emit = si_pm4_emit_state;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(rasterizer)].emit = si_pm4_emit_rasterizer;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(dsa)].emit = si_pm4_emit_dsa;
-   sctx->atoms.s.pm4_states[SI_STATE_IDX(poly_offset)].emit = si_pm4_emit_state;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(ls)].emit = si_pm4_emit_shader;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(hs)].emit = si_pm4_emit_shader;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(es)].emit = si_pm4_emit_shader;
