@@ -536,6 +536,7 @@
 
   <enum name="PPP Vertex">
     <value name="0" value="1"/>
+    <value name="1" value="2"/>
     <value name="2" value="3"/>
   </enum>
 
@@ -802,6 +803,7 @@
 
   <enum name="VDM Vertex">
     <value name="0" value="0"/>
+    <value name="1" value="1"/>
     <value name="2" value="2"/>
   </enum>
 
