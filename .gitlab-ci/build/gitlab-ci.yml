@@ -582,6 +582,9 @@ debian-vulkan:
       -D glx=disabled
       -D gbm=disabled
       -D egl=disabled
+      -D opengl=false
+      -D gles1=disabled
+      -D gles2=disabled
       -D platforms=x11,wayland
       -D osmesa=false
     GALLIUM_ST: >
