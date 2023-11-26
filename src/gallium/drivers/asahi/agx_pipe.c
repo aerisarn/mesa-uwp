@@ -2047,8 +2047,12 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
       if (!agx_is_valid_pixel_format(tex_format))
          return false;
 
-      /* RGB32 is emulated for texture buffers only */
-      if (ent.channels == AGX_CHANNELS_R32G32B32_EMULATED &&
+      /* RGB32, luminance/alpha/intensity emulated for texture buffers only */
+      if ((ent.channels == AGX_CHANNELS_R32G32B32_EMULATED ||
+           util_format_is_luminance(tex_format) ||
+           util_format_is_alpha(tex_format) ||
+           util_format_is_luminance_alpha(tex_format) ||
+           util_format_is_intensity(tex_format)) &&
           target != PIPE_BUFFER)
          return false;
 
