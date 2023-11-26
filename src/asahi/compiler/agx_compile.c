@@ -2500,7 +2500,7 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings,
    base += 4;
 
    /* These are always flat-shaded from the FS perspective */
-   key->vs.outputs_flat_shaded |= VARYING_SLOT_LAYER | VARYING_SLOT_VIEWPORT;
+   key->vs.outputs_flat_shaded |= VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT;
 
    assert(!(key->vs.outputs_flat_shaded & key->vs.outputs_linear_shaded));
 
