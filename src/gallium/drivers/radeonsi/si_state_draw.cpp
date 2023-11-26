@@ -1041,7 +1041,7 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
    if (GFX_VERSION == GFX9) {
       /* Workaround for SpecviewPerf13 Catia hang on GFX9. */
       if (prim != sctx->last_prim)
-         sctx->tracked_regs.other_reg_saved_mask &= ~BITFIELD64_BIT(SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG);
+         BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG);
 
       radeon_opt_set_uconfig_reg_idx(sctx, GFX_VERSION, R_030960_IA_MULTI_VGT_PARAM,
                                      SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG,
@@ -1347,8 +1347,9 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       }
 
       /* Invalidate tracked draw constants because DrawIndirect overwrites them. */
-      sctx->tracked_regs.other_reg_saved_mask &=
-         ~(BASEVERTEX_DRAWID_STARTINSTANCE_MASK << tracked_base_vertex_reg);
+      BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg); /* BaseVertex */
+      BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg + 1); /* DrawID */
+      BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg + 2); /* StartInstance */
       sctx->last_instance_count = SI_INSTANCE_COUNT_UNKNOWN;
 
       radeon_emit(PKT3(PKT3_SET_BASE, 2, 0));
@@ -1460,8 +1461,9 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
        */
       if (is_blit) {
          /* Re-emit draw constants after we leave u_blitter. */
-         sctx->tracked_regs.other_reg_saved_mask &=
-            ~(BASEVERTEX_DRAWID_STARTINSTANCE_MASK << tracked_base_vertex_reg);
+         BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg); /* BaseVertex */
+         BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg + 1); /* DrawID */
+         BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg + 2); /* StartInstance */
 
          /* Blit VS doesn't use BASE_VERTEX, START_INSTANCE, and DRAWID. */
          radeon_set_sh_reg_seq(sh_base_reg + SI_SGPR_VS_BLIT_DATA * 4, sctx->num_vs_blit_sgprs);
@@ -1510,8 +1512,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                   radeon_emit(V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
                }
                if (num_draws > 1) {
-                  sctx->tracked_regs.other_reg_saved_mask &=
-                     ~(BASEVERTEX_DRAWID_MASK << tracked_base_vertex_reg);
+                  BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg); /* BaseVertex */
+                  BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg + 1); /* DrawID */
                }
             } else {
                /* Only DrawID varies. */
@@ -1529,8 +1531,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                   radeon_emit(V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
                }
                if (num_draws > 1) {
-                  sctx->tracked_regs.other_reg_saved_mask &=
-                     ~(DRAWID_MASK << tracked_base_vertex_reg);
+                  BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg + 1); /* DrawID */
                }
             }
          } else {
@@ -1550,8 +1551,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                   radeon_emit(V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
                }
                if (num_draws > 1) {
-                  sctx->tracked_regs.other_reg_saved_mask &=
-                     ~(BASEVERTEX_MASK << tracked_base_vertex_reg);
+                  BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg); /* BaseVertex */
                }
             } else {
                /* DrawID and BaseVertex are constant. */
@@ -1594,8 +1594,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                radeon_emit(V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
             }
             if (num_draws > 1 && (IS_DRAW_VERTEX_STATE || !sctx->num_vs_blit_sgprs)) {
-               sctx->tracked_regs.other_reg_saved_mask &=
-                  ~(BASEVERTEX_DRAWID_MASK << tracked_base_vertex_reg);
+               BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg); /* BaseVertex */
+               BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg + 1); /* DrawID */
             }
          } else {
             for (unsigned i = 0; i < num_draws; i++) {
@@ -1607,8 +1607,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                radeon_emit(V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
             }
             if (num_draws > 1 && (IS_DRAW_VERTEX_STATE || !sctx->num_vs_blit_sgprs)) {
-               sctx->tracked_regs.other_reg_saved_mask &=
-                  ~(BASEVERTEX_MASK << tracked_base_vertex_reg);
+               BITSET_CLEAR(sctx->tracked_regs.reg_saved_mask, tracked_base_vertex_reg); /* BaseVertex */
             }
          }
       }

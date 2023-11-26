@@ -999,8 +999,10 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
       si_compute_resources_add_all_to_bo_list(sctx);
 
    /* Skipping setting redundant registers on compute queues breaks compute. */
-   if (!sctx->has_graphics)
-      sctx->tracked_regs.other_reg_saved_mask = 0;
+   if (!sctx->has_graphics) {
+      BITSET_SET_RANGE(sctx->tracked_regs.reg_saved_mask,
+                       SI_FIRST_TRACKED_OTHER_REG, SI_NUM_ALL_TRACKED_REGS - 1);
+   }
 
    /* First emit registers. */
    bool prefetch;

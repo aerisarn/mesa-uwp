@@ -9,6 +9,7 @@
 
 #include "si_pm4.h"
 #include "util/format/u_format.h"
+#include "util/bitset.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -237,9 +238,10 @@ struct si_shader_data {
    uint32_t sh_base[SI_NUM_SHADERS];
 };
 
-/* Context registers whose values are tracked by si_context. */
-enum si_tracked_context_reg
+/* Registers whose values are tracked by si_context. */
+enum si_tracked_reg
 {
+   /* CONTEXT registers. */
    /* 2 consecutive registers */
    SI_TRACKED_DB_RENDER_CONTROL,
    SI_TRACKED_DB_COUNT_CONTROL,
@@ -326,11 +328,10 @@ enum si_tracked_context_reg
    SI_TRACKED_CB_DCC_CONTROL,                /* GFX8-xx (TBD) */
 
    SI_NUM_TRACKED_CONTEXT_REGS,
-};
+   SI_FIRST_TRACKED_OTHER_REG = SI_NUM_TRACKED_CONTEXT_REGS,
 
-/* Non-context registers whose values are tracked by si_context. */
-enum si_tracked_other_reg {
-   SI_TRACKED_GE_PC_ALLOC,                   /* GFX10+ */
+   /* SH and UCONFIG registers. */
+   SI_TRACKED_GE_PC_ALLOC = SI_FIRST_TRACKED_OTHER_REG, /* GFX10+ */
    SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,       /* GFX7+ */
    SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,       /* GFX10+ */
    SI_TRACKED_VGT_GS_OUT_PRIM_TYPE_UCONFIG,  /* GFX11+ */
@@ -372,7 +373,7 @@ enum si_tracked_other_reg {
    SI_TRACKED_COMPUTE_DISPATCH_SCRATCH_BASE_LO, /* GFX11+ */
    SI_TRACKED_COMPUTE_DISPATCH_SCRATCH_BASE_HI, /* GFX11+ */
 
-   SI_NUM_TRACKED_OTHER_REGS,
+   SI_NUM_ALL_TRACKED_REGS,
 };
 
 /* For 3 draw constants: BaseVertex, DrawID, StartInstance */
@@ -383,12 +384,9 @@ enum si_tracked_other_reg {
 #define BASEVERTEX_DRAWID_STARTINSTANCE_MASK (BASEVERTEX_MASK | DRAWID_MASK | STARTINSTANCE_MASK)
 
 struct si_tracked_regs {
-   uint64_t context_reg_saved_mask;
-   uint32_t context_reg_value[SI_NUM_TRACKED_CONTEXT_REGS];
+   BITSET_DECLARE(reg_saved_mask, SI_NUM_ALL_TRACKED_REGS);
+   uint32_t reg_value[SI_NUM_ALL_TRACKED_REGS];
    uint32_t spi_ps_input_cntl[32];
-
-   uint32_t other_reg_saved_mask;
-   uint32_t other_reg_value[SI_NUM_TRACKED_OTHER_REGS];
 };
 
 /* Private read-write buffer slots. */
