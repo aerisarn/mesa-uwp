@@ -209,6 +209,11 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->tracked_regs.reg_value[SI_TRACKED_DB_RENDER_CONTROL] = 0;
    ctx->tracked_regs.reg_value[SI_TRACKED_DB_COUNT_CONTROL] = 0;
 
+   ctx->tracked_regs.reg_value[SI_TRACKED_DB_DEPTH_CONTROL] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_DB_STENCIL_CONTROL] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_DB_DEPTH_BOUNDS_MIN] = 0;
+   ctx->tracked_regs.reg_value[SI_TRACKED_DB_DEPTH_BOUNDS_MAX] = 0;
+
    ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_LINE_CNTL] = 0x1000;
    ctx->tracked_regs.reg_value[SI_TRACKED_PA_SC_AA_CONFIG] = 0;
 

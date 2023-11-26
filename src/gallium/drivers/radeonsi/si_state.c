@@ -1403,66 +1403,52 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
                                  const struct pipe_depth_stencil_alpha_state *state)
 {
    struct si_state_dsa *dsa = CALLOC_STRUCT(si_state_dsa);
-   struct si_pm4_state *pm4 = &dsa->pm4;
-   unsigned db_depth_control;
-   uint32_t db_stencil_control = 0;
-
    if (!dsa) {
       return NULL;
    }
-
-   si_pm4_clear_state(pm4, (struct si_screen*)ctx->screen, false);
 
    dsa->stencil_ref.valuemask[0] = state->stencil[0].valuemask;
    dsa->stencil_ref.valuemask[1] = state->stencil[1].valuemask;
    dsa->stencil_ref.writemask[0] = state->stencil[0].writemask;
    dsa->stencil_ref.writemask[1] = state->stencil[1].writemask;
 
-   db_depth_control =
+   dsa->db_depth_control =
       S_028800_Z_ENABLE(state->depth_enabled) | S_028800_Z_WRITE_ENABLE(state->depth_writemask) |
       S_028800_ZFUNC(state->depth_func) | S_028800_DEPTH_BOUNDS_ENABLE(state->depth_bounds_test);
 
    /* stencil */
    if (state->stencil[0].enabled) {
-      db_depth_control |= S_028800_STENCIL_ENABLE(1);
-      db_depth_control |= S_028800_STENCILFUNC(state->stencil[0].func);
-      db_stencil_control |=
+      dsa->db_depth_control |= S_028800_STENCIL_ENABLE(1);
+      dsa->db_depth_control |= S_028800_STENCILFUNC(state->stencil[0].func);
+      dsa->db_stencil_control |=
          S_02842C_STENCILFAIL(si_translate_stencil_op(state->stencil[0].fail_op));
-      db_stencil_control |=
+      dsa->db_stencil_control |=
          S_02842C_STENCILZPASS(si_translate_stencil_op(state->stencil[0].zpass_op));
-      db_stencil_control |=
+      dsa->db_stencil_control |=
          S_02842C_STENCILZFAIL(si_translate_stencil_op(state->stencil[0].zfail_op));
 
       if (state->stencil[1].enabled) {
-         db_depth_control |= S_028800_BACKFACE_ENABLE(1);
-         db_depth_control |= S_028800_STENCILFUNC_BF(state->stencil[1].func);
-         db_stencil_control |=
+         dsa->db_depth_control |= S_028800_BACKFACE_ENABLE(1);
+         dsa->db_depth_control |= S_028800_STENCILFUNC_BF(state->stencil[1].func);
+         dsa->db_stencil_control |=
             S_02842C_STENCILFAIL_BF(si_translate_stencil_op(state->stencil[1].fail_op));
-         db_stencil_control |=
+         dsa->db_stencil_control |=
             S_02842C_STENCILZPASS_BF(si_translate_stencil_op(state->stencil[1].zpass_op));
-         db_stencil_control |=
+         dsa->db_stencil_control |=
             S_02842C_STENCILZFAIL_BF(si_translate_stencil_op(state->stencil[1].zfail_op));
       }
    }
 
+   dsa->db_depth_bounds_min = fui(state->depth_bounds_min);
+   dsa->db_depth_bounds_max = fui(state->depth_bounds_max);
+
    /* alpha */
    if (state->alpha_enabled) {
       dsa->alpha_func = state->alpha_func;
-
-      si_pm4_set_reg(pm4, R_00B030_SPI_SHADER_USER_DATA_PS_0 + SI_SGPR_ALPHA_REF * 4,
-                     fui(state->alpha_ref_value));
+      dsa->spi_shader_user_data_ps_alpha_ref = fui(state->alpha_ref_value);
    } else {
       dsa->alpha_func = PIPE_FUNC_ALWAYS;
    }
-
-   si_pm4_set_reg(pm4, R_028800_DB_DEPTH_CONTROL, db_depth_control);
-   if (state->stencil[0].enabled)
-      si_pm4_set_reg(pm4, R_02842C_DB_STENCIL_CONTROL, db_stencil_control);
-   if (state->depth_bounds_test) {
-      si_pm4_set_reg(pm4, R_028020_DB_DEPTH_BOUNDS_MIN, fui(state->depth_bounds_min));
-      si_pm4_set_reg(pm4, R_028024_DB_DEPTH_BOUNDS_MAX, fui(state->depth_bounds_max));
-   }
-   si_pm4_finalize(pm4);
 
    dsa->depth_enabled = state->depth_enabled;
    dsa->depth_write_enabled = state->depth_enabled && state->depth_writemask;
@@ -1470,6 +1456,7 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    dsa->stencil_write_enabled =
       (util_writes_stencil(&state->stencil[0]) || util_writes_stencil(&state->stencil[1]));
    dsa->db_can_write = dsa->depth_write_enabled || dsa->stencil_write_enabled;
+   dsa->depth_bounds_enabled = state->depth_bounds_test;
 
    bool zfunc_is_ordered =
       state->depth_func == PIPE_FUNC_NEVER || state->depth_func == PIPE_FUNC_LESS ||
@@ -1494,6 +1481,68 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
       (state->depth_func == PIPE_FUNC_ALWAYS || state->depth_func == PIPE_FUNC_NEVER);
 
    return dsa;
+}
+
+static void si_pm4_emit_dsa(struct si_context *sctx, unsigned index)
+{
+   struct si_state_dsa *state = sctx->queued.named.dsa;
+   assert(state && state != sctx->emitted.named.dsa);
+
+   if (sctx->screen->info.has_set_context_pairs_packed) {
+      radeon_begin(&sctx->gfx_cs);
+      gfx11_begin_packed_context_regs();
+      gfx11_opt_set_context_reg(R_028800_DB_DEPTH_CONTROL, SI_TRACKED_DB_DEPTH_CONTROL,
+                                state->db_depth_control);
+      if (state->stencil_enabled) {
+         gfx11_opt_set_context_reg(R_02842C_DB_STENCIL_CONTROL, SI_TRACKED_DB_STENCIL_CONTROL,
+                                   state->db_stencil_control);
+      }
+      if (state->depth_bounds_enabled) {
+         gfx11_opt_set_context_reg(R_028020_DB_DEPTH_BOUNDS_MIN, SI_TRACKED_DB_DEPTH_BOUNDS_MIN,
+                                   state->db_depth_bounds_min);
+         gfx11_opt_set_context_reg(R_028024_DB_DEPTH_BOUNDS_MAX, SI_TRACKED_DB_DEPTH_BOUNDS_MAX,
+                                   state->db_depth_bounds_max);
+      }
+      gfx11_end_packed_context_regs();
+
+      if (state->alpha_func != PIPE_FUNC_ALWAYS) {
+         if (sctx->screen->info.has_set_sh_pairs_packed) {
+            gfx11_opt_push_gfx_sh_reg(R_00B030_SPI_SHADER_USER_DATA_PS_0 + SI_SGPR_ALPHA_REF * 4,
+                                      SI_TRACKED_SPI_SHADER_USER_DATA_PS__ALPHA_REF,
+                                      state->spi_shader_user_data_ps_alpha_ref);
+         } else {
+            radeon_opt_set_sh_reg(sctx, R_00B030_SPI_SHADER_USER_DATA_PS_0 + SI_SGPR_ALPHA_REF * 4,
+                                  SI_TRACKED_SPI_SHADER_USER_DATA_PS__ALPHA_REF,
+                                  state->spi_shader_user_data_ps_alpha_ref);
+         }
+      }
+      radeon_end(); /* don't track context rolls on GFX11 */
+   } else {
+      radeon_begin(&sctx->gfx_cs);
+      radeon_opt_set_context_reg(sctx, R_028800_DB_DEPTH_CONTROL, SI_TRACKED_DB_DEPTH_CONTROL,
+                                 state->db_depth_control);
+      if (state->stencil_enabled) {
+         radeon_opt_set_context_reg(sctx, R_02842C_DB_STENCIL_CONTROL, SI_TRACKED_DB_STENCIL_CONTROL,
+                                    state->db_stencil_control);
+      }
+      if (state->depth_bounds_enabled) {
+         radeon_opt_set_context_reg2(sctx, R_028020_DB_DEPTH_BOUNDS_MIN,
+                                     SI_TRACKED_DB_DEPTH_BOUNDS_MIN,
+                                     state->db_depth_bounds_min,
+                                     state->db_depth_bounds_max);
+      }
+      radeon_end_update_context_roll();
+
+      if (state->alpha_func != PIPE_FUNC_ALWAYS) {
+         radeon_begin(&sctx->gfx_cs);
+         radeon_opt_set_sh_reg(sctx, R_00B030_SPI_SHADER_USER_DATA_PS_0 + SI_SGPR_ALPHA_REF * 4,
+                               SI_TRACKED_SPI_SHADER_USER_DATA_PS__ALPHA_REF,
+                               state->spi_shader_user_data_ps_alpha_ref);
+         radeon_end();
+      }
+   }
+
+   sctx->emitted.named.dsa = state;
 }
 
 static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
@@ -5713,7 +5762,7 @@ void si_init_state_functions(struct si_context *sctx)
 {
    sctx->atoms.s.pm4_states[SI_STATE_IDX(blend)].emit = si_pm4_emit_state;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(rasterizer)].emit = si_pm4_emit_state;
-   sctx->atoms.s.pm4_states[SI_STATE_IDX(dsa)].emit = si_pm4_emit_state;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(dsa)].emit = si_pm4_emit_dsa;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(poly_offset)].emit = si_pm4_emit_state;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(ls)].emit = si_pm4_emit_shader;
    sctx->atoms.s.pm4_states[SI_STATE_IDX(hs)].emit = si_pm4_emit_shader;

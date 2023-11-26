@@ -109,6 +109,13 @@ struct si_state_dsa {
    struct si_pm4_state pm4;
    struct si_dsa_stencil_ref_part stencil_ref;
 
+   /* Register values. */
+   unsigned db_depth_control;
+   unsigned db_stencil_control;
+   unsigned db_depth_bounds_min;
+   unsigned db_depth_bounds_max;
+   unsigned spi_shader_user_data_ps_alpha_ref;
+
    /* 0 = without stencil buffer, 1 = when both Z and S buffers are present */
    struct si_dsa_order_invariance order_invariance[2];
 
@@ -118,6 +125,7 @@ struct si_state_dsa {
    bool stencil_enabled : 1;
    bool stencil_write_enabled : 1;
    bool db_can_write : 1;
+   bool depth_bounds_enabled : 1;
 };
 
 struct si_stencil_ref {
@@ -226,8 +234,7 @@ union si_state_atoms {
 
 static inline uint64_t si_atoms_that_always_roll_context(void)
 {
-   return SI_STATE_BIT(blend) | SI_STATE_BIT(rasterizer) | SI_STATE_BIT(dsa) |
-          SI_STATE_BIT(poly_offset) |
+   return SI_STATE_BIT(blend) | SI_STATE_BIT(rasterizer) | SI_STATE_BIT(poly_offset) |
           SI_ATOM_BIT(streamout_begin) | SI_ATOM_BIT(streamout_enable) | SI_ATOM_BIT(framebuffer) |
           SI_ATOM_BIT(sample_locations) | SI_ATOM_BIT(sample_mask) | SI_ATOM_BIT(blend_color)|
           SI_ATOM_BIT(clip_state) | SI_ATOM_BIT(scissors) | SI_ATOM_BIT(viewports)|
@@ -245,6 +252,12 @@ enum si_tracked_reg
    /* 2 consecutive registers */
    SI_TRACKED_DB_RENDER_CONTROL,
    SI_TRACKED_DB_COUNT_CONTROL,
+
+   SI_TRACKED_DB_DEPTH_CONTROL,
+   SI_TRACKED_DB_STENCIL_CONTROL,
+   /* 2 consecutive registers */
+   SI_TRACKED_DB_DEPTH_BOUNDS_MIN,
+   SI_TRACKED_DB_DEPTH_BOUNDS_MAX,
 
    /* 2 consecutive registers */
    SI_TRACKED_PA_SC_LINE_CNTL,
@@ -357,6 +370,8 @@ enum si_tracked_reg
    SI_TRACKED_SPI_SHADER_USER_DATA_VS__BASE_VERTEX,      /* GFX6-10 */
    SI_TRACKED_SPI_SHADER_USER_DATA_VS__DRAWID,           /* GFX6-10 */
    SI_TRACKED_SPI_SHADER_USER_DATA_VS__START_INSTANCE,   /* GFX6-10 */
+
+   SI_TRACKED_SPI_SHADER_USER_DATA_PS__ALPHA_REF,
 
    SI_TRACKED_COMPUTE_RESOURCE_LIMITS,
    SI_TRACKED_COMPUTE_NUM_THREAD_X,
