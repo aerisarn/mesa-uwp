@@ -1559,12 +1559,8 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
       agx_pack(bindings + i, CF_BINDING, cfg) {
          cfg.base_coefficient_register = fs->bindings[i].cf_base;
          cfg.components = fs->bindings[i].count;
-         cfg.perspective = fs->bindings[i].perspective;
-
-         cfg.shade_model = fs->bindings[i].smooth ? AGX_SHADE_MODEL_GOURAUD
-                           : first_provoking_vertex
-                              ? AGX_SHADE_MODEL_FLAT_VERTEX_0
-                              : AGX_SHADE_MODEL_FLAT_VERTEX_2;
+         cfg.shade_model =
+            agx_translate_shade_model(fs, i, first_provoking_vertex);
 
          if (fs->bindings[i].slot == VARYING_SLOT_PNTC) {
             assert(fs->bindings[i].offset == 0);
@@ -1580,10 +1576,12 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
          }
 
          if (fs->bindings[i].slot == VARYING_SLOT_POS) {
-            if (fs->bindings[i].offset == 2)
+            if (fs->bindings[i].offset == 2) {
                cfg.source = AGX_COEFFICIENT_SOURCE_FRAGCOORD_Z;
-            else
-               assert(!cfg.perspective && "W must not be perspective divided");
+            } else {
+               assert(!fs->bindings[i].perspective &&
+                      "W must not be perspective divided");
+            }
          }
 
          assert(cfg.base_coefficient_register + cfg.components <= fs->nr_cf &&

@@ -165,7 +165,9 @@
   <enum name="Shade model">
     <value name="Flat vertex 0" value="0"/>
     <value name="Flat vertex 2" value="2"/>
-    <value name="Gouraud" value="3"/>
+    <value name="Linear" value="3"/>
+    <value name="Flat vertex 1" value="6"/>
+    <value name="Perspective" value="7"/>
   </enum>
 
   <enum name="Coefficient source">
@@ -179,8 +181,7 @@
 
   <struct name="CF binding" size="4">
     <field name="Components" size="2" start="0" type="uint" modifier="minus(1)"/>
-    <field name="Shade model" size="2" start="2" type="Shade model"/>
-    <field name="Perspective" size="1" start="4" type="bool"/>
+    <field name="Shade model" size="3" start="2" type="Shade model"/>
     <field name="Source" size="3" start="5" type="Coefficient source"/>
     <field name="Base slot" size="8" start="8" type="uint"/>
     <field name="Base coefficient register" size="8" start="16" type="uint"/>
