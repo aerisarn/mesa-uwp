@@ -249,7 +249,6 @@ static void si_emit_guardband(struct si_context *sctx, unsigned index)
    struct si_signed_scissor vp_as_scissor;
    struct pipe_viewport_state vp;
    float left, top, right, bottom, max_range, guardband_x, guardband_y;
-   float discard_x, discard_y;
 
    if (sctx->vs_writes_viewport_index) {
       /* Shaders can draw to any viewport. Make a union of all
@@ -339,28 +338,17 @@ static void si_emit_guardband(struct si_context *sctx, unsigned index)
    guardband_x = MIN2(-left, right);
    guardband_y = MIN2(-top, bottom);
 
-   discard_x = 1.0;
-   discard_y = 1.0;
+   float discard_x = 1.0;
+   float discard_y = 1.0;
+   float distance = sctx->current_clip_discard_distance;
 
-   if (unlikely(util_prim_is_points_or_lines(sctx->current_rast_prim))) {
-      /* When rendering wide points or lines, we need to be more
-       * conservative about when to discard them entirely. */
-      float pixels;
+   /* Add half the point size / line width */
+   discard_x += distance / (2.0 * vp.scale[0]);
+   discard_y += distance / (2.0 * vp.scale[1]);
 
-      if (sctx->current_rast_prim == MESA_PRIM_POINTS)
-         pixels = rs->max_point_size;
-      else
-         pixels = rs->line_width;
-
-      /* Add half the point size / line width */
-      discard_x += pixels / (2.0 * vp.scale[0]);
-      discard_y += pixels / (2.0 * vp.scale[1]);
-
-      /* Discard primitives that would lie entirely outside the clip
-       * region. */
-      discard_x = MIN2(discard_x, guardband_x);
-      discard_y = MIN2(discard_y, guardband_y);
-   }
+   /* Discard primitives that would lie entirely outside the viewport area. */
+   discard_x = MIN2(discard_x, guardband_x);
+   discard_y = MIN2(discard_y, guardband_y);
 
    unsigned pa_su_vtx_cntl = S_028BE4_PIX_CENTER(rs->half_pixel_center) |
                              S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |

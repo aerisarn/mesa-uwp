@@ -1255,6 +1255,23 @@ struct si_context {
    bool vs_disables_clipping_viewport;
    bool has_reset_been_notified;
 
+   /* The number of pixels outside the viewport that are not culled by the clipper.
+    * Normally, the clipper clips everything outside the viewport, however, points and lines
+    * can have vertices outside the viewport, but their edges can be inside the viewport. Those
+    * shouldn't be culled. The problem is that the register setting (PA_CL_GB_*_DISC_ADJ) that
+    * controls the discard distance, which depends on the point size and line width, applies to
+    * all primitive types, and we would have to set 0 distance for triangles and non-zero for
+    * points and lines whenever the primitive type changes, which would add overhead and cause
+    * context rolls.
+    *
+    * To reduce that, whenever the discard distance changes for points and lines, we keep it
+    * at that higher value up to a certain small number for all primitive types including all
+    * points and lines within a specific size. This is slightly inefficient, but it eliminates
+    * a lot of guardband state updates and context register changes.
+    */
+   float min_clip_discard_distance_watermark;
+   float current_clip_discard_distance;
+
    /* Precomputed IA_MULTI_VGT_PARAM */
    union si_vgt_param_key ia_multi_vgt_param_key;
    unsigned ia_multi_vgt_param[SI_NUM_VGT_PARAM_STATES];
@@ -2114,6 +2131,28 @@ void si_check_dirty_buffers_textures(struct si_context *sctx)
    }
 }
 
+static inline void si_set_clip_discard_distance(struct si_context *sctx, float distance)
+{
+   /* Determine whether the guardband registers change.
+    *
+    * When we see a value greater than min_clip_discard_distance_watermark, we increase it
+    * up to a certain number to eliminate those state changes next time they happen.
+    * See the comment at min_clip_discard_distance_watermark.
+    */
+   if (distance > sctx->min_clip_discard_distance_watermark) {
+      /* The maximum number was determined from Viewperf. The number is in units of half-pixels. */
+      sctx->min_clip_discard_distance_watermark = MIN2(distance, 6);
+
+      float old_distance = sctx->current_clip_discard_distance;
+      float new_distance = MAX2(distance, sctx->min_clip_discard_distance_watermark);
+
+      if (old_distance != new_distance) {
+         sctx->current_clip_discard_distance = new_distance;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
+      }
+   }
+}
+
 /* Update these two GS_STATE fields. They depend on whatever the last shader before PS is
  * and the rasterizer state.
  *
@@ -2147,16 +2186,23 @@ si_set_rasterized_prim(struct si_context *sctx, enum mesa_prim rast_prim,
       bool is_rect = rast_prim == SI_PRIM_RECTANGLE_LIST;
       bool is_points = rast_prim == MESA_PRIM_POINTS;
       bool is_lines = util_prim_is_lines(rast_prim);
-      bool is_triangles = util_rast_prim_is_triangles(rast_prim);
 
-      if ((is_points || is_lines) != util_prim_is_points_or_lines(sctx->current_rast_prim))
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
+      if (is_points) {
+         si_set_clip_discard_distance(sctx, sctx->queued.named.rasterizer->max_point_size);
+         sctx->gs_out_prim = V_028A6C_POINTLIST;
+      } else if (is_lines) {
+         si_set_clip_discard_distance(sctx, sctx->queued.named.rasterizer->line_width);
+         sctx->gs_out_prim = V_028A6C_LINESTRIP;
+      } else if (is_rect) {
+         /* Don't change the clip discard distance for rectangles. */
+         sctx->gs_out_prim = V_028A6C_RECTLIST;
+      } else {
+         si_set_clip_discard_distance(sctx, 0);
+         sctx->gs_out_prim = V_028A6C_TRISTRIP;
+      }
 
       sctx->current_rast_prim = rast_prim;
       si_vs_ps_key_update_rast_prim_smooth_stipple(sctx);
-      sctx->gs_out_prim = is_triangles ? V_028A6C_TRISTRIP :
-                          is_lines ? V_028A6C_LINESTRIP :
-                          is_rect ? V_028A6C_RECTLIST : V_028A6C_POINTLIST;
       si_update_ngg_prim_state_sgpr(sctx, hw_vs, ngg);
    }
 }

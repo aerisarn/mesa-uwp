@@ -1268,9 +1268,14 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
    if (old_rs->scissor_enable != rs->scissor_enable)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.scissors);
 
-   if (old_rs->line_width != rs->line_width || old_rs->max_point_size != rs->max_point_size ||
-       old_rs->half_pixel_center != rs->half_pixel_center)
+   /* This never changes for OpenGL. */
+   if (old_rs->half_pixel_center != rs->half_pixel_center)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
+
+   if (util_prim_is_lines(sctx->current_rast_prim))
+      si_set_clip_discard_distance(sctx, rs->line_width);
+   else if (sctx->current_rast_prim == MESA_PRIM_POINTS)
+      si_set_clip_discard_distance(sctx, rs->max_point_size);
 
    if (old_rs->clip_halfz != rs->clip_halfz)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.viewports);
