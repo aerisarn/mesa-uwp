@@ -1697,13 +1697,6 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_ATTRIB_ELEMENT_ALIGNED_ONLY:
       return 1;
 
-   /* We run nir_lower_point_size so we need the GLSL linker to copy
-    * the original gl_PointSize when captured by transform feedback. We could
-    * also copy it ourselves but it's easier to set the CAP.
-    */
-   case PIPE_CAP_PSIZ_CLAMPED:
-      return 1;
-
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       return 16384;
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
@@ -1758,7 +1751,6 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FLATSHADE:
    case PIPE_CAP_TWO_SIDED_COLOR:
    case PIPE_CAP_ALPHA_TEST:
-   case PIPE_CAP_POINT_SIZE_FIXED:
    case PIPE_CAP_CLIP_PLANES:
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;

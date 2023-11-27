@@ -158,6 +158,8 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
       return load_sysval_root(b, 1, 64, &u->input_assembly);
    case nir_intrinsic_load_geometry_param_buffer_agx:
       return load_sysval_root(b, 1, 64, &u->geometry_params);
+   case nir_intrinsic_load_fixed_point_size_agx:
+      return load_sysval_root(b, 1, 32, &u->fixed_point_size);
    default:
       break;
    }

@@ -50,6 +50,7 @@
 #include "agx_nir_lower_gs.h"
 #include "agx_tilebuffer.h"
 #include "nir_builder.h"
+#include "nir_builder_opcodes.h"
 #include "nir_intrinsics.h"
 #include "nir_intrinsics_indices.h"
 #include "pool.h"
@@ -1697,6 +1698,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
       struct asahi_vs_shader_key *key = &key_->vs;
 
       NIR_PASS_V(nir, agx_nir_lower_vbo, &key->vbuf);
+      NIR_PASS_V(nir, agx_nir_lower_point_size, key->program_point_size);
 
       if (should_lower_clip_m1_1(dev, key->clip_halfz)) {
          NIR_PASS_V(nir, nir_shader_intrinsics_pass, agx_nir_lower_clip_m1_1,
@@ -2126,6 +2128,19 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    return true;
 }
 
+static enum mesa_prim
+rast_prim(enum mesa_prim mode, unsigned fill_mode)
+{
+   if (u_reduced_prim(mode) == MESA_PRIM_TRIANGLES) {
+      if (fill_mode == PIPE_POLYGON_MODE_POINT)
+         return MESA_PRIM_POINTS;
+      else if (fill_mode == PIPE_POLYGON_MODE_LINE)
+         return MESA_PRIM_LINES;
+   }
+
+   return mode;
+}
+
 static bool
 agx_update_vs(struct agx_context *ctx)
 {
@@ -2136,12 +2151,22 @@ agx_update_vs(struct agx_context *ctx)
     * outputs_{flat,linear}_shaded: FS_PROG
     */
    if (!(ctx->dirty & (AGX_DIRTY_VS_PROG | AGX_DIRTY_VERTEX | AGX_DIRTY_XFB |
-                       AGX_DIRTY_FS_PROG | AGX_DIRTY_RS)))
+                       AGX_DIRTY_FS_PROG | AGX_DIRTY_RS | AGX_DIRTY_PRIM)))
       return false;
+
+   enum mesa_prim rasterized_prim =
+      rast_prim(ctx->batch->reduced_prim, ctx->rast->base.fill_front);
 
    struct asahi_vs_shader_key key = {
       .vbuf.count = util_last_bit(ctx->vb_mask),
       .clip_halfz = ctx->rast->base.clip_halfz,
+
+      /* If we are not rasterizing points, set program_point_size to eliminate
+       * the useless point size write.
+       */
+      .program_point_size = ctx->rast->base.point_size_per_vertex ||
+                            rasterized_prim != MESA_PRIM_POINTS,
+
       .outputs_flat_shaded =
          ctx->stage[PIPE_SHADER_FRAGMENT].shader->info.inputs_flat_shaded,
       .outputs_linear_shaded =
@@ -3824,19 +3849,6 @@ agx_needs_passthrough_gs(struct agx_context *ctx,
    return false;
 }
 
-static enum mesa_prim
-rast_prim(enum mesa_prim mode, unsigned fill_mode)
-{
-   if (u_reduced_prim(mode) == MESA_PRIM_TRIANGLES) {
-      if (fill_mode == PIPE_POLYGON_MODE_POINT)
-         return MESA_PRIM_POINTS;
-      else if (fill_mode == PIPE_POLYGON_MODE_LINE)
-         return MESA_PRIM_LINES;
-   }
-
-   return mode;
-}
-
 static struct agx_uncompiled_shader *
 agx_get_passthrough_gs(struct agx_context *ctx,
                        struct agx_uncompiled_shader *prev_cso,
@@ -4031,6 +4043,14 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    agx_batch_init_state(batch);
 
+   /* Dirty track the reduced prim: lines vs points vs triangles. Happens before
+    * agx_update_vs/agx_update_fs, which specialize based on primitive.
+    */
+   enum mesa_prim reduced_prim = u_reduced_prim(info->mode);
+   if (reduced_prim != batch->reduced_prim)
+      ctx->dirty |= AGX_DIRTY_PRIM;
+   batch->reduced_prim = reduced_prim;
+
    /* Update shaders first so we can use them after */
    if (agx_update_vs(ctx)) {
       ctx->dirty |= AGX_DIRTY_VS | AGX_DIRTY_VS_PROG;
@@ -4059,14 +4079,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
       ctx->dirty |= AGX_DIRTY_VS;
    }
-
-   /* Dirty track the reduced prim: lines vs points vs triangles. Happens before
-    * agx_update_fs, which specializes based on primitive.
-    */
-   enum mesa_prim reduced_prim = u_reduced_prim(info->mode);
-   if (reduced_prim != batch->reduced_prim)
-      ctx->dirty |= AGX_DIRTY_PRIM;
-   batch->reduced_prim = reduced_prim;
 
    if (agx_update_fs(batch)) {
       ctx->dirty |= AGX_DIRTY_FS | AGX_DIRTY_FS_PROG;
@@ -4132,8 +4144,12 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
              sizeof(ctx->blend_color));
    }
 
+   if (IS_DIRTY(RS)) {
+      batch->uniforms.fixed_point_size = ctx->rast->base.point_size;
+   }
+
    if (IS_DIRTY(VS) || IS_DIRTY(FS) || ctx->gs || IS_DIRTY(VERTEX) ||
-       IS_DIRTY(BLEND_COLOR)) {
+       IS_DIRTY(BLEND_COLOR) || IS_DIRTY(RS)) {
 
       agx_upload_uniforms(batch);
    }

@@ -108,6 +108,9 @@ struct PACKED agx_draw_uniforms {
    /* Blend constant if any */
    float blend_constant[4];
 
+   /* glPointSize value */
+   float fixed_point_size;
+
    /* Value of the multisample control register, containing sample positions in
     * each byte (x in low nibble, y in high nibble).
     */
@@ -364,6 +367,7 @@ struct agx_blend {
 struct asahi_vs_shader_key {
    struct agx_vbufs vbuf;
    bool clip_halfz;
+   bool program_point_size;
    uint64_t outputs_flat_shaded;
    uint64_t outputs_linear_shaded;
 };
@@ -795,6 +799,8 @@ void agx_upload_uniforms(struct agx_batch *batch);
 
 uint64_t agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
                                    enum pipe_shader_type stage);
+
+void agx_nir_lower_point_size(nir_shader *nir, bool program_point_size);
 
 bool agx_nir_lower_sysvals(nir_shader *shader, bool lower_draw_params);
 

@@ -1842,6 +1842,9 @@ system_value("api_sample_mask_agx", 1, bit_sizes=[16])
 # Loads the sample position array as fixed point packed into a 32-bit word
 system_value("sample_positions_agx", 1, bit_sizes=[32])
 
+# Loads the fixed-function glPointSize() value
+system_value("fixed_point_size_agx", 1, bit_sizes=[32])
+
 # Image loads go through the texture cache, which is not coherent with the PBE
 # or memory access, so fencing is necessary for writes to become visible.
 
