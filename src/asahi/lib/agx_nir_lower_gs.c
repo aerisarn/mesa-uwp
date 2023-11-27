@@ -960,7 +960,9 @@ link_libagx(nir_shader *nir, const nir_shader *libagx)
    NIR_PASS_V(nir, nir_inline_functions);
    NIR_PASS_V(nir, nir_remove_non_entrypoints);
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, 64);
-   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp,
+   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+              nir_var_shader_temp | nir_var_function_temp | nir_var_mem_shared |
+                 nir_var_mem_global,
               glsl_get_cl_type_size_align);
    NIR_PASS_V(nir, nir_opt_deref);
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);

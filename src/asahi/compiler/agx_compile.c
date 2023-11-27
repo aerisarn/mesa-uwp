@@ -2876,14 +2876,10 @@ link_libagx(nir_shader *nir, const nir_shader *libagx)
    nir_link_shader_functions(nir, libagx);
    NIR_PASS_V(nir, nir_inline_functions);
    NIR_PASS_V(nir, nir_remove_non_entrypoints);
-   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp,
-              glsl_get_cl_type_size_align);
-   NIR_PASS_V(nir, nir_opt_deref);
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_lower_explicit_io,
+   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
               nir_var_shader_temp | nir_var_function_temp | nir_var_mem_shared |
                  nir_var_mem_global,
-              nir_address_format_62bit_generic);
+              glsl_get_cl_type_size_align);
 }
 
 /*
@@ -2980,6 +2976,13 @@ agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
     */
    agx_optimize_loop_nir(nir);
 
+   NIR_PASS_V(nir, nir_opt_deref);
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_shader_temp | nir_var_function_temp | nir_var_mem_shared |
+                 nir_var_mem_global,
+              nir_address_format_62bit_generic);
+
    /* We're lowered away all variables. Remove them all for smaller shaders. */
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_all, NULL);
    nir->info.io_lowered = true;
@@ -3048,8 +3051,16 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       NIR_PASS(needs_libagx, nir, agx_nir_lower_interpolation);
 
-   if (needs_libagx)
+   if (needs_libagx) {
       link_libagx(nir, key->libagx);
+
+      NIR_PASS_V(nir, nir_opt_deref);
+      NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+      NIR_PASS_V(nir, nir_lower_explicit_io,
+                 nir_var_shader_temp | nir_var_function_temp |
+                    nir_var_mem_shared | nir_var_mem_global,
+                 nir_address_format_62bit_generic);
+   }
 
    /* Late VBO lowering creates constant udiv instructions */
    NIR_PASS_V(nir, nir_opt_idiv_const, 16);
