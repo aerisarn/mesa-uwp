@@ -93,8 +93,15 @@ libagx_vertex_id_for_topology(enum mesa_prim mode, bool flatshade_first,
          even_or_first ? 3 : -2,
       };
 
+      /* Ensure NIR can see thru the local array */
+      uint offset = 0;
+      for (uint i = 1; i < 6; ++i) {
+         if (i == vert)
+            offset = offsets[i];
+      }
+
       /* Finally add to the base of the primitive */
-      return (prim * 2) + offsets[vert];
+      return (prim * 2) + offset;
    }
 
    default:
