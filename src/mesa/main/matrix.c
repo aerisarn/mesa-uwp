@@ -569,7 +569,9 @@ static void
 matrix_mult(struct gl_matrix_stack *stack, const GLfloat *m, const char* caller)
 {
    GET_CURRENT_CONTEXT(ctx);
-   if (!m || _mesa_matrix_is_identity(m))
+
+   /* glthread filters out identity matrices, so don't do it again. */
+   if (!m || (!ctx->GLThread.enabled && _mesa_matrix_is_identity(m)))
       return;
 
    if (MESA_VERBOSE & VERBOSE_API)

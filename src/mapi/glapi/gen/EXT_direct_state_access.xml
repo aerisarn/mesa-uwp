@@ -26,7 +26,8 @@
       <param name="matrixMode" type="GLenum" />
       <param name="m" type="const GLdouble *" count="16"/>
    </function>
-   <function name="MatrixMultfEXT" offset="assign" exec="dlist">
+   <function name="MatrixMultfEXT" offset="assign" exec="dlist"
+             marshal_call_before="if (_mesa_matrix_is_identity(m)) return;">
       <param name="matrixMode" type="GLenum" />
       <param name="m" type="const GLfloat *" count="16"/>
    </function>
