@@ -5695,6 +5695,15 @@ typedef struct nir_lower_tex_options {
    bool lower_rect;
 
    /**
+    * If true, lower 1D textures to 2D. This requires the GL/VK driver to map 1D
+    * textures to 2D textures with height=1.
+    *
+    * lower_1d_shadow does this lowering for shadow textures only.
+    */
+   bool lower_1d;
+   bool lower_1d_shadow;
+
+   /**
     * If true, convert yuv to rgb.
     */
    unsigned lower_y_uv_external;
