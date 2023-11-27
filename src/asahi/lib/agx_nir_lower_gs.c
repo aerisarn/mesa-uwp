@@ -390,7 +390,12 @@ lower_id(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       id = load_instance_id(b);
    else if (intr->intrinsic == nir_intrinsic_load_num_vertices)
       id = nir_channel(b, nir_load_num_workgroups(b), 0);
-   else
+   else if (intr->intrinsic == nir_intrinsic_load_flat_mask)
+      id = load_geometry_param(b, flat_outputs);
+   else if (intr->intrinsic == nir_intrinsic_load_provoking_last) {
+      id = nir_b2b32(
+         b, libagx_is_provoking_last(b, nir_load_input_assembly_buffer_agx(b)));
+   } else
       return false;
 
    b->cursor = nir_instr_remove(&intr->instr);

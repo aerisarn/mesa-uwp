@@ -98,6 +98,7 @@ union agx_varyings {
 struct agx_uncompiled_shader_info {
    uint64_t inputs_flat_shaded;
    uint64_t inputs_linear_shaded;
+   bool has_edgeflags;
 };
 
 struct agx_shader_info {

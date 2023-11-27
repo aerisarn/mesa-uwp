@@ -463,3 +463,9 @@ libagx_prefix_sum(global uint *buffer, uint len, uint words, uint2 local_id)
       *ptr = count + sub_group_scan_exclusive_add(value) + value;
    }
 }
+
+bool
+libagx_is_provoking_last(global struct agx_ia_state *ia)
+{
+   return !ia->flatshade_first;
+}

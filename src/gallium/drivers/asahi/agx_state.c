@@ -409,6 +409,14 @@ agx_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    ctx->rast = so;
 }
 
+static bool
+has_edgeflags(struct agx_context *ctx, enum mesa_prim mode)
+{
+   return ctx->stage[PIPE_SHADER_VERTEX].shader->info.has_edgeflags &&
+          mode == MESA_PRIM_TRIANGLES &&
+          (ctx->rast->base.fill_front != PIPE_POLYGON_MODE_FILL);
+}
+
 static enum agx_wrap
 agx_wrap_from_pipe(enum pipe_tex_wrap in)
 {
@@ -2318,9 +2326,13 @@ agx_delete_shader_state(struct pipe_context *ctx, void *cso)
    _mesa_hash_table_destroy(so->variants, agx_delete_compiled_shader);
    blob_finish(&so->serialized_nir);
 
-   for (unsigned i = 0; i < ARRAY_SIZE(so->passthrough_progs); ++i) {
-      if (so->passthrough_progs[i])
-         agx_delete_shader_state(ctx, so->passthrough_progs[i]);
+   for (unsigned i = 0; i < MESA_PRIM_COUNT; ++i) {
+      for (unsigned j = 0; j < 3; ++j) {
+         for (unsigned k = 0; k < 2; ++k) {
+            if (so->passthrough_progs[i][j][k])
+               agx_delete_shader_state(ctx, so->passthrough_progs[i][j][k]);
+         }
+      }
    }
 
    ralloc_free(so);
@@ -3466,6 +3478,8 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
    struct agx_geometry_params params = {
       .state = agx_batch_geometry_state(batch),
       .indirect_desc = batch->geom_indirect,
+      .flat_outputs =
+         batch->ctx->stage[PIPE_SHADER_FRAGMENT].shader->info.inputs_flat_shaded,
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(batch->ctx->streamout.targets); ++i) {
@@ -3800,8 +3814,25 @@ agx_needs_passthrough_gs(struct agx_context *ctx,
        ctx->streamout.num_targets)
       return true;
 
+   /* Edge flags are emulated with a geometry shader */
+   if (has_edgeflags(ctx, info->mode))
+      return true;
+
    /* Otherwise, we don't need one */
    return false;
+}
+
+static enum mesa_prim
+rast_prim(enum mesa_prim mode, unsigned fill_mode)
+{
+   if (u_reduced_prim(mode) == MESA_PRIM_TRIANGLES) {
+      if (fill_mode == PIPE_POLYGON_MODE_POINT)
+         return MESA_PRIM_POINTS;
+      else if (fill_mode == PIPE_POLYGON_MODE_LINE)
+         return MESA_PRIM_LINES;
+   }
+
+   return mode;
 }
 
 static struct agx_uncompiled_shader *
@@ -3809,8 +3840,11 @@ agx_get_passthrough_gs(struct agx_context *ctx,
                        struct agx_uncompiled_shader *prev_cso,
                        enum mesa_prim mode)
 {
-   if (prev_cso->passthrough_progs[mode])
-      return prev_cso->passthrough_progs[mode];
+   bool edgeflags = has_edgeflags(ctx, mode);
+   unsigned poly_mode = ctx->rast->base.fill_front;
+
+   if (prev_cso->passthrough_progs[mode][poly_mode][edgeflags])
+      return prev_cso->passthrough_progs[mode][poly_mode][edgeflags];
 
    struct blob_reader reader;
    blob_reader_init(&reader, prev_cso->early_serialized_nir.data,
@@ -3818,13 +3852,13 @@ agx_get_passthrough_gs(struct agx_context *ctx,
    nir_shader *prev = nir_deserialize(NULL, &agx_nir_options, &reader);
 
    nir_shader *gs = nir_create_passthrough_gs(
-      &agx_nir_options, prev, mode, mode, false /* emulate edge flags */,
+      &agx_nir_options, prev, mode, rast_prim(mode, poly_mode), edgeflags,
       false /* force line strip out */);
 
    ralloc_free(prev);
 
    struct agx_uncompiled_shader *cso = pipe_shader_from_nir(&ctx->base, gs);
-   prev_cso->passthrough_progs[mode] = cso;
+   prev_cso->passthrough_progs[mode][poly_mode][edgeflags] = cso;
    return cso;
 }
 

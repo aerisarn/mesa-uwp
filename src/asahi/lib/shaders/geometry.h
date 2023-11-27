@@ -131,6 +131,9 @@ struct agx_geometry_params {
     */
    uint32_t xfb_prims[MAX_VERTEX_STREAMS];
 
+   /* Location-indexed mask of flat outputs, used for lowering GL edge flags. */
+   uint64_t flat_outputs;
+
    /* Within an indirect GS draw, the grid used to dispatch the GS written out
     * by the GS indirect setup kernel. Unused for direct GS draws.
     */

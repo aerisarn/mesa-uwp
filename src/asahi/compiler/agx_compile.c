@@ -2943,6 +2943,8 @@ agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
          out->inputs_flat_shaded = masks.flat;
          out->inputs_linear_shaded = masks.linear;
       }
+   } else if (nir->info.stage == MESA_SHADER_VERTEX) {
+      out->has_edgeflags = nir->info.outputs_written & VARYING_BIT_EDGE;
    }
 
    /* Clean up deref gunk after lowering I/O */

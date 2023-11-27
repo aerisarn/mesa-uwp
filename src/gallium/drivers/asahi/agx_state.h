@@ -198,7 +198,7 @@ struct agx_uncompiled_shader {
    uint8_t nir_sha1[20];
    struct agx_uncompiled_shader_info info;
    struct hash_table *variants;
-   struct agx_uncompiled_shader *passthrough_progs[MESA_PRIM_COUNT];
+   struct agx_uncompiled_shader *passthrough_progs[MESA_PRIM_COUNT][3][2];
    bool has_xfb_info;
 
    /* Whether the shader accesses indexed samplers via the bindless heap */
