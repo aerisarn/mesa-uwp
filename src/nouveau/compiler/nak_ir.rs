@@ -1909,10 +1909,7 @@ impl fmt::Display for MemAccess {
         write!(
             f,
             "{}{}{}{}",
-            self.space,
-            self.order,
-            self.eviction_priority,
-            self.mem_type,
+            self.space, self.order, self.eviction_priority, self.mem_type,
         )
     }
 }

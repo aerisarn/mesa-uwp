@@ -36,7 +36,7 @@ fn find_cuda() -> std::io::Result<PathBuf> {
         path.push("bin");
         path.push("nvdisasm");
         if path.exists() {
-            return Ok(path)
+            return Ok(path);
         }
     }
 
