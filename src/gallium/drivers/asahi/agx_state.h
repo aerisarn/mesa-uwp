@@ -510,6 +510,7 @@ struct agx_context {
 
    struct agx_compiled_shader *gs_prefix_sums[16];
    struct agx_compiled_shader *gs_setup_indirect[MESA_PRIM_MAX][2];
+   struct agx_compiled_shader *gs_unroll_restart[MESA_PRIM_MAX][3];
    struct agx_meta_cache meta;
 
    uint32_t syncobj;

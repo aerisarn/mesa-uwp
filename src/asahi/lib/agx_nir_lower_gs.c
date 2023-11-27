@@ -1189,3 +1189,28 @@ agx_nir_gs_setup_indirect(const nir_shader *libagx, enum mesa_prim prim,
    agx_preprocess_nir(b.shader, libagx, false, &info);
    return b.shader;
 }
+
+nir_shader *
+agx_nir_unroll_restart(const nir_shader *libagx, enum mesa_prim prim,
+                       unsigned index_size_B)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "Primitive restart unroll");
+
+   nir_def *ia = nir_load_input_assembly_buffer_agx(&b);
+   nir_def *draw = nir_channel(&b, nir_load_workgroup_id(&b), 0);
+   nir_def *mode = nir_imm_int(&b, prim);
+
+   if (index_size_B == 1)
+      libagx_unroll_restart_u8(&b, ia, mode, draw);
+   else if (index_size_B == 2)
+      libagx_unroll_restart_u16(&b, ia, mode, draw);
+   else if (index_size_B == 4)
+      libagx_unroll_restart_u32(&b, ia, mode, draw);
+   else
+      unreachable("invalid index size");
+
+   UNUSED struct agx_uncompiled_shader_info info;
+   agx_preprocess_nir(b.shader, libagx, false, &info);
+   return b.shader;
+}

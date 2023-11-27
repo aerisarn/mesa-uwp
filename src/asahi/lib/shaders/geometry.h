@@ -41,7 +41,20 @@ struct agx_ia_key {
    bool indirect_multidraw;
 };
 
+/* Packed geometry state buffer */
+struct agx_geometry_state {
+   /* Heap to allocate from, in either direction. By convention, the top is used
+    * for intra-draw allocations and the bottom is used for full-batch
+    * allocations. In the future we could use kernel support to improve this.
+    */
+   GLOBAL(uchar) heap;
+   uint32_t heap_bottom, heap_top, heap_size, padding;
+} PACKED;
+
 struct agx_ia_state {
+   /* Heap to allocate from across draws */
+   GLOBAL(struct agx_geometry_state) heap;
+
    /* Input: index buffer if present. */
    CONST(uchar) index_buffer;
 
@@ -57,21 +70,26 @@ struct agx_ia_state {
     */
    GLOBAL(uint) prefix_sums;
 
+   /* When unrolling primitive restart, output draw descriptors */
+   GLOBAL(uint) out_draws;
+
+   /* Primitive restart index, if unrolling */
+   uint32_t restart_index;
+
+   /* Input index buffer size in bytes, if unrolling */
+   uint32_t index_buffer_size_B;
+
    /* Stride for the draw descrptor array */
    uint32_t draw_stride;
 
-   /* The index size (1, 2, 4) or 0 if drawing without an index buffer. */
-   uint8_t index_size_B;
-} PACKED;
-
-/* Packed geometry state buffer */
-struct agx_geometry_state {
-   /* Heap to allocate from, in either direction. By convention, the top is used
-    * for intra-draw allocations and the bottom is used for full-batch
-    * allocations. In the future we could use kernel support to improve this.
+   /* When unrolling primitive restart, use first vertex as the provoking vertex
+    * for flat shading. We could stick this in the key, but meh, you're already
+    * hosed for perf on the unroll path.
     */
-   GLOBAL(uchar) heap;
-   uint32_t heap_bottom, heap_top, heap_size, padding;
+   uint32_t flatshade_first;
+
+   /* The index size (1, 2, 4) or 0 if drawing without an index buffer. */
+   uint32_t index_size_B;
 } PACKED;
 
 struct agx_geometry_params {

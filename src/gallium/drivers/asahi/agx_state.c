@@ -39,6 +39,7 @@
 #include "util/macros.h"
 #include "util/u_dump.h"
 #include "util/u_inlines.h"
+#include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 #include "util/u_resource.h"
@@ -3311,6 +3312,17 @@ agx_index_buffer_direct_ptr(struct agx_batch *batch,
    }
 }
 
+static uint64_t
+agx_index_buffer_ptr(struct agx_batch *batch, const struct pipe_draw_info *info,
+                     const struct pipe_draw_start_count_bias *draw,
+                     size_t *extent)
+{
+   if (draw)
+      return agx_index_buffer_direct_ptr(batch, draw, info, extent);
+   else
+      return agx_index_buffer_rsrc_ptr(batch, info, extent);
+}
+
 static bool
 agx_scissor_culls_everything(struct agx_context *ctx)
 {
@@ -3399,16 +3411,20 @@ agx_batch_geometry_state(struct agx_batch *batch)
    return batch->geometry_state;
 }
 
-static uint64_t
-agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
-                          const struct pipe_draw_info *info,
-                          const struct pipe_draw_start_count_bias *draw,
-                          const struct pipe_draw_indirect_info *indirect)
+static void
+agx_upload_ia_params(struct agx_batch *batch, const struct pipe_draw_info *info,
+                     const struct pipe_draw_indirect_info *indirect,
+                     uint64_t input_index_buffer, size_t index_buffer_size_B,
+                     uint64_t unroll_output)
 {
-   /* XXX move me */
    struct agx_ia_state ia = {
+      .heap = agx_batch_geometry_state(batch),
       .index_buffer = input_index_buffer,
       .index_size_B = info->index_size,
+      .out_draws = unroll_output,
+      .restart_index = info->restart_index,
+      .index_buffer_size_B = index_buffer_size_B,
+      .flatshade_first = batch->ctx->rast->base.flatshade_first,
    };
 
    if (indirect) {
@@ -3425,13 +3441,27 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
       ia.count = rsrc->bo->ptr.gpu + indirect->indirect_draw_count_offset;
       ia.draw_stride = indirect->stride;
 
-      size_t max_sum_size = sizeof(uint32_t) * indirect->draw_count;
-      ia.prefix_sums =
-         agx_pool_alloc_aligned(&batch->pool, max_sum_size, 4).gpu;
+      /* MDI requires prefix sums, but not for our current unroll path */
+      if (!unroll_output) {
+         size_t max_sum_size = sizeof(uint32_t) * indirect->draw_count;
+         ia.prefix_sums =
+            agx_pool_alloc_aligned(&batch->pool, max_sum_size, 4).gpu;
+      }
    }
 
    batch->uniforms.input_assembly =
       agx_pool_upload_aligned(&batch->pool, &ia, sizeof(ia), 8);
+}
+
+static uint64_t
+agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
+                          size_t index_buffer_size_B,
+                          const struct pipe_draw_info *info,
+                          const struct pipe_draw_start_count_bias *draw,
+                          const struct pipe_draw_indirect_info *indirect)
+{
+   agx_upload_ia_params(batch, info, indirect, input_index_buffer,
+                        index_buffer_size_B, 0);
 
    struct agx_geometry_params params = {
       .state = agx_batch_geometry_state(batch),
@@ -3511,10 +3541,7 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
       batch->cdm = agx_encoder_allocate(batch, dev);
    }
 
-   if (info->primitive_restart) {
-      fprintf(stderr, "Mode: %s\n", util_str_prim_mode(info->mode, true));
-      unreachable("TODO: Primitive restart with GS");
-   }
+   assert(!info->primitive_restart && "should have been lowered");
 
    struct pipe_grid_info grid = {.block = {1, 1, 1}};
    struct agx_resource grid_indirect_rsrc = {.bo = batch->geom_params_bo};
@@ -3630,6 +3657,88 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
    ctx->base.bind_vs_state(&ctx->base, vs_cso);
    ctx->base.bind_gs_state(&ctx->base, gs_cso);
    memcpy(ctx->prims_generated, prim_queries, sizeof(prim_queries));
+}
+
+static void
+agx_draw_without_restart(struct agx_batch *batch,
+                         const struct pipe_draw_info *info,
+                         unsigned drawid_offset,
+                         const struct pipe_draw_indirect_info *indirect,
+                         const struct pipe_draw_start_count_bias *draw)
+{
+   struct agx_context *ctx = batch->ctx;
+   struct agx_device *dev = agx_device(ctx->base.screen);
+
+   perf_debug(dev, "Unrolling primitive restart due to GS/XFB");
+
+   agx_batch_init_state(batch);
+
+   size_t ib_extent = 0;
+   uint64_t ib = agx_index_buffer_ptr(batch, info, draw, &ib_extent);
+
+   /* The rest of this function handles only the general case of indirect
+    * multidraws, so synthesize an indexed indirect draw now if we need one for
+    * a direct draw (necessarily only one). This unifies the code paths.
+    */
+   struct pipe_draw_indirect_info indirect_synthesized = {.draw_count = 1};
+
+   if (!indirect) {
+      uint32_t desc[5] = {draw->count, info->instance_count, draw->start,
+                          draw->index_bias, info->start_instance};
+
+      u_upload_data(ctx->base.const_uploader, 0, sizeof(desc), 4, &desc,
+                    &indirect_synthesized.offset, &indirect_synthesized.buffer);
+
+      indirect = &indirect_synthesized;
+   }
+
+   /* Next, we unroll the index buffer used by the indirect draw */
+   uint8_t log2_idx_size = util_logbase2(info->index_size);
+   assert(log2_idx_size <= 2);
+
+   if (!batch->cdm.bo)
+      batch->cdm = agx_encoder_allocate(batch, dev);
+
+   if (!ctx->gs_unroll_restart[info->mode][log2_idx_size]) {
+      struct agx_shader_key base_key = {0};
+
+      ctx->gs_unroll_restart[info->mode][log2_idx_size] = agx_compile_nir(
+         dev, agx_nir_unroll_restart(dev->libagx, info->mode, info->index_size),
+         &base_key, NULL);
+   }
+
+   /* Allocate output indirect draw descriptors. This is exact. */
+   struct agx_resource out_draws_rsrc = {0};
+   struct agx_ptr out_draws = agx_pool_alloc_aligned_with_bo(
+      &batch->pool, 5 * sizeof(uint32_t) * indirect->draw_count, 4,
+      &out_draws_rsrc.bo);
+
+   agx_upload_ia_params(batch, info, indirect, ib, ib_extent, out_draws.gpu);
+
+   /* Unroll the index buffer for each draw */
+   const struct pipe_grid_info grid_setup = {
+      .block = {1, 1, 1},
+      .grid = {indirect->draw_count, 1, 1},
+   };
+
+   agx_launch(batch, &grid_setup,
+              ctx->gs_unroll_restart[info->mode][log2_idx_size],
+              PIPE_SHADER_COMPUTE);
+
+   /* Now draw the results without restart */
+   struct pipe_draw_info new_info = *info;
+   new_info.primitive_restart = false;
+   new_info.mode = u_decomposed_prim(info->mode);
+   new_info.index.resource = ctx->heap;
+   new_info.has_user_indices = false;
+
+   struct pipe_draw_indirect_info new_indirect = *indirect;
+   new_indirect.buffer = &out_draws_rsrc.base;
+   new_indirect.offset = out_draws.gpu - out_draws_rsrc.bo->ptr.gpu;
+   new_indirect.stride = 5 * sizeof(uint32_t);
+
+   ctx->base.draw_vbo(&ctx->base, &new_info, drawid_offset, &new_indirect, draw,
+                      1);
 }
 
 static bool
@@ -3841,15 +3950,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       return;
    }
 
-   bool uses_gs = ctx->stage[PIPE_SHADER_GEOMETRY].shader;
-
-   if (uses_gs && info->primitive_restart) {
-      perf_debug_ctx(ctx, "Emulating primitive restart due to GS");
-      util_draw_vbo_without_prim_restart(pctx, info, drawid_offset, indirect,
-                                         draws);
-      return;
-   }
-
    /* Only the rasterization stream counts */
    if (ctx->active_queries && ctx->prims_generated[0] &&
        !ctx->stage[PIPE_SHADER_GEOMETRY].shader) {
@@ -3859,6 +3959,14 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    struct agx_batch *batch = agx_get_batch(ctx);
+
+   if (ctx->stage[PIPE_SHADER_GEOMETRY].shader && info->primitive_restart &&
+       info->index_size) {
+
+      agx_draw_without_restart(batch, info, drawid_offset, indirect, draws);
+      return;
+   }
+
    agx_batch_add_timestamp_query(batch, ctx->time_elapsed);
 
    unsigned idx_size = info->index_size;
@@ -3866,10 +3974,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    size_t ib_extent = 0;
 
    if (idx_size) {
-      if (indirect != NULL)
-         ib = agx_index_buffer_rsrc_ptr(batch, info, &ib_extent);
-      else
-         ib = agx_index_buffer_direct_ptr(batch, draws, info, &ib_extent);
+      ib =
+         agx_index_buffer_ptr(batch, info, indirect ? NULL : draws, &ib_extent);
    }
 
 #ifndef NDEBUG
@@ -3905,7 +4011,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                                 .gpu;
 
       batch->uniforms.geometry_params =
-         agx_batch_geometry_params(batch, ib, info, draws, indirect);
+         agx_batch_geometry_params(batch, ib, ib_extent, info, draws, indirect);
    }
 
    struct agx_compiled_shader *vs = ctx->vs;
