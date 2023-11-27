@@ -76,6 +76,8 @@ export EXTRA_MESON_ARGS="--cross-file=/cross_file-${arch}.txt -D libdir=lib/${MU
 
 . .gitlab-ci/container/build-wayland.sh
 
+. .gitlab-ci/container/build-directx-headers.sh
+
 apt-get purge -y "${EPHEMERAL[@]}"
 
 . .gitlab-ci/container/container_post_build.sh

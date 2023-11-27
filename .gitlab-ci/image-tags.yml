@@ -10,7 +10,7 @@ variables:
    DEBIAN_BASE_TAG: "2023-11-18-deqp-runner"
 
    DEBIAN_X86_64_BUILD_IMAGE_PATH: "debian/x86_64_build"
-   DEBIAN_BUILD_TAG: "2023-11-20-meson"
+   DEBIAN_BUILD_TAG: "2023-12-01-debian-x86_32-d3d12_2"
 
    DEBIAN_X86_64_TEST_BASE_IMAGE: "debian/x86_64_test-base"
 

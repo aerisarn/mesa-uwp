@@ -24,6 +24,8 @@
 #ifndef D3D12_COMPILER_H
 #define D3D12_COMPILER_H
 
+#include "d3d12_common.h"
+
 #include "dxil_nir_lower_int_samplers.h"
 
 #include "pipe/p_defines.h"
