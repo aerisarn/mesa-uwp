@@ -471,7 +471,13 @@ aco_nir_op_supports_packed_math_16bit(const nir_alu_instr* alu)
    case nir_op_imin:
    case nir_op_imax:
    case nir_op_umin:
-   case nir_op_umax: return true;
+   case nir_op_umax:
+   case nir_op_fddx:
+   case nir_op_fddy:
+   case nir_op_fddx_fine:
+   case nir_op_fddy_fine:
+   case nir_op_fddx_coarse:
+   case nir_op_fddy_coarse: return true;
    case nir_op_ishl: /* TODO: in NIR, these have 32bit shift operands */
    case nir_op_ishr: /* while Radeon needs 16bit operands when vectorized */
    case nir_op_ushr:

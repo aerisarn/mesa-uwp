@@ -3866,11 +3866,10 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          /* Source is the same in all lanes, so the derivative is zero.
           * This also avoids emitting invalid IR.
           */
-         bld.copy(Definition(dst), Operand::zero());
+         bld.copy(Definition(dst), Operand::zero(dst.bytes()));
          break;
       }
 
-      Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
       uint16_t dpp_ctrl1, dpp_ctrl2;
       if (instr->op == nir_op_fddx_fine) {
          dpp_ctrl1 = dpp_quad_perm(0, 0, 2, 2);
@@ -3886,14 +3885,38 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
             dpp_ctrl2 = dpp_quad_perm(2, 2, 2, 2);
       }
 
-      Temp tmp;
-      if (ctx->program->gfx_level >= GFX8) {
+      if (dst.regClass() == v1 && instr->def.bit_size == 16) {
+         assert(instr->def.num_components == 2);
+
+         Temp src = as_vgpr(ctx, get_alu_src_vop3p(ctx, instr->src[0]));
+
+         /* swizzle to opsel: all swizzles are either 0 (x) or 1 (y) */
+         unsigned opsel_lo = instr->src[0].swizzle[0] & 1;
+         unsigned opsel_hi = instr->src[0].swizzle[1] & 1;
+         opsel_lo |= opsel_lo << 1;
+         opsel_hi |= opsel_hi << 1;
+
          Temp tl = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl1);
-         bld.vop2_dpp(aco_opcode::v_sub_f32, Definition(dst), src, tl, dpp_ctrl2);
+         Temp tr = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl2);
+
+         VALU_instruction& sub =
+            bld.vop3p(aco_opcode::v_pk_add_f16, Definition(dst), tr, tl, opsel_lo, opsel_hi)
+               .instr->valu();
+         sub.neg_lo[1] = true;
+         sub.neg_hi[1] = true;
       } else {
-         Temp tl = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl1);
-         Temp tr = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl2);
-         bld.vop2(aco_opcode::v_sub_f32, Definition(dst), tr, tl);
+         Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
+
+         if (ctx->program->gfx_level >= GFX8) {
+            aco_opcode sub =
+               instr->def.bit_size == 16 ? aco_opcode::v_sub_f16 : aco_opcode::v_sub_f32;
+            Temp tl = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl1);
+            bld.vop2_dpp(sub, Definition(dst), src, tl, dpp_ctrl2);
+         } else {
+            Temp tl = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl1);
+            Temp tr = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl2);
+            bld.vop2(aco_opcode::v_sub_f32, Definition(dst), tr, tl);
+         }
       }
       set_wqm(ctx, true);
       break;
