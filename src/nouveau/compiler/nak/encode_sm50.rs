@@ -47,30 +47,6 @@ impl Src {
     }
 }
 
-fn src_mod_has_abs(src_mod: SrcMod) -> bool {
-    match src_mod {
-        SrcMod::None | SrcMod::FNeg | SrcMod::INeg | SrcMod::BNot => false,
-        SrcMod::FAbs | SrcMod::FNegAbs => true,
-        _ => panic!("Not an ALU source modifier"),
-    }
-}
-
-fn src_mod_has_neg(src_mod: SrcMod) -> bool {
-    match src_mod {
-        SrcMod::None | SrcMod::FAbs | SrcMod::BNot => false,
-        SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg => true,
-        _ => panic!("Not an ALU source modifier"),
-    }
-}
-
-fn src_mod_is_bnot(src_mod: SrcMod) -> bool {
-    match src_mod {
-        SrcMod::None => false,
-        SrcMod::BNot => true,
-        _ => panic!("Not an predicate source modifier"),
-    }
-}
-
 fn align_down(value: usize, align: usize) -> usize {
     value / align * align
 }
@@ -228,7 +204,7 @@ impl SM50Instr {
             _ => panic!("Not a register"),
         };
         self.set_pred_reg(range, reg);
-        self.set_bit(not_bit, not ^ src_mod_is_bnot(src.src_mod));
+        self.set_bit(not_bit, not ^ src.src_mod.is_bnot());
     }
 
     fn set_dst(&mut self, dst: Dst) {
@@ -712,8 +688,7 @@ impl SM50Instr {
         self.set_bit(48, op.signed); /* src0 signed */
         self.set_bit(
             51,
-            src_mod_has_neg(op.srcs[0].src_mod)
-                ^ src_mod_has_neg(op.srcs[1].src_mod),
+            op.srcs[0].src_mod.is_ineg() ^ op.srcs[1].src_mod.is_ineg(),
         );
         self.set_bit(53, op.signed); /* src1 signed */
 
@@ -1341,8 +1316,7 @@ impl SM50Instr {
             self.set_src_imm32(20..52, imm32);
             self.set_bit(
                 19,
-                src_mod_has_neg(op.srcs[0].src_mod)
-                    ^ src_mod_has_neg(op.srcs[1].src_mod),
+                op.srcs[0].src_mod.has_fneg() ^ op.srcs[1].src_mod.has_fneg(),
             );
         } else {
             match &op.srcs[1].src_ref {
@@ -1367,8 +1341,7 @@ impl SM50Instr {
             self.set_bit(45, false); /* TODO: DNZ */
             self.set_bit(
                 48,
-                src_mod_has_neg(op.srcs[0].src_mod)
-                    ^ src_mod_has_neg(op.srcs[1].src_mod),
+                op.srcs[0].src_mod.has_fneg() ^ op.srcs[1].src_mod.has_fneg(),
             );
             self.set_bit(50, op.saturate);
         }
