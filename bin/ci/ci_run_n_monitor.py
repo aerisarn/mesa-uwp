@@ -298,6 +298,11 @@ def parse_args() -> None:
         "--pipeline-url",
         help="URL of the pipeline to use, instead of auto-detecting it.",
     )
+    mutex_group1.add_argument(
+        "--mr",
+        type=int,
+        help="ID of a merge request; the latest pipeline in that MR will be used.",
+    )
 
     args = parser.parse_args()
 
@@ -372,11 +377,14 @@ if __name__ == "__main__":
             pipe = cur_project.pipelines.get(pipeline_id)
             REV = pipe.sha
         else:
-            REV = check_output(['git', 'rev-parse', REV]).decode('ascii').strip()
-
             mesa_project = gl.projects.get("mesa/mesa")
-            user_project = get_gitlab_project(gl, args.project)
-            (pipe, cur_project) = wait_for_pipeline([mesa_project, user_project], REV)
+            projects = [mesa_project]
+            if args.mr:
+                REV = mesa_project.mergerequests.get(args.mr).sha
+            else:
+                REV = check_output(['git', 'rev-parse', REV]).decode('ascii').strip()
+                projects.append(get_gitlab_project(gl, args.project))
+            (pipe, cur_project) = wait_for_pipeline(projects, REV)
 
         print(f"Revision: {REV}")
         print(f"Pipeline: {pipe.web_url}")
