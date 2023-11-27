@@ -817,7 +817,7 @@ struct zink_shader {
    unsigned num_texel_buffers;
    uint32_t ubos_used; // bitfield of which ubo indices are used
    uint32_t ssbos_used; // bitfield of which ssbo indices are used
-   uint32_t flat_flags;
+   uint64_t flat_flags;
    bool bindless;
    bool can_inline;
    bool has_uniforms;
