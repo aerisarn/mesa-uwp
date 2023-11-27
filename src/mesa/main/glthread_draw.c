@@ -1967,3 +1967,71 @@ _mesa_DrawElementsInstancedBaseVertexBaseInstanceDrawID(void)
 {
    unreachable("should never end up here");
 }
+
+struct marshal_cmd_PushMatrix
+{
+   struct marshal_cmd_base cmd_base;
+};
+
+uint32_t
+_mesa_unmarshal_PushMatrix(struct gl_context *ctx,
+                           const struct marshal_cmd_PushMatrix *restrict cmd)
+{
+   const unsigned push_matrix_size = 1;
+   const unsigned mult_matrixf_size = 9;
+   const unsigned draw_elements_size =
+      (align(sizeof(struct marshal_cmd_DrawElementsBaseVertex), 8) / 8);
+   const unsigned pop_matrix_size = 1;
+   uint64_t *next1 = _mesa_glthread_next_cmd((uint64_t *)cmd, push_matrix_size);
+   uint64_t *next2;
+
+   /* Viewperf has these call patterns. */
+   switch (_mesa_glthread_get_cmd(next1)->cmd_id) {
+   case DISPATCH_CMD_DrawElementsBaseVertex:
+      /* Execute this sequence:
+       *    glPushMatrix
+       *    (glMultMatrixf with identity is eliminated by the marshal function)
+       *    glDrawElementsBaseVertex (also used by glDraw{Range}Elements)
+       *    glPopMatrix
+       * as:
+       *    glDrawElementsBaseVertex (also used by glDraw{Range}Elements)
+       */
+      next2 = _mesa_glthread_next_cmd(next1, draw_elements_size);
+
+      if (_mesa_glthread_get_cmd(next2)->cmd_id == DISPATCH_CMD_PopMatrix) {
+         assert(_mesa_glthread_get_cmd(next2)->cmd_size == pop_matrix_size);
+
+         /* The beauty of this is that this is inlined. */
+         _mesa_unmarshal_DrawElementsBaseVertex(ctx, (void*)next1);
+         return push_matrix_size + draw_elements_size + pop_matrix_size;
+      }
+      break;
+
+   case DISPATCH_CMD_MultMatrixf:
+      /* Skip this sequence:
+       *    glPushMatrix
+       *    glMultMatrixf
+       *    glPopMatrix
+       */
+      next2 = _mesa_glthread_next_cmd(next1, mult_matrixf_size);
+
+      if (_mesa_glthread_get_cmd(next2)->cmd_id == DISPATCH_CMD_PopMatrix) {
+         assert(_mesa_glthread_get_cmd(next2)->cmd_size == pop_matrix_size);
+         return push_matrix_size + mult_matrixf_size + pop_matrix_size;
+      }
+      break;
+   }
+
+   CALL_PushMatrix(ctx->Dispatch.Current, ());
+   return push_matrix_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_PushMatrix(void)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_PushMatrix,
+                                   sizeof(struct marshal_cmd_PushMatrix));
+   _mesa_glthread_PushMatrix(ctx);
+}

@@ -75,6 +75,19 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
    return cmd_base;
 }
 
+static inline struct marshal_cmd_base *
+_mesa_glthread_get_cmd(uint64_t *opaque_cmd)
+{
+   return (struct marshal_cmd_base*)opaque_cmd;
+}
+
+static inline uint64_t *
+_mesa_glthread_next_cmd(uint64_t *opaque_cmd, unsigned cmd_size)
+{
+   assert(_mesa_glthread_get_cmd(opaque_cmd)->cmd_size == cmd_size);
+   return opaque_cmd + cmd_size;
+}
+
 static inline bool
 _mesa_glthread_call_is_last(struct glthread_state *glthread,
                             struct marshal_cmd_base *last)
