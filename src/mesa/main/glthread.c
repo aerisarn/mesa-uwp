@@ -340,6 +340,11 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
 
    struct glthread_batch *next = glthread->next_batch;
 
+   /* Mark the end of the batch, but don't increment "used". */
+   struct marshal_cmd_base *last =
+      (struct marshal_cmd_base *)&next->buffer[glthread->used];
+   last->cmd_id = NUM_DISPATCH_CMD;
+
    p_atomic_add(&glthread->stats.num_offloaded_items, glthread->used);
    next->used = glthread->used;
 
