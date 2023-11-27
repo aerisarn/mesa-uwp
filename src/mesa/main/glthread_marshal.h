@@ -33,6 +33,7 @@
 #include "main/glthread.h"
 #include "main/context.h"
 #include "main/macros.h"
+#include "main/matrix.h"
 #include "marshal_generated.h"
 
 struct marshal_cmd_base
@@ -397,19 +398,6 @@ _mesa_get_matrix_index(struct gl_context *ctx, GLenum mode)
       return M_PROGRAM0 + (mode - GL_MATRIX0_ARB);
 
    return M_DUMMY;
-}
-
-static inline bool
-_mesa_matrix_is_identity(const float *m)
-{
-   static float identity[16] = {
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-   };
-
-   return !memcmp(m, identity, sizeof(identity));
 }
 
 static inline void
