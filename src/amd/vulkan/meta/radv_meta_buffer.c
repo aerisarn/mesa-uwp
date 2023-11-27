@@ -1,5 +1,6 @@
 #include "nir/nir_builder.h"
 #include "radv_meta.h"
+#include "radv_sdma.h"
 
 #include "radv_cs.h"
 #include "sid.h"

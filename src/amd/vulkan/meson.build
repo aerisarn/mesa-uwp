@@ -129,6 +129,7 @@ libradv_files = files(
   'radv_rt_shader.c',
   'radv_sampler.c',
   'radv_sdma.c',
+  'radv_sdma.h',
   'radv_shader.c',
   'radv_shader.h',
   'radv_shader_args.c',
@@ -292,7 +293,7 @@ if with_tests
       cpp_args : [cpp_msvc_compat_args],
       gnu_symbol_visibility : 'hidden',
       include_directories : [
-        inc_include, 
+        inc_include,
         inc_src,
         inc_mapi,
         inc_mesa,

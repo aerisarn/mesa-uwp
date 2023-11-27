@@ -24,31 +24,11 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "radv_sdma.h"
 #include "util/macros.h"
 #include "util/u_memory.h"
 #include "radv_cs.h"
 #include "radv_private.h"
-
-struct radv_sdma_linear_info {
-   uint64_t va;
-   unsigned pitch;
-   unsigned slice_pitch;
-   unsigned bpp;
-   unsigned blk_w;
-   unsigned blk_h;
-};
-
-struct radv_sdma_tiled_info {
-   VkExtent3D extent;
-   uint64_t va;
-   uint64_t meta_va;
-   uint32_t meta_config;
-   uint32_t info_dword;
-   uint32_t header_dword;
-   unsigned bpp;
-   unsigned blk_w;
-   unsigned blk_h;
-};
 
 struct radv_sdma_chunked_copy_info {
    unsigned bpp;

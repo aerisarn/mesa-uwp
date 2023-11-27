@@ -2883,19 +2883,6 @@ void radv_rra_trace_init(struct radv_device *device);
 VkResult radv_rra_dump_trace(VkQueue vk_queue, char *filename);
 void radv_rra_trace_finish(VkDevice vk_device, struct radv_rra_trace_data *data);
 
-void radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdbuf *cs, struct radv_image *image,
-                                 struct radv_buffer *buffer, const VkBufferImageCopy2 *region, bool to_image);
-bool radv_sdma_use_unaligned_buffer_image_copy(const struct radv_device *device, const struct radv_image *image,
-                                               const struct radv_buffer *buffer, const VkBufferImageCopy2 *region);
-void radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct radeon_cmdbuf *cs,
-                                           struct radv_image *image, struct radv_buffer *buffer,
-                                           const VkBufferImageCopy2 *region, struct radeon_winsys_bo *temp_bo,
-                                           bool to_image);
-void radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va, uint64_t dst_va,
-                           uint64_t size);
-void radv_sdma_fill_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, const uint64_t va,
-                           const uint64_t size, const uint32_t value);
-
 void radv_memory_trace_init(struct radv_device *device);
 void radv_rmv_log_bo_allocate(struct radv_device *device, struct radeon_winsys_bo *bo, uint32_t size, bool is_internal);
 void radv_rmv_log_bo_destroy(struct radv_device *device, struct radeon_winsys_bo *bo);
