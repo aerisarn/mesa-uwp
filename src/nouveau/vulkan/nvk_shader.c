@@ -67,6 +67,14 @@ pipe_shader_type_from_mesa(gl_shader_stage stage)
 VkShaderStageFlags
 nvk_nak_stages(const struct nv_device_info *info)
 {
+   const VkShaderStageFlags all =
+      VK_SHADER_STAGE_VERTEX_BIT |
+      VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+      VK_SHADER_STAGE_GEOMETRY_BIT |
+      VK_SHADER_STAGE_FRAGMENT_BIT |
+      VK_SHADER_STAGE_COMPUTE_BIT;
+
    const struct debug_control flags[] = {
       { "vs", BITFIELD64_BIT(MESA_SHADER_VERTEX) },
       { "tcs", BITFIELD64_BIT(MESA_SHADER_TESS_CTRL) },
@@ -74,13 +82,13 @@ nvk_nak_stages(const struct nv_device_info *info)
       { "gs", BITFIELD64_BIT(MESA_SHADER_GEOMETRY) },
       { "fs", BITFIELD64_BIT(MESA_SHADER_FRAGMENT) },
       { "cs", BITFIELD64_BIT(MESA_SHADER_COMPUTE) },
-      { "all", ~0 },
+      { "all", all },
       { NULL, 0 },
    };
 
    const char *env_str = getenv("NVK_USE_NAK");
    if (env_str == NULL)
-      return info->cls_eng3d >= TURING_A ? ~0 : 0;
+      return info->cls_eng3d >= TURING_A ? all : 0;
    else
       return parse_debug_string(env_str, flags);
 }
@@ -88,7 +96,7 @@ nvk_nak_stages(const struct nv_device_info *info)
 static bool
 use_nak(const struct nvk_physical_device *pdev, gl_shader_stage stage)
 {
-   return nvk_nak_stages(&pdev->info) & BITFIELD64_BIT(stage);
+   return nvk_nak_stages(&pdev->info) & mesa_to_vk_shader_stage(stage);
 }
 
 uint64_t
