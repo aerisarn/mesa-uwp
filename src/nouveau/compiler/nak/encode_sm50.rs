@@ -1496,15 +1496,15 @@ impl SM50Instr {
         match &op.src.src_ref {
             SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x38e0);
-                self.set_src_imm_f20(20..40, 56, *imm32);
+                self.set_src_imm_i20(20..40, 56, *imm32);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5ce0);
-                self.set_reg_fmod_src(20..28, 45, 49, op.src);
+                self.set_reg_src(20..28, op.src);
             }
-            SrcRef::CBuf(_) => {
+            SrcRef::CBuf(cbuf) => {
                 self.set_opcode(0x4ce0);
-                self.set_cb_fmod_src(20..39, 45, 49, op.src);
+                self.set_src_cb(20..39, cbuf);
             }
             src => panic!("Unsupported src type for IABS: {src}"),
         }
