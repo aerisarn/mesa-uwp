@@ -70,7 +70,6 @@ agx_nir_lower_frag_sidefx(nir_shader *s)
     * incorrectly and then the side effects not kicking in.
     */
    if (s->info.fs.early_fragment_tests) {
-      assert(!writes_zs && "incompatible");
       nir_function_impl *impl = nir_shader_get_entrypoint(s);
       nir_builder b = nir_builder_at(nir_before_impl(impl));
       nir_sample_mask_agx(&b, nir_imm_intN_t(&b, ALL_SAMPLES, 16),
