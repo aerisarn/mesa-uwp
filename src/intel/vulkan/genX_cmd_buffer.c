@@ -1361,6 +1361,63 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.current_l3_config = cfg;
 }
 
+ALWAYS_INLINE void
+genX(invalidate_aux_map)(struct anv_batch *batch,
+                         struct anv_device *device,
+                         enum intel_engine_class engine_class,
+                         enum anv_pipe_bits bits)
+{
+#if GFX_VER == 12
+   if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) && device->info->has_aux_map) {
+      uint32_t register_addr = 0;
+      switch (engine_class) {
+      case INTEL_ENGINE_CLASS_COMPUTE:
+         register_addr = GENX(COMPCS0_CCS_AUX_INV_num);
+         break;
+      case INTEL_ENGINE_CLASS_COPY:
+#if GFX_VERx10 >= 125
+         register_addr = GENX(BCS_CCS_AUX_INV_num);
+#endif
+         break;
+      case INTEL_ENGINE_CLASS_VIDEO:
+         register_addr = GENX(VD0_CCS_AUX_INV_num);
+         break;
+      case INTEL_ENGINE_CLASS_RENDER:
+      default:
+         register_addr = GENX(GFX_CCS_AUX_INV_num);
+         break;
+      }
+
+      anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+         lri.RegisterOffset = register_addr;
+         lri.DataDWord = 1;
+      }
+
+      /* Wa_16018063123 - emit fast color dummy blit before MI_FLUSH_DW. */
+      if (intel_needs_workaround(device->info, 16018063123) &&
+          engine_class == INTEL_ENGINE_CLASS_COPY) {
+         genX(batch_emit_fast_color_dummy_blit)(batch, device);
+      }
+
+      /* HSD 22012751911: SW Programming sequence when issuing aux invalidation:
+       *
+       *    "Poll Aux Invalidation bit once the invalidation is set
+       *     (Register 4208 bit 0)"
+       */
+      anv_batch_emit(batch, GENX(MI_SEMAPHORE_WAIT), sem) {
+         sem.CompareOperation = COMPARE_SAD_EQUAL_SDD;
+         sem.WaitMode = PollingMode;
+         sem.RegisterPollMode = true;
+         sem.SemaphoreDataDword = 0x0;
+         sem.SemaphoreAddress =
+            anv_address_from_u64(register_addr);
+      }
+   }
+#else
+   assert(!device->info->has_aux_map);
+#endif
+}
+
 ALWAYS_INLINE enum anv_pipe_bits
 genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
                               struct anv_device *device,
@@ -1642,32 +1699,10 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
       genx_batch_emit_pipe_control_write(batch, device->info, current_pipeline,
                                          sync_op, addr, 0, bits);
 
-#if GFX_VER == 12
-      if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) && device->info->has_aux_map) {
-         uint64_t register_addr =
-            current_pipeline == GPGPU ? GENX(COMPCS0_CCS_AUX_INV_num) :
-                                        GENX(GFX_CCS_AUX_INV_num);
-         anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-            lri.RegisterOffset = register_addr;
-            lri.DataDWord = 1;
-         }
-         /* HSD 22012751911: SW Programming sequence when issuing aux invalidation:
-          *
-          *    "Poll Aux Invalidation bit once the invalidation is set
-          *     (Register 4208 bit 0)"
-          */
-         anv_batch_emit(batch, GENX(MI_SEMAPHORE_WAIT), sem) {
-            sem.CompareOperation = COMPARE_SAD_EQUAL_SDD;
-            sem.WaitMode = PollingMode;
-            sem.RegisterPollMode = true;
-            sem.SemaphoreDataDword = 0x0;
-            sem.SemaphoreAddress =
-               anv_address_from_u64(register_addr);
-         }
-      }
-#else
-      assert(!device->info->has_aux_map);
-#endif
+      enum intel_engine_class engine_class =
+         current_pipeline == GPGPU ? INTEL_ENGINE_CLASS_COMPUTE :
+                                     INTEL_ENGINE_CLASS_RENDER;
+      genX(invalidate_aux_map)(batch, device, engine_class, bits);
 
       bits &= ~ANV_PIPE_INVALIDATE_BITS;
    }
@@ -1704,8 +1739,16 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    else if (bits == 0)
       return;
 
-   if (anv_cmd_buffer_is_blitter_queue(cmd_buffer))
+   if (anv_cmd_buffer_is_blitter_queue(cmd_buffer) ||
+       anv_cmd_buffer_is_video_queue(cmd_buffer)) {
+      if (bits & ANV_PIPE_INVALIDATE_BITS) {
+         genX(invalidate_aux_map)(&cmd_buffer->batch, cmd_buffer->device,
+                                  cmd_buffer->queue_family->engine_class, bits);
+         bits &= ~ANV_PIPE_INVALIDATE_BITS;
+      }
+      cmd_buffer->state.pending_pipe_bits = bits;
       return;
+   }
 
    const bool trace_flush =
       (bits & (ANV_PIPE_FLUSH_BITS |
@@ -3340,8 +3383,18 @@ genX(BeginCommandBuffer)(
    trace_intel_begin_cmd_buffer(&cmd_buffer->trace);
 
    if (anv_cmd_buffer_is_video_queue(cmd_buffer) ||
-       anv_cmd_buffer_is_blitter_queue(cmd_buffer))
+       anv_cmd_buffer_is_blitter_queue(cmd_buffer)) {
+      /* Re-emit the aux table register in every command buffer.  This way we're
+       * ensured that we have the table even if this command buffer doesn't
+       * initialize any images.
+       */
+      if (cmd_buffer->device->info->has_aux_map) {
+         anv_add_pending_pipe_bits(cmd_buffer,
+                                   ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
+                                   "new cmd buffer with aux-tt");
+      }
       return VK_SUCCESS;
+   }
 
 #if GFX_VER >= 12
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
@@ -3532,6 +3585,7 @@ end_command_buffer(struct anv_cmd_buffer *cmd_buffer)
    if (anv_cmd_buffer_is_video_queue(cmd_buffer) ||
        anv_cmd_buffer_is_blitter_queue(cmd_buffer)) {
       trace_intel_end_cmd_buffer(&cmd_buffer->trace, cmd_buffer->vk.level);
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
       anv_cmd_buffer_end_batch_buffer(cmd_buffer);
       return VK_SUCCESS;
    }
