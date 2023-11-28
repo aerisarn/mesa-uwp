@@ -317,6 +317,7 @@ struct EncodedBitstreamResolvedMetadata
    * encoded in the GPU
    */
    uint64_t preEncodeGeneratedHeadersByteSize = 0;
+   uint64_t preEncodeGeneratedHeadersBytePadding = 0;
    std::vector<uint64_t> pWrittenCodecUnitsSizes;
 
    /* 

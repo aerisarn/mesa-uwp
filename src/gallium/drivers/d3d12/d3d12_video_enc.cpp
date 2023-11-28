@@ -1961,6 +1961,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
                                                       pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize,
                                                       pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes);
    assert(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize == pD3D12Enc->m_BitstreamHeadersBuffer.size());
+   pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersBytePadding = 0;
 
    // Only upload headers now and leave prefix offset space gap in compressed bitstream if the codec builds headers before execution.
    if (!pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].postEncodeHeadersNeeded)
@@ -1978,12 +1979,9 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
             && ((pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize % pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.CompressedBitstreamBufferAccessAlignment) != 0)
          ) {
             size_t new_size = ALIGN(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize, pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.CompressedBitstreamBufferAccessAlignment);
-            size_t align_padding = new_size - pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize;
+            pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersBytePadding = new_size - pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize;
             pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize = new_size;
             pD3D12Enc->m_BitstreamHeadersBuffer.resize(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize, 0);
-            // Update last pWrittenCodecUnitsSizes with extra offset padding
-            if (pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size() > 0)
-               pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes[pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size() - 1] += align_padding;
          }
 
          // Upload the CPU buffers with the bitstream headers to the compressed bitstream resource in the interval
@@ -2289,7 +2287,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
 void
 d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
                                   void *feedback,
-                                  unsigned *size,
+                                  unsigned *output_buffer_size,
                                   struct pipe_enc_feedback_metadata* pMetadata)
 {
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
@@ -2380,69 +2378,54 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
          *pMetadata = opt_metadata;
       return;
    }
-   debug_printf("WrittenSubregionsCount: %" PRIu64" \n", encoderMetadata.WrittenSubregionsCount);
 
-   // Calculate the full bitstream size
+   uint64_t unpadded_frame_size = 0;
    if(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].postEncodeHeadersNeeded)
    {
-      ///
-      /// If we didn't write headers before encode execution, finalize the codec specific bitsteam now
-      ///
-
-      *size = d3d12_video_encoder_build_post_encode_codec_bitstream(
-         // Current encoder
+      *output_buffer_size = d3d12_video_encoder_build_post_encode_codec_bitstream(
          pD3D12Enc,
-         // Associated frame fenceValue
          requested_metadata_fence,
-         // metadata desc
          pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot]
       );
+      for (uint32_t i = 0; i < pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size(); i++)
+      {
+         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].size = pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes[i];
+         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].offset = unpadded_frame_size;
+         unpadded_frame_size += opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].size;
+         opt_metadata.codec_unit_metadata_count++;
+      }
    }
    else
    {
-      ///
-      /// If we wrote headers (if any) before encode execution, use that size to calculate feedback size of complete bitstream.
-      ///
+      *output_buffer_size = 0;
+      for (uint32_t i = 0; i < pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size() ; i++) {
+         unpadded_frame_size += pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes[i];
+         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].size = pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes[i];
+         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].offset = *output_buffer_size;
+         *output_buffer_size += pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes[i];
+         opt_metadata.codec_unit_metadata_count++;
+      }
 
-      *size = static_cast<unsigned int>(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersByteSize + encoderMetadata.EncodedBitstreamWrittenBytesCount);
+      // Add padding between pre encode headers (e.g EncodeFrame driver offset alignment) and the first slice
+      *output_buffer_size += pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].preEncodeGeneratedHeadersBytePadding;
 
-      size_t num_headers = pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size();
-      // Prepare codec unit metadata post execution with pre-execution headers generation
-      for (unsigned i = 0; i < pSubregionsMetadata.size();i++) {
-         pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.push_back(pSubregionsMetadata[i].bSize);
-         // Report PIPE_VIDEO_CODEC_UNIT_LOCATION_FLAG_MAX_SLICE_SIZE_OVERFLOW on each slice entry in codec_unit_metadata
+      for (uint32_t i = 0; i < pSubregionsMetadata.size(); i++)
+      {
+         uint64_t unpadded_slice_size = pSubregionsMetadata[i].bSize - pSubregionsMetadata[i].bStartOffset;
+         unpadded_frame_size += unpadded_slice_size;
+         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].size = unpadded_slice_size;
+         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].offset = *output_buffer_size;
+         *output_buffer_size += pSubregionsMetadata[i].bSize;
          if ((pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_slice_size > 0) &&
-             (pSubregionsMetadata[i].bSize > pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_slice_size))
-            opt_metadata.codec_unit_metadata[num_headers + i].flags |= PIPE_VIDEO_CODEC_UNIT_LOCATION_FLAG_MAX_SLICE_SIZE_OVERFLOW;
+             (unpadded_slice_size > pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_slice_size))
+            opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].flags |= PIPE_VIDEO_CODEC_UNIT_LOCATION_FLAG_MAX_SLICE_SIZE_OVERFLOW;
+         opt_metadata.codec_unit_metadata_count++;
       }
    }
 
-   debug_printf("[d3d12_video_encoder_get_feedback] Requested metadata for encoded frame at fence %" PRIu64 " is %d (feedback was requested at current fence %" PRIu64 ")\n",
-         requested_metadata_fence,
-         *size,
-         pD3D12Enc->m_fenceValue);
-
-   // Report PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_MAX_FRAME_SIZE_OVERFLOW
    if ((pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_frame_size > 0) &&
-      (*size > pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_frame_size))
+      (unpadded_frame_size > pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].expected_max_frame_size))
       opt_metadata.encode_result |= PIPE_VIDEO_FEEDBACK_METADATA_ENCODE_FLAG_MAX_FRAME_SIZE_OVERFLOW;
-
-   // Report codec unit metadata
-   opt_metadata.codec_unit_metadata_count = 0u;
-   uint64_t absolute_offset_acum = 0u;
-   debug_printf("Written: %" PRIu64" codec units \n", static_cast<uint64_t>(pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size()));
-   for (uint32_t i = 0; i < pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes.size(); i++)
-   {
-      opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].size = pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].pWrittenCodecUnitsSizes[i];
-      opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].offset = absolute_offset_acum;
-      absolute_offset_acum += opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].size;
-      debug_printf("Codec unit %d: offset: %" PRIu64" - size: %" PRIu64" \n",
-         i,
-         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].offset,
-         opt_metadata.codec_unit_metadata[opt_metadata.codec_unit_metadata_count].size);
-
-      opt_metadata.codec_unit_metadata_count++;
-   }
 
    opt_metadata.average_frame_qp = static_cast<unsigned int>(encoderMetadata.EncodeStats.AverageQP);
 
@@ -2456,7 +2439,27 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec,
    if (pMetadata)
       *pMetadata = opt_metadata;
 
-   assert(absolute_offset_acum == *size);
+   debug_printf("[d3d12_video_encoder_get_feedback] Requested metadata for encoded frame at fence %" PRIu64 " is:\n"
+                "\tfeedback was requested at current fence: %" PRIu64 "\n"
+                "\toutput_buffer_size (including padding): %d\n"
+                "\tunpadded_frame_size: %" PRIu64 "\n"
+                "\ttotal padding: %" PRIu64 "\n"
+                "\tcodec_unit_metadata_count: %d\n",
+                pD3D12Enc->m_fenceValue,
+                requested_metadata_fence,
+                *output_buffer_size,
+                unpadded_frame_size,
+                static_cast<uint64_t>(static_cast<uint64_t>(*output_buffer_size) - unpadded_frame_size),
+                opt_metadata.codec_unit_metadata_count);
+
+   for (uint32_t i = 0; i < opt_metadata.codec_unit_metadata_count; i++) {
+      debug_printf("\tcodec_unit_metadata[%d].offset: %" PRIu64" - codec_unit_metadata[%d].size: %" PRIu64" \n",
+         i,
+         opt_metadata.codec_unit_metadata[i].offset,
+         i,
+         opt_metadata.codec_unit_metadata[i].size);
+   }
+
    pD3D12Enc->m_spEncodedFrameMetadata[current_metadata_slot].bRead = true;
 }
 
