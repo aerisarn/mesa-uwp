@@ -2878,12 +2878,18 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_fsign: {
       Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
       if (dst.regClass() == v2b) {
-         assert(ctx->program->gfx_level >= GFX9);
          /* replace negative zero with positive zero */
          src = bld.vop2(aco_opcode::v_add_f16, bld.def(v2b), Operand::zero(), src);
-         src =
-            bld.vop3(aco_opcode::v_med3_i16, bld.def(v2b), Operand::c16(-1), src, Operand::c16(1u));
-         bld.vop1(aco_opcode::v_cvt_f16_i16, Definition(dst), src);
+         if (ctx->program->gfx_level >= GFX9) {
+            src = bld.vop3(aco_opcode::v_med3_i16, bld.def(v2b), Operand::c16(-1), src,
+                           Operand::c16(1u));
+            bld.vop1(aco_opcode::v_cvt_f16_i16, Definition(dst), src);
+         } else {
+            src = convert_int(ctx, bld, src, 16, 32, true);
+            src = bld.vop3(aco_opcode::v_med3_i32, bld.def(v1), Operand::c32(-1), src,
+                           Operand::c32(1u));
+            bld.vop1(aco_opcode::v_cvt_f16_i16, Definition(dst), src);
+         }
       } else if (dst.regClass() == v1) {
          if (ctx->block->fp_mode.denorm32 == fp_denorm_flush) {
             /* If denormals are flushed, then v_mul_legacy_f32(2.0, src) can become omod. */
