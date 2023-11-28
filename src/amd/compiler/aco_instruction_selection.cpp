@@ -879,8 +879,11 @@ emit_vop2_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode opc, T
 
    if (flush_denorms && ctx->program->gfx_level < GFX9) {
       assert(dst.size() == 1);
-      Temp tmp = bld.vop2(opc, bld.def(v1), op[0], op[1]);
-      bld.vop2(aco_opcode::v_mul_f32, Definition(dst), Operand::c32(0x3f800000u), tmp);
+      Temp tmp = bld.vop2(opc, bld.def(dst.regClass()), op[0], op[1]);
+      if (dst.bytes() == 2)
+         bld.vop2(aco_opcode::v_mul_f16, Definition(dst), Operand::c16(0x3c00), tmp);
+      else
+         bld.vop2(aco_opcode::v_mul_f32, Definition(dst), Operand::c32(0x3f800000u), tmp);
    } else {
       if (nuw) {
          bld.nuw().vop2(opc, Definition(dst), op[0], op[1]);
@@ -2447,8 +2450,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    }
    case nir_op_fmax: {
       if (dst.regClass() == v2b) {
-         // TODO: check fp_mode.must_flush_denorms16_64
-         emit_vop2_instruction(ctx, instr, aco_opcode::v_max_f16, dst, true);
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_max_f16, dst, true, false,
+                               ctx->block->fp_mode.must_flush_denorms16_64);
       } else if (dst.regClass() == v1 && instr->def.bit_size == 16) {
          emit_vop3p_instruction(ctx, instr, aco_opcode::v_pk_max_f16, dst);
       } else if (dst.regClass() == v1) {
@@ -2464,8 +2467,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    }
    case nir_op_fmin: {
       if (dst.regClass() == v2b) {
-         // TODO: check fp_mode.must_flush_denorms16_64
-         emit_vop2_instruction(ctx, instr, aco_opcode::v_min_f16, dst, true);
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_min_f16, dst, true, false,
+                               ctx->block->fp_mode.must_flush_denorms16_64);
       } else if (dst.regClass() == v1 && instr->def.bit_size == 16) {
          emit_vop3p_instruction(ctx, instr, aco_opcode::v_pk_min_f16, dst, true);
       } else if (dst.regClass() == v1) {
