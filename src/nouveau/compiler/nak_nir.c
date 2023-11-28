@@ -989,7 +989,28 @@ nak_mem_access_size_align(nir_intrinsic_op intrin,
    if (intrin == nir_intrinsic_load_ubo)
       chunk_bytes = MIN2(chunk_bytes, 8);
 
-   if (chunk_bytes < 4) {
+   if (intrin == nir_intrinsic_load_ubo && align < 4) {
+      /* CBufs require 4B alignment unless we're doing a ldc.u8 or ldc.i8.
+       * In particular, this applies to ldc.u16 which means we either have to
+       * fall back to two ldc.u8 or use ldc.u32 and shift stuff around to get
+       * the 16bit value out.  Fortunately, nir_lower_mem_access_bit_sizes()
+       * can handle over-alignment for reads.
+       */
+      if (align == 2 || offset_is_const) {
+         return (nir_mem_access_size_align) {
+            .bit_size = 32,
+            .num_components = 1,
+            .align = 4,
+         };
+      } else {
+         assert(align == 1);
+         return (nir_mem_access_size_align) {
+            .bit_size = 8,
+            .num_components = 1,
+            .align = 1,
+         };
+      }
+   } else if (chunk_bytes < 4) {
       return (nir_mem_access_size_align) {
          .bit_size = chunk_bytes * 8,
          .num_components = 1,
