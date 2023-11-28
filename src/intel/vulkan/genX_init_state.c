@@ -700,6 +700,52 @@ init_compute_queue_state(struct anv_queue *queue)
                                         false /* is_companion_rcs_batch */);
 }
 
+static VkResult
+init_copy_video_queue_state(struct anv_queue *queue)
+{
+#if GFX_VER >= 12
+   UNUSED const struct intel_device_info *devinfo = queue->device->info;
+   uint32_t cmds[64];
+   UNUSED struct anv_batch batch = {
+      .start = cmds,
+      .next = cmds,
+      .end = (void *) cmds + sizeof(cmds),
+   };
+
+   if (queue->device->info->has_aux_map) {
+      uint64_t reg = GENX(VD0_AUX_TABLE_BASE_ADDR_num);
+
+      if (queue->family->engine_class == INTEL_ENGINE_CLASS_COPY) {
+#if GFX_VERx10 >= 125
+         reg = GENX(BCS_AUX_TABLE_BASE_ADDR_num);
+#endif
+      }
+
+      uint64_t aux_base_addr =
+         intel_aux_map_get_base(queue->device->aux_map_ctx);
+      assert(aux_base_addr % (32 * 1024) == 0);
+      anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+         lri.RegisterOffset = reg;
+         lri.DataDWord = aux_base_addr & 0xffffffff;
+      }
+      anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+         lri.RegisterOffset = reg + 4;
+         lri.DataDWord = aux_base_addr >> 32;
+      }
+
+      anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
+      assert(batch.next <= batch.end);
+
+      return anv_queue_submit_simple_batch(queue, &batch,
+                                           false /* is_companion_rcs_batch */);
+   }
+#else
+   assert(!queue->device->info->has_aux_map);
+#endif
+
+   return VK_SUCCESS;
+}
+
 void
 genX(init_physical_device_state)(ASSERTED struct anv_physical_device *pdevice)
 {
@@ -737,9 +783,13 @@ genX(init_device_state)(struct anv_device *device)
          break;
       }
       case INTEL_ENGINE_CLASS_VIDEO:
-         res = VK_SUCCESS;
+         res = init_copy_video_queue_state(queue);
          break;
       case INTEL_ENGINE_CLASS_COPY:
+         res = init_copy_video_queue_state(queue);
+         if (res != VK_SUCCESS)
+            return res;
+
          /**
           * Execute RCS init batch by default on the companion RCS command buffer in
           * order to support MSAA copy/clear operations on copy queue.
