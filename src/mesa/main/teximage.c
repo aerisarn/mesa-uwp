@@ -1577,6 +1577,21 @@ _mesa_target_can_be_compressed(const struct gl_context *ctx, GLenum target,
       case MESA_FORMAT_LAYOUT_BPTC:
          target_can_be_compresed = ctx->Extensions.ARB_texture_compression_bptc;
          break;
+      case MESA_FORMAT_LAYOUT_S3TC:
+         /* From the EXT_texture_compression_s3tc spec:
+          *
+          *      In extended OpenGL ES 3.0.2 these new tokens are also accepted by the
+          *      <internalformat> parameter of TexImage3D, CompressedTexImage3D,
+          *      TexStorage2D, TexStorage3D and the <format> parameter of
+          *      CompressedTexSubImage3D.
+          *
+          * The spec does not clarify whether the same applies to newer desktop GL versions
+          * (where 3D textures were introduced), check compatibility ext to be safe.
+          */
+         target_can_be_compresed =
+            ctx->Extensions.EXT_texture_compression_s3tc &&
+            (_mesa_is_gles3(ctx) || ctx->Extensions.ARB_ES3_compatibility);
+         break;
       case MESA_FORMAT_LAYOUT_ASTC:
          target_can_be_compresed =
             ctx->Extensions.KHR_texture_compression_astc_hdr ||
@@ -5531,6 +5546,11 @@ compressed_subtexture_target_check(struct gl_context *ctx, GLenum target,
          switch (layout) {
          case MESA_FORMAT_LAYOUT_BPTC:
             /* valid format */
+            break;
+         case MESA_FORMAT_LAYOUT_S3TC:
+            targetOK =
+               ctx->Extensions.EXT_texture_compression_s3tc &&
+               (_mesa_is_gles3(ctx) || ctx->Extensions.ARB_ES3_compatibility);
             break;
          case MESA_FORMAT_LAYOUT_ASTC:
             targetOK =
