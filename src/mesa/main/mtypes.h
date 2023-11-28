@@ -2528,7 +2528,6 @@ struct gl_shared_state
  */
 struct gl_renderbuffer
 {
-   GLuint ClassID;        /**< Useful for drivers */
    GLuint Name;
    GLchar *Label;         /**< GL_KHR_debug */
    GLint RefCount;
