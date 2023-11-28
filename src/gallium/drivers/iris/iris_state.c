@@ -1430,6 +1430,18 @@ iris_init_compute_context(struct iris_batch *batch)
    iris_batch_sync_region_end(batch);
 }
 
+static void
+iris_init_copy_context(struct iris_batch *batch)
+{
+   iris_batch_sync_region_start(batch);
+
+#if GFX_VER >= 12
+   init_aux_map_state(batch);
+#endif
+
+   iris_batch_sync_region_end(batch);
+}
+
 struct iris_vertex_buffer_state {
    /** The VERTEX_BUFFER_STATE hardware structure. */
    uint32_t state[GENX(VERTEX_BUFFER_STATE_length)];
@@ -6195,14 +6207,30 @@ init_aux_map_state(struct iris_batch *batch)
    uint64_t base_addr = intel_aux_map_get_base(aux_map_ctx);
    assert(base_addr != 0 && align64(base_addr, 32 * 1024) == base_addr);
 
-   bool use_compute_reg = batch->name == IRIS_BATCH_COMPUTE &&
-                          devinfo->has_compute_engine &&
-                          debug_get_bool_option("INTEL_COMPUTE_CLASS", false);
+   uint32_t reg = 0;
+   switch (batch->name) {
+   case IRIS_BATCH_COMPUTE:
+      if (devinfo->has_compute_engine &&
+          debug_get_bool_option("INTEL_COMPUTE_CLASS", false)) {
+         reg = GENX(COMPCS0_AUX_TABLE_BASE_ADDR_num);
+         break;
+      }
+      /* fallthrough */
+      FALLTHROUGH;
+   case IRIS_BATCH_RENDER:
+      reg = GENX(GFX_AUX_TABLE_BASE_ADDR_num);
+      break;
+   case IRIS_BATCH_BLITTER:
+#if GFX_VERx10 >= 125
+      reg = GENX(BCS_AUX_TABLE_BASE_ADDR_num);
+#endif
+      break;
+   default:
+      unreachable("Invalid batch for aux map init.");
+   }
 
-   uint32_t reg = use_compute_reg ? GENX(COMPCS0_AUX_TABLE_BASE_ADDR_num) :
-                                    GENX(GFX_AUX_TABLE_BASE_ADDR_num);
-
-   iris_load_register_imm64(batch, reg, base_addr);
+   if (reg)
+      iris_load_register_imm64(batch, reg, base_addr);
 }
 #endif
 
@@ -9875,6 +9903,7 @@ genX(init_screen_state)(struct iris_screen *screen)
    screen->vtbl.destroy_state = iris_destroy_state;
    screen->vtbl.init_render_context = iris_init_render_context;
    screen->vtbl.init_compute_context = iris_init_compute_context;
+   screen->vtbl.init_copy_context = iris_init_copy_context;
    screen->vtbl.upload_render_state = iris_upload_render_state;
    screen->vtbl.upload_indirect_render_state = iris_upload_indirect_render_state;
    screen->vtbl.update_binder_address = iris_update_binder_address;
