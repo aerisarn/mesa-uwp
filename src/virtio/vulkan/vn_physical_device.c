@@ -2010,6 +2010,48 @@ vn_physical_device_fix_image_format_info(
    return &local_info->format;
 }
 
+static uint32_t
+vn_modifier_plane_count(struct vn_physical_device *physical_dev,
+                        VkFormat format,
+                        uint64_t modifier)
+{
+   VkPhysicalDevice physical_dev_handle =
+      vn_physical_device_to_handle(physical_dev);
+
+   VkDrmFormatModifierPropertiesListEXT modifier_list = {
+      .sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT,
+      .pDrmFormatModifierProperties = NULL,
+   };
+   VkFormatProperties2 format_props = {
+      .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2,
+      .pNext = &modifier_list,
+   };
+   vn_GetPhysicalDeviceFormatProperties2(physical_dev_handle, format,
+                                         &format_props);
+
+   STACK_ARRAY(VkDrmFormatModifierPropertiesEXT, modifier_props,
+               modifier_list.drmFormatModifierCount);
+   if (!modifier_props)
+      return 0;
+   modifier_list.pDrmFormatModifierProperties = modifier_props;
+
+   vn_GetPhysicalDeviceFormatProperties2(physical_dev_handle, format,
+                                         &format_props);
+
+   uint32_t plane_count = 0;
+   for (uint32_t i = 0; i < modifier_list.drmFormatModifierCount; i++) {
+      const struct VkDrmFormatModifierPropertiesEXT *props =
+         &modifier_list.pDrmFormatModifierProperties[i];
+      if (modifier == props->drmFormatModifier) {
+         plane_count = props->drmFormatModifierPlaneCount;
+         break;
+      }
+   }
+
+   STACK_ARRAY_FINISH(modifier_props);
+   return plane_count;
+}
+
 VkResult
 vn_GetPhysicalDeviceImageFormatProperties2(
    VkPhysicalDevice physicalDevice,
@@ -2025,22 +2067,54 @@ vn_GetPhysicalDeviceImageFormatProperties2(
 
    const struct wsi_image_create_info *wsi_info = vk_find_struct_const(
       pImageFormatInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
+   const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *modifier_info =
+      vk_find_struct_const(
+         pImageFormatInfo->pNext,
+         PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
 
    /* force common wsi into choosing DRM_FORMAT_MOD_LINEAR or else fall back
     * to the legacy path, for which Venus also forces LINEAR for wsi images.
     */
    if (VN_PERF(NO_TILED_WSI_IMAGE)) {
-      const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *modifier_info =
-         vk_find_struct_const(
-            pImageFormatInfo->pNext,
-            PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
-
       if (wsi_info && modifier_info &&
           modifier_info->drmFormatModifier != DRM_FORMAT_MOD_LINEAR) {
          if (VN_DEBUG(WSI)) {
             vn_log(physical_dev->instance,
                    "rejecting non-linear wsi image format modifier %" PRIu64,
                    modifier_info->drmFormatModifier);
+         }
+         return vn_error(physical_dev->instance,
+                         VK_ERROR_FORMAT_NOT_SUPPORTED);
+      }
+   }
+
+   /* Integration with Xwayland (using virgl-backed gbm) may only use
+    * modifiers for which `memory_plane_count == format_plane_count` with the
+    * distinction defined in the spec for VkDrmFormatModifierPropertiesEXT.
+    *
+    * The spec also states that:
+    *   If an image is non-linear, then the partition of the image’s memory
+    *   into memory planes is implementation-specific and may be unrelated to
+    *   the partition of the image’s content into format planes.
+    *
+    * A modifier like I915_FORMAT_MOD_Y_TILED_CCS with an extra CCS
+    * metadata-only _memory_ plane is not supported by virgl. In general,
+    * since the partition of format planes into memory planes (even when their
+    * counts match) cannot be guarantably known, the safest option is to limit
+    * both plane counts to 1 while virgl may be involved.
+    */
+   if (wsi_info && modifier_info &&
+       modifier_info->drmFormatModifier != DRM_FORMAT_MOD_LINEAR) {
+      const uint32_t plane_count =
+         vn_modifier_plane_count(physical_dev, pImageFormatInfo->format,
+                                 modifier_info->drmFormatModifier);
+      if (plane_count != 1) {
+         if (VN_DEBUG(WSI)) {
+            vn_log(physical_dev->instance,
+                   "rejecting multi-plane (%u) modifier %" PRIu64
+                   " for wsi image with format %u",
+                   plane_count, modifier_info->drmFormatModifier,
+                   pImageFormatInfo->format);
          }
          return vn_error(physical_dev->instance,
                          VK_ERROR_FORMAT_NOT_SUPPORTED);
